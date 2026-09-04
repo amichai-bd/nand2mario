@@ -33,7 +33,9 @@ path and line numbers. Published source references work without GitHub access.
 Markdown renders links, headings, tables, and code blocks. Repository-relative
 links resolve from the original source path. Missing tracked targets and anchors
 fail the build. Links to this repository's `blob/main` and `tree/main` paths also
-resolve locally. Other HTTP, HTTPS, and mail links are left unchanged.
+resolve locally. Other HTTP, HTTPS, `mailto:`, and scheme-relative web links
+(`//example.com/path`) are left unchanged. Other explicit URL schemes fail the
+build, with or without a host. Runtime assets must still be local.
 
 HTML documents under `wiki/` and SVG assets embed in an iframe with script permission
 and without same-origin privileges. A standalone link opens the original file;

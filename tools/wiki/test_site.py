@@ -83,6 +83,34 @@ class PublicationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Broken link"):
             site.resolve("untracked.md", "README.md", {"README.md": ""})
 
+    def test_link_schemes_through_resolver_and_rendering(self):
+        rejected = ("ftp://example.com/file.txt", "ssh://example.com/repo",
+                    "custom://example.com/path", "javascript://example.com/path",
+                    "ftp:file.txt", "javascript:alert(1)")
+        allowed = ("http://example.com/path", "https://example.com/path",
+                   "mailto:hello@example.com", "//example.com/path")
+        files = {"wiki/index.md": "", "wiki/target.md": "# Target"}
+        for url in rejected:
+            with self.subTest(url=url), self.assertRaisesRegex(ValueError, "Unsupported URL in wiki/index.md"):
+                site.resolve(url, "wiki/index.md", files)
+            for source, text in (("wiki/index.md", f'[Link]({url})'),
+                                 ("wiki/index.html", f'<a href="{url}">Link</a>')):
+                with self.subTest(url=url, source=source), self.assertRaisesRegex(ValueError, "Unsupported URL"):
+                    site.validate({**files, source: text})
+        for url in (*allowed, "target.md#target"):
+            with self.subTest(url=url):
+                expected = ("wiki/target.md", "target") if url == "target.md#target" else None
+                self.assertEqual(site.resolve(url, "wiki/index.md", files), expected)
+            for source, text in (("wiki/index.md", f'[Link]({url})'),
+                                 ("wiki/index.html", f'<a href="{url}">Link</a>')):
+                with self.subTest(url=url, source=source):
+                    rendered = ''.join(site.validate({**files, source: text})[source].output)
+                    href = '?page=wiki/target.md#target' if expected and source.endswith('.md') else url
+                    self.assertIn(f'href="{href}"', rendered)
+        for url in ("https://example.com/runtime.js", "//example.com/runtime.js"):
+            with self.subTest(asset=url), self.assertRaisesRegex(ValueError, "Runtime assets must be local"):
+                site.validate({"wiki/index.html": f'<script src="{url}"></script>'})
+
     def test_output_and_publication_boundary(self):
         parent = site.ROOT / "workdir/wiki/tests"
         parent.mkdir(parents=True, exist_ok=True)
