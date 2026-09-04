@@ -1,0 +1,4 @@
+interface:
+  display_name: "Agent Flow"
+  short_description: "Run an issue through verified merge and cleanup"
+  default_prompt: "Take this nand2mario issue through its isolated worktree, checks, peer-agent review, merge, and cleanup."

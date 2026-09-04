@@ -27,3 +27,12 @@ Closes #
 ## Risk
 
 <!-- State the main risk, or write "None". -->
+
+## Agent review
+
+<!-- Update after independent review. Same-account agents submit COMMENT reviews. -->
+
+- Reviewer agent:
+- Reviewed commit:
+- Verdict: pending
+- Findings and disposition:
