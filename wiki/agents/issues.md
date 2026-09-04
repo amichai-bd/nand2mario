@@ -32,6 +32,11 @@ Blank issues are disabled.
 
 The issue is the agent's working guide and starting prompt.
 
+When the user explicitly invokes
+[`grill-me`](../../.agents/skills/grill-me/SKILL.md), its confirmed decision
+packet maps into the issue goal, scope, success criteria, and linked wiki work.
+Otherwise align directly. Do not copy the full interview into the issue.
+
 - Assign the issue before work starts. The assignee is accountable for it.
 - Claim the issue in a comment. Name the agent, branch, and relative worktree.
 - When an internal agent has no GitHub identity, assign the accountable user and
