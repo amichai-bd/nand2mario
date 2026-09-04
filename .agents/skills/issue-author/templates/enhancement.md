@@ -1,7 +1,7 @@
-<!-- issue-meta: {"title":"Short imperative result","labels":["type:enhancement","area:agents","priority:p0"],"assignee":"@me","repo":"owner/repository"} -->
+<!-- issue-meta: {"title":"Add observable behavior","labels":["type:enhancement","area:tools","priority:p1"],"assignee":"@me","repo":"owner/repository"} -->
 ## TL;DR
 
-State the issue in one or two sentences.
+State the change in one or two sentences.
 
 ## Specification reference
 
@@ -9,11 +9,11 @@ State the issue in one or two sentences.
 
 ## Current behavior
 
-State facts and the gap.
+State what exists and why it is insufficient.
 
 ## Proposed behavior
 
-State the observable change.
+State the externally visible change.
 
 ## Out of scope
 

@@ -13,7 +13,9 @@ from typing import Any
 
 META_RE = re.compile(r"<!--\s*issue-meta:\s*(\{.*\})\s*-->")
 REPO_RE = re.compile(r"[^/\s]+/[^/\s]+")
-HEADING_RE = re.compile(r"^##[ \t]+(.+?)[ \t]*\r?$", re.MULTILINE)
+HEADING_RE = re.compile(r"^##[ \t]+(.+?)[ \t]*$")
+FENCE_RE = re.compile(r"^[ ]{0,3}(`{3,}|~{3,})(.*)$")
+CHECKBOX_RE = re.compile(r"^[ \t]*[-*+] \[[ xX]\] \S.*$")
 REQUIRED_KEYS = {"title", "labels", "assignee", "repo"}
 
 
@@ -70,24 +72,56 @@ def validate_metadata(metadata: dict[str, Any]) -> None:
         raise DraftError("repo must use owner/name")
 
 
+def lines_outside_fences(body: str) -> list[tuple[int, str]]:
+    lines = []
+    fence: tuple[str, int] | None = None
+    offset = 0
+    for raw_line in body.splitlines(keepends=True):
+        line = raw_line.rstrip("\r\n")
+        match = FENCE_RE.fullmatch(line)
+        if fence:
+            marker, width = fence
+            if re.fullmatch(rf"[ ]{{0,3}}{re.escape(marker)}{{{width},}}[ \t]*", line):
+                fence = None
+        elif match and (match.group(1)[0] == "~" or "`" not in match.group(2)):
+            fence = (match.group(1)[0], len(match.group(1)))
+        else:
+            lines.append((offset, line))
+        offset += len(raw_line)
+    return lines
+
+
+def find_headings(body: str) -> list[tuple[str, int, int]]:
+    headings = []
+    for offset, line in lines_outside_fences(body):
+        match = HEADING_RE.fullmatch(line)
+        if match:
+            headings.append((match.group(1).strip(), offset, offset + len(line)))
+    return headings
+
+
 def validate_body(body: str) -> None:
-    matches = list(HEADING_RE.finditer(body))
-    headings = [match.group(1).strip() for match in matches]
+    matches = find_headings(body)
+    headings = [name for name, _, _ in matches]
     if len(headings) < 4:
         raise DraftError("issue body needs the four shared headings")
-    if body[: matches[0].start()].strip():
+    if body[: matches[0][1]].strip():
         raise DraftError("issue body must start with the TL;DR heading")
     if headings[:2] != ["TL;DR", "Specification reference"]:
         raise DraftError("issue body must start with TL;DR, then Specification reference")
     if headings[-2:] != ["Goal", "Success criteria"]:
         raise DraftError("issue body must end with Goal, then Success criteria")
-    for index, match in enumerate(matches):
-        end = matches[index + 1].start() if index + 1 < len(matches) else len(body)
-        if not body[match.end() : end].strip():
+    for index, (_, _, content_start) in enumerate(matches):
+        end = matches[index + 1][1] if index + 1 < len(matches) else len(body)
+        if not body[content_start:end].strip():
             raise DraftError(f"section {headings[index]!r} is empty")
-    success_start = matches[-1].end()
-    if not re.search(r"(?m)^- \[ \] \S", body[success_start:]):
-        raise DraftError("Success criteria needs at least one unchecked item")
+    success_body = body[matches[-1][2] :]
+    checkboxes = sum(
+        bool(CHECKBOX_RE.fullmatch(line))
+        for _, line in lines_outside_fences(success_body)
+    )
+    if not 3 <= checkboxes <= 5:
+        raise DraftError("Success criteria needs three to five checkboxes")
 
 
 def build_command(metadata: dict[str, Any]) -> list[str]:

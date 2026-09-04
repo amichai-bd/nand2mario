@@ -32,6 +32,7 @@ class CreateIssueTest(unittest.TestCase):
             "## Context\r\n\r\nLine one.\r\nLine two: 日本語.\r\n\r\n"
             "## Goal\r\n\r\nPreserve exact Markdown.\r\n\r\n"
             "## Success criteria\r\n\r\n- [ ] Body is unchanged.\r\n"
+            "- [ ] Arguments stay separate.\r\n- [ ] Unicode stays intact.\r\n"
         )
         title = "Keep spaces, `ticks`, apostrophe's text, and 日本語"
         metadata_source = {
@@ -88,6 +89,45 @@ class CreateIssueTest(unittest.TestCase):
         }
         with self.assertRaisesRegex(create_issue.DraftError, "unknown titel"):
             create_issue.validate_metadata(metadata)
+
+    def test_ignores_headings_and_checkboxes_in_fences(self) -> None:
+        body = (
+            "## TL;DR\n\nParse Markdown.\n\n"
+            "## Specification reference\n\nwiki/a.md\n\n"
+            "## Context\n\n"
+            "```markdown\n## Empty\n- [ ] Not a criterion.\n```\n\n"
+            "~~~text\n## Goal\n## Success criteria\n~~~\n\n"
+            "## Goal\n\nIgnore fenced headings.\n\n"
+            "## Success criteria\n\n"
+            "- [ ] First.\n- [ ] Second.\n- [ ] Third.\n"
+        )
+        create_issue.validate_body(body)
+        self.assertEqual(
+            ["TL;DR", "Specification reference", "Context", "Goal", "Success criteria"],
+            [name for name, _, _ in create_issue.find_headings(body)],
+        )
+
+    def test_accepts_success_criteria_bounds(self) -> None:
+        for count in (3, 5):
+            with self.subTest(count=count):
+                body = self.body_with_criteria(count)
+                create_issue.validate_body(body)
+
+    def test_rejects_success_criteria_outside_bounds(self) -> None:
+        for count in (2, 6):
+            with self.subTest(count=count):
+                with self.assertRaisesRegex(create_issue.DraftError, "three to five"):
+                    create_issue.validate_body(self.body_with_criteria(count))
+
+    @staticmethod
+    def body_with_criteria(count: int) -> str:
+        criteria = "".join(f"- [ ] Check {index}.\n" for index in range(count))
+        return (
+            "## TL;DR\n\nBound the list.\n\n"
+            "## Specification reference\n\nwiki/a.md\n\n"
+            "## Goal\n\nKeep issues focused.\n\n"
+            f"## Success criteria\n\n{criteria}"
+        )
 
 
 if __name__ == "__main__":
