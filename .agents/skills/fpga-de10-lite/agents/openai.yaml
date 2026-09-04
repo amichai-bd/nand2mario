@@ -1,0 +1,4 @@
+interface:
+  display_name: "FPGA DE10-Lite"
+  short_description: "Constrain and prove the DE10-Lite target safely"
+  default_prompt: "Use $fpga-de10-lite to build or inspect this DE10-Lite change."

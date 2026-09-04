@@ -1,77 +1,27 @@
 ---
 name: grill-me
-description: Run an explicit human-alignment interview before a nand2mario issue or implementation starts. Use only when the user invokes grill-me or $grill-me; do not invoke it for ordinary ambiguity.
+description: Run a human-alignment interview before nand2mario work. Use only when the user invokes grill-me or $grill-me; do not invoke it for ordinary ambiguity.
 ---
 
 # Grill me
 
-Turn an unclear request into a confirmed decision packet. Do not create issues,
-edit files, or take external action during the interview.
+Turn an unclear request into a confirmed decision packet. Do not edit files,
+create issues, or take external action during the interview.
 
-This repository skill is self-contained for Codex agents. Do not delegate to an
-upstream skill. Run it only after the user explicitly invokes it. Otherwise,
-align directly with the user.
+1. Inspect repository facts before asking questions.
+2. Ask one to three ready decisions that can change scope, behavior, risk, cost,
+   or an irreversible action.
+3. Give concrete choices and a recommendation with its tradeoff.
+4. Wait, then recompute the remaining decisions.
+5. Challenge conflicts with evidence. Do not guess past missing facts.
+6. Fill [the decision packet](templates/decision-packet.md) and ask for explicit
+   confirmation before handoff.
 
-## Method
-
-1. Read the repository, linked specifications, and known constraints. Find facts
-   with available tools instead of asking the human.
-2. Map the remaining decisions and their dependencies. Ask only questions that
-   could change scope, architecture, acceptance, risk, cost, or an irreversible
-   action.
-3. Ask the ready decision frontier in a short round. Each question includes:
-   - the decision and why it matters;
-   - two or three concrete choices;
-   - a recommendation with its main tradeoff.
-4. Wait for the answers. Recompute the frontier. Challenge contradictions and
-   assumptions with evidence, then ask the next ready round.
-5. If a decision needs a prototype, measurement, private input, or permission,
-   name that dependency. Do not replace missing evidence with a guess.
-6. When no material decision remains, present the packet below. Ask the human to
-   confirm or correct it. Do not hand off to implementation before confirmation.
-
-Ask one to three questions per round. A dependent question waits for a later
-round. Do not ask about naming, formatting, or implementation detail unless it
-changes an observable result.
-
-## Decision packet
-
-- **Goal:** one observable result.
-- **Decisions:** chosen behavior and important rationale.
-- **Non-goals:** tempting adjacent work that is excluded.
-- **Risks and dependencies:** unresolved evidence, permissions, or inputs.
-- **Wiki impact:** pages to create or update as sources of truth.
-- **Issue shape:** suggested title, scope, and three to five success criteria.
-- **Confirmation:** the human's explicit approval or requested corrections.
-
-The packet informs the wiki and issue. It does not replace them. After approval,
-use the repository issue flow to record the work.
-
-## Stop conditions
-
-Stop when the packet is confirmed, the human pauses the interview, or progress
-requires evidence or authority that is unavailable. Preserve unresolved items;
-do not silently choose for the human.
-
-## Examples
-
-Good: Before choosing a Game Boy-to-VGA frame crossing, inspect the current
-clock plan and DE10-Lite memory limits. Ask whether tearing-free output or lower
-memory use wins if both cannot be proven together. Recommend a double buffer,
-state its block-RAM cost, and wait for confirmation before writing the CDC spec.
-
-Bad: Ask which DE10-Lite FPGA is installed when the board manual already answers
-it, present ten unrelated questions at once, assume a single clock domain, and
-start editing RTL before the user confirms the tradeoff.
+Read [the scenarios](examples/scenarios.md) when deciding what to ask. Stop when
+the packet is confirmed, paused, or blocked by missing evidence or authority.
 
 ## Provenance
 
 Adapted from Matt Pocock's `grill-me` and `grilling` skills at commit
-`3cca18b368ae95cdbdebbff572ccafa662551015`:
-
-- <https://github.com/mattpocock/skills/tree/3cca18b368ae95cdbdebbff572ccafa662551015>
-- [Upstream MIT license](LICENSE.upstream.txt)
-
-The decision tree, ready-frontier interview, recommendations, fact-finding, and
-confirmation gate were adapted. Repository-specific issue and wiki outputs,
-bounded rounds, mutation boundary, stop conditions, and FPGA examples were added.
+`3cca18b368ae95cdbdebbff572ccafa662551015`. See
+[the upstream MIT license](LICENSE.upstream.txt).

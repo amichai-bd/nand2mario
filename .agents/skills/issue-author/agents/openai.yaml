@@ -1,0 +1,4 @@
+interface:
+  display_name: "Issue Author"
+  short_description: "Create focused, safe GitHub issue prompts"
+  default_prompt: "Use $issue-author to draft and validate a focused repository issue."

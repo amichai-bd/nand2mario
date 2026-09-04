@@ -1,0 +1,4 @@
+interface:
+  display_name: "DV UVM-lite"
+  short_description: "Build small self-checking SystemVerilog tests"
+  default_prompt: "Use $dv-uvm-lite to verify this specified hardware behavior."

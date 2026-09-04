@@ -1,0 +1,4 @@
+interface:
+  display_name: "Build Maintainer"
+  short_description: "Keep builds deterministic and artifacts traceable"
+  default_prompt: "Use $build-maintainer to implement or review this build-system change."

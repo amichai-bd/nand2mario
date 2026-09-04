@@ -1,0 +1,4 @@
+interface:
+  display_name: "Wiki Spec Writer"
+  short_description: "Write concise, testable hardware contracts"
+  default_prompt: "Use $wiki-spec-writer to define this behavior as a testable wiki contract."
