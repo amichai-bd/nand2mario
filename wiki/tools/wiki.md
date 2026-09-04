@@ -19,8 +19,9 @@ build job runs the same command, uploads `workdir/wiki/site/`, and passes that
 artifact to a separate deploy job. Deployments use the `github-pages`
 environment and a single `pages` concurrency group.
 
-A repository administrator must select **GitHub Actions** as the Pages source
-before the first deployment. Pull requests never deploy.
+GitHub Actions is the configured Pages source. The deployment after merge
+`55ba933` [passed](https://github.com/amichai-bd/nand2mario/actions/runs/33899199181).
+Pull requests never deploy.
 
 The Pages site is public even while the source repository remains private.
 Private-repository Pages requires a GitHub plan that supports it. Treat every

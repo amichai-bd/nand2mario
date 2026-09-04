@@ -25,8 +25,8 @@ decisions, verification, and development guidance.
 
 ## Status
 
-The agent workflow, repository structure, wiki checks, and deployment automation
-exist. Product-facing P0 gaps still block functional RTL.
+The agent workflow, repository structure, wiki checks, and Pages deployment are
+proven. Assigned P0 gaps still block functional RTL.
 
 Future pages should remain short. Create one page per subsystem or interface and
 use this structure where practical:

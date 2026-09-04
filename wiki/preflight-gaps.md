@@ -2,7 +2,7 @@
 
 Date: 2026-09-04
 
-Status: open gap register
+Status: P0 active; GAP-009 closed
 
 ## Purpose
 
@@ -24,23 +24,23 @@ logic needed to test clocks, VGA, UART, reset, and safe programming.
 
 ## Gap summary
 
-| ID | Priority | Gap | Closed when |
-|---|---|---|---|
-| GAP-001 | P0 | Scope and success contract | DMG target, releases, and non-goals are approved |
-| GAP-002 | P0 | License, ROM policy, and provenance | Licenses and reuse rules are committed |
-| GAP-003 | P0 | Build command | A minimal `n2m` command runs from a fresh shell |
-| GAP-004 | P0 | Real environment doctor | It proves compile, elaborate, run, JTAG, and UART detection |
-| GAP-005 | P0 | Board wiring and safe bring-up | VGA test card and UART ping pass with documented wiring |
-| GAP-006 | P0 | Clock, reset, and CDC plan | Frequencies, crossings, resets, and SDC rules are approved |
-| GAP-007 | P0 | Executable interface contracts | Address maps, host registers, and trace formats have one source |
-| GAP-008 | P0 | Verification baseline | A known-good DUT and deliberately failing DUT prove the harness |
-| GAP-009 | P0 | Initial agent skills | Core skills exist and have concise trigger tests and examples |
-| GAP-010 | P0 | GitHub workflow, CI, and Pages | Templates, checks, rules, and deployment pass end to end |
-| GAP-011 | P1 | Cartridge and target ROM facts | Header is inspected privately and required mapper is specified |
-| GAP-012 | P1 | VGA frame crossing | Buffering and monitor timing pass simulation and hardware tests |
-| GAP-013 | P1 | External dependencies | Tests and tools are pinned, licensed, and reproducible |
-| GAP-014 | P2 | Physical audio path | Output method and acceptance test are selected |
-| GAP-015 | P2 | Native compiler scope | Language, ABI, outputs, and compatibility goal are approved |
+| ID | Priority | State | Issue | Gap | Closed when |
+|---|---|---|---|---|---|
+| GAP-001 | P0 | Open | [#24](https://github.com/amichai-bd/nand2mario/issues/24) | Scope and success contract | DMG target, releases, and non-goals are approved |
+| GAP-002 | P0 | Open | [#25](https://github.com/amichai-bd/nand2mario/issues/25) | License, ROM policy, and provenance | Licenses and reuse rules are committed |
+| GAP-003 | P0 | Open | [#26](https://github.com/amichai-bd/nand2mario/issues/26) | Build command | A minimal `n2m` command runs from a fresh shell |
+| GAP-004 | P0 | Open | [#27](https://github.com/amichai-bd/nand2mario/issues/27) | Real environment doctor | It proves compile, elaborate, run, JTAG, and UART detection |
+| GAP-005 | P0 | Open | [#28](https://github.com/amichai-bd/nand2mario/issues/28) | Board wiring and safe bring-up | VGA test card and UART ping pass with documented wiring |
+| GAP-006 | P0 | Open | [#29](https://github.com/amichai-bd/nand2mario/issues/29) | Clock, reset, and CDC plan | Frequencies, crossings, resets, and SDC rules are approved |
+| GAP-007 | P0 | Open | [#30](https://github.com/amichai-bd/nand2mario/issues/30) | Executable interface contracts | Address maps, host registers, and trace formats have one source |
+| GAP-008 | P0 | Open | [#31](https://github.com/amichai-bd/nand2mario/issues/31) | Verification baseline | A known-good DUT and deliberately failing DUT prove the harness |
+| GAP-009 | P0 | Closed | [#14](https://github.com/amichai-bd/nand2mario/issues/14) | Initial agent skills | Core skills exist and have concise trigger tests and examples |
+| GAP-010 | P0 | Open | [#32](https://github.com/amichai-bd/nand2mario/issues/32) | GitHub workflow, CI, and Pages | Templates, checks, rules, and deployment pass end to end |
+| GAP-011 | P1 | Later | — | Cartridge and target ROM facts | Header is inspected privately and required mapper is specified |
+| GAP-012 | P1 | Later | — | VGA frame crossing | Buffering and monitor timing pass simulation and hardware tests |
+| GAP-013 | P1 | Later | — | External dependencies | Tests and tools are pinned, licensed, and reproducible |
+| GAP-014 | P2 | Later | — | Physical audio path | Output method and acceptance test are selected |
+| GAP-015 | P2 | Later | — | Native compiler scope | Language, ABI, outputs, and compatibility goal are approved |
 
 ## GAP-001 — Scope and success contract
 
@@ -242,8 +242,11 @@ correct flags, timing, memory traffic, or interrupts.
 
 **Current state**
 
-The repository has focused skills for issue delivery, human alignment, RTL,
-verification, FPGA work, specifications, builds, and host UART tools.
+Closed by issues [#7](https://github.com/amichai-bd/nand2mario/issues/7)
+through [#10](https://github.com/amichai-bd/nand2mario/issues/10) and the
+end-to-end audit in [#14](https://github.com/amichai-bd/nand2mario/issues/14).
+The focused skills use short methods with separate templates and examples. The
+issue helper has passing validation tests.
 
 **Risk**
 
@@ -266,10 +269,13 @@ or PR evidence drift.
 
 **Current state**
 
-A private GitHub repository, three issue forms, a PR template, required PR and
-wiki checks, protected `main`, the canonical label catalog, and a main-only
-Pages workflow exist. Product build CI and a self-hosted runner do not. The
-first Pages deployment is not yet proven.
+A private GitHub repository, issue forms, a PR template, required PR and wiki
+checks, protected `main`, labels, and main-only Pages deployment are proven.
+[PR #23](https://github.com/amichai-bd/nand2mario/pull/23) completed the
+wiki-only flow through peer review, merge, issue closure, cleanup, and a
+[successful Pages run](https://github.com/amichai-bd/nand2mario/actions/runs/33899199181).
+Product build CI and the protected physical runner remain open in
+[#32](https://github.com/amichai-bd/nand2mario/issues/32).
 
 **Risk**
 
