@@ -5,21 +5,23 @@ description: Run a nand2mario issue through its worktree, peer review, green CI,
 
 # Agent flow
 
-Own the result until merge and cleanup are verified. Follow `AGENTS.md` and the
-focused skill for the work.
+One root orchestrator selects issues. Authors babysit their PRs until merged.
 
-1. Align with the user. Use `grill-me` only when explicitly invoked.
-2. Create or refine a focused issue. Start only when it has an assignee.
-3. Claim a branch and issue worktree as defined in `worktrees/README.md`.
-4. Work in the issue worktree. Keep specification, code, and tests aligned.
-5. Commit, push, and open a PR that closes the issue.
-6. Poll checks. Fix owned failures and review findings.
-7. Get an independent agent review of the exact head SHA.
-8. Squash merge when checks and review pass. Verify closure, then clean up.
+1. Align directly; use `grill-me` only on explicit invocation.
+2. Create or pick an assigned issue. Root delegates one author and records
+   ownership using [the worktree guide](../../../worktrees/README.md).
+3. Author reads the issue and spec, then loops on specification, code, and tests.
+4. Commit, push, and open a draft PR using `pr-author`.
+5. Babysit: poll CI, fix failures, and request an independent review following
+   [the review guide](references/review.md).
+6. After a ready verdict for the current SHA and green checks, author posts the
+   report, undrafts, squash merges, and reports the merge to root.
+7. Root verifies merge, issue closure, deployment, and cleanup using the worktree
+   guide. End author and reviewer sessions through available lifecycle tools.
 
-Use [the review template](templates/review.md) for the peer-agent handoff. Read
-[the scenarios](examples/scenarios.md) when the ownership or retry boundary is
-unclear.
+Read [recovery and capacity](references/recovery.md) for delegation or interrupted
+work. Use [the review template](templates/review.md) and
+[scenarios](examples/scenarios.md) for review handoffs.
 
-Stop for a new product decision, broader scope, protected action, missing
-credential, or hardware action without approval.
+Stop for a new product decision, broader scope, missing credentials, or an
+unauthorized hardware action. Routine Pages deployment already has authorization.

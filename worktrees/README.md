@@ -1,51 +1,51 @@
 # Issue worktrees
 
-`worktrees/` holds isolated Git checkouts. `workdir/` holds disposable build
-output inside each checkout.
+The root checkout stays clean on `main`. It orchestrates isolated author and
+reviewer checkouts. `workdir/` stores generated output inside each checkout.
 
-The root checkout is the control point. Keep it clean and on `main`. Use it to
-create, inspect, and remove worktrees, not to implement changes.
+## Create
 
-## Lifecycle
+Root selects an assigned issue and delegates one author. From the root:
 
-1. Create a focused issue and assign its accountable owner.
-2. From the root checkout, fetch `main` and create the branch and worktree:
+```powershell
+git fetch origin
+git worktree add -b 42-fix-timer worktrees/42-fix-timer origin/main
+```
 
-   ```powershell
-   git fetch origin
-   git worktree add -b issue/42-fix-tima-reload worktrees/issue-42-fix-tima-reload origin/main
-   ```
+The branch and author directory have the same name: `<number>-<slug>`.
+`<repo-root>` means the root orchestration checkout, not a required environment
+variable. Comment the agent, branch, and relative worktree on the issue before
+editing. Never share a worktree.
 
-3. Comment on the issue with the agent, branch, and relative worktree path.
-4. Make all edits, builds, validation, and commits in that worktree.
-5. Push the branch and open a PR containing `Closes #42`.
-6. Create a separate reviewer worktree at the exact PR head SHA. In this
-   example, issue #42 produced PR #51:
+For PR 51, resolve its current head and give a different agent a detached
+checkout named `worktrees/review-51-<sha7>/`:
 
-   ```powershell
-   git fetch origin pull/51/head:refs/review/pr-51
-   git worktree add --detach worktrees/review-51-agent refs/review/pr-51
-   ```
+```powershell
+git fetch origin pull/51/head
+git rev-parse FETCH_HEAD
+# Substitute the returned full SHA and its first seven characters:
+git worktree add --detach worktrees/review-51-<sha7> <full-sha>
+```
 
-7. After agent review and required checks pass, squash merge and verify the PR.
-8. From the root checkout, remove both clean worktrees and prune metadata:
+Follow [agent-flow](../.agents/skills/agent-flow/SKILL.md) for review and babysitting.
 
-   ```powershell
-   git worktree remove worktrees/issue-42-fix-tima-reload
-   git worktree remove worktrees/review-51-agent
-   git worktree prune
-   ```
+## Clean up after merge
 
-9. Delete local task and review refs only after the merge is verified.
+The author reports its squash merge. Root verifies the PR merged, its closing
+issues closed, and required main checks/deployment passed. Stop active users of
+the worktrees before removing them.
 
-## Ownership
+Check both worktrees are clean. Resolve their full paths and confirm they are
+inside this repository's `worktrees/`. Do not force-remove dirty worktrees.
+Retain temporary drafts by moving their ignored `workdir/.tmp/` content to root
+`workdir/.tmp/` before removal; preserve same-name collisions under distinct
+names. Keep useful evidence until its linked retention need is satisfied.
 
-- One issue has one active author worktree.
-- A reviewer uses a separate read-only worktree at the reviewed SHA.
-- One agent owns each worktree. Never share one.
-- The GitHub assignee remains accountable when an internal agent has no account.
-- Transfer ownership in an issue comment before another agent continues.
-- Use relative paths in issues and documentation.
-- Do not force-remove a dirty worktree. Resolve or preserve its changes first.
+Then remove the exact author and reviewer worktrees with `git worktree remove`.
+Delete the verified merged local branch with `git branch -D 42-fix-timer`
+(squash merges do not retain branch ancestry). Delete its remote branch if still
+present, fetch with prune, and fast-forward root `main`. Do not delete unrelated
+branches or refs. End agent sessions through supported lifecycle tools.
 
-Child directories are ignored. This file is the only tracked file here.
+For interruption or ownership transfer, read
+[recovery](../.agents/skills/agent-flow/references/recovery.md).

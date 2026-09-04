@@ -39,6 +39,8 @@ packet maps into the issue goal, scope, success criteria, and linked wiki work.
 Otherwise align directly. Do not copy the full interview into the issue.
 
 - Assign the issue before work starts. The assignee is accountable for it.
+- One root orchestrator picks issues and delegates authors. Authors do not pick
+  unrelated backlog work.
 - Claim the issue in a comment. Name the agent, branch, and relative worktree.
 - When an internal agent has no GitHub identity, assign the accountable user and
   name the agent or session in the claim comment.
@@ -51,6 +53,9 @@ Otherwise align directly. Do not copy the full interview into the issue.
 
 Do not use comments as a command transcript. Build logs belong under the build
 tag; the issue should contain only the result and useful links.
+
+Use the [issue skill](https://github.com/amichai-bd/nand2mario/blob/main/.agents/skills/issue-author/SKILL.md)
+for retained Markdown drafts under `workdir/.tmp/issues/` and safe CLI bodies.
 
 Every implementation PR closes its issue. The normal case is one issue and one
 PR. One focused PR may close several related issues. See

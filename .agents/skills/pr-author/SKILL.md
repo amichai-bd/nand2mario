@@ -5,14 +5,16 @@ description: Open, update, and finish a focused nand2mario pull request. Use for
 
 # PR author
 
-Follow `wiki/agents/pull-requests.md` and `agent-flow`.
+Follow `agent-flow` and `wiki/agents/pull-requests.md`.
 
-1. Confirm the branch, issue, worktree, and latest validation.
-2. Fill [the PR body](templates/pull-request.md). Include each `Closes #N` line.
-3. State specification impact, exact results, risk, and current review SHA.
-4. Open early, then update the body when evidence changes.
-5. Poll checks and review. Fix owned failures until merge or a stop condition.
+1. Confirm the issue, branch, worktree, and validation.
+2. Fill [the PR body](templates/pull-request.md) at
+   `workdir/.tmp/pr/<pr-title-slug>.md`. Keep it locally after use.
+3. Open early with `gh pr create --draft --base main --title '<title>' --body-file <path>`.
+4. Update evidence with `gh pr edit <number> --body-file <path>`.
+5. Babysit CI and independent review. Post the returned report from a file,
+   undraft with `gh pr ready <number>`, then squash merge when ready.
 
-Use [the scenarios](examples/scenarios.md) when deciding whether issues belong in
-one PR. Stop when scope changed, evidence is missing, or a protected action needs
-approval.
+Use [the scenarios](examples/scenarios.md) for body handling and issue scope.
+Never interpolate Markdown into shell commands. Stop when scope changes,
+evidence is missing, or an unauthorized protected action is required.

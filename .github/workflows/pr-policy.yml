@@ -41,13 +41,13 @@ jobs:
           body = os.environ.get("PR_BODY", "")
 
           match = re.fullmatch(
-              r"issue/([1-9][0-9]*)-[a-z0-9]+(?:-[a-z0-9]+)*",
+              r"([1-9][0-9]*)-[a-z0-9]+(?:-[a-z0-9]+)*",
               branch,
           )
           if not match:
               print(
                   "::error::Branch must match "
-                  "issue/<primary-number>-<lowercase-slug>."
+                  "<primary-number>-<lowercase-slug>."
               )
               sys.exit(1)
 

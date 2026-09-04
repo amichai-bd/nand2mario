@@ -1,13 +1,15 @@
 # Scenarios
 
-Good: Claim an assigned issue, work only in its worktree, fix CI, get a fresh
-review after the last material push, merge, verify closure, and clean both
-worktrees.
+Good: Root delegates issue 42 to an author in `worktrees/42-fix-timer/`.
+The author opens a draft PR, fixes a CI failure, and gets an independent review.
+A fix changes the SHA, so the reviewer checks again. The author posts the ready
+report, undrafts, and squash merges. Root verifies closure and cleans up.
 
-Bad: Edit root `main`, accept a stale review, rerun a deterministic failure
-without a change, or stop after opening the PR.
+Good: A spec describes planned behavior before implementation. The PR names the
+open implementation issue and closure criteria. The reviewer checks that this
+sequencing is allowed by the current issue.
 
-A same-account reviewer leaves a COMMENT review. It does not claim to approve
-the author's PR. The recorded `ready` verdict is the project gate.
+Bad: Accept a stale review, edit root main, silently leave code/spec drift, or
+stop babysitting after opening the PR.
 
-Not a trigger: A design question that has no issue work to start or finish.
+Not a trigger: A design question with no issue work to start or finish.
