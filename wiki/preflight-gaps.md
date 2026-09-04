@@ -266,9 +266,10 @@ or PR evidence drift.
 
 **Current state**
 
-A private GitHub repository, three issue forms, a PR template, a required PR
-policy check, a wiki PR check, protected `main`, and the canonical label catalog
-exist. Product build CI, a self-hosted runner, and Pages do not.
+A private GitHub repository, three issue forms, a PR template, required PR and
+wiki checks, protected `main`, the canonical label catalog, and a main-only
+Pages workflow exist. Product build CI and a self-hosted runner do not. The
+first Pages deployment is not yet proven.
 
 **Risk**
 

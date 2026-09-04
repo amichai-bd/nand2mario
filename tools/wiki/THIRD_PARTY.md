@@ -16,10 +16,12 @@ come from [PyPI](https://pypi.org/) over pip.
 `pip-tools==7.5.2` (BSD-3-Clause) generated the lock file. It is not installed
 by the wiki check.
 
-The PR workflow uses GitHub's `actions/checkout` and `actions/setup-python`.
-Both use the MIT license and are pinned to full commit SHAs in the workflow.
+The workflows use GitHub's `actions/checkout`, `actions/setup-python`,
+`actions/configure-pages`, `actions/upload-pages-artifact`, and
+`actions/deploy-pages`. Each uses the MIT license and is pinned to a full commit
+SHA in its workflow.
 
 Process reference: `amichai-bd/frog-bui` at
 `d942998610bb69ee1351aa1adcdf8bd38a35fed1`. Its separate check and deploy
-workflows informed the split. The reference has no root license, so no source
-was copied.
+workflows informed the build and deployment split. The reference has no root
+license, so no source was copied.
