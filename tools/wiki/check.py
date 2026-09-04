@@ -15,6 +15,7 @@ LOCK = ROOT / "tools" / "wiki" / "requirements.txt"
 
 
 def main() -> int:
+    (ROOT / "workdir/wiki/docs").mkdir(parents=True, exist_ok=True)
     lock_hash = hashlib.sha256(LOCK.read_bytes()).hexdigest()[:16]
     runtime = f"python-{sys.version_info.major}.{sys.version_info.minor}"
     environment = ROOT / "workdir" / "tools" / "wiki" / runtime / lock_hash
@@ -39,6 +40,11 @@ def main() -> int:
         )
         ready.write_text(lock_hash + "\n", encoding="utf-8")
 
+    subprocess.run(
+        [str(python), "-m", "unittest", "discover", "-s", "tools/wiki", "-p", "test_*.py"],
+        cwd=ROOT,
+        check=True,
+    )
     return subprocess.run(
         [str(python), "-m", "mkdocs", "build", "--clean", "--strict"],
         cwd=ROOT,
