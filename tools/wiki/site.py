@@ -85,9 +85,11 @@ def resolve(url: str, source: str, files: dict[str, str]) -> tuple[str, str] | N
 class Document(HTMLParser):
     """Validate parsed attributes, and rewrite only rendered Markdown URLs."""
 
-    def __init__(self, source, files, rewrite=False):
+    def __init__(self, source, files, rewrite=False, bridge=False):
         super().__init__(convert_charrefs=False)
         self.source, self.files, self.rewrite = source, files, rewrite
+        self.bridge = bridge
+        self.runtime_inserted = False
         self.output, self.links, self.ids = [], [], set()
 
     def handle_starttag(self, tag, attrs):
@@ -95,18 +97,32 @@ class Document(HTMLParser):
         if "id" in attributes:
             self.ids.add(attributes["id"])
         for key, value in attrs:
-            if key in ("href", "src", "poster", "data") and value:
+            if key in ("href", "xlink:href", "src", "poster", "data") and value:
                 target = resolve(value, self.source, self.files)
-                if target is None and (key != "href" or tag == "link"):
+                navigation = tag == "a" and key == "href"
+                if target is None and not navigation:
                     raise ValueError(f"Runtime assets must be local in {self.source}: {value}")
                 if target:
                     path, fragment = target
                     self.links.append((path, fragment))
                     if self.rewrite:
-                        attributes[key] = route(path, fragment) if key == "href" else "files/" + quote(path, safe="/")
+                        if navigation:
+                            attributes[key] = route(path, fragment)
+                        elif not value.startswith("#"):
+                            attributes[key] = "files/" + quote(path, safe="/") + ("#" + quote(fragment) if fragment else "")
+                    elif self.bridge and navigation:
+                        attributes["data-wiki-page"] = path
+                        attributes["data-wiki-fragment"] = fragment
             if key == "srcset" and value:
+                candidates = []
                 for candidate in value.split(","):
-                    resolve(candidate.strip().split()[0], self.source, self.files)
+                    url, *descriptor = candidate.strip().split()
+                    target = resolve(url, self.source, self.files)
+                    if target is None:
+                        raise ValueError(f"Runtime assets must be local in {self.source}: {url}")
+                    self.links.append(target)
+                    candidates.append(" ".join(["files/" + quote(target[0], safe="/") if self.rewrite else url, *descriptor]))
+                attributes[key] = ", ".join(candidates)
         if attributes.get("data-source"):
             path = attributes["data-source"]
             if path not in self.files:
@@ -121,8 +137,15 @@ class Document(HTMLParser):
 
     def handle_startendtag(self, tag, attrs):
         self.handle_starttag(tag, attrs)
+        self.output[-1] = self.output[-1][:-1] + " />"
     def handle_endtag(self, tag):
+        if tag == "body" and self.bridge and not self.runtime_inserted:
+            self.append_runtime()
         self.output.append(f"</{tag}>")
+    def append_runtime(self):
+        runtime = posixpath.relpath("tools/wiki/assets/embed.js", posixpath.dirname(self.source))
+        self.output.append(f'<script src="{html.escape(runtime)}" defer></script>')
+        self.runtime_inserted = True
     def handle_data(self, data):
         self.output.append(data)
     def handle_entityref(self, name):
@@ -137,13 +160,15 @@ class Document(HTMLParser):
 
 def render(path: str, text: str, files: dict[str, str]) -> Document:
     suffix = Path(path).suffix.lower()
-    parser = Document(path, files, rewrite=suffix == ".md")
+    parser = Document(path, files, rewrite=suffix == ".md", bridge=suffix == ".html")
     if suffix == ".md":
         if path.startswith(".agents/skills/"):
             text = re.sub(r"\A---\r?\n.*?\r?\n---(?:\r?\n|$)", "", text, count=1, flags=re.S)
         parser.feed(markdown.markdown(text, extensions=["extra", "toc", "sane_lists"]))
     elif suffix == ".svg" or suffix == ".html" and path.startswith("wiki/"):
         parser.feed(text)
+        if parser.bridge and not parser.runtime_inserted:
+            parser.append_runtime()
     return parser
 
 
@@ -201,13 +226,21 @@ def build(root: Path = ROOT, output: Path | None = None):
                           "text": text, "html": "".join(documents[path].output) if kind == "md" else ""}
         destination = output / "files" / path
         destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_text(text, encoding="utf-8")
+        if suffix == ".html" and path.startswith("wiki/"):
+            content = "".join(documents[path].output)
+            if "tools/wiki/assets/embed.js" not in files:
+                raise ValueError("Missing tracked embed runtime")
+            destination.write_text(content, encoding="utf-8")
+        else:
+            destination.write_text(text, encoding="utf-8")
     (output / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False), encoding="utf-8")
     (output / "index.html").write_text((root / "tools/wiki/assets/shell.html").read_text(encoding="utf-8"), encoding="utf-8")
     (output / ".nojekyll").write_text("", encoding="utf-8")
     for path in manifest:
         old = (path.removeprefix("wiki/") if path.startswith("wiki/") else
                path.removeprefix(".agents/") if path.startswith(".agents/skills/") else path)
+        if path.startswith(".agents/skills/") and not old.endswith(".md"):
+            old += ".md"
         if not old.endswith(".md") or path == "README.md":
             continue
         old = "wiki-index.md" if path == "wiki/index.md" else old

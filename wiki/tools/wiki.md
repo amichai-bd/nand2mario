@@ -41,6 +41,11 @@ relative assets retain their repository layout under `files/`. Fullscreen expand
 the document wrapper so source overlays remain visible. Browser restrictions on
 embedded fullscreen may require the wiki's Fullscreen button.
 
+The generated HTML copy adds a small navigation bridge. Inside the wiki, local
+document links open the rendered target and heading in the shell. Standalone
+links keep their original relative `href`. SVG resource links and `srcset` assets
+keep resource semantics rather than becoming document routes.
+
 Skill templates and other source HTML render as escaped text, not live pages.
 Do not put credentials or private machine or ROM facts in public source files.
 
@@ -58,8 +63,9 @@ same wrapper; failure returns `n2m:fullscreen-result` with `ok: false`.
 
 Shared visual attributes live in `tools/wiki/assets/tokens.css`: `--bg`,
 `--panel`, `--surface`, `--text`, `--muted`, `--accent`, `--border`, `--font`,
-`--mono`, and `--radius`. Presentations live in `wiki/presentations/` and use the
-shared presentation runtime. Source files remain the authority for all content.
+`--mono`, and `--radius`. Presentation authoring and its shared runtime are tracked
+in [#41](https://github.com/amichai-bd/nand2mario/issues/41); their destination is
+`wiki/presentations/`. Source files remain the authority for all content.
 
 ## Text-only policy and deployment
 

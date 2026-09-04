@@ -143,6 +143,10 @@ document.addEventListener("click", (event) => {
 window.addEventListener("message", (event) => {
   if (!activeFrame || event.source !== activeFrame.contentWindow || !event.data || typeof event.data !== "object") return;
   if (event.data.type === "n2m:source") source(event.data.path, event.data.line ?? 1);
+  if (event.data.type === "n2m:navigate" && Object.hasOwn(files, event.data.path) && typeof event.data.fragment === "string") {
+    if (files[event.data.path].kind === "source") source(event.data.path, Number(event.data.fragment.match(/^L(\d+)/)?.[1] || 1));
+    else navigate(event.data.path, event.data.fragment);
+  }
   if (event.data.type === "n2m:fullscreen") fullscreen().then((ok) => {
     event.source.postMessage({type: "n2m:fullscreen-result", ok}, "*");
   });

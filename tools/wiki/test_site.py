@@ -48,6 +48,21 @@ class PublicationTests(unittest.TestCase):
         files = {".agents/skills/a/templates/a.html": '<script src="../../future/path.js"></script>'}
         self.assertEqual(site.validate(files)[next(iter(files))].output, [])
 
+    def test_srcset_svg_resource_links_and_embed_navigation(self):
+        files = {"wiki/a.md": '<img srcset="../assets/art.svg 1x, ../assets/art.svg 2x"><svg><defs><g id="shape"></g></defs><use href="#shape" /></svg>',
+                 "assets/art.svg": '<svg></svg>', "wiki/b.html": '<body><a href="a.md#shape">Spec</a></body>'}
+        documents = site.validate(files)
+        rendered = ''.join(documents["wiki/a.md"].output)
+        self.assertIn('srcset="files/assets/art.svg 1x, files/assets/art.svg 2x"', rendered)
+        self.assertIn(("assets/art.svg", ""), documents["wiki/a.md"].links)
+        self.assertIn('<use href="#shape" />', rendered)
+        embedded = ''.join(documents["wiki/b.html"].output)
+        self.assertIn('href="a.md#shape" data-wiki-page="wiki/a.md" data-wiki-fragment="shape"', embedded)
+        self.assertIn('src="../tools/wiki/assets/embed.js" defer></script></body>', embedded)
+        for markup in ('<svg><image href="https://example.com/art.svg" /></svg>', '<img srcset="https://example.com/art.svg 1x">'):
+            with self.assertRaisesRegex(ValueError, "Runtime assets must be local"):
+                site.validate({"wiki/a.md": markup})
+
     def test_source_aliases_fragments_and_local_runtime_assets(self):
         files = {"README.md": f'[Code]({site.REPO}/blob/main/src/a.sv#L1)', "src/a.sv": "module a;"}
         self.assertIn('?page=src/a.sv#L1', ''.join(site.validate(files)["README.md"].output))
@@ -76,7 +91,10 @@ class PublicationTests(unittest.TestCase):
             files = {"README.md": "# Human\n[Guide](worktrees/README.md)", "AGENTS.md": "# Agents",
                      "worktrees/README.md": "# Guide", "private-note.txt": "not a public dependency",
                      "wiki/index.md": "# Wiki", "src/rtl/a.sv": '<script>alert(1)</script>',
-                     "tools/wiki/assets/shell.html": "<!doctype html><title>Test</title>"}
+                     "tools/wiki/assets/shell.html": "<!doctype html><title>Test</title>",
+                     ".agents/skills/a/scripts/run.py": "print('test')",
+                     "wiki/demo.html": '<body><a href="../src/rtl/a.sv">Source</a></body>',
+                     "tools/wiki/assets/embed.js": "// bridge"}
             for path, content in files.items():
                 target = root / path
                 target.parent.mkdir(parents=True, exist_ok=True)
@@ -93,6 +111,8 @@ class PublicationTests(unittest.TestCase):
             self.assertEqual(manifest["src/rtl/a.sv"]["kind"], "source")
             self.assertFalse((output / "stale.txt").exists())
             self.assertTrue((output / "wiki-index/index.html").is_file())
+            self.assertTrue((output / "skills/a/scripts/run.py/index.html").is_file())
+            self.assertIn('data-wiki-page="src/rtl/a.sv"', (output / "files/wiki/demo.html").read_text())
             with self.assertRaisesRegex(ValueError, "output must"):
                 site.build(root, root / "wiki")
 
