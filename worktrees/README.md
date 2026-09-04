@@ -33,7 +33,8 @@ Follow [agent-flow](../.agents/skills/agent-flow/SKILL.md) for review and babysi
 
 The author reports its squash merge. Root verifies the PR merged, its closing
 issues closed, and required main checks/deployment passed. Stop active users of
-the worktrees before removing them.
+the worktrees before removing them. If a worktree ran a local preview, follow
+[preview cleanup](../.agents/skills/agent-flow/references/preview-cleanup.md).
 
 Check both worktrees are clean. Resolve their full paths and confirm they are
 inside this repository's `worktrees/`. Do not force-remove dirty worktrees.

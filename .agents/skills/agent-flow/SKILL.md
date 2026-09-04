@@ -19,7 +19,9 @@ One root orchestrator selects issues. Authors babysit their PRs until merged.
 6. After a ready verdict for the current SHA and green checks, author posts the
    report, undrafts, squash merges, and reports the merge to root.
 7. Root verifies merge, issue closure, deployment, and cleanup using the worktree
-   guide. End author and reviewer sessions through available lifecycle tools.
+   guide. For worktrees that ran a local preview, read
+   [preview cleanup](references/preview-cleanup.md). End author and reviewer
+   sessions through available lifecycle tools.
 
 Read [recovery and capacity](references/recovery.md) for delegation or interrupted
 work. Use [the review template](templates/review.md) and

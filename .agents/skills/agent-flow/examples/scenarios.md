@@ -9,7 +9,15 @@ Good: A spec describes planned behavior before implementation. The PR names the
 open implementation issue and closure criteria. The reviewer checks that this
 sequencing is allowed by the current issue.
 
+Good: A preview owner records `127.0.0.1:8000`, its command, process, and served
+directory. After Ctrl+C, the port still has a listener. Root confirms the exact
+PID belongs to that preview, stops it, and verifies the port and process tree are
+clear before removing the worktree.
+
 Bad: Accept a stale review, edit root main, silently leave code/spec drift, or
 stop babysitting after opening the PR.
+
+Bad: Treat Ctrl+C as proof, kill every Python or browser process, or force-delete
+an uninspected leftover directory after Git unregisters the worktree.
 
 Not a trigger: A design question with no issue work to start or finish.
