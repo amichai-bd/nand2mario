@@ -7,11 +7,11 @@ display through VGA and accept controls through UART.
 
 ## Current phase
 
-Research is complete. Read `wiki/preflight-gaps.md` before implementation.
-Until the blockers are closed, do only bootstrap work requested by the user.
+Read `wiki/preflight-gaps.md` before implementation. Close the applicable P0
+gaps before functional RTL, DV, FPGA, or build work.
 
-The GitHub repository is private. Do not change visibility, publish pages, or
-program the FPGA without explicit approval.
+The repository is private. Keep Pages deployment on merged `main`. Do not change
+visibility or program the FPGA without explicit approval.
 
 ## Sources of truth
 
@@ -34,6 +34,7 @@ Keep each fact in one place. Link to it elsewhere.
 
 ## Work
 
+- Use `grill-me` before an issue when material human decisions remain.
 - Keep the root checkout clean and on `main`. Use it only to orchestrate work.
 - Start work only after the issue has an assignee.
 - Prefer one issue, one observable result, one branch, and one PR.
@@ -56,6 +57,11 @@ Keep each fact in one place. Link to it elsewhere.
   changes.
 - Record exact commands and results. Do not claim a planned command passed.
 - Finish by checking the success criteria and posting the evidence.
+- The authoring agent owns the PR until merge and cleanup are verified.
+- Require an independent agent review of the latest material commit.
+- Fix owned CI failures and review findings; keep polling until resolution.
+- Same-account agents leave review comments. They cannot approve their own PR.
+- No human approval is required after checks and agent review pass.
 - Remove the worktree only after the PR is verified as merged.
 - Keep generated output under `workdir/`.
 
