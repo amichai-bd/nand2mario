@@ -1,3 +1,4 @@
 interface:
   display_name: "Unslop"
   short_description: "Tighten repository prose without changing meaning"
+  default_prompt: "Use $unslop to tighten this repository prose without changing its meaning."

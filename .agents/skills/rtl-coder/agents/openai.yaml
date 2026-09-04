@@ -1,0 +1,4 @@
+interface:
+  display_name: "RTL Coder"
+  short_description: "Build synthesizable RTL from approved contracts"
+  default_prompt: "Use $rtl-coder to implement this approved SystemVerilog behavior."

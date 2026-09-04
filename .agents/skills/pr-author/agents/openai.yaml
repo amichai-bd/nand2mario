@@ -1,0 +1,4 @@
+interface:
+  display_name: "PR Author"
+  short_description: "Open and finish evidence-backed pull requests"
+  default_prompt: "Use $pr-author to open or update this issue-closing pull request."

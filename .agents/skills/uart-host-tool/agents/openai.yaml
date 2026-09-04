@@ -1,0 +1,4 @@
+interface:
+  display_name: "UART Host Tool"
+  short_description: "Build safe, testable host UART controls"
+  default_prompt: "Use $uart-host-tool to implement or inspect this host UART change."

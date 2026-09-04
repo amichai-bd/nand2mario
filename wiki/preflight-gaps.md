@@ -242,8 +242,8 @@ correct flags, timing, memory traffic, or interrupts.
 
 **Current state**
 
-The repository has skills for agent delivery and human alignment. The focused
-implementation and verification skills are still missing.
+The repository has focused skills for issue delivery, human alignment, RTL,
+verification, FPGA work, specifications, builds, and host UART tools.
 
 **Risk**
 
@@ -253,16 +253,14 @@ or PR evidence drift.
 **Close when**
 
 - `issue-author`, `pr-author`, `rtl-coder`, `dv-uvm-lite`,
-  `fpga-de10-lite`, and `wiki-spec-writer` exist.
+  `fpga-de10-lite`, `wiki-spec-writer`, `build-maintainer`, and
+  `uart-host-tool` exist.
 - Each skill has a narrow trigger and non-trigger description.
 - Each skill links to sources rather than duplicating specifications.
-- Each skill defines inputs, steps, outputs, validation, stop conditions, one
-  good example, and one bad example.
+- Each skill keeps its short method and stop conditions in `SKILL.md` and links
+  its reusable template and scenarios.
 - Trigger examples are tested against likely user requests.
-- Skills invoke real build commands rather than planned commands.
-
-Add `build-maintainer`, `uart-host-tool`, and `sm83-platform` only when their
-interfaces exist.
+- Skills do not claim planned build commands have passed.
 
 ## GAP-010 — GitHub remote, issues, CI, and Pages
 
