@@ -32,6 +32,10 @@ Blank issues are disabled.
 
 The issue is the agent's working guide and starting prompt.
 
+- Assign the issue before work starts. The assignee is accountable for it.
+- Claim the issue in a comment. Name the agent, branch, and relative worktree.
+- When an internal agent has no GitHub identity, assign the accountable user and
+  name the agent or session in the claim comment.
 - Read the full issue and specification before changing files.
 - Use comments for useful discoveries, decisions, blockers, and evidence.
 - Edit the issue when new facts make it clearer or add required links.

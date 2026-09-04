@@ -15,6 +15,7 @@ decisions, verification, and development guidance.
   reusable label model.
 - [Branches and pull requests](agents/pull-requests.md) defines issue-backed
   branches, required closure, and the PR policy check.
+- [Worktree lifecycle](../worktrees/README.md) defines isolated agent checkouts.
 - [Agent working rules](../AGENTS.md) defines the concise rules used throughout
   the repository.
 

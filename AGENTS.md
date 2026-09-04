@@ -34,8 +34,14 @@ Keep each fact in one place. Link to it elsewhere.
 
 ## Work
 
+- Keep the root checkout clean and on `main`. Use it only to orchestrate work.
+- Start work only after the issue has an assignee.
 - Prefer one issue, one observable result, one branch, and one PR.
 - Name work branches `issue/<primary-number>-<slug>`.
+- Use one worktree per issue at `worktrees/issue-<number>-<slug>`.
+- Record the agent, branch, and worktree in an issue comment before editing.
+- Do all edits, builds, validation, and commits inside that worktree.
+- Never share a worktree between agents.
 - Every PR must close at least one issue with `Closes #<number>`.
 - The branch's primary issue number must be one of those closing references.
 - Close several issues in one PR only when one focused change completes them.
@@ -50,6 +56,7 @@ Keep each fact in one place. Link to it elsewhere.
   changes.
 - Record exact commands and results. Do not claim a planned command passed.
 - Finish by checking the success criteria and posting the evidence.
+- Remove the worktree only after the PR is verified as merged.
 - Keep generated output under `workdir/`.
 
 ## Verification

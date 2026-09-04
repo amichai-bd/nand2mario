@@ -16,6 +16,16 @@ Example:
 issue/42-fix-tima-reload
 ```
 
+Create its worktree at:
+
+```text
+worktrees/issue-42-fix-tima-reload
+```
+
+The root checkout stays clean and on `main`. All changes, builds, commits, and
+PR updates happen from the issue worktree. See the
+[worktree lifecycle](../../worktrees/README.md).
+
 ## Issue closure
 
 Every PR must close at least one issue. Put each closing reference on its own
@@ -56,7 +66,8 @@ The `PR policy` workflow checks:
 
 - the branch matches `issue/<number>-<slug>`;
 - the PR body contains at least one `Closes #<number>`; and
-- the PR closes the primary issue named by the branch.
+- the PR closes the primary issue named by the branch; and
+- the primary issue exists, is not a PR, and has an assignee.
 
 ## Main protection
 

@@ -10,6 +10,10 @@ __pycache__/
 # Project-generated output
 workdir/
 
+# Issue worktrees; keep the lifecycle guide tracked
+worktrees/*
+!worktrees/README.md
+
 # Simulation output
 work/
 transcript
