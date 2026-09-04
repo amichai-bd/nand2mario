@@ -32,9 +32,10 @@ path and line numbers. Published source references work without GitHub access.
 
 Markdown renders links, headings, tables, and code blocks. Repository-relative
 links resolve from the original source path. Missing tracked targets and anchors
-fail the build. External HTTP, HTTPS, and mail links are left unchanged.
+fail the build. Links to this repository's `blob/main` and `tree/main` paths also
+resolve locally. Other HTTP, HTTPS, and mail links are left unchanged.
 
-HTML and SVG documents under `wiki/` embed in an iframe with script permission
+HTML documents under `wiki/` and SVG assets embed in an iframe with script permission
 and without same-origin privileges. A standalone link opens the original file;
 relative assets retain their repository layout under `files/`. Fullscreen expands
 the document wrapper so source overlays remain visible. Browser restrictions on

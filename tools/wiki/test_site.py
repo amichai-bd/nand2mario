@@ -48,6 +48,18 @@ class PublicationTests(unittest.TestCase):
         files = {".agents/skills/a/templates/a.html": '<script src="../../future/path.js"></script>'}
         self.assertEqual(site.validate(files)[next(iter(files))].output, [])
 
+    def test_source_aliases_fragments_and_local_runtime_assets(self):
+        files = {"README.md": f'[Code]({site.REPO}/blob/main/src/a.sv#L1)', "src/a.sv": "module a;"}
+        self.assertIn('?page=src/a.sv#L1', ''.join(site.validate(files)["README.md"].output))
+        files["README.md"] = '[Code](src/a.sv#L2)'
+        with self.assertRaisesRegex(ValueError, "Invalid source lines"):
+            site.validate(files)
+        for text in ('<script src="https://cdn.example/a.js"></script>', '<img src="data:image/png;base64,abcd">'):
+            with self.assertRaises(ValueError):
+                site.validate({"wiki/a.html": text})
+        with self.assertRaisesRegex(ValueError, "Broken link"):
+            site.validate({"tools/a.css": '@import "missing.css";'})
+
     def test_url_confinement_and_untracked_dependencies(self):
         with self.assertRaisesRegex(ValueError, "Broken link"):
             site.resolve("../../outside.md", "README.md", {"README.md": ""})

@@ -17,7 +17,8 @@ function tree() {
   Object.entries(files).forEach(([path, file]) => {
     if (!file.nav || file.category !== activeCategory || !path.toLowerCase().includes(filter)) return;
     let node = nodes;
-    const parts = path.split("/");
+    const relative = path.replace(/^(?:\.agents\/skills|src|tools|cfg)\//, "");
+    const parts = relative.split("/");
     parts.slice(0, -1).forEach((part) => { node = node[part] ||= {}; });
     node[parts.at(-1)] = path;
   });
@@ -64,12 +65,17 @@ function source(path, line = 1) {
 
 function display() {
   const url = new URL(location.href);
+  const emptyCategory = url.searchParams.get("category");
+  if (categories.includes(emptyCategory)) { showEmpty(emptyCategory); return; }
   current = url.searchParams.get("page") || "README.md";
   activeFrame = null;
   const entry = files[current];
   $("document").replaceChildren();
   $("document").classList.remove("embedded");
   if (!entry) {
+    $("home-toggle").hidden = true;
+    $("path").textContent = current;
+    $("source-path").textContent = "";
     $("document").textContent = `Document not found: ${current}`;
     $("document").classList.add("error");
     $("source").disabled = true;
@@ -86,7 +92,7 @@ function display() {
   if (entry.kind === "md") $("document").innerHTML = entry.html;
   else if (entry.kind === "html") {
     const frame = document.createElement("iframe"), standalone = document.createElement("a");
-    frame.src = `files/${current.split("/").map(encodeURIComponent).join("/")}`;
+    frame.src = `files/${current.split("/").map(encodeURIComponent).join("/")}${location.hash}`;
     frame.title = current;
     frame.setAttribute("sandbox", "allow-scripts");
     standalone.href = frame.src;
@@ -113,7 +119,8 @@ async function fullscreen() {
   try {
     if (document.fullscreenElement) await document.exitFullscreen();
     else await $("stage").requestFullscreen();
-  } catch { $("fullscreen").textContent = "Fullscreen unavailable"; }
+    return true;
+  } catch { $("fullscreen").textContent = "Fullscreen unavailable"; return false; }
 }
 
 document.addEventListener("click", (event) => {
@@ -127,13 +134,18 @@ document.addEventListener("click", (event) => {
   const target = new URL(anchor.href, location.href);
   if (target.origin === location.origin && target.pathname === location.pathname && target.searchParams.has("page")) {
     event.preventDefault();
-    navigate(target.searchParams.get("page"), decodeURIComponent(target.hash.slice(1)));
+    const path = target.searchParams.get("page");
+    if (path.startsWith("src/") && files[path]?.kind === "source") {
+      source(path, Number(target.hash.match(/^#L(\d+)/)?.[1] || 1));
+    } else navigate(path, decodeURIComponent(target.hash.slice(1)));
   }
 });
 window.addEventListener("message", (event) => {
   if (!activeFrame || event.source !== activeFrame.contentWindow || !event.data || typeof event.data !== "object") return;
   if (event.data.type === "n2m:source") source(event.data.path, event.data.line ?? 1);
-  if (event.data.type === "n2m:fullscreen") fullscreen();
+  if (event.data.type === "n2m:fullscreen") fullscreen().then((ok) => {
+    event.source.postMessage({type: "n2m:fullscreen-result", ok}, "*");
+  });
 });
 window.addEventListener("popstate", display);
 $("filter").addEventListener("input", tree);
@@ -142,6 +154,18 @@ $("close-source").addEventListener("click", () => $("source-dialog").close());
 $("fullscreen").addEventListener("click", fullscreen);
 document.addEventListener("fullscreenchange", () => { $("fullscreen").textContent = document.fullscreenElement ? "Exit fullscreen" : "Fullscreen"; });
 document.querySelectorAll("[data-home]").forEach((button) => button.addEventListener("click", () => navigate(button.dataset.home)));
+function showEmpty(name) {
+  activeCategory = name;
+  activeFrame = null;
+  current = "";
+  tree();
+  $("home-toggle").hidden = true;
+  $("path").textContent = name;
+  $("source-path").textContent = "";
+  $("source").disabled = true;
+  $("document").classList.remove("embedded", "error");
+  $("document").textContent = "No documents in this category yet.";
+}
 categories.forEach((name) => {
   const button = document.createElement("button");
   button.textContent = name;
@@ -149,7 +173,10 @@ categories.forEach((name) => {
     $("filter").value = "";
     const entry = Object.entries(files).find(([path, file]) => file.nav && file.category === name && (name !== "Home" || path === "README.md"));
     if (entry) navigate(entry[0]);
-    else { activeCategory = name; tree(); $("document").textContent = "No documents in this category yet."; }
+    else {
+      showEmpty(name);
+      history.pushState(null, "", `?category=${encodeURIComponent(name)}`);
+    }
   });
   $("tabs").append(button);
 });

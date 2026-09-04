@@ -64,6 +64,9 @@ def route(path: str, fragment: str = "") -> str:
 
 def resolve(url: str, source: str, files: dict[str, str]) -> tuple[str, str] | None:
     parts = urlsplit(url)
+    for prefix in (REPO + "/blob/main/", REPO + "/tree/main/"):
+        if url.startswith(prefix):
+            return resolve("/" + url[len(prefix):], source, files)
     if parts.scheme or parts.netloc:
         if parts.scheme not in ("https", "http", "mailto") and not parts.netloc:
             raise ValueError(f"Unsupported URL in {source}: {url}")
@@ -94,6 +97,8 @@ class Document(HTMLParser):
         for key, value in attrs:
             if key in ("href", "src", "poster", "data") and value:
                 target = resolve(value, self.source, self.files)
+                if target is None and (key != "href" or tag == "link"):
+                    raise ValueError(f"Runtime assets must be local in {self.source}: {value}")
                 if target:
                     path, fragment = target
                     self.links.append((path, fragment))
@@ -106,6 +111,7 @@ class Document(HTMLParser):
             path = attributes["data-source"]
             if path not in self.files:
                 raise ValueError(f"Unknown source reference in {self.source}: {path}")
+            self.links.append((path, ""))
             line = attributes.get("data-line", "1")
             if not line.isdigit() or not 1 <= int(line) <= max(1, len(self.files[path].splitlines())):
                 raise ValueError(f"Invalid source line in {self.source}: {path}:{line}")
@@ -133,8 +139,10 @@ def render(path: str, text: str, files: dict[str, str]) -> Document:
     suffix = Path(path).suffix.lower()
     parser = Document(path, files, rewrite=suffix == ".md")
     if suffix == ".md":
+        if path.startswith(".agents/skills/"):
+            text = re.sub(r"\A---\r?\n.*?\r?\n---(?:\r?\n|$)", "", text, count=1, flags=re.S)
         parser.feed(markdown.markdown(text, extensions=["extra", "toc", "sane_lists"]))
-    elif suffix in (".html", ".svg") and path.startswith("wiki/"):
+    elif suffix == ".svg" or suffix == ".html" and path.startswith("wiki/"):
         parser.feed(text)
     return parser
 
@@ -143,18 +151,31 @@ def validate(files: dict[str, str]) -> dict[str, Document]:
     documents = {path: render(path, text, files) for path, text in files.items()}
     for path, document in documents.items():
         for target, fragment in document.links:
-            if fragment and not re.fullmatch(r"L\d+(?:-L\d+)?", fragment) and fragment not in documents[target].ids:
+            lines = re.fullmatch(r"L(\d+)(?:-L(\d+))?", fragment)
+            if lines:
+                start, end = int(lines[1]), int(lines[2] or lines[1])
+                if not 1 <= start <= end <= max(1, len(files[target].splitlines())):
+                    raise ValueError(f"Invalid source lines in {path}: {target}#{fragment}")
+            elif fragment and fragment not in documents[target].ids:
                 raise ValueError(f"Broken anchor in {path}: {target}#{fragment}")
         if Path(path).suffix == ".css":
             for url in re.findall(r"url\(\s*['\"]?([^'\")]+)", files[path]):
-                resolve(url.strip(), path, files)
+                target = resolve(url.strip(), path, files)
+                if target is None:
+                    raise ValueError(f"Runtime assets must be local in {path}: {url}")
+                document.links.append(target)
+            for url in re.findall(r"@import\s+['\"]([^'\"]+)", files[path]):
+                target = resolve(url, path, files)
+                if target is None:
+                    raise ValueError(f"Runtime assets must be local in {path}: {url}")
+                document.links.append(target)
     return documents
 
 
 def build(root: Path = ROOT, output: Path | None = None):
     output = output or root / "workdir/wiki/site"
     expected = root / "workdir/wiki/site"
-    if (output.resolve() != expected.resolve() or output.is_symlink()
+    if (output.resolve() != expected.absolute() or output.is_symlink()
             or not output.resolve().is_relative_to(root.resolve())):
         raise ValueError("Wiki output must be workdir/wiki/site inside the checkout")
     tracked = tracked_text(root)
@@ -175,7 +196,7 @@ def build(root: Path = ROOT, output: Path | None = None):
     for path, text in files.items():
         published = path in ("README.md", "AGENTS.md") or path.startswith(PUBLISH_ROOTS)
         suffix = Path(path).suffix.lower()
-        kind = "html" if suffix in (".html", ".svg") and path.startswith("wiki/") else "md" if suffix == ".md" else "source"
+        kind = "html" if suffix == ".svg" or suffix == ".html" and path.startswith("wiki/") else "md" if suffix == ".md" else "source"
         manifest[path] = {"category": category(path), "nav": published, "kind": kind,
                           "text": text, "html": "".join(documents[path].output) if kind == "md" else ""}
         destination = output / "files" / path
