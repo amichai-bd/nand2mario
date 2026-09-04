@@ -68,7 +68,7 @@ def resolve(url: str, source: str, files: dict[str, str]) -> tuple[str, str] | N
         if url.startswith(prefix):
             return resolve("/" + url[len(prefix):], source, files)
     if parts.scheme or parts.netloc:
-        if parts.scheme not in ("https", "http", "mailto") and not parts.netloc:
+        if parts.scheme and parts.scheme not in ("https", "http", "mailto"):
             raise ValueError(f"Unsupported URL in {source}: {url}")
         return None
     path = unquote(parts.path)
