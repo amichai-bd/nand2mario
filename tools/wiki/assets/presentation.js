@@ -40,11 +40,16 @@
     if (!link || !embedded || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button !== 0) return;
     event.preventDefault();
     window.parent.postMessage({type: 'n2m:source', path: link.dataset.source,
-      line: Number(link.dataset.line) || 1}, window.location.origin);
+      line: Number(link.dataset.line) || 1}, '*');
+  });
+  window.addEventListener('message', event => {
+    if (event.source === window.parent && event.data?.type === 'n2m:fullscreen-result' && !event.data.ok) {
+      status.textContent = 'Use the wiki Fullscreen button to expand this presentation.';
+    }
   });
   controls.querySelector('[data-fullscreen]').addEventListener('click', async () => {
     if (embedded) {
-      window.parent.postMessage({type: 'n2m:fullscreen'}, window.location.origin);
+      window.parent.postMessage({type: 'n2m:fullscreen'}, '*');
       return;
     }
     try {

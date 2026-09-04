@@ -19,7 +19,8 @@ navigation. Motion respects the reduced-motion preference. Without JavaScript,
 all slides remain readable. Escape exits fullscreen through browser controls.
 
 The fullscreen button requests `n2m:fullscreen` from the wiki shell when embedded;
-the shell includes its source overlay. Alone, the deck uses the browser
+the shell includes its source overlay. If the browser requires a direct gesture,
+use the shell's Fullscreen button. Alone, the deck uses the browser
 Fullscreen API and reports when it is unavailable.
 
 ## Source references
@@ -34,6 +35,8 @@ Use an ordinary repository-relative link plus a repository-root source path:
 
 The shared runtime asks the parent wiki to show that file with the message
 `{type: 'n2m:source', path, line}`. The shell accepts known published files from
-its active frame. The ordinary link is the standalone fallback. Use tracked
+its active sandboxed frame. Messages target the parent with `*` because the
+frame has an opaque origin; their payload contains only a public source path.
+The ordinary link is the standalone fallback. Use tracked
 sources and link to them rather than maintaining copied code on a slide.
 The [wiki contract](../tools/wiki.md) owns publication and source-viewer behavior.
