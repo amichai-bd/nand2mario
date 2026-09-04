@@ -184,30 +184,39 @@ published vector set.
 
 ## Build and repository findings
 
-The repository should have two content roots:
+The repository separates product, automation, configuration, documentation,
+and generated work:
 
-- `src/` for RTL, verification, FPGA files, software, and tools;
-- `wiki/` for requirements, architecture, decisions, and verification plans.
+- `src/` contains RTL, verification, target software, and FPGA files.
+- `tools/` contains checked-in build and automation code.
+- `cfg/` contains only small, project-wide YAML configuration.
+- `wiki/` contains short documentation for source, tools, and agents.
+- `.agents/` and `.github/` contain agent and GitHub integration metadata.
+- ignored `workdir/` contains downloaded tools, cache, tagged builds, and logs.
 
-Metadata belongs in root files, `.agents/`, and `.github/`. Generated output
-belongs under ignored `.work/`.
+Owner-specific configuration stays with its owner. Do not create speculative
+configuration directories.
 
 The planned command should be small and consistent:
 
 ```text
-n2m doctor
-n2m check
-n2m test <unit>
-n2m sim <test>
-n2m regress <suite>
-n2m fpga build|program
-n2m uart ping|load-rom|press|release|tap
-n2m docs build|serve
+python tools/build.py doctor
+python tools/build.py check
+python tools/build.py sim test <test>
+python tools/build.py sim regress <level>
+python tools/build.py fpga build|program
+python tools/build.py uart ping|load-rom|press|release|tap
+python tools/build.py docs build|serve
 ```
 
 The command does not exist yet. It should be a modular, standard-library-first
 Python package with JSON results, dry runs where useful, and reproducible
 manifests. All tools should use it rather than duplicate shell commands.
+
+An explicit build tag reopens a persistent workspace and reuses stages whose
+content fingerprints still match. Without a tag, the build uses a UTC timestamp.
+The complete layout is in the
+[build-system specification](tools/build-system.md).
 
 ## Development flow
 

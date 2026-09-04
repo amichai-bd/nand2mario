@@ -9,6 +9,9 @@ Status: open gap register
 This file records what is missing after research. It prevents planned work from
 being mistaken for completed infrastructure.
 
+The current output and caching design is recorded in the
+[build-system specification](tools/build-system.md).
+
 Priorities:
 
 - **P0** — close before functional Game Boy RTL starts.
@@ -104,10 +107,12 @@ Every agent may invent a different command, directory, or tool invocation.
 
 **Close when**
 
-- `n2m doctor`, `n2m check`, and one simulation command exist.
-- A PowerShell entry point works from the repository root.
+- `python tools/build.py doctor`, `check`, and one simulation command exist.
+- The entry point works from a fresh PowerShell session.
 - Commands are implemented as small Python modules.
-- All output goes to `.work/`.
+- All generated output goes to ignored `workdir/`.
+- An explicit tag reuses matching stages by content fingerprint.
+- A missing tag creates a UTC timestamp build.
 - Exit codes are reliable and machine-readable JSON is available.
 - Results record tool versions, Git commit, inputs, seed, and artifacts.
 - A clean checkout can bootstrap Python dependencies from a pinned definition.
@@ -341,7 +346,7 @@ licenses. CI and local results may differ.
 
 - A dependency manifest pins every URL and commit or version.
 - Hashes and licenses are recorded.
-- Downloads go to `.work/cache`, not source directories.
+- Downloads go to `workdir/cache` or `workdir/tools`, not source directories.
 - Offline behavior and cache validation are clear.
 - Test selection and expected pass signatures are versioned.
 - CI uses the same manifest as local builds.

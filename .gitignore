@@ -8,7 +8,7 @@ __pycache__/
 .ruff_cache/
 
 # Project-generated output
-.work/
+workdir/
 
 # Simulation output
 work/

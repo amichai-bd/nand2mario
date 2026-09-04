@@ -9,6 +9,8 @@ decisions, verification, and development guidance.
   reference review, recommended architecture, and delivery sequence.
 - [Gaps before implementation](preflight-gaps.md) records unresolved work and
   the evidence required to close it.
+- [Build-system specification](tools/build-system.md) defines tagged builds,
+  cache behavior, and simulation result paths.
 - [Agent working rules](../AGENTS.md) defines the concise rules used throughout
   the repository.
 

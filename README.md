@@ -27,14 +27,19 @@ Pages deployment, or issue tracker yet.
 
 ## Planned layout
 
-- `src/` — RTL, verification, FPGA files, software, and project tools.
-- `wiki/` — architecture, specifications, decisions, verification plans, and
-  development guidance.
+- `src/` — RTL, verification, target software, and FPGA files.
+- `cfg/` — small, project-wide YAML configuration only.
+- `tools/` — checked-in build, automation, and maintenance code.
+- `wiki/` — short documentation mirroring source, tools, and agent work.
 - `.agents/skills/` — focused procedures for recurring agent tasks.
 - `.github/` — issue templates, PR template, and workflows after a remote is
   approved.
+- `workdir/` — downloaded tools, generated scripts, tagged builds, and logs.
 
-Generated files will live under `.work/` and will not be committed.
+Generated files will live under ignored `workdir/` and will not be committed.
+
+The tagged build layout is defined in the
+[build-system specification](wiki/tools/build-system.md).
 
 ## Content policy
 
