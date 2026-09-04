@@ -1,8 +1,20 @@
 # Pre-RTL bootstrap plan
 
-Functional Game Boy RTL is blocked until this plan reaches the implementation
-gate below. The [gap register](../preflight-gaps.md) owns gap status and close
-conditions.
+The [gap register](../preflight-gaps.md) owns gap status and close conditions.
+
+## Current phase
+
+Infrastructure, flows, and methodology refinement only. Maintain the existing
+agent skills, issue/PR workflow, wiki, and their CI tooling and tests.
+
+Defer product architecture and all product RTL, DV, SW, and FPGA work. This
+includes project build/doctor implementation and simulation, board-proving
+designs and tests, and physical runner setup. An assigned issue or a P0 priority
+does not authorize this work.
+
+The user must explicitly start the next phase before these prerequisites may
+begin. That phase change does not waive gap close conditions or the separate
+authorization required for programming and physical tests.
 
 ## Completed infrastructure
 
@@ -13,7 +25,7 @@ conditions.
 | Focused skills and issue helper | [#10](https://github.com/amichai-bd/nand2mario/issues/10) |
 | Pre-RTL directory structure | [#11](https://github.com/amichai-bd/nand2mario/issues/11) and [repository layout](https://github.com/amichai-bd/nand2mario/blob/main/README.md#repository-layout) |
 | Required wiki and PR checks | [#12](https://github.com/amichai-bd/nand2mario/issues/12) and [PR #23](https://github.com/amichai-bd/nand2mario/pull/23) |
-| Original-source wiki and skill navigation, README/AGENTS toggle | [#35](https://github.com/amichai-bd/nand2mario/issues/35) and [wiki build contract](../tools/wiki.md) |
+| Custom HTML wiki, source navigation, README/AGENTS toggle, and presentations | [#40](https://github.com/amichai-bd/nand2mario/issues/40), [#41](https://github.com/amichai-bd/nand2mario/issues/41), and [wiki build contract](../tools/wiki.md) |
 | Automatic Pages after merge to main | [#13](https://github.com/amichai-bd/nand2mario/issues/13) and [#35](https://github.com/amichai-bd/nand2mario/issues/35) |
 | Draft PR, independent review, author merge | [PR #38](https://github.com/amichai-bd/nand2mario/pull/38) and [PR #37](https://github.com/amichai-bd/nand2mario/pull/37) |
 
@@ -22,9 +34,10 @@ delivery and cleanup evidence. Skill structure checks do not prove agent
 behavior; the reviewed PRs demonstrate the flow for these changes only.
 These results do not close the product, tool, verification, or hardware gaps below.
 
-## Remaining P0 work
+## Future P0 sequence
 
-Complete the assigned issues in this order.
+After an explicit phase change, complete the assigned issues in this order.
+This is a dependency plan, not current execution permission.
 
 1. Approve project scope and legal boundaries:
    [GAP-001](../preflight-gaps.md#gap-001-scope-and-success-contract)
@@ -60,15 +73,15 @@ milestones.
 
 ## Implementation gate
 
-Decision: the agent environment is ready for controlled P0 prerequisite work.
-The repository is not ready for functional Game Boy RTL.
+The repository is not ready for functional Game Boy RTL. The current phase
+also blocks starting its P0 prerequisites.
 
 Start the first functional CPU issue only when:
 
+- the user has explicitly authorized the product implementation phase;
 - every applicable P0 close condition has evidence;
 - issues #24 through #32 are closed or the gap register names approved
   replacements; and
 - the first CPU issue links its approved contracts and verification plan.
 
-Before then, only bootstrap work and the minimal board-proving design allowed by
-the gap register may add RTL.
+Board-proving RTL belongs to the future prerequisites, not the current phase.

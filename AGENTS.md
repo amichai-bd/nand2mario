@@ -1,9 +1,9 @@
 # Agent rules
 
 Build a verified, original-DMG-compatible Game Boy for the DE10-Lite, with VGA
-display and UART controls. Read [preflight gaps](wiki/preflight-gaps.md) before
-implementation. Only approved bootstrap work may start before applicable P0 gaps
-close.
+display and UART controls. Follow the [current phase](wiki/agents/bootstrap-plan.md#current-phase)
+before selecting work. Read [preflight gaps](wiki/preflight-gaps.md) before
+implementation; open product prerequisites are not permission to start them.
 
 ## Sources of truth
 

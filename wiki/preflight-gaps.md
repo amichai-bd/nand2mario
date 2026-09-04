@@ -1,13 +1,15 @@
 # Gaps before implementation
 
-Date: 2026-09-04
-
-Status: P0 active; GAP-009 closed
+Status: product P0 gaps remain open; GAP-009 closed
 
 ## Purpose
 
 This file records what is missing after research. It prevents planned work from
 being mistaken for completed infrastructure.
+
+The [current phase](agents/bootstrap-plan.md#current-phase) defines which work
+may start. Gap priority and close conditions describe future requirements, not
+execution permission.
 
 The current output and caching design is recorded in the
 [build-system specification](tools/build-system.md).
@@ -18,9 +20,6 @@ Priorities:
 - **P1** — close before the affected subsystem or shared integration starts.
 - **P2** — planned later and does not block early implementation.
 - **Deferred** — intentionally waiting for user authorization or a later phase.
-
-The board-proving test design is allowed during P0. It should contain only the
-logic needed to test clocks, VGA, UART, reset, and safe programming.
 
 ## Gap summary
 
@@ -98,8 +97,9 @@ research until file-level reuse permission is confirmed.
 
 **Current state**
 
-No build package, Python project, lock file, wrapper, or output convention
-exists. Commands shown in the research document are planned interfaces only.
+The [build/output contract](tools/build-system.md) exists, but the product build
+command, package, and pinned environment are not implemented. Existing wiki
+tooling does not prove the planned product commands.
 
 **Risk**
 
@@ -276,8 +276,9 @@ or PR evidence drift.
 A private GitHub repository, issue forms, a PR template, required PR and wiki
 checks, protected `main`, labels, and automatic Pages deployment are proven.
 [#34](https://github.com/amichai-bd/nand2mario/issues/34) defines the revised
-agent workflow. [#35](https://github.com/amichai-bd/nand2mario/issues/35) publishes
-the original wiki and skills with a README/AGENTS toggle; the
+agent workflow. [#40](https://github.com/amichai-bd/nand2mario/issues/40) and
+[#41](https://github.com/amichai-bd/nand2mario/issues/41) provide the custom HTML
+wiki and presentations, reusing original sources; the
 [wiki contract](tools/wiki.md) owns its behavior. [#36](https://github.com/amichai-bd/nand2mario/issues/36)
 records the final review, delivery, and cleanup evidence.
 Product build CI and the protected physical runner remain open in
@@ -412,14 +413,5 @@ Treat a C-like compiler as a separate later epic.
 
 ## Required closing order
 
-Before functional Game Boy RTL:
-
-1. GAP-001 and GAP-002: approve scope and legal boundaries.
-2. GAP-003 and GAP-004: create and prove the build environment.
-3. GAP-005 and GAP-006: prove board I/O and clock safety.
-4. GAP-007 and GAP-008: establish executable contracts and trusted tests.
-5. GAP-010: finish trusted product CI and hardware-job isolation.
-
-Then create the first CPU issue. Resolve GAP-011 through GAP-013 before system
-integration. GAP-014 and GAP-015 can remain later milestones. GAP-009 is
-closed.
+Follow the [future P0 sequence and implementation gate](agents/bootstrap-plan.md#future-p0-sequence).
+The current phase does not authorize starting that sequence.
