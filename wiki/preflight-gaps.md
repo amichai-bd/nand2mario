@@ -246,7 +246,11 @@ Closed by issues [#7](https://github.com/amichai-bd/nand2mario/issues/7)
 through [#10](https://github.com/amichai-bd/nand2mario/issues/10) and the
 end-to-end audit in [#14](https://github.com/amichai-bd/nand2mario/issues/14).
 The focused skills use short methods with separate templates and examples. The
-issue helper has passing validation tests.
+issue helper has passing validation tests. [#34](https://github.com/amichai-bd/nand2mario/issues/34)
+aligns the flow and review guidance with the agreed operating rules.
+Structural skill validation is not proof of agent behavior; the
+[scaffolding audit](https://github.com/amichai-bd/nand2mario/issues/36) links
+observed workflow evidence.
 
 **Risk**
 
@@ -270,10 +274,12 @@ or PR evidence drift.
 **Current state**
 
 A private GitHub repository, issue forms, a PR template, required PR and wiki
-checks, protected `main`, labels, and main-only Pages deployment are proven.
-[PR #23](https://github.com/amichai-bd/nand2mario/pull/23) completed the
-wiki-only flow through peer review, merge, issue closure, cleanup, and a
-[successful Pages run](https://github.com/amichai-bd/nand2mario/actions/runs/33899199181).
+checks, protected `main`, labels, and automatic Pages deployment are proven.
+[#34](https://github.com/amichai-bd/nand2mario/issues/34) defines the revised
+agent workflow. [#35](https://github.com/amichai-bd/nand2mario/issues/35) publishes
+the original wiki and skills with a README/AGENTS toggle; the
+[wiki contract](tools/wiki.md) owns its behavior. [#36](https://github.com/amichai-bd/nand2mario/issues/36)
+records the final review, delivery, and cleanup evidence.
 Product build CI and the protected physical runner remain open in
 [#32](https://github.com/amichai-bd/nand2mario/issues/32).
 

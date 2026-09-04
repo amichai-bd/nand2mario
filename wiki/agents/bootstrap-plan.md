@@ -8,16 +8,19 @@ conditions.
 
 | Result | Evidence |
 |---|---|
-| Agent rules, issue flow, and worktrees | [#7](https://github.com/amichai-bd/nand2mario/issues/7), [agent rules](https://github.com/amichai-bd/nand2mario/blob/main/AGENTS.md), and [worktree lifecycle](https://github.com/amichai-bd/nand2mario/blob/main/worktrees/README.md) |
+| Agent rules, issue flow, and worktrees | [#34](https://github.com/amichai-bd/nand2mario/issues/34), [agent rules](https://github.com/amichai-bd/nand2mario/blob/main/AGENTS.md), and [agent flow](https://github.com/amichai-bd/nand2mario/blob/main/.agents/skills/agent-flow/SKILL.md) |
 | Explicit alignment and concise writing | [#8](https://github.com/amichai-bd/nand2mario/issues/8) and [#9](https://github.com/amichai-bd/nand2mario/issues/9) |
 | Focused skills and issue helper | [#10](https://github.com/amichai-bd/nand2mario/issues/10) |
 | Pre-RTL directory structure | [#11](https://github.com/amichai-bd/nand2mario/issues/11) and [repository layout](https://github.com/amichai-bd/nand2mario/blob/main/README.md#repository-layout) |
 | Required wiki and PR checks | [#12](https://github.com/amichai-bd/nand2mario/issues/12) and [PR #23](https://github.com/amichai-bd/nand2mario/pull/23) |
-| Main-only Pages deployment | [#13](https://github.com/amichai-bd/nand2mario/issues/13) and [successful main run](https://github.com/amichai-bd/nand2mario/actions/runs/33899199181) |
-| Wiki-only steady-state flow | [#22](https://github.com/amichai-bd/nand2mario/issues/22), reviewed SHA `a54e41a`, merge `55ba933`, and [#14](https://github.com/amichai-bd/nand2mario/issues/14) |
+| Original-source wiki and skill navigation, README/AGENTS toggle | [#35](https://github.com/amichai-bd/nand2mario/issues/35) and [wiki build contract](../tools/wiki.md) |
+| Automatic Pages after merge to main | [#13](https://github.com/amichai-bd/nand2mario/issues/13) and [#35](https://github.com/amichai-bd/nand2mario/issues/35) |
+| Draft PR, independent review, author merge | [PR #38](https://github.com/amichai-bd/nand2mario/pull/38) and [PR #37](https://github.com/amichai-bd/nand2mario/pull/37) |
 
-These results establish the working method. They do not close the product,
-tool, verification, or hardware gaps below.
+The [final audit issue](https://github.com/amichai-bd/nand2mario/issues/36) owns
+delivery and cleanup evidence. Skill structure checks do not prove agent
+behavior; the reviewed PRs demonstrate the flow for these changes only.
+These results do not close the product, tool, verification, or hardware gaps below.
 
 ## Remaining P0 work
 
