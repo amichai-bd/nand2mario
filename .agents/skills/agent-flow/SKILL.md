@@ -19,7 +19,8 @@ use the focused repository skill for the work itself.
 
 1. Align before committing to scope.
    - Inspect the repository and linked facts first.
-   - Use `grill-me` when a material, costly, or hard-to-reverse decision remains.
+   - Use `grill-me` when available and a material, costly, or hard-to-reverse
+     decision remains. Otherwise align directly with the human.
    - Create or refine the issue after the human confirms the decision packet.
 2. Claim isolated work.
    - Assign the issue.

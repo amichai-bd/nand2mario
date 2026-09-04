@@ -7,11 +7,11 @@ display through VGA and accept controls through UART.
 
 ## Current phase
 
-Read `wiki/preflight-gaps.md` before implementation. Close the applicable P0
-gaps before functional RTL, DV, FPGA, or build work.
+Read `wiki/preflight-gaps.md` before implementation. Before functional RTL
+starts, do only approved bootstrap work that closes its applicable P0 gaps.
 
-The repository is private. Keep Pages deployment on merged `main`. Do not change
-visibility or program the FPGA without explicit approval.
+The repository is private. Do not change visibility, publish Pages, or program
+the FPGA without explicit approval.
 
 ## Sources of truth
 
@@ -34,7 +34,7 @@ Keep each fact in one place. Link to it elsewhere.
 
 ## Work
 
-- Use `grill-me` before an issue when material human decisions remain.
+- Use `grill-me` when available before an issue with material human decisions.
 - Keep the root checkout clean and on `main`. Use it only to orchestrate work.
 - Start work only after the issue has an assignee.
 - Prefer one issue, one observable result, one branch, and one PR.

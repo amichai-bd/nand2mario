@@ -19,11 +19,12 @@ create, inspect, and remove worktrees, not to implement changes.
 3. Comment on the issue with the agent, branch, and relative worktree path.
 4. Make all edits, builds, validation, and commits in that worktree.
 5. Push the branch and open a PR containing `Closes #42`.
-6. Create a separate reviewer worktree at the exact PR head SHA:
+6. Create a separate reviewer worktree at the exact PR head SHA. In this
+   example, issue #42 produced PR #51:
 
    ```powershell
-   git fetch origin pull/42/head:refs/review/pr-42
-   git worktree add --detach worktrees/review-42-agent refs/review/pr-42
+   git fetch origin pull/51/head:refs/review/pr-51
+   git worktree add --detach worktrees/review-51-agent refs/review/pr-51
    ```
 
 7. After agent review and required checks pass, squash merge and verify the PR.
@@ -31,7 +32,7 @@ create, inspect, and remove worktrees, not to implement changes.
 
    ```powershell
    git worktree remove worktrees/issue-42-fix-tima-reload
-   git worktree remove worktrees/review-42-agent
+   git worktree remove worktrees/review-51-agent
    git worktree prune
    ```
 
