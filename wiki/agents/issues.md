@@ -33,7 +33,8 @@ Blank issues are disabled.
 The issue is the agent's working guide and starting prompt.
 
 When the user explicitly invokes
-[`grill-me`](../../.agents/skills/grill-me/SKILL.md), its confirmed decision
+[`grill-me`](https://github.com/amichai-bd/nand2mario/blob/main/.agents/skills/grill-me/SKILL.md),
+its confirmed decision
 packet maps into the issue goal, scope, success criteria, and linked wiki work.
 Otherwise align directly. Do not copy the full interview into the issue.
 

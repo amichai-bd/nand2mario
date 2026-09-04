@@ -269,8 +269,8 @@ interfaces exist.
 **Current state**
 
 A private GitHub repository, three issue forms, a PR template, a required PR
-policy check, protected `main`, and the canonical label catalog exist. Build
-CI, a self-hosted runner, and Pages do not.
+policy check, a wiki PR check, protected `main`, and the canonical label catalog
+exist. Product build CI, a self-hosted runner, and Pages do not.
 
 **Risk**
 

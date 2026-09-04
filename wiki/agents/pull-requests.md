@@ -24,7 +24,7 @@ worktrees/issue-42-fix-tima-reload
 
 The root checkout stays clean and on `main`. All changes, builds, commits, and
 PR updates happen from the issue worktree. See the
-[worktree lifecycle](../../worktrees/README.md).
+[worktree lifecycle](https://github.com/amichai-bd/nand2mario/blob/main/worktrees/README.md).
 
 ## Issue closure
 
