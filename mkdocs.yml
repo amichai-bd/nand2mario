@@ -19,6 +19,7 @@ nav:
       - Build system: tools/build-system.md
       - Wiki: tools/wiki.md
   - Agents:
+      - Bootstrap plan: agents/bootstrap-plan.md
       - Issues: agents/issues.md
       - Pull requests: agents/pull-requests.md
 
