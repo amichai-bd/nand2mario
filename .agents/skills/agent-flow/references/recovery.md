@@ -23,4 +23,6 @@ deterministic failures.
 After merge, root verifies cleanup and ends the author and reviewer sessions
 using the runtime's supported tools. If no close operation exists, let agents
 finish or interrupt active work; report that limitation rather than claiming
-an agent was deleted. Never remove a worktree while its agent is using it.
+an agent was deleted. Never remove a worktree while its agent is using it. If
+the worktree ran a local preview, follow [preview cleanup](preview-cleanup.md)
+before removing it.
