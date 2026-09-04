@@ -63,9 +63,9 @@ same wrapper; failure returns `n2m:fullscreen-result` with `ok: false`.
 
 Shared visual attributes live in `tools/wiki/assets/tokens.css`: `--bg`,
 `--panel`, `--surface`, `--text`, `--muted`, `--accent`, `--border`, `--font`,
-`--mono`, and `--radius`. Presentation authoring and its shared runtime are tracked
-in [#41](https://github.com/amichai-bd/nand2mario/issues/41); their destination is
-`wiki/presentations/`. Source files remain the authority for all content.
+`--mono`, and `--radius`. Use the [presentation contract](../presentations/README.md)
+and [authoring skill](../../.agents/skills/html-presentation/SKILL.md) for decks
+under `wiki/presentations/`. Source files remain the authority for all content.
 
 ## Text-only policy and deployment
 
