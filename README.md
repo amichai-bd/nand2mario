@@ -23,9 +23,9 @@ Read these documents before implementation:
 - [Agent working rules](AGENTS.md)
 
 The GitHub repository is private. Issue forms, labels, the PR policy check, and
-`main` protection are active. Pull requests build and validate the wiki. A
-main-only Pages workflow is defined; its first deployment is not yet proven.
-The deployed wiki is public even though this repository remains private.
+`main` protection are active. Pull requests validate the wiki. Merges to `main`
+deploy it through Pages. The deployed wiki is public even though this repository
+remains private.
 
 ## Repository layout
 
