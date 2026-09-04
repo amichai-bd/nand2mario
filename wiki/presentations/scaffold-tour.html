@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>A tour of the scaffold</title>
+  <link rel="stylesheet" href="../../tools/wiki/assets/presentation.css">
+  <script src="../../tools/wiki/assets/presentation.js" defer></script>
+</head>
+<body>
+  <main class="deck" aria-label="A tour of the scaffold">
+    <section data-slide aria-labelledby="start">
+      <p class="eyebrow">nand2mario · scaffold tour</p>
+      <h1 id="start">Start with the source</h1>
+      <p>The wiki displays repository files. Change their originals; the next build publishes the change.</p>
+      <svg viewBox="0 0 700 110" role="img" aria-labelledby="flow-title">
+        <title id="flow-title">Repository sources flow through the wiki build to the published site</title>
+        <g fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="1" y="16" width="184" height="76" rx="10"/><path d="M185 54h70m-10-8 10 8-10 8"/>
+          <rect x="256" y="16" width="184" height="76" rx="10"/><path d="M440 54h70m-10-8 10 8-10 8"/>
+          <rect x="511" y="16" width="184" height="76" rx="10"/>
+        </g>
+        <g fill="currentColor" text-anchor="middle" font-size="20" font-family="system-ui">
+          <text x="93" y="61">Source files</text><text x="348" y="61">Wiki build</text><text x="603" y="61">Published site</text>
+        </g>
+      </svg>
+    </section>
+    <section data-slide aria-labelledby="inspect">
+      <p class="eyebrow">Source viewer</p>
+      <h2 id="inspect">Check what exists</h2>
+      <p>The RTL directory currently contains a short placeholder. This is scaffold evidence, not implemented Game Boy behavior.</p>
+      <p><a href="../../src/rtl/README.md" data-source="src/rtl/README.md" data-line="1">Inspect src/rtl/README.md</a></p>
+    </section>
+    <section data-slide aria-labelledby="next">
+      <p class="eyebrow">Authoring</p>
+      <h2 id="next">Keep the deck editable</h2>
+      <p>Use HTML for content and SVG for diagrams. Reuse the shared controls and style. Source links keep the evidence current.</p>
+      <p><a href="README.md">Read the presentation contract</a></p>
+    </section>
+  </main>
+</body>
+</html>
