@@ -8,8 +8,8 @@ description: Resolve material human decisions before a nand2mario issue or imple
 Turn an unclear request into a confirmed decision packet. Do not create issues,
 edit files, or take external action during the interview.
 
-This repository skill targets GPT-family Codex agents. It is self-contained; do
-not delegate to an upstream skill or translate its flow into another agent tool.
+This repository skill is self-contained for Codex agents. Do not delegate to an
+upstream skill.
 
 ## Method
 
@@ -29,7 +29,7 @@ not delegate to an upstream skill or translate its flow into another agent tool.
 6. When no material decision remains, present the packet below. Ask the human to
    confirm or correct it. Do not hand off to implementation before confirmation.
 
-Prefer one to three questions per round. A dependent question waits for a later
+Ask one to three questions per round. A dependent question waits for a later
 round. Do not ask about naming, formatting, or implementation detail unless it
 changes an observable result.
 
