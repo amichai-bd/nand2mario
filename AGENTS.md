@@ -35,8 +35,8 @@ selects assigned issues and delegates authors to separate worktrees. Keep the
 root checkout clean on `main`; never share a worktree.
 
 Use branch `<number>-<slug>` and author worktree
-`<repo-root>/worktrees/<number>-<slug>/`. Record ownership in the issue before
-editing. All edits, builds, validation, and commits belong in that worktree.
+`<repo-root>/worktrees/<number>-<slug>/`. Record ownership in the orchestration
+handoff and PR. All edits, builds, validation, and commits belong in that worktree.
 Keep generated output under `workdir/`.
 
 Prefer one issue and one PR. Every PR starts as draft and closes its branch's
@@ -45,9 +45,10 @@ The author babysits through independent review, green checks, and squash merge.
 No human review is required. Root verifies merge, closure, and cleanup.
 
 Read the issue and linked specification. Keep scope within its success criteria.
-Comment useful findings, decisions, blockers, and evidence. Clarify issue facts
-and links as needed; summarize material edits in a comment. Do not broaden the
-goal or weaken criteria without approval.
+Edit or comment on issues only for new findings that require clarification, a
+decision, or documented drift. No routine progress or completion updates; keep
+evidence in PRs and artifacts. Do not broaden the goal or weaken criteria without
+approval. See [issue guidance](wiki/agents/issues.md#agent-use).
 
 Use [grill-me](.agents/skills/grill-me/SKILL.md) only when explicitly invoked.
 Otherwise align directly. Use focused skills and keep detailed procedures there.

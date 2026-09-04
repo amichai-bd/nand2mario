@@ -14,8 +14,8 @@ git worktree add -b 42-fix-timer worktrees/42-fix-timer origin/main
 
 The branch and author directory have the same name: `<number>-<slug>`.
 `<repo-root>` means the root orchestration checkout, not a required environment
-variable. Comment the agent, branch, and relative worktree on the issue before
-editing. Never share a worktree.
+variable. Record the agent, branch, and relative worktree in the orchestration
+handoff before editing, then in the PR when opened. Never share a worktree.
 
 For PR 51, resolve its current head and give a different agent a detached
 checkout named `worktrees/review-51-<sha7>/`:

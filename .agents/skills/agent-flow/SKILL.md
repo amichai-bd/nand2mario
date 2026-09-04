@@ -11,6 +11,8 @@ One root orchestrator selects issues. Authors babysit their PRs until merged.
 2. Create or pick an assigned issue. Root delegates one author and records
    ownership using [the worktree guide](../../../worktrees/README.md).
 3. Author reads the issue and spec, then loops on specification, code, and tests.
+   Keep routine updates in the handoff or PR; follow the
+   [issue update rules](../../../wiki/agents/issues.md#agent-use).
 4. Commit, push, and open a draft PR using `pr-author`.
 5. Babysit: poll CI, fix failures, and request an independent review following
    [the review guide](references/review.md).
