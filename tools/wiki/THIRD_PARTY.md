@@ -5,16 +5,11 @@ come from [PyPI](https://pypi.org/) over pip.
 
 | Packages | License |
 |---|---|
-| MkDocs | BSD-2-Clause |
-| click, colorama, Jinja2, Markdown, MarkupSafe | BSD-3-Clause |
-| ghp-import, watchdog | Apache-2.0 |
-| mergedeep, mkdocs-get-deps, platformdirs, PyYAML, pyyaml-env-tag, six | MIT |
-| packaging | Apache-2.0 OR BSD-2-Clause |
-| pathspec | MPL-2.0 |
-| python-dateutil | Apache-2.0 OR BSD-3-Clause |
+| [Python-Markdown 3.10.3](https://pypi.org/project/Markdown/3.10.3/) | BSD-3-Clause |
 
-`pip-tools==7.5.2` (BSD-3-Clause) generated the lock file. It is not installed
-by the wiki check.
+The lock contains the wheel and source distribution hashes. Markdown has no
+runtime dependencies. The shell, navigation, and generator are repository-owned;
+there is no MkDocs runtime, CDN, binary font, or copied theme.
 
 The workflows use GitHub's `actions/checkout`, `actions/setup-python`,
 `actions/configure-pages`, `actions/upload-pages-artifact`, and

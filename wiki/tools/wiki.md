@@ -1,61 +1,89 @@
 # Wiki build
 
-The wiki renders existing repository files. One command creates the pinned
-MkDocs environment, tests publication, and checks pages and anchors:
+The repository owns its HTML shell, navigation, and build. Python-Markdown parses
+Markdown; MkDocs is not used. Run:
 
 ```text
 python tools/wiki/check.py
 ```
 
-Output goes to `workdir/wiki/site/`. The command fails on a build warning or a
-broken internal link. It does not deploy.
+This creates the pinned environment, runs publication tests, checks tracked
+content and links, then writes `workdir/wiki/site/`. Serve that directory over
+HTTP for local viewing. The command does not deploy.
 
 ## Sources and navigation
 
-The build stages tracked `wiki/`, `README.md`, `AGENTS.md`, and
-`.agents/skills/` files under `workdir/wiki/docs/`. Generated copies are ignored;
-edit the originals. Untracked drafts are not published. Stage new files with
-`git add` before checking them.
+Publish tracked `README.md`, `AGENTS.md`, `wiki/`, `.agents/skills/`, `src/`,
+`tools/`, and `cfg/`. Referenced tracked files outside these roots are included
+as source dependencies without category navigation. Unreferenced files outside
+the roots and untracked drafts are not published. Stage new files before checking.
 
-The landing page shows the full README by default. The README/AGENTS buttons
-switch documents and work with the keyboard. Without JavaScript both documents
-remain readable. Source and edit links point to the original repository files.
+Top tabs are Home, Src, Agents/Skills, Tools, Cfg, and Presentations. Each tab has
+a directory-based sidebar and file filter. Src includes RTL, DV, SW, and FPGA.
+Home defaults to README; its toggle selects AGENTS. URLs identify the original
+file with `?page=wiki/tools/wiki.md`; fragments select headings or `#L12` source
+lines. Former MkDocs document paths redirect to the matching source.
 
-Wiki and skill navigation follows their directory structure. Skill templates,
-examples, references, scripts, and configuration files are included. Scripts and
-other text support files render as escaped text; the build never runs them.
-Raster images are copied as assets. Other binary files link to their source.
+Keep each fact in its original file. The site uses generated output only, never
+committed document mirrors. Every page exposes an escaped source viewer with the
+path and line numbers. Published source references work without GitHub access.
 
-Markdown links, reference links, images, and anchors resolve from each original
-file's location. Links to repository files outside the published set open GitHub.
-Code examples are left untouched. Existing wiki page paths stay stable; its
-former landing page is available as `wiki-index/`.
+## Content and embeds
 
-Keep each rule or specification in its original owner file. Link to that source
-instead of adding a second version for the website.
+Markdown renders links, headings, tables, and code blocks. Repository-relative
+links resolve from the original source path. Missing tracked targets and anchors
+fail the build. Links to this repository's `blob/main` and `tree/main` paths also
+resolve locally. Other HTTP, HTTPS, and mail links are left unchanged.
 
-## Checks and deployment
+HTML documents under `wiki/` and SVG assets embed in an iframe with script permission
+and without same-origin privileges. A standalone link opens the original file;
+relative assets retain their repository layout under `files/`. Fullscreen expands
+the document wrapper so source overlays remain visible. Browser restrictions on
+embedded fullscreen may require the wiki's Fullscreen button.
 
-The PR workflow runs the same command with read-only repository access.
-Dependency versions and licenses are recorded in
-[`tools/wiki/THIRD_PARTY.md`](https://github.com/amichai-bd/nand2mario/blob/main/tools/wiki/THIRD_PARTY.md).
+The generated HTML copy adds a small navigation bridge. Inside the wiki, local
+document links open the rendered target and heading in the shell. Standalone
+links keep their original relative `href`. SVG resource links and `srcset` assets
+keep resource semantics rather than becoming document routes.
 
-Merging to `main` authorizes automatic wiki deployment; no further approval is
-needed. The Pages workflow runs after a push to `main` or a manual dispatch. Its
-build job runs the same command, uploads `workdir/wiki/site/`, and passes that
-artifact to a separate deploy job. Deployments use the `github-pages`
-environment and a single `pages` concurrency group.
+Skill templates and other source HTML render as escaped text, not live pages.
+Do not put credentials or private machine or ROM facts in public source files.
 
-GitHub Actions is the configured Pages source. Pull requests never deploy.
+HTML source links use a real relative `href` as a standalone fallback:
 
-The Pages site is public even while the source repository remains private.
-Private-repository Pages requires a GitHub plan that supports it. Treat every
-published source as public: do not include credentials, private ROM facts,
-unique device identifiers, or machine-specific paths.
+```html
+<a href="../../src/rtl/README.md" data-source="src/rtl/README.md" data-line="1">RTL source</a>
+```
 
-## References
+Embedded scripts may post `{type: "n2m:source", path: "src/rtl/README.md", line: 1}`
+to the parent. The shell accepts messages only from its current iframe and only
+opens known published paths and valid lines. Opaque sandbox origins require a
+`"*"` target for this non-secret message. A `n2m:fullscreen` message requests the
+same wrapper; failure returns `n2m:fullscreen-result` with `ok: false`.
 
-- [MkDocs configuration and link validation](https://www.mkdocs.org/user-guide/configuration/)
-- [GitHub Pages custom workflows](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages)
-- [GitHub Pages publishing source](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site)
-- [GitHub Actions secure use](https://docs.github.com/en/actions/reference/security/secure-use)
+Shared visual attributes live in `tools/wiki/assets/tokens.css`: `--bg`,
+`--panel`, `--surface`, `--text`, `--muted`, `--accent`, `--border`, `--font`,
+`--mono`, and `--radius`. Presentation authoring and its shared runtime are tracked
+in [#41](https://github.com/amichai-bd/nand2mario/issues/41); their destination is
+`wiki/presentations/`. Source files remain the authority for all content.
+
+## Text-only policy and deployment
+
+The required Wiki check scans every tracked repository file, including files not
+published. It rejects binary extensions (including PNG, JPEG, PDF, PPT/PPTX),
+known binary signatures, invalid UTF-8, and binary control bytes. Textual Markdown,
+HTML, SVG, code, and configuration are allowed. No binary fonts or external CDN
+runtime are required. Keep generated images, PDFs, ROMs, and other binary artifacts
+under ignored `workdir/`. Tests include disguised PDF/PNG, NUL, invalid UTF-8,
+and valid Unicode SVG inputs.
+
+Dependency versions, hashes, and licenses are recorded in
+[the dependency note](../../tools/wiki/THIRD_PARTY.md).
+
+PRs run the same read-only build and never deploy. Merges to `main` automatically
+publish the artifact with standing authorization. Pages uses separate build and
+deploy jobs, the `github-pages` environment, and serialized deployment. The source
+repository is private; its Pages site is public.
+
+The build/deploy split follows process ideas from `frog-bui`; no code was copied.
+See [GitHub Pages custom workflows](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages).
