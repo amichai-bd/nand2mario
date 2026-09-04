@@ -1,2 +1,2 @@
-# Direct wiki build dependency. Resolve changes into requirements.txt.
-mkdocs==1.6.1
+# Markdown parsing only. The site shell is repository-owned.
+Markdown==3.10.3

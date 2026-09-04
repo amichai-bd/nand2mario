@@ -1,5 +1,0 @@
-.document-toggle { display: flex; gap: .5rem; margin-bottom: 1.5rem; }
-.document-toggle button { border: 1px solid #426781; border-radius: .25rem; padding: .5rem 1rem; background: white; color: #244258; }
-.document-toggle button[aria-pressed="true"] { background: #244258; color: white; }
-.document-toggle button:focus-visible { outline: 3px solid #bb7100; outline-offset: 3px; }
-[hidden] { display: none !important; }

@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="The nand2mario source, specifications, and agent workspace.">
+  <title>nand2mario — project wiki</title>
+  <link rel="stylesheet" href="files/tools/wiki/assets/tokens.css">
+  <link rel="stylesheet" href="files/tools/wiki/assets/shell.css">
+  <script src="files/tools/wiki/assets/shell.js" defer></script>
+</head>
+<body>
+  <header class="masthead"><a class="brand" href="?page=README.md"><span class="mark">n2m</span>nand2mario</a><span class="edition">PROJECT WORKSPACE <span class="status-dot"></span> LIVE SOURCES</span></header>
+  <nav id="tabs" aria-label="Categories"></nav>
+  <div class="workspace">
+    <aside aria-label="Category files"><div class="explorer-label">EXPLORER</div><label class="filter-label" for="filter">Find a file</label><input id="filter" type="search" placeholder="Filter this category…" autocomplete="off"><div id="tree"></div></aside>
+    <main id="stage">
+      <div class="toolbar"><span id="path">Loading workspace…</span><div class="actions"><button id="source" type="button">View source</button><button id="fullscreen" type="button" title="Expand document">Fullscreen</button></div></div>
+      <div id="home-toggle" role="group" aria-label="Home document"><button data-home="README.md" aria-pressed="true">README <small>For humans</small></button><button data-home="AGENTS.md" aria-pressed="false">AGENTS <small>For agents</small></button></div>
+      <article id="document" tabindex="-1" aria-live="polite"></article>
+      <footer>Rendered from the original files. <span id="source-path"></span></footer>
+      <dialog id="source-dialog" aria-labelledby="source-title"><header><strong id="source-title"></strong><button id="close-source" type="button">Close <kbd>Esc</kbd></button></header><pre id="source-lines"></pre></dialog>
+    </main>
+  </div>
+  <noscript>This workspace needs JavaScript for navigation. Original documents are available at <a href="files/README.md">README.md</a> and <a href="files/AGENTS.md">AGENTS.md</a>.</noscript>
+</body>
+</html>

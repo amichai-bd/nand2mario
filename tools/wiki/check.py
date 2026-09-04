@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create the pinned wiki environment, then build with strict link checks."""
+"""Create the pinned Markdown environment, test, scan text, and build the wiki."""
 
 from __future__ import annotations
 
@@ -46,7 +46,7 @@ def main() -> int:
         check=True,
     )
     return subprocess.run(
-        [str(python), "-m", "mkdocs", "build", "--clean", "--strict"],
+        [str(python), "tools/wiki/site.py"],
         cwd=ROOT,
         check=False,
     ).returncode
