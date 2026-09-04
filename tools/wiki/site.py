@@ -40,7 +40,8 @@ def source_links(source: str) -> str:
 def stage(root: Path, docs: Path) -> dict[str, str]:
     # Only this generated directory is replaced; tracked and ignored inputs stay put.
     expected = root / "workdir/wiki/docs"
-    if docs.resolve() != expected.resolve() or docs.is_symlink():
+    if (docs.resolve() != expected.resolve() or docs.is_symlink()
+            or not docs.resolve().is_relative_to(root.resolve())):
         raise ValueError("Wiki staging must be workdir/wiki/docs")
     if docs.exists():
         shutil.rmtree(docs)

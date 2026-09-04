@@ -7,6 +7,9 @@ document.addEventListener("DOMContentLoaded", () => {
       button.setAttribute("aria-pressed", String(active));
       document.getElementById(button.getAttribute("aria-controls")).hidden = !active;
     });
+    const edit = document.querySelector(".navbar a[href*='/edit/main/']");
+    const sourceEdit = document.querySelector(`#${name}-view a[href*='/edit/main/']`);
+    if (edit && sourceEdit) edit.href = sourceEdit.href;
   };
   buttons.forEach((button) => button.addEventListener("click", () => select(button.dataset.view)));
   // Show the matching document when following a heading or search result.
