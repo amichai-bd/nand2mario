@@ -33,9 +33,11 @@ The GitHub repository is private. Issue forms, labels, the PR policy check, and
 - `wiki/` — short documentation mirroring source, tools, and agent work.
 - `.agents/skills/` — focused procedures for recurring agent tasks.
 - `.github/` — issue forms, labels, PR templates, and workflows.
+- `worktrees/` — ignored issue checkouts plus a tracked lifecycle guide.
 - `workdir/` — downloaded tools, generated scripts, tagged builds, and logs.
 
-Generated files will live under ignored `workdir/` and will not be committed.
+`worktrees/` isolates source changes. `workdir/` contains disposable output
+inside each checkout. Neither child worktrees nor generated files are committed.
 
 The tagged build layout is defined in the
 [build-system specification](wiki/tools/build-system.md).
