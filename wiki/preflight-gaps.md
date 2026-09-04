@@ -267,9 +267,9 @@ interfaces exist.
 
 **Current state**
 
-A private GitHub repository, three issue forms, a PR template, a PR policy
-check, and the canonical label catalog exist. Main-branch rules, build CI, a
-self-hosted runner, and Pages do not.
+A private GitHub repository, three issue forms, a PR template, a required PR
+policy check, protected `main`, and the canonical label catalog exist. Build
+CI, a self-hosted runner, and Pages do not.
 
 **Risk**
 
@@ -409,5 +409,5 @@ Before functional Game Boy RTL:
 5. GAP-009: make the agent workflow repeatable.
 
 Then create the first CPU issue. Resolve GAP-011 through GAP-013 before system
-integration. GAP-014 and GAP-015 can remain later milestones. GAP-010 waits for
-explicit authorization to create the GitHub remote.
+integration. GAP-014 and GAP-015 can remain later milestones. Complete the
+remaining CI, runner, and Pages work in GAP-010 during repository bootstrap.

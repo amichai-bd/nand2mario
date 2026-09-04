@@ -22,8 +22,8 @@ Read these documents before implementation:
 - [Project documentation index](wiki/index.md)
 - [Agent working rules](AGENTS.md)
 
-The GitHub repository is private. Issue forms and labels are configured. CI,
-Pages deployment, and branch rules are not configured yet.
+The GitHub repository is private. Issue forms, labels, the PR policy check, and
+`main` protection are active. Build CI and Pages are not configured yet.
 
 ## Planned layout
 

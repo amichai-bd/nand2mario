@@ -58,5 +58,17 @@ The `PR policy` workflow checks:
 - the PR body contains at least one `Closes #<number>`; and
 - the PR closes the primary issue named by the branch.
 
+## Main protection
+
+`main` requires:
+
+- a pull request;
+- a passing, up-to-date `PR policy` check;
+- linear history;
+- resolved review conversations; and
+- no force-push or branch deletion.
+
+No approving review count is required yet.
+
 GitHub closes every referenced issue when the PR merges into `main`. See
 [Linking a pull request to an issue](https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/linking-a-pull-request-to-an-issue).
