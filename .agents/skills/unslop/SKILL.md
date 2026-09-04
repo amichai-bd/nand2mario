@@ -38,14 +38,14 @@ conflict, or unsupported claim needs the author's decision.
 
 ## Examples
 
-Bad: "It is important to note that this robust change leverages a comprehensive
-approach to successfully improve UART reliability."
+Bad: "It is important to note that the UART test has successfully passed with
+no checksum errors."
 
-Good: "The UART test passed 10,000 frames with no checksum errors."
+Good: "The UART test passed with no checksum errors."
 
 No-op: "TimeQuest reports 4.2 ns setup slack for the 50 MHz clock."
 
 ## Design references
 
 - [OpenAI GPT-5.6 model guidance](https://developers.openai.com/api/docs/guides/latest-model?model=gpt-5.6#prompting-best-practices): keep prompts lean, state each instruction once, lead with required content, and remove repetition before evidence.
-- [OpenAI model writing guidance](https://developers.openai.com/api/docs/guides/latest-model#personality-and-writing-style): use plain language, direct statements, and only as much structure as comprehension needs.
+- [OpenAI GPT-6 Astra writing guidance](https://developers.openai.com/api/docs/guides/latest-model?model=gpt-6-astra#personality-and-writing-style): an additional, non-GPT-5.6-specific source for plain language, direct statements, and restrained structure.
