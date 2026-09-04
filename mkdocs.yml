@@ -1,27 +1,20 @@
 site_name: nand2mario
 site_url: https://amichai-bd.github.io/nand2mario/
 repo_url: https://github.com/amichai-bd/nand2mario
-edit_uri: edit/main/wiki/
-docs_dir: wiki
+edit_uri: edit/main/
+docs_dir: workdir/wiki/docs
 site_dir: workdir/wiki/site
 strict: true
 
 theme:
   name: mkdocs
 
-nav:
-  - Home: index.md
-  - Research: research-findings.md
-  - Preflight gaps: preflight-gaps.md
-  - Design:
-      - Source index: src/README.md
-  - Tools:
-      - Build system: tools/build-system.md
-      - Wiki: tools/wiki.md
-  - Agents:
-      - Bootstrap plan: agents/bootstrap-plan.md
-      - Issues: agents/issues.md
-      - Pull requests: agents/pull-requests.md
+hooks:
+  - tools/wiki/site.py
+extra_javascript:
+  - site-assets/toggle.js
+extra_css:
+  - site-assets/toggle.css
 
 validation:
   omitted_files: warn
