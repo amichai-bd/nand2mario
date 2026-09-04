@@ -37,7 +37,7 @@
   const embedded = window.parent !== window;
   deck.addEventListener('click', event => {
     const link = event.target.closest('a[data-source]');
-    if (!link || !embedded || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button !== 0) return;
+    if (!link || !embedded || event.defaultPrevented || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button !== 0) return;
     event.preventDefault();
     window.parent.postMessage({type: 'n2m:source', path: link.dataset.source,
       line: Number(link.dataset.line) || 1}, '*');
