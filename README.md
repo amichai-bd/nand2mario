@@ -25,12 +25,18 @@ Read these documents before implementation:
 The GitHub repository is private. Issue forms, labels, the PR policy check, and
 `main` protection are active. Build CI and Pages are not configured yet.
 
-## Planned layout
+## Repository layout
 
-- `src/` — RTL, verification, target software, and FPGA files.
+- `src/rtl/` — synthesizable SystemVerilog.
+- `src/dv/` — testbenches, assertions, and verification data.
+- `src/sw/` — target software and test ROM sources.
+- `src/fpga/de10_lite/` — DE10-Lite projects and constraints.
 - `cfg/` — small, project-wide YAML configuration only.
-- `tools/` — checked-in build, automation, and maintenance code.
-- `wiki/` — short documentation mirroring source, tools, and agent work.
+- `tools/automations/` — checked-in CI and repository automation support.
+- `tools/scripts/` — checked-in developer and maintenance scripts.
+- `wiki/src/` — hardware and software specifications.
+- `wiki/tools/` — tool and build specifications.
+- `wiki/agents/` — agent workflow guidance.
 - `.agents/skills/` — focused procedures for recurring agent tasks.
 - `.github/` — issue forms, labels, PR templates, and workflows.
 - `worktrees/` — ignored issue checkouts plus a tracked lifecycle guide.
