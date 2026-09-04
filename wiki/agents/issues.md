@@ -64,6 +64,18 @@ Every implementation PR closes its issue. The normal case is one issue and one
 PR. One focused PR may close several related issues. See
 [Branches and pull requests](pull-requests.md).
 
+## Helper tests
+
+From the repository root, run:
+
+```text
+python -m unittest discover -s .agents/skills/issue-author/scripts -p test_create_issue.py -v
+```
+
+The required PR `Wiki check` and the main Pages build run this suite before
+building the wiki. A failed test stops publication. The tests mock GitHub calls;
+they do not create issues.
+
 ## Labels
 
 `.github/labels.yml` is the canonical label catalog.
