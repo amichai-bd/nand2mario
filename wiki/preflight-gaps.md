@@ -242,7 +242,8 @@ correct flags, timing, memory traffic, or interrupts.
 
 **Current state**
 
-Skill names and responsibilities are planned, but no repository skills exist.
+The repository has skills for agent delivery and human alignment. The focused
+implementation and verification skills are still missing.
 
 **Risk**
 
