@@ -34,7 +34,11 @@ Keep each fact in one place. Link to it elsewhere.
 
 ## Work
 
-- One issue, one observable result, one short-lived branch.
+- Prefer one issue, one observable result, one branch, and one PR.
+- Name work branches `issue/<primary-number>-<slug>`.
+- Every PR must close at least one issue with `Closes #<number>`.
+- The branch's primary issue number must be one of those closing references.
+- Close several issues in one PR only when one focused change completes them.
 - Treat the issue as the working guide and starting prompt.
 - Read the issue and linked specification before editing.
 - Keep changes inside the acceptance criteria.

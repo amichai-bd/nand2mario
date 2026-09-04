@@ -42,6 +42,10 @@ The issue is the agent's working guide and starting prompt.
 Do not use comments as a command transcript. Build logs belong under the build
 tag; the issue should contain only the result and useful links.
 
+Every implementation PR closes its issue. The normal case is one issue and one
+PR. One focused PR may close several related issues. See
+[Branches and pull requests](pull-requests.md).
+
 ## Labels
 
 `.github/labels.yml` is the canonical label catalog.
