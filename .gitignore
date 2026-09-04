@@ -1,0 +1,43 @@
+# Local environment
+.venv/
+.n2m.local.toml
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Project-generated output
+.work/
+
+# Simulation output
+work/
+transcript
+vsim.wlf
+*.wlf
+*.vcd
+*.fst
+
+# Quartus output
+db/
+incremental_db/
+output_files/
+*.qws
+*.qdf
+*.sof
+*.pof
+*.jic
+*.rpd
+
+# Cartridge images and saves
+*.gb
+*.gbc
+*.rom
+*.sav
+*.srm
+
+# Editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

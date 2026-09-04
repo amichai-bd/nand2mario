@@ -1,0 +1,20 @@
+* text=auto
+
+*.md text eol=lf
+*.py text eol=lf
+*.ps1 text eol=lf
+*.sv text eol=lf
+*.svh text eol=lf
+*.tcl text eol=lf
+*.sdc text eol=lf
+*.qpf text eol=lf
+*.qsf text eol=lf
+*.toml text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+
+*.gb binary
+*.gbc binary
+*.rom binary
+*.sof binary
+*.pof binary
