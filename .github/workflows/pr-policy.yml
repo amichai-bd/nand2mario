@@ -1,0 +1,62 @@
+name: PR policy
+
+on:
+  pull_request:
+    types:
+      - opened
+      - edited
+      - reopened
+      - synchronize
+      - ready_for_review
+
+permissions:
+  contents: read
+
+jobs:
+  policy:
+    name: PR policy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check branch and closing issues
+        env:
+          PR_BRANCH: ${{ github.head_ref }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import os
+          import re
+          import sys
+
+          branch = os.environ.get("PR_BRANCH", "")
+          body = os.environ.get("PR_BODY", "")
+
+          match = re.fullmatch(
+              r"issue/([1-9][0-9]*)-[a-z0-9]+(?:-[a-z0-9]+)*",
+              branch,
+          )
+          if not match:
+              print(
+                  "::error::Branch must match "
+                  "issue/<primary-number>-<lowercase-slug>."
+              )
+              sys.exit(1)
+
+          primary_issue = match.group(1)
+          closing_issues = set(
+              re.findall(r"(?i)\bcloses\s+#([1-9][0-9]*)\b", body)
+          )
+          if not closing_issues:
+              print("::error::PR body must contain at least one Closes #<number>.")
+              sys.exit(1)
+
+          if primary_issue not in closing_issues:
+              print(
+                  f"::error::PR must close primary issue #{primary_issue} "
+                  "from the branch name."
+              )
+              sys.exit(1)
+
+          closed = ", ".join(f"#{number}" for number in sorted(closing_issues, key=int))
+          print(f"PR policy passed: {branch} closes {closed}.")
+          PY

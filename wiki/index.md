@@ -13,6 +13,8 @@ decisions, verification, and development guidance.
   cache behavior, and simulation result paths.
 - [Issues and labels](agents/issues.md) defines concise issue intake and the
   reusable label model.
+- [Branches and pull requests](agents/pull-requests.md) defines issue-backed
+  branches, required closure, and the PR policy check.
 - [Agent working rules](../AGENTS.md) defines the concise rules used throughout
   the repository.
 
