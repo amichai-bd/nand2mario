@@ -2,3 +2,5 @@ interface:
   display_name: "Grill Me"
   short_description: "Resolve material decisions before work starts"
   default_prompt: "Use $grill-me to turn this idea into a confirmed decision packet."
+policy:
+  allow_implicit_invocation: false

@@ -1,6 +1,6 @@
 ---
 name: grill-me
-description: Resolve material human decisions before a nand2mario issue or implementation starts. Use for ambiguous, costly, or hard-to-reverse choices; skip when the issue and linked specifications already settle the work.
+description: Run an explicit human-alignment interview before a nand2mario issue or implementation starts. Use only when the user invokes grill-me or $grill-me; do not invoke it for ordinary ambiguity.
 ---
 
 # Grill me
@@ -9,7 +9,8 @@ Turn an unclear request into a confirmed decision packet. Do not create issues,
 edit files, or take external action during the interview.
 
 This repository skill is self-contained for Codex agents. Do not delegate to an
-upstream skill.
+upstream skill. Run it only after the user explicitly invokes it. Otherwise,
+align directly with the user.
 
 ## Method
 

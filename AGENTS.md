@@ -34,7 +34,8 @@ Keep each fact in one place. Link to it elsewhere.
 
 ## Work
 
-- Use `grill-me` when available before an issue with material human decisions.
+- Use `grill-me` only when the user explicitly invokes it. Otherwise align
+  directly with the user.
 - Keep the root checkout clean and on `main`. Use it only to orchestrate work.
 - Start work only after the issue has an assignee.
 - Prefer one issue, one observable result, one branch, and one PR.
