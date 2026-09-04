@@ -1,62 +1,30 @@
 # nand2mario
 
-`nand2mario` is a planned FPGA recreation of the original monochrome Game Boy
-for the Terasic DE10-Lite.
+A planned recreation of the original monochrome Game Boy on the DE10-Lite.
+The goal is VGA video and game controls sent from a host CLI over UART.
 
-The intended system will:
+The agent tooling and repository scaffold are in place. Game Boy implementation
+has not started. [Preflight gaps](wiki/preflight-gaps.md) track what must come first.
 
-- implement the Game Boy SM83 CPU and supporting hardware in SystemVerilog;
-- load a user-supplied cartridge image through UART;
-- display the Game Boy picture through the board's VGA output;
-- accept Game Boy controls from a host CLI through UART; and
-- use simulation, open test ROMs, formal checks, and hardware tests as evidence.
-
-## Status
-
-Research is complete. Functional RTL and build tooling have not started.
-
-Read these documents before implementation:
-
-- [Research findings](wiki/research-findings.md)
-- [Gaps before implementation](wiki/preflight-gaps.md)
-- [Project documentation index](wiki/index.md)
-- [Agent working rules](AGENTS.md)
-
-The GitHub repository is private. Issue forms, labels, the PR policy check, and
-`main` protection are active. Pull requests validate the wiki. Merges to `main`
-deploy it through Pages. The deployed wiki is public even though this repository
-remains private.
+- [Documentation](https://amichai-bd.github.io/nand2mario/)
+- [Open issues](https://github.com/amichai-bd/nand2mario/issues)
+- [Research](wiki/research-findings.md)
+- [Agent rules](AGENTS.md)
 
 ## Repository layout
 
-- `src/rtl/` — synthesizable SystemVerilog.
-- `src/dv/` — testbenches, assertions, and verification data.
-- `src/sw/` — target software and test ROM sources.
-- `src/fpga/de10_lite/` — DE10-Lite projects and constraints.
-- `cfg/` — small, project-wide YAML configuration only.
-- `tools/automations/` — checked-in CI and repository automation support.
-- `tools/scripts/` — checked-in developer and maintenance scripts.
-- `wiki/src/` — hardware and software specifications.
-- `wiki/tools/` — tool and build specifications.
-- `wiki/agents/` — agent workflow guidance.
-- `.agents/skills/` — focused procedures for recurring agent tasks.
-- `.github/` — issue forms, labels, PR templates, and workflows.
-- `worktrees/` — ignored issue checkouts plus a tracked lifecycle guide.
-- `workdir/` — downloaded tools, generated scripts, tagged builds, and logs.
+- `src/`: RTL, verification, software, and FPGA projects.
+- `wiki/`: specifications, decisions, and tool guidance.
+- `.agents/skills/`: agent methods, examples, and templates.
+- `.github/`: issue forms, PR template, labels, and workflows.
+- `cfg/`: small project configuration.
+- `tools/`: checked-in host scripts and automation.
+- `worktrees/`: isolated issue checkouts.
+- `workdir/`: local tools, temporary drafts, builds, and logs.
 
-`worktrees/` isolates source changes. `workdir/` contains disposable output
-inside each checkout. Neither child worktrees nor generated files are committed.
+See the [build specification](wiki/tools/build-system.md) for planned commands
+and output layout.
 
-The tagged build layout is defined in the
-[build-system specification](wiki/tools/build-system.md).
-
-## Content policy
-
-Do not commit commercial ROMs, Nintendo boot ROMs, save files, generated FPGA
-images, or copied reference-project code without a compatible license and a
-recorded provenance decision. Do not put credentials, private ROM facts, unique
-device identifiers, or machine-specific paths in `wiki/` because Pages publishes
-that directory.
-
-No project license has been selected yet. See
-[GAP-002](wiki/preflight-gaps.md#gap-002--license-rom-policy-and-provenance).
+The repository is private; the documentation site is public and deploys after
+merge to `main`. Do not commit commercial ROMs, saves, or credentials. A project
+license is still [pending](wiki/preflight-gaps.md#gap-002-license-rom-policy-and-provenance).

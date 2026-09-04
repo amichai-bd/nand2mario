@@ -1,38 +1,37 @@
 ## TL;DR
 
-<!-- State the result in one or two sentences. -->
+State the result in one or two sentences.
 
 ## Issues
 
 Closes #
 
-<!-- Add one complete "Closes #<number>" line for every additional issue. -->
-
 ## Specification
 
-<!-- Link changed specifications, or state why there is no specification impact. -->
+Link the governing specification and state alignment or no-impact reasoning.
+
+## Known misalignment
+
+Use `None`, or link an open issue with the side ahead, reason, and closure
+criteria. Mark planned behavior. A drift issue does not waive this PR's criteria.
 
 ## Changes
-
-<!-- List the smallest useful set of changes. -->
 
 -
 
 ## Validation
 
-<!-- Give exact commands and results. Link build tags and useful evidence. -->
-
--
+- `exact command` — result
 
 ## Risk
 
-<!-- State the main risk, or write "None". -->
+State the main risk or `None`.
 
 ## Agent review
-
-<!-- Update after independent review. Same-account agents submit COMMENT reviews. -->
 
 - Reviewer agent:
 - Reviewed commit:
 - Verdict: pending
 - Findings and disposition:
+
+The author posts the independent report and undrafts only when ready.

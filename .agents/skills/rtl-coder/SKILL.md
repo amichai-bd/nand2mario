@@ -11,7 +11,8 @@ Read the issue, linked specification, and nearby RTL before editing.
 2. Keep modules small, synchronous intent explicit, and widths signedness clear.
 3. Avoid latches, implicit nets, unsafe crossings, and vendor logic outside FPGA
    wrappers.
-4. Update assertions and directed tests with behavior changes.
+4. Align wiki, assertions, and directed tests with behavior changes using the
+   [review guide](../agent-flow/references/review.md).
 5. Run the smallest compile and simulation that prove the contract.
 
 Use [the checklist](templates/rtl-checklist.md) in review notes. Read
