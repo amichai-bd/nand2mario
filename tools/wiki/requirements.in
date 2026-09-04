@@ -1,0 +1,2 @@
+# Direct wiki build dependency. Resolve changes into requirements.txt.
+mkdocs==1.6.1

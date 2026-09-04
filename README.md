@@ -23,7 +23,8 @@ Read these documents before implementation:
 - [Agent working rules](AGENTS.md)
 
 The GitHub repository is private. Issue forms, labels, the PR policy check, and
-`main` protection are active. Build CI and Pages are not configured yet.
+`main` protection are active. Pull requests also build and validate the wiki.
+Pages deployment and product build CI are not configured yet.
 
 ## Repository layout
 

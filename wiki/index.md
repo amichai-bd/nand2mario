@@ -11,13 +11,15 @@ decisions, verification, and development guidance.
   the evidence required to close it.
 - [Build-system specification](tools/build-system.md) defines tagged builds,
   cache behavior, and simulation result paths.
+- [Wiki build](tools/wiki.md) defines the local and pull-request check.
 - [Issues and labels](agents/issues.md) defines concise issue intake and the
   reusable label model.
 - [Branches and pull requests](agents/pull-requests.md) defines issue-backed
   branches, required closure, and the PR policy check.
-- [Worktree lifecycle](../worktrees/README.md) defines isolated agent checkouts.
-- [Agent working rules](../AGENTS.md) defines the concise rules used throughout
-  the repository.
+- [Worktree lifecycle](https://github.com/amichai-bd/nand2mario/blob/main/worktrees/README.md)
+  defines isolated agent checkouts.
+- [Agent working rules](https://github.com/amichai-bd/nand2mario/blob/main/AGENTS.md)
+  defines the concise rules used throughout the repository.
 
 ## Status
 
