@@ -23,8 +23,9 @@ Read these documents before implementation:
 - [Agent working rules](AGENTS.md)
 
 The GitHub repository is private. Issue forms, labels, the PR policy check, and
-`main` protection are active. Pull requests also build and validate the wiki.
-Pages deployment and product build CI are not configured yet.
+`main` protection are active. Pull requests build and validate the wiki. A
+main-only Pages workflow is defined; its first deployment is not yet proven.
+The deployed wiki is public even though this repository remains private.
 
 ## Repository layout
 
@@ -53,7 +54,9 @@ The tagged build layout is defined in the
 
 Do not commit commercial ROMs, Nintendo boot ROMs, save files, generated FPGA
 images, or copied reference-project code without a compatible license and a
-recorded provenance decision.
+recorded provenance decision. Do not put credentials, private ROM facts, unique
+device identifiers, or machine-specific paths in `wiki/` because Pages publishes
+that directory.
 
 No project license has been selected yet. See
 [GAP-002](wiki/preflight-gaps.md#gap-002--license-rom-policy-and-provenance).
