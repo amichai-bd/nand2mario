@@ -24,7 +24,7 @@ The goal is one observable end state. Success criteria are three to five checks
 that prove the goal. These two fields always finish the issue.
 
 Each issue should describe one observable result. Keep success criteria to
-three to five checks. Put implementation discussion in comments or the PR.
+three to five checks. Put implementation discussion in the PR.
 
 Blank issues are disabled.
 
@@ -41,18 +41,21 @@ Otherwise align directly. Do not copy the full interview into the issue.
 - Assign the issue before work starts. The assignee is accountable for it.
 - One root orchestrator picks issues and delegates authors. Authors do not pick
   unrelated backlog work.
-- Claim the issue in a comment. Name the agent, branch, and relative worktree.
+- Record the agent, branch, and relative worktree in the orchestration handoff
+  and PR, not an issue claim comment.
 - When an internal agent has no GitHub identity, assign the accountable user and
-  name the agent or session in the claim comment.
+  name the agent or session in that handoff and PR.
 - Read the full issue and specification before changing files.
-- Use comments for useful discoveries, decisions, blockers, and evidence.
-- Edit the issue when new facts make it clearer or add required links.
-- Summarize a material body edit in a comment.
+- Edit or comment only when a new finding requires clarification, a decision,
+  or documented drift. State the finding and its effect on the issue contract.
+- Edit the body for settled facts; comment for an unresolved question or drift.
+  Do not duplicate a body edit in a comment.
 - Never broaden the goal or weaken success criteria without approval.
-- At completion, check the criteria and post the validation evidence.
 
-Do not use comments as a command transcript. Build logs belong under the build
-tag; the issue should contain only the result and useful links.
+Do not post routine claims, progress, CI, review, merge, or cleanup updates.
+Do not edit the body just to report completion or tick criteria. Check criteria
+and record results in the PR; keep logs in build artifacts. Assignment, linked
+PRs, and automatic closure show the lifecycle without issue updates.
 
 Use the [issue skill](https://github.com/amichai-bd/nand2mario/blob/main/.agents/skills/issue-author/SKILL.md)
 for retained Markdown drafts under `workdir/.tmp/issues/` and safe CLI bodies.

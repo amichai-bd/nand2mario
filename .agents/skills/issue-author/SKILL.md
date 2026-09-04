@@ -12,7 +12,10 @@ Write one observable result using `wiki/agents/issues.md`.
    [enhancement](templates/enhancement.md), or
    [specification](templates/specification.md) template.
 3. State current facts, scope, goal, and three to five observable checks.
-4. Put discussion in comments. Do not prescribe needless implementation.
+4. Edit or comment only for new findings requiring clarification, a decision,
+   or documented drift. Follow the wiki's
+   [update rules](../../../wiki/agents/issues.md#agent-use).
+   Do not prescribe needless implementation.
 5. Save metadata and body at `workdir/.tmp/issues/<issue-title-slug>.md`, then run
    `python .agents/skills/issue-author/scripts/create_issue.py <draft>`.
 

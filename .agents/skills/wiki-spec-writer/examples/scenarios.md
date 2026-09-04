@@ -6,4 +6,4 @@ timeout, reset state, and error response.
 Bad: Say the protocol is "simple and robust" or paste implementation history
 into the contract.
 
-Not a trigger: Post build evidence to an issue without changing behavior.
+Not a trigger: Post build evidence to a PR without changing behavior.

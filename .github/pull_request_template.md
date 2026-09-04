@@ -19,6 +19,11 @@ criteria. Mark planned behavior. A drift issue does not waive this PR's criteria
 
 -
 
+## Ownership
+
+- Author agent:
+- Branch and worktree:
+
 ## Validation
 
 - `exact command` — result

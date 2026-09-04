@@ -14,6 +14,17 @@ observable goal.
 
 Not a trigger: Open or update a pull request for completed work.
 
+## Findings, not progress
+
+Good: "The linked spec gives two reset values. Which is intended?" Comment with
+the conflicting references; update the body once the decision is settled.
+
+Good: Document that the spec is ahead of the code, with the open drift issue and
+the condition that restores alignment.
+
+Bad: "Started work", "CI passed", "PR merged", or checking completed criteria
+in the issue body. Keep ownership in the handoff and PR, and evidence in the PR.
+
 ## Safe draft handling
 
 Save a filled template at `workdir/.tmp/issues/fix-timer.md`, then run:
