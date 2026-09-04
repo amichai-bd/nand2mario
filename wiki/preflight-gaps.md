@@ -35,7 +35,7 @@ logic needed to test clocks, VGA, UART, reset, and safe programming.
 | GAP-007 | P0 | Executable interface contracts | Address maps, host registers, and trace formats have one source |
 | GAP-008 | P0 | Verification baseline | A known-good DUT and deliberately failing DUT prove the harness |
 | GAP-009 | P0 | Initial agent skills | Core skills exist and have concise trigger tests and examples |
-| GAP-010 | Deferred | GitHub remote, issues, CI, and Pages | User authorizes remote creation and the full flow passes |
+| GAP-010 | P0 | GitHub workflow, CI, and Pages | Templates, checks, rules, and deployment pass end to end |
 | GAP-011 | P1 | Cartridge and target ROM facts | Header is inspected privately and required mapper is specified |
 | GAP-012 | P1 | VGA frame crossing | Buffering and monitor timing pass simulation and hardware tests |
 | GAP-013 | P1 | External dependencies | Tests and tools are pinned, licensed, and reproducible |
@@ -267,26 +267,24 @@ interfaces exist.
 
 **Current state**
 
-The repository is intentionally local. There is no remote, issue tracker,
-branch protection, CI, self-hosted runner, or Pages site.
+A private GitHub repository, three issue forms, and the canonical label catalog
+exist. Branch rules, CI, a self-hosted runner, PR template, and Pages do not.
 
 **Risk**
 
 The intended GitHub Flow and wiki deployment cannot be tested. A careless
 self-hosted runner configuration could execute untrusted code on this PC.
 
-**Close when authorized**
+**Close when**
 
-- Repository name, owner, and visibility are approved.
 - Issue and PR templates are installed and tested.
+- GitHub labels match `.github/labels.yml`.
 - `main` requires focused portable checks.
 - Wiki build and link checks run on PRs.
 - Pages deploys only from merged `main`.
 - Questa, Quartus, and board jobs run only for trusted code.
 - The physical runner uses concurrency control and a protected environment.
 - One sample issue completes branch, PR, checks, merge, and Pages deployment.
-
-Do not close this gap or create a remote without user authorization.
 
 ## GAP-011 — Cartridge and target ROM facts
 

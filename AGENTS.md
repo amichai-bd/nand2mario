@@ -10,8 +10,8 @@ display through VGA and accept controls through UART.
 Research is complete. Read `wiki/preflight-gaps.md` before implementation.
 Until the blockers are closed, do only bootstrap work requested by the user.
 
-The repository is local. Do not create a remote, publish pages, or program the
-FPGA without explicit approval.
+The GitHub repository is private. Do not change visibility, publish pages, or
+program the FPGA without explicit approval.
 
 ## Sources of truth
 

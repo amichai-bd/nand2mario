@@ -11,6 +11,8 @@ decisions, verification, and development guidance.
   the evidence required to close it.
 - [Build-system specification](tools/build-system.md) defines tagged builds,
   cache behavior, and simulation result paths.
+- [Issues and labels](agents/issues.md) defines concise issue intake and the
+  reusable label model.
 - [Agent working rules](../AGENTS.md) defines the concise rules used throughout
   the repository.
 

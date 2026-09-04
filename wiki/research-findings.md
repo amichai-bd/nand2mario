@@ -23,11 +23,12 @@ mappers, and a native software compiler follow in explicit milestones.
 
 - Git was initialized locally.
 - The initial branch was renamed from `master` to `main` for this baseline.
-- No GitHub remote exists.
+- A private GitHub remote was created after the research baseline.
 - No FPGA was programmed during research.
 - No UART data was transmitted during research.
 - No Game Boy RTL or build system exists yet.
-- This commit contains only policy, findings, gaps, and ignore rules.
+- The repository still contains policy and planning only; implementation has
+  not started.
 
 ## Local environment
 

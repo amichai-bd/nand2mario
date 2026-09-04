@@ -1,0 +1,63 @@
+name: Enhancement
+description: Propose one new or improved behavior.
+labels:
+  - "type:enhancement"
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Which part of the project owns this behavior?
+      options:
+        - RTL
+        - DV
+        - Software
+        - FPGA
+        - Tools
+        - Wiki
+        - Agents
+        - Cross-cutting
+    validations:
+      required: true
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: Describe the observable result in one sentence.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reason
+    attributes:
+      label: Why
+      description: Why is this result needed now?
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: List three to five checks that prove completion.
+      placeholder: |
+        - [ ] Observable result one
+        - [ ] Observable result two
+        - [ ] Required verification passes
+    validations:
+      required: true
+
+  - type: textarea
+    id: specification
+    attributes:
+      label: Specification impact
+      description: Link the affected wiki page, or explain why no specification changes.
+    validations:
+      required: true
+
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: Out of scope
+      description: Name adjacent work that this issue will not include.

@@ -1,0 +1,67 @@
+name: Bug
+description: Report incorrect or unexpected behavior.
+labels:
+  - "type:bug"
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Where is the problem?
+      options:
+        - RTL
+        - DV
+        - Software
+        - FPGA
+        - Tools
+        - Wiki
+        - Agents
+        - Cross-cutting
+    validations:
+      required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What is wrong? Keep it short and observable.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduce
+      description: Give the smallest exact sequence that shows the problem.
+      placeholder: |
+        Build tag:
+        Commit:
+        Command:
+        Result:
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What should happen instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Add useful logs, traces, waves, screenshots, or reports.
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Done when
+      description: List the checks that prove the bug is fixed.
+      placeholder: |
+        - [ ] The smallest reproduction passes.
+        - [ ] A regression test covers the failure.
+    validations:
+      required: true

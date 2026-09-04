@@ -22,8 +22,8 @@ Read these documents before implementation:
 - [Project documentation index](wiki/index.md)
 - [Agent working rules](AGENTS.md)
 
-The current repository is intentionally local. It has no GitHub remote, CI,
-Pages deployment, or issue tracker yet.
+The GitHub repository is private. Issue forms and labels are configured. CI,
+Pages deployment, and branch rules are not configured yet.
 
 ## Planned layout
 
@@ -32,8 +32,7 @@ Pages deployment, or issue tracker yet.
 - `tools/` — checked-in build, automation, and maintenance code.
 - `wiki/` — short documentation mirroring source, tools, and agent work.
 - `.agents/skills/` — focused procedures for recurring agent tasks.
-- `.github/` — issue templates, PR template, and workflows after a remote is
-  approved.
+- `.github/` — issue forms, labels, PR templates, and workflows.
 - `workdir/` — downloaded tools, generated scripts, tagged builds, and logs.
 
 Generated files will live under ignored `workdir/` and will not be committed.
