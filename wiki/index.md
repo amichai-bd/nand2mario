@@ -9,6 +9,8 @@ decisions, verification, and development guidance.
   reference review, recommended architecture, and delivery sequence.
 - [Gaps before implementation](preflight-gaps.md) records unresolved work and
   the evidence required to close it.
+- [Pre-RTL bootstrap plan](agents/bootstrap-plan.md) orders the remaining work
+  and defines the implementation gate.
 - [Build-system specification](tools/build-system.md) defines tagged builds,
   cache behavior, and simulation result paths.
 - [Wiki build](tools/wiki.md) defines the local and pull-request check.
@@ -23,9 +25,8 @@ decisions, verification, and development guidance.
 
 ## Status
 
-The project is at the end of research and before repository bootstrap. There is
-no functional RTL, simulation environment, FPGA project, host CLI, or deployed
-website yet.
+The agent workflow, repository structure, wiki checks, and deployment automation
+exist. Product-facing P0 gaps still block functional RTL.
 
 Future pages should remain short. Create one page per subsystem or interface and
 use this structure where practical:
