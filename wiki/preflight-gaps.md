@@ -279,8 +279,8 @@ Product build CI and the protected physical runner remain open in
 
 **Risk**
 
-The intended GitHub Flow and wiki deployment cannot be tested. A careless
-self-hosted runner configuration could execute untrusted code on this PC.
+Wiki-only checks cannot catch product defects. An unsafe self-hosted or hardware
+job could run untrusted code on this PC or allow concurrent access to the FPGA.
 
 **Close when**
 
@@ -412,8 +412,8 @@ Before functional Game Boy RTL:
 2. GAP-003 and GAP-004: create and prove the build environment.
 3. GAP-005 and GAP-006: prove board I/O and clock safety.
 4. GAP-007 and GAP-008: establish executable contracts and trusted tests.
-5. GAP-009: make the agent workflow repeatable.
+5. GAP-010: finish trusted product CI and hardware-job isolation.
 
 Then create the first CPU issue. Resolve GAP-011 through GAP-013 before system
-integration. GAP-014 and GAP-015 can remain later milestones. Complete the
-remaining CI, runner, and Pages work in GAP-010 during repository bootstrap.
+integration. GAP-014 and GAP-015 can remain later milestones. GAP-009 is
+closed.
