@@ -67,6 +67,17 @@ class CreateIssueTest(unittest.TestCase):
         with self.assertRaisesRegex(create_issue.DraftError, "must start"):
             create_issue.read_draft(self.write(draft))
 
+    def test_rejects_text_before_tldr(self) -> None:
+        draft = (
+            '<!-- issue-meta: {"title":"Leading text","labels":["type:bug"],'
+            '"assignee":"@me","repo":"owner/repo"} -->\n'
+            "Do this first.\n\n## TL;DR\n\nWrong.\n\n"
+            "## Specification reference\n\nwiki/a.md\n\n"
+            "## Goal\n\nFix it.\n\n## Success criteria\n\n- [ ] Fixed.\n"
+        )
+        with self.assertRaisesRegex(create_issue.DraftError, "TL;DR heading"):
+            create_issue.read_draft(self.write(draft))
+
     def test_rejects_unknown_metadata_field(self) -> None:
         metadata = {
             "title": "A",

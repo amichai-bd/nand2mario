@@ -75,6 +75,8 @@ def validate_body(body: str) -> None:
     headings = [match.group(1).strip() for match in matches]
     if len(headings) < 4:
         raise DraftError("issue body needs the four shared headings")
+    if body[: matches[0].start()].strip():
+        raise DraftError("issue body must start with the TL;DR heading")
     if headings[:2] != ["TL;DR", "Specification reference"]:
         raise DraftError("issue body must start with TL;DR, then Specification reference")
     if headings[-2:] != ["Goal", "Success criteria"]:
