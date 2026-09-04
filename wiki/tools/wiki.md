@@ -22,6 +22,11 @@ environment and a single `pages` concurrency group.
 A repository administrator must select **GitHub Actions** as the Pages source
 before the first deployment. Pull requests never deploy.
 
+The Pages site is public even while the source repository remains private.
+Private-repository Pages requires a GitHub plan that supports it. Treat every
+file under `wiki/` as public: do not include credentials, private ROM facts,
+unique device identifiers, or machine-specific paths.
+
 ## References
 
 - [MkDocs configuration and link validation](https://www.mkdocs.org/user-guide/configuration/)

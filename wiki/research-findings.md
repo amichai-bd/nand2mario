@@ -39,10 +39,10 @@ mappers, and a native software compiler follow in explicit milestones.
 | GitHub CLI | 2.92.0, authenticated to GitHub as `amichai-bd` |
 | Python | 3.14.5 with `pyserial`; `pytest` is not installed |
 | Quartus | Prime Lite 25.1std.0 Build 1129 with MAX 10 support |
-| Quartus path | `C:\altera_lite\25.1std\quartus\bin64` |
+| Quartus path | Installed outside the normal `PATH`; resolve through tool configuration |
 | Questa | Questa FPGA Starter Edition 2025.2; license variables are set |
 | FPGA | USB-Blaster detects MAX 10 device `10M50DA` |
-| UART | FTDI USB serial adapter `FTATQ14W` appears as `COM3` |
+| UART | FTDI USB serial adapter detected; select its port at runtime |
 | WSL | Ubuntu 24.04 is available |
 | WSL RTL tools | Icarus 12.0, Verilator 5.020, Yosys 0.33, SymbiYosys 0.63 |
 | Missing tools | RGBDS, SDCC/GBDK, pytest, Ninja, and native Windows open RTL tools |
@@ -55,7 +55,7 @@ not require global machine changes.
 ## Tool smoke results
 
 - `jtagconfig` identified the connected MAX 10 through USB-Blaster.
-- Windows identified the FTDI serial port as `COM3`.
+- Windows identified the FTDI serial adapter. The port is runtime-selected.
 - Questa compiled the inspected `frog-bui` RTL without compile errors.
 - The `frog-bui` MMIO smoke did not reach a passing simulation. Its builder used
   a Windows library path incorrectly, and the reference testbench also had stale

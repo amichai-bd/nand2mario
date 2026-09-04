@@ -144,8 +144,8 @@ simulation fails.
 
 **Current state**
 
-JTAG and `COM3` are visible. The physical UART wire crossing, voltage, target
-pins, reset polarity, and VGA monitor behavior have not been proven here.
+JTAG and a UART adapter are visible. The physical UART wire crossing, voltage,
+target pins, reset polarity, and VGA monitor behavior have not been proven here.
 
 Reference `frog-bui` assignments suggest:
 
