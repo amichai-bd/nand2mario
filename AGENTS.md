@@ -35,11 +35,17 @@ Keep each fact in one place. Link to it elsewhere.
 ## Work
 
 - One issue, one observable result, one short-lived branch.
+- Treat the issue as the working guide and starting prompt.
 - Read the issue and linked specification before editing.
 - Keep changes inside the acceptance criteria.
+- Comment useful discoveries, decisions, blockers, and validation evidence.
+- Edit the issue when facts or links become clearer. Summarize material edits in
+  a comment.
+- Do not broaden the goal or weaken success criteria without approval.
 - Update specification, implementation, and tests together when behavior
   changes.
 - Record exact commands and results. Do not claim a planned command passed.
+- Finish by checking the success criteria and posting the evidence.
 - Keep generated output under `workdir/`.
 
 ## Verification

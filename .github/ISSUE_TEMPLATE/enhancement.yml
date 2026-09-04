@@ -3,6 +3,23 @@ description: Propose one new or improved behavior.
 labels:
   - "type:enhancement"
 body:
+  - type: textarea
+    id: tldr
+    attributes:
+      label: TL;DR
+      description: Summarize the issue in one or two sentences.
+    validations:
+      required: true
+
+  - type: input
+    id: spec_reference
+    attributes:
+      label: Specification reference
+      description: Link the governing wiki page or gap. State the planned path if it is missing.
+      placeholder: wiki/src/... or Missing - wiki/src/...
+    validations:
+      required: true
+
   - type: dropdown
     id: area
     attributes:
@@ -21,38 +38,18 @@ body:
       required: true
 
   - type: textarea
-    id: goal
+    id: context
     attributes:
-      label: Goal
-      description: Describe the observable result in one sentence.
+      label: Current behavior
+      description: What exists today, and why is it insufficient?
     validations:
       required: true
 
   - type: textarea
-    id: reason
+    id: proposed_behavior
     attributes:
-      label: Why
-      description: Why is this result needed now?
-    validations:
-      required: true
-
-  - type: textarea
-    id: acceptance
-    attributes:
-      label: Acceptance criteria
-      description: List three to five checks that prove completion.
-      placeholder: |
-        - [ ] Observable result one
-        - [ ] Observable result two
-        - [ ] Required verification passes
-    validations:
-      required: true
-
-  - type: textarea
-    id: specification
-    attributes:
-      label: Specification impact
-      description: Link the affected wiki page, or explain why no specification changes.
+      label: Proposed behavior
+      description: Describe the externally visible change without prescribing unnecessary implementation.
     validations:
       required: true
 
@@ -61,3 +58,23 @@ body:
     attributes:
       label: Out of scope
       description: Name adjacent work that this issue will not include.
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: State the required end state in one sentence.
+    validations:
+      required: true
+
+  - type: textarea
+    id: success_criteria
+    attributes:
+      label: Success criteria
+      description: List three to five observable checks that prove completion.
+      placeholder: |
+        - [ ] Observable result one
+        - [ ] Observable result two
+        - [ ] Required checks pass.
+    validations:
+      required: true

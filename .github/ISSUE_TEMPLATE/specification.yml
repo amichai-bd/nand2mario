@@ -3,6 +3,23 @@ description: Define or change one design contract or decision.
 labels:
   - "type:spec"
 body:
+  - type: textarea
+    id: tldr
+    attributes:
+      label: TL;DR
+      description: Summarize the issue in one or two sentences.
+    validations:
+      required: true
+
+  - type: input
+    id: spec_reference
+    attributes:
+      label: Specification reference
+      description: Link the existing page or gap. For a new page, state its planned path.
+      placeholder: wiki/... or New - wiki/src/...
+    validations:
+      required: true
+
   - type: dropdown
     id: area
     attributes:
@@ -17,14 +34,6 @@ body:
         - Wiki
         - Agents
         - Cross-cutting
-    validations:
-      required: true
-
-  - type: textarea
-    id: goal
-    attributes:
-      label: Specification goal
-      description: State the behavior or decision that must become clear.
     validations:
       required: true
 
@@ -45,19 +54,27 @@ body:
       required: true
 
   - type: textarea
-    id: acceptance
+    id: references
     attributes:
-      label: Acceptance criteria
-      description: How will we know the specification is complete and usable?
+      label: Supporting references
+      description: Link primary sources, related issues, or affected files.
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: State the required end state in one sentence.
+    validations:
+      required: true
+
+  - type: textarea
+    id: success_criteria
+    attributes:
+      label: Success criteria
+      description: List three to five checks that make the specification usable.
       placeholder: |
         - [ ] Behavior is observable and unambiguous.
         - [ ] Interfaces and edge cases are defined.
         - [ ] Verification can derive tests from the specification.
     validations:
       required: true
-
-  - type: textarea
-    id: references
-    attributes:
-      label: References
-      description: Link primary sources, related issues, or affected files.

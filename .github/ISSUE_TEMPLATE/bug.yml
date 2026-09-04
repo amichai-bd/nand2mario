@@ -3,6 +3,23 @@ description: Report incorrect or unexpected behavior.
 labels:
   - "type:bug"
 body:
+  - type: textarea
+    id: tldr
+    attributes:
+      label: TL;DR
+      description: Summarize the issue in one or two sentences.
+    validations:
+      required: true
+
+  - type: input
+    id: spec_reference
+    attributes:
+      label: Specification reference
+      description: Link the governing wiki page or gap. State the planned path if it is missing.
+      placeholder: wiki/src/... or Missing - wiki/src/...
+    validations:
+      required: true
+
   - type: dropdown
     id: area
     attributes:
@@ -21,17 +38,17 @@ body:
       required: true
 
   - type: textarea
-    id: summary
+    id: observed
     attributes:
-      label: Summary
-      description: What is wrong? Keep it short and observable.
+      label: Observed behavior
+      description: What happens now?
     validations:
       required: true
 
   - type: textarea
-    id: reproduce
+    id: recreate
     attributes:
-      label: Reproduce
+      label: How to recreate
       description: Give the smallest exact sequence that shows the problem.
       placeholder: |
         Build tag:
@@ -56,12 +73,21 @@ body:
       description: Add useful logs, traces, waves, screenshots, or reports.
 
   - type: textarea
-    id: acceptance
+    id: goal
     attributes:
-      label: Done when
-      description: List the checks that prove the bug is fixed.
+      label: Goal
+      description: State the required end state in one sentence.
+    validations:
+      required: true
+
+  - type: textarea
+    id: success_criteria
+    attributes:
+      label: Success criteria
+      description: List three to five observable checks that prove the fix.
       placeholder: |
-        - [ ] The smallest reproduction passes.
+        - [ ] The smallest recreation passes.
         - [ ] A regression test covers the failure.
+        - [ ] Required checks pass.
     validations:
       required: true
