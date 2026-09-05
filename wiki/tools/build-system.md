@@ -1,6 +1,6 @@
 # Build system
 
-Status: `doctor`, `check`, and Icarus `sim test` implemented; other stages planned.
+Status: `doctor`, `check`, and Icarus/Questa `sim test` implemented; other stages planned.
 
 ## Purpose
 
@@ -43,8 +43,44 @@ distribution. Select `--sim icarus` or `--sim wsl-icarus` explicitly. Use
 <path>` to override executables in that environment. WSL paths are Linux paths;
 source/output paths are translated automatically. Paths with spaces are supported.
 Missing tools fail with diagnostics; there is no silent simulator fallback after
-an explicitly selected tool fails. Questa is supported by environment doctor;
-it is not a general `sim test` backend yet.
+an explicitly selected tool fails. Automatic selection remains portable.
+
+## Questa simulation
+
+Select Questa explicitly for an authorized registered target:
+
+```powershell
+python tools/build.py sim test builder-smoke --sim questa --tag questa-smoke --json
+python tools/build.py sim test tile-pixel --sim questa --questa-bin <directory> --tag questa-tile --json
+python tools/build.py sim test tile-pixel-corrupt --sim questa --tag questa-corrupt --json
+```
+
+`--questa-bin` selects the directory containing `vlib`, `vmap`, `vlog`, and
+`vsim`; omit it to resolve those executables on PATH. Missing or invalid explicit
+selections fail without fallback. Icarus/WSL options cannot accompany Questa,
+and `--questa-bin` requires `--sim questa` for `sim test`. No command changes
+environment variables or license settings. Versions and executable hashes are
+recorded; `vlib` has no version query, so its path and hash identify it.
+
+The same target registry, seed, expected exit, and signature rules apply to both
+backends. Each actual Questa attempt creates an isolated library under
+`compile/questa/<target>/<attempt>/` and local mappings in its compile and run
+directories. A retained `run.do` uses the same finish/error handling as the
+[doctor](#environment-doctor). Logs, mappings, macro, library, VCD/WLF files,
+commands, and input/tool hashes remain beneath the tag. Unexpected warnings,
+errors, timeouts, or missing signatures fail; expected nonzero targets require
+their full diagnostic and reject additional errors.
+
+Backend, tool identity, source, target, seed, or runner changes invalidate cache.
+Damaged artifacts also invalidate it. A matching successful result may be
+`CACHED`, including a verified expected-failure target. Cache reuse performs no
+simulation or runtime license checkout; use `--rebuild` for fresh evidence.
+The failing smoke target still reports FAIL. Discovery failures retain their
+diagnostics and request record under `discovery/<attempt>/` and invalidate any
+previous success for the requested target.
+
+The [gap register](../preflight-gaps.md#gap-008-verification-baseline) records
+the licensed tests established by this integration and outstanding coverage.
 
 ## Environment doctor
 
@@ -145,7 +181,7 @@ in the failing command's log. Simulator warnings fail the stage.
 
 Add simulation targets to this manifest when their contracts and tests are ready.
 The [tile pixel checks](tile-pixel-sim.md) use this interface for normal and
-expected-corruption runs; their Questa check remains separate.
+expected-corruption runs through either explicit backend.
 Future software and FPGA commands should have separate modules under `tools/n2m/`
 and the output boundaries below. They are not implemented by this issue.
 
@@ -230,7 +266,7 @@ Reuse results only when the fingerprint matches and the prior stage succeeded.
 - A per-tag lock prevents concurrent writers.
 - A stale stage is replaced atomically after the new stage completes.
 
-The first backend treats compilation and simulation as one stage: any source,
+Each backend treats compilation and simulation as one stage: any source,
 runner module, dependency definition, target configuration, seed, or discovered
 tool identity change rebuilds both. Artifact hashes are also checked before reuse.
 `check` and `doctor` always rerun. A lock left by an interrupted process requires
@@ -312,7 +348,8 @@ workdir/builds/<tag>/sim/regress/level0/<test-name>/
 
 The implemented simulation stage publishes `result.json` atomically. It records
 status, fingerprint, provenance, commands, and hashes of immutable artifacts under
-`attempts/<id>/` and `compile/iverilog/<test-name>/<id>/`. A new attempt never
+`attempts/<id>/` and `compile/<backend>/<test-name>/<id>/`, with `iverilog` or
+`questa` as the backend directory. A new attempt never
 modifies an old attempt. `sim.log` beside `result.json` is a convenience copy;
 the record's hashed paths are authoritative. Each attempt contains `sim.log`,
 `result.json`, `waves/`, and `coverage/` (empty until coverage is implemented).

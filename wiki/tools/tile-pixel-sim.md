@@ -1,6 +1,6 @@
 # Tile pixel simulation
 
-The [product builder](build-system.md) runs the portable checks for the
+The [product builder](build-system.md) runs the registered checks for the
 [tile pixel contract](../src/display/tile-pixel.md):
 
 ```powershell
@@ -17,11 +17,24 @@ is detected. It cannot replace the mandatory normal target.
 Repeat either command to reuse a matching successful result (`CACHED`); use
 `--rebuild` to rerun. Changed inputs or damaged artifacts invalidate reuse.
 The builder records tools, input hashes, commands, exit codes, results, and
-waves beneath `workdir/builds/<tag>/`. It handles native Icarus or Windows-to-WSL
-execution. Its seed is recorded for cache identity; this test is deterministic
-and reports `seed=none`.
+waves beneath `workdir/builds/<tag>/`. It handles native Icarus, Windows-to-WSL
+Icarus, and explicitly selected native Questa. Its seed is recorded for cache
+identity; this test is deterministic and reports `seed=none`.
 
-## Questa and standalone checks
+## Questa checks
+
+Use the shared builder with the same normal and corruption targets:
+
+```powershell
+python tools/build.py sim test tile-pixel --sim questa --tag tile-questa --json
+python tools/build.py sim test tile-pixel-corrupt --sim questa --tag tile-questa-corrupt --json
+```
+
+The [Questa backend contract](build-system.md#questa-simulation) owns discovery,
+isolated libraries, strict diagnostics, and cache behavior. Add `--questa-bin
+<directory>` for explicit discovery; use `--rebuild` for fresh runtime evidence.
+
+## Standalone checks
 
 The [GAP-008 decision](../preflight-gaps.md#gap-008-verification-baseline) records
 the scoped tile/doctor licensed evidence and remaining general Questa deferral.

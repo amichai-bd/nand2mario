@@ -1,8 +1,11 @@
-"""Icarus discovery and argv-only native/WSL execution."""
+"""Explicit simulator discovery and argv-only native/WSL execution."""
+import hashlib
 import os
 from pathlib import Path
 import shutil
 import subprocess
+
+from .questa import diagnostic
 
 
 class ToolError(RuntimeError):
@@ -12,7 +15,17 @@ class ToolError(RuntimeError):
 
 
 class Simulator:
-    def __init__(self, backend="auto", iverilog=None, vvp=None, distro=None):
+    def __init__(self, backend="auto", iverilog=None, vvp=None, distro=None, questa_bin=None):
+        if backend == "questa":
+            if any(value is not None for value in (iverilog, vvp, distro)):
+                raise ToolError("Questa does not accept Icarus or WSL tool options")
+            self.backend, self.prefix = "questa", []
+            self.discover_questa(questa_bin)
+            return
+        if questa_bin is not None:
+            raise ToolError("--questa-bin requires explicit --sim questa")
+        if backend not in ("auto", "icarus", "wsl-icarus"):
+            raise ToolError(f"unsupported simulator: {backend}")
         if backend == "auto":
             backend = "icarus" if shutil.which(iverilog or "iverilog") else "wsl-icarus"
         self.backend = backend
@@ -44,6 +57,31 @@ class Simulator:
             else:
                 self.runtime = location
 
+    def discover_questa(self, directory):
+        if directory is not None and (not directory or not Path(directory).is_dir()):
+            raise ToolError("--questa-bin must name an existing tool directory")
+        self.tools = {}
+        self.info = {"backend": "questa", "tools": {}, "discovery": []}
+        for name in ("vlib", "vmap", "vlog", "vsim"):
+            candidate = str(Path(directory) / (name + (".exe" if os.name == "nt" else ""))) \
+                if directory is not None else name
+            found = shutil.which(candidate)
+            if not found:
+                raise ToolError(f"missing {name}; select the Questa tool directory explicitly")
+            path = str(Path(found).resolve())
+            self.tools[name] = path
+            detail = {"path": path, "sha256": hashlib.sha256(Path(path).read_bytes()).hexdigest()}
+            # vlib does not expose -version; retain its executable identity.
+            if name != "vlib":
+                result = self.run([path, "-version"])
+                self.info["discovery"].append({"argv": [path, "-version"],
+                                               "exit_code": result.returncode, "output": result.stdout})
+                if result.returncode or diagnostic(result.stdout) or "Questa" not in result.stdout:
+                    raise ToolError(f"could not identify Questa {name}: {result.stdout.strip()}", result.stdout)
+                detail["version"] = result.stdout.strip()
+            self.info["tools"][name] = detail
+        self.compiler, self.runtime = self.tools["vlog"], self.tools["vsim"]
+
     def run(self, argv, cwd=None, timeout=60):
         command = self.prefix + argv
         try:
@@ -69,4 +107,3 @@ class Simulator:
 
     def command(self, argv):
         return self.prefix + argv
-

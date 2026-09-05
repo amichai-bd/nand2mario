@@ -7,10 +7,11 @@ import platform
 import re
 import subprocess
 import sys
+import uuid
 
-from .records import atomic_json, atomic_text, git_state, workspace
+from .records import atomic_json, atomic_text, file_hash, git_state, workspace
 from .simulation import simulate
-from .simulator import Simulator
+from .simulator import Simulator, ToolError
 from .doctor import doctor
 
 
@@ -27,12 +28,14 @@ def parser():
     test.add_argument("target")
     test.add_argument("--seed", type=int, default=1)
     test.add_argument("--rebuild", action="store_true")
+    test.add_argument("--questa-bin", help="Questa tool directory; requires explicit --sim questa")
     leaves.append(test)
     for leaf in leaves:
         leaf.add_argument("--tag")
         leaf.add_argument("--json", action="store_true", help="emit one JSON result")
         if leaf is not leaves[1]:
-            leaf.add_argument("--sim", choices=("auto", "icarus", "wsl-icarus"), default="auto")
+            choices = ("auto", "icarus", "wsl-icarus", "questa") if leaf is test else ("auto", "icarus", "wsl-icarus")
+            leaf.add_argument("--sim", choices=choices, default="auto")
             leaf.add_argument("--iverilog", help="compiler executable name or path in selected backend")
             leaf.add_argument("--vvp", help="runtime executable name or path in selected backend")
             leaf.add_argument("--wsl-distro", help="WSL distribution; omitted uses WSL default")
@@ -63,16 +66,25 @@ def main(argv=None, root=None):
                     provenance = {k: report[k] for k in ("commit", "dirty_tree_fingerprint", "host", "python") if k in report}
                     report.update(doctor(root, build, args, provenance))
                 else:
-                    simulator = Simulator(args.sim, args.iverilog, args.vvp, args.wsl_distro)
+                    simulator = Simulator(args.sim, args.iverilog, args.vvp, args.wsl_distro, args.questa_bin)
                     if not 0 <= args.seed <= 2147483647:
                         raise ValueError("seed must be between 0 and 2147483647")
                     provenance = {k: report[k] for k in ("commit", "dirty_tree_fingerprint", "host", "python") if k in report}
                     report.update(simulate(root, build, args, simulator, provenance))
             except Exception as error:
                 report.update(status="FAIL", error=str(error))
+                failure_artifacts = {}
+                if isinstance(error, ToolError):
+                    folder = build / "discovery" / uuid.uuid4().hex
+                    folder.mkdir(parents=True)
+                    log = folder / "failure.log"
+                    log.write_text(error.output + "\n" + str(error) + "\n", encoding="utf-8")
+                    failure_artifacts[log.relative_to(root).as_posix()] = file_hash(log)
+                    report["artifacts"] = failure_artifacts
+                    atomic_json(folder / "result.json", report)
                 if args.command == "sim" and re.fullmatch(r"[a-z0-9][a-z0-9_-]*", args.target):
                     atomic_json(build / "sim/test" / args.target / "result.json",
-                                {"status": "FAIL", "error": str(error), "artifacts": {}})
+                                {"status": "FAIL", "error": str(error), "artifacts": failure_artifacts})
             atomic_json(build / "manifest.json", report)
             atomic_json(build / "status.json", {"status": report["status"], "cache": report.get("cache")})
             if report["status"] == "PASS":

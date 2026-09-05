@@ -241,7 +241,8 @@ assertion library, reference adapters, coverage model, or regression baseline.
 **Temporary Questa deferral**
 
 The user has deferred general Questa simulation until they confirm availability,
-with a separately authorized tile/doctor diagnostic recheck. Real portable
+with separately authorized tile/doctor diagnosis and shared-builder integration.
+Real portable
 simulation must compile, elaborate, run, and check expected results. Positive
 and deliberately failing checks, independent review, and passing CI remain
 required for affected delivery; compilation alone is not a simulation pass.
@@ -250,6 +251,12 @@ The [tile/doctor correction](https://github.com/amichai-bd/nand2mario/pull/77)
 establishes licensed elaboration, normal and deliberately corrupt tile runs,
 and the doctor's 22-observation checked smoke in Questa 2025.2. This is scoped
 runtime evidence; it does not prove full environment or hardware readiness.
+
+The [shared Questa backend](https://github.com/amichai-bd/nand2mario/issues/76)
+also establishes registered smoke and tile normal/failure execution through the
+builder, with isolated libraries and checked cache reuse. The deliberately
+failing smoke remains FAIL; only the exact expected tile corruption is accepted.
+This does not establish the planned shared verification harness or adapters.
 
 The shared baseline's good/broken examples and other accumulated licensed
 coverage remain outstanding in
