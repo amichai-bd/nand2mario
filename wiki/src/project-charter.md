@@ -71,10 +71,11 @@ reuse policy delivery belongs to
 Agents own focused issue boundaries, module organization, test seeds/artifacts,
 and detailed ABI, reset/load, protocol, clock/CDC, and input contracts within
 approved behavior. Escalate changes to scope, acceptance, or safety boundaries.
-Programming, UART transmission, and physical tests need separate explicit
-authorization and verified device, wiring, and voltage. Simulation cannot
-satisfy physical acceptance. Questa evidence follows the
-[temporary deferral](../preflight-gaps.md#gap-008-verification-baseline).
+The [current authorization](../agents/bootstrap-plan.md#verification-and-hardware-authorization)
+owns permission and prerequisites for Questa and physical execution, including
+the board approval required above. Simulation cannot satisfy physical acceptance.
+Outstanding Questa evidence remains in
+[GAP-008](../preflight-gaps.md#gap-008-verification-baseline).
 
 [uart]: https://github.com/amichai-bd/frog-bui/blob/311e64d6e7e54db682e515f51aef92c083a32d5a/src/rtl/uart_ctrl/README.md
 [ps2]: https://github.com/amichai-bd/frog-bui/blob/311e64d6e7e54db682e515f51aef92c083a32d5a/src/rtl/ps2_keyboard/README.md

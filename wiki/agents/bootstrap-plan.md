@@ -12,16 +12,31 @@ The root selects assigned work and delegates separate author worktrees.
 
 The [reference study](../src/rtl-reference-style.md) informs style without
 authorizing HDL reuse. Existing tile, builder, and doctor results retain their
-bounded evidence. All simulation work follows the
-[temporary Questa deferral](../preflight-gaps.md#gap-008-verification-baseline);
-real portable positive and negative checks remain required.
+bounded evidence. The [gap register](../preflight-gaps.md) records outstanding
+verification and physical proof.
 
-Design, software, portable simulation, and preparation of FPGA builds may
-proceed as their applicable contracts and dependencies are satisfied. Board
-bring-up designs and timing/CDC work are now authorized prerequisites.
-Programming, UART transmission, and physical tests require separate explicit
-authorization and verified device, wiring, and voltage. Outstanding physical
-evidence gates board acceptance, not independent simulation or host work.
+Design, software, simulation, and FPGA work may proceed as their applicable
+contracts and dependencies are satisfied. Outstanding physical evidence gates
+board acceptance, not independent simulation or host work.
+
+### Verification and hardware authorization
+
+The user authorizes required Questa verification, FPGA programming, UART
+transmission, and physical tests within the approved project, as recorded in
+[#90](https://github.com/amichai-bd/nand2mario/issues/90). This supersedes the
+earlier general Questa deferral and supplies the separate hardware authorization;
+do not request it again for work within this scope.
+
+Before physical execution, verify the expected device identity, wiring, ground
+and voltage, a suitable reviewed build with applicable constraints and timing
+evidence, and exclusive serialized access. Missing setup facts or access block
+the dependent physical work.
+
+Authorization is not evidence. Simulation must compile, elaborate, run, and check
+expected results, including required positive and deliberately failing cases.
+Independent review, passing CI, source privacy, and trusted-runner isolation
+remain required. Preserve failures and distinguish simulation, Quartus fit/timing,
+and physical results; none substitutes for another.
 
 ## Completed infrastructure
 
@@ -91,15 +106,16 @@ Start the first functional CPU issue only when:
 - its scope follows the approved charter and committed source/reuse policy;
 - its clock/reset, interface, verification, and CI prerequisites from issues
   #29 through #32 have evidence for that issue's simulation/build scope;
-- every applicable P0 close condition has evidence, except the explicitly
-  deferred evidence recorded below; and
+- every applicable P0 close condition has evidence, except the physical
+  evidence scoped below; and
 - the issue links its approved contracts and verification plan.
 
 The user-approved phase replaces the former requirement that every issue #24
 through #32 close before any CPU work. GAP-005 physical bring-up and physical
 portions of GAP-006, GAP-010, and GAP-012 remain outstanding board prerequisites;
 record their missing evidence and do not count simulation as hardware proof.
-Licensed Questa evidence remains outstanding under GAP-008. These scoped
-replacements allow portable implementation progress; all other applicable
-conditions remain required. The gap register stays open for unmet close
-conditions, even when an independent implementation issue can finish.
+Required Questa baseline evidence remains outstanding under GAP-008 and is
+authorized above. The physical evidence exception allows independent
+implementation progress; all other applicable conditions remain required. The
+gap register stays open for unmet close conditions, even when an independent
+implementation issue can finish.
