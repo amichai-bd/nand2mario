@@ -23,5 +23,5 @@ For interrupted work, follow [recovery](references/recovery.md). Review handoffs
 use [the report template](templates/review.md); see
 [scenarios](examples/scenarios.md) when needed.
 
-Stop for a new product decision, broader scope, missing credentials, or an
-unauthorized hardware action. Routine Pages deployment already has authorization.
+Use the [agent work rules](../../../AGENTS.md#work) for proceed-or-ask decisions.
+Missing credentials block only work that needs them.

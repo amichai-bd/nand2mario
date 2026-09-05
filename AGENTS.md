@@ -48,8 +48,14 @@ No human review is required. Root verifies merge, issue closure, main checks,
 deployment, and cleanup.
 
 Read the issue and linked specification. Keep scope within its success criteria.
-Do not broaden the goal or weaken criteria without approval. Follow
-[issue guidance](wiki/agents/issues.md#agent-use) for assignment and updates;
+Proceed when requirements and conventions support a choice within existing
+authorization. Ask before resolving ambiguity that would change observable
+behavior, scope, acceptance criteria, or an explicit safety boundary beyond that
+authorization. Do not broaden the goal or weaken criteria without approval.
+Do not ask again for an authorized change. While awaiting a decision, continue
+independent authorized work; pause only work that depends on the answer. See
+[decision examples](.agents/skills/agent-flow/examples/scenarios.md#decisions).
+Follow [issue guidance](wiki/agents/issues.md#agent-use) for assignment and updates;
 keep review evidence in PRs and logs in artifacts.
 
 Use [grill-me](.agents/skills/grill-me/SKILL.md) only when explicitly invoked.
