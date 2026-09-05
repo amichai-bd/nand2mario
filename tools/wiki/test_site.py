@@ -3,6 +3,7 @@
 import importlib.util
 import json
 from pathlib import Path
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -13,6 +14,30 @@ spec.loader.exec_module(site)
 
 
 class PublicationTests(unittest.TestCase):
+    def test_private_paths_rejected_even_when_content_is_text(self):
+        for path in ("game.ROM", "backup.SAV", "boot.hex", "cart.mem", "cart.mif",
+                     "game.srm", "game.state", "game.rtc", "game.gba", "game.nds",
+                     "private/header.json", "src/private/facts.md", "workdir/log.txt",
+                     ".env", ".env.local", ".n2m.local.toml", "keys/device.pem",
+                     "keys/device.key", "credentials.json", "secrets.json"):
+            with self.subTest(path=path), self.assertRaisesRegex(ValueError, "private content path"):
+                site.checked_text(path, b"plain ASCII private data\n")
+        self.assertEqual(site.checked_text("src/example.asm", b"nop\n"), "nop\n")
+
+    def test_forced_tracked_private_file_stops_publication_scan(self):
+        temporary = site.ROOT / "workdir/wiki/tests"
+        temporary.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=temporary) as directory:
+            root = Path(directory)
+            subprocess.run(["git", "init", "-q", str(root)], check=True)
+            (root / ".gitignore").write_text("*.sav\n", encoding="utf-8")
+            (root / "game.sav").write_text("ASCII save", encoding="utf-8")
+            subprocess.run(["git", "add", ".gitignore"], cwd=root, check=True)
+            self.assertNotIn("game.sav", site.tracked_text(root))
+            subprocess.run(["git", "add", "-f", "game.sav"], cwd=root, check=True)
+            with self.assertRaisesRegex(ValueError, "private content path"):
+                site.tracked_text(root)
+
     def test_binary_rejection_covers_extensions_signatures_and_disguised_bytes(self):
         cases = [("diagram.PNG", b"text"), ("slides.pptx", b"text"), ("report.pdf", b"text"),
                  ("photo.jpeg", b"text"), ("fake.md", b"%PDF-1.7\n"),

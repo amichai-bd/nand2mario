@@ -39,6 +39,23 @@ output_files/
 *.rom
 *.sav
 *.srm
+*.bin
+*.hex
+*.mem
+*.mif
+*.gba
+*.nds
+*.state
+*.rtc
+
+# Private runtime inputs and credentials (never force-add)
+private/
+.env
+.env.*
+*.pem
+*.key
+credentials.json
+secrets.json
 
 # Editors and operating systems
 .vscode/

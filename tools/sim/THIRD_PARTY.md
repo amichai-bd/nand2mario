@@ -8,4 +8,7 @@
 CI uses Ubuntu 24.04's host C/C++ toolchain, autoconf, bison, flex, and gperf to
 build the pinned Icarus source. These are provisioning dependencies, not HDL
 imports. No reference RTL, external testbench, ROM, or asset is included.
-The project license decision remains open in [GAP-002](../../wiki/preflight-gaps.md#gap-002-license-rom-policy-and-provenance).
+Original project material follows the [source policy](../../wiki/tools/provenance.md).
+Local changes to these external tools: none. Quartus Prime Lite 25.1std is also
+a user-installed proprietary tool; its installation retains the vendor terms
+and notices. Neither vendor tool nor license material is redistributed.
