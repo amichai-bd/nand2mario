@@ -6,6 +6,7 @@ import re
 import uuid
 
 from .simulator import ToolError
+from .questa import commands as questa_commands, diagnostic
 from .records import atomic_json, atomic_text, cache_matches, digest, file_hash, read_json
 
 
@@ -41,7 +42,8 @@ def simulate(root, build, args, simulator, provenance=None):
         return {**old, "cache": "CACHED"}
     attempt_id = uuid.uuid4().hex
     attempt = stage / "attempts" / attempt_id
-    compile_dir = build / "compile/iverilog" / args.target / attempt_id
+    backend = "questa" if simulator.backend == "questa" else "iverilog"
+    compile_dir = build / "compile" / backend / args.target / attempt_id
     for path in (attempt / "waves", attempt / "coverage", compile_dir):
         path.mkdir(parents=True, exist_ok=True)
     record = {"status": "RUNNING", "cache": "BUILT", "fingerprint": fingerprint,
@@ -52,15 +54,19 @@ def simulate(root, build, args, simulator, provenance=None):
     # Invalidate the previous success before execution. A killed process leaves
     # RUNNING and a lock, never a reusable success for its unfinished request.
     atomic_json(current, record)
-    binary = compile_dir / "simulation.vvp"
-    compile_argv = [simulator.compiler, "-g2012", "-Wall", "-s", target["top"],
-                    "-o", simulator.path(binary),
-                    *[simulator.path(root / source) for source in target["sources"]]]
-    sim_argv = [simulator.runtime, simulator.path(binary), f"+seed={args.seed}", *target["args"]]
+    log = compile_dir / "prepare.log"
     try:
-        for argv, cwd, log, expected in (
-                (compile_argv, compile_dir, compile_dir / "compile.log", "zero"),
-                (sim_argv, attempt, attempt / "sim.log", target["expected_exit"])):
+        if simulator.backend == "questa":
+            commands = questa_commands(simulator, root, target, args.seed, compile_dir, attempt)
+        else:
+            binary = compile_dir / "simulation.vvp"
+            compile_argv = [simulator.compiler, "-g2012", "-Wall", "-s", target["top"],
+                            "-o", simulator.path(binary),
+                            *[simulator.path(root / source) for source in target["sources"]]]
+            sim_argv = [simulator.runtime, simulator.path(binary), f"+seed={args.seed}", *target["args"]]
+            commands = [(compile_argv, compile_dir, compile_dir / "compile.log", "zero"),
+                        (sim_argv, attempt, attempt / "sim.log", target["expected_exit"])]
+        for argv, cwd, log, expected in commands:
             command = simulator.command(argv)
             record["commands"].append({"argv": command, "cwd": str(cwd)})
             with (build / "commands.log").open("a", encoding="utf-8") as stream:
@@ -70,8 +76,9 @@ def simulate(root, build, args, simulator, provenance=None):
             record["commands"][-1]["exit_code"] = result.returncode
             if (result.returncode == 0) != (expected == "zero"):
                 raise RuntimeError(f"unexpected exit {result.returncode}; see {log.relative_to(root)}")
-            if re.search(r"\bwarning\b", result.stdout, re.IGNORECASE):
-                raise RuntimeError(f"unexplained simulator warning; see {log.relative_to(root)}")
+            problem = diagnostic(result.stdout, target["signature"] if expected == "nonzero" else None)
+            if problem:
+                raise RuntimeError(f"{problem}; see {log.relative_to(root)}")
         if target["signature"] not in result.stdout:
             raise RuntimeError(f"missing expected signature: {target['signature']}")
         record["status"] = "PASS"
