@@ -1,6 +1,6 @@
 # Gaps before implementation
 
-Status: product P0 gaps remain open; GAP-003 and GAP-009 closed
+Status: product P0 gaps remain open; GAP-003, GAP-004, and GAP-009 closed
 
 ## Purpose
 
@@ -15,7 +15,8 @@ design.
 
 Priorities:
 
-- **P0** — close before functional Game Boy RTL starts.
+- **P0** — close before functional Game Boy RTL starts, except the explicit
+  isolated-unit authorization in the current phase.
 - **P1** — close before the affected subsystem or shared integration starts.
 - **P2** — planned later; does not block early implementation.
 - **Deferred** — intentionally waiting for user authorization or a later phase.
@@ -27,7 +28,7 @@ Priorities:
 | GAP-001 | P0 | Open | [#24](https://github.com/amichai-bd/nand2mario/issues/24) | Scope and success contract | DMG target, releases, and non-goals are approved |
 | GAP-002 | P0 | Open | [#25](https://github.com/amichai-bd/nand2mario/issues/25) | License, ROM policy, and provenance | Licenses and reuse rules are committed |
 | GAP-003 | P0 | Closed | [#26](https://github.com/amichai-bd/nand2mario/issues/26) | Build command | A minimal `n2m` command runs from a fresh shell |
-| GAP-004 | P0 | Open | [#27](https://github.com/amichai-bd/nand2mario/issues/27) | Real environment doctor | It proves compile, elaborate, run, JTAG, and UART detection |
+| GAP-004 | P0 | Closed | [#27](https://github.com/amichai-bd/nand2mario/issues/27) | Real environment doctor | Portable smoke and read-only identity checks work; licensed runtime evidence remains in GAP-008 |
 | GAP-005 | P0 | Open | [#28](https://github.com/amichai-bd/nand2mario/issues/28) | Board wiring and safe bring-up | VGA test card and UART ping pass with documented wiring |
 | GAP-006 | P0 | Open | [#29](https://github.com/amichai-bd/nand2mario/issues/29) | Clock, reset, and CDC plan | Frequencies, crossings, resets, and SDC rules are approved |
 | GAP-007 | P0 | Open | [#30](https://github.com/amichai-bd/nand2mario/issues/30) | Executable interface contracts | Address maps, host registers, and trace formats have one source |
@@ -122,8 +123,12 @@ Agents may invent different commands, directories, or tool invocations.
 
 **Current state**
 
-Tools were inspected manually. Quartus is outside `PATH`. Questa compiled RTL,
-but the reference smoke exposed library-path and stale-port problems.
+The [environment doctor](tools/build-system.md#environment-doctor) implements
+checked portable/Questa smoke runs, Quartus edition reporting, and read-only
+JTAG/UART enumeration. Portable smoke, selected UART health/identity, expected
+JTAG identity, and scoped Quartus version checks satisfy the implementation
+criteria in #27. Full environment readiness remains unproven; licensed runtime
+evidence follows the [temporary deferral](#gap-008-verification-baseline).
 
 **Risk**
 
@@ -132,8 +137,9 @@ Checking only executable names can report success while every simulation fails.
 **Close when**
 
 - Quartus and Questa are found without editing global `PATH`.
-- The expected license is checked.
-- A repository-owned SV design compiles, elaborates, runs, and checks a value.
+- License success, failure, or unverified scope is reported truthfully.
+- A repository-owned SV design compiles, elaborates, runs, and checks a value in
+  the portable simulator; positive licensed execution remains tracked in GAP-008.
 - USB-Blaster reports the expected MAX 10 device.
 - UART is found by VID, PID, or serial identity with an explicit override.
 - WSL tools and optional dependencies are reported as pass, warning, or fail.
@@ -219,9 +225,20 @@ RTL, testbenches, Python, and wiki tables can use different values.
 
 **Current state**
 
-Questa and open-source tools are available, but there is no repository testbench,
-assertion library, scoreboard, reference adapter, coverage model, or regression
-manifest.
+The [tile pixel unit](src/display/tile-pixel.md) has a focused independent
+testbench and dual-simulator runner. This does not establish the shared
+assertion library, reference adapters, coverage model, or regression baseline.
+
+**Temporary Questa deferral**
+
+The user authorized tile and doctor delivery while Questa is unavailable.
+Portable simulation, tile exhaustive/negative checks, independent review, and
+passing CI remain required. Licensed Questa elaboration, tile normal/negative
+runs, and the doctor's checked smoke remain outstanding under
+[#31](https://github.com/amichai-bd/nand2mario/issues/31); compilation alone is
+not a simulation pass. This defers only licensed evidence for those deliveries.
+Failed doctor checks still report FAIL. It does not close GAP-008 or change the
+criteria below, broader gates, or hardware authorization.
 
 **Risk**
 

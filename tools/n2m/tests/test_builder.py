@@ -55,7 +55,7 @@ class BuilderTests(unittest.TestCase):
     def setUp(self):
         base = ROOT / "workdir/builds/builder-unit-tests"
         base.mkdir(parents=True, exist_ok=True)
-        self.temp = tempfile.TemporaryDirectory(prefix="path with spaces ", dir=base)
+        self.temp = tempfile.TemporaryDirectory(prefix="space ", dir=base)
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
         for owner in ("tools/n2m", "src/dv/builder"):
@@ -154,6 +154,35 @@ class BuilderTests(unittest.TestCase):
         self.sim.fail = True
         self.assertEqual(self.run_stage()["status"], "PASS")
 
+    def test_tile_corruption_cannot_disguise_normal_failure(self):
+        for owner in ("src/rtl/display", "src/dv/display"):
+            shutil.copytree(ROOT / owner, self.root / owner)
+        targets = json.loads((self.root / "src/dv/builder/targets.json").read_text())
+        corrupt = targets["tile-pixel-corrupt"]["signature"]
+        normal = targets["tile-pixel"]["signature"]
+        original_run = self.sim.run
+
+        def result_for(code, output):
+            def run(argv, cwd=None):
+                result = original_run(argv, cwd)
+                if argv[0] == self.sim.runtime:
+                    result.returncode, result.stdout = code, output
+                return result
+            return run
+
+        for target, code, output, expected in (
+                ("tile-pixel", 1, corrupt, "FAIL"),
+                ("tile-pixel-corrupt", 1, "MISMATCH unrelated failure", "FAIL"),
+                ("tile-pixel-corrupt", 0, corrupt, "FAIL"),
+                ("tile-pixel-corrupt", 1, corrupt, "PASS"),
+                ("tile-pixel", 0, normal, "PASS")):
+            self.args.target = target
+            with patch.object(self.sim, "run", side_effect=result_for(code, output)):
+                result = self.run_stage()
+                self.assertEqual(result["status"], expected, (target, code, output))
+                if expected == "PASS":
+                    self.assertEqual(self.run_stage()["cache"], "CACHED")
+
     def test_tags_default_collision_lock_and_traversal(self):
         for tag in ("../escape", ".", "..", "UPPER", "con", "nul.txt", "a.", "x" * 49):
             self.assertFalse(valid_tag(tag), tag)
@@ -181,7 +210,7 @@ class BuilderTests(unittest.TestCase):
     def test_cli_failure_json_and_latest(self):
         latest = self.root / "workdir/latest.txt"
         latest.write_text("previous\n")
-        with patch("n2m.cli.Simulator", side_effect=ToolError("missing compiler")), \
+        with patch("n2m.doctor.Simulator", side_effect=ToolError("missing compiler")), \
                 patch("n2m.cli.git_state", return_value={"commit": "test"}), \
                 contextlib.redirect_stdout(io.StringIO()) as output:
             status = main(["doctor", "--tag", "missing", "--json"], self.root)
