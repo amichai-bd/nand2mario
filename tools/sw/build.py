@@ -8,6 +8,7 @@ from n2m.records import atomic_json, cache_matches, digest, file_hash, read_json
 from .assembler import assemble
 from .expressions import AssemblyError
 from .objects import validate
+from .targets import validate_target
 
 
 def assemble_target(root, build, args, provenance):
@@ -37,8 +38,7 @@ def _assemble_target(root, build, args, provenance, stage, folder):
     if set(data) != {'schema_version', 'targets'} or type(data['schema_version']) is not int or data['schema_version'] != 1:
         raise AssemblyError('SCHEMA_MISMATCH', 'unsupported software target registry')
     target = data['targets'].get(args.target)
-    if not isinstance(target, dict) or set(target) != {'directory', 'sources', 'assets'}:
-        raise AssemblyError('SYNTAX', 'unknown or malformed software target')
+    validate_target(target)
 
     def confined(base, spelling):
         path = Path(spelling)
@@ -67,7 +67,7 @@ def _assemble_target(root, build, args, provenance, stage, folder):
         objects = [assemble(path, tree, root / 'src/sw/generated/interfaces.inc', assets) for path in paths]
         implementation = [root / 'tools/sw' / name for name in
                           ('assembler.py', 'expressions.py', 'objects.py', 'build.py', 'opcodes.json',
-                           'object.schema.json', 'targets.schema.json')]
+                           'object.schema.json', 'targets.schema.json', 'targets.py')]
         implementation += [root / name for name in ('tools/n2m/records.py', 'tools/n2m/cli.py',
                             'tools/n2m/generated_interfaces.py', 'cfg/interfaces.json')]
         inputs = {path.relative_to(root).as_posix(): file_hash(path) for path in implementation + [registry]}

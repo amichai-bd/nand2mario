@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "nand2mario assembler target registry v1",
+  "title": "nand2mario assembly and cartridge target registry v1",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -41,7 +41,94 @@
               "type": "string",
               "minLength": 1
             }
+          },
+          "layout": {
+            "type": "string",
+            "minLength": 1
+          },
+          "entry": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "unit",
+              "symbol"
+            ],
+            "properties": {
+              "unit": {
+                "type": "string",
+                "minLength": 1
+              },
+              "symbol": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+              }
+            }
+          },
+          "title": {
+            "type": "string",
+            "pattern": "^[A-Z0-9 ]{1,15}$"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 255
+          },
+          "profile": {
+            "const": "dmg-direct-v1"
+          },
+          "interface_schema_version": {
+            "const": 1
           }
+        },
+        "dependentRequired": {
+          "layout": [
+            "layout",
+            "entry",
+            "title",
+            "version",
+            "profile",
+            "interface_schema_version"
+          ],
+          "entry": [
+            "layout",
+            "entry",
+            "title",
+            "version",
+            "profile",
+            "interface_schema_version"
+          ],
+          "title": [
+            "layout",
+            "entry",
+            "title",
+            "version",
+            "profile",
+            "interface_schema_version"
+          ],
+          "version": [
+            "layout",
+            "entry",
+            "title",
+            "version",
+            "profile",
+            "interface_schema_version"
+          ],
+          "profile": [
+            "layout",
+            "entry",
+            "title",
+            "version",
+            "profile",
+            "interface_schema_version"
+          ],
+          "interface_schema_version": [
+            "layout",
+            "entry",
+            "title",
+            "version",
+            "profile",
+            "interface_schema_version"
+          ]
         }
       }
     }

@@ -34,6 +34,20 @@ jobs:
             exit 1
           fi
           python -c "import json; from pathlib import Path; r=json.loads(Path('workdir/builds/ci-conformance/manifest.json').read_text()); assert r['status']=='FAIL' and r['error']=='encoding mismatch offset=0 actual=01 expected=00' and r['cases']==569 and r['base_opcodes']==244 and r['cb_opcodes']==256"
+      - name: Check linking and independent cartridge packaging
+        run: |
+          python tools/build.py sw build linker-basic --tag ci-linker --json
+          python tools/build.py sw link-conformance --tag ci-link-proof --json
+          if python tools/build.py sw link-conformance --tag ci-link-proof --offline --mutate relocation --json; then
+            echo "Deliberate relocation mutation unexpectedly passed"
+            exit 1
+          fi
+          python -c "import json; from pathlib import Path; r=json.loads(Path('workdir/builds/ci-link-proof/manifest.json').read_text()); assert r['status']=='FAIL' and r['error']=='relocation mismatch offset=513 actual=81 expected=80'"
+          if python tools/build.py sw link-conformance --tag ci-link-proof --offline --mutate checksum --json; then
+            echo "Deliberate checksum mutation unexpectedly passed"
+            exit 1
+          fi
+          python -c "import json; from pathlib import Path; r=json.loads(Path('workdir/builds/ci-link-proof/manifest.json').read_text()); assert r['status']=='FAIL' and r['error']=='package checksum/header mismatch'"
       - name: Report simulation scope
         run: |
           echo "Host contracts and the actual pinned RGBDS oracle. Licensed Questa simulation is not run on hosted PR jobs; actual local evidence is required until the trusted route in issue #32 is configured." >> "$GITHUB_STEP_SUMMARY"

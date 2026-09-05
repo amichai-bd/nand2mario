@@ -8,8 +8,7 @@ The [PRD](PRD.md) owns scope, implementation status, and release acceptance.
 unmodified upstream RGBASM/RGBLINK prebuilt release for Windows or Linux x86_64
 and checks the original fixture in `src/sw/oracle/`. Add `--offline` to forbid
 downloads and require the same tag's verified cached inputs. Other host platforms
-and arbitrary installed executables are unsupported. This command is separate from the assembler below; the linker and cartridge
-packager remain planned.
+and arbitrary installed executables are unsupported. This command is separate from the project assembler and linker below.
 
 The [manifest](../../../tools/n2m/dependencies.json) owns the source/version,
 archive and notice hashes. The [provenance](../../../tools/sw/THIRD_PARTY.md)
@@ -78,7 +77,7 @@ inconsistent sizes and overlapping/out-of-range relocations fail validation.
 
 Every definition contains an expression tree and source span. Labels and `@`
 retain their section and statement byte offset; `EQU` references may be forward.
-Imports and exports remain explicit unit-local declarations until #86 resolves
+Imports and exports remain explicit unit-local declarations until linking resolves
 them across units. Each relocation retains kind, section, patch offset, expression,
 minimum/maximum, mask, shift, bias, allowed values and source span. For an ordinary
 patch, validate the expression value and allowed set, then apply
@@ -93,8 +92,8 @@ high-memory bounds and negative lower-bound bias, never a truncated input.
 The listing records section, offset, size, instruction flag and source span for
 every emitted or allocated statement. It covers each section exactly once.
 Instruction entries require ROM and length 1..3; data and RAM allocations are
-separate. All spans refer to recorded source hashes. #86 must use these instruction
-boundaries when checking entry eligibility, not infer instructions from data bytes.
+separate. All spans refer to recorded source hashes. The linker uses these instruction boundaries when checking entry eligibility; it
+does not infer instructions from data bytes.
 
 Objects are UTF-8 JSON with sorted keys, two-space indentation, LF and final
 newline. Their source hashes cover UTF-8 text with CRLF normalized to LF; binary
@@ -124,9 +123,69 @@ source hashes and verified tool snapshot are retained. `--offline` requires a
 verified cache; `--mutate` flips the first project byte and must fail at the byte
 comparison after successful oracle execution. No run proves CPU semantics.
 
+## Implemented linker and packager
+
+`sw build <target>` consumes the validated assembler objects, places sections,
+resolves every definition/import and relocation, and emits a direct-profile ROM.
+The [original basic fixture](../../../src/sw/linker/basic/README.md) is runnable
+as `python tools/build.py sw build linker-basic --tag <tag> --json`. It is tooling
+evidence, not CPU or original-program acceptance.
+
+The target adds `layout`, `entry`, `title`, `version`, `profile`, and
+`interface_schema_version` as a complete group to the assembler target fields.
+`entry` is an object with the source `unit` and `symbol`, allowing a local symbol
+without making it an implicit global. Interface schema 1 and profile
+`dmg-direct-v1` must match generated exports. The builder compares the generated
+Python/prelude content with the current interface source before linking; stale
+exports fail rather than silently building against another hardware contract.
+
+[layout.schema.json](../../../tools/sw/layout.schema.json) contains schema version
+1 and a `sections` array. Each row binds `unit` (one target source) and `section`
+to a generated `region`: ROM0/ROM1 for ROM, or VRAM/WRAM/OAM/HRAM for RAM.
+Absent/null `address` means floating placement; `alignment` defaults to 1.
+`vector` optionally names a generated slot such as RST_00 or VBLANK. That explicit
+binding places the section at the slot address, requires ROM0 and a size fitting
+the slot, and excludes only that reservation from its overlap check. It does
+not grant header ownership. Echo aliases, I/O, absent cartridge RAM and unusable
+space are not allocation regions. Every section is assigned exactly once.
+The [layout fixture](../../../src/sw/linker/basic/layout.json) demonstrates fixed,
+floating and RAM allocation. The placement and range rules below still apply.
+
+[map.schema.json](../../../tools/sw/map.schema.json),
+[symbols.schema.json](../../../tools/sw/symbols.schema.json), and
+[listing.schema.json](../../../tools/sw/listing.schema.json) define output shapes.
+Maps use address plus size and null RAM file offsets. Symbol names are qualified
+`unit::symbol`; visibility distinguishes exports from local definitions. Listings
+preserve source order, spans, instruction flags, final address, bytes and each
+relocation's original value and encoded disposition. All bytes are deterministic.
+
+Artifacts live under `workdir/builds/<tag>/sw/build/<target>/runs/<id>/`:
+`image.gb`, numbered objects, map, symbols, listing and diagnostics. A separate
+result records provenance and hashes. Every request reparses, validates, links
+and checks the canonical output. A HIT additionally requires identical complete
+immutable/current inventories, bytes and input fingerprints. `--rebuild` forces
+new artifacts. Failure publishes a fresh failed stage with original structured
+assembly/link/package diagnostics and no successful ROM pointer. Prior immutable
+successful attempts remain history; they are not results for the failed request.
+
+`python tools/build.py sw link-conformance --tag <tag> --json` assembles two
+[original units](../../../src/sw/linker/conformance/README.md) through both
+implementations. The separately retained RGBDS spelling only translates section
+placement, IMPORT omission and DEF EQU syntax. RGBLINK independently supplies
+the complete linked byte image and seven selected label addresses, including
+cross-unit addresses and JR displacements at -128/+127. The checker never uses
+project relocation results to prepare oracle inputs. A separate iterative
+header/checksum construction compares the complete packaged image without
+RGBFIX or logo assets. `--mutate relocation` must fail with an exact changed
+byte diagnostic; `--mutate checksum` must fail the independent package comparison.
+`--offline` requires the same verified cache policy as the existing oracle.
+Commands, raw exits, source/object/expected/actual bytes, symbols and a complete
+immutable tool cache snapshot are retained per attempt. Hosted Builder CI runs
+these actual software checks; no licensed simulator is needed.
+
 ## Inputs and ownership
 
-Plan `python tools/build.py sw build <target> --tag <tag> --json` using the
+Run `python tools/build.py sw build <target> --tag <tag> --json` using the
 [builder's](../n2m/SPEC.md) workspace, locking, failure, and cache rules.
 Target definitions beside original sources under `src/sw/` name an ordered
 assembly-input list, declared assets, link layout, entry symbol, title, version

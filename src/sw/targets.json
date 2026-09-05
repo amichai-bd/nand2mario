@@ -7,6 +7,23 @@
         "main.asm"
       ],
       "assets": {}
+    },
+    "linker-basic": {
+      "directory": "linker/basic",
+      "sources": [
+        "main.asm",
+        "other.asm"
+      ],
+      "assets": {},
+      "layout": "layout.json",
+      "entry": {
+        "unit": "main.asm",
+        "symbol": "Start"
+      },
+      "title": "OWNED DEMO",
+      "version": 1,
+      "profile": "dmg-direct-v1",
+      "interface_schema_version": 1
     }
   }
 }

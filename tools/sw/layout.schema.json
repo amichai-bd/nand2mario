@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "nand2mario layout v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "sections"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "sections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "unit",
+          "section",
+          "region"
+        ],
+        "properties": {
+          "unit": {
+            "type": "string",
+            "minLength": 1
+          },
+          "section": {
+            "type": "string",
+            "minLength": 1
+          },
+          "region": {
+            "enum": [
+              "ROM0",
+              "ROM1",
+              "VRAM",
+              "WRAM",
+              "OAM",
+              "HRAM"
+            ]
+          },
+          "address": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 65535
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "alignment": {
+            "enum": [
+              1,
+              2,
+              4,
+              8,
+              16,
+              32,
+              64,
+              128,
+              256,
+              512,
+              1024,
+              2048,
+              4096,
+              8192,
+              16384,
+              32768,
+              65536
+            ]
+          },
+          "vector": {
+            "anyOf": [
+              {
+                "enum": [
+                  "RST_00",
+                  "RST_08",
+                  "RST_10",
+                  "RST_18",
+                  "RST_20",
+                  "RST_28",
+                  "RST_30",
+                  "RST_38",
+                  "VBLANK",
+                  "STAT",
+                  "TIMER",
+                  "SERIAL",
+                  "JOYPAD"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

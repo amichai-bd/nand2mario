@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "sections": [
+    {
+      "unit": "main.asm",
+      "section": "code",
+      "region": "ROM0",
+      "address": 512
+    },
+    {
+      "unit": "main.asm",
+      "section": "forward",
+      "region": "ROM0",
+      "address": 768
+    },
+    {
+      "unit": "main.asm",
+      "section": "backward",
+      "region": "ROM0",
+      "address": 1024
+    },
+    {
+      "unit": "main.asm",
+      "section": "work",
+      "region": "WRAM",
+      "address": 49152
+    },
+    {
+      "unit": "other.asm",
+      "section": "other",
+      "region": "ROM1",
+      "address": 16384
+    },
+    {
+      "unit": "other.asm",
+      "section": "near",
+      "region": "ROM0",
+      "address": 897
+    }
+  ]
+}

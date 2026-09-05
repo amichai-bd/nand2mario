@@ -1,0 +1,27 @@
+; Original definitions and targets resolved independently by RGBLINK.
+DEF ByteLow EQU -128
+DEF ByteHigh EQU 255
+DEF WordLow EQU -32768
+DEF WordHigh EQU 65535
+DEF HighMem EQU $ff80
+DEF BitZero EQU 0
+DEF BitSeven EQU 7
+DEF VectorFirst EQU 0
+DEF VectorLast EQU 56
+EXPORT ByteLow
+EXPORT ByteHigh
+EXPORT WordLow
+EXPORT WordHigh
+EXPORT HighMem
+EXPORT BitZero
+EXPORT BitSeven
+EXPORT VectorFirst
+EXPORT VectorLast
+SECTION "other", ROMX[$4000], BANK[1]
+Partner: RET
+EXPORT Partner
+SECTION "near", ROM0[$0381]
+TargetForward: NOP
+TargetBackward: NOP
+EXPORT TargetForward
+EXPORT TargetBackward
