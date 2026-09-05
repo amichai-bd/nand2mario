@@ -4,8 +4,8 @@ Status: draft design; structure agreed; not implemented
 
 ## Purpose
 
-The build system gives agents and people one predictable command. It creates
-tagged workspaces, reuses valid results, and records evidence.
+The build system gives agents and people one predictable command to create
+tagged workspaces, reuse valid results, and record evidence.
 
 The planned entry point is:
 
@@ -24,8 +24,8 @@ under `tools/n2m/`.
 - `workdir/builds/` contains tagged build state and results.
 - `workdir/logs/` contains bootstrap and doctor logs that have no build tag.
 
-Build-specific generated scripts belong inside their tagged build. This keeps
-the command, inputs, and results together.
+Keep generated build-specific scripts inside their tagged build alongside
+commands, inputs, and results.
 
 `workdir/` is ignored and disposable. It must never contain the only copy of
 source, configuration, or documentation.
@@ -48,7 +48,7 @@ workdir/               Ignored tools, cache, builds, and logs
 ```
 
 Do not create speculative configuration trees. Keep owner-specific input near
-its owner. Examples include regression definitions under `src/dv/` and board
+its owner. For example, put regression definitions under `src/dv/` and board
 constraints under `src/fpga/de10_lite/`.
 
 ## Build tags
@@ -59,8 +59,8 @@ An explicit tag creates or reopens a persistent build workspace:
 python tools/build.py sim test timer-overflow --tag timer-dev
 ```
 
-If `timer-dev` exists, valid stages are reused. Stale stages and their dependent
-stages are rebuilt.
+If `timer-dev` exists, reuse valid stages; rebuild stale stages and their
+dependents.
 
 Without `--tag`, the build uses a UTC timestamp:
 
@@ -68,16 +68,16 @@ Without `--tag`, the build uses a UTC timestamp:
 20260904T142311Z
 ```
 
-If that name already exists, append a short numeric suffix. A build tag is a
+If the name exists, append a short numeric suffix. A build tag is a
 directory name, not a Git tag.
 
-Tags must be lowercase, filesystem-safe, and no longer than 48 characters.
+Tags must be lowercase, filesystem-safe, and at most 48 characters.
 Allowed characters are letters, numbers, `.`, `_`, and `-`.
 
 ## Cache rules
 
-A directory name is not proof that a result is valid. Each stage has a content
-fingerprint containing:
+Directory names do not prove validity. Each stage has a content fingerprint
+containing:
 
 - source input hashes;
 - direct dependency result hashes;
@@ -86,8 +86,7 @@ fingerprint containing:
 - command options; and
 - test seed when applicable.
 
-The result is reused only when the fingerprint matches and the prior stage
-completed successfully.
+Reuse results only when the fingerprint matches and the prior stage succeeded.
 
 - A cache hit reports `CACHED`.
 - A changed input rebuilds that stage and dependent stages.
@@ -140,11 +139,11 @@ workdir/builds/<tag>/
         └── image.lst
 ```
 
-Compilation is separated by simulator so incompatible libraries cannot collide.
+Separate compilation by simulator to prevent incompatible library collisions.
 FPGA output stays separate because Quartus compilation, fitting, timing, and
 image generation form their own flow.
 
-Use `sw/`, not `sw-collateral`. The output names have clear meanings:
+Use `sw/`, not `sw-collateral`:
 
 - `obj/` contains intermediate object files.
 - `image.gb` is the final cartridge image.
@@ -175,17 +174,16 @@ waves/
 coverage/
 ```
 
-If a test runs several seeds, use `seed-<number>/` below the test name. The
+For multiple test seeds, use `seed-<number>/` below the test name. The
 level directory contains an aggregate `summary.json`. The full regression also
 produces `summary.json` and `junit.xml`.
 
-Regression membership and level meaning will be defined with the verification
-sources under `src/dv/`. Directory placement is output, not the source of the
-regression definition.
+Verification sources under `src/dv/` will define regression membership and
+levels. Directory placement reflects output; it does not define regressions.
 
 ## Manifest
 
-`manifest.json` records enough information to explain and repeat a result:
+`manifest.json` records evidence to explain and reproduce a result:
 
 - build tag and creation time;
 - Git commit and dirty-tree fingerprint;
@@ -200,7 +198,7 @@ committed file. Build manifests remain ignored under `workdir/`.
 
 ## Cleanup
 
-Timestamp builds can consume significant disk space. Cleanup must be explicit:
+Timestamp builds can consume significant disk space. Clean up explicitly:
 
 ```text
 python tools/build.py builds list

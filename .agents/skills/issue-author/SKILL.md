@@ -22,7 +22,6 @@ Write one observable result using `wiki/agents/issues.md`.
 The script validates section order and passes UTF-8 body text to `gh` through
 stdin, without shell interpolation. Use `--check` before creation. Keep drafts
 locally after success or failure; never commit them. See
-[safe draft handling](examples/scenarios.md).
-
-Read [the scenarios](examples/scenarios.md) when issue scope is unclear. Stop
+[safe draft handling](examples/scenarios.md) and
+[scope scenarios](examples/scenarios.md). Stop
 when the goal needs an unmade product decision or an unknown specification.

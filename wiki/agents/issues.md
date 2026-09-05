@@ -8,7 +8,7 @@ Use one of three forms:
 - **Enhancement** for one new or improved behavior.
 - **Specification** for one design contract or decision.
 
-Every form uses the same frame:
+Every form uses:
 
 1. `TL;DR`
 2. `Specification reference`
@@ -16,12 +16,11 @@ Every form uses the same frame:
 4. `Goal`
 5. `Success criteria`
 
-`TL;DR` summarizes the issue in one or two sentences. The specification field
-links the governing wiki page or gap. If the page does not exist, it states the
-planned path.
+`TL;DR` summarizes the issue in one or two sentences. Link the governing wiki
+page or gap in the specification field; name its planned path only if the page
+does not exist.
 
-The goal is one observable end state. Success criteria are three to five checks
-that prove the goal. These two fields always finish the issue.
+End every issue with one observable goal and three to five success checks.
 
 Put implementation discussion in the PR.
 
@@ -33,8 +32,8 @@ The issue is the agent's working guide and starting prompt.
 
 When the user explicitly invokes
 [`grill-me`](https://github.com/amichai-bd/nand2mario/blob/main/.agents/skills/grill-me/SKILL.md),
-its confirmed decision
-packet maps into the issue goal, scope, success criteria, and linked wiki work.
+map its confirmed decision packet to the issue goal, scope, success criteria,
+and linked wiki work.
 Otherwise align directly. Do not copy the full interview into the issue.
 
 - Assign the issue before work starts. The assignee is accountable for it.
@@ -47,10 +46,10 @@ Otherwise align directly. Do not copy the full interview into the issue.
 - Edit the body for settled facts; comment for an unresolved question or drift.
   Do not duplicate a body edit in a comment.
 
-Do not post routine claims, progress, CI, review, merge, or cleanup updates.
-Do not edit the body just to report completion or tick criteria. Check criteria
-and record results in the PR; keep logs in build artifacts. Assignment, linked
-PRs, and automatic closure show the lifecycle without issue updates.
+Do not post routine claims, progress, CI, review, merge, cleanup, or completion
+updates, or tick criteria in the issue body. Check criteria and record results
+in the PR; keep logs in build artifacts. Assignment, linked PRs, and automatic
+closure show the lifecycle.
 
 Use the [issue skill](https://github.com/amichai-bd/nand2mario/blob/main/.agents/skills/issue-author/SKILL.md)
 for retained Markdown drafts under `workdir/.tmp/issues/` and safe CLI bodies.
@@ -65,8 +64,8 @@ From the repository root, run:
 python -m unittest discover -s .agents/skills/issue-author/scripts -p test_create_issue.py -v
 ```
 
-The required PR `Wiki check` and the main Pages build run this suite before
-building the wiki. A failed test stops publication. The tests mock GitHub calls;
+The required PR `Wiki check` and main Pages build run this suite before the
+wiki build. A failed test stops publication. The tests mock GitHub calls;
 they do not create issues.
 
 ## Labels
@@ -79,8 +78,8 @@ they do not create issues.
 - Use `needs:decision` or `needs:hardware` only when required.
 - Use `status:blocked` only when the blocking dependency is named.
 
-Do not add `in-progress` or `in-review` labels. Assignees, linked branches,
-linked PRs, and GitHub state already show that lifecycle.
+Do not add `in-progress` or `in-review` labels. Assignees, linked branches
+and PRs, and GitHub state show the lifecycle.
 
 ## Titles
 

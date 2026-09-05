@@ -1,7 +1,7 @@
 # Wiki build
 
-The repository owns its HTML shell, navigation, and build. Python-Markdown parses
-Markdown; MkDocs is not used. Run:
+The repository owns its HTML shell, navigation, and build. Python-Markdown
+parses Markdown; MkDocs is not used. Run:
 
 ```text
 python tools/wiki/check.py
@@ -13,35 +13,35 @@ HTTP for local viewing. The command does not deploy.
 
 ## Browser checks
 
-Run `python tools/wiki/check.py --browser --install-browser` for the first run.
+First run `python tools/wiki/check.py --browser --install-browser`.
 This installs the pinned Chromium headless shell and its OS dependencies. Later,
 `python tools/wiki/check.py --browser` reuses the browser under ignored
 `workdir/tools/playwright/`. CI uses the first command on PRs and on `main` before
 publication. A browser failure blocks the existing Wiki check or Pages build.
 
 If downloads are unavailable locally, add `--browser-executable <path>` to use
-a compatible cached Chromium executable. This explicit override is not a CI
-substitute; its version is recorded. Browser policies or version mismatches may
+a compatible cached Chromium executable. Its version is recorded; this explicit
+override cannot substitute for CI. Browser policies or version mismatches may
 prevent launch. No failure silently falls back or skips the suite.
 
 Checks use real page interactions for categories, filtering, the README/AGENTS
 toggle, source overlays, slides, fullscreen when supported, HTML links, and
 recovery from a missing page. Unexpected console errors and page exceptions fail.
 The browser's optional favicon request is handled locally. Waits observe page
-state; they do not use fixed sleeps.
+state without fixed sleeps.
 
 The test owns an ephemeral loopback server thread and browser. Both close in
 `finally` blocks; a forced failure also exercises cleanup. The server's listener
 and thread are checked after shutdown. Results, trace, browser temporary files,
 and failure screenshots stay under `workdir/wiki/browser/`; CI uploads failure
-evidence as an artifact, not to Pages. This is one Chromium suite, not a
-cross-browser or screen-reader assessment.
+evidence as an artifact, not to Pages. This Chromium suite does not assess
+other browsers or screen readers.
 
 ## Sources and navigation
 
 Publish tracked `README.md`, `AGENTS.md`, `wiki/`, `.agents/skills/`, `src/`,
-`tools/`, and `cfg/`. Referenced tracked files outside these roots are included
-as source dependencies without category navigation. Unreferenced files outside
+`tools/`, and `cfg/`. Referenced tracked files outside these roots become
+source dependencies without category navigation. Unreferenced files outside
 the roots and untracked drafts are not published. Stage new files before checking.
 
 Top tabs are Home, Src, Agents/Skills, Tools, Cfg, and Presentations. Each tab has
@@ -50,7 +50,7 @@ Home defaults to README; its toggle selects AGENTS. URLs identify the original
 file with `?page=wiki/tools/wiki.md`; fragments select headings or `#L12` source
 lines. Former MkDocs document paths redirect to the matching source.
 
-Keep each fact in its original file. The site uses generated output only, never
+Keep facts in their original files. The site uses only generated output, never
 committed document mirrors. Every page exposes an escaped source viewer with the
 path and line numbers. Published source references work without GitHub access.
 
@@ -65,11 +65,11 @@ build, with or without a host. Runtime assets must still be local.
 
 HTML documents under `wiki/` and SVG assets embed in an iframe with script permission
 and without same-origin privileges. A standalone link opens the original file;
-relative assets retain their repository layout under `files/`. Fullscreen expands
+relative assets retain repository layout under `files/`. Fullscreen expands
 the document wrapper so source overlays remain visible. Browser restrictions on
 embedded fullscreen may require the wiki's Fullscreen button.
 
-The generated HTML copy adds a small navigation bridge. Inside the wiki, local
+Generated HTML adds a small navigation bridge. Inside the wiki, local
 document links open the rendered target and heading in the shell. Standalone
 links keep their original relative `href`. SVG resource links and `srcset` assets
 keep resource semantics rather than becoming document routes.
@@ -84,8 +84,8 @@ HTML source links use a real relative `href` as a standalone fallback:
 ```
 
 Embedded scripts may post `{type: "n2m:source", path: "src/rtl/README.md", line: 1}`
-to the parent. The shell accepts messages only from its current iframe and only
-opens known published paths and valid lines. Opaque sandbox origins require a
+to the parent. The shell accepts only its current iframe's messages and
+opens only known published paths and valid lines. Opaque sandbox origins require a
 `"*"` target for this non-secret message. A `n2m:fullscreen` message requests the
 same wrapper; failure returns `n2m:fullscreen-result` with `ok: false`.
 
@@ -97,8 +97,8 @@ under `wiki/presentations/`. Source files remain the authority for all content.
 
 ## Text-only policy and deployment
 
-The required Wiki check scans every tracked repository file, including files not
-published. It rejects binary extensions (including PNG, JPEG, PDF, PPT/PPTX),
+The required Wiki check scans all tracked files, including unpublished ones.
+It rejects binary extensions (including PNG, JPEG, PDF, PPT/PPTX),
 known binary signatures, invalid UTF-8, and binary control bytes. Textual Markdown,
 HTML, SVG, code, and configuration are allowed. No binary fonts or external CDN
 runtime are required. Keep generated images, PDFs, ROMs, and other binary artifacts
@@ -108,7 +108,7 @@ and valid Unicode SVG inputs.
 Dependency versions, hashes, and licenses are recorded in
 [the dependency note](../../tools/wiki/THIRD_PARTY.md).
 
-PRs run the same read-only build and never deploy. Merges to `main` automatically
+PRs run this read-only build and never deploy. Merges to `main` automatically
 publish the artifact with standing authorization. Pages uses separate build and
 deploy jobs, the `github-pages` environment, and serialized deployment. The source
 repository is private; its Pages site is public.

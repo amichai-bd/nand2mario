@@ -10,14 +10,13 @@ The connected PC and DE10-Lite are suitable for this project. Quartus, Questa,
 JTAG, UART, Python, GitHub tooling, and useful open-source verification tools are
 available.
 
-The project should start with a small environment milestone. That milestone
-must prove the build command, simulation, VGA, UART, and safe board programming
-before functional Game Boy RTL begins.
+Start with a small environment milestone. It must prove the build command,
+simulation, VGA, UART, and safe board programming before functional Game Boy RTL.
 
-The first compatibility target should be the original monochrome Game Boy
-(DMG). The first visible product goal is a user-supplied Mario ROM running over
-VGA with CLI-controlled input. Full DMG completion, audio, more cartridge
-mappers, and a native software compiler follow in explicit milestones.
+The original monochrome Game Boy (DMG) should be the first target. The first
+visible goal is a user-supplied Mario ROM running over VGA with CLI-controlled
+input. Full DMG completion, audio, more cartridge mappers, and a native software
+compiler follow in explicit milestones.
 
 ## Repository state at handoff
 
@@ -27,8 +26,7 @@ mappers, and a native software compiler follow in explicit milestones.
 - No FPGA was programmed during research.
 - No UART data was transmitted during research.
 - No Game Boy RTL or build system exists yet.
-- The repository still contains policy and planning only; implementation has
-  not started.
+- The repository contains only policy and planning; implementation has not started.
 
 ## Local environment
 
@@ -49,8 +47,8 @@ mappers, and a native software compiler follow in explicit milestones.
 | Containers | Docker was not found |
 
 Quartus is not on the normal Windows `PATH`. The future build command should
-discover the known installation and allow an ignored local override. It should
-not require global machine changes.
+discover the known installation and allow an ignored local override without
+requiring global machine changes.
 
 ## Tool smoke results
 
@@ -61,9 +59,9 @@ not require global machine changes.
   a Windows library path incorrectly, and the reference testbench also had stale
   implicit port connections.
 
-This is not evidence that Questa is broken. It is evidence that a useful
-environment doctor must compile, elaborate, execute, and check a repository-owned
-known-good test. Version detection and compilation alone are insufficient.
+This does not establish a Questa defect. It shows the environment doctor must
+compile, elaborate, execute, and check a repository-owned known-good test.
+Version detection and compilation alone are insufficient.
 
 ## Reference project review
 
@@ -85,7 +83,7 @@ Patterns worth keeping:
 
 Patterns to improve:
 
-- Keep build commands in small Python modules rather than one very large file.
+- Keep build commands in small Python modules, not one large file.
 - Split CI by purpose so failures are easy to locate.
 - Test elaboration and execution, not only compilation.
 - Check issue labels and documentation for stale state automatically.
@@ -95,8 +93,7 @@ Patterns to improve:
 
 ## Game Boy technical findings
 
-- The CPU target is the Sharp SM83. It is not RISC-V and should not be treated as
-  a generic Z80.
+- Target the Sharp SM83 CPU, not RISC-V or a generic Z80.
 - The CPU has an 8-bit data path, a 16-bit address space, variable-length
   instructions, and timing-sensitive interrupt and HALT behavior.
 - The memory map separates cartridge ROM/RAM, VRAM, work RAM, OAM, I/O, high RAM,
@@ -104,13 +101,13 @@ Patterns to improve:
 - The display is 160 by 144 pixels. It uses 8 by 8, 2-bit-per-pixel tiles,
   background/window layers, and sprites.
 - The PPU has 154 lines of 456 dots. Mode 3 length changes with scrolling,
-  windows, and sprites. A frame-only renderer is not a sufficient final model.
+  windows, and sprites. A frame-only renderer is insufficient as a final model.
 - Joypad register `FF00` exposes two active-low four-button groups and can cause
   an interrupt on a selected high-to-low transition.
 - OAM DMA, timer overflow, interrupt entry, EI delay, and the HALT bug need
   directed timing tests.
-- Cartridge hardware varies. The exact Mario ROM header must determine which
-  mapper and storage capacity are required.
+- Cartridge hardware varies. The exact Mario ROM header must determine the
+  required mapper and storage capacity.
 
 Primary behavior references:
 
@@ -134,7 +131,7 @@ Primary behavior references:
 
 ### Host control plane
 
-UART should access a separate, versioned host register space. It should provide:
+UART should access a separate, versioned host register space providing:
 
 - version and capability discovery;
 - reset, run, halt, and step control;
@@ -144,8 +141,8 @@ UART should access a separate, versioned host register space. It should provide:
 - frame CRC or framebuffer readback.
 
 The host register space must not occupy normal Game Boy addresses. Host joypad
-state feeds the authentic `FF00` behavior. ROM writes must be blocked or
-arbitrated while the CPU is running.
+state feeds the authentic `FF00` behavior. Block or arbitrate ROM writes
+while the CPU runs.
 
 ### Display path
 
@@ -156,9 +153,8 @@ arbitrated while the CPU is running.
 - Swap buffers safely at VGA blanking to avoid tearing.
 - Check frames by CRC in simulation and hardware.
 
-The exact Game Boy and VGA clock plan remains an open design decision. It must
-be proven with generated clocks, explicit clock-domain crossings, and complete
-TimeQuest constraints.
+The exact Game Boy and VGA clock plan is undecided. Prove it with generated
+clocks, explicit clock-domain crossings, and complete TimeQuest constraints.
 
 ## Verification findings
 
@@ -180,13 +176,12 @@ authoritative SystemVerilog simulator. Verilator, Icarus, Yosys, and SymbiYosys
 provide fast and portable checks.
 
 A model generated from the same opcode table as the RTL is not an independent
-oracle. At least one test path must come from an independent implementation or
-published vector set.
+oracle. At least one test path must use an independent implementation or published
+vector set.
 
 ## Build and repository findings
 
-The repository separates product, automation, configuration, documentation,
-and generated work:
+The repository separates:
 
 - `src/` contains RTL, verification, target software, and FPGA files.
 - `tools/` contains checked-in build and automation code.
@@ -198,7 +193,7 @@ and generated work:
 Owner-specific configuration stays with its owner. Do not create speculative
 configuration directories.
 
-The planned command should be small and consistent:
+Keep the planned command small and consistent:
 
 ```text
 python tools/build.py doctor
@@ -210,13 +205,13 @@ python tools/build.py uart ping|load-rom|press|release|tap
 python tools/build.py docs build|serve
 ```
 
-The command does not exist yet. It should be a modular, standard-library-first
+The command is not implemented. It should be a modular, standard-library-first
 Python package with JSON results, dry runs where useful, and reproducible
 manifests. All tools should use it rather than duplicate shell commands.
 
 An explicit build tag reopens a persistent workspace and reuses stages whose
 content fingerprints still match. Without a tag, the build uses a UTC timestamp.
-The complete layout is in the
+See the complete layout in the
 [build-system specification](tools/build-system.md).
 
 ## Development flow
@@ -254,8 +249,8 @@ procedures. The wiki holds behavior. Issues hold goals. PRs hold change evidence
 
 ## External project references
 
-These are useful behavioral or architectural references, not sources to copy
-without checking file-level licenses:
+Use these behavioral or architectural references; check file-level licenses
+before copying:
 
 - [VerilogBoy](https://github.com/zephray/VerilogBoy)
 - [MiSTer Game Boy core](https://github.com/MiSTer-devel/Gameboy_MiSTer)

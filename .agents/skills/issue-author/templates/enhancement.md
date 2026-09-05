@@ -17,11 +17,11 @@ State the externally visible change.
 
 ## Out of scope
 
-Name adjacent work that is excluded.
+Name excluded adjacent work.
 
 ## Goal
 
-State one observable end result.
+State one observable result.
 
 ## Success criteria
 

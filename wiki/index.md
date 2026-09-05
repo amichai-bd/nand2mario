@@ -1,7 +1,7 @@
 # nand2mario documentation
 
-This wiki is the version-controlled source for project behavior, architecture,
-decisions, verification, and development guidance.
+This wiki records project behavior, architecture, decisions, verification, and
+development guidance in version control.
 
 ## Current documents
 
@@ -28,8 +28,7 @@ decisions, verification, and development guidance.
 The agent workflow, repository structure, wiki checks, and Pages deployment are
 proven. Assigned P0 gaps still block functional RTL.
 
-Future pages should remain short. Create one page per subsystem or interface and
-use this structure where practical:
+Keep future pages short, with one per subsystem or interface. Where practical, use:
 
 1. Purpose
 2. Interface

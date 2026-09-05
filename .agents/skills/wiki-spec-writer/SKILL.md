@@ -5,7 +5,7 @@ description: Create or revise concise nand2mario specifications and design decis
 
 # Wiki spec writer
 
-Make one page the source of truth for one contract or decision.
+Give each contract or decision one authoritative page.
 
 1. Name scope, terms, inputs, outputs, state, timing, reset, and error behavior.
 2. Use observable rules with units, bit order, clock domain, and edge cases.
@@ -15,5 +15,5 @@ Make one page the source of truth for one contract or decision.
    [review guide](../agent-flow/references/review.md).
 
 Start from [the spec template](templates/spec.md). Read
-[the scenarios](examples/scenarios.md) when deciding whether content is
-normative. Stop when a product decision or authoritative source is missing.
+[the scenarios](examples/scenarios.md) for normative content boundaries. Stop
+when a product decision or authoritative source is missing.

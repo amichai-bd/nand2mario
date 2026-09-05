@@ -16,10 +16,10 @@ implementation; open product prerequisites are not permission to start them.
 - `src/`: product implementation and verification.
 - Build artifacts: logs, traces, and results.
 
-Keep each fact in one place and link to it. The site renders existing sources;
-do not maintain mirrored documents. Review source/spec/test alignment using the
+Keep each fact in one linked source. The site renders these; do not maintain
+document mirrors. Review source/spec/test alignment using the
 [review guide](.agents/skills/agent-flow/references/review.md).
-Document allowed drift with an open issue; do not silently accept it.
+Track allowed drift in an open issue; never accept it silently.
 
 ## Style
 
@@ -36,32 +36,31 @@ root checkout clean on `main`; never share a worktree.
 
 Use branch `<number>-<slug>` and author worktree
 `<repo-root>/worktrees/<number>-<slug>/`. Record ownership in the orchestration
-handoff and PR. All edits, builds, validation, and commits belong in that worktree.
-Keep generated output under `workdir/`.
+handoff and PR. Edit, build, validate, and commit only there. Keep generated
+output under `workdir/`.
 
-Prefer one issue and one PR. Every PR starts as draft and closes its branch's
+Prefer one issue per PR. Every PR starts as draft and closes its branch's
 issue with `Closes #<number>`. Combine issues only when one focused result meets
 all their success criteria.
 The author owns delivery through independent review of the current PR SHA,
 passing required checks, resolved review conversations, and squash merge.
-No human review is required. Root verifies merge, issue closure, main checks,
+Human review is not required. Root verifies merge, issue closure, main checks,
 deployment, and cleanup.
 
-Read the issue and linked specification. Keep scope within its success criteria.
+Read the issue and linked specification; stay within its success criteria.
 Proceed when requirements and conventions support a choice within existing
 authorization. Ask before resolving ambiguity that would change observable
 behavior, scope, acceptance criteria, or an explicit safety boundary beyond that
 authorization. Do not broaden the goal or weaken criteria without approval.
-Do not ask again for an authorized change. While awaiting a decision, continue
-independent authorized work; pause only work that depends on the answer. See
+Do not reconfirm authorized changes. While awaiting a decision, continue
+independent authorized work; pause only dependent work. See
 [decision examples](.agents/skills/agent-flow/examples/scenarios.md#decisions).
 Follow [issue guidance](wiki/agents/issues.md#agent-use) for assignment and updates;
 keep review evidence in PRs and logs in artifacts.
 
 Use [grill-me](.agents/skills/grill-me/SKILL.md) only when explicitly invoked.
 Otherwise align directly. Use focused skills and keep detailed procedures there.
-Choose routine steps and tools to meet these obligations. Retain enough context
-for another agent to resume safely; see
+Choose routine steps and tools. Retain enough context for safe takeover; see
 [recovery](.agents/skills/agent-flow/references/recovery.md).
 
 ## Verification and safety
@@ -72,8 +71,8 @@ expected result. Treat unexplained warnings as failures. Preserve useful logs,
 seeds, traces, waves, and reports under the build tag.
 
 Merges to `main` automatically publish Pages with standing authorization.
-The repository is private and the site is public. Changes to visibility or
-deployment policy require approval.
+The repository is private; the site is public. Visibility or deployment policy
+changes require approval.
 
 Verify device, wiring, and voltage before hardware use. Programming and physical
 tests need explicit authorization and serialized access. Never commit commercial

@@ -1,8 +1,8 @@
 # Infrastructure acceptance
 
-Use this checklist to exercise the existing infrastructure flow with a fresh
-author. Record run evidence in the PR and ignored `workdir/` artifacts, including
-any procedural coaching or unfinished step. This checklist is not a new CI gate.
+Exercise the existing infrastructure flow with a fresh author. Record evidence,
+procedural coaching, and unfinished steps in the PR and ignored `workdir/`
+artifacts. This checklist is not a new CI gate.
 
 - [ ] Confirm the assigned issue fits the [current phase](bootstrap-plan.md#current-phase)
   and read the [preflight gaps](../preflight-gaps.md). Product architecture,
@@ -21,7 +21,7 @@ any procedural coaching or unfinished step. This checklist is not a new CI gate.
   required [PR checks](pull-requests.md#policy-and-protection) pass.
 - [ ] Obtain an [independent review](../../.agents/skills/agent-flow/references/review.md)
   of the complete diff in a separate detached checkout. Retain the report and
-  its alignment assessment; confirm its ready verdict names the current head SHA.
+  alignment assessment; confirm its ready verdict names the current head SHA.
 - [ ] Author resolves findings, babysits checks, posts the review, undrafts, and
   uses the [squash merge method](../../worktrees/README.md#merge).
 - [ ] Root verifies the merge, issue closure, and successful main
