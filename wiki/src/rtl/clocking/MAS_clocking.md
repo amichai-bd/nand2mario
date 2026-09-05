@@ -16,15 +16,19 @@ reset, and raw PLL lock. It produces PLL reset, qualified readiness, and the two
 asynchronous-assert/synchronous-release domain resets. Initialized state provides
 configuration startup. A board release chain controls its qualification counter;
 a separate lock sampling chain controls readiness qualification. Domain release
-chains consume readiness. Their asynchronous blocks and synchronizer attributes
-are specialized reset logic; synchronous register macros must not alter assertion
-behavior. Counter release and consumer recovery/removal remain timed after their
-respective synchronizers.
+chains consume readiness. All clocking state and proof counters use the shared
+[asynchronous register macros](../../rtl-reference-style.md#product-register-convention).
+Declarations retain configuration initializers, register names and synchronizer
+attributes. Next-state logic preserves reset priority, terminal counter holding,
+current-edge carry, pause completion and the resume edge. Counter release and
+consumer recovery/removal remain timed after their respective synchronizers.
 
-The timebase and proof counters also retain asynchronous domain assertion. They
-use the documented specialized-block exception in the
-[register convention](../../rtl-reference-style.md#product-register-convention);
-the ordinary macros deliberately describe synchronous resets only.
+Named simulation assertions check phase range, known control state, tick masking,
+readiness/reset exclusion and terminal/paused holding. The stable checks use prior
+control and asynchronously invalidated history. They supplement the independent
+public-boundary oracle. Assertion logic is excluded from the FPGA netlist; every
+named chain endpoint and asynchronous clear pin remains subject to the existing
+fit/timing audit without a topology waiver.
 
 The [FPGA wrapper](../../../../src/fpga/de10_lite/n2m_clocking.sv) contains the
 generated ALTPLL instance. Vendor files are generated under the build attempt.

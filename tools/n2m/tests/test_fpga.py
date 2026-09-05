@@ -81,6 +81,7 @@ class FpgaTests(unittest.TestCase):
         self.assertIn("src/shared.svh", result["inputs"])
         qsf = next(self.build.rglob("design.qsf")).read_text()
         self.assertIn("SEARCH_PATH", qsf)
+        self.assertIn('set_global_assignment -name VERILOG_MACRO "SYNTHESIS=1"', qsf)
         for bad in ('$readmemh("memory.hex", storage);', '`include DYNAMIC', '`include "src/missing.svh"'):
             header.write_text(bad)
             self.assertEqual(self.run_build()["status"], "FAIL")

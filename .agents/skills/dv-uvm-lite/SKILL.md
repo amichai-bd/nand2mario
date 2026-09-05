@@ -16,7 +16,11 @@ rules to independent checks, `src/` and `tools/` implementation, and evidence.
 3. Compare valid/ready timing and every meaningful typed field, rejecting
    unknowns where the contract requires known values. Report expected, actual,
    cycle, seed and counts; cover backpressure, reset, error recovery and ordering.
-4. Use assertions for local invariants and scoreboards for transactions. Align
+4. Use the [shared named assertion macros](../../../wiki/src/rtl-reference-style.md#named-assertion-convention)
+   for local sampled invariants and independent scoreboards for transactions.
+   Retain detailed procedural expected/actual mismatch reports. Review each
+   macro's name, argument order, fatal hierarchy diagnostic and synthesis guard.
+   Prove deliberate violations and reset pulses between sampled clocks. Align
    sampled assertions to the correct prior edge and guard reset/history validity.
    Separate unit checks from composed paths with delayed responses.
 5. Prove the harness with a passing DUT and a deliberate failing case in Questa.

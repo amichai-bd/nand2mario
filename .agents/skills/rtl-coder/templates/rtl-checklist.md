@@ -8,3 +8,6 @@
 - Crossings use an approved structure
 - Assertions and directed tests updated
 - Exact compile and simulation results recorded
+- Shared synchronous/asynchronous register macros used; each raw block has a reviewed inference reason
+- Named assertion macros follow argument order, prior-edge control and reset/history rules
+- Assertion fatal negative and synthesis exclusion proven; names/attributes/initializers preserved

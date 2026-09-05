@@ -107,6 +107,7 @@ def prepare(root, folder, target):
              f'set_global_assignment -name DEVICE {DEVICE}',
              f'set_global_assignment -name TOP_LEVEL_ENTITY {tcl_word(target["top"])}',
              'set_global_assignment -name NUM_PARALLEL_PROCESSORS 2',
+             'set_global_assignment -name VERILOG_MACRO "SYNTHESIS=1"',
              f'set_global_assignment -name SEARCH_PATH {tcl_word(root.resolve())}',
              'set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output']
     for field, assignment in (("sources", "SYSTEMVERILOG_FILE"), ("constraints", "SDC_FILE")):
