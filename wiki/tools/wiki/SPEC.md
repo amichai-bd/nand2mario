@@ -1,5 +1,7 @@
 # Wiki build
 
+Purpose and acceptance links: [PRD](PRD.md).
+
 The repository owns its HTML shell, navigation, and build. Python-Markdown
 parses Markdown; MkDocs is not used. Run:
 

@@ -1,5 +1,7 @@
 # DMG tile pixel
 
+Owner and related contracts: [ownership map](../../../ownership.md).
+
 Status: implemented isolated unit; not an integrated PPU.
 
 ## Contract

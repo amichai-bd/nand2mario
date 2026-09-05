@@ -1,5 +1,7 @@
 # Tile pixel simulation
 
+Purpose and scope: [PRD](PRD.md).
+
 The [product builder](../n2m/SPEC.md) runs the registered checks for the
 [tile pixel contract](../../src/rtl/display/MAS_display.md):
 
