@@ -37,7 +37,9 @@ def _assemble_target(root, build, args, provenance, stage, folder):
     if set(data) != {'schema_version', 'targets'} or type(data['schema_version']) is not int or data['schema_version'] != 1:
         raise AssemblyError('SCHEMA_MISMATCH', 'unsupported software target registry')
     target = data['targets'].get(args.target)
-    if not isinstance(target, dict) or set(target) != {'directory', 'sources', 'assets'}:
+    package_fields = {'layout', 'entry', 'title', 'version', 'profile', 'interface_schema_version'}
+    if (not isinstance(target, dict) or not {'directory', 'sources', 'assets'} <= target.keys()
+            or target.keys() - {'directory', 'sources', 'assets'} - package_fields):
         raise AssemblyError('SYNTAX', 'unknown or malformed software target')
 
     def confined(base, spelling):

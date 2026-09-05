@@ -16,6 +16,7 @@ from .doctor import doctor
 from .fpga import build_fpga
 from .rgbds import oracle
 from sw.build import assemble_target
+from sw.rom_build import build_target
 from sw.conformance import conformance
 from sw.expressions import AssemblyError
 
@@ -59,6 +60,11 @@ def parser():
     assembly.add_argument("--rebuild", action="store_true")
     assembly.add_argument("--tag")
     assembly.add_argument("--json", action="store_true")
+    cartridge = sw.add_parser("build", help="link and package an explicit direct-profile target")
+    cartridge.add_argument("target")
+    cartridge.add_argument("--rebuild", action="store_true")
+    cartridge.add_argument("--tag")
+    cartridge.add_argument("--json", action="store_true")
     proof = sw.add_parser("conformance", help="compare complete original instruction matrix against RGBDS")
     proof.add_argument("--offline", action="store_true")
     proof.add_argument("--mutate", action="store_true", help="deliberately corrupt one encoded byte; must fail")
@@ -97,6 +103,7 @@ def main(argv=None, root=None):
                     provenance = {k: report[k] for k in ("commit", "dirty_tree_fingerprint", "host", "python") if k in report}
                     report.update(oracle(root, build, args, provenance) if args.action == "oracle"
                                   else conformance(root, build, args, provenance) if args.action == "conformance"
+                                  else build_target(root, build, args, provenance) if args.action == "build"
                                   else assemble_target(root, build, args, provenance))
                 else:
                     simulator = Simulator(args.sim, questa_bin=args.questa_bin)

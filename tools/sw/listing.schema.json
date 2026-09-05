@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "nand2mario listing v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "lines"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "lines": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "unit",
+          "section",
+          "span",
+          "address",
+          "size",
+          "bytes",
+          "instruction",
+          "relocations"
+        ],
+        "properties": {
+          "unit": {
+            "type": "string",
+            "minLength": 1
+          },
+          "section": {
+            "type": "string",
+            "minLength": 1
+          },
+          "span": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "file",
+              "line",
+              "column"
+            ],
+            "properties": {
+              "file": {
+                "type": "string",
+                "minLength": 1
+              },
+              "line": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 2147483647
+              },
+              "column": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 2147483647
+              }
+            }
+          },
+          "address": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 65535
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 65536
+          },
+          "bytes": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 255
+            }
+          },
+          "instruction": {
+            "type": "boolean"
+          },
+          "relocations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "offset",
+                "kind",
+                "value",
+                "encoded"
+              ],
+              "properties": {
+                "offset": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 65535
+                },
+                "kind": {
+                  "enum": [
+                    "U8",
+                    "U16LE",
+                    "ADDR16LE",
+                    "REL8",
+                    "HIGH8",
+                    "LOW8"
+                  ]
+                },
+                "value": {
+                  "type": "integer"
+                },
+                "encoded": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
