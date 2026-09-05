@@ -4,18 +4,17 @@ The [gap register](../preflight-gaps.md) owns gap status and close conditions.
 
 ## Current phase
 
-Infrastructure refinement and user-authorized reference RTL/display analysis.
-Maintain the existing methodology; study frog-bui and FROG_FS before proposing
-display microarchitecture or RTL. See the [reference study](../src/rtl-reference-style.md).
+Infrastructure refinement and the user-authorized isolated display unit in
+[#68](https://github.com/amichai-bd/nand2mario/issues/68): finish reference
+analysis, specify, implement, and simulate the [tile pixel stage](../src/display/tile-pixel.md).
+This bounded start permits its focused test runner and PR/main simulation CI.
+It is an explicit exception to the global P0 start gate, not evidence that
+those gaps are closed.
 
-Defer final product architecture and all product RTL, DV, SW, and FPGA work. This
-includes project build/doctor implementation and simulation, board-proving
-designs and tests, and physical runner setup. An assigned issue or a P0 priority
-does not authorize this work.
-
-The user must explicitly authorize broader product work before these prerequisites begin.
-Gap close conditions and separate programming and physical-test authorization
-still apply.
+Defer broader product architecture, integration, build/doctor, board-proving
+work, and physical runners. The [reference study](../src/rtl-reference-style.md)
+informs style; it does not authorize code reuse. Global gap close conditions
+and separate programming/physical-test authorization remain unchanged.
 
 ## Completed infrastructure
 
@@ -77,8 +76,8 @@ milestones.
 
 ## Implementation gate
 
-Functional Game Boy RTL is not ready to start; the current phase also blocks
-its P0 prerequisites.
+Beyond the isolated unit authorized above, functional Game Boy RTL and its
+P0 prerequisites remain gated.
 
 Start the first functional CPU issue only when:
 
