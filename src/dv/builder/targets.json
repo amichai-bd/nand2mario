@@ -1,4 +1,18 @@
 {
+  "interfaces": {
+    "sources": ["src/rtl/interfaces/n2m_interfaces_pkg.sv", "src/dv/interfaces/tb_interfaces.sv"],
+    "top": "tb_interfaces",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS interface vectors widths spaces"
+  },
+  "interfaces-corrupt": {
+    "sources": ["src/rtl/interfaces/n2m_interfaces_pkg.sv", "src/dv/interfaces/tb_interfaces.sv"],
+    "top": "tb_interfaces",
+    "args": ["+corrupt"],
+    "expected_exit": "nonzero",
+    "signature": "INTERFACE_MISMATCH expected=01000007123456790001 actual=01000007123456780001"
+  },
   "builder-smoke": {
     "sources": ["src/dv/builder/builder_smoke.sv"],
     "top": "builder_smoke",

@@ -1,6 +1,6 @@
 # Gaps before implementation
 
-Status: product P0 gaps remain open; GAP-001, GAP-002, GAP-003, GAP-004, and GAP-009 closed
+Status: product P0 gaps remain open; GAP-001, GAP-002, GAP-003, GAP-004, GAP-007, and GAP-009 closed
 
 ## Purpose
 
@@ -31,7 +31,7 @@ Priorities:
 | GAP-004 | P0 | Closed | [#27](https://github.com/amichai-bd/nand2mario/issues/27) | Real environment doctor | Portable smoke and read-only identity checks work; licensed runtime evidence remains in GAP-008 |
 | GAP-005 | P0 | Open | [#28](https://github.com/amichai-bd/nand2mario/issues/28) | Board wiring and safe bring-up | VGA test card and UART ping pass with documented wiring |
 | GAP-006 | P0 | Open | [#29](https://github.com/amichai-bd/nand2mario/issues/29) | Clock, reset, and CDC plan | Frequencies, crossings, resets, and SDC rules are approved |
-| GAP-007 | P0 | Open | [#30](https://github.com/amichai-bd/nand2mario/issues/30) | Executable interface contracts | Address maps, host registers, and trace formats have one source |
+| GAP-007 | P0 | Closed | [#30](https://github.com/amichai-bd/nand2mario/issues/30) | Executable interface contracts | Address maps, host registers, and trace formats have one source |
 | GAP-008 | P0 | Open | [#31](https://github.com/amichai-bd/nand2mario/issues/31) | Verification baseline | A known-good DUT and deliberately failing DUT prove the harness |
 | GAP-009 | P0 | Closed | [#14](https://github.com/amichai-bd/nand2mario/issues/14) | Initial agent skills | Core skills exist and have concise trigger tests and examples |
 | GAP-010 | P0 | Open | [#32](https://github.com/amichai-bd/nand2mario/issues/32) | GitHub workflow, CI, and Pages | Templates, checks, rules, and deployment pass end to end |
@@ -212,13 +212,17 @@ cause intermittent failures missed by simulation.
 
 **Current state**
 
-External sources document the Game Boy memory map; this repository lacks a
-canonical address map, host register map, UART packet format, trace format, and
-generated constants.
+The [executable contract](src/interface-contracts.md) owns one checked source
+for Game Boy/host spaces, UART packets, direct-entry state and retirement
+records, with generated SV/Python/wiki exports. Required CI checks regeneration,
+byte/width/space tests and real positive/corrupt portable simulation. This closes
+the interface-data gap; endpoint, loader, snapshot and verification implementations
+remain tracked by the contract's delivery issues.
 
 **Risk**
 
-RTL, testbenches, Python, and wiki tables can use different values.
+Future implementations could bypass generated constants; their reviews must
+check consumption and full behavioral verification, not only codec agreement.
 
 **Close when**
 

@@ -1,0 +1,1498 @@
+{
+  "schema_version": 1,
+  "byte_order": "little",
+  "profile_name": "dmg-direct-v1",
+  "groups": {
+    "gb": [
+      {
+        "name": "ADDRESS_BITS",
+        "bits": 8,
+        "value": 16,
+        "description": "CPU byte address width"
+      },
+      {
+        "name": "DATA_BITS",
+        "bits": 8,
+        "value": 8,
+        "description": "CPU byte data width"
+      },
+      {
+        "name": "ROM0_START",
+        "bits": 16,
+        "value": 0,
+        "description": "Fixed cartridge bank; file offset equals address in dmg-direct-v1"
+      },
+      {
+        "name": "ROM0_END",
+        "bits": 16,
+        "value": 16383,
+        "description": "Inclusive end"
+      },
+      {
+        "name": "ROM1_START",
+        "bits": 16,
+        "value": 16384,
+        "description": "Second fixed bank in dmg-direct-v1; file offset equals address"
+      },
+      {
+        "name": "ROM1_END",
+        "bits": 16,
+        "value": 32767,
+        "description": "Inclusive end"
+      },
+      {
+        "name": "VRAM_START",
+        "bits": 16,
+        "value": 32768,
+        "description": "Video RAM"
+      },
+      {
+        "name": "VRAM_END",
+        "bits": 16,
+        "value": 40959,
+        "description": "Inclusive end"
+      },
+      {
+        "name": "CART_RAM_START",
+        "bits": 16,
+        "value": 40960,
+        "description": "Cartridge RAM space; absent in direct profile"
+      },
+      {
+        "name": "CART_RAM_END",
+        "bits": 16,
+        "value": 49151,
+        "description": "Inclusive end"
+      },
+      {
+        "name": "WRAM_START",
+        "bits": 16,
+        "value": 49152,
+        "description": "Internal work RAM"
+      },
+      {
+        "name": "WRAM_END",
+        "bits": 16,
+        "value": 57343,
+        "description": "Inclusive end"
+      },
+      {
+        "name": "ECHO_START",
+        "bits": 16,
+        "value": 57344,
+        "description": "Alias of C000-DDFF"
+      },
+      {
+        "name": "ECHO_END",
+        "bits": 16,
+        "value": 65023,
+        "description": "Inclusive end"
+      },
+      {
+        "name": "OAM_START",
+        "bits": 16,
+        "value": 65024,
+        "description": "Object attributes"
+      },
+      {
+        "name": "OAM_END",
+        "bits": 16,
+        "value": 65183,
+        "description": "Inclusive end"
+      },
+      {
+        "name": "UNUSABLE_START",
+        "bits": 16,
+        "value": 65184,
+        "description": "Reserved; not general RAM"
+      },
+      {
+        "name": "UNUSABLE_END",
+        "bits": 16,
+        "value": 65279,
+        "description": "Inclusive end"
+      },
+      {
+        "name": "IO_START",
+        "bits": 16,
+        "value": 65280,
+        "description": "DMG I/O"
+      },
+      {
+        "name": "IO_END",
+        "bits": 16,
+        "value": 65407,
+        "description": "Inclusive end"
+      },
+      {
+        "name": "HRAM_START",
+        "bits": 16,
+        "value": 65408,
+        "description": "High RAM"
+      },
+      {
+        "name": "HRAM_END",
+        "bits": 16,
+        "value": 65534,
+        "description": "Inclusive end"
+      },
+      {
+        "name": "IE_START",
+        "bits": 16,
+        "value": 65535,
+        "description": "Interrupt enable"
+      },
+      {
+        "name": "IE_END",
+        "bits": 16,
+        "value": 65535,
+        "description": "Inclusive end"
+      }
+    ],
+    "gb_reg": [
+      {
+        "name": "JOYP",
+        "bits": 16,
+        "value": 65280,
+        "description": "8-bit DMG register address; access behavior belongs to subsystem contract"
+      },
+      {
+        "name": "SB",
+        "bits": 16,
+        "value": 65281,
+        "description": "8-bit DMG register address; access behavior belongs to subsystem contract"
+      },
+      {
+        "name": "SC",
+        "bits": 16,
+        "value": 65282,
+        "description": "8-bit DMG register address; access behavior belongs to subsystem contract"
+      },
+      {
+        "name": "DIV",
+        "bits": 16,
+        "value": 65284,
+        "description": "8-bit DMG register address; access behavior belongs to subsystem contract"
+      },
+      {
+        "name": "TIMA",
+        "bits": 16,
+        "value": 65285,
+        "description": "8-bit DMG register address; access behavior belongs to subsystem contract"
+      },
+      {
+        "name": "TMA",
+        "bits": 16,
+        "value": 65286,
+        "description": "8-bit DMG register address; access behavior belongs to subsystem contract"
+      },
+      {
+        "name": "TAC",
+        "bits": 16,
+        "value": 65287,
+        "description": "8-bit DMG register address; access behavior belongs to subsystem contract"
+      },
+      {
+        "name": "IF",
+        "bits": 16,
+        "value": 65295,
+        "description": "8-bit DMG register address; access behavior belongs to subsystem contract"
+      },
+      {
+        "name": "NR10",
+        "bits": 16,
+        "value": 65296,
+        "description": "8-bit DMG register address; access behavior belongs to subsystem contract"
+      },
+      {
+        "name": "NR11",
+        "bits": 16,
+        "value": 65297,
+        "description": "8-bit DMG register address; access behavior belongs to subsystem contract"
+      },
+      {
+        "name": "NR12",
+        "bits": 16,
+        "value": 65298,
+        "description": "8-bit DMG register address; access behavior belongs to subsystem contract"
+      },
+      {
+        "name": "NR13",
+        "bits": 16,
+        "value": 65299,
+        "description": "8-bit DMG register address; access behavior belongs to subsystem contract"
+      },
+      {
+        "name": "NR14",
+        "bits": 16,
+        "value": 65300,
+        "description": "8-bit DMG register address; access behavior belongs to subsystem contract"
+      },
+      {
+        "name": "NR21",
+        "bits": 16,
+        "value": 65302,
+        "description": "8-bit DMG register address; access behavior belongs to subsystem contract"
+      },
+      {
+        "name": "NR22",
+        "bits": 16,
+        "value": 65303,
+        "description": "8-bit DMG register address; access behavior belongs to subsystem contract"
+      },
+      {
+        "name": "NR23",
+        "bits": 16,
+        "value": 65304,
+        "description": "8-bit DMG register address; access behavior belongs to subsystem contract"
+      },
+      {
+        "name": "NR24",
+        "bits": 16,
+        "value": 65305,
+        "description": "8-bit DMG register address; access behavior belongs to subsystem contract"
+      },
+      {
+        "name": "NR30",
+        "bits": 16,
+        "value": 65306,
+        "description": "8-bit DMG register address; access behavior belongs to subsystem contract"
+      },
+      {
+        "name": "NR31",
+        "bits": 16,
+        "value": 65307,
+        "description": "8-bit DMG register address; access behavior belongs to subsystem contract"
+      },
+      {
+        "name": "NR32",
+        "bits": 16,
+        "value": 65308,
+        "description": "8-bit DMG register address; access behavior belongs to subsystem contract"
+      },
+      {
+        "name": "NR33",
+        "bits": 16,
+        "value": 65309,
+        "description": "8-bit DMG register address; access behavior belongs to subsystem contract"
+      },
+      {
+        "name": "NR34",
+        "bits": 16,
+        "value": 65310,
+        "description": "8-bit DMG register address; access behavior belongs to subsystem contract"
+      },
+      {
+        "name": "NR41",
+        "bits": 16,
+        "value": 65312,
+        "description": "8-bit DMG register address; access behavior belongs to subsystem contract"
+      },
+      {
+        "name": "NR42",
+        "bits": 16,
+        "value": 65313,
+        "description": "8-bit DMG register address; access behavior belongs to subsystem contract"
+      },
+      {
+        "name": "NR43",
+        "bits": 16,
+        "value": 65314,
+        "description": "8-bit DMG register address; access behavior belongs to subsystem contract"
+      },
+      {
+        "name": "NR44",
+        "bits": 16,
+        "value": 65315,
+        "description": "8-bit DMG register address; access behavior belongs to subsystem contract"
+      },
+      {
+        "name": "NR50",
+        "bits": 16,
+        "value": 65316,
+        "description": "8-bit DMG register address; access behavior belongs to subsystem contract"
+      },
+      {
+        "name": "NR51",
+        "bits": 16,
+        "value": 65317,
+        "description": "8-bit DMG register address; access behavior belongs to subsystem contract"
+      },
+      {
+        "name": "NR52",
+        "bits": 16,
+        "value": 65318,
+        "description": "8-bit DMG register address; access behavior belongs to subsystem contract"
+      },
+      {
+        "name": "LCDC",
+        "bits": 16,
+        "value": 65344,
+        "description": "8-bit DMG register address; access behavior belongs to subsystem contract"
+      },
+      {
+        "name": "STAT",
+        "bits": 16,
+        "value": 65345,
+        "description": "8-bit DMG register address; access behavior belongs to subsystem contract"
+      },
+      {
+        "name": "SCY",
+        "bits": 16,
+        "value": 65346,
+        "description": "8-bit DMG register address; access behavior belongs to subsystem contract"
+      },
+      {
+        "name": "SCX",
+        "bits": 16,
+        "value": 65347,
+        "description": "8-bit DMG register address; access behavior belongs to subsystem contract"
+      },
+      {
+        "name": "LY",
+        "bits": 16,
+        "value": 65348,
+        "description": "8-bit DMG register address; access behavior belongs to subsystem contract"
+      },
+      {
+        "name": "LYC",
+        "bits": 16,
+        "value": 65349,
+        "description": "8-bit DMG register address; access behavior belongs to subsystem contract"
+      },
+      {
+        "name": "DMA",
+        "bits": 16,
+        "value": 65350,
+        "description": "8-bit DMG register address; access behavior belongs to subsystem contract"
+      },
+      {
+        "name": "BGP",
+        "bits": 16,
+        "value": 65351,
+        "description": "8-bit DMG register address; access behavior belongs to subsystem contract"
+      },
+      {
+        "name": "OBP0",
+        "bits": 16,
+        "value": 65352,
+        "description": "8-bit DMG register address; access behavior belongs to subsystem contract"
+      },
+      {
+        "name": "OBP1",
+        "bits": 16,
+        "value": 65353,
+        "description": "8-bit DMG register address; access behavior belongs to subsystem contract"
+      },
+      {
+        "name": "WY",
+        "bits": 16,
+        "value": 65354,
+        "description": "8-bit DMG register address; access behavior belongs to subsystem contract"
+      },
+      {
+        "name": "WX",
+        "bits": 16,
+        "value": 65355,
+        "description": "8-bit DMG register address; access behavior belongs to subsystem contract"
+      },
+      {
+        "name": "BOOT_DISABLE",
+        "bits": 16,
+        "value": 65360,
+        "description": "8-bit DMG register address; access behavior belongs to subsystem contract"
+      },
+      {
+        "name": "IE",
+        "bits": 16,
+        "value": 65535,
+        "description": "8-bit DMG register address; access behavior belongs to subsystem contract"
+      }
+    ],
+    "gb_view": [
+      {
+        "name": "WAVE_START",
+        "bits": 16,
+        "value": 65328,
+        "description": "16 wave bytes"
+      },
+      {
+        "name": "WAVE_END",
+        "bits": 16,
+        "value": 65343,
+        "description": "Inclusive end"
+      },
+      {
+        "name": "LDH_START",
+        "bits": 16,
+        "value": 65280,
+        "description": "LDH full-address range"
+      },
+      {
+        "name": "LDH_END",
+        "bits": 16,
+        "value": 65535,
+        "description": "Inclusive end"
+      },
+      {
+        "name": "TILES_START",
+        "bits": 16,
+        "value": 32768,
+        "description": "Tile storage"
+      },
+      {
+        "name": "TILES_END",
+        "bits": 16,
+        "value": 38911,
+        "description": "Inclusive end"
+      },
+      {
+        "name": "MAP0_START",
+        "bits": 16,
+        "value": 38912,
+        "description": "32 by 32 tile map"
+      },
+      {
+        "name": "MAP1_START",
+        "bits": 16,
+        "value": 39936,
+        "description": "32 by 32 tile map"
+      }
+    ],
+    "vector": [
+      {
+        "name": "RST_00",
+        "bits": 16,
+        "value": 0,
+        "description": "Eight-byte reserved vector slot in direct profile"
+      },
+      {
+        "name": "RST_08",
+        "bits": 16,
+        "value": 8,
+        "description": "Eight-byte reserved vector slot in direct profile"
+      },
+      {
+        "name": "RST_10",
+        "bits": 16,
+        "value": 16,
+        "description": "Eight-byte reserved vector slot in direct profile"
+      },
+      {
+        "name": "RST_18",
+        "bits": 16,
+        "value": 24,
+        "description": "Eight-byte reserved vector slot in direct profile"
+      },
+      {
+        "name": "RST_20",
+        "bits": 16,
+        "value": 32,
+        "description": "Eight-byte reserved vector slot in direct profile"
+      },
+      {
+        "name": "RST_28",
+        "bits": 16,
+        "value": 40,
+        "description": "Eight-byte reserved vector slot in direct profile"
+      },
+      {
+        "name": "RST_30",
+        "bits": 16,
+        "value": 48,
+        "description": "Eight-byte reserved vector slot in direct profile"
+      },
+      {
+        "name": "RST_38",
+        "bits": 16,
+        "value": 56,
+        "description": "Eight-byte reserved vector slot in direct profile"
+      },
+      {
+        "name": "VBLANK",
+        "bits": 16,
+        "value": 64,
+        "description": "Eight-byte reserved vector slot in direct profile"
+      },
+      {
+        "name": "STAT",
+        "bits": 16,
+        "value": 72,
+        "description": "Eight-byte reserved vector slot in direct profile"
+      },
+      {
+        "name": "TIMER",
+        "bits": 16,
+        "value": 80,
+        "description": "Eight-byte reserved vector slot in direct profile"
+      },
+      {
+        "name": "SERIAL",
+        "bits": 16,
+        "value": 88,
+        "description": "Eight-byte reserved vector slot in direct profile"
+      },
+      {
+        "name": "JOYPAD",
+        "bits": 16,
+        "value": 96,
+        "description": "Eight-byte reserved vector slot in direct profile"
+      }
+    ],
+    "profile": [
+      {
+        "name": "DIRECT_ID",
+        "bits": 8,
+        "value": 1,
+        "description": "dmg-direct-v1; original v0.5 programs only"
+      },
+      {
+        "name": "ROM_BYTES",
+        "bits": 32,
+        "value": 32768,
+        "description": "Exact load image length"
+      },
+      {
+        "name": "BANK_BYTES",
+        "bits": 16,
+        "value": 16384,
+        "description": "Section boundary"
+      },
+      {
+        "name": "HEADER_START",
+        "bits": 16,
+        "value": 256,
+        "description": "Packager reservation inclusive"
+      },
+      {
+        "name": "HEADER_END",
+        "bits": 16,
+        "value": 335,
+        "description": "Packager reservation inclusive"
+      },
+      {
+        "name": "VECTOR_SLOT_BYTES",
+        "bits": 8,
+        "value": 8,
+        "description": "Each vector reservation length"
+      },
+      {
+        "name": "PC",
+        "bits": 16,
+        "value": 256,
+        "description": "First opcode after reset/resume"
+      },
+      {
+        "name": "SP",
+        "bits": 16,
+        "value": 65534,
+        "description": "Stack pointer"
+      },
+      {
+        "name": "A",
+        "bits": 8,
+        "value": 0,
+        "description": "Direct reset CPU state"
+      },
+      {
+        "name": "F",
+        "bits": 8,
+        "value": 0,
+        "description": "Direct reset CPU state"
+      },
+      {
+        "name": "B",
+        "bits": 8,
+        "value": 0,
+        "description": "Direct reset CPU state"
+      },
+      {
+        "name": "C",
+        "bits": 8,
+        "value": 0,
+        "description": "Direct reset CPU state"
+      },
+      {
+        "name": "D",
+        "bits": 8,
+        "value": 0,
+        "description": "Direct reset CPU state"
+      },
+      {
+        "name": "E",
+        "bits": 8,
+        "value": 0,
+        "description": "Direct reset CPU state"
+      },
+      {
+        "name": "H",
+        "bits": 8,
+        "value": 0,
+        "description": "Direct reset CPU state"
+      },
+      {
+        "name": "L",
+        "bits": 8,
+        "value": 0,
+        "description": "Direct reset CPU state"
+      },
+      {
+        "name": "IME",
+        "bits": 8,
+        "value": 0,
+        "description": "Direct reset CPU state"
+      },
+      {
+        "name": "IME_DELAY",
+        "bits": 8,
+        "value": 0,
+        "description": "Direct reset CPU state"
+      },
+      {
+        "name": "CPU_HALT",
+        "bits": 8,
+        "value": 0,
+        "description": "Direct reset CPU state"
+      },
+      {
+        "name": "CPU_STOP",
+        "bits": 8,
+        "value": 0,
+        "description": "Direct reset CPU state"
+      },
+      {
+        "name": "HALT_BUG",
+        "bits": 8,
+        "value": 0,
+        "description": "Direct reset CPU state"
+      },
+      {
+        "name": "RAM_FILL",
+        "bits": 8,
+        "value": 0,
+        "description": "Reset fills WRAM, HRAM, VRAM, OAM, wave RAM"
+      },
+      {
+        "name": "JOYP_SELECT",
+        "bits": 8,
+        "value": 48,
+        "description": "Neither group selected"
+      },
+      {
+        "name": "BOOT_MAPPED",
+        "bits": 8,
+        "value": 0,
+        "description": "No boot ROM; unmapping is permanent"
+      },
+      {
+        "name": "PERIPHERAL_FILL",
+        "bits": 8,
+        "value": 0,
+        "description": "Writable peripheral storage and internal counters; read masks still apply"
+      }
+    ],
+    "host": [
+      {
+        "name": "ADDRESS_BITS",
+        "bits": 8,
+        "value": 32,
+        "description": "Host-only byte address width"
+      },
+      {
+        "name": "DATA_BITS",
+        "bits": 8,
+        "value": 32,
+        "description": "Host register width"
+      },
+      {
+        "name": "BASE",
+        "bits": 32,
+        "value": 65536,
+        "description": "Outside the CPU address range"
+      }
+    ],
+    "host_reg": [
+      {
+        "name": "ABI",
+        "bits": 32,
+        "value": 65536,
+        "description": "Interface ABI version; read-only"
+      },
+      {
+        "name": "STATE",
+        "bits": 32,
+        "value": 65540,
+        "description": "Host state enum; read-only"
+      },
+      {
+        "name": "IMAGE_VALID",
+        "bits": 32,
+        "value": 65544,
+        "description": "0 or 1; read-only"
+      },
+      {
+        "name": "PROFILE",
+        "bits": 32,
+        "value": 65548,
+        "description": "Loaded profile ID or 0; read-only"
+      },
+      {
+        "name": "DOT_LO",
+        "bits": 32,
+        "value": 65552,
+        "description": "Low half of paused emulated dot count; read-only"
+      },
+      {
+        "name": "DOT_HI",
+        "bits": 32,
+        "value": 65556,
+        "description": "High half; pause for coherent multi-read; read-only"
+      },
+      {
+        "name": "RETIRE_LO",
+        "bits": 32,
+        "value": 65560,
+        "description": "Low half of retirement count; read-only"
+      },
+      {
+        "name": "RETIRE_HI",
+        "bits": 32,
+        "value": 65564,
+        "description": "High half; pause for coherent multi-read; read-only"
+      },
+      {
+        "name": "INPUT",
+        "bits": 32,
+        "value": 65568,
+        "description": "Active-high host button mask; read-only"
+      },
+      {
+        "name": "SNAPSHOT_VALID",
+        "bits": 32,
+        "value": 65572,
+        "description": "0 or 1; read-only"
+      },
+      {
+        "name": "SNAPSHOT_SEQ_LO",
+        "bits": 32,
+        "value": 65576,
+        "description": "Latched source frame sequence low; read-only"
+      },
+      {
+        "name": "SNAPSHOT_SEQ_HI",
+        "bits": 32,
+        "value": 65580,
+        "description": "Latched source frame sequence high; read-only"
+      },
+      {
+        "name": "BUILD_ID_0",
+        "bits": 32,
+        "value": 65584,
+        "description": "Least-significant 32 bits of 128-bit build identifier; read-only"
+      },
+      {
+        "name": "BUILD_ID_1",
+        "bits": 32,
+        "value": 65588,
+        "description": "Build identifier bits 63:32; read-only"
+      },
+      {
+        "name": "BUILD_ID_2",
+        "bits": 32,
+        "value": 65592,
+        "description": "Build identifier bits 95:64; read-only"
+      },
+      {
+        "name": "BUILD_ID_3",
+        "bits": 32,
+        "value": 65596,
+        "description": "Build identifier bits 127:96; read-only"
+      },
+      {
+        "name": "SNAPSHOT_EPOCH",
+        "bits": 32,
+        "value": 65600,
+        "description": "Latched source core-reset epoch; read-only"
+      }
+    ],
+    "state": [
+      {
+        "name": "PAUSED",
+        "bits": 8,
+        "value": 0,
+        "description": "Frozen emulated state"
+      },
+      {
+        "name": "RUNNING",
+        "bits": 8,
+        "value": 1,
+        "description": "Emulated time advances"
+      },
+      {
+        "name": "LOADING",
+        "bits": 8,
+        "value": 2,
+        "description": "Paused; incomplete image cannot run"
+      }
+    ],
+    "button": [
+      {
+        "name": "RIGHT",
+        "bits": 8,
+        "value": 1,
+        "description": "Active-high pressed bit in host mask; no opposite-direction filtering"
+      },
+      {
+        "name": "LEFT",
+        "bits": 8,
+        "value": 2,
+        "description": "Active-high pressed bit in host mask; no opposite-direction filtering"
+      },
+      {
+        "name": "UP",
+        "bits": 8,
+        "value": 4,
+        "description": "Active-high pressed bit in host mask; no opposite-direction filtering"
+      },
+      {
+        "name": "DOWN",
+        "bits": 8,
+        "value": 8,
+        "description": "Active-high pressed bit in host mask; no opposite-direction filtering"
+      },
+      {
+        "name": "A",
+        "bits": 8,
+        "value": 16,
+        "description": "Active-high pressed bit in host mask; no opposite-direction filtering"
+      },
+      {
+        "name": "B",
+        "bits": 8,
+        "value": 32,
+        "description": "Active-high pressed bit in host mask; no opposite-direction filtering"
+      },
+      {
+        "name": "SELECT",
+        "bits": 8,
+        "value": 64,
+        "description": "Active-high pressed bit in host mask; no opposite-direction filtering"
+      },
+      {
+        "name": "START",
+        "bits": 8,
+        "value": 128,
+        "description": "Active-high pressed bit in host mask; no opposite-direction filtering"
+      }
+    ],
+    "wire": [
+      {
+        "name": "VERSION",
+        "bits": 8,
+        "value": 1,
+        "description": "Packet ABI"
+      },
+      {
+        "name": "REQUEST",
+        "bits": 8,
+        "value": 0,
+        "description": "Host to FPGA"
+      },
+      {
+        "name": "RESPONSE",
+        "bits": 8,
+        "value": 1,
+        "description": "FPGA to host"
+      },
+      {
+        "name": "MAX_PAYLOAD",
+        "bits": 16,
+        "value": 256,
+        "description": "Decoded payload byte limit"
+      },
+      {
+        "name": "CRC_POLY",
+        "bits": 16,
+        "value": 4129,
+        "description": "CRC-16 polynomial; non-reflected"
+      },
+      {
+        "name": "CRC_INIT",
+        "bits": 16,
+        "value": 65535,
+        "description": "CRC-16 initial value; xorout zero"
+      },
+      {
+        "name": "BAUD",
+        "bits": 32,
+        "value": 115200,
+        "description": "Initial UART baud, 8N1 LSB-first data bits, no flow control"
+      },
+      {
+        "name": "FRAME_TIMEOUT_MS",
+        "bits": 16,
+        "value": 500,
+        "description": "Incomplete frame discarded after idle interval"
+      },
+      {
+        "name": "RESPONSE_TIMEOUT_MS",
+        "bits": 16,
+        "value": 2000,
+        "description": "Host timeout; fail uncertain without automatic retry"
+      },
+      {
+        "name": "STEP_MAX_DOTS",
+        "bits": 32,
+        "value": 70224,
+        "description": "Maximum step budget"
+      },
+      {
+        "name": "ABI",
+        "bits": 32,
+        "value": 1,
+        "description": "Host register ABI"
+      },
+      {
+        "name": "CRC32_POLY",
+        "bits": 32,
+        "value": 3988292384,
+        "description": "Reflected CRC-32/ISO-HDLC polynomial"
+      },
+      {
+        "name": "CRC32_INIT",
+        "bits": 32,
+        "value": 4294967295,
+        "description": "Initial CRC32 register and final XOR value"
+      }
+    ],
+    "status": [
+      {
+        "name": "OK",
+        "bits": 8,
+        "value": 0,
+        "description": "Completed"
+      },
+      {
+        "name": "BAD_VERSION",
+        "bits": 8,
+        "value": 1,
+        "description": "Unsupported packet version"
+      },
+      {
+        "name": "BAD_COMMAND",
+        "bits": 8,
+        "value": 2,
+        "description": "Unknown command"
+      },
+      {
+        "name": "BAD_LENGTH",
+        "bits": 8,
+        "value": 3,
+        "description": "Wrong payload length"
+      },
+      {
+        "name": "BAD_VALUE",
+        "bits": 8,
+        "value": 4,
+        "description": "Range, alignment, profile, or reserved value invalid"
+      },
+      {
+        "name": "BAD_STATE",
+        "bits": 8,
+        "value": 5,
+        "description": "Command not permitted in current state"
+      },
+      {
+        "name": "BAD_IMAGE",
+        "bits": 8,
+        "value": 6,
+        "description": "Incomplete image or whole-image CRC mismatch"
+      },
+      {
+        "name": "NO_FRAME",
+        "bits": 8,
+        "value": 7,
+        "description": "No complete source frame since reset"
+      },
+      {
+        "name": "STEP_LIMIT",
+        "bits": 8,
+        "value": 8,
+        "description": "Budget exhausted; paused without next retirement"
+      },
+      {
+        "name": "SEQUENCE",
+        "bits": 8,
+        "value": 9,
+        "description": "Sequence reused with different request"
+      }
+    ],
+    "trace": [
+      {
+        "name": "VERSION",
+        "bits": 8,
+        "value": 1,
+        "description": "Retirement record ABI"
+      },
+      {
+        "name": "INSTRUCTION",
+        "bits": 8,
+        "value": 0,
+        "description": "Completed instruction"
+      },
+      {
+        "name": "INTERRUPT",
+        "bits": 8,
+        "value": 1,
+        "description": "Completed interrupt entry; separate event, not instruction retirement"
+      }
+    ],
+    "frame": [
+      {
+        "name": "WIDTH",
+        "bits": 16,
+        "value": 160,
+        "description": "Visible pixels per row"
+      },
+      {
+        "name": "HEIGHT",
+        "bits": 16,
+        "value": 144,
+        "description": "Visible rows"
+      },
+      {
+        "name": "PIXEL_BITS",
+        "bits": 8,
+        "value": 2,
+        "description": "Final shade index"
+      },
+      {
+        "name": "BYTES",
+        "bits": 16,
+        "value": 5760,
+        "description": "Four shades per byte; first pixel in bits 1:0"
+      }
+    ],
+    "command": [
+      {
+        "name": "PING",
+        "bits": 8,
+        "value": 1,
+        "description": "Return ABI."
+      },
+      {
+        "name": "READ_HOST",
+        "bits": 8,
+        "value": 2,
+        "description": "Read exactly one aligned host register; unknown addresses fail."
+      },
+      {
+        "name": "RESET",
+        "bits": 8,
+        "value": 3,
+        "description": "Pause at a dot boundary and initialize direct state; retain valid ROM and profile."
+      },
+      {
+        "name": "RUN",
+        "bits": 8,
+        "value": 4,
+        "description": "Resume from retained phase; acknowledgement after transition."
+      },
+      {
+        "name": "HALT",
+        "bits": 8,
+        "value": 5,
+        "description": "Host pause at next dot boundary; already paused is idempotent."
+      },
+      {
+        "name": "STEP",
+        "bits": 8,
+        "value": 6,
+        "description": "Advance until next completed instruction or the requested dot budget; interrupt entry does not satisfy retirement."
+      },
+      {
+        "name": "LOAD_BEGIN",
+        "bits": 8,
+        "value": 7,
+        "description": "Validate metadata, pause/reset, invalidate old image and start a fresh load."
+      },
+      {
+        "name": "LOAD_WRITE",
+        "bits": 8,
+        "value": 8,
+        "description": "Write 1..252 image bytes, marking each byte present; ranges cannot cross image end."
+      },
+      {
+        "name": "LOAD_END",
+        "bits": 8,
+        "value": 9,
+        "description": "Require every byte written and expected CRC32; reset and mark image valid, paused."
+      },
+      {
+        "name": "READ_ROM",
+        "bits": 8,
+        "value": 10,
+        "description": "Read exact image storage bytes; host offsets never denote CPU or host registers."
+      },
+      {
+        "name": "INPUT",
+        "bits": 8,
+        "value": 11,
+        "description": "Apply full button mask at next dot boundary, or immediately while paused; return completed dot count."
+      },
+      {
+        "name": "SNAPSHOT",
+        "bits": 8,
+        "value": 12,
+        "description": "Copy last completed source frame to dedicated immutable host snapshot; fail if none since core reset."
+      },
+      {
+        "name": "READ_FRAME",
+        "bits": 8,
+        "value": 13,
+        "description": "Read dedicated snapshot, unchanged until next successful SNAPSHOT or global reset."
+      }
+    ]
+  },
+  "records": {
+    "packet_header": [
+      {
+        "name": "version",
+        "bits": 8,
+        "description": "Wire ABI"
+      },
+      {
+        "name": "kind",
+        "bits": 8,
+        "description": "Request or response"
+      },
+      {
+        "name": "seq",
+        "bits": 32,
+        "description": "Client correlation token"
+      },
+      {
+        "name": "command",
+        "bits": 8,
+        "description": "Command ID"
+      },
+      {
+        "name": "status",
+        "bits": 8,
+        "description": "Zero in requests"
+      },
+      {
+        "name": "length",
+        "bits": 16,
+        "description": "Payload byte length"
+      }
+    ],
+    "read_host": [
+      {
+        "name": "address",
+        "bits": 32,
+        "description": "Aligned host register address"
+      }
+    ],
+    "word": [
+      {
+        "name": "value",
+        "bits": 32,
+        "description": "Unsigned value"
+      }
+    ],
+    "load_begin": [
+      {
+        "name": "profile",
+        "bits": 8,
+        "description": "Direct profile ID"
+      },
+      {
+        "name": "size",
+        "bits": 32,
+        "description": "Exact image byte length"
+      },
+      {
+        "name": "crc32",
+        "bits": 32,
+        "description": "Whole image CRC-32/ISO-HDLC"
+      }
+    ],
+    "offset": [
+      {
+        "name": "offset",
+        "bits": 32,
+        "description": "ROM file offset or snapshot byte offset"
+      }
+    ],
+    "read_range": [
+      {
+        "name": "offset",
+        "bits": 32,
+        "description": "Byte offset"
+      },
+      {
+        "name": "count",
+        "bits": 16,
+        "description": "1 through maximum payload bytes"
+      }
+    ],
+    "input": [
+      {
+        "name": "buttons",
+        "bits": 8,
+        "description": "All eight active-high button states"
+      }
+    ],
+    "dot": [
+      {
+        "name": "dot",
+        "bits": 64,
+        "description": "Number of completed emulated dots at transition"
+      }
+    ],
+    "snapshot": [
+      {
+        "name": "epoch",
+        "bits": 32,
+        "description": "Core-reset epoch of source frame"
+      },
+      {
+        "name": "seq",
+        "bits": 64,
+        "description": "Source frame sequence"
+      },
+      {
+        "name": "dot",
+        "bits": 64,
+        "description": "Source frame completion dot"
+      },
+      {
+        "name": "size",
+        "bits": 32,
+        "description": "Packed frame bytes"
+      }
+    ],
+    "retirement": [
+      {
+        "name": "version",
+        "bits": 8,
+        "description": "Trace ABI"
+      },
+      {
+        "name": "kind",
+        "bits": 8,
+        "description": "Instruction or interrupt entry"
+      },
+      {
+        "name": "epoch",
+        "bits": 32,
+        "description": "Core-reset epoch since global reset"
+      },
+      {
+        "name": "seq",
+        "bits": 64,
+        "description": "Event index from zero within epoch"
+      },
+      {
+        "name": "dot",
+        "bits": 64,
+        "description": "Completed dots at event end"
+      },
+      {
+        "name": "pc_before",
+        "bits": 16,
+        "description": "PC before instruction or interrupt entry"
+      },
+      {
+        "name": "pc_after",
+        "bits": 16,
+        "description": "PC after completion"
+      },
+      {
+        "name": "opcode",
+        "bits": 24,
+        "description": "Fetched bytes in bits 7:0 then 15:8 then 23:16; unused bytes zero"
+      },
+      {
+        "name": "opcode_length",
+        "bits": 8,
+        "description": "1..3 for instruction; zero for interrupt entry"
+      },
+      {
+        "name": "a",
+        "bits": 8,
+        "description": "Post-event CPU register"
+      },
+      {
+        "name": "f",
+        "bits": 8,
+        "description": "Post-event flags; low nibble zero"
+      },
+      {
+        "name": "b",
+        "bits": 8,
+        "description": "Post-event CPU register"
+      },
+      {
+        "name": "c",
+        "bits": 8,
+        "description": "Post-event CPU register"
+      },
+      {
+        "name": "d",
+        "bits": 8,
+        "description": "Post-event CPU register"
+      },
+      {
+        "name": "e",
+        "bits": 8,
+        "description": "Post-event CPU register"
+      },
+      {
+        "name": "h",
+        "bits": 8,
+        "description": "Post-event CPU register"
+      },
+      {
+        "name": "l",
+        "bits": 8,
+        "description": "Post-event CPU register"
+      },
+      {
+        "name": "sp",
+        "bits": 16,
+        "description": "Post-event stack pointer"
+      },
+      {
+        "name": "ime",
+        "bits": 8,
+        "description": "Post-event interrupt master enable: 0 or 1"
+      },
+      {
+        "name": "ime_delay",
+        "bits": 8,
+        "description": "Deferred EI state: 0 or 1"
+      },
+      {
+        "name": "halted",
+        "bits": 8,
+        "description": "CPU HALT: 0 or 1"
+      },
+      {
+        "name": "stopped",
+        "bits": 8,
+        "description": "CPU STOP: 0 or 1"
+      },
+      {
+        "name": "halt_bug",
+        "bits": 8,
+        "description": "Pending suppressed PC increment: 0 or 1"
+      },
+      {
+        "name": "ie",
+        "bits": 8,
+        "description": "Interrupt-enable storage byte"
+      },
+      {
+        "name": "iflags",
+        "bits": 8,
+        "description": "Interrupt-request low five storage bits"
+      },
+      {
+        "name": "buttons",
+        "bits": 8,
+        "description": "Host mask at event end"
+      }
+    ]
+  },
+  "commands": [
+    {
+      "name": "PING",
+      "request": "empty",
+      "response": "word",
+      "state": "any"
+    },
+    {
+      "name": "READ_HOST",
+      "request": "read_host",
+      "response": "word",
+      "state": "any"
+    },
+    {
+      "name": "RESET",
+      "request": "empty",
+      "response": "empty",
+      "state": "not loading"
+    },
+    {
+      "name": "RUN",
+      "request": "empty",
+      "response": "empty",
+      "state": "paused valid image"
+    },
+    {
+      "name": "HALT",
+      "request": "empty",
+      "response": "dot",
+      "state": "not loading"
+    },
+    {
+      "name": "STEP",
+      "request": "word",
+      "response": "dot",
+      "state": "paused valid image"
+    },
+    {
+      "name": "LOAD_BEGIN",
+      "request": "load_begin",
+      "response": "empty",
+      "state": "any"
+    },
+    {
+      "name": "LOAD_WRITE",
+      "request": "offset+bytes",
+      "response": "empty",
+      "state": "loading"
+    },
+    {
+      "name": "LOAD_END",
+      "request": "empty",
+      "response": "empty",
+      "state": "loading"
+    },
+    {
+      "name": "READ_ROM",
+      "request": "read_range",
+      "response": "bytes",
+      "state": "paused or loading"
+    },
+    {
+      "name": "INPUT",
+      "request": "input",
+      "response": "dot",
+      "state": "not loading"
+    },
+    {
+      "name": "SNAPSHOT",
+      "request": "empty",
+      "response": "snapshot",
+      "state": "not loading"
+    },
+    {
+      "name": "READ_FRAME",
+      "request": "read_range",
+      "response": "bytes",
+      "state": "snapshot valid"
+    }
+  ],
+  "references": [
+    {
+      "name": "Pan Docs",
+      "revision": "fe246067b695b5404a4a6a47efb4fd6d921ececb",
+      "license": "CC0-1.0",
+      "url": "https://github.com/gbdev/pandocs/tree/fe246067b695b5404a4a6a47efb4fd6d921ececb",
+      "purpose": "Memory map, vectors, DMG register addresses, joypad matrix; research only, no imported code"
+    }
+  ]
+}
