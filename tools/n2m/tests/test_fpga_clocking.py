@@ -36,7 +36,9 @@ def fixture():
 
 class ClockingEvidenceTests(unittest.TestCase):
     def test_pll_cache_requires_generated_netlist_and_checked_constraints(self):
-        with tempfile.TemporaryDirectory() as temporary:
+        scratch = Path(__file__).resolve().parents[3] / "workdir/fpga-clock-tests"
+        scratch.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=scratch) as temporary:
             root = Path(temporary)
             build = root / "workdir/builds/test"
             folder = build / "attempt"
