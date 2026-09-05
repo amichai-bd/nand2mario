@@ -1,5 +1,6 @@
 """Tagged assembler integration; emits relocatable JSON, never a cartridge."""
 import json
+from hashlib import sha256
 from pathlib import Path
 import re
 import uuid
@@ -9,6 +10,7 @@ from .assembler import assemble
 from .expressions import AssemblyError
 from .objects import validate
 from .targets import validate_target
+from .assets import load_shades, encode_shades
 
 
 def assemble_target(root, build, args, provenance):
@@ -35,7 +37,7 @@ def _assemble_target(root, build, args, provenance, stage, folder):
         raise AssemblyError('SYNTAX', 'invalid target name')
     registry = root / 'src/sw/targets.json'
     data = json.loads(registry.read_text())
-    if set(data) != {'schema_version', 'targets'} or type(data['schema_version']) is not int or data['schema_version'] != 1:
+    if set(data) != {'schema_version', 'targets'} or type(data['schema_version']) is not int or data['schema_version'] != 2:
         raise AssemblyError('SCHEMA_MISMATCH', 'unsupported software target registry')
     target = data['targets'].get(args.target)
     validate_target(target)
@@ -57,17 +59,27 @@ def _assemble_target(root, build, args, provenance, stage, folder):
         raise AssemblyError('SYNTAX', 'duplicate resolved assembly source')
     if not isinstance(target['assets'], dict):
         raise AssemblyError('SYNTAX', 'declared generated asset map required')
-    assets = {}
-    for name, relative in target['assets'].items():
-        path = confined(root / 'workdir', relative)
-        assets[name] = path.read_bytes()
+    assets, asset_sources, asset_outputs, asset_metadata = {}, [], {}, {}
+    for name, declaration in target['assets'].items():
+        path = confined(tree, declaration['source'])
+        relative = path.relative_to(tree).as_posix()
+        shades = load_shades(path, relative)
+        encoded = encode_shades(shades, relative)
+        assets[name] = encoded
+        asset_sources.append(path)
+        asset_outputs['asset-' + name + '.2bpp'] = encoded
+        asset_metadata[name] = {'source': relative, 'author': declaration['author'],
+                                'width': shades['width'], 'height': shades['height'],
+                                'bytes': len(encoded), 'sha256': sha256(encoded).hexdigest()}
+    if assets:
+        asset_outputs['assets.json'] = (json.dumps(asset_metadata, indent=2, sort_keys=True) + '\n').encode('utf-8')
     report = {'status': 'FAIL', 'target': args.target, **provenance,
               'scope': 'relocatable assembly objects; no link placement or cartridge packaging'}
     try:
         objects = [assemble(path, tree, root / 'src/sw/generated/interfaces.inc', assets) for path in paths]
         implementation = [root / 'tools/sw' / name for name in
                           ('assembler.py', 'expressions.py', 'objects.py', 'build.py', 'opcodes.json',
-                           'object.schema.json', 'targets.schema.json', 'targets.py')]
+                           'object.schema.json', 'targets.schema.json', 'targets.py', 'assets.py', 'shade.schema.json')]
         implementation += [root / name for name in ('tools/n2m/records.py', 'tools/n2m/cli.py',
                             'tools/n2m/generated_interfaces.py', 'cfg/interfaces.json')]
         inputs = {path.relative_to(root).as_posix(): file_hash(path) for path in implementation + [registry]}
@@ -75,7 +87,7 @@ def _assemble_target(root, build, args, provenance, stage, folder):
         for obj in objects:
             source_paths.update(tree / name for name in obj['sources']
                                 if not name.startswith(('__n2m__/', '__assets__/')))
-        source_paths.update(confined(root / 'workdir', relative) for relative in target['assets'].values())
+        source_paths.update(asset_sources)
         inputs.update({path.relative_to(root).as_posix(): file_hash(path) for path in source_paths})
         fingerprint = digest({'objects': objects, 'implementation': inputs})
         report.update(fingerprint=fingerprint, inputs=inputs)
@@ -88,16 +100,22 @@ def _assemble_target(root, build, args, provenance, stage, folder):
             if complete:
                 prior_folder = next(iter(parents))
                 expected_files = [prior_folder / (str(i) + '.object.json') for i in range(len(objects))]
+                object_files = list(expected_files)
                 expected_files.append(prior_folder / 'diagnostics.json')
+                expected_files.extend(prior_folder / name for name in asset_outputs)
                 complete = (prior_folder.parent == stage / 'runs'
                             and re.fullmatch('[0-9a-f]{12}', prior_folder.name)
-                            and retained == [p.relative_to(root).as_posix() for p in expected_files[:-1]]
+                            and retained == [p.relative_to(root).as_posix() for p in object_files]
+                            and previous.get('asset_outputs', {}) == {name: (prior_folder / name).relative_to(root).as_posix() for name in asset_outputs}
                             and set(previous.get('artifacts', {})) == {p.relative_to(root).as_posix() for p in expected_files}
                             and read_json(prior_folder / 'result.json') == previous)
         if complete:
             complete = all((root / relative).is_file() and (root / relative).read_bytes() ==
                            (json.dumps(obj, indent=2, sort_keys=True) + '\n').encode('utf-8')
                            for relative, obj in zip(retained, objects))
+        if complete:
+            complete = all((prior_folder / name).is_file() and (prior_folder / name).read_bytes() == value
+                           for name, value in asset_outputs.items())
         if not args.rebuild and complete and cache_matches(previous, fingerprint, root, build):
             # Parsing still revalidates every source/include and its schema; only
             # identical previously retained object bytes may be returned.
@@ -109,7 +127,10 @@ def _assemble_target(root, build, args, provenance, stage, folder):
             path = folder / (str(index) + '.object.json')
             atomic_json(path, obj)
             output.append(path.relative_to(root).as_posix())
-        report.update(status='PASS', cache='MISS', objects=output)
+        for name, value in asset_outputs.items():
+            (folder / name).write_bytes(value)
+        report.update(status='PASS', cache='MISS', objects=output,
+                      asset_outputs={name: (folder / name).relative_to(root).as_posix() for name in asset_outputs})
         atomic_json(folder / 'diagnostics.json', [])
     except AssemblyError as error:
         report['error'] = str(error)

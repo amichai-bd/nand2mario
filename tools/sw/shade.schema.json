@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Original shade asset v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "width",
+    "height",
+    "pixels"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "width": {
+      "type": "integer",
+      "minimum": 8,
+      "multipleOf": 8
+    },
+    "height": {
+      "type": "integer",
+      "minimum": 8,
+      "multipleOf": 8
+    },
+    "pixels": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "items": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3
+        }
+      }
+    }
+  }
+}
