@@ -15,7 +15,7 @@ stable around the rising edge. The clock period is 10 ns; observation occurs
 
 `fixture.sv` contains the only intentional defect: `+broken` drops the operand's
 high bit before addition. It changes the DUT, never the oracle. The directed
-sequence produces expected zero and actual 128 at cycle 6. Both simulators must
+sequence produces expected zero and actual 128 at cycle 6. Questa must
 exit nonzero with that exact mismatch. A compiler failure, warning, timeout,
 other fatal diagnostic or zero runtime exit cannot satisfy this negative case.
 
@@ -34,7 +34,7 @@ The [test plan](../../../../src/dv/baseline/README.md) maps normal, edge, reset,
 error and ordering cases to these components. Use this separation for later
 units; their contracts must supply expected behavior before writing checks.
 This UVM-lite uses modules and explicit sampled transactions, without class,
-UVM library, SVA or covergroup dependencies. It works on both selected engines.
+UVM library, SVA or covergroup dependencies. It runs in Questa.
 
 Directed literal checkpoints independently establish the oracle's expected
 128 at cycle 4 and zero at cycle 6. The good test requires 75 comparisons and

@@ -21,6 +21,9 @@ rules to independent checks, `src/` and `tools/` implementation, and evidence.
    Separate unit checks from composed paths with delayed responses.
 5. Prove the harness with a passing DUT and a deliberate failing case in Questa.
    Use Questa only for new simulation evidence; do not start Icarus runs.
+   Coordinate the licensed runtime slot with root and serialize all applicable
+   builder, doctor, standalone and regression children. Release it after exit;
+   preserve contention failures and retry only after competing execution ends.
    Watchdogs and mismatches must produce nonzero raw exits; require the exact
    intended failure diagnostic as well. A printed failure followed by `$finish`
    is not sufficient. Retain commands, raw exits, seeds, logs and waves.

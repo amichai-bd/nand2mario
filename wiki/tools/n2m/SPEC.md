@@ -73,6 +73,13 @@ The failing smoke target still reports FAIL. Discovery failures retain their
 diagnostics and request record under `discovery/<attempt>/` and invalidate any
 previous success for the requested target.
 
+Coordinate the licensed execution slot with the root orchestrator before actual
+runs. Where the installation limits concurrent sessions, serialize builder,
+doctor, standalone and regression invocations, including all regression children.
+Release the slot only after those processes finish. Retain license-contention
+failures as failures; retry once the competing run ends, with fresh evidence.
+Do not kill another author's simulator or change license settings to bypass it.
+
 The [gap register](../../preflight-gaps.md#gap-008-verification-baseline) records
 the licensed tests established by this integration and outstanding coverage.
 
@@ -547,7 +554,7 @@ memory map. SV users import `n2m_interfaces_pkg`.
 ## Verification baseline runner
 
 `python tools/n2m/baseline.py` composes registered fixture simulations and checks
-retained evidence and cross-simulator traces. It is a host entry point alongside
+retained evidence and transaction traces. It is a host entry point alongside
 `tools/build.py`; no new dispatcher subcommand is implied. The
 [baseline contract](../../src/dv/baseline/SPEC.md#execution-and-regression) owns
 its options, regression levels, wall-budget semantics and trace checks.

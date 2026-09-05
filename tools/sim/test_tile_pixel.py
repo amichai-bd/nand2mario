@@ -33,14 +33,14 @@ class RunnerTests(unittest.TestCase):
         self.source = self.root / "src/unit.sv"
         self.source.write_text("source", encoding="utf-8")
 
-    def invoke(self, responder=None, missing=False, simulator="questa"):
+    def invoke(self, responder=None, missing=False, simulator=None):
         def normal(argv, **kwargs):
             if "+corrupt" in argv:
                 return subprocess.CompletedProcess(argv, 1, MISMATCH)
             return subprocess.CompletedProcess(argv, 0, PASS)
 
         with patch.multiple(tile_pixel, ROOT=self.root, SOURCES=[self.source], __file__=str(self.script)), \
-             patch("sys.argv", ["tile_pixel.py", "--sim", simulator, "--tag", "test"]), \
+             patch("sys.argv", ["tile_pixel.py", "--tag", "test", *(["--sim", simulator] if simulator else [])]), \
              patch("tile_pixel.shutil.which", return_value=None if missing else "/tool path/bin"), \
              patch("tile_pixel.subprocess.check_output", side_effect=["abc\n", ""]), \
              patch("tile_pixel.subprocess.run", side_effect=responder or normal) as run, \
@@ -71,6 +71,12 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("missing", manifest["error"])
         run.assert_not_called()
+
+    def test_retired_backend_is_rejected(self):
+        with self.assertRaises(SystemExit) as caught:
+            self.invoke(simulator="icarus")
+        self.assertEqual(caught.exception.code, 2)
+        self.assertFalse((self.root / "workdir/builds/test").exists())
 
     def test_missing_tool_records_failure(self):
         code, manifest, run = self.invoke(missing=True)
