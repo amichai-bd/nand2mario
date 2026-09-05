@@ -4,30 +4,24 @@ The [gap register](../preflight-gaps.md) owns gap status and close conditions.
 
 ## Current phase
 
-Product definition toward the approved
-[end-to-end direction](../src/project-charter.md#approved-direction), alongside
-infrastructure refinement, reference RTL/display analysis, and the user's
-explicitly authorized isolated tile-pixel, minimal builder, and read-only
-environment doctor work
-([#68](https://github.com/amichai-bd/nand2mario/issues/68),
-[#26](https://github.com/amichai-bd/nand2mario/issues/26),
-[#27](https://github.com/amichai-bd/nand2mario/issues/27)). See the
-[tile pixel contract](../src/display/tile-pixel.md),
-[reference study](../src/rtl-reference-style.md), and
-[build contract](../tools/build-system.md).
+Authorized hardware design, verification, and the Python software stack toward
+[the approved charter](../src/project-charter.md), delivered through focused
+issues and the shared [builder](../tools/build-system.md). Begin with prerequisite
+contracts and their executable evidence, then implement each dependent unit.
+The root selects assigned work and delegates separate author worktrees.
 
-The isolated tile unit includes its focused runner and PR/main simulation CI.
-This bounded exception does not close global gaps; the reference study informs
-style without authorizing HDL reuse.
-Tile and doctor delivery follow the [temporary Questa deferral](../preflight-gaps.md#gap-008-verification-baseline).
+The [reference study](../src/rtl-reference-style.md) informs style without
+authorizing HDL reuse. Existing tile, builder, and doctor results retain their
+bounded evidence. All simulation work follows the
+[temporary Questa deferral](../preflight-gaps.md#gap-008-verification-baseline);
+real portable positive and negative checks remain required.
 
-The user has authorized the goal from hardware/software design through simulation
-to DE10-Lite operation. Define its release contract in
-[#24](https://github.com/amichai-bd/nand2mario/issues/24). Unmade product decisions
-and applicable implementation gates still apply; the goal does not waive them.
-CPU/PPU integration, software/FPGA backends, board-proving designs, and physical
-runner setup remain dependency-gated. Programming and physical tests still need
-explicit authorization.
+Design, software, portable simulation, and preparation of FPGA builds may
+proceed as their applicable contracts and dependencies are satisfied. Board
+bring-up designs and timing/CDC work are now authorized prerequisites.
+Programming, UART transmission, and physical tests require separate explicit
+authorization and verified device, wiring, and voltage. Outstanding physical
+evidence gates board acceptance, not independent simulation or host work.
 
 ## Completed infrastructure
 
@@ -53,8 +47,8 @@ exercise the existing flow with a fresh author and retain evidence in the PR.
 ## Future P0 sequence
 
 Complete assigned prerequisites in this dependency order as authorized by the
-current phase. Product definition is now authorized; later steps retain their
-gates.
+current phase. Resolve each applicable contract before its dependent behavior;
+independent prerequisites may proceed in parallel.
 
 1. Approve project scope and legal boundaries:
    [GAP-001](../preflight-gaps.md#gap-001-scope-and-success-contract)
@@ -90,15 +84,22 @@ milestones.
 
 ## Implementation gate
 
-Broader functional Game Boy RTL remains gated; only the bounded exceptions in
-the current phase may proceed.
+Product implementation is authorized, subject to the applicable evidence below.
 
 Start the first functional CPU issue only when:
 
-- the user has explicitly authorized the product implementation phase;
-- every applicable P0 close condition has evidence;
-- issues #24 through #32 are closed or the gap register names approved
-  replacements; and
-- the first CPU issue links its approved contracts and verification plan.
+- its scope follows the approved charter and committed source/reuse policy;
+- its clock/reset, interface, verification, and CI prerequisites from issues
+  #29 through #32 have evidence for that issue's simulation/build scope;
+- every applicable P0 close condition has evidence, except the explicitly
+  deferred evidence recorded below; and
+- the issue links its approved contracts and verification plan.
 
-Board-proving RTL belongs to the future prerequisites, not the current phase.
+The user-approved phase replaces the former requirement that every issue #24
+through #32 close before any CPU work. GAP-005 physical bring-up and physical
+portions of GAP-006, GAP-010, and GAP-012 remain outstanding board prerequisites;
+record their missing evidence and do not count simulation as hardware proof.
+Licensed Questa evidence remains outstanding under GAP-008. These scoped
+replacements allow portable implementation progress; all other applicable
+conditions remain required. The gap register stays open for unmet close
+conditions, even when an independent implementation issue can finish.
