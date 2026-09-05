@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "targets": {
     "assembler-basic": {
       "directory": "assembler/basic",
@@ -21,6 +21,27 @@
         "symbol": "Start"
       },
       "title": "OWNED DEMO",
+      "version": 1,
+      "profile": "dmg-direct-v1",
+      "interface_schema_version": 1
+    },
+    "assets-basic": {
+      "directory": "assets/original-pattern",
+      "sources": [
+        "main.asm"
+      ],
+      "assets": {
+        "Pattern": {
+          "source": "shades.json",
+          "author": "Original nand2mario project-agent arithmetic fixture; no external source"
+        }
+      },
+      "layout": "layout.json",
+      "entry": {
+        "unit": "main.asm",
+        "symbol": "Start"
+      },
+      "title": "SHADE PROOF",
       "version": 1,
       "profile": "dmg-direct-v1",
       "interface_schema_version": 1

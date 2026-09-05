@@ -27,7 +27,7 @@ def build_target(root, build, args, provenance):
         registry = root / 'src/sw/targets.json'
         definitions = json.loads(registry.read_text(encoding='utf-8'))
         if (type(definitions) is not dict or set(definitions) != {'schema_version', 'targets'}
-                or type(definitions['schema_version']) is not int or definitions['schema_version'] != 1
+                or type(definitions['schema_version']) is not int or definitions['schema_version'] != 2
                 or type(definitions['targets']) is not dict or safe != args.target):
             fail('SCHEMA_MISMATCH', 'invalid software target registry')
         target = definitions['targets'].get(args.target)
@@ -73,6 +73,7 @@ def build_target(root, build, args, provenance):
                    'symbols.json': json_bytes(linked['symbols']), 'listing.json': json_bytes(linked['listing']),
                    'diagnostics.json': json_bytes([])}
         outputs.update({f'{index}.object.json': json_bytes(obj) for index, obj in enumerate(objects)})
+        outputs.update({name: (root / relative).read_bytes() for name, relative in assembly.get('asset_outputs', {}).items()})
         fingerprint = digest({'inputs': inputs, 'target': target})
         report.update(inputs=inputs, fingerprint=fingerprint, profile=target['profile'], entry=linked['entry'])
         previous = read_json(stage / 'result.json')

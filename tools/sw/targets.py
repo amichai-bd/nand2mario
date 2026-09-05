@@ -22,8 +22,14 @@ def validate_target(target, require_package=False, stage='assemble'):
         reject('nonempty relative directory/source paths required','PRIVATE_PATH')
     if len(target['sources'])!=len(set(target['sources'])):
         reject('duplicate source spelling')
-    if type(target['assets']) is not dict or not all(type(n) is str and n and path(p) for n,p in target['assets'].items()):
-        reject('declared asset names and paths required')
+    if type(target['assets']) is not dict:
+        reject('declared asset map required')
+    for name,declaration in target['assets'].items():
+        if (type(name) is not str or not re.fullmatch('[A-Za-z_][A-Za-z0-9_]*',name)
+                or type(declaration) is not dict or set(declaration)!={'source','author'}
+                or not path(declaration['source']) or type(declaration['author']) is not str
+                or not declaration['author'].strip()):
+            reject('asset requires identifier, target-relative source and original author')
     present=target.keys() & PACKAGE
     if present and present!=PACKAGE or require_package and present!=PACKAGE:
         reject('packaging metadata must be absent or complete')

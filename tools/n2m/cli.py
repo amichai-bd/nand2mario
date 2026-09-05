@@ -18,6 +18,7 @@ from .rgbds import oracle
 from sw.build import assemble_target
 from sw.rom_build import build_target
 from sw.link_conformance import proof as link_proof
+from sw.asset_conformance import proof as asset_proof
 from sw.conformance import conformance
 from sw.expressions import AssemblyError
 
@@ -76,6 +77,10 @@ def parser():
     linked_proof.add_argument("--mutate", choices=("relocation", "checksum"))
     linked_proof.add_argument("--tag")
     linked_proof.add_argument("--json", action="store_true")
+    asset_check = sw.add_parser("asset-conformance", help="decode original assets and verify ASSET build integration")
+    asset_check.add_argument("--mutate", choices=("planes", "bitorder", "columns", "rows", "tiles"))
+    asset_check.add_argument("--tag")
+    asset_check.add_argument("--json", action="store_true")
     return result
 
 
@@ -109,6 +114,7 @@ def main(argv=None, root=None):
                     provenance = {k: report[k] for k in ("commit", "dirty_tree_fingerprint", "host", "python") if k in report}
                     report.update(oracle(root, build, args, provenance) if args.action == "oracle"
                                   else conformance(root, build, args, provenance) if args.action == "conformance"
+                                  else asset_proof(root, build, args, provenance) if args.action == "asset-conformance"
                                   else link_proof(root, build, args, provenance) if args.action == "link-conformance"
                                   else build_target(root, build, args, provenance) if args.action == "build"
                                   else assemble_target(root, build, args, provenance))

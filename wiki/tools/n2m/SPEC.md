@@ -675,3 +675,10 @@ including deliberate relocation/checksum mutations. The
 output schemas, placement, entry eligibility, complete cache inventory and
 failure publication. These software commands share the existing tag lock and
 manifest handling and do not claim physical or CPU verification.
+
+Version-two software targets declare original shade sources and authorship.
+`sw assemble` and `sw build` convert them into immutable ASSET inputs with the
+same tag/cache/failure rules. `sw asset-conformance` verifies the original fixture
+with an independent decoder; plane/bit-order mutations must fail. The
+[asset contract](../sw/SPEC.md#original-assets) owns schema, ordering, diagnostics
+and retained evidence. No licensed simulation is involved.
