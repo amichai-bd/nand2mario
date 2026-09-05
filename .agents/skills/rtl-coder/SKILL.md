@@ -14,11 +14,18 @@ requirements/design aligned with `src/rtl/`, verification, and evidence.
    Use the [product register convention](../../../wiki/src/rtl-reference-style.md#product-register-convention)
    for ordinary registers: `DFF`, `DFF_RST`, `DFF_RST_VAL`, `DFF_EN`, and
    `DFF_RST_EN(Q, D, CLK, EN, RST, RESET_VAL)`. Keep reset polarity, priority,
-   enable holding and stage timing explicit; preserve documented specialized
-   asynchronous/attributed blocks. Never substitute synchronous reset for async.
+   enable holding and stage timing explicit. Use `DFF_ARST_VAL` or
+   `DFF_ARST_N_VAL` for asynchronous resets, retaining declarations, names,
+   initializers and synchronizer attributes. Async reset or attributes alone do
+   not justify a raw sequential block. An unavoidable inference exception needs
+   a concrete reason beside the block and in its owner contract, plus review.
 3. Avoid latches, implicit nets, unsafe crossings, and vendor logic outside FPGA
    wrappers.
-4. Align wiki, assertions, and directed tests with behavior changes using the
+4. Use the [named assertion convention](../../../wiki/src/rtl-reference-style.md#named-assertion-convention)
+   for meaningful local invariants. Review argument order, reset polarity, prior
+   sampled controls and asynchronous history invalidation. Prove a named fatal
+   failure in Questa and synthesis exclusion; keep the independent oracle.
+   Align wiki, assertions, and directed tests with behavior changes using the
    [review guide](../agent-flow/references/review.md).
 5. Run the smallest compile and checked Questa simulation that prove the contract.
    Use Questa only for new simulation evidence; do not start Icarus runs.

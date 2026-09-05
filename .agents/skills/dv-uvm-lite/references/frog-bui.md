@@ -13,7 +13,7 @@ or a nand2mario behavior contract. No source is imported; the
 | UART checker | Compares validity alignment, unknowns and all public typed fields; reports detailed actual/expected values and counts. A data-only comparison can miss a lost or duplicated transaction. |
 | Host smoke | Exercises parser, bridge and full serial paths with delayed responses. Layer local error/recovery checks and composed backpressure/ordering checks. Its watchdog prints failure then calls `$finish`; do not copy that completion policy. Require nonzero raw failure and an exact diagnostic. |
 | Display smoke | Checks byte readback, contention, foreground/background selection, known outputs, sync widths and boundaries, with a fatal watchdog. Some checks use hierarchy; internal state is diagnostic context, not independent golden truth. |
-| Assertion helpers | The hold check uses prior sampled control because a hold affects the next observed update. Derive sampling from the consuming contract, guard reset and valid history, and prove a deliberate failure. No reference assertion helper is adopted. |
+| Assertion helpers | The hold check uses prior sampled control because a hold affects the next observed update. Derive sampling from the consuming contract, guard reset and valid history, and prove a deliberate failure. The project uses the reference argument order with original N2M helpers, fatal exits and explicit asynchronous history validity; no source is imported. |
 
 The [skill](../SKILL.md) owns the working method; the
 [baseline contract](../../../../wiki/src/dv/baseline/SPEC.md) owns the project's

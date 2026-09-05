@@ -23,17 +23,25 @@ an extra semicolon. Parenthesize argument expressions containing commas.
 | `DFF_EN(Q, D, CLK, EN)` | Capture D when enabled; otherwise hold |
 | `DFF_RST_EN(Q, D, CLK, EN, RST, RESET_VAL)` | Reset value takes priority; otherwise capture D when enabled or hold |
 
-All assignments are nonblocking. Reset is synchronous and active high; input
+The five forms above use synchronous active-high reset. Their assignments are
+nonblocking; input
 changes between positive edges do not update Q. Q's declared width controls the
 assignment width. Use explicitly sized reset values where nonzero and make
 signedness and truncation intentional. Forms without reset have no defined
 initial value. Controls must meet the consuming module's known-value contract.
 
-Preserve explicit specialized blocks for asynchronous assertion/synchronized
-release, attributed synchronizer chains, memory inference or vendor primitives
-when an ordinary macro cannot represent the required semantics. Document the
-exception beside the block and in its owner contract. Never replace an
-asynchronous reset with a synchronous macro. Testbench stimulus, reference models
+Use `DFF_ARST_VAL(Q, D, CLK, RST, RESET_VAL)` for asynchronous active-high
+reset, and `DFF_ARST_N_VAL(Q, D, CLK, RST_N, RESET_VAL)` for active-low reset.
+Reset immediately assigns the explicit value and takes priority over D; otherwise
+Q captures D on the rising edge. Preserve declaration initializers, names and
+synchronizer attributes. These forms cover reset synchronizers, qualification
+counters and domain state; asynchronous reset or attributes alone are not an
+exception. Keep next-state hold and priority explicit in combinational logic.
+
+An explicit sequential block needs a concrete inference requirement that the
+shared forms cannot express, such as a memory write port. Document that reason
+beside the block and in its owner contract, and review the synthesized result.
+Never replace asynchronous reset with synchronous reset. Testbench stimulus, reference models
 and scoreboards remain independent; this convention does not require rewriting
 them with product macros.
 
@@ -41,9 +49,10 @@ The vocabulary and argument order follow the inspected committed
 frog-bui header `src/rtl/common/macros.svh` at local unpublished commit
 `da16dc841d50c6c48827225b91dac6b8716b4311`. These are originally written
 nand2mario definitions of the specified register operations, not an imported
-header. No memory or assertion macro library is adopted. The
+header. The asynchronous forms are original project extensions; the inspected
+reference defines synchronous register forms. No memory macro library is adopted. The
 [source policy](../tools/provenance.md) still prohibits unlicensed source reuse.
-The [directed test plan](../../src/dv/common/README.md) verifies the five forms,
+The [directed test plan](../../src/dv/common/README.md) verifies the register and assertion forms,
 and the [tile contract](rtl/display/MAS_display.md) retains its independent oracle.
 
 The owner supplied this local reference checkout. Its inspected files matched
@@ -51,6 +60,39 @@ the commit; this revision is not available through an upstream GitHub permalink.
 Reproduce inspection from that checkout with
 `git show da16dc841d50c6c48827225b91dac6b8716b4311:src/rtl/common/macros.svh`.
 This local register inspection is separate from the published historical study below.
+
+## Named assertion convention
+
+Use the shared header for local sampled invariants in product RTL and DV.
+These module-item macros follow the inspected frog-bui argument order with
+project names and original implementations:
+
+| Form | Check |
+|---|---|
+| `N2M_ASSERT(NAME, CLK, RESET, PROPERTY)` | Property on rising CLK, disabled while RESET is high |
+| `N2M_ASSERT_NO_RST(NAME, CLK, PROPERTY)` | Property on every rising CLK, including reset |
+| `N2M_ASSERT_NEVER(NAME, CLK, RESET, CONDITION)` | CONDITION must be false |
+| `N2M_ASSERT_KNOWN(NAME, CLK, RESET, SIGNAL)` | SIGNAL has no X or Z bits |
+| `N2M_ASSERT_STABLE_WHEN(NAME, CLK, RESET, HOLD, SIGNAL)` | Prior sampled HOLD requires SIGNAL to remain stable |
+
+Failures use `$fatal(1)` with the assertion name and `%m` instance hierarchy.
+Choose meaningful unique names within each scope. RESET is active high even when
+the checked register has an active-low reset; pass its inverted reset signal.
+The stable helper initializes history invalid and clears it asynchronously on
+RESET. It skips the first sampled edge after reset, including a pulse wholly
+between clocks. Its prior-edge HOLD rule permits an update preceding entry into
+hold. The consuming contract must establish which edge owns a control.
+
+`SYNTHESIS` removes all assertion declarations, checks and history state. The
+[FPGA builder](../tools/n2m/SPEC.md#hdl-includes) explicitly defines it; simulation
+normally does not. Prove both exclusion and an exact named nonzero failure in
+Questa. The [test plan](../../src/dv/common/README.md) covers each helper.
+Transaction scoreboards retain independent expected/actual diagnostics; these
+local helpers do not replace the oracle or require a procedural-check macro.
+
+The reference's sampled-hold idea and names are process observations. Its helper
+uses `$error`; this project deliberately requires fatal raw exits and adds reset
+history validity. No reference source is copied or licensed by this convention.
 
 ## Sources and limits
 

@@ -201,7 +201,7 @@ cache lookup or compilation. Closure is limited to 256 source/header files.
 Comments are ignored; includes in every conditional branch are dependencies.
 This is deliberately bounded parsing, not a general preprocessor.
 
-The repository root is the compiler include directory for Questa and Quartus. Every transitive header and the resolver implementation is fingerprinted;
+The repository root is the compiler include directory for Questa and Quartus. Quartus QSF explicitly defines `SYNTHESIS=1`, matching synthesis dependency inspection and excluding simulation assertion checks/history. Normal Questa compilation leaves this macro undefined. Every transitive header and the resolver implementation is fingerprinted;
 a changed header rebuilds the stage. A missing or unsupported dependency cannot
 reuse previous success. FPGA headers retain the existing prohibition on external
 file reads; constraints retain their separate SDC checks. The
