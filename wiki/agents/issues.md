@@ -17,7 +17,8 @@ Every form uses:
 5. `Success criteria`
 
 `TL;DR` summarizes the issue in one or two sentences. Link the governing wiki
-page or gap in the specification field, or name its planned path.
+page or gap in the specification field; name its planned path only if the page
+does not exist.
 
 End every issue with one observable goal and three to five success checks.
 

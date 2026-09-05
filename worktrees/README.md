@@ -53,7 +53,7 @@ If remote state is unclear, investigate before any retry or cleanup.
 
 ## Clean up after merge
 
-The author reports its squash merge. Root verifies the PR merged, referenced
+The author reports its squash merge. Root verifies the PR merged, its closing
 issues closed, and required main checks/deployment passed. Stop active worktree
 users before removal. If a worktree ran a local preview, follow
 [preview cleanup](../.agents/skills/agent-flow/references/preview-cleanup.md).
