@@ -134,8 +134,8 @@ and test-method observations.
 
 Ordinary state uses the shared register macros. Attributed two-stage crossing
 registers use the explicit asynchronous reset macro with unchanged stage names
-and polarity. The RAM's separate enabled read/write blocks are the memory
-inference exception: neither array nor output register has reset or initialization.
+and polarity. The RAM's separate enabled read/write ports also use the shared
+enable macro; neither array nor output register has reset or initialization.
 Named concurrent assertions check source ordering/known values, immutable writer
 ownership, pending bundle stability and display-bank changes only after a swap
 boundary. The source-side ownership model and full raster oracle retain detailed
