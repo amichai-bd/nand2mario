@@ -1,9 +1,13 @@
 """Validate fresh fixed-profile builder records before controller attestation."""
 import json
+import hashlib
+import os
+import re
+from types import SimpleNamespace
 from pathlib import Path
-from tools.n2m import baseline, fpga, simulation
+from tools.n2m import baseline, fpga, fpga_pll, simulation, questa
 from tools.n2m.hdl import dependencies
-from tools.n2m.records import git_state
+from tools.n2m.records import git_state, digest as builder_digest
 from tools.n2m.questa import diagnostic
 from .model import PROFILES, require
 from .storage import beneath, file_hash, inventory
@@ -40,11 +44,13 @@ def check_artifacts(root, build, record):
         require(file_hash(path) == expected, 'artifact hash mismatch')
 
 
-def check_record(root, req, profile, target, tag, raw_exit, printed):
+def check_record(root, req, profile, target, tag, raw_exit, printed, selected_tools):
     build = root / 'workdir/builds' / tag
     stage = build / ('sim/test' if profile == 'questa-baseline' else 'fpga') / target
     record = json.loads((stage / 'result.json').read_text(encoding='utf-8'))
     require(all(printed.get(k) == v for k, v in record.items()), 'printed/stage record mismatch')
+    clean = builder_digest({'diff': hashlib.sha256(b'').hexdigest(), 'untracked': {}})
+    require(git_state(root)['dirty_tree_fingerprint'] == clean, 'execution checkout changed')
     require(record['cache'] == 'BUILT' and record['provenance']['commit'] == req['sha']
             and record['provenance']['dirty_tree_fingerprint'] == git_state(root)['dirty_tree_fingerprint'],
             'fresh authorized source execution')
@@ -59,6 +65,7 @@ def check_record(root, req, profile, target, tag, raw_exit, printed):
     for path in attempt.rglob('*'):
         if path.is_file() and path.name != 'result.json':
             require(path.relative_to(root).as_posix() in record['artifacts'], 'truncated attempt inventory')
+    validate_commands(root, profile, record, attempt, build, target, selected_tools)
     if profile == 'questa-baseline':
         definition, _ = simulation.load_target(root, target)
         require(raw_exit == 0 and record['status'] == 'PASS' and record['seed'] == 1
@@ -106,3 +113,56 @@ def check_record(root, req, profile, target, tag, raw_exit, printed):
             require('Error (332000): checked endpoint count mismatch: reset_0' in text and
                     record['error'] == 'Quartus exit 3; see compile.log', 'exact invalid constraint diagnostic')
     return {'target': target, 'record': record, 'complete_build_inventory': inventory(build)}
+
+
+def executable(info, directory, name):
+    expected = (Path(directory) / (name + ('.exe' if os.name == 'nt' else ''))).resolve()
+    require(info['path'] == str(expected) and expected.is_file() and info['sha256'] == file_hash(expected),
+            'selected executable identity: ' + name)
+    return str(expected)
+
+
+def validate_commands(root, profile, record, attempt, build, target, selected_tools):
+    if profile == 'questa-baseline':
+        info = record['tools']; directory = selected_tools['questa']
+        require(set(info) == {'backend', 'tools', 'discovery'} and info['backend'] == 'questa' and
+                set(info['tools']) == {'vlib', 'vmap', 'vlog', 'vsim'}, 'complete Questa identity')
+        paths = {name: executable(detail, directory, name) for name, detail in info['tools'].items()}
+        require(len(info['discovery']) == 3, 'complete Questa version probes')
+        for name, probe in zip(('vmap', 'vlog', 'vsim'), info['discovery']):
+            require(probe['argv'] == [paths[name], '-version'] and probe['exit_code'] == 0 and
+                    'Questa' in probe['output'] and diagnostic(probe['output']) is None and
+                    info['tools'][name]['version'] == probe['output'].strip(), 'Questa version identity')
+        definition, _ = simulation.load_target(root, target)
+        compiler = build / 'compile/questa' / target / attempt.name
+        adapter = SimpleNamespace(tools=paths, path=lambda p: str(Path(p).resolve()))
+        expected = questa.commands(adapter, root, definition, 1, compiler, attempt, prepare=False)
+        require(len(expected) == len(record['commands']), 'complete Questa argv chain')
+        for actual, (argv, cwd, _, _) in zip(record['commands'], expected):
+            require(actual['argv'] == argv and actual['cwd'] == str(cwd) and actual['timeout_seconds'] == 60,
+                    'exact Questa command arguments/working directory/timeout')
+        require(record['fingerprint'] == builder_digest({'inputs': record['inputs'], 'tools': info,
+                                                         'options': record['options']}), 'Questa fingerprint')
+    else:
+        info = record['tools']; directory = selected_tools['quartus']
+        require(set(info) == {*fpga.TOOLS, 'altpll'}, 'complete Quartus identity')
+        paths = {name: executable(info[name], directory, name) for name in fpga.TOOLS}
+        require(info['altpll'] == fpga_pll.identity(directory), 'complete ALTPLL dependency identity')
+        for name in fpga.TOOLS:
+            text = (attempt / f'{name}-version.log').read_text(encoding='utf-8')
+            version = re.search(r'(?m)^Version (.+)$', text)
+            require(version and 'Quartus' in text and info[name]['version'] == version[1].strip(),
+                    'Quartus version identity')
+            fpga.diagnostics(text)
+        require(len({info[name]['version'] for name in fpga.TOOLS}) == 1, 'matched Quartus versions')
+        expected = [[paths[name], '--version'] for name in fpga.TOOLS]
+        expected += [fpga_pll.generation_command(info['altpll'], record['definition']['pll']),
+                     [paths['quartus_sh'], '--flow', 'compile', 'design']]
+        if target == 'clocking-nominal':
+            expected += [[paths['quartus_sta'], '-t', 'audit.tcl'],
+                         [paths['quartus_eda'], '--simulation', '--tool=modelsim', '--format=verilog', 'design']]
+        require(len(expected) == len(record['commands']), 'complete Quartus argv chain')
+        require(all(actual['argv'] == argv and actual['cwd'] == str(attempt) and actual['timed_out'] is False
+                    for actual, argv in zip(record['commands'], expected)), 'exact Quartus command arguments/cwd')
+        require(record['fingerprint'] == builder_digest({'inputs': record['inputs'], 'tools': info,
+                    'definition': record['definition'], 'timeout': 600}), 'Quartus fingerprint')

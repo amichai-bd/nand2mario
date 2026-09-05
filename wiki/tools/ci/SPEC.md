@@ -24,7 +24,9 @@ final publication allows only that same SHA still reachable from protected main.
 API errors, missing fields, unexpected identities or ambiguous collections fail.
 
 The local controller checkout must be clean, with HEAD equal to the authorized
-SHA. Verify configuration, controller and workflow blobs at that revision. Child
+SHA. Reject assume-unchanged/skip-worktree index flags and compare every tracked file
+with its authorized Git blob, allowing only CRLF-to-LF checkout normalization
+for text. Git status alone is insufficient source identity. Child
 execution uses a separate detached checkout created at that same immutable SHA;
 no remote job source is executed before admission. Reviewed main code, installed
 tools, the controller account and the local operator are trusted. This is not a
@@ -46,7 +48,10 @@ additional queueing, not a replacement for this lock.
 
 Recheck admission and cancellation before each child and before final publication.
 A rerun, cancelled job, changed workflow/account, lost protection or rewritten main
-invalidates publication. Main advancing normally does not retarget the admitted SHA.
+invalidates publication when observed. API checks and status creation are not an
+atomic GitHub transaction; the hosted waiter rechecks admission and latest status
+immediately before acceptance. A cancelled waiter cannot turn a late status into
+a successful hosted job. Main advancing normally does not retarget the admitted SHA.
 No background loop launches work; each local invocation is explicit.
 
 ## Profiles and records
@@ -57,8 +62,10 @@ every command, raw exit, source/tool hashes and complete artifact inventory. Exp
 negative outcomes require the exact registered failure diagnostic and nonzero raw
 exit; a generic failure or missing tool is not a successful negative sample.
 
-Validate child records against selected commands and source SHA, their complete
-required files and actual file hashes. Cache-only samples cannot count as fresh
+Validate child records against complete fixed argv, working directories, selected
+executable paths/content hashes/version probes, source SHA, recomputed builder
+fingerprint, complete required files and actual file hashes. The validator uses
+shared read-only command plans without rewriting retained artifacts. Cache-only samples cannot count as fresh
 licensed execution. Freeze a canonical JSON envelope with admission tuple, fresh
 invocation ID, controller/config/profile/input/tool hashes, each command and raw
 exit, outcome and all immutable artifact hashes. Hash this complete envelope before

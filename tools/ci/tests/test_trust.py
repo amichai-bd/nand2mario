@@ -279,4 +279,15 @@ class ControllerTests(unittest.TestCase):
         (root / 'cfg/trusted-ci.json').write_text('{}', encoding='utf-8')
         with self.assertRaisesRegex(ValueError, 'not clean'): controller.sources(root, cfg, req)
 
+    def test_hidden_index_flags_cannot_authorize_changed_source(self):
+        for flag in ('--assume-unchanged', '--skip-worktree'):
+            with self.subTest(flag=flag):
+                root, cfg, req, _ = self.prepare_repo(flag[2:])
+                subprocess.run(['git', '-C', str(root), 'update-index', flag, '.gitignore'], check=True)
+                (root / '.gitignore').write_text('workdir/\nchanged\n', encoding='utf-8')
+                self.assertEqual(controller.git(root, 'status', '--porcelain'), '')
+                with self.assertRaisesRegex(ValueError, 'hidden index flags'):
+                    controller.sources(root, cfg, req)
+
+
 if __name__ == '__main__': unittest.main()

@@ -29,8 +29,37 @@ def sources(root, cfg, req):
     require(git(root, 'hash-object', cfg['workflow_path']) == cfg['workflow_blob'], 'local workflow blob')
     require(json.loads((root / 'cfg/trusted-ci.json').read_text(encoding='utf-8')) == cfg,
             'fixed tracked configuration')
-    names = [name for name in git(root, 'ls-files', '-z').split('\0') if name]
-    return {name: file_hash(root / name) for name in names}
+    flags = git(root, 'ls-files', '-v', '-z').split('\0')
+    require(all(item.startswith('H ') for item in flags if item), 'hidden index flags are unsupported')
+    tree = subprocess.check_output(['git', '-C', str(root), 'ls-tree', '-rz', '--full-tree', req['sha']])
+    entries = []
+    for entry in tree.split(b'\0'):
+        if not entry:
+            continue
+        metadata, name = entry.split(b'\t', 1)
+        mode, kind, blob = metadata.decode('ascii').split()
+        require(mode in ('100644', '100755') and kind == 'blob', 'non-file controller source')
+        entries.append((name.decode('utf-8'), blob))
+    require({item[2:] for item in flags if item} == {name for name, _ in entries}, 'index/commit file inventory')
+    batch = subprocess.run(['git', '-C', str(root), 'cat-file', '--batch'],
+                           input=('\n'.join(blob for _, blob in entries) + '\n').encode('ascii'),
+                           capture_output=True, check=True).stdout
+    offset = 0
+    hashes = {}
+    for name, expected_blob in entries:
+        end = batch.index(b'\n', offset)
+        blob, kind, size = batch[offset:end].decode('ascii').split()
+        require(blob == expected_blob and kind == 'blob', 'authorized Git blob identity')
+        start = end + 1; offset = start + int(size) + 1
+        expected = batch[start:offset - 1]
+        path = root / name
+        require(not path.is_symlink() and path.resolve().is_relative_to(root.resolve()), 'source path boundary')
+        actual = path.read_bytes()
+        require(actual == expected or (b'\0' not in expected and actual.replace(b'\r\n', b'\n') == expected),
+                'source bytes differ from authorized Git blob: ' + name)
+        hashes[name] = file_hash(path)
+    require(offset == len(batch), 'complete Git blob stream')
+    return hashes
 
 
 def child_environment():
@@ -63,7 +92,7 @@ def run_profile(root, cfg, req, invocation, folder, tools, recheck):
         freeze(output / 'exit.json', {'exit_code': result.returncode, 'finished': now()})
         require(not result.stderr.strip(), 'unexpected child stderr')
         record = json.loads(result.stdout)
-        checked = check_record(checkout, req, req['profile'], target, tag, result.returncode, record)
+        checked = check_record(checkout, req, req['profile'], target, tag, result.returncode, record, tools)
         results.append({'argv': argv, 'raw_exit': result.returncode, **checked})
     return results
 
