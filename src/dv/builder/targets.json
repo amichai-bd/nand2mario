@@ -1,0 +1,16 @@
+{
+  "builder-smoke": {
+    "sources": ["src/dv/builder/builder_smoke.sv"],
+    "top": "builder_smoke",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS builder-smoke"
+  },
+  "builder-smoke-fail": {
+    "sources": ["src/dv/builder/builder_smoke.sv"],
+    "top": "builder_smoke",
+    "args": ["+inject_failure"],
+    "expected_exit": "zero",
+    "signature": "PASS builder-smoke"
+  }
+}
