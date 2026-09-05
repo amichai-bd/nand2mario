@@ -48,6 +48,7 @@ module tb_vga;
     int pix_edges = 0;
     int seen_banks = 0;
     bit mutation_reuse, mutation_swap;
+    logic [1:0] mutation_bank;
     bit have_previous_display = 0;
     logic [1:0] previous_display_bank;
     logic [63:0] previous_display_seq;
@@ -238,7 +239,10 @@ module tb_vga;
         if (mutation_swap) begin
             wait (video_y == 10 && video_x == 100);
             @(negedge clk_pix);
-            force dut.display_bank = 2'd2;
+            // Choose the non-writer alternative so the intended swap assertion
+            // wins without also injecting a cross-domain ownership violation.
+            mutation_bank = 2'(3 - int'(dut.display_bank) - int'(dut.writer_bank));
+            force dut.display_bank = mutation_bank;
             repeat (5) @(negedge clk_pix);
             $fatal(1, "MUTATION_MISSED: active swap");
         end
