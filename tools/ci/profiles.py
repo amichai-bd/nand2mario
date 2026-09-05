@@ -10,6 +10,7 @@ from tools.n2m.hdl import dependencies
 from tools.n2m.records import git_state, digest as builder_digest
 from tools.n2m.questa import diagnostic
 from .model import PROFILES, require
+from .diagnostics import invalid_compile
 from .source import verify_sources
 from .storage import beneath, file_hash, inventory
 
@@ -101,6 +102,8 @@ def check_record(root, req, profile, target, tag, raw_exit, printed, selected_to
             require(raw_exit == 0 and record['status'] == 'PASS' and
                     fpga.complete_cache(record, record['fingerprint'], root, build, record['definition']),
                     'complete checked FPGA evidence')
+            for name in ('generate-pll.log', 'compile.log', 'audit.log', 'netlist.log'):
+                fpga.diagnostics((attempt / name).read_text(encoding='utf-8'))
             names = [Path(c['argv'][0]).stem.lower() for c in record['commands']]
             require(names == [*fpga.TOOLS, 'qmegawiz', 'quartus_sh', 'quartus_sta', 'quartus_eda'] and
                     all(c['exit_code'] == 0 for c in record['commands']), 'fresh complete FPGA tool chain')
@@ -120,9 +123,10 @@ def check_record(root, req, profile, target, tag, raw_exit, printed, selected_to
                         and path.stat().st_size > 0, 'required invalid-target evidence: ' + name)
             require((attempt / 'checked.sdc').read_text(encoding='utf-8') ==
                     fpga.checked_constraints(record['definition']), 'invalid-target checked constraints')
+            fpga.diagnostics((attempt / 'generate-pll.log').read_text(encoding='utf-8'))
             text = (attempt / 'compile.log').read_text(encoding='utf-8')
-            require('Error (332000): checked endpoint count mismatch: reset_0' in text and
-                    record['error'] == 'Quartus exit 3; see compile.log', 'exact invalid constraint diagnostic')
+            invalid_compile(text, attempt, selected_tools['quartus'])
+            require(record['error'] == 'Quartus exit 3; see compile.log', 'exact invalid constraint diagnostic')
     return {'target': target, 'record': record, 'source_inventory': source_inventory,
             'complete_build_inventory': inventory(build)}
 
@@ -150,9 +154,12 @@ def validate_commands(root, profile, record, attempt, build, target, selected_to
         adapter = SimpleNamespace(tools=paths, path=lambda p: str(Path(p).resolve()))
         expected = questa.commands(adapter, root, definition, 1, compiler, attempt, prepare=False)
         require(len(expected) == len(record['commands']), 'complete Questa argv chain')
-        for actual, (argv, cwd, _, _) in zip(record['commands'], expected):
+        for actual, (argv, cwd, log, exit_class) in zip(record['commands'], expected):
             require(actual['argv'] == argv and actual['cwd'] == str(cwd) and actual['timeout_seconds'] == 60,
                     'exact Questa command arguments/working directory/timeout')
+            require(diagnostic(log.read_text(encoding='utf-8'),
+                    definition['signature'] if exit_class == 'nonzero' else None) is None,
+                    'unexplained diagnostic in Questa command log')
         require(record['fingerprint'] == builder_digest({'inputs': record['inputs'], 'tools': info,
                                                          'options': record['options']}), 'Questa fingerprint')
     else:

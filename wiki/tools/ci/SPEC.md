@@ -62,7 +62,14 @@ Only fixed Questa baseline good/broken and Quartus clocking/invalid profiles exi
 Use fresh UUID-derived tags and the shared builder with rebuild requested. Record
 every command, raw exit, source/tool hashes and complete artifact inventory. Invalid Quartus runs still require generated HDL, project/checked constraint
 files, generation/compile/failure logs and every tool version record. The missing
-endpoint must be the intended `reset_0` failure after successful generation. Expected
+endpoint must be the intended `reset_0` failure after successful generation. The invalid
+compile classifier accepts only the complete observed missing-endpoint cascade:
+scoped missing pin, `reset_0`, failed SDC read/fitting and exact flow summaries,
+plus the existing classified optional LogicLock and electrical notices. IDs alone
+are insufficient: message, path, severity and counts must match. Extra, duplicated,
+missing or unrelated warnings/errors reject the negative sample. Generation logs
+and successful compile/audit/netlist logs retain the builder's strict diagnostic
+classification. This explains an intentional constraint failure, not a timing waiver. Expected
 negative outcomes require the exact registered failure diagnostic and nonzero raw
 exit; a generic failure or missing tool is not a successful negative sample.
 

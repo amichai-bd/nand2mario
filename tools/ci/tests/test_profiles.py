@@ -16,6 +16,30 @@ from tools.n2m.records import atomic_json, digest, git_state
 REPO = Path(__file__).resolve().parents[3]
 
 
+def negative_text(attempt, binary):
+    # Independent fixed fixture for the observed missing-endpoint cascade.
+    lines = [
+        'Warning (330000): Timing-Driven Synthesis is skipped because it could not initialize the timing netlist',
+        'Warning (292013): Feature LogicLock is only available with a valid subscription license. You can purchase a software subscription to gain full access to this feature.',
+        f'Warning (332174): Ignored filter at checked.sdc(1): u_clocking|u_reset|missing_register[0]|clrn could not be matched with a pin File: {(attempt / "checked.sdc").as_posix()} Line: 1',
+        'Error (332000): checked endpoint count mismatch: reset_0',
+        'Critical Warning (332008): Read_sdc failed due to errors in the SDC file',
+        "Error (171000): Can't fit design in device",
+        'Warning (169177): 1 pins must meet Intel FPGA requirements for 3.3-, 3.0-, and 2.5-V interfaces. For more information, refer to AN 447: Interfacing MAX 10 Devices with 3.3/3.0/2.5-V LVTTL/LVCMOS I/O Systems.',
+        'Error: Quartus Prime Fitter was unsuccessful. 2 errors, 4 warnings',
+        'Error (293001): Quartus Prime Full Compilation was unsuccessful. 4 errors, 5 warnings',
+        f'Error: Flow compile (for project {(attempt / "design").as_posix()}) was not successful',
+        'Error: ERROR: Error(s) found while running an executable. See report file(s) for error message(s). Message log indicates which executable was run last.',
+        f'Error (23031): Evaluation of Tcl script {(binary.parent / "common/tcl/internal/qsh_flow.tcl").as_posix()} unsuccessful',
+        'Error: Quartus Prime Shell was unsuccessful. 11 errors, 5 warnings',
+    ]
+    lines += ['    Error: Peak virtual memory: 123 megabytes',
+              '    Error: Processing ended: Sun Sep  6 01:43:38 2026',
+              '    Error: Elapsed time: 00:00:02',
+              '    Error: Total CPU time (on all processors): 00:00:02'] * 2
+    return '\n'.join(lines) + '\n'
+
+
 class ProfileTests(unittest.TestCase):
     def setUp(self):
         base = REPO / 'workdir/.tmp'; base.mkdir(parents=True, exist_ok=True)
@@ -213,7 +237,7 @@ class ProfileTests(unittest.TestCase):
         for name in names: self.write(self.attempt / name)
         self.write(self.attempt / 'checked.sdc', fpga.checked_constraints(definition))
         if invalid:
-            self.write(self.attempt / 'compile.log', 'Error (332000): checked endpoint count mismatch: reset_0\n')
+            self.write(self.attempt / 'compile.log', negative_text(self.attempt, self.bin))
             self.write(self.attempt / 'failure.log', 'Quartus exit 3; see compile.log\n')
         self.record = {'status': 'FAIL' if invalid else 'PASS', 'cache': 'BUILT', 'target': self.target,
                        'provenance': git_state(self.root), 'inputs': profiles.expected_inputs(self.root, 'quartus-clocking', self.target),
@@ -284,6 +308,24 @@ class ProfileTests(unittest.TestCase):
         self.record['provenance'] = git_state(self.root)
         self.republish()
         with self.assertRaisesRegex(ValueError, 'hidden index flags'): self.check()
+
+
+    def test_mixed_or_incomplete_negative_diagnostics_are_rejected(self):
+        self.fpga_record(invalid=True)
+        original = negative_text(self.attempt, self.bin)
+        for suffix in ('Warning (999999): unrelated warning\n', 'Error (999999): unrelated error\n',
+                       'Error (332000): checked endpoint count mismatch: reset_0\n'):
+            self.write(self.attempt / 'compile.log', original + suffix); self.fpga_republish()
+            with self.assertRaises(ValueError): self.fpga_check()
+        for text in (original.replace('missing_register[0]', 'other_register[0]'),
+                     original.replace('2 errors, 4 warnings', '3 errors, 4 warnings'),
+                     original.replace('Read_sdc failed due to errors in the SDC file', 'unrelated failure')):
+            self.write(self.attempt / 'compile.log', text); self.fpga_republish()
+            with self.assertRaises(ValueError): self.fpga_check()
+        self.write(self.attempt / 'compile.log', original)
+        self.write(self.attempt / 'generate-pll.log', 'Warning (999999): unrelated warning\n')
+        self.fpga_republish()
+        with self.assertRaises(ValueError): self.fpga_check()
 
 
 if __name__ == '__main__': unittest.main()
