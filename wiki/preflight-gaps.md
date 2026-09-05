@@ -1,6 +1,6 @@
 # Gaps before implementation
 
-Status: product P0 gaps remain open; GAP-001, GAP-003, GAP-004, and GAP-009 closed
+Status: product P0 gaps remain open; GAP-001, GAP-002, GAP-003, GAP-004, and GAP-009 closed
 
 ## Purpose
 
@@ -26,7 +26,7 @@ Priorities:
 | ID | Priority | State | Issue | Gap | Closed when |
 |---|---|---|---|---|---|
 | GAP-001 | P0 | Closed | [#24](https://github.com/amichai-bd/nand2mario/issues/24) | Scope and success contract | DMG target, releases, and non-goals are approved |
-| GAP-002 | P0 | Open | [#25](https://github.com/amichai-bd/nand2mario/issues/25) | License, ROM policy, and provenance | Licenses and reuse rules are committed |
+| GAP-002 | P0 | Closed | [#25](https://github.com/amichai-bd/nand2mario/issues/25) | License, ROM policy, and provenance | Approved private source policy, provenance rules, and practical content safeguards are committed |
 | GAP-003 | P0 | Closed | [#26](https://github.com/amichai-bd/nand2mario/issues/26) | Build command | A minimal `n2m` command runs from a fresh shell |
 | GAP-004 | P0 | Closed | [#27](https://github.com/amichai-bd/nand2mario/issues/27) | Real environment doctor | Portable smoke and read-only identity checks work; licensed runtime evidence remains in GAP-008 |
 | GAP-005 | P0 | Open | [#28](https://github.com/amichai-bd/nand2mario/issues/28) | Board wiring and safe bring-up | VGA test card and UART ping pass with documented wiring |
@@ -71,27 +71,32 @@ Create `Project charter and release acceptance` with no RTL changes.
 
 **Current state**
 
-The repository has no license. The inspected `frog-bui` commit also has no root
-license file. External cores and test packages use different licenses.
+The [source policy](tools/provenance.md) records the owner's decision to keep
+original hardware and software private with no reuse grant. No open-source
+license is selected. The [provenance index](../tools/provenance.json) links the
+existing dependency pins and notices. Ignore rules and required wiki checks
+reject protected file extensions and private paths, including forced tracked
+ASCII save files. The policy states detection limits and review duties.
 
 **Risk**
 
-Unclear reuse rights can prevent publication. Commercial ROMs or boot ROMs
-could be committed accidentally.
+Commercial content encoded as ordinary source text and unknown secret formats
+can evade automated checks. Independent provenance and diff review remain needed.
 
 **Close when**
 
-- Hardware and software licenses are selected.
+- The approved private/no-reuse-grant policy for hardware and software is committed.
 - A short third-party/provenance policy exists.
-- Each imported dependency has a name, URL, commit, license, and purpose.
+- Dependency records require name, URL, commit or version, license, purpose,
+  and local changes, linking existing authoritative records.
 - Commercial ROM, Nintendo boot ROM, save, screenshot, and generated-image rules
   are enforced by ignore and CI checks.
 - User ROMs are accepted only as ignored runtime paths.
 
-**Recommended default**
+**Reference reuse**
 
-Use permissive licenses where possible. Treat reference HDL as behavioral
-research until file-level reuse permission is confirmed.
+Treat reference HDL as behavioral research until file-level reuse permission is
+confirmed. Future dependency fetching remains in GAP-013.
 
 ## GAP-003 — Build command
 
