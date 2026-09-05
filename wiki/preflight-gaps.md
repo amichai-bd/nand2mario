@@ -1,6 +1,6 @@
 # Gaps before implementation
 
-Status: product P0 gaps remain open; GAP-003, GAP-004, and GAP-009 closed
+Status: product P0 gaps remain open; GAP-001, GAP-003, GAP-004, and GAP-009 closed
 
 ## Purpose
 
@@ -15,8 +15,8 @@ design.
 
 Priorities:
 
-- **P0** — close before functional Game Boy RTL starts, except the explicit
-  isolated-unit authorization in the current phase.
+- **P0** — close before functional Game Boy RTL starts, subject to the explicit
+  scoped evidence replacements in the current phase.
 - **P1** — close before the affected subsystem or shared integration starts.
 - **P2** — planned later; does not block early implementation.
 - **Deferred** — intentionally waiting for user authorization or a later phase.
@@ -25,7 +25,7 @@ Priorities:
 
 | ID | Priority | State | Issue | Gap | Closed when |
 |---|---|---|---|---|---|
-| GAP-001 | P0 | Open | [#24](https://github.com/amichai-bd/nand2mario/issues/24) | Scope and success contract | DMG target, releases, and non-goals are approved |
+| GAP-001 | P0 | Closed | [#24](https://github.com/amichai-bd/nand2mario/issues/24) | Scope and success contract | DMG target, releases, and non-goals are approved |
 | GAP-002 | P0 | Open | [#25](https://github.com/amichai-bd/nand2mario/issues/25) | License, ROM policy, and provenance | Licenses and reuse rules are committed |
 | GAP-003 | P0 | Closed | [#26](https://github.com/amichai-bd/nand2mario/issues/26) | Build command | A minimal `n2m` command runs from a fresh shell |
 | GAP-004 | P0 | Closed | [#27](https://github.com/amichai-bd/nand2mario/issues/27) | Real environment doctor | Portable smoke and read-only identity checks work; licensed runtime evidence remains in GAP-008 |
@@ -45,8 +45,9 @@ Priorities:
 
 **Current state**
 
-The direction is clear, but “entire Game Boy” could mean original DMG hardware,
-all later models, or every cartridge peripheral: very different projects.
+The [charter](src/project-charter.md) records the approved end-to-end DMG direction
+and approved DMG-family policy, bounded release acceptance, and deferred
+features. Issue #24 records the decision; its charter closes this gap.
 
 **Risk**
 
@@ -230,14 +231,20 @@ assertion library, reference adapters, coverage model, or regression baseline.
 
 **Temporary Questa deferral**
 
-The user authorized tile and doctor delivery while Questa is unavailable.
-Portable simulation, tile exhaustive/negative checks, independent review, and
-passing CI remain required. Licensed Questa elaboration, tile normal/negative
-runs, and the doctor's checked smoke remain outstanding under
-[#31](https://github.com/amichai-bd/nand2mario/issues/31); compilation alone is
-not a simulation pass. This defers only licensed evidence for those deliveries.
-Failed doctor checks still report FAIL. It does not close GAP-008 or change the
-criteria below, broader gates, or hardware authorization.
+The user has deferred all Questa simulation until they confirm it is available,
+including hardware/software implementation verification. Real portable
+simulation must compile, elaborate, run, and check expected results. Positive
+and deliberately failing checks, independent review, and passing CI remain
+required for affected delivery; compilation alone is not a simulation pass.
+
+Licensed Questa elaboration, tile normal/negative runs, the doctor's checked
+smoke, and the shared baseline's good/broken examples remain outstanding in
+[#31](https://github.com/amichai-bd/nand2mario/issues/31). Each affected later issue
+must identify any additional deferred Questa coverage and retained portable
+evidence. Resume the accumulated licensed checks when the user confirms
+availability. Failed doctor checks still report FAIL. GAP-008 remains open
+until its full close conditions are met; this deferral substitutes portable
+evidence only for implementation progress, not for licensed or physical proof.
 
 **Risk**
 
@@ -429,4 +436,5 @@ Treat a C-like compiler as a separate later epic.
 ## Required closing order
 
 Follow the [future P0 sequence and implementation gate](agents/bootstrap-plan.md#future-p0-sequence).
-Only the current phase's explicit exceptions may proceed before that sequence.
+The current phase names scoped evidence replacements for portable progress;
+all outstanding licensed and physical close conditions remain tracked here.
