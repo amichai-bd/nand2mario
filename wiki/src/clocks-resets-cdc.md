@@ -88,7 +88,12 @@ belongs to the VGA implementation contract; this page specifies its timing.
 ## Reset and run control
 
 A small always-running `clk_sys` reset controller uses the board reset request
-and FPGA configuration startup. The board wrapper maps the active-low manual
+and FPGA configuration startup. Configuration must initialize PLL reset asserted,
+qualification counters and readiness to zero, and both domain reset-release
+chains to the asserted state, even if the button is never pressed. Generated
+implementation must prove a supported MAX 10 power-up initialization or wrapper
+reset source establishes these values without a running pixel clock.
+The board wrapper maps the active-low manual
 reset input; #28 must verify its pin/polarity on hardware. Assert reset without
 waiting for a clock. After release, synchronize the raw input through two flops
 and require 500000 consecutive released system edges (10 ms nominal) before
@@ -107,7 +112,11 @@ phases, valid flags, counters, and emulated state. RAM contents need not be
 cleared; invalid banks cannot be displayed. Drive black until the first complete
 frame; reset drives RGB zero and sync inactive. Wait for both domain-ready
 levels, each synchronized into the peer domain, before offering or consuming a
-frame. A stopped pixel clock leaves its reset asserted and cannot grant a bank.
+frame. A pixel clock stopped during reset cannot complete reset release or grant
+a bank. A clock stopped after readiness while PLL lock remains high is not
+detected by this controller: ownership remains held, no acknowledgement occurs,
+and presentation may freeze while emulation continues. This contract provides
+lock-loss reset, not a separate clock-failure detector.
 
 A host emulated-core reset is synchronous in `clk_sys`; it clears DMG state,
 tick phase, and any partial writer frame, but keeps UART, PLL, VGA and frame
