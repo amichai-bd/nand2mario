@@ -21,6 +21,11 @@ constants come from generated exports of
 constants as explicit fingerprinted inputs. This page owns cartridge file
 construction, not a duplicate hardware address map. Privately selected ROMs are
 runtime inputs under the [source policy](provenance.md), never assembly assets.
+The builder supplies #30's canonical generated assembly prelude as a separately
+allowlisted input before target sources, even when its path is outside the target
+tree. Targets select its schema/profile identity, not an arbitrary external path.
+Normal `INCLUDE` confinement still applies; do not copy generated constants into
+each target to bypass it. Prelude definitions cannot be redefined by a target.
 
 ## Assembly language
 
