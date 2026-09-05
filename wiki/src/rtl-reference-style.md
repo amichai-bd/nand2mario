@@ -12,8 +12,8 @@ Declare SystemVerilog variables and nets without assignments. This applies to
 product RTL, FPGA wrappers, DV, shared headers and generated SV. Put continuous
 net drivers in separate `assign` statements. Put procedural assignments after
 all declarations in the containing block; declare loop variables before the
-`for` statement. Parameter/localparam values, enum members and genvar elaboration
-loops are compile-time definitions, not signal assignments.
+`for` statement, including genvar declarations. Parameter/localparam values
+and enum members are compile-time definitions, not signal assignments.
 
 Preserve required power-up values with separate constant `initial` assignments,
 including reset-controller state and assertion history. Preserve register names,

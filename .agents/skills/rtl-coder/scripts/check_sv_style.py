@@ -15,8 +15,30 @@ def violations(source):
     # Keep positions for file/line diagnostics; comments and strings contain no declarations.
     clean = re.sub(r'//[^\n]*|/\*[\s\S]*?\*/|"(?:\\.|[^"\\])*"',
                    lambda m: re.sub(r'[^\n]', ' ', m.group()), source)
-    types = BUILTINS | set(re.findall(r'\btypedef\b[^;]*?\b(\w+)\s*;', clean))
     tokens = list(TOKEN.finditer(clean))
+    types = set(BUILTINS)
+    # Aggregate typedef members may contain semicolons; only the outer terminator
+    # ends the definition. Ignore dimensions when identifying its declared alias.
+    alias = None
+    nesting = 0
+    in_typedef = False
+    for token in tokens:
+        value = token.group()
+        if value == 'typedef':
+            in_typedef = True
+            alias = None
+        elif in_typedef:
+            if value in {'{', '[', '('}:
+                nesting += 1
+            elif value in {'}', ']', ')'}:
+                nesting -= 1
+            elif nesting == 0:
+                if value == ';':
+                    if alias:
+                        types.add(alias)
+                    in_typedef = False
+                elif re.fullmatch(r'[A-Za-z_$][\w$]*', value):
+                    alias = value
     found = set()
     for i, token in enumerate(tokens):
         if token.group() not in types:
