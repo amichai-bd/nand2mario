@@ -29,11 +29,18 @@ class Simulator:
             if result.returncode or not version:
                 raise ToolError(f"could not identify {tool}: {result.stdout.strip()}")
             if not self.prefix:
-                location = shutil.which(tool)
+                location = str(Path(shutil.which(tool)).resolve())
             else:
                 found = self.run(["which", tool])
                 location = found.stdout.strip() if found.returncode == 0 else tool
+                resolved = self.run(["readlink", "-f", location])
+                if resolved.returncode == 0:
+                    location = resolved.stdout.strip()
             self.info["tools"][tool] = {"path": location, "version": version}
+            if tool == self.compiler:
+                self.compiler = location
+            else:
+                self.runtime = location
 
     def run(self, argv, cwd=None, timeout=60):
         command = self.prefix + argv

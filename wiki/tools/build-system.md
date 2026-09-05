@@ -64,9 +64,8 @@ Run these inside the checkout in WSL, then from fresh PowerShell:
 python tools/build.py doctor --sim wsl-icarus --iverilog ./workdir/tools/iverilog/bin/iverilog --vvp ./workdir/tools/iverilog/bin/vvp --json
 ```
 
-For simulation, use absolute Linux executable paths (or add the installed `bin`
-directory to the WSL PATH), because compilation and simulation run in their tagged
-output directories. Native Linux uses the same bootstrap and absolute paths.
+Executable overrides are resolved before entering the tagged output directories.
+Native Linux uses the same bootstrap and overrides.
 CI calls the same script and source pin. Host package versions depend on the OS;
 they are build prerequisites, not a hermetic host image. An existing PATH tool is
 allowed and its actual version/path is recorded; that is not proof it matches
