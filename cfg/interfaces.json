@@ -1423,7 +1423,7 @@
       "name": "RESET",
       "request": "empty",
       "response": "empty",
-      "state": "not loading"
+      "state": "not loading; valid image"
     },
     {
       "name": "RUN",

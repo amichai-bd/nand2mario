@@ -2,7 +2,7 @@
 
 Generated from cfg/interfaces.json by tools/n2m/interfaces.py; DO NOT EDIT.
 
-Source SHA-256: `f591df20c6ccd79235a2aed906fef0f21923eaeede3ced95d48fdaaa45d1ab84`.
+Source SHA-256: `fd251c431cebd5a34d81f983f118f2682ff0e03344215e474361839349e75550`.
 
 See [interface contracts](interface-contracts.md) for behavior, reset, framing and tests.
 
@@ -385,7 +385,7 @@ See [interface contracts](interface-contracts.md) for behavior, reset, framing a
 |---|---|---|---|
 | `PING` | `empty` | `word` | any |
 | `READ_HOST` | `read_host` | `word` | any |
-| `RESET` | `empty` | `empty` | not loading |
+| `RESET` | `empty` | `empty` | not loading; valid image |
 | `RUN` | `empty` | `empty` | paused valid image |
 | `HALT` | `empty` | `dot` | not loading |
 | `STEP` | `word` | `dot` | paused valid image |

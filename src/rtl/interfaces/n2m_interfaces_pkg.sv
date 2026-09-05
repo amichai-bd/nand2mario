@@ -1,5 +1,5 @@
 // Generated from cfg/interfaces.json by tools/n2m/interfaces.py; DO NOT EDIT.
-// Source SHA-256: f591df20c6ccd79235a2aed906fef0f21923eaeede3ced95d48fdaaa45d1ab84
+// Source SHA-256: fd251c431cebd5a34d81f983f118f2682ff0e03344215e474361839349e75550
 `timescale 1ns/1ps
 package n2m_interfaces_pkg;
   localparam logic [7:0] GB_ADDRESS_BITS = 8'h10;
