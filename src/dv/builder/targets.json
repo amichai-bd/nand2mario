@@ -166,5 +166,78 @@
     ],
     "expected_exit": "nonzero",
     "signature": "RESET_MISMATCH mode=early-reset expected=asserted"
+  },
+  "async-assert-macros": {
+    "sources": [
+      "src/dv/common/tb_async_assert_macros.sv"
+    ],
+    "top": "tb_async_assert_macros",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS async and assertion macros edges=10 reset-pulses=2"
+  },
+  "async-assert-hold": {
+    "sources": [
+      "src/dv/common/tb_async_assert_macros.sv"
+    ],
+    "top": "tb_async_assert_macros",
+    "args": [
+      "+fail_hold"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT hold_check instance=tb_async_assert_macros"
+  },
+  "async-assert-direct": {
+    "sources": [
+      "src/dv/common/tb_async_assert_macros.sv"
+    ],
+    "top": "tb_async_assert_macros",
+    "args": [
+      "+fail_direct"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT direct_check instance=tb_async_assert_macros"
+  },
+  "async-assert-no_reset": {
+    "sources": [
+      "src/dv/common/tb_async_assert_macros.sv"
+    ],
+    "top": "tb_async_assert_macros",
+    "args": [
+      "+fail_no_reset"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT no_reset_check instance=tb_async_assert_macros"
+  },
+  "async-assert-never": {
+    "sources": [
+      "src/dv/common/tb_async_assert_macros.sv"
+    ],
+    "top": "tb_async_assert_macros",
+    "args": [
+      "+fail_never"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT never_check instance=tb_async_assert_macros"
+  },
+  "async-assert-known": {
+    "sources": [
+      "src/dv/common/tb_async_assert_macros.sv"
+    ],
+    "top": "tb_async_assert_macros",
+    "args": [
+      "+fail_known"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT known_check instance=tb_async_assert_macros"
+  },
+  "assert-synthesis": {
+    "sources": [
+      "src/dv/common/tb_assert_synthesis.sv"
+    ],
+    "top": "tb_assert_synthesis",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS assertion synthesis exclusion"
   }
 }
