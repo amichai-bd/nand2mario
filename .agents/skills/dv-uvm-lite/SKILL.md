@@ -5,7 +5,9 @@ description: Build or review lightweight SystemVerilog verification for nand2mar
 
 # DV UVM-lite
 
-Derive checks from the issue and specification.
+Derive checks from the issue and specification. Use the
+[ownership map](../../../wiki/ownership.md) to link RTL MAS and tool PRD/SPEC
+rules to independent checks, `src/` and `tools/` implementation, and evidence.
 
 1. Write a test plan with normal, edge, reset, error, and ordering cases.
 2. Separate stimulus, observation, reference behavior, and checks.

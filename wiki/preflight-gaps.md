@@ -10,7 +10,7 @@ The [current phase](agents/bootstrap-plan.md#current-phase) defines which work
 may start. Gap priority and close conditions describe future requirements, not
 execution permission.
 
-The [build-system specification](tools/build-system.md) records output and caching
+The [build-system specification](tools/n2m/SPEC.md) records output and caching
 design.
 
 Priorities:
@@ -102,7 +102,7 @@ confirmed. Future dependency fetching remains in GAP-013.
 
 **Current state**
 
-The [build command](tools/build-system.md) implements tagged doctor, builder
+The [build command](tools/n2m/SPEC.md) implements tagged doctor, builder
 checks, and portable self-checking simulation. Its stdlib host code and pinned
 Icarus bootstrap satisfy [#26](https://github.com/amichai-bd/nand2mario/issues/26).
 Questa licensing, full environment/hardware doctor, and software/FPGA backends
@@ -128,7 +128,7 @@ Agents may invent different commands, directories, or tool invocations.
 
 **Current state**
 
-The [environment doctor](tools/build-system.md#environment-doctor) implements
+The [environment doctor](tools/n2m/SPEC.md#environment-doctor) implements
 checked portable/Questa smoke runs, Quartus edition reporting, and read-only
 JTAG/UART enumeration. Portable smoke, selected UART health/identity, expected
 JTAG identity, and scoped Quartus version checks satisfy the implementation
@@ -234,7 +234,7 @@ RTL, testbenches, Python, and wiki tables can use different values.
 
 **Current state**
 
-The [tile pixel unit](src/display/tile-pixel.md) has a focused independent
+The [tile pixel unit](src/rtl/display/MAS_display.md) has a focused independent
 testbench and dual-simulator runner. This does not establish the shared
 assertion library, reference adapters, coverage model, or regression baseline.
 
@@ -323,7 +323,7 @@ checks, protected `main`, labels, and automatic Pages deployment are proven.
 agent workflow. [#40](https://github.com/amichai-bd/nand2mario/issues/40) and
 [#41](https://github.com/amichai-bd/nand2mario/issues/41) provide the custom HTML
 wiki and presentations, reusing original sources; the
-[wiki contract](tools/wiki.md) owns its behavior. [#36](https://github.com/amichai-bd/nand2mario/issues/36)
+[wiki contract](tools/wiki/SPEC.md) owns its behavior. [#36](https://github.com/amichai-bd/nand2mario/issues/36)
 records the final review, delivery, and cleanup evidence.
 Product build CI and the protected physical runner remain open in
 [#32](https://github.com/amichai-bd/nand2mario/issues/32).

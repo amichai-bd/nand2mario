@@ -212,7 +212,7 @@ manifests. All tools should use it rather than duplicate shell commands.
 An explicit build tag reopens a persistent workspace and reuses stages whose
 content fingerprints still match. Without a tag, the build uses a UTC timestamp.
 See the complete layout in the
-[build-system specification](tools/build-system.md).
+[build-system specification](tools/n2m/SPEC.md).
 
 ## Development flow
 

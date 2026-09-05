@@ -5,7 +5,9 @@ description: Implement or review synthesizable nand2mario SystemVerilog from an 
 
 # RTL coder
 
-Read the issue, linked specification, and nearby RTL before editing.
+Read the issue, linked specification, and nearby RTL before editing. Locate the
+owner's MAS through the [ownership map](../../../wiki/ownership.md); keep its
+requirements/design aligned with `src/rtl/`, verification, and evidence.
 
 1. State ports, clocks, resets, state, timing, and invalid cases.
 2. Keep modules small, synchronous intent explicit, and widths and signedness clear.

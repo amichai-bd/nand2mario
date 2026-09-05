@@ -5,7 +5,10 @@ description: Design or maintain nand2mario host build tooling and workdir artifa
 
 # Build maintainer
 
-Follow `wiki/tools/build-system.md`. Do not claim planned commands work.
+Follow `wiki/tools/n2m/SPEC.md`. Do not claim planned commands work.
+Use the [ownership map](../../../wiki/ownership.md) to align tool PRD/SPEC,
+`tools/` implementation, tests, and evidence during
+[review](../agent-flow/references/review.md#code-spec-and-test-alignment).
 
 1. Keep commands small, deterministic, scriptable, and useful from PowerShell.
 2. Put generated files only under `workdir/builds/<tag>/`.

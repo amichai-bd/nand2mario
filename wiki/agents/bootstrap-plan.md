@@ -6,7 +6,7 @@ The [gap register](../preflight-gaps.md) owns gap status and close conditions.
 
 Authorized hardware design, verification, and the Python software stack toward
 [the approved charter](../src/project-charter.md), delivered through focused
-issues and the shared [builder](../tools/build-system.md). Begin with prerequisite
+issues and the shared [builder](../tools/n2m/SPEC.md). Begin with prerequisite
 contracts and their executable evidence, then implement each dependent unit.
 The root selects assigned work and delegates separate author worktrees.
 
@@ -32,7 +32,7 @@ evidence gates board acceptance, not independent simulation or host work.
 | Focused skills and issue helper | [#10](https://github.com/amichai-bd/nand2mario/issues/10) |
 | Pre-RTL directory structure | [#11](https://github.com/amichai-bd/nand2mario/issues/11) and [repository layout](https://github.com/amichai-bd/nand2mario/blob/main/README.md#repository-layout) |
 | Required wiki and PR checks | [#12](https://github.com/amichai-bd/nand2mario/issues/12) and [PR #23](https://github.com/amichai-bd/nand2mario/pull/23) |
-| Custom HTML wiki, source navigation, README/AGENTS toggle, and presentations | [#40](https://github.com/amichai-bd/nand2mario/issues/40), [#41](https://github.com/amichai-bd/nand2mario/issues/41), and [wiki build contract](../tools/wiki.md) |
+| Custom HTML wiki, source navigation, README/AGENTS toggle, and presentations | [#40](https://github.com/amichai-bd/nand2mario/issues/40), [#41](https://github.com/amichai-bd/nand2mario/issues/41), and [wiki build contract](../tools/wiki/SPEC.md) |
 | Automatic Pages after merge to main | [#13](https://github.com/amichai-bd/nand2mario/issues/13) and [#35](https://github.com/amichai-bd/nand2mario/issues/35) |
 | Draft PR, independent review, author merge | [PR #38](https://github.com/amichai-bd/nand2mario/pull/38) and [PR #37](https://github.com/amichai-bd/nand2mario/pull/37) |
 

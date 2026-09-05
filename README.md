@@ -22,7 +22,7 @@ has not started. [Preflight gaps](wiki/preflight-gaps.md) track what must come f
 - `worktrees/`: isolated issue checkouts.
 - `workdir/`: local tools, temporary drafts, builds, and logs.
 
-See the [build specification](wiki/tools/build-system.md) for planned commands
+See the [build specification](wiki/tools/n2m/SPEC.md) for planned commands
 and output layout.
 
 The repository is private; the documentation site is public and deploys after

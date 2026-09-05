@@ -1,14 +1,14 @@
 # Tile pixel simulation
 
-The [product builder](build-system.md) runs the registered checks for the
-[tile pixel contract](../src/display/tile-pixel.md):
+The [product builder](../n2m/SPEC.md) runs the registered checks for the
+[tile pixel contract](../../src/rtl/display/MAS_display.md):
 
 ```powershell
 python tools/build.py sim test tile-pixel --tag tile-pixel --json
 python tools/build.py sim test tile-pixel-corrupt --tag tile-corrupt --json
 ```
 
-The [target registry](../../src/dv/builder/targets.json) requires a zero simulator
+The [target registry](../../../src/dv/builder/targets.json) requires a zero simulator
 exit and exhaustive PASS counts for `tile-pixel`. The separate corrupt target
 requires a nonzero simulator exit and the exact cycle, phase, expected/actual,
 and input diagnostic. Its builder result is PASS only when that intended failure
@@ -30,13 +30,13 @@ python tools/build.py sim test tile-pixel --sim questa --tag tile-questa --json
 python tools/build.py sim test tile-pixel-corrupt --sim questa --tag tile-questa-corrupt --json
 ```
 
-The [Questa backend contract](build-system.md#questa-simulation) owns discovery,
+The [Questa backend contract](../n2m/SPEC.md#questa-simulation) owns discovery,
 isolated libraries, strict diagnostics, and cache behavior. Add `--questa-bin
 <directory>` for explicit discovery; use `--rebuild` for fresh runtime evidence.
 
 ## Standalone checks
 
-The [GAP-008 decision](../preflight-gaps.md#gap-008-verification-baseline) records
+The [GAP-008 decision](../../preflight-gaps.md#gap-008-verification-baseline) records
 the scoped tile/doctor licensed evidence and remaining general Questa deferral.
 For an authorized run, use Python 3.12 or later,
 `vlib`, `vmap`, `vlog`, and `vsim` on `PATH`, and a valid simulation license:
@@ -63,9 +63,9 @@ output failures. Portable success and command-construction tests do not prove
 Questa execution. The gap register distinguishes established runtime evidence
 from the broader verification baseline still due in #31.
 
-The [workflow](../../.github/workflows/tile-pixel.yml) runs on pull requests and
-pushes to `main`, using the shared [pinned bootstrap](build-system.md#bootstrap)
+The [workflow](../../../.github/workflows/tile-pixel.yml) runs on pull requests and
+pushes to `main`, using the shared [pinned bootstrap](../n2m/SPEC.md#bootstrap)
 and builder targets. It checks both results and cache reuse and preserves logs
-and traces even on failure. See [tool provenance](../../tools/sim/THIRD_PARTY.md).
+and traces even on failure. See [tool provenance](../../../tools/sim/THIRD_PARTY.md).
 This unit check
-does not close the [global verification or trusted-CI gaps](../preflight-gaps.md).
+does not close the [global verification or trusted-CI gaps](../../preflight-gaps.md).

@@ -5,7 +5,10 @@ description: Create or revise concise nand2mario specifications and design decis
 
 # Wiki spec writer
 
-Give each contract or decision one authoritative page.
+Give each contract or decision one authoritative page. Use the
+[ownership map](../../../wiki/ownership.md) for tool PRD/SPEC and RTL MAS paths.
+Link requirements to design, implementation, tests, and evidence; do not copy
+rules between pages. Keep shared and generated contracts at their mapped owner.
 
 1. Name scope, terms, inputs, outputs, state, timing, reset, and error behavior.
 2. Use observable rules with units, bit order, clock domain, and edge cases.

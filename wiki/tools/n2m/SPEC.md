@@ -4,8 +4,7 @@ Status: `doctor`, `check`, and Icarus/Questa `sim test` implemented; other stage
 
 ## Purpose
 
-The build system gives agents and people one predictable command to create
-tagged workspaces, reuse valid results, and record evidence.
+The [PRD](PRD.md) owns the purpose and acceptance links.
 
 The entry point is:
 
@@ -79,7 +78,7 @@ The failing smoke target still reports FAIL. Discovery failures retain their
 diagnostics and request record under `discovery/<attempt>/` and invalidate any
 previous success for the requested target.
 
-The [gap register](../preflight-gaps.md#gap-008-verification-baseline) records
+The [gap register](../../preflight-gaps.md#gap-008-verification-baseline) records
 the licensed tests established by this integration and outstanding coverage.
 
 ## Environment doctor
@@ -136,14 +135,14 @@ updates `workdir/latest.txt`. This extends the previous binary exit contract.
 
 Quartus license scope follows the [Intel 24.3 overview](https://www.intel.com/content/www/us/en/docs/programmable/683472/24-3/design-suite-overview.html).
 Installed `jtagconfig --help` defines the read-only enumeration invocation.
-The [gap register](../preflight-gaps.md#gap-008-verification-baseline) records
+The [gap register](../../preflight-gaps.md#gap-008-verification-baseline) records
 the doctor's scoped licensed runtime evidence and the broader baseline still
 due in [#31](https://github.com/amichai-bd/nand2mario/issues/31). A failed
 environment check still reports FAIL; a passing smoke is not full readiness.
 
 ## Bootstrap
 
-The [dependency definition](../../tools/n2m/dependencies.json) pins Python and
+The [dependency definition](../../../tools/n2m/dependencies.json) pins Python and
 Icarus source, provenance, and licenses. No Python packages or virtual environment
 are required. Install Python 3.14.5 for the supported host environment. Linux/WSL
 source-build prerequisites are Git, a C/C++ toolchain, Make, autoconf, bison, flex,
@@ -180,11 +179,11 @@ and 60 s host command timeout bound execution. Partial timeout output is retaine
 in the failing command's log. Simulator warnings fail the stage.
 
 Add simulation targets to this manifest when their contracts and tests are ready.
-The [tile pixel checks](tile-pixel-sim.md) use this interface for normal and
+The [tile pixel checks](../sim/SPEC.md) use this interface for normal and
 expected-corruption runs through either explicit backend.
 Future software and FPGA commands should have separate modules under `tools/n2m/`
 and the output boundaries below. They are not implemented by this issue.
-The [software contract](software-toolchain.md) defines the planned `sw build`
+The [software contract](../sw/SPEC.md) defines the planned `sw build`
 inputs, deterministic artifacts and independent conformance requirements.
 
 ## Source and workspace boundary

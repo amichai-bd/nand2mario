@@ -1,14 +1,11 @@
 # Software toolchain
 
-Status: planned Python toolchain contract for
-[#75](https://github.com/amichai-bd/nand2mario/issues/75). No software backend is
-implemented here. The [charter](../src/project-charter.md) requires our toolchain
-for `v0.5`; an initial opcode subset is an intermediate delivery, not that result.
+The [PRD](PRD.md) owns scope, implementation status, and release acceptance.
 
 ## Inputs and ownership
 
 Plan `python tools/build.py sw build <target> --tag <tag> --json` using the
-[builder's](build-system.md) workspace, locking, failure, and cache rules.
+[builder's](../n2m/SPEC.md) workspace, locking, failure, and cache rules.
 Target definitions beside original sources under `src/sw/` name an ordered
 assembly-input list, declared assets, link layout, entry symbol, title, version
 byte, and profile `dmg-direct-v1`. Implementation must commit a versioned target
@@ -20,7 +17,7 @@ constants come from generated exports of
 [#30](https://github.com/amichai-bd/nand2mario/issues/30). Import its assembly
 constants as explicit fingerprinted inputs. This page owns cartridge file
 construction, not a duplicate hardware address map. Privately selected ROMs are
-runtime inputs under the [source policy](provenance.md), never assembly assets.
+runtime inputs under the [source policy](../provenance.md), never assembly assets.
 The builder supplies #30's canonical generated assembly prelude as a separately
 allowlisted input before target sources, even when its path is outside the target
 tree. Targets select its schema/profile identity, not an arbitrary external path.
@@ -169,8 +166,8 @@ Fingerprint all source/include/asset/layout/generated #30 inputs, schemas,
 implementation and options; validate output hashes before cache reuse. Changed
 includes, corrupt objects, stale headers and missing ROMs must rebuild or fail.
 
-The [dependency manifest](../../tools/n2m/dependencies.json) pins the external
-RGBASM/RGBLINK oracle; [provenance](../../tools/sw/THIRD_PARTY.md) records permitted
+The [dependency manifest](../../../tools/n2m/dependencies.json) pins the external
+RGBASM/RGBLINK oracle; [provenance](../../../tools/sw/THIRD_PARTY.md) records permitted
 use. Independently authored instruction fixtures feed both toolchains; compare
 linked bytes and selected symbols before packaging. The oracle adapter may only
 normalize the explicit spelling choices above and translate section placement;
