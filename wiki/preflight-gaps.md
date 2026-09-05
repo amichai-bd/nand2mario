@@ -185,16 +185,20 @@ The wrong device or bitstream could be programmed.
 
 **Current state**
 
-The [timing contract](src/clocks-resets-cdc.md) defines the system clock, exact
-average DMG enables, selected VGA rate, reset sequence, CDC ownership, and
-required simulation/TimeQuest checks. Issue #29 delivers the contract only.
-[Clocking RTL and its FPGA wrapper](src/rtl/clocking/MAS_clocking.md) implement
-the timebase/reset subset in [#79](https://github.com/amichai-bd/nand2mario/issues/79),
-with independent Questa checks and generated nominal/upper-reference fit and
-timing evidence. This gap stays open for frame ownership/crossings, line/frame
-and buffer-swap checks in [#80](https://github.com/amichai-bd/nand2mario/issues/80),
-integration, and the separate physical acceptance gates. The isolated clocking
-proof does not establish framebuffer or connected-board behavior.
+The [timing contract](src/clocks-resets-cdc.md) defines clocks, enables, reset
+and CDC requirements. The [clocking implementation](src/rtl/clocking/MAS_clocking.md)
+and [VGA frame bridge](src/rtl/vga/MAS_vga.md) now have bounded independent
+Questa and generated nominal/upper-reference FPGA evidence. The
+[clocking delivery](https://github.com/amichai-bd/nand2mario/pull/107) and
+[macro conversion review](https://github.com/amichai-bd/nand2mario/pull/114)
+cover timebase/reset behavior and retained timing checks. The
+[VGA delivery review](https://github.com/amichai-bd/nand2mario/pull/111) covers
+frame ownership, crossings, line/frame geometry, buffer swaps and RAM inference.
+
+This gap remains open for composed-system clock/reset/CDC verification and
+separate physical acceptance. The isolated proofs do not establish all future
+control crossings or connected-board behavior; [GAP-005](#gap-005-board-wiring-and-safe-bring-up)
+and [GAP-012](#gap-012-vga-frame-crossing) retain the physical display gates.
 
 **Risk**
 
@@ -383,9 +387,20 @@ The wrong mapper or storage backend could be called Mario-compatible.
 
 **Current state**
 
-Three-times scaling and centering are recommended, but buffer format, write/read
-ownership, frame-rate difference, palette mapping, and monitor tolerance are not
-proven.
+The [VGA contract](src/rtl/vga/MAS_vga.md) specifies buffer format, ownership,
+scaling and shade mapping under the shared clock/reset/CDC contract.
+[Delivered #80 evidence](https://github.com/amichai-bd/nand2mario/pull/111)
+includes independent Questa ownership and raster checks, intended bank-reuse
+and active-swap failures, and actual nominal/upper-reference Quartus fit,
+three-bank RAM inference and timing audits. The clocking proof and its
+[#113 macro conversion evidence](https://github.com/amichai-bd/nand2mario/pull/114)
+are linked in [GAP-006](#gap-006-clock-reset-and-cdc-plan).
+
+Composed PPU/display integration and frame-CRC acceptance remain open. The
+source fixtures do not establish those end-to-end results. Actual monitor
+tolerance, test-card/scaled-image operation, and connected pin/wiring/voltage
+verification also remain open under [GAP-005](#gap-005-board-wiring-and-safe-bring-up).
+Simulation and fit evidence do not replace physical acceptance.
 
 **Risk**
 
