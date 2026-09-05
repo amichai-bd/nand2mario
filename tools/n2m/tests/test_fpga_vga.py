@@ -1,10 +1,13 @@
 """Bounded VGA collection selection; no Quartus or licensed execution."""
 import tkinter
 import tempfile
+import json
 from pathlib import Path
 import unittest
+from unittest.mock import patch
 
-from tools.n2m import fpga, fpga_vga
+from tools.n2m import fpga, fpga_vga, fpga_pll
+from tools.n2m.records import file_hash
 
 
 def fixture(folder):
@@ -44,6 +47,36 @@ def fixture(folder):
 
 
 class VgaEvidenceTests(unittest.TestCase):
+    def test_truncated_mutable_and_immutable_cache_cannot_omit_vga_report(self):
+        base = Path(__file__).resolve().parents[3] / "workdir" / "vga-report-tests"
+        base.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=base) as temp:
+            root = Path(temp)
+            build = root / "workdir/builds/test"
+            folder = build / "attempt"
+            names = ["output/" + name for name in [*fpga.REQUIRED_REPORTS, *fpga_pll.required_reports(), *fpga_vga.required_reports()]]
+            names += ["n2m_pixel_pll.v", "generate-pll.log", "simulation/questa/design.vo", "netlist.log",
+                      "design.qpf", "design.qsf", "audit.tcl", "compile.log", "audit.log", "checked.sdc"]
+            for name in names:
+                path = folder / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("original fixture")
+            record = {"status": "PASS", "fingerprint": "request", "artifacts": {p.relative_to(root).as_posix(): file_hash(p) for p in folder.rglob("*") if p.is_file()},
+                      "attempt_result": (folder / "result.json").relative_to(root).as_posix(),
+                      "evidence_directory": folder.relative_to(root).as_posix(), "evidence": {}}
+            (folder / "result.json").write_text(json.dumps(record))
+            target = {"top": "vga_proof", "pll": {}, "timing": {}}
+            with patch.object(fpga, "timing_evidence", return_value={}):
+                self.assertTrue(fpga.complete_cache(record, "request", root, build, target))
+                for name in fpga_vga.required_reports():
+                    path = folder / "output" / name
+                    truncated = {**record, "artifacts": {k: v for k, v in record["artifacts"].items() if k != path.relative_to(root).as_posix()}}
+                    (folder / "result.json").write_text(json.dumps(truncated))
+                    path.unlink()
+                    with self.subTest(missing=name):
+                        self.assertFalse(fpga.complete_cache(truncated, "request", root, build, target))
+                    path.write_text("original fixture")
+
     def test_complete_inventory_bounds_and_corner_mutations(self):
         base = Path(__file__).resolve().parents[3] / "workdir" / "vga-report-tests"
         base.mkdir(parents=True, exist_ok=True)
