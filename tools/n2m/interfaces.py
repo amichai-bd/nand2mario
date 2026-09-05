@@ -10,7 +10,7 @@ import re
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path("cfg/interfaces.json")
 OUTPUTS = (Path("src/rtl/interfaces/n2m_interfaces_pkg.sv"),
-           Path("tools/n2m/generated_interfaces.py"), Path("wiki/src/interface-tables.md"),
+           Path("tools/n2m/generated_interfaces.py"), Path("wiki/cfg/interfaces.md"),
            Path("src/sw/generated/interfaces.inc"))
 
 
@@ -136,7 +136,7 @@ def render(data):
     py = ['"""' + mark + '\nSource SHA-256: ' + digest + '\n"""']
     assembly = ['; ' + mark, '; Source SHA-256: ' + digest]
     md = ['# Interface tables', '', mark, '', 'Source SHA-256: `' + digest + '`.', '',
-          'See [interface contracts](interface-contracts.md) for behavior, reset, framing and tests.', '']
+          'See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior, reset, framing and tests.', '']
     for group, items in data['groups'].items():
         md += ['## ' + group.replace('_', ' ').title(), '', '| Constant | Bits | Value | Meaning |', '|---|---|---|---|']
         for item in items:

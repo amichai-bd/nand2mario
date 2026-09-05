@@ -212,7 +212,7 @@ cause intermittent failures missed by simulation.
 
 **Current state**
 
-The [executable contract](src/interface-contracts.md) owns one checked source
+The [executable contract](src/rtl/interfaces/MAS_interfaces.md) owns one checked source
 for Game Boy/host spaces, UART packets, direct-entry state and retirement
 records, with generated SV/Python/wiki exports. Required CI checks regeneration,
 byte/width/space tests and real positive/corrupt portable simulation. This closes

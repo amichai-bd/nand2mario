@@ -4,7 +4,7 @@ Generated from cfg/interfaces.json by tools/n2m/interfaces.py; DO NOT EDIT.
 
 Source SHA-256: `fd251c431cebd5a34d81f983f118f2682ff0e03344215e474361839349e75550`.
 
-See [interface contracts](interface-contracts.md) for behavior, reset, framing and tests.
+See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior, reset, framing and tests.
 
 ## Gb
 

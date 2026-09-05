@@ -9,3 +9,11 @@ from planned software, FPGA, regression, and cleanup stages. Acceptance links
 command results to the [gap register](../../preflight-gaps.md#gap-003-build-command)
 and the [environment doctor criteria](../../preflight-gaps.md#gap-004-real-environment-doctor).
 The [ownership map](../../ownership.md) links implementation and tests.
+
+The interface generator gives RTL, host tools, assembly users, and documentation
+matching checked exports from one schema. Its acceptance is
+[#30](https://github.com/amichai-bd/nand2mario/issues/30) and
+[GAP-007](../../preflight-gaps.md#gap-007-executable-interface-contracts).
+[Generation rules](SPEC.md#interface-generation) and the
+[shared interface contract](../../src/rtl/interfaces/MAS_interfaces.md) own the
+details; these requirements do not claim implemented CPU or UART behavior.

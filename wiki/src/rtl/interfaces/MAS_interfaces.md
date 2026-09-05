@@ -1,9 +1,9 @@
 # Executable interface contracts
 
-The [source](../../cfg/interfaces.json) owns numeric Game Boy, host, wire,
-direct-entry and trace values. Its [generated tables](interface-tables.md)
+The [source](../../../../cfg/interfaces.json) owns numeric Game Boy, host, wire,
+direct-entry and trace values. Its [generated tables](../../../cfg/interfaces.md)
 are the human-readable view. The closed schema and semantic validator live in
-[the generator](../../tools/n2m/interfaces.py); the source's schema version is
+[the generator](../../../../tools/n2m/interfaces.py); the source's schema version is
 independent of the packet, host-register and trace ABI versions.
 
 This delivers [#30](https://github.com/amichai-bd/nand2mario/issues/30)'s data,
@@ -14,37 +14,16 @@ is tracked by [UART endpoint #91](https://github.com/amichai-bd/nand2mario/issue
 [host snapshots #93](https://github.com/amichai-bd/nand2mario/issues/93), and
 [verification baseline #31](https://github.com/amichai-bd/nand2mario/issues/31).
 No device
-is opened by these tools. The [charter](project-charter.md) still requires full
+is opened by these tools. The [charter](../../project-charter.md) still requires full
 load/readback, all eight buttons and a simultaneous pair, every retirement,
 and independent pixel comparison. Codec tests are not those acceptance runs.
 
 ## Authority and generation
 
-Run `python tools/n2m/interfaces.py` to regenerate the marked SV package, Python
-exports, assembly prelude and Markdown tables. `python tools/n2m/interfaces.py --check` renders
-in memory and fails on a missing or changed export, including documentation.
-The required Builder check runs this and the interface unit tests. The normal
-wiki renderer publishes the generated Markdown tables as HTML; no separate
-hand-maintained HTML copy exists.
-
-The source uses exact integer values, closed object keys, nonempty constant
-groups, unique uppercase names and explicit unsigned widths. Record fields are
-ordered byte multiples with unique lowercase names. Unknown keys, duplicate
-JSON keys, booleans/floats as integers, overflow, invalid references, duplicate
-addresses/command IDs, map overlap/gaps and inconsistent ROM/frame sizes fail.
-The generator's `validate` function is the executable schema v1. Changing an
-existing wire layout or meaning requires a new ABI version, even if the source
-schema can still represent it. Unsupported versions fail; no implicit downgrade.
-
-Checked-in generated exports are interface source artifacts required by this
-issue. Build-specific output and test logs stay under `workdir/builds/<tag>/`.
-Each export records the canonical source SHA-256. The Python software packager
-must import `tools/n2m/generated_interfaces.py` and fingerprint it and the JSON;
-the builder-owned allowlisted [assembly prelude](../../src/sw/generated/interfaces.inc)
-supplies the same exported names and values as immutable EQU definitions, outside
-the target's source tree. Fingerprint this input as required by the
-[software contract](../tools/software-toolchain.md). Do not maintain a second
-memory map. SV users import `n2m_interfaces_pkg`.
+This shared interface contract governs RTL, host software, and verification
+consumers of the schema. The [generator specification](../../../tools/n2m/SPEC.md#interface-generation)
+owns schema validation, regeneration, export provenance, and consumer imports.
+The generated tables retain schema ownership; do not hand-copy their constants.
 
 ## Address spaces
 
@@ -96,7 +75,7 @@ host snapshot. Only LOAD_BEGIN is needed to establish the direct profile.
 RESET with no valid image returns BAD_STATE. RESET while LOADING also fails;
 LOAD_BEGIN restarts an interrupted load, including while already LOADING.
 
-As required by [timing/reset/CDC](clocks-resets-cdc.md), core reset and loading
+As required by [timing/reset/CDC](../../clocks-resets-cdc.md), core reset and loading
 keep UART, PLL, VGA and frame ownership handshakes alive. Clear partial writer
 progress, but never mutate an offered/displayed frame or clear one side of a
 mailbox. Keep the last displayed image until a new complete frame replaces it.
@@ -127,7 +106,7 @@ and no reply. A valid-CRC unsupported version returns BAD_VERSION in the current
 version. Unknown commands return BAD_COMMAND. Other complete malformed requests
 return the generated status appropriate to the failed check.
 
-The [pure codecs](../../tools/n2m/interface_codec.py) reject malformed byte
+The [pure codecs](../../../../tools/n2m/interface_codec.py) reject malformed byte
 records without opening a device. Their decoder raises on unsupported versions;
 the future endpoint must map that validated header to the specified error reply.
 Request/response payload layouts come from the generated command table. `empty`
@@ -248,7 +227,7 @@ and exact instruction semantics remain the CPU verification contract's scope.
 
 Packed SV structs place the first record field at the least-significant bits;
 serialize each field low byte first. Python codecs use explicit little-endian
-conversion, never native struct alignment. The [SV fixture](../../src/dv/interfaces/tb_interfaces.sv)
+conversion, never native struct alignment. The [SV fixture](../../../../src/dv/interfaces/tb_interfaces.sv)
 checks imported widths/offsets and an independently written literal byte vector.
 Its corrupt variant must fail with the expected mismatch. Host tests cover
 CRC vectors, full byte alphabets, maximum payload, malformed frames, range
@@ -261,7 +240,7 @@ The source pins Pan Docs commit `fe246067b695b5404a4a6a47efb4fd6d921ececb`,
 CC0-1.0. Consulted [memory map][map], [joypad][joypad] and [audio register][audio]
 addresses; no reference HDL, boot assets, test code or prose was imported.
 The direct-entry values, host layout, wire framing and trace format are original
-project decisions. See the [source policy](../tools/provenance.md).
+project decisions. See the [source policy](../../../tools/provenance.md).
 
 [map]: https://github.com/gbdev/pandocs/blob/fe246067b695b5404a4a6a47efb4fd6d921ececb/src/Memory_Map.md
 [joypad]: https://github.com/gbdev/pandocs/blob/fe246067b695b5404a4a6a47efb4fd6d921ececb/src/Joypad_Input.md
