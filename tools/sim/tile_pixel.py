@@ -90,7 +90,8 @@ def main():
             else:
                 run([binaries["vmap"], "-c"], sim_dir, "ini.log")
                 run([binaries["vmap"], "work", (compiler / "work").as_posix()], sim_dir, "map.log")
-                command = [binaries["vsim"], "-c", "-onfinish", "stop", "-wlf", "waves.wlf",
+                # Normal $finish exits; only assertion breaks use the error handler.
+                command = [binaries["vsim"], "-c", "-onfinish", "exit", "-wlf", "waves.wlf",
                            "work.tb_dmg_tile_pixel", *plusargs,
                            "-do", "onbreak {quit -code 1}; onerror {quit -code 1}; run -all; quit -code 0"]
             marker = "MISMATCH cycle=5" if corrupt else "PASS pixel_cases=524288 palette_cases=8192"

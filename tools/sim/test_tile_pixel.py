@@ -25,14 +25,14 @@ class RunnerTests(unittest.TestCase):
         self.source = self.root / "unit.sv"
         self.source.write_text("source", encoding="utf-8")
 
-    def invoke(self, responder=None, missing=False):
+    def invoke(self, responder=None, missing=False, simulator="icarus"):
         def normal(argv, **kwargs):
             if "+corrupt" in argv:
                 return subprocess.CompletedProcess(argv, 1, "MISMATCH cycle=5")
             return subprocess.CompletedProcess(argv, 0, "PASS pixel_cases=524288 palette_cases=8192")
 
         with patch.multiple(tile_pixel, ROOT=self.root, SOURCES=[self.source], __file__=str(self.script)), \
-             patch("sys.argv", ["tile_pixel.py", "--sim", "icarus", "--tag", "test"]), \
+             patch("sys.argv", ["tile_pixel.py", "--sim", simulator, "--tag", "test"]), \
              patch("tile_pixel.shutil.which", return_value=None if missing else "/tool path/bin"), \
              patch("tile_pixel.subprocess.check_output", side_effect=["abc\n", ""]), \
              patch("tile_pixel.subprocess.run", side_effect=responder or normal) as run, \
@@ -52,6 +52,18 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("missing tools", manifest["error"])
         run.assert_not_called()
+
+    def test_questa_finish_and_failure_commands(self):
+        code, manifest, _ = self.invoke(simulator="questa")
+        self.assertEqual(code, 0)
+        commands = [entry["argv"] for entry in manifest["commands"]
+                    if "work.tb_dmg_tile_pixel" in entry["argv"]]
+        self.assertEqual(len(commands), 2)
+        for argv in commands:
+            self.assertEqual(argv[argv.index("-onfinish") + 1], "exit")
+            self.assertIn("onbreak {quit -code 1}", argv[-1])
+        self.assertNotIn("+corrupt", commands[0])
+        self.assertIn("+corrupt", commands[1])
 
     def test_existing_tag_rejected(self):
         self.invoke()
