@@ -239,5 +239,49 @@
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS assertion synthesis exclusion"
+  },
+  "vga": {
+    "sources": [
+      "src/rtl/clocking/n2m_reset_control.sv",
+      "src/rtl/vga/n2m_frame_ram.sv",
+      "src/rtl/vga/n2m_vga_scan.sv",
+      "src/rtl/vga/n2m_frame_bridge.sv",
+      "src/dv/vga/tb_vga.sv"
+    ],
+    "top": "tb_vga",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS vga every-pixel observer ownership fast slow pause core-reset lockloss stopped-pixel",
+    "timeout_seconds": 180
+  },
+  "vga-bank-reuse": {
+    "sources": [
+      "src/rtl/clocking/n2m_reset_control.sv",
+      "src/rtl/vga/n2m_frame_ram.sv",
+      "src/rtl/vga/n2m_vga_scan.sv",
+      "src/rtl/vga/n2m_frame_bridge.sv",
+      "src/dv/vga/tb_vga.sv"
+    ],
+    "top": "tb_vga",
+    "args": [
+      "+bank_reuse"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT frame_bank_reuse instance=tb_vga"
+  },
+  "vga-active-swap": {
+    "sources": [
+      "src/rtl/clocking/n2m_reset_control.sv",
+      "src/rtl/vga/n2m_frame_ram.sv",
+      "src/rtl/vga/n2m_vga_scan.sv",
+      "src/rtl/vga/n2m_frame_bridge.sv",
+      "src/dv/vga/tb_vga.sv"
+    ],
+    "top": "tb_vga",
+    "args": [
+      "+active_swap"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT frame_active_swap instance=tb_vga"
   }
 }

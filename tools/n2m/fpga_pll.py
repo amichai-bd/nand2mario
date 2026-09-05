@@ -26,8 +26,8 @@ def required_reports():
     return ["metastability.rpt", "clock_transfers.rpt"] + [f"chain_{name}_{check}.rpt" for name in CHAINS for check in ("setup", "hold")]
 
 
-def verify_lock_event(folder, checks):
-    return fpga_lock.verify((folder / "simulation/questa/design.vo").read_text(encoding="utf-8"), checks)
+def verify_lock_event(folder, checks, top="clocking_proof"):
+    return fpga_lock.verify((folder / "simulation/questa/design.vo").read_text(encoding="utf-8"), checks, top)
 
 
 def verify_fit(folder, target):

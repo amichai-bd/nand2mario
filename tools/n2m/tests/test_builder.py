@@ -76,6 +76,31 @@ class BuilderTests(unittest.TestCase):
     def run_stage(self):
         return simulate(self.root, self.build, self.args, self.sim)
 
+    def test_bounded_target_runtime_timeout_and_cache_identity(self):
+        registry = self.root / "src/dv/builder/targets.json"
+        targets = read_json(registry)
+        original_run = self.sim.run
+        seen = []
+        def run(argv, cwd=None, timeout=60):
+            seen.append((argv[0], timeout))
+            return original_run(argv, cwd=cwd)
+        self.sim.run = run
+        targets["builder-smoke"]["timeout_seconds"] = 180
+        atomic_json(registry, targets)
+        result = self.run_stage()
+        self.assertEqual(result["status"], "PASS")
+        self.assertEqual(seen[-1], ("vsim", 180))
+        self.assertTrue(all(bound == 60 for _, bound in seen[:-1]))
+        self.assertEqual(result["commands"][-1]["timeout_seconds"], 180)
+        targets["builder-smoke"]["timeout_seconds"] = 181
+        atomic_json(registry, targets)
+        self.assertEqual(self.run_stage()["cache"], "BUILT")
+        for invalid in (0, 601, True, 1.5, "180"):
+            targets["builder-smoke"]["timeout_seconds"] = invalid
+            atomic_json(registry, targets)
+            with self.assertRaisesRegex(ValueError, "timeout_seconds"):
+                self.run_stage()
+
     def test_transitive_headers_invalidate_cache_and_missing_never_reuses(self):
         source = self.root / "src/dv/builder/builder_smoke.sv"
         source.write_text('`include "src/one.svh"\n' + source.read_text())
