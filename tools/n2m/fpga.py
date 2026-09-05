@@ -69,6 +69,8 @@ def target_definition(root, name):
         raise ValueError("unknown FPGA target, fields, or device")
     if "pll" in target:
         fpga_pll.validate(target["pll"])
+        if target["top"] != "clocking_proof" or "timing" not in target:
+            raise ValueError("PLL evidence currently requires the bounded clocking proof target")
     if "timing" in target:
         fpga_constraints.validate(target["timing"])
     if not isinstance(target["top"], str) or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", target["top"]):

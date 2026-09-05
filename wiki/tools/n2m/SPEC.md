@@ -564,6 +564,9 @@ input period 20000 ps and output multiplier/divisor 63/125. The generator owns
 50% duty, zero phase, normal operation and CLK0 compensation. These settings
 implement the [clock contract](../../src/clocks-resets-cdc.md), which owns the
 selected rates. Other PLL definitions are rejected.
+This initial proof schema requires the `clocking_proof` top and its named wrapper
+hierarchy. A different integration hierarchy needs an explicit evidence-checker
+extension; it cannot inherit this topology classification implicitly.
 
 `qmegawiz` comes from the explicit Quartus directory. Its executable, ALTPLL
 definition/rules/wizard XML and primitive declaration hashes enter the request
