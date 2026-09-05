@@ -55,7 +55,7 @@ class BuilderTests(unittest.TestCase):
     def setUp(self):
         base = ROOT / "workdir/builds/builder-unit-tests"
         base.mkdir(parents=True, exist_ok=True)
-        self.temp = tempfile.TemporaryDirectory(prefix="path with spaces ", dir=base)
+        self.temp = tempfile.TemporaryDirectory(prefix="space ", dir=base)
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
         for owner in ("tools/n2m", "src/dv/builder"):
@@ -181,7 +181,7 @@ class BuilderTests(unittest.TestCase):
     def test_cli_failure_json_and_latest(self):
         latest = self.root / "workdir/latest.txt"
         latest.write_text("previous\n")
-        with patch("n2m.cli.Simulator", side_effect=ToolError("missing compiler")), \
+        with patch("n2m.doctor.Simulator", side_effect=ToolError("missing compiler")), \
                 patch("n2m.cli.git_state", return_value={"commit": "test"}), \
                 contextlib.redirect_stdout(io.StringIO()) as output:
             status = main(["doctor", "--tag", "missing", "--json"], self.root)

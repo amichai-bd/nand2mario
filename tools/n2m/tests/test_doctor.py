@@ -1,0 +1,118 @@
+"""Readiness failures and safety boundaries; doubles are not board evidence."""
+import json
+import contextlib
+import io
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+from types import SimpleNamespace
+import unittest
+from unittest.mock import patch
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from n2m.doctor import doctor, execute, parse_jtag, questa, quartus, select_uart, uart, warning
+from n2m.cli import main, parser
+
+ROOT = Path(__file__).resolve().parents[3]
+
+
+class DoctorTests(unittest.TestCase):
+    def setUp(self):
+        base = ROOT / "workdir/builds/doctor-unit-tests"
+        base.mkdir(parents=True, exist_ok=True)
+        self.temp = tempfile.TemporaryDirectory(prefix="tools with spaces ", dir=base)
+        self.addCleanup(self.temp.cleanup)
+        self.folder = Path(self.temp.name)
+
+    def test_questa_elaboration_runtime_and_signature_failure(self):
+        for output, code in (("elaboration failed", 1), ("runtime failed", 1), ("", 0),
+                             ("Warning: unsafe\nPASS builder-smoke seed=1 checks=22", 0)):
+            calls = []
+            def run(argv, **kwargs):
+                calls.append(argv)
+                is_sim = "-c" in argv
+                return SimpleNamespace(returncode=code if is_sim else 0,
+                                       stdout=output if is_sim else "Errors: 0, Warnings: 0")
+            with patch("n2m.doctor.executable", side_effect=lambda d, n: str(self.folder / n)), \
+                    patch("n2m.doctor.subprocess.run", side_effect=run):
+                with self.assertRaises(RuntimeError):
+                    questa(ROOT, self.folder, str(self.folder))
+            self.assertEqual(len(calls), 4)
+            self.assertEqual(calls[2][-1], str(ROOT / "src/dv/builder/builder_smoke.sv"))
+            self.assertTrue((self.folder / "sim.log").exists())
+
+    def test_missing_tool_timeout_and_partial_logs(self):
+        for error in (FileNotFoundError("absent"), subprocess.TimeoutExpired("vsim", 60, output=b"partial runtime")):
+            with patch("n2m.doctor.subprocess.run", side_effect=error):
+                with self.assertRaises(RuntimeError):
+                    execute(["path with spaces/vsim"], self.folder, "failed.log")
+            self.assertTrue((self.folder / "failed.log").read_text())
+        self.assertIn("partial runtime", (self.folder / "failed.log").read_text())
+
+    def test_jtag_identity_stays_with_cable_and_ambiguity(self):
+        valid = "1) USB-Blaster [USB-0]\n  031050DD 10M50DA(.|ES)/10M50DC\n"
+        self.assertEqual(parse_jtag(valid)["selected"]["index"], "1")
+        for invalid in ("1) USB-Blaster\n  00000000 UNKNOWN\n2) Other\n  031050DD 10M50DA\n",
+                        valid + valid.replace("1)", "2)"), "No hardware", valid.replace("10M50DA", "10M40DA")):
+            with self.assertRaises(RuntimeError):
+                parse_jtag(invalid)
+        self.assertEqual(parse_jtag(valid + valid.replace("1)", "2)"), "2")["selected"]["index"], "2")
+
+    def test_uart_selection_is_read_only_and_exact(self):
+        ports = [{"DeviceID": "COM5", "PNPDeviceID": "USB\\VID_0403&PID_6001\\SERIAL_A"}]
+        args = SimpleNamespace(uart_port=None, uart_vid=None, uart_pid=None, uart_identity=None)
+        self.assertEqual(select_uart(ports, args)["status"], "WARNING")
+        args.uart_identity = ports[0]["PNPDeviceID"]
+        self.assertEqual(select_uart(ports, args)["selected"], ports[0])
+        args.uart_port = "COM6"
+        with self.assertRaises(RuntimeError):
+            select_uart(ports, args)
+        args.uart_port = "COM5"
+        with patch("n2m.doctor.os.name", "nt"), patch("n2m.doctor.execute", return_value=json.dumps(ports)) as run:
+            self.assertEqual(uart(self.folder, args)["selected"], ports[0])
+        argv = run.call_args.args[0]
+        self.assertIn("Get-CimInstance Win32_SerialPort", argv[-1])
+        self.assertNotIn("SerialPort]", argv[-1])
+        self.assertNotIn("Open", argv[-1])
+
+    def test_zero_warning_summary_only(self):
+        self.assertFalse(warning("Errors: 0, Warnings: 0"))
+        self.assertTrue(warning("Warnings: 1"))
+        self.assertTrue(warning("# ** Warning: diagnostic"))
+
+    def test_status_priority_exit_and_latest_pointer(self):
+        for status, code in (("PASS", 0), ("WARNING", 2), ("FAIL", 1)):
+            with patch("n2m.cli.doctor", return_value={"status": status}), \
+                    patch("n2m.cli.git_state", return_value={}), contextlib.redirect_stdout(io.StringIO()):
+                latest = self.folder / "workdir/latest.txt"
+                latest.parent.mkdir(exist_ok=True)
+                latest.write_text("previous\n")
+                self.assertEqual(main(["doctor", "--tag", "status", "--json"], self.folder), code)
+                self.assertEqual(latest.read_text(), "status\n" if status == "PASS" else "previous\n")
+
+    def test_profile_failure_priority_and_fresh_attempts(self):
+        args = parser().parse_args(["doctor", "--profile", "environment"])
+        with patch("n2m.doctor.Simulator"), patch("n2m.doctor.simulate", return_value={"status": "PASS"}), \
+                patch("n2m.doctor.quartus", return_value={}), patch("n2m.doctor.executable", return_value="jtagconfig"), \
+                patch("n2m.doctor.execute", return_value="1) USB-Blaster\n  031050DD 10M50DA\n"), \
+                patch("n2m.doctor.uart", return_value={"status": "WARNING"}), \
+                patch("n2m.doctor.questa", return_value={}):
+            self.assertEqual(doctor(ROOT, self.folder, args, {})["status"], "WARNING")
+            with patch("n2m.doctor.questa", side_effect=RuntimeError("bad elaboration")):
+                self.assertEqual(doctor(ROOT, self.folder, args, {})["status"], "FAIL")
+            self.assertEqual(len(list((self.folder / "doctor").iterdir())), 2)
+
+    def test_quartus_license_scope_and_diagnostics(self):
+        for edition, status in (("Lite Edition", "PASS"), ("Standard Edition", "WARNING")):
+            with patch("n2m.doctor.executable", return_value="quartus_sh"), \
+                    patch("n2m.doctor.execute", return_value=f"Quartus Prime Shell\nVersion 25.1 {edition}\n"):
+                self.assertEqual(quartus(self.folder, None)["status"], status)
+        with patch("n2m.doctor.executable", return_value="quartus_sh"), \
+                patch("n2m.doctor.execute", return_value="TBBmalloc: unknown prologue\nQuartus Prime Shell\nVersion 25.1 Lite Edition"):
+            with self.assertRaisesRegex(RuntimeError, "diagnostic"):
+                quartus(self.folder, None)
+
+
+if __name__ == "__main__":
+    unittest.main()

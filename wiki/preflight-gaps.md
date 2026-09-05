@@ -121,8 +121,10 @@ Agents may invent different commands, directories, or tool invocations.
 
 **Current state**
 
-Tools were inspected manually. Quartus is outside `PATH`. Questa compiled RTL,
-but the reference smoke exposed library-path and stale-port problems.
+The [environment doctor](tools/build-system.md#environment-doctor) implements
+checked portable/Questa smoke runs, Quartus edition reporting, and read-only
+JTAG/UART enumeration. GAP-004 stays open until positive licensed Questa runtime
+and selected device evidence satisfy #27; implementation alone is not readiness.
 
 **Risk**
 

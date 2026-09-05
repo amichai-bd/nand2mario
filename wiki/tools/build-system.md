@@ -30,11 +30,12 @@ The second identical simulation reports `CACHED`. The deliberate-failure target
 must exit 1 and retain its mismatch log and waveform. Other successful commands
 exit 0; errors exit nonzero. `--json` emits one result object on stdout.
 
-`doctor` identifies Icarus compiler/runtime versions; it does not prove a license,
-simulation, or hardware connection. `sim test` proves compile, elaboration, run,
-and the target's expected signature. `check` runs builder contract tests with
-controlled executor doubles; these are not RTL evidence. Neither command touches
-hardware. The broader doctor remains [#27](https://github.com/amichai-bd/nand2mario/issues/27).
+`doctor` now reruns the builder smoke; its previous version only discovered tools.
+The default `--profile portable` preserves existing options and JSON `tools`, adds
+per-check results, and leaves licensed tools and devices explicitly untested.
+Hosted CI uses this profile. See [environment doctor](#environment-doctor).
+`sim test` proves compile, elaboration, run, and the target's expected signature.
+`check` runs contract tests with controlled doubles; these are not RTL evidence.
 
 Native Icarus on PATH is preferred; Windows otherwise tries the default WSL
 distribution. Select `--sim icarus` or `--sim wsl-icarus` explicitly. Use
@@ -42,7 +43,58 @@ distribution. Select `--sim icarus` or `--sim wsl-icarus` explicitly. Use
 <path>` to override executables in that environment. WSL paths are Linux paths;
 source/output paths are translated automatically. Paths with spaces are supported.
 Missing tools fail with diagnostics; there is no silent simulator fallback after
-an explicitly selected tool fails. Questa is not a backend yet.
+an explicitly selected tool fails. Questa is supported by environment doctor;
+it is not a general `sim test` backend yet.
+
+## Environment doctor
+
+```powershell
+python tools/build.py doctor --profile environment --questa-bin <directory> --quartus-bin <directory> --uart-port COM5 --json
+```
+
+Executable discovery uses PATH or explicit directories, never changes global
+PATH, and never falls back from an explicit selection. Tool versions are recorded;
+commercial installations are user-provided, not bootstrapped or assumed pinned.
+The existing dependency manifest owns the portable simulator pin.
+
+Each invocation gets fresh logs and Questa libraries under
+`workdir/builds/<tag>/doctor/<attempt>/`. Source/runner hashes, commands, versions,
+artifact hashes, and per-check outcomes remain in ignored build evidence.
+Readiness is never cached. The portable smoke uses the existing simulation stage
+with forced rebuild and checks 22 reset, count, and wrap observations.
+
+The environment profile also checks:
+
+- Questa: compile and run that same source, requiring its checked completion
+  signature. A compile-only success does not prove elaboration or a runtime
+  license. Timeouts, warnings, and missing signatures fail.
+- Quartus: report version and edition. Lite needs no license file; other editions
+  report unverified licensing. Unexpected diagnostics fail. Version discovery
+  does not prove synthesis.
+- JTAG: invoke only `jtagconfig` enumeration. Exactly one USB-Blaster chain must
+  report `10M50DA`; `--jtag-cable <index>` selects among multiple chains. This is
+  reported identity, not wiring, voltage, or programming proof.
+- UART: Windows CIM enumeration only. Select with `--uart-port`, `--uart-vid`,
+  `--uart-pid`, or exact `--uart-identity` (the OS PNP identity, which may include
+  a serial). Combined selectors must all match exactly one port. No selection
+  is a warning; a missing or ambiguous explicit selection fails. Non-Windows
+  enumeration is unsupported and reports a warning.
+
+No command opens UART, drives modem lines, sends bytes, programs FPGA memory,
+changes JTAG configuration, or proves physical operation. Those need separate
+authorization and the hardware workflow. Optional WSL is exercised only when
+selected for portable simulation; no Python packages are required.
+
+`PASS`/exit 0 means all checks in the selected profile passed. `WARNING`/exit 2
+means requested evidence is incomplete. `FAIL`/exit 1 means a check failed and
+takes precedence over warnings. JSON includes `profile`, `checks`, `readiness`,
+and `untested`; portable success is not full environment readiness. Only PASS
+updates `workdir/latest.txt`. This extends the previous binary exit contract.
+
+Quartus license scope follows the [Intel 24.3 overview](https://www.intel.com/content/www/us/en/docs/programmable/683472/24-3/design-suite-overview.html).
+Installed `jtagconfig --help` defines the read-only enumeration invocation.
+Positive licensed Questa evidence remains required by
+[#27](https://github.com/amichai-bd/nand2mario/issues/27).
 
 ## Bootstrap
 

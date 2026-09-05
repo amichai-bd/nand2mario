@@ -30,7 +30,7 @@ jobs:
       - name: Test builder and discover tools
         run: |
           python tools/build.py check --tag ci-check --json
-          python tools/build.py doctor --sim icarus --tag ci-doctor --json
+          python tools/build.py doctor --profile portable --sim icarus --tag ci-doctor --json
       - name: Compile, elaborate, run, and check
         run: |
           python tools/build.py sim test builder-smoke --sim icarus --tag ci-smoke --json

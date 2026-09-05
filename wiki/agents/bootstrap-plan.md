@@ -5,9 +5,11 @@ The [gap register](../preflight-gaps.md) owns gap status and close conditions.
 ## Current phase
 
 Infrastructure refinement, reference RTL/display analysis, and the user's
-explicitly authorized isolated tile-pixel and minimal builder work
+explicitly authorized isolated tile-pixel, minimal builder, and read-only
+environment doctor work
 ([#68](https://github.com/amichai-bd/nand2mario/issues/68),
-[#26](https://github.com/amichai-bd/nand2mario/issues/26)). See the
+[#26](https://github.com/amichai-bd/nand2mario/issues/26),
+[#27](https://github.com/amichai-bd/nand2mario/issues/27)). See the
 [reference study](../src/rtl-reference-style.md) and
 [build contract](../tools/build-system.md).
 

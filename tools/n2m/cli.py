@@ -11,6 +11,7 @@ import sys
 from .records import atomic_json, atomic_text, git_state, workspace
 from .simulation import simulate
 from .simulator import Simulator
+from .doctor import doctor
 
 
 def parser():
@@ -18,6 +19,9 @@ def parser():
     commands = result.add_subparsers(dest="command", required=True)
     leaves = [commands.add_parser("doctor", help="discover portable simulator; no hardware access"),
               commands.add_parser("check", help="run builder tests")]
+    leaves[0].add_argument("--profile", choices=("portable", "environment"), default="portable")
+    for option in ("questa-bin", "quartus-bin", "jtag-cable", "uart-port", "uart-vid", "uart-pid", "uart-identity"):
+        leaves[0].add_argument("--" + option)
     sim = commands.add_parser("sim").add_subparsers(dest="action", required=True)
     test = sim.add_parser("test", help="compile, elaborate, run, and check a named target")
     test.add_argument("target")
@@ -55,17 +59,15 @@ def main(argv=None, root=None):
                     (build / "commands.log").write_text(json.dumps(command) + "\n", encoding="utf-8")
                     report.update(status="PASS" if result.returncode == 0 else "FAIL",
                                   commands=[command], artifacts=[str((build / "check.log").relative_to(root))])
+                elif args.command == "doctor":
+                    provenance = {k: report[k] for k in ("commit", "dirty_tree_fingerprint", "host", "python") if k in report}
+                    report.update(doctor(root, build, args, provenance))
                 else:
                     simulator = Simulator(args.sim, args.iverilog, args.vvp, args.wsl_distro)
-                    if args.command == "doctor":
-                        report.update(status="PASS", tools=simulator.info,
-                                      scope="Icarus compiler/runtime discovery only; run sim test builder-smoke to prove execution",
-                                      untested=["Questa license/runtime", "Quartus", "JTAG", "UART"])
-                    else:
-                        if not 0 <= args.seed <= 2147483647:
-                            raise ValueError("seed must be between 0 and 2147483647")
-                        provenance = {k: report[k] for k in ("commit", "dirty_tree_fingerprint", "host", "python") if k in report}
-                        report.update(simulate(root, build, args, simulator, provenance))
+                    if not 0 <= args.seed <= 2147483647:
+                        raise ValueError("seed must be between 0 and 2147483647")
+                    provenance = {k: report[k] for k in ("commit", "dirty_tree_fingerprint", "host", "python") if k in report}
+                    report.update(simulate(root, build, args, simulator, provenance))
             except Exception as error:
                 report.update(status="FAIL", error=str(error))
                 if args.command == "sim" and re.fullmatch(r"[a-z0-9][a-z0-9_-]*", args.target):
@@ -83,7 +85,9 @@ def main(argv=None, root=None):
         print(f"{report.get('cache', report['status'])}: {args.command} tag={report.get('tag', '-')}")
         if "error" in report:
             print(report["error"])
-        if args.command == "doctor" and report["status"] == "PASS":
+        if args.command == "doctor" and "checks" in report:
             print(report["scope"])
-            print(json.dumps(report["tools"], indent=2))
-    return 0 if report["status"] == "PASS" else 1
+            for name, check in report["checks"].items():
+                print(f"{name}: {check['status']} {check.get('error', check.get('detail', ''))}")
+            print(f"Readiness: {report['readiness']}; untested: {', '.join(report['untested'])}")
+    return {"PASS": 0, "FAIL": 1, "WARNING": 2}[report["status"]]
