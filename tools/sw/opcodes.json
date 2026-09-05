@@ -1,0 +1,3262 @@
+{
+  "provenance": "../../tools/provenance.json",
+  "forms": [
+    {
+      "bytes": [
+        0
+      ],
+      "form": "nop"
+    },
+    {
+      "bytes": [
+        1
+      ],
+      "form": "ld bc,d16"
+    },
+    {
+      "bytes": [
+        2
+      ],
+      "form": "ld [bc],a"
+    },
+    {
+      "bytes": [
+        3
+      ],
+      "form": "inc bc"
+    },
+    {
+      "bytes": [
+        4
+      ],
+      "form": "inc b"
+    },
+    {
+      "bytes": [
+        5
+      ],
+      "form": "dec b"
+    },
+    {
+      "bytes": [
+        6
+      ],
+      "form": "ld b,d8"
+    },
+    {
+      "bytes": [
+        7
+      ],
+      "form": "rlca"
+    },
+    {
+      "bytes": [
+        8
+      ],
+      "form": "ld [a16],sp"
+    },
+    {
+      "bytes": [
+        9
+      ],
+      "form": "add hl,bc"
+    },
+    {
+      "bytes": [
+        10
+      ],
+      "form": "ld a,[bc]"
+    },
+    {
+      "bytes": [
+        11
+      ],
+      "form": "dec bc"
+    },
+    {
+      "bytes": [
+        12
+      ],
+      "form": "inc c"
+    },
+    {
+      "bytes": [
+        13
+      ],
+      "form": "dec c"
+    },
+    {
+      "bytes": [
+        14
+      ],
+      "form": "ld c,d8"
+    },
+    {
+      "bytes": [
+        15
+      ],
+      "form": "rrca"
+    },
+    {
+      "bytes": [
+        16,
+        0
+      ],
+      "form": "stop"
+    },
+    {
+      "bytes": [
+        17
+      ],
+      "form": "ld de,d16"
+    },
+    {
+      "bytes": [
+        18
+      ],
+      "form": "ld [de],a"
+    },
+    {
+      "bytes": [
+        19
+      ],
+      "form": "inc de"
+    },
+    {
+      "bytes": [
+        20
+      ],
+      "form": "inc d"
+    },
+    {
+      "bytes": [
+        21
+      ],
+      "form": "dec d"
+    },
+    {
+      "bytes": [
+        22
+      ],
+      "form": "ld d,d8"
+    },
+    {
+      "bytes": [
+        23
+      ],
+      "form": "rla"
+    },
+    {
+      "bytes": [
+        24
+      ],
+      "form": "jr target"
+    },
+    {
+      "bytes": [
+        25
+      ],
+      "form": "add hl,de"
+    },
+    {
+      "bytes": [
+        26
+      ],
+      "form": "ld a,[de]"
+    },
+    {
+      "bytes": [
+        27
+      ],
+      "form": "dec de"
+    },
+    {
+      "bytes": [
+        28
+      ],
+      "form": "inc e"
+    },
+    {
+      "bytes": [
+        29
+      ],
+      "form": "dec e"
+    },
+    {
+      "bytes": [
+        30
+      ],
+      "form": "ld e,d8"
+    },
+    {
+      "bytes": [
+        31
+      ],
+      "form": "rra"
+    },
+    {
+      "bytes": [
+        32
+      ],
+      "form": "jr nz,target"
+    },
+    {
+      "bytes": [
+        33
+      ],
+      "form": "ld hl,d16"
+    },
+    {
+      "bytes": [
+        34
+      ],
+      "form": "ld [hl+],a"
+    },
+    {
+      "bytes": [
+        35
+      ],
+      "form": "inc hl"
+    },
+    {
+      "bytes": [
+        36
+      ],
+      "form": "inc h"
+    },
+    {
+      "bytes": [
+        37
+      ],
+      "form": "dec h"
+    },
+    {
+      "bytes": [
+        38
+      ],
+      "form": "ld h,d8"
+    },
+    {
+      "bytes": [
+        39
+      ],
+      "form": "daa"
+    },
+    {
+      "bytes": [
+        40
+      ],
+      "form": "jr z,target"
+    },
+    {
+      "bytes": [
+        41
+      ],
+      "form": "add hl,hl"
+    },
+    {
+      "bytes": [
+        42
+      ],
+      "form": "ld a,[hl+]"
+    },
+    {
+      "bytes": [
+        43
+      ],
+      "form": "dec hl"
+    },
+    {
+      "bytes": [
+        44
+      ],
+      "form": "inc l"
+    },
+    {
+      "bytes": [
+        45
+      ],
+      "form": "dec l"
+    },
+    {
+      "bytes": [
+        46
+      ],
+      "form": "ld l,d8"
+    },
+    {
+      "bytes": [
+        47
+      ],
+      "form": "cpl"
+    },
+    {
+      "bytes": [
+        48
+      ],
+      "form": "jr nc,target"
+    },
+    {
+      "bytes": [
+        49
+      ],
+      "form": "ld sp,d16"
+    },
+    {
+      "bytes": [
+        50
+      ],
+      "form": "ld [hl-],a"
+    },
+    {
+      "bytes": [
+        51
+      ],
+      "form": "inc sp"
+    },
+    {
+      "bytes": [
+        52
+      ],
+      "form": "inc [hl]"
+    },
+    {
+      "bytes": [
+        53
+      ],
+      "form": "dec [hl]"
+    },
+    {
+      "bytes": [
+        54
+      ],
+      "form": "ld [hl],d8"
+    },
+    {
+      "bytes": [
+        55
+      ],
+      "form": "scf"
+    },
+    {
+      "bytes": [
+        56
+      ],
+      "form": "jr c,target"
+    },
+    {
+      "bytes": [
+        57
+      ],
+      "form": "add hl,sp"
+    },
+    {
+      "bytes": [
+        58
+      ],
+      "form": "ld a,[hl-]"
+    },
+    {
+      "bytes": [
+        59
+      ],
+      "form": "dec sp"
+    },
+    {
+      "bytes": [
+        60
+      ],
+      "form": "inc a"
+    },
+    {
+      "bytes": [
+        61
+      ],
+      "form": "dec a"
+    },
+    {
+      "bytes": [
+        62
+      ],
+      "form": "ld a,d8"
+    },
+    {
+      "bytes": [
+        63
+      ],
+      "form": "ccf"
+    },
+    {
+      "bytes": [
+        64
+      ],
+      "form": "ld b,b"
+    },
+    {
+      "bytes": [
+        65
+      ],
+      "form": "ld b,c"
+    },
+    {
+      "bytes": [
+        66
+      ],
+      "form": "ld b,d"
+    },
+    {
+      "bytes": [
+        67
+      ],
+      "form": "ld b,e"
+    },
+    {
+      "bytes": [
+        68
+      ],
+      "form": "ld b,h"
+    },
+    {
+      "bytes": [
+        69
+      ],
+      "form": "ld b,l"
+    },
+    {
+      "bytes": [
+        70
+      ],
+      "form": "ld b,[hl]"
+    },
+    {
+      "bytes": [
+        71
+      ],
+      "form": "ld b,a"
+    },
+    {
+      "bytes": [
+        72
+      ],
+      "form": "ld c,b"
+    },
+    {
+      "bytes": [
+        73
+      ],
+      "form": "ld c,c"
+    },
+    {
+      "bytes": [
+        74
+      ],
+      "form": "ld c,d"
+    },
+    {
+      "bytes": [
+        75
+      ],
+      "form": "ld c,e"
+    },
+    {
+      "bytes": [
+        76
+      ],
+      "form": "ld c,h"
+    },
+    {
+      "bytes": [
+        77
+      ],
+      "form": "ld c,l"
+    },
+    {
+      "bytes": [
+        78
+      ],
+      "form": "ld c,[hl]"
+    },
+    {
+      "bytes": [
+        79
+      ],
+      "form": "ld c,a"
+    },
+    {
+      "bytes": [
+        80
+      ],
+      "form": "ld d,b"
+    },
+    {
+      "bytes": [
+        81
+      ],
+      "form": "ld d,c"
+    },
+    {
+      "bytes": [
+        82
+      ],
+      "form": "ld d,d"
+    },
+    {
+      "bytes": [
+        83
+      ],
+      "form": "ld d,e"
+    },
+    {
+      "bytes": [
+        84
+      ],
+      "form": "ld d,h"
+    },
+    {
+      "bytes": [
+        85
+      ],
+      "form": "ld d,l"
+    },
+    {
+      "bytes": [
+        86
+      ],
+      "form": "ld d,[hl]"
+    },
+    {
+      "bytes": [
+        87
+      ],
+      "form": "ld d,a"
+    },
+    {
+      "bytes": [
+        88
+      ],
+      "form": "ld e,b"
+    },
+    {
+      "bytes": [
+        89
+      ],
+      "form": "ld e,c"
+    },
+    {
+      "bytes": [
+        90
+      ],
+      "form": "ld e,d"
+    },
+    {
+      "bytes": [
+        91
+      ],
+      "form": "ld e,e"
+    },
+    {
+      "bytes": [
+        92
+      ],
+      "form": "ld e,h"
+    },
+    {
+      "bytes": [
+        93
+      ],
+      "form": "ld e,l"
+    },
+    {
+      "bytes": [
+        94
+      ],
+      "form": "ld e,[hl]"
+    },
+    {
+      "bytes": [
+        95
+      ],
+      "form": "ld e,a"
+    },
+    {
+      "bytes": [
+        96
+      ],
+      "form": "ld h,b"
+    },
+    {
+      "bytes": [
+        97
+      ],
+      "form": "ld h,c"
+    },
+    {
+      "bytes": [
+        98
+      ],
+      "form": "ld h,d"
+    },
+    {
+      "bytes": [
+        99
+      ],
+      "form": "ld h,e"
+    },
+    {
+      "bytes": [
+        100
+      ],
+      "form": "ld h,h"
+    },
+    {
+      "bytes": [
+        101
+      ],
+      "form": "ld h,l"
+    },
+    {
+      "bytes": [
+        102
+      ],
+      "form": "ld h,[hl]"
+    },
+    {
+      "bytes": [
+        103
+      ],
+      "form": "ld h,a"
+    },
+    {
+      "bytes": [
+        104
+      ],
+      "form": "ld l,b"
+    },
+    {
+      "bytes": [
+        105
+      ],
+      "form": "ld l,c"
+    },
+    {
+      "bytes": [
+        106
+      ],
+      "form": "ld l,d"
+    },
+    {
+      "bytes": [
+        107
+      ],
+      "form": "ld l,e"
+    },
+    {
+      "bytes": [
+        108
+      ],
+      "form": "ld l,h"
+    },
+    {
+      "bytes": [
+        109
+      ],
+      "form": "ld l,l"
+    },
+    {
+      "bytes": [
+        110
+      ],
+      "form": "ld l,[hl]"
+    },
+    {
+      "bytes": [
+        111
+      ],
+      "form": "ld l,a"
+    },
+    {
+      "bytes": [
+        112
+      ],
+      "form": "ld [hl],b"
+    },
+    {
+      "bytes": [
+        113
+      ],
+      "form": "ld [hl],c"
+    },
+    {
+      "bytes": [
+        114
+      ],
+      "form": "ld [hl],d"
+    },
+    {
+      "bytes": [
+        115
+      ],
+      "form": "ld [hl],e"
+    },
+    {
+      "bytes": [
+        116
+      ],
+      "form": "ld [hl],h"
+    },
+    {
+      "bytes": [
+        117
+      ],
+      "form": "ld [hl],l"
+    },
+    {
+      "bytes": [
+        118
+      ],
+      "form": "halt"
+    },
+    {
+      "bytes": [
+        119
+      ],
+      "form": "ld [hl],a"
+    },
+    {
+      "bytes": [
+        120
+      ],
+      "form": "ld a,b"
+    },
+    {
+      "bytes": [
+        121
+      ],
+      "form": "ld a,c"
+    },
+    {
+      "bytes": [
+        122
+      ],
+      "form": "ld a,d"
+    },
+    {
+      "bytes": [
+        123
+      ],
+      "form": "ld a,e"
+    },
+    {
+      "bytes": [
+        124
+      ],
+      "form": "ld a,h"
+    },
+    {
+      "bytes": [
+        125
+      ],
+      "form": "ld a,l"
+    },
+    {
+      "bytes": [
+        126
+      ],
+      "form": "ld a,[hl]"
+    },
+    {
+      "bytes": [
+        127
+      ],
+      "form": "ld a,a"
+    },
+    {
+      "bytes": [
+        128
+      ],
+      "form": "add a,b"
+    },
+    {
+      "bytes": [
+        129
+      ],
+      "form": "add a,c"
+    },
+    {
+      "bytes": [
+        130
+      ],
+      "form": "add a,d"
+    },
+    {
+      "bytes": [
+        131
+      ],
+      "form": "add a,e"
+    },
+    {
+      "bytes": [
+        132
+      ],
+      "form": "add a,h"
+    },
+    {
+      "bytes": [
+        133
+      ],
+      "form": "add a,l"
+    },
+    {
+      "bytes": [
+        134
+      ],
+      "form": "add a,[hl]"
+    },
+    {
+      "bytes": [
+        135
+      ],
+      "form": "add a,a"
+    },
+    {
+      "bytes": [
+        136
+      ],
+      "form": "adc a,b"
+    },
+    {
+      "bytes": [
+        137
+      ],
+      "form": "adc a,c"
+    },
+    {
+      "bytes": [
+        138
+      ],
+      "form": "adc a,d"
+    },
+    {
+      "bytes": [
+        139
+      ],
+      "form": "adc a,e"
+    },
+    {
+      "bytes": [
+        140
+      ],
+      "form": "adc a,h"
+    },
+    {
+      "bytes": [
+        141
+      ],
+      "form": "adc a,l"
+    },
+    {
+      "bytes": [
+        142
+      ],
+      "form": "adc a,[hl]"
+    },
+    {
+      "bytes": [
+        143
+      ],
+      "form": "adc a,a"
+    },
+    {
+      "bytes": [
+        144
+      ],
+      "form": "sub a,b"
+    },
+    {
+      "bytes": [
+        145
+      ],
+      "form": "sub a,c"
+    },
+    {
+      "bytes": [
+        146
+      ],
+      "form": "sub a,d"
+    },
+    {
+      "bytes": [
+        147
+      ],
+      "form": "sub a,e"
+    },
+    {
+      "bytes": [
+        148
+      ],
+      "form": "sub a,h"
+    },
+    {
+      "bytes": [
+        149
+      ],
+      "form": "sub a,l"
+    },
+    {
+      "bytes": [
+        150
+      ],
+      "form": "sub a,[hl]"
+    },
+    {
+      "bytes": [
+        151
+      ],
+      "form": "sub a,a"
+    },
+    {
+      "bytes": [
+        152
+      ],
+      "form": "sbc a,b"
+    },
+    {
+      "bytes": [
+        153
+      ],
+      "form": "sbc a,c"
+    },
+    {
+      "bytes": [
+        154
+      ],
+      "form": "sbc a,d"
+    },
+    {
+      "bytes": [
+        155
+      ],
+      "form": "sbc a,e"
+    },
+    {
+      "bytes": [
+        156
+      ],
+      "form": "sbc a,h"
+    },
+    {
+      "bytes": [
+        157
+      ],
+      "form": "sbc a,l"
+    },
+    {
+      "bytes": [
+        158
+      ],
+      "form": "sbc a,[hl]"
+    },
+    {
+      "bytes": [
+        159
+      ],
+      "form": "sbc a,a"
+    },
+    {
+      "bytes": [
+        160
+      ],
+      "form": "and a,b"
+    },
+    {
+      "bytes": [
+        161
+      ],
+      "form": "and a,c"
+    },
+    {
+      "bytes": [
+        162
+      ],
+      "form": "and a,d"
+    },
+    {
+      "bytes": [
+        163
+      ],
+      "form": "and a,e"
+    },
+    {
+      "bytes": [
+        164
+      ],
+      "form": "and a,h"
+    },
+    {
+      "bytes": [
+        165
+      ],
+      "form": "and a,l"
+    },
+    {
+      "bytes": [
+        166
+      ],
+      "form": "and a,[hl]"
+    },
+    {
+      "bytes": [
+        167
+      ],
+      "form": "and a,a"
+    },
+    {
+      "bytes": [
+        168
+      ],
+      "form": "xor a,b"
+    },
+    {
+      "bytes": [
+        169
+      ],
+      "form": "xor a,c"
+    },
+    {
+      "bytes": [
+        170
+      ],
+      "form": "xor a,d"
+    },
+    {
+      "bytes": [
+        171
+      ],
+      "form": "xor a,e"
+    },
+    {
+      "bytes": [
+        172
+      ],
+      "form": "xor a,h"
+    },
+    {
+      "bytes": [
+        173
+      ],
+      "form": "xor a,l"
+    },
+    {
+      "bytes": [
+        174
+      ],
+      "form": "xor a,[hl]"
+    },
+    {
+      "bytes": [
+        175
+      ],
+      "form": "xor a,a"
+    },
+    {
+      "bytes": [
+        176
+      ],
+      "form": "or a,b"
+    },
+    {
+      "bytes": [
+        177
+      ],
+      "form": "or a,c"
+    },
+    {
+      "bytes": [
+        178
+      ],
+      "form": "or a,d"
+    },
+    {
+      "bytes": [
+        179
+      ],
+      "form": "or a,e"
+    },
+    {
+      "bytes": [
+        180
+      ],
+      "form": "or a,h"
+    },
+    {
+      "bytes": [
+        181
+      ],
+      "form": "or a,l"
+    },
+    {
+      "bytes": [
+        182
+      ],
+      "form": "or a,[hl]"
+    },
+    {
+      "bytes": [
+        183
+      ],
+      "form": "or a,a"
+    },
+    {
+      "bytes": [
+        184
+      ],
+      "form": "cp a,b"
+    },
+    {
+      "bytes": [
+        185
+      ],
+      "form": "cp a,c"
+    },
+    {
+      "bytes": [
+        186
+      ],
+      "form": "cp a,d"
+    },
+    {
+      "bytes": [
+        187
+      ],
+      "form": "cp a,e"
+    },
+    {
+      "bytes": [
+        188
+      ],
+      "form": "cp a,h"
+    },
+    {
+      "bytes": [
+        189
+      ],
+      "form": "cp a,l"
+    },
+    {
+      "bytes": [
+        190
+      ],
+      "form": "cp a,[hl]"
+    },
+    {
+      "bytes": [
+        191
+      ],
+      "form": "cp a,a"
+    },
+    {
+      "bytes": [
+        192
+      ],
+      "form": "ret nz"
+    },
+    {
+      "bytes": [
+        193
+      ],
+      "form": "pop bc"
+    },
+    {
+      "bytes": [
+        194
+      ],
+      "form": "jp nz,a16"
+    },
+    {
+      "bytes": [
+        195
+      ],
+      "form": "jp a16"
+    },
+    {
+      "bytes": [
+        196
+      ],
+      "form": "call nz,a16"
+    },
+    {
+      "bytes": [
+        197
+      ],
+      "form": "push bc"
+    },
+    {
+      "bytes": [
+        198
+      ],
+      "form": "add a,d8"
+    },
+    {
+      "bytes": [
+        199
+      ],
+      "form": "rst 0"
+    },
+    {
+      "bytes": [
+        200
+      ],
+      "form": "ret z"
+    },
+    {
+      "bytes": [
+        201
+      ],
+      "form": "ret"
+    },
+    {
+      "bytes": [
+        202
+      ],
+      "form": "jp z,a16"
+    },
+    {
+      "bytes": [
+        204
+      ],
+      "form": "call z,a16"
+    },
+    {
+      "bytes": [
+        205
+      ],
+      "form": "call a16"
+    },
+    {
+      "bytes": [
+        206
+      ],
+      "form": "adc a,d8"
+    },
+    {
+      "bytes": [
+        207
+      ],
+      "form": "rst 8"
+    },
+    {
+      "bytes": [
+        208
+      ],
+      "form": "ret nc"
+    },
+    {
+      "bytes": [
+        209
+      ],
+      "form": "pop de"
+    },
+    {
+      "bytes": [
+        210
+      ],
+      "form": "jp nc,a16"
+    },
+    {
+      "bytes": [
+        212
+      ],
+      "form": "call nc,a16"
+    },
+    {
+      "bytes": [
+        213
+      ],
+      "form": "push de"
+    },
+    {
+      "bytes": [
+        214
+      ],
+      "form": "sub a,d8"
+    },
+    {
+      "bytes": [
+        215
+      ],
+      "form": "rst 16"
+    },
+    {
+      "bytes": [
+        216
+      ],
+      "form": "ret c"
+    },
+    {
+      "bytes": [
+        217
+      ],
+      "form": "reti"
+    },
+    {
+      "bytes": [
+        218
+      ],
+      "form": "jp c,a16"
+    },
+    {
+      "bytes": [
+        220
+      ],
+      "form": "call c,a16"
+    },
+    {
+      "bytes": [
+        222
+      ],
+      "form": "sbc a,d8"
+    },
+    {
+      "bytes": [
+        223
+      ],
+      "form": "rst 24"
+    },
+    {
+      "bytes": [
+        224
+      ],
+      "form": "ldh [a8],a"
+    },
+    {
+      "bytes": [
+        225
+      ],
+      "form": "pop hl"
+    },
+    {
+      "bytes": [
+        226
+      ],
+      "form": "ldh [c],a"
+    },
+    {
+      "bytes": [
+        229
+      ],
+      "form": "push hl"
+    },
+    {
+      "bytes": [
+        230
+      ],
+      "form": "and a,d8"
+    },
+    {
+      "bytes": [
+        231
+      ],
+      "form": "rst 32"
+    },
+    {
+      "bytes": [
+        232
+      ],
+      "form": "add sp,r8"
+    },
+    {
+      "bytes": [
+        233
+      ],
+      "form": "jp hl"
+    },
+    {
+      "bytes": [
+        234
+      ],
+      "form": "ld [a16],a"
+    },
+    {
+      "bytes": [
+        238
+      ],
+      "form": "xor a,d8"
+    },
+    {
+      "bytes": [
+        239
+      ],
+      "form": "rst 40"
+    },
+    {
+      "bytes": [
+        240
+      ],
+      "form": "ldh a,[a8]"
+    },
+    {
+      "bytes": [
+        241
+      ],
+      "form": "pop af"
+    },
+    {
+      "bytes": [
+        242
+      ],
+      "form": "ldh a,[c]"
+    },
+    {
+      "bytes": [
+        243
+      ],
+      "form": "di"
+    },
+    {
+      "bytes": [
+        245
+      ],
+      "form": "push af"
+    },
+    {
+      "bytes": [
+        246
+      ],
+      "form": "or a,d8"
+    },
+    {
+      "bytes": [
+        247
+      ],
+      "form": "rst 48"
+    },
+    {
+      "bytes": [
+        248
+      ],
+      "form": "ld hl,sp+r8"
+    },
+    {
+      "bytes": [
+        249
+      ],
+      "form": "ld sp,hl"
+    },
+    {
+      "bytes": [
+        250
+      ],
+      "form": "ld a,[a16]"
+    },
+    {
+      "bytes": [
+        251
+      ],
+      "form": "ei"
+    },
+    {
+      "bytes": [
+        254
+      ],
+      "form": "cp a,d8"
+    },
+    {
+      "bytes": [
+        255
+      ],
+      "form": "rst 56"
+    },
+    {
+      "bytes": [
+        203,
+        0
+      ],
+      "form": "rlc b"
+    },
+    {
+      "bytes": [
+        203,
+        1
+      ],
+      "form": "rlc c"
+    },
+    {
+      "bytes": [
+        203,
+        2
+      ],
+      "form": "rlc d"
+    },
+    {
+      "bytes": [
+        203,
+        3
+      ],
+      "form": "rlc e"
+    },
+    {
+      "bytes": [
+        203,
+        4
+      ],
+      "form": "rlc h"
+    },
+    {
+      "bytes": [
+        203,
+        5
+      ],
+      "form": "rlc l"
+    },
+    {
+      "bytes": [
+        203,
+        6
+      ],
+      "form": "rlc [hl]"
+    },
+    {
+      "bytes": [
+        203,
+        7
+      ],
+      "form": "rlc a"
+    },
+    {
+      "bytes": [
+        203,
+        8
+      ],
+      "form": "rrc b"
+    },
+    {
+      "bytes": [
+        203,
+        9
+      ],
+      "form": "rrc c"
+    },
+    {
+      "bytes": [
+        203,
+        10
+      ],
+      "form": "rrc d"
+    },
+    {
+      "bytes": [
+        203,
+        11
+      ],
+      "form": "rrc e"
+    },
+    {
+      "bytes": [
+        203,
+        12
+      ],
+      "form": "rrc h"
+    },
+    {
+      "bytes": [
+        203,
+        13
+      ],
+      "form": "rrc l"
+    },
+    {
+      "bytes": [
+        203,
+        14
+      ],
+      "form": "rrc [hl]"
+    },
+    {
+      "bytes": [
+        203,
+        15
+      ],
+      "form": "rrc a"
+    },
+    {
+      "bytes": [
+        203,
+        16
+      ],
+      "form": "rl b"
+    },
+    {
+      "bytes": [
+        203,
+        17
+      ],
+      "form": "rl c"
+    },
+    {
+      "bytes": [
+        203,
+        18
+      ],
+      "form": "rl d"
+    },
+    {
+      "bytes": [
+        203,
+        19
+      ],
+      "form": "rl e"
+    },
+    {
+      "bytes": [
+        203,
+        20
+      ],
+      "form": "rl h"
+    },
+    {
+      "bytes": [
+        203,
+        21
+      ],
+      "form": "rl l"
+    },
+    {
+      "bytes": [
+        203,
+        22
+      ],
+      "form": "rl [hl]"
+    },
+    {
+      "bytes": [
+        203,
+        23
+      ],
+      "form": "rl a"
+    },
+    {
+      "bytes": [
+        203,
+        24
+      ],
+      "form": "rr b"
+    },
+    {
+      "bytes": [
+        203,
+        25
+      ],
+      "form": "rr c"
+    },
+    {
+      "bytes": [
+        203,
+        26
+      ],
+      "form": "rr d"
+    },
+    {
+      "bytes": [
+        203,
+        27
+      ],
+      "form": "rr e"
+    },
+    {
+      "bytes": [
+        203,
+        28
+      ],
+      "form": "rr h"
+    },
+    {
+      "bytes": [
+        203,
+        29
+      ],
+      "form": "rr l"
+    },
+    {
+      "bytes": [
+        203,
+        30
+      ],
+      "form": "rr [hl]"
+    },
+    {
+      "bytes": [
+        203,
+        31
+      ],
+      "form": "rr a"
+    },
+    {
+      "bytes": [
+        203,
+        32
+      ],
+      "form": "sla b"
+    },
+    {
+      "bytes": [
+        203,
+        33
+      ],
+      "form": "sla c"
+    },
+    {
+      "bytes": [
+        203,
+        34
+      ],
+      "form": "sla d"
+    },
+    {
+      "bytes": [
+        203,
+        35
+      ],
+      "form": "sla e"
+    },
+    {
+      "bytes": [
+        203,
+        36
+      ],
+      "form": "sla h"
+    },
+    {
+      "bytes": [
+        203,
+        37
+      ],
+      "form": "sla l"
+    },
+    {
+      "bytes": [
+        203,
+        38
+      ],
+      "form": "sla [hl]"
+    },
+    {
+      "bytes": [
+        203,
+        39
+      ],
+      "form": "sla a"
+    },
+    {
+      "bytes": [
+        203,
+        40
+      ],
+      "form": "sra b"
+    },
+    {
+      "bytes": [
+        203,
+        41
+      ],
+      "form": "sra c"
+    },
+    {
+      "bytes": [
+        203,
+        42
+      ],
+      "form": "sra d"
+    },
+    {
+      "bytes": [
+        203,
+        43
+      ],
+      "form": "sra e"
+    },
+    {
+      "bytes": [
+        203,
+        44
+      ],
+      "form": "sra h"
+    },
+    {
+      "bytes": [
+        203,
+        45
+      ],
+      "form": "sra l"
+    },
+    {
+      "bytes": [
+        203,
+        46
+      ],
+      "form": "sra [hl]"
+    },
+    {
+      "bytes": [
+        203,
+        47
+      ],
+      "form": "sra a"
+    },
+    {
+      "bytes": [
+        203,
+        48
+      ],
+      "form": "swap b"
+    },
+    {
+      "bytes": [
+        203,
+        49
+      ],
+      "form": "swap c"
+    },
+    {
+      "bytes": [
+        203,
+        50
+      ],
+      "form": "swap d"
+    },
+    {
+      "bytes": [
+        203,
+        51
+      ],
+      "form": "swap e"
+    },
+    {
+      "bytes": [
+        203,
+        52
+      ],
+      "form": "swap h"
+    },
+    {
+      "bytes": [
+        203,
+        53
+      ],
+      "form": "swap l"
+    },
+    {
+      "bytes": [
+        203,
+        54
+      ],
+      "form": "swap [hl]"
+    },
+    {
+      "bytes": [
+        203,
+        55
+      ],
+      "form": "swap a"
+    },
+    {
+      "bytes": [
+        203,
+        56
+      ],
+      "form": "srl b"
+    },
+    {
+      "bytes": [
+        203,
+        57
+      ],
+      "form": "srl c"
+    },
+    {
+      "bytes": [
+        203,
+        58
+      ],
+      "form": "srl d"
+    },
+    {
+      "bytes": [
+        203,
+        59
+      ],
+      "form": "srl e"
+    },
+    {
+      "bytes": [
+        203,
+        60
+      ],
+      "form": "srl h"
+    },
+    {
+      "bytes": [
+        203,
+        61
+      ],
+      "form": "srl l"
+    },
+    {
+      "bytes": [
+        203,
+        62
+      ],
+      "form": "srl [hl]"
+    },
+    {
+      "bytes": [
+        203,
+        63
+      ],
+      "form": "srl a"
+    },
+    {
+      "bytes": [
+        203,
+        64
+      ],
+      "form": "bit 0,b"
+    },
+    {
+      "bytes": [
+        203,
+        65
+      ],
+      "form": "bit 0,c"
+    },
+    {
+      "bytes": [
+        203,
+        66
+      ],
+      "form": "bit 0,d"
+    },
+    {
+      "bytes": [
+        203,
+        67
+      ],
+      "form": "bit 0,e"
+    },
+    {
+      "bytes": [
+        203,
+        68
+      ],
+      "form": "bit 0,h"
+    },
+    {
+      "bytes": [
+        203,
+        69
+      ],
+      "form": "bit 0,l"
+    },
+    {
+      "bytes": [
+        203,
+        70
+      ],
+      "form": "bit 0,[hl]"
+    },
+    {
+      "bytes": [
+        203,
+        71
+      ],
+      "form": "bit 0,a"
+    },
+    {
+      "bytes": [
+        203,
+        72
+      ],
+      "form": "bit 1,b"
+    },
+    {
+      "bytes": [
+        203,
+        73
+      ],
+      "form": "bit 1,c"
+    },
+    {
+      "bytes": [
+        203,
+        74
+      ],
+      "form": "bit 1,d"
+    },
+    {
+      "bytes": [
+        203,
+        75
+      ],
+      "form": "bit 1,e"
+    },
+    {
+      "bytes": [
+        203,
+        76
+      ],
+      "form": "bit 1,h"
+    },
+    {
+      "bytes": [
+        203,
+        77
+      ],
+      "form": "bit 1,l"
+    },
+    {
+      "bytes": [
+        203,
+        78
+      ],
+      "form": "bit 1,[hl]"
+    },
+    {
+      "bytes": [
+        203,
+        79
+      ],
+      "form": "bit 1,a"
+    },
+    {
+      "bytes": [
+        203,
+        80
+      ],
+      "form": "bit 2,b"
+    },
+    {
+      "bytes": [
+        203,
+        81
+      ],
+      "form": "bit 2,c"
+    },
+    {
+      "bytes": [
+        203,
+        82
+      ],
+      "form": "bit 2,d"
+    },
+    {
+      "bytes": [
+        203,
+        83
+      ],
+      "form": "bit 2,e"
+    },
+    {
+      "bytes": [
+        203,
+        84
+      ],
+      "form": "bit 2,h"
+    },
+    {
+      "bytes": [
+        203,
+        85
+      ],
+      "form": "bit 2,l"
+    },
+    {
+      "bytes": [
+        203,
+        86
+      ],
+      "form": "bit 2,[hl]"
+    },
+    {
+      "bytes": [
+        203,
+        87
+      ],
+      "form": "bit 2,a"
+    },
+    {
+      "bytes": [
+        203,
+        88
+      ],
+      "form": "bit 3,b"
+    },
+    {
+      "bytes": [
+        203,
+        89
+      ],
+      "form": "bit 3,c"
+    },
+    {
+      "bytes": [
+        203,
+        90
+      ],
+      "form": "bit 3,d"
+    },
+    {
+      "bytes": [
+        203,
+        91
+      ],
+      "form": "bit 3,e"
+    },
+    {
+      "bytes": [
+        203,
+        92
+      ],
+      "form": "bit 3,h"
+    },
+    {
+      "bytes": [
+        203,
+        93
+      ],
+      "form": "bit 3,l"
+    },
+    {
+      "bytes": [
+        203,
+        94
+      ],
+      "form": "bit 3,[hl]"
+    },
+    {
+      "bytes": [
+        203,
+        95
+      ],
+      "form": "bit 3,a"
+    },
+    {
+      "bytes": [
+        203,
+        96
+      ],
+      "form": "bit 4,b"
+    },
+    {
+      "bytes": [
+        203,
+        97
+      ],
+      "form": "bit 4,c"
+    },
+    {
+      "bytes": [
+        203,
+        98
+      ],
+      "form": "bit 4,d"
+    },
+    {
+      "bytes": [
+        203,
+        99
+      ],
+      "form": "bit 4,e"
+    },
+    {
+      "bytes": [
+        203,
+        100
+      ],
+      "form": "bit 4,h"
+    },
+    {
+      "bytes": [
+        203,
+        101
+      ],
+      "form": "bit 4,l"
+    },
+    {
+      "bytes": [
+        203,
+        102
+      ],
+      "form": "bit 4,[hl]"
+    },
+    {
+      "bytes": [
+        203,
+        103
+      ],
+      "form": "bit 4,a"
+    },
+    {
+      "bytes": [
+        203,
+        104
+      ],
+      "form": "bit 5,b"
+    },
+    {
+      "bytes": [
+        203,
+        105
+      ],
+      "form": "bit 5,c"
+    },
+    {
+      "bytes": [
+        203,
+        106
+      ],
+      "form": "bit 5,d"
+    },
+    {
+      "bytes": [
+        203,
+        107
+      ],
+      "form": "bit 5,e"
+    },
+    {
+      "bytes": [
+        203,
+        108
+      ],
+      "form": "bit 5,h"
+    },
+    {
+      "bytes": [
+        203,
+        109
+      ],
+      "form": "bit 5,l"
+    },
+    {
+      "bytes": [
+        203,
+        110
+      ],
+      "form": "bit 5,[hl]"
+    },
+    {
+      "bytes": [
+        203,
+        111
+      ],
+      "form": "bit 5,a"
+    },
+    {
+      "bytes": [
+        203,
+        112
+      ],
+      "form": "bit 6,b"
+    },
+    {
+      "bytes": [
+        203,
+        113
+      ],
+      "form": "bit 6,c"
+    },
+    {
+      "bytes": [
+        203,
+        114
+      ],
+      "form": "bit 6,d"
+    },
+    {
+      "bytes": [
+        203,
+        115
+      ],
+      "form": "bit 6,e"
+    },
+    {
+      "bytes": [
+        203,
+        116
+      ],
+      "form": "bit 6,h"
+    },
+    {
+      "bytes": [
+        203,
+        117
+      ],
+      "form": "bit 6,l"
+    },
+    {
+      "bytes": [
+        203,
+        118
+      ],
+      "form": "bit 6,[hl]"
+    },
+    {
+      "bytes": [
+        203,
+        119
+      ],
+      "form": "bit 6,a"
+    },
+    {
+      "bytes": [
+        203,
+        120
+      ],
+      "form": "bit 7,b"
+    },
+    {
+      "bytes": [
+        203,
+        121
+      ],
+      "form": "bit 7,c"
+    },
+    {
+      "bytes": [
+        203,
+        122
+      ],
+      "form": "bit 7,d"
+    },
+    {
+      "bytes": [
+        203,
+        123
+      ],
+      "form": "bit 7,e"
+    },
+    {
+      "bytes": [
+        203,
+        124
+      ],
+      "form": "bit 7,h"
+    },
+    {
+      "bytes": [
+        203,
+        125
+      ],
+      "form": "bit 7,l"
+    },
+    {
+      "bytes": [
+        203,
+        126
+      ],
+      "form": "bit 7,[hl]"
+    },
+    {
+      "bytes": [
+        203,
+        127
+      ],
+      "form": "bit 7,a"
+    },
+    {
+      "bytes": [
+        203,
+        128
+      ],
+      "form": "res 0,b"
+    },
+    {
+      "bytes": [
+        203,
+        129
+      ],
+      "form": "res 0,c"
+    },
+    {
+      "bytes": [
+        203,
+        130
+      ],
+      "form": "res 0,d"
+    },
+    {
+      "bytes": [
+        203,
+        131
+      ],
+      "form": "res 0,e"
+    },
+    {
+      "bytes": [
+        203,
+        132
+      ],
+      "form": "res 0,h"
+    },
+    {
+      "bytes": [
+        203,
+        133
+      ],
+      "form": "res 0,l"
+    },
+    {
+      "bytes": [
+        203,
+        134
+      ],
+      "form": "res 0,[hl]"
+    },
+    {
+      "bytes": [
+        203,
+        135
+      ],
+      "form": "res 0,a"
+    },
+    {
+      "bytes": [
+        203,
+        136
+      ],
+      "form": "res 1,b"
+    },
+    {
+      "bytes": [
+        203,
+        137
+      ],
+      "form": "res 1,c"
+    },
+    {
+      "bytes": [
+        203,
+        138
+      ],
+      "form": "res 1,d"
+    },
+    {
+      "bytes": [
+        203,
+        139
+      ],
+      "form": "res 1,e"
+    },
+    {
+      "bytes": [
+        203,
+        140
+      ],
+      "form": "res 1,h"
+    },
+    {
+      "bytes": [
+        203,
+        141
+      ],
+      "form": "res 1,l"
+    },
+    {
+      "bytes": [
+        203,
+        142
+      ],
+      "form": "res 1,[hl]"
+    },
+    {
+      "bytes": [
+        203,
+        143
+      ],
+      "form": "res 1,a"
+    },
+    {
+      "bytes": [
+        203,
+        144
+      ],
+      "form": "res 2,b"
+    },
+    {
+      "bytes": [
+        203,
+        145
+      ],
+      "form": "res 2,c"
+    },
+    {
+      "bytes": [
+        203,
+        146
+      ],
+      "form": "res 2,d"
+    },
+    {
+      "bytes": [
+        203,
+        147
+      ],
+      "form": "res 2,e"
+    },
+    {
+      "bytes": [
+        203,
+        148
+      ],
+      "form": "res 2,h"
+    },
+    {
+      "bytes": [
+        203,
+        149
+      ],
+      "form": "res 2,l"
+    },
+    {
+      "bytes": [
+        203,
+        150
+      ],
+      "form": "res 2,[hl]"
+    },
+    {
+      "bytes": [
+        203,
+        151
+      ],
+      "form": "res 2,a"
+    },
+    {
+      "bytes": [
+        203,
+        152
+      ],
+      "form": "res 3,b"
+    },
+    {
+      "bytes": [
+        203,
+        153
+      ],
+      "form": "res 3,c"
+    },
+    {
+      "bytes": [
+        203,
+        154
+      ],
+      "form": "res 3,d"
+    },
+    {
+      "bytes": [
+        203,
+        155
+      ],
+      "form": "res 3,e"
+    },
+    {
+      "bytes": [
+        203,
+        156
+      ],
+      "form": "res 3,h"
+    },
+    {
+      "bytes": [
+        203,
+        157
+      ],
+      "form": "res 3,l"
+    },
+    {
+      "bytes": [
+        203,
+        158
+      ],
+      "form": "res 3,[hl]"
+    },
+    {
+      "bytes": [
+        203,
+        159
+      ],
+      "form": "res 3,a"
+    },
+    {
+      "bytes": [
+        203,
+        160
+      ],
+      "form": "res 4,b"
+    },
+    {
+      "bytes": [
+        203,
+        161
+      ],
+      "form": "res 4,c"
+    },
+    {
+      "bytes": [
+        203,
+        162
+      ],
+      "form": "res 4,d"
+    },
+    {
+      "bytes": [
+        203,
+        163
+      ],
+      "form": "res 4,e"
+    },
+    {
+      "bytes": [
+        203,
+        164
+      ],
+      "form": "res 4,h"
+    },
+    {
+      "bytes": [
+        203,
+        165
+      ],
+      "form": "res 4,l"
+    },
+    {
+      "bytes": [
+        203,
+        166
+      ],
+      "form": "res 4,[hl]"
+    },
+    {
+      "bytes": [
+        203,
+        167
+      ],
+      "form": "res 4,a"
+    },
+    {
+      "bytes": [
+        203,
+        168
+      ],
+      "form": "res 5,b"
+    },
+    {
+      "bytes": [
+        203,
+        169
+      ],
+      "form": "res 5,c"
+    },
+    {
+      "bytes": [
+        203,
+        170
+      ],
+      "form": "res 5,d"
+    },
+    {
+      "bytes": [
+        203,
+        171
+      ],
+      "form": "res 5,e"
+    },
+    {
+      "bytes": [
+        203,
+        172
+      ],
+      "form": "res 5,h"
+    },
+    {
+      "bytes": [
+        203,
+        173
+      ],
+      "form": "res 5,l"
+    },
+    {
+      "bytes": [
+        203,
+        174
+      ],
+      "form": "res 5,[hl]"
+    },
+    {
+      "bytes": [
+        203,
+        175
+      ],
+      "form": "res 5,a"
+    },
+    {
+      "bytes": [
+        203,
+        176
+      ],
+      "form": "res 6,b"
+    },
+    {
+      "bytes": [
+        203,
+        177
+      ],
+      "form": "res 6,c"
+    },
+    {
+      "bytes": [
+        203,
+        178
+      ],
+      "form": "res 6,d"
+    },
+    {
+      "bytes": [
+        203,
+        179
+      ],
+      "form": "res 6,e"
+    },
+    {
+      "bytes": [
+        203,
+        180
+      ],
+      "form": "res 6,h"
+    },
+    {
+      "bytes": [
+        203,
+        181
+      ],
+      "form": "res 6,l"
+    },
+    {
+      "bytes": [
+        203,
+        182
+      ],
+      "form": "res 6,[hl]"
+    },
+    {
+      "bytes": [
+        203,
+        183
+      ],
+      "form": "res 6,a"
+    },
+    {
+      "bytes": [
+        203,
+        184
+      ],
+      "form": "res 7,b"
+    },
+    {
+      "bytes": [
+        203,
+        185
+      ],
+      "form": "res 7,c"
+    },
+    {
+      "bytes": [
+        203,
+        186
+      ],
+      "form": "res 7,d"
+    },
+    {
+      "bytes": [
+        203,
+        187
+      ],
+      "form": "res 7,e"
+    },
+    {
+      "bytes": [
+        203,
+        188
+      ],
+      "form": "res 7,h"
+    },
+    {
+      "bytes": [
+        203,
+        189
+      ],
+      "form": "res 7,l"
+    },
+    {
+      "bytes": [
+        203,
+        190
+      ],
+      "form": "res 7,[hl]"
+    },
+    {
+      "bytes": [
+        203,
+        191
+      ],
+      "form": "res 7,a"
+    },
+    {
+      "bytes": [
+        203,
+        192
+      ],
+      "form": "set 0,b"
+    },
+    {
+      "bytes": [
+        203,
+        193
+      ],
+      "form": "set 0,c"
+    },
+    {
+      "bytes": [
+        203,
+        194
+      ],
+      "form": "set 0,d"
+    },
+    {
+      "bytes": [
+        203,
+        195
+      ],
+      "form": "set 0,e"
+    },
+    {
+      "bytes": [
+        203,
+        196
+      ],
+      "form": "set 0,h"
+    },
+    {
+      "bytes": [
+        203,
+        197
+      ],
+      "form": "set 0,l"
+    },
+    {
+      "bytes": [
+        203,
+        198
+      ],
+      "form": "set 0,[hl]"
+    },
+    {
+      "bytes": [
+        203,
+        199
+      ],
+      "form": "set 0,a"
+    },
+    {
+      "bytes": [
+        203,
+        200
+      ],
+      "form": "set 1,b"
+    },
+    {
+      "bytes": [
+        203,
+        201
+      ],
+      "form": "set 1,c"
+    },
+    {
+      "bytes": [
+        203,
+        202
+      ],
+      "form": "set 1,d"
+    },
+    {
+      "bytes": [
+        203,
+        203
+      ],
+      "form": "set 1,e"
+    },
+    {
+      "bytes": [
+        203,
+        204
+      ],
+      "form": "set 1,h"
+    },
+    {
+      "bytes": [
+        203,
+        205
+      ],
+      "form": "set 1,l"
+    },
+    {
+      "bytes": [
+        203,
+        206
+      ],
+      "form": "set 1,[hl]"
+    },
+    {
+      "bytes": [
+        203,
+        207
+      ],
+      "form": "set 1,a"
+    },
+    {
+      "bytes": [
+        203,
+        208
+      ],
+      "form": "set 2,b"
+    },
+    {
+      "bytes": [
+        203,
+        209
+      ],
+      "form": "set 2,c"
+    },
+    {
+      "bytes": [
+        203,
+        210
+      ],
+      "form": "set 2,d"
+    },
+    {
+      "bytes": [
+        203,
+        211
+      ],
+      "form": "set 2,e"
+    },
+    {
+      "bytes": [
+        203,
+        212
+      ],
+      "form": "set 2,h"
+    },
+    {
+      "bytes": [
+        203,
+        213
+      ],
+      "form": "set 2,l"
+    },
+    {
+      "bytes": [
+        203,
+        214
+      ],
+      "form": "set 2,[hl]"
+    },
+    {
+      "bytes": [
+        203,
+        215
+      ],
+      "form": "set 2,a"
+    },
+    {
+      "bytes": [
+        203,
+        216
+      ],
+      "form": "set 3,b"
+    },
+    {
+      "bytes": [
+        203,
+        217
+      ],
+      "form": "set 3,c"
+    },
+    {
+      "bytes": [
+        203,
+        218
+      ],
+      "form": "set 3,d"
+    },
+    {
+      "bytes": [
+        203,
+        219
+      ],
+      "form": "set 3,e"
+    },
+    {
+      "bytes": [
+        203,
+        220
+      ],
+      "form": "set 3,h"
+    },
+    {
+      "bytes": [
+        203,
+        221
+      ],
+      "form": "set 3,l"
+    },
+    {
+      "bytes": [
+        203,
+        222
+      ],
+      "form": "set 3,[hl]"
+    },
+    {
+      "bytes": [
+        203,
+        223
+      ],
+      "form": "set 3,a"
+    },
+    {
+      "bytes": [
+        203,
+        224
+      ],
+      "form": "set 4,b"
+    },
+    {
+      "bytes": [
+        203,
+        225
+      ],
+      "form": "set 4,c"
+    },
+    {
+      "bytes": [
+        203,
+        226
+      ],
+      "form": "set 4,d"
+    },
+    {
+      "bytes": [
+        203,
+        227
+      ],
+      "form": "set 4,e"
+    },
+    {
+      "bytes": [
+        203,
+        228
+      ],
+      "form": "set 4,h"
+    },
+    {
+      "bytes": [
+        203,
+        229
+      ],
+      "form": "set 4,l"
+    },
+    {
+      "bytes": [
+        203,
+        230
+      ],
+      "form": "set 4,[hl]"
+    },
+    {
+      "bytes": [
+        203,
+        231
+      ],
+      "form": "set 4,a"
+    },
+    {
+      "bytes": [
+        203,
+        232
+      ],
+      "form": "set 5,b"
+    },
+    {
+      "bytes": [
+        203,
+        233
+      ],
+      "form": "set 5,c"
+    },
+    {
+      "bytes": [
+        203,
+        234
+      ],
+      "form": "set 5,d"
+    },
+    {
+      "bytes": [
+        203,
+        235
+      ],
+      "form": "set 5,e"
+    },
+    {
+      "bytes": [
+        203,
+        236
+      ],
+      "form": "set 5,h"
+    },
+    {
+      "bytes": [
+        203,
+        237
+      ],
+      "form": "set 5,l"
+    },
+    {
+      "bytes": [
+        203,
+        238
+      ],
+      "form": "set 5,[hl]"
+    },
+    {
+      "bytes": [
+        203,
+        239
+      ],
+      "form": "set 5,a"
+    },
+    {
+      "bytes": [
+        203,
+        240
+      ],
+      "form": "set 6,b"
+    },
+    {
+      "bytes": [
+        203,
+        241
+      ],
+      "form": "set 6,c"
+    },
+    {
+      "bytes": [
+        203,
+        242
+      ],
+      "form": "set 6,d"
+    },
+    {
+      "bytes": [
+        203,
+        243
+      ],
+      "form": "set 6,e"
+    },
+    {
+      "bytes": [
+        203,
+        244
+      ],
+      "form": "set 6,h"
+    },
+    {
+      "bytes": [
+        203,
+        245
+      ],
+      "form": "set 6,l"
+    },
+    {
+      "bytes": [
+        203,
+        246
+      ],
+      "form": "set 6,[hl]"
+    },
+    {
+      "bytes": [
+        203,
+        247
+      ],
+      "form": "set 6,a"
+    },
+    {
+      "bytes": [
+        203,
+        248
+      ],
+      "form": "set 7,b"
+    },
+    {
+      "bytes": [
+        203,
+        249
+      ],
+      "form": "set 7,c"
+    },
+    {
+      "bytes": [
+        203,
+        250
+      ],
+      "form": "set 7,d"
+    },
+    {
+      "bytes": [
+        203,
+        251
+      ],
+      "form": "set 7,e"
+    },
+    {
+      "bytes": [
+        203,
+        252
+      ],
+      "form": "set 7,h"
+    },
+    {
+      "bytes": [
+        203,
+        253
+      ],
+      "form": "set 7,l"
+    },
+    {
+      "bytes": [
+        203,
+        254
+      ],
+      "form": "set 7,[hl]"
+    },
+    {
+      "bytes": [
+        203,
+        255
+      ],
+      "form": "set 7,a"
+    }
+  ]
+}

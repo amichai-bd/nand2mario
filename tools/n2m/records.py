@@ -26,7 +26,7 @@ def atomic_text(path, text):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     temp = path.with_name(path.name + "." + uuid.uuid4().hex + ".tmp")
-    temp.write_text(text, encoding="utf-8")
+    temp.write_text(text, encoding="utf-8", newline="\n")
     os.replace(temp, path)
 
 

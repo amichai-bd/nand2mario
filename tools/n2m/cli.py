@@ -15,6 +15,8 @@ from .simulator import Simulator, ToolError
 from .doctor import doctor
 from .fpga import build_fpga
 from .rgbds import oracle
+from sw.build import assemble_target
+from sw.conformance import conformance
 
 
 def parser():
@@ -51,6 +53,16 @@ def parser():
     rgbds.add_argument("--expected", help="explicit expected fixture JSON, including deliberate negative checks")
     rgbds.add_argument("--tag")
     rgbds.add_argument("--json", action="store_true")
+    assembly = sw.add_parser("assemble", help="emit validated relocatable objects for an explicit target")
+    assembly.add_argument("target")
+    assembly.add_argument("--rebuild", action="store_true")
+    assembly.add_argument("--tag")
+    assembly.add_argument("--json", action="store_true")
+    proof = sw.add_parser("conformance", help="compare complete original instruction matrix against RGBDS")
+    proof.add_argument("--offline", action="store_true")
+    proof.add_argument("--mutate", action="store_true", help="deliberately corrupt one encoded byte; must fail")
+    proof.add_argument("--tag")
+    proof.add_argument("--json", action="store_true")
     return result
 
 
@@ -82,7 +94,9 @@ def main(argv=None, root=None):
                     report.update(build_fpga(root, build, args, provenance))
                 elif args.command == "sw":
                     provenance = {k: report[k] for k in ("commit", "dirty_tree_fingerprint", "host", "python") if k in report}
-                    report.update(oracle(root, build, args, provenance))
+                    report.update(oracle(root, build, args, provenance) if args.action == "oracle"
+                                  else conformance(root, build, args, provenance) if args.action == "conformance"
+                                  else assemble_target(root, build, args, provenance))
                 else:
                     simulator = Simulator(args.sim, questa_bin=args.questa_bin)
                     if not 0 <= args.seed <= 2147483647:
