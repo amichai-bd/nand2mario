@@ -74,10 +74,13 @@ The environment profile also checks:
 - JTAG: invoke only `jtagconfig` enumeration. Exactly one USB-Blaster chain must
   report `10M50DA`; `--jtag-cable <index>` selects among multiple chains. This is
   reported identity, not wiring, voltage, or programming proof.
-- UART: Windows CIM enumeration only. Select with `--uart-port`, `--uart-vid`,
+- UART: Windows CIM PnP Ports enumeration, including FTDI virtual COM ports.
+  Require a serial `(COM<number>)` name suffix and retain the exact PnP identity;
+  exclude parallel ports and malformed names. Select with `--uart-port`, `--uart-vid`,
   `--uart-pid`, or exact `--uart-identity` (the OS PNP identity, which may include
   a serial). Combined selectors must all match exactly one port. No selection
-  is a warning; a missing or ambiguous explicit selection fails. Non-Windows
+  is a warning; a missing, ambiguous, or unhealthy explicit selection fails.
+  Windows must report `Status=OK` and `ConfigManagerErrorCode=0`. Non-Windows
   enumeration is unsupported and reports a warning.
 
 No command opens UART, drives modem lines, sends bytes, programs FPGA memory,

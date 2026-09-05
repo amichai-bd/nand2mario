@@ -60,7 +60,9 @@ class DoctorTests(unittest.TestCase):
         self.assertEqual(parse_jtag(valid + valid.replace("1)", "2)"), "2")["selected"]["index"], "2")
 
     def test_uart_selection_is_read_only_and_exact(self):
-        ports = [{"DeviceID": "COM5", "PNPDeviceID": "USB\\VID_0403&PID_6001\\SERIAL_A"}]
+        ports = [{"DeviceID": "COM5", "Name": "USB Serial Port (COM5)",
+                  "PNPDeviceID": "FTDIBUS\\VID_0403+PID_6001+SYNTHETIC_A\\0000",
+                  "Status": "OK", "ConfigManagerErrorCode": 0}]
         args = SimpleNamespace(uart_port=None, uart_vid=None, uart_pid=None, uart_identity=None)
         self.assertEqual(select_uart(ports, args)["status"], "WARNING")
         args.uart_identity = ports[0]["PNPDeviceID"]
@@ -72,9 +74,36 @@ class DoctorTests(unittest.TestCase):
         with patch("n2m.doctor.os.name", "nt"), patch("n2m.doctor.execute", return_value=json.dumps(ports)) as run:
             self.assertEqual(uart(self.folder, args)["selected"], ports[0])
         argv = run.call_args.args[0]
-        self.assertIn("Get-CimInstance Win32_SerialPort", argv[-1])
+        self.assertIn("Get-CimInstance Win32_PnPEntity", argv[-1])
+        self.assertNotIn("Win32_SerialPort", argv[-1])
         self.assertNotIn("SerialPort]", argv[-1])
         self.assertNotIn("Open", argv[-1])
+
+    def test_pnp_serial_inventory_filters_and_health(self):
+        serial = {"Name": "USB Serial Port (COM8)",
+                  "PNPDeviceID": "FTDIBUS\\VID_0403+PID_6001+EXAMPLE_B\\0000",
+                  "Status": "OK", "ConfigManagerErrorCode": 0}
+        args = parser().parse_args(["doctor", "--uart-port", "COM8", "--uart-vid", "0403",
+                                   "--uart-pid", "6001", "--uart-identity", serial["PNPDeviceID"]])
+        inventory = [serial, *[{**serial, "Name": name} for name in
+                              ("Printer Port (LPT1)", "USB Serial Port COM8", "USB (COM0)",
+                               "USB (COM8) extra", "USB (COM8x)", None)]]
+        def probe(devices):
+            # Only PnP is queried; absence from Win32_SerialPort has no effect.
+            def query(argv, *unused):
+                return json.dumps(devices) if "Win32_PnPEntity" in argv[-1] else "[]"
+            with patch("n2m.doctor.os.name", "nt"), patch("n2m.doctor.execute", side_effect=query):
+                return uart(self.folder, args)
+        self.assertEqual(len(probe(inventory)["ports"]), 1)
+        for fields in ({"Status": "Error"}, {"ConfigManagerErrorCode": 22},
+                       {"Status": None}, {"ConfigManagerErrorCode": None}):
+            with self.assertRaisesRegex(RuntimeError, "healthy"):
+                probe([{**serial, **fields}])
+        with self.assertRaisesRegex(RuntimeError, "exactly one"):
+            probe([serial, serial])
+        args.uart_identity = "wrong identity"
+        with self.assertRaisesRegex(RuntimeError, "exactly one"):
+            probe([serial])
 
     def test_zero_warning_summary_only(self):
         self.assertFalse(warning("Errors: 0, Warnings: 0"))

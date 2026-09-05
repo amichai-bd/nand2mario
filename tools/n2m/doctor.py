@@ -114,6 +114,8 @@ def select_uart(ports, args):
         return {"status": "WARNING", "ports": ports, "detail": "enumerated only; select expected UART identity"}
     if len(matches) != 1:
         raise RuntimeError("UART selection must match exactly one enumerated port")
+    if matches[0].get("Status") != "OK" or matches[0].get("ConfigManagerErrorCode") != 0:
+        raise RuntimeError("selected UART is not healthy in Windows PnP; see ports.log")
     return {"selected": matches[0], "ports": ports,
             "scope": "OS identity only; port not opened, no DTR/RTS or bytes sent"}
 
@@ -121,10 +123,20 @@ def select_uart(ports, args):
 def uart(folder, args):
     if os.name != "nt":
         return {"status": "WARNING", "detail": "UART enumeration supported on Windows only"}
-    script = "@(Get-CimInstance Win32_SerialPort | Select-Object DeviceID,Name,PNPDeviceID) | ConvertTo-Json -Compress"
+    script = ("$ErrorActionPreference = 'Stop'; "
+              "@(Get-CimInstance Win32_PnPEntity -Filter \"PNPClass='Ports'\" | "
+              "Select-Object Name,PNPDeviceID,Status,ConfigManagerErrorCode) | ConvertTo-Json -Compress")
     output = execute(["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script], folder, "ports.log")
-    ports = json.loads(output) if output.strip() else []
-    return select_uart([ports] if isinstance(ports, dict) else ports, args)
+    devices = json.loads(output) if output.strip() else []
+    devices = [devices] if isinstance(devices, dict) else devices
+    ports = []
+    for device in devices:
+        # PnP Ports includes LPT devices. Require the serial friendly-name suffix;
+        # never infer a COM port or hardware serial from a PNP identity tail.
+        port = re.search(r"\(COM([1-9][0-9]*)\)$", device.get("Name") or "", re.I)
+        if port and device.get("PNPDeviceID"):
+            ports.append({**device, "DeviceID": "COM" + port[1]})
+    return select_uart(ports, args)
 
 
 def doctor(root, build, args, provenance):
