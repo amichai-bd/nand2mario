@@ -5,6 +5,8 @@ development guidance in version control.
 
 ## Current documents
 
+- [RTL reference style](src/rtl-reference-style.md) compares frog-bui and FROG_FS
+  before display design.
 - [Research findings](research-findings.md) records the environment audit,
   reference review, recommended architecture, and delivery sequence.
 - [Gaps before implementation](preflight-gaps.md) records unresolved work and

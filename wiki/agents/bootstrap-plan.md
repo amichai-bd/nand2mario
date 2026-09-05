@@ -4,15 +4,16 @@ The [gap register](../preflight-gaps.md) owns gap status and close conditions.
 
 ## Current phase
 
-Infrastructure, flows, and methodology refinement only. Maintain the existing
-agent skills, issue/PR workflow, wiki, and their CI tooling and tests.
+Infrastructure refinement and user-authorized reference RTL/display analysis.
+Maintain the existing methodology; study frog-bui and FROG_FS before proposing
+display microarchitecture or RTL. See the [reference study](../src/rtl-reference-style.md).
 
-Defer product architecture and all product RTL, DV, SW, and FPGA work. This
+Defer final product architecture and all product RTL, DV, SW, and FPGA work. This
 includes project build/doctor implementation and simulation, board-proving
 designs and tests, and physical runner setup. An assigned issue or a P0 priority
 does not authorize this work.
 
-The user must explicitly start the next phase before these prerequisites begin.
+The user must explicitly authorize broader product work before these prerequisites begin.
 Gap close conditions and separate programming and physical-test authorization
 still apply.
 
