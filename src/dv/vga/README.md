@@ -19,8 +19,8 @@ the pixel oracle's expected values.
 
 Required schedules: fast frames with pending-offer discards, slow frames with
 repeated scanout, delayed acknowledgements from a stopped pixel clock, host pause,
-partial-frame core reset, global reset with an outstanding offer, and raw lock
-loss. Continue driving the source while presentation is stopped. Require nonzero
+partial-frame core reset, core reset with an immutable pending offer, global
+reset with an outstanding offer, and raw lock loss. Continue driving the source while presentation is stopped. Require nonzero
 discard/repeat coverage, all three bank IDs and multiple complete raster frames.
 Check asynchronous black/inactive output masking while the pixel clock is stopped.
 
@@ -32,5 +32,9 @@ time. The complete raster target has a 180-second host runtime bound and a
 Wave output is
 bounded to control signals, without dumping complete RAM arrays.
 
-Actual simulation, nominal/upper Quartus fit, RAM inference and bundle/output
-timing records are pending. Physical monitor acceptance is outside #80.
+Delivery evidence includes actual Questa positive and named-fatal negative
+records, nominal/upper Quartus fits, RAM inference and bundle/output timing,
+an invalid constraint target, and checked cache reuse. The pixel fixture uses
+nominal 25.2 MHz rounded to 1 ps, with a phase offset excluding coincident clock
+edges; actual vendor PLL proof comes from Quartus. Physical monitor acceptance
+is outside #80.

@@ -340,8 +340,8 @@ The verifier checks all bundle bits, all output ports, exact skew constraint
 scope and adjacent synchronizer endpoints at each of three explicitly selected
 operating corners. It also requires the three fitted simple dual-port, dual-clock
 RAM rows and matching total memory/M9K usage. Missing, malformed or out-of-bound
-records fail. Final actual nominal/upper delivery evidence remains under
-development in #80; no generated image is accepted on RAM bit count alone.
+records fail. Actual nominal/upper delivery evidence must pass this complete
+profile; no generated image is accepted on RAM bit count alone.
 
 ## Source and workspace boundary
 
