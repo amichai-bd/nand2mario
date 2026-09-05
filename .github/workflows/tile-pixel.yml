@@ -19,31 +19,36 @@ jobs:
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.14.5"
-      - name: Check out Icarus 12.0
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          repository: steveicarus/iverilog
-          ref: 4fd5291632232fbe1ba49b2c26bb6b2bf1c6c9cf
-          path: workdir/tools/iverilog-source
-          persist-credentials: false
-      - name: Build pinned simulator
-        working-directory: workdir/tools/iverilog-source
+      - name: Install source-build prerequisites
         run: |
           sudo apt-get update
           sudo apt-get install -y autoconf bison flex gperf build-essential
-          sh autoconf.sh
-          ./configure --prefix="$GITHUB_WORKSPACE/workdir/tools/iverilog"
-          make -j2
-          make install
+      - name: Build pinned simulator
+        run: |
+          python tools/n2m/bootstrap.py
           echo "$GITHUB_WORKSPACE/workdir/tools/iverilog/bin" >> "$GITHUB_PATH"
-      - name: Check runner behavior
-        run: python -m unittest discover -s tools/sim -p test_tile_pixel.py -v
+      - name: Check builder and standalone runner behavior
+        run: |
+          python tools/build.py check --tag ci-tile-check --json
+          python -m unittest discover -s tools/sim -p test_tile_pixel.py -v
       - name: Compile, elaborate, and check pixels
-        run: python tools/sim/tile_pixel.py --sim icarus --tag ci-tile-pixel
+        run: |
+          python tools/build.py sim test tile-pixel --sim icarus --tag ci-tile-pixel --json
+          python tools/build.py sim test tile-pixel-corrupt --sim icarus --tag ci-tile-corrupt --json
+          python tools/build.py sim test tile-pixel --sim icarus --tag ci-tile-pixel --json
+          python tools/build.py sim test tile-pixel-corrupt --sim icarus --tag ci-tile-corrupt --json
+          python - <<'PY'
+          import json, pathlib
+          for tag in ("ci-tile-pixel", "ci-tile-corrupt"):
+              result = json.loads((pathlib.Path("workdir/builds") / tag / "manifest.json").read_text())
+              assert result["status"] == "PASS" and result["cache"] == "CACHED"
+          PY
       - name: Retain simulation evidence
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: tile-pixel-evidence
-          path: workdir/builds/
+          path: |
+            workdir/builds/
+            workdir/logs/iverilog-bootstrap.log
           if-no-files-found: ignore

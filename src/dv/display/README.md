@@ -14,9 +14,14 @@ DUT boundary: public ports of `dmg_tile_pixel`, one clock, no memory or board.
 
 The testbench separates stimulus (`step`), arithmetic reference functions, and
 output assertions (`check_output`). It reads no DUT hierarchy. No randomized
-stimulus or seed is used. Coverage counts are asserted by the runner's required
+stimulus or seed is used. Coverage counts are asserted by the required
 PASS marker; this is exhaustive functional coverage of the independent pixel
 and palette transformations, not their full Cartesian product.
+
+Both builder targets must pass: `tile-pixel` proves normal behavior;
+`tile-pixel-corrupt` proves the exact expected checker failure. Builder contract
+tests reject unrelated failures and prevent the normal target accepting the
+corrupt signature. The Questa runner still checks both cases locally.
 
 Logs include expected/actual, cycle, phase, and input payload on failure. A
 6 ms simulated-time watchdog prevents hangs. VCD records directed controls
