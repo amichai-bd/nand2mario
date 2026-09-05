@@ -90,14 +90,17 @@ def identity(directory):
     return {name: {"path": str(path), "sha256": file_hash(path)} for name, path in paths.items()}
 
 
-def generate(folder, identity, definition, execute, timeout, record, build):
+def generation_command(identity, definition):
     validate(definition)
-    output = folder / "n2m_pixel_pll.v"
-    command = [identity["generator"]["path"], "-silent", "module=altpll",
-               "INTENDED_DEVICE_FAMILY=MAX 10", "INCLK0_INPUT_FREQUENCY=20000",
-               "CLK0_MULTIPLY_BY=63", "CLK0_DIVIDE_BY=125", "CLK0_DUTY_CYCLE=50",
-               "CLK0_PHASE_SHIFT=0", "COMPENSATE_CLOCK=CLK0", "OPERATION_MODE=NORMAL",
-               "areset=used", "locked=used", "clk0=used", "OPTIONAL_FILES=NONE", output.name]
+    return [identity["generator"]["path"], "-silent", "module=altpll",
+            "INTENDED_DEVICE_FAMILY=MAX 10", "INCLK0_INPUT_FREQUENCY=20000",
+            "CLK0_MULTIPLY_BY=63", "CLK0_DIVIDE_BY=125", "CLK0_DUTY_CYCLE=50",
+            "CLK0_PHASE_SHIFT=0", "COMPENSATE_CLOCK=CLK0", "OPERATION_MODE=NORMAL",
+            "areset=used", "locked=used", "clk0=used", "OPTIONAL_FILES=NONE", "n2m_pixel_pll.v"]
+
+
+def generate(folder, identity, definition, execute, timeout, record, build):
+    command = generation_command(identity, definition)
     execute(command, folder, folder / "generate-pll.log", timeout, record, build)
     verify(folder)
 

@@ -1,0 +1,48 @@
+name: Trusted product bootstrap (inactive)
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: Fixed explicitly invoked local validation profile
+        required: true
+        type: choice
+        options: [questa-baseline, quartus-clocking]
+
+permissions:
+  contents: read
+  actions: read
+  statuses: read
+  deployments: read
+
+concurrency:
+  group: trusted-product
+  cancel-in-progress: false
+
+jobs:
+  attestation:
+    # #115 ships inactive. #32 must review this guard, config and environment
+    # policy together before any dispatch/controller execution is accepted.
+    if: ${{ false }}
+    name: Trusted product attestation (${{ inputs.profile }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    environment: trusted-product
+    steps:
+      - name: Check out exact dispatched revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14.5"
+      - name: Wait for authenticated explicit local attestation
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CI_SHA: ${{ github.sha }}
+          CI_RUN_ID: ${{ github.run_id }}
+          CI_ATTEMPT: ${{ github.run_attempt }}
+          CI_PROFILE: ${{ inputs.profile }}
+        run: python -m tools.ci.waiter

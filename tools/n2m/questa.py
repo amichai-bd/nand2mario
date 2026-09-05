@@ -24,10 +24,11 @@ def diagnostic(output, expected_failure=None):
     return None
 
 
-def commands(simulator, root, target, seed, compiler, attempt):
+def commands(simulator, root, target, seed, compiler, attempt, *, prepare=True):
     tools = simulator.tools
     library = (compiler / "work").as_posix()
-    write_macro(attempt)
+    if prepare:
+        write_macro(attempt)
     return [
         ([tools["vmap"], "-c"], compiler, compiler / "ini.log", "zero"),
         ([tools["vlib"], "work"], compiler, compiler / "library.log", "zero"),

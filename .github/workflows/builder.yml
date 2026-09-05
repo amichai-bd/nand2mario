@@ -23,6 +23,7 @@ jobs:
         run: |
           python tools/n2m/interfaces.py --check
           python tools/build.py check --tag ci-check --json
+          python -m unittest discover -s tools/ci/tests -v
       - name: Check pinned upstream RGBDS oracle
         run: python tools/build.py sw oracle --tag ci-rgbds --json
       - name: Check complete assembler and deliberate encoding mutation
