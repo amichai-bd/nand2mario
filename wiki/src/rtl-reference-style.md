@@ -99,7 +99,9 @@ DMG target/timing fidelity, register and VRAM/OAM access rules, tile/object
 priority, and reset behavior. Then compare memory schedules and Game Boy-to-VGA
 buffering against that contract, including frame-rate mismatch and CDC. Choose
 independent pixel/timing acceptance cases alongside those decisions. Existing
-product prerequisites and separate hardware authorization remain in force.
+product prerequisites and the
+[current authorization](../agents/bootstrap-plan.md#verification-and-hardware-authorization)
+remain in force.
 
 [bui]: https://github.com/amichai-bd/frog-bui/tree/311e64d6e7e54db682e515f51aef92c083a32d5a
 [fs]: https://github.com/amichai-bd/FROG_FS/tree/69e2cabdb6c2c633cdb7cebda05a2c8b309dfbc5

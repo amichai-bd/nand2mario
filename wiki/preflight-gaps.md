@@ -133,7 +133,7 @@ checked portable/Questa smoke runs, Quartus edition reporting, and read-only
 JTAG/UART enumeration. Portable smoke, selected UART health/identity, expected
 JTAG identity, and scoped Quartus version checks satisfy the implementation
 criteria in #27. Full environment readiness remains unproven; licensed runtime
-evidence follows the [temporary deferral](#gap-008-verification-baseline).
+evidence is recorded under [GAP-008](#gap-008-verification-baseline).
 
 **Risk**
 
@@ -238,11 +238,10 @@ The [tile pixel unit](src/rtl/display/MAS_display.md) has a focused independent
 testbench and dual-simulator runner. This does not establish the shared
 assertion library, reference adapters, coverage model, or regression baseline.
 
-**Temporary Questa deferral**
+**Questa evidence**
 
-The user has deferred general Questa simulation until they confirm availability,
-with separately authorized tile/doctor diagnosis and shared-builder integration.
-Real portable
+The [current authorization](agents/bootstrap-plan.md#verification-and-hardware-authorization)
+supersedes the earlier general Questa deferral. Required Questa and portable
 simulation must compile, elaborate, run, and check expected results. Positive
 and deliberately failing checks, independent review, and passing CI remain
 required for affected delivery; compilation alone is not a simulation pass.
@@ -261,11 +260,10 @@ This does not establish the planned shared verification harness or adapters.
 The shared baseline's good/broken examples and other accumulated licensed
 coverage remain outstanding in
 [#31](https://github.com/amichai-bd/nand2mario/issues/31). Each affected later issue
-must identify any additional deferred Questa coverage and retained portable
-evidence. Resume the accumulated licensed checks when the user confirms
-availability. Failed doctor checks still report FAIL. GAP-008 remains open
-until its full close conditions are met; this deferral substitutes portable
-evidence only for implementation progress, not for licensed or physical proof.
+must identify and execute its required Questa coverage and retain portable
+evidence. Failed doctor checks still report FAIL. GAP-008 remains open until
+its full close conditions are met; authorization and portable results do not
+substitute for licensed or physical proof.
 
 **Risk**
 

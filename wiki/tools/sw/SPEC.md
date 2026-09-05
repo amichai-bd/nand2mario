@@ -188,7 +188,8 @@ Loading consumes immutable ROM/manifest, validates profile/length and follows
 #30's versioned load/readback/start protocol without editing the image. Transport
 retries/device selection belong to the host contract; software build opens no
 device. Full load/readback and runtime validation remain required end-to-end
-evidence. Physical transmission needs its separate authorization.
+evidence. Physical transmission follows the
+[current authorization](../../agents/bootstrap-plan.md#verification-and-hardware-authorization).
 
 ## Delivery order
 

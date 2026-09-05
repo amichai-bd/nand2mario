@@ -123,8 +123,9 @@ The environment profile also checks:
   enumeration is unsupported and reports a warning.
 
 No command opens UART, drives modem lines, sends bytes, programs FPGA memory,
-changes JTAG configuration, or proves physical operation. Those need separate
-authorization and the hardware workflow. Optional WSL is exercised only when
+changes JTAG configuration, or proves physical operation. Those follow the
+[current authorization](../../agents/bootstrap-plan.md#verification-and-hardware-authorization)
+and hardware workflow. Optional WSL is exercised only when
 selected for portable simulation; no Python packages are required.
 
 `PASS`/exit 0 means all checks in the selected profile passed. `WARNING`/exit 2

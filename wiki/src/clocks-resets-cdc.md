@@ -231,9 +231,9 @@ are absent from the top. SDRAM constraints cannot be inferred from this plan.
   frame RAM inference rather than assuming bit count establishes fit.
 
 Portable simulation must compile, elaborate, run, and check both positive and
-negative results. Questa evidence follows the gap register's scoped policy.
-Physical measurements, monitor acceptance, programming and UART transmission
-remain separately authorized board work. A contract merge closes #29's design
+negative results. Questa and physical execution follow the
+[current authorization](../agents/bootstrap-plan.md#verification-and-hardware-authorization).
+A contract merge closes #29's design
 criteria; it does not close GAP-006 or GAP-012 implementation evidence.
 [Timebase/reset implementation](https://github.com/amichai-bd/nand2mario/issues/79)
 and [VGA/frame bridge implementation](https://github.com/amichai-bd/nand2mario/issues/80)

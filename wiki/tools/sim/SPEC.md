@@ -38,9 +38,10 @@ isolated libraries, strict diagnostics, and cache behavior. Add `--questa-bin
 
 ## Standalone checks
 
-The [GAP-008 decision](../../preflight-gaps.md#gap-008-verification-baseline) records
-the scoped tile/doctor licensed evidence and remaining general Questa deferral.
-For an authorized run, use Python 3.12 or later,
+[GAP-008](../../preflight-gaps.md#gap-008-verification-baseline) records scoped
+licensed evidence and outstanding baseline checks. Follow the
+[current authorization](../../agents/bootstrap-plan.md#verification-and-hardware-authorization).
+Use Python 3.12 or later,
 `vlib`, `vmap`, `vlog`, and `vsim` on `PATH`, and a valid simulation license:
 
 ```powershell
