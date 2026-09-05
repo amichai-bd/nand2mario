@@ -48,6 +48,19 @@ jobs:
             exit 1
           fi
           python -c "import json; from pathlib import Path; r=json.loads(Path('workdir/builds/ci-link-proof/manifest.json').read_text()); assert r['status']=='FAIL' and r['error']=='package checksum/header mismatch'"
+      - name: Check original shade assets and deliberate encoding faults
+        run: |
+          python tools/build.py sw asset-conformance --tag ci-assets --json
+          if python tools/build.py sw asset-conformance --tag ci-assets --mutate planes --json; then
+            echo "Swapped bitplanes unexpectedly passed"
+            exit 1
+          fi
+          python -c "import json; from pathlib import Path; r=json.loads(Path('workdir/builds/ci-assets/manifest.json').read_text()); assert r['status']=='FAIL' and r['error']=='asset pixel mismatch x=1 y=0 expected=1 actual=2'"
+          if python tools/build.py sw asset-conformance --tag ci-assets --mutate bitorder --json; then
+            echo "Reversed bit order unexpectedly passed"
+            exit 1
+          fi
+          python -c "import json; from pathlib import Path; r=json.loads(Path('workdir/builds/ci-assets/manifest.json').read_text()); assert r['status']=='FAIL' and r['error']=='asset pixel mismatch x=0 y=0 expected=0 actual=3'"
       - name: Report simulation scope
         run: |
           echo "Host contracts and the actual pinned RGBDS oracle. Licensed Questa simulation is not run on hosted PR jobs; actual local evidence is required until the trusted route in issue #32 is configured." >> "$GITHUB_STEP_SUMMARY"

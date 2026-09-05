@@ -1,8 +1,9 @@
 # Software toolchain requirements
 
 The pinned RGBDS oracle, complete documented SM83 assembler, deterministic linker
-and direct-profile cartridge packager are implemented. Assets and the original
-program remain assigned to #87–#88.
+direct-profile cartridge packager, and original shade-asset conversion are
+implemented. The original program remains assigned to #88 and depends on its
+CPU/PPU/loader and execution evidence.
 
 The [SPEC](SPEC.md) owns the assembly language, object schema, independent
 conformance, deterministic artifacts and remaining delivery dependencies. The
