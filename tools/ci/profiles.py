@@ -10,6 +10,7 @@ from tools.n2m.hdl import dependencies
 from tools.n2m.records import git_state, digest as builder_digest
 from tools.n2m.questa import diagnostic
 from .model import PROFILES, require
+from .source import verify_sources
 from .storage import beneath, file_hash, inventory
 
 
@@ -45,6 +46,7 @@ def check_artifacts(root, build, record):
 
 
 def check_record(root, req, profile, target, tag, raw_exit, printed, selected_tools):
+    source_inventory = verify_sources(root, req['sha'])
     build = root / 'workdir/builds' / tag
     stage = build / ('sim/test' if profile == 'questa-baseline' else 'fpga') / target
     record = json.loads((stage / 'result.json').read_text(encoding='utf-8'))
@@ -109,10 +111,20 @@ def check_record(root, req, profile, target, tag, raw_exit, printed, selected_to
                     [*fpga.TOOLS, 'qmegawiz', 'quartus_sh'] and
                     all(c['exit_code'] == 0 for c in commands[:-1]) and commands[-1]['exit_code'] == 3,
                     'intended negative reached compile after successful generation')
+            required = ['design.qpf', 'design.qsf', 'checked.sdc', 'audit.tcl',
+                        'n2m_pixel_pll.v', 'generate-pll.log', 'compile.log', 'failure.log']
+            required += [f'{name}-version.log' for name in fpga.TOOLS]
+            for name in required:
+                path = attempt / name
+                require(path.relative_to(root).as_posix() in record['artifacts'] and path.is_file()
+                        and path.stat().st_size > 0, 'required invalid-target evidence: ' + name)
+            require((attempt / 'checked.sdc').read_text(encoding='utf-8') ==
+                    fpga.checked_constraints(record['definition']), 'invalid-target checked constraints')
             text = (attempt / 'compile.log').read_text(encoding='utf-8')
             require('Error (332000): checked endpoint count mismatch: reset_0' in text and
                     record['error'] == 'Quartus exit 3; see compile.log', 'exact invalid constraint diagnostic')
-    return {'target': target, 'record': record, 'complete_build_inventory': inventory(build)}
+    return {'target': target, 'record': record, 'source_inventory': source_inventory,
+            'complete_build_inventory': inventory(build)}
 
 
 def executable(info, directory, name):

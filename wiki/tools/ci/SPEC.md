@@ -28,7 +28,9 @@ SHA. Reject assume-unchanged/skip-worktree index flags and compare every tracked
 with its authorized Git blob, allowing only CRLF-to-LF checkout normalization
 for text. Git status alone is insufficient source identity. Child
 execution uses a separate detached checkout created at that same immutable SHA;
-no remote job source is executed before admission. Reviewed main code, installed
+no remote job source is executed before admission. Apply the same authorized-blob
+checks to the execution checkout before each child and when validating its result;
+recomputed hashes of hidden modified files cannot establish authorized-source proof. Reviewed main code, installed
 tools, the controller account and the local operator are trusted. This is not a
 sandbox for malicious code carrying those authorities.
 
@@ -58,7 +60,9 @@ No background loop launches work; each local invocation is explicit.
 
 Only fixed Questa baseline good/broken and Quartus clocking/invalid profiles exist.
 Use fresh UUID-derived tags and the shared builder with rebuild requested. Record
-every command, raw exit, source/tool hashes and complete artifact inventory. Expected
+every command, raw exit, source/tool hashes and complete artifact inventory. Invalid Quartus runs still require generated HDL, project/checked constraint
+files, generation/compile/failure logs and every tool version record. The missing
+endpoint must be the intended `reset_0` failure after successful generation. Expected
 negative outcomes require the exact registered failure diagnostic and nonzero raw
 exit; a generic failure or missing tool is not a successful negative sample.
 
@@ -104,3 +108,34 @@ Do not substitute an ancestor's status or dummy success for premerge proof.
 Primary API contracts: [workflow runs](https://docs.github.com/en/rest/actions/workflow-runs),
 [individual commit statuses](https://docs.github.com/en/rest/commits/statuses), and
 [deployment branch policies](https://docs.github.com/en/rest/deployments/branch-policies).
+
+## Commands and retained results
+
+Host-only validation, safe while inactive:
+
+```text
+python -m unittest discover -s tools/ci/tests -v
+```
+
+The configured entry points currently return FAIL with an inactive-bootstrap
+explanation before API or licensed calls. After separately reviewed #32 activation,
+the local command form is:
+
+```text
+python -m tools.ci.controller --sha <authorized-main-sha> --run-id <run-id> --attempt <attempt> --profile questa-baseline --questa-bin <absolute-local-tool-directory>
+python -m tools.ci.controller --sha <authorized-main-sha> --run-id <run-id> --attempt <attempt> --profile quartus-clocking --quartus-bin <absolute-local-tool-directory>
+```
+
+These are syntax examples, not activation instructions. The controller reads its
+local status-write credential from `GH_TOKEN`; the hosted waiter receives only its
+read-scoped job credential. The profile is selected locally and must match the
+active fixed-name waiter job. There is no hardware, command, checkout-path or
+journal-path profile option.
+
+Each attempt retains admission, pending-status response, a separate detached
+checkout, child command/stdout/stderr/raw-exit files, canonical envelope and final
+status response under `workdir/ci/attempts/<invocation-id>/`. Build tags remain under
+the child checkout's `workdir/builds/`. A successful command prints its envelope
+path and SHA256; failed publication cannot erase the consumed journal or turn
+partial evidence into a reusable success. Cleanup must retain complete files for
+independent audit, not only digest pointers.

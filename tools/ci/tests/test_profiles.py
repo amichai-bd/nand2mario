@@ -6,6 +6,8 @@ from pathlib import Path
 import subprocess
 import tempfile
 from types import SimpleNamespace
+from unittest.mock import patch
+from tools.n2m.hdl import dependencies
 import unittest
 from tools.ci import profiles, storage
 from tools.n2m import questa, fpga, fpga_pll
@@ -165,6 +167,123 @@ class ProfileTests(unittest.TestCase):
             changed['fingerprint'] = digest({'inputs': changed['inputs'], 'tools': changed['tools'],
                                              'definition': changed['definition'], 'timeout': 600})
             with self.assertRaises(ValueError): check(changed)
+
+
+    def fpga_record(self, invalid=False):
+        self.target = 'clocking-invalid' if invalid else 'clocking-nominal'
+        definition = json.loads((REPO / fpga.REGISTRY).read_text(encoding='utf-8'))['targets'][self.target]
+        for name in dependencies(REPO, definition['sources'], synthesis=True) + definition['constraints']:
+            self.write(self.root / name, (REPO / name).read_text(encoding='utf-8'))
+        self.write(self.root / fpga.REGISTRY, json.dumps({'schema_version': 1, 'targets': {self.target: definition}}))
+        self.write(self.root / 'tools/build.py', '# synthetic source\n')
+        self.write(self.root / 'tools/n2m/fixture.py', '# synthetic source\n')
+        self.write(self.root / '.gitignore', 'workdir/\n')
+        def git(*args):
+            return subprocess.check_output(['git', '-C', str(self.root), *args], text=True,
+                                           stderr=subprocess.DEVNULL).strip()
+        git('init', '-b', 'main'); git('config', 'user.name', 'Fixture'); git('config', 'user.email', 'test@example.invalid')
+        git('add', '.'); git('commit', '-m', 'Synthetic source')
+        self.req = {'sha': git('rev-parse', 'HEAD')}; self.tag = 'fixture'
+        self.build = self.root / 'workdir/builds' / self.tag
+        self.stage = self.build / 'fpga' / self.target
+        self.attempt = self.stage / 'attempts/one'; self.attempt.mkdir(parents=True)
+        info = {name: self.binary(name) for name in fpga.TOOLS}
+        for name, detail in info.items():
+            detail['version'] = '25.1std synthetic'
+            self.write(self.attempt / f'{name}-version.log', 'Quartus\nVersion 25.1std synthetic\n')
+        self.binary('qmegawiz')
+        for name in ('libraries/megafunctions/xml_info/altpll_info.xml', 'libraries/megafunctions/altpll.tdf',
+                     'eda/sim_lib/fiftyfivenm_atoms.v', 'eda/sim_lib/altera_primitives.v',
+                     'libraries/megafunctions/xml_info/altpll_rules.xml',
+                     'libraries/megafunctions/xml_info/altpll_wiz_map.xml'):
+            self.write(self.bin.parent / name)
+        info['altpll'] = fpga_pll.identity(self.bin)
+        argv = [[info[n]['path'], '--version'] for n in fpga.TOOLS]
+        argv += [fpga_pll.generation_command(info['altpll'], definition['pll']),
+                 [info['quartus_sh']['path'], '--flow', 'compile', 'design']]
+        if not invalid:
+            argv += [[info['quartus_sta']['path'], '-t', 'audit.tcl'],
+                     [info['quartus_eda']['path'], '--simulation', '--tool=modelsim', '--format=verilog', 'design']]
+        names = ['design.qpf', 'design.qsf', 'checked.sdc', 'audit.tcl', 'n2m_pixel_pll.v',
+                 'generate-pll.log', 'compile.log']
+        if invalid: names += ['failure.log']
+        else:
+            names += ['audit.log', 'netlist.log', 'simulation/questa/design.vo']
+            names += ['output/' + n for n in (*fpga.REQUIRED_REPORTS, *fpga_pll.required_reports())]
+        for name in names: self.write(self.attempt / name)
+        self.write(self.attempt / 'checked.sdc', fpga.checked_constraints(definition))
+        if invalid:
+            self.write(self.attempt / 'compile.log', 'Error (332000): checked endpoint count mismatch: reset_0\n')
+            self.write(self.attempt / 'failure.log', 'Quartus exit 3; see compile.log\n')
+        self.record = {'status': 'FAIL' if invalid else 'PASS', 'cache': 'BUILT', 'target': self.target,
+                       'provenance': git_state(self.root), 'inputs': profiles.expected_inputs(self.root, 'quartus-clocking', self.target),
+                       'definition': definition, 'tools': info,
+                       'commands': [{'argv': a, 'cwd': str(self.attempt), 'timed_out': False,
+                                     'exit_code': 3 if invalid and i == len(argv)-1 else 0} for i, a in enumerate(argv)],
+                       'attempt_result': (self.attempt / 'result.json').relative_to(self.root).as_posix()}
+        if invalid: self.record['error'] = 'Quartus exit 3; see compile.log'
+        else:
+            self.record['evidence_directory'] = self.attempt.relative_to(self.root).as_posix()
+            self.record['evidence'] = {'synthetic_timing_stub': True}
+        self.fpga_republish()
+
+    def fpga_republish(self):
+        self.record['artifacts'] = {p.relative_to(self.root).as_posix(): storage.file_hash(p)
+                                   for p in self.attempt.rglob('*') if p.is_file() and p.name != 'result.json'}
+        self.record['fingerprint'] = digest({k: self.record[k] for k in ('inputs', 'tools', 'definition')} | {'timeout': 600})
+        for p in (self.attempt / 'result.json', self.stage / 'result.json', self.build / 'manifest.json'):
+            atomic_json(p, self.record)
+
+    def fpga_check(self):
+        return profiles.check_record(self.root, self.req, 'quartus-clocking', self.target, self.tag,
+                                     1 if self.target == 'clocking-invalid' else 0, self.record, self.tools)
+
+    def test_full_nominal_admission_requires_inventory_and_delegated_timing(self):
+        self.fpga_record()
+        # The unchanged timing parser owns report semantics and its own lower-level
+        # tests. This fixture exercises the complete controller/cache boundary.
+        with patch.object(fpga, 'timing_evidence', return_value={'synthetic_timing_stub': True}):
+            self.assertEqual(self.fpga_check()['target'], 'clocking-nominal')
+            for name in ('output/design.sof', 'checked.sdc', 'simulation/questa/design.vo',
+                         'output/chain_pix_release_hold.rpt', 'generate-pll.log'):
+                with self.subTest(name=name):
+                    path = self.attempt / name; raw = path.read_bytes()
+                    path.unlink(); self.fpga_republish()
+                    with self.assertRaises(ValueError): self.fpga_check()
+                    path.write_bytes(raw); self.fpga_republish()
+        with patch.object(fpga, 'timing_evidence', side_effect=ValueError('timing violated')):
+            with self.assertRaises(ValueError): self.fpga_check()
+
+    def test_full_invalid_admission_rejects_missing_pre_failure_evidence(self):
+        self.fpga_record(invalid=True)
+        self.assertEqual(self.fpga_check()['target'], 'clocking-invalid')
+        for name in ('design.qpf', 'design.qsf', 'checked.sdc', 'audit.tcl', 'n2m_pixel_pll.v',
+                     'generate-pll.log', 'compile.log', 'failure.log'):
+            with self.subTest(name=name):
+                path = self.attempt / name; raw = path.read_bytes()
+                path.unlink(); self.fpga_republish()
+                with self.assertRaises((ValueError, OSError)): self.fpga_check()
+                path.write_bytes(raw); self.fpga_republish()
+        original = deepcopy(self.record)
+        for mutate in (lambda r: r['commands'][-2].__setitem__('exit_code', 3),
+                       lambda r: r['commands'][-1].__setitem__('exit_code', 0),
+                       lambda r: r.__setitem__('error', 'missing tool'),
+                       lambda r: r.__setitem__('status', 'PASS')):
+            self.record = deepcopy(original); mutate(self.record); self.fpga_republish()
+            with self.assertRaises(ValueError): self.fpga_check()
+        self.record = deepcopy(original)
+        self.write(self.attempt / 'compile.log', 'Error (999): unrelated failure\n'); self.fpga_republish()
+        with self.assertRaises(ValueError): self.fpga_check()
+
+
+    def test_hidden_execution_source_cannot_be_attested_with_new_hashes(self):
+        self.simulation_record()
+        subprocess.run(['git', '-C', str(self.root), 'update-index', '--assume-unchanged', 'src/dv/fixture.sv'], check=True)
+        self.write(self.root / 'src/dv/fixture.sv', 'module changed; endmodule\n')
+        self.record['inputs'] = profiles.expected_inputs(self.root, 'questa-baseline', self.target)
+        self.record['provenance'] = git_state(self.root)
+        self.republish()
+        with self.assertRaisesRegex(ValueError, 'hidden index flags'): self.check()
 
 
 if __name__ == '__main__': unittest.main()
