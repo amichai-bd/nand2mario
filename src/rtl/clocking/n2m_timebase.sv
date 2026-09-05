@@ -1,4 +1,5 @@
 `timescale 1ns/1ps
+`include "src/rtl/common/macros.svh"
 // Contract: wiki/src/clocks-resets-cdc.md (exact emulated time and run control).
 module n2m_timebase (
     input  logic clk_sys,
@@ -14,21 +15,28 @@ module n2m_timebase (
     // Consumers sample this edge's carry, before the phase register advances.
     assign gb_tick = !reset_sys && !core_reset && !paused && (sum >= 19'd390625);
 
-    // Domain reset must assert between edges; synchronous DFF macros cannot express it.
-    always_ff @(posedge clk_sys or posedge reset_sys) begin
-        if (reset_sys) begin
-            phase <= 19'd0;
-            paused <= 1'b1;
-        end else if (core_reset) begin
-            phase <= 19'd0;
-            paused <= 1'b1;
+    logic [18:0] phase_next;
+    logic paused_next;
+    always_comb begin
+        phase_next = phase;
+        paused_next = paused;
+        if (core_reset) begin
+            phase_next = 19'd0;
+            paused_next = 1'b1;
         end else if (paused) begin
-            if (!pause_request) paused <= 1'b0;
+            if (!pause_request) paused_next = 1'b0;
         end else if (sum >= 19'd390625) begin
-            phase <= sum - 19'd390625;
-            if (pause_request) paused <= 1'b1;
+            phase_next = sum - 19'd390625;
+            if (pause_request) paused_next = 1'b1;
         end else begin
-            phase <= sum;
+            phase_next = sum;
         end
     end
+    `DFF_ARST_VAL(phase, phase_next, clk_sys, reset_sys, 19'd0)
+    `DFF_ARST_VAL(paused, paused_next, clk_sys, reset_sys, 1'b1)
+
+    `N2M_ASSERT(phase_in_range, clk_sys, reset_sys, phase < 19'd390625)
+    `N2M_ASSERT_KNOWN(timebase_known, clk_sys, reset_sys, {phase, paused, gb_tick})
+    `N2M_ASSERT_NEVER(no_tick_while_stopped, clk_sys, reset_sys, (core_reset || paused) && gb_tick)
+    `N2M_ASSERT_STABLE_WHEN(paused_phase_holds, clk_sys, reset_sys, paused && !core_reset, phase)
 endmodule
