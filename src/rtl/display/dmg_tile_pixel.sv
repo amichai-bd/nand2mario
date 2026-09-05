@@ -1,4 +1,4 @@
-// Contract: wiki/src/display/tile-pixel.md
+// Contract: wiki/src/rtl/display/MAS_display.md
 `timescale 1ns/1ps
 `default_nettype none
 module dmg_tile_pixel (

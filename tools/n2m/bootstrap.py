@@ -8,7 +8,7 @@ import sys
 def main():
     root = Path(__file__).resolve().parents[2]
     if sys.platform != "linux":
-        raise SystemExit("Run this script in Linux or WSL; see wiki/tools/build-system.md#bootstrap")
+        raise SystemExit("Run this script in Linux or WSL; see wiki/tools/n2m/SPEC.md#bootstrap")
     pin = json.loads((root / "tools/n2m/dependencies.json").read_text())["iverilog"]
     source = root / "workdir/tools/iverilog-source"
     prefix = root / "workdir/tools/iverilog"

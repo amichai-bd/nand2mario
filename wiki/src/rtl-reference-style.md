@@ -93,7 +93,7 @@ study does not select a commercial ROM or authorize importing its assets.
 
 ## Next design decisions
 
-The [tile pixel contract](display/tile-pixel.md) defines the first isolated stage.
+The [tile pixel contract](rtl/display/MAS_display.md) defines the first isolated stage.
 Before proposing integrated microarchitecture, define the display's observable contract:
 DMG target/timing fidelity, register and VRAM/OAM access rules, tile/object
 priority, and reset behavior. Then compare memory schedules and Game Boy-to-VGA

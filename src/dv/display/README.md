@@ -1,6 +1,6 @@
 # Tile pixel verification
 
-Contract: [DMG tile pixel](../../../wiki/src/display/tile-pixel.md).
+Contract: [DMG tile pixel](../../../wiki/src/rtl/display/MAS_display.md).
 DUT boundary: public ports of `dmg_tile_pixel`, one clock, no memory or board.
 
 | Contract rule | Stimulus and independent check |
@@ -27,4 +27,4 @@ Logs include expected/actual, cycle, phase, and input payload on failure. A
 6 ms simulated-time watchdog prevents hangs. VCD records directed controls
 and the final drain; exhaustive loops pause dumping. The deliberate failure
 retains its own trace. Commands and result files remain under the build tag.
-See [running the unit](../../../wiki/tools/tile-pixel-sim.md).
+See [running the unit](../../../wiki/tools/sim/SPEC.md).

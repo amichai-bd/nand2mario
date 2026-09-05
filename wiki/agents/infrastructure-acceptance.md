@@ -12,7 +12,7 @@ artifacts. This checklist is not a new CI gate.
   using the [worktree guide](../../worktrees/README.md#create).
 - [ ] Follow [agent flow](../../.agents/skills/agent-flow/SKILL.md) and the issue's
   linked specifications. Fix only demonstrated guide gaps within the issue.
-- [ ] Run the existing [wiki and browser checks](../tools/wiki.md#browser-checks)
+- [ ] Run the existing [wiki and browser checks](../tools/wiki/SPEC.md#browser-checks)
   and the issue-helper test command in the [Wiki workflow](../../.github/workflows/wiki.yml).
   Record exact commands, results, and artifact paths; identify any local browser
   override. CI must pass its pinned browser run.

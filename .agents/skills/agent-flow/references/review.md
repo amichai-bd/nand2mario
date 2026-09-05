@@ -23,9 +23,14 @@ read-only diff review; never invent native-run evidence.
 
 ## Code, spec, and test alignment
 
-Inspect the complete merge-base diff and linked issue criteria. Check both
-directions: behavioral changes in `src/` need matching wiki requirements and
-tests; changed wiki behavior needs matching implementation and tests.
+Inspect the complete merge-base diff and linked issue criteria. Follow the
+[ownership map](../../../../wiki/ownership.md) to the affected tool PRD/SPEC or
+RTL MAS. Check both directions: behavioral changes in `src/` or `tools/` need
+matching wiki requirements/design and tests; changed wiki behavior needs
+matching implementation and tests. Check retained evidence against those rules,
+not just successful command exits. Verify moved links and navigation, and keep
+Markdown, HTML, and SVG documentation within the publication boundary; source
+references remain external rather than copied into documentation.
 
 Record one result in [the report](../templates/review.md):
 

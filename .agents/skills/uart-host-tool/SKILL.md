@@ -6,6 +6,9 @@ description: Design or maintain nand2mario host-side UART protocol tools. Use fo
 # UART host tool
 
 Read the UART and host-register contracts before editing.
+Use the [ownership map](../../../wiki/ownership.md) for the tool's PRD/SPEC and
+shared interface authorities. Review wiki/code/test alignment for `tools/` and
+its `src/` consumers; retain evidence without duplicating generated constants.
 
 1. Separate packet encoding, transport, commands, and CLI output.
 2. Make byte order, bounds, timeout, retry, checksum, and error behavior exact.

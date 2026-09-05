@@ -1,5 +1,7 @@
 # DMG tile pixel
 
+Owner and related contracts: [ownership map](../../../ownership.md).
+
 Status: implemented isolated unit; not an integrated PPU.
 
 ## Contract
@@ -44,7 +46,7 @@ mapping. Pipeline controls below are this unit's interface, not DMG dot timing.
 ## Microarchitecture and boundaries
 
 Two combinational selections feed five flip-flops: index, shade, and valid.
-Explicit S0/S1 names preserve the [reference study](../rtl-reference-style.md)'s
+Explicit S0/S1 names preserve the [reference study](../../rtl-reference-style.md)'s
 stage alignment. Original RTL uses one `always_ff` block without a macro or
 package needed only by this unit. There is no memory, CDC, vendor primitive,
 clock generation, or dependency on reference HDL.
@@ -52,15 +54,15 @@ clock generation, or dependency on reference HDL.
 This unit does not fetch tiles, access registers, arbitrate VRAM/OAM, resolve
 objects, or define LCD/VGA timing. The palette is an input snapshot; when a
 future PPU samples BGP is a separate contract. No game assets are included.
-See the [bounded phase](../../agents/bootstrap-plan.md#current-phase).
+See the [bounded phase](../../../agents/bootstrap-plan.md#current-phase).
 
 ## Alignment and verification
 
-[RTL](../../../src/rtl/display/dmg_tile_pixel.sv) implements the named rules.
-The [test plan](../../../src/dv/display/README.md) maps each to independent
-checks. The builder's [targets](../../../src/dv/builder/targets.json) run Icarus;
-the [standalone runner](../../../tools/sim/tile_pixel.py) retains Questa support.
-See [unit simulation](../../tools/tile-pixel-sim.md).
+[RTL](../../../../src/rtl/display/dmg_tile_pixel.sv) implements the named rules.
+The [test plan](../../../../src/dv/display/README.md) maps each to independent
+checks. The builder's [targets](../../../../src/dv/builder/targets.json) run Icarus;
+the [standalone runner](../../../../tools/sim/tile_pixel.py) retains Questa support.
+See [unit simulation](../../../tools/sim/SPEC.md).
 
 [tiles]: https://github.com/gbdev/pandocs/blob/fe246067b695b5404a4a6a47efb4fd6d921ececb/src/Tile_Data.md
 [palette]: https://github.com/gbdev/pandocs/blob/fe246067b695b5404a4a6a47efb4fd6d921ececb/src/Palettes.md

@@ -8,7 +8,9 @@ Closes #
 
 ## Specification
 
-Link the governing specification and state alignment or no-impact reasoning.
+Link the ownership map and governing tool PRD/SPEC or RTL MAS where applicable.
+State alignment or no-impact reasoning for wiki requirements/design, `src/` and
+`tools/` implementation, tests, and evidence.
 
 ## Known misalignment
 

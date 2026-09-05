@@ -5,7 +5,10 @@ development guidance in version control.
 
 ## Current documents
 
-- [Software toolchain](tools/software-toolchain.md) defines the planned Python
+- [Documentation ownership](ownership.md) maps tool PRDs/SPECs and RTL
+  microarchitecture to implementation and verification.
+
+- [Software toolchain](tools/sw/SPEC.md) defines the planned Python
   assembler/linker, original assets and fixed-ROM packaging.
 
 - [Project charter](src/project-charter.md) records the approved direction and
@@ -20,9 +23,9 @@ development guidance in version control.
   the evidence required to close it.
 - [Pre-RTL bootstrap plan](agents/bootstrap-plan.md) orders the remaining work
   and defines the implementation gate.
-- [Build-system specification](tools/build-system.md) defines tagged builds,
+- [Build-system specification](tools/n2m/SPEC.md) defines tagged builds,
   cache behavior, and simulation result paths.
-- [Wiki build](tools/wiki.md) defines the local and pull-request check.
+- [Wiki build](tools/wiki/SPEC.md) defines the local and pull-request check.
 - [Issues and labels](agents/issues.md) defines concise issue intake and the
   reusable label model.
 - [Branches and pull requests](agents/pull-requests.md) defines issue-backed

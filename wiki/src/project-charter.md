@@ -13,7 +13,7 @@ output and PC keyboard input over UART.
 
 Use the repository's issue, specification, implementation, verification, and
 review flow. Keep software and hardware aligned through shared interface
-contracts and the [build entry point](../tools/build-system.md).
+contracts and the [build entry point](../tools/n2m/SPEC.md).
 
 The [reference study](rtl-reference-style.md) guides RTL style and verification.
 Reference process and UART/input ideas do not select the Game Boy architecture

@@ -1,5 +1,7 @@
 # Wiki build
 
+Purpose and acceptance links: [PRD](PRD.md).
+
 The repository owns its HTML shell, navigation, and build. Python-Markdown
 parses Markdown; MkDocs is not used. Run:
 
@@ -59,7 +61,7 @@ and CSS imports to excluded files fail the build.
 Top tabs are Home, Src, Agents/Skills, Tools, Cfg, and Presentations. Each tab has
 a directory-based sidebar and file filter. Each tab lists its published documentation; an empty category says so.
 Home defaults to README; its toggle selects AGENTS. URLs identify the original
-file with `?page=wiki/tools/wiki.md`; fragments select headings or `#L12` source
+file with `?page=wiki/tools/wiki/SPEC.md`; fragments select headings or `#L12` source
 lines. Former MkDocs document paths redirect to the matching source.
 
 Keep facts in their original files. The site uses only generated output, never
@@ -93,7 +95,7 @@ Do not put credentials or private machine or ROM facts in published documents.
 HTML references use a real relative `href` in the repository:
 
 ```html
-<a href="../../src/rtl/README.md" data-source="src/rtl/README.md" data-line="1">RTL source</a>
+<a href="../../../src/rtl/README.md" data-source="src/rtl/README.md" data-line="1">RTL source</a>
 ```
 
 For excluded targets the build replaces this link with a GitHub URL and line
@@ -106,15 +108,15 @@ same wrapper; failure returns `n2m:fullscreen-result` with `ok: false`.
 
 Shared visual attributes live in `tools/wiki/assets/tokens.css`: `--bg`,
 `--panel`, `--surface`, `--text`, `--muted`, `--accent`, `--border`, `--font`,
-`--mono`, and `--radius`. Use the [presentation contract](../presentations/README.md)
-and [authoring skill](../../.agents/skills/html-presentation/SKILL.md) for decks
+`--mono`, and `--radius`. Use the [presentation contract](../../presentations/README.md)
+and [authoring skill](../../../.agents/skills/html-presentation/SKILL.md) for decks
 under `wiki/presentations/`. Source files remain the authority for all content.
 
 ## Text-only policy and deployment
 
 The required Wiki check scans all tracked files, including unpublished ones.
 It also enforces the protected extensions and private path rules in the
-[source and provenance policy](provenance.md#enforced-checks-and-limits).
+[source and provenance policy](../provenance.md#enforced-checks-and-limits).
 It rejects binary extensions (including PNG, JPEG, PDF, PPT/PPTX),
 known binary signatures, invalid UTF-8, and binary control bytes. Textual Markdown,
 HTML, SVG, code, and configuration are allowed. No binary fonts or external CDN
@@ -123,7 +125,7 @@ under ignored `workdir/`. Tests include disguised PDF/PNG, NUL, invalid UTF-8,
 and valid Unicode SVG inputs.
 
 Dependency versions, hashes, and licenses are recorded in
-[the dependency note](../../tools/wiki/THIRD_PARTY.md).
+[the dependency note](../../../tools/wiki/THIRD_PARTY.md).
 
 PRs run this read-only build and never deploy. Merges to `main` automatically
 publish the artifact with standing authorization. Pages uses separate build and

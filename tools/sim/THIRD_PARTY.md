@@ -2,7 +2,7 @@
 
 | Tool | Pin and source | License | Use |
 |---|---|---|---|
-| Icarus Verilog | [Shared dependency pin, source, and license](../n2m/dependencies.json) | Defined in that manifest and upstream component headers | Portable compile, elaboration, and simulation; provisioned by the [shared bootstrap](../../wiki/tools/build-system.md#bootstrap) |
+| Icarus Verilog | [Shared dependency pin, source, and license](../n2m/dependencies.json) | Defined in that manifest and upstream component headers | Portable compile, elaboration, and simulation; provisioned by the [shared bootstrap](../../wiki/tools/n2m/SPEC.md#bootstrap) |
 | Questa Altera Starter FPGA Edition 2025.2 | Vendor installation from Quartus Prime Lite 25.1std | Proprietary; user-provided license required | Local independent simulator; no redistribution |
 
 CI uses Ubuntu 24.04's host C/C++ toolchain, autoconf, bison, flex, and gperf to

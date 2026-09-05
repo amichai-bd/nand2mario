@@ -16,8 +16,11 @@ implementation; open product prerequisites are not permission to start them.
 - `src/`: product implementation and verification.
 - Build artifacts: logs, traces, and results.
 
-Keep each fact in one linked source. The site renders these; do not maintain
-document mirrors. Review source/spec/test alignment using the
+Keep each fact in one linked source. Follow the
+[ownership map](wiki/ownership.md) for tool PRD/SPEC and RTL MAS placement.
+The site renders documentation; do not maintain document or implementation
+mirrors. Review wiki requirements/design against `src/`, `tools/`, tests, and
+retained evidence using the
 [review guide](.agents/skills/agent-flow/references/review.md).
 Track allowed drift in an open issue; never accept it silently.
 
