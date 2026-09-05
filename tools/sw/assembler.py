@@ -292,6 +292,10 @@ def assemble(source, tree, prelude, assets=None):
             evaluate(expr, symbols)
         except Unresolved:
             pass
+        except AssemblyError as error:
+            error.diagnostic['span'] = obj['symbols'][name]['span']
+            error.diagnostic.setdefault('symbol', name)
+            raise
     for item in obj['relocations']:
         unknown = set(references(item['expression'])) - symbols.keys() - set(obj['imports'])
         if unknown:

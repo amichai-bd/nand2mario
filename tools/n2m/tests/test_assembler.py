@@ -97,7 +97,8 @@ class AssemblerTests(unittest.TestCase):
         self.assertEqual(obj['symbols']['Here']['expression'],{'op':'address','section':'code','offset':0})
         self.assertEqual(obj['sections'][0]['data'],[0])
         self.assertEqual(obj['listing'][0]['span']['file'],'body.asm')
-        for source in ['Count EQU (1+','A EQU 1']:
+        for source in ['Count EQU (1+', 'A EQU 1', 'Count EQU LOW(65536)',
+                       'Count EQU 1/0', 'Count EQU 1<<64']:
             with self.subTest(source=source),self.assertRaises(AssemblyError) as caught:self.assemble(source)
             self.assertEqual(caught.exception.diagnostic['span'],{'file':'main.asm','line':1,'column':1})
 
