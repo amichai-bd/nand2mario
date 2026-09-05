@@ -127,7 +127,8 @@ def conformance(root, build, args, provenance):
         if args.mutate:
             actual[0] ^= 1
         (folder / 'actual.bin').write_bytes(actual)
-        oracle_source = source.replace('SECTION "code", ROM', 'SECTION "code", ROM0[$0200]')
+        oracle_source = 'SECTION "code", ROM0[$0200]\n' + '\n'.join(
+            f'Case{index:04d}::\n' + case['text'] for index, case in enumerate(cases)) + '\nOracleEnd::\n'
         atomic_text(folder / 'oracle.asm', oracle_source)
         def run(command, name):
             report['commands'].append([str(item) for item in command])
@@ -143,12 +144,23 @@ def conformance(root, build, args, provenance):
                 raise ValueError('oracle version mismatch')
         run([tools['rgbasm'], '-Wall', '-Werror', '-o', folder / 'oracle.o', folder / 'oracle.asm'], 'assemble')
         run([tools['rgblink'], '-p', '255', '-o', folder / 'oracle.gb', '-n', folder / 'oracle.sym', folder / 'oracle.o'], 'link')
-        expected = (folder / 'oracle.gb').read_bytes()[512:512 + len(actual)]
+        oracle_symbols = {}
+        for line in (folder / 'oracle.sym').read_text().splitlines():
+            fields = line.split()
+            if len(fields) == 2 and not line.startswith(';'):
+                oracle_symbols[fields[1]] = int(fields[0].split(':')[1], 16)
+        expected = (folder / 'oracle.gb').read_bytes()[512:oracle_symbols['OracleEnd']]
+        if len(expected) != len(actual):
+            raise ValueError(f'encoded size mismatch actual={len(actual)} expected={len(expected)}')
         (folder / 'expected.bin').write_bytes(expected)
         listing = obj['listing']
         base_opcodes, cb_opcodes = set(), set()
-        for case, line in zip(cases, listing):
+        for index, (case, line) in enumerate(zip(cases, listing)):
             offset, size = line['offset'], line['size']
+            oracle_start = oracle_symbols[f'Case{index:04d}']
+            oracle_end = oracle_symbols[f'Case{index + 1:04d}'] if index + 1 < len(cases) else oracle_symbols['OracleEnd']
+            if offset != oracle_start - 512 or size != oracle_end - oracle_start:
+                raise ValueError(f'instruction boundary mismatch case={index}')
             encoded = expected[offset:offset + size]
             if encoded[0] == 203:
                 cb_opcodes.add(encoded[1])

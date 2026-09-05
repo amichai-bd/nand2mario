@@ -105,6 +105,15 @@ def source_lines(source, tree, sources, stack=()):
         location = {'file': relative, 'line': number, 'column': len(line) - len(line.lstrip()) + 1}
         if not statement:
             continue
+        label = re.match(r'([A-Za-z_][A-Za-z0-9_]*):\s*(.*)', statement)
+        if label:
+            # Bind the label before expanding a following INCLUDE, just as for
+            # an ordinary statement, retaining each statement's source column.
+            yield label[1] + ':', location
+            statement = label[2]
+            location = {**location, 'column': location['column'] + label.start(2)}
+            if not statement:
+                continue
         if re.match(r'INCLUDE\b', statement, re.I):
             parts = statement.split(None, 1)
             if len(parts) != 2:
@@ -148,12 +157,16 @@ def assemble(source, tree, prelude, assets=None):
     for statement, location in lines:
         match = re.fullmatch(r'([A-Za-z_][A-Za-z0-9_]*)\s+EQU\s+(.+)', statement, re.I)
         if match:
-            name = identifier(match[1])
-            if name in equates:
-                raise AssemblyError('DUPLICATE_SYMBOL', f'duplicate {name}', location, symbol=name, previous=equates[name][1])
-            equates[name] = (match[2], location)
-            if '@' not in match[2]:
-                symbols[name] = parse(match[2])
+            try:
+                name = identifier(match[1])
+                if name in equates:
+                    raise AssemblyError('DUPLICATE_SYMBOL', f'duplicate {name}', location, symbol=name, previous=equates[name][1])
+                equates[name] = (match[2], location)
+                if '@' not in match[2]:
+                    symbols[name] = parse(match[2])
+            except AssemblyError as error:
+                error.diagnostic['span'] = location
+                raise
     def define(name, expression, location):
         identifier(name)
         if name in obj['symbols']:

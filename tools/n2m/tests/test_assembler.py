@@ -91,6 +91,16 @@ class AssemblerTests(unittest.TestCase):
         with self.assertRaises(AssemblyError) as caught:self.assemble('INCLUDE "one.asm"\nINCLUDE "one.asm"')
         self.assertIn('previous',caught.exception.diagnostic)
 
+    def test_label_before_include_and_first_pass_equate_diagnostics(self):
+        (self.tree/'body.asm').write_text('NOP')
+        obj=self.assemble('SECTION "code",ROM\nHere: INCLUDE "body.asm"')
+        self.assertEqual(obj['symbols']['Here']['expression'],{'op':'address','section':'code','offset':0})
+        self.assertEqual(obj['sections'][0]['data'],[0])
+        self.assertEqual(obj['listing'][0]['span']['file'],'body.asm')
+        for source in ['Count EQU (1+','A EQU 1']:
+            with self.subTest(source=source),self.assertRaises(AssemblyError) as caught:self.assemble(source)
+            self.assertEqual(caught.exception.diagnostic['span'],{'file':'main.asm','line':1,'column':1})
+
     def test_bare_include_has_structured_source_diagnostic(self):
         with self.assertRaises(AssemblyError) as caught:self.assemble('INCLUDE')
         self.assertEqual(caught.exception.diagnostic['code'],'SYNTAX')
