@@ -38,14 +38,19 @@ and scoreboards remain independent; this convention does not require rewriting
 them with product macros.
 
 The vocabulary and argument order follow the inspected committed
-[frog-bui header at da16dc84][register-reference]. These are originally written
+frog-bui header `src/rtl/common/macros.svh` at local unpublished commit
+`da16dc841d50c6c48827225b91dac6b8716b4311`. These are originally written
 nand2mario definitions of the specified register operations, not an imported
 header. No memory or assertion macro library is adopted. The
 [source policy](../tools/provenance.md) still prohibits unlicensed source reuse.
 The [directed test plan](../../src/dv/common/README.md) verifies the five forms,
 and the [tile contract](rtl/display/MAS_display.md) retains its independent oracle.
 
-[register-reference]: https://github.com/amichai-bd/frog-bui/blob/da16dc841d50c6c48827225b91dac6b8716b4311/src/rtl/common/macros.svh
+The owner supplied this local reference checkout. Its inspected files matched
+the commit; this revision is not available through an upstream GitHub permalink.
+Reproduce inspection from that checkout with
+`git show da16dc841d50c6c48827225b91dac6b8716b4311:src/rtl/common/macros.svh`.
+This local register inspection is separate from the published historical study below.
 
 ## Sources and limits
 
