@@ -15,7 +15,8 @@ design.
 
 Priorities:
 
-- **P0** — close before functional Game Boy RTL starts.
+- **P0** — close before functional Game Boy RTL starts, except the explicit
+  isolated-unit authorization in the current phase.
 - **P1** — close before the affected subsystem or shared integration starts.
 - **P2** — planned later; does not block early implementation.
 - **Deferred** — intentionally waiting for user authorization or a later phase.
@@ -218,9 +219,18 @@ RTL, testbenches, Python, and wiki tables can use different values.
 
 **Current state**
 
-Questa and open-source tools are available, but there is no repository testbench,
-assertion library, scoreboard, reference adapter, coverage model, or regression
-manifest.
+The [tile pixel unit](src/display/tile-pixel.md) has a focused independent
+testbench and dual-simulator runner. This does not establish the shared
+assertion library, reference adapters, coverage model, or regression baseline.
+
+**Temporary Questa deferral**
+
+The user authorized tile delivery with exhaustive Icarus checks, the exact
+negative test, independent review, and passing CI while Questa is unavailable.
+Licensed Questa elaboration and normal/negative runs remain outstanding under
+[#31](https://github.com/amichai-bd/nand2mario/issues/31); compilation alone is
+not a simulation pass. This defers only that tile delivery requirement. It does
+not close GAP-008 or change the criteria below, broader gates, or hardware authorization.
 
 **Risk**
 
