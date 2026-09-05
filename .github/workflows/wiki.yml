@@ -23,8 +23,18 @@ jobs:
         with:
           python-version: "3.14.5"
           cache: pip
-          cache-dependency-path: tools/wiki/requirements.txt
+          cache-dependency-path: tools/wiki/requirements*.txt
       - name: Test issue helper
         run: python -m unittest discover -s .agents/skills/issue-author/scripts -p test_create_issue.py -v
       - name: Build and check wiki
-        run: python tools/wiki/check.py
+        run: python tools/wiki/check.py --browser --install-browser
+      - name: Preserve browser failure evidence
+        if: failure()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: wiki-browser-failure
+          path: |
+            workdir/wiki/browser/result.json
+            workdir/wiki/browser/trace.zip
+            workdir/wiki/browser/failure.png
+          if-no-files-found: ignore

@@ -11,6 +11,32 @@ This creates the pinned environment, runs publication tests, checks tracked
 content and links, then writes `workdir/wiki/site/`. Serve that directory over
 HTTP for local viewing. The command does not deploy.
 
+## Browser checks
+
+Run `python tools/wiki/check.py --browser --install-browser` for the first run.
+This installs the pinned Chromium headless shell and its OS dependencies. Later,
+`python tools/wiki/check.py --browser` reuses the browser under ignored
+`workdir/tools/playwright/`. CI uses the first command on PRs and on `main` before
+publication. A browser failure blocks the existing Wiki check or Pages build.
+
+If downloads are unavailable locally, add `--browser-executable <path>` to use
+a compatible cached Chromium executable. This explicit override is not a CI
+substitute; its version is recorded. Browser policies or version mismatches may
+prevent launch. No failure silently falls back or skips the suite.
+
+Checks use real page interactions for categories, filtering, the README/AGENTS
+toggle, source overlays, slides, fullscreen when supported, HTML links, and
+recovery from a missing page. Unexpected console errors and page exceptions fail.
+The browser's optional favicon request is handled locally. Waits observe page
+state; they do not use fixed sleeps.
+
+The test owns an ephemeral loopback server thread and browser. Both close in
+`finally` blocks; a forced failure also exercises cleanup. The server's listener
+and thread are checked after shutdown. Results, trace, browser temporary files,
+and failure screenshots stay under `workdir/wiki/browser/`; CI uploads failure
+evidence as an artifact, not to Pages. This is one Chromium suite, not a
+cross-browser or screen-reader assessment.
+
 ## Sources and navigation
 
 Publish tracked `README.md`, `AGENTS.md`, `wiki/`, `.agents/skills/`, `src/`,
