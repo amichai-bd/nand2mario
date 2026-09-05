@@ -190,10 +190,9 @@ in the failing command's log. Simulator warnings fail the stage.
 
 Add simulation targets to this manifest when their contracts and tests are ready.
 The [tile pixel checks](../sim/SPEC.md) use this interface for normal and
-expected-corruption runs through either explicit backend.
-Future software commands should have separate modules under `tools/n2m/`
-and the output boundaries below. They are not implemented yet.
-The [software contract](../sw/SPEC.md) defines the planned `sw build`
+expected-corruption runs through Questa.
+Software commands use modules under `tools/sw/` and the output boundaries below.
+The [software contract](../sw/SPEC.md) defines implemented `sw build`
 inputs, deterministic artifacts and independent conformance requirements.
 
 ## HDL includes
@@ -667,3 +666,12 @@ against actual RGBDS; `--mutate` proves a changed encoded byte fails. The
 [assembler contract](../sw/SPEC.md#implemented-assembler) owns target/object
 schemas, source bounds, cache rules and diagnostics. Shared atomic text records
 use explicit LF so deterministic objects have identical bytes across hosts.
+
+`python tools/build.py sw build <target> --tag <tag> --json` links and packages
+validated objects into the explicit direct-profile image. `sw link-conformance`
+compares actual RGBDS linked bytes/symbols and independent header/checksums,
+including deliberate relocation/checksum mutations. The
+[linker contract](../sw/SPEC.md#implemented-linker-and-packager) owns layout and
+output schemas, placement, entry eligibility, complete cache inventory and
+failure publication. These software commands share the existing tag lock and
+manifest handling and do not claim physical or CPU verification.

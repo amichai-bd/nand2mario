@@ -2,6 +2,9 @@
 from copy import deepcopy
 from pathlib import Path
 import sys
+import json
+import shutil
+from types import SimpleNamespace
 import tempfile
 import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -9,6 +12,7 @@ from sw.assembler import assemble
 from sw.expressions import AssemblyError
 from sw.linker import link
 from sw.package import package, validate_image
+from sw.rom_build import build_target
 ROOT = Path(__file__).resolve().parents[3]
 
 class LinkerTests(unittest.TestCase):
@@ -77,5 +81,88 @@ class LinkerTests(unittest.TestCase):
         with self.assertRaises(AssemblyError) as raised:
             link([a,b],{'schema_version':1,'sections':[{'unit':'a.asm','section':'c','region':'ROM0','address':512}]},{'unit':'a.asm','symbol':'Start'})
         self.assertEqual(raised.exception.diagnostic['code'],'CYCLIC_SYMBOL')
+
+    def test_relative_limits_and_unresolved_operand_constraints(self):
+        for distance in [-129,-128,127,128]:
+            text=f'IMPORT Destination\nSECTION "code",ROM\nStart: JR Destination\n'
+            a=self.obj('a.asm',text)
+            b=self.obj('b.asm',f'Destination EQU {514+distance}\nEXPORT Destination\n')
+            layout={'schema_version':1,'sections':[{'unit':'a.asm','section':'code','region':'ROM0','address':512}]}
+            if distance in [-128,127]:
+                result=link([a,b],layout,{'unit':'a.asm','symbol':'Start'})
+                self.assertEqual(result['image'][513],distance%256)
+            else:
+                with self.assertRaises(AssemblyError) as raised:link([a,b],layout,{'unit':'a.asm','symbol':'Start'})
+                self.assertEqual(raised.exception.diagnostic['code'],'RANGE')
+        for instruction,values in [('BIT Value,A',[-1,0,7,8]),('RST Value',[-1,0,8,56,57]),('LDH A,[Value]',[65279,65280,65535,65536])]:
+            for value in values:
+                a=self.obj('a.asm','IMPORT Value\nSECTION "code",ROM\nStart: '+instruction+'\n')
+                b=self.obj('b.asm',f'Value EQU {value}\nEXPORT Value\n')
+                valid=(0<=value<=7 if instruction.startswith('BIT') else value in range(0,57,8) if instruction.startswith('RST') else 65280<=value<=65535)
+                if valid:link([a,b],layout,{'unit':'a.asm','symbol':'Start'})
+                else:
+                    with self.subTest(instruction=instruction,value=value),self.assertRaises(AssemblyError) as raised:link([a,b],layout,{'unit':'a.asm','symbol':'Start'})
+                    self.assertEqual(raised.exception.diagnostic['code'],'RANGE')
+
+    def test_named_vector_bank_exhaustion_and_unit_local_symbols(self):
+        a=self.obj('a.asm','SECTION "vector",ROM\nNOP\nSECTION "code",ROM\nLocal: NOP\n')
+        b=self.obj('b.asm','SECTION "code",ROM\nLocal: RET\n')
+        rows=[{'unit':'a.asm','section':'vector','region':'ROM0','vector':'RST_00'},
+              {'unit':'a.asm','section':'code','region':'ROM0','address':512},
+              {'unit':'b.asm','section':'code','region':'ROM1','address':32767}]
+        result=link([a,b],{'schema_version':1,'sections':rows},{'unit':'a.asm','symbol':'Local'})
+        self.assertEqual(result['image'][0],0);self.assertEqual(result['image'][32767],201)
+        symbols={s['name']:s['value'] for s in result['symbols']['symbols']}
+        self.assertEqual(symbols['a.asm::Local'],512);self.assertEqual(symbols['b.asm::Local'],32767)
+        a[1]['exports']=['Local'];b[1]['exports']=['Local']
+        with self.assertRaises(AssemblyError) as raised:link([a,b],{'schema_version':1,'sections':rows},{'unit':'a.asm','symbol':'Local'})
+        self.assertEqual(raised.exception.diagnostic['code'],'DUPLICATE_SYMBOL')
+        huge=self.obj('huge.asm','SECTION "full",ROM\nStart: NOP\nDB '+','.join(['0']*16383)+'\nSECTION "extra",ROM\nNOP\n')
+        rows=[{'unit':'huge.asm','section':name,'region':'ROM1'} for name in ['full','extra']]
+        with self.assertRaises(AssemblyError) as raised:link([huge],{'schema_version':1,'sections':rows},{'unit':'huge.asm','symbol':'Start'})
+        self.assertEqual(raised.exception.diagnostic['code'],'EXHAUSTION')
+
+    def checkout(self,name):
+        root=self.tree/name
+        for part in ['tools','src/sw','cfg']:
+            shutil.copytree(ROOT/part,root/part,ignore=shutil.ignore_patterns('__pycache__'))
+        return root
+
+    def test_stage_determinism_cache_inventory_and_failure_diagnostics(self):
+        first=self.checkout('checkout one');second=self.checkout('checkout two')
+        args=SimpleNamespace(target='linker-basic',rebuild=False)
+        results=[]
+        for root,tag in [(first,'fresh-a'),(first,'fresh-b'),(second,'other-path')]:
+            build=root/'workdir/builds'/tag;build.mkdir(parents=True)
+            report=build_target(root,build,args,{'commit':'test'})
+            self.assertEqual(report['status'],'PASS',report)
+            results.append({Path(name).name:(root/name).read_bytes() for name in report['artifacts']})
+            self.assertEqual(build_target(root,build,args,{'commit':'test'})['cache'],'HIT')
+        self.assertEqual(results[0],results[1]);self.assertEqual(results[0],results[2])
+        build=first/'workdir/builds/fresh-a';stage=build/'sw/build/linker-basic';current=stage/'result.json'
+        prior=json.loads(current.read_text());rom=first/prior['rom'];rom.write_bytes(b'corrupt')
+        self.assertEqual(build_target(first,build,args,{})['cache'],'MISS')
+        prior=json.loads(current.read_text());prior['artifacts'].pop(prior['rom']);current.write_text(json.dumps(prior))
+        self.assertEqual(build_target(first,build,args,{})['cache'],'MISS')
+        source=first/'src/sw/linker/basic/main.asm';source.write_text('SECTION "code",ROM\nLD A,256\n')
+        failed=build_target(first,build,args,{})
+        self.assertEqual(failed['status'],'FAIL');self.assertNotIn('rom',failed)
+        diagnostic=json.loads((first/next(iter(failed['artifacts']))).read_text())[0]
+        self.assertEqual((diagnostic['code'],diagnostic['stage'],diagnostic['span']['file'],diagnostic['span']['line']),('RANGE','assemble','main.asm',2))
+        self.assertEqual(json.loads(current.read_text())['status'],'FAIL')
+
+    def test_changed_layout_include_and_generated_inputs(self):
+        root=self.checkout('dependencies');build=root/'workdir/builds/a';build.mkdir(parents=True)
+        args=SimpleNamespace(target='linker-basic',rebuild=False)
+        first=build_target(root,build,args,{})
+        source=root/'src/sw/linker/basic/main.asm';source.write_text('INCLUDE "constant.inc"\n'+source.read_text())
+        include=source.with_name('constant.inc');include.write_text('Owned EQU 1\n')
+        changed=build_target(root,build,args,{})
+        self.assertEqual(changed['cache'],'MISS');self.assertNotEqual(first['fingerprint'],changed['fingerprint'])
+        include.write_text('Owned EQU 2\n');self.assertEqual(build_target(root,build,args,{})['cache'],'MISS')
+        layout=source.with_name('layout.json');data=json.loads(layout.read_text());data['sections'][0]['address']=768;layout.write_text(json.dumps(data))
+        changed=build_target(root,build,args,{});self.assertEqual(changed['cache'],'MISS');self.assertEqual(changed['entry'],768)
+        prelude=root/'src/sw/generated/interfaces.inc';prelude.write_text(prelude.read_text()+'Stale EQU 1\n')
+        failed=build_target(root,build,args,{});self.assertEqual(failed['status'],'FAIL');self.assertIn('stale',failed['error'])
 
 if __name__ == '__main__': unittest.main()

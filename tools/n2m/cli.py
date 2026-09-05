@@ -17,6 +17,7 @@ from .fpga import build_fpga
 from .rgbds import oracle
 from sw.build import assemble_target
 from sw.rom_build import build_target
+from sw.link_conformance import proof as link_proof
 from sw.conformance import conformance
 from sw.expressions import AssemblyError
 
@@ -70,6 +71,11 @@ def parser():
     proof.add_argument("--mutate", action="store_true", help="deliberately corrupt one encoded byte; must fail")
     proof.add_argument("--tag")
     proof.add_argument("--json", action="store_true")
+    linked_proof = sw.add_parser("link-conformance", help="compare linked bytes/symbols and independent packaging")
+    linked_proof.add_argument("--offline", action="store_true")
+    linked_proof.add_argument("--mutate", choices=("relocation", "checksum"))
+    linked_proof.add_argument("--tag")
+    linked_proof.add_argument("--json", action="store_true")
     return result
 
 
@@ -103,6 +109,7 @@ def main(argv=None, root=None):
                     provenance = {k: report[k] for k in ("commit", "dirty_tree_fingerprint", "host", "python") if k in report}
                     report.update(oracle(root, build, args, provenance) if args.action == "oracle"
                                   else conformance(root, build, args, provenance) if args.action == "conformance"
+                                  else link_proof(root, build, args, provenance) if args.action == "link-conformance"
                                   else build_target(root, build, args, provenance) if args.action == "build"
                                   else assemble_target(root, build, args, provenance))
                 else:

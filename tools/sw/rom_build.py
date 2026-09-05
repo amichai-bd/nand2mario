@@ -3,6 +3,8 @@ import json
 from pathlib import Path
 import re
 import uuid
+from n2m.interfaces import render
+from n2m import generated_interfaces as hw
 from n2m.records import atomic_json, cache_matches, digest, file_hash, read_json
 from .build import assemble_target
 from .expressions import AssemblyError
@@ -39,6 +41,13 @@ def build_target(root, build, args, provenance):
             if path.is_symlink() or not path.resolve().is_relative_to(base.resolve()):
                 fail('PRIVATE_PATH', 'path escapes target ownership')
             return path.resolve()
+        interface_data = json.loads((root / 'cfg/interfaces.json').read_text(encoding='utf-8'))
+        generated = render(interface_data)
+        for name in ['src/sw/generated/interfaces.inc', 'tools/n2m/generated_interfaces.py']:
+            if (root / name).read_text(encoding='utf-8') != generated[Path(name)]:
+                fail('SCHEMA_MISMATCH', 'generated interface export is stale: ' + name)
+        if hw.PROFILE_NAME != target['profile']:
+            fail('PROFILE_MISMATCH', 'target differs from generated runtime profile')
         tree = confined(root / 'src/sw', target['directory'])
         layout_path = confined(tree, target['layout'])
         layout = json.loads(layout_path.read_text(encoding='utf-8'))
@@ -47,7 +56,9 @@ def build_target(root, build, args, provenance):
         assembly = assemble_target(root, build, args, provenance)
         if assembly['status'] != 'PASS':
             diagnostic_file = next(name for name in assembly['artifacts'] if name.endswith('diagnostics.json'))
-            diagnostics = read_json(root / diagnostic_file)
+            diagnostics = json.loads((root / diagnostic_file).read_text(encoding='utf-8'))
+            if type(diagnostics) is not list or not diagnostics or type(diagnostics[0]) is not dict:
+                fail('SCHEMA_MISMATCH', 'assembly failure has malformed diagnostic evidence')
             error = AssemblyError('ASSEMBLY_FAILED', assembly.get('error', 'assembly failed'))
             error.diagnostic = diagnostics[0]
             raise error
@@ -56,6 +67,7 @@ def build_target(root, build, args, provenance):
         rom = package(linked, target['title'], target['version'], target['profile'])
         inputs = dict(assembly['inputs'])
         inputs[layout_path.relative_to(root).as_posix()] = file_hash(layout_path)
+        inputs['tools/n2m/interfaces.py'] = file_hash(root / 'tools/n2m/interfaces.py')
         for path in sorted((root / 'tools/sw').glob('*')):
             if path.suffix in ('.py', '.json'):
                 inputs[path.relative_to(root).as_posix()] = file_hash(path)
