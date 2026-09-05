@@ -34,6 +34,9 @@ delivery and cleanup evidence. Skill structure checks do not prove agent
 behavior; the reviewed PRs demonstrate the flow for these changes only.
 These results do not close the product, tool, verification, or hardware gaps below.
 
+Use the [infrastructure acceptance checklist](infrastructure-acceptance.md) to
+exercise the existing flow with a fresh author and retain evidence in the PR.
+
 ## Future P0 sequence
 
 After an explicit phase change, complete the assigned issues in this order.
