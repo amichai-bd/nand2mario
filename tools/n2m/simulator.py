@@ -6,7 +6,9 @@ import subprocess
 
 
 class ToolError(RuntimeError):
-    pass
+    def __init__(self, message, output=""):
+        super().__init__(message)
+        self.output = output
 
 
 class Simulator:
@@ -51,7 +53,10 @@ class Simulator:
                                   errors="replace", stdout=subprocess.PIPE,
                                   stderr=subprocess.STDOUT, timeout=timeout)
         except (OSError, subprocess.TimeoutExpired) as error:
-            raise ToolError(f"command failed: {command}: {error}") from error
+            output = getattr(error, "stdout", "") or ""
+            if isinstance(output, bytes):
+                output = output.decode("utf-8", errors="replace")
+            raise ToolError(f"command failed: {command}: {error}", output) from error
 
     def path(self, path):
         path = str(Path(path).resolve())

@@ -4,7 +4,7 @@
     "version": "12.0",
     "url": "https://github.com/steveicarus/iverilog.git",
     "commit": "4fd5291632232fbe1ba49b2c26bb6b2bf1c6c9cf",
-    "license": "GPL-2.0-or-later; see upstream COPYING for component exceptions",
+    "license": "GPL-2.0-or-later; see upstream COPYING and component file headers",
     "purpose": "Portable simulation, external executable only"
   }
 }

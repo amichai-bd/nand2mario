@@ -31,6 +31,7 @@ class FakeSimulator:
         self.fail = False
         self.warning = False
         self.signature = True
+        self.timeout = False
 
     def path(self, value):
         return str(value)
@@ -43,6 +44,8 @@ class FakeSimulator:
         if argv[0] == self.compiler:
             Path(argv[argv.index("-o") + 1]).write_text("compiled")
             return SimpleNamespace(returncode=0, stdout="warning: test\n" if self.warning else "")
+        if self.timeout:
+            raise ToolError("runtime timed out", "last emitted diagnostic")
         (cwd / "waves/smoke.vcd").write_text("wave")
         return SimpleNamespace(returncode=1 if self.fail else 0,
                                stdout="PASS builder-smoke" if self.signature and not self.fail else "FAIL expected=7 actual=3")
@@ -120,6 +123,29 @@ class BuilderTests(unittest.TestCase):
         self.sim.warning = True
         self.assertEqual(self.run_stage()["status"], "FAIL")
 
+    def test_empty_signature_rejected_and_timeout_preserved(self):
+        target = self.root / "src/dv/builder/targets.json"
+        config = json.loads(target.read_text())
+        for invalid in ("", "  ", None):
+            config["builder-smoke"]["signature"] = invalid
+            target.write_text(json.dumps(config))
+            with self.assertRaisesRegex(ValueError, "signature"):
+                self.run_stage()
+        config["builder-smoke"]["signature"] = "PASS builder-smoke"
+        target.write_text(json.dumps(config))
+        self.sim.timeout = True
+        result = self.run_stage()
+        self.assertEqual(result["status"], "FAIL")
+        self.assertTrue(any("last emitted diagnostic" in (self.root / p).read_text()
+                            for p in result["artifacts"] if p.endswith("sim.log")))
+        tool = object.__new__(Simulator)
+        tool.prefix = []
+        with patch("n2m.simulator.subprocess.run", side_effect=subprocess.TimeoutExpired(
+                ["vvp"], 60, output=b"last emitted diagnostic")):
+            with self.assertRaises(ToolError) as caught:
+                tool.run(["vvp"])
+        self.assertEqual(caught.exception.output, "last emitted diagnostic")
+
     def test_expected_nonzero_is_explicit(self):
         target = self.root / "src/dv/builder/targets.json"
         config = json.loads(target.read_text())
@@ -167,6 +193,19 @@ class BuilderTests(unittest.TestCase):
     def test_missing_executable(self):
         with self.assertRaises(ToolError):
             Simulator("icarus", "n2m-compiler-does-not-exist", "n2m-runtime-does-not-exist")
+
+    def test_discovery_failure_invalidates_previous_success(self):
+        with patch("n2m.cli.Simulator", return_value=self.sim), \
+                patch("n2m.cli.git_state", return_value={"commit": "test"}), \
+                contextlib.redirect_stdout(io.StringIO()):
+            command = ["sim", "test", "builder-smoke", "--tag", "discovery", "--json"]
+            self.assertEqual(main(command, self.root), 0)
+            with patch("n2m.cli.Simulator", side_effect=ToolError("missing runtime")):
+                self.assertEqual(main(command + ["--rebuild"], self.root), 1)
+            current = self.root / "workdir/builds/discovery/sim/test/builder-smoke/result.json"
+            self.assertEqual(read_json(current)["status"], "FAIL")
+            self.assertEqual(main(command, self.root), 0)
+            self.assertEqual(len(self.sim.calls), 4)
 
     def test_cli_pass_cache_fail_latest(self):
         with patch("n2m.cli.Simulator", return_value=self.sim), \

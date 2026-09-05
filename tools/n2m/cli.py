@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 import json
 from pathlib import Path
 import platform
+import re
 import subprocess
 import sys
 
@@ -67,6 +68,9 @@ def main(argv=None, root=None):
                         report.update(simulate(root, build, args, simulator, provenance))
             except Exception as error:
                 report.update(status="FAIL", error=str(error))
+                if args.command == "sim" and re.fullmatch(r"[a-z0-9][a-z0-9_-]*", args.target):
+                    atomic_json(build / "sim/test" / args.target / "result.json",
+                                {"status": "FAIL", "error": str(error), "artifacts": {}})
             atomic_json(build / "manifest.json", report)
             atomic_json(build / "status.json", {"status": report["status"], "cache": report.get("cache")})
             if report["status"] == "PASS":

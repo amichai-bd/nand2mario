@@ -74,12 +74,13 @@ the pinned source. No reference HDL or Game Boy assets are imported.
 ## First simulation target
 
 `src/dv/builder/targets.json` defines sources, top module, plusargs, expected exit
-class (`zero` or `nonzero`), and required output signature. The original smoke
+class (`zero` or `nonzero`), and nonempty required output signature. The original smoke
 fixture checks synchronous reset, counting through 4-bit wrap, and reset again:
 22 comparisons on falling edges after rising-edge register updates. Its failure
 variant injects expected=7 at cycle 3, where actual=3. Seed is recorded and passed
 to the testbench; this directed fixture does not use randomness. A 1 us watchdog
-and 60 s host command timeout bound execution. Simulator warnings fail the stage.
+and 60 s host command timeout bound execution. Partial timeout output is retained
+in the failing command's log. Simulator warnings fail the stage.
 
 Add simulation targets to this manifest when their contracts and tests are ready.
 Future software and FPGA commands should have separate modules under `tools/n2m/`
@@ -256,6 +257,7 @@ the record's hashed paths are authoritative. Each attempt contains `sim.log`,
 Before execution, the published record becomes `RUNNING`, preventing reuse after
 interruption. Completion publishes `PASS` or `FAIL`; a failed forced rebuild
 invalidates the earlier success for that stage and preserves both attempts.
+Discovery or preparation failure also invalidates that target's prior success.
 `manifest.json` and `status.json` describe the latest command on the tag. The
 latest pointer changes only after command success; it records the last successful
 invocation's tag, whose later contents may change when explicitly reused.

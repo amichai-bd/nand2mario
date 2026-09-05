@@ -5,6 +5,7 @@ from pathlib import Path
 import re
 import uuid
 
+from .simulator import ToolError
 from .records import atomic_json, atomic_text, cache_matches, digest, file_hash, read_json
 
 
@@ -14,6 +15,8 @@ def load_target(root, name):
     if name not in targets or not re.fullmatch(r"[a-z0-9][a-z0-9_-]*", name):
         raise ValueError(f"unknown simulation target: {name}")
     target = targets[name]
+    if not isinstance(target.get("signature"), str) or not target["signature"].strip():
+        raise ValueError("target signature must be a nonempty string")
     if target["expected_exit"] not in ("zero", "nonzero"):
         raise ValueError("expected_exit must be zero or nonzero")
     for source in target["sources"]:
@@ -73,6 +76,8 @@ def simulate(root, build, args, simulator, provenance=None):
             raise RuntimeError(f"missing expected signature: {target['signature']}")
         record["status"] = "PASS"
     except Exception as error:
+        if isinstance(error, ToolError):
+            log.write_text(error.output + "\n" + str(error) + "\n", encoding="utf-8")
         record["status"] = "FAIL"
         record["error"] = str(error)
         if not (attempt / "sim.log").exists():
