@@ -27,6 +27,9 @@ class DoctorTests(unittest.TestCase):
 
     def test_questa_elaboration_runtime_and_signature_failure(self):
         for output, code in (("elaboration failed", 1), ("runtime failed", 1), ("", 0),
+                             ("PASS builder-smoke seed=1 checks=22", 1),
+                             ("** Error: mismatch\nPASS builder-smoke seed=1 checks=22", 0),
+                             ("Errors: 1, Warnings: 0\nPASS builder-smoke seed=1 checks=22", 0),
                              ("Warning: unsafe\nPASS builder-smoke seed=1 checks=22", 0)):
             calls = []
             def run(argv, **kwargs):
@@ -41,6 +44,24 @@ class DoctorTests(unittest.TestCase):
             self.assertEqual(len(calls), 4)
             self.assertEqual(calls[2][-1], str(ROOT / "src/dv/builder/builder_smoke.sv"))
             self.assertTrue((self.folder / "sim.log").exists())
+
+    def test_questa_checked_smoke_uses_macro_handlers(self):
+        def run(argv, **kwargs):
+            output = "Errors: 0, Warnings: 0"
+            if "-c" in argv:
+                self.assertEqual(argv[-2:], ["-do", "do run.do"])
+                self.assertEqual(argv[argv.index("-onfinish") + 1], "stop")
+                macro = (kwargs["cwd"] / "run.do").read_text()
+                self.assertEqual(macro.splitlines(), [
+                    "onbreak {if {[lindex [runStatus -full] 2] eq {$finish}} "
+                    "{quit -code 0} else {quit -code 1}}",
+                    "onerror {quit -code 1}", "run -all", "quit -code 1"])
+                output = "PASS builder-smoke seed=1 checks=22"
+            return SimpleNamespace(returncode=0, stdout=output)
+        with patch("n2m.doctor.executable", side_effect=lambda d, n: str(self.folder / n)), \
+                patch("n2m.doctor.subprocess.run", side_effect=run):
+            result = questa(ROOT, self.folder, str(self.folder))
+        self.assertIn("runtime checkout succeeded", result["license"])
 
     def test_missing_tool_timeout_and_partial_logs(self):
         for error in (FileNotFoundError("absent"), subprocess.TimeoutExpired("vsim", 60, output=b"partial runtime")):

@@ -34,6 +34,12 @@ python tools/sim/tile_pixel.py --sim questa --tag tile-questa
 This standalone runner checks normal and deliberately corrupt cases together.
 It records hashes, commit/dirty status, commands, tool banners, logs, and VCDs
 under a fresh tag; existing tags are rejected and results are never cached.
+Each Questa case retains a `run.do` macro. Its handlers run with `-onfinish stop`
+and inspect the simulator's stop reason: normal `$finish` exits zero; fatal,
+other breaks, macro errors, or return without `$finish` exit nonzero. The normal
+case requires the full exhaustive completion signature. Corruption requires
+the full intended mismatch diagnostic and a nonzero exit; additional errors
+or warnings fail the runner even when an expected signature appears.
 It also supports `--sim icarus` for direct comparison. Running that mode from
 WSL inside a Windows-created worktree requires WSL `GIT_DIR`/`GIT_WORK_TREE`
 paths. The builder's Windows-to-WSL mode needs no such Git override.

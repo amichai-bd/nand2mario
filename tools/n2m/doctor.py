@@ -55,12 +55,18 @@ def questa(root, folder, directory):
     if warning(compiled):
         raise RuntimeError("simulator warning; see compile.log")
     (folder / "waves").mkdir(exist_ok=True)
-    output = execute([names["vsim"], "-c", "-onfinish", "exit", "-wlf", "waves/smoke.wlf",
-                      "work.builder_smoke", "+seed=1", "-do",
-                      "onbreak {quit -code 1}; onerror {quit -code 1}; run -all; quit -code 0"],
+    # onbreak/onerror are macro commands; inline -do emits warnings in Questa.
+    (folder / "run.do").write_text(
+        "onbreak {if {[lindex [runStatus -full] 2] eq {$finish}} "
+        "{quit -code 0} else {quit -code 1}}\n"
+        "onerror {quit -code 1}\nrun -all\nquit -code 1\n",
+        encoding="utf-8")
+    output = execute([names["vsim"], "-c", "-onfinish", "stop", "-wlf", "waves/smoke.wlf",
+                      "work.builder_smoke", "+seed=1", "-do", "do run.do"],
                      folder, "sim.log")
-    if warning(output) or "PASS builder-smoke seed=1 checks=22" not in output:
-        raise RuntimeError("simulation warning or missing checked result; see sim.log")
+    if (warning(output) or re.search(r"(?i)\b(?:error|fatal)(?: \([^)]*\))?:|\bErrors:\s*[1-9]", output)
+            or "PASS builder-smoke seed=1 checks=22" not in output):
+        raise RuntimeError("simulation diagnostic or missing checked result; see sim.log")
     return {"version": version.strip(), "tools": names,
             "license": "runtime checkout succeeded for this smoke invocation"}
 

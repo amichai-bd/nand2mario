@@ -67,7 +67,11 @@ The environment profile also checks:
 
 - Questa: compile and run that same source, requiring its checked completion
   signature. A compile-only success does not prove elaboration or a runtime
-  license. Timeouts, warnings, and missing signatures fail.
+  license. Timeouts, warnings, error diagnostics, and missing signatures fail.
+  A retained `run.do` macro handles breaks and errors. With `-onfinish stop`,
+  only a normal `$finish` stop exits zero; fatal or other breaks, macro errors,
+  and return without `$finish` exit nonzero. The checked signature is still
+  required after a zero exit.
 - Quartus: report version and edition. Lite needs no license file; other editions
   report unverified licensing. Unexpected diagnostics fail. Version discovery
   does not prove synthesis.
