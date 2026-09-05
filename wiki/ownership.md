@@ -18,7 +18,7 @@ names follow the implementation owner, not a second software hierarchy.
 
 `tools/scripts/` and `tools/automations/` contain only placement README files;
 they own no executable tool or behavior contract yet. `src/rtl/README.md` is an
-index; display is the implemented RTL behavior owner in this inventory; interfaces
+index; display and clocking are implemented RTL behavior owners; interfaces
 contains generated representations, with endpoint behavior still planned. Verification
 fixtures under `src/dv/` are not product RTL. The issue helper under
 `.agents/skills/issue-author/` belongs to the agent method and its linked

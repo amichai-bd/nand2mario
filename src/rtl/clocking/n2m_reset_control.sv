@@ -10,6 +10,7 @@ module n2m_reset_control (
     output logic reset_sys,
     output logic reset_pix
 );
+    // Specialized async reset/attributed chains cannot use synchronous DFF macros.
     // Constant initialization is part of the MAX 10 configuration contract.
     (* preserve, altera_attribute = "-name SYNCHRONIZER_IDENTIFICATION FORCED" *)
     logic [1:0] board_release = 2'b00;

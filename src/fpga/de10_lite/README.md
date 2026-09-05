@@ -8,3 +8,11 @@ and nominal 20 ns period follow the [timing contract](../../../wiki/src/clocks-r
 This fixture proves the tool flow, not board operation or the #79/#80 designs.
 `builder-invalid` deliberately uses a negative clock period and must fail.
 Neither fixture is a hardware acceptance image.
+
+`clocking-nominal` and `clocking-upper` fit the clocking/timebase proof at the
+two reference timing bounds in the shared contract. Their virtual controls and
+observation counters are not board assignments. The `clocking-invalid` target
+names a missing asynchronous-reset endpoint and must fail the checked SDC
+collection; it cannot count as a positive fit. See the
+[clocking test plan](../../dv/clocking/README.md) and
+[generation/evidence rules](../../../wiki/tools/n2m/SPEC.md#generated-clocking-inputs).

@@ -14,6 +14,7 @@ module n2m_timebase (
     // Consumers sample this edge's carry, before the phase register advances.
     assign gb_tick = !reset_sys && !core_reset && !paused && (sum >= 19'd390625);
 
+    // Domain reset must assert between edges; synchronous DFF macros cannot express it.
     always_ff @(posedge clk_sys or posedge reset_sys) begin
         if (reset_sys) begin
             phase <= 19'd0;

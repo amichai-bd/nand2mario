@@ -8,6 +8,7 @@ module clocking_proof (
     wire clk_pix, reset_sys, reset_pix, gb_tick;
     n2m_clocking u_clocking (.clk_sys, .board_reset_n, .clk_pix, .reset_sys, .reset_pix, .ready);
     n2m_timebase u_tick (.clk_sys, .reset_sys, .core_reset, .pause_request, .gb_tick, .paused);
+    // Specialized async consumers exercise recovery/removal after each reset bridge.
     always_ff @(posedge clk_sys or posedge reset_sys) begin
         if (reset_sys) sys_count <= 0;
         else if (gb_tick) sys_count <= sys_count + 8'd1;

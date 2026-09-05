@@ -21,6 +21,11 @@ are specialized reset logic; synchronous register macros must not alter assertio
 behavior. Counter release and consumer recovery/removal remain timed after their
 respective synchronizers.
 
+The timebase and proof counters also retain asynchronous domain assertion. They
+use the documented specialized-block exception in the
+[register convention](../../rtl-reference-style.md#product-register-convention);
+the ordinary macros deliberately describe synchronous resets only.
+
 The [FPGA wrapper](../../../../src/fpga/de10_lite/n2m_clocking.sv) contains the
 generated ALTPLL instance. Vendor files are generated under the build attempt.
 The [portable test plan](../../../../src/dv/clocking/README.md) independently

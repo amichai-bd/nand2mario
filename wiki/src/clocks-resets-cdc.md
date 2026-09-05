@@ -1,9 +1,11 @@
 # Clocks, resets, and CDC
 
-Status: planned implementation contract for
-[#29](https://github.com/amichai-bd/nand2mario/issues/29). This defines requirements;
-PLL generation, RTL simulation, fit, timing closure, and physical proof remain
-outstanding in [GAP-006](../preflight-gaps.md#gap-006-clock-reset-and-cdc-plan).
+Status: shared implementation contract from
+[#29](https://github.com/amichai-bd/nand2mario/issues/29).
+[Clocking and timebase](rtl/clocking/MAS_clocking.md) implement the clock/reset
+subset with simulation and generated FPGA timing checks. Frame crossings,
+integration, and physical proof remain outstanding in
+[GAP-006](../preflight-gaps.md#gap-006-clock-reset-and-cdc-plan).
 
 ## Clock domains
 

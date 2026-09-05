@@ -188,10 +188,13 @@ The wrong device or bitstream could be programmed.
 The [timing contract](src/clocks-resets-cdc.md) defines the system clock, exact
 average DMG enables, selected VGA rate, reset sequence, CDC ownership, and
 required simulation/TimeQuest checks. Issue #29 delivers the contract only.
-Generated PLL/RTL, fit, timing, and simulation evidence remain outstanding;
-this gap stays open until the close conditions below are proven in
-[#79](https://github.com/amichai-bd/nand2mario/issues/79) and
-[#80](https://github.com/amichai-bd/nand2mario/issues/80).
+[Clocking RTL and its FPGA wrapper](src/rtl/clocking/MAS_clocking.md) implement
+the timebase/reset subset in [#79](https://github.com/amichai-bd/nand2mario/issues/79),
+with independent Questa checks and generated nominal/upper-reference fit and
+timing evidence. This gap stays open for frame ownership/crossings, line/frame
+and buffer-swap checks in [#80](https://github.com/amichai-bd/nand2mario/issues/80),
+integration, and the separate physical acceptance gates. The isolated clocking
+proof does not establish framebuffer or connected-board behavior.
 
 **Risk**
 
