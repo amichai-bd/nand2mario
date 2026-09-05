@@ -13,6 +13,7 @@ from .records import atomic_json, cache_matches, digest, file_hash, read_json
 DEVICE = "10M50DAF484C7G"
 REGISTRY = "src/fpga/de10_lite/targets.json"
 TOOLS = ("quartus_sh", "quartus_map", "quartus_fit", "quartus_asm", "quartus_sta")
+TIMING_CHECKS = set("no_clock multiple_clock pos_neg_clock_domain generated_clock virtual_clock no_input_delay no_output_delay partial_input_delay partial_output_delay io_min_max_delay_consistency reference_pin generated_io_delay latency_override partial_multicycle multicycle_consistency loops latches pll_cross_check uncertainty partial_min_max_delay clock_assignments_on_output_ports input_delay_assigned_to_clock".split())
 ALLOCATOR_NOTICE = "TBBmalloc: skip allocation functions replacement in ucrtbase.dll: unknown prologue for function _msize"
 # These exact diagnostics do not establish physical readiness. No warning is hidden.
 CLASSIFIED = {
@@ -192,7 +193,7 @@ def timing_evidence(folder, target):
         raise ValueError("ignored or missing SDC assignments evidence")
     checks = (output / "check_timing.rpt").read_text(encoding="utf-8")
     rows = re.findall(r";\s*([a-z_]+)\s*;\s*(\d+)\s*;", checks)
-    if not rows or not {"no_clock", "no_input_delay", "no_output_delay", "loops", "latches"}.issubset(dict(rows)):
+    if not TIMING_CHECKS.issubset(dict(rows)) or len(dict(rows)) != len(rows):
         raise ValueError("missing structural timing checks")
     for name, count in rows:
         if int(count) and not (name == "virtual_clock" and int(count) == 1 and "No virtual clock was found." in checks):

@@ -25,7 +25,12 @@ def reports(folder):
         f"; {name} ; 0 ; 0 ;" for name in ("Illegal Clocks", "Unconstrained Clocks", "Unconstrained Input Ports",
         "Unconstrained Input Port Paths", "Unconstrained Output Ports", "Unconstrained Output Port Paths")))
     (output / "ignored.rpt").write_text("No constraints were ignored.\n")
-    (output / "check_timing.rpt").write_text('; no_clock ; 0 ;\n; no_input_delay ; 0 ;\n; no_output_delay ; 0 ;\n; loops ; 0 ;\n; latches ; 0 ;\n')
+    (output / "check_timing.rpt").write_text('\n'.join(f'; {name} ; 0 ;' for name in (
+        "no_clock", "multiple_clock", "pos_neg_clock_domain", "generated_clock", "virtual_clock",
+        "no_input_delay", "no_output_delay", "partial_input_delay", "partial_output_delay",
+        "io_min_max_delay_consistency", "reference_pin", "generated_io_delay", "latency_override",
+        "partial_multicycle", "multicycle_consistency", "loops", "latches", "pll_cross_check",
+        "uncertainty", "partial_min_max_delay", "clock_assignments_on_output_ports", "input_delay_assigned_to_clock")))
 
 
 class FpgaTests(unittest.TestCase):
@@ -101,7 +106,7 @@ class FpgaTests(unittest.TestCase):
             "design.sta.summary": [("Slack : 0.125", "Slack : -0.001"), ("TNS : 0.000", "TNS : -1.000"),
                                    ("Slack : 0.125", "Slack : nan"), ("Slow 1200mV 85C", "Missing corner")],
             "unconstrained.rpt": [("Output Ports ; 0 ;", "Output Ports ; 1 ;")],
-            "check_timing.rpt": [("loops ; 0 ;", "loops ; 1 ;")],
+            "check_timing.rpt": [("loops ; 0 ;", "loops ; 1 ;"), ("; uncertainty ; 0 ;", "")],
             "ignored.rpt": [("No constraints were ignored.", "Ignored create_clock")],
             "design.fit.summary": [("10M50DAF484C7G", "OTHER_DEVICE"), ("Final", "Preliminary")],
         }
