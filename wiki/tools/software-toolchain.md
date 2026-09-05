@@ -47,7 +47,8 @@ division truncated toward zero and arithmetic right shift. Division by zero
 and shift counts outside 0..63 fail. `@` means the current statement address.
 `LOW(expr)`/`HIGH(expr)` accept 0..65535 and extract bytes; no silent truncation.
 
-Raw byte data/immediates accept -128..255, word data -32768..65535; encode modulo
+Raw byte data/immediates accept -128..255; word data and non-address 16-bit
+immediates accept -32768..65535. Encode modulo
 width only after checking. Address operands require 0..65535; signed instruction
 offsets require -128..127; bit indices require 0..7 and restart vectors must be
 legal SM83 vectors. `JR target` always names an address: displacement is
@@ -112,7 +113,8 @@ for the failed request and must not be returned as its result.
 
 Use the pinned [cartridge file format][header]. The packager owns offsets
 `$0100..$014F`: the four-byte entry is NOP then JP to the explicit entry symbol
-in an executable ROM section outside reservations. No guessed entry default.
+at an emitted instruction boundary in a ROM section outside reservations.
+No guessed entry default or entry into emitted data.
 
 `dmg-direct-v1` deliberately zeroes the 48-byte logo field, copies no Nintendo
 logo/boot asset and does not use Nintendo's stock boot ROM. #30 owns the explicit
