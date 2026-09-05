@@ -3,10 +3,11 @@ module baseline_scoreboard(input logic strobe, reset, enable,
                            input logic [7:0] operand, actual,
                            input integer cycle, seed,
                            output integer checked);
-  integer prior = 0;
+  integer prior;
   integer expected, trace_file;
   baseline_reference reference_model(prior, reset, enable, operand, expected);
   initial begin
+    prior = 0;
     checked = 0;
     trace_file = $fopen("transactions.csv", "w");
     if (!trace_file) $fatal(1, "BASELINE_TRACE_OPEN");

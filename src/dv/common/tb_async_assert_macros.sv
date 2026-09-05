@@ -2,22 +2,25 @@
 `default_nettype none
 `include "src/rtl/common/macros.svh"
 module tb_async_assert_macros;
-    logic clk = 0;
-    logic reset = 0;
-    logic reset_n = 1;
-    logic [7:0] data = 0;
+    logic clk;
+    logic reset;
+    logic reset_n;
+    logic [7:0] data;
     logic [7:0] high_q, low_q;
+    logic [7:0] initialized_high, initialized_low;
     logic [7:0] expected_high, expected_low;
-    logic [7:0] observed = 0;
-    logic hold = 0;
-    logic direct_ok = 1;
-    logic no_reset_ok = 1;
-    logic forbidden = 0;
-    logic known_value = 0;
-    integer edges = 0;
+    logic [7:0] observed;
+    logic hold;
+    logic direct_ok;
+    logic no_reset_ok;
+    logic forbidden;
+    logic known_value;
+    integer edges;
 
     `DFF_ARST_VAL(high_q, data, clk, reset, 8'ha5)
     `DFF_ARST_N_VAL(low_q, data, clk, reset_n, 8'h3c)
+    `DFF_INIT_ARST_VAL(initialized_high, data, clk, reset, 8'ha5)
+    `DFF_INIT_ARST_N_VAL(initialized_low, data, clk, reset_n, 8'h3c)
     `N2M_ASSERT(direct_check, clk, reset, direct_ok)
     `N2M_ASSERT_NO_RST(no_reset_check, clk, no_reset_ok)
     `N2M_ASSERT_NEVER(never_check, clk, reset, forbidden)
@@ -28,6 +31,9 @@ module tb_async_assert_macros;
         if (high_q !== expected_high || low_q !== expected_low)
             $fatal(1, "ASYNC_REGISTER_MISMATCH edge=%0d expected=%h/%h actual=%h/%h",
                    edges, expected_high, expected_low, high_q, low_q);
+        if (initialized_high !== expected_high || initialized_low !== expected_low)
+            $fatal(1, "INITIALIZED_ASYNC_MISMATCH edge=%0d expected=%h/%h actual=%h/%h",
+                   edges, expected_high, expected_low, initialized_high, initialized_low);
     endtask
 
     task automatic edge_check;
@@ -41,10 +47,24 @@ module tb_async_assert_macros;
     endtask
 
     initial begin
+        clk = 0;
+        reset = 0;
+        reset_n = 1;
+        data = 0;
+        observed = 0;
+        hold = 0;
+        direct_ok = 1;
+        no_reset_ok = 1;
+        forbidden = 0;
+        known_value = 0;
+        edges = 0;
         $dumpfile("waves/async-assert.vcd");
         $dumpvars(0, tb_async_assert_macros);
         // Both reset polarities act between edges and dominate changing data.
-        #1 reset = 1; reset_n = 0; data = 8'hff;
+        #1;
+        if (initialized_high !== 8'ha5 || initialized_low !== 8'h3c)
+            $fatal(1, "INITIALIZED_ASYNC_STARTUP");
+        reset = 1; reset_n = 0; data = 8'hff;
         direct_ok = 0; forbidden = 1; known_value = 1'bx;
         expected_high = 8'ha5; expected_low = 8'h3c;
         #1 compare_registers();

@@ -1,15 +1,61 @@
 `timescale 1ns/1ps
 `include "src/rtl/common/macros.svh"
 module tb_vga;
-    logic clk_sys = 0, clk_pix = 0, pixel_running = 1;
-    bit pixel_phase = 0;
-    logic board_reset_n = 0, pll_locked = 0, core_reset = 0;
+    logic clk_sys, clk_pix, pixel_running;
+    bit pixel_phase;
+    logic board_reset_n, pll_locked, core_reset;
     wire pll_areset, ready, reset_sys, reset_pix;
     always #10 clk_sys = !clk_sys;
     // Nominal 63/125 clock ratio, rounded to the fixture's 1 ps precision.
     // Preserve oscillator phase through clock stops: rising edges remain on odd
     // half-cycles, so the 3 ns offset excludes coincident system rising edges.
     initial begin
+        int seq;
+        clk_sys = 0;
+        clk_pix = 0;
+        pixel_running = 1;
+        pixel_phase = 0;
+        board_reset_n = 0;
+        pll_locked = 0;
+        core_reset = 0;
+        source_valid = 0;
+        source_start = 0;
+        source_shade = 0;
+        source_epoch = 0;
+        source_dot = 0;
+        observed_pixel = 0;
+        observed_seq = 0;
+        completed_total = 0;
+        raster_frames = 0;
+        displayed_frames = 0;
+        source_edges = 0;
+        pix_edges = 0;
+        seen_banks = 0;
+        have_previous_display = 0;
+        ref_sys_edges = 0;
+        ref_pix_edges = 0;
+        ref_ready_samples = 0;
+        ref_index = 0;
+        ref_source_seq = 0;
+        ref_writer = 0;
+        ref_old_display = 1;
+        ref_free = 2;
+        ref_offer_bank = 0;
+        ref_offer_seq = 0;
+        ref_offer_epoch = 0;
+        ref_capture_edge = 0;
+        ref_return_edge = 0;
+        ref_display_bank = 1;
+        ref_display_seq = 0;
+        ref_display_epoch = 0;
+        ref_discards = 0;
+        ref_repeats = 0;
+        ref_pending = 0;
+        ref_returning = 0;
+        ref_captured = 0;
+        ref_display_valid = 0;
+        ref_raster_point = 0;
+        ack_completion_coincidences = 0;
         #3;
         forever #(1250.0 / 63.0) begin
             pixel_phase = !pixel_phase;
@@ -20,10 +66,10 @@ module tb_vga;
         (longint'($realtime * 1000.0) % 20000) != 10000)
     n2m_reset_control u_reset (.clk_sys, .clk_pix, .board_reset_n, .pll_locked,
                               .pll_areset, .ready, .reset_sys, .reset_pix);
-    logic source_valid = 0, source_start = 0;
-    logic [1:0] source_shade = 0;
-    logic [31:0] source_epoch = 0;
-    logic [63:0] source_dot = 0;
+    logic source_valid, source_start;
+    logic [1:0] source_shade;
+    logic [31:0] source_epoch;
+    logic [63:0] source_dot;
     wire observe_valid, observe_complete, display_valid;
     wire [14:0] observe_index;
     wire [1:0] observe_shade;
@@ -42,30 +88,30 @@ module tb_vga;
     function automatic logic [3:0] gray(input logic [1:0] shade);
         return 4'(15 - 5 * int'(shade));
     endfunction
-    int observed_pixel = 0, observed_seq = 0, completed_total = 0;
+    int observed_pixel, observed_seq, completed_total;
     bit complete_frames [int][int];
-    int raster_frames = 0, displayed_frames = 0, source_edges = 0;
-    int pix_edges = 0;
-    int seen_banks = 0;
+    int raster_frames, displayed_frames, source_edges;
+    int pix_edges;
+    int seen_banks;
     bit mutation_reuse, mutation_swap;
     logic [1:0] mutation_bank;
-    bit have_previous_display = 0;
+    bit have_previous_display;
     logic [1:0] previous_display_bank;
     logic [63:0] previous_display_seq;
     logic [31:0] previous_display_epoch;
 
     // Event deadlines model the specified crossings without reading DUT state.
     // Source and pixel rising edges never coincide in this variable-phase fixture.
-    int ref_sys_edges = 0, ref_pix_edges = 0, ref_ready_samples = 0;
-    int ref_index = 0, ref_source_seq = 0;
-    int ref_writer = 0, ref_old_display = 1, ref_free = 2, ref_offer_bank = 0;
-    int ref_offer_seq = 0, ref_offer_epoch = 0;
-    int ref_capture_edge = 0, ref_return_edge = 0;
-    int ref_display_bank = 1, ref_display_seq = 0, ref_display_epoch = 0;
-    longint unsigned ref_discards = 0, ref_repeats = 0;
-    bit ref_pending = 0, ref_returning = 0, ref_captured = 0, ref_display_valid = 0;
-    int ref_raster_point = 0;
-    int ack_completion_coincidences = 0;
+    int ref_sys_edges, ref_pix_edges, ref_ready_samples;
+    int ref_index, ref_source_seq;
+    int ref_writer, ref_old_display, ref_free, ref_offer_bank;
+    int ref_offer_seq, ref_offer_epoch;
+    int ref_capture_edge, ref_return_edge;
+    int ref_display_bank, ref_display_seq, ref_display_epoch;
+    longint unsigned ref_discards, ref_repeats;
+    bit ref_pending, ref_returning, ref_captured, ref_display_valid;
+    int ref_raster_point;
+    int ack_completion_coincidences;
     always @(posedge clk_sys) begin : source_ownership_oracle
         bit returning_now;
         ref_sys_edges++;
@@ -208,7 +254,8 @@ module tb_vga;
     end
 
     task automatic send_pixels(input int count, gap, seq);
-        for (int index = 0; index < count; index++) begin
+        int index;
+        for (index = 0; index < count; index++) begin
             @(negedge clk_sys);
             source_valid = 1; source_start = index == 0;
             source_shade = pattern(int'(source_epoch), seq, index);
@@ -228,7 +275,7 @@ module tb_vga;
         mutation_swap = $test$plusargs("active_swap");
         $dumpfile("vga.vcd"); $dumpvars(1, tb_vga);
         startup();
-        for (int seq = 0; seq < 8; seq++) send_pixels(23040, 1, seq);
+        for (seq = 0; seq < 8; seq++) send_pixels(23040, 1, seq);
         wait (display_valid);
         if (mutation_reuse) begin
             @(negedge clk_sys);
@@ -271,7 +318,7 @@ module tb_vga;
         @(negedge clk_sys); core_reset = 1; source_epoch = 2;
         @(negedge clk_sys); core_reset = 0;
         @(negedge clk_pix); pixel_running = 0;
-        for (int seq = 0; seq < 3; seq++) send_pixels(23040, 1, seq);
+        for (seq = 0; seq < 3; seq++) send_pixels(23040, 1, seq);
         @(negedge clk_sys); pixel_running = 1;
         repeat (840000) @(negedge clk_pix);
         if (discard_count == 0 || repeat_count == 0 || displayed_frames < 3 || raster_frames < 6 ||

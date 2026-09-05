@@ -14,6 +14,8 @@ module baseline_stimulus(input logic clk, output logic reset, enable,
     if ($value$plusargs("seed=%d", seed)) begin end
     random_state = seed ^ 32'h9e3779b9;
     if (random_state == 0) random_state = 1;
+    // Arm edge-driven stimulus after time-zero clock initialization settles.
+    #0;
     drive(1, 1, 255); // Reset wins over addition.
     drive(0, 1, 1);
     drive(0, 1, 127);

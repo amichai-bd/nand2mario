@@ -28,6 +28,18 @@
     always_ff @(posedge CLK or negedge RST_N) \
         if (!(RST_N)) Q <= (RESET_VAL); else Q <= (D);
 
+// Explicit power-up initialization needs a second process. Questa rejects an
+// initial writer alongside always_ff (vopt-7061), so only these forms use always.
+`define DFF_INIT_ARST_VAL(Q, D, CLK, RST, RESET_VAL) \
+    initial Q = (RESET_VAL); \
+    always @(posedge CLK or posedge RST) \
+        if (RST) Q <= (RESET_VAL); else Q <= (D);
+
+`define DFF_INIT_ARST_N_VAL(Q, D, CLK, RST_N, RESET_VAL) \
+    initial Q = (RESET_VAL); \
+    always @(posedge CLK or negedge RST_N) \
+        if (!(RST_N)) Q <= (RESET_VAL); else Q <= (D);
+
 // Assertions are simulation checks, never synthesized circuitry.
 `ifdef SYNTHESIS
 `define N2M_ASSERT(NAME, CLK, RESET, PROPERTY)
@@ -53,8 +65,8 @@
 // HOLD at the prior edge controls the update observed now. A reset clears
 // history asynchronously; the first subsequent sampled edge has no predecessor.
 `define N2M_ASSERT_STABLE_WHEN(NAME, CLK, RESET, HOLD, SIGNAL) \
-    logic NAME``_history = 1'b0; \
-    `DFF_ARST_VAL(NAME``_history, 1'b1, CLK, RESET, 1'b0) \
+    logic NAME``_history; \
+    `DFF_INIT_ARST_VAL(NAME``_history, 1'b1, CLK, RESET, 1'b0) \
     `N2M_ASSERT(NAME, CLK, RESET, (NAME``_history && $past(HOLD)) |-> $stable(SIGNAL))
 `endif
 

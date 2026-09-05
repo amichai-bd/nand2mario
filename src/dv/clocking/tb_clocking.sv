@@ -1,12 +1,12 @@
 `timescale 1ns/1ps
 module tb_clocking;
-    logic clk_sys = 0;
-    logic clk_pix = 0;
-    logic pixel_running = 0;
-    logic board_reset_n = 1;
-    logic pll_locked = 0;
-    logic core_reset = 0;
-    logic pause_request = 1;
+    logic clk_sys;
+    logic clk_pix;
+    logic pixel_running;
+    logic board_reset_n;
+    logic pll_locked;
+    logic core_reset;
+    logic pause_request;
     wire pll_areset, ready, reset_sys, reset_pix, gb_tick, paused;
     always #10 clk_sys = ~clk_sys;
     // Independent destination edges exercise reset control, not a vendor PLL model.
@@ -14,18 +14,19 @@ module tb_clocking;
     n2m_reset_control u_reset (.clk_sys, .clk_pix, .board_reset_n, .pll_locked,
                               .pll_areset, .ready, .reset_sys, .reset_pix);
     n2m_timebase u_tick (.clk_sys, .reset_sys, .core_reset, .pause_request, .gb_tick, .paused);
-    wire [18:0] bad_sum = u_tick.phase + 19'd32769;
+    wire [18:0] bad_sum;
+    assign bad_sum = u_tick.phase + 19'd32769;
     bit corrupt_numerator, corrupt_drop, corrupt_reset;
-    string mode = "normal";
-    longint unsigned active_edges = 0;
-    longint unsigned seen_ticks = 0;
-    longint unsigned total_checked_edges = 0;
-    longint unsigned previous_tick = 0;
+    string mode;
+    longint unsigned active_edges;
+    longint unsigned seen_ticks;
+    longint unsigned total_checked_edges;
+    longint unsigned previous_tick;
     longint unsigned expected_ticks;
-    bit expected_running = 0;
+    bit expected_running;
     bit expected_carry;
     bit observed_carry;
-    int gaps11 = 0, gaps12 = 0;
+    int gaps11, gaps12;
 
     // Cumulative integer arithmetic is independent of the DUT accumulator.
     always @(posedge clk_sys) begin
@@ -75,7 +76,8 @@ module tb_clocking;
             $fatal(1, "RESET_MISMATCH mode=%s expected=asserted", mode);
     endtask
     task automatic qualify_board(input int remaining);
-        for (int i = 1; i < remaining; i++) begin
+        int i;
+        for (i = 1; i < remaining; i++) begin
             step;
             if (i == 32) $dumpoff;
             if (i == remaining - 32) $dumpon;
@@ -86,7 +88,8 @@ module tb_clocking;
             $fatal(1, "RESET_QUALIFICATION_EDGE");
     endtask
     task automatic qualify_lock;
-        for (int i = 1; i <= 1025; i++) begin
+        int i;
+        for (i = 1; i <= 1025; i++) begin
             step;
             if (ready !== 0 || reset_sys !== 1 || reset_pix !== 1)
                 $fatal(1, "RESET_LOCK_EARLY edge=%0d", i);
@@ -101,6 +104,21 @@ module tb_clocking;
     endtask
 
     initial begin
+        clk_sys = 0;
+        clk_pix = 0;
+        pixel_running = 0;
+        board_reset_n = 1;
+        pll_locked = 0;
+        core_reset = 0;
+        pause_request = 1;
+        mode = "normal";
+        active_edges = 0;
+        seen_ticks = 0;
+        total_checked_edges = 0;
+        previous_tick = 0;
+        expected_running = 0;
+        gaps11 = 0;
+        gaps12 = 0;
         $dumpfile("clocking.vcd"); $dumpvars(0, tb_clocking);
         corrupt_numerator = $test$plusargs("bad_numerator");
         corrupt_drop = $test$plusargs("drop_tick");

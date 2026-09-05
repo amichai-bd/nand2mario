@@ -1,6 +1,6 @@
 `timescale 1ns/1ps
 module tb_baseline;
-  logic clk = 0;
+  logic clk;
   always #5 clk = ~clk;
   logic reset, enable, done, sampled_reset, sampled_enable, strobe;
   logic [7:0] operand, value, sampled_operand, actual, coverage_bits;
@@ -13,6 +13,7 @@ module tb_baseline;
   baseline_assertions assertions(strobe, sampled_reset, sampled_enable, actual, cycle, seed);
   baseline_coverage coverage_model(strobe, sampled_reset, sampled_enable, sampled_operand, actual, cycle, coverage_bits);
   initial begin
+    clk = 0;
     $dumpfile("baseline.vcd");
     $dumpvars(0, tb_baseline);
     wait(done);
