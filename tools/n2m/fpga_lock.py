@@ -1,0 +1,124 @@
+"""Recognize only the documented MAX 10 ALTPLL locked-output event latch."""
+import re
+
+PLL = "u_clocking|u_pll|altpll_component|auto_generated|"
+RESET = "u_clocking|u_reset|"
+ROW = "n2m_clocking:u_clocking|n2m_pixel_pll:u_pll|altpll:altpll_component|n2m_pixel_pll_altpll:auto_generated|pll_lock_sync"
+
+
+def verify(text, checks):
+    rows = re.findall(r";\s*([^;\r\n]+?)\s*;\s*No clock feeds this register's clock port\.\s*;", checks)
+    if rows != [ROW]:
+        raise ValueError("unrecognized no-clock endpoint")
+    text = re.sub(r"//[^\n]*", "", text)
+    text = re.sub(r"(?m)^\s*`timescale[^\n]*", "", text)
+    cells = {}
+    assignments = []
+    # Consume every statement. Unknown syntax cannot silently hide another sink.
+    for statement in text.split(";"):
+        statement = statement.strip()
+        if not statement or statement == "endmodule":
+            continue
+        if re.fullmatch(r"module\s+clocking_proof\s*\([A-Za-z0-9_,\s]+\)", statement):
+            continue
+        if re.fullmatch(r"(?:input|output|wire|tri0|tri1)\s+(?:\[\d+:\d+\]\s*)?(?:\\[^\s]+\s*(?:\[\d+\])?|[A-Za-z_]\w*)", statement):
+            continue
+        if re.fullmatch(r"defparam\s+\\[^\s]+\s+\.\w+\s*=\s*(?:\"[^\"]*\"|[A-Za-z0-9_'.+-]+)", statement):
+            continue
+        assignment = re.fullmatch(r"assign\s+([^=]+)=(.+)", statement, re.S)
+        if assignment:
+            assignments.append(re.sub(r"\s", "", assignment[2]))
+            continue
+        match = re.fullmatch(r"(\w+)\s+(?:\\(\S+)\s+|([A-Za-z_]\w*)\s*)\((.*)\)", statement, re.S)
+        if not match:
+            raise ValueError(f"unsupported structural netlist statement: {statement[:80]}")
+        kind, escaped, plain, body = match.groups()
+        name = escaped or plain
+        if name in cells:
+            raise ValueError("duplicate netlist cell")
+        connections = re.findall(r"\.(\w+)\(([^()]*)\)", body)
+        remainder = re.sub(r"\.(\w+)\(([^()]*)\)", "", body)
+        if re.sub(r"[\s,]", "", remainder) or len({p for p, _ in connections}) != len(connections):
+            raise ValueError("unsupported or duplicate netlist connection")
+        ports = {key: re.sub(r"\s", "", value) for key, value in connections}
+        cells[name] = (kind, ports)
+
+    def cell(name, kind):
+        if name not in cells or cells[name][0] != kind:
+            raise ValueError(f"vendor lock topology missing {name}")
+        return cells[name][1]
+
+    def parameter(name, key):
+        values = re.findall(r"defparam \\" + re.escape(name) + r"\s+\." + key + r"\s*=\s*([^;]+);", text)
+        if len(values) != 1:
+            raise ValueError("missing or duplicate vendor lock parameter")
+        return values[0].strip()
+
+    def users(net):
+        outputs = {"dffeas": {"q"}, "fiftyfivenm_lcell_comb": {"combout", "cout"},
+                   "fiftyfivenm_clkctrl": {"outclk"}, "fiftyfivenm_pll": {"locked", "clk", "fbout", "phasedone", "scandataout", "scandone", "activeclock", "vcooverrange", "vcounderrange", "clkbad"}}
+        result = {(name, port) for name, (kind, ports) in cells.items() for port, value in ports.items()
+                  if port not in outputs.get(kind, set()) and net in value}
+        result |= {(f"assign-{i}", "rhs") for i, rhs in enumerate(assignments) if net in rhs}
+        return result
+
+    pll = cell(PLL + "pll1", "fiftyfivenm_pll")
+    ff = cell(PLL + "pll_lock_sync", "dffeas")
+    expected = {"clk": pll["locked"], "d": "\\" + PLL + "pll_lock_sync~feeder_combout",
+                "asdata": "vcc", "clrn": pll["areset"].removeprefix("!"), "aload": "gnd",
+                "sclr": "gnd", "sload": "gnd", "ena": "vcc", "devclrn": "devclrn",
+                "devpor": "devpor", "q": "\\" + PLL + "pll_lock_sync~q", "prn": "vcc"}
+    if not pll["areset"].startswith("!") or ff != expected:
+        raise ValueError("vendor lock event latch ports differ")
+    if parameter(PLL + "pll_lock_sync", "power_up") != '"low"':
+        raise ValueError("vendor lock event latch initialization differs")
+    feeder = cell(PLL + "pll_lock_sync~feeder", "fiftyfivenm_lcell_comb")
+    if parameter(PLL + "pll_lock_sync~feeder", "lut_mask").lower() != "16'hffff" or feeder.get("combout") != ff["d"]:
+        raise ValueError("vendor lock event latch D is not constant one")
+    if any(feeder.get(p) != "gnd" for p in ("dataa", "datab", "datac", "datad", "cin")):
+        raise ValueError("vendor lock constant feeder has unexpected inputs")
+
+    # The latch clears from the very same reset as the PLL, with opposite polarity.
+    reset_buffer = cell(RESET + "pll_areset~clkctrl", "fiftyfivenm_clkctrl")
+    reset_ff = cell(RESET + "pll_areset", "dffeas")
+    if (reset_buffer.get("outclk") != ff["clrn"] or reset_buffer.get("ena") != "vcc"
+            or reset_buffer.get("clkselect") != "2'b00"
+            or reset_buffer.get("inclk") != "{vcc,vcc,vcc," + reset_ff["q"] + "}"):
+        raise ValueError("vendor lock reset source differs")
+
+    gate_name = RESET + "lock_reset~0"
+    gate = cell(gate_name, "fiftyfivenm_lcell_comb")
+    mask = parameter(gate_name, "lut_mask")
+    if not re.fullmatch(r"16'h[0-9A-Fa-f]{4}", mask):
+        raise ValueError("invalid vendor lock gate truth table")
+    mask = int(mask[4:], 16)
+    for assignment in range(8):
+        q, raw, released = [(assignment >> i) & 1 for i in range(3)]
+        values = {ff["q"]: q, pll["locked"]: raw, reset_ff["q"]: released, "gnd": 0, "vcc": 1}
+        try:
+            address = sum(values[gate[port]] << i for i, port in enumerate(("dataa", "datab", "datac", "datad")))
+        except KeyError as error:
+            raise ValueError("vendor lock gate has unrelated inputs") from error
+        if ((mask >> address) & 1) != (not (q and raw and released)):
+            raise ValueError("vendor lock gate no longer propagates raw lock loss")
+    q_users = users(ff["q"])
+    raw_users = users(pll["locked"])
+    if len(q_users) != 1 or {name for name, _ in q_users} != {gate_name}:
+        raise ValueError("vendor lock latch has non-lock fanout")
+    if raw_users != {(PLL + "pll_lock_sync", "clk")} | {(gate_name, p) for p, v in gate.items() if v == pll["locked"]}:
+        raise ValueError("raw PLL lock has unexpected fanout")
+    gate_buffer_name = RESET + "lock_reset~0clkctrl"
+    gate_buffer = cell(gate_buffer_name, "fiftyfivenm_clkctrl")
+    if (gate_buffer.get("inclk") != "{vcc,vcc,vcc," + gate["combout"] + "}"
+            or gate_buffer.get("clkselect") != "2'b00" or gate_buffer.get("ena") != "vcc"
+            or users(gate["combout"]) != {(gate_buffer_name, "inclk")}):
+        raise ValueError("lock-only reset fanout differs")
+    sample_names = {RESET + f"lock_samples[{i}]" for i in (0, 1)}
+    if users(gate_buffer["outclk"]) != {(name, "clrn") for name in sample_names}:
+        raise ValueError("vendor lock drives a functional datapath")
+    for name in sample_names:
+        sample = cell(name, "dffeas")
+        if sample.get("clrn") != "!" + gate_buffer["outclk"] or sample.get("clk") != reset_ff["clk"]:
+            raise ValueError("lock sampling reset or system clock differs")
+    return {"endpoint": ROW, "classification": "documented ALTPLL lock event latch",
+            "topology": "constant-one D; PLL reset clears; raw lock loss propagates; only reset sampling fanout"}

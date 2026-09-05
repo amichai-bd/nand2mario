@@ -14,7 +14,7 @@ from . import fpga_pll, fpga_constraints
 
 DEVICE = "10M50DAF484C7G"
 REGISTRY = "src/fpga/de10_lite/targets.json"
-TOOLS = ("quartus_sh", "quartus_map", "quartus_fit", "quartus_asm", "quartus_sta")
+TOOLS = ("quartus_sh", "quartus_map", "quartus_fit", "quartus_asm", "quartus_sta", "quartus_eda")
 REQUIRED_REPORTS = ("design.map.rpt", "design.fit.rpt", "design.fit.summary", "design.asm.rpt", "design.sta.rpt", "design.sta.summary",
                     "design.sof", "unconstrained.rpt", "check_timing.rpt", "ignored.rpt")
 SDC_COMMANDS = set("create_clock create_generated_clock derive_clock_uncertainty derive_pll_clocks set_input_delay set_output_delay set_false_path set_multicycle_path set_max_delay set_min_delay set_clock_uncertainty set_clock_groups set_clock_latency set_clock_transition".split())
@@ -22,6 +22,7 @@ TIMING_CHECKS = set("no_clock multiple_clock pos_neg_clock_domain generated_cloc
 ALLOCATOR_NOTICE = "TBBmalloc: skip allocation functions replacement in ucrtbase.dll: unknown prologue for function _msize"
 # These exact diagnostics do not establish physical readiness. No warning is hidden.
 CLASSIFIED = {
+    "10905": r"Generated the EDA functional simulation netlist because it is the only supported netlist type for this device\.",
     "292013": r"Feature LogicLock is only available with a valid subscription license\. You can purchase a software subscription to gain full access to this feature\.",
     "169177": r"\d+ pins must meet Intel FPGA requirements for 3\.3-, 3\.0-, and 2\.5-V interfaces\. For more information, refer to AN 447: Interfacing MAX 10 Devices with 3\.3/3\.0/2\.5-V LVTTL/LVCMOS I/O Systems\.",
 }
@@ -121,7 +122,10 @@ def prepare(root, folder, target):
         lines.append(f'set_instance_assignment -name VIRTUAL_PIN ON -to {tcl_word(port)}')
     (folder / "design.qsf").write_text('\n'.join(lines) + '\n', encoding="utf-8")
     (folder / "design.qpf").write_text('PROJECT_REVISION = "design"\n', encoding="utf-8")
-    (folder / "audit.tcl").write_text(AUDIT, encoding="utf-8")
+    audit = AUDIT
+    if "pll" in target:
+        audit = audit.replace("project_close", "report_metastability -file output/metastability.rpt\nreport_clock_transfers -file output/clock_transfers.rpt\n" + fpga_pll.chain_audit(tcl_word) + "project_close")
+    (folder / "audit.tcl").write_text(audit, encoding="utf-8")
 
 
 def diagnostics(output):
@@ -145,7 +149,6 @@ def execute(argv, folder, log, timeout, record, build):
     with (build / "commands.log").open("a", encoding="utf-8") as stream:
         stream.write(json.dumps(command) + '\n')
     # Windows timeout cleanup uses taskkill /T, not console control events.
-    # qmegawiz cannot launch its generator in a new Windows console process group.
     options = {} if os.name == "nt" else {"start_new_session": True}
     process = subprocess.Popen(argv, cwd=folder, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, **options)
     timed_out = False
@@ -188,6 +191,9 @@ def tools(directory, folder, record, build, timeout):
 
 
 def timing_evidence(folder, target):
+    if "timing" in target:
+        if (folder / "checked.sdc").read_text(encoding="utf-8") != fpga_constraints.generate(target["timing"], tcl_word):
+            raise ValueError("checked timing assignments differ from target")
     if "pll" in target:
         fpga_pll.verify(folder)
     output = folder / "output"
@@ -208,9 +214,13 @@ def timing_evidence(folder, target):
             raise ValueError(f"timing failure: {name}, slack={slack}, TNS={tns}")
         slacks[name] = slack
     for corner in ("Slow 1200mV 85C", "Slow 1200mV 0C", "Fast 1200mV 0C"):
-        for check in ("Setup", "Hold", "Minimum Pulse Width"):
+        for check in (("Setup", "Hold", "Recovery", "Removal", "Minimum Pulse Width") if "pll" in target else ("Setup", "Hold", "Minimum Pulse Width")):
             if not any(name.startswith(f"{corner} Model {check} '") for name in slacks):
                 raise ValueError(f"missing timing corner/check: {corner} {check}")
+            if "pll" in target:
+                for clock in ("clk_sys", "u_clocking|u_pll|altpll_component|auto_generated|pll1|clk[0]"):
+                    if f"{corner} Model {check} '{clock}'" not in slacks:
+                        raise ValueError(f"missing clock timing: {clock} {corner} {check}")
     ucp = (output / "unconstrained.rpt").read_text(encoding="utf-8")
     rows = re.findall(r";\s*(Illegal Clocks|Unconstrained [^;]+?)\s*;\s*(\d+)\s*;\s*(\d+)\s*;", ucp)
     expected = {"Illegal Clocks", "Unconstrained Clocks", "Unconstrained Input Ports", "Unconstrained Input Port Paths", "Unconstrained Output Ports", "Unconstrained Output Port Paths"}
@@ -223,10 +233,18 @@ def timing_evidence(folder, target):
     rows = re.findall(r";\s*([a-z_]+)\s*;\s*(\d+)\s*;", checks)
     if not TIMING_CHECKS.issubset(dict(rows)) or len(dict(rows)) != len(rows):
         raise ValueError("missing structural timing checks")
+    lock_event = None
+    if "pll" in target:
+        if dict(rows).get("no_clock") != "1":
+            raise ValueError("vendor lock event row missing or extra no-clock endpoints")
+        lock_event = fpga_pll.verify_lock_event(folder, checks)
+        fpga_pll.verify_fit(folder, target)
     for name, count in rows:
+        if name == "no_clock" and int(count) == 1 and "pll" in target:
+            continue
         if int(count) and not (name == "virtual_clock" and int(count) == 1 and "No virtual clock was found." in checks):
             raise ValueError(f"structural timing failure: {name}={count}")
-    return {"slack_ns": slacks, "fit_summary": fit, "unconstrained": "none", "ignored_constraints": "none",
+    return {"slack_ns": slacks, "fit_summary": fit, "unconstrained": "none", "ignored_constraints": "none", "vendor_lock_event": lock_event,
             "virtual_clock_check": "No virtual clock required for the physical-clock-referenced fixture" if "No virtual clock was found." in checks else "passed"}
 
 
@@ -243,7 +261,11 @@ def complete_cache(record, fingerprint, root, build, target):
         required = [folder / "output" / name for name in REQUIRED_REPORTS]
         if "pll" in target:
             required += [folder / "n2m_pixel_pll.v", folder / "generate-pll.log"]
+            required += [folder / "simulation/questa/design.vo", folder / "netlist.log"]
+            required += [folder / "output" / name for name in fpga_pll.required_reports()]
         required += [folder / name for name in ("design.qpf", "design.qsf", "audit.tcl", "compile.log", "audit.log")]
+        if "timing" in target:
+            required.append(folder / "checked.sdc")
         if any(p.relative_to(root).as_posix() not in record["artifacts"] for p in required):
             return False
         return timing_evidence(folder, target) == record["evidence"]
@@ -287,6 +309,8 @@ def build_fpga(root, build, args, provenance=None):
             prepare(root, folder, target)
             execute([record["tools"]["quartus_sh"]["path"], "--flow", "compile", "design"], folder, folder / "compile.log", args.timeout, record, build)
             execute([record["tools"]["quartus_sta"]["path"], "-t", "audit.tcl"], folder, folder / "audit.log", args.timeout, record, build)
+            if "pll" in target:
+                execute([record["tools"]["quartus_eda"]["path"], "--simulation", "--tool=modelsim", "--format=verilog", "design"], folder, folder / "netlist.log", args.timeout, record, build)
             record["evidence"] = timing_evidence(folder, target)
             record["evidence_directory"] = folder.relative_to(root).as_posix()
             record["status"] = "PASS"

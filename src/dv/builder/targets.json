@@ -63,7 +63,6 @@
     "expected_exit": "nonzero",
     "signature": "MISMATCH cycle=5 phase=after-edge expected=10110 actual=10111 low=00 high=01 x=7 palette=e4 seed=none"
   },
-<<<<<<< HEAD
   "baseline-good": {
     "sources": [
       "src/dv/baseline/fixture.sv",
@@ -117,7 +116,7 @@
     ],
     "expected_exit": "nonzero",
     "signature": "REGISTER_MISMATCH cycle=5 seed=1 expected=2d6aeb55fbd6aeb5 actual=2d6aeb55fbd6aeb4"
-=======
+  },
   "clocking": {
     "sources": [
       "src/rtl/clocking/n2m_reset_control.sv",
@@ -167,6 +166,5 @@
     ],
     "expected_exit": "nonzero",
     "signature": "RESET_MISMATCH mode=early-reset expected=asserted"
->>>>>>> c15debf (Implement clocking control and begin generated PLL timing proof)
   }
 }

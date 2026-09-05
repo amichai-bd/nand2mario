@@ -3,8 +3,10 @@ import re
 
 
 def validate(value):
-    if not isinstance(value, dict) or set(value) != {"async_reset_pins", "output_delays"}:
+    if not isinstance(value, dict) or set(value) != {"async_reset_pins", "output_delays", "reference_ns"}:
         raise ValueError("invalid checked timing assignments")
+    if value["reference_ns"] not in ("20.000", "19.998"):
+        raise ValueError("unsupported reference timing corner")
     pins = value["async_reset_pins"]
     if not isinstance(pins, list) or not pins or len(set(pins)) != len(pins):
         raise ValueError("invalid asynchronous reset endpoints")
