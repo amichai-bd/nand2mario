@@ -96,8 +96,10 @@ updates `workdir/latest.txt`. This extends the previous binary exit contract.
 
 Quartus license scope follows the [Intel 24.3 overview](https://www.intel.com/content/www/us/en/docs/programmable/683472/24-3/design-suite-overview.html).
 Installed `jtagconfig --help` defines the read-only enumeration invocation.
-Positive licensed Questa evidence remains required by
-[#27](https://github.com/amichai-bd/nand2mario/issues/27).
+Positive licensed Questa evidence is deferred in
+[#31](https://github.com/amichai-bd/nand2mario/issues/31) under the
+[current phase](../agents/bootstrap-plan.md#current-phase). This permits delivery
+of the doctor implementation; a failed environment check still reports FAIL.
 
 ## Bootstrap
 
