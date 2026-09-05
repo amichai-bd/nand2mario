@@ -402,3 +402,36 @@ python tools/build.py builds prune --keep 10
 
 Cleanup resolves and validates the exact path under `workdir/builds/` before
 removal. It never removes checked-in tools or source files.
+
+## Interface generation
+
+The [interface contract](../../src/rtl/interfaces/MAS_interfaces.md) owns shared
+behavior; [cfg/interfaces.json](../../../cfg/interfaces.json) owns numeric values
+and ordered layouts. Its [generated table](../../cfg/interfaces.md) is the
+checked documentation export.
+
+Run `python tools/n2m/interfaces.py` to regenerate the marked SV package, Python
+exports, assembly prelude and Markdown tables. `python tools/n2m/interfaces.py --check` renders
+in memory and fails on a missing or changed export, including documentation.
+The required Builder check runs this and the interface unit tests. The normal
+wiki renderer publishes the generated Markdown tables as HTML; no separate
+hand-maintained HTML copy exists.
+
+The source uses exact integer values, closed object keys, nonempty constant
+groups, unique uppercase names and explicit unsigned widths. Record fields are
+ordered byte multiples with unique lowercase names. Unknown keys, duplicate
+JSON keys, booleans/floats as integers, overflow, invalid references, duplicate
+addresses/command IDs, map overlap/gaps and inconsistent ROM/frame sizes fail.
+The generator's `validate` function is the executable schema v1. Changing an
+existing wire layout or meaning requires a new ABI version, even if the source
+schema can still represent it. Unsupported versions fail; no implicit downgrade.
+
+Checked-in generated exports are interface source artifacts required by this
+issue. Build-specific output and test logs stay under `workdir/builds/<tag>/`.
+Each export records the canonical source SHA-256. The Python software packager
+must import `tools/n2m/generated_interfaces.py` and fingerprint it and the JSON;
+the builder-owned allowlisted [assembly prelude](../../../src/sw/generated/interfaces.inc)
+supplies the same exported names and values as immutable EQU definitions, outside
+the target's source tree. Fingerprint this input as required by the
+[software contract](../sw/SPEC.md). Do not maintain a second
+memory map. SV users import `n2m_interfaces_pkg`.

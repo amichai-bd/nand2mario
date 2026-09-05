@@ -29,10 +29,13 @@ jobs:
           echo "$GITHUB_WORKSPACE/workdir/tools/iverilog/bin" >> "$GITHUB_PATH"
       - name: Test builder and discover tools
         run: |
+          python tools/n2m/interfaces.py --check
           python tools/build.py check --tag ci-check --json
           python tools/build.py doctor --profile portable --sim icarus --tag ci-doctor --json
       - name: Compile, elaborate, run, and check
         run: |
+          python tools/build.py sim test interfaces --sim icarus --tag ci-interfaces --json
+          python tools/build.py sim test interfaces-corrupt --sim icarus --tag ci-interfaces-corrupt --json
           python tools/build.py sim test builder-smoke --sim icarus --tag ci-smoke --json
           python tools/build.py sim test builder-smoke --sim icarus --tag ci-smoke --json
           python - <<'PY'
