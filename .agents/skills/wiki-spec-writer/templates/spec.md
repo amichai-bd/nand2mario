@@ -18,7 +18,7 @@ List boundary and conflicting events in priority order.
 
 ## Verification
 
-List checks that can prove the contract.
+List checks proving the contract.
 
 ## References
 

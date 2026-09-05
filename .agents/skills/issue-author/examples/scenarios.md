@@ -6,8 +6,8 @@ regression.
 
 Use `bug.md` for a failure with recreation evidence, `enhancement.md` for new
 observable behavior, and `specification.md` for one missing design contract.
-Keep the matching `type:*` label from that template and replace its area and
-priority examples with the issue's real labels.
+Keep the template's matching `type:*` label; replace area and priority examples
+with the issue's labels.
 
 Bad: "Improve simulation" mixes tool setup, RTL changes, and CI work without an
 observable goal.
@@ -17,7 +17,7 @@ Not a trigger: Open or update a pull request for completed work.
 ## Findings, not progress
 
 Good: "The linked spec gives two reset values. Which is intended?" Comment with
-the conflicting references; update the body once the decision is settled.
+the conflicting references; update the body after the decision.
 
 Good: Document that the spec is ahead of the code, with the open drift issue and
 the condition that restores alignment.
@@ -34,8 +34,8 @@ python .agents/skills/issue-author/scripts/create_issue.py --check workdir/.tmp/
 python .agents/skills/issue-author/scripts/create_issue.py workdir/.tmp/issues/fix-timer.md
 ```
 
-Keep the draft. The helper strips its metadata and sends only the body through
-stdin. For edits, save a body-only Markdown file and use
+Keep the draft. The helper sends only the body through stdin, stripping metadata.
+For edits, save a body-only Markdown file and use
 `gh issue edit 42 --body-file workdir/.tmp/issues/fix-timer-body.md`.
 Do not pass the metadata template directly as an edit body.
 

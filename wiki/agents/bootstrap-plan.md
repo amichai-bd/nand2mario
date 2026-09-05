@@ -12,9 +12,9 @@ includes project build/doctor implementation and simulation, board-proving
 designs and tests, and physical runner setup. An assigned issue or a P0 priority
 does not authorize this work.
 
-The user must explicitly start the next phase before these prerequisites may
-begin. That phase change does not waive gap close conditions or the separate
-authorization required for programming and physical tests.
+The user must explicitly start the next phase before these prerequisites begin.
+Gap close conditions and separate programming and physical-test authorization
+still apply.
 
 ## Completed infrastructure
 
@@ -31,7 +31,7 @@ authorization required for programming and physical tests.
 
 The [final audit issue](https://github.com/amichai-bd/nand2mario/issues/36) owns
 delivery and cleanup evidence. Skill structure checks do not prove agent
-behavior; the reviewed PRs demonstrate the flow for these changes only.
+behavior; reviewed PRs demonstrate only their own flow.
 These results do not close the product, tool, verification, or hardware gaps below.
 
 Use the [infrastructure acceptance checklist](infrastructure-acceptance.md) to
@@ -39,8 +39,8 @@ exercise the existing flow with a fresh author and retain evidence in the PR.
 
 ## Future P0 sequence
 
-After an explicit phase change, complete the assigned issues in this order.
-This is a dependency plan, not current execution permission.
+After an explicit phase change, complete assigned issues in this dependency
+order. This plan does not authorize work now.
 
 1. Approve project scope and legal boundaries:
    [GAP-001](../preflight-gaps.md#gap-001-scope-and-success-contract)
@@ -76,8 +76,8 @@ milestones.
 
 ## Implementation gate
 
-The repository is not ready for functional Game Boy RTL. The current phase
-also blocks starting its P0 prerequisites.
+Functional Game Boy RTL is not ready to start; the current phase also blocks
+its P0 prerequisites.
 
 Start the first functional CPU issue only when:
 

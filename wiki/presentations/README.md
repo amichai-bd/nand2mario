@@ -37,6 +37,6 @@ The shared runtime asks the parent wiki to show that file with the message
 `{type: 'n2m:source', path, line}`. The shell accepts known published files from
 its active sandboxed frame. Messages target the parent with `*` because the
 frame has an opaque origin; their payload contains only a public source path.
-The ordinary link is the standalone fallback. Use tracked
-sources and link to them rather than maintaining copied code on a slide.
+The ordinary link is the standalone fallback. Link tracked
+sources instead of maintaining code copies on slides.
 The [wiki contract](../tools/wiki.md) owns publication and source-viewer behavior.

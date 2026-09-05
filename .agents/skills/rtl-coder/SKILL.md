@@ -8,7 +8,7 @@ description: Implement or review synthesizable nand2mario SystemVerilog from an 
 Read the issue, linked specification, and nearby RTL before editing.
 
 1. State ports, clocks, resets, state, timing, and invalid cases.
-2. Keep modules small, synchronous intent explicit, and widths signedness clear.
+2. Keep modules small, synchronous intent explicit, and widths and signedness clear.
 3. Avoid latches, implicit nets, unsafe crossings, and vendor logic outside FPGA
    wrappers.
 4. Align wiki, assertions, and directed tests with behavior changes using the

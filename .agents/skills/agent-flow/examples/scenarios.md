@@ -6,8 +6,8 @@ A fix changes the SHA, so the reviewer checks again. The author posts the ready
 report, undrafts, and squash merges. Root verifies closure and cleans up.
 
 Good: A spec describes planned behavior before implementation. The PR names the
-open implementation issue and closure criteria. The reviewer checks that this
-sequencing is allowed by the current issue.
+open implementation issue and closure criteria. The reviewer checks that the
+current issue allows this sequence.
 
 Good: A preview owner records `127.0.0.1:8000`, its command, process, and served
 directory. After Ctrl+C, the port still has a listener. Root confirms the exact
@@ -33,10 +33,10 @@ Not a trigger: A design question with no issue work to start or finish.
 
 Apply the [agent work rules](../../../../AGENTS.md#work):
 
-- An issue authorizes a wiki navigation change. Choose the existing layout
-  convention and implement it without asking again about the changed navigation.
+- An issue authorizes a wiki navigation change. Follow the existing layout
+  convention without reconfirming the navigation change.
 - Two specifications require different navigation behavior and neither takes
   precedence. Ask which behavior is intended; continue an independent authorized
   wording fix while the navigation change waits.
-- A wording issue reveals a useful navigation redesign. Keep the current change
-  within the issue and ask before adding the redesign.
+- A wording issue reveals a useful navigation redesign. Stay within the issue
+  and ask before adding the redesign.

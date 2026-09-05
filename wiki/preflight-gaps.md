@@ -4,21 +4,20 @@ Status: product P0 gaps remain open; GAP-009 closed
 
 ## Purpose
 
-This file records what is missing after research. It prevents planned work from
-being mistaken for completed infrastructure.
+This register distinguishes post-research gaps from completed infrastructure.
 
 The [current phase](agents/bootstrap-plan.md#current-phase) defines which work
 may start. Gap priority and close conditions describe future requirements, not
 execution permission.
 
-The current output and caching design is recorded in the
-[build-system specification](tools/build-system.md).
+The [build-system specification](tools/build-system.md) records output and caching
+design.
 
 Priorities:
 
 - **P0** — close before functional Game Boy RTL starts.
 - **P1** — close before the affected subsystem or shared integration starts.
-- **P2** — planned later and does not block early implementation.
+- **P2** — planned later; does not block early implementation.
 - **Deferred** — intentionally waiting for user authorization or a later phase.
 
 ## Gap summary
@@ -45,9 +44,8 @@ Priorities:
 
 **Current state**
 
-The direction is clear, but “entire Game Boy” can mean original DMG hardware,
-all later Game Boy models, or every cartridge peripheral ever released. Those
-are very different projects.
+The direction is clear, but “entire Game Boy” could mean original DMG hardware,
+all later models, or every cartridge peripheral: very different projects.
 
 **Risk**
 
@@ -76,8 +74,8 @@ license file. External cores and test packages use different licenses.
 
 **Risk**
 
-Unclear reuse rights can make code impossible to publish. A commercial ROM or
-boot ROM could be committed accidentally.
+Unclear reuse rights can prevent publication. Commercial ROMs or boot ROMs
+could be committed accidentally.
 
 **Close when**
 
@@ -103,7 +101,7 @@ tooling does not prove the planned product commands.
 
 **Risk**
 
-Every agent may invent a different command, directory, or tool invocation.
+Agents may invent different commands, directories, or tool invocations.
 
 **Close when**
 
@@ -126,8 +124,7 @@ but the reference smoke exposed library-path and stale-port problems.
 
 **Risk**
 
-A doctor that checks only executable names can report success while every real
-simulation fails.
+Checking only executable names can report success while every simulation fails.
 
 **Close when**
 
@@ -144,8 +141,8 @@ simulation fails.
 
 **Current state**
 
-JTAG and a UART adapter are visible. The physical UART wire crossing, voltage,
-target pins, reset polarity, and VGA monitor behavior have not been proven here.
+JTAG and a UART adapter are visible. Physical UART wire crossing, voltage, target
+pins, reset polarity, and VGA monitor behavior remain unproven here.
 
 Reference `frog-bui` assignments suggest:
 
@@ -153,12 +150,12 @@ Reference `frog-bui` assignments suggest:
 - FPGA UART TX: Arduino D1, `PIN_AB6`;
 - 3.3 V LVTTL with adapter TX connected to FPGA RX.
 
-These are reference values, not yet accepted project constraints.
+These reference values are not yet accepted project constraints.
 
 **Risk**
 
-Incorrect direction or voltage can prevent communication or damage equipment.
-An incorrect device or bitstream could be programmed.
+Incorrect direction or voltage can block communication or damage equipment.
+The wrong device or bitstream could be programmed.
 
 **Close when**
 
@@ -175,13 +172,13 @@ An incorrect device or bitstream could be programmed.
 **Current state**
 
 The board clock is 50 MHz. Game Boy timing and 640 by 480 VGA require different
-rates. The exact PLL outputs, clock-enable approach, error tolerance, buffer
-crossing, and reset release are undecided.
+rates. PLL outputs, clock-enable approach, error tolerance, buffer crossing, and
+reset release remain undecided.
 
 **Risk**
 
 Fabric-generated clocks, unconstrained crossings, or mismatched frame rates can
-create intermittent failures that simulations miss.
+cause intermittent failures missed by simulation.
 
 **Close when**
 
@@ -197,8 +194,8 @@ create intermittent failures that simulations miss.
 
 **Current state**
 
-The Game Boy memory map is documented externally, but this repository has no
-canonical address map, host register map, UART packet format, trace format, or
+External sources document the Game Boy memory map; this repository lacks a
+canonical address map, host register map, UART packet format, trace format, and
 generated constants.
 
 **Risk**
@@ -225,8 +222,8 @@ manifest.
 
 **Risk**
 
-Agents may implement many instructions before there is trustworthy evidence of
-correct flags, timing, memory traffic, or interrupts.
+Agents may implement many instructions without reliable evidence of correct
+flags, timing, memory traffic, or interrupts.
 
 **Close when**
 
@@ -245,10 +242,10 @@ correct flags, timing, memory traffic, or interrupts.
 Closed by issues [#7](https://github.com/amichai-bd/nand2mario/issues/7)
 through [#10](https://github.com/amichai-bd/nand2mario/issues/10) and the
 end-to-end audit in [#14](https://github.com/amichai-bd/nand2mario/issues/14).
-The focused skills use short methods with separate templates and examples. The
-issue helper has passing validation tests. [#34](https://github.com/amichai-bd/nand2mario/issues/34)
+Focused skills have short methods, separate templates, and examples.
+Issue-helper validation tests pass. [#34](https://github.com/amichai-bd/nand2mario/issues/34)
 aligns the flow and review guidance with the agreed operating rules.
-Structural skill validation is not proof of agent behavior; the
+Structural skill validation does not prove agent behavior; the
 [scaffolding audit](https://github.com/amichai-bd/nand2mario/issues/36) links
 observed workflow evidence.
 
@@ -304,13 +301,12 @@ job could run untrusted code on this PC or allow concurrent access to the FPGA.
 
 **Current state**
 
-The exact Mario file, header, size, mapper, RAM, and region are unknown. No ROM
-should be added to the repository to answer these questions.
+The exact Mario file, header, size, mapper, RAM, and region are unknown. Do not
+add a ROM to the repository to resolve them.
 
 **Risk**
 
-The project could build the wrong mapper or storage backend and still call it
-Mario-compatible.
+The wrong mapper or storage backend could be called Mario-compatible.
 
 **Close when**
 
@@ -330,8 +326,8 @@ proven.
 
 **Risk**
 
-The PPU can be correct while the physical display tears, repeats partial frames,
-or rejects the timing.
+A correct PPU can still feed a physical display that tears, repeats partial
+frames, or rejects timing.
 
 **Close when**
 
@@ -346,13 +342,13 @@ or rejects the timing.
 
 **Current state**
 
-Useful test suites, RGBDS, and emulator references were identified but are not
-pinned or fetched reproducibly. RGBDS is not installed locally.
+Identified test suites, RGBDS, and emulator references are not pinned or fetched
+reproducibly. RGBDS is not installed locally.
 
 **Risk**
 
-Tests may change underneath the project, disappear, or introduce incompatible
-licenses. CI and local results may differ.
+Tests may change, disappear, or introduce incompatible licenses. CI and local
+results may differ.
 
 **Close when**
 
@@ -388,13 +384,13 @@ This does not block silent video and input bring-up.
 
 **Current state**
 
-“Software compiler” may mean an assembler/linker toolchain, a C compiler, or a
-new higher-level language. Those products have different costs and interfaces.
+“Software compiler” may mean an assembler/linker toolchain, C compiler, or new
+higher-level language, each with different costs and interfaces.
 
 **Risk**
 
-Compiler work can delay hardware even though commercial cartridges are already
-compiled and open test ROMs can use RGBDS.
+Compiler work can delay hardware despite precompiled commercial cartridges and
+RGBDS support for open test ROMs.
 
 **Close when**
 

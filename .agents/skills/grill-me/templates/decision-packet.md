@@ -2,7 +2,7 @@
 
 - **Goal:** one observable result.
 - **Decisions:** chosen behavior and important rationale.
-- **Non-goals:** adjacent work that is excluded.
+- **Non-goals:** excluded adjacent work.
 - **Risks and dependencies:** unresolved evidence, permission, or input.
 - **Wiki impact:** sources of truth to create or update.
 - **Issue shape:** title, scope, and three to five success criteria.

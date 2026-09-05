@@ -17,7 +17,7 @@ Make project prose direct, natural, concise, and exact.
 6. Compare with the source. Restore anything whose removal changes meaning.
 
 Preserve required headings, closing references, checkboxes, links, and code
-spans. Make no change when the source is already clear. Use
+spans. Leave clear prose unchanged. Use
 [the check](templates/check.md) for high-risk edits and see
-[the scenarios](examples/scenarios.md) for boundaries. The style basis is listed
-in [sources](references/sources.md).
+[the scenarios](examples/scenarios.md) for boundaries. See the style
+[sources](references/sources.md).

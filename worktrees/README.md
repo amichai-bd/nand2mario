@@ -4,7 +4,7 @@ Setup, merge, and cleanup methods for the [work rules](../AGENTS.md#work).
 
 ## Create
 
-Root selects an assigned issue and delegates one author. From the root:
+Root selects an assigned issue and delegates one author. From root:
 
 ```powershell
 git fetch origin
@@ -48,19 +48,18 @@ gh pr view <number> --json state,mergedAt,mergeCommit
 gh issue view <issue> --json state,closedAt
 ```
 
-If the PR is merged, report its merge commit and the local error to root. Do not
-retry the merge. If remote state is not clear, stop and investigate before any
-retry or cleanup.
+If merged, report the merge commit and local error to root; do not retry.
+If remote state is unclear, investigate before any retry or cleanup.
 
 ## Clean up after merge
 
-The author reports its squash merge. Root verifies the PR merged, its closing
-issues closed, and required main checks/deployment passed. Stop active users of
-the worktrees before removing them. If a worktree ran a local preview, follow
+The author reports its squash merge. Root verifies the PR merged, referenced
+issues closed, and required main checks/deployment passed. Stop active worktree
+users before removal. If a worktree ran a local preview, follow
 [preview cleanup](../.agents/skills/agent-flow/references/preview-cleanup.md).
 
-Check both worktrees are clean. Resolve their full paths and confirm they are
-inside this repository's `worktrees/`. Do not force-remove dirty worktrees.
+Check both worktrees are clean and their resolved full paths are inside this
+repository's `worktrees/`. Do not force-remove dirty worktrees.
 Retain temporary drafts by moving their ignored `workdir/.tmp/` content to root
 `workdir/.tmp/` before removal; preserve same-name collisions under distinct
 names. Keep useful evidence until its linked retention need is satisfied.
