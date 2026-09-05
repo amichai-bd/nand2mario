@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "targets": {
+    "builder-smoke": {
+      "device": "10M50DAF484C7G",
+      "top": "fpga_smoke",
+      "sources": ["src/dv/builder/fpga_smoke.sv"],
+      "constraints": ["src/fpga/de10_lite/builder_smoke.sdc"],
+      "pins": {"clk": "PIN_P11"},
+      "virtual_pins": ["count[*]"]
+    },
+    "builder-invalid": {
+      "device": "10M50DAF484C7G",
+      "top": "fpga_smoke",
+      "sources": ["src/dv/builder/fpga_smoke.sv"],
+      "constraints": ["src/fpga/de10_lite/builder_invalid.sdc"],
+      "pins": {"clk": "PIN_P11"},
+      "virtual_pins": ["count[*]"]
+    }
+  }
+}

@@ -1,6 +1,6 @@
 # Build system
 
-Status: `doctor`, `check`, and Icarus/Questa `sim test` implemented; other stages planned.
+Status: `doctor`, `check`, Icarus/Questa `sim test`, and MAX 10 `fpga build` implemented; other stages planned.
 
 ## Purpose
 
@@ -186,6 +186,88 @@ Future software and FPGA commands should have separate modules under `tools/n2m/
 and the output boundaries below. They are not implemented by this issue.
 The [software contract](../sw/SPEC.md) defines the planned `sw build`
 inputs, deterministic artifacts and independent conformance requirements.
+
+## FPGA build
+
+```powershell
+python tools/build.py fpga build builder-smoke --quartus-bin <directory> --tag fpga-smoke --json
+python tools/build.py fpga build builder-invalid --quartus-bin <directory> --tag fpga-invalid --json
+```
+
+The first command compiles, fits, assembles, and checks the owned MAX 10 fixture.
+The invalid target deliberately supplies a negative clock period and must FAIL
+with exit 1; it never becomes a passing build. No command programs the board,
+opens UART, or proves physical operation. Design-specific PLL/frame/fit evidence
+belongs to [#79](https://github.com/amichai-bd/nand2mario/issues/79) and
+[#80](https://github.com/amichai-bd/nand2mario/issues/80), using the
+[timing contract](../../src/clocks-resets-cdc.md).
+
+The [target registry](../../../src/fpga/de10_lite/targets.json) has exactly
+`schema_version: 1` and a `targets` object. Each named target has exactly
+`device`, `top`, ordered nonempty `sources` and `constraints` lists, a `pins`
+port-to-package-pin object, and a `virtual_pins` port-pattern list. The device
+is `10M50DAF484C7G`; top names are identifiers. Inputs are unique existing
+repository-relative `.sv` and `.sdc` paths under `src/`, without traversal or
+symlink escapes. Physical pins are unique `PIN_<letters><digits>` names; port
+names permit an optional numeric or wildcard array index. Physical assignments
+use 3.3-V LVTTL. This version supports self-contained inputs; HDL includes/file
+reads and external/dynamic SDC loads are rejected. Generated IP and additional
+file types need an explicit input/dependency extension before use.
+
+`--quartus-bin` is required and resolves `quartus_sh`, `quartus_map`,
+`quartus_fit`, `quartus_asm`, and `quartus_sta` from that one directory. All must
+report the same version. Record their versions, executable hashes and paths;
+never alter global PATH or provision commercial tools. The checked native
+flow uses Quartus Prime Lite 25.1std; a different installation must satisfy
+the same reports and diagnostics. `--timeout` bounds each tool to 1–3600 seconds
+(default 600; discovery at most 60). Timeout kills the invoked process tree and
+retains partial output. Missing tools, nonzero exits, and incomplete reports fail.
+
+Each request gets an immutable attempt under
+`workdir/builds/<tag>/fpga/<target>/attempts/<id>/`. Generated QPF/QSF and the
+timing-audit Tcl script live there, with databases, logs, output reports and
+images; checked-in configuration/source stays separate. `result.json` in the
+target directory is the atomic current result. It becomes RUNNING before input
+validation/discovery, so an interrupted or invalid request cannot reuse a stale
+success. Failures retain the failed attempt and publish FAIL. Only PASS updates
+the shared latest pointer.
+
+Fingerprint input/configuration/runner hashes, explicit tool identity and
+timeout. Reuse requires a matching successful result and every retained artifact
+hash; `--rebuild` forces execution. Cache hits still probe explicit tool versions,
+record that discovery, and link the reused immutable result and its artifacts.
+They perform no compile or timing run. An altered image/report/source/constraint,
+changed tool, or failed forced rebuild prevents stale reuse.
+
+Required evidence includes map/fit/assembler/timing reports, a nonempty SOF,
+the successful exact-device fit summary with final timing models, and timing
+summary checks for setup, hold and minimum pulse width at Slow 1200mV 85C,
+Slow 1200mV 0C and Fast 1200mV 0C. Every reported slack must be finite and
+nonnegative with zero TNS. The audit requires zero illegal/unconstrained
+clock/input/output setup and hold counts, no ignored SDC assignments, and no
+structural timing problems. Missing/malformed evidence fails rather than passing
+on the tool exit alone. Keep resource totals and all corner slack values.
+
+### Diagnostic classification
+
+Keep every diagnostic in the logs and result. Unknown warnings, critical
+warnings and errors fail. The following exact messages are classified for this
+bounded build flow; different text under the same number fails:
+
+| Diagnostic | Meaning and limit |
+|---|---|
+| 292013, LogicLock requires a subscription | Lite does not provide this optional placement feature. The generated QSF has no LogicLock assignments; this does not excuse missing required IP/tool licenses. |
+| 169177, MAX 10 3.3/3.0/2.5-V interface advisory pointing to AN 447 | The fitter reminds the user of electrical requirements. A generated image does not verify wiring, voltage, or physical acceptance; those remain required before use. |
+| Exact `TBBmalloc` `_msize` replacement notice | The installed allocator cannot replace that CRT allocation hook. It is not a failed compilation or timing check; retain the notice and require all execution/report evidence. |
+| `check_timing` virtual_clock = 1, exactly “No virtual clock was found.” | The fixture's I/O delays reference its physical clock. No virtual reference clock is required. Every other structural check still must be zero. |
+
+The installed Quartus messages and `report_ucp`, `check_timing`, `report_sdc`
+reports own the diagnostic text and timing observations. Independent review
+checks these narrow classifications against the actual retained reports. The
+[host tests](../../../tools/n2m/tests/test_fpga.py) inject unexpected diagnostics,
+negative/malformed timing, missing evidence, invalid inputs, cache corruption,
+tool failures and timeouts. Real positive/invalid-constraint runs prove execution;
+test doubles alone do not establish Quartus readiness.
 
 ## Source and workspace boundary
 

@@ -13,6 +13,7 @@ from .records import atomic_json, atomic_text, file_hash, git_state, workspace
 from .simulation import simulate
 from .simulator import Simulator, ToolError
 from .doctor import doctor
+from .fpga import build_fpga
 
 
 def parser():
@@ -39,6 +40,14 @@ def parser():
             leaf.add_argument("--iverilog", help="compiler executable name or path in selected backend")
             leaf.add_argument("--vvp", help="runtime executable name or path in selected backend")
             leaf.add_argument("--wsl-distro", help="WSL distribution; omitted uses WSL default")
+    fpga = commands.add_parser("fpga").add_subparsers(dest="action", required=True)
+    build = fpga.add_parser("build", help="fit and check an explicit MAX 10 target; no programming")
+    build.add_argument("target")
+    build.add_argument("--quartus-bin", required=True, help="explicit directory containing Quartus executables")
+    build.add_argument("--timeout", type=int, default=600, help="per-tool timeout in seconds, 1..3600")
+    build.add_argument("--rebuild", action="store_true")
+    build.add_argument("--tag")
+    build.add_argument("--json", action="store_true")
     return result
 
 
@@ -65,6 +74,9 @@ def main(argv=None, root=None):
                 elif args.command == "doctor":
                     provenance = {k: report[k] for k in ("commit", "dirty_tree_fingerprint", "host", "python") if k in report}
                     report.update(doctor(root, build, args, provenance))
+                elif args.command == "fpga":
+                    provenance = {k: report[k] for k in ("commit", "dirty_tree_fingerprint", "host", "python") if k in report}
+                    report.update(build_fpga(root, build, args, provenance))
                 else:
                     simulator = Simulator(args.sim, args.iverilog, args.vvp, args.wsl_distro, args.questa_bin)
                     if not 0 <= args.seed <= 2147483647:
