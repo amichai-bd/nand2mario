@@ -14,6 +14,7 @@ def verify(text, checks):
     text = re.sub(r"(?m)^\s*`timescale[^\n]*", "", text)
     cells = {}
     assignments = []
+    assigned_nets = []
     # Consume every statement. Unknown syntax cannot silently hide another sink.
     for statement in text.split(";"):
         statement = statement.strip()
@@ -27,6 +28,7 @@ def verify(text, checks):
             continue
         assignment = re.fullmatch(r"assign\s+([^=]+)=(.+)", statement, re.S)
         if assignment:
+            assigned_nets.append(re.sub(r"\s", "", assignment[1]))
             assignments.append(re.sub(r"\s", "", assignment[2]))
             continue
         match = re.fullmatch(r"(\w+)\s+(?:\\(\S+)\s+|([A-Za-z_]\w*)\s*)\((.*)\)", statement, re.S)
@@ -120,5 +122,15 @@ def verify(text, checks):
         sample = cell(name, "dffeas")
         if sample.get("clrn") != "!" + gate_buffer["outclk"] or sample.get("clk") != reset_ff["clk"]:
             raise ValueError("lock sampling reset or system clock differs")
+    critical_drivers = [(pll["locked"], PLL + "pll1", "locked"), (ff["q"], PLL + "pll_lock_sync", "q"),
+                        (ff["d"], PLL + "pll_lock_sync~feeder", "combout"),
+                        (ff["clrn"], RESET + "pll_areset~clkctrl", "outclk"),
+                        (reset_ff["q"], RESET + "pll_areset", "q"), (gate["combout"], gate_name, "combout"),
+                        (gate_buffer["outclk"], gate_buffer_name, "outclk")]
+    for net, expected_name, expected_port in critical_drivers:
+        drivers = {(name, port) for name, (_, ports) in cells.items() for port, value in ports.items()
+                   if port in {"q", "combout", "cout", "outclk", "locked"} and value == net}
+        if drivers != {(expected_name, expected_port)} or any(net in lhs for lhs in assigned_nets):
+            raise ValueError("vendor lock net has additional drivers")
     return {"endpoint": ROW, "classification": "documented ALTPLL lock event latch",
             "topology": "constant-one D; PLL reset clears; raw lock loss propagates; only reset sampling fanout"}

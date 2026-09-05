@@ -75,6 +75,8 @@ class ClockingEvidenceTests(unittest.TestCase):
                      text + '\ndffeas #(.power_up("low")) bad (.d(\\lock_buffer ));',
                      text + " dffeas bad (.d(\\lock_buffer ));",
                      text + "\ncustom bad (.q(\\lock_buffer ));",
+                     text + "\ndffeas bad (.q(\\lock_buffer ));",
+                     text + "\nassign \\lock_buffer = bad;",
                      text + "\ndffeas bad (.d(func(\\lock_buffer)));",
                      text + "\nassign bad = \\lock_buffer ;"]
         for mutated in mutations:
