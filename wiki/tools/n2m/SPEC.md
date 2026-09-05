@@ -182,8 +182,8 @@ in the failing command's log. Simulator warnings fail the stage.
 Add simulation targets to this manifest when their contracts and tests are ready.
 The [tile pixel checks](../sim/SPEC.md) use this interface for normal and
 expected-corruption runs through either explicit backend.
-Future software and FPGA commands should have separate modules under `tools/n2m/`
-and the output boundaries below. They are not implemented by this issue.
+Future software commands should have separate modules under `tools/n2m/`
+and the output boundaries below. They are not implemented yet.
 The [software contract](../sw/SPEC.md) defines the planned `sw build`
 inputs, deterministic artifacts and independent conformance requirements.
 
@@ -367,7 +367,7 @@ after the requested command succeeds.
 ## Output layout
 
 Implemented commands create only their needed directories. The larger layout
-below reserves locations for planned regression, FPGA, and software stages.
+below includes implemented FPGA attempts and reserves planned regression and software locations.
 
 ```text
 workdir/builds/<tag>/
@@ -392,9 +392,14 @@ workdir/builds/<tag>/
 │           ├── summary.json
 │           └── <test-name>/
 ├── fpga/
-│   ├── quartus/
-│   ├── reports/
-│   └── images/
+│   └── <target>/
+│       ├── result.json
+│       └── attempts/<id>/
+│           ├── design.qpf
+│           ├── design.qsf
+│           ├── audit.tcl
+│           ├── db/
+│           └── output/
 └── sw/
     └── <image-name>/
         ├── obj/

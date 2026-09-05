@@ -63,7 +63,7 @@ def target_definition(root, name):
             text = path.read_text(encoding="utf-8")
             if suffix == ".sv" and re.search(r'`include\b|\$(?:readmemh|readmemb|fopen)\b', text):
                 raise ValueError(f"external FPGA source dependencies are unsupported: {name}")
-            if suffix == ".sdc" and re.search(r'\b(?:source|read_sdc|open|exec|load|eval)\b', text):
+            if suffix == ".sdc" and re.search(r'(?:^|[;\[])\s*(?:source|read_sdc|open|exec|load|eval)\b', text, re.M):
                 raise ValueError(f"external or dynamic SDC dependencies are unsupported: {name}")
     if not isinstance(target["pins"], dict) or not target["pins"] or not isinstance(target["virtual_pins"], list):
         raise ValueError("invalid FPGA pin assignments")

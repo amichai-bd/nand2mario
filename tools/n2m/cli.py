@@ -1,4 +1,4 @@
-"""Small command dispatcher; future SW/FPGA backends belong beside simulation."""
+"""Small command dispatcher for tagged verification and build backends."""
 import argparse
 from datetime import datetime, timezone
 import json
@@ -17,7 +17,7 @@ from .fpga import build_fpga
 
 
 def parser():
-    result = argparse.ArgumentParser(description="Tagged repository builds (doctor, check, sim test).")
+    result = argparse.ArgumentParser(description="Tagged repository builds (doctor, check, sim test, fpga build).")
     commands = result.add_subparsers(dest="command", required=True)
     leaves = [commands.add_parser("doctor", help="discover portable simulator; no hardware access"),
               commands.add_parser("check", help="run builder tests")]
