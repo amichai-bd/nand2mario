@@ -129,3 +129,14 @@ fixture source was copied; the project-specific two-bit ownership RAM and
 independent asymmetric pattern are original. See the
 [reference study](../../rtl-reference-style.md) for the related staged-metadata
 and test-method observations.
+
+## Register and assertion form
+
+Ordinary state uses the shared register macros. Attributed two-stage crossing
+registers use the explicit asynchronous reset macro with unchanged stage names
+and polarity. The RAM's separate enabled read/write blocks are the memory
+inference exception: neither array nor output register has reset or initialization.
+Named concurrent assertions check source ordering/known values, immutable writer
+ownership, pending bundle stability and display-bank changes only after a swap
+boundary. The source-side ownership model and full raster oracle retain detailed
+procedural comparisons independent of those local assertions.

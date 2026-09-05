@@ -1,4 +1,5 @@
 `timescale 1ns/1ps
+`include "src/rtl/common/macros.svh"
 module tb_vga;
     logic clk_sys = 0, clk_pix = 0, pixel_running = 1;
     logic board_reset_n = 0, pll_locked = 0, core_reset = 0;
@@ -45,9 +46,6 @@ module tb_vga;
     logic [1:0] previous_display_bank;
     logic [63:0] previous_display_seq;
     logic [31:0] previous_display_epoch;
-    bit previous_boundary;
-    bit pending_previous = 0, release_previous = 0;
-    logic [97:0] previous_offer;
 
     // Event deadlines model the specified crossings without reading DUT state.
     // Source and pixel rising edges never coincide in this variable-phase fixture.
@@ -102,10 +100,21 @@ module tb_vga;
                    dut.writer_bank, dut.system_display_bank, dut.pending, discard_count);
     end
 
+    // Sampled local safety checks complement the independent source/raster oracle.
+    `N2M_ASSERT_NEVER(frame_bank_reuse, clk_sys, reset_sys,
+        (dut.pending && dut.writer_bank == dut.offer_bank) ||
+        dut.writer_bank == dut.system_display_bank ||
+        (display_valid && dut.writer_bank == dut.display_bank))
+    `N2M_ASSERT_STABLE_WHEN(frame_offer_stable, clk_sys, reset_sys,
+        dut.pending && !(dut.ack_sys[1] == dut.request && dut.pix_ready_sys[1]),
+        {dut.offer_bank, dut.offer_epoch, dut.offer_sequence})
+    `N2M_ASSERT_STABLE_WHEN(frame_active_swap, clk_pix, reset_pix,
+        !dut.swap_boundary, dut.display_bank)
+
     always @(posedge clk_sys) begin
         source_edges++;
         if (reset_sys) begin
-            observed_pixel = 0; observed_seq = 0; pending_previous = 0;
+            observed_pixel = 0; observed_seq = 0;
             complete_frames.delete();
         end else begin
             if (core_reset) begin observed_pixel = 0; observed_seq = 0; end
@@ -123,16 +132,6 @@ module tb_vga;
                     completed_total++; observed_seq++; observed_pixel = 0;
                 end else observed_pixel++;
             end
-            if ((dut.pending && dut.writer_bank == dut.offer_bank) ||
-                 dut.writer_bank == dut.system_display_bank ||
-                 (display_valid && dut.writer_bank == dut.display_bank))
-                $fatal(1, "FRAME_BANK_REUSE: writer targets immutable bank");
-            if (pending_previous && !release_previous &&
-                {dut.offer_bank, dut.offer_epoch, dut.offer_sequence} !== previous_offer)
-                $fatal(1, "FRAME_OFFER_CHANGED: pending bundle changed");
-            pending_previous = dut.pending;
-            release_previous = dut.pending && dut.ack_sys[1] == dut.request && dut.pix_ready_sys[1];
-            previous_offer = {dut.offer_bank, dut.offer_epoch, dut.offer_sequence};
         end
     end
 
@@ -149,7 +148,6 @@ module tb_vga;
         end
         else begin
             pix_edges++;
-            previous_boundary = ref_raster_point == 384000;
             captured_before = ref_captured;
             if (ref_pending && !ref_returning && ref_pix_edges == ref_capture_edge) ref_captured = 1;
             if (ref_raster_point == 384000) begin
@@ -163,8 +161,6 @@ module tb_vga;
         end
         #1;
         if (!reset_pix) begin
-            if (have_previous_display && dut.display_bank != previous_display_bank && !previous_boundary)
-                $fatal(1, "FRAME_ACTIVE_SWAP: bank changed outside blanking boundary");
             if (display_valid !== ref_display_valid || dut.display_bank !== 2'(ref_display_bank) ||
                 display_sequence !== 64'(ref_display_seq) || display_epoch !== 32'(ref_display_epoch) ||
                 repeat_count !== ref_repeats)
@@ -235,6 +231,7 @@ module tb_vga;
         end
         if (mutation_swap) begin
             wait (video_y == 10 && video_x == 100);
+            @(negedge clk_pix);
             force dut.display_bank = 2'd2;
             repeat (5) @(negedge clk_pix);
             $fatal(1, "MUTATION_MISSED: active swap");

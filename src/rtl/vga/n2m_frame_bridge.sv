@@ -42,20 +42,10 @@ module n2m_frame_bridge (
     // Specialized attributed synchronizers; no functional use of first stages.
     (* preserve, altera_attribute = "-name SYNCHRONIZER_IDENTIFICATION FORCED" *)
     logic [1:0] pix_ready_sys, sys_ready_pix, ack_sys, req_pix;
-    always_ff @(posedge clk_sys or posedge reset_sys) begin
-        if (reset_sys) begin pix_ready_sys <= 2'b00; ack_sys <= 2'b00; end
-        else begin
-            pix_ready_sys <= {pix_ready_sys[0], !reset_pix};
-            ack_sys <= {ack_sys[0], acknowledge};
-        end
-    end
-    always_ff @(posedge clk_pix or posedge reset_pix) begin
-        if (reset_pix) begin sys_ready_pix <= 2'b00; req_pix <= 2'b00; end
-        else begin
-            sys_ready_pix <= {sys_ready_pix[0], !reset_sys};
-            req_pix <= {req_pix[0], request};
-        end
-    end
+    `DFF_ARST_VAL(pix_ready_sys, {pix_ready_sys[0], !reset_pix}, clk_sys, reset_sys, 2'b00)
+    `DFF_ARST_VAL(ack_sys, {ack_sys[0], acknowledge}, clk_sys, reset_sys, 2'b00)
+    `DFF_ARST_VAL(sys_ready_pix, {sys_ready_pix[0], !reset_sys}, clk_pix, reset_pix, 2'b00)
+    `DFF_ARST_VAL(req_pix, {req_pix[0], request}, clk_pix, reset_pix, 2'b00)
     logic [1:0] writer_bank, system_display_bank, free_bank, offer_bank;
     logic [1:0] writer_next, system_display_next, free_next, offer_next;
     logic pending, pending_next, request_next;
@@ -148,13 +138,11 @@ module n2m_frame_bridge (
                 reset_sys || core_reset, 1'b0)
     `DFF_RST_EN(frame_epoch, source_epoch, clk_sys, accept_pixel && source_start,
                 reset_sys || core_reset, 32'd0)
-    always @(posedge clk_sys) if (!reset_sys && !core_reset && source_valid) begin
-        if (source_start !== !in_frame)
-            $fatal(1, "FRAME_SOURCE_ORDER: start/partial frame mismatch");
-        if (in_frame && source_epoch !== frame_epoch)
-            $fatal(1, "FRAME_SOURCE_EPOCH: epoch changed within frame");
-        if ($isunknown({source_shade, source_start, source_epoch, source_dot}))
-            $fatal(1, "FRAME_SOURCE_UNKNOWN: unknown source input");
-    end
+    `N2M_ASSERT(frame_source_order, clk_sys, reset_sys || core_reset,
+                source_valid |-> (source_start === !in_frame))
+    `N2M_ASSERT(frame_source_epoch, clk_sys, reset_sys || core_reset,
+                (source_valid && in_frame) |-> (source_epoch === frame_epoch))
+    `N2M_ASSERT(frame_source_known, clk_sys, reset_sys || core_reset,
+                source_valid |-> !$isunknown({source_shade, source_start, source_epoch, source_dot}))
 `endif
 endmodule

@@ -267,7 +267,7 @@
       "+bank_reuse"
     ],
     "expected_exit": "nonzero",
-    "signature": "FRAME_BANK_REUSE: writer targets immutable bank"
+    "signature": "N2M_ASSERT frame_bank_reuse instance=tb_vga"
   },
   "vga-active-swap": {
     "sources": [
@@ -282,6 +282,6 @@
       "+active_swap"
     ],
     "expected_exit": "nonzero",
-    "signature": "FRAME_ACTIVE_SWAP: bank changed outside blanking boundary"
+    "signature": "N2M_ASSERT frame_active_swap instance=tb_vga"
   }
 }
