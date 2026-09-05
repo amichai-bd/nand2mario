@@ -24,6 +24,12 @@ def main() -> int:
     args = parser.parse_args()
     if (args.install_browser or args.browser_executable) and not args.browser:
         parser.error('Browser options require --browser')
+    if args.browser:
+        output = ROOT / 'workdir/wiki/browser'
+        output.mkdir(parents=True, exist_ok=True)
+        (output / 'result.json').write_text('{"status": "starting"}', encoding='utf-8')
+        for name in ('failure.png', 'trace.zip'):
+            (output / name).unlink(missing_ok=True)
     lock = LOCK.with_name('requirements-browser.txt') if args.browser else LOCK
     (ROOT / "workdir/wiki/docs").mkdir(parents=True, exist_ok=True)
     lock_hash = hashlib.sha256(LOCK.read_bytes() + lock.read_bytes()).hexdigest()[:16]
@@ -64,7 +70,6 @@ def main() -> int:
         return result
     temporary = ROOT / 'workdir/wiki/browser/tmp'
     temporary.mkdir(parents=True, exist_ok=True)
-    (temporary.parent / 'result.json').write_text('{"status": "starting"}', encoding='utf-8')
     env = {**os.environ, 'PLAYWRIGHT_BROWSERS_PATH': str(ROOT / 'workdir/tools/playwright'),
            'TMPDIR': str(temporary), 'TMP': str(temporary), 'TEMP': str(temporary)}
     if args.install_browser:

@@ -57,6 +57,8 @@ def interactions(browser, base):
         page.goto(base)
         expect(page.locator('#path')).to_have_text('README.md')
         page.locator('[data-home="AGENTS.md"]').click()
+        expect(page.locator('#path')).to_have_text('AGENTS.md')
+        expect(page.locator('[data-home="AGENTS.md"]')).to_have_attribute('aria-pressed', 'true')
         expect(page.locator('#document')).to_contain_text('Agent rules')
         page.locator('[data-home="README.md"]').click()
         expect(page.locator('#path')).to_have_text('README.md')
