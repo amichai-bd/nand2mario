@@ -40,5 +40,39 @@
     "args": ["+corrupt"],
     "expected_exit": "nonzero",
     "signature": "MISMATCH cycle=5 phase=after-edge expected=10110 actual=10111 low=00 high=01 x=7 palette=e4 seed=none"
+  },
+  "baseline-good": {
+    "sources": [
+      "src/dv/baseline/fixture.sv",
+      "src/dv/baseline/stimulus.sv",
+      "src/dv/baseline/monitor.sv",
+      "src/dv/baseline/reference.sv",
+      "src/dv/baseline/scoreboard.sv",
+      "src/dv/baseline/assertions.sv",
+      "src/dv/baseline/coverage.sv",
+      "src/dv/baseline/tb_baseline.sv"
+    ],
+    "top": "tb_baseline",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS baseline transactions=75 bins=ff"
+  },
+  "baseline-broken": {
+    "sources": [
+      "src/dv/baseline/fixture.sv",
+      "src/dv/baseline/stimulus.sv",
+      "src/dv/baseline/monitor.sv",
+      "src/dv/baseline/reference.sv",
+      "src/dv/baseline/scoreboard.sv",
+      "src/dv/baseline/assertions.sv",
+      "src/dv/baseline/coverage.sv",
+      "src/dv/baseline/tb_baseline.sv"
+    ],
+    "top": "tb_baseline",
+    "args": [
+      "+broken"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "BASELINE_MISMATCH cycle=6 expected=0 actual=128"
   }
 }

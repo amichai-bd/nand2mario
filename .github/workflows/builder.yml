@@ -49,6 +49,8 @@ jobs:
           assert any("expected=7 actual=3" in pathlib.Path(p).read_text() for p in failed["artifacts"] if p.endswith("sim.log"))
           assert pathlib.Path("workdir/latest.txt").read_text().strip() == "ci-smoke"
           PY
+      - name: Verify baseline good and broken examples
+        run: python tools/n2m/baseline.py --sim portable --level smoke --tag ci-baseline
       - name: Retain build evidence
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6

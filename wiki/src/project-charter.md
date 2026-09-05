@@ -74,7 +74,7 @@ approved behavior. Escalate changes to scope, acceptance, or safety boundaries.
 The [current authorization](../agents/bootstrap-plan.md#verification-and-hardware-authorization)
 owns permission and prerequisites for Questa and physical execution, including
 the board approval required above. Simulation cannot satisfy physical acceptance.
-Outstanding Questa evidence remains in
+Shared Questa baseline evidence is recorded in
 [GAP-008](../preflight-gaps.md#gap-008-verification-baseline).
 
 [uart]: https://github.com/amichai-bd/frog-bui/blob/311e64d6e7e54db682e515f51aef92c083a32d5a/src/rtl/uart_ctrl/README.md

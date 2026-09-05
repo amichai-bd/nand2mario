@@ -135,6 +135,10 @@ def interactions(browser, base):
         expect(page.locator('#path')).to_have_text('wiki/presentations/README.md')
 
         page.screenshot(path=str(OUTPUT / 'documentation.png'), full_page=True)
+        page.goto(base + '/?page=wiki/src/dv/baseline/SPEC.md')
+        expect(page.locator('#document')).to_contain_text('Harness boundaries')
+        expect(page.locator('#document')).to_contain_text('Future adapter plans')
+        page.screenshot(path=str(OUTPUT / 'verification-baseline.png'))
         page.goto(base + '/?page=src/rtl/README.md')
         expect(page.locator('#document')).to_have_text('Document not found: src/rtl/README.md')
         expect(page.locator('#source')).to_be_disabled()

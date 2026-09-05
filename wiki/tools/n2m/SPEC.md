@@ -530,3 +530,11 @@ supplies the same exported names and values as immutable EQU definitions, outsid
 the target's source tree. Fingerprint this input as required by the
 [software contract](../sw/SPEC.md). Do not maintain a second
 memory map. SV users import `n2m_interfaces_pkg`.
+
+## Verification baseline runner
+
+`python tools/n2m/baseline.py` composes registered fixture simulations and checks
+retained evidence and cross-simulator traces. It is a host entry point alongside
+`tools/build.py`; no new dispatcher subcommand is implied. The
+[baseline contract](../../src/dv/baseline/SPEC.md#execution-and-regression) owns
+its options, regression levels, wall-budget semantics and trace checks.
