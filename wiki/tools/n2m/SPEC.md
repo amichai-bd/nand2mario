@@ -173,7 +173,9 @@ its protected trusted-revision route and required product checks. That route
 requires independent review of concrete workflow/launcher/configuration before
 activation; an actual dispatched licensed sample must then prove it. If its
 workflow must first land on main for dispatch, review and land the inert bootstrap
-before activation and acceptance. Untrusted PR code must never execute on the
+before activation and acceptance. The inactive
+[controller bootstrap](../ci/SPEC.md) owns its fixed admission and attestation
+contract; it does not establish the configured licensed route. Untrusted PR code must never execute on the
 physical/self-hosted runner. Missing tools or licensing is a failure, never a
 skipped job presented as a successful simulation. Quartus/board gates remain #32.
 

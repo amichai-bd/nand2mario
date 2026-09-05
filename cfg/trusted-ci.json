@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "enabled": false,
+  "repository": "amichai-bd/nand2mario",
+  "repository_id": 1357311510,
+  "controller_id": 81047407,
+  "workflow_id": 0,
+  "workflow_path": ".github/workflows/trusted-product.yml",
+  "workflow_blob": "84f8b1e5527e7bd348b68a97712126a5efdf8be4",
+  "environment": "trusted-product"
+}
