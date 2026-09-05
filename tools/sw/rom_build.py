@@ -10,6 +10,7 @@ from .build import assemble_target
 from .expressions import AssemblyError
 from .linker import fail, link
 from .package import package
+from .targets import validate_target
 
 
 def json_bytes(value):
@@ -30,10 +31,7 @@ def build_target(root, build, args, provenance):
                 or type(definitions['targets']) is not dict or safe != args.target):
             fail('SCHEMA_MISMATCH', 'invalid software target registry')
         target = definitions['targets'].get(args.target)
-        if type(target) is not dict or set(target) != {'directory', 'sources', 'assets', 'layout', 'entry', 'title', 'version', 'profile', 'interface_schema_version'}:
-            fail('SCHEMA_MISMATCH', 'complete software build target required')
-        if type(target['interface_schema_version']) is not int or target['interface_schema_version'] != 1:
-            fail('SCHEMA_MISMATCH', 'unsupported interface schema identity')
+        validate_target(target, require_package=True, stage='link')
         def confined(base, name):
             if type(name) is not str or not name or Path(name).is_absolute() or '..' in Path(name).parts or ':' in name or '\\' in name:
                 fail('PRIVATE_PATH', 'target-relative confined path required')

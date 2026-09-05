@@ -13,6 +13,7 @@ from sw.expressions import AssemblyError
 from sw.linker import link
 from sw.package import package, validate_image
 from sw.rom_build import build_target
+from sw.build import assemble_target
 ROOT = Path(__file__).resolve().parents[3]
 
 class LinkerTests(unittest.TestCase):
@@ -165,6 +166,17 @@ class LinkerTests(unittest.TestCase):
         diagnostic=json.loads((first/next(iter(failed['artifacts']))).read_text())[0]
         self.assertEqual((diagnostic['code'],diagnostic['stage'],diagnostic['span']['file'],diagnostic['span']['line']),('RANGE','assemble','main.asm',2))
         self.assertEqual(json.loads(current.read_text())['status'],'FAIL')
+
+    def test_assembly_rejects_incomplete_or_invalid_packaging_metadata(self):
+        root=self.checkout('shared target validation');build=root/'workdir/builds/a';build.mkdir(parents=True)
+        args=SimpleNamespace(target='linker-basic',rebuild=False)
+        registry=root/'src/sw/targets.json';original=json.loads(registry.read_text())
+        for field,value in [('entry',{'unit':'missing.asm','symbol':'Start'}),('title','lower'),('version',True),('profile','other'),('interface_schema_version',2),('layout','../escape.json')]:
+            data=deepcopy(original);data['targets']['linker-basic'][field]=value;registry.write_text(json.dumps(data))
+            with self.subTest(field=field):self.assertEqual(assemble_target(root,build,args,{})['status'],'FAIL')
+        data=deepcopy(original);data['targets']['linker-basic'].pop('layout');registry.write_text(json.dumps(data))
+        self.assertEqual(assemble_target(root,build,args,{})['status'],'FAIL')
+        registry.write_text(json.dumps(original));self.assertEqual(assemble_target(root,build,args,{})['status'],'PASS')
 
     def test_changed_layout_include_and_generated_inputs(self):
         root=self.checkout('dependencies');build=root/'workdir/builds/a';build.mkdir(parents=True)
