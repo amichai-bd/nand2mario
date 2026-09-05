@@ -1912,5 +1912,31 @@
     "expected_exit": "nonzero",
     "signature": "PPU_VBLANK_EVENT case=0 dot=65662 expected=1 actual=0",
     "timeout_seconds": 120
+  },
+  "cpu-alu": {
+    "sources": [
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/dv/cpu/alu_reference.sv",
+      "src/dv/cpu/tb_cpu_alu.sv"
+    ],
+    "top": "tb_cpu_alu",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU ALU cases=1220608 operations=29 seed=none"
+  },
+  "cpu-alu-corrupt": {
+    "sources": [
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/dv/cpu/alu_reference.sv",
+      "src/dv/cpu/tb_cpu_alu.sv"
+    ],
+    "top": "tb_cpu_alu",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_ALU_MISMATCH case=17 op=0 lhs=00 rhs=08 flags=1f bit=0 expected=0800 actual=0900"
   }
 }

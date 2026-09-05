@@ -1,7 +1,8 @@
 # SM83 CPU
 
 Status: design in progress for [#118](https://github.com/amichai-bd/nand2mario/issues/118).
-The CPU is not implemented or verified yet. The open modeling decisions below
+The byte ALU has directed Questa evidence; the instruction controller is not
+implemented or verified yet. The open modeling decisions below
 must be settled before their dependent RTL. This owner covers the complete legal
 base and CB instruction sets; a subset does not complete the issue.
 
@@ -23,8 +24,11 @@ not an exemption from instruction coverage.
 
 ## Boundary
 
-The planned module is `n2m_cpu` under `src/rtl/cpu/`. Every signal is synchronous
-to `clk_sys`; the wrapper synchronizes external inputs. CPU state uses shared
+The planned module is `n2m_cpu` under `src/rtl/cpu/`. Inputs are synchronous
+to `clk_sys` except `reset_sys`, which asserts asynchronously and releases
+through the shared domain synchronizer. CPU registers use asynchronous global
+reset assertion through the shared macros. `core_reset` is synchronous and has
+priority over tick-enabled updates; the wrapper synchronizes external inputs. CPU state uses shared
 register macros and local properties use named assertion macros. Declarations
 are separate from assignments, including power-up initialization. A tick is an
 enable, never a generated CPU clock.
@@ -33,7 +37,9 @@ enable, never a generated CPU clock.
 |---|---|---|
 | `clk_sys`, `reset_sys`, `core_reset` | Input | Reset has priority over emulated activity. Core reset aborts the current instruction and bus attempt and applies the generated profile. Global reset additionally clears any observation history. |
 | `gb_tick` | Input | One enabled system edge advances one emulated T-cycle. No missing response may stretch or drop this edge. |
+| `profile_id` | Input, generated profile-ID width | Core reset accepts only the generated direct-profile ID and applies every generated CPU register/control field. An unknown ID is a named contract failure; it cannot select a test state. |
 | `epoch` | Input, 32 bits | Current initialization epoch, supplied by the system owner. The CPU does not invent a second epoch counter. |
+| `dot_before` | Input, 64 bits | System count of completed emulated T-cycles before the current edge. An event on `gb_tick` records this count plus one. The system count includes HALT, freezes with host pause, and follows the agreed STOP oscillator gating; it is not a CPU-running counter. |
 | `ie`, `iflags` | Input, 8 and 5 bits | Live interrupt enable and request state, including changes caused by CPU writes and peripherals. These are not frozen at interrupt-entry start. |
 | `buttons`, `joyp_selected_active` | Input | Public latched button snapshot and selected active-low JOYP-line reduction from the JOYP owner; physical buttons alone do not determine STOP wake. |
 | Memory request | Output | Address, read/write direction, write byte and access kind: opcode, operand, data, stack or idle. Idle is observable without issuing a memory transaction. |
@@ -41,10 +47,11 @@ enable, never a generated CPU clock.
 | Memory commit | Output | One pulse per committed access. Preparation must not cause peripheral side effects; reset before commit cancels the attempt. |
 | Interrupt acknowledge | Output, 5 bits | At most one selected request cleared at the specified entry edge; the peripheral owner combines acknowledgement and its own event/write priority. |
 | STOP coordination | Output | CPU stopped and divider-reset request, distinct from host pause and CPU HALT. The enclosing system owns oscillator/peripheral gating. |
+| Contract fault | Output | Latched on missing response or invalid initialization profile; suppresses further commits and retirement until reset. Simulation additionally emits the corresponding named fatal assertion. |
 | Retirement | Output | One-cycle valid pulse and generated `retirement_t`, describing the completed event. No backpressure may change emulated CPU timing. |
 
-The final port names and exact bus phases will be frozen with the timing decision
-below. These are product-facing signals, not a test-only register-write port.
+The final port names follow this boundary. The digital memory phases below do
+not depend on implementing future peripherals first. These are product-facing signals, not a test-only register-write port.
 Tests establish non-reset register states through executed instructions and
 observe public bus transactions and retirement. An observation port cannot
 change architectural state.
@@ -89,6 +96,25 @@ wake without IME resumes without servicing. With IME set, wake services an
 interrupt before executing the following instruction. EI/HALT and changed
 pending state at entry/wake are separate directed cases.
 
+## Arithmetic datapath
+
+`n2m_cpu_alu` is a combinational byte datapath. Its operation enum belongs to
+`n2m_cpu_pkg`; the controller owns cycle timing and destination writeback.
+Inputs are two bytes, input F and a three-bit CB bit index; outputs are the
+result byte and F with its low nibble cleared. CP returns the unchanged left
+byte with subtraction flags. BIT returns the unchanged byte with tested flags.
+SCF/CCF change only their specified flags. Unused operation codes return the
+unchanged byte and masked F; the controller must never issue them.
+
+The directed datapath fixture uses a separate integer reference and its own
+operation mapping. It enumerates every byte pair and carry state for the eight
+binary operations, every input byte and flags nibble for unary operations, and
+every bit index for BIT/RES/SET: 1,220,608 cases. Both the full positive case and deliberate result-byte mutation have run in
+Questa. This proves the byte datapath boundary, not instruction sequencing or
+full CPU coverage. A sampled trace and early
+waves are retained; any later mismatch includes its complete expected/actual
+inputs even after routine waveform recording ends.
+
 ## Time, bus and retirement
 
 Instruction manuals count execution M-cycles with the final opcode fetch
@@ -98,22 +124,58 @@ startup from an extra cycle charged to every instruction. Fetched instruction
 bytes are retained when read, so later memory changes cannot rewrite a trace.
 A branch's final fetch uses the branch target; a HALT fetch can leave PC
 unadvanced. An interrupt can discard an already fetched opcode without retiring
-that instruction.
+that instruction. The internal fetch cursor is not architectural `pc_after`:
+that field identifies where the next instruction would execute after this event.
+In particular, a completed final fetch does not add one to `pc_after`.
+
+With initial PC `0100`, memory `0100:00, 0101:00, 0102:00` and uninterrupted ticks:
+
+| Completed dot | Access | Event |
+|---|---|---|
+| 4 | Fetch `00` at `0100` | None: initial fetch only. |
+| 8 | Fetch `00` at `0101` | Sequence 0, NOP, before `0100`, after `0101`; cursor may already be `0102`. |
+| 12 | Fetch `00` at `0102` | Sequence 1, NOP, before `0101`, after `0102`. |
+
+For `0100:C3, 0101:00, 0102:02` (JP `0200`), accesses occur at dots 4, 8 and 12;
+dot 16 is idle and dot 20 fetches `0200`. The JP event at dot 20 has before
+`0100`, after `0200`, and fetched bytes `C3 00 02`. It must not report `0201`.
+A suppressed HALT-bug cursor increment is tracked independently: consecutive
+instructions may legitimately have the same first-opcode address. A discarded
+interrupt fetch cannot become a fabricated instruction event.
 
 The external timing reference places read sampling at T4 rising. This is an
 inference from its matching half-cycle labels and sampling marker, not evidence
 that all internal peripherals have the same side-effect edge. The CPU's digital
 bus uses the four T-cycle enables; it does not reproduce analog cartridge pins.
-The final request/response/commit mapping must preserve ordered reads/writes and
-state which bus-owner behavior remains outside this module.
+The digital CPU bus uses this fixed mapping:
+
+| Phase | CPU and bus action |
+|---|---|
+| Before T1 | The next M-cycle address, direction, write byte and kind are available. The bus owner may prepare data; preparation has no architectural side effect. |
+| T1 through T3 | Request fields remain stable. The bus owner resolves its bounded internal service and arbitration. Idle cycles issue no transaction. |
+| T4 | Exactly one commit pulse for an access. Reads require valid data at this edge; writes take effect at this edge in the digital bus abstraction. A missing read response latches the contract fault and emits a named fatal assertion in simulation. It consumes no read byte, commits no access and never becomes a wait state. |
+| Following system edge | Bounded bookkeeping observes bus-side IE/IF updates and publishes any completed retirement event with its captured T4 dot. It adds no emulated cycle. It must finish before the next T-cycle enable. |
+
+This T4 write commit is the digital transaction boundary, not a claim to
+reproduce the cartridge's falling-edge WR pin pulse. Future bus/peripheral
+owners map their pin, DMA, blocked-access and register conflict behavior into
+this boundary and may not acknowledge preparation as a write. The CPU does not
+resolve unimplemented peripheral conflicts by extending instruction timing.
+Reset before T4 cancels an uncommitted request; reset at T4 wins over commit.
+A prepared request may remain stable across host pause without side effects.
 
 Retirement records post-event architectural state, actual fetched bytes and the
 public IE/IF/button snapshot. A CB instruction produces one event, interrupt
 entry produces its own kind, and HALT/STOP/lock idle produces none. Event sequence
-starts at zero after initialization. Dot counts all completed emulated T-cycles,
-including HALT time; host pause contributes none. The input epoch is copied,
+starts at zero after initialization. Dot is supplied by the system owner and counts completed emulated T-cycles,
+including HALT time; host pause contributes none. CPU STOP reports its clock
+request to that owner rather than maintaining a competing time counter. The input epoch is copied,
 not generated. The generated field widths and wrap rules remain authoritative.
-No event from an aborted pre-reset instruction may leak after reset.
+Interrupt events have opcode and opcode length zero. Instructions retain only
+their one to three fetched bytes, with unused high bytes zero; CB remains one
+event. IME_DELAY and HALT_BUG describe the post-event pending-enable and
+suppressed-increment states, not historical triggers. No event from an aborted
+pre-reset instruction may leak after reset.
 
 Host pause freezes the supplied tick, CPU state and emulated bus progress at a
 T-cycle boundary. A prepared transaction is retained without committing twice.
@@ -123,13 +185,10 @@ priority. The system must not use CPU HALT as host pause.
 
 ## Design gates before dependent RTL
 
-1. Freeze the four-phase memory contract, including internal-memory side effects
-   and IRQ acknowledgement timing. External read sampling alone is insufficient
-   evidence for every MMIO owner.
-2. Reconcile interrupt selection after the high stack write, including an IE
+1. Reconcile interrupt selection after the high stack write, including an IE
    write through a wrapping SP, late higher-priority requests, cancellation and
    the resulting vector/acknowledge. Expectations must be independently sourced.
-3. Resolve STOP's deterministic held/pending combinations and the documented
+2. Resolve STOP's deterministic held/pending combinations and the documented
    nondeterministic oscillator-glitch case under the charter's model policy.
    A deliberate model fault or a deterministic digital approximation must be
    explicit and reviewed; neither may be silently presented as exact silicon.
