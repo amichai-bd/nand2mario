@@ -67,7 +67,11 @@ The environment profile also checks:
 
 - Questa: compile and run that same source, requiring its checked completion
   signature. A compile-only success does not prove elaboration or a runtime
-  license. Timeouts, warnings, and missing signatures fail.
+  license. Timeouts, warnings, error diagnostics, and missing signatures fail.
+  A retained `run.do` macro handles breaks and errors. With `-onfinish stop`,
+  only a normal `$finish` stop exits zero; fatal or other breaks, macro errors,
+  and return without `$finish` exit nonzero. The checked signature is still
+  required after a zero exit.
 - Quartus: report version and edition. Lite needs no license file; other editions
   report unverified licensing. Unexpected diagnostics fail. Version discovery
   does not prove synthesis.
@@ -96,10 +100,10 @@ updates `workdir/latest.txt`. This extends the previous binary exit contract.
 
 Quartus license scope follows the [Intel 24.3 overview](https://www.intel.com/content/www/us/en/docs/programmable/683472/24-3/design-suite-overview.html).
 Installed `jtagconfig --help` defines the read-only enumeration invocation.
-Positive licensed Questa evidence is deferred in
-[#31](https://github.com/amichai-bd/nand2mario/issues/31) under the
-[current phase](../agents/bootstrap-plan.md#current-phase). This permits delivery
-of the doctor implementation; a failed environment check still reports FAIL.
+The [gap register](../preflight-gaps.md#gap-008-verification-baseline) records
+the doctor's scoped licensed runtime evidence and the broader baseline still
+due in [#31](https://github.com/amichai-bd/nand2mario/issues/31). A failed
+environment check still reports FAIL; a passing smoke is not full readiness.
 
 ## Bootstrap
 

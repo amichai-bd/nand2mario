@@ -55,8 +55,14 @@ def main():
         log.write_text(result.stdout, encoding="utf-8")
         record["commands"].append({"argv": command, "cwd": str(directory.relative_to(build)),
                                    "exit_code": result.returncode, "log": str(log.relative_to(build))})
-        if re.search(r"(?:\*\* Warning:|\bwarning:)", result.stdout, re.IGNORECASE):
+        if re.search(r"(?:\*\* Warning:|\bwarning:|\bWarnings:\s*[1-9])", result.stdout, re.IGNORECASE):
             raise RuntimeError(f"unexplained warning: {log}")
+        diagnostics = re.findall(r"(?im)^.*\b(?:error|fatal)(?: \([^)]*\))?:.*$", result.stdout)
+        if any(not (failure and marker and marker in line) for line in diagnostics):
+            raise RuntimeError(f"unexpected diagnostic: {log}")
+        if any(int(count) != (1 if failure else 0)
+               for count in re.findall(r"\bErrors:\s*(\d+)", result.stdout)):
+            raise RuntimeError(f"unexpected error count: {log}")
         if (result.returncode != 0) != failure or (marker and marker not in result.stdout):
             raise RuntimeError(f"unexpected result: {log}")
         return result.stdout
@@ -90,11 +96,19 @@ def main():
             else:
                 run([binaries["vmap"], "-c"], sim_dir, "ini.log")
                 run([binaries["vmap"], "work", (compiler / "work").as_posix()], sim_dir, "map.log")
-                # Normal $finish exits; only assertion breaks use the error handler.
-                command = [binaries["vsim"], "-c", "-onfinish", "exit", "-wlf", "waves.wlf",
+                # Questa's handlers require a macro, not inline -do commands.
+                (sim_dir / "run.do").write_text(
+                    "onbreak {if {[lindex [runStatus -full] 2] eq {$finish}} "
+                    "{quit -code 0} else {quit -code 1}}\n"
+                    "onerror {quit -code 1}\nrun -all\nquit -code 1\n",
+                    encoding="utf-8")
+                # stop preserves the finish reason; exit turns $fatal into 0.
+                command = [binaries["vsim"], "-c", "-onfinish", "stop", "-wlf", "waves.wlf",
                            "work.tb_dmg_tile_pixel", *plusargs,
-                           "-do", "onbreak {quit -code 1}; onerror {quit -code 1}; run -all; quit -code 0"]
-            marker = "MISMATCH cycle=5" if corrupt else "PASS pixel_cases=524288 palette_cases=8192"
+                           "-do", "do run.do"]
+            marker = ("MISMATCH cycle=5 phase=after-edge expected=10110 actual=10111 "
+                      "low=00 high=01 x=7 palette=e4 seed=none" if corrupt else
+                      "PASS pixel_cases=524288 palette_cases=8192 cycles=532521 seed=none")
             run(command, sim_dir, "sim.log", failure=corrupt, marker=marker)
             (sim_dir / "result.json").write_text(json.dumps({
                 "status": "EXPECTED_FAILURE" if corrupt else "PASS", "marker": marker,

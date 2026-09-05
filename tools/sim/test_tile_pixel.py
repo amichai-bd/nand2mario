@@ -11,6 +11,10 @@ from unittest.mock import patch
 
 import tile_pixel
 
+PASS = "PASS pixel_cases=524288 palette_cases=8192 cycles=532521 seed=none"
+MISMATCH = ("MISMATCH cycle=5 phase=after-edge expected=10110 actual=10111 "
+            "low=00 high=01 x=7 palette=e4 seed=none")
+
 
 class RunnerTests(unittest.TestCase):
     def setUp(self):
@@ -28,8 +32,8 @@ class RunnerTests(unittest.TestCase):
     def invoke(self, responder=None, missing=False, simulator="icarus"):
         def normal(argv, **kwargs):
             if "+corrupt" in argv:
-                return subprocess.CompletedProcess(argv, 1, "MISMATCH cycle=5")
-            return subprocess.CompletedProcess(argv, 0, "PASS pixel_cases=524288 palette_cases=8192")
+                return subprocess.CompletedProcess(argv, 1, MISMATCH)
+            return subprocess.CompletedProcess(argv, 0, PASS)
 
         with patch.multiple(tile_pixel, ROOT=self.root, SOURCES=[self.source], __file__=str(self.script)), \
              patch("sys.argv", ["tile_pixel.py", "--sim", simulator, "--tag", "test"]), \
@@ -56,12 +60,19 @@ class RunnerTests(unittest.TestCase):
     def test_questa_finish_and_failure_commands(self):
         code, manifest, _ = self.invoke(simulator="questa")
         self.assertEqual(code, 0)
-        commands = [entry["argv"] for entry in manifest["commands"]
-                    if "work.tb_dmg_tile_pixel" in entry["argv"]]
+        entries = [entry for entry in manifest["commands"]
+                   if "work.tb_dmg_tile_pixel" in entry["argv"]]
+        commands = [entry["argv"] for entry in entries]
         self.assertEqual(len(commands), 2)
         for argv in commands:
-            self.assertEqual(argv[argv.index("-onfinish") + 1], "exit")
-            self.assertIn("onbreak {quit -code 1}", argv[-1])
+            self.assertEqual(argv[argv.index("-onfinish") + 1], "stop")
+            self.assertEqual(argv[-1], "do run.do")
+        for entry in entries:
+            macro = (self.root / "workdir/builds/test" / entry["cwd"] / "run.do").read_text()
+            self.assertEqual(macro.splitlines(), [
+                "onbreak {if {[lindex [runStatus -full] 2] eq {$finish}} "
+                "{quit -code 0} else {quit -code 1}}",
+                "onerror {quit -code 1}", "run -all", "quit -code 1"])
         self.assertNotIn("+corrupt", commands[0])
         self.assertIn("+corrupt", commands[1])
 
@@ -80,10 +91,62 @@ class RunnerTests(unittest.TestCase):
         def wrong_failure(argv, **kwargs):
             if "+corrupt" in argv:
                 return subprocess.CompletedProcess(argv, 1, "unrelated failure")
-            return subprocess.CompletedProcess(argv, 0, "PASS pixel_cases=524288 palette_cases=8192")
+            return subprocess.CompletedProcess(argv, 0, PASS)
         code, manifest, _ = self.invoke(wrong_failure)
         self.assertEqual(code, 1)
         self.assertEqual(manifest["status"], "FAIL")
+
+    def test_questa_corruption_requires_nonzero_exit(self):
+        code, manifest, _ = self.invoke(
+            lambda argv, **kwargs: subprocess.CompletedProcess(
+                argv, 0, MISMATCH if "+corrupt" in argv else PASS), simulator="questa")
+        self.assertEqual(code, 1)
+        self.assertEqual(manifest["commands"][-1]["exit_code"], 0)
+        self.assertIn("unexpected result", manifest["error"])
+
+    def test_questa_corruption_requires_full_diagnostic(self):
+        def incomplete(argv, **kwargs):
+            return subprocess.CompletedProcess(argv, 1, "MISMATCH cycle=5") if "+corrupt" in argv else \
+                subprocess.CompletedProcess(argv, 0, PASS)
+        code, manifest, _ = self.invoke(incomplete, simulator="questa")
+        self.assertEqual(code, 1)
+        self.assertIn("unexpected result", manifest["error"])
+
+    def test_questa_macro_warning_overrides_pass(self):
+        def warning(argv, **kwargs):
+            output = PASS
+            if "work.tb_dmg_tile_pixel" in argv:
+                output += "\n# ** Warning: onbreak command for use within macro"
+            return subprocess.CompletedProcess(argv, 0, output)
+        code, manifest, _ = self.invoke(warning, simulator="questa")
+        self.assertEqual(code, 1)
+        self.assertIn("unexplained warning", manifest["error"])
+
+    def test_questa_error_overrides_pass(self):
+        def error(argv, **kwargs):
+            output = PASS
+            if "work.tb_dmg_tile_pixel" in argv:
+                output += "\n# ** Error: unexpected scoreboard failure\n# Errors: 1, Warnings: 0"
+            return subprocess.CompletedProcess(argv, 0, output)
+        code, manifest, _ = self.invoke(error, simulator="questa")
+        self.assertEqual(code, 1)
+        self.assertIn("unexpected diagnostic", manifest["error"])
+
+    def test_questa_extra_error_is_not_corruption_proof(self):
+        def error(argv, **kwargs):
+            if "+corrupt" in argv:
+                return subprocess.CompletedProcess(argv, 1, MISMATCH + "\nErrors: 2, Warnings: 0")
+            return subprocess.CompletedProcess(argv, 0, PASS)
+        code, manifest, _ = self.invoke(error, simulator="questa")
+        self.assertEqual(code, 1)
+        self.assertIn("unexpected error count", manifest["error"])
+
+    def test_questa_nonzero_warning_summary_fails(self):
+        code, manifest, _ = self.invoke(
+            lambda argv, **kwargs: subprocess.CompletedProcess(argv, 0, "Errors: 0, Warnings: 1"),
+            simulator="questa")
+        self.assertEqual(code, 1)
+        self.assertIn("unexplained warning", manifest["error"])
 
     def test_timeout_preserves_partial_output(self):
         def timeout(argv, **kwargs):
