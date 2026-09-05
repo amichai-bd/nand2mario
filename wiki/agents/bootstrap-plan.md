@@ -10,8 +10,14 @@ environment doctor work
 ([#68](https://github.com/amichai-bd/nand2mario/issues/68),
 [#26](https://github.com/amichai-bd/nand2mario/issues/26),
 [#27](https://github.com/amichai-bd/nand2mario/issues/27)). See the
-[reference study](../src/rtl-reference-style.md) and
+[tile pixel contract](../src/display/tile-pixel.md),
+[reference study](../src/rtl-reference-style.md), and
 [build contract](../tools/build-system.md).
+
+The isolated tile unit includes its focused runner and PR/main simulation CI.
+This bounded exception does not close global gaps; the reference study informs
+style without authorizing HDL reuse.
+Tile and doctor delivery follow the [temporary Questa deferral](../preflight-gaps.md#gap-008-verification-baseline).
 
 Broader product architecture, CPU/PPU integration, software/FPGA backends,
 board-proving designs, and physical runner setup remain deferred. Issue assignment

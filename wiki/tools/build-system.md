@@ -140,6 +140,8 @@ and 60 s host command timeout bound execution. Partial timeout output is retaine
 in the failing command's log. Simulator warnings fail the stage.
 
 Add simulation targets to this manifest when their contracts and tests are ready.
+The [tile pixel checks](tile-pixel-sim.md) use this interface for normal and
+expected-corruption runs; their Questa check remains separate.
 Future software and FPGA commands should have separate modules under `tools/n2m/`
 and the output boundaries below. They are not implemented by this issue.
 

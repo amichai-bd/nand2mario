@@ -12,5 +12,19 @@
     "args": ["+inject_failure"],
     "expected_exit": "zero",
     "signature": "PASS builder-smoke"
+  },
+  "tile-pixel": {
+    "sources": ["src/rtl/display/dmg_tile_pixel.sv", "src/dv/display/tb_dmg_tile_pixel.sv"],
+    "top": "tb_dmg_tile_pixel",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS pixel_cases=524288 palette_cases=8192 cycles=532521 seed=none"
+  },
+  "tile-pixel-corrupt": {
+    "sources": ["src/rtl/display/dmg_tile_pixel.sv", "src/dv/display/tb_dmg_tile_pixel.sv"],
+    "top": "tb_dmg_tile_pixel",
+    "args": ["+corrupt"],
+    "expected_exit": "nonzero",
+    "signature": "MISMATCH cycle=5 phase=after-edge expected=10110 actual=10111 low=00 high=01 x=7 palette=e4 seed=none"
   }
 }
