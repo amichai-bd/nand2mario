@@ -78,7 +78,7 @@ def validate(definition):
 
 def identity(directory):
     directory = Path(directory).resolve()
-    paths = {"generator": directory / "qmegawiz.exe",
+    paths = {"generator": directory / ("qmegawiz.exe" if os.name == "nt" else "qmegawiz"),
              "definition": directory.parent / "libraries/megafunctions/xml_info/altpll_info.xml",
              "primitive": directory.parent / "libraries/megafunctions/altpll.tdf",
              "rules": directory.parent / "libraries/megafunctions/xml_info/altpll_rules.xml",
@@ -106,6 +106,7 @@ def verify(folder):
     expected = {"clk0_divide_by": "125", "clk0_multiply_by": "63", "clk0_duty_cycle": "50",
                 "clk0_phase_shift": '"0"', "inclk0_input_frequency": "20000",
                 "intended_device_family": '"MAX 10"', "operation_mode": '"NORMAL"',
+                "compensate_clock": '"CLK0"', "self_reset_on_loss_lock": '"OFF"',
                 "port_areset": '"PORT_USED"', "port_locked": '"PORT_USED"'}
     for key, value in expected.items():
         values = re.findall(r"altpll_component\." + key + r"\s*=\s*([^,;]+)", text)
