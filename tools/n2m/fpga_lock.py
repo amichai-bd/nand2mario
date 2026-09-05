@@ -9,10 +9,13 @@ OUTPUTS = {
     "fiftyfivenm_clkctrl": {"outclk"}, "fiftyfivenm_io_ibuf": {"o"}, "fiftyfivenm_io_obuf": {"o", "obar"},
     "fiftyfivenm_pll": {"locked", "clk", "fbout", "phasedone", "scandataout", "scandone", "activeclock", "vcooverrange", "vcounderrange", "clkbad"},
     "fiftyfivenm_adcblock": {"eoc", "dout"}, "fiftyfivenm_unvm": {"busy", "osc", "bgpbusy", "sp_pass", "se_pass", "drdout"},
+    "fiftyfivenm_ram_block": {"portadataout", "portbdataout"},
 }
 
 
-def verify(text, checks):
+def verify(text, checks, top="clocking_proof"):
+    if top not in ("clocking_proof", "vga_proof"):
+        raise ValueError("unsupported PLL proof top")
     rows = re.findall(r";\s*([^;\r\n]+?)\s*;\s*No clock feeds this register's clock port\.\s*;", checks)
     if rows != [ROW]:
         raise ValueError("unrecognized no-clock endpoint")
@@ -28,7 +31,7 @@ def verify(text, checks):
         statement = statement.strip()
         if not statement or statement == "endmodule":
             continue
-        if re.fullmatch(r"module\s+clocking_proof\s*\([A-Za-z0-9_,\s]+\)", statement):
+        if re.fullmatch(r"module\s+" + re.escape(top) + r"\s*\([A-Za-z0-9_,\s]+\)", statement):
             continue
         if re.fullmatch(r"(?:input|output|wire|tri0|tri1)\s+(?:\[\d+:\d+\]\s*)?(?:\\[^\s]+\s*(?:\[\d+\])?|[A-Za-z_]\w*)", statement):
             declarations.append(" ".join(statement.split()))

@@ -43,6 +43,59 @@ module tb_vga;
     bit pending_previous = 0, release_previous = 0;
     logic [97:0] previous_offer;
 
+    // Event deadlines model the specified crossings without reading DUT state.
+    // Source and pixel rising edges never coincide in this variable-phase fixture.
+    int ref_sys_edges = 0, ref_pix_edges = 0, ref_ready_samples = 0;
+    int ref_index = 0, ref_source_seq = 0;
+    int ref_writer = 0, ref_old_display = 1, ref_free = 2, ref_offer_bank = 0;
+    int ref_offer_seq = 0, ref_offer_epoch = 0;
+    int ref_capture_edge = 0, ref_return_edge = 0;
+    int ref_display_bank = 1, ref_display_seq = 0, ref_display_epoch = 0;
+    longint unsigned ref_discards = 0, ref_repeats = 0;
+    bit ref_pending = 0, ref_returning = 0, ref_captured = 0, ref_display_valid = 0;
+    int ref_raster_point = 0;
+    int ack_completion_coincidences = 0;
+    always @(posedge clk_sys) begin : source_ownership_oracle
+        bit returning_now;
+        ref_sys_edges++;
+        if (reset_sys) begin
+            ref_index = 0; ref_source_seq = 0; ref_ready_samples = 0;
+            ref_writer = 0; ref_old_display = 1; ref_free = 2;
+            ref_offer_bank = 0; ref_pending = 0; ref_returning = 0;
+            ref_discards = 0;
+        end else begin
+            returning_now = ref_pending && ref_returning && ref_sys_edges == ref_return_edge;
+            if (returning_now) begin
+                ref_free = ref_old_display;
+                ref_old_display = ref_offer_bank;
+                ref_pending = 0; ref_returning = 0;
+            end
+            if (core_reset) begin ref_index = 0; ref_source_seq = 0; end
+            else if (source_valid) begin
+                if (ref_index == 23039) begin
+                    if (returning_now) ack_completion_coincidences++;
+                    if (!ref_pending && ref_ready_samples >= 2) begin
+                        ref_offer_bank = ref_writer;
+                        ref_offer_seq = ref_source_seq;
+                        ref_offer_epoch = int'(source_epoch);
+                        ref_pending = 1;
+                        ref_writer = ref_free;
+                        ref_capture_edge = ref_pix_edges + 4;
+                    end else ref_discards++;
+                    ref_source_seq++; ref_index = 0;
+                end else ref_index++;
+            end
+            if (reset_pix) ref_ready_samples = 0;
+            else if (ref_ready_samples < 2) ref_ready_samples++;
+        end
+        #1;
+        if (!reset_sys && (discard_count !== ref_discards || dut.writer_bank !== 2'(ref_writer) ||
+            dut.system_display_bank !== 2'(ref_old_display) || dut.pending !== ref_pending))
+            $fatal(1, "FRAME_SOURCE_SELECTION: expected writer=%0d display=%0d pending=%0d discards=%0d actual=%0d,%0d,%0d,%0d",
+                   ref_writer, ref_old_display, ref_pending, ref_discards,
+                   dut.writer_bank, dut.system_display_bank, dut.pending, discard_count);
+    end
+
     always @(posedge clk_sys) begin
         source_edges++;
         if (reset_sys) begin
@@ -64,10 +117,9 @@ module tb_vga;
                     completed_total++; observed_seq++; observed_pixel = 0;
                 end else observed_pixel++;
             end
-            if (source_valid && !core_reset &&
-                ((dut.pending && dut.writer_bank == dut.offer_bank) ||
+            if ((dut.pending && dut.writer_bank == dut.offer_bank) ||
                  dut.writer_bank == dut.system_display_bank ||
-                 (display_valid && dut.writer_bank == dut.display_bank)))
+                 (display_valid && dut.writer_bank == dut.display_bank))
                 $fatal(1, "FRAME_BANK_REUSE: writer targets immutable bank");
             if (pending_previous && !release_previous &&
                 {dut.offer_bank, dut.offer_epoch, dut.offer_sequence} !== previous_offer)
@@ -82,15 +134,37 @@ module tb_vga;
         int point, ex, ey, index;
         bit ea, ei;
         logic [3:0] expected_gray;
-        if (reset_pix) begin pix_edges = 0; have_previous_display = 0; end
+        bit captured_before;
+        ref_pix_edges++;
+        if (reset_pix) begin
+            pix_edges = 0; have_previous_display = 0;
+            ref_captured = 0; ref_display_valid = 0; ref_display_bank = 1;
+            ref_display_seq = 0; ref_display_epoch = 0; ref_repeats = 0; ref_raster_point = 0;
+        end
         else begin
             pix_edges++;
-            previous_boundary = dut.swap_boundary;
+            previous_boundary = ref_raster_point == 384000;
+            captured_before = ref_captured;
+            if (ref_pending && !ref_returning && ref_pix_edges == ref_capture_edge) ref_captured = 1;
+            if (ref_raster_point == 384000) begin
+                if (captured_before) begin
+                    ref_display_valid = 1; ref_display_bank = ref_offer_bank;
+                    ref_display_seq = ref_offer_seq; ref_display_epoch = ref_offer_epoch;
+                    ref_captured = 0; ref_returning = 1; ref_return_edge = ref_sys_edges + 3;
+                end else if (ref_display_valid) ref_repeats++;
+            end
+            ref_raster_point = (ref_raster_point + 1) % 420000;
         end
         #1;
         if (!reset_pix) begin
             if (have_previous_display && dut.display_bank != previous_display_bank && !previous_boundary)
                 $fatal(1, "FRAME_ACTIVE_SWAP: bank changed outside blanking boundary");
+            if (display_valid !== ref_display_valid || dut.display_bank !== 2'(ref_display_bank) ||
+                display_sequence !== 64'(ref_display_seq) || display_epoch !== 32'(ref_display_epoch) ||
+                repeat_count !== ref_repeats)
+                $fatal(1, "FRAME_DISPLAY_SELECTION: expected epoch=%0d seq=%0d bank=%0d repeats=%0d actual=%0d,%0d,%0d,%0d",
+                       ref_display_epoch, ref_display_seq, ref_display_bank, ref_repeats,
+                       display_epoch, display_sequence, dut.display_bank, repeat_count);
             if (display_valid && (!have_previous_display || dut.display_bank != previous_display_bank)) begin
                 if (!complete_frames.exists(int'(display_epoch)) ||
                     !complete_frames[int'(display_epoch)].exists(int'(display_sequence)))
@@ -108,11 +182,11 @@ module tb_vga;
                 point = (pix_edges - 2) % 420000;
                 ex = point % 800; ey = point / 800;
                 ea = ex < 640 && ey < 480;
-                ei = ex >= 80 && ex < 560 && ey >= 24 && ey < 456 && display_valid;
+                ei = ex >= 80 && ex < 560 && ey >= 24 && ey < 456 && ref_display_valid;
                 expected_gray = 0;
                 if (ei) begin
                     index = ((ey - 24) / 3) * 160 + (ex - 80) / 3;
-                    expected_gray = gray(pattern(int'(display_epoch), int'(display_sequence), index));
+                    expected_gray = gray(pattern(ref_display_epoch, ref_display_seq, index));
                 end
                 if (video_x !== 10'(ex) || video_y !== 10'(ey) || video_active !== ea || video_image !== ei ||
                     hsync_n !== !(ex >= 656 && ex <= 751) || vsync_n !== !(ey >= 490 && ey <= 491) ||
@@ -160,24 +234,41 @@ module tb_vga;
             $fatal(1, "MUTATION_MISSED: active swap");
         end
         $dumpoff;
+        // Arrange an acknowledgement and completion on exactly the same system edge.
+        repeat (5) @(negedge clk_sys);
+        send_pixels(23040, 1, 8);
+        send_pixels(23039, 1, 9);
+        wait (ref_returning);
+        wait (ref_sys_edges == ref_return_edge - 1);
+        @(negedge clk_sys);
+        source_valid = 1; source_start = 0;
+        source_shade = pattern(int'(source_epoch), 9, 23039); source_dot++;
+        @(negedge clk_sys); source_valid = 0;
         repeat (840000) @(negedge clk_pix);
         // Slow producer and paused intervals leave scanout and ownership alive.
-        send_pixels(23040, 50, 8);
-        send_pixels(23040, 50, 9);
+        send_pixels(23040, 50, 10);
+        send_pixels(23040, 50, 11);
         repeat (420000) @(negedge clk_pix);
         // Core reset abandons partial data but preserves the last complete image.
-        send_pixels(311, 1, 10);
+        send_pixels(311, 1, 12);
         @(negedge clk_sys); core_reset = 1; source_epoch = 1;
         @(negedge clk_sys); core_reset = 0;
         send_pixels(23040, 1, 0);
+        if (!ref_pending) $fatal(1, "VGA_COVERAGE: core reset needs immutable pending frame");
+        @(negedge clk_sys); core_reset = 1; source_epoch = 2;
+        @(negedge clk_sys); core_reset = 0;
         @(negedge clk_pix); pixel_running = 0;
-        for (int seq = 1; seq < 4; seq++) send_pixels(23040, 1, seq);
+        for (int seq = 0; seq < 3; seq++) send_pixels(23040, 1, seq);
         @(negedge clk_sys); pixel_running = 1;
         repeat (840000) @(negedge clk_pix);
-        if (discard_count == 0 || repeat_count == 0 || displayed_frames < 3 || raster_frames < 6)
+        if (discard_count == 0 || repeat_count == 0 || displayed_frames < 3 || raster_frames < 6 ||
+            ack_completion_coincidences != 1 || seen_banks != 7)
             $fatal(1, "VGA_COVERAGE: discard=%0d repeat=%0d display=%0d rasters=%0d", discard_count, repeat_count, displayed_frames, raster_frames);
         // Raw lock loss asserts both resets even with no pixel edge.
         @(negedge clk_pix); pixel_running = 0;
+        send_pixels(23040, 1, 3);
+        send_pixels(23040, 1, 4);
+        if (!ref_pending) $fatal(1, "VGA_COVERAGE: reset needs outstanding offer");
         #7; pll_locked = 0;
         #1;
         if ({red, green, blue} !== 12'h000 || !hsync_n || !vsync_n || !reset_sys || !reset_pix)

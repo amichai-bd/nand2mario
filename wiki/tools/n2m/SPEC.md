@@ -65,6 +65,13 @@ commands, and input/tool hashes remain beneath the tag. Unexpected warnings,
 errors, timeouts, or missing signatures fail; expected nonzero targets require
 their full diagnostic and reject additional errors.
 
+A target may set integer `timeout_seconds` from 1 through 600 for its Questa
+runtime command; the default and all preparation/compile commands remain 60
+seconds. The value enters the target fingerprint and each command records its
+effective bound. Long raster tests retain independent simulation-time watchdogs.
+A wall-clock timeout is a failed harness run, not a checked DUT verdict; partial
+output remains available. Increasing a bound does not reduce required coverage.
+
 Backend, tool identity, source, target, seed, or runner changes invalidate cache.
 Damaged artifacts also invalidate it. A matching successful result may be
 `CACHED`, including a verified expected-failure target. Cache reuse performs no
@@ -297,6 +304,39 @@ checks these narrow classifications against the actual retained reports. The
 negative/malformed timing, missing evidence, invalid inputs, cache corruption,
 tool failures and timeouts. Real positive/invalid-constraint runs prove execution;
 test doubles alone do not establish Quartus readiness.
+
+### VGA proof profile
+
+The `vga_proof` top extends the generated-clock proof with the
+[frame bridge](../../src/rtl/vga/MAS_vga.md). Its two registered targets use the
+shared nominal/upper reference analyses. The generated QSF explicitly defines
+`SYNTHESIS=1`, matching synthesis-aware include discovery and excluding guarded
+simulation assertions. The original test-card producer is a fit fixture, not a
+PPU or a physical monitor result.
+
+[fpga_vga](../../../tools/n2m/fpga_vga.py) owns exact proof hierarchy collections.
+Each CDC exception selects its named launching register and one named first-stage
+data pin. MAX 10 may map that input to `d` before fitting and synchronous-load
+`asdata` after fitting. Only those two exact alternatives are queried; exactly
+one must exist. Missing or ambiguous collections fail, and the chosen pins are
+retained in each compilation phase's log and the final endpoint report. No clock,
+reset or second-stage pin is eligible. Adjacent stage setup/hold reports remain
+mandatory. Bounded Tcl tests execute missing/ambiguous selection cases.
+
+Stable-bundle registers and VGA output ports also require complete exact
+collections. The helper emits the shared contract's bundle/output bounds and
+retains per-endpoint path and skew reports. These new reports enter the required
+cache inventory, and final validation must recompute them from current inputs.
+The profile's physical VGA assignments come from the referenced manual table;
+an explicit 8 mA drive setting removes an unspecified synthesis choice. It does
+not verify the connected load or authorize using an unverified board.
+
+The verifier checks all bundle bits, all output ports, exact skew constraint
+scope and adjacent synchronizer endpoints at each of three explicitly selected
+operating corners. It also requires the three fitted simple dual-port, dual-clock
+RAM rows and matching total memory/M9K usage. Missing, malformed or out-of-bound
+records fail. Final actual nominal/upper delivery evidence remains under
+development in #80; no generated image is accepted on RAM bit count alone.
 
 ## Source and workspace boundary
 

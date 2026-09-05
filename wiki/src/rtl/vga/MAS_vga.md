@@ -110,6 +110,14 @@ stages, output bounds and both reference-frequency timing analyses. This design
 description is not that evidence. Physical monitor, pin/wiring and voltage proof
 remain #28/GAP-012.
 
+The [FPGA proof](../../../../src/fpga/de10_lite/vga_proof.sv) feeds original shades
+from the emulated tick and exposes domain-local status through virtual ports.
+The [target registry](../../../../src/fpga/de10_lite/targets.json) owns manual-derived
+VGA pin assignments: DE10-Lite manual v1.7, table 3-11, printed page 36. The
+manual and its verified hash are linked by the shared clock contract. The proof
+uses 3.3-V LVTTL and an explicit 8 mA VGA output setting; connected-device,
+resistor-load and electrical verification remain physical bring-up work.
+
 ## Reference method
 
 The owner-supplied local frog-bui revision

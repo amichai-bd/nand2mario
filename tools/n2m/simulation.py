@@ -21,6 +21,9 @@ def load_target(root, name):
         raise ValueError("target signature must be a nonempty string")
     if target["expected_exit"] not in ("zero", "nonzero"):
         raise ValueError("expected_exit must be zero or nonzero")
+    timeout = target.get("timeout_seconds", 60)
+    if type(timeout) is not int or not 1 <= timeout <= 600:
+        raise ValueError("simulation target timeout_seconds must be an integer in 1..600")
     for source in target["sources"]:
         path = (root / source).resolve()
         if not path.is_relative_to(root.resolve()) or not path.is_file():
@@ -63,7 +66,9 @@ def simulate(root, build, args, simulator, provenance=None):
             record["commands"].append({"argv": command, "cwd": str(cwd)})
             with (build / "commands.log").open("a", encoding="utf-8") as stream:
                 stream.write(json.dumps(record["commands"][-1]) + "\n")
-            result = simulator.run(argv, cwd=cwd)
+            call_options = {"timeout": target["timeout_seconds"]} if log.name == "sim.log" and "timeout_seconds" in target else {}
+            record["commands"][-1]["timeout_seconds"] = call_options.get("timeout", 60)
+            result = simulator.run(argv, cwd=cwd, **call_options)
             log.write_text(result.stdout, encoding="utf-8")
             record["commands"][-1]["exit_code"] = result.returncode
             if (result.returncode == 0) != (expected == "zero"):

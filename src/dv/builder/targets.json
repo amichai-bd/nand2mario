@@ -251,7 +251,8 @@
     "top": "tb_vga",
     "args": [],
     "expected_exit": "zero",
-    "signature": "PASS vga every-pixel observer ownership fast slow pause core-reset lockloss stopped-pixel"
+    "signature": "PASS vga every-pixel observer ownership fast slow pause core-reset lockloss stopped-pixel",
+    "timeout_seconds": 180
   },
   "vga-bank-reuse": {
     "sources": [

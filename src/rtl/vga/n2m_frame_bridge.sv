@@ -23,17 +23,11 @@ module n2m_frame_bridge (
     output logic hsync_n, vsync_n
 );
     logic [14:0] write_index;
-    logic in_frame;
-    logic [31:0] frame_epoch;
     logic [63:0] source_sequence;
     wire accept_pixel = source_valid && !reset_sys && !core_reset;
     wire complete = accept_pixel && write_index == 15'd23039;
     `DFF_RST_EN(write_index, complete ? 15'd0 : write_index + 15'd1,
                 clk_sys, accept_pixel, reset_sys || core_reset, 15'd0)
-    `DFF_RST_EN(in_frame, !complete, clk_sys, accept_pixel,
-                reset_sys || core_reset, 1'b0)
-    `DFF_RST_EN(frame_epoch, source_epoch, clk_sys, accept_pixel && source_start,
-                reset_sys || core_reset, 32'd0)
     `DFF_RST_EN(source_sequence, source_sequence + 64'd1, clk_sys, complete,
                 reset_sys || core_reset, 64'd0)
     assign observe_valid = accept_pixel;
@@ -132,14 +126,15 @@ module n2m_frame_bridge (
     logic [14:0] read_address;
     wire [1:0] bank_shade [0:2];
     wire [1:0] read_shade = bank_shade[display_bank];
-    for (genvar bank = 0; bank < 3; bank++) begin : banks
+    genvar bank;
+    generate for (bank = 0; bank < 3; bank = bank + 1) begin : banks
         n2m_frame_ram u_ram (
             .clk_sys, .write_enable(accept_pixel && writer_bank == 2'(bank)),
             .write_address(write_index), .write_shade(source_shade),
             .clk_pix, .read_enable(read_enable && display_bank == 2'(bank)),
             .read_address, .read_shade(bank_shade[bank])
         );
-    end
+    end endgenerate
     n2m_vga_scan u_scan (
         .clk_pix, .reset_pix, .display_valid, .read_shade,
         .read_enable, .read_address, .swap_boundary,
@@ -147,6 +142,12 @@ module n2m_frame_bridge (
         .red, .green, .blue, .hsync_n, .vsync_n
     );
 `ifndef SYNTHESIS
+    logic in_frame;
+    logic [31:0] frame_epoch;
+    `DFF_RST_EN(in_frame, !complete, clk_sys, accept_pixel,
+                reset_sys || core_reset, 1'b0)
+    `DFF_RST_EN(frame_epoch, source_epoch, clk_sys, accept_pixel && source_start,
+                reset_sys || core_reset, 32'd0)
     always @(posedge clk_sys) if (!reset_sys && !core_reset && source_valid) begin
         if (source_start !== !in_frame)
             $fatal(1, "FRAME_SOURCE_ORDER: start/partial frame mismatch");
