@@ -4,17 +4,23 @@ The [gap register](../preflight-gaps.md) owns gap status and close conditions.
 
 ## Current phase
 
-Infrastructure refinement and the user-authorized isolated display unit in
-[#68](https://github.com/amichai-bd/nand2mario/issues/68): finish reference
-analysis, specify, implement, and simulate the [tile pixel stage](../src/display/tile-pixel.md).
-This bounded start permits its focused test runner and PR/main simulation CI.
-It is an explicit exception to the global P0 start gate, not evidence that
-those gaps are closed.
+Infrastructure refinement, reference RTL/display analysis, and the user's
+explicitly authorized isolated tile-pixel and minimal builder work
+([#68](https://github.com/amichai-bd/nand2mario/issues/68),
+[#26](https://github.com/amichai-bd/nand2mario/issues/26)). See the
+[tile pixel contract](../src/display/tile-pixel.md),
+[reference study](../src/rtl-reference-style.md), and
+[build contract](../tools/build-system.md).
 
-Defer broader product architecture, integration, build/doctor, board-proving
-work, and physical runners. The [reference study](../src/rtl-reference-style.md)
-informs style; it does not authorize code reuse. Global gap close conditions
-and separate programming/physical-test authorization remain unchanged.
+The isolated tile unit includes its focused runner and PR/main simulation CI.
+This bounded exception does not close global gaps; the reference study informs
+style without authorizing HDL reuse.
+
+Broader product architecture, CPU/PPU integration, software/FPGA backends,
+board-proving designs, and physical runner setup remain deferred. Issue assignment
+or priority alone does not authorize them. Scope/provenance decisions #24/#25,
+gap close conditions, and separate programming/physical-test authorization remain
+open and applicable.
 
 ## Completed infrastructure
 
@@ -40,7 +46,7 @@ exercise the existing flow with a fresh author and retain evidence in the PR.
 ## Future P0 sequence
 
 After an explicit phase change, complete assigned issues in this dependency
-order. This plan does not authorize work now.
+order. This sequence does not authorize work beyond the current phase.
 
 1. Approve project scope and legal boundaries:
    [GAP-001](../preflight-gaps.md#gap-001-scope-and-success-contract)
@@ -76,8 +82,8 @@ milestones.
 
 ## Implementation gate
 
-Beyond the isolated unit authorized above, functional Game Boy RTL and its
-P0 prerequisites remain gated.
+Broader functional Game Boy RTL remains gated; only the bounded exceptions in
+the current phase may proceed.
 
 Start the first functional CPU issue only when:
 

@@ -1,7 +1,8 @@
 # Tile pixel simulation
 
 `tools/sim/tile_pixel.py` runs only the [tile pixel contract](../src/display/tile-pixel.md).
-It does not implement the planned [product build system](build-system.md).
+The [product builder](build-system.md) currently runs separate smoke targets;
+this tile target still uses its standalone runner, including Questa support.
 Python 3.12 or later and the selected simulator must be on `PATH`:
 
 ```powershell
