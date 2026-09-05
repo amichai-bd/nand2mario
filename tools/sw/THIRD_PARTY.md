@@ -28,6 +28,22 @@ A future local source-build path must record its actual build dependency version
 licenses and source/build hashes before acceptance.
 
 All downloaded bytes, notices, installed tools and generated fixture output stay
-under ignored `workdir/builds/<tag>/sw/oracle/`. No upstream source is vendored or
+under ignored `workdir/builds/<tag>/sw/oracle/`. No RGBDS source is vendored or
 modified. A failed download, hash, version, assembly, link or comparison blocks
 conformance; no fallback oracle is used.
+
+## Assembler opcode data
+
+The [provenance index](../provenance.json) pins the reviewed `mgbdis`
+`instruction_set.py` and its raw source SHA-256. Its MIT notice is retained in
+[MGBDIS_LICENSE.md](MGBDIS_LICENSE.md). `opcodes.json` adapts only the base/CB
+opcode-to-form dictionaries: illegal slots and disassembler aliases are omitted;
+explicit accumulator, full-address LDH and address-based JR spellings follow the
+software contract. RST/bit variants retain their architectural opcode fields.
+No upstream executable disassembler logic, external tests, ROMs or assets are
+imported. Original parser, expressions, schemas and tests do not change its terms.
+
+The independent conformance matrix is constructed from instruction families and
+register/condition combinations without reading the imported table. Unmodified
+RGBDS owns its expected instruction bytes and relocations, so the imported table
+cannot supply both implementation and oracle answers.

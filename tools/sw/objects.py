@@ -1,5 +1,6 @@
 """Strict version-one relocatable object validation, shared with future linker."""
 import re
+from n2m.generated_interfaces import GB_IO_START, GB_IE_END
 
 from .expressions import AssemblyError, check_cycles, references
 
@@ -72,6 +73,7 @@ def _validate(obj):
             integer(byte, 0, 255)
         require(len(section['data']) == (section['size'] if section['kind'] == 'ROM' else 0), 'inconsistent section length')
         span(section['span'])
+        require(section['span']['file'] in obj['sources'], 'section span has no source hash')
         sections[section['name']] = section
     require(type(obj['symbols']) is dict, 'symbols required')
     for name, definition in obj['symbols'].items():
@@ -79,6 +81,7 @@ def _validate(obj):
         fields(definition, 'expression span')
         expression(definition['expression'], sections)
         span(definition['span'])
+        require(definition['span']['file'] in obj['sources'], 'symbol span has no source hash')
     for visibility in ('exports', 'imports'):
         values = obj[visibility]
         require(type(values) is list and all(type(v) is str and IDENTIFIER.fullmatch(v) for v in values), 'invalid visibility names')
@@ -106,6 +109,7 @@ def _validate(obj):
             integer(value, relocation['minimum'], relocation['maximum'])
         expression(relocation['expression'], sections)
         span(relocation['span'])
+        require(relocation['span']['file'] in obj['sources'], 'relocation span has no source hash')
         shape = (relocation['minimum'], relocation['maximum'], relocation['mask'],
                  relocation['shift'], relocation['bias'], tuple(relocation['allowed']))
         if kind in ('U16LE', 'ADDR16LE'):
@@ -115,17 +119,25 @@ def _validate(obj):
         else:
             permitted = [(-128, 255, 255, 0, 0, ()), (-128, 127, 255, 0, 0, ()),
                          (0, 7, 56, 3, 0, ()), (0, 56, 56, 0, 0, tuple(range(0, 57, 8)))]
-            # High-memory address bounds are carried explicitly by the producer;
-            # the patch must still map precisely to an unsigned byte.
-            high_address = shape[1] - shape[0] == 255 and shape[2:] == (255, 0, -shape[0], ())
+            high_address = shape == (GB_IO_START, GB_IE_END, 255, 0, -GB_IO_START, ())
             require(shape in permitted or high_address, 'invalid byte relocation constraint')
     require(type(obj['listing']) is list, 'listing required')
+    listed = set()
     for line in obj['listing']:
         fields(line, 'section offset size instruction span')
         require(line['section'] in sections and type(line['instruction']) is bool, 'invalid listing section/instruction')
         integer(line['offset'], 0, sections[line['section']]['size'])
         integer(line['size'], 0, sections[line['section']]['size'] - line['offset'])
         span(line['span'])
+        require(line['span']['file'] in obj['sources'], 'listing span has no source hash')
+        if line['instruction']:
+            require(sections[line['section']]['kind'] == 'ROM' and 1 <= line['size'] <= 3,
+                    'instruction listing requires positive legal length in ROM')
+        positions = {(line['section'], line['offset'] + i) for i in range(line['size'])}
+        require(not listed & positions, 'overlapping listing spans')
+        listed |= positions
+    require(listed == {(name, offset) for name, section in sections.items()
+                       for offset in range(section['size'])}, 'listing does not cover section allocation/emission')
     definitions = {name: value['expression'] for name, value in obj['symbols'].items()}
     for node in list(definitions.values()) + [r['expression'] for r in obj['relocations']]:
         require(set(references(node)) <= definitions.keys() | set(obj['imports']), 'undeclared expression symbol')

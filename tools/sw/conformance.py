@@ -9,7 +9,7 @@ import subprocess
 import shutil
 import uuid
 
-from n2m.records import atomic_json, atomic_text, file_hash
+from n2m.records import atomic_json, atomic_text, digest, file_hash
 from n2m.rgbds import install
 from .assembler import assemble
 from .expressions import evaluate
@@ -113,6 +113,10 @@ def conformance(root, build, args, provenance):
                             for p in list((root / 'tools/sw').glob('*.py')) +
                             [root / 'tools/sw/opcodes.json', root / 'tools/sw/object.schema.json',
                              root / 'src/sw/generated/interfaces.inc', root / 'tools/n2m/dependencies.json']}
+        report['inputs'].update({name: file_hash(root / name) for name in
+                                ('tools/n2m/rgbds.py', 'tools/n2m/records.py',
+                                 'tools/n2m/generated_interfaces.py', 'cfg/interfaces.json')})
+        report['fingerprint'] = digest({'inputs': report['inputs'], 'installation': installation})
         cases = matrix()
         source = 'SECTION "code", ROM\n' + '\n'.join(case['text'] for case in cases) + '\n'
         atomic_text(folder / 'matrix.asm', source)

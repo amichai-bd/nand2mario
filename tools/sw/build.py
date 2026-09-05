@@ -11,7 +11,25 @@ from .objects import validate
 
 
 def assemble_target(root, build, args, provenance):
-    stage = build / 'sw/assemble' / args.target
+    safe_target = args.target if re.fullmatch('[a-z0-9][a-z0-9_-]*', args.target) else 'invalid-target'
+    stage = build / 'sw/assemble' / safe_target
+    folder = stage / 'runs' / uuid.uuid4().hex[:12]
+    folder.mkdir(parents=True)
+    try:
+        return _assemble_target(root, build, args, provenance, stage, folder)
+    except Exception as error:
+        diagnostic = error.diagnostic if isinstance(error, AssemblyError) else {
+            'code': 'SYNTAX', 'stage': 'assemble', 'cause': str(error),
+            'span': {'file': 'targets.json', 'line': 1, 'column': 1}}
+        atomic_json(folder / 'diagnostics.json', [diagnostic])
+        report = {'status': 'FAIL', 'target': args.target, **provenance, 'error': str(error),
+                  'artifacts': {(folder / 'diagnostics.json').relative_to(root).as_posix(): file_hash(folder / 'diagnostics.json')}}
+        atomic_json(folder / 'result.json', report)
+        atomic_json(stage / 'result.json', report)
+        return report
+
+
+def _assemble_target(root, build, args, provenance, stage, folder):
     if not re.fullmatch('[a-z0-9][a-z0-9_-]*', args.target):
         raise AssemblyError('SYNTAX', 'invalid target name')
     registry = root / 'src/sw/targets.json'
@@ -43,8 +61,6 @@ def assemble_target(root, build, args, provenance):
     for name, relative in target['assets'].items():
         path = confined(root / 'workdir', relative)
         assets[name] = path.read_bytes()
-    folder = stage / 'runs' / uuid.uuid4().hex[:12]
-    folder.mkdir(parents=True)
     report = {'status': 'FAIL', 'target': args.target, **provenance,
               'scope': 'relocatable assembly objects; no link placement or cartridge packaging'}
     try:
@@ -52,6 +68,8 @@ def assemble_target(root, build, args, provenance):
         implementation = [root / 'tools/sw' / name for name in
                           ('assembler.py', 'expressions.py', 'objects.py', 'build.py', 'opcodes.json',
                            'object.schema.json', 'targets.schema.json')]
+        implementation += [root / name for name in ('tools/n2m/records.py', 'tools/n2m/cli.py',
+                            'tools/n2m/generated_interfaces.py', 'cfg/interfaces.json')]
         inputs = {path.relative_to(root).as_posix(): file_hash(path) for path in implementation + [registry]}
         source_paths = {root / 'src/sw/generated/interfaces.inc'}
         for obj in objects:
@@ -62,12 +80,30 @@ def assemble_target(root, build, args, provenance):
         fingerprint = digest({'objects': objects, 'implementation': inputs})
         report.update(fingerprint=fingerprint, inputs=inputs)
         previous = read_json(stage / 'result.json')
-        if not args.rebuild and cache_matches(previous, fingerprint, root, build):
+        retained = previous.get('objects', [])
+        complete = type(retained) is list and len(retained) == len(objects)
+        if complete:
+            parents = {(root / relative).parent for relative in retained}
+            complete = len(parents) == 1
+            if complete:
+                prior_folder = next(iter(parents))
+                expected_files = [prior_folder / (str(i) + '.object.json') for i in range(len(objects))]
+                expected_files.append(prior_folder / 'diagnostics.json')
+                complete = (prior_folder.parent == stage / 'runs'
+                            and re.fullmatch('[0-9a-f]{12}', prior_folder.name)
+                            and retained == [p.relative_to(root).as_posix() for p in expected_files[:-1]]
+                            and set(previous.get('artifacts', {})) == {p.relative_to(root).as_posix() for p in expected_files}
+                            and read_json(prior_folder / 'result.json') == previous)
+        if complete:
+            complete = all((root / relative).is_file() and (root / relative).read_bytes() ==
+                           (json.dumps(obj, indent=2, sort_keys=True) + '\n').encode('utf-8')
+                           for relative, obj in zip(retained, objects))
+        if not args.rebuild and complete and cache_matches(previous, fingerprint, root, build):
             # Parsing still revalidates every source/include and its schema; only
             # identical previously retained object bytes may be returned.
             for relative in previous.get('objects', []):
                 validate(read_json(root / relative))
-            return {**previous, 'cache': 'HIT'}
+            return {**previous, **provenance, 'cache': 'HIT', 'reused_from': previous.get('commit')}
         output = []
         for index, obj in enumerate(objects):
             path = folder / (str(index) + '.object.json')

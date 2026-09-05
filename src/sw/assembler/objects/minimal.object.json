@@ -1,0 +1,62 @@
+{
+  "exports": [],
+  "imports": [
+    "External"
+  ],
+  "listing": [
+    {
+      "instruction": true,
+      "offset": 0,
+      "section": "code",
+      "size": 2,
+      "span": {
+        "column": 1,
+        "file": "minimal.asm",
+        "line": 3
+      }
+    }
+  ],
+  "relocations": [
+    {
+      "allowed": [],
+      "bias": 0,
+      "expression": {
+        "name": "External",
+        "op": "symbol"
+      },
+      "kind": "U8",
+      "mask": 255,
+      "maximum": 255,
+      "minimum": -128,
+      "offset": 1,
+      "section": "code",
+      "shift": 0,
+      "span": {
+        "column": 1,
+        "file": "minimal.asm",
+        "line": 3
+      }
+    }
+  ],
+  "schema_version": 1,
+  "sections": [
+    {
+      "data": [
+        62,
+        0
+      ],
+      "kind": "ROM",
+      "name": "code",
+      "size": 2,
+      "span": {
+        "column": 1,
+        "file": "minimal.asm",
+        "line": 1
+      }
+    }
+  ],
+  "sources": {
+    "minimal.asm": "a67854a844b21d54a133db20a4dc00a97e4d5da88b8aeae53ea69d4f13bf15cc"
+  },
+  "symbols": {}
+}

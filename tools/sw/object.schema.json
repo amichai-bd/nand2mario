@@ -213,15 +213,30 @@
             "op": {
               "enum": [
                 "+",
-                "-",
+                "-"
+              ]
+            },
+            "args": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 2,
+              "items": {
+                "$ref": "#/$defs/expression"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "op",
+            "args"
+          ],
+          "properties": {
+            "op": {
+              "enum": [
                 "~",
-                "*",
-                "/",
-                "<<",
-                ">>",
-                "&",
-                "^",
-                "|",
                 "LOW",
                 "HIGH"
               ]
@@ -229,6 +244,35 @@
             "args": {
               "type": "array",
               "minItems": 1,
+              "maxItems": 1,
+              "items": {
+                "$ref": "#/$defs/expression"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "op",
+            "args"
+          ],
+          "properties": {
+            "op": {
+              "enum": [
+                "*",
+                "/",
+                "<<",
+                ">>",
+                "&",
+                "^",
+                "|"
+              ]
+            },
+            "args": {
+              "type": "array",
+              "minItems": 2,
               "maxItems": 2,
               "items": {
                 "$ref": "#/$defs/expression"

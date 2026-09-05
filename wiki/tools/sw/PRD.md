@@ -1,12 +1,11 @@
 # Software toolchain requirements
 
-Status: the pinned RGBDS oracle is implemented; the project assembler/linker
-remain planned under
-[#75](https://github.com/amichai-bd/nand2mario/issues/75). The [implemented oracle](SPEC.md#implemented-oracle) checks original fixtures. The [charter](../../src/project-charter.md) requires our toolchain
-for `v0.5`; an initial opcode subset is an intermediate delivery, not that result.
+The pinned RGBDS oracle and complete documented SM83 assembler are implemented.
+The assembler emits validated relocatable objects; layout, cartridge packaging,
+assets and the original program remain assigned to #86–#88.
 
-The [SPEC](SPEC.md) owns assembly, objects, placement, packaging, original assets,
-deterministic artifacts, independent conformance, and delivery dependencies.
-Its [delivery order](SPEC.md#delivery-order) assigns implementation and executable
-acceptance to issues #84 through #88. The
-[ownership map](../../ownership.md) connects this planned owner to its provenance.
+The [SPEC](SPEC.md) owns the assembly language, object schema, independent
+conformance, deterministic artifacts and remaining delivery dependencies. The
+[ownership map](../../ownership.md) connects implementation, tests and provenance.
+The [charter](../../src/project-charter.md) requires the complete toolchain for
+`v0.5`; assembler coverage alone does not prove CPU or program behavior.

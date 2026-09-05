@@ -91,6 +91,11 @@ class AssemblerTests(unittest.TestCase):
         with self.assertRaises(AssemblyError) as caught:self.assemble('INCLUDE "one.asm"\nINCLUDE "one.asm"')
         self.assertIn('previous',caught.exception.diagnostic)
 
+    def test_bare_include_has_structured_source_diagnostic(self):
+        with self.assertRaises(AssemblyError) as caught:self.assemble('INCLUDE')
+        self.assertEqual(caught.exception.diagnostic['code'],'SYNTAX')
+        self.assertEqual(caught.exception.diagnostic['span'],{'file':'main.asm','line':1,'column':1})
+
     def test_assets_and_no_section_errors(self):
         obj=self.assemble('SECTION "code",ROM\nASSET "tile"',{'tile':bytes([1,2,3])})
         self.assertEqual(obj['sections'][0]['data'],[1,2,3])
@@ -106,12 +111,22 @@ class AssemblerTests(unittest.TestCase):
                  lambda o:o['relocations'][0].update(offset=2),lambda o:o['relocations'][0].update(mask=0),
                  lambda o:o['relocations'].append(copy.deepcopy(o['relocations'][0])),
                  lambda o:o['relocations'][0]['expression'].update(op='eval'),
-                 lambda o:o['relocations'][0]['span'].update(file='../private'),lambda o:o.update(imports=[])]
+                 lambda o:o['relocations'][0]['span'].update(file='../private'),lambda o:o.update(imports=[]),
+                 lambda o:o['listing'][0].update(size=0),lambda o:o['listing'].append(copy.deepcopy(o['listing'][0])),
+                 lambda o:o['listing'][0]['span'].update(file='unhashed.asm'),
+                 lambda o:o['relocations'][0].update(minimum=0,maximum=255,bias=0)]
         for change in changes:
             obj=copy.deepcopy(original);change(obj)
             with self.assertRaises(AssemblyError):validate(obj)
         for obj in [None,[],{'schema_version':1}]:
             with self.assertRaises(AssemblyError):validate(obj)
+
+    def test_committed_schema_fixtures(self):
+        fixture=ROOT/'src/sw/assembler/objects'
+        validate(json.loads((fixture/'minimal.object.json').read_text()))
+        with self.assertRaises(AssemblyError) as caught:
+            validate(json.loads((fixture/'wrong-version.object.json').read_text()))
+        self.assertEqual(caught.exception.diagnostic['code'],'SCHEMA_MISMATCH')
 
     def test_identical_object_bytes_across_roots(self):
         source='SECTION "code",ROM\nHere: NOP\nJR Here\n'
@@ -125,6 +140,8 @@ class AssemblerTests(unittest.TestCase):
         shutil.copytree(ROOT/'src/sw/assembler',root/'src/sw/assembler')
         shutil.copytree(ROOT/'src/sw/generated',root/'src/sw/generated')
         shutil.copytree(ROOT/'tools/sw',root/'tools/sw')
+        shutil.copytree(ROOT/'tools/n2m',root/'tools/n2m')
+        shutil.copytree(ROOT/'cfg',root/'cfg')
         shutil.copy2(ROOT/'src/sw/targets.json',root/'src/sw/targets.json')
         args=SimpleNamespace(target='assembler-basic',rebuild=False)
         build=root/'workdir/builds/test'
@@ -132,6 +149,24 @@ class AssemblerTests(unittest.TestCase):
         self.assertEqual(first['status'],'PASS')
         second=assemble_target(root,build,args,{})
         self.assertEqual(second['cache'],'HIT')
+        current=build/'sw/assemble/assembler-basic/result.json'
+        tampered=json.loads(current.read_text())
+        missing=root/tampered['objects'][0]
+        missing.unlink()
+        del tampered['artifacts'][tampered['objects'][0]]
+        tampered['objects']=[]
+        current.write_text(json.dumps(tampered))
+        repaired=assemble_target(root,build,args,{})
+        self.assertEqual((repaired['status'],repaired['cache'],len(repaired['objects'])),('PASS','MISS',1))
+        registry=root/'src/sw/targets.json'
+        original_registry=registry.read_text()
+        changed=json.loads(original_registry)
+        changed['targets']['assembler-basic']['sources']=['../outside.asm']
+        registry.write_text(json.dumps(changed))
+        rejected=assemble_target(root,build,args,{})
+        self.assertEqual(rejected['status'],'FAIL')
+        self.assertEqual(json.loads(current.read_text())['status'],'FAIL')
+        registry.write_text(original_registry)
         include=root/'src/sw/assembler/basic/constants.asm'
         include.write_text(include.read_text().replace('$42','$43'))
         third=assemble_target(root,build,args,{})
@@ -140,7 +175,7 @@ class AssemblerTests(unittest.TestCase):
         failed=assemble_target(root,build,args,{})
         self.assertEqual(failed['status'],'FAIL')
         self.assertNotIn('objects',failed)
-        self.assertTrue((root/first['objects'][0]).exists())
+        self.assertTrue((root/repaired['objects'][0]).exists())
 
 
 if __name__=='__main__':unittest.main()

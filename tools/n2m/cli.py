@@ -17,6 +17,7 @@ from .fpga import build_fpga
 from .rgbds import oracle
 from sw.build import assemble_target
 from sw.conformance import conformance
+from sw.expressions import AssemblyError
 
 
 def parser():
@@ -105,6 +106,11 @@ def main(argv=None, root=None):
                     report.update(simulate(root, build, args, simulator, provenance))
             except Exception as error:
                 report.update(status="FAIL", error=str(error))
+                if isinstance(error, AssemblyError):
+                    report['diagnostics'] = [error.diagnostic]
+                    diagnostic = build / 'sw' / ('diagnostics-' + uuid.uuid4().hex[:12] + '.json')
+                    atomic_json(diagnostic, report['diagnostics'])
+                    report['artifacts'] = {diagnostic.relative_to(root).as_posix(): file_hash(diagnostic)}
                 failure_artifacts = {}
                 if isinstance(error, ToolError):
                     folder = build / "discovery" / uuid.uuid4().hex
