@@ -98,6 +98,8 @@ under `wiki/presentations/`. Source files remain the authority for all content.
 ## Text-only policy and deployment
 
 The required Wiki check scans all tracked files, including unpublished ones.
+It also enforces the protected extensions and private path rules in the
+[source and provenance policy](provenance.md#enforced-checks-and-limits).
 It rejects binary extensions (including PNG, JPEG, PDF, PPT/PPTX),
 known binary signatures, invalid UTF-8, and binary control bytes. Textual Markdown,
 HTML, SVG, code, and configuration are allowed. No binary fonts or external CDN
