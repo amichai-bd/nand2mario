@@ -33,7 +33,9 @@ host mocks do not prove synthesis or simulation.
 `tb_async_assert_macros` owns two eight-bit registers with independently tracked
 expected state: active-high reset to A5 and active-low reset to 3C. Reset pulses
 and data changes occur between edges; checks prove immediate reset, priority,
-no update on reset release, and rising-edge capture. Ten edges cover entry to
+no update on reset release, and rising-edge capture. Invalid direct, never and
+known values are disabled during reset; NO_RST is proved to fail during reset.
+Ten edges cover entry to
 hold after a legitimate update, sustained hold, release/resume, and a reset pulse
 entirely between sampled edges. An independently driven observed signal probes
 the stable helper without deriving its expected behavior from the DUT.

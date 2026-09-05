@@ -45,9 +45,11 @@ module tb_async_assert_macros;
         $dumpvars(0, tb_async_assert_macros);
         // Both reset polarities act between edges and dominate changing data.
         #1 reset = 1; reset_n = 0; data = 8'hff;
+        direct_ok = 0; forbidden = 1; known_value = 1'bx;
         expected_high = 8'ha5; expected_low = 8'h3c;
         #1 compare_registers();
         edge_check();
+        direct_ok = 1; forbidden = 0; known_value = 0;
         reset = 0; reset_n = 1; data = 8'h12; observed = 8'h10;
         #1 compare_registers();
         edge_check();
@@ -72,7 +74,9 @@ module tb_async_assert_macros;
         edge_check();
         if ($test$plusargs("fail_hold")) observed = 8'h41;
         if ($test$plusargs("fail_direct")) direct_ok = 0;
-        if ($test$plusargs("fail_no_reset")) no_reset_ok = 0;
+        if ($test$plusargs("fail_no_reset")) begin
+            reset = 1; no_reset_ok = 0;
+        end
         if ($test$plusargs("fail_never")) forbidden = 1;
         if ($test$plusargs("fail_known")) known_value = 1'bx;
         edge_check();
