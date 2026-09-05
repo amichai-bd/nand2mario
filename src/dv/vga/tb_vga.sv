@@ -2,16 +2,22 @@
 `include "src/rtl/common/macros.svh"
 module tb_vga;
     logic clk_sys = 0, clk_pix = 0, pixel_running = 1;
+    bit pixel_phase = 0;
     logic board_reset_n = 0, pll_locked = 0, core_reset = 0;
     wire pll_areset, ready, reset_sys, reset_pix;
     always #10 clk_sys = !clk_sys;
     // Nominal 63/125 clock ratio, rounded to the fixture's 1 ps precision.
-    // A 3 ns offset gives asynchronous arrival phase without coincident edges.
+    // Preserve oscillator phase through clock stops: rising edges remain on odd
+    // half-cycles, so the 3 ns offset excludes coincident system rising edges.
     initial begin
         #3;
-        forever #(1250.0 / 63.0)
-            if (pixel_running) clk_pix = !clk_pix; else clk_pix = 0;
+        forever #(1250.0 / 63.0) begin
+            pixel_phase = !pixel_phase;
+            clk_pix = pixel_running && pixel_phase;
+        end
     end
+    `N2M_ASSERT_NO_RST(fixture_distinct_edges, clk_pix,
+        (longint'($realtime * 1000.0) % 20000) != 10000)
     n2m_reset_control u_reset (.clk_sys, .clk_pix, .board_reset_n, .pll_locked,
                               .pll_areset, .ready, .reset_sys, .reset_pix);
     logic source_valid = 0, source_start = 0;
