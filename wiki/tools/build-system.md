@@ -184,6 +184,8 @@ The [tile pixel checks](tile-pixel-sim.md) use this interface for normal and
 expected-corruption runs through either explicit backend.
 Future software and FPGA commands should have separate modules under `tools/n2m/`
 and the output boundaries below. They are not implemented by this issue.
+The [software contract](software-toolchain.md) defines the planned `sw build`
+inputs, deterministic artifacts and independent conformance requirements.
 
 ## Source and workspace boundary
 
