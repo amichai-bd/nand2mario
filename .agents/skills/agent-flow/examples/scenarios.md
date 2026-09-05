@@ -28,3 +28,15 @@ Bad: Use `--delete-branch` from an author worktree or retry a merge because its
 post-merge local cleanup returned an error.
 
 Not a trigger: A design question with no issue work to start or finish.
+
+## Decisions
+
+Apply the [agent work rules](../../../../AGENTS.md#work):
+
+- An issue authorizes a wiki navigation change. Choose the existing layout
+  convention and implement it without asking again about the changed navigation.
+- Two specifications require different navigation behavior and neither takes
+  precedence. Ask which behavior is intended; continue an independent authorized
+  wording fix while the navigation change waits.
+- A wording issue reveals a useful navigation redesign. Keep the current change
+  within the issue and ask before adding the redesign.
