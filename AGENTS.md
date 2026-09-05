@@ -40,18 +40,23 @@ handoff and PR. All edits, builds, validation, and commits belong in that worktr
 Keep generated output under `workdir/`.
 
 Prefer one issue and one PR. Every PR starts as draft and closes its branch's
-issue with `Closes #<number>`. Combine issues only for one focused result.
-The author babysits through independent review, green checks, and squash merge.
-No human review is required. Root verifies merge, closure, and cleanup.
+issue with `Closes #<number>`. Combine issues only when one focused result meets
+all their success criteria.
+The author owns delivery through independent review of the current PR SHA,
+passing required checks, resolved review conversations, and squash merge.
+No human review is required. Root verifies merge, issue closure, main checks,
+deployment, and cleanup.
 
 Read the issue and linked specification. Keep scope within its success criteria.
-Edit or comment on issues only for new findings that require clarification, a
-decision, or documented drift. No routine progress or completion updates; keep
-evidence in PRs and artifacts. Do not broaden the goal or weaken criteria without
-approval. See [issue guidance](wiki/agents/issues.md#agent-use).
+Do not broaden the goal or weaken criteria without approval. Follow
+[issue guidance](wiki/agents/issues.md#agent-use) for assignment and updates;
+keep review evidence in PRs and logs in artifacts.
 
 Use [grill-me](.agents/skills/grill-me/SKILL.md) only when explicitly invoked.
 Otherwise align directly. Use focused skills and keep detailed procedures there.
+Choose routine steps and tools to meet these obligations. Retain enough context
+for another agent to resume safely; see
+[recovery](.agents/skills/agent-flow/references/recovery.md).
 
 ## Verification and safety
 

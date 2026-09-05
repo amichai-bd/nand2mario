@@ -5,29 +5,23 @@ description: Run a nand2mario issue through its worktree, peer review, green CI,
 
 # Agent flow
 
-One root orchestrator selects issues. Authors babysit their PRs until merged.
+Apply the obligations in [AGENTS](../../../AGENTS.md#work) through this flow:
 
-1. Align directly; use `grill-me` only on explicit invocation.
-2. Create or pick an assigned issue. Root delegates one author and records
-   ownership using [the worktree guide](../../../worktrees/README.md).
-3. Author reads the issue and spec, then loops on specification, code, and tests.
-   Keep routine updates in the handoff or PR; follow the
-   [issue update rules](../../../wiki/agents/issues.md#agent-use).
-4. Commit, push, and open a draft PR using `pr-author`.
-5. Babysit: poll CI, fix failures, and request an independent review following
-   [the review guide](references/review.md).
-6. After a ready verdict for the current SHA and green checks, author posts the
-   report, undrafts, uses the worktree guide's
-   [merge method](../../../worktrees/README.md#merge), and reports the merge to
-   root.
-7. Root verifies merge, issue closure, deployment, and cleanup using the worktree
-   guide. For worktrees that ran a local preview, read
-   [preview cleanup](references/preview-cleanup.md). End author and reviewer
-   sessions through available lifecycle tools.
+1. Root selects the assigned issue and delegates its author using
+   [worktree setup](../../../worktrees/README.md#create) and
+   [capacity guidance](references/recovery.md).
+2. Author reads the issue and linked spec, then aligns the change and validation
+   with its success criteria. Iterate as needed; use the relevant focused skills.
+3. Use [pr-author](../pr-author/SKILL.md) to open and maintain the draft PR.
+   Resolve CI failures and obtain [independent review](references/review.md).
+4. With a current ready verdict and required checks passing, post the report,
+   undraft, and follow the [merge method](../../../worktrees/README.md#merge).
+   Report the outcome to root.
+5. Root performs [verification and cleanup](../../../worktrees/README.md#clean-up-after-merge).
 
-Read [recovery and capacity](references/recovery.md) for delegation or interrupted
-work. Use [the review template](templates/review.md) and
-[scenarios](examples/scenarios.md) for review handoffs.
+For interrupted work, follow [recovery](references/recovery.md). Review handoffs
+use [the report template](templates/review.md); see
+[scenarios](examples/scenarios.md) when needed.
 
 Stop for a new product decision, broader scope, missing credentials, or an
 unauthorized hardware action. Routine Pages deployment already has authorization.

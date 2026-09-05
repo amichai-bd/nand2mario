@@ -1,17 +1,13 @@
 # Branches and pull requests
 
-Prefer one issue, one result, and one PR. Branches use
-`<primary-number>-<lowercase-slug>`, such as `42-fix-timer`. The author worktree
-uses the same name under `worktrees/`.
-
-Every PR starts as draft. Each closing reference has its own line:
+Follow the [agent work rules](https://github.com/amichai-bd/nand2mario/blob/main/AGENTS.md#work)
+for branch naming, worktree ownership, draft state, and issue scope.
+Use a lowercase branch slug, such as `42-fix-timer`.
+Each closing reference has its own line:
 
 ```text
 Closes #42
 ```
-
-Include the primary branch issue. Close more issues only when one focused change
-meets all their criteria.
 
 The issue owns the goal; the PR describes the result and evidence. Use the
 [PR skill](https://github.com/amichai-bd/nand2mario/blob/main/.agents/skills/pr-author/SKILL.md) for retained body files and
