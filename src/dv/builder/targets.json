@@ -74,5 +74,25 @@
     ],
     "expected_exit": "nonzero",
     "signature": "BASELINE_MISMATCH cycle=6 expected=0 actual=128"
+  },
+  "register-macros": {
+    "sources": [
+      "src/dv/common/tb_register_macros.sv"
+    ],
+    "top": "tb_register_macros",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS register macros cycles=64 combinations=15"
+  },
+  "register-macros-corrupt": {
+    "sources": [
+      "src/dv/common/tb_register_macros.sv"
+    ],
+    "top": "tb_register_macros",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "REGISTER_MISMATCH cycle=5 seed=1 expected=2d6aeb55fbd6aeb5 actual=2d6aeb55fbd6aeb4"
   }
 }

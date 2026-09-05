@@ -1,6 +1,7 @@
 // Contract: wiki/src/rtl/display/MAS_display.md
 `timescale 1ns/1ps
 `default_nettype none
+`include "src/rtl/common/macros.svh"
 module dmg_tile_pixel (
     input  wire logic       clk,
     input  wire logic       reset,
@@ -22,16 +23,8 @@ module dmg_tile_pixel (
     assign color_index_s0 = {row_high_s0[bit_select_s0], row_low_s0[bit_select_s0]};
     assign shade_s0 = palette_s0[{color_index_s0, 1'b0} +: 2];
 
-    always_ff @(posedge clk) begin
-        if (reset) begin
-            valid_s1       <= 1'b0;
-            color_index_s1 <= 2'b00;
-            shade_s1       <= 2'b00;
-        end else if (enable) begin
-            valid_s1       <= valid_s0;
-            color_index_s1 <= valid_s0 ? color_index_s0 : 2'b00;
-            shade_s1       <= valid_s0 ? shade_s0 : 2'b00;
-        end
-    end
+    `DFF_RST_EN(valid_s1, valid_s0, clk, enable, reset, 1'b0)
+    `DFF_RST_EN(color_index_s1, valid_s0 ? color_index_s0 : 2'b00, clk, enable, reset, 2'b00)
+    `DFF_RST_EN(shade_s1, valid_s0 ? shade_s0 : 2'b00, clk, enable, reset, 2'b00)
 endmodule
 `default_nettype wire

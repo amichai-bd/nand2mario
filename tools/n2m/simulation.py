@@ -5,6 +5,7 @@ from pathlib import Path
 import re
 import uuid
 
+from .hdl import dependencies
 from .simulator import ToolError
 from .questa import commands as questa_commands, diagnostic
 from .records import atomic_json, atomic_text, cache_matches, digest, file_hash, read_json
@@ -29,7 +30,7 @@ def load_target(root, name):
 
 def simulate(root, build, args, simulator, provenance=None):
     target, registry = load_target(root, args.target)
-    inputs = target["sources"] + [registry.relative_to(root).as_posix(), "tools/build.py"]
+    inputs = dependencies(root, target["sources"]) + [registry.relative_to(root).as_posix(), "tools/build.py"]
     inputs += [str(p.relative_to(root)).replace("\\", "/") for p in (root / "tools/n2m").glob("*.py")]
     inputs += ["tools/n2m/dependencies.json"]
     hashes = {p: file_hash(root / p) for p in inputs}
@@ -61,7 +62,7 @@ def simulate(root, build, args, simulator, provenance=None):
         else:
             binary = compile_dir / "simulation.vvp"
             compile_argv = [simulator.compiler, "-g2012", "-Wall", "-s", target["top"],
-                            "-o", simulator.path(binary),
+                            "-I", simulator.path(root), "-o", simulator.path(binary),
                             *[simulator.path(root / source) for source in target["sources"]]]
             sim_argv = [simulator.runtime, simulator.path(binary), f"+seed={args.seed}", *target["args"]]
             commands = [(compile_argv, compile_dir, compile_dir / "compile.log", "zero"),

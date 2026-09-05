@@ -69,6 +69,24 @@ class BuilderTests(unittest.TestCase):
     def run_stage(self):
         return simulate(self.root, self.build, self.args, self.sim)
 
+    def test_transitive_headers_invalidate_cache_and_missing_never_reuses(self):
+        source = self.root / "src/dv/builder/builder_smoke.sv"
+        source.write_text('`include "src/one.svh"\n' + source.read_text())
+        first = self.root / "src/one.svh"
+        second = self.root / "src/two.svh"
+        first.write_text('`include "src/two.svh"\n')
+        second.write_text('// original\n')
+        self.assertEqual(self.run_stage()["cache"], "BUILT")
+        self.assertEqual(self.run_stage()["cache"], "CACHED")
+        second.write_text('// changed\n')
+        result = self.run_stage()
+        self.assertEqual(result["cache"], "BUILT")
+        self.assertIn("src/two.svh", result["inputs"])
+        self.assertIn("-I", self.sim.calls[-2])
+        second.unlink()
+        with self.assertRaisesRegex(ValueError, "missing"):
+            self.run_stage()
+
     def test_cache_reuse_and_rebuild(self):
         self.assertEqual(self.run_stage()["status"], "PASS")
         self.assertEqual(self.run_stage()["cache"], "CACHED")
@@ -155,7 +173,7 @@ class BuilderTests(unittest.TestCase):
         self.assertEqual(self.run_stage()["status"], "PASS")
 
     def test_tile_corruption_cannot_disguise_normal_failure(self):
-        for owner in ("src/rtl/display", "src/dv/display"):
+        for owner in ("src/rtl/display", "src/dv/display", "src/rtl/common"):
             shutil.copytree(ROOT / owner, self.root / owner)
         targets = json.loads((self.root / "src/dv/builder/targets.json").read_text())
         corrupt = targets["tile-pixel-corrupt"]["signature"]

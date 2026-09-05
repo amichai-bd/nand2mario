@@ -12,6 +12,8 @@ import sys
 
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "tools"))
+from n2m.hdl import dependencies
 SOURCES = [
     ROOT / "src/rtl/display/dmg_tile_pixel.sv",
     ROOT / "src/dv/display/tb_dmg_tile_pixel.sv",
@@ -34,8 +36,7 @@ def main():
     record = {
         "simulator": args.sim, "tag": args.tag, "seed": None,
         "created_utc": datetime.now(timezone.utc).isoformat(),
-        "inputs": {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
-                   for p in [*SOURCES, Path(__file__)]},
+        "inputs": {},
         "commands": [], "status": "FAIL",
     }
 
@@ -68,6 +69,8 @@ def main():
         return result.stdout
 
     try:
+        inputs = [*[ROOT / name for name in dependencies(ROOT, [p.relative_to(ROOT).as_posix() for p in SOURCES])], Path(__file__), ROOT / "tools/n2m/hdl.py"]
+        record["inputs"] = {p.relative_to(ROOT).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest() for p in inputs}
         record["commit"] = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
         record["dirty"] = bool(subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT, text=True))
         names = ["iverilog", "vvp"] if args.sim == "icarus" else ["vlib", "vmap", "vlog", "vsim"]
@@ -81,11 +84,11 @@ def main():
             # -V can emit installation helper diagnostics on some distributions.
             # Capture the public compiler banner with -v during the real compile.
             run([binaries["iverilog"], "-g2012", "-Wall", "-v", "-s", "tb_dmg_tile_pixel",
-                 "-o", str(compiler / "tile.vvp"), *map(str, SOURCES)], compiler, "compile.log")
+                 "-I", str(ROOT), "-o", str(compiler / "tile.vvp"), *map(str, SOURCES)], compiler, "compile.log")
         else:
             run([binaries["vlog"], "-version"], compiler, "version.log")
             run([binaries["vlib"], "work"], compiler, "library.log")
-            run([binaries["vlog"], "-sv", "-work", "work", *map(str, SOURCES)], compiler, "compile.log")
+            run([binaries["vlog"], "-sv", "-work", "work", "+incdir+" + str(ROOT), *map(str, SOURCES)], compiler, "compile.log")
         for corrupt in [False, True]:
             case = "corrupt" if corrupt else "normal"
             sim_dir = build / "sim/test/tile-pixel" / case
@@ -116,7 +119,7 @@ def main():
         record["status"] = "PASS"
         print(f"PASS {args.sim}: normal and deliberate corruption; {build}")
         return 0
-    except (OSError, RuntimeError, subprocess.SubprocessError) as error:
+    except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
         record["error"] = str(error)
         print(f"FAIL: {error}", file=sys.stderr)
         return 1

@@ -125,7 +125,7 @@ class QuestaTests(unittest.TestCase):
         self.assertEqual(self.run_stage()["cache"], "BUILT")
 
     def test_expected_corruption_requires_full_signature_and_nonzero(self):
-        for owner in ("src/rtl/display", "src/dv/display"):
+        for owner in ("src/rtl/display", "src/dv/display", "src/rtl/common"):
             shutil.copytree(Path(__file__).resolve().parents[3] / owner, self.root / owner)
         self.sim = FakeQuesta()
         self.args.target = "tile-pixel-corrupt"

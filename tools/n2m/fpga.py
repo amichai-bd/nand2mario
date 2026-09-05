@@ -8,6 +8,7 @@ import re
 import subprocess
 import uuid
 
+from .hdl import dependencies
 from .records import atomic_json, cache_matches, digest, file_hash, read_json
 
 DEVICE = "10M50DAF484C7G"
@@ -76,11 +77,7 @@ def target_definition(root, name):
                     or path.suffix != suffix or not path.is_file() or path.is_symlink()
                     or not path.resolve().is_relative_to(root.resolve())):
                 raise ValueError(f"missing or unsafe FPGA input: {name}")
-            # This first target format deliberately supports self-contained inputs.
-            # Add an explicit dependency model before accepting includes/IP/data files.
             text = path.read_text(encoding="utf-8")
-            if suffix == ".sv" and re.search(r'`include\b|\$(?:readmemh|readmemb|fopen)\b', text):
-                raise ValueError(f"external FPGA source dependencies are unsupported: {name}")
             if suffix == ".sdc":
                 self_contained_sdc(text)
     if not isinstance(target["pins"], dict) or not target["pins"] or not isinstance(target["virtual_pins"], list):
@@ -92,6 +89,7 @@ def target_definition(root, name):
         raise ValueError("invalid FPGA pin")
     if len(set(target["pins"].values())) != len(target["pins"]):
         raise ValueError("duplicate FPGA pin")
+    dependencies(root, target["sources"], synthesis=True)
     return target
 
 
@@ -101,6 +99,7 @@ def prepare(root, folder, target):
              f'set_global_assignment -name DEVICE {DEVICE}',
              f'set_global_assignment -name TOP_LEVEL_ENTITY {tcl_word(target["top"])}',
              'set_global_assignment -name NUM_PARALLEL_PROCESSORS 2',
+             f'set_global_assignment -name SEARCH_PATH {tcl_word(root.resolve())}',
              'set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output']
     for field, assignment in (("sources", "SYSTEMVERILOG_FILE"), ("constraints", "SDC_FILE")):
         for name in target[field]:
@@ -255,7 +254,7 @@ def build_fpga(root, build, args, provenance=None):
         if not 1 <= args.timeout <= 3600:
             raise ValueError("FPGA stage timeout must be between 1 and 3600 seconds")
         target = target_definition(root, args.target)
-        inputs = [REGISTRY, "tools/build.py", *target["sources"], *target["constraints"]]
+        inputs = [REGISTRY, "tools/build.py", *dependencies(root, target["sources"], synthesis=True), *target["constraints"]]
         inputs += [p.relative_to(root).as_posix() for p in (root / "tools/n2m").glob("*.py")]
         record["inputs"] = {p: file_hash(root / p) for p in inputs}
         record["tools"] = tools(args.quartus_bin, folder, record, build, min(args.timeout, 60))
