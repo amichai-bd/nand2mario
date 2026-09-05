@@ -5,6 +5,8 @@ development guidance in version control.
 
 ## Current documents
 
+- [Project charter](src/project-charter.md) records the approved direction and
+  proposed release acceptance.
 - [RTL reference style](src/rtl-reference-style.md) compares frog-bui and FROG_FS
   before display design.
 - [Research findings](research-findings.md) records the environment audit,

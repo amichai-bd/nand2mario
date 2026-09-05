@@ -44,8 +44,9 @@ Priorities:
 
 **Current state**
 
-The direction is clear, but “entire Game Boy” could mean original DMG hardware,
-all later models, or every cartridge peripheral: very different projects.
+The [charter](src/project-charter.md) records the approved end-to-end DMG direction
+and proposed releases. Silicon policy, release checks, and feature boundaries
+remain unapproved.
 
 **Risk**
 

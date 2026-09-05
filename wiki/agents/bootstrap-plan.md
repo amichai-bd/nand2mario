@@ -4,18 +4,22 @@ The [gap register](../preflight-gaps.md) owns gap status and close conditions.
 
 ## Current phase
 
-Infrastructure refinement, reference RTL/display analysis, and the user's
+Product definition toward the approved
+[end-to-end direction](../src/project-charter.md#approved-direction), alongside
+infrastructure refinement, reference RTL/display analysis, and the user's
 explicitly authorized isolated tile-pixel and minimal builder work
 ([#68](https://github.com/amichai-bd/nand2mario/issues/68),
 [#26](https://github.com/amichai-bd/nand2mario/issues/26)). See the
 [reference study](../src/rtl-reference-style.md) and
 [build contract](../tools/build-system.md).
 
-Broader product architecture, CPU/PPU integration, software/FPGA backends,
-board-proving designs, and physical runner setup remain deferred. Issue assignment
-or priority alone does not authorize them. Scope/provenance decisions #24/#25,
-gap close conditions, and separate programming/physical-test authorization remain
-open and applicable.
+The user has authorized the goal from hardware/software design through simulation
+to DE10-Lite operation. Define its release contract in
+[#24](https://github.com/amichai-bd/nand2mario/issues/24). Unmade product decisions
+and applicable implementation gates still apply; the goal does not waive them.
+CPU/PPU integration, software/FPGA backends, board-proving designs, and physical
+runner setup remain dependency-gated. Programming and physical tests still need
+explicit authorization.
 
 ## Completed infrastructure
 
@@ -40,8 +44,9 @@ exercise the existing flow with a fresh author and retain evidence in the PR.
 
 ## Future P0 sequence
 
-After an explicit phase change, complete assigned issues in this dependency
-order. This sequence does not authorize work beyond the current phase.
+Complete assigned prerequisites in this dependency order as authorized by the
+current phase. Product definition is now authorized; later steps retain their
+gates.
 
 1. Approve project scope and legal boundaries:
    [GAP-001](../preflight-gaps.md#gap-001-scope-and-success-contract)
