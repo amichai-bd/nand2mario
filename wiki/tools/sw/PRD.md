@@ -1,8 +1,8 @@
 # Software toolchain requirements
 
-Status: planned Python toolchain contract for
-[#75](https://github.com/amichai-bd/nand2mario/issues/75). No software backend is
-implemented here. The [charter](../../src/project-charter.md) requires our toolchain
+Status: the pinned RGBDS oracle is implemented; the project assembler/linker
+remain planned under
+[#75](https://github.com/amichai-bd/nand2mario/issues/75). The [implemented oracle](SPEC.md#implemented-oracle) checks original fixtures. The [charter](../../src/project-charter.md) requires our toolchain
 for `v0.5`; an initial opcode subset is an intermediate delivery, not that result.
 
 The [SPEC](SPEC.md) owns assembly, objects, placement, packaging, original assets,

@@ -14,6 +14,7 @@ from .simulation import simulate
 from .simulator import Simulator, ToolError
 from .doctor import doctor
 from .fpga import build_fpga
+from .rgbds import oracle
 
 
 def parser():
@@ -44,6 +45,12 @@ def parser():
     build.add_argument("--rebuild", action="store_true")
     build.add_argument("--tag")
     build.add_argument("--json", action="store_true")
+    sw = commands.add_parser("sw").add_subparsers(dest="action", required=True)
+    rgbds = sw.add_parser("oracle", help="check original fixtures with pinned upstream RGBDS")
+    rgbds.add_argument("--offline", action="store_true", help="require verified cached downloads")
+    rgbds.add_argument("--expected", help="explicit expected fixture JSON, including deliberate negative checks")
+    rgbds.add_argument("--tag")
+    rgbds.add_argument("--json", action="store_true")
     return result
 
 
@@ -73,6 +80,9 @@ def main(argv=None, root=None):
                 elif args.command == "fpga":
                     provenance = {k: report[k] for k in ("commit", "dirty_tree_fingerprint", "host", "python") if k in report}
                     report.update(build_fpga(root, build, args, provenance))
+                elif args.command == "sw":
+                    provenance = {k: report[k] for k in ("commit", "dirty_tree_fingerprint", "host", "python") if k in report}
+                    report.update(oracle(root, build, args, provenance))
                 else:
                     simulator = Simulator(args.sim, questa_bin=args.questa_bin)
                     if not 0 <= args.seed <= 2147483647:

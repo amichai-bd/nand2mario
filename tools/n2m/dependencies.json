@@ -10,7 +10,35 @@
     "url": "https://github.com/gbdev/rgbds.git",
     "commit": "307846b03ea89ee57bf75f179d5f8051175ac60d",
     "license": "MIT; see upstream LICENSE and file headers",
-    "purpose": "Planned unmodified external assembler/linker oracle; not bootstrapped yet",
-    "local_changes": "none"
+    "purpose": "Unmodified external assembler/linker oracle for original fixtures",
+    "local_changes": "none",
+    "packages": {
+      "windows-x86_64": {
+        "url": "https://github.com/gbdev/rgbds/releases/download/v1.0.3/rgbds-win64.zip",
+        "sha256": "b66c23cb6d073dd3866ea30ef1ca5164549e0dae9ebe771957aff25e2658b0e3"
+      },
+      "linux-x86_64": {
+        "url": "https://github.com/gbdev/rgbds/releases/download/v1.0.3/rgbds-linux-x86_64.tar.xz",
+        "sha256": "280a52061a0c516999bee75ac357628d6d50784309e0486cef25f7460e6f330b"
+      }
+    },
+    "notices": {
+      "LICENSE": {
+        "url": "https://raw.githubusercontent.com/gbdev/rgbds/307846b03ea89ee57bf75f179d5f8051175ac60d/LICENSE",
+        "sha256": "776850497a707cc8183b19b774cf73dd0d79428cb1c51e452a940875be1e292c"
+      },
+      ".github/workflows/create-release-artifacts.yml": {
+        "url": "https://raw.githubusercontent.com/gbdev/rgbds/307846b03ea89ee57bf75f179d5f8051175ac60d/.github/workflows/create-release-artifacts.yml",
+        "sha256": "9c1f6ed91ffee770e21c4ea974da8bce9cccc381988ec6a4c594d619dff0514e"
+      },
+      ".github/scripts/install-deps.sh": {
+        "url": "https://raw.githubusercontent.com/gbdev/rgbds/307846b03ea89ee57bf75f179d5f8051175ac60d/.github/scripts/install-deps.sh",
+        "sha256": "51723f81caa951ba1a094e2a95380638903731aa9d27df49af8b4f71396e772c"
+      },
+      "CMakeLists.txt": {
+        "url": "https://raw.githubusercontent.com/gbdev/rgbds/307846b03ea89ee57bf75f179d5f8051175ac60d/CMakeLists.txt",
+        "sha256": "285cc200c113d57d81b27fbc422f1305a263771a449325b9e3770d83ca08ea9e"
+      }
+    }
   }
 }

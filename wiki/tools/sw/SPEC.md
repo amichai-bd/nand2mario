@@ -2,6 +2,53 @@
 
 The [PRD](PRD.md) owns scope, implementation status, and release acceptance.
 
+## Implemented oracle
+
+`python tools/build.py sw oracle --tag <tag> --json` provisions the pinned
+unmodified upstream RGBASM/RGBLINK prebuilt release for Windows or Linux x86_64
+and checks the original fixture in `src/sw/oracle/`. Add `--offline` to forbid
+downloads and require the same tag's verified cached inputs. Other host platforms
+and arbitrary installed executables are unsupported. This command does not
+implement the planned project assembler, linker or cartridge packager below.
+
+The [manifest](../../../tools/n2m/dependencies.json) owns the source/version,
+archive and notice hashes. The [provenance](../../../tools/sw/THIRD_PARTY.md)
+records license and upstream prebuilt installation limits. Provisioning checks
+all downloaded hashes before use, and compares installed executable bytes with
+the verified archive on every call. A corrupt archive, notice or executable,
+missing previously installed tool, unavailable download or wrong reported
+version fails. Online mode does not silently repair corruption. Choose a fresh
+tag after inspecting a failed cache; offline cache misses fail without fetching.
+
+The builder's exclusive tag lock protects installation. The cache lives at
+`workdir/builds/<tag>/sw/oracle/cache/`; every invocation creates an immutable
+`runs/<id>/` containing exact commands, raw exit results, logs, object files,
+linked bytes, map, symbols, copied expectations and a hashed result. The stage
+`result.json` and builder manifest point to the latest attempt. Reusing a tag
+verifies the cache and reruns the oracle; it never reuses a previous PASS result.
+Each executable call has a 60-second timeout. Nonzero exits, warnings and timeouts
+fail and retain available diagnostics. No tool invocation uses a shell.
+
+The two original assembly files exercise immediate and CB-prefixed encoding,
+relative branching, fixed section placement, cross-object CALL relocation and
+LOW(symbol). RGBASM owns encoding and RGBLINK owns relocation. The checker uses
+independently authored literal region bytes, total size, fill byte and selected
+symbol addresses from `expected.json`; it compares the whole output, including
+padding. It does not read project opcode tables, encode instructions or resolve
+relocations. These samples establish the oracle path, not exhaustive instruction
+or CPU coverage. #85 owns exhaustive assembler conformance.
+
+`--expected <file>` selects an explicit expectation JSON for independent and
+negative checks. Changing an expected byte must return failure with the offset
+and expected/actual bytes. It does not alter assembly or link inputs. The fixture
+runs at `$0200` and contains no Nintendo logo or borrowed program content.
+
+Host tests cover cache hits/misses, corrupted downloads/notices/executables,
+missing tools, wrong versions, timeout/raw failure, byte/symbol mismatches and
+space-containing paths. Retained actual upstream runs prove positive and changed
+expectation outcomes; hosted Builder CI also runs the actual pinned Linux oracle.
+The source and cache hashes connect this evidence to the reviewed implementation.
+
 ## Inputs and ownership
 
 Plan `python tools/build.py sw build <target> --tag <tag> --json` using the

@@ -1,0 +1,10 @@
+{
+  "regions": [
+    {"offset": 512, "hex": "3e4201341222cb5f200100cd2002c34002"},
+    {"offset": 544, "hex": "f53e40f1c9"},
+    {"offset": 576, "hex": "afc9"}
+  ],
+  "symbols": {"Entry": "00:0200", "Helper": "00:0220", "Tail": "00:0240"},
+  "size": 16384,
+  "padding": 255
+}
