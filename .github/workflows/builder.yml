@@ -25,6 +25,15 @@ jobs:
           python tools/build.py check --tag ci-check --json
       - name: Check pinned upstream RGBDS oracle
         run: python tools/build.py sw oracle --tag ci-rgbds --json
+      - name: Check complete assembler and deliberate encoding mutation
+        run: |
+          python tools/build.py sw assemble assembler-basic --tag ci-assembler --json
+          python tools/build.py sw conformance --tag ci-conformance --json
+          if python tools/build.py sw conformance --tag ci-conformance --offline --mutate --json; then
+            echo "Deliberate encoding mutation unexpectedly passed"
+            exit 1
+          fi
+          python -c "import json; from pathlib import Path; r=json.loads(Path('workdir/builds/ci-conformance/manifest.json').read_text()); assert r['status']=='FAIL' and r['error']=='encoding mismatch offset=0 actual=01 expected=00' and r['cases']==569 and r['base_opcodes']==244 and r['cb_opcodes']==256"
       - name: Report simulation scope
         run: |
           echo "Host contracts and the actual pinned RGBDS oracle. Licensed Questa simulation is not run on hosted PR jobs; actual local evidence is required until the trusted route in issue #32 is configured." >> "$GITHUB_STEP_SUMMARY"

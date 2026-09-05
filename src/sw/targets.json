@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "targets": {
+    "assembler-basic": {
+      "directory": "assembler/basic",
+      "sources": [
+        "main.asm"
+      ],
+      "assets": {}
+    }
+  }
+}

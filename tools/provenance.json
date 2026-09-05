@@ -1,7 +1,20 @@
 {
   "schema_version": 1,
   "original_material_policy": "../wiki/tools/provenance.md",
-  "imported_product_sources": [],
+  "imported_product_sources": [
+    {
+      "name": "mgbdis opcode mnemonic data",
+      "source": "https://github.com/mattcurrie/mgbdis",
+      "commit": "95d951a9881a0d7ff1a42a94d1be175da92b1777",
+      "source_file": "instruction_set.py",
+      "source_sha256": "b1f4aff9001b9bfc9a1e03ecce93b88013ab46b0a7bda7fa33c9a9e26b66b66b",
+      "license": "MIT",
+      "notices": "sw/MGBDIS_LICENSE.md",
+      "purpose": "Adapted opcode-to-form data for original assembler; RGBDS remains independent oracle",
+      "local_changes": "Retain base/CB dictionaries as JSON; enforce explicit accumulator, LDH C and address-based JR forms; omit disassembler aliases/illegal slots",
+      "storage": "tools/sw/opcodes.json"
+    }
+  ],
   "dependencies": [
     {
       "name": "RGBDS",

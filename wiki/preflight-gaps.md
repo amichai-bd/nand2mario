@@ -405,8 +405,11 @@ frames, or rejects timing.
 
 **Current state**
 
-Identified test suites, RGBDS, and emulator references are not pinned or fetched
-reproducibly. RGBDS is not installed locally.
+The [RGBDS oracle](tools/sw/SPEC.md#implemented-oracle) is pinned, hash-verified,
+provisioned and exercised by local and hosted checks delivered in
+[#84](https://github.com/amichai-bd/nand2mario/issues/84). Future emulator/test-suite
+adapters still need their planned reproducible fetching and executable acceptance;
+[their reviewed plans](src/dv/baseline/SPEC.md#future-adapter-plans) remain open.
 
 **Risk**
 

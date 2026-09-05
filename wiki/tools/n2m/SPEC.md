@@ -615,3 +615,10 @@ RGBASM/RGBLINK against original encoding/relocation fixtures. The
 cache/offline behavior, expected-byte checks and retained artifacts. Builder CI
 runs this actual software oracle alongside host contract tests; it does not
 provide licensed Questa simulation.
+
+`python tools/build.py sw assemble <target> --tag <tag> --json` emits validated
+relocatable objects. `sw conformance` runs complete instruction-family coverage
+against actual RGBDS; `--mutate` proves a changed encoded byte fails. The
+[assembler contract](../sw/SPEC.md#implemented-assembler) owns target/object
+schemas, source bounds, cache rules and diagnostics. Shared atomic text records
+use explicit LF so deterministic objects have identical bytes across hosts.
