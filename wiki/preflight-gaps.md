@@ -223,6 +223,15 @@ The [tile pixel unit](src/display/tile-pixel.md) has a focused independent
 testbench and dual-simulator runner. This does not establish the shared
 assertion library, reference adapters, coverage model, or regression baseline.
 
+**Temporary Questa deferral**
+
+The user authorized tile delivery with exhaustive Icarus checks, the exact
+negative test, independent review, and passing CI while Questa is unavailable.
+Licensed Questa elaboration and normal/negative runs remain outstanding under
+[#31](https://github.com/amichai-bd/nand2mario/issues/31); compilation alone is
+not a simulation pass. This defers only that tile delivery requirement. It does
+not close GAP-008 or change the criteria below, broader gates, or hardware authorization.
+
 **Risk**
 
 Agents may implement many instructions without reliable evidence of correct
