@@ -4,6 +4,14 @@
   "imported_product_sources": [],
   "dependencies": [
     {
+      "name": "RGBDS",
+      "record": "n2m/dependencies.json",
+      "notices": "sw/THIRD_PARTY.md",
+      "purpose": "Planned external encoding/link oracle",
+      "local_changes": "none",
+      "storage": "Ignored workdir tools/cache; not installed by the contract"
+    },
+    {
       "name": "Python and Icarus Verilog",
       "record": "n2m/dependencies.json",
       "notices": "sim/THIRD_PARTY.md",

@@ -5,6 +5,9 @@ development guidance in version control.
 
 ## Current documents
 
+- [Software toolchain](tools/software-toolchain.md) defines the planned Python
+  assembler/linker, original assets and fixed-ROM packaging.
+
 - [Project charter](src/project-charter.md) records the approved direction and
   approved release acceptance.
 - [Clocks, resets, and CDC](src/clocks-resets-cdc.md) defines the planned

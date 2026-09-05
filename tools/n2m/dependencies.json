@@ -1,5 +1,13 @@
 {
   "python": {"version": "3.14.5", "url": "https://www.python.org/downloads/release/python-3145/", "license": "PSF-2.0", "packages": []},
+  "rgbds": {
+    "version": "1.0.3",
+    "url": "https://github.com/gbdev/rgbds.git",
+    "commit": "307846b03ea89ee57bf75f179d5f8051175ac60d",
+    "license": "MIT; see upstream LICENSE and file headers",
+    "purpose": "Planned unmodified external assembler/linker oracle; not bootstrapped yet",
+    "local_changes": "none"
+  },
   "iverilog": {
     "version": "12.0",
     "url": "https://github.com/steveicarus/iverilog.git",
