@@ -1,6 +1,6 @@
 # Gaps before implementation
 
-Status: product P0 gaps remain open; GAP-001, GAP-002, GAP-003, GAP-004, GAP-007, and GAP-009 closed
+Status: product P0 gaps remain open; GAP-001, GAP-002, GAP-003, GAP-004, GAP-007, GAP-008, and GAP-009 closed
 
 ## Purpose
 
@@ -28,11 +28,11 @@ Priorities:
 | GAP-001 | P0 | Closed | [#24](https://github.com/amichai-bd/nand2mario/issues/24) | Scope and success contract | DMG target, releases, and non-goals are approved |
 | GAP-002 | P0 | Closed | [#25](https://github.com/amichai-bd/nand2mario/issues/25) | License, ROM policy, and provenance | Approved private source policy, provenance rules, and practical content safeguards are committed |
 | GAP-003 | P0 | Closed | [#26](https://github.com/amichai-bd/nand2mario/issues/26) | Build command | A minimal `n2m` command runs from a fresh shell |
-| GAP-004 | P0 | Closed | [#27](https://github.com/amichai-bd/nand2mario/issues/27) | Real environment doctor | Portable smoke and read-only identity checks work; licensed runtime evidence remains in GAP-008 |
+| GAP-004 | P0 | Closed | [#27](https://github.com/amichai-bd/nand2mario/issues/27) | Real environment doctor | Portable smoke and read-only identity checks work; licensed runtime evidence is recorded in GAP-008 |
 | GAP-005 | P0 | Open | [#28](https://github.com/amichai-bd/nand2mario/issues/28) | Board wiring and safe bring-up | VGA test card and UART ping pass with documented wiring |
 | GAP-006 | P0 | Open | [#29](https://github.com/amichai-bd/nand2mario/issues/29) | Clock, reset, and CDC plan | Frequencies, crossings, resets, and SDC rules are approved |
 | GAP-007 | P0 | Closed | [#30](https://github.com/amichai-bd/nand2mario/issues/30) | Executable interface contracts | Address maps, host registers, and trace formats have one source |
-| GAP-008 | P0 | Open | [#31](https://github.com/amichai-bd/nand2mario/issues/31) | Verification baseline | A known-good DUT and deliberately failing DUT prove the harness |
+| GAP-008 | P0 | Closed | [#31](https://github.com/amichai-bd/nand2mario/issues/31) | Verification baseline | A known-good DUT and deliberately failing DUT prove the harness |
 | GAP-009 | P0 | Closed | [#14](https://github.com/amichai-bd/nand2mario/issues/14) | Initial agent skills | Core skills exist and have concise trigger tests and examples |
 | GAP-010 | P0 | Open | [#32](https://github.com/amichai-bd/nand2mario/issues/32) | GitHub workflow, CI, and Pages | Templates, checks, rules, and deployment pass end to end |
 | GAP-011 | P1 | Later | — | Cartridge and target ROM facts | Header is inspected privately and required mapper is specified |
@@ -238,9 +238,19 @@ check consumption and full behavioral verification, not only codec agreement.
 
 **Current state**
 
-The [tile pixel unit](src/rtl/display/MAS_display.md) has a focused independent
-testbench and dual-simulator runner. This does not establish the shared
-assertion library, reference adapters, coverage model, or regression baseline.
+The [shared baseline](src/dv/baseline/SPEC.md) supplies separate stimulus,
+observation, integer reference, scoreboard, assertions and fixture coverage.
+Its known-good and deliberately broken examples run through both Questa and
+portable Icarus with checked logs, seed, expected/actual CSV and waves. The
+regression runner checks raw failure exits and complete cross-engine traces.
+
+[#31](https://github.com/amichai-bd/nand2mario/issues/31) records baseline delivery.
+Reviewed adapter designs, licenses, immutable pins, retirement comparison format
+and bounded regression levels satisfy this prerequisite. Adapter implementations
+remain planned in [#101](https://github.com/amichai-bd/nand2mario/issues/101),
+[#102](https://github.com/amichai-bd/nand2mario/issues/102) and
+[#103](https://github.com/amichai-bd/nand2mario/issues/103). Fixture coverage is
+not CPU, full-system, licensed environment or physical acceptance.
 
 **Questa evidence**
 
@@ -261,13 +271,11 @@ builder, with isolated libraries and checked cache reuse. The deliberately
 failing smoke remains FAIL; only the exact expected tile corruption is accepted.
 This does not establish the planned shared verification harness or adapters.
 
-The shared baseline's good/broken examples and other accumulated licensed
-coverage remain outstanding in
-[#31](https://github.com/amichai-bd/nand2mario/issues/31). Each affected later issue
-must identify and execute its required Questa coverage and retain portable
-evidence. Failed doctor checks still report FAIL. GAP-008 remains open until
-its full close conditions are met; authorization and portable results do not
-substitute for licensed or physical proof.
+The shared good/broken baseline now has both licensed and portable runtime
+proof. Each affected later issue must still identify and execute its own
+required Questa coverage and retain portable evidence. Failed doctor checks
+remain FAIL. Closing this baseline gap does not waive later subsystem,
+independent adapter or physical verification.
 
 **Risk**
 

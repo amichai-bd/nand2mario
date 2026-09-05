@@ -19,3 +19,9 @@ matching checked exports from one schema. Its acceptance is
 [Generation rules](SPEC.md#interface-generation) and the
 [shared interface contract](../../src/rtl/interfaces/MAS_interfaces.md) own the
 details; these requirements do not claim implemented CPU or UART behavior.
+
+The [verification baseline runner](SPEC.md#verification-baseline-runner) must
+accept the known-good fixture and detect its known defect through both selected
+simulators, retaining reproducible failure evidence. Acceptance belongs to
+[#31](https://github.com/amichai-bd/nand2mario/issues/31), without claiming CPU
+or hardware coverage from this fixture.

@@ -29,7 +29,10 @@
     {
       "name": "Wiki Python packages and Chromium",
       "record": "wiki/THIRD_PARTY.md",
-      "locks": ["wiki/requirements.txt", "wiki/requirements-browser.txt"],
+      "locks": [
+        "wiki/requirements.txt",
+        "wiki/requirements-browser.txt"
+      ],
       "purpose": "Documentation rendering and browser testing",
       "local_changes": "none",
       "storage": "Ignored workdir/tools; upstream notices remain with installed packages"
@@ -48,6 +51,13 @@
       "purpose": "User-installed proprietary simulation and FPGA build tools",
       "local_changes": "none",
       "storage": "User installation only; no redistribution"
+    },
+    {
+      "name": "Planned SingleStepTests, Mooneye and SameBoy adapters",
+      "record": "../wiki/src/dv/baseline/SPEC.md#future-adapter-plans",
+      "purpose": "Reviewed immutable pins and MIT/Expat reuse boundaries for future vectors, acceptance tests and independent reference",
+      "local_changes": "none; external implementation/data not imported",
+      "storage": "Future ignored workdir downloads/builds, with notices and dependency hashes"
     }
   ]
 }
