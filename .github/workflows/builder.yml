@@ -1,0 +1,57 @@
+name: Builder
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  builder:
+    name: Builder check
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14.5"
+      - name: Install source-build prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y autoconf bison flex gperf build-essential
+      - name: Build pinned simulator
+        run: |
+          python tools/n2m/bootstrap.py
+          echo "$GITHUB_WORKSPACE/workdir/tools/iverilog/bin" >> "$GITHUB_PATH"
+      - name: Test builder and discover tools
+        run: |
+          python tools/build.py check --tag ci-check --json
+          python tools/build.py doctor --sim icarus --tag ci-doctor --json
+      - name: Compile, elaborate, run, and check
+        run: |
+          python tools/build.py sim test builder-smoke --sim icarus --tag ci-smoke --json
+          python tools/build.py sim test builder-smoke --sim icarus --tag ci-smoke --json
+          python - <<'PY'
+          import json, pathlib, subprocess, sys
+          root = pathlib.Path("workdir/builds")
+          assert json.loads((root / "ci-smoke/manifest.json").read_text())["cache"] == "CACHED"
+          result = subprocess.run([sys.executable, "tools/build.py", "sim", "test", "builder-smoke-fail", "--sim", "icarus", "--tag", "ci-fail", "--json"])
+          assert result.returncode == 1
+          failed = json.loads((root / "ci-fail/manifest.json").read_text())
+          assert failed["status"] == "FAIL"
+          assert any("expected=7 actual=3" in pathlib.Path(p).read_text() for p in failed["artifacts"] if p.endswith("sim.log"))
+          assert pathlib.Path("workdir/latest.txt").read_text().strip() == "ci-smoke"
+          PY
+      - name: Retain build evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: builder-evidence
+          path: |
+            workdir/builds/
+            workdir/logs/iverilog-bootstrap.log
+          if-no-files-found: ignore

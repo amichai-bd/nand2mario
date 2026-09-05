@@ -1,6 +1,6 @@
 # Gaps before implementation
 
-Status: product P0 gaps remain open; GAP-009 closed
+Status: product P0 gaps remain open; GAP-003 and GAP-009 closed
 
 ## Purpose
 
@@ -26,7 +26,7 @@ Priorities:
 |---|---|---|---|---|---|
 | GAP-001 | P0 | Open | [#24](https://github.com/amichai-bd/nand2mario/issues/24) | Scope and success contract | DMG target, releases, and non-goals are approved |
 | GAP-002 | P0 | Open | [#25](https://github.com/amichai-bd/nand2mario/issues/25) | License, ROM policy, and provenance | Licenses and reuse rules are committed |
-| GAP-003 | P0 | Open | [#26](https://github.com/amichai-bd/nand2mario/issues/26) | Build command | A minimal `n2m` command runs from a fresh shell |
+| GAP-003 | P0 | Closed | [#26](https://github.com/amichai-bd/nand2mario/issues/26) | Build command | A minimal `n2m` command runs from a fresh shell |
 | GAP-004 | P0 | Open | [#27](https://github.com/amichai-bd/nand2mario/issues/27) | Real environment doctor | It proves compile, elaborate, run, JTAG, and UART detection |
 | GAP-005 | P0 | Open | [#28](https://github.com/amichai-bd/nand2mario/issues/28) | Board wiring and safe bring-up | VGA test card and UART ping pass with documented wiring |
 | GAP-006 | P0 | Open | [#29](https://github.com/amichai-bd/nand2mario/issues/29) | Clock, reset, and CDC plan | Frequencies, crossings, resets, and SDC rules are approved |
@@ -95,9 +95,11 @@ research until file-level reuse permission is confirmed.
 
 **Current state**
 
-The [build/output contract](tools/build-system.md) exists, but the product build
-command, package, and pinned environment are not implemented. Existing wiki
-tooling does not prove the planned product commands.
+The [build command](tools/build-system.md) implements tagged doctor, builder
+checks, and portable self-checking simulation. Its stdlib host code and pinned
+Icarus bootstrap satisfy [#26](https://github.com/amichai-bd/nand2mario/issues/26).
+Questa licensing, full environment/hardware doctor, and software/FPGA backends
+remain outside this result.
 
 **Risk**
 
@@ -410,4 +412,4 @@ Treat a C-like compiler as a separate later epic.
 ## Required closing order
 
 Follow the [future P0 sequence and implementation gate](agents/bootstrap-plan.md#future-p0-sequence).
-The current phase does not authorize starting that sequence.
+Only the current phase's explicit exceptions may proceed before that sequence.

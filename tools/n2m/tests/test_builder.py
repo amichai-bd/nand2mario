@@ -1,0 +1,187 @@
+"""Failure and cache contract tests; fake execution is not RTL evidence."""
+import contextlib
+import io
+import json
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+import tempfile
+from types import SimpleNamespace
+import unittest
+from unittest.mock import patch
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from n2m.cli import main
+from n2m.records import atomic_json, read_json, valid_tag, workspace
+from n2m.simulation import simulate
+from n2m.simulator import Simulator, ToolError
+
+ROOT = Path(__file__).resolve().parents[3]
+
+
+class FakeSimulator:
+    backend = "icarus"
+    compiler = "iverilog"
+    runtime = "vvp"
+
+    def __init__(self):
+        self.info = {"backend": "icarus", "version": "12.0", "path": "/tools/iverilog"}
+        self.calls = []
+        self.fail = False
+        self.warning = False
+        self.signature = True
+
+    def path(self, value):
+        return str(value)
+
+    def command(self, argv):
+        return argv
+
+    def run(self, argv, cwd=None):
+        self.calls.append(argv)
+        if argv[0] == self.compiler:
+            Path(argv[argv.index("-o") + 1]).write_text("compiled")
+            return SimpleNamespace(returncode=0, stdout="warning: test\n" if self.warning else "")
+        (cwd / "waves/smoke.vcd").write_text("wave")
+        return SimpleNamespace(returncode=1 if self.fail else 0,
+                               stdout="PASS builder-smoke" if self.signature and not self.fail else "FAIL expected=7 actual=3")
+
+
+class BuilderTests(unittest.TestCase):
+    def setUp(self):
+        base = ROOT / "workdir/builds/builder-unit-tests"
+        base.mkdir(parents=True, exist_ok=True)
+        self.temp = tempfile.TemporaryDirectory(prefix="path with spaces ", dir=base)
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        for owner in ("tools/n2m", "src/dv/builder"):
+            shutil.copytree(ROOT / owner, self.root / owner, ignore=shutil.ignore_patterns("__pycache__", "tests"))
+        shutil.copy(ROOT / "tools/build.py", self.root / "tools/build.py")
+        self.build = self.root / "workdir/builds/test"
+        self.build.mkdir(parents=True)
+        self.args = SimpleNamespace(target="builder-smoke", seed=1, rebuild=False)
+        self.sim = FakeSimulator()
+
+    def run_stage(self):
+        return simulate(self.root, self.build, self.args, self.sim)
+
+    def test_cache_reuse_and_rebuild(self):
+        self.assertEqual(self.run_stage()["status"], "PASS")
+        self.assertEqual(self.run_stage()["cache"], "CACHED")
+        self.assertEqual(len(self.sim.calls), 2)
+        self.args.rebuild = True
+        self.assertEqual(self.run_stage()["cache"], "BUILT")
+        self.assertEqual(len(self.sim.calls), 4)
+
+    def test_stale_sources_runner_config_seed_tools(self):
+        self.run_stage()
+        for file in ("src/dv/builder/builder_smoke.sv", "tools/n2m/cli.py", "src/dv/builder/targets.json"):
+            path = self.root / file
+            path.write_text(path.read_text() + "\n")
+            self.assertEqual(self.run_stage()["cache"], "BUILT", file)
+        self.args.seed = 22
+        self.assertEqual(self.run_stage()["cache"], "BUILT")
+        self.sim.info["version"] = "13.0"
+        self.assertEqual(self.run_stage()["cache"], "BUILT")
+        self.sim.info["path"] = "/other/iverilog"
+        self.assertEqual(self.run_stage()["cache"], "BUILT")
+
+    def test_missing_and_tampered_artifacts(self):
+        first = self.run_stage()
+        artifact = next(p for p in first["artifacts"] if p.endswith("simulation.vvp"))
+        (self.root / artifact).unlink()
+        self.assertEqual(self.run_stage()["cache"], "BUILT")
+        current = self.run_stage()
+        artifact = next(p for p in current["artifacts"] if p.endswith("smoke.vcd"))
+        (self.root / artifact).write_text("tampered")
+        self.assertEqual(self.run_stage()["cache"], "BUILT")
+
+    def test_failed_rebuild_and_interruption_not_cached(self):
+        self.run_stage()
+        self.args.rebuild = True
+        self.sim.fail = True
+        failed = self.run_stage()
+        self.assertEqual(failed["status"], "FAIL")
+        self.assertTrue(any("sim.log" in p for p in failed["artifacts"]))
+        self.sim.fail = False
+        self.args.rebuild = False
+        self.assertEqual(self.run_stage()["cache"], "BUILT")
+        current = self.build / "sim/test/builder-smoke/result.json"
+        record = read_json(current)
+        record["status"] = "RUNNING"
+        atomic_json(current, record)
+        self.assertEqual(self.run_stage()["cache"], "BUILT")
+
+    def test_signature_and_warning_fail(self):
+        self.sim.signature = False
+        self.assertEqual(self.run_stage()["status"], "FAIL")
+        self.sim.signature = True
+        self.sim.warning = True
+        self.assertEqual(self.run_stage()["status"], "FAIL")
+
+    def test_expected_nonzero_is_explicit(self):
+        target = self.root / "src/dv/builder/targets.json"
+        config = json.loads(target.read_text())
+        config["builder-smoke"].update(expected_exit="nonzero", signature="FAIL expected=7 actual=3")
+        target.write_text(json.dumps(config))
+        self.sim.fail = True
+        self.assertEqual(self.run_stage()["status"], "PASS")
+
+    def test_tags_default_collision_lock_and_traversal(self):
+        for tag in ("../escape", ".", "..", "UPPER", "con", "nul.txt", "a.", "x" * 49):
+            self.assertFalse(valid_tag(tag), tag)
+        self.assertTrue(valid_tag("smoke-01.v1"))
+        with workspace(self.root, None) as first:
+            self.assertRegex(first.name, r"^\d{8}t\d{6}z$")
+            with self.assertRaisesRegex(ValueError, "locked"):
+                with workspace(self.root, first.name):
+                    pass
+            with workspace(self.root, None) as second:
+                self.assertNotEqual(first, second)
+        self.assertFalse((first / ".lock").exists())
+
+    def test_corrupt_cache_and_escaping_artifact(self):
+        self.run_stage()
+        current = self.build / "sim/test/builder-smoke/result.json"
+        for invalid in ("[]", "null", "truncated"):
+            current.write_text(invalid)
+            self.assertEqual(self.run_stage()["cache"], "BUILT")
+        record = read_json(current)
+        record["artifacts"] = {"../../outside": "anything"}
+        atomic_json(current, record)
+        self.assertEqual(self.run_stage()["cache"], "BUILT")
+
+    def test_cli_failure_json_and_latest(self):
+        latest = self.root / "workdir/latest.txt"
+        latest.write_text("previous\n")
+        with patch("n2m.cli.Simulator", side_effect=ToolError("missing compiler")), \
+                patch("n2m.cli.git_state", return_value={"commit": "test"}), \
+                contextlib.redirect_stdout(io.StringIO()) as output:
+            status = main(["doctor", "--tag", "missing", "--json"], self.root)
+        self.assertEqual(status, 1)
+        self.assertEqual(json.loads(output.getvalue())["status"], "FAIL")
+        self.assertEqual(latest.read_text(), "previous\n")
+        self.assertEqual(read_json(self.root / "workdir/builds/missing/status.json")["status"], "FAIL")
+
+    def test_missing_executable(self):
+        with self.assertRaises(ToolError):
+            Simulator("icarus", "n2m-compiler-does-not-exist", "n2m-runtime-does-not-exist")
+
+    def test_cli_pass_cache_fail_latest(self):
+        with patch("n2m.cli.Simulator", return_value=self.sim), \
+                patch("n2m.cli.git_state", return_value={"commit": "test"}), \
+                contextlib.redirect_stdout(io.StringIO()):
+            command = ["sim", "test", "builder-smoke", "--tag", "cli", "--json"]
+            self.assertEqual(main(command, self.root), 0)
+            self.assertEqual(main(command, self.root), 0)
+            latest = self.root / "workdir/latest.txt"
+            latest.write_text("other-success\n")
+            self.sim.fail = True
+            self.assertEqual(main(command + ["--rebuild"], self.root), 1)
+            self.assertEqual(latest.read_text(), "other-success\n")
+            self.assertEqual(read_json(self.root / "workdir/builds/cli/manifest.json")["status"], "FAIL")
+
+
+if __name__ == "__main__":
+    unittest.main()

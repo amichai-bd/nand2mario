@@ -4,18 +4,18 @@ The [gap register](../preflight-gaps.md) owns gap status and close conditions.
 
 ## Current phase
 
-Infrastructure refinement and user-authorized reference RTL/display analysis.
-Maintain the existing methodology; study frog-bui and FROG_FS before proposing
-display microarchitecture or RTL. See the [reference study](../src/rtl-reference-style.md).
+Infrastructure refinement, reference RTL/display analysis, and the user's
+explicitly authorized isolated tile-pixel and minimal builder work
+([#68](https://github.com/amichai-bd/nand2mario/issues/68),
+[#26](https://github.com/amichai-bd/nand2mario/issues/26)). See the
+[reference study](../src/rtl-reference-style.md) and
+[build contract](../tools/build-system.md).
 
-Defer final product architecture and all product RTL, DV, SW, and FPGA work. This
-includes project build/doctor implementation and simulation, board-proving
-designs and tests, and physical runner setup. An assigned issue or a P0 priority
-does not authorize this work.
-
-The user must explicitly authorize broader product work before these prerequisites begin.
-Gap close conditions and separate programming and physical-test authorization
-still apply.
+Broader product architecture, CPU/PPU integration, software/FPGA backends,
+board-proving designs, and physical runner setup remain deferred. Issue assignment
+or priority alone does not authorize them. Scope/provenance decisions #24/#25,
+gap close conditions, and separate programming/physical-test authorization remain
+open and applicable.
 
 ## Completed infrastructure
 
@@ -41,7 +41,7 @@ exercise the existing flow with a fresh author and retain evidence in the PR.
 ## Future P0 sequence
 
 After an explicit phase change, complete assigned issues in this dependency
-order. This plan does not authorize work now.
+order. This sequence does not authorize work beyond the current phase.
 
 1. Approve project scope and legal boundaries:
    [GAP-001](../preflight-gaps.md#gap-001-scope-and-success-contract)
@@ -77,8 +77,8 @@ milestones.
 
 ## Implementation gate
 
-Functional Game Boy RTL is not ready to start; the current phase also blocks
-its P0 prerequisites.
+Broader functional Game Boy RTL remains gated; only the bounded exceptions in
+the current phase may proceed.
 
 Start the first functional CPU issue only when:
 
