@@ -7,6 +7,8 @@ development guidance in version control.
 
 - [Project charter](src/project-charter.md) records the approved direction and
   approved release acceptance.
+- [Clocks, resets, and CDC](src/clocks-resets-cdc.md) defines the planned
+  system timebase, VGA timing, reset release, and frame ownership.
 - [RTL reference style](src/rtl-reference-style.md) compares frog-bui and FROG_FS
   before display design.
 - [Research findings](research-findings.md) records the environment audit,
