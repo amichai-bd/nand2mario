@@ -405,8 +405,6 @@ workdir/builds/<tag>/
 ├── commands.log
 ├── scripts/
 ├── compile/
-│   ├── questa/
-│   ├── verilator/
 │   └── questa/
 ├── sim/
 │   ├── test/
