@@ -40,7 +40,7 @@
       "record": "sim/THIRD_PARTY.md",
       "purpose": "User-installed proprietary simulation and FPGA build tools",
       "local_changes": "none",
-      "storage": "User installation only; no redistribution; licensed Questa execution deferred"
+      "storage": "User installation only; no redistribution"
     }
   ]
 }
