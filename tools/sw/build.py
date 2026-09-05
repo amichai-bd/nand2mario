@@ -60,15 +60,16 @@ def _assemble_target(root, build, args, provenance, stage, folder):
     if not isinstance(target['assets'], dict):
         raise AssemblyError('SYNTAX', 'declared generated asset map required')
     assets, asset_sources, asset_outputs, asset_metadata = {}, [], {}, {}
-    for name, declaration in target['assets'].items():
+    for index, (name, declaration) in enumerate(sorted(target['assets'].items())):
         path = confined(tree, declaration['source'])
         relative = path.relative_to(tree).as_posix()
         shades = load_shades(path, relative)
         encoded = encode_shades(shades, relative)
         assets[name] = encoded
         asset_sources.append(path)
-        asset_outputs['asset-' + name + '.2bpp'] = encoded
-        asset_metadata[name] = {'source': relative, 'author': declaration['author'],
+        output_name = f'asset-{index:04d}.2bpp'
+        asset_outputs[output_name] = encoded
+        asset_metadata[name] = {'source': relative, 'author': declaration['author'], 'file': output_name,
                                 'width': shades['width'], 'height': shades['height'],
                                 'bytes': len(encoded), 'sha256': sha256(encoded).hexdigest()}
     if assets:

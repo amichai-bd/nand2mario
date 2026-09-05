@@ -78,7 +78,7 @@ def parser():
     linked_proof.add_argument("--tag")
     linked_proof.add_argument("--json", action="store_true")
     asset_check = sw.add_parser("asset-conformance", help="decode original assets and verify ASSET build integration")
-    asset_check.add_argument("--mutate", choices=("planes", "bitorder"))
+    asset_check.add_argument("--mutate", choices=("planes", "bitorder", "columns", "rows", "tiles"))
     asset_check.add_argument("--tag")
     asset_check.add_argument("--json", action="store_true")
     return result

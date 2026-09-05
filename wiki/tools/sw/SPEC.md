@@ -349,8 +349,9 @@ one-based source location and the affected row/pixel in the cause where relevant
 Undeclared ASSET references retain the assembler's source statement diagnostic.
 No failed request returns a successful object or ROM pointer.
 
-Assembly and package attempts retain each `asset-<name>.2bpp` plus deterministic
-`assets.json` containing original source, author, dimensions, byte count and hash.
+Assembly and package attempts retain each `asset-<index>.2bpp` (names sorted by case-sensitive identifier) plus deterministic
+`assets.json` containing original source, author, output filename, dimensions, byte count and hash.
+Indexed filenames keep case-distinct ASSET names separate on every host.
 Object asset hashes describe encoded bytes; stage inputs also fingerprint the raw
 shade JSON, registry, schema and converter. Every request validates and converts
 again. Cache reuse additionally verifies canonical asset bytes, metadata and the
@@ -367,9 +368,14 @@ bytes, decoded pixels, coverage and all producer artifacts are retained.
 `--mutate planes` exchanges each row's two bytes and must fail exactly at
 x=1,y=0 (expected 1, actual 2). `--mutate bitorder` reverses byte bit order and
 must fail at x=0,y=0 (expected 0, actual 3). Both actual CLI checks exit 1; positive
-round-trip exits 0. Host tests also cover tall/wide tile arrays, strict rejection,
+round-trip exits 0. A separate 769-case moving-pixel basis uses four tiles: one
+all-zero image and shades 1..3 at every unique pixel position. Every complete
+decoded image must match. `--mutate columns` swaps local x=0/4, `--mutate rows`
+swaps local y=0/4, and `--mutate tiles` swaps adjacent tiles. These real proof
+commands must fail, preventing repeating patterns from hiding a position remap.
+The passing basis retains coordinates, shades and each encoded digest. Host tests also cover tall/wide tile arrays, strict rejection,
 undeclared assets, corruption, dependency invalidation and identical builds across
-tags and checkout paths. Hosted Builder runs the same three conformance outcomes.
+tags and checkout paths. Hosted Builder runs the positive case and all five deliberate failures.
 This evidence establishes asset tooling, not PPU rendering or program execution.
 
 ## Artifacts and independent conformance

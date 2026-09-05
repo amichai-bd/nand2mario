@@ -9,7 +9,7 @@ from types import SimpleNamespace
 import unittest
 sys.path.insert(0,str(Path(__file__).resolve().parents[2]))
 from sw.assets import encode_shades, load_shades, validate_shades
-from sw.asset_conformance import decode_tiles, compare_pixels, proof
+from sw.asset_conformance import decode_tiles, compare_pixels, proof, basis_proof
 from sw.expressions import AssemblyError
 from sw.build import assemble_target
 from sw.rom_build import build_target
@@ -36,6 +36,30 @@ class AssetTests(unittest.TestCase):
         for width,height in [(8,8),(8,24),(24,8),(16,24)]:
             value={'schema_version':1,'width':width,'height':height,'pixels':[[(x+3*y)%4 for x in range(width)] for y in range(height)]}
             self.assertEqual(decode_tiles(encode_shades(value),width,height),value['pixels'])
+    def test_moving_pixel_basis_distinguishes_all_positions(self):
+        result=basis_proof();self.assertEqual(result['case_count'],769)
+        self.assertEqual(len({(c['x'],c['y'],c['shade']) for c in result['cases'][1:]}),768)
+        for mutation in ['columns','rows','tiles']:
+            with self.subTest(mutation=mutation),self.assertRaises(ValueError):basis_proof(mutation)
+
+    def test_case_sensitive_asset_names_have_distinct_portable_outputs(self):
+        root=self.checkout('case variants');build=root/'workdir/builds/a';build.mkdir(parents=True)
+        registry=root/'src/sw/targets.json';data=json.loads(registry.read_text())
+        target=data['targets']['assets-basic']
+        target['assets']['pattern']={'source':'other.json','author':'Original changed-pixel fixture'}
+        registry.write_text(json.dumps(data))
+        other=deepcopy(self.fixture);other['pixels'][0][0]=3
+        tree=root/'src/sw/assets/original-pattern';(tree/'other.json').write_text(json.dumps(other))
+        source=tree/'main.asm';source.write_text(source.read_text()+'ASSET "pattern"\n')
+        result=build_target(root,build,SimpleNamespace(target='assets-basic',rebuild=False),{})
+        self.assertEqual(result['status'],'PASS',result)
+        paths={Path(n).name:root/n for n in result['artifacts']}
+        metadata=json.loads(paths['assets.json'].read_text())
+        self.assertNotEqual(metadata['Pattern']['file'].casefold(),metadata['pattern']['file'].casefold())
+        upper=paths[metadata['Pattern']['file']].read_bytes();lower=paths[metadata['pattern']['file']].read_bytes()
+        self.assertNotEqual(upper,lower)
+        rom=(root/result['rom']).read_bytes();self.assertEqual(rom[513:641],upper);self.assertEqual(rom[641:769],lower)
+
     def test_strict_shape_dimension_and_pixel_rejections(self):
         cases=[]
         for field in ['width','height']:
@@ -58,9 +82,9 @@ class AssetTests(unittest.TestCase):
         root=self.checkout('proof');build=root/'workdir/builds/a';build.mkdir(parents=True)
         good=proof(root,build,SimpleNamespace(mutate=None),{})
         self.assertEqual(good['status'],'PASS',good);self.assertEqual(good['local_pixel_shade_bins'],256)
-        for mutation in ['planes','bitorder']:
+        for mutation in ['planes','bitorder','columns','rows','tiles']:
             failed=proof(root,build,SimpleNamespace(mutate=mutation),{})
-            self.assertEqual(failed['status'],'FAIL');self.assertTrue(failed['error'].startswith('asset pixel mismatch'))
+            self.assertEqual(failed['status'],'FAIL');self.assertIn('asset pixel mismatch',failed['error'])
             self.assertTrue(any(n.endswith('actual.2bpp') for n in failed['artifacts']))
         source=root/'src/sw/assets/original-pattern/main.asm';source.write_text(source.read_text().replace('"Pattern"','"Undeclared"'))
         failed=build_target(root,build,SimpleNamespace(target='assets-basic',rebuild=False),{})
@@ -73,10 +97,10 @@ class AssetTests(unittest.TestCase):
         first=build_target(root,build,args,{})
         self.assertEqual(first['status'],'PASS');self.assertEqual(build_target(root,build,args,{})['cache'],'HIT')
         assembly=build/'sw/assemble/assets-basic/result.json'
-        record=json.loads(assembly.read_text());binary=root/record['asset_outputs']['asset-Pattern.2bpp'];binary.write_bytes(b'bad')
+        record=json.loads(assembly.read_text());binary=root/record['asset_outputs']['asset-0000.2bpp'];binary.write_bytes(b'bad')
         rebuilt=assemble_target(root,build,args,{})
-        self.assertEqual(rebuilt['cache'],'MISS');self.assertEqual((root/rebuilt['asset_outputs']['asset-Pattern.2bpp']).read_bytes(),encode_shades(self.fixture))
-        (root/rebuilt['asset_outputs']['asset-Pattern.2bpp']).unlink()
+        self.assertEqual(rebuilt['cache'],'MISS');self.assertEqual((root/rebuilt['asset_outputs']['asset-0000.2bpp']).read_bytes(),encode_shades(self.fixture))
+        (root/rebuilt['asset_outputs']['asset-0000.2bpp']).unlink()
         self.assertEqual(assemble_target(root,build,args,{})['cache'],'MISS')
         asset=root/'src/sw/assets/original-pattern/shades.json';data=json.loads(asset.read_text());data['pixels'][0][0]=3;asset.write_text(json.dumps(data))
         changed=build_target(root,build,args,{})

@@ -61,6 +61,15 @@ jobs:
             exit 1
           fi
           python -c "import json; from pathlib import Path; r=json.loads(Path('workdir/builds/ci-assets/manifest.json').read_text()); assert r['status']=='FAIL' and r['error']=='asset pixel mismatch x=0 y=0 expected=0 actual=3'"
+      - name: Reject pixel, row and tile position permutations
+        run: |
+          for mode in columns rows tiles; do
+            if python tools/build.py sw asset-conformance --tag ci-assets --mutate "$mode" --json; then
+              echo "Position permutation unexpectedly passed"
+              exit 1
+            fi
+            python -c "import json,sys; from pathlib import Path; r=json.loads(Path('workdir/builds/ci-assets/manifest.json').read_text()); expected='asset pixel mismatch x=0 y=0 expected=0 actual=1' if sys.argv[1]=='tiles' else 'asset basis case=1: asset pixel mismatch x=0 y=0 expected=1 actual=0'; assert r['status']=='FAIL' and r['error']==expected" "$mode"
+          done
       - name: Report simulation scope
         run: |
           echo "Host contracts and the actual pinned RGBDS oracle. Licensed Questa simulation is not run on hosted PR jobs; actual local evidence is required until the trusted route in issue #32 is configured." >> "$GITHUB_STEP_SUMMARY"
