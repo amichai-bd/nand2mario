@@ -122,6 +122,21 @@ class LinkerTests(unittest.TestCase):
         with self.assertRaises(AssemblyError) as raised:link([huge],{'schema_version':1,'sections':rows},{'unit':'huge.asm','symbol':'Start'})
         self.assertEqual(raised.exception.diagnostic['code'],'EXHAUSTION')
 
+    def test_malformed_object_layout_and_profile_metadata(self):
+        objects,layout,entry=self.fixture()
+        broken=deepcopy(objects);broken[0][1]['schema_version']=2
+        with self.assertRaises(AssemblyError) as raised:link(broken,layout,entry)
+        self.assertEqual(raised.exception.diagnostic['code'],'SCHEMA_MISMATCH')
+        for field,value in [('extra',1),('schema_version',True)]:
+            bad={**layout,field:value}
+            with self.assertRaises(AssemblyError):link(objects,bad,entry)
+        with self.assertRaises(AssemblyError) as raised:link(objects,layout,entry,'stock-boot')
+        self.assertEqual(raised.exception.diagnostic['code'],'PROFILE_MISMATCH')
+        linked=link(objects,layout,entry)
+        for title,version in [('',0),('lower',0),('TOO LONG FOR TITLE',0),('OK',True),('OK',256),('OK',-1)]:
+            with self.subTest(title=title,version=version),self.assertRaises(AssemblyError):package(linked,title,version)
+        with self.assertRaises(AssemblyError):package(linked,'OK',0,'unknown')
+
     def checkout(self,name):
         root=self.tree/name
         for part in ['tools','src/sw','cfg']:
