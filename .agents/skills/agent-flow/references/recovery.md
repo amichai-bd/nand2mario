@@ -20,6 +20,11 @@ next action in the handoff or PR. Update the issue only when the blocker needs
 contract clarification, a decision, or documented drift. Do not loop on unchanged
 deterministic failures.
 
+If a merge command reports an error after sending its request, follow the
+worktree guide's [remote verification](../../../../worktrees/README.md#merge).
+A merged remote PR is success even when a later local checkout or branch action
+failed. Report that local failure to root; do not submit the merge again.
+
 After merge, root verifies cleanup and ends the author and reviewer sessions
 using the runtime's supported tools. If no close operation exists, let agents
 finish or interrupt active work; report that limitation rather than claiming
