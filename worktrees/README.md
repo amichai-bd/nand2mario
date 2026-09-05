@@ -1,7 +1,6 @@
 # Issue worktrees
 
-The root checkout stays clean on `main`. It orchestrates isolated author and
-reviewer checkouts. `workdir/` stores generated output inside each checkout.
+Setup, merge, and cleanup methods for the [work rules](../AGENTS.md#work).
 
 ## Create
 
@@ -12,10 +11,11 @@ git fetch origin
 git worktree add -b 42-fix-timer worktrees/42-fix-timer origin/main
 ```
 
-The branch and author directory have the same name: `<number>-<slug>`.
 `<repo-root>` means the root orchestration checkout, not a required environment
 variable. Record the agent, branch, and relative worktree in the orchestration
-handoff before editing, then in the PR when opened. Never share a worktree.
+handoff before editing, then in the PR when opened. See
+[recovery](../.agents/skills/agent-flow/references/recovery.md#retained-context)
+for retained context.
 
 For PR 51, resolve its current head and give a different agent a detached
 checkout named `worktrees/review-51-<sha7>/`:
@@ -31,7 +31,8 @@ Follow [agent-flow](../.agents/skills/agent-flow/SKILL.md) for review and babysi
 
 ## Merge
 
-After current-SHA review and required checks pass, the author runs:
+Once [review readiness](../.agents/skills/agent-flow/references/review.md#verdict-and-pr-state)
+and the [delivery obligations](../AGENTS.md#work) are met, the author runs:
 
 ```powershell
 gh pr merge <number> --squash
