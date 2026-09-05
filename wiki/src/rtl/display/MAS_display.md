@@ -47,8 +47,8 @@ mapping. Pipeline controls below are this unit's interface, not DMG dot timing.
 
 Two combinational selections feed five flip-flops: index, shade, and valid.
 Explicit S0/S1 names preserve the [reference study](../../rtl-reference-style.md)'s
-stage alignment. Original RTL uses one `always_ff` block without a macro or
-package needed only by this unit. There is no memory, CDC, vendor primitive,
+stage alignment. Original RTL uses three `DFF_RST_EN` calls from the
+[shared register convention](../../rtl-reference-style.md#product-register-convention). There is no memory, CDC, vendor primitive,
 clock generation, or dependency on reference HDL.
 
 This unit does not fetch tiles, access registers, arbitrate VRAM/OAM, resolve

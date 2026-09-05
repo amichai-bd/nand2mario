@@ -1,10 +1,51 @@
-# RTL reference style for the display
+# RTL register convention and reference style
 
 Use the references' explicit stages, typed boundaries, and small memory wrappers
 to guide original RTL. Their text engines illustrate indirection and scanout;
-they do not define Game Boy behavior. This is an analysis, not an approved
-microarchitecture. The [current phase](../agents/bootstrap-plan.md#current-phase)
+they do not define Game Boy behavior. The register convention below is adopted for product RTL; the reference
+analysis does not select a Game Boy microarchitecture. The [current phase](../agents/bootstrap-plan.md#current-phase)
 and [gap register](../preflight-gaps.md) still govern implementation.
+
+## Product register convention
+
+Use the original [shared register header](../../src/rtl/common/macros.svh) for
+ordinary product registers. Include it with the literal repository path
+`src/rtl/common/macros.svh`; the [builder](../tools/n2m/SPEC.md#hdl-includes)
+owns resolution and dependency checks. Keep combinational calculations separate
+and give each output exactly one driver. Macro calls are module items, without
+an extra semicolon. Parenthesize argument expressions containing commas.
+
+| Form and argument order | Rising-edge update |
+|---|---|
+| `DFF(Q, D, CLK)` | Capture D |
+| `DFF_RST(Q, D, CLK, RST)` | Clear to zero on reset; otherwise capture D |
+| `DFF_RST_VAL(Q, D, CLK, RST, RESET_VAL)` | Capture RESET_VAL on reset; otherwise D |
+| `DFF_EN(Q, D, CLK, EN)` | Capture D when enabled; otherwise hold |
+| `DFF_RST_EN(Q, D, CLK, EN, RST, RESET_VAL)` | Reset value takes priority; otherwise capture D when enabled or hold |
+
+All assignments are nonblocking. Reset is synchronous and active high; input
+changes between positive edges do not update Q. Q's declared width controls the
+assignment width. Use explicitly sized reset values where nonzero and make
+signedness and truncation intentional. Forms without reset have no defined
+initial value. Controls must meet the consuming module's known-value contract.
+
+Preserve explicit specialized blocks for asynchronous assertion/synchronized
+release, attributed synchronizer chains, memory inference or vendor primitives
+when an ordinary macro cannot represent the required semantics. Document the
+exception beside the block and in its owner contract. Never replace an
+asynchronous reset with a synchronous macro. Testbench stimulus, reference models
+and scoreboards remain independent; this convention does not require rewriting
+them with product macros.
+
+The vocabulary and argument order follow the inspected committed
+[frog-bui header at da16dc84][register-reference]. These are originally written
+nand2mario definitions of the specified register operations, not an imported
+header. No memory or assertion macro library is adopted. The
+[source policy](../tools/provenance.md) still prohibits unlicensed source reuse.
+The [directed test plan](../../src/dv/common/README.md) verifies the five forms,
+and the [tile contract](rtl/display/MAS_display.md) retains its independent oracle.
+
+[register-reference]: https://github.com/amichai-bd/frog-bui/blob/da16dc841d50c6c48827225b91dac6b8716b4311/src/rtl/common/macros.svh
 
 ## Sources and limits
 
@@ -26,7 +67,7 @@ result. Test code establishes intended checks, not their passing status.
 | Boundaries | Both separate text/font storage, bus adaptation, graphics, and raster timing. FROG_FS nests timing inside [graphics][fs-graphics]; frog-bui passes coordinates and sync/status into [graphics][bui-graphics]. | Give each module one timing or storage responsibility; choose boundaries from the future contract. |
 | Names and types | Both use `rv_` modules, `u_` instances, `logic`, uppercase constants, and `t_` packed records/enums in [packages][fs-types]. FROG_FS imports `rv_pkg::*`; frog-bui [qualifies package types and widths][bui-types]. | Preserve recognizable naming and typed interfaces; define only shared concepts in packages. CPU-specific widths and names are not a Game Boy contract. |
 | Stages | CPU memory paths use `Q103H` request and `Q104H` response suffixes. FROG_FS graphics uses `V0H` address, `V1H` character/font address, and `V2H` font data. frog-bui uses `Q1H`/`Q2H` for pixel metadata. | Make cycle ownership visible in names and carry validity, coordinates, and sync beside data. Do not inherit CPU stage numbers mechanically. |
-| Logic | Both use `assign`/`always_comb` for calculations and `DFF*` macros for state. [FROG_FS MMIO][fs-mmio] and [frog-bui MMIO][bui-mmio] default next state to current state before writes. | Keep next-state logic complete and register updates obvious. Preserve the concise macro idiom if adopted; independently define and test its semantics. |
+| Logic | Both use `assign`/`always_comb` for calculations and `DFF*` macros for state. [FROG_FS MMIO][fs-mmio] and [frog-bui MMIO][bui-mmio] default next state to current state before writes. | Keep next-state logic complete and register updates obvious. Use the adopted register convention above; define and test its semantics independently. |
 | Reset | Shared [DFF macros][macros] use positive clock edges: `DFF_RST` is synchronous, active high, clearing to zero; `DFF_RST_VAL` chooses the value; `DFF_RST_EN` gives reset priority over enable. Board wrappers differ: [FROG_FS][fs-reset] synchronizes/debounces a button; [frog-bui][bui-reset] asserts reset asynchronously and releases through two destination flops. | State reset semantics per domain; similarly named modules need not have equivalent contracts. |
 | RAM and ports | [FROG_FS][fs-ram] directly instantiates dual-port MAX 10 `altsyncram`, with debug access selecting the scan port. [frog-bui][bui-ram] separates portable byte RAM from a Quartus wrapper and keeps scanout independent of the CPU/host port. | Put vendor implementation behind a small boundary. Specify latency, arbitration, byte lanes, and collisions before choosing RAM. |
 

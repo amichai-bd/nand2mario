@@ -26,7 +26,11 @@ class RunnerTests(unittest.TestCase):
         self.script = self.root / "tools/sim/tile_pixel.py"
         self.script.parent.mkdir(parents=True)
         self.script.write_text("runner", encoding="utf-8")
-        self.source = self.root / "unit.sv"
+        (self.root / "src").mkdir()
+        helper = self.root / "tools/n2m/hdl.py"
+        helper.parent.mkdir()
+        helper.write_text("helper")
+        self.source = self.root / "src/unit.sv"
         self.source.write_text("source", encoding="utf-8")
 
     def invoke(self, responder=None, missing=False, simulator="icarus"):
@@ -50,6 +54,23 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual((code, manifest["status"]), (0, "PASS"))
         self.assertEqual(run.call_count, 4)
         self.assertIn(str(self.source), manifest["commands"][1]["argv"])
+
+    def test_header_manifest_and_missing_dependency_fail_before_tools(self):
+        self.source.write_text('`include "src/shared.svh"\n')
+        header = self.root / "src/shared.svh"
+        header.write_text('// shared\n')
+        code, manifest, _ = self.invoke()
+        self.assertEqual(code, 0)
+        self.assertIn("src/shared.svh", manifest["inputs"])
+        command = manifest["commands"][1]["argv"]
+        self.assertEqual(command[command.index("-I") + 1], str(self.root))
+
+    def test_missing_header_retains_failure_manifest(self):
+        self.source.write_text('`include "src/missing.svh"\n')
+        code, manifest, run = self.invoke()
+        self.assertEqual(code, 1)
+        self.assertIn("missing", manifest["error"])
+        run.assert_not_called()
 
     def test_missing_tool_records_failure(self):
         code, manifest, run = self.invoke(missing=True)

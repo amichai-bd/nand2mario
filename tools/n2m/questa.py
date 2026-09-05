@@ -32,7 +32,7 @@ def commands(simulator, root, target, seed, compiler, attempt):
         ([tools["vmap"], "-c"], compiler, compiler / "ini.log", "zero"),
         ([tools["vlib"], "work"], compiler, compiler / "library.log", "zero"),
         ([tools["vmap"], "work", library], compiler, compiler / "map.log", "zero"),
-        ([tools["vlog"], "-sv", "-work", "work",
+        ([tools["vlog"], "-sv", "-work", "work", "+incdir+" + simulator.path(root),
           *[simulator.path(root / source) for source in target["sources"]]],
          compiler, compiler / "compile.log", "zero"),
         ([tools["vmap"], "-c"], attempt, attempt / "ini.log", "zero"),

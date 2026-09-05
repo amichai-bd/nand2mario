@@ -68,6 +68,23 @@ class FpgaTests(unittest.TestCase):
         with patch.object(fpga, "tools", return_value=self.info), patch.object(fpga, "execute", side_effect=execute or self.execute):
             return fpga.build_fpga(self.root, self.build, self.args)
 
+    def test_headers_rebuild_and_preserve_external_dependency_rejection(self):
+        source = self.root / "src/smoke.sv"
+        source.write_text('`include "src/shared.svh"\n')
+        header = self.root / "src/shared.svh"
+        header.write_text('// first\n')
+        self.assertEqual(self.run_build()["cache"], "BUILT")
+        self.assertEqual(self.run_build()["cache"], "CACHED")
+        header.write_text('// changed\n')
+        result = self.run_build()
+        self.assertEqual(result["cache"], "BUILT")
+        self.assertIn("src/shared.svh", result["inputs"])
+        qsf = next(self.build.rglob("design.qsf")).read_text()
+        self.assertIn("SEARCH_PATH", qsf)
+        for bad in ('$readmemh("memory.hex", storage);', '`include DYNAMIC', '`include "src/missing.svh"'):
+            header.write_text(bad)
+            self.assertEqual(self.run_build()["status"], "FAIL")
+
     def test_cache_input_tool_artifact_and_failed_rebuild(self):
         result = self.run_build()
         self.assertEqual(result["status"], "PASS", result)

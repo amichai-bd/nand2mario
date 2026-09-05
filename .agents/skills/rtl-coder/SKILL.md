@@ -11,12 +11,21 @@ requirements/design aligned with `src/rtl/`, verification, and evidence.
 
 1. State ports, clocks, resets, state, timing, and invalid cases.
 2. Keep modules small, synchronous intent explicit, and widths and signedness clear.
+   Use the [product register convention](../../../wiki/src/rtl-reference-style.md#product-register-convention)
+   for ordinary registers: `DFF`, `DFF_RST`, `DFF_RST_VAL`, `DFF_EN`, and
+   `DFF_RST_EN(Q, D, CLK, EN, RST, RESET_VAL)`. Keep reset polarity, priority,
+   enable holding and stage timing explicit; preserve documented specialized
+   asynchronous/attributed blocks. Never substitute synchronous reset for async.
 3. Avoid latches, implicit nets, unsafe crossings, and vendor logic outside FPGA
    wrappers.
 4. Align wiki, assertions, and directed tests with behavior changes using the
    [review guide](../agent-flow/references/review.md).
-5. Run the smallest compile and simulation that prove the contract.
+5. Run the smallest compile and checked Questa simulation that prove the contract.
+   Use Questa only for new simulation evidence; do not start Icarus runs.
 
 Use [the checklist](templates/rtl-checklist.md) in review notes. Read
 [the scenarios](examples/scenarios.md) for the skill boundary. Stop when the
 contract, clocking, reset, or crossing behavior is undecided.
+
+[Issue #106](https://github.com/amichai-bd/nand2mario/issues/106) tracks removal of
+legacy simulator tooling and automatic CI; it does not permit new Icarus runs.

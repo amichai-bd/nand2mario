@@ -187,6 +187,26 @@ and the output boundaries below. They are not implemented yet.
 The [software contract](../sw/SPEC.md) defines the planned `sw build`
 inputs, deterministic artifacts and independent conformance requirements.
 
+## HDL includes
+
+Simulation and FPGA builds share the [dependency resolver](../../../tools/n2m/hdl.py).
+Sources are repository `src/` files. An include must name a literal, canonical
+repository path such as `src/rtl/common/macros.svh`. Only `.svh` headers and
+ASCII path letters, digits, underscore, hyphen, slash and period are accepted.
+Relative traversal, missing files, escapes, symlink files, cycles, dynamic names,
+extra include tokens and ambiguous source-directory shadow files fail before
+cache lookup or compilation. Closure is limited to 256 source/header files.
+Comments are ignored; includes in every conditional branch are dependencies.
+This is deliberately bounded parsing, not a general preprocessor.
+
+The repository root is the compiler include directory for Icarus, Questa and
+Quartus. Every transitive header and the resolver implementation is fingerprinted;
+a changed header rebuilds the stage. A missing or unsupported dependency cannot
+reuse previous success. FPGA headers retain the existing prohibition on external
+file reads; constraints retain their separate SDC checks. The
+[standalone tile runner](../sim/SPEC.md#standalone-checks) uses the same resolver
+and includes its header hashes in each fresh manifest, without caching.
+
 ## FPGA build
 
 ```powershell
@@ -210,8 +230,8 @@ is `10M50DAF484C7G`; top names are identifiers. Inputs are unique existing
 repository-relative `.sv` and `.sdc` paths under `src/`, without traversal or
 symlink escapes. Physical pins are unique `PIN_<letters><digits>` names; port
 names permit an optional numeric or wildcard array index. Physical assignments
-use 3.3-V LVTTL. This version supports self-contained inputs; HDL includes/file
-reads and external/dynamic SDC loads are rejected. SDC permits one literal clock,
+use 3.3-V LVTTL. HDL uses the bounded [include contract](#hdl-includes); HDL file reads and
+external/dynamic SDC loads are rejected. SDC permits one literal clock,
 delay, exception or uncertainty assignment per line, using the bounded command
 set in the [validator](../../../tools/n2m/fpga.py). Collection getters may select
 ports, clocks, pins, cells, registers, nets, inputs or outputs; nested bracket

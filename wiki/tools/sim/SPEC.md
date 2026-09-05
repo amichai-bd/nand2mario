@@ -49,7 +49,10 @@ python tools/sim/tile_pixel.py --sim questa --tag tile-questa
 ```
 
 This standalone runner checks normal and deliberately corrupt cases together.
-It records hashes, commit/dirty status, commands, tool banners, logs, and VCDs
+It resolves and hashes transitive headers under the shared
+[include contract](../n2m/SPEC.md#hdl-includes). Missing or unsupported includes
+retain a failure manifest before tools run. It records commit/dirty status,
+commands, tool banners, logs, and VCDs
 under a fresh tag; existing tags are rejected and results are never cached.
 Each Questa case retains a `run.do` macro. Its handlers run with `-onfinish stop`
 and inspect the simulator's stop reason: normal `$finish` exits zero; fatal,
