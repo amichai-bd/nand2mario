@@ -7,6 +7,7 @@ import platform
 import re
 import subprocess
 import sys
+import uuid
 
 from .records import atomic_json, atomic_text, file_hash, git_state, workspace
 from .simulation import simulate
@@ -74,10 +75,13 @@ def main(argv=None, root=None):
                 report.update(status="FAIL", error=str(error))
                 failure_artifacts = {}
                 if isinstance(error, ToolError):
-                    log = build / "discovery.log"
+                    folder = build / "discovery" / uuid.uuid4().hex
+                    folder.mkdir(parents=True)
+                    log = folder / "failure.log"
                     log.write_text(error.output + "\n" + str(error) + "\n", encoding="utf-8")
                     failure_artifacts[log.relative_to(root).as_posix()] = file_hash(log)
                     report["artifacts"] = failure_artifacts
+                    atomic_json(folder / "result.json", report)
                 if args.command == "sim" and re.fullmatch(r"[a-z0-9][a-z0-9_-]*", args.target):
                     atomic_json(build / "sim/test" / args.target / "result.json",
                                 {"status": "FAIL", "error": str(error), "artifacts": failure_artifacts})

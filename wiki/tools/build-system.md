@@ -76,7 +76,8 @@ Damaged artifacts also invalidate it. A matching successful result may be
 `CACHED`, including a verified expected-failure target. Cache reuse performs no
 simulation or runtime license checkout; use `--rebuild` for fresh evidence.
 The failing smoke target still reports FAIL. Discovery failures retain their
-diagnostics and invalidate any previous success for the requested target.
+diagnostics and request record under `discovery/<attempt>/` and invalidate any
+previous success for the requested target.
 
 The [gap register](../preflight-gaps.md#gap-008-verification-baseline) records
 the licensed tests established by this integration and outstanding coverage.

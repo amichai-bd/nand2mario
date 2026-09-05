@@ -151,7 +151,11 @@ class QuestaTests(unittest.TestCase):
                 self.assertEqual(main(command + ["--rebuild"], self.root), 1)
             current = self.root / "workdir/builds/questa-cli/sim/test/builder-smoke/result.json"
             self.assertEqual(read_json(current)["status"], "FAIL")
-            self.assertIn("partial discovery", (current.parents[3] / "discovery.log").read_text())
+            failure_log = next(iter(read_json(current)["artifacts"]))
+            self.assertIn("partial discovery", (self.root / failure_log).read_text())
+            self.assertEqual(main(command, self.root), 0)
+            self.assertTrue((self.root / failure_log).is_file())
+            self.assertEqual(read_json((self.root / failure_log).with_name("result.json"))["status"], "FAIL")
 
 
 if __name__ == "__main__":
