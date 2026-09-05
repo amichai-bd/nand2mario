@@ -141,6 +141,13 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("unexpected error count", manifest["error"])
 
+    def test_questa_nonzero_warning_summary_fails(self):
+        code, manifest, _ = self.invoke(
+            lambda argv, **kwargs: subprocess.CompletedProcess(argv, 0, "Errors: 0, Warnings: 1"),
+            simulator="questa")
+        self.assertEqual(code, 1)
+        self.assertIn("unexplained warning", manifest["error"])
+
     def test_timeout_preserves_partial_output(self):
         def timeout(argv, **kwargs):
             raise subprocess.TimeoutExpired(argv, 180, output=b"partial evidence")

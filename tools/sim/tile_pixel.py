@@ -55,7 +55,7 @@ def main():
         log.write_text(result.stdout, encoding="utf-8")
         record["commands"].append({"argv": command, "cwd": str(directory.relative_to(build)),
                                    "exit_code": result.returncode, "log": str(log.relative_to(build))})
-        if re.search(r"(?:\*\* Warning:|\bwarning:)", result.stdout, re.IGNORECASE):
+        if re.search(r"(?:\*\* Warning:|\bwarning:|\bWarnings:\s*[1-9])", result.stdout, re.IGNORECASE):
             raise RuntimeError(f"unexplained warning: {log}")
         diagnostics = re.findall(r"(?im)^.*\b(?:error|fatal)(?: \([^)]*\))?:.*$", result.stdout)
         if any(not (failure and marker and marker in line) for line in diagnostics):
