@@ -556,3 +556,54 @@ retained evidence and transaction traces. It is a host entry point alongside
 `tools/build.py`; no new dispatcher subcommand is implied. The
 [baseline contract](../../src/dv/baseline/SPEC.md#execution-and-regression) owns
 its options, regression levels, wall-budget semantics and trace checks.
+
+## Generated clocking inputs
+
+An FPGA target may declare the bounded `pll` definition for `n2m_pixel_pll`:
+input period 20000 ps and output multiplier/divisor 63/125. The generator owns
+50% duty, zero phase, normal operation and CLK0 compensation. These settings
+implement the [clock contract](../../src/clocks-resets-cdc.md), which owns the
+selected rates. Other PLL definitions are rejected.
+This initial proof schema requires the `clocking_proof` top and its named wrapper
+hierarchy. A different integration hierarchy needs an explicit evidence-checker
+extension; it cannot inherit this topology classification implicitly.
+
+`qmegawiz` comes from the explicit Quartus directory. Its executable, ALTPLL
+definition/rules/wizard XML and primitive declaration hashes enter the request
+fingerprint. The generated HDL, generation command/log and vendor auxiliary
+files remain under the immutable attempt. The generated HDL is checked against
+the requested parameters and loaded directly; generated QIP Tcl is retained but
+not evaluated. Reuse requires this evidence as well as the complete fit/timing
+inventory. Generator errors fail the request and remain retained; there is no
+automatic retry or acceptance of partial output. A later explicit build request
+creates a separate attempt.
+
+Optional declarative `timing` assignments produce owned SDC with checked exact
+asynchronous-reset pins and output clock/port collections. Every collection must
+match its declared count. Reset exceptions terminate only at named `clrn` pins;
+they do not cut synchronized reset consumers or whole clock domains. Output
+delays explicitly include source latency. Arbitrary Tcl bodies and external
+constraint loads remain unsupported in source SDC.
+
+The MAX 10 ALTPLL lock output contains the vendor's documented event latch when
+`areset` is enabled ([PLL control signals, section 2.3.6][lock-guide]). Its raw
+`locked` transition clocks a constant-one D input; PLL reset clears the latch,
+and output logic still propagates raw lock loss. This is not a periodic datapath
+clock. The builder may explain exactly that one `no_clock` row only after checking
+the generated functional netlist: latch input/reset/initial state, the lock gate
+truth table, and all downstream buffers/fanout through the two lock sampling reset
+pins. Supported LUT, clock-control and register parameter sets are exact; default
+constant declarations/assignments and absence of extra drivers are checked.
+The installed atom/register model hashes join the generator fingerprint.
+Unsupported primitive modes, structural statements, extra consumers, or any other no-clock
+row fail. Synthetic topology mutations prove these rejections.
+
+The raw row and vendor netlist remain evidence. All functional unconstrained-path
+counts must stay zero. Both clocks require setup, hold, recovery, removal, and
+minimum-pulse results at every required corner. Exact adjacent reset-stage
+setup/hold reports prove the release chain remains timed. CDC/MTBF reports are
+retained; their reset-chain identification is not a hardware reliability claim.
+The functional netlist writer's exact diagnostic 10905 explains that MAX 10
+supports functional, not timing, simulation netlists; TimeQuest supplies timing.
+
+[lock-guide]: https://docs.altera.com/r/docs/683047/21.1/max-10-clocking-and-pll-user-guide/pll-control-signals

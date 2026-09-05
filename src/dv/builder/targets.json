@@ -1,43 +1,65 @@
 {
   "interfaces": {
-    "sources": ["src/rtl/interfaces/n2m_interfaces_pkg.sv", "src/dv/interfaces/tb_interfaces.sv"],
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/dv/interfaces/tb_interfaces.sv"
+    ],
     "top": "tb_interfaces",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS interface vectors widths spaces"
   },
   "interfaces-corrupt": {
-    "sources": ["src/rtl/interfaces/n2m_interfaces_pkg.sv", "src/dv/interfaces/tb_interfaces.sv"],
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/dv/interfaces/tb_interfaces.sv"
+    ],
     "top": "tb_interfaces",
-    "args": ["+corrupt"],
+    "args": [
+      "+corrupt"
+    ],
     "expected_exit": "nonzero",
     "signature": "INTERFACE_MISMATCH expected=01000007123456790001 actual=01000007123456780001"
   },
   "builder-smoke": {
-    "sources": ["src/dv/builder/builder_smoke.sv"],
+    "sources": [
+      "src/dv/builder/builder_smoke.sv"
+    ],
     "top": "builder_smoke",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS builder-smoke"
   },
   "builder-smoke-fail": {
-    "sources": ["src/dv/builder/builder_smoke.sv"],
+    "sources": [
+      "src/dv/builder/builder_smoke.sv"
+    ],
     "top": "builder_smoke",
-    "args": ["+inject_failure"],
+    "args": [
+      "+inject_failure"
+    ],
     "expected_exit": "zero",
     "signature": "PASS builder-smoke"
   },
   "tile-pixel": {
-    "sources": ["src/rtl/display/dmg_tile_pixel.sv", "src/dv/display/tb_dmg_tile_pixel.sv"],
+    "sources": [
+      "src/rtl/display/dmg_tile_pixel.sv",
+      "src/dv/display/tb_dmg_tile_pixel.sv"
+    ],
     "top": "tb_dmg_tile_pixel",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS pixel_cases=524288 palette_cases=8192 cycles=532521 seed=none"
   },
   "tile-pixel-corrupt": {
-    "sources": ["src/rtl/display/dmg_tile_pixel.sv", "src/dv/display/tb_dmg_tile_pixel.sv"],
+    "sources": [
+      "src/rtl/display/dmg_tile_pixel.sv",
+      "src/dv/display/tb_dmg_tile_pixel.sv"
+    ],
     "top": "tb_dmg_tile_pixel",
-    "args": ["+corrupt"],
+    "args": [
+      "+corrupt"
+    ],
     "expected_exit": "nonzero",
     "signature": "MISMATCH cycle=5 phase=after-edge expected=10110 actual=10111 low=00 high=01 x=7 palette=e4 seed=none"
   },
@@ -94,5 +116,55 @@
     ],
     "expected_exit": "nonzero",
     "signature": "REGISTER_MISMATCH cycle=5 seed=1 expected=2d6aeb55fbd6aeb5 actual=2d6aeb55fbd6aeb4"
+  },
+  "clocking": {
+    "sources": [
+      "src/rtl/clocking/n2m_reset_control.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/dv/clocking/tb_clocking.sv"
+    ],
+    "top": "tb_clocking",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS clocking startup qualification lockloss pause core-reset periods jitter stopped-pixel"
+  },
+  "clocking-bad-numerator": {
+    "sources": [
+      "src/rtl/clocking/n2m_reset_control.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/dv/clocking/tb_clocking.sv"
+    ],
+    "top": "tb_clocking",
+    "args": [
+      "+bad_numerator"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "TIMEBASE_MISMATCH mode=numerator edge=751 expected=62 actual=63"
+  },
+  "clocking-drop-tick": {
+    "sources": [
+      "src/rtl/clocking/n2m_reset_control.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/dv/clocking/tb_clocking.sv"
+    ],
+    "top": "tb_clocking",
+    "args": [
+      "+drop_tick"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "TIMEBASE_MISMATCH mode=drop edge=12 expected=1 actual=0"
+  },
+  "clocking-early-reset": {
+    "sources": [
+      "src/rtl/clocking/n2m_reset_control.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/dv/clocking/tb_clocking.sv"
+    ],
+    "top": "tb_clocking",
+    "args": [
+      "+early_reset"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "RESET_MISMATCH mode=early-reset expected=asserted"
   }
 }

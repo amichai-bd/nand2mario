@@ -11,13 +11,14 @@ names follow the implementation owner, not a second software hierarchy.
 | [tools/sw](../tools/sw/THIRD_PARTY.md) (planned implementation; provenance exists) | [PRD](tools/sw/PRD.md) | [SPEC](tools/sw/SPEC.md) | Planned conformance owned by [#84–#88](tools/sw/SPEC.md#delivery-order) |
 | [src/rtl/common](../src/rtl/common/macros.svh) | [#105](https://github.com/amichai-bd/nand2mario/issues/105) | [Shared register convention](src/rtl-reference-style.md#product-register-convention) | [Directed macro test plan](../src/dv/common/README.md) |
 | [src/rtl/display](../src/rtl/display/dmg_tile_pixel.sv) | [Charter](src/project-charter.md) | [MAS_display](src/rtl/display/MAS_display.md) | [Tile test plan](../src/dv/display/README.md) |
+| [src/rtl/clocking](../src/rtl/clocking/n2m_reset_control.sv) and its [FPGA wrapper](../src/fpga/de10_lite/n2m_clocking.sv) | [Clock/reset contract](src/clocks-resets-cdc.md) | [MAS_clocking](src/rtl/clocking/MAS_clocking.md) | [Clocking test plan](../src/dv/clocking/README.md) |
 | [src/rtl/interfaces](../src/rtl/interfaces/n2m_interfaces_pkg.sv) | [Charter](src/project-charter.md) and [#30](https://github.com/amichai-bd/nand2mario/issues/30) | [MAS_interfaces](src/rtl/interfaces/MAS_interfaces.md), shared with host and verification consumers | [Interface fixture](../src/dv/interfaces/tb_interfaces.sv), [codec tests](../tools/n2m/tests/test_interfaces.py) |
 | [cfg/interfaces.json](../cfg/interfaces.json), schema shared across RTL and tools | [Interface requirements](tools/n2m/PRD.md) | [Generated tables](cfg/interfaces.md), [generator rules](tools/n2m/SPEC.md#interface-generation) | [Generator and drift tests](../tools/n2m/tests/test_interfaces.py) |
 | [src/dv/baseline](../src/dv/baseline/README.md), test-only fixture and harness | [#31](https://github.com/amichai-bd/nand2mario/issues/31) | [Baseline SPEC](src/dv/baseline/SPEC.md) | [Test plan](../src/dv/baseline/README.md), [regression manifest](../src/dv/baseline/regression.json) |
 
 `tools/scripts/` and `tools/automations/` contain only placement README files;
 they own no executable tool or behavior contract yet. `src/rtl/README.md` is an
-index; display is the implemented RTL behavior owner in this inventory; interfaces
+index; display and clocking are implemented RTL behavior owners; interfaces
 contains generated representations, with endpoint behavior still planned. Verification
 fixtures under `src/dv/` are not product RTL. The issue helper under
 `.agents/skills/issue-author/` belongs to the agent method and its linked
