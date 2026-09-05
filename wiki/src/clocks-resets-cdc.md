@@ -230,7 +230,7 @@ are absent from the top. SDRAM constraints cannot be inferred from this plan.
   unexplained warnings, ignored constraints, or unconstrained paths. Prove
   frame RAM inference rather than assuming bit count establishes fit.
 
-Portable simulation must compile, elaborate, run, and check both positive and
+Questa simulation must compile, elaborate, run, and check both positive and
 negative results. Questa and physical execution follow the
 [current authorization](../agents/bootstrap-plan.md#verification-and-hardware-authorization).
 A contract merge closes #29's design

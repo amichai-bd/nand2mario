@@ -32,16 +32,10 @@ class BaselineTests(unittest.TestCase):
             writer.writeheader()
             writer.writerows(rows)
 
-    def test_exact_trace_and_comparison(self):
+    def test_exact_trace(self):
         rows = self.rows()
         self.write_trace(rows)
-        actual = baseline.trace_rows(self.trace, 31, False)
-        baseline.compare_traces(rows, actual)
-        actual[7]["operand"] = 99
-        with self.assertRaisesRegex(ValueError, "backend trace cycle=8 expected=.*actual="):
-            baseline.compare_traces(rows, actual)
-        with self.assertRaisesRegex(ValueError, "length"):
-            baseline.compare_traces(rows, rows[:-1])
+        self.assertEqual(baseline.trace_rows(self.trace, 31, False), rows)
 
     def test_missing_extra_seed_order_and_mismatch(self):
         for mutation in ("missing", "extra", "seed", "cycle", "actual", "operand"):
@@ -107,7 +101,7 @@ class BaselineTests(unittest.TestCase):
             clock[0] = 2.0
             return SimpleNamespace(returncode=0, stdout="finished", stderr="")
         with patch.object(baseline, "ROOT", self.root), patch.object(baseline, "MANIFEST", plan), \
-             patch.object(sys, "argv", ["baseline", "--sim", "portable", "--tag", "budget"]), \
+             patch.object(sys, "argv", ["baseline", "--sim", "questa", "--tag", "budget"]), \
              patch.object(baseline.time, "monotonic", side_effect=lambda: clock[0]), \
              patch.object(baseline.subprocess, "run", side_effect=child) as run, \
              patch.object(baseline, "evidence", return_value=self.rows()):

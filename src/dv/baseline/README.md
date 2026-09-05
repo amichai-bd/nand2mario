@@ -8,10 +8,10 @@
 - **Normal cases:** additions, consecutive commands, enabled zero and disabled inputs.
 - **Edge and error cases:** initial/reset-during-activity, reset wins over enable, operand 255, wrap at 256, seeded stimulus, watchdog. Broken fixture drops the operand MSB and must fail at cycle 6 with expected 0 and actual 128.
 - **Coverage:** reset, reset+enable, enabled addition, operand zero, operand maximum, observed wrap, hold and reset-after-activity. These are fixture bins, not CPU coverage.
-- **Failure artifacts:** seed and exact expected/actual/cycle in sim.log and transactions.csv; baseline.vcd, Questa WLF when applicable, input/tool fingerprints and raw exit in builder records. Good runs also emit coverage/bins.txt.
+- **Failure artifacts:** seed and exact expected/actual/cycle in sim.log and transactions.csv; baseline.vcd, Questa WLF, input/tool fingerprints and raw exit in builder records. Good runs also emit coverage/bins.txt.
 
 The [regression manifest](regression.json) selects fixed levels. Run through
-`python tools/n2m/baseline.py --sim both --level smoke --tag baseline-smoke`.
+`python tools/n2m/baseline.py --sim questa --level smoke --tag baseline-smoke`.
 The broken target's simulator exit remains nonzero; the wrapper accepts only
 that named defect and retains it. Extra/missing trace rows, mismatched seeds,
-wrong failure values, missing waves and disagreement between backends fail.
+wrong failure values, missing waves and unexpected mismatches fail. Questa is the sole backend.

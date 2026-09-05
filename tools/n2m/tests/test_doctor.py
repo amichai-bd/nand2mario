@@ -36,7 +36,7 @@ class DoctorTests(unittest.TestCase):
                 calls.append(argv)
                 is_sim = "-c" in argv
                 return SimpleNamespace(returncode=code if is_sim else 0,
-                                       stdout=output if is_sim else "Errors: 0, Warnings: 0")
+                                       stdout=output if is_sim else ("Questa 2025.2" if "-version" in argv else "Errors: 0, Warnings: 0"))
             with patch("n2m.doctor.executable", side_effect=lambda d, n: str(self.folder / n)), \
                     patch("n2m.doctor.subprocess.run", side_effect=run):
                 with self.assertRaises(RuntimeError):
@@ -47,7 +47,7 @@ class DoctorTests(unittest.TestCase):
 
     def test_questa_checked_smoke_uses_macro_handlers(self):
         def run(argv, **kwargs):
-            output = "Errors: 0, Warnings: 0"
+            output = "Questa 2025.2" if "-version" in argv else "Errors: 0, Warnings: 0"
             if "-c" in argv:
                 self.assertEqual(argv[-2:], ["-do", "do run.do"])
                 self.assertEqual(argv[argv.index("-onfinish") + 1], "stop")
@@ -143,8 +143,7 @@ class DoctorTests(unittest.TestCase):
 
     def test_profile_failure_priority_and_fresh_attempts(self):
         args = parser().parse_args(["doctor", "--profile", "environment"])
-        with patch("n2m.doctor.Simulator"), patch("n2m.doctor.simulate", return_value={"status": "PASS"}), \
-                patch("n2m.doctor.quartus", return_value={}), patch("n2m.doctor.executable", return_value="jtagconfig"), \
+        with patch("n2m.doctor.quartus", return_value={}), patch("n2m.doctor.executable", return_value="jtagconfig"), \
                 patch("n2m.doctor.execute", return_value="1) USB-Blaster\n  031050DD 10M50DA\n"), \
                 patch("n2m.doctor.uart", return_value={"status": "WARNING"}), \
                 patch("n2m.doctor.questa", return_value={}):
@@ -152,6 +151,23 @@ class DoctorTests(unittest.TestCase):
             with patch("n2m.doctor.questa", side_effect=RuntimeError("bad elaboration")):
                 self.assertEqual(doctor(ROOT, self.folder, args, {})["status"], "FAIL")
             self.assertEqual(len(list((self.folder / "doctor").iterdir())), 2)
+
+    def test_default_profile_runs_only_questa_and_missing_license_fails(self):
+        args = parser().parse_args(["doctor"])
+        self.assertEqual((args.profile, args.sim), ("simulation", "questa"))
+        with patch("n2m.doctor.questa", return_value={"tools": {"vsim": "fixture"}}) as run, \
+             patch("n2m.doctor.quartus") as quartus_probe, patch("n2m.doctor.uart") as uart_probe:
+            report = doctor(ROOT, self.folder, args, {})
+            self.assertEqual(report["status"], "PASS")
+            self.assertEqual(set(report["checks"]), {"questa"})
+            self.assertEqual(report["untested"], ["Quartus", "JTAG", "UART"])
+            run.assert_called_once()
+            quartus_probe.assert_not_called()
+            uart_probe.assert_not_called()
+        with patch("n2m.doctor.questa", side_effect=RuntimeError("runtime license unavailable")):
+            report = doctor(ROOT, self.folder, args, {})
+            self.assertEqual(report["status"], "FAIL")
+            self.assertIn("license", report["checks"]["questa"]["error"])
 
     def test_quartus_license_scope_and_diagnostics(self):
         for edition, status in (("Lite Edition", "PASS"), ("Standard Edition", "WARNING")):

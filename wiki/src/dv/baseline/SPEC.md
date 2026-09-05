@@ -58,22 +58,21 @@ The [regression runner](../../../../tools/n2m/baseline.py) executes the
 [manifest](../../../../src/dv/baseline/regression.json) and validates artifacts:
 
 ```text
-python tools/n2m/baseline.py --sim both --level smoke --tag baseline-smoke
-python tools/n2m/baseline.py --sim both --level regression --tag baseline-regression
+python tools/n2m/baseline.py --sim questa --level smoke --tag baseline-smoke
+python tools/n2m/baseline.py --sim questa --level regression --tag baseline-regression
 ```
 
-`--sim portable` chooses the builder's native-Icarus/default-WSL discovery;
-`--sim questa` selects only Questa; `both` compares both. The optional
-`--questa-bin` is passed only to Questa. Missing tools/license/runtime failures
-fail the run; there is no fallback to another backend after selection. No
-command modifies global paths, licenses, or device state.
+Questa is the default and sole backend; `--sim questa` is optional. The optional
+`--questa-bin` chooses its installation directory. Retired `portable` and `both`
+selections fail argument parsing. Missing tools/license/runtime failures fail
+the run. No command modifies global paths, licenses or device state.
 
 The manifest owns the seed lists and aggregate wall budgets. `smoke` uses one
 seed and both good/broken targets for changed-unit PR checks. `regression` uses
 four seeds, including zero and the largest accepted seed, for baseline delivery
-and later scheduled or affected integration runs. Portable smoke runs in hosted
-Builder CI. Required local delivery runs both engines; licensed checks are not
-claimed by hosted CI. Future CPU/system regressions must add separately reviewed
+and later scheduled or affected integration runs. Required local delivery runs
+Questa; hosted CI checks host contracts only. The
+[trusted route](../../../tools/n2m/SPEC.md#ci-execution-boundary) remains due in #32. Future CPU/system regressions must add separately reviewed
 lists and budgets; no unimplemented CPU coverage is silently included.
 
 Every child builder command retains its own subprocess timeout. The aggregate
@@ -82,20 +81,20 @@ but allows the current bounded child to finish and preserve its evidence.
 The runner always requests fresh simulations. Tags are exclusive, at most
 24 characters, with distinct child tags. It does not reuse stale runtime proof.
 
-## Evidence and trace comparison
+## Evidence and trace validation
 
 Each child builder attempt records source/tool fingerprints, seed, exact command,
-raw exit, compilation/elaboration/runtime logs, `baseline.vcd`, and Questa WLF
-when applicable. `transactions.csv` has these ordered decimal integer columns:
+raw exit, compilation/elaboration/runtime logs, `baseline.vcd`, and Questa WLF. `transactions.csv` has these ordered decimal integer columns:
 `seed,cycle,reset,enable,operand,expected,actual`. Cycle numbers start at one.
 The scoreboard flushes each row before a fatal mismatch. Good runs additionally
 write `coverage/bins.txt`; incomplete/broken runs do not claim full coverage.
 
 The runner checks artifact hashes and confines them to the child build, requires
 nonempty waveform/log/trace, checks the raw runtime exit, and validates ordered
-row count, seed and the exact negative mismatch. For `both`, every CSV field and
-row must match across simulators. It rejects omissions, extra rows or differing
-values; there is no resynchronization or golden-trace update from DUT output.
+row count, seed and the exact negative mismatch. It rejects omissions, extra rows
+and unexpected mismatches. The independent reference/scoreboard remains the
+behavior oracle; no golden trace is updated from DUT output. Historical dual-engine
+comparisons remain prior evidence, not a current execution requirement.
 The summary `workdir/builds/<tag>/regression.json` records each child command,
 exit and log plus aggregate result/elapsed time and manifest hash. Child manifests
 own the detailed versions and artifacts. Comparator unit tests inject missing,

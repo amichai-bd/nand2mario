@@ -1,4 +1,4 @@
-"""Run the fixture regression and compare retained transactions across simulators."""
+"""Run the Questa fixture regression and validate retained transactions."""
 import argparse
 import csv
 import json
@@ -54,14 +54,6 @@ def trace_rows(path, seed, broken):
     return rows
 
 
-def compare_traces(expected, actual):
-    if len(expected) != len(actual):
-        raise ValueError(f"backend trace length expected={len(expected)} actual={len(actual)}")
-    for index, (left, right) in enumerate(zip(expected, actual), 1):
-        if left != right:
-            raise ValueError(f"backend trace cycle={index} expected={left} actual={right}")
-
-
 def evidence(root, tag, seed, broken):
     folder = root / "workdir/builds" / tag
     manifest = json.loads((folder / "manifest.json").read_text(encoding="utf-8"))
@@ -87,19 +79,17 @@ def evidence(root, tag, seed, broken):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--level", choices=("smoke", "regression"), default="smoke")
-    parser.add_argument("--sim", choices=("portable", "questa", "both"), default="both")
+    parser.add_argument("--sim", choices=("questa",), default="questa")
     parser.add_argument("--questa-bin")
     parser.add_argument("--tag", required=True)
     args = parser.parse_args()
     if not valid_tag(args.tag) or len(args.tag) > 24:
         parser.error("regression tag must be a valid build tag of at most 24 characters")
-    if args.questa_bin and args.sim == "portable":
-        parser.error("--questa-bin requires Questa")
     plan = load_plan(MANIFEST)
     level = plan["levels"][args.level]
-    backends = ["auto", "questa"] if args.sim == "both" else ["auto" if args.sim == "portable" else "questa"]
+    backends = ["questa"]
     report = {"status": "RUNNING", "level": args.level, "simulators": backends,
-              "manifest_sha256": file_hash(MANIFEST), "runs": [], "trace_comparison": "not applicable"}
+              "manifest_sha256": file_hash(MANIFEST), "runs": []}
     start = time.monotonic()
     with workspace(ROOT, args.tag) as build:
         destination = build / "regression.json"
@@ -107,7 +97,6 @@ def main():
         try:
             for index, seed in enumerate(level["seeds"]):
                 for target in plan["targets"]:
-                    traces = []
                     for backend in backends:
                         if time.monotonic() - start >= level["budget_seconds"]:
                             raise ValueError("regression wall-clock budget exhausted")
@@ -124,10 +113,7 @@ def main():
                                                "exit_code": result.returncode, "log": log.relative_to(ROOT).as_posix()})
                         if result.returncode:
                             raise ValueError(f"regression target failed: {tag}; see {log.relative_to(ROOT)}")
-                        traces.append(evidence(ROOT, tag, seed, target == "baseline-broken"))
-                    if len(traces) == 2:
-                        compare_traces(*traces)
-                        report["trace_comparison"] = "PASS"
+                        evidence(ROOT, tag, seed, target == "baseline-broken")
             if time.monotonic() - start > level["budget_seconds"]:
                 raise ValueError("regression wall-clock budget exhausted")
             report["status"] = "PASS"

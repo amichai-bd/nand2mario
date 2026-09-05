@@ -19,9 +19,9 @@ from .fpga import build_fpga
 def parser():
     result = argparse.ArgumentParser(description="Tagged repository builds (doctor, check, sim test, fpga build).")
     commands = result.add_subparsers(dest="command", required=True)
-    leaves = [commands.add_parser("doctor", help="discover portable simulator; no hardware access"),
+    leaves = [commands.add_parser("doctor", help="run checked Questa smoke; no hardware access"),
               commands.add_parser("check", help="run builder tests")]
-    leaves[0].add_argument("--profile", choices=("portable", "environment"), default="portable")
+    leaves[0].add_argument("--profile", choices=("simulation", "environment"), default="simulation")
     for option in ("questa-bin", "quartus-bin", "jtag-cable", "uart-port", "uart-vid", "uart-pid", "uart-identity"):
         leaves[0].add_argument("--" + option)
     sim = commands.add_parser("sim").add_subparsers(dest="action", required=True)
@@ -29,17 +29,13 @@ def parser():
     test.add_argument("target")
     test.add_argument("--seed", type=int, default=1)
     test.add_argument("--rebuild", action="store_true")
-    test.add_argument("--questa-bin", help="Questa tool directory; requires explicit --sim questa")
+    test.add_argument("--questa-bin", help="Questa tool directory; otherwise discover on PATH")
     leaves.append(test)
     for leaf in leaves:
         leaf.add_argument("--tag")
         leaf.add_argument("--json", action="store_true", help="emit one JSON result")
         if leaf is not leaves[1]:
-            choices = ("auto", "icarus", "wsl-icarus", "questa") if leaf is test else ("auto", "icarus", "wsl-icarus")
-            leaf.add_argument("--sim", choices=choices, default="auto")
-            leaf.add_argument("--iverilog", help="compiler executable name or path in selected backend")
-            leaf.add_argument("--vvp", help="runtime executable name or path in selected backend")
-            leaf.add_argument("--wsl-distro", help="WSL distribution; omitted uses WSL default")
+            leaf.add_argument("--sim", choices=("questa",), default="questa")
     fpga = commands.add_parser("fpga").add_subparsers(dest="action", required=True)
     build = fpga.add_parser("build", help="fit and check an explicit MAX 10 target; no programming")
     build.add_argument("target")
@@ -78,7 +74,7 @@ def main(argv=None, root=None):
                     provenance = {k: report[k] for k in ("commit", "dirty_tree_fingerprint", "host", "python") if k in report}
                     report.update(build_fpga(root, build, args, provenance))
                 else:
-                    simulator = Simulator(args.sim, args.iverilog, args.vvp, args.wsl_distro, args.questa_bin)
+                    simulator = Simulator(args.sim, questa_bin=args.questa_bin)
                     if not 0 <= args.seed <= 2147483647:
                         raise ValueError("seed must be between 0 and 2147483647")
                     provenance = {k: report[k] for k in ("commit", "dirty_tree_fingerprint", "host", "python") if k in report}

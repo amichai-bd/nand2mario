@@ -70,8 +70,28 @@ class QuestaTests(unittest.TestCase):
                                        ("questa", str(directory / "absent"))):
             with self.assertRaises(ToolError):
                 Simulator(backend, questa_bin=directory_arg)
-        with self.assertRaisesRegex(ToolError, "Icarus or WSL"):
-            Simulator("questa", iverilog="iverilog")
+        for backend in ("icarus", "wsl-icarus", "auto"):
+            with self.assertRaisesRegex(ToolError, "only Questa"):
+                Simulator(backend)
+
+
+    def test_default_discovery_is_questa_and_retired_cli_options_fail(self):
+        directory = self.root / "default-tools"
+        directory.mkdir()
+        for name in ("vlib", "vmap", "vlog", "vsim"):
+            (directory / name).write_text(name)
+        with patch("n2m.simulator.shutil.which", side_effect=lambda name: str(directory / name)), \
+             patch.object(Simulator, "run", return_value=SimpleNamespace(returncode=0, stdout="Questa 2025.2")):
+            self.assertEqual(Simulator().backend, "questa")
+        with patch("n2m.simulator.shutil.which", return_value=None):
+            with self.assertRaisesRegex(ToolError, "missing vlib"):
+                Simulator()
+        for option in (["--sim", "icarus"], ["--sim", "auto"], ["--sim", "wsl-icarus"],
+                       ["--iverilog", "old"], ["--vvp", "old"], ["--wsl-distro", "old"]):
+            with self.subTest(option=option), contextlib.redirect_stderr(io.StringIO()):
+                with self.assertRaises(SystemExit) as caught:
+                    main(["sim", "test", "builder-smoke", *option], self.root)
+                self.assertEqual(caught.exception.code, 2)
 
     def test_bad_version_warning_and_timeout_fail_discovery(self):
         with patch("n2m.simulator.shutil.which", return_value=str(self.root / "tools/build.py")):
@@ -146,7 +166,8 @@ class QuestaTests(unittest.TestCase):
         with patch("n2m.cli.Simulator", return_value=self.sim) as discover, \
                 patch("n2m.cli.git_state", return_value={}), contextlib.redirect_stdout(io.StringIO()):
             self.assertEqual(main(command, self.root), 0)
-            self.assertEqual(discover.call_args.args, ("questa", None, None, None, "tools with spaces"))
+            self.assertEqual(discover.call_args.args, ("questa",))
+            self.assertEqual(discover.call_args.kwargs, {"questa_bin": "tools with spaces"})
             with patch("n2m.cli.Simulator", side_effect=ToolError("missing vsim", "partial discovery")):
                 self.assertEqual(main(command + ["--rebuild"], self.root), 1)
             current = self.root / "workdir/builds/questa-cli/sim/test/builder-smoke/result.json"

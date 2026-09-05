@@ -33,7 +33,7 @@ class RunnerTests(unittest.TestCase):
         self.source = self.root / "src/unit.sv"
         self.source.write_text("source", encoding="utf-8")
 
-    def invoke(self, responder=None, missing=False, simulator="icarus"):
+    def invoke(self, responder=None, missing=False, simulator="questa"):
         def normal(argv, **kwargs):
             if "+corrupt" in argv:
                 return subprocess.CompletedProcess(argv, 1, MISMATCH)
@@ -52,8 +52,8 @@ class RunnerTests(unittest.TestCase):
     def test_success_and_paths_with_spaces(self):
         code, manifest, run = self.invoke()
         self.assertEqual((code, manifest["status"]), (0, "PASS"))
-        self.assertEqual(run.call_count, 4)
-        self.assertIn(str(self.source), manifest["commands"][1]["argv"])
+        self.assertEqual(run.call_count, 9)
+        self.assertIn(str(self.source), manifest["commands"][2]["argv"])
 
     def test_header_manifest_and_missing_dependency_fail_before_tools(self):
         self.source.write_text('`include "src/shared.svh"\n')
@@ -62,8 +62,8 @@ class RunnerTests(unittest.TestCase):
         code, manifest, _ = self.invoke()
         self.assertEqual(code, 0)
         self.assertIn("src/shared.svh", manifest["inputs"])
-        command = manifest["commands"][1]["argv"]
-        self.assertEqual(command[command.index("-I") + 1], str(self.root))
+        command = manifest["commands"][2]["argv"]
+        self.assertIn("+incdir+" + str(self.root), command)
 
     def test_missing_header_retains_failure_manifest(self):
         self.source.write_text('`include "src/missing.svh"\n')

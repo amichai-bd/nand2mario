@@ -33,5 +33,5 @@ Fill [the test plan](templates/test-plan.md) before broad regression work. Read
 [the scenarios](examples/scenarios.md) for boundaries. Stop when expected
 behavior is missing or contradictory.
 
-[Issue #106](https://github.com/amichai-bd/nand2mario/issues/106) tracks removal of
-legacy simulator tooling and automatic CI; it does not permit new Icarus runs.
+The [CI boundary](../../../wiki/tools/n2m/SPEC.md#ci-execution-boundary) distinguishes
+hosted host checks from required actual local Questa evidence until #32.

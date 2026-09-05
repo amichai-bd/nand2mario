@@ -5,12 +5,9 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
-from types import SimpleNamespace
 import uuid
 
 from .records import file_hash
-from .simulation import simulate
-from .simulator import Simulator
 from .questa import write_macro, diagnostic
 
 
@@ -50,11 +47,15 @@ def warning(output):
 def questa(root, folder, directory):
     names = {name: executable(directory, name) for name in ("vlib", "vlog", "vsim")}
     version = execute([names["vsim"], "-version"], folder, "version.log")
-    execute([names["vlib"], "work"], folder, "library.log")
+    if "Questa" not in version or diagnostic(version):
+        raise RuntimeError("unrecognized Questa version or diagnostic; see version.log")
+    library = execute([names["vlib"], "work"], folder, "library.log")
+    if diagnostic(library):
+        raise RuntimeError("simulator diagnostic; see library.log")
     compiled = execute([names["vlog"], "-sv", "-work", "work",
                         str(root / "src/dv/builder/builder_smoke.sv")], folder, "compile.log")
-    if warning(compiled):
-        raise RuntimeError("simulator warning; see compile.log")
+    if diagnostic(compiled):
+        raise RuntimeError("simulator diagnostic; see compile.log")
     (folder / "waves").mkdir(exist_ok=True)
     write_macro(folder)
     output = execute([names["vsim"], "-c", "-onfinish", "stop", "-wlf", "waves/smoke.wlf",
@@ -154,16 +155,9 @@ def doctor(root, build, args, provenance):
         checks[name]["artifacts"] = {p.relative_to(root).as_posix(): file_hash(p)
                                      for p in folder.rglob("*") if p.is_file()}
 
-    def portable(folder):
-        simulator = Simulator(args.sim, args.iverilog, args.vvp, args.wsl_distro)
-        result = simulate(root, build, SimpleNamespace(target="builder-smoke", seed=1, rebuild=True), simulator, provenance)
-        return {"status": result["status"], "tools": simulator.info,
-                "result": str(build / "sim/test/builder-smoke/result.json")}
-
-    check("portable", portable)
-    untested = ["Questa", "Quartus", "JTAG", "UART"]
+    check("questa", lambda folder: questa(root, folder, args.questa_bin))
+    untested = ["Quartus", "JTAG", "UART"]
     if args.profile == "environment":
-        check("questa", lambda folder: questa(root, folder, args.questa_bin))
         check("quartus", lambda folder: quartus(folder, args.quartus_bin))
         check("jtag", lambda folder: parse_jtag(execute(
             [executable(args.quartus_bin, "jtagconfig")], folder, "chain.log"), args.jtag_cable))
@@ -176,6 +170,6 @@ def doctor(root, build, args, provenance):
             "profile": args.profile,
             "inputs": {p.relative_to(root).as_posix(): file_hash(p) for p in
                        [root / "src/dv/builder/builder_smoke.sv", *(root / "tools/n2m").glob("*.py")]},
-            "tools": checks["portable"].get("tools", {}), "untested": untested,
+            "tools": checks["questa"].get("tools", {}), "untested": untested,
             "readiness": "complete" if all(c["status"] == "PASS" for c in checks.values()) else "partial",
             "scope": f"{args.profile} checks only; warnings do not establish readiness"}

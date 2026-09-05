@@ -43,7 +43,7 @@ def simulate(root, build, args, simulator, provenance=None):
         return {**old, "cache": "CACHED"}
     attempt_id = uuid.uuid4().hex
     attempt = stage / "attempts" / attempt_id
-    backend = "questa" if simulator.backend == "questa" else "iverilog"
+    backend = "questa"
     compile_dir = build / "compile" / backend / args.target / attempt_id
     for path in (attempt / "waves", attempt / "coverage", compile_dir):
         path.mkdir(parents=True, exist_ok=True)
@@ -57,16 +57,7 @@ def simulate(root, build, args, simulator, provenance=None):
     atomic_json(current, record)
     log = compile_dir / "prepare.log"
     try:
-        if simulator.backend == "questa":
-            commands = questa_commands(simulator, root, target, args.seed, compile_dir, attempt)
-        else:
-            binary = compile_dir / "simulation.vvp"
-            compile_argv = [simulator.compiler, "-g2012", "-Wall", "-s", target["top"],
-                            "-I", simulator.path(root), "-o", simulator.path(binary),
-                            *[simulator.path(root / source) for source in target["sources"]]]
-            sim_argv = [simulator.runtime, simulator.path(binary), f"+seed={args.seed}", *target["args"]]
-            commands = [(compile_argv, compile_dir, compile_dir / "compile.log", "zero"),
-                        (sim_argv, attempt, attempt / "sim.log", target["expected_exit"])]
+        commands = questa_commands(simulator, root, target, args.seed, compile_dir, attempt)
         for argv, cwd, log, expected in commands:
             command = simulator.command(argv)
             record["commands"].append({"argv": command, "cwd": str(cwd)})
