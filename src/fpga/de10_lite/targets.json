@@ -4,18 +4,95 @@
     "builder-smoke": {
       "device": "10M50DAF484C7G",
       "top": "fpga_smoke",
-      "sources": ["src/dv/builder/fpga_smoke.sv"],
-      "constraints": ["src/fpga/de10_lite/builder_smoke.sdc"],
-      "pins": {"clk": "PIN_P11"},
-      "virtual_pins": ["count[*]"]
+      "sources": [
+        "src/dv/builder/fpga_smoke.sv"
+      ],
+      "constraints": [
+        "src/fpga/de10_lite/builder_smoke.sdc"
+      ],
+      "pins": {
+        "clk": "PIN_P11"
+      },
+      "virtual_pins": [
+        "count[*]"
+      ]
     },
     "builder-invalid": {
       "device": "10M50DAF484C7G",
       "top": "fpga_smoke",
-      "sources": ["src/dv/builder/fpga_smoke.sv"],
-      "constraints": ["src/fpga/de10_lite/builder_invalid.sdc"],
-      "pins": {"clk": "PIN_P11"},
-      "virtual_pins": ["count[*]"]
+      "sources": [
+        "src/dv/builder/fpga_smoke.sv"
+      ],
+      "constraints": [
+        "src/fpga/de10_lite/builder_invalid.sdc"
+      ],
+      "pins": {
+        "clk": "PIN_P11"
+      },
+      "virtual_pins": [
+        "count[*]"
+      ]
+    },
+    "clocking-nominal": {
+      "device": "10M50DAF484C7G",
+      "top": "clocking_proof",
+      "sources": [
+        "src/rtl/clocking/n2m_reset_control.sv",
+        "src/rtl/clocking/n2m_timebase.sv",
+        "src/fpga/de10_lite/n2m_clocking.sv",
+        "src/fpga/de10_lite/clocking_proof.sv"
+      ],
+      "constraints": [
+        "src/fpga/de10_lite/clocking_nominal.sdc"
+      ],
+      "pins": {
+        "clk_sys": "PIN_P11"
+      },
+      "virtual_pins": [
+        "board_reset_n",
+        "core_reset",
+        "pause_request",
+        "ready",
+        "paused",
+        "sys_count[*]",
+        "pix_count[*]"
+      ],
+      "pll": {
+        "module": "n2m_pixel_pll",
+        "input_ps": 20000,
+        "multiply": 63,
+        "divide": 125
+      },
+      "timing": {
+        "async_reset_pins": [
+          "u_clocking|u_reset|board_release[0]|clrn",
+          "u_clocking|u_reset|board_release[1]|clrn",
+          "u_clocking|u_reset|lock_samples[0]|clrn",
+          "u_clocking|u_reset|lock_samples[1]|clrn",
+          "u_clocking|u_reset|sys_release[0]|clrn",
+          "u_clocking|u_reset|sys_release[1]|clrn",
+          "u_clocking|u_reset|pix_release[0]|clrn",
+          "u_clocking|u_reset|pix_release[1]|clrn"
+        ],
+        "output_delays": [
+          {
+            "clock": "clk_sys",
+            "ports": [
+              "ready",
+              "paused",
+              "sys_count[*]"
+            ],
+            "count": 10
+          },
+          {
+            "clock": "u_clocking|u_pll|altpll_component|auto_generated|pll1|clk[0]",
+            "ports": [
+              "pix_count[*]"
+            ],
+            "count": 8
+          }
+        ]
+      }
     }
   }
 }

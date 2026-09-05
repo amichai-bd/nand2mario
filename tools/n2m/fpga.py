@@ -10,6 +10,7 @@ import uuid
 
 from .hdl import dependencies
 from .records import atomic_json, cache_matches, digest, file_hash, read_json
+from . import fpga_pll, fpga_constraints
 
 DEVICE = "10M50DAF484C7G"
 REGISTRY = "src/fpga/de10_lite/targets.json"
@@ -63,8 +64,12 @@ def target_definition(root, name):
         raise ValueError("unsupported FPGA registry schema")
     target = registry["targets"].get(name)
     fields = {"device", "top", "sources", "constraints", "pins", "virtual_pins"}
-    if not isinstance(target, dict) or set(target) != fields or target["device"] != DEVICE:
+    if not isinstance(target, dict) or not fields.issubset(target) or set(target) - fields - {"pll", "timing"} or target["device"] != DEVICE:
         raise ValueError("unknown FPGA target, fields, or device")
+    if "pll" in target:
+        fpga_pll.validate(target["pll"])
+    if "timing" in target:
+        fpga_constraints.validate(target["timing"])
     if not isinstance(target["top"], str) or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", target["top"]):
         raise ValueError("invalid FPGA top")
     for field, suffix in (("sources", ".sv"), ("constraints", ".sdc")):
@@ -104,6 +109,11 @@ def prepare(root, folder, target):
     for field, assignment in (("sources", "SYSTEMVERILOG_FILE"), ("constraints", "SDC_FILE")):
         for name in target[field]:
             lines.append(f'set_global_assignment -name {assignment} {tcl_word((root / name).resolve())}')
+    if "pll" in target:
+        lines.append('set_global_assignment -name VERILOG_FILE n2m_pixel_pll.v')
+    if "timing" in target:
+        (folder / "checked.sdc").write_text(fpga_constraints.generate(target["timing"], tcl_word), encoding="utf-8")
+        lines.append('set_global_assignment -name SDC_FILE checked.sdc')
     for port, pin in target["pins"].items():
         lines.extend([f'set_location_assignment {pin} -to {tcl_word(port)}',
                       f'set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to {tcl_word(port)}'])
@@ -134,7 +144,9 @@ def execute(argv, folder, log, timeout, record, build):
     record["commands"].append(command)
     with (build / "commands.log").open("a", encoding="utf-8") as stream:
         stream.write(json.dumps(command) + '\n')
-    options = {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP} if os.name == "nt" else {"start_new_session": True}
+    # Windows timeout cleanup uses taskkill /T, not console control events.
+    # qmegawiz cannot launch its generator in a new Windows console process group.
+    options = {} if os.name == "nt" else {"start_new_session": True}
     process = subprocess.Popen(argv, cwd=folder, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, **options)
     timed_out = False
     try:
@@ -176,6 +188,8 @@ def tools(directory, folder, record, build, timeout):
 
 
 def timing_evidence(folder, target):
+    if "pll" in target:
+        fpga_pll.verify(folder)
     output = folder / "output"
     for name in REQUIRED_REPORTS:
         if not (output / name).is_file() or not (output / name).stat().st_size:
@@ -227,6 +241,8 @@ def complete_cache(record, fingerprint, root, build, target):
         if read_json(immutable) != record:
             return False
         required = [folder / "output" / name for name in REQUIRED_REPORTS]
+        if "pll" in target:
+            required += [folder / "n2m_pixel_pll.v", folder / "generate-pll.log"]
         required += [folder / name for name in ("design.qpf", "design.qsf", "audit.tcl", "compile.log", "audit.log")]
         if any(p.relative_to(root).as_posix() not in record["artifacts"] for p in required):
             return False
@@ -258,12 +274,16 @@ def build_fpga(root, build, args, provenance=None):
         inputs += [p.relative_to(root).as_posix() for p in (root / "tools/n2m").glob("*.py")]
         record["inputs"] = {p: file_hash(root / p) for p in inputs}
         record["tools"] = tools(args.quartus_bin, folder, record, build, min(args.timeout, 60))
+        if "pll" in target:
+            record["tools"]["altpll"] = fpga_pll.identity(args.quartus_bin)
         record["definition"] = target
         record["fingerprint"] = digest({"inputs": record["inputs"], "tools": record["tools"], "definition": target, "timeout": args.timeout})
         if not args.rebuild and complete_cache(old, record["fingerprint"], root, build, target):
             record.update(status="PASS", cache="CACHED", reused_result=old["attempt_result"], evidence=old["evidence"], evidence_directory=old["evidence_directory"])
             record["artifacts"].update(old["artifacts"])
         else:
+            if "pll" in target:
+                fpga_pll.generate(folder, record["tools"]["altpll"], target["pll"], execute, args.timeout, record, build)
             prepare(root, folder, target)
             execute([record["tools"]["quartus_sh"]["path"], "--flow", "compile", "design"], folder, folder / "compile.log", args.timeout, record, build)
             execute([record["tools"]["quartus_sta"]["path"], "-t", "audit.tcl"], folder, folder / "audit.log", args.timeout, record, build)

@@ -549,6 +549,7 @@ the target's source tree. Fingerprint this input as required by the
 [software contract](../sw/SPEC.md). Do not maintain a second
 memory map. SV users import `n2m_interfaces_pkg`.
 
+<<<<<<< HEAD
 ## Verification baseline runner
 
 `python tools/n2m/baseline.py` composes registered fixture simulations and checks
@@ -556,3 +557,29 @@ retained evidence and transaction traces. It is a host entry point alongside
 `tools/build.py`; no new dispatcher subcommand is implied. The
 [baseline contract](../../src/dv/baseline/SPEC.md#execution-and-regression) owns
 its options, regression levels, wall-budget semantics and trace checks.
+=======
+## Generated clocking inputs
+
+An FPGA target may declare the bounded `pll` definition for `n2m_pixel_pll`:
+input period 20000 ps and output multiplier/divisor 63/125. The generator owns
+50% duty, zero phase, normal operation and CLK0 compensation. These settings
+implement the [clock contract](../../src/clocks-resets-cdc.md), which owns the
+selected rates. Other PLL definitions are rejected.
+
+`qmegawiz` comes from the explicit Quartus directory. Its executable, ALTPLL
+definition/rules/wizard XML and primitive declaration hashes enter the request
+fingerprint. The generated HDL, generation command/log and vendor auxiliary
+files remain under the immutable attempt. The generated HDL is checked against
+the requested parameters and loaded directly; generated QIP Tcl is retained but
+not evaluated. Reuse requires this evidence as well as the complete fit/timing
+inventory. On Windows a verified filesystem short-path alias for the same
+attempt accommodates generator path limits. Timeout cleanup still kills the
+Windows process tree; a new console process group is not required.
+
+Optional declarative `timing` assignments produce owned SDC with checked exact
+asynchronous-reset pins and output clock/port collections. Every collection must
+match its declared count. Reset exceptions terminate only at named `clrn` pins;
+they do not cut synchronized reset consumers or whole clock domains. Output
+delays explicitly include source latency. Arbitrary Tcl bodies and external
+constraint loads remain unsupported in source SDC.
+>>>>>>> c15debf (Implement clocking control and begin generated PLL timing proof)
