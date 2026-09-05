@@ -607,3 +607,11 @@ The functional netlist writer's exact diagnostic 10905 explains that MAX 10
 supports functional, not timing, simulation netlists; TimeQuest supplies timing.
 
 [lock-guide]: https://docs.altera.com/r/docs/683047/21.1/max-10-clocking-and-pll-user-guide/pll-control-signals
+## Software oracle
+
+`python tools/build.py sw oracle --tag <tag> --json` runs the pinned upstream
+RGBASM/RGBLINK against original encoding/relocation fixtures. The
+[software SPEC](../sw/SPEC.md#implemented-oracle) owns supported hosts, verified
+cache/offline behavior, expected-byte checks and retained artifacts. Builder CI
+runs this actual software oracle alongside host contract tests; it does not
+provide licensed Questa simulation.

@@ -7,9 +7,9 @@
       "name": "RGBDS",
       "record": "n2m/dependencies.json",
       "notices": "sw/THIRD_PARTY.md",
-      "purpose": "Planned external encoding/link oracle",
+      "purpose": "Unmodified external encoding/link oracle",
       "local_changes": "none",
-      "storage": "Ignored workdir tools/cache; not installed by the contract"
+      "storage": "Ignored workdir/builds/<tag>/sw/oracle/cache with retained notices"
     },
     {
       "name": "Pan Docs interface research",
