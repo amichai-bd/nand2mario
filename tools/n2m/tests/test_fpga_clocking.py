@@ -104,6 +104,7 @@ class ClockingEvidenceTests(unittest.TestCase):
                      text.replace('ena_register_mode = "none"', 'ena_register_mode = "falling edge"'),
                      text.replace('power_up = "low"', 'power_up = "high"'),
                      text.replace("assign vcc = 1'b1", "assign vcc = 1'b0"),
+                     text.replace("assign vcc = 1'b1", "wire other; assign {vcc, other} = 1'b1"),
                      text.replace("tri1 devpor", "tri0 devpor"),
                      text.replace("wire vcc", "tri0 vcc"),
                      text + "\nassign vcc = 1'b0;",

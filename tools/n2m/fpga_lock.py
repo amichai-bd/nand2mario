@@ -81,8 +81,8 @@ def verify(text, checks):
     for constant, declaration in {"gnd": "wire gnd", "vcc": "wire vcc", "devclrn": "tri1 devclrn", "devpor": "tri1 devpor"}.items():
         if re.search(r"\\" + constant + r"\s", text) or [d for d in declarations if re.search(r"\b" + constant + r"$", d)] != [declaration]:
             raise ValueError("vendor constant declaration differs")
-        values = [rhs for lhs, rhs in zip(assigned_nets, assignments) if re.search(r"\b" + constant + r"\b", lhs)]
-        if values != (["1'b0"] if constant == "gnd" else ["1'b1"] if constant == "vcc" else []):
+        values = [(lhs, rhs) for lhs, rhs in zip(assigned_nets, assignments) if re.search(r"\b" + constant + r"\b", lhs)]
+        if values != ([(constant, "1'b0")] if constant == "gnd" else [(constant, "1'b1")] if constant == "vcc" else []):
             raise ValueError("vendor constant assignment differs")
         if any(re.search(r"\b" + constant + r"\b", value) for kind, ports in cells.values() for port, value in ports.items()
                if port in OUTPUTS[kind]):
