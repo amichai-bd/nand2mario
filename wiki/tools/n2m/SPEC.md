@@ -324,8 +324,13 @@ reset or second-stage pin is eligible. Adjacent stage setup/hold reports remain
 mandatory. Bounded Tcl tests execute missing/ambiguous selection cases.
 
 Stable-bundle registers and VGA output ports also require complete exact
-collections. The helper emits the shared contract's bundle/output bounds and
-retains per-endpoint path and skew reports. These new reports enter the required
+collections. Each offer-to-capture bundle has paired minimum 0 ns and maximum
+20 ns assignments. The minimum explicitly overrides that bundle's hold
+relationship, including clock-network delays; it adds no intentional extra hold
+beyond the protocol's offer-through-capture/ack stability. The independent Q-to-D
+path report still checks the 20 ns bound. Full STA hold/slack checks and adjacent
+synchronizer setup/hold reports remain required. The helper also emits the
+shared contract's output bounds and retains per-endpoint path and skew reports. These new reports enter the required
 cache inventory, and final validation must recompute them from current inputs.
 The profile's physical VGA assignments come from the referenced manual table;
 an explicit 8 mA drive setting removes an unspecified synthesis choice. It does

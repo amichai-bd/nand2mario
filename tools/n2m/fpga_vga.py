@@ -38,6 +38,7 @@ def constraints(quote):
         lines += collection("registers", [f"u_bridge|{source}[{i}]" for i in range(width)], source, quote)
         lines += collection("registers", [f"u_bridge|{capture}[{i}]" for i in range(width)], capture, quote)
         lines.append(f"set_max_delay 20.000 -from ${source} -to ${capture}")
+        lines.append(f"set_min_delay 0.000 -from ${source} -to ${capture}")
     lines += collection("ports", PORTS, "vga_outputs", quote)
     lines += ["set_max_delay 10.000 -to $vga_outputs", "set_min_delay 0.000 -to $vga_outputs",
               "set_max_skew -to $vga_outputs 2.000"]

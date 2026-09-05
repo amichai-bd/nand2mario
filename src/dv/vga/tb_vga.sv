@@ -4,7 +4,13 @@ module tb_vga;
     logic board_reset_n = 0, pll_locked = 0, core_reset = 0;
     wire pll_areset, ready, reset_sys, reset_pix;
     always #10 clk_sys = !clk_sys;
-    always #19 if (pixel_running) clk_pix = !clk_pix; else clk_pix = 0;
+    // Nominal 63/125 clock ratio, rounded to the fixture's 1 ps precision.
+    // A 3 ns offset gives asynchronous arrival phase without coincident edges.
+    initial begin
+        #3;
+        forever #(1250.0 / 63.0)
+            if (pixel_running) clk_pix = !clk_pix; else clk_pix = 0;
+    end
     n2m_reset_control u_reset (.clk_sys, .clk_pix, .board_reset_n, .pll_locked,
                               .pll_areset, .ready, .reset_sys, .reset_pix);
     logic source_valid = 0, source_start = 0;

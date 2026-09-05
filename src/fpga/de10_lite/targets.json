@@ -406,6 +406,100 @@
         ],
         "reference_ns": "19.998"
       }
+    },
+    "vga-invalid": {
+      "device": "10M50DAF484C7G",
+      "top": "vga_proof",
+      "sources": [
+        "src/rtl/clocking/n2m_reset_control.sv",
+        "src/rtl/clocking/n2m_timebase.sv",
+        "src/fpga/de10_lite/n2m_clocking.sv",
+        "src/rtl/vga/n2m_frame_ram.sv",
+        "src/rtl/vga/n2m_vga_scan.sv",
+        "src/rtl/vga/n2m_frame_bridge.sv",
+        "src/fpga/de10_lite/vga_proof.sv"
+      ],
+      "constraints": [
+        "src/fpga/de10_lite/clocking_nominal.sdc"
+      ],
+      "pins": {
+        "clk_sys": "PIN_P11",
+        "red[0]": "PIN_AA1",
+        "red[1]": "PIN_V1",
+        "red[2]": "PIN_Y2",
+        "red[3]": "PIN_Y1",
+        "green[0]": "PIN_W1",
+        "green[1]": "PIN_T2",
+        "green[2]": "PIN_R2",
+        "green[3]": "PIN_R1",
+        "blue[0]": "PIN_P1",
+        "blue[1]": "PIN_T1",
+        "blue[2]": "PIN_P4",
+        "blue[3]": "PIN_N2",
+        "hsync_n": "PIN_N3",
+        "vsync_n": "PIN_N1"
+      },
+      "virtual_pins": [
+        "board_reset_n",
+        "core_reset",
+        "pause_request",
+        "ready",
+        "paused",
+        "discard_count[*]",
+        "repeat_count[*]",
+        "display_sequence[*]",
+        "display_epoch[*]",
+        "observed_sequence[*]",
+        "observed_index[*]",
+        "observed_complete"
+      ],
+      "pll": {
+        "module": "n2m_pixel_pll",
+        "input_ps": 20000,
+        "multiply": 63,
+        "divide": 125
+      },
+      "timing": {
+        "async_reset_pins": [
+          "u_clocking|u_reset|missing_register[0]|clrn",
+          "u_clocking|u_reset|board_release[1]|clrn",
+          "u_clocking|u_reset|lock_samples[0]|clrn",
+          "u_clocking|u_reset|lock_samples[1]|clrn",
+          "u_clocking|u_reset|sys_release[0]|clrn",
+          "u_clocking|u_reset|sys_release[1]|clrn",
+          "u_clocking|u_reset|pix_release[0]|clrn",
+          "u_clocking|u_reset|pix_release[1]|clrn"
+        ],
+        "output_delays": [
+          {
+            "clock": "clk_sys",
+            "ports": [
+              "ready",
+              "paused",
+              "discard_count[*]",
+              "observed_sequence[*]",
+              "observed_index[*]",
+              "observed_complete"
+            ],
+            "count": 146
+          },
+          {
+            "clock": "u_clocking|u_pll|altpll_component|auto_generated|pll1|clk[0]",
+            "ports": [
+              "repeat_count[*]",
+              "display_sequence[*]",
+              "display_epoch[*]",
+              "red[*]",
+              "green[*]",
+              "blue[*]",
+              "hsync_n",
+              "vsync_n"
+            ],
+            "count": 174
+          }
+        ],
+        "reference_ns": "20.000"
+      }
     }
   }
 }
