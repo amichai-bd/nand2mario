@@ -29,6 +29,28 @@ git worktree add --detach worktrees/review-51-<sha7> <full-sha>
 
 Follow [agent-flow](../.agents/skills/agent-flow/SKILL.md) for review and babysitting.
 
+## Merge
+
+After current-SHA review and required checks pass, the author runs:
+
+```powershell
+gh pr merge <number> --squash
+```
+
+Do not pass `--delete-branch` from an author worktree. Root owns worktree and
+branch deletion after it verifies the merge and deployment.
+
+If the command errors after sending the merge request, inspect remote state:
+
+```powershell
+gh pr view <number> --json state,mergedAt,mergeCommit
+gh issue view <issue> --json state,closedAt
+```
+
+If the PR is merged, report its merge commit and the local error to root. Do not
+retry the merge. If remote state is not clear, stop and investigate before any
+retry or cleanup.
+
 ## Clean up after merge
 
 The author reports its squash merge. Root verifies the PR merged, its closing

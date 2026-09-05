@@ -13,7 +13,8 @@ Follow `agent-flow` and `wiki/agents/pull-requests.md`.
 3. Open early with `gh pr create --draft --base main --title '<title>' --body-file <path>`.
 4. Update evidence with `gh pr edit <number> --body-file <path>`.
 5. Babysit CI and independent review. Post the returned report from a file,
-   undraft with `gh pr ready <number>`, then squash merge when ready.
+   undraft with `gh pr ready <number>`, then use the worktree guide's
+   [merge method](../../../worktrees/README.md#merge).
 
 Use [the scenarios](examples/scenarios.md) for body handling and issue scope.
 Never interpolate Markdown into shell commands. Stop when scope changes,

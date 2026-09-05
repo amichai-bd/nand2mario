@@ -17,7 +17,9 @@ One root orchestrator selects issues. Authors babysit their PRs until merged.
 5. Babysit: poll CI, fix failures, and request an independent review following
    [the review guide](references/review.md).
 6. After a ready verdict for the current SHA and green checks, author posts the
-   report, undrafts, squash merges, and reports the merge to root.
+   report, undrafts, uses the worktree guide's
+   [merge method](../../../worktrees/README.md#merge), and reports the merge to
+   root.
 7. Root verifies merge, issue closure, deployment, and cleanup using the worktree
    guide. For worktrees that ran a local preview, read
    [preview cleanup](references/preview-cleanup.md). End author and reviewer
