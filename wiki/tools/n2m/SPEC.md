@@ -592,7 +592,10 @@ and output logic still propagates raw lock loss. This is not a periodic datapath
 clock. The builder may explain exactly that one `no_clock` row only after checking
 the generated functional netlist: latch input/reset/initial state, the lock gate
 truth table, and all downstream buffers/fanout through the two lock sampling reset
-pins. Unsupported structural statements, extra consumers, or any other no-clock
+pins. Supported LUT, clock-control and register parameter sets are exact; default
+constant declarations/assignments and absence of extra drivers are checked.
+The installed atom/register model hashes join the generator fingerprint.
+Unsupported primitive modes, structural statements, extra consumers, or any other no-clock
 row fail. Synthetic topology mutations prove these rejections.
 
 The raw row and vendor netlist remain evidence. All functional unconstrained-path

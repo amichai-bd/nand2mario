@@ -4,6 +4,12 @@ import re
 PLL = "u_clocking|u_pll|altpll_component|auto_generated|"
 RESET = "u_clocking|u_reset|"
 ROW = "n2m_clocking:u_clocking|n2m_pixel_pll:u_pll|altpll:altpll_component|n2m_pixel_pll_altpll:auto_generated|pll_lock_sync"
+OUTPUTS = {
+    "dffeas": {"q"}, "fiftyfivenm_lcell_comb": {"combout", "cout"},
+    "fiftyfivenm_clkctrl": {"outclk"}, "fiftyfivenm_io_ibuf": {"o"}, "fiftyfivenm_io_obuf": {"o", "obar"},
+    "fiftyfivenm_pll": {"locked", "clk", "fbout", "phasedone", "scandataout", "scandone", "activeclock", "vcooverrange", "vcounderrange", "clkbad"},
+    "fiftyfivenm_adcblock": {"eoc", "dout"}, "fiftyfivenm_unvm": {"busy", "osc", "bgpbusy", "sp_pass", "se_pass", "drdout"},
+}
 
 
 def verify(text, checks):
@@ -15,6 +21,8 @@ def verify(text, checks):
     cells = {}
     assignments = []
     assigned_nets = []
+    declarations = []
+    parameters = {}
     # Consume every statement. Unknown syntax cannot silently hide another sink.
     for statement in text.split(";"):
         statement = statement.strip()
@@ -23,8 +31,15 @@ def verify(text, checks):
         if re.fullmatch(r"module\s+clocking_proof\s*\([A-Za-z0-9_,\s]+\)", statement):
             continue
         if re.fullmatch(r"(?:input|output|wire|tri0|tri1)\s+(?:\[\d+:\d+\]\s*)?(?:\\[^\s]+\s*(?:\[\d+\])?|[A-Za-z_]\w*)", statement):
+            declarations.append(" ".join(statement.split()))
             continue
-        if re.fullmatch(r"defparam\s+\\[^\s]+\s+\.\w+\s*=\s*(?:\"[^\"]*\"|[A-Za-z0-9_'.+-]+)", statement):
+        param = re.fullmatch(r"defparam\s+\\([^\s]+)\s+\.(\w+)\s*=\s*(\"[^\"]*\"|[A-Za-z0-9_'.+-]+)", statement)
+        if param:
+            owner, key, value = param.groups()
+            values = parameters.setdefault(owner, {})
+            if key in values:
+                raise ValueError("duplicate primitive parameter")
+            values[key] = value
             continue
         assignment = re.fullmatch(r"assign\s+([^=]+)=(.+)", statement, re.S)
         if assignment:
@@ -35,6 +50,8 @@ def verify(text, checks):
         if not match:
             raise ValueError(f"unsupported structural netlist statement: {statement[:80]}")
         kind, escaped, plain, body = match.groups()
+        if kind not in OUTPUTS:
+            raise ValueError("unsupported vendor primitive type")
         name = escaped or plain
         if name in cells:
             raise ValueError("duplicate netlist cell")
@@ -51,21 +68,35 @@ def verify(text, checks):
         return cells[name][1]
 
     def parameter(name, key):
-        values = re.findall(r"defparam \\" + re.escape(name) + r"\s+\." + key + r"\s*=\s*([^;]+);", text)
-        if len(values) != 1:
+        if key not in parameters.get(name, {}):
             raise ValueError("missing or duplicate vendor lock parameter")
-        return values[0].strip()
+        return parameters[name][key]
+
+    # Exact supported overrides close over the installed primitive model's defaults.
+    # In particular, LUT cin mode and registered clock enables change behavior.
+    def modes(name, expected):
+        if parameters.get(name) != expected:
+            raise ValueError(f"unsupported primitive parameter set: {name}")
+
+    for constant, declaration in {"gnd": "wire gnd", "vcc": "wire vcc", "devclrn": "tri1 devclrn", "devpor": "tri1 devpor"}.items():
+        if re.search(r"\\" + constant + r"\s", text) or [d for d in declarations if re.search(r"\b" + constant + r"$", d)] != [declaration]:
+            raise ValueError("vendor constant declaration differs")
+        values = [rhs for lhs, rhs in zip(assigned_nets, assignments) if re.search(r"\b" + constant + r"\b", lhs)]
+        if values != (["1'b0"] if constant == "gnd" else ["1'b1"] if constant == "vcc" else []):
+            raise ValueError("vendor constant assignment differs")
+        if any(re.search(r"\b" + constant + r"\b", value) for kind, ports in cells.values() for port, value in ports.items()
+               if port in OUTPUTS[kind]):
+            raise ValueError("vendor constant has a primitive driver")
 
     def users(net):
-        outputs = {"dffeas": {"q"}, "fiftyfivenm_lcell_comb": {"combout", "cout"},
-                   "fiftyfivenm_clkctrl": {"outclk"}, "fiftyfivenm_pll": {"locked", "clk", "fbout", "phasedone", "scandataout", "scandone", "activeclock", "vcooverrange", "vcounderrange", "clkbad"}}
         result = {(name, port) for name, (kind, ports) in cells.items() for port, value in ports.items()
-                  if port not in outputs.get(kind, set()) and net in value}
+                  if port not in OUTPUTS[kind] and net in value}
         result |= {(f"assign-{i}", "rhs") for i, rhs in enumerate(assignments) if net in rhs}
         return result
 
     pll = cell(PLL + "pll1", "fiftyfivenm_pll")
     ff = cell(PLL + "pll_lock_sync", "dffeas")
+    modes(PLL + "pll_lock_sync", {"is_wysiwyg": '"true"', "power_up": '"low"'})
     expected = {"clk": pll["locked"], "d": "\\" + PLL + "pll_lock_sync~feeder_combout",
                 "asdata": "vcc", "clrn": pll["areset"].removeprefix("!"), "aload": "gnd",
                 "sclr": "gnd", "sload": "gnd", "ena": "vcc", "devclrn": "devclrn",
@@ -75,6 +106,7 @@ def verify(text, checks):
     if parameter(PLL + "pll_lock_sync", "power_up") != '"low"':
         raise ValueError("vendor lock event latch initialization differs")
     feeder = cell(PLL + "pll_lock_sync~feeder", "fiftyfivenm_lcell_comb")
+    modes(PLL + "pll_lock_sync~feeder", {"lut_mask": "16'hFFFF", "sum_lutc_input": '"datac"'})
     if parameter(PLL + "pll_lock_sync~feeder", "lut_mask").lower() != "16'hffff" or feeder.get("combout") != ff["d"]:
         raise ValueError("vendor lock event latch D is not constant one")
     if any(feeder.get(p) != "gnd" for p in ("dataa", "datab", "datac", "datad", "cin")):
@@ -83,6 +115,8 @@ def verify(text, checks):
     # The latch clears from the very same reset as the PLL, with opposite polarity.
     reset_buffer = cell(RESET + "pll_areset~clkctrl", "fiftyfivenm_clkctrl")
     reset_ff = cell(RESET + "pll_areset", "dffeas")
+    modes(RESET + "pll_areset", {"is_wysiwyg": '"true"', "power_up": '"low"'})
+    modes(RESET + "pll_areset~clkctrl", {"clock_type": '"global clock"', "ena_register_mode": '"none"'})
     if (reset_buffer.get("outclk") != ff["clrn"] or reset_buffer.get("ena") != "vcc"
             or reset_buffer.get("clkselect") != "2'b00"
             or reset_buffer.get("inclk") != "{vcc,vcc,vcc," + reset_ff["q"] + "}"):
@@ -91,6 +125,7 @@ def verify(text, checks):
     gate_name = RESET + "lock_reset~0"
     gate = cell(gate_name, "fiftyfivenm_lcell_comb")
     mask = parameter(gate_name, "lut_mask")
+    modes(gate_name, {"lut_mask": mask, "sum_lutc_input": '"datac"'})
     if not re.fullmatch(r"16'h[0-9A-Fa-f]{4}", mask):
         raise ValueError("invalid vendor lock gate truth table")
     mask = int(mask[4:], 16)
@@ -111,6 +146,7 @@ def verify(text, checks):
         raise ValueError("raw PLL lock has unexpected fanout")
     gate_buffer_name = RESET + "lock_reset~0clkctrl"
     gate_buffer = cell(gate_buffer_name, "fiftyfivenm_clkctrl")
+    modes(gate_buffer_name, {"clock_type": '"global clock"', "ena_register_mode": '"none"'})
     if (gate_buffer.get("inclk") != "{vcc,vcc,vcc," + gate["combout"] + "}"
             or gate_buffer.get("clkselect") != "2'b00" or gate_buffer.get("ena") != "vcc"
             or users(gate["combout"]) != {(gate_buffer_name, "inclk")}):
@@ -120,6 +156,7 @@ def verify(text, checks):
         raise ValueError("vendor lock drives a functional datapath")
     for name in sample_names:
         sample = cell(name, "dffeas")
+        modes(name, {"is_wysiwyg": '"true"', "power_up": '"low"'})
         if sample.get("clrn") != "!" + gate_buffer["outclk"] or sample.get("clk") != reset_ff["clk"]:
             raise ValueError("lock sampling reset or system clock differs")
     critical_drivers = [(pll["locked"], PLL + "pll1", "locked"), (ff["q"], PLL + "pll_lock_sync", "q"),
@@ -128,8 +165,8 @@ def verify(text, checks):
                         (reset_ff["q"], RESET + "pll_areset", "q"), (gate["combout"], gate_name, "combout"),
                         (gate_buffer["outclk"], gate_buffer_name, "outclk")]
     for net, expected_name, expected_port in critical_drivers:
-        drivers = {(name, port) for name, (_, ports) in cells.items() for port, value in ports.items()
-                   if port in {"q", "combout", "cout", "outclk", "locked"} and value == net}
+        drivers = {(name, port) for name, (kind, ports) in cells.items() for port, value in ports.items()
+                   if port in OUTPUTS[kind] and net in value}
         if drivers != {(expected_name, expected_port)} or any(net in lhs for lhs in assigned_nets):
             raise ValueError("vendor lock net has additional drivers")
     return {"endpoint": ROW, "classification": "documented ALTPLL lock event latch",

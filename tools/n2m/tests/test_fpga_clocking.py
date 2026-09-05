@@ -11,9 +11,17 @@ from tools.n2m.records import file_hash
 def fixture():
     # Construct an abstract evidence fixture, not a copied vendor implementation.
     pll, reset = fpga_lock.PLL, fpga_lock.RESET
-    cells = []
+    cells = ["wire gnd;", "wire vcc;", "assign gnd = 1'b0;", "assign vcc = 1'b1;", "tri1 devclrn;", "tri1 devpor;"]
     def cell(kind, name, **ports):
         cells.append(kind + " \\" + name + " (" + ",".join(f".{p}({v})" for p, v in ports.items()) + ");")
+        if kind == "dffeas":
+            param(name, "is_wysiwyg", '"true"')
+            param(name, "power_up", '"low"')
+        elif kind == "fiftyfivenm_clkctrl":
+            param(name, "clock_type", '"global clock"')
+            param(name, "ena_register_mode", '"none"')
+        elif kind == "fiftyfivenm_lcell_comb":
+            param(name, "sum_lutc_input", '"datac"')
     def param(name, key, value):
         cells.append("defparam \\" + name + f" .{key} = {value};")
     raw, q, release = "\\raw", "\\" + pll + "pll_lock_sync~q", "\\release"
@@ -21,7 +29,6 @@ def fixture():
     cell("fiftyfivenm_pll", pll + "pll1", locked=raw, areset="!\\reset_buffer")
     cell("dffeas", pll + "pll_lock_sync", clk=raw, d=data, asdata="vcc", clrn="\\reset_buffer",
          aload="gnd", sclr="gnd", sload="gnd", ena="vcc", devclrn="devclrn", devpor="devpor", q=q, prn="vcc")
-    param(pll + "pll_lock_sync", "power_up", '"low"')
     cell("fiftyfivenm_lcell_comb", pll + "pll_lock_sync~feeder", dataa="gnd", datab="gnd", datac="gnd", datad="gnd", cin="gnd", combout=data)
     param(pll + "pll_lock_sync~feeder", "lut_mask", "16'hFFFF")
     cell("dffeas", reset + "pll_areset", q=release, clk="\\system_clock")
@@ -90,6 +97,23 @@ class ClockingEvidenceTests(unittest.TestCase):
         for report in (checks + checks, checks.replace(fpga_lock.ROW, "functional_register"), ""):
             with self.assertRaises(ValueError):
                 fpga_lock.verify(text, report)
+
+    def test_primitive_modes_and_constant_drivers_are_closed(self):
+        text, checks = fixture()
+        mutations = [text.replace('sum_lutc_input = "datac"', 'sum_lutc_input = "cin"'),
+                     text.replace('ena_register_mode = "none"', 'ena_register_mode = "falling edge"'),
+                     text.replace('power_up = "low"', 'power_up = "high"'),
+                     text.replace("assign vcc = 1'b1", "assign vcc = 1'b0"),
+                     text.replace("tri1 devpor", "tri0 devpor"),
+                     text.replace("wire vcc", "tri0 vcc"),
+                     text + "\nassign vcc = 1'b0;",
+                     text + "\nassign vcc[0] = 1'b0;",
+                     text + "\ndffeas bad (.q(vcc));",
+                     text + '\ndefparam \\' + fpga_lock.PLL + 'pll_lock_sync .invert_clock = "true";',
+                     text + '\ndefparam \\' + fpga_lock.PLL + 'pll_lock_sync .sclr_over_ena = "true";']
+        for mutated in mutations:
+            with self.subTest(mutated=mutated[-100:]), self.assertRaises(ValueError):
+                fpga_lock.verify(mutated, checks)
 
     def test_checked_constraints_reject_broad_or_executable_endpoints(self):
         for endpoint in ("*|clrn", "cell|q", "cell|clrn;source extra.sdc", "cell|clrn\nsource extra.sdc"):

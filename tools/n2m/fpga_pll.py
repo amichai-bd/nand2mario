@@ -81,6 +81,8 @@ def identity(directory):
     paths = {"generator": directory / ("qmegawiz.exe" if os.name == "nt" else "qmegawiz"),
              "definition": directory.parent / "libraries/megafunctions/xml_info/altpll_info.xml",
              "primitive": directory.parent / "libraries/megafunctions/altpll.tdf",
+             "atom_model": directory.parent / "eda/sim_lib/fiftyfivenm_atoms.v",
+             "register_model": directory.parent / "eda/sim_lib/altera_primitives.v",
              "rules": directory.parent / "libraries/megafunctions/xml_info/altpll_rules.xml",
              "wizard": directory.parent / "libraries/megafunctions/xml_info/altpll_wiz_map.xml"}
     if any(not path.is_file() for path in paths.values()):
