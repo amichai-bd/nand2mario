@@ -211,8 +211,14 @@ repository-relative `.sv` and `.sdc` paths under `src/`, without traversal or
 symlink escapes. Physical pins are unique `PIN_<letters><digits>` names; port
 names permit an optional numeric or wildcard array index. Physical assignments
 use 3.3-V LVTTL. This version supports self-contained inputs; HDL includes/file
-reads and external/dynamic SDC loads are rejected. Generated IP and additional
-file types need an explicit input/dependency extension before use.
+reads and external/dynamic SDC loads are rejected. SDC permits one literal clock,
+delay, exception or uncertainty assignment per line, using the bounded command
+set in the [validator](../../../tools/n2m/fpga.py). Collection getters may select
+ports, clocks, pins, cells, registers, nets, inputs or outputs; nested bracket
+expressions, variables, control/procedure bodies, command chaining and dynamic
+commands are unsupported. Comments and line continuations are allowed. Generated
+IP, broader Tcl syntax and additional file types need an explicit dependency
+extension before use.
 
 `--quartus-bin` is required and resolves `quartus_sh`, `quartus_map`,
 `quartus_fit`, `quartus_asm`, and `quartus_sta` from that one directory. All must
@@ -233,8 +239,10 @@ success. Failures retain the failed attempt and publish FAIL. Only PASS updates
 the shared latest pointer.
 
 Fingerprint input/configuration/runner hashes, explicit tool identity and
-timeout. Reuse requires a matching successful result and every retained artifact
-hash; `--rebuild` forces execution. Cache hits still probe explicit tool versions,
+timeout. Reuse requires a matching successful result, agreement with its immutable
+attempt record, the complete required report/image/configuration inventory,
+every retained artifact hash, and revalidated timing evidence; `--rebuild` forces
+execution. Cache hits still probe explicit tool versions,
 record that discovery, and link the reused immutable result and its artifacts.
 They perform no compile or timing run. An altered image/report/source/constraint,
 changed tool, or failed forced rebuild prevents stale reuse.

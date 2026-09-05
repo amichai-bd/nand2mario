@@ -46,6 +46,7 @@ class FpgaTests(unittest.TestCase):
             path = self.root / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text("owned input\n")
+        (self.root / "src/smoke.sdc").write_text('create_clock -name clk -period 20 [get_ports clk]\n')
         self.registry = self.root / fpga.REGISTRY
         self.registry.parent.mkdir(parents=True, exist_ok=True)
         self.save_target()
@@ -73,7 +74,7 @@ class FpgaTests(unittest.TestCase):
         self.assertEqual(self.run_build()["cache"], "CACHED")
         for source in ("src/smoke.sv", "src/smoke.sdc", "tools/n2m/fpga.py"):
             with (self.root / source).open("a") as stream:
-                stream.write("changed\n")
+                stream.write("# changed\n" if source.endswith('.sdc') else "changed\n")
             self.assertEqual(self.run_build()["cache"], "BUILT")
         self.info["quartus_fit"]["sha256"] = "new tool identity"
         result = self.run_build()
@@ -100,6 +101,31 @@ class FpgaTests(unittest.TestCase):
         self.target["sources"] = ["../escape.sv"]
         self.save_target()
         self.assertEqual(self.run_build()["status"], "FAIL")
+
+    def test_truncated_cache_manifest_cannot_hide_missing_image(self):
+        result = self.run_build()
+        current = self.build / "fpga/smoke/result.json"
+        log = next(name for name in result["artifacts"] if name.endswith("compile.log"))
+        truncated = {**result, "artifacts": {log: result["artifacts"][log]}}
+        current.write_text(json.dumps(truncated))
+        for image in self.build.rglob('*.sof'):
+            image.unlink()
+        rebuilt = self.run_build()
+        self.assertEqual((rebuilt['status'], rebuilt['cache']), ('PASS', 'BUILT'))
+        self.assertTrue(any(name.endswith('.sof') for name in rebuilt['artifacts']))
+        # Even a corrupt immutable record cannot remove the required inventory.
+        truncated = {**rebuilt, "artifacts": {name: value for name, value in rebuilt['artifacts'].items() if not name.endswith('.sof')}}
+        current.write_text(json.dumps(truncated))
+        (self.root / truncated['attempt_result']).write_text(json.dumps(truncated))
+        self.assertEqual(self.run_build()['cache'], 'BUILT')
+
+    def test_nested_namespaced_and_indirect_sdc_loads_are_rejected(self):
+        for text in ('if {1} { source extra.sdc }', '::source extra.sdc',
+                     'set command source\n$command extra.sdc', 'create_clock -period [exec helper] clk'):
+            with self.subTest(text=text):
+                (self.root / 'src/smoke.sdc').write_text(text)
+                with self.assertRaisesRegex(ValueError, 'unsupported'):
+                    fpga.target_definition(self.root, 'smoke')
 
     def test_report_failures_are_not_success(self):
         mutations = {

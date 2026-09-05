@@ -13,6 +13,9 @@ from .records import atomic_json, cache_matches, digest, file_hash, read_json
 DEVICE = "10M50DAF484C7G"
 REGISTRY = "src/fpga/de10_lite/targets.json"
 TOOLS = ("quartus_sh", "quartus_map", "quartus_fit", "quartus_asm", "quartus_sta")
+REQUIRED_REPORTS = ("design.map.rpt", "design.fit.rpt", "design.fit.summary", "design.asm.rpt", "design.sta.rpt", "design.sta.summary",
+                    "design.sof", "unconstrained.rpt", "check_timing.rpt", "ignored.rpt")
+SDC_COMMANDS = set("create_clock create_generated_clock derive_clock_uncertainty derive_pll_clocks set_input_delay set_output_delay set_false_path set_multicycle_path set_max_delay set_min_delay set_clock_uncertainty set_clock_groups set_clock_latency set_clock_transition".split())
 TIMING_CHECKS = set("no_clock multiple_clock pos_neg_clock_domain generated_clock virtual_clock no_input_delay no_output_delay partial_input_delay partial_output_delay io_min_max_delay_consistency reference_pin generated_io_delay latency_override partial_multicycle multicycle_consistency loops latches pll_cross_check uncertainty partial_min_max_delay clock_assignments_on_output_ports input_delay_assigned_to_clock".split())
 ALLOCATOR_NOTICE = "TBBmalloc: skip allocation functions replacement in ucrtbase.dll: unknown prologue for function _msize"
 # These exact diagnostics do not establish physical readiness. No warning is hidden.
@@ -33,6 +36,20 @@ project_close
 
 def tcl_word(value):
     return '"' + str(value).replace('\\', '/').replace('"', '\\"').replace('$', '\\$').replace('[', '\\[').replace(']', '\\]') + '"'
+
+
+def self_contained_sdc(text):
+    # A bounded command subset avoids hidden dependency reads through Tcl bodies,
+    # variables, aliases or dynamically constructed command names.
+    for line in re.sub(r'\\\r?\n', ' ', text).splitlines():
+        line = line.strip()
+        if not line or line.startswith('#'):
+            continue
+        if line.split()[0] not in SDC_COMMANDS or any(c in line for c in '$;\\'):
+            raise ValueError("unsupported external/dynamic SDC syntax")
+        scalar = re.sub(r'\[(?:get_ports|get_clocks|get_pins|get_cells|get_registers|get_nets|all_inputs|all_outputs|all_registers)\b[^\[\]$;\\]*\]', '', line)
+        if '[' in scalar or ']' in scalar:
+            raise ValueError("unsupported dynamic or nested SDC expression")
 
 
 def target_definition(root, name):
@@ -64,8 +81,8 @@ def target_definition(root, name):
             text = path.read_text(encoding="utf-8")
             if suffix == ".sv" and re.search(r'`include\b|\$(?:readmemh|readmemb|fopen)\b', text):
                 raise ValueError(f"external FPGA source dependencies are unsupported: {name}")
-            if suffix == ".sdc" and re.search(r'(?:^|[;\[])\s*(?:source|read_sdc|open|exec|load|eval)\b', text, re.M):
-                raise ValueError(f"external or dynamic SDC dependencies are unsupported: {name}")
+            if suffix == ".sdc":
+                self_contained_sdc(text)
     if not isinstance(target["pins"], dict) or not target["pins"] or not isinstance(target["virtual_pins"], list):
         raise ValueError("invalid FPGA pin assignments")
     for port in [*target["pins"], *target["virtual_pins"]]:
@@ -161,9 +178,7 @@ def tools(directory, folder, record, build, timeout):
 
 def timing_evidence(folder, target):
     output = folder / "output"
-    required = ["design.map.rpt", "design.fit.rpt", "design.fit.summary", "design.asm.rpt", "design.sta.rpt", "design.sta.summary",
-                "design.sof", "unconstrained.rpt", "check_timing.rpt", "ignored.rpt"]
-    for name in required:
+    for name in REQUIRED_REPORTS:
         if not (output / name).is_file() or not (output / name).stat().st_size:
             raise ValueError(f"missing FPGA evidence: {name}")
     fit = (output / "design.fit.summary").read_text(encoding="utf-8")
@@ -202,6 +217,25 @@ def timing_evidence(folder, target):
             "virtual_clock_check": "No virtual clock required for the physical-clock-referenced fixture" if "No virtual clock was found." in checks else "passed"}
 
 
+def complete_cache(record, fingerprint, root, build, target):
+    if not cache_matches(record, fingerprint, root, build):
+        return False
+    try:
+        immutable = (root / record["attempt_result"]).resolve()
+        folder = (root / record["evidence_directory"]).resolve()
+        if not immutable.is_relative_to(build.resolve()) or not folder.is_relative_to(build.resolve()):
+            return False
+        if read_json(immutable) != record:
+            return False
+        required = [folder / "output" / name for name in REQUIRED_REPORTS]
+        required += [folder / name for name in ("design.qpf", "design.qsf", "audit.tcl", "compile.log", "audit.log")]
+        if any(p.relative_to(root).as_posix() not in record["artifacts"] for p in required):
+            return False
+        return timing_evidence(folder, target) == record["evidence"]
+    except (KeyError, TypeError, ValueError, OSError):
+        return False
+
+
 def build_fpga(root, build, args, provenance=None):
     if not re.fullmatch(r"[a-z0-9][a-z0-9_-]*", args.target):
         raise ValueError("invalid FPGA target name")
@@ -227,14 +261,15 @@ def build_fpga(root, build, args, provenance=None):
         record["tools"] = tools(args.quartus_bin, folder, record, build, min(args.timeout, 60))
         record["definition"] = target
         record["fingerprint"] = digest({"inputs": record["inputs"], "tools": record["tools"], "definition": target, "timeout": args.timeout})
-        if not args.rebuild and cache_matches(old, record["fingerprint"], root, build):
-            record.update(status="PASS", cache="CACHED", reused_result=old["attempt_result"], evidence=old["evidence"])
+        if not args.rebuild and complete_cache(old, record["fingerprint"], root, build, target):
+            record.update(status="PASS", cache="CACHED", reused_result=old["attempt_result"], evidence=old["evidence"], evidence_directory=old["evidence_directory"])
             record["artifacts"].update(old["artifacts"])
         else:
             prepare(root, folder, target)
             execute([record["tools"]["quartus_sh"]["path"], "--flow", "compile", "design"], folder, folder / "compile.log", args.timeout, record, build)
             execute([record["tools"]["quartus_sta"]["path"], "-t", "audit.tcl"], folder, folder / "audit.log", args.timeout, record, build)
             record["evidence"] = timing_evidence(folder, target)
+            record["evidence_directory"] = folder.relative_to(root).as_posix()
             record["status"] = "PASS"
     except Exception as error:
         record.update(status="FAIL", error=str(error))
