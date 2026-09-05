@@ -60,7 +60,7 @@ See the [bounded phase](../../../agents/bootstrap-plan.md#current-phase).
 
 [RTL](../../../../src/rtl/display/dmg_tile_pixel.sv) implements the named rules.
 The [test plan](../../../../src/dv/display/README.md) maps each to independent
-checks. The builder's [targets](../../../../src/dv/builder/targets.json) run Icarus;
+checks. The builder's [targets](../../../../src/dv/builder/targets.json) run Questa;
 the [standalone runner](../../../../tools/sim/tile_pixel.py) retains Questa support.
 See [unit simulation](../../../tools/sim/SPEC.md).
 

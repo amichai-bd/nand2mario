@@ -21,12 +21,13 @@ ROOT = Path(__file__).resolve().parents[3]
 
 
 class FakeSimulator:
-    backend = "icarus"
-    compiler = "iverilog"
-    runtime = "vvp"
+    backend = "questa"
+    compiler = "vlog"
+    runtime = "vsim"
 
     def __init__(self):
-        self.info = {"backend": "icarus", "version": "12.0", "path": "/tools/iverilog"}
+        self.info = {"backend": "questa", "version": "2025.2", "path": "/tools/vsim"}
+        self.tools = {name: name for name in ("vlib", "vmap", "vlog", "vsim")}
         self.calls = []
         self.fail = False
         self.warning = False
@@ -41,9 +42,15 @@ class FakeSimulator:
 
     def run(self, argv, cwd=None):
         self.calls.append(argv)
+        if argv[0] == "vlib":
+            (cwd / "work").mkdir()
+        if argv[0] == "vmap" and "-c" in argv:
+            (cwd / "modelsim.ini").write_text("local mappings")
         if argv[0] == self.compiler:
-            Path(argv[argv.index("-o") + 1]).write_text("compiled")
+            (cwd / "work/design.bin").write_text("compiled")
             return SimpleNamespace(returncode=0, stdout="warning: test\n" if self.warning else "")
+        if argv[0] != self.runtime:
+            return SimpleNamespace(returncode=0, stdout="")
         if self.timeout:
             raise ToolError("runtime timed out", "last emitted diagnostic")
         (cwd / "waves/smoke.vcd").write_text("wave")
@@ -82,7 +89,7 @@ class BuilderTests(unittest.TestCase):
         result = self.run_stage()
         self.assertEqual(result["cache"], "BUILT")
         self.assertIn("src/two.svh", result["inputs"])
-        self.assertIn("-I", self.sim.calls[-2])
+        self.assertIn("+incdir+" + str(self.root), next(argv for argv in self.sim.calls if argv[0] == "vlog"))
         second.unlink()
         with self.assertRaisesRegex(ValueError, "missing"):
             self.run_stage()
@@ -90,10 +97,10 @@ class BuilderTests(unittest.TestCase):
     def test_cache_reuse_and_rebuild(self):
         self.assertEqual(self.run_stage()["status"], "PASS")
         self.assertEqual(self.run_stage()["cache"], "CACHED")
-        self.assertEqual(len(self.sim.calls), 2)
+        self.assertEqual(len(self.sim.calls), 7)
         self.args.rebuild = True
         self.assertEqual(self.run_stage()["cache"], "BUILT")
-        self.assertEqual(len(self.sim.calls), 4)
+        self.assertEqual(len(self.sim.calls), 14)
 
     def test_stale_sources_runner_config_seed_tools(self):
         self.run_stage()
@@ -105,12 +112,12 @@ class BuilderTests(unittest.TestCase):
         self.assertEqual(self.run_stage()["cache"], "BUILT")
         self.sim.info["version"] = "13.0"
         self.assertEqual(self.run_stage()["cache"], "BUILT")
-        self.sim.info["path"] = "/other/iverilog"
+        self.sim.info["path"] = "/other/vsim"
         self.assertEqual(self.run_stage()["cache"], "BUILT")
 
     def test_missing_and_tampered_artifacts(self):
         first = self.run_stage()
-        artifact = next(p for p in first["artifacts"] if p.endswith("simulation.vvp"))
+        artifact = next(p for p in first["artifacts"] if p.endswith("design.bin"))
         (self.root / artifact).unlink()
         self.assertEqual(self.run_stage()["cache"], "BUILT")
         current = self.run_stage()
@@ -157,11 +164,10 @@ class BuilderTests(unittest.TestCase):
         self.assertTrue(any("last emitted diagnostic" in (self.root / p).read_text()
                             for p in result["artifacts"] if p.endswith("sim.log")))
         tool = object.__new__(Simulator)
-        tool.prefix = []
         with patch("n2m.simulator.subprocess.run", side_effect=subprocess.TimeoutExpired(
-                ["vvp"], 60, output=b"last emitted diagnostic")):
+                ["vsim"], 60, output=b"last emitted diagnostic")):
             with self.assertRaises(ToolError) as caught:
-                tool.run(["vvp"])
+                tool.run(["vsim"])
         self.assertEqual(caught.exception.output, "last emitted diagnostic")
 
     def test_expected_nonzero_is_explicit(self):
@@ -228,7 +234,7 @@ class BuilderTests(unittest.TestCase):
     def test_cli_failure_json_and_latest(self):
         latest = self.root / "workdir/latest.txt"
         latest.write_text("previous\n")
-        with patch("n2m.doctor.Simulator", side_effect=ToolError("missing compiler")), \
+        with patch("n2m.doctor.questa", side_effect=ToolError("missing compiler")), \
                 patch("n2m.cli.git_state", return_value={"commit": "test"}), \
                 contextlib.redirect_stdout(io.StringIO()) as output:
             status = main(["doctor", "--tag", "missing", "--json"], self.root)
@@ -239,7 +245,7 @@ class BuilderTests(unittest.TestCase):
 
     def test_missing_executable(self):
         with self.assertRaises(ToolError):
-            Simulator("icarus", "n2m-compiler-does-not-exist", "n2m-runtime-does-not-exist")
+            Simulator(questa_bin=str(self.root / "missing-questa"))
 
     def test_discovery_failure_invalidates_previous_success(self):
         with patch("n2m.cli.Simulator", return_value=self.sim), \
@@ -252,7 +258,7 @@ class BuilderTests(unittest.TestCase):
             current = self.root / "workdir/builds/discovery/sim/test/builder-smoke/result.json"
             self.assertEqual(read_json(current)["status"], "FAIL")
             self.assertEqual(main(command, self.root), 0)
-            self.assertEqual(len(self.sim.calls), 4)
+            self.assertEqual(len(self.sim.calls), 14)
 
     def test_cli_pass_cache_fail_latest(self):
         with patch("n2m.cli.Simulator", return_value=self.sim), \

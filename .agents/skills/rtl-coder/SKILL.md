@@ -27,5 +27,5 @@ Use [the checklist](templates/rtl-checklist.md) in review notes. Read
 [the scenarios](examples/scenarios.md) for the skill boundary. Stop when the
 contract, clocking, reset, or crossing behavior is undecided.
 
-[Issue #106](https://github.com/amichai-bd/nand2mario/issues/106) tracks removal of
-legacy simulator tooling and automatic CI; it does not permit new Icarus runs.
+The [CI boundary](../../../wiki/tools/n2m/SPEC.md#ci-execution-boundary) distinguishes
+hosted host checks from required actual local Questa evidence until #32.

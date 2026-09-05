@@ -22,8 +22,11 @@ has not started. [Preflight gaps](wiki/preflight-gaps.md) track what must come f
 - `worktrees/`: isolated issue checkouts.
 - `workdir/`: local tools, temporary drafts, builds, and logs.
 
-See the [build specification](wiki/tools/n2m/SPEC.md) for planned commands
-and output layout.
+Questa is the sole supported simulator. See the
+[build specification](wiki/tools/n2m/SPEC.md) for commands and output layout.
+Hosted CI checks host contracts; licensed simulation currently requires local
+evidence. The [CI boundary](wiki/tools/n2m/SPEC.md#ci-execution-boundary) tracks
+the trusted remote route still due in #32.
 
 The repository is private; the documentation site is public and deploys after
 merge to `main`. Do not commit commercial ROMs, saves, or credentials. A project

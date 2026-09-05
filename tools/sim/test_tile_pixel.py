@@ -33,14 +33,14 @@ class RunnerTests(unittest.TestCase):
         self.source = self.root / "src/unit.sv"
         self.source.write_text("source", encoding="utf-8")
 
-    def invoke(self, responder=None, missing=False, simulator="icarus"):
+    def invoke(self, responder=None, missing=False, simulator=None):
         def normal(argv, **kwargs):
             if "+corrupt" in argv:
                 return subprocess.CompletedProcess(argv, 1, MISMATCH)
             return subprocess.CompletedProcess(argv, 0, PASS)
 
         with patch.multiple(tile_pixel, ROOT=self.root, SOURCES=[self.source], __file__=str(self.script)), \
-             patch("sys.argv", ["tile_pixel.py", "--sim", simulator, "--tag", "test"]), \
+             patch("sys.argv", ["tile_pixel.py", "--tag", "test", *(["--sim", simulator] if simulator else [])]), \
              patch("tile_pixel.shutil.which", return_value=None if missing else "/tool path/bin"), \
              patch("tile_pixel.subprocess.check_output", side_effect=["abc\n", ""]), \
              patch("tile_pixel.subprocess.run", side_effect=responder or normal) as run, \
@@ -52,8 +52,8 @@ class RunnerTests(unittest.TestCase):
     def test_success_and_paths_with_spaces(self):
         code, manifest, run = self.invoke()
         self.assertEqual((code, manifest["status"]), (0, "PASS"))
-        self.assertEqual(run.call_count, 4)
-        self.assertIn(str(self.source), manifest["commands"][1]["argv"])
+        self.assertEqual(run.call_count, 9)
+        self.assertIn(str(self.source), manifest["commands"][2]["argv"])
 
     def test_header_manifest_and_missing_dependency_fail_before_tools(self):
         self.source.write_text('`include "src/shared.svh"\n')
@@ -62,8 +62,8 @@ class RunnerTests(unittest.TestCase):
         code, manifest, _ = self.invoke()
         self.assertEqual(code, 0)
         self.assertIn("src/shared.svh", manifest["inputs"])
-        command = manifest["commands"][1]["argv"]
-        self.assertEqual(command[command.index("-I") + 1], str(self.root))
+        command = manifest["commands"][2]["argv"]
+        self.assertIn("+incdir+" + str(self.root), command)
 
     def test_missing_header_retains_failure_manifest(self):
         self.source.write_text('`include "src/missing.svh"\n')
@@ -71,6 +71,12 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("missing", manifest["error"])
         run.assert_not_called()
+
+    def test_retired_backend_is_rejected(self):
+        with self.assertRaises(SystemExit) as caught:
+            self.invoke(simulator="icarus")
+        self.assertEqual(caught.exception.code, 2)
+        self.assertFalse((self.root / "workdir/builds/test").exists())
 
     def test_missing_tool_records_failure(self):
         code, manifest, run = self.invoke(missing=True)

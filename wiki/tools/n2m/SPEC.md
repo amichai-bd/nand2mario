@@ -1,6 +1,6 @@
 # Build system
 
-Status: `doctor`, `check`, Icarus/Questa `sim test`, and MAX 10 `fpga build` implemented; other stages planned.
+Status: `doctor`, `check`, Questa `sim test`, and MAX 10 `fpga build` implemented; other stages planned.
 
 ## Purpose
 
@@ -29,24 +29,21 @@ The second identical simulation reports `CACHED`. The deliberate-failure target
 must exit 1 and retain its mismatch log and waveform. Other successful commands
 exit 0; errors exit nonzero. `--json` emits one result object on stdout.
 
-`doctor` now reruns the builder smoke; its previous version only discovered tools.
-The default `--profile portable` preserves existing options and JSON `tools`, adds
-per-check results, and leaves licensed tools and devices explicitly untested.
-Hosted CI uses this profile. See [environment doctor](#environment-doctor).
+`doctor` defaults to `--profile simulation`: it compiles, elaborates and runs
+a checked Questa smoke. Quartus and devices remain explicitly untested in this
+profile. See [environment doctor](#environment-doctor).
 `sim test` proves compile, elaboration, run, and the target's expected signature.
-`check` runs contract tests with controlled doubles; these are not RTL evidence.
+`check` runs host contracts with controlled Questa doubles; these are not RTL
+or license evidence.
 
-Native Icarus on PATH is preferred; Windows otherwise tries the default WSL
-distribution. Select `--sim icarus` or `--sim wsl-icarus` explicitly. Use
-`--wsl-distro <name>` to select a distribution and `--iverilog <path>` / `--vvp
-<path>` to override executables in that environment. WSL paths are Linux paths;
-source/output paths are translated automatically. Paths with spaces are supported.
-Missing tools fail with diagnostics; there is no silent simulator fallback after
-an explicitly selected tool fails. Automatic selection remains portable.
+Questa is the sole supported simulator and the default. `--sim questa` remains
+an optional explicit spelling. Retired selections (`auto`, `icarus`,
+`wsl-icarus`) and Icarus/WSL executable options fail argument parsing. Missing
+tools fail with diagnostics; there is no fallback simulator.
 
 ## Questa simulation
 
-Select Questa explicitly for an authorized registered target:
+Run an authorized registered target with default or explicit Questa:
 
 ```powershell
 python tools/build.py sim test builder-smoke --sim questa --tag questa-smoke --json
@@ -56,13 +53,11 @@ python tools/build.py sim test tile-pixel-corrupt --sim questa --tag questa-corr
 
 `--questa-bin` selects the directory containing `vlib`, `vmap`, `vlog`, and
 `vsim`; omit it to resolve those executables on PATH. Missing or invalid explicit
-selections fail without fallback. Icarus/WSL options cannot accompany Questa,
-and `--questa-bin` requires `--sim questa` for `sim test`. No command changes
+selections fail without fallback. No command changes
 environment variables or license settings. Versions and executable hashes are
 recorded; `vlib` has no version query, so its path and hash identify it.
 
-The same target registry, seed, expected exit, and signature rules apply to both
-backends. Each actual Questa attempt creates an isolated library under
+The target registry owns seed, expected exit and signature rules. Each Questa attempt creates an isolated library under
 `compile/questa/<target>/<attempt>/` and local mappings in its compile and run
 directories. A retained `run.do` uses the same finish/error handling as the
 [doctor](#environment-doctor). Logs, mappings, macro, library, VCD/WLF files,
@@ -78,6 +73,13 @@ The failing smoke target still reports FAIL. Discovery failures retain their
 diagnostics and request record under `discovery/<attempt>/` and invalidate any
 previous success for the requested target.
 
+Coordinate the licensed execution slot with the root orchestrator before actual
+runs. Where the installation limits concurrent sessions, serialize builder,
+doctor, standalone and regression invocations, including all regression children.
+Release the slot only after those processes finish. Retain license-contention
+failures as failures; retry once the competing run ends, with fresh evidence.
+Do not kill another author's simulator or change license settings to bypass it.
+
 The [gap register](../../preflight-gaps.md#gap-008-verification-baseline) records
 the licensed tests established by this integration and outstanding coverage.
 
@@ -90,15 +92,15 @@ python tools/build.py doctor --profile environment --questa-bin <directory> --qu
 Executable discovery uses PATH or explicit directories, never changes global
 PATH, and never falls back from an explicit selection. Tool versions are recorded;
 commercial installations are user-provided, not bootstrapped or assumed pinned.
-The existing dependency manifest owns the portable simulator pin.
+The [tool provenance](../../../tools/sim/THIRD_PARTY.md) owns installation boundaries.
 
 Each invocation gets fresh logs and Questa libraries under
 `workdir/builds/<tag>/doctor/<attempt>/`. Source/runner hashes, commands, versions,
 artifact hashes, and per-check outcomes remain in ignored build evidence.
-Readiness is never cached. The portable smoke uses the existing simulation stage
-with forced rebuild and checks 22 reset, count, and wrap observations.
+Readiness is never cached. Every profile runs the Questa smoke and checks
+22 reset, count, and wrap observations.
 
-The environment profile also checks:
+The default profile checks Questa; the environment profile adds the remaining tools:
 
 - Questa: compile and run that same source, requiring its checked completion
   signature. A compile-only success does not prove elaboration or a runtime
@@ -125,48 +127,48 @@ The environment profile also checks:
 No command opens UART, drives modem lines, sends bytes, programs FPGA memory,
 changes JTAG configuration, or proves physical operation. Those follow the
 [current authorization](../../agents/bootstrap-plan.md#verification-and-hardware-authorization)
-and hardware workflow. Optional WSL is exercised only when
-selected for portable simulation; no Python packages are required.
+and hardware workflow. No extra Python packages are required.
 
 `PASS`/exit 0 means all checks in the selected profile passed. `WARNING`/exit 2
 means requested evidence is incomplete. `FAIL`/exit 1 means a check failed and
 takes precedence over warnings. JSON includes `profile`, `checks`, `readiness`,
-and `untested`; portable success is not full environment readiness. Only PASS
+and `untested`; simulation success is not full environment readiness. Only PASS
 updates `workdir/latest.txt`. This extends the previous binary exit contract.
 
 Quartus license scope follows the [Intel 24.3 overview](https://www.intel.com/content/www/us/en/docs/programmable/683472/24-3/design-suite-overview.html).
 Installed `jtagconfig --help` defines the read-only enumeration invocation.
 The [gap register](../../preflight-gaps.md#gap-008-verification-baseline) records
-the doctor's scoped licensed runtime evidence and the broader baseline still
-due in [#31](https://github.com/amichai-bd/nand2mario/issues/31). A failed
+the doctor's scoped licensed runtime evidence and the completed shared baseline from [#31](https://github.com/amichai-bd/nand2mario/issues/31). A failed
 environment check still reports FAIL; a passing smoke is not full readiness.
 
-## Bootstrap
+## Installation
 
-The [dependency definition](../../../tools/n2m/dependencies.json) pins Python and
-Icarus source, provenance, and licenses. No Python packages or virtual environment
-are required. Install Python 3.14.5 for the supported host environment. Linux/WSL
-source-build prerequisites are Git, a C/C++ toolchain, Make, autoconf, bison, flex,
-and gperf. On Ubuntu 24.04:
+The [dependency definition](../../../tools/n2m/dependencies.json) pins Python
+3.14.5. Host commands use the standard library. Install Questa separately under
+its license and expose `vlib`, `vmap`, `vlog`, and `vsim` on PATH, or pass
+`--questa-bin <directory>`. Paths with spaces are supported. There is no simulator
+bootstrap, automatic download, WSL fallback or license configuration command.
+Recorded executable versions/hashes identify the installed tool; they do not
+claim a pinned proprietary distribution.
 
-```sh
-sudo apt-get update
-sudo apt-get install -y git build-essential autoconf bison flex gperf
-python3 tools/n2m/bootstrap.py
-```
+## CI execution boundary
 
-Run these inside the checkout in WSL, then from fresh PowerShell:
+Hosted PR/main [Builder checks](../../../.github/workflows/builder.yml) validate
+generation and host contracts. [Tile runner checks](../../../.github/workflows/tile-pixel.yml)
+validate standalone host contracts. Neither job executes a simulator or reports
+licensed RTL acceptance. Their summaries state this limitation. Required
+`PR policy` and `Wiki check` protection settings are unchanged.
 
-```powershell
-python tools/build.py doctor --sim wsl-icarus --iverilog ./workdir/tools/iverilog/bin/iverilog --vvp ./workdir/tools/iverilog/bin/vvp --json
-```
-
-Executable overrides are resolved before entering the tagged output directories.
-Native Linux uses the same bootstrap and overrides.
-CI calls the same script and source pin. Host package versions depend on the OS;
-they are build prerequisites, not a hermetic host image. An existing PATH tool is
-allowed and its actual version/path is recorded; that is not proof it matches
-the pinned source. No reference HDL or Game Boy assets are imported.
+Actual local Questa positive and deliberately failing runs are mandatory author
+and independent-review evidence. No trusted remote Questa runner is currently
+configured. [Issue #32](https://github.com/amichai-bd/nand2mario/issues/32) owns
+its protected trusted-revision route and required product checks. That route
+requires independent review of concrete workflow/launcher/configuration before
+activation; an actual dispatched licensed sample must then prove it. If its
+workflow must first land on main for dispatch, review and land the inert bootstrap
+before activation and acceptance. Untrusted PR code must never execute on the
+physical/self-hosted runner. Missing tools or licensing is a failure, never a
+skipped job presented as a successful simulation. Quartus/board gates remain #32.
 
 ## First simulation target
 
@@ -199,8 +201,7 @@ cache lookup or compilation. Closure is limited to 256 source/header files.
 Comments are ignored; includes in every conditional branch are dependencies.
 This is deliberately bounded parsing, not a general preprocessor.
 
-The repository root is the compiler include directory for Icarus, Questa and
-Quartus. Every transitive header and the resolver implementation is fingerprinted;
+The repository root is the compiler include directory for Questa and Quartus. Every transitive header and the resolver implementation is fingerprinted;
 a changed header rebuilds the stage. A missing or unsupported dependency cannot
 reuse previous success. FPGA headers retain the existing prohibition on external
 file reads; constraints retain their separate SDC checks. The
@@ -404,9 +405,7 @@ workdir/builds/<tag>/
 ├── commands.log
 ├── scripts/
 ├── compile/
-│   ├── questa/
-│   ├── verilator/
-│   └── iverilog/
+│   └── questa/
 ├── sim/
 │   ├── test/
 │   │   └── <test-name>/
@@ -465,8 +464,7 @@ workdir/builds/<tag>/sim/regress/level0/<test-name>/
 
 The implemented simulation stage publishes `result.json` atomically. It records
 status, fingerprint, provenance, commands, and hashes of immutable artifacts under
-`attempts/<id>/` and `compile/<backend>/<test-name>/<id>/`, with `iverilog` or
-`questa` as the backend directory. A new attempt never
+`attempts/<id>/` and `compile/<backend>/<test-name>/<id>/`, with `questa` as the backend directory. A new attempt never
 modifies an old attempt. `sim.log` beside `result.json` is a convenience copy;
 the record's hashed paths are authoritative. Each attempt contains `sim.log`,
 `result.json`, `waves/`, and `coverage/` (empty until coverage is implemented).
@@ -554,7 +552,7 @@ memory map. SV users import `n2m_interfaces_pkg`.
 ## Verification baseline runner
 
 `python tools/n2m/baseline.py` composes registered fixture simulations and checks
-retained evidence and cross-simulator traces. It is a host entry point alongside
+retained evidence and transaction traces. It is a host entry point alongside
 `tools/build.py`; no new dispatcher subcommand is implied. The
 [baseline contract](../../src/dv/baseline/SPEC.md#execution-and-regression) owns
 its options, regression levels, wall-budget semantics and trace checks.

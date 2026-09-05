@@ -19,8 +19,7 @@ is detected. It cannot replace the mandatory normal target.
 Repeat either command to reuse a matching successful result (`CACHED`); use
 `--rebuild` to rerun. Changed inputs or damaged artifacts invalidate reuse.
 The builder records tools, input hashes, commands, exit codes, results, and
-waves beneath `workdir/builds/<tag>/`. It handles native Icarus, Windows-to-WSL
-Icarus, and explicitly selected native Questa. Its seed is recorded for cache
+waves beneath `workdir/builds/<tag>/`. It uses Questa by default. Its seed is recorded for cache
 identity; this test is deterministic and reports `seed=none`.
 
 ## Questa checks
@@ -38,9 +37,7 @@ isolated libraries, strict diagnostics, and cache behavior. Add `--questa-bin
 
 ## Standalone checks
 
-[GAP-008](../../preflight-gaps.md#gap-008-verification-baseline) records scoped
-licensed evidence and outstanding baseline checks. Follow the
-[current authorization](../../agents/bootstrap-plan.md#verification-and-hardware-authorization).
+Follow the [current authorization](../../agents/bootstrap-plan.md#verification-and-hardware-authorization).
 Use Python 3.12 or later,
 `vlib`, `vmap`, `vlog`, and `vsim` on `PATH`, and a valid simulation license:
 
@@ -60,18 +57,16 @@ other breaks, macro errors, or return without `$finish` exit nonzero. The normal
 case requires the full exhaustive completion signature. Corruption requires
 the full intended mismatch diagnostic and a nonzero exit; additional errors
 or warnings fail the runner even when an expected signature appears.
-It also supports `--sim icarus` for direct comparison. Running that mode from
-WSL inside a Windows-created worktree requires WSL `GIT_DIR`/`GIT_WORK_TREE`
-paths. The builder's Windows-to-WSL mode needs no such Git override.
+Questa is the default and only supported backend. Retired simulator selections
+fail argument parsing; there is no fallback.
 
 Both paths reject tool, compile, elaboration, warning, timeout, exit, or expected
-output failures. Portable success and command-construction tests do not prove
-Questa execution. The gap register distinguishes established runtime evidence
-from the broader verification baseline still due in #31.
+output failures. Host command-construction tests do not prove Questa execution. The
+[baseline contract](../../src/dv/baseline/SPEC.md) owns broader verification.
 
-The [workflow](../../../.github/workflows/tile-pixel.yml) runs on pull requests and
-pushes to `main`, using the shared [pinned bootstrap](../n2m/SPEC.md#bootstrap)
-and builder targets. It checks both results and cache reuse and preserves logs
-and traces even on failure. See [tool provenance](../../../tools/sim/THIRD_PARTY.md).
-This unit check
-does not close the [global verification or trusted-CI gaps](../../preflight-gaps.md).
+The [workflow](../../../.github/workflows/tile-pixel.yml) runs standalone host
+contracts on pull requests and main. Its check is named `Tile runner checks`;
+it does not claim licensed RTL execution. Actual local positive/corrupt Questa
+evidence remains required. The [trusted CI boundary](../n2m/SPEC.md#ci-execution-boundary)
+records the unconfigured route owned by #32. See
+[tool provenance](../../../tools/sim/THIRD_PARTY.md).

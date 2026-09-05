@@ -42,7 +42,7 @@ compiler follow in explicit milestones.
 | FPGA | USB-Blaster detects MAX 10 device `10M50DA` |
 | UART | FTDI USB serial adapter detected; select its port at runtime |
 | WSL | Ubuntu 24.04 is available |
-| WSL RTL tools | Icarus 12.0, Verilator 5.020, Yosys 0.33, SymbiYosys 0.63 |
+| Historical WSL tool inventory | Icarus 12.0, Verilator 5.020, Yosys 0.33, SymbiYosys 0.63; not supported simulator choices |
 | Missing tools | RGBDS, SDCC/GBDK, pytest, Ninja, and native Windows open RTL tools |
 | Containers | Docker was not found |
 
@@ -172,8 +172,9 @@ Recommended independent evidence:
 
 Use a UVM-lite structure first: interfaces, transactions, drivers, monitors,
 scoreboards, assertions, coverage, and reference models. Questa is the
-authoritative SystemVerilog simulator. Verilator, Icarus, Yosys, and SymbiYosys
-provide fast and portable checks.
+sole supported SystemVerilog simulator under
+[#106](https://github.com/amichai-bd/nand2mario/issues/106). Earlier tool inventory
+is historical and does not authorize another simulation backend.
 
 A model generated from the same opcode table as the RTL is not an independent
 oracle. At least one test path must use an independent implementation or published
@@ -223,8 +224,10 @@ See the complete layout in the
 - The PR links the issue, lists up to three changes, declares spec impact, and
   records exact verification commands.
 - Behavioral changes update specification, code, and tests together.
-- Hosted CI runs documentation, Python, and portable RTL checks.
-- Trusted self-hosted jobs run Questa, Quartus, and physical-board tests.
+- Hosted CI runs documentation and Python host checks; local Questa evidence is required.
+- Trusted Questa, Quartus and board jobs remain planned in
+  [#32](https://github.com/amichai-bd/nand2mario/issues/32); see the
+  [actual CI boundary](tools/n2m/SPEC.md#ci-execution-boundary).
 - Wiki checks run on pull requests. Pages deploys only after merge to `main`.
 
 `AGENTS.md` should remain a short constitution and map. Skills hold focused

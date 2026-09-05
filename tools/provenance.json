@@ -19,12 +19,12 @@
       "storage": "Remote pinned documentation; original project interface values and code"
     },
     {
-      "name": "Python and Icarus Verilog",
+      "name": "Python",
       "record": "n2m/dependencies.json",
       "notices": "sim/THIRD_PARTY.md",
-      "purpose": "External host runtime and portable simulator",
+      "purpose": "External host runtime",
       "local_changes": "none",
-      "storage": "User Python installation; ignored workdir tools/cache for Icarus"
+      "storage": "User Python installation"
     },
     {
       "name": "Wiki Python packages and Chromium",

@@ -28,7 +28,7 @@ Priorities:
 | GAP-001 | P0 | Closed | [#24](https://github.com/amichai-bd/nand2mario/issues/24) | Scope and success contract | DMG target, releases, and non-goals are approved |
 | GAP-002 | P0 | Closed | [#25](https://github.com/amichai-bd/nand2mario/issues/25) | License, ROM policy, and provenance | Approved private source policy, provenance rules, and practical content safeguards are committed |
 | GAP-003 | P0 | Closed | [#26](https://github.com/amichai-bd/nand2mario/issues/26) | Build command | A minimal `n2m` command runs from a fresh shell |
-| GAP-004 | P0 | Closed | [#27](https://github.com/amichai-bd/nand2mario/issues/27) | Real environment doctor | Portable smoke and read-only identity checks work; licensed runtime evidence is recorded in GAP-008 |
+| GAP-004 | P0 | Closed | [#27](https://github.com/amichai-bd/nand2mario/issues/27) | Real environment doctor | Checked smoke and read-only identity checks work; licensed runtime evidence is recorded in GAP-008 |
 | GAP-005 | P0 | Open | [#28](https://github.com/amichai-bd/nand2mario/issues/28) | Board wiring and safe bring-up | VGA test card and UART ping pass with documented wiring |
 | GAP-006 | P0 | Open | [#29](https://github.com/amichai-bd/nand2mario/issues/29) | Clock, reset, and CDC plan | Frequencies, crossings, resets, and SDC rules are approved |
 | GAP-007 | P0 | Closed | [#30](https://github.com/amichai-bd/nand2mario/issues/30) | Executable interface contracts | Address maps, host registers, and trace formats have one source |
@@ -103,10 +103,10 @@ confirmed. Future dependency fetching remains in GAP-013.
 **Current state**
 
 The [build command](tools/n2m/SPEC.md) implements tagged doctor, builder
-checks, and portable self-checking simulation. Its stdlib host code and pinned
-Icarus bootstrap satisfy [#26](https://github.com/amichai-bd/nand2mario/issues/26).
-Questa licensing, full environment/hardware doctor, and software/FPGA backends
-remain outside this result.
+checks and self-checking simulation. Issue [#26](https://github.com/amichai-bd/nand2mario/issues/26)
+originally delivered a portable simulator path. That historical evidence remains;
+[#106](https://github.com/amichai-bd/nand2mario/issues/106) replaces active simulation
+with Questa only. Later scoped doctor, baseline and FPGA results are linked below.
 
 **Risk**
 
@@ -129,8 +129,8 @@ Agents may invent different commands, directories, or tool invocations.
 **Current state**
 
 The [environment doctor](tools/n2m/SPEC.md#environment-doctor) implements
-checked portable/Questa smoke runs, Quartus edition reporting, and read-only
-JTAG/UART enumeration. Portable smoke, selected UART health/identity, expected
+checked Questa smoke runs, Quartus edition reporting, and read-only
+JTAG/UART enumeration. Earlier portable smoke, selected UART health/identity, expected
 JTAG identity, and scoped Quartus version checks satisfy the implementation
 criteria in #27. Full environment readiness remains unproven; licensed runtime
 evidence is recorded under [GAP-008](#gap-008-verification-baseline).
@@ -144,7 +144,7 @@ Checking only executable names can report success while every simulation fails.
 - Quartus and Questa are found without editing global `PATH`.
 - License success, failure, or unverified scope is reported truthfully.
 - A repository-owned SV design compiles, elaborates, runs, and checks a value in
-  the portable simulator; positive licensed execution remains tracked in GAP-008.
+  Questa; scoped licensed execution is recorded in GAP-008.
 - USB-Blaster reports the expected MAX 10 device.
 - UART is found by VID, PID, or serial identity with an explicit override.
 - WSL tools and optional dependencies are reported as pass, warning, or fail.
@@ -240,9 +240,10 @@ check consumption and full behavioral verification, not only codec agreement.
 
 The [shared baseline](src/dv/baseline/SPEC.md) supplies separate stimulus,
 observation, integer reference, scoreboard, assertions and fixture coverage.
-Its known-good and deliberately broken examples run through both Questa and
-portable Icarus with checked logs, seed, expected/actual CSV and waves. The
-regression runner checks raw failure exits and complete cross-engine traces.
+Its known-good and deliberately broken examples run through Questa with checked
+logs, seed, expected/actual CSV and waves. The regression runner checks raw failure
+exits, complete traces and artifact integrity. Prior #31 dual-engine evidence
+is historical; #106 removes the second simulator from current requirements.
 
 [#31](https://github.com/amichai-bd/nand2mario/issues/31) records baseline delivery.
 Reviewed adapter designs, licenses, immutable pins, retirement comparison format
@@ -255,8 +256,7 @@ not CPU, full-system, licensed environment or physical acceptance.
 **Questa evidence**
 
 The [current authorization](agents/bootstrap-plan.md#verification-and-hardware-authorization)
-supersedes the earlier general Questa deferral. Required Questa and portable
-simulation must compile, elaborate, run, and check expected results. Positive
+supersedes the earlier general Questa deferral. Required Questa simulation must compile, elaborate, run, and check expected results. Positive
 and deliberately failing checks, independent review, and passing CI remain
 required for affected delivery; compilation alone is not a simulation pass.
 
@@ -271,9 +271,9 @@ builder, with isolated libraries and checked cache reuse. The deliberately
 failing smoke remains FAIL; only the exact expected tile corruption is accepted.
 This does not establish the planned shared verification harness or adapters.
 
-The shared good/broken baseline now has both licensed and portable runtime
-proof. Each affected later issue must still identify and execute its own
-required Questa coverage and retain portable evidence. Failed doctor checks
+The shared good/broken baseline has licensed runtime proof, with historical
+portable results retained. Each affected later issue must identify and execute
+its own required Questa coverage. Failed doctor checks
 remain FAIL. Closing this baseline gap does not waive later subsystem,
 independent adapter or physical verification.
 
@@ -285,7 +285,7 @@ flags, timing, memory traffic, or interrupts.
 **Close when**
 
 - A small UVM-lite structure is committed.
-- A known-good example passes in Questa and the selected portable simulator.
+- A known-good example passes in Questa.
 - A deliberately broken example fails for the expected reason.
 - Failure artifacts include logs, seed, waveform, and expected versus actual.
 - SingleStepTests and Mooneye adapters are designed and license-reviewed.
@@ -335,8 +335,11 @@ agent workflow. [#40](https://github.com/amichai-bd/nand2mario/issues/40) and
 wiki and presentations, reusing original sources; the
 [wiki contract](tools/wiki/SPEC.md) owns its behavior. [#36](https://github.com/amichai-bd/nand2mario/issues/36)
 records the final review, delivery, and cleanup evidence.
-Product build CI and the protected physical runner remain open in
-[#32](https://github.com/amichai-bd/nand2mario/issues/32).
+Hosted Builder and Tile runner jobs check host contracts only after #106.
+Actual local Questa evidence remains mandatory; automated licensed simulation
+is unavailable until the [trusted route](tools/n2m/SPEC.md#ci-execution-boundary)
+is configured. Required product checks and the protected physical runner remain
+open in [#32](https://github.com/amichai-bd/nand2mario/issues/32).
 
 **Risk**
 
@@ -347,7 +350,7 @@ job could run untrusted code on this PC or allow concurrent access to the FPGA.
 
 - Issue and PR templates are installed and tested.
 - GitHub labels match `.github/labels.yml`.
-- `main` requires focused portable checks.
+- `main` requires focused host/product checks with honest licensed execution evidence.
 - Wiki build and link checks run on PRs.
 - Pages deploys only from merged `main`.
 - Questa, Quartus, and board jobs run only for trusted code.
@@ -467,5 +470,5 @@ Treat a C-like compiler as a separate later epic.
 ## Required closing order
 
 Follow the [future P0 sequence and implementation gate](agents/bootstrap-plan.md#future-p0-sequence).
-The current phase names scoped evidence replacements for portable progress;
+The current phase names scoped evidence replacements for independent progress;
 all outstanding licensed and physical close conditions remain tracked here.

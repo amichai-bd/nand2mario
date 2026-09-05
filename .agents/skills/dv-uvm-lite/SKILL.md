@@ -21,6 +21,9 @@ rules to independent checks, `src/` and `tools/` implementation, and evidence.
    Separate unit checks from composed paths with delayed responses.
 5. Prove the harness with a passing DUT and a deliberate failing case in Questa.
    Use Questa only for new simulation evidence; do not start Icarus runs.
+   Coordinate the licensed runtime slot with root and serialize all applicable
+   builder, doctor, standalone and regression children. Release it after exit;
+   preserve contention failures and retry only after competing execution ends.
    Watchdogs and mismatches must produce nonzero raw exits; require the exact
    intended failure diagnostic as well. A printed failure followed by `$finish`
    is not sufficient. Retain commands, raw exits, seeds, logs and waves.
@@ -33,5 +36,5 @@ Fill [the test plan](templates/test-plan.md) before broad regression work. Read
 [the scenarios](examples/scenarios.md) for boundaries. Stop when expected
 behavior is missing or contradictory.
 
-[Issue #106](https://github.com/amichai-bd/nand2mario/issues/106) tracks removal of
-legacy simulator tooling and automatic CI; it does not permit new Icarus runs.
+The [CI boundary](../../../wiki/tools/n2m/SPEC.md#ci-execution-boundary) distinguishes
+hosted host checks from required actual local Questa evidence until #32.

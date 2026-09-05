@@ -22,7 +22,7 @@ SOURCES = [
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--sim", choices=["icarus", "questa"], required=True)
+    parser.add_argument("--sim", choices=["questa"], default="questa")
     parser.add_argument("--tag", default=datetime.now(timezone.utc).strftime("%Y%m%dt%H%M%Sz"))
     args = parser.parse_args()
     if not re.fullmatch(r"[a-z0-9][a-z0-9._-]{0,47}", args.tag):
@@ -73,42 +73,32 @@ def main():
         record["inputs"] = {p.relative_to(ROOT).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest() for p in inputs}
         record["commit"] = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
         record["dirty"] = bool(subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT, text=True))
-        names = ["iverilog", "vvp"] if args.sim == "icarus" else ["vlib", "vmap", "vlog", "vsim"]
+        names = ["vlib", "vmap", "vlog", "vsim"]
         binaries = {name: shutil.which(name) for name in names}
         if not all(binaries.values()):
             raise RuntimeError("missing tools on PATH: " + ", ".join(n for n, p in binaries.items() if not p))
         compiler = build / "compile" / args.sim
         compiler.mkdir(parents=True)
-        if args.sim == "icarus":
-            run([binaries["vvp"], "-V"], compiler, "runtime-version.log")
-            # -V can emit installation helper diagnostics on some distributions.
-            # Capture the public compiler banner with -v during the real compile.
-            run([binaries["iverilog"], "-g2012", "-Wall", "-v", "-s", "tb_dmg_tile_pixel",
-                 "-I", str(ROOT), "-o", str(compiler / "tile.vvp"), *map(str, SOURCES)], compiler, "compile.log")
-        else:
-            run([binaries["vlog"], "-version"], compiler, "version.log")
-            run([binaries["vlib"], "work"], compiler, "library.log")
-            run([binaries["vlog"], "-sv", "-work", "work", "+incdir+" + str(ROOT), *map(str, SOURCES)], compiler, "compile.log")
+        run([binaries["vlog"], "-version"], compiler, "version.log")
+        run([binaries["vlib"], "work"], compiler, "library.log")
+        run([binaries["vlog"], "-sv", "-work", "work", "+incdir+" + str(ROOT), *map(str, SOURCES)], compiler, "compile.log")
         for corrupt in [False, True]:
             case = "corrupt" if corrupt else "normal"
             sim_dir = build / "sim/test/tile-pixel" / case
             sim_dir.mkdir(parents=True)
             plusargs = ["+corrupt"] if corrupt else []
-            if args.sim == "icarus":
-                command = [binaries["vvp"], str(compiler / "tile.vvp"), *plusargs]
-            else:
-                run([binaries["vmap"], "-c"], sim_dir, "ini.log")
-                run([binaries["vmap"], "work", (compiler / "work").as_posix()], sim_dir, "map.log")
-                # Questa's handlers require a macro, not inline -do commands.
-                (sim_dir / "run.do").write_text(
-                    "onbreak {if {[lindex [runStatus -full] 2] eq {$finish}} "
-                    "{quit -code 0} else {quit -code 1}}\n"
-                    "onerror {quit -code 1}\nrun -all\nquit -code 1\n",
-                    encoding="utf-8")
-                # stop preserves the finish reason; exit turns $fatal into 0.
-                command = [binaries["vsim"], "-c", "-onfinish", "stop", "-wlf", "waves.wlf",
-                           "work.tb_dmg_tile_pixel", *plusargs,
-                           "-do", "do run.do"]
+            run([binaries["vmap"], "-c"], sim_dir, "ini.log")
+            run([binaries["vmap"], "work", (compiler / "work").as_posix()], sim_dir, "map.log")
+            # Questa's handlers require a macro, not inline -do commands.
+            (sim_dir / "run.do").write_text(
+                "onbreak {if {[lindex [runStatus -full] 2] eq {$finish}} "
+                "{quit -code 0} else {quit -code 1}}\n"
+                "onerror {quit -code 1}\nrun -all\nquit -code 1\n",
+                encoding="utf-8")
+            # stop preserves the finish reason; exit turns $fatal into 0.
+            command = [binaries["vsim"], "-c", "-onfinish", "stop", "-wlf", "waves.wlf",
+                       "work.tb_dmg_tile_pixel", *plusargs,
+                       "-do", "do run.do"]
             marker = ("MISMATCH cycle=5 phase=after-edge expected=10110 actual=10111 "
                       "low=00 high=01 x=7 palette=e4 seed=none" if corrupt else
                       "PASS pixel_cases=524288 palette_cases=8192 cycles=532521 seed=none")
