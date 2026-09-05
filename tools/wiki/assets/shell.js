@@ -94,7 +94,7 @@ function display() {
     const frame = document.createElement("iframe"), standalone = document.createElement("a");
     frame.src = `files/${current.split("/").map(encodeURIComponent).join("/")}${location.hash}`;
     frame.title = current;
-    frame.setAttribute("sandbox", "allow-scripts");
+    frame.setAttribute("sandbox", "allow-scripts allow-popups allow-popups-to-escape-sandbox");
     standalone.href = frame.src;
     standalone.target = "_blank";
     standalone.rel = "noopener";

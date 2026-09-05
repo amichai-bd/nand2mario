@@ -20,7 +20,26 @@ PROHIBITED = set(".png .jpg .jpeg .gif .webp .ico .bmp .tif .tiff .avif .pdf .pp
 PRIVATE_SUFFIXES = set(".rom .sav .srm .hex .mem .mif .gba .nds .state .rtc .pem .key".split())
 PRIVATE_NAMES = {".env", ".n2m.local.toml", "credentials.json", "secrets.json"}
 SIGNATURES = (b"%PDF-", b"\x89PNG", b"GIF87a", b"GIF89a", b"PK\x03\x04", b"\xff\xd8\xff", b"RIFF", b"\xd0\xcf\x11\xe0")
-PUBLISH_ROOTS = ("wiki/", ".agents/skills/", "src/", "tools/", "cfg/")
+DOCUMENT_SUFFIXES = {".md", ".html", ".svg"}
+WIKI_ASSET_SUFFIXES = {".css", ".js"}
+RUNTIME = {"tools/wiki/assets/" + name for name in (
+    "tokens.css", "shell.css", "shell.js", "presentation.css", "presentation.js", "embed.js")}
+
+
+def content_page(path: str) -> bool:
+    return (path in {"README.md", "AGENTS.md"}
+            or path.startswith("wiki/") and Path(path).suffix.lower() in DOCUMENT_SUFFIXES
+            or path.startswith(".agents/skills/") and Path(path).suffix.lower() in DOCUMENT_SUFFIXES
+            and (Path(path).suffix.lower() == ".md" or "/templates/" not in path))
+
+
+def public_asset(path: str) -> bool:
+    return path in RUNTIME or (path.startswith("wiki/")
+                              and Path(path).suffix.lower() in WIKI_ASSET_SUFFIXES)
+
+
+def github(path: str, fragment: str = "") -> str:
+    return REPO + "/blob/main/" + quote(path, safe="/") + ("#" + quote(fragment) if fragment else "")
 
 
 def checked_text(path: str, data: bytes) -> str:
@@ -112,7 +131,13 @@ class Document(HTMLParser):
                 if target:
                     path, fragment = target
                     self.links.append((path, fragment))
-                    if self.rewrite:
+                    if navigation and not content_page(path):
+                        attributes[key] = github(path, fragment)
+                        attributes["target"] = "_blank"
+                        attributes["rel"] = "noopener"
+                    elif not navigation and not (content_page(path) or public_asset(path)):
+                        raise ValueError(f"Unpublished runtime asset in {self.source}: {path}")
+                    elif self.rewrite:
                         if navigation:
                             attributes[key] = route(path, fragment)
                         elif not value.startswith("#"):
@@ -127,6 +152,8 @@ class Document(HTMLParser):
                     target = resolve(url, self.source, self.files)
                     if target is None:
                         raise ValueError(f"Runtime assets must be local in {self.source}: {url}")
+                    if not (content_page(target[0]) or public_asset(target[0])):
+                        raise ValueError(f"Unpublished runtime asset in {self.source}: {target[0]}")
                     self.links.append(target)
                     candidates.append(" ".join(["files/" + quote(target[0], safe="/") if self.rewrite else url, *descriptor]))
                 attributes[key] = ", ".join(candidates)
@@ -138,6 +165,14 @@ class Document(HTMLParser):
             line = attributes.get("data-line", "1")
             if not line.isdigit() or not 1 <= int(line) <= max(1, len(self.files[path].splitlines())):
                 raise ValueError(f"Invalid source line in {self.source}: {path}:{line}")
+            if not content_page(path):
+                attributes.pop("data-source", None)
+                attributes.pop("data-line", None)
+                attributes.pop("data-wiki-page", None)
+                attributes.pop("data-wiki-fragment", None)
+                attributes["href"] = github(path, "L" + line)
+                attributes["target"] = "_blank"
+                attributes["rel"] = "noopener"
         rendered = " ".join(key if value is None else f'{key}="{html.escape(value, quote=True)}"'
                             for key, value in attributes.items())
         self.output.append(f"<{tag}{' ' if rendered else ''}{rendered}>")
@@ -167,12 +202,12 @@ class Document(HTMLParser):
 
 def render(path: str, text: str, files: dict[str, str]) -> Document:
     suffix = Path(path).suffix.lower()
-    parser = Document(path, files, rewrite=suffix == ".md", bridge=suffix == ".html")
+    parser = Document(path, files, rewrite=suffix == ".md", bridge=suffix == ".html" and content_page(path))
     if suffix == ".md":
         if path.startswith(".agents/skills/"):
             text = re.sub(r"\A---\r?\n.*?\r?\n---(?:\r?\n|$)", "", text, count=1, flags=re.S)
         parser.feed(markdown.markdown(text, extensions=["extra", "toc", "sane_lists"]))
-    elif suffix == ".svg" or suffix == ".html" and path.startswith("wiki/"):
+    elif suffix == ".svg" or suffix == ".html" and content_page(path):
         parser.feed(text)
         if parser.bridge and not parser.runtime_inserted:
             parser.append_runtime()
@@ -195,11 +230,15 @@ def validate(files: dict[str, str]) -> dict[str, Document]:
                 target = resolve(url.strip(), path, files)
                 if target is None:
                     raise ValueError(f"Runtime assets must be local in {path}: {url}")
+                if not (content_page(target[0]) or public_asset(target[0])):
+                    raise ValueError(f"Unpublished runtime asset in {path}: {target[0]}")
                 document.links.append(target)
             for url in re.findall(r"@import\s+['\"]([^'\"]+)", files[path]):
                 target = resolve(url, path, files)
                 if target is None:
                     raise ValueError(f"Runtime assets must be local in {path}: {url}")
+                if not (content_page(target[0]) or public_asset(target[0])):
+                    raise ValueError(f"Unpublished runtime asset in {path}: {target[0]}")
                 document.links.append(target)
     return documents
 
@@ -212,28 +251,21 @@ def build(root: Path = ROOT, output: Path | None = None):
         raise ValueError("Wiki output must be workdir/wiki/site inside the checkout")
     tracked = tracked_text(root)
     documents = validate(tracked)
-    selected = {path for path in tracked if path in ("README.md", "AGENTS.md") or path.startswith(PUBLISH_ROOTS)}
-    pending = list(selected)
-    while pending:
-        path = pending.pop()
-        for target, _ in documents[path].links:
-            if target not in selected:
-                selected.add(target)
-                pending.append(target)
+    selected = {path for path in tracked if content_page(path) or public_asset(path)}
     files = {path: text for path, text in tracked.items() if path in selected}
     if output.exists():
         shutil.rmtree(output)
     output.mkdir(parents=True)
     manifest = {}
     for path, text in files.items():
-        published = path in ("README.md", "AGENTS.md") or path.startswith(PUBLISH_ROOTS)
         suffix = Path(path).suffix.lower()
-        kind = "html" if suffix == ".svg" or suffix == ".html" and path.startswith("wiki/") else "md" if suffix == ".md" else "source"
-        manifest[path] = {"category": category(path), "nav": published, "kind": kind,
-                          "text": text, "html": "".join(documents[path].output) if kind == "md" else ""}
+        kind = "html" if suffix in {".svg", ".html"} else "md"
+        if content_page(path):
+            manifest[path] = {"category": category(path), "nav": True, "kind": kind,
+                              "text": text, "html": "".join(documents[path].output) if kind == "md" else ""}
         destination = output / "files" / path
         destination.parent.mkdir(parents=True, exist_ok=True)
-        if suffix == ".html" and path.startswith("wiki/"):
+        if suffix in {".html", ".svg"} and content_page(path):
             content = "".join(documents[path].output)
             if "tools/wiki/assets/embed.js" not in files:
                 raise ValueError("Missing tracked embed runtime")
@@ -255,7 +287,7 @@ def build(root: Path = ROOT, output: Path | None = None):
         target.parent.mkdir(parents=True, exist_ok=True)
         relative = posixpath.relpath("index.html", old[:-3]) + route(path)
         target.write_text(f'<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0;url={html.escape(relative)}"><a href="{html.escape(relative)}">Open document</a>', encoding="utf-8")
-    print(f"Wiki built: {len(files)} tracked text files checked; {output}")
+    print(f"Wiki built: {len(tracked)} tracked files checked, {len(manifest)} documents published; {output}")
 
 
 if __name__ == "__main__":

@@ -39,51 +39,66 @@ other browsers or screen readers.
 
 ## Sources and navigation
 
-Publish tracked `README.md`, `AGENTS.md`, `wiki/`, `.agents/skills/`, `src/`,
-`tools/`, and `cfg/`. Referenced tracked files outside these roots become
-source dependencies without category navigation. Unreferenced files outside
-the roots and untracked drafts are not published. Stage new files before checking.
+Publish tracked Markdown, HTML, and SVG documentation under `wiki/` and
+`.agents/skills/`, plus root `README.md` and `AGENTS.md`. HTML skill templates and
+helper scripts are excluded; Markdown templates remain documentation. Stage new documents before checking.
+
+Implementation files under `src/`, `tools/`, and `cfg/` are excluded from
+pages, navigation, search, document source payloads, copied files, and redirects.
+Links cannot expand this boundary: references to excluded tracked files become
+GitHub links. They require repository access. All tracked files still undergo
+private-file and text checks, including excluded files.
+
+Package only these shared runtime files from `tools/wiki/assets/`: `tokens.css`,
+`shell.css`, `shell.js`, `presentation.css`, `presentation.js`, and `embed.js`.
+The shell HTML becomes the site entry point. CSS and JavaScript under `wiki/`
+are documentation assets. Runtime files are copied outside the content manifest;
+they never become navigation, search, or source-viewer entries. Resource links
+and CSS imports to excluded files fail the build.
 
 Top tabs are Home, Src, Agents/Skills, Tools, Cfg, and Presentations. Each tab has
-a directory-based sidebar and file filter. Src includes RTL, DV, SW, and FPGA.
+a directory-based sidebar and file filter. Each tab lists its published documentation; an empty category says so.
 Home defaults to README; its toggle selects AGENTS. URLs identify the original
 file with `?page=wiki/tools/wiki.md`; fragments select headings or `#L12` source
 lines. Former MkDocs document paths redirect to the matching source.
 
 Keep facts in their original files. The site uses only generated output, never
-committed document mirrors. Every page exposes an escaped source viewer with the
-path and line numbers. Published source references work without GitHub access.
+committed document mirrors. Every documentation page exposes its own escaped source viewer with the
+path and line numbers. Implementation source is available only through GitHub.
 
 ## Content and embeds
 
 Markdown renders links, headings, tables, and code blocks. Repository-relative
 links resolve from the original source path. Missing tracked targets and anchors
 fail the build. Links to this repository's `blob/main` and `tree/main` paths also
-resolve locally. Other HTTP, HTTPS, `mailto:`, and scheme-relative web links
+resolve locally for documentation and externally for excluded files. Other HTTP, HTTPS, `mailto:`, and scheme-relative web links
 (`//example.com/path`) are left unchanged. Other explicit URL schemes fail the
 build, with or without a host. Runtime assets must still be local.
 
 HTML documents under `wiki/` and SVG assets embed in an iframe with script permission
-and without same-origin privileges. A standalone link opens the original file;
+and without same-origin privileges. External links may open a separate tab
+outside the sandbox. A standalone link opens the original file;
 relative assets retain repository layout under `files/`. Fullscreen expands
 the document wrapper so source overlays remain visible. Browser restrictions on
 embedded fullscreen may require the wiki's Fullscreen button.
 
 Generated HTML adds a small navigation bridge. Inside the wiki, local
 document links open the rendered target and heading in the shell. Standalone
-links keep their original relative `href`. SVG resource links and `srcset` assets
+document links keep their original relative `href`; excluded targets become GitHub links. SVG resource links and `srcset` assets
 keep resource semantics rather than becoming document routes.
 
-Skill templates and other source HTML render as escaped text, not live pages.
-Do not put credentials or private machine or ROM facts in public source files.
+HTML skill templates and implementation HTML are not published.
+Do not put credentials or private machine or ROM facts in published documents.
 
-HTML source links use a real relative `href` as a standalone fallback:
+HTML references use a real relative `href` in the repository:
 
 ```html
 <a href="../../src/rtl/README.md" data-source="src/rtl/README.md" data-line="1">RTL source</a>
 ```
 
-Embedded scripts may post `{type: "n2m:source", path: "src/rtl/README.md", line: 1}`
+For excluded targets the build replaces this link with a GitHub URL and line
+fragment, and removes source-popup attributes. This works in both embedded and
+standalone documents. Embedded scripts may post `{type: "n2m:source", path: "src/rtl/README.md", line: 1}`
 to the parent. The shell accepts only its current iframe's messages and
 opens only known published paths and valid lines. Opaque sandbox origins require a
 `"*"` target for this non-secret message. A `n2m:fullscreen` message requests the
