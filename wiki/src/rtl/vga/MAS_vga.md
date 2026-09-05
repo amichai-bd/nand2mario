@@ -7,7 +7,8 @@ This page defines the module boundaries and presentation choices. The
 [bridge](../../../../src/rtl/vga/n2m_frame_bridge.sv),
 [scanout](../../../../src/rtl/vga/n2m_vga_scan.sv) and
 [RAM](../../../../src/rtl/vga/n2m_frame_ram.sv) implement these boundaries.
-Measured resource/timing evidence is pending.
+Measured resource/timing and simulation evidence is retained with
+[the implementation review](https://github.com/amichai-bd/nand2mario/pull/111).
 
 ## Source and observation
 
@@ -69,8 +70,8 @@ system write port and one pixel read port, 23040 entries of two bits, and one
 registered read stage. Three instances implement the ownership banks. Memory
 contents and read data have no reset initialization. A read is enabled only for
 a valid display bank and scaled-image coordinate. Ownership excludes same-bank
-read/write collisions; collision results are never consumed. Explicit memory
-clocked blocks are the register convention's documented inference exception.
+read/write collisions; collision results are never consumed. Both independent
+clocked ports use the shared `DFF_EN` macro.
 
 ## Scanout
 
