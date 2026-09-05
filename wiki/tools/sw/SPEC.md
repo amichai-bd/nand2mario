@@ -23,7 +23,9 @@ tag after inspecting a failed cache; offline cache misses fail without fetching.
 The builder's exclusive tag lock protects installation. The cache lives at
 `workdir/builds/<tag>/sw/oracle/cache/`; every invocation creates an immutable
 `runs/<id>/` containing exact commands, raw exit results, logs, object files,
-linked bytes, map, symbols, copied expectations and a hashed result. The stage
+linked bytes, map, symbols, copied expectations, a complete cache snapshot and a
+hashed result. Immutable artifact hashes name the snapshot, so a later cache or
+pin failure cannot invalidate earlier attempt evidence. The stage
 `result.json` and builder manifest point to the latest attempt. Reusing a tag
 verifies the cache and reruns the oracle; it never reuses a previous PASS result.
 Each executable call has a 60-second timeout. Nonzero exits, warnings and timeouts

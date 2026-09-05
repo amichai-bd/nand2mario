@@ -4,6 +4,7 @@ import io
 import json
 from pathlib import Path
 import platform
+import shutil
 import subprocess
 import tarfile
 import urllib.request
@@ -154,8 +155,12 @@ def oracle(root, build, args, provenance):
         report['status'] = 'PASS'
     except Exception as error:
         report['error'] = str(error)
+    # Cache state may change on a later failed request. Preserve this attempt's
+    # exact bytes instead of making old evidence depend on mutable cache paths.
+    if (stage / 'cache').exists():
+        shutil.copytree(stage / 'cache', folder / 'cache-snapshot')
     report['artifacts'] = {path.relative_to(root).as_posix(): file_hash(path)
-                           for base in (folder, stage / 'cache') for path in sorted(base.rglob('*'))
+                           for path in sorted(folder.rglob('*'))
                            if path.is_file() and path.name != 'result.json'}
     atomic_json(folder / 'result.json', report)
     atomic_json(stage / 'result.json', report)

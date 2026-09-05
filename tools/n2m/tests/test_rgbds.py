@@ -14,6 +14,7 @@ import zipfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from n2m.rgbds import compare, fetch, install, oracle
+from n2m.records import file_hash
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -108,6 +109,25 @@ class RGBDSTests(unittest.TestCase):
             report = oracle(self.root, self.root / 'workdir/builds/run', args, {})
         self.assertEqual(report['status'], 'FAIL')
         return report
+
+    def test_later_failed_pin_cannot_mutate_old_pass_evidence(self):
+        def execute(command, cwd, **_):
+            if '--version' in command:
+                return SimpleNamespace(returncode=0, stdout=Path(command[0]).stem + ' v1.0.3')
+            (cwd / 'fixture.gb').write_bytes(b'')
+            (cwd / 'fixture.sym').write_text('')
+            return SimpleNamespace(returncode=0, stdout='')
+        args = SimpleNamespace(offline=True, expected=None)
+        with patch('n2m.rgbds.platform.system', return_value='Windows'), patch('n2m.rgbds.subprocess.run', side_effect=execute), patch('n2m.rgbds.compare'):
+            first = oracle(self.root, self.root / 'workdir/builds/run', args, {})
+            self.assertEqual(first['status'], 'PASS')
+            self.pin['version'] = '0.0.0'
+            (self.root / 'tools/n2m/dependencies.json').write_text(json.dumps({'rgbds': self.pin}))
+            second = oracle(self.root, self.root / 'workdir/builds/run', args, {})
+            self.assertEqual(second['status'], 'FAIL')
+        self.assertTrue(first['artifacts'])
+        for path, expected in first['artifacts'].items():
+            self.assertEqual(file_hash(self.root / path), expected, path)
 
     def test_wrong_version_is_not_conformance(self):
         report = self.run_failed(SimpleNamespace(returncode=0, stdout='rgbasm v0.0.0'))
