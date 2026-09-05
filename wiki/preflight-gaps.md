@@ -185,9 +185,13 @@ The wrong device or bitstream could be programmed.
 
 **Current state**
 
-The board clock is 50 MHz. Game Boy timing and 640 by 480 VGA require different
-rates. PLL outputs, clock-enable approach, error tolerance, buffer crossing, and
-reset release remain undecided.
+The [timing contract](src/clocks-resets-cdc.md) defines the system clock, exact
+average DMG enables, selected VGA rate, reset sequence, CDC ownership, and
+required simulation/TimeQuest checks. Issue #29 delivers the contract only.
+Generated PLL/RTL, fit, timing, and simulation evidence remain outstanding;
+this gap stays open until the close conditions below are proven in
+[#79](https://github.com/amichai-bd/nand2mario/issues/79) and
+[#80](https://github.com/amichai-bd/nand2mario/issues/80).
 
 **Risk**
 
