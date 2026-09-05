@@ -21,7 +21,7 @@ and independent pixel comparison. Codec tests are not those acceptance runs.
 ## Authority and generation
 
 Run `python tools/n2m/interfaces.py` to regenerate the marked SV package, Python
-exports and Markdown tables. `python tools/n2m/interfaces.py --check` renders
+exports, assembly prelude and Markdown tables. `python tools/n2m/interfaces.py --check` renders
 in memory and fails on a missing or changed export, including documentation.
 The required Builder check runs this and the interface unit tests. The normal
 wiki renderer publishes the generated Markdown tables as HTML; no separate
@@ -40,8 +40,11 @@ Checked-in generated exports are interface source artifacts required by this
 issue. Build-specific output and test logs stay under `workdir/builds/<tag>/`.
 Each export records the canonical source SHA-256. The Python software packager
 must import `tools/n2m/generated_interfaces.py` and fingerprint it and the JSON;
-assembly constant injection must use these exported names and values. It must
-not maintain a second memory map. SV users import `n2m_interfaces_pkg`.
+the builder-owned allowlisted [assembly prelude](../../src/sw/generated/interfaces.inc)
+supplies the same exported names and values as immutable EQU definitions, outside
+the target's source tree. Fingerprint this input as required by the
+[software contract](../tools/software-toolchain.md). Do not maintain a second
+memory map. SV users import `n2m_interfaces_pkg`.
 
 ## Address spaces
 

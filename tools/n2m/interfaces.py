@@ -10,7 +10,8 @@ import re
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path("cfg/interfaces.json")
 OUTPUTS = (Path("src/rtl/interfaces/n2m_interfaces_pkg.sv"),
-           Path("tools/n2m/generated_interfaces.py"), Path("wiki/src/interface-tables.md"))
+           Path("tools/n2m/generated_interfaces.py"), Path("wiki/src/interface-tables.md"),
+           Path("src/sw/generated/interfaces.inc"))
 
 
 def keys(value, expected, location):
@@ -133,6 +134,7 @@ def render(data):
     mark = 'Generated from cfg/interfaces.json by tools/n2m/interfaces.py; DO NOT EDIT.'
     sv = ['// ' + mark, '// Source SHA-256: ' + digest, '`timescale 1ns/1ps', 'package n2m_interfaces_pkg;']
     py = ['"""' + mark + '\nSource SHA-256: ' + digest + '\n"""']
+    assembly = ['; ' + mark, '; Source SHA-256: ' + digest]
     md = ['# Interface tables', '', mark, '', 'Source SHA-256: `' + digest + '`.', '',
           'See [interface contracts](interface-contracts.md) for behavior, reset, framing and tests.', '']
     for group, items in data['groups'].items():
@@ -142,6 +144,7 @@ def render(data):
             bits, value = item['bits'], item['value']
             sv.append(f"  localparam logic [{bits-1}:0] {symbol} = {bits}'h{value:X};")
             py.append(f'{symbol} = {value}')
+            assembly.append(f'{symbol} EQU {value}')
             md.append(f"| `{symbol}` | {bits} | `0x{value:X}` | {item['description']} |")
         md.append('')
     for record, fields in data['records'].items():
@@ -172,7 +175,7 @@ def render(data):
     md += [f"| `{c['name']}` | `{c['request']}` | `{c['response']}` | {c['state']} |" for c in data['commands']]
     md += ['', '## Provenance', '']
     md += [f"- [{r['name']}]({r['url']}), `{r['revision']}`, {r['license']}: {r['purpose']}." for r in data['references']]
-    return dict(zip(OUTPUTS, ('\n'.join(sv), '\n'.join(py), '\n'.join(md)+'\n')))
+    return dict(zip(OUTPUTS, ('\n'.join(sv), '\n'.join(py), '\n'.join(md)+'\n', '\n'.join(assembly)+'\n')))
 
 
 def generate(root=ROOT, check=False):
