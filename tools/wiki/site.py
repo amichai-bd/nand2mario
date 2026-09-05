@@ -17,11 +17,18 @@ import markdown
 ROOT = Path(__file__).resolve().parents[2]
 REPO = "https://github.com/amichai-bd/nand2mario"
 PROHIBITED = set(".png .jpg .jpeg .gif .webp .ico .bmp .tif .tiff .avif .pdf .ppt .pptx .doc .docx .xls .xlsx .zip .gz .7z .woff .woff2 .ttf .mp3 .mp4 .wav .exe .dll .gb .gbc .bin".split())
+PRIVATE_SUFFIXES = set(".rom .sav .srm .hex .mem .mif .gba .nds .state .rtc .pem .key".split())
+PRIVATE_NAMES = {".env", ".n2m.local.toml", "credentials.json", "secrets.json"}
 SIGNATURES = (b"%PDF-", b"\x89PNG", b"GIF87a", b"GIF89a", b"PK\x03\x04", b"\xff\xd8\xff", b"RIFF", b"\xd0\xcf\x11\xe0")
 PUBLISH_ROOTS = ("wiki/", ".agents/skills/", "src/", "tools/", "cfg/")
 
 
 def checked_text(path: str, data: bytes) -> str:
+    parts = path.replace("\\", "/").lower().split("/")
+    if (any(part in {"private", "workdir"} for part in parts)
+            or parts[-1] in PRIVATE_NAMES or parts[-1].startswith(".env.")
+            or Path(parts[-1]).suffix in PRIVATE_SUFFIXES):
+        raise ValueError(f"Prohibited private content path: {path}")
     if Path(path).suffix.lower() in PROHIBITED or data.startswith(SIGNATURES):
         raise ValueError(f"Prohibited binary content: {path}")
     try:

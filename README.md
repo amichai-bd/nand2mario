@@ -27,4 +27,4 @@ and output layout.
 
 The repository is private; the documentation site is public and deploys after
 merge to `main`. Do not commit commercial ROMs, saves, or credentials. A project
-license is still [pending](wiki/preflight-gaps.md#gap-002-license-rom-policy-and-provenance).
+reuse grant is withheld under the [source and provenance policy](wiki/tools/provenance.md).

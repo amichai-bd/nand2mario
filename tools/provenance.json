@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "original_material_policy": "../wiki/tools/provenance.md",
+  "imported_product_sources": [],
+  "dependencies": [
+    {
+      "name": "Python and Icarus Verilog",
+      "record": "n2m/dependencies.json",
+      "notices": "sim/THIRD_PARTY.md",
+      "purpose": "External host runtime and portable simulator",
+      "local_changes": "none",
+      "storage": "User Python installation; ignored workdir tools/cache for Icarus"
+    },
+    {
+      "name": "Wiki Python packages and Chromium",
+      "record": "wiki/THIRD_PARTY.md",
+      "locks": ["wiki/requirements.txt", "wiki/requirements-browser.txt"],
+      "purpose": "Documentation rendering and browser testing",
+      "local_changes": "none",
+      "storage": "Ignored workdir/tools; upstream notices remain with installed packages"
+    },
+    {
+      "name": "GitHub Actions",
+      "record": "wiki/THIRD_PARTY.md",
+      "pins": "../.github/workflows/",
+      "purpose": "CI and Pages deployment",
+      "local_changes": "none",
+      "storage": "GitHub runner action cache; no source vendored"
+    },
+    {
+      "name": "Questa and Quartus",
+      "record": "sim/THIRD_PARTY.md",
+      "purpose": "User-installed proprietary simulation and FPGA build tools",
+      "local_changes": "none",
+      "storage": "User installation only; no redistribution; licensed Questa execution deferred"
+    }
+  ]
+}
