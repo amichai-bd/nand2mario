@@ -184,3 +184,11 @@ fresh after wake. `cpu-wake-stale` forces the actual captured opcode to its old
 value, and `cpu-wake-missing` removes the required wake response, checking sample
 suppression and the named fatal. These checks do not close STOP oscillator wake
 or all sleep/reset-interruption acceptance.
+
+
+`cpu-wake-reset` separately cancels sleeping preparation at all four M-phases,
+for both reset types and IME states. Phase three has already captured a pending
+request. It checks quiet held preparation, no reset-edge bus/IDU effect, no stack
+write, and a fresh epoch/sequence-zero literal NOP record. The fault target
+forces an actual reset-edge bus commit. Global reset is asserted between clock
+edges, followed by an explicit direct-profile reset for fresh execution.

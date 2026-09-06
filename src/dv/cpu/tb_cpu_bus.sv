@@ -120,7 +120,7 @@ module tb_cpu_bus;
                 edge_cycle(1);
             end
         end
-        // Inactive HALT cycles retain phase but never access memory. Reactivate
+        // Inactive cycles retain phase but never access memory. Reactivate
         // only at the next full M boundary, regardless of when wake is noticed.
         active = 0;
         for (iteration = 0; iteration < 4; iteration = iteration + 1) begin
