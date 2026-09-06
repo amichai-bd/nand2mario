@@ -368,3 +368,22 @@ SARY/REJO; Pan Docs' short Y-condition description omits that qualification.
 The selected digital controller maps this to quarter phase0 (an integration inference, not a measurement from gate names) and retains it
 until VBlank/LCD reset. Tests distinguish changing WY/enable before and after
 that sample, rather than assuming only a scanline-boundary comparison.
+### Renderer composition
+
+`n2m_ppu` connects the owned register, timing, position, window, fetch, object,
+shift and mixer blocks. Its VRAM address mux retains map, background low/high,
+then object low/high priority. Responses are associated with the preceding
+request before the capture edge; overlapping phase flags do not grant multiple
+independent memory responses. The first mode3 map-fetch phase0 qualifies the
+fine-scroll latch once before that line's first fetch completes.
+
+The public source carries valid/start/shade, X/Y, epoch and dot, plus abort,
+blank-assert and display-eligible events. Epoch and dot-before are supplied by
+the shared system owner and sampled with A's event. A captures all source fields;
+they are consumed on B without palette or coordinate recomputation. LCD-disable
+or a newly detected memory fault wins over a would-be pixel at A. The first
+complete enabled frame forwards shade0 and is not display-release eligible;
+only subsequent complete rendered frames qualify. Core reset cancels pending
+pixels; an already committed blank assertion is retained through B so resetting
+PPU control cannot silently undo a presentation request. VGA owns the persistent
+blank state, qualifying acknowledgement, actual swap and public observer.

@@ -78,6 +78,12 @@
       "source": "rtl/video.v",
       "section": "DMG WY/WX qualification and window row/column state",
       "local_changes": "Extract DMG persistent WY and delayed WX/window state; preserve repeated activation row increments and WX166 delayed match; remove CGB/platform dependencies; macro registers and explicit reset"
+    },
+    {
+      "path": "n2m_ppu.sv",
+      "source": "rtl/video.v and rtl/sprites.v",
+      "section": "Composed DMG renderer and selected memory address priority",
+      "local_changes": "Connect separately adapted helpers; original project A/B source-event forwarding, cancellation, first-frame shade suppression and display qualification; external memory and epoch/dot interfaces; no platform/snapshot store"
     }
   ]
 }
