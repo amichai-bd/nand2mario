@@ -30,6 +30,7 @@ module n2m_ppu_registers (
     output logic [7:0] wx,
     output logic [3:0] stat_enable,
     output logic stat_write,
+    output logic lyc_write,
     output logic lcd_enable,
     output logic lcd_disable
 );
@@ -37,6 +38,7 @@ module n2m_ppu_registers (
     logic write_commit, lcdc_write;
     assign write_commit = gb_tick && io_commit && io_write && !reset;
     assign lcdc_write = write_commit && io_address == GB_REG_LCDC;
+    assign lyc_write = write_commit && io_address == GB_REG_LYC;
     assign stat_write = write_commit && io_address == GB_REG_STAT;
     assign lcd_enable = lcdc_write && !lcdc[7] && io_wdata[7];
     assign lcd_disable = lcdc_write && lcdc[7] && !io_wdata[7];

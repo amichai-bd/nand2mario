@@ -72,28 +72,23 @@ module n2m_ppu (
     logic tile_map, tile_bank;
     logic pixel_capture, abort_capture, event_capture, complete_capture;
     logic pending_pixel, captured_start, pending_abort, pending_blank;
-    logic first_frame_blank, fault_seen, stat_history, vblank_history;
-    logic stat_transient;
-    logic [3:0] effective_stat_enable;
+    logic first_frame_blank, fault_seen, vblank_history;
+    logic lyc_write;
+    logic [7:0] readable_ly;
     assign reset = reset_sys || core_reset;
     assign fault = fetch_fault || object_fault;
     assign fault_now = fetch_fault_now || object_fault_now;
     n2m_ppu_registers registers (
         .clk_sys, .reset, .gb_tick, .io_commit, .io_write, .io_address, .io_wdata,
-        .ly, .mode, .coincidence, .quarter_phase, .io_selected, .io_rdata,
+        .ly(readable_ly), .mode, .coincidence, .quarter_phase, .io_selected, .io_rdata,
         .lcdc, .scy, .scx, .lyc, .bgp, .obp0, .obp1, .wy, .wx, .stat_enable,
-        .stat_write, .lcd_enable, .lcd_disable
+        .stat_write, .lyc_write, .lcd_enable, .lcd_disable
     );
-    // One emulated-dot write transient. The combined effective condition goes
-    // directly to the common edge history; no intermediate stored-enable edge.
-    // HBlank/OAM special qualification remains a documented integration gate.
-    `DFF_RST_EN(stat_transient, stat_write, clk_sys, gb_tick, reset, 1'b0)
-    assign effective_stat_enable = stat_transient ? 4'hf : stat_enable;
     n2m_ppu_timing timing (
-        .clk_sys, .reset, .gb_tick, .lcd_on(lcdc[7]), .ly_compare(lyc), .stat_enable(effective_stat_enable),
+        .clk_sys, .reset, .gb_tick, .lcd_on(lcdc[7]), .ly_compare(lyc), .stat_enable, .stat_write, .lyc_write, .write_data(io_wdata),
         .scan_done, .scan_active, .pixel_end, .object_found, .line_quarter,
-        .quarter_phase, .ly, .coincidence, .mode, .mode3, .mode3_end,
-        .line_reset, .stat_condition, .vblank_condition
+        .quarter_phase, .ly, .readable_ly, .coincidence, .mode, .mode3, .mode3_end,
+        .line_reset, .stat_condition, .stat_rise, .vblank_condition
     );
     n2m_ppu_position position (
         .clk_sys, .reset, .gb_tick, .lcd_on(lcdc[7]),
@@ -157,9 +152,7 @@ module n2m_ppu (
     assign oam_phase = reset || fault_now ? 2'd0 : object_oam_phase;
     assign vram_cpu_allow = !mode3;
     assign oam_cpu_allow = !(scan_active || mode3 || dma_active);
-    assign stat_rise = stat_condition && !stat_history && !reset;
     assign vblank_rise = vblank_condition && !vblank_history && !reset;
-    `DFF_RST(stat_history, stat_condition, clk_sys, reset)
     `DFF_RST(vblank_history, vblank_condition, clk_sys, reset)
     assign pixel_capture = gb_tick && source_event && !lcd_disable && !fault_now && !reset;
     assign abort_capture = !reset && ((gb_tick && lcd_disable) || (fault_now && !fault_seen));

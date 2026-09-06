@@ -53,7 +53,7 @@
       "path": "n2m_ppu_timing.sv",
       "source": "rtl/video.v",
       "section": "DMG line counters, LY comparison history, mode and interrupt conditions",
-      "local_changes": "Extract one-dot enable timing with explicit direct reset; retain quarter-dot phase and delayed condition/mode history; remove CGB/save-state/CPU/DMA dependencies; macro registers and named assertions. Exact startup/LY153/STAT/WX integration gates remain subject to independent source-backed validation"
+      "local_changes": "Extract one-dot enable timing with explicit direct reset; retain quarter-dot phase and delayed condition/mode history; remove CGB/save-state/CPU/DMA dependencies; macro registers and named assertions. Exact startup/LY153/STAT/WX integration gates remain subject to independent source-backed validation; separate CPU-readable LY153/comparison state from renderer counter and preserve ordered old/new LYC IRQ events under MAS_ppu mapping corroborated by pinned SameBoy/TCAGBD research, without importing their code"
     },
     {
       "path": "n2m_ppu_objects.sv",
