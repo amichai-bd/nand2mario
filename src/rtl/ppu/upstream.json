@@ -42,6 +42,12 @@
       "source": "rtl/video.v",
       "section": "Background/window and DMG object shift state",
       "local_changes": "Extract six eight-bit planes with explicit paused-safe reset and line clear; separate fetch controls from state; preserve pre-edge emptiness and load-over-shift priority; remove CGB and extra-sprite branches; use shared register/assertion macros"
+    },
+    {
+      "path": "n2m_ppu_fetch.sv",
+      "source": "rtl/video.v",
+      "section": "Background/window and object fetch sequencing",
+      "local_changes": "Extract DMG phase/plane state; preserve pre-edge phase-five response bypass and ordered updates; explicit reset and fail-closed response input; exclude CGB/platform/save-state/extra-sprite logic; macro registers and named assertions"
     }
   ]
 }

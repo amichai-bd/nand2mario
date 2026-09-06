@@ -258,3 +258,23 @@ paused against pixel advance in ordinary schedules. The shift module preserves
 the pinned source's pre-edge slot test even for simultaneous load and advance;
 independent vectors check that boundary and reset while paused before integration.
 The shift helper reset is synchronous: the integration drives its reset from the released system-domain reset or local core reset, with reset priority over gb_tick. It does not itself provide asynchronous output masking; the existing global/domain reset boundary owns that protection.
+
+### Fetch sequencing boundary
+
+The selected renderer's fetch sequencer owns the three-bit background and object
+fetch phases, shift position, first-background/window-fetch state, tile index,
+and fetched plane bytes. Each map or plane read occupies two dots; the odd dot
+captures the response already visible before A. Phase five can reload the high
+background plane directly from that response, rather than its newly written
+register. The sequencer emits load controls for the shift helper; it never
+recomputes an A-captured pixel at B.
+
+Background reload resets fetch phase, while a simultaneous unpaused shift-count
+increment uses its pre-edge count as in the pinned implementation. Window start
+and mode3 exit then override both fetch phase and shift position. Object fetch
+starts only after the first background fetch and outside the first window fetch;
+it returns to phase zero when no object is pending or that fetch completes.
+All state has explicit synchronous system reset independent of gb_tick. Missing
+promised VRAM data latches the common PPU fault and suppresses load publication;
+the top-level owner performs the single source abort. This helper does not own
+LCD startup, window trigger quirks, OAM selection or bus arbitration.
