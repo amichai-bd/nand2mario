@@ -375,11 +375,13 @@ shift and mixer blocks. Its VRAM address mux retains map, background low/high,
 then object low/high priority. Responses are associated with the preceding
 request before the capture edge; overlapping phase flags do not grant multiple
 independent memory responses. The first mode3 map-fetch phase0 qualifies the
-fine-scroll latch once before that line's first fetch completes.
+fine-scroll latch before that line's first fetch completes. An explicit sampled
+bit prevents a window-induced phase0 restart from recapturing it in the same line.
 
 The public source carries valid/start/shade, X/Y, epoch and dot, plus abort,
 blank-assert and display-eligible events. Epoch and dot-before are supplied by
-the shared system owner and sampled with A's event. A captures all source fields;
+the shared system owner. The source tag captures dot-before plus1 at A, the
+completed-T count required by the shared frame interface. A captures all source fields;
 they are consumed on B without palette or coordinate recomputation. LCD-disable
 or a newly detected memory fault wins over a would-be pixel at A. The first
 complete enabled frame forwards shade0 and is not display-release eligible;

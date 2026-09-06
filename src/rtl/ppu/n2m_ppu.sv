@@ -169,7 +169,7 @@ module n2m_ppu (
     `DFF_RST_EN(source_x, pixel_x, clk_sys, event_capture, reset, 8'd0)
     `DFF_RST_EN(source_y, ly, clk_sys, event_capture, reset, 8'd0)
     `DFF_RST_EN(source_epoch, epoch, clk_sys, event_capture, reset, 32'd0)
-    `DFF_RST_EN(source_dot, dot_before, clk_sys, event_capture, reset, 64'd0)
+    `DFF_RST_EN(source_dot, dot_before + 64'd1, clk_sys, event_capture, reset, 64'd0)
     `DFF_RST_EN(source_display_eligible, !first_frame_blank, clk_sys, pixel_capture, reset, 1'b0)
     `DFF_RST_EN(first_frame_blank, lcd_enable, clk_sys,
         gb_tick && (lcd_enable || complete_capture), reset, 1'b1)

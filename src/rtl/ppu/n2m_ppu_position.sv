@@ -26,9 +26,11 @@ module n2m_ppu_position (
     output logic source_event
 );
     logic [2:0] fine_scroll;
+    logic fine_sampled, sample_fine;
     logic scroll_done, scroll_done_next, scroll_end, paused, disabled_reset;
     logic [7:0] raw_x_next;
     assign disabled_reset = reset || !lcd_on;
+    assign sample_fine = fine_latch && !fine_sampled && !line_reset && lcd_on;
     assign pixel_end = raw_x == 8'd167;
     assign background_paused = !background_first_done || window_first || object_found || pixel_end;
     assign scroll_end = !background_paused && shift_count == fine_scroll && !scroll_done;
@@ -48,7 +50,9 @@ module n2m_ppu_position (
     end
     `DFF_RST_EN(raw_x, raw_x_next, clk_sys, gb_tick, disabled_reset, 8'd0)
     `DFF_RST_EN(scroll_done, scroll_done_next, clk_sys, gb_tick, disabled_reset, 1'b0)
-    `DFF_RST_EN(fine_scroll, fine_scx, clk_sys, gb_tick && fine_latch, reset, 3'd0)
+    `DFF_RST_EN(fine_scroll, fine_scx, clk_sys, gb_tick && sample_fine, reset, 3'd0)
+    `DFF_RST_EN(fine_sampled, !(line_reset || !lcd_on), clk_sys,
+        gb_tick && (line_reset || !lcd_on || sample_fine), reset, 1'b0)
     `N2M_ASSERT(pixel_position_range, clk_sys, reset, raw_x <= 8'd167)
     `N2M_ASSERT(source_position_range, clk_sys, reset, !source_event || source_x < 8'd160)
 endmodule
