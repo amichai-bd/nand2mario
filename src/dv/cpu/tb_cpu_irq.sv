@@ -90,7 +90,8 @@ module tb_cpu_irq;
             expected_write = 0;
             expected_address = 16'(16'h0100 + mcycle - 1);
             expected_byte = memory[expected_address];
-            if (mcycle == 2 || mcycle == 3) expected_kind = 2;
+            if (mcycle == 2 || mcycle == 3 || (scenario==16 && mcycle==6)) expected_kind = 2;
+            if (scenario==14 && mcycle==8) expected_kind = 0;
             if (mcycle > recognition_dot / 4) begin
                 elapsed = mcycle - recognition_dot / 4;
                 expected_kind = 0;
@@ -138,6 +139,7 @@ module tb_cpu_irq;
                 observed_entry = 1;
             end else begin
                 event_dot = event_index == 0 ? 16 : 16 + 4*event_index;
+                if (scenario==16 && event_index==2) event_dot=28;
                 expected[112 +: 64] = 64'(event_dot);
                 if (event_index == 0) begin
                     expected[176 +: 16] = 16'h0100;
@@ -154,6 +156,13 @@ module tb_cpu_irq;
                     if ((scenario == 3 || scenario == 4) && event_dot == recognition_dot)
                         expected[192 +: 16] = return_pc;
                 end
+            end
+            if (scenario==14 && event_index==3) expected[336 +: 8]=1;
+            if (scenario==16 && event_index>=2) expected[248 +: 8]=8'h80;
+            if (scenario==16 && event_index==2) begin
+                expected[192 +: 16]=16'h106;
+                expected[208 +: 24]=24'h0000cb;
+                expected[232 +: 8]=2;
             end
             $fdisplay(trace,"retire,%0d,%0d,%096h,%096h",scenario,event_index,expected,retirement);
             if (retirement !== expected)
@@ -183,7 +192,7 @@ module tb_cpu_irq;
         if (!trace) $fatal(1,"CPU_IRQ_TRACE_OPEN");
         $dumpfile("waves/cpu-irq.vcd");
         $dumpvars(0,tb_cpu_irq);
-        for (scenario=0; scenario<14; scenario=scenario+1) begin
+        for (scenario=0; scenario<18; scenario=scenario+1) begin
             reset_sys=1;
             edge_cycle(0);
             for (item=0; item<65536; item=item+1) memory[item]=0;
@@ -208,11 +217,24 @@ module tb_cpu_irq;
                 vector_pc=16'(16'h40 + 8*(scenario-7));
             end
             if (scenario==13) request_bits=31;
+            if (scenario==14 || scenario==15) begin
+                recognition_dot=32; arrival_dot=30;
+                return_pc=scenario==14 ? 16'h106 : 16'h107;
+                if (scenario==14) memory[16'h105]=8'h76;
+            end
+            if (scenario==16) begin
+                memory[16'h104]=8'hcb; memory[16'h105]=0; arrival_dot=22;
+            end
+            if (scenario==17) begin
+                memory[16'h104]=8'hfb; arrival_dot=18;
+                recognition_dot=24; return_pc=16'h105;
+            end
             memory[16'h100]=8'h31; memory[16'h101]=start_sp[7:0];
             memory[16'h102]=start_sp[15:8]; memory[16'h103]=8'hfb;
             ie=request_bits; iflags=0; epoch=32'(scenario+1);
             observed_entry=0; event_index=0; pause_done=0;
             expected_events=(recognition_dot-16)/4+2;
+            if (scenario==14 || scenario==16) expected_events=expected_events-1;
             reset_sys=0; core_reset=1; edge_cycle(0); core_reset=0;
             for (cycle=0; cycle<(recognition_dot+20)*3+2; cycle=cycle+1) begin
                 if (!same_edge && dot_before==64'(arrival_dot)) iflags=request_bits[4:0];
@@ -231,7 +253,7 @@ module tb_cpu_irq;
                 $fatal(1,"CPU_IRQ_FINAL case=%0d events=%0d expected=%0d",scenario,event_index,expected_events);
         end
         $fclose(trace);
-        $display("PASS CPU IRQ cases=14 T3 snapshot priorities stack HALT pause");
+        $display("PASS CPU IRQ cases=18 T3 snapshot stack HALT wake CB EI pause");
         $finish;
     end
     initial begin

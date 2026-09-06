@@ -105,6 +105,16 @@ from the resolved post-event IF snapshot captured for retirement. The future IF
 owner resolves register/event/ack collisions; this CPU contract does not invent
 their priority from HDL scheduling.
 
+Once asleep, HALT wakes from the captured enabled request at the next T4
+boundary. With IME set it enters the interrupt sequence directly, preserving the
+same subsequent stack/ack/vector timing as NOP waiting under the identical
+request schedule. No extra fetch M-cycle may be unique to that path. This follows
+Mooneye's DMG timing comparison; it does not establish every physical pin edge.
+With IME clear, the current component refetches the next opcode before executing;
+its exact downstream latency versus the IME0 timing fixture remains unresolved.
+It must not reuse a stale byte merely to remove a cycle. STOP's stopped-clock wake
+continues to use its separate power-policy input.
+
 HALT preserves peripheral time. With IME clear and an enabled request already
 pending, it suppresses one following opcode-fetch PC increment instead of
 sleeping. Without such a request it sleeps until an enabled request appears;
@@ -264,8 +274,10 @@ branch matches the pinned SameBoy model for pending requests with IME set,
 including delayed EI. An earlier inference that ordinary IME alone proved this
 branch wrong was withdrawn after source comparison. Requests before the latch
 closes and arrivals after HALT enters sleep need separate checked expectations.
-STOP policy, IDU observation and complete opcode state/access coverage remain
-unfinished; this snapshot cannot close #118.
+STOP policy, IDU observation, reset/sleep/wake interruption and composed
+interrupt/peripheral boundaries remain unfinished; this snapshot cannot close
+#118. The selected 498-form state/access evidence below remains valid within
+its declared flat-RAM exclusions.
 
 
 The selected flat-RAM vector layer now checks 498 forms with all 16 initial flag

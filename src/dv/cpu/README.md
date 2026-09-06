@@ -108,3 +108,11 @@ the missing negative forces the actual recorder valid output. Expected upstream
 state is unchanged. Both require their exact diagnostic and raw exit 1. Initial
 setup attempts with warning/type errors are retained as failures, not accepted
 proof. This layer does not prove physical IDU address exposure or future MMIO.
+
+
+The IRQ fixture now has 18 cases. A sleeping IME1 HALT and a NOP waiting program
+use the same request time and assert identical stack/ack/vector times, with their
+separate correct return PCs. A request during a CB prefix must wait for the one
+combined instruction event. Consecutive EI must mature without postponing a
+pending request. The earlier 14-case records remain retained; these additions do
+not settle IME0 wake latency or reset/STOP acceptance.

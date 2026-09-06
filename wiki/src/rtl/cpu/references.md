@@ -81,3 +81,12 @@ delayed EI. Therefore the general Pan Docs distinction between normal wake and
 EI/HALT is insufficient by itself to prove a late-arrival rollback defect. Our
 checks must contrast request sampling during execution with wake after sleep;
 source interpretation and tested digital behavior remain separately identified.
+
+
+The existing Mooneye pin's `acceptance/halt_ime1_timing2-GS.s` explicitly compares
+HALT waiting with NOP waiting and reports equal latency on DMG/MGB/SGB/SGB2,
+while other listed models fail. `halt_ime1_timing.s` checks that the instruction
+after HALT does not execute before service. `halt_ime0_nointr_timing.s` compares
+six NOPs with interrupt entry plus JP HL; its whole setup and fetch pipeline must
+be accounted for before fixing the IME0 wake schedule. These primary fixtures
+were read with retained MIT notices; no Mooneye ROM was run here.

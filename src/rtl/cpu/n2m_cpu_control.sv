@@ -186,8 +186,11 @@ module n2m_cpu_control (
         // low-stack vector selection consume this frozen M-cycle snapshot.
         if (gb_tick && phase == 2) control_next.irq_snapshot = ie[4:0] & iflags;
         // Inactive wake is accepted only at a complete M-cycle boundary.
-        if (control.mode == MODE_HALT && wake_request && gb_tick && phase == 3)
-            control_next.mode = MODE_FETCH;
+        if (control.mode == MODE_HALT && pending_irq && gb_tick && phase == 3) begin
+            control_next.mode = control.ime ? MODE_INTERRUPT : MODE_FETCH;
+            control_next.step = 0;
+            control_next.irq_pc = control.pc;
+        end
         if (control.mode == MODE_STOP && wake_request && phase == 0)
             control_next.mode = MODE_FETCH;
         if (cycle_end) begin
