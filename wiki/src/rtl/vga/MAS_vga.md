@@ -48,7 +48,9 @@ may lease any of these three banks.
 ## LCD cancellation and blank control
 
 The PPU supplies `source_abort`, `blank_assert`, and `source_display_eligible`.
-Existing synthetic sources tie abort/blank low and eligibility high. Abort wins
+Existing synthetic sources tie abort/blank low and eligibility high. Eligibility
+is known and constant on every accepted pixel of a frame; completion samples
+that frame value. Abort permits a new frame to choose a new eligibility value. Abort wins
 over a same-edge pixel, resets partial writer progress, and emits
 `observe_abort` with the current epoch and next completed-frame sequence.
 It does not complete a frame, consume a sequence number, or change complete

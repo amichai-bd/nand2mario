@@ -22,9 +22,7 @@ module tb_vga;
                               .pll_areset, .ready, .reset_sys, .reset_pix);
     logic source_valid, source_start;
     logic source_abort, blank_assert, source_display_eligible, observe_abort;
-    assign source_abort = 1'b0;
-    assign blank_assert = 1'b0;
-    assign source_display_eligible = 1'b1;
+
     logic [1:0] source_shade;
     logic [31:0] source_epoch;
     logic [63:0] source_dot;
@@ -74,22 +72,34 @@ module tb_vga;
     bit ref_pending, ref_returning, ref_captured, ref_display_valid;
     int ref_raster_point;
     int ack_completion_coincidences;
+    bit ref_blank_requested, ref_blank_active, ref_release;
+    bit sampled_blank [int];
+    bit sampled_active [int];
+    int abort_total, blank_cycles, blank_releases;
+
     always @(posedge clk_sys) begin : source_ownership_oracle
         bit returning_now;
         ref_sys_edges++;
+        sampled_active[ref_sys_edges] = ref_blank_active;
         if (reset_sys) begin
             ref_index = 0; ref_source_seq = 0; ref_ready_samples = 0;
             ref_writer = 0; ref_old_display = 1; ref_free = 2;
             ref_offer_bank = 0; ref_pending = 0; ref_returning = 0;
             ref_discards = 0;
+            ref_blank_requested = 0; ref_release = 0; sampled_active.delete();
         end else begin
+            if (blank_assert || core_reset) ref_release = 0;
+            if (blank_assert) ref_blank_requested = 1;
             returning_now = ref_pending && ref_returning && ref_sys_edges == ref_return_edge;
             if (returning_now) begin
                 ref_free = ref_old_display;
                 ref_old_display = ref_offer_bank;
                 ref_pending = 0; ref_returning = 0;
+                if (ref_release) ref_blank_requested = 0;
+                ref_release = 0;
             end
             if (core_reset) begin ref_index = 0; ref_source_seq = 0; end
+            else if (source_abort) ref_index = 0;
             else if (source_valid) begin
                 if (ref_index == 23039) begin
                     if (returning_now) ack_completion_coincidences++;
@@ -100,6 +110,9 @@ module tb_vga;
                         ref_pending = 1;
                         ref_writer = ref_free;
                         ref_capture_edge = ref_pix_edges + 4;
+                        ref_release = ref_blank_requested && source_display_eligible
+                            && sampled_active.exists(ref_sys_edges - 2)
+                            && sampled_active[ref_sys_edges - 2] && !blank_assert;
                     end else ref_discards++;
                     ref_source_seq++; ref_index = 0;
                 end else ref_index++;
@@ -133,7 +146,14 @@ module tb_vga;
             complete_frames.delete();
         end else begin
             if (core_reset) begin observed_pixel = 0; observed_seq = 0; end
-            if (observe_valid !== (source_valid && !core_reset))
+            if (observe_abort !== (source_abort && !core_reset))
+                $fatal(1, "OBSERVER_ABORT: lost or invented cancellation");
+            if (observe_abort) begin
+                if (observe_complete || observe_sequence !== 64'(observed_seq)
+                    || observe_epoch !== source_epoch) $fatal(1, "OBSERVER_ABORT_IDENTITY");
+                observed_pixel = 0; abort_total++;
+            end
+            if (observe_valid !== (source_valid && !source_abort && !core_reset))
                 $fatal(1, "OBSERVER_VALID: lost or invented source edge");
             if (observe_valid) begin
                 if (observe_index !== 15'(observed_pixel) ||
@@ -156,14 +176,23 @@ module tb_vga;
         logic [3:0] expected_gray;
         bit captured_before;
         ref_pix_edges++;
+        sampled_blank[ref_pix_edges] = ref_blank_requested;
         if (reset_pix) begin
             pix_edges = 0; have_previous_display = 0;
             ref_captured = 0; ref_display_valid = 0; ref_display_bank = 1;
             ref_display_seq = 0; ref_display_epoch = 0; ref_repeats = 0; ref_raster_point = 0;
+            ref_blank_active = 0; sampled_blank.delete();
         end
         else begin
             pix_edges++;
             captured_before = ref_captured;
+            if (sampled_blank.exists(ref_pix_edges - 2) && sampled_blank[ref_pix_edges - 2])
+                ref_blank_active = 1;
+            else if (ref_raster_point == 384000) begin
+                if (ref_blank_active) blank_releases++;
+                ref_blank_active = 0;
+            end
+            if (ref_blank_active) blank_cycles++;
             if (ref_pending && !ref_returning && ref_pix_edges == ref_capture_edge) ref_captured = 1;
             if (ref_raster_point == 384000) begin
                 if (captured_before) begin
@@ -199,11 +228,11 @@ module tb_vga;
                 point = (pix_edges - 2) % 420000;
                 ex = point % 800; ey = point / 800;
                 ea = ex < 640 && ey < 480;
-                ei = ex >= 80 && ex < 560 && ey >= 24 && ey < 456 && ref_display_valid;
+                ei = ex >= 80 && ex < 560 && ey >= 24 && ey < 456 && (ref_display_valid || ref_blank_active);
                 expected_gray = 0;
                 if (ei) begin
                     index = ((ey - 24) / 3) * 160 + (ex - 80) / 3;
-                    expected_gray = gray(pattern(ref_display_epoch, ref_display_seq, index));
+                    expected_gray = ref_blank_active ? 4'hf : gray(pattern(ref_display_epoch, ref_display_seq, index));
                 end
                 if (video_x !== 10'(ex) || video_y !== 10'(ey) || video_active !== ea || video_image !== ei ||
                     hsync_n !== !(ex >= 656 && ex <= 751) || vsync_n !== !(ey >= 490 && ey <= 491) ||
@@ -237,6 +266,72 @@ module tb_vga;
         wait (!reset_sys && !reset_pix);
         repeat (8) @(negedge clk_sys);
     endtask
+    task automatic cancel(input bit white);
+        @(negedge clk_sys);
+        source_abort = 1; blank_assert = white; source_valid = 1;
+        @(negedge clk_sys);
+        source_abort = 0; blank_assert = 0; source_valid = 0; source_start = 0;
+    endtask
+    task automatic lcd_scenario;
+        // Abort wins even at a first pixel and the would-be last completion.
+        source_start = 1;
+        cancel(0);
+        send_pixels(23039, 1, 0);
+        cancel(0);
+        send_pixels(23040, 1, 0);
+        wait (display_valid);
+        wait (video_y == 30 && video_x == 100);
+        cancel(1);
+        repeat (8) @(negedge clk_pix);
+        if ($test$plusargs("blank_corrupt")) force dut.red = 4'h0;
+        repeat (10) @(negedge clk_pix);
+        if (!ref_blank_active) $fatal(1, "LCD_COVERAGE: active blank");
+        // Core reset retains requested white and source sequence restarts.
+        @(negedge clk_sys); core_reset = 1; source_epoch = 1;
+        @(negedge clk_sys); core_reset = 0;
+        source_display_eligible = 0;
+        send_pixels(23040, 1, 0);
+        wait (display_epoch == 1);
+        repeat (8) @(negedge clk_sys);
+        if (!ref_blank_requested) $fatal(1, "LCD_COVERAGE: startup released blank");
+        source_display_eligible = 1;
+        send_pixels(23040, 1, 1);
+        // A newer disable invalidates this already offered eligible frame.
+        cancel(1);
+        @(negedge clk_pix); pixel_running = 0;
+        repeat (100) @(negedge clk_sys);
+        pixel_running = 1;
+        wait (display_sequence == 1 && display_epoch == 1);
+        repeat (8) @(negedge clk_sys);
+        if (!ref_blank_requested) $fatal(1, "LCD_COVERAGE: stale offer released blank");
+        send_pixels(23040, 1, 2);
+        wait (display_sequence == 2 && display_epoch == 1);
+        wait (!ref_blank_active);
+        repeat (420000) @(negedge clk_pix);
+        // Reassert and receive white BEFORE offering: old requested/seen levels
+        // are both1, so the later invalidation gate alone prevents requalification.
+        cancel(1);
+        repeat (8) @(negedge clk_pix);
+        repeat (8) @(negedge clk_sys);
+        // Match old ack, new completion and a fresh blank invalidation exactly.
+        send_pixels(23040, 1, 3);
+        send_pixels(23039, 1, 4);
+        wait (ref_returning);
+        wait (ref_sys_edges == ref_return_edge - 1);
+        @(negedge clk_sys);
+        source_valid = 1; source_start = 0; blank_assert = 1;
+        source_shade = pattern(1, 4, 23039); source_dot++;
+        @(negedge clk_sys); source_valid = 0; blank_assert = 0;
+        repeat (840000) @(negedge clk_pix);
+        // Include visible scanout after the new offer's later acknowledgement.
+        repeat (420000) @(negedge clk_pix);
+        if (!ref_blank_requested || ref_release || abort_total != 5
+            || blank_releases != 1 || ack_completion_coincidences != 1)
+            $fatal(1, "LCD_COVERAGE: abort=%0d release=%0d coincidence=%0d",
+                abort_total, blank_releases, ack_completion_coincidences);
+        $display("PASS VGA LCD abort blank stale-offer core-reset stopped-pixel ack-completion-invalidation");
+        $finish;
+    endtask
     initial begin
         int seq;
         clk_sys = 0;
@@ -248,6 +343,7 @@ module tb_vga;
         core_reset = 0;
         source_valid = 0;
         source_start = 0;
+        source_abort = 0; blank_assert = 0; source_display_eligible = 1;
         source_shade = 0;
         source_epoch = 0;
         source_dot = 0;
@@ -284,6 +380,8 @@ module tb_vga;
         ref_display_valid = 0;
         ref_raster_point = 0;
         ack_completion_coincidences = 0;
+        ref_blank_requested = 0; ref_blank_active = 0; ref_release = 0;
+        abort_total = 0; blank_cycles = 0; blank_releases = 0;
         mutation_reuse = $test$plusargs("bank_reuse");
         mutation_swap = $test$plusargs("active_swap");
         mutation_latency = $test$plusargs("read_latency");
@@ -297,6 +395,7 @@ module tb_vga;
                      display_epoch, display_sequence, video_x, video_y, video_valid,
                      video_image, red, green, blue, hsync_n, vsync_n);
         startup();
+        if ($test$plusargs("lcd")) lcd_scenario();
         for (seq = 0; seq < 8; seq++) send_pixels(23040, 1, seq);
         wait (display_valid);
         if (mutation_latency) begin

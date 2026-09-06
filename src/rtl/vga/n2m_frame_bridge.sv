@@ -167,10 +167,12 @@ module n2m_frame_bridge (
         .red(scan_red), .green(), .blue(), .hsync_n, .vsync_n
     );
 `ifndef SYNTHESIS
-    logic in_frame;
+    logic in_frame, frame_eligible;
     logic [31:0] frame_epoch;
     `DFF_RST_EN(in_frame, !complete, clk_sys, accept_pixel,
                 reset_sys || core_reset || source_abort, 1'b0)
+    `DFF_RST_EN(frame_eligible, source_display_eligible, clk_sys, accept_pixel && source_start,
+                reset_sys || core_reset, 1'b0)
     `DFF_RST_EN(frame_epoch, source_epoch, clk_sys, accept_pixel && source_start,
                 reset_sys || core_reset, 32'd0)
     `N2M_ASSERT(frame_source_order, clk_sys, reset_sys || core_reset,
@@ -178,7 +180,9 @@ module n2m_frame_bridge (
     `N2M_ASSERT(frame_source_epoch, clk_sys, reset_sys || core_reset,
                 (accept_pixel && in_frame) |-> (source_epoch === frame_epoch))
     `N2M_ASSERT(frame_source_known, clk_sys, reset_sys || core_reset,
-                accept_pixel |-> !$isunknown({source_shade, source_start, source_epoch, source_dot}))
+                accept_pixel |-> !$isunknown({source_shade, source_start, source_epoch, source_dot, source_display_eligible}))
+    `N2M_ASSERT(frame_eligibility_stable, clk_sys, reset_sys || core_reset,
+                (accept_pixel && in_frame) |-> (source_display_eligible === frame_eligible))
     `N2M_ASSERT(blank_invalidation_wins, clk_sys, reset_sys,
                 (blank_assert || core_reset) |=> !pending_release)
     `N2M_ASSERT(abort_suppresses_pixel, clk_sys, reset_sys,
