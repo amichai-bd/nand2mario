@@ -56,3 +56,19 @@ on the planned public CPU module.
   offsets, including instruction lengths, zero IRQ opcode, post-bus snapshots,
   idle non-repetition and reset cancellation/sequence restart. Its negative
   forces an actual output opcode field and must fail the record comparison.
+
+
+## Integrated program slice
+
+`cpu-program` executes an original literal program through the control, execution,
+bus and retirement modules. Its independent tables compare all 50 M-cycles and
+18 complete retirement records, followed by idle HALT observation through dot
+220. The program covers register/memory loads, CB memory rotation, stack transfer,
+taken and untaken branches, CALL/RET, JP and HALT. Separate state, commit-timing
+and retirement-output faults force actual DUT signals and must fail with the
+registered exact diagnostic and raw exit 1.
+
+This slice does not establish IRQ/HALT corner timing, STOP policy, every opcode's
+architectural behavior, or internal IDU observations. These remain required before
+#118 can close. In particular, the current pending-interrupt HALT path still needs
+a directed distinction between an already enabled IME and delayed EI maturation.

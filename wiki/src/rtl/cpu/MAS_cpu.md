@@ -241,3 +241,21 @@ State, timing and retirement mutations must each produce their intended fatal
 failure and a nonzero raw simulator exit through the shared builder. Retain
 source hashes, commands, seed, expected/actual transactions, traces and waves.
 Host checks, full external adapters and physical acceptance remain separate.
+
+
+## Integration status
+
+The internal `n2m_cpu_control` component composes the execution planner, T-cycle
+bus and retirement recorder. Its first checked program covers 18 events and 50
+M-cycles. The public CPU wrapper is unfinished. The component's `stop_action`,
+`stop_padding` and `wake_request` ports are internal policy seams, not additions
+to the host initialization ABI; the final wrapper must own their resolved logic.
+
+Interrupt recognition remains under source and directed-test review. The current
+component observes pending requests at the final fetch T4. That implementation
+is not yet an accepted phase contract: a PPU event produced after that edge and
+forwarded for retirement must not silently alter dispatch timing. The resolved
+post-event IF snapshot for retirement is distinct from the pre-low-stack-write
+IF observation used for interrupt selection. Already enabled IME during HALT
+must also be distinguished from a delayed EI that matures there. These pending
+checks prevent a whole-CPU readiness claim for this component snapshot.
