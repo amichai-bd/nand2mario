@@ -2,7 +2,7 @@
 
 Generated from cfg/interfaces.json by tools/n2m/interfaces.py; DO NOT EDIT.
 
-Source SHA-256: `fc2c3bd0e2290b18fc1b0bcead054770f45fbe97277a917af0dd2f48a047a2a1`.
+Source SHA-256: `c8444489d6170daad0103cdfb00d7da4372a8c2f8471d2629892b0dc8b898f21`.
 
 See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior, reset, framing and tests.
 
@@ -395,7 +395,7 @@ See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior,
 | `halt_bug` | 44 | 8 | Pending suppressed PC increment: 0 or 1 |
 | `ie` | 45 | 8 | Interrupt-enable storage byte |
 | `iflags` | 46 | 8 | Interrupt-request low five storage bits |
-| `buttons` | 47 | 8 | Host mask at event end |
+| `buttons` | 47 | 8 | Effective Game Boy button mask at event end |
 
 ## Write Host record
 

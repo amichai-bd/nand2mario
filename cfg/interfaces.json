@@ -1454,7 +1454,7 @@
       {
         "name": "buttons",
         "bits": 8,
-        "description": "Host mask at event end"
+        "description": "Effective Game Boy button mask at event end"
       }
     ],
     "write_host": [
