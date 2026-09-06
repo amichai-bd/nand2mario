@@ -4,7 +4,9 @@
 
 // Bounded composition for the original smoke ROM, not a full board top.
 module n2m_smoke_system (
-    input var logic clk_sys, reset_sys, uart_rx,
+    input var logic clk_sys,
+    input var logic reset_sys,
+    input var logic uart_rx,
     output logic uart_tx,
     output logic gb_tick, paused, core_reset,
     output logic [31:0] epoch,
