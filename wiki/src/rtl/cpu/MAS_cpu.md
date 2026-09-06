@@ -243,11 +243,14 @@ never asks the memory owner to perform a second architectural write.
 The current internal controller exposes `address_effect_phase`,
 `address_effect_sample` and `address_effect_resolved` alongside the payload.
 The sample pulse occurs only on the shared T4 rising enable, with reset and
-fault suppression; it can accompany idle rather than a memory commit.
+fault suppression; a missing response suppresses the sample on the failed T4
+itself, before the registered fault changes. It can accompany idle rather than a memory commit.
 `resolved` is an explicit completeness qualifier: a consumer must reject an
 unresolved sample rather than interpreting its payload as no effect. In this
 incomplete integration, interrupt PC repair, sleep and the wake-refetch cycle,
-and STOP execution are unresolved. Sourced ordinary fetch/operand/stack/planner
+STOP execution, and internal ADD HL / ADD SP,e / LD HL,SP+e arithmetic
+cycles are unresolved. Their operand/final-fetch increments remain separately
+sourced. Sourced ordinary fetch/operand/stack/planner
 cycles are resolved. This qualifier changes observation only, not CPU execution,
 and cannot waive the remaining full-CPU acceptance gate.
 

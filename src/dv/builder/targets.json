@@ -2323,5 +2323,23 @@
     ],
     "expected_exit": "nonzero",
     "signature": "CPU_PROGRAM_IDU cycle=20 dot=81"
+  },
+  "cpu-program-idu-missing": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/dv/cpu/tb_cpu_program.sv"
+    ],
+    "top": "tb_cpu_program",
+    "args": [
+      "+effect_missing"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT CPU_BUS_RESPONSE"
   }
 }

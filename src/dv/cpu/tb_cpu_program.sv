@@ -67,6 +67,7 @@ module tb_cpu_program;
     integer reset_phase;
     integer reset_tick;
     bit effect_fault;
+    bit effect_missing;
 
     n2m_cpu_control dut (.*);
     assign read_data = memory[address];
@@ -83,7 +84,7 @@ module tb_cpu_program;
                 $fatal(1, "CPU_PROGRAM_IDU_RESET");
         end else begin
             if (address_effect_phase !== dot_before[1:0] ||
-                    address_effect_sample !== (gb_tick && dot_before[1:0] == 3))
+                    address_effect_sample !== (gb_tick && dot_before[1:0] == 3 && response_valid))
                 $fatal(1, "CPU_PROGRAM_IDU_EDGE dot=%0d", dot_before);
             if (bus_index < 50) begin
                 expected_effect_mask = expected_effect_valid[bus_index] ? 16'hffff : 0;
@@ -160,7 +161,13 @@ module tb_cpu_program;
         gb_tick = tick;
         #4;
         check_address_effect();
-        if (!reset_sys && !core_reset) check_bus();
+        if (!reset_sys && !core_reset) begin
+            if (effect_missing && !response_valid && gb_tick && dot_before == 3) begin
+                if (address_effect_sample || bus_commit)
+                    $fatal(1, "CPU_PROGRAM_IDU_CANCELED_CONSUMED");
+                $display("CPU_PROGRAM_IDU_MISSING_SUPPRESSED dot=4");
+            end else check_bus();
+        end
         #1 clk_sys = 1;
         #1;
         if (retirement_fault && retirement_valid && event_index == 3)
@@ -191,6 +198,7 @@ module tb_cpu_program;
         timing_fault = $test$plusargs("timing_fault");
         retirement_fault = $test$plusargs("retirement_fault");
         effect_fault = $test$plusargs("effect_fault");
+        effect_missing = $test$plusargs("effect_missing");
         for (item = 0; item < 65536; item = item + 1) memory[item] = 0;
         memory[16'h0100] = 8'h31;
         memory[16'h0101] = 8'h00;
@@ -274,6 +282,7 @@ module tb_cpu_program;
             if (timing_fault && dot_before == 10) force dut.bus.commit = 1'b1;
             if (cycle >= 240 && cycle < 252 && (cycle % 3) == 0)
                 for (pause_edge = 0; pause_edge < 20; pause_edge = pause_edge + 1) edge_cycle(0);
+            if (effect_missing && dot_before == 3) response_valid = 0;
             if (effect_fault && dot_before == 81)
                 force dut.address_effect.address = 16'h0000;
             edge_cycle((cycle % 3) == 0);
