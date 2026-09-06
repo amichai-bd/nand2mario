@@ -53,6 +53,22 @@ same-sequence differences return SEQUENCE without changing the cache. Completion
 publishes request and response cache state atomically. Global reset invalidates
 the cache; core reset preserves it.
 
+`n2m_uart_exchange_store` provides three separate raw-packet banks. Bank 0 holds
+the last completed decoded request; bank 1 holds its raw response; bank 2 stages
+the current response. Each bank has `UART_RAW_MAX` byte words. A fixed bank's
+address/data occupies the correspondingly indexed slice of the packed port bus.
+The executor cannot overwrite a cached response while constructing a new one.
+After command completion, the controller copies the accepted request and staged
+response into the cache while transport remains busy, then atomically publishes
+the new cache metadata. Same-sequence errors never replace either cached packet.
+Only global reset invalidates the cache; core reset is not a store reset input.
+
+These stores use one system clock, A byte writes and one-edge read-only B ports,
+with uninitialized contents and reset-masked validity. Their early
+`uart-exchange-stores` fit target has 85 virtual input bits, 27 output bits and
+6432 logical memory bits at the current ABI. It must establish three physical
+M9Ks with matching clock/read/reset structure before dependent cache acceptance.
+
 ## Core and storage integration
 
 The controller drives the existing timebase `pause_request` and observes `paused`
