@@ -9,6 +9,22 @@ from n2m.hdl import dependencies
 
 
 class HdlTests(unittest.TestCase):
+    def test_literal_module_include_and_cycle(self):
+        parent = Path(__file__).resolve().parents[3] / "workdir/builds/hdl-tests"
+        parent.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=parent) as folder:
+            root = Path(folder)
+            (root / "src").mkdir()
+            (root / "src/wrapper.sv").write_text('`define SYNTHESIS\n`include "src/product.sv"\n`undef SYNTHESIS\n')
+            product = root / "src/product.sv"
+            product.write_text('module product; endmodule\n')
+            self.assertEqual(dependencies(root, ["src/wrapper.sv"]), ["src/wrapper.sv", "src/product.sv"])
+            for invalid in ('`include "src/wrapper.sv"', '`include "src/../outside.sv"',
+                            '`include "src/missing.sv"', '`include "src/product.sv" trailing'):
+                product.write_text(invalid)
+                with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                    dependencies(root, ["src/wrapper.sv"])
+
     def test_literal_closure_comments_conditions_and_rejections(self):
         parent = Path(__file__).resolve().parents[3] / "workdir/builds/hdl-tests"
         parent.mkdir(parents=True, exist_ok=True)

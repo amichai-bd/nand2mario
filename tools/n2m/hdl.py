@@ -30,7 +30,7 @@ def dependencies(root, sources, *, synthesis=False):
         if synthesis and re.search(r'\$(?:readmemh|readmemb|fopen)\b', text):
             raise ValueError(f"external FPGA source dependencies are unsupported: {name}")
         for match in re.finditer(r'`include\b([^\n]*)', text):
-            literal = re.fullmatch(r'\s*"(src/[A-Za-z0-9_./-]+\.svh)"\s*', match[1])
+            literal = re.fullmatch(r'\s*"(src/[A-Za-z0-9_./-]+\.(?:sv|svh))"\s*', match[1])
             if not literal:
                 raise ValueError(f"unsupported HDL include in {name}: use a literal src/ path")
             include = literal[1]

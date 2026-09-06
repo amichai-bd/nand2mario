@@ -90,6 +90,15 @@ and absent memory clear/initialization. The fitter's physical new-data mode
 may include NBE handling; the MAS permits simultaneous A read/write only with
 all public lanes enabled, where that mapping preserves the defined result.
 
+The `memory-stores` FPGA target constrains the seven direct-profile stores at
+50 MHz with virtual service inputs and outputs. Its checker requires the exact
+seven logical depths, 395,640 bits and 52 fitted M9Ks. It checks both port
+register stages, the common clock, disabled B writes, whole-byte enables,
+physical bit inventory, and absent primitive reset/initialization. The ordinary
+timing and diagnostic gates still apply. This proves the raw storage slice;
+CPU routing, arbitration and full-system initialization require their own
+composition evidence in the [memory contract](../../src/rtl/memory/MAS_memory.md).
+
 ### Registered target execution
 
 Run an authorized registered target with default or explicit Questa:
@@ -252,7 +261,7 @@ inputs, deterministic artifacts and independent conformance requirements.
 
 Simulation and FPGA builds share the [dependency resolver](../../../tools/n2m/hdl.py).
 Sources are repository `src/` files. An include must name a literal, canonical
-repository path such as `src/rtl/common/macros.svh`. Only `.svh` headers and
+repository path such as `src/rtl/common/macros.svh`. Only `.sv` source files, `.svh` headers and
 ASCII path letters, digits, underscore, hyphen, slash and period are accepted.
 Relative traversal, missing files, escapes, symlink files, cycles, dynamic names,
 extra include tokens and ambiguous source-directory shadow files fail before

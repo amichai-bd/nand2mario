@@ -5,6 +5,7 @@ names follow the implementation owner, not a second software hierarchy.
 
 | Implementation owner | Requirements | Design and observable rules | Verification |
 |---|---|---|---|
+| [src/rtl/timer](../src/rtl/timer/n2m_timer.sv) | [#128](https://github.com/amichai-bd/nand2mario/issues/128) | [MAS_timer](src/rtl/timer/MAS_timer.md) | [Timer test plan](../src/dv/timer/README.md) |
 | [src/rtl/interrupts](../src/rtl/interrupts/n2m_interrupts.sv) | [#133](https://github.com/amichai-bd/nand2mario/issues/133) | [MAS_interrupts](src/rtl/interrupts/MAS_interrupts.md) | [Interrupt test plan](../src/dv/interrupts/README.md) |
 | [tools/n2m](../tools/n2m/cli.py) and its [tools/build.py](../tools/build.py) dispatcher | [PRD](tools/n2m/PRD.md) | [SPEC](tools/n2m/SPEC.md) | [Host tests](../tools/n2m/tests/test_builder.py), [interface generator tests](../tools/n2m/tests/test_interfaces.py), [baseline report tests](../tools/n2m/tests/test_baseline.py), [simulation registry and smoke](../src/dv/builder/targets.json) |
 | [tools/n2m/host](../tools/n2m/host/client.py) | [PRD](tools/n2m/host/PRD.md) | [SPEC](tools/n2m/host/SPEC.md) | [Fake endpoint and CLI tests](../tools/n2m/tests/test_host.py) |
@@ -19,6 +20,7 @@ names follow the implementation owner, not a second software hierarchy.
 | [src/rtl/vga](../src/rtl/vga/n2m_frame_bridge.sv) | [Clock/reset/CDC contract](src/clocks-resets-cdc.md) | [MAS_vga](src/rtl/vga/MAS_vga.md) | [Frame bridge test plan](../src/dv/vga/README.md) |
 | [src/rtl/interfaces](../src/rtl/interfaces/n2m_interfaces_pkg.sv) | [Charter](src/project-charter.md) and [#30](https://github.com/amichai-bd/nand2mario/issues/30) | [MAS_interfaces](src/rtl/interfaces/MAS_interfaces.md), shared with host and verification consumers | [Interface fixture](../src/dv/interfaces/tb_interfaces.sv), [codec tests](../tools/n2m/tests/test_interfaces.py) |
 | [src/rtl/uart](../src/rtl/uart/n2m_uart_packet_store.sv) | [#91](https://github.com/amichai-bd/nand2mario/issues/91) | [MAS_uart](src/rtl/uart/MAS_uart.md), implementation in progress | [UART test plan](../src/dv/uart/README.md) |
+| Planned direct-profile memory, [#130](https://github.com/amichai-bd/nand2mario/issues/130) | [Charter](src/project-charter.md) and issue130 | [MAS_memory](src/rtl/memory/MAS_memory.md) | Directed storage/routing and inference evidence planned under #130 |
 | [cfg/interfaces.json](../cfg/interfaces.json), schema shared across RTL and tools | [Interface requirements](tools/n2m/PRD.md) | [Generated tables](cfg/interfaces.md), [generator rules](tools/n2m/SPEC.md#interface-generation) | [Generator and drift tests](../tools/n2m/tests/test_interfaces.py) |
 | [src/dv/baseline](../src/dv/baseline/README.md), test-only fixture and harness | [#31](https://github.com/amichai-bd/nand2mario/issues/31) | [Baseline SPEC](src/dv/baseline/SPEC.md) | [Test plan](../src/dv/baseline/README.md), [regression manifest](../src/dv/baseline/regression.json) |
 

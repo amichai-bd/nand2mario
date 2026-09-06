@@ -465,6 +465,163 @@
     "expected_exit": "nonzero",
     "signature": "UART_EXCHANGE_DUPLICATE_EXECUTION"
   },
+  "memory-service": {
+    "vendor_model": "intel-memory",
+    "sources": ["src/rtl/interfaces/n2m_interfaces_pkg.sv", "src/rtl/memory/n2m_memory_pkg.sv", "src/rtl/common/n2m_intel_ram.sv", "src/rtl/memory/n2m_memory_stores.sv", "src/rtl/memory/n2m_memory_decode.sv", "src/rtl/memory/n2m_memory_cpu_port.sv", "src/dv/memory/tb_memory_service.sv"],
+    "top": "tb_memory_service",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS memory concurrent CPU PPU writes=352 preA_pairs=1040 blocked unusable"
+  },
+  "memory-service-corrupt": {
+    "vendor_model": "intel-memory",
+    "sources": ["src/rtl/interfaces/n2m_interfaces_pkg.sv", "src/rtl/memory/n2m_memory_pkg.sv", "src/rtl/common/n2m_intel_ram.sv", "src/rtl/memory/n2m_memory_stores.sv", "src/rtl/memory/n2m_memory_decode.sv", "src/rtl/memory/n2m_memory_cpu_port.sv", "src/dv/memory/tb_memory_service.sv"],
+    "top": "tb_memory_service",
+    "args": ["+corrupt_response"],
+    "expected_exit": "nonzero",
+    "signature": "MEMORY_SERVICE_VRAM_PRE_A expected=90 actual=00"
+  },
+  "memory-cpu-port": {
+    "vendor_model": "intel-memory",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/memory/n2m_memory_stores.sv",
+      "src/rtl/memory/n2m_memory_decode.sv",
+      "src/rtl/memory/n2m_memory_cpu_port.sv",
+      "src/dv/memory/tb_memory_cpu_port.sv"
+    ],
+    "top": "tb_memory_cpu_port",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS memory CPU port writes=7 owner_commits=1 fixed_io=71 absent_cart=8192 reset_phases=16 echo ROM stale pause"
+  },
+  "memory-cpu-duplicate": {
+    "vendor_model": "intel-memory",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/memory/n2m_memory_stores.sv",
+      "src/rtl/memory/n2m_memory_decode.sv",
+      "src/rtl/memory/n2m_memory_cpu_port.sv",
+      "src/dv/memory/tb_memory_cpu_port.sv"
+    ],
+    "top": "tb_memory_cpu_port",
+    "args": [
+      "+duplicate_fault"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "MEMORY_CPU_DUPLICATE_WRITE"
+  },
+  "memory-cpu-missing": {
+    "vendor_model": "intel-memory",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/memory/n2m_memory_stores.sv",
+      "src/rtl/memory/n2m_memory_decode.sv",
+      "src/rtl/memory/n2m_memory_cpu_port.sv",
+      "src/dv/memory/tb_memory_cpu_port.sv"
+    ],
+    "top": "tb_memory_cpu_port",
+    "args": [
+      "+missing_fault"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT MEMORY_COMMIT_READ_SERVICE"
+  },
+  "memory-cpu-owner-fault": {
+    "vendor_model": "intel-memory",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/memory/n2m_memory_stores.sv",
+      "src/rtl/memory/n2m_memory_decode.sv",
+      "src/rtl/memory/n2m_memory_cpu_port.sv",
+      "src/dv/memory/tb_memory_cpu_port.sv"
+    ],
+    "top": "tb_memory_cpu_port",
+    "args": [
+      "+write_fault"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT MEMORY_COMMIT_OWNER_SERVICE"
+  },
+  "memory-cpu-sticky": {
+    "vendor_model": "intel-memory",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/memory/n2m_memory_decode.sv",
+      "src/dv/memory/tb_memory_cpu_synthesis.sv"
+    ],
+    "top": "tb_memory_cpu_port",
+    "args": [
+      "+write_fault"
+    ],
+    "expected_exit": "zero",
+    "signature": "PASS memory CPU synthesized sticky fault no same-edge or later effects reset"
+  },
+  "memory-decode": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/memory/n2m_memory_decode.sv",
+      "src/dv/memory/tb_memory_decode.sv"
+    ],
+    "top": "tb_memory_decode",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS memory decode addresses=65536 echo=7680"
+  },
+  "memory-decode-alias": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/memory/n2m_memory_decode.sv",
+      "src/dv/memory/tb_memory_decode.sv"
+    ],
+    "top": "tb_memory_decode",
+    "args": [
+      "+alias_fault"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "MEMORY_DECODE_MISMATCH address=e123"
+  },
+  "memory-stores": {
+    "vendor_model": "intel-memory",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/memory/n2m_memory_stores.sv",
+      "src/dv/memory/tb_memory_stores.sv"
+    ],
+    "top": "tb_memory_stores",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS memory stores RAM_inspected=66748 ROM_bytes=32768 clear_edges=8192"
+  },
+  "memory-stores-early": {
+    "vendor_model": "intel-memory",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/memory/n2m_memory_stores.sv",
+      "src/dv/memory/tb_memory_stores.sv"
+    ],
+    "top": "tb_memory_stores",
+    "args": [
+      "+early"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "MEMORY_STORES_EARLY_INIT edge=8"
+  },
   "interrupts": {
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
@@ -594,5 +751,100 @@
     "signature": "UART_SERIAL_TX_BIT",
     "expected_exit": "nonzero",
     "timeout_seconds": 180
+  },
+  "timer-reload": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/rtl/timer/n2m_timer_pkg.sv",
+      "src/rtl/timer/n2m_timer.sv",
+      "src/dv/timer/tb_timer_reload.sv"
+    ],
+    "top": "tb_timer_reload",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS timer reload schedules cases=8 checks=1152"
+  },
+  "timer-counter-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/rtl/timer/n2m_timer_pkg.sv",
+      "src/rtl/timer/n2m_timer.sv",
+      "src/dv/timer/tb_timer_reload.sv"
+    ],
+    "top": "tb_timer_reload",
+    "args": [
+      "+counter_fault"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "TIMER_COUNTER case=0 tick=64 expected=ff actual=00"
+  },
+  "timer-request-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/rtl/timer/n2m_timer_pkg.sv",
+      "src/rtl/timer/n2m_timer.sv",
+      "src/dv/timer/tb_timer_reload.sv"
+    ],
+    "top": "tb_timer_reload",
+    "args": [
+      "+request_fault"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "TIMER_REQUEST case=2 tick=132 expected=1 actual=0"
+  },
+  "timer-edges": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/rtl/timer/n2m_timer_pkg.sv",
+      "src/rtl/timer/n2m_timer.sv",
+      "src/dv/timer/tb_timer_edges.sv"
+    ],
+    "top": "tb_timer_edges",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS timer frequencies edges wrap pause STOP resets cases=67",
+    "timeout_seconds": 120
+  },
+  "timer-edge-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/rtl/timer/n2m_timer_pkg.sv",
+      "src/rtl/timer/n2m_timer.sv",
+      "src/dv/timer/tb_timer_edges.sv"
+    ],
+    "top": "tb_timer_edges",
+    "args": [
+      "+edge_fault"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "TIMER_EDGE_READ case=1 tick=1020 address=ff05 expected=01 actual=00",
+    "timeout_seconds": 120
+  },
+  "timer-commit-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/rtl/timer/n2m_timer_pkg.sv",
+      "src/rtl/timer/n2m_timer.sv",
+      "src/dv/timer/tb_timer_edges.sv"
+    ],
+    "top": "tb_timer_edges",
+    "args": [
+      "+bad_commit"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT TIMER_COMMIT_BOUNDARY",
+    "timeout_seconds": 120
   }
 }
