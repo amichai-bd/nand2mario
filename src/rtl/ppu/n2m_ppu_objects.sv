@@ -30,7 +30,8 @@ module n2m_ppu_objects (
     output logic [10:0] tile_row_address,
     output logic [7:0] object_attributes,
     output logic [3:0] selected_index,
-    output logic fault
+    output logic fault,
+    output logic fault_now
 );
     logic [7:0] x_position [0:9];
     logic [7:0] x_position_next [0:9];
@@ -61,6 +62,7 @@ module n2m_ppu_objects (
     assign capture_fetch = object_found && fetch_phase1;
     assign missing = gb_tick && !oam_valid && (capture_scan || capture_fetch);
     assign state_enable = gb_tick && !fault && !missing;
+    assign fault_now = fault || missing;
     assign object_found = (|x_matches) && fetch_mode && object_enable && lcd_on && !fault;
     assign object_attributes = captured_high;
     assign fetch_row = captured_high[6] ? ~row_offset[selected_index] : row_offset[selected_index];

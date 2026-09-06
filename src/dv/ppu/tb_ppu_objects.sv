@@ -13,7 +13,7 @@ module tb_ppu_objects;
     logic [10:0] tile_row_address;
     logic [7:0] object_attributes;
     logic [3:0] selected_index;
-    logic fault;
+    logic fault, fault_now;
     integer entry;
     n2m_ppu_objects dut (.*);
     task automatic tick;

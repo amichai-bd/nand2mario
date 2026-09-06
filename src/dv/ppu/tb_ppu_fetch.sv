@@ -10,7 +10,7 @@ module tb_ppu_fetch;
     logic [2:0] background_phase, object_phase, shift_count;
     logic background_done, object_done, background_first_done, window_first;
     logic [7:0] tile_index, background_low, background_high, object_low, object_high;
-    logic background_load, object_load, fault;
+    logic background_load, object_load, fault, fault_now;
     logic [31:0] cases;
     n2m_ppu_fetch dut (.*);
     task automatic step(input logic [2:0] bg, input logic [2:0] obj);

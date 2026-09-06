@@ -37,7 +37,8 @@ module n2m_ppu_fetch (
     output logic object_load,
     output logic [7:0] object_low,
     output logic [7:0] object_high,
-    output logic fault
+    output logic fault,
+    output logic fault_now
 );
     logic [2:0] background_phase_next, object_phase_next;
     logic [2:0] shift_count_next;
@@ -65,6 +66,7 @@ module n2m_ppu_fetch (
     assign missing = gb_tick && !vram_valid && (capture_map || capture_low
         || capture_high || capture_object_low || capture_object_high);
     assign state_enable = gb_tick && !fault && !missing;
+    assign fault_now = fault || missing;
     assign object_data = object_x_flip
         ? {vram_data[0], vram_data[1], vram_data[2], vram_data[3],
            vram_data[4], vram_data[5], vram_data[6], vram_data[7]} : vram_data;
