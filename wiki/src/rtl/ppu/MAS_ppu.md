@@ -167,18 +167,19 @@ This table fixes the intended digital transaction abstraction. Directed
 before/on/after register writes and imported-core phase comparison must establish
 its behavior; it is not an assertion of cartridge-pin phase equivalence.
 
-## STAT-write timing proposal
+## STAT-write timing
 
 The pinned [SameBoy DMG conflict implementation](https://github.com/LIJI32/SameBoy/blob/213a12ce93d66b105a113debd9396306066a7cfc/Core/sm83_cpu.c#L148)
 models all STAT interrupt enables asserted for one T-cycle at a CPU write,
-then restores the written enables. This supports a one-dot digital proposal;
+then restores the written enables. This supports the selected one-dot digital mapping;
 it does not establish a four-dot pulse or a measured DMG-B half-phase.
 Its special HBlank-to-OAM branch explicitly describes a timing approximation.
-That boundary requires independent reconciliation before final STAT acceptance.
+The approved compatibility projection below preserves that qualification without
+moving the renderer's selected source timing.
 The existing Mooneye DMG A/B/C blocking case proves shared-line edge behavior,
 not the transient width. The older fork's STAT-write test is MGB-verified only.
 
-The proposed ordinary mapping is:
+The ordinary mapping is:
 
 | Edge | Enable and shared-line observation |
 |---|---|
@@ -195,9 +196,24 @@ Directed checks must cover old/new enables, active and inactive coincidence,
 write before/on/after a mode transition, and a natural STAT event coincident
 with T4 retirement and an IF write. One CPU commit cannot write STAT and IF
 simultaneously; the composed vector must not invent that stimulus.
-The HBlank/OAM special case and LCD-off qualification remain explicit review
-gates. The renderer implements this ordinary effective-enable interval with shared
-condition edge history. The special qualification gates above remain open.
+At the ordinary OAM source's rising observation, a STAT write with
+`old(STAT & 0x28) == 0x08` suppresses only the transient OAM enable for that
+one-T interval. Other transient enables remain asserted; the next dot uses the
+written enables. This predicate excludes VBlank. It is an approved compatibility
+projection of the qualified SameBoy branch, not a measured DMG-B half-phase.
+The renderer, readable modes, access gates and four-T OAM source stay unchanged.
+
+At legal write edge452 of the selected startup-relative ordinary transition,
+HBlank and OAM sources overlap. HBlank therefore masks this OAM-enable
+suppression in the combined condition: old08 and old28 both remain high after
+that edge. Writing zero then permits the condition to fall at453. A write at456
+does not invent an OAM source after its four-T interval ends. The fixture checks
+the internal compatibility qualifier separately and sensitizes its deliberate
+fault; it does not claim an IRQ difference that this overlap masks. Public
+452/456 mode/access observations and all-edge event counts remain checked.
+Separate OAM-only cases compose the actual IF owner and verify a natural event
+with and without a simultaneous IF clear, including the pre-B observation.
+LCD-off retention is specified in the LCD-off section below.
 
 ## Proposed LCD cancellation and presentation
 

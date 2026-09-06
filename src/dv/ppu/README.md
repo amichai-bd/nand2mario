@@ -193,3 +193,13 @@ extra on those16 lines. The independent scene checks all46080 pixels. An actual
 source timestamp fault at line84 proves the specific timing check, and public
 waves are retained. These targets still require runtime evidence. This adds
 the existing X0 matrix case; it does not claim absolute mode3 phase measurement.
+
+`ppu-stat-oam` checks the approved old08 transient OAM-enable suppression at
+the ordinary source rise. HBlank overlaps at legal452, so the public line does
+not distinguish old08 from28 there. A separately labeled qualifier check and
+actual qualifier fault prove that narrow compatibility branch. Six reset-separated
+cases check writes at452/456, unchanged public modes/access, the four-T OAM
+condition and all-edge event counts. OAM-only cases compose the actual IF owner
+with and without a same-edge IF clear, checking pre-B observation and stored IF.
+These targets require runtime evidence; no source interval or renderer shift is
+inferred from the compatibility projection.

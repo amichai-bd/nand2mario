@@ -48,6 +48,7 @@ module n2m_ppu_timing (
     logic natural_stat, final_stat, stat_event;
     logic [3:0] final_enable;
     logic next_mode0, next_mode1, next_mode2;
+    logic mode2_history, suppress_transient_oam;
     logic mode3_end_delayed, mode3_end_delayed_next;
     logic mode3_delayed, scan_delayed;
     logic line_end_sample, line_end_sample_next, ly_reset_hold, ly_reset_hold_next;
@@ -59,7 +60,11 @@ module n2m_ppu_timing (
     assign raw_vblank = ly >= 8'd144;
     assign line153 = ly == 8'd153;
     assign readable_ly = !lcd_on || (exceptional && exception_step >= 4'd6) ? 8'd0 : ly;
-    assign final_enable = stat_write ? 4'hf : stat_enable;
+    // Approved compatibility projection: only the transient OAM enable is
+    // suppressed for old STAT08 at the ordinary OAM-source rising edge.
+    assign suppress_transient_oam = next_mode2 && !mode2_history && !raw_vblank
+        && (stat_enable & 4'h5) == 4'h1;
+    assign final_enable = stat_write ? (suppress_transient_oam ? 4'hb : 4'hf) : stat_enable;
     assign line_quarter_next = quarter_end ? 7'd0 : line_quarter + 1'b1;
     assign mode3_end = !object_found && pixel_end;
     assign mode3 = lcd_on && !mode3_end_delayed && scan_done;
@@ -165,6 +170,7 @@ module n2m_ppu_timing (
     // Keep the combined line across LCD-off writes and enable. The next active
     // observation compares against this history rather than an artificial low.
     `DFF_RST_EN(stat_condition, final_stat, clk_sys, gb_tick && lcd_on, reset, 1'b0)
+    `DFF_RST_EN(mode2_history, next_mode2, clk_sys, gb_tick, disabled_reset, 1'b0)
     `DFF_RST_EN(exceptional, exceptional_next, clk_sys, gb_tick, disabled_reset, 1'b0)
     `DFF_RST_EN(exception_step, exception_step_next, clk_sys, gb_tick, disabled_reset, 4'd0)
     `DFF_RST_EN(comparison_value, comparison_value_next, clk_sys, gb_tick, reset, 8'd0)
@@ -190,5 +196,5 @@ module n2m_ppu_timing (
     `N2M_ASSERT_KNOWN(timing_state_known, clk_sys, reset,
         {line_quarter, quarter_phase, ly, readable_ly, coincidence, coincidence_irq,
          comparison_valid, comparison_value, exceptional, exception_step,
-         mode, stat_condition, stat_rise, vblank_condition})
+         mode, mode2_history, stat_condition, stat_rise, vblank_condition})
 endmodule
