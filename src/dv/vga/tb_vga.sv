@@ -47,7 +47,11 @@ module tb_vga;
     int raster_frames, displayed_frames, source_edges;
     int pix_edges;
     int seen_banks;
-    bit mutation_reuse, mutation_swap;
+    bit mutation_reuse, mutation_swap, mutation_latency;
+    logic [1:0] late_shade;
+    integer pixel_trace;
+    // Fault injection delays the actual RAM response, not the raster oracle.
+    always @(posedge clk_pix) late_shade <= dut.bank_shade[dut.display_bank];
     logic [1:0] mutation_bank;
     bit have_previous_display;
     logic [1:0] previous_display_bank;
@@ -202,7 +206,12 @@ module tb_vga;
                     {red, green, blue} !== {expected_gray, expected_gray, expected_gray})
                     $fatal(1, "VGA_PIXEL: coordinate=%0d,%0d actual=%0d,%0d expected=%h actual=%h epoch=%0d sequence=%0d",
                            ex, ey, video_x, video_y, expected_gray, red, display_epoch, display_sequence);
-                if (point == 419999) raster_frames++;
+                if (ei && (ex == 80 || ex == 559))
+                    $fdisplay(pixel_trace,"%0t,%0d,%0d,%0d,%0d,%h,%h",$time,ref_display_epoch,ref_display_seq,ex,ey,expected_gray,red);
+                if (point == 419999) begin
+                    raster_frames++;
+                    $display("VGA_PROGRESS time=%0t rasters=%0d completed=%0d displayed=%0d",$time,raster_frames,completed_total,displayed_frames);
+                end
             end
         end
     end
@@ -273,10 +282,26 @@ module tb_vga;
         ack_completion_coincidences = 0;
         mutation_reuse = $test$plusargs("bank_reuse");
         mutation_swap = $test$plusargs("active_swap");
-        $dumpfile("vga.vcd"); $dumpvars(1, tb_vga);
+        mutation_latency = $test$plusargs("read_latency");
+        pixel_trace = $fopen("vga-pixels.csv", "w");
+        if (!pixel_trace) $fatal(1, "VGA_PIXEL_TRACE_OPEN");
+        $fdisplay(pixel_trace,"time,epoch,sequence,x,y,expected,actual");
+        $dumpfile("waves/vga.vcd");
+        $dumpvars(0, clk_sys, clk_pix, reset_sys, reset_pix, core_reset,
+                     source_valid, source_start, source_shade, observe_valid,
+                     observe_index, observe_shade, observe_complete, display_valid,
+                     display_epoch, display_sequence, video_x, video_y, video_valid,
+                     video_image, red, green, blue, hsync_n, vsync_n);
         startup();
         for (seq = 0; seq < 8; seq++) send_pixels(23040, 1, seq);
         wait (display_valid);
+        if (mutation_latency) begin
+            @(negedge clk_pix);
+            force dut.read_shade = late_shade;
+            wait (video_image);
+            repeat (3200) @(negedge clk_pix);
+            $fatal(1, "MUTATION_MISSED: read latency");
+        end
         if (mutation_reuse) begin
             @(negedge clk_sys);
             force dut.writer_bank = dut.display_bank;
@@ -293,7 +318,6 @@ module tb_vga;
             repeat (5) @(negedge clk_pix);
             $fatal(1, "MUTATION_MISSED: active swap");
         end
-        $dumpoff;
         // Arrange an acknowledgement and completion on exactly the same system edge.
         repeat (5) @(negedge clk_sys);
         send_pixels(23040, 1, 8);
@@ -338,8 +362,20 @@ module tb_vga;
         wait (!reset_sys && !reset_pix);
         send_pixels(23040, 1, 0);
         repeat (840000) @(negedge clk_pix);
+        $fclose(pixel_trace);
         $display("PASS vga every-pixel observer ownership fast slow pause core-reset lockloss stopped-pixel");
         $finish;
+    end
+    // Keep useful reset and first-image wave windows without dumping millions
+    // of vendor-internal edges. Every pixel remains checked by the same oracle.
+    initial begin
+        #1;
+        repeat (128) @(negedge clk_sys);
+        $dumpoff;
+        wait (video_image);
+        $dumpon;
+        repeat (1600) @(negedge clk_pix);
+        $dumpoff;
     end
     initial begin #250000000; $fatal(1, "VGA_WATCHDOG"); end
 endmodule
