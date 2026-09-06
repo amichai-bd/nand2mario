@@ -90,12 +90,12 @@ module tb_uart_exchange;
         request[request_bytes-1] = value[15:8];
     endtask
 
-    task automatic make_request(input logic [31:0] sequence,
+    task automatic make_request(input logic [31:0] sequence_token,
                                 input integer count, input logic [7:0] salt);
         integer index;
         request_header = '0;
         request_header.version = 1;
-        request_header.seq = sequence;
+        request_header.seq = sequence_token;
         request_header.command = COMMAND_INPUT;
         request_header.length = 16'(count-12);
         request_bytes = UART_ADDRESS_BITS'(count);
