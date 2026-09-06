@@ -86,6 +86,15 @@ module intel_ram_case #(
         end
         a_read = 1; a_address = ADDRESS_BITS'(DEPTH-1); a_wdata = DATA_BITS'('h69); cycle();
         a_read = 0;
+        // A masked whole-word write must leave initialized storage and both
+        // disabled read outputs unchanged, including the two-bit shade shape.
+        if (LANES == 1) begin
+            a_address = ADDRESS_BITS'(DEPTH-1); a_wdata = ~DATA_BITS'('h69);
+            a_byte_enable = '0; cycle();
+            a_write = 0; a_read = 1; a_byte_enable = '1; cycle();
+            if (a_rdata !== DATA_BITS'('h69)) $fatal(1, "INTEL_RAM_MASKED_WORD");
+            a_read = 0;
+        end
         if (LANES == 4) begin
             a_address = ADDRESS_BITS'(3); a_wdata = DATA_BITS'('h11223344); cycle();
             a_wdata = DATA_BITS'('h0000AA00); a_byte_enable = LANES'(2); cycle();

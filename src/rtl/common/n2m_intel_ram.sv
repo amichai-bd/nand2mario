@@ -29,15 +29,23 @@ module n2m_intel_ram #(
 );
     localparam integer PRIMITIVE_LANES = (DATA_BITS + 7) / 8;
     logic read_a, write_a, read_b;
+    logic primitive_write;
     logic valid_a, valid_b;
     logic read_clock_b;
     logic [2:0] unused_ecc;
     logic [DATA_BITS-1:0] ram_data_a, ram_data_b;
     logic [PRIMITIVE_LANES-1:0] primitive_byte_enable;
-    generate if (BYTE_LANES == 1) begin : whole_word_enable
+    generate if (DATA_BITS < 8) begin : sub_byte_enable
+        // Intel byte lanes are eight or nine bits. A shade uses whole-word
+        // write gating and leaves the unsupported sub-byte lane port inactive.
+        assign primitive_byte_enable = '1;
+        assign primitive_write = write_a && a_byte_enable[0];
+    end else if (BYTE_LANES == 1) begin : whole_word_enable
         assign primitive_byte_enable = {PRIMITIVE_LANES{a_byte_enable[0]}};
+        assign primitive_write = write_a;
     end else begin : byte_lane_enable
         assign primitive_byte_enable = a_byte_enable;
+        assign primitive_write = write_a;
     end endgenerate
     assign read_clock_b = DUAL_CLOCK ? clk_b : clk_a;
     assign read_a = a_read && !reset_a;
@@ -77,7 +85,7 @@ module n2m_intel_ram #(
         .clock0(clk_a), .clock1(DUAL_CLOCK ? clk_b : 1'b1),
         .clocken0(1'b1), .clocken1(1'b1), .clocken2(1'b1), .clocken3(1'b1),
         .aclr0(1'b0), .aclr1(1'b0),
-        .address_a(a_address), .data_a(a_wdata), .wren_a(write_a), .rden_a(read_a),
+        .address_a(a_address), .data_a(a_wdata), .wren_a(primitive_write), .rden_a(read_a),
         .byteena_a(primitive_byte_enable), .addressstall_a(1'b0), .q_a(ram_data_a),
         .address_b(b_address), .data_b({DATA_BITS{1'b0}}), .wren_b(1'b0), .rden_b(read_b),
         .byteena_b({PRIMITIVE_LANES{1'b1}}), .addressstall_b(1'b0), .q_b(ram_data_b), .eccstatus(unused_ecc)
