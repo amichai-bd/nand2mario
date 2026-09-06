@@ -132,7 +132,7 @@ class InterfaceTests(unittest.TestCase):
 
     def test_address_spaces_and_range_neighbors(self):
         self.assertEqual(codec.host_address(0x10000),0x10000)
-        for bad in (0xff00,0xffff,0x10001,0x10044,-1,1<<32):
+        for bad in (0xff00,0xffff,0x10001,0x10050,-1,1<<32):
             with self.assertRaises(ValueError):codec.host_address(bad)
         for address in (0,0x3fff,0x4000,0x7fff):self.assertEqual(codec.rom_offset(address),address)
         for bad in (-1,0x8000,0xff00,0x10000):
@@ -140,6 +140,20 @@ class InterfaceTests(unittest.TestCase):
         self.assertEqual(codec.checked_range(32767,1,32768),slice(32767,32768))
         for offset,count in ((32768,1),(32767,2),(0,0),(0,257),(0xffffffff,2)):
             with self.assertRaises(ValueError):codec.checked_range(offset,count,32768)
+
+    def test_host_write_permissions_and_wire_layout(self):
+        for value in range(256):
+            self.assertEqual(codec.host_write(0x10020, value),
+                             bytes.fromhex('20 00 01 00') + value.to_bytes(4, 'little'))
+        for value in (0, 1):
+            self.assertEqual(codec.host_write(0x10044, value),
+                             bytes.fromhex('44 00 01 00') + value.to_bytes(4, 'little'))
+        for address, value in ((0x10000, 0), (0x10048, 0), (0x1004c, 0),
+                               (0x10050, 0), (0xff00, 0), (0x10021, 0),
+                               (0x10020, 256), (0x10044, 2), (0x10020, -1),
+                               (0x10044, True), (True, 0)):
+            with self.assertRaises(ValueError):
+                codec.host_write(address, value)
 
     def test_button_and_pixel_mapping(self):
         self.assertEqual([abi.BUTTON_RIGHT,abi.BUTTON_LEFT,abi.BUTTON_UP,abi.BUTTON_DOWN,

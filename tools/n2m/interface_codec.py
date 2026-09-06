@@ -134,3 +134,11 @@ def pack_pixels(pixels):
         raise ValueError('wrong frame size')
     return bytes(sum(uint(pixels[i+j], abi.FRAME_PIXEL_BITS) << (j*abi.FRAME_PIXEL_BITS)
                      for j in range(4)) for i in range(0, len(pixels), 4))
+
+
+def host_write(address, value):
+    address, value = uint(address, 32), uint(value, 32)
+    mask = abi.HOST_WRITABLE_REGISTERS.get(address)
+    if mask is None or value & ~mask:
+        raise ValueError('host register is read only, unknown, or value has reserved bits')
+    return pack_record('write_host', {'address': address, 'value': value})

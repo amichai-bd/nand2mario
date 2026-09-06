@@ -53,7 +53,7 @@ def validate(data):
     integer(data['schema_version'], 1, 1, 'schema_version')
     if data['byte_order'] != 'little' or data['profile_name'] != 'dmg-direct-v1':
         raise ValueError('unsupported byte order or profile')
-    keys(data['groups'], 'gb gb_reg gb_view vector profile host host_reg state button wire status trace frame command', 'groups')
+    keys(data['groups'], 'gb gb_reg gb_view vector profile host host_reg state button wire status trace frame command input_source host_write_mask', 'groups')
     constants = {}
     for group, entries in data['groups'].items():
         if type(entries) is not list or not entries:
@@ -112,6 +112,10 @@ def validate(data):
     for row in data['groups']['host_reg']:
         if row['value'] <= 0xffff or row['value'] % 4 or row['bits'] != 32:
             raise ValueError('host address overlaps DMG or is unaligned')
+    host_names = {row['name'] for row in data['groups']['host_reg']}
+    for row in data['groups']['host_write_mask']:
+        if row['name'] not in host_names or row['bits'] != 32 or not row['value']:
+            raise ValueError('invalid host register write mask')
     # Ordered regions must cover the CPU space once; aliases are separate regions.
     cursor = 0
     for region in ('ROM0','ROM1','VRAM','CART_RAM','WRAM','ECHO','OAM','UNUSABLE','IO','HRAM','IE'):
@@ -169,6 +173,7 @@ def render(data):
     sv += ['endpackage', '']
     py += ['', 'PROFILE_NAME = ' + repr(data['profile_name']),
            'HOST_REGISTERS = ' + repr({row['value']: row['name'] for row in data['groups']['host_reg']}),
+           'HOST_WRITABLE_REGISTERS = ' + repr({constants['HOST_REG_' + row['name']]: row['value'] for row in data['groups']['host_write_mask']}),
            'RECORDS = ' + repr(data['records']),
            'COMMANDS = ' + repr(data['commands']), 'SOURCE_SHA256 = ' + repr(digest), '']
     md += ['## Commands', '', '| Name | Request payload | Successful response | Allowed state |', '|---|---|---|---|']

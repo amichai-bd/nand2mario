@@ -813,6 +813,24 @@
         "bits": 32,
         "value": 65600,
         "description": "Latched source core-reset epoch; read-only"
+      },
+      {
+        "name": "INPUT_SOURCE",
+        "bits": 32,
+        "value": 65604,
+        "description": "Selected input source: UART or physical."
+      },
+      {
+        "name": "INPUT_PHYSICAL",
+        "bits": 32,
+        "value": 65608,
+        "description": "Latest coherent physical button mask; read only."
+      },
+      {
+        "name": "INPUT_EFFECTIVE",
+        "bits": 32,
+        "value": 65612,
+        "description": "Effective Game Boy button mask; read only."
       }
     ],
     "state": [
@@ -1151,6 +1169,40 @@
         "bits": 8,
         "value": 13,
         "description": "Read dedicated snapshot, unchanged until next successful SNAPSHOT or global reset."
+      },
+      {
+        "name": "WRITE_HOST",
+        "bits": 8,
+        "value": 14,
+        "description": "Write a whitelisted host control register."
+      }
+    ],
+    "input_source": [
+      {
+        "name": "UART",
+        "bits": 8,
+        "value": 0,
+        "description": "Use the host button mask; reset default."
+      },
+      {
+        "name": "PHYSICAL",
+        "bits": 8,
+        "value": 1,
+        "description": "Use the coherent physical button mask."
+      }
+    ],
+    "host_write_mask": [
+      {
+        "name": "INPUT",
+        "bits": 32,
+        "value": 255,
+        "description": "Writable host button mask bits."
+      },
+      {
+        "name": "INPUT_SOURCE",
+        "bits": 32,
+        "value": 1,
+        "description": "Writable source selection bit."
       }
     ]
   },
@@ -1404,6 +1456,18 @@
         "bits": 8,
         "description": "Host mask at event end"
       }
+    ],
+    "write_host": [
+      {
+        "name": "address",
+        "bits": 32,
+        "description": "Whitelisted host register address."
+      },
+      {
+        "name": "value",
+        "bits": 32,
+        "description": "Value with all reserved bits zero."
+      }
     ]
   },
   "commands": [
@@ -1484,6 +1548,12 @@
       "request": "read_range",
       "response": "bytes",
       "state": "snapshot valid"
+    },
+    {
+      "name": "WRITE_HOST",
+      "request": "write_host",
+      "response": "dot",
+      "state": "Not LOADING."
     }
   ],
   "references": [
