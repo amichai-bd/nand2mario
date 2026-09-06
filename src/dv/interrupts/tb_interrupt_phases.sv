@@ -11,7 +11,7 @@ module tb_interrupt_phases;
     integer checks, trace_file, policy, arrival, scenario;
     logic [4:0] expected_b, expected_after;
     bit observation_fault;
-    n2m_interrupts dut (.*);
+    n2m_interrupts dut (.source_event(5'd0), .*);
 
     // Sample the public pre-B observation exactly as the CPU recorder does.
     // Scripted expectations below never use the DUT's operation or history.
