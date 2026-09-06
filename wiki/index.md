@@ -5,6 +5,9 @@ development guidance in version control.
 
 ## Current documents
 
+- [PS/2 keyboard setup slides](presentations/ps2-keyboard-setup.html) compare
+  resistor-only tests and level shifting for DE10-Lite.
+
 - [Documentation ownership](ownership.md) maps tool PRDs/SPECs and RTL
   microarchitecture to implementation and verification.
 
