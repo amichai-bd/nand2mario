@@ -55,7 +55,7 @@ module tb_cpu_alu;
         if (!trace) $fatal(1, "CPU_ALU_TRACE_OPEN");
         $fdisplay(trace, "case,operation,lhs,rhs,flags,bit,expected,actual");
         $dumpfile("waves/cpu-alu.vcd");
-        $dumpvars(0, tb_cpu_alu);
+        $dumpvars(0,operation,lhs,rhs,flags_in,bit_index,value,flags_out);
         // Exhaust every input pair and both carry states. Irrelevant flags and
         // forbidden low bits vary, so accidental preservation is detected.
         for (op = 0; op < 8; op = op + 1)

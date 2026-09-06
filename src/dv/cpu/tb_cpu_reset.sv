@@ -133,7 +133,12 @@ module tb_cpu_reset;
         trace=$fopen("reset-trace.csv","w");
         if (!trace) $fatal(1,"CPU_RESET_TRACE_OPEN");
         $dumpfile("waves/cpu-reset.vcd");
-        $dumpvars(0,tb_cpu_reset);
+        $dumpvars(0,clk_sys,reset_sys,core_reset,gb_tick,profile_id,epoch,dot_before,ie,iflags,
+            buttons,read_data,response_valid,joyp_selected_active,divider_reset_request,wake_request,
+            request_valid,address,write_data,write_enable,access_kind,bus_commit,irq_ack,halted,
+            stopped,locked,initialized,fault,ime_observe,ime_delay_observe,stop_execute,
+            retirement_valid,retirement,address_effect,address_effect_resolved,address_effect_sample,
+            address_effect_phase,instruction_complete);
         for (scenario=0; scenario<10; scenario=scenario+1) begin
             fresh=0; reset_sys=1; edge_cycle(0); reset_sys=0;
             for (item=0; item<65536; item=item+1) memory[item]=0;

@@ -291,7 +291,12 @@ module tb_cpu_program;
         $fdisplay(trace, "dot,kind,address,write,data,commit");
         $fdisplay(records, "event,expected,actual");
         $dumpfile("waves/cpu-program.vcd");
-        $dumpvars(0, tb_cpu_program);
+        $dumpvars(0,clk_sys,reset_sys,core_reset,gb_tick,profile_id,epoch,dot_before,ie,iflags,
+            buttons,read_data,response_valid,joyp_selected_active,divider_reset_request,wake_request,
+            request_valid,address,write_data,write_enable,access_kind,bus_commit,irq_ack,halted,
+            stopped,locked,initialized,fault,ime_observe,ime_delay_observe,stop_execute,
+            retirement_valid,retirement,address_effect,address_effect_resolved,address_effect_sample,
+            address_effect_phase,instruction_complete);
         edge_cycle(0);
         reset_sys = 0;
         core_reset = 1;

@@ -170,7 +170,12 @@ module tb_cpu_vectors;
         bus_trace=$fopen("vector-bus.csv","w");
         if (!trace || !bus_trace) $fatal(1,"CPU_VECTOR_TRACE_OPEN");
         $dumpfile("waves/cpu-vectors.vcd");
-        $dumpvars(0,tb_cpu_vectors);
+        $dumpvars(0,clk_sys,reset_sys,core_reset,gb_tick,profile_id,epoch,dot_before,ie,iflags,
+            buttons,read_data,response_valid,joyp_selected_active,divider_reset_request,wake_request,
+            request_valid,address,write_data,write_enable,access_kind,bus_commit,irq_ack,halted,
+            stopped,locked,initialized,fault,ime_observe,ime_delay_observe,stop_execute,
+            retirement_valid,retirement,address_effect,address_effect_resolved,address_effect_sample,
+            address_effect_phase,instruction_complete);
         for (number=0; number<8000; number=number+1) begin
             vector_case=vector_data[number];
             opcode_number=int'(vector_case[206 +: 9]);

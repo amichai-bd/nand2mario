@@ -204,7 +204,12 @@ module tb_cpu_wake;
         if (!trace || !records) $fatal(1,"CPU_WAKE_TRACE_OPEN");
         $fdisplay(trace,"case,dot,kind,address,write,data,commit,effect_sample,effect_address");
         $fdisplay(records,"case,event,expected,actual");
-        $dumpfile("waves/cpu-wake.vcd"); $dumpvars(0,tb_cpu_wake);
+        $dumpfile("waves/cpu-wake.vcd"); $dumpvars(0,clk_sys,reset_sys,core_reset,gb_tick,profile_id,epoch,dot_before,ie,iflags,
+            buttons,read_data,response_valid,joyp_selected_active,divider_reset_request,wake_request,
+            request_valid,address,write_data,write_enable,access_kind,bus_commit,irq_ack,halted,
+            stopped,locked,initialized,fault,ime_observe,ime_delay_observe,stop_execute,
+            retirement_valid,retirement,address_effect,address_effect_resolved,address_effect_sample,
+            address_effect_phase,instruction_complete);
         for (scenario=0; scenario<7; scenario=scenario+1) begin
             ime_case=scenario>=3 && scenario<6; modified_case=scenario==6;
             wake_dot=scenario%3==0 ? 36 : 40;

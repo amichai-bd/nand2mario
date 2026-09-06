@@ -150,7 +150,10 @@ module tb_cpu_execute;
         if (!trace) $fatal(1, "CPU_EXECUTE_TRACE_OPEN");
         $fdisplay(trace, "opcode,flags,cb,step,kind,address,write,data,finish,F");
         $dumpfile("waves/cpu-execute.vcd");
-        $dumpvars(0, tb_cpu_execute);
+        $dumpvars(0,request,result,registers,registers_next,opcode,cb_bank,step,pc,temporary,data_in,
+            pc_next,temporary_next,address,write_data,write_enable,access_kind,finish,prefix,
+            halt_request,stop_request,illegal,enable_interrupts,disable_interrupts,return_interrupt,
+            address_effect);
         cases = 0;
         for (instruction = 0; instruction < 256; instruction = instruction + 1) begin
             for (flags = 0; flags < 16; flags = flags + 1) begin

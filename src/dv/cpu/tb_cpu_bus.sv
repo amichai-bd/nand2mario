@@ -87,7 +87,9 @@ module tb_cpu_bus;
         if (!trace) $fatal(1, "CPU_BUS_TRACE_OPEN");
         $fdisplay(trace, "cycle,phase,active,tick,reset,address,commit");
         $dumpfile("waves/cpu-bus.vcd");
-        $dumpvars(0, tb_cpu_bus);
+        $dumpvars(0,clk_sys,reset_sys,core_reset,gb_tick,active,complete_enable,plan,plan_address,
+            plan_write_data,plan_write,plan_kind,response_valid,phase,request_valid,address,
+            write_data,write_enable,access_kind,commit,cycle_end,fault);
         edge_cycle(0);
         reset_sys = 0;
         if (late_active) begin

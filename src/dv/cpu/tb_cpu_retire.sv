@@ -122,7 +122,10 @@ module tb_cpu_retire;
         if (!trace) $fatal(1, "CPU_RETIRE_TRACE_OPEN");
         $fdisplay(trace, "event,expected,actual");
         $dumpfile("waves/cpu-retire.vcd");
-        $dumpvars(0, tb_cpu_retire);
+        $dumpvars(0,clk_sys,reset_sys,core_reset,capture,event_valid,event_interrupt,registers_after,
+            pc_before,pc_after,fetched_bytes,fetched_length,ime_after,ime_delay_after,halted_after,
+            stopped_after,halt_bug_after,epoch,dot_after,ie,iflags,buttons,retirement_valid,
+            retirement);
         edge_cycle();
         reset_sys = 0;
         for (event_number = 0; event_number < 5; event_number = event_number + 1) begin

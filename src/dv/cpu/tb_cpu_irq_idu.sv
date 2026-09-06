@@ -155,7 +155,12 @@ module tb_cpu_irq_idu;
         if (!trace || !records) $fatal(1,"CPU_IRQ_IDU_TRACE_OPEN");
         $fdisplay(trace,"dot,kind,address,commit,data,effect,effect_address");
         $fdisplay(records,"event,expected,actual");
-        $dumpfile("waves/cpu-irq-idu.vcd"); $dumpvars(0,tb_cpu_irq_idu);
+        $dumpfile("waves/cpu-irq-idu.vcd"); $dumpvars(0,clk_sys,reset_sys,core_reset,gb_tick,profile_id,epoch,dot_before,ie,iflags,
+            buttons,read_data,response_valid,joyp_selected_active,divider_reset_request,wake_request,
+            request_valid,address,write_data,write_enable,access_kind,bus_commit,irq_ack,halted,
+            stopped,locked,initialized,fault,ime_observe,ime_delay_observe,stop_execute,
+            retirement_valid,retirement,address_effect,address_effect_resolved,address_effect_sample,
+            address_effect_phase,instruction_complete);
         edge_cycle(0); reset_sys=0; core_reset=1; edge_cycle(0); core_reset=0;
         while (dot_before<56) begin
             cycle=int'(dot_before)/4;

@@ -131,7 +131,12 @@ module tb_cpu_wake_reset;
         if (!trace || !records) $fatal(1,"CPU_WAKE_RESET_TRACE_OPEN");
         $fdisplay(trace,"case,fresh,dot,global_reset,core_reset,address,commit,effect_sample");
         $fdisplay(records,"case,fresh,event,expected,actual");
-        $dumpfile("waves/cpu-wake-reset.vcd"); $dumpvars(0,tb_cpu_wake_reset);
+        $dumpfile("waves/cpu-wake-reset.vcd"); $dumpvars(0,clk_sys,reset_sys,core_reset,gb_tick,profile_id,epoch,dot_before,ie,iflags,
+            buttons,read_data,response_valid,joyp_selected_active,divider_reset_request,wake_request,
+            request_valid,address,write_data,write_enable,access_kind,bus_commit,irq_ack,halted,
+            stopped,locked,initialized,fault,ime_observe,ime_delay_observe,stop_execute,
+            retirement_valid,retirement,address_effect,address_effect_resolved,address_effect_sample,
+            address_effect_phase,instruction_complete);
         for (scenario=0; scenario<16; scenario=scenario+1) begin
             phase_case=scenario%4; global_case=(scenario&4)!=0; ime_case=(scenario&8)!=0;
             for (item=0; item<65536; item=item+1) memory[item]=0;

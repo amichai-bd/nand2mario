@@ -138,7 +138,12 @@ module tb_cpu_irq_reset;
         if (!trace || !records) $fatal(1,"CPU_IRQ_RESET_TRACE_OPEN");
         $fdisplay(trace,"case,fresh,dot,global_reset,core_reset,address,commit,effect_sample");
         $fdisplay(records,"case,fresh,event,expected,actual");
-        $dumpfile("waves/cpu-irq-reset.vcd"); $dumpvars(0,tb_cpu_irq_reset);
+        $dumpfile("waves/cpu-irq-reset.vcd"); $dumpvars(0,clk_sys,reset_sys,core_reset,gb_tick,profile_id,epoch,dot_before,ie,iflags,
+            buttons,read_data,response_valid,joyp_selected_active,divider_reset_request,wake_request,
+            request_valid,address,write_data,write_enable,access_kind,bus_commit,irq_ack,halted,
+            stopped,locked,initialized,fault,ime_observe,ime_delay_observe,stop_execute,
+            retirement_valid,retirement,address_effect,address_effect_resolved,address_effect_sample,
+            address_effect_phase,instruction_complete);
         for (scenario=0; scenario<42; scenario=scenario+1) begin
             slot=scenario%21; global_case=scenario>=21; capture_case=slot==20;
             target_dot=16+slot; expected_writes=(target_dot>=28 ? 1 : 0)+(target_dot>=32 ? 1 : 0);
