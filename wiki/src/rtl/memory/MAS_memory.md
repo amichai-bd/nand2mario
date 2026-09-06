@@ -1,0 +1,109 @@
+# Direct-profile memory
+
+Status: proposed under [#130](https://github.com/amichai-bd/nand2mario/issues/130).
+This owner connects storage to the CPU, PPU and host endpoint. It does not supply
+missing peripheral or DMA behavior. The [shared interfaces](../interfaces/MAS_interfaces.md)
+own numeric ranges, fills, profile and load semantics.
+
+## Stores and ownership
+
+| Store | Sole storage owner | Behavior owner and access |
+|---|---|---|
+| Direct ROM | Memory, generated exact profile size | Host endpoint validates LOAD_BEGIN/presence/CRC and controls loading; memory accepts bounded byte offsets and supports complete readback. CPU ROM writes never load bytes. |
+| WRAM | Memory | CPU commits and the separately arbitrated DMA read port. Echo uses the same low thirteen address bits, with no second store. |
+| HRAM | Memory | CPU commits; no alias at IE or the host address range. |
+| VRAM | Memory | CPU access policy comes from PPU/arbitration; PPU reads the same store through its fixed service port. |
+| OAM | Memory | CPU, DMA and corruption updates reach one resolved write port. The PPU receives the arbitrated pair from #132, not a second OAM array. |
+| Wave RAM | Memory | An APU gateway owns CPU wave-access semantics and playback addressing; raw storage and generated reset fill belong here. An absent gateway is a service failure, not a synthetic audio register. |
+| Peripheral registers and state | Their behavior owners | Timer #128, DMA/arbitration #132, IF/IE #133, JOYP #134, PPU #120, and future serial/APU owners. No generic shadow I/O register file. |
+
+All RAM arrays initialize by a bounded sweep using the generated RAM fill.
+ROM is retained across core reset and remains invalid until the endpoint's
+complete load succeeds. The largest owned RAM determines the sweep length;
+completion becomes true only after the final physical write edge. During reset
+or initialization no CPU commit or PPU sample may advance emulated state.
+Clear cancels pending responses and dominates owned writes. It does not reset
+UART, PLL, VGA ownership or immutable frames. External register initialization
+completion is a separate input to the system reset coordinator.
+
+## Fixed service and CPU commit
+
+CPU #118 at `9a984d0` agrees that request fields are prepared before T1 and held
+through T4. `read_data` and `response_valid` are consumed before the T4 edge;
+T3 samples IE/IF only, not memory data. A synchronous RAM result from a preceding
+system edge therefore meets the read boundary. Read preparation has no side
+effect. Only `bus_commit` at the agreed T4 edge changes storage or commits a
+peripheral command. Missing response cancels that same edge and latches a named
+contract fault; no stretched T-cycle is inserted.
+
+Host pause holds a prepared request, but produces no commit. Core/global reset
+at any phase cancels response validity and wins over a coincident commit.
+CPU addresses stay sixteen bits; host ROM offsets stay separately bounded and
+host status addresses never enter the CPU decoder.
+
+I/O prepare routes address/direction/data to the selected behavior owner before
+T4. Its read result may reflect the current pre-edge register value; memory
+does not snapshot it prematurely or apply read effects during preparation.
+The owner receives a commit pulse only for the accepted CPU access. Unknown
+service must fail, not be replaced by a convenient constant.
+
+## PPU and arbitration boundary
+
+PPU #120 proposes `vram_request`, thirteen-bit byte address, and a registered
+one-system-edge data/valid response. That response must already exist before
+the consuming A dot; a response first registered at A is too late. The OAM
+raw store reads a seven-bit pair address and returns lower-address byte in
+bits7:0. PPU phase0 is idle, phase1 scans Y/X, and phase2 fetches tile/attribute.
+Phase1 suppresses capture during DMA; phase2 uses the actual arbitrated pair.
+No missing-response fallback or PPU backpressure is allowed.
+
+The exact service wiring, simultaneous same-address policy and access-gating
+edge are awaiting direct PPU-owner agreement. #132 owns CPU bus conflicts,
+OAM write priority, corruption rows and the pair presented to PPU. Its resolved
+raw-store operations may be implemented independently of its engine; a tied-off
+DMA fixture cannot claim arbitration acceptance. Pending behavior is not
+silently encoded as a denied access or a fabricated FF response.
+
+## Source-backed access and open gates
+
+The pinned [source record](references.md) supports bidirectional WRAM echo,
+ignored ordinary writes into prohibited storage, PPU-owned VRAM/OAM gating,
+and the DMG-B unusable range: zero when OAM is accessible, FF when blocked.
+Access to that range can still participate in the separately owned OAM
+corruption behavior. Treat its read result and corruption event independently.
+
+Absent cartridge RAM is an explicit unresolved bus-value policy. Sources call
+disabled/unmapped RAM open bus, often but not guaranteed FF; the pinned
+reference uses retained bus data and labels its approximation uncertain.
+No constant-FF replacement or analog decay rule is authorized by these sources
+alone. Storage/echo/service development can continue, but complete #130
+read-value acceptance requires this policy to be resolved.
+
+Unimplemented I/O addresses also need an exact DMG-B source-backed table.
+Recognized but not-yet-implemented peripheral registers must remain routed to
+their explicit owner, regardless of what unused registers return. FF50 belongs
+to the direct-profile boot-mapping policy, not a mutable generic RAM byte.
+
+## Verification and inference plan
+
+The initial [RAM primitive](../../../../src/rtl/memory/n2m_memory_ram.sv) uses
+one clock, one read/write port and one read port. Enabled reads return registered
+data from the requested address after that edge; disabled reads retain their
+data and deassert validity. Reset immediately masks validity and suppresses
+access without changing array contents. The owner supplies initialization writes.
+Same-edge reads return pre-write data, including both ports reading an address
+written through port A. This selected storage policy does not define the
+arbitrator's contested Game Boy bus value. Actual MAX10 inference must preserve
+old-data mode; no don't-care attribute is permitted.
+
+Independent Questa checks will cover all region endpoints, full reset sweeps,
+ROM loading/readback/retention, bidirectional echo, per-phase pause/reset,
+prepared versus committed I/O, and simultaneous CPU/PPU service. Deliberate
+alias, duplicate commit and early-initialization defects must fail with their
+exact nonzero diagnostics. Macro assertions supplement independent traces.
+
+Use synchronous RAM ports with no array reset. Ordinary registers and array
+writes use shared macros where they preserve inference. Any necessary inference
+exception must be stated here and beside the block. A separate constrained
+MAX10 synthesis/fit target must retain concrete RAM/resource and timing reports;
+source-size arithmetic is only a design estimate.

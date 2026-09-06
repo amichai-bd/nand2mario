@@ -283,5 +283,19 @@
     ],
     "expected_exit": "nonzero",
     "signature": "N2M_ASSERT frame_active_swap instance=tb_vga"
+  },
+  "memory-ram": {
+    "sources": ["src/rtl/memory/n2m_memory_ram.sv", "src/dv/memory/tb_memory_ram.sv"],
+    "top": "tb_memory_ram",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS memory RAM bytes=160 dual_reads=320 old_data=2 reset_retention=1"
+  },
+  "memory-ram-corrupt": {
+    "sources": ["src/rtl/memory/n2m_memory_ram.sv", "src/dv/memory/tb_memory_ram.sv"],
+    "top": "tb_memory_ram",
+    "args": ["+corrupt"],
+    "expected_exit": "nonzero",
+    "signature": "MEMORY_RAM_READ_B check=166 address=154 expected=55 actual=ff"
   }
 }
