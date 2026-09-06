@@ -110,6 +110,40 @@ class FpgaTests(unittest.TestCase):
         self.args.rebuild = False
         self.assertEqual(self.run_build()["cache"], "BUILT")
 
+    def test_non_pll_memory_consumer_pins_model_and_requires_netlist(self):
+        source = "src/rtl/common/n2m_intel_ram.sv"
+        path = self.root / source
+        path.parent.mkdir(parents=True)
+        path.write_text("// explicit shared memory consumer\n")
+        self.target["sources"].append(source)
+        self.save_target()
+        def execute(argv, folder, log, timeout, record, build):
+            self.execute(argv, folder, log, timeout, record, build)
+            if "--simulation" in argv:
+                netlist = folder / "simulation/questa/design.vo"
+                netlist.parent.mkdir(parents=True, exist_ok=True)
+                netlist.write_text("module design; endmodule\n")
+        with patch.object(fpga.fpga_intel_memory, "identity", return_value={"primitive": {"sha256": "pinned"}}) as identity:
+            result = self.run_build(execute)
+            self.assertEqual(result["status"], "PASS", result)
+            identity.assert_called_once_with(self.args.quartus_bin)
+            self.assertEqual(result["tools"]["altsyncram"]["primitive"]["sha256"], "pinned")
+            self.assertTrue(any("--simulation" in c["argv"] for c in result["commands"]))
+            self.assertEqual(self.run_build(execute)["cache"], "CACHED")
+            # A truncated inventory in both records cannot authorize a hit.
+            current = self.build / "fpga/smoke/result.json"
+            record = json.loads(current.read_text())
+            netlist = next(p for p in record["artifacts"] if p.endswith("design.vo"))
+            (self.root / netlist).unlink()
+            del record["artifacts"][netlist]
+            current.write_text(json.dumps(record))
+            (self.root / record["attempt_result"]).write_text(json.dumps(record))
+            self.assertEqual(self.run_build(execute)["cache"], "BUILT")
+        with patch.object(fpga.fpga_intel_memory, "identity", side_effect=ValueError("model identity mismatch")):
+            result = self.run_build(execute)
+            self.assertEqual(result["status"], "FAIL")
+            self.assertIn("model identity mismatch", result["error"])
+
     def test_missing_tools_and_definition_invalidate_previous_success(self):
         self.run_build()
         with patch.object(fpga, "tools", side_effect=ValueError("missing explicit Quartus tool")):
