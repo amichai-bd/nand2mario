@@ -3171,5 +3171,63 @@
     "signature": "UART_RESPONSE_BYTE case=0 index=10",
     "vendor_model": "intel-memory",
     "timeout_seconds": 120
+  },
+  "uart-load": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/memory/n2m_memory_stores.sv",
+      "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/uart/n2m_uart_presence_store.sv",
+      "src/rtl/uart/n2m_uart_load.sv",
+      "src/dv/uart/tb_uart_load.sv"
+    ],
+    "top": "tb_uart_load",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS UART load full_ROM CRC32 presence repair overlap readback reset",
+    "vendor_model": "intel-memory",
+    "timeout_seconds": 180
+  },
+  "uart-load-crc": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/memory/n2m_memory_stores.sv",
+      "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/uart/n2m_uart_presence_store.sv",
+      "src/rtl/uart/n2m_uart_load.sv",
+      "src/dv/uart/tb_uart_load.sv"
+    ],
+    "top": "tb_uart_load",
+    "args": [
+      "+crc_fault"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "UART_LOAD_RESULT op=2 expected=0 actual=6",
+    "vendor_model": "intel-memory",
+    "timeout_seconds": 180
+  },
+  "uart-load-presence": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/memory/n2m_memory_stores.sv",
+      "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/uart/n2m_uart_presence_store.sv",
+      "src/rtl/uart/n2m_uart_load.sv",
+      "src/dv/uart/tb_uart_load.sv"
+    ],
+    "top": "tb_uart_load",
+    "args": [
+      "+presence_fault"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "UART_LOAD_RESULT op=2 expected=6 actual=0",
+    "vendor_model": "intel-memory",
+    "timeout_seconds": 180
   }
 }

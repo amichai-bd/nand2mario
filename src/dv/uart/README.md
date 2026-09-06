@@ -45,3 +45,15 @@ and command echo, little-endian header/CRC order and completion-after-write are
 checked. Three global cancellations cover header, held payload and CRC stages;
 fresh public writes recover. An actual CRC-byte corruption must fail the fixed
 expected stream. This response-construction test does not claim command effects.
+
+
+The load fixture binds the real memory owner's ROM port and the fitted one-bit
+presence store. An original deterministic 32768-byte image has a fixed expected
+Python zlib CRC32. Descending chunk writes leave one byte absent, repair it,
+replace and repair an overlapping byte, then read every byte with backpressure.
+A second BEGIN leaves one byte unmarked while retained ROM data already matches
+the full CRC, independently sensitizing the presence check. Global resets cancel
+a partial sweep and a partial write; committed ROM data survives, and new END
+cannot reuse old presence. Actual ROM-response corruption and an actual presence
+bit force must fail opposite literal success/error expectations. Loader tests do
+not substitute for the endpoint's later state validation and reset acknowledgement.

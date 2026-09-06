@@ -177,3 +177,22 @@ bits and two output bits to clk_sys at 50 MHz. Its first fit must establish the
 actual one-bit logical shape, M9K allocation, registered addresses/read control,
 unregistered data output and absence of array reset/initialization before
 load-controller acceptance uses this store.
+
+
+`n2m_uart_load` owns bounded BEGIN/WRITE/END/READ storage operations. The command
+owner first validates state, profile, lengths and full-width ranges. BEGIN
+captures the expected CRC and completes only after the full presence sweep.
+WRITE marks presence on the same accepted edge as its actual ROM byte, including
+overlaps. END reads every presence bit and actual ROM byte, accumulates reflected
+CRC32, and returns BAD_IMAGE for missing bytes or checksum mismatch. This result
+alone never publishes image validity or starts emulation: the command owner must
+complete the specified direct-core initialization before replying to LOAD_END.
+READ returns a held stream through the actual ROM read port, including paused
+backpressure. Neither presence nor CRC relies on a private ROM mirror.
+
+The ROM service is fixed one-edge latency, with separate scheduled read/consume
+states. Missing service is a named integration contract failure, not an invented
+wait state. Global reset cancels the storage operation and invalidates sweep
+metadata while preserving already committed ROM bytes. A new BEGIN is required
+before another WRITE/END; raw READ may still observe retained bytes. Core reset
+is absent from this transport/load owner and cannot erase a pending response.

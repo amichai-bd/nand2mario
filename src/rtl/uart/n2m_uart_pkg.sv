@@ -4,6 +4,9 @@ package n2m_uart_pkg;
     localparam integer UART_RAW_MAX = PACKET_HEADER_BYTES + WIRE_MAX_PAYLOAD + 2;
     localparam integer UART_ENCODED_MAX = UART_RAW_MAX + UART_RAW_MAX / 254 + 1;
     localparam integer UART_ADDRESS_BITS = $clog2(UART_ENCODED_MAX);
+    typedef enum logic [1:0] {
+        UART_LOAD_BEGIN, UART_LOAD_WRITE, UART_LOAD_END, UART_LOAD_READ
+    } uart_load_operation_t;
 
     function automatic logic [15:0] crc16_byte(
         input logic [15:0] previous,
