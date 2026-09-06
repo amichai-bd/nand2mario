@@ -49,6 +49,7 @@ module tb_cpu_stop_idu;
     integer item;
     integer event_index;
     integer commits;
+    integer cycles;
     integer effects;
     integer trace;
     integer records;
@@ -72,20 +73,22 @@ module tb_cpu_stop_idu;
                 4: begin expected_address=16'h100; expected_data=8'hc3; end
                 8: begin expected_kind=2; expected_address=16'h101; expected_data=8'hff; end
                 12: begin expected_kind=2; expected_address=16'h102; expected_data=page_case ? 8'hfd : 8'h01; end
-                16: begin expected_address=stop_address; expected_data=8'h10; end
-                20: begin expected_address=entry_address; expected_data=8'h3c; end
+                16: begin expected_kind=0; end // JP internal M-cycle, independently specified.
+                20: begin expected_address=stop_address; expected_data=8'h10; end
+                24: begin expected_address=entry_address; expected_data=8'h3c; end
                 default: $fatal(1,"CPU_STOP_IDU_EXTRA_CYCLE");
             endcase
-            if(!bus_commit || !request_valid || address!==expected_address || access_kind!==expected_kind || read_data!==expected_data)
+            if(bus_commit !== (expected_kind!=0) || (expected_kind!=0 &&
+                    (!request_valid || address!==expected_address || access_kind!==expected_kind || read_data!==expected_data)))
                 $fatal(1,"CPU_STOP_IDU_BUS case=%0d dot=%0d",scenario,dot_before+1);
-            if(dot_before==19) begin
+            if(dot_before==23) begin
                 if(!address_effect_sample || !address_effect_resolved || !address_effect.valid ||
                     address_effect.address!==entry_address || address_effect.known_mask!==16'hffff || !address_effect.write_effect)
                     $fatal(1,"CPU_STOP_ENTRY_IDU case=%0d expected=%04h actual=%04h",scenario,entry_address,address_effect.address);
                 if(divider_reset_request!==!selected_case) $fatal(1,"CPU_STOP_IDU_DIVIDER");
                 effects=effects+1;
             end
-            commits=commits+1;
+            commits=commits+integer'(bus_commit); cycles=cycles+1;
             $fdisplay(trace,"%0d,%0d,%0d,%04h,%02h,%0d,%04h,%04h,%0d",scenario,dot_before+1,access_kind,address,read_data,address_effect_resolved,address_effect.address,address_effect.known_mask,address_effect.write_effect);
         end else if(bus_commit) $fatal(1,"CPU_STOP_IDU_EARLY");
     endtask
@@ -95,11 +98,11 @@ module tb_cpu_stop_idu;
             expected[48+:64]=64'(event_index); expected[304+:16]=16'hfffe; expected[360+:8]=1;
             case(event_index)
                 0: begin
-                    expected[112+:64]=16; expected[176+:16]=16'h100; expected[192+:16]=stop_address;
+                    expected[112+:64]=20; expected[176+:16]=16'h100; expected[192+:16]=stop_address;
                     expected[208+:24]=page_case ? 24'hfdffc3 : 24'h01ffc3; expected[232+:8]=3;
                 end
                 1: begin
-                    expected[112+:64]=20; expected[176+:16]=stop_address;
+                    expected[112+:64]=24; expected[176+:16]=stop_address;
                     expected[192+:16]=pending_case ? entry_address : entry_address+16'd1;
                     expected[208+:24]=pending_case ? 24'h10 : 24'h3c10;
                     expected[232+:8]=pending_case ? 8'd1 : 8'd2;
@@ -125,7 +128,7 @@ module tb_cpu_stop_idu;
     initial begin
         clk_sys=0; reset_sys=1; core_reset=0; gb_tick=0; profile_id=1; epoch=0; dot_before=0;
         ie=1; iflags=0; buttons=0; response_valid=1; joyp_selected_active=0; wake_request=0;
-        corrupt=$test$plusargs("corrupt"); event_index=0; commits=0; effects=0;
+        corrupt=$test$plusargs("corrupt"); event_index=0; commits=0; cycles=0; effects=0;
         trace=$fopen("stop-entry-idu.csv","w"); records=$fopen("stop-entry-records.csv","w");
         if(!trace || !records) $fatal(1,"CPU_STOP_IDU_TRACE");
         $fdisplay(trace,"case,dot,kind,address,data,resolved,effect_address,known_mask,write_effect");
@@ -139,15 +142,15 @@ module tb_cpu_stop_idu;
             for(item=0;item<65536;item=item+1) memory[item]=0;
             memory['h100]=8'hc3; memory['h101]=8'hff; memory['h102]=page_case ? 8'hfd : 8'h01;
             memory[stop_address]=8'h10; memory[entry_address]=8'h3c;
-            event_index=0; commits=0; effects=0; epoch=32'(scenario+1); iflags=0;
+            event_index=0; commits=0; cycles=0; effects=0; epoch=32'(scenario+1); iflags=0;
             joyp_selected_active=selected_case; core_reset=1; edge_cycle(0); core_reset=0;
-            while(dot_before<20) begin
-                if(dot_before==16) iflags=5'(pending_case);
-                if(corrupt && scenario==4 && dot_before==19) force dut.address_effect.address=16'hfdff;
+            while(dot_before<24) begin
+                if(dot_before==20) iflags=5'(pending_case);
+                if(corrupt && scenario==4 && dot_before==23) force dut.address_effect.address=16'hfdff;
                 edge_cycle(1); release dut.address_effect.address; edge_cycle(0); edge_cycle(0);
             end
             repeat(9) edge_cycle(0);
-            if(event_index!=2 || commits!=5 || effects!=1 || stopped!==!selected_case || halted!==(selected_case && !pending_case))
+            if(event_index!=2 || commits!=5 || cycles!=6 || effects!=1 || stopped!==!selected_case || halted!==(selected_case && !pending_case))
                 $fatal(1,"CPU_STOP_IDU_TOTAL case=%0d",scenario);
         end
         $fclose(trace); $fclose(records);
