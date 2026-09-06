@@ -60,6 +60,12 @@
       "source": "rtl/sprites.v",
       "section": "First-ten OAM evaluation and DMG object fetch selection",
       "local_changes": "Remove both local dpram stores, all save-state and sprites_extra branches; expose arbitrated pair address/phase/response; explicit control/array reset; retain scan capture/selection and fetch priority ordering; macro registers and named assertions. DMA/corruption remains external132 owner"
+    },
+    {
+      "path": "n2m_ppu_registers.sv",
+      "source": "rtl/video.v",
+      "section": "DMG LCD register writes and readback",
+      "local_changes": "Use generated addresses/direct-entry fill and CPU T4 commit interface; exclude FF46/CGB/save-state; expose LCD transitions and STAT-write event separately from timing/IRQ; enforce tick/quarter alignment with named assertions; use shared macros"
     }
   ]
 }

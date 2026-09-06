@@ -335,3 +335,11 @@ The direct-entry reset initializes both comparison-history bits to zero, as
 explicit internal state. LY=LYC=0 does not combinationally set the flag while
 LCDC is off. The first enabled comparison sample updates it through the defined
 history pipeline; no undocumented power-up equality evaluation is assumed.
+
+The register helper stores LCDC, SCY, SCX, LYC, BGP, OBP0/1, WY, WX and STAT
+interrupt enables using generated addresses and direct-entry peripheral fill.
+LY and STAT mode/coincidence readback come from timing; writes to LY have no
+stored effect. FF46 is not selected. It exposes qualified LCD on/off transitions
+and the STAT-write commit to integration; the STAT glitch's duration and IRQ
+ordering belong to the timing/interrupt contract, not an unqualified address
+level. Every stored write uses the existing A-edge commit and shared macros.
