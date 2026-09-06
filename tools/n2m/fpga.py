@@ -10,7 +10,7 @@ import uuid
 
 from .hdl import dependencies
 from .records import atomic_json, cache_matches, digest, file_hash, read_json
-from . import fpga_pll, fpga_constraints, fpga_vga, fpga_intel_memory
+from . import fpga_pll, fpga_constraints, fpga_vga, fpga_intel_memory, fpga_memory_stores
 
 DEVICE = "10M50DAF484C7G"
 REGISTRY = "src/fpga/de10_lite/targets.json"
@@ -257,6 +257,8 @@ def timing_evidence(folder, target):
         fpga_pll.verify_fit(folder, target)
     vga_evidence = fpga_vga.verify(folder) if target.get("top") == "vga_proof" else None
     memory_evidence = fpga_intel_memory.verify(folder) if target.get("top") == "intel_memory_proof" else None
+    if target.get("top") == "n2m_memory_stores":
+        memory_evidence = fpga_memory_stores.verify(folder)
     for name, count in rows:
         if name == "no_clock" and int(count) == 1 and "pll" in target:
             continue
