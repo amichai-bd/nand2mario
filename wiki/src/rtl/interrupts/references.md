@@ -1,0 +1,9 @@
+# Interrupt behavior sources
+
+- [Pan Docs Interrupts](https://github.com/gbdev/pandocs/blob/fe246067b695b5404a4a6a47efb4fd6d921ececb/src/Interrupts.md), CC0-1.0: request rises set IF independently of enable; software may set/clear flags; CPU acknowledges its selected request. This establishes the five-source interface, not same-edge priorities.
+- [SameBoy memory](https://github.com/LIJI32/SameBoy/blob/213a12ce93d66b105a113debd9396306066a7cfc/Core/memory.c), repository Expat license: IF reads OR E0; IE reads/writes retain the byte. Retrieved SHA256 `fca194c0168863086a18a589048c563b094dda44bbb43b438d99c3ebcf31ec63`. This is corroboration, not measured silicon.
+- [GateBoy interrupt gates](https://github.com/aappleby/metroboy/blob/36797ad4cf77b3e04ffe45716218a79b5280076a/src/GateBoyLib/GateBoyInterrupts.cpp#L102-L128) and [DFF22](https://github.com/aappleby/metroboy/blob/36797ad4cf77b3e04ffe45716218a79b5280076a/src/GateBoyLib/Regs.h#L467-L479): per-bit reset/ack and CPU-written zero dominate the clocked request, while a written one sets only without ack. This supports the pointwise priority inference in the MAS; the A/B lifetime is an explicit reviewed project projection. The selected file stubs the serial clock, so it is not complete serial behavior evidence. Research only; no source import or execution.
+- [Mooneye IE stack tests](https://github.com/Gekkio/mooneye-test-suite/blob/31510e12eea6286d36eea060a6adde755e1067aa/acceptance/interrupts/ie_push.s), MIT: retained SHA256 `2f33ed6af272f0e5945277d654882b5c48df7d336e95f3cefdd6ad49a46025d3`. CPU's existing reviewed source record owns the high/low stack-write timing; do not infer a new IF collision rule from this test.
+
+The implementation is original. Shared CPU/peripheral specifications own the
+integration phases; reference models do not establish physical collision widths.

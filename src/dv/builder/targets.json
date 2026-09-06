@@ -1,8 +1,13 @@
 {
   "intel-memory": {
-    "sources": ["src/rtl/common/n2m_intel_ram.sv", "src/dv/common/tb_intel_ram.sv"],
+    "sources": [
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/dv/common/tb_intel_ram.sv"
+    ],
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": ["tb_intel_ram.frame_case.dut.ram.m_default.altsyncram_inst"],
+    "intel_mixed_mode_instances": [
+      "tb_intel_ram.frame_case.dut.ram.m_default.altsyncram_inst"
+    ],
     "top": "tb_intel_ram",
     "args": [],
     "expected_exit": "zero",
@@ -10,29 +15,50 @@
     "timeout_seconds": 180
   },
   "intel-memory-data": {
-    "sources": ["src/rtl/common/n2m_intel_ram.sv", "src/dv/common/tb_intel_ram.sv"],
+    "sources": [
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/dv/common/tb_intel_ram.sv"
+    ],
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": ["tb_intel_ram.frame_case.dut.ram.m_default.altsyncram_inst"],
+    "intel_mixed_mode_instances": [
+      "tb_intel_ram.frame_case.dut.ram.m_default.altsyncram_inst"
+    ],
     "top": "tb_intel_ram",
-    "args": ["+corrupt"],
+    "args": [
+      "+corrupt"
+    ],
     "expected_exit": "nonzero",
     "signature": "INTEL_RAM_DATA_A case=0 check=164 expected=38 actual=ff"
   },
   "intel-memory-latency": {
-    "sources": ["src/rtl/common/n2m_intel_ram.sv", "src/dv/common/tb_intel_ram.sv"],
+    "sources": [
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/dv/common/tb_intel_ram.sv"
+    ],
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": ["tb_intel_ram.frame_case.dut.ram.m_default.altsyncram_inst"],
+    "intel_mixed_mode_instances": [
+      "tb_intel_ram.frame_case.dut.ram.m_default.altsyncram_inst"
+    ],
     "top": "tb_intel_ram",
-    "args": ["+late"],
+    "args": [
+      "+late"
+    ],
     "expected_exit": "nonzero",
     "signature": "INTEL_RAM_DATA_A case=0 check=164 expected=38 actual=a5"
   },
   "intel-memory-collision": {
-    "sources": ["src/rtl/common/n2m_intel_ram.sv", "src/dv/common/tb_intel_ram.sv"],
+    "sources": [
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/dv/common/tb_intel_ram.sv"
+    ],
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": ["tb_intel_ram.frame_case.dut.ram.m_default.altsyncram_inst"],
+    "intel_mixed_mode_instances": [
+      "tb_intel_ram.frame_case.dut.ram.m_default.altsyncram_inst"
+    ],
     "top": "tb_intel_ram",
-    "args": ["+collision"],
+    "args": [
+      "+collision"
+    ],
     "expected_exit": "nonzero",
     "signature": "N2M_ASSERT INTEL_RAM_MIXED_PORT_A instance=tb_intel_ram.byte_case.dut"
   },
@@ -366,5 +392,97 @@
     "expected_exit": "nonzero",
     "signature": "VGA_PIXEL:",
     "timeout_seconds": 600
+  },
+  "interrupts": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/dv/interrupts/tb_interrupts.sv"
+    ],
+    "top": "tb_interrupts",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS interrupt register truth table masks held sources reset observations checks=2569"
+  },
+  "interrupts-lost": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/dv/interrupts/tb_interrupts.sv"
+    ],
+    "top": "tb_interrupts",
+    "args": [
+      "+lost"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "INTERRUPT_OBSERVE check=13 expected_if=01 actual_if=00"
+  },
+  "interrupts-duplicate": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/dv/interrupts/tb_interrupts.sv"
+    ],
+    "top": "tb_interrupts",
+    "args": [
+      "+duplicate"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "INTERRUPT_OBSERVE check=16 expected_if=00 actual_if=01"
+  },
+  "interrupts-priority": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/dv/interrupts/tb_interrupts.sv"
+    ],
+    "top": "tb_interrupts",
+    "args": [
+      "+priority"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "INTERRUPT_OBSERVE check=2549 expected_if=00 actual_if=01"
+  },
+  "interrupt-phases": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/dv/interrupts/tb_interrupt_phases.sv"
+    ],
+    "top": "tb_interrupt_phases",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS interrupt phase and CPU snapshot scripts cases=23 checks=140"
+  },
+  "interrupt-phases-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/dv/interrupts/tb_interrupt_phases.sv"
+    ],
+    "top": "tb_interrupt_phases",
+    "args": [
+      "+observation_fault"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "INTERRUPT_PHASE_OBSERVE case=0 check=1 expected_if=01 actual_if=00"
+  },
+  "interrupt-ack-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/dv/interrupts/tb_interrupt_ack_fault.sv"
+    ],
+    "top": "tb_interrupt_ack_fault",
+    "args": [],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT INTERRUPT_ACK_ONEHOT"
   }
 }
