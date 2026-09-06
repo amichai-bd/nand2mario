@@ -1,0 +1,10 @@
+# Timer sources
+
+- [Pan Docs timer registers](https://github.com/gbdev/pandocs/blob/fe246067b695b5404a4a6a47efb4fd6d921ececb/src/Timer_and_Divider_Registers.md) and [obscure behavior](https://github.com/gbdev/pandocs/blob/fe246067b695b5404a4a6a47efb4fd6d921ececb/src/Timer_Obscure_Behaviour.md), CC0: frequency, falling-edge and delayed-reload rules. The overview's old-TMA reload sentence conflicts with the detailed circuit explanation; the owner explicitly resolves this using the tested source below.
+- [Mooneye timer tests](https://github.com/Gekkio/mooneye-test-suite/tree/31510e12eea6286d36eea060a6adde755e1067aa/acceptance/timer), MIT: `tim00` through `tim11`, their DIV-trigger cases, `div_write`, `rapid_toggle`, `tima_reload`, `tima_write_reloading` and `tma_write_reloading`. The reload tests explicitly report DMG passing results. They establish independent expected observations, not proof that this repository executed those ROMs. The TMA test expects 7F/7F/FE/FE at its four write placements.
+- [GateBoy timer gates](https://github.com/aappleby/metroboy/blob/36797ad4cf77b3e04ffe45716218a79b5280076a/src/GateBoyLib/GateBoyTimer.cpp): research-only source for divider/write gating, overflow detection and asynchronous reload data selection. Its internal counter uses a different phase/unit convention. Map that convention explicitly rather than copying gate names or half-cycle timing into this owner.
+- [SameBoy timing](https://github.com/LIJI32/SameBoy/blob/213a12ce93d66b105a113debd9396306066a7cfc/Core/timing.c) and [memory](https://github.com/LIJI32/SameBoy/blob/213a12ce93d66b105a113debd9396306066a7cfc/Core/memory.c), Expat: corroborate T-cycle selection bits, stopped timer progression and TAC/TIMA/TMA accesses. Its state-machine representation is not a direct RTL or silicon timing oracle.
+
+All implementation and fixtures are original. Retained retrieval hashes and
+licenses belong to build/review artifacts; these pinned links identify the
+behavior sources without copying external tests into the published wiki.
