@@ -29,7 +29,7 @@ module tb_ppu_shift;
         object_low = 8'h80;
         object_high = 8'h40;
         object_palette = 1;
-        object_behind = 1;
+        object_behind = 0;
         cases = 0;
         edge_check(0, 0);
         reset = 0;
@@ -37,7 +37,7 @@ module tb_ppu_shift;
         background_load = 1;
         object_load = 1;
         edge_check(1, 1);
-        if (!palette_select || !behind_background) $fatal(1, "PPU_SHIFT_METADATA");
+        if (!palette_select || behind_background) $fatal(1, "PPU_SHIFT_METADATA");
         background_load = 0;
         object_load = 0;
         advance = 1;
@@ -49,7 +49,7 @@ module tb_ppu_shift;
         object_palette = 0;
         object_behind = 0;
         edge_check(2, 2);
-        if (!palette_select || !behind_background) $fatal(1, "PPU_SHIFT_PRIORITY_METADATA");
+        if (!palette_select || behind_background) $fatal(1, "PPU_SHIFT_PRIORITY_METADATA");
         object_load = 0;
         advance = 1;
         edge_check(0, 3);
@@ -81,15 +81,15 @@ module tb_ppu_shift;
         object_low = 8'h40;
         object_high = 0;
         object_palette = 1;
-        object_behind = 1;
+        object_behind = 0;
         edge_check(0, 0);
         advance = 1;
         object_low = 0;
         object_high = 8'h80;
         object_palette = 0;
-        object_behind = 0;
+        object_behind = 1;
         edge_check(0, 2); // old-empty bit7 receives new object, replacing shifted bit6
-        if (palette_select || behind_background) $fatal(1, "PPU_SHIFT_REPLACED_METADATA");
+        if (palette_select || !behind_background) $fatal(1, "PPU_SHIFT_REPLACED_METADATA");
         clear_line = 1;
         background_load = 1;
         edge_check(0, 0); // all controls active: clear wins
@@ -110,6 +110,8 @@ module tb_ppu_shift;
         object_load = 0;
         advance = 0;
         if ($test$plusargs("unknown")) begin
+            gb_tick = 1;
+            edge_check(0, 0); // retire prior hold history before targeted unknown fault
             force dut.obj_low = 8'hxx;
             edge_check(0, 0); // named state assertion must terminate before check
         end
