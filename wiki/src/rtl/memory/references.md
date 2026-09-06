@@ -16,16 +16,7 @@ CPU and PPU owner MAS contracts establish digital phase interfaces. Emulated
 reference code is not a measured pin trace, and synthetic boundary fixtures
 are not evidence of finished peripheral or DMA behavior.
 
-## Unused I/O and direct boot policy proposal
-
-| CPU addresses | Source-backed DMG-B behavior |
-|---|---|
-| FF03; FF08–FF0E | No implemented DMG register; FF reads, no CPU-visible write effect. |
-| FF15; FF1F; FF27–FF2F | Unused audio holes; FF reads, no channel or wave-memory write effect. |
-| FF4C–FF4F; FF51–FF7F | CGB-only or unassigned on DMG-B; FF reads, no CPU-visible write effect. |
-| FF50 in this direct profile | Boot mapping is already permanently disabled; read FF and ignore writes without allocating state. |
-
-All other defined DMG registers retain their explicit behavior owner and its
-read masks/effects. In particular, readable-FF write-only audio registers are
-not unused addresses. Wave RAM remains behind the APU gateway. A000–BFFF is
-outside this I/O table and its separate open-bus choice remains unresolved.
+The [memory contract](MAS_memory.md#fixed-unused-io-and-disabled-boot-mapping)
+owns the exact unused-I/O/disabled-boot table. Readable-FF write-only audio
+registers are behavior-owner registers, not unused addresses. This evidence
+does not settle the separately documented absent-cartridge open-bus choice.

@@ -71,8 +71,8 @@ from the generated interface package.
 JOYP, serial, timer, IF/IE, APU, PPU and DMA registers retain distinct behavior
 owners. FF46 selects DMA, independent of its neighboring PPU registers. FF50
 selects the direct-profile boot policy. A000–BFFF and unassigned I/O each have
-an explicit destination; neither destination supplies data or invents a
-service response. Their pending policies below still gate completed routing.
+an explicit destination. The CPU port implements the exact fixed-I/O rule
+below; absent cartridge RAM still needs its separate read-value decision.
 Store/offset outputs for non-storage destinations are unused. The decoder has
 no state or commit effects. Its fixture independently enumerates all 65,536
 addresses, including all 7,680 echo offsets, and injects a wrong echo offset.
@@ -86,7 +86,8 @@ match the current address before a raw response is exposed to CPU. A changed
 address cannot reuse the previous response. Owner destinations receive address,
 direction, data, prepare and commit separately; their current pre-T4 read data,
 validity and fixed-service availability return through the selected-owner
-boundary. This dispatch does not implement the DMA resolved-access mux.
+boundary. Fixed unused/boot I/O is handled locally without an owner commit or
+storage operation. This dispatch does not implement the DMA resolved-access mux.
 
 Reset or incomplete initialization suppresses dispatch and masks all CPU
 responses. The CPU owns cancelling read completion when `response_valid` is
@@ -167,10 +168,27 @@ No constant-FF replacement or analog decay rule is authorized by these sources
 alone. Storage/echo/service development can continue, but complete #130
 read-value acceptance requires this policy to be resolved.
 
-Unimplemented I/O addresses also need an exact DMG-B source-backed table.
-Recognized but not-yet-implemented peripheral registers must remain routed to
-their explicit owner, regardless of what unused registers return. FF50 belongs
-to the direct-profile boot-mapping policy, not a mutable generic RAM byte.
+### Fixed unused I/O and disabled boot mapping
+
+The pinned [I/O sources](references.md) establish this exact DMG-B table:
+
+| CPU addresses | Read | Committed write |
+|---|---|---|
+| FF03; FF08–FF0E | FF | No effect |
+| FF15; FF1F; FF27–FF2F | FF | No effect |
+| FF4C–FF4F; FF51–FF7F | FF | No effect |
+| FF50 in this direct profile | FF | No effect; boot mapping stays disabled |
+
+These 71 addresses have combinational read service and no writable state.
+They do not send a prepare/commit to a peripheral or touch raw memory. Reset,
+initialization and contract-fault masking still apply. The CPU-port fixture
+writes and reads every entry, checks FF independent of written data, and
+checks that no owner or storage effect escapes.
+
+All other defined DMG registers retain their explicit behavior owner and its
+read masks/effects. Readable-FF write-only audio registers are not unused
+addresses. Wave RAM remains behind the APU gateway. A000–BFFF is outside this
+I/O table and its separate open-bus choice remains unresolved.
 
 ## Shared primitive and verification
 

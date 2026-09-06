@@ -15,7 +15,7 @@ module tb_memory_cpu_port;
     logic [15:0] unused_oam;
     logic unused_host_valid, unused_vram_valid, unused_oam_valid, unused_wave_valid;
     logic host_write;
-    integer index, phase, writes, owner_commits;
+    integer index, phase, writes, owner_commits, fixed_reads;
     bit duplicate_fault, missing_fault, write_fault;
     n2m_memory_cpu_port dut (.*);
     n2m_memory_stores stores (
@@ -94,7 +94,7 @@ module tb_memory_cpu_port;
         address = 0; write_enable = 0; write_data = 0; bus_commit = 0;
         host_write = 0;
         owner_rdata = 0; owner_valid = 0; owner_service_available = 0;
-        writes = 0; owner_commits = 0;
+        writes = 0; owner_commits = 0; fixed_reads = 0;
         duplicate_fault = $test$plusargs("duplicate_fault");
         missing_fault = $test$plusargs("missing_fault");
         write_fault = $test$plusargs("write_fault");
@@ -127,6 +127,25 @@ module tb_memory_cpu_port;
             edge_cycle();
             $fatal(1, "MEMORY_CPU_DUPLICATE_NOT_DETECTED");
         end
+        // Enumerate the exact source-backed unused/boot table independently
+        // of the DUT's destination enum. Known peripheral registers excluded.
+        for (index = 'hFF00; index < 'hFF80; index = index + 1) begin
+            if (index == 'hFF03 || (index >= 'hFF08 && index <= 'hFF0E)
+                || index == 'hFF15 || index == 'hFF1F
+                || (index >= 'hFF27 && index <= 'hFF2F) || index >= 'hFF4C) begin
+                address = 16'(index); write_enable = 1; write_data = 8'(index); bus_commit = 1;
+                #1;
+                if (owner_prepare || owner_commit || storage_read || storage_write)
+                    $fatal(1, "MEMORY_CPU_FIXED_WRITE_EFFECT address=%04h", address);
+                edge_cycle(); bus_commit = 0; write_enable = 0;
+                #1;
+                if (!response_valid || read_data !== 8'hFF || owner_prepare || storage_read)
+                    $fatal(1, "MEMORY_CPU_FIXED_READ address=%04h", address);
+                bus_commit = 1; edge_cycle(); bus_commit = 0;
+                fixed_reads = fixed_reads + 1;
+            end
+        end
+        if (fixed_reads != 71 || contract_fault) $fatal(1, "MEMORY_CPU_FIXED_INVENTORY");
         // A synthetic selected-owner endpoint proves dispatch only. It is
         // not a timer, DMA or PPU implementation or its acceptance evidence.
         address = 16'hFF46; write_enable = 0; owner_service_available = 1; owner_valid = 1;
@@ -177,7 +196,7 @@ module tb_memory_cpu_port;
         read_byte(16'hC000, 8'h00);
         read_byte(16'hFFFE, 8'h00);
         if (writes != 7 || owner_commits != 1 || contract_fault) $fatal(1, "MEMORY_CPU_FINAL_COUNTS");
-        $display("PASS memory CPU port writes=7 owner_commits=1 echo ROM reset stale pause");
+        $display("PASS memory CPU port writes=7 owner_commits=1 fixed_io=71 echo ROM reset stale pause");
         $finish;
     end
     initial begin
