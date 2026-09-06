@@ -59,6 +59,26 @@ DMA/corruption write granularity remains a #132 integration gate.
 
 ## Fixed service and CPU commit
 
+### Address ownership decoder
+
+`n2m_memory_decode` maps the sixteen-bit CPU address to a named destination and,
+for storage-backed regions, a local byte offset. ROM, WRAM and its echo, and
+HRAM select direct storage. VRAM, OAM and the unusable range select the
+arbitration/access-policy boundary. Wave RAM selects the APU gateway rather
+than bypassing its access rules. Numeric ranges and register addresses come
+from the generated interface package.
+
+JOYP, serial, timer, IF/IE, APU, PPU and DMA registers retain distinct behavior
+owners. FF46 selects DMA, independent of its neighboring PPU registers. FF50
+selects the direct-profile boot policy. A000–BFFF and unassigned I/O each have
+an explicit destination; neither destination supplies data or invents a
+service response. Their pending policies below still gate completed routing.
+Store/offset outputs for non-storage destinations are unused. The decoder has
+no state or commit effects. Its fixture independently enumerates all 65,536
+addresses, including all 7,680 echo offsets, and injects a wrong echo offset.
+
+### Prepared and committed operations
+
 CPU #118 at `9a984d0` agrees that request fields are prepared before T1 and held
 through T4. `read_data` and `response_valid` are consumed before the T4 edge;
 T3 samples IE/IF only, not memory data. A synchronous RAM result from a preceding

@@ -321,6 +321,20 @@
     "expected_exit": "nonzero",
     "signature": "N2M_ASSERT frame_active_swap instance=tb_vga"
   },
+  "memory-decode": {
+    "sources": ["src/rtl/interfaces/n2m_interfaces_pkg.sv", "src/rtl/memory/n2m_memory_pkg.sv", "src/rtl/memory/n2m_memory_decode.sv", "src/dv/memory/tb_memory_decode.sv"],
+    "top": "tb_memory_decode",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS memory decode addresses=65536 echo=7680"
+  },
+  "memory-decode-alias": {
+    "sources": ["src/rtl/interfaces/n2m_interfaces_pkg.sv", "src/rtl/memory/n2m_memory_pkg.sv", "src/rtl/memory/n2m_memory_decode.sv", "src/dv/memory/tb_memory_decode.sv"],
+    "top": "tb_memory_decode",
+    "args": ["+alias_fault"],
+    "expected_exit": "nonzero",
+    "signature": "MEMORY_DECODE_MISMATCH address=e123"
+  },
   "memory-stores": {
     "vendor_model": "intel-memory",
     "sources": ["src/rtl/interfaces/n2m_interfaces_pkg.sv", "src/rtl/memory/n2m_memory_pkg.sv", "src/rtl/common/n2m_intel_ram.sv", "src/rtl/memory/n2m_memory_stores.sv", "src/dv/memory/tb_memory_stores.sv"],
