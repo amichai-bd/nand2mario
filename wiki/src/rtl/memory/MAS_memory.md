@@ -187,7 +187,7 @@ corruption behavior. Treat its read result and corruption event independently.
 
 ### Absent cartridge RAM in the direct profile
 
-The approved digital profile returns FF for every A000–BFFF read and ignores
+The approved digital profile returns FF for every A000-BFFF read and ignores
 all writes to that range. It allocates no cartridge RAM and sends no prepare
 or commit to an external owner. Read service is combinational, with the same
 reset, initialization and sticky-fault masking as other CPU responses.
