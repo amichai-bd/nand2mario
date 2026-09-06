@@ -781,7 +781,7 @@
     "expected_exit": "zero",
     "args": [],
     "top": "tb_ppu_shift",
-    "signature": "PASS PPU shift literal_cases=12",
+    "signature": "PASS PPU shift literal_cases=18",
     "sources": [
       "src/rtl/ppu/n2m_ppu_shift.sv",
       "src/dv/ppu/tb_ppu_shift.sv"

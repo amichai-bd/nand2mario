@@ -77,11 +77,43 @@ module tb_ppu_shift;
         clear_line = 0;
         background_load = 0;
         advance = 0;
+        object_load = 1;
+        object_low = 8'h40;
+        object_high = 0;
+        object_palette = 1;
+        object_behind = 1;
+        edge_check(0, 0);
+        advance = 1;
+        object_low = 0;
+        object_high = 8'h80;
+        object_palette = 0;
+        object_behind = 0;
+        edge_check(0, 2); // old-empty bit7 receives new object, replacing shifted bit6
+        if (palette_select || behind_background) $fatal(1, "PPU_SHIFT_REPLACED_METADATA");
+        clear_line = 1;
+        background_load = 1;
+        edge_check(0, 0); // all controls active: clear wins
+        clear_line = 0;
+        background_load = 0;
+        advance = 0;
+        object_low = 8'h40;
+        object_high = 0;
+        edge_check(0, 0);
+        advance = 1;
+        object_low = 0;
+        edge_check(0, 0); // transparent new slot also replaces shifted nonzero
+        gb_tick = 0;
+        background_load = 1;
+        object_low = 8'hff;
+        edge_check(0, 0); // controls without a tick hold all state
+        background_load = 0;
+        object_load = 0;
+        advance = 0;
         if ($test$plusargs("unknown")) begin
             force dut.obj_low = 8'hxx;
             edge_check(0, 0); // named state assertion must terminate before check
         end
-        $display("PASS PPU shift literal_cases=12");
+        $display("PASS PPU shift literal_cases=18");
         $finish;
     end
     initial begin

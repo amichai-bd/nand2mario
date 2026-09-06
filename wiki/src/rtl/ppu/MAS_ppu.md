@@ -257,3 +257,4 @@ The controller supplies already flipped tile bytes and keeps object fetching
 paused against pixel advance in ordinary schedules. The shift module preserves
 the pinned source's pre-edge slot test even for simultaneous load and advance;
 independent vectors check that boundary and reset while paused before integration.
+The shift helper reset is synchronous: the integration drives its reset from the released system-domain reset or local core reset, with reset priority over gb_tick. It does not itself provide asynchronous output masking; the existing global/domain reset boundary owns that protection.
