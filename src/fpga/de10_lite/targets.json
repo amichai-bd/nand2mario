@@ -1022,12 +1022,13 @@
     },
     "snapshot": {
       "device": "10M50DAF484C7G",
-      "top": "n2m_frame_snapshot",
+      "top": "snapshot_proof",
       "sources": [
         "src/rtl/interfaces/n2m_interfaces_pkg.sv",
         "src/rtl/snapshot/n2m_snapshot_pkg.sv",
         "src/rtl/common/n2m_intel_ram.sv",
-        "src/rtl/snapshot/n2m_frame_snapshot.sv"
+        "src/rtl/snapshot/n2m_frame_snapshot.sv",
+        "src/fpga/de10_lite/snapshot_proof.sv"
       ],
       "constraints": [
         "src/fpga/de10_lite/snapshot.sdc"
@@ -1051,7 +1052,10 @@
         "snapshot_done",
         "snapshot_ok",
         "snapshot_valid",
-        "snapshot_metadata[*]",
+        "snapshot_epoch[*]",
+        "snapshot_sequence[*]",
+        "snapshot_dot[*]",
+        "snapshot_size_valid",
         "frame_read",
         "frame_address[*]",
         "frame_data[*]",
