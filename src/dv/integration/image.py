@@ -25,6 +25,10 @@ def build(root, destination):
         if image[address:address + len(literal)] != literal:
             raise ValueError(f'original instruction bytes differ at {address:04x}')
     destination.mkdir(parents=True, exist_ok=True)
+    expected = json.loads((source / 'retirement.json').read_text())
+    if len(expected) != 69 or any(len(event['hex']) != 96 for event in expected):
+        raise ValueError('invalid literal retirement oracle')
+    (destination / 'retirement.hex').write_text(''.join(event['hex'] + '\n' for event in expected))
     (destination / 'program.gb').write_bytes(image)
     (destination / 'layout.json').write_text(json.dumps(layout, indent=2) + '\n')
     return image

@@ -131,7 +131,7 @@ module tb_integration;
         event_index=0; pixel_index=0; frame_index=0; ram_writes=0; stack_writes=0; video_writes=0; dumping=0;
         data_fault=$test$plusargs("data_fault"); irq_fault=$test$plusargs("irq_fault"); pixel_fault=$test$plusargs("pixel_fault");
         if(!$value$plusargs("smoke_root=%s",root_path)) $fatal(1,"SMOKE_ROOT");
-        $readmemh({root_path,"/src/dv/integration/retirement.hex"},expected_records);
+        $readmemh("retirement.hex",expected_records);
         records_file=$fopen("retirement.csv","w"); pixels_file=$fopen("pixels.csv","w"); bus_file=$fopen("bus.csv","w");
         if(!records_file || !pixels_file || !bus_file) $fatal(1,"SMOKE_TRACE");
         $fdisplay(records_file,"seq,record"); $fdisplay(pixels_file,"frame,index,dot,shade"); $fdisplay(bus_file,"dot,address,write,data");
