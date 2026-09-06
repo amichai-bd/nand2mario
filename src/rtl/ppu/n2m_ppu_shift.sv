@@ -37,6 +37,7 @@ module n2m_ppu_shift (
     assign palette_select = obj_palette[7];
     assign behind_background = obj_behind[7];
     always_comb begin
+        i = 0;
         bg_low_next = bg_low;
         bg_high_next = bg_high;
         obj_low_next = obj_low;
