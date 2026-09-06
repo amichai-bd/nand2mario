@@ -464,5 +464,97 @@
     ],
     "expected_exit": "nonzero",
     "signature": "UART_EXCHANGE_DUPLICATE_EXECUTION"
+  },
+  "interrupts": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/dv/interrupts/tb_interrupts.sv"
+    ],
+    "top": "tb_interrupts",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS interrupt register truth table masks held sources reset observations checks=2569"
+  },
+  "interrupts-lost": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/dv/interrupts/tb_interrupts.sv"
+    ],
+    "top": "tb_interrupts",
+    "args": [
+      "+lost"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "INTERRUPT_OBSERVE check=13 expected_if=01 actual_if=00"
+  },
+  "interrupts-duplicate": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/dv/interrupts/tb_interrupts.sv"
+    ],
+    "top": "tb_interrupts",
+    "args": [
+      "+duplicate"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "INTERRUPT_OBSERVE check=16 expected_if=00 actual_if=01"
+  },
+  "interrupts-priority": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/dv/interrupts/tb_interrupts.sv"
+    ],
+    "top": "tb_interrupts",
+    "args": [
+      "+priority"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "INTERRUPT_OBSERVE check=2549 expected_if=00 actual_if=01"
+  },
+  "interrupt-phases": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/dv/interrupts/tb_interrupt_phases.sv"
+    ],
+    "top": "tb_interrupt_phases",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS interrupt phase and CPU snapshot scripts cases=23 checks=140"
+  },
+  "interrupt-phases-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/dv/interrupts/tb_interrupt_phases.sv"
+    ],
+    "top": "tb_interrupt_phases",
+    "args": [
+      "+observation_fault"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "INTERRUPT_PHASE_OBSERVE case=0 check=1 expected_if=01 actual_if=00"
+  },
+  "interrupt-ack-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/dv/interrupts/tb_interrupt_ack_fault.sv"
+    ],
+    "top": "tb_interrupt_ack_fault",
+    "args": [],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT INTERRUPT_ACK_ONEHOT"
   }
 }

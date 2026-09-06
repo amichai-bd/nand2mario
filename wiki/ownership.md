@@ -5,6 +5,7 @@ names follow the implementation owner, not a second software hierarchy.
 
 | Implementation owner | Requirements | Design and observable rules | Verification |
 |---|---|---|---|
+| [src/rtl/interrupts](../src/rtl/interrupts/n2m_interrupts.sv) | [#133](https://github.com/amichai-bd/nand2mario/issues/133) | [MAS_interrupts](src/rtl/interrupts/MAS_interrupts.md) | [Interrupt test plan](../src/dv/interrupts/README.md) |
 | [tools/n2m](../tools/n2m/cli.py) and its [tools/build.py](../tools/build.py) dispatcher | [PRD](tools/n2m/PRD.md) | [SPEC](tools/n2m/SPEC.md) | [Host tests](../tools/n2m/tests/test_builder.py), [interface generator tests](../tools/n2m/tests/test_interfaces.py), [baseline report tests](../tools/n2m/tests/test_baseline.py), [simulation registry and smoke](../src/dv/builder/targets.json) |
 | [tools/n2m/host](../tools/n2m/host/client.py) | [PRD](tools/n2m/host/PRD.md) | [SPEC](tools/n2m/host/SPEC.md) | [Fake endpoint and CLI tests](../tools/n2m/tests/test_host.py) |
 | [tools/ci](../tools/ci/controller.py) and [trusted configuration](../cfg/trusted-ci.json) | [PRD](tools/ci/PRD.md) | [SPEC](tools/ci/SPEC.md) | [Admission, recovery and status host tests](../tools/ci/tests/test_trust.py) |
