@@ -1,0 +1,423 @@
+{
+  "status": "proposed literal sequence; not executed",
+  "irq_return_pc": "0222",
+  "halt_pc": "025B",
+  "events": [
+    {
+      "pc": "0100",
+      "instruction": "NOP",
+      "bytes": "00",
+      "mcycles": 1
+    },
+    {
+      "pc": "0101",
+      "instruction": "JP $0200",
+      "bytes": "c30002",
+      "mcycles": 4
+    },
+    {
+      "pc": "0200",
+      "instruction": "DI",
+      "bytes": "f3",
+      "mcycles": 1
+    },
+    {
+      "pc": "0201",
+      "instruction": "LD SP,$DFFE",
+      "bytes": "31fedf",
+      "mcycles": 3
+    },
+    {
+      "pc": "0204",
+      "instruction": "XOR A",
+      "bytes": "af",
+      "mcycles": 1
+    },
+    {
+      "pc": "0205",
+      "instruction": "LDH [$40],A",
+      "bytes": "e040",
+      "mcycles": 3
+    },
+    {
+      "pc": "0207",
+      "instruction": "LDH [$0F],A",
+      "bytes": "e00f",
+      "mcycles": 3
+    },
+    {
+      "pc": "0209",
+      "instruction": "LD [$FFFF],A",
+      "bytes": "eaffff",
+      "mcycles": 4
+    },
+    {
+      "pc": "020C",
+      "instruction": "LD A,$3C",
+      "bytes": "3e3c",
+      "mcycles": 2
+    },
+    {
+      "pc": "020E",
+      "instruction": "LD [$C000],A",
+      "bytes": "ea00c0",
+      "mcycles": 4
+    },
+    {
+      "pc": "0211",
+      "instruction": "LD A,[$E000]",
+      "bytes": "fa00e0",
+      "mcycles": 4
+    },
+    {
+      "pc": "0214",
+      "instruction": "ADD A,$05",
+      "bytes": "c605",
+      "mcycles": 2
+    },
+    {
+      "pc": "0216",
+      "instruction": "LD [$C001],A",
+      "bytes": "ea01c0",
+      "mcycles": 4
+    },
+    {
+      "pc": "0219",
+      "instruction": "LD A,$01",
+      "bytes": "3e01",
+      "mcycles": 2
+    },
+    {
+      "pc": "021B",
+      "instruction": "LD [$FFFF],A",
+      "bytes": "eaffff",
+      "mcycles": 4
+    },
+    {
+      "pc": "021E",
+      "instruction": "LDH [$0F],A",
+      "bytes": "e00f",
+      "mcycles": 3
+    },
+    {
+      "pc": "0220",
+      "instruction": "EI",
+      "bytes": "fb",
+      "mcycles": 1
+    },
+    {
+      "pc": "0221",
+      "instruction": "NOP",
+      "bytes": "00",
+      "mcycles": 1
+    },
+    {
+      "event": "IRQ VBlank software request",
+      "vector": "0040",
+      "return_pc": "0222",
+      "mcycles": 5
+    },
+    {
+      "pc": "0040",
+      "instruction": "PUSH AF",
+      "bytes": "f5",
+      "mcycles": 4
+    },
+    {
+      "pc": "0041",
+      "instruction": "LD A,$A7",
+      "bytes": "3ea7",
+      "mcycles": 2
+    },
+    {
+      "pc": "0043",
+      "instruction": "LD [$C002],A",
+      "bytes": "ea02c0",
+      "mcycles": 4
+    },
+    {
+      "pc": "0046",
+      "instruction": "POP AF",
+      "bytes": "f1",
+      "mcycles": 3
+    },
+    {
+      "pc": "0047",
+      "instruction": "RETI",
+      "bytes": "d9",
+      "mcycles": 4
+    },
+    {
+      "pc": "0222",
+      "instruction": "DI",
+      "bytes": "f3",
+      "mcycles": 1
+    },
+    {
+      "pc": "0223",
+      "instruction": "XOR A",
+      "bytes": "af",
+      "mcycles": 1
+    },
+    {
+      "pc": "0224",
+      "instruction": "LD [$FFFF],A",
+      "bytes": "eaffff",
+      "mcycles": 4
+    },
+    {
+      "pc": "0227",
+      "instruction": "LDH [$0F],A",
+      "bytes": "e00f",
+      "mcycles": 3
+    },
+    {
+      "pc": "0229",
+      "instruction": "LDH [$42],A",
+      "bytes": "e042",
+      "mcycles": 3
+    },
+    {
+      "pc": "022B",
+      "instruction": "LDH [$43],A",
+      "bytes": "e043",
+      "mcycles": 3
+    },
+    {
+      "pc": "022D",
+      "instruction": "LD A,$E4",
+      "bytes": "3ee4",
+      "mcycles": 2
+    },
+    {
+      "pc": "022F",
+      "instruction": "LDH [$47],A",
+      "bytes": "e047",
+      "mcycles": 3
+    },
+    {
+      "pc": "0231",
+      "instruction": "LD HL,$8000",
+      "bytes": "210080",
+      "mcycles": 3
+    },
+    {
+      "pc": "0234",
+      "instruction": "LD BC,$3355",
+      "bytes": "015533",
+      "mcycles": 3
+    },
+    {
+      "pc": "0237",
+      "instruction": "LD A,C",
+      "bytes": "79",
+      "mcycles": 1
+    },
+    {
+      "pc": "0238",
+      "instruction": "LD [HL+],A",
+      "bytes": "22",
+      "mcycles": 2
+    },
+    {
+      "pc": "0239",
+      "instruction": "LD A,B",
+      "bytes": "78",
+      "mcycles": 1
+    },
+    {
+      "pc": "023A",
+      "instruction": "LD [HL+],A",
+      "bytes": "22",
+      "mcycles": 2
+    },
+    {
+      "pc": "023B",
+      "instruction": "LD A,C",
+      "bytes": "79",
+      "mcycles": 1
+    },
+    {
+      "pc": "023C",
+      "instruction": "LD [HL+],A",
+      "bytes": "22",
+      "mcycles": 2
+    },
+    {
+      "pc": "023D",
+      "instruction": "LD A,B",
+      "bytes": "78",
+      "mcycles": 1
+    },
+    {
+      "pc": "023E",
+      "instruction": "LD [HL+],A",
+      "bytes": "22",
+      "mcycles": 2
+    },
+    {
+      "pc": "023F",
+      "instruction": "LD A,C",
+      "bytes": "79",
+      "mcycles": 1
+    },
+    {
+      "pc": "0240",
+      "instruction": "LD [HL+],A",
+      "bytes": "22",
+      "mcycles": 2
+    },
+    {
+      "pc": "0241",
+      "instruction": "LD A,B",
+      "bytes": "78",
+      "mcycles": 1
+    },
+    {
+      "pc": "0242",
+      "instruction": "LD [HL+],A",
+      "bytes": "22",
+      "mcycles": 2
+    },
+    {
+      "pc": "0243",
+      "instruction": "LD A,C",
+      "bytes": "79",
+      "mcycles": 1
+    },
+    {
+      "pc": "0244",
+      "instruction": "LD [HL+],A",
+      "bytes": "22",
+      "mcycles": 2
+    },
+    {
+      "pc": "0245",
+      "instruction": "LD A,B",
+      "bytes": "78",
+      "mcycles": 1
+    },
+    {
+      "pc": "0246",
+      "instruction": "LD [HL+],A",
+      "bytes": "22",
+      "mcycles": 2
+    },
+    {
+      "pc": "0247",
+      "instruction": "LD A,C",
+      "bytes": "79",
+      "mcycles": 1
+    },
+    {
+      "pc": "0248",
+      "instruction": "LD [HL+],A",
+      "bytes": "22",
+      "mcycles": 2
+    },
+    {
+      "pc": "0249",
+      "instruction": "LD A,B",
+      "bytes": "78",
+      "mcycles": 1
+    },
+    {
+      "pc": "024A",
+      "instruction": "LD [HL+],A",
+      "bytes": "22",
+      "mcycles": 2
+    },
+    {
+      "pc": "024B",
+      "instruction": "LD A,C",
+      "bytes": "79",
+      "mcycles": 1
+    },
+    {
+      "pc": "024C",
+      "instruction": "LD [HL+],A",
+      "bytes": "22",
+      "mcycles": 2
+    },
+    {
+      "pc": "024D",
+      "instruction": "LD A,B",
+      "bytes": "78",
+      "mcycles": 1
+    },
+    {
+      "pc": "024E",
+      "instruction": "LD [HL+],A",
+      "bytes": "22",
+      "mcycles": 2
+    },
+    {
+      "pc": "024F",
+      "instruction": "LD A,C",
+      "bytes": "79",
+      "mcycles": 1
+    },
+    {
+      "pc": "0250",
+      "instruction": "LD [HL+],A",
+      "bytes": "22",
+      "mcycles": 2
+    },
+    {
+      "pc": "0251",
+      "instruction": "LD A,B",
+      "bytes": "78",
+      "mcycles": 1
+    },
+    {
+      "pc": "0252",
+      "instruction": "LD [HL+],A",
+      "bytes": "22",
+      "mcycles": 2
+    },
+    {
+      "pc": "0253",
+      "instruction": "LD A,C",
+      "bytes": "79",
+      "mcycles": 1
+    },
+    {
+      "pc": "0254",
+      "instruction": "LD [HL+],A",
+      "bytes": "22",
+      "mcycles": 2
+    },
+    {
+      "pc": "0255",
+      "instruction": "LD A,B",
+      "bytes": "78",
+      "mcycles": 1
+    },
+    {
+      "pc": "0256",
+      "instruction": "LD [HL+],A",
+      "bytes": "22",
+      "mcycles": 2
+    },
+    {
+      "pc": "0257",
+      "instruction": "LD A,$91",
+      "bytes": "3e91",
+      "mcycles": 2
+    },
+    {
+      "pc": "0259",
+      "instruction": "LDH [$40],A",
+      "bytes": "e040",
+      "mcycles": 3
+    },
+    {
+      "pc": "025B",
+      "instruction": "HALT",
+      "bytes": "76",
+      "mcycles": 1
+    }
+  ],
+  "instruction_events": 68,
+  "total_mcycles": 149
+}

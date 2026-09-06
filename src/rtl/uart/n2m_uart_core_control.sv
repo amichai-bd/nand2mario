@@ -9,7 +9,7 @@ module n2m_uart_core_control (
     input var logic start,
     input var logic [7:0] command,
     input var logic [31:0] step_budget,
-    input var logic [7:0] input_buttons,
+    input var n2m_input_pkg::input_write_t input_write,
     input var logic gb_tick,
     input var logic paused,
     input var logic core_initialized,
@@ -18,7 +18,7 @@ module n2m_uart_core_control (
     input var logic cpu_stopped,
     output logic pause_request,
     output logic core_reset,
-    output logic [7:0] buttons,
+    output n2m_input_pkg::input_write_t accepted_input,
     output logic [31:0] epoch,
     output logic [63:0] dot_count,
     output logic [63:0] retirement_count,
@@ -35,10 +35,14 @@ module n2m_uart_core_control (
     state_t state, state_next;
     logic host_pause, host_pause_next;
     logic [31:0] remaining, remaining_next;
-    logic [7:0] pending_buttons, pending_buttons_next, buttons_next, status_next;
+    logic [7:0] status_next;
+    n2m_input_pkg::input_write_t pending_input, pending_input_next;
     logic [31:0] epoch_next;
     logic [63:0] dot_next, retirement_next, completed_dot_next;
     logic stop_step;
+    assign accepted_input.valid = state == INPUT_APPLY && !gb_tick && !reset_sys && !core_reset;
+    assign accepted_input.source_write = pending_input.source_write;
+    assign accepted_input.value = pending_input.value;
     assign busy = state != IDLE;
     assign done = state == COMPLETE;
     assign core_reset = state == RESET_ASSERT && !reset_sys;
@@ -51,8 +55,7 @@ module n2m_uart_core_control (
         state_next = state;
         host_pause_next = host_pause;
         remaining_next = remaining;
-        pending_buttons_next = pending_buttons;
-        buttons_next = buttons;
+        pending_input_next = pending_input;
         epoch_next = epoch;
         dot_next = dot_count + (gb_tick ? 64'd1 : 64'd0);
         retirement_next = retirement_count + (retirement_valid ? 64'd1 : 64'd0);
@@ -65,7 +68,7 @@ module n2m_uart_core_control (
                     COMMAND_HALT: begin host_pause_next = 1; state_next = HALT_WAIT; end
                     COMMAND_RUN: begin host_pause_next = 0; state_next = RUN_WAIT; end
                     COMMAND_RESET: begin host_pause_next = 1; state_next = RESET_WAIT; end
-                    COMMAND_INPUT: begin pending_buttons_next = input_buttons; state_next = INPUT_APPLY; end
+                    COMMAND_INPUT: begin pending_input_next = input_write; state_next = INPUT_APPLY; end
                     COMMAND_STEP: begin
                         if (cpu_stopped) begin
                             // An already sleeping oscillator cannot spend a dot
@@ -92,7 +95,6 @@ module n2m_uart_core_control (
                 epoch_next = epoch + 1'b1;
                 dot_next = 0;
                 retirement_next = 0;
-                buttons_next = 0;
                 state_next = INIT_WAIT;
             end
             INIT_WAIT: if (core_initialized) begin
@@ -100,7 +102,6 @@ module n2m_uart_core_control (
                 state_next = COMPLETE;
             end
             INPUT_APPLY: if (!gb_tick) begin
-                buttons_next = pending_buttons;
                 completed_dot_next = dot_count;
                 state_next = COMPLETE;
             end
@@ -122,8 +123,7 @@ module n2m_uart_core_control (
     `DFF_ARST_VAL(state, state_next, clk_sys, reset_sys, IDLE)
     `DFF_ARST_VAL(host_pause, host_pause_next, clk_sys, reset_sys, 1'b1)
     `DFF_ARST_VAL(remaining, remaining_next, clk_sys, reset_sys, '0)
-    `DFF_ARST_VAL(pending_buttons, pending_buttons_next, clk_sys, reset_sys, '0)
-    `DFF_ARST_VAL(buttons, buttons_next, clk_sys, reset_sys, '0)
+    `DFF_ARST_VAL(pending_input, pending_input_next, clk_sys, reset_sys, '0)
     `DFF_ARST_VAL(epoch, epoch_next, clk_sys, reset_sys, '0)
     `DFF_ARST_VAL(dot_count, dot_next, clk_sys, reset_sys, '0)
     `DFF_ARST_VAL(retirement_count, retirement_next, clk_sys, reset_sys, '0)

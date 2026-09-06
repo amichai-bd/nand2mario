@@ -9,6 +9,9 @@ module n2m_uart_host_registers (
     input var logic [63:0] dot_count,
     input var logic [63:0] retirement_count,
     input var logic [7:0] buttons,
+    input var logic [7:0] input_source,
+    input var logic [7:0] physical_buttons,
+    input var logic [7:0] effective_buttons,
     input var logic snapshot_valid,
     input var n2m_interfaces_pkg::snapshot_t snapshot_metadata,
     input var logic [127:0] build_id,
@@ -29,6 +32,9 @@ module n2m_uart_host_registers (
             HOST_REG_RETIRE_LO: data = retirement_count[31:0];
             HOST_REG_RETIRE_HI: data = retirement_count[63:32];
             HOST_REG_INPUT: data = {24'b0, buttons};
+            HOST_REG_INPUT_SOURCE: data = {24'b0, input_source};
+            HOST_REG_INPUT_PHYSICAL: data = {24'b0, physical_buttons};
+            HOST_REG_INPUT_EFFECTIVE: data = {24'b0, effective_buttons};
             HOST_REG_SNAPSHOT_VALID: data = {31'b0, snapshot_valid};
             HOST_REG_SNAPSHOT_SEQ_LO: data = snapshot_metadata.seq[31:0];
             HOST_REG_SNAPSHOT_SEQ_HI: data = snapshot_metadata.seq[63:32];

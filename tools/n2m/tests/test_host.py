@@ -165,6 +165,23 @@ class HostTests(unittest.TestCase):
         atomic_json(path, record)
         return path, record
 
+    def test_host_write_validates_before_transport(self):
+        endpoint = Endpoint()
+        client = Client(endpoint)
+        for address, value in ((0x10000, 0), (0x10048, 1), (0x1004c, 0),
+                               (0x10020, 256), (0x10044, 2), (0xff00, 1)):
+            with self.assertRaises(ValueError):
+                client.write_host(address, value)
+        self.assertEqual(endpoint.requests, [])
+        self.assertEqual(client.sequence, 0)
+        self.assertFalse(client.uncertain)
+        with patch.object(client, 'request', return_value={'dot': 17}) as request:
+            self.assertEqual(client.write_host(0x10020, 0xa5), {'dot': 17})
+            request.assert_called_once_with('WRITE_HOST', bytes.fromhex('20 00 01 00 a5 00 00 00'))
+        with patch.object(client, 'request', return_value={'dot': 18}) as request:
+            self.assertEqual(client.select_input_source(1), {'dot': 18})
+            request.assert_called_once_with('WRITE_HOST', bytes.fromhex('44 00 01 00 01 00 00 00'))
+
     def test_complete_load_readback_and_controls(self):
         endpoint = Endpoint()
         records = []
