@@ -87,9 +87,11 @@ module tb_timer_edges;
             // Four ticks elapsed after DIV reset when the TIMA clear ends.
             tick_count=0;
             case(selector)0:period=1024;1:period=16;2:period=64;3:period=256;endcase
-            if(edge_fault&&selector==0)force dut.state_q.tac=3'd0;
             for(index=1;index<=2*period;index=index+1)begin
-                tick();read_check(16'hFF05,8'((index+4)/period));read_check(16'hFF04,8'((index+4)/256));request_check(0);
+                if(edge_fault&&selector==0&&index==1)begin
+                    tick_a();force dut.state_q.tac=3'd0;tick_b();
+                end else tick();
+                read_check(16'hFF05,8'((index+4)/period));read_check(16'hFF04,8'((index+4)/256));request_check(0);
             end
             scenario=scenario+1;
         end
