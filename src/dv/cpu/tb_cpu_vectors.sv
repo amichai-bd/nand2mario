@@ -40,6 +40,11 @@ module tb_cpu_vectors;
     logic [1:0] address_effect_phase;
 
     logic [1023:0] vector_data [8000];
+    string vector_name [8000];
+    string vector_source [8000];
+    integer identity_trace;
+    bit expected_fault;
+    logic [383:0] actual_record;
     logic [1023:0] vector_case;
     logic [7:0] memory [65536];
     n2m_cpu_pkg::cpu_registers_t initial_registers;
@@ -88,6 +93,40 @@ module tb_cpu_vectors;
         end
     end
 
+    task automatic context_report;
+        $display("CPU_VECTOR_CONTEXT case=%0d name=%s source=%s index=%0d dot=%0d pin=f9c30210245dd691661db39f5ace022c465ecc2f model=DMG-B-digital seed=none exclusions=STOP,HALT,upstream-IME-IE-EI",
+            number,vector_name[number],vector_source[number],vector_case[215 +: 10],dot_before);
+    endtask
+
+    function automatic string record_field(input integer offset);
+        case (offset)
+            0: return "version"; 1: return "flags";
+            2,3,4,5: return "epoch";
+            6,7,8,9,10,11,12,13: return "sequence";
+            14,15,16,17,18,19,20,21: return "dot";
+            22,23: return "pc_before"; 24,25: return "pc_after";
+            26,27,28: return "opcode"; 29: return "length";
+            30: return "A"; 31: return "F"; 32: return "B"; 33: return "C";
+            34: return "D"; 35: return "E"; 36: return "H"; 37: return "L";
+            38,39: return "SP"; 40: return "IME"; 41: return "IME_DELAY";
+            42: return "IE"; 43: return "IF"; 44: return "buttons";
+            45: return "HALT_BUG"; default: return "reserved";
+        endcase
+    endfunction
+
+    task automatic first_state_difference;
+        integer offset;
+        actual_record=retirement;
+        context_report();
+        for (offset=0; offset<48; offset=offset+1) begin
+            if (actual_record[8*offset +: 8] !== expected_record[8*offset +: 8]) begin
+                $display("CPU_VECTOR_FIRST_DIFFERENCE field=%s byte=%0d expected=%02h actual=%02h",
+                    record_field(offset),offset,expected_record[8*offset +: 8],actual_record[8*offset +: 8]);
+                break;
+            end
+        end
+    endtask
+
     task automatic check_bus;
         if (bus_commit && (!gb_tick || dot_before[1:0] != 3))
             $fatal(1,"CPU_VECTOR_T4 case=%0d dot=%0d",number,dot_before+1);
@@ -111,10 +150,15 @@ module tb_cpu_vectors;
             if (bus_commit !== expected_commit || (expected_commit &&
                 (write_enable !== expected_write ||
                  (expected_cycle[26] && address !== expected_address) ||
-                 (expected_cycle[27] && (write_enable ? write_data : read_data) !== expected_byte))))
+                 (expected_cycle[27] && (write_enable ? write_data : read_data) !== expected_byte)))) begin
+                $display("CPU_VECTOR_FIRST_BUS_DIFFERENCE field=%s M=%0d",
+                    bus_commit !== expected_commit ? "commit" :
+                    write_enable !== expected_write ? "write_enable" :
+                    expected_cycle[26] && address !== expected_address ? "address" : "data",mcycle);
                 $fatal(1,"CPU_VECTOR_BUS case=%0d opcode=%03h M=%0d expected=%07h actual=%0d/%04h/%0d/%02h",
                     number,opcode_number,mcycle,expected_cycle,bus_commit,address,write_enable,
                     write_enable ? write_data : read_data);
+            end
         end
     endtask
 
@@ -134,11 +178,14 @@ module tb_cpu_vectors;
             // cases use separately documented direct EI/DI/RETI effects only.
             if (opcode_number == 9'h0fb) expected_record[328 +: 8] = 1;
             if (opcode_number == 9'h0d9) expected_record[320 +: 8] = 1;
+            if (expected_fault && number==0) expected_record[240]=~expected_record[240];
             $fdisplay(trace,"%0d,%03h,%0d,%096h,%096h",number,opcode_number,
                 vector_case[215 +: 10],expected_record,retirement);
-            if (retirement !== expected_record)
+            if (retirement !== expected_record) begin
+                first_state_difference();
                 $fatal(1,"CPU_VECTOR_STATE case=%0d opcode=%03h expected=%096h actual=%096h",
                     number,opcode_number,expected_record,retirement);
+            end
             for (item=0; item<final_ram_count; item=item+1) begin
                 expected_address=vector_case[417+24*item +: 16];
                 expected_byte=vector_case[433+24*item +: 8];
@@ -160,15 +207,19 @@ module tb_cpu_vectors;
 
     initial begin
         `include "src/dv/cpu/singlestep/vectors.svh"
+        `include "src/dv/cpu/singlestep/identities.svh"
         clk_sys=0; reset_sys=1; core_reset=0; gb_tick=0; profile_id=1;
         epoch=1; dot_before=0; ie=0; iflags=0; buttons=0;
         response_valid=1; joyp_selected_active=0; wake_request=0;
         count=0; skipped=0; write_count=0;
+        expected_fault=$test$plusargs("expected-state-fault");
         corrupt=$test$plusargs("corrupt"); missing=$test$plusargs("missing");
         for (item=0; item<65536; item=item+1) memory[item]=0;
         trace=$fopen("vector-retirement.csv","w");
         bus_trace=$fopen("vector-bus.csv","w");
-        if (!trace || !bus_trace) $fatal(1,"CPU_VECTOR_TRACE_OPEN");
+        identity_trace=$fopen("vector-identities.csv","w");
+        $fdisplay(identity_trace,"case,source,index,name,pin,model,seed,exclusions");
+        if (!trace || !bus_trace || !identity_trace) $fatal(1,"CPU_VECTOR_TRACE_OPEN");
         $dumpfile("waves/cpu-vectors.vcd");
         $dumpvars(0,clk_sys,reset_sys,core_reset,gb_tick,profile_id,epoch,dot_before,ie,iflags,
             buttons,read_data,response_valid,joyp_selected_active,divider_reset_request,wake_request,
@@ -183,6 +234,8 @@ module tb_cpu_vectors;
                 skipped=skipped+1;
                 continue;
             end
+            $fdisplay(identity_trace,"%0d,%s,%0d,%s,f9c30210245dd691661db39f5ace022c465ecc2f,DMG-B-digital,none,STOP/HALT/upstream-IME-IE-EI",
+                number,vector_source[number],vector_case[215 +: 10],vector_name[number]);
             reset_sys=1; edge_cycle(0); reset_sys=0;
             epoch=32'(number+1); core_reset=1; edge_cycle(0); core_reset=0;
             complete=0; write_count=0;
@@ -221,6 +274,7 @@ module tb_cpu_vectors;
             edge_cycle(0);
             release dut.u_control.registers;
             release dut.u_control.control;
+            context_report();
             if (missing && number==0) force dut.u_retire.retirement_valid=0;
             for (cycle=0; cycle<(instruction_cycles+1)*12+2; cycle=cycle+1) begin
                 if (corrupt && number==0 && dot_before==4)
@@ -235,7 +289,7 @@ module tb_cpu_vectors;
             for (item=0; item<write_count; item=item+1) memory[written_addresses[item]]=0;
             if (count==32) $dumpoff;
         end
-        $fclose(trace); $fclose(bus_trace);
+        $fclose(trace); $fclose(bus_trace); $fclose(identity_trace);
         if (count!=7968 || skipped!=32) $fatal(1,"CPU_VECTOR_COUNT");
         $display("PASS CPU vectors cases=7968 forms=498 flags=16 excluded_STOP_HALT=32");
         $finish;
