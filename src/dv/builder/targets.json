@@ -1348,5 +1348,102 @@
     "expected_exit": "nonzero",
     "signature": "PPU_FINE_PIXEL case=1 frame=1 index=0 expected=1 actual=0",
     "timeout_seconds": 180
+  },
+  "ppu-window-wy": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_scroll_window.sv"
+    ],
+    "top": "tb_ppu_scroll_window",
+    "args": [
+      "+wy"
+    ],
+    "expected_exit": "zero",
+    "signature": "PASS PPU WY qualified equality retained eligibility hidden row pixels=46080 late=0",
+    "timeout_seconds": 180
+  },
+  "ppu-window-wy-late": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_scroll_window.sv"
+    ],
+    "top": "tb_ppu_scroll_window",
+    "args": [
+      "+wy",
+      "+wy_late"
+    ],
+    "expected_exit": "zero",
+    "signature": "PASS PPU WY qualified equality retained eligibility hidden row pixels=46080 late=1",
+    "timeout_seconds": 180
+  },
+  "ppu-lcd-video": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/rtl/vga/n2m_frame_ram.sv",
+      "src/rtl/vga/n2m_vga_scan.sv",
+      "src/rtl/vga/n2m_frame_bridge.sv",
+      "src/dv/ppu/tb_ppu_lcd_video.sv"
+    ],
+    "top": "tb_ppu_lcd_video",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS PPU LCD composed first last cancellation aborts=2 frames=3 VGA pixels=207360 resets=2",
+    "timeout_seconds": 180
+  },
+  "ppu-lcd-video-corrupt": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/rtl/vga/n2m_frame_ram.sv",
+      "src/rtl/vga/n2m_vga_scan.sv",
+      "src/rtl/vga/n2m_frame_bridge.sv",
+      "src/dv/ppu/tb_ppu_lcd_video.sv"
+    ],
+    "top": "tb_ppu_lcd_video",
+    "args": [
+      "+lcd_observer_corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "PPU_LCD_OBSERVER run=2 index=0 expected_sequence=1 actual=3",
+    "timeout_seconds": 180
   }
 }

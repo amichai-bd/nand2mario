@@ -25,7 +25,7 @@ module tb_ppu_scroll_window;
     logic [7:0] source_x, source_y;
     logic [31:0] source_epoch;
     logic [63:0] source_dot, previous_dot, enable_dot, normal_first_dot;
-    logic case_done;
+    logic case_done, wy_case, wy_late;
     integer current_scx, current_wx, write_line, expected_window_row;
     integer window_lines, background_lines;
     logic [7:0] vram [0:8191];
@@ -49,10 +49,11 @@ module tb_ppu_scroll_window;
 
 
     function automatic integer line_scx(input integer row);
-        line_scx = row % 8;
+        line_scx = wy_case ? 0 : row % 8;
     endfunction
     function automatic integer line_wx(input integer row);
-        case (row % 16)
+        if (wy_case) line_wx = 47;
+        else case (row % 16)
             8: line_wx = 7;
             9: line_wx = 8;
             10: line_wx = 15;
@@ -69,7 +70,7 @@ module tb_ppu_scroll_window;
             count = 0;
             for (r = 0; r < row; r = r + 1)
                 if (line_wx(r) < 167) count = count + 1;
-            window_row_before = count;
+            window_row_before = wy_case ? (row <= 33 ? row - 32 : row - 33) : count;
         end
     endfunction
     function automatic integer map_tile(input integer tx, input integer ty, input logic win);
@@ -82,7 +83,8 @@ module tb_ppu_scroll_window;
         integer sx, sy, tile;
         logic win;
         begin
-            win = line_wx(py) < 167 && px >= line_wx(py) - 7;
+            win = (wy_case ? !wy_late && py >= 32 && py != 34 : line_wx(py) < 167)
+                && px >= line_wx(py) - 7;
             sx = win ? px - (line_wx(py) - 7) : (px + line_scx(py)) % 256;
             sy = win ? window_row_before(py) : (py + 11) % 256;
             tile = map_tile(sx / 8, sy / 8, win);
@@ -117,7 +119,8 @@ module tb_ppu_scroll_window;
                 frame_count = frame_count + 1; pixel_count = 0;
                 if (frame_count == 2) begin
                     $fclose(trace_file);
-                    $display("PASS PPU scroll/window static pixels=46080 fine=8 wx=8");
+                    if (wy_case) $display("PASS PPU WY qualified equality retained eligibility hidden row pixels=46080 late=%0d", wy_late);
+                    else $display("PASS PPU scroll/window static pixels=46080 fine=8 wx=8");
                     case_done = 1;
                     $finish;
                 end
@@ -129,6 +132,7 @@ module tb_ppu_scroll_window;
         $dumpvars(0, dut);
         clk_sys = 0; reset_sys = 1; core_reset = 0; pause_request = 0;
         epoch = 5; write_pending = 0; io_write = 1; io_address = 0; io_wdata = 0;
+        wy_case = $test$plusargs("wy"); wy_late = $test$plusargs("wy_late");
         dma_active = 0; frame_count = 0; pixel_count = 0; previous_dot = 0; case_done = 0;
         trace_file = $fopen("scroll-window.csv", "w");
         if (!trace_file) $fatal(1, "PPU_SCROLL_TRACE");
@@ -153,8 +157,9 @@ module tb_ppu_scroll_window;
         repeat (4) @(negedge clk_sys);
         reset_sys = 0;
         write_register(16'hff43, 0); write_register(16'hff42, 11);
-        write_register(16'hff47, 8'he4); write_register(16'hff4a, 0); write_register(16'hff4b, 255);
-        write_register(16'hff40, 8'hf1);
+        write_register(16'hff47, 8'he4); write_register(16'hff4a, wy_case ? 32 : 0);
+        write_register(16'hff4b, wy_case ? 47 : 255);
+        write_register(16'hff40, wy_case ? 8'hd1 : 8'hf1);
         // Constant offscreen window during warm-up. The next frame's WY latch
         // starts afresh after VBlank; line0 uses the same prepared configuration.
         wait (frame_count == 1);
@@ -162,7 +167,20 @@ module tb_ppu_scroll_window;
             @(negedge clk_sys);
             force dut.source_shade = 2'd0;
         end
-        for (write_line = 1; write_line < 144; write_line = write_line + 1) begin
+        if (wy_case) begin
+            // Enabling during LY32 qualifies equality on the next quarter0,
+            // well before WX47. Enabling after LY32 has ended cannot qualify.
+            wait (pixel_count == (wy_late ? 33 : 32) * 160 + 16);
+            write_register(16'hff40, 8'hf1);
+            if (!wy_late) begin
+                wait (pixel_count == 33 * 160);
+                write_register(16'hff4a, 255);
+                wait (pixel_count == 34 * 160);
+                write_register(16'hff40, 8'hd1);
+                wait (pixel_count == 35 * 160);
+                write_register(16'hff40, 8'hf1);
+            end
+        end else for (write_line = 1; write_line < 144; write_line = write_line + 1) begin
             wait (pixel_count == write_line * 160);
             write_register(16'hff43, 8'(line_scx(write_line)));
             write_register(16'hff4b, 8'(line_wx(write_line)));

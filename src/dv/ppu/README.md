@@ -105,3 +105,17 @@ sample70302 are relative to LCD-enable T4; writes70300/70304 select fine2/5.
 The corruption target changes actual source shade in the after-write case.
 These targets still require actual evidence. WX0/166, intra-fetch coarse
 SCX/SCY and WY enable/equality edge coverage remain separate required cases.
+
+`ppu-window-wy` enables the window during LY32 before its X trigger, changes WY
+after the equality has latched, hides line34, then checks row2 on line35.
+`ppu-window-wy-late` enables only after LY32 has ended and must keep the window
+absent. Both use the existing independent full-frame spatial oracle.
+
+`ppu-lcd-video` connects actual PPU transactions to the actual bridge. LegalT4
+writes cancel a would-be first pixel and a would-be final frame pixel. Independent
+assembly checks zero and23039 partial pixels, no phantom completion, restarted
+blank/eligible frames and full VGA image release. Paused core reset retains the
+last image; shared global reset clears both endpoints and blacks RGB. The fault
+target changes the actual observer sequence while leaving source pixels intact.
+These new cases require actual runtime evidence and retain the separate
+synthetic mailbox coverage rather than replacing it.
