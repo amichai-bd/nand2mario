@@ -79,6 +79,14 @@
       "purpose": "Reviewed immutable pins and MIT/Expat reuse boundaries for future vectors, acceptance tests and independent reference",
       "local_changes": "none; external implementation/data not imported",
       "storage": "Future ignored workdir downloads/builds, with notices and dependency hashes"
+    },
+    {
+      "name": "MiSTer PPU selected logic (adaptation planned)",
+      "record": "../src/rtl/ppu/upstream.json",
+      "notices": "../src/rtl/ppu/THIRD_PARTY.md",
+      "purpose": "Approved private GPL-3.0-or-later DMG logic adaptation with independent contract/tests",
+      "local_changes": "Planned changes and import state are authoritative in the owner manifest",
+      "storage": "src/rtl/ppu; no platform, boot ROM or game assets"
     }
   ]
 }

@@ -404,6 +404,37 @@ RAM rows and matching total memory/M9K usage. Missing, malformed or out-of-bound
 records fail. Actual nominal/upper delivery evidence must pass this complete
 profile; no generated image is accepted on RAM bit count alone.
 
+### PPU and LCD-control proof profile
+
+The bounded `ppu_proof` target connects the actual PPU to the frame bridge,
+with explicitly timed virtual CPU/memory ports. It does not supply #130 backing
+stores, a complete CPU/system or physical monitor proof. Its nominal/upper
+profiles preserve the existing device, generated PLL, manual-derived VGA pins,
+three-bank memory shape, complete timing checks and strict diagnostic policy.
+
+In addition to the four original bridge chains, `blank_pix` crosses the request
+into the pixel clock and `blank_seen_sys` returns active blank to `clk_sys`.
+Each named launch/first-data endpoint is exact; both adjacent-stage setup/hold
+checks remain mandatory at all three operating corners. The latter chain must
+not inherit a pixel-clock classification from its position in an inventory.
+The profile additionally retains setup/hold paths from `blank_active` and
+`blank_pix[1]` to all twelve packed RGB output registers at every corner.
+The four-level F/A/5/0 value repeats those two registered bits across each RGB
+channel. Quartus packs the original plus five duplicates of each bit into
+the twelve pins. Both VGA profiles require the exact register-to-pin mapping
+in the fitter table and output paths; the LCD profile checks every physical
+copy as a blank-control capture. Missing, extra, mispaired, wrong-clock or
+negative-slack paths fail.
+Only final gray/sync registers launch the registered output-to-pin paths;
+existing complete output/skew bounds remain. The skew assignment aggregate
+must be nonnegative and at most 2 ns. Individual earliest/latest contributions
+may be signed, but each must have magnitude at most 2 ns, nonnegative slack,
+and slack equal to required minus actual skew within 0.0011 ns for the printed
+three-decimal reports. White selection precedes the
+existing final register edge and does not add a cycle.
+All additional reports enter immutable-result/cache completeness checks.
+The deliberate invalid target still requires the exact missing reset endpoint.
+
 ## Source and workspace boundary
 
 - Root `tools/` contains checked-in project automation.

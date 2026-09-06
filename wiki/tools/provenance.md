@@ -28,9 +28,9 @@ Unknown permission blocks copying; it does not authorize choosing a license.
 Review compatibility for the intended use before an import. A tool's license
 does not automatically establish rights to its input or output.
 
-The index covers the current external build and test tools. No third-party HDL,
-test ROM, game asset, or emulator code is imported. New imports must add a record
-before use. Reproducible fetching of future verification suites belongs to
+The index covers external build/test tools and the selected licensed
+[PPU logic adaptation](../../src/rtl/ppu/upstream.json). No test ROM, game asset
+or emulator code is imported. New imports must add a record before use. Reproducible fetching of future verification suites belongs to
 [GAP-013](../preflight-gaps.md#gap-013-external-dependencies).
 
 `frog-bui` is a process and behavioral research reference only. Its inspected

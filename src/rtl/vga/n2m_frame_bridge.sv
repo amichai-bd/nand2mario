@@ -5,10 +5,11 @@ module n2m_frame_bridge (
     input logic clk_sys, reset_sys, core_reset,
     input logic clk_pix, reset_pix,
     input logic source_valid, source_start,
+    input logic source_abort, blank_assert, source_display_eligible,
     input logic [1:0] source_shade,
     input logic [31:0] source_epoch,
     input logic [63:0] source_dot,
-    output logic observe_valid, observe_complete,
+    output logic observe_valid, observe_complete, observe_abort,
     output logic [14:0] observe_index,
     output logic [1:0] observe_shade,
     output logic [31:0] observe_epoch,
@@ -25,13 +26,14 @@ module n2m_frame_bridge (
     logic [14:0] write_index;
     logic [63:0] source_sequence;
     logic accept_pixel;
-    assign accept_pixel = source_valid && !reset_sys && !core_reset;
+    assign accept_pixel = source_valid && !source_abort && !reset_sys && !core_reset;
     logic complete;
     assign complete = accept_pixel && write_index == 15'd23039;
     `DFF_RST_EN(write_index, complete ? 15'd0 : write_index + 15'd1,
-                clk_sys, accept_pixel, reset_sys || core_reset, 15'd0)
+                clk_sys, accept_pixel, reset_sys || core_reset || source_abort, 15'd0)
     `DFF_RST_EN(source_sequence, source_sequence + 64'd1, clk_sys, complete,
                 reset_sys || core_reset, 64'd0)
+    assign observe_abort = source_abort && !reset_sys && !core_reset;
     assign observe_valid = accept_pixel;
     assign observe_complete = complete;
     assign observe_index = write_index;
@@ -41,6 +43,12 @@ module n2m_frame_bridge (
     assign observe_dot = source_dot;
 
     logic request, acknowledge;
+    logic blank_requested, blank_next, blank_active, blank_next_pix, pending_release, release_next;
+    (* preserve, altera_attribute = "-name SYNCHRONIZER_IDENTIFICATION FORCED" *)
+    logic [1:0] blank_pix, blank_seen_sys;
+    `DFF_ARST_VAL(blank_pix, {blank_pix[0], blank_requested}, clk_pix, reset_pix, 2'b00)
+    `DFF_ARST_VAL(blank_seen_sys, {blank_seen_sys[0], blank_active}, clk_sys, reset_sys, 2'b00)
+
     // Specialized attributed synchronizers; no functional use of first stages.
     (* preserve, altera_attribute = "-name SYNCHRONIZER_IDENTIFICATION FORCED" *)
     logic [1:0] pix_ready_sys, sys_ready_pix, ack_sys, req_pix;
@@ -63,11 +71,18 @@ module n2m_frame_bridge (
         offer_sequence_next = offer_sequence;
         offer_epoch_next = offer_epoch;
         discard_next = discard_count;
+        blank_next = blank_requested;
+        release_next = pending_release;
+        // Invalidation dominates old acknowledgement AND new qualification.
+        if (blank_assert || core_reset) release_next = 1'b0;
+        if (blank_assert) blank_next = 1'b1;
         // Returning ownership is applied before a simultaneous completion.
         if (pending && ack_sys[1] == request && pix_ready_sys[1]) begin
             free_next = system_display_bank;
             system_display_next = offer_bank;
             pending_next = 1'b0;
+            if (release_next) blank_next = 1'b0;
+            release_next = 1'b0;
         end
         if (complete) begin
             if (!pending_next && pix_ready_sys[1]) begin
@@ -77,9 +92,13 @@ module n2m_frame_bridge (
                 request_next = !request;
                 pending_next = 1'b1;
                 writer_next = free_next;
+                release_next = source_display_eligible && blank_requested
+                    && blank_seen_sys[1] && !blank_assert && !core_reset;
             end else discard_next = discard_count + 64'd1;
         end
     end
+    `DFF_RST(blank_requested, blank_next, clk_sys, reset_sys)
+    `DFF_RST(pending_release, release_next, clk_sys, reset_sys)
     `DFF_RST_VAL(writer_bank, writer_next, clk_sys, reset_sys, 2'd0)
     `DFF_RST_VAL(system_display_bank, system_display_next, clk_sys, reset_sys, 2'd1)
     `DFF_RST_VAL(free_bank, free_next, clk_sys, reset_sys, 2'd2)
@@ -96,6 +115,8 @@ module n2m_frame_bridge (
     logic [31:0] captured_epoch;
     logic captured_phase;
     logic swap_boundary;
+    assign blank_next_pix = blank_pix[1] ? 1'b1 : (swap_boundary ? 1'b0 : blank_active);
+    `DFF_RST(blank_active, blank_next_pix, clk_pix, reset_pix)
     logic new_request;
     assign new_request = sys_ready_pix[1] && req_pix[1] != acknowledge;
     logic capture_now;
@@ -132,23 +153,31 @@ module n2m_frame_bridge (
         );
     end endgenerate
     n2m_vga_scan u_scan (
-        .clk_pix, .reset_pix, .display_valid, .read_shade,
+        .clk_pix, .reset_pix, .display_valid, .read_shade, .blank_image(blank_next_pix),
         .read_enable, .read_address, .swap_boundary,
         .video_x, .video_y, .video_valid, .video_active, .video_image,
         .red, .green, .blue, .hsync_n, .vsync_n
     );
 `ifndef SYNTHESIS
-    logic in_frame;
+    logic in_frame, frame_eligible;
     logic [31:0] frame_epoch;
     `DFF_RST_EN(in_frame, !complete, clk_sys, accept_pixel,
+                reset_sys || core_reset || source_abort, 1'b0)
+    `DFF_RST_EN(frame_eligible, source_display_eligible, clk_sys, accept_pixel && source_start,
                 reset_sys || core_reset, 1'b0)
     `DFF_RST_EN(frame_epoch, source_epoch, clk_sys, accept_pixel && source_start,
                 reset_sys || core_reset, 32'd0)
     `N2M_ASSERT(frame_source_order, clk_sys, reset_sys || core_reset,
-                source_valid |-> (source_start === !in_frame))
+                accept_pixel |-> (source_start === !in_frame))
     `N2M_ASSERT(frame_source_epoch, clk_sys, reset_sys || core_reset,
-                (source_valid && in_frame) |-> (source_epoch === frame_epoch))
+                (accept_pixel && in_frame) |-> (source_epoch === frame_epoch))
     `N2M_ASSERT(frame_source_known, clk_sys, reset_sys || core_reset,
-                source_valid |-> !$isunknown({source_shade, source_start, source_epoch, source_dot}))
+                accept_pixel |-> !$isunknown({source_shade, source_start, source_epoch, source_dot, source_display_eligible}))
+    `N2M_ASSERT(frame_eligibility_stable, clk_sys, reset_sys || core_reset,
+                (accept_pixel && in_frame) |-> (source_display_eligible === frame_eligible))
+    `N2M_ASSERT(blank_invalidation_wins, clk_sys, reset_sys,
+                (blank_assert || core_reset) |=> !pending_release)
+    `N2M_ASSERT(abort_suppresses_pixel, clk_sys, reset_sys,
+                source_abort |-> (!observe_valid && !observe_complete))
 `endif
 endmodule

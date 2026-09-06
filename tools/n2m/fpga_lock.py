@@ -14,7 +14,7 @@ OUTPUTS = {
 
 
 def verify(text, checks, top="clocking_proof"):
-    if top not in ("clocking_proof", "vga_proof", "intel_memory_proof"):
+    if top not in ("clocking_proof", "vga_proof", "ppu_proof", "intel_memory_proof"):
         raise ValueError("unsupported PLL proof top")
     rows = re.findall(r";\s*([^;\r\n]+?)\s*;\s*No clock feeds this register's clock port\.\s*;", checks)
     if rows != [ROW]:

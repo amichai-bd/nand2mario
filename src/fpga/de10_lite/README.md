@@ -16,3 +16,10 @@ names a missing asynchronous-reset endpoint and must fail the checked SDC
 collection; it cannot count as a positive fit. See the
 [clocking test plan](../../dv/clocking/README.md) and
 [generation/evidence rules](../../../wiki/tools/n2m/SPEC.md#generated-clocking-inputs).
+
+The `ppu_proof` component target connects the actual PPU and VGA bridge. CPU
+register and VRAM/OAM response ports are explicitly timed virtual pins; #130
+owns backing stores and #132 owns DMA arbitration. These targets establish
+component fit/timing, not a complete system or physical monitor result. The
+[n2m proof profile](../../../wiki/tools/n2m/SPEC.md#ppu-and-lcd-control-proof-profile)
+owns the additional LCD-control crossing and RGB-path evidence.
