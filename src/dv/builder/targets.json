@@ -1,8 +1,13 @@
 {
   "intel-memory": {
-    "sources": ["src/rtl/common/n2m_intel_ram.sv", "src/dv/common/tb_intel_ram.sv"],
+    "sources": [
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/dv/common/tb_intel_ram.sv"
+    ],
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": ["tb_intel_ram.frame_case.dut.ram.m_default.altsyncram_inst"],
+    "intel_mixed_mode_instances": [
+      "tb_intel_ram.frame_case.dut.ram.m_default.altsyncram_inst"
+    ],
     "top": "tb_intel_ram",
     "args": [],
     "expected_exit": "zero",
@@ -10,29 +15,50 @@
     "timeout_seconds": 180
   },
   "intel-memory-data": {
-    "sources": ["src/rtl/common/n2m_intel_ram.sv", "src/dv/common/tb_intel_ram.sv"],
+    "sources": [
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/dv/common/tb_intel_ram.sv"
+    ],
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": ["tb_intel_ram.frame_case.dut.ram.m_default.altsyncram_inst"],
+    "intel_mixed_mode_instances": [
+      "tb_intel_ram.frame_case.dut.ram.m_default.altsyncram_inst"
+    ],
     "top": "tb_intel_ram",
-    "args": ["+corrupt"],
+    "args": [
+      "+corrupt"
+    ],
     "expected_exit": "nonzero",
     "signature": "INTEL_RAM_DATA_A case=0 check=164 expected=38 actual=ff"
   },
   "intel-memory-latency": {
-    "sources": ["src/rtl/common/n2m_intel_ram.sv", "src/dv/common/tb_intel_ram.sv"],
+    "sources": [
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/dv/common/tb_intel_ram.sv"
+    ],
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": ["tb_intel_ram.frame_case.dut.ram.m_default.altsyncram_inst"],
+    "intel_mixed_mode_instances": [
+      "tb_intel_ram.frame_case.dut.ram.m_default.altsyncram_inst"
+    ],
     "top": "tb_intel_ram",
-    "args": ["+late"],
+    "args": [
+      "+late"
+    ],
     "expected_exit": "nonzero",
     "signature": "INTEL_RAM_DATA_A case=0 check=164 expected=38 actual=a5"
   },
   "intel-memory-collision": {
-    "sources": ["src/rtl/common/n2m_intel_ram.sv", "src/dv/common/tb_intel_ram.sv"],
+    "sources": [
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/dv/common/tb_intel_ram.sv"
+    ],
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": ["tb_intel_ram.frame_case.dut.ram.m_default.altsyncram_inst"],
+    "intel_mixed_mode_instances": [
+      "tb_intel_ram.frame_case.dut.ram.m_default.altsyncram_inst"
+    ],
     "top": "tb_intel_ram",
-    "args": ["+collision"],
+    "args": [
+      "+collision"
+    ],
     "expected_exit": "nonzero",
     "signature": "N2M_ASSERT INTEL_RAM_MIXED_PORT_A instance=tb_intel_ram.byte_case.dut"
   },
@@ -467,7 +493,15 @@
   },
   "memory-service": {
     "vendor_model": "intel-memory",
-    "sources": ["src/rtl/interfaces/n2m_interfaces_pkg.sv", "src/rtl/memory/n2m_memory_pkg.sv", "src/rtl/common/n2m_intel_ram.sv", "src/rtl/memory/n2m_memory_stores.sv", "src/rtl/memory/n2m_memory_decode.sv", "src/rtl/memory/n2m_memory_cpu_port.sv", "src/dv/memory/tb_memory_service.sv"],
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/memory/n2m_memory_stores.sv",
+      "src/rtl/memory/n2m_memory_decode.sv",
+      "src/rtl/memory/n2m_memory_cpu_port.sv",
+      "src/dv/memory/tb_memory_service.sv"
+    ],
     "top": "tb_memory_service",
     "args": [],
     "expected_exit": "zero",
@@ -475,9 +509,19 @@
   },
   "memory-service-corrupt": {
     "vendor_model": "intel-memory",
-    "sources": ["src/rtl/interfaces/n2m_interfaces_pkg.sv", "src/rtl/memory/n2m_memory_pkg.sv", "src/rtl/common/n2m_intel_ram.sv", "src/rtl/memory/n2m_memory_stores.sv", "src/rtl/memory/n2m_memory_decode.sv", "src/rtl/memory/n2m_memory_cpu_port.sv", "src/dv/memory/tb_memory_service.sv"],
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/memory/n2m_memory_stores.sv",
+      "src/rtl/memory/n2m_memory_decode.sv",
+      "src/rtl/memory/n2m_memory_cpu_port.sv",
+      "src/dv/memory/tb_memory_service.sv"
+    ],
     "top": "tb_memory_service",
-    "args": ["+corrupt_response"],
+    "args": [
+      "+corrupt_response"
+    ],
     "expected_exit": "nonzero",
     "signature": "MEMORY_SERVICE_VRAM_PRE_A expected=90 actual=00"
   },
@@ -845,6 +889,52 @@
     ],
     "expected_exit": "nonzero",
     "signature": "N2M_ASSERT TIMER_COMMIT_BOUNDARY",
+    "timeout_seconds": 120
+  },
+  "uart-packet-tx": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/uart/n2m_uart_tx.sv",
+      "src/rtl/uart/n2m_uart_packet_tx.sv",
+      "src/dv/uart/tb_uart_packet_tx.sv"
+    ],
+    "top": "tb_uart_packet_tx",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS UART packet TX replies=11 resets=3 COBS zero 254 max serial_stop",
+    "timeout_seconds": 120
+  },
+  "uart-packet-tx-corrupt": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/uart/n2m_uart_tx.sv",
+      "src/rtl/uart/n2m_uart_packet_tx.sv",
+      "src/dv/uart/tb_uart_packet_tx.sv"
+    ],
+    "top": "tb_uart_packet_tx",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "UART_PACKET_TX_BYTE",
+    "timeout_seconds": 120
+  },
+  "uart-packet-tx-missing": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/uart/n2m_uart_tx.sv",
+      "src/rtl/uart/n2m_uart_packet_tx.sv",
+      "src/dv/uart/tb_uart_packet_tx.sv"
+    ],
+    "top": "tb_uart_packet_tx",
+    "args": [
+      "+missing"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT UART_TX_READ_SERVICE",
     "timeout_seconds": 120
   }
 }

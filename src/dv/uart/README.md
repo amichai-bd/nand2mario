@@ -21,3 +21,18 @@ independent of DUT decode/next-state fields. Retain explicit public wave signals
 transaction logs, exact source snapshots and Intel binding evidence. Test-only
 core/storage/snapshot models prove their boundary contracts, not full-system
 integration. Licensed runs require the root's exclusive slot.
+
+
+### COBS response output
+
+The packet-transmit fixture constructs an independent flat COBS byte vector
+with reserved/backfilled code positions. It compares each accepted byte from
+the DUT against this vector while the actual serial TX supplies backpressure.
+Maximum-length zero, nonzero, incrementing, block-boundary-zero and trailing-zero
+patterns plus lengths 12, 254 and 255 cover code and delimiter boundaries.
+Eleven complete replies include recovery from three asynchronous resets during
+scan, after a code and during the final data byte. The completion check requires
+all ten serial cells per accepted byte, including the final delimiter stop.
+Actual output corruption and missing public-read response have separate negative
+targets. This fixture's response source is a public one-edge model; later full
+endpoint composition binds the already fitted Intel exchange store.

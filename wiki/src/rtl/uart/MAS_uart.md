@@ -134,3 +134,16 @@ frames through the actual serial RX and Intel-backed packet receiver: a bad
 stop invalidates one frame, and the next complete frame recovers. A deliberate
 actual TX pin corruption must fail the independent bit oracle. These are
 logical simulation boundaries; no physical wiring or electrical claim follows.
+
+
+## Response packet transmission
+
+`n2m_uart_packet_tx` reads the held raw response through the exchange's existing
+one-edge public port. It scans each COBS block to determine its code byte, then
+rereads and sends the nonzero data. It allocates no additional packet memory.
+Zero bytes, full 254-byte blocks and a trailing zero produce canonical COBS;
+the final delimiter is a separate zero byte. Response size and contents remain
+stable through transmission. `transmit_done` occurs only after the actual
+serial transmitter finishes the delimiter's stop cell and returns ready.
+Global reset cancels scanning or output and resets the serial output to idle.
+A missing scheduled memory response produces a named contract assertion.
