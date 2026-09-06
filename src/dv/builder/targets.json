@@ -1218,5 +1218,47 @@
     "expected_exit": "nonzero",
     "signature": "PPU_PALETTE_PIXEL",
     "timeout_seconds": 180
+  },
+  "ppu-stat-off": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_stat_off.sv"
+    ],
+    "top": "tb_ppu_stat_off",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS PPU STAT LCD off cases=14 edges=2"
+  },
+  "ppu-stat-off-corrupt": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_stat_off.sv"
+    ],
+    "top": "tb_ppu_stat_off",
+    "args": [
+      "+off_corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "PPU_STAT_OFF_STATE case=10 expected_flag=0 expected_line=0 expected_edges=1 actual_flag=0 actual_line=1 actual_edges=1"
   }
 }

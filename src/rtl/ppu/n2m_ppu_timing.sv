@@ -10,6 +10,7 @@ module n2m_ppu_timing (
     input var logic reset,
     input var logic gb_tick,
     input var logic lcd_on,
+    input var logic lcd_disable,
     input var logic [7:0] ly_compare,
     input var logic [3:0] stat_enable,
     input var logic stat_write,
@@ -44,8 +45,8 @@ module n2m_ppu_timing (
     logic comparison_valid, comparison_valid_next;
     logic exceptional, exceptional_next;
     logic [3:0] exception_step, exception_step_next;
-    logic stat_transient, natural_stat, final_stat, stat_event;
-    logic [3:0] effective_enable, final_enable;
+    logic natural_stat, final_stat, stat_event;
+    logic [3:0] final_enable;
     logic next_mode0, next_mode1, next_mode2;
     logic mode3_end_delayed, mode3_end_delayed_next;
     logic mode3_delayed, scan_delayed;
@@ -57,19 +58,14 @@ module n2m_ppu_timing (
     assign quarter_end = line_quarter == 7'd113;
     assign raw_vblank = ly >= 8'd144;
     assign line153 = ly == 8'd153;
-    assign readable_ly = exceptional && exception_step >= 4'd6 ? 8'd0 : ly;
-    assign effective_enable = stat_transient ? 4'hf : stat_enable;
+    assign readable_ly = !lcd_on || (exceptional && exception_step >= 4'd6) ? 8'd0 : ly;
     assign final_enable = stat_write ? 4'hf : stat_enable;
     assign line_quarter_next = quarter_end ? 7'd0 : line_quarter + 1'b1;
     assign mode3_end = !object_found && pixel_end;
     assign mode3 = lcd_on && !mode3_end_delayed && scan_done;
     assign line_reset = quarter_edge && end_of_line && !raw_vblank;
-    assign mode = vblank_condition && vblank_stage ? 2'd1
+    assign mode = !lcd_on ? 2'd0 : vblank_condition && vblank_stage ? 2'd1
         : scan_delayed ? 2'd2 : mode3_delayed && !mode3_end ? 2'd3 : 2'd0;
-    assign stat_condition = (effective_enable[3] && coincidence_irq)
-        || (effective_enable[2] && end_of_line_delayed && !vblank_condition)
-        || (effective_enable[1] && vblank_condition)
-        || (effective_enable[0] && mode3_end_delayed && !vblank_condition);
 
     always_comb begin
         end_of_line_next = end_of_line;
@@ -146,6 +142,12 @@ module n2m_ppu_timing (
             coincidence_next = comparison_stage_next;
             coincidence_irq_next = comparison_stage_next;
         end
+        // Disable follows the natural A observation. Reset only the comparison
+        // value; readable coincidence and its IRQ latch retain that observation.
+        if (lcd_disable) begin
+            comparison_value_next = 0;
+            comparison_valid_next = 1;
+        end
     end
     assign next_mode0 = mode3_end_delayed_next && !vblank_stage;
     assign next_mode1 = vblank_stage;
@@ -159,8 +161,10 @@ module n2m_ppu_timing (
     assign stat_event = (!stat_condition && natural_stat) || (!natural_stat && final_stat);
     // Capture both ordered transitions at A; owner133 consumes before B. This
     // pulse clears on the next system edge even when host pause stops dots.
-    `DFF_RST(stat_rise, gb_tick && stat_event, clk_sys, reset)
-    `DFF_RST_EN(stat_transient, stat_write, clk_sys, gb_tick, reset, 1'b0)
+    `DFF_RST(stat_rise, gb_tick && lcd_on && stat_event, clk_sys, reset)
+    // Keep the combined line across LCD-off writes and enable. The next active
+    // observation compares against this history rather than an artificial low.
+    `DFF_RST_EN(stat_condition, final_stat, clk_sys, gb_tick && lcd_on, reset, 1'b0)
     `DFF_RST_EN(exceptional, exceptional_next, clk_sys, gb_tick, disabled_reset, 1'b0)
     `DFF_RST_EN(exception_step, exception_step_next, clk_sys, gb_tick, disabled_reset, 4'd0)
     `DFF_RST_EN(comparison_value, comparison_value_next, clk_sys, gb_tick, reset, 8'd0)

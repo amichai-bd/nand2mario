@@ -391,11 +391,28 @@ therefore occurs at PPU quarter3. The integrated wrapper asserts this invariant;
 LCDC, so a new enable establishes alignment again. A stopped system preserves
 phase; it does not independently restart either counter.
 
-While LCD is off, comparison history, readable coincidence and the IRQ latch
-hold their values, including across LYC writes. Global/core reset initializes
-them to zero independently of the dot enable. LY=LYC=0 does not combinationally
-set the flag while LCDC is off. On enable, ordinary comparison resumes through
-the defined phase history; no undocumented power-up equality is assumed.
+LCD disable follows the natural A observation with old LCDC/LYC/enables. It
+retains the resulting readable coincidence, coincidence IRQ latch and combined
+STAT line, including a natural rising event for B. Readable LY/mode become zero
+and the comparison value resets to zero; these do not recompute the retained
+flag or interrupt histories.
+
+While LCD is off, STAT/LYC writes store their writable values without changing
+those histories or generating an interrupt. Enable preserves the prior combined
+line. The first T1 captures LY0 versus current LYC through the ordinary comparison
+phase, including its early falling and delayed rising rules. No synthetic low
+level creates a restart edge. This phase is the declared project mapping;
+Mooneye on/off checks establish instruction-scale behavior, not a sub-T anchor.
+Global/core reset initializes histories to zero independently of the dot enable.
+Host pause preserves retained state; an A event still clears after its B sampling.
+
+The pinned [SameBoy LCD update and shutdown model](https://github.com/LIJI32/SameBoy/blob/213a12ce93d66b105a113debd9396306066a7cfc/Core/display.c#L523)
+returns before updating coincidence/shared IRQ state while disabled. Its shutdown
+resets readable LY/mode and comparison value separately. This is model
+corroboration, not an additional silicon measurement. The pinned
+[Mooneye on/off checks](https://github.com/Gekkio/mooneye-test-suite/blob/31510e12eea6286d36eea060a6adde755e1067aa/acceptance/ppu/stat_lyc_onoff.s)
+distinguish retained coincidence, equal-to-equal restart without an interrupt,
+and unequal-to-equal restart with an interrupt.
 
 The register helper stores LCDC, SCY, SCX, LYC, BGP, OBP0/1, WY, WX and STAT
 interrupt enables using generated addresses and direct-entry peripheral fill.

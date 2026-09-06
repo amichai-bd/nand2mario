@@ -85,7 +85,7 @@ module n2m_ppu (
         .stat_write, .lyc_write, .lcd_enable, .lcd_disable
     );
     n2m_ppu_timing timing (
-        .clk_sys, .reset, .gb_tick, .lcd_on(lcdc[7]), .ly_compare(lyc), .stat_enable, .stat_write, .lyc_write, .write_data(io_wdata),
+        .clk_sys, .reset, .gb_tick, .lcd_on(lcdc[7]), .lcd_disable, .ly_compare(lyc), .stat_enable, .stat_write, .lyc_write, .write_data(io_wdata),
         .scan_done, .scan_active, .pixel_end, .object_found, .line_quarter,
         .quarter_phase, .ly, .readable_ly, .coincidence, .mode, .mode3, .mode3_end,
         .line_reset, .stat_condition, .stat_rise, .vblank_condition

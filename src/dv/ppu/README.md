@@ -88,3 +88,5 @@ with every-pixel comparison. The negative substitutes the new-palette shade
 at an actual sensitive commit pixel. Existing static wrappers preserve the
 unsigned/8x16 scene; this variant does not claim dynamic scrolling/window edges.
 The variant is pending actual runtime evidence.
+
+`ppu-stat-off` checks fourteen public readback/shared-line observations across off-state writes, equal and unequal restart, pause and core reset. `ppu-stat-off-corrupt` changes the actual retained line while off and must fail the corresponding independent check. These targets require actual runtime evidence; HBlank/OAM transition coverage remains separate.
