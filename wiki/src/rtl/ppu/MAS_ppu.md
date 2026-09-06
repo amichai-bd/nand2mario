@@ -296,3 +296,23 @@ transition between 76 and 80 ticks; LY reads bracket the first increment between
 The selected source's delayed mode signal fits the former bracket; the complete
 controller must pass the whole literal table with pre-edge CPU reads. The
 remaining exact LY153/comparison, STAT-write and window gates above still apply.
+
+### OAM scan and fetch port
+
+The scanner exposes a seven-bit pair address and a phase: 0 idle, 1 Y/X scan,
+2 tile/attribute fetch. The sixteen-bit response places the lower-address byte
+in bits7:0. A scan examines forty OAM entries in order, retaining at most the
+first ten Y matches, including hidden X positions. Matching the current pixel
+position chooses the lowest retained index; finishing that fetch removes that
+match. The renderer's increasing X position supplies DMG X priority.
+
+Phase1 alternates request/capture dots and saves the captured Y/X on the next
+dot. DMA-active suppresses the Y/X capture as in the selected source; its
+existing captured pair is retained. Phase2 samples the arbitrated pair at object
+fetch phase1. The external owner #132 controls the actual bus pair during DMA;
+these scan observations do not themselves implement or prove OAM corruption.
+A promised sample without response-valid faults without stretching a dot.
+There is no local OAM RAM, FF46 register or DMA engine. Reset initializes all
+scan state independently of gb_tick; LCD-off tick handling retains the selected
+source's first-line scan behavior. Mode/startup integration must validate the
+result against the instruction-relative observation table.
