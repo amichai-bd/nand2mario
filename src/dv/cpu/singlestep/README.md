@@ -1,6 +1,6 @@
 # Selected SM83 CPU vectors
 
-This bounded adapter uses the delivered [CPU boundary](../../../../wiki/src/rtl/cpu/MAS.md),
+This bounded adapter uses the delivered [CPU boundary](../../../../wiki/src/rtl/cpu/MAS_cpu.md),
 using the [baseline's reviewed source](../../../../wiki/src/dv/baseline/SPEC.md#singlestep-vectors).
 The adapter scope is [#101](https://github.com/amichai-bd/nand2mario/issues/101).
 

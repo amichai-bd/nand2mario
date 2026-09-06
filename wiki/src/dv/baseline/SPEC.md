@@ -135,7 +135,7 @@ compare final registers and touched RAM against the input's expected values.
 Record vector name and first expected/actual difference. Treat bus observations
 as M-state data; nullable address/data are don't-care only where upstream says
 so. They do not prove T-state edge timing. Upstream does not establish reliable
-interrupt-state expectations; the [CPU contract](../../rtl/cpu/MAS.md) classifies IME/EI
+interrupt-state expectations; the [CPU contract](../../rtl/cpu/MAS_cpu.md) classifies IME/EI
 cases explicitly, and independent directed tests cover excluded fields.
 Do not claim the source is infallible or use its Ares-derived expectations as
 an independent Ares differential oracle. Preserve exclusions in the run report.

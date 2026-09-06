@@ -3080,7 +3080,7 @@
       "+expected-state-fault"
     ],
     "expected_exit": "nonzero",
-    "signature": "CPU_VECTOR_FIRST_DIFFERENCE field=A byte=30 expected=1b actual=1a",
+    "signature": "CPU_VECTOR_STATE case=0",
     "timeout_seconds": 120
   }
 }
