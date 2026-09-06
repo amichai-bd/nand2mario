@@ -34,10 +34,10 @@ module tb_ppu_objects;
         scan_reset = 0;
     endtask
     task automatic fetch_check(input logic [3:0] index_value,
-        input logic [15:0] data_value, input logic [10:0] row_value);
+        input logic [6:0] pair_value, input logic [15:0] data_value, input logic [10:0] row_value);
         fetch_mode = 1;
         #1;
-        if (!object_found || selected_index !== index_value || oam_phase !== 2)
+        if (!object_found || selected_index !== index_value || oam_phase !== 2 || oam_pair_address !== pair_value)
             $fatal(1, "PPU_OBJECT_SELECTION index=%0d actual=%0d", index_value, selected_index);
         fetch_phase1 = 1;
         oam_data = data_value;
@@ -79,8 +79,8 @@ module tb_ppu_objects;
         end
         tick(); // final saved pair follows its capture
         if (!scan_done) $fatal(1, "PPU_OBJECT_SCAN_END");
-        fetch_check(0, 16'hd023, 11'h11f); // 8x16 ignores tilebit0, vertical flip
-        fetch_check(1, 16'h0024, 11'h120);
+        fetch_check(0, 7'd1, 16'hd023, 11'h11f); // 8x16 ignores tilebit0, vertical flip
+        fetch_check(1, 7'd3, 16'h0024, 11'h120);
         pixel_position = 16;
         #1;
         if (object_found) $fatal(1, "PPU_OBJECT_FIRST_TEN_HIDDEN_X");
@@ -94,8 +94,19 @@ module tb_ppu_objects;
         end
         dma_active = 0;
         tick();
-        fetch_check(0, 16'h0020, 11'h100);
-        fetch_check(1, 16'h0022, 11'h110); // DMA suppression retained prior Y/X pair
+        fetch_check(0, 7'd1, 16'h0020, 11'h100);
+        fetch_check(1, 7'd3, 16'h0022, 11'h110); // DMA suppression retained prior Y/X pair
+        begin_scan();
+        for (entry = 0; entry < 40; entry = entry + 1) begin
+            tick();
+            oam_data = entry == 39 ? 16'h0810 : 16'h20c8;
+            tick();
+        end
+        fetch_mode = 1;
+        #1;
+        if (!scan_done || object_found) $fatal(1, "PPU_OBJECT_FINAL_CAPTURE_ORDER");
+        tick(); // only now can the captured final OAM entry be admitted
+        fetch_check(0, 7'd79, 16'h0026, 11'h130);
         gb_tick = 0;
         reset = 1;
         tick();
