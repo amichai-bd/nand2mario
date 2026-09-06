@@ -71,7 +71,7 @@ module tb_cpu_irq;
     bit corrupt;
     bit di_fault;
 
-    n2m_cpu_control dut (.*);
+    n2m_cpu dut (.*);
     assign read_data = address == 16'hffff ? ie :
         (address == 16'hff0f ? {3'b111, iflags} : memory[address]);
 
@@ -290,9 +290,9 @@ module tb_cpu_irq;
                 end
                 if (scenario==12 && dot_before==28) iflags=request_bits[4:0];
                 if (di_fault && scenario==18 && dot_before==24)
-                    force dut.control.mode=n2m_cpu_pkg::MODE_INTERRUPT;
+                    force dut.u_control.control.mode=n2m_cpu_pkg::MODE_INTERRUPT;
                 if (corrupt && scenario==0 && dot_before==27)
-                    force dut.control.irq_snapshot=5'b0;
+                    force dut.u_control.control.irq_snapshot=5'b0;
                 edge_cycle(cycle%3==0);
             end
             if ((expect_interrupt && !observed_entry) || event_index!=expected_events || fault || locked ||

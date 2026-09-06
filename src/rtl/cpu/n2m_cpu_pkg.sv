@@ -60,6 +60,64 @@ package n2m_cpu_pkg;
         logic write_effect;
     } cpu_address_effect_t;
 
+    // Prepared transaction, with effects applied only by the bus T4 owner.
+    typedef struct packed {
+        logic [15:0] address;
+        logic [7:0] write_data;
+        logic write_enable;
+        access_kind_t access_kind;
+    } cpu_bus_plan_t;
+
+    typedef struct packed {
+        cpu_registers_t registers;
+        logic [7:0] opcode;
+        logic cb_bank;
+        logic [2:0] step;
+        logic [15:0] pc;
+        logic [15:0] temporary;
+        logic [7:0] data;
+    } cpu_execute_request_t;
+
+    typedef struct packed {
+        cpu_registers_t registers_after;
+        logic [15:0] pc_after;
+        logic [15:0] temporary_after;
+        cpu_bus_plan_t plan;
+        logic finish;
+        logic prefix;
+        logic halt_request;
+        logic stop_request;
+        logic illegal;
+        logic enable_interrupts;
+        logic disable_interrupts;
+        logic return_interrupt;
+        cpu_address_effect_t address_effect;
+    } cpu_execute_result_t;
+
+    // Architectural payload captured at T4/A. IE/IF/buttons are observed at B.
+    typedef struct packed {
+        logic valid;
+        logic is_interrupt;
+        cpu_registers_t registers_after;
+        logic [15:0] pc_before;
+        logic [15:0] pc_after;
+        logic [23:0] fetched_bytes;
+        logic [1:0] fetched_length;
+        logic ime_after;
+        logic ime_delay_after;
+        logic halted_after;
+        logic stopped_after;
+        logic halt_bug_after;
+        logic [31:0] epoch;
+        logic [63:0] dot_after;
+    } cpu_retire_capture_t;
+
+    typedef enum logic [1:0] {
+        STOP_CONTINUE = 2'd0,
+        STOP_HALT = 2'd1,
+        STOP_OSCILLATOR = 2'd2
+    } cpu_stop_action_t;
+
     function automatic logic [7:0] read_byte(input cpu_registers_t r, input logic [2:0] index);
         case (index)
             0: read_byte = r.b;

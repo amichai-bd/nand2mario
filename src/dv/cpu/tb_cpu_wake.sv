@@ -62,7 +62,7 @@ module tb_cpu_wake;
     bit missing;
     bit stale;
 
-    n2m_cpu_control dut (.*);
+    n2m_cpu dut (.*);
     assign read_data = memory[address];
     always @(posedge clk_sys) begin
         if (reset_sys || core_reset) dot_before <= 0;
@@ -223,9 +223,9 @@ module tb_cpu_wake;
                 if (dot_before==64'(wake_dot-1)) response_valid=!(missing && scenario==0);
                 if (dot_before>=28 && dot_before<32)
                     for (quiet=0; quiet<8; quiet=quiet+1) edge_cycle(0);
-                if (stale && modified_case && dot_before==64'(wake_dot-1)) force dut.control_next.opcode=8'h00;
+                if (stale && modified_case && dot_before==64'(wake_dot-1)) force dut.u_control.control_next.opcode=8'h00;
                 edge_cycle(1);
-                if (stale && modified_case && dot_before==64'(wake_dot)) release dut.control_next.opcode;
+                if (stale && modified_case && dot_before==64'(wake_dot)) release dut.u_control.control_next.opcode;
                 edge_cycle(0); edge_cycle(0);
             end
             if (event_index != (ime_case ? 7 : 11) || fault || halted || stopped || locked)

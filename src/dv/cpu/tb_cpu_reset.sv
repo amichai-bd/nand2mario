@@ -61,7 +61,7 @@ module tb_cpu_reset;
     bit fresh;
     bit corrupt;
 
-    n2m_cpu_control dut (.*);
+    n2m_cpu dut (.*);
     assign read_data=memory[address];
     always @(posedge clk_sys) begin
         if (reset_sys || core_reset) dot_before<=0;
@@ -175,7 +175,7 @@ module tb_cpu_reset;
             fresh=1;
             for (cycle=0; cycle<132; cycle=cycle+1) begin
                 if (corrupt && scenario==0 && dot_before==31)
-                    force dut.bus.commit=1'b0;
+                    force dut.u_bus.commit=1'b0;
                 edge_cycle(cycle%3==0);
             end
             if (write_count!=3 || event_index!=5 || !halted || fault ||

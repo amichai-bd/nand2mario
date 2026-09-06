@@ -58,7 +58,7 @@ module tb_cpu_if_observation;
     integer records;
     bit corrupt;
 
-    n2m_cpu_control dut (.*);
+    n2m_cpu dut (.*);
     assign read_data=memory[address];
     always @(posedge clk_sys) begin
         if (reset_sys || core_reset) dot_before <= 0;
@@ -133,7 +133,7 @@ module tb_cpu_if_observation;
         if (!reset_sys && !core_reset && tick && dot_before==16) begin
             iflags=scenario==0 ? 0 : (scenario==1 ? 5'd1 : 5'd2);
             ie=scenario==2 ? 8'd2 : 8'd1; buttons='h5a;
-            if (corrupt && scenario==1) force dut.observer.retirement_next.iflags=8'h00;
+            if (corrupt && scenario==1) force dut.u_retire.retirement_b_next.iflags=8'h00;
         end
         #1;
         if (!reset_sys && !core_reset) check_event();

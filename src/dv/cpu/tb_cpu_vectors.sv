@@ -73,7 +73,7 @@ module tb_cpu_vectors;
     bit corrupt;
     bit missing;
 
-    n2m_cpu_control dut (.*);
+    n2m_cpu dut (.*);
     assign read_data = memory[address];
 
     always @(posedge clk_sys) begin
@@ -210,15 +210,15 @@ module tb_cpu_vectors;
             initial_control.instruction_pc=initial_pc;
             corrupt_registers=initial_registers;
             corrupt_registers.a=initial_registers.a ^ 8'h01;
-            force dut.registers=initial_registers;
-            force dut.control=initial_control;
+            force dut.u_control.registers=initial_registers;
+            force dut.u_control.control=initial_control;
             edge_cycle(0);
-            release dut.registers;
-            release dut.control;
-            if (missing && number==0) force dut.observer.retirement_valid=0;
+            release dut.u_control.registers;
+            release dut.u_control.control;
+            if (missing && number==0) force dut.u_retire.retirement_valid=0;
             for (cycle=0; cycle<(instruction_cycles+1)*12+2; cycle=cycle+1) begin
                 if (corrupt && number==0 && dot_before==4)
-                    force dut.registers=corrupt_registers;
+                    force dut.u_control.registers=corrupt_registers;
                 edge_cycle(cycle%3==0);
             end
             if (!complete) $fatal(1,"CPU_VECTOR_MISSING case=%0d",number);

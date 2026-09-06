@@ -61,7 +61,7 @@ module tb_cpu_irq_reset;
     bit fresh;
     bit corrupt;
 
-    n2m_cpu_control dut (.*);
+    n2m_cpu dut (.*);
     assign read_data=memory[address];
     always @(posedge clk_sys) begin
         if (reset_sys || core_reset) dot_before <= 0;
@@ -157,7 +157,7 @@ module tb_cpu_irq_reset;
             if (dot_before!==64'(target_dot) || event_index!=3 || writes!=expected_writes)
                 $fatal(1,"CPU_IRQ_RESET_HELD case=%0d writes=%0d expected=%0d",scenario,writes,expected_writes);
             if (global_case) reset_sys=1; else core_reset=1;
-            if (corrupt && scenario==19) force dut.bus.commit=1'b1;
+            if (corrupt && scenario==19) force dut.u_bus.commit=1'b1;
             #2; check_bus();
             if (global_case && (initialized || retirement_valid || address_effect_phase!=0))
                 $fatal(1,"CPU_IRQ_RESET_ASYNC");

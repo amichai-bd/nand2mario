@@ -6,6 +6,45 @@ they do not define Game Boy behavior. The register convention below is adopted f
 analysis does not select a Game Boy microarchitecture. The [current phase](../agents/bootstrap-plan.md#current-phase)
 and [gap register](../preflight-gaps.md) still govern implementation.
 
+## Typed module and timing boundaries
+
+Keep shared request, response, execution and captured-event records in the
+owner's package. A module boundary should carry a named record when its fields
+form one transaction or stage payload. Use finite enums for control choices;
+do not duplicate generated interface constants or invent another encoding.
+Keep a small combinational helper small rather than wrapping unrelated pins
+in an artificial transaction.
+
+A composition module connects explicit owners. Steering has one owner;
+combinational arithmetic, transaction timing and committed observation remain
+separate responsibilities. Name product instances `u_<role>`. Use consistent
+state/next-state names, and name timed payloads for their actual sampling phase.
+For the SM83, T3 recognition, T4/A capture and following-edge B publication are
+distinct; a cache's q1/q2/q3 labels do not define CPU timing. Do not add flops or
+copy pipeline stages merely to resemble a reference.
+
+Keep each clock domain explicit in its owner contract. Use the approved clock
+and enables; a typed record is not a CDC mechanism. Preserve reset priority,
+pause holding and pending-transaction cancellation across structural changes.
+Keep stability assertions at the transaction owner and capture/publish assertions
+at the recorder. DV observes full public records at the specified boundary;
+interface packing changes must not rewrite the independent expected stream.
+
+These method observations follow the pinned frog-bui
+[RTL convention](https://github.com/amichai-bd/frog-bui/blob/33da9b82b5d63b394c490653336318d9d58f3b7f/wiki/src/rtl/BKM-RTL.md),
+[package](https://github.com/amichai-bd/frog-bui/blob/33da9b82b5d63b394c490653336318d9d58f3b7f/src/rtl/rv_cpu/rv_pkg.sv)
+and [DV guidance](https://github.com/amichai-bd/frog-bui/blob/33da9b82b5d63b394c490653336318d9d58f3b7f/.agents/skills/dv-testbench-coder/SKILL.md),
+and the FROG_FS
+[CPU composition](https://github.com/amichai-bd/FROG_FS/blob/dce7b9c3003565e3745e1d940eb66156075e8fec/src/rtl/rv_cpu/rv_cpu.sv).
+Those private repository links require access. The FPGA-MAFIA
+[cache top](https://github.com/FPGA-MAFIA/fpga_mafia/blob/0939fe7586f472942f64003c26048e1bf37e5c85/source/mem_ss/d_cache/d_cache.sv),
+[package](https://github.com/FPGA-MAFIA/fpga_mafia/blob/0939fe7586f472942f64003c26048e1bf37e5c85/source/mem_ss/d_cache/d_cache_param_pkg.sv)
+and [pipeline](https://github.com/FPGA-MAFIA/fpga_mafia/blob/0939fe7586f472942f64003c26048e1bf37e5c85/source/mem_ss/d_cache/d_cache_pipe.sv)
+show typed request/response composition and explicit stage-register boundaries.
+No reference HDL is copied into this project; these designs do not specify DMG
+behavior. The earlier unpublished register-header inspection below remains a
+separate source with its own revision.
+
 ## Separate declarations and assignments
 
 Product RAM and ROM backing stores use the

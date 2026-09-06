@@ -72,7 +72,7 @@ module tb_cpu_program;
     integer qualified_effects;
     integer qualified_accesses;
 
-    n2m_cpu_control dut (.*);
+    n2m_cpu dut (.*);
     assign read_data = memory[address];
 
     always @(posedge clk_sys) begin
@@ -185,7 +185,7 @@ module tb_cpu_program;
         #1 clk_sys = 1;
         #1;
         if (retirement_fault && retirement_valid && event_index == 3)
-            force dut.observer.retirement.pc_after = 16'hffff;
+            force dut.u_retire.retirement.pc_after = 16'hffff;
         #1;
         if (!reset_sys && !core_reset) check_retirement();
         #3 clk_sys = 0;
@@ -315,8 +315,8 @@ module tb_cpu_program;
             core_reset = 0;
         end
         for (cycle = 0; cycle < 660; cycle = cycle + 1) begin
-            if (state_fault && dot_before == 120) force dut.registers.a = 8'h40;
-            if (timing_fault && dot_before == 10) force dut.bus.commit = 1'b1;
+            if (state_fault && dot_before == 120) force dut.u_control.registers.a = 8'h40;
+            if (timing_fault && dot_before == 10) force dut.u_bus.commit = 1'b1;
             if (cycle >= 240 && cycle < 252 && (cycle % 3) == 0)
                 for (pause_edge = 0; pause_edge < 20; pause_edge = pause_edge + 1) edge_cycle(0);
             if (effect_missing && dot_before == 3) response_valid = 0;

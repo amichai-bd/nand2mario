@@ -61,7 +61,7 @@ module tb_cpu_stop;
     bit corrupt_divider;
     bit corrupt_action;
 
-    n2m_cpu_control dut (.*);
+    n2m_cpu dut (.*);
     assign read_data = memory[address];
 
     always @(posedge clk_sys) begin
@@ -189,9 +189,9 @@ module tb_cpu_stop;
             while (dot_before < 64'(target_dot)) begin
                 if (dot_before==14 && pending_case) iflags=1;
                 if (scenario==0 && dot_before==15 && corrupt_divider)
-                    force dut.stop_policy.divider_reset=1'b0;
+                    force dut.u_stop_policy.divider_reset=1'b0;
                 if (scenario==0 && dot_before==15 && corrupt_action)
-                    force dut.stop_policy.action=2'd0;
+                    force dut.u_stop_policy.action=n2m_cpu_pkg::STOP_CONTINUE;
                 edge_cycle(1); edge_cycle(0); edge_cycle(0);
             end
             for (quiet=0; quiet<40; quiet=quiet+1) edge_cycle(0);

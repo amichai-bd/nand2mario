@@ -1,8 +1,8 @@
 `default_nettype none
 `include "src/rtl/common/macros.svh"
 
-// Pipeline and architectural state. DMG STOP entry is local; oscillator wake
-// retains its explicit policy seam until the remaining model gates are closed.
+// Single owner of architectural steering. Temporal bus and recorder state
+// belong to their separate modules in the composition wrapper.
 module n2m_cpu_control (
     input var logic clk_sys,
     input var logic reset_sys,
@@ -13,17 +13,22 @@ module n2m_cpu_control (
     input var logic [63:0] dot_before,
     input var logic [7:0] ie,
     input var logic [4:0] iflags,
-    input var logic [7:0] buttons,
     input var logic [7:0] read_data,
-    input var logic response_valid,
     input var logic joyp_selected_active,
     input var logic wake_request,
-    output logic request_valid,
-    output logic [15:0] address,
-    output logic [7:0] write_data,
-    output logic write_enable,
-    output n2m_cpu_pkg::access_kind_t access_kind,
-    output logic bus_commit,
+    input var logic [1:0] phase,
+    input var logic cycle_end,
+    input var logic bus_fault,
+    input var n2m_cpu_pkg::cpu_execute_result_t execute_result,
+    input var n2m_cpu_pkg::cpu_stop_action_t stop_action,
+    input var logic stop_padding,
+    input var logic divider_reset_request,
+    output n2m_cpu_pkg::cpu_execute_request_t execute_request,
+    output n2m_cpu_pkg::cpu_bus_plan_t bus_plan,
+    output n2m_cpu_pkg::cpu_retire_capture_t retire_capture,
+    output logic active,
+    output logic complete_enable,
+    output logic pending_irq,
     output n2m_cpu_pkg::cpu_address_effect_t address_effect,
     output logic address_effect_resolved,
     output logic address_effect_sample,
@@ -36,10 +41,7 @@ module n2m_cpu_control (
     output logic fault,
     output logic ime_observe,
     output logic ime_delay_observe,
-    output logic stop_execute,
-    output logic divider_reset_request,
-    output logic retirement_valid,
-    output n2m_interfaces_pkg::retirement_t retirement
+    output logic stop_execute
 );
     import n2m_cpu_pkg::*;
     import n2m_interfaces_pkg::*;
@@ -48,45 +50,10 @@ module n2m_cpu_control (
     cpu_control_t control_next;
     cpu_registers_t registers;
     cpu_registers_t registers_next;
-    cpu_registers_t execute_registers;
-    logic [15:0] execute_pc;
-    logic [15:0] execute_temporary;
-    logic [15:0] execute_address;
-    logic [7:0] execute_write_data;
-    logic execute_write;
-    access_kind_t execute_kind;
-    logic execute_finish;
-    logic execute_prefix;
-    logic execute_halt;
-    logic execute_stop;
-    logic execute_illegal;
-    logic execute_ei;
-    logic execute_di;
-    logic execute_reti;
-    logic active;
-    logic complete_enable;
-    logic [1:0] phase;
-    logic [15:0] plan_address;
-    logic [7:0] plan_write_data;
-    logic plan_write;
-    access_kind_t plan_kind;
-    logic cycle_end;
-    logic bus_fault;
-    logic event_valid;
-    logic event_interrupt;
-    logic [15:0] event_pc_before;
-    logic [15:0] event_pc_after;
-    logic [23:0] event_fetched;
-    logic [1:0] event_length;
-    logic event_halted;
-    logic event_stopped;
     logic [4:0] dispatch;
     logic [4:0] selected_irq;
     logic [15:0] selected_vector;
-    logic pending_irq;
     logic hold_address_effect;
-    logic [1:0] stop_action;
-    logic stop_padding;
 
     function automatic cpu_registers_t profile_registers;
         cpu_registers_t r;
@@ -114,6 +81,16 @@ module n2m_cpu_control (
         return c;
     endfunction
 
+    always_comb begin
+        execute_request.registers = registers;
+        execute_request.opcode = control.opcode;
+        execute_request.cb_bank = control.cb_bank;
+        execute_request.step = control.step;
+        execute_request.pc = control.pc;
+        execute_request.temporary = control.temporary;
+        execute_request.data = read_data;
+    end
+
     assign fault = bus_fault || control.profile_fault;
     assign initialized = control.initialized;
     assign active = initialized && !fault && (control.mode == MODE_FETCH || control.mode == MODE_EXECUTE || control.mode == MODE_INTERRUPT || control.mode == MODE_HALT);
@@ -125,33 +102,13 @@ module n2m_cpu_control (
     assign ime_delay_observe = control.ime_delay;
     assign pending_irq = |control.irq_snapshot;
     assign dispatch = control.irq_snapshot;
-    assign stop_execute = control.mode == MODE_EXECUTE && execute_stop && cycle_end;
+    assign stop_execute = control.mode == MODE_EXECUTE && execute_result.stop_request && cycle_end;
 
     assign address_effect_phase = phase;
     assign address_effect_sample = gb_tick && phase == 3 && initialized &&
         !fault && !reset_sys && !core_reset && (!active || cycle_end);
     assign hold_address_effect = initialized && !fault &&
         (phase != 0 || gb_tick) && !(gb_tick && phase == 3);
-
-    n2m_cpu_stop_policy stop_policy (
-        .selected_active(joyp_selected_active), .enabled_pending(pending_irq),
-        .execute(stop_execute), .action(stop_action), .padding(stop_padding),
-        .divider_reset(divider_reset_request)
-    );
-
-    cpu_address_effect_t execute_address_effect;
-
-    n2m_cpu_execute execute (
-        .registers(registers), .opcode(control.opcode), .cb_bank(control.cb_bank),
-        .step(control.step), .pc(control.pc), .temporary(control.temporary),
-        .data_in(read_data), .registers_next(execute_registers), .pc_next(execute_pc),
-        .temporary_next(execute_temporary), .address(execute_address),
-        .write_data(execute_write_data), .write_enable(execute_write),
-        .access_kind(execute_kind), .finish(execute_finish), .prefix(execute_prefix),
-        .halt_request(execute_halt), .stop_request(execute_stop), .illegal(execute_illegal),
-        .enable_interrupts(execute_ei), .disable_interrupts(execute_di),
-        .return_interrupt(execute_reti), .address_effect(execute_address_effect)
-    );
 
     // Incomplete source mappings are visible to the future consumer. They
     // never masquerade as resolved cycles without an additional effect.
@@ -163,12 +120,12 @@ module n2m_cpu_control (
             address_effect.valid = !control.observation_resume;
             address_effect.address = control.observation_resume ? 16'b0 : control.pc;
         end else if (control.mode == MODE_EXECUTE) begin
-            address_effect = execute_address_effect;
-            if (execute_finish && !execute_halt && !execute_stop) begin
+            address_effect = execute_result.address_effect;
+            if (execute_result.finish && !execute_result.halt_request && !execute_result.stop_request) begin
                 address_effect.valid = 1;
-                address_effect.address = execute_pc;
+                address_effect.address = execute_result.pc_after;
             end
-            if (execute_stop) address_effect_resolved = 0;
+            if (execute_result.stop_request) address_effect_resolved = 0;
         end else if (control.mode == MODE_INTERRUPT) begin
             if (control.step == 0) begin
                 address_effect_resolved = !control.observation_resume;
@@ -195,35 +152,25 @@ module n2m_cpu_control (
     end
 
     always_comb begin
-        plan_address = control.pc;
-        plan_write_data = 0;
-        plan_write = 0;
-        plan_kind = ACCESS_IDLE;
-        if (control.mode == MODE_FETCH || control.mode == MODE_HALT) plan_kind = ACCESS_OPCODE;
+        bus_plan.address = control.pc;
+        bus_plan.write_data = 0;
+        bus_plan.write_enable = 0;
+        bus_plan.access_kind = ACCESS_IDLE;
+        if (control.mode == MODE_FETCH || control.mode == MODE_HALT) bus_plan.access_kind = ACCESS_OPCODE;
         else if (control.mode == MODE_EXECUTE) begin
-            plan_address = execute_address;
-            plan_write_data = execute_write_data;
-            plan_write = execute_write;
-            plan_kind = execute_kind;
+            bus_plan.address = execute_result.plan.address;
+            bus_plan.write_data = execute_result.plan.write_data;
+            bus_plan.write_enable = execute_result.plan.write_enable;
+            bus_plan.access_kind = execute_result.plan.access_kind;
         end else if (control.mode == MODE_INTERRUPT) begin
             if (control.step == 2 || control.step == 3) begin
-                plan_address = registers.sp;
-                plan_write = 1;
-                plan_write_data = control.step == 2 ? control.irq_pc[15:8] : control.irq_pc[7:0];
-                plan_kind = ACCESS_STACK;
-            end else if (control.step == 4) plan_kind = ACCESS_OPCODE;
+                bus_plan.address = registers.sp;
+                bus_plan.write_enable = 1;
+                bus_plan.write_data = control.step == 2 ? control.irq_pc[15:8] : control.irq_pc[7:0];
+                bus_plan.access_kind = ACCESS_STACK;
+            end else if (control.step == 4) bus_plan.access_kind = ACCESS_OPCODE;
         end
     end
-
-    n2m_cpu_bus bus (
-        .clk_sys(clk_sys), .reset_sys(reset_sys), .core_reset(core_reset),
-        .gb_tick(gb_tick), .active(active), .complete_enable(complete_enable),
-        .plan_address(plan_address),
-        .plan_write_data(plan_write_data), .plan_write(plan_write), .plan_kind(plan_kind),
-        .response_valid(response_valid), .phase(phase), .request_valid(request_valid),
-        .address(address), .write_data(write_data), .write_enable(write_enable),
-        .access_kind(access_kind), .commit(bus_commit), .cycle_end(cycle_end), .fault(bus_fault)
-    );
 
     always_comb begin
         selected_irq = 0;
@@ -238,14 +185,15 @@ module n2m_cpu_control (
     always_comb begin
         control_next = control;
         registers_next = registers;
-        event_valid = 0;
-        event_interrupt = 0;
-        event_pc_before = control.instruction_pc;
-        event_pc_after = control.pc;
-        event_fetched = control.fetched;
-        event_length = control.length;
-        event_halted = halted;
-        event_stopped = stopped;
+        retire_capture = '0;
+        retire_capture.valid = 0;
+        retire_capture.is_interrupt = 0;
+        retire_capture.pc_before = control.instruction_pc;
+        retire_capture.pc_after = control.pc;
+        retire_capture.fetched_bytes = control.fetched;
+        retire_capture.fetched_length = control.length;
+        retire_capture.halted_after = halted;
+        retire_capture.stopped_after = stopped;
         irq_ack = 0;
         // PHI closes the enabled-request latch at T3 rising. Recognition and
         // low-stack vector selection consume this frozen M-cycle snapshot.
@@ -277,11 +225,11 @@ module n2m_cpu_control (
                     end
                 end
                 MODE_EXECUTE: begin
-                    registers_next = execute_registers;
-                    control_next.pc = execute_pc;
-                    control_next.temporary = execute_temporary;
+                    registers_next = execute_result.registers_after;
+                    control_next.pc = execute_result.pc_after;
+                    control_next.temporary = execute_result.temporary_after;
                     control_next.step = control.step + 3'd1;
-                    if (execute_kind == ACCESS_OPERAND) begin
+                    if (execute_result.plan.access_kind == ACCESS_OPERAND) begin
                         case (control.length)
                             1: control_next.fetched[15:8] = read_data;
                             2: control_next.fetched[23:16] = read_data;
@@ -289,61 +237,61 @@ module n2m_cpu_control (
                         endcase
                         control_next.length = control.length + 2'd1;
                     end
-                    if (execute_prefix) begin
+                    if (execute_result.prefix) begin
                         control_next.opcode = read_data;
                         control_next.cb_bank = 1;
                         control_next.step = 0;
                     end
-                    if (execute_illegal) control_next.mode = MODE_LOCK;
-                    if (execute_finish) begin
-                        event_valid = 1;
-                        event_pc_after = execute_pc;
+                    if (execute_result.illegal) control_next.mode = MODE_LOCK;
+                    if (execute_result.finish) begin
+                        retire_capture.valid = 1;
+                        retire_capture.pc_after = execute_result.pc_after;
                         control_next.step = 0;
                         control_next.cb_bank = 0;
-                        control_next.ime = control.ime || control.ime_delay || execute_reti;
+                        control_next.ime = control.ime || control.ime_delay || execute_result.return_interrupt;
                         control_next.ime_delay = 0;
-                        if (execute_di) control_next.ime = 0;
-                        else if (execute_ei && !control_next.ime) control_next.ime_delay = 1;
+                        if (execute_result.disable_interrupts) control_next.ime = 0;
+                        else if (execute_result.enable_interrupts && !control_next.ime) control_next.ime_delay = 1;
                         control_next.opcode = read_data;
                         control_next.fetched = {16'b0, read_data};
                         control_next.length = 1;
-                        control_next.instruction_pc = execute_pc;
-                        control_next.pc = execute_pc + 16'd1;
+                        control_next.instruction_pc = execute_result.pc_after;
+                        control_next.pc = execute_result.pc_after + 16'd1;
                         control_next.halt_bug = 0;
-                        if (execute_halt) begin
-                            control_next.pc = execute_pc;
+                        if (execute_result.halt_request) begin
+                            control_next.pc = execute_result.pc_after;
                             if (pending_irq) begin
                                 if (control_next.ime) begin
                                     // A request recognized while HALT executes
                                     // with IME set returns to this HALT. This also
                                     // covers delayed EI maturation; late arrivals
                                     // after the T3 snapshot instead enter sleep.
-                                    event_pc_after = control.instruction_pc;
+                                    retire_capture.pc_after = control.instruction_pc;
                                     control_next.pc = control.instruction_pc + 16'd1;
                                 end else control_next.halt_bug = 1;
                             end else begin
                                 control_next.mode = MODE_HALT;
-                                event_halted = 1;
+                                retire_capture.halted_after = 1;
                             end
                         end
-                        if (execute_stop) begin
+                        if (execute_result.stop_request) begin
                             if (stop_padding) begin
-                                event_fetched[15:8] = read_data;
-                                event_length = 2;
-                                event_pc_after = execute_pc + 16'd1;
+                                retire_capture.fetched_bytes[15:8] = read_data;
+                                retire_capture.fetched_length = 2;
+                                retire_capture.pc_after = execute_result.pc_after + 16'd1;
                             end
-                            if (stop_action != 0) begin
+                            if (stop_action != STOP_CONTINUE) begin
                                 control_next.observation_resume = 1;
-                                control_next.pc = event_pc_after;
-                                control_next.mode = stop_action == 1 ? MODE_HALT : MODE_STOP;
-                                event_halted = stop_action == 1;
-                                event_stopped = stop_action == 2;
+                                control_next.pc = retire_capture.pc_after;
+                                control_next.mode = stop_action == STOP_HALT ? MODE_HALT : MODE_STOP;
+                                retire_capture.halted_after = stop_action == STOP_HALT;
+                                retire_capture.stopped_after = stop_action == STOP_OSCILLATOR;
                             end
                         end
-                        if (control_next.ime && pending_irq && !event_stopped) begin
+                        if (control_next.ime && pending_irq && !retire_capture.stopped_after) begin
                             control_next.mode = MODE_INTERRUPT;
-                            control_next.irq_pc = event_pc_after;
-                            event_halted = 0;
+                            control_next.irq_pc = retire_capture.pc_after;
+                            retire_capture.halted_after = 0;
                             control_next.halt_bug = 0;
                         end
                     end
@@ -362,10 +310,10 @@ module n2m_cpu_control (
                     end
                     if (control.step == 4) begin
                         control_next.observation_resume = 0;
-                        event_valid = 1;
-                        event_interrupt = 1;
-                        event_pc_before = control.irq_pc;
-                        event_pc_after = control.pc;
+                        retire_capture.valid = 1;
+                        retire_capture.is_interrupt = 1;
+                        retire_capture.pc_before = control.irq_pc;
+                        retire_capture.pc_after = control.pc;
                         control_next.mode = MODE_EXECUTE;
                         control_next.step = 0;
                         control_next.cb_bank = 0;
@@ -384,24 +332,19 @@ module n2m_cpu_control (
             control_next.initialized = profile_id == PROFILE_DIRECT_ID;
             control_next.profile_fault = profile_id != PROFILE_DIRECT_ID;
             registers_next = profile_registers();
-            event_valid = 0;
+            retire_capture.valid = 0;
             irq_ack = 0;
         end
+        retire_capture.registers_after = registers_next;
+        retire_capture.ime_after = control_next.ime;
+        retire_capture.ime_delay_after = control_next.ime_delay;
+        retire_capture.halt_bug_after = control_next.halt_bug;
+        retire_capture.epoch = epoch;
+        retire_capture.dot_after = dot_before + 64'd1;
     end
 
     `DFF_ARST_VAL(control, control_next, clk_sys, reset_sys, profile_control())
     `DFF_ARST_VAL(registers, registers_next, clk_sys, reset_sys, profile_registers())
-
-    n2m_cpu_retire observer (
-        .clk_sys(clk_sys), .reset_sys(reset_sys), .core_reset(core_reset),
-        .event_valid(event_valid), .event_interrupt(event_interrupt),
-        .registers_after(registers_next), .pc_before(event_pc_before), .pc_after(event_pc_after),
-        .fetched_bytes(event_fetched), .fetched_length(event_length),
-        .ime_after(control_next.ime), .ime_delay_after(control_next.ime_delay),
-        .halted_after(event_halted), .stopped_after(event_stopped), .halt_bug_after(control_next.halt_bug),
-        .epoch(epoch), .dot_after(dot_before + 64'd1), .ie(ie), .iflags(iflags), .buttons(buttons),
-        .retirement_valid(retirement_valid), .retirement(retirement)
-    );
 
     `N2M_ASSERT(CPU_STOP_DIVIDER_EDGE, clk_sys, reset_sys,
         !divider_reset_request || (stop_execute && gb_tick && phase == 3 && !core_reset))
@@ -415,9 +358,9 @@ module n2m_cpu_control (
     `N2M_ASSERT(CPU_IDU_OUTPUT_PAGE, clk_sys, reset_sys || core_reset,
         !address_effect.valid || !address_effect.write_effect || address_effect.known_mask[15:8] == 8'hff)
     `N2M_ASSERT(CPU_IDU_KNOWN_PAGE, clk_sys, reset_sys || core_reset,
-        !execute_address_effect.valid || !execute_address_effect.write_effect ||
-        execute_address_effect.known_mask[15:8] == 8'hff)
+        !execute_result.address_effect.valid || !execute_result.address_effect.write_effect ||
+        execute_result.address_effect.known_mask[15:8] == 8'hff)
     `N2M_ASSERT(CPU_IDU_MASKED_BITS, clk_sys, reset_sys || core_reset,
-        (execute_address_effect.address & ~execute_address_effect.known_mask) == 0)
+        (execute_result.address_effect.address & ~execute_result.address_effect.known_mask) == 0)
     `N2M_ASSERT(CPU_F_LOW_ZERO, clk_sys, reset_sys || core_reset, registers.f[3:0] == 0)
 endmodule

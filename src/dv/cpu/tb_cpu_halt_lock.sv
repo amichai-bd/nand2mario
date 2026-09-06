@@ -60,7 +60,7 @@ module tb_cpu_halt_lock;
     bit lock_fault;
     bit halt_fault;
 
-    n2m_cpu_control dut (.*);
+    n2m_cpu dut (.*);
     assign read_data=memory[address];
     always @(posedge clk_sys) begin
         if (reset_sys || core_reset) dot_before<=0;
@@ -161,8 +161,8 @@ module tb_cpu_halt_lock;
                 bus_count=1; end_dot=20;
             end
             for (cycle=0; cycle<end_dot*3+2; cycle=cycle+1) begin
-                if (halt_fault && scenario==0 && dot_before==8) force dut.control.pc=16'h102;
-                if (lock_fault && scenario==2 && dot_before==12) force dut.observer.retirement_valid=1'b1;
+                if (halt_fault && scenario==0 && dot_before==8) force dut.u_control.control.pc=16'h102;
+                if (lock_fault && scenario==2 && dot_before==12) force dut.u_retire.retirement_valid=1'b1;
                 edge_cycle(cycle%3==0);
             end
             if (fault || !initialized || halted || stopped || bus_index!=bus_count)

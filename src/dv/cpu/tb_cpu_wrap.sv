@@ -64,7 +64,7 @@ module tb_cpu_wrap;
     integer records;
     bit corrupt;
 
-    n2m_cpu_control dut (.*);
+    n2m_cpu dut (.*);
     assign read_data=memory[address];
     always @(posedge clk_sys) begin
         if (reset_sys || core_reset) dot_before <= 0;

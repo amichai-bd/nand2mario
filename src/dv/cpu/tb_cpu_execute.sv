@@ -42,6 +42,32 @@ module tb_cpu_execute;
     integer cases;
     integer trace;
 
+    n2m_cpu_pkg::cpu_execute_request_t request;
+    n2m_cpu_pkg::cpu_execute_result_t result;
+    assign request.registers = registers;
+    assign request.opcode = opcode;
+    assign request.cb_bank = cb_bank;
+    assign request.step = step;
+    assign request.pc = pc;
+    assign request.temporary = temporary;
+    assign request.data = data_in;
+    assign registers_next = result.registers_after;
+    assign pc_next = result.pc_after;
+    assign temporary_next = result.temporary_after;
+    assign address = result.plan.address;
+    assign write_data = result.plan.write_data;
+    assign write_enable = result.plan.write_enable;
+    assign access_kind = result.plan.access_kind;
+    assign finish = result.finish;
+    assign prefix = result.prefix;
+    assign halt_request = result.halt_request;
+    assign stop_request = result.stop_request;
+    assign illegal = result.illegal;
+    assign enable_interrupts = result.enable_interrupts;
+    assign disable_interrupts = result.disable_interrupts;
+    assign return_interrupt = result.return_interrupt;
+    assign address_effect = result.address_effect;
+
     n2m_cpu_execute dut (.*);
 
     task automatic check_effect(input integer op, cycle_number, f,
@@ -55,7 +81,7 @@ module tb_cpu_execute;
         {registers.h, registers.l} = 16'hfe42;
         {registers.b, registers.c} = 16'hfdff;
         if ($test$plusargs("idu_fault") && op == 'h03)
-            force dut.address_effect.address = 16'hfe00;
+            force dut.result.address_effect.address = 16'hfe00;
         #1;
         if (address_effect.valid !== expected_valid ||
                 address_effect.address !== expected_address ||

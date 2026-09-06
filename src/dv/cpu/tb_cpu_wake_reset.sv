@@ -55,7 +55,7 @@ module tb_cpu_wake_reset;
     bit fresh;
     bit corrupt;
 
-    n2m_cpu_control dut (.*);
+    n2m_cpu dut (.*);
     assign read_data=memory[address];
     always @(posedge clk_sys) begin
         if (reset_sys || core_reset) dot_before <= 0;
@@ -152,7 +152,7 @@ module tb_cpu_wake_reset;
             // Both reset types cancel at the chosen paused phase. Phase three
             // has a frozen pending request and would otherwise wake at T4.
             if (global_case) reset_sys=1; else core_reset=1;
-            if (corrupt && scenario==3) force dut.bus.commit=1'b1;
+            if (corrupt && scenario==3) force dut.u_bus.commit=1'b1;
             #2; check_bus();
             if (global_case && (initialized || retirement_valid || address_effect_phase!=0))
                 $fatal(1,"CPU_WAKE_RESET_ASYNC");

@@ -363,23 +363,45 @@ source hashes, commands, seed, expected/actual transactions, traces and waves.
 Host checks, full external adapters and physical acceptance remain separate.
 
 
+## Module and state ownership
+
+The CPU follows the [typed boundary convention](../../rtl-reference-style.md#typed-module-and-timing-boundaries).
+`n2m_cpu_pkg` owns execution request/result, bus plan and T4 retirement-capture
+records and the finite STOP action enum. Generated profile and published record
+encodings remain in their existing interface owner.
+
+| Module | Responsibility and state |
+|---|---|
+| `n2m_cpu` | Explicit composition and unchanged scalar CPU boundary; no state. |
+| `n2m_cpu_control` | Architectural registers, instruction/IRQ steering and T3 snapshot; sole steering owner. |
+| `n2m_cpu_execute` / `n2m_cpu_alu` | Combinational execution result and arithmetic; no state. |
+| `n2m_cpu_bus` | Sole T-phase/fault owner; prepared plan, completion and commit. |
+| `n2m_cpu_retire` | T4/A capture, following-edge B publication and sequence state. |
+| `n2m_cpu_stop_policy` | Combinational deterministic entry action, padding and divider request. |
+
+The top connects `u_control`, `u_execute`, `u_bus`, `u_retire` and
+`u_stop_policy`. Typed boundaries add no registers or clock domains. Control
+emits a prepared plan and architectural capture record; it does not duplicate
+bus phase or recorder state. IE/IF/buttons still enter the recorder at B.
+The STOP oscillator-wake seam remains incomplete; composition alone does not
+resolve that behavior or close the issue.
+
 ## Integration status
 
-The internal `n2m_cpu_control` component composes the execution planner, T-cycle
-bus and retirement recorder. Its first checked program covers 18 events and 50
-M-cycles. The public CPU wrapper is unfinished. The component now owns deterministic STOP entry from `joyp_selected_active`
+The `n2m_cpu` wrapper composes the owners above. Its checked original program
+covers 18 events and 50 M-cycles. The component owns deterministic STOP entry from `joyp_selected_active`
 and its frozen enabled-request snapshot. The remaining `wake_request` input is
 an internal policy seam, not an addition to the host initialization ABI; the
 final wrapper must own its resolved logic.
 
 The T3 request snapshot mapping is specified above; its contrasted IRQ/HALT
-fixtures remain required before full readiness. The current HALT return-to-HALT
+fixtures have bounded checked evidence; full readiness still requires the remaining gates. The current HALT return-to-HALT
 branch matches the pinned SameBoy model for pending requests with IME set,
 including delayed EI. An earlier inference that ordinary IME alone proved this
 branch wrong was withdrawn after source comparison. Requests before the latch
 closes and arrivals after HALT enters sleep need separate checked expectations.
-STOP wake policy, complete IDU observation, reset/sleep/wake interruption and composed
-interrupt/peripheral boundaries remain unfinished; this snapshot cannot close
+STOP wake policy, its remaining IDU observation, and final composed acceptance
+remain unfinished; this snapshot cannot close
 #118. The selected 498-form state/access evidence below remains valid within
 its declared flat-RAM exclusions.
 

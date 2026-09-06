@@ -56,7 +56,7 @@ module tb_cpu_idu_arithmetic;
     integer records;
     bit corrupt;
 
-    n2m_cpu_control dut (.*);
+    n2m_cpu dut (.*);
 
     // Original program. These bytes are separate from the expectation tables.
     always_comb begin

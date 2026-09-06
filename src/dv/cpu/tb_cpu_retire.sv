@@ -32,6 +32,22 @@ module tb_cpu_retire;
     integer trace;
     bit corrupt;
 
+    n2m_cpu_pkg::cpu_retire_capture_t capture;
+    assign capture.valid = event_valid;
+    assign capture.is_interrupt = event_interrupt;
+    assign capture.registers_after = registers_after;
+    assign capture.pc_before = pc_before;
+    assign capture.pc_after = pc_after;
+    assign capture.fetched_bytes = fetched_bytes;
+    assign capture.fetched_length = fetched_length;
+    assign capture.ime_after = ime_after;
+    assign capture.ime_delay_after = ime_delay_after;
+    assign capture.halted_after = halted_after;
+    assign capture.stopped_after = stopped_after;
+    assign capture.halt_bug_after = halt_bug_after;
+    assign capture.epoch = epoch;
+    assign capture.dot_after = dot_after;
+
     n2m_cpu_retire dut (.*);
 
     task automatic edge_cycle;

@@ -34,6 +34,12 @@ module tb_cpu_bus;
     bit late_active;
     bit change_after_t1;
 
+    n2m_cpu_pkg::cpu_bus_plan_t plan;
+    assign plan.address = plan_address;
+    assign plan.write_data = plan_write_data;
+    assign plan.write_enable = plan_write;
+    assign plan.access_kind = plan_kind;
+
     n2m_cpu_bus dut (.*);
 
     task automatic edge_cycle(input bit tick);

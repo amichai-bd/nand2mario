@@ -9,10 +9,7 @@ module n2m_cpu_bus (
     input var logic gb_tick,
     input var logic active,
     input var logic complete_enable,
-    input var logic [15:0] plan_address,
-    input var logic [7:0] plan_write_data,
-    input var logic plan_write,
-    input var n2m_cpu_pkg::access_kind_t plan_kind,
+    input var n2m_cpu_pkg::cpu_bus_plan_t plan,
     input var logic response_valid,
     output logic [1:0] phase,
     output logic request_valid,
@@ -43,12 +40,12 @@ module n2m_cpu_bus (
         end
     end
 
-    assign request_valid = active && !fault && !reset_sys && !core_reset && plan_kind != ACCESS_IDLE;
-    assign address = plan_address;
-    assign write_data = plan_write_data;
-    assign write_enable = plan_write;
-    assign access_kind = plan_kind;
-    assign required_read = request_valid && !plan_write;
+    assign request_valid = active && !fault && !reset_sys && !core_reset && plan.access_kind != ACCESS_IDLE;
+    assign address = plan.address;
+    assign write_data = plan.write_data;
+    assign write_enable = plan.write_enable;
+    assign access_kind = plan.access_kind;
+    assign required_read = request_valid && !plan.write_enable;
     assign terminal = gb_tick && phase == 3 && active && !fault && !reset_sys && !core_reset;
     assign cycle_end = terminal && complete_enable && (!required_read || response_valid);
     assign commit = cycle_end && request_valid;
@@ -64,9 +61,9 @@ module n2m_cpu_bus (
     `N2M_ASSERT(CPU_BUS_RESPONSE, clk_sys, reset_sys || core_reset,
         (terminal && complete_enable && required_read) |-> (response_valid === 1'b1))
     `N2M_ASSERT(CPU_BUS_WRITE_KIND, clk_sys, reset_sys || core_reset,
-        (request_valid && plan_write) |-> (plan_kind == ACCESS_DATA || plan_kind == ACCESS_STACK))
+        (request_valid && plan.write_enable) |-> (plan.access_kind == ACCESS_DATA || plan.access_kind == ACCESS_STACK))
     `N2M_ASSERT_KNOWN(CPU_BUS_REQUEST_KNOWN, clk_sys, reset_sys || core_reset,
-        {active, complete_enable, gb_tick, plan_kind, plan_address, plan_write, plan_write_data})
+        {active, complete_enable, gb_tick, plan.access_kind, plan.address, plan.write_enable, plan.write_data})
     `N2M_ASSERT_STABLE_WHEN(CPU_BUS_PLAN_STABLE, clk_sys, reset_sys || core_reset,
-        hold_plan, {plan_kind, plan_address, plan_write, plan_write_data})
+        hold_plan, {plan.access_kind, plan.address, plan.write_enable, plan.write_data})
 endmodule
