@@ -798,5 +798,27 @@
       "src/rtl/ppu/n2m_ppu_shift.sv",
       "src/dv/ppu/tb_ppu_shift.sv"
     ]
+  },
+  "ppu-fetch": {
+    "signature": "PASS PPU fetch literal_schedule cases=21",
+    "args": [],
+    "sources": [
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/dv/ppu/tb_ppu_fetch.sv"
+    ],
+    "expected_exit": "zero",
+    "top": "tb_ppu_fetch"
+  },
+  "ppu-fetch-missing": {
+    "signature": "N2M_ASSERT fetch_response_missing",
+    "args": [
+      "+missing"
+    ],
+    "sources": [
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/dv/ppu/tb_ppu_fetch.sv"
+    ],
+    "expected_exit": "nonzero",
+    "top": "tb_ppu_fetch"
   }
 }
