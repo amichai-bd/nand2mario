@@ -181,11 +181,8 @@ def verify(folder, *, lcd=False):
             raise ValueError("VGA RAM dimensions, registers, M9K usage or initialization differ")
     physical_ram = verify_memory_netlist((folder / "simulation/questa/design.vo").read_text(encoding="utf-8"))
     result = {"physical_ram": physical_ram, "ram_banks": 3, "memory_bits": 138240, "m9k_blocks": 18, "first_pins": pins, "corners": {}}
-    output_sources = {"u_clocking|u_reset|pix_release[1]", "u_bridge|u_scan|valid_out", "u_bridge|u_scan|hs_out", "u_bridge|u_scan|vs_out"}
-    output_sources.update(f"u_bridge|u_scan|gray_out[{i}]" for i in range(4))
-    if lcd:
-        output_sources = {"u_bridge|u_scan|gray_out[0]", "u_bridge|u_scan|gray_out[1]",
-                          "u_bridge|u_scan|hs_out", "u_bridge|u_scan|vs_out"}
+    output_sources = {"u_bridge|u_scan|gray_out[0]", "u_bridge|u_scan|gray_out[1]",
+                      "u_bridge|u_scan|hs_out", "u_bridge|u_scan|vs_out"}
     for corner, model, temperature in CORNERS:
         model_name = f"{model.title()} 1200mV {temperature}C Model"
         prefix = f"vga_{corner}_"

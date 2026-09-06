@@ -183,6 +183,8 @@ class VgaEvidenceTests(unittest.TestCase):
             fixture(folder)
             self.assertEqual(fpga_vga.verify(folder)["m9k_blocks"], 18)
             changes = [
+                ("vga_fast0_outputs_max.rpt", "gray_out[0]", "valid_out"),
+                ("vga_fast0_outputs_max.rpt", "gray_out[0]", "gray_out[2]"),
                 ("vga_fast0_offer_sequence.rpt", "|captured_sequence[63]", "|captured_sequence[62]"),
                 ("vga_slow0_offer_epoch.rpt", "; 1.000 ;", "; 20.001 ;"),
                 ("vga_fast0_outputs_max.rpt", "; 5.000 ;", "; 10.001 ;"),
