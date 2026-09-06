@@ -10,7 +10,7 @@ module n2m_ppu_position (
     input var logic reset,
     input var logic gb_tick,
     input var logic lcd_on,
-    input var logic lcd_enable,
+    input var logic fine_latch,
     input var logic line_reset,
     input var logic mode3,
     input var logic background_first_done,
@@ -48,7 +48,7 @@ module n2m_ppu_position (
     end
     `DFF_RST_EN(raw_x, raw_x_next, clk_sys, gb_tick, disabled_reset, 8'd0)
     `DFF_RST_EN(scroll_done, scroll_done_next, clk_sys, gb_tick, disabled_reset, 1'b0)
-    `DFF_RST_EN(fine_scroll, fine_scx, clk_sys, gb_tick && (line_reset || lcd_enable), reset, 3'd0)
+    `DFF_RST_EN(fine_scroll, fine_scx, clk_sys, gb_tick && fine_latch, reset, 3'd0)
     `N2M_ASSERT(pixel_position_range, clk_sys, reset, raw_x <= 8'd167)
     `N2M_ASSERT(source_position_range, clk_sys, reset, !source_event || source_x < 8'd160)
 endmodule

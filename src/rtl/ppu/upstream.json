@@ -71,7 +71,7 @@
       "path": "n2m_ppu_position.sv",
       "source": "rtl/video.v",
       "section": "Pixel counter, fine-scroll pause and source-pixel enable",
-      "local_changes": "Extract rawX/scroll control; retain explicit terminal-pixel event; latch fineSCX at owner line boundary instead of live low bits; macro reset/enable and named range assertions; expose source-coordinate event without platform RGB"
+      "local_changes": "Extract rawX/scroll control; retain explicit terminal-pixel event; latch fineSCX at first background map-fetch boundary instead of live low bits; macro reset/enable and named range assertions; expose source-coordinate event without platform RGB"
     }
   ]
 }

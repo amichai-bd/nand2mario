@@ -41,7 +41,7 @@ those results must not be relabeled direct DMG-B measurements.
 |---|---|
 | Steady raster | 154 lines of 456 dots, 144 visible lines of 160 pixels; mode 2 uses 80 dots; mode 3 varies with scroll, window and object fetches |
 | Objects | Select the first ten Y-overlapping OAM entries, including X-hidden entries; smaller X wins, then lower OAM index; apply BG priority after selecting the winning nontransparent object |
-| Fetch effects | Fine SCX is sampled at line start; coarse scrolling, tile selection and each bitplane's Y address are sampled at their fetch stages |
+| Fetch effects | Fine SCX is sampled at the first background map-fetch boundary; coarse scrolling, tile selection and each bitplane's Y address are sampled at their fetch stages |
 | LCD startup | Mooneye `lcdon_timing-GS` specifies first enabled line mode 0 followed directly by mode 3, with timing two T-cycles later than the normal line; the first enabled frame is visibly blank |
 | Coincidence | Mooneye `stat_lyc_onoff` requires the comparison flag to retain its value while LCD is off, including across LYC writes; comparison resumes on enable |
 | Interrupts | STAT is an edge of the shared condition, not a pulse per enabled source; Mooneye `vblank_stat_intr-GS` also requires mode-2 selection at the line-144 VBlank edge |
@@ -346,7 +346,7 @@ level. Every stored write uses the existing A-edge commit and shared macros.
 
 The position controller counts raw X from0 through167, including the eight
 leading positions used for clipped objects/window fetches. Visible X is raw X
-minus8. Fine SCX is latched at the owned line-start/enable boundary; later coarse
+minus8. Fine SCX is latched at the first background map-fetch boundary; later coarse
 SCX still contributes to map addressing. Background first-fetch, window first-
 fetch, object fetch and line end pause pixel advance. The terminal rawX167 has
 one explicit source event even though advance is paused on that edge; otherwise
@@ -354,3 +354,17 @@ the last visible pixel would be lost. No other paused edge publishes a pixel.
 The A-edge source snapshot therefore contains exactly X0 through159 before a
 line completes. Composed tests, rather than the position counter itself, check
 that ordering and frame size.
+
+The pinned Mealybug `m3_scx_low_3_bits` probe reports that low SCX bits appear to
+be sampled at the start of the first B01s map fetch. This refines the earlier
+shorthand “line start”; it is not an asserted direct single-dot measurement.
+The controller latches on its first map-fetch phase0 and checks writes before,
+on and after that edge using the A pre-edge convention. Later low-bit writes
+cannot change the already selected fine-scroll delay.
+
+WY matching is qualified by Window enable before being latched. The pinned
+MiSTer behavior is independently corroborated by GateBoy CPU-B gate PALO feeding
+SARY/REJO; Pan Docs' short Y-condition description omits that qualification.
+The selected digital controller samples it at quarter phase0 and retains it
+until VBlank/LCD reset. Tests distinguish changing WY/enable before and after
+that sample, rather than assuming only a scanline-boundary comparison.
