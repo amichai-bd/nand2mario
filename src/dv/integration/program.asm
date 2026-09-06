@@ -1,0 +1,70 @@
+SECTION "code",ROM
+Start:
+DI
+LD SP,$DFFE
+XOR A,A
+LDH [$FF40],A
+LDH [$FF0F],A
+LD [$FFFF],A
+LD A,$3C
+LD [$C000],A
+LD A,[$E000]
+ADD A,$05
+LD [$C001],A
+LD A,$01
+LD [$FFFF],A
+LDH [$FF0F],A
+EI
+NOP
+DI
+XOR A,A
+LD [$FFFF],A
+LDH [$FF0F],A
+LDH [$FF42],A
+LDH [$FF43],A
+LD A,$E4
+LDH [$FF47],A
+LD HL,$8000
+LD BC,$3355
+LD A,C
+LD [HL+],A
+LD A,B
+LD [HL+],A
+LD A,C
+LD [HL+],A
+LD A,B
+LD [HL+],A
+LD A,C
+LD [HL+],A
+LD A,B
+LD [HL+],A
+LD A,C
+LD [HL+],A
+LD A,B
+LD [HL+],A
+LD A,C
+LD [HL+],A
+LD A,B
+LD [HL+],A
+LD A,C
+LD [HL+],A
+LD A,B
+LD [HL+],A
+LD A,C
+LD [HL+],A
+LD A,B
+LD [HL+],A
+LD A,C
+LD [HL+],A
+LD A,B
+LD [HL+],A
+LD A,$91
+LDH [$FF40],A
+HALT
+EXPORT Start
+SECTION "handler",ROM
+PUSH AF
+LD A,$A7
+LD [$C002],A
+POP AF
+RETI

@@ -44,6 +44,7 @@ def commands(simulator, root, target, seed, compiler, attempt, *, prepare=True, 
         *vendor_map,
         ([tools["vsim"], "-c", "-onfinish", "stop", "-wlf", "waves/simulation.wlf",
           *vendor_binding,
-          "work." + target["top"], f"+seed={seed}", *target["args"], "-do", "do run.do"],
+          "work." + target["top"], f"+seed={seed}", *target["args"],
+          *(["+smoke_root=" + simulator.path(root)] if "driver" in target else []), "-do", "do run.do"],
          attempt, attempt / "sim.log", target["expected_exit"]),
     ]
