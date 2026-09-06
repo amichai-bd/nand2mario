@@ -343,3 +343,14 @@ stored effect. FF46 is not selected. It exposes qualified LCD on/off transitions
 and the STAT-write commit to integration; the STAT glitch's duration and IRQ
 ordering belong to the timing/interrupt contract, not an unqualified address
 level. Every stored write uses the existing A-edge commit and shared macros.
+
+The position controller counts raw X from0 through167, including the eight
+leading positions used for clipped objects/window fetches. Visible X is raw X
+minus8. Fine SCX is latched at the owned line-start/enable boundary; later coarse
+SCX still contributes to map addressing. Background first-fetch, window first-
+fetch, object fetch and line end pause pixel advance. The terminal rawX167 has
+one explicit source event even though advance is paused on that edge; otherwise
+the last visible pixel would be lost. No other paused edge publishes a pixel.
+The A-edge source snapshot therefore contains exactly X0 through159 before a
+line completes. Composed tests, rather than the position counter itself, check
+that ordering and frame size.
