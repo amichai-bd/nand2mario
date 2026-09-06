@@ -171,3 +171,15 @@ bytes determine the expected shades. The reference LCD enable origin changes
 only on bit7 rising, not a map/tile write while enabled. An actual public-shade
 fault proves the shared pixel checker. These new targets need runtime evidence;
 previous scroll cases do not by themselves prove these LCDC changes.
+
+`ppu-window-repeated` checks two activations on normal line32. Legal T4 writes
+disable at84984, move WX from47 to127 at84988, and re-enable at84992, relative
+to LCD enable. The selected source's pre-A fetch ordering yields four literal
+40-pixel segments with shades0/1/0/2. Both old window planes precede disable;
+later plane addresses use the live background row mux. The next line uses
+window row2 (shade3), verifying both active-to-inactive row advances. Original
+flat tiles define all46080 expected pixels; fixed timestamps check320 pixels
+on lines32/33, including each six-dot window delay. Actual shade corruption at
+the second activation must fail. These targets require actual runtime evidence.
+The retained source derivation follows the pinned MiSTer reload, row-address,
+and window state rules; it makes no silicon sub-T timing claim.

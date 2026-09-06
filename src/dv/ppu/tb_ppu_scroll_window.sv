@@ -26,6 +26,7 @@ module tb_ppu_scroll_window;
     logic [31:0] source_epoch;
     logic [63:0] source_dot, previous_dot, enable_dot, normal_first_dot;
     logic case_done, wy_case, wy_late, wx166_case, wx0_case, disabled_wx_case;
+    logic repeated_window, ref_lcd_on;
     integer disabled_pixels;
     integer fine7_distinct;
     integer current_scx, current_wx, write_line, expected_window_row;
@@ -41,6 +42,8 @@ module tb_ppu_scroll_window;
     assign io_commit = write_pending && cpu_phase == 3 && gb_tick;
     `DFF_RST_EN(cpu_phase, cpu_phase + 2'd1, clk_sys, gb_tick, reset_sys || core_reset, 2'd0)
     `DFF_RST_EN(dot_before, dot_before + 64'd1, clk_sys, gb_tick, reset_sys || core_reset, 64'd0)
+    `DFF_RST_EN(ref_lcd_on, io_wdata[7], clk_sys, io_commit && io_address == 16'hff40,
+        reset_sys || core_reset, 1'b0)
     // Response-valid refers to the prior request, never the fault-masked current
     // request. Returned bytes remain available before the later consuming dot.
     `DFF_RST(vram_valid, vram_request, clk_sys, reset_sys)
@@ -123,6 +126,10 @@ module tb_ppu_scroll_window;
             tile = map_tile(sx / 8, sy / 8, win);
             scene = disabled_wx_case && py >= 33 && px == 40
                 ? 2'd0 : pattern(tile, sx % 8, sy % 8);
+            if (repeated_window) begin
+                if (py == 32) scene = px < 40 ? 2'd0 : px < 80 ? 2'd1 : px < 120 ? 2'd0 : 2'd2;
+                else scene = py > 32 && px >= 120 ? 2'((py - 30) % 4) : 2'd0;
+            end
         end
     endfunction
     task automatic write_register(input logic [15:0] address, input logic [7:0] value);
@@ -132,8 +139,19 @@ module tb_ppu_scroll_window;
         @(negedge clk_sys);
         write_pending = 0;
     endtask
+    task automatic write_at(input integer elapsed, input logic [15:0] address, input logic [7:0] value);
+        @(negedge clk_sys);
+        io_address = address; io_wdata = value;
+        do @(negedge clk_sys); while (!(gb_tick && dot_before == enable_dot + 64'(elapsed)));
+        if (cpu_phase != 3) $fatal(1, "PPU_REPEAT_ILLEGAL_WRITE");
+        write_pending = 1;
+        @(posedge clk_sys);
+        @(negedge clk_sys);
+        write_pending = 0;
+    endtask
     always #10 clk_sys = !clk_sys;
     always @(posedge clk_sys) begin
+        if (io_commit && io_address == 16'hff40 && io_wdata[7] && !ref_lcd_on) enable_dot = dot_before;
         if (!reset_sys && source_valid) begin
             if (gb_tick || source_abort || fault) $fatal(1, "PPU_SCROLL_FORWARD");
             if (source_x !== 8'(pixel_count % 160) || source_y !== 8'(pixel_count / 160)
@@ -142,6 +160,16 @@ module tb_ppu_scroll_window;
             if (source_dot !== dot_before || source_dot <= previous_dot || source_epoch !== 32'd5)
                 $fatal(1, "PPU_SCROLL_DOT");
             expected = frame_count == 0 ? 2'd0 : scene(pixel_count % 160, pixel_count / 160);
+            if (repeated_window && source_shade !== expected)
+                $fatal(1, "PPU_REPEAT_PIXEL frame=%0d index=%0d expected=%0d actual=%0d",
+                    frame_count, pixel_count, expected, source_shade);
+            if (repeated_window && frame_count == 1 && pixel_count / 160 == 32
+                && source_dot !== enable_dot + 64'(84909 + pixel_count % 160
+                    + (pixel_count % 160 >= 40 ? 6 : 0) + (pixel_count % 160 >= 120 ? 6 : 0)))
+                $fatal(1, "PPU_REPEAT_LINE32_DOT index=%0d actual=%0d", pixel_count, source_dot);
+            if (repeated_window && frame_count == 1 && pixel_count / 160 == 33
+                && source_dot !== enable_dot + 64'(85365 + pixel_count % 160 + (pixel_count % 160 >= 120 ? 6 : 0)))
+                $fatal(1, "PPU_REPEAT_LINE33_DOT index=%0d actual=%0d", pixel_count, source_dot);
             if (source_shade !== expected)
                 $fatal(1, "PPU_SCROLL_PIXEL frame=%0d index=%0d scx=%0d wx=%0d wrow=%0d expected=%0d actual=%0d",
                     frame_count, pixel_count, line_scx(pixel_count / 160), line_wx(pixel_count / 160),
@@ -159,7 +187,8 @@ module tb_ppu_scroll_window;
                 frame_count = frame_count + 1; pixel_count = 0;
                 if (frame_count == 2) begin
                     $fclose(trace_file);
-                    if (disabled_wx_case) begin
+                    if (repeated_window) $display("PASS PPU repeated window two activations row2 pixels=46080 timing_pixels=320");
+                    else if (disabled_wx_case) begin
                         if (disabled_pixels != 111) $fatal(1, "PPU_DISABLED_WX_COUNT");
                         $display("PASS PPU disabled WX match inserted zero pixels=111 frame_pixels=46080");
                     end
@@ -185,6 +214,7 @@ module tb_ppu_scroll_window;
         clk_sys = 0; reset_sys = 1; core_reset = 0; pause_request = 0;
         epoch = 5; write_pending = 0; io_write = 1; io_address = 0; io_wdata = 0;
         disabled_wx_case = $test$plusargs("disabled_wx"); disabled_pixels = 0;
+        repeated_window = $test$plusargs("repeated_window"); enable_dot = 0;
         wx166_case = $test$plusargs("wx166"); wx0_case = $test$plusargs("wx0"); fine7_distinct = 0;
         wy_case = $test$plusargs("wy"); wy_late = $test$plusargs("wy_late");
         dma_active = 0; frame_count = 0; pixel_count = 0; previous_dot = 0; case_done = 0;
@@ -208,11 +238,20 @@ module tb_ppu_scroll_window;
                 vram['h1c00+32*y+x] = 8'(map_tile(x, y, 1));
             end
         end
+        if (repeated_window) begin
+            for (n = 0; n < 8192; n = n + 1) vram[n] = 0;
+            for (y = 0; y < 8; y = y + 1) begin
+                color = 2'((y + 1) % 4);
+                vram[16 + 2*y] = color[0] ? 8'hff : 8'h00;
+                vram[17 + 2*y] = color[1] ? 8'hff : 8'h00;
+            end
+            for (n = 0; n < 1024; n = n + 1) vram['h1c00+n] = 1;
+        end
         repeat (4) @(negedge clk_sys);
         reset_sys = 0;
         write_register(16'hff43, 0); write_register(16'hff42, 11);
-        write_register(16'hff47, 8'he4); write_register(16'hff4a, wy_case || wx166_case || disabled_wx_case ? 32 : 0);
-        write_register(16'hff4b, wx0_case ? 0 : wy_case ? 47 : 255);
+        write_register(16'hff47, 8'he4); write_register(16'hff4a, wy_case || wx166_case || disabled_wx_case || repeated_window ? 32 : 0);
+        write_register(16'hff4b, wx0_case ? 0 : wy_case || repeated_window ? 47 : 255);
         write_register(16'hff40, wy_case ? 8'hd1 : 8'hf1);
         // Constant offscreen window during warm-up. The next frame's WY latch
         // starts afresh after VBlank; line0 uses the same prepared configuration.
@@ -221,7 +260,18 @@ module tb_ppu_scroll_window;
             @(negedge clk_sys);
             force dut.source_shade = 2'd0;
         end
-        if (disabled_wx_case) begin
+        if (repeated_window) begin
+            // Pre-A captures retain the first window tile through x79. Both
+            // its planes precede disable; later BG fetches use live BG row3.
+            write_at(84984, 16'hff40, 8'hd1);
+            write_at(84988, 16'hff4b, 127);
+            write_at(84992, 16'hff40, 8'hf1);
+            if ($test$plusargs("repeated_window_corrupt")) begin
+                wait (pixel_count == 32 * 160 + 120);
+                @(negedge clk_sys);
+                force dut.source_shade = 2'd3;
+            end
+        end else if (disabled_wx_case) begin
             // WY32 qualifies with Window enabled and WX offscreen. Hide on33
             // while retaining the match. Raw47 suppresses reload at count7;
             // raw48/source40 emits raw0, then the retained tile is one pixel late.
