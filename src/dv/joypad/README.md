@@ -1,7 +1,7 @@
 # JOYP verification plan
 
-Status: matrix proof complete; register and event acceptance in progress for issue134.
-Matrix positive and actual row fault have retained Questa evidence in PR150.
+Status: matrix, register and event acceptance complete for issue134.
+Producing source identities, logs and independent review are recorded in PR150.
 
 Use an independent literal matrix table: all256 active-high button masks and
 select values00/10/20/30. Check each bit, high read mask, neither/both rows,
@@ -29,4 +29,13 @@ neighbor selection, committed reads, simultaneous input/select replacement and
 both reset types winning over both updates. Fourteen explicit public waveform
 signals are retained. Actual commit suppression must cause the literal register
 mismatch; an off-T4 commit must fire JOYP_COMMIT_BOUNDARY. Event/IF/wake proofs
-remain dependent on the selected event rule, separate from these state checks.
+use the approved selected-line digital event rule, separate from these state checks.
+
+The event fixture checks187 system edges and42 literal falls through the actual
+IF owner. It covers all eight buttons, adjacent falls, shared held lines,
+select/input coincidence, three placements around A/B with clear/ack, reset
+cancellation and withheld dots. Lost and duplicate actual output mutations fail
+at cases4 and5. Twenty-four explicit public signals accompany the CSV. Mode
+labels identify withheld-dot input scenarios; they do not claim composed CPU
+execution, UART transport or physical clock qualification. Existing IF truth
+and phase fixtures also pass with the new event input tied low.

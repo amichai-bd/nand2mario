@@ -1,8 +1,8 @@
 # DMG joypad
 
-Status: implementation and verification for [#134](https://github.com/amichai-bd/nand2mario/issues/134).
+Status: implemented under [#134](https://github.com/amichai-bd/nand2mario/issues/134).
 The matrix, register updates and selected-line event transport are implemented.
-Directed event verification remains in progress.
+The independent test plan covers the agreed event and IF boundary.
 
 ## Authority
 
