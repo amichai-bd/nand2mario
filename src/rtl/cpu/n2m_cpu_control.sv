@@ -25,6 +25,10 @@ module n2m_cpu_control (
     output logic write_enable,
     output n2m_cpu_pkg::access_kind_t access_kind,
     output logic bus_commit,
+    output n2m_cpu_pkg::cpu_address_effect_t address_effect,
+    output logic address_effect_resolved,
+    output logic address_effect_sample,
+    output logic [1:0] address_effect_phase,
     output logic [4:0] irq_ack,
     output logic halted,
     output logic stopped,
@@ -79,6 +83,7 @@ module n2m_cpu_control (
     logic [4:0] selected_irq;
     logic [15:0] selected_vector;
     logic pending_irq;
+    logic hold_address_effect;
 
     function automatic cpu_registers_t profile_registers;
         cpu_registers_t r;
@@ -118,6 +123,12 @@ module n2m_cpu_control (
     assign dispatch = control.irq_snapshot;
     assign stop_execute = control.mode == MODE_EXECUTE && execute_stop && cycle_end;
 
+    assign address_effect_phase = phase;
+    assign address_effect_sample = gb_tick && phase == 3 && initialized &&
+        !fault && !reset_sys && !core_reset;
+    assign hold_address_effect = initialized && !fault &&
+        (phase != 0 || gb_tick) && !(gb_tick && phase == 3);
+
     cpu_address_effect_t execute_address_effect;
 
     n2m_cpu_execute execute (
@@ -131,6 +142,43 @@ module n2m_cpu_control (
         .enable_interrupts(execute_ei), .disable_interrupts(execute_di),
         .return_interrupt(execute_reti), .address_effect(execute_address_effect)
     );
+
+    // Incomplete source mappings are visible to the future consumer. They
+    // never masquerade as resolved cycles without an additional effect.
+    always_comb begin
+        address_effect = '0;
+        address_effect_resolved = 1;
+        if (control.mode == MODE_FETCH) begin
+            address_effect_resolved = !control.observation_resume;
+            address_effect.valid = !control.observation_resume;
+            address_effect.address = control.observation_resume ? 16'b0 : control.pc;
+        end else if (control.mode == MODE_EXECUTE) begin
+            address_effect = execute_address_effect;
+            if (execute_finish && !execute_halt && !execute_stop) begin
+                address_effect.valid = 1;
+                address_effect.address = execute_pc;
+            end
+            if (execute_stop) address_effect_resolved = 0;
+        end else if (control.mode == MODE_INTERRUPT) begin
+            if (control.step == 0) address_effect_resolved = 0;
+            else if (control.step == 1 || control.step == 2) begin
+                address_effect.valid = 1;
+                address_effect.address = registers.sp;
+            end else if (control.step == 4) begin
+                address_effect.valid = 1;
+                address_effect.address = control.pc;
+            end
+        end else if (control.mode == MODE_HALT || control.mode == MODE_STOP)
+            address_effect_resolved = 0;
+        if (address_effect.valid) begin
+            if (address_effect.known_mask == 0) address_effect.known_mask = 16'hffff;
+            address_effect.write_effect = 1;
+        end
+        if (!initialized || fault || reset_sys || core_reset) begin
+            address_effect = '0;
+            address_effect_resolved = 0;
+        end
+    end
 
     always_comb begin
         plan_address = control.pc;
@@ -192,12 +240,16 @@ module n2m_cpu_control (
             control_next.mode = control.ime ? MODE_INTERRUPT : MODE_FETCH;
             control_next.step = 0;
             control_next.irq_pc = control.pc;
+            control_next.observation_resume = 1;
         end
-        if (control.mode == MODE_STOP && wake_request && phase == 0)
+        if (control.mode == MODE_STOP && wake_request && phase == 0) begin
             control_next.mode = MODE_FETCH;
+            control_next.observation_resume = 1;
+        end
         if (cycle_end) begin
             case (control.mode)
                 MODE_FETCH: begin
+                    control_next.observation_resume = 0;
                     control_next.opcode = read_data;
                     control_next.fetched = {16'b0, read_data};
                     control_next.length = 1;
@@ -340,6 +392,10 @@ module n2m_cpu_control (
     `N2M_ASSERT(CPU_PROFILE_ID, clk_sys, reset_sys,
         core_reset |-> profile_id == PROFILE_DIRECT_ID)
     `N2M_ASSERT(CPU_IRQ_ACK_ONEHOT, clk_sys, reset_sys || core_reset, $onehot0(irq_ack))
+    `N2M_ASSERT_STABLE_WHEN(CPU_IDU_PLAN_STABLE, clk_sys, reset_sys || core_reset,
+        hold_address_effect, {address_effect_resolved, address_effect})
+    `N2M_ASSERT(CPU_IDU_OUTPUT_PAGE, clk_sys, reset_sys || core_reset,
+        !address_effect.valid || !address_effect.write_effect || address_effect.known_mask[15:8] == 8'hff)
     `N2M_ASSERT(CPU_IDU_KNOWN_PAGE, clk_sys, reset_sys || core_reset,
         !execute_address_effect.valid || !execute_address_effect.write_effect ||
         execute_address_effect.known_mask[15:8] == 8'hff)

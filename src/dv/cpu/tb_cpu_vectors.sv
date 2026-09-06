@@ -34,6 +34,10 @@ module tb_cpu_vectors;
     logic stop_execute;
     logic retirement_valid;
     n2m_interfaces_pkg::retirement_t retirement;
+    n2m_cpu_pkg::cpu_address_effect_t address_effect;
+    logic address_effect_resolved;
+    logic address_effect_sample;
+    logic [1:0] address_effect_phase;
 
     logic [1023:0] vector_data [8000];
     logic [1023:0] vector_case;

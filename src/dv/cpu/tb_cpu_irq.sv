@@ -34,6 +34,10 @@ module tb_cpu_irq;
     logic stop_execute;
     logic retirement_valid;
     n2m_interfaces_pkg::retirement_t retirement;
+    n2m_cpu_pkg::cpu_address_effect_t address_effect;
+    logic address_effect_resolved;
+    logic address_effect_sample;
+    logic [1:0] address_effect_phase;
 
     logic [7:0] memory [65536];
     logic [383:0] expected;

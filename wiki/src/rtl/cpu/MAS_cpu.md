@@ -240,6 +240,17 @@ never asks the memory owner to perform a second architectural write.
 | `known_mask[15:0]` | One marks a justified address bit. The consumer must not interpret a zero-mask bit as a known zero. |
 | `write_effect` | Additional write-like OAM effect, to be combined with any ordinary read/write in this M-cycle. It does not indicate an architectural memory write or its data. |
 
+The current internal controller exposes `address_effect_phase`,
+`address_effect_sample` and `address_effect_resolved` alongside the payload.
+The sample pulse occurs only on the shared T4 rising enable, with reset and
+fault suppression; it can accompany idle rather than a memory commit.
+`resolved` is an explicit completeness qualifier: a consumer must reject an
+unresolved sample rather than interpreting its payload as no effect. In this
+incomplete integration, interrupt PC repair, sleep and the wake-refetch cycle,
+and STOP execution are unresolved. Sourced ordinary fetch/operand/stack/planner
+cycles are resolved. This qualifier changes observation only, not CPU execution,
+and cannot waive the remaining full-CPU acceptance gate.
+
 The public bus phase identifies T1 through T4 for this observation. Fields are
 prepared before T1 and stable through T4, including host pause. The owner samples
 one M-cycle observation at the shared T4 rising enable; it must not apply one

@@ -141,5 +141,6 @@ package n2m_cpu_pkg;
         logic initialized;
         logic profile_fault;
         logic [4:0] irq_snapshot;
+        logic observation_resume;
     } cpu_control_t;
 endpackage
