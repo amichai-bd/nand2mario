@@ -6,6 +6,7 @@ names follow the implementation owner, not a second software hierarchy.
 | Implementation owner | Requirements | Design and observable rules | Verification |
 |---|---|---|---|
 | [tools/n2m](../tools/n2m/cli.py) and its [tools/build.py](../tools/build.py) dispatcher | [PRD](tools/n2m/PRD.md) | [SPEC](tools/n2m/SPEC.md) | [Host tests](../tools/n2m/tests/test_builder.py), [interface generator tests](../tools/n2m/tests/test_interfaces.py), [baseline report tests](../tools/n2m/tests/test_baseline.py), [simulation registry and smoke](../src/dv/builder/targets.json) |
+| [tools/n2m/host](../tools/n2m/host/client.py) | [PRD](tools/n2m/host/PRD.md) | [SPEC](tools/n2m/host/SPEC.md) | [Fake endpoint and CLI tests](../tools/n2m/tests/test_host.py) |
 | [tools/ci](../tools/ci/controller.py) and [trusted configuration](../cfg/trusted-ci.json) | [PRD](tools/ci/PRD.md) | [SPEC](tools/ci/SPEC.md) | [Admission, recovery and status host tests](../tools/ci/tests/test_trust.py) |
 | [tools/wiki](../tools/wiki/site.py) | [PRD](tools/wiki/PRD.md) | [SPEC](tools/wiki/SPEC.md) | [Publication tests](../tools/wiki/test_site.py), [check tests](../tools/wiki/test_check.py), [browser tests](../tools/wiki/browser_tests.py) |
 | [tools/sim](../tools/sim/tile_pixel.py) | [PRD](tools/sim/PRD.md) | [SPEC](tools/sim/SPEC.md) | [Runner tests](../tools/sim/test_tile_pixel.py), [tile test plan](../src/dv/display/README.md) |

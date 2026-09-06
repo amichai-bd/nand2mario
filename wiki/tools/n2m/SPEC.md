@@ -1,6 +1,6 @@
 # Build system
 
-Status: `doctor`, `check`, Questa `sim test`, and MAX 10 `fpga build` implemented; other stages planned.
+Status: `doctor`, `check`, Questa `sim test`, MAX 10 `fpga build`, and [host load/control](host/SPEC.md) implemented; other stages planned.
 
 ## Purpose
 
@@ -131,7 +131,7 @@ The default profile checks Questa; the environment profile adds the remaining to
   Windows must report `Status=OK` and `ConfigManagerErrorCode=0`. Non-Windows
   enumeration is unsupported and reports a warning.
 
-No command opens UART, drives modem lines, sends bytes, programs FPGA memory,
+The doctor never opens UART, drives modem lines, sends bytes, programs FPGA memory,
 changes JTAG configuration, or proves physical operation. Those follow the
 [current authorization](../../agents/bootstrap-plan.md#verification-and-hardware-authorization)
 and hardware workflow. No extra Python packages are required.
@@ -151,7 +151,9 @@ environment check still reports FAIL; a passing smoke is not full readiness.
 ## Installation
 
 The [dependency definition](../../../tools/n2m/dependencies.json) pins Python
-3.14.5. Host commands use the standard library. Install Questa separately under
+3.14.5. Host tests use the standard library. Physical UART commands have an
+explicit optional [pinned serial dependency](../../../tools/n2m/host/THIRD_PARTY.md).
+Install Questa separately under
 its license and expose `vlib`, `vmap`, `vlog`, and `vsim` on PATH, or pass
 `--questa-bin <directory>`. Paths with spaces are supported. There is no simulator
 bootstrap, automatic download, WSL fallback or license configuration command.

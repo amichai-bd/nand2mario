@@ -8,13 +8,14 @@ independent of the packet, host-register and trace ABI versions.
 
 This delivers [#30](https://github.com/amichai-bd/nand2mario/issues/30)'s data,
 generation and byte-codec checks. CPU/register behavior, transport/controller
-RTL, loader and differential adapters are future implementations. Delivery
+RTL and differential adapters are future implementations. The
+[host loader](../../../tools/n2m/host/SPEC.md) implements the Python transport and
+commands with fake-endpoint evidence; physical/RTL acceptance remains separate. Delivery
 is tracked by [UART endpoint #91](https://github.com/amichai-bd/nand2mario/issues/91),
 [host loader #92](https://github.com/amichai-bd/nand2mario/issues/92),
 [host snapshots #93](https://github.com/amichai-bd/nand2mario/issues/93), and
 [verification baseline #31](https://github.com/amichai-bd/nand2mario/issues/31).
-No device
-is opened by these tools. The [charter](../../project-charter.md) still requires full
+No device is opened by the pure codecs. The [charter](../../project-charter.md) still requires full
 load/readback, all eight buttons and a simultaneous pair, every retirement,
 and independent pixel comparison. Codec tests are not those acceptance runs.
 
