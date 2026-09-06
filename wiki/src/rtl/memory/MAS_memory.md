@@ -95,7 +95,7 @@ Phase1 suppresses capture during DMA; phase2 uses the actual arbitrated pair.
 No missing-response fallback or PPU backpressure is allowed.
 
 The PPU owner agrees to the previous-request registered response and pre-A
-sampling boundary. The raw RAM uses the old-data policy described below;
+sampling boundary. The raw RAM follows the shared Intel primitive contract;
 contested-bus selection and access-gating corner traces remain separate gates.
 #132 owns CPU bus conflicts,
 OAM write priority, corruption rows and the pair presented to PPU. Its resolved
@@ -123,26 +123,25 @@ Recognized but not-yet-implemented peripheral registers must remain routed to
 their explicit owner, regardless of what unused registers return. FF50 belongs
 to the direct-profile boot-mapping policy, not a mutable generic RAM byte.
 
-## Verification and inference plan
+## Shared primitive and verification
 
-The initial [RAM primitive](../../../../src/rtl/memory/n2m_memory_ram.sv) uses
-one clock, one read/write port and one read port. Enabled reads return registered
-data from the requested address after that edge; disabled reads retain their
-data and deassert validity. Reset immediately masks validity and suppresses
-access without changing array contents. The owner supplies initialization writes.
-Same-edge reads return pre-write data, including both ports reading an address
-written through port A. This selected storage policy does not define the
-arbitrator's contested Game Boy bus value. Actual MAX10 inference must preserve
-old-data mode; no don't-care attribute is permitted.
+All backing stores use the [shared Intel memory wrapper](../common/MAS_memory_primitives.md).
+The identical explicit instances and parameters are used by the installed
+Intel model in Questa and by MAX 10 synthesis. This owner does not duplicate
+the shared reset/read-hold, byte-enable or collision rules. Resolved A reads
+and writes may coincide with full-lane new-data service. A write may not target
+the address of an active B read; arbitration must schedule it separately.
+Clearing uses ordinary public A writes and never accesses a vendor-private array.
 
-Independent Questa checks will cover all region endpoints, full reset sweeps,
-ROM loading/readback/retention, bidirectional echo, per-phase pause/reset,
-prepared versus committed I/O, and simultaneous CPU/PPU service. Deliberate
-alias, duplicate commit and early-initialization defects must fail with their
-exact nonzero diagnostics. Macro assertions supplement independent traces.
+Independent Questa checks cover all region endpoints, complete reset sweeps,
+ROM loading/readback/retention across core and global reset, interrupted-clear
+restart, bidirectional echo, per-phase pause/reset, prepared versus committed
+I/O, and simultaneous permitted CPU/PPU service. The raw-store fixture observes
+every clear write at the public primitive ports and independently reads every
+owned byte. Deliberate alias, duplicate commit and early-initialization defects
+must fail with exact nonzero diagnostics. Macro assertions supplement traces.
 
-Use synchronous RAM ports with no array reset. Ordinary registers and array
-writes use shared macros where they preserve inference. Any necessary inference
-exception must be stated here and beside the block. A separate constrained
-MAX10 synthesis/fit target must retain concrete RAM/resource and timing reports;
-source-size arithmetic is only a design estimate.
+A separate constrained MAX 10 fit retains the actual store configurations and
+service paths, with concrete primitive/resource and timing evidence. Source-size
+arithmetic is only a design estimate. Historical inferred-RAM runs are not
+acceptance evidence for the current implementation.

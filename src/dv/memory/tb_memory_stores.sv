@@ -39,6 +39,22 @@ module tb_memory_stores;
         for (index = 0; index < 8192; index = index + 1) begin
             if (init_done) $fatal(1, "MEMORY_STORES_EARLY_INIT edge=%0d", index);
             if (early && index == 7) force dut.init_done = 1'b1;
+            // Observe public primitive write ports; expectations come from the
+            // independently counted sweep edge, not the DUT's clear counter.
+            if (dut.wram.a_write !== 1'b1 || dut.vram.a_write !== 1'b1
+                || dut.wram.a_address !== 13'(index) || dut.vram.a_address !== 13'(index)
+                || dut.wram.a_wdata !== 8'd0 || dut.vram.a_wdata !== 8'd0
+                || dut.hram.a_write !== (index < 127)
+                || dut.oam_low.a_write !== (index < 160 && index % 2 == 0)
+                || dut.oam_high.a_write !== (index < 160 && index % 2 == 1)
+                || dut.wave_ram.a_write !== (index < 16))
+                $fatal(1, "MEMORY_STORES_CLEAR_WRITES edge=%0d", index);
+            if ((index < 127 && (dut.hram.a_address !== 7'(index) || dut.hram.a_wdata !== 8'd0))
+                || (index < 160 && (dut.oam_low.a_address !== 7'(index / 2)
+                    || dut.oam_high.a_address !== 7'(index / 2)
+                    || dut.oam_low.a_wdata !== 8'd0 || dut.oam_high.a_wdata !== 8'd0))
+                || (index < 16 && (dut.wave_ram.a_address !== 4'(index) || dut.wave_ram.a_wdata !== 8'd0)))
+                $fatal(1, "MEMORY_STORES_CLEAR_ADDRESS_DATA edge=%0d", index);
             edge_cycle();
         end
         if (!init_done) $fatal(1, "MEMORY_STORES_LATE_INIT");
@@ -64,6 +80,13 @@ module tb_memory_stores;
     initial begin
         $dumpfile("memory-stores.vcd");
         $dumpvars(1, tb_memory_stores);
+        $dumpvars(1, tb_memory_stores.dut.rom);
+        $dumpvars(1, tb_memory_stores.dut.wram);
+        $dumpvars(1, tb_memory_stores.dut.hram);
+        $dumpvars(1, tb_memory_stores.dut.vram);
+        $dumpvars(1, tb_memory_stores.dut.oam_low);
+        $dumpvars(1, tb_memory_stores.dut.oam_high);
+        $dumpvars(1, tb_memory_stores.dut.wave_ram);
         clk_sys = 0; reset_sys = 1; core_reset = 0;
         access_read = 0; access_write = 0; access_store = STORE_ROM;
         access_address = 0; access_wdata = 0;
@@ -134,6 +157,30 @@ module tb_memory_stores;
             if (!host_valid || host_rdata !== pattern(0, index)
                 || !access_valid || access_rdata !== pattern(0, 32767 - index))
                 $fatal(1, "MEMORY_STORES_ROM_RETAIN offset=%0d", index);
+        end
+        // Global reset cancels prepared ROM responses and retains every loaded
+        // byte. A sampled core reset partway through clearing restarts all 8192
+        // write edges; the previous partial sweep cannot shorten completion.
+        reset_sys = 1;
+        #1;
+        if (init_done || access_valid || host_valid)
+            $fatal(1, "MEMORY_STORES_GLOBAL_RESET_RESPONSE");
+        edge_cycle();
+        access_read = 0; host_read = 0; reset_sys = 0;
+        for (index = 0; index < 17; index = index + 1) begin
+            if (init_done) $fatal(1, "MEMORY_STORES_INTERRUPTED_CLEAR");
+            edge_cycle();
+        end
+        core_reset = 1; edge_cycle(); core_reset = 0;
+        wait_clear();
+        inspect_ram(0);
+        host_read = 1; access_read = 1; access_store = STORE_ROM;
+        for (index = 0; index < 32768; index = index + 1) begin
+            host_offset = 32'(index); access_address = 15'(32767 - index);
+            edge_cycle();
+            if (!host_valid || host_rdata !== pattern(0, index)
+                || !access_valid || access_rdata !== pattern(0, 32767 - index))
+                $fatal(1, "MEMORY_STORES_GLOBAL_ROM_RETAIN offset=%0d", index);
         end
         $display("PASS memory stores RAM_inspected=%0d ROM_bytes=32768 clear_edges=8192", inspected);
         $finish;
