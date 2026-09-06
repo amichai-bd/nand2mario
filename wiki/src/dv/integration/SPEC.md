@@ -3,8 +3,8 @@
 This bounded simulation implements [#140](https://github.com/amichai-bd/nand2mario/issues/140).
 It does not replace the complete release acceptance in
 [#88](https://github.com/amichai-bd/nand2mario/issues/88) or any component's acceptance.
-Actual run evidence and measured regression tiers belong in the PR; the first
-integration run is not yet accepted.
+Runtime evidence and measured regression tiers are recorded in
+[PR159](https://github.com/amichai-bd/nand2mario/pull/159).
 
 ## Original program and oracle
 
