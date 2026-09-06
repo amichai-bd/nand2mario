@@ -1,6 +1,6 @@
 # UART endpoint
 
-Status: composed wire commands are implemented under [#91](https://github.com/amichai-bd/nand2mario/issues/91). Already-STOPped STEP returns immediately without consuming time.
+Status: implemented under [#91](https://github.com/amichai-bd/nand2mario/issues/91). Already-STOPped STEP returns immediately without consuming time.
 
 The [shared interface contract](../interfaces/MAS_interfaces.md) owns packet,
 command, duplicate and core-transition behavior. Its generated package supplies
