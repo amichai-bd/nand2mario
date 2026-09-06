@@ -183,3 +183,13 @@ on lines32/33, including each six-dot window delay. Actual shade corruption at
 the second activation must fail. These targets require actual runtime evidence.
 The retained source derivation follows the pinned MiSTer reload, row-address,
 and window state rules; it makes no silicon sub-T timing claim.
+
+`ppu-object-zero` changes only the original Y100 object's X position from1 to0.
+Its 8x16 selection covers lines84..99 but contributes no visible pixels. The
+pinned Pan Docs X0 exception predicts11 extra dots regardless of SCX; this
+fixture retains SCX5. A normal line0 timestamp supplies the common origin,
+then all144 line-first positions must follow456-dot recurrence with exactly11
+extra on those16 lines. The independent scene checks all46080 pixels. An actual
+source timestamp fault at line84 proves the specific timing check, and public
+waves are retained. These targets still require runtime evidence. This adds
+the existing X0 matrix case; it does not claim absolute mode3 phase measurement.

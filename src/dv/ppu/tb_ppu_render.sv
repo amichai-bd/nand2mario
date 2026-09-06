@@ -26,6 +26,9 @@ module tb_ppu_render;
     logic [31:0] source_epoch;
     logic [63:0] source_dot, previous_dot, enable_dot, normal_first_dot;
     logic temporal, simulation_done, rich_scene, dynamic_palette;
+    logic object_zero;
+    integer zero_lines;
+    logic [63:0] zero_expected_dot;
     logic [7:0] ref_bgp, ref_obp0, ref_obp1, sampled_bgp, sampled_obp0, sampled_obp1;
     logic [7:0] sampled_new_palette, prior_palette [0:2];
     logic [63:0] sampled_dot, palette_write_dot [0:2];
@@ -192,6 +195,18 @@ module tb_ppu_render;
                 || source_start !== (pixel_count == 0))
                 $fatal(1, "PPU_RENDER_ORDER frame=%0d index=%0d xy=%0d,%0d",
                     frame_count, pixel_count, source_x, source_y);
+            // Pinned Pan Docs X0 exception is11 dots independent of SCX.
+            // Y100 and 8x16 imply visible lines84..99; X0 has no visible pixels.
+            // The first normal line anchors only the common frame origin.
+            if (object_zero && frame_count == 1 && pixel_count == 0) normal_first_dot = source_dot;
+            if (object_zero && frame_count == 1 && pixel_count % 160 == 0) begin
+                zero_expected_dot = normal_first_dot + 64'(456 * (pixel_count / 160)
+                    + (pixel_count / 160 >= 84 && pixel_count / 160 < 100 ? 11 : 0));
+                if (source_dot !== zero_expected_dot)
+                    $fatal(1, "PPU_X0_FIRST line=%0d expected=%0d actual=%0d",
+                        pixel_count / 160, zero_expected_dot, source_dot);
+                if (pixel_count / 160 >= 84 && pixel_count / 160 < 100) zero_lines = zero_lines + 1;
+            end
             if (source_dot !== dot_before || source_dot <= previous_dot || source_epoch !== 32'd5)
                 $fatal(1, "PPU_RENDER_TIMESTAMP frame=%0d index=%0d", frame_count, pixel_count);
             if (temporal && pixel_count == 0 && frame_count == 1) normal_first_dot = source_dot;
@@ -226,7 +241,10 @@ module tb_ppu_render;
                     $fclose(trace_file);
                     // Let composed passive observers sample this accepting edge.
                     #1;
-                    if (dynamic_palette) begin
+                    if (object_zero) begin
+                        if (zero_lines != 16) $fatal(1, "PPU_X0_COUNT");
+                        $display("PASS PPU X0 hidden object fixed11 lines=16 line_first=144 pixels=46080");
+                    end else if (dynamic_palette) begin
                         for (coverage_index = 0; coverage_index < 3; coverage_index = coverage_index + 1)
                             if (commit_pixels[coverage_index] == 0 || after_pixels[coverage_index] == 0)
                                 $fatal(1, "PPU_PALETTE_COVERAGE palette=%0d commit=%0d after=%0d", coverage_index,
@@ -245,7 +263,13 @@ module tb_ppu_render;
     end
     initial begin
         $dumpfile("waves/renderer.vcd");
-        $dumpvars(0, dut);
+        if ($test$plusargs("object_zero"))
+            $dumpvars(0, clk_sys, reset_sys, core_reset, gb_tick, dot_before,
+                io_commit, io_address, io_wdata, source_valid, source_start,
+                source_abort, source_x, source_y, source_shade, source_dot,
+                source_display_eligible, frame_count, pixel_count, expected,
+                zero_expected_dot, zero_lines);
+        else $dumpvars(0, dut);
         clk_sys = 0;
         reset_sys = 1;
         core_reset = 0;
@@ -257,6 +281,7 @@ module tb_ppu_render;
         io_wdata = 0;
         dma_active = 0;
         temporal = $test$plusargs("temporal");
+        object_zero = $test$plusargs("object_zero"); zero_lines = 0;
         dynamic_palette = $test$plusargs("palette");
         rich_scene = dynamic_palette;
         write_number = 0;
@@ -298,7 +323,7 @@ module tb_ppu_render;
         oam[0]=48; oam[1]=28; oam[2]=31; oam[3]=0;
         oam[4]=48; oam[5]=28; oam[6]=40; oam[7]=16;
         oam[8]=56; oam[9]=72; oam[10]=42; oam[11]=224;
-        oam[12]=100; oam[13]=1; oam[14]=48; oam[15]=32;
+        oam[12]=100; oam[13]=object_zero ? 0 : 1; oam[14]=48; oam[15]=32;
         oam[16]=18; oam[17]=167; oam[18]=50; oam[19]=0;
         repeat (4) @(negedge clk_sys);
         reset_sys = 0;
@@ -329,6 +354,11 @@ module tb_ppu_render;
                 endcase
                 write_number = write_number + 1;
             end
+        end
+        if ($test$plusargs("object_zero_corrupt")) begin
+            wait (frame_count == 1 && pixel_count == 84 * 160);
+            @(negedge clk_sys);
+            force dut.source_dot = 64'd0;
         end
         if ($test$plusargs("corrupt")) begin
             wait (frame_count == 1);
