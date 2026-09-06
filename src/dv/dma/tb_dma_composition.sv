@@ -196,9 +196,10 @@ module tb_dma_composition;
                 if(family_store && bus_commit && bus_plan.address[15:8]==8'hfe) begin
                     if(!bus_plan.write_enable || bus_plan.address!==16'('hfe3f-ordinary_writes))
                         $fatal(1,"DMA_FAMILY_STORE_ADDRESS index=%0d actual=%04x",ordinary_writes,bus_plan.address);
+                    if(bus_plan.write_data!==8'hc0)$fatal(1,"DMA_FAMILY_STORE_DATA expected=c0 actual=%02x",bus_plan.write_data);
                     ordinary_writes=ordinary_writes+1;
                     // A permitted ordinary store commits independently of scan corruption.
-                    if(!dma_active && oam_cpu_allow)expected_oam[bus_plan.address[7:0]]=bus_plan.write_data;
+                    if(!dma_active && oam_cpu_allow)expected_oam[bus_plan.address[7:0]]=8'hc0;
                 end
                 if(address_effect_sample && address_effect.valid && address_effect.write_effect &&
                     address_effect.address[15:8]==8'hfe) begin
