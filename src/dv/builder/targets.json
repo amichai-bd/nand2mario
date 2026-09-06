@@ -2687,5 +2687,41 @@
     ],
     "expected_exit": "nonzero",
     "signature": "CPU_IF_RECORD case=1 event=2"
+  },
+  "cpu-irq-reset": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/dv/cpu/tb_cpu_irq_reset.sv"
+    ],
+    "top": "tb_cpu_irq_reset",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU IRQ reset cases=42 phases=4 entry_cycles=5 captured_cancel=2"
+  },
+  "cpu-irq-reset-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/dv/cpu/tb_cpu_irq_reset.sv"
+    ],
+    "top": "tb_cpu_irq_reset",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_IRQ_RESET_CANCEL case=19"
   }
 }

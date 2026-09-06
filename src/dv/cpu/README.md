@@ -218,3 +218,11 @@ from held T3 recognition and the later dispatch snapshot. Clear, raise and
 reprioritize cases have literal instruction/stack/vector schedules. The negative
 forces the actual published IF field stale. This verifies the CPU sampling
 contract, not the separate IF owner's collision-priority implementation.
+
+
+`cpu-irq-reset` cancels each of five IRQ-entry M-cycles at all four phases with
+both resets, plus two IRQ-capture-at-A/before-publication-at-B cases. It preserves
+exactly the stack writes already committed, rejects pending access and stale
+events, and checks a fresh epoch/sequence-zero profile record. Forty-two cases
+produce 168 full records. The actual reset-edge commit fault must fail. Reset
+does not roll back writes that crossed the public commit boundary.
