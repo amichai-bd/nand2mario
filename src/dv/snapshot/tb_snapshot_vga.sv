@@ -98,8 +98,9 @@ module tb_snapshot_vga;
         $dumpvars(0,snapshot_request,snapshot_ready,snapshot_done,snapshot_ok,snapshot_valid,
             snapshot_metadata,frame_read,frame_address,frame_data,frame_valid);
         wait(source_frames==1); acquire(); wait(acquisitions==1);
-        // Four scanlines before wrap: the 230.4us copy overlaps the first swap.
-        wait(video.video_y==520 && video.video_x==0); acquire(); wait(acquisitions==2);
+        // Five lines before vertical blank (line480), the specified swap edge.
+        wait(video.video_y==475 && video.video_x==0); acquire(); wait(acquisitions==2);
+        if (copies_during_swap<1) $fatal(1,"SNAPSHOT_VGA_COPY_SWAP_MISSING");
     end
     always @(negedge video.pll_locked) begin
         if ($time>0 && host_initialized) begin
