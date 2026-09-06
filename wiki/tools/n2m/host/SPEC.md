@@ -25,8 +25,9 @@ is not device authentication or proof of correct wiring.
 
 Before any operation the host checks PING and host ABI, then records the stable
 128-bit build ID. It sends no product operation after an ABI mismatch. The build
-ID is evidence, not authentication; zero remains valid only for explicitly
-unidentified simulation fixtures under the shared contract.
+ID is evidence, not authentication. An all-zero ID fails before any product
+command. The shared contract's unidentified simulation-fixture exception is
+not exposed by the physical host CLI.
 
 Load accepts a successful immutable
 `workdir/builds/<tag>/sw/build/<target>/runs/<attempt>/result.json`, not a loose

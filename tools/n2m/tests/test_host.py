@@ -59,6 +59,8 @@ class Endpoint:
                       abi.HOST_REG_IMAGE_VALID: self.valid, abi.HOST_REG_PROFILE: self.profile,
                       abi.HOST_REG_INPUT: self.buttons}
             values.update({getattr(abi, f'HOST_REG_BUILD_ID_{i}'): 0x12340000 + i for i in range(4)})
+            if self.defect == 'zero-build':
+                values.update({getattr(abi, f'HOST_REG_BUILD_ID_{i}'): 0 for i in range(4)})
             response = pack_record('word', {'value': values[address]})
         elif name == 'LOAD_BEGIN':
             request = unpack_record('load_begin', payload)
@@ -326,6 +328,27 @@ class HostTests(unittest.TestCase):
         self.assertEqual(report['result']['verified_bytes'], 32768)
         self.assertEqual(endpoint.rom, (ROOT / packaged['rom']).read_bytes())
         self.assertEqual(report['package']['rom_sha256'], packaged['artifacts'][packaged['rom']])
+
+    def test_cli_zero_build_stops_before_product_commands(self):
+        path, _ = self.manifest()
+        for action in ('load', 'run', 'reset', 'halt', 'step', 'input', 'snapshot'):
+            with self.subTest(action=action):
+                endpoint = Endpoint('zero-build')
+                def fake_session(folder, args, state_root):
+                    return session(folder, args, self.folder / 'state',
+                                   discover=lambda folder, args: select_uart([DEVICE], args),
+                                   opener=lambda port: endpoint)
+                command = ['host', action, '--uart-port', 'COM92', '--json']
+                if action == 'load':
+                    command += ['--package', str(path)]
+                if action == 'step':
+                    command += ['--dots', '4']
+                if action == 'input':
+                    command += ['--mask', '255']
+                with patch('n2m.host.command.session', fake_session), redirect_stdout(io.StringIO()) as stdout:
+                    self.assertEqual(main(command, ROOT), 1)
+                self.assertIn('build identity is zero', json.loads(stdout.getvalue())['error'])
+                self.assertEqual([name for name, _, _ in endpoint.requests], ['PING'] + ['READ_HOST'] * 5)
 
     def test_serial_backend_configures_before_explicit_open(self):
         connection = unittest.mock.Mock()

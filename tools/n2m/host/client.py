@@ -109,6 +109,8 @@ class Client:
         if ping != abi.WIRE_ABI or version != abi.WIRE_ABI:
             raise ValueError('endpoint ABI mismatch')
         words = [self.read_host(getattr(abi, f'HOST_REG_BUILD_ID_{i}')) for i in range(4)]
+        if not any(words):
+            raise ValueError('endpoint build identity is zero; physical host commands require an identified build')
         return {'abi': version, 'build_id': b''.join(word.to_bytes(4, 'little') for word in words).hex()}
 
     def load(self, image):
