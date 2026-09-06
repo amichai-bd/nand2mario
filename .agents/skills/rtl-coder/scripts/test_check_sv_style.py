@@ -15,7 +15,8 @@ class DeclarationStyleTests(unittest.TestCase):
 
     def test_logic_signal_types(self):
         for source in ["wire q;", "reg [7:0] q;", "input wire logic q;",
-                       "module m(output wire q); endmodule", "wire [1:0] bank [0:2];"]:
+                       "module m(output wire q); endmodule", "wire [1:0] bank [0:2];",
+                       "`default_nettype wire wire q;", "`default_nettype none reg q;"]:
             with self.subTest(source=source):
                 self.assertTrue(legacy_declarations(source))
         for source in ["logic q; assign q = a;", "input var logic q;",

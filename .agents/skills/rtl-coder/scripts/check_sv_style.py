@@ -20,7 +20,7 @@ def code_text(source):
 def legacy_declarations(source):
     clean = code_text(source)
     # A nettype restoration directive is compiler state, not a signal declaration.
-    clean = re.sub(r'(?m)^[ \t]*`default_nettype[^\n]*',
+    clean = re.sub(r'(?m)^[ \t]*`default_nettype[ \t]+[A-Za-z_]\w*',
                    lambda m: ' ' * len(m.group()), clean)
     return sorted({source.count('\n', 0, m.start()) + 1
                    for m in re.finditer(r'\b(?:wire|reg)\b', clean)})
