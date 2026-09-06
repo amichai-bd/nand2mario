@@ -1008,5 +1008,21 @@
     "expected_exit": "nonzero",
     "signature": "VGA_PIXEL:",
     "timeout_seconds": 180
+  },
+  "vga-lcd-reset": {
+    "sources": [
+      "src/rtl/clocking/n2m_reset_control.sv",
+      "src/rtl/vga/n2m_frame_ram.sv",
+      "src/rtl/vga/n2m_vga_scan.sv",
+      "src/rtl/vga/n2m_frame_bridge.sv",
+      "src/dv/vga/tb_vga.sv"
+    ],
+    "top": "tb_vga",
+    "args": [
+      "+lcd_reset"
+    ],
+    "expected_exit": "zero",
+    "signature": "PASS VGA LCD shared-reset release-skew stopped-pixel retained-white global-mask",
+    "timeout_seconds": 180
   }
 }

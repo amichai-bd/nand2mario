@@ -274,6 +274,38 @@ module tb_vga;
         @(negedge clk_sys);
         source_abort = 0; blank_assert = 0; source_valid = 0; source_start = 0;
     endtask
+    task automatic lcd_reset_skew;
+        // Both resets share one owner. Keep the pixel clock stopped so only
+        // the system reset releases; never reset an active mailbox end alone.
+        pixel_running = 0;
+        #7; board_reset_n = 1;
+        wait (!pll_areset); #13; pll_locked = 1;
+        wait (!reset_sys);
+        if (!reset_pix) $fatal(1, "LCD_RESET_SKEW: pixel reset escaped stopped clock");
+        @(negedge clk_sys); blank_assert = 1;
+        @(negedge clk_sys); blank_assert = 0;
+        send_pixels(23040, 1, 0);
+        if (discard_count != 1 || !ref_blank_requested || display_valid)
+            $fatal(1, "LCD_RESET_SKEW: unavailable peer acceptance");
+        @(negedge clk_sys); core_reset = 1; source_epoch = 1;
+        @(negedge clk_sys); core_reset = 0;
+        pixel_running = 1;
+        wait (!reset_pix);
+        wait (video_y == 30 && video_x == 100);
+        repeat (10) @(negedge clk_pix);
+        if (!ref_blank_active || display_valid || {red, green, blue} !== 12'hfff)
+            $fatal(1, "LCD_RESET_SKEW: retained white not visible");
+        // A genuine shared lock loss masks white asynchronously, even stopped.
+        @(negedge clk_pix); pixel_running = 0;
+        #7; pll_locked = 0;
+        #1;
+        if (!reset_sys || !reset_pix || {red, green, blue} !== 12'h000)
+            $fatal(1, "LCD_RESET_SKEW: global mask");
+        repeat (4) @(negedge clk_sys);
+        if (ref_blank_requested) $fatal(1, "LCD_RESET_SKEW: global state clear");
+        $display("PASS VGA LCD shared-reset release-skew stopped-pixel retained-white global-mask");
+        $finish;
+    endtask
     task automatic lcd_scenario;
         // Abort wins even at a first pixel and the would-be last completion.
         source_start = 1;
@@ -396,6 +428,7 @@ module tb_vga;
                      observe_index, observe_shade, observe_complete, display_valid,
                      display_epoch, display_sequence, video_x, video_y, video_valid,
                      video_image, red, green, blue, hsync_n, vsync_n);
+        if ($test$plusargs("lcd_reset")) lcd_reset_skew();
         startup();
         if ($test$plusargs("lcd")) lcd_scenario();
         for (seq = 0; seq < 8; seq++) send_pixels(23040, 1, seq);
