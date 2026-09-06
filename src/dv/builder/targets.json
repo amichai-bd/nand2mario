@@ -4331,5 +4331,66 @@
       "+boundary_fault"
     ],
     "expected_exit": "nonzero"
+  },
+  "uart-input-mmio": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/memory/n2m_memory_stores.sv",
+      "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/uart/n2m_uart_packet_store.sv",
+      "src/rtl/uart/n2m_uart_packet_rx.sv",
+      "src/rtl/uart/n2m_uart_exchange_store.sv",
+      "src/rtl/uart/n2m_uart_exchange.sv",
+      "src/rtl/uart/n2m_uart_tx.sv",
+      "src/rtl/uart/n2m_uart_packet_tx.sv",
+      "src/rtl/uart/n2m_uart_response.sv",
+      "src/rtl/uart/n2m_uart_presence_store.sv",
+      "src/rtl/uart/n2m_uart_load.sv",
+      "src/rtl/uart/n2m_uart_rx.sv",
+      "src/rtl/input/n2m_input_pkg.sv",
+      "src/rtl/input/n2m_input.sv",
+      "src/rtl/uart/n2m_uart_core_control.sv",
+      "src/rtl/uart/n2m_uart_host_registers.sv",
+      "src/rtl/uart/n2m_uart_validate.sv",
+      "src/rtl/uart/n2m_uart_commands.sv",
+      "src/rtl/uart/n2m_uart.sv",
+      "src/dv/uart/tb_uart_endpoint.sv"
+    ],
+    "top": "tb_uart_endpoint",
+    "args": [
+      "+input_mmio"
+    ],
+    "expected_exit": "zero",
+    "signature": "PASS UART_INPUT_MMIO writes=4 invalid=12 replay=1 physical_reset_retained",
+    "vendor_model": "intel-memory",
+    "timeout_seconds": 300
+  },
+  "input-ordering": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/input/n2m_input_pkg.sv",
+      "src/rtl/input/n2m_input.sv",
+      "src/rtl/joypad/n2m_joypad_pkg.sv",
+      "src/rtl/joypad/n2m_joypad_matrix.sv",
+      "src/rtl/joypad/n2m_joypad.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/dv/input/tb_input_ordering.sv"
+    ],
+    "top": "tb_input_ordering",
+    "signature": "PASS INPUT_ORDERING simultaneous_switch reset_cancel physical_retention checks=15",
+    "args": [],
+    "expected_exit": "zero"
   }
 }

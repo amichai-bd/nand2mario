@@ -42,6 +42,10 @@ module tb_uart_endpoint;
     logic [7:0] expected_command, expected_status;
     bit waiting_reply, forbid_reset, duplicate_fault, readback_fault;
     bit dot_reply, input_reply;
+    logic physical_commit;
+    logic [7:0] physical_buttons, effective_buttons;
+    n2m_input_pkg::input_update_t effective_update;
+    integer accepted_inputs;
     logic [63:0] observed_input_dot;
     logic [7:0] prior_buttons;
     n2m_uart #(.CLOCK_HZ(100000),.BAUD(12500)) dut (
@@ -49,7 +53,8 @@ module tb_uart_endpoint;
         .build_id(128'hfedcba98765432100123456789abcdef),.gb_tick(gb_tick),.paused(paused),
         .core_initialized(core_initialized),.instruction_complete(instruction_complete),
         .retirement_valid(retirement_valid),.cpu_stopped(cpu_stopped),.pause_request(pause_request),
-        .physical_commit(1'b0),.physical_buttons(8'd0),.effective_buttons(),.effective_update(),
+        .physical_commit(physical_commit),.physical_buttons(physical_buttons),
+        .effective_buttons(effective_buttons),.effective_update(effective_update),
         .core_reset(core_reset),.buttons(buttons),.epoch(epoch),.dot_count(dot_count),
         .retirement_count(retirement_count),.profile(profile),.image_valid(image_valid),
         .endpoint_state(endpoint_state),.rom_write(rom_write),.rom_read(rom_read),
@@ -237,6 +242,30 @@ module tb_uart_endpoint;
     task automatic exchange(input logic [7:0] cmd, input integer size, input logic [7:0] result_status, input integer result_size);
         exchange_header(cmd,size,size,1,result_status,result_size);
     endtask
+    task automatic host_write_request(input logic [31:0] address_value, input logic [31:0] value);
+        integer item;
+        for(item=0;item<4;item=item+1) begin
+            request_payload[item]=8'(address_value>>(item*8));
+            request_payload[item+4]=8'(value>>(item*8));
+        end
+    endtask
+    task automatic physical_update(input logic [7:0] value);
+        @(negedge clk_sys); while(gb_tick) @(negedge clk_sys);
+        physical_buttons=value;physical_commit=1;
+        @(negedge clk_sys);physical_commit=0;
+    endtask
+    task automatic input_readbacks(input logic [7:0] host_mask, input logic [7:0] source,
+                                   input logic [7:0] physical_mask, input logic [7:0] effective_mask);
+        word_request(32'h10020);expect_word({24'd0,host_mask});exchange(2,4,0,4);
+        word_request(32'h10044);expect_word({24'd0,source});exchange(2,4,0,4);
+        word_request(32'h10048);expect_word({24'd0,physical_mask});exchange(2,4,0,4);
+        word_request(32'h1004c);expect_word({24'd0,effective_mask});exchange(2,4,0,4);
+        if(buttons!==host_mask || effective_buttons!==effective_mask)$fatal(1,"UART_INPUT_OBSERVATION");
+    endtask
+    always @(posedge clk_sys) begin
+        if(reset_sys) accepted_inputs=0;
+        else if(dut.u_input.host_write.valid) accepted_inputs=accepted_inputs+1;
+    end
     task automatic word_request(input logic [31:0] value);
         integer item;
         for(item=0;item<4;item=item+1) request_payload[item]=8'(value>>(item*8));
@@ -258,6 +287,7 @@ module tb_uart_endpoint;
         integer at, amount, item, before_writes, before_resets;
         logic [31:0] saved_token;
         clk_sys=0;reset_sys=1;uart_rx=1;ie=0;iflags=0;
+        physical_commit=0;physical_buttons=0;accepted_inputs=0;
         frame_available=0;snapshot_delay=0;snapshot_done=0;snapshot_ok=0;snapshot_valid=0;snapshot_metadata='0;
         frame_valid=0;frame_data=0;reply_size=0;expected_size=0;reply_count=0;command_count=0;
         rom_writes=0;reset_count=0;irq_count=0;token=1;waiting_reply=0;forbid_reset=0;dot_reply=0;input_reply=0;
@@ -267,10 +297,49 @@ module tb_uart_endpoint;
         $fdisplay(trace,"seq,command,status,payload,dots,rom_writes");
         $dumpfile("waves.vcd");
         $dumpvars(0,reset_sys,uart_rx,uart_tx,gb_tick,paused,pause_request,core_reset,core_initialized,
-            buttons,epoch,dot_count,retirement_count,profile,image_valid,endpoint_state,rom_write,rom_read,
+            buttons,physical_commit,physical_buttons,effective_buttons,effective_update,accepted_inputs,
+            epoch,dot_count,retirement_count,profile,image_valid,endpoint_state,rom_write,rom_read,
             rom_address,rom_write_data,rom_read_data,rom_read_valid,snapshot_request,snapshot_done,snapshot_valid,
             frame_read,frame_address,frame_data,frame_valid,reply_count,command_count,rom_writes,reset_count);
         repeat(5) @(negedge clk_sys);reset_sys=0;
+        if($test$plusargs("input_mmio")) begin
+            input_readbacks(0,0,0,0);
+            physical_update(8'ha5);input_readbacks(0,0,8'ha5,0);
+            host_write_request(32'h10020,32'h3c);expect_dot(0);exchange(14,8,0,8);
+            input_readbacks(8'h3c,0,8'ha5,8'h3c);
+            host_write_request(32'h10044,1);expect_dot(0);exchange(14,8,0,8);
+            input_readbacks(8'h3c,1,8'ha5,8'ha5);
+            request_payload[0]=8'hc3;expect_dot(0);exchange(11,1,0,8);
+            input_readbacks(8'hc3,1,8'ha5,8'ha5);
+            physical_update(8'h5a);input_readbacks(8'hc3,1,8'h5a,8'h5a);
+            host_write_request(32'h10044,0);expect_dot(0);exchange(14,8,0,8);
+            saved_token=token;before_writes=accepted_inputs;
+            token=saved_token-1;exchange(14,8,0,8);token=saved_token;
+            if(accepted_inputs!=before_writes)$fatal(1,"UART_INPUT_REPLAY_EFFECT");
+            input_readbacks(8'hc3,0,8'h5a,8'hc3);
+            for(item=0;item<8;item=item+1) begin
+                case(item)
+                    0:host_write_request(32'hff00,0);
+                    1:host_write_request(32'h10021,0);
+                    2:host_write_request(32'h10000,0);
+                    3:host_write_request(32'h10048,0);
+                    4:host_write_request(32'h1004c,0);
+                    5:host_write_request(32'h10050,0);
+                    6:host_write_request(32'h10020,256);
+                    7:host_write_request(32'h10044,2);
+                endcase
+                exchange(14,8,4,0);
+            end
+            host_write_request(32'h10020,0);exchange(14,7,3,0);
+            if(accepted_inputs!=before_writes)$fatal(1,"UART_INPUT_INVALID_EFFECT");
+            input_readbacks(8'hc3,0,8'h5a,8'hc3);
+            begin_image();input_readbacks(0,0,8'h5a,0);
+            host_write_request(32'h10044,2);exchange(14,7,3,0);exchange(14,8,4,0);
+            host_write_request(32'h10044,1);exchange(14,8,5,0);
+            input_readbacks(0,0,8'h5a,0);
+            if(accepted_inputs!=before_writes)$fatal(1,"UART_INPUT_LOADING_EFFECT");
+            $fclose(trace);$display("PASS UART_INPUT_MMIO writes=4 invalid=12 replay=1 physical_reset_retained");$finish;
+        end
         expect_word(1);exchange(1,0,0,4);
         word_request(32'h1000c);expect_word(0);exchange(2,4,0,4);
         exchange(3,0,5,0);exchange(4,0,5,0);
