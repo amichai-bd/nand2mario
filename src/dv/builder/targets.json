@@ -2955,5 +2955,20 @@
     ],
     "expected_exit": "nonzero",
     "signature": "CPU_STOP_IRQ_BUS case=0 dot=32"
+  },
+  "snapshot": {
+    "top": "tb_snapshot",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/snapshot/n2m_snapshot_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/snapshot/n2m_frame_snapshot.sv",
+      "src/dv/snapshot/tb_snapshot.sv"
+    ],
+    "vendor_model": "intel-memory",
+    "signature": "PASS snapshot first copy bytes=5760",
+    "args": [],
+    "expected_exit": "zero",
+    "timeout_seconds": 180
   }
 }

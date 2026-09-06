@@ -1019,6 +1019,44 @@
         ],
         "reference_ns": "20.000"
       }
+    },
+    "snapshot": {
+      "device": "10M50DAF484C7G",
+      "top": "n2m_frame_snapshot",
+      "sources": [
+        "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+        "src/rtl/snapshot/n2m_snapshot_pkg.sv",
+        "src/rtl/common/n2m_intel_ram.sv",
+        "src/rtl/snapshot/n2m_frame_snapshot.sv"
+      ],
+      "constraints": [
+        "src/fpga/de10_lite/snapshot.sdc"
+      ],
+      "pins": {
+        "clk_sys": "PIN_P11"
+      },
+      "virtual_pins": [
+        "reset_sys",
+        "core_reset",
+        "observe_valid",
+        "observe_complete",
+        "observe_abort",
+        "observe_index[*]",
+        "observe_shade[*]",
+        "observe_epoch[*]",
+        "observe_sequence[*]",
+        "observe_dot[*]",
+        "snapshot_request",
+        "snapshot_ready",
+        "snapshot_done",
+        "snapshot_ok",
+        "snapshot_valid",
+        "snapshot_metadata[*]",
+        "frame_read",
+        "frame_address[*]",
+        "frame_data[*]",
+        "frame_valid"
+      ]
     }
   }
 }
