@@ -140,19 +140,19 @@ advance the PPU dot, or reread a palette to alter that event.
 | LCD disable at A | Cancel partial source progress and suppress A's otherwise valid pixel/completion; request white presentation; retain ownership of all complete/offered banks |
 | Core reset at any system edge | Initialize PPU control and cancel pending source event without requiring a future tick; preserve VGA mailbox ends, desired presentation state and complete banks |
 | Memory contract violation | Latch a visible PPU fault, suppress source publication and future memory side effects, and issue one partial abort; do not insert a wait dot or silently lengthen a mode |
-| Interrupt publication | Changed interrupt condition after A is visible to the shared interrupt owner at B; edge history is sampled on system edges so one condition rise cannot become repeated requests |
+| Interrupt publication | Changed condition after A contributes to the shared owner's combinational next-IF observation before B; CPU retirement captures that observation at B |
 
 The CPU register port is `io_commit`, `io_write`, `io_address[15:0]`,
 `io_wdata[7:0]`, and combinational `io_rdata[7:0]`/`io_selected`.
 Commit is valid only with `gb_tick`. Generated addresses identify LCD registers;
 FF46 belongs to #132. IRQ condition levels and one-system-cycle rising-edge
 requests are exposed separately for trace and integration. Their same-edge
-interaction with IF writes belongs to the shared interrupt owner.
+interaction with IF writes belongs to [the interrupt owner](https://github.com/amichai-bd/nand2mario/issues/133). That owner supplies the combinational post-event IF observation before B, including the A-updated PPU condition and its specified CPU-write/ack priority. CPU retirement samples that observation at B, rather than the pre-B stored IF. A registered pulse first visible after B cannot be the sole event input for this observation. Edge history prevents repeated requests; CPU dispatch retains its separately specified snapshot.
 
 The VRAM port provides `vram_request`, `vram_address[12:0]` and receives
 `vram_data[7:0]` plus `vram_data_valid`. The memory owner supplies a registered
 one-system-cycle read response and holds the corresponding data/valid through
-the consuming dot. A newly changed address has the intervening system cycles
+the consuming dot. The response belongs to the previously requested address and must be visible before A; registering it at A is too late for that consumption. A newly changed address has the intervening system cycles
 to settle; a missing promised response on the consuming edge is a fault.
 
 The OAM port provides a seven-bit pair address, scan-active/index and fetch-phase

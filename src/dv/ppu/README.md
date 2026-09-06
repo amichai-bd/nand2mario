@@ -57,3 +57,8 @@ records and waves under the build tag. Declare complete line/frame counts and
 coverage before runs. Bound the watchdog from the planned dot schedule, without
 shortening coverage to avoid a failure. No physical or full-system acceptance
 is implied by these unit and bridge-composition tests.
+
+The shared interrupt integration fixture must coincide T4 retirement with VBlank
+and STAT rises and an IF write. Check the interrupt owner's specified priority
+and combinational next-IF observation captured by the CPU at B, without moving
+retirement to another edge or duplicating IF state in the CPU.
