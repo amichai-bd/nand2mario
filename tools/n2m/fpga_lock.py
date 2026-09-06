@@ -36,9 +36,10 @@ def verify(text, checks, top="clocking_proof"):
         if re.fullmatch(r"(?:input|output|wire|tri0|tri1)\s+(?:\[\d+:\d+\]\s*)?(?:\\[^\s]+\s*(?:\[\d+\])?|[A-Za-z_]\w*)", statement):
             declarations.append(" ".join(statement.split()))
             continue
-        param = re.fullmatch(r"defparam\s+\\([^\s]+)\s+\.(\w+)\s*=\s*(\"[^\"]*\"|[A-Za-z0-9_'.+-]+)", statement)
+        param = re.fullmatch(r"defparam\s+(?:\\([^\s]+)\s+|([A-Za-z_]\w*)\s*)\.(\w+)\s*=\s*(\"[^\"]*\"|[A-Za-z0-9_'.+-]+)", statement)
         if param:
-            owner, key, value = param.groups()
+            escaped, plain, key, value = param.groups()
+            owner = escaped or plain
             values = parameters.setdefault(owner, {})
             if key in values:
                 raise ValueError("duplicate primitive parameter")
