@@ -11,8 +11,12 @@ module n2m_intel_ram #(
     parameter integer BYTE_LANES = 1,
     parameter bit DUAL_CLOCK = 0
 ) (
-    input var logic clk_a, clk_b, reset_a, reset_b,
-    input var logic a_read, a_write,
+    input var logic clk_a,
+    input var logic clk_b,
+    input var logic reset_a,
+    input var logic reset_b,
+    input var logic a_read,
+    input var logic a_write,
     input var logic [ADDRESS_BITS-1:0] a_address,
     input var logic [DATA_BITS-1:0] a_wdata,
     input var logic [BYTE_LANES-1:0] a_byte_enable,
