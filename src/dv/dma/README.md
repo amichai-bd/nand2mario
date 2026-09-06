@@ -87,3 +87,13 @@ all destination bytes and the untouched CPU-addressed source locations.
 This complements real-CPU fixtures; it does not implement other I/O owners.
 The corrupt target changes the actual CPU read output81 toFF and requires
 DMA_ACCESS_READ with the exact address and values.
+
+
+The restart fixture supplies four literal CPU-boundary timelines to the actual
+DMA and Intel stores: different-page restart at offset20, consecutive FF46
+triggers, a mature trigger at old159, and a new trigger arriving at old159.
+It checks985 physical writes at exactly25 system clocks after their accepted
+T4s and640 final readback bytes. The new trigger on159 is not yet mature:
+completion deactivates ownership, M1 writes no old byte, then new offset0
+follows. The early target injects a valid physical write one clock early and
+requires the independent expected25/actual24 timing failure.

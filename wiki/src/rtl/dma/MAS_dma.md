@@ -169,6 +169,10 @@ another pending trigger rather than postponing the old trigger. Consecutive
 commits therefore produce consecutive resets. This preserves the source's
 separate page, delayed trigger and reset-dominant completion roles; it is an
 explicit cycle projection rather than a claim of measured half-phase timing.
+A newly accepted FF46 trigger on old byte159 is not yet mature: the old
+transfer completes and deactivates; the following M1 activates offset0 without
+an old-byte write. A trigger already pending before159 instead matures on
+that edge and keeps ownership active at offset0.
 
 Source requests are side-effect-free preparation and persist during pause.
 Only a qualified T4 consumes the response. A missing promised response cancels
