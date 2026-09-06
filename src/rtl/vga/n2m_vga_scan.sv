@@ -3,6 +3,7 @@
 // Geometry authority: wiki/src/clocks-resets-cdc.md. Two-stage output latency.
 module n2m_vga_scan (
     input logic clk_pix, reset_pix, display_valid,
+    input var logic blank_image,
     input logic [1:0] read_shade,
     output logic read_enable,
     output logic [14:0] read_address,
@@ -16,7 +17,11 @@ module n2m_vga_scan (
     logic [9:0] x_q, y_q, x_out, y_out;
     logic active_q, image_q, valid_q, hs_q, vs_q;
     logic active_out, image_out, valid_out, hs_out, vs_out;
-    logic [3:0] gray, gray_out;
+    logic [3:0] gray;
+    logic [1:0] gray_out;
+    logic white_output;
+    assign white_output = blank_image && x_q >= 10'd80 && x_q < 10'd560
+        && y_q >= 10'd24 && y_q < 10'd456;
     logic [9:0] source_x, source_y;
     logic active;
     assign active = x < 10'd640 && y < 10'd480;
@@ -52,19 +57,22 @@ module n2m_vga_scan (
     `DFF_RST(x_out, x_q, clk_pix, reset_pix)
     `DFF_RST(y_out, y_q, clk_pix, reset_pix)
     `DFF_RST(active_out, active_q, clk_pix, reset_pix)
-    `DFF_RST(image_out, image_q, clk_pix, reset_pix)
+    `DFF_RST(image_out, image_q || white_output, clk_pix, reset_pix)
     `DFF_RST(valid_out, valid_q, clk_pix, reset_pix)
-    `DFF_RST_VAL(hs_out, hs_q, clk_pix, reset_pix, 1'b1)
-    `DFF_RST_VAL(vs_out, vs_q, clk_pix, reset_pix, 1'b1)
-    `DFF_RST(gray_out, image_q ? gray : 4'h0, clk_pix, reset_pix)
+    `DFF_ARST_VAL(hs_out, hs_q, clk_pix, reset_pix, 1'b1)
+    `DFF_ARST_VAL(vs_out, vs_q, clk_pix, reset_pix, 1'b1)
+    // Each two-bit pair repeats in F/A/5/0. Register the white choice on the
+    // existing output edge; async reset masks pins even with no pixel clock.
+    `DFF_ARST_VAL(gray_out, white_output ? 2'b11 : (image_q ? gray[1:0] : 2'b00),
+                  clk_pix, reset_pix, 2'b00)
     assign video_x = x_out;
     assign video_y = y_out;
     assign video_valid = valid_out && !reset_pix;
     assign video_active = active_out && video_valid;
     assign video_image = image_out && video_valid;
-    assign red = video_valid ? gray_out : 4'h0;
+    assign red = {gray_out, gray_out};
     assign green = red;
     assign blue = red;
-    assign hsync_n = video_valid ? hs_out : 1'b1;
-    assign vsync_n = video_valid ? vs_out : 1'b1;
+    assign hsync_n = hs_out;
+    assign vsync_n = vs_out;
 endmodule

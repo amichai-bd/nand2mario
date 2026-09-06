@@ -10,6 +10,7 @@ BUNDLES = (("offer_bank", "captured_bank", 2),
            ("offer_sequence", "captured_sequence", 64),
            ("offer_epoch", "captured_epoch", 32))
 PORTS = [f"{color}[{bit}]" for color in ("red", "green", "blue") for bit in range(4)] + ["hsync_n", "vsync_n"]
+BLANK_CONTROLS = (("active", "u_bridge|blank_active"), ("request", "u_bridge|blank_pix[1]"))
 CORNERS = (("slow85", "slow", 85), ("slow0", "slow", 0), ("fast0", "fast", 0))
 
 
@@ -59,7 +60,8 @@ def required_reports(*, lcd=False):
     names = ([f"{name}_{check}" for name, _, _ in chain_profile(lcd) for check in ("setup", "hold")]
              + [source for source, _, _ in BUNDLES] + ["outputs_max", "outputs_min", "skew"])
     if lcd:
-        names += ["blank_outputs_max", "blank_outputs_min"]
+        names += [f"blank_{name}_gray{bit}_{check}" for name, _ in BLANK_CONTROLS
+                  for bit in range(2) for check in ("setup", "hold")]
     return [f"vga_{corner}_{name}.rpt" for corner, _, _ in CORNERS for name in names] + ["vga_first_pins.rpt"]
 
 
@@ -74,8 +76,10 @@ def audit(quote, *, lcd=False):
         lines += collection("registers", [f"u_bridge|{capture}[{i}]" for i in range(width)], capture, quote)
     lines += collection("ports", PORTS, "vga_outputs", quote)
     if lcd:
-        lines += collection("registers", ["u_bridge|blank_active"], "vga_blank", quote)
-        lines += collection("ports", PORTS[:-2], "vga_rgb", quote)
+        for name, launch in BLANK_CONTROLS:
+            lines += collection("registers", [launch], "vga_blank_" + name, quote)
+        for bit in range(2):
+            lines += collection("registers", [f"u_bridge|u_scan|gray_out[{bit}]"], f"vga_gray_{bit}", quote)
     # -multi_corner does not provide all file-output corners for these commands.
     for corner, model, temperature in CORNERS:
         lines += [f"set_operating_conditions -model {model} -voltage 1200 -temperature {temperature}",
@@ -91,8 +95,10 @@ def audit(quote, *, lcd=False):
         for name, option in (("max", ""), ("min", "-min_path")):
             lines.append(f"report_path -to $vga_outputs -npaths 14 -nworst 1 {option} -file output/vga_{corner}_outputs_{name}.rpt")
         if lcd:
-            for direction, option in (("max", ""), ("min", "-min_path")):
-                lines.append(f"report_path -from $vga_blank -to $vga_rgb -npaths 12 -nworst 1 {option} -file output/vga_{corner}_blank_outputs_{direction}.rpt")
+            for name, _ in BLANK_CONTROLS:
+                for bit in range(2):
+                    for check in ("setup", "hold"):
+                        lines.append(f"report_timing -from $vga_blank_{name} -to $vga_gray_{bit} -{check} -npaths 1 -detail full_path -file output/vga_{corner}_blank_{name}_gray{bit}_{check}.rpt")
         lines.append(f"report_max_skew -npaths 14 -detail full_path -file output/vga_{corner}_skew.rpt")
     return "\n".join(lines) + "\n"
 
@@ -178,8 +184,8 @@ def verify(folder, *, lcd=False):
     output_sources = {"u_clocking|u_reset|pix_release[1]", "u_bridge|u_scan|valid_out", "u_bridge|u_scan|hs_out", "u_bridge|u_scan|vs_out"}
     output_sources.update(f"u_bridge|u_scan|gray_out[{i}]" for i in range(4))
     if lcd:
-        output_sources.add("u_bridge|blank_active")
-        output_sources.update(f"u_bridge|u_scan|{axis}_out[{i}]" for axis in ("x", "y") for i in range(10))
+        output_sources = {"u_bridge|u_scan|gray_out[0]", "u_bridge|u_scan|gray_out[1]",
+                          "u_bridge|u_scan|hs_out", "u_bridge|u_scan|vs_out"}
     for corner, model, temperature in CORNERS:
         model_name = f"{model.title()} 1200mV {temperature}C Model"
         prefix = f"vga_{corner}_"
@@ -207,16 +213,20 @@ def verify(folder, *, lcd=False):
             output_delays[direction] = max(delays) if direction == "max" else min(delays)
         if output_delays["max"] - output_delays["min"] > 2:
             raise ValueError("VGA complete output path spread exceeds 2 ns")
-        blank_delays = {}
+        blank_slacks = {}
         if lcd:
-            for direction in ("max", "min"):
-                paths = path_rows(reports[prefix + "blank_outputs_" + direction + ".rpt"], 12)
-                if {row[2] for row in paths} != set(PORTS[:-2]) or any(node(row[1]) != "u_bridge|blank_active" for row in paths):
-                    raise ValueError("VGA blank output path inventory differs")
-                delays = [number(row[0]) for row in paths]
-                if any(value < 0 or value > 10 for value in delays):
-                    raise ValueError("VGA blank output datapath outside 0..10 ns")
-                blank_delays[direction] = max(delays) if direction == "max" else min(delays)
+            pixel_clock = "u_clocking|u_pll|altpll_component|auto_generated|pll1|clk[0]"
+            for name, launch in BLANK_CONTROLS:
+                for bit in range(2):
+                    for check in ("setup", "hold"):
+                        key = f"blank_{name}_gray{bit}_{check}"
+                        text = reports[prefix + key + ".rpt"]
+                        if not re.search(r"Report Timing: Found 1 " + check + r" paths \(0 violated\)", text):
+                            raise ValueError("missing or violated VGA blank control path")
+                        paths = [row for row in rows(summary(text)) if len(row) == 8 and row[0] != "Slack"]
+                        if len(paths) != 1 or [node(v) for v in paths[0][1:3]] != [launch, f"u_bridge|u_scan|gray_out[{bit}]"] or paths[0][3:5] != [pixel_clock, pixel_clock] or number(paths[0][0]) < 0:
+                            raise ValueError("VGA blank control path differs")
+                        blank_slacks[key] = number(paths[0][0])
         skews = rows(summary(reports[prefix + "skew.rpt"]))
         assignment = [row for row in skews if row[0] == "set_max_skew"]
         port_filter = "[get_ports {" + " ".join("{" + p + "}" if "[" in p else p for p in PORTS) + "}]"
@@ -244,7 +254,7 @@ def verify(folder, *, lcd=False):
         result["corners"][corner] = {"bundle_max_ns": bundles, "outputs_ns": output_delays,
                                      "skew_ns": number(assignment[0][3]), "chain_slack_ns": chain_slacks}
         if lcd:
-            result["corners"][corner]["blank_outputs_ns"] = blank_delays
+            result["corners"][corner]["blank_control_slack_ns"] = blank_slacks
     return result
 
 

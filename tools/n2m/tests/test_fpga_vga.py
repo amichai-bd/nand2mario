@@ -68,9 +68,11 @@ def fixture(folder, lcd=False):
             data = "".join(row("5.000", "u_bridge|u_scan|gray_out[0]", port) for port in fpga_vga.PORTS)
             write(prefix + "outputs_" + direction + ".rpt", report("Report Path: Found 14 paths.", model_name, data))
         if lcd:
-            for direction in ("max", "min"):
-                data = "".join(row("4.000", "u_bridge|blank_active", port) for port in fpga_vga.PORTS[:-2])
-                write(prefix + "blank_outputs_" + direction + ".rpt", report("Report Path: Found 12 paths.", model_name, data))
+            for name, launch in (("active", "u_bridge|blank_active"), ("request", "u_bridge|blank_pix[1]")):
+                for bit in range(2):
+                    for check in ("setup", "hold"):
+                        data = row("0.750", launch, f"u_bridge|u_scan|gray_out[{bit}]", pix_clock, pix_clock, "39.683", "0.000", "1.000")
+                        write(prefix + f"blank_{name}_gray{bit}_{check}.rpt", report(f"Report Timing: Found 1 {check} paths (0 violated).", model_name, data))
         port_filter = "[get_ports {" + " ".join("{" + p + "}" if "[" in p else p for p in fpga_vga.PORTS) + "}]"
         data = row("set_max_skew", "1.000", "2.000", "1.000", "", port_filter, "", "", "")
         data += "".join(row("--", "1.000", "2.000", "1.000", "u_bridge|u_scan|gray_out[0]", fpga_vga.PORTS[i % 14], pix_clock, pix_clock, "") for i in range(28))
@@ -146,14 +148,16 @@ class VgaEvidenceTests(unittest.TestCase):
             fixture(folder, lcd=True)
             result = fpga_vga.verify(folder, lcd=True)
             self.assertEqual(len(result["corners"]["slow85"]["chain_slack_ns"]), 12)
-            self.assertEqual(result["corners"]["slow85"]["blank_outputs_ns"], {"max": 4, "min": 4})
+            self.assertEqual(len(result["corners"]["slow85"]["blank_control_slack_ns"]), 8)
             pixel = "u_clocking|u_pll|altpll_component|auto_generated|pll1|clk[0]"
             for name, old, new in [
                 ("vga_slow0_blank_seen_sys_setup.rpt", "clk_sys", pixel),
+                ("vga_slow85_blank_request_gray1_hold.rpt", pixel, "clk_sys"),
+                ("vga_slow0_outputs_max.rpt", "gray_out[0]", "x_out[6]"),
                 ("vga_fast0_blank_pix_hold.rpt", "; 0.500 ;", "; -0.001 ;"),
-                ("vga_slow85_blank_outputs_max.rpt", "u_bridge|blank_active", "u_bridge|request"),
-                ("vga_slow0_blank_outputs_min.rpt", "red[0]", "red[1]"),
-                ("vga_fast0_blank_outputs_max.rpt", "; 4.000 ;", "; 10.001 ;"),
+                ("vga_slow85_blank_active_gray0_setup.rpt", "u_bridge|blank_active", "u_bridge|request"),
+                ("vga_slow0_blank_request_gray0_hold.rpt", "gray_out[0]", "gray_out[1]"),
+                ("vga_fast0_blank_active_gray1_setup.rpt", "; 0.750 ;", "; -0.001 ;"),
                 ("vga_first_pins.rpt", "blank_seen_sys[0]|d", "blank_seen_sys[1]|d"),
             ]:
                 path = folder / "output" / name

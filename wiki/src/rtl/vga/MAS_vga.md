@@ -77,9 +77,12 @@ a qualified frame swap, acknowledgement round trip, level synchronization and
 then a permitted boundary. Rapid intermediate requests may coalesce; a newer
 invalidation cannot be released by an old offer or simultaneous completion.
 
-At the aligned output coordinates, active blank selects F/F/F inside the scaled
-image even without a valid display bank. Borders and video blanking remain black;
-global reset/invalid video takes priority. No additional RGB pipeline stage is
+The next pixel-domain blank state selects F/F/F inside the scaled image at the
+existing final RGB register edge, even without a valid display bank. The
+pre-output coordinates align that choice with the shade registered on the same
+edge. Borders and video blanking remain black. Final RGB and sync registers use
+asynchronous global reset, so black/inactive sync appears even with a stopped
+pixel clock. No additional pipeline stage or post-register coordinate mux is
 introduced. `video_image` includes this presented white area; `display_valid`
 and displayed identity continue to describe retained banks. Core reset alone
 does not request white. The first enabled PPU frame is observed as real shade0

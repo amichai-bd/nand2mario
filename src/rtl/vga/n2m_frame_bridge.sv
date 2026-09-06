@@ -43,7 +43,7 @@ module n2m_frame_bridge (
     assign observe_dot = source_dot;
 
     logic request, acknowledge;
-    logic blank_requested, blank_next, blank_active, pending_release, release_next;
+    logic blank_requested, blank_next, blank_active, blank_next_pix, pending_release, release_next;
     (* preserve, altera_attribute = "-name SYNCHRONIZER_IDENTIFICATION FORCED" *)
     logic [1:0] blank_pix, blank_seen_sys;
     `DFF_ARST_VAL(blank_pix, {blank_pix[0], blank_requested}, clk_pix, reset_pix, 2'b00)
@@ -115,8 +115,8 @@ module n2m_frame_bridge (
     logic [31:0] captured_epoch;
     logic captured_phase;
     logic swap_boundary;
-    `DFF_RST(blank_active, blank_pix[1] ? 1'b1 : (swap_boundary ? 1'b0 : blank_active),
-             clk_pix, reset_pix)
+    assign blank_next_pix = blank_pix[1] ? 1'b1 : (swap_boundary ? 1'b0 : blank_active);
+    `DFF_RST(blank_active, blank_next_pix, clk_pix, reset_pix)
     logic new_request;
     assign new_request = sys_ready_pix[1] && req_pix[1] != acknowledge;
     logic capture_now;
@@ -152,19 +152,11 @@ module n2m_frame_bridge (
             .read_address, .read_shade(bank_shade[bank])
         );
     end endgenerate
-    logic scan_image, white_image;
-    logic [3:0] scan_red;
-    assign white_image = blank_active && video_valid && video_x >= 10'd80
-        && video_x < 10'd560 && video_y >= 10'd24 && video_y < 10'd456;
-    assign video_image = scan_image || white_image;
-    assign red = !video_valid ? 4'h0 : white_image ? 4'hf : scan_red;
-    assign green = red;
-    assign blue = red;
     n2m_vga_scan u_scan (
-        .clk_pix, .reset_pix, .display_valid, .read_shade,
+        .clk_pix, .reset_pix, .display_valid, .read_shade, .blank_image(blank_next_pix),
         .read_enable, .read_address, .swap_boundary,
-        .video_x, .video_y, .video_valid, .video_active, .video_image(scan_image),
-        .red(scan_red), .green(), .blue(), .hsync_n, .vsync_n
+        .video_x, .video_y, .video_valid, .video_active, .video_image,
+        .red, .green, .blue, .hsync_n, .vsync_n
     );
 `ifndef SYNTHESIS
     logic in_frame, frame_eligible;
