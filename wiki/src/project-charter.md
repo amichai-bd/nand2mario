@@ -39,11 +39,21 @@ contain machine code; our tools build our own programs.
 
 ## Input boundary
 
-Use PC keyboard events over UART first; direct PS/2 follows later. Keep host
-loading/control separate from input events. Converge scripted and keyboard
-inputs at the emulated DMG button interface, so game ROMs need no custom host
-MMIO. The pinned `frog-bui` [UART][uart], [PS/2][ps2], and
-[shared input][keyboard] sources inform this separation without granting reuse.
+Use UART for scripted testing and PC keyboard input. Physical buttons and an
+ADC joystick are planned controls. Route UART and physical controls through one
+shared input boundary for the same eight Game Boy buttons and MMIO state;
+game ROMs need no custom host MMIO. Keep loading/control separate from input
+events. Preserve VGA output and UART source-frame observation.
+
+The shared boundary is planned in
+[#155](https://github.com/amichai-bd/nand2mario/issues/155), physical buttons and
+ADC joystick in [#156](https://github.com/amichai-bd/nand2mario/issues/156), and
+Python observation/play tools in
+[#157](https://github.com/amichai-bd/nand2mario/issues/157). These references do
+not claim implemented or physically verified controls. Existing UART commands
+follow the [shared interface contract](rtl/interfaces/MAS_interfaces.md).
+The pinned `frog-bui` [UART][uart] and [shared input][keyboard] sources inform
+this separation without granting reuse.
 
 ## Release acceptance
 
@@ -78,5 +88,4 @@ Shared Questa baseline evidence is recorded in
 [GAP-008](../preflight-gaps.md#gap-008-verification-baseline).
 
 [uart]: https://github.com/amichai-bd/frog-bui/blob/311e64d6e7e54db682e515f51aef92c083a32d5a/src/rtl/uart_ctrl/README.md
-[ps2]: https://github.com/amichai-bd/frog-bui/blob/311e64d6e7e54db682e515f51aef92c083a32d5a/src/rtl/ps2_keyboard/README.md
 [keyboard]: https://github.com/amichai-bd/frog-bui/blob/311e64d6e7e54db682e515f51aef92c083a32d5a/src/sw/include/frog/keyboard_input.h
