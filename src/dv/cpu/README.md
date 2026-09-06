@@ -143,3 +143,13 @@ not merely an incorrect IME bit. `cpu-irq-di-fault` forces actual interrupt mode
 after DI and must fail the next public bus cycle. The shorter intermediate case
 ended at DI and did not establish this behavioral cancellation; its evidence is
 retained with that review limitation.
+
+
+`cpu-halt-lock` checks pending-IME0 HALT followed by an immediate load and by RST.
+The first reads the opcode byte again as its immediate value; the second pushes
+the RST address itself. Literal bus and full retirement records prove both.
+All eleven illegal base encodings then enter lock without retirement or further
+access, stay locked across pause and pending requests, and recover through core
+reset with a fresh epoch/sequence/profile NOP. Wrong-PC and invented locked-event
+faults force actual DUT signals and must fail their exact public checks. These
+cases do not settle the distinct IME0 wake-after-sleep latency question.
