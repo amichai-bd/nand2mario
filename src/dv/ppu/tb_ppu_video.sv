@@ -53,7 +53,18 @@ module tb_ppu_video;
             end
         end
     end
-    final begin
-        if (completed != 3) $error("PPU_VIDEO_COMPLETION_COUNT actual=%0d", completed);
+    initial begin
+        wait (scene.simulation_done);
+        @(negedge scene.clk_sys);
+        if (completed != 3) $fatal(1, "PPU_VIDEO_COMPLETION_COUNT actual=%0d", completed);
+        $display("PASS PPU video observer frames=3 pixels=69120");
+        $finish;
+    end
+    initial begin
+        if ($test$plusargs("observer_corrupt")) begin
+            wait (frame == 1);
+            @(negedge scene.clk_sys);
+            force bridge.observe_shade = 2'd3;
+        end
     end
 endmodule

@@ -25,7 +25,7 @@ module tb_ppu_render;
     logic [7:0] source_x, source_y;
     logic [31:0] source_epoch;
     logic [63:0] source_dot, previous_dot, enable_dot, normal_first_dot;
-    logic temporal;
+    logic temporal, simulation_done;
     integer startup_reads;
     logic [7:0] vram [0:8191];
     logic [7:0] oam [0:159];
@@ -149,7 +149,8 @@ module tb_ppu_render;
                         if (startup_reads != 4) $fatal(1, "PPU_RENDER_STARTUP_COUNT");
                         $display("PASS PPU renderer temporal frames=3 pixels=69120 startup_reads=4 period=70224");
                     end else $display("PASS PPU renderer original_scene frames=2 pixels=46080");
-                    $finish;
+                    if ($test$plusargs("video")) simulation_done = 1;
+                    else $finish;
                 end
             end else pixel_count = pixel_count + 1;
         end
@@ -168,6 +169,7 @@ module tb_ppu_render;
         io_wdata = 0;
         dma_active = 0;
         temporal = $test$plusargs("temporal");
+        simulation_done = 0;
         startup_reads = 0;
         enable_dot = 0;
         normal_first_dot = 0;

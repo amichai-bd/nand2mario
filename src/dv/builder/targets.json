@@ -1046,10 +1046,40 @@
     ],
     "top": "tb_ppu_video",
     "args": [
-      "+temporal"
+      "+temporal",
+      "+video"
     ],
     "expected_exit": "zero",
-    "signature": "PPU_VIDEO_OBSERVER_COMPLETE count=3 pixels=69120",
+    "signature": "PASS PPU video observer frames=3 pixels=69120",
+    "timeout_seconds": 180
+  },
+  "ppu-video-corrupt": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_render.sv",
+      "src/rtl/vga/n2m_frame_ram.sv",
+      "src/rtl/vga/n2m_vga_scan.sv",
+      "src/rtl/vga/n2m_frame_bridge.sv",
+      "src/dv/ppu/tb_ppu_video.sv"
+    ],
+    "top": "tb_ppu_video",
+    "args": [
+      "+temporal",
+      "+video",
+      "+observer_corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "PPU_VIDEO_OBSERVER_PIXEL frame=1 index=0",
     "timeout_seconds": 180
   }
 }
