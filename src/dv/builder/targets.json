@@ -3059,7 +3059,7 @@
     "top": "tb_snapshot_vga",
     "args": [],
     "expected_exit": "zero",
-    "signature": "PASS snapshot VGA frames=16 immutable",
+    "signature": "PASS snapshot VGA pre_reset_frames=18 immutable",
     "timeout_seconds": 600
   }
 }
