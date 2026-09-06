@@ -1,7 +1,7 @@
 # DMG picture processing
 
-Contract preparation for [#120](https://github.com/amichai-bd/nand2mario/issues/120).
-Detailed timing choices below are under source review before dependent RTL.
+Owner contract for [#120](https://github.com/amichai-bd/nand2mario/issues/120).
+Detailed timing choices and their source limits are defined below.
 This owner covers LCD registers, background/window/object rendering, mode and
 interrupt timing, and the final source-pixel boundary. It does not claim a
 complete Game Boy or connected-monitor acceptance.
@@ -47,9 +47,9 @@ those results must not be relabeled direct DMG-B measurements.
 | Interrupts | STAT is an edge of the shared condition, not a pulse per enabled source; Mooneye `vblank_stat_intr-GS` also requires mode-2 selection at the line-144 VBlank edge |
 | Window state | WY matching latches a frame condition; the internal window row advances on activation, including repeated enabled activations within one line; hiding it does not substitute LY-WY |
 
-Exact LY153 comparison edges, STAT-write transient alignment, startup dot
-numbering and WX boundary behavior must be reconciled with independent timing
-expectations before their state transitions are implemented. [DMA/access arbitration #132](https://github.com/amichai-bd/nand2mario/issues/132)
+The sections below define LY153 comparison edges, STAT-write transient
+alignment, startup dot numbering and WX boundary behavior with independent
+expectations and explicit source limits. [DMA/access arbitration #132](https://github.com/amichai-bd/nand2mario/issues/132)
 owns FF46 transfer scheduling and application of DMG-B OAM corruption from CPU
 bus/IDU activity. [Memory #130](https://github.com/amichai-bd/nand2mario/issues/130)
 owns the single backing store and routing. This PPU owns OAM scan timing and
@@ -88,7 +88,7 @@ blind same-edge substitution or extra emulated dot is allowed. CPU reads,
 mode/access visibility and before/on/after write vectors must corroborate the
 digital commit mapping before it is frozen.
 
-## Proposed digital ports
+## Digital ports
 
 All PPU logic uses `clk_sys`; `gb_tick` commits one emulated T-cycle. Host pause
 removes ticks through the shared controller. CPU HALT is not an input and cannot
@@ -215,7 +215,7 @@ Separate OAM-only cases compose the actual IF owner and verify a natural event
 with and without a simultaneous IF clear, including the pre-B observation.
 LCD-off retention is specified in the LCD-off section below.
 
-## Proposed LCD cancellation and presentation
+## LCD cancellation and presentation
 
 LCD disable can interrupt a partial source frame without resetting the CPU,
 source epoch, completed-frame sequence, or VGA ownership handshake. An explicit
@@ -307,7 +307,7 @@ promised VRAM data latches the common PPU fault and suppresses load publication;
 the top-level owner performs the single source abort. This helper does not own
 LCD startup, window trigger quirks, OAM selection or bus arbitration.
 
-### Controller phase convention under integration
+### Controller phase convention
 
 The adapted timing controller retains the selected source's divide-by-four
 phase and 114-quarter line counter. Phase zero advances the quarter counter;
@@ -322,8 +322,9 @@ T4 commit is `4*N+8` ticks later. Verified mode reads bracket the first mode3
 transition between 76 and 80 ticks; LY reads bracket the first increment between
 448 and 452 ticks. These are observation brackets, not single-dot measurements.
 The selected source's delayed mode signal fits the former bracket; the complete
-controller must pass the whole literal table with pre-edge CPU reads. The
-remaining exact LY153/comparison, STAT-write and window gates above still apply.
+controller is checked against the literal table with pre-edge CPU reads.
+The LY153/comparison, STAT-write and window sections define their additional
+directed boundaries.
 
 ### LY153 and ordered LYC comparison
 

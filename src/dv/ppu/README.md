@@ -1,9 +1,10 @@
 # PPU verification plan
 
-Planned verification for the [PPU MAS](../../../wiki/src/rtl/ppu/MAS_ppu.md)
-and [#120](https://github.com/amichai-bd/nand2mario/issues/120). No simulation
-result is claimed by this plan. Resolve the MAS timing and interface gates
-before implementing dependent checks or RTL.
+Verification for the [PPU MAS](../../../wiki/src/rtl/ppu/MAS_ppu.md)
+and [#120](https://github.com/amichai-bd/nand2mario/issues/120).
+[PR129](https://github.com/amichai-bd/nand2mario/pull/129) records independently
+reviewed results with their exact producing sources and retained artifacts.
+The matrix below defines acceptance; it is not a substitute for those records.
 
 ## Independent boundaries
 
@@ -17,8 +18,8 @@ counters, fetch state or completion to choose an expected result.
 
 The initial [spatial oracle](scene.py) covers stable-register rendering. Its
 host sanity checks use explicit bitplanes and remapped palettes. It does not
-provide timing evidence and rejects special window activation geometry pending
-the separate event model.
+provide timing evidence and rejects special window activation geometry;
+the separate directed fixtures below own those checks.
 
 ## Required matrix
 
@@ -71,7 +72,7 @@ all invalid/valid window boundaries, immediate valid writes, retained IRQ
 history across invalid writes, one-system-edge event publication, whole-window
 IRQ totals, a held VBlank OR source, pause and reset. The expected edge table comes from MAS_ppu; it does not read DUT
 line/quarter counters to choose expectations. Separate actual readback, missing IRQ and extra between-check IRQ corruptions must produce the intended raw fatal exits. This fixture
-is pending runtime evidence; normal pixel recurrence remains a separate
+has retained runtime evidence; normal pixel recurrence remains a separate
 composed regression. Same-edge natural-rise/write-fall coverage must respect
 legal CPU phase; an impossible T4 stimulus is not composed evidence.
 
@@ -87,9 +88,9 @@ old-palette pixels and later new-palette pixels for all three registers, along
 with every-pixel comparison. The negative substitutes the new-palette shade
 at an actual sensitive commit pixel. Existing static wrappers preserve the
 unsigned/8x16 scene; this variant does not claim dynamic scrolling/window edges.
-The variant is pending actual runtime evidence.
+The variant has retained positive and deliberate-fault evidence.
 
-`ppu-stat-off` checks fourteen public readback/shared-line observations across off-state writes, equal and unequal restart, pause and core reset. `ppu-stat-off-corrupt` changes the actual retained line while off and must fail the corresponding independent check. These targets require actual runtime evidence; HBlank/OAM transition coverage remains separate.
+`ppu-stat-off` checks fourteen public readback/shared-line observations across off-state writes, equal and unequal restart, pause and core reset. `ppu-stat-off-corrupt` changes the actual retained line while off and must fail the corresponding independent check. HBlank/OAM transition coverage remains separate.
 
 `ppu-scroll-window` checks every pixel of a blank warm-up frame and a normal
 frame with all eight fine-SCX values and WX7/8/15/47/80/159/167/255. Legal HBlank
@@ -103,7 +104,7 @@ reset-separated cases check the complete blank frame, first normal line and
 literal first-pixel timestamps. The normal-line reset origin70221 and first-map
 sample70302 are relative to LCD-enable T4; writes70300/70304 select fine2/5.
 The corruption target changes actual source shade in the after-write case.
-These targets still require actual evidence. WX0/166, intra-fetch coarse
+WX0/166, intra-fetch coarse
 SCX/SCY and WY enable/equality edge coverage remain separate required cases.
 
 `ppu-window-wy` enables the window during LY32 before its X trigger, changes WY
@@ -117,8 +118,7 @@ assembly checks zero and23039 partial pixels, no phantom completion, restarted
 blank/eligible frames and full VGA image release. Paused core reset retains the
 last image; shared global reset clears both endpoints and blacks RGB. The fault
 target changes the actual observer sequence while leaving source pixels intact.
-These new cases require actual runtime evidence and retain the separate
-synthetic mailbox coverage rather than replacing it.
+These cases retain the separate synthetic mailbox coverage.
 
 `ppu-live-scroll` checks two legal T4 writes at elapsed70312 of the normal
 line0 fetch. The selected source trace starts the second map at70308 and
@@ -130,8 +130,8 @@ and uses column2 from pixel8. Original flat tile colors distinguish the map
 case; asymmetric plane bytes distinguish the SCY case. Registered memory
 responses precede the consuming A. This is the approved digital phase mapping,
 not a silicon sub-T measurement. The fault target forces the actual public
-shade to0 where the first mixed-plane pixel must be3. Both targets require
-actual positive/nonzero evidence and retained public wave declarations.
+shade to0 where the first mixed-plane pixel must be3. Positive/nonzero
+evidence and public wave declarations are retained.
 
 `ppu-window-wx0` checks every pixel for all eight static fine offsets from the
 [PPU spatial contract](../../../wiki/src/rtl/ppu/MAS_ppu.md), using original
@@ -139,7 +139,7 @@ asymmetric window tiles. Legal HBlank writes prepare each following line.
 A checked counter requires fine7 scenes to distinguish columns14 and15.
 `ppu-window-wx166` uses a fresh WY32 match: line32 background, line33 window
 row1/column8, line34 row2/column8 after WX255, then background. Both retain
-public waves and need actual runtime evidence. Neither claims exact mode3
+public waves. Neither claims exact mode3
 length or resolves the documented physical LCD phase limits.
 
 `ppu-window-disabled-wx` qualifies WY32 with an offscreen window, then disables
@@ -148,7 +148,7 @@ oracle checks the selected delayed-load columns and all111 raw0 insertions,
 without reading DUT fetch state. The source recurrence traces old WX match at
 raw47/count7, no reload, raw48/color0, then the delayed tile at raw49. The fault
 target changes the actual source shade at the first inserted pixel from0 to3.
-Both targets require runtime evidence; the old failed WY run is not acceptance.
+The old failed WY run is retained separately and is not acceptance.
 
 `ppu-access` reads only at legal T4 edges with no objects, DMA or scrolling.
 Enable-relative452/456 bracket HBlank/OAM entry;532/536 bracket OAM/transfer;
@@ -157,9 +157,9 @@ is allowed except the two mode3 samples, while OAM is allowed only at452/708.
 The source projection has line reset453, first map534, first visible capture548
 and terminal capture707. These are the selected digital timings, not new
 sub-T hardware measurements. STAT enable remains reset0: this fixture does not
-choose the disputed STAT-write mask or IRQ-source projection. The fault target
-forces the actual OAM access output high at the blocked456 read. Both need
-actual runtime evidence with public waves.
+exercise the separately specified STAT-write compatibility projection. The fault target
+forces the actual OAM access output high at the blocked456 read; public
+waves are retained.
 
 `ppu-lcdc-fetch` uses the same legal70312T4 seam for two additional existing
 matrix entries. Changing BG map select after the second map capture preserves
@@ -169,8 +169,8 @@ high70313 mixes the old low bank with the new high bank for those first eight
 pixels, then uses the new bank. Original flat tile IDs and asymmetric plane
 bytes determine the expected shades. The reference LCD enable origin changes
 only on bit7 rising, not a map/tile write while enabled. An actual public-shade
-fault proves the shared pixel checker. These new targets need runtime evidence;
-previous scroll cases do not by themselves prove these LCDC changes.
+fault proves the shared pixel checker. Previous scroll cases do not by
+themselves prove these LCDC changes.
 
 `ppu-window-repeated` checks two activations on normal line32. Legal T4 writes
 disable at84984, move WX from47 to127 at84988, and re-enable at84992, relative
@@ -180,7 +180,7 @@ later plane addresses use the live background row mux. The next line uses
 window row2 (shade3), verifying both active-to-inactive row advances. Original
 flat tiles define all46080 expected pixels; fixed timestamps check320 pixels
 on lines32/33, including each six-dot window delay. Actual shade corruption at
-the second activation must fail. These targets require actual runtime evidence.
+the second activation must fail.
 The retained source derivation follows the pinned MiSTer reload, row-address,
 and window state rules; it makes no silicon sub-T timing claim.
 
@@ -191,7 +191,7 @@ fixture retains SCX5. A normal line0 timestamp supplies the common origin,
 then all144 line-first positions must follow456-dot recurrence with exactly11
 extra on those16 lines. The independent scene checks all46080 pixels. An actual
 source timestamp fault at line84 proves the specific timing check, and public
-waves are retained. These targets still require runtime evidence. This adds
+waves are retained. This adds
 the existing X0 matrix case; it does not claim absolute mode3 phase measurement.
 
 `ppu-stat-oam` checks the approved old08 transient OAM-enable suppression at
@@ -201,8 +201,8 @@ actual qualifier fault prove that narrow compatibility branch. Six reset-separat
 cases check writes at452/456, unchanged public modes/access, the four-T OAM
 condition and all-edge event counts. OAM-only cases compose the actual IF owner
 with and without a same-edge IF clear, checking pre-B observation and stored IF.
-These targets require runtime evidence; no source interval or renderer shift is
-inferred from the compatibility projection.
+No source interval or renderer shift is inferred from the compatibility
+projection.
 
 `ppu-vblank` checks the selected line144 pipeline with the actual IF owner.
 The declared LY1 anchor451 plus143 lines of456 dots gives LY144 at65659.
@@ -215,4 +215,4 @@ Four cases check every system-edge event count, pre-B IF observation and stored
 IF. Legal T4 IF writes clear at65656/65664; the fourth case also clears on the
 natural OAM event at65660, proving write priority without an illegal VBlank-edge
 CPU commit. A public VBlank-rise fault must fail the exact65662 check. Public
-waves and32 literal boundary checks are retained by the targets; runtime is pending.
+waves and32 literal boundary checks are retained with positive and fault evidence.
