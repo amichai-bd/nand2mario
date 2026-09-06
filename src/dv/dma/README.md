@@ -105,3 +105,12 @@ and effects, all 160 cleared OAM bytes, FF46 reset and eight idle M-cycles
 without stale work. The corruption context supplies a public row4 prefetch
 before the row5 effect; it does not model the PPU scanner. The stale target
 forces the actual write output during reset and requires DMA_RESET_CANCEL.
+
+The overlay fixture distinguishes a row5 DMA byte F3 from RAM write feedback
+03 at the same T4 as a separately observed FE-page IDU effect. Literal operands
+make corruption preserve that distinction: row5 and the held pair must contain
+55F3 or 5503, rather than the old 55AA. Actual byte39 commits before the row4
+prefetch. Both cases check all 48 physical writes, the held phase2 response and
+unchanged WRAM source and CPU-addressed bytes. The corrupt target substitutes
+the unmasked F3 for the actual 03 write. This is a synthetic CPU/PPU boundary
+witness of the adopted ordering, not a new hardware measurement.

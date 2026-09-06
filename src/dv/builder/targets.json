@@ -4601,5 +4601,57 @@
     "args": [
       "+STALE_RESET"
     ]
+  },
+  "dma-overlay": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/memory/n2m_memory_stores.sv",
+      "src/rtl/memory/n2m_memory_decode.sv",
+      "src/rtl/memory/n2m_memory_cpu_port.sv",
+      "src/rtl/dma/n2m_oam_pkg.sv",
+      "src/rtl/dma/n2m_dma_pkg.sv",
+      "src/rtl/dma/n2m_oam_corrupt.sv",
+      "src/rtl/dma/n2m_oam_qualify.sv",
+      "src/rtl/dma/n2m_dma_engine.sv",
+      "src/rtl/dma/n2m_dma_service.sv",
+      "src/rtl/dma/n2m_dma.sv",
+      "src/dv/dma/tb_dma_overlay.sv"
+    ],
+    "top": "tb_dma_overlay",
+    "timeout_seconds": 60,
+    "expected_exit": "zero",
+    "signature": "PASS DMA overlay feedback cases=2 writes=96 readback=100",
+    "vendor_model": "intel-memory",
+    "args": []
+  },
+  "dma-overlay-corrupt": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/memory/n2m_memory_stores.sv",
+      "src/rtl/memory/n2m_memory_decode.sv",
+      "src/rtl/memory/n2m_memory_cpu_port.sv",
+      "src/rtl/dma/n2m_oam_pkg.sv",
+      "src/rtl/dma/n2m_dma_pkg.sv",
+      "src/rtl/dma/n2m_oam_corrupt.sv",
+      "src/rtl/dma/n2m_oam_qualify.sv",
+      "src/rtl/dma/n2m_dma_engine.sv",
+      "src/rtl/dma/n2m_dma_service.sv",
+      "src/rtl/dma/n2m_dma.sv",
+      "src/dv/dma/tb_dma_overlay.sv"
+    ],
+    "top": "tb_dma_overlay",
+    "timeout_seconds": 60,
+    "expected_exit": "nonzero",
+    "signature": "DMA_OVERLAY_WRITE case=1 address=40 expected=03 actual=f3",
+    "vendor_model": "intel-memory",
+    "args": [
+      "+CORRUPT_OVERLAY"
+    ]
   }
 }
