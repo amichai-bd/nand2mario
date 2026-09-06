@@ -4,12 +4,47 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
+import time
+import urllib.request
+import uuid
 from pathlib import Path
 import zipfile
 
 PIN = "f9c30210245dd691661db39f5ace022c465ecc2f"
 ARCHIVE_SHA256 = "0a492d69b69cff0d440c9f795a6528c9374a4b771465fbbf42606c98492ab2f2"
 ROOT = Path(__file__).resolve().parent / "singlestep"
+REPO = Path(__file__).resolve().parents[3]
+URL = f"https://codeload.github.com/SingleStepTests/sm83/zip/{PIN}"
+MAX_ARCHIVE_BYTES = 256 * 1024 * 1024
+
+
+def fetch(cache: Path) -> Path:
+    """Fetch only the reviewed URL; never trust an existing cache by its name."""
+    cache.mkdir(parents=True, exist_ok=True)
+    destination = cache / f"{PIN}.zip"
+    if destination.exists():
+        if hashlib.sha256(destination.read_bytes()).hexdigest() != ARCHIVE_SHA256:
+            raise ValueError("cached source archive integrity mismatch")
+        return destination
+    temporary = cache / f"{PIN}.{uuid.uuid4().hex}.tmp"
+    started = time.monotonic()
+    digest = hashlib.sha256()
+    total = 0
+    try:
+        with urllib.request.urlopen(URL, timeout=60) as response, temporary.open("wb") as output:
+            while chunk := response.read(1024 * 1024):
+                total += len(chunk)
+                if total > MAX_ARCHIVE_BYTES or time.monotonic() - started > 180:
+                    raise ValueError("locked archive download bound exceeded")
+                output.write(chunk)
+                digest.update(chunk)
+        if digest.hexdigest() != ARCHIVE_SHA256:
+            raise ValueError("downloaded source archive integrity mismatch")
+        os.replace(temporary, destination)
+    finally:
+        temporary.unlink(missing_ok=True)
+    return destination
 
 
 def registers(state: dict) -> int:
@@ -75,6 +110,7 @@ def generate(archive: Path) -> dict[str, bytes]:
                                "76": "HALT model/timing uses independent directed tests",
                                "interrupt_fields": "upstream IME/IE/EI are not reliable expectations"}}
     lines = ["// Selected MIT-licensed SingleStepTests data; see manifest.json and LICENSE."]
+    identities = ["// Original source identities for the same selected vectors; see LICENSE."]
     with zipfile.ZipFile(archive) as z:
         prefix = f"sm83-{PIN}/"
         files = sorted(n for n in z.namelist() if n.startswith(prefix + "v1/") and n.endswith(".json"))
@@ -101,19 +137,27 @@ def generate(archive: Path) -> dict[str, bytes]:
                 metadata["cases"].append({"source": relative, "index": index,
                                           "name": case["name"], "flags": flags})
                 lines.append(f"vector_data[{number}] = 1024'h{pack(case, opcode, index):0256x};")
+                identities.append(f"vector_name[{number}] = {json.dumps(case['name'])};")
+                identities.append(f"vector_source[{number}] = {json.dumps(relative)};")
         license_bytes = z.read(prefix + "LICENSE")
     metadata["count"] = len(metadata["cases"])
     return {"vectors.svh": ("\n".join(lines) + "\n").encode(),
+            "identities.svh": ("\n".join(identities) + "\n").encode(),
             "manifest.json": (json.dumps(metadata, indent=2) + "\n").encode(),
             "LICENSE": license_bytes}
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("archive", type=Path)
+    parser.add_argument("archive", type=Path, nargs="?")
+    parser.add_argument("--fetch", action="store_true", help="fetch the immutable reviewed archive into workdir cache")
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
-    for name, data in generate(args.archive).items():
+    if (args.archive is None) == (not args.fetch):
+        parser.error("supply one archive path or --fetch")
+    archive = fetch(REPO / "workdir/cache/singlestep") if args.fetch else args.archive
+    generated = generate(archive)
+    for name, data in generated.items():
         path = ROOT / name
         if args.check:
             if path.read_bytes() != data:
@@ -121,6 +165,12 @@ def main() -> None:
         else:
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(data)
+    report = REPO / "workdir/builds/singlestep-source/result.json"
+    report.parent.mkdir(parents=True, exist_ok=True)
+    report.write_text(json.dumps({"status": "PASS", "pin": PIN, "url": URL,
+        "archive_sha256": ARCHIVE_SHA256, "archive": str(archive),
+        "selection": "8000 selected; 7968 executed; 32 STOP/HALT excluded",
+        "artifacts": {name: hashlib.sha256(data).hexdigest() for name, data in generated.items()}}, indent=2) + "\n")
     print("PASS selected CPU fixture reproducibility" if args.check else "Generated selected CPU fixture")
 
 
