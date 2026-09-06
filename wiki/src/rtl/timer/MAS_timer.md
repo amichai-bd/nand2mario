@@ -8,8 +8,10 @@ expectations from source-model phase projections. No external RTL is imported.
 
 ## Boundary and state
 
-Use `clk_sys`, asynchronous `reset_sys`, synchronous core-reset control and
-`gb_tick` from the shared timebase. CPU register writes use `io_commit`,
+Use `clk_sys`, asynchronous `reset_sys`, shared core-reset control and
+`gb_tick` from the shared timebase. Core reset is generated in the system
+domain; this owner combines it with global reset for asynchronous assertion
+and immediate output cancellation, matching the shared owner convention. CPU register writes use `io_commit`,
 `io_write`, `io_address` and `io_wdata` only at their accepted T4 A edge.
 `io_selected` and `io_rdata` provide side-effect-free pre-edge register reads.
 Numeric addresses and profile initialization come from generated interfaces.
