@@ -9,6 +9,7 @@ from .hdl import dependencies
 from .simulator import ToolError
 from .questa import commands as questa_commands, diagnostic
 from .records import atomic_json, atomic_text, cache_matches, digest, file_hash, read_json
+from . import intel_memory
 
 
 def load_target(root, name):
@@ -33,11 +34,15 @@ def load_target(root, name):
 
 def simulate(root, build, args, simulator, provenance=None):
     target, registry = load_target(root, args.target)
-    inputs = dependencies(root, target["sources"]) + [registry.relative_to(root).as_posix(), "tools/build.py"]
+    hdl_inputs = dependencies(root, target["sources"])
+    vendor_model = intel_memory.resolve(root, simulator, target, getattr(args, "intel_sim_lib", None))
+    if vendor_model is not None:
+        intel_memory.reject_shadow_models(root, hdl_inputs)
+    inputs = hdl_inputs + [registry.relative_to(root).as_posix(), "tools/build.py"]
     inputs += [str(p.relative_to(root)).replace("\\", "/") for p in (root / "tools/n2m").glob("*.py")]
     inputs += ["tools/n2m/dependencies.json"]
     hashes = {p: file_hash(root / p) for p in inputs}
-    options = {"seed": args.seed, "target": args.target, "definition": target}
+    options = {"seed": args.seed, "target": args.target, "definition": target, "vendor_model": vendor_model}
     fingerprint = digest({"inputs": hashes, "tools": simulator.info, "options": options})
     stage = build / "sim/test" / args.target
     current = stage / "result.json"
@@ -60,7 +65,7 @@ def simulate(root, build, args, simulator, provenance=None):
     atomic_json(current, record)
     log = compile_dir / "prepare.log"
     try:
-        commands = questa_commands(simulator, root, target, args.seed, compile_dir, attempt)
+        commands = questa_commands(simulator, root, target, args.seed, compile_dir, attempt, vendor_model=vendor_model)
         for argv, cwd, log, expected in commands:
             command = simulator.command(argv)
             record["commands"].append({"argv": command, "cwd": str(cwd)})

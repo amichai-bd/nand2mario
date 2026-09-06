@@ -43,6 +43,31 @@ tools fail with diagnostics; there is no fallback simulator.
 
 ## Questa simulation
 
+### Installed Intel memory model
+
+A target declaring `vendor_model: "intel-memory"` requires the installed source
+set pinned in [dependencies.json](../../../tools/n2m/dependencies.json).
+The builder finds `quartus/eda/sim_lib` beside the selected Questa distribution,
+or accepts `--intel-sim-lib <directory>` explicitly. Each required source must
+exist and match the supported hash before cache reuse or compilation. A missing,
+modified or wrong model fails; there is no portable fallback. Repository HDL
+that defines a shadow `altsyncram` or `altsyncram_body` is rejected.
+
+Each attempt compiles the unchanged source into its own `n2m_altera_mf` library,
+maps that library in the run directory, and binds through `vsim -L n2m_altera_mf`.
+The record's `options.vendor_model` retains release, source paths/hashes,
+compilation options and binding options. These and the wrapper/fixture sources,
+parameters, dependency pin and builder options enter the fingerprint. Updating
+an approved pin changes the fingerprint; removing/changing an installed source
+cannot reuse an older PASS. Vendor source is never copied into tracked files.
+
+The [shared memory MAS](../../src/rtl/common/MAS_memory_primitives.md) owns the
+same-instance simulation/synthesis rule and the narrow supported port shapes.
+Missing-model and cache host tests use controlled original bytes and fake
+execution; only actual Intel-model simulation supplies behavior evidence.
+
+### Registered target execution
+
 Run an authorized registered target with default or explicit Questa:
 
 ```powershell

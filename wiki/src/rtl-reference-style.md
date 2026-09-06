@@ -8,6 +8,13 @@ and [gap register](../preflight-gaps.md) still govern implementation.
 
 ## Separate declarations and assignments
 
+Product RAM and ROM backing stores use the
+[shared Intel memory boundary](rtl/common/MAS_memory_primitives.md), with the
+same explicit `altsyncram` instance in Questa and MAX 10 synthesis. Its owner
+contract distinguishes ordinary flop state and independent reference arrays,
+and tracks existing-store migrations. Portable DUT arrays are not replacement
+acceptance for the installed vendor model.
+
 Use `logic` for SystemVerilog signals; do not declare them with `wire` or `reg`.
 Use `input var logic` when an explicit input port kind is needed under
 `default_nettype none`. Preserve widths, signedness, single runtime drivers and
