@@ -289,8 +289,10 @@ module tb_dma_composition;
         if(!cpu_initialized) $fatal(1,"DMA_COMPOSITION_CORE_INITIALIZE");
         @(negedge clk_sys); setup=0; observe=1; run_enable=1;
         if(pause_phase>=0) begin
-            wait(seen_start && dma_age>=10 && cpu_phase==2'(pause_phase));
-            @(negedge clk_sys); pause_dot=dot_before; pause_sample_phase=cpu_phase; run_enable=0;
+            // Sample after CPU phase NBA updates; age changes on the same T4.
+            @(negedge clk_sys);
+            while(!(seen_start && dma_age>=10 && cpu_phase==2'(pause_phase))) @(negedge clk_sys);
+            pause_dot=dot_before; pause_sample_phase=cpu_phase; run_enable=0;
             if(pause_sample_phase!==2'(pause_phase)) $fatal(1,"DMA_PAUSE_REQUEST_PHASE");
             wait(paused); @(negedge clk_sys);
             if(dot_before!=pause_dot+1 || cpu_phase!=pause_sample_phase+2'd1)
