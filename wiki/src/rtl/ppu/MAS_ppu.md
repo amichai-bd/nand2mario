@@ -64,12 +64,18 @@ prose and links, not copied HDL. No source/bitstream release or visibility chang
 is part of this issue. Independent DMG-B behavior and integration evidence remain
 required after adaptation.
 
-The upstream negedge LCDC/LYC register block and separate pixel phase require an
-explicit phase mapping. A candidate uses the emulated-dot edge for renderer and
-register state, then a following system edge for output staging. It must preserve
-which operations sample old registers and which see a newly written palette.
-No generated clock, blind same-edge substitution or extra emulated dot is allowed.
-This mapping is not frozen until CPU ordering and adaptation checks agree.
+The upstream output register samples pixel, validity and palettes together on
+its enabled rising edge. A coincident palette write therefore cannot change
+that sampled pixel. Adaptation must snapshot raw color, final shade, validity
+and metadata from pre-edge state at the emulated-dot edge; later output staging
+may only forward that event. The upstream `ce_n` path belongs to excluded extra
+sprites, not the normal pixel-output phase.
+
+The actual negedge LCDC/LYC write block still requires an explicit relative-order
+mapping: renderer sampling precedes those register changes. No generated clock,
+blind same-edge substitution or extra emulated dot is allowed. CPU reads,
+mode/access visibility and before/on/after write vectors must corroborate the
+digital commit mapping before it is frozen.
 
 ## Proposed digital ports
 
