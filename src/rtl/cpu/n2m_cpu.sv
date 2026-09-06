@@ -17,6 +17,7 @@ module n2m_cpu (
     input var logic [7:0] read_data,
     input var logic response_valid,
     input var logic joyp_selected_active,
+    // Qualified stable-clock restart pulse from the power owner, before T1.
     input var logic wake_request,
     output logic request_valid,
     output logic [15:0] address,

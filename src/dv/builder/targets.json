@@ -2760,5 +2760,43 @@
     ],
     "expected_exit": "nonzero",
     "signature": "CPU_IRQ_RESET_CANCEL case=19"
+  },
+  "cpu-stop-wake": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_stop_wake.sv"
+    ],
+    "top": "tb_cpu_stop_wake",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU normal STOP wake cases=20 normal=4 reset=16"
+  },
+  "cpu-stop-wake-stale": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_stop_wake.sv"
+    ],
+    "top": "tb_cpu_stop_wake",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_STOP_WAKE_RECORD case=0 event=3"
   }
 }

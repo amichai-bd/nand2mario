@@ -331,6 +331,31 @@ pause nor a canceled/reset STOP attempt may create a divider-reset pulse. The
 future timer and JOYP owners consume these boundaries; the CPU does not add
 another divider counter or duplicate selected-line computation.
 
+### Qualified normal wake
+
+`wake_request` is a one-system-edge stable-clock qualification pulse from the
+power owner, not a raw button or interrupt. That owner latches the selected JOYP
+line event, finishes oscillator restart, and presents the pulse while the CPU
+is stopped at phase zero with `gb_tick` low. It may resume emulated ticks only
+after the CPU has prepared its read. This contract assigns no fixed analog
+settling duration and does not add another CPU phase counter.
+
+The mode transition retains that pulse through host pause. The first resumed
+M-cycle reads the stored architectural PC afresh; a changed opcode during sleep
+must be observed. For ordinary IME0 wake, and IME1 wake without an enabled
+interrupt throughout restart, this fetch has the full known PC increment IDU
+observation. The next completed instruction produces ordinary retirement; wake
+itself does not invent an instruction event. Either reset cancels the prepared
+read and restores the existing profile and epoch rules.
+
+The normal path does not require JOYP IE to be enabled. Raw selected lines may
+have returned inactive after the power owner latched their pulse. The future
+JOYP/power integration must prove that qualification rather than directly
+connecting a button to `wake_request`. Scripted CPU fixtures verify only this
+public qualification contract. An IME1 enabled interrupt during restart remains
+the separate unresolved case below, including one arriving after qualification
+but before the first stable fetch completes.
+
 These entry rows do not resolve oscillator restart. The separately pinned
 SonoSooS notes describe an interrupt with IME set during DMG STOP wake as an
 unstable-clock case. That wake model remains an explicit pending decision;
@@ -383,16 +408,18 @@ The top connects `u_control`, `u_execute`, `u_bus`, `u_retire` and
 `u_stop_policy`. Typed boundaries add no registers or clock domains. Control
 emits a prepared plan and architectural capture record; it does not duplicate
 bus phase or recorder state. IE/IF/buttons still enter the recorder at B.
-The STOP oscillator-wake seam remains incomplete; composition alone does not
+The normal STOP stable-clock qualification seam is specified below; unresolved
+interrupt-during-restart policy means composition alone does not
 resolve that behavior or close the issue.
 
 ## Integration status
 
 The `n2m_cpu` wrapper composes the owners above. Its checked original program
 covers 18 events and 50 M-cycles. The component owns deterministic STOP entry from `joyp_selected_active`
-and its frozen enabled-request snapshot. The remaining `wake_request` input is
-an internal policy seam, not an addition to the host initialization ABI; the
-final wrapper must own its resolved logic.
+and its frozen enabled-request snapshot. The `wake_request` input is the stable-clock qualification described above,
+not an addition to the host initialization ABI. The enclosing power owner owns
+selected-line capture and stable tick release; normal-path runtime evidence is
+pending for this snapshot.
 
 The T3 request snapshot mapping is specified above; its contrasted IRQ/HALT
 fixtures have bounded checked evidence; full readiness still requires the remaining gates. The current HALT return-to-HALT
@@ -400,7 +427,7 @@ branch matches the pinned SameBoy model for pending requests with IME set,
 including delayed EI. An earlier inference that ordinary IME alone proved this
 branch wrong was withdrawn after source comparison. Requests before the latch
 closes and arrivals after HALT enters sleep need separate checked expectations.
-STOP wake policy, its remaining IDU observation, and final composed acceptance
+STOP interrupt-during-restart policy, entry IDU mapping, and final composed acceptance
 remain unfinished; this snapshot cannot close
 #118. The selected 498-form state/access evidence below remains valid within
 its declared flat-RAM exclusions.

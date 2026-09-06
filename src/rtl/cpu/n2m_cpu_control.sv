@@ -198,10 +198,13 @@ module n2m_cpu_control (
         // PHI closes the enabled-request latch at T3 rising. Recognition and
         // low-stack vector selection consume this frozen M-cycle snapshot.
         if (gb_tick && phase == 2) control_next.irq_snapshot = ie[4:0] & iflags;
-        // STOP wake retains its separate unresolved oscillator policy.
-        if (control.mode == MODE_STOP && wake_request && phase == 0) begin
+        // The power owner has already latched the selected-line wake and
+        // qualified stable clocks. Accept before T1; the mode transition
+        // retains a one-edge pulse even while host pause withholds ticks.
+        // IME-enabled pending restart remains the separate model-policy gate.
+        if (control.mode == MODE_STOP && wake_request && phase == 0 && !gb_tick) begin
             control_next.mode = MODE_FETCH;
-            control_next.observation_resume = 1;
+            control_next.observation_resume = control.ime && (|(ie[4:0] & iflags));
         end
         if (cycle_end) begin
             case (control.mode)
@@ -346,6 +349,9 @@ module n2m_cpu_control (
     `DFF_ARST_VAL(control, control_next, clk_sys, reset_sys, profile_control())
     `DFF_ARST_VAL(registers, registers_next, clk_sys, reset_sys, profile_registers())
 
+    `N2M_ASSERT(CPU_STOP_WAKE_BOUNDARY, clk_sys, reset_sys || core_reset,
+        (stopped && wake_request) |-> (phase == 0 && !gb_tick))
+    `N2M_ASSERT_KNOWN(CPU_STOP_WAKE_KNOWN, clk_sys, reset_sys || core_reset, wake_request)
     `N2M_ASSERT(CPU_STOP_DIVIDER_EDGE, clk_sys, reset_sys,
         !divider_reset_request || (stop_execute && gb_tick && phase == 3 && !core_reset))
     `N2M_ASSERT_KNOWN(CPU_STOP_SELECTED_KNOWN, clk_sys, reset_sys || core_reset,

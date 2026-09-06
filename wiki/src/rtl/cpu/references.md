@@ -166,3 +166,24 @@ read at wake T4 followed by execution satisfies that comparison; an additional
 IME0 refetch M-cycle does not. The original fixture contrasts both IME states,
 three arrival edges, and an opcode changed during sleep. No external test ROM
 was executed to establish this projection.
+
+
+## Normal STOP stable-clock boundary
+
+At the existing Pan Docs pin, `Reducing_Power_Consumption.md` identifies selected
+P10-P13 low as the STOP release source. SameBoy at the existing pin checks JOYP's
+low nibble independently of IE in `GB_cpu_run`, then advances eight cycles after
+leaving STOP. This corroborates selected-line release, not a hardware-exact
+settling duration: its STOP entry read timing is explicitly unverified.
+The pinned SonoSooS example resumes with a fresh fetch after the discarded
+padding byte. We project that stable fetch onto the normal PC increment
+observation, without claiming an analog waveform.
+
+Gekkio's `control_unit.vhd` separates system-clock release (`wake`, lines148-155)
+from CPU-clock release (`intr_wake_sync` or `startup_begin`, line121).
+`interrupts.vhd` line55 combines enabled requests and NMI for `intr_wake`.
+The retained `test_soc.vhd` initializes `wake` to zero without a JOYP driver, so
+it does not independently resolve button-only/no-IE restart. The CPU boundary
+therefore delegates oscillator qualification to the enclosing power owner and
+assigns no invented fixed delay. The IME-enabled interrupt during unstable
+restart remains a separately documented unresolved model decision.

@@ -226,3 +226,13 @@ exactly the stack writes already committed, rejects pending access and stale
 events, and checks a fresh epoch/sequence-zero profile record. Forty-two cases
 produce 168 full records. The actual reset-edge commit fault must fail. Reset
 does not roll back writes that crossed the public commit boundary.
+
+
+The normal STOP-wake fixture uses a scripted qualified stable-clock pulse from
+an external power owner. Four normal cases distinguish both IME states and
+JOYP IE disabled/enabled with no pending request; a changed stored-PC opcode
+must be fetched after the pulse and host pause. Sixteen reset cases cancel that
+prepared fetch at each phase for both IME states and reset types. Literal bus,
+full retirement and resumed IDU checks remain separate from actual stale-read
+fault injection. This fixture does not establish analog settling duration,
+JOYP event priority or the unresolved IME1 interrupt-during-restart policy.
