@@ -114,3 +114,11 @@ prefetch. Both cases check all 48 physical writes, the held phase2 response and
 unchanged WRAM source and CPU-addressed bytes. The corrupt target substitutes
 the unmasked F3 for the actual 03 write. This is a synthetic CPU/PPU boundary
 witness of the adopted ordering, not a new hardware measurement.
+
+Four original CPU programs exercise INC BC, DEC SP, LD(HL-),A and POP BC in
+64-iteration loops around the actual PPU, DMA and Intel stores. They check
+literal old addresses, decrement direction, a store plus one IDU effect, and
+POP's first read with an effect versus its second ordinary read. POP checks
+128 reads. D controls the loop so changing BC cannot alter the iteration count.
+The POP fault removes the actual first-read write effect and requires the
+independent expected-one/actual-zero observation failure.

@@ -65,6 +65,8 @@ module tb_dma_composition;
     bit corrupt_byte, invalid_case, hardware_fault;
     bit read_case, read_increment_case, sampled_read, sampled_write;
     integer reads, scan_reads, scan_combined, excluded_reads;
+    integer family_case, ordinary_writes;
+    bit family_decrement, family_pop, family_store, corrupt_pop_idu;
     logic [19:0] read_rows;
     bit corrupt_row_case, row_fault_ready;
     logic [14:0] row_fault_address;
@@ -187,18 +189,26 @@ module tb_dma_composition;
                 end
                 sampled_read=0; sampled_write=0;
                 if(read_case && bus_commit && bus_plan.address[15:8]==8'hfe) begin
-                    if(bus_plan.write_enable || bus_plan.address!==16'('hfe00+(read_increment_case ? reads : 0)))
+                    if(bus_plan.write_enable || bus_plan.address!==16'('hfe00+((read_increment_case || family_pop) ? reads : 0)))
                         $fatal(1,"DMA_COMPOSITION_READ_ADDRESS index=%0d actual=%04x",reads,bus_plan.address);
                     reads=reads+1; sampled_read=1;
                 end
+                if(family_store && bus_commit && bus_plan.address[15:8]==8'hfe) begin
+                    if(!bus_plan.write_enable || bus_plan.address!==16'('hfe3f-ordinary_writes))
+                        $fatal(1,"DMA_FAMILY_STORE_ADDRESS index=%0d actual=%04x",ordinary_writes,bus_plan.address);
+                    ordinary_writes=ordinary_writes+1;
+                    // A permitted ordinary store commits independently of scan corruption.
+                    if(!dma_active && oam_cpu_allow)expected_oam[bus_plan.address[7:0]]=bus_plan.write_data;
+                end
                 if(address_effect_sample && address_effect.valid && address_effect.write_effect &&
                     address_effect.address[15:8]==8'hfe) begin
-                    if(address_effect.address!==16'('hfe00+effects)) $fatal(1,"DMA_COMPOSITION_IDU");
+                    if(address_effect.address!==16'(family_decrement ? 'hfe3f-effects :
+                        'hfe00+(family_pop ? 2*effects:effects))) $fatal(1,"DMA_COMPOSITION_IDU");
                     effects=effects+1; sampled_write=1;
                 end
                 // The original opcode fixes whether this accepted read has an IDU write.
-                if(sampled_read && sampled_write!=read_increment_case)
-                    $fatal(1,"DMA_COMPOSITION_READ_IDU expected=%0d actual=%0d",read_increment_case,sampled_write);
+                if(sampled_read && sampled_write!=(family_pop ? reads%2==1:read_increment_case))
+                    $fatal(1,"DMA_COMPOSITION_READ_IDU expected=%0d actual=%0d",family_pop ? reads%2==1:read_increment_case,sampled_write);
                 if(ppu_oam_phase==1 && (sampled_read || sampled_write)) begin
                     corrupt_row(int'(ppu_scan_index)/2,sampled_read,sampled_write);
                     if(sampled_read) begin
@@ -238,8 +248,14 @@ module tb_dma_composition;
         pause_phase=-1; pause_count=0; pause_dot=0; pause_sample_phase=0; pause_done=0;
         if($value$plusargs("PAUSE_PHASE=%d",pause_phase) && (pause_phase<0 || pause_phase>3))
             $fatal(1,"DMA_PAUSE_PHASE_ARGUMENT");
+        family_case=0;ordinary_writes=0;
+        if($value$plusargs("FAMILY=%d",family_case) && (family_case<1 || family_case>4))
+            $fatal(1,"DMA_FAMILY_ARGUMENT");
+        family_decrement=family_case==2 || family_case==3;
+        family_pop=family_case==4;family_store=family_case==3;
+        corrupt_pop_idu=$test$plusargs("CORRUPT_POP_IDU");
         read_increment_case=$test$plusargs("READ_INCREMENT");
-        read_case=$test$plusargs("READ_CASE") || read_increment_case;
+        read_case=$test$plusargs("READ_CASE") || read_increment_case || family_pop;
         reads=0; scan_reads=0; scan_combined=0; excluded_reads=0; read_rows=0;
         sampled_read=0; sampled_write=0;
         corrupt_row_case=$test$plusargs("CORRUPT_ROW"); row_fault_ready=0; row_fault_address=0;
@@ -255,7 +271,7 @@ module tb_dma_composition;
             dut.engine.write_valid,peripheral_commit,dut.service.dma_held_pair,
             reads,scan_reads,scan_combined,excluded_reads,read_rows,sampled_read,sampled_write,row_fault_ready,row_fault_address,
             cpu_stopped,test_wake,sleep_dot,stop_execute,clock_stop_action,
-            pause_phase,pause_done,pause_dot,pause_count,pause_sample_phase);
+            pause_phase,pause_done,pause_dot,pause_count,pause_sample_phase,family_case,ordinary_writes);
         repeat(3) @(negedge clk_sys); reset_sys=0;
         core_reset=1; repeat(2) @(negedge clk_sys); core_reset=0;
         wait(memory_init_done); repeat(3) @(negedge clk_sys);
@@ -272,6 +288,16 @@ module tb_dma_composition;
         program_bytes[14]='h05; program_bytes[15]='h20; program_bytes[16]='hfc; program_bytes[17]='h76;
         // Both opcodes have a two-M-cycle body; DEC B/JR controls64 iterations.
         if(read_case) program_bytes[13]=read_increment_case ? 8'h2a : 8'h7e;
+        if(family_case!=0) begin
+            // D counts iterations so INC/POP BC cannot alter loop control.
+            program_bytes[11]='h16;program_bytes[14]='h15;
+            case(family_case)
+                1:begin program_bytes[4]='h01;program_bytes[13]='h03;end // INC BC
+                2:begin program_bytes[4]='h31;program_bytes[5]='h3f;program_bytes[13]='h3b;end // DEC SP
+                3:begin program_bytes[5]='h3f;program_bytes[13]='h32;end // LD (HL-),A
+                4:begin program_bytes[4]='h31;program_bytes[13]='hc1;end // POP BC
+            endcase
+        end
         if(power_case) begin
             // LDH retirement spans M1; immediate HALT entry M2 writes even byte0.
             if(stop_case) begin
@@ -330,6 +356,11 @@ module tb_dma_composition;
             wait(seen_start && access_write && access_store==STORE_OAM && access_address==5);
             @(negedge clk_sys); force dut.access_wdata=8'h00;
         end
+        if(corrupt_pop_idu) begin
+            wait(request_valid && bus_plan.access_kind==ACCESS_STACK && bus_plan.address==16'hfe00);
+            @(negedge clk_sys);
+            force address_effect={1'b1,16'hfe00,16'hffff,1'b0};
+        end
         wait(stop_case ? cpu_stopped : cpu_halted);
         if(power_case) begin
             @(negedge clk_sys); held_count=dma_count;
@@ -356,12 +387,14 @@ module tb_dma_composition;
         end
         @(negedge clk_sys); run_enable=0;
         repeat(60) @(negedge clk_sys);
-        if(dma_count!=160 || effects!=((power_case || (read_case && !read_increment_case)) ? 0 : 64) || checks==0) $fatal(1,"DMA_COMPOSITION_COUNTS dma=%0d effects=%0d ppu=%0d",dma_count,effects,checks);
+        if(dma_count!=160 || effects!=((power_case || (read_case && !read_increment_case && !family_pop)) ? 0 : 64) || checks==0) $fatal(1,"DMA_COMPOSITION_COUNTS dma=%0d effects=%0d ppu=%0d",dma_count,effects,checks);
         if(pause_phase>=0 && !pause_done) $fatal(1,"DMA_PAUSE_NOT_EXERCISED");
-        if(read_case && (reads!=64 || excluded_reads==0 ||
-            (read_increment_case ? scan_combined==0 : scan_reads==0)))
+        if(read_case && (reads!=(family_pop ? 128:64) || excluded_reads==0 ||
+            ((read_increment_case || family_pop) ? scan_combined==0 : scan_reads==0)))
             $fatal(1,"DMA_COMPOSITION_READ_COUNTS reads=%0d scan=%0d combined=%0d excluded=%0d",
                 reads,scan_reads,scan_combined,excluded_reads);
+        if(family_store && ordinary_writes!=64)$fatal(1,"DMA_FAMILY_STORE_COUNT");
+        if(family_pop && scan_reads==0)$fatal(1,"DMA_FAMILY_POP_SECOND_READ");
         observe=0; setup=1;
         for(index=0;index<160;index=index+1) begin
             @(negedge clk_sys); setup_read=1; setup_store=STORE_OAM; setup_address=15'(index);
@@ -370,8 +403,8 @@ module tb_dma_composition;
                 $fatal(1,"DMA_COMPOSITION_READBACK offset=%0d expected=%02x actual=%02x",index,expected_oam[index],access_rdata);
         end
         $fclose(trace);
-        $display("PASS DMA composition bytes=160 idu=%0d halt=%0d stop=%0d ppu=%0d reads=%0d scan=%0d combined=%0d excluded=%0d rows=%05x pause=%0d",
-            effects,halt_case,stop_case,checks,reads,scan_reads,scan_combined,excluded_reads,read_rows,pause_phase); $finish;
+        $display("PASS DMA composition bytes=160 idu=%0d halt=%0d stop=%0d ppu=%0d reads=%0d scan=%0d combined=%0d excluded=%0d rows=%05x pause=%0d family=%0d stores=%0d",
+            effects,halt_case,stop_case,checks,reads,scan_reads,scan_combined,excluded_reads,read_rows,pause_phase,family_case,ordinary_writes); $finish;
     end
     initial begin #10000000; $fatal(1,"DMA_COMPOSITION_WATCHDOG"); end
 endmodule
