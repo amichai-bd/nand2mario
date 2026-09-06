@@ -122,3 +122,10 @@ POP's first read with an effect versus its second ordinary read. POP checks
 128 reads. D controls the loop so changing BC cannot alter the iteration count.
 The POP fault removes the actual first-read write effect and requires the
 independent expected-one/actual-zero observation failure.
+
+The qualifier matrix checks 6,811 finite cases: independent ordinary and IDU
+addresses at FE00/FE9F/FEA0/FEFF/FDFF/FF00, full and high-only masks, three
+scan phases, seven scan indices and unsampled activity. High-only cases leave
+unclaimed low bits unknown. This is a typed-boundary matrix, not an exhaustive
+CPU opcode test. Actual-class corruption and an incomplete high mask each
+require their intended failure.

@@ -4874,5 +4874,51 @@
     "timeout_seconds": 60,
     "top": "tb_dma_composition",
     "vendor_model": "intel-memory"
+  },
+  "oam-qualify": {
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS OAM qualifier cases=6811 full/high-mask addresses scan exclusions",
+    "timeout_seconds": 30,
+    "top": "tb_oam_qualify",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/dma/n2m_oam_pkg.sv",
+      "src/rtl/dma/n2m_oam_qualify.sv",
+      "src/dv/dma/tb_oam_qualify.sv"
+    ]
+  },
+  "oam-qualify-corrupt": {
+    "args": [
+      "+CORRUPT_CLASS"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "OAM_QUALIFIER_ORACLE case=0 expected=0 actual=2",
+    "timeout_seconds": 30,
+    "top": "tb_oam_qualify",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/dma/n2m_oam_pkg.sv",
+      "src/rtl/dma/n2m_oam_qualify.sv",
+      "src/dv/dma/tb_oam_qualify.sv"
+    ]
+  },
+  "oam-qualify-mask": {
+    "args": [
+      "+BAD_MASK"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "OAM_OBSERVATION_RESOLVED",
+    "timeout_seconds": 30,
+    "top": "tb_oam_qualify",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/dma/n2m_oam_pkg.sv",
+      "src/rtl/dma/n2m_oam_qualify.sv",
+      "src/dv/dma/tb_oam_qualify.sv"
+    ]
   }
 }
