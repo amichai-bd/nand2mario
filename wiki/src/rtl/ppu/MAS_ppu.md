@@ -243,3 +243,17 @@ and run in Questa through the shared builder, with exact expected nonzero
 negative diagnostics. Source-pixel and timing/interrupt traces, original scenes,
 commands, seeds and waves remain tagged artifacts. None establishes physical
 monitor or complete-system acceptance.
+
+### Pixel shift state
+
+`n2m_ppu_shift` holds two background planes, two object planes, and object palette
+and priority bits for eight pending pixels. The renderer samples their high bits
+before A. On a tick, advance shifts toward that high bit; background reload wins
+over advance. Object load fills only slots whose pre-edge raw object color is
+zero, preserving the first object's priority. The fetch controller orders object
+loads by X then OAM index. Line clear wins over all tick operations. System reset
+clears all planes even without a tick. These controls do not add emulated dots.
+The controller supplies already flipped tile bytes and keeps object fetching
+paused against pixel advance in ordinary schedules. The shift module preserves
+the pinned source's pre-edge slot test even for simultaneous load and advance;
+independent vectors check that boundary and reset while paused before integration.

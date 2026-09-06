@@ -36,6 +36,12 @@
       "source": "rtl/video.v",
       "section": "DMG pixel priority and palette selection",
       "local_changes": "Extract pure combinational DMG path; logic-only named ports; explicitly treat disabled background as raw color0 for priority; remove CGB and all state/platform dependencies"
+    },
+    {
+      "path": "n2m_ppu_shift.sv",
+      "source": "rtl/video.v",
+      "section": "Background/window and DMG object shift state",
+      "local_changes": "Extract six eight-bit planes with explicit paused-safe reset and line clear; separate fetch controls from state; preserve pre-edge emptiness and load-over-shift priority; remove CGB and extra-sprite branches; use shared register/assertion macros"
     }
   ]
 }
