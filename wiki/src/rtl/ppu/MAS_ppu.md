@@ -316,3 +316,22 @@ There is no local OAM RAM, FF46 register or DMA engine. Reset initializes all
 scan state independently of gb_tick; LCD-off tick handling retains the selected
 source's first-line scan behavior. Mode/startup integration must validate the
 result against the instruction-relative observation table.
+
+CPU T4 remains aligned across HALT, wake and interrupt entry: the CPU advances its
+four-phase bus cycle on every emulated tick even while inactive, and activates
+wake only after T4. Host pause holds both domains' emulated phase. LCDC enable at
+T4 starts PPU quarter0 on the following T1. While LCDC is enabled, a CPU commit
+therefore occurs at PPU quarter3. The integrated wrapper asserts this invariant;
+`io_commit && gb_tick` alone is insufficient. Core reset clears both phases and
+LCDC, so a new enable establishes alignment again. A stopped system preserves
+phase; it does not independently restart either counter.
+
+This alignment makes comparison-stage updates at T1 settle into the visible
+flag by T2, before a legal T4 LCD disable. Thus the selected off-state pipeline
+copies equal history values rather than changing the retained flag. Directed
+checks cover the last pre-disable comparison transition and LYC writes while
+off; arbitrary-phase helper stimuli are distinguished from reachable CPU writes.
+The direct-entry reset initializes both comparison-history bits to zero, as
+explicit internal state. LY=LYC=0 does not combinationally set the flag while
+LCDC is off. The first enabled comparison sample updates it through the defined
+history pipeline; no undocumented power-up equality evaluation is assumed.
