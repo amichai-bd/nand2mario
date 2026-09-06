@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "name": "MiSTer Game Boy PPU selected logic",
+  "repository": "https://github.com/MiSTer-devel/Gameboy_MiSTer",
+  "commit": "7a5ff50528cd9c1d13ffb675e7df8506bffaa078",
+  "license": "GPL-3.0-or-later",
+  "license_text": "GPL-3.0.txt",
+  "license_text_sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+  "notices": "THIRD_PARTY.md",
+  "status": "Selected renderer, OAM and timing logic adapted; component verification and physical timing evidence recorded in PR129",
+  "purpose": "Adapt selected DMG renderer, OAM selection and timing logic; independent project interfaces and verification remain required",
+  "sources": [
+    {
+      "path": "rtl/video.v",
+      "sha256": "95c16fde7d5ea1105891d7663105d718e5d515319b185273a344e08d5a630528",
+      "url": "https://raw.githubusercontent.com/MiSTer-devel/Gameboy_MiSTer/7a5ff50528cd9c1d13ffb675e7df8506bffaa078/rtl/video.v"
+    },
+    {
+      "path": "rtl/sprites.v",
+      "sha256": "1d2e0438e4bc027c4cecf41bc492b6e365ee9c649cf197d656cc267a752b2c81",
+      "url": "https://raw.githubusercontent.com/MiSTer-devel/Gameboy_MiSTer/7a5ff50528cd9c1d13ffb675e7df8506bffaa078/rtl/sprites.v"
+    }
+  ],
+  "planned_local_changes": [
+    "Specialize DMG and remove CGB, extra sprites, savestates and platform integration",
+    "Convert to logic-only SystemVerilog with separate declarations and shared register/assertion macros",
+    "Adapt CPU commit and emulated-dot phases without fabric clocks or hidden extra dots",
+    "Use project direct-entry reset values and owned memory interface",
+    "Add explicit source/observer cancellation and generation-qualified LCD blank presentation",
+    "Remove FF46/DMA engine; issue132 owns scheduling/arbitration/corruption and issue130 owns the single backing store"
+  ],
+  "use_boundary": "Private project only in this issue; no source/bitstream external release. Derived files retain GPL-3.0-or-later. Any later distribution of a combined work requires a compatible release review; original unrelated material is not relicensed.",
+  "derived_files": [
+    {
+      "path": "n2m_ppu_mix.sv",
+      "source": "rtl/video.v",
+      "section": "DMG pixel priority and palette selection",
+      "local_changes": "Extract pure combinational DMG path; logic-only named ports; explicitly treat disabled background as raw color0 for priority; remove CGB and all state/platform dependencies"
+    },
+    {
+      "path": "n2m_ppu_shift.sv",
+      "source": "rtl/video.v",
+      "section": "Background/window and DMG object shift state",
+      "local_changes": "Extract six eight-bit planes with explicit paused-safe reset and line clear; separate fetch controls from state; preserve pre-edge emptiness and load-over-shift priority; remove CGB and extra-sprite branches; use shared register/assertion macros"
+    },
+    {
+      "path": "n2m_ppu_fetch.sv",
+      "source": "rtl/video.v",
+      "section": "Background/window and object fetch sequencing",
+      "local_changes": "Extract DMG phase/plane state; preserve pre-edge phase-five response bypass and ordered updates; explicit reset and fail-closed response input; exclude CGB/platform/save-state/extra-sprite logic; macro registers and named assertions"
+    },
+    {
+      "path": "n2m_ppu_timing.sv",
+      "source": "rtl/video.v",
+      "section": "DMG line counters, LY comparison history, mode and interrupt conditions",
+      "local_changes": "Extract one-dot enable timing with explicit direct reset; retain quarter-dot phase and delayed condition/mode history; remove CGB/save-state/CPU/DMA dependencies; macro registers and named assertions. Exact startup/LY153/STAT/WX integration gates remain subject to independent source-backed validation; separate CPU-readable LY153/comparison state from renderer counter and preserve ordered old/new LYC IRQ events under MAS_ppu mapping corroborated by pinned SameBoy/TCAGBD research, without importing their code; retain combined STAT line across LCD-off writes and ordered disable/restart per selected source model; apply approved narrow old-STAT08 transient OAM-enable suppression at ordinary source rise, retaining overlapping HBlank OR and renderer/access timing"
+    },
+    {
+      "path": "n2m_ppu_objects.sv",
+      "source": "rtl/sprites.v",
+      "section": "First-ten OAM evaluation and DMG object fetch selection",
+      "local_changes": "Remove both local dpram stores, all save-state and sprites_extra branches; expose arbitrated pair address/phase/response; explicit control/array reset; retain scan capture/selection and fetch priority ordering; macro registers and named assertions. DMA/corruption remains external132 owner"
+    },
+    {
+      "path": "n2m_ppu_registers.sv",
+      "source": "rtl/video.v",
+      "section": "DMG LCD register writes and readback",
+      "local_changes": "Use generated addresses/direct-entry fill and CPU T4 commit interface; exclude FF46/CGB/save-state; expose LCD transitions and STAT-write event separately from timing/IRQ; enforce tick/quarter alignment with named assertions; use shared macros"
+    },
+    {
+      "path": "n2m_ppu_position.sv",
+      "source": "rtl/video.v",
+      "section": "Pixel counter, fine-scroll pause and source-pixel enable",
+      "local_changes": "Extract rawX/scroll control; retain explicit terminal-pixel event; latch fineSCX at first background map-fetch boundary instead of live low bits; macro reset/enable and named range assertions; expose source-coordinate event without platform RGB"
+    },
+    {
+      "path": "n2m_ppu_window.sv",
+      "source": "rtl/video.v",
+      "section": "DMG WY/WX qualification and window row/column state",
+      "local_changes": "Extract DMG persistent WY and delayed WX/window state; preserve repeated activation row increments and WX166 delayed match; remove CGB/platform dependencies; macro registers and explicit reset"
+    },
+    {
+      "path": "n2m_ppu.sv",
+      "source": "rtl/video.v and rtl/sprites.v",
+      "section": "Composed DMG renderer and selected memory address priority",
+      "local_changes": "Connect separately adapted helpers; original project A/B source-event forwarding, cancellation, first-frame shade suppression and display qualification; external memory and epoch/dot interfaces; no platform/snapshot store"
+    }
+  ]
+}

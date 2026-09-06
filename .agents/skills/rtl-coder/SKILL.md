@@ -11,6 +11,9 @@ requirements/design aligned with `src/rtl/`, verification, and evidence.
 
 1. State ports, clocks, resets, state, timing, and invalid cases.
 2. Keep modules small, synchronous intent explicit, and widths and signedness clear.
+   Follow [typed module and timing boundaries](../../../wiki/src/rtl-reference-style.md#typed-module-and-timing-boundaries)
+   for package-owned transactions, single state ownership and phase naming.
+   A structural refactor must preserve the original reset/enable and commit timing.
    Use the [product register convention](../../../wiki/src/rtl-reference-style.md#product-register-convention)
    for ordinary registers: `DFF`, `DFF_RST`, `DFF_RST_VAL`, `DFF_EN`, and
    `DFF_RST_EN(Q, D, CLK, EN, RST, RESET_VAL)`. Keep reset polarity, priority,

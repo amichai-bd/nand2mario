@@ -13,7 +13,10 @@ Follow the [separate declaration and assignment rule](../../../wiki/src/rtl-refe
 including `logic` signal declarations, loop variables and time-zero stimulus ordering.
 
 1. Write a test plan with normal, edge, reset, error, and ordering cases.
-2. Separate stimulus, passive public-boundary observation, reference behavior,
+2. Follow the [typed boundary convention](../../../wiki/src/rtl-reference-style.md#typed-module-and-timing-boundaries)
+   when observing package records. Adapt interface packing and fault paths without
+   changing independent literal expectations during a structural refactor.
+   Separate stimulus, passive public-boundary observation, reference behavior,
    and checks. Calculate expected values from the contract and observed inputs,
    not DUT decoded fields or internal next-state logic.
 3. Compare valid/ready timing and every meaningful typed field, rejecting

@@ -28,6 +28,8 @@ module vga_proof (
         .clk_sys, .reset_sys, .core_reset, .clk_pix, .reset_pix,
         .source_valid(gb_tick), .source_start(pixel_index == 0), .source_shade(shade),
         .source_dot, .source_epoch,
+        .source_abort(1'b0), .blank_assert(1'b0), .source_display_eligible(1'b1),
+        .observe_abort(),
         .observe_valid(), .observe_complete(observed_complete), .observe_index(observed_index),
         .observe_shade(), .observe_epoch(), .observe_sequence(observed_sequence), .observe_dot(),
         .discard_count, .repeat_count, .display_valid(), .display_sequence, .display_epoch,
