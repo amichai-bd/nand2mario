@@ -8,7 +8,7 @@ module n2m_uart_exchange (
     input var logic clk_sys,
     input var logic reset_sys,
     input var logic request_valid,
-    input n2m_interfaces_pkg::packet_header_t request_header,
+    input var n2m_interfaces_pkg::packet_header_t request_header,
     input var logic [n2m_uart_pkg::UART_ADDRESS_BITS-1:0] request_bytes,
     output logic request_done,
     output logic packet_read,
