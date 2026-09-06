@@ -1,0 +1,145 @@
+`timescale 1ns/1ps
+`default_nettype none
+module tb_memory_stores;
+    import n2m_memory_pkg::*;
+    logic clk_sys, reset_sys, core_reset, init_done;
+    logic access_read, access_write, access_valid, host_read, host_write, host_valid;
+    memory_store_t access_store;
+    logic [14:0] access_address;
+    logic [7:0] access_wdata, access_rdata, host_wdata, host_rdata;
+    logic [31:0] host_offset;
+    logic ppu_vram_read, ppu_vram_valid, ppu_oam_read, ppu_oam_valid, wave_read, wave_valid;
+    logic [12:0] ppu_vram_address;
+    logic [7:0] ppu_vram_rdata, wave_rdata;
+    logic [6:0] ppu_oam_pair;
+    logic [15:0] ppu_oam_rdata;
+    logic [3:0] wave_address;
+    integer index, store_number, size, inspected;
+    bit early;
+    n2m_memory_stores dut (.*);
+
+    function automatic integer bytes_in_store(input integer number);
+        case (number)
+            1, 3: return 8192;
+            2: return 127;
+            4: return 160;
+            5: return 16;
+            default: return 32768;
+        endcase
+    endfunction
+    function automatic logic [7:0] pattern(input integer number, offset);
+        return 8'(number * 41 + offset * 29 + offset / 256);
+    endfunction
+    task automatic edge_cycle;
+        #5; clk_sys = 1;
+        #1;
+        #4; clk_sys = 0;
+    endtask
+    task automatic wait_clear;
+        for (index = 0; index < 8192; index = index + 1) begin
+            if (init_done) $fatal(1, "MEMORY_STORES_EARLY_INIT edge=%0d", index);
+            if (early && index == 7) force dut.init_done = 1'b1;
+            edge_cycle();
+        end
+        if (!init_done) $fatal(1, "MEMORY_STORES_LATE_INIT");
+    endtask
+    task automatic inspect_ram(input bit patterned);
+        for (store_number = 1; store_number <= 5; store_number = store_number + 1) begin
+            access_store = memory_store_t'(store_number);
+            access_read = 1;
+            size = bytes_in_store(store_number);
+            for (index = 0; index < size; index = index + 1) begin
+                access_address = 15'(index);
+                edge_cycle();
+                if (!access_valid || access_rdata !== (patterned ? pattern(store_number, index) : 8'd0))
+                    $fatal(1, "MEMORY_STORES_READ store=%0d offset=%0d expected=%02h actual=%02h valid=%0d",
+                        store_number, index, patterned ? pattern(store_number, index) : 8'd0, access_rdata, access_valid);
+                inspected = inspected + 1;
+            end
+        end
+        access_read = 0;
+        edge_cycle();
+        if (access_valid) $fatal(1, "MEMORY_STORES_STALE_VALID");
+    endtask
+    initial begin
+        $dumpfile("memory-stores.vcd");
+        $dumpvars(1, tb_memory_stores);
+        clk_sys = 0; reset_sys = 1; core_reset = 0;
+        access_read = 0; access_write = 0; access_store = STORE_ROM;
+        access_address = 0; access_wdata = 0;
+        host_read = 0; host_write = 0; host_offset = 0; host_wdata = 0;
+        ppu_vram_read = 0; ppu_vram_address = 0;
+        ppu_oam_read = 0; ppu_oam_pair = 0;
+        wave_read = 0; wave_address = 0;
+        inspected = 0;
+        early = $test$plusargs("early");
+        edge_cycle();
+        reset_sys = 0;
+        wait_clear();
+        inspect_ram(0);
+        for (store_number = 1; store_number <= 5; store_number = store_number + 1) begin
+            access_store = memory_store_t'(store_number);
+            access_write = 1;
+            size = bytes_in_store(store_number);
+            for (index = 0; index < size; index = index + 1) begin
+                access_address = 15'(index);
+                access_wdata = pattern(store_number, index);
+                edge_cycle();
+            end
+        end
+        access_write = 0;
+        inspect_ram(1);
+        ppu_vram_read = 1; ppu_oam_read = 1; wave_read = 1;
+        for (index = 0; index < 8192; index = index + 1) begin
+            ppu_vram_address = 13'(index);
+            ppu_oam_pair = 7'(index % 80);
+            wave_address = 4'(index % 16);
+            edge_cycle();
+            if (!ppu_vram_valid || ppu_vram_rdata !== pattern(3, index)
+                || !ppu_oam_valid || ppu_oam_rdata !== {pattern(4, (index % 80) * 2 + 1), pattern(4, (index % 80) * 2)}
+                || !wave_valid || wave_rdata !== pattern(5, index % 16))
+                $fatal(1, "MEMORY_STORES_PARALLEL offset=%0d", index);
+        end
+        ppu_vram_read = 0; ppu_oam_read = 0; wave_read = 0;
+        host_write = 1;
+        for (index = 0; index < 32768; index = index + 1) begin
+            host_offset = 32'(index); host_wdata = pattern(0, index);
+            edge_cycle();
+        end
+        host_write = 0;
+        // CPU/store writes to ROM cannot perform loading.
+        access_store = STORE_ROM; access_write = 1; access_address = 15'd32767; access_wdata = 8'h33;
+        edge_cycle();
+        access_write = 0;
+        // Cancel actual outstanding valid responses between clock edges.
+        access_read = 1; host_read = 1;
+        ppu_vram_read = 1; ppu_oam_read = 1; wave_read = 1;
+        edge_cycle();
+        if (!access_valid || !host_valid || !ppu_vram_valid || !ppu_oam_valid || !wave_valid)
+            $fatal(1, "MEMORY_STORES_RESET_SETUP");
+        core_reset = 1;
+        #1;
+        if (init_done || access_valid || host_valid || ppu_vram_valid || ppu_oam_valid || wave_valid)
+            $fatal(1, "MEMORY_STORES_RESET_RESPONSE");
+        edge_cycle();
+        access_read = 0; host_read = 0;
+        ppu_vram_read = 0; ppu_oam_read = 0; wave_read = 0;
+        core_reset = 0;
+        wait_clear();
+        inspect_ram(0);
+        host_read = 1; access_read = 1; access_store = STORE_ROM;
+        for (index = 0; index < 32768; index = index + 1) begin
+            host_offset = 32'(index); access_address = 15'(32767 - index);
+            edge_cycle();
+            if (!host_valid || host_rdata !== pattern(0, index)
+                || !access_valid || access_rdata !== pattern(0, 32767 - index))
+                $fatal(1, "MEMORY_STORES_ROM_RETAIN offset=%0d", index);
+        end
+        $display("PASS memory stores RAM_inspected=%0d ROM_bytes=32768 clear_edges=8192", inspected);
+        $finish;
+    end
+    initial begin
+        #5000000;
+        $fatal(1, "MEMORY_STORES_WATCHDOG");
+    end
+endmodule

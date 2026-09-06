@@ -26,6 +26,37 @@ Clear cancels pending responses and dominates owned writes. It does not reset
 UART, PLL, VGA ownership or immutable frames. External register initialization
 completion is a separate input to the system reset coordinator.
 
+### Raw store service
+
+[`n2m_memory_stores`](../../../../src/rtl/memory/n2m_memory_stores.sv) exposes
+storage-local operations after arbitration; it is not the CPU address decoder.
+Its internal store selector is defined in
+[`n2m_memory_pkg`](../../../../src/rtl/memory/n2m_memory_pkg.sv), not the host ABI.
+All ports use `clk_sys`. `reset_sys` and `core_reset` immediately cancel response
+validity and suppress operations. Global reset initializes sweep state
+asynchronously; a sampled core reset restarts the sweep at offset zero.
+
+| Port | Request and bounds | Response |
+|---|---|---|
+| Resolved access | Read/write, store selector, fifteen-bit local byte offset and byte data. Offset must fit the selected generated region. | Registered byte and valid after a read edge. ROM writes have no effect. |
+| Host ROM | Independently enabled read/write, bounded thirty-two-bit offset and byte data. Endpoint #91 must authorize writes. | Registered read byte and valid. RAM clearing alone does not block this port. |
+| PPU VRAM | Read enable and thirteen-bit byte offset. | Registered byte and valid. |
+| PPU raw OAM | Read enable and seven-bit pair index, zero through 79. | Registered sixteen-bit pair, lower-address byte in bits 7:0. #132 resolves the pair presented to PPU. |
+| Wave playback | Read enable and four-bit byte offset. | Registered byte and valid. The APU gateway owns playback and CPU access restrictions. |
+
+RAM ports are unavailable while clearing; the upstream router must suppress
+their requests, with a named invariant detecting a violation. Host ROM requests
+remain independent. This boundary prevents a quiet fixture from standing in for
+the eventual CPU/PPU reset-coordinator wiring.
+
+The sweep performs 8192 write edges after reset release. WRAM and VRAM write
+every edge. HRAM writes offsets 0 through 126, OAM offsets 0 through 159, and
+wave RAM offsets 0 through 15. OAM uses two eighty-byte parity banks for the
+same single logical store; its raw resolved write remains one byte per edge.
+The completion edge writes offset 8191 before asserting `init_done`. A repeated
+sampled core reset restarts this schedule. No ROM array clear is performed.
+DMA/corruption write granularity remains a #132 integration gate.
+
 ## Fixed service and CPU commit
 
 CPU #118 at `9a984d0` agrees that request fields are prepared before T1 and held
@@ -40,6 +71,12 @@ Host pause holds a prepared request, but produces no commit. Core/global reset
 at any phase cancels response validity and wins over a coincident commit.
 CPU addresses stay sixteen bits; host ROM offsets stay separately bounded and
 host status addresses never enter the CPU decoder.
+
+Sleeping HALT may retain a next-PC opcode preparation without a commit. The
+memory service can refresh this side-effect-free read; only the CPU's qualified
+wake-T4 completion creates `bus_commit`. A missing response on that attempted
+completion cancels the same edge. Sleeping preparation alone requires no read
+effect and does not authorize an emulated state transition.
 
 I/O prepare routes address/direction/data to the selected behavior owner before
 T4. Its read result may reflect the current pre-edge register value; memory
@@ -57,8 +94,10 @@ bits7:0. PPU phase0 is idle, phase1 scans Y/X, and phase2 fetches tile/attribute
 Phase1 suppresses capture during DMA; phase2 uses the actual arbitrated pair.
 No missing-response fallback or PPU backpressure is allowed.
 
-The exact service wiring, simultaneous same-address policy and access-gating
-edge are awaiting direct PPU-owner agreement. #132 owns CPU bus conflicts,
+The PPU owner agrees to the previous-request registered response and pre-A
+sampling boundary. The raw RAM uses the old-data policy described below;
+contested-bus selection and access-gating corner traces remain separate gates.
+#132 owns CPU bus conflicts,
 OAM write priority, corruption rows and the pair presented to PPU. Its resolved
 raw-store operations may be implemented independently of its engine; a tied-off
 DMA fixture cannot claim arbitration acceptance. Pending behavior is not

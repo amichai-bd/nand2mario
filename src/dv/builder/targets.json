@@ -297,5 +297,19 @@
     "args": ["+corrupt"],
     "expected_exit": "nonzero",
     "signature": "MEMORY_RAM_READ_B check=166 address=154 expected=55 actual=ff"
+  },
+  "memory-stores": {
+    "sources": ["src/rtl/interfaces/n2m_interfaces_pkg.sv", "src/rtl/memory/n2m_memory_pkg.sv", "src/rtl/memory/n2m_memory_ram.sv", "src/rtl/memory/n2m_memory_stores.sv", "src/dv/memory/tb_memory_stores.sv"],
+    "top": "tb_memory_stores",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS memory stores RAM_inspected=50061 ROM_bytes=32768 clear_edges=8192"
+  },
+  "memory-stores-early": {
+    "sources": ["src/rtl/interfaces/n2m_interfaces_pkg.sv", "src/rtl/memory/n2m_memory_pkg.sv", "src/rtl/memory/n2m_memory_ram.sv", "src/rtl/memory/n2m_memory_stores.sv", "src/dv/memory/tb_memory_stores.sv"],
+    "top": "tb_memory_stores",
+    "args": ["+early"],
+    "expected_exit": "nonzero",
+    "signature": "MEMORY_STORES_EARLY_INIT edge=8"
   }
 }
