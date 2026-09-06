@@ -62,6 +62,7 @@ module tb_cpu_wake;
     bit missing;
     bit stale;
 
+    logic instruction_complete;
     n2m_cpu dut (.*);
     assign read_data = memory[address];
     always @(posedge clk_sys) begin

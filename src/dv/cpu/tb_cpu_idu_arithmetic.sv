@@ -56,6 +56,7 @@ module tb_cpu_idu_arithmetic;
     integer records;
     bit corrupt;
 
+    logic instruction_complete;
     n2m_cpu dut (.*);
 
     // Original program. These bytes are separate from the expectation tables.

@@ -60,6 +60,7 @@ module tb_cpu_halt_lock;
     bit lock_fault;
     bit halt_fault;
 
+    logic instruction_complete;
     n2m_cpu dut (.*);
     assign read_data=memory[address];
     always @(posedge clk_sys) begin

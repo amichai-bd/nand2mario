@@ -61,6 +61,7 @@ module tb_cpu_stop;
     bit corrupt_divider;
     bit corrupt_action;
 
+    logic instruction_complete;
     n2m_cpu dut (.*);
     assign read_data = memory[address];
 

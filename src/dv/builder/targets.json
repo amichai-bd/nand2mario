@@ -2836,5 +2836,66 @@
     ],
     "expected_exit": "nonzero",
     "signature": "CPU_STOP_ENTRY_IDU case=4"
+  },
+  "cpu-step": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/dv/cpu/tb_cpu_step.sv"
+    ],
+    "top": "tb_cpu_step",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU STEP timebase steps=7 records=8 interrupts=1 ticks=64"
+  },
+  "cpu-step-suppress": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/dv/cpu/tb_cpu_step.sv"
+    ],
+    "top": "tb_cpu_step",
+    "args": [
+      "+suppress"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_STEP_COMPLETE case=0 dot=8 expected=1 actual=0"
+  },
+  "cpu-step-missing": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/dv/cpu/tb_cpu_step.sv"
+    ],
+    "top": "tb_cpu_step",
+    "args": [
+      "+missing"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT CPU_BUS_RESPONSE"
   }
 }

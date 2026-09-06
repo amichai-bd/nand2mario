@@ -39,6 +39,7 @@ module n2m_cpu (
     output logic ime_delay_observe,
     output logic stop_execute,
     output logic divider_reset_request,
+    output logic instruction_complete,
     output logic retirement_valid,
     output n2m_interfaces_pkg::retirement_t retirement
 );
@@ -55,6 +56,11 @@ module n2m_cpu (
     logic [1:0] phase;
     logic cycle_end;
     logic bus_fault;
+
+    // Pre-A completion lets STEP stop this T enable; B still publishes the
+    // complete retirement record while the timebase is paused.
+    assign instruction_complete = retire_capture.valid && !retire_capture.is_interrupt &&
+        initialized && !fault && !reset_sys && !core_reset;
 
     n2m_cpu_control u_control (
         .clk_sys(clk_sys), .reset_sys(reset_sys), .core_reset(core_reset), .gb_tick(gb_tick),

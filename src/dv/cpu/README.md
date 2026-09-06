@@ -244,3 +244,10 @@ entry reads at0200/FE00, all four entry rows and independent additional effects.
 It checks48 literal M-cycles,40 committed reads and16 full records. An actual FE00-to-FDFF
 output mutation proves that ordinary read correctness cannot hide a wrong IDU
 page. Analog partial-cycle shutdown timing is outside this digital projection.
+
+`cpu-step` composes the real CPU and timebase. Seven single-instruction requests
+stop on their completing A edge and publish eight B records, including one
+interrupt entry which does not finish STEP. Literal cumulative dots are
+8/16/24/28 and 8/12/36 after reset. The two fault targets suppress the actual
+completion output or remove the finishing read response; the latter requires
+both the missing-completion suppression marker and CPU bus assertion.

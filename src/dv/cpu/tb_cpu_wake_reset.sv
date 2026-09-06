@@ -55,6 +55,7 @@ module tb_cpu_wake_reset;
     bit fresh;
     bit corrupt;
 
+    logic instruction_complete;
     n2m_cpu dut (.*);
     assign read_data=memory[address];
     always @(posedge clk_sys) begin

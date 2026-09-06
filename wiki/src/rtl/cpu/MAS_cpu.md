@@ -50,6 +50,7 @@ enable, never a generated CPU clock.
 | Interrupt acknowledge | Output, 5 bits | At most one selected request cleared at the specified entry edge; the peripheral owner combines acknowledgement and its own event/write priority. |
 | STOP coordination | Output | CPU stopped and divider-reset request, distinct from host pause and CPU HALT. The enclosing system owns oscillator/peripheral gating. |
 | Contract fault | Output | Latched on missing response or invalid initialization profile; suppresses further commits and retirement until reset. Simulation additionally emits the corresponding named fatal assertion. |
+| `instruction_complete` | Output | Pre-A pulse for an accepted instruction completion at T4. Excludes interrupt entry, missing response, reset and fault. The STEP owner may combine it with its active STEP condition to request timebase pause on this same enable. |
 | Retirement | Output | One-cycle valid pulse and generated `retirement_t`, describing the completed event. No backpressure may change emulated CPU timing. |
 
 The final port names follow this boundary. The digital memory phases below do
@@ -441,3 +442,15 @@ combinations. Its data and exclusions are owned by the CPU test plan. It does
 not complete STOP/HALT, full reset/wake interruption, physical IDU observations
 or integrated peripheral timing acceptance. Arbitrary state setup belongs only
 to the simulation wrapper; the public direct-profile contract is unchanged.
+
+### STEP completion boundary
+
+`instruction_complete` is combinational from the accepted T4 retirement capture,
+restricted to instruction events. It does not wait for B publication. The endpoint
+uses it only while STEP is active; interrupt-entry records do not finish STEP.
+The timebase takes pause on the completing A enable, then CPU B publication
+finishes with no further emulated dot. A request for multiple instructions resumes
+the timebase for each subsequent instruction. `gb_tick` depends on registered
+timebase phase/paused state, not combinational `pause_request`, so this connection
+does not form a combinational loop. Missing read response prevents completion on
+the failing edge; reset or a latched fault also suppresses the output.

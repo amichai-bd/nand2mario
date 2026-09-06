@@ -59,6 +59,7 @@ module tb_cpu_irq_idu;
     integer quiet;
     bit corrupt;
 
+    logic instruction_complete;
     n2m_cpu dut (.*);
     assign read_data=memory[address];
     always @(posedge clk_sys) begin

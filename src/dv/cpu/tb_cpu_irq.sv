@@ -71,6 +71,7 @@ module tb_cpu_irq;
     bit corrupt;
     bit di_fault;
 
+    logic instruction_complete;
     n2m_cpu dut (.*);
     assign read_data = address == 16'hffff ? ie :
         (address == 16'hff0f ? {3'b111, iflags} : memory[address]);

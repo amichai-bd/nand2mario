@@ -73,6 +73,7 @@ module tb_cpu_vectors;
     bit corrupt;
     bit missing;
 
+    logic instruction_complete;
     n2m_cpu dut (.*);
     assign read_data = memory[address];
 

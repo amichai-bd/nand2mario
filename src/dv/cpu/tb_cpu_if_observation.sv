@@ -58,6 +58,7 @@ module tb_cpu_if_observation;
     integer records;
     bit corrupt;
 
+    logic instruction_complete;
     n2m_cpu dut (.*);
     assign read_data=memory[address];
     always @(posedge clk_sys) begin

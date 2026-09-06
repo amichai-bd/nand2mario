@@ -72,6 +72,7 @@ module tb_cpu_program;
     integer qualified_effects;
     integer qualified_accesses;
 
+    logic instruction_complete;
     n2m_cpu dut (.*);
     assign read_data = memory[address];
 
