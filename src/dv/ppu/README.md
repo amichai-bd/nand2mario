@@ -149,3 +149,14 @@ without reading DUT fetch state. The source recurrence traces old WX match at
 raw47/count7, no reload, raw48/color0, then the delayed tile at raw49. The fault
 target changes the actual source shade at the first inserted pixel from0 to3.
 Both targets require runtime evidence; the old failed WY run is not acceptance.
+
+`ppu-access` reads only at legal T4 edges with no objects, DMA or scrolling.
+Enable-relative452/456 bracket HBlank/OAM entry;532/536 bracket OAM/transfer;
+704/708 bracket transfer/HBlank. Literal mode values are0,2,2,3,3,0; VRAM access
+is allowed except the two mode3 samples, while OAM is allowed only at452/708.
+The source projection has line reset453, first map534, first visible capture548
+and terminal capture707. These are the selected digital timings, not new
+sub-T hardware measurements. STAT enable remains reset0: this fixture does not
+choose the disputed STAT-write mask or IRQ-source projection. The fault target
+forces the actual OAM access output high at the blocked456 read. Both need
+actual runtime evidence with public waves.
