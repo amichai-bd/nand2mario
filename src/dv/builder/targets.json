@@ -1675,5 +1675,52 @@
     "expected_exit": "nonzero",
     "signature": "PPU_ACCESS_CPU elapsed=456 expected_mode=2 actual_mode=2 expected_vram=1 actual_vram=1 expected_oam=0 actual_oam=1",
     "timeout_seconds": 60
+  },
+  "ppu-lcdc-fetch": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_live_scroll.sv"
+    ],
+    "top": "tb_ppu_live_scroll",
+    "args": [
+      "+lcdc_fetch"
+    ],
+    "expected_exit": "zero",
+    "signature": "PASS PPU LCDC live map and tile-bank fetch cases=2 visible_pixels=320",
+    "timeout_seconds": 180
+  },
+  "ppu-lcdc-fetch-corrupt": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_live_scroll.sv"
+    ],
+    "top": "tb_ppu_live_scroll",
+    "args": [
+      "+lcdc_fetch",
+      "+lcdc_fetch_corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "PPU_LIVE_SCROLL_PIXEL case=2 frame=1 index=0 expected=0 actual=3",
+    "timeout_seconds": 180
   }
 }

@@ -160,3 +160,14 @@ sub-T hardware measurements. STAT enable remains reset0: this fixture does not
 choose the disputed STAT-write mask or IRQ-source projection. The fault target
 forces the actual OAM access output high at the blocked456 read. Both need
 actual runtime evidence with public waves.
+
+`ppu-lcdc-fetch` uses the same legal70312T4 seam for two additional existing
+matrix entries. Changing BG map select after the second map capture preserves
+column0 for the first eight pixels; the third fetch selects column1 of the
+other map. Changing unsigned to signed tile addressing between low70311 and
+high70313 mixes the old low bank with the new high bank for those first eight
+pixels, then uses the new bank. Original flat tile IDs and asymmetric plane
+bytes determine the expected shades. The reference LCD enable origin changes
+only on bit7 rising, not a map/tile write while enabled. An actual public-shade
+fault proves the shared pixel checker. These new targets need runtime evidence;
+previous scroll cases do not by themselves prove these LCDC changes.

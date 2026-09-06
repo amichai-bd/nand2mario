@@ -25,7 +25,7 @@ module tb_ppu_live_scroll;
     logic [7:0] source_x, source_y;
     logic [31:0] source_epoch;
     logic [63:0] source_dot, previous_dot, enable_dot, normal_first_dot;
-    logic case_done;
+    logic case_done, lcdc_cases, ref_lcd_on;
     integer case_index, first_pixels;
     logic [63:0] expected_first;
     logic [7:0] vram [0:8191];
@@ -39,6 +39,8 @@ module tb_ppu_live_scroll;
     assign io_commit = write_pending && cpu_phase == 3 && gb_tick;
     `DFF_RST_EN(cpu_phase, cpu_phase + 2'd1, clk_sys, gb_tick, reset_sys || core_reset, 2'd0)
     `DFF_RST_EN(dot_before, dot_before + 64'd1, clk_sys, gb_tick, reset_sys || core_reset, 64'd0)
+    `DFF_RST_EN(ref_lcd_on, io_wdata[7], clk_sys,
+        io_commit && io_address == 16'hff40, reset_sys, 1'b0)
     // Response-valid refers to the prior request, never the fault-masked current
     // request. Returned bytes remain available before the later consuming dot.
     `DFF_RST(vram_valid, vram_request, clk_sys, reset_sys)
@@ -57,7 +59,12 @@ module tb_ppu_live_scroll;
     endtask
     task automatic write_at(input integer elapsed);
         @(negedge clk_sys);
-        io_address = case_index == 0 ? 16'hff42 : 16'hff43; io_wdata = case_index == 0 ? 1 : 8;
+        case (case_index)
+            0: begin io_address = 16'hff42; io_wdata = 1; end
+            1: begin io_address = 16'hff43; io_wdata = 8; end
+            2: begin io_address = 16'hff40; io_wdata = 8'h99; end
+            3: begin io_address = 16'hff40; io_wdata = 8'h81; end
+        endcase
         do @(negedge clk_sys); while (!(gb_tick && dot_before == enable_dot + 64'(elapsed)));
         if (cpu_phase != 3) $fatal(1, "PPU_LIVE_SCROLL_ILLEGAL_WRITE");
         write_pending = 1;
@@ -67,7 +74,7 @@ module tb_ppu_live_scroll;
     endtask
     always #10 clk_sys = !clk_sys;
     always @(posedge clk_sys) begin
-        if (io_commit && io_address == 16'hff40 && io_wdata[7]) enable_dot = dot_before;
+        if (io_commit && io_address == 16'hff40 && io_wdata[7] && !ref_lcd_on) enable_dot = dot_before;
         if (!reset_sys && source_valid && !case_done) begin
             if (gb_tick || source_abort || fault) $fatal(1, "PPU_LIVE_SCROLL_FORWARD");
             if (source_x !== 8'(pixel_count % 160) || source_y !== 8'(pixel_count / 160)
@@ -77,10 +84,11 @@ module tb_ppu_live_scroll;
                 $fatal(1, "PPU_LIVE_SCROLL_DOT");
             expected = 0;
             if (frame_count == 1) begin
-                if (case_index == 0)
+                if (case_index == 0 || case_index == 3)
                     expected = pixel_count < 8 ? (pixel_count % 2 == 0 ? 2'd3 : 2'd0)
                         : (pixel_count % 2 == 0 ? 2'd2 : 2'd1);
-                else expected = pixel_count < 8 ? 2'd0 : 2'(((pixel_count + 8) / 8) % 4);
+                else if (case_index == 1) expected = pixel_count < 8 ? 2'd0 : 2'(((pixel_count + 8) / 8) % 4);
+                else expected = pixel_count < 8 ? 2'd0 : 2'((pixel_count / 8 + 2) % 4);
             end
             if (frame_count == 1 && pixel_count == 0) begin
                 expected_first = enable_dot + 64'd70317;
@@ -108,26 +116,32 @@ module tb_ppu_live_scroll;
         clk_sys = 0; reset_sys = 1; core_reset = 0; pause_request = 0;
         epoch = 5; write_pending = 0; io_write = 1; io_address = 0; io_wdata = 0;
         dma_active = 0; frame_count = 0; pixel_count = 0; previous_dot = 0; case_done = 0;
-        first_pixels = 0; enable_dot = 0;
+        first_pixels = 0; enable_dot = 0; lcdc_cases = $test$plusargs("lcdc_fetch");
         trace_file = $fopen("live-scroll.csv", "w");
         if (!trace_file) $fatal(1, "PPU_LIVE_SCROLL_TRACE");
         $fdisplay(trace_file, "case,frame,index,completed_dot,expected,actual");
         for (n = 0; n < 8192; n = n + 1) vram[n] = 0;
         for (n = 0; n < 160; n = n + 1) oam[n] = 0;
-        for (case_index = 0; case_index < 2; case_index = case_index + 1) begin
+        for (case_index = lcdc_cases ? 2 : 0; case_index < (lcdc_cases ? 4 : 2); case_index = case_index + 1) begin
             // Original literals: SCY crosses independently fetched planes;
             // SCX crosses a captured map tile and later live map selection.
             for (n = 0; n < 8192; n = n + 1) vram[n] = 0;
             if (case_index == 0) begin
                 vram[0] = 8'haa; vram[1] = 8'h55;
                 vram[2] = 8'h55; vram[3] = 8'haa;
+            end else if (case_index == 3) begin
+                vram[0] = 8'haa; vram[1] = 8'h55;
+                vram['h1000] = 8'h55; vram['h1001] = 8'haa;
             end else begin
                 for (t = 0; t < 4; t = t + 1)
                     for (y = 0; y < 8; y = y + 1) begin
                         vram[t*16+y*2] = t % 2 != 0 ? 8'hff : 8'h00;
                         vram[t*16+y*2+1] = t >= 2 ? 8'hff : 8'h00;
                     end
-                for (n = 0; n < 1024; n = n + 1) vram[6144+n] = 8'(n % 4);
+                for (n = 0; n < 1024; n = n + 1) begin
+                    vram[6144+n] = 8'(n % 4);
+                    vram[7168+n] = 8'((n+2) % 4);
+                end
             end
             reset_sys = 1;
             repeat (4) @(negedge clk_sys);
@@ -143,12 +157,17 @@ module tb_ppu_live_scroll;
                 @(negedge clk_sys);
                 force dut.source_shade = 2'd0;
             end
+            if ($test$plusargs("lcdc_fetch_corrupt") && case_index == 2) begin
+                @(negedge clk_sys);
+                force dut.source_shade = 2'd3;
+            end
             wait (case_done);
             @(negedge clk_sys);
         end
         if (first_pixels != 2) $fatal(1, "PPU_LIVE_SCROLL_COUNT");
         $fclose(trace_file);
-        $display("PASS PPU live SCY planes and coarse SCX fetch cases=2 visible_pixels=320");
+        if (lcdc_cases) $display("PASS PPU LCDC live map and tile-bank fetch cases=2 visible_pixels=320");
+        else $display("PASS PPU live SCY planes and coarse SCX fetch cases=2 visible_pixels=320");
         $finish;
     end
     initial begin
