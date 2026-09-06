@@ -70,7 +70,8 @@ module tb_memory_decode;
 
     initial begin
         $dumpfile("waves.vcd");
-        $dumpvars(0, tb_memory_decode);
+        $dumpvars(0, address, destination, store, offset,
+                  expected_destination, expected_store, expected_offset);
         alias_fault = $test$plusargs("alias_fault");
         address = 0;
         for (index = 0; index < 65536; index = index + 1) begin
