@@ -7,7 +7,7 @@ module tb_memory_ram;
     logic [7:0] reference_bytes [0:159];
     logic [7:0] expected_a, expected_b, retained_a, retained_b;
     integer checks, index;
-    bit corrupt;
+    bit corrupt, have_a, have_b;
     n2m_memory_ram #(.DEPTH(160), .ADDRESS_BITS(8)) dut (.*);
 
     task automatic edge_cycle;
@@ -19,13 +19,15 @@ module tb_memory_ram;
         #1;
         if (a_valid !== (a_read && !reset) || b_valid !== (b_read && !reset))
             $fatal(1, "MEMORY_RAM_VALID check=%0d", checks);
-        if (a_read && !reset && a_rdata !== expected_a)
+        if ((have_a || (a_read && !reset)) && a_rdata !== expected_a)
             $fatal(1, "MEMORY_RAM_READ_A check=%0d address=%0d expected=%02h actual=%02h",
                 checks, a_address, expected_a, a_rdata);
-        if (b_read && !reset && b_rdata !== expected_b)
+        if ((have_b || (b_read && !reset)) && b_rdata !== expected_b)
             $fatal(1, "MEMORY_RAM_READ_B check=%0d address=%0d expected=%02h actual=%02h",
                 checks, b_address, expected_b, b_rdata);
         if (!reset && a_write) reference_bytes[a_address] = a_wdata;
+        if (a_read && !reset) have_a = 1;
+        if (b_read && !reset) have_b = 1;
         retained_a = a_rdata;
         retained_b = b_rdata;
         checks = checks + 1;
@@ -41,6 +43,7 @@ module tb_memory_ram;
         a_read = 0; a_write = 0; b_read = 0;
         a_address = 0; b_address = 0; a_wdata = 0;
         checks = 0;
+        have_a = 0; have_b = 0;
         retained_a = 0; retained_b = 0;
         corrupt = $test$plusargs("corrupt");
         edge_cycle();
@@ -70,7 +73,10 @@ module tb_memory_ram;
         reset = 0; a_write = 0;
         edge_cycle();
         a_read = 0; b_read = 0;
-        edge_cycle();
+        for (index = 0; index < 20; index = index + 1) begin
+            a_address = 8'(index); b_address = 8'(159 - index);
+            edge_cycle();
+        end
         $display("PASS memory RAM bytes=160 dual_reads=320 old_data=2 reset_retention=1");
         $finish;
     end
