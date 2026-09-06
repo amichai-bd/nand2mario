@@ -2579,5 +2579,41 @@
     ],
     "expected_exit": "nonzero",
     "signature": "CPU_WAKE_RESET_CANCEL case=3 phase=3"
+  },
+  "cpu-irq-idu": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/dv/cpu/tb_cpu_irq_idu.sv"
+    ],
+    "top": "tb_cpu_irq_idu",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU IRQ IDU cycles=14 events=6 FE_effects=1 FE_accesses=0"
+  },
+  "cpu-irq-idu-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/dv/cpu/tb_cpu_irq_idu.sv"
+    ],
+    "top": "tb_cpu_irq_idu",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_IRQ_IDU_EFFECT cycle=9"
   }
 }

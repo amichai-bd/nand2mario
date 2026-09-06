@@ -192,3 +192,12 @@ request. It checks quiet held preparation, no reset-edge bus/IDU effect, no stac
 write, and a fresh epoch/sequence-zero literal NOP record. The fault target
 forces an actual reset-edge bus commit. Global reset is asserted between clock
 edges, followed by an explicit direct-profile reset for fresh execution.
+
+
+`cpu-irq-idu` checks fourteen literal bus/effect cycles and six complete records.
+A JP to FDFD followed by a request captured before T3 causes a discarded FDFF
+fetch, then the IRQ PC-repair effect at FE00. No ordinary access enters FE00–FEFF.
+All four repair phases are paused without duplicate consumption. The negative
+forces the actual effect address into FDFF while retaining the independent
+expected FE00 page. This witnesses the additional effect separately from memory
+transactions; it does not implement the OAM consumer or STOP wake mapping.
