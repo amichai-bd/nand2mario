@@ -3586,5 +3586,121 @@
     "expected_exit": "nonzero",
     "signature": "CPU_VECTOR_STATE case=0",
     "timeout_seconds": 120
+  },
+  "joypad-matrix": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/joypad/n2m_joypad_matrix.sv",
+      "src/dv/joypad/tb_joypad_matrix.sv"
+    ],
+    "top": "tb_joypad_matrix",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS JOYP matrix cases=1024"
+  },
+  "joypad-matrix-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/joypad/n2m_joypad_matrix.sv",
+      "src/dv/joypad/tb_joypad_matrix.sv"
+    ],
+    "top": "tb_joypad_matrix",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "JOY_MATRIX case=6 expected=ee actual=ed"
+  },
+  "joypad-registers": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/joypad/n2m_joypad_pkg.sv",
+      "src/rtl/joypad/n2m_joypad_matrix.sv",
+      "src/rtl/joypad/n2m_joypad.sv",
+      "src/dv/joypad/tb_joypad_registers.sv"
+    ],
+    "top": "tb_joypad_registers",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS JOYP registers writes=256 inputs=256 resets=2"
+  },
+  "joypad-register-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/joypad/n2m_joypad_pkg.sv",
+      "src/rtl/joypad/n2m_joypad_matrix.sv",
+      "src/rtl/joypad/n2m_joypad.sv",
+      "src/dv/joypad/tb_joypad_registers.sv"
+    ],
+    "top": "tb_joypad_registers",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "JOY_REG_READ case=0 expected=c0 actual=ff"
+  },
+  "joypad-boundary-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/joypad/n2m_joypad_pkg.sv",
+      "src/rtl/joypad/n2m_joypad_matrix.sv",
+      "src/rtl/joypad/n2m_joypad.sv",
+      "src/dv/joypad/tb_joypad_registers.sv"
+    ],
+    "top": "tb_joypad_registers",
+    "args": [
+      "+boundary_fault"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT JOYP_COMMIT_BOUNDARY"
+  },
+  "joypad-events": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/joypad/n2m_joypad_pkg.sv",
+      "src/rtl/joypad/n2m_joypad_matrix.sv",
+      "src/rtl/joypad/n2m_joypad.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/dv/joypad/tb_joypad_events.sv"
+    ],
+    "top": "tb_joypad_events",
+    "signature": "PASS JOYP events",
+    "expected_exit": "zero",
+    "args": []
+  },
+  "joypad-events-lost": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/joypad/n2m_joypad_pkg.sv",
+      "src/rtl/joypad/n2m_joypad_matrix.sv",
+      "src/rtl/joypad/n2m_joypad.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/dv/joypad/tb_joypad_events.sv"
+    ],
+    "top": "tb_joypad_events",
+    "signature": "JOYP_EVENT case=",
+    "args": [
+      "+lost"
+    ],
+    "expected_exit": "nonzero"
+  },
+  "joypad-events-duplicate": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/joypad/n2m_joypad_pkg.sv",
+      "src/rtl/joypad/n2m_joypad_matrix.sv",
+      "src/rtl/joypad/n2m_joypad.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/dv/joypad/tb_joypad_events.sv"
+    ],
+    "top": "tb_joypad_events",
+    "signature": "JOYP_EVENT case=",
+    "args": [
+      "+duplicate"
+    ],
+    "expected_exit": "nonzero"
   }
 }

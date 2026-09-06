@@ -12,7 +12,7 @@ The [source record](references.md) distinguishes documented request edges and
 read masks from the inferred collision projection below. No external RTL is
 imported. No timer, PPU, JOYP or serial behavior is synthesized here. Each
 peripheral owns its request condition and timing; this owner detects request
-rises once and stores their flags independently of IE or IME.
+rises once and consumes explicit event transactions independently of IE or IME.
 
 ## Registers and ports
 
@@ -28,6 +28,7 @@ uses only bits 4:0. Global boot-era register defaults are not the direct profile
 | `gb_tick`, `io_commit`, `io_write`, `io_address`, `io_wdata` | A is a system edge with an emulated T enable. An accepted CPU register write occurs only at its T4 A edge. Reads are side-effect free and do not require commit here. |
 | `io_selected`, `io_rdata` | Exact IF/IE address selection and current pre-edge read value for the selected-owner memory service. No bus address aliases. |
 | `source_level[4:0]` | Qualified request levels, bit order from the generated interrupt interface. PPU supplies its combined STAT condition and VBlank condition, not a private IF register. A timer/serial one-event pulse must remain visible through a consuming system edge. |
+| `source_event[4:0]` | One accepted event per high system-edge sample, independent of level history. JOYP registers falls after an update edge and supplies bit4 through the next edge. Adjacent high samples are distinct events. Existing level-only sources tie this input to zero. |
 | `irq_ack[4:0]` | CPU's one-hot-or-zero selected acknowledgement, captured at its A boundary. A zero-vector canceled entry sends zero. |
 | `ie_stored[7:0]`, `if_stored[4:0]` | Stored state before the current A transaction, available to ordinary service and phase reasoning. |
 | `ie_observe[7:0]`, `if_observe[4:0]` | Resolved state including pending A write/ack and peripheral transitions visible before B. This is the CPU retirement observation, not a new interrupt selector. |
@@ -50,7 +51,7 @@ the same system edge and a new A cannot overwrite an unconsumed capture.
 
 For each IF bit, reset applies profile state first. Otherwise an active
 acknowledgement clears that bit; otherwise a captured IF write supplies its
-written bit; otherwise a new source rise sets the bit; otherwise it holds.
+written bit; otherwise a new source rise or explicit source event sets the bit; otherwise it holds.
 IE changes only for reset or its captured committed write. Multiple independent
 source rises set their bits together; IE never suppresses flag storage.
 
