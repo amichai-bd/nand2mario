@@ -212,6 +212,7 @@ module tb_ppu_render;
         write_register(16'hff4b, 47);
         write_register(16'hff40, 8'hf7);
         if (temporal) begin
+            if ($test$plusargs("timing_corrupt")) force dut.io_rdata = 8'h83;
             // Mooneye pinned lcdon_timing-GS brackets, relative to write T4:
             // LD A,(DE) read commits at 4*N+8, using old state at that edge.
             startup_read(76, 16'hff41, 8'h03, 0);

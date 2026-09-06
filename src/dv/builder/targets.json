@@ -909,5 +909,29 @@
     "expected_exit": "zero",
     "signature": "PASS PPU renderer temporal frames=3 pixels=69120 startup_reads=4 period=70224",
     "timeout_seconds": 180
+  },
+  "ppu-render-timing-corrupt": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_render.sv"
+    ],
+    "top": "tb_ppu_render",
+    "args": [
+      "+temporal",
+      "+timing_corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "PPU_RENDER_STARTUP elapsed=76 address=ff41 expected=00 actual=03",
+    "timeout_seconds": 180
   }
 }
