@@ -358,9 +358,9 @@ write priority remain owned by the shared interrupt boundary above.
 Before accepting this timing implementation, directed tests must check LYC 0,
 152,153 and nonmatching values; legal T4 writes around each interval; both
 ordered rise/fall cases; a held-high mode source; pause/reset; and unchanged
-normal frame recurrence. The current quarter-sampled implementation is pending
-this correction under #120; earlier rendered-frame evidence does not validate
-these new register/IRQ edges.
+normal frame recurrence. The controller keeps the ordinary quarter comparison history outside this
+window. Its readable and IRQ histories are separate, and valid CPU writes
+update both histories so a later sample cannot restore a stale comparison.
 
 ### OAM scan and fetch port
 
@@ -391,15 +391,11 @@ therefore occurs at PPU quarter3. The integrated wrapper asserts this invariant;
 LCDC, so a new enable establishes alignment again. A stopped system preserves
 phase; it does not independently restart either counter.
 
-In the initial quarter-sampled implementation, this alignment makes comparison-stage updates at T1 settle into the visible
-flag by T2, before a legal T4 LCD disable. Thus the selected off-state pipeline
-copies equal history values rather than changing the retained flag. Directed
-checks cover the last pre-disable comparison transition and LYC writes while
-off; arbitrary-phase helper stimuli are distinguished from reachable CPU writes.
-The direct-entry reset initializes both comparison-history bits to zero, as
-explicit internal state. LY=LYC=0 does not combinationally set the flag while
-LCDC is off. The first enabled comparison sample updates it through the defined
-history pipeline; no undocumented power-up equality evaluation is assumed.
+While LCD is off, comparison history, readable coincidence and the IRQ latch
+hold their values, including across LYC writes. Global/core reset initializes
+them to zero independently of the dot enable. LY=LYC=0 does not combinationally
+set the flag while LCDC is off. On enable, ordinary comparison resumes through
+the defined phase history; no undocumented power-up equality is assumed.
 
 The register helper stores LCDC, SCY, SCX, LYC, BGP, OBP0/1, WY, WX and STAT
 interrupt enables using generated addresses and direct-entry peripheral fill.

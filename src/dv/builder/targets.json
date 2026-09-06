@@ -1171,5 +1171,52 @@
     "expected_exit": "nonzero",
     "signature": "PPU_LY153_EDGE_COUNT compare=0 expected=2 actual=3",
     "timeout_seconds": 180
+  },
+  "ppu-palette": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_render.sv"
+    ],
+    "top": "tb_ppu_render",
+    "args": [
+      "+palette"
+    ],
+    "expected_exit": "zero",
+    "signature": "PASS PPU palette signed tiles 8x8 objects asymmetric rows pixels=46080",
+    "timeout_seconds": 180
+  },
+  "ppu-palette-corrupt": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_render.sv"
+    ],
+    "top": "tb_ppu_render",
+    "args": [
+      "+palette",
+      "+palette_corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "PPU_PALETTE_PIXEL",
+    "timeout_seconds": 180
   }
 }

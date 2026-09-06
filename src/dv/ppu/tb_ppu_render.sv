@@ -25,7 +25,16 @@ module tb_ppu_render;
     logic [7:0] source_x, source_y;
     logic [31:0] source_epoch;
     logic [63:0] source_dot, previous_dot, enable_dot, normal_first_dot;
-    logic temporal, simulation_done;
+    logic temporal, simulation_done, rich_scene, dynamic_palette;
+    logic [7:0] ref_bgp, ref_obp0, ref_obp1, sampled_bgp, sampled_obp0, sampled_obp1;
+    logic [7:0] sampled_new_palette, prior_palette [0:2];
+    logic [63:0] sampled_dot, palette_write_dot [0:2];
+    logic [1:0] sampled_write;
+    logic [3:0] selected_pixel;
+    logic [1:0] replacement_shade;
+    integer commit_pixels [0:2];
+    integer after_pixels [0:2];
+    integer write_number, palette_index, coverage_index;
     integer startup_reads;
     logic [7:0] vram [0:8191];
     logic [7:0] oam [0:159];
@@ -47,12 +56,13 @@ module tb_ppu_render;
         clk_sys, oam_phase != 0, reset_sys, 16'd0)
 
     function automatic logic [1:0] pattern(input integer tile, input integer px, input integer py);
-        pattern = 2'((tile >> (px % 6)) + px + 3 * py + (tile >> 5));
+        pattern = 2'((tile >> (px % 6)) + px + 3 * py + (tile >> 5)
+            + (rich_scene ? (py >> 2) * (px + 1) : 0));
     endfunction
     function automatic integer map_tile(input integer tx, input integer ty, input logic win);
         map_tile = win ? (7 * ty + 11 * tx + 91) % 256 : (5 * ty + 3 * tx + 17) % 256;
     endfunction
-    function automatic logic [1:0] scene(input integer px, input integer py);
+    function automatic logic [3:0] scene_pick(input integer px, input integer py);
         integer sx, sy, tile, raw_bg, raw_obj, chosen, best_x, ox, oy, row, col;
         integer i, attr;
         logic win;
@@ -61,6 +71,7 @@ module tb_ppu_render;
             sx = win ? px - 40 : (px + 5) % 256;
             sy = win ? py - 32 : (py + 11) % 256;
             tile = map_tile(sx / 8, sy / 8, win);
+            if (rich_scene && tile < 128) tile = tile + 256;
             raw_bg = int'(pattern(tile, sx % 8, sy % 8));
             chosen = -1;
             raw_obj = 0;
@@ -71,12 +82,12 @@ module tb_ppu_render;
                 ox = int'(oam[4*i+1]) - 8;
                 oy = int'(oam[4*i]) - 16;
                 attr = int'(oam[4*i+3]);
-                if (px >= ox && px < ox + 8 && py >= oy && py < oy + 16) begin
+                if (px >= ox && px < ox + 8 && py >= oy && py < oy + (rich_scene ? 8 : 16)) begin
                     row = py - oy;
                     col = px - ox;
-                    if (attr & 64) row = 15 - row;
+                    if (attr & 64) row = (rich_scene ? 7 : 15) - row;
                     if (attr & 32) col = 7 - col;
-                    tile = (int'(oam[4*i+2]) & 254) + row / 8;
+                    tile = rich_scene ? int'(oam[4*i+2]) : (int'(oam[4*i+2]) & 254) + row / 8;
                     if (pattern(tile, col, row % 8) != 0 && ox < best_x) begin
                         chosen = i;
                         best_x = ox;
@@ -84,14 +95,71 @@ module tb_ppu_render;
                     end
                 end
             end
-            scene = 2'(raw_bg);
+            scene_pick = {2'd0, 2'(raw_bg)};
             if (chosen >= 0) begin
                 attr = int'(oam[4*chosen+3]);
                 if (!(attr & 128) || raw_bg == 0)
-                    scene = (attr & 16) ? 2'(3 - raw_obj) : 2'(raw_obj);
+                    scene_pick = {(attr & 16) ? 2'd2 : 2'd1, 2'(raw_obj)};
             end
         end
     endfunction
+    function automatic logic [1:0] palette_scene(input integer px, input integer py,
+        input logic [7:0] bg, input logic [7:0] obj0, input logic [7:0] obj1);
+        logic [3:0] pick;
+        logic [7:0] selected_palette;
+        begin
+            pick = scene_pick(px, py);
+            selected_palette = pick[3:2] == 0 ? bg : pick[3:2] == 1 ? obj0 : obj1;
+            palette_scene = selected_palette[2 * pick[1:0] +: 2];
+        end
+    endfunction
+    function automatic logic [1:0] scene(input integer px, input integer py);
+        scene = palette_scene(px, py, 8'he4, 8'he4, 8'h1b);
+    endfunction
+    // Independent input history: sample old palettes before applying this A
+    // edge's CPU write. The B observer must use the same completed-dot snapshot.
+    always @(posedge clk_sys) begin
+        if (reset_sys) begin
+            ref_bgp = 0; ref_obp0 = 0; ref_obp1 = 0;
+            sampled_bgp = 0; sampled_obp0 = 0; sampled_obp1 = 0;
+            sampled_dot = 0; sampled_write = 3; sampled_new_palette = 0;
+            for (palette_index = 0; palette_index < 3; palette_index = palette_index + 1) begin
+                prior_palette[palette_index] = 0;
+                palette_write_dot[palette_index] = 0;
+            end
+        end else if (gb_tick) begin
+            sampled_bgp = ref_bgp; sampled_obp0 = ref_obp0; sampled_obp1 = ref_obp1;
+            sampled_dot = dot_before + 64'd1;
+            sampled_write = 3;
+            if (io_commit && io_write) begin
+                case (io_address)
+                    16'hff47: begin sampled_write = 0; prior_palette[0] = ref_bgp; ref_bgp = io_wdata; end
+                    16'hff48: begin sampled_write = 1; prior_palette[1] = ref_obp0; ref_obp0 = io_wdata; end
+                    16'hff49: begin sampled_write = 2; prior_palette[2] = ref_obp1; ref_obp1 = io_wdata; end
+                    default: begin end
+                endcase
+                if (sampled_write != 3) begin
+                    sampled_new_palette = io_wdata;
+                    palette_write_dot[sampled_write] = sampled_dot;
+                end
+            end
+        end
+    end
+    always @(negedge clk_sys) begin
+        if (dynamic_palette && $test$plusargs("palette_corrupt") && source_valid && frame_count == 1) begin
+            selected_pixel = scene_pick(pixel_count % 160, pixel_count / 160);
+            replacement_shade = sampled_new_palette[2 * selected_pixel[1:0] +: 2];
+            if (sampled_write == selected_pixel[3:2] && replacement_shade !=
+                palette_scene(pixel_count % 160, pixel_count / 160, sampled_bgp, sampled_obp0, sampled_obp1)) begin
+                case (replacement_shade)
+                    0: force dut.source_shade = 2'd0;
+                    1: force dut.source_shade = 2'd1;
+                    2: force dut.source_shade = 2'd2;
+                    3: force dut.source_shade = 2'd3;
+                endcase
+            end
+        end
+    end
     task automatic write_register(input logic [15:0] address, input logic [7:0] value);
         @(negedge clk_sys);
         io_address = address;
@@ -130,7 +198,20 @@ module tb_ppu_render;
             if (temporal && pixel_count == 0 && frame_count == 2
                 && source_dot - normal_first_dot != 64'd70224)
                 $fatal(1, "PPU_RENDER_PERIOD expected=70224 actual=%0d", source_dot - normal_first_dot);
-            expected = frame_count == 0 ? 2'd0 : scene(pixel_count % 160, pixel_count / 160);
+            expected = frame_count == 0 ? 2'd0 : dynamic_palette
+                ? palette_scene(pixel_count % 160, pixel_count / 160, sampled_bgp, sampled_obp0, sampled_obp1)
+                : scene(pixel_count % 160, pixel_count / 160);
+            if (dynamic_palette && frame_count != 0) begin
+                if (source_dot != sampled_dot) $fatal(1, "PPU_PALETTE_SNAPSHOT_DOT");
+                selected_pixel = scene_pick(pixel_count % 160, pixel_count / 160);
+                if (sampled_write == selected_pixel[3:2] && expected != sampled_new_palette[2 * selected_pixel[1:0] +: 2])
+                    commit_pixels[selected_pixel[3:2]] = commit_pixels[selected_pixel[3:2]] + 1;
+                if (source_dot > palette_write_dot[selected_pixel[3:2]] && expected != prior_palette[selected_pixel[3:2]][2 * selected_pixel[1:0] +: 2])
+                    after_pixels[selected_pixel[3:2]] = after_pixels[selected_pixel[3:2]] + 1;
+                if (source_shade !== expected)
+                    $fatal(1, "PPU_PALETTE_PIXEL frame=%0d index=%0d palette=%0d expected=%0d actual=%0d",
+                        frame_count, pixel_count, selected_pixel[3:2], expected, source_shade);
+            end
             if (source_shade !== expected)
                 $fatal(1, "PPU_RENDER_PIXEL frame=%0d index=%0d expected=%0d actual=%0d",
                     frame_count, pixel_count, expected, source_shade);
@@ -145,7 +226,14 @@ module tb_ppu_render;
                     $fclose(trace_file);
                     // Let composed passive observers sample this accepting edge.
                     #1;
-                    if (temporal) begin
+                    if (dynamic_palette) begin
+                        for (coverage_index = 0; coverage_index < 3; coverage_index = coverage_index + 1)
+                            if (commit_pixels[coverage_index] == 0 || after_pixels[coverage_index] == 0)
+                                $fatal(1, "PPU_PALETTE_COVERAGE palette=%0d commit=%0d after=%0d", coverage_index,
+                                    commit_pixels[coverage_index], after_pixels[coverage_index]);
+                        $display("PASS PPU palette signed tiles 8x8 objects asymmetric rows pixels=46080 commit=%0d,%0d,%0d after=%0d,%0d,%0d",
+                            commit_pixels[0], commit_pixels[1], commit_pixels[2], after_pixels[0], after_pixels[1], after_pixels[2]);
+                    end else if (temporal) begin
                         if (startup_reads != 4) $fatal(1, "PPU_RENDER_STARTUP_COUNT");
                         $display("PASS PPU renderer temporal frames=3 pixels=69120 startup_reads=4 period=70224");
                     end else $display("PASS PPU renderer original_scene frames=2 pixels=46080");
@@ -169,6 +257,13 @@ module tb_ppu_render;
         io_wdata = 0;
         dma_active = 0;
         temporal = $test$plusargs("temporal");
+        dynamic_palette = $test$plusargs("palette");
+        rich_scene = dynamic_palette;
+        write_number = 0;
+        for (coverage_index = 0; coverage_index < 3; coverage_index = coverage_index + 1) begin
+            commit_pixels[coverage_index] = 0;
+            after_pixels[coverage_index] = 0;
+        end
         simulation_done = 0;
         startup_reads = 0;
         enable_dot = 0;
@@ -214,7 +309,7 @@ module tb_ppu_render;
         write_register(16'hff49, 8'h1b);
         write_register(16'hff4a, 32);
         write_register(16'hff4b, 47);
-        write_register(16'hff40, 8'hf7);
+        write_register(16'hff40, rich_scene ? 8'he3 : 8'hf7);
         if (temporal) begin
             if ($test$plusargs("timing_corrupt")) force dut.io_rdata = 8'h83;
             // Mooneye pinned lcdon_timing-GS brackets, relative to write T4:
@@ -223,6 +318,17 @@ module tb_ppu_render;
             startup_read(80, 16'hff41, 8'h03, 3);
             startup_read(448, 16'hff44, 8'hff, 0);
             startup_read(452, 16'hff44, 8'hff, 1);
+        end
+        if (dynamic_palette) begin
+            wait (frame_count == 1);
+            while (frame_count < 2) begin
+                case (write_number % 3)
+                    0: write_register(16'hff47, ref_bgp == 8'he4 ? 8'h1b : 8'he4);
+                    1: write_register(16'hff48, ref_obp0 == 8'he4 ? 8'h1b : 8'he4);
+                    2: write_register(16'hff49, ref_obp1 == 8'he4 ? 8'h1b : 8'he4);
+                endcase
+                write_number = write_number + 1;
+            end
         end
         if ($test$plusargs("corrupt")) begin
             wait (frame_count == 1);

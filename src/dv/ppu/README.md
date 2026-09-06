@@ -74,3 +74,17 @@ line/quarter counters to choose expectations. Separate actual readback, missing 
 is pending runtime evidence; normal pixel recurrence remains a separate
 composed regression. Same-edge natural-rise/write-fall coverage must respect
 legal CPU phase; an impossible T4 stimulus is not composed evidence.
+
+## Palette and asymmetric scene variant
+
+`ppu-palette` uses the same passive row-major source observer with signed tile
+addressing, 8x8 objects and eight distinct row patterns. Its oracle independently
+selects raw BG/object color and winning palette from original scene memory.
+Palette shadows update only from CPU input commits; each A snapshot precedes
+that edge's write and is bound to the completed source dot at B. A rotating
+legal T4 schedule changes BGP/OBP0/OBP1. Acceptance requires sensitive same-edge
+old-palette pixels and later new-palette pixels for all three registers, along
+with every-pixel comparison. The negative substitutes the new-palette shade
+at an actual sensitive commit pixel. Existing static wrappers preserve the
+unsigned/8x16 scene; this variant does not claim dynamic scrolling/window edges.
+The variant is pending actual runtime evidence.
