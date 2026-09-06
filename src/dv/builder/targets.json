@@ -1024,5 +1024,32 @@
     "expected_exit": "zero",
     "signature": "PASS VGA LCD shared-reset release-skew stopped-pixel retained-white global-mask",
     "timeout_seconds": 180
+  },
+  "ppu-video": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_render.sv",
+      "src/rtl/vga/n2m_frame_ram.sv",
+      "src/rtl/vga/n2m_vga_scan.sv",
+      "src/rtl/vga/n2m_frame_bridge.sv",
+      "src/dv/ppu/tb_ppu_video.sv"
+    ],
+    "top": "tb_ppu_video",
+    "args": [
+      "+temporal"
+    ],
+    "expected_exit": "zero",
+    "signature": "PPU_VIDEO_OBSERVER_COMPLETE count=3 pixels=69120",
+    "timeout_seconds": 180
   }
 }

@@ -143,6 +143,8 @@ module tb_ppu_render;
                 pixel_count = 0;
                 if (frame_count == (temporal ? 3 : 2)) begin
                     $fclose(trace_file);
+                    // Let composed passive observers sample this accepting edge.
+                    #1;
                     if (temporal) begin
                         if (startup_reads != 4) $fatal(1, "PPU_RENDER_STARTUP_COUNT");
                         $display("PASS PPU renderer temporal frames=3 pixels=69120 startup_reads=4 period=70224");
