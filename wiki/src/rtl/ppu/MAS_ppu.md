@@ -167,6 +167,35 @@ This table fixes the intended digital transaction abstraction. Directed
 before/on/after register writes and imported-core phase comparison must establish
 its behavior; it is not an assertion of cartridge-pin phase equivalence.
 
+## STAT-write timing proposal
+
+The pinned [SameBoy DMG conflict implementation](https://github.com/LIJI32/SameBoy/blob/213a12ce93d66b105a113debd9396306066a7cfc/Core/sm83_cpu.c#L148)
+models all STAT interrupt enables asserted for one T-cycle at a CPU write,
+then restores the written enables. This supports a one-dot digital proposal;
+it does not establish a four-dot pulse or a measured DMG-B half-phase.
+Its special HBlank-to-OAM branch explicitly describes a timing approximation.
+That boundary requires independent reconciliation before final STAT acceptance.
+The existing Mooneye DMG A/B/C blocking case proves shared-line edge behavior,
+not the transient width. The older fork's STAT-write test is MGB-verified only.
+
+The proposed ordinary mapping is:
+
+| Edge | Enable and shared-line observation |
+|---|---|
+| Before write A | Stored enables determine the old shared condition; address preparation has no effect |
+| Write A | Renderer/read sampling uses old state; writable STAT bits commit, and a transient-enable flag becomes active after A |
+| Before B | Effective enables include the transient; the resulting condition contributes to owner #133 next-IF before retirement capture |
+| Following dot A | The transient expires after this edge; stored written enables then determine the condition |
+| Pause after write A | No new emulated dot occurs, so the transient retains its emulated duration; edge history still prevents repeated requests |
+| Reset | Clear transient and interrupt edge history without waiting for a tick |
+
+A held shared condition must not retrigger because another source or write
+joins it. A mode-3 write without coincidence must not invent an active source.
+Directed checks must cover old/new enables, active and inactive coincidence,
+write before/on/after a mode transition, and simultaneous T4 retirement/IF write.
+The HBlank/OAM special case and LCD-off qualification remain explicit review
+gates. This proposal is not implemented by the initial scene renderer.
+
 ## Proposed LCD cancellation and presentation
 
 LCD disable can interrupt a partial source frame without resetting the CPU,
