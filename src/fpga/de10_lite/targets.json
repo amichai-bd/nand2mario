@@ -1,133 +1,21 @@
 {
+  "schema_version": 1,
   "targets": {
-    "memory-stores": {
+    "builder-invalid": {
       "device": "10M50DAF484C7G",
-      "top": "n2m_memory_stores",
+      "top": "fpga_smoke",
       "sources": [
-        "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-        "src/rtl/memory/n2m_memory_pkg.sv",
-        "src/rtl/common/n2m_intel_ram.sv",
-        "src/rtl/memory/n2m_memory_stores.sv"
+        "src/dv/builder/fpga_smoke.sv"
       ],
       "constraints": [
-        "src/fpga/de10_lite/memory_stores.sdc"
+        "src/fpga/de10_lite/builder_invalid.sdc"
       ],
       "pins": {
-        "clk_sys": "PIN_P11"
+        "clk": "PIN_P11"
       },
       "virtual_pins": [
-        "reset_sys",
-        "core_reset",
-        "init_done",
-        "access_read",
-        "access_write",
-        "access_store[*]",
-        "access_address[*]",
-        "access_wdata[*]",
-        "access_rdata[*]",
-        "access_valid",
-        "host_read",
-        "host_write",
-        "host_offset[*]",
-        "host_wdata[*]",
-        "host_rdata[*]",
-        "host_valid",
-        "ppu_vram_read",
-        "ppu_vram_address[*]",
-        "ppu_vram_rdata[*]",
-        "ppu_vram_valid",
-        "ppu_oam_read",
-        "ppu_oam_pair[*]",
-        "ppu_oam_rdata[*]",
-        "ppu_oam_valid",
-        "wave_read",
-        "wave_address[*]",
-        "wave_rdata[*]",
-        "wave_valid"
+        "count[*]"
       ]
-    },
-    "intel-memory": {
-      "device": "10M50DAF484C7G",
-      "top": "intel_memory_proof",
-      "sources": [
-        "src/rtl/clocking/n2m_reset_control.sv",
-        "src/fpga/de10_lite/n2m_clocking.sv",
-        "src/rtl/common/n2m_intel_ram.sv",
-        "src/fpga/de10_lite/intel_memory_proof.sv"
-      ],
-      "constraints": [
-        "src/fpga/de10_lite/intel_memory_nominal.sdc"
-      ],
-      "pins": {
-        "clk_sys": "PIN_P11"
-      },
-      "virtual_pins": [
-        "board_reset_n",
-        "a_read",
-        "a_write",
-        "a_address[*]",
-        "a_wdata[*]",
-        "a_byte_enable[*]",
-        "b_read",
-        "b_address[*]",
-        "ready",
-        "byte_a[*]",
-        "byte_b[*]",
-        "pair_a[*]",
-        "pair_b[*]",
-        "lanes_a[*]",
-        "lanes_b[*]",
-        "frame_a[*]",
-        "frame_b[*]",
-        "a_valid[*]",
-        "b_valid[*]",
-        "frame_valid"
-      ],
-      "pll": {
-        "module": "n2m_pixel_pll",
-        "input_ps": 20000,
-        "multiply": 63,
-        "divide": 125
-      },
-      "timing": {
-        "async_reset_pins": [
-          "u_clocking|u_reset|board_release[0]|clrn",
-          "u_clocking|u_reset|board_release[1]|clrn",
-          "u_clocking|u_reset|lock_samples[0]|clrn",
-          "u_clocking|u_reset|lock_samples[1]|clrn",
-          "u_clocking|u_reset|sys_release[0]|clrn",
-          "u_clocking|u_reset|sys_release[1]|clrn",
-          "u_clocking|u_reset|pix_release[0]|clrn",
-          "u_clocking|u_reset|pix_release[1]|clrn"
-        ],
-        "output_delays": [
-          {
-            "clock": "clk_sys",
-            "ports": [
-              "ready",
-              "byte_a[*]",
-              "byte_b[*]",
-              "pair_a[*]",
-              "pair_b[*]",
-              "lanes_a[*]",
-              "lanes_b[*]",
-              "frame_a[*]",
-              "a_valid[*]",
-              "b_valid[*]"
-            ],
-            "count": 122
-          },
-          {
-            "clock": "u_clocking|u_pll|altpll_component|auto_generated|pll1|clk[0]",
-            "ports": [
-              "frame_b[*]",
-              "frame_valid"
-            ],
-            "count": 3
-          }
-        ],
-        "reference_ns": "20.000"
-      }
     },
     "builder-smoke": {
       "device": "10M50DAF484C7G",
@@ -145,21 +33,67 @@
         "count[*]"
       ]
     },
-    "builder-invalid": {
+    "clocking-invalid": {
       "device": "10M50DAF484C7G",
-      "top": "fpga_smoke",
+      "top": "clocking_proof",
       "sources": [
-        "src/dv/builder/fpga_smoke.sv"
+        "src/rtl/clocking/n2m_reset_control.sv",
+        "src/rtl/clocking/n2m_timebase.sv",
+        "src/fpga/de10_lite/n2m_clocking.sv",
+        "src/fpga/de10_lite/clocking_proof.sv"
       ],
       "constraints": [
-        "src/fpga/de10_lite/builder_invalid.sdc"
+        "src/fpga/de10_lite/clocking_nominal.sdc"
       ],
       "pins": {
-        "clk": "PIN_P11"
+        "clk_sys": "PIN_P11"
       },
       "virtual_pins": [
-        "count[*]"
-      ]
+        "board_reset_n",
+        "core_reset",
+        "pause_request",
+        "ready",
+        "paused",
+        "sys_count[*]",
+        "pix_count[*]"
+      ],
+      "pll": {
+        "module": "n2m_pixel_pll",
+        "input_ps": 20000,
+        "multiply": 63,
+        "divide": 125
+      },
+      "timing": {
+        "async_reset_pins": [
+          "u_clocking|u_reset|missing_register[0]|clrn",
+          "u_clocking|u_reset|board_release[1]|clrn",
+          "u_clocking|u_reset|lock_samples[0]|clrn",
+          "u_clocking|u_reset|lock_samples[1]|clrn",
+          "u_clocking|u_reset|sys_release[0]|clrn",
+          "u_clocking|u_reset|sys_release[1]|clrn",
+          "u_clocking|u_reset|pix_release[0]|clrn",
+          "u_clocking|u_reset|pix_release[1]|clrn"
+        ],
+        "output_delays": [
+          {
+            "clock": "clk_sys",
+            "ports": [
+              "ready",
+              "paused",
+              "sys_count[*]"
+            ],
+            "count": 10
+          },
+          {
+            "clock": "u_clocking|u_pll|altpll_component|auto_generated|pll1|clk[0]",
+            "ports": [
+              "pix_count[*]"
+            ],
+            "count": 8
+          }
+        ],
+        "reference_ns": "20.000"
+      }
     },
     "clocking-nominal": {
       "device": "10M50DAF484C7G",
@@ -285,114 +219,42 @@
         "reference_ns": "19.998"
       }
     },
-    "clocking-invalid": {
+    "intel-memory": {
       "device": "10M50DAF484C7G",
-      "top": "clocking_proof",
+      "top": "intel_memory_proof",
       "sources": [
         "src/rtl/clocking/n2m_reset_control.sv",
-        "src/rtl/clocking/n2m_timebase.sv",
         "src/fpga/de10_lite/n2m_clocking.sv",
-        "src/fpga/de10_lite/clocking_proof.sv"
+        "src/rtl/common/n2m_intel_ram.sv",
+        "src/fpga/de10_lite/intel_memory_proof.sv"
       ],
       "constraints": [
-        "src/fpga/de10_lite/clocking_nominal.sdc"
+        "src/fpga/de10_lite/intel_memory_nominal.sdc"
       ],
       "pins": {
         "clk_sys": "PIN_P11"
       },
       "virtual_pins": [
         "board_reset_n",
-        "core_reset",
-        "pause_request",
+        "a_read",
+        "a_write",
+        "a_address[*]",
+        "a_wdata[*]",
+        "a_byte_enable[*]",
+        "b_read",
+        "b_address[*]",
         "ready",
-        "paused",
-        "sys_count[*]",
-        "pix_count[*]"
-      ],
-      "pll": {
-        "module": "n2m_pixel_pll",
-        "input_ps": 20000,
-        "multiply": 63,
-        "divide": 125
-      },
-      "timing": {
-        "async_reset_pins": [
-          "u_clocking|u_reset|missing_register[0]|clrn",
-          "u_clocking|u_reset|board_release[1]|clrn",
-          "u_clocking|u_reset|lock_samples[0]|clrn",
-          "u_clocking|u_reset|lock_samples[1]|clrn",
-          "u_clocking|u_reset|sys_release[0]|clrn",
-          "u_clocking|u_reset|sys_release[1]|clrn",
-          "u_clocking|u_reset|pix_release[0]|clrn",
-          "u_clocking|u_reset|pix_release[1]|clrn"
-        ],
-        "output_delays": [
-          {
-            "clock": "clk_sys",
-            "ports": [
-              "ready",
-              "paused",
-              "sys_count[*]"
-            ],
-            "count": 10
-          },
-          {
-            "clock": "u_clocking|u_pll|altpll_component|auto_generated|pll1|clk[0]",
-            "ports": [
-              "pix_count[*]"
-            ],
-            "count": 8
-          }
-        ],
-        "reference_ns": "20.000"
-      }
-    },
-    "vga-nominal": {
-      "device": "10M50DAF484C7G",
-      "top": "vga_proof",
-      "sources": [
-        "src/rtl/clocking/n2m_reset_control.sv",
-        "src/rtl/clocking/n2m_timebase.sv",
-        "src/fpga/de10_lite/n2m_clocking.sv",
-        "src/rtl/common/n2m_intel_ram.sv",
-        "src/rtl/vga/n2m_frame_ram.sv",
-        "src/rtl/vga/n2m_vga_scan.sv",
-        "src/rtl/vga/n2m_frame_bridge.sv",
-        "src/fpga/de10_lite/vga_proof.sv"
-      ],
-      "constraints": [
-        "src/fpga/de10_lite/clocking_nominal.sdc"
-      ],
-      "pins": {
-        "clk_sys": "PIN_P11",
-        "red[0]": "PIN_AA1",
-        "red[1]": "PIN_V1",
-        "red[2]": "PIN_Y2",
-        "red[3]": "PIN_Y1",
-        "green[0]": "PIN_W1",
-        "green[1]": "PIN_T2",
-        "green[2]": "PIN_R2",
-        "green[3]": "PIN_R1",
-        "blue[0]": "PIN_P1",
-        "blue[1]": "PIN_T1",
-        "blue[2]": "PIN_P4",
-        "blue[3]": "PIN_N2",
-        "hsync_n": "PIN_N3",
-        "vsync_n": "PIN_N1"
-      },
-      "virtual_pins": [
-        "board_reset_n",
-        "core_reset",
-        "pause_request",
-        "ready",
-        "paused",
-        "discard_count[*]",
-        "repeat_count[*]",
-        "display_sequence[*]",
-        "display_epoch[*]",
-        "observed_sequence[*]",
-        "observed_index[*]",
-        "observed_complete"
+        "byte_a[*]",
+        "byte_b[*]",
+        "pair_a[*]",
+        "pair_b[*]",
+        "lanes_a[*]",
+        "lanes_b[*]",
+        "frame_a[*]",
+        "frame_b[*]",
+        "a_valid[*]",
+        "b_valid[*]",
+        "frame_valid"
       ],
       "pll": {
         "module": "n2m_pixel_pll",
@@ -416,131 +278,81 @@
             "clock": "clk_sys",
             "ports": [
               "ready",
-              "paused",
-              "discard_count[*]",
-              "observed_sequence[*]",
-              "observed_index[*]",
-              "observed_complete"
+              "byte_a[*]",
+              "byte_b[*]",
+              "pair_a[*]",
+              "pair_b[*]",
+              "lanes_a[*]",
+              "lanes_b[*]",
+              "frame_a[*]",
+              "a_valid[*]",
+              "b_valid[*]"
             ],
-            "count": 146
+            "count": 122
           },
           {
             "clock": "u_clocking|u_pll|altpll_component|auto_generated|pll1|clk[0]",
             "ports": [
-              "repeat_count[*]",
-              "display_sequence[*]",
-              "display_epoch[*]",
-              "red[*]",
-              "green[*]",
-              "blue[*]",
-              "hsync_n",
-              "vsync_n"
+              "frame_b[*]",
+              "frame_valid"
             ],
-            "count": 174
+            "count": 3
           }
         ],
         "reference_ns": "20.000"
       }
     },
-    "vga-upper": {
+    "memory-stores": {
       "device": "10M50DAF484C7G",
-      "top": "vga_proof",
+      "top": "n2m_memory_stores",
       "sources": [
-        "src/rtl/clocking/n2m_reset_control.sv",
-        "src/rtl/clocking/n2m_timebase.sv",
-        "src/fpga/de10_lite/n2m_clocking.sv",
+        "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+        "src/rtl/memory/n2m_memory_pkg.sv",
         "src/rtl/common/n2m_intel_ram.sv",
-        "src/rtl/vga/n2m_frame_ram.sv",
-        "src/rtl/vga/n2m_vga_scan.sv",
-        "src/rtl/vga/n2m_frame_bridge.sv",
-        "src/fpga/de10_lite/vga_proof.sv"
+        "src/rtl/memory/n2m_memory_stores.sv"
       ],
       "constraints": [
-        "src/fpga/de10_lite/clocking_upper.sdc"
+        "src/fpga/de10_lite/memory_stores.sdc"
       ],
       "pins": {
-        "clk_sys": "PIN_P11",
-        "red[0]": "PIN_AA1",
-        "red[1]": "PIN_V1",
-        "red[2]": "PIN_Y2",
-        "red[3]": "PIN_Y1",
-        "green[0]": "PIN_W1",
-        "green[1]": "PIN_T2",
-        "green[2]": "PIN_R2",
-        "green[3]": "PIN_R1",
-        "blue[0]": "PIN_P1",
-        "blue[1]": "PIN_T1",
-        "blue[2]": "PIN_P4",
-        "blue[3]": "PIN_N2",
-        "hsync_n": "PIN_N3",
-        "vsync_n": "PIN_N1"
+        "clk_sys": "PIN_P11"
       },
       "virtual_pins": [
-        "board_reset_n",
+        "reset_sys",
         "core_reset",
-        "pause_request",
-        "ready",
-        "paused",
-        "discard_count[*]",
-        "repeat_count[*]",
-        "display_sequence[*]",
-        "display_epoch[*]",
-        "observed_sequence[*]",
-        "observed_index[*]",
-        "observed_complete"
-      ],
-      "pll": {
-        "module": "n2m_pixel_pll",
-        "input_ps": 20000,
-        "multiply": 63,
-        "divide": 125
-      },
-      "timing": {
-        "async_reset_pins": [
-          "u_clocking|u_reset|board_release[0]|clrn",
-          "u_clocking|u_reset|board_release[1]|clrn",
-          "u_clocking|u_reset|lock_samples[0]|clrn",
-          "u_clocking|u_reset|lock_samples[1]|clrn",
-          "u_clocking|u_reset|sys_release[0]|clrn",
-          "u_clocking|u_reset|sys_release[1]|clrn",
-          "u_clocking|u_reset|pix_release[0]|clrn",
-          "u_clocking|u_reset|pix_release[1]|clrn"
-        ],
-        "output_delays": [
-          {
-            "clock": "clk_sys",
-            "ports": [
-              "ready",
-              "paused",
-              "discard_count[*]",
-              "observed_sequence[*]",
-              "observed_index[*]",
-              "observed_complete"
-            ],
-            "count": 146
-          },
-          {
-            "clock": "u_clocking|u_pll|altpll_component|auto_generated|pll1|clk[0]",
-            "ports": [
-              "repeat_count[*]",
-              "display_sequence[*]",
-              "display_epoch[*]",
-              "red[*]",
-              "green[*]",
-              "blue[*]",
-              "hsync_n",
-              "vsync_n"
-            ],
-            "count": 174
-          }
-        ],
-        "reference_ns": "19.998"
-      }
+        "init_done",
+        "access_read",
+        "access_write",
+        "access_store[*]",
+        "access_address[*]",
+        "access_wdata[*]",
+        "access_rdata[*]",
+        "access_valid",
+        "host_read",
+        "host_write",
+        "host_offset[*]",
+        "host_wdata[*]",
+        "host_rdata[*]",
+        "host_valid",
+        "ppu_vram_read",
+        "ppu_vram_address[*]",
+        "ppu_vram_rdata[*]",
+        "ppu_vram_valid",
+        "ppu_oam_read",
+        "ppu_oam_pair[*]",
+        "ppu_oam_rdata[*]",
+        "ppu_oam_valid",
+        "wave_read",
+        "wave_address[*]",
+        "wave_rdata[*]",
+        "wave_valid"
+      ]
     },
-    "vga-invalid": {
+    "ppu-invalid": {
       "device": "10M50DAF484C7G",
-      "top": "vga_proof",
+      "top": "ppu_proof",
       "sources": [
+        "src/rtl/interfaces/n2m_interfaces_pkg.sv",
         "src/rtl/clocking/n2m_reset_control.sv",
         "src/rtl/clocking/n2m_timebase.sv",
         "src/fpga/de10_lite/n2m_clocking.sv",
@@ -548,10 +360,19 @@
         "src/rtl/vga/n2m_frame_ram.sv",
         "src/rtl/vga/n2m_vga_scan.sv",
         "src/rtl/vga/n2m_frame_bridge.sv",
-        "src/fpga/de10_lite/vga_proof.sv"
+        "src/rtl/ppu/n2m_ppu_mix.sv",
+        "src/rtl/ppu/n2m_ppu_shift.sv",
+        "src/rtl/ppu/n2m_ppu_fetch.sv",
+        "src/rtl/ppu/n2m_ppu_timing.sv",
+        "src/rtl/ppu/n2m_ppu_objects.sv",
+        "src/rtl/ppu/n2m_ppu_registers.sv",
+        "src/rtl/ppu/n2m_ppu_position.sv",
+        "src/rtl/ppu/n2m_ppu_window.sv",
+        "src/rtl/ppu/n2m_ppu.sv",
+        "src/fpga/de10_lite/ppu_proof.sv"
       ],
       "constraints": [
-        "src/fpga/de10_lite/clocking_nominal.sdc"
+        "src/fpga/de10_lite/ppu_nominal.sdc"
       ],
       "pins": {
         "clk_sys": "PIN_P11",
@@ -582,7 +403,35 @@
         "display_epoch[*]",
         "observed_sequence[*]",
         "observed_index[*]",
-        "observed_complete"
+        "observed_complete",
+        "io_commit",
+        "io_write",
+        "io_address[*]",
+        "io_wdata[*]",
+        "vram_data[*]",
+        "vram_valid",
+        "oam_data[*]",
+        "oam_valid",
+        "dma_active",
+        "io_selected",
+        "io_rdata[*]",
+        "vram_request",
+        "vram_cpu_allow",
+        "oam_cpu_allow",
+        "vram_address[*]",
+        "oam_pair_address[*]",
+        "oam_phase[*]",
+        "oam_scan_index[*]",
+        "stat_condition",
+        "stat_rise",
+        "vblank_condition",
+        "vblank_rise",
+        "fault",
+        "observed_dot[*]",
+        "observed_epoch[*]",
+        "observed_shade[*]",
+        "observed_valid",
+        "observed_abort"
       ],
       "pll": {
         "module": "n2m_pixel_pll",
@@ -610,9 +459,28 @@
               "discard_count[*]",
               "observed_sequence[*]",
               "observed_index[*]",
-              "observed_complete"
+              "observed_complete",
+              "io_selected",
+              "io_rdata[*]",
+              "vram_request",
+              "vram_cpu_allow",
+              "oam_cpu_allow",
+              "vram_address[*]",
+              "oam_pair_address[*]",
+              "oam_phase[*]",
+              "oam_scan_index[*]",
+              "stat_condition",
+              "stat_rise",
+              "vblank_condition",
+              "vblank_rise",
+              "fault",
+              "observed_dot[*]",
+              "observed_epoch[*]",
+              "observed_shade[*]",
+              "observed_valid",
+              "observed_abort"
             ],
-            "count": 146
+            "count": 291
           },
           {
             "clock": "u_clocking|u_pll|altpll_component|auto_generated|pll1|clk[0]",
@@ -936,157 +804,73 @@
         "reference_ns": "19.998"
       }
     },
-    "ppu-invalid": {
+    "snapshot": {
       "device": "10M50DAF484C7G",
-      "top": "ppu_proof",
+      "top": "snapshot_proof",
       "sources": [
         "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-        "src/rtl/clocking/n2m_reset_control.sv",
-        "src/rtl/clocking/n2m_timebase.sv",
-        "src/fpga/de10_lite/n2m_clocking.sv",
+        "src/rtl/snapshot/n2m_snapshot_pkg.sv",
         "src/rtl/common/n2m_intel_ram.sv",
-        "src/rtl/vga/n2m_frame_ram.sv",
-        "src/rtl/vga/n2m_vga_scan.sv",
-        "src/rtl/vga/n2m_frame_bridge.sv",
-        "src/rtl/ppu/n2m_ppu_mix.sv",
-        "src/rtl/ppu/n2m_ppu_shift.sv",
-        "src/rtl/ppu/n2m_ppu_fetch.sv",
-        "src/rtl/ppu/n2m_ppu_timing.sv",
-        "src/rtl/ppu/n2m_ppu_objects.sv",
-        "src/rtl/ppu/n2m_ppu_registers.sv",
-        "src/rtl/ppu/n2m_ppu_position.sv",
-        "src/rtl/ppu/n2m_ppu_window.sv",
-        "src/rtl/ppu/n2m_ppu.sv",
-        "src/fpga/de10_lite/ppu_proof.sv"
+        "src/rtl/snapshot/n2m_frame_snapshot.sv",
+        "src/fpga/de10_lite/snapshot_proof.sv"
       ],
       "constraints": [
-        "src/fpga/de10_lite/ppu_nominal.sdc"
+        "src/fpga/de10_lite/snapshot.sdc"
       ],
       "pins": {
-        "clk_sys": "PIN_P11",
-        "red[0]": "PIN_AA1",
-        "red[1]": "PIN_V1",
-        "red[2]": "PIN_Y2",
-        "red[3]": "PIN_Y1",
-        "green[0]": "PIN_W1",
-        "green[1]": "PIN_T2",
-        "green[2]": "PIN_R2",
-        "green[3]": "PIN_R1",
-        "blue[0]": "PIN_P1",
-        "blue[1]": "PIN_T1",
-        "blue[2]": "PIN_P4",
-        "blue[3]": "PIN_N2",
-        "hsync_n": "PIN_N3",
-        "vsync_n": "PIN_N1"
+        "clk_sys": "PIN_P11"
       },
       "virtual_pins": [
-        "board_reset_n",
+        "reset_sys",
         "core_reset",
-        "pause_request",
-        "ready",
-        "paused",
-        "discard_count[*]",
-        "repeat_count[*]",
-        "display_sequence[*]",
-        "display_epoch[*]",
-        "observed_sequence[*]",
-        "observed_index[*]",
-        "observed_complete",
-        "io_commit",
-        "io_write",
-        "io_address[*]",
-        "io_wdata[*]",
-        "vram_data[*]",
-        "vram_valid",
-        "oam_data[*]",
-        "oam_valid",
-        "dma_active",
-        "io_selected",
-        "io_rdata[*]",
-        "vram_request",
-        "vram_cpu_allow",
-        "oam_cpu_allow",
-        "vram_address[*]",
-        "oam_pair_address[*]",
-        "oam_phase[*]",
-        "oam_scan_index[*]",
-        "stat_condition",
-        "stat_rise",
-        "vblank_condition",
-        "vblank_rise",
-        "fault",
-        "observed_dot[*]",
-        "observed_epoch[*]",
-        "observed_shade[*]",
-        "observed_valid",
-        "observed_abort"
+        "observe_valid",
+        "observe_complete",
+        "observe_abort",
+        "observe_index[*]",
+        "observe_shade[*]",
+        "observe_epoch[*]",
+        "observe_sequence[*]",
+        "observe_dot[*]",
+        "snapshot_request",
+        "snapshot_ready",
+        "snapshot_done",
+        "snapshot_ok",
+        "snapshot_valid",
+        "snapshot_epoch[*]",
+        "snapshot_sequence[*]",
+        "snapshot_dot[*]",
+        "snapshot_size_valid",
+        "frame_read",
+        "frame_address[*]",
+        "frame_data[*]",
+        "frame_valid"
+      ]
+    },
+    "uart-exchange-stores": {
+      "device": "10M50DAF484C7G",
+      "top": "n2m_uart_exchange_store",
+      "sources": [
+        "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+        "src/rtl/uart/n2m_uart_pkg.sv",
+        "src/rtl/common/n2m_intel_ram.sv",
+        "src/rtl/uart/n2m_uart_exchange_store.sv"
       ],
-      "pll": {
-        "module": "n2m_pixel_pll",
-        "input_ps": 20000,
-        "multiply": 63,
-        "divide": 125
+      "constraints": [
+        "src/fpga/de10_lite/uart_exchange_stores.sdc"
+      ],
+      "pins": {
+        "clk_sys": "PIN_P11"
       },
-      "timing": {
-        "async_reset_pins": [
-          "u_clocking|u_reset|missing_register[0]|clrn",
-          "u_clocking|u_reset|board_release[1]|clrn",
-          "u_clocking|u_reset|lock_samples[0]|clrn",
-          "u_clocking|u_reset|lock_samples[1]|clrn",
-          "u_clocking|u_reset|sys_release[0]|clrn",
-          "u_clocking|u_reset|sys_release[1]|clrn",
-          "u_clocking|u_reset|pix_release[0]|clrn",
-          "u_clocking|u_reset|pix_release[1]|clrn"
-        ],
-        "output_delays": [
-          {
-            "clock": "clk_sys",
-            "ports": [
-              "ready",
-              "paused",
-              "discard_count[*]",
-              "observed_sequence[*]",
-              "observed_index[*]",
-              "observed_complete",
-              "io_selected",
-              "io_rdata[*]",
-              "vram_request",
-              "vram_cpu_allow",
-              "oam_cpu_allow",
-              "vram_address[*]",
-              "oam_pair_address[*]",
-              "oam_phase[*]",
-              "oam_scan_index[*]",
-              "stat_condition",
-              "stat_rise",
-              "vblank_condition",
-              "vblank_rise",
-              "fault",
-              "observed_dot[*]",
-              "observed_epoch[*]",
-              "observed_shade[*]",
-              "observed_valid",
-              "observed_abort"
-            ],
-            "count": 291
-          },
-          {
-            "clock": "u_clocking|u_pll|altpll_component|auto_generated|pll1|clk[0]",
-            "ports": [
-              "repeat_count[*]",
-              "display_sequence[*]",
-              "display_epoch[*]",
-              "red[*]",
-              "green[*]",
-              "blue[*]",
-              "hsync_n",
-              "vsync_n"
-            ],
-            "count": 174
-          }
-        ],
-        "reference_ns": "20.000"
-      }
+      "virtual_pins": [
+        "reset_sys",
+        "write_enable[*]",
+        "write_address[*]",
+        "write_data[*]",
+        "read_enable[*]",
+        "read_address[*]",
+        "read_data[*]",
+        "read_valid[*]"
+      ]
     },
     "uart-packet-stores": {
       "device": "10M50DAF484C7G",
@@ -1121,32 +905,6 @@
         "decoded_read_valid"
       ]
     },
-    "uart-exchange-stores": {
-      "device": "10M50DAF484C7G",
-      "top": "n2m_uart_exchange_store",
-      "sources": [
-        "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-        "src/rtl/uart/n2m_uart_pkg.sv",
-        "src/rtl/common/n2m_intel_ram.sv",
-        "src/rtl/uart/n2m_uart_exchange_store.sv"
-      ],
-      "constraints": [
-        "src/fpga/de10_lite/uart_exchange_stores.sdc"
-      ],
-      "pins": {
-        "clk_sys": "PIN_P11"
-      },
-      "virtual_pins": [
-        "reset_sys",
-        "write_enable[*]",
-        "write_address[*]",
-        "write_data[*]",
-        "read_enable[*]",
-        "read_address[*]",
-        "read_data[*]",
-        "read_valid[*]"
-      ]
-    },
     "uart-presence-store": {
       "device": "10M50DAF484C7G",
       "top": "n2m_uart_presence_store",
@@ -1171,7 +929,291 @@
         "read_present",
         "read_valid"
       ]
+    },
+    "vga-invalid": {
+      "device": "10M50DAF484C7G",
+      "top": "vga_proof",
+      "sources": [
+        "src/rtl/clocking/n2m_reset_control.sv",
+        "src/rtl/clocking/n2m_timebase.sv",
+        "src/fpga/de10_lite/n2m_clocking.sv",
+        "src/rtl/common/n2m_intel_ram.sv",
+        "src/rtl/vga/n2m_frame_ram.sv",
+        "src/rtl/vga/n2m_vga_scan.sv",
+        "src/rtl/vga/n2m_frame_bridge.sv",
+        "src/fpga/de10_lite/vga_proof.sv"
+      ],
+      "constraints": [
+        "src/fpga/de10_lite/clocking_nominal.sdc"
+      ],
+      "pins": {
+        "clk_sys": "PIN_P11",
+        "red[0]": "PIN_AA1",
+        "red[1]": "PIN_V1",
+        "red[2]": "PIN_Y2",
+        "red[3]": "PIN_Y1",
+        "green[0]": "PIN_W1",
+        "green[1]": "PIN_T2",
+        "green[2]": "PIN_R2",
+        "green[3]": "PIN_R1",
+        "blue[0]": "PIN_P1",
+        "blue[1]": "PIN_T1",
+        "blue[2]": "PIN_P4",
+        "blue[3]": "PIN_N2",
+        "hsync_n": "PIN_N3",
+        "vsync_n": "PIN_N1"
+      },
+      "virtual_pins": [
+        "board_reset_n",
+        "core_reset",
+        "pause_request",
+        "ready",
+        "paused",
+        "discard_count[*]",
+        "repeat_count[*]",
+        "display_sequence[*]",
+        "display_epoch[*]",
+        "observed_sequence[*]",
+        "observed_index[*]",
+        "observed_complete"
+      ],
+      "pll": {
+        "module": "n2m_pixel_pll",
+        "input_ps": 20000,
+        "multiply": 63,
+        "divide": 125
+      },
+      "timing": {
+        "async_reset_pins": [
+          "u_clocking|u_reset|missing_register[0]|clrn",
+          "u_clocking|u_reset|board_release[1]|clrn",
+          "u_clocking|u_reset|lock_samples[0]|clrn",
+          "u_clocking|u_reset|lock_samples[1]|clrn",
+          "u_clocking|u_reset|sys_release[0]|clrn",
+          "u_clocking|u_reset|sys_release[1]|clrn",
+          "u_clocking|u_reset|pix_release[0]|clrn",
+          "u_clocking|u_reset|pix_release[1]|clrn"
+        ],
+        "output_delays": [
+          {
+            "clock": "clk_sys",
+            "ports": [
+              "ready",
+              "paused",
+              "discard_count[*]",
+              "observed_sequence[*]",
+              "observed_index[*]",
+              "observed_complete"
+            ],
+            "count": 146
+          },
+          {
+            "clock": "u_clocking|u_pll|altpll_component|auto_generated|pll1|clk[0]",
+            "ports": [
+              "repeat_count[*]",
+              "display_sequence[*]",
+              "display_epoch[*]",
+              "red[*]",
+              "green[*]",
+              "blue[*]",
+              "hsync_n",
+              "vsync_n"
+            ],
+            "count": 174
+          }
+        ],
+        "reference_ns": "20.000"
+      }
+    },
+    "vga-nominal": {
+      "device": "10M50DAF484C7G",
+      "top": "vga_proof",
+      "sources": [
+        "src/rtl/clocking/n2m_reset_control.sv",
+        "src/rtl/clocking/n2m_timebase.sv",
+        "src/fpga/de10_lite/n2m_clocking.sv",
+        "src/rtl/common/n2m_intel_ram.sv",
+        "src/rtl/vga/n2m_frame_ram.sv",
+        "src/rtl/vga/n2m_vga_scan.sv",
+        "src/rtl/vga/n2m_frame_bridge.sv",
+        "src/fpga/de10_lite/vga_proof.sv"
+      ],
+      "constraints": [
+        "src/fpga/de10_lite/clocking_nominal.sdc"
+      ],
+      "pins": {
+        "clk_sys": "PIN_P11",
+        "red[0]": "PIN_AA1",
+        "red[1]": "PIN_V1",
+        "red[2]": "PIN_Y2",
+        "red[3]": "PIN_Y1",
+        "green[0]": "PIN_W1",
+        "green[1]": "PIN_T2",
+        "green[2]": "PIN_R2",
+        "green[3]": "PIN_R1",
+        "blue[0]": "PIN_P1",
+        "blue[1]": "PIN_T1",
+        "blue[2]": "PIN_P4",
+        "blue[3]": "PIN_N2",
+        "hsync_n": "PIN_N3",
+        "vsync_n": "PIN_N1"
+      },
+      "virtual_pins": [
+        "board_reset_n",
+        "core_reset",
+        "pause_request",
+        "ready",
+        "paused",
+        "discard_count[*]",
+        "repeat_count[*]",
+        "display_sequence[*]",
+        "display_epoch[*]",
+        "observed_sequence[*]",
+        "observed_index[*]",
+        "observed_complete"
+      ],
+      "pll": {
+        "module": "n2m_pixel_pll",
+        "input_ps": 20000,
+        "multiply": 63,
+        "divide": 125
+      },
+      "timing": {
+        "async_reset_pins": [
+          "u_clocking|u_reset|board_release[0]|clrn",
+          "u_clocking|u_reset|board_release[1]|clrn",
+          "u_clocking|u_reset|lock_samples[0]|clrn",
+          "u_clocking|u_reset|lock_samples[1]|clrn",
+          "u_clocking|u_reset|sys_release[0]|clrn",
+          "u_clocking|u_reset|sys_release[1]|clrn",
+          "u_clocking|u_reset|pix_release[0]|clrn",
+          "u_clocking|u_reset|pix_release[1]|clrn"
+        ],
+        "output_delays": [
+          {
+            "clock": "clk_sys",
+            "ports": [
+              "ready",
+              "paused",
+              "discard_count[*]",
+              "observed_sequence[*]",
+              "observed_index[*]",
+              "observed_complete"
+            ],
+            "count": 146
+          },
+          {
+            "clock": "u_clocking|u_pll|altpll_component|auto_generated|pll1|clk[0]",
+            "ports": [
+              "repeat_count[*]",
+              "display_sequence[*]",
+              "display_epoch[*]",
+              "red[*]",
+              "green[*]",
+              "blue[*]",
+              "hsync_n",
+              "vsync_n"
+            ],
+            "count": 174
+          }
+        ],
+        "reference_ns": "20.000"
+      }
+    },
+    "vga-upper": {
+      "device": "10M50DAF484C7G",
+      "top": "vga_proof",
+      "sources": [
+        "src/rtl/clocking/n2m_reset_control.sv",
+        "src/rtl/clocking/n2m_timebase.sv",
+        "src/fpga/de10_lite/n2m_clocking.sv",
+        "src/rtl/common/n2m_intel_ram.sv",
+        "src/rtl/vga/n2m_frame_ram.sv",
+        "src/rtl/vga/n2m_vga_scan.sv",
+        "src/rtl/vga/n2m_frame_bridge.sv",
+        "src/fpga/de10_lite/vga_proof.sv"
+      ],
+      "constraints": [
+        "src/fpga/de10_lite/clocking_upper.sdc"
+      ],
+      "pins": {
+        "clk_sys": "PIN_P11",
+        "red[0]": "PIN_AA1",
+        "red[1]": "PIN_V1",
+        "red[2]": "PIN_Y2",
+        "red[3]": "PIN_Y1",
+        "green[0]": "PIN_W1",
+        "green[1]": "PIN_T2",
+        "green[2]": "PIN_R2",
+        "green[3]": "PIN_R1",
+        "blue[0]": "PIN_P1",
+        "blue[1]": "PIN_T1",
+        "blue[2]": "PIN_P4",
+        "blue[3]": "PIN_N2",
+        "hsync_n": "PIN_N3",
+        "vsync_n": "PIN_N1"
+      },
+      "virtual_pins": [
+        "board_reset_n",
+        "core_reset",
+        "pause_request",
+        "ready",
+        "paused",
+        "discard_count[*]",
+        "repeat_count[*]",
+        "display_sequence[*]",
+        "display_epoch[*]",
+        "observed_sequence[*]",
+        "observed_index[*]",
+        "observed_complete"
+      ],
+      "pll": {
+        "module": "n2m_pixel_pll",
+        "input_ps": 20000,
+        "multiply": 63,
+        "divide": 125
+      },
+      "timing": {
+        "async_reset_pins": [
+          "u_clocking|u_reset|board_release[0]|clrn",
+          "u_clocking|u_reset|board_release[1]|clrn",
+          "u_clocking|u_reset|lock_samples[0]|clrn",
+          "u_clocking|u_reset|lock_samples[1]|clrn",
+          "u_clocking|u_reset|sys_release[0]|clrn",
+          "u_clocking|u_reset|sys_release[1]|clrn",
+          "u_clocking|u_reset|pix_release[0]|clrn",
+          "u_clocking|u_reset|pix_release[1]|clrn"
+        ],
+        "output_delays": [
+          {
+            "clock": "clk_sys",
+            "ports": [
+              "ready",
+              "paused",
+              "discard_count[*]",
+              "observed_sequence[*]",
+              "observed_index[*]",
+              "observed_complete"
+            ],
+            "count": 146
+          },
+          {
+            "clock": "u_clocking|u_pll|altpll_component|auto_generated|pll1|clk[0]",
+            "ports": [
+              "repeat_count[*]",
+              "display_sequence[*]",
+              "display_epoch[*]",
+              "red[*]",
+              "green[*]",
+              "blue[*]",
+              "hsync_n",
+              "vsync_n"
+            ],
+            "count": 174
+          }
+        ],
+        "reference_ns": "19.998"
+      }
     }
-  },
-  "schema_version": 1
+  }
 }

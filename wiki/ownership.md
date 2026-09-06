@@ -5,6 +5,7 @@ names follow the implementation owner, not a second software hierarchy.
 
 | Implementation owner | Requirements | Design and observable rules | Verification |
 |---|---|---|---|
+| [src/rtl/snapshot](../src/rtl/snapshot/n2m_frame_snapshot.sv) | [#93](https://github.com/amichai-bd/nand2mario/issues/93) | [MAS_snapshot](src/rtl/snapshot/MAS_snapshot.md) | [Snapshot test plan](../src/dv/snapshot/README.md) |
 | [src/rtl/timer](../src/rtl/timer/n2m_timer.sv) | [#128](https://github.com/amichai-bd/nand2mario/issues/128) | [MAS_timer](src/rtl/timer/MAS_timer.md) | [Timer test plan](../src/dv/timer/README.md) |
 | [src/rtl/interrupts](../src/rtl/interrupts/n2m_interrupts.sv) | [#133](https://github.com/amichai-bd/nand2mario/issues/133) | [MAS_interrupts](src/rtl/interrupts/MAS_interrupts.md) | [Interrupt test plan](../src/dv/interrupts/README.md) |
 | [tools/n2m](../tools/n2m/cli.py) and its [tools/build.py](../tools/build.py) dispatcher | [PRD](tools/n2m/PRD.md) | [SPEC](tools/n2m/SPEC.md) | [Host tests](../tools/n2m/tests/test_builder.py), [interface generator tests](../tools/n2m/tests/test_interfaces.py), [baseline report tests](../tools/n2m/tests/test_baseline.py), [simulation registry and smoke](../src/dv/builder/targets.json) |

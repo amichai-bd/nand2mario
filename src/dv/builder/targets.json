@@ -1,88 +1,110 @@
 {
-  "intel-memory": {
+  "assert-synthesis": {
     "sources": [
-      "src/rtl/common/n2m_intel_ram.sv",
-      "src/dv/common/tb_intel_ram.sv"
+      "src/dv/common/tb_assert_synthesis.sv"
     ],
-    "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_intel_ram.frame_case.dut.ram.m_default.altsyncram_inst"
-    ],
-    "top": "tb_intel_ram",
+    "top": "tb_assert_synthesis",
     "args": [],
     "expected_exit": "zero",
-    "signature": "PASS Intel memory configurations=4 initialized_words=23344 latency=1",
-    "timeout_seconds": 180
+    "signature": "PASS assertion synthesis exclusion"
   },
-  "intel-memory-data": {
+  "async-assert-direct": {
     "sources": [
-      "src/rtl/common/n2m_intel_ram.sv",
-      "src/dv/common/tb_intel_ram.sv"
+      "src/dv/common/tb_async_assert_macros.sv"
     ],
-    "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_intel_ram.frame_case.dut.ram.m_default.altsyncram_inst"
-    ],
-    "top": "tb_intel_ram",
+    "top": "tb_async_assert_macros",
     "args": [
-      "+corrupt"
+      "+fail_direct"
     ],
     "expected_exit": "nonzero",
-    "signature": "INTEL_RAM_DATA_A case=0 check=164 expected=38 actual=ff"
+    "signature": "N2M_ASSERT direct_check instance=tb_async_assert_macros"
   },
-  "intel-memory-latency": {
+  "async-assert-hold": {
     "sources": [
-      "src/rtl/common/n2m_intel_ram.sv",
-      "src/dv/common/tb_intel_ram.sv"
+      "src/dv/common/tb_async_assert_macros.sv"
     ],
-    "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_intel_ram.frame_case.dut.ram.m_default.altsyncram_inst"
-    ],
-    "top": "tb_intel_ram",
+    "top": "tb_async_assert_macros",
     "args": [
-      "+late"
+      "+fail_hold"
     ],
     "expected_exit": "nonzero",
-    "signature": "INTEL_RAM_DATA_A case=0 check=164 expected=38 actual=a5"
+    "signature": "N2M_ASSERT hold_check instance=tb_async_assert_macros"
   },
-  "intel-memory-collision": {
+  "async-assert-known": {
     "sources": [
-      "src/rtl/common/n2m_intel_ram.sv",
-      "src/dv/common/tb_intel_ram.sv"
+      "src/dv/common/tb_async_assert_macros.sv"
     ],
-    "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_intel_ram.frame_case.dut.ram.m_default.altsyncram_inst"
-    ],
-    "top": "tb_intel_ram",
+    "top": "tb_async_assert_macros",
     "args": [
-      "+collision"
+      "+fail_known"
     ],
     "expected_exit": "nonzero",
-    "signature": "N2M_ASSERT INTEL_RAM_MIXED_PORT_A instance=tb_intel_ram.byte_case.dut"
+    "signature": "N2M_ASSERT known_check instance=tb_async_assert_macros"
   },
-  "interfaces": {
+  "async-assert-macros": {
     "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/dv/interfaces/tb_interfaces.sv"
+      "src/dv/common/tb_async_assert_macros.sv"
     ],
-    "top": "tb_interfaces",
+    "top": "tb_async_assert_macros",
     "args": [],
     "expected_exit": "zero",
-    "signature": "PASS interface vectors widths spaces"
+    "signature": "PASS async and assertion macros edges=10 reset-pulses=2"
   },
-  "interfaces-corrupt": {
+  "async-assert-never": {
     "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/dv/interfaces/tb_interfaces.sv"
+      "src/dv/common/tb_async_assert_macros.sv"
     ],
-    "top": "tb_interfaces",
+    "top": "tb_async_assert_macros",
     "args": [
-      "+corrupt"
+      "+fail_never"
     ],
     "expected_exit": "nonzero",
-    "signature": "INTERFACE_MISMATCH expected=01000007123456790001 actual=01000007123456780001"
+    "signature": "N2M_ASSERT never_check instance=tb_async_assert_macros"
+  },
+  "async-assert-no_reset": {
+    "sources": [
+      "src/dv/common/tb_async_assert_macros.sv"
+    ],
+    "top": "tb_async_assert_macros",
+    "args": [
+      "+fail_no_reset"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT no_reset_check instance=tb_async_assert_macros"
+  },
+  "baseline-broken": {
+    "sources": [
+      "src/dv/baseline/fixture.sv",
+      "src/dv/baseline/stimulus.sv",
+      "src/dv/baseline/monitor.sv",
+      "src/dv/baseline/reference.sv",
+      "src/dv/baseline/scoreboard.sv",
+      "src/dv/baseline/assertions.sv",
+      "src/dv/baseline/coverage.sv",
+      "src/dv/baseline/tb_baseline.sv"
+    ],
+    "top": "tb_baseline",
+    "args": [
+      "+broken"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "BASELINE_MISMATCH cycle=6 expected=0 actual=128"
+  },
+  "baseline-good": {
+    "sources": [
+      "src/dv/baseline/fixture.sv",
+      "src/dv/baseline/stimulus.sv",
+      "src/dv/baseline/monitor.sv",
+      "src/dv/baseline/reference.sv",
+      "src/dv/baseline/scoreboard.sv",
+      "src/dv/baseline/assertions.sv",
+      "src/dv/baseline/coverage.sv",
+      "src/dv/baseline/tb_baseline.sv"
+    ],
+    "top": "tb_baseline",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS baseline transactions=75 bins=ff"
   },
   "builder-smoke": {
     "sources": [
@@ -103,82 +125,6 @@
     ],
     "expected_exit": "zero",
     "signature": "PASS builder-smoke"
-  },
-  "tile-pixel": {
-    "sources": [
-      "src/rtl/display/dmg_tile_pixel.sv",
-      "src/dv/display/tb_dmg_tile_pixel.sv"
-    ],
-    "top": "tb_dmg_tile_pixel",
-    "args": [],
-    "expected_exit": "zero",
-    "signature": "PASS pixel_cases=524288 palette_cases=8192 cycles=532521 seed=none"
-  },
-  "tile-pixel-corrupt": {
-    "sources": [
-      "src/rtl/display/dmg_tile_pixel.sv",
-      "src/dv/display/tb_dmg_tile_pixel.sv"
-    ],
-    "top": "tb_dmg_tile_pixel",
-    "args": [
-      "+corrupt"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "MISMATCH cycle=5 phase=after-edge expected=10110 actual=10111 low=00 high=01 x=7 palette=e4 seed=none"
-  },
-  "baseline-good": {
-    "sources": [
-      "src/dv/baseline/fixture.sv",
-      "src/dv/baseline/stimulus.sv",
-      "src/dv/baseline/monitor.sv",
-      "src/dv/baseline/reference.sv",
-      "src/dv/baseline/scoreboard.sv",
-      "src/dv/baseline/assertions.sv",
-      "src/dv/baseline/coverage.sv",
-      "src/dv/baseline/tb_baseline.sv"
-    ],
-    "top": "tb_baseline",
-    "args": [],
-    "expected_exit": "zero",
-    "signature": "PASS baseline transactions=75 bins=ff"
-  },
-  "baseline-broken": {
-    "sources": [
-      "src/dv/baseline/fixture.sv",
-      "src/dv/baseline/stimulus.sv",
-      "src/dv/baseline/monitor.sv",
-      "src/dv/baseline/reference.sv",
-      "src/dv/baseline/scoreboard.sv",
-      "src/dv/baseline/assertions.sv",
-      "src/dv/baseline/coverage.sv",
-      "src/dv/baseline/tb_baseline.sv"
-    ],
-    "top": "tb_baseline",
-    "args": [
-      "+broken"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "BASELINE_MISMATCH cycle=6 expected=0 actual=128"
-  },
-  "register-macros": {
-    "sources": [
-      "src/dv/common/tb_register_macros.sv"
-    ],
-    "top": "tb_register_macros",
-    "args": [],
-    "expected_exit": "zero",
-    "signature": "PASS register macros cycles=64 combinations=15"
-  },
-  "register-macros-corrupt": {
-    "sources": [
-      "src/dv/common/tb_register_macros.sv"
-    ],
-    "top": "tb_register_macros",
-    "args": [
-      "+corrupt"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "REGISTER_MISMATCH cycle=5 seed=1 expected=2d6aeb55fbd6aeb5 actual=2d6aeb55fbd6aeb4"
   },
   "clocking": {
     "sources": [
@@ -230,218 +176,1225 @@
     "expected_exit": "nonzero",
     "signature": "RESET_MISMATCH mode=early-reset expected=asserted"
   },
-  "async-assert-macros": {
+  "cpu-alu": {
     "sources": [
-      "src/dv/common/tb_async_assert_macros.sv"
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/dv/cpu/alu_reference.sv",
+      "src/dv/cpu/tb_cpu_alu.sv"
     ],
-    "top": "tb_async_assert_macros",
+    "top": "tb_cpu_alu",
     "args": [],
     "expected_exit": "zero",
-    "signature": "PASS async and assertion macros edges=10 reset-pulses=2"
+    "signature": "PASS CPU ALU cases=1232896 operations=32 seed=none"
   },
-  "async-assert-hold": {
+  "cpu-alu-corrupt": {
     "sources": [
-      "src/dv/common/tb_async_assert_macros.sv"
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/dv/cpu/alu_reference.sv",
+      "src/dv/cpu/tb_cpu_alu.sv"
     ],
-    "top": "tb_async_assert_macros",
+    "top": "tb_cpu_alu",
     "args": [
-      "+fail_hold"
+      "+corrupt"
     ],
     "expected_exit": "nonzero",
-    "signature": "N2M_ASSERT hold_check instance=tb_async_assert_macros"
+    "signature": "CPU_ALU_MISMATCH case=17 op=0 lhs=00 rhs=08 flags=1f bit=0 expected=0800 actual=0900"
   },
-  "async-assert-direct": {
+  "cpu-bus": {
     "sources": [
-      "src/dv/common/tb_async_assert_macros.sv"
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/dv/cpu/tb_cpu_bus.sv"
     ],
-    "top": "tb_async_assert_macros",
-    "args": [
-      "+fail_direct"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "N2M_ASSERT direct_check instance=tb_async_assert_macros"
-  },
-  "async-assert-no_reset": {
-    "sources": [
-      "src/dv/common/tb_async_assert_macros.sv"
-    ],
-    "top": "tb_async_assert_macros",
-    "args": [
-      "+fail_no_reset"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "N2M_ASSERT no_reset_check instance=tb_async_assert_macros"
-  },
-  "async-assert-never": {
-    "sources": [
-      "src/dv/common/tb_async_assert_macros.sv"
-    ],
-    "top": "tb_async_assert_macros",
-    "args": [
-      "+fail_never"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "N2M_ASSERT never_check instance=tb_async_assert_macros"
-  },
-  "async-assert-known": {
-    "sources": [
-      "src/dv/common/tb_async_assert_macros.sv"
-    ],
-    "top": "tb_async_assert_macros",
-    "args": [
-      "+fail_known"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "N2M_ASSERT known_check instance=tb_async_assert_macros"
-  },
-  "assert-synthesis": {
-    "sources": [
-      "src/dv/common/tb_assert_synthesis.sv"
-    ],
-    "top": "tb_assert_synthesis",
+    "top": "tb_cpu_bus",
     "args": [],
     "expected_exit": "zero",
-    "signature": "PASS assertion synthesis exclusion"
+    "signature": "PASS CPU bus commits=13 pause_phases=4 reset_phases=4 inactive_cycles=4"
   },
-  "vga": {
+  "cpu-bus-changing-request": {
     "sources": [
-      "src/rtl/clocking/n2m_reset_control.sv",
-      "src/rtl/common/n2m_intel_ram.sv",
-      "src/rtl/vga/n2m_frame_ram.sv",
-      "src/rtl/vga/n2m_vga_scan.sv",
-      "src/rtl/vga/n2m_frame_bridge.sv",
-      "src/dv/vga/tb_vga.sv"
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/dv/cpu/tb_cpu_bus.sv"
     ],
-    "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_vga.dut.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_vga.dut.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_vga.dut.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
+    "top": "tb_cpu_bus",
+    "args": [
+      "+change_after_t1"
     ],
-    "top": "tb_vga",
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT CPU_BUS_PLAN_STABLE"
+  },
+  "cpu-bus-late-active": {
+    "sources": [
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/dv/cpu/tb_cpu_bus.sv"
+    ],
+    "top": "tb_cpu_bus",
+    "args": [
+      "+late_active"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT CPU_BUS_ACTIVE_BOUNDARY"
+  },
+  "cpu-bus-missing-response": {
+    "sources": [
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/dv/cpu/tb_cpu_bus.sv"
+    ],
+    "top": "tb_cpu_bus",
+    "args": [
+      "+missing_response"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT CPU_BUS_RESPONSE"
+  },
+  "cpu-execute": {
+    "sources": [
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/dv/cpu/alu_reference.sv",
+      "src/dv/cpu/tb_cpu_execute.sv"
+    ],
+    "top": "tb_cpu_execute",
     "args": [],
     "expected_exit": "zero",
-    "signature": "PASS vga every-pixel observer ownership fast slow pause core-reset lockloss stopped-pixel",
-    "timeout_seconds": 600
+    "signature": "PASS CPU execute cases=135168 base=256 flagsets=16 cb_memory=32 seed=none"
   },
-  "vga-bank-reuse": {
+  "cpu-execute-idu-fault": {
     "sources": [
-      "src/rtl/clocking/n2m_reset_control.sv",
-      "src/rtl/common/n2m_intel_ram.sv",
-      "src/rtl/vga/n2m_frame_ram.sv",
-      "src/rtl/vga/n2m_vga_scan.sv",
-      "src/rtl/vga/n2m_frame_bridge.sv",
-      "src/dv/vga/tb_vga.sv"
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/dv/cpu/alu_reference.sv",
+      "src/dv/cpu/tb_cpu_execute.sv"
     ],
-    "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_vga.dut.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_vga.dut.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_vga.dut.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
-    "top": "tb_vga",
+    "top": "tb_cpu_execute",
     "args": [
-      "+bank_reuse"
+      "+idu_fault"
     ],
     "expected_exit": "nonzero",
-    "signature": "N2M_ASSERT frame_bank_reuse instance=tb_vga",
-    "timeout_seconds": 600
+    "signature": "CPU_EXECUTE_IDU op=03 step=0"
   },
-  "vga-active-swap": {
-    "sources": [
-      "src/rtl/clocking/n2m_reset_control.sv",
-      "src/rtl/common/n2m_intel_ram.sv",
-      "src/rtl/vga/n2m_frame_ram.sv",
-      "src/rtl/vga/n2m_vga_scan.sv",
-      "src/rtl/vga/n2m_frame_bridge.sv",
-      "src/dv/vga/tb_vga.sv"
-    ],
-    "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_vga.dut.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_vga.dut.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_vga.dut.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
-    "top": "tb_vga",
-    "args": [
-      "+active_swap"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "N2M_ASSERT frame_active_swap instance=tb_vga",
-    "timeout_seconds": 600
-  },
-  "vga-read-latency": {
-    "sources": [
-      "src/rtl/clocking/n2m_reset_control.sv",
-      "src/rtl/common/n2m_intel_ram.sv",
-      "src/rtl/vga/n2m_frame_ram.sv",
-      "src/rtl/vga/n2m_vga_scan.sv",
-      "src/rtl/vga/n2m_frame_bridge.sv",
-      "src/dv/vga/tb_vga.sv"
-    ],
-    "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_vga.dut.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_vga.dut.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_vga.dut.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
-    "top": "tb_vga",
-    "args": [
-      "+read_latency"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "VGA_PIXEL:",
-    "timeout_seconds": 600
-  },
-  "memory-service": {
-    "vendor_model": "intel-memory",
+  "cpu-halt-bug-fault": {
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/memory/n2m_memory_pkg.sv",
-      "src/rtl/common/n2m_intel_ram.sv",
-      "src/rtl/memory/n2m_memory_stores.sv",
-      "src/rtl/memory/n2m_memory_decode.sv",
-      "src/rtl/memory/n2m_memory_cpu_port.sv",
-      "src/dv/memory/tb_memory_service.sv"
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_halt_lock.sv"
     ],
-    "top": "tb_memory_service",
-    "args": [],
-    "expected_exit": "zero",
-    "signature": "PASS memory concurrent CPU PPU writes=352 preA_pairs=1040 blocked unusable"
-  },
-  "memory-service-corrupt": {
-    "vendor_model": "intel-memory",
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/memory/n2m_memory_pkg.sv",
-      "src/rtl/common/n2m_intel_ram.sv",
-      "src/rtl/memory/n2m_memory_stores.sv",
-      "src/rtl/memory/n2m_memory_decode.sv",
-      "src/rtl/memory/n2m_memory_cpu_port.sv",
-      "src/dv/memory/tb_memory_service.sv"
-    ],
-    "top": "tb_memory_service",
+    "top": "tb_cpu_halt_lock",
     "args": [
-      "+corrupt_response"
+      "+halt_fault"
     ],
     "expected_exit": "nonzero",
-    "signature": "MEMORY_SERVICE_VRAM_PRE_A expected=90 actual=00"
+    "signature": "CPU_POWER_BUS case=0 dot=12"
   },
-  "memory-cpu-port": {
-    "vendor_model": "intel-memory",
+  "cpu-halt-lock": {
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/memory/n2m_memory_pkg.sv",
-      "src/rtl/common/n2m_intel_ram.sv",
-      "src/rtl/memory/n2m_memory_stores.sv",
-      "src/rtl/memory/n2m_memory_decode.sv",
-      "src/rtl/memory/n2m_memory_cpu_port.sv",
-      "src/dv/memory/tb_memory_cpu_port.sv"
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_halt_lock.sv"
     ],
-    "top": "tb_memory_cpu_port",
+    "top": "tb_cpu_halt_lock",
     "args": [],
     "expected_exit": "zero",
-    "signature": "PASS memory CPU port writes=7 owner_commits=1 fixed_io=71 absent_cart=8192 reset_phases=16 echo ROM stale pause"
+    "signature": "PASS CPU HALT bug cases=2 illegal_locks=11 reset_recovery=11"
+  },
+  "cpu-idu-arithmetic": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_idu_arithmetic.sv"
+    ],
+    "top": "tb_cpu_idu_arithmetic",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU IDU arithmetic cycles=17 events=6 resolved_no_effect=4"
+  },
+  "cpu-idu-arithmetic-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_idu_arithmetic.sv"
+    ],
+    "top": "tb_cpu_idu_arithmetic",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_IDU_ARITH_EFFECT cycle=7 dot=29"
+  },
+  "cpu-if-observation": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_if_observation.sv"
+    ],
+    "top": "tb_cpu_if_observation",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU IF observation cases=3 records=13 T3_A_B_separate=1"
+  },
+  "cpu-if-observation-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_if_observation.sv"
+    ],
+    "top": "tb_cpu_if_observation",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_IF_RECORD case=1 event=2"
+  },
+  "cpu-irq": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_irq.sv"
+    ],
+    "top": "tb_cpu_irq",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU IRQ cases=20 T3 stack HALT wake CB EI DI RETI pause"
+  },
+  "cpu-irq-di-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_irq.sv"
+    ],
+    "top": "tb_cpu_irq",
+    "args": [
+      "+di_fault"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_IRQ_BUS case=18 dot=28"
+  },
+  "cpu-irq-idu": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_irq_idu.sv"
+    ],
+    "top": "tb_cpu_irq_idu",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU IRQ IDU cycles=14 events=6 FE_effects=1 FE_accesses=0"
+  },
+  "cpu-irq-idu-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_irq_idu.sv"
+    ],
+    "top": "tb_cpu_irq_idu",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_IRQ_IDU_EFFECT cycle=9"
+  },
+  "cpu-irq-reset": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_irq_reset.sv"
+    ],
+    "top": "tb_cpu_irq_reset",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU IRQ reset cases=42 phases=4 entry_cycles=5 captured_cancel=2"
+  },
+  "cpu-irq-reset-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_irq_reset.sv"
+    ],
+    "top": "tb_cpu_irq_reset",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_IRQ_RESET_CANCEL case=19"
+  },
+  "cpu-irq-snapshot-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_irq.sv"
+    ],
+    "top": "tb_cpu_irq",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_IRQ_BUS case=0 dot=32"
+  },
+  "cpu-lock-event-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_halt_lock.sv"
+    ],
+    "top": "tb_cpu_halt_lock",
+    "args": [
+      "+lock_fault"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_POWER_LOCK_EVENT case=2"
+  },
+  "cpu-program": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_program.sv"
+    ],
+    "top": "tb_cpu_program",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU program events=18 Mcycles=50 dots=220 HALT=1"
+  },
+  "cpu-program-idu-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_program.sv"
+    ],
+    "top": "tb_cpu_program",
+    "args": [
+      "+effect_fault"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_PROGRAM_IDU cycle=20 dot=81"
+  },
+  "cpu-program-idu-missing": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_program.sv"
+    ],
+    "top": "tb_cpu_program",
+    "args": [
+      "+effect_missing"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT CPU_BUS_RESPONSE"
+  },
+  "cpu-program-idu-page": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_program.sv"
+    ],
+    "top": "tb_cpu_program",
+    "args": [
+      "+effect_page"
+    ],
+    "expected_exit": "zero",
+    "signature": "PASS CPU IDU FE-page effects=2 ordinary_accesses=0"
+  },
+  "cpu-program-idu-page-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_program.sv"
+    ],
+    "top": "tb_cpu_program",
+    "args": [
+      "+effect_page",
+      "+effect_fault"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_PROGRAM_IDU cycle=20 dot=81"
+  },
+  "cpu-program-retirement-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_program.sv"
+    ],
+    "top": "tb_cpu_program",
+    "args": [
+      "+retirement_fault"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_PROGRAM_STATE event=3"
+  },
+  "cpu-program-state-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_program.sv"
+    ],
+    "top": "tb_cpu_program",
+    "args": [
+      "+state_fault"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_PROGRAM_STATE event=11"
+  },
+  "cpu-program-timing-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_program.sv"
+    ],
+    "top": "tb_cpu_program",
+    "args": [
+      "+timing_fault"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_PROGRAM_TIMING"
+  },
+  "cpu-reset": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_reset.sv"
+    ],
+    "top": "tb_cpu_reset",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU reset cases=10 phases=4 pending=2 pause=20 fresh_events=50"
+  },
+  "cpu-reset-lost-write": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_reset.sv"
+    ],
+    "top": "tb_cpu_reset",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_RESET_WRITE case=0 dot=32"
+  },
+  "cpu-retire": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/dv/cpu/tb_cpu_retire.sv"
+    ],
+    "top": "tb_cpu_retire",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU retirement events=6 lengths=1,2,3 irq_zero=1 reset_cancel=1"
+  },
+  "cpu-retire-corrupt": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/dv/cpu/tb_cpu_retire.sv"
+    ],
+    "top": "tb_cpu_retire",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_RETIRE_MISMATCH case=1"
+  },
+  "cpu-step": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/dv/cpu/tb_cpu_step.sv"
+    ],
+    "top": "tb_cpu_step",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU STEP timebase steps=7 records=8 interrupts=1 ticks=64"
+  },
+  "cpu-step-missing": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/dv/cpu/tb_cpu_step.sv"
+    ],
+    "top": "tb_cpu_step",
+    "args": [
+      "+missing"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT CPU_BUS_RESPONSE"
+  },
+  "cpu-step-suppress": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/dv/cpu/tb_cpu_step.sv"
+    ],
+    "top": "tb_cpu_step",
+    "args": [
+      "+suppress"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_STEP_COMPLETE case=0 dot=8 expected=1 actual=0"
+  },
+  "cpu-stop": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_stop.sv"
+    ],
+    "top": "tb_cpu_stop",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU STOP entry cases=8 rows=4 IME_states=2"
+  },
+  "cpu-stop-divider-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_stop.sv"
+    ],
+    "top": "tb_cpu_stop",
+    "args": [
+      "+corrupt_divider"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_STOP_DIVIDER case=0 dot=16"
+  },
+  "cpu-stop-idu": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_stop_idu.sv"
+    ],
+    "top": "tb_cpu_stop_idu",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU STOP entry IDU cases=8 pages=2 rows=4"
+  },
+  "cpu-stop-idu-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_stop_idu.sv"
+    ],
+    "top": "tb_cpu_stop_idu",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_STOP_ENTRY_IDU case=4"
+  },
+  "cpu-stop-irq": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_stop_irq.sv"
+    ],
+    "top": "tb_cpu_stop_irq",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU STOP interrupt restart cases=14 records=64 normal=6 reset=8"
+  },
+  "cpu-stop-irq-effect": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_stop_irq.sv"
+    ],
+    "top": "tb_cpu_stop_irq",
+    "args": [
+      "+effect_fault"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_STOP_IRQ_EFFECT case=0 dot=20"
+  },
+  "cpu-stop-irq-stack": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_stop_irq.sv"
+    ],
+    "top": "tb_cpu_stop_irq",
+    "args": [
+      "+stack_fault"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_STOP_IRQ_BUS case=0 dot=32"
+  },
+  "cpu-stop-mode-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_stop.sv"
+    ],
+    "top": "tb_cpu_stop",
+    "args": [
+      "+corrupt_action"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_STOP_RECORD case=0 event=2"
+  },
+  "cpu-stop-wake": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_stop_wake.sv"
+    ],
+    "top": "tb_cpu_stop_wake",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU normal STOP wake cases=20 normal=4 reset=16"
+  },
+  "cpu-stop-wake-stale": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_stop_wake.sv"
+    ],
+    "top": "tb_cpu_stop_wake",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_STOP_WAKE_RECORD case=0 event=3"
+  },
+  "cpu-vectors": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_vectors.sv"
+    ],
+    "top": "tb_cpu_vectors",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU vectors cases=7968 forms=498 flags=16 excluded_STOP_HALT=32",
+    "timeout_seconds": 120
+  },
+  "cpu-vectors-missing": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_vectors.sv"
+    ],
+    "top": "tb_cpu_vectors",
+    "args": [
+      "+missing"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_VECTOR_MISSING case=0",
+    "timeout_seconds": 120
+  },
+  "cpu-vectors-state-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_vectors.sv"
+    ],
+    "top": "tb_cpu_vectors",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_VECTOR_STATE case=0",
+    "timeout_seconds": 120
+  },
+  "cpu-wake": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_wake.sv"
+    ],
+    "top": "tb_cpu_wake",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU HALT wake cases=7 arrival_edges=3 IME_states=2 fresh_opcode=1"
+  },
+  "cpu-wake-missing": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_wake.sv"
+    ],
+    "top": "tb_cpu_wake",
+    "args": [
+      "+missing"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_BUS_RESPONSE"
+  },
+  "cpu-wake-reset": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_wake_reset.sv"
+    ],
+    "top": "tb_cpu_wake_reset",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU HALT reset cases=16 phases=4 resets=2 IME_states=2"
+  },
+  "cpu-wake-reset-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_wake_reset.sv"
+    ],
+    "top": "tb_cpu_wake_reset",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_WAKE_RESET_CANCEL case=3 phase=3"
+  },
+  "cpu-wake-stale": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_wake.sv"
+    ],
+    "top": "tb_cpu_wake",
+    "args": [
+      "+stale"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_WAKE_RECORD case=6 event=4"
+  },
+  "cpu-wrap": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_wrap.sv"
+    ],
+    "top": "tb_cpu_wrap",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU wrap cases=2 cycles=40 records=12 writes=4"
+  },
+  "cpu-wrap-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_wrap.sv"
+    ],
+    "top": "tb_cpu_wrap",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_WRAP_RECORD case=0 event=3"
+  },
+  "intel-memory": {
+    "sources": [
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/dv/common/tb_intel_ram.sv"
+    ],
+    "vendor_model": "intel-memory",
+    "intel_mixed_mode_instances": [
+      "tb_intel_ram.frame_case.dut.ram.m_default.altsyncram_inst"
+    ],
+    "top": "tb_intel_ram",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS Intel memory configurations=4 initialized_words=23344 latency=1",
+    "timeout_seconds": 180
+  },
+  "intel-memory-collision": {
+    "sources": [
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/dv/common/tb_intel_ram.sv"
+    ],
+    "vendor_model": "intel-memory",
+    "intel_mixed_mode_instances": [
+      "tb_intel_ram.frame_case.dut.ram.m_default.altsyncram_inst"
+    ],
+    "top": "tb_intel_ram",
+    "args": [
+      "+collision"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT INTEL_RAM_MIXED_PORT_A instance=tb_intel_ram.byte_case.dut"
+  },
+  "intel-memory-data": {
+    "sources": [
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/dv/common/tb_intel_ram.sv"
+    ],
+    "vendor_model": "intel-memory",
+    "intel_mixed_mode_instances": [
+      "tb_intel_ram.frame_case.dut.ram.m_default.altsyncram_inst"
+    ],
+    "top": "tb_intel_ram",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "INTEL_RAM_DATA_A case=0 check=164 expected=38 actual=ff"
+  },
+  "intel-memory-latency": {
+    "sources": [
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/dv/common/tb_intel_ram.sv"
+    ],
+    "vendor_model": "intel-memory",
+    "intel_mixed_mode_instances": [
+      "tb_intel_ram.frame_case.dut.ram.m_default.altsyncram_inst"
+    ],
+    "top": "tb_intel_ram",
+    "args": [
+      "+late"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "INTEL_RAM_DATA_A case=0 check=164 expected=38 actual=a5"
+  },
+  "interfaces": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/dv/interfaces/tb_interfaces.sv"
+    ],
+    "top": "tb_interfaces",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS interface vectors widths spaces"
+  },
+  "interfaces-corrupt": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/dv/interfaces/tb_interfaces.sv"
+    ],
+    "top": "tb_interfaces",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "INTERFACE_MISMATCH expected=01000007123456790001 actual=01000007123456780001"
+  },
+  "interrupt-ack-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/dv/interrupts/tb_interrupt_ack_fault.sv"
+    ],
+    "top": "tb_interrupt_ack_fault",
+    "args": [],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT INTERRUPT_ACK_ONEHOT"
+  },
+  "interrupt-phases": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/dv/interrupts/tb_interrupt_phases.sv"
+    ],
+    "top": "tb_interrupt_phases",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS interrupt phase and CPU snapshot scripts cases=23 checks=140"
+  },
+  "interrupt-phases-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/dv/interrupts/tb_interrupt_phases.sv"
+    ],
+    "top": "tb_interrupt_phases",
+    "args": [
+      "+observation_fault"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "INTERRUPT_PHASE_OBSERVE case=0 check=1 expected_if=01 actual_if=00"
+  },
+  "interrupts": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/dv/interrupts/tb_interrupts.sv"
+    ],
+    "top": "tb_interrupts",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS interrupt register truth table masks held sources reset observations checks=2569"
+  },
+  "interrupts-duplicate": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/dv/interrupts/tb_interrupts.sv"
+    ],
+    "top": "tb_interrupts",
+    "args": [
+      "+duplicate"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "INTERRUPT_OBSERVE check=16 expected_if=00 actual_if=01"
+  },
+  "interrupts-lost": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/dv/interrupts/tb_interrupts.sv"
+    ],
+    "top": "tb_interrupts",
+    "args": [
+      "+lost"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "INTERRUPT_OBSERVE check=13 expected_if=01 actual_if=00"
+  },
+  "interrupts-priority": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/dv/interrupts/tb_interrupts.sv"
+    ],
+    "top": "tb_interrupts",
+    "args": [
+      "+priority"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "INTERRUPT_OBSERVE check=2549 expected_if=00 actual_if=01"
   },
   "memory-cpu-duplicate": {
     "vendor_model": "intel-memory",
@@ -497,6 +1450,22 @@
     "expected_exit": "nonzero",
     "signature": "N2M_ASSERT MEMORY_COMMIT_OWNER_SERVICE"
   },
+  "memory-cpu-port": {
+    "vendor_model": "intel-memory",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/memory/n2m_memory_stores.sv",
+      "src/rtl/memory/n2m_memory_decode.sv",
+      "src/rtl/memory/n2m_memory_cpu_port.sv",
+      "src/dv/memory/tb_memory_cpu_port.sv"
+    ],
+    "top": "tb_memory_cpu_port",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS memory CPU port writes=7 owner_commits=1 fixed_io=71 absent_cart=8192 reset_phases=16 echo ROM stale pause"
+  },
   "memory-cpu-sticky": {
     "vendor_model": "intel-memory",
     "sources": [
@@ -538,6 +1507,40 @@
     "expected_exit": "nonzero",
     "signature": "MEMORY_DECODE_MISMATCH address=e123"
   },
+  "memory-service": {
+    "vendor_model": "intel-memory",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/memory/n2m_memory_stores.sv",
+      "src/rtl/memory/n2m_memory_decode.sv",
+      "src/rtl/memory/n2m_memory_cpu_port.sv",
+      "src/dv/memory/tb_memory_service.sv"
+    ],
+    "top": "tb_memory_service",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS memory concurrent CPU PPU writes=352 preA_pairs=1040 blocked unusable"
+  },
+  "memory-service-corrupt": {
+    "vendor_model": "intel-memory",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/memory/n2m_memory_stores.sv",
+      "src/rtl/memory/n2m_memory_decode.sv",
+      "src/rtl/memory/n2m_memory_cpu_port.sv",
+      "src/dv/memory/tb_memory_service.sv"
+    ],
+    "top": "tb_memory_service",
+    "args": [
+      "+corrupt_response"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "MEMORY_SERVICE_VRAM_PRE_A expected=90 actual=00"
+  },
   "memory-stores": {
     "vendor_model": "intel-memory",
     "sources": [
@@ -568,236 +1571,49 @@
     "expected_exit": "nonzero",
     "signature": "MEMORY_STORES_EARLY_INIT edge=8"
   },
-  "interrupts": {
+  "ppu-access": {
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
-      "src/rtl/interrupts/n2m_interrupts.sv",
-      "src/dv/interrupts/tb_interrupts.sv"
-    ],
-    "top": "tb_interrupts",
-    "args": [],
-    "expected_exit": "zero",
-    "signature": "PASS interrupt register truth table masks held sources reset observations checks=2569"
-  },
-  "interrupts-lost": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
-      "src/rtl/interrupts/n2m_interrupts.sv",
-      "src/dv/interrupts/tb_interrupts.sv"
-    ],
-    "top": "tb_interrupts",
-    "args": [
-      "+lost"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "INTERRUPT_OBSERVE check=13 expected_if=01 actual_if=00"
-  },
-  "interrupts-duplicate": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
-      "src/rtl/interrupts/n2m_interrupts.sv",
-      "src/dv/interrupts/tb_interrupts.sv"
-    ],
-    "top": "tb_interrupts",
-    "args": [
-      "+duplicate"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "INTERRUPT_OBSERVE check=16 expected_if=00 actual_if=01"
-  },
-  "interrupts-priority": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
-      "src/rtl/interrupts/n2m_interrupts.sv",
-      "src/dv/interrupts/tb_interrupts.sv"
-    ],
-    "top": "tb_interrupts",
-    "args": [
-      "+priority"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "INTERRUPT_OBSERVE check=2549 expected_if=00 actual_if=01"
-  },
-  "interrupt-phases": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
-      "src/rtl/interrupts/n2m_interrupts.sv",
-      "src/dv/interrupts/tb_interrupt_phases.sv"
-    ],
-    "top": "tb_interrupt_phases",
-    "args": [],
-    "expected_exit": "zero",
-    "signature": "PASS interrupt phase and CPU snapshot scripts cases=23 checks=140"
-  },
-  "interrupt-phases-fault": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
-      "src/rtl/interrupts/n2m_interrupts.sv",
-      "src/dv/interrupts/tb_interrupt_phases.sv"
-    ],
-    "top": "tb_interrupt_phases",
-    "args": [
-      "+observation_fault"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "INTERRUPT_PHASE_OBSERVE case=0 check=1 expected_if=01 actual_if=00"
-  },
-  "interrupt-ack-fault": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
-      "src/rtl/interrupts/n2m_interrupts.sv",
-      "src/dv/interrupts/tb_interrupt_ack_fault.sv"
-    ],
-    "top": "tb_interrupt_ack_fault",
-    "args": [],
-    "expected_exit": "nonzero",
-    "signature": "N2M_ASSERT INTERRUPT_ACK_ONEHOT"
-  },
-  "timer-reload": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
-      "src/rtl/interrupts/n2m_interrupts.sv",
-      "src/rtl/timer/n2m_timer_pkg.sv",
-      "src/rtl/timer/n2m_timer.sv",
-      "src/dv/timer/tb_timer_reload.sv"
-    ],
-    "top": "tb_timer_reload",
-    "args": [],
-    "expected_exit": "zero",
-    "signature": "PASS timer reload schedules cases=8 checks=1152"
-  },
-  "timer-counter-fault": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
-      "src/rtl/interrupts/n2m_interrupts.sv",
-      "src/rtl/timer/n2m_timer_pkg.sv",
-      "src/rtl/timer/n2m_timer.sv",
-      "src/dv/timer/tb_timer_reload.sv"
-    ],
-    "top": "tb_timer_reload",
-    "args": [
-      "+counter_fault"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "TIMER_COUNTER case=0 tick=64 expected=ff actual=00"
-  },
-  "timer-request-fault": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
-      "src/rtl/interrupts/n2m_interrupts.sv",
-      "src/rtl/timer/n2m_timer_pkg.sv",
-      "src/rtl/timer/n2m_timer.sv",
-      "src/dv/timer/tb_timer_reload.sv"
-    ],
-    "top": "tb_timer_reload",
-    "args": [
-      "+request_fault"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "TIMER_REQUEST case=2 tick=132 expected=1 actual=0"
-  },
-  "timer-edges": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
-      "src/rtl/interrupts/n2m_interrupts.sv",
-      "src/rtl/timer/n2m_timer_pkg.sv",
-      "src/rtl/timer/n2m_timer.sv",
-      "src/dv/timer/tb_timer_edges.sv"
-    ],
-    "top": "tb_timer_edges",
-    "args": [],
-    "expected_exit": "zero",
-    "signature": "PASS timer frequencies edges wrap pause STOP resets cases=67",
-    "timeout_seconds": 120
-  },
-  "timer-edge-fault": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
-      "src/rtl/interrupts/n2m_interrupts.sv",
-      "src/rtl/timer/n2m_timer_pkg.sv",
-      "src/rtl/timer/n2m_timer.sv",
-      "src/dv/timer/tb_timer_edges.sv"
-    ],
-    "top": "tb_timer_edges",
-    "args": [
-      "+edge_fault"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "TIMER_EDGE_READ case=1 tick=1020 address=ff05 expected=01 actual=00",
-    "timeout_seconds": 120
-  },
-  "timer-commit-fault": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
-      "src/rtl/interrupts/n2m_interrupts.sv",
-      "src/rtl/timer/n2m_timer_pkg.sv",
-      "src/rtl/timer/n2m_timer.sv",
-      "src/dv/timer/tb_timer_edges.sv"
-    ],
-    "top": "tb_timer_edges",
-    "args": [
-      "+bad_commit"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "N2M_ASSERT TIMER_COMMIT_BOUNDARY",
-    "timeout_seconds": 120
-  },
-  "ppu-mix": {
-    "sources": [
+      "src/rtl/clocking/n2m_timebase.sv",
       "src/rtl/ppu/n2m_ppu_mix.sv",
-      "src/dv/ppu/tb_ppu_mix.sv"
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_access.sv"
     ],
-    "top": "tb_ppu_mix",
+    "top": "tb_ppu_access",
     "args": [],
     "expected_exit": "zero",
-    "signature": "PASS PPU mixer literal_cases=10"
+    "signature": "PASS PPU legal CPU mode/access observations cases=6",
+    "timeout_seconds": 60
   },
-  "ppu-mix-corrupt": {
+  "ppu-access-corrupt": {
     "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
       "src/rtl/ppu/n2m_ppu_mix.sv",
-      "src/dv/ppu/tb_ppu_mix.sv"
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_access.sv"
     ],
-    "top": "tb_ppu_mix",
+    "top": "tb_ppu_access",
     "args": [
-      "+corrupt"
+      "+access_corrupt"
     ],
     "expected_exit": "nonzero",
-    "signature": "PPU_MIX_MISMATCH case=3 expected=0 actual=3"
-  },
-  "ppu-shift": {
-    "expected_exit": "zero",
-    "args": [],
-    "top": "tb_ppu_shift",
-    "signature": "PASS PPU shift literal_cases=18",
-    "sources": [
-      "src/rtl/ppu/n2m_ppu_shift.sv",
-      "src/dv/ppu/tb_ppu_shift.sv"
-    ]
-  },
-  "ppu-shift-unknown": {
-    "expected_exit": "nonzero",
-    "args": [
-      "+unknown"
-    ],
-    "top": "tb_ppu_shift",
-    "signature": "N2M_ASSERT shift_state_known",
-    "sources": [
-      "src/rtl/ppu/n2m_ppu_shift.sv",
-      "src/dv/ppu/tb_ppu_shift.sv"
-    ]
+    "signature": "PPU_ACCESS_CPU elapsed=456 expected_mode=2 actual_mode=2 expected_vram=1 actual_vram=1 expected_oam=0 actual_oam=1",
+    "timeout_seconds": 60
   },
   "ppu-fetch": {
     "signature": "PASS PPU fetch literal_schedule cases=21",
@@ -821,6 +1637,364 @@
     "expected_exit": "nonzero",
     "top": "tb_ppu_fetch"
   },
+  "ppu-fine-scroll": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_fine_scroll.sv"
+    ],
+    "top": "tb_ppu_fine_scroll",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS PPU fine scroll legal before/after cases=2 visible_pixels=320",
+    "timeout_seconds": 180
+  },
+  "ppu-fine-scroll-corrupt": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_fine_scroll.sv"
+    ],
+    "top": "tb_ppu_fine_scroll",
+    "args": [
+      "+fine_corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "PPU_FINE_PIXEL case=1 frame=1 index=0 expected=1 actual=0",
+    "timeout_seconds": 180
+  },
+  "ppu-lcd-video": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/vga/n2m_frame_ram.sv",
+      "src/rtl/vga/n2m_vga_scan.sv",
+      "src/rtl/vga/n2m_frame_bridge.sv",
+      "src/dv/ppu/tb_ppu_lcd_video.sv"
+    ],
+    "top": "tb_ppu_lcd_video",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS PPU LCD composed first last cancellation aborts=2 frames=3 VGA pixels=207360 resets=2",
+    "timeout_seconds": 600,
+    "vendor_model": "intel-memory",
+    "intel_mixed_mode_instances": [
+      "tb_ppu_lcd_video.bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_ppu_lcd_video.bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_ppu_lcd_video.bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
+    ]
+  },
+  "ppu-lcd-video-corrupt": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/vga/n2m_frame_ram.sv",
+      "src/rtl/vga/n2m_vga_scan.sv",
+      "src/rtl/vga/n2m_frame_bridge.sv",
+      "src/dv/ppu/tb_ppu_lcd_video.sv"
+    ],
+    "top": "tb_ppu_lcd_video",
+    "args": [
+      "+lcd_observer_corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "PPU_LCD_OBSERVER run=2 index=0 expected_sequence=1 actual=3",
+    "timeout_seconds": 600,
+    "vendor_model": "intel-memory",
+    "intel_mixed_mode_instances": [
+      "tb_ppu_lcd_video.bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_ppu_lcd_video.bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_ppu_lcd_video.bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
+    ]
+  },
+  "ppu-lcdc-fetch": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_live_scroll.sv"
+    ],
+    "top": "tb_ppu_live_scroll",
+    "args": [
+      "+lcdc_fetch"
+    ],
+    "expected_exit": "zero",
+    "signature": "PASS PPU LCDC live map and tile-bank fetch cases=2 visible_pixels=320",
+    "timeout_seconds": 180
+  },
+  "ppu-lcdc-fetch-corrupt": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_live_scroll.sv"
+    ],
+    "top": "tb_ppu_live_scroll",
+    "args": [
+      "+lcdc_fetch",
+      "+lcdc_fetch_corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "PPU_LIVE_SCROLL_PIXEL case=2 frame=1 index=0 expected=0 actual=3",
+    "timeout_seconds": 180
+  },
+  "ppu-live-scroll": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_live_scroll.sv"
+    ],
+    "top": "tb_ppu_live_scroll",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS PPU live SCY planes and coarse SCX fetch cases=2 visible_pixels=320",
+    "timeout_seconds": 180
+  },
+  "ppu-live-scroll-corrupt": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_live_scroll.sv"
+    ],
+    "top": "tb_ppu_live_scroll",
+    "args": [
+      "+live_scroll_corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "PPU_LIVE_SCROLL_PIXEL case=0 frame=1 index=0 expected=3 actual=0",
+    "timeout_seconds": 180
+  },
+  "ppu-ly153": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_ly153.sv"
+    ],
+    "top": "tb_ppu_ly153",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS PPU LY153 public reads cases=54 legal LYC invalid valid held-mode edge-count pause reset",
+    "timeout_seconds": 180
+  },
+  "ppu-ly153-corrupt": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_ly153.sv"
+    ],
+    "top": "tb_ppu_ly153",
+    "args": [
+      "+ly_corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "PPU_LY153_READ elapsed=69763 expected=153 actual=0",
+    "timeout_seconds": 180
+  },
+  "ppu-ly153-extra-irq": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_ly153.sv"
+    ],
+    "top": "tb_ppu_ly153",
+    "args": [
+      "+extra_irq"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "PPU_LY153_EDGE_COUNT compare=0 expected=2 actual=3",
+    "timeout_seconds": 180
+  },
+  "ppu-ly153-irq-corrupt": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_ly153.sv"
+    ],
+    "top": "tb_ppu_ly153",
+    "args": [
+      "+irq_corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "PPU_LY153_EVENT elapsed=69773 expected=1 actual=0",
+    "timeout_seconds": 180
+  },
+  "ppu-mix": {
+    "sources": [
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/dv/ppu/tb_ppu_mix.sv"
+    ],
+    "top": "tb_ppu_mix",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS PPU mixer literal_cases=10"
+  },
+  "ppu-mix-corrupt": {
+    "sources": [
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/dv/ppu/tb_ppu_mix.sv"
+    ],
+    "top": "tb_ppu_mix",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "PPU_MIX_MISMATCH case=3 expected=0 actual=3"
+  },
+  "ppu-object-zero": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_render.sv"
+    ],
+    "top": "tb_ppu_render",
+    "args": [
+      "+object_zero"
+    ],
+    "expected_exit": "zero",
+    "signature": "PASS PPU X0 hidden object fixed11 lines=16 line_first=144 pixels=46080",
+    "timeout_seconds": 180
+  },
+  "ppu-object-zero-corrupt": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_render.sv"
+    ],
+    "top": "tb_ppu_render",
+    "args": [
+      "+object_zero",
+      "+object_zero_corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "PPU_X0_FIRST line=84",
+    "timeout_seconds": 180
+  },
   "ppu-objects": {
     "sources": [
       "src/rtl/ppu/n2m_ppu_objects.sv",
@@ -842,6 +2016,53 @@
     "expected_exit": "nonzero",
     "signature": "N2M_ASSERT oam_response_missing",
     "top": "tb_ppu_objects"
+  },
+  "ppu-palette": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_render.sv"
+    ],
+    "top": "tb_ppu_render",
+    "args": [
+      "+palette"
+    ],
+    "expected_exit": "zero",
+    "signature": "PASS PPU palette signed tiles 8x8 objects asymmetric rows pixels=46080",
+    "timeout_seconds": 180
+  },
+  "ppu-palette-corrupt": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_render.sv"
+    ],
+    "top": "tb_ppu_render",
+    "args": [
+      "+palette",
+      "+palette_corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "PPU_PALETTE_PIXEL",
+    "timeout_seconds": 180
   },
   "ppu-render": {
     "sources": [
@@ -934,6 +2155,72 @@
     "signature": "PPU_RENDER_STARTUP elapsed=76 address=ff41 expected=00 actual=03",
     "timeout_seconds": 180
   },
+  "ppu-scroll-window": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_scroll_window.sv"
+    ],
+    "top": "tb_ppu_scroll_window",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS PPU scroll/window static pixels=46080 fine=8 wx=8",
+    "timeout_seconds": 180
+  },
+  "ppu-scroll-window-corrupt": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_scroll_window.sv"
+    ],
+    "top": "tb_ppu_scroll_window",
+    "args": [
+      "+scroll_corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "PPU_SCROLL_PIXEL frame=1 index=0 scx=0 wx=255 wrow=0 expected=3 actual=0",
+    "timeout_seconds": 180
+  },
+  "ppu-shift": {
+    "expected_exit": "zero",
+    "args": [],
+    "top": "tb_ppu_shift",
+    "signature": "PASS PPU shift literal_cases=18",
+    "sources": [
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/dv/ppu/tb_ppu_shift.sv"
+    ]
+  },
+  "ppu-shift-unknown": {
+    "expected_exit": "nonzero",
+    "args": [
+      "+unknown"
+    ],
+    "top": "tb_ppu_shift",
+    "signature": "N2M_ASSERT shift_state_known",
+    "sources": [
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/dv/ppu/tb_ppu_shift.sv"
+    ]
+  },
   "ppu-stat": {
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
@@ -976,75 +2263,143 @@
     "expected_exit": "nonzero",
     "signature": "PPU_STAT_LINE case=2 expected=1"
   },
-  "vga-lcd": {
+  "ppu-stat-oam": {
     "sources": [
-      "src/rtl/clocking/n2m_reset_control.sv",
-      "src/rtl/common/n2m_intel_ram.sv",
-      "src/rtl/vga/n2m_frame_ram.sv",
-      "src/rtl/vga/n2m_vga_scan.sv",
-      "src/rtl/vga/n2m_frame_bridge.sv",
-      "src/dv/vga/tb_vga.sv"
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_stat_oam.sv"
     ],
-    "top": "tb_vga",
-    "args": [
-      "+lcd"
-    ],
+    "top": "tb_ppu_stat_oam",
+    "args": [],
     "expected_exit": "zero",
-    "signature": "PASS VGA LCD abort blank stale-offer core-reset stopped-pixel ack-completion-invalidation",
-    "timeout_seconds": 600,
-    "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_vga.dut.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_vga.dut.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_vga.dut.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ]
+    "signature": "PASS PPU STAT OAM compatibility qualifier public overlap IF priority cases=6 checks=42",
+    "timeout_seconds": 60
   },
-  "vga-lcd-corrupt": {
+  "ppu-stat-oam-corrupt": {
     "sources": [
-      "src/rtl/clocking/n2m_reset_control.sv",
-      "src/rtl/common/n2m_intel_ram.sv",
-      "src/rtl/vga/n2m_frame_ram.sv",
-      "src/rtl/vga/n2m_vga_scan.sv",
-      "src/rtl/vga/n2m_frame_bridge.sv",
-      "src/dv/vga/tb_vga.sv"
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_stat_oam.sv"
     ],
-    "top": "tb_vga",
+    "top": "tb_ppu_stat_oam",
     "args": [
-      "+lcd",
-      "+blank_corrupt"
+      "+qualifier_fault"
     ],
     "expected_exit": "nonzero",
-    "signature": "VGA_PIXEL:",
-    "timeout_seconds": 600,
-    "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_vga.dut.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_vga.dut.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_vga.dut.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ]
+    "signature": "PPU_STAT_OAM_QUALIFIER case=0 expected=b actual=f",
+    "timeout_seconds": 60
   },
-  "vga-lcd-reset": {
+  "ppu-stat-off": {
     "sources": [
-      "src/rtl/clocking/n2m_reset_control.sv",
-      "src/rtl/common/n2m_intel_ram.sv",
-      "src/rtl/vga/n2m_frame_ram.sv",
-      "src/rtl/vga/n2m_vga_scan.sv",
-      "src/rtl/vga/n2m_frame_bridge.sv",
-      "src/dv/vga/tb_vga.sv"
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_stat_off.sv"
     ],
-    "top": "tb_vga",
-    "args": [
-      "+lcd_reset"
-    ],
+    "top": "tb_ppu_stat_off",
+    "args": [],
     "expected_exit": "zero",
-    "signature": "PASS VGA LCD shared-reset release-skew stopped-pixel retained-white global-mask",
-    "timeout_seconds": 600,
-    "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_vga.dut.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_vga.dut.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_vga.dut.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ]
+    "signature": "PASS PPU STAT LCD off cases=14 edges=2"
+  },
+  "ppu-stat-off-corrupt": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_stat_off.sv"
+    ],
+    "top": "tb_ppu_stat_off",
+    "args": [
+      "+off_corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "PPU_STAT_OFF_STATE case=10 expected_flag=0 expected_line=0 expected_edges=1 actual_flag=0 actual_line=1 actual_edges=1"
+  },
+  "ppu-vblank": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_vblank.sv"
+    ],
+    "top": "tb_ppu_vblank",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS PPU line144 STAT VBlank IF priority cases=4 checks=32",
+    "timeout_seconds": 120
+  },
+  "ppu-vblank-corrupt": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_vblank.sv"
+    ],
+    "top": "tb_ppu_vblank",
+    "args": [
+      "+vblank_fault"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "PPU_VBLANK_EVENT case=0 dot=65662 expected=1 actual=0",
+    "timeout_seconds": 120
   },
   "ppu-video": {
     "sources": [
@@ -1117,474 +2472,6 @@
       "tb_ppu_video.bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
     ]
   },
-  "ppu-ly153": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/clocking/n2m_timebase.sv",
-      "src/rtl/ppu/n2m_ppu_mix.sv",
-      "src/rtl/ppu/n2m_ppu_shift.sv",
-      "src/rtl/ppu/n2m_ppu_fetch.sv",
-      "src/rtl/ppu/n2m_ppu_timing.sv",
-      "src/rtl/ppu/n2m_ppu_objects.sv",
-      "src/rtl/ppu/n2m_ppu_registers.sv",
-      "src/rtl/ppu/n2m_ppu_position.sv",
-      "src/rtl/ppu/n2m_ppu_window.sv",
-      "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_ly153.sv"
-    ],
-    "top": "tb_ppu_ly153",
-    "args": [],
-    "expected_exit": "zero",
-    "signature": "PASS PPU LY153 public reads cases=54 legal LYC invalid valid held-mode edge-count pause reset",
-    "timeout_seconds": 180
-  },
-  "ppu-ly153-corrupt": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/clocking/n2m_timebase.sv",
-      "src/rtl/ppu/n2m_ppu_mix.sv",
-      "src/rtl/ppu/n2m_ppu_shift.sv",
-      "src/rtl/ppu/n2m_ppu_fetch.sv",
-      "src/rtl/ppu/n2m_ppu_timing.sv",
-      "src/rtl/ppu/n2m_ppu_objects.sv",
-      "src/rtl/ppu/n2m_ppu_registers.sv",
-      "src/rtl/ppu/n2m_ppu_position.sv",
-      "src/rtl/ppu/n2m_ppu_window.sv",
-      "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_ly153.sv"
-    ],
-    "top": "tb_ppu_ly153",
-    "args": [
-      "+ly_corrupt"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "PPU_LY153_READ elapsed=69763 expected=153 actual=0",
-    "timeout_seconds": 180
-  },
-  "ppu-ly153-irq-corrupt": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/clocking/n2m_timebase.sv",
-      "src/rtl/ppu/n2m_ppu_mix.sv",
-      "src/rtl/ppu/n2m_ppu_shift.sv",
-      "src/rtl/ppu/n2m_ppu_fetch.sv",
-      "src/rtl/ppu/n2m_ppu_timing.sv",
-      "src/rtl/ppu/n2m_ppu_objects.sv",
-      "src/rtl/ppu/n2m_ppu_registers.sv",
-      "src/rtl/ppu/n2m_ppu_position.sv",
-      "src/rtl/ppu/n2m_ppu_window.sv",
-      "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_ly153.sv"
-    ],
-    "top": "tb_ppu_ly153",
-    "args": [
-      "+irq_corrupt"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "PPU_LY153_EVENT elapsed=69773 expected=1 actual=0",
-    "timeout_seconds": 180
-  },
-  "ppu-ly153-extra-irq": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/clocking/n2m_timebase.sv",
-      "src/rtl/ppu/n2m_ppu_mix.sv",
-      "src/rtl/ppu/n2m_ppu_shift.sv",
-      "src/rtl/ppu/n2m_ppu_fetch.sv",
-      "src/rtl/ppu/n2m_ppu_timing.sv",
-      "src/rtl/ppu/n2m_ppu_objects.sv",
-      "src/rtl/ppu/n2m_ppu_registers.sv",
-      "src/rtl/ppu/n2m_ppu_position.sv",
-      "src/rtl/ppu/n2m_ppu_window.sv",
-      "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_ly153.sv"
-    ],
-    "top": "tb_ppu_ly153",
-    "args": [
-      "+extra_irq"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "PPU_LY153_EDGE_COUNT compare=0 expected=2 actual=3",
-    "timeout_seconds": 180
-  },
-  "ppu-palette": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/clocking/n2m_timebase.sv",
-      "src/rtl/ppu/n2m_ppu_mix.sv",
-      "src/rtl/ppu/n2m_ppu_shift.sv",
-      "src/rtl/ppu/n2m_ppu_fetch.sv",
-      "src/rtl/ppu/n2m_ppu_timing.sv",
-      "src/rtl/ppu/n2m_ppu_objects.sv",
-      "src/rtl/ppu/n2m_ppu_registers.sv",
-      "src/rtl/ppu/n2m_ppu_position.sv",
-      "src/rtl/ppu/n2m_ppu_window.sv",
-      "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_render.sv"
-    ],
-    "top": "tb_ppu_render",
-    "args": [
-      "+palette"
-    ],
-    "expected_exit": "zero",
-    "signature": "PASS PPU palette signed tiles 8x8 objects asymmetric rows pixels=46080",
-    "timeout_seconds": 180
-  },
-  "ppu-palette-corrupt": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/clocking/n2m_timebase.sv",
-      "src/rtl/ppu/n2m_ppu_mix.sv",
-      "src/rtl/ppu/n2m_ppu_shift.sv",
-      "src/rtl/ppu/n2m_ppu_fetch.sv",
-      "src/rtl/ppu/n2m_ppu_timing.sv",
-      "src/rtl/ppu/n2m_ppu_objects.sv",
-      "src/rtl/ppu/n2m_ppu_registers.sv",
-      "src/rtl/ppu/n2m_ppu_position.sv",
-      "src/rtl/ppu/n2m_ppu_window.sv",
-      "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_render.sv"
-    ],
-    "top": "tb_ppu_render",
-    "args": [
-      "+palette",
-      "+palette_corrupt"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "PPU_PALETTE_PIXEL",
-    "timeout_seconds": 180
-  },
-  "ppu-stat-off": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/clocking/n2m_timebase.sv",
-      "src/rtl/ppu/n2m_ppu_mix.sv",
-      "src/rtl/ppu/n2m_ppu_shift.sv",
-      "src/rtl/ppu/n2m_ppu_fetch.sv",
-      "src/rtl/ppu/n2m_ppu_timing.sv",
-      "src/rtl/ppu/n2m_ppu_objects.sv",
-      "src/rtl/ppu/n2m_ppu_registers.sv",
-      "src/rtl/ppu/n2m_ppu_position.sv",
-      "src/rtl/ppu/n2m_ppu_window.sv",
-      "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_stat_off.sv"
-    ],
-    "top": "tb_ppu_stat_off",
-    "args": [],
-    "expected_exit": "zero",
-    "signature": "PASS PPU STAT LCD off cases=14 edges=2"
-  },
-  "ppu-stat-off-corrupt": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/clocking/n2m_timebase.sv",
-      "src/rtl/ppu/n2m_ppu_mix.sv",
-      "src/rtl/ppu/n2m_ppu_shift.sv",
-      "src/rtl/ppu/n2m_ppu_fetch.sv",
-      "src/rtl/ppu/n2m_ppu_timing.sv",
-      "src/rtl/ppu/n2m_ppu_objects.sv",
-      "src/rtl/ppu/n2m_ppu_registers.sv",
-      "src/rtl/ppu/n2m_ppu_position.sv",
-      "src/rtl/ppu/n2m_ppu_window.sv",
-      "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_stat_off.sv"
-    ],
-    "top": "tb_ppu_stat_off",
-    "args": [
-      "+off_corrupt"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "PPU_STAT_OFF_STATE case=10 expected_flag=0 expected_line=0 expected_edges=1 actual_flag=0 actual_line=1 actual_edges=1"
-  },
-  "ppu-scroll-window": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/clocking/n2m_timebase.sv",
-      "src/rtl/ppu/n2m_ppu_mix.sv",
-      "src/rtl/ppu/n2m_ppu_shift.sv",
-      "src/rtl/ppu/n2m_ppu_fetch.sv",
-      "src/rtl/ppu/n2m_ppu_timing.sv",
-      "src/rtl/ppu/n2m_ppu_objects.sv",
-      "src/rtl/ppu/n2m_ppu_registers.sv",
-      "src/rtl/ppu/n2m_ppu_position.sv",
-      "src/rtl/ppu/n2m_ppu_window.sv",
-      "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_scroll_window.sv"
-    ],
-    "top": "tb_ppu_scroll_window",
-    "args": [],
-    "expected_exit": "zero",
-    "signature": "PASS PPU scroll/window static pixels=46080 fine=8 wx=8",
-    "timeout_seconds": 180
-  },
-  "ppu-scroll-window-corrupt": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/clocking/n2m_timebase.sv",
-      "src/rtl/ppu/n2m_ppu_mix.sv",
-      "src/rtl/ppu/n2m_ppu_shift.sv",
-      "src/rtl/ppu/n2m_ppu_fetch.sv",
-      "src/rtl/ppu/n2m_ppu_timing.sv",
-      "src/rtl/ppu/n2m_ppu_objects.sv",
-      "src/rtl/ppu/n2m_ppu_registers.sv",
-      "src/rtl/ppu/n2m_ppu_position.sv",
-      "src/rtl/ppu/n2m_ppu_window.sv",
-      "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_scroll_window.sv"
-    ],
-    "top": "tb_ppu_scroll_window",
-    "args": [
-      "+scroll_corrupt"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "PPU_SCROLL_PIXEL frame=1 index=0 scx=0 wx=255 wrow=0 expected=3 actual=0",
-    "timeout_seconds": 180
-  },
-  "ppu-fine-scroll": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/clocking/n2m_timebase.sv",
-      "src/rtl/ppu/n2m_ppu_mix.sv",
-      "src/rtl/ppu/n2m_ppu_shift.sv",
-      "src/rtl/ppu/n2m_ppu_fetch.sv",
-      "src/rtl/ppu/n2m_ppu_timing.sv",
-      "src/rtl/ppu/n2m_ppu_objects.sv",
-      "src/rtl/ppu/n2m_ppu_registers.sv",
-      "src/rtl/ppu/n2m_ppu_position.sv",
-      "src/rtl/ppu/n2m_ppu_window.sv",
-      "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_fine_scroll.sv"
-    ],
-    "top": "tb_ppu_fine_scroll",
-    "args": [],
-    "expected_exit": "zero",
-    "signature": "PASS PPU fine scroll legal before/after cases=2 visible_pixels=320",
-    "timeout_seconds": 180
-  },
-  "ppu-fine-scroll-corrupt": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/clocking/n2m_timebase.sv",
-      "src/rtl/ppu/n2m_ppu_mix.sv",
-      "src/rtl/ppu/n2m_ppu_shift.sv",
-      "src/rtl/ppu/n2m_ppu_fetch.sv",
-      "src/rtl/ppu/n2m_ppu_timing.sv",
-      "src/rtl/ppu/n2m_ppu_objects.sv",
-      "src/rtl/ppu/n2m_ppu_registers.sv",
-      "src/rtl/ppu/n2m_ppu_position.sv",
-      "src/rtl/ppu/n2m_ppu_window.sv",
-      "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_fine_scroll.sv"
-    ],
-    "top": "tb_ppu_fine_scroll",
-    "args": [
-      "+fine_corrupt"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "PPU_FINE_PIXEL case=1 frame=1 index=0 expected=1 actual=0",
-    "timeout_seconds": 180
-  },
-  "ppu-window-wy": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/clocking/n2m_timebase.sv",
-      "src/rtl/ppu/n2m_ppu_mix.sv",
-      "src/rtl/ppu/n2m_ppu_shift.sv",
-      "src/rtl/ppu/n2m_ppu_fetch.sv",
-      "src/rtl/ppu/n2m_ppu_timing.sv",
-      "src/rtl/ppu/n2m_ppu_objects.sv",
-      "src/rtl/ppu/n2m_ppu_registers.sv",
-      "src/rtl/ppu/n2m_ppu_position.sv",
-      "src/rtl/ppu/n2m_ppu_window.sv",
-      "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_scroll_window.sv"
-    ],
-    "top": "tb_ppu_scroll_window",
-    "args": [
-      "+wy"
-    ],
-    "expected_exit": "zero",
-    "signature": "PASS PPU WY qualified equality retained eligibility hidden row pixels=46080 late=0",
-    "timeout_seconds": 180
-  },
-  "ppu-window-wy-late": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/clocking/n2m_timebase.sv",
-      "src/rtl/ppu/n2m_ppu_mix.sv",
-      "src/rtl/ppu/n2m_ppu_shift.sv",
-      "src/rtl/ppu/n2m_ppu_fetch.sv",
-      "src/rtl/ppu/n2m_ppu_timing.sv",
-      "src/rtl/ppu/n2m_ppu_objects.sv",
-      "src/rtl/ppu/n2m_ppu_registers.sv",
-      "src/rtl/ppu/n2m_ppu_position.sv",
-      "src/rtl/ppu/n2m_ppu_window.sv",
-      "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_scroll_window.sv"
-    ],
-    "top": "tb_ppu_scroll_window",
-    "args": [
-      "+wy",
-      "+wy_late"
-    ],
-    "expected_exit": "zero",
-    "signature": "PASS PPU WY qualified equality retained eligibility hidden row pixels=46080 late=1",
-    "timeout_seconds": 180
-  },
-  "ppu-lcd-video": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/clocking/n2m_timebase.sv",
-      "src/rtl/ppu/n2m_ppu_mix.sv",
-      "src/rtl/ppu/n2m_ppu_shift.sv",
-      "src/rtl/ppu/n2m_ppu_fetch.sv",
-      "src/rtl/ppu/n2m_ppu_timing.sv",
-      "src/rtl/ppu/n2m_ppu_objects.sv",
-      "src/rtl/ppu/n2m_ppu_registers.sv",
-      "src/rtl/ppu/n2m_ppu_position.sv",
-      "src/rtl/ppu/n2m_ppu_window.sv",
-      "src/rtl/ppu/n2m_ppu.sv",
-      "src/rtl/common/n2m_intel_ram.sv",
-      "src/rtl/vga/n2m_frame_ram.sv",
-      "src/rtl/vga/n2m_vga_scan.sv",
-      "src/rtl/vga/n2m_frame_bridge.sv",
-      "src/dv/ppu/tb_ppu_lcd_video.sv"
-    ],
-    "top": "tb_ppu_lcd_video",
-    "args": [],
-    "expected_exit": "zero",
-    "signature": "PASS PPU LCD composed first last cancellation aborts=2 frames=3 VGA pixels=207360 resets=2",
-    "timeout_seconds": 600,
-    "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_ppu_lcd_video.bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_ppu_lcd_video.bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_ppu_lcd_video.bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ]
-  },
-  "ppu-lcd-video-corrupt": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/clocking/n2m_timebase.sv",
-      "src/rtl/ppu/n2m_ppu_mix.sv",
-      "src/rtl/ppu/n2m_ppu_shift.sv",
-      "src/rtl/ppu/n2m_ppu_fetch.sv",
-      "src/rtl/ppu/n2m_ppu_timing.sv",
-      "src/rtl/ppu/n2m_ppu_objects.sv",
-      "src/rtl/ppu/n2m_ppu_registers.sv",
-      "src/rtl/ppu/n2m_ppu_position.sv",
-      "src/rtl/ppu/n2m_ppu_window.sv",
-      "src/rtl/ppu/n2m_ppu.sv",
-      "src/rtl/common/n2m_intel_ram.sv",
-      "src/rtl/vga/n2m_frame_ram.sv",
-      "src/rtl/vga/n2m_vga_scan.sv",
-      "src/rtl/vga/n2m_frame_bridge.sv",
-      "src/dv/ppu/tb_ppu_lcd_video.sv"
-    ],
-    "top": "tb_ppu_lcd_video",
-    "args": [
-      "+lcd_observer_corrupt"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "PPU_LCD_OBSERVER run=2 index=0 expected_sequence=1 actual=3",
-    "timeout_seconds": 600,
-    "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_ppu_lcd_video.bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_ppu_lcd_video.bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_ppu_lcd_video.bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ]
-  },
-  "ppu-live-scroll": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/clocking/n2m_timebase.sv",
-      "src/rtl/ppu/n2m_ppu_mix.sv",
-      "src/rtl/ppu/n2m_ppu_shift.sv",
-      "src/rtl/ppu/n2m_ppu_fetch.sv",
-      "src/rtl/ppu/n2m_ppu_timing.sv",
-      "src/rtl/ppu/n2m_ppu_objects.sv",
-      "src/rtl/ppu/n2m_ppu_registers.sv",
-      "src/rtl/ppu/n2m_ppu_position.sv",
-      "src/rtl/ppu/n2m_ppu_window.sv",
-      "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_live_scroll.sv"
-    ],
-    "top": "tb_ppu_live_scroll",
-    "args": [],
-    "expected_exit": "zero",
-    "signature": "PASS PPU live SCY planes and coarse SCX fetch cases=2 visible_pixels=320",
-    "timeout_seconds": 180
-  },
-  "ppu-live-scroll-corrupt": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/clocking/n2m_timebase.sv",
-      "src/rtl/ppu/n2m_ppu_mix.sv",
-      "src/rtl/ppu/n2m_ppu_shift.sv",
-      "src/rtl/ppu/n2m_ppu_fetch.sv",
-      "src/rtl/ppu/n2m_ppu_timing.sv",
-      "src/rtl/ppu/n2m_ppu_objects.sv",
-      "src/rtl/ppu/n2m_ppu_registers.sv",
-      "src/rtl/ppu/n2m_ppu_position.sv",
-      "src/rtl/ppu/n2m_ppu_window.sv",
-      "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_live_scroll.sv"
-    ],
-    "top": "tb_ppu_live_scroll",
-    "args": [
-      "+live_scroll_corrupt"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "PPU_LIVE_SCROLL_PIXEL case=0 frame=1 index=0 expected=3 actual=0",
-    "timeout_seconds": 180
-  },
-  "ppu-window-wx0": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/clocking/n2m_timebase.sv",
-      "src/rtl/ppu/n2m_ppu_mix.sv",
-      "src/rtl/ppu/n2m_ppu_shift.sv",
-      "src/rtl/ppu/n2m_ppu_fetch.sv",
-      "src/rtl/ppu/n2m_ppu_timing.sv",
-      "src/rtl/ppu/n2m_ppu_objects.sv",
-      "src/rtl/ppu/n2m_ppu_registers.sv",
-      "src/rtl/ppu/n2m_ppu_position.sv",
-      "src/rtl/ppu/n2m_ppu_window.sv",
-      "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_scroll_window.sv"
-    ],
-    "top": "tb_ppu_scroll_window",
-    "args": [
-      "+wx0"
-    ],
-    "expected_exit": "zero",
-    "signature": "PASS PPU WX0 static fine=8 pixels=46080 distinct14vs15=14",
-    "timeout_seconds": 180
-  },
-  "ppu-window-wx166": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/clocking/n2m_timebase.sv",
-      "src/rtl/ppu/n2m_ppu_mix.sv",
-      "src/rtl/ppu/n2m_ppu_shift.sv",
-      "src/rtl/ppu/n2m_ppu_fetch.sv",
-      "src/rtl/ppu/n2m_ppu_timing.sv",
-      "src/rtl/ppu/n2m_ppu_objects.sv",
-      "src/rtl/ppu/n2m_ppu_registers.sv",
-      "src/rtl/ppu/n2m_ppu_position.sv",
-      "src/rtl/ppu/n2m_ppu_window.sv",
-      "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_scroll_window.sv"
-    ],
-    "top": "tb_ppu_scroll_window",
-    "args": [
-      "+wx166"
-    ],
-    "expected_exit": "zero",
-    "signature": "PASS PPU WX166 retained carry rows1/2 column8 pixels=46080",
-    "timeout_seconds": 180
-  },
   "ppu-window-disabled-wx": {
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
@@ -1630,97 +2517,6 @@
     ],
     "expected_exit": "nonzero",
     "signature": "PPU_SCROLL_PIXEL frame=1 index=5320 scx=0 wx=47 wrow=0 expected=0 actual=3",
-    "timeout_seconds": 180
-  },
-  "ppu-access": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/clocking/n2m_timebase.sv",
-      "src/rtl/ppu/n2m_ppu_mix.sv",
-      "src/rtl/ppu/n2m_ppu_shift.sv",
-      "src/rtl/ppu/n2m_ppu_fetch.sv",
-      "src/rtl/ppu/n2m_ppu_timing.sv",
-      "src/rtl/ppu/n2m_ppu_objects.sv",
-      "src/rtl/ppu/n2m_ppu_registers.sv",
-      "src/rtl/ppu/n2m_ppu_position.sv",
-      "src/rtl/ppu/n2m_ppu_window.sv",
-      "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_access.sv"
-    ],
-    "top": "tb_ppu_access",
-    "args": [],
-    "expected_exit": "zero",
-    "signature": "PASS PPU legal CPU mode/access observations cases=6",
-    "timeout_seconds": 60
-  },
-  "ppu-access-corrupt": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/clocking/n2m_timebase.sv",
-      "src/rtl/ppu/n2m_ppu_mix.sv",
-      "src/rtl/ppu/n2m_ppu_shift.sv",
-      "src/rtl/ppu/n2m_ppu_fetch.sv",
-      "src/rtl/ppu/n2m_ppu_timing.sv",
-      "src/rtl/ppu/n2m_ppu_objects.sv",
-      "src/rtl/ppu/n2m_ppu_registers.sv",
-      "src/rtl/ppu/n2m_ppu_position.sv",
-      "src/rtl/ppu/n2m_ppu_window.sv",
-      "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_access.sv"
-    ],
-    "top": "tb_ppu_access",
-    "args": [
-      "+access_corrupt"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "PPU_ACCESS_CPU elapsed=456 expected_mode=2 actual_mode=2 expected_vram=1 actual_vram=1 expected_oam=0 actual_oam=1",
-    "timeout_seconds": 60
-  },
-  "ppu-lcdc-fetch": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/clocking/n2m_timebase.sv",
-      "src/rtl/ppu/n2m_ppu_mix.sv",
-      "src/rtl/ppu/n2m_ppu_shift.sv",
-      "src/rtl/ppu/n2m_ppu_fetch.sv",
-      "src/rtl/ppu/n2m_ppu_timing.sv",
-      "src/rtl/ppu/n2m_ppu_objects.sv",
-      "src/rtl/ppu/n2m_ppu_registers.sv",
-      "src/rtl/ppu/n2m_ppu_position.sv",
-      "src/rtl/ppu/n2m_ppu_window.sv",
-      "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_live_scroll.sv"
-    ],
-    "top": "tb_ppu_live_scroll",
-    "args": [
-      "+lcdc_fetch"
-    ],
-    "expected_exit": "zero",
-    "signature": "PASS PPU LCDC live map and tile-bank fetch cases=2 visible_pixels=320",
-    "timeout_seconds": 180
-  },
-  "ppu-lcdc-fetch-corrupt": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/clocking/n2m_timebase.sv",
-      "src/rtl/ppu/n2m_ppu_mix.sv",
-      "src/rtl/ppu/n2m_ppu_shift.sv",
-      "src/rtl/ppu/n2m_ppu_fetch.sv",
-      "src/rtl/ppu/n2m_ppu_timing.sv",
-      "src/rtl/ppu/n2m_ppu_objects.sv",
-      "src/rtl/ppu/n2m_ppu_registers.sv",
-      "src/rtl/ppu/n2m_ppu_position.sv",
-      "src/rtl/ppu/n2m_ppu_window.sv",
-      "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_live_scroll.sv"
-    ],
-    "top": "tb_ppu_live_scroll",
-    "args": [
-      "+lcdc_fetch",
-      "+lcdc_fetch_corrupt"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "PPU_LIVE_SCROLL_PIXEL case=2 frame=1 index=0 expected=0 actual=3",
     "timeout_seconds": 180
   },
   "ppu-window-repeated": {
@@ -1770,7 +2566,7 @@
     "signature": "PPU_REPEAT_PIXEL frame=1 index=5240 expected=2 actual=3",
     "timeout_seconds": 180
   },
-  "ppu-object-zero": {
+  "ppu-window-wx0": {
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/clocking/n2m_timebase.sv",
@@ -1783,17 +2579,17 @@
       "src/rtl/ppu/n2m_ppu_position.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
       "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_render.sv"
+      "src/dv/ppu/tb_ppu_scroll_window.sv"
     ],
-    "top": "tb_ppu_render",
+    "top": "tb_ppu_scroll_window",
     "args": [
-      "+object_zero"
+      "+wx0"
     ],
     "expected_exit": "zero",
-    "signature": "PASS PPU X0 hidden object fixed11 lines=16 line_first=144 pixels=46080",
+    "signature": "PASS PPU WX0 static fine=8 pixels=46080 distinct14vs15=14",
     "timeout_seconds": 180
   },
-  "ppu-object-zero-corrupt": {
+  "ppu-window-wx166": {
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/clocking/n2m_timebase.sv",
@@ -1806,1429 +2602,305 @@
       "src/rtl/ppu/n2m_ppu_position.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
       "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_render.sv"
+      "src/dv/ppu/tb_ppu_scroll_window.sv"
     ],
-    "top": "tb_ppu_render",
+    "top": "tb_ppu_scroll_window",
     "args": [
-      "+object_zero",
-      "+object_zero_corrupt"
+      "+wx166"
     ],
-    "expected_exit": "nonzero",
-    "signature": "PPU_X0_FIRST line=84",
+    "expected_exit": "zero",
+    "signature": "PASS PPU WX166 retained carry rows1/2 column8 pixels=46080",
     "timeout_seconds": 180
   },
-  "ppu-stat-oam": {
+  "ppu-window-wy": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_scroll_window.sv"
+    ],
+    "top": "tb_ppu_scroll_window",
+    "args": [
+      "+wy"
+    ],
+    "expected_exit": "zero",
+    "signature": "PASS PPU WY qualified equality retained eligibility hidden row pixels=46080 late=0",
+    "timeout_seconds": 180
+  },
+  "ppu-window-wy-late": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_scroll_window.sv"
+    ],
+    "top": "tb_ppu_scroll_window",
+    "args": [
+      "+wy",
+      "+wy_late"
+    ],
+    "expected_exit": "zero",
+    "signature": "PASS PPU WY qualified equality retained eligibility hidden row pixels=46080 late=1",
+    "timeout_seconds": 180
+  },
+  "register-macros": {
+    "sources": [
+      "src/dv/common/tb_register_macros.sv"
+    ],
+    "top": "tb_register_macros",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS register macros cycles=64 combinations=15"
+  },
+  "register-macros-corrupt": {
+    "sources": [
+      "src/dv/common/tb_register_macros.sv"
+    ],
+    "top": "tb_register_macros",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "REGISTER_MISMATCH cycle=5 seed=1 expected=2d6aeb55fbd6aeb5 actual=2d6aeb55fbd6aeb4"
+  },
+  "snapshot": {
+    "top": "tb_snapshot",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/snapshot/n2m_snapshot_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/snapshot/n2m_frame_snapshot.sv",
+      "src/dv/snapshot/tb_snapshot.sv"
+    ],
+    "vendor_model": "intel-memory",
+    "signature": "PASS snapshot first copy bytes=5760",
+    "args": [],
+    "expected_exit": "zero",
+    "timeout_seconds": 180
+  },
+  "snapshot-latency": {
+    "top": "tb_snapshot_lifecycle",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/snapshot/n2m_snapshot_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/snapshot/n2m_frame_snapshot.sv",
+      "src/dv/snapshot/tb_snapshot_lifecycle.sv"
+    ],
+    "vendor_model": "intel-memory",
+    "signature": "SNAPSHOT_LIFECYCLE_LATENCY case=2 byte=3",
+    "args": [
+      "+latency_fault"
+    ],
+    "expected_exit": "nonzero",
+    "timeout_seconds": 180
+  },
+  "snapshot-lifecycle": {
+    "top": "tb_snapshot_lifecycle",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/snapshot/n2m_snapshot_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/snapshot/n2m_frame_snapshot.sv",
+      "src/dv/snapshot/tb_snapshot_lifecycle.sv"
+    ],
+    "vendor_model": "intel-memory",
+    "signature": "PASS snapshot lifecycle cases=8 bytes=43367",
+    "args": [],
+    "expected_exit": "zero",
+    "timeout_seconds": 180
+  },
+  "snapshot-overwrite": {
+    "top": "tb_snapshot_lifecycle",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/snapshot/n2m_snapshot_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/snapshot/n2m_frame_snapshot.sv",
+      "src/dv/snapshot/tb_snapshot_lifecycle.sv"
+    ],
+    "vendor_model": "intel-memory",
+    "signature": "SNAPSHOT_LIFECYCLE_DATA case=2 byte=3",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "timeout_seconds": 180
+  },
+  "snapshot-ownership": {
+    "top": "tb_snapshot_lifecycle",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/snapshot/n2m_snapshot_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/snapshot/n2m_frame_snapshot.sv",
+      "src/dv/snapshot/tb_snapshot_lifecycle.sv"
+    ],
+    "vendor_model": "intel-memory",
+    "signature": "N2M_ASSERT SNAPSHOT_BANK_OWNERSHIP",
+    "args": [
+      "+ownership_fault"
+    ],
+    "expected_exit": "nonzero",
+    "timeout_seconds": 180
+  },
+  "snapshot-vga": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/snapshot/n2m_snapshot_pkg.sv",
+      "src/rtl/clocking/n2m_reset_control.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/vga/n2m_frame_ram.sv",
+      "src/rtl/vga/n2m_vga_scan.sv",
+      "src/rtl/vga/n2m_frame_bridge.sv",
+      "src/dv/vga/tb_vga.sv",
+      "src/rtl/snapshot/n2m_frame_snapshot.sv",
+      "src/dv/snapshot/tb_snapshot_vga.sv"
+    ],
+    "vendor_model": "intel-memory",
+    "intel_mixed_mode_instances": [
+      "tb_snapshot_vga.video.dut.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_snapshot_vga.video.dut.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_snapshot_vga.video.dut.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
+    ],
+    "top": "tb_snapshot_vga",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS snapshot VGA pre_reset_frames=18 immutable",
+    "timeout_seconds": 600
+  },
+  "tile-pixel": {
+    "sources": [
+      "src/rtl/display/dmg_tile_pixel.sv",
+      "src/dv/display/tb_dmg_tile_pixel.sv"
+    ],
+    "top": "tb_dmg_tile_pixel",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS pixel_cases=524288 palette_cases=8192 cycles=532521 seed=none"
+  },
+  "tile-pixel-corrupt": {
+    "sources": [
+      "src/rtl/display/dmg_tile_pixel.sv",
+      "src/dv/display/tb_dmg_tile_pixel.sv"
+    ],
+    "top": "tb_dmg_tile_pixel",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "MISMATCH cycle=5 phase=after-edge expected=10110 actual=10111 low=00 high=01 x=7 palette=e4 seed=none"
+  },
+  "timer-commit-fault": {
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/interrupts/n2m_interrupts_pkg.sv",
       "src/rtl/interrupts/n2m_interrupts.sv",
-      "src/rtl/clocking/n2m_timebase.sv",
-      "src/rtl/ppu/n2m_ppu_mix.sv",
-      "src/rtl/ppu/n2m_ppu_shift.sv",
-      "src/rtl/ppu/n2m_ppu_fetch.sv",
-      "src/rtl/ppu/n2m_ppu_timing.sv",
-      "src/rtl/ppu/n2m_ppu_objects.sv",
-      "src/rtl/ppu/n2m_ppu_registers.sv",
-      "src/rtl/ppu/n2m_ppu_position.sv",
-      "src/rtl/ppu/n2m_ppu_window.sv",
-      "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_stat_oam.sv"
+      "src/rtl/timer/n2m_timer_pkg.sv",
+      "src/rtl/timer/n2m_timer.sv",
+      "src/dv/timer/tb_timer_edges.sv"
     ],
-    "top": "tb_ppu_stat_oam",
-    "args": [],
-    "expected_exit": "zero",
-    "signature": "PASS PPU STAT OAM compatibility qualifier public overlap IF priority cases=6 checks=42",
-    "timeout_seconds": 60
+    "top": "tb_timer_edges",
+    "args": [
+      "+bad_commit"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT TIMER_COMMIT_BOUNDARY",
+    "timeout_seconds": 120
   },
-  "ppu-stat-oam-corrupt": {
+  "timer-counter-fault": {
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/interrupts/n2m_interrupts_pkg.sv",
       "src/rtl/interrupts/n2m_interrupts.sv",
-      "src/rtl/clocking/n2m_timebase.sv",
-      "src/rtl/ppu/n2m_ppu_mix.sv",
-      "src/rtl/ppu/n2m_ppu_shift.sv",
-      "src/rtl/ppu/n2m_ppu_fetch.sv",
-      "src/rtl/ppu/n2m_ppu_timing.sv",
-      "src/rtl/ppu/n2m_ppu_objects.sv",
-      "src/rtl/ppu/n2m_ppu_registers.sv",
-      "src/rtl/ppu/n2m_ppu_position.sv",
-      "src/rtl/ppu/n2m_ppu_window.sv",
-      "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_stat_oam.sv"
+      "src/rtl/timer/n2m_timer_pkg.sv",
+      "src/rtl/timer/n2m_timer.sv",
+      "src/dv/timer/tb_timer_reload.sv"
     ],
-    "top": "tb_ppu_stat_oam",
+    "top": "tb_timer_reload",
     "args": [
-      "+qualifier_fault"
+      "+counter_fault"
     ],
     "expected_exit": "nonzero",
-    "signature": "PPU_STAT_OAM_QUALIFIER case=0 expected=b actual=f",
-    "timeout_seconds": 60
+    "signature": "TIMER_COUNTER case=0 tick=64 expected=ff actual=00"
   },
-  "ppu-vblank": {
+  "timer-edge-fault": {
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/interrupts/n2m_interrupts_pkg.sv",
       "src/rtl/interrupts/n2m_interrupts.sv",
-      "src/rtl/clocking/n2m_timebase.sv",
-      "src/rtl/ppu/n2m_ppu_mix.sv",
-      "src/rtl/ppu/n2m_ppu_shift.sv",
-      "src/rtl/ppu/n2m_ppu_fetch.sv",
-      "src/rtl/ppu/n2m_ppu_timing.sv",
-      "src/rtl/ppu/n2m_ppu_objects.sv",
-      "src/rtl/ppu/n2m_ppu_registers.sv",
-      "src/rtl/ppu/n2m_ppu_position.sv",
-      "src/rtl/ppu/n2m_ppu_window.sv",
-      "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_vblank.sv"
+      "src/rtl/timer/n2m_timer_pkg.sv",
+      "src/rtl/timer/n2m_timer.sv",
+      "src/dv/timer/tb_timer_edges.sv"
     ],
-    "top": "tb_ppu_vblank",
-    "args": [],
-    "expected_exit": "zero",
-    "signature": "PASS PPU line144 STAT VBlank IF priority cases=4 checks=32",
+    "top": "tb_timer_edges",
+    "args": [
+      "+edge_fault"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "TIMER_EDGE_READ case=1 tick=1020 address=ff05 expected=01 actual=00",
     "timeout_seconds": 120
   },
-  "ppu-vblank-corrupt": {
+  "timer-edges": {
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/interrupts/n2m_interrupts_pkg.sv",
       "src/rtl/interrupts/n2m_interrupts.sv",
-      "src/rtl/clocking/n2m_timebase.sv",
-      "src/rtl/ppu/n2m_ppu_mix.sv",
-      "src/rtl/ppu/n2m_ppu_shift.sv",
-      "src/rtl/ppu/n2m_ppu_fetch.sv",
-      "src/rtl/ppu/n2m_ppu_timing.sv",
-      "src/rtl/ppu/n2m_ppu_objects.sv",
-      "src/rtl/ppu/n2m_ppu_registers.sv",
-      "src/rtl/ppu/n2m_ppu_position.sv",
-      "src/rtl/ppu/n2m_ppu_window.sv",
-      "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_vblank.sv"
+      "src/rtl/timer/n2m_timer_pkg.sv",
+      "src/rtl/timer/n2m_timer.sv",
+      "src/dv/timer/tb_timer_edges.sv"
     ],
-    "top": "tb_ppu_vblank",
-    "args": [
-      "+vblank_fault"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "PPU_VBLANK_EVENT case=0 dot=65662 expected=1 actual=0",
+    "top": "tb_timer_edges",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS timer frequencies edges wrap pause STOP resets cases=67",
     "timeout_seconds": 120
   },
-  "cpu-alu": {
+  "timer-reload": {
     "sources": [
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/dv/cpu/alu_reference.sv",
-      "src/dv/cpu/tb_cpu_alu.sv"
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/rtl/timer/n2m_timer_pkg.sv",
+      "src/rtl/timer/n2m_timer.sv",
+      "src/dv/timer/tb_timer_reload.sv"
     ],
-    "top": "tb_cpu_alu",
+    "top": "tb_timer_reload",
     "args": [],
     "expected_exit": "zero",
-    "signature": "PASS CPU ALU cases=1232896 operations=32 seed=none"
+    "signature": "PASS timer reload schedules cases=8 checks=1152"
   },
-  "cpu-alu-corrupt": {
+  "timer-request-fault": {
     "sources": [
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/dv/cpu/alu_reference.sv",
-      "src/dv/cpu/tb_cpu_alu.sv"
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/rtl/timer/n2m_timer_pkg.sv",
+      "src/rtl/timer/n2m_timer.sv",
+      "src/dv/timer/tb_timer_reload.sv"
     ],
-    "top": "tb_cpu_alu",
+    "top": "tb_timer_reload",
     "args": [
-      "+corrupt"
+      "+request_fault"
     ],
     "expected_exit": "nonzero",
-    "signature": "CPU_ALU_MISMATCH case=17 op=0 lhs=00 rhs=08 flags=1f bit=0 expected=0800 actual=0900"
-  },
-  "cpu-execute": {
-    "sources": [
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/dv/cpu/alu_reference.sv",
-      "src/dv/cpu/tb_cpu_execute.sv"
-    ],
-    "top": "tb_cpu_execute",
-    "args": [],
-    "expected_exit": "zero",
-    "signature": "PASS CPU execute cases=135168 base=256 flagsets=16 cb_memory=32 seed=none"
-  },
-  "cpu-bus": {
-    "sources": [
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/dv/cpu/tb_cpu_bus.sv"
-    ],
-    "top": "tb_cpu_bus",
-    "args": [],
-    "expected_exit": "zero",
-    "signature": "PASS CPU bus commits=13 pause_phases=4 reset_phases=4 inactive_cycles=4"
-  },
-  "cpu-bus-missing-response": {
-    "sources": [
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/dv/cpu/tb_cpu_bus.sv"
-    ],
-    "top": "tb_cpu_bus",
-    "args": [
-      "+missing_response"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "N2M_ASSERT CPU_BUS_RESPONSE"
-  },
-  "cpu-bus-late-active": {
-    "sources": [
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/dv/cpu/tb_cpu_bus.sv"
-    ],
-    "top": "tb_cpu_bus",
-    "args": [
-      "+late_active"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "N2M_ASSERT CPU_BUS_ACTIVE_BOUNDARY"
-  },
-  "cpu-bus-changing-request": {
-    "sources": [
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/dv/cpu/tb_cpu_bus.sv"
-    ],
-    "top": "tb_cpu_bus",
-    "args": [
-      "+change_after_t1"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "N2M_ASSERT CPU_BUS_PLAN_STABLE"
-  },
-  "cpu-retire": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/dv/cpu/tb_cpu_retire.sv"
-    ],
-    "top": "tb_cpu_retire",
-    "args": [],
-    "expected_exit": "zero",
-    "signature": "PASS CPU retirement events=6 lengths=1,2,3 irq_zero=1 reset_cancel=1"
-  },
-  "cpu-retire-corrupt": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/dv/cpu/tb_cpu_retire.sv"
-    ],
-    "top": "tb_cpu_retire",
-    "args": [
-      "+corrupt"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "CPU_RETIRE_MISMATCH case=1"
-  },
-  "cpu-program": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
-      "src/rtl/cpu/n2m_cpu_control.sv",
-      "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_program.sv"
-    ],
-    "top": "tb_cpu_program",
-    "args": [],
-    "expected_exit": "zero",
-    "signature": "PASS CPU program events=18 Mcycles=50 dots=220 HALT=1"
-  },
-  "cpu-program-state-fault": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
-      "src/rtl/cpu/n2m_cpu_control.sv",
-      "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_program.sv"
-    ],
-    "top": "tb_cpu_program",
-    "args": [
-      "+state_fault"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "CPU_PROGRAM_STATE event=11"
-  },
-  "cpu-program-timing-fault": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
-      "src/rtl/cpu/n2m_cpu_control.sv",
-      "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_program.sv"
-    ],
-    "top": "tb_cpu_program",
-    "args": [
-      "+timing_fault"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "CPU_PROGRAM_TIMING"
-  },
-  "cpu-program-retirement-fault": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
-      "src/rtl/cpu/n2m_cpu_control.sv",
-      "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_program.sv"
-    ],
-    "top": "tb_cpu_program",
-    "args": [
-      "+retirement_fault"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "CPU_PROGRAM_STATE event=3"
-  },
-  "cpu-irq": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
-      "src/rtl/cpu/n2m_cpu_control.sv",
-      "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_irq.sv"
-    ],
-    "top": "tb_cpu_irq",
-    "args": [],
-    "expected_exit": "zero",
-    "signature": "PASS CPU IRQ cases=20 T3 stack HALT wake CB EI DI RETI pause"
-  },
-  "cpu-irq-snapshot-fault": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
-      "src/rtl/cpu/n2m_cpu_control.sv",
-      "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_irq.sv"
-    ],
-    "top": "tb_cpu_irq",
-    "args": [
-      "+corrupt"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "CPU_IRQ_BUS case=0 dot=32"
-  },
-  "cpu-vectors": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
-      "src/rtl/cpu/n2m_cpu_control.sv",
-      "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_vectors.sv"
-    ],
-    "top": "tb_cpu_vectors",
-    "args": [],
-    "expected_exit": "zero",
-    "signature": "PASS CPU vectors cases=7968 forms=498 flags=16 excluded_STOP_HALT=32",
-    "timeout_seconds": 120
-  },
-  "cpu-vectors-state-fault": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
-      "src/rtl/cpu/n2m_cpu_control.sv",
-      "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_vectors.sv"
-    ],
-    "top": "tb_cpu_vectors",
-    "args": [
-      "+corrupt"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "CPU_VECTOR_STATE case=0",
-    "timeout_seconds": 120
-  },
-  "cpu-vectors-missing": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
-      "src/rtl/cpu/n2m_cpu_control.sv",
-      "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_vectors.sv"
-    ],
-    "top": "tb_cpu_vectors",
-    "args": [
-      "+missing"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "CPU_VECTOR_MISSING case=0",
-    "timeout_seconds": 120
-  },
-  "cpu-reset": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
-      "src/rtl/cpu/n2m_cpu_control.sv",
-      "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_reset.sv"
-    ],
-    "top": "tb_cpu_reset",
-    "args": [],
-    "expected_exit": "zero",
-    "signature": "PASS CPU reset cases=10 phases=4 pending=2 pause=20 fresh_events=50"
-  },
-  "cpu-reset-lost-write": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
-      "src/rtl/cpu/n2m_cpu_control.sv",
-      "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_reset.sv"
-    ],
-    "top": "tb_cpu_reset",
-    "args": [
-      "+corrupt"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "CPU_RESET_WRITE case=0 dot=32"
-  },
-  "cpu-irq-di-fault": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
-      "src/rtl/cpu/n2m_cpu_control.sv",
-      "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_irq.sv"
-    ],
-    "top": "tb_cpu_irq",
-    "args": [
-      "+di_fault"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "CPU_IRQ_BUS case=18 dot=28"
-  },
-  "cpu-halt-lock": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
-      "src/rtl/cpu/n2m_cpu_control.sv",
-      "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_halt_lock.sv"
-    ],
-    "top": "tb_cpu_halt_lock",
-    "args": [],
-    "expected_exit": "zero",
-    "signature": "PASS CPU HALT bug cases=2 illegal_locks=11 reset_recovery=11"
-  },
-  "cpu-halt-bug-fault": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
-      "src/rtl/cpu/n2m_cpu_control.sv",
-      "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_halt_lock.sv"
-    ],
-    "top": "tb_cpu_halt_lock",
-    "args": [
-      "+halt_fault"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "CPU_POWER_BUS case=0 dot=12"
-  },
-  "cpu-lock-event-fault": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
-      "src/rtl/cpu/n2m_cpu_control.sv",
-      "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_halt_lock.sv"
-    ],
-    "top": "tb_cpu_halt_lock",
-    "args": [
-      "+lock_fault"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "CPU_POWER_LOCK_EVENT case=2"
-  },
-  "cpu-execute-idu-fault": {
-    "sources": [
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/dv/cpu/alu_reference.sv",
-      "src/dv/cpu/tb_cpu_execute.sv"
-    ],
-    "top": "tb_cpu_execute",
-    "args": [
-      "+idu_fault"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "CPU_EXECUTE_IDU op=03 step=0"
-  },
-  "cpu-program-idu-fault": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
-      "src/rtl/cpu/n2m_cpu_control.sv",
-      "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_program.sv"
-    ],
-    "top": "tb_cpu_program",
-    "args": [
-      "+effect_fault"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "CPU_PROGRAM_IDU cycle=20 dot=81"
-  },
-  "cpu-program-idu-missing": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
-      "src/rtl/cpu/n2m_cpu_control.sv",
-      "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_program.sv"
-    ],
-    "top": "tb_cpu_program",
-    "args": [
-      "+effect_missing"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "N2M_ASSERT CPU_BUS_RESPONSE"
-  },
-  "cpu-program-idu-page": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
-      "src/rtl/cpu/n2m_cpu_control.sv",
-      "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_program.sv"
-    ],
-    "top": "tb_cpu_program",
-    "args": [
-      "+effect_page"
-    ],
-    "expected_exit": "zero",
-    "signature": "PASS CPU IDU FE-page effects=2 ordinary_accesses=0"
-  },
-  "cpu-program-idu-page-fault": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
-      "src/rtl/cpu/n2m_cpu_control.sv",
-      "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_program.sv"
-    ],
-    "top": "tb_cpu_program",
-    "args": [
-      "+effect_page",
-      "+effect_fault"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "CPU_PROGRAM_IDU cycle=20 dot=81"
-  },
-  "cpu-idu-arithmetic": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
-      "src/rtl/cpu/n2m_cpu_control.sv",
-      "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_idu_arithmetic.sv"
-    ],
-    "top": "tb_cpu_idu_arithmetic",
-    "args": [],
-    "expected_exit": "zero",
-    "signature": "PASS CPU IDU arithmetic cycles=17 events=6 resolved_no_effect=4"
-  },
-  "cpu-idu-arithmetic-fault": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
-      "src/rtl/cpu/n2m_cpu_control.sv",
-      "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_idu_arithmetic.sv"
-    ],
-    "top": "tb_cpu_idu_arithmetic",
-    "args": [
-      "+corrupt"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "CPU_IDU_ARITH_EFFECT cycle=7 dot=29"
-  },
-  "cpu-stop": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
-      "src/rtl/cpu/n2m_cpu_control.sv",
-      "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_stop.sv"
-    ],
-    "top": "tb_cpu_stop",
-    "args": [],
-    "expected_exit": "zero",
-    "signature": "PASS CPU STOP entry cases=8 rows=4 IME_states=2"
-  },
-  "cpu-stop-divider-fault": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
-      "src/rtl/cpu/n2m_cpu_control.sv",
-      "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_stop.sv"
-    ],
-    "top": "tb_cpu_stop",
-    "args": [
-      "+corrupt_divider"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "CPU_STOP_DIVIDER case=0 dot=16"
-  },
-  "cpu-stop-mode-fault": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
-      "src/rtl/cpu/n2m_cpu_control.sv",
-      "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_stop.sv"
-    ],
-    "top": "tb_cpu_stop",
-    "args": [
-      "+corrupt_action"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "CPU_STOP_RECORD case=0 event=2"
-  },
-  "cpu-wake": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
-      "src/rtl/cpu/n2m_cpu_control.sv",
-      "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_wake.sv"
-    ],
-    "top": "tb_cpu_wake",
-    "args": [],
-    "expected_exit": "zero",
-    "signature": "PASS CPU HALT wake cases=7 arrival_edges=3 IME_states=2 fresh_opcode=1"
-  },
-  "cpu-wake-stale": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
-      "src/rtl/cpu/n2m_cpu_control.sv",
-      "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_wake.sv"
-    ],
-    "top": "tb_cpu_wake",
-    "args": [
-      "+stale"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "CPU_WAKE_RECORD case=6 event=4"
-  },
-  "cpu-wake-missing": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
-      "src/rtl/cpu/n2m_cpu_control.sv",
-      "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_wake.sv"
-    ],
-    "top": "tb_cpu_wake",
-    "args": [
-      "+missing"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "CPU_BUS_RESPONSE"
-  },
-  "cpu-wake-reset": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
-      "src/rtl/cpu/n2m_cpu_control.sv",
-      "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_wake_reset.sv"
-    ],
-    "top": "tb_cpu_wake_reset",
-    "args": [],
-    "expected_exit": "zero",
-    "signature": "PASS CPU HALT reset cases=16 phases=4 resets=2 IME_states=2"
-  },
-  "cpu-wake-reset-fault": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
-      "src/rtl/cpu/n2m_cpu_control.sv",
-      "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_wake_reset.sv"
-    ],
-    "top": "tb_cpu_wake_reset",
-    "args": [
-      "+corrupt"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "CPU_WAKE_RESET_CANCEL case=3 phase=3"
-  },
-  "cpu-irq-idu": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
-      "src/rtl/cpu/n2m_cpu_control.sv",
-      "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_irq_idu.sv"
-    ],
-    "top": "tb_cpu_irq_idu",
-    "args": [],
-    "expected_exit": "zero",
-    "signature": "PASS CPU IRQ IDU cycles=14 events=6 FE_effects=1 FE_accesses=0"
-  },
-  "cpu-irq-idu-fault": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
-      "src/rtl/cpu/n2m_cpu_control.sv",
-      "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_irq_idu.sv"
-    ],
-    "top": "tb_cpu_irq_idu",
-    "args": [
-      "+corrupt"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "CPU_IRQ_IDU_EFFECT cycle=9"
-  },
-  "cpu-wrap": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
-      "src/rtl/cpu/n2m_cpu_control.sv",
-      "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_wrap.sv"
-    ],
-    "top": "tb_cpu_wrap",
-    "args": [],
-    "expected_exit": "zero",
-    "signature": "PASS CPU wrap cases=2 cycles=40 records=12 writes=4"
-  },
-  "cpu-wrap-fault": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
-      "src/rtl/cpu/n2m_cpu_control.sv",
-      "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_wrap.sv"
-    ],
-    "top": "tb_cpu_wrap",
-    "args": [
-      "+corrupt"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "CPU_WRAP_RECORD case=0 event=3"
-  },
-  "cpu-if-observation": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
-      "src/rtl/cpu/n2m_cpu_control.sv",
-      "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_if_observation.sv"
-    ],
-    "top": "tb_cpu_if_observation",
-    "args": [],
-    "expected_exit": "zero",
-    "signature": "PASS CPU IF observation cases=3 records=13 T3_A_B_separate=1"
-  },
-  "cpu-if-observation-fault": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
-      "src/rtl/cpu/n2m_cpu_control.sv",
-      "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_if_observation.sv"
-    ],
-    "top": "tb_cpu_if_observation",
-    "args": [
-      "+corrupt"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "CPU_IF_RECORD case=1 event=2"
-  },
-  "cpu-irq-reset": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
-      "src/rtl/cpu/n2m_cpu_control.sv",
-      "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_irq_reset.sv"
-    ],
-    "top": "tb_cpu_irq_reset",
-    "args": [],
-    "expected_exit": "zero",
-    "signature": "PASS CPU IRQ reset cases=42 phases=4 entry_cycles=5 captured_cancel=2"
-  },
-  "cpu-irq-reset-fault": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
-      "src/rtl/cpu/n2m_cpu_control.sv",
-      "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_irq_reset.sv"
-    ],
-    "top": "tb_cpu_irq_reset",
-    "args": [
-      "+corrupt"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "CPU_IRQ_RESET_CANCEL case=19"
-  },
-  "cpu-stop-wake": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
-      "src/rtl/cpu/n2m_cpu_control.sv",
-      "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_stop_wake.sv"
-    ],
-    "top": "tb_cpu_stop_wake",
-    "args": [],
-    "expected_exit": "zero",
-    "signature": "PASS CPU normal STOP wake cases=20 normal=4 reset=16"
-  },
-  "cpu-stop-wake-stale": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
-      "src/rtl/cpu/n2m_cpu_control.sv",
-      "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_stop_wake.sv"
-    ],
-    "top": "tb_cpu_stop_wake",
-    "args": [
-      "+corrupt"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "CPU_STOP_WAKE_RECORD case=0 event=3"
-  },
-  "cpu-stop-idu": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
-      "src/rtl/cpu/n2m_cpu_control.sv",
-      "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_stop_idu.sv"
-    ],
-    "top": "tb_cpu_stop_idu",
-    "args": [],
-    "expected_exit": "zero",
-    "signature": "PASS CPU STOP entry IDU cases=8 pages=2 rows=4"
-  },
-  "cpu-stop-idu-fault": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
-      "src/rtl/cpu/n2m_cpu_control.sv",
-      "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_stop_idu.sv"
-    ],
-    "top": "tb_cpu_stop_idu",
-    "args": [
-      "+corrupt"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "CPU_STOP_ENTRY_IDU case=4"
-  },
-  "cpu-step": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
-      "src/rtl/cpu/n2m_cpu_control.sv",
-      "src/rtl/cpu/n2m_cpu.sv",
-      "src/rtl/clocking/n2m_timebase.sv",
-      "src/dv/cpu/tb_cpu_step.sv"
-    ],
-    "top": "tb_cpu_step",
-    "args": [],
-    "expected_exit": "zero",
-    "signature": "PASS CPU STEP timebase steps=7 records=8 interrupts=1 ticks=64"
-  },
-  "cpu-step-suppress": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
-      "src/rtl/cpu/n2m_cpu_control.sv",
-      "src/rtl/cpu/n2m_cpu.sv",
-      "src/rtl/clocking/n2m_timebase.sv",
-      "src/dv/cpu/tb_cpu_step.sv"
-    ],
-    "top": "tb_cpu_step",
-    "args": [
-      "+suppress"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "CPU_STEP_COMPLETE case=0 dot=8 expected=1 actual=0"
-  },
-  "cpu-step-missing": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
-      "src/rtl/cpu/n2m_cpu_control.sv",
-      "src/rtl/cpu/n2m_cpu.sv",
-      "src/rtl/clocking/n2m_timebase.sv",
-      "src/dv/cpu/tb_cpu_step.sv"
-    ],
-    "top": "tb_cpu_step",
-    "args": [
-      "+missing"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "N2M_ASSERT CPU_BUS_RESPONSE"
-  },
-  "cpu-stop-irq": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
-      "src/rtl/cpu/n2m_cpu_control.sv",
-      "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_stop_irq.sv"
-    ],
-    "top": "tb_cpu_stop_irq",
-    "args": [],
-    "expected_exit": "zero",
-    "signature": "PASS CPU STOP interrupt restart cases=14 records=64 normal=6 reset=8"
-  },
-  "cpu-stop-irq-effect": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
-      "src/rtl/cpu/n2m_cpu_control.sv",
-      "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_stop_irq.sv"
-    ],
-    "top": "tb_cpu_stop_irq",
-    "args": [
-      "+effect_fault"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "CPU_STOP_IRQ_EFFECT case=0 dot=20"
-  },
-  "cpu-stop-irq-stack": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_pkg.sv",
-      "src/rtl/cpu/n2m_cpu_alu.sv",
-      "src/rtl/cpu/n2m_cpu_execute.sv",
-      "src/rtl/cpu/n2m_cpu_bus.sv",
-      "src/rtl/cpu/n2m_cpu_retire.sv",
-      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
-      "src/rtl/cpu/n2m_cpu_control.sv",
-      "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_stop_irq.sv"
-    ],
-    "top": "tb_cpu_stop_irq",
-    "args": [
-      "+stack_fault"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "CPU_STOP_IRQ_BUS case=0 dot=32"
-  },
-  "uart-packet-rx": {
-    "vendor_model": "intel-memory",
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/uart/n2m_uart_pkg.sv",
-      "src/rtl/common/n2m_intel_ram.sv",
-      "src/rtl/uart/n2m_uart_packet_store.sv",
-      "src/rtl/uart/n2m_uart_packet_rx.sv",
-      "src/dv/uart/tb_uart_packet_rx.sv"
-    ],
-    "top": "tb_uart_packet_rx",
-    "args": [],
-    "expected_exit": "zero",
-    "signature": "PASS UART packet RX requests=7"
-  },
-  "uart-packet-corrupt": {
-    "vendor_model": "intel-memory",
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/uart/n2m_uart_pkg.sv",
-      "src/rtl/common/n2m_intel_ram.sv",
-      "src/rtl/uart/n2m_uart_packet_store.sv",
-      "src/rtl/uart/n2m_uart_packet_rx.sv",
-      "src/dv/uart/tb_uart_packet_rx.sv"
-    ],
-    "top": "tb_uart_packet_rx",
-    "args": [
-      "+corrupt"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "UART_RX_PACKET_BYTE index=2"
-  },
-  "uart-packet-range": {
-    "vendor_model": "intel-memory",
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/uart/n2m_uart_pkg.sv",
-      "src/rtl/common/n2m_intel_ram.sv",
-      "src/rtl/uart/n2m_uart_packet_store.sv",
-      "src/rtl/uart/n2m_uart_packet_rx.sv",
-      "src/dv/uart/tb_uart_packet_rx.sv"
-    ],
-    "top": "tb_uart_packet_rx",
-    "args": [
-      "+bad_read"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "N2M_ASSERT UART_PACKET_READ_RANGE"
-  },
-  "uart-exchange": {
-    "vendor_model": "intel-memory",
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/uart/n2m_uart_pkg.sv",
-      "src/rtl/common/n2m_intel_ram.sv",
-      "src/rtl/uart/n2m_uart_exchange_store.sv",
-      "src/rtl/uart/n2m_uart_exchange.sv",
-      "src/dv/uart/tb_uart_exchange.sv"
-    ],
-    "top": "tb_uart_exchange",
-    "args": [],
-    "expected_exit": "zero",
-    "signature": "PASS UART exchange replies=14 effects=7 dispatch=9"
-  },
-  "uart-exchange-corrupt": {
-    "vendor_model": "intel-memory",
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/uart/n2m_uart_pkg.sv",
-      "src/rtl/common/n2m_intel_ram.sv",
-      "src/rtl/uart/n2m_uart_exchange_store.sv",
-      "src/rtl/uart/n2m_uart_exchange.sv",
-      "src/dv/uart/tb_uart_exchange.sv"
-    ],
-    "top": "tb_uart_exchange",
-    "args": [
-      "+corrupt"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "UART_EXCHANGE_REPLY_BYTE index=2"
-  },
-  "uart-exchange-duplicate": {
-    "vendor_model": "intel-memory",
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/uart/n2m_uart_pkg.sv",
-      "src/rtl/common/n2m_intel_ram.sv",
-      "src/rtl/uart/n2m_uart_exchange_store.sv",
-      "src/rtl/uart/n2m_uart_exchange.sv",
-      "src/dv/uart/tb_uart_exchange.sv"
-    ],
-    "top": "tb_uart_exchange",
-    "args": [
-      "+duplicate"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "UART_EXCHANGE_DUPLICATE_EXECUTION"
-  },
-  "uart-serial": {
-    "vendor_model": "intel-memory",
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/uart/n2m_uart_pkg.sv",
-      "src/rtl/common/n2m_intel_ram.sv",
-      "src/rtl/uart/n2m_uart_packet_store.sv",
-      "src/rtl/uart/n2m_uart_packet_rx.sv",
-      "src/rtl/uart/n2m_uart_rx.sv",
-      "src/rtl/uart/n2m_uart_tx.sv",
-      "src/dv/uart/tb_uart_serial.sv"
-    ],
-    "top": "tb_uart_serial",
-    "args": [],
-    "signature": "PASS UART serial bytes=302 errors=2 packets=2 reset_bits=10",
-    "expected_exit": "zero",
-    "timeout_seconds": 180
-  },
-  "uart-serial-corrupt": {
-    "vendor_model": "intel-memory",
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/uart/n2m_uart_pkg.sv",
-      "src/rtl/common/n2m_intel_ram.sv",
-      "src/rtl/uart/n2m_uart_packet_store.sv",
-      "src/rtl/uart/n2m_uart_packet_rx.sv",
-      "src/rtl/uart/n2m_uart_rx.sv",
-      "src/rtl/uart/n2m_uart_tx.sv",
-      "src/dv/uart/tb_uart_serial.sv"
-    ],
-    "top": "tb_uart_serial",
-    "args": [
-      "+corrupt"
-    ],
-    "signature": "UART_SERIAL_TX_BIT",
-    "expected_exit": "nonzero",
-    "timeout_seconds": 180
-  },
-  "uart-packet-tx": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/uart/n2m_uart_pkg.sv",
-      "src/rtl/uart/n2m_uart_tx.sv",
-      "src/rtl/uart/n2m_uart_packet_tx.sv",
-      "src/dv/uart/tb_uart_packet_tx.sv"
-    ],
-    "top": "tb_uart_packet_tx",
-    "args": [],
-    "expected_exit": "zero",
-    "signature": "PASS UART packet TX replies=11 resets=3 COBS zero 254 max serial_stop",
-    "timeout_seconds": 120
-  },
-  "uart-packet-tx-corrupt": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/uart/n2m_uart_pkg.sv",
-      "src/rtl/uart/n2m_uart_tx.sv",
-      "src/rtl/uart/n2m_uart_packet_tx.sv",
-      "src/dv/uart/tb_uart_packet_tx.sv"
-    ],
-    "top": "tb_uart_packet_tx",
-    "args": [
-      "+corrupt"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "UART_PACKET_TX_BYTE",
-    "timeout_seconds": 120
-  },
-  "uart-packet-tx-missing": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/uart/n2m_uart_pkg.sv",
-      "src/rtl/uart/n2m_uart_tx.sv",
-      "src/rtl/uart/n2m_uart_packet_tx.sv",
-      "src/dv/uart/tb_uart_packet_tx.sv"
-    ],
-    "top": "tb_uart_packet_tx",
-    "args": [
-      "+missing"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "N2M_ASSERT UART_TX_READ_SERVICE",
-    "timeout_seconds": 120
-  },
-  "uart-response": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/common/n2m_intel_ram.sv",
-      "src/rtl/uart/n2m_uart_pkg.sv",
-      "src/rtl/uart/n2m_uart_exchange_store.sv",
-      "src/rtl/uart/n2m_uart_response.sv",
-      "src/dv/uart/tb_uart_response.sv"
-    ],
-    "top": "tb_uart_response",
-    "args": [],
-    "expected_exit": "zero",
-    "signature": "PASS UART response packets=6 bytes=328 resets=3 Intel_staging CRC16",
-    "vendor_model": "intel-memory",
-    "timeout_seconds": 120
-  },
-  "uart-response-corrupt": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/common/n2m_intel_ram.sv",
-      "src/rtl/uart/n2m_uart_pkg.sv",
-      "src/rtl/uart/n2m_uart_exchange_store.sv",
-      "src/rtl/uart/n2m_uart_response.sv",
-      "src/dv/uart/tb_uart_response.sv"
-    ],
-    "top": "tb_uart_response",
-    "args": [
-      "+corrupt"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "UART_RESPONSE_BYTE case=0 index=10",
-    "vendor_model": "intel-memory",
-    "timeout_seconds": 120
-  },
-  "uart-load": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/common/n2m_intel_ram.sv",
-      "src/rtl/memory/n2m_memory_pkg.sv",
-      "src/rtl/memory/n2m_memory_stores.sv",
-      "src/rtl/uart/n2m_uart_pkg.sv",
-      "src/rtl/uart/n2m_uart_presence_store.sv",
-      "src/rtl/uart/n2m_uart_load.sv",
-      "src/dv/uart/tb_uart_load.sv"
-    ],
-    "top": "tb_uart_load",
-    "args": [],
-    "expected_exit": "zero",
-    "signature": "PASS UART load full_ROM CRC32 presence repair overlap readback reset",
-    "vendor_model": "intel-memory",
-    "timeout_seconds": 180
-  },
-  "uart-load-crc": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/common/n2m_intel_ram.sv",
-      "src/rtl/memory/n2m_memory_pkg.sv",
-      "src/rtl/memory/n2m_memory_stores.sv",
-      "src/rtl/uart/n2m_uart_pkg.sv",
-      "src/rtl/uart/n2m_uart_presence_store.sv",
-      "src/rtl/uart/n2m_uart_load.sv",
-      "src/dv/uart/tb_uart_load.sv"
-    ],
-    "top": "tb_uart_load",
-    "args": [
-      "+crc_fault"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "UART_LOAD_RESULT op=2 expected=0 actual=6",
-    "vendor_model": "intel-memory",
-    "timeout_seconds": 180
-  },
-  "uart-load-presence": {
-    "sources": [
-      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
-      "src/rtl/common/n2m_intel_ram.sv",
-      "src/rtl/memory/n2m_memory_pkg.sv",
-      "src/rtl/memory/n2m_memory_stores.sv",
-      "src/rtl/uart/n2m_uart_pkg.sv",
-      "src/rtl/uart/n2m_uart_presence_store.sv",
-      "src/rtl/uart/n2m_uart_load.sv",
-      "src/dv/uart/tb_uart_load.sv"
-    ],
-    "top": "tb_uart_load",
-    "args": [
-      "+presence_fault"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "UART_LOAD_RESULT op=2 expected=6 actual=0",
-    "vendor_model": "intel-memory",
-    "timeout_seconds": 180
+    "signature": "TIMER_REQUEST case=2 tick=132 expected=1 actual=0"
   },
   "uart-endpoint": {
     "sources": [
@@ -3353,5 +3025,439 @@
     "signature": "UART_ENDPOINT_PAYLOAD cmd=10 index=0 expected=a5 actual=00",
     "vendor_model": "intel-memory",
     "timeout_seconds": 300
+  },
+  "uart-exchange": {
+    "vendor_model": "intel-memory",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/uart/n2m_uart_exchange_store.sv",
+      "src/rtl/uart/n2m_uart_exchange.sv",
+      "src/dv/uart/tb_uart_exchange.sv"
+    ],
+    "top": "tb_uart_exchange",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS UART exchange replies=14 effects=7 dispatch=9"
+  },
+  "uart-exchange-corrupt": {
+    "vendor_model": "intel-memory",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/uart/n2m_uart_exchange_store.sv",
+      "src/rtl/uart/n2m_uart_exchange.sv",
+      "src/dv/uart/tb_uart_exchange.sv"
+    ],
+    "top": "tb_uart_exchange",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "UART_EXCHANGE_REPLY_BYTE index=2"
+  },
+  "uart-exchange-duplicate": {
+    "vendor_model": "intel-memory",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/uart/n2m_uart_exchange_store.sv",
+      "src/rtl/uart/n2m_uart_exchange.sv",
+      "src/dv/uart/tb_uart_exchange.sv"
+    ],
+    "top": "tb_uart_exchange",
+    "args": [
+      "+duplicate"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "UART_EXCHANGE_DUPLICATE_EXECUTION"
+  },
+  "uart-load": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/memory/n2m_memory_stores.sv",
+      "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/uart/n2m_uart_presence_store.sv",
+      "src/rtl/uart/n2m_uart_load.sv",
+      "src/dv/uart/tb_uart_load.sv"
+    ],
+    "top": "tb_uart_load",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS UART load full_ROM CRC32 presence repair overlap readback reset",
+    "vendor_model": "intel-memory",
+    "timeout_seconds": 180
+  },
+  "uart-load-crc": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/memory/n2m_memory_stores.sv",
+      "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/uart/n2m_uart_presence_store.sv",
+      "src/rtl/uart/n2m_uart_load.sv",
+      "src/dv/uart/tb_uart_load.sv"
+    ],
+    "top": "tb_uart_load",
+    "args": [
+      "+crc_fault"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "UART_LOAD_RESULT op=2 expected=0 actual=6",
+    "vendor_model": "intel-memory",
+    "timeout_seconds": 180
+  },
+  "uart-load-presence": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/memory/n2m_memory_stores.sv",
+      "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/uart/n2m_uart_presence_store.sv",
+      "src/rtl/uart/n2m_uart_load.sv",
+      "src/dv/uart/tb_uart_load.sv"
+    ],
+    "top": "tb_uart_load",
+    "args": [
+      "+presence_fault"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "UART_LOAD_RESULT op=2 expected=6 actual=0",
+    "vendor_model": "intel-memory",
+    "timeout_seconds": 180
+  },
+  "uart-packet-corrupt": {
+    "vendor_model": "intel-memory",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/uart/n2m_uart_packet_store.sv",
+      "src/rtl/uart/n2m_uart_packet_rx.sv",
+      "src/dv/uart/tb_uart_packet_rx.sv"
+    ],
+    "top": "tb_uart_packet_rx",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "UART_RX_PACKET_BYTE index=2"
+  },
+  "uart-packet-range": {
+    "vendor_model": "intel-memory",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/uart/n2m_uart_packet_store.sv",
+      "src/rtl/uart/n2m_uart_packet_rx.sv",
+      "src/dv/uart/tb_uart_packet_rx.sv"
+    ],
+    "top": "tb_uart_packet_rx",
+    "args": [
+      "+bad_read"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT UART_PACKET_READ_RANGE"
+  },
+  "uart-packet-rx": {
+    "vendor_model": "intel-memory",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/uart/n2m_uart_packet_store.sv",
+      "src/rtl/uart/n2m_uart_packet_rx.sv",
+      "src/dv/uart/tb_uart_packet_rx.sv"
+    ],
+    "top": "tb_uart_packet_rx",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS UART packet RX requests=7"
+  },
+  "uart-packet-tx": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/uart/n2m_uart_tx.sv",
+      "src/rtl/uart/n2m_uart_packet_tx.sv",
+      "src/dv/uart/tb_uart_packet_tx.sv"
+    ],
+    "top": "tb_uart_packet_tx",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS UART packet TX replies=11 resets=3 COBS zero 254 max serial_stop",
+    "timeout_seconds": 120
+  },
+  "uart-packet-tx-corrupt": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/uart/n2m_uart_tx.sv",
+      "src/rtl/uart/n2m_uart_packet_tx.sv",
+      "src/dv/uart/tb_uart_packet_tx.sv"
+    ],
+    "top": "tb_uart_packet_tx",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "UART_PACKET_TX_BYTE",
+    "timeout_seconds": 120
+  },
+  "uart-packet-tx-missing": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/uart/n2m_uart_tx.sv",
+      "src/rtl/uart/n2m_uart_packet_tx.sv",
+      "src/dv/uart/tb_uart_packet_tx.sv"
+    ],
+    "top": "tb_uart_packet_tx",
+    "args": [
+      "+missing"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT UART_TX_READ_SERVICE",
+    "timeout_seconds": 120
+  },
+  "uart-response": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/uart/n2m_uart_exchange_store.sv",
+      "src/rtl/uart/n2m_uart_response.sv",
+      "src/dv/uart/tb_uart_response.sv"
+    ],
+    "top": "tb_uart_response",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS UART response packets=6 bytes=328 resets=3 Intel_staging CRC16",
+    "vendor_model": "intel-memory",
+    "timeout_seconds": 120
+  },
+  "uart-response-corrupt": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/uart/n2m_uart_exchange_store.sv",
+      "src/rtl/uart/n2m_uart_response.sv",
+      "src/dv/uart/tb_uart_response.sv"
+    ],
+    "top": "tb_uart_response",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "UART_RESPONSE_BYTE case=0 index=10",
+    "vendor_model": "intel-memory",
+    "timeout_seconds": 120
+  },
+  "uart-serial": {
+    "vendor_model": "intel-memory",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/uart/n2m_uart_packet_store.sv",
+      "src/rtl/uart/n2m_uart_packet_rx.sv",
+      "src/rtl/uart/n2m_uart_rx.sv",
+      "src/rtl/uart/n2m_uart_tx.sv",
+      "src/dv/uart/tb_uart_serial.sv"
+    ],
+    "top": "tb_uart_serial",
+    "args": [],
+    "signature": "PASS UART serial bytes=302 errors=2 packets=2 reset_bits=10",
+    "expected_exit": "zero",
+    "timeout_seconds": 180
+  },
+  "uart-serial-corrupt": {
+    "vendor_model": "intel-memory",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/uart/n2m_uart_packet_store.sv",
+      "src/rtl/uart/n2m_uart_packet_rx.sv",
+      "src/rtl/uart/n2m_uart_rx.sv",
+      "src/rtl/uart/n2m_uart_tx.sv",
+      "src/dv/uart/tb_uart_serial.sv"
+    ],
+    "top": "tb_uart_serial",
+    "args": [
+      "+corrupt"
+    ],
+    "signature": "UART_SERIAL_TX_BIT",
+    "expected_exit": "nonzero",
+    "timeout_seconds": 180
+  },
+  "vga": {
+    "sources": [
+      "src/rtl/clocking/n2m_reset_control.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/vga/n2m_frame_ram.sv",
+      "src/rtl/vga/n2m_vga_scan.sv",
+      "src/rtl/vga/n2m_frame_bridge.sv",
+      "src/dv/vga/tb_vga.sv"
+    ],
+    "vendor_model": "intel-memory",
+    "intel_mixed_mode_instances": [
+      "tb_vga.dut.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_vga.dut.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_vga.dut.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
+    ],
+    "top": "tb_vga",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS vga every-pixel observer ownership fast slow pause core-reset lockloss stopped-pixel",
+    "timeout_seconds": 600
+  },
+  "vga-active-swap": {
+    "sources": [
+      "src/rtl/clocking/n2m_reset_control.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/vga/n2m_frame_ram.sv",
+      "src/rtl/vga/n2m_vga_scan.sv",
+      "src/rtl/vga/n2m_frame_bridge.sv",
+      "src/dv/vga/tb_vga.sv"
+    ],
+    "vendor_model": "intel-memory",
+    "intel_mixed_mode_instances": [
+      "tb_vga.dut.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_vga.dut.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_vga.dut.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
+    ],
+    "top": "tb_vga",
+    "args": [
+      "+active_swap"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT frame_active_swap instance=tb_vga",
+    "timeout_seconds": 600
+  },
+  "vga-bank-reuse": {
+    "sources": [
+      "src/rtl/clocking/n2m_reset_control.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/vga/n2m_frame_ram.sv",
+      "src/rtl/vga/n2m_vga_scan.sv",
+      "src/rtl/vga/n2m_frame_bridge.sv",
+      "src/dv/vga/tb_vga.sv"
+    ],
+    "vendor_model": "intel-memory",
+    "intel_mixed_mode_instances": [
+      "tb_vga.dut.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_vga.dut.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_vga.dut.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
+    ],
+    "top": "tb_vga",
+    "args": [
+      "+bank_reuse"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT frame_bank_reuse instance=tb_vga",
+    "timeout_seconds": 600
+  },
+  "vga-lcd": {
+    "sources": [
+      "src/rtl/clocking/n2m_reset_control.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/vga/n2m_frame_ram.sv",
+      "src/rtl/vga/n2m_vga_scan.sv",
+      "src/rtl/vga/n2m_frame_bridge.sv",
+      "src/dv/vga/tb_vga.sv"
+    ],
+    "top": "tb_vga",
+    "args": [
+      "+lcd"
+    ],
+    "expected_exit": "zero",
+    "signature": "PASS VGA LCD abort blank stale-offer core-reset stopped-pixel ack-completion-invalidation",
+    "timeout_seconds": 600,
+    "vendor_model": "intel-memory",
+    "intel_mixed_mode_instances": [
+      "tb_vga.dut.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_vga.dut.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_vga.dut.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
+    ]
+  },
+  "vga-lcd-corrupt": {
+    "sources": [
+      "src/rtl/clocking/n2m_reset_control.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/vga/n2m_frame_ram.sv",
+      "src/rtl/vga/n2m_vga_scan.sv",
+      "src/rtl/vga/n2m_frame_bridge.sv",
+      "src/dv/vga/tb_vga.sv"
+    ],
+    "top": "tb_vga",
+    "args": [
+      "+lcd",
+      "+blank_corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "VGA_PIXEL:",
+    "timeout_seconds": 600,
+    "vendor_model": "intel-memory",
+    "intel_mixed_mode_instances": [
+      "tb_vga.dut.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_vga.dut.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_vga.dut.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
+    ]
+  },
+  "vga-lcd-reset": {
+    "sources": [
+      "src/rtl/clocking/n2m_reset_control.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/vga/n2m_frame_ram.sv",
+      "src/rtl/vga/n2m_vga_scan.sv",
+      "src/rtl/vga/n2m_frame_bridge.sv",
+      "src/dv/vga/tb_vga.sv"
+    ],
+    "top": "tb_vga",
+    "args": [
+      "+lcd_reset"
+    ],
+    "expected_exit": "zero",
+    "signature": "PASS VGA LCD shared-reset release-skew stopped-pixel retained-white global-mask",
+    "timeout_seconds": 600,
+    "vendor_model": "intel-memory",
+    "intel_mixed_mode_instances": [
+      "tb_vga.dut.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_vga.dut.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_vga.dut.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
+    ]
+  },
+  "vga-read-latency": {
+    "sources": [
+      "src/rtl/clocking/n2m_reset_control.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/vga/n2m_frame_ram.sv",
+      "src/rtl/vga/n2m_vga_scan.sv",
+      "src/rtl/vga/n2m_frame_bridge.sv",
+      "src/dv/vga/tb_vga.sv"
+    ],
+    "vendor_model": "intel-memory",
+    "intel_mixed_mode_instances": [
+      "tb_vga.dut.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_vga.dut.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_vga.dut.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
+    ],
+    "top": "tb_vga",
+    "args": [
+      "+read_latency"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "VGA_PIXEL:",
+    "timeout_seconds": 600
   }
 }

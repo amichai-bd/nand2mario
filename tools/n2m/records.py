@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import time
 import uuid
 
 
@@ -26,8 +27,24 @@ def atomic_text(path, text):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     temp = path.with_name(path.name + "." + uuid.uuid4().hex + ".tmp")
-    temp.write_text(text, encoding="utf-8", newline="\n")
-    os.replace(temp, path)
+    try:
+        temp.write_text(text, encoding="utf-8", newline="\n")
+        # Windows readers may briefly deny delete sharing. Never unlink the
+        # destination: readers must see the complete old or new record.
+        for attempt in range(6):
+            try:
+                os.replace(temp, path)
+                break
+            except PermissionError as error:
+                if getattr(error, "winerror", None) not in (5, 32, 33) or attempt == 5:
+                    raise
+                time.sleep(.01 * 2 ** attempt)
+    finally:
+        # Do not mask a publication failure if a handle also blocks cleanup.
+        try:
+            temp.unlink(missing_ok=True)
+        except OSError:
+            pass
 
 
 def read_json(path):
