@@ -25,6 +25,7 @@ module n2m_ppu_fetch (
     output logic object_high_read,
     output logic [2:0] background_phase,
     output logic [2:0] object_phase,
+    output logic [2:0] shift_count,
     output logic background_done,
     output logic object_done,
     output logic background_first_done,
@@ -39,7 +40,7 @@ module n2m_ppu_fetch (
     output logic fault
 );
     logic [2:0] background_phase_next, object_phase_next;
-    logic [2:0] shift_count, shift_count_next;
+    logic [2:0] shift_count_next;
     logic background_first_done_next, window_first_next;
     logic [7:0] tile_low, tile_high, object_plane_low;
     logic [7:0] object_data;
