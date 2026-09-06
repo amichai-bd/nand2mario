@@ -1,16 +1,16 @@
 `timescale 1ns/1ps
 `default_nettype none
 module tb_dmg_tile_pixel;
-    logic clk = 0;
+    logic clk;
     logic reset, enable, valid_s0;
     logic [7:0] row_low_s0, row_high_s0, palette_s0;
     logic [2:0] pixel_x_s0;
     wire valid_s1;
     wire [1:0] color_index_s1, shade_s1;
-    logic [4:0] expected = 0;
-    integer cycle = 0;
-    integer pixel_cases = 0;
-    integer palette_cases = 0;
+    logic [4:0] expected;
+    integer cycle;
+    integer pixel_cases;
+    integer palette_cases;
     bit corrupt;
 
     dmg_tile_pixel dut (.*);
@@ -121,6 +121,11 @@ module tb_dmg_tile_pixel;
     end
 
     initial begin
+        clk = 0;
+        expected = 0;
+        cycle = 0;
+        pixel_cases = 0;
+        palette_cases = 0;
         #6000000;
         $fatal(1, "TIMEOUT seed=none");
     end

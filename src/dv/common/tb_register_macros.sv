@@ -2,10 +2,10 @@
 `default_nettype none
 `include "src/rtl/common/macros.svh"
 module tb_register_macros;
-    logic clk = 0;
-    logic reset = 0;
-    logic enable = 1;
-    logic [31:0] data = 0;
+    logic clk;
+    logic reset;
+    logic enable;
+    logic [31:0] data;
     logic [7:0] plain;
     logic cleared;
     logic [16:0] valued;
@@ -15,7 +15,7 @@ module tb_register_macros;
     logic [61:0] actual;
     integer cycle;
     integer seed;
-    integer combinations = 0;
+    integer combinations;
     bit corrupt;
 
     `DFF(plain, data[7:0], clk)
@@ -32,6 +32,11 @@ module tb_register_macros;
     endtask
 
     initial begin
+        clk = 0;
+        reset = 0;
+        enable = 1;
+        data = 0;
+        combinations = 0;
         seed = 1;
         if ($value$plusargs("seed=%d", seed)) begin end
         corrupt = $test$plusargs("corrupt");

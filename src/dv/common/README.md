@@ -31,7 +31,9 @@ host mocks do not prove synthesis or simulation.
 ## Asynchronous registers and named assertions
 
 `tb_async_assert_macros` owns two eight-bit registers with independently tracked
-expected state: active-high reset to A5 and active-low reset to 3C. Reset pulses
+expected state: active-high reset to A5 and active-low reset to 3C. Parallel
+initialized forms must start at those same values before any reset or clock
+edge, then match the independent expected state at every check. Reset pulses
 and data changes occur between edges; checks prove immediate reset, priority,
 no update on reset release, and rising-edge capture. Invalid direct, never and
 known values are disabled during reset; NO_RST is proved to fail during reset.

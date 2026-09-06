@@ -22,7 +22,8 @@ module vga_proof (
                 clk_sys, gb_tick, reset_sys || core_reset, 15'd0)
     `DFF_RST_EN(source_dot, source_dot + 64'd1, clk_sys, gb_tick, reset_sys || core_reset, 64'd0)
     `DFF_RST_EN(source_epoch, source_epoch + 32'd1, clk_sys, core_reset, reset_sys, 32'd0)
-    wire [1:0] shade = pixel_index[1:0] ^ pixel_index[9:8] ^ source_epoch[1:0];
+    wire [1:0] shade;
+    assign shade = pixel_index[1:0] ^ pixel_index[9:8] ^ source_epoch[1:0];
     n2m_frame_bridge u_bridge (
         .clk_sys, .reset_sys, .core_reset, .clk_pix, .reset_pix,
         .source_valid(gb_tick), .source_start(pixel_index == 0), .source_shade(shade),

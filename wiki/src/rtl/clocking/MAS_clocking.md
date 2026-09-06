@@ -18,8 +18,10 @@ configuration startup. A board release chain controls its qualification counter;
 a separate lock sampling chain controls readiness qualification. Domain release
 chains consume readiness. All clocking state and proof counters use the shared
 [asynchronous register macros](../../rtl-reference-style.md#product-register-convention).
-Declarations retain configuration initializers, register names and synchronizer
-attributes. Next-state logic preserves reset priority, terminal counter holding,
+The reset controller uses the initialized asynchronous forms: separate constant
+`initial` assignments retain configuration values, and edge-triggered `always`
+avoids the Questa `always_ff` multiple-process restriction. Declarations retain
+register names and synchronizer attributes. Next-state logic preserves reset priority, terminal counter holding,
 current-edge carry, pause completion and the resume edge. Counter release and
 consumer recovery/removal remain timed after their respective synchronizers.
 

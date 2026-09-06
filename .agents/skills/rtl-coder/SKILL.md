@@ -16,7 +16,10 @@ requirements/design aligned with `src/rtl/`, verification, and evidence.
    `DFF_RST_EN(Q, D, CLK, EN, RST, RESET_VAL)`. Keep reset polarity, priority,
    enable holding and stage timing explicit. Use `DFF_ARST_VAL` or
    `DFF_ARST_N_VAL` for asynchronous resets, retaining declarations, names,
-   initializers and synchronizer attributes. Async reset or attributes alone do
+   power-up values and synchronizer attributes. Follow the
+   [separate declaration and assignment rule](../../../wiki/src/rtl-reference-style.md#separate-declarations-and-assignments);
+   never retain a variable/net declaration assignment. Use the initialized
+   asynchronous forms only where the contract requires constant power-up state. Async reset or attributes alone do
    not justify a raw sequential block. An unavoidable inference exception needs
    a concrete reason beside the block and in its owner contract, plus review.
 3. Avoid latches, implicit nets, unsafe crossings, and vendor logic outside FPGA
@@ -29,6 +32,10 @@ requirements/design aligned with `src/rtl/`, verification, and evidence.
    [review guide](../agent-flow/references/review.md).
 5. Run the smallest compile and checked Questa simulation that prove the contract.
    Use Questa only for new simulation evidence; do not start Icarus runs.
+
+Run `python .agents/skills/rtl-coder/scripts/check_sv_style.py` before review.
+The lexical guard checks tracked SV/SVH built-in and locally typedef-named
+declarations; review imported types and emitted source too.
 
 Use [the checklist](templates/rtl-checklist.md) in review notes. Read
 [the scenarios](examples/scenarios.md) for the skill boundary. Stop when the

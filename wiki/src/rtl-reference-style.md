@@ -6,13 +6,35 @@ they do not define Game Boy behavior. The register convention below is adopted f
 analysis does not select a Game Boy microarchitecture. The [current phase](../agents/bootstrap-plan.md#current-phase)
 and [gap register](../preflight-gaps.md) still govern implementation.
 
+## Separate declarations and assignments
+
+Declare SystemVerilog variables and nets without assignments. This applies to
+product RTL, FPGA wrappers, DV, shared headers and generated SV. Put continuous
+net drivers in separate `assign` statements. Put procedural assignments after
+all declarations in the containing block; declare loop variables before the
+`for` statement, including genvar declarations. Parameter/localparam values
+and enum members are compile-time definitions, not signal assignments.
+
+Preserve required power-up values with separate constant `initial` assignments,
+including reset-controller state and assertion history. Preserve register names,
+widths, signedness and synchronizer attributes. Do not replace a continuous net
+driver with initialization or add initialization to previously unknown state.
+An `initial` block runs at time zero rather than before procedural execution;
+keep testbench defaults and their immediate consumers in one startup process,
+and check reset/clock transitions and configuration startup in Questa. Prove
+FPGA power-up inference in Quartus when moving product initialization.
+
+Run `python .agents/skills/rtl-coder/scripts/check_sv_style.py` before review.
+The required Wiki check runs this source guard and its negative fixtures.
+
 ## Product register convention
 
 Use the original [shared register header](../../src/rtl/common/macros.svh) for
 ordinary product registers. Include it with the literal repository path
 `src/rtl/common/macros.svh`; the [builder](../tools/n2m/SPEC.md#hdl-includes)
 owns resolution and dependency checks. Keep combinational calculations separate
-and give each output exactly one driver. Macro calls are module items, without
+and give each output exactly one runtime driver; the initialized forms below
+add only their required constant power-up assignment. Macro calls are module items, without
 an extra semicolon. Parenthesize argument expressions containing commas.
 
 | Form and argument order | Rising-edge update |
@@ -33,10 +55,19 @@ initial value. Controls must meet the consuming module's known-value contract.
 Use `DFF_ARST_VAL(Q, D, CLK, RST, RESET_VAL)` for asynchronous active-high
 reset, and `DFF_ARST_N_VAL(Q, D, CLK, RST_N, RESET_VAL)` for active-low reset.
 Reset immediately assigns the explicit value and takes priority over D; otherwise
-Q captures D on the rising edge. Preserve declaration initializers, names and
-synchronizer attributes. These forms cover reset synchronizers, qualification
+Q captures D on the rising edge. Preserve power-up values using the [separate assignment rule](#separate-declarations-and-assignments),
+register names and synchronizer attributes. These forms cover reset synchronizers, qualification
 counters and domain state; asynchronous reset or attributes alone are not an
 exception. Keep next-state hold and priority explicit in combinational logic.
+
+`DFF_INIT_ARST_VAL` and `DFF_INIT_ARST_N_VAL` use the same argument order
+and reset behavior as their asynchronous counterparts, and initialize Q to
+RESET_VAL in a separate `initial` statement. Use them only for state whose
+contract already requires that power-up value. They use edge-triggered `always`
+because Questa rejects another procedural writer alongside `always_ff`
+(vopt-7061). Ordinary register forms retain `always_ff`. The initialized forms
+are the reviewed inference exception for configuration state and assertion
+history; callers must retain exactly one runtime driver.
 
 An explicit sequential block needs a concrete inference requirement that the
 shared forms cannot express, such as a memory write port. Document that reason
