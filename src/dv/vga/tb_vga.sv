@@ -81,6 +81,7 @@ module tb_vga;
         bit returning_now;
         ref_sys_edges++;
         sampled_active[ref_sys_edges] = ref_blank_active;
+        sampled_active.delete(ref_sys_edges - 3);
         if (reset_sys) begin
             ref_index = 0; ref_source_seq = 0; ref_ready_samples = 0;
             ref_writer = 0; ref_old_display = 1; ref_free = 2;
@@ -177,6 +178,7 @@ module tb_vga;
         bit captured_before;
         ref_pix_edges++;
         sampled_blank[ref_pix_edges] = ref_blank_requested;
+        sampled_blank.delete(ref_pix_edges - 3);
         if (reset_pix) begin
             pix_edges = 0; have_previous_display = 0;
             ref_captured = 0; ref_display_valid = 0; ref_display_bank = 1;
