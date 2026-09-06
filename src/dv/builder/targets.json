@@ -3459,5 +3459,69 @@
     "expected_exit": "nonzero",
     "signature": "VGA_PIXEL:",
     "timeout_seconds": 600
+  },
+  "uart-snapshot": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/uart/n2m_uart_packet_store.sv",
+      "src/rtl/uart/n2m_uart_packet_rx.sv",
+      "src/rtl/uart/n2m_uart_exchange_store.sv",
+      "src/rtl/uart/n2m_uart_exchange.sv",
+      "src/rtl/uart/n2m_uart_tx.sv",
+      "src/rtl/uart/n2m_uart_packet_tx.sv",
+      "src/rtl/uart/n2m_uart_response.sv",
+      "src/rtl/uart/n2m_uart_presence_store.sv",
+      "src/rtl/uart/n2m_uart_load.sv",
+      "src/rtl/uart/n2m_uart_rx.sv",
+      "src/rtl/uart/n2m_uart_core_control.sv",
+      "src/rtl/uart/n2m_uart_host_registers.sv",
+      "src/rtl/uart/n2m_uart_validate.sv",
+      "src/rtl/uart/n2m_uart_commands.sv",
+      "src/rtl/uart/n2m_uart.sv",
+      "src/rtl/snapshot/n2m_snapshot_pkg.sv",
+      "src/rtl/snapshot/n2m_frame_snapshot.sv",
+      "src/dv/uart/tb_uart_snapshot.sv"
+    ],
+    "top": "tb_uart_snapshot",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS UART snapshot actual_Intel wire bytes=23040 commands=",
+    "vendor_model": "intel-memory",
+    "timeout_seconds": 180
+  },
+  "uart-snapshot-corrupt": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/uart/n2m_uart_packet_store.sv",
+      "src/rtl/uart/n2m_uart_packet_rx.sv",
+      "src/rtl/uart/n2m_uart_exchange_store.sv",
+      "src/rtl/uart/n2m_uart_exchange.sv",
+      "src/rtl/uart/n2m_uart_tx.sv",
+      "src/rtl/uart/n2m_uart_packet_tx.sv",
+      "src/rtl/uart/n2m_uart_response.sv",
+      "src/rtl/uart/n2m_uart_presence_store.sv",
+      "src/rtl/uart/n2m_uart_load.sv",
+      "src/rtl/uart/n2m_uart_rx.sv",
+      "src/rtl/uart/n2m_uart_core_control.sv",
+      "src/rtl/uart/n2m_uart_host_registers.sv",
+      "src/rtl/uart/n2m_uart_validate.sv",
+      "src/rtl/uart/n2m_uart_commands.sv",
+      "src/rtl/uart/n2m_uart.sv",
+      "src/rtl/snapshot/n2m_snapshot_pkg.sv",
+      "src/rtl/snapshot/n2m_frame_snapshot.sv",
+      "src/dv/uart/tb_uart_snapshot.sv"
+    ],
+    "top": "tb_uart_snapshot",
+    "args": [
+      "+corrupt_frame"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "UART_SNAPSHOT_PAYLOAD cmd=13 index=0 expected=39 actual=00",
+    "vendor_model": "intel-memory",
+    "timeout_seconds": 180
   }
 }

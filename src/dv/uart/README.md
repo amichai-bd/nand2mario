@@ -78,3 +78,20 @@ host retention across core reset. It does not claim full peripheral routing or
 #93 storage composition. The wire clock ratio is deliberately eight clocks per
 bit to bound the full-image test; physical 50 MHz/115200 timing remains covered
 by the retained serial slice. Already-STOPped STEP acceptance remains pending.
+
+
+The focused `uart-snapshot` wire fixture binds the delivered
+`n2m_frame_snapshot` and all four Intel banks. Original public observer pixels
+produce independently packed bytes and literal epoch/sequence/dot metadata.
+It reads all 5760 bytes after capture, rereads the old publication after a new
+source completes, then captures and reads the replacement. Metadata/validity
+cannot change before the completion pulse. Actual UART LOAD_BEGIN supplies the
+core reset; published bytes survive and remain readable while LOADING. Global
+reset invalidates publication, NO_FRAME recovers, and a fresh source captures.
+An actual returned frame byte force must fail the wire payload comparison.
+
+This focused test performs no ROM load/readback traffic and uses an explicit
+16-clock aggregate core-initialization boundary. It complements the unchanged
+actual CPU/ROM endpoint proof. The source observer is driven directly, so no PPU
+pixel or whole-system claim follows. Earlier model-backed snapshot cases remain
+historical boundary evidence; this test supplies actual owner composition.
