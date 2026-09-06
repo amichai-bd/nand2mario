@@ -90,3 +90,18 @@ unsigned/8x16 scene; this variant does not claim dynamic scrolling/window edges.
 The variant is pending actual runtime evidence.
 
 `ppu-stat-off` checks fourteen public readback/shared-line observations across off-state writes, equal and unequal restart, pause and core reset. `ppu-stat-off-corrupt` changes the actual retained line while off and must fail the corresponding independent check. These targets require actual runtime evidence; HBlank/OAM transition coverage remains separate.
+
+`ppu-scroll-window` checks every pixel of a blank warm-up frame and a normal
+frame with all eight fine-SCX values and WX7/8/15/47/80/159/167/255. Legal HBlank
+writes prepare each following line. The independent spatial model counts window
+row advances only for visible activations; hidden lines cannot substitute LY-WY.
+Its corruption target changes the actual first normal source shade.
+
+`ppu-fine-scroll` isolates nearest legal CPU writes before/after first-map
+sampling by mapping every background entry to one repeated-pattern tile. Two
+reset-separated cases check the complete blank frame, first normal line and
+literal first-pixel timestamps. The normal-line reset origin70221 and first-map
+sample70302 are relative to LCD-enable T4; writes70300/70304 select fine2/5.
+The corruption target changes actual source shade in the after-write case.
+These targets still require actual evidence. WX0/166, intra-fetch coarse
+SCX/SCY and WY enable/equality edge coverage remain separate required cases.

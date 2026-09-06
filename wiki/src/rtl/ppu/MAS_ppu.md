@@ -436,9 +436,12 @@ that ordering and frame size.
 The pinned [Mealybug SCX probe](https://github.com/mattcurrie/mealybug-tearoom-tests/blob/70e88fb90b59d19dfbb9c3ac36c64105202bb1f4/src/ppu/m3_scx_low_3_bits.asm) reports that low SCX bits appear to
 be sampled at the start of the first B01s map fetch. This refines the earlier
 shorthand “line start”; it is not an asserted direct single-dot measurement.
-The controller latches on its first map-fetch phase0 and checks writes before,
-on and after that edge using the A pre-edge convention. Later low-bit writes
-cannot change the already selected fine-scroll delay.
+The controller latches on its first map-fetch phase0 using the A pre-edge
+convention. With the continuous CPU phase, startup first-map sampling is T3 and
+normal-line sampling is T2; CPU writes occur only at T4. Composed checks therefore
+use the nearest legal T4 before and after sampling. A simultaneous helper input
+would use its pre-A value, but it is not a reachable CPU write under this phase
+binding. Later low-bit writes cannot change the selected fine-scroll delay.
 
 WY matching is qualified by Window enable before being latched. The pinned
 MiSTer qualification is independently corroborated by [GateBoy CPU-B gate PALO](https://github.com/aappleby/metroboy/blob/36797ad4cf77b3e04ffe45716218a79b5280076a/src/GateBoyLib/GateBoyPixPipe.cpp) feeding

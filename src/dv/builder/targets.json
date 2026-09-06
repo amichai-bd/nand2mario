@@ -1260,5 +1260,93 @@
     ],
     "expected_exit": "nonzero",
     "signature": "PPU_STAT_OFF_STATE case=10 expected_flag=0 expected_line=0 expected_edges=1 actual_flag=0 actual_line=1 actual_edges=1"
+  },
+  "ppu-scroll-window": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_scroll_window.sv"
+    ],
+    "top": "tb_ppu_scroll_window",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS PPU scroll/window static pixels=46080 fine=8 wx=8",
+    "timeout_seconds": 180
+  },
+  "ppu-scroll-window-corrupt": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_scroll_window.sv"
+    ],
+    "top": "tb_ppu_scroll_window",
+    "args": [
+      "+scroll_corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "PPU_SCROLL_PIXEL frame=1 index=0 scx=0 wx=255 wrow=0 expected=3 actual=0",
+    "timeout_seconds": 180
+  },
+  "ppu-fine-scroll": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_fine_scroll.sv"
+    ],
+    "top": "tb_ppu_fine_scroll",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS PPU fine scroll legal before/after cases=2 visible_pixels=320",
+    "timeout_seconds": 180
+  },
+  "ppu-fine-scroll-corrupt": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_fine_scroll.sv"
+    ],
+    "top": "tb_ppu_fine_scroll",
+    "args": [
+      "+fine_corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "PPU_FINE_PIXEL case=1 frame=1 index=0 expected=1 actual=0",
+    "timeout_seconds": 180
   }
 }
