@@ -159,13 +159,6 @@ module n2m_cpu_control (
                 address_effect.address = execute_pc;
             end
             if (execute_stop) address_effect_resolved = 0;
-            // These internal arithmetic transfers still need address-drive
-            // reconciliation. Their operand and final-fetch increments are
-            // already covered by the ordinary PC path.
-            if (!control.cb_bank && !execute_finish && execute_kind != ACCESS_OPERAND &&
-                    (control.opcode == 8'he8 || control.opcode == 8'hf8 ||
-                    (control.opcode[7:6] == 0 && control.opcode[3:0] == 9)))
-                address_effect_resolved = 0;
         end else if (control.mode == MODE_INTERRUPT) begin
             if (control.step == 0) address_effect_resolved = 0;
             else if (control.step == 1 || control.step == 2) begin

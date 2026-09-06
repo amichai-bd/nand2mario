@@ -124,3 +124,13 @@ This establishes the extra increment effect at the old temporary address in
 that M-cycle. The high write has no corresponding increment. Combining the
 extra effect with the ordinary write follows Pan Docs' same-cycle rule, rather
 than requesting a second architectural write.
+
+For ADD HL's internal `sx00`, ADD SP,e's internal `001`/`010`, and LD HL,SP+e's
+internal `x01`, the decoder's complete IDU input-driver selection has no active
+PC, HL, BC, DE, SP or WZ source, and the IDU increment/decrement controls do not
+select those states. The signed-SP result uses ALU paths and direct WZ-to-SP
+writeback; it is not an SP-to-IDU address exposure. SameBoy separately uses
+`cycle_no_access` for these internal cycles. We therefore map them to no
+additional write-like effect within this digital observation model, without
+claiming a measured value on floating or precharged pins. Final-fetch states
+ADD HL `x01`, ADD SP,e `011`, and LD HL,SP+e `x10` still select PC increments.

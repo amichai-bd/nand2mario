@@ -248,9 +248,7 @@ itself, before the registered fault changes. It can accompany idle rather than a
 `resolved` is an explicit completeness qualifier: a consumer must reject an
 unresolved sample rather than interpreting its payload as no effect. In this
 incomplete integration, interrupt PC repair, sleep and the wake-refetch cycle,
-STOP execution, and internal ADD HL / ADD SP,e / LD HL,SP+e arithmetic
-cycles are unresolved. Their operand/final-fetch increments remain separately
-sourced. Sourced ordinary fetch/operand/stack/planner
+and STOP execution are unresolved. Sourced ordinary fetch/operand/stack/planner
 cycles are resolved. This qualifier changes observation only, not CPU execution,
 and cannot waive the remaining full-CPU acceptance gate.
 
@@ -283,6 +281,7 @@ The implementation and directed proof must follow this mapping:
 | POP and RET family | First stack read: full old SP and additional effect. Second read: ordinary read only, despite its SP update. |
 | PUSH, CALL and RST | First decrement before the high write, then the decrement overlapping the high write; full old SP for each. The low write has no additional decrement effect. |
 | Ordinary opcode/operand PC increment | Same M-cycle as the read, with the full old PC. A suppressed increment or HALT dummy fetch must not inherit this rule merely because its access kind is opcode. |
+| ADD HL,rr; ADD SP,e; LD HL,SP+e | Internal arithmetic cycles have no additional write-like effect (`resolved=1`, `valid=0`). Their operand reads and final fetches retain ordinary PC-increment effects. This does not describe floating pin voltage. |
 | LD [a16],SP | Low-byte write cycle: full temporary address before its increment, combined with the ordinary write. High-byte write: ordinary write only. |
 | LD SP,HL | Internal transfer cycle; full old HL, following the register-file address-drive inference and independent emulator corroboration. |
 | Taken JR, conditional or unconditional | Internal adjustment cycle: pre-adjustment PC high byte, mask `FF00`. Low bits remain unclaimed. Final target fetch is a separate ordinary fetch. |

@@ -2378,5 +2378,39 @@
     ],
     "expected_exit": "nonzero",
     "signature": "CPU_PROGRAM_IDU cycle=20 dot=81"
+  },
+  "cpu-idu-arithmetic": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/dv/cpu/tb_cpu_idu_arithmetic.sv"
+    ],
+    "top": "tb_cpu_idu_arithmetic",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU IDU arithmetic cycles=17 events=6 resolved_no_effect=4"
+  },
+  "cpu-idu-arithmetic-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/dv/cpu/tb_cpu_idu_arithmetic.sv"
+    ],
+    "top": "tb_cpu_idu_arithmetic",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_IDU_ARITH_EFFECT cycle=7 dot=29"
   }
 }
