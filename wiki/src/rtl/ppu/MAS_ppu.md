@@ -53,6 +53,24 @@ expectations before their state transitions are implemented. DMA/OAM collision
 behavior needs a named boundary with the later bus owner; ordinary mode access
 blocking alone does not establish the OAM corruption quirk.
 
+## Licensed implementation basis
+
+Selected MiSTer renderer, OAM selection and timing logic is approved for private
+adaptation. The [upstream manifest](../../../../src/rtl/ppu/upstream.json) owns
+its exact pin, file hashes, import state and local changes; the
+[notices](../../../../src/rtl/ppu/THIRD_PARTY.md) retain its GPL terms.
+Derived files remain GPL-covered. The public wiki contains original explanatory
+prose and links, not copied HDL. No source/bitstream release or visibility change
+is part of this issue. Independent DMG-B behavior and integration evidence remain
+required after adaptation.
+
+The upstream negedge LCDC/LYC register block and separate pixel phase require an
+explicit phase mapping. A candidate uses the emulated-dot edge for renderer and
+register state, then a following system edge for output staging. It must preserve
+which operations sample old registers and which see a newly written palette.
+No generated clock, blind same-edge substitution or extra emulated dot is allowed.
+This mapping is not frozen until CPU ordering and adaptation checks agree.
+
 ## Proposed digital ports
 
 All PPU logic uses `clk_sys`; `gb_tick` commits one emulated T-cycle. Host pause
@@ -85,7 +103,10 @@ Neither display drops nor host snapshot activity feeds back into the PPU.
 LCD disable can interrupt a partial source frame without resetting the CPU,
 source epoch, completed-frame sequence, or VGA ownership handshake. An explicit
 source-abort event clears only partial writer/observer progress and wins over
-a same-edge pixel, including the would-be final pixel. An aborted frame emits
+a same-edge pixel, including the would-be final pixel. The public observer exposes an abort event with the current epoch and next
+completed-frame sequence; abort suppresses same-edge valid/complete. A snapshot
+assembler drops only its unpublished partial assembly on that event. Published
+frames and existing snapshots remain untouched. An aborted frame emits
 no completion and consumes no completed-frame sequence number. Offered and
 displayed banks remain immutable.
 
@@ -107,6 +128,25 @@ the latest eligible post-startup generation can release it, and release occurs
 at a permitted display boundary. Generation qualification belongs to the
 presentation adapter, not the host epoch or completed-frame sequence. The
 implementation protocol and crossing constraints require review before RTL.
+Blank control is persistent, not a pulse or an unacknowledged toggle. Old offers
+continue normal acknowledgement and recycling even while white is selected.
+Rapid intermediate presentation states may coalesce while the newest blank
+request remains pending; a stale offer cannot release that request.
+
+The candidate protocol holds a system-domain blank level until acknowledgement
+of an eligible post-startup offer. Each disable or core reset invalidates any
+pending release qualification before processing an acknowledgement. It preserves
+the blank level itself on core reset. The existing one-outstanding-offer phase
+may identify the qualifying offer only after its predecessor has been recycled;
+source sequence/epoch reuse is not a qualification token. A separate synchronized
+blank level must be observed before that frame's capture/swap acknowledgement.
+That ordering needs an explicit invariant and adversarial checks before reuse.
+
+For review, blank assertion overrides the image pixels after its synchronized
+pixel-domain arrival, including during active scanout, with global-reset black
+having higher priority. Only the scaled image is white. Unblank waits for a
+permitted swap boundary; simultaneous blank assertion wins. The exact pipeline
+edge and stopped-clock resumption bound must be fixed with the adapter.
 
 Core reset retains the existing last-image rule. Initializing LCDC to zero is
 not a software LCD-disable request and must not erase a retained display image.

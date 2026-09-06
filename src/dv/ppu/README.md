@@ -32,6 +32,9 @@ counters, fetch state or completion to choose an expected result.
 Cross meaningful cases: window with sprites, fine scroll with objects, palette
 changes with variable stalls, reset/disable with partial and offered frames.
 Coverage records the case and expected result; counters alone do not prove it.
+Use BGP maps where raw BG color0 maps black and a nonzero color maps white,
+proving object-behind-BG priority tests raw color before palette mapping. Cross
+that with winning-object selection and OBP-remapped color0 transparency.
 A frame checksum supplements every-pixel comparisons and cannot replace them.
 
 ## Failure and evidence
