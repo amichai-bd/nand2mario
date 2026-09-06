@@ -117,4 +117,3 @@ package n2m_cpu_pkg;
     endfunction
 endpackage
 
-`default_nettype wire

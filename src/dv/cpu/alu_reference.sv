@@ -103,4 +103,3 @@ package cpu_alu_reference;
     endfunction
 endpackage
 
-`default_nettype wire

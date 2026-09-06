@@ -2,11 +2,11 @@
 
 // Pure instruction datapath. The CPU owner controls timing and writeback.
 module n2m_cpu_alu (
-    input  wire logic [4:0] operation,
-    input  wire logic [7:0] lhs,
-    input  wire logic [7:0] rhs,
-    input  wire logic [7:0] flags_in,
-    input  wire logic [2:0] bit_index,
+    input  var logic [4:0] operation,
+    input  var logic [7:0] lhs,
+    input  var logic [7:0] rhs,
+    input  var logic [7:0] flags_in,
+    input  var logic [2:0] bit_index,
     output logic [7:0] value,
     output logic [7:0] flags_out
 );
@@ -118,4 +118,3 @@ module n2m_cpu_alu (
     end
 endmodule
 
-`default_nettype wire

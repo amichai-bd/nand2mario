@@ -30,9 +30,11 @@ module tb_cpu_alu;
         flags_in = 8'(flags);
         bit_index = 3'(selected_bit);
         expected = cpu_alu_reference::calculate(operation_id, left, right, flags, selected_bit);
+        // Fault injection changes the actual DUT result, not the compared
+        // observation or oracle. Normal expectations use only public inputs.
+        if (corrupt && cases == 17) force dut.value = 8'h09;
         #1;
         observed = {value, flags_out};
-        if (corrupt && cases == 17) observed[8] = ~observed[8];
         if (cases < 256 || observed !== expected)
             $fdisplay(trace, "%0d,%0d,%02h,%02h,%02h,%0d,%04h,%04h", cases, operation_id, lhs, rhs, flags_in, selected_bit, expected, observed);
         if (observed !== expected)
@@ -61,16 +63,16 @@ module tb_cpu_alu;
                 for (b = 0; b < 256; b = b + 1)
                     for (f = 0; f < 2; f = f + 1)
                         check_case(op, a, b, f * 16 + ((a + b) % 8) * 32 + 15, 0);
-        for (op = 8; op <= 28; op = op + 1) begin
-            bit_count = (op >= 26) ? 8 : 1;
+        for (op = 8; op <= 31; op = op + 1) begin
+            bit_count = (op >= 26 && op <= 28) ? 8 : 1;
             for (a = 0; a < 256; a = a + 1)
                 for (f = 0; f < 16; f = f + 1)
                     for (bit_number = 0; bit_number < bit_count; bit_number = bit_number + 1)
                         check_case(op, a, 0, f * 16 + 15, bit_number);
         end
-        if (cases != 1220608) $fatal(1, "CPU_ALU_COVERAGE expected=1220608 actual=%0d", cases);
+        if (cases != 1232896) $fatal(1, "CPU_ALU_COVERAGE expected=1232896 actual=%0d", cases);
         $fclose(trace);
-        $display("PASS CPU ALU cases=1220608 operations=29 seed=none");
+        $display("PASS CPU ALU cases=1232896 operations=32 seed=none");
         $finish;
     end
 
@@ -80,4 +82,3 @@ module tb_cpu_alu;
     end
 endmodule
 
-`default_nettype wire

@@ -1923,7 +1923,7 @@
     "top": "tb_cpu_alu",
     "args": [],
     "expected_exit": "zero",
-    "signature": "PASS CPU ALU cases=1220608 operations=29 seed=none"
+    "signature": "PASS CPU ALU cases=1232896 operations=32 seed=none"
   },
   "cpu-alu-corrupt": {
     "sources": [
@@ -1938,5 +1938,55 @@
     ],
     "expected_exit": "nonzero",
     "signature": "CPU_ALU_MISMATCH case=17 op=0 lhs=00 rhs=08 flags=1f bit=0 expected=0800 actual=0900"
+  },
+  "cpu-execute": {
+    "sources": [
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/dv/cpu/alu_reference.sv",
+      "src/dv/cpu/tb_cpu_execute.sv"
+    ],
+    "top": "tb_cpu_execute",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU execute cases=135168 base=256 flagsets=16 cb_memory=32 seed=none"
+  },
+  "cpu-bus": {
+    "sources": [
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/dv/cpu/tb_cpu_bus.sv"
+    ],
+    "top": "tb_cpu_bus",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU bus commits=13 pause_phases=4 reset_phases=4 inactive_cycles=4"
+  },
+  "cpu-bus-missing-response": {
+    "sources": [
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/dv/cpu/tb_cpu_bus.sv"
+    ],
+    "top": "tb_cpu_bus",
+    "args": [
+      "+missing_response"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT CPU_BUS_RESPONSE"
+  },
+  "cpu-bus-late-active": {
+    "sources": [
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/dv/cpu/tb_cpu_bus.sv"
+    ],
+    "top": "tb_cpu_bus",
+    "args": [
+      "+late_active"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT CPU_BUS_ACTIVE_BOUNDARY"
   }
 }

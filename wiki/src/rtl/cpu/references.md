@@ -35,3 +35,22 @@ bus edges, and their IME/EI limitations cannot establish interrupt behavior.
 Independent original fixtures must cover those gaps without reading product
 control signals. Source byte hashes belong in retained build evidence; imported
 source, if later approved, additionally needs its exact license and notices.
+
+## Interrupt snapshot evidence
+
+The pinned Mooneye `acceptance/interrupts/ie_push.s` reports results verified on
+DMG and other listed hardware. It establishes that an upper stack-byte write
+to IE can cancel dispatch or change its selected request, while the lower-byte
+write is too late to cancel it. Cancellation targets zero, leaves IF unchanged
+and leaves IME clear. This establishes ordering, not a measured exact T-edge.
+`acceptance/ei_sequence.s`, `ei_timing.s` and `halt_ime0_ei.s` separately constrain
+consecutive EI, delayed enable and EI/HALT behavior. These files were read as
+research with their MIT notices; no external suite was executed or imported.
+
+The existing pinned SameBoy `Core/sm83_cpu.c` captures IE after the high write,
+then selects against IF during the low write. Its `cycle_write_if` uses the
+old IF value when that write itself targets IF, and comments explicitly flag
+remaining same-M-cycle timing uncertainty. Consequently the CPU exposes a
+bus-owner dispatch snapshot separately from post-commit IF storage. The CPU's
+fixed sampling edge is a documented digital boundary, not a claim that SameBoy
+proves every simultaneous timer/request/register-write priority in hardware.

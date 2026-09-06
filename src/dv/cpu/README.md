@@ -1,8 +1,8 @@
 # CPU verification plan
 
-Status: planned for [#118](https://github.com/amichai-bd/nand2mario/issues/118).
+Status: component verification in progress for [#118](https://github.com/amichai-bd/nand2mario/issues/118).
 [MAS_cpu](../../../wiki/src/rtl/cpu/MAS_cpu.md) owns behavior and its open design
-gates. No CPU simulation result is claimed by this plan.
+gates. The component results below do not establish full CPU acceptance.
 
 The harness separates program and interrupt stimulus, a passive public bus and
 retirement monitor, an independent reference model, and typed scoreboards.
@@ -29,3 +29,23 @@ host-only checks and prior software encoding proofs cannot substitute.
 
 No full external adapter, integrated PPU/loader, commercial ROM or physical
 compatibility result is claimed. Those remain separate issue acceptance.
+
+## Checked components
+
+- `cpu-alu` compares 1,232,896 byte/flag cases with an independent integer model,
+  including unused operation passthrough. `cpu-alu-corrupt` forces the actual
+  DUT result at the named case, rather than changing the expected/observed word.
+- `cpu-execute` checks all base classifications and execution M-cycle counts
+  across 16 flag sets against a separate manual count table. It also checks
+  every CB memory operation with every byte/flag set through read, optional
+  write and final fetch: 135,168 cases in total. The final RL/RR flags must
+  retain the write-cycle result rather than recompute with the new carry.
+- `cpu-bus` checks 13 commits with pause and reset at all four phases, plus
+  inactive M-cycles and boundary reactivation. Missing response and activation
+  partway through an M-cycle produce their exact named fatal assertions.
+
+These targets have actual Questa positive/negative evidence retained under the
+author build tags. The cycle-count table does not prove every base instruction's
+state or access address; the integrated public-bus/state oracle remains required.
+The component state ports are datapath interfaces, not arbitrary register writes
+on the planned public CPU module.

@@ -3,13 +3,13 @@
 // One execution M-cycle. The front end owns T phases, fetch overlap, reset,
 // sleep and interrupt dispatch. This block never changes state itself.
 module n2m_cpu_execute (
-    input wire n2m_cpu_pkg::cpu_registers_t registers,
-    input wire logic [7:0] opcode,
-    input wire logic cb_bank,
-    input wire logic [2:0] step,
-    input wire logic [15:0] pc,
-    input wire logic [15:0] temporary,
-    input wire logic [7:0] data_in,
+    input var n2m_cpu_pkg::cpu_registers_t registers,
+    input var logic [7:0] opcode,
+    input var logic cb_bank,
+    input var logic [2:0] step,
+    input var logic [15:0] pc,
+    input var logic [15:0] temporary,
+    input var logic [7:0] data_in,
     output n2m_cpu_pkg::cpu_registers_t registers_next,
     output logic [15:0] pc_next,
     output logic [15:0] temporary_next,
@@ -120,9 +120,12 @@ module n2m_cpu_execute (
                 registers_next.f = alu_flags;
             end else begin
                 finish = 1;
-                if (opcode[2:0] != 6)
+                if (opcode[2:0] != 6) begin
                     registers_next = write_byte(registers, opcode[2:0], alu_value);
-                registers_next.f = alu_flags;
+                    registers_next.f = alu_flags;
+                end else if (opcode[7:6] == 1) registers_next.f = alu_flags;
+                // Memory RMW already committed its flags with the write. In
+                // RL/RR the new carry must not feed a second ALU evaluation.
             end
         end else if (opcode >= 8'h40 && opcode <= 8'h7f) begin
             if (opcode == 8'h76) begin
@@ -375,4 +378,3 @@ module n2m_cpu_execute (
     end
 endmodule
 
-`default_nettype wire

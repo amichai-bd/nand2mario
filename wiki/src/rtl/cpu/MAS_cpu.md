@@ -1,8 +1,9 @@
 # SM83 CPU
 
 Status: design in progress for [#118](https://github.com/amichai-bd/nand2mario/issues/118).
-The byte ALU has directed Questa evidence; the instruction controller is not
-implemented or verified yet. The open modeling decisions below
+The byte ALU, instruction cycle planner and digital bus have component Questa
+evidence. The integrated instruction controller is not implemented or verified
+yet. The open modeling decisions below
 must be settled before their dependent RTL. This owner covers the complete legal
 base and CB instruction sets; a subset does not complete the issue.
 
@@ -41,6 +42,7 @@ enable, never a generated CPU clock.
 | `epoch` | Input, 32 bits | Current initialization epoch, supplied by the system owner. The CPU does not invent a second epoch counter. |
 | `dot_before` | Input, 64 bits | System count of completed emulated T-cycles before the current edge. An event on `gb_tick` records this count plus one. The system count includes HALT, freezes with host pause, and follows the agreed STOP oscillator gating; it is not a CPU-running counter. |
 | `ie`, `iflags` | Input, 8 and 5 bits | Live interrupt enable and request state, including changes caused by CPU writes and peripherals. These are not frozen at interrupt-entry start. |
+| `if_dispatch` | Input, 5 bits | Bus-owner request snapshot at the low stack-write T4 edge, before that CPU write modifies IF. The bus owner resolves simultaneous peripheral events; CPU sampling is explicit and separate from post-event `iflags`. |
 | `buttons`, `joyp_selected_active` | Input | Public latched button snapshot and selected active-low JOYP-line reduction from the JOYP owner; physical buttons alone do not determine STOP wake. |
 | Memory request | Output | Address, read/write direction, write byte and access kind: opcode, operand, data, stack or idle. Idle is observable without issuing a memory transaction. |
 | Memory response | Input | Read byte and response-valid by the specified emulated sampling edge. There is no unbounded ready/wait protocol. |
@@ -86,8 +88,15 @@ instruction. DI disables immediately and cancels pending enable. Consecutive EI
 must not postpone the first EI's scheduled enable. RETI enables before the next
 instruction can execute. Pending enabled interrupts are prioritized from the
 lowest numbered request. Interrupt entry is a separate event, with two idle
-M-cycles, two stack writes and the vector-fetch cycle. Selection and cancellation
-during entry require the explicit timing decision below.
+M-cycles, two stack writes and the vector-fetch cycle. After the high stack write commits, the following system edge captures IE.
+At the low stack-write T4 edge, that captured IE is ANDed with `if_dispatch`;
+the lowest set bit selects the vector and acknowledgement. Thus a high-byte
+write to IE can cancel or reprioritize entry, while a low-byte write to IE is
+too late. No selected bit gives vector zero, no IF acknowledgement, and IME
+remains clear. A low-byte write to IF must not replace the dispatch snapshot
+with the just-written byte. The [source record](references.md) distinguishes
+hardware-tested IE ordering from the corroborating IF-write model. The CPU
+cannot claim that this interface proves every future timer/IF same-edge rule.
 
 HALT preserves peripheral time. With IME clear and an enabled request already
 pending, it suppresses one following opcode-fetch PC increment instead of
@@ -109,7 +118,8 @@ unchanged byte and masked F; the controller must never issue them.
 The directed datapath fixture uses a separate integer reference and its own
 operation mapping. It enumerates every byte pair and carry state for the eight
 binary operations, every input byte and flags nibble for unary operations, and
-every bit index for BIT/RES/SET: 1,220,608 cases. Both the full positive case and deliberate result-byte mutation have run in
+every bit index for BIT/RES/SET: 1,220,608 legal-operation cases. A further
+12,288 cases check the three unused operation values. All 1,232,896 cases and the actual DUT-output fault injection have run in
 Questa. This proves the byte datapath boundary, not instruction sequencing or
 full CPU coverage. A sampled trace and early
 waves are retained; any later mismatch includes its complete expected/actual
@@ -164,6 +174,14 @@ resolve unimplemented peripheral conflicts by extending instruction timing.
 Reset before T4 cancels an uncommitted request; reset at T4 wins over commit.
 A prepared request may remain stable across host pause without side effects.
 
+The bus M-phase runs through inactive HALT cycles. The front end may change
+bus-active state only at phase zero, after a completed T4; a named assertion
+rejects activation partway through an M-cycle. In particular, a wake observed
+while inactive cannot immediately commit a new request at phase three. STOP
+freezes the system T-cycle supply at the agreed boundary; host pause preserves
+the current phase and active request. Directed checks vary inactive/reactivation
+and pause at all four phases. Reset resets phase to zero regardless of activity.
+
 Retirement records post-event architectural state, actual fetched bytes and the
 public IE/IF/button snapshot. A CB instruction produces one event, interrupt
 entry produces its own kind, and HALT/STOP/lock idle produces none. Event sequence
@@ -185,10 +203,7 @@ priority. The system must not use CPU HALT as host pause.
 
 ## Design gates before dependent RTL
 
-1. Reconcile interrupt selection after the high stack write, including an IE
-   write through a wrapping SP, late higher-priority requests, cancellation and
-   the resulting vector/acknowledge. Expectations must be independently sourced.
-2. Resolve STOP's deterministic held/pending combinations and the documented
+1. Resolve STOP's deterministic held/pending combinations and the documented
    nondeterministic oscillator-glitch case under the charter's model policy.
    A deliberate model fault or a deterministic digital approximation must be
    explicit and reviewed; neither may be silently presented as exact silicon.
