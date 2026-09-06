@@ -2970,5 +2970,71 @@
     "args": [],
     "expected_exit": "zero",
     "timeout_seconds": 180
+  },
+  "snapshot-lifecycle": {
+    "top": "tb_snapshot_lifecycle",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/snapshot/n2m_snapshot_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/snapshot/n2m_frame_snapshot.sv",
+      "src/dv/snapshot/tb_snapshot_lifecycle.sv"
+    ],
+    "vendor_model": "intel-memory",
+    "signature": "PASS snapshot lifecycle cases=8 bytes=43367",
+    "args": [],
+    "expected_exit": "zero",
+    "timeout_seconds": 180
+  },
+  "snapshot-overwrite": {
+    "top": "tb_snapshot_lifecycle",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/snapshot/n2m_snapshot_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/snapshot/n2m_frame_snapshot.sv",
+      "src/dv/snapshot/tb_snapshot_lifecycle.sv"
+    ],
+    "vendor_model": "intel-memory",
+    "signature": "SNAPSHOT_LIFECYCLE_DATA case=2 byte=3",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "timeout_seconds": 180
+  },
+  "snapshot-latency": {
+    "top": "tb_snapshot_lifecycle",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/snapshot/n2m_snapshot_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/snapshot/n2m_frame_snapshot.sv",
+      "src/dv/snapshot/tb_snapshot_lifecycle.sv"
+    ],
+    "vendor_model": "intel-memory",
+    "signature": "SNAPSHOT_LIFECYCLE_LATENCY case=2 byte=3",
+    "args": [
+      "+latency_fault"
+    ],
+    "expected_exit": "nonzero",
+    "timeout_seconds": 180
+  },
+  "snapshot-ownership": {
+    "top": "tb_snapshot_lifecycle",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/snapshot/n2m_snapshot_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/snapshot/n2m_frame_snapshot.sv",
+      "src/dv/snapshot/tb_snapshot_lifecycle.sv"
+    ],
+    "vendor_model": "intel-memory",
+    "signature": "N2M_ASSERT SNAPSHOT_BANK_OWNERSHIP",
+    "args": [
+      "+ownership_fault"
+    ],
+    "expected_exit": "nonzero",
+    "timeout_seconds": 180
   }
 }
