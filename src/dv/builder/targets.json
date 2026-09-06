@@ -3523,5 +3523,47 @@
     "signature": "UART_SNAPSHOT_PAYLOAD cmd=13 index=0 expected=39 actual=00",
     "vendor_model": "intel-memory",
     "timeout_seconds": 180
+  },
+  "uart-stopped-step": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/uart/n2m_uart_core_control.sv",
+      "src/dv/uart/tb_uart_stopped_step.sv"
+    ],
+    "top": "tb_uart_stopped_step",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS UART stopped STEP immediate cases=4 zero_dots input_preserved queued_wake=1"
+  },
+  "uart-stopped-step-corrupt": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/uart/n2m_uart_core_control.sv",
+      "src/dv/uart/tb_uart_stopped_step.sv"
+    ],
+    "top": "tb_uart_stopped_step",
+    "args": [
+      "+release_pause"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "UART_STOP_STEP_PAUSED"
   }
 }

@@ -77,7 +77,7 @@ completion/read model, covering NO_FRAME, metadata, last-byte bounds and publish
 host retention across core reset. It does not claim full peripheral routing or
 #93 storage composition. The wire clock ratio is deliberately eight clocks per
 bit to bound the full-image test; physical 50 MHz/115200 timing remains covered
-by the retained serial slice. Already-STOPped STEP acceptance remains pending.
+by the retained serial slice. Already-STOPped STEP returns immediate STEP_LIMIT without advancing time.
 
 
 The focused `uart-snapshot` wire fixture binds the delivered
@@ -95,3 +95,14 @@ This focused test performs no ROM load/readback traffic and uses an explicit
 actual CPU/ROM endpoint proof. The source observer is driven directly, so no PPU
 pixel or whole-system claim follows. Earlier model-backed snapshot cases remain
 historical boundary evidence; this test supplies actual owner composition.
+
+
+`uart-stopped-step` binds the actual CPU, existing timebase and host core-control
+owner. An original STOP instruction establishes oscillator sleep. Four immediate
+STEP failures cover budgets1/70224 with and without a queued wake and held A5/FF
+input. Public pause, dots, retirements, epoch, CPU sleep and absence of effects
+remain unchanged through each reply and following clocks. A later RUN delivers
+the preserved queued wake once. The wake boundary is explicit stimulus, not a
+claim about analog restart or the JOYP detector. Actual pause-output corruption
+must fail the independent freeze checker. The normal full wire endpoint test
+remains the affected command/status/reset/ROM regression after this control edit.

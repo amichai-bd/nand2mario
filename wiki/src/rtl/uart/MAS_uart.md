@@ -1,6 +1,6 @@
 # UART endpoint
 
-Status: composed wire commands are implemented under [#91](https://github.com/amichai-bd/nand2mario/issues/91). Already-STOPped STEP remains pending.
+Status: composed wire commands are implemented under [#91](https://github.com/amichai-bd/nand2mario/issues/91). Already-STOPped STEP returns immediately without consuming time.
 
 The [shared interface contract](../interfaces/MAS_interfaces.md) owns packet,
 command, duplicate and core-transition behavior. Its generated package supplies
@@ -222,9 +222,10 @@ INPUT applies between dot edges and returns that boundary's count. STEP uses the
 CPU's pre-T4 instruction-completion qualifier, excluding interrupt entry, and
 counts actual delivered dots. Instruction completion wins a budget tie; the
 reply follows the finishing B retirement publication. No synthetic tick or
-wall-clock STEP timeout is introduced. Already-STOPped STEP remains an explicit
-unresolved product decision and has a named assertion; that corner is not an
-accepted endpoint behavior yet.
+wall-clock STEP timeout is introduced. An already oscillator-STOPped CPU returns
+STEP_LIMIT immediately while host pause, dot/state/input and pending wake remain
+unchanged. Named assertions check completion and frozen time; RUN owns subsequent
+resumption through the existing wake boundary.
 
 SNAPSHOT holds request until ready, then awaits done/ok and captures the generated
 metadata before reply construction. NO_FRAME contains no payload. READ_FRAME

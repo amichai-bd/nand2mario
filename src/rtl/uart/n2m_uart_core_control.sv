@@ -67,9 +67,17 @@ module n2m_uart_core_control (
                     COMMAND_RESET: begin host_pause_next = 1; state_next = RESET_WAIT; end
                     COMMAND_INPUT: begin pending_buttons_next = input_buttons; state_next = INPUT_APPLY; end
                     COMMAND_STEP: begin
-                        remaining_next = step_budget;
-                        host_pause_next = 0;
-                        state_next = STEP_RUN;
+                        if (cpu_stopped) begin
+                            // An already sleeping oscillator cannot spend a dot
+                            // budget. Preserve pause/input and any queued wake.
+                            status_next = STATUS_STEP_LIMIT;
+                            completed_dot_next = dot_count;
+                            state_next = COMPLETE;
+                        end else begin
+                            remaining_next = step_budget;
+                            host_pause_next = 0;
+                            state_next = STEP_RUN;
+                        end
                     end
                     default: begin end
                 endcase
@@ -126,9 +134,11 @@ module n2m_uart_core_control (
     `N2M_ASSERT(UART_CORE_INIT_FROZEN, clk_sys, reset_sys, state == INIT_WAIT |-> paused && !gb_tick)
     `N2M_ASSERT(UART_STEP_BUDGET, clk_sys, reset_sys,
         start && command == COMMAND_STEP |-> paused && step_budget != 0 && step_budget <= WIRE_STEP_MAX_DOTS)
-    // Pending product decision: no already-STOPped STEP acceptance claim.
-    `N2M_ASSERT(UART_STEP_STOP_POLICY_PENDING, clk_sys, reset_sys,
-        start && command == COMMAND_STEP |-> !cpu_stopped)
+    `N2M_ASSERT(UART_STEP_ASLEEP_COMPLETE, clk_sys, reset_sys,
+        start && command == COMMAND_STEP && cpu_stopped |=>
+            done && status == STATUS_STEP_LIMIT && pause_request && paused && !gb_tick)
+    `N2M_ASSERT_STABLE_WHEN(UART_STEP_ASLEEP_TIME, clk_sys, reset_sys,
+        start && command == COMMAND_STEP && cpu_stopped, dot_count)
     `N2M_ASSERT_KNOWN(UART_CORE_CONTROLS, clk_sys, reset_sys,
         ({start, gb_tick, paused, core_initialized, instruction_complete, retirement_valid, cpu_stopped, state}))
 endmodule
