@@ -125,7 +125,12 @@ module n2m_cpu_control (
                 address_effect.valid = 1;
                 address_effect.address = execute_result.pc_after;
             end
-            if (execute_result.stop_request) address_effect_resolved = 0;
+            if (execute_result.stop_request) begin
+                // Completed STOP drives its pre-fetch PC through the IDU.
+                // Retirement length does not determine this additional effect.
+                address_effect.valid = 1;
+                address_effect.address = control.pc;
+            end
         end else if (control.mode == MODE_INTERRUPT) begin
             if (control.step == 0) begin
                 address_effect_resolved = !control.observation_resume;
@@ -284,7 +289,7 @@ module n2m_cpu_control (
                                 retire_capture.pc_after = execute_result.pc_after + 16'd1;
                             end
                             if (stop_action != STOP_CONTINUE) begin
-                                control_next.observation_resume = 1;
+                                control_next.observation_resume = stop_action == STOP_OSCILLATOR;
                                 control_next.pc = retire_capture.pc_after;
                                 control_next.mode = stop_action == STOP_HALT ? MODE_HALT : MODE_STOP;
                                 retire_capture.halted_after = stop_action == STOP_HALT;

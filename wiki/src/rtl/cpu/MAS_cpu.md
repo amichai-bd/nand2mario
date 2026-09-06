@@ -253,7 +253,7 @@ fault suppression; a missing response suppresses the sample on the failed T4
 itself, before the registered fault changes. It can accompany idle rather than a memory commit.
 `resolved` is an explicit completeness qualifier: a consumer must reject an
 unresolved sample rather than interpreting its payload as no effect. In this
-incomplete integration, STOP execution and its oscillator-wake address activity
+incomplete integration, the unresolved interrupt-during-oscillator-restart address activity
 remain unresolved. Ordinary HALT preparation is resolved but is sampled only
 when its fresh wake read completes. Sourced ordinary fetch/operand/stack/planner
 cycles are resolved. This qualifier changes observation only, not CPU execution,
@@ -265,7 +265,10 @@ one M-cycle observation at the shared T4 rising enable; it must not apply one
 effect per system clock while `valid` remains asserted. Reset or a canceled bus
 attempt suppresses the observation. HALT preparation may expose a valid payload
 through sleep without a sample pulse; it causes no increment effect until wake.
-STOP/lock idle has no fabricated PC increment. This is an M-cycle digital abstraction, not a claimed pin waveform.
+A completed STOP execution exposes its pre-fetch PC with a full known mask and
+a write-like effect, independently of whether retirement consumes the fetched
+byte as padding. STOP that enters HALT keeps the ordinary HALT observation; it
+does not inherit an oscillator uncertainty marker. STOP/lock idle has no fabricated PC increment. This is an M-cycle digital abstraction, not a claimed pin waveform.
 
 A valid write-like observation must have every high-byte mask bit set; the
 producer enforces this with a named assertion. Unknown high bits are not an
@@ -418,8 +421,8 @@ The `n2m_cpu` wrapper composes the owners above. Its checked original program
 covers 18 events and 50 M-cycles. The component owns deterministic STOP entry from `joyp_selected_active`
 and its frozen enabled-request snapshot. The `wake_request` input is the stable-clock qualification described above,
 not an addition to the host initialization ABI. The enclosing power owner owns
-selected-line capture and stable tick release; normal-path runtime evidence is
-pending for this snapshot.
+selected-line capture and stable tick release; normal-path runtime evidence checks four normal cases and sixteen prepared-read
+reset cancellations, with an actual stale-read failure.
 
 The T3 request snapshot mapping is specified above; its contrasted IRQ/HALT
 fixtures have bounded checked evidence; full readiness still requires the remaining gates. The current HALT return-to-HALT
@@ -427,7 +430,7 @@ branch matches the pinned SameBoy model for pending requests with IME set,
 including delayed EI. An earlier inference that ordinary IME alone proved this
 branch wrong was withdrawn after source comparison. Requests before the latch
 closes and arrivals after HALT enters sleep need separate checked expectations.
-STOP interrupt-during-restart policy, entry IDU mapping, and final composed acceptance
+STOP interrupt-during-restart policy and final composed acceptance
 remain unfinished; this snapshot cannot close
 #118. The selected 498-form state/access evidence below remains valid within
 its declared flat-RAM exclusions.

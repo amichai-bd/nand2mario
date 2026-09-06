@@ -78,6 +78,10 @@ module tb_cpu_stop;
         if (expected_divider) divider_count = divider_count + 1;
         if (!gb_tick && (bus_commit || address_effect_sample)) $fatal(1, "CPU_STOP_PAUSE_COMMIT");
         if (gb_tick && dot_before[1:0] == 3) begin
+            if (dot_before == 15 && (!address_effect_sample || !address_effect_resolved ||
+                    !address_effect.valid || address_effect.address !== 16'h0103 ||
+                    address_effect.known_mask !== 16'hffff || !address_effect.write_effect))
+                $fatal(1,"CPU_STOP_ENTRY_IDU_MATRIX case=%0d",scenario);
             expected_kind = 0;
             expected_address = 0;
             expected_byte = 0;

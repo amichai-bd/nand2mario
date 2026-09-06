@@ -236,3 +236,11 @@ prepared fetch at each phase for both IME states and reset types. Literal bus,
 full retirement and resumed IDU checks remain separate from actual stale-read
 fault injection. This fixture does not establish analog settling duration,
 JOYP event priority or the unresolved IME1 interrupt-during-restart policy.
+
+
+STOP-entry IDU checks extend the eight-row/IME entry matrix without changing its
+architectural oracle. A separate eight-case program contrasts STOP at01FF/FDFF,
+entry reads at0200/FE00, all four entry rows and independent additional effects.
+It checks40 literal public cycles and16 full records. An actual FE00-to-FDFF
+output mutation proves that ordinary read correctness cannot hide a wrong IDU
+page. Analog partial-cycle shutdown timing is outside this digital projection.

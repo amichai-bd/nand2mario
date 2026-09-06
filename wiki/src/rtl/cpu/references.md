@@ -187,3 +187,17 @@ it does not independently resolve button-only/no-IE restart. The CPU boundary
 therefore delegates oscillator qualification to the enclosing power owner and
 assigns no invented fixed delay. The IME-enabled interrupt during unstable
 restart remains a separately documented unresolved model decision.
+
+
+## STOP execution IDU projection
+
+At the existing Gekkio pin, stage1 line482 selects `op_nop_stop_s0xx` for the
+actual NOP/STOP execution row. Stage2 includes it in `addr_pc` (335), `m1` (363)
+and `idu_inc` (449). The register file drives all16 PC bits onto `idu_in`
+(163-167), which is also the address output in `cpu_core` (164). Stage3 routes
+the IDU result to PC (549-560). Thus a completed STOP execution has the pre-fetch
+PC write-like observation; architectural one-byte retirement does not establish
+absence of IDU activity. The interrupt row separately selects PC decrement,
+which remains write-like under the typed convention. This is the same digital
+M-cycle projection as ordinary fetch/IRQ effects, not a promise about partial-M
+analog shutdown transitions or increment/decrement direction on physical pins.
