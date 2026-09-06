@@ -87,7 +87,7 @@ module tb_cpu_program;
                 $fatal(1, "CPU_PROGRAM_IDU_RESET");
         end else begin
             if (address_effect_phase !== dot_before[1:0] ||
-                    address_effect_sample !== (gb_tick && dot_before[1:0] == 3 && response_valid))
+                    address_effect_sample !== (gb_tick && dot_before[1:0] == 3 && response_valid && bus_index < 50))
                 $fatal(1, "CPU_PROGRAM_IDU_EDGE dot=%0d", dot_before);
             if (bus_index < 50) begin
                 expected_effect_mask = expected_effect_valid[bus_index] ? 16'hffff : 0;
@@ -112,8 +112,10 @@ module tb_cpu_program;
                     $fdisplay(effect_trace, "%0d,%0d,%0d,%04h,%04h,%0d", dot_before+1,
                         bus_index, address_effect.valid, address_effect.address,
                         address_effect.known_mask, address_effect.write_effect);
-            end else if (address_effect_resolved)
-                $fatal(1, "CPU_PROGRAM_IDU_UNRESOLVED_HALT");
+            end else if (!address_effect_resolved || !address_effect.valid ||
+                    !address_effect.write_effect || address_effect.address !== 16'h0131 ||
+                    address_effect.known_mask !== 16'hffff || address_effect_sample)
+                $fatal(1, "CPU_PROGRAM_IDU_HALTED_PREPARATION");
         end
     endtask
 
@@ -132,7 +134,9 @@ module tb_cpu_program;
                 if (encoded_kind != 0 && (access_kind !== 3'(encoded_kind) || address !== expected_address[bus_index] || write_enable !== expected_write || (write_enable ? write_data : read_data) !== expected_data[bus_index]))
                     $fatal(1, "CPU_PROGRAM_BUS dot=%0d expected_address=%04h actual_address=%04h expected_data=%02h actual_data=%02h", dot_before+1, expected_address[bus_index], address, expected_data[bus_index], write_enable ? write_data : read_data);
                 bus_index = bus_index + 1;
-            end else if (bus_commit || request_valid) $fatal(1, "CPU_PROGRAM_HALTED_ACCESS");
+            end else if (bus_commit || !request_valid || write_enable ||
+                    access_kind !== n2m_cpu_pkg::ACCESS_OPCODE || address !== 16'h0131)
+                $fatal(1, "CPU_PROGRAM_HALTED_ACCESS");
         end
     endtask
 

@@ -99,7 +99,10 @@ module tb_cpu_irq;
             expected_address = 16'(16'h0100 + mcycle - 1);
             expected_byte = memory[expected_address];
             if (mcycle == 2 || mcycle == 3 || (scenario==16 && mcycle==6)) expected_kind = 2;
-            if (scenario==14 && mcycle==8) expected_kind = 0;
+            if (scenario==14 && mcycle==8) begin
+                expected_address = 16'h0106;
+                expected_byte = memory[16'h0106];
+            end
             if (expect_interrupt && mcycle > recognition_dot / 4) begin
                 elapsed = mcycle - recognition_dot / 4;
                 expected_kind = 0;

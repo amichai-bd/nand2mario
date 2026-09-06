@@ -64,6 +64,7 @@ module n2m_cpu_control (
     logic execute_di;
     logic execute_reti;
     logic active;
+    logic complete_enable;
     logic [1:0] phase;
     logic [15:0] plan_address;
     logic [7:0] plan_write_data;
@@ -115,7 +116,8 @@ module n2m_cpu_control (
 
     assign fault = bus_fault || control.profile_fault;
     assign initialized = control.initialized;
-    assign active = initialized && !fault && (control.mode == MODE_FETCH || control.mode == MODE_EXECUTE || control.mode == MODE_INTERRUPT);
+    assign active = initialized && !fault && (control.mode == MODE_FETCH || control.mode == MODE_EXECUTE || control.mode == MODE_INTERRUPT || control.mode == MODE_HALT);
+    assign complete_enable = control.mode != MODE_HALT || pending_irq;
     assign halted = control.mode == MODE_HALT;
     assign stopped = control.mode == MODE_STOP;
     assign locked = control.mode == MODE_LOCK;
@@ -156,7 +158,7 @@ module n2m_cpu_control (
     always_comb begin
         address_effect = '0;
         address_effect_resolved = 1;
-        if (control.mode == MODE_FETCH) begin
+        if (control.mode == MODE_FETCH || control.mode == MODE_HALT) begin
             address_effect_resolved = !control.observation_resume;
             address_effect.valid = !control.observation_resume;
             address_effect.address = control.observation_resume ? 16'b0 : control.pc;
@@ -168,7 +170,11 @@ module n2m_cpu_control (
             end
             if (execute_stop) address_effect_resolved = 0;
         end else if (control.mode == MODE_INTERRUPT) begin
-            if (control.step == 0) address_effect_resolved = 0;
+            if (control.step == 0) begin
+                address_effect_resolved = !control.observation_resume;
+                address_effect.valid = !control.observation_resume;
+                address_effect.address = control.observation_resume ? 16'b0 : control.pc;
+            end
             else if (control.step == 1 || control.step == 2) begin
                 address_effect.valid = 1;
                 address_effect.address = registers.sp;
@@ -176,7 +182,7 @@ module n2m_cpu_control (
                 address_effect.valid = 1;
                 address_effect.address = control.pc;
             end
-        end else if (control.mode == MODE_HALT || control.mode == MODE_STOP)
+        end else if (control.mode == MODE_STOP)
             address_effect_resolved = 0;
         if (address_effect.valid) begin
             if (address_effect.known_mask == 0) address_effect.known_mask = 16'hffff;
@@ -193,7 +199,7 @@ module n2m_cpu_control (
         plan_write_data = 0;
         plan_write = 0;
         plan_kind = ACCESS_IDLE;
-        if (control.mode == MODE_FETCH) plan_kind = ACCESS_OPCODE;
+        if (control.mode == MODE_FETCH || control.mode == MODE_HALT) plan_kind = ACCESS_OPCODE;
         else if (control.mode == MODE_EXECUTE) begin
             plan_address = execute_address;
             plan_write_data = execute_write_data;
@@ -211,7 +217,8 @@ module n2m_cpu_control (
 
     n2m_cpu_bus bus (
         .clk_sys(clk_sys), .reset_sys(reset_sys), .core_reset(core_reset),
-        .gb_tick(gb_tick), .active(active), .plan_address(plan_address),
+        .gb_tick(gb_tick), .active(active), .complete_enable(complete_enable),
+        .plan_address(plan_address),
         .plan_write_data(plan_write_data), .plan_write(plan_write), .plan_kind(plan_kind),
         .response_valid(response_valid), .phase(phase), .request_valid(request_valid),
         .address(address), .write_data(write_data), .write_enable(write_enable),
@@ -243,21 +250,18 @@ module n2m_cpu_control (
         // PHI closes the enabled-request latch at T3 rising. Recognition and
         // low-stack vector selection consume this frozen M-cycle snapshot.
         if (gb_tick && phase == 2) control_next.irq_snapshot = ie[4:0] & iflags;
-        // Inactive wake is accepted only at a complete M-cycle boundary.
-        if (control.mode == MODE_HALT && pending_irq && gb_tick && phase == 3) begin
-            control_next.mode = control.ime ? MODE_INTERRUPT : MODE_FETCH;
-            control_next.step = 0;
-            control_next.irq_pc = control.pc;
-            control_next.observation_resume = 1;
-        end
+        // STOP wake retains its separate unresolved oscillator policy.
         if (control.mode == MODE_STOP && wake_request && phase == 0) begin
             control_next.mode = MODE_FETCH;
             control_next.observation_resume = 1;
         end
         if (cycle_end) begin
             case (control.mode)
-                MODE_FETCH: begin
-                    control_next.observation_resume = 0;
+                // HALT continuously prepares this read, but only its frozen
+                // pending request enables completion. Wake captures fresh data
+                // at this T4; it never reuses the discarded pre-sleep byte.
+                MODE_FETCH, MODE_HALT: begin
+                    control_next.observation_resume = control.observation_resume && control.ime && pending_irq;
                     control_next.opcode = read_data;
                     control_next.fetched = {16'b0, read_data};
                     control_next.length = 1;
@@ -329,6 +333,7 @@ module n2m_cpu_control (
                                 event_pc_after = execute_pc + 16'd1;
                             end
                             if (stop_action != 0) begin
+                                control_next.observation_resume = 1;
                                 control_next.pc = event_pc_after;
                                 control_next.mode = stop_action == 1 ? MODE_HALT : MODE_STOP;
                                 event_halted = stop_action == 1;
@@ -356,6 +361,7 @@ module n2m_cpu_control (
                         irq_ack = selected_irq;
                     end
                     if (control.step == 4) begin
+                        control_next.observation_resume = 0;
                         event_valid = 1;
                         event_interrupt = 1;
                         event_pc_before = control.irq_pc;

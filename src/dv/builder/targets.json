@@ -2488,5 +2488,60 @@
     ],
     "expected_exit": "nonzero",
     "signature": "CPU_STOP_RECORD case=0 event=2"
+  },
+  "cpu-wake": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/dv/cpu/tb_cpu_wake.sv"
+    ],
+    "top": "tb_cpu_wake",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU HALT wake cases=7 arrival_edges=3 IME_states=2 fresh_opcode=1"
+  },
+  "cpu-wake-stale": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/dv/cpu/tb_cpu_wake.sv"
+    ],
+    "top": "tb_cpu_wake",
+    "args": [
+      "+stale"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_WAKE_RECORD case=6 event=4"
+  },
+  "cpu-wake-missing": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/dv/cpu/tb_cpu_wake.sv"
+    ],
+    "top": "tb_cpu_wake",
+    "args": [
+      "+missing"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_BUS_RESPONSE"
   }
 }

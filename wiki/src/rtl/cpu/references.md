@@ -148,3 +148,21 @@ marking the STOP dummy-read timing unverified. Separately, the pinned SonoSooS
 notes describe unstable DMG clocks when an IME-enabled interrupt occurs during
 wake. We preserve that separate evidence and model limit without conflating
 it with the chart's CGB speed-switch branch.
+
+
+## HALT wake projection
+
+At the existing Gekkio pin, `control_unit.vhd` forces decoder state `111` during
+clock shutdown (`reset_op_int`, lines 164 and 217–239). Decoder stage 1's
+`op_s111` and stage 2's `addr_pc`/`idu_inc` select the next-PC fetch. Normal
+interrupt state `int_s000` instead selects PC with `idu_dec`; the register file
+and `cpu_core` expose the IDU input, hence the pre-decrement cursor. These are
+digital source-to-phase inferences, not measurements of stopped-clock pins.
+
+The two Mooneye timing fixtures place their DIV resets at matching 24/23
+M-cycle setup offsets: the extra IME0 NOP replaces EI. Their six-NOP versus
+interrupt-entry-plus-JP-HL comparison constrains the subsequent latency. A fresh
+read at wake T4 followed by execution satisfies that comparison; an additional
+IME0 refetch M-cycle does not. The original fixture contrasts both IME states,
+three arrival edges, and an opcode changed during sleep. No external test ROM
+was executed to establish this projection.

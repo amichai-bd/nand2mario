@@ -171,3 +171,16 @@ expected records stay unchanged. This fixture covers deterministic entry only.
 It does not settle analog wake, IME0 HALT wake latency, physical STOP IDU activity,
 or the pending full-system clock/timer/JOYP integration. Actual run evidence and
 its exact producing sources belong in the PR and build records.
+
+
+### HALT fresh wake
+
+`cpu-wake` uses an original six-NOP versus IRQ-entry/JP-HL stream. Both IME
+states must reach the subsequent DIV read at wake plus 32 T-cycles. Literal
+public schedules and complete retirement records cover interrupt arrival before,
+on and after T3. Prepared reads persist through every-phase host pause; unused
+sleep responses may be invalid without fault. A changed next opcode must execute
+fresh after wake. `cpu-wake-stale` forces the actual captured opcode to its old
+value, and `cpu-wake-missing` removes the required wake response, checking sample
+suppression and the named fatal. These checks do not close STOP oscillator wake
+or all sleep/reset-interruption acceptance.

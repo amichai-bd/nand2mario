@@ -7,6 +7,7 @@ module tb_cpu_bus;
     logic core_reset;
     logic gb_tick;
     logic active;
+    logic complete_enable;
     logic [15:0] plan_address;
     logic [7:0] plan_write_data;
     logic plan_write;
@@ -39,7 +40,7 @@ module tb_cpu_bus;
         clk_sys = 0;
         gb_tick = tick;
         #4;
-        expected_commit = tick && expected_phase == 3 && active && !core_reset && !reset_sys && plan_kind != 0 && (plan_write || response_valid);
+        expected_commit = tick && expected_phase == 3 && active && complete_enable && !core_reset && !reset_sys && plan_kind != 0 && (plan_write || response_valid);
         if (commit !== expected_commit)
             $fatal(1, "CPU_BUS_MISMATCH commit cycle=%0d phase=%0d expected=%0d actual=%0d", cycles, expected_phase, expected_commit, commit);
         if (request_valid && (address !== plan_address || write_data !== plan_write_data || write_enable !== plan_write || access_kind !== plan_kind))
@@ -64,6 +65,7 @@ module tb_cpu_bus;
         core_reset = 0;
         gb_tick = 0;
         active = 0;
+        complete_enable = 1;
         plan_address = 16'hc123;
         plan_write_data = 8'h96;
         plan_write = 0;

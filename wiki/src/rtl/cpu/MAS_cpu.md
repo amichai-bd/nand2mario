@@ -111,9 +111,11 @@ boundary. With IME set it enters the interrupt sequence directly, preserving the
 same subsequent stack/ack/vector timing as NOP waiting under the identical
 request schedule. No extra fetch M-cycle may be unique to that path. This follows
 Mooneye's DMG timing comparison; it does not establish every physical pin edge.
-With IME clear, the current component refetches the next opcode before executing;
-its exact downstream latency versus the IME0 timing fixture remains unresolved.
-It must not reuse a stale byte merely to remove a cycle. STOP's stopped-clock wake
+At wake T4 both IME states consume a fresh next-opcode read, prepared throughout
+sleep. IME clear executes that byte immediately in the following M-cycle; IME
+set discards it into interrupt entry. Six NOPs and interrupt entry plus JP HL
+therefore reach a following read at the same relative edge. No extra refetch
+M-cycle or stale pre-sleep byte may substitute for the wake read. STOP's stopped-clock wake
 continues to use its separate power-policy input.
 
 HALT preserves peripheral time. With IME clear and an enabled request already
@@ -192,7 +194,11 @@ resolve unimplemented peripheral conflicts by extending instruction timing.
 Reset before T4 cancels an uncommitted request; reset at T4 wins over commit.
 A prepared request may remain stable across host pause without side effects.
 
-The bus M-phase runs through inactive HALT cycles. The front end may change
+The bus M-phase runs through HALT cycles. HALT keeps a side-effect-free opcode
+read prepared at the next PC. The internal `complete_enable` permits consumption
+only when the T3 snapshot enables wake; it gates missing-response faults as well
+as commit. A response is not required for an unused sleeping preparation.
+Memory continuously services preparation and applies effects only on commit. The front end may change
 bus-active state only at phase zero, after a completed T4; a named assertion
 rejects activation partway through an M-cycle. In particular, a wake observed
 while inactive cannot immediately commit a new request at phase three. STOP
@@ -247,8 +253,9 @@ fault suppression; a missing response suppresses the sample on the failed T4
 itself, before the registered fault changes. It can accompany idle rather than a memory commit.
 `resolved` is an explicit completeness qualifier: a consumer must reject an
 unresolved sample rather than interpreting its payload as no effect. In this
-incomplete integration, interrupt PC repair, sleep and the wake-refetch cycle,
-and STOP execution are unresolved. Sourced ordinary fetch/operand/stack/planner
+incomplete integration, STOP execution and its oscillator-wake address activity
+remain unresolved. Ordinary HALT preparation is resolved but is sampled only
+when its fresh wake read completes. Sourced ordinary fetch/operand/stack/planner
 cycles are resolved. This qualifier changes observation only, not CPU execution,
 and cannot waive the remaining full-CPU acceptance gate.
 
@@ -256,8 +263,9 @@ The public bus phase identifies T1 through T4 for this observation. Fields are
 prepared before T1 and stable through T4, including host pause. The owner samples
 one M-cycle observation at the shared T4 rising enable; it must not apply one
 effect per system clock while `valid` remains asserted. Reset or a canceled bus
-attempt suppresses the observation. HALT/STOP/lock idle has no fabricated PC
-increment. This is an M-cycle digital abstraction, not a claimed pin waveform.
+attempt suppresses the observation. HALT preparation may expose a valid payload
+through sleep without a sample pulse; it causes no increment effect until wake.
+STOP/lock idle has no fabricated PC increment. This is an M-cycle digital abstraction, not a claimed pin waveform.
 
 A valid write-like observation must have every high-byte mask bit set; the
 producer enforces this with a named assertion. Unknown high bits are not an
@@ -281,6 +289,7 @@ The implementation and directed proof must follow this mapping:
 | POP and RET family | First stack read: full old SP and additional effect. Second read: ordinary read only, despite its SP update. |
 | PUSH, CALL and RST | First decrement before the high write, then the decrement overlapping the high write; full old SP for each. The low write has no additional decrement effect. |
 | Ordinary opcode/operand PC increment | Same M-cycle as the read, with the full old PC. A suppressed increment or HALT dummy fetch must not inherit this rule merely because its access kind is opcode. |
+| HALT wake and ordinary IRQ repair | Wake read: full next PC with increment. Following IRQ repair: full prefetched cursor before decrement. STOP-origin wake remains separately unresolved. |
 | ADD HL,rr; ADD SP,e; LD HL,SP+e | Internal arithmetic cycles have no additional write-like effect (`resolved=1`, `valid=0`). Their operand reads and final fetches retain ordinary PC-increment effects. This does not describe floating pin voltage. |
 | LD [a16],SP | Low-byte write cycle: full temporary address before its increment, combined with the ordinary write. High-byte write: ordinary write only. |
 | LD SP,HL | Internal transfer cycle; full old HL, following the register-file address-drive inference and independent emulator corroboration. |
@@ -289,10 +298,7 @@ The implementation and directed proof must follow this mapping:
 The shared JR mapping follows the die-model datapath inference in the
 [source record](references.md#internal-address-evidence). It deliberately does
 not choose different unconditional and conditional addresses from emulator
-shortcuts. This table is a design contract awaiting implementation and checked
-observation traces. IRQ entry's PC-repair cycle, HALT wake address activity and
-other internal transfers still require source-to-phase reconciliation before
-full readiness; an invalid observation is not a waiver for those effects.
+shortcuts. Each row requires checked observation traces before full readiness; an invalid observation is not a waiver for those effects.
 OAM storage and corruption belong to their separate owner. The current planner's
 idle address remains unrelated to a physical address claim.
 
