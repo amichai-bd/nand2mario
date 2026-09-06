@@ -95,9 +95,9 @@ module n2m_dma (
         .ppu_oam_phase(ppu_oam_phase), .ppu_scan_index(ppu_scan_index),
         .kind(effect_kind), .row_index(effect_row), .invalid_observation(invalid_observation));
     n2m_dma_engine engine (.clk_sys(clk_sys), .reset_sys(reset_sys), .core_reset(core_reset),
-        .gb_tick(gb_tick && !fault), .cpu_phase(cpu_phase),
+        .gb_tick(gb_tick && !fault && !invalid_observation), .cpu_phase(cpu_phase),
         .progress_enable(!cpu_halted && !cpu_stopped),
-        .ff46_write(owner_commit && owner_destination==MEMORY_DMA && owner_write),
+        .ff46_write(owner_commit && owner_destination==MEMORY_DMA && owner_write && !invalid_observation),
         .ff46_wdata(owner_wdata), .source_data(engine_source_data), .source_valid(engine_source_valid),
         .ff46_rdata(page), .source_request(engine_source_request), .source_address(engine_source_address),
         .write_valid(engine_write), .write_offset(engine_offset), .write_data(engine_data),
@@ -116,7 +116,7 @@ module n2m_dma (
     assign local_memory=owner_destination==MEMORY_OAM || owner_destination==MEMORY_VRAM;
     assign local_allowed=owner_destination==MEMORY_VRAM ? vram_cpu_allow : (oam_cpu_allow && !dma_active);
     assign peripheral_prepare=owner_prepare && !local_owner;
-    assign peripheral_commit=owner_commit && !local_owner;
+    assign peripheral_commit=owner_commit && !local_owner && !invalid_observation;
     assign peripheral_destination=owner_destination;
     assign peripheral_address=owner_address;
     assign peripheral_write=owner_write;
@@ -154,7 +154,7 @@ module n2m_dma (
         (!conflict && owner_commit && local_memory && local_allowed && owner_write) || redirect_write);
     assign service_cpu_store=redirect_write ? STORE_VRAM : direct_store;
     assign service_cpu_offset=redirect_write ? {2'd0,engine_source_address[12:0]} : direct_offset;
-    n2m_dma_service service (.clk_sys(clk_sys), .reset(reset), .init_done(init_done && !observation_fault),
+    n2m_dma_service service (.clk_sys(clk_sys), .reset(reset), .init_done(init_done && !fault && !invalid_observation),
         .t4(t4 && !engine_fault && !port_fault), .scan_active(ppu_oam_phase==2'd1), .scan_row(effect_row),
         .effect_kind(effect_kind), .dma_write(engine_write), .dma_offset(engine_offset), .dma_byte(transfer_byte),
         .dma_source_request(engine_source_request), .dma_source_address(engine_source_address),

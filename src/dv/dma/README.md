@@ -36,3 +36,5 @@ DMA_SOURCE_SERVICE assertion. All public ports and independent expected fields
 are dumped, and every phase observation has a CSV row.
 
 The first dma-composition fixture runs an original HRAM program on the actual CPU, enables the actual PPU, and transfers160 bytes through the shared Intel stores while checking64 HL increments. Independent OAM words, physical writes, PPU pre-dot pair data and complete final public readback are checked. This initial case does not replace the remaining source-bus, restart, power-state and other IDU-family witnesses. dma-composition-byte corrupts the actual raw OAM write value and requires DMA_COMPOSITION_WRITE.
+
+The halt case uses a real CPU NOP then HALT at DMA byte0, checks partial-even pair0810 through240 system clocks, then enables an IRQ input and requires the next DMA byte at wakeT4+4 dots. The unresolved case changes the accepted observation qualifier and checks no current write before its named fatal. A separate literal SYNTHESIS wrapper runs the same product with hardware assertion exclusion and checks200 further clocks without effects after the sticky fault; it does not waive the normal assertion target.

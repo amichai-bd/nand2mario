@@ -8,6 +8,11 @@ module tb_dma_composition;
     logic [63:0] dot_before;
     logic [1:0] cpu_phase;
     logic cpu_halted, cpu_stopped, cpu_initialized, request_valid, bus_commit;
+    logic [7:0] test_ie;
+    logic [4:0] test_if;
+    logic [63:0] wake_dot;
+    integer held_count;
+    bit halt_case, seen_wake, resumed_dma;
     cpu_bus_plan_t bus_plan;
     cpu_address_effect_t address_effect;
     logic address_effect_resolved, address_effect_sample;
@@ -51,14 +56,14 @@ module tb_dma_composition;
     integer index, phase_count, dma_age, dma_count, checks, effects, row, r, w, b;
     integer selected_offset, trace, retired;
     bit observe, seen_start, a_bit, b_bit, c_bit, d_bit;
-    bit corrupt_byte;
+    bit corrupt_byte, invalid_case, hardware_fault;
     assign init_done=memory_init_done && !setup;
     n2m_dma dut (.*);
     n2m_timebase timebase (.clk_sys(clk_sys), .reset_sys(reset_sys), .core_reset(core_reset),
         .pause_request(!run_enable), .paused(paused), .gb_tick(gb_tick));
     n2m_cpu cpu (.clk_sys(clk_sys), .reset_sys(reset_sys), .core_reset(core_reset),
         .gb_tick(gb_tick), .profile_id(PROFILE_DIRECT_ID), .epoch(32'd1), .dot_before(dot_before),
-        .ie(8'd0), .iflags(5'd0), .buttons(8'd0), .read_data(read_data), .response_valid(response_valid),
+        .ie(test_ie), .iflags(test_if), .buttons(8'd0), .read_data(read_data), .response_valid(response_valid),
         .joyp_selected_active(1'b0), .wake_request(1'b0), .request_valid(request_valid),
         .address(bus_plan.address), .write_data(bus_plan.write_data), .write_enable(bus_plan.write_enable),
         .access_kind(bus_plan.access_kind), .bus_commit(bus_commit), .address_effect(address_effect),
@@ -138,7 +143,12 @@ module tb_dma_composition;
         if(reset_sys) dot_before<=0;
         else if(gb_tick) dot_before<=dot_before+1;
         if(observe) begin
-            if(fault || cpu_fault || ppu_fault) $fatal(1,"DMA_COMPOSITION_FAULT");
+            if((fault || cpu_fault || ppu_fault) && !hardware_fault) $fatal(1,"DMA_COMPOSITION_FAULT");
+            if(invalid_case && address_effect_sample && !dut.qualify.effect_resolved &&
+                (dut.engine.write_valid || access_write || peripheral_commit))
+                $fatal(1,"DMA_INVALID_EFFECT_CANCEL");
+            if(hardware_fault && fault && (access_write || peripheral_commit || dut.engine.write_valid))
+                $fatal(1,"DMA_LATCHED_EFFECT_CANCEL");
             if(gb_tick && previous_pair_request && ppu_oam_phase!=0) begin
                 if(!dma_active) observed_pair={expected_oam[int'(previous_pair)*2+1],expected_oam[int'(previous_pair)*2]};
                 else observed_pair=expected_held;
@@ -150,9 +160,13 @@ module tb_dma_composition;
                 if(bus_commit && bus_plan.write_enable && bus_plan.address==16'hff46) begin
                     if(seen_start) $fatal(1,"DMA_COMPOSITION_UNEXPECTED_RESTART");
                     seen_start=1; dma_age=0;
-                end else if(seen_start) dma_age=dma_age+1;
-                if(seen_start && dma_age>=2 && dma_age<=161) begin
+                end else if(seen_start && !cpu_halted && !cpu_stopped) dma_age=dma_age+1;
+                if(seen_start && !cpu_halted && !cpu_stopped && dma_age>=2 && dma_age<=161) begin
                     selected_offset=dma_age-2;
+                    if(seen_wake && !resumed_dma) begin
+                        if(dot_before+1!=wake_dot+4) $fatal(1,"DMA_HALT_WAKE_DOT expected=%0d actual=%0d",wake_dot+4,dot_before+1);
+                        resumed_dma=1;
+                    end
                     expected_oam[selected_offset]=sprite_byte(selected_offset);
                     dma_count=dma_count+1;
                 end
@@ -162,7 +176,7 @@ module tb_dma_composition;
                     effects=effects+1;
                     if(ppu_oam_phase==1) corrupt_row(int'(ppu_scan_index)/2,0,1);
                 end
-                if(seen_start && dma_age>=2 && dma_age<=161)
+                if(seen_start && !cpu_halted && !cpu_stopped && dma_age>=2 && dma_age<=161)
                     expected_held={expected_oam[(selected_offset/2)*2+1],expected_oam[(selected_offset/2)*2]};
             end
             if(access_write && access_store==STORE_OAM) begin
@@ -181,13 +195,19 @@ module tb_dma_composition;
         dma_age=0; dma_count=0; checks=0; effects=0; expected_held=0;
         previous_pair=0; previous_pair_request=0; dot_before=0;
         corrupt_byte=$test$plusargs("CORRUPT_BYTE");
+        invalid_case=$test$plusargs("INVALID_OBSERVATION");
+        hardware_fault=$test$plusargs("HARDWARE_FAULT");
+        halt_case=$test$plusargs("HALT_CASE"); test_ie=0; test_if=0;
+        seen_wake=0; resumed_dma=0; wake_dot=0; held_count=0;
         trace=$fopen("dma-composition.csv","w");
         $dumpfile("dma-composition.vcd");
         $dumpvars(0,clk_sys,gb_tick,cpu_phase,bus_commit,bus_plan,address_effect,address_effect_sample,
             dma_active,access_read,access_write,access_store,access_address,access_wdata,
             ppu_oam_phase,ppu_scan_index,ppu_oam_pair,ppu_oam_data,ppu_oam_valid,
             fault,cpu_fault,ppu_fault,read_data,response_valid,dma_count,effects,expected_held,
-            reset_sys,core_reset,memory_init_done,cpu_initialized,setup,run_enable,paused,request_valid);
+            reset_sys,core_reset,memory_init_done,cpu_initialized,setup,run_enable,paused,request_valid,
+            cpu_halted,test_ie,test_if,wake_dot,seen_wake,resumed_dma,dut.invalid_observation,
+            dut.engine.write_valid,peripheral_commit);
         repeat(3) @(negedge clk_sys); reset_sys=0;
         core_reset=1; repeat(2) @(negedge clk_sys); core_reset=0;
         wait(memory_init_done); repeat(3) @(negedge clk_sys);
@@ -202,6 +222,11 @@ module tb_dma_composition;
         program_bytes[7]='h3e; program_bytes[8]='hc0; program_bytes[9]='he0; program_bytes[10]='h46;
         program_bytes[11]='h06; program_bytes[12]='h40; program_bytes[13]='h23;
         program_bytes[14]='h05; program_bytes[15]='h20; program_bytes[16]='hfc; program_bytes[17]='h76;
+        if(halt_case) begin
+            // One NOP spans startup M1; HALT entry M2 writes even byte0.
+            program_bytes[11]='h00; program_bytes[12]='h76;
+            program_bytes[13]='h18; program_bytes[14]='hfe;
+        end
         for(index=0;index<127;index=index+1) load_byte(STORE_HRAM,index,program_bytes[index]);
         for(index=0;index<3;index=index+1) begin
             @(negedge clk_sys); host_address=32'('h100+index);
@@ -210,13 +235,36 @@ module tb_dma_composition;
         end
         if(!cpu_initialized) $fatal(1,"DMA_COMPOSITION_CORE_INITIALIZE");
         @(negedge clk_sys); setup=0; observe=1; run_enable=1;
+        if(invalid_case) begin
+            wait(seen_start && dma_age==4); @(negedge clk_sys);
+            force dut.qualify.effect_resolved=1'b0;
+            if(hardware_fault) begin
+                wait(fault); repeat(200) @(negedge clk_sys);
+                if(access_write || peripheral_commit || dut.engine.write_valid)
+                    $fatal(1,"DMA_LATCHED_EFFECT_CANCEL");
+                $display("PASS DMA invalid observation cancels current and latched effects");
+                $finish;
+            end
+        end
         if(corrupt_byte) begin
             wait(seen_start && access_write && access_store==STORE_OAM && access_address==5);
             @(negedge clk_sys); force dut.access_wdata=8'h00;
         end
-        wait(cpu_halted); @(negedge clk_sys); run_enable=0;
+        wait(cpu_halted);
+        if(halt_case) begin
+            @(negedge clk_sys); held_count=dma_count;
+            if(held_count!=1 || !dma_active || expected_held!==16'h0810)
+                $fatal(1,"DMA_HALT_EVEN_PAIR count=%0d pair=%04x",held_count,expected_held);
+            repeat(240) @(negedge clk_sys);
+            if(dma_count!=held_count || !dma_active) $fatal(1,"DMA_HALT_PROGRESS");
+            test_ie=1; test_if=1;
+            wait(!cpu_halted); wake_dot=dot_before; seen_wake=1;
+            wait(dma_count==160);
+            if(!resumed_dma) $fatal(1,"DMA_HALT_NO_RESUME");
+        end
+        @(negedge clk_sys); run_enable=0;
         repeat(60) @(negedge clk_sys);
-        if(dma_count!=160 || effects!=64 || checks==0) $fatal(1,"DMA_COMPOSITION_COUNTS dma=%0d effects=%0d ppu=%0d",dma_count,effects,checks);
+        if(dma_count!=160 || effects!=(halt_case ? 0 : 64) || checks==0) $fatal(1,"DMA_COMPOSITION_COUNTS dma=%0d effects=%0d ppu=%0d",dma_count,effects,checks);
         observe=0; setup=1;
         for(index=0;index<160;index=index+1) begin
             @(negedge clk_sys); setup_read=1; setup_store=STORE_OAM; setup_address=15'(index);
@@ -225,7 +273,7 @@ module tb_dma_composition;
                 $fatal(1,"DMA_COMPOSITION_READBACK offset=%0d expected=%02x actual=%02x",index,expected_oam[index],access_rdata);
         end
         $fclose(trace);
-        $display("PASS DMA composition bytes=160 idu=64 ppu=%0d",checks); $finish;
+        $display("PASS DMA composition bytes=160 idu=%0d halt=%0d ppu=%0d",effects,halt_case,checks); $finish;
     end
     initial begin #10000000; $fatal(1,"DMA_COMPOSITION_WATCHDOG"); end
 endmodule
