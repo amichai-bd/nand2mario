@@ -21,7 +21,7 @@ module tb_memory_service;
     logic [7:0] ppu_vram_rdata, expected_vram, unused_host, unused_wave;
     logic [15:0] ppu_oam_rdata, expected_oam;
     logic unused_host_valid, unused_wave_valid;
-    bit observe_ppu, previous_vram, previous_oam;
+    bit observe_ppu, previous_vram, previous_oam, corrupt_response;
     integer index, writes, ppu_checks, before_writes;
     n2m_memory_cpu_port dut (.*);
 
@@ -109,6 +109,7 @@ module tb_memory_service;
         ppu_vram_read = 0; ppu_oam_read = 0; ppu_vram_address = 0; ppu_oam_pair = 0;
         observe_ppu = 0; previous_vram = 0; previous_oam = 0;
         expected_vram = 0; expected_oam = 0; writes = 0; ppu_checks = 0;
+        corrupt_response = $test$plusargs("corrupt_response");
         edge_cycle(); reset_sys = 0;
         repeat (8192) edge_cycle();
         if (!init_done) $fatal(1, "MEMORY_SERVICE_INIT");
@@ -120,6 +121,7 @@ module tb_memory_service;
         ppu_vram_read = 1; ppu_oam_read = 1; observe_ppu = 1;
         for (index = 0; index < 128; index = index + 1) begin
             ppu_vram_address = 13'(index % 64); ppu_oam_pair = 7'(index % 80);
+            if (corrupt_response && index == 7) force stores.ppu_vram_rdata = 8'h00;
             write_byte(16'('hC000 + index), 8'(index ^ 'hD3));
             read_byte(16'('hE000 + index), 8'(index ^ 'hD3));
             read_byte(16'('h8000 + (index % 64)), 8'((index % 64) ^ 'h96));

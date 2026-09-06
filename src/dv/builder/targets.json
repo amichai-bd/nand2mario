@@ -401,6 +401,14 @@
     "expected_exit": "zero",
     "signature": "PASS memory concurrent CPU PPU writes=352 preA_pairs=1040 blocked unusable"
   },
+  "memory-service-corrupt": {
+    "vendor_model": "intel-memory",
+    "sources": ["src/rtl/interfaces/n2m_interfaces_pkg.sv", "src/rtl/memory/n2m_memory_pkg.sv", "src/rtl/common/n2m_intel_ram.sv", "src/rtl/memory/n2m_memory_stores.sv", "src/rtl/memory/n2m_memory_decode.sv", "src/rtl/memory/n2m_memory_cpu_port.sv", "src/dv/memory/tb_memory_service.sv"],
+    "top": "tb_memory_service",
+    "args": ["+corrupt_response"],
+    "expected_exit": "nonzero",
+    "signature": "MEMORY_SERVICE_VRAM_PRE_A expected=90 actual=00"
+  },
   "memory-cpu-port": {
     "vendor_model": "intel-memory",
     "sources": [

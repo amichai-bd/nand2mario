@@ -164,6 +164,9 @@ zero reads through a synthetic selected-policy adapter. The adapter supplies
 ordinary access gates explicitly and permits only one resolved A writer.
 These traces prove storage/routing boundary composition. They do not implement
 the PPU fetcher, DMA engine, corruption algorithm or transition-edge policy.
+The companion fault target corrupts the actual returned VRAM byte before a
+known pre-A observation; the independent previous-request data oracle must
+fail with the exact nonzero mismatch diagnostic.
 
 The PPU owner agrees to the previous-request registered response and pre-A
 sampling boundary. The raw RAM follows the shared Intel primitive contract;
