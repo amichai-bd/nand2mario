@@ -7,14 +7,14 @@ module tb_clocking;
     logic pll_locked;
     logic core_reset;
     logic pause_request;
-    wire pll_areset, ready, reset_sys, reset_pix, gb_tick, paused;
+    logic pll_areset, ready, reset_sys, reset_pix, gb_tick, paused;
     always #10 clk_sys = ~clk_sys;
     // Independent destination edges exercise reset control, not a vendor PLL model.
     always #19 if (pixel_running) clk_pix = ~clk_pix; else clk_pix = 0;
     n2m_reset_control u_reset (.clk_sys, .clk_pix, .board_reset_n, .pll_locked,
                               .pll_areset, .ready, .reset_sys, .reset_pix);
     n2m_timebase u_tick (.clk_sys, .reset_sys, .core_reset, .pause_request, .gb_tick, .paused);
-    wire [18:0] bad_sum;
+    logic [18:0] bad_sum;
     assign bad_sum = u_tick.phase + 19'd32769;
     bit corrupt_numerator, corrupt_drop, corrupt_reset;
     string mode;

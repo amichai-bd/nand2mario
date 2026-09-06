@@ -10,7 +10,7 @@ Derive checks from the issue and specification. Use the
 rules to independent checks, `src/` and `tools/` implementation, and evidence.
 
 Follow the [separate declaration and assignment rule](../../../wiki/src/rtl-reference-style.md#separate-declarations-and-assignments),
-including loop variables and time-zero stimulus ordering.
+including `logic` signal declarations, loop variables and time-zero stimulus ordering.
 
 1. Write a test plan with normal, edge, reset, error, and ordering cases.
 2. Separate stimulus, passive public-boundary observation, reference behavior,

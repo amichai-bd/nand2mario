@@ -18,7 +18,8 @@ requirements/design aligned with `src/rtl/`, verification, and evidence.
    `DFF_ARST_N_VAL` for asynchronous resets, retaining declarations, names,
    power-up values and synchronizer attributes. Follow the
    [separate declaration and assignment rule](../../../wiki/src/rtl-reference-style.md#separate-declarations-and-assignments);
-   never retain a variable/net declaration assignment. Use the initialized
+   use `logic` signal declarations instead of `wire`/`reg`, and never retain
+   a declaration assignment. Use the initialized
    asynchronous forms only where the contract requires constant power-up state. Async reset or attributes alone do
    not justify a raw sequential block. An unavoidable inference exception needs
    a concrete reason beside the block and in its owner contract, plus review.

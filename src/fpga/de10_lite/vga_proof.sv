@@ -12,7 +12,7 @@ module vga_proof (
     output logic [14:0] observed_index,
     output logic observed_complete
 );
-    wire clk_pix, reset_sys, reset_pix, gb_tick;
+    logic clk_pix, reset_sys, reset_pix, gb_tick;
     n2m_clocking u_clocking (.clk_sys, .board_reset_n, .clk_pix, .reset_sys, .reset_pix, .ready);
     n2m_timebase u_timebase (.clk_sys, .reset_sys, .core_reset, .pause_request, .gb_tick, .paused);
     logic [14:0] pixel_index;
@@ -22,7 +22,7 @@ module vga_proof (
                 clk_sys, gb_tick, reset_sys || core_reset, 15'd0)
     `DFF_RST_EN(source_dot, source_dot + 64'd1, clk_sys, gb_tick, reset_sys || core_reset, 64'd0)
     `DFF_RST_EN(source_epoch, source_epoch + 32'd1, clk_sys, core_reset, reset_sys, 32'd0)
-    wire [1:0] shade;
+    logic [1:0] shade;
     assign shade = pixel_index[1:0] ^ pixel_index[9:8] ^ source_epoch[1:0];
     n2m_frame_bridge u_bridge (
         .clk_sys, .reset_sys, .core_reset, .clk_pix, .reset_pix,

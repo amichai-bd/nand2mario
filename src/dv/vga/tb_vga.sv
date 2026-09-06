@@ -4,7 +4,7 @@ module tb_vga;
     logic clk_sys, clk_pix, pixel_running;
     bit pixel_phase;
     logic board_reset_n, pll_locked, core_reset;
-    wire pll_areset, ready, reset_sys, reset_pix;
+    logic pll_areset, ready, reset_sys, reset_pix;
     always #10 clk_sys = !clk_sys;
     // Nominal 63/125 clock ratio, rounded to the fixture's 1 ps precision.
     // Preserve oscillator phase through clock stops: rising edges remain on odd
@@ -24,14 +24,14 @@ module tb_vga;
     logic [1:0] source_shade;
     logic [31:0] source_epoch;
     logic [63:0] source_dot;
-    wire observe_valid, observe_complete, display_valid;
-    wire [14:0] observe_index;
-    wire [1:0] observe_shade;
-    wire [31:0] observe_epoch, display_epoch;
-    wire [63:0] observe_sequence, observe_dot, discard_count, repeat_count, display_sequence;
-    wire [9:0] video_x, video_y;
-    wire video_valid, video_active, video_image, hsync_n, vsync_n;
-    wire [3:0] red, green, blue;
+    logic observe_valid, observe_complete, display_valid;
+    logic [14:0] observe_index;
+    logic [1:0] observe_shade;
+    logic [31:0] observe_epoch, display_epoch;
+    logic [63:0] observe_sequence, observe_dot, discard_count, repeat_count, display_sequence;
+    logic [9:0] video_x, video_y;
+    logic video_valid, video_active, video_image, hsync_n, vsync_n;
+    logic [3:0] red, green, blue;
     n2m_frame_bridge dut (.*);
 
     function automatic logic [1:0] pattern(input int ep, seq, index);

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reject SystemVerilog variable/net declaration assignments in tracked source."""
+"""Check separate assignments and logic signal declarations in tracked SV/SVH."""
 from pathlib import Path
 import re
 import subprocess
@@ -11,10 +11,23 @@ QUALIFIERS = {'signed', 'unsigned', 'var', 'static', 'automatic', 'const'}
 TOKEN = re.compile(r'[A-Za-z_$][\w$]*(?:``[\w$]+)*|::|==|!=|<=|>=|===|!==|\S')
 
 
-def violations(source):
+def code_text(source):
     # Keep positions for file/line diagnostics; comments and strings contain no declarations.
-    clean = re.sub(r'//[^\n]*|/\*[\s\S]*?\*/|"(?:\\.|[^"\\])*"',
+    return re.sub(r'//[^\n]*|/\*[\s\S]*?\*/|"(?:\\.|[^"\\])*"',
                    lambda m: re.sub(r'[^\n]', ' ', m.group()), source)
+
+
+def legacy_declarations(source):
+    clean = code_text(source)
+    # A nettype restoration directive is compiler state, not a signal declaration.
+    clean = re.sub(r'(?m)^[ \t]*`default_nettype[ \t]+[A-Za-z_]\w*',
+                   lambda m: ' ' * len(m.group()), clean)
+    return sorted({source.count('\n', 0, m.start()) + 1
+                   for m in re.finditer(r'\b(?:wire|reg)\b', clean)})
+
+
+def violations(source):
+    clean = code_text(source)
     tokens = list(TOKEN.finditer(clean))
     types = set(BUILTINS)
     # Aggregate typedef members may contain semicolons; only the outer terminator
@@ -77,7 +90,10 @@ def main():
     paths = subprocess.check_output(['git', 'ls-files', '-z', '--', '*.sv', '*.svh'], cwd=ROOT).decode().split('\0')
     errors = []
     for name in filter(None, paths):
-        for line in violations((ROOT / name).read_text(encoding='utf-8')):
+        source = (ROOT / name).read_text(encoding='utf-8')
+        for line in legacy_declarations(source):
+            errors.append(f'{name}:{line}: use logic instead of wire/reg signals')
+        for line in violations(source):
             errors.append(f'{name}:{line}: separate declaration and assignment')
     print('\n'.join(errors) if errors else 'PASS SystemVerilog declaration style')
     return bool(errors)

@@ -8,16 +8,23 @@ and [gap register](../preflight-gaps.md) still govern implementation.
 
 ## Separate declarations and assignments
 
-Declare SystemVerilog variables and nets without assignments. This applies to
+Use `logic` for SystemVerilog signals; do not declare them with `wire` or `reg`.
+Use `input var logic` when an explicit input port kind is needed under
+`default_nettype none`. Preserve widths, signedness, single runtime drivers and
+appropriate counter, string, enum and record types. The compiler directive
+`default_nettype wire` restores compiler state; it is not a signal declaration.
+Generated vendor Verilog and its netlist-parser fixtures retain vendor syntax.
+
+Declare signals without assignments. This applies to
 product RTL, FPGA wrappers, DV, shared headers and generated SV. Put continuous
-net drivers in separate `assign` statements. Put procedural assignments after
+drivers in separate `assign` statements. Put procedural assignments after
 all declarations in the containing block; declare loop variables before the
 `for` statement, including genvar declarations. Parameter/localparam values
 and enum members are compile-time definitions, not signal assignments.
 
 Preserve required power-up values with separate constant `initial` assignments,
 including reset-controller state and assertion history. Preserve register names,
-widths, signedness and synchronizer attributes. Do not replace a continuous net
+widths, signedness and synchronizer attributes. Do not replace a continuous
 driver with initialization or add initialization to previously unknown state.
 An `initial` block runs at time zero rather than before procedural execution;
 keep testbench defaults and their immediate consumers in one startup process,

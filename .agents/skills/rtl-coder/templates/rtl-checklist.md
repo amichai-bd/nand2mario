@@ -12,3 +12,4 @@
 - Named assertion macros follow argument order, prior-edge control and reset/history rules
 - Assertion fatal negative and synthesis exclusion proven; names/attributes/power-up values preserved
 - Variable/net declarations have no assignments; separate initialization preserves startup behavior
+- Signal declarations use logic, with explicit input var logic where required by default_nettype none
