@@ -13,10 +13,11 @@ control registers may remain flops; independent reference models may use arrays.
 One narrow wrapper supports the current owners. Port A reads or writes;
 port B only reads. A uses `clk_a`. B uses `clk_a` in single-clock mode and
 `clk_b` in dual-clock mode. The unused primitive `clock1` is tied high in
-single-clock mode, as required by its unused-port convention. The current width/lane configurations are 2/1,
+single-clock mode, as required by its unused-port convention. The current width/lane configurations are 1/1, 2/1,
 8/1, 16/1 and 32/4. Depth and address width are explicit, and requests must
 stay within the declared depth even when the address encoding has spare values.
-The two-bit shape serves frame shades; byte stores serve system memory; the
+The one-bit shape serves the UART ROM-presence bitmap; the two-bit shape serves
+frame shades; byte stores serve system memory; the
 32-bit shape proves the issue's four byte enables. This is not a mapper or
 general memory-generator interface.
 
@@ -40,7 +41,7 @@ power-up fill. `power_up_uninitialized` is `TRUE`, and `init_file` is `UNUSED`.
 Enabled A writes update only enabled lanes. The single-lane configurations
 enable the whole word; the sixteen-bit whole-word enable is replicated to the
 primitive's two required eight-bit lanes. 32/4 maps lane zero to bits 7:0.
-The two-bit whole-word enable gates physical write enable; its unused physical
+The one- and two-bit whole-word enables gate physical write enable; their unused physical
 byte-enable port is tied high because Intel byte sizes are eight or nine bits.
 The primitive lane count is the width rounded up in units of eight bits, with
 all B lanes tied enabled on its read-only port. A same-port simultaneous
