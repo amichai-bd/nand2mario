@@ -35,10 +35,10 @@ uses only bits4:0. Global boot-era register defaults are not the direct profile.
 No duplicate IF/IE shadow exists in memory or PPU. All state uses package-owned
 records where it crosses the capture boundary and shared register macros.
 
-## Proposed A/B collision projection
+## A/B collision projection
 
-This explicit digital mapping requires source/owner review before RTL. It
-does not assert a measured physical write-pulse width or analog collision rule.
+This reviewed internal system-clock mapping preserves the CPU's A/B contract.
+It does not assert a measured physical write-pulse width or analog collision rule.
 
 A captures the committed CPU write and acknowledgement. B is the following
 system edge, before another emulated T enable. The captured operation remains
