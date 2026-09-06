@@ -10,6 +10,66 @@ from .intel_memory import MIXED_MODE_MODEL_HASH
 
 SHAPES = {"byte_ram": (160, 8), "pair_ram": (80, 16),
           "lanes_ram": (64, 32), "frame_ram": (23040, 2)}
+SYS_CLOCK = r"\clk_sys~inputclkctrl_outclk"
+PIX_CLOCK = r"\u_clocking|u_pll|altpll_component|auto_generated|wire_pll1_clk[0]~clkctrl_outclk"
+
+
+def verify_netlist(text):
+    atoms = re.findall(r"fiftyfivenm_ram_block\s+\\(\S+)\s*\((.*?)\);", text, re.DOTALL)
+    if len(atoms) != 10:
+        raise ValueError("Intel physical RAM atom count differs")
+    evidence = {}
+    counts = {name: 0 for name in SHAPES}
+    first_bits = {name: [] for name in SHAPES}
+    for name, body in atoms:
+        owner = name.split("|", 1)[0]
+        if owner not in SHAPES or not name.startswith(owner + "|ram|auto_generated|ram_block"):
+            raise ValueError("unexpected Intel physical RAM owner")
+        counts[owner] += 1
+        ports = dict(re.findall(r"\.(\w+)\((.*?)\)(?:,|$)", body, re.DOTALL))
+        ports = {key: re.sub(r"\s+", "", value) for key, value in ports.items()}
+        params = dict(re.findall(r"defparam\s+\\" + re.escape(name) + r"\s+\.(\w+)\s*=\s*(.*?);", text))
+        params = {key: value.strip().strip('"') for key, value in params.items()}
+        depth, width = SHAPES[owner]
+        expected = {"operation_mode": "bidir_dual_port", "ram_block_type": "M9K",
+                    "power_up_uninitialized": "true",
+                    "mixed_port_feed_through_mode": "dont_care" if owner == "frame_ram" else "old",
+                    "port_b_address_clock": "clock1" if owner == "frame_ram" else "clock0",
+                    "port_b_read_enable_clock": "clock1" if owner == "frame_ram" else "clock0"}
+        for port in ("a", "b"):
+            expected.update({f"port_{port}_logical_ram_depth": str(depth),
+                             f"port_{port}_logical_ram_width": str(width),
+                             f"port_{port}_data_out_clock": "none",
+                             f"port_{port}_address_clear": "none",
+                             f"port_{port}_data_out_clear": "none",
+                             f"port_{port}_read_during_write_mode": "new_data_with_nbe_read"})
+        if any(params.get(key) != value for key, value in expected.items()):
+            raise ValueError(f"Intel physical RAM parameter differs: {name}")
+        if any(key.startswith("mem_init") or key.startswith("init_file") for key in params):
+            raise ValueError("Intel physical RAM initialization unexpectedly present")
+        expected_ports = {"clk0": SYS_CLOCK, "clk1": PIX_CLOCK if owner == "frame_ram" else "gnd",
+                          "clr0": "gnd", "clr1": "gnd", "portbwe": "gnd", "portbbyteenamasks": "1'b1"}
+        if any(ports.get(key) != value for key, value in expected_ports.items()):
+            raise ValueError(f"Intel physical RAM clocks, reset or read-only B differ: {name}")
+        data_bits = [int(bit) for bit in re.findall(r"\\a_wdata\[(\d+)\]~input0", ports.get("portadatain", ""))]
+        enables = [int(bit) for bit in re.findall(r"\\a_byte_enable\[(\d+)\]~input0", ports.get("portabyteenamasks", ""))]
+        first = int(params["port_a_first_bit_number"])
+        first_bits[owner].append(first)
+        if owner == "frame_ram":
+            valid_lanes = data_bits == [first] and first in (0, 1) and ports.get("portabyteenamasks") == "1'b1"
+        else:
+            bits = 8 if owner == "byte_ram" else 16
+            expected_enables = [0] if owner == "byte_ram" else ([0, 0] if owner == "pair_ram" else [first // 8 + 1, first // 8])
+            valid_lanes = data_bits == list(range(first + bits - 1, first - 1, -1)) and enables == expected_enables
+        if not valid_lanes:
+            raise ValueError(f"Intel physical RAM data or byte-lane mapping differs: {name}")
+        evidence[name] = {"ports": ports, "parameters": params}
+    if counts != {"byte_ram": 1, "pair_ram": 1, "lanes_ram": 2, "frame_ram": 6}:
+        raise ValueError("Intel physical RAM owner counts differ")
+    if {key: sorted(value) for key, value in first_bits.items()} != {
+            "byte_ram": [0], "pair_ram": [0], "lanes_ram": [0, 16], "frame_ram": [0, 0, 0, 1, 1, 1]}:
+        raise ValueError("Intel physical RAM bit partition differs")
+    return evidence
 
 
 def identity(directory):
@@ -32,14 +92,21 @@ def audit(quote):
         words = " ".join(quote(port) for port in ports)
         lines += [f'set memory_{name} [get_ports [list {words}]]',
                   f'if {{[get_collection_size $memory_{name}] != {count}}} {{error "Intel memory input count mismatch: {name}"}}',
-                  f'puts $memory_inputs "{name} [get_collection_size $memory_{name}]"']
+                  f'puts $memory_inputs "{name} [get_collection_size $memory_{name}]"',
+                  f'foreach_in_collection port $memory_{name} {{puts $memory_inputs "input {name} [get_port_info -name $port]"}}']
     lines.append("close $memory_inputs")
     return "\n".join(lines) + "\n"
 
 
 def verify(folder):
     output = folder / "output"
-    if (output / "intel_memory_inputs.rpt").read_text().splitlines() != ["sys 63", "pix 16"]:
+    inventory = (output / "intel_memory_inputs.rpt").read_text().splitlines()
+    expected_inputs = ["sys 63", "pix 16"]
+    expected_inputs += ["input sys " + name for name in ("board_reset_n", "a_read", "a_write", "b_read")]
+    expected_inputs += [f"input sys {name}[{bit}]" for name, size in
+                        (("a_address", 15), ("a_wdata", 32), ("a_byte_enable", 4), ("b_address", 8)) for bit in range(size)]
+    expected_inputs += ["input pix frame_read"] + [f"input pix frame_address[{bit}]" for bit in range(15)]
+    if sorted(inventory) != sorted(expected_inputs):
         raise ValueError("Intel memory input-domain inventory differs")
     fit = (output / "design.fit.rpt").read_text(encoding="cp1252" if os.name == "nt" else "utf-8")
     memories = [row for row in rows(fit) if len(row) >= 20 and row[1] == "M9K"]
@@ -65,4 +132,5 @@ def verify(folder):
     netlist = (folder / "simulation/questa/design.vo").read_text(encoding="utf-8")
     if "fiftyfivenm_ram_block" not in netlist or re.search(r"(?i)black.?box", netlist):
         raise ValueError("Intel memory device RAM primitive missing or black boxed")
+    evidence["physical_atoms"] = verify_netlist(netlist)
     return evidence

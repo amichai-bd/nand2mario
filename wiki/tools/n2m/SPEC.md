@@ -76,6 +76,19 @@ same-instance simulation/synthesis rule and the narrow supported port shapes.
 Missing-model and cache host tests use controlled original bytes and fake
 execution; only actual Intel-model simulation supplies behavior evidence.
 
+The `intel-memory` FPGA target retains the four MAS configurations with virtual
+request and observation ports. Its sixteen pixel inputs have a synthetic
+0–2 ns delay budget that includes launch source latency; this is not an
+off-chip source specification. The
+[Intel SDC reference](https://cdrdv2-public.intel.com/655074/mnl_sdctmq.pdf)
+defines `-source_latency_included`. The audit checks the exact 63 system and
+16 pixel input names, all existing timing gates, four logical RAM shapes and
+ten fitted M9Ks. Fitted atom checks bind data and byte lanes, system/pixel
+clocks, B address/read-control clocks, unregistered outputs, disabled B writes,
+and absent memory clear/initialization. The fitter's physical new-data mode
+may include NBE handling; the MAS permits simultaneous A read/write only with
+all public lanes enabled, where that mapping preserves the defined result.
+
 ### Registered target execution
 
 Run an authorized registered target with default or explicit Questa:
