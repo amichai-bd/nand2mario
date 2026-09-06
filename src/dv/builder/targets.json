@@ -3161,7 +3161,9 @@
       "src/dv/joypad/tb_joypad_events.sv"
     ],
     "top": "tb_joypad_events",
-    "signature": "PASS JOYP events"
+    "signature": "PASS JOYP events",
+    "expected_exit": "zero",
+    "args": []
   },
   "joypad-events-lost": {
     "sources": [
