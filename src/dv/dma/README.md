@@ -42,3 +42,13 @@ The halt case uses a real CPU HALT after LDH retirement at DMA byte0, checks act
 The HALT witness seeds OAM byte1=08 but source byte1=27, so even-pair0810 is distinguishable from the later transferred odd-pair2710. The earlier inserted-NOP fixture failed with two transferred bytes and remains retained; it was a fixture schedule error, not an RTL failure.
 
 The HALT fixture checks the actual service output, not a PPU phase2 fetch. Actual DMA-held phase2 consumption remains a separate required full-composition witness.
+
+
+The dma-terminal fixture uses the actual object scanner and Intel OAM store.
+Only object39 is admitted before DMA. Synthetic twelve-clock dots exercise
+the phase2 pair79 response and captured attributes at12/24/36 clocks after
+the final accepted byte, with old159=3C and new159=A5. A separately tagged
+pair78 probe rejects broadcasting the pending pair. Actual core reset cancels
+a later pending byte. This is a consumer-boundary fixture, not full PPU timing
+or pixel output evidence. dma-terminal-corrupt changes the returned pair to
+002A and requires DMA_TERMINAL_PAIR.

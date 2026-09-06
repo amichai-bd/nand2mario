@@ -1,9 +1,9 @@
 # OAM DMA and access arbitration
 
-Status: contract preparation for [#132](https://github.com/amichai-bd/nand2mario/issues/132).
+Status: implementation and bounded verification for [#132](https://github.com/amichai-bd/nand2mario/issues/132).
 The four digital compatibility projections below are adopted under the user's
-delegation. The pure corruption component has bounded reviewed Questa evidence;
-transfer and composed arbitration acceptance remain incomplete.
+delegation. The transformation, sequencer and initial CPU/PPU composition have bounded
+reviewed Questa evidence. Full arbitration acceptance remains incomplete.
 
 ## Ownership and boundaries
 
@@ -45,7 +45,7 @@ for A000-BFFF; it does not allocate the upstream test's MBC5 RAM.
 These MIT-licensed tests report verified model scope. Their sources and notice
 are retained with hashes; they have not been executed locally for this issue.
 
-## Corruption qualification and service proposal
+## Corruption qualification and combined service
 
 The pinned [corruption specification](https://github.com/gbdev/pandocs/blob/fe246067b695b5404a4a6a47efb4fd6d921ececb/src/OAM_Corruption_Bug.md)
 defines read, write and combined read/IDU transformations on twenty eight-byte
@@ -55,8 +55,8 @@ write count as one write class. Qualify ordinary and additional addresses
 separately, including FEA0-FEFF. Reject unresolved or incomplete-high-mask
 effects; consume only the CPU's accepted T4 sample.
 
-The following schedule is reviewed for corruption alone, not complete DMA
-arbitration. Ordinary line reset is T1; the scanner captures even objects on
+The raw port serves corruption, DMA and CPU reads in one schedule.
+Ordinary line reset is T1; the scanner captures even objects on
 T3 and odd objects on the next T1. At T4, row r is pre-edge scan_index divided
 by two. The next consumer needs current-row word2. Initial LCD startup has no
 enabled scan until the first line reset. Delayed readable STAT is not the
@@ -72,10 +72,14 @@ first word and the current first word. They are prepared before A.
 | 3-8 | Write current row bytes0-3 and6-7. |
 | 9-16 | Write previous row bytes0-7. |
 | 17-24 | Write row-before-previous bytes0-7. |
-| 25-32 | Read current row bytes0-7 for the next event. |
-| 33-34 | Read previous row bytes0-1 for the next event. |
-| 35-36 | Read next row bytes0-1. |
-| 37 | Capture the last registered response. |
+| 25 | Write an uncovered DMA destination byte. |
+| 26-33 | Read current row bytes0-7 for the next event. |
+| 34-35 | Read previous row bytes0-1 for the next event. |
+| 36-37 | Read next row bytes0-1. |
+| 38 | Capture the last operand response. |
+| 39-40 | Request and capture the next DMA source byte. |
+| 41-42 | Request and capture its destination pair's other byte. |
+| 43-46 | Grant CPU prepared reads and retain address-tagged responses. |
 
 The minimum M-cycle interval is 47 system edges. Prior writes finish before
 next operands are read, preserving consecutive-event coherence. Shorter
@@ -87,7 +91,24 @@ Suppress a raw PPU B-port read only when it collides with a same-pair A write;
 restore the registered pair before its consuming dot. The first word2 writes
 finish at edge2, allowing a fresh read at edge3 before the next T1. Preserve
 the previous request's tag and validity. CPU read response/tag storage must
-also be independent of raw A-port reuse.
+also be independent of raw A-port reuse. CPU memory data is ready before
+its next T4; the separate IE/IF owner must still meet its pre-T3 snapshot.
+
+A DMA byte covered by a corruption row is folded into that row's writes.
+Otherwise edge25 commits it. Keep the resulting pair tagged as pending until
+the matching physical write completes: the single uncovered byte, or the
+covered pair's high byte after its low byte. This tag is separate from DMA
+ownership, which ends at accepted byte159. After ownership ends, only a
+request for the pending pair receives its forwarded data. Register selection
+and data with the request, including the physical commit edge; subsequent
+raw reads supply the committed pair. Reset and fault invalidate this forwarding.
+No pending pair may be broadcast to unrelated OAM addresses.
+
+Unavailable operands, other-byte data, or a granted raw read response raise
+named faults. An unresolved CPU sample cancels same-edge effects and latches
+fault. Preserve that edge's prepared CPU response: feeding sample-dependent
+fault qualification into response_valid would create a cycle-end loop.
+The latched fault suppresses later requests, responses and effects.
 
 ## Adopted digital compatibility projections
 

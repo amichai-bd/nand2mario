@@ -84,6 +84,8 @@ module n2m_dma (
     logic [4:0] effect_row;
     logic invalid_observation;
     logic oam_dma_response_q, oam_request_q;
+    logic pair_pending, forward_pair;
+    logic [6:0] pending_pair;
     logic [15:0] held_response_q;
     assign reset=reset_sys || core_reset;
     assign t4=gb_tick && cpu_phase==2'd3;
@@ -159,6 +161,7 @@ module n2m_dma (
         .effect_kind(effect_kind), .dma_write(engine_write), .dma_offset(engine_offset), .dma_byte(transfer_byte),
         .dma_source_request(engine_source_request), .dma_source_address(engine_source_address),
         .dma_source_data(engine_source_data), .dma_source_valid(engine_source_valid), .dma_held_pair(held_pair),
+        .dma_pair_pending(pair_pending), .dma_pending_pair(pending_pair),
         .cpu_read(service_read), .cpu_write(service_write), .cpu_store(service_cpu_store),
         .cpu_offset(service_cpu_offset), .cpu_address(bus_plan.address), .cpu_wdata(bus_plan.write_data),
         .cpu_rdata(cache_data), .cpu_valid(cache_valid), .access_read(access_read), .access_write(access_write),
@@ -172,7 +175,10 @@ module n2m_dma (
     assign raw_oam_read=ppu_oam_phase!=0 && !dma_active && !reset && !fault &&
         !(access_write && access_store==STORE_OAM && access_address[7:1]==ppu_oam_pair);
     assign raw_oam_pair=ppu_oam_pair;
-    `DFF_ARST_VAL(oam_dma_response_q, dma_active, clk_sys, reset, 1'b0)
+    // Register selection with the request, including the physical commit edge.
+    // After DMA ends only the still-pending destination pair is forwarded.
+    assign forward_pair=dma_active || (pair_pending && pending_pair==ppu_oam_pair);
+    `DFF_ARST_VAL(oam_dma_response_q, forward_pair, clk_sys, reset, 1'b0)
     `DFF_ARST_VAL(oam_request_q, ppu_oam_phase!=0, clk_sys, reset, 1'b0)
     `DFF_ARST_VAL(held_response_q, held_pair, clk_sys, reset, 16'd0)
     assign ppu_oam_data=oam_dma_response_q ? held_response_q : raw_oam_data;

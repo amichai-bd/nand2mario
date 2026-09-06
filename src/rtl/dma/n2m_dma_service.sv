@@ -19,6 +19,8 @@ module n2m_dma_service (
     output logic [7:0] dma_source_data,
     output logic dma_source_valid,
     output logic [15:0] dma_held_pair,
+    output logic dma_pair_pending,
+    output logic [6:0] dma_pending_pair,
     input var logic cpu_read,
     input var logic cpu_write,
     input var n2m_memory_pkg::memory_store_t cpu_store,
@@ -58,6 +60,7 @@ module n2m_dma_service (
     logic [15:0] cpu_address_q;
     logic cpu_valid_q;
     logic [15:0] held_q, held_next;
+    logic pair_pending_q, pair_pending_next, pair_committed;
     logic [2:0] grant_kind, response_kind_q;
     logic [3:0] grant_index, response_index_q;
     logic [15:0] grant_address, response_address_q;
@@ -112,6 +115,20 @@ module n2m_dma_service (
     end
     `DFF_RST_EN(held_q, held_next, clk_sys, accept && !service_fault, reset, 16'd0)
     assign dma_held_pair=held_q;
+    // Keep the accepted pair available until both physical bytes are current.
+    // A covered corruption writes low then high; an uncovered DMA writes one byte.
+    assign pair_committed=access_write && access_store==STORE_OAM &&
+        access_address[7:1]==dma_offset_q[7:1] &&
+        (uncovered_q || access_address[0]);
+    always_comb begin
+        pair_pending_next=pair_pending_q;
+        if (pair_committed) pair_pending_next=0;
+        if (accept && !service_fault && dma_write) pair_pending_next=1;
+        if (!init_done || fault || service_fault) pair_pending_next=0;
+    end
+    `DFF_ARST_VAL(pair_pending_q, pair_pending_next, clk_sys, reset, 1'b0)
+    assign dma_pair_pending=pair_pending_q && init_done && !reset && !fault;
+    assign dma_pending_pair=dma_offset_q[7:1];
     always_comb begin
         slot_next=slot_q;
         if (slot_q != 0) slot_next=slot_q==6'd46 ? 6'd0 : slot_q+6'd1;
