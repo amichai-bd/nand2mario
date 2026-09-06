@@ -52,3 +52,12 @@ pair78 probe rejects broadcasting the pending pair. Actual core reset cancels
 a later pending byte. This is a consumer-boundary fixture, not full PPU timing
 or pixel output evidence. dma-terminal-corrupt changes the returned pair to
 002A and requires DMA_TERMINAL_PAIR.
+
+
+The read and read-increment composition targets use original opcodes7E and2A
+in the same64-iteration CPU loop. They independently check committed FE reads,
+old-HL IDU addresses, READ versus READ_WRITE row results, every physical OAM
+write and full readback. Scan and excluded-read counts plus a row bitmap bound
+actual coverage; nonzero scan coverage is not all twenty rows. The row-fault
+target changes the first eligible current-row Y write from10 to00 and requires
+the independent DMA_COMPOSITION_WRITE failure.

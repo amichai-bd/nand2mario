@@ -57,6 +57,11 @@ module tb_dma_composition;
     integer selected_offset, trace, retired;
     bit observe, seen_start, a_bit, b_bit, c_bit, d_bit;
     bit corrupt_byte, invalid_case, hardware_fault;
+    bit read_case, read_increment_case, sampled_read, sampled_write;
+    integer reads, scan_reads, scan_combined, excluded_reads;
+    logic [19:0] read_rows;
+    bit corrupt_row_case, row_fault_ready;
+    logic [14:0] row_fault_address;
     assign init_done=memory_init_done && !setup;
     n2m_dma dut (.*);
     n2m_timebase timebase (.clk_sys(clk_sys), .reset_sys(reset_sys), .core_reset(core_reset),
@@ -170,12 +175,32 @@ module tb_dma_composition;
                     expected_oam[selected_offset]=halt_case && selected_offset==1 ? 8'h27 : sprite_byte(selected_offset);
                     dma_count=dma_count+1;
                 end
+                sampled_read=0; sampled_write=0;
+                if(read_case && bus_commit && bus_plan.address[15:8]==8'hfe) begin
+                    if(bus_plan.write_enable || bus_plan.address!==16'('hfe00+(read_increment_case ? reads : 0)))
+                        $fatal(1,"DMA_COMPOSITION_READ_ADDRESS index=%0d actual=%04x",reads,bus_plan.address);
+                    reads=reads+1; sampled_read=1;
+                end
                 if(address_effect_sample && address_effect.valid && address_effect.write_effect &&
                     address_effect.address[15:8]==8'hfe) begin
                     if(address_effect.address!==16'('hfe00+effects)) $fatal(1,"DMA_COMPOSITION_IDU");
-                    effects=effects+1;
-                    if(ppu_oam_phase==1) corrupt_row(int'(ppu_scan_index)/2,0,1);
+                    effects=effects+1; sampled_write=1;
                 end
+                // The original opcode fixes whether this accepted read has an IDU write.
+                if(sampled_read && sampled_write!=read_increment_case)
+                    $fatal(1,"DMA_COMPOSITION_READ_IDU expected=%0d actual=%0d",read_increment_case,sampled_write);
+                if(ppu_oam_phase==1 && (sampled_read || sampled_write)) begin
+                    corrupt_row(int'(ppu_scan_index)/2,sampled_read,sampled_write);
+                    if(sampled_read) begin
+                        read_rows[int'(ppu_scan_index)/2]=1;
+                        if(corrupt_row_case && !row_fault_ready && ppu_scan_index/2>=4 && ppu_scan_index/2<=18) begin
+                            row_fault_address=15'(8*(int'(ppu_scan_index)/2)+4);
+                            row_fault_ready=1;
+                        end
+                        if(sampled_write) scan_combined=scan_combined+1;
+                        else scan_reads=scan_reads+1;
+                    end
+                end else if(sampled_read) excluded_reads=excluded_reads+1;
                 if(seen_start && !cpu_halted && !cpu_stopped && dma_age>=2 && dma_age<=161)
                     expected_held={expected_oam[(selected_offset/2)*2+1],expected_oam[(selected_offset/2)*2]};
             end
@@ -198,6 +223,11 @@ module tb_dma_composition;
         invalid_case=$test$plusargs("INVALID_OBSERVATION");
         hardware_fault=$test$plusargs("HARDWARE_FAULT");
         halt_case=$test$plusargs("HALT_CASE"); test_ie=0; test_if=0;
+        read_increment_case=$test$plusargs("READ_INCREMENT");
+        read_case=$test$plusargs("READ_CASE") || read_increment_case;
+        reads=0; scan_reads=0; scan_combined=0; excluded_reads=0; read_rows=0;
+        sampled_read=0; sampled_write=0;
+        corrupt_row_case=$test$plusargs("CORRUPT_ROW"); row_fault_ready=0; row_fault_address=0;
         seen_wake=0; resumed_dma=0; wake_dot=0; held_count=0;
         trace=$fopen("dma-composition.csv","w");
         $dumpfile("dma-composition.vcd");
@@ -207,7 +237,8 @@ module tb_dma_composition;
             fault,cpu_fault,ppu_fault,read_data,response_valid,dma_count,effects,expected_held,
             reset_sys,core_reset,memory_init_done,cpu_initialized,setup,run_enable,paused,request_valid,
             cpu_halted,test_ie,test_if,wake_dot,seen_wake,resumed_dma,dut.invalid_observation,
-            dut.engine.write_valid,peripheral_commit,dut.service.dma_held_pair);
+            dut.engine.write_valid,peripheral_commit,dut.service.dma_held_pair,
+            reads,scan_reads,scan_combined,excluded_reads,read_rows,sampled_read,sampled_write,row_fault_ready,row_fault_address);
         repeat(3) @(negedge clk_sys); reset_sys=0;
         core_reset=1; repeat(2) @(negedge clk_sys); core_reset=0;
         wait(memory_init_done); repeat(3) @(negedge clk_sys);
@@ -222,6 +253,8 @@ module tb_dma_composition;
         program_bytes[7]='h3e; program_bytes[8]='hc0; program_bytes[9]='he0; program_bytes[10]='h46;
         program_bytes[11]='h06; program_bytes[12]='h40; program_bytes[13]='h23;
         program_bytes[14]='h05; program_bytes[15]='h20; program_bytes[16]='hfc; program_bytes[17]='h76;
+        // Both opcodes have a two-M-cycle body; DEC B/JR controls64 iterations.
+        if(read_case) program_bytes[13]=read_increment_case ? 8'h2a : 8'h7e;
         if(halt_case) begin
             // LDH retirement spans M1; immediate HALT entry M2 writes even byte0.
             program_bytes[11]='h76; program_bytes[12]='h18; program_bytes[13]='hfe;
@@ -245,6 +278,12 @@ module tb_dma_composition;
                 $finish;
             end
         end
+        if(corrupt_row_case) begin
+            wait(row_fault_ready); @(negedge clk_sys);
+            if(!access_write || access_store!=STORE_OAM || access_address!==row_fault_address || access_wdata!==8'h10)
+                $fatal(1,"DMA_ROW_FAULT_PRECONDITION address=%0d actual=%0d data=%02x",row_fault_address,access_address,access_wdata);
+            force dut.access_wdata=8'h00;
+        end
         if(corrupt_byte) begin
             wait(seen_start && access_write && access_store==STORE_OAM && access_address==5);
             @(negedge clk_sys); force dut.access_wdata=8'h00;
@@ -266,7 +305,11 @@ module tb_dma_composition;
         end
         @(negedge clk_sys); run_enable=0;
         repeat(60) @(negedge clk_sys);
-        if(dma_count!=160 || effects!=(halt_case ? 0 : 64) || checks==0) $fatal(1,"DMA_COMPOSITION_COUNTS dma=%0d effects=%0d ppu=%0d",dma_count,effects,checks);
+        if(dma_count!=160 || effects!=((halt_case || (read_case && !read_increment_case)) ? 0 : 64) || checks==0) $fatal(1,"DMA_COMPOSITION_COUNTS dma=%0d effects=%0d ppu=%0d",dma_count,effects,checks);
+        if(read_case && (reads!=64 || excluded_reads==0 ||
+            (read_increment_case ? scan_combined==0 : scan_reads==0)))
+            $fatal(1,"DMA_COMPOSITION_READ_COUNTS reads=%0d scan=%0d combined=%0d excluded=%0d",
+                reads,scan_reads,scan_combined,excluded_reads);
         observe=0; setup=1;
         for(index=0;index<160;index=index+1) begin
             @(negedge clk_sys); setup_read=1; setup_store=STORE_OAM; setup_address=15'(index);
@@ -275,7 +318,8 @@ module tb_dma_composition;
                 $fatal(1,"DMA_COMPOSITION_READBACK offset=%0d expected=%02x actual=%02x",index,expected_oam[index],access_rdata);
         end
         $fclose(trace);
-        $display("PASS DMA composition bytes=160 idu=%0d halt=%0d ppu=%0d",effects,halt_case,checks); $finish;
+        $display("PASS DMA composition bytes=160 idu=%0d halt=%0d ppu=%0d reads=%0d scan=%0d combined=%0d excluded=%0d rows=%05x",
+            effects,halt_case,checks,reads,scan_reads,scan_combined,excluded_reads,read_rows); $finish;
     end
     initial begin #10000000; $fatal(1,"DMA_COMPOSITION_WATCHDOG"); end
 endmodule
