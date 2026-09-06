@@ -18,6 +18,10 @@ module n2m_uart #(
     output logic pause_request,
     output logic core_reset,
     output logic [7:0] buttons,
+    input var logic physical_commit,
+    input var logic [7:0] physical_buttons,
+    output logic [7:0] effective_buttons,
+    output n2m_input_pkg::input_update_t effective_update,
     output logic [31:0] epoch,
     output logic [63:0] dot_count,
     output logic [63:0] retirement_count,
@@ -42,6 +46,8 @@ module n2m_uart #(
     input var logic frame_valid
 );
     import n2m_uart_pkg::*;
+    n2m_input_pkg::input_write_t accepted_input;
+    logic [7:0] input_source, physical_observe;
     logic rx_valid, rx_error, byte_valid, byte_ready;
     logic [7:0] rx_data, byte_data;
     logic request_valid, request_done;
@@ -59,6 +65,12 @@ module n2m_uart #(
     logic transmit_valid, transmit_read, transmit_data_valid, transmit_done;
     logic [UART_ADDRESS_BITS-1:0] transmit_bytes, transmit_address;
     logic [7:0] transmit_data;
+    n2m_input u_input (
+        .clk_sys(clk_sys), .reset_sys(reset_sys), .core_reset(core_reset), .gb_tick(gb_tick),
+        .host_write(accepted_input), .physical_commit(physical_commit), .physical_buttons(physical_buttons),
+        .host_buttons(buttons), .physical_observe(physical_observe), .source_observe(input_source),
+        .effective_buttons(effective_buttons), .effective_update(effective_update)
+    );
     n2m_uart_rx #(.CLOCK_HZ(CLOCK_HZ), .BAUD(BAUD)) u_serial_rx (
         .clk_sys(clk_sys), .reset_sys(reset_sys), .uart_rx(uart_rx),
         .byte_valid(rx_valid), .byte_data(rx_data), .frame_error(rx_error)
@@ -124,7 +136,9 @@ module n2m_uart #(
         .command_done(command_done), .response_bytes(response_bytes), .build_id(build_id),
         .gb_tick(gb_tick), .paused(paused), .core_initialized(core_initialized),
         .instruction_complete(instruction_complete), .retirement_valid(retirement_valid), .cpu_stopped(cpu_stopped),
-        .pause_request(pause_request), .core_reset(core_reset), .buttons(buttons), .epoch(epoch),
+        .pause_request(pause_request), .core_reset(core_reset), .buttons(buttons), .input_source(input_source),
+        .physical_buttons(physical_observe), .effective_buttons(effective_buttons),
+        .accepted_input(accepted_input), .epoch(epoch),
         .dot_count(dot_count), .retirement_count(retirement_count), .profile(profile), .image_valid(image_valid),
         .endpoint_state(endpoint_state), .rom_write(rom_write), .rom_read(rom_read), .rom_address(rom_address),
         .rom_write_data(rom_write_data), .rom_read_data(rom_read_data), .rom_read_valid(rom_read_valid),

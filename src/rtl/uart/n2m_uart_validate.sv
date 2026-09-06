@@ -17,8 +17,10 @@ module n2m_uart_validate (
     logic command_known, length_valid, value_valid, state_valid;
     logic no_frame;
     logic [32:0] range_end;
+    write_host_t write_fields;
     load_begin_t begin_fields;
     read_range_t range_fields;
+    assign write_fields = arguments[WRITE_HOST_BYTES*8-1:0];
     assign begin_fields = arguments;
     assign range_fields = arguments[READ_RANGE_BYTES*8-1:0];
     always_comb begin
@@ -67,6 +69,15 @@ module n2m_uart_validate (
                 if (header.command == COMMAND_READ_ROM)
                     state_valid = endpoint_state == STATE_PAUSED || endpoint_state == STATE_LOADING;
                 else no_frame = !snapshot_valid;
+            end
+            COMMAND_WRITE_HOST: begin
+                length_valid = header.length == WRITE_HOST_BYTES;
+                value_valid = (write_fields.address == HOST_REG_INPUT &&
+                    (write_fields.value & ~HOST_WRITE_MASK_INPUT) == 0) ||
+                    (write_fields.address == HOST_REG_INPUT_SOURCE &&
+                    (write_fields.value & ~HOST_WRITE_MASK_INPUT_SOURCE) == 0);
+                state_valid = endpoint_state != STATE_LOADING;
+                response_length = DOT_BYTES;
             end
             COMMAND_INPUT: begin
                 length_valid = header.length == INPUT_BYTES;

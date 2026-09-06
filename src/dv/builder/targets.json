@@ -2928,6 +2928,8 @@
       "src/rtl/uart/n2m_uart_presence_store.sv",
       "src/rtl/uart/n2m_uart_load.sv",
       "src/rtl/uart/n2m_uart_rx.sv",
+      "src/rtl/input/n2m_input_pkg.sv",
+      "src/rtl/input/n2m_input.sv",
       "src/rtl/uart/n2m_uart_core_control.sv",
       "src/rtl/uart/n2m_uart_host_registers.sv",
       "src/rtl/uart/n2m_uart_validate.sv",
@@ -2968,6 +2970,8 @@
       "src/rtl/uart/n2m_uart_presence_store.sv",
       "src/rtl/uart/n2m_uart_load.sv",
       "src/rtl/uart/n2m_uart_rx.sv",
+      "src/rtl/input/n2m_input_pkg.sv",
+      "src/rtl/input/n2m_input.sv",
       "src/rtl/uart/n2m_uart_core_control.sv",
       "src/rtl/uart/n2m_uart_host_registers.sv",
       "src/rtl/uart/n2m_uart_validate.sv",
@@ -3010,6 +3014,8 @@
       "src/rtl/uart/n2m_uart_presence_store.sv",
       "src/rtl/uart/n2m_uart_load.sv",
       "src/rtl/uart/n2m_uart_rx.sv",
+      "src/rtl/input/n2m_input_pkg.sv",
+      "src/rtl/input/n2m_input.sv",
       "src/rtl/uart/n2m_uart_core_control.sv",
       "src/rtl/uart/n2m_uart_host_registers.sv",
       "src/rtl/uart/n2m_uart_validate.sv",
@@ -3475,6 +3481,8 @@
       "src/rtl/uart/n2m_uart_presence_store.sv",
       "src/rtl/uart/n2m_uart_load.sv",
       "src/rtl/uart/n2m_uart_rx.sv",
+      "src/rtl/input/n2m_input_pkg.sv",
+      "src/rtl/input/n2m_input.sv",
       "src/rtl/uart/n2m_uart_core_control.sv",
       "src/rtl/uart/n2m_uart_host_registers.sv",
       "src/rtl/uart/n2m_uart_validate.sv",
@@ -3506,6 +3514,8 @@
       "src/rtl/uart/n2m_uart_presence_store.sv",
       "src/rtl/uart/n2m_uart_load.sv",
       "src/rtl/uart/n2m_uart_rx.sv",
+      "src/rtl/input/n2m_input_pkg.sv",
+      "src/rtl/input/n2m_input.sv",
       "src/rtl/uart/n2m_uart_core_control.sv",
       "src/rtl/uart/n2m_uart_host_registers.sv",
       "src/rtl/uart/n2m_uart_validate.sv",
@@ -3536,6 +3546,8 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/input/n2m_input_pkg.sv",
+      "src/rtl/input/n2m_input.sv",
       "src/rtl/uart/n2m_uart_core_control.sv",
       "src/dv/uart/tb_uart_stopped_step.sv"
     ],
@@ -3556,6 +3568,8 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/input/n2m_input_pkg.sv",
+      "src/rtl/input/n2m_input.sv",
       "src/rtl/uart/n2m_uart_core_control.sv",
       "src/dv/uart/tb_uart_stopped_step.sv"
     ],
@@ -3729,6 +3743,8 @@
       "src/rtl/uart/n2m_uart_presence_store.sv",
       "src/rtl/uart/n2m_uart_load.sv",
       "src/rtl/uart/n2m_uart_rx.sv",
+      "src/rtl/input/n2m_input_pkg.sv",
+      "src/rtl/input/n2m_input.sv",
       "src/rtl/uart/n2m_uart_core_control.sv",
       "src/rtl/uart/n2m_uart_host_registers.sv",
       "src/rtl/uart/n2m_uart_validate.sv",
@@ -3856,6 +3872,8 @@
       "src/rtl/uart/n2m_uart_presence_store.sv",
       "src/rtl/uart/n2m_uart_load.sv",
       "src/rtl/uart/n2m_uart_rx.sv",
+      "src/rtl/input/n2m_input_pkg.sv",
+      "src/rtl/input/n2m_input.sv",
       "src/rtl/uart/n2m_uart_core_control.sv",
       "src/rtl/uart/n2m_uart_host_registers.sv",
       "src/rtl/uart/n2m_uart_validate.sv",
@@ -3985,6 +4003,8 @@
       "src/rtl/uart/n2m_uart_presence_store.sv",
       "src/rtl/uart/n2m_uart_load.sv",
       "src/rtl/uart/n2m_uart_rx.sv",
+      "src/rtl/input/n2m_input_pkg.sv",
+      "src/rtl/input/n2m_input.sv",
       "src/rtl/uart/n2m_uart_core_control.sv",
       "src/rtl/uart/n2m_uart_host_registers.sv",
       "src/rtl/uart/n2m_uart_validate.sv",
@@ -4114,6 +4134,8 @@
       "src/rtl/uart/n2m_uart_presence_store.sv",
       "src/rtl/uart/n2m_uart_load.sv",
       "src/rtl/uart/n2m_uart_rx.sv",
+      "src/rtl/input/n2m_input_pkg.sv",
+      "src/rtl/input/n2m_input.sv",
       "src/rtl/uart/n2m_uart_core_control.sv",
       "src/rtl/uart/n2m_uart_host_registers.sv",
       "src/rtl/uart/n2m_uart_validate.sv",
@@ -4216,5 +4238,98 @@
         "fault"
       ]
     }
+  },
+  "input-matrix": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/input/n2m_input_pkg.sv",
+      "src/rtl/input/n2m_input.sv",
+      "src/rtl/joypad/n2m_joypad_pkg.sv",
+      "src/rtl/joypad/n2m_joypad_matrix.sv",
+      "src/rtl/joypad/n2m_joypad.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/dv/input/tb_input_matrix.sv"
+    ],
+    "top": "tb_input_matrix",
+    "signature": "PASS INPUT_MATRIX cases=2048",
+    "args": [],
+    "expected_exit": "zero"
+  },
+  "input-matrix-data": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/input/n2m_input_pkg.sv",
+      "src/rtl/input/n2m_input.sv",
+      "src/rtl/joypad/n2m_joypad_pkg.sv",
+      "src/rtl/joypad/n2m_joypad_matrix.sv",
+      "src/rtl/joypad/n2m_joypad.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/dv/input/tb_input_matrix.sv"
+    ],
+    "top": "tb_input_matrix",
+    "signature": "INPUT_MATRIX_STATE case=1",
+    "args": [
+      "+data_fault"
+    ],
+    "expected_exit": "nonzero"
+  },
+  "input-matrix-source": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/input/n2m_input_pkg.sv",
+      "src/rtl/input/n2m_input.sv",
+      "src/rtl/joypad/n2m_joypad_pkg.sv",
+      "src/rtl/joypad/n2m_joypad_matrix.sv",
+      "src/rtl/joypad/n2m_joypad.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/dv/input/tb_input_matrix.sv"
+    ],
+    "top": "tb_input_matrix",
+    "signature": "INPUT_MATRIX_STATE case=1",
+    "args": [
+      "+source_fault"
+    ],
+    "expected_exit": "nonzero"
+  },
+  "input-matrix-event": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/input/n2m_input_pkg.sv",
+      "src/rtl/input/n2m_input.sv",
+      "src/rtl/joypad/n2m_joypad_pkg.sv",
+      "src/rtl/joypad/n2m_joypad_matrix.sv",
+      "src/rtl/joypad/n2m_joypad.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/dv/input/tb_input_matrix.sv"
+    ],
+    "top": "tb_input_matrix",
+    "signature": "INPUT_MATRIX_EVENT case=1",
+    "args": [
+      "+event_fault"
+    ],
+    "expected_exit": "nonzero"
+  },
+  "input-matrix-boundary": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/input/n2m_input_pkg.sv",
+      "src/rtl/input/n2m_input.sv",
+      "src/rtl/joypad/n2m_joypad_pkg.sv",
+      "src/rtl/joypad/n2m_joypad_matrix.sv",
+      "src/rtl/joypad/n2m_joypad.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/dv/input/tb_input_matrix.sv"
+    ],
+    "top": "tb_input_matrix",
+    "signature": "N2M_ASSERT INPUT_PHYSICAL_BOUNDARY",
+    "args": [
+      "+boundary_fault"
+    ],
+    "expected_exit": "nonzero"
   }
 }

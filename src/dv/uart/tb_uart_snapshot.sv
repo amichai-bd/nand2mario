@@ -38,6 +38,7 @@ module tb_uart_snapshot;
         .build_id(128'hfedcba98765432100123456789abcdef),.gb_tick(gb_tick),.paused(paused),
         .core_initialized(core_initialized),.instruction_complete(instruction_complete),
         .retirement_valid(retirement_valid),.cpu_stopped(cpu_stopped),.pause_request(pause_request),
+        .physical_commit(1'b0),.physical_buttons(8'd0),.effective_buttons(),.effective_update(),
         .core_reset(core_reset),.buttons(buttons),.epoch(epoch),.dot_count(dot_count),
         .retirement_count(retirement_count),.profile(profile),.image_valid(image_valid),
         .endpoint_state(endpoint_state),.rom_write(rom_write),.rom_read(rom_read),

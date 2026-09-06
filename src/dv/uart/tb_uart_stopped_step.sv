@@ -18,7 +18,15 @@ module tb_uart_stopped_step;
     logic [31:0] frozen_epoch;
     bit asleep_check, release_pause;
     n2m_timebase u_timebase (.*);
+    n2m_input_pkg::input_write_t input_write, accepted_input;
+    assign input_write = {1'b1, 1'b0, input_buttons};
     n2m_uart_core_control u_control (.*);
+    n2m_input u_input (
+        .clk_sys(clk_sys), .reset_sys(reset_sys), .core_reset(core_reset), .gb_tick(gb_tick),
+        .host_write(accepted_input), .physical_commit(1'b0), .physical_buttons(8'd0),
+        .host_buttons(buttons), .physical_observe(), .source_observe(),
+        .effective_buttons(), .effective_update()
+    );
     // Original two-byte STOP followed by NOPs, through a public read responder.
     // No ROM/presence acceptance is claimed by this focused control fixture.
     assign read_data = address == 16'h0100 ? 8'h10 : 8'h00;
