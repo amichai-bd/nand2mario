@@ -52,6 +52,14 @@ package n2m_cpu_pkg;
         ACCESS_STACK = 3'd4
     } access_kind_t;
 
+    // Additional M-cycle address activity; unknown bits are masked, not guessed.
+    typedef struct packed {
+        logic valid;
+        logic [15:0] address;
+        logic [15:0] known_mask;
+        logic write_effect;
+    } cpu_address_effect_t;
+
     function automatic logic [7:0] read_byte(input cpu_registers_t r, input logic [2:0] index);
         case (index)
             0: read_byte = r.b;

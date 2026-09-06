@@ -4,6 +4,7 @@
 module tb_cpu_execute;
     import n2m_cpu_pkg::cpu_registers_t;
     import n2m_cpu_pkg::access_kind_t;
+    import n2m_cpu_pkg::cpu_address_effect_t;
     cpu_registers_t registers;
     cpu_registers_t registers_next;
     cpu_registers_t expected_registers;
@@ -27,6 +28,7 @@ module tb_cpu_execute;
     logic enable_interrupts;
     logic disable_interrupts;
     logic return_interrupt;
+    cpu_address_effect_t address_effect;
     logic [15:0] expected_alu;
     integer base_cycles [256];
     integer instruction;
@@ -41,6 +43,28 @@ module tb_cpu_execute;
     integer trace;
 
     n2m_cpu_execute dut (.*);
+
+    task automatic check_effect(input integer op, cycle_number, f,
+                                input logic expected_valid,
+                                input logic [15:0] expected_address, expected_mask);
+        setup(op, f);
+        step = 3'(cycle_number);
+        pc = 16'hfe80;
+        registers.sp = 16'hfe00;
+        {registers.h, registers.l} = 16'hfe42;
+        {registers.b, registers.c} = 16'hfdff;
+        if ($test$plusargs("idu_fault") && op == 'h03)
+            force dut.address_effect.address = 16'hfe00;
+        #1;
+        if (address_effect.valid !== expected_valid ||
+                address_effect.address !== expected_address ||
+                address_effect.known_mask !== expected_mask ||
+                address_effect.write_effect !== expected_valid)
+            $fatal(1, "CPU_EXECUTE_IDU op=%02h step=%0d expected=%0d/%04h/%04h actual=%0d/%04h/%04h/%0d",
+                opcode, step, expected_valid, expected_address, expected_mask,
+                address_effect.valid, address_effect.address, address_effect.known_mask,
+                address_effect.write_effect);
+    endtask
 
     task automatic setup(input integer op, f);
         registers = '0;
@@ -168,6 +192,36 @@ module tb_cpu_execute;
                 end
             end
         end
+        // Literal address expectations do not share the DUT decode or pair helper.
+        check_effect('h03, 0, 0, 1, 'hfdff, 'hffff); // INC BC before page crossing.
+        check_effect('h3b, 0, 0, 1, 'hfe00, 'hffff); // DEC SP before page crossing.
+        check_effect('h22, 0, 0, 1, 'hfe42, 'hffff);
+        check_effect('h3a, 0, 0, 1, 'hfe42, 'hffff);
+        check_effect('h18, 0, 0, 1, 'hfe80, 'hffff); // Displacement read.
+        check_effect('h18, 1, 0, 1, 'hfe00, 'hff00); // Shared JR high byte only.
+        check_effect('h20, 1, 0, 1, 'hfe00, 'hff00);
+        check_effect('h28, 1, 8, 1, 'hfe00, 'hff00);
+        check_effect('h30, 1, 0, 1, 'hfe00, 'hff00);
+        check_effect('h38, 1, 1, 1, 'hfe00, 'hff00);
+        check_effect('h20, 1, 8, 0, 0, 0); // Untaken JR has no adjustment.
+        check_effect('hc5, 0, 0, 1, 'hfe00, 'hffff);
+        check_effect('hc5, 1, 0, 1, 'hfe00, 'hffff);
+        check_effect('hc5, 2, 0, 0, 0, 0);
+        check_effect('hcd, 2, 0, 1, 'hfe00, 'hffff);
+        check_effect('hcd, 3, 0, 1, 'hfe00, 'hffff);
+        check_effect('hcd, 4, 0, 0, 0, 0);
+        check_effect('hc4, 2, 8, 0, 0, 0);
+        check_effect('hc1, 0, 0, 1, 'hfe00, 'hffff);
+        check_effect('hc1, 1, 0, 0, 0, 0);
+        check_effect('hc9, 0, 0, 1, 'hfe00, 'hffff);
+        check_effect('hc9, 1, 0, 0, 0, 0);
+        check_effect('hc0, 0, 0, 0, 0, 0);
+        check_effect('hc0, 1, 0, 1, 'hfe00, 'hffff);
+        check_effect('hc0, 2, 0, 0, 0, 0);
+        check_effect('hcb, 0, 0, 1, 'hfe80, 'hffff);
+        check_effect('h76, 0, 0, 0, 0, 0); // Front-end final fetch policy stays separate.
+        check_effect('hf9, 0, 0, 1, 'hfe42, 'hffff);
+        $display("PASS CPU execute IDU literal cases=28");
         if (cases != 135168) $fatal(1, "CPU_EXECUTE_COVERAGE expected=135168 actual=%0d", cases);
         $fclose(trace);
         $display("PASS CPU execute cases=135168 base=256 flagsets=16 cb_memory=32 seed=none");

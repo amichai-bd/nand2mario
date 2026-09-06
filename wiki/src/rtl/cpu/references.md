@@ -90,3 +90,30 @@ after HALT does not execute before service. `halt_ime0_nointr_timing.s` compares
 six NOPs with interrupt entry plus JP HL; its whole setup and fetch pipeline must
 be accounted for before fixing the IME0 wake schedule. These primary fixtures
 were read with retained MIT notices; no Mooneye ROM was run here.
+
+
+## Internal-address evidence
+
+At the same Gekkio research pin, `hdl/cpu_core.vhd` drives the external address
+from `idu_in`, not `idu_out`. The decoder stages use shared taken-JR adjustment
+and completion paths for conditional and unconditional forms. In
+`hdl/regfile.vhd`, the adjustment phase drives PC's high byte onto the IDU input;
+PC's low byte and the signed offset participate in the separate ALU result.
+The following phase drives WZ for the target fetch. The simplified model does
+not establish a fully driven low address byte throughout the adjustment phase.
+Our high-byte-only observation is an explicit inference from these connections,
+not a measured full 16-bit bus value. None of this VHDL was executed or imported.
+
+The pinned SameBoy JR implementations pass differently timed PC values to their
+OAM helper. That difference is not adopted as proof of distinct conditional and
+unconditional hardware paths. Pan Docs' `src/OAM_Corruption_Bug.md` states that
+once an address is in FE00–FEFF, its precise value does not affect the corruption
+pattern. This supports a known-high-byte interface for the later OAM consumer,
+while preserving uncertainty about physical low bits and waveform intervals.
+
+For LD SP,HL, decoder stage 1 identifies the transfer state; stage 2 selects
+`addr_hl`, and stage 3 enables HL onto the IDU input and the IDU result into SP.
+The register file connects all 16 HL bits to that input. Together with SameBoy's
+explicit HL OAM-effect call, this supports the full-HL internal-transfer
+observation. The additional effect is not inferred merely from an architectural
+SP value change; other arithmetic transfers need their own source mapping.

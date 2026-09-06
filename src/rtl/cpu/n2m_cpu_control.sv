@@ -118,6 +118,8 @@ module n2m_cpu_control (
     assign dispatch = control.irq_snapshot;
     assign stop_execute = control.mode == MODE_EXECUTE && execute_stop && cycle_end;
 
+    cpu_address_effect_t execute_address_effect;
+
     n2m_cpu_execute execute (
         .registers(registers), .opcode(control.opcode), .cb_bank(control.cb_bank),
         .step(control.step), .pc(control.pc), .temporary(control.temporary),
@@ -127,7 +129,7 @@ module n2m_cpu_control (
         .access_kind(execute_kind), .finish(execute_finish), .prefix(execute_prefix),
         .halt_request(execute_halt), .stop_request(execute_stop), .illegal(execute_illegal),
         .enable_interrupts(execute_ei), .disable_interrupts(execute_di),
-        .return_interrupt(execute_reti)
+        .return_interrupt(execute_reti), .address_effect(execute_address_effect)
     );
 
     always_comb begin
@@ -338,5 +340,10 @@ module n2m_cpu_control (
     `N2M_ASSERT(CPU_PROFILE_ID, clk_sys, reset_sys,
         core_reset |-> profile_id == PROFILE_DIRECT_ID)
     `N2M_ASSERT(CPU_IRQ_ACK_ONEHOT, clk_sys, reset_sys || core_reset, $onehot0(irq_ack))
+    `N2M_ASSERT(CPU_IDU_KNOWN_PAGE, clk_sys, reset_sys || core_reset,
+        !execute_address_effect.valid || !execute_address_effect.write_effect ||
+        execute_address_effect.known_mask[15:8] == 8'hff)
+    `N2M_ASSERT(CPU_IDU_MASKED_BITS, clk_sys, reset_sys || core_reset,
+        (execute_address_effect.address & ~execute_address_effect.known_mask) == 0)
     `N2M_ASSERT(CPU_F_LOW_ZERO, clk_sys, reset_sys || core_reset, registers.f[3:0] == 0)
 endmodule

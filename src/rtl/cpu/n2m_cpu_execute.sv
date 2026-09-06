@@ -24,7 +24,8 @@ module n2m_cpu_execute (
     output logic illegal,
     output logic enable_interrupts,
     output logic disable_interrupts,
-    output logic return_interrupt
+    output logic return_interrupt,
+    output n2m_cpu_pkg::cpu_address_effect_t address_effect
 );
     import n2m_cpu_pkg::*;
 
@@ -369,6 +370,56 @@ module n2m_cpu_execute (
             8'h10: begin finish = 1; stop_request = 1; end
             default: illegal = 1;
         endcase
+
+        // Expose only additional IDU activity. Ordinary transactions retain
+        // their separate read/write kind. The front end owns final-fetch PC
+        // increments, including HALT-bug and interrupt-discard exceptions.
+        address_effect = '0;
+        if (access_kind == ACCESS_OPERAND) begin
+            address_effect.valid = 1;
+            address_effect.address = pc;
+        end
+        if (!cb_bank) begin
+            if (opcode[7:6] == 0 && (opcode[3:0] == 3 || opcode[3:0] == 11) && step == 0) begin
+                address_effect.valid = 1;
+                address_effect.address = read_pair(registers, opcode[5:4], 0);
+            end
+            if (opcode[7:6] == 0 && opcode[2:0] == 2 && opcode[5] && step == 0) begin
+                address_effect.valid = 1;
+                address_effect.address = {registers.h, registers.l};
+            end
+            if ((opcode == 8'h18 || (opcode & 8'he7) == 8'h20) && step == 1 && !finish) begin
+                address_effect.valid = 1;
+                address_effect.address = {pc[15:8], 8'b0};
+            end
+            if (((opcode & 8'hcf) == 8'hc5 || (opcode & 8'hc7) == 8'hc7) && step < 2) begin
+                address_effect.valid = 1;
+                address_effect.address = registers.sp;
+            end
+            if ((opcode == 8'hcd || (opcode & 8'he7) == 8'hc4) && !finish && (step == 2 || step == 3)) begin
+                address_effect.valid = 1;
+                address_effect.address = registers.sp;
+            end
+            if (opcode == 8'hf9 && step == 0) begin
+                address_effect.valid = 1;
+                address_effect.address = {registers.h, registers.l};
+            end
+            if ((opcode & 8'hcf) == 8'hc1 && step == 0) begin
+                address_effect.valid = 1;
+                address_effect.address = registers.sp;
+            end
+            if ((opcode == 8'hc9 || opcode == 8'hd9 || (opcode & 8'he7) == 8'hc0) &&
+                    access_kind == ACCESS_STACK && return_step == 0) begin
+                address_effect.valid = 1;
+                address_effect.address = registers.sp;
+            end
+        end
+        if (address_effect.valid) begin
+            address_effect.known_mask = 16'hffff;
+            address_effect.write_effect = 1;
+            if (!cb_bank && (opcode == 8'h18 || (opcode & 8'he7) == 8'h20) && step == 1 && !finish)
+                address_effect.known_mask = 16'hff00;
+        end
 
         if (finish) begin
             access_kind = ACCESS_OPCODE;

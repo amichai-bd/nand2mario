@@ -2,8 +2,9 @@
 
 Status: design in progress for [#118](https://github.com/amichai-bd/nand2mario/issues/118).
 The byte ALU, instruction cycle planner, digital bus and retirement recorder
-have component Questa evidence. The integrated instruction controller is not implemented or verified
-yet. The open modeling decisions below
+have component Questa evidence. The integrated controller has checked programs,
+selected instruction vectors and directed control-state fixtures; the public
+wrapper and remaining acceptance boundaries are unfinished. The open modeling decisions below
 must be settled before their dependent RTL. This owner covers the complete legal
 base and CB instruction sets; a subset does not complete the issue.
 
@@ -227,12 +228,59 @@ postincrement/decrement HL, stack operations and PC increments. POP/RET have a
 specific difference between their first and second read; stack pushes can merge
 IDU and ordinary write activity within one M-cycle.
 
-The CPU must expose the pre-operation IDU address and operation phase to the
-future arbitration/OAM owner. `ACCESS_IDLE` with an arbitrary PC address is not
-proof of those effects, and retirement cannot reconstruct them. Exact IDU
-observation output and coverage remain unfinished in #118 before dependent
-integration; OAM storage/corruption itself belongs to its separate owner. The
-current cycle planner's idle address is not presented as a physical bus model.
+The planned typed `address_effect` observation is separate from the memory
+request and retirement ABI. It describes additional write-like address activity
+within the current M-cycle, including cycles with no ordinary transaction. It
+never asks the memory owner to perform a second architectural write.
+
+| Field | Meaning |
+|---|---|
+| `valid` | This M-cycle has a modeled additional address effect. Zero means no effect within the implemented contract, not an unknown effect silently accepted as absent. |
+| `address[15:0]` | Pre-operation address bits justified by the source mapping. Bits outside `known_mask` are canonical zero and carry no physical claim. |
+| `known_mask[15:0]` | One marks a justified address bit. The consumer must not interpret a zero-mask bit as a known zero. |
+| `write_effect` | Additional write-like OAM effect, to be combined with any ordinary read/write in this M-cycle. It does not indicate an architectural memory write or its data. |
+
+The public bus phase identifies T1 through T4 for this observation. Fields are
+prepared before T1 and stable through T4, including host pause. The owner samples
+one M-cycle observation at the shared T4 rising enable; it must not apply one
+effect per system clock while `valid` remains asserted. Reset or a canceled bus
+attempt suppresses the observation. HALT/STOP/lock idle has no fabricated PC
+increment. This is an M-cycle digital abstraction, not a claimed pin waveform.
+
+A valid write-like observation must have every high-byte mask bit set; the
+producer enforces this with a named assertion. Unknown high bits are not an
+allowed output of the settled mapping. For OAM qualification the consumer requires `(known_mask & FF00) == FF00` and
+`(address & FF00) == FE00`. An incomplete high byte is insufficient to decide
+whether an effect qualifies; it cannot be treated as outside OAM. The pinned
+Pan Docs corruption patterns depend on the scanned PPU row and combined access
+type, not the lower address bits or written byte. Therefore a justified high
+byte alone is sufficient for that consumer. The OAM owner qualifies each ordinary access and additional effect using its
+own address before combining their types. For example, an SP decrement from
+FE00 must not lose its effect because a later stack write addresses FDFF.
+It combines ordinary read/write and this additional write-like effect within one M-cycle; two writes
+in that cycle do not become two separate corruption applications.
+
+The implementation and directed proof must follow this mapping:
+
+| Operation | Additional effect and address observation |
+|---|---|
+| INC/DEC 16-bit pair | Internal update M-cycle; full pre-operation BC, DE, HL or SP. |
+| HL postincrement/decrement load | Memory-access M-cycle; full old HL, combined with that access. |
+| POP and RET family | First stack read: full old SP and additional effect. Second read: ordinary read only, despite its SP update. |
+| PUSH, CALL and RST | First decrement before the high write, then the decrement overlapping the high write; full old SP for each. The low write has no additional decrement effect. |
+| Ordinary opcode/operand PC increment | Same M-cycle as the read, with the full old PC. A suppressed increment or HALT dummy fetch must not inherit this rule merely because its access kind is opcode. |
+| LD SP,HL | Internal transfer cycle; full old HL, following the register-file address-drive inference and independent emulator corroboration. |
+| Taken JR, conditional or unconditional | Internal adjustment cycle: pre-adjustment PC high byte, mask `FF00`. Low bits remain unclaimed. Final target fetch is a separate ordinary fetch. |
+
+The shared JR mapping follows the die-model datapath inference in the
+[source record](references.md#internal-address-evidence). It deliberately does
+not choose different unconditional and conditional addresses from emulator
+shortcuts. This table is a design contract awaiting implementation and checked
+observation traces. IRQ entry's PC-repair cycle, HALT wake address activity and
+other internal transfers still require source-to-phase reconciliation before
+full readiness; an invalid observation is not a waiver for those effects.
+OAM storage and corruption belong to their separate owner. The current planner's
+idle address remains unrelated to a physical address claim.
 
 ## Design gates before dependent RTL
 

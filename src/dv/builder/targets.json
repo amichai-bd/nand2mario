@@ -2290,5 +2290,20 @@
     ],
     "expected_exit": "nonzero",
     "signature": "CPU_POWER_LOCK_EVENT case=2"
+  },
+  "cpu-execute-idu-fault": {
+    "sources": [
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/dv/cpu/alu_reference.sv",
+      "src/dv/cpu/tb_cpu_execute.sv"
+    ],
+    "top": "tb_cpu_execute",
+    "args": [
+      "+idu_fault"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_EXECUTE_IDU op=03 step=0"
   }
 }
