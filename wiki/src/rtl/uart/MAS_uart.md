@@ -196,3 +196,38 @@ wait state. Global reset cancels the storage operation and invalidates sweep
 metadata while preserving already committed ROM bytes. A new BEGIN is required
 before another WRITE/END; raw READ may still observe retained bytes. Core reset
 is absent from this transport/load owner and cannot erase a pending response.
+
+
+## Ordered endpoint composition
+
+`n2m_uart` connects the serial, packet, completed-exchange cache, command and
+response owners without another packet array. `n2m_uart_validate` applies the
+generated error order before effects. `n2m_uart_commands` reads arguments through
+the held request's public port, then orders storage, core and snapshot completion
+before publishing a raw reply. READ_HOST uses only the generated host word table;
+unknown and unaligned addresses return BAD_VALUE. It never decodes DMG memory.
+
+LOAD_BEGIN invalidates the image and enters LOADING, stops the existing timebase,
+resets and awaits aggregate core initialization, then completes the presence
+sweep. LOAD_END publishes validity only after actual presence/ROM CRC success
+and another completed core initialization. Failed END remains LOADING. RESET
+preserves image validity and transport/cache state; its reply waits for aggregate
+initialization. The system owner gates CPU memory service during initialization
+and host loading. It supplies fixed one-edge ROM and snapshot read service.
+
+`n2m_uart_core_control` owns host pause, epoch, dot/retirement counters and the
+held eight-bit input mask. It uses the existing timebase's tick and registered
+paused acknowledgement. RESET increments epoch and clears counters and input.
+INPUT applies between dot edges and returns that boundary's count. STEP uses the
+CPU's pre-T4 instruction-completion qualifier, excluding interrupt entry, and
+counts actual delivered dots. Instruction completion wins a budget tie; the
+reply follows the finishing B retirement publication. No synthetic tick or
+wall-clock STEP timeout is introduced. Already-STOPped STEP remains an explicit
+unresolved product decision and has a named assertion; that corner is not an
+accepted endpoint behavior yet.
+
+SNAPSHOT holds request until ready, then awaits done/ok and captures the generated
+metadata before reply construction. NO_FRAME contains no payload. READ_FRAME
+uses the published host bank through its one-edge byte port. The separate snapshot
+owner retains published bytes and metadata across core reset and failed capture;
+this UART composition does not implement the observer or snapshot storage.

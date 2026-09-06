@@ -57,3 +57,24 @@ a partial sweep and a partial write; committed ROM data survives, and new END
 cannot reuse old presence. Actual ROM-response corruption and an actual presence
 bit force must fail opposite literal success/error expectations. Loader tests do
 not substitute for the endpoint's later state validation and reset acknowledgement.
+
+
+### Full wire command composition
+
+`uart-endpoint` sends independent CRC16/COBS requests through actual serial pins,
+all packet/cache/response owners, real Intel ROM/presence storage, the actual CPU
+and its timebase. A deterministic original 32768-byte image has fixed zlib CRC32
+83bb4628; every byte is loaded and read back through wire commands. The fixture
+checks error precedence, completed replay and conflicting sequence preservation,
+reset acknowledgement after the memory sweep, publication after successful END,
+paused/running command rules, STEP completion/budget/interrupt exclusion, all
+input bits and every generated host word. Actual reset-effect duplication and
+actual ROM response corruption must fail the corresponding independent checks.
+
+The CPU responder covers this program's ROM and HRAM stack only, gating service
+during initialization and host loading. The snapshot boundary is an explicit
+completion/read model, covering NO_FRAME, metadata, last-byte bounds and published
+host retention across core reset. It does not claim full peripheral routing or
+#93 storage composition. The wire clock ratio is deliberately eight clocks per
+bit to bound the full-image test; physical 50 MHz/115200 timing remains covered
+by the retained serial slice. Already-STOPped STEP acceptance remains pending.
