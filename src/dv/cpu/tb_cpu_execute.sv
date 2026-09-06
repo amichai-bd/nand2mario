@@ -50,6 +50,7 @@ module tb_cpu_execute;
         setup(op, f);
         step = 3'(cycle_number);
         pc = 16'hfe80;
+        temporary = 16'hfe10;
         registers.sp = 16'hfe00;
         {registers.h, registers.l} = 16'hfe42;
         {registers.b, registers.c} = 16'hfdff;
@@ -221,7 +222,9 @@ module tb_cpu_execute;
         check_effect('hcb, 0, 0, 1, 'hfe80, 'hffff);
         check_effect('h76, 0, 0, 0, 0, 0); // Front-end final fetch policy stays separate.
         check_effect('hf9, 0, 0, 1, 'hfe42, 'hffff);
-        $display("PASS CPU execute IDU literal cases=28");
+        check_effect('h08, 2, 0, 1, 'hfe10, 'hffff);
+        check_effect('h08, 3, 0, 0, 0, 0);
+        $display("PASS CPU execute IDU literal cases=30");
         if (cases != 135168) $fatal(1, "CPU_EXECUTE_COVERAGE expected=135168 actual=%0d", cases);
         $fclose(trace);
         $display("PASS CPU execute cases=135168 base=256 flagsets=16 cb_memory=32 seed=none");

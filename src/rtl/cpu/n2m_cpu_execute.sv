@@ -400,6 +400,10 @@ module n2m_cpu_execute (
                 address_effect.valid = 1;
                 address_effect.address = registers.sp;
             end
+            if (opcode == 8'h08 && step == 2) begin
+                address_effect.valid = 1;
+                address_effect.address = temporary;
+            end
             if (opcode == 8'hf9 && step == 0) begin
                 address_effect.valid = 1;
                 address_effect.address = {registers.h, registers.l};

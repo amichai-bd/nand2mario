@@ -117,3 +117,10 @@ The register file connects all 16 HL bits to that input. Together with SameBoy's
 explicit HL OAM-effect call, this supports the full-HL internal-transfer
 observation. The additional effect is not inferred merely from an architectural
 SP value change; other arithmetic transfers need their own source mapping.
+
+For LD [a16],SP, stage 2 selects WZ onto the IDU input for both data-write
+states, and asserts `idu_inc` specifically for low-write state `s010`.
+This establishes the extra increment effect at the old temporary address in
+that M-cycle. The high write has no corresponding increment. Combining the
+extra effect with the ordinary write follows Pan Docs' same-cycle rule, rather
+than requesting a second architectural write.

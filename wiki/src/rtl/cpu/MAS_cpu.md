@@ -283,6 +283,7 @@ The implementation and directed proof must follow this mapping:
 | POP and RET family | First stack read: full old SP and additional effect. Second read: ordinary read only, despite its SP update. |
 | PUSH, CALL and RST | First decrement before the high write, then the decrement overlapping the high write; full old SP for each. The low write has no additional decrement effect. |
 | Ordinary opcode/operand PC increment | Same M-cycle as the read, with the full old PC. A suppressed increment or HALT dummy fetch must not inherit this rule merely because its access kind is opcode. |
+| LD [a16],SP | Low-byte write cycle: full temporary address before its increment, combined with the ordinary write. High-byte write: ordinary write only. |
 | LD SP,HL | Internal transfer cycle; full old HL, following the register-file address-drive inference and independent emulator corroboration. |
 | Taken JR, conditional or unconditional | Internal adjustment cycle: pre-adjustment PC high byte, mask `FF00`. Low bits remain unclaimed. Final target fetch is a separate ordinary fetch. |
 

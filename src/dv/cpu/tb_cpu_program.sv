@@ -68,6 +68,9 @@ module tb_cpu_program;
     integer reset_tick;
     bit effect_fault;
     bit effect_missing;
+    bit effect_page;
+    integer qualified_effects;
+    integer qualified_accesses;
 
     n2m_cpu_control dut (.*);
     assign read_data = memory[address];
@@ -99,6 +102,12 @@ module tb_cpu_program;
                         expected_effect_address[bus_index], expected_effect_mask,
                         address_effect.valid, address_effect.address, address_effect.known_mask,
                         address_effect_resolved);
+                if (address_effect_sample) begin
+                    if (address_effect.valid && address_effect.known_mask[15:8] == 8'hff && address_effect.address[15:8] == 8'hfe)
+                        qualified_effects = qualified_effects + 1;
+                    if (bus_commit && address[15:8] == 8'hfe)
+                        qualified_accesses = qualified_accesses + 1;
+                end
                 if (address_effect_sample)
                     $fdisplay(effect_trace, "%0d,%0d,%0d,%04h,%04h,%0d", dot_before+1,
                         bus_index, address_effect.valid, address_effect.address,
@@ -147,7 +156,8 @@ module tb_cpu_program;
             if (event_index >= 1) expected_record[256 +: 16] = 16'h3412;
             if (event_index >= 8) expected_record[272 +: 16] = 16'h3412;
             if (event_index >= 2) expected_record[288 +: 16] = 16'h00c0;
-            expected_record[304 +: 16] = (event_index == 7 || event_index == 13 || event_index == 14) ? 16'hcffe : 16'hd000;
+            expected_record[304 +: 16] = (event_index == 7 || event_index == 13 || event_index == 14) ?
+                (effect_page ? 16'hfdfe : 16'hcffe) : (effect_page ? 16'hfe00 : 16'hd000);
             if (event_index == 17) expected_record[336 +: 8] = 1;
             $fdisplay(records, "%0d,%096h,%096h", event_index, expected_record, retirement);
             if (retirement !== expected_record)
@@ -199,6 +209,9 @@ module tb_cpu_program;
         retirement_fault = $test$plusargs("retirement_fault");
         effect_fault = $test$plusargs("effect_fault");
         effect_missing = $test$plusargs("effect_missing");
+        effect_page = $test$plusargs("effect_page");
+        qualified_effects = 0;
+        qualified_accesses = 0;
         for (item = 0; item < 65536; item = item + 1) memory[item] = 0;
         memory[16'h0100] = 8'h31;
         memory[16'h0101] = 8'h00;
@@ -244,6 +257,27 @@ module tb_cpu_program;
         expected_dot = '{64'h10, 64'h1c, 64'h28, 64'h30, 64'h38, 64'h48, 64'h50, 64'h60, 64'h6c, 64'h70, 64'h78, 64'h7c, 64'h88, 64'ha0, 64'ha4, 64'hb4, 64'hc4, 64'hc8};
         expected_effect_valid = '{1'b1, 1'b1, 1'b1, 1'b1, 1'b1, 1'b1, 1'b1, 1'b1, 1'b1, 1'b1, 1'b1, 1'b1, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b1, 1'b0, 1'b1, 1'b1, 1'b1, 1'b0, 1'b1, 1'b1, 1'b0, 1'b1, 1'b1, 1'b1, 1'b1, 1'b1, 1'b1, 1'b1, 1'b1, 1'b1, 1'b1, 1'b1, 1'b1, 1'b0, 1'b1, 1'b1, 1'b1, 1'b0, 1'b0, 1'b1, 1'b1, 1'b1, 1'b0, 1'b1, 1'b0};
         expected_effect_address = '{16'h0100, 16'h0101, 16'h0102, 16'h0103, 16'h0104, 16'h0105, 16'h0106, 16'h0107, 16'h0108, 16'h0109, 16'h010a, 16'h010b, 16'h0000, 16'h010c, 16'h010d, 16'h0000, 16'h0000, 16'h010e, 16'h0000, 16'h010f, 16'hd000, 16'hcfff, 16'h0000, 16'h0110, 16'hcffe, 16'h0000, 16'h0111, 16'h0112, 16'h0113, 16'h0114, 16'h0115, 16'h0116, 16'h0100, 16'h0119, 16'h011a, 16'h011b, 16'hd000, 16'hcfff, 16'h0000, 16'h0120, 16'h0121, 16'hcffe, 16'h0000, 16'h0000, 16'h011c, 16'h011d, 16'h011e, 16'h0000, 16'h0130, 16'h0000};
+        if (effect_page) begin
+            // Original program, separately listed FE00 stack placement. The
+            // decrement qualifies while its following FDFF write does not.
+            memory[16'h0102] = 8'hfe;
+            expected_data[2] = 8'hfe;
+            expected_opcode[0] = 24'hfe0031;
+            expected_address[21] = 16'hfdff;
+            expected_address[22] = 16'hfdfe;
+            expected_address[24] = 16'hfdfe;
+            expected_address[25] = 16'hfdff;
+            expected_address[37] = 16'hfdff;
+            expected_address[38] = 16'hfdfe;
+            expected_address[41] = 16'hfdfe;
+            expected_address[42] = 16'hfdff;
+            expected_effect_address[20] = 16'hfe00;
+            expected_effect_address[21] = 16'hfdff;
+            expected_effect_address[24] = 16'hfdfe;
+            expected_effect_address[36] = 16'hfe00;
+            expected_effect_address[37] = 16'hfdff;
+            expected_effect_address[41] = 16'hfdfe;
+        end
         effect_trace = $fopen("program-address-effects.csv", "w");
         if (!effect_trace) $fatal(1, "CPU_PROGRAM_IDU_TRACE_OPEN");
         $fdisplay(effect_trace, "dot,cycle,valid,address,known_mask,write_effect");
@@ -289,6 +323,9 @@ module tb_cpu_program;
         end
         if (fault || locked || !initialized || !halted || stopped || bus_index != 50 || event_index != 18 || memory['hc000] != 0)
             $fatal(1, "CPU_PROGRAM_FINAL events=%0d cycles=%0d halted=%0d fault=%0d", event_index, bus_index, halted, fault);
+        if (qualified_effects != (effect_page ? 2 : 0) || qualified_accesses != 0)
+            $fatal(1, "CPU_PROGRAM_IDU_QUALIFICATION effects=%0d accesses=%0d", qualified_effects, qualified_accesses);
+        if (effect_page) $display("PASS CPU IDU FE-page effects=2 ordinary_accesses=0");
         $fclose(trace);
         $fclose(records);
         $fclose(effect_trace);
