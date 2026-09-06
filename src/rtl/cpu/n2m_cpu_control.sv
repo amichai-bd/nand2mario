@@ -206,10 +206,11 @@ module n2m_cpu_control (
         // The power owner has already latched the selected-line wake and
         // qualified stable clocks. Accept before T1; the mode transition
         // retains a one-edge pulse even while host pause withholds ticks.
-        // IME-enabled pending restart remains the separate model-policy gate.
+        // Approved digital restart uses ordinary fetch/IRQ behavior even when
+        // IME-enabled requests arrived during oscillator restart.
         if (control.mode == MODE_STOP && wake_request && phase == 0 && !gb_tick) begin
             control_next.mode = MODE_FETCH;
-            control_next.observation_resume = control.ime && (|(ie[4:0] & iflags));
+            control_next.observation_resume = 0;
         end
         if (cycle_end) begin
             case (control.mode)

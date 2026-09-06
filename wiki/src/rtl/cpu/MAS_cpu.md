@@ -4,8 +4,8 @@ Status: design in progress for [#118](https://github.com/amichai-bd/nand2mario/i
 The byte ALU, instruction cycle planner, digital bus and retirement recorder
 have component Questa evidence. The integrated controller has checked programs,
 selected instruction vectors and directed control-state fixtures; the public
-wrapper and remaining acceptance boundaries are unfinished. The open modeling decisions below
-must be settled before their dependent RTL. This owner covers the complete legal
+wrapper is implemented; final acceptance remains in progress. The approved digital
+STOP restart rule below is part of the implementation. This owner covers the complete legal
 base and CB instruction sets; a subset does not complete the issue.
 
 ## Authority and model
@@ -253,9 +253,8 @@ The sample pulse occurs only on the shared T4 rising enable, with reset and
 fault suppression; a missing response suppresses the sample on the failed T4
 itself, before the registered fault changes. It can accompany idle rather than a memory commit.
 `resolved` is an explicit completeness qualifier: a consumer must reject an
-unresolved sample rather than interpreting its payload as no effect. In this
-incomplete integration, the unresolved interrupt-during-oscillator-restart address activity
-remain unresolved. Ordinary HALT preparation is resolved but is sampled only
+unresolved sample rather than interpreting its payload as no effect. The approved digital restart uses the ordinary fetch and IRQ repair
+observations; it does not expose an analog partial-clock address trace. Ordinary HALT preparation is resolved but is sampled only
 when its fresh wake read completes. Sourced ordinary fetch/operand/stack/planner
 cycles are resolved. This qualifier changes observation only, not CPU execution,
 and cannot waive the remaining full-CPU acceptance gate.
@@ -293,7 +292,7 @@ The implementation and directed proof must follow this mapping:
 | POP and RET family | First stack read: full old SP and additional effect. Second read: ordinary read only, despite its SP update. |
 | PUSH, CALL and RST | First decrement before the high write, then the decrement overlapping the high write; full old SP for each. The low write has no additional decrement effect. |
 | Ordinary opcode/operand PC increment | Same M-cycle as the read, with the full old PC. A suppressed increment or HALT dummy fetch must not inherit this rule merely because its access kind is opcode. |
-| HALT wake and ordinary IRQ repair | Wake read: full next PC with increment. Following IRQ repair: full prefetched cursor before decrement. STOP-origin wake remains separately unresolved. |
+| HALT wake and ordinary IRQ repair | Wake read: full next PC with increment. Following IRQ repair: full prefetched cursor before decrement. Qualified STOP-origin wake uses these same digital observations. |
 | ADD HL,rr; ADD SP,e; LD HL,SP+e | Internal arithmetic cycles have no additional write-like effect (`resolved=1`, `valid=0`). Their operand reads and final fetches retain ordinary PC-increment effects. This does not describe floating pin voltage. |
 | LD [a16],SP | Low-byte write cycle: full temporary address before its increment, combined with the ordinary write. High-byte write: ordinary write only. |
 | LD SP,HL | Internal transfer cycle; full old HL, following the register-file address-drive inference and independent emulator corroboration. |
@@ -335,7 +334,7 @@ pause nor a canceled/reset STOP attempt may create a divider-reset pulse. The
 future timer and JOYP owners consume these boundaries; the CPU does not add
 another divider counter or duplicate selected-line computation.
 
-### Qualified normal wake
+### Qualified STOP wake
 
 `wake_request` is a one-system-edge stable-clock qualification pulse from the
 power owner, not a raw button or interrupt. That owner latches the selected JOYP
@@ -346,9 +345,8 @@ settling duration and does not add another CPU phase counter.
 
 The mode transition retains that pulse through host pause. The first resumed
 M-cycle reads the stored architectural PC afresh; a changed opcode during sleep
-must be observed. For ordinary IME0 wake, and IME1 wake without an enabled
-interrupt throughout restart, this fetch has the full known PC increment IDU
-observation. The next completed instruction produces ordinary retirement; wake
+must be observed. This fetch has the full known PC increment IDU observation for both IME0
+and IME1, including an enabled interrupt during oscillator restart. The next completed instruction produces ordinary retirement; wake
 itself does not invent an instruction event. Either reset cancels the prepared
 read and restores the existing profile and epoch rules.
 
@@ -356,22 +354,27 @@ The normal path does not require JOYP IE to be enabled. Raw selected lines may
 have returned inactive after the power owner latched their pulse. The future
 JOYP/power integration must prove that qualification rather than directly
 connecting a button to `wake_request`. Scripted CPU fixtures verify only this
-public qualification contract. An IME1 enabled interrupt during restart remains
-the separate unresolved case below, including one arriving after qualification
-but before the first stable fetch completes.
+public qualification contract.
 
-These entry rows do not resolve oscillator restart. The separately pinned
-SonoSooS notes describe an interrupt with IME set during DMG STOP wake as an
-unstable-clock case. That wake model remains an explicit pending decision;
-it is not silently converted into a fault, a repeatable analog result or an
-exemption from the complete CPU acceptance gate.
+The approved model deliberately uses deterministic ordinary interrupt priority,
+stack writes and T3 recognition for IME1 requests during unstable oscillator
+restart. After stable qualification, the first fetch samples enabled requests
+at its normal T3 and enters the normal five-M-cycle interrupt sequence if needed.
+A request arriving after that T3 waits for the next ordinary instruction boundary.
+The first fetched byte may be discarded for entry, but is not executed or retired.
+High/low stack write cancellation/reselection and B retirement observations follow
+the existing normal rules. The fetch and repair IDU observations are fully known
+within this digital model.
+
+This is an explicit analog approximation approved for the DMG-B product model,
+not a claim that unstable physical clock restart is repeatable. The separately
+pinned SonoSooS description remains evidence of that physical limitation. No
+new model fault or random execution is introduced.
 
 ## Design gates before dependent RTL
 
-1. Resolve the documented nondeterministic STOP oscillator-restart case under
-   the charter's model policy; the deterministic entry rows are separate above.
-   A deliberate model fault or a deterministic digital approximation must be
-   explicit and reviewed; neither may be silently presented as exact silicon.
+The STOP restart model choice is resolved by the deterministic rule above.
+Final independent regression still must verify the complete selected model.
 
 These gates do not authorize a reduced opcode implementation. Remaining
 instruction datapath and independent test design can proceed from their pinned
@@ -412,9 +415,8 @@ The top connects `u_control`, `u_execute`, `u_bus`, `u_retire` and
 `u_stop_policy`. Typed boundaries add no registers or clock domains. Control
 emits a prepared plan and architectural capture record; it does not duplicate
 bus phase or recorder state. IE/IF/buttons still enter the recorder at B.
-The normal STOP stable-clock qualification seam is specified below; unresolved
-interrupt-during-restart policy means composition alone does not
-resolve that behavior or close the issue.
+The STOP stable-clock qualification seam and approved digital interrupt
+approximation are specified above. Composition must satisfy that boundary.
 
 ## Integration status
 
@@ -431,9 +433,8 @@ branch matches the pinned SameBoy model for pending requests with IME set,
 including delayed EI. An earlier inference that ordinary IME alone proved this
 branch wrong was withdrawn after source comparison. Requests before the latch
 closes and arrivals after HALT enters sleep need separate checked expectations.
-STOP interrupt-during-restart policy and final composed acceptance
-remain unfinished; this snapshot cannot close
-#118. The selected 498-form state/access evidence below remains valid within
+The STOP interrupt-during-restart policy is approved; its directed proof and
+final regression acceptance remain required before closing #118. The selected 498-form state/access evidence below remains valid within
 its declared flat-RAM exclusions.
 
 

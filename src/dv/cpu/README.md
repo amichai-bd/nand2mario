@@ -235,7 +235,7 @@ must be fetched after the pulse and host pause. Sixteen reset cases cancel that
 prepared fetch at each phase for both IME states and reset types. Literal bus,
 full retirement and resumed IDU checks remain separate from actual stale-read
 fault injection. This fixture does not establish analog settling duration,
-JOYP event priority or the unresolved IME1 interrupt-during-restart policy.
+JOYP event priority or the separately approved IME1 interrupt-during-restart model.
 
 
 STOP-entry IDU checks extend the eight-row/IME entry matrix without changing its
@@ -251,3 +251,16 @@ interrupt entry which does not finish STEP. Literal cumulative dots are
 8/16/24/28 and 8/12/36 after reset. The two fault targets suppress the actual
 completion output or remove the finishing read response; the latter requires
 both the missing-completion suppression marker and CPU bus assertion.
+
+
+The planned `cpu-stop-irq` fixture checks the approved deterministic restart
+approximation. Six literal schedules distinguish pending requests before wake,
+pre-T3 arrival, on-T3 and post-T3 arrival, masked priority, and cancellation
+before stack dispatch. Fresh INC A data distinguishes an immediately discarded
+fetch from an instruction retired before the later interrupt. The oracle checks
+both stack bytes, full IDU masks/addresses and every retirement field. Eight
+additional cases cancel a qualified pending restart at each prepared-fetch phase
+with core or global reset. The fourteen cases require 64 complete records.
+Two actual DUT output faults target restart IDU qualification and the high stack
+byte. This is a digital model check, not an analog oscillator measurement;
+actual runtime remains required before accepting these targets.
