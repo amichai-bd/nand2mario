@@ -4,10 +4,10 @@ An author may request a review subagent when nested delegation is supported.
 Otherwise root spawns the reviewer and returns its report. Authors never pick
 unrelated backlog work.
 
-Check capacity before spawning; reserve a reviewer slot. Runtime limits vary;
-do not hard-code a slot count. If full, finish or pause independent work before
-requesting review. Native review
-does not remove the need for an independent reviewer.
+Check the [work caps](../../../../AGENTS.md#work) and runtime capacity before
+spawning; reserve a reviewer slot. If full, finish or pause independent work
+before requesting review. Native review does not remove the need for an
+independent reviewer.
 
 ## Retained context
 
