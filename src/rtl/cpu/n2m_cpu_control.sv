@@ -40,27 +40,8 @@ module n2m_cpu_control (
     import n2m_cpu_pkg::*;
     import n2m_interfaces_pkg::*;
 
-    typedef enum logic [2:0] {MODE_FETCH, MODE_EXECUTE, MODE_HALT, MODE_STOP, MODE_INTERRUPT, MODE_LOCK} mode_t;
-    typedef struct packed {
-        mode_t mode;
-        logic [15:0] pc;
-        logic [15:0] instruction_pc;
-        logic [15:0] temporary;
-        logic [15:0] irq_pc;
-        logic [7:0] opcode;
-        logic [23:0] fetched;
-        logic [1:0] length;
-        logic [2:0] step;
-        logic cb_bank;
-        logic ime;
-        logic ime_delay;
-        logic halt_bug;
-        logic initialized;
-        logic profile_fault;
-        logic [4:0] irq_snapshot;
-    } control_t;
-    control_t control;
-    control_t control_next;
+    cpu_control_t control;
+    cpu_control_t control_next;
     cpu_registers_t registers;
     cpu_registers_t registers_next;
     cpu_registers_t execute_registers;
@@ -113,8 +94,8 @@ module n2m_cpu_control (
         return r;
     endfunction
 
-    function automatic control_t profile_control;
-        control_t c;
+    function automatic cpu_control_t profile_control;
+        cpu_control_t c;
         c = '0;
         c.mode = PROFILE_CPU_STOP[0] ? MODE_STOP : (PROFILE_CPU_HALT[0] ? MODE_HALT : MODE_FETCH);
         c.pc = PROFILE_PC;

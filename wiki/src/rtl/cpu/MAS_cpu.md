@@ -266,3 +266,10 @@ branch wrong was withdrawn after source comparison. Requests before the latch
 closes and arrivals after HALT enters sleep need separate checked expectations.
 STOP policy, IDU observation and complete opcode state/access coverage remain
 unfinished; this snapshot cannot close #118.
+
+
+The selected flat-RAM vector layer now checks 498 forms with all 16 initial flag
+combinations. Its data and exclusions are owned by the CPU test plan. It does
+not complete STOP/HALT, full reset/wake interruption, physical IDU observations
+or integrated peripheral timing acceptance. Arbitrary state setup belongs only
+to the simulation wrapper; the public direct-profile contract is unchanged.

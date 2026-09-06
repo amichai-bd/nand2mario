@@ -115,4 +115,23 @@ package n2m_cpu_pkg;
             default: condition_true = f[4];
         endcase
     endfunction
+    typedef enum logic [2:0] {MODE_FETCH, MODE_EXECUTE, MODE_HALT, MODE_STOP, MODE_INTERRUPT, MODE_LOCK} cpu_mode_t;
+    typedef struct packed {
+        cpu_mode_t mode;
+        logic [15:0] pc;
+        logic [15:0] instruction_pc;
+        logic [15:0] temporary;
+        logic [15:0] irq_pc;
+        logic [7:0] opcode;
+        logic [23:0] fetched;
+        logic [1:0] length;
+        logic [2:0] step;
+        logic cb_bank;
+        logic ime;
+        logic ime_delay;
+        logic halt_bug;
+        logic initialized;
+        logic profile_fault;
+        logic [4:0] irq_snapshot;
+    } cpu_control_t;
 endpackage

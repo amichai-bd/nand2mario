@@ -1,7 +1,8 @@
 # CPU behavior sources
 
-These immutable sources support [MAS_cpu](MAS_cpu.md). They are research inputs;
-no CPU implementation or upstream test suite is imported by this source record.
+These immutable sources support [MAS_cpu](MAS_cpu.md). No upstream CPU
+implementation is imported. The selected MIT instruction-vector data is recorded
+separately in the [fixture manifest](../../../../src/dv/cpu/singlestep/README.md).
 The original prose below summarizes the role and limits of each source.
 
 | Source | Immutable revision | Purpose and reuse boundary |

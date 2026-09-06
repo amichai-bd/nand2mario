@@ -84,3 +84,27 @@ PC. A 20-system-edge host pause after T3 removes the live request while preservi
 the captured decision; a forced snapshot fault must fail the public bus schedule.
 Wake after actual sleep, full reset interruption and STOP remain separate pending
 coverage; the two HALT execution cases do not establish those paths.
+
+
+## Selected independent instruction vectors
+
+The [selected fixture](singlestep/README.md) retains pinned MIT data, source
+hashes, original case names/indexes and reproducible generation. `cpu-vectors`
+checks 7,968 selected cases: 498 forms with all 16 initial flag combinations,
+full architectural retirement state, expected read/write cycles, exact write
+footprint and final listed RAM. The documented extra pipeline fetch is checked.
+This is not all upstream vectors. STOP/HALT's 32 source cases are excluded in
+favor of independent power/timing cases; source interrupt fields are excluded.
+
+Initial arbitrary register/RAM state is loaded only by the simulation wrapper.
+It constructs a literal fetch-state setup and forces whole packed variables,
+then releases before the first T-cycle. No expected value comes from DUT state
+or its profile helper. The internal control type is shared for that setup, not
+exposed as a product port. Whole-variable setup avoids Questa's warning about
+forcing a variable member from a nonconstant expression.
+
+The state negative forces actual architectural A after the first opcode fetch;
+the missing negative forces the actual recorder valid output. Expected upstream
+state is unchanged. Both require their exact diagnostic and raw exit 1. Initial
+setup attempts with warning/type errors are retained as failures, not accepted
+proof. This layer does not prove physical IDU address exposure or future MMIO.
