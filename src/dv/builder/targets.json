@@ -979,6 +979,7 @@
   "vga-lcd": {
     "sources": [
       "src/rtl/clocking/n2m_reset_control.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/vga/n2m_frame_ram.sv",
       "src/rtl/vga/n2m_vga_scan.sv",
       "src/rtl/vga/n2m_frame_bridge.sv",
@@ -990,11 +991,18 @@
     ],
     "expected_exit": "zero",
     "signature": "PASS VGA LCD abort blank stale-offer core-reset stopped-pixel ack-completion-invalidation",
-    "timeout_seconds": 180
+    "timeout_seconds": 600,
+    "vendor_model": "intel-memory",
+    "intel_mixed_mode_instances": [
+      "tb_vga.dut.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_vga.dut.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_vga.dut.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
+    ]
   },
   "vga-lcd-corrupt": {
     "sources": [
       "src/rtl/clocking/n2m_reset_control.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/vga/n2m_frame_ram.sv",
       "src/rtl/vga/n2m_vga_scan.sv",
       "src/rtl/vga/n2m_frame_bridge.sv",
@@ -1007,11 +1015,18 @@
     ],
     "expected_exit": "nonzero",
     "signature": "VGA_PIXEL:",
-    "timeout_seconds": 180
+    "timeout_seconds": 600,
+    "vendor_model": "intel-memory",
+    "intel_mixed_mode_instances": [
+      "tb_vga.dut.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_vga.dut.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_vga.dut.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
+    ]
   },
   "vga-lcd-reset": {
     "sources": [
       "src/rtl/clocking/n2m_reset_control.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/vga/n2m_frame_ram.sv",
       "src/rtl/vga/n2m_vga_scan.sv",
       "src/rtl/vga/n2m_frame_bridge.sv",
@@ -1023,7 +1038,13 @@
     ],
     "expected_exit": "zero",
     "signature": "PASS VGA LCD shared-reset release-skew stopped-pixel retained-white global-mask",
-    "timeout_seconds": 180
+    "timeout_seconds": 600,
+    "vendor_model": "intel-memory",
+    "intel_mixed_mode_instances": [
+      "tb_vga.dut.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_vga.dut.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_vga.dut.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
+    ]
   },
   "ppu-video": {
     "sources": [
@@ -1039,6 +1060,7 @@
       "src/rtl/ppu/n2m_ppu_window.sv",
       "src/rtl/ppu/n2m_ppu.sv",
       "src/dv/ppu/tb_ppu_render.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/vga/n2m_frame_ram.sv",
       "src/rtl/vga/n2m_vga_scan.sv",
       "src/rtl/vga/n2m_frame_bridge.sv",
@@ -1051,7 +1073,13 @@
     ],
     "expected_exit": "zero",
     "signature": "PASS PPU video observer frames=3 pixels=69120",
-    "timeout_seconds": 180
+    "timeout_seconds": 600,
+    "vendor_model": "intel-memory",
+    "intel_mixed_mode_instances": [
+      "tb_ppu_video.bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_ppu_video.bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_ppu_video.bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
+    ]
   },
   "ppu-video-corrupt": {
     "sources": [
@@ -1067,6 +1095,7 @@
       "src/rtl/ppu/n2m_ppu_window.sv",
       "src/rtl/ppu/n2m_ppu.sv",
       "src/dv/ppu/tb_ppu_render.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/vga/n2m_frame_ram.sv",
       "src/rtl/vga/n2m_vga_scan.sv",
       "src/rtl/vga/n2m_frame_bridge.sv",
@@ -1080,7 +1109,13 @@
     ],
     "expected_exit": "nonzero",
     "signature": "PPU_VIDEO_OBSERVER_PIXEL frame=1 index=0",
-    "timeout_seconds": 180
+    "timeout_seconds": 600,
+    "vendor_model": "intel-memory",
+    "intel_mixed_mode_instances": [
+      "tb_ppu_video.bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_ppu_video.bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_ppu_video.bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
+    ]
   },
   "ppu-ly153": {
     "sources": [
@@ -1409,6 +1444,7 @@
       "src/rtl/ppu/n2m_ppu_position.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
       "src/rtl/ppu/n2m_ppu.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/vga/n2m_frame_ram.sv",
       "src/rtl/vga/n2m_vga_scan.sv",
       "src/rtl/vga/n2m_frame_bridge.sv",
@@ -1418,7 +1454,13 @@
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS PPU LCD composed first last cancellation aborts=2 frames=3 VGA pixels=207360 resets=2",
-    "timeout_seconds": 180
+    "timeout_seconds": 600,
+    "vendor_model": "intel-memory",
+    "intel_mixed_mode_instances": [
+      "tb_ppu_lcd_video.bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_ppu_lcd_video.bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_ppu_lcd_video.bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
+    ]
   },
   "ppu-lcd-video-corrupt": {
     "sources": [
@@ -1433,6 +1475,7 @@
       "src/rtl/ppu/n2m_ppu_position.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
       "src/rtl/ppu/n2m_ppu.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/vga/n2m_frame_ram.sv",
       "src/rtl/vga/n2m_vga_scan.sv",
       "src/rtl/vga/n2m_frame_bridge.sv",
@@ -1444,7 +1487,13 @@
     ],
     "expected_exit": "nonzero",
     "signature": "PPU_LCD_OBSERVER run=2 index=0 expected_sequence=1 actual=3",
-    "timeout_seconds": 180
+    "timeout_seconds": 600,
+    "vendor_model": "intel-memory",
+    "intel_mixed_mode_instances": [
+      "tb_ppu_lcd_video.bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_ppu_lcd_video.bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_ppu_lcd_video.bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
+    ]
   },
   "ppu-live-scroll": {
     "sources": [
