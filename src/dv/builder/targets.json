@@ -1240,6 +1240,64 @@
     ],
     "top": "tb_cpu_wrap"
   },
+  "dma-engine": {
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS DMA engine pages=256",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/dma/n2m_dma_pkg.sv",
+      "src/rtl/dma/n2m_dma_engine.sv",
+      "src/dv/dma/tb_dma_engine.sv"
+    ],
+    "timeout_seconds": 60,
+    "top": "tb_dma_engine"
+  },
+  "dma-engine-byte": {
+    "args": [
+      "+CORRUPT_DATA"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "DMA_ENGINE_BYTE",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/dma/n2m_dma_pkg.sv",
+      "src/rtl/dma/n2m_dma_engine.sv",
+      "src/dv/dma/tb_dma_engine.sv"
+    ],
+    "timeout_seconds": 60,
+    "top": "tb_dma_engine"
+  },
+  "dma-engine-service": {
+    "args": [
+      "+MISSING_SOURCE"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "DMA_SOURCE_SERVICE",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/dma/n2m_dma_pkg.sv",
+      "src/rtl/dma/n2m_dma_engine.sv",
+      "src/dv/dma/tb_dma_engine.sv"
+    ],
+    "timeout_seconds": 60,
+    "top": "tb_dma_engine"
+  },
+  "dma-engine-time": {
+    "args": [
+      "+CORRUPT_TIME"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "DMA_ENGINE_TIME",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/dma/n2m_dma_pkg.sv",
+      "src/rtl/dma/n2m_dma_engine.sv",
+      "src/dv/dma/tb_dma_engine.sv"
+    ],
+    "timeout_seconds": 60,
+    "top": "tb_dma_engine"
+  },
   "intel-memory": {
     "args": [],
     "expected_exit": "zero",

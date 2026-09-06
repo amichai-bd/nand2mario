@@ -1,8 +1,8 @@
 # OAM DMA verification
 
 Full scope follows [DMA MAS](../../../wiki/src/rtl/dma/MAS_dma.md) and #132.
-Transfer/arbitration and composed corruption tests remain planned while their
-explicit policy gates are unresolved. No runtime pass is claimed yet.
+Pure corruption has reviewed bounded runtime evidence. The adopted digital
+policies are in MAS; composed arbitration verification remains incomplete.
 
 The initial `oam-corrupt` target checks the pure transformation against an
 independent sequential word oracle. It covers twenty rows, four classes,
@@ -23,3 +23,14 @@ Later acceptance retains the actual shared Intel OAM store, delivered CPU
 internal-address events, real PPU scan/fetch consumers, reset/pause/HALT/STOP,
 all transfer bytes/times and actual timing/arbitration defects. A pure formula
 pass or normal DMA copy cannot replace that evidence.
+
+The `dma-engine` fixture independently supplies the expected page and destination
+for all256 pages and160 offsets, fresh timing, changed-page/middle/consecutive
+restarts, terminal/restart priority, suspended progression and reset at all
+four public phases. It checks preparation and writes separately. This synthetic
+source proves sequencer behavior only; actual memory/CPU/PPU remains required.
+`dma-engine-byte` corrupts actual byte7, `dma-engine-time` advances its actual
+valid to T3, and `dma-engine-service` withholds the promised first response.
+The exact expected failures are DMA_ENGINE_BYTE, DMA_ENGINE_TIME and the local
+DMA_SOURCE_SERVICE assertion. All public ports and independent expected fields
+are dumped, and every phase observation has a CSV row.

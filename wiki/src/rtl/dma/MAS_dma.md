@@ -1,8 +1,9 @@
 # OAM DMA and access arbitration
 
 Status: contract preparation for [#132](https://github.com/amichai-bd/nand2mario/issues/132).
-The complete arbitration contract is not frozen. The settled combinational
-transformation below is implemented; its runtime acceptance is pending.
+The four digital compatibility projections below are adopted under the user's
+delegation. The pure corruption component has bounded reviewed Questa evidence;
+transfer and composed arbitration acceptance remain incomplete.
 
 ## Ownership and boundaries
 
@@ -88,32 +89,85 @@ finish at edge2, allowing a fresh read at edge3 before the next T1. Preserve
 the previous request's tag and validity. CPU read response/tag storage must
 also be independent of raw A-port reuse.
 
-## Remaining contract gates
+## Adopted digital compatibility projections
 
-- Exact startup, source sampling, destination write and finish T-edges.
-- CPU region conflict values and write effects, including FF46 exceptions;
-  HRAM-only programming advice does not define a complete bus truth table.
-- DMA versus corruption priority and invalidation of prefetched operands.
-- DMA data presented to the PPU during phase2 fetch, with primitive collision
-  avoidance and exact prior-request response semantics.
-- The combined CPU/DMA/corruption service schedule, pause after acceptance,
-  reset cancellation and LCD transition cases.
-- HALT-specific DMA progression: continuous PPU ticks and CPU phase do not
-  prove continuous transfer. The pinned gate model qualifies DMA clocks with
-  CPU clock request; the corroborating emulator stops DMA while halted.
+These choices define this DMG-B digital model. They are not physical measurements;
+retained hardware tests do not distinguish their same-edge alternatives.
 
-Phase research uses [GateBoy DMA](https://github.com/aappleby/metroboy/blob/36797ad4cf77b3e04ffe45716218a79b5280076a/src/GateBoyLib/GateBoyDMA.cpp)
-and its [OAM bus](https://github.com/aappleby/metroboy/blob/36797ad4cf77b3e04ffe45716218a79b5280076a/src/GateBoyLib/GateBoyOamBus.cpp).
-These are research references, not imported code or measured silicon traces.
-The CPU clock-request gating must be mapped explicitly before using any
-emulator's elapsed-cycle shortcut.
+- At a transfer T4, apply same-bus RAM-source CPU write feedback (DMA byte AND
+  CPU data), then overlay the DMA destination byte, then apply qualified row
+  corruption. Forward the overlay into every affected staged operand. DMA does
+  not suppress a separately qualified CPU internal-address effect.
+- A conflicting CPU read observes the byte prepared for this T4 transfer.
+  Main bus covers cartridge/WRAM; VRAM is separate. A RAM-source conflicting
+  write modifies the transferred byte, not the CPU-addressed RAM location.
+  Direct ROM writes have no mapper effect. A VRAM-source conflicting write
+  targets the redirected source byte only when the normal PPU write gate allows
+  it, after DMA samples the old byte. FF46, internal I/O and HRAM remain separate.
+- Progress requires pre-edge CPU neither halted nor stopped, plus the emulated
+  T4 tick. HALT entry may finish that edge's transfer. HALT wake T4 does not
+  advance; the next T4, four dots later, resumes. STOP wake restores phase0;
+  its next T4 may advance. During suspension, PPU phase2 receives the pair
+  selected by the most recent DMA destination byte, including its overlays.
+  An even-byte write updates the low byte while retaining the existing high
+  byte; it does not select the preceding completely transferred pair.
+- FF46 changes the live page at its accepted T4. That edge consumes its already
+  prepared old-page byte. The following M1 consumes the new-page byte at the
+  continuing old offset; M2 starts new-page offset0.
 
-No affected integration RTL begins before these gates are reconciled. The finite issue
-acceptance map and exact source hashes are retained with the author artifacts.
-Full acceptance requires original independent transfer/time, all corruption
-classes/rows, concurrent CPU/PPU, reset/pause/HALT/STOP and deliberate actual
-fault fixtures against the shared Intel store. A normal copy alone is not
-acceptance.
+The [pinned GateBoy DMA research](https://github.com/aappleby/metroboy/blob/36797ad4cf77b3e04ffe45716218a79b5280076a/src/GateBoyLib/GateBoyDMA.cpp)
+locates live page writes at NAFA-MARU, delayed trigger at LUVY/LENE, counter
+reset at LAPA and completion reset at MYTE. CPU clock request qualifies the
+trigger/counter clocks. Its
+[OAM bus](https://github.com/aappleby/metroboy/blob/36797ad4cf77b3e04ffe45716218a79b5280076a/src/GateBoyLib/GateBoyOamBus.cpp)
+is a port-ownership reference, not a complete analog corruption oracle.
+The retained source manifest records exact hashes and research-only use.
+
+## Sequencer timing projection
+
+The public interface projects the established M-cycle schedule onto accepted
+T4 edges. M0 accepts FF46; fresh M1 has no byte write and activates offset0
+at its end. M2 writes byte0, through M161 writing byte159. Ownership is active
+before the final write and inactive afterward. E0-FF pages alias C0-DF.
+
+| Accepted edge | Fresh transfer | Restart from active offset20 |
+|---|---|---|
+| M0 T4, FF46 commit | No write; record trigger/page | Write old-page20; record trigger/page |
+| M1 T4 | No write; activate offset0 | Write new-page21; reset offset0 |
+| M2 T4 | Write0 | Write0 |
+| M3 T4 | Write1 | Write1 |
+| M4 T4 | Write2 | Write2 |
+| M5 T4 | Write3 | Write3 |
+| M160 T4 | Write158 | Write158 |
+| M161 T4 | Write159; deactivate | Write159; deactivate |
+
+A pending trigger matures on the next qualified T4 independently of a new
+FF46 commit. The old scheduled byte completes first; maturation sets index0
+and active, overriding terminal completion. A simultaneous new commit records
+another pending trigger rather than postponing the old trigger. Consecutive
+commits therefore produce consecutive resets. This preserves the source's
+separate page, delayed trigger and reset-dominant completion roles; it is an
+explicit cycle projection rather than a claim of measured half-phase timing.
+
+Source requests are side-effect-free preparation and persist during pause.
+Only a qualified T4 consumes the response. A missing promised response cancels
+that edge's byte write and advancement, raises a named assertion and latches
+fault; later requests and effects stay suppressed until reset. Neither reset
+path clears VGA state. The arbiter supplies pre-edge source data and owns all
+physical OAM writes and the held pair; the sequencer adds no backing store.
+
+## Remaining implementation and proof
+
+The combined CPU/DMA/corruption service schedule must preserve the previous
+PPU request's response, avoid Intel mixed-port collisions, and independently
+tag CPU responses while reusing the raw port. Accepted service may finish
+while ticks pause; reset cancels unfinished work. LCD transitions and all
+four adopted projections require composed independent checks.
+
+Full acceptance requires original transfer/time, all corruption classes/rows,
+concurrent CPU/PPU, reset/pause/HALT/STOP and deliberate actual fault fixtures
+against the shared Intel store. A normal copy or pure formula alone is not
+acceptance. The finite map and source hashes remain in author artifacts.
 
 ## Settled transformation component
 
