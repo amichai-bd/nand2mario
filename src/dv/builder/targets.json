@@ -776,5 +776,27 @@
     ],
     "expected_exit": "nonzero",
     "signature": "PPU_MIX_MISMATCH case=3 expected=0 actual=3"
+  },
+  "ppu-shift": {
+    "expected_exit": "zero",
+    "args": [],
+    "top": "tb_ppu_shift",
+    "signature": "PASS PPU shift literal_cases=12",
+    "sources": [
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/dv/ppu/tb_ppu_shift.sv"
+    ]
+  },
+  "ppu-shift-unknown": {
+    "expected_exit": "nonzero",
+    "args": [
+      "+unknown"
+    ],
+    "top": "tb_ppu_shift",
+    "signature": "N2M_ASSERT shift_state_known",
+    "sources": [
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/dv/ppu/tb_ppu_shift.sv"
+    ]
   }
 }
