@@ -11,7 +11,7 @@ module tb_dma_composition;
     logic [7:0] test_ie;
     logic [4:0] test_if;
     logic [63:0] wake_dot;
-    integer held_count;
+    integer held_count, held_ppu_checks;
     bit halt_case, seen_wake, resumed_dma;
     cpu_bus_plan_t bus_plan;
     cpu_address_effect_t address_effect;
@@ -155,6 +155,7 @@ module tb_dma_composition;
                 if((!dma_active || ppu_oam_phase==2) && (!ppu_oam_valid || ppu_oam_data!==observed_pair))
                     $fatal(1,"DMA_COMPOSITION_PPU pair=%0d expected=%04x actual=%04x",previous_pair,observed_pair,ppu_oam_data);
                 checks=checks+1;
+                if(halt_case && cpu_halted && ppu_oam_phase==2) held_ppu_checks=held_ppu_checks+1;
             end
             if(gb_tick && cpu_phase==3) begin
                 if(bus_commit && bus_plan.write_enable && bus_plan.address==16'hff46) begin
@@ -167,7 +168,7 @@ module tb_dma_composition;
                         if(dot_before+1!=wake_dot+4) $fatal(1,"DMA_HALT_WAKE_DOT expected=%0d actual=%0d",wake_dot+4,dot_before+1);
                         resumed_dma=1;
                     end
-                    expected_oam[selected_offset]=sprite_byte(selected_offset);
+                    expected_oam[selected_offset]=halt_case && selected_offset==1 ? 8'h27 : sprite_byte(selected_offset);
                     dma_count=dma_count+1;
                 end
                 if(address_effect_sample && address_effect.valid && address_effect.write_effect &&
@@ -198,7 +199,7 @@ module tb_dma_composition;
         invalid_case=$test$plusargs("INVALID_OBSERVATION");
         hardware_fault=$test$plusargs("HARDWARE_FAULT");
         halt_case=$test$plusargs("HALT_CASE"); test_ie=0; test_if=0;
-        seen_wake=0; resumed_dma=0; wake_dot=0; held_count=0;
+        seen_wake=0; resumed_dma=0; wake_dot=0; held_count=0; held_ppu_checks=0;
         trace=$fopen("dma-composition.csv","w");
         $dumpfile("dma-composition.vcd");
         $dumpvars(0,clk_sys,gb_tick,cpu_phase,bus_commit,bus_plan,address_effect,address_effect_sample,
@@ -207,12 +208,12 @@ module tb_dma_composition;
             fault,cpu_fault,ppu_fault,read_data,response_valid,dma_count,effects,expected_held,
             reset_sys,core_reset,memory_init_done,cpu_initialized,setup,run_enable,paused,request_valid,
             cpu_halted,test_ie,test_if,wake_dot,seen_wake,resumed_dma,dut.invalid_observation,
-            dut.engine.write_valid,peripheral_commit);
+            dut.engine.write_valid,peripheral_commit,dut.service.dma_held_pair,held_ppu_checks);
         repeat(3) @(negedge clk_sys); reset_sys=0;
         core_reset=1; repeat(2) @(negedge clk_sys); core_reset=0;
         wait(memory_init_done); repeat(3) @(negedge clk_sys);
         for(index=0;index<160;index=index+1) begin
-            load_byte(STORE_WRAM,index,sprite_byte(index));
+            load_byte(STORE_WRAM,index,halt_case && index==1 ? 8'h27 : sprite_byte(index));
             load_byte(STORE_OAM,index,sprite_byte(index)); expected_oam[index]=sprite_byte(index);
         end
         for(index=0;index<128;index=index+1) program_bytes[index]=0;
@@ -223,9 +224,8 @@ module tb_dma_composition;
         program_bytes[11]='h06; program_bytes[12]='h40; program_bytes[13]='h23;
         program_bytes[14]='h05; program_bytes[15]='h20; program_bytes[16]='hfc; program_bytes[17]='h76;
         if(halt_case) begin
-            // One NOP spans startup M1; HALT entry M2 writes even byte0.
-            program_bytes[11]='h00; program_bytes[12]='h76;
-            program_bytes[13]='h18; program_bytes[14]='hfe;
+            // LDH retirement spans M1; immediate HALT entry M2 writes even byte0.
+            program_bytes[11]='h76; program_bytes[12]='h18; program_bytes[13]='hfe;
         end
         for(index=0;index<127;index=index+1) load_byte(STORE_HRAM,index,program_bytes[index]);
         for(index=0;index<3;index=index+1) begin
@@ -253,9 +253,13 @@ module tb_dma_composition;
         wait(cpu_halted);
         if(halt_case) begin
             @(negedge clk_sys); held_count=dma_count;
-            if(held_count!=1 || !dma_active || expected_held!==16'h0810)
+            if(held_count!=1 || !dma_active || expected_held!==16'h0810 || dut.service.dma_held_pair!==16'h0810)
                 $fatal(1,"DMA_HALT_EVEN_PAIR count=%0d pair=%04x",held_count,expected_held);
-            repeat(240) @(negedge clk_sys);
+            repeat(1000) begin
+                @(negedge clk_sys);
+                if(dut.service.dma_held_pair!==16'h0810) $fatal(1,"DMA_HALT_ACTUAL_PAIR");
+            end
+            if(held_ppu_checks==0) $fatal(1,"DMA_HALT_PPU_PHASE2_MISSING");
             if(dma_count!=held_count || !dma_active) $fatal(1,"DMA_HALT_PROGRESS");
             test_ie=1; test_if=1;
             wait(!cpu_halted); wake_dot=dot_before; seen_wake=1;
