@@ -96,7 +96,7 @@ module tb_input_matrix;
                 if(data_fault) force dut.effective_buttons=8'h00;
                 if(source_fault) force dut.host_q.physical_source=1'b1;
                 if(event_fault) force u_joypad.request_event=1'b0;
-                if(boundary_fault) gb_tick=1;
+                if(boundary_fault) begin host_write.valid=0; gb_tick=1; end
             end
             step();host_write='0;physical_commit=0;step();
             cases=cases+1;
