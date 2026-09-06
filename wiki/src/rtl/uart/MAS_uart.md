@@ -1,6 +1,6 @@
 # UART endpoint
 
-Status: implementation in progress under [#91](https://github.com/amichai-bd/nand2mario/issues/91).
+Status: composed wire commands are implemented under [#91](https://github.com/amichai-bd/nand2mario/issues/91). Already-STOPped STEP remains pending.
 
 The [shared interface contract](../interfaces/MAS_interfaces.md) owns packet,
 command, duplicate and core-transition behavior. Its generated package supplies
@@ -168,8 +168,8 @@ It marks a bit only with its corresponding accepted ROM byte and does not
 clear bits on overlapping rewrites. A presence query and same-address write
 must occupy separate edges; mixed-port collisions remain forbidden.
 
-The load controller owns sweep completion, image validity and any count. A
-presence result cannot replace reading actual ROM bytes for LOAD_END CRC32.
+The load controller owns sweep completion and remaining byte count; the command
+owner publishes image validity after initialization. A presence result cannot replace reading actual ROM bytes for LOAD_END CRC32.
 Global reset invalidates the endpoint's load state; stale array contents cannot
 be used until the next complete sweep. Core reset does not clear transport load
 metadata. The minimal `uart-presence-store` proof constrains 34 virtual input

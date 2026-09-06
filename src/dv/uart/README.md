@@ -20,7 +20,7 @@ Stimulus, passive accepted-effect monitors and expected packet bytes remain
 independent of DUT decode/next-state fields. Retain explicit public wave signals,
 transaction logs, exact source snapshots and Intel binding evidence. Test-only
 core/storage/snapshot models prove their boundary contracts, not full-system
-integration. Licensed runs require the root's exclusive slot.
+integration. Licensed runs use the shared serialized tool slot recorded by the orchestrator.
 
 
 ### COBS response output
