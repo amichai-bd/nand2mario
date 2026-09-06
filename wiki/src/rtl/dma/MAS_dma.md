@@ -1,9 +1,9 @@
 # OAM DMA and access arbitration
 
-Status: implementation and bounded verification for [#132](https://github.com/amichai-bd/nand2mario/issues/132).
-The four digital compatibility projections below are adopted under the user's
-delegation. The transformation, sequencer and initial CPU/PPU composition have bounded
-reviewed Questa evidence. Full arbitration acceptance remains incomplete.
+Implemented for [#132](https://github.com/amichai-bd/nand2mario/issues/132).
+The four adopted digital compatibility projections below define the selected
+model. The verification boundary distinguishes component, composed and physical
+claims.
 
 ## Ownership and boundaries
 
@@ -181,18 +181,23 @@ fault; later requests and effects stay suppressed until reset. Neither reset
 path clears VGA state. The arbiter supplies pre-edge source data and owns all
 physical OAM writes and the held pair; the sequencer adds no backing store.
 
-## Remaining implementation and proof
+## Verification boundary
 
-The combined CPU/DMA/corruption service schedule must preserve the previous
-PPU request's response, avoid Intel mixed-port collisions, and independently
-tag CPU responses while reusing the raw port. Accepted service may finish
-while ticks pause; reset cancels unfinished work. LCD transitions and all
-four adopted projections require composed independent checks.
+The [directed fixtures](../../../../src/dv/dma/README.md) combine the actual
+CPU, PPU and Intel stores where those consumers are needed. Synthetic boundary
+fixtures isolate exact restart, feedback, reset and service-fault cases. They
+do not substitute for the real consumer checks or implement neighboring I/O
+owners. Accepted service may finish while ticks pause; reset cancels unfinished
+work. LCD request cancellation and fresh scan-row replacement are distinct
+checks.
 
-Full acceptance requires original transfer/time, all corruption classes/rows,
-concurrent CPU/PPU, reset/pause/HALT/STOP and deliberate actual fault fixtures
-against the shared Intel store. A normal copy or pure formula alone is not
-acceptance. The finite map and source hashes remain in author artifacts.
+The pure truth table covers all transformation classes and rows. Composed
+fixtures cover transfer/time, CPU address effects, concurrent PPU consumption,
+reset/pause/HALT/STOP and deliberate actual faults against the shared Intel
+store. A normal copy or pure formula alone is not acceptance. Exact sources,
+commands, traces and independent review remain in PR evidence and artifacts.
+This issue does not claim analog DMG measurements, board execution or whole-system
+acceptance.
 
 ## Settled transformation component
 
