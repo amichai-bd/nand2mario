@@ -54,3 +54,9 @@ remaining same-M-cycle timing uncertainty. Consequently the CPU exposes a
 bus-owner dispatch snapshot separately from post-commit IF storage. The CPU's
 fixed sampling edge is a documented digital boundary, not a claim that SameBoy
 proves every simultaneous timer/request/register-write priority in hardware.
+
+The same Pan Docs pin's `src/OAM_Corruption_Bug.md` distinguishes ordinary
+read/write activity from IDU address exposure and identifies the POP/RET and
+stack-push exceptions. It supplies an additional required CPU observation
+boundary for the future OAM/arbitration owner, not permission to infer all
+bus-side effects from retirement or T4 transaction commits.

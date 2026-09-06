@@ -51,7 +51,7 @@ module n2m_cpu_bus (
     assign terminal = gb_tick && phase == 3 && active && !fault && !reset_sys && !core_reset;
     assign cycle_end = terminal && (!required_read || response_valid);
     assign commit = cycle_end && request_valid;
-    assign hold_plan = active && phase != 0 && !terminal;
+    assign hold_plan = active && (phase != 0 || gb_tick) && !terminal;
 
     `DFF_ARST_VAL(phase, phase_next, clk_sys, reset_sys, 2'b0)
     `DFF_ARST_VAL(fault, fault_next, clk_sys, reset_sys, 1'b0)

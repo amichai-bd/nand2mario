@@ -42,10 +42,17 @@ compatibility result is claimed. Those remain separate issue acceptance.
   retain the write-cycle result rather than recompute with the new carry.
 - `cpu-bus` checks 13 commits with pause and reset at all four phases, plus
   inactive M-cycles and boundary reactivation. Missing response and activation
-  partway through an M-cycle produce their exact named fatal assertions.
+  partway through an M-cycle produce their exact named fatal assertions. A third
+  negative changes the prepared address immediately after T1 and must fail
+  before that altered request could commit.
 
 These targets have actual Questa positive/negative evidence retained under the
 author build tags. The cycle-count table does not prove every base instruction's
 state or access address; the integrated public-bus/state oracle remains required.
 The component state ports are datapath interfaces, not arbitrary register writes
 on the planned public CPU module.
+
+- `cpu-retire` checks six recorded events against independent literal ABI byte
+  offsets, including instruction lengths, zero IRQ opcode, post-bus snapshots,
+  idle non-repetition and reset cancellation/sequence restart. Its negative
+  forces an actual output opcode field and must fail the record comparison.

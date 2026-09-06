@@ -31,6 +31,7 @@ module tb_cpu_bus;
     bit expected_commit;
     bit missing_response;
     bit late_active;
+    bit change_after_t1;
 
     n2m_cpu_bus dut (.*);
 
@@ -73,6 +74,7 @@ module tb_cpu_bus;
         cycles = 0;
         missing_response = $test$plusargs("missing_response");
         late_active = $test$plusargs("late_active");
+        change_after_t1 = $test$plusargs("change_after_t1");
         trace = $fopen("bus-trace.csv", "w");
         if (!trace) $fatal(1, "CPU_BUS_TRACE_OPEN");
         $fdisplay(trace, "cycle,phase,active,tick,reset,address,commit");
@@ -87,6 +89,12 @@ module tb_cpu_bus;
             $fatal(1, "CPU_BUS_NEGATIVE_DID_NOT_FAIL active");
         end
         active = 1;
+        if (change_after_t1) begin
+            edge_cycle(1);
+            plan_address = 16'hc999;
+            edge_cycle(0);
+            $fatal(1, "CPU_BUS_NEGATIVE_DID_NOT_FAIL T1 payload");
+        end
         if (missing_response) begin
             edge_cycle(1);
             edge_cycle(1);

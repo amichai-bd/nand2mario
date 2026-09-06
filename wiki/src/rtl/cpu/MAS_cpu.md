@@ -1,8 +1,8 @@
 # SM83 CPU
 
 Status: design in progress for [#118](https://github.com/amichai-bd/nand2mario/issues/118).
-The byte ALU, instruction cycle planner and digital bus have component Questa
-evidence. The integrated instruction controller is not implemented or verified
+The byte ALU, instruction cycle planner, digital bus and retirement recorder
+have component Questa evidence. The integrated instruction controller is not implemented or verified
 yet. The open modeling decisions below
 must be settled before their dependent RTL. This owner covers the complete legal
 base and CB instruction sets; a subset does not complete the issue.
@@ -200,6 +200,22 @@ T-cycle boundary. A prepared transaction is retained without committing twice.
 Resume continues that transaction once; it does not refetch committed operands,
 repeat a stack write, or invent elapsed dots. Reset while paused still takes
 priority. The system must not use CPU HALT as host pause.
+
+## Internal-address observation
+
+A committed read/write trace is insufficient for DMG-B OAM corruption. The
+pinned Pan Docs OAM-corruption chapter identifies IDU activity that exposes a
+16-bit register value even without read/write strobes, including INC/DEC pairs,
+postincrement/decrement HL, stack operations and PC increments. POP/RET have a
+specific difference between their first and second read; stack pushes can merge
+IDU and ordinary write activity within one M-cycle.
+
+The CPU must expose the pre-operation IDU address and operation phase to the
+future arbitration/OAM owner. `ACCESS_IDLE` with an arbitrary PC address is not
+proof of those effects, and retirement cannot reconstruct them. Exact IDU
+observation output and coverage remain unfinished in #118 before dependent
+integration; OAM storage/corruption itself belongs to its separate owner. The
+current cycle planner's idle address is not presented as a physical bus model.
 
 ## Design gates before dependent RTL
 

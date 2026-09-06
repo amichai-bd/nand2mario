@@ -1988,5 +1988,44 @@
     ],
     "expected_exit": "nonzero",
     "signature": "N2M_ASSERT CPU_BUS_ACTIVE_BOUNDARY"
+  },
+  "cpu-bus-changing-request": {
+    "sources": [
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/dv/cpu/tb_cpu_bus.sv"
+    ],
+    "top": "tb_cpu_bus",
+    "args": [
+      "+change_after_t1"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT CPU_BUS_PLAN_STABLE"
+  },
+  "cpu-retire": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/dv/cpu/tb_cpu_retire.sv"
+    ],
+    "top": "tb_cpu_retire",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU retirement events=6 lengths=1,2,3 irq_zero=1 reset_cancel=1"
+  },
+  "cpu-retire-corrupt": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/dv/cpu/tb_cpu_retire.sv"
+    ],
+    "top": "tb_cpu_retire",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_RETIRE_MISMATCH case=1"
   }
 }
