@@ -3,13 +3,13 @@
 module n2m_clocking (
     input  logic clk_sys,
     input  logic board_reset_n,
-    output wire  clk_pix,
-    output wire  reset_sys,
-    output wire  reset_pix,
-    output wire  ready
+    output logic  clk_pix,
+    output logic  reset_sys,
+    output logic  reset_pix,
+    output logic  ready
 );
-    wire pll_areset;
-    wire pll_locked;
+    logic pll_areset;
+    logic pll_locked;
     n2m_pixel_pll u_pll (.inclk0(clk_sys), .areset(pll_areset),
                         .c0(clk_pix), .locked(pll_locked));
     n2m_reset_control u_reset (.clk_sys, .clk_pix, .board_reset_n, .pll_locked,

@@ -24,9 +24,9 @@ module n2m_frame_bridge (
 );
     logic [14:0] write_index;
     logic [63:0] source_sequence;
-    wire accept_pixel;
+    logic accept_pixel;
     assign accept_pixel = source_valid && !reset_sys && !core_reset;
-    wire complete;
+    logic complete;
     assign complete = accept_pixel && write_index == 15'd23039;
     `DFF_RST_EN(write_index, complete ? 15'd0 : write_index + 15'd1,
                 clk_sys, accept_pixel, reset_sys || core_reset, 15'd0)
@@ -96,11 +96,11 @@ module n2m_frame_bridge (
     logic [31:0] captured_epoch;
     logic captured_phase;
     logic swap_boundary;
-    wire new_request;
+    logic new_request;
     assign new_request = sys_ready_pix[1] && req_pix[1] != acknowledge;
-    wire capture_now;
+    logic capture_now;
     assign capture_now = capture_wait && !captured;
-    wire swap;
+    logic swap;
     assign swap = swap_boundary && captured && sys_ready_pix[1];
     `DFF_RST(capture_wait, new_request && !captured && !capture_wait,
              clk_pix, reset_pix)
@@ -119,8 +119,8 @@ module n2m_frame_bridge (
 
     logic read_enable;
     logic [14:0] read_address;
-    wire [1:0] bank_shade [0:2];
-    wire [1:0] read_shade;
+    logic [1:0] bank_shade [0:2];
+    logic [1:0] read_shade;
     assign read_shade = bank_shade[display_bank];
     genvar bank;
     generate for (bank = 0; bank < 3; bank = bank + 1) begin : banks

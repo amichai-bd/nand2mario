@@ -2,7 +2,7 @@
 module baseline_stimulus(input logic clk, output logic reset, enable,
                          output logic [7:0] operand, output logic done,
                          output integer seed);
-  reg [31:0] random_state;
+  logic [31:0] random_state;
   integer i;
   task drive(input bit r, e, input logic [7:0] data);
     @(negedge clk);

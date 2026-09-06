@@ -1,9 +1,9 @@
 `timescale 1ns/1ps
 // Original build-harness fixture: no Game Boy behavior or reference HDL.
 module builder_smoke;
-    reg clk;
-    reg reset;
-    reg [3:0] count;
+    logic clk;
+    logic reset;
+    logic [3:0] count;
     integer seed;
     integer expected;
     integer cycle;

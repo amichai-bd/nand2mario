@@ -3,14 +3,14 @@
 `default_nettype none
 `include "src/rtl/common/macros.svh"
 module dmg_tile_pixel (
-    input  wire logic       clk,
-    input  wire logic       reset,
-    input  wire logic       enable,
-    input  wire logic       valid_s0,
-    input  wire logic [7:0] row_low_s0,
-    input  wire logic [7:0] row_high_s0,
-    input  wire logic [2:0] pixel_x_s0,
-    input  wire logic [7:0] palette_s0,
+    input var logic       clk,
+    input var logic       reset,
+    input var logic       enable,
+    input var logic       valid_s0,
+    input var logic [7:0] row_low_s0,
+    input var logic [7:0] row_high_s0,
+    input var logic [2:0] pixel_x_s0,
+    input var logic [7:0] palette_s0,
     output logic       valid_s1,
     output logic [1:0] color_index_s1,
     output logic [1:0] shade_s1

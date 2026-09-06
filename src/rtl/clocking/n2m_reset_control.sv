@@ -29,7 +29,7 @@ module n2m_reset_control (
     `DFF_INIT_ARST_N_VAL(release_count, release_count_next, clk_sys, board_release[1], 19'd0)
     `DFF_INIT_ARST_N_VAL(pll_areset, pll_areset_next, clk_sys, board_release[1], 1'b1)
 
-    wire lock_reset;
+    logic lock_reset;
     assign lock_reset = pll_areset || !pll_locked;
     (* preserve, altera_attribute = "-name SYNCHRONIZER_IDENTIFICATION FORCED" *)
     logic [1:0] lock_samples;

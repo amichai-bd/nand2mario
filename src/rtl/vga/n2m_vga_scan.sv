@@ -18,9 +18,9 @@ module n2m_vga_scan (
     logic active_out, image_out, valid_out, hs_out, vs_out;
     logic [3:0] gray, gray_out;
     logic [9:0] source_x, source_y;
-    wire active;
+    logic active;
     assign active = x < 10'd640 && y < 10'd480;
-    wire image_area;
+    logic image_area;
     assign image_area = x >= 10'd80 && x < 10'd560 &&
                       y >= 10'd24 && y < 10'd456;
     always_comb begin
