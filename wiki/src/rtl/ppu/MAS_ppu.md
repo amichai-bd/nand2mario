@@ -192,7 +192,9 @@ The proposed ordinary mapping is:
 A held shared condition must not retrigger because another source or write
 joins it. A mode-3 write without coincidence must not invent an active source.
 Directed checks must cover old/new enables, active and inactive coincidence,
-write before/on/after a mode transition, and simultaneous T4 retirement/IF write.
+write before/on/after a mode transition, and a natural STAT event coincident
+with T4 retirement and an IF write. One CPU commit cannot write STAT and IF
+simultaneously; the composed vector must not invent that stimulus.
 The HBlank/OAM special case and LCD-off qualification remain explicit review
 gates. This proposal is not implemented by the initial scene renderer.
 
