@@ -73,6 +73,8 @@ module n2m_ppu (
     logic pixel_capture, abort_capture, event_capture, complete_capture;
     logic pending_pixel, captured_start, pending_abort, pending_blank;
     logic first_frame_blank, fault_seen, stat_history, vblank_history;
+    logic stat_transient;
+    logic [3:0] effective_stat_enable;
     assign reset = reset_sys || core_reset;
     assign fault = fetch_fault || object_fault;
     assign fault_now = fetch_fault_now || object_fault_now;
@@ -82,10 +84,13 @@ module n2m_ppu (
         .lcdc, .scy, .scx, .lyc, .bgp, .obp0, .obp1, .wy, .wx, .stat_enable,
         .stat_write, .lcd_enable, .lcd_disable
     );
-    // STAT write transient qualification remains an explicit integration gate;
-    // ordinary stored enables are wired here for initial composed scene checks.
+    // One emulated-dot write transient. The combined effective condition goes
+    // directly to the common edge history; no intermediate stored-enable edge.
+    // HBlank/OAM special qualification remains a documented integration gate.
+    `DFF_RST_EN(stat_transient, stat_write, clk_sys, gb_tick, reset, 1'b0)
+    assign effective_stat_enable = stat_transient ? 4'hf : stat_enable;
     n2m_ppu_timing timing (
-        .clk_sys, .reset, .gb_tick, .lcd_on(lcdc[7]), .ly_compare(lyc), .stat_enable,
+        .clk_sys, .reset, .gb_tick, .lcd_on(lcdc[7]), .ly_compare(lyc), .stat_enable(effective_stat_enable),
         .scan_done, .scan_active, .pixel_end, .object_found, .line_quarter,
         .quarter_phase, .ly, .coincidence, .mode, .mode3, .mode3_end,
         .line_reset, .stat_condition, .vblank_condition

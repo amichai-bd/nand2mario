@@ -196,7 +196,8 @@ write before/on/after a mode transition, and a natural STAT event coincident
 with T4 retirement and an IF write. One CPU commit cannot write STAT and IF
 simultaneously; the composed vector must not invent that stimulus.
 The HBlank/OAM special case and LCD-off qualification remain explicit review
-gates. This proposal is not implemented by the initial scene renderer.
+gates. The renderer implements this ordinary effective-enable interval with shared
+condition edge history. The special qualification gates above remain open.
 
 ## Proposed LCD cancellation and presentation
 
