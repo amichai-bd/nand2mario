@@ -203,3 +203,16 @@ condition and all-edge event counts. OAM-only cases compose the actual IF owner
 with and without a same-edge IF clear, checking pre-B observation and stored IF.
 These targets require runtime evidence; no source interval or renderer shift is
 inferred from the compatibility projection.
+
+`ppu-vblank` checks the selected line144 pipeline with the actual IF owner.
+The declared LY1 anchor451 plus143 lines of456 dots gives LY144 at65659.
+The pinned controller's delayed OAM source rises at65660; its VBlank stage
+updates at65661 and public VBlank rises at65662. STAT10 rises with VBlank,
+STAT20 rises two dots earlier, and STAT30 stays high across the source change.
+This is the approved digital projection, not a sub-T silicon measurement;
+Mooneye's interrupt/DIV brackets do not establish identical individual edges.
+Four cases check every system-edge event count, pre-B IF observation and stored
+IF. Legal T4 IF writes clear at65656/65664; the fourth case also clears on the
+natural OAM event at65660, proving write priority without an illegal VBlank-edge
+CPU commit. A public VBlank-rise fault must fail the exact65662 check. Public
+waves and32 literal boundary checks are retained by the targets; runtime is pending.

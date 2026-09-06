@@ -1864,5 +1864,53 @@
     "expected_exit": "nonzero",
     "signature": "PPU_STAT_OAM_QUALIFIER case=0 expected=b actual=f",
     "timeout_seconds": 60
+  },
+  "ppu-vblank": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_vblank.sv"
+    ],
+    "top": "tb_ppu_vblank",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS PPU line144 STAT VBlank IF priority cases=4 checks=32",
+    "timeout_seconds": 120
+  },
+  "ppu-vblank-corrupt": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_vblank.sv"
+    ],
+    "top": "tb_ppu_vblank",
+    "args": [
+      "+vblank_fault"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "PPU_VBLANK_EVENT case=0 dot=65662 expected=1 actual=0",
+    "timeout_seconds": 120
   }
 }
