@@ -69,6 +69,22 @@ with uninitialized contents and reset-masked validity. Their early
 6432 logical memory bits at the current ABI. It must establish three physical
 M9Ks with matching clock/read/reset structure before dependent cache acceptance.
 
+`n2m_uart_exchange` holds `command_valid` until the executor finishes writing its
+entire raw response and asserts `command_done` with the response size. Its
+`command_forced_status` is OK for a new command or SEQUENCE for a conflicting
+retry; the executor must build that error reply without command effects. The
+exchange supplies the executor's packet reads only during execution. Compare and
+copy reads use the same one-edge packet-source port while the receiver holds the
+request. An identical retry never asserts `command_valid`.
+
+The transmitter holds `transmit_read` and an in-range raw-byte address for each
+one-edge read, then asserts `transmit_done` only after sending the delimiter.
+Only that completion releases the receiver. Staged responses cannot transmit
+before executor completion; new cached replies cannot transmit before the final
+copy write and cache publication. There is no ready signal that can alter core
+execution timing: these handshakes order host commands outside emulated bus
+retirement.
+
 ## Core and storage integration
 
 The controller drives the existing timebase `pause_request` and observes `paused`

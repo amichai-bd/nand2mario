@@ -415,5 +415,54 @@
     ],
     "expected_exit": "nonzero",
     "signature": "N2M_ASSERT UART_PACKET_READ_RANGE"
+  },
+  "uart-exchange": {
+    "vendor_model": "intel-memory",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/uart/n2m_uart_exchange_store.sv",
+      "src/rtl/uart/n2m_uart_exchange.sv",
+      "src/dv/uart/tb_uart_exchange.sv"
+    ],
+    "top": "tb_uart_exchange",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS UART exchange replies=14 effects=7 dispatch=9"
+  },
+  "uart-exchange-corrupt": {
+    "vendor_model": "intel-memory",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/uart/n2m_uart_exchange_store.sv",
+      "src/rtl/uart/n2m_uart_exchange.sv",
+      "src/dv/uart/tb_uart_exchange.sv"
+    ],
+    "top": "tb_uart_exchange",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "UART_EXCHANGE_REPLY_BYTE index=2"
+  },
+  "uart-exchange-duplicate": {
+    "vendor_model": "intel-memory",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/uart/n2m_uart_exchange_store.sv",
+      "src/rtl/uart/n2m_uart_exchange.sv",
+      "src/dv/uart/tb_uart_exchange.sv"
+    ],
+    "top": "tb_uart_exchange",
+    "args": [
+      "+duplicate"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "UART_EXCHANGE_DUPLICATE_EXECUTION"
   }
 }
