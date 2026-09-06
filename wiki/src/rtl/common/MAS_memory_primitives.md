@@ -38,7 +38,10 @@ power-up fill. `power_up_uninitialized` is `TRUE`, and `init_file` is `UNUSED`.
 ## Writes and collisions
 
 Enabled A writes update only enabled lanes. The single-lane configurations
-enable the whole word; 32/4 maps lane zero to bits 7:0. A same-port simultaneous
+enable the whole word; the sixteen-bit whole-word enable is replicated to the
+primitive's two required eight-bit lanes. 32/4 maps lane zero to bits 7:0.
+The primitive lane count is the width rounded up in units of eight bits, with
+all B lanes tied enabled on its read-only port. A same-port simultaneous
 read/write is supported only with all lanes enabled and returns the new word
 at that edge. The primitive selects `NEW_DATA_NO_NBE_READ`; partial writes
 must disable A reading and can be observed with a subsequent enabled read.

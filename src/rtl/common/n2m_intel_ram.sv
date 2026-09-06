@@ -27,11 +27,18 @@ module n2m_intel_ram #(
     output logic [DATA_BITS-1:0] b_rdata,
     output logic b_valid
 );
+    localparam integer PRIMITIVE_LANES = (DATA_BITS + 7) / 8;
     logic read_a, write_a, read_b;
     logic valid_a, valid_b;
     logic read_clock_b;
     logic [2:0] unused_ecc;
     logic [DATA_BITS-1:0] ram_data_a, ram_data_b;
+    logic [PRIMITIVE_LANES-1:0] primitive_byte_enable;
+    generate if (BYTE_LANES == 1) begin : whole_word_enable
+        assign primitive_byte_enable = {PRIMITIVE_LANES{a_byte_enable[0]}};
+    end else begin : byte_lane_enable
+        assign primitive_byte_enable = a_byte_enable;
+    end endgenerate
     assign read_clock_b = DUAL_CLOCK ? clk_b : clk_a;
     assign read_a = a_read && !reset_a;
     assign write_a = a_write && !reset_a;
@@ -50,7 +57,7 @@ module n2m_intel_ram #(
         .operation_mode("BIDIR_DUAL_PORT"), .lpm_type("altsyncram"),
         .width_a(DATA_BITS), .widthad_a(ADDRESS_BITS), .numwords_a(DEPTH),
         .width_b(DATA_BITS), .widthad_b(ADDRESS_BITS), .numwords_b(DEPTH),
-        .width_byteena_a(BYTE_LANES), .width_byteena_b(1),
+        .width_byteena_a(PRIMITIVE_LANES), .width_byteena_b(PRIMITIVE_LANES),
         .byte_size(8),
         .address_reg_b(DUAL_CLOCK ? "CLOCK1" : "CLOCK0"),
         .rdcontrol_reg_b(DUAL_CLOCK ? "CLOCK1" : "CLOCK0"),
@@ -71,9 +78,9 @@ module n2m_intel_ram #(
         .clocken0(1'b1), .clocken1(1'b1), .clocken2(1'b1), .clocken3(1'b1),
         .aclr0(1'b0), .aclr1(1'b0),
         .address_a(a_address), .data_a(a_wdata), .wren_a(write_a), .rden_a(read_a),
-        .byteena_a(a_byte_enable), .addressstall_a(1'b0), .q_a(ram_data_a),
+        .byteena_a(primitive_byte_enable), .addressstall_a(1'b0), .q_a(ram_data_a),
         .address_b(b_address), .data_b({DATA_BITS{1'b0}}), .wren_b(1'b0), .rden_b(read_b),
-        .byteena_b(1'b1), .addressstall_b(1'b0), .q_b(ram_data_b), .eccstatus(unused_ecc)
+        .byteena_b({PRIMITIVE_LANES{1'b1}}), .addressstall_b(1'b0), .q_b(ram_data_b), .eccstatus(unused_ecc)
     );
 
     `N2M_ASSERT_NO_RST(INTEL_RAM_CONFIGURATION, clk_a,
