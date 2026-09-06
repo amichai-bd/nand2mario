@@ -113,6 +113,12 @@ boundary under both core and global reset. Held system edges before each
 boundary check pause behavior; T4 reset overlaps the commit input. Every
 case waits for the complete clear and checks that no cancelled byte effect
 or stale response survives.
+The same fixture holds CPU request/commit inactive during an interrupted
+public-port ROM load, resets after seventeen written bytes, verifies those
+bytes through permitted incomplete-load readback, then fills the remaining
+direct image. This models only the endpoint's stop/reset coordination. #91
+still owns image completeness, CRC/presence and RUN authorization; raw memory
+does not invent an image-valid flag or define unwritten-byte read values.
 
 CPU #118 at `9a984d0` agrees that request fields are prepared before T1 and held
 through T4. `read_data` and `response_valid` are consumed before the T4 edge;
