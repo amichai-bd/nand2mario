@@ -129,7 +129,10 @@ module tb_ppu_scroll_window;
     end
     initial begin
         $dumpfile("waves/scroll-window.vcd");
-        $dumpvars(0, dut);
+        $dumpvars(0, clk_sys, reset_sys, core_reset, gb_tick, dot_before,
+            io_commit, io_address, io_wdata, source_valid, source_start,
+            source_abort, source_x, source_y, source_shade, source_dot,
+            source_display_eligible, frame_count, pixel_count, expected);
         clk_sys = 0; reset_sys = 1; core_reset = 0; pause_request = 0;
         epoch = 5; write_pending = 0; io_write = 1; io_address = 0; io_wdata = 0;
         wy_case = $test$plusargs("wy"); wy_late = $test$plusargs("wy_late");
@@ -175,10 +178,16 @@ module tb_ppu_scroll_window;
             if (!wy_late) begin
                 wait (pixel_count == 33 * 160);
                 write_register(16'hff4a, 255);
+                // Isolate hidden-row bookkeeping from the DMG disabled-window
+                // WX-match reload glitch (pinned video.v844-851).
                 wait (pixel_count == 34 * 160);
                 write_register(16'hff40, 8'hd1);
+                write_register(16'hff4b, 255);
+                if (pixel_count != 34 * 160) $fatal(1, "PPU_WY_LATE_HIDE");
                 wait (pixel_count == 35 * 160);
+                write_register(16'hff4b, 47);
                 write_register(16'hff40, 8'hf1);
+                if (pixel_count != 35 * 160) $fatal(1, "PPU_WY_LATE_RESTORE");
             end
         end else for (write_line = 1; write_line < 144; write_line = write_line + 1) begin
             wait (pixel_count == write_line * 160);

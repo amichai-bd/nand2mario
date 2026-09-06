@@ -151,7 +151,14 @@ module tb_ppu_lcd_video;
         end
     end
     initial begin
-        $dumpfile("waves/lcd-video.vcd"); $dumpvars(0, dut, bridge);
+        $dumpfile("waves/lcd-video.vcd");
+        $dumpvars(0, clk_sys, clk_pix, reset_sys, reset_pix, core_reset,
+            gb_tick, dot_before, io_commit, io_address, io_wdata,
+            source_valid, source_abort, blank_assert, source_x, source_y,
+            source_shade, source_dot, source_display_eligible, observe_valid,
+            observe_abort, observe_complete, observe_index, observe_shade,
+            observe_sequence, display_valid, display_sequence, red, green,
+            blue, video_valid, video_image, video_x, video_y, completed, aborted);
         clk_sys = 0; reset_sys = 1; core_reset = 0; pause_request = 0;
         epoch = 5; write_pending = 0; io_write = 1; io_address = 0; io_wdata = 0;
         dma_active = 0; pixel_count = 0; stream_frame = 0; completed = 0; aborted = 0;
