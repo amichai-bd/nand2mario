@@ -107,6 +107,10 @@ module tb_snapshot_vga;
                 $fatal(1,"SNAPSHOT_VGA_COVERAGE frames=%0d reads=%0d copies=%0d resets=%0d overlaps=%0d",
                     source_frames,host_reads,acquisitions,resets,copies_during_swap);
             $display("PASS snapshot VGA frames=16 immutable reads=%0d swaps_during_copy=%0d core_resets=2",host_reads,copies_during_swap);
+            // The reused fixture restarts after this shared global lock loss.
+            // Global reset invalidates snapshots; only core reset preserves them.
+            host_initialized=0; frame_read=0; read_offset=0; read_spacing=0;
+            copy_active=0;
         end
     end
 endmodule
