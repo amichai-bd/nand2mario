@@ -820,5 +820,27 @@
     ],
     "expected_exit": "nonzero",
     "top": "tb_ppu_fetch"
+  },
+  "ppu-objects": {
+    "sources": [
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/dv/ppu/tb_ppu_objects.sv"
+    ],
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS PPU objects first_ten_dma_priority",
+    "top": "tb_ppu_objects"
+  },
+  "ppu-objects-missing": {
+    "sources": [
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/dv/ppu/tb_ppu_objects.sv"
+    ],
+    "args": [
+      "+missing"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT oam_response_missing",
+    "top": "tb_ppu_objects"
   }
 }
