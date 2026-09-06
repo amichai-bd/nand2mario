@@ -25,7 +25,8 @@ module tb_ppu_scroll_window;
     logic [7:0] source_x, source_y;
     logic [31:0] source_epoch;
     logic [63:0] source_dot, previous_dot, enable_dot, normal_first_dot;
-    logic case_done, wy_case, wy_late;
+    logic case_done, wy_case, wy_late, wx166_case, wx0_case;
+    integer fine7_distinct;
     integer current_scx, current_wx, write_line, expected_window_row;
     integer window_lines, background_lines;
     logic [7:0] vram [0:8191];
@@ -49,10 +50,12 @@ module tb_ppu_scroll_window;
 
 
     function automatic integer line_scx(input integer row);
-        line_scx = wy_case ? 0 : row % 8;
+        line_scx = wy_case || wx166_case ? 0 : row % 8;
     endfunction
     function automatic integer line_wx(input integer row);
-        if (wy_case) line_wx = 47;
+        if (wx0_case) line_wx = 0;
+        else if (wx166_case) line_wx = row == 32 || row == 33 ? 166 : 255;
+        else if (wy_case) line_wx = 47;
         else case (row % 16)
             8: line_wx = 7;
             9: line_wx = 8;
@@ -73,6 +76,17 @@ module tb_ppu_scroll_window;
             window_row_before = wy_case ? (row <= 33 ? row - 32 : row - 33) : count;
         end
     endfunction
+    function automatic integer wx0_offset(input integer fine);
+        case (fine)
+            0: wx0_offset = 7;
+            1: wx0_offset = 9;
+            2: wx0_offset = 10;
+            3: wx0_offset = 11;
+            4: wx0_offset = 12;
+            5: wx0_offset = 13;
+            default: wx0_offset = 14;
+        endcase
+    endfunction
     function automatic integer map_tile(input integer tx, input integer ty, input logic win);
         map_tile = win ? (7 * ty + 11 * tx + 91) % 256 : (5 * ty + 3 * tx + 17) % 256;
     endfunction
@@ -87,6 +101,18 @@ module tb_ppu_scroll_window;
                 && px >= line_wx(py) - 7;
             sx = win ? px - (line_wx(py) - 7) : (px + line_scx(py)) % 256;
             sy = win ? window_row_before(py) : (py + 11) % 256;
+            // Selected WX166 carry: trigger line32 remains BG; next two
+            // lines start at window column8, rows1/2, even after WX255 on34.
+            if (wx166_case) begin
+                win = py == 33 || py == 34;
+                sx = win ? px + 8 : px;
+                sy = win ? py - 32 : (py + 11) % 256;
+            end
+            if (wx0_case) begin
+                win = 1;
+                sx = px + wx0_offset(py % 8);
+                sy = py;
+            end
             tile = map_tile(sx / 8, sy / 8, win);
             scene = pattern(tile, sx % 8, sy % 8);
         end
@@ -112,6 +138,10 @@ module tb_ppu_scroll_window;
                 $fatal(1, "PPU_SCROLL_PIXEL frame=%0d index=%0d scx=%0d wx=%0d wrow=%0d expected=%0d actual=%0d",
                     frame_count, pixel_count, line_scx(pixel_count / 160), line_wx(pixel_count / 160),
                     window_row_before(pixel_count / 160), expected, source_shade);
+            if (wx0_case && frame_count == 1 && pixel_count % 160 == 0
+                && (pixel_count / 160) % 8 == 7
+                && expected != pattern(map_tile(1, (pixel_count / 160) / 8, 1), 7, (pixel_count / 160) % 8))
+                fine7_distinct = fine7_distinct + 1;
             if (source_display_eligible !== (frame_count != 0)) $fatal(1, "PPU_SCROLL_ELIGIBILITY");
             $fdisplay(trace_file, "%0d,%0d,%0d,%0d,%0d", frame_count, pixel_count, source_dot, expected, source_shade);
             previous_dot = source_dot;
@@ -119,7 +149,12 @@ module tb_ppu_scroll_window;
                 frame_count = frame_count + 1; pixel_count = 0;
                 if (frame_count == 2) begin
                     $fclose(trace_file);
-                    if (wy_case) $display("PASS PPU WY qualified equality retained eligibility hidden row pixels=46080 late=%0d", wy_late);
+                    if (wx0_case) begin
+                        if (fine7_distinct != 14) $fatal(1, "PPU_WX0_ORACLE_INSENSITIVE");
+                        $display("PASS PPU WX0 static fine=8 pixels=46080 distinct14vs15=%0d", fine7_distinct);
+                    end
+                    else if (wx166_case) $display("PASS PPU WX166 retained carry rows1/2 column8 pixels=46080");
+                    else if (wy_case) $display("PASS PPU WY qualified equality retained eligibility hidden row pixels=46080 late=%0d", wy_late);
                     else $display("PASS PPU scroll/window static pixels=46080 fine=8 wx=8");
                     case_done = 1;
                     $finish;
@@ -135,6 +170,7 @@ module tb_ppu_scroll_window;
             source_display_eligible, frame_count, pixel_count, expected);
         clk_sys = 0; reset_sys = 1; core_reset = 0; pause_request = 0;
         epoch = 5; write_pending = 0; io_write = 1; io_address = 0; io_wdata = 0;
+        wx166_case = $test$plusargs("wx166"); wx0_case = $test$plusargs("wx0"); fine7_distinct = 0;
         wy_case = $test$plusargs("wy"); wy_late = $test$plusargs("wy_late");
         dma_active = 0; frame_count = 0; pixel_count = 0; previous_dot = 0; case_done = 0;
         trace_file = $fopen("scroll-window.csv", "w");
@@ -160,8 +196,8 @@ module tb_ppu_scroll_window;
         repeat (4) @(negedge clk_sys);
         reset_sys = 0;
         write_register(16'hff43, 0); write_register(16'hff42, 11);
-        write_register(16'hff47, 8'he4); write_register(16'hff4a, wy_case ? 32 : 0);
-        write_register(16'hff4b, wy_case ? 47 : 255);
+        write_register(16'hff47, 8'he4); write_register(16'hff4a, wy_case || wx166_case ? 32 : 0);
+        write_register(16'hff4b, wx0_case ? 0 : wy_case ? 47 : 255);
         write_register(16'hff40, wy_case ? 8'hd1 : 8'hf1);
         // Constant offscreen window during warm-up. The next frame's WY latch
         // starts afresh after VBlank; line0 uses the same prepared configuration.
@@ -170,7 +206,14 @@ module tb_ppu_scroll_window;
             @(negedge clk_sys);
             force dut.source_shade = 2'd0;
         end
-        if (wy_case) begin
+        if (wx166_case) begin
+            wait (pixel_count == 32 * 160);
+            write_register(16'hff4b, 166);
+            if (pixel_count != 32 * 160) $fatal(1, "PPU_WX166_LATE_START");
+            wait (pixel_count == 34 * 160);
+            write_register(16'hff4b, 255);
+            if (pixel_count != 34 * 160) $fatal(1, "PPU_WX166_LATE_HIDE");
+        end else if (wy_case) begin
             // Enabling during LY32 qualifies equality on the next quarter0,
             // well before WX47. Enabling after LY32 has ended cannot qualify.
             wait (pixel_count == (wy_late ? 33 : 32) * 160 + 16);

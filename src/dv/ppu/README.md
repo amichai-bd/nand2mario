@@ -132,3 +132,12 @@ responses precede the consuming A. This is the approved digital phase mapping,
 not a silicon sub-T measurement. The fault target forces the actual public
 shade to0 where the first mixed-plane pixel must be3. Both targets require
 actual positive/nonzero evidence and retained public wave declarations.
+
+`ppu-window-wx0` checks every pixel for all eight static fine offsets from the
+[PPU spatial contract](../../../wiki/src/rtl/ppu/MAS_ppu.md), using original
+asymmetric window tiles. Legal HBlank writes prepare each following line.
+A checked counter requires fine7 scenes to distinguish columns14 and15.
+`ppu-window-wx166` uses a fresh WY32 match: line32 background, line33 window
+row1/column8, line34 row2/column8 after WX255, then background. Both retain
+public waves and need actual runtime evidence. Neither claims exact mode3
+length or resolves the documented physical LCD phase limits.

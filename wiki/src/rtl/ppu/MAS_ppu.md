@@ -449,6 +449,24 @@ SARY/REJO; Pan Docs' short Y-condition description omits that qualification.
 The selected digital controller maps this to quarter phase0 (an integration inference, not a measurement from gate names) and retains it
 until VBlank/LCD reset. Tests distinguish changing WY/enable before and after
 that sample, rather than assuming only a scanline-boundary comparison.
+For static WX0 with Y qualified before mode3, BG/window enabled, and no object
+stalls or midline writes, first visible window columns for fine SCX0..7 are
+7,9,10,11,12,13,14,14. At fine7, the old WX match delays the second pipe load;
+load priority then places column8 at internal pixel2 and column14 at visible0.
+This follows the selected [MiSTer reload ordering](https://github.com/MiSTer-devel/Gameboy_MiSTer/blob/7a5ff50528cd9c1d13ffb675e7df8506bffaa078/rtl/video.v#L842)
+and independently ordered [GateBoy pixel gates](https://github.com/aappleby/metroboy/blob/36797ad4cf77b3e04ffe45716218a79b5280076a/src/GateBoyLib/GateBoy.cpp#L1064).
+Pinned SameBoy213a gives column15 for fine7; that model discrepancy remains
+explicit. This rule defines the selected digital spatial result, not measured
+LCD latch phase or a mode3-duration claim.
+
+For WX166 after a new WY match, the trigger line remains background but advances
+the internal window row. With no object stalls and fine SCX0, the next line
+starts at window column8,row1. If WX becomes255 before the following line,
+the retained match still produces column8,row2 once; the next line is background.
+This selected carry behavior follows the retained match in the same MiSTer
+source and [SameBoy's carry path](https://github.com/LIJI32/SameBoy/blob/213a12ce93d66b105a113debd9396306066a7cfc/Core/display.c#L2080),
+whose timing approximation does not establish an exact physical edge.
+
 ### Renderer composition
 
 `n2m_ppu` connects the owned register, timing, position, window, fetch, object,

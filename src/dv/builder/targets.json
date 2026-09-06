@@ -1538,5 +1538,51 @@
     "expected_exit": "nonzero",
     "signature": "PPU_LIVE_SCROLL_PIXEL case=0 frame=1 index=0 expected=3 actual=0",
     "timeout_seconds": 180
+  },
+  "ppu-window-wx0": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_scroll_window.sv"
+    ],
+    "top": "tb_ppu_scroll_window",
+    "args": [
+      "+wx0"
+    ],
+    "expected_exit": "zero",
+    "signature": "PASS PPU WX0 static fine=8 pixels=46080 distinct14vs15=14",
+    "timeout_seconds": 180
+  },
+  "ppu-window-wx166": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_scroll_window.sv"
+    ],
+    "top": "tb_ppu_scroll_window",
+    "args": [
+      "+wx166"
+    ],
+    "expected_exit": "zero",
+    "signature": "PASS PPU WX166 retained carry rows1/2 column8 pixels=46080",
+    "timeout_seconds": 180
   }
 }
