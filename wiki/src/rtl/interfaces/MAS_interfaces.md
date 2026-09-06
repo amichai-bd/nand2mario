@@ -145,8 +145,11 @@ unidentified simulation fixtures; it is not a device identity/authentication key
   that state without catch-up ticks. Idempotent HALT returns the paused dot count.
 - STEP requires a budget from one through STEP_MAX_DOTS. Resume at the retained
   phase, execute through the next retired instruction, then pause on its ending
-  dot. Interrupt-entry events do not count as instructions. If the CPU remains
-  HALTed/STOPped or no instruction retires before the budget, pause and return
+  dot. Interrupt-entry events do not count as instructions. If the CPU is already
+  oscillator-STOPped when STEP is accepted, return STEP_LIMIT immediately with
+  no payload or delivered dots. Stay host-paused and preserve CPU state, input
+  and any pending wake; STEP does not start oscillator restart or consume that
+  wake. Otherwise, if no instruction retires before the budget, pause and return
   STEP_LIMIT; consumed time/state is retained, readable through host registers.
   If retirement and budget end coincide, retirement wins. CPU HALT never freezes
   the PPU/timebase. Stepping a partially executed instruction completes that
