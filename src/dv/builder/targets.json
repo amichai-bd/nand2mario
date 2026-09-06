@@ -3082,5 +3082,45 @@
     "expected_exit": "nonzero",
     "signature": "CPU_VECTOR_STATE case=0",
     "timeout_seconds": 120
+  },
+  "oam-corrupt": {
+    "sources": [
+      "src/rtl/dma/n2m_oam_pkg.sv",
+      "src/rtl/dma/n2m_oam_corrupt.sv",
+      "src/dv/dma/tb_oam_corrupt.sv"
+    ],
+    "top": "tb_oam_corrupt",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS OAM corruption truth=20480 invalid=48",
+    "timeout_seconds": 30
+  },
+  "oam-corrupt-output": {
+    "sources": [
+      "src/rtl/dma/n2m_oam_pkg.sv",
+      "src/rtl/dma/n2m_oam_corrupt.sv",
+      "src/dv/dma/tb_oam_corrupt.sv"
+    ],
+    "top": "tb_oam_corrupt",
+    "args": [
+      "+output-fault"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "OAM_CORRUPTION_RESULT row=4 kind=3",
+    "timeout_seconds": 30
+  },
+  "oam-corrupt-mask": {
+    "sources": [
+      "src/rtl/dma/n2m_oam_pkg.sv",
+      "src/rtl/dma/n2m_oam_corrupt.sv",
+      "src/dv/dma/tb_oam_corrupt.sv"
+    ],
+    "top": "tb_oam_corrupt",
+    "args": [
+      "+mask-fault"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CORRUPTION_MASK_RANGE",
+    "timeout_seconds": 30
   }
 }

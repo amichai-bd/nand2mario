@@ -1,8 +1,8 @@
 # OAM DMA and access arbitration
 
 Status: contract preparation for [#132](https://github.com/amichai-bd/nand2mario/issues/132).
-The complete arbitration contract is not frozen. No implementation or runtime
-acceptance is claimed.
+The complete arbitration contract is not frozen. The settled combinational
+transformation below is implemented; its runtime acceptance is pending.
 
 ## Ownership and boundaries
 
@@ -108,9 +108,30 @@ These are research references, not imported code or measured silicon traces.
 The CPU clock-request gating must be mapped explicitly before using any
 emulator's elapsed-cycle shortcut.
 
-No affected RTL begins before these gates are reconciled. The finite issue
+No affected integration RTL begins before these gates are reconciled. The finite issue
 acceptance map and exact source hashes are retained with the author artifacts.
 Full acceptance requires original independent transfer/time, all corruption
 classes/rows, concurrent CPU/PPU, reset/pause/HALT/STOP and deliberate actual
 fault fixtures against the shared Intel store. A normal copy alone is not
 acceptance.
+
+## Settled transformation component
+
+[`n2m_oam_corrupt`](../../../../src/rtl/dma/n2m_oam_corrupt.sv) has no storage or
+temporal state. clk_sys and reset sample named invariants only. Its
+[package](../../../../src/rtl/dma/n2m_oam_pkg.sv) defines NONE, READ, WRITE and
+READ_WRITE. Inputs are row_index and three original 64-bit rows, with the
+lowest-address byte in bits7:0. Outputs preserve or transform those rows and
+provide a three-bit write mask: current, previous, older in bits0,1,2.
+The arbiter owns accepting and physically writing the result.
+
+Row0 and NONE preserve inputs with zero mask. Invalid indices20-31 also
+preserve inputs, set invalid_row and return zero mask; an integration sample
+must reject them. Row1 requires the real row0 as previous input; only its older
+input is unused. READ/WRITE and the excluded preliminary rows use mask001.
+Combined rows4-18 use mask111. The implementation retains the sequential
+preliminary and normal-read transformations, without any DMA-order policy.
+
+The [test plan](../../../../src/dv/dma/README.md) owns the independent word
+oracle, invalid-row cases and actual output/mask faults. This component does
+not satisfy transfer, storage composition or full corruption timing acceptance.
