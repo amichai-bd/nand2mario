@@ -1,8 +1,9 @@
 # CPU verification plan
 
-Status: component verification in progress for [#118](https://github.com/amichai-bd/nand2mario/issues/118).
-[MAS_cpu](../../../wiki/src/rtl/cpu/MAS_cpu.md) owns behavior and its open design
-gates. The component results below do not establish full CPU acceptance.
+Status: CPU verification for [#118](https://github.com/amichai-bd/nand2mario/issues/118).
+[MAS_cpu](../../../wiki/src/rtl/cpu/MAS_cpu.md) owns behavior. The complete
+acceptance combines component and integrated fixtures below; current review and
+retained run evidence are linked from [PR131](https://github.com/amichai-bd/nand2mario/pull/131).
 
 The harness separates program and interrupt stimulus, a passive public bus and
 retirement monitor, an independent reference model, and typed scoreboards.
@@ -50,7 +51,7 @@ These targets have actual Questa positive/negative evidence retained under the
 author build tags. The cycle-count table does not prove every base instruction's
 state or access address; the integrated public-bus/state oracle remains required.
 The component state ports are datapath interfaces, not arbitrary register writes
-on the planned public CPU module.
+on the public CPU module.
 
 - `cpu-retire` checks six recorded events against independent literal ABI byte
   offsets, including instruction lengths, zero IRQ opcode, post-bus snapshots,
@@ -68,11 +69,9 @@ taken and untaken branches, CALL/RET, JP and HALT. Separate state, commit-timing
 and retirement-output faults force actual DUT signals and must fail with the
 registered exact diagnostic and raw exit 1.
 
-This slice does not establish IRQ/HALT corner timing, STOP policy, every opcode's
-architectural behavior, or internal IDU observations. These remain required before
-#118 can close. The pending-interrupt HALT path needs contrasted arrival-phase checks for
-already enabled IME, delayed EI maturation and wake after sleep; an earlier
-claim that the first case proved a defect was withdrawn after source comparison.
+Separate fixtures below establish IRQ/HALT corner timing, the selected STOP
+policy, opcode state/access coverage and digital IDU observations. The HALT
+checks distinguish already enabled IME, delayed EI and wake after actual sleep.
 
 
 `cpu-irq` adds 14 independent literal program/transaction cases. Requests before,
@@ -82,8 +81,8 @@ to change selection, and a low-stack IF write that preserves the selection
 snapshot. Separate EI/HALT and already-enabled HALT execution cases check return
 PC. A 20-system-edge host pause after T3 removes the live request while preserving
 the captured decision; a forced snapshot fault must fail the public bus schedule.
-Wake after actual sleep, full reset interruption and STOP remain separate pending
-coverage; the two HALT execution cases do not establish those paths.
+Separate wake, reset and STOP fixtures below cover those paths; the two HALT
+execution cases alone do not establish them.
 
 
 ## Selected independent instruction vectors
@@ -115,7 +114,7 @@ use the same request time and assert identical stack/ack/vector times, with thei
 separate correct return PCs. A request during a CB prefix must wait for the one
 combined instruction event. Consecutive EI must mature without postponing a
 pending request. The earlier 14-case records remain retained; these additions do
-not settle IME0 wake latency or reset/STOP acceptance.
+not alone establish IME0 wake latency or reset/STOP acceptance.
 
 
 `cpu-reset` checks ten cancellation/reinitialization cases: synchronous core and
@@ -127,7 +126,7 @@ Twenty idle system edges preserve each paused request and dot. The lost-write
 negative forces actual commit low and must fail at the exact missing write.
 The initial oracle omitted the generated profile's FFFE stack pointer; those
 failed records remain retained, and the corrected literal checks all 48 bytes.
-This layer does not yet prove reset in every IRQ/power/lock state.
+IRQ and power reset fixtures below cover the other state families.
 
 
 The 20-case IRQ fixture additionally proves pending EI→DI cancellation and RETI
@@ -152,7 +151,7 @@ All eleven illegal base encodings then enter lock without retirement or further
 access, stay locked across pause and pending requests, and recover through core
 reset with a fresh epoch/sequence/profile NOP. Wrong-PC and invented locked-event
 faults force actual DUT signals and must fail their exact public checks. These
-cases do not settle the distinct IME0 wake-after-sleep latency question.
+cases are separate from the IME0 wake-after-sleep latency fixture below.
 
 
 ## STOP entry fixture
@@ -253,7 +252,7 @@ completion output or remove the finishing read response; the latter requires
 both the missing-completion suppression marker and CPU bus assertion.
 
 
-The planned `cpu-stop-irq` fixture checks the approved deterministic restart
+The `cpu-stop-irq` fixture checks the approved deterministic restart
 approximation. Six literal schedules distinguish pending requests before wake,
 pre-T3 arrival, on-T3 and post-T3 arrival, masked priority, and cancellation
 before stack dispatch. Fresh INC A data distinguishes an immediately discarded
@@ -263,4 +262,4 @@ additional cases cancel a qualified pending restart at each prepared-fetch phase
 with core or global reset. The fourteen cases require 64 complete records.
 Two actual DUT output faults target restart IDU qualification and the high stack
 byte. This is a digital model check, not an analog oscillator measurement;
-actual runtime remains required before accepting these targets.
+the accepted runs retain 32 explicit public waveform signals.

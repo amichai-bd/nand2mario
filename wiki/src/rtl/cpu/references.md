@@ -185,8 +185,10 @@ from CPU-clock release (`intr_wake_sync` or `startup_begin`, line121).
 The retained `test_soc.vhd` initializes `wake` to zero without a JOYP driver, so
 it does not independently resolve button-only/no-IE restart. The CPU boundary
 therefore delegates oscillator qualification to the enclosing power owner and
-assigns no invented fixed delay. The IME-enabled interrupt during unstable
-restart remains a separately documented unresolved model decision.
+assigns no invented fixed delay. The approved [CPU model](MAS_cpu.md#qualified-stop-wake)
+uses deterministic ordinary interrupt behavior after stable qualification when
+IME-enabled requests occur during restart. This is an explicit digital analog
+approximation, not a new claim from these physical-source references.
 
 
 ## STOP execution IDU projection

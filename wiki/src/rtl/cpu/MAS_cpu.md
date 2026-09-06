@@ -1,10 +1,10 @@
 # SM83 CPU
 
-Status: design in progress for [#118](https://github.com/amichai-bd/nand2mario/issues/118).
+Status: implemented under [#118](https://github.com/amichai-bd/nand2mario/issues/118).
 The byte ALU, instruction cycle planner, digital bus and retirement recorder
 have component Questa evidence. The integrated controller has checked programs,
 selected instruction vectors and directed control-state fixtures; the public
-wrapper is implemented; final acceptance remains in progress. The approved digital
+wrapper is implemented. The approved digital
 STOP restart rule below is part of the implementation. This owner covers the complete legal
 base and CB instruction sets; a subset does not complete the issue.
 
@@ -26,7 +26,7 @@ not an exemption from instruction coverage.
 
 ## Boundary
 
-The planned module is `n2m_cpu` under `src/rtl/cpu/`. Inputs are synchronous
+The public module is `n2m_cpu` under `src/rtl/cpu/`. Inputs are synchronous
 to `clk_sys` except `reset_sys`, which asserts asynchronously and releases
 through the shared domain synchronizer. CPU registers use asynchronous global
 reset assertion through the shared macros. `core_reset` is synchronous and has
@@ -235,7 +235,7 @@ postincrement/decrement HL, stack operations and PC increments. POP/RET have a
 specific difference between their first and second read; stack pushes can merge
 IDU and ordinary write activity within one M-cycle.
 
-The planned typed `address_effect` observation is separate from the memory
+The typed `address_effect` observation is separate from the memory
 request and retirement ABI. It describes additional write-like address activity
 within the current M-cycle, including cycles with no ordinary transaction. It
 never asks the memory owner to perform a second architectural write.
@@ -257,7 +257,7 @@ unresolved sample rather than interpreting its payload as no effect. The approve
 observations; it does not expose an analog partial-clock address trace. Ordinary HALT preparation is resolved but is sampled only
 when its fresh wake read completes. Sourced ordinary fetch/operand/stack/planner
 cycles are resolved. This qualifier changes observation only, not CPU execution,
-and cannot waive the remaining full-CPU acceptance gate.
+and cannot waive the complete CPU acceptance criteria.
 
 The public bus phase identifies T1 through T4 for this observation. Fields are
 prepared before T1 and stable through T4, including host pause. The owner samples
@@ -371,14 +371,10 @@ not a claim that unstable physical clock restart is repeatable. The separately
 pinned SonoSooS description remains evidence of that physical limitation. No
 new model fault or random execution is introduced.
 
-## Design gates before dependent RTL
+## Model boundary
 
-The STOP restart model choice is resolved by the deterministic rule above.
-Final independent regression still must verify the complete selected model.
-
-These gates do not authorize a reduced opcode implementation. Remaining
-instruction datapath and independent test design can proceed from their pinned
-sources while the affected behavior waits.
+The deterministic STOP restart rule above defines the selected digital model.
+It does not reduce the complete legal instruction set or its verification criteria.
 
 ## Verification
 
@@ -428,19 +424,18 @@ selected-line capture and stable tick release; normal-path runtime evidence chec
 reset cancellations, with an actual stale-read failure.
 
 The T3 request snapshot mapping is specified above; its contrasted IRQ/HALT
-fixtures have bounded checked evidence; full readiness still requires the remaining gates. The current HALT return-to-HALT
+fixtures check the selected digital timing model. The current HALT return-to-HALT
 branch matches the pinned SameBoy model for pending requests with IME set,
 including delayed EI. An earlier inference that ordinary IME alone proved this
 branch wrong was withdrawn after source comparison. Requests before the latch
 closes and arrivals after HALT enters sleep need separate checked expectations.
-The STOP interrupt-during-restart policy is approved; its directed proof and
-final regression acceptance remain required before closing #118. The selected 498-form state/access evidence below remains valid within
+The STOP interrupt-during-restart policy is approved and has directed proof. The selected 498-form state/access evidence below remains valid within
 its declared flat-RAM exclusions.
 
 
 The selected flat-RAM vector layer now checks 498 forms with all 16 initial flag
-combinations. Its data and exclusions are owned by the CPU test plan. It does
-not complete STOP/HALT, full reset/wake interruption, physical IDU observations
+combinations. Its data and exclusions are owned by the CPU test plan. Separate directed fixtures cover STOP/HALT, reset/wake interruption and digital
+IDU observations. These CPU checks do not establish physical address waveforms
 or integrated peripheral timing acceptance. Arbitrary state setup belongs only
 to the simulation wrapper; the public direct-profile contract is unchanged.
 
