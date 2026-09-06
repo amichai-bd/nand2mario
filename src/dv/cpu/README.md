@@ -201,3 +201,12 @@ All four repair phases are paused without duplicate consumption. The negative
 forces the actual effect address into FDFF while retaining the independent
 expected FE00 page. This witnesses the additional effect separately from memory
 transactions; it does not implement the OAM consumer or STOP wake mapping.
+
+
+`cpu-wrap` checks original flat-memory programs against forty literal bus cycles
+and twelve complete records. PUSH/POP and CALL/RET cross SP zero, a POP starting
+at FFFF reads its second byte at0000, and a three-byte instruction at FFFE reads
+operands at FFFF/0000 before executing the following HALT at0001. The independent
+expected stream includes four stack writes. Its negative changes actual POP
+read data and must fail the complete post-event record. The flat-memory responder
+does not model the separate IF/IE owner or authorize product storage inference.
