@@ -472,5 +472,17 @@
     ],
     "expected_exit": "nonzero",
     "signature": "INTERRUPT_PHASE_OBSERVE case=0 check=1 expected_if=01 actual_if=00"
+  },
+  "interrupt-ack-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/dv/interrupts/tb_interrupt_ack_fault.sv"
+    ],
+    "top": "tb_interrupt_ack_fault",
+    "args": [],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT INTERRUPT_ACK_ONEHOT"
   }
 }

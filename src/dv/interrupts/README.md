@@ -25,3 +25,7 @@ high-write cancellation/reselection, low-write snapshots, simultaneous sources,
 full IE retention and a committed read. They do not execute the pending CPU or
 claim future peripheral collision behavior. The observation fault changes the
 actual DUT output; its expected snapshots are untouched.
+
+`interrupt-ack-fault` drives an actual invalid two-bit acknowledgement at A
+and requires the named `INTERRUPT_ACK_ONEHOT` fatal assertion. Shared macros
+exclude assertion code under `SYNTHESIS`, as covered by their existing tests.

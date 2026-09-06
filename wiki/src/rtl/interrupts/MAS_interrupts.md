@@ -1,6 +1,6 @@
 # DMG interrupt registers
 
-Status: proposed under [#133](https://github.com/amichai-bd/nand2mario/issues/133).
+Status: implemented under [#133](https://github.com/amichai-bd/nand2mario/issues/133).
 This owner stores IF/IE and resolves requests, CPU writes and acknowledgement.
 CPU owns priority selection, IME, delayed EI and dispatch timing. Numeric
 addresses and direct-profile reset fill belong to the
