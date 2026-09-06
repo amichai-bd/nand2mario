@@ -7,7 +7,7 @@
   "license_text": "GPL-3.0.txt",
   "license_text_sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
   "notices": "THIRD_PARTY.md",
-  "status": "approved adaptation planned; source not imported yet",
+  "status": "Selected combinational mixer adapted; remaining renderer/timing import gated by phase review",
   "purpose": "Adapt selected DMG renderer, OAM selection and timing logic; independent project interfaces and verification remain required",
   "sources": [
     {
@@ -29,5 +29,13 @@
     "Add explicit source/observer cancellation and generation-qualified LCD blank presentation",
     "Remove FF46/DMA engine; issue132 owns scheduling/arbitration/corruption and issue130 owns the single backing store"
   ],
-  "use_boundary": "Private project only in this issue; no source/bitstream external release. Derived files retain GPL-3.0-or-later. Any later distribution of a combined work requires a compatible release review; original unrelated material is not relicensed."
+  "use_boundary": "Private project only in this issue; no source/bitstream external release. Derived files retain GPL-3.0-or-later. Any later distribution of a combined work requires a compatible release review; original unrelated material is not relicensed.",
+  "derived_files": [
+    {
+      "path": "n2m_ppu_mix.sv",
+      "source": "rtl/video.v",
+      "section": "DMG pixel priority and palette selection",
+      "local_changes": "Extract pure combinational DMG path; logic-only named ports; explicitly treat disabled background as raw color0 for priority; remove CGB and all state/platform dependencies"
+    }
+  ]
 }
