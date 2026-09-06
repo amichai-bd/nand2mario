@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 import json
 from pathlib import Path
 import re
+import sys
 import uuid
 
 from .hdl import dependencies
@@ -10,6 +11,7 @@ from .simulator import ToolError
 from .questa import commands as questa_commands, diagnostic
 from .records import atomic_json, atomic_text, cache_matches, digest, file_hash, read_json
 from . import intel_memory
+from .simulation_peer import Peer
 
 
 def load_target(root, name):
@@ -29,6 +31,18 @@ def load_target(root, name):
         path = (root / source).resolve()
         if not path.is_relative_to(root.resolve()) or not path.is_file():
             raise ValueError(f"missing or out-of-tree source: {source}")
+    if "driver" in target:
+        driver = target["driver"]
+        if not isinstance(driver, dict) or set(driver) - {"script", "peer", "inputs", "access"} or not {"script", "peer", "inputs"} <= set(driver) or not isinstance(driver["inputs"], list):
+            raise ValueError("simulation driver requires script, peer and inputs")
+        if not isinstance(driver.get("access", []), list) or any(not isinstance(name, str) or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name) for name in driver.get("access", [])):
+            raise ValueError("driver access must name top-level DV objects")
+        for source in [driver["script"], driver["peer"], *driver["inputs"]]:
+            if not isinstance(source, str):
+                raise ValueError("simulation driver inputs must be paths")
+            path = (root / source).resolve()
+            if not path.is_relative_to(root.resolve()) or not path.is_file():
+                raise ValueError(f"missing or out-of-tree driver input: {source}")
     return target, registry
 
 
@@ -41,8 +55,12 @@ def simulate(root, build, args, simulator, provenance=None):
     inputs = hdl_inputs + [registry.relative_to(root).as_posix(), "tools/build.py"]
     inputs += [str(p.relative_to(root)).replace("\\", "/") for p in (root / "tools/n2m").glob("*.py")]
     inputs += ["tools/n2m/dependencies.json"]
+    if "driver" in target:
+        inputs += [target["driver"]["script"], target["driver"]["peer"], *target["driver"]["inputs"]]
     hashes = {p: file_hash(root / p) for p in inputs}
     options = {"seed": args.seed, "target": args.target, "definition": target, "vendor_model": vendor_model}
+    if "driver" in target:
+        options["peer_python"] = {"path": sys.executable, "sha256": file_hash(Path(sys.executable)), "version": sys.version}
     fingerprint = digest({"inputs": hashes, "tools": simulator.info, "options": options})
     stage = build / "sim/test" / args.target
     current = stage / "result.json"
@@ -73,9 +91,23 @@ def simulate(root, build, args, simulator, provenance=None):
                 stream.write(json.dumps(record["commands"][-1]) + "\n")
             call_options = {"timeout": target["timeout_seconds"]} if log.name == "sim.log" and "timeout_seconds" in target else {}
             record["commands"][-1]["timeout_seconds"] = call_options.get("timeout", 60)
-            result = simulator.run(argv, cwd=cwd, **call_options)
-            log.write_text(result.stdout, encoding="utf-8")
-            record["commands"][-1]["exit_code"] = result.returncode
+            peer = None
+            result = None
+            try:
+                if log.name == "sim.log" and "driver" in target:
+                    peer = Peer(root, attempt, target["driver"]["peer"])
+                    port = peer.start()
+                    def tcl_path(path):
+                        return "{" + path.as_posix().replace("{", "\\{").replace("}", "\\}") + "}"
+                    macro = (attempt / "run.do").read_text(encoding="utf-8")
+                    macro = macro.replace("run -all", f"set smoke_root {tcl_path(root)}\nset smoke_peer_port {port}\nsource {tcl_path(root / target['driver']['script'])}")
+                    (attempt / "run.do").write_text(macro, encoding="utf-8")
+                result = simulator.run(argv, cwd=cwd, **call_options)
+                log.write_text(result.stdout, encoding="utf-8")
+                record["commands"][-1]["exit_code"] = result.returncode
+            finally:
+                if peer is not None:
+                    peer.close(result is not None and result.returncode == 0)
             if (result.returncode == 0) != (expected == "zero"):
                 raise RuntimeError(f"unexpected exit {result.returncode}; see {log.relative_to(root)}")
             checked_output = result.stdout
