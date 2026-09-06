@@ -2955,5 +2955,29 @@
     ],
     "expected_exit": "nonzero",
     "signature": "CPU_STOP_IRQ_BUS case=0 dot=32"
+  },
+  "joypad-matrix": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/joypad/n2m_joypad_matrix.sv",
+      "src/dv/joypad/tb_joypad_matrix.sv"
+    ],
+    "top": "tb_joypad_matrix",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS JOYP matrix cases=1024"
+  },
+  "joypad-matrix-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/joypad/n2m_joypad_matrix.sv",
+      "src/dv/joypad/tb_joypad_matrix.sv"
+    ],
+    "top": "tb_joypad_matrix",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "JOY_MATRIX case=6 expected=ee actual=ed"
   }
 }

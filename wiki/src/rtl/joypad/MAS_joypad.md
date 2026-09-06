@@ -1,0 +1,73 @@
+# DMG joypad
+
+Status: contract preparation for [#134](https://github.com/amichai-bd/nand2mario/issues/134).
+The matrix below is settled. Request transport and its directed phase proof must
+be reviewed before dependent sequential RTL.
+
+## Authority
+
+The [generated interface](../interfaces/MAS_interfaces.md) owns button bit values,
+FF00 and direct-profile reset state. The [source record](references.md) separates
+documented digital reads/events from physical filtering evidence. No external
+RTL or emulator source is imported.
+
+## Register and matrix
+
+JOYP writes retain only bits5:4. Bits7:6 read high; bits3:0 are read-only.
+The generated direct profile releases all eight buttons and writes select30,
+so JOYP readsFF. These are direct-profile values, not boot-ROM defaults.
+
+Host masks are active high: bits0..7 are Right, Left, Up, Down, A, B, Select,
+Start. Read bits0..3 pair Right/A, Left/B, Up/Select and Down/Start.
+A zero select bit enables its row: bit4 directions, bit5 actions. Both selected
+rows combine pressed buttons; neither selected readsF. Preserve simultaneous
+and opposite directions. Reading or writing ignored bits has no other effect.
+The selected-active output is the reduction of these four active-low lines,
+not a reduction of unselected physical buttons.
+
+## Clock and update boundary
+
+All digital state belongs to clk_sys. reset_sys asserts asynchronously; core
+reset restores the generated profile and cancels request bookkeeping. A CPU
+select write takes effect only on the existing committed T4 A edge. Reads are
+side-effect free and provide the pre-edge value to prepared CPU service.
+
+INPUT replaces all eight bits atomically. The host owner schedules it between
+completed dots while running and immediately without a dot while paused. CPU
+HALT/STOP does not prevent updates. Existing interface priority is reset, host
+input latch, then emulated effects. This owner must not add a private input queue,
+new host ABI or discarded update policy. The exact accepted update port and
+coincident-edge rule are part of the pending integration review below.
+
+## Interrupt and wake boundary
+
+Pan Docs describes a request when any selected read bit changes high to low.
+A release alone does not request; a held line does not repeat; a different row
+button sharing an already low line does not create another falling edge.
+Selecting a held button can produce a line fall. IE/IME do not mask the source.
+The existing IF owner stores requests and owns write/ack collision priority.
+
+A request pulse must reach a consuming system edge. Consecutive update transport
+must be checked against the IF owner's rising-level history, so adjacent events
+cannot silently disappear around an IF write/ack. This is a concrete integration
+requirement, not authorization for a speculative glitch filter or new handshake.
+
+CPU STOP entry consumes selected-active. The enclosing power owner retains an
+eligible selected-line wake event and qualifies stable clocks before asserting
+CPU wake_request. Raw button activity must not drive that qualified input.
+The [approved CPU restart model](../cpu/MAS_cpu.md#qualified-stop-wake) uses
+ordinary deterministic interrupt priority/stack behavior after qualification;
+JOYP does not choose another restart policy or oscillator delay.
+
+## Finite acceptance
+
+The [test plan](../../../../src/dv/joypad/README.md) covers all256 masks x4 row
+selections, all ignored write bits, reset, release/repress/held/simultaneous
+changes, select changes, host pause and HALT/STOP updates. Directed phase tests
+must verify actual IF storage and distinguish selected-active/raw event from
+qualified CPU wake. Actual row, lost-event and duplicate-event faults and a
+local named assertion must fail nonzero. Retain explicit public waves, source
+pins, hashes, logs and literal expected/actual traces.
+
+Remaining contract review is bounded to event transport and accepted update
+ordering; matrix implementation can proceed independently.
