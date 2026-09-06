@@ -79,6 +79,35 @@ addresses, including all 7,680 echo offsets, and injects a wrong echo offset.
 
 ### Prepared and committed operations
 
+`n2m_memory_cpu_port` dispatches the prepared CPU request. Direct ROM/WRAM/HRAM
+reads request the raw store each system edge; writes reach it only with
+`bus_commit`. A complete sixteen-bit tag from the preceding enabled read must
+match the current address before a raw response is exposed to CPU. A changed
+address cannot reuse the previous response. Owner destinations receive address,
+direction, data, prepare and commit separately; their current pre-T4 read data,
+validity and fixed-service availability return through the selected-owner
+boundary. This dispatch does not implement the DMA resolved-access mux.
+
+Reset or incomplete initialization suppresses dispatch and masks all CPU
+responses. The CPU owns cancelling read completion when `response_valid` is
+absent. A commit nevertheless presented without active service triggers a
+named assertion and latches `contract_fault`. Effects are suppressed on that
+same unavailable-service edge, and the sticky fault suppresses later dispatch
+and responses until reset. An external write owner must
+guarantee service at commit; availability is an integration invariant, not a
+new CPU write handshake. The system fault coordinator remains responsible for
+reporting the sticky fault; this slice does not invent a later replay.
+
+The CPU-port fixture composes the real shared Intel-backed raw stores with
+this dispatch. It checks bidirectional echo, held read preparations, ignored
+CPU ROM writes, stale address rejection and reset cancellation. Its selected
+owner endpoint is explicitly synthetic and proves dispatch only. Normal
+fault targets require named fatal diagnostics. A separate compilation wrapper
+defines `SYNTHESIS` around the same product and test sources to observe the
+hardware sticky fault after a missing-owner write: no same-edge commit,
+subsequent dispatch suppressed, and reset recovery. This complements, and
+does not replace, the assertion-enabled runs.
+
 CPU #118 at `9a984d0` agrees that request fields are prepared before T1 and held
 through T4. `read_data` and `response_valid` are consumed before the T4 edge;
 T3 samples IE/IF only, not memory data. A synchronous RAM result from a preceding
