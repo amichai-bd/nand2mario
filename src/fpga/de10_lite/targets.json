@@ -1,6 +1,46 @@
 {
   "schema_version": 1,
   "targets": {
+    "intel-memory": {
+      "device": "10M50DAF484C7G",
+      "top": "intel_memory_proof",
+      "sources": [
+        "src/rtl/clocking/n2m_reset_control.sv",
+        "src/fpga/de10_lite/n2m_clocking.sv",
+        "src/rtl/common/n2m_intel_ram.sv",
+        "src/fpga/de10_lite/intel_memory_proof.sv"
+      ],
+      "constraints": ["src/fpga/de10_lite/intel_memory_nominal.sdc"],
+      "pins": {"clk_sys": "PIN_P11"},
+      "virtual_pins": [
+        "board_reset_n", "a_read", "a_write", "a_address[*]", "a_wdata[*]", "a_byte_enable[*]",
+        "b_read", "b_address[*]", "ready",
+        "byte_a[*]", "byte_b[*]", "pair_a[*]", "pair_b[*]", "lanes_a[*]", "lanes_b[*]",
+        "frame_a[*]", "frame_b[*]", "a_valid[*]", "b_valid[*]", "frame_valid"
+      ],
+      "pll": {"module": "n2m_pixel_pll", "input_ps": 20000, "multiply": 63, "divide": 125},
+      "timing": {
+        "async_reset_pins": [
+          "u_clocking|u_reset|board_release[0]|clrn", "u_clocking|u_reset|board_release[1]|clrn",
+          "u_clocking|u_reset|lock_samples[0]|clrn", "u_clocking|u_reset|lock_samples[1]|clrn",
+          "u_clocking|u_reset|sys_release[0]|clrn", "u_clocking|u_reset|sys_release[1]|clrn",
+          "u_clocking|u_reset|pix_release[0]|clrn", "u_clocking|u_reset|pix_release[1]|clrn"
+        ],
+        "output_delays": [
+          {
+            "clock": "clk_sys",
+            "ports": ["ready", "byte_a[*]", "byte_b[*]", "pair_a[*]", "pair_b[*]", "lanes_a[*]", "lanes_b[*]", "frame_a[*]", "a_valid[*]", "b_valid[*]"],
+            "count": 122
+          },
+          {
+            "clock": "u_clocking|u_pll|altpll_component|auto_generated|pll1|clk[0]",
+            "ports": ["frame_b[*]", "frame_valid"],
+            "count": 3
+          }
+        ],
+        "reference_ns": "20.000"
+      }
+    },
     "builder-smoke": {
       "device": "10M50DAF484C7G",
       "top": "fpga_smoke",

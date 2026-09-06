@@ -26,5 +26,11 @@ accept the known-good fixture and detect its known defect through Questa, retain
 or hardware coverage from this fixture.
 
 Questa is the sole simulator under [#106](https://github.com/amichai-bd/nand2mario/issues/106).
+Product memory simulation must use the installed Intel model for the same
+explicit wrapper used by MAX 10 synthesis. [#137](https://github.com/amichai-bd/nand2mario/issues/137)
+requires checked model selection, retained source hashes and binding, and
+failure on a missing, modified or shadow model. A host double cannot establish
+primitive behavior. The [shared memory MAS](../../src/rtl/common/MAS_memory_primitives.md)
+owns port timing and consumer migration boundaries.
 Hosted checks verify host contracts only; the [CI boundary](SPEC.md#ci-execution-boundary)
 requires actual local evidence until #32 proves its trusted licensed route.
