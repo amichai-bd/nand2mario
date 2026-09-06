@@ -97,3 +97,11 @@ T4s and640 final readback bytes. The new trigger on159 is not yet mature:
 completion deactivates ownership, M1 writes no old byte, then new offset0
 follows. The early target injects a valid physical write one clock early and
 requires the independent expected25/actual24 timing failure.
+
+The reset fixture drives both global and core reset in four CPU phases during
+pending start, pending transfer, pending restart and corruption service. Its
+32 cases check each physical write prefix, cancellation of pending responses
+and effects, all 160 cleared OAM bytes, FF46 reset and eight idle M-cycles
+without stale work. The corruption context supplies a public row4 prefetch
+before the row5 effect; it does not model the PPU scanner. The stale target
+forces the actual write output during reset and requires DMA_RESET_CANCEL.
