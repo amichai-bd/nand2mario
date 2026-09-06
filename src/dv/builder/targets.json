@@ -4017,7 +4017,8 @@
     "timeout_seconds": 60,
     "expected_exit": "zero",
     "signature": "PASS DMA terminal actual object pair before and after commit",
-    "vendor_model": "intel-memory"
+    "vendor_model": "intel-memory",
+    "args": []
   },
   "dma-terminal-corrupt": {
     "sources": [
