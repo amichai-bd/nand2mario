@@ -2112,7 +2112,7 @@
     "top": "tb_cpu_irq",
     "args": [],
     "expected_exit": "zero",
-    "signature": "PASS CPU IRQ cases=18 T3 snapshot stack HALT wake CB EI pause"
+    "signature": "PASS CPU IRQ cases=20 T3 stack HALT wake CB EI DI RETI pause"
   },
   "cpu-irq-snapshot-fault": {
     "sources": [

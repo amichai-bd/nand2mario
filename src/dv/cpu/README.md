@@ -128,3 +128,10 @@ negative forces actual commit low and must fail at the exact missing write.
 The initial oracle omitted the generated profile's FFFE stack pointer; those
 failed records remain retained, and the corrected literal checks all 48 bytes.
 This layer does not yet prove reset in every IRQ/power/lock state.
+
+
+The 20-case IRQ fixture additionally proves pending EI→DI cancellation and RETI
+chaining to a remaining STAT request. The latter checks both stack entries,
+acknowledgements, seven full events and the intervening RETI reads/idle/fetch;
+no ordinary instruction may retire between RETI and the second entry. These
+original cases supplement the upstream interrupt-field exclusions.
