@@ -309,6 +309,59 @@ The selected source's delayed mode signal fits the former bracket; the complete
 controller must pass the whole literal table with pre-edge CPU reads. The
 remaining exact LY153/comparison, STAT-write and window gates above still apply.
 
+### LY153 and ordered LYC comparison
+
+This digital mapping uses the pinned
+[SameBoy display sequence](https://github.com/LIJI32/SameBoy/blob/213a12ce93d66b105a113debd9396306066a7cfc/Core/display.c#L2217)
+and its distinct readable flag and IRQ coincidence latch. SameBoy is Expat
+licensed behavior research, not imported implementation. The DMG table on
+page 32 of [TCAGBD](https://github.com/AntonioND/giibiiadvance/blob/ccb40c3cf7d9efec538858a36d4ab69bb4d0ce5c/docs/TCAGBD.pdf)
+(CC-BY4.0) corroborates the four-dot readable interval and coarse comparator
+samples. That document explicitly warns that it is old and contains errors;
+it is corroboration, not the sole authority or an exact silicon claim.
+
+A0 is the existing phase-two LY152-to-153 boundary. The first LY increment at
+451 ticks after LCD enable fits the independent 448/452 read brackets; adding
+152 lines of 456 dots places the first A0 at 69763. This is the declared project
+phase mapping. It does not claim a measured sub-T hardware edge. Keep the
+renderer line counter and the 70224-dot normal frame recurrence unchanged.
+
+| Edge relative to A0 | Readable LY | Comparison value | Readable STAT2 | LYC IRQ latch |
+|---|---|---|---|---|
+| -2 |152 | Invalid |0 | Retain |
+| 0 |153 | Invalid |0 | Retain |
+| +4 |0 |153 | Equality with LYC | Equality with LYC |
+| +6 |0 | Invalid |0 | Retain |
+| +10 |0 |0 | Equality with LYC | Equality with LYC |
+
+An invalid comparison clears only readable STAT2; it does not force a fall in
+the coincidence IRQ source. The enabled mode sources still OR with that latch.
+The [DMG LYC write path](https://github.com/LIJI32/SameBoy/blob/213a12ce93d66b105a113debd9396306066a7cfc/Core/memory.c#L1452)
+recomputes after the write. At a legal T4/A commit, first advance the natural
+comparison using old LYC, then apply the new LYC and recompute immediately if
+the comparison value is valid. During an invalid interval, retain the IRQ
+latch and keep readable STAT2 zero. Do not postpone this write response to the
+next quarter. LCD-off retention and reset initialization remain separate rules.
+
+Preserve both ordered changes in the shared STAT condition. Let S0 be the
+preceding final condition, S1 the natural after-A condition with old LYC, and
+S2 the final condition after the CPU write. The event is
+`(!S0 && S1) || (!S1 && S2)`. Each condition includes the mode-source OR and the
+appropriate ordinary STAT transient state. Thus 0-to-1-to-0 and 1-to-0-to-1 each
+produce one event, while a continuously high mode source prevents a false
+edge. Store final history S2, not S1. Publish the event during A-to-B for the
+shared IRQ owner to sample before B, even if the final condition is low; clear
+that one-system-edge event after B without needing another emulated dot.
+Host pause after A must not lose or repeat the event. CPU retirement and IF
+write priority remain owned by the shared interrupt boundary above.
+
+Before accepting this timing implementation, directed tests must check LYC 0,
+152,153 and nonmatching values; legal T4 writes around each interval; both
+ordered rise/fall cases; a held-high mode source; pause/reset; and unchanged
+normal frame recurrence. The current quarter-sampled implementation is pending
+this correction under #120; earlier rendered-frame evidence does not validate
+these new register/IRQ edges.
+
 ### OAM scan and fetch port
 
 The scanner exposes a seven-bit pair address and a phase: 0 idle, 1 Y/X scan,
@@ -338,7 +391,7 @@ therefore occurs at PPU quarter3. The integrated wrapper asserts this invariant;
 LCDC, so a new enable establishes alignment again. A stopped system preserves
 phase; it does not independently restart either counter.
 
-This alignment makes comparison-stage updates at T1 settle into the visible
+In the initial quarter-sampled implementation, this alignment makes comparison-stage updates at T1 settle into the visible
 flag by T2, before a legal T4 LCD disable. Thus the selected off-state pipeline
 copies equal history values rather than changing the retained flag. Directed
 checks cover the last pre-disable comparison transition and LYC writes while
