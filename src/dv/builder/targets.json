@@ -3137,5 +3137,39 @@
     "expected_exit": "nonzero",
     "signature": "N2M_ASSERT UART_TX_READ_SERVICE",
     "timeout_seconds": 120
+  },
+  "uart-response": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/uart/n2m_uart_exchange_store.sv",
+      "src/rtl/uart/n2m_uart_response.sv",
+      "src/dv/uart/tb_uart_response.sv"
+    ],
+    "top": "tb_uart_response",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS UART response packets=6 bytes=328 resets=3 Intel_staging CRC16",
+    "vendor_model": "intel-memory",
+    "timeout_seconds": 120
+  },
+  "uart-response-corrupt": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/uart/n2m_uart_exchange_store.sv",
+      "src/rtl/uart/n2m_uart_response.sv",
+      "src/dv/uart/tb_uart_response.sv"
+    ],
+    "top": "tb_uart_response",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "UART_RESPONSE_BYTE case=0 index=10",
+    "vendor_model": "intel-memory",
+    "timeout_seconds": 120
   }
 }

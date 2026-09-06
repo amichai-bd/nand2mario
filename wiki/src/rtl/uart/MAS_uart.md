@@ -99,8 +99,8 @@ pauses, invalidates the image, restarts presence tracking and resets the core.
 LOAD_END checks complete presence and reads the actual ROM bytes to compute
 CRC32 before reinitializing and publishing valid PAUSED state. A presence bitmap
 alone cannot prove data integrity. Running ROM writes are rejected before the
-memory port is enabled. The memory implementation in pending #130 is not copied
-into this branch; later composition must bind these reviewed ports explicitly.
+memory port is enabled. The memory implementation from #130 remains its own owner; endpoint composition
+binds its reviewed ROM ports rather than copying backing storage.
 
 The snapshot owner in #93 supplies a separate completion/read boundary; UART
 does not read or lease VGA banks. CPU, PPU, DMA, JOYP and endpoint framing are
@@ -147,3 +147,11 @@ stable through transmission. `transmit_done` occurs only after the actual
 serial transmitter finishes the delimiter's stop cell and returns ready.
 Global reset cancels scanning or output and resets the serial output to idle.
 A missing scheduled memory response produces a named contract assertion.
+
+
+`n2m_uart_response` captures the reply metadata, emits the generated ten-byte
+header, accepts a held byte stream for the declared payload, and appends CRC16
+low byte first to the existing staging bank. It reports completion only after
+the final CRC write. Error replies contain no payload. Payload gaps stall host
+construction without advancing the emulated core or publishing a partial reply.
+Global reset cancels this construction; core reset does not reset transport.

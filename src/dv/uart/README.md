@@ -36,3 +36,12 @@ all ten serial cells per accepted byte, including the final delimiter stop.
 Actual output corruption and missing public-read response have separate negative
 targets. This fixture's response source is a public one-edge model; later full
 endpoint composition binds the already fitted Intel exchange store.
+
+
+The response fixture checks empty, maximum-payload and STEP_LIMIT raw replies
+against fixed byte vectors generated with Python's standard-library CRC16,
+then reads all bytes from the actual Intel staging bank. Payload gaps, sequence
+and command echo, little-endian header/CRC order and completion-after-write are
+checked. Three global cancellations cover header, held payload and CRC stages;
+fresh public writes recover. An actual CRC-byte corruption must fail the fixed
+expected stream. This response-construction test does not claim command effects.
