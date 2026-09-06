@@ -69,4 +69,6 @@ while {1} {
     } else {
         error "SMOKE_DRIVER_MESSAGE"
     }
+    # Peer idle time starts after the completed reply, excluding simulation work.
+    set deadline [expr {[clock milliseconds] + 30000}]
 }

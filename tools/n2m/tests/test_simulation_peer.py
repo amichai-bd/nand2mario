@@ -107,3 +107,72 @@ class PeerTests(unittest.TestCase):
         records = list(self.attempt.rglob('peer-result.json'))
         self.assertEqual(len(records), 1)
         self.assertIsNotNone(json.loads(records[0].read_text())['exit_code'])
+
+
+class DriverDeadlineTests(unittest.TestCase):
+    def test_long_transaction_then_next_request(self):
+        # Execute the actual Tcl control flow with only public mailbox operations
+        # stubbed. No simulator, serial endpoint or product behavior is modeled.
+        try:
+            import tkinter
+        except ImportError:
+            self.skipTest('Tcl runtime unavailable; exercised in local Windows check')
+        tcl = tkinter.Tcl()
+        tcl.eval(r"""
+            set smoke_peer_port 1
+            set wall 0
+            set incoming 0
+            set replies 0
+            set advances 0
+            array set signals {simulation_ns 0 tx_count 0 tx_busy 0 rx_count 0 rx_done 0 finish_request 0}
+            rename clock real_clock
+            proc clock {arg} { global wall; return $wall }
+            proc socket {args} { return smoke }
+            proc fconfigure {args} {}
+            proc close {args} {}
+            proc flush {args} {}
+            proc eof {args} { return 0 }
+            proc after {args} { global wall; incr wall }
+            proc puts {args} {
+                global replies
+                if {[llength $args]==2 && [lindex $args 0] eq "smoke"} { incr replies }
+            }
+            proc gets {channel variable} {
+                global incoming
+                upvar 1 $variable line
+                incr incoming
+                switch $incoming {
+                    1 - 3 { set line "TX 00"; return 5 }
+                    2 { return -1 }
+                    4 { set line "DONE"; return 4 }
+                    default { error "unexpected extra input read" }
+                }
+            }
+            proc examine {args} {
+                global signals
+                set name [lindex [split [lindex $args end] /] end]
+                if {[string match "rx_bytes*" $name]} { return 0 }
+                return $signals($name)
+            }
+            proc force {mode path value} {
+                global signals
+                set name [lindex [split $path /] end]
+                set signals($name) [string range $value 3 end]
+            }
+            proc run {amount units} {
+                global wall signals advances
+                if {$signals(finish_request)} { error TEST_COMPLETED }
+                if {$amount==100} {
+                    incr advances
+                    incr wall [expr {$advances==1 ? 60000 : 1}]
+                    incr signals(simulation_ns) 100000
+                    set signals(rx_done) 1
+                    set signals(rx_count) 1
+                }
+            }
+        """)
+        driver = (ROOT / 'src/dv/integration/driver.do').read_text()
+        with self.assertRaisesRegex(tkinter.TclError, 'TEST_COMPLETED'):
+            tcl.eval(driver)
+        self.assertEqual(int(tcl.getvar('replies')), 2)
+        self.assertEqual(int(tcl.getvar('advances')), 2)
