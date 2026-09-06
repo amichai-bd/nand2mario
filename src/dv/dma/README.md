@@ -129,3 +129,10 @@ scan phases, seven scan indices and unsampled activity. High-only cases leave
 unclaimed low bits unknown. This is a typed-boundary matrix, not an exhaustive
 CPU opcode test. Actual-class corruption and an incomplete high mask each
 require their intended failure.
+
+The I/O fixture uses the actual interrupt owner and declared replies for other
+peripheral boundaries. It checks 18 owner commits (two setup and 16 during
+DMA), nine reads, the complete transfer and readback. IF/IE observations remain
+available immediately before T3 while the raw port reads an operand. The held
+event input proves availability, not single-pulse counting. The fault removes
+the actual IF observation. Other peripheral replies prove routing only.
