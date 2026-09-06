@@ -1279,7 +1279,8 @@
       "src/dv/dma/tb_dma_composition.sv"
     ],
     "timeout_seconds": 60,
-    "top": "tb_dma_composition"
+    "top": "tb_dma_composition",
+    "vendor_model": "intel-memory"
   },
   "dma-composition-byte": {
     "args": [
@@ -1322,7 +1323,8 @@
       "src/dv/dma/tb_dma_composition.sv"
     ],
     "timeout_seconds": 60,
-    "top": "tb_dma_composition"
+    "top": "tb_dma_composition",
+    "vendor_model": "intel-memory"
   },
   "dma-engine": {
     "args": [],
