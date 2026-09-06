@@ -93,7 +93,7 @@ module n2m_intel_ram #(
 
     `N2M_ASSERT_NO_RST(INTEL_RAM_CONFIGURATION, clk_a,
         DEPTH > 1 && DEPTH <= (2 ** ADDRESS_BITS) && BYTE_LANES > 0 &&
-        ((BYTE_LANES == 1 && (DATA_BITS == 2 || DATA_BITS == 8 || DATA_BITS == 16)) ||
+        ((BYTE_LANES == 1 && (DATA_BITS == 1 || DATA_BITS == 2 || DATA_BITS == 8 || DATA_BITS == 16)) ||
          (DATA_BITS == 32 && BYTE_LANES == 4)))
     `N2M_ASSERT(INTEL_RAM_A_RANGE, clk_a, reset_a,
         !(a_read || a_write) || int'(a_address) < DEPTH)

@@ -14,6 +14,7 @@ module n2m_interrupts (
     input var logic [15:0] io_address,
     input var logic [7:0] io_wdata,
     input var logic [4:0] source_level,
+    input var logic [4:0] source_event,
     input var logic [4:0] irq_ack,
     output logic io_selected,
     output logic [7:0] io_rdata,
@@ -39,7 +40,7 @@ module n2m_interrupts (
         operation_a.data = io_wdata;
         operation_a.ack = irq_ack;
 
-        flags_next = flags_q | source_rise;
+        flags_next = flags_q | source_rise | source_event;
         enable_next = enable_q;
         if (pending) begin
             if (operation_b.write_if) flags_next = operation_b.data[4:0];
@@ -68,7 +69,7 @@ module n2m_interrupts (
         irq_ack == 0 || gb_tick)
     `N2M_ASSERT(INTERRUPT_ACK_ONEHOT, clk_sys, reset, $onehot0(irq_ack))
     `N2M_ASSERT_KNOWN(INTERRUPT_CONTROLS, clk_sys, reset,
-        {gb_tick, io_commit, io_write, source_level, irq_ack})
+        {gb_tick, io_commit, io_write, source_level, source_event, irq_ack})
     `N2M_ASSERT(INTERRUPT_WRITE_KNOWN, clk_sys, reset,
         !(io_commit && io_write) || !$isunknown({io_address, io_wdata}))
     `N2M_ASSERT_KNOWN(INTERRUPT_OBSERVATION, clk_sys, reset,

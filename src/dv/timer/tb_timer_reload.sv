@@ -18,7 +18,7 @@ module tb_timer_reload;
     n2m_interrupts u_interrupts (
         .clk_sys(clk_sys),.reset_sys(reset_sys),.core_reset(core_reset),.gb_tick(gb_tick),
         .io_commit(1'b0),.io_write(1'b0),.io_address(16'hFF0F),.io_wdata(8'd0),
-        .source_level(sources),.irq_ack(5'd0),.io_selected(),.io_rdata(),
+        .source_event(5'd0), .source_level(sources),.irq_ack(5'd0),.io_selected(),.io_rdata(),
         .ie_stored(ie_stored),.if_stored(if_stored),.ie_observe(ie_observe),.if_observe(if_observe)
     );
     task automatic system_edge;

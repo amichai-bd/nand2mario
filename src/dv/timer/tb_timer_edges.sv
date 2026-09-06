@@ -18,7 +18,7 @@ module tb_timer_edges;
     n2m_interrupts u_interrupts (
         .clk_sys(clk_sys),.reset_sys(reset_sys),.core_reset(core_reset),.gb_tick(gb_tick),
         .io_commit(if_commit),.io_write(if_commit),.io_address(16'hFF0F),.io_wdata(8'd0),
-        .source_level(sources),.irq_ack(5'd0),.io_selected(),.io_rdata(),
+        .source_event(5'd0), .source_level(sources),.irq_ack(5'd0),.io_selected(),.io_rdata(),
         .ie_stored(),.if_stored(if_stored),.ie_observe(),.if_observe(if_observe)
     );
     task automatic system_edge;
