@@ -7,7 +7,7 @@
   "license_text": "GPL-3.0.txt",
   "license_text_sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
   "notices": "THIRD_PARTY.md",
-  "status": "Selected combinational mixer adapted; remaining renderer/timing import gated by phase review",
+  "status": "Mixer, shift and fetch components adapted; timing/controller integration and full acceptance in progress",
   "purpose": "Adapt selected DMG renderer, OAM selection and timing logic; independent project interfaces and verification remain required",
   "sources": [
     {
@@ -48,6 +48,12 @@
       "source": "rtl/video.v",
       "section": "Background/window and object fetch sequencing",
       "local_changes": "Extract DMG phase/plane state; preserve pre-edge phase-five response bypass and ordered updates; explicit reset and fail-closed response input; exclude CGB/platform/save-state/extra-sprite logic; macro registers and named assertions"
+    },
+    {
+      "path": "n2m_ppu_timing.sv",
+      "source": "rtl/video.v",
+      "section": "DMG line counters, LY comparison history, mode and interrupt conditions",
+      "local_changes": "Extract one-dot enable timing with explicit direct reset; retain quarter-dot phase and delayed condition/mode history; remove CGB/save-state/CPU/DMA dependencies; macro registers and named assertions. Exact startup/LY153/STAT/WX integration gates remain subject to independent source-backed validation"
     }
   ]
 }

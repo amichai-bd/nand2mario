@@ -278,3 +278,21 @@ All state has explicit synchronous system reset independent of gb_tick. Missing
 promised VRAM data latches the common PPU fault and suppresses load publication;
 the top-level owner performs the single source abort. This helper does not own
 LCD startup, window trigger quirks, OAM selection or bus arbitration.
+
+### Controller phase convention under integration
+
+The adapted timing controller retains the selected source's divide-by-four
+phase and 114-quarter line counter. Phase zero advances the quarter counter;
+phase two at quarter113 advances LY and begins the end-of-line history. LY read
+state, comparison history, VBlank condition and CPU-visible mode are separate
+signals. The controller does not turn a STAT condition level into repeated IRQ
+requests. Its outputs feed the shared interrupt boundary described above.
+
+Startup validation uses the pinned Mooneye equivalent sequence `LDH (LCDC),A`,
+N NOPs, then `LD A,(DE)`. Relative to the LCDC T4 commit, the following read's
+T4 commit is `4*N+8` ticks later. Verified mode reads bracket the first mode3
+transition between 76 and 80 ticks; LY reads bracket the first increment between
+448 and 452 ticks. These are observation brackets, not single-dot measurements.
+The selected source's delayed mode signal fits the former bracket; the complete
+controller must pass the whole literal table with pre-edge CPU reads. The
+remaining exact LY153/comparison, STAT-write and window gates above still apply.
