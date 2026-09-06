@@ -116,3 +116,15 @@ separate correct return PCs. A request during a CB prefix must wait for the one
 combined instruction event. Consecutive EI must mature without postponing a
 pending request. The earlier 14-case records remain retained; these additions do
 not settle IME0 wake latency or reset/STOP acceptance.
+
+
+`cpu-reset` checks ten cancellation/reinitialization cases: synchronous core and
+asynchronous global reset at each phase of a paused prepared write, plus each
+reset between retirement capture and publication. It checks no partial write or
+old event escapes, the global public state clears before core initialization,
+and five full fresh-profile events per case restart sequence/epoch correctly.
+Twenty idle system edges preserve each paused request and dot. The lost-write
+negative forces actual commit low and must fail at the exact missing write.
+The initial oracle omitted the generated profile's FFFE stack pointer; those
+failed records remain retained, and the corrected literal checks all 48 bytes.
+This layer does not yet prove reset in every IRQ/power/lock state.

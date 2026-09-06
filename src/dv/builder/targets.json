@@ -2186,5 +2186,39 @@
     "expected_exit": "nonzero",
     "signature": "CPU_VECTOR_MISSING case=0",
     "timeout_seconds": 120
+  },
+  "cpu-reset": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/dv/cpu/tb_cpu_reset.sv"
+    ],
+    "top": "tb_cpu_reset",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU reset cases=10 phases=4 pending=2 pause=20 fresh_events=50"
+  },
+  "cpu-reset-lost-write": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/dv/cpu/tb_cpu_reset.sv"
+    ],
+    "top": "tb_cpu_reset",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_RESET_WRITE case=0 dot=32"
   }
 }
