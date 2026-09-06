@@ -366,5 +366,54 @@
     "expected_exit": "nonzero",
     "signature": "VGA_PIXEL:",
     "timeout_seconds": 600
+  },
+  "uart-packet-rx": {
+    "vendor_model": "intel-memory",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/uart/n2m_uart_packet_store.sv",
+      "src/rtl/uart/n2m_uart_packet_rx.sv",
+      "src/dv/uart/tb_uart_packet_rx.sv"
+    ],
+    "top": "tb_uart_packet_rx",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS UART packet RX requests=7"
+  },
+  "uart-packet-corrupt": {
+    "vendor_model": "intel-memory",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/uart/n2m_uart_packet_store.sv",
+      "src/rtl/uart/n2m_uart_packet_rx.sv",
+      "src/dv/uart/tb_uart_packet_rx.sv"
+    ],
+    "top": "tb_uart_packet_rx",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "UART_RX_PACKET_BYTE index=2"
+  },
+  "uart-packet-range": {
+    "vendor_model": "intel-memory",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/uart/n2m_uart_packet_store.sv",
+      "src/rtl/uart/n2m_uart_packet_rx.sv",
+      "src/dv/uart/tb_uart_packet_rx.sv"
+    ],
+    "top": "tb_uart_packet_rx",
+    "args": [
+      "+bad_read"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT UART_PACKET_READ_RANGE"
   }
 }
