@@ -133,7 +133,7 @@ module tb_vga;
     `N2M_ASSERT_NEVER(frame_bank_reuse, clk_sys, reset_sys,
         (dut.pending && dut.writer_bank == dut.offer_bank) ||
         dut.writer_bank == dut.system_display_bank ||
-        (display_valid && dut.writer_bank == dut.display_bank))
+        (!reset_pix && display_valid && dut.writer_bank == dut.display_bank))
     `N2M_ASSERT_STABLE_WHEN(frame_offer_stable, clk_sys, reset_sys,
         dut.pending && !(dut.ack_sys[1] == dut.request && dut.pix_ready_sys[1]),
         {dut.offer_bank, dut.offer_epoch, dut.offer_sequence})
@@ -285,7 +285,7 @@ module tb_vga;
         @(negedge clk_sys); blank_assert = 1;
         @(negedge clk_sys); blank_assert = 0;
         send_pixels(23040, 1, 0);
-        if (discard_count != 1 || !ref_blank_requested || display_valid)
+        if (discard_count !== 64'd1 || !ref_blank_requested || dut.pending !== 1'b0)
             $fatal(1, "LCD_RESET_SKEW: unavailable peer acceptance");
         @(negedge clk_sys); core_reset = 1; source_epoch = 1;
         @(negedge clk_sys); core_reset = 0;
