@@ -19,4 +19,5 @@ are not evidence of finished peripheral or DMA behavior.
 The [memory contract](MAS_memory.md#fixed-unused-io-and-disabled-boot-mapping)
 owns the exact unused-I/O/disabled-boot table. Readable-FF write-only audio
 registers are behavior-owner registers, not unused addresses. This evidence
-does not settle the separately documented absent-cartridge open-bus choice.
+does not establish a universal absent-cartridge value. The memory MAS records
+the separately approved fixed-FF digital profile approximation.

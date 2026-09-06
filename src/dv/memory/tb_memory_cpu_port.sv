@@ -17,7 +17,7 @@ module tb_memory_cpu_port;
     logic host_write, host_read;
     logic [31:0] host_offset;
     logic [7:0] host_wdata;
-    integer index, phase, writes, owner_commits, fixed_reads, reset_phase, direction, reset_kind;
+    integer index, phase, writes, owner_commits, fixed_reads, absent_reads, reset_phase, direction, reset_kind;
     bit duplicate_fault, missing_fault, write_fault, endpoint_loading;
     n2m_memory_cpu_port dut (.*);
     n2m_memory_stores stores (
@@ -128,7 +128,7 @@ module tb_memory_cpu_port;
         address = 0; write_enable = 0; write_data = 0; bus_commit = 0;
         host_write = 0; host_read = 0; host_offset = 0; host_wdata = 0; endpoint_loading = 1;
         owner_rdata = 0; owner_valid = 0; owner_service_available = 0;
-        writes = 0; owner_commits = 0; fixed_reads = 0;
+        writes = 0; owner_commits = 0; fixed_reads = 0; absent_reads = 0;
         duplicate_fault = $test$plusargs("duplicate_fault");
         missing_fault = $test$plusargs("missing_fault");
         write_fault = $test$plusargs("write_fault");
@@ -199,6 +199,24 @@ module tb_memory_cpu_port;
             end
         end
         if (fixed_reads != 71 || contract_fault) $fatal(1, "MEMORY_CPU_FIXED_INVENTORY");
+        // The approved direct profile has no cartridge RAM. Exercise every
+        // address with a varying write value and unavailable external owner.
+        for (index = 'hA000; index <= 'hBFFF; index = index + 1) begin
+            address = 16'(index); write_enable = 1; write_data = 8'(index ^ 'hA5);
+            bus_commit = 0; edge_cycle();
+            if (owner_prepare || owner_commit || storage_read || storage_write)
+                $fatal(1, "MEMORY_CPU_ABSENT_PREPARE address=%04h", address);
+            bus_commit = 1; #1;
+            if (owner_prepare || owner_commit || storage_read || storage_write)
+                $fatal(1, "MEMORY_CPU_ABSENT_WRITE_EFFECT address=%04h", address);
+            edge_cycle(); bus_commit = 0; write_enable = 0; #1;
+            if (!response_valid || read_data !== 8'hFF || owner_prepare || storage_read)
+                $fatal(1, "MEMORY_CPU_ABSENT_READ address=%04h expected=ff actual=%02h", address, read_data);
+            bus_commit = 1; edge_cycle(); bus_commit = 0;
+            absent_reads = absent_reads + 1;
+        end
+        if (absent_reads != 8192 || writes != 7 || owner_commits != 0 || contract_fault)
+            $fatal(1, "MEMORY_CPU_ABSENT_INVENTORY");
         // A synthetic selected-owner endpoint proves dispatch only. It is
         // not a timer, DMA or PPU implementation or its acceptance evidence.
         address = 16'hFF46; write_enable = 0; owner_service_available = 1; owner_valid = 1;
@@ -253,11 +271,11 @@ module tb_memory_cpu_port;
                 for (reset_phase = 0; reset_phase < 4; reset_phase = reset_phase + 1)
                     reset_prepared(direction != 0, reset_phase, reset_kind != 0);
         if (writes != 7 || owner_commits != 1 || contract_fault) $fatal(1, "MEMORY_CPU_FINAL_COUNTS");
-        $display("PASS memory CPU port writes=7 owner_commits=1 fixed_io=71 reset_phases=16 echo ROM stale pause");
+        $display("PASS memory CPU port writes=7 owner_commits=1 fixed_io=71 absent_cart=8192 reset_phases=16 echo ROM stale pause");
         $finish;
     end
     initial begin
-        #1000000;
+        #1200000;
         $fatal(1, "MEMORY_CPU_WATCHDOG");
     end
 endmodule

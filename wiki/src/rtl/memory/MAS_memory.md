@@ -72,7 +72,7 @@ JOYP, serial, timer, IF/IE, APU, PPU and DMA registers retain distinct behavior
 owners. FF46 selects DMA, independent of its neighboring PPU registers. FF50
 selects the direct-profile boot policy. A000–BFFF and unassigned I/O each have
 an explicit destination. The CPU port implements the exact fixed-I/O rule
-below; absent cartridge RAM still needs its separate read-value decision.
+below and the approved absent-cartridge rule.
 Store/offset outputs for non-storage destinations are unused. The decoder has
 no state or commit effects. Its fixture independently enumerates all 65,536
 addresses, including all 7,680 echo offsets, and injects a wrong echo offset.
@@ -86,7 +86,7 @@ match the current address before a raw response is exposed to CPU. A changed
 address cannot reuse the previous response. Owner destinations receive address,
 direction, data, prepare and commit separately; their current pre-T4 read data,
 validity and fixed-service availability return through the selected-owner
-boundary. Fixed unused/boot I/O is handled locally without an owner commit or
+boundary. Fixed unused/boot I/O and absent cartridge RAM are handled locally without an owner commit or
 storage operation. This dispatch does not implement the DMA resolved-access mux.
 
 Reset or incomplete initialization suppresses dispatch and masks all CPU
@@ -185,12 +185,18 @@ and the DMG-B unusable range: zero when OAM is accessible, FF when blocked.
 Access to that range can still participate in the separately owned OAM
 corruption behavior. Treat its read result and corruption event independently.
 
-Absent cartridge RAM is an explicit unresolved bus-value policy. Sources call
-disabled/unmapped RAM open bus, often but not guaranteed FF; the pinned
-reference uses retained bus data and labels its approximation uncertain.
-No constant-FF replacement or analog decay rule is authorized by these sources
-alone. Storage/echo/service development can continue, but complete #130
-read-value acceptance requires this policy to be resolved.
+### Absent cartridge RAM in the direct profile
+
+The approved digital profile returns FF for every A000�BFFF read and ignores
+all writes to that range. It allocates no cartridge RAM and sends no prepare
+or commit to an external owner. Read service is combinational, with the same
+reset, initialization and sticky-fault masking as other CPU responses.
+
+This is an explicit digital approximation, not a claim that real unmapped
+cartridge buses always read FF. The pinned sources describe open bus and a
+reference retained-bus approximation; this profile does not model analog decay
+or retained bus data. The CPU fixture writes and reads all 8192 addresses with
+an unavailable external owner and independently checks FF and zero effects.
 
 ### Fixed unused I/O and disabled boot mapping
 
@@ -212,7 +218,7 @@ checks that no owner or storage effect escapes.
 All other defined DMG registers retain their explicit behavior owner and its
 read masks/effects. Readable-FF write-only audio registers are not unused
 addresses. Wave RAM remains behind the APU gateway. A000–BFFF is outside this
-I/O table and its separate open-bus choice remains unresolved.
+I/O table and follows the separate approved digital rule above.
 
 ## Shared primitive and verification
 

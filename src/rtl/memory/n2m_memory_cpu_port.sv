@@ -35,7 +35,7 @@ module n2m_memory_cpu_port (
     input var logic owner_service_available
 );
     import n2m_memory_pkg::*;
-    logic reset, active, direct, fixed_io, committed, service_available;
+    logic reset, active, direct, fixed_ff, committed, service_available;
     logic prepared_read;
     logic [15:0] prepared_address;
     logic fault_now;
@@ -47,16 +47,17 @@ module n2m_memory_cpu_port (
     assign reset = reset_sys || core_reset;
     assign active = !reset && !contract_fault && init_done && request_valid;
     assign direct = owner_destination == MEMORY_DIRECT;
-    // The decoder's exact unused-I/O table and permanently disabled boot
-    // mapping have no writable state. Absent cartridge RAM is separate.
-    assign fixed_io = owner_destination == MEMORY_UNUSED_IO || owner_destination == MEMORY_BOOT;
-    assign service_available = direct || fixed_io || owner_service_available;
+    // The direct profile has no cartridge RAM or writable unused/boot state.
+    // These destinations return the approved fixed FF digital value.
+    assign fixed_ff = owner_destination == MEMORY_UNUSED_IO || owner_destination == MEMORY_BOOT
+        || owner_destination == MEMORY_ABSENT_CART;
+    assign service_available = direct || fixed_ff || owner_service_available;
     assign committed = active && bus_commit && service_available && (write_enable || response_valid);
     assign storage_read = active && direct && !write_enable;
     assign storage_write = committed && direct && write_enable;
     assign storage_wdata = write_data;
-    assign owner_prepare = active && !direct && !fixed_io;
-    assign owner_commit = committed && !direct && !fixed_io;
+    assign owner_prepare = active && !direct && !fixed_ff;
+    assign owner_commit = committed && !direct && !fixed_ff;
     assign owner_address = address;
     assign owner_write = write_enable;
     assign owner_wdata = write_data;
@@ -67,8 +68,8 @@ module n2m_memory_cpu_port (
     `DFF_EN(prepared_address, address, clk_sys, storage_read)
     assign response_valid = active && !write_enable && (direct
         ? (prepared_read && prepared_address == address && storage_valid)
-        : (fixed_io || (owner_service_available && owner_valid)));
-    assign read_data = direct ? storage_rdata : (fixed_io ? 8'hFF : owner_rdata);
+        : (fixed_ff || (owner_service_available && owner_valid)));
+    assign read_data = direct ? storage_rdata : (fixed_ff ? 8'hFF : owner_rdata);
 
     // CPU already cancels missing-read completion. A commit seen here without
     // bounded service is an integration violation, never an automatic replay.
@@ -80,7 +81,7 @@ module n2m_memory_cpu_port (
     `N2M_ASSERT(MEMORY_COMMIT_READ_SERVICE, clk_sys, reset,
         !(bus_commit && !write_enable) || response_valid)
     `N2M_ASSERT(MEMORY_COMMIT_OWNER_SERVICE, clk_sys, reset,
-        !(bus_commit && active && !direct && !fixed_io) || owner_service_available)
+        !(bus_commit && active && !direct && !fixed_ff) || owner_service_available)
     `N2M_ASSERT_KNOWN(MEMORY_CPU_CONTROLS, clk_sys, reset,
         {init_done, request_valid, bus_commit})
     `N2M_ASSERT(MEMORY_CPU_REQUEST_KNOWN, clk_sys, reset,
