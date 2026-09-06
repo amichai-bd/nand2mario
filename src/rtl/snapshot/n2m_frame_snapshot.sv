@@ -3,12 +3,17 @@
 `include "src/rtl/common/macros.svh"
 // Contract: wiki/src/rtl/snapshot/MAS_snapshot.md.
 module n2m_frame_snapshot (
-    input var logic clk_sys, reset_sys, core_reset,
-    input var logic observe_valid, observe_complete, observe_abort,
+    input var logic clk_sys,
+    input var logic reset_sys,
+    input var logic core_reset,
+    input var logic observe_valid,
+    input var logic observe_complete,
+    input var logic observe_abort,
     input var logic [14:0] observe_index,
     input var logic [1:0] observe_shade,
     input var logic [31:0] observe_epoch,
-    input var logic [63:0] observe_sequence, observe_dot,
+    input var logic [63:0] observe_sequence,
+    input var logic [63:0] observe_dot,
     input var logic snapshot_request,
     output logic snapshot_ready, snapshot_done, snapshot_ok, snapshot_valid,
     output n2m_interfaces_pkg::snapshot_t snapshot_metadata,
