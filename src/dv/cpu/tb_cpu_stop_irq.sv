@@ -185,7 +185,13 @@ module tb_cpu_stop_irq;
         if(!trace || !records) $fatal(1,"CPU_STOP_IRQ_TRACE");
         $fdisplay(trace,"case,dot,commit,address,data,effect,effect_address,ack");
         $fdisplay(records,"case,event,expected,actual");
-        $dumpfile("waves/cpu-stop-irq.vcd"); $dumpvars(0,tb_cpu_stop_irq);
+        $dumpfile("waves/cpu-stop-irq.vcd");
+        $dumpvars(0,clk_sys,reset_sys,core_reset,gb_tick,dot_before,ie,iflags,
+            response_valid,read_data,wake_request,request_valid,address,write_data,
+            write_enable,access_kind,bus_commit,irq_ack,stopped,halted,locked,
+            initialized,fault,ime_observe,ime_delay_observe,divider_reset_request,
+            instruction_complete,retirement_valid,retirement,address_effect,
+            address_effect_resolved,address_effect_sample,address_effect_phase);
         edge_cycle(0); reset_sys=0;
         for(scenario=0;scenario<14;scenario=scenario+1) begin
             for(item=0;item<65536;item=item+1) memory[item]=0;
