@@ -18,7 +18,8 @@ bit and all 16 enabled mux changes at two independently specified divider
 positions. It then pauses immediately before a fall, holds a pending reload
 through qualified STOP gating, checks DIV/TAC writes at reload, repeated TMA FF
 requests through the actual IF owner, ten reset boundaries and committed reads.
-The 67 cases remain to be executed. No HALT signal enters the timer: continued
+The 67-case positive and intended faults passed; PR146 retains exact producing
+sources, commands and independent evidence. No HALT signal enters the timer: continued
 enables exercise its ongoing time, while absent enables exercise host pause
 and the enclosing STOP contract. These are owner-boundary tests, not whole CPU
 or analog restart execution. The actual TAC-state fault must miss an expected
