@@ -81,4 +81,3 @@ module tb_cpu_alu;
         $fatal(1, "CPU_ALU_TIMEOUT");
     end
 endmodule
-

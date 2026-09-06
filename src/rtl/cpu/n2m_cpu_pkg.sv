@@ -116,4 +116,3 @@ package n2m_cpu_pkg;
         endcase
     endfunction
 endpackage
-

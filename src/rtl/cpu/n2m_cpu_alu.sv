@@ -117,4 +117,3 @@ module n2m_cpu_alu (
         endcase
     end
 endmodule
-
