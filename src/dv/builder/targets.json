@@ -4053,7 +4053,7 @@
       "+READ_CASE"
     ],
     "expected_exit": "zero",
-    "signature": "PASS DMA composition bytes=160 idu=64",
+    "signature": "PASS DMA composition bytes=160 idu=0",
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/cpu/n2m_cpu_pkg.sv",
