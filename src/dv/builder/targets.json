@@ -393,6 +393,14 @@
     "signature": "VGA_PIXEL:",
     "timeout_seconds": 600
   },
+  "memory-service": {
+    "vendor_model": "intel-memory",
+    "sources": ["src/rtl/interfaces/n2m_interfaces_pkg.sv", "src/rtl/memory/n2m_memory_pkg.sv", "src/rtl/common/n2m_intel_ram.sv", "src/rtl/memory/n2m_memory_stores.sv", "src/rtl/memory/n2m_memory_decode.sv", "src/rtl/memory/n2m_memory_cpu_port.sv", "src/dv/memory/tb_memory_service.sv"],
+    "top": "tb_memory_service",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS memory concurrent CPU PPU writes=352 preA_pairs=1040 blocked unusable"
+  },
   "memory-cpu-port": {
     "vendor_model": "intel-memory",
     "sources": [

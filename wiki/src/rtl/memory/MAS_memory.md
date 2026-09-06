@@ -155,6 +155,16 @@ bits7:0. PPU phase0 is idle, phase1 scans Y/X, and phase2 fetches tile/attribute
 Phase1 suppresses capture during DMA; phase2 uses the actual arbitrated pair.
 No missing-response fallback or PPU backpressure is allowed.
 
+The composed `memory-service` fixture connects actual CPU dispatch and Intel
+stores to an independent PPU request driver. Its pre-A checks compare each
+response with the previous request while the next address is already present.
+It performs concurrent WRAM/echo effects, permitted CPU VRAM/OAM reads and
+both PPU reads, then checks blocked writes/FF reads and accessible unusable
+zero reads through a synthetic selected-policy adapter. The adapter supplies
+ordinary access gates explicitly and permits only one resolved A writer.
+These traces prove storage/routing boundary composition. They do not implement
+the PPU fetcher, DMA engine, corruption algorithm or transition-edge policy.
+
 The PPU owner agrees to the previous-request registered response and pre-A
 sampling boundary. The raw RAM follows the shared Intel primitive contract;
 contested-bus selection and access-gating corner traces remain separate gates.
