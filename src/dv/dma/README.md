@@ -142,3 +142,10 @@ loops. It requires canceled OAM requests and validity after off, scan effects
 before and after reenable, every physical write and full readback. The negative
 forces actual response validity while off. This proves cancellation and resumed
 composition; fresh-row replacement is checked separately by the scan-tag fixture.
+
+The scan-tag fixture moves from row4 through an excluded interval to row12,
+then checks a row13 effect against literal fresh operands and eight readbacks.
+It proves replacement after a row jump, rather than isolating invalidation of
+an otherwise matching tag. Its data fault changes a returned prefetch byte.
+Three further targets require named failures for a missing raw response,
+an unmatched operand tag and missing destination-pair readiness.

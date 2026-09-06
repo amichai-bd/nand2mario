@@ -5065,5 +5065,138 @@
     "timeout_seconds": 60,
     "top": "tb_dma_composition",
     "vendor_model": "intel-memory"
+  },
+  "dma-tags": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/memory/n2m_memory_stores.sv",
+      "src/rtl/memory/n2m_memory_decode.sv",
+      "src/rtl/memory/n2m_memory_cpu_port.sv",
+      "src/rtl/dma/n2m_oam_pkg.sv",
+      "src/rtl/dma/n2m_dma_pkg.sv",
+      "src/rtl/dma/n2m_oam_corrupt.sv",
+      "src/rtl/dma/n2m_oam_qualify.sv",
+      "src/rtl/dma/n2m_dma_engine.sv",
+      "src/rtl/dma/n2m_dma_service.sv",
+      "src/rtl/dma/n2m_dma.sv",
+      "src/dv/dma/tb_dma_tags.sv"
+    ],
+    "top": "tb_dma_tags",
+    "timeout_seconds": 60,
+    "expected_exit": "zero",
+    "signature": "PASS DMA scan tags row4 off row12 row13 writes=8 readback=8",
+    "vendor_model": "intel-memory",
+    "args": []
+  },
+  "dma-tags-data": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/memory/n2m_memory_stores.sv",
+      "src/rtl/memory/n2m_memory_decode.sv",
+      "src/rtl/memory/n2m_memory_cpu_port.sv",
+      "src/rtl/dma/n2m_oam_pkg.sv",
+      "src/rtl/dma/n2m_dma_pkg.sv",
+      "src/rtl/dma/n2m_oam_corrupt.sv",
+      "src/rtl/dma/n2m_oam_qualify.sv",
+      "src/rtl/dma/n2m_dma_engine.sv",
+      "src/rtl/dma/n2m_dma_service.sv",
+      "src/rtl/dma/n2m_dma.sv",
+      "src/dv/dma/tb_dma_tags.sv"
+    ],
+    "top": "tb_dma_tags",
+    "timeout_seconds": 60,
+    "expected_exit": "nonzero",
+    "signature": "DMA_TAG_FRESH_ROW address=108 expected=84 actual=00",
+    "vendor_model": "intel-memory",
+    "args": [
+      "+BAD_TAG_DATA"
+    ]
+  },
+  "dma-tags-raw": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/memory/n2m_memory_stores.sv",
+      "src/rtl/memory/n2m_memory_decode.sv",
+      "src/rtl/memory/n2m_memory_cpu_port.sv",
+      "src/rtl/dma/n2m_oam_pkg.sv",
+      "src/rtl/dma/n2m_dma_pkg.sv",
+      "src/rtl/dma/n2m_oam_corrupt.sv",
+      "src/rtl/dma/n2m_oam_qualify.sv",
+      "src/rtl/dma/n2m_dma_engine.sv",
+      "src/rtl/dma/n2m_dma_service.sv",
+      "src/rtl/dma/n2m_dma.sv",
+      "src/dv/dma/tb_dma_tags.sv"
+    ],
+    "top": "tb_dma_tags",
+    "timeout_seconds": 60,
+    "expected_exit": "nonzero",
+    "signature": "DMA_RAW_SERVICE",
+    "vendor_model": "intel-memory",
+    "args": [
+      "+MISSING_RAW"
+    ]
+  },
+  "dma-tags-operand": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/memory/n2m_memory_stores.sv",
+      "src/rtl/memory/n2m_memory_decode.sv",
+      "src/rtl/memory/n2m_memory_cpu_port.sv",
+      "src/rtl/dma/n2m_oam_pkg.sv",
+      "src/rtl/dma/n2m_dma_pkg.sv",
+      "src/rtl/dma/n2m_oam_corrupt.sv",
+      "src/rtl/dma/n2m_oam_qualify.sv",
+      "src/rtl/dma/n2m_dma_engine.sv",
+      "src/rtl/dma/n2m_dma_service.sv",
+      "src/rtl/dma/n2m_dma.sv",
+      "src/dv/dma/tb_dma_tags.sv"
+    ],
+    "top": "tb_dma_tags",
+    "timeout_seconds": 60,
+    "expected_exit": "nonzero",
+    "signature": "DMA_OPERAND_SERVICE",
+    "vendor_model": "intel-memory",
+    "args": [
+      "+MISSING_OPERAND"
+    ]
+  },
+  "dma-tags-pair": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/memory/n2m_memory_stores.sv",
+      "src/rtl/memory/n2m_memory_decode.sv",
+      "src/rtl/memory/n2m_memory_cpu_port.sv",
+      "src/rtl/dma/n2m_oam_pkg.sv",
+      "src/rtl/dma/n2m_dma_pkg.sv",
+      "src/rtl/dma/n2m_oam_corrupt.sv",
+      "src/rtl/dma/n2m_oam_qualify.sv",
+      "src/rtl/dma/n2m_dma_engine.sv",
+      "src/rtl/dma/n2m_dma_service.sv",
+      "src/rtl/dma/n2m_dma.sv",
+      "src/dv/dma/tb_dma_tags.sv"
+    ],
+    "top": "tb_dma_tags",
+    "timeout_seconds": 60,
+    "expected_exit": "nonzero",
+    "signature": "DMA_PAIR_SERVICE",
+    "vendor_model": "intel-memory",
+    "args": [
+      "+MISSING_PAIR"
+    ]
   }
 }
