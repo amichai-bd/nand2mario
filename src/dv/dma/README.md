@@ -75,3 +75,15 @@ Accepted writes may drain; after47 clocks every public effect output must be
 quiet. Resume completes full byte/readback checks. The pause-fault target forces
 the actual raw write control during the held interval and requires
 DMA_PAUSE_SERVICE_DRAIN.
+
+
+The access fixture drives a legal twelve-clock-dot CPU boundary around the
+actual DMA and Intel stores. Seven source cases cover C0, ROM00, VRAM80 with
+both write-gate states, absent A0, and E0/FE mirrors. It checks1,120 destination
+bytes and44 reads: accessible M1, conflicting prepared data, RAM AND feedback,
+ignored ROM-source writes, gated VRAM redirect, active separate-bus reads,
+HRAM/FF46 separation and blocked OAM/unusable reads. Public readback checks
+all destination bytes and the untouched CPU-addressed source locations.
+This complements real-CPU fixtures; it does not implement other I/O owners.
+The corrupt target changes the actual CPU read output81 toFF and requires
+DMA_ACCESS_READ with the exact address and values.
