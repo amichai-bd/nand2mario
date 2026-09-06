@@ -280,45 +280,91 @@
   "vga": {
     "sources": [
       "src/rtl/clocking/n2m_reset_control.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/vga/n2m_frame_ram.sv",
       "src/rtl/vga/n2m_vga_scan.sv",
       "src/rtl/vga/n2m_frame_bridge.sv",
       "src/dv/vga/tb_vga.sv"
     ],
+    "vendor_model": "intel-memory",
+    "intel_mixed_mode_instances": [
+      "tb_vga.dut.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_vga.dut.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_vga.dut.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
+    ],
     "top": "tb_vga",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS vga every-pixel observer ownership fast slow pause core-reset lockloss stopped-pixel",
-    "timeout_seconds": 180
+    "timeout_seconds": 600
   },
   "vga-bank-reuse": {
     "sources": [
       "src/rtl/clocking/n2m_reset_control.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/vga/n2m_frame_ram.sv",
       "src/rtl/vga/n2m_vga_scan.sv",
       "src/rtl/vga/n2m_frame_bridge.sv",
       "src/dv/vga/tb_vga.sv"
+    ],
+    "vendor_model": "intel-memory",
+    "intel_mixed_mode_instances": [
+      "tb_vga.dut.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_vga.dut.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_vga.dut.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
     ],
     "top": "tb_vga",
     "args": [
       "+bank_reuse"
     ],
     "expected_exit": "nonzero",
-    "signature": "N2M_ASSERT frame_bank_reuse instance=tb_vga"
+    "signature": "N2M_ASSERT frame_bank_reuse instance=tb_vga",
+    "timeout_seconds": 600
   },
   "vga-active-swap": {
     "sources": [
       "src/rtl/clocking/n2m_reset_control.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/vga/n2m_frame_ram.sv",
       "src/rtl/vga/n2m_vga_scan.sv",
       "src/rtl/vga/n2m_frame_bridge.sv",
       "src/dv/vga/tb_vga.sv"
+    ],
+    "vendor_model": "intel-memory",
+    "intel_mixed_mode_instances": [
+      "tb_vga.dut.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_vga.dut.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_vga.dut.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
     ],
     "top": "tb_vga",
     "args": [
       "+active_swap"
     ],
     "expected_exit": "nonzero",
-    "signature": "N2M_ASSERT frame_active_swap instance=tb_vga"
+    "signature": "N2M_ASSERT frame_active_swap instance=tb_vga",
+    "timeout_seconds": 600
+  },
+  "vga-read-latency": {
+    "sources": [
+      "src/rtl/clocking/n2m_reset_control.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/vga/n2m_frame_ram.sv",
+      "src/rtl/vga/n2m_vga_scan.sv",
+      "src/rtl/vga/n2m_frame_bridge.sv",
+      "src/dv/vga/tb_vga.sv"
+    ],
+    "vendor_model": "intel-memory",
+    "intel_mixed_mode_instances": [
+      "tb_vga.dut.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_vga.dut.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_vga.dut.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
+    ],
+    "top": "tb_vga",
+    "args": [
+      "+read_latency"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "VGA_PIXEL:",
+    "timeout_seconds": 600
   }
 }

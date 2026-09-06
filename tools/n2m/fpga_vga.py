@@ -79,6 +79,55 @@ def audit(quote):
     return "\n".join(lines) + "\n"
 
 
+def verify_memory_netlist(text):
+    """Check the fitted MAX 10 atoms, including clocks and one-edge read shape."""
+    atoms = re.findall(r"fiftyfivenm_ram_block\s+\\(\S+)\s*\((.*?)\);", text, re.DOTALL)
+    if len(atoms) != 18 or len({name for name, _ in atoms}) != 18:
+        raise ValueError("VGA physical RAM atom inventory differs")
+    bits = {bank: [] for bank in range(3)}
+    evidence = {}
+    for name, body in atoms:
+        owner = re.fullmatch(r"u_bridge\|banks\[([0-2])\]\.u_ram\|u_storage\|ram\|auto_generated\|ram_block1a[0-5]", name)
+        if not owner:
+            raise ValueError("unexpected VGA physical RAM owner")
+        bank = int(owner[1])
+        ports = {key: re.sub(r"\s+", "", value) for key, value in
+                 re.findall(r"\.(\w+)\((.*?)\)(?:,|$)", body, re.DOTALL)}
+        params = {key: value.strip().strip('"') for key, value in
+                  re.findall(r"defparam\s+\\" + re.escape(name) + r"\s+\.(\w+)\s*=\s*(.*?);", text)}
+        expected = {"operation_mode": "bidir_dual_port", "ram_block_type": "M9K",
+                    "power_up_uninitialized": "true", "mixed_port_feed_through_mode": "dont_care",
+                    "port_b_address_clock": "clock1", "port_b_read_enable_clock": "clock1"}
+        for port in ("a", "b"):
+            expected.update({f"port_{port}_logical_ram_depth": "23040", f"port_{port}_logical_ram_width": "2",
+                             f"port_{port}_data_out_clock": "none", f"port_{port}_address_clear": "none",
+                             f"port_{port}_data_out_clear": "none", f"port_{port}_data_width": "1",
+                             f"port_{port}_address_width": "13", f"port_{port}_first_address": "0",
+                             f"port_{port}_last_address": "8191",
+                             f"port_{port}_read_during_write_mode": "new_data_with_nbe_read"})
+        if any(params.get(key) != value for key, value in expected.items()):
+            raise ValueError("VGA physical RAM parameters differ")
+        if any(key.startswith(("mem_init", "init_file")) for key in params):
+            raise ValueError("VGA physical RAM initialization unexpectedly present")
+        expected_ports = {"clk0": r"\clk_sys~inputclkctrl_outclk",
+                          "clk1": r"\u_clocking|u_pll|altpll_component|auto_generated|wire_pll1_clk[0]~clkctrl_outclk",
+                          "clr0": "gnd", "clr1": "gnd", "portare": "gnd", "portbwe": "gnd",
+                          "portaaddrstall": "gnd", "portbaddrstall": "gnd",
+                          "portabyteenamasks": "1'b1", "portbbyteenamasks": "1'b1"}
+        if any(ports.get(key) != value for key, value in expected_ports.items()):
+            raise ValueError("VGA physical RAM clocks, read/write roles or reset differ")
+        first = params.get("port_a_first_bit_number")
+        if first not in ("0", "1") or params.get("port_b_first_bit_number") != first:
+            raise ValueError("VGA physical RAM bit identity differs")
+        if not re.fullmatch(r"\{\\shade\[" + first + r"\]~\d+_combout\}", ports.get("portadatain", "")):
+            raise ValueError("VGA physical RAM input shade bit differs")
+        bits[bank].append(int(first))
+        evidence[name] = {"ports": ports, "parameters": params}
+    if any(sorted(partition) != [0, 0, 0, 1, 1, 1] for partition in bits.values()):
+        raise ValueError("VGA physical RAM bit partition differs")
+    return evidence
+
+
 def verify(folder):
     output = folder / "output"
     reports = {}
@@ -99,14 +148,15 @@ def verify(folder):
     memory = [row[1] for row in rows(fit) if len(row) == 2 and row[0] == "Total block memory bits"]
     if memory != ["138,240 / 1,677,312 ( 8 % )"]:
         raise ValueError("unexpected total fitted memory bits")
-    ram_rows = [row for row in rows(fit) if len(row) > 4 and row[1:4] == ["M9K", "Simple Dual Port", "Dual Clocks"]]
-    expected_banks = {f"u_bridge|banks[{i}].u_ram|pixels_rtl_0|auto_generated|ALTSYNCRAM" for i in range(3)}
+    ram_rows = [row for row in rows(fit) if len(row) > 4 and row[1:4] == ["M9K", "True Dual Port", "Dual Clocks"]]
+    expected_banks = {f"u_bridge|banks[{i}].u_ram|u_storage|ram|auto_generated|ALTSYNCRAM" for i in range(3)}
     if len(ram_rows) != 3 or {node(row[0]) for row in ram_rows} != expected_banks:
         raise ValueError("missing or extra fitted dual-clock VGA RAM banks")
     for row in ram_rows:
-        if len(row) < 20 or row[4:18] != ["23040", "2", "23040", "2", "yes", "no", "yes", "no", "46080", "23040", "2", "23040", "2", "46080"] or row[18] != "6" or row[19] != "None":
+        if len(row) != 27 or row[4:18] != ["23040", "2", "23040", "2", "yes", "no", "yes", "no", "46080", "23040", "2", "23040", "2", "46080"] or row[18] != "6" or row[19] != "None" or row[21:] != ["Don't care", "New data with NBE Read", "New data with NBE Read", "Off", "No", "No - Unknown"]:
             raise ValueError("VGA RAM dimensions, registers, M9K usage or initialization differ")
-    result = {"ram_banks": 3, "memory_bits": 138240, "m9k_blocks": 18, "first_pins": pins, "corners": {}}
+    physical_ram = verify_memory_netlist((folder / "simulation/questa/design.vo").read_text(encoding="utf-8"))
+    result = {"physical_ram": physical_ram, "ram_banks": 3, "memory_bits": 138240, "m9k_blocks": 18, "first_pins": pins, "corners": {}}
     output_sources = {"u_clocking|u_reset|pix_release[1]", "u_bridge|u_scan|valid_out", "u_bridge|u_scan|hs_out", "u_bridge|u_scan|vs_out"}
     output_sources.update(f"u_bridge|u_scan|gray_out[{i}]" for i in range(4))
     for corner, model, temperature in CORNERS:

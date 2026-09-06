@@ -10,6 +10,34 @@ from tools.n2m import fpga, fpga_vga, fpga_pll
 from tools.n2m.records import file_hash
 
 
+def memory_netlist():
+    """Original physical-shape fixture; no copied vendor generated HDL."""
+    cells = []
+    for bank in range(3):
+        for block in range(6):
+            bit = block % 2
+            name = f"u_bridge|banks[{bank}].u_ram|u_storage|ram|auto_generated|ram_block1a{block}"
+            ports = {"clk0": r"\clk_sys~inputclkctrl_outclk",
+                     "clk1": r"\u_clocking|u_pll|altpll_component|auto_generated|wire_pll1_clk[0]~clkctrl_outclk",
+                     "clr0": "gnd", "clr1": "gnd", "portare": "gnd", "portbwe": "gnd",
+                     "portaaddrstall": "gnd", "portbaddrstall": "gnd",
+                     "portabyteenamasks": "1'b1", "portbbyteenamasks": "1'b1",
+                     "portadatain": "{\\shade[" + str(bit) + "]~7_combout }"}
+            cells.append("fiftyfivenm_ram_block \\" + name + " (" + ",".join(f".{k}({v})" for k, v in ports.items()) + ");")
+            params = {"operation_mode": "bidir_dual_port", "ram_block_type": "M9K",
+                      "power_up_uninitialized": "true", "mixed_port_feed_through_mode": "dont_care",
+                      "port_b_address_clock": "clock1", "port_b_read_enable_clock": "clock1"}
+            for port in ("a", "b"):
+                params.update({f"port_{port}_logical_ram_depth": "23040", f"port_{port}_logical_ram_width": "2",
+                               f"port_{port}_data_out_clock": "none", f"port_{port}_address_clear": "none",
+                               f"port_{port}_data_out_clear": "none", f"port_{port}_data_width": "1",
+                               f"port_{port}_address_width": "13", f"port_{port}_first_address": "0",
+                               f"port_{port}_last_address": "8191", f"port_{port}_first_bit_number": str(bit),
+                               f"port_{port}_read_during_write_mode": "new_data_with_nbe_read"})
+            cells += [f'defparam \\{name} .{key} = "{value}";' for key, value in params.items()]
+    return "\n".join(cells)
+
+
 def fixture(folder):
     """Original minimal tables exercise report semantics, not vendor prose."""
     output = folder / "output"
@@ -22,8 +50,11 @@ def fixture(folder):
         return header + "\nDelay Model:\n" + model + "\n; Summary of Paths ;\n" + data + "Path #1:\n"
     ram = row("M9Ks", "18 / 182 ( 10 % )") + row("Total block memory bits", "138,240 / 1,677,312 ( 8 % )")
     for bank in range(3):
-        ram += row(f"u_bridge|banks[{bank}].u_ram|pixels_rtl_0|auto_generated|ALTSYNCRAM", "M9K", "Simple Dual Port", "Dual Clocks", "23040", "2", "23040", "2", "yes", "no", "yes", "no", "46080", "23040", "2", "23040", "2", "46080", "6", "None")
+        ram += row(f"u_bridge|banks[{bank}].u_ram|u_storage|ram|auto_generated|ALTSYNCRAM", "M9K", "True Dual Port", "Dual Clocks", "23040", "2", "23040", "2", "yes", "no", "yes", "no", "46080", "23040", "2", "23040", "2", "46080", "6", "None", "six locations", "Don't care", "New data with NBE Read", "New data with NBE Read", "Off", "No", "No - Unknown")
     write("design.fit.rpt", ram)
+    netlist = folder / "simulation/questa/design.vo"
+    netlist.parent.mkdir(parents=True)
+    netlist.write_text(memory_netlist(), encoding="utf-8")
     write("vga_first_pins.rpt", "".join(f"{name} u_bridge|{name}[0]|d\n" for name in fpga_vga.CHAINS))
     pix_clock = "u_clocking|u_pll|altpll_component|auto_generated|pll1|clk[0]"
     for corner, model, temperature in fpga_vga.CORNERS:
@@ -47,6 +78,28 @@ def fixture(folder):
 
 
 class VgaEvidenceTests(unittest.TestCase):
+    def test_physical_memory_clock_role_latency_init_and_partition_failures(self):
+        text = memory_netlist()
+        self.assertEqual(len(fpga_vga.verify_memory_netlist(text)), 18)
+        mutations = [
+            ('.clk1(\\u_clocking|', '.clk1(\\wrong_clock|'),
+            ('.portbwe(gnd)', '.portbwe(vcc)'),
+            ('.portare(gnd)', '.portare(vcc)'),
+            ('.port_a_data_out_clock = "none"', '.port_a_data_out_clock = "clock0"'),
+            ('.power_up_uninitialized = "true"', '.power_up_uninitialized = "false"'),
+            ('.port_b_logical_ram_depth = "23040"', '.port_b_logical_ram_depth = "23039"'),
+            ('.port_b_first_bit_number = "0"', '.port_b_first_bit_number = "1"'),
+            ('shade[0]', 'shade[1]'),
+            ('banks[2]', 'banks[3]'),
+            ('.ram_block_type = "M9K"', '.init_file = "forbidden"'),
+        ]
+        for before, after in mutations:
+            with self.subTest(mutation=before):
+                self.assertIn(before, text)
+                with self.assertRaises(ValueError):
+                    fpga_vga.verify_memory_netlist(text.replace(before, after, 1))
+
+
     def test_truncated_mutable_and_immutable_cache_cannot_omit_vga_report(self):
         base = Path(__file__).resolve().parents[3] / "workdir" / "vga-report-tests"
         base.mkdir(parents=True, exist_ok=True)
