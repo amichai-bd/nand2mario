@@ -38,7 +38,7 @@ def memory_netlist():
     return "\n".join(cells)
 
 
-def fixture(folder):
+def fixture(folder, lcd=False):
     """Original minimal tables exercise report semantics, not vendor prose."""
     output = folder / "output"
     output.mkdir()
@@ -55,7 +55,8 @@ def fixture(folder):
     netlist = folder / "simulation/questa/design.vo"
     netlist.parent.mkdir(parents=True)
     netlist.write_text(memory_netlist(), encoding="utf-8")
-    write("vga_first_pins.rpt", "".join(f"{name} u_bridge|{name}[0]|d\n" for name in fpga_vga.CHAINS))
+    names = (*fpga_vga.CHAINS, "blank_pix", "blank_seen_sys") if lcd else fpga_vga.CHAINS
+    write("vga_first_pins.rpt", "".join(f"{name} u_bridge|{name}[0]|d\n" for name in names))
     pix_clock = "u_clocking|u_pll|altpll_component|auto_generated|pll1|clk[0]"
     for corner, model, temperature in fpga_vga.CORNERS:
         model_name = f"{model.title()} 1200mV {temperature}C Model"
@@ -66,12 +67,16 @@ def fixture(folder):
         for direction in ("max", "min"):
             data = "".join(row("5.000", "u_bridge|u_scan|gray_out[0]", port) for port in fpga_vga.PORTS)
             write(prefix + "outputs_" + direction + ".rpt", report("Report Path: Found 14 paths.", model_name, data))
+        if lcd:
+            for direction in ("max", "min"):
+                data = "".join(row("4.000", "u_bridge|blank_active", port) for port in fpga_vga.PORTS[:-2])
+                write(prefix + "blank_outputs_" + direction + ".rpt", report("Report Path: Found 12 paths.", model_name, data))
         port_filter = "[get_ports {" + " ".join("{" + p + "}" if "[" in p else p for p in fpga_vga.PORTS) + "}]"
         data = row("set_max_skew", "1.000", "2.000", "1.000", "", port_filter, "", "", "")
         data += "".join(row("--", "1.000", "2.000", "1.000", "u_bridge|u_scan|gray_out[0]", fpga_vga.PORTS[i % 14], pix_clock, pix_clock, "") for i in range(28))
         write(prefix + "skew.rpt", report("Report Max Skew: Found 28 paths (0 violated).", model_name, data))
-        for name in fpga_vga.CHAINS:
-            clock = "clk_sys" if name in ("pix_ready_sys", "ack_sys") else pix_clock
+        for name in names:
+            clock = "clk_sys" if name in ("pix_ready_sys", "ack_sys", "blank_seen_sys") else pix_clock
             for check in ("setup", "hold"):
                 data = row("0.500", f"u_bridge|{name}[0]", f"u_bridge|{name}[1]", clock, clock, "20.000", "0.000", "1.000")
                 write(prefix + name + "_" + check + ".rpt", report(f"Report Timing: Found 1 {check} paths (0 violated).", model_name, data))
@@ -101,13 +106,18 @@ class VgaEvidenceTests(unittest.TestCase):
 
 
     def test_truncated_mutable_and_immutable_cache_cannot_omit_vga_report(self):
+        for lcd in (False, True):
+            with self.subTest(lcd=lcd):
+                self.cache_inventory(lcd)
+
+    def cache_inventory(self, lcd):
         base = Path(__file__).resolve().parents[3] / "workdir" / "vga-report-tests"
         base.mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(dir=base) as temp:
             root = Path(temp)
             build = root / "workdir/builds/test"
             folder = build / "attempt"
-            names = ["output/" + name for name in [*fpga.REQUIRED_REPORTS, *fpga_pll.required_reports(), *fpga_vga.required_reports()]]
+            names = ["output/" + name for name in [*fpga.REQUIRED_REPORTS, *fpga_pll.required_reports(), *fpga_vga.required_reports(lcd=lcd)]]
             names += ["n2m_pixel_pll.v", "generate-pll.log", "simulation/questa/design.vo", "netlist.log",
                       "design.qpf", "design.qsf", "audit.tcl", "compile.log", "audit.log", "checked.sdc"]
             for name in names:
@@ -118,10 +128,10 @@ class VgaEvidenceTests(unittest.TestCase):
                       "attempt_result": (folder / "result.json").relative_to(root).as_posix(),
                       "evidence_directory": folder.relative_to(root).as_posix(), "evidence": {}}
             (folder / "result.json").write_text(json.dumps(record))
-            target = {"top": "vga_proof", "pll": {}, "timing": {}}
+            target = {"top": "ppu_proof" if lcd else "vga_proof", "pll": {}, "timing": {}}
             with patch.object(fpga, "timing_evidence", return_value={}):
                 self.assertTrue(fpga.complete_cache(record, "request", root, build, target))
-                for name in fpga_vga.required_reports():
+                for name in fpga_vga.required_reports(lcd=lcd):
                     path = folder / "output" / name
                     truncated = {**record, "artifacts": {k: v for k, v in record["artifacts"].items() if k != path.relative_to(root).as_posix()}}
                     (folder / "result.json").write_text(json.dumps(truncated))
@@ -129,6 +139,37 @@ class VgaEvidenceTests(unittest.TestCase):
                     with self.subTest(missing=name):
                         self.assertFalse(fpga.complete_cache(truncated, "request", root, build, target))
                     path.write_text("original fixture")
+
+    def test_lcd_crossings_and_blank_output_paths_fail_closed(self):
+        with tempfile.TemporaryDirectory() as temp:
+            folder = Path(temp)
+            fixture(folder, lcd=True)
+            result = fpga_vga.verify(folder, lcd=True)
+            self.assertEqual(len(result["corners"]["slow85"]["chain_slack_ns"]), 12)
+            self.assertEqual(result["corners"]["slow85"]["blank_outputs_ns"], {"max": 4, "min": 4})
+            pixel = "u_clocking|u_pll|altpll_component|auto_generated|pll1|clk[0]"
+            for name, old, new in [
+                ("vga_slow0_blank_seen_sys_setup.rpt", "clk_sys", pixel),
+                ("vga_fast0_blank_pix_hold.rpt", "; 0.500 ;", "; -0.001 ;"),
+                ("vga_slow85_blank_outputs_max.rpt", "u_bridge|blank_active", "u_bridge|request"),
+                ("vga_slow0_blank_outputs_min.rpt", "red[0]", "red[1]"),
+                ("vga_fast0_blank_outputs_max.rpt", "; 4.000 ;", "; 10.001 ;"),
+                ("vga_first_pins.rpt", "blank_seen_sys[0]|d", "blank_seen_sys[1]|d"),
+            ]:
+                path = folder / "output" / name
+                original = path.read_text()
+                self.assertIn(old, original)
+                path.write_text(original.replace(old, new))
+                with self.subTest(mutation=name), self.assertRaises(ValueError):
+                    fpga_vga.verify(folder, lcd=True)
+                path.write_text(original)
+            for name in set(fpga_vga.required_reports(lcd=True)) - set(fpga_vga.required_reports()):
+                path = folder / "output" / name
+                original = path.read_text()
+                path.unlink()
+                with self.subTest(missing=name), self.assertRaises(ValueError):
+                    fpga_vga.verify(folder, lcd=True)
+                path.write_text(original)
 
     def test_complete_inventory_bounds_and_corner_mutations(self):
         base = Path(__file__).resolve().parents[3] / "workdir" / "vga-report-tests"
@@ -168,7 +209,7 @@ class VgaEvidenceTests(unittest.TestCase):
                 path.write_bytes(original)
 
     def test_exact_first_data_pin_rejects_missing_or_ambiguous_mapping(self):
-        for name in fpga_vga.CHAINS:
+        for name in (*fpga_vga.CHAINS, "blank_pix", "blank_seen_sys"):
             for suffixes in ([], ["d"], ["asdata"], ["d", "asdata"]):
                 with self.subTest(name=name, suffixes=suffixes):
                     tcl = tkinter.Tcl()

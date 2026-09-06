@@ -404,6 +404,26 @@ RAM rows and matching total memory/M9K usage. Missing, malformed or out-of-bound
 records fail. Actual nominal/upper delivery evidence must pass this complete
 profile; no generated image is accepted on RAM bit count alone.
 
+### PPU and LCD-control proof profile
+
+The bounded `ppu_proof` target connects the actual PPU to the frame bridge,
+with explicitly timed virtual CPU/memory ports. It does not supply #130 backing
+stores, a complete CPU/system or physical monitor proof. Its nominal/upper
+profiles preserve the existing device, generated PLL, manual-derived VGA pins,
+three-bank memory shape, complete timing checks and strict diagnostic policy.
+
+In addition to the four original bridge chains, `blank_pix` crosses the request
+into the pixel clock and `blank_seen_sys` returns active blank to `clk_sys`.
+Each named launch/first-data endpoint is exact; both adjacent-stage setup/hold
+checks remain mandatory at all three operating corners. The latter chain must
+not inherit a pixel-clock classification from its position in an inventory.
+The profile additionally retains twelve explicit `blank_active`-to-RGB paths
+for both minimum and maximum delay at every corner. Missing, duplicate, wrong
+launch/clock or out-of-bound paths fail. Existing full output/skew limits remain;
+aligned scan-coordinate registers are known additional RGB-mask launches.
+All additional reports enter immutable-result/cache completeness checks.
+The deliberate invalid target still requires the exact missing reset endpoint.
+
 ## Source and workspace boundary
 
 - Root `tools/` contains checked-in project automation.

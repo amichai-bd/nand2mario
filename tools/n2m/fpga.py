@@ -69,7 +69,7 @@ def target_definition(root, name):
         raise ValueError("unknown FPGA target, fields, or device")
     if "pll" in target:
         fpga_pll.validate(target["pll"])
-        if target["top"] not in ("clocking_proof", "vga_proof", "intel_memory_proof") or "timing" not in target:
+        if target["top"] not in ("clocking_proof", "vga_proof", "ppu_proof", "intel_memory_proof") or "timing" not in target:
             raise ValueError("PLL evidence currently requires the bounded clocking proof target")
     if "timing" in target:
         fpga_constraints.validate(target["timing"])
@@ -121,7 +121,7 @@ def prepare(root, folder, target):
     for port, pin in target["pins"].items():
         lines.extend([f'set_location_assignment {pin} -to {tcl_word(port)}',
                       f'set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to {tcl_word(port)}'])
-        if target.get("top") == "vga_proof" and port in fpga_vga.PORTS:
+        if target.get("top") in ("vga_proof", "ppu_proof") and port in fpga_vga.PORTS:
             lines.append(f'set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to {tcl_word(port)}')
     for port in target["virtual_pins"]:
         lines.append(f'set_instance_assignment -name VIRTUAL_PIN ON -to {tcl_word(port)}')
@@ -130,8 +130,8 @@ def prepare(root, folder, target):
     audit = AUDIT
     if "pll" in target:
         audit = audit.replace("project_close", "report_metastability -file output/metastability.rpt\nreport_clock_transfers -file output/clock_transfers.rpt\n" + fpga_pll.chain_audit(tcl_word) + "project_close")
-    if target.get("top") == "vga_proof":
-        audit = audit.replace("project_close", fpga_vga.audit(tcl_word) + "project_close")
+    if target.get("top") in ("vga_proof", "ppu_proof"):
+        audit = audit.replace("project_close", fpga_vga.audit(tcl_word, lcd=target["top"] == "ppu_proof") + "project_close")
     if target.get("top") == "intel_memory_proof":
         audit = audit.replace("project_close", fpga_intel_memory.audit(tcl_word) + "project_close")
     (folder / "audit.tcl").write_text(audit, encoding="utf-8")
@@ -139,8 +139,8 @@ def prepare(root, folder, target):
 
 def checked_constraints(target):
     text = fpga_constraints.generate(target["timing"], tcl_word)
-    if target.get("top") == "vga_proof":
-        text += fpga_vga.constraints(tcl_word)
+    if target.get("top") in ("vga_proof", "ppu_proof"):
+        text += fpga_vga.constraints(tcl_word, lcd=target["top"] == "ppu_proof")
     return text
 
 
@@ -255,7 +255,7 @@ def timing_evidence(folder, target):
             raise ValueError("vendor lock event row missing or extra no-clock endpoints")
         lock_event = fpga_pll.verify_lock_event(folder, checks, target["top"])
         fpga_pll.verify_fit(folder, target)
-    vga_evidence = fpga_vga.verify(folder) if target.get("top") == "vga_proof" else None
+    vga_evidence = fpga_vga.verify(folder, lcd=target["top"] == "ppu_proof") if target.get("top") in ("vga_proof", "ppu_proof") else None
     memory_evidence = fpga_intel_memory.verify(folder) if target.get("top") == "intel_memory_proof" else None
     if target.get("top") == "n2m_memory_stores":
         memory_evidence = fpga_memory_stores.verify(folder)
@@ -287,8 +287,8 @@ def complete_cache(record, fingerprint, root, build, target):
         required += [folder / name for name in ("design.qpf", "design.qsf", "audit.tcl", "compile.log", "audit.log")]
         if "timing" in target:
             required.append(folder / "checked.sdc")
-        if target.get("top") == "vga_proof":
-            required += [folder / "output" / name for name in fpga_vga.required_reports()]
+        if target.get("top") in ("vga_proof", "ppu_proof"):
+            required += [folder / "output" / name for name in fpga_vga.required_reports(lcd=target["top"] == "ppu_proof")]
         if target.get("top") == "intel_memory_proof":
             required.append(folder / "output/intel_memory_inputs.rpt")
         if any(p.relative_to(root).as_posix() not in record["artifacts"] for p in required):
