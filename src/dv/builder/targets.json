@@ -4392,5 +4392,32 @@
     "signature": "PASS INPUT_ORDERING simultaneous_switch reset_cancel physical_retention checks=15",
     "args": [],
     "expected_exit": "zero"
+  },
+  "input-power": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/input/n2m_input_pkg.sv",
+      "src/rtl/input/n2m_input.sv",
+      "src/rtl/uart/n2m_uart_core_control.sv",
+      "src/rtl/joypad/n2m_joypad_pkg.sv",
+      "src/rtl/joypad/n2m_joypad_matrix.sv",
+      "src/rtl/joypad/n2m_joypad.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/dv/input/tb_input_power.sv"
+    ],
+    "top": "tb_input_power",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS INPUT_POWER cases=4 actual_HALT_STOP effective_records"
   }
 }

@@ -313,6 +313,7 @@ module tb_uart_endpoint;
             input_readbacks(8'hc3,1,8'ha5,8'ha5);
             physical_update(8'h5a);input_readbacks(8'hc3,1,8'h5a,8'h5a);
             host_write_request(32'h10044,0);expect_dot(0);exchange(14,8,0,8);
+            if(accepted_inputs!=4)$fatal(1,"UART_INPUT_WRITE_COUNT expected=4 actual=%0d",accepted_inputs);
             saved_token=token;before_writes=accepted_inputs;
             token=saved_token-1;exchange(14,8,0,8);token=saved_token;
             if(accepted_inputs!=before_writes)$fatal(1,"UART_INPUT_REPLAY_EFFECT");
