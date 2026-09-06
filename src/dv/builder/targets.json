@@ -842,5 +842,49 @@
     "expected_exit": "nonzero",
     "signature": "N2M_ASSERT oam_response_missing",
     "top": "tb_ppu_objects"
+  },
+  "ppu-render": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_render.sv"
+    ],
+    "top": "tb_ppu_render",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS PPU renderer original_scene frames=2 pixels=46080",
+    "timeout_seconds": 180
+  },
+  "ppu-render-corrupt": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_render.sv"
+    ],
+    "top": "tb_ppu_render",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "PPU_RENDER_PIXEL frame=1 index=0",
+    "timeout_seconds": 180
   }
 }
