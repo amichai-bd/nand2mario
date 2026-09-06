@@ -13,6 +13,7 @@ from .records import atomic_json, atomic_text, file_hash, git_state, workspace
 from .simulation import simulate
 from .simulator import Simulator, ToolError
 from .doctor import doctor
+from .host.command import run as host_command
 from .fpga import build_fpga
 from .rgbds import oracle
 from sw.build import assemble_target
@@ -81,6 +82,21 @@ def parser():
     asset_check.add_argument("--mutate", choices=("planes", "bitorder", "columns", "rows", "tiles"))
     asset_check.add_argument("--tag")
     asset_check.add_argument("--json", action="store_true")
+    host = commands.add_parser('host', help='explicit UART load/control; follows verified hardware workflow').add_subparsers(dest='action', required=True)
+    for action in ('status', 'load', 'reset', 'run', 'halt', 'step', 'input', 'snapshot'):
+        leaf = host.add_parser(action)
+        for option in ('uart-port', 'uart-vid', 'uart-pid', 'uart-identity'):
+            leaf.add_argument('--' + option)
+        leaf.add_argument('--endpoint-restarted', action='store_true',
+                          help='declare a separately completed endpoint global reset after uncertain completion; sends no reset')
+        leaf.add_argument('--tag')
+        leaf.add_argument('--json', action='store_true')
+        if action == 'load':
+            leaf.add_argument('--package', required=True, help='immutable sw/build/<target>/runs/<attempt>/result.json')
+        if action == 'step':
+            leaf.add_argument('--dots', type=int, required=True)
+        if action == 'input':
+            leaf.add_argument('--mask', type=lambda value: int(value, 0), required=True)
     return result
 
 
@@ -110,6 +126,9 @@ def main(argv=None, root=None):
                 elif args.command == "fpga":
                     provenance = {k: report[k] for k in ("commit", "dirty_tree_fingerprint", "host", "python") if k in report}
                     report.update(build_fpga(root, build, args, provenance))
+                elif args.command == 'host':
+                    provenance = {k: report[k] for k in ('commit', 'dirty_tree_fingerprint', 'host', 'python') if k in report}
+                    report.update(host_command(root, build, args, provenance))
                 elif args.command == "sw":
                     provenance = {k: report[k] for k in ("commit", "dirty_tree_fingerprint", "host", "python") if k in report}
                     report.update(oracle(root, build, args, provenance) if args.action == "oracle"
