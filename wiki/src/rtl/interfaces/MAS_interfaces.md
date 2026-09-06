@@ -173,7 +173,9 @@ unidentified simulation fixtures; it is not a device identity/authentication key
   offsets/counts must fit storage without arithmetic wrap, with count in
   1..MAX_PAYLOAD. During an incomplete load unwritten bytes are unspecified;
   full post-commit readback must equal the original image.
-- INPUT replaces all eight host button bits atomically. While running, apply
+- INPUT replaces all eight host button bits atomically in either source mode.
+  Only UART mode selects that mask for JOYP; PHYSICAL mode retains it as host
+  shadow readback. While running, apply
   it between completed dots, before the next dot observes JOYP/interrupt edges;
   while paused apply it immediately without advancing time. Return the count
   of already completed dots. CPU HALT/STOP does not discard input. Host bits

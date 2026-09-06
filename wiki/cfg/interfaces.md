@@ -2,7 +2,7 @@
 
 Generated from cfg/interfaces.json by tools/n2m/interfaces.py; DO NOT EDIT.
 
-Source SHA-256: `ef99d18e6addd841b4da5586b5caa397e02121b455465f9a62fb8ffc86facb7a`.
+Source SHA-256: `fc2c3bd0e2290b18fc1b0bcead054770f45fbe97277a917af0dd2f48a047a2a1`.
 
 See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior, reset, framing and tests.
 
@@ -164,7 +164,7 @@ See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior,
 | `HOST_REG_DOT_HI` | 32 | `0x10014` | High half; pause for coherent multi-read; read-only |
 | `HOST_REG_RETIRE_LO` | 32 | `0x10018` | Low half of retirement count; read-only |
 | `HOST_REG_RETIRE_HI` | 32 | `0x1001C` | High half; pause for coherent multi-read; read-only |
-| `HOST_REG_INPUT` | 32 | `0x10020` | Active-high host button mask; read-only |
+| `HOST_REG_INPUT` | 32 | `0x10020` | Active-high host button mask; writable by INPUT or WRITE_HOST |
 | `HOST_REG_SNAPSHOT_VALID` | 32 | `0x10024` | 0 or 1; read-only |
 | `HOST_REG_SNAPSHOT_SEQ_LO` | 32 | `0x10028` | Latched source frame sequence low; read-only |
 | `HOST_REG_SNAPSHOT_SEQ_HI` | 32 | `0x1002C` | Latched source frame sequence high; read-only |

@@ -21,7 +21,14 @@ is not device authentication or proof of correct wiring.
 | `host halt` | Pause through HALT; return completed dots. |
 | `host step --dots <budget>` | One instruction with generated budget bounds; STEP_LIMIT is a known failure with consumed time retained. |
 | `host input --mask <integer>` | Replace the complete active-high eight-button mask, preserving simultaneous/opposite states. Decimal or prefixed hexadecimal is accepted. |
+| `host write --address <integer> --value <integer>` | Write the generated INPUT mask or INPUT_SOURCE selector; reject read-only/unknown addresses and reserved value bits before opening the port. |
 | `host snapshot` | One SNAPSHOT followed by all READ_FRAME chunks; retain metadata and packed shades. No new snapshot during readback. |
+
+`Client.write_host(address, value)` uses the same whitelist.
+`Client.select_input_source(source)` selects UART or PHYSICAL through that write.
+Existing `Client.read_host` reads host, physical, source and effective observations;
+legacy status/INPUT retain their original host-mask meaning. See the
+[shared input owner](../../../src/rtl/input/MAS_input.md) for reset and authority.
 
 Before any operation the host checks PING and host ABI, then records the stable
 128-bit build ID. It sends no product operation after an ABI mismatch. The build

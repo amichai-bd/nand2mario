@@ -1,5 +1,5 @@
 ; Generated from cfg/interfaces.json by tools/n2m/interfaces.py; DO NOT EDIT.
-; Source SHA-256: ef99d18e6addd841b4da5586b5caa397e02121b455465f9a62fb8ffc86facb7a
+; Source SHA-256: fc2c3bd0e2290b18fc1b0bcead054770f45fbe97277a917af0dd2f48a047a2a1
 GB_ADDRESS_BITS EQU 16
 GB_DATA_BITS EQU 8
 GB_ROM0_START EQU 0

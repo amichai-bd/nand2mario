@@ -11,5 +11,7 @@ The ordering fixture checks a simultaneous source/physical update, inactive
 host writes, repeated values, asynchronous reset cancellation and retained
 physical observation across core reset. The UART input fixture checks real
 serial MMIO/legacy INPUT replies, all readbacks, invalid length/value/state
-precedence, cache replay and reset. Actual CPU power and affected regressions
-remain acceptance gates until their evidence is recorded in PR160.
+precedence, cache replay and reset. The power fixture uses both sources with actual CPU HALT/STOP, paused input
+updates and effective-mask successor retirement checks. Legacy endpoint,
+snapshot, stopped-STEP and integration checks preserve existing contracts.
+[PR160](https://github.com/amichai-bd/nand2mario/pull/160) retains run evidence.

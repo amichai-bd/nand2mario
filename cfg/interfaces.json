@@ -764,7 +764,7 @@
         "name": "INPUT",
         "bits": 32,
         "value": 65568,
-        "description": "Active-high host button mask; read-only"
+        "description": "Active-high host button mask; writable by INPUT or WRITE_HOST"
       },
       {
         "name": "SNAPSHOT_VALID",
