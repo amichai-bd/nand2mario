@@ -50,14 +50,25 @@ must disable A reading and can be observed with a subsequent enabled read.
 An assertion rejects partial-lane simultaneous read/write.
 
 Cross-port read/write collisions are forbidden in both clock modes. The
-primitive explicitly selects mixed-port `OLD_DATA`, matching the installed
-model's MAX 10 family handling. This parameter does not authorize a collision
+primitive selects mixed-port `OLD_DATA` for one clock and `DONT_CARE` for
+different clocks, with identical parameters in simulation and synthesis.
+This parameter does not authorize a collision
 or promise a deterministic value for unrelated clocks. The wrapper checks at
 both port clocks that an active A write
 request and B read request do not target the same address. This deliberately
 strong request-window rule is only a local diagnostic: owners must also enforce
 bank/address ownership across unrelated clocks, including physical timing
 windows. Simultaneous reads are allowed. There is no B write port.
+
+The pinned Intel model maps MAX 10 through its Cyclone III/II family flags
+(`altera_mf.v` lines 48040, 48042 and 48048), then coerces mixed-port behavior
+to `OLD_DATA` at line 48360 and reports that coercion at line 48421. This
+differs only for the prohibited collision. Hardware requires `DONT_CARE` for
+different clocks; Quartus critical warning 15003 remains a failure.
+The builder records the model's exact time-zero coercion diagnostic against
+the target's expected instance inventory and reviewed source hash. Missing,
+duplicate, wrong-instance or other diagnostics fail. Raw transcripts retain
+the warning; reports must state its count instead of claiming zero warnings.
 
 The MAX 10 guide documents [read-enable holding](https://docs.altera.com/r/docs/683431/current/max-10-embedded-memory-user-guide/read-enable?contentId=LsRwx_P_1NO6gEMewkvOBQ),
 [same-port new data](https://docs.altera.com/r/docs/683431/current/max-10-embedded-memory-user-guide/same-port-read-during-write-mode?contentId=mPC_Y0bBM58cJ0SN~2R3EA),

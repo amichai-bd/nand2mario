@@ -3,9 +3,11 @@ import json
 from pathlib import Path
 from types import SimpleNamespace
 import unittest
+import tempfile
 
 import test_builder
-from n2m import intel_memory
+from n2m import intel_memory, fpga_intel_memory
+from n2m.questa import diagnostic
 from n2m.records import file_hash, read_json
 
 
@@ -99,6 +101,59 @@ class IntelMemoryTests(unittest.TestCase):
         source.write_text("module altsyncram; endmodule\n")
         with self.assertRaisesRegex(ValueError, "shadows the installed"):
             intel_memory.reject_shadow_models(self.root, [source.relative_to(self.root).as_posix()])
+
+
+class IntelDiagnosticTests(unittest.TestCase):
+    instance = "tb_intel_ram.frame_case.dut.ram.m_default.altsyncram_inst"
+
+    def setUp(self):
+        self.descriptor = {"mixed_mode_instances": [self.instance],
+                           "sources": [{"name": "altera_mf.v", "sha256": intel_memory.MIXED_MODE_MODEL_HASH}]}
+        self.pair = ("# Warning: read_during_write_mode_mixed_ports is assumed as               OLD_DATA\n"
+                     f"# Time: 0  Instance: {self.instance}")
+
+    def test_exact_pair_is_recorded_without_changing_raw_input(self):
+        raw = self.pair + "\n# Errors: 0, Warnings: 0\n"
+        checked, evidence = intel_memory.classify_diagnostics(raw, self.descriptor)
+        self.assertIsNone(diagnostic(checked))
+        self.assertEqual(len(evidence), 1)
+        self.assertEqual(evidence[0]["raw"], self.pair)
+        self.assertEqual(evidence[0]["instance"], self.instance)
+        self.assertIn(self.pair, raw)
+
+    def test_missing_duplicate_wrong_time_and_instance_fail(self):
+        for raw in ("", self.pair + "\n" + self.pair,
+                    self.pair.replace("Time: 0", "Time: 1"),
+                    self.pair.replace("frame_case", "byte_case"),
+                    self.pair.replace("OLD_DATA", "NEW_DATA")):
+            with self.subTest(raw=raw), self.assertRaisesRegex(ValueError, "count or instance"):
+                intel_memory.classify_diagnostics(raw, self.descriptor)
+
+    def test_other_warning_and_nonzero_summary_remain_failures(self):
+        for extra in ("# Warning: other issue", "# Errors: 0, Warnings: 1"):
+            checked, _ = intel_memory.classify_diagnostics(self.pair + "\n" + extra, self.descriptor)
+            self.assertEqual(diagnostic(checked), "unexplained simulator warning")
+
+    def test_unpinned_or_undeclared_warning_cannot_be_classified(self):
+        self.descriptor["sources"][0]["sha256"] = "0" * 64
+        with self.assertRaisesRegex(ValueError, "reviewed model source hash"):
+            intel_memory.classify_diagnostics(self.pair, self.descriptor)
+        checked, evidence = intel_memory.classify_diagnostics(self.pair, None)
+        self.assertEqual(evidence, [])
+        self.assertEqual(diagnostic(checked), "unexplained simulator warning")
+
+    def test_synthesis_rejects_missing_or_different_model(self):
+        with tempfile.TemporaryDirectory() as directory:
+            quartus = Path(directory)
+            with self.assertRaisesRegex(ValueError, "missing installed"):
+                fpga_intel_memory.identity(quartus / "bin64")
+            for relative in ("libraries/megafunctions/altsyncram.tdf",
+                             "libraries/megafunctions/altsyncram.inc", "eda/sim_lib/altera_mf.v"):
+                path = quartus / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("Original test bytes, not an Intel implementation.")
+            with self.assertRaisesRegex(ValueError, "differs from the reviewed"):
+                fpga_intel_memory.identity(quartus / "bin64")
 
 
 if __name__ == "__main__":

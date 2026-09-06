@@ -7,6 +7,7 @@ from .records import file_hash
 
 
 LIBRARY = "n2m_altera_mf"
+MIXED_MODE_MODEL_HASH = "2ae09f97f9606626da216e9eb91007beec3ebbe023c5b9415be472417fe49d5e"
 
 
 def resolve(root, simulator, target, directory=None):
@@ -33,9 +34,36 @@ def resolve(root, simulator, target, directory=None):
         if actual != expected:
             raise ValueError(f"unsupported Intel memory model hash: {name}; install the pinned release")
         sources.append({"name": name, "path": str(path), "sha256": actual})
+    instances = target.get("intel_mixed_mode_instances", [])
+    if (not isinstance(instances, list) or
+            any(not isinstance(item, str) or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_.$\[\]]*", item) for item in instances) or
+            len(set(instances)) != len(instances)):
+        raise ValueError("invalid Intel mixed-mode diagnostic instance inventory")
+    if instances and not any(source["name"] == "altera_mf.v" and source["sha256"] == MIXED_MODE_MODEL_HASH for source in sources):
+        raise ValueError("Intel mixed-mode diagnostic requires the reviewed model source hash")
     return {"selection": selection, "library": LIBRARY, "version": pin["version"],
             "sources": sources, "compile_options": ["-work", LIBRARY],
-            "binding_options": ["-L", LIBRARY]}
+            "binding_options": ["-L", LIBRARY], "mixed_mode_instances": instances}
+
+
+def classify_diagnostics(output, descriptor):
+    """Record only the pinned model's time-zero mixed-mode coercion pairs."""
+    instances = descriptor.get("mixed_mode_instances", []) if descriptor else []
+    if not instances:
+        return output, []
+    if not any(source["name"] == "altera_mf.v" and source["sha256"] == MIXED_MODE_MODEL_HASH
+               for source in descriptor["sources"]):
+        raise ValueError("Intel mixed-mode diagnostic requires the reviewed model source hash")
+    pattern = re.compile(r"^# Warning: read_during_write_mode_mixed_ports is assumed as +OLD_DATA\r?\n"
+                         r"# Time: 0 +Instance: ([A-Za-z_][A-Za-z0-9_.$\[\]]*)\r?$", re.MULTILINE)
+    matches = list(pattern.finditer(output))
+    if sorted(match[1] for match in matches) != sorted(instances):
+        raise ValueError("Intel mixed-mode diagnostic count or instance differs")
+    evidence = [{"id": "intel-max10-mixed-mode-coercion", "time": 0,
+                 "instance": match[1], "raw": match[0], "model_sha256": MIXED_MODE_MODEL_HASH,
+                 "reason": "Different-clock mixed-port collisions are forbidden by the memory MAS."}
+                for match in matches]
+    return pattern.sub("", output), evidence
 
 
 def reject_shadow_models(root, inputs):

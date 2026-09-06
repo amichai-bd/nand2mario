@@ -77,9 +77,9 @@ module n2m_intel_ram #(
         .clock_enable_output_a("BYPASS"), .clock_enable_output_b("BYPASS"),
         .read_during_write_mode_port_a("NEW_DATA_NO_NBE_READ"),
         .read_during_write_mode_port_b("NEW_DATA_NO_NBE_READ"),
-        // Intel's MAX 10 model coerces this family to OLD_DATA. Select it
-        // explicitly, while forbidding every mixed-port collision below.
-        .read_during_write_mode_mixed_ports("OLD_DATA"),
+        // Different-clock collisions have no defined device result. The pinned
+        // Intel model's coercion diagnostic is recorded by the builder.
+        .read_during_write_mode_mixed_ports(DUAL_CLOCK ? "DONT_CARE" : "OLD_DATA"),
         .power_up_uninitialized("TRUE"), .init_file("UNUSED")
     ) ram (
         .clock0(clk_a), .clock1(DUAL_CLOCK ? clk_b : 1'b1),

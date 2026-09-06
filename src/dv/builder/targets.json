@@ -2,6 +2,7 @@
   "intel-memory": {
     "sources": ["src/rtl/common/n2m_intel_ram.sv", "src/dv/common/tb_intel_ram.sv"],
     "vendor_model": "intel-memory",
+    "intel_mixed_mode_instances": ["tb_intel_ram.frame_case.dut.ram.m_default.altsyncram_inst"],
     "top": "tb_intel_ram",
     "args": [],
     "expected_exit": "zero",
@@ -11,6 +12,7 @@
   "intel-memory-data": {
     "sources": ["src/rtl/common/n2m_intel_ram.sv", "src/dv/common/tb_intel_ram.sv"],
     "vendor_model": "intel-memory",
+    "intel_mixed_mode_instances": ["tb_intel_ram.frame_case.dut.ram.m_default.altsyncram_inst"],
     "top": "tb_intel_ram",
     "args": ["+corrupt"],
     "expected_exit": "nonzero",
@@ -19,6 +21,7 @@
   "intel-memory-latency": {
     "sources": ["src/rtl/common/n2m_intel_ram.sv", "src/dv/common/tb_intel_ram.sv"],
     "vendor_model": "intel-memory",
+    "intel_mixed_mode_instances": ["tb_intel_ram.frame_case.dut.ram.m_default.altsyncram_inst"],
     "top": "tb_intel_ram",
     "args": ["+late"],
     "expected_exit": "nonzero",
@@ -27,6 +30,7 @@
   "intel-memory-collision": {
     "sources": ["src/rtl/common/n2m_intel_ram.sv", "src/dv/common/tb_intel_ram.sv"],
     "vendor_model": "intel-memory",
+    "intel_mixed_mode_instances": ["tb_intel_ram.frame_case.dut.ram.m_default.altsyncram_inst"],
     "top": "tb_intel_ram",
     "args": ["+collision"],
     "expected_exit": "nonzero",

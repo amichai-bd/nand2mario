@@ -5,6 +5,7 @@ import re
 
 from .records import file_hash
 from .fpga_vga import rows, node
+from .intel_memory import MIXED_MODE_MODEL_HASH
 
 
 SHAPES = {"byte_ram": (160, 8), "pair_ram": (80, 16),
@@ -18,6 +19,8 @@ def identity(directory):
              "model": quartus / "eda/sim_lib/altera_mf.v"}
     if any(not path.is_file() for path in paths.values()):
         raise ValueError("missing installed Intel memory synthesis dependency")
+    if file_hash(paths["model"]) != MIXED_MODE_MODEL_HASH:
+        raise ValueError("Intel synthesis model differs from the reviewed simulation model")
     return {name: {"path": str(path), "sha256": file_hash(path)} for name, path in paths.items()}
 
 

@@ -78,7 +78,10 @@ def simulate(root, build, args, simulator, provenance=None):
             record["commands"][-1]["exit_code"] = result.returncode
             if (result.returncode == 0) != (expected == "zero"):
                 raise RuntimeError(f"unexpected exit {result.returncode}; see {log.relative_to(root)}")
-            problem = diagnostic(result.stdout, target["signature"] if expected == "nonzero" else None)
+            checked_output = result.stdout
+            if log.name == "sim.log":
+                checked_output, record["explained_diagnostics"] = intel_memory.classify_diagnostics(result.stdout, vendor_model)
+            problem = diagnostic(checked_output, target["signature"] if expected == "nonzero" else None)
             if problem:
                 raise RuntimeError(f"{problem}; see {log.relative_to(root)}")
         if target["signature"] not in result.stdout:

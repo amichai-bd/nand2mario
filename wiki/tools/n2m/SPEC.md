@@ -61,6 +61,16 @@ parameters, dependency pin and builder options enter the fingerprint. Updating
 an approved pin changes the fingerprint; removing/changing an installed source
 cannot reuse an older PASS. Vendor source is never copied into tracked files.
 
+`intel_mixed_mode_instances` names the exact vendor instances expected to emit
+the reviewed model's mixed-port coercion warning. This inventory is part of the
+descriptor and fingerprint. Only the pinned source's exact two-line time-zero
+diagnostic is classified, and only during runtime. Missing, duplicate,
+wrong-instance, wrong-time and other warnings fail. `explained_diagnostics`
+records each original pair, source hash and reason; raw logs remain unchanged.
+The exception applies only to the forbidden collision described by the memory
+MAS. Synthesis must use the same reviewed model source and must not produce
+Quartus critical warning 15003.
+
 The [shared memory MAS](../../src/rtl/common/MAS_memory_primitives.md) owns the
 same-instance simulation/synthesis rule and the narrow supported port shapes.
 Missing-model and cache host tests use controlled original bytes and fake
@@ -215,7 +225,7 @@ fixture checks synchronous reset, counting through 4-bit wrap, and reset again:
 variant injects expected=7 at cycle 3, where actual=3. Seed is recorded and passed
 to the testbench; this directed fixture does not use randomness. A 1 us watchdog
 and 60 s host command timeout bound execution. Partial timeout output is retained
-in the failing command's log. Simulator warnings fail the stage.
+in the failing command's log. Unclassified simulator warnings fail the stage.
 
 Add simulation targets to this manifest when their contracts and tests are ready.
 The [tile pixel checks](../sim/SPEC.md) use this interface for normal and
