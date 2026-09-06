@@ -45,6 +45,49 @@ random access to a VGA bank. #93 owns assembly, atomic publication, immutable
 host readback, packed byte format and snapshot command behavior. No host command
 may lease any of these three banks.
 
+## LCD cancellation and blank control
+
+The PPU supplies `source_abort`, `blank_assert`, and `source_display_eligible`.
+Existing synthetic sources tie abort/blank low and eligibility high. Abort wins
+over a same-edge pixel, resets partial writer progress, and emits
+`observe_abort` with the current epoch and next completed-frame sequence.
+It does not complete a frame, consume a sequence number, or change complete
+banks. The observer's snapshot assembler discards only unpublished partial data.
+Core reset retains its existing sequence-reset and last-image policy.
+
+`blank_assert` sets a persistent system-domain blank request. Core reset retains
+that level. Both events invalidate release qualification before any matching
+acknowledgement or new completion can qualify a release. An eligible completed
+frame may qualify its existing one-outstanding offer phase only after the
+pixel-domain blank-active level has crossed back through two synchronizer stages.
+No host epoch or source-sequence comparison identifies this qualification.
+A matching qualified acknowledgement clears the request; stale offers continue
+to swap, acknowledge and recycle normally while white remains selected.
+
+The request crosses two attributed pixel-domain synchronizer stages. On the
+next pixel edge observing the second stage high, blank becomes active, including
+during active scanout. Thus the digital assertion bound is three receiving
+edges from the first synchronizer sampling edge. A stopped pixel clock resumes
+under the same edge bound; this is not an analog metastability-time guarantee.
+Blank remains active until the synchronized request is low and a permitted swap
+boundary occurs. Assertion wins at a simultaneous boundary. Release follows
+a qualified frame swap, acknowledgement round trip, level synchronization and
+then a permitted boundary. Rapid intermediate requests may coalesce; a newer
+invalidation cannot be released by an old offer or simultaneous completion.
+
+At the aligned output coordinates, active blank selects F/F/F inside the scaled
+image even without a valid display bank. Borders and video blanking remain black;
+global reset/invalid video takes priority. No additional RGB pipeline stage is
+introduced. `video_image` includes this presented white area; `display_valid`
+and displayed identity continue to describe retained banks. Core reset alone
+does not request white. The first enabled PPU frame is observed as real shade0
+pixels but cannot qualify a blank release; later complete frames may qualify.
+
+The two added level synchronizers require exact first-stage constraints and
+retained second-stage setup/hold evidence in the composed FPGA target. The
+existing bank bundle remains unchanged. Separate mailbox-end resets are still
+invalid under the shared clock contract.
+
 ## Ownership and storage
 
 The system side tracks writer, last acknowledged display, optional pending bank,

@@ -223,31 +223,11 @@ and future snapshot assembly. Internally rendered colors from that startup
 frame are not exposed as final source shades. Subsequent frames expose rendered
 shades. Partial disable interrupts either kind of frame in the same way.
 
-A presentation blank request must survive old pending offers and rapid
-LCD disable/enable/disable sequences. Only an acknowledged complete frame from
-the latest eligible post-startup generation can release it, and release occurs
-at a permitted display boundary. Generation qualification belongs to the
-presentation adapter, not the host epoch or completed-frame sequence. The
-implementation protocol and crossing constraints require review before RTL.
-Blank control is persistent, not a pulse or an unacknowledged toggle. Old offers
-continue normal acknowledgement and recycling even while white is selected.
-Rapid intermediate presentation states may coalesce while the newest blank
-request remains pending; a stale offer cannot release that request.
-
-The candidate protocol holds a system-domain blank level until acknowledgement
-of an eligible post-startup offer. Each disable or core reset invalidates any
-pending release qualification before processing an acknowledgement. It preserves
-the blank level itself on core reset. The existing one-outstanding-offer phase
-may identify the qualifying offer only after its predecessor has been recycled;
-source sequence/epoch reuse is not a qualification token. A separate synchronized
-blank level must be observed before that frame's capture/swap acknowledgement.
-That ordering needs an explicit invariant and adversarial checks before reuse.
-
-For review, blank assertion overrides the image pixels after its synchronized
-pixel-domain arrival, including during active scanout, with global-reset black
-having higher priority. Only the scaled image is white. Unblank waits for a
-permitted swap boundary; simultaneous blank assertion wins. The exact pipeline
-edge and stopped-clock resumption bound must be fixed with the adapter.
+The [VGA LCD-control boundary](../vga/MAS_vga.md#lcd-cancellation-and-blank-control)
+owns the persistent blank request, qualifying offer acknowledgement, crossing
+latency and final aligned white mask. The PPU supplies one disable request and
+marks only post-startup frames eligible to release it. Generation qualification
+uses presentation ownership, never source epoch/sequence reuse.
 
 Core reset retains the existing last-image rule. Initializing LCDC to zero is
 not a software LCD-disable request and must not erase a retained display image.
