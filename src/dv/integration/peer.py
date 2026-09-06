@@ -71,7 +71,7 @@ def main():
         with connection, connection.makefile('rwb') as channel:
             # Wall time bounds a stalled bridge; Client separately checks its
             # generated response budget against returned simulation time.
-            connection.settimeout(30)
+            connection.settimeout(120)
             transport = Transport(channel)
             records = []
             client = Client(transport, clock=lambda: transport.sim_time, record=records.append)

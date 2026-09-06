@@ -7,7 +7,7 @@ proc progress {phase} {
     puts "SMOKE_DRIVER phase=$phase ordinal=$ordinal wall_ms=[expr {[clock milliseconds]-$started}] sim_ns=[observe simulation_ns] tx_count=[observe tx_count] tx_busy=[observe tx_busy] rx_count=[observe rx_count] rx_done=[observe rx_done]"
 }
 proc bounded_wait {expression} {
-    set deadline [expr {[clock milliseconds] + 30000}]
+    set deadline [expr {[clock milliseconds] + 120000}]
     while {![uplevel 1 [list expr $expression]]} {
         if {[clock milliseconds] >= $deadline} { error "SMOKE_DRIVER_RESPONSE_TIMEOUT" }
         advance

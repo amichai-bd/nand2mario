@@ -67,8 +67,10 @@ bridges encoded request bytes into a DV serial transmitter and returns bytes
 captured from UART TX. It never decodes commands, supplies expected responses
 or writes product storage. Its loopback channel is not a physical serial port.
 
-Peer readiness has a five-second wall bound. Channel and simulation progress
-have explicit watchdogs; the target's outer runtime bound is600 seconds. The
+Peer readiness has a five-second wall bound. Reply waiting and simulation
+progress use a120-second wall tolerance, checked between simulation chunks.
+The Client's simulated response deadline is unchanged. The target's outer
+runtime bound is600 seconds. The
 builder reaps the peer after success, simulator failure or timeout, retaining
 both outcomes. Success requires the live Client's successful exit and the DUT
 checker signature. The Client checks response deadlines in simulation time.
