@@ -67,6 +67,8 @@ module tb_dma_composition;
     integer reads, scan_reads, scan_combined, excluded_reads;
     integer family_case, ordinary_writes;
     bit family_decrement, family_pop, family_store, corrupt_pop_idu;
+    bit lcd_case, lcd_disabled, lcd_reenabled, corrupt_lcd;
+    integer lcd_scan_before, lcd_scan_after;
     logic [19:0] read_rows;
     bit corrupt_row_case, row_fault_ready;
     logic [14:0] row_fault_address;
@@ -187,6 +189,10 @@ module tb_dma_composition;
                     expected_oam[selected_offset]=power_case && selected_offset==1 ? 8'h27 : sprite_byte(selected_offset);
                     dma_count=dma_count+1;
                 end
+                if(lcd_case && bus_commit && bus_plan.write_enable && bus_plan.address==16'hff40) begin
+                    if(bus_plan.write_data==0)lcd_disabled=1;
+                    else if(lcd_disabled && bus_plan.write_data==8'h93)lcd_reenabled=1;
+                end
                 sampled_read=0; sampled_write=0;
                 if(read_case && bus_commit && bus_plan.address[15:8]==8'hfe) begin
                     if(bus_plan.write_enable || bus_plan.address!==16'('hfe00+((read_increment_case || family_pop) ? reads : 0)))
@@ -211,6 +217,10 @@ module tb_dma_composition;
                 if(sampled_read && sampled_write!=(family_pop ? reads%2==1:read_increment_case))
                     $fatal(1,"DMA_COMPOSITION_READ_IDU expected=%0d actual=%0d",family_pop ? reads%2==1:read_increment_case,sampled_write);
                 if(ppu_oam_phase==1 && (sampled_read || sampled_write)) begin
+                    if(lcd_case)begin
+                        if(lcd_reenabled)lcd_scan_after=lcd_scan_after+1;
+                        else lcd_scan_before=lcd_scan_before+1;
+                    end
                     corrupt_row(int'(ppu_scan_index)/2,sampled_read,sampled_write);
                     if(sampled_read) begin
                         read_rows[int'(ppu_scan_index)/2]=1;
@@ -249,6 +259,8 @@ module tb_dma_composition;
         pause_phase=-1; pause_count=0; pause_dot=0; pause_sample_phase=0; pause_done=0;
         if($value$plusargs("PAUSE_PHASE=%d",pause_phase) && (pause_phase<0 || pause_phase>3))
             $fatal(1,"DMA_PAUSE_PHASE_ARGUMENT");
+        lcd_case=$test$plusargs("LCD_RESTART");corrupt_lcd=$test$plusargs("CORRUPT_LCD_VALID");
+        lcd_disabled=0;lcd_reenabled=0;lcd_scan_before=0;lcd_scan_after=0;
         family_case=0;ordinary_writes=0;
         if($value$plusargs("FAMILY=%d",family_case) && (family_case<1 || family_case>4))
             $fatal(1,"DMA_FAMILY_ARGUMENT");
@@ -272,7 +284,7 @@ module tb_dma_composition;
             dut.engine.write_valid,peripheral_commit,dut.service.dma_held_pair,
             reads,scan_reads,scan_combined,excluded_reads,read_rows,sampled_read,sampled_write,row_fault_ready,row_fault_address,
             cpu_stopped,test_wake,sleep_dot,stop_execute,clock_stop_action,
-            pause_phase,pause_done,pause_dot,pause_count,pause_sample_phase,family_case,ordinary_writes);
+            pause_phase,pause_done,pause_dot,pause_count,pause_sample_phase,family_case,ordinary_writes,lcd_disabled,lcd_reenabled,lcd_scan_before,lcd_scan_after);
         repeat(3) @(negedge clk_sys); reset_sys=0;
         core_reset=1; repeat(2) @(negedge clk_sys); core_reset=0;
         wait(memory_init_done); repeat(3) @(negedge clk_sys);
@@ -289,6 +301,13 @@ module tb_dma_composition;
         program_bytes[14]='h05; program_bytes[15]='h20; program_bytes[16]='hfc; program_bytes[17]='h76;
         // Both opcodes have a two-M-cycle body; DEC B/JR controls64 iterations.
         if(read_case) program_bytes[13]=read_increment_case ? 8'h2a : 8'h7e;
+        if(lcd_case)begin
+            // A second original loop resumes at HL=FE40 after actual LCD off/on writes.
+            program_bytes[17]='h3e;program_bytes[18]=0;program_bytes[19]='he0;program_bytes[20]='h40;
+            program_bytes[21]='h3e;program_bytes[22]='h93;program_bytes[23]='he0;program_bytes[24]='h40;
+            program_bytes[25]='h06;program_bytes[26]='h40;program_bytes[27]='h23;
+            program_bytes[28]='h05;program_bytes[29]='h20;program_bytes[30]='hfc;program_bytes[31]='h76;
+        end
         if(family_case!=0) begin
             // D counts iterations so INC/POP BC cannot alter loop control.
             program_bytes[11]='h16;program_bytes[14]='h15;
@@ -357,6 +376,13 @@ module tb_dma_composition;
             wait(seen_start && access_write && access_store==STORE_OAM && access_address==5);
             @(negedge clk_sys); force dut.access_wdata=8'h00;
         end
+        if(lcd_case)begin
+            wait(lcd_disabled);repeat(3)@(negedge clk_sys);
+            if(corrupt_lcd)force dut.ppu_oam_valid=1'b1;
+            #1;
+            if(ppu_oam_phase!=0 || ppu_oam_valid || raw_oam_read)
+                $fatal(1,"DMA_LCD_REQUEST_CANCEL phase=%0d valid=%0d request=%0d",ppu_oam_phase,ppu_oam_valid,raw_oam_read);
+        end
         if(corrupt_pop_idu) begin
             wait(request_valid && bus_plan.access_kind==ACCESS_STACK && bus_plan.address==16'hfe00);
             @(negedge clk_sys);
@@ -388,12 +414,14 @@ module tb_dma_composition;
         end
         @(negedge clk_sys); run_enable=0;
         repeat(60) @(negedge clk_sys);
-        if(dma_count!=160 || effects!=((power_case || (read_case && !read_increment_case && !family_pop)) ? 0 : 64) || checks==0) $fatal(1,"DMA_COMPOSITION_COUNTS dma=%0d effects=%0d ppu=%0d",dma_count,effects,checks);
+        if(dma_count!=160 || effects!=((power_case || (read_case && !read_increment_case && !family_pop)) ? 0 : (lcd_case ? 128:64)) || checks==0) $fatal(1,"DMA_COMPOSITION_COUNTS dma=%0d effects=%0d ppu=%0d",dma_count,effects,checks);
         if(pause_phase>=0 && !pause_done) $fatal(1,"DMA_PAUSE_NOT_EXERCISED");
         if(read_case && (reads!=(family_pop ? 128:64) || excluded_reads==0 ||
             ((read_increment_case || family_pop) ? scan_combined==0 : scan_reads==0)))
             $fatal(1,"DMA_COMPOSITION_READ_COUNTS reads=%0d scan=%0d combined=%0d excluded=%0d",
                 reads,scan_reads,scan_combined,excluded_reads);
+        if(lcd_case && (!lcd_reenabled || lcd_scan_before==0 || lcd_scan_after==0))
+            $fatal(1,"DMA_LCD_SCAN_COVERAGE before=%0d after=%0d",lcd_scan_before,lcd_scan_after);
         if(family_store && ordinary_writes!=64)$fatal(1,"DMA_FAMILY_STORE_COUNT");
         if(family_pop && scan_reads==0)$fatal(1,"DMA_FAMILY_POP_SECOND_READ");
         observe=0; setup=1;
@@ -404,8 +432,8 @@ module tb_dma_composition;
                 $fatal(1,"DMA_COMPOSITION_READBACK offset=%0d expected=%02x actual=%02x",index,expected_oam[index],access_rdata);
         end
         $fclose(trace);
-        $display("PASS DMA composition bytes=160 idu=%0d halt=%0d stop=%0d ppu=%0d reads=%0d scan=%0d combined=%0d excluded=%0d rows=%05x pause=%0d family=%0d stores=%0d",
-            effects,halt_case,stop_case,checks,reads,scan_reads,scan_combined,excluded_reads,read_rows,pause_phase,family_case,ordinary_writes); $finish;
+        $display("PASS DMA composition bytes=160 idu=%0d halt=%0d stop=%0d ppu=%0d reads=%0d scan=%0d combined=%0d excluded=%0d rows=%05x pause=%0d family=%0d stores=%0d lcd_off=%0d lcd_on=%0d scan_before=%0d scan_after=%0d",
+            effects,halt_case,stop_case,checks,reads,scan_reads,scan_combined,excluded_reads,read_rows,pause_phase,family_case,ordinary_writes,lcd_disabled,lcd_reenabled,lcd_scan_before,lcd_scan_after); $finish;
     end
     initial begin #10000000; $fatal(1,"DMA_COMPOSITION_WATCHDOG"); end
 endmodule

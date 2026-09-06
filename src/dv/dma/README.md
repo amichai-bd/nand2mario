@@ -136,3 +136,9 @@ DMA), nine reads, the complete transfer and readback. IF/IE observations remain
 available immediately before T3 while the raw port reads an operand. The held
 event input proves availability, not single-pulse counting. The fault removes
 the actual IF observation. Other peripheral replies prove routing only.
+
+The LCD restart program executes real FF40 off/on writes between two 64-IDU
+loops. It requires canceled OAM requests and validity after off, scan effects
+before and after reenable, every physical write and full readback. The negative
+forces actual response validity while off. This proves cancellation and resumed
+composition; fresh-row replacement is checked separately by the scan-tag fixture.
