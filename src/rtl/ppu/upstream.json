@@ -26,7 +26,8 @@
     "Convert to logic-only SystemVerilog with separate declarations and shared register/assertion macros",
     "Adapt CPU commit and emulated-dot phases without fabric clocks or hidden extra dots",
     "Use project direct-entry reset values and owned memory interface",
-    "Add explicit source/observer cancellation and generation-qualified LCD blank presentation"
+    "Add explicit source/observer cancellation and generation-qualified LCD blank presentation",
+    "Remove FF46/DMA engine; issue132 owns scheduling/arbitration/corruption and issue130 owns the single backing store"
   ],
   "use_boundary": "Private project only in this issue; no source/bitstream external release. Derived files retain GPL-3.0-or-later. Any later distribution of a combined work requires a compatible release review; original unrelated material is not relicensed."
 }

@@ -15,6 +15,11 @@ shades from original asymmetric tile/object data. A separate event/timing oracle
 uses pinned source expectations and the scheduled writes; it must not use DUT
 counters, fetch state or completion to choose an expected result.
 
+The initial [spatial oracle](scene.py) covers stable-register rendering. Its
+host sanity checks use explicit bitplanes and remapped palettes. It does not
+provide timing evidence and rejects special window activation geometry pending
+the separate event model.
+
 ## Required matrix
 
 | Group | Directed cases and independent checks |

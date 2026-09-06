@@ -49,9 +49,20 @@ those results must not be relabeled direct DMG-B measurements.
 
 Exact LY153 comparison edges, STAT-write transient alignment, startup dot
 numbering and WX boundary behavior must be reconciled with independent timing
-expectations before their state transitions are implemented. DMA/OAM collision
-behavior needs a named boundary with the later bus owner; ordinary mode access
-blocking alone does not establish the OAM corruption quirk.
+expectations before their state transitions are implemented. [DMA/access arbitration #132](https://github.com/amichai-bd/nand2mario/issues/132)
+owns FF46 transfer scheduling and application of DMG-B OAM corruption from CPU
+bus/IDU activity. [Memory #130](https://github.com/amichai-bd/nand2mario/issues/130)
+owns the single backing store and routing. This PPU owns OAM scan timing and
+explicit access/arbitration signals; mode blocking does not prove corruption.
+The upstream DMA engine will be removed structurally, not silently omitted from
+the product goal.
+
+LCDC bit0 disabling BG/window selects raw background color0, which still passes
+through BGP. [dmg-acid2's Hair explanation](https://github.com/mattcurrie/dmg-acid2/blob/8a98ce731f96dde032ffb22ec36dc985d78fdb18/README.md#hair)
+explicitly states this palette behavior. It is distinct from LCDC bit7 disabling
+the LCD and the first enabled frame's forced final shade0. Test a nonwhite BGP
+color0 so an identity palette cannot hide this distinction. Objects can still
+win over the disabled background regardless of their behind-BG attribute.
 
 ## Licensed implementation basis
 
@@ -87,22 +98,74 @@ belongs to the memory owner; reset completion waits for that owner before RUN.
 
 The CPU boundary prepares address, direction and write byte before T1, holds
 them through T3 and commits once on T4. Only the commit can change LCD registers.
-A read exposes the state sampled at that edge, with masks and blocked-access
-results defined by this owner. The PPU never stretches an emulated T-cycle.
+A read exposes pre-edge state, with masks and blocked-access
+results defined by this owner. Renderer fetch, shift and final-pixel sampling
+also use pre-edge registers. A coincident write commits after those samples;
+BGP/OBP writes affect the next pixel sampling edge, not the one already sampled.
+LCDC-disable cancellation takes priority over forwarding that edge's source
+pixel. The renderer sample can exist internally without becoming an accepted
+source pixel. Reset cancels any not-yet-forwarded event. The PPU never stretches an emulated T-cycle.
 The shared integration owner must define same-edge register/PPU update ordering.
 
-The intended memory boundary requests one VRAM byte or one OAM entry at a time,
+The intended memory boundary requests one VRAM byte or one 16-bit OAM pair at a time,
 with a fixed system-clock response that completes before the consuming dot.
 There is no PPU backpressure. Missing or mistimed memory responses are integration
 errors with named assertions, not permission to change mode length. CPU access
-permission outputs follow PPU mode; DMA arbitration remains a separate input
-contract to settle before memory-facing RTL.
+permission outputs follow the specified access windows, which can differ from
+the delayed STAT mode bits. DMA arbitration is an explicit input; denied OAM
+service during a legitimate DMA slot is distinct from a missing promised memory
+response. Scan phase and address remain observable to the arbiter. No duplicate
+OAM store is created in the PPU.
 
 The source boundary emits final two-bit DMG shades, row-major start/valid,
 core epoch and completed-dot identity. Registered output pulses are sampled by
 the bridge on the following system edge with their associated metadata. Every
 real complete source frame reaches the observer before presentation selection.
 Neither display drops nor host snapshot activity feeds back into the PPU.
+
+## Digital edge and memory table for review
+
+`A` is the rising system edge carrying `gb_tick`. `B` is the following system
+edge. These are pipeline names, not new clocks or emulated dots. An output
+event sampled at A is held for the bridge to accept at B. Global/core reset at
+B suppresses that pending event. Host pause prevents future A edges but does not
+undo the already sampled event. No B action may perform another CPU access,
+advance the PPU dot, or reread a palette to alter that event.
+
+| Edge or event | Required ordering |
+|---|---|
+| Ordinary A | Read pre-edge LCD registers, memory response and renderer state; capture final shade and identity; advance rendering/timing state once |
+| CPU read commit at A | Return pre-edge register/mode state; address preparation has no side effect |
+| CPU write commit at A | Renderer sampling precedes register mutation; future samples see the write; a write to STAT creates its documented transient from the commit, not from address preparation |
+| LCD disable at A | Cancel partial source progress and suppress A's otherwise valid pixel/completion; request white presentation; retain ownership of all complete/offered banks |
+| Core reset at any system edge | Initialize PPU control and cancel pending source event without requiring a future tick; preserve VGA mailbox ends, desired presentation state and complete banks |
+| Memory contract violation | Latch a visible PPU fault, suppress source publication and future memory side effects, and issue one partial abort; do not insert a wait dot or silently lengthen a mode |
+| Interrupt publication | Changed interrupt condition after A is visible to the shared interrupt owner at B; edge history is sampled on system edges so one condition rise cannot become repeated requests |
+
+The CPU register port is `io_commit`, `io_write`, `io_address[15:0]`,
+`io_wdata[7:0]`, and combinational `io_rdata[7:0]`/`io_selected`.
+Commit is valid only with `gb_tick`. Generated addresses identify LCD registers;
+FF46 belongs to #132. IRQ condition levels and one-system-cycle rising-edge
+requests are exposed separately for trace and integration. Their same-edge
+interaction with IF writes belongs to the shared interrupt owner.
+
+The VRAM port provides `vram_request`, `vram_address[12:0]` and receives
+`vram_data[7:0]` plus `vram_data_valid`. The memory owner supplies a registered
+one-system-cycle read response and holds the corresponding data/valid through
+the consuming dot. A newly changed address has the intervening system cycles
+to settle; a missing promised response on the consuming edge is a fault.
+
+The OAM port provides a seven-bit pair address, scan-active/index and fetch-phase
+observations, and receives the arbitrated sixteen-bit bus pair, data validity
+and DMA-active state. There is one external OAM store. The arbiter owns which
+bus data is presented during contention; DMA-active suppression of scan capture
+is explicit and does not stretch scan time. It is distinct from a missing
+promised bus response. The final named phase encoding must agree with #132
+before the memory-facing module is frozen.
+
+This table fixes the intended digital transaction abstraction. Directed
+before/on/after register writes and imported-core phase comparison must establish
+its behavior; it is not an assertion of cartridge-pin phase equivalence.
 
 ## Proposed LCD cancellation and presentation
 
