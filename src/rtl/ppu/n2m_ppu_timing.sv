@@ -37,7 +37,7 @@ module n2m_ppu_timing (
     logic raw_vblank, line153;
     logic [6:0] line_quarter_next;
     logic [7:0] ly_next;
-    logic end_of_line, end_of_line_next, end_of_line_delayed;
+    logic end_of_line, end_of_line_next;
     logic vblank_stage, vblank_stage_next;
     logic comparison_stage, comparison_stage_next, coincidence_next;
     logic coincidence_irq, coincidence_irq_next, coincidence_natural, irq_natural;
@@ -174,7 +174,6 @@ module n2m_ppu_timing (
     `DFF_RST_EN(line_quarter, line_quarter_next, clk_sys, gb_tick && quarter_edge, disabled_reset, 7'd0)
     `DFF_RST_EN(ly, ly_next, clk_sys, gb_tick, disabled_reset, 8'd0)
     `DFF_RST_EN(end_of_line, end_of_line_next, clk_sys, gb_tick, disabled_reset, 1'b0)
-    `DFF_RST_EN(end_of_line_delayed, end_of_line, clk_sys, gb_tick, disabled_reset, 1'b0)
     `DFF_RST_EN(vblank_stage, vblank_stage_next, clk_sys, gb_tick, disabled_reset, 1'b0)
     `DFF_RST_EN(vblank_condition, vblank_stage, clk_sys, gb_tick, disabled_reset, 1'b0)
     `DFF_RST_EN(line_end_sample, line_end_sample_next, clk_sys, gb_tick, disabled_reset, 1'b0)
