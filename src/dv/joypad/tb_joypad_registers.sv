@@ -9,7 +9,7 @@ module tb_joypad_registers;
     logic [1:0] expected_select;
     integer item, case_number, checks, trace;
     bit corrupt, boundary_fault;
-    n2m_joypad dut (.*);
+    n2m_joypad dut (.request_event(), .*);
     task automatic check_state;
         case(expected_select)
             0: expected_data=8'hc0 | (8'h0f & ~(expected_buttons | (expected_buttons >> 4)));

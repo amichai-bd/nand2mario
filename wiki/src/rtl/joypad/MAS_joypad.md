@@ -1,8 +1,8 @@
 # DMG joypad
 
-Status: contract preparation for [#134](https://github.com/amichai-bd/nand2mario/issues/134).
-The matrix and register update rules below are implemented. Request transport
-and its directed phase proof remain a separate gate before event/wake RTL.
+Status: implementation and verification for [#134](https://github.com/amichai-bd/nand2mario/issues/134).
+The matrix, register updates and selected-line event transport are implemented.
+Directed event verification remains in progress.
 
 ## Authority
 
@@ -39,7 +39,7 @@ input latch, then emulated effects. This owner must not add a private input queu
 new host ABI or discarded update policy. `input_commit` accepts `input_buttons` at the system edge; it does not depend on
 gb_tick or CPU mode. A coincident select write and INPUT atomically update their
 separate fields, then the combinational matrix reflects both new values. Event
-transport for that change remains part of the pending review below.
+transport compares the old matrix with that final combined matrix.
 
 ## Interrupt and wake boundary
 
@@ -49,13 +49,17 @@ button sharing an already low line does not create another falling edge.
 Selecting a held button can produce a line fall. IE/IME do not mask the source.
 The existing IF owner stores requests and owns write/ack collision priority.
 
-A request pulse must reach a consuming system edge. Consecutive update transport
-must be checked against the IF owner's rising-level history, so adjacent events
-cannot silently disappear around an IF write/ack. This is a concrete integration
-requirement, not authorization for a speculative glitch filter or new handshake.
+The approved digital model detects each selected-line fall without an uncertain
+physical filter delay. `request_event` registers the OR of those falls at the
+update edge A and remains available through the following system edge B.
+The IF owner consumes it on `source_event[4]`, with its JOYP `source_level[4]`
+tied low. Adjacent high cycles are distinct accepted events, not a held level.
+The IF owner applies its existing write/ack priority at B. Neither IE nor IME
+filters this source. Reset cancels a pending event. No queue or ready handshake
+is added, and physical switch filtering is not modeled.
 
 CPU STOP entry consumes selected-active. The enclosing power owner retains an
-eligible selected-line wake event and qualifies stable clocks before asserting
+eligible `request_event` and qualifies stable clocks before asserting
 CPU wake_request. Raw button activity must not drive that qualified input.
 The [approved CPU restart model](../cpu/MAS_cpu.md#qualified-stop-wake) uses
 ordinary deterministic interrupt priority/stack behavior after qualification;
@@ -71,8 +75,8 @@ qualified CPU wake. Actual row, lost-event and duplicate-event faults and a
 local named assertion must fail nonzero. Retain explicit public waves, source
 pins, hashes, logs and literal expected/actual traces.
 
-Remaining contract review is bounded to event transport and accepted update
-ordering; matrix implementation can proceed independently.
+The event interface uses the approved IF A/B projection. It provides raw wake
+intent, not oscillator qualification or a second CPU power policy.
 
 
 `n2m_joypad` forwards exact-address selection and side-effect-free read data,
@@ -80,4 +84,4 @@ buttons_observe and selected_active. The memory owner forwards io_commit only
 for this selected owner; an off-boundary commit is a named contract violation.
 `joypad_state_t` owns the button byte and two writable select bits. Shared async
 register macros apply global/core reset with immediate profile observation;
-no IF state or qualified CPU wake output exists in this register slice.
+no IF state or qualified CPU wake output exists in this owner.

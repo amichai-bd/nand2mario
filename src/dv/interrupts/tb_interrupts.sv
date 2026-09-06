@@ -10,7 +10,7 @@ module tb_interrupts;
     logic [4:0] expected;
     logic [7:0] expected_ie;
     bit lost, duplicate, priority_fault;
-    n2m_interrupts dut (.*);
+    n2m_interrupts dut (.source_event(5'd0), .*);
 
     task automatic edge_cycle;
         #4; clk_sys = 1; #1; clk_sys = 0;

@@ -2,7 +2,7 @@
 `default_nettype none
 `include "src/rtl/common/macros.svh"
 
-// Register and matrix owner. Interrupt/wake transport is a separate design gate.
+// A registers each selected-line fall; the IF owner consumes that event at B.
 module n2m_joypad (
     input var logic clk_sys,
     input var logic reset_sys,
@@ -17,13 +17,16 @@ module n2m_joypad (
     output logic io_selected,
     output logic [7:0] io_rdata,
     output logic [7:0] buttons_observe,
-    output logic selected_active
+    output logic selected_active,
+    output logic request_event
 );
     import n2m_interfaces_pkg::*;
     import n2m_joypad_pkg::*;
     logic reset, write_select;
     logic [7:0] matrix_data;
     logic matrix_active;
+    logic [7:0] next_matrix_data;
+    logic next_matrix_active, event_q;
     joypad_state_t state_q, state_next, reset_value;
     assign reset = reset_sys || core_reset;
     assign reset_value.buttons = 8'd0;
@@ -40,6 +43,12 @@ module n2m_joypad (
         .buttons(state_q.buttons), .select_bits(state_q.select_bits),
         .read_data(matrix_data), .selected_active(matrix_active)
     );
+    n2m_joypad_matrix u_next_matrix (
+        .buttons(state_next.buttons), .select_bits(state_next.select_bits),
+        .read_data(next_matrix_data), .selected_active(next_matrix_active)
+    );
+    `DFF_ARST_VAL(event_q, |(matrix_data[3:0] & ~next_matrix_data[3:0]), clk_sys, reset, 1'b0)
+    assign request_event = !reset && event_q;
     assign io_rdata = io_selected ? (reset ? {2'b11, PROFILE_JOYP_SELECT[5:4], 4'hf} : matrix_data) : 8'd0;
     assign buttons_observe = reset ? 8'd0 : state_q.buttons;
     assign selected_active = !reset && matrix_active;

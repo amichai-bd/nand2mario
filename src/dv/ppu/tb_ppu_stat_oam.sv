@@ -37,7 +37,7 @@ module tb_ppu_stat_oam;
     n2m_interrupts irq_owner (
         .clk_sys, .reset_sys, .core_reset, .gb_tick,
         .io_commit(if_commit), .io_write(if_commit), .io_address(16'hff0f), .io_wdata(8'd0),
-        .source_level(irq_sources), .irq_ack(5'd0), .io_selected(), .io_rdata(),
+        .source_event(5'd0), .source_level(irq_sources), .irq_ack(5'd0), .io_selected(), .io_rdata(),
         .ie_stored(), .if_stored, .ie_observe(), .if_observe
     );
     assign io_commit = pending_write && cpu_phase == 3 && gb_tick;
