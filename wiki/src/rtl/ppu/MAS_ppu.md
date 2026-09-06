@@ -355,7 +355,7 @@ The A-edge source snapshot therefore contains exactly X0 through159 before a
 line completes. Composed tests, rather than the position counter itself, check
 that ordering and frame size.
 
-The pinned Mealybug `m3_scx_low_3_bits` probe reports that low SCX bits appear to
+The pinned [Mealybug SCX probe](https://github.com/mattcurrie/mealybug-tearoom-tests/blob/70e88fb90b59d19dfbb9c3ac36c64105202bb1f4/src/ppu/m3_scx_low_3_bits.asm) reports that low SCX bits appear to
 be sampled at the start of the first B01s map fetch. This refines the earlier
 shorthand “line start”; it is not an asserted direct single-dot measurement.
 The controller latches on its first map-fetch phase0 and checks writes before,
@@ -363,8 +363,8 @@ on and after that edge using the A pre-edge convention. Later low-bit writes
 cannot change the already selected fine-scroll delay.
 
 WY matching is qualified by Window enable before being latched. The pinned
-MiSTer behavior is independently corroborated by GateBoy CPU-B gate PALO feeding
+MiSTer qualification is independently corroborated by [GateBoy CPU-B gate PALO](https://github.com/aappleby/metroboy/blob/36797ad4cf77b3e04ffe45716218a79b5280076a/src/GateBoyLib/GateBoyPixPipe.cpp) feeding
 SARY/REJO; Pan Docs' short Y-condition description omits that qualification.
-The selected digital controller samples it at quarter phase0 and retains it
+The selected digital controller maps this to quarter phase0 (an integration inference, not a measurement from gate names) and retains it
 until VBlank/LCD reset. Tests distinguish changing WY/enable before and after
 that sample, rather than assuming only a scanline-boundary comparison.

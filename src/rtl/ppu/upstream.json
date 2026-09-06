@@ -72,6 +72,12 @@
       "source": "rtl/video.v",
       "section": "Pixel counter, fine-scroll pause and source-pixel enable",
       "local_changes": "Extract rawX/scroll control; retain explicit terminal-pixel event; latch fineSCX at first background map-fetch boundary instead of live low bits; macro reset/enable and named range assertions; expose source-coordinate event without platform RGB"
+    },
+    {
+      "path": "n2m_ppu_window.sv",
+      "source": "rtl/video.v",
+      "section": "DMG WY/WX qualification and window row/column state",
+      "local_changes": "Extract DMG persistent WY and delayed WX/window state; preserve repeated activation row increments and WX166 delayed match; remove CGB/platform dependencies; macro registers and explicit reset"
     }
   ]
 }
