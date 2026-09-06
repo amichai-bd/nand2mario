@@ -1445,5 +1445,49 @@
     "expected_exit": "nonzero",
     "signature": "PPU_LCD_OBSERVER run=2 index=0 expected_sequence=1 actual=3",
     "timeout_seconds": 180
+  },
+  "ppu-live-scroll": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_live_scroll.sv"
+    ],
+    "top": "tb_ppu_live_scroll",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS PPU live SCY planes and coarse SCX fetch cases=2 visible_pixels=320",
+    "timeout_seconds": 180
+  },
+  "ppu-live-scroll-corrupt": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_live_scroll.sv"
+    ],
+    "top": "tb_ppu_live_scroll",
+    "args": [
+      "+live_scroll_corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "PPU_LIVE_SCROLL_PIXEL case=0 frame=1 index=0 expected=3 actual=0",
+    "timeout_seconds": 180
   }
 }

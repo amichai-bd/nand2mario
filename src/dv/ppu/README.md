@@ -119,3 +119,16 @@ last image; shared global reset clears both endpoints and blacks RGB. The fault
 target changes the actual observer sequence while leaving source pixels intact.
 These new cases require actual runtime evidence and retain the separate
 synthetic mailbox coverage rather than replacing it.
+
+`ppu-live-scroll` checks two legal T4 writes at elapsed70312 of the normal
+line0 fetch. The selected source trace starts the second map at70308 and
+captures it at70309; low and high planes capture at70311 and70313. Reload at
+70315 supplies the first visible pixel atA70316 (completed-dot70317). SCY0 to1
+therefore combines original row0 lowAA with row1 highAA for pixels0..7, then
+uses both row1 planes. SCX0 to8 retains the already captured column0 for pixels0..7
+and uses column2 from pixel8. Original flat tile colors distinguish the map
+case; asymmetric plane bytes distinguish the SCY case. Registered memory
+responses precede the consuming A. This is the approved digital phase mapping,
+not a silicon sub-T measurement. The fault target forces the actual public
+shade to0 where the first mixed-plane pixel must be3. Both targets require
+actual positive/nonzero evidence and retained public wave declarations.
