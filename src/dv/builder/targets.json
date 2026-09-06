@@ -484,5 +484,51 @@
     "args": [],
     "expected_exit": "nonzero",
     "signature": "N2M_ASSERT INTERRUPT_ACK_ONEHOT"
+  },
+  "timer-reload": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/rtl/timer/n2m_timer_pkg.sv",
+      "src/rtl/timer/n2m_timer.sv",
+      "src/dv/timer/tb_timer_reload.sv"
+    ],
+    "top": "tb_timer_reload",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS timer reload schedules cases=8 checks=1152"
+  },
+  "timer-counter-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/rtl/timer/n2m_timer_pkg.sv",
+      "src/rtl/timer/n2m_timer.sv",
+      "src/dv/timer/tb_timer_reload.sv"
+    ],
+    "top": "tb_timer_reload",
+    "args": [
+      "+counter_fault"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "TIMER_COUNTER case=0 tick=64 expected=ff actual=00"
+  },
+  "timer-request-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/rtl/timer/n2m_timer_pkg.sv",
+      "src/rtl/timer/n2m_timer.sv",
+      "src/dv/timer/tb_timer_reload.sv"
+    ],
+    "top": "tb_timer_reload",
+    "args": [
+      "+request_fault"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "TIMER_REQUEST case=2 tick=132 expected=1 actual=0"
   }
 }

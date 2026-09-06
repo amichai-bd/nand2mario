@@ -44,15 +44,21 @@ Pan Docs circuit explanation and the hardware-verified Mooneye TMA-write test.
 This owner follows the latter: the same reload-period TMA write changes TIMA.
 This is a documented source resolution, not an arbitrary selectable mode.
 
-Two detailed projections require source review before affected RTL:
+The digital order at an enabled edge is natural divider advance, then DIV
+reset/TAC replacement. Detect a falling selected signal across each step;
+at most one increment occurs. This preserves a selected signal which rises
+on the natural advance and falls on the following disable/reset. GateBoy's
+M-unit divider advances at its A phase, before its EFG CPU write window;
+this project projects that order onto accepted T4 writes without asserting
+an analog intermediate waveform. TIMA writes and reload still override counting.
 
-- A natural divider change and a DIV/TAC write can make an intermediate rise
-  followed by a write-induced fall. The proposed order is natural advance,
-  then write effect, with at most one increment. A simple old-to-final signal
-  comparison would miss this case. Pin its T4 relation before implementation.
-- Specify the reload-active interval in T enables, including a write exactly
-  at each boundary. The tested CPU write phase and the four-T delay must be
-  distinguished from a claim about an analog load pulse.
+For a natural overflow at t=128, reload/request occurs at t=132 and its active
+interval ends at t=136. TIMA writes at 124/128/132/136 give later values
+80/7F/FE/7F with initial TIMA/TMA FE and a 64-T timer. TMA writes at
+128/132/136/140 give 7F/7F/FE/FE. These original schedules follow the pinned
+Mooneye instruction timing: after the last DIV write, LD A,H takes 4 T,
+each NOP takes 4 T, and LDH write takes 12 T. The four-T active reload interval
+follows the detailed circuit explanation; the tests pin its legal T4 boundaries.
 
 ## Reset, pause, HALT and STOP
 
@@ -68,9 +74,11 @@ of host pause. This timer does not invent oscillator settling time or choose
 the CPU's unresolved unstable restart policy.
 
 The divider-reset input affects the divider rather than masquerading as core
-reset. Pending TIMA/reload behavior across a stopped interval must be sourced
-and explicitly reviewed before that case is implemented; it must not be
-silently discarded as though all timer state were reset.
+reset. Pending TIMA/reload state holds across the stopped interval and resumes on
+the remaining supplied enables. SameBoy corroborates this distinction by
+returning before timer progression while stopped, without resetting reload
+state. Its separately marked uncertain IME0 divider-hold workaround is not
+imported. The enclosing power owner remains responsible for qualified enables.
 
 ## Independent acceptance
 
