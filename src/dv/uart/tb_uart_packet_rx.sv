@@ -6,6 +6,7 @@ module tb_uart_packet_rx;
     logic reset;
     logic rx_valid;
     logic [7:0] rx_data;
+    logic rx_error;
     logic request_valid;
     packet_header_t header;
     logic [UART_ADDRESS_BITS-1:0] request_bytes;
@@ -25,7 +26,7 @@ module tb_uart_packet_rx;
     logic bad_read;
 
     n2m_uart_packet_rx #(.CLOCK_HZ(1000)) dut (
-        .clk_sys(clk), .reset_sys(reset), .rx_valid(rx_valid), .rx_data(rx_data),
+        .clk_sys(clk), .reset_sys(reset), .rx_valid(rx_valid), .rx_data(rx_data), .rx_error(rx_error),
         .request_valid(request_valid), .request_header(header),
         .request_bytes(request_bytes), .request_done(done),
         .packet_read(packet_read), .packet_address(packet_address),
@@ -172,6 +173,7 @@ module tb_uart_packet_rx;
         reset = 1'b1;
         rx_valid = 1'b0;
         rx_data = 0;
+        rx_error = 1'b0;
         done = 1'b0;
         packet_read = 1'b0;
         packet_address = 0;
@@ -181,7 +183,7 @@ module tb_uart_packet_rx;
         corrupt = $test$plusargs("corrupt");
         bad_read = $test$plusargs("bad_read");
         $dumpfile("waves.vcd");
-        $dumpvars(0, clk, reset, rx_valid, rx_data, request_valid, header,
+        $dumpvars(0, clk, reset, rx_valid, rx_data, rx_error, request_valid, header,
             request_bytes, done, packet_read, packet_address, packet_data,
             packet_valid, accepted, checked_bytes);
         crc16 = 16'hffff;
@@ -252,6 +254,15 @@ module tb_uart_packet_rx;
         send_frame();
         expect_silent(old_count);
         make_packet(8, 1, 0, 0);
+        send_byte(encoded[0]);
+        send_byte(encoded[1]);
+        rx_error = 1'b1;
+        @(negedge clk);
+        rx_error = 1'b0;
+        for (index = 2; index < encoded_size; index = index + 1)
+            send_byte(encoded[index]);
+        send_byte(0);
+        expect_silent(old_count);
         raw[raw_size-1] = raw[raw_size-1] ^ 8'h01;
         encode();
         send_frame();

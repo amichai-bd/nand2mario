@@ -1,7 +1,9 @@
 # UART endpoint verification
 
 Contract: [UART MAS](../../../wiki/src/rtl/uart/MAS_uart.md) and its shared ABI.
-Implementation and actual Questa evidence are pending under #91.
+Issue #91 tracks full endpoint acceptance; completed slices remain bounded to
+their named fixtures. The serial pair also composes the real packet receiver
+and Intel stores to check framing-error discard and delimiter recovery.
 
 | Boundary | Independent checks |
 | --- | --- |

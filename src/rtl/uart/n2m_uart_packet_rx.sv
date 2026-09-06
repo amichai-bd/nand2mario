@@ -10,6 +10,7 @@ module n2m_uart_packet_rx #(
     input var logic reset_sys,
     input var logic rx_valid,
     input var logic [7:0] rx_data,
+    input var logic rx_error,
     output logic request_valid,
     output n2m_interfaces_pkg::packet_header_t request_header,
     output logic [n2m_uart_pkg::UART_ADDRESS_BITS-1:0] request_bytes,
@@ -63,7 +64,7 @@ module n2m_uart_packet_rx #(
     assign request_bytes = decoded_count;
     assign more_encoded = encoded_index + 1'b1 < encoded_count;
     assign encoded_read = state == FETCH;
-    assign encoded_write = state == RECEIVE && rx_valid && rx_data != 0 &&
+    assign encoded_write = state == RECEIVE && rx_valid && !rx_error && rx_data != 0 &&
                            !discard_input && encoded_count < UART_ENCODED_MAX;
     assign decoded_write = emit_byte && decoded_count < UART_RAW_MAX;
     assign decoded_read = request_valid && packet_read;
@@ -201,6 +202,16 @@ module n2m_uart_packet_rx #(
                 decoded_count_next = decoded_count + 1'b1;
             end
         end
+        // A bad UART stop bit invalidates its entire in-flight frame. Keep a
+        // previously delimited request intact while dropping this busy input.
+        if (rx_error) begin
+            discard_input_next = 1'b1;
+            if (state == RECEIVE) begin
+                state_next = RECEIVE;
+                encoded_count_next = '0;
+                idle_count_next = '0;
+            end
+        end
     end
 
     `DFF_ARST_VAL(state, state_next, clk_sys, reset_sys, RECEIVE)
@@ -222,7 +233,7 @@ module n2m_uart_packet_rx #(
         decoded_read |-> packet_address < decoded_count)
     `N2M_ASSERT(UART_REQUEST_DONE, clk_sys, reset_sys, request_done |-> request_valid)
     `N2M_ASSERT_KNOWN(UART_RX_CONTROLS, clk_sys, reset_sys,
-        ({rx_valid, request_done, packet_read, state}))
+        ({rx_valid, rx_error, request_done, packet_read, state}))
     `N2M_ASSERT_STABLE_WHEN(UART_REQUEST_HELD, clk_sys, reset_sys,
         request_valid && !request_done, ({header, decoded_count}))
 endmodule

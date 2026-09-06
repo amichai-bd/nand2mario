@@ -556,5 +556,43 @@
     "args": [],
     "expected_exit": "nonzero",
     "signature": "N2M_ASSERT INTERRUPT_ACK_ONEHOT"
+  },
+  "uart-serial": {
+    "vendor_model": "intel-memory",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/uart/n2m_uart_packet_store.sv",
+      "src/rtl/uart/n2m_uart_packet_rx.sv",
+      "src/rtl/uart/n2m_uart_rx.sv",
+      "src/rtl/uart/n2m_uart_tx.sv",
+      "src/dv/uart/tb_uart_serial.sv"
+    ],
+    "top": "tb_uart_serial",
+    "args": [],
+    "signature": "PASS UART serial bytes=302 errors=2 packets=2 reset_bits=10",
+    "expected_exit": "zero",
+    "timeout_seconds": 180
+  },
+  "uart-serial-corrupt": {
+    "vendor_model": "intel-memory",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/uart/n2m_uart_packet_store.sv",
+      "src/rtl/uart/n2m_uart_packet_rx.sv",
+      "src/rtl/uart/n2m_uart_rx.sv",
+      "src/rtl/uart/n2m_uart_tx.sv",
+      "src/dv/uart/tb_uart_serial.sv"
+    ],
+    "top": "tb_uart_serial",
+    "args": [
+      "+corrupt"
+    ],
+    "signature": "UART_SERIAL_TX_BIT",
+    "expected_exit": "nonzero",
+    "timeout_seconds": 180
   }
 }

@@ -113,3 +113,24 @@ The [test plan](../../../../src/dv/uart/README.md) separates serial framing,
 packet integrity, duplicate handling and completed control effects. Required
 actual runs use Questa and the installed Intel model, through the shared builder.
 No physical transmission is part of this issue's acceptance.
+
+## Serial byte boundary
+
+The original 8N1 RX and TX modules use clk_sys at 50 MHz and the generated
+115200 baud rate. Each byte retains fractional clock residue across its ten
+bit cells. TX accepts a held byte only while ready, emits start/data-LSB-first/
+stop, and returns idle high. The source holds valid/data through acceptance.
+RX uses two synchronizer registers and samples only the second stage. It
+validates the start midpoint and samples each data/stop midpoint. A false
+start produces no byte; a low stop produces a one-cycle framing error and no
+valid byte. Global reset cancels partial bytes and drives TX idle high.
+
+A framing error discards the current encoded packet through its next delimiter.
+It cannot publish a partial request or disturb an already delimited request
+being processed. The serial fixture checks all 256 byte values against a
+literal per-clock rational TX oracle, asynchronous RX phase offsets, held TX
+input, false start, bad stop and reset in every bit. It also sends literal PING
+frames through the actual serial RX and Intel-backed packet receiver: a bad
+stop invalidates one frame, and the next complete frame recovers. A deliberate
+actual TX pin corruption must fail the independent bit oracle. These are
+logical simulation boundaries; no physical wiring or electrical claim follows.
