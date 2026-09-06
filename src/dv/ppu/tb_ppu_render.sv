@@ -24,7 +24,9 @@ module tb_ppu_render;
     logic [1:0] source_shade;
     logic [7:0] source_x, source_y;
     logic [31:0] source_epoch;
-    logic [63:0] source_dot, previous_dot;
+    logic [63:0] source_dot, previous_dot, enable_dot, normal_first_dot;
+    logic temporal;
+    integer startup_reads;
     logic [7:0] vram [0:8191];
     logic [7:0] oam [0:159];
     integer frame_count, pixel_count, trace_file;
@@ -99,6 +101,21 @@ module tb_ppu_render;
         @(negedge clk_sys);
         write_pending = 0;
     endtask
+    task automatic startup_read(input integer elapsed, input logic [15:0] address,
+        input logic [7:0] mask, input logic [7:0] value);
+        @(negedge clk_sys);
+        io_address = address;
+        io_write = 0;
+        do @(posedge clk_sys); while (!(gb_tick && dot_before == enable_dot + 64'(elapsed)));
+        if ((io_rdata & mask) !== value)
+            $fatal(1, "PPU_RENDER_STARTUP elapsed=%0d address=%h expected=%h actual=%h",
+                elapsed, address, value, io_rdata & mask);
+        startup_reads = startup_reads + 1;
+        @(negedge clk_sys);
+    endtask
+    always @(posedge clk_sys) begin
+        if (io_commit && io_address == 16'hff40 && io_wdata[7]) enable_dot = dot_before;
+    end
     always #10 clk_sys = !clk_sys;
     always @(posedge clk_sys) begin
         if (!reset_sys && source_valid) begin
@@ -109,6 +126,10 @@ module tb_ppu_render;
                     frame_count, pixel_count, source_x, source_y);
             if (source_dot !== dot_before || source_dot <= previous_dot || source_epoch !== 32'd5)
                 $fatal(1, "PPU_RENDER_TIMESTAMP frame=%0d index=%0d", frame_count, pixel_count);
+            if (temporal && pixel_count == 0 && frame_count == 1) normal_first_dot = source_dot;
+            if (temporal && pixel_count == 0 && frame_count == 2
+                && source_dot - normal_first_dot != 64'd70224)
+                $fatal(1, "PPU_RENDER_PERIOD expected=70224 actual=%0d", source_dot - normal_first_dot);
             expected = frame_count == 0 ? 2'd0 : scene(pixel_count % 160, pixel_count / 160);
             if (source_shade !== expected)
                 $fatal(1, "PPU_RENDER_PIXEL frame=%0d index=%0d expected=%0d actual=%0d",
@@ -120,9 +141,12 @@ module tb_ppu_render;
             if (pixel_count == 23039) begin
                 frame_count = frame_count + 1;
                 pixel_count = 0;
-                if (frame_count == 2) begin
+                if (frame_count == (temporal ? 3 : 2)) begin
                     $fclose(trace_file);
-                    $display("PASS PPU renderer original_scene frames=2 pixels=46080");
+                    if (temporal) begin
+                        if (startup_reads != 4) $fatal(1, "PPU_RENDER_STARTUP_COUNT");
+                        $display("PASS PPU renderer temporal frames=3 pixels=69120 startup_reads=4 period=70224");
+                    end else $display("PASS PPU renderer original_scene frames=2 pixels=46080");
                     $finish;
                 end
             end else pixel_count = pixel_count + 1;
@@ -141,6 +165,10 @@ module tb_ppu_render;
         io_address = 0;
         io_wdata = 0;
         dma_active = 0;
+        temporal = $test$plusargs("temporal");
+        startup_reads = 0;
+        enable_dot = 0;
+        normal_first_dot = 0;
         frame_count = 0;
         pixel_count = 0;
         previous_dot = 0;
@@ -183,6 +211,14 @@ module tb_ppu_render;
         write_register(16'hff4a, 32);
         write_register(16'hff4b, 47);
         write_register(16'hff40, 8'hf7);
+        if (temporal) begin
+            // Mooneye pinned lcdon_timing-GS brackets, relative to write T4:
+            // LD A,(DE) read commits at 4*N+8, using old state at that edge.
+            startup_read(76, 16'hff41, 8'h03, 0);
+            startup_read(80, 16'hff41, 8'h03, 3);
+            startup_read(448, 16'hff44, 8'hff, 0);
+            startup_read(452, 16'hff44, 8'hff, 1);
+        end
         if ($test$plusargs("corrupt")) begin
             wait (frame_count == 1);
             @(negedge clk_sys);
@@ -190,7 +226,7 @@ module tb_ppu_render;
         end
     end
     initial begin
-        #50000000;
+        #70000000;
         $fatal(1, "PPU_RENDER_TIMEOUT frames=%0d pixels=%0d", frame_count, pixel_count);
     end
 endmodule
