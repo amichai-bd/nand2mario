@@ -62,3 +62,16 @@ The shared interrupt integration fixture must coincide T4 retirement with VBlank
 and STAT rises and an IF write. Check the interrupt owner's specified priority
 and combinational next-IF observation captured by the CPU at B, without moving
 retirement to another edge or duplicating IF state in the CPU.
+
+## LY153 comparison fixture
+
+`tb_ppu_ly153.sv` uses the real timebase, legal CPU T4 commits and public
+FF44/FF41 readback. Forty-five checks cover LYC 0/152/153/nonmatching values,
+all invalid/valid window boundaries, immediate valid writes, retained IRQ
+history across invalid writes, one-system-edge event publication, pause and
+reset. The expected edge table comes from MAS_ppu; it does not read DUT
+line/quarter counters to choose expectations. Separate actual readback and
+IRQ-output corruptions must produce the intended raw fatal exits. This fixture
+is pending runtime evidence; normal pixel recurrence remains a separate
+composed regression. Same-edge natural-rise/write-fall coverage must respect
+legal CPU phase; an impossible T4 stimulus is not composed evidence.

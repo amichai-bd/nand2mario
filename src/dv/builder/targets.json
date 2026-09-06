@@ -1081,5 +1081,72 @@
     "expected_exit": "nonzero",
     "signature": "PPU_VIDEO_OBSERVER_PIXEL frame=1 index=0",
     "timeout_seconds": 180
+  },
+  "ppu-ly153": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_ly153.sv"
+    ],
+    "top": "tb_ppu_ly153",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS PPU LY153 public reads cases=45 legal LYC invalid valid pause reset",
+    "timeout_seconds": 180
+  },
+  "ppu-ly153-corrupt": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_ly153.sv"
+    ],
+    "top": "tb_ppu_ly153",
+    "args": [
+      "+ly_corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "PPU_LY153_READ elapsed=69763 expected=153 actual=0",
+    "timeout_seconds": 180
+  },
+  "ppu-ly153-irq-corrupt": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_ly153.sv"
+    ],
+    "top": "tb_ppu_ly153",
+    "args": [
+      "+irq_corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "PPU_LY153_EVENT elapsed=69773 expected=1 actual=0",
+    "timeout_seconds": 180
   }
 }
