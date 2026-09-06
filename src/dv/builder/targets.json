@@ -1912,5 +1912,1048 @@
     "expected_exit": "nonzero",
     "signature": "PPU_VBLANK_EVENT case=0 dot=65662 expected=1 actual=0",
     "timeout_seconds": 120
+  },
+  "cpu-alu": {
+    "sources": [
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/dv/cpu/alu_reference.sv",
+      "src/dv/cpu/tb_cpu_alu.sv"
+    ],
+    "top": "tb_cpu_alu",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU ALU cases=1232896 operations=32 seed=none"
+  },
+  "cpu-alu-corrupt": {
+    "sources": [
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/dv/cpu/alu_reference.sv",
+      "src/dv/cpu/tb_cpu_alu.sv"
+    ],
+    "top": "tb_cpu_alu",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_ALU_MISMATCH case=17 op=0 lhs=00 rhs=08 flags=1f bit=0 expected=0800 actual=0900"
+  },
+  "cpu-execute": {
+    "sources": [
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/dv/cpu/alu_reference.sv",
+      "src/dv/cpu/tb_cpu_execute.sv"
+    ],
+    "top": "tb_cpu_execute",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU execute cases=135168 base=256 flagsets=16 cb_memory=32 seed=none"
+  },
+  "cpu-bus": {
+    "sources": [
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/dv/cpu/tb_cpu_bus.sv"
+    ],
+    "top": "tb_cpu_bus",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU bus commits=13 pause_phases=4 reset_phases=4 inactive_cycles=4"
+  },
+  "cpu-bus-missing-response": {
+    "sources": [
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/dv/cpu/tb_cpu_bus.sv"
+    ],
+    "top": "tb_cpu_bus",
+    "args": [
+      "+missing_response"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT CPU_BUS_RESPONSE"
+  },
+  "cpu-bus-late-active": {
+    "sources": [
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/dv/cpu/tb_cpu_bus.sv"
+    ],
+    "top": "tb_cpu_bus",
+    "args": [
+      "+late_active"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT CPU_BUS_ACTIVE_BOUNDARY"
+  },
+  "cpu-bus-changing-request": {
+    "sources": [
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/dv/cpu/tb_cpu_bus.sv"
+    ],
+    "top": "tb_cpu_bus",
+    "args": [
+      "+change_after_t1"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT CPU_BUS_PLAN_STABLE"
+  },
+  "cpu-retire": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/dv/cpu/tb_cpu_retire.sv"
+    ],
+    "top": "tb_cpu_retire",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU retirement events=6 lengths=1,2,3 irq_zero=1 reset_cancel=1"
+  },
+  "cpu-retire-corrupt": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/dv/cpu/tb_cpu_retire.sv"
+    ],
+    "top": "tb_cpu_retire",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_RETIRE_MISMATCH case=1"
+  },
+  "cpu-program": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_program.sv"
+    ],
+    "top": "tb_cpu_program",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU program events=18 Mcycles=50 dots=220 HALT=1"
+  },
+  "cpu-program-state-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_program.sv"
+    ],
+    "top": "tb_cpu_program",
+    "args": [
+      "+state_fault"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_PROGRAM_STATE event=11"
+  },
+  "cpu-program-timing-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_program.sv"
+    ],
+    "top": "tb_cpu_program",
+    "args": [
+      "+timing_fault"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_PROGRAM_TIMING"
+  },
+  "cpu-program-retirement-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_program.sv"
+    ],
+    "top": "tb_cpu_program",
+    "args": [
+      "+retirement_fault"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_PROGRAM_STATE event=3"
+  },
+  "cpu-irq": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_irq.sv"
+    ],
+    "top": "tb_cpu_irq",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU IRQ cases=20 T3 stack HALT wake CB EI DI RETI pause"
+  },
+  "cpu-irq-snapshot-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_irq.sv"
+    ],
+    "top": "tb_cpu_irq",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_IRQ_BUS case=0 dot=32"
+  },
+  "cpu-vectors": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_vectors.sv"
+    ],
+    "top": "tb_cpu_vectors",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU vectors cases=7968 forms=498 flags=16 excluded_STOP_HALT=32",
+    "timeout_seconds": 120
+  },
+  "cpu-vectors-state-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_vectors.sv"
+    ],
+    "top": "tb_cpu_vectors",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_VECTOR_STATE case=0",
+    "timeout_seconds": 120
+  },
+  "cpu-vectors-missing": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_vectors.sv"
+    ],
+    "top": "tb_cpu_vectors",
+    "args": [
+      "+missing"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_VECTOR_MISSING case=0",
+    "timeout_seconds": 120
+  },
+  "cpu-reset": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_reset.sv"
+    ],
+    "top": "tb_cpu_reset",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU reset cases=10 phases=4 pending=2 pause=20 fresh_events=50"
+  },
+  "cpu-reset-lost-write": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_reset.sv"
+    ],
+    "top": "tb_cpu_reset",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_RESET_WRITE case=0 dot=32"
+  },
+  "cpu-irq-di-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_irq.sv"
+    ],
+    "top": "tb_cpu_irq",
+    "args": [
+      "+di_fault"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_IRQ_BUS case=18 dot=28"
+  },
+  "cpu-halt-lock": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_halt_lock.sv"
+    ],
+    "top": "tb_cpu_halt_lock",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU HALT bug cases=2 illegal_locks=11 reset_recovery=11"
+  },
+  "cpu-halt-bug-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_halt_lock.sv"
+    ],
+    "top": "tb_cpu_halt_lock",
+    "args": [
+      "+halt_fault"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_POWER_BUS case=0 dot=12"
+  },
+  "cpu-lock-event-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_halt_lock.sv"
+    ],
+    "top": "tb_cpu_halt_lock",
+    "args": [
+      "+lock_fault"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_POWER_LOCK_EVENT case=2"
+  },
+  "cpu-execute-idu-fault": {
+    "sources": [
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/dv/cpu/alu_reference.sv",
+      "src/dv/cpu/tb_cpu_execute.sv"
+    ],
+    "top": "tb_cpu_execute",
+    "args": [
+      "+idu_fault"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_EXECUTE_IDU op=03 step=0"
+  },
+  "cpu-program-idu-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_program.sv"
+    ],
+    "top": "tb_cpu_program",
+    "args": [
+      "+effect_fault"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_PROGRAM_IDU cycle=20 dot=81"
+  },
+  "cpu-program-idu-missing": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_program.sv"
+    ],
+    "top": "tb_cpu_program",
+    "args": [
+      "+effect_missing"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT CPU_BUS_RESPONSE"
+  },
+  "cpu-program-idu-page": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_program.sv"
+    ],
+    "top": "tb_cpu_program",
+    "args": [
+      "+effect_page"
+    ],
+    "expected_exit": "zero",
+    "signature": "PASS CPU IDU FE-page effects=2 ordinary_accesses=0"
+  },
+  "cpu-program-idu-page-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_program.sv"
+    ],
+    "top": "tb_cpu_program",
+    "args": [
+      "+effect_page",
+      "+effect_fault"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_PROGRAM_IDU cycle=20 dot=81"
+  },
+  "cpu-idu-arithmetic": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_idu_arithmetic.sv"
+    ],
+    "top": "tb_cpu_idu_arithmetic",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU IDU arithmetic cycles=17 events=6 resolved_no_effect=4"
+  },
+  "cpu-idu-arithmetic-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_idu_arithmetic.sv"
+    ],
+    "top": "tb_cpu_idu_arithmetic",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_IDU_ARITH_EFFECT cycle=7 dot=29"
+  },
+  "cpu-stop": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_stop.sv"
+    ],
+    "top": "tb_cpu_stop",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU STOP entry cases=8 rows=4 IME_states=2"
+  },
+  "cpu-stop-divider-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_stop.sv"
+    ],
+    "top": "tb_cpu_stop",
+    "args": [
+      "+corrupt_divider"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_STOP_DIVIDER case=0 dot=16"
+  },
+  "cpu-stop-mode-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_stop.sv"
+    ],
+    "top": "tb_cpu_stop",
+    "args": [
+      "+corrupt_action"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_STOP_RECORD case=0 event=2"
+  },
+  "cpu-wake": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_wake.sv"
+    ],
+    "top": "tb_cpu_wake",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU HALT wake cases=7 arrival_edges=3 IME_states=2 fresh_opcode=1"
+  },
+  "cpu-wake-stale": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_wake.sv"
+    ],
+    "top": "tb_cpu_wake",
+    "args": [
+      "+stale"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_WAKE_RECORD case=6 event=4"
+  },
+  "cpu-wake-missing": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_wake.sv"
+    ],
+    "top": "tb_cpu_wake",
+    "args": [
+      "+missing"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_BUS_RESPONSE"
+  },
+  "cpu-wake-reset": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_wake_reset.sv"
+    ],
+    "top": "tb_cpu_wake_reset",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU HALT reset cases=16 phases=4 resets=2 IME_states=2"
+  },
+  "cpu-wake-reset-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_wake_reset.sv"
+    ],
+    "top": "tb_cpu_wake_reset",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_WAKE_RESET_CANCEL case=3 phase=3"
+  },
+  "cpu-irq-idu": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_irq_idu.sv"
+    ],
+    "top": "tb_cpu_irq_idu",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU IRQ IDU cycles=14 events=6 FE_effects=1 FE_accesses=0"
+  },
+  "cpu-irq-idu-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_irq_idu.sv"
+    ],
+    "top": "tb_cpu_irq_idu",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_IRQ_IDU_EFFECT cycle=9"
+  },
+  "cpu-wrap": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_wrap.sv"
+    ],
+    "top": "tb_cpu_wrap",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU wrap cases=2 cycles=40 records=12 writes=4"
+  },
+  "cpu-wrap-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_wrap.sv"
+    ],
+    "top": "tb_cpu_wrap",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_WRAP_RECORD case=0 event=3"
+  },
+  "cpu-if-observation": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_if_observation.sv"
+    ],
+    "top": "tb_cpu_if_observation",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU IF observation cases=3 records=13 T3_A_B_separate=1"
+  },
+  "cpu-if-observation-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_if_observation.sv"
+    ],
+    "top": "tb_cpu_if_observation",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_IF_RECORD case=1 event=2"
+  },
+  "cpu-irq-reset": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_irq_reset.sv"
+    ],
+    "top": "tb_cpu_irq_reset",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU IRQ reset cases=42 phases=4 entry_cycles=5 captured_cancel=2"
+  },
+  "cpu-irq-reset-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_irq_reset.sv"
+    ],
+    "top": "tb_cpu_irq_reset",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_IRQ_RESET_CANCEL case=19"
+  },
+  "cpu-stop-wake": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_stop_wake.sv"
+    ],
+    "top": "tb_cpu_stop_wake",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU normal STOP wake cases=20 normal=4 reset=16"
+  },
+  "cpu-stop-wake-stale": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_stop_wake.sv"
+    ],
+    "top": "tb_cpu_stop_wake",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_STOP_WAKE_RECORD case=0 event=3"
+  },
+  "cpu-stop-idu": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_stop_idu.sv"
+    ],
+    "top": "tb_cpu_stop_idu",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU STOP entry IDU cases=8 pages=2 rows=4"
+  },
+  "cpu-stop-idu-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_stop_idu.sv"
+    ],
+    "top": "tb_cpu_stop_idu",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_STOP_ENTRY_IDU case=4"
+  },
+  "cpu-step": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/dv/cpu/tb_cpu_step.sv"
+    ],
+    "top": "tb_cpu_step",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU STEP timebase steps=7 records=8 interrupts=1 ticks=64"
+  },
+  "cpu-step-suppress": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/dv/cpu/tb_cpu_step.sv"
+    ],
+    "top": "tb_cpu_step",
+    "args": [
+      "+suppress"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_STEP_COMPLETE case=0 dot=8 expected=1 actual=0"
+  },
+  "cpu-step-missing": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/dv/cpu/tb_cpu_step.sv"
+    ],
+    "top": "tb_cpu_step",
+    "args": [
+      "+missing"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT CPU_BUS_RESPONSE"
+  },
+  "cpu-stop-irq": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_stop_irq.sv"
+    ],
+    "top": "tb_cpu_stop_irq",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CPU STOP interrupt restart cases=14 records=64 normal=6 reset=8"
+  },
+  "cpu-stop-irq-effect": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_stop_irq.sv"
+    ],
+    "top": "tb_cpu_stop_irq",
+    "args": [
+      "+effect_fault"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_STOP_IRQ_EFFECT case=0 dot=20"
+  },
+  "cpu-stop-irq-stack": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/dv/cpu/tb_cpu_stop_irq.sv"
+    ],
+    "top": "tb_cpu_stop_irq",
+    "args": [
+      "+stack_fault"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CPU_STOP_IRQ_BUS case=0 dot=32"
   }
 }
