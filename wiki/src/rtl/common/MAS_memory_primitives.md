@@ -12,7 +12,8 @@ control registers may remain flops; independent reference models may use arrays.
 
 One narrow wrapper supports the current owners. Port A reads or writes;
 port B only reads. A uses `clk_a`. B uses `clk_a` in single-clock mode and
-`clk_b` in dual-clock mode. The current width/lane configurations are 2/1,
+`clk_b` in dual-clock mode. The unused primitive `clock1` is tied high in
+single-clock mode, as required by its unused-port convention. The current width/lane configurations are 2/1,
 8/1, 16/1 and 32/4. Depth and address width are explicit, and requests must
 stay within the declared depth even when the address encoding has spare values.
 The two-bit shape serves frame shades; byte stores serve system memory; the

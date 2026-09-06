@@ -67,7 +67,7 @@ module n2m_intel_ram #(
         .read_during_write_mode_mixed_ports("OLD_DATA"),
         .power_up_uninitialized("TRUE"), .init_file("UNUSED")
     ) ram (
-        .clock0(clk_a), .clock1(clk_b),
+        .clock0(clk_a), .clock1(DUAL_CLOCK ? clk_b : 1'b1),
         .clocken0(1'b1), .clocken1(1'b1), .clocken2(1'b1), .clocken3(1'b1),
         .aclr0(1'b0), .aclr1(1'b0),
         .address_a(a_address), .data_a(a_wdata), .wren_a(write_a), .rden_a(read_a),
