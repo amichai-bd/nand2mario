@@ -70,5 +70,17 @@ registered exact diagnostic and raw exit 1.
 
 This slice does not establish IRQ/HALT corner timing, STOP policy, every opcode's
 architectural behavior, or internal IDU observations. These remain required before
-#118 can close. In particular, the current pending-interrupt HALT path still needs
-a directed distinction between an already enabled IME and delayed EI maturation.
+#118 can close. The pending-interrupt HALT path needs contrasted arrival-phase checks for
+already enabled IME, delayed EI maturation and wake after sleep; an earlier
+claim that the first case proved a defect was withdrawn after source comparison.
+
+
+`cpu-irq` adds 14 independent literal program/transaction cases. Requests before,
+on and after T3 prove the closed request window. Cases cover all priorities and
+simultaneous requests, high-stack IE cancellation, a low-stack IE write too late
+to change selection, and a low-stack IF write that preserves the selection
+snapshot. Separate EI/HALT and already-enabled HALT execution cases check return
+PC. A 20-system-edge host pause after T3 removes the live request while preserving
+the captured decision; a forced snapshot fault must fail the public bus schedule.
+Wake after actual sleep, full reset interruption and STOP remain separate pending
+coverage; the two HALT execution cases do not establish those paths.

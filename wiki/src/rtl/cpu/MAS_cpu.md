@@ -42,7 +42,6 @@ enable, never a generated CPU clock.
 | `epoch` | Input, 32 bits | Current initialization epoch, supplied by the system owner. The CPU does not invent a second epoch counter. |
 | `dot_before` | Input, 64 bits | System count of completed emulated T-cycles before the current edge. An event on `gb_tick` records this count plus one. The system count includes HALT, freezes with host pause, and follows the agreed STOP oscillator gating; it is not a CPU-running counter. |
 | `ie`, `iflags` | Input, 8 and 5 bits | Live interrupt enable and request state, including changes caused by CPU writes and peripherals. These are not frozen at interrupt-entry start. |
-| `if_dispatch` | Input, 5 bits | Bus-owner request snapshot at the low stack-write T4 edge, before that CPU write modifies IF. The bus owner resolves simultaneous peripheral events; CPU sampling is explicit and separate from post-event `iflags`. |
 | `buttons`, `joyp_selected_active` | Input | Public latched button snapshot and selected active-low JOYP-line reduction from the JOYP owner; physical buttons alone do not determine STOP wake. |
 | Memory request | Output | Address, read/write direction, write byte and access kind: opcode, operand, data, stack or idle. Idle is observable without issuing a memory transaction. |
 | Memory response | Input | Read byte and response-valid by the specified emulated sampling edge. There is no unbounded ready/wait protocol. |
@@ -88,15 +87,23 @@ instruction. DI disables immediately and cancels pending enable. Consecutive EI
 must not postpone the first EI's scheduled enable. RETI enables before the next
 instruction can execute. Pending enabled interrupts are prioritized from the
 lowest numbered request. Interrupt entry is a separate event, with two idle
-M-cycles, two stack writes and the vector-fetch cycle. After the high stack write commits, the following system edge captures IE.
-At the low stack-write T4 edge, that captured IE is ANDed with `if_dispatch`;
-the lowest set bit selects the vector and acknowledgement. Thus a high-byte
-write to IE can cancel or reprioritize entry, while a low-byte write to IE is
-too late. No selected bit gives vector zero, no IF acknowledgement, and IME
-remains clear. A low-byte write to IF must not replace the dispatch snapshot
-with the just-written byte. The [source record](references.md) distinguishes
-hardware-tested IE ordering from the corroborating IF-write model. The CPU
-cannot claim that this interface proves every future timer/IF same-edge rule.
+M-cycles, two stack writes and the vector-fetch cycle. The CPU captures `IE & IF` immediately before each T3 rising enable (bus phase
+2) and holds that vector through T4. Final-fetch recognition and low-stack
+vector selection use this snapshot, not live T4 or post-commit IF. A peripheral
+request resolved before T3 participates; a request produced at or after that
+edge participates in the next M-cycle. Host pause preserves the snapshot;
+reset cancels it. This digital mapping follows the PHI latch and clock-phase
+inference in the [source record](references.md), not a claim of measured
+half-cycle accuracy for every peripheral.
+
+At low-stack T4, the lowest captured bit selects the vector and acknowledgement.
+A high-byte write to IE has committed before the following T3 snapshot and can
+cancel or reprioritize entry. A low-byte write to IE or IF occurs after that
+snapshot and cannot replace it. No selected bit gives vector zero, no IF
+acknowledgement, and IME remains clear. This selection observation is separate
+from the resolved post-event IF snapshot captured for retirement. The future IF
+owner resolves register/event/ack collisions; this CPU contract does not invent
+their priority from HDL scheduling.
 
 HALT preserves peripheral time. With IME clear and an enabled request already
 pending, it suppresses one following opcode-fetch PC increment instead of
@@ -251,11 +258,11 @@ M-cycles. The public CPU wrapper is unfinished. The component's `stop_action`,
 `stop_padding` and `wake_request` ports are internal policy seams, not additions
 to the host initialization ABI; the final wrapper must own their resolved logic.
 
-Interrupt recognition remains under source and directed-test review. The current
-component observes pending requests at the final fetch T4. That implementation
-is not yet an accepted phase contract: a PPU event produced after that edge and
-forwarded for retirement must not silently alter dispatch timing. The resolved
-post-event IF snapshot for retirement is distinct from the pre-low-stack-write
-IF observation used for interrupt selection. Already enabled IME during HALT
-must also be distinguished from a delayed EI that matures there. These pending
-checks prevent a whole-CPU readiness claim for this component snapshot.
+The T3 request snapshot mapping is specified above; its contrasted IRQ/HALT
+fixtures remain required before full readiness. The current HALT return-to-HALT
+branch matches the pinned SameBoy model for pending requests with IME set,
+including delayed EI. An earlier inference that ordinary IME alone proved this
+branch wrong was withdrawn after source comparison. Requests before the latch
+closes and arrivals after HALT enters sleep need separate checked expectations.
+STOP policy, IDU observation and complete opcode state/access coverage remain
+unfinished; this snapshot cannot close #118.

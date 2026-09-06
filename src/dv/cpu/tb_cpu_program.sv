@@ -11,7 +11,6 @@ module tb_cpu_program;
     logic [63:0] dot_before;
     logic [7:0] ie;
     logic [4:0] iflags;
-    logic [4:0] if_dispatch;
     logic [7:0] buttons;
     logic [7:0] read_data;
     logic response_valid;
@@ -59,7 +58,6 @@ module tb_cpu_program;
 
     n2m_cpu_control dut (.*);
     assign read_data = memory[address];
-    assign if_dispatch = iflags;
 
     always @(posedge clk_sys) begin
         if (reset_sys || core_reset) dot_before <= 0;

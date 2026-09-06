@@ -50,13 +50,33 @@ research with their MIT notices; no external suite was executed or imported.
 The existing pinned SameBoy `Core/sm83_cpu.c` captures IE after the high write,
 then selects against IF during the low write. Its `cycle_write_if` uses the
 old IF value when that write itself targets IF, and comments explicitly flag
-remaining same-M-cycle timing uncertainty. Consequently the CPU exposes a
-bus-owner dispatch snapshot separately from post-commit IF storage. The CPU's
-fixed sampling edge is a documented digital boundary, not a claim that SameBoy
-proves every simultaneous timer/request/register-write priority in hardware.
+remaining same-M-cycle timing uncertainty. The CPU therefore keeps its dispatch snapshot separate from post-commit IF
+storage. The phase inference below refines that snapshot to T3 rather than
+claiming that SameBoy proves every simultaneous timer/request/register-write
+priority in hardware.
 
 The same Pan Docs pin's `src/OAM_Corruption_Bug.md` distinguishes ordinary
 read/write activity from IDU address exposure and identifies the POP/RET and
 stack-push exceptions. It supplies an additional required CPU observation
 boundary for the future OAM/arbitration owner, not permission to infer all
 bus-side effects from retirement or T4 transaction commits.
+
+
+## Request-latch phase inference
+
+At the existing Gekkio research pin, `hdl/cells/dlatch.vhd` is transparent while
+its clock is high. `hdl/interrupts.vhd` uses PHI to latch the enabled request
+vector. `hdl/simulation/test_soc.vhd` supplies PHI high in half-phases 0–3 and writeback in
+6–7; the control unit consumes the held request at the instruction boundary.
+CTR's clock-phase figure places PHI falling at T3 rising. Combining these sources
+supports capturing the resolved enabled vector before T3 and using it at T4 in
+our digital bus contract. This is a stated inference from an unexecuted die
+model with known SoC-validation limits. It naturally separates preceding high
+stack writes from the current low write, consistent with Mooneye's IE tests.
+
+The pinned SameBoy `halt()` performs its dummy read before checking pending
+requests and rolls PC back when IME is set. That predicate is not restricted to
+delayed EI. Therefore the general Pan Docs distinction between normal wake and
+EI/HALT is insufficient by itself to prove a late-arrival rollback defect. Our
+checks must contrast request sampling during execution with wake after sleep;
+source interpretation and tested digital behavior remain separately identified.

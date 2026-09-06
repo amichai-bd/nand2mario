@@ -13,7 +13,6 @@ module n2m_cpu_control (
     input var logic [63:0] dot_before,
     input var logic [7:0] ie,
     input var logic [4:0] iflags,
-    input var logic [4:0] if_dispatch,
     input var logic [7:0] buttons,
     input var logic [7:0] read_data,
     input var logic response_valid,
@@ -58,8 +57,7 @@ module n2m_cpu_control (
         logic halt_bug;
         logic initialized;
         logic profile_fault;
-        logic capture_ie;
-        logic [4:0] entry_ie;
+        logic [4:0] irq_snapshot;
     } control_t;
     control_t control;
     control_t control_next;
@@ -135,8 +133,8 @@ module n2m_cpu_control (
     assign locked = control.mode == MODE_LOCK;
     assign ime_observe = control.ime;
     assign ime_delay_observe = control.ime_delay;
-    assign pending_irq = |(ie[4:0] & iflags);
-    assign dispatch = control.entry_ie & if_dispatch;
+    assign pending_irq = |control.irq_snapshot;
+    assign dispatch = control.irq_snapshot;
     assign stop_execute = control.mode == MODE_EXECUTE && execute_stop && cycle_end;
 
     n2m_cpu_execute execute (
@@ -203,10 +201,9 @@ module n2m_cpu_control (
         event_halted = halted;
         event_stopped = stopped;
         irq_ack = 0;
-        if (control.capture_ie) begin
-            control_next.entry_ie = ie[4:0];
-            control_next.capture_ie = 0;
-        end
+        // PHI closes the enabled-request latch at T3 rising. Recognition and
+        // low-stack vector selection consume this frozen M-cycle snapshot.
+        if (gb_tick && phase == 2) control_next.irq_snapshot = ie[4:0] & iflags;
         // Inactive wake is accepted only at a complete M-cycle boundary.
         if (control.mode == MODE_HALT && wake_request && gb_tick && phase == 3)
             control_next.mode = MODE_FETCH;
@@ -267,8 +264,10 @@ module n2m_cpu_control (
                             control_next.pc = execute_pc;
                             if (pending_irq) begin
                                 if (control_next.ime) begin
-                                    // Delayed EI matured into an already-pending
-                                    // IRQ: the subsequent entry returns to HALT.
+                                    // A request recognized while HALT executes
+                                    // with IME set returns to this HALT. This also
+                                    // covers delayed EI maturation; late arrivals
+                                    // after the T3 snapshot instead enter sleep.
                                     event_pc_after = control.instruction_pc;
                                     control_next.pc = control.instruction_pc + 16'd1;
                                 end else control_next.halt_bug = 1;
@@ -306,7 +305,6 @@ module n2m_cpu_control (
                     if (control.step == 0) control_next.pc = control.irq_pc;
                     if (control.step == 1 || control.step == 2)
                         registers_next.sp = registers.sp - 16'd1;
-                    if (control.step == 2) control_next.capture_ie = 1;
                     if (control.step == 3) begin
                         control_next.pc = selected_vector;
                         irq_ack = selected_irq;
@@ -355,8 +353,6 @@ module n2m_cpu_control (
 
     `N2M_ASSERT(CPU_PROFILE_ID, clk_sys, reset_sys,
         core_reset |-> profile_id == PROFILE_DIRECT_ID)
-    `N2M_ASSERT(CPU_BOOKKEEPING_BEFORE_TICK, clk_sys, reset_sys || core_reset,
-        !(control.capture_ie && gb_tick))
     `N2M_ASSERT(CPU_IRQ_ACK_ONEHOT, clk_sys, reset_sys || core_reset, $onehot0(irq_ack))
     `N2M_ASSERT(CPU_F_LOW_ZERO, clk_sys, reset_sys || core_reset, registers.f[3:0] == 0)
 endmodule
