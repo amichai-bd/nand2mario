@@ -1,4 +1,16 @@
 {
+  "intel_memory": {
+    "version": "Quartus Prime 25.1.0 Build 1129 10/21/2025",
+    "url": "https://www.altera.com/downloads/fpga-development-tools/quartus-prime-lite-edition-design-software-version-25-1-windows",
+    "license": "Proprietary Altera software/IP agreements; see installed source header and distribution license files",
+    "purpose": "Unmodified installed altsyncram simulation model for MAX 10 product memory",
+    "local_changes": "none",
+    "storage": "User Quartus installation eda/sim_lib; generated compiled library stays under ignored build tag",
+    "redistribution": "No vendor source is copied into this repository",
+    "sources": {
+      "altera_mf.v": "2ae09f97f9606626da216e9eb91007beec3ebbe023c5b9415be472417fe49d5e"
+    }
+  },
   "python": {
     "version": "3.14.5",
     "url": "https://www.python.org/downloads/release/python-3145/",

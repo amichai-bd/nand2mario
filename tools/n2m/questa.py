@@ -1,5 +1,6 @@
 """Questa macro completion and strict transcript checks."""
 import re
+from .intel_memory import commands as intel_commands
 
 
 def write_macro(folder):
@@ -24,21 +25,25 @@ def diagnostic(output, expected_failure=None):
     return None
 
 
-def commands(simulator, root, target, seed, compiler, attempt, *, prepare=True):
+def commands(simulator, root, target, seed, compiler, attempt, *, prepare=True, vendor_model=None):
     tools = simulator.tools
     library = (compiler / "work").as_posix()
     if prepare:
         write_macro(attempt)
+    vendor_compile, vendor_map, vendor_binding = intel_commands(simulator, compiler, attempt, vendor_model)
     return [
         ([tools["vmap"], "-c"], compiler, compiler / "ini.log", "zero"),
         ([tools["vlib"], "work"], compiler, compiler / "library.log", "zero"),
         ([tools["vmap"], "work", library], compiler, compiler / "map.log", "zero"),
+        *vendor_compile,
         ([tools["vlog"], "-sv", "-work", "work", "+incdir+" + simulator.path(root),
           *[simulator.path(root / source) for source in target["sources"]]],
          compiler, compiler / "compile.log", "zero"),
         ([tools["vmap"], "-c"], attempt, attempt / "ini.log", "zero"),
         ([tools["vmap"], "work", library], attempt, attempt / "map.log", "zero"),
+        *vendor_map,
         ([tools["vsim"], "-c", "-onfinish", "stop", "-wlf", "waves/simulation.wlf",
+          *vendor_binding,
           "work." + target["top"], f"+seed={seed}", *target["args"], "-do", "do run.do"],
          attempt, attempt / "sim.log", target["expected_exit"]),
     ]

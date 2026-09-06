@@ -38,6 +38,7 @@ def parser():
     test.add_argument("--seed", type=int, default=1)
     test.add_argument("--rebuild", action="store_true")
     test.add_argument("--questa-bin", help="Questa tool directory; otherwise discover on PATH")
+    test.add_argument("--intel-sim-lib", help="supported Quartus eda/sim_lib directory for Intel memory targets")
     leaves.append(test)
     for leaf in leaves:
         leaf.add_argument("--tag")
