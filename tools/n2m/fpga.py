@@ -280,7 +280,7 @@ def complete_cache(record, fingerprint, root, build, target):
         if "pll" in target:
             required += [folder / "n2m_pixel_pll.v", folder / "generate-pll.log"]
             required += [folder / "output" / name for name in fpga_pll.required_reports()]
-        if "pll" in target or target.get("top") == "n2m_memory_stores":
+        if "pll" in target or "src/rtl/common/n2m_intel_ram.sv" in target.get("sources", []):
             required += [folder / "simulation/questa/design.vo", folder / "netlist.log"]
         required += [folder / name for name in ("design.qpf", "design.qsf", "audit.tcl", "compile.log", "audit.log")]
         if "timing" in target:
@@ -321,7 +321,7 @@ def build_fpga(root, build, args, provenance=None):
         record["tools"] = tools(args.quartus_bin, folder, record, build, min(args.timeout, 60))
         if "pll" in target:
             record["tools"]["altpll"] = fpga_pll.identity(args.quartus_bin)
-        if target.get("top") in ("intel_memory_proof", "n2m_memory_stores"):
+        if "src/rtl/common/n2m_intel_ram.sv" in target.get("sources", []):
             record["tools"]["altsyncram"] = fpga_intel_memory.identity(args.quartus_bin)
         record["definition"] = target
         record["fingerprint"] = digest({"inputs": record["inputs"], "tools": record["tools"], "definition": target, "timeout": args.timeout})
@@ -334,7 +334,7 @@ def build_fpga(root, build, args, provenance=None):
             prepare(root, folder, target)
             execute([record["tools"]["quartus_sh"]["path"], "--flow", "compile", "design"], folder, folder / "compile.log", args.timeout, record, build)
             execute([record["tools"]["quartus_sta"]["path"], "-t", "audit.tcl"], folder, folder / "audit.log", args.timeout, record, build)
-            if "pll" in target or target.get("top") == "n2m_memory_stores":
+            if "pll" in target or "src/rtl/common/n2m_intel_ram.sv" in target.get("sources", []):
                 execute([record["tools"]["quartus_eda"]["path"], "--simulation", "--tool=modelsim", "--format=verilog", "design"], folder, folder / "netlist.log", args.timeout, record, build)
             record["evidence"] = timing_evidence(folder, target)
             record["evidence_directory"] = folder.relative_to(root).as_posix()
