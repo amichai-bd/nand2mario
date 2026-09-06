@@ -7,7 +7,7 @@ module tb_ppu_fetch;
     logic vram_valid;
     logic map_read, background_low_read, background_high_read;
     logic object_low_read, object_high_read;
-    logic [2:0] background_phase, object_phase;
+    logic [2:0] background_phase, object_phase, shift_count;
     logic background_done, object_done, background_first_done, window_first;
     logic [7:0] tile_index, background_low, background_high, object_low, object_high;
     logic background_load, object_load, fault;
