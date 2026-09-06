@@ -250,11 +250,16 @@ class VgaEvidenceTests(unittest.TestCase):
     def test_physical_register_selection_rejects_missing_or_duplicate(self):
         original = "n2m_frame_bridge:u_bridge|n2m_vga_scan:u_scan|gray_out[0]"
         for candidates, accepted in [([], False), ([original], True),
-                ([original, original + "~_Duplicate_1"], True),
+                ([original, original + "~_Duplicate_1"], False),
                 ([original + "~_Duplicate_1"], False), ([original, original], False)]:
             with self.subTest(candidates=candidates):
                 tcl = tkinter.Tcl()
-                tcl.createcommand("get_registers", lambda *args: tuple(candidates))
+                requested = []
+                def registers(*args):
+                    requested.append(args)
+                    return tuple(candidates)
+                tcl.createcommand("get_registers", registers)
+                tcl.eval("proc get_collection_size {items} {llength $items}")
                 tcl.eval("proc get_register_info {flag item} {return $item}")
                 tcl.eval("proc foreach_in_collection {var items body} {upvar 1 $var value; foreach value $items {uplevel 1 $body}}")
                 script = "\n".join(fpga_vga.physical_register(0, "u_bridge|u_scan|gray_out[0]", fpga.tcl_word))
@@ -262,8 +267,9 @@ class VgaEvidenceTests(unittest.TestCase):
                     tcl.eval(script)
                     self.assertEqual(tcl.splitlist(tcl.getvar("vga_gray_0")), (original,))
                 else:
-                    with self.assertRaisesRegex(tkinter.TclError, "VGA physical output mismatch"):
+                    with self.assertRaisesRegex(tkinter.TclError, "VGA physical output (name )?mismatch"):
                         tcl.eval(script)
+                self.assertEqual(requested[0][0], "-no_duplicates")
 
     def test_exact_first_data_pin_rejects_missing_or_ambiguous_mapping(self):
         for name in (*fpga_vga.CHAINS, "blank_pix", "blank_seen_sys"):

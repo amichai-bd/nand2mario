@@ -70,14 +70,14 @@ def required_reports(*, lcd=False):
 
 
 def physical_register(bit, register, quote):
-    """Select one physical name without accepting automatic duplicate expansion."""
-    return [f"set vga_gray_{bit} [list]",
-            f"foreach_in_collection r [get_registers {quote(register)}] {{",
+    """Keep Quartus collection identity and disable automatic replica expansion."""
+    return [f"set vga_gray_{bit} [get_registers -no_duplicates {quote(register)}]",
+            f'if {{[get_collection_size $vga_gray_{bit}] != 1}} {{error "VGA physical output mismatch: gray{bit}"}}',
+            f"foreach_in_collection r $vga_gray_{bit} {{",
             "set n [get_register_info -name $r]",
             r"regsub -all {(^|[|])[^|:]+:} $n {\1} n",
-            f"if {{$n eq {quote(register)}}} {{lappend vga_gray_{bit} $r}}",
-            "}",
-            f'if {{[llength $vga_gray_{bit}] != 1}} {{error "VGA physical output mismatch: gray{bit}"}}']
+            f'if {{$n ne {quote(register)}}} {{error "VGA physical output name mismatch: gray{bit}"}}',
+            "}"]
 
 
 def audit(quote, *, lcd=False):
@@ -93,8 +93,8 @@ def audit(quote, *, lcd=False):
     if lcd:
         for name, launch in BLANK_CONTROLS:
             lines += collection("registers", [launch], "vga_blank_" + name, quote)
-        # get_registers expands a logical name to its fitter duplicates. Keep
-        # only the exact normalized physical name, then require one endpoint.
+        # -no_duplicates disables implicit replica expansion; each explicitly
+        # named physical replica remains its own checked collection.
         for bit, register in enumerate(RGB_REGISTERS):
             lines += physical_register(bit, register, quote)
     # -multi_corner does not provide all file-output corners for these commands.
