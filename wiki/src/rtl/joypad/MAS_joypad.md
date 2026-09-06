@@ -1,8 +1,8 @@
 # DMG joypad
 
 Status: contract preparation for [#134](https://github.com/amichai-bd/nand2mario/issues/134).
-The matrix below is settled. Request transport and its directed phase proof must
-be reviewed before dependent sequential RTL.
+The matrix and register update rules below are implemented. Request transport
+and its directed phase proof remain a separate gate before event/wake RTL.
 
 ## Authority
 
@@ -36,8 +36,10 @@ INPUT replaces all eight bits atomically. The host owner schedules it between
 completed dots while running and immediately without a dot while paused. CPU
 HALT/STOP does not prevent updates. Existing interface priority is reset, host
 input latch, then emulated effects. This owner must not add a private input queue,
-new host ABI or discarded update policy. The exact accepted update port and
-coincident-edge rule are part of the pending integration review below.
+new host ABI or discarded update policy. `input_commit` accepts `input_buttons` at the system edge; it does not depend on
+gb_tick or CPU mode. A coincident select write and INPUT atomically update their
+separate fields, then the combinational matrix reflects both new values. Event
+transport for that change remains part of the pending review below.
 
 ## Interrupt and wake boundary
 
@@ -71,3 +73,11 @@ pins, hashes, logs and literal expected/actual traces.
 
 Remaining contract review is bounded to event transport and accepted update
 ordering; matrix implementation can proceed independently.
+
+
+`n2m_joypad` forwards exact-address selection and side-effect-free read data,
+buttons_observe and selected_active. The memory owner forwards io_commit only
+for this selected owner; an off-boundary commit is a named contract violation.
+`joypad_state_t` owns the button byte and two writable select bits. Shared async
+register macros apply global/core reset with immediate profile observation;
+no IF state or qualified CPU wake output exists in this register slice.
