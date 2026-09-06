@@ -21,6 +21,10 @@ module tb_vga;
     n2m_reset_control u_reset (.clk_sys, .clk_pix, .board_reset_n, .pll_locked,
                               .pll_areset, .ready, .reset_sys, .reset_pix);
     logic source_valid, source_start;
+    logic source_abort, blank_assert, source_display_eligible, observe_abort;
+    assign source_abort = 1'b0;
+    assign blank_assert = 1'b0;
+    assign source_display_eligible = 1'b1;
     logic [1:0] source_shade;
     logic [31:0] source_epoch;
     logic [63:0] source_dot;
