@@ -43,6 +43,55 @@ tools fail with diagnostics; there is no fallback simulator.
 
 ## Questa simulation
 
+### Installed Intel memory model
+
+A target declaring `vendor_model: "intel-memory"` requires the installed source
+set pinned in [dependencies.json](../../../tools/n2m/dependencies.json).
+The builder finds `quartus/eda/sim_lib` beside the selected Questa distribution,
+or accepts `--intel-sim-lib <directory>` explicitly. Each required source must
+exist and match the supported hash before cache reuse or compilation. A missing,
+modified or wrong model fails; there is no portable fallback. Repository HDL
+that defines a shadow `altsyncram` or `altsyncram_body` is rejected.
+
+Each attempt compiles the unchanged source into its own `n2m_altera_mf` library,
+maps that library in the run directory, and binds through `vsim -L n2m_altera_mf`.
+The record's `options.vendor_model` retains release, source paths/hashes,
+compilation options and binding options. These and the wrapper/fixture sources,
+parameters, dependency pin and builder options enter the fingerprint. Updating
+an approved pin changes the fingerprint; removing/changing an installed source
+cannot reuse an older PASS. Vendor source is never copied into tracked files.
+
+`intel_mixed_mode_instances` names the exact vendor instances expected to emit
+the reviewed model's mixed-port coercion warning. This inventory is part of the
+descriptor and fingerprint. Only the pinned source's exact two-line time-zero
+diagnostic is classified, and only during runtime. Missing, duplicate,
+wrong-instance, wrong-time and other warnings fail. `explained_diagnostics`
+records each original pair, source hash and reason; raw logs remain unchanged.
+The exception applies only to the forbidden collision described by the memory
+MAS. Synthesis must use the same reviewed model source and must not produce
+Quartus critical warning 15003.
+
+The [shared memory MAS](../../src/rtl/common/MAS_memory_primitives.md) owns the
+same-instance simulation/synthesis rule and the narrow supported port shapes.
+Missing-model and cache host tests use controlled original bytes and fake
+execution; only actual Intel-model simulation supplies behavior evidence.
+
+The `intel-memory` FPGA target retains the four MAS configurations with virtual
+system request and observation ports. A real pixel-domain producer outside
+the wrapper alternates read-enable and advances through addresses 0–23039.
+Its sixteen launch registers use the existing pixel clock and reset. There
+is no fictional off-chip pixel input budget. The audit checks the exact
+63 system input names, all existing timing gates, and setup/hold paths from
+every pixel request register into memory at all three timing corners. Each
+path must use the same pixel launch/capture clock and have nonnegative slack.
+It also checks four logical RAM shapes and ten fitted M9Ks. Fitted atom checks bind data and byte lanes, system/pixel
+clocks, B address/read-control clocks, unregistered outputs, disabled B writes,
+and absent memory clear/initialization. The fitter's physical new-data mode
+may include NBE handling; the MAS permits simultaneous A read/write only with
+all public lanes enabled, where that mapping preserves the defined result.
+
+### Registered target execution
+
 Run an authorized registered target with default or explicit Questa:
 
 ```powershell
@@ -190,7 +239,7 @@ fixture checks synchronous reset, counting through 4-bit wrap, and reset again:
 variant injects expected=7 at cycle 3, where actual=3. Seed is recorded and passed
 to the testbench; this directed fixture does not use randomness. A 1 us watchdog
 and 60 s host command timeout bound execution. Partial timeout output is retained
-in the failing command's log. Simulator warnings fail the stage.
+in the failing command's log. Unclassified simulator warnings fail the stage.
 
 Add simulation targets to this manifest when their contracts and tests are ready.
 The [tile pixel checks](../sim/SPEC.md) use this interface for normal and

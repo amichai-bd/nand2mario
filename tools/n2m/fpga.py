@@ -10,7 +10,7 @@ import uuid
 
 from .hdl import dependencies
 from .records import atomic_json, cache_matches, digest, file_hash, read_json
-from . import fpga_pll, fpga_constraints, fpga_vga
+from . import fpga_pll, fpga_constraints, fpga_vga, fpga_intel_memory
 
 DEVICE = "10M50DAF484C7G"
 REGISTRY = "src/fpga/de10_lite/targets.json"
@@ -69,7 +69,7 @@ def target_definition(root, name):
         raise ValueError("unknown FPGA target, fields, or device")
     if "pll" in target:
         fpga_pll.validate(target["pll"])
-        if target["top"] not in ("clocking_proof", "vga_proof") or "timing" not in target:
+        if target["top"] not in ("clocking_proof", "vga_proof", "intel_memory_proof") or "timing" not in target:
             raise ValueError("PLL evidence currently requires the bounded clocking proof target")
     if "timing" in target:
         fpga_constraints.validate(target["timing"])
@@ -132,6 +132,8 @@ def prepare(root, folder, target):
         audit = audit.replace("project_close", "report_metastability -file output/metastability.rpt\nreport_clock_transfers -file output/clock_transfers.rpt\n" + fpga_pll.chain_audit(tcl_word) + "project_close")
     if target.get("top") == "vga_proof":
         audit = audit.replace("project_close", fpga_vga.audit(tcl_word) + "project_close")
+    if target.get("top") == "intel_memory_proof":
+        audit = audit.replace("project_close", fpga_intel_memory.audit(tcl_word) + "project_close")
     (folder / "audit.tcl").write_text(audit, encoding="utf-8")
 
 
@@ -254,12 +256,13 @@ def timing_evidence(folder, target):
         lock_event = fpga_pll.verify_lock_event(folder, checks, target["top"])
         fpga_pll.verify_fit(folder, target)
     vga_evidence = fpga_vga.verify(folder) if target.get("top") == "vga_proof" else None
+    memory_evidence = fpga_intel_memory.verify(folder) if target.get("top") == "intel_memory_proof" else None
     for name, count in rows:
         if name == "no_clock" and int(count) == 1 and "pll" in target:
             continue
         if int(count) and not (name == "virtual_clock" and int(count) == 1 and "No virtual clock was found." in checks):
             raise ValueError(f"structural timing failure: {name}={count}")
-    return {"slack_ns": slacks, "fit_summary": fit, "unconstrained": "none", "ignored_constraints": "none", "vendor_lock_event": lock_event, "vga": vga_evidence,
+    return {"slack_ns": slacks, "fit_summary": fit, "unconstrained": "none", "ignored_constraints": "none", "vendor_lock_event": lock_event, "vga": vga_evidence, "intel_memory": memory_evidence,
             "virtual_clock_check": "No virtual clock required for the physical-clock-referenced fixture" if "No virtual clock was found." in checks else "passed"}
 
 
@@ -283,6 +286,8 @@ def complete_cache(record, fingerprint, root, build, target):
             required.append(folder / "checked.sdc")
         if target.get("top") == "vga_proof":
             required += [folder / "output" / name for name in fpga_vga.required_reports()]
+        if target.get("top") == "intel_memory_proof":
+            required.append(folder / "output/intel_memory_inputs.rpt")
         if any(p.relative_to(root).as_posix() not in record["artifacts"] for p in required):
             return False
         return timing_evidence(folder, target) == record["evidence"]
@@ -315,6 +320,8 @@ def build_fpga(root, build, args, provenance=None):
         record["tools"] = tools(args.quartus_bin, folder, record, build, min(args.timeout, 60))
         if "pll" in target:
             record["tools"]["altpll"] = fpga_pll.identity(args.quartus_bin)
+        if target.get("top") == "intel_memory_proof":
+            record["tools"]["altsyncram"] = fpga_intel_memory.identity(args.quartus_bin)
         record["definition"] = target
         record["fingerprint"] = digest({"inputs": record["inputs"], "tools": record["tools"], "definition": target, "timeout": args.timeout})
         if not args.rebuild and complete_cache(old, record["fingerprint"], root, build, target):

@@ -17,6 +17,14 @@
   ],
   "dependencies": [
     {
+      "name": "Installed Intel memory simulation model",
+      "record": "n2m/dependencies.json",
+      "notices": "sim/THIRD_PARTY.md",
+      "purpose": "Actual altsyncram simulation for the same MAX 10 product-memory wrappers used by synthesis",
+      "local_changes": "none",
+      "storage": "User Quartus installation only; compiled model library stays under ignored build tags; no redistribution"
+    },
+    {
       "name": "RGBDS",
       "record": "n2m/dependencies.json",
       "notices": "sw/THIRD_PARTY.md",

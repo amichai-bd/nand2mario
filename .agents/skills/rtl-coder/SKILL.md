@@ -24,7 +24,10 @@ requirements/design aligned with `src/rtl/`, verification, and evidence.
    not justify a raw sequential block. An unavoidable inference exception needs
    a concrete reason beside the block and in its owner contract, plus review.
 3. Avoid latches, implicit nets, unsafe crossings, and vendor logic outside FPGA
-   wrappers.
+   wrappers or the [shared Intel memory boundary](../../../wiki/src/rtl/common/MAS_memory_primitives.md).
+   Use that explicit `altsyncram` boundary for product RAM/ROM backing stores;
+   its installed Intel model must run in Questa with the same parameters used
+   by synthesis. Behavioral DUT arrays or stubs cannot replace that evidence.
 4. Use the [named assertion convention](../../../wiki/src/rtl-reference-style.md#named-assertion-convention)
    for meaningful local invariants. Review argument order, reset polarity, prior
    sampled controls and asynchronous history invalidation. Prove a named fatal

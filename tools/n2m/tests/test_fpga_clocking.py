@@ -71,6 +71,16 @@ class ClockingEvidenceTests(unittest.TestCase):
         text, checks = fixture()
         self.assertEqual(fpga_lock.verify(text, checks)["endpoint"], fpga_lock.ROW)
 
+    def test_plain_primitive_parameter_owner_keeps_strict_grammar(self):
+        text, checks = fixture()
+        plain = '\ndffeas frame_read (.clk(gnd), .d(gnd), .q(frame_value));\ndefparam frame_read.is_wysiwyg = "true";'
+        self.assertEqual(fpga_lock.verify(text + plain, checks)["endpoint"], fpga_lock.ROW)
+        for bad in (plain + '\ndefparam frame_read.is_wysiwyg = "true";',
+                    plain.replace('frame_read.is_wysiwyg', 'frame_read..is_wysiwyg'),
+                    plain.replace('frame_read.is_wysiwyg', '9bad.is_wysiwyg')):
+            with self.subTest(bad=bad), self.assertRaises(ValueError):
+                fpga_lock.verify(text + bad, checks)
+
     def test_topology_mutations_are_not_classified(self):
         text, checks = fixture()
         mutations = [text.replace("16'hFFFF", "16'hFFFE"),
