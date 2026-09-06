@@ -65,6 +65,7 @@ module tb_cpu_irq;
     bit pause_done;
     integer pause_cycle;
     bit corrupt;
+    bit di_fault;
 
     n2m_cpu_control dut (.*);
     assign read_data = address == 16'hffff ? ie :
@@ -95,7 +96,7 @@ module tb_cpu_irq;
             expected_byte = memory[expected_address];
             if (mcycle == 2 || mcycle == 3 || (scenario==16 && mcycle==6)) expected_kind = 2;
             if (scenario==14 && mcycle==8) expected_kind = 0;
-            if (mcycle > recognition_dot / 4) begin
+            if (expect_interrupt && mcycle > recognition_dot / 4) begin
                 elapsed = mcycle - recognition_dot / 4;
                 expected_kind = 0;
                 if (elapsed == 3 || elapsed == 4) begin
@@ -131,7 +132,7 @@ module tb_cpu_irq;
                 $fatal(1, "CPU_IRQ_BUS case=%0d dot=%0d expected=%0d/%04h/%02h actual=%0d/%04h/%02h",
                     scenario,dot_before+1,expected_kind,expected_address,expected_byte,
                     access_kind,address,write_enable ? write_data : read_data);
-            expected_ack=(dot_before+1==recognition_dot+16) ? selected_bit[4:0] : 5'b0;
+            expected_ack=(expect_interrupt && dot_before+1==recognition_dot+16) ? selected_bit[4:0] : 5'b0;
             if (scenario==19 && dot_before+1==80) expected_ack=5'b00010;
             if (irq_ack !== expected_ack)
                 $fatal(1, "CPU_IRQ_ACK case=%0d dot=%0d expected=%02h actual=%02h",
@@ -177,7 +178,7 @@ module tb_cpu_irq;
                         expected[192 +: 16] = return_pc;
                 end
             end
-            if (scenario==18 && event_index==2) expected[320 +: 8]=0;
+            if (scenario==18 && event_index>=2) expected[320 +: 8]=0;
             if (scenario==19 && event_index==5) begin
                 expected[112 +: 64]=64;
                 expected[176 +: 16]=16'h40;
@@ -214,7 +215,7 @@ module tb_cpu_irq;
         clk_sys=0; reset_sys=1; core_reset=0; gb_tick=0; profile_id=1;
         epoch=1; dot_before=0; ie=0; iflags=0; buttons=0;
         response_valid=1; stop_action=0; stop_padding=0; wake_request=0;
-        same_edge=0; corrupt=$test$plusargs("corrupt");
+        same_edge=0; corrupt=$test$plusargs("corrupt"); di_fault=$test$plusargs("di_fault");
         trace=$fopen("irq-trace.csv","w");
         if (!trace) $fatal(1,"CPU_IRQ_TRACE_OPEN");
         $dumpfile("waves/cpu-irq.vcd");
@@ -269,7 +270,7 @@ module tb_cpu_irq;
             if (scenario==14 || scenario==16) expected_events=expected_events-1;
             expect_interrupt=scenario!=18;
             end_dot=recognition_dot+20;
-            if (scenario==18) begin expected_events=3; end_dot=24; end
+            if (scenario==18) begin expected_events=8; end_dot=44; end
             if (scenario==19) begin expected_events=7; end_dot=84; end
             reset_sys=0; core_reset=1; edge_cycle(0); core_reset=0;
             for (cycle=0; cycle<end_dot*3+2; cycle=cycle+1) begin
@@ -281,6 +282,8 @@ module tb_cpu_irq;
                     pause_done=1;
                 end
                 if (scenario==12 && dot_before==28) iflags=request_bits[4:0];
+                if (di_fault && scenario==18 && dot_before==24)
+                    force dut.control.mode=n2m_cpu_pkg::MODE_INTERRUPT;
                 if (corrupt && scenario==0 && dot_before==27)
                     force dut.control.irq_snapshot=5'b0;
                 edge_cycle(cycle%3==0);

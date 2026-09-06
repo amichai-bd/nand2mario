@@ -135,3 +135,11 @@ chaining to a remaining STAT request. The latter checks both stack entries,
 acknowledgements, seven full events and the intervening RETI reads/idle/fetch;
 no ordinary instruction may retire between RETI and the second entry. These
 original cases supplement the upstream interrupt-field exclusions.
+
+
+The DI cancellation case continues five literal NOPs through the would-be IRQ
+completion time with IF still pending. It rejects any stack/ack/vector sequence,
+not merely an incorrect IME bit. `cpu-irq-di-fault` forces actual interrupt mode
+after DI and must fail the next public bus cycle. The shorter intermediate case
+ended at DI and did not establish this behavioral cancellation; its evidence is
+retained with that review limitation.
