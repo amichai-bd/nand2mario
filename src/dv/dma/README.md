@@ -34,3 +34,5 @@ valid to T3, and `dma-engine-service` withholds the promised first response.
 The exact expected failures are DMA_ENGINE_BYTE, DMA_ENGINE_TIME and the local
 DMA_SOURCE_SERVICE assertion. All public ports and independent expected fields
 are dumped, and every phase observation has a CSV row.
+
+The first dma-composition fixture runs an original HRAM program on the actual CPU, enables the actual PPU, and transfers160 bytes through the shared Intel stores while checking64 HL increments. Independent OAM words, physical writes, PPU pre-dot pair data and complete final public readback are checked. This initial case does not replace the remaining source-bus, restart, power-state and other IDU-family witnesses. dma-composition-byte corrupts the actual raw OAM write value and requires DMA_COMPOSITION_WRITE.
