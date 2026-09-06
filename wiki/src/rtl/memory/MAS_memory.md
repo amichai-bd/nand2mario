@@ -108,6 +108,11 @@ defines `SYNTHESIS` around the same product and test sources to observe the
 hardware sticky fault after a missing-owner write: no same-edge commit,
 subsequent dispatch suppressed, and reset recovery. This complements, and
 does not replace, the assertion-enabled runs.
+The normal positive also cancels a prepared read and write at each T1–T4
+boundary under both core and global reset. Held system edges before each
+boundary check pause behavior; T4 reset overlaps the commit input. Every
+case waits for the complete clear and checks that no cancelled byte effect
+or stale response survives.
 
 CPU #118 at `9a984d0` agrees that request fields are prepared before T1 and held
 through T4. `read_data` and `response_valid` are consumed before the T4 edge;

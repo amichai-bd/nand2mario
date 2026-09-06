@@ -15,7 +15,7 @@ module tb_memory_cpu_port;
     logic [15:0] unused_oam;
     logic unused_host_valid, unused_vram_valid, unused_oam_valid, unused_wave_valid;
     logic host_write;
-    integer index, phase, writes, owner_commits, fixed_reads;
+    integer index, phase, writes, owner_commits, fixed_reads, reset_phase, direction, reset_kind;
     bit duplicate_fault, missing_fault, write_fault;
     n2m_memory_cpu_port dut (.*);
     n2m_memory_stores stores (
@@ -81,6 +81,35 @@ module tb_memory_cpu_port;
         // Sleeping/HALT-style preparation has no commit and can refresh data.
         repeat (4) edge_cycle();
         bus_commit = 1; edge_cycle(); bus_commit = 0;
+    endtask
+
+    task automatic reset_prepared(input bit writing, input integer cancel_phase, input bit global_reset);
+        integer current_phase, before_writes, before_owners;
+        before_writes = writes; before_owners = owner_commits;
+        address = 16'hC123; write_enable = writing; write_data = 8'h7E;
+        request_valid = 1; bus_commit = 0;
+        edge_cycle();
+        for (current_phase = 0; current_phase <= cancel_phase; current_phase = current_phase + 1) begin
+            repeat (3) edge_cycle();
+            if (writes != before_writes || owner_commits != before_owners)
+                $fatal(1, "MEMORY_CPU_PHASE_PAUSE_EFFECT phase=%0d", current_phase);
+            if (current_phase == cancel_phase) begin
+                // At T4, reset wins over a coincident accepted-commit input.
+                // At earlier T states it cancels the already prepared read.
+                bus_commit = current_phase == 3;
+                if (global_reset) reset_sys = 1;
+                else core_reset = 1;
+                #1;
+                if (response_valid || storage_read || storage_write || owner_prepare || owner_commit)
+                    $fatal(1, "MEMORY_CPU_PHASE_RESET_CANCEL phase=%0d write=%0d", current_phase, writing);
+            end
+            edge_cycle();
+        end
+        bus_commit = 0; core_reset = 0; reset_sys = 0;
+        initialize();
+        read_byte(16'hC123, 8'h00);
+        if (writes != before_writes || owner_commits != before_owners || contract_fault)
+            $fatal(1, "MEMORY_CPU_PHASE_RESET_EFFECT phase=%0d write=%0d", cancel_phase, writing);
     endtask
 
     initial begin
@@ -195,8 +224,12 @@ module tb_memory_cpu_port;
         edge_cycle(); core_reset = 0; initialize();
         read_byte(16'hC000, 8'h00);
         read_byte(16'hFFFE, 8'h00);
+        for (reset_kind = 0; reset_kind < 2; reset_kind = reset_kind + 1)
+            for (direction = 0; direction < 2; direction = direction + 1)
+                for (reset_phase = 0; reset_phase < 4; reset_phase = reset_phase + 1)
+                    reset_prepared(direction != 0, reset_phase, reset_kind != 0);
         if (writes != 7 || owner_commits != 1 || contract_fault) $fatal(1, "MEMORY_CPU_FINAL_COUNTS");
-        $display("PASS memory CPU port writes=7 owner_commits=1 fixed_io=71 echo ROM reset stale pause");
+        $display("PASS memory CPU port writes=7 owner_commits=1 fixed_io=71 reset_phases=16 echo ROM stale pause");
         $finish;
     end
     initial begin
