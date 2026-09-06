@@ -141,3 +141,11 @@ A checked counter requires fine7 scenes to distinguish columns14 and15.
 row1/column8, line34 row2/column8 after WX255, then background. Both retain
 public waves and need actual runtime evidence. Neither claims exact mode3
 length or resolves the documented physical LCD phase limits.
+
+`ppu-window-disabled-wx` qualifies WY32 with an offscreen window, then disables
+Window enable and sets WX47 in HBlank before line33. An original asymmetric BG
+oracle checks the selected delayed-load columns and all111 raw0 insertions,
+without reading DUT fetch state. The source recurrence traces old WX match at
+raw47/count7, no reload, raw48/color0, then the delayed tile at raw49. The fault
+target changes the actual source shade at the first inserted pixel from0 to3.
+Both targets require runtime evidence; the old failed WY run is not acceptance.

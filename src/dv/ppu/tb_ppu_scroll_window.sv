@@ -25,7 +25,8 @@ module tb_ppu_scroll_window;
     logic [7:0] source_x, source_y;
     logic [31:0] source_epoch;
     logic [63:0] source_dot, previous_dot, enable_dot, normal_first_dot;
-    logic case_done, wy_case, wy_late, wx166_case, wx0_case;
+    logic case_done, wy_case, wy_late, wx166_case, wx0_case, disabled_wx_case;
+    integer disabled_pixels;
     integer fine7_distinct;
     integer current_scx, current_wx, write_line, expected_window_row;
     integer window_lines, background_lines;
@@ -50,10 +51,11 @@ module tb_ppu_scroll_window;
 
 
     function automatic integer line_scx(input integer row);
-        line_scx = wy_case || wx166_case ? 0 : row % 8;
+        line_scx = wy_case || wx166_case || disabled_wx_case ? 0 : row % 8;
     endfunction
     function automatic integer line_wx(input integer row);
-        if (wx0_case) line_wx = 0;
+        if (disabled_wx_case) line_wx = row >= 33 ? 47 : 255;
+        else if (wx0_case) line_wx = 0;
         else if (wx166_case) line_wx = row == 32 || row == 33 ? 166 : 255;
         else if (wy_case) line_wx = 47;
         else case (row % 16)
@@ -113,8 +115,14 @@ module tb_ppu_scroll_window;
                 sx = px + wx0_offset(py % 8);
                 sy = py;
             end
+            if (disabled_wx_case) begin
+                win = 0;
+                sx = py >= 33 && px > 40 ? px - 1 : px;
+                sy = (py + 11) % 256;
+            end
             tile = map_tile(sx / 8, sy / 8, win);
-            scene = pattern(tile, sx % 8, sy % 8);
+            scene = disabled_wx_case && py >= 33 && px == 40
+                ? 2'd0 : pattern(tile, sx % 8, sy % 8);
         end
     endfunction
     task automatic write_register(input logic [15:0] address, input logic [7:0] value);
@@ -142,6 +150,8 @@ module tb_ppu_scroll_window;
                 && (pixel_count / 160) % 8 == 7
                 && expected != pattern(map_tile(1, (pixel_count / 160) / 8, 1), 7, (pixel_count / 160) % 8))
                 fine7_distinct = fine7_distinct + 1;
+            if (disabled_wx_case && frame_count == 1 && pixel_count / 160 >= 33
+                && pixel_count % 160 == 40) disabled_pixels = disabled_pixels + 1;
             if (source_display_eligible !== (frame_count != 0)) $fatal(1, "PPU_SCROLL_ELIGIBILITY");
             $fdisplay(trace_file, "%0d,%0d,%0d,%0d,%0d", frame_count, pixel_count, source_dot, expected, source_shade);
             previous_dot = source_dot;
@@ -149,7 +159,11 @@ module tb_ppu_scroll_window;
                 frame_count = frame_count + 1; pixel_count = 0;
                 if (frame_count == 2) begin
                     $fclose(trace_file);
-                    if (wx0_case) begin
+                    if (disabled_wx_case) begin
+                        if (disabled_pixels != 111) $fatal(1, "PPU_DISABLED_WX_COUNT");
+                        $display("PASS PPU disabled WX match inserted zero pixels=111 frame_pixels=46080");
+                    end
+                    else if (wx0_case) begin
                         if (fine7_distinct != 14) $fatal(1, "PPU_WX0_ORACLE_INSENSITIVE");
                         $display("PASS PPU WX0 static fine=8 pixels=46080 distinct14vs15=%0d", fine7_distinct);
                     end
@@ -170,6 +184,7 @@ module tb_ppu_scroll_window;
             source_display_eligible, frame_count, pixel_count, expected);
         clk_sys = 0; reset_sys = 1; core_reset = 0; pause_request = 0;
         epoch = 5; write_pending = 0; io_write = 1; io_address = 0; io_wdata = 0;
+        disabled_wx_case = $test$plusargs("disabled_wx"); disabled_pixels = 0;
         wx166_case = $test$plusargs("wx166"); wx0_case = $test$plusargs("wx0"); fine7_distinct = 0;
         wy_case = $test$plusargs("wy"); wy_late = $test$plusargs("wy_late");
         dma_active = 0; frame_count = 0; pixel_count = 0; previous_dot = 0; case_done = 0;
@@ -196,7 +211,7 @@ module tb_ppu_scroll_window;
         repeat (4) @(negedge clk_sys);
         reset_sys = 0;
         write_register(16'hff43, 0); write_register(16'hff42, 11);
-        write_register(16'hff47, 8'he4); write_register(16'hff4a, wy_case || wx166_case ? 32 : 0);
+        write_register(16'hff47, 8'he4); write_register(16'hff4a, wy_case || wx166_case || disabled_wx_case ? 32 : 0);
         write_register(16'hff4b, wx0_case ? 0 : wy_case ? 47 : 255);
         write_register(16'hff40, wy_case ? 8'hd1 : 8'hf1);
         // Constant offscreen window during warm-up. The next frame's WY latch
@@ -206,7 +221,20 @@ module tb_ppu_scroll_window;
             @(negedge clk_sys);
             force dut.source_shade = 2'd0;
         end
-        if (wx166_case) begin
+        if (disabled_wx_case) begin
+            // WY32 qualifies with Window enabled and WX offscreen. Hide on33
+            // while retaining the match. Raw47 suppresses reload at count7;
+            // raw48/source40 emits raw0, then the retained tile is one pixel late.
+            wait (pixel_count == 33 * 160);
+            write_register(16'hff40, 8'hd1);
+            write_register(16'hff4b, 47);
+            if (pixel_count != 33 * 160) $fatal(1, "PPU_DISABLED_WX_LATE_SETUP");
+            if ($test$plusargs("disabled_wx_corrupt")) begin
+                wait (pixel_count == 33 * 160 + 40);
+                @(negedge clk_sys);
+                force dut.source_shade = 2'd3;
+            end
+        end else if (wx166_case) begin
             wait (pixel_count == 32 * 160);
             write_register(16'hff4b, 166);
             if (pixel_count != 32 * 160) $fatal(1, "PPU_WX166_LATE_START");

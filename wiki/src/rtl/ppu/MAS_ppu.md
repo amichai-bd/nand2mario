@@ -467,6 +467,14 @@ This selected carry behavior follows the retained match in the same MiSTer
 source and [SameBoy's carry path](https://github.com/LIJI32/SameBoy/blob/213a12ce93d66b105a113debd9396306066a7cfc/Core/display.c#L2080),
 whose timing approximation does not establish an exact physical edge.
 
+A retained WY match can also suppress a normal BG reload when Window enable is
+off. The selected DMG reload rule still uses that WX match; a suppressed load
+allows an emptied shift pipe to emit raw BG color0 before the delayed tile.
+For fine SCX0 and WX47 held through the line, pixels0..39 use BG columns0..39,
+pixel40 uses raw0 through BGP, and pixels41..159 use BG columns40..158. This
+is the disabled-window reload effect explicitly described by the pinned MiSTer
+source, separate from LCD-off blanking or clearing the WY latch.
+
 ### Renderer composition
 
 `n2m_ppu` connects the owned register, timing, position, window, fetch, object,
