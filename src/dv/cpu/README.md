@@ -210,3 +210,11 @@ operands at FFFF/0000 before executing the following HALT at0001. The independen
 expected stream includes four stack writes. Its negative changes actual POP
 read data and must fail the complete post-event record. The flat-memory responder
 does not model the separate IF/IE owner or authorize product storage inference.
+
+
+`cpu-if-observation` scripts resolved public IE/IF/button observations after A
+and before B. Thirteen complete records distinguish retirement's updated fields
+from held T3 recognition and the later dispatch snapshot. Clear, raise and
+reprioritize cases have literal instruction/stack/vector schedules. The negative
+forces the actual published IF field stale. This verifies the CPU sampling
+contract, not the separate IF owner's collision-priority implementation.
