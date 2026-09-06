@@ -61,3 +61,17 @@ write and full readback. Scan and excluded-read counts plus a row bitmap bound
 actual coverage; nonzero scan coverage is not all twenty rows. The row-fault
 target changes the first eligible current-row Y write from10 to00 and requires
 the independent DMA_COMPOSITION_WRITE failure.
+
+
+The STOP composition runs an original STOP instruction. Its existing policy
+qualifies pause on the accepting carry; registered stopped then holds time.
+A thousand system clocks preserve the pair and dot count. An upstream-qualified
+phase0/off-tick wake precedes the first resumed transfer by four dots. This
+fixture does not implement analog oscillator restart qualification.
+
+Four pause targets request host pause in each CPU phase. They require one
+accepting dot, then frozen phase/dots/transfer count for200 system clocks.
+Accepted writes may drain; after47 clocks every public effect output must be
+quiet. Resume completes full byte/readback checks. The pause-fault target forces
+the actual raw write control during the held interval and requires
+DMA_PAUSE_SERVICE_DRAIN.
