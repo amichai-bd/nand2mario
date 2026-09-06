@@ -44,8 +44,10 @@ must disable A reading and can be observed with a subsequent enabled read.
 An assertion rejects partial-lane simultaneous read/write.
 
 Cross-port read/write collisions are forbidden in both clock modes. The
-primitive selects mixed-port `DONT_CARE`, so no deterministic collision value
-is promised. The wrapper checks at both port clocks that an active A write
+primitive explicitly selects mixed-port `OLD_DATA`, matching the installed
+model's MAX 10 family handling. This parameter does not authorize a collision
+or promise a deterministic value for unrelated clocks. The wrapper checks at
+both port clocks that an active A write
 request and B read request do not target the same address. This deliberately
 strong request-window rule is only a local diagnostic: owners must also enforce
 bank/address ownership across unrelated clocks, including physical timing
