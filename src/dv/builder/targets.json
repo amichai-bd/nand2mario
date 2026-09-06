@@ -2955,5 +2955,111 @@
     ],
     "expected_exit": "nonzero",
     "signature": "CPU_STOP_IRQ_BUS case=0 dot=32"
+  },
+  "snapshot": {
+    "top": "tb_snapshot",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/snapshot/n2m_snapshot_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/snapshot/n2m_frame_snapshot.sv",
+      "src/dv/snapshot/tb_snapshot.sv"
+    ],
+    "vendor_model": "intel-memory",
+    "signature": "PASS snapshot first copy bytes=5760",
+    "args": [],
+    "expected_exit": "zero",
+    "timeout_seconds": 180
+  },
+  "snapshot-lifecycle": {
+    "top": "tb_snapshot_lifecycle",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/snapshot/n2m_snapshot_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/snapshot/n2m_frame_snapshot.sv",
+      "src/dv/snapshot/tb_snapshot_lifecycle.sv"
+    ],
+    "vendor_model": "intel-memory",
+    "signature": "PASS snapshot lifecycle cases=8 bytes=43367",
+    "args": [],
+    "expected_exit": "zero",
+    "timeout_seconds": 180
+  },
+  "snapshot-overwrite": {
+    "top": "tb_snapshot_lifecycle",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/snapshot/n2m_snapshot_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/snapshot/n2m_frame_snapshot.sv",
+      "src/dv/snapshot/tb_snapshot_lifecycle.sv"
+    ],
+    "vendor_model": "intel-memory",
+    "signature": "SNAPSHOT_LIFECYCLE_DATA case=2 byte=3",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "timeout_seconds": 180
+  },
+  "snapshot-latency": {
+    "top": "tb_snapshot_lifecycle",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/snapshot/n2m_snapshot_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/snapshot/n2m_frame_snapshot.sv",
+      "src/dv/snapshot/tb_snapshot_lifecycle.sv"
+    ],
+    "vendor_model": "intel-memory",
+    "signature": "SNAPSHOT_LIFECYCLE_LATENCY case=2 byte=3",
+    "args": [
+      "+latency_fault"
+    ],
+    "expected_exit": "nonzero",
+    "timeout_seconds": 180
+  },
+  "snapshot-ownership": {
+    "top": "tb_snapshot_lifecycle",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/snapshot/n2m_snapshot_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/snapshot/n2m_frame_snapshot.sv",
+      "src/dv/snapshot/tb_snapshot_lifecycle.sv"
+    ],
+    "vendor_model": "intel-memory",
+    "signature": "N2M_ASSERT SNAPSHOT_BANK_OWNERSHIP",
+    "args": [
+      "+ownership_fault"
+    ],
+    "expected_exit": "nonzero",
+    "timeout_seconds": 180
+  },
+  "snapshot-vga": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/snapshot/n2m_snapshot_pkg.sv",
+      "src/rtl/clocking/n2m_reset_control.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/vga/n2m_frame_ram.sv",
+      "src/rtl/vga/n2m_vga_scan.sv",
+      "src/rtl/vga/n2m_frame_bridge.sv",
+      "src/dv/vga/tb_vga.sv",
+      "src/rtl/snapshot/n2m_frame_snapshot.sv",
+      "src/dv/snapshot/tb_snapshot_vga.sv"
+    ],
+    "vendor_model": "intel-memory",
+    "intel_mixed_mode_instances": [
+      "tb_snapshot_vga.video.dut.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_snapshot_vga.video.dut.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_snapshot_vga.video.dut.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
+    ],
+    "top": "tb_snapshot_vga",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS snapshot VGA pre_reset_frames=18 immutable",
+    "timeout_seconds": 600
   }
 }
