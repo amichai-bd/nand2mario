@@ -3791,6 +3791,18 @@
         "tools/n2m/host/package.py",
         "tools/n2m/host/transport.py",
         "tools/n2m/host/__init__.py"
+      ],
+      "access": [
+        "tx_bytes",
+        "rx_bytes",
+        "tx_count",
+        "rx_count",
+        "tx_busy",
+        "rx_done",
+        "tx_go",
+        "finish_request",
+        "simulation_ns",
+        "dot_count"
       ]
     }
   },
@@ -3884,6 +3896,18 @@
         "tools/n2m/host/package.py",
         "tools/n2m/host/transport.py",
         "tools/n2m/host/__init__.py"
+      ],
+      "access": [
+        "tx_bytes",
+        "rx_bytes",
+        "tx_count",
+        "rx_count",
+        "tx_busy",
+        "rx_done",
+        "tx_go",
+        "finish_request",
+        "simulation_ns",
+        "dot_count"
       ]
     }
   },
@@ -3977,6 +4001,18 @@
         "tools/n2m/host/package.py",
         "tools/n2m/host/transport.py",
         "tools/n2m/host/__init__.py"
+      ],
+      "access": [
+        "tx_bytes",
+        "rx_bytes",
+        "tx_count",
+        "rx_count",
+        "tx_busy",
+        "rx_done",
+        "tx_go",
+        "finish_request",
+        "simulation_ns",
+        "dot_count"
       ]
     }
   },
@@ -4070,6 +4106,18 @@
         "tools/n2m/host/package.py",
         "tools/n2m/host/transport.py",
         "tools/n2m/host/__init__.py"
+      ],
+      "access": [
+        "tx_bytes",
+        "rx_bytes",
+        "tx_count",
+        "rx_count",
+        "tx_busy",
+        "rx_done",
+        "tx_go",
+        "finish_request",
+        "simulation_ns",
+        "dot_count"
       ]
     }
   }

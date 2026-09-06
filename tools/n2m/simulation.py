@@ -33,8 +33,10 @@ def load_target(root, name):
             raise ValueError(f"missing or out-of-tree source: {source}")
     if "driver" in target:
         driver = target["driver"]
-        if not isinstance(driver, dict) or set(driver) != {"script", "peer", "inputs"} or not isinstance(driver["inputs"], list):
+        if not isinstance(driver, dict) or set(driver) - {"script", "peer", "inputs", "access"} or not {"script", "peer", "inputs"} <= set(driver) or not isinstance(driver["inputs"], list):
             raise ValueError("simulation driver requires script, peer and inputs")
+        if not isinstance(driver.get("access", []), list) or any(not isinstance(name, str) or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name) for name in driver.get("access", [])):
+            raise ValueError("driver access must name top-level DV objects")
         for source in [driver["script"], driver["peer"], *driver["inputs"]]:
             if not isinstance(source, str):
                 raise ValueError("simulation driver inputs must be paths")
