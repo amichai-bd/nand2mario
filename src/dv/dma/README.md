@@ -1,8 +1,8 @@
 # OAM DMA verification
 
 Full scope follows [DMA MAS](../../../wiki/src/rtl/dma/MAS_dma.md) and #132.
-Pure corruption has reviewed bounded runtime evidence. The adopted digital
-policies are in MAS; composed arbitration verification remains incomplete.
+The fixtures below cover pure corruption and composed arbitration. The adopted
+digital policies and physical-model limits are defined in the MAS.
 
 The initial `oam-corrupt` target checks the pure transformation against an
 independent sequential word oracle. It covers twenty rows, four classes,
@@ -19,7 +19,7 @@ Public inputs/results/masks are explicitly dumped; the CSV contains original
 rows, complete expected/actual rows and every case coordinate. A system-time
 watchdog is independent of DUT completion. No random seed influences selection.
 
-Later acceptance retains the actual shared Intel OAM store, delivered CPU
+Composed verification uses the actual shared Intel OAM store, delivered CPU
 internal-address events, real PPU scan/fetch consumers, reset/pause/HALT/STOP,
 all transfer bytes/times and actual timing/arbitration defects. A pure formula
 pass or normal DMA copy cannot replace that evidence.
@@ -35,13 +35,13 @@ The exact expected failures are DMA_ENGINE_BYTE, DMA_ENGINE_TIME and the local
 DMA_SOURCE_SERVICE assertion. All public ports and independent expected fields
 are dumped, and every phase observation has a CSV row.
 
-The first dma-composition fixture runs an original HRAM program on the actual CPU, enables the actual PPU, and transfers160 bytes through the shared Intel stores while checking64 HL increments. Independent OAM words, physical writes, PPU pre-dot pair data and complete final public readback are checked. This initial case does not replace the remaining source-bus, restart, power-state and other IDU-family witnesses. dma-composition-byte corrupts the actual raw OAM write value and requires DMA_COMPOSITION_WRITE.
+The dma-composition fixture runs an original HRAM program on the actual CPU, enables the actual PPU, and transfers160 bytes through the shared Intel stores while checking64 HL increments. Independent OAM words, physical writes, PPU pre-dot pair data and complete final public readback are checked. The source-bus, restart, power-state and other IDU-family witnesses below complement this case. dma-composition-byte corrupts the actual raw OAM write value and requires DMA_COMPOSITION_WRITE.
 
 The halt case uses a real CPU HALT after LDH retirement at DMA byte0, checks actual partial-even pair0810 through1000 system clocks, then enables an IRQ input and requires the next DMA byte at wakeT4+4 dots. The unresolved case changes the accepted observation qualifier and checks no current write before its named fatal. A separate literal SYNTHESIS wrapper runs the same product with hardware assertion exclusion and checks200 further clocks without effects after the sticky fault; it does not waive the normal assertion target.
 
 The HALT witness seeds OAM byte1=08 but source byte1=27, so even-pair0810 is distinguishable from the later transferred odd-pair2710. The earlier inserted-NOP fixture failed with two transferred bytes and remains retained; it was a fixture schedule error, not an RTL failure.
 
-The HALT fixture checks the actual service output, not a PPU phase2 fetch. Actual DMA-held phase2 consumption remains a separate required full-composition witness.
+The HALT fixture checks the actual service output. The terminal fixture below supplies the separate actual phase2 consumer witness; the overlay fixture checks the held response after simultaneous effects.
 
 
 The dma-terminal fixture uses the actual object scanner and Intel OAM store.
