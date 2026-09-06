@@ -543,6 +543,39 @@
         ],
         "reference_ns": "20.000"
       }
+    },
+    "uart-packet-stores": {
+      "device": "10M50DAF484C7G",
+      "top": "n2m_uart_packet_store",
+      "sources": [
+        "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+        "src/rtl/uart/n2m_uart_pkg.sv",
+        "src/rtl/common/n2m_intel_ram.sv",
+        "src/rtl/uart/n2m_uart_packet_store.sv"
+      ],
+      "constraints": [
+        "src/fpga/de10_lite/uart_packet_stores.sdc"
+      ],
+      "pins": {
+        "clk_sys": "PIN_P11"
+      },
+      "virtual_pins": [
+        "reset_sys",
+        "encoded_write",
+        "encoded_write_address[*]",
+        "encoded_write_data[*]",
+        "encoded_read",
+        "encoded_read_address[*]",
+        "encoded_read_data[*]",
+        "encoded_read_valid",
+        "decoded_write",
+        "decoded_write_address[*]",
+        "decoded_write_data[*]",
+        "decoded_read",
+        "decoded_read_address[*]",
+        "decoded_read_data[*]",
+        "decoded_read_valid"
+      ]
     }
   }
 }

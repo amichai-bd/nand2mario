@@ -1,0 +1,21 @@
+# UART endpoint verification
+
+Contract: [UART MAS](../../../wiki/src/rtl/uart/MAS_uart.md) and its shared ABI.
+Implementation and actual Questa evidence are pending under #91.
+
+| Boundary | Independent checks |
+| --- | --- |
+| Serial | Idle/start/data/stop timing, all byte values, fractional phase, false start, bad stop, reset during each bit; check public RX/TX bytes against driven bits |
+| Framing | Literal known CRC vectors, COBS zero blocks and 254-byte blocks, equivalent trailing encoding, maximum payload, delimiter-only, truncation, malformed code, oversize and idle recovery |
+| Validation | Bad CRC/kind/request status cause no request or response; valid unsupported version/command and invalid lengths give exact statuses without effects |
+| Duplicate | Identical decoded retries, equivalent COBS forms, same sequence with changed bytes, intervening sequence, wrap and core/global reset; count effects independently |
+| Load | Full public load/readback, arbitrary order, overlap/rewrite, missing byte, bad whole-image CRC, repair/restart, running write rejection, reset acknowledgement after initialization |
+| Control | HALT after current dot, RUN resume without catch-up, STEP instruction versus interrupt events and HALT/STOP budget, retirement wins at budget, all eight input bits and simultaneous masks at exact dot boundaries |
+| Isolation | Separate host-address and ROM-offset validation, every known/unaligned/unknown host word, no DMG bus decoder or CPU-address truncation |
+| Harness sensitivity | Corrupt an actual returned byte or duplicate an actual accepted effect; require a named nonzero mismatch, plus a meaningful local assertion failure |
+
+Stimulus, passive accepted-effect monitors and expected packet bytes remain
+independent of DUT decode/next-state fields. Retain explicit public wave signals,
+transaction logs, exact source snapshots and Intel binding evidence. Test-only
+core/storage/snapshot models prove their boundary contracts, not full-system
+integration. Licensed runs require the root's exclusive slot.
