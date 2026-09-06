@@ -120,7 +120,7 @@ def audit(quote, *, lcd=False):
     return "\n".join(lines) + "\n"
 
 
-def verify_memory_netlist(text):
+def verify_memory_netlist(text, *, lcd=False):
     """Check the fitted MAX 10 atoms, including clocks and one-edge read shape."""
     atoms = re.findall(r"fiftyfivenm_ram_block\s+\\(\S+)\s*\((.*?)\);", text, re.DOTALL)
     if len(atoms) != 18 or len({name for name, _ in atoms}) != 18:
@@ -160,7 +160,10 @@ def verify_memory_netlist(text):
         first = params.get("port_a_first_bit_number")
         if first not in ("0", "1") or params.get("port_b_first_bit_number") != first:
             raise ValueError("VGA physical RAM bit identity differs")
-        if not re.fullmatch(r"\{\\shade\[" + first + r"\]~\d+_combout\}", ports.get("portadatain", "")):
+        expected_input = "{\\u_ppu|source_shade[" + first + "]}"
+        input_matches = ports.get("portadatain") == expected_input if lcd else bool(
+            re.fullmatch(r"\{\\shade\[" + first + r"\]~\d+_combout\}", ports.get("portadatain", "")))
+        if not input_matches:
             raise ValueError("VGA physical RAM input shade bit differs")
         bits[bank].append(int(first))
         evidence[name] = {"ports": ports, "parameters": params}
@@ -196,7 +199,7 @@ def verify(folder, *, lcd=False):
     for row in ram_rows:
         if len(row) != 27 or row[4:18] != ["23040", "2", "23040", "2", "yes", "no", "yes", "no", "46080", "23040", "2", "23040", "2", "46080"] or row[18] != "6" or row[19] != "None" or row[21:] != ["Don't care", "New data with NBE Read", "New data with NBE Read", "Off", "No", "No - Unknown"]:
             raise ValueError("VGA RAM dimensions, registers, M9K usage or initialization differ")
-    physical_ram = verify_memory_netlist((folder / "simulation/questa/design.vo").read_text(encoding="utf-8"))
+    physical_ram = verify_memory_netlist((folder / "simulation/questa/design.vo").read_text(encoding="utf-8"), lcd=lcd)
     result = {"physical_ram": physical_ram, "ram_banks": 3, "memory_bits": 138240, "m9k_blocks": 18, "first_pins": pins, "corners": {}}
     output_sources = dict(zip(PORTS, OUTPUT_REGISTERS))
     packed = [row for row in rows(fit) if len(row) > 6 and row[1:3] == ["Packed Register", "Register Packing"]

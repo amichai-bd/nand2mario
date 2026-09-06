@@ -10,7 +10,7 @@ from tools.n2m import fpga, fpga_vga, fpga_pll
 from tools.n2m.records import file_hash
 
 
-def memory_netlist():
+def memory_netlist(lcd=False):
     """Original physical-shape fixture; no copied vendor generated HDL."""
     cells = []
     for bank in range(3):
@@ -35,7 +35,11 @@ def memory_netlist():
                                f"port_{port}_last_address": "8191", f"port_{port}_first_bit_number": str(bit),
                                f"port_{port}_read_during_write_mode": "new_data_with_nbe_read"})
             cells += [f'defparam \\{name} .{key} = "{value}";' for key, value in params.items()]
-    return "\n".join(cells)
+    text = "\n".join(cells)
+    if lcd:
+        for bit in (0, 1):
+            text = text.replace(f"\\shade[{bit}]~7_combout", f"\\u_ppu|source_shade [{bit}]")
+    return text
 
 
 def fixture(folder, lcd=False):
@@ -63,7 +67,7 @@ def fixture(folder, lcd=False):
     write("design.fit.rpt", ram)
     netlist = folder / "simulation/questa/design.vo"
     netlist.parent.mkdir(parents=True)
-    netlist.write_text(memory_netlist(), encoding="utf-8")
+    netlist.write_text(memory_netlist(lcd=lcd), encoding="utf-8")
     names = (*fpga_vga.CHAINS, "blank_pix", "blank_seen_sys") if lcd else fpga_vga.CHAINS
     write("vga_first_pins.rpt", "".join(f"{name} u_bridge|{name}[0]|d\n" for name in names))
     pix_clock = "u_clocking|u_pll|altpll_component|auto_generated|pll1|clk[0]"
@@ -94,6 +98,18 @@ def fixture(folder, lcd=False):
 
 
 class VgaEvidenceTests(unittest.TestCase):
+    def test_composed_memory_exact_shade_bit_and_profile(self):
+        text = memory_netlist(lcd=True)
+        self.assertEqual(len(fpga_vga.verify_memory_netlist(text, lcd=True)), 18)
+        for before, after in (("source_shade [0]", "source_shade [1]"),
+                              ("u_ppu|source_shade", "other|source_shade")):
+            with self.subTest(mutation=after), self.assertRaises(ValueError):
+                fpga_vga.verify_memory_netlist(text.replace(before, after, 1), lcd=True)
+        with self.assertRaises(ValueError):
+            fpga_vga.verify_memory_netlist(text)
+        with self.assertRaises(ValueError):
+            fpga_vga.verify_memory_netlist(memory_netlist(), lcd=True)
+
     def test_physical_memory_clock_role_latency_init_and_partition_failures(self):
         text = memory_netlist()
         self.assertEqual(len(fpga_vga.verify_memory_netlist(text)), 18)
@@ -299,3 +315,4 @@ class VgaEvidenceTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
