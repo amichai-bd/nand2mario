@@ -1,8 +1,8 @@
 `default_nettype none
 `include "src/rtl/common/macros.svh"
 
-// Pipeline and architectural state. The separate power-policy owner supplies
-// STOP's model-dependent decision; this internal interface is not a host ABI.
+// Pipeline and architectural state. DMG STOP entry is local; oscillator wake
+// retains its explicit policy seam until the remaining model gates are closed.
 module n2m_cpu_control (
     input var logic clk_sys,
     input var logic reset_sys,
@@ -16,8 +16,7 @@ module n2m_cpu_control (
     input var logic [7:0] buttons,
     input var logic [7:0] read_data,
     input var logic response_valid,
-    input var logic [1:0] stop_action,
-    input var logic stop_padding,
+    input var logic joyp_selected_active,
     input var logic wake_request,
     output logic request_valid,
     output logic [15:0] address,
@@ -38,6 +37,7 @@ module n2m_cpu_control (
     output logic ime_observe,
     output logic ime_delay_observe,
     output logic stop_execute,
+    output logic divider_reset_request,
     output logic retirement_valid,
     output n2m_interfaces_pkg::retirement_t retirement
 );
@@ -84,6 +84,8 @@ module n2m_cpu_control (
     logic [15:0] selected_vector;
     logic pending_irq;
     logic hold_address_effect;
+    logic [1:0] stop_action;
+    logic stop_padding;
 
     function automatic cpu_registers_t profile_registers;
         cpu_registers_t r;
@@ -128,6 +130,12 @@ module n2m_cpu_control (
         !fault && !reset_sys && !core_reset && (!active || cycle_end);
     assign hold_address_effect = initialized && !fault &&
         (phase != 0 || gb_tick) && !(gb_tick && phase == 3);
+
+    n2m_cpu_stop_policy stop_policy (
+        .selected_active(joyp_selected_active), .enabled_pending(pending_irq),
+        .execute(stop_execute), .action(stop_action), .padding(stop_padding),
+        .divider_reset(divider_reset_request)
+    );
 
     cpu_address_effect_t execute_address_effect;
 
@@ -389,6 +397,10 @@ module n2m_cpu_control (
         .retirement_valid(retirement_valid), .retirement(retirement)
     );
 
+    `N2M_ASSERT(CPU_STOP_DIVIDER_EDGE, clk_sys, reset_sys,
+        !divider_reset_request || (stop_execute && gb_tick && phase == 3 && !core_reset))
+    `N2M_ASSERT_KNOWN(CPU_STOP_SELECTED_KNOWN, clk_sys, reset_sys || core_reset,
+        joyp_selected_active)
     `N2M_ASSERT(CPU_PROFILE_ID, clk_sys, reset_sys,
         core_reset |-> profile_id == PROFILE_DIRECT_ID)
     `N2M_ASSERT(CPU_IRQ_ACK_ONEHOT, clk_sys, reset_sys || core_reset, $onehot0(irq_ack))

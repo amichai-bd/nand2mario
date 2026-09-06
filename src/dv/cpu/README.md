@@ -153,3 +153,21 @@ access, stay locked across pause and pending requests, and recover through core
 reset with a fresh epoch/sequence/profile NOP. Wrong-PC and invented locked-event
 faults force actual DUT signals and must fail their exact public checks. These
 cases do not settle the distinct IME0 wake-after-sleep latency question.
+
+
+## STOP entry fixture
+
+`cpu-stop` specifies eight original cases: the four selected-JOYP/pending-request
+rows with both IME states. EI/NOP setup establishes IME through instructions.
+The fixture checks actual one-byte versus two-byte retirement, ignored nonzero
+padding, one-byte continuation executing that byte, ordinary interrupt entry
+from the continuation row, divider-reset timing, held stopped-clock dots and
+HALT's continuing ticks. Expected bus/stack schedules and complete 48-byte
+records are literal and separate from the product policy. The policy inputs
+come from public JOYP/IE/IF stimulus, not private controller readback.
+
+The two negative targets force the actual policy's divider pulse or entry action;
+expected records stay unchanged. This fixture covers deterministic entry only.
+It does not settle analog wake, IME0 HALT wake latency, physical STOP IDU activity,
+or the pending full-system clock/timer/JOYP integration. Actual run evidence and
+its exact producing sources belong in the PR and build records.

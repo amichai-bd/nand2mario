@@ -296,10 +296,45 @@ full readiness; an invalid observation is not a waiver for those effects.
 OAM storage and corruption belong to their separate owner. The current planner's
 idle address remains unrelated to a physical address claim.
 
+## STOP entry policy
+
+For the DMG model there is no KEY1 speed-switch request. The pinned Pan Docs
+chart's no-speed-switch path gives these entry results. Its IME/glitch diamond
+belongs to the speed-switch path and is not used as a DMG entry condition.
+
+| Selected JOYP line active | Enabled request pending | Length | Entry mode | DIV reset |
+|---|---|---|---|---|
+| Yes | Yes | 1 byte | Continue; ordinary enabled interrupt recognition still applies. | No |
+| Yes | No | 2 bytes | HALT | No |
+| No | Yes | 1 byte | STOP | Yes |
+| No | No | 2 bytes | STOP | Yes |
+
+The combinational `n2m_cpu_stop_policy` receives the selected-line
+reduction, the CPU's T3 enabled-request snapshot and the STOP execution pulse.
+It drives the existing internal action/padding seams and a divider-reset pulse
+only on the completed STOP T4. The selected-line input is observed before that
+T4 edge, consistent with the synchronous digital input boundary; a newly
+resolved post-edge input belongs to subsequent wake handling. This mapping
+states the digital sampling convention, not measured analog pin timing. The
+second byte is the actual byte read from memory, retained in a two-byte event
+but not executed; a one-byte event leaves it as the next instruction address.
+
+The system completes the following bookkeeping edge before withholding further
+emulated ticks for STOP. HALT does not withhold peripheral ticks. Neither host
+pause nor a canceled/reset STOP attempt may create a divider-reset pulse. The
+future timer and JOYP owners consume these boundaries; the CPU does not add
+another divider counter or duplicate selected-line computation.
+
+These entry rows do not resolve oscillator restart. The separately pinned
+SonoSooS notes describe an interrupt with IME set during DMG STOP wake as an
+unstable-clock case. That wake model remains an explicit pending decision;
+it is not silently converted into a fault, a repeatable analog result or an
+exemption from the complete CPU acceptance gate.
+
 ## Design gates before dependent RTL
 
-1. Resolve STOP's deterministic held/pending combinations and the documented
-   nondeterministic oscillator-glitch case under the charter's model policy.
+1. Resolve the documented nondeterministic STOP oscillator-restart case under
+   the charter's model policy; the deterministic entry rows are separate above.
    A deliberate model fault or a deterministic digital approximation must be
    explicit and reviewed; neither may be silently presented as exact silicon.
 
@@ -326,9 +361,10 @@ Host checks, full external adapters and physical acceptance remain separate.
 
 The internal `n2m_cpu_control` component composes the execution planner, T-cycle
 bus and retirement recorder. Its first checked program covers 18 events and 50
-M-cycles. The public CPU wrapper is unfinished. The component's `stop_action`,
-`stop_padding` and `wake_request` ports are internal policy seams, not additions
-to the host initialization ABI; the final wrapper must own their resolved logic.
+M-cycles. The public CPU wrapper is unfinished. The component now owns deterministic STOP entry from `joyp_selected_active`
+and its frozen enabled-request snapshot. The remaining `wake_request` input is
+an internal policy seam, not an addition to the host initialization ABI; the
+final wrapper must own its resolved logic.
 
 The T3 request snapshot mapping is specified above; its contrasted IRQ/HALT
 fixtures remain required before full readiness. The current HALT return-to-HALT
@@ -336,7 +372,7 @@ branch matches the pinned SameBoy model for pending requests with IME set,
 including delayed EI. An earlier inference that ordinary IME alone proved this
 branch wrong was withdrawn after source comparison. Requests before the latch
 closes and arrivals after HALT enters sleep need separate checked expectations.
-STOP policy, IDU observation, reset/sleep/wake interruption and composed
+STOP wake policy, complete IDU observation, reset/sleep/wake interruption and composed
 interrupt/peripheral boundaries remain unfinished; this snapshot cannot close
 #118. The selected 498-form state/access evidence below remains valid within
 its declared flat-RAM exclusions.

@@ -134,3 +134,17 @@ writeback; it is not an SP-to-IDU address exposure. SameBoy separately uses
 additional write-like effect within this digital observation model, without
 claiming a measured value on floating or precharged pins. Final-fetch states
 ADD HL `x01`, ADD SP,e `011`, and LD HL,SP+e `x10` still select PC increments.
+
+
+## STOP chart scope
+
+The retained Pan Docs SVG connects selected-line inactive to the KEY1 question.
+Its no-speed-switch branch leads directly to the pending-request question and
+the one-byte/two-byte STOP entry results. The IME/glitch diamond is downstream
+of the speed-switch-yes branch. It must not be relabeled as a DMG entry test.
+The same source's selected-line-active branch chooses one-byte continuation
+or two-byte HALT. SameBoy corroborates these entry cases, while explicitly
+marking the STOP dummy-read timing unverified. Separately, the pinned SonoSooS
+notes describe unstable DMG clocks when an IME-enabled interrupt occurs during
+wake. We preserve that separate evidence and model limit without conflating
+it with the chart's CGB speed-switch branch.
