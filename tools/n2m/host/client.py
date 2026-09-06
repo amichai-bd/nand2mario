@@ -103,6 +103,13 @@ class Client:
         from ..interface_codec import host_address
         return self.request('READ_HOST', pack_record('read_host', {'address': host_address(address)}))['value']
 
+    def write_host(self, address, value):
+        from ..interface_codec import host_write
+        return self.request('WRITE_HOST', host_write(address, value))
+
+    def select_input_source(self, source):
+        return self.write_host(abi.HOST_REG_INPUT_SOURCE, source)
+
     def identify(self):
         ping = self.request('PING')['value']
         version = self.read_host(abi.HOST_REG_ABI)

@@ -29,9 +29,9 @@ The generated tables retain schema ownership; do not hand-copy their constants.
 ## Address spaces
 
 Game Boy addresses denote bytes on the original 16-bit CPU bus; data is eight
-bits. Host addresses denote aligned 32-bit read-only control/status words on a
+bits. Host addresses denote aligned 32-bit control/status words on a
 separate 32-bit bus entirely above the CPU range. No CPU transaction decodes
-host registers. `READ_HOST` is the only wire command carrying a host address.
+host registers. `READ_HOST` and `WRITE_HOST` carry host addresses.
 Unknown/unaligned host addresses fail without aliasing or truncation.
 
 ROM and snapshot commands carry byte offsets into named storage, not either
@@ -133,8 +133,15 @@ discarded; the host must recover the outstanding response before proceeding.
 
 Validate payload length, ranges and permitted state before effects; invalid
 commands do not partially change state. PING and status reads work in any state.
-All host registers are read-only: writes use explicit commands, not hidden
-write-only MMIO. Reserved enum values fail. Profile reads zero before a load
+Host registers are read-only except INPUT and INPUT_SOURCE. `WRITE_HOST` accepts
+only these generated addresses and writable bits; all other writes fail before
+effects. Its address32/value32 request returns the accepted dot64. Invalid length
+precedes BAD_VALUE, which precedes BAD_STATE, including while LOADING.
+Legacy INPUT remains the same atomic host-mask operation and readback.
+INPUT_SOURCE selects UART (reset default) or PHYSICAL; INPUT_PHYSICAL and
+INPUT_EFFECTIVE expose the observed and selected masks. This additive command
+retains ABI1; older endpoints reject it without an implicit fallback.
+Reserved enum values fail. Profile reads zero before a load
 has established it. Multiword live counts require HALT before coherent reads;
 snapshot sequence and the 128-bit build identifier are stable. Build ID is a
 deterministic build identity supplied by implementation, zero only for explicitly
@@ -166,7 +173,9 @@ unidentified simulation fixtures; it is not a device identity/authentication key
   offsets/counts must fit storage without arithmetic wrap, with count in
   1..MAX_PAYLOAD. During an incomplete load unwritten bytes are unspecified;
   full post-commit readback must equal the original image.
-- INPUT replaces all eight host button bits atomically. While running, apply
+- INPUT replaces all eight host button bits atomically in either source mode.
+  Only UART mode selects that mask for JOYP; PHYSICAL mode retains it as host
+  shadow readback. While running, apply
   it between completed dots, before the next dot observes JOYP/interrupt edges;
   while paused apply it immediately without advancing time. Return the count
   of already completed dots. CPU HALT/STOP does not discard input. Host bits

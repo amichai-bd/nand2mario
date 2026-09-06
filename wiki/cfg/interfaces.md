@@ -2,7 +2,7 @@
 
 Generated from cfg/interfaces.json by tools/n2m/interfaces.py; DO NOT EDIT.
 
-Source SHA-256: `fd251c431cebd5a34d81f983f118f2682ff0e03344215e474361839349e75550`.
+Source SHA-256: `c8444489d6170daad0103cdfb00d7da4372a8c2f8471d2629892b0dc8b898f21`.
 
 See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior, reset, framing and tests.
 
@@ -164,7 +164,7 @@ See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior,
 | `HOST_REG_DOT_HI` | 32 | `0x10014` | High half; pause for coherent multi-read; read-only |
 | `HOST_REG_RETIRE_LO` | 32 | `0x10018` | Low half of retirement count; read-only |
 | `HOST_REG_RETIRE_HI` | 32 | `0x1001C` | High half; pause for coherent multi-read; read-only |
-| `HOST_REG_INPUT` | 32 | `0x10020` | Active-high host button mask; read-only |
+| `HOST_REG_INPUT` | 32 | `0x10020` | Active-high host button mask; writable by INPUT or WRITE_HOST |
 | `HOST_REG_SNAPSHOT_VALID` | 32 | `0x10024` | 0 or 1; read-only |
 | `HOST_REG_SNAPSHOT_SEQ_LO` | 32 | `0x10028` | Latched source frame sequence low; read-only |
 | `HOST_REG_SNAPSHOT_SEQ_HI` | 32 | `0x1002C` | Latched source frame sequence high; read-only |
@@ -173,6 +173,9 @@ See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior,
 | `HOST_REG_BUILD_ID_2` | 32 | `0x10038` | Build identifier bits 95:64; read-only |
 | `HOST_REG_BUILD_ID_3` | 32 | `0x1003C` | Build identifier bits 127:96; read-only |
 | `HOST_REG_SNAPSHOT_EPOCH` | 32 | `0x10040` | Latched source core-reset epoch; read-only |
+| `HOST_REG_INPUT_SOURCE` | 32 | `0x10044` | Selected input source: UART or physical. |
+| `HOST_REG_INPUT_PHYSICAL` | 32 | `0x10048` | Latest coherent physical button mask; read only. |
+| `HOST_REG_INPUT_EFFECTIVE` | 32 | `0x1004C` | Effective Game Boy button mask; read only. |
 
 ## State
 
@@ -262,6 +265,21 @@ See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior,
 | `COMMAND_INPUT` | 8 | `0xB` | Apply full button mask at next dot boundary, or immediately while paused; return completed dot count. |
 | `COMMAND_SNAPSHOT` | 8 | `0xC` | Copy last completed source frame to dedicated immutable host snapshot; fail if none since core reset. |
 | `COMMAND_READ_FRAME` | 8 | `0xD` | Read dedicated snapshot, unchanged until next successful SNAPSHOT or global reset. |
+| `COMMAND_WRITE_HOST` | 8 | `0xE` | Write a whitelisted host control register. |
+
+## Input Source
+
+| Constant | Bits | Value | Meaning |
+|---|---|---|---|
+| `INPUT_SOURCE_UART` | 8 | `0x0` | Use the host button mask; reset default. |
+| `INPUT_SOURCE_PHYSICAL` | 8 | `0x1` | Use the coherent physical button mask. |
+
+## Host Write Mask
+
+| Constant | Bits | Value | Meaning |
+|---|---|---|---|
+| `HOST_WRITE_MASK_INPUT` | 32 | `0xFF` | Writable host button mask bits. |
+| `HOST_WRITE_MASK_INPUT_SOURCE` | 32 | `0x1` | Writable source selection bit. |
 
 ## Packet Header record
 
@@ -377,7 +395,16 @@ See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior,
 | `halt_bug` | 44 | 8 | Pending suppressed PC increment: 0 or 1 |
 | `ie` | 45 | 8 | Interrupt-enable storage byte |
 | `iflags` | 46 | 8 | Interrupt-request low five storage bits |
-| `buttons` | 47 | 8 | Host mask at event end |
+| `buttons` | 47 | 8 | Effective Game Boy button mask at event end |
+
+## Write Host record
+
+8 bytes, in listed order; each field is unsigned little-endian.
+
+| Field | Byte offset | Bits | Meaning |
+|---|---|---|---|
+| `address` | 0 | 32 | Whitelisted host register address. |
+| `value` | 4 | 32 | Value with all reserved bits zero. |
 
 ## Commands
 
@@ -396,6 +423,7 @@ See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior,
 | `INPUT` | `input` | `dot` | not loading |
 | `SNAPSHOT` | `empty` | `snapshot` | not loading |
 | `READ_FRAME` | `read_range` | `bytes` | snapshot valid |
+| `WRITE_HOST` | `write_host` | `dot` | Not LOADING. |
 
 ## Provenance
 

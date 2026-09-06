@@ -215,10 +215,12 @@ preserves image validity and transport/cache state; its reply waits for aggregat
 initialization. The system owner gates CPU memory service during initialization
 and host loading. It supplies fixed one-edge ROM and snapshot read service.
 
-`n2m_uart_core_control` owns host pause, epoch, dot/retirement counters and the
-held eight-bit input mask. It uses the existing timebase's tick and registered
-paused acknowledgement. RESET increments epoch and clears counters and input.
-INPUT applies between dot edges and returns that boundary's count. STEP uses the
+`n2m_uart_core_control` owns host pause, epoch and dot/retirement counters. It
+uses the existing timebase's tick and registered paused acknowledgement. RESET
+increments epoch and clears counters; the [shared input owner](../input/MAS_input.md)
+restores UART source and released host buttons. INPUT and WRITE_HOST(INPUT)
+normalize to one accepted mask operation between dot edges, returning that
+boundary's count. WRITE_HOST(INPUT_SOURCE) uses the same acceptance boundary. STEP uses the
 CPU's pre-T4 instruction-completion qualifier, excluding interrupt entry, and
 counts actual delivered dots. Instruction completion wins a budget tie; the
 reply follows the finishing B retirement publication. No synthetic tick or

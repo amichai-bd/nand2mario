@@ -29,7 +29,11 @@ module n2m_uart_commands (
     input var logic cpu_stopped,
     output logic pause_request,
     output logic core_reset,
-    output logic [7:0] buttons,
+    input var logic [7:0] buttons,
+    input var logic [7:0] input_source,
+    input var logic [7:0] physical_buttons,
+    input var logic [7:0] effective_buttons,
+    output n2m_input_pkg::input_write_t accepted_input,
     output logic [31:0] epoch,
     output logic [63:0] dot_count,
     output logic [63:0] retirement_count,
@@ -83,8 +87,14 @@ module n2m_uart_commands (
     logic load_input_valid, load_input_ready, load_output_valid, load_output_ready;
     logic reply_start, reply_busy, reply_done, payload_valid, payload_ready;
     logic [7:0] payload_data;
+    n2m_input_pkg::input_write_t core_input;
+    write_host_t write_fields;
     load_begin_t begin_fields;
     read_range_t range_fields;
+    assign write_fields = arguments[WRITE_HOST_BYTES*8-1:0];
+    assign core_input.valid = 1'b1;
+    assign core_input.source_write = request_header.command == COMMAND_WRITE_HOST && write_fields.address == HOST_REG_INPUT_SOURCE;
+    assign core_input.value = request_header.command == COMMAND_WRITE_HOST ? write_fields.value[7:0] : arguments[7:0];
     assign begin_fields = arguments;
     assign range_fields = arguments[READ_RANGE_BYTES*8-1:0];
     assign endpoint_state = loading ? STATE_LOADING : (paused ? STATE_PAUSED : STATE_RUNNING);
@@ -93,7 +103,7 @@ module n2m_uart_commands (
         : UART_ADDRESS_BITS'(PACKET_HEADER_BYTES + OFFSET_BYTES) + index;
     assign core_start = state == CORE_START;
     assign core_command = request_header.command == COMMAND_LOAD_BEGIN || request_header.command == COMMAND_LOAD_END
-        ? COMMAND_RESET : request_header.command;
+        ? COMMAND_RESET : (request_header.command == COMMAND_WRITE_HOST ? COMMAND_INPUT : request_header.command);
     assign load_start = state == LOAD_START;
     always_comb begin
         case (request_header.command)
@@ -128,7 +138,8 @@ module n2m_uart_commands (
     n2m_uart_host_registers u_host_registers (
         .address(arguments[31:0]), .endpoint_state(endpoint_state), .image_valid(image_valid),
         .profile(profile), .dot_count(dot_count), .retirement_count(retirement_count),
-        .buttons(buttons), .snapshot_valid(snapshot_valid), .snapshot_metadata(snapshot_metadata),
+        .buttons(buttons), .input_source(input_source), .physical_buttons(physical_buttons),
+        .effective_buttons(effective_buttons), .snapshot_valid(snapshot_valid), .snapshot_metadata(snapshot_metadata),
         .build_id(build_id), .address_valid(host_address_valid), .data(host_data)
     );
     n2m_uart_validate u_validate (
@@ -139,10 +150,10 @@ module n2m_uart_commands (
     );
     n2m_uart_core_control u_core_control (
         .clk_sys(clk_sys), .reset_sys(reset_sys), .start(core_start), .command(core_command),
-        .step_budget(arguments[31:0]), .input_buttons(arguments[7:0]), .gb_tick(gb_tick),
+        .step_budget(arguments[31:0]), .input_write(core_input), .gb_tick(gb_tick),
         .paused(paused), .core_initialized(core_initialized), .instruction_complete(instruction_complete),
         .retirement_valid(retirement_valid), .cpu_stopped(cpu_stopped), .pause_request(pause_request),
-        .core_reset(core_reset), .buttons(buttons), .epoch(epoch), .dot_count(dot_count),
+        .core_reset(core_reset), .accepted_input(accepted_input), .epoch(epoch), .dot_count(dot_count),
         .retirement_count(retirement_count), .busy(core_busy), .done(core_done), .status(core_status),
         .completed_dot(core_completed_dot)
     );
@@ -200,7 +211,7 @@ module n2m_uart_commands (
                 else case (request_header.command)
                     COMMAND_PING: begin reply_value_next[31:0] = WIRE_ABI; state_next = REPLY_START; end
                     COMMAND_READ_HOST: begin reply_value_next[31:0] = host_data; state_next = REPLY_START; end
-                    COMMAND_RESET, COMMAND_RUN, COMMAND_HALT, COMMAND_STEP, COMMAND_INPUT: state_next = CORE_START;
+                    COMMAND_RESET, COMMAND_RUN, COMMAND_HALT, COMMAND_STEP, COMMAND_INPUT, COMMAND_WRITE_HOST: state_next = CORE_START;
                     COMMAND_LOAD_BEGIN: begin
                         loading_next = 1;
                         image_valid_next = 0;

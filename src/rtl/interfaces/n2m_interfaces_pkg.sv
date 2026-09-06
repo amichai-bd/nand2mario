@@ -1,5 +1,5 @@
 // Generated from cfg/interfaces.json by tools/n2m/interfaces.py; DO NOT EDIT.
-// Source SHA-256: fd251c431cebd5a34d81f983f118f2682ff0e03344215e474361839349e75550
+// Source SHA-256: c8444489d6170daad0103cdfb00d7da4372a8c2f8471d2629892b0dc8b898f21
 `timescale 1ns/1ps
 package n2m_interfaces_pkg;
   localparam logic [7:0] GB_ADDRESS_BITS = 8'h10;
@@ -135,6 +135,9 @@ package n2m_interfaces_pkg;
   localparam logic [31:0] HOST_REG_BUILD_ID_2 = 32'h10038;
   localparam logic [31:0] HOST_REG_BUILD_ID_3 = 32'h1003C;
   localparam logic [31:0] HOST_REG_SNAPSHOT_EPOCH = 32'h10040;
+  localparam logic [31:0] HOST_REG_INPUT_SOURCE = 32'h10044;
+  localparam logic [31:0] HOST_REG_INPUT_PHYSICAL = 32'h10048;
+  localparam logic [31:0] HOST_REG_INPUT_EFFECTIVE = 32'h1004C;
   localparam logic [7:0] STATE_PAUSED = 8'h0;
   localparam logic [7:0] STATE_RUNNING = 8'h1;
   localparam logic [7:0] STATE_LOADING = 8'h2;
@@ -189,6 +192,11 @@ package n2m_interfaces_pkg;
   localparam logic [7:0] COMMAND_INPUT = 8'hB;
   localparam logic [7:0] COMMAND_SNAPSHOT = 8'hC;
   localparam logic [7:0] COMMAND_READ_FRAME = 8'hD;
+  localparam logic [7:0] COMMAND_WRITE_HOST = 8'hE;
+  localparam logic [7:0] INPUT_SOURCE_UART = 8'h0;
+  localparam logic [7:0] INPUT_SOURCE_PHYSICAL = 8'h1;
+  localparam logic [31:0] HOST_WRITE_MASK_INPUT = 32'hFF;
+  localparam logic [31:0] HOST_WRITE_MASK_INPUT_SOURCE = 32'h1;
   localparam integer PACKET_HEADER_BYTES = 10;
   localparam integer PACKET_HEADER_VERSION_OFFSET = 0;
   localparam integer PACKET_HEADER_KIND_OFFSET = 1;
@@ -311,4 +319,11 @@ package n2m_interfaces_pkg;
     logic [7:0] kind;
     logic [7:0] version;
   } retirement_t;
+  localparam integer WRITE_HOST_BYTES = 8;
+  localparam integer WRITE_HOST_ADDRESS_OFFSET = 0;
+  localparam integer WRITE_HOST_VALUE_OFFSET = 4;
+  typedef struct packed {
+    logic [31:0] value;
+    logic [31:0] address;
+  } write_host_t;
 endpackage
