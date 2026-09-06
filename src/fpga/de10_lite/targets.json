@@ -1146,6 +1146,31 @@
         "read_data[*]",
         "read_valid[*]"
       ]
+    },
+    "uart-presence-store": {
+      "device": "10M50DAF484C7G",
+      "top": "n2m_uart_presence_store",
+      "sources": [
+        "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+        "src/rtl/common/n2m_intel_ram.sv",
+        "src/rtl/uart/n2m_uart_presence_store.sv"
+      ],
+      "constraints": [
+        "src/fpga/de10_lite/uart_presence_store.sdc"
+      ],
+      "pins": {
+        "clk_sys": "PIN_P11"
+      },
+      "virtual_pins": [
+        "reset_sys",
+        "write_enable",
+        "write_address[*]",
+        "write_present",
+        "read_enable",
+        "read_address[*]",
+        "read_present",
+        "read_valid"
+      ]
     }
   },
   "schema_version": 1

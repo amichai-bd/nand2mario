@@ -155,3 +155,25 @@ low byte first to the existing staging bank. It reports completion only after
 the final CRC write. Error replies contain no payload. Payload gaps stall host
 construction without advancing the emulated core or publishing a partial reply.
 Global reset cancels this construction; core reset does not reset transport.
+
+
+## ROM presence storage
+
+`n2m_uart_presence_store` holds one bit per generated `PROFILE_ROM_BYTES` byte,
+32768 bits for the direct profile. It uses the same explicit Intel primitive
+in simulation and FPGA, one system clock, A bit writes and one-edge B reads.
+Reset cancels service/validity; it does not initialize the array. LOAD_BEGIN's
+load owner must explicitly sweep every bit to zero before accepting writes.
+It marks a bit only with its corresponding accepted ROM byte and does not
+clear bits on overlapping rewrites. A presence query and same-address write
+must occupy separate edges; mixed-port collisions remain forbidden.
+
+The load controller owns sweep completion, image validity and any count. A
+presence result cannot replace reading actual ROM bytes for LOAD_END CRC32.
+Global reset invalidates the endpoint's load state; stale array contents cannot
+be used until the next complete sweep. Core reset does not clear transport load
+metadata. The minimal `uart-presence-store` proof constrains 34 virtual input
+bits and two output bits to clk_sys at 50 MHz. Its first fit must establish the
+actual one-bit logical shape, M9K allocation, registered addresses/read control,
+unregistered data output and absence of array reset/initialization before
+load-controller acceptance uses this store.
