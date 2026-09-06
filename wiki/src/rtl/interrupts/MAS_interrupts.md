@@ -19,9 +19,9 @@ rises once and stores their flags independently of IE or IME.
 One module, `n2m_interrupts`, uses `clk_sys`. `reset_sys` asserts asynchronously;
 core reset is sampled by the system, with immediate output/capture cancellation.
 Both apply the generated peripheral fill to IF's five stored bits and IE's
-eight bits, and clear pending operations/history. IF reads force bits7:5 high;
-only bits4:0 are writable. IE retains all eight written bits, but CPU selection
-uses only bits4:0. Global boot-era register defaults are not the direct profile.
+eight bits, and clear pending operations/history. IF reads force bits 7:5 high;
+only bits 4:0 are writable. IE retains all eight written bits, but CPU selection
+uses only bits 4:0. Global boot-era register defaults are not the direct profile.
 
 | Port group | Meaning |
 |---|---|
@@ -85,10 +85,10 @@ not the pending PPU STAT-write or timer reload behavior.
 
 ## Required verification
 
-Independent literal tests cover every IF bit, all32 source masks, IE disabled
+Independent literal tests cover every IF bit, all 32 source masks, IE disabled
 and reenabled, software set/clear, full-byte IE retention, IF upper masks,
-held-high suppression and low/high rearming. Enumerate per-bit write0/write1,
-ack0/ack1 and new-edge0/new-edge1 against a literal truth table, then exercise
+held-high suppression and low/high rearming. Enumerate per-bit write 0/write 1,
+ack 0/ack 1 and new-edge 0/new-edge 1 against a literal truth table, then exercise
 the same combinations through actual A/B captured operations.
 
 Directed schedules place events before/on/after A and B; they distinguish

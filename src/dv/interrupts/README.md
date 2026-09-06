@@ -4,7 +4,7 @@ Contract: [MAS_interrupts](../../../wiki/src/rtl/interrupts/MAS_interrupts.md).
 Use the shared builder and Questa; source levels are original scripted stimuli,
 not synthetic implementations of the timer, PPU, JOYP or serial owner.
 
-`interrupts` checks all32 source masks,256 IE bytes, IF upper read bits,120
+`interrupts` checks all 32 source masks, 256 IE bytes, IF upper read bits, 120
 per-bit initial/write/ack/rise combinations, held-source clearing and rearming,
 both reset paths and cancellation between A capture and B storage. The checker
 observes public stored and resolved outputs and emits expected/actual CSV rows.
@@ -12,9 +12,10 @@ The literal truth table does not inspect the DUT next-state calculation.
 Three targets force actual lost state, incorrect source history and lost
 acknowledgement; expected data remains unchanged.
 
-This first slice does not complete issue133. Explicit pre/on/post A/B schedules,
-CPU T3/stack selection and composed retirement snapshot fixtures remain to be
-added. No actual runtime result exists yet. Full criteria remain in the issue.
+The source, commands and actual positive/fault evidence are reviewed in
+[PR145](https://github.com/amichai-bd/nand2mario/pull/145). The phase and stack
+fixtures below cover this owner boundary; full-system acceptance remains with
+the separate integration issues.
 
 The phase fixture places source rises before A, at A by nonblocking update,
 after A, just before B, at B by nonblocking update and after B. Each runs with
