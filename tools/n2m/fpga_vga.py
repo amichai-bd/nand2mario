@@ -10,6 +10,10 @@ BUNDLES = (("offer_bank", "captured_bank", 2),
            ("offer_sequence", "captured_sequence", 64),
            ("offer_epoch", "captured_epoch", 32))
 PORTS = [f"{color}[{bit}]" for color in ("red", "green", "blue") for bit in range(4)] + ["hsync_n", "vsync_n"]
+# Fitter packs six copies of each grayscale bit into the twelve RGB pins.
+RGB_REGISTERS = tuple(f"u_bridge|u_scan|gray_out[{i % 2}]" +
+                      (f"~_Duplicate_{i // 2}" if i // 2 else "") for i in range(12))
+OUTPUT_REGISTERS = (*RGB_REGISTERS, "u_bridge|u_scan|hs_out", "u_bridge|u_scan|vs_out")
 BLANK_CONTROLS = (("active", "u_bridge|blank_active"), ("request", "u_bridge|blank_pix[1]"))
 CORNERS = (("slow85", "slow", 85), ("slow0", "slow", 0), ("fast0", "fast", 0))
 
@@ -61,8 +65,19 @@ def required_reports(*, lcd=False):
              + [source for source, _, _ in BUNDLES] + ["outputs_max", "outputs_min", "skew"])
     if lcd:
         names += [f"blank_{name}_gray{bit}_{check}" for name, _ in BLANK_CONTROLS
-                  for bit in range(2) for check in ("setup", "hold")]
+                  for bit in range(12) for check in ("setup", "hold")]
     return [f"vga_{corner}_{name}.rpt" for corner, _, _ in CORNERS for name in names] + ["vga_first_pins.rpt"]
+
+
+def physical_register(bit, register, quote):
+    """Select one physical name without accepting automatic duplicate expansion."""
+    return [f"set vga_gray_{bit} [list]",
+            f"foreach_in_collection r [get_registers {quote(register)}] {{",
+            "set n [get_register_info -name $r]",
+            r"regsub -all {(^|[|])[^|:]+:} $n {\1} n",
+            f"if {{$n eq {quote(register)}}} {{lappend vga_gray_{bit} $r}}",
+            "}",
+            f'if {{[llength $vga_gray_{bit}] != 1}} {{error "VGA physical output mismatch: gray{bit}"}}']
 
 
 def audit(quote, *, lcd=False):
@@ -78,8 +93,10 @@ def audit(quote, *, lcd=False):
     if lcd:
         for name, launch in BLANK_CONTROLS:
             lines += collection("registers", [launch], "vga_blank_" + name, quote)
-        for bit in range(2):
-            lines += collection("registers", [f"u_bridge|u_scan|gray_out[{bit}]"], f"vga_gray_{bit}", quote)
+        # get_registers expands a logical name to its fitter duplicates. Keep
+        # only the exact normalized physical name, then require one endpoint.
+        for bit, register in enumerate(RGB_REGISTERS):
+            lines += physical_register(bit, register, quote)
     # -multi_corner does not provide all file-output corners for these commands.
     for corner, model, temperature in CORNERS:
         lines += [f"set_operating_conditions -model {model} -voltage 1200 -temperature {temperature}",
@@ -96,7 +113,7 @@ def audit(quote, *, lcd=False):
             lines.append(f"report_path -to $vga_outputs -npaths 14 -nworst 1 {option} -file output/vga_{corner}_outputs_{name}.rpt")
         if lcd:
             for name, _ in BLANK_CONTROLS:
-                for bit in range(2):
+                for bit in range(12):
                     for check in ("setup", "hold"):
                         lines.append(f"report_timing -from $vga_blank_{name} -to $vga_gray_{bit} -{check} -npaths 1 -detail full_path -file output/vga_{corner}_blank_{name}_gray{bit}_{check}.rpt")
         lines.append(f"report_max_skew -npaths 14 -detail full_path -file output/vga_{corner}_skew.rpt")
@@ -181,8 +198,12 @@ def verify(folder, *, lcd=False):
             raise ValueError("VGA RAM dimensions, registers, M9K usage or initialization differ")
     physical_ram = verify_memory_netlist((folder / "simulation/questa/design.vo").read_text(encoding="utf-8"))
     result = {"physical_ram": physical_ram, "ram_banks": 3, "memory_bits": 138240, "m9k_blocks": 18, "first_pins": pins, "corners": {}}
-    output_sources = {"u_bridge|u_scan|gray_out[0]", "u_bridge|u_scan|gray_out[1]",
-                      "u_bridge|u_scan|hs_out", "u_bridge|u_scan|vs_out"}
+    output_sources = dict(zip(PORTS, OUTPUT_REGISTERS))
+    packed = [row for row in rows(fit) if len(row) > 6 and row[1:3] == ["Packed Register", "Register Packing"]
+              and node(row[0]) in OUTPUT_REGISTERS]
+    if len(packed) != 14 or {(node(row[0]), row[6]) for row in packed} != {
+            (register, port + "~output") for port, register in output_sources.items()}:
+        raise ValueError("VGA packed output register mapping differs")
     for corner, model, temperature in CORNERS:
         model_name = f"{model.title()} 1200mV {temperature}C Model"
         prefix = f"vga_{corner}_"
@@ -202,7 +223,7 @@ def verify(folder, *, lcd=False):
         output_delays = {}
         for direction in ("max", "min"):
             paths = path_rows(reports[prefix + "outputs_" + direction + ".rpt"], len(PORTS))
-            if {row[2] for row in paths} != set(PORTS) or any(node(row[1]) not in output_sources for row in paths):
+            if {row[2] for row in paths} != set(PORTS) or any(node(row[1]) != output_sources.get(row[2]) for row in paths):
                 raise ValueError("VGA output path inventory differs")
             delays = [number(row[0]) for row in paths]
             if any(value < 0 or value > 10 for value in delays):
@@ -214,14 +235,14 @@ def verify(folder, *, lcd=False):
         if lcd:
             pixel_clock = "u_clocking|u_pll|altpll_component|auto_generated|pll1|clk[0]"
             for name, launch in BLANK_CONTROLS:
-                for bit in range(2):
+                for bit in range(12):
                     for check in ("setup", "hold"):
                         key = f"blank_{name}_gray{bit}_{check}"
                         text = reports[prefix + key + ".rpt"]
                         if not re.search(r"Report Timing: Found 1 " + check + r" paths \(0 violated\)", text):
                             raise ValueError("missing or violated VGA blank control path")
                         paths = [row for row in rows(summary(text)) if len(row) == 8 and row[0] != "Slack"]
-                        if len(paths) != 1 or [node(v) for v in paths[0][1:3]] != [launch, f"u_bridge|u_scan|gray_out[{bit}]"] or paths[0][3:5] != [pixel_clock, pixel_clock] or number(paths[0][0]) < 0:
+                        if len(paths) != 1 or [node(v) for v in paths[0][1:3]] != [launch, RGB_REGISTERS[bit]] or paths[0][3:5] != [pixel_clock, pixel_clock] or number(paths[0][0]) < 0:
                             raise ValueError("VGA blank control path differs")
                         blank_slacks[key] = number(paths[0][0])
         skews = rows(summary(reports[prefix + "skew.rpt"]))
@@ -236,7 +257,7 @@ def verify(folder, *, lcd=False):
             if row[2] != "2.000" or number(row[1]) < 0 or not 0 <= number(row[3]) <= 2:
                 raise ValueError("VGA skew exceeds required bound")
         for row in details:
-            if len(row) != 9 or row[5] not in PORTS or node(row[4]) not in output_sources or row[6] != row[7] or row[6] != "u_clocking|u_pll|altpll_component|auto_generated|pll1|clk[0]":
+            if len(row) != 9 or row[5] not in PORTS or node(row[4]) != output_sources.get(row[5]) or row[6] != row[7] or row[6] != "u_clocking|u_pll|altpll_component|auto_generated|pll1|clk[0]":
                 raise ValueError("unexpected VGA skew path or clock")
         chain_slacks = {}
         for name, _, clock in chain_profile(lcd):

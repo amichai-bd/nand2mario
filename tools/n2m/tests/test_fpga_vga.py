@@ -51,6 +51,15 @@ def fixture(folder, lcd=False):
     ram = row("M9Ks", "18 / 182 ( 10 % )") + row("Total block memory bits", "138,240 / 1,677,312 ( 8 % )")
     for bank in range(3):
         ram += row(f"u_bridge|banks[{bank}].u_ram|u_storage|ram|auto_generated|ALTSYNCRAM", "M9K", "True Dual Port", "Dual Clocks", "23040", "2", "23040", "2", "yes", "no", "yes", "no", "46080", "23040", "2", "23040", "2", "46080", "6", "None", "six locations", "Don't care", "New data with NBE Read", "New data with NBE Read", "Off", "No", "No - Unknown")
+    outputs = []
+    for color_index, color in enumerate(("red", "green", "blue")):
+        for bit in range(4):
+            copy = color_index * 2 + bit // 2
+            register = f"u_bridge|u_scan|gray_out[{bit % 2}]" + (f"~_Duplicate_{copy}" if copy else "")
+            outputs.append((f"{color}[{bit}]", register))
+    outputs += [("hsync_n", "u_bridge|u_scan|hs_out"), ("vsync_n", "u_bridge|u_scan|vs_out")]
+    for port, register in outputs:
+        ram += row(register, "Packed Register", "Register Packing", "Timing optimization", "Q", "", port + "~output", "I", "")
     write("design.fit.rpt", ram)
     netlist = folder / "simulation/questa/design.vo"
     netlist.parent.mkdir(parents=True)
@@ -65,17 +74,17 @@ def fixture(folder, lcd=False):
             data = "".join(row("1.000", f"u_bridge|{source}[{i}]", f"u_bridge|{capture}[{i}]") for i in range(width))
             write(prefix + source + ".rpt", report(f"Report Path: Found {width} paths.", model_name, data))
         for direction in ("max", "min"):
-            data = "".join(row("5.000", "u_bridge|u_scan|gray_out[0]", port) for port in fpga_vga.PORTS)
+            data = "".join(row("5.000", register, port) for port, register in outputs)
             write(prefix + "outputs_" + direction + ".rpt", report("Report Path: Found 14 paths.", model_name, data))
         if lcd:
             for name, launch in (("active", "u_bridge|blank_active"), ("request", "u_bridge|blank_pix[1]")):
-                for bit in range(2):
+                for bit, (_, register) in enumerate(outputs[:12]):
                     for check in ("setup", "hold"):
-                        data = row("0.750", launch, f"u_bridge|u_scan|gray_out[{bit}]", pix_clock, pix_clock, "39.683", "0.000", "1.000")
+                        data = row("0.750", launch, register, pix_clock, pix_clock, "39.683", "0.000", "1.000")
                         write(prefix + f"blank_{name}_gray{bit}_{check}.rpt", report(f"Report Timing: Found 1 {check} paths (0 violated).", model_name, data))
         port_filter = "[get_ports {" + " ".join("{" + p + "}" if "[" in p else p for p in fpga_vga.PORTS) + "}]"
         data = row("set_max_skew", "1.000", "2.000", "1.000", "", port_filter, "", "", "")
-        data += "".join(row("--", "1.000", "2.000", "1.000", "u_bridge|u_scan|gray_out[0]", fpga_vga.PORTS[i % 14], pix_clock, pix_clock, "") for i in range(28))
+        data += "".join(row("--", "1.000", "2.000", "1.000", outputs[i % 14][1], outputs[i % 14][0], pix_clock, pix_clock, "") for i in range(28))
         write(prefix + "skew.rpt", report("Report Max Skew: Found 28 paths (0 violated).", model_name, data))
         for name in names:
             clock = "clk_sys" if name in ("pix_ready_sys", "ack_sys", "blank_seen_sys") else pix_clock
@@ -148,7 +157,7 @@ class VgaEvidenceTests(unittest.TestCase):
             fixture(folder, lcd=True)
             result = fpga_vga.verify(folder, lcd=True)
             self.assertEqual(len(result["corners"]["slow85"]["chain_slack_ns"]), 12)
-            self.assertEqual(len(result["corners"]["slow85"]["blank_control_slack_ns"]), 8)
+            self.assertEqual(len(result["corners"]["slow85"]["blank_control_slack_ns"]), 48)
             pixel = "u_clocking|u_pll|altpll_component|auto_generated|pll1|clk[0]"
             for name, old, new in [
                 ("vga_slow0_blank_seen_sys_setup.rpt", "clk_sys", pixel),
@@ -184,6 +193,9 @@ class VgaEvidenceTests(unittest.TestCase):
             self.assertEqual(fpga_vga.verify(folder)["m9k_blocks"], 18)
             changes = [
                 ("vga_fast0_outputs_max.rpt", "gray_out[0]", "valid_out"),
+                ("vga_fast0_outputs_max.rpt", "gray_out[0]~_Duplicate_1", "gray_out[1]~_Duplicate_1"),
+                ("design.fit.rpt", "gray_out[0]~_Duplicate_5", "gray_out[0]~_Duplicate_6"),
+                ("design.fit.rpt", "red[0]~output", "red[1]~output"),
                 ("vga_fast0_outputs_max.rpt", "gray_out[0]", "gray_out[2]"),
                 ("vga_fast0_offer_sequence.rpt", "|captured_sequence[63]", "|captured_sequence[62]"),
                 ("vga_slow0_offer_epoch.rpt", "; 1.000 ;", "; 20.001 ;"),
@@ -213,6 +225,24 @@ class VgaEvidenceTests(unittest.TestCase):
                 with self.subTest(missing=name), self.assertRaisesRegex(ValueError, "missing VGA evidence"):
                     fpga_vga.verify(folder)
                 path.write_bytes(original)
+
+    def test_physical_register_selection_rejects_missing_or_duplicate(self):
+        original = "n2m_frame_bridge:u_bridge|n2m_vga_scan:u_scan|gray_out[0]"
+        for candidates, accepted in [([], False), ([original], True),
+                ([original, original + "~_Duplicate_1"], True),
+                ([original + "~_Duplicate_1"], False), ([original, original], False)]:
+            with self.subTest(candidates=candidates):
+                tcl = tkinter.Tcl()
+                tcl.createcommand("get_registers", lambda *args: tuple(candidates))
+                tcl.eval("proc get_register_info {flag item} {return $item}")
+                tcl.eval("proc foreach_in_collection {var items body} {upvar 1 $var value; foreach value $items {uplevel 1 $body}}")
+                script = "\n".join(fpga_vga.physical_register(0, "u_bridge|u_scan|gray_out[0]", fpga.tcl_word))
+                if accepted:
+                    tcl.eval(script)
+                    self.assertEqual(tcl.splitlist(tcl.getvar("vga_gray_0")), (original,))
+                else:
+                    with self.assertRaisesRegex(tkinter.TclError, "VGA physical output mismatch"):
+                        tcl.eval(script)
 
     def test_exact_first_data_pin_rejects_missing_or_ambiguous_mapping(self):
         for name in (*fpga_vga.CHAINS, "blank_pix", "blank_seen_sys"):

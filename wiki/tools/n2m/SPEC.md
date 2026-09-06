@@ -418,9 +418,13 @@ Each named launch/first-data endpoint is exact; both adjacent-stage setup/hold
 checks remain mandatory at all three operating corners. The latter chain must
 not inherit a pixel-clock classification from its position in an inventory.
 The profile additionally retains setup/hold paths from `blank_active` and
-`blank_pix[1]` to each of the two final gray-register bits at every corner.
+`blank_pix[1]` to all twelve packed RGB output registers at every corner.
 The four-level F/A/5/0 value repeats those two registered bits across each RGB
-channel. Missing, duplicate, wrong launch/clock or negative-slack paths fail.
+channel. Quartus packs the original plus five duplicates of each bit into
+the twelve pins. Both VGA profiles require the exact register-to-pin mapping
+in the fitter table and output paths; the LCD profile checks every physical
+copy as a blank-control capture. Missing, extra, mispaired, wrong-clock or
+negative-slack paths fail.
 Only final gray/sync registers launch the registered output-to-pin paths;
 existing complete output/skew bounds remain. White selection precedes the
 existing final register edge and does not add a cycle.
