@@ -426,7 +426,11 @@ in the fitter table and output paths; the LCD profile checks every physical
 copy as a blank-control capture. Missing, extra, mispaired, wrong-clock or
 negative-slack paths fail.
 Only final gray/sync registers launch the registered output-to-pin paths;
-existing complete output/skew bounds remain. White selection precedes the
+existing complete output/skew bounds remain. The skew assignment aggregate
+must be nonnegative and at most 2 ns. Individual earliest/latest contributions
+may be signed, but each must have magnitude at most 2 ns, nonnegative slack,
+and slack equal to required minus actual skew within 0.0011 ns for the printed
+three-decimal reports. White selection precedes the
 existing final register edge and does not add a cycle.
 All additional reports enter immutable-result/cache completeness checks.
 The deliberate invalid target still requires the exact missing reset endpoint.

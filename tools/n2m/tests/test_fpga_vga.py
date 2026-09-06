@@ -226,6 +226,27 @@ class VgaEvidenceTests(unittest.TestCase):
                     fpga_vga.verify(folder)
                 path.write_bytes(original)
 
+    def test_signed_skew_detail_requires_consistent_slack(self):
+        base = Path(__file__).resolve().parents[3] / "workdir" / "vga-report-tests"
+        base.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=base) as temp:
+            folder = Path(temp)
+            fixture(folder)
+            path = folder / "output/vga_fast0_skew.rpt"
+            original = path.read_text()
+            signed = original.replace("; -- ; 1.000 ; 2.000 ; 1.000 ;",
+                                      "; -- ; 2.010 ; 2.000 ; -0.010 ;", 1)
+            self.assertNotEqual(signed, original)
+            path.write_text(signed)
+            fpga_vga.verify(folder)
+            for bad in [signed.replace("2.010 ; 2.000 ; -0.010", "-0.010 ; 2.000 ; 2.010"),
+                        signed.replace("2.010 ; 2.000 ; -0.010", "1.000 ; 2.000 ; -0.010"),
+                        signed.replace("2.010 ; 2.000 ; -0.010", "4.001 ; 2.000 ; -2.001"),
+                        signed.replace("set_max_skew ; 1.000 ; 2.000 ; 1.000", "set_max_skew ; 2.010 ; 2.000 ; -0.010")]:
+                path.write_text(bad)
+                with self.assertRaises(ValueError):
+                    fpga_vga.verify(folder)
+
     def test_physical_register_selection_rejects_missing_or_duplicate(self):
         original = "n2m_frame_bridge:u_bridge|n2m_vga_scan:u_scan|gray_out[0]"
         for candidates, accepted in [([], False), ([original], True),

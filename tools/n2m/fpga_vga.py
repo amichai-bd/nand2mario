@@ -253,8 +253,15 @@ def verify(folder, *, lcd=False):
         details = [row for row in skews if row[0] == "--"]
         if len(details) != 28 or not re.search(r"Report Max Skew: Found 28 paths \(0 violated\)", reports[prefix + "skew.rpt"]):
             raise ValueError("missing or violated VGA skew paths")
+        if not 0 <= number(assignment[0][3]) <= 2:
+            raise ValueError("VGA aggregate skew exceeds required bound")
         for row in assignment + details:
-            if row[2] != "2.000" or number(row[1]) < 0 or not 0 <= number(row[3]) <= 2:
+            # Individual latest/earliest arrival contributions can be signed;
+            # the assignment's aggregate is nonnegative. Never accept a bad
+            # slack, out-of-bound magnitude or inconsistent slack equation.
+            slack, actual = number(row[1]), number(row[3])
+            if (row[2] != "2.000" or slack < 0 or abs(actual) > 2
+                    or abs(slack - (2 - actual)) > 0.0011):
                 raise ValueError("VGA skew exceeds required bound")
         for row in details:
             if len(row) != 9 or row[5] not in PORTS or node(row[4]) != output_sources.get(row[5]) or row[6] != row[7] or row[6] != "u_clocking|u_pll|altpll_component|auto_generated|pll1|clk[0]":
