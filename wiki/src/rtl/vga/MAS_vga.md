@@ -65,13 +65,20 @@ count as repeats. Presentation counters clear on global reset only. Their ports
 are domain-local observations; a host consumer must use the separately specified
 status snapshot mailbox, not sample them as live multibit crossings.
 
-`n2m_frame_ram` is a small inferred simple dual-port memory boundary. It has one
+`n2m_frame_ram` preserves the display-facing scalar boundary over the
+[shared explicit Intel memory](../common/MAS_memory_primitives.md). It has one
 system write port and one pixel read port, 23040 entries of two bits, and one
 registered read stage. Three instances implement the ownership banks. Memory
 contents and read data have no reset initialization. A read is enabled only for
 a valid display bank and scaled-image coordinate. Ownership excludes same-bank
-read/write collisions; collision results are never consumed. Both independent
-clocked ports use the shared `DFF_EN` macro.
+read/write collisions; collision results are never consumed. The same `n2m_intel_ram` instance and parameters run against the installed
+Intel model in Questa and synthesize for MAX 10. A is write-only and B is
+read-only with independent clocks. Its address/input stage provides the one-edge
+read; the primitive output is unregistered, so no second RAM stage is added.
+The adapter ties reset inactive, discards unused valid/A-read outputs, and gates
+inactive addresses to zero. Owners still mask startup and reset validity; the
+store is never cleared. The builder records the three exact reviewed Intel
+model coercion diagnostics; prohibited collision results remain unused.
 
 ## Scanout
 
@@ -105,7 +112,7 @@ produce their specific nonzero failures in Questa. Clock/reset schedules include
 faster and slower sources, pause, core reset, outstanding-offer global reset,
 lock loss, and stopped pixel clocks.
 
-Actual generated PLL and Quartus evidence must prove three inferred dual-clock
+Actual generated PLL and Quartus evidence must prove three explicit dual-clock
 banks, fit resources, exact bundle endpoints and delay bounds, synchronizer
 stages, output bounds and both reference-frequency timing analyses. This design
 description is not that evidence. Physical monitor, pin/wiring and voltage proof
@@ -135,8 +142,8 @@ and test-method observations.
 
 Ordinary state uses the shared register macros. Attributed two-stage crossing
 registers use the explicit asynchronous reset macro with unchanged stage names
-and polarity. The RAM's separate enabled read/write ports also use the shared
-enable macro; neither array nor output register has reset or initialization.
+and polarity. The RAM uses the shared Intel primitive boundary; its data has no reset or
+initialization and no additional output register.
 Named concurrent assertions check source ordering/known values, immutable writer
 ownership, pending bundle stability and display-bank changes only after a swap
 boundary. The source-side ownership model and full raster oracle retain detailed
