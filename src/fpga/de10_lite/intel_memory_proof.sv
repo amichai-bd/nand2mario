@@ -1,5 +1,6 @@
 `timescale 1ns/1ps
 `default_nettype none
+`include "src/rtl/common/macros.svh"
 // Virtual request/observation ports retain all four RAM configurations for fit.
 // This is a resource/timing proof, not a physical board acceptance image.
 module intel_memory_proof (
@@ -12,8 +13,6 @@ module intel_memory_proof (
     input var logic [3:0] a_byte_enable,
     input var logic b_read,
     input var logic [7:0] b_address,
-    input var logic frame_read,
-    input var logic [14:0] frame_address,
     output logic ready,
     output logic [7:0] byte_a,
     output logic [7:0] byte_b,
@@ -28,7 +27,16 @@ module intel_memory_proof (
     output logic frame_valid
 );
     logic clk_pix, reset_sys, reset_pix;
+    logic frame_read;
+    logic [14:0] frame_address, frame_next_address;
     n2m_clocking u_clocking (.clk_sys, .board_reset_n, .clk_pix, .reset_sys, .reset_pix, .ready);
+    // A real pixel-domain owner launches requests on the same clock tree as B.
+    // This producer is outside the wrapper and adds no wrapper service stage.
+    assign frame_next_address = frame_address == 15'd23039 ? 15'd0 : frame_address + 15'd1;
+    `DFF_RST(frame_read, !frame_read, clk_pix, reset_pix)
+    `DFF_RST_EN(frame_address, frame_next_address, clk_pix, frame_read, reset_pix, 15'd0)
+    `N2M_ASSERT_KNOWN(INTEL_PROOF_REQUEST_KNOWN, clk_pix, reset_pix, {frame_read, frame_address})
+    `N2M_ASSERT(INTEL_PROOF_ADDRESS_RANGE, clk_pix, reset_pix, frame_address < 15'd23040)
     n2m_intel_ram #(.DEPTH(160), .DATA_BITS(8), .ADDRESS_BITS(8)) byte_ram (
         .clk_a(clk_sys), .clk_b(clk_sys), .reset_a(reset_sys), .reset_b(reset_sys),
         .a_read, .a_write, .a_address(a_address[7:0]), .a_wdata(a_wdata[7:0]),

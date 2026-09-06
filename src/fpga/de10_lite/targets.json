@@ -14,7 +14,7 @@
       "pins": {"clk_sys": "PIN_P11"},
       "virtual_pins": [
         "board_reset_n", "a_read", "a_write", "a_address[*]", "a_wdata[*]", "a_byte_enable[*]",
-        "b_read", "b_address[*]", "frame_read", "frame_address[*]", "ready",
+        "b_read", "b_address[*]", "ready",
         "byte_a[*]", "byte_b[*]", "pair_a[*]", "pair_b[*]", "lanes_a[*]", "lanes_b[*]",
         "frame_a[*]", "frame_b[*]", "a_valid[*]", "b_valid[*]", "frame_valid"
       ],

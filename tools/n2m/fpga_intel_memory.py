@@ -88,24 +88,32 @@ def audit(quote):
     sys_ports = ["board_reset_n", "a_read", "a_write", "a_address[*]", "a_wdata[*]",
                  "a_byte_enable[*]", "b_read", "b_address[*]"]
     lines = ['set memory_inputs [open output/intel_memory_inputs.rpt w]']
-    for name, ports, count in (("sys", sys_ports, 63), ("pix", ["frame_read", "frame_address[*]"], 16)):
+    for name, ports, count in (("sys", sys_ports, 63),):
         words = " ".join(quote(port) for port in ports)
         lines += [f'set memory_{name} [get_ports [list {words}]]',
                   f'if {{[get_collection_size $memory_{name}] != {count}}} {{error "Intel memory input count mismatch: {name}"}}',
                   f'puts $memory_inputs "{name} [get_collection_size $memory_{name}]"',
                   f'foreach_in_collection port $memory_{name} {{puts $memory_inputs "input {name} [get_port_info -name $port]"}}']
     lines.append("close $memory_inputs")
+    lines += ['set memory_captures [get_registers {frame_ram|ram|auto_generated|*}]',
+              'if {[get_collection_size $memory_captures] == 0} {error "missing frame memory captures"}']
+    for corner, model, temperature in (("slow85", "slow", 85), ("slow0", "slow", 0), ("fast0", "fast", 0)):
+        lines += [f"set_operating_conditions -model {model} -voltage 1200 -temperature {temperature}", "update_timing_netlist"]
+        for index, source in enumerate(["frame_read"] + [f"frame_address[{bit}]" for bit in range(15)]):
+            lines += [f'set memory_launch [get_registers {quote(source)}]',
+                      'if {[get_collection_size $memory_launch] != 1} {error "missing frame request launch register"}']
+            for check in ("setup", "hold"):
+                lines.append(f'report_timing -from $memory_launch -to $memory_captures -{check} -npaths 1 -detail full_path -file output/memory_{corner}_{index}_{check}.rpt')
     return "\n".join(lines) + "\n"
 
 
 def verify(folder):
     output = folder / "output"
     inventory = (output / "intel_memory_inputs.rpt").read_text().splitlines()
-    expected_inputs = ["sys 63", "pix 16"]
+    expected_inputs = ["sys 63"]
     expected_inputs += ["input sys " + name for name in ("board_reset_n", "a_read", "a_write", "b_read")]
     expected_inputs += [f"input sys {name}[{bit}]" for name, size in
                         (("a_address", 15), ("a_wdata", 32), ("a_byte_enable", 4), ("b_address", 8)) for bit in range(size)]
-    expected_inputs += ["input pix frame_read"] + [f"input pix frame_address[{bit}]" for bit in range(15)]
     if sorted(inventory) != sorted(expected_inputs):
         raise ValueError("Intel memory input-domain inventory differs")
     fit = (output / "design.fit.rpt").read_text(encoding="cp1252" if os.name == "nt" else "utf-8")
@@ -133,4 +141,19 @@ def verify(folder):
     if "fiftyfivenm_ram_block" not in netlist or re.search(r"(?i)black.?box", netlist):
         raise ValueError("Intel memory device RAM primitive missing or black boxed")
     evidence["physical_atoms"] = verify_netlist(netlist)
+    launch_paths = {}
+    for corner in ("slow85", "slow0", "fast0"):
+        for index, source in enumerate(["frame_read"] + [f"frame_address[{bit}]" for bit in range(15)]):
+            for check in ("setup", "hold"):
+                name = f"memory_{corner}_{index}_{check}.rpt"
+                report = (output / name).read_text()
+                fields = dict((row[0], row[1]) for row in rows(report) if len(row) == 2)
+                clock = "u_clocking|u_pll|altpll_component|auto_generated|pll1|clk[0]"
+                if (fields.get("From Node") != source or
+                        not node(fields.get("To Node", "")).startswith("frame_ram|ram|auto_generated|") or
+                        fields.get("Launch Clock") != clock or fields.get("Latch Clock") != clock or
+                        float(fields.get("Slack", "-inf").split()[0]) < 0):
+                    raise ValueError(f"Intel pixel launch/capture timing differs: {name}")
+                launch_paths[name] = fields
+    evidence["pixel_launch_paths"] = launch_paths
     return evidence
