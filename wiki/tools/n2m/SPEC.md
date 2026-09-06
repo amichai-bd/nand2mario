@@ -516,6 +516,17 @@ Reuse results only when the fingerprint matches and the prior stage succeeded.
 - A per-tag lock prevents concurrent writers.
 - A stale stage is replaced atomically after the new stage completes.
 
+Record publication writes a unique sibling temporary file, closes it, then
+replaces the destination without unlinking the old record. Windows access,
+sharing, and lock denials (errors 5, 32, 33) receive at most five retries with
+10, 20, 40, 80, and 160 ms delays (310 ms total). Other errors fail immediately;
+exhaustion propagates the final error. This bounds transient handle contention,
+not permanent permissions. Cleanup attempts to remove only that operation's
+temporary file; a cleanup denial must not mask the publication error. A blocked
+cleanup can leave that temporary file for inspection. Failed replacement leaves
+the old complete record intact. Simulation still publishes RUNNING before any
+execution; publication failure aborts the request rather than reporting success.
+
 Each backend treats compilation and simulation as one stage: any source,
 runner module, dependency definition, target configuration, seed, or discovered
 tool identity change rebuilds both. Artifact hashes are also checked before reuse.

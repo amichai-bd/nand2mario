@@ -2,6 +2,7 @@
 import contextlib
 import io
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -75,6 +76,33 @@ class BuilderTests(unittest.TestCase):
 
     def run_stage(self):
         return simulate(self.root, self.build, self.args, self.sim)
+
+    def test_publication_denial_does_not_execute_or_cache_unpublished_success(self):
+        self.run_stage()
+        current = self.build / "sim/test/builder-smoke/result.json"
+        old = current.read_bytes()
+        self.args.rebuild = True
+        self.sim.calls.clear()
+        error = PermissionError("injected Windows access denial")
+        error.winerror = 5
+        with patch("n2m.records.os.replace", side_effect=error), patch("time.sleep"):
+            with self.assertRaises(PermissionError):
+                self.run_stage()
+        self.assertEqual(self.sim.calls, [])
+        self.assertEqual(current.read_bytes(), old)
+
+        real_replace = os.replace
+        def deny_final(source, destination):
+            if destination == current and read_json(source).get("status") == "PASS":
+                raise error
+            real_replace(source, destination)
+        with patch("n2m.records.os.replace", side_effect=deny_final), patch("time.sleep"):
+            with self.assertRaises(PermissionError):
+                self.run_stage()
+        self.assertEqual(read_json(current)["status"], "RUNNING")
+        self.args.rebuild = False
+        self.assertEqual(self.run_stage()["cache"], "BUILT")
+        self.assertEqual(self.run_stage()["cache"], "CACHED")
 
     def test_bounded_target_runtime_timeout_and_cache_identity(self):
         registry = self.root / "src/dv/builder/targets.json"
