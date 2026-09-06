@@ -148,3 +148,27 @@ Named concurrent assertions check source ordering/known values, immutable writer
 ownership, pending bundle stability and display-bank changes only after a swap
 boundary. The source-side ownership model and full raster oracle retain detailed
 procedural comparisons independent of those local assertions.
+
+
+## Explicit memory fit evidence
+
+The shared wrapper's bidirectional primitive configuration fits as three
+True Dual Port/Dual Clocks logical banks although the adapter uses A only for
+writes and B only for reads. Each remains23040x2, six M9Ks and46080 stored bits;
+three banks retain18 M9Ks and138240 bits. Input/address registers are enabled,
+output registers are absent, initialization is unknown and mixed-port collision
+behavior is unconsumed. The changed classification is not an added public port.
+
+The VGA checker inspects all18 fitted MAX10 RAM atoms, their bank/bit partition,
+logical dimensions, system/pixel clocks, write-only A/read-only B roles, inactive
+clears and byte-enable wiring, uninitialized contents and absence of an extra
+output stage. It retains the existing CDC, bundle, output and timing checks.
+The builder pins the installed primitive definition/declaration/model for every
+consumer of the shared RAM, and requires a retained device netlist in its cache.
+
+The Intel-model raster regression retains the original per-pixel oracle and
+coverage. Its600-second limit accommodates the installed vendor model, with
+raster progress messages and sampled first/last-column pixel traces. Bounded
+public wave windows cover reset and first-image output. An actual extra RAM
+response edge must fail the independent coordinate/shade comparison. A timeout
+is a failed run, never a substitute for the final PASS signature.
