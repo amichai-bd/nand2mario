@@ -15,3 +15,13 @@ acknowledgement; expected data remains unchanged.
 This first slice does not complete issue133. Explicit pre/on/post A/B schedules,
 CPU T3/stack selection and composed retirement snapshot fixtures remain to be
 added. No actual runtime result exists yet. Full criteria remain in the issue.
+
+The phase fixture places source rises before A, at A by nonblocking update,
+after A, just before B, at B by nonblocking update and after B. Each runs with
+no operation, IF clear and acknowledgement. Its own public pre-B sampler
+separates the retirement observation from a later event. Clock processing
+continues while emulated enables are held off. Literal stack scripts exercise
+high-write cancellation/reselection, low-write snapshots, simultaneous sources,
+full IE retention and a committed read. They do not execute the pending CPU or
+claim future peripheral collision behavior. The observation fault changes the
+actual DUT output; its expected snapshots are untouched.

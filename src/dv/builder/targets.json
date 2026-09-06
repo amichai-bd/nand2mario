@@ -446,5 +446,31 @@
     ],
     "expected_exit": "nonzero",
     "signature": "INTERRUPT_OBSERVE check=2549 expected_if=00 actual_if=01"
+  },
+  "interrupt-phases": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/dv/interrupts/tb_interrupt_phases.sv"
+    ],
+    "top": "tb_interrupt_phases",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS interrupt phase and CPU snapshot scripts cases=23 checks=140"
+  },
+  "interrupt-phases-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts_pkg.sv",
+      "src/rtl/interrupts/n2m_interrupts.sv",
+      "src/dv/interrupts/tb_interrupt_phases.sv"
+    ],
+    "top": "tb_interrupt_phases",
+    "args": [
+      "+observation_fault"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "INTERRUPT_PHASE_OBSERVE case=0 check=1 expected_if=01 actual_if=00"
   }
 }
