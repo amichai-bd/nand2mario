@@ -7,7 +7,7 @@ module tb_dma_composition;
     logic clk_sys, reset_sys, core_reset, init_done, memory_init_done, gb_tick, paused, run_enable;
     logic [63:0] dot_before;
     logic [1:0] cpu_phase;
-    logic cpu_halted, cpu_stopped, request_valid, bus_commit;
+    logic cpu_halted, cpu_stopped, cpu_initialized, request_valid, bus_commit;
     cpu_bus_plan_t bus_plan;
     cpu_address_effect_t address_effect;
     logic address_effect_resolved, address_effect_sample;
@@ -64,7 +64,7 @@ module tb_dma_composition;
         .access_kind(bus_plan.access_kind), .bus_commit(bus_commit), .address_effect(address_effect),
         .address_effect_resolved(address_effect_resolved), .address_effect_sample(address_effect_sample),
         .address_effect_phase(cpu_phase), .irq_ack(), .halted(cpu_halted), .stopped(cpu_stopped),
-        .locked(), .initialized(), .fault(cpu_fault), .ime_observe(), .ime_delay_observe(),
+        .locked(), .initialized(cpu_initialized), .fault(cpu_fault), .ime_observe(), .ime_delay_observe(),
         .stop_execute(), .divider_reset_request(), .instruction_complete(), .retirement_valid(), .retirement());
     n2m_ppu ppu (.clk_sys(clk_sys), .reset_sys(reset_sys), .core_reset(core_reset),
         .gb_tick(gb_tick), .epoch(32'd1), .dot_before(dot_before),
@@ -186,8 +186,10 @@ module tb_dma_composition;
         $dumpvars(0,clk_sys,gb_tick,cpu_phase,bus_commit,bus_plan,address_effect,address_effect_sample,
             dma_active,access_read,access_write,access_store,access_address,access_wdata,
             ppu_oam_phase,ppu_scan_index,ppu_oam_pair,ppu_oam_data,ppu_oam_valid,
-            fault,cpu_fault,ppu_fault,read_data,response_valid,dma_count,effects,expected_held);
+            fault,cpu_fault,ppu_fault,read_data,response_valid,dma_count,effects,expected_held,
+            reset_sys,core_reset,memory_init_done,cpu_initialized,setup,run_enable,paused,request_valid);
         repeat(3) @(negedge clk_sys); reset_sys=0;
+        core_reset=1; repeat(2) @(negedge clk_sys); core_reset=0;
         wait(memory_init_done); repeat(3) @(negedge clk_sys);
         for(index=0;index<160;index=index+1) begin
             load_byte(STORE_WRAM,index,sprite_byte(index));
@@ -206,6 +208,7 @@ module tb_dma_composition;
             case(index) 0: host_data='hc3; 1: host_data='h80; default: host_data='hff; endcase
             host_write=1; @(negedge clk_sys); host_write=0;
         end
+        if(!cpu_initialized) $fatal(1,"DMA_COMPOSITION_CORE_INITIALIZE");
         @(negedge clk_sys); setup=0; observe=1; run_enable=1;
         if(corrupt_byte) begin
             wait(seen_start && access_write && access_store==STORE_OAM && access_address==5);
