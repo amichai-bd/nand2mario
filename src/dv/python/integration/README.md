@@ -89,6 +89,10 @@ after136280 dots, HALT and STATE_PAUSED complete the sequence. The full69 record
 The test has a500ms simulated bound and600s builder bound at25MHz/3.125Mbaud.
 The data/IRQ/pixel fault targets change actual DUT observations using the same
 fault locations as the integration contract. They must fail the unchanged checker.
-Runtime acceptance remains pending until the positive, clean repeat and all three
-faults have been independently reviewed. Legacy targets and the preloaded
-historical diagnostic remain available; this mode does not close parent issues.
+Acceptance requires a positive, a clean repeat with byte-identical retirement,
+bus and pixel CSVs, and all three intended fault failures. Run the four
+`python-integration-uart` targets with distinct build tags; use the positive
+target again for the repeat. Run `python-integration` to check compatibility
+with the default preloaded mode after changes to the shared wrapper or monitors.
+Legacy targets and the preloaded historical diagnostic remain available;
+this mode does not close parent issues.
