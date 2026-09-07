@@ -84,3 +84,38 @@ identification and loader completion, but excludes compilation before the peer
 starts. The retained builder start and loaded-checkpoint timestamps permit a
 separately labeled compile-inclusive duration. Execution wall/simulation times
 cover the same INPUT/RUN/WAIT/HALT sequence in both modes.
+
+## Continuous Client comparison
+
+`python-integration-uart` and `python-integration-client-preloaded` use the same
+product Client, serial transport and independent Python execution monitors.
+The first uploads and reads back all 32768 bytes. The second selects supported
+Intel initialization and real BEGIN/END adoption. Both read the same initial
+public fields, send INPUT0/RUN, reach dot136280 and send HALT/STATE_PAUSED.
+The original 69 retirement, 145 bus and 46080 pixel expectations remain unchanged.
+The default `python-integration` scheduled diagnostic remains a separate mode.
+
+```text
+python src/dv/preload/compare_continuous.py --root <workspace> --normal <real-result.json> --preloaded <preload-result.json>
+```
+
+The comparator requires both explicit modes and exact common source, model,
+Python runtime, seed and trace configuration. Only the declared initialization
+selection and Python entry module differ. It validates artifact hashes, complete
+ordered outputs and normalized initial state, including released resets, paused
+state and zero observed activity. Receipt count, presence and CRC retain their
+dedicated lifecycle proof; no new public loader register is introduced.
+
+Both modes emit UTC checkpoints at test entry, loader start, loaded/paused,
+RUN request and final paused. The builder's recorded stage start precedes image
+preparation, compilation and model startup. Subtracting that start from the
+loaded checkpoint includes those costs, but excludes earlier tool discovery,
+source hashing and environment installation. Loader-command and loaded-to-paused
+intervals are reported separately. Stage duration ends after result checks,
+before final artifact hashing and publication. Reject unordered timestamps;
+do not infer a performance improvement
+from unlike configurations or these intervals alone.
+
+Successful continuous execution establishes the checked correspondence under
+this mechanism. It does not identify the exact cause of the retained finite-Tcl
+failures. Those failures and that limitation remain explicit in issue168.
