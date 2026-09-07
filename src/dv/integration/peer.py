@@ -51,6 +51,8 @@ class Transport:
 
 
 def main(*, preloaded=False):
+    peer_started_wall = time.monotonic()
+    peer_started_unix_ns = time.time_ns()
     parser = argparse.ArgumentParser()
     parser.add_argument('--root', type=Path, required=True)
     parser.add_argument('--attempt', type=Path, required=True)
@@ -90,8 +92,11 @@ def main(*, preloaded=False):
                 loaded = client.load(image)
                 from n2m.preload import observe_initial
                 loaded['initial_state'] = observe_initial(client)
-            timings = {'setup_wall_seconds': time.monotonic() - setup_wall,
-                       'setup_sim_seconds': transport.sim_time - setup_sim}
+            timings = {'loader_command_wall_seconds': time.monotonic() - setup_wall,
+                       'loader_command_sim_seconds': transport.sim_time - setup_sim,
+                       'peer_to_loaded_wall_seconds': time.monotonic() - peer_started_wall,
+                       'peer_started_unix_ns': peer_started_unix_ns,
+                       'loaded_checkpoint_unix_ns': time.time_ns()}
             execution_wall = time.monotonic()
             execution_sim = transport.sim_time
             client.control('INPUT', 0)
@@ -102,7 +107,8 @@ def main(*, preloaded=False):
             if client.read_host(abi.HOST_REG_STATE) != abi.STATE_PAUSED:
                 raise ValueError('integration did not pause after selected frame')
             timings.update(execution_wall_seconds=time.monotonic() - execution_wall,
-                           execution_sim_seconds=transport.sim_time - execution_sim)
+                           execution_sim_seconds=transport.sim_time - execution_sim,
+                           execution_finished_unix_ns=time.time_ns())
             result = {'identity': identity, 'load': loaded, 'requests': records, 'timings': timings}
             (args.attempt / 'client.json').write_text(json.dumps(result, indent=2) + '\n')
             transport.send('DONE')
