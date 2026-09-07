@@ -21,7 +21,7 @@ def verify_identity(folder, build_id):
     return build_id
 
 
-def verify_uart_memory(text, fit):
+def verify_uart_memory(text, fit, *, system_net=r"\clk_sys~inputclkctrl_outclk"):
     """Account for the six existing UART stores alongside the three VGA banks."""
     from .fpga_lock import parse_netlist
     _, cells, params, *_ = parse_netlist(text, 'controls_proof')
@@ -49,7 +49,7 @@ def verify_uart_memory(text, fit):
                              f'port_{side}_read_during_write_mode': '"new_data_with_nbe_read"'})
         if any(p.get(k) != v for k, v in required.items()) or any(k.startswith(('mem_init', 'init_file')) for k in p):
             raise ValueError('combined UART RAM dimensions/latency/initialization differ')
-        required_ports = {'clk0': r'\clk_sys~inputclkctrl_outclk', 'clk1': 'gnd', 'clr0': 'gnd', 'clr1': 'gnd',
+        required_ports = {'clk0': system_net, 'clk1': 'gnd', 'clr0': 'gnd', 'clr1': 'gnd',
                           'portare': 'gnd', 'portbwe': 'gnd', 'portaaddrstall': 'gnd', 'portbaddrstall': 'gnd',
                           'portabyteenamasks': "1'b1", 'portbbyteenamasks': "1'b1"}
         if any(ports.get(k) != v for k, v in required_ports.items()):
@@ -99,7 +99,7 @@ def required_reports():
             for name, _, _, _ in CHAINS for check in ("setup", "hold")]
 
 
-def verify(folder):
+def verify(folder, *, system_clock="clk_sys", system_net=r"\clk_sys~inputclkctrl_outclk"):
     """Check every external-control synchronizer path and its sole first-stage sink."""
     from .fpga_lock import parse_netlist, OUTPUTS
     import re
@@ -114,7 +114,7 @@ def verify(folder):
                     raise ValueError('missing or violated control synchronizer path')
                 rows = [r for r in fpga_vga.rows(fpga_vga.summary(text)) if len(r) == 8 and r[0] != 'Slack']
                 if (len(rows) != 1 or [fpga_vga.node(v) for v in rows[0][1:3]] != [first, second]
-                        or rows[0][3:5] != ['clk_sys', 'clk_sys'] or fpga_vga.number(rows[0][0]) < 0):
+                        or rows[0][3:5] != [system_clock, system_clock] or fpga_vga.number(rows[0][0]) < 0):
                     raise ValueError('control synchronizer timing endpoints or clocks differ')
                 result['paths'][report.name] = fpga_vga.number(rows[0][0])
     text = (folder / 'simulation/questa/design.vo').read_text()
@@ -131,7 +131,7 @@ def verify(folder):
         if (ports.get('ena') != 'vcc' or ports.get('aload') != 'gnd'
                 or ports.get('sclr') != 'gnd' or ports.get('prn') != 'vcc'
                 or ports.get('devclrn') != 'devclrn' or ports.get('devpor') != 'devpor'
-                or ports.get('clk') != r'\clk_sys~inputclkctrl_outclk'
+                or ports.get('clk') != system_net
                 or ports.get('clrn') != r'\u_clocking|u_reset|sys_release[1]~clkctrl_outclk'
                 or params.get(register) != {'is_wysiwyg': '"true"', 'power_up': '"low"'}):
             raise ValueError('control synchronizer clock/reset/load/enable differs')

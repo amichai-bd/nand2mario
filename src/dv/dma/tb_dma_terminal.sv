@@ -136,9 +136,8 @@ module tb_dma_terminal;
         other_pair=0;
         repeat(2) @(negedge clk_sys);
         if(corrupt) force dut.ppu_oam_data=16'h002a;
-        // Five clocks elapsed sinceA; reach first dotA+12 without changing the budget.
-        repeat(6) @(negedge clk_sys);
-        expect_pair(); fetch_phase1=1; gb_tick=1;
+        // Five clocks elapsed since A: consume the earliest next Game Boy dot.
+        #1; expect_pair(); fetch_phase1=1; gb_tick=1;
         @(negedge clk_sys); gb_tick=0; cpu_phase=cpu_phase+2'd1;
         if(object_attributes!==8'ha5 || tile_row_address!==11'h150) $fatal(1,"DMA_TERMINAL_CAPTURE");
         dot_step(); expect_pair();
@@ -149,7 +148,7 @@ module tb_dma_terminal;
         fetch_phase1=0; begin_dma(); repeat(8) dot_step();
         if(!dut.pair_pending) $fatal(1,"DMA_TERMINAL_RESET_SETUP");
         core_reset=1; @(negedge clk_sys);
-        if(dut.pair_pending || ppu_oam_valid || access_write) $fatal(1,"DMA_TERMINAL_RESET_CANCEL");
+        if(dut.pair_pending || ppu_oam_valid || access_write || (|oam_request.write_enable)) $fatal(1,"DMA_TERMINAL_RESET_CANCEL");
         $display("PASS DMA terminal actual object pair before and after commit"); $finish;
     end
     initial begin #5000000; $fatal(1,"DMA_TERMINAL_WATCHDOG"); end

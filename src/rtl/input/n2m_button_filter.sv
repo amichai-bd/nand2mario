@@ -1,7 +1,7 @@
 `timescale 1ns/1ps
 `include "src/rtl/common/macros.svh"
 module n2m_button_filter #(
-    parameter int unsigned STABLE_CYCLES = 250000
+    parameter int unsigned STABLE_CYCLES = 125000
 ) (
     input var logic clk_sys,
     input var logic reset_sys,

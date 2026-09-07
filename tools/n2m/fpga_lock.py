@@ -184,3 +184,124 @@ def verify(text, checks, top="clocking_proof"):
             raise ValueError("vendor lock net has additional drivers")
     return {"endpoint": ROW, "classification": "documented ALTPLL lock event latch",
             "topology": "constant-one D; PLL reset clears; raw lock loss propagates; only reset sampling fanout"}
+
+
+def verify_parallel(text, checks, top):
+    """Prove both lock events only qualify reset, including either raw lock loss."""
+    from .fpga_pll import SYSTEM_NET
+    system = "u_clocking|u_system_pll|altpll_component|auto_generated|"
+    system_row = "n2m_clocking:u_clocking|n2m_system_pll:u_system_pll|altpll:altpll_component|n2m_system_pll_altpll:auto_generated|pll_lock_sync"
+    expected_rows = [ROW, system_row]
+    if top == "controls_proof":
+        expected_rows.append("n2m_adc_backend:u_adc|n2m_adc_pll:u_pll|altpll:altpll_component|n2m_adc_pll_altpll:auto_generated|pll_lock_sync")
+    rows = re.findall(r";\s*([^;\r\n]+?)\s*;\s*No clock feeds this register's clock port\.\s*;", checks)
+    if sorted(rows) != sorted(expected_rows):
+        raise ValueError("parallel lock event inventory differs")
+    _, cells, params, declarations, rhs, lhs = parse_netlist(text, top)
+    def cell(name, kind, modes=None):
+        if cells.get(name, (None,))[0] != kind or modes is not None and params.get(name) != modes:
+            raise ValueError("parallel lock cell/mode differs: " + name)
+        return cells[name][1]
+    def contains(net, value):
+        return net in re.findall(r"\\[^,{}!]+", value)
+    def users(net):
+        if any(contains(net, value) for value in rhs + lhs):
+            raise ValueError("parallel lock alias is not allowed")
+        return {(n,p) for n,(kind,ports) in cells.items() for p,v in ports.items()
+                if p not in OUTPUTS[kind] and contains(net, v)}
+    register_modes = {"is_wysiwyg": '"true"', "power_up": '"low"'}
+    buffer_modes = {"clock_type": '"global clock"', "ena_register_mode": '"none"'}
+    reset = cell(RESET + "pll_areset", "dffeas", register_modes)
+    if reset['clk'] != r"\clk_reference~inputclkctrl_outclk":
+        raise ValueError("PLL reset bootstrap depends on a generated clock")
+    reset_buffer = cell(RESET + "pll_areset~clkctrl", "fiftyfivenm_clkctrl", buffer_modes)
+    if reset_buffer != {"ena":"vcc", "inclk":"{vcc,vcc,vcc,"+reset['q']+"}", "clkselect":"2'b00",
+                        "devclrn":"devclrn", "devpor":"devpor", "outclk":r"\u_clocking|u_reset|pll_areset~clkctrl_outclk"}:
+        raise ValueError("parallel PLL reset buffer differs")
+    roots = [reset['q']]
+    critical = [(reset['q'],RESET+'pll_areset','q'),(reset_buffer['outclk'],RESET+'pll_areset~clkctrl','outclk')]
+    events = []
+    for prefix in (PLL, system):
+        pll = cell(prefix + "pll1", "fiftyfivenm_pll")
+        ff = cell(prefix + "pll_lock_sync", "dffeas", register_modes)
+        feeder = cell(prefix + "pll_lock_sync~feeder", "fiftyfivenm_lcell_comb",
+                      {"lut_mask":"16'hFFFF", "sum_lutc_input":'"datac"'})
+        if (pll['areset'] != '!'+reset_buffer['outclk'] or pll['inclk'] != r"{gnd,\clk_reference~input_o}"
+                or ff != {"clk":pll['locked'], "d":feeder['combout'], "asdata":"vcc", "clrn":reset_buffer['outclk'],
+                          "aload":"gnd", "sclr":"gnd", "sload":"gnd", "ena":"vcc", "devclrn":"devclrn",
+                          "devpor":"devpor", "q":"\\"+prefix+"pll_lock_sync~q", "prn":"vcc"}
+                or any(feeder.get(p) != 'gnd' for p in ('dataa','datab','datac','datad','cin'))
+                or feeder.get('cout') != ''):
+            raise ValueError("parallel PLL constant-one event or reset differs")
+        roots += [ff['q'],pll['locked']]
+        events.append((prefix,ff,pll))
+        critical += [(ff['q'],prefix+'pll_lock_sync','q'),(pll['locked'],prefix+'pll1','locked'),
+                     (feeder['combout'],prefix+'pll_lock_sync~feeder','combout')]
+    names = [RESET+'lock_reset~0',RESET+'lock_reset']
+    gates = []
+    for name in names:
+        gate = cell(name,'fiftyfivenm_lcell_comb')
+        modes = params.get(name,{})
+        if (set(modes) != {'lut_mask','sum_lutc_input'} or modes['sum_lutc_input'] != '"datac"'
+                or not re.fullmatch(r"16'h[0-9A-Fa-f]{4}",modes['lut_mask'])
+                or gate.get('cin') != 'gnd' or gate.get('cout') != ''):
+            raise ValueError("parallel lock gate mode differs")
+        gates.append(gate)
+        critical.append((gate['combout'],name,'combout'))
+    for assignment in range(32):
+        bits=[(assignment>>i)&1 for i in range(5)]
+        values={**dict(zip(roots,bits)),'gnd':0,'vcc':1}
+        for name,gate in zip(names,gates):
+            try: index=sum(values[gate[p]]<<i for i,p in enumerate(('dataa','datab','datac','datad')))
+            except KeyError as e: raise ValueError("parallel lock gate has unrelated inputs") from e
+            values[gate['combout']]=(int(params[name]['lut_mask'][4:],16)>>index)&1
+        if values[gates[-1]['combout']] != (not all(bits)):
+            raise ValueError("parallel lock gate loses raw lock/reset propagation")
+    for prefix,ff,pll in events:
+        for net,extra in ((ff['q'],set()),(pll['locked'],{(prefix+'pll_lock_sync','clk')})):
+            expected=extra|{(name,p) for name,gate in zip(names,gates) for p,v in gate.items() if v==net}
+            if users(net) != expected or not expected:
+                raise ValueError("parallel lock event has non-reset fanout")
+    if users(gates[0]['combout']) != {(names[1],p) for p,v in gates[1].items() if v==gates[0]['combout']}:
+        raise ValueError("parallel lock intermediate gate fanout differs")
+    buffer_name=RESET+'lock_reset~clkctrl'
+    buffer=cell(buffer_name,'fiftyfivenm_clkctrl',buffer_modes)
+    if (buffer != {'ena':'vcc','inclk':'{vcc,vcc,vcc,'+gates[-1]['combout']+'}', 'clkselect':"2'b00",
+                   'devclrn':'devclrn','devpor':'devpor','outclk':r"\u_clocking|u_reset|lock_reset~clkctrl_outclk"}
+            or users(gates[-1]['combout']) != {(buffer_name,'inclk')}):
+        raise ValueError("parallel lock reset distribution differs")
+    critical.append((buffer['outclk'],buffer_name,'outclk'))
+    samples={RESET+f'lock_samples[{i}]' for i in (0,1)}
+    if users(buffer['outclk']) != {(n,'clrn') for n in samples}:
+        raise ValueError("parallel lock reset reaches a functional datapath")
+    for i in (0,1):
+        name=RESET+f'lock_samples[{i}]'
+        ff=cell(name,'dffeas',register_modes)
+        if (ff.get('clk') != SYSTEM_NET or ff.get('clrn') != '!'+buffer['outclk']
+                or any(ff.get(p)!=v for p,v in {'prn':'vcc','ena':'vcc','aload':'gnd','sclr':'gnd','devclrn':'devclrn','devpor':'devpor'}.items())
+                or ff.get('sload') not in ('gnd','vcc') or ff.get('q') != "\\"+name):
+            raise ValueError("parallel lock sample clock/reset/control differs")
+        selected=ff.get('d' if ff['sload']=='gnd' else 'asdata')
+        expected='vcc' if i==0 else "\\"+RESET+'lock_samples[0]'
+        if selected != expected:
+            feeder_name=name+'~feeder'
+            feeder=cell(feeder_name,'fiftyfivenm_lcell_comb')
+            modes=params.get(feeder_name,{})
+            if (selected != feeder.get('combout') or feeder.get('cin')!='gnd' or feeder.get('cout')!=''
+                    or set(modes)!={'lut_mask','sum_lutc_input'} or modes['sum_lutc_input']!='"datac"'
+                    or not re.fullmatch(r"16'h[0-9A-Fa-f]{4}",modes['lut_mask'])):
+                raise ValueError("parallel lock sample feeder differs")
+            for bit in (0,1):
+                values={expected:bit,'gnd':0,'vcc':1}
+                try: index=sum(values[feeder[p]]<<n for n,p in enumerate(('dataa','datab','datac','datad')))
+                except KeyError as e: raise ValueError("parallel lock sample has unrelated data") from e
+                if ((int(modes['lut_mask'][4:],16)>>index)&1) != values[expected]:
+                    raise ValueError("parallel lock sample pipeline bypassed")
+            critical.append((selected,feeder_name,'combout'))
+        critical.append((ff['q'],name,'q'))
+    for net,name,port in critical:
+        drivers={(n,p) for n,(kind,ports) in cells.items() for p,v in ports.items() if p in OUTPUTS[kind] and contains(net, v)}
+        if drivers != {(name,port)} or any(contains(net, value) for value in lhs):
+            raise ValueError("parallel lock net has extra drivers")
+    return {'endpoints':[ROW,system_row], 'classification':'two constant-one ALTPLL lock events',
+            'truth_cases':32,'bootstrap_clock':'clk_reference','sampling_clock':SYSTEM_NET}

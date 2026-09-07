@@ -5261,7 +5261,7 @@
     "top": "tb_dma_restart",
     "timeout_seconds": 60,
     "expected_exit": "nonzero",
-    "signature": "DMA_RESTART_WRITE_TIME expected_delta=25 actual_delta=24",
+    "signature": "DMA_RESTART_WRITE_TIME expected_delta=13 actual_delta=12",
     "vendor_model": "intel-memory",
     "args": [
       "+EARLY_WRITE"

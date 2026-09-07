@@ -8,18 +8,18 @@ def hierarchy(text):
 
 def constraints(quote):
     text = fpga_vga.constraints(quote, lcd=True)
-    # Readiness enters this proof as qualified reset ports. Only the first
-    # synchronizer data pin is excepted; asynchronous reset pins remain timed.
-    for name, port in (("pix_ready_sys", "reset_pix"),
-                       ("sys_ready_pix", "reset_sys")):
-        launch = dict(zip(fpga_vga.CHAINS, fpga_vga.LAUNCHES))[name]
-        old = f'set launch_{name} [get_registers [list {quote(launch)}]]'
-        new = f'set launch_{name} [get_ports [list {quote(port)}]]'
-        if text.count(old) != 1:
-            raise ValueError("v0.5 readiness constraint profile changed")
-        text = text.replace(old, new)
     return hierarchy(text)
 
 
 def audit(quote):
     return hierarchy(fpga_vga.audit(quote, lcd=True))
+
+
+def verify_paths(folder, *, system_clock):
+    reports = {}
+    for name in fpga_vga.required_reports(lcd=True):
+        path = folder / "output" / name
+        if not path.is_file() or not path.stat().st_size:
+            raise ValueError("missing composed VGA path evidence: " + name)
+        reports[name] = path.read_text(encoding="utf-8")
+    return fpga_vga.verify_paths(reports,lcd=True,system_clock=system_clock,bridge_prefix="u_system|u_bridge|")

@@ -68,7 +68,7 @@ module n2m_smoke_system #(parameter bit HOST_PLAY = 0) (
     assign core_initialized = memory_initialized && cpu_initialized;
     assign fault = cpu_fault || memory_fault || ppu_fault;
 
-    n2m_uart #(.CLOCK_HZ(50000000), .BAUD(6250000)) u_uart (
+    n2m_uart #(.CLOCK_HZ(25000000), .BAUD(3125000)) u_uart (
         .clk_sys, .reset_sys, .uart_rx, .uart_tx,
         .build_id(128'h14000000000000000000000000000001), .gb_tick, .paused,
         .core_initialized, .instruction_complete, .retirement_valid, .cpu_stopped,
@@ -174,7 +174,7 @@ module n2m_smoke_system #(parameter bit HOST_PLAY = 0) (
         logic [63:0] observe_sequence, observe_dot;
         // DV pixel clock only; this bounded system is not a physical board top.
         initial clk_pix = 0;
-        always #20 clk_pix = !clk_pix;
+        always #(1000.0/50.4) clk_pix = !clk_pix;
         n2m_joypad u_joypad (
             .clk_sys, .reset_sys, .core_reset, .gb_tick,
             .input_commit(effective_update.valid), .input_buttons(effective_update.buttons),

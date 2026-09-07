@@ -5,12 +5,14 @@
 add CPU, memory, interrupt or pixel semantics. The program and acceptance follow the [v0.5 fixture](../../dv/v05/SPEC.md) under the [charter](../../project-charter.md#release-acceptance) and
 [software specification](../../../tools/sw/SPEC.md).
 
-The module accepts 50MHz `clk_sys`, 25.2MHz `clk_pix` and their qualified,
+The module accepts 25 MHz `clk_sys`, 25.2 MHz `clk_pix` and their qualified,
 asynchronously asserted domain resets. The enclosing clock/reset owner supplies
-these signals. The composed fit treats the clocks as unrelated and checks the
-actual bridge CDC, resets, RAM and input/output timing. It does not establish
-board pin timing, PLL routing or full board clock integration. UART loading and control use the same 6.25Mbaud parameter in this
-simulation/fit boundary. This is not a physical UART wiring or board-clock claim.
+these signals. The composed fit uses the real parallel PLL wrapper driven by
+the 50 MHz board reference and the actual bridge CDC constraints. Virtual UART
+and observation ports make this a placement proof, not a programmable board image.
+UART defaults to 115200 baud. Simulation may explicitly override `UART_BAUD`,
+subject to the UART owner's minimum eight system clocks per bit. An accelerated
+transport test does not establish physical UART acceptance.
 
 The UART owner supplies core reset, profile, epoch, pause and effective input.
 Initialization completes only when CPU and backing-store initialization complete.

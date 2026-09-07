@@ -69,7 +69,7 @@ def target_definition(root, name):
         raise ValueError("unknown FPGA target, fields, or device")
     if "pll" in target:
         fpga_pll.validate(target["pll"])
-        if target["top"] not in ("clocking_proof", "vga_proof", "ppu_proof", "intel_memory_proof", "controls_proof") or "timing" not in target:
+        if target["top"] not in ("clocking_proof", "vga_proof", "ppu_proof", "intel_memory_proof", "controls_proof", "v05_proof") or "timing" not in target:
             raise ValueError("PLL evidence currently requires the bounded clocking proof target")
     if "timing" in target:
         fpga_constraints.validate(target["timing"])
@@ -91,7 +91,7 @@ def target_definition(root, name):
     if not isinstance(target["pins"], dict) or not target["pins"] or not isinstance(target["virtual_pins"], list):
         raise ValueError("invalid FPGA pin assignments")
     for port in [*target["pins"], *target["virtual_pins"]]:
-        if not isinstance(port, str) or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*(?:\[(?:\d+|\*)\])?", port):
+        if not isinstance(port, str) or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*(?:\[(?:\d+|\*)\])?", port):
             raise ValueError("invalid FPGA port")
     if any(not isinstance(pin, str) or not re.fullmatch(r"PIN_[A-Z]+[0-9]+", pin) for pin in target["pins"].values()):
         raise ValueError("invalid FPGA pin")
@@ -155,7 +155,7 @@ def prepare(root, folder, target, build_id=None):
 
 def checked_constraints(target):
     if target.get("top") == "v05_proof":
-        return fpga_v05.constraints(tcl_word)
+        return fpga_constraints.generate(target["timing"], tcl_word) + fpga_v05.constraints(tcl_word)
     text = fpga_constraints.generate(target["timing"], tcl_word)
     if target.get("top") in ("vga_proof", "ppu_proof", "controls_proof"):
         text += fpga_vga.constraints(tcl_word, lcd=target["top"] == "ppu_proof")
@@ -211,6 +211,8 @@ def execute(argv, folder, log, timeout, record, build):
     explained = ()
     if log.name == "compile.log" and record.get("definition", {}).get("top") in ("adc_proof", "controls_proof"):
         explained = fpga_adc.explained_diagnostics(text, folder, record["tools"]["adc"])
+    if log.name == "compile.log" and "pll" in record.get("definition", {}):
+        explained = [*explained, *fpga_pll.explained_diagnostics(text, folder, record["definition"]["pll"])]
     record["classified_diagnostics"].extend(diagnostics(text, explained))
     return text
 
@@ -233,6 +235,8 @@ def tools(directory, folder, record, build, timeout):
 
 
 def timing_evidence(folder, target, *, build_id=None):
+    parallel = target.get("pll", {}).get("system_divide") == 2
+    system_profile = {"system_clock": fpga_pll.SYSTEM_CLOCK, "system_net": fpga_pll.SYSTEM_NET} if parallel else {}
     if "timing" in target:
         if (folder / "checked.sdc").read_text(encoding="utf-8") != checked_constraints(target):
             raise ValueError("checked timing assignments differ from target")
@@ -262,7 +266,7 @@ def timing_evidence(folder, target, *, build_id=None):
             if not any(name.startswith(f"{corner} Model {check} '") for name in slacks):
                 raise ValueError(f"missing timing corner/check: {corner} {check}")
             if "pll" in target:
-                for clock in ("clk_sys", "u_clocking|u_pll|altpll_component|auto_generated|pll1|clk[0]"):
+                for clock in (("clk_reference", fpga_pll.SYSTEM_CLOCK, fpga_pll.PIXEL_PLL + "|clk[0]") if parallel else ("clk_sys", fpga_pll.PIXEL_PLL + "|clk[0]")):
                     if f"{corner} Model {check} '{clock}'" not in slacks:
                         raise ValueError(f"missing clock timing: {clock} {corner} {check}")
     ucp = (output / "unconstrained.rpt").read_text(encoding="utf-8")
@@ -278,18 +282,18 @@ def timing_evidence(folder, target, *, build_id=None):
     if not TIMING_CHECKS.issubset(dict(rows)) or len(dict(rows)) != len(rows):
         raise ValueError("missing structural timing checks")
     lock_event = None
-    expected_lock_events = 2 if target["top"] == "controls_proof" else 1
+    expected_lock_events = (2 if target["top"] == "controls_proof" else 1) + int(parallel)
     if "pll" in target:
         if dict(rows).get("no_clock") != str(expected_lock_events):
             raise ValueError("vendor lock event row missing or extra no-clock endpoints")
-        lock_event = fpga_pll.verify_lock_event(folder, checks, target["top"])
+        lock_event = fpga_pll.verify_lock_event(folder, checks, target["top"], parallel=parallel)
         fpga_pll.verify_fit(folder, target)
     adc_evidence = None
     if target["top"] in ("adc_proof", "controls_proof"):
-        adc_evidence = fpga_adc.verify(folder, target["top"])
+        adc_evidence = fpga_adc.verify(folder, target["top"], **({"parallel": True, "system_net": fpga_pll.SYSTEM_NET} if parallel else {}))
         if target["top"] == "adc_proof":
             lock_event = adc_evidence["lock_event"]
-    vga_evidence = fpga_vga.verify(folder, lcd=target["top"] == "ppu_proof", controls=target["top"] == "controls_proof") if target.get("top") in ("vga_proof", "ppu_proof", "controls_proof") else None
+    vga_evidence = fpga_vga.verify(folder, lcd=target["top"] == "ppu_proof", controls=target["top"] == "controls_proof", **system_profile) if target.get("top") in ("vga_proof", "ppu_proof", "controls_proof") else None
     memory_evidence = fpga_intel_memory.verify(folder) if target.get("top") == "intel_memory_proof" else None
     if target.get("top") == "n2m_memory_stores":
         memory_evidence = fpga_memory_stores.verify(folder)
@@ -300,10 +304,12 @@ def timing_evidence(folder, target, *, build_id=None):
             raise ValueError(f"structural timing failure: {name}={count}")
     evidence = {"slack_ns": slacks, "fit_summary": fit, "unconstrained": "none", "ignored_constraints": "none", "vendor_lock_event": lock_event, "vga": vga_evidence, "intel_memory": memory_evidence,
             "virtual_clock_check": "No virtual clock required for the physical-clock-referenced fixture" if "No virtual clock was found." in checks else "passed"}
+    if target["top"] == "v05_proof":
+        evidence["vga_paths"] = fpga_v05.verify_paths(folder, system_clock=fpga_pll.SYSTEM_CLOCK)
     if adc_evidence is not None:
         evidence["adc"] = adc_evidence
     if target.get("top") == "controls_proof":
-        evidence["controls"] = fpga_controls.verify(folder)
+        evidence["controls"] = fpga_controls.verify(folder, **system_profile)
         evidence["controls"]["build_id"] = fpga_controls.verify_identity(folder, build_id)
     return evidence
 

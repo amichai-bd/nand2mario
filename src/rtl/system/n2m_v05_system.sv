@@ -86,6 +86,7 @@ module n2m_v05_system #(
         .build_id(128'h88000000000000000000000000000001), .gb_tick, .paused,
         .core_initialized, .instruction_complete, .retirement_valid, .cpu_stopped,
         .physical_commit(1'b0), .physical_buttons(8'd0), .effective_buttons, .effective_update,
+        .input_source_observe(),
         .pause_request, .core_reset, .buttons, .epoch, .dot_count, .retirement_count,
         .profile, .image_valid, .endpoint_state, .rom_write, .rom_read, .rom_address,
         .rom_write_data, .rom_read_data, .rom_read_valid,

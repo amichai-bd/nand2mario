@@ -1,12 +1,10 @@
 `timescale 1ns/1ps
 `default_nettype none
 
-// Placement proof with externally qualified clocks/resets, not a board image.
+// Composed placement proof with real board-reference PLLs and qualified resets.
 module v05_proof (
-    input var logic clk_sys,
-    input var logic clk_pix,
-    input var logic reset_sys,
-    input var logic reset_pix,
+    input var logic clk_reference,
+    input var logic board_reset_n,
     input var logic uart_rx,
     output logic uart_tx,
     output logic [3:0] red, green, blue,
@@ -15,6 +13,14 @@ module v05_proof (
     output logic [31:0] display_epoch,
     output logic paused, fault
 );
+    logic clk_sys;
+    logic clk_pix;
+    logic reset_sys;
+    logic reset_pix;
+    n2m_clocking u_clocking (
+        .clk_reference, .board_reset_n, .clk_sys, .clk_pix,
+        .reset_sys, .reset_pix, .ready()
+    );
     n2m_v05_system u_system (
         .clk_sys, .clk_pix, .reset_sys, .reset_pix, .uart_rx, .uart_tx,
         .red, .green, .blue, .hsync_n, .vsync_n, .paused, .fault,

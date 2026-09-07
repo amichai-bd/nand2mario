@@ -9,9 +9,9 @@ integration, and physical proof remain outstanding in
 
 ## Clock domains
 
-The25 MHz migration is implemented under
+The 25 MHz migration is implemented under
 [#164](https://github.com/amichai-bd/nand2mario/issues/164). Final composed
-acceptance is pending; historical50 MHz evidence does not establish this design.
+acceptance is pending; historical 50 MHz evidence does not establish this design.
 
 Target DE10-Lite `10M50DAF484C7G`. Use `MAX10_CLK1_50` on `PIN_P11`, nominal
 50 MHz, as `clk_reference` for reset bootstrap and both system/pixel PLLs. These are manual-derived design
@@ -36,7 +36,7 @@ must finish before the applicable emulated edge without silently stretching DMG
 time. Missing service is an assertion/error, not a dropped tick.
 
 Generate system and pixel clocks through two parallel MAX 10 ALTPLLs from
-the same50 MHz reference. The system PLL divides by2. The
+the same 50 MHz reference. The system PLL divides by 2. The
 [dedicated clock-pin connections](https://docs.altera.com/r/docs/683047/21.1/max-10-clocking-and-pll-user-guide/clock-pin-to-pll-connections)
 support two PLLs from the reference group. Use no PLL cascade. Generate the
 pixel clock on a global network, nominal
@@ -61,15 +61,15 @@ sets phase to zero. Use at least 19 bits for phase and a sum wide enough for
 456160. Consumers see this edge's carry; do not accidentally add a pipeline dot.
 
 From reset, after N active system edges the tick count is exactly
-`floor(N * 65536 / 390625)`. The first tick is edge6; subsequent gaps are5
-or6 edges. Each 390625-edge period emits65536 ticks. Each tick arrives less
+`floor(N * 65536 / 390625)`. The first tick is edge 6; subsequent gaps are 5
+or 6 edges. Each 390625-edge period emits 65536 ticks. Each tick arrives less
 than one system period late relative to its ideal continuous edge: less than
 40 ns nominal. This quantization has zero cumulative average error and preserves
 DMG event order; it is not a claim of original crystal waveform identity.
 
-A normal-speed M-cycle spans four dot enables, requiring23 or24 system edges.
-Every memory service must finish within23 edges; the shortest single-dot
-interval is5 edges. Pipelining cannot borrow an extra emulated cycle. One acceptance frame interval
+A normal-speed M-cycle spans four dot enables, requiring 23 or 24 system edges.
+Every memory service must finish within 23 edges; the shortest single-dot
+interval is 5 edges. Pipelining cannot borrow an extra emulated cycle. One acceptance frame interval
 is 456 * 154 = 70224 dots, nominally 16.74270630 ms (about 59.72750057 Hz).
 This interval exists even when the emulated LCD is disabled. PPU mode timing,
 LCD enable behavior, STOP, and instruction semantics belong to their own
@@ -101,9 +101,39 @@ of 160 by 144, centered at x=80..559 and y=24..455; border RGB is zero. Register
 RGB, sync, and valid with matching memory-read latency. Pixel shade conversion
 belongs to the VGA implementation contract; this page specifies its timing.
 
+## System service budgets
+
+The minimum five-edge dot interval and 23-edge M-cycle are hard deadlines.
+The following bounds count system edges from acceptance or a stable request;
+none depends on average tick spacing. Owner contracts retain the detailed
+ordering, collisions and cancellation rules.
+
+| Owner | Required service | Worst bound at 25 MHz | Deadline and independence |
+|---|---|---|---|
+| [CPU memory port](rtl/memory/MAS_memory.md#prepared-and-committed-operations) without DMA | Tagged synchronous store response | One read edge; response valid before the following edge | Request is prepared before T1 and consumed at T4; no added T-cycle |
+| [DMA and OAM](rtl/dma/MAS_dma.md#corruption-qualification-and-combined-service) | Three corruption rows, uncovered DMA byte, next operands/source/destination and CPU response | Last tagged CPU capture at A+22 | Next T4 cannot precede A+23; source and destination pair read at A+20 use distinct banks |
+| [PPU](rtl/ppu/MAS_ppu.md) VRAM and OAM | Read/tag the requested byte or pair | One read edge; two edges allowed for requester observation | Before the next dot at least five edges away; dedicated B ports, same-pair collision gating and pending-pair forwarding preserve ownership |
+| [Interrupts](rtl/interrupts/MAS_interrupts.md) and JOYP | Resolve same-edge events, writes and acknowledgement | Combinational next-state observation | CPU samples IF/IE before T3; independent of the raw memory service slot |
+| UART ROM, packet and response memories | Tagged synchronous reads and whole-byte writes | One read edge | Transport state waits for valid; ROM loading holds emulation reset, packet stores do not share CPU RAM ports |
+| [Frame bridge](rtl/vga/MAS_vga.md) | Write one completed shade | One system edge | At most one shade per dot; pixel reads use the separate clocked port |
+| [Snapshot](rtl/snapshot/MAS_snapshot.md) | Copy 5760 packed bytes into immutable host storage | Two system edges per byte, 11520 edges (460.8 us), plus command completion | Background copy has dedicated banks and cannot stall Game Boy ticks; host reads take one edge |
+| Physical controls | Debounce, pair acquisition and freshness | 125000 / 25000 / 500000 system edges | Preserve 5 ms / 1 ms / 20 ms durations; ADC hard-block clock stays independent |
+
+UART phase accumulators use 25000000 Hz and preserve the configured baud rate.
+The packet timeout remains derived from milliseconds. The physical default is
+115200 baud; accelerated verification uses at most 3125000 baud to retain the
+minimum eight system clocks per bit. Reference reset qualification remains
+500000 raw 50 MHz edges (10 ms); lock qualification remains 1024 system samples
+(40.96 us), followed by each destination's two release edges. Host pause stops
+only Game Boy enables. Already accepted services may drain; reset cancels them.
+
+Timer, serial-transfer and audio owners are still incomplete in the bounded
+v0.5 composition. Their existing milestone requirements remain open; this table
+does not invent a service guarantee for missing implementations.
+
 ## Reset and run control
 
-A small always-running50 MHz `clk_reference` reset bootstrap uses the board reset request
+A small always-running 50 MHz `clk_reference` reset bootstrap uses the board reset request
 and FPGA configuration startup. Configuration must initialize PLL reset asserted,
 qualification counters and readiness to zero, and both domain reset-release
 chains to the asserted state, even if the button is never pressed. Generated

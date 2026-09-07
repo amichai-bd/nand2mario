@@ -82,7 +82,7 @@ module tb_dma_restart;
             if(cpu_phase==3) begin
                 if(expected_pending) $fatal(1,"DMA_RESTART_PREVIOUS_SERVICE");
                 expected_pending=write_now;expected_offset=offset;expected_byte=value;
-                accepted_edge=system_edges+1;expected_edge=accepted_edge+25;
+                accepted_edge=system_edges+1;expected_edge=accepted_edge+13;
                 if(write_now) expected_oam[offset]=value;
             end
             @(negedge clk_sys);gb_tick=0;bus_commit=0;address_effect_sample=0;cpu_phase=cpu_phase+2'd1;
@@ -108,7 +108,7 @@ module tb_dma_restart;
         if(observe && access_write && access_store==STORE_OAM) begin
             if(!expected_pending) $fatal(1,"DMA_RESTART_UNEXPECTED_WRITE");
             if(system_edges!=expected_edge)
-                $fatal(1,"DMA_RESTART_WRITE_TIME expected_delta=25 actual_delta=%0d",system_edges-accepted_edge);
+                $fatal(1,"DMA_RESTART_WRITE_TIME expected_delta=13 actual_delta=%0d",system_edges-accepted_edge);
             if(access_address!=={7'd0,expected_offset} || access_wdata!==expected_byte)
                 $fatal(1,"DMA_RESTART_WRITE case=%0d expected=%0d:%02x actual=%0d:%02x",case_index,expected_offset,expected_byte,access_address,access_wdata);
             $fdisplay(trace,"%0d,%0d,%0d,%02x,%0d,%0d",case_index,write_count,access_address,access_wdata,system_edges,expected_edge);
@@ -117,7 +117,7 @@ module tb_dma_restart;
             for (lane=0; lane<2; lane=lane+1) if (observe && oam_request.write_enable[lane]) begin
             if(!expected_pending) $fatal(1,"DMA_RESTART_UNEXPECTED_WRITE");
             if(system_edges!=expected_edge)
-                $fatal(1,"DMA_RESTART_WRITE_TIME expected_delta=25 actual_delta=%0d",system_edges-accepted_edge);
+                $fatal(1,"DMA_RESTART_WRITE_TIME expected_delta=13 actual_delta=%0d",system_edges-accepted_edge);
             if((15'(oam_request.pair)*15'd2+15'(lane))!=={7'd0,expected_offset} || oam_request.data[8*lane +: 8]!==expected_byte)
                 $fatal(1,"DMA_RESTART_WRITE case=%0d expected=%0d:%02x actual=%0d:%02x",case_index,expected_offset,expected_byte,(15'(oam_request.pair)*15'd2+15'(lane)),oam_request.data[8*lane +: 8]);
             $fdisplay(trace,"%0d,%0d,%0d,%02x,%0d,%0d",case_index,write_count,(15'(oam_request.pair)*15'd2+15'(lane)),oam_request.data[8*lane +: 8],system_edges,expected_edge);

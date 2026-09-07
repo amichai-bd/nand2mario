@@ -18,14 +18,14 @@ BLANK_CONTROLS = (("active", "u_bridge|blank_active"), ("request", "u_bridge|bla
 CORNERS = (("slow85", "slow", 85), ("slow0", "slow", 0), ("fast0", "fast", 0))
 
 
-def chain_profile(lcd=False):
+def chain_profile(lcd=False, *, system_clock="clk_sys"):
     if type(lcd) is not bool:
         raise ValueError("invalid VGA LCD timing profile")
     pixel = "u_clocking|u_pll|altpll_component|auto_generated|pll1|clk[0]"
-    base = tuple((name, launch, "clk_sys" if name in ("pix_ready_sys", "ack_sys") else pixel)
+    base = tuple((name, launch, system_clock if name in ("pix_ready_sys", "ack_sys") else pixel)
                  for name, launch in zip(CHAINS, LAUNCHES))
     return base + (("blank_pix", "u_bridge|blank_requested", pixel),
-                   ("blank_seen_sys", "u_bridge|blank_active", "clk_sys")) if lcd else base
+                   ("blank_seen_sys", "u_bridge|blank_active", system_clock)) if lcd else base
 
 
 def collection(kind, names, variable, quote):
@@ -120,7 +120,7 @@ def audit(quote, *, lcd=False):
     return "\n".join(lines) + "\n"
 
 
-def verify_memory_netlist(text, *, lcd=False, controls=False):
+def verify_memory_netlist(text, *, lcd=False, controls=False, system_net=r"\clk_sys~inputclkctrl_outclk"):
     """Check the fitted MAX 10 atoms, including clocks and one-edge read shape."""
     atoms = re.findall(r"fiftyfivenm_ram_block\s+\\(\S+)\s*\((.*?)\);", text, re.DOTALL)
     if controls:
@@ -152,7 +152,7 @@ def verify_memory_netlist(text, *, lcd=False, controls=False):
             raise ValueError("VGA physical RAM parameters differ")
         if any(key.startswith(("mem_init", "init_file")) for key in params):
             raise ValueError("VGA physical RAM initialization unexpectedly present")
-        expected_ports = {"clk0": r"\clk_sys~inputclkctrl_outclk",
+        expected_ports = {"clk0": system_net,
                           "clk1": r"\u_clocking|u_pll|altpll_component|auto_generated|wire_pll1_clk[0]~clkctrl_outclk",
                           "clr0": "gnd", "clr1": "gnd", "portare": "gnd", "portbwe": "gnd",
                           "portaaddrstall": "gnd", "portbaddrstall": "gnd",
@@ -174,7 +174,7 @@ def verify_memory_netlist(text, *, lcd=False, controls=False):
     return evidence
 
 
-def verify(folder, *, lcd=False, controls=False):
+def verify(folder, *, lcd=False, controls=False, system_clock="clk_sys", system_net=r"\clk_sys~inputclkctrl_outclk"):
     output = folder / "output"
     reports = {}
     for name in required_reports(lcd=lcd):
@@ -205,8 +205,8 @@ def verify(folder, *, lcd=False, controls=False):
     uart_ram = None
     if controls:
         from .fpga_controls import verify_uart_memory
-        uart_ram = verify_uart_memory(netlist, fit)
-    physical_ram = verify_memory_netlist(netlist, lcd=lcd, controls=controls)
+        uart_ram = verify_uart_memory(netlist, fit, system_net=system_net)
+    physical_ram = verify_memory_netlist(netlist, lcd=lcd, controls=controls, system_net=system_net)
     result = {"physical_ram": physical_ram, "ram_banks": 3, "memory_bits": 138240, "m9k_blocks": 18, "first_pins": pins, "corners": {}}
     if uart_ram is not None:
         result['uart_memory'] = uart_ram
@@ -216,82 +216,7 @@ def verify(folder, *, lcd=False, controls=False):
     if len(packed) != 14 or {(node(row[0]), row[6]) for row in packed} != {
             (register, port + "~output") for port, register in output_sources.items()}:
         raise ValueError("VGA packed output register mapping differs")
-    for corner, model, temperature in CORNERS:
-        model_name = f"{model.title()} 1200mV {temperature}C Model"
-        prefix = f"vga_{corner}_"
-        for name, text in reports.items():
-            if name.startswith(prefix) and re.findall(r"Delay Model:\s*([^\r\n]+)", text) != [model_name]:
-                raise ValueError(f"VGA report corner mismatch: {name}")
-        bundles = {}
-        for source, capture, width in BUNDLES:
-            paths = path_rows(reports[prefix + source + ".rpt"], width)
-            expected = {(f"u_bridge|{source}[{i}]", f"u_bridge|{capture}[{i}]") for i in range(width)}
-            if {(node(row[1]), node(row[2])) for row in paths} != expected:
-                raise ValueError("VGA bundle path inventory differs")
-            delay = max(number(row[0]) for row in paths)
-            if delay > 20:
-                raise ValueError("VGA bundle datapath exceeds 20 ns")
-            bundles[source] = delay
-        output_delays = {}
-        for direction in ("max", "min"):
-            paths = path_rows(reports[prefix + "outputs_" + direction + ".rpt"], len(PORTS))
-            if {row[2] for row in paths} != set(PORTS) or any(node(row[1]) != output_sources.get(row[2]) for row in paths):
-                raise ValueError("VGA output path inventory differs")
-            delays = [number(row[0]) for row in paths]
-            if any(value < 0 or value > 10 for value in delays):
-                raise ValueError("VGA output datapath outside 0..10 ns")
-            output_delays[direction] = max(delays) if direction == "max" else min(delays)
-        if output_delays["max"] - output_delays["min"] > 2:
-            raise ValueError("VGA complete output path spread exceeds 2 ns")
-        blank_slacks = {}
-        if lcd:
-            pixel_clock = "u_clocking|u_pll|altpll_component|auto_generated|pll1|clk[0]"
-            for name, launch in BLANK_CONTROLS:
-                for bit in range(12):
-                    for check in ("setup", "hold"):
-                        key = f"blank_{name}_gray{bit}_{check}"
-                        text = reports[prefix + key + ".rpt"]
-                        if not re.search(r"Report Timing: Found 1 " + check + r" paths \(0 violated\)", text):
-                            raise ValueError("missing or violated VGA blank control path")
-                        paths = [row for row in rows(summary(text)) if len(row) == 8 and row[0] != "Slack"]
-                        if len(paths) != 1 or [node(v) for v in paths[0][1:3]] != [launch, RGB_REGISTERS[bit]] or paths[0][3:5] != [pixel_clock, pixel_clock] or number(paths[0][0]) < 0:
-                            raise ValueError("VGA blank control path differs")
-                        blank_slacks[key] = number(paths[0][0])
-        skews = rows(summary(reports[prefix + "skew.rpt"]))
-        assignment = [row for row in skews if row[0] == "set_max_skew"]
-        port_filter = "[get_ports {" + " ".join("{" + p + "}" if "[" in p else p for p in PORTS) + "}]"
-        if len(assignment) != 1 or len(assignment[0]) != 9 or assignment[0][4] or assignment[0][5] != port_filter:
-            raise ValueError("VGA skew constraint inventory differs")
-        details = [row for row in skews if row[0] == "--"]
-        if len(details) != 28 or not re.search(r"Report Max Skew: Found 28 paths \(0 violated\)", reports[prefix + "skew.rpt"]):
-            raise ValueError("missing or violated VGA skew paths")
-        if not 0 <= number(assignment[0][3]) <= 2:
-            raise ValueError("VGA aggregate skew exceeds required bound")
-        for row in assignment + details:
-            # Individual latest/earliest arrival contributions can be signed;
-            # the assignment's aggregate is nonnegative. Never accept a bad
-            # slack, out-of-bound magnitude or inconsistent slack equation.
-            slack, actual = number(row[1]), number(row[3])
-            if (row[2] != "2.000" or slack < 0 or abs(actual) > 2
-                    or abs(slack - (2 - actual)) > 0.0011):
-                raise ValueError("VGA skew exceeds required bound")
-        for row in details:
-            if len(row) != 9 or row[5] not in PORTS or node(row[4]) != output_sources.get(row[5]) or row[6] != row[7] or row[6] != "u_clocking|u_pll|altpll_component|auto_generated|pll1|clk[0]":
-                raise ValueError("unexpected VGA skew path or clock")
-        chain_slacks = {}
-        for name, _, clock in chain_profile(lcd):
-            for check in ("setup", "hold"):
-                text = reports[prefix + name + "_" + check + ".rpt"]
-                if not re.search(r"Report Timing: Found 1 " + check + r" paths \(0 violated\)", text):
-                    raise ValueError("missing or violated VGA synchronizer path")
-                paths = [row for row in rows(summary(text)) if len(row) == 8 and row[0] != "Slack"]
-                if len(paths) != 1 or [node(v) for v in paths[0][1:3]] != [f"u_bridge|{name}[0]", f"u_bridge|{name}[1]"] or paths[0][3:5] != [clock, clock] or number(paths[0][0]) < 0:
-                    raise ValueError("VGA synchronizer path differs")
-                chain_slacks[name + "_" + check] = number(paths[0][0])
-        result["corners"][corner] = {"bundle_max_ns": bundles, "outputs_ns": output_delays,
-                                     "skew_ns": number(assignment[0][3]), "chain_slack_ns": chain_slacks}
-        if lcd:
-            result["corners"][corner]["blank_control_slack_ns"] = blank_slacks
+    result["corners"] = verify_paths(reports, lcd=lcd, system_clock=system_clock)
     return result
 
 
@@ -325,3 +250,95 @@ def path_rows(text, count):
     if any(number(row[0]) < 0 for row in paths):
         raise ValueError("negative VGA datapath delay")
     return paths
+
+
+def verify_paths(reports, *, lcd=False, system_clock="clk_sys", bridge_prefix="u_bridge|"):
+    """Check the same path contracts in the standalone and composed hierarchy."""
+    def path_node(value):
+        value = node(value)
+        return "u_bridge|" + value[len(bridge_prefix):] if value.startswith(bridge_prefix) else value
+    pins = reports["vga_first_pins.rpt"].splitlines()
+    if len(pins) != len(chain_profile(lcd)):
+        raise ValueError("incomplete VGA first-pin inventory")
+    for (name, _, _), line in zip(chain_profile(lcd), pins):
+        if line not in [f"{name} {bridge_prefix}{name}[0]|{suffix}" for suffix in ("d", "asdata")]:
+            raise ValueError("unsupported VGA first data pin")
+    output_sources = dict(zip(PORTS, OUTPUT_REGISTERS))
+    result = {}
+    for corner, model, temperature in CORNERS:
+        model_name = f"{model.title()} 1200mV {temperature}C Model"
+        prefix = f"vga_{corner}_"
+        for name, text in reports.items():
+            if name.startswith(prefix) and re.findall(r"Delay Model:\s*([^\r\n]+)", text) != [model_name]:
+                raise ValueError(f"VGA report corner mismatch: {name}")
+        bundles = {}
+        for source, capture, width in BUNDLES:
+            paths = path_rows(reports[prefix + source + ".rpt"], width)
+            expected = {(f"u_bridge|{source}[{i}]", f"u_bridge|{capture}[{i}]") for i in range(width)}
+            if {(path_node(row[1]), path_node(row[2])) for row in paths} != expected:
+                raise ValueError("VGA bundle path inventory differs")
+            delay = max(number(row[0]) for row in paths)
+            if delay > 20:
+                raise ValueError("VGA bundle datapath exceeds 20 ns")
+            bundles[source] = delay
+        output_delays = {}
+        for direction in ("max", "min"):
+            paths = path_rows(reports[prefix + "outputs_" + direction + ".rpt"], len(PORTS))
+            if {row[2] for row in paths} != set(PORTS) or any(path_node(row[1]) != output_sources.get(row[2]) for row in paths):
+                raise ValueError("VGA output path inventory differs")
+            delays = [number(row[0]) for row in paths]
+            if any(value < 0 or value > 10 for value in delays):
+                raise ValueError("VGA output datapath outside 0..10 ns")
+            output_delays[direction] = max(delays) if direction == "max" else min(delays)
+        if output_delays["max"] - output_delays["min"] > 2:
+            raise ValueError("VGA complete output path spread exceeds 2 ns")
+        blank_slacks = {}
+        if lcd:
+            pixel_clock = "u_clocking|u_pll|altpll_component|auto_generated|pll1|clk[0]"
+            for name, launch in BLANK_CONTROLS:
+                for bit in range(12):
+                    for check in ("setup", "hold"):
+                        key = f"blank_{name}_gray{bit}_{check}"
+                        text = reports[prefix + key + ".rpt"]
+                        if not re.search(r"Report Timing: Found 1 " + check + r" paths \(0 violated\)", text):
+                            raise ValueError("missing or violated VGA blank control path")
+                        paths = [row for row in rows(summary(text)) if len(row) == 8 and row[0] != "Slack"]
+                        if len(paths) != 1 or [path_node(v) for v in paths[0][1:3]] != [launch, RGB_REGISTERS[bit]] or paths[0][3:5] != [pixel_clock, pixel_clock] or number(paths[0][0]) < 0:
+                            raise ValueError("VGA blank control path differs")
+                        blank_slacks[key] = number(paths[0][0])
+        skews = rows(summary(reports[prefix + "skew.rpt"]))
+        assignment = [row for row in skews if row[0] == "set_max_skew"]
+        port_filter = "[get_ports {" + " ".join("{" + p + "}" if "[" in p else p for p in PORTS) + "}]"
+        if len(assignment) != 1 or len(assignment[0]) != 9 or assignment[0][4] or assignment[0][5] != port_filter:
+            raise ValueError("VGA skew constraint inventory differs")
+        details = [row for row in skews if row[0] == "--"]
+        if len(details) != 28 or not re.search(r"Report Max Skew: Found 28 paths \(0 violated\)", reports[prefix + "skew.rpt"]):
+            raise ValueError("missing or violated VGA skew paths")
+        if not 0 <= number(assignment[0][3]) <= 2:
+            raise ValueError("VGA aggregate skew exceeds required bound")
+        for row in assignment + details:
+            # Individual latest/earliest arrival contributions can be signed;
+            # the assignment's aggregate is nonnegative. Never accept a bad
+            # slack, out-of-bound magnitude or inconsistent slack equation.
+            slack, actual = number(row[1]), number(row[3])
+            if (row[2] != "2.000" or slack < 0 or abs(actual) > 2
+                    or abs(slack - (2 - actual)) > 0.0011):
+                raise ValueError("VGA skew exceeds required bound")
+        for row in details:
+            if len(row) != 9 or row[5] not in PORTS or path_node(row[4]) != output_sources.get(row[5]) or row[6] != row[7] or row[6] != "u_clocking|u_pll|altpll_component|auto_generated|pll1|clk[0]":
+                raise ValueError("unexpected VGA skew path or clock")
+        chain_slacks = {}
+        for name, _, clock in chain_profile(lcd, system_clock=system_clock):
+            for check in ("setup", "hold"):
+                text = reports[prefix + name + "_" + check + ".rpt"]
+                if not re.search(r"Report Timing: Found 1 " + check + r" paths \(0 violated\)", text):
+                    raise ValueError("missing or violated VGA synchronizer path")
+                paths = [row for row in rows(summary(text)) if len(row) == 8 and row[0] != "Slack"]
+                if len(paths) != 1 or [path_node(v) for v in paths[0][1:3]] != [f"u_bridge|{name}[0]", f"u_bridge|{name}[1]"] or paths[0][3:5] != [clock, clock] or number(paths[0][0]) < 0:
+                    raise ValueError("VGA synchronizer path differs")
+                chain_slacks[name + "_" + check] = number(paths[0][0])
+        result[corner] = {"bundle_max_ns": bundles, "outputs_ns": output_delays,
+                                     "skew_ns": number(assignment[0][3]), "chain_slack_ns": chain_slacks}
+        if lcd:
+            result[corner]["blank_control_slack_ns"] = blank_slacks
+    return result

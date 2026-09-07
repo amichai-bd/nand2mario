@@ -1,13 +1,7 @@
-# Separate external clocks; no generated relationship or blanket clock exception.
-create_clock -name clk_sys -period 20.000 [get_ports clk_sys]
-# Round down to TimeQuest's ps resolution, conservatively faster than 25.2 MHz.
-create_clock -name clk_pix -period 39.682 [get_ports clk_pix]
+# Real parallel PLLs retain their shared 50 MHz board-reference relationship.
+create_clock -name clk_reference -period 20.000 [get_ports clk_reference]
+derive_pll_clocks
 derive_clock_uncertainty
-set_input_delay -clock clk_sys -max 2.000 [get_ports {reset_sys uart_rx}]
-set_input_delay -clock clk_sys -min 0.000 [get_ports {reset_sys uart_rx}]
-set_input_delay -clock clk_pix -max 2.000 [get_ports reset_pix]
-set_input_delay -clock clk_pix -min 0.000 [get_ports reset_pix]
-set_output_delay -clock clk_sys -max 2.000 [get_ports {uart_tx paused fault}]
-set_output_delay -clock clk_sys -min 0.000 [get_ports {uart_tx paused fault}]
-set_output_delay -clock clk_pix -max 2.000 [get_ports {red* green* blue* hsync_n vsync_n display_sequence* display_epoch*}]
-set_output_delay -clock clk_pix -min 0.000 [get_ports {red* green* blue* hsync_n vsync_n display_sequence* display_epoch*}]
+# Asynchronous board inputs terminate at checked synchronization stages.
+set_input_delay -clock [get_clocks {u_clocking|u_system_pll|altpll_component|auto_generated|pll1|clk*}] -source_latency_included -max 2.000 [get_ports {board_reset_n uart_rx}]
+set_input_delay -clock [get_clocks {u_clocking|u_system_pll|altpll_component|auto_generated|pll1|clk*}] -source_latency_included -min 0.000 [get_ports {board_reset_n uart_rx}]

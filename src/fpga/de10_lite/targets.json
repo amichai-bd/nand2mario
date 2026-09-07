@@ -349,7 +349,13 @@
         "wave_read",
         "wave_address[*]",
         "wave_rdata[*]",
-        "wave_valid"
+        "wave_valid",
+        "oam_request.read",
+        "oam_request.write_enable[*]",
+        "oam_request.pair[*]",
+        "oam_request.data[*]",
+        "oam_response.valid",
+        "oam_response.data[*]"
       ]
     },
     "ppu-invalid": {
@@ -1452,13 +1458,14 @@
         "src/rtl/vga/n2m_frame_bridge.sv",
         "src/rtl/snapshot/n2m_frame_snapshot.sv",
         "src/rtl/system/n2m_v05_system.sv",
+        "src/rtl/clocking/n2m_reset_control.sv",
+        "src/fpga/de10_lite/n2m_clocking.sv",
         "src/fpga/de10_lite/v05_proof.sv"
       ],
       "constraints": [
         "src/fpga/de10_lite/v05.sdc"
       ],
       "pins": {
-        "clk_sys": "PIN_P11",
         "red[0]": "PIN_AA1",
         "red[1]": "PIN_V1",
         "red[2]": "PIN_Y2",
@@ -1473,18 +1480,61 @@
         "blue[3]": "PIN_N2",
         "hsync_n": "PIN_N3",
         "vsync_n": "PIN_N1",
-        "clk_pix": "PIN_N14"
+        "clk_reference": "PIN_P11"
       },
       "virtual_pins": [
-        "reset_sys",
-        "reset_pix",
         "uart_rx",
         "uart_tx",
         "paused",
         "fault",
         "display_sequence[*]",
-        "display_epoch[*]"
-      ]
+        "display_epoch[*]",
+        "board_reset_n"
+      ],
+      "pll": {
+        "module": "n2m_pixel_pll",
+        "input_ps": 20000,
+        "multiply": 63,
+        "divide": 125,
+        "system_divide": 2
+      },
+      "timing": {
+        "async_reset_pins": [
+          "u_clocking|u_reset|board_release[0]|clrn",
+          "u_clocking|u_reset|board_release[1]|clrn",
+          "u_clocking|u_reset|lock_samples[0]|clrn",
+          "u_clocking|u_reset|lock_samples[1]|clrn",
+          "u_clocking|u_reset|sys_release[0]|clrn",
+          "u_clocking|u_reset|sys_release[1]|clrn",
+          "u_clocking|u_reset|pix_release[0]|clrn",
+          "u_clocking|u_reset|pix_release[1]|clrn"
+        ],
+        "output_delays": [
+          {
+            "clock": "u_clocking|u_system_pll|altpll_component|auto_generated|pll1|clk[0]",
+            "count": 3,
+            "ports": [
+              "uart_tx",
+              "paused",
+              "fault"
+            ]
+          },
+          {
+            "clock": "u_clocking|u_pll|altpll_component|auto_generated|pll1|clk[0]",
+            "count": 110,
+            "ports": [
+              "red[*]",
+              "green[*]",
+              "blue[*]",
+              "hsync_n",
+              "vsync_n",
+              "display_sequence[*]",
+              "display_epoch[*]"
+            ]
+          }
+        ],
+        "reference_ns": "20.000"
+      }
     }
   }
 }

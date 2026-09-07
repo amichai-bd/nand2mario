@@ -12,13 +12,17 @@ FSM = "u_adc|u_control|u_control_fsm|"
 SYS = r"\clk_sys~inputclkctrl_outclk"
 
 
-def verify_netlist(text, checks, top="adc_proof"):
+def verify_netlist(text, checks, top="adc_proof", *, parallel=False, system_net=SYS):
     from .fpga_lock import ROW
     if top not in ("adc_proof", "controls_proof"):
         raise ValueError("unsupported ADC proof top")
     reset = "u_adc_reset|" if top == "controls_proof" else "u_reset|"
     row = "n2m_adc_backend:u_adc|n2m_adc_pll:u_pll|altpll:altpll_component|n2m_adc_pll_altpll:auto_generated|pll_lock_sync"
-    if re.findall(r";\s*([^;\r\n]+?)\s*;\s*No clock feeds this register's clock port\.\s*;", checks) != ([ROW, row] if top == "controls_proof" else [row]):
+    expected_rows = [ROW, row] if top == "controls_proof" else [row]
+    if parallel:
+        expected_rows.append("n2m_clocking:u_clocking|n2m_system_pll:u_system_pll|altpll:altpll_component|n2m_system_pll_altpll:auto_generated|pll_lock_sync")
+    actual_rows = re.findall(r";\s*([^;\r\n]+?)\s*;\s*No clock feeds this register's clock port\.\s*;", checks)
+    if sorted(actual_rows) != sorted(expected_rows):
         raise ValueError("unexpected ADC no-clock endpoint")
     _, cells, params, declarations, rhs, lhs = parse_netlist(text, top)
 
@@ -46,7 +50,8 @@ def verify_netlist(text, checks, top="adc_proof"):
                 "ADC reset buffer is not an always-enabled identity")
         return ports["outclk"]
 
-    def register(name, reset, clock=SYS):
+    def register(name, reset, clock=None):
+        clock = system_net if clock is None else clock
         ports = cell(name, "dffeas")
         require(ports.get("clk") == clock and ports.get("clrn") == reset and
                 ports.get("prn") == "vcc" and ports.get("aload") == "gnd" and
@@ -204,22 +209,22 @@ def verify_netlist(text, checks, top="adc_proof"):
             "qualification_truth_cases": 2048}
 
 
-def verify(folder, top="adc_proof"):
+def verify(folder, top="adc_proof", *, parallel=False, system_net=SYS):
     result = verify_netlist((folder / "simulation/questa/design.vo").read_text(),
-                            (folder / "output/check_timing.rpt").read_text(), top)
+                            (folder / "output/check_timing.rpt").read_text(), top, parallel=parallel, system_net=system_net)
     fit = (folder / "output/design.fit.rpt").read_text()
     summary = (folder / "output/design.fit.summary").read_text()
-    expected_resources = (("Total PLLs", 2), ("ADC blocks", 1)) if top == "controls_proof" else (
+    expected_resources = (("Total PLLs", 3 if parallel else 2), ("ADC blocks", 1)) if top == "controls_proof" else (
         ("Total PLLs", 1), ("ADC blocks", 1), ("Total memory bits", 0))
     for label, expected in expected_resources:
         values = re.findall(r"(?m)^" + re.escape(label) + r"\s*:\s*(\d+)\s*/", summary)
         if values != [str(expected)]:
             raise ValueError("ADC fit resource mismatch: " + label)
-    for pin, signal in (("N5", "clk_adc_reference"), ("P11", "clk_sys")):
+    for pin, signal in (("N5", "clk_adc_reference"), ("P11", "clk_reference" if parallel else "clk_sys")):
         rows = [row for row in fit.splitlines() if re.match(r";\s*" + pin + r"\s*;", row)]
         if len(rows) != 1 or not re.search(r";\s*" + signal + r"\s*;\s*input\s*;\s*3.3-V LVTTL\s*;", rows[0]):
             raise ValueError("ADC physical clock pin mismatch: " + pin)
-    mode = r";\s*PLL mode\s*;\s*" + (r"Normal\s*;\s*" if top == "controls_proof" else "") + r"No Compensation\s*;"
+    mode = r";\s*PLL mode\s*;\s*" + (r"Normal\s*;\s*" * (2 if parallel else 1) if top == "controls_proof" else "") + r"No Compensation\s*;"
     if not re.search(mode, fit, re.I):
         raise ValueError("ADC fit compensation mode differs")
     return result

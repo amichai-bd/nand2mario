@@ -31,7 +31,7 @@ module tb_integration;
     bit data_fault, irq_fault, pixel_fault, dumping;
     string root_path;
     n2m_smoke_system dut (.*);
-    always #10 clk_sys = !clk_sys;
+    always #20 clk_sys = !clk_sys;
     always @(posedge clk_sys) simulation_ns = $time;
 
     initial begin : transmit

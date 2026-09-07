@@ -68,21 +68,21 @@ first word and the current first word. They are prepared before A.
 
 | System edges after A | OAM pair banks | Independent byte banks |
 |---|---|---|
-| 1 | Write current row word2, the next object's Y/X. | — |
-| 2-4 | Write current row words0,1,3. | — |
-| 5-8 | Write previous row words0-3. | — |
-| 9-12 | Write row-before-previous words0-3. | — |
-| 13 | Write an uncovered DMA byte using one byte enable. | — |
-| 14-17 | Read current row words0-3 for the next event. | — |
-| 18 | Read previous row word0. | — |
-| 19 | Read next row word0; capture at20. | — |
+| 1 | Write current row word2, the next object's Y/X. | No access |
+| 2-4 | Write current row words0,1,3. | No access |
+| 5-8 | Write previous row words0-3. | No access |
+| 9-12 | Write row-before-previous words0-3. | No access |
+| 13 | Write an uncovered DMA byte using one byte enable. | No access |
+| 14-17 | Read current row words0-3 for the next event. | No access |
+| 18 | Read previous row word0. | No access |
+| 19 | Read next row word0; capture at20. | No access |
 | 20 | Read next DMA destination pair. | Read next DMA source byte. |
 | 21 | Grant CPU preparation if it selects OAM. | Grant CPU preparation for other stores. |
 | 22 | Capture the tagged CPU response. | Capture the tagged CPU response. |
 
-The minimum M-cycle interval is23 system edges. DMA source addresses cannot
+The minimum M-cycle interval is 23 system edges. DMA source addresses cannot
 select OAM: the engine's existing FE/FF mirroring selects DE/DF. Thus the two
-edge20 reads access independent physical memories. Prior writes finish before
+edge 20 reads access independent physical memories. Prior writes finish before
 next operands are read, preserving consecutive-event coherence. Shorter
 classes write only the current row. No speculative write is authorized by
 prefetch. Operands and pending results are transaction registers, not a second
@@ -96,7 +96,7 @@ also be independent of raw A-port reuse. CPU memory data is ready before
 its next T4; the separate IE/IF owner must still meet its pre-T3 snapshot.
 
 A DMA byte covered by a corruption row is folded into that row's writes.
-Otherwise edge13 commits it. Keep the resulting pair tagged as pending until
+Otherwise edge 13 commits it. Keep the resulting pair tagged as pending until
 the matching physical write completes: the single uncovered byte, or the
 covered pair's atomic two-bank write. This tag is separate from DMA
 ownership, which ends at accepted byte159. After ownership ends, only a

@@ -1,12 +1,18 @@
 """Bounded ALTPLL generation; generated vendor HDL stays inside the attempt."""
 from pathlib import Path
 import os
+import math
 import re
 
 from .records import file_hash
 from . import fpga_lock
 
 CHAINS = ("board_release", "lock_samples", "sys_release", "pix_release")
+SYSTEM_PLL = "u_clocking|u_system_pll|altpll_component|auto_generated|pll1"
+PIXEL_PLL = "u_clocking|u_pll|altpll_component|auto_generated|pll1"
+ADC_PLL = "u_adc|u_pll|altpll_component|auto_generated|pll1"
+SYSTEM_CLOCK = SYSTEM_PLL + "|clk[0]"
+SYSTEM_NET = r"\u_clocking|u_system_pll|altpll_component|auto_generated|wire_pll1_clk[0]~clkctrl_outclk"
 
 
 def chain_audit(quote):
@@ -26,11 +32,29 @@ def required_reports():
     return ["metastability.rpt", "clock_transfers.rpt"] + [f"chain_{name}_{check}.rpt" for name in CHAINS for check in ("setup", "hold")]
 
 
-def verify_lock_event(folder, checks, top="clocking_proof"):
-    return fpga_lock.verify((folder / "simulation/questa/design.vo").read_text(encoding="utf-8"), checks, top)
+def verify_lock_event(folder, checks, top="clocking_proof", *, parallel=False):
+    checker = fpga_lock.verify_parallel if parallel else fpga_lock.verify
+    return checker((folder / "simulation/questa/design.vo").read_text(encoding="utf-8"), checks, top)
+
+
+def explained_diagnostics(text, folder, definition):
+    if definition.get("system_divide") != 2:
+        return []
+    verify(folder, definition)
+    prefix = ('Warning (176127): The parameters of the PLL '
+              'n2m_clocking:u_clocking|n2m_pixel_pll:u_pll|altpll:altpll_component|n2m_pixel_pll_altpll:auto_generated|pll1 '
+              'and the PLL n2m_clocking:u_clocking|n2m_system_pll:u_system_pll|altpll:altpll_component|n2m_system_pll_altpll:auto_generated|pll1 '
+              'do not have the same values - hence these PLLs cannot be merged File: ')
+    lines = [line for line in text.splitlines() if line.startswith(prefix)]
+    if len(lines) > 1 or any(not re.fullmatch(re.escape(prefix + (folder / "db/n2m_pixel_pll_altpll.v").resolve().as_posix()) + r" Line: \d+", line) for line in lines):
+        raise ValueError("parallel PLL diagnostic identity/count differs")
+    return [{"code": "176127", "text": line,
+             "reason": "Separate verified 25 MHz and 25.2 MHz PLLs must retain different ratios."} for line in lines]
 
 
 def verify_fit(folder, target):
+    if target["pll"].get("system_divide") == 2:
+        return verify_parallel_fit(folder, target)
     fit = (folder / "output/design.fit.rpt").read_text(encoding="cp1252" if os.name == "nt" else "utf-8")
     combined = target.get("top") == "controls_proof"
     adc_values = {"PLL mode": "No compensation", "Compensate clock": "--", "Input frequency 0": "10.0 MHz",
@@ -92,6 +116,69 @@ def verify_fit(folder, target):
                 raise ValueError(f"reset stage path is missing or violated: {name}")
             if any(f"u_reset|{chain}[{i}]" not in report for i in (0, 1)):
                 raise ValueError(f"reset stage path endpoints differ: {name}")
+
+
+def verify_parallel_fit(folder, target):
+    """Bind each fitted column and clock to its declared physical owner."""
+    fit = (folder / "output/design.fit.rpt").read_text(encoding="cp1252" if os.name == "nt" else "utf-8")
+    rows = [[v.strip() for v in line.split(';')[1:-1]] for line in fit.splitlines()]
+    expected = {
+        SYSTEM_PLL: ("Normal", "clock0", "50.0 MHz", "6.3 MHz", "650.0 MHz", "104", "8", "Dedicated Pin"),
+        PIXEL_PLL: ("Normal", "clock0", "50.0 MHz", "10.0 MHz", "630.0 MHz", "63", "5", "Dedicated Pin"),
+    }
+    if target["top"] == "controls_proof":
+        expected[ADC_PLL] = ("No compensation", "--", "10.0 MHz", "10.0 MHz", "400.0 MHz", "40", "1", "Dedicated Pin")
+    headings = [r[1:] for r in rows if r and r[0] == "SDC pin name"]
+    if len(headings) != 1 or len(headings[0]) != len(expected) or set(headings[0]) != set(expected):
+        raise ValueError("parallel PLL owner columns differ")
+    for index, key in enumerate(("PLL mode", "Compensate clock", "Input frequency 0", "Nominal PFD frequency",
+                                 "Nominal VCO frequency", "M value", "N value", "Inclk0 signal type")):
+        actual = [r[1:] for r in rows if r and r[0] == key]
+        if actual != [[expected[name][index] for name in headings[0]]]:
+            raise ValueError("parallel PLL configuration differs: " + key)
+    shapes = {SYSTEM_PLL: ["1", "2", "25.0 MHz", "26"], PIXEL_PLL: ["63", "125", "25.2 MHz", "25"],
+              ADC_PLL: ["1", "1", "10.0 MHz", "40"]}
+    usage = [r for r in rows if len(r) == 15 and r[1] == "clock0" and "wire_pll1_clk" in r[0]]
+    if len(usage) != len(expected):
+        raise ValueError("parallel PLL output count differs")
+    for name in expected:
+        matches = [r for r in usage if r[-1] == name + "|clk[0]"]
+        if len(matches) != 1:
+            raise ValueError("parallel PLL output owner differs")
+        row = matches[0]
+        if row[2:5] + [row[9]] != shapes[name] or row[5] != "0 (0 ps)" or row[7:9] != ["50/50", "C0"]:
+            raise ValueError("parallel PLL output rate/phase/duty differs")
+    sta = (folder / "output/design.sta.rpt").read_text(encoding="utf-8")
+    clocks = [[v.strip() for v in line.split(';')[1:-1]] for line in sta.splitlines()
+              if re.match(r";[^;]+;\s*(?:Base|Generated)\s*;", line)]
+    reference = float(target["timing"]["reference_ns"])
+    wanted = {"clk_reference": ("Base", reference, None, None),
+              SYSTEM_CLOCK: ("Generated", reference*2, ["50.00", "2", "1"], "clk_reference"),
+              PIXEL_PLL + "|clk[0]": ("Generated", reference*125/63, ["50.00", "125", "63"], "clk_reference")}
+    if ADC_PLL in expected:
+        wanted.update({"clk_adc_reference": ("Base", 100.0, None, None),
+                       ADC_PLL + "|clk[0]": ("Generated", 100.0, ["50.00", "1", "1"], "clk_adc_reference")})
+    if len(clocks) != len(wanted) or {r[0] for r in clocks} != set(wanted):
+        raise ValueError("parallel PLL clock inventory differs")
+    for row in clocks:
+        kind, period, ratio, master = wanted[row[0]]
+        if row[1] != kind or not abs(float(row[2])-period) < .001:
+            raise ValueError("parallel PLL clock period differs")
+        if ratio is not None and (row[6:9] != ratio or row[14] != master):
+            raise ValueError("parallel PLL clock relationship differs")
+    summary = (folder / "output/design.fit.summary").read_text()
+    if re.findall(r"(?m)^Total PLLs : (\d+) /", summary) != [str(len(expected))]:
+        raise ValueError("parallel PLL physical resource count differs")
+    for name in required_reports():
+        path = folder / "output" / name
+        if not path.is_file() or not path.stat().st_size:
+            raise ValueError("missing parallel clock report: " + name)
+        if name.startswith("chain_"):
+            chain, check = name.removeprefix("chain_").removesuffix(".rpt").rsplit("_", 1)
+            text = path.read_text()
+            result = re.findall(r"Report Timing: Found 1 " + check + r" paths \(0 violated\)\.  Worst case slack is (\S+)", text)
+            if len(result) != 1 or (not math.isfinite(float(result[0])) or float(result[0]) < 0) or any(f"u_reset|{chain}[{i}]" not in text for i in (0, 1)):
+                raise ValueError("parallel reset chain missing or violated: " + name)
 
 
 def validate(definition):
