@@ -116,7 +116,7 @@ No physical transmission is part of this issue's acceptance.
 
 ## Serial byte boundary
 
-The original 8N1 RX and TX modules use clk_sys at 50 MHz and the generated
+The original 8N1 RX and TX modules use clk_sys at25 MHz and the generated
 115200 baud rate. Each byte retains fractional clock residue across its ten
 bit cells. TX accepts a held byte only while ready, emits start/data-LSB-first/
 stop, and returns idle high. The source holds valid/data through acceptance.
@@ -173,7 +173,7 @@ owner publishes image validity after initialization. A presence result cannot re
 Global reset invalidates the endpoint's load state; stale array contents cannot
 be used until the next complete sweep. Core reset does not clear transport load
 metadata. The minimal `uart-presence-store` proof constrains 34 virtual input
-bits and two output bits to clk_sys at 50 MHz. Its first fit must establish the
+bits and two output bits to clk_sys at25 MHz. Its first fit must establish the
 actual one-bit logical shape, M9K allocation, registered addresses/read control,
 unregistered data output and absence of array reset/initialization before
 load-controller acceptance uses this store.

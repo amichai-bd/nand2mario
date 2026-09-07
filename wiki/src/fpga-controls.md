@@ -34,7 +34,7 @@ Use the installed Intel Modular ADC control core only, ADC1, internal 2.5 V
 reference, 125 ksample/s, and a dedicated ALTPLL c0 at10 MHz from N5 in
 no-compensation mode. This clock feeds the ADC's dedicated input; it need not
 align a fabric clock or external output to the reference phase. The
-control core's command and response interfaces run at50 MHz `clk_sys`; its
+control core's command and response interfaces run at25 MHz `clk_sys`; its
 hard-block crossing uses the vendor handshake and corresponding scoped SDC.
 The generated PLL, vendor HDL, atom models, and constraints remain build
 artifacts with recorded source hashes. There is no alternative behavioral ADC

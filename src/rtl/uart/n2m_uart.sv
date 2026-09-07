@@ -1,7 +1,7 @@
 `timescale 1ns/1ps
 `default_nettype none
 module n2m_uart #(
-    parameter integer CLOCK_HZ = 50000000,
+    parameter integer CLOCK_HZ = 25000000,
     parameter integer BAUD = n2m_interfaces_pkg::WIRE_BAUD
 ) (
     input var logic clk_sys,

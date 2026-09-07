@@ -3,7 +3,7 @@
 // Component timing proof with virtual CPU/memory ports. No backing-store,
 // complete CPU/system, programming or physical monitor acceptance is claimed.
 module ppu_proof (
-    input var logic clk_sys,
+    input var logic clk_reference,
     input var logic board_reset_n,
     input var logic core_reset,
     input var logic pause_request,
@@ -34,6 +34,7 @@ module ppu_proof (
     output logic [1:0] observed_shade,
     output logic observed_valid, observed_complete, observed_abort
 );
+    logic clk_sys;
     logic clk_pix, reset_sys, reset_pix, gb_tick;
     logic [63:0] dot_before;
     logic [31:0] epoch;
@@ -41,7 +42,7 @@ module ppu_proof (
     logic [1:0] source_shade;
     logic [31:0] source_epoch;
     logic [63:0] source_dot;
-    n2m_clocking u_clocking (.clk_sys, .board_reset_n, .clk_pix, .reset_sys, .reset_pix, .ready);
+    n2m_clocking u_clocking (.clk_reference, .clk_sys, .board_reset_n, .clk_pix, .reset_sys, .reset_pix, .ready);
     n2m_timebase u_timebase (.clk_sys, .reset_sys, .core_reset, .pause_request, .gb_tick, .paused);
     `DFF_RST_EN(dot_before, dot_before + 64'd1, clk_sys, gb_tick, reset_sys || core_reset, 64'd0)
     `DFF_RST_EN(epoch, epoch + 32'd1, clk_sys, core_reset, reset_sys, 32'd0)

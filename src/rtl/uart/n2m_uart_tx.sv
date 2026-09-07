@@ -3,7 +3,7 @@
 `include "src/rtl/common/macros.svh"
 
 module n2m_uart_tx #(
-    parameter integer CLOCK_HZ = 50000000,
+    parameter integer CLOCK_HZ = 25000000,
     parameter integer BAUD = n2m_interfaces_pkg::WIRE_BAUD
 ) (
     input var logic clk_sys,

@@ -95,8 +95,10 @@ def verify_fit(folder, target):
 
 
 def validate(definition):
-    if definition != {"module": "n2m_pixel_pll", "input_ps": 20000,
-                      "multiply": 63, "divide": 125}:
+    if definition not in ({"module": "n2m_pixel_pll", "input_ps": 20000,
+                          "multiply": 63, "divide": 125},
+                         {"module": "n2m_pixel_pll", "input_ps": 20000,
+                          "multiply": 63, "divide": 125, "system_divide": 2}):
         raise ValueError("unsupported PLL definition")
 
 
@@ -114,34 +116,57 @@ def identity(directory):
     return {name: {"path": str(path), "sha256": file_hash(path)} for name, path in paths.items()}
 
 
+def _command(identity, module, input_ps, multiply, divide, bandwidth=None):
+    command = [identity["generator"]["path"], "-silent", "module=altpll",
+               "INTENDED_DEVICE_FAMILY=MAX 10", f"INCLK0_INPUT_FREQUENCY={input_ps}",
+               f"CLK0_MULTIPLY_BY={multiply}", f"CLK0_DIVIDE_BY={divide}",
+               "CLK0_DUTY_CYCLE=50", "CLK0_PHASE_SHIFT=0", "COMPENSATE_CLOCK=CLK0",
+               "OPERATION_MODE=NORMAL", "areset=used", "locked=used", "clk0=used",
+               "OPTIONAL_FILES=NONE"]
+    if bandwidth:
+        command.append(f"BANDWIDTH_TYPE={bandwidth}")
+    return command + [module + ".v"]
+
+
 def generation_command(identity, definition):
     validate(definition)
-    return [identity["generator"]["path"], "-silent", "module=altpll",
-            "INTENDED_DEVICE_FAMILY=MAX 10", "INCLK0_INPUT_FREQUENCY=20000",
-            "CLK0_MULTIPLY_BY=63", "CLK0_DIVIDE_BY=125", "CLK0_DUTY_CYCLE=50",
-            "CLK0_PHASE_SHIFT=0", "COMPENSATE_CLOCK=CLK0", "OPERATION_MODE=NORMAL",
-            "areset=used", "locked=used", "clk0=used", "OPTIONAL_FILES=NONE", "n2m_pixel_pll.v"]
+    return _command(identity, "n2m_pixel_pll", 20000, 63, 125)
 
 
 def generate(folder, identity, definition, execute, timeout, record, build):
-    command = generation_command(identity, definition)
-    execute(command, folder, folder / "generate-pll.log", timeout, record, build)
-    verify(folder)
+    execute(generation_command(identity, definition), folder,
+            folder / "generate-pll.log", timeout, record, build)
+    if definition.get("system_divide") == 2:
+        execute(_command(identity, "n2m_system_pll", 20000, 1, 2, "LOW"), folder,
+                folder / "generate-system-pll.log", timeout, record, build)
+    verify(folder, definition)
 
 
-def verify(folder):
-    path = folder / "n2m_pixel_pll.v"
+def verify(folder, definition=None):
+    if definition is None:
+        definition = {"module": "n2m_pixel_pll", "input_ps": 20000, "multiply": 63, "divide": 125}
+    validate(definition)
+    _verify_module(folder, definition, None)
+    if definition.get("system_divide") == 2:
+        _verify_module(folder, {"module": "n2m_system_pll", "input_ps": 20000,
+                               "multiply": 1, "divide": 2}, "LOW")
+
+
+def _verify_module(folder, definition, bandwidth):
+    path = folder / (definition["module"] + ".v")
     text = path.read_text(encoding="utf-8")
-    expected = {"clk0_divide_by": "125", "clk0_multiply_by": "63", "clk0_duty_cycle": "50",
-                "clk0_phase_shift": '"0"', "inclk0_input_frequency": "20000",
+    expected = {"clk0_divide_by": str(definition["divide"]), "clk0_multiply_by": str(definition["multiply"]), "clk0_duty_cycle": "50",
+                "clk0_phase_shift": '"0"', "inclk0_input_frequency": str(definition["input_ps"]),
                 "intended_device_family": '"MAX 10"', "operation_mode": '"NORMAL"',
                 "compensate_clock": '"CLK0"', "self_reset_on_loss_lock": '"OFF"',
                 "port_areset": '"PORT_USED"', "port_locked": '"PORT_USED"'}
+    if bandwidth:
+        expected["bandwidth_type"] = '"' + bandwidth + '"'
     for key, value in expected.items():
         values = re.findall(r"altpll_component\." + key + r"\s*=\s*([^,;]+)", text)
         if values != [value]:
             raise ValueError(f"generated PLL parameter mismatch: {key}")
     if re.search(r'`include\b|\$(?:readmemh|readmemb|fopen)\b', text):
         raise ValueError("untracked generated PLL dependency")
-    if not re.search(r"module\s+n2m_pixel_pll\s*\(", text):
+    if not re.search(r"module\s+" + re.escape(definition["module"]) + r"\s*\(", text):
         raise ValueError("generated PLL module mismatch")

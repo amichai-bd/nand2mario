@@ -4,6 +4,9 @@ module tb_dma_composition;
     import n2m_interfaces_pkg::*;
     import n2m_cpu_pkg::*;
     import n2m_memory_pkg::*;
+    integer lane;
+    memory_oam_request_t oam_request;
+    memory_oam_response_t oam_response;
     logic clk_sys, reset_sys, core_reset, init_done, memory_init_done, gb_tick, paused, run_enable;
     logic [63:0] dot_before;
     logic [1:0] cpu_phase;
@@ -104,7 +107,7 @@ module tb_dma_composition;
         .blank_assert(), .source_display_eligible());
     assign peripheral_valid=ppu_selected;
     assign peripheral_available=ppu_selected;
-    n2m_memory_stores stores (.clk_sys(clk_sys), .reset_sys(reset_sys), .core_reset(core_reset),
+    n2m_memory_stores stores (.oam_request, .oam_response, .clk_sys(clk_sys), .reset_sys(reset_sys), .core_reset(core_reset),
         .init_done(memory_init_done), .access_read(setup ? setup_read : access_read),
         .access_write(setup ? setup_write : access_write), .access_store(setup ? setup_store : access_store),
         .access_address(setup ? setup_address : access_address), .access_wdata(setup ? setup_data : access_wdata),
@@ -164,9 +167,9 @@ module tb_dma_composition;
         if(observe) begin
             if((fault || cpu_fault || ppu_fault) && !hardware_fault) $fatal(1,"DMA_COMPOSITION_FAULT");
             if(invalid_case && address_effect_sample && !dut.qualify.effect_resolved &&
-                (dut.engine.write_valid || access_write || peripheral_commit))
+                (dut.engine.write_valid || access_write || |oam_request.write_enable || peripheral_commit))
                 $fatal(1,"DMA_INVALID_EFFECT_CANCEL");
-            if(hardware_fault && fault && (access_write || peripheral_commit || dut.engine.write_valid))
+            if(hardware_fault && fault && (access_write || |oam_request.write_enable || peripheral_commit || dut.engine.write_valid))
                 $fatal(1,"DMA_LATCHED_EFFECT_CANCEL");
             if(gb_tick && previous_pair_request && ppu_oam_phase!=0) begin
                 if(!dma_active) observed_pair={expected_oam[int'(previous_pair)*2+1],expected_oam[int'(previous_pair)*2]};
@@ -239,6 +242,11 @@ module tb_dma_composition;
                 if(access_wdata!==expected_oam[access_address])
                     $fatal(1,"DMA_COMPOSITION_WRITE address=%0d expected=%02x actual=%02x",access_address,expected_oam[access_address],access_wdata);
                 $fdisplay(trace,"%0d,%0d,%02x,%02x",dot_before,access_address,expected_oam[access_address],access_wdata);
+            end
+            for (lane=0; lane<2; lane=lane+1) if (oam_request.write_enable[lane]) begin
+                if(oam_request.data[8*lane +: 8]!==expected_oam[(15'(oam_request.pair)*15'd2+15'(lane))])
+                    $fatal(1,"DMA_COMPOSITION_WRITE address=%0d expected=%02x actual=%02x",(15'(oam_request.pair)*15'd2+15'(lane)),expected_oam[(15'(oam_request.pair)*15'd2+15'(lane))],oam_request.data[8*lane +: 8]);
+                $fdisplay(trace,"%0d,%0d,%02x,%02x",dot_before,(15'(oam_request.pair)*15'd2+15'(lane)),expected_oam[(15'(oam_request.pair)*15'd2+15'(lane))],oam_request.data[8*lane +: 8]);
             end
         end
         previous_pair=ppu_oam_pair;
@@ -348,7 +356,7 @@ module tb_dma_composition;
             for(pause_edge=0;pause_edge<200;pause_edge=pause_edge+1) begin
                 @(negedge clk_sys);
                 if(corrupt_pause && pause_edge==99) force dut.access_write=1'b1;
-                if(pause_edge>=47 && (access_write || peripheral_commit || dut.engine.write_valid))
+                if(pause_edge>=23 && (access_write || |oam_request.write_enable || peripheral_commit || dut.engine.write_valid))
                     $fatal(1,"DMA_PAUSE_SERVICE_DRAIN");
                 if(gb_tick || dot_before!=pause_dot || cpu_phase!=pause_sample_phase || dma_count!=pause_count)
                     $fatal(1,"DMA_PAUSE_HOLD phase=%0d",pause_phase);
@@ -360,7 +368,7 @@ module tb_dma_composition;
             force dut.qualify.effect_resolved=1'b0;
             if(hardware_fault) begin
                 wait(fault); repeat(200) @(negedge clk_sys);
-                if(access_write || peripheral_commit || dut.engine.write_valid)
+                if(access_write || |oam_request.write_enable || peripheral_commit || dut.engine.write_valid)
                     $fatal(1,"DMA_LATCHED_EFFECT_CANCEL");
                 $display("PASS DMA invalid observation cancels current and latched effects");
                 $finish;
@@ -368,13 +376,13 @@ module tb_dma_composition;
         end
         if(corrupt_row_case) begin
             wait(row_fault_ready); @(negedge clk_sys);
-            if(!access_write || access_store!=STORE_OAM || access_address!==row_fault_address || access_wdata!==8'h10)
+            if(!oam_request.write_enable[row_fault_address[0]] || oam_request.pair!==row_fault_address[7:1] || oam_request.data[8*int'(row_fault_address[0]) +: 8]!==8'h10)
                 $fatal(1,"DMA_ROW_FAULT_PRECONDITION address=%0d actual=%0d data=%02x",row_fault_address,access_address,access_wdata);
-            force dut.access_wdata=8'h00;
+            force dut.oam_request.data=16'h0000;
         end
         if(corrupt_byte) begin
-            wait(seen_start && access_write && access_store==STORE_OAM && access_address==5);
-            @(negedge clk_sys); force dut.access_wdata=8'h00;
+            wait(seen_start && oam_request.write_enable[1] && oam_request.pair==2);
+            @(negedge clk_sys); force dut.oam_request.data=16'h0000;
         end
         if(lcd_case)begin
             wait(lcd_disabled);repeat(3)@(negedge clk_sys);

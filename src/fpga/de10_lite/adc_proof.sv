@@ -24,7 +24,7 @@ module adc_proof (
     logic [4:0] adc_response_channel;
 
     n2m_reset_control u_reset (
-        .clk_sys(clk_sys), .clk_pix(clk_adc),
+        .clk_reference(clk_sys), .clk_sys(clk_sys), .clk_pix(clk_adc),
         .board_reset_n(board_reset_n), .pll_locked(pll_locked),
         .pll_areset(pll_areset), .ready(ready),
         .reset_sys(reset_sys), .reset_pix(reset_adc)

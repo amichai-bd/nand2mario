@@ -5,6 +5,8 @@ module tb_memory_stores;
     logic clk_sys, reset_sys, core_reset, init_done;
     logic access_read, access_write, access_valid, host_read, host_write, host_valid;
     memory_store_t access_store;
+    memory_oam_request_t oam_request;
+    memory_oam_response_t oam_response;
     logic [14:0] access_address;
     logic [7:0] access_wdata, access_rdata, host_wdata, host_rdata;
     logic [31:0] host_offset;
@@ -97,6 +99,7 @@ module tb_memory_stores;
         if (access_valid) $fatal(1, "MEMORY_STORES_STALE_VALID");
     endtask
     initial begin
+        oam_request='0;
         $dumpfile("memory-stores.vcd");
         $dumpvars(0, clk_sys, reset_sys, core_reset, init_done, access_read, access_write,
             access_store, access_address, access_wdata, access_rdata, access_valid,
@@ -164,6 +167,27 @@ module tb_memory_stores;
                 $fatal(1, "MEMORY_STORES_PARALLEL offset=%0d", index);
         end
         ppu_vram_read = 0; ppu_oam_read = 0; wave_read = 0;
+        access_read=0;
+        // Exercise full and partial pair writes through the same byte storage.
+        for (index=0; index<80; index=index+1) begin
+            oam_request='{read:1'b0, write_enable:2'b11, pair:7'(index), data:16'h1234};
+            edge_cycle();
+            oam_request.write_enable=2'b01; oam_request.data=16'hff5a; edge_cycle();
+            oam_request.write_enable=2'b10; oam_request.data=16'ha5ff; edge_cycle();
+            oam_request.write_enable=0; oam_request.read=1;
+            access_read=1; access_store=STORE_WRAM; access_address=15'(index);
+            ppu_oam_read=1; ppu_oam_pair=7'(index); edge_cycle();
+            if (!oam_response.valid || oam_response.data!==16'ha55a ||
+                !access_valid || access_rdata!==pattern(1,index) ||
+                !ppu_oam_valid || ppu_oam_rdata!==16'ha55a)
+                $fatal(1,"MEMORY_OAM_PARALLEL_PAIR index=%0d",index);
+            oam_request='0; ppu_oam_read=0;
+            access_store=STORE_OAM; access_address=15'(index*2); edge_cycle();
+            if (!access_valid || access_rdata!==8'h5a) $fatal(1,"MEMORY_OAM_LOW_BYTE");
+            access_address=15'(index*2+1); edge_cycle();
+            if (!access_valid || access_rdata!==8'ha5) $fatal(1,"MEMORY_OAM_HIGH_BYTE");
+            access_read=0;
+        end
         host_write = 1;
         for (index = 0; index < 32768; index = index + 1) begin
             host_offset = 32'(index); host_wdata = pattern(0, index);

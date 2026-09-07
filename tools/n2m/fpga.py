@@ -119,6 +119,8 @@ def prepare(root, folder, target, build_id=None):
             lines.append(f'set_global_assignment -name {assignment} {tcl_word((root / name).resolve())}')
     if "pll" in target:
         lines.append('set_global_assignment -name VERILOG_FILE n2m_pixel_pll.v')
+        if target["pll"].get("system_divide") == 2:
+            lines.append('set_global_assignment -name VERILOG_FILE n2m_system_pll.v')
     if "src/rtl/input/n2m_adc_backend.sv" in target["sources"]:
         lines.extend(fpga_adc.assignments())
     if "timing" in target or target["top"] == "v05_proof":
@@ -182,11 +184,11 @@ def diagnostics(output, explained=()):
 
 def execute(argv, folder, log, timeout, record, build):
     command = {"argv": [str(a) for a in argv], "cwd": str(folder)}
+    options = {} if os.name == "nt" else {"start_new_session": True}
     record["commands"].append(command)
     with (build / "commands.log").open("a", encoding="utf-8") as stream:
         stream.write(json.dumps(command) + '\n')
     # Windows timeout cleanup uses taskkill /T, not console control events.
-    options = {} if os.name == "nt" else {"start_new_session": True}
     process = subprocess.Popen(argv, cwd=folder, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, **options)
     timed_out = False
     try:
@@ -235,7 +237,7 @@ def timing_evidence(folder, target, *, build_id=None):
         if (folder / "checked.sdc").read_text(encoding="utf-8") != checked_constraints(target):
             raise ValueError("checked timing assignments differ from target")
     if "pll" in target:
-        fpga_pll.verify(folder)
+        fpga_pll.verify(folder, target["pll"])
     output = folder / "output"
     for name in REQUIRED_REPORTS:
         if not (output / name).is_file() or not (output / name).stat().st_size:
@@ -319,6 +321,8 @@ def complete_cache(record, fingerprint, root, build, target):
         required = [folder / "output" / name for name in REQUIRED_REPORTS]
         if "pll" in target:
             required += [folder / "n2m_pixel_pll.v", folder / "generate-pll.log"]
+            if target["pll"].get("system_divide") == 2:
+                required += [folder / "n2m_system_pll.v", folder / "generate-system-pll.log"]
             required += [folder / "output" / name for name in fpga_pll.required_reports()]
         if "src/rtl/input/n2m_adc_backend.sv" in target.get("sources", []):
             required += [folder / name for name in (*fpga_adc.CONTROL, "n2m_adc_pll.v", "generate-adc-pll.log")]

@@ -2,9 +2,9 @@
 // System-domain acquisition/filtering. The FPGA owner supplies the actual Intel
 // ADC command interface and a reset-qualified availability signal.
 module n2m_physical_controls #(
-    parameter int unsigned BUTTON_CYCLES = 250000,
-    parameter int unsigned INTERVAL_CYCLES = 50000,
-    parameter int unsigned LIMIT_CYCLES = 1000000,
+    parameter int unsigned BUTTON_CYCLES = 125000,
+    parameter int unsigned INTERVAL_CYCLES = 25000,
+    parameter int unsigned LIMIT_CYCLES = 500000,
     parameter int unsigned X_MIN = 0,
     parameter int unsigned X_CENTER = 1352,
     parameter int unsigned X_MAX = 2703,

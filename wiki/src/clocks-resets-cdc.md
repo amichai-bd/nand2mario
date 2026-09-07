@@ -9,42 +9,12 @@ integration, and physical proof remain outstanding in
 
 ## Clock domains
 
-### Approved 25 MHz migration
-
-[#164](https://github.com/amichai-bd/nand2mario/issues/164) replaces the 50 MHz
-system implementation below with a 25 MHz PLL output. This section records the
-approved design; implementation and fit evidence are still pending. CPU, memory,
-peripherals and UART remain in one system domain. The VGA clock stays 25.2 MHz
-and the ADC retains its independent PLL and lock-loss isolation.
-
-Use the P11 50 MHz reference for reset bootstrap and an upstream system PLL.
-The pixel PLL takes the 25 MHz system output with ratio 126/125. Use LOW upstream
-and HIGH downstream bandwidth as required by the
-[MAX 10 cascading rule](https://docs.altera.com/r/docs/683047/21.1/max-10-clocking-and-pll-user-guide/pll-to-pll-cascading).
-Generation alone does not prove legal placement or routing; fit the composed
-clock and memory design before treating this migration as accepted.
-
-At 25 MHz the exact tick accumulator adds 65536 modulo390625. The first tick is
-edge6, then gaps are5 or6 edges; four-dot machine cycles span23 or24 edges.
-The average remains4194304 dots/s, with quantization below40 ns. Reset, pause,
-instruction, bus, input and frame ordering retain their existing contracts.
-Service deadlines must fit the shortest interval, not its average.
-
-The existing DMA byte schedule cannot meet23 edges. The migration must use the
-authoritative even/odd OAM banks together: twelve pair writes, one uncovered-byte
-slot, six operand-pair reads, parallel non-OAM source and OAM destination reads,
-then CPU preparation before the next T4. Pair tags, PPU collision recovery and
-all combined corruption cases remain acceptance requirements. No extra emulated
-cycles, duplicate authoritative memory, or timing exceptions may hide a miss.
-
-Audit UART divisors and accelerated test rates, reset qualification and PLL
-startup, physical-input timers, snapshot completion bounds, constraints and
-all test assumptions together. Preserve10 ms board reset qualification using
-the always-running50 MHz reference. Slower system logic must never control the
-release of the PLL that supplies its own clock.
+The25 MHz migration is implemented under
+[#164](https://github.com/amichai-bd/nand2mario/issues/164). Final composed
+acceptance is pending; historical50 MHz evidence does not establish this design.
 
 Target DE10-Lite `10M50DAF484C7G`. Use `MAX10_CLK1_50` on `PIN_P11`, nominal
-50 MHz, as `clk_sys` and the PLL reference. These are manual-derived design
+50 MHz, as `clk_reference` for reset bootstrap and both system/pixel PLLs. These are manual-derived design
 constraints, not verification of the connected board. The second 50 MHz input,
 SDRAM and physical audio are unused in the initial fixed-ROM design. The
 [board controls contract](fpga-controls.md) adds the independent N5 ADC clock
@@ -53,7 +23,7 @@ Adding SDRAM requires a separate storage/timing contract before integration.
 
 | Name | Nominal rate | Consumers | Required accuracy |
 |---|---|---|---|
-| `clk_sys` | 50,000,000 Hz; 20 ns | Host UART/control, memories, DMG logic, frame writes | Board reference within +/-100 ppm; prove before board acceptance |
+| `clk_sys` | 25,000,000 Hz; 40 ns | Host UART/control, memories, DMG logic, frame writes | Board reference within +/-100 ppm; prove before board acceptance |
 | `gb_tick` | 4,194,304 enables/s | One DMG dot/T-cycle per enabled rising `clk_sys` edge | Exact average relative to nominal reference; bounded quantization below |
 | `clk_pix` | 25,200,000 Hz; 39.68253968 ns | VGA counters, frame reads, registered RGB/sync | Exact PLL ratio 63/125 relative to reference; inherits its ppm error |
 
@@ -65,7 +35,11 @@ timers, DMA, and host registers share `clk_sys`; their synchronous arbitration
 must finish before the applicable emulated edge without silently stretching DMG
 time. Missing service is an assertion/error, not a dropped tick.
 
-Generate the pixel clock through MAX 10 ALTPLL on a global network, nominal
+Generate system and pixel clocks through two parallel MAX 10 ALTPLLs from
+the same50 MHz reference. The system PLL divides by2. The
+[dedicated clock-pin connections](https://docs.altera.com/r/docs/683047/21.1/max-10-clocking-and-pll-user-guide/clock-pin-to-pll-connections)
+support two PLLs from the reference group. Use no PLL cascade. Generate the
+pixel clock on a global network, nominal
 50% duty and zero requested phase. The candidate counters `M=63, N=5, C=25`
 give 630 MHz VCO, 10 MHz PFD, and 25.2 MHz output by the vendor ratio equation.
 This is a feasibility candidate, not a proven IP configuration. The pinned
@@ -80,20 +54,22 @@ board clock verification and monitor acceptance remain separate evidence.
 
 ## Exact emulated time
 
-At each active `clk_sys` rising edge, calculate `sum = phase + 32768` from the
+At each active `clk_sys` rising edge, calculate `sum = phase + 65536` from the
 old unsigned phase. If `sum >= 390625`, assert the enable for this edge and set
 `phase = sum - 390625`; otherwise do not enable and set `phase = sum`. Reset
 sets phase to zero. Use at least 19 bits for phase and a sum wide enough for
-423392. Consumers see this edge's carry; do not accidentally add a pipeline dot.
+456160. Consumers see this edge's carry; do not accidentally add a pipeline dot.
 
 From reset, after N active system edges the tick count is exactly
-`floor(N * 32768 / 390625)`. The first tick is edge 12; subsequent gaps are 11
-or 12 edges. Each 390625-edge period emits 32768 ticks. Each tick arrives less
+`floor(N * 65536 / 390625)`. The first tick is edge6; subsequent gaps are5
+or6 edges. Each 390625-edge period emits65536 ticks. Each tick arrives less
 than one system period late relative to its ideal continuous edge: less than
-20 ns nominal. This quantization has zero cumulative average error and preserves
+40 ns nominal. This quantization has zero cumulative average error and preserves
 DMG event order; it is not a claim of original crystal waveform identity.
 
-A normal-speed M-cycle spans four dot enables. One acceptance frame interval
+A normal-speed M-cycle spans four dot enables, requiring23 or24 system edges.
+Every memory service must finish within23 edges; the shortest single-dot
+interval is5 edges. Pipelining cannot borrow an extra emulated cycle. One acceptance frame interval
 is 456 * 154 = 70224 dots, nominally 16.74270630 ms (about 59.72750057 Hz).
 This interval exists even when the emulated LCD is disabled. PPU mode timing,
 LCD enable behavior, STOP, and instruction semantics belong to their own
@@ -101,7 +77,7 @@ contracts; they must not redefine the acceptance time unit.
 
 Run a separate system-cycle watchdog, not one driven by DUT frame_done. For K
 frame intervals from phase zero, the required elapsed active edges are
-`ceil(K * 70224 * 390625 / 32768)`. Account explicitly for startup/reset edges
+`ceil(K * 70224 * 390625 / 65536)`. Account explicitly for startup/reset edges
 outside that interval. Instruction HALT must not halt this timebase or PPU.
 A deliberate host pause freezes emulated state and phase at a dot boundary;
 UART, CDC handshakes, and VGA continue. Resume starts from retained phase with
@@ -127,7 +103,7 @@ belongs to the VGA implementation contract; this page specifies its timing.
 
 ## Reset and run control
 
-A small always-running `clk_sys` reset controller uses the board reset request
+A small always-running50 MHz `clk_reference` reset bootstrap uses the board reset request
 and FPGA configuration startup. Configuration must initialize PLL reset asserted,
 qualification counters and readiness to zero, and both domain reset-release
 chains to the asserted state, even if the button is never pressed. Generated
@@ -136,10 +112,11 @@ reset source establishes these values without a running pixel clock.
 The board wrapper maps the active-low manual
 reset input; #28 must verify its pin/polarity on hardware. Assert reset without
 waiting for a clock. After release, synchronize the raw input through two flops
-and require 500000 consecutive released system edges (10 ms nominal) before
+and require 500000 consecutive released reference edges (10 ms nominal) before
 releasing PLL `areset`. Any reassertion restarts the qualification.
 
-Keep PLL reset independent of `locked` to avoid a circular reset dependency.
+Both PLLs share the reference-qualified reset. Readiness requires both raw
+lock signals; either loss resets both product domains. Keep PLL reset independent of `locked` to avoid a circular reset dependency.
 Synchronize `locked` through two system flops; require 1024 consecutive asserted
 samples before readiness. A raw lock loss asynchronously clears readiness and
 asserts both domain resets. Each domain has its own two-flop reset-release

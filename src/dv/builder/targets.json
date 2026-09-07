@@ -6964,5 +6964,27 @@
     ],
     "expected_exit": "nonzero",
     "signature": "MEMORY_BANK_ENABLE store=6 address=0000"
+  },
+  "timebase25": {
+    "sources": [
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/dv/clocking/tb_timebase25.sv"
+    ],
+    "top": "tb_timebase25",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS TIMEBASE25 exact-rate shortest-dot=5 shortest-machine=23 pause reset"
+  },
+  "timebase25-bad-numerator": {
+    "sources": [
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/dv/clocking/tb_timebase25.sv"
+    ],
+    "top": "tb_timebase25",
+    "args": [
+      "+bad_numerator"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "TIMEBASE25_RATE"
   }
 }

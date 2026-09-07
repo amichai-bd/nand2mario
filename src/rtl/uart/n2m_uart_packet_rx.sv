@@ -4,7 +4,7 @@
 
 // Byte-domain framing only; the dispatcher owns command length/status replies.
 module n2m_uart_packet_rx #(
-    parameter integer CLOCK_HZ = 50000000
+    parameter integer CLOCK_HZ = 25000000
 ) (
     input var logic clk_sys,
     input var logic reset_sys,

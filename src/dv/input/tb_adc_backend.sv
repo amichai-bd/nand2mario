@@ -27,7 +27,7 @@ module tb_adc_backend;
     integer replies;
     bit corrupt;
     n2m_reset_control u_reset (
-        .clk_sys(clk_sys), .clk_pix(clk_adc), .board_reset_n(board_reset_n), .pll_locked(pll_locked),
+        .clk_reference(clk_sys), .clk_sys(clk_sys), .clk_pix(clk_adc), .board_reset_n(board_reset_n), .pll_locked(pll_locked),
         .pll_areset(pll_reset), .ready(adc_ready), .reset_sys(adc_reset), .reset_pix(adc_domain_reset)
     );
     n2m_adc_backend u_adc (

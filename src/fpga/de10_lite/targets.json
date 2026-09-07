@@ -46,7 +46,7 @@
         "src/fpga/de10_lite/clocking_nominal.sdc"
       ],
       "pins": {
-        "clk_sys": "PIN_P11"
+        "clk_reference": "PIN_P11"
       },
       "virtual_pins": [
         "board_reset_n",
@@ -61,7 +61,8 @@
         "module": "n2m_pixel_pll",
         "input_ps": 20000,
         "multiply": 63,
-        "divide": 125
+        "divide": 125,
+        "system_divide": 2
       },
       "timing": {
         "async_reset_pins": [
@@ -76,7 +77,7 @@
         ],
         "output_delays": [
           {
-            "clock": "clk_sys",
+            "clock": "u_clocking|u_system_pll|altpll_component|auto_generated|pll1|clk[0]",
             "count": 10,
             "ports": [
               "ready",
@@ -108,7 +109,7 @@
         "src/fpga/de10_lite/clocking_nominal.sdc"
       ],
       "pins": {
-        "clk_sys": "PIN_P11"
+        "clk_reference": "PIN_P11"
       },
       "virtual_pins": [
         "board_reset_n",
@@ -123,7 +124,8 @@
         "module": "n2m_pixel_pll",
         "input_ps": 20000,
         "multiply": 63,
-        "divide": 125
+        "divide": 125,
+        "system_divide": 2
       },
       "timing": {
         "async_reset_pins": [
@@ -138,7 +140,7 @@
         ],
         "output_delays": [
           {
-            "clock": "clk_sys",
+            "clock": "u_clocking|u_system_pll|altpll_component|auto_generated|pll1|clk[0]",
             "count": 10,
             "ports": [
               "ready",
@@ -170,7 +172,7 @@
         "src/fpga/de10_lite/clocking_upper.sdc"
       ],
       "pins": {
-        "clk_sys": "PIN_P11"
+        "clk_reference": "PIN_P11"
       },
       "virtual_pins": [
         "board_reset_n",
@@ -185,7 +187,8 @@
         "module": "n2m_pixel_pll",
         "input_ps": 20000,
         "multiply": 63,
-        "divide": 125
+        "divide": 125,
+        "system_divide": 2
       },
       "timing": {
         "async_reset_pins": [
@@ -200,7 +203,7 @@
         ],
         "output_delays": [
           {
-            "clock": "clk_sys",
+            "clock": "u_clocking|u_system_pll|altpll_component|auto_generated|pll1|clk[0]",
             "count": 10,
             "ports": [
               "ready",
@@ -232,7 +235,7 @@
         "src/fpga/de10_lite/intel_memory_nominal.sdc"
       ],
       "pins": {
-        "clk_sys": "PIN_P11"
+        "clk_reference": "PIN_P11"
       },
       "virtual_pins": [
         "board_reset_n",
@@ -260,7 +263,8 @@
         "module": "n2m_pixel_pll",
         "input_ps": 20000,
         "multiply": 63,
-        "divide": 125
+        "divide": 125,
+        "system_divide": 2
       },
       "timing": {
         "async_reset_pins": [
@@ -275,7 +279,7 @@
         ],
         "output_delays": [
           {
-            "clock": "clk_sys",
+            "clock": "u_clocking|u_system_pll|altpll_component|auto_generated|pll1|clk[0]",
             "count": 122,
             "ports": [
               "ready",
@@ -375,7 +379,6 @@
         "src/fpga/de10_lite/ppu_nominal.sdc"
       ],
       "pins": {
-        "clk_sys": "PIN_P11",
         "red[0]": "PIN_AA1",
         "red[1]": "PIN_V1",
         "red[2]": "PIN_Y2",
@@ -389,7 +392,8 @@
         "blue[2]": "PIN_P4",
         "blue[3]": "PIN_N2",
         "hsync_n": "PIN_N3",
-        "vsync_n": "PIN_N1"
+        "vsync_n": "PIN_N1",
+        "clk_reference": "PIN_P11"
       },
       "virtual_pins": [
         "board_reset_n",
@@ -437,7 +441,8 @@
         "module": "n2m_pixel_pll",
         "input_ps": 20000,
         "multiply": 63,
-        "divide": 125
+        "divide": 125,
+        "system_divide": 2
       },
       "timing": {
         "async_reset_pins": [
@@ -452,7 +457,7 @@
         ],
         "output_delays": [
           {
-            "clock": "clk_sys",
+            "clock": "u_clocking|u_system_pll|altpll_component|auto_generated|pll1|clk[0]",
             "count": 291,
             "ports": [
               "ready",
@@ -527,7 +532,6 @@
         "src/fpga/de10_lite/ppu_nominal.sdc"
       ],
       "pins": {
-        "clk_sys": "PIN_P11",
         "red[0]": "PIN_AA1",
         "red[1]": "PIN_V1",
         "red[2]": "PIN_Y2",
@@ -541,7 +545,8 @@
         "blue[2]": "PIN_P4",
         "blue[3]": "PIN_N2",
         "hsync_n": "PIN_N3",
-        "vsync_n": "PIN_N1"
+        "vsync_n": "PIN_N1",
+        "clk_reference": "PIN_P11"
       },
       "virtual_pins": [
         "board_reset_n",
@@ -589,7 +594,8 @@
         "module": "n2m_pixel_pll",
         "input_ps": 20000,
         "multiply": 63,
-        "divide": 125
+        "divide": 125,
+        "system_divide": 2
       },
       "timing": {
         "async_reset_pins": [
@@ -604,7 +610,7 @@
         ],
         "output_delays": [
           {
-            "clock": "clk_sys",
+            "clock": "u_clocking|u_system_pll|altpll_component|auto_generated|pll1|clk[0]",
             "count": 291,
             "ports": [
               "ready",
@@ -679,7 +685,6 @@
         "src/fpga/de10_lite/ppu_upper.sdc"
       ],
       "pins": {
-        "clk_sys": "PIN_P11",
         "red[0]": "PIN_AA1",
         "red[1]": "PIN_V1",
         "red[2]": "PIN_Y2",
@@ -693,7 +698,8 @@
         "blue[2]": "PIN_P4",
         "blue[3]": "PIN_N2",
         "hsync_n": "PIN_N3",
-        "vsync_n": "PIN_N1"
+        "vsync_n": "PIN_N1",
+        "clk_reference": "PIN_P11"
       },
       "virtual_pins": [
         "board_reset_n",
@@ -741,7 +747,8 @@
         "module": "n2m_pixel_pll",
         "input_ps": 20000,
         "multiply": 63,
-        "divide": 125
+        "divide": 125,
+        "system_divide": 2
       },
       "timing": {
         "async_reset_pins": [
@@ -756,7 +763,7 @@
         ],
         "output_delays": [
           {
-            "clock": "clk_sys",
+            "clock": "u_clocking|u_system_pll|altpll_component|auto_generated|pll1|clk[0]",
             "count": 291,
             "ports": [
               "ready",
@@ -947,7 +954,6 @@
         "src/fpga/de10_lite/clocking_nominal.sdc"
       ],
       "pins": {
-        "clk_sys": "PIN_P11",
         "red[0]": "PIN_AA1",
         "red[1]": "PIN_V1",
         "red[2]": "PIN_Y2",
@@ -961,7 +967,8 @@
         "blue[2]": "PIN_P4",
         "blue[3]": "PIN_N2",
         "hsync_n": "PIN_N3",
-        "vsync_n": "PIN_N1"
+        "vsync_n": "PIN_N1",
+        "clk_reference": "PIN_P11"
       },
       "virtual_pins": [
         "board_reset_n",
@@ -981,7 +988,8 @@
         "module": "n2m_pixel_pll",
         "input_ps": 20000,
         "multiply": 63,
-        "divide": 125
+        "divide": 125,
+        "system_divide": 2
       },
       "timing": {
         "async_reset_pins": [
@@ -996,7 +1004,7 @@
         ],
         "output_delays": [
           {
-            "clock": "clk_sys",
+            "clock": "u_clocking|u_system_pll|altpll_component|auto_generated|pll1|clk[0]",
             "count": 146,
             "ports": [
               "ready",
@@ -1042,7 +1050,6 @@
         "src/fpga/de10_lite/clocking_nominal.sdc"
       ],
       "pins": {
-        "clk_sys": "PIN_P11",
         "red[0]": "PIN_AA1",
         "red[1]": "PIN_V1",
         "red[2]": "PIN_Y2",
@@ -1056,7 +1063,8 @@
         "blue[2]": "PIN_P4",
         "blue[3]": "PIN_N2",
         "hsync_n": "PIN_N3",
-        "vsync_n": "PIN_N1"
+        "vsync_n": "PIN_N1",
+        "clk_reference": "PIN_P11"
       },
       "virtual_pins": [
         "board_reset_n",
@@ -1076,7 +1084,8 @@
         "module": "n2m_pixel_pll",
         "input_ps": 20000,
         "multiply": 63,
-        "divide": 125
+        "divide": 125,
+        "system_divide": 2
       },
       "timing": {
         "async_reset_pins": [
@@ -1091,7 +1100,7 @@
         ],
         "output_delays": [
           {
-            "clock": "clk_sys",
+            "clock": "u_clocking|u_system_pll|altpll_component|auto_generated|pll1|clk[0]",
             "count": 146,
             "ports": [
               "ready",
@@ -1137,7 +1146,6 @@
         "src/fpga/de10_lite/clocking_upper.sdc"
       ],
       "pins": {
-        "clk_sys": "PIN_P11",
         "red[0]": "PIN_AA1",
         "red[1]": "PIN_V1",
         "red[2]": "PIN_Y2",
@@ -1151,7 +1159,8 @@
         "blue[2]": "PIN_P4",
         "blue[3]": "PIN_N2",
         "hsync_n": "PIN_N3",
-        "vsync_n": "PIN_N1"
+        "vsync_n": "PIN_N1",
+        "clk_reference": "PIN_P11"
       },
       "virtual_pins": [
         "board_reset_n",
@@ -1171,7 +1180,8 @@
         "module": "n2m_pixel_pll",
         "input_ps": 20000,
         "multiply": 63,
-        "divide": 125
+        "divide": 125,
+        "system_divide": 2
       },
       "timing": {
         "async_reset_pins": [
@@ -1186,7 +1196,7 @@
         ],
         "output_delays": [
           {
-            "clock": "clk_sys",
+            "clock": "u_clocking|u_system_pll|altpll_component|auto_generated|pll1|clk[0]",
             "count": 146,
             "ports": [
               "ready",
@@ -1283,7 +1293,6 @@
         "src/fpga/de10_lite/controls.sdc"
       ],
       "pins": {
-        "clk_sys": "PIN_P11",
         "red[0]": "PIN_AA1",
         "red[1]": "PIN_V1",
         "red[2]": "PIN_Y2",
@@ -1315,7 +1324,8 @@
         "leds[6]": "PIN_E14",
         "leds[7]": "PIN_D14",
         "leds[8]": "PIN_A11",
-        "leds[9]": "PIN_B11"
+        "leds[9]": "PIN_B11",
+        "clk_reference": "PIN_P11"
       },
       "virtual_pins": [
         "ready",
@@ -1332,7 +1342,8 @@
         "module": "n2m_pixel_pll",
         "input_ps": 20000,
         "multiply": 63,
-        "divide": 125
+        "divide": 125,
+        "system_divide": 2
       },
       "timing": {
         "async_reset_pins": [
@@ -1353,7 +1364,7 @@
         ],
         "output_delays": [
           {
-            "clock": "clk_sys",
+            "clock": "u_clocking|u_system_pll|altpll_component|auto_generated|pll1|clk[0]",
             "count": 157,
             "ports": [
               "ready",

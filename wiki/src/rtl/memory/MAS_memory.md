@@ -39,6 +39,7 @@ asynchronously; a sampled core reset restarts the sweep at offset zero.
 | Port | Request and bounds | Response |
 |---|---|---|
 | Resolved access | Read/write, store selector, fifteen-bit local byte offset and byte data. Offset must fit the selected generated region. | Registered byte and valid after a read edge. ROM writes have no effect. |
+| OAM pair service | Package-owned read or two byte-write enables, pair index0-79 and sixteen-bit data. Mutually exclusive with a resolved OAM byte request. Other stores remain independent. | Registered pair and valid; both parity banks remain the sole authoritative storage. |
 | Host ROM | Independently enabled read/write, bounded thirty-two-bit offset and byte data. Endpoint #91 must authorize writes. | Registered read byte and valid. RAM clearing alone does not block this port. |
 | PPU VRAM | Read enable and thirteen-bit byte offset. | Registered byte and valid. |
 | PPU raw OAM | Read enable and seven-bit pair index, zero through 79. | Registered sixteen-bit pair, lower-address byte in bits 7:0. #132 resolves the pair presented to PPU. |
@@ -52,10 +53,11 @@ the eventual CPU/PPU reset-coordinator wiring.
 The sweep performs 8192 write edges after reset release. WRAM and VRAM write
 every edge. HRAM writes offsets 0 through 126, OAM offsets 0 through 159, and
 wave RAM offsets 0 through 15. OAM uses two eighty-byte parity banks for the
-same single logical store; its raw resolved write remains one byte per edge.
+same single logical store; its resolved CPU write remains one byte per edge, while the OAM service can
+write either or both bytes of one pair.
 The completion edge writes offset 8191 before asserting `init_done`. A repeated
 sampled core reset restarts this schedule. No ROM array clear is performed.
-DMA/corruption write granularity remains a #132 integration gate.
+The [DMA owner](../dma/MAS_dma.md) arbitrates pair operations and PPU collisions.
 
 ## Fixed service and CPU commit
 

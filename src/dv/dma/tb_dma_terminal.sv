@@ -4,6 +4,8 @@ module tb_dma_terminal;
     import n2m_interfaces_pkg::*;
     import n2m_cpu_pkg::*;
     import n2m_memory_pkg::*;
+    memory_oam_request_t oam_request;
+    memory_oam_response_t oam_response;
     logic clk_sys, reset_sys, core_reset, init_done, memory_init_done, gb_tick;
     logic [1:0] cpu_phase;
     logic cpu_halted, cpu_stopped, request_valid, bus_commit;
@@ -60,7 +62,7 @@ module tb_dma_terminal;
         .scan_active(scan_active), .scan_done(scan_done), .object_found(object_found),
         .tile_row_address(tile_row_address), .object_attributes(object_attributes),
         .selected_index(selected_index), .fault(ppu_fault), .fault_now(object_fault_now));
-    n2m_memory_stores stores (.clk_sys(clk_sys), .reset_sys(reset_sys), .core_reset(core_reset),
+    n2m_memory_stores stores (.oam_request, .oam_response, .clk_sys(clk_sys), .reset_sys(reset_sys), .core_reset(core_reset),
         .init_done(memory_init_done), .access_read(setup ? setup_read : access_read),
         .access_write(setup ? setup_write : access_write), .access_store(setup ? setup_store : access_store),
         .access_address(setup ? setup_address : access_address), .access_wdata(setup ? setup_data : access_wdata),
@@ -77,7 +79,7 @@ module tb_dma_terminal;
         setup_write=1; @(negedge clk_sys); setup_write=0;
     endtask
     task automatic dot_step;
-        repeat(11) @(negedge clk_sys);
+        repeat(cpu_phase==0 ? 4 : 5) @(negedge clk_sys);
         if(fetch_phase1) expect_pair();
         gb_tick=1;
         bus_commit=request_valid && cpu_phase==3;

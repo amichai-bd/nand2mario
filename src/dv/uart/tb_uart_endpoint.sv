@@ -78,7 +78,7 @@ module tb_uart_endpoint;
     );
     // This original program uses ROM and HRAM stack only. No peripheral decode
     // or full-system integration is claimed by this fixture's small responder.
-    n2m_memory_stores u_memory (
+    n2m_memory_stores u_memory (.oam_request('0), .oam_response(),
         .clk_sys(clk_sys),.reset_sys(reset_sys),.core_reset(core_reset),.init_done(memory_initialized),
         .access_read(memory_initialized && endpoint_state != 2 && request_valid && !write_enable),
         .access_write(memory_initialized && bus_commit && write_enable),

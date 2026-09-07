@@ -133,7 +133,7 @@ module n2m_smoke_system #(parameter bit HOST_PLAY = 0) (
             default: begin owner_service = 0; owner_valid = 0; end
         endcase
     end
-    n2m_memory_stores u_stores (
+    n2m_memory_stores u_stores (.oam_request('0), .oam_response(),
         .clk_sys, .reset_sys, .core_reset, .init_done(memory_initialized),
         .access_read(raw_read), .access_write(raw_write), .access_store(raw_store),
         .access_address(raw_offset), .access_wdata(write_data),

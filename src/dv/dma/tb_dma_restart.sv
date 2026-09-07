@@ -4,6 +4,9 @@ module tb_dma_restart;
     import n2m_interfaces_pkg::*;
     import n2m_cpu_pkg::*;
     import n2m_memory_pkg::*;
+    integer lane;
+    memory_oam_request_t oam_request;
+    memory_oam_response_t oam_response;
     logic clk_sys, reset_sys, core_reset, init_done, memory_init_done, gb_tick;
     logic [1:0] cpu_phase;
     logic cpu_halted, cpu_stopped, request_valid, bus_commit;
@@ -48,7 +51,7 @@ module tb_dma_restart;
     bit observe, early_write;
     assign init_done=memory_init_done && !setup;
     n2m_dma dut (.*);
-    n2m_memory_stores stores (.clk_sys(clk_sys), .reset_sys(reset_sys), .core_reset(core_reset),
+    n2m_memory_stores stores (.oam_request, .oam_response, .clk_sys(clk_sys), .reset_sys(reset_sys), .core_reset(core_reset),
         .init_done(memory_init_done), .access_read(setup ? setup_read : access_read),
         .access_write(setup ? setup_write : access_write), .access_store(setup ? setup_store : access_store),
         .access_address(setup ? setup_address : access_address), .access_wdata(setup ? setup_data : access_wdata),
@@ -74,7 +77,7 @@ module tb_dma_restart;
         request_valid=restart;bus_plan='0;bus_plan.address=16'hff46;
         bus_plan.write_enable=restart;bus_plan.write_data=page;
         for(dot=0;dot<4;dot=dot+1) begin
-            repeat(11) @(negedge clk_sys);
+            repeat(cpu_phase==0 ? 4 : 5) @(negedge clk_sys);
             gb_tick=1;bus_commit=restart && cpu_phase==3;address_effect_sample=bus_commit;
             if(cpu_phase==3) begin
                 if(expected_pending) $fatal(1,"DMA_RESTART_PREVIOUS_SERVICE");
@@ -109,6 +112,15 @@ module tb_dma_restart;
             if(access_address!=={7'd0,expected_offset} || access_wdata!==expected_byte)
                 $fatal(1,"DMA_RESTART_WRITE case=%0d expected=%0d:%02x actual=%0d:%02x",case_index,expected_offset,expected_byte,access_address,access_wdata);
             $fdisplay(trace,"%0d,%0d,%0d,%02x,%0d,%0d",case_index,write_count,access_address,access_wdata,system_edges,expected_edge);
+            expected_pending=0;write_count=write_count+1;
+        end
+            for (lane=0; lane<2; lane=lane+1) if (observe && oam_request.write_enable[lane]) begin
+            if(!expected_pending) $fatal(1,"DMA_RESTART_UNEXPECTED_WRITE");
+            if(system_edges!=expected_edge)
+                $fatal(1,"DMA_RESTART_WRITE_TIME expected_delta=25 actual_delta=%0d",system_edges-accepted_edge);
+            if((15'(oam_request.pair)*15'd2+15'(lane))!=={7'd0,expected_offset} || oam_request.data[8*lane +: 8]!==expected_byte)
+                $fatal(1,"DMA_RESTART_WRITE case=%0d expected=%0d:%02x actual=%0d:%02x",case_index,expected_offset,expected_byte,(15'(oam_request.pair)*15'd2+15'(lane)),oam_request.data[8*lane +: 8]);
+            $fdisplay(trace,"%0d,%0d,%0d,%02x,%0d,%0d",case_index,write_count,(15'(oam_request.pair)*15'd2+15'(lane)),oam_request.data[8*lane +: 8],system_edges,expected_edge);
             expected_pending=0;write_count=write_count+1;
         end
     end

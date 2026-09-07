@@ -50,6 +50,8 @@ module n2m_dma (
     output logic [7:0] access_wdata,
     input var logic [7:0] access_rdata,
     input var logic access_valid,
+    output n2m_memory_pkg::memory_oam_request_t oam_request,
+    input var n2m_memory_pkg::memory_oam_response_t oam_response,
     output logic raw_vram_read,
     output logic [12:0] raw_vram_address,
     input var logic [7:0] raw_vram_data,
@@ -156,7 +158,7 @@ module n2m_dma (
         (!conflict && owner_commit && local_memory && local_allowed && owner_write) || redirect_write);
     assign service_cpu_store=redirect_write ? STORE_VRAM : direct_store;
     assign service_cpu_offset=redirect_write ? {2'd0,engine_source_address[12:0]} : direct_offset;
-    n2m_dma_service service (.clk_sys(clk_sys), .reset(reset), .init_done(init_done && !fault && !invalid_observation),
+    n2m_dma_service service (.oam_request, .oam_response, .clk_sys(clk_sys), .reset(reset), .init_done(init_done && !fault && !invalid_observation),
         .t4(t4 && !engine_fault && !port_fault), .scan_active(ppu_oam_phase==2'd1), .scan_row(effect_row),
         .effect_kind(effect_kind), .dma_write(engine_write), .dma_offset(engine_offset), .dma_byte(transfer_byte),
         .dma_source_request(engine_source_request), .dma_source_address(engine_source_address),
@@ -173,7 +175,8 @@ module n2m_dma (
     assign ppu_vram_data=raw_vram_data;
     assign ppu_vram_valid=raw_vram_valid && !reset && !fault;
     assign raw_oam_read=ppu_oam_phase!=0 && !dma_active && !reset && !fault &&
-        !(access_write && access_store==STORE_OAM && access_address[7:1]==ppu_oam_pair);
+        !(access_write && access_store==STORE_OAM && access_address[7:1]==ppu_oam_pair) &&
+        !(|oam_request.write_enable && oam_request.pair==ppu_oam_pair);
     assign raw_oam_pair=ppu_oam_pair;
     // Register selection with the request, including the physical commit edge.
     // After DMA ends only the still-pending destination pair is forwarded.
