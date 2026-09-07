@@ -2,7 +2,11 @@
 `include "src/rtl/common/macros.svh"
 // Physical input diagnostic; generated VGA pattern is not a Game Boy frame.
 module controls_proof #(
+`ifdef N2M_CONTROLS_BUILD_ID
+    parameter logic [127:0] BUILD_ID = `N2M_CONTROLS_BUILD_ID
+`else
     parameter logic [127:0] BUILD_ID = 128'd0
+`endif
 ) (
     input var logic clk_sys,
     input var logic clk_adc_reference,

@@ -113,7 +113,7 @@ def prepare(root, folder, target, build_id=None):
     if target["top"] == "controls_proof":
         if not isinstance(build_id, str) or not re.fullmatch(r"[0-9a-f]{32}", build_id) or int(build_id, 16) == 0:
             raise ValueError("physical controls build requires a nonzero fingerprint identity")
-        lines.append("set_parameter -name BUILD_ID " + tcl_word("128'h" + build_id))
+        lines.append("set_global_assignment -name VERILOG_MACRO " + tcl_word("N2M_CONTROLS_BUILD_ID=128'h" + build_id))
     for field, assignment in (("sources", "SYSTEMVERILOG_FILE"), ("constraints", "SDC_FILE")):
         for name in target[field]:
             lines.append(f'set_global_assignment -name {assignment} {tcl_word((root / name).resolve())}')
