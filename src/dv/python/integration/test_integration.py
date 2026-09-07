@@ -1,5 +1,6 @@
 """Public-pin reproduction of the preloaded run-control diagnostic (#174)."""
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 import struct
 import sys
@@ -88,11 +89,12 @@ def known(signal):
     return int(value)
 
 
-async def run_contract(dut, *, real_uart=False):
+async def run_contract(dut, *, real_uart=False, client_preloaded=False):
+    test_entry = datetime.now(timezone.utc).isoformat()
     expected = json.loads((ROOT / "src/dv/integration/retirement.json").read_text())
     assert len(expected) == 69 and expected[0]["fields"]["dot"] == 8
     assert expected[-1]["fields"]["dot"] == 600
-    if real_uart:
+    if real_uart and not client_preloaded:
         sys.path.insert(0, str(ROOT / "src/dv/integration"))
         from image import build
         build(ROOT, Path.cwd())
@@ -174,7 +176,8 @@ async def run_contract(dut, *, real_uart=False):
         observation("reset", asserted=0)
         if real_uart:
             from client_transport import execute
-            await execute(dut, image, received, observation, counts)
+            await execute(dut, image, received, observation, counts,
+                          preloaded=client_preloaded, test_entry=test_entry)
         else:
             for sequence, (time_ns, command, payload) in enumerate(requests(image)):
                 await Timer(time_ns * 1000 + 1 - int(get_sim_time(unit="ps")), unit="ps")

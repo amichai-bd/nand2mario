@@ -1,5 +1,7 @@
 """Product Client adapter over actual UART pins, with simulation-time waits."""
 from pathlib import Path
+from datetime import datetime, timezone
+import hashlib
 import json
 import time
 
@@ -8,7 +10,7 @@ from cocotb.triggers import FallingEdge, ReadOnly, Timer, with_timeout
 from cocotb.utils import get_sim_time
 
 from n2m import generated_interfaces as abi
-from n2m.preload import observe_initial
+from n2m.preload import adopt, observe_initial, verify
 
 
 async def frames(dut):
@@ -79,17 +81,23 @@ def connect(dut, received, observation, entries):
     return client
 
 
-async def execute(dut, image, received, observation, counts):
+async def execute(dut, image, received, observation, counts, *, preloaded=False, test_entry=None):
     started = time.monotonic()
     entries = []
+    stamps = {'test_entry': test_entry or datetime.now(timezone.utc).isoformat()}
 
     client = connect(dut, received, observation, entries)
 
     @bridge
     def load():
+        stamps['loader_start'] = datetime.now(timezone.utc).isoformat()
         identity = client.identify()
-        loaded = client.load(image)
-        initial = observe_initial(client)
+        if preloaded:
+            loaded = adopt(client, verify(Path.cwd()))
+            initial = loaded['initial_state']
+        else:
+            loaded = client.load(image)
+            initial = observe_initial(client)
         return identity, loaded, initial
 
     identity, loaded, initial = await load()
@@ -98,13 +106,19 @@ async def execute(dut, image, received, observation, counts):
     assert (int(dut.epoch.value), int(dut.dot_count.value), int(dut.paused.value),
             int(dut.core_reset.value)) == (2, 0, 1, 0), "INTEGRATION_INITIAL_STATE"
     assert counts == dict(records=0, pixels=0, bus=0), "INTEGRATION_PAUSED_ACTIVITY"
+    boundary = {name: int(getattr(dut, name).value) for name in ('reset_sys', 'core_reset', 'paused', 'fault')}
+    boundary.update(counts)
+    assert boundary == dict(reset_sys=0, core_reset=0, paused=1, fault=0, records=0, pixels=0, bus=0)
     loaded_wall = time.monotonic()
+    stamps['loaded'] = datetime.now(timezone.utc).isoformat()
     observation("loaded", identity=identity, loaded=loaded, initial=initial)
-    Path("initial-state.json").write_text(json.dumps(dict(epoch=2, public=initial, load=loaded), indent=2))
+    Path("initial-state.json").write_text(json.dumps(dict(epoch=2, public=initial,
+        boundary=boundary, image_sha256=hashlib.sha256(image).hexdigest()), indent=2))
 
     @bridge
     def start():
         client.control("INPUT", 0)
+        stamps['run'] = datetime.now(timezone.utc).isoformat()
         client.control("RUN")
 
     await start()
@@ -120,7 +134,9 @@ async def execute(dut, image, received, observation, counts):
     await halt()
     await Timer(1, unit="ns")
     assert int(dut.paused.value) == 1, "INTEGRATION_FINAL_PAUSED"
+    stamps['paused'] = datetime.now(timezone.utc).isoformat()
     Path("client.json").write_text(json.dumps(dict(identity=identity, load=loaded,
         initial=initial, requests=entries, final_dot=int(dut.dot_count.value),
+        final_state=abi.STATE_PAUSED, checkpoints_utc=stamps,
         timings=dict(test_to_loaded_wall_seconds=loaded_wall-started,
                      loaded_to_paused_wall_seconds=time.monotonic()-loaded_wall)), indent=2))
