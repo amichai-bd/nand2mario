@@ -114,6 +114,9 @@ def simulate(root, build, args, simulator, provenance=None):
             peer = None
             result = None
             try:
+                if log.name == "sim.log" and target.get("preload") == "mooneye-reg-f":
+                    from .preload import verify
+                    verify(attempt)
                 if log.name == "sim.log" and "driver" in target:
                     peer = Peer(root, attempt, target["driver"]["peer"])
                     port = peer.start()
