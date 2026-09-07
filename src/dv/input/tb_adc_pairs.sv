@@ -61,7 +61,7 @@ module tb_adc_pairs;
     endtask
     task automatic respond(input logic [4:0] channel, input logic [11:0] data);
         response_channel = channel; response_data = data; response_valid = 1'b1;
-        step(); response_valid = 1'b0;
+        step(); response_valid = 1'b0; #1;
     endtask
     task automatic complete_pair(input logic [11:0] x, input logic [11:0] y);
         accept(5'd1); respond(5'd1, x); accept(5'd2);
