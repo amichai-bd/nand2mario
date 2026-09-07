@@ -6,7 +6,7 @@ CHAINS = tuple((f"button{i}", f"buttons_n[{i}]", f"u_physical|u_buttons|button_m
     ("uart", "uart_rx", "u_uart|u_serial_rx|rx_meta", "u_uart|u_serial_rx|rx_sync"),)
 
 
-def verify_identity(folder, build_id, *, macro="N2M_CONTROLS_BUILD_ID"):
+def verify_identity(folder, build_id, *, macro="N2M_CONTROLS_BUILD_ID", instances=1):
     import re
     if not isinstance(build_id, str) or not re.fullmatch('[0-9a-f]{32}', build_id) or int(build_id, 16) == 0:
         raise ValueError('controls proof requires its nonzero producing build identity')
@@ -16,7 +16,7 @@ def verify_identity(folder, build_id, *, macro="N2M_CONTROLS_BUILD_ID"):
         raise ValueError('controls generated macro differs from producing identity')
     report = (folder / 'output/design.map.rpt').read_text()
     values = re.findall(r';\s*BUILD_ID\s*;\s*([01]+)\s*;\s*Unsigned Binary\s*;', report)
-    if values != [f'{int(build_id, 16):0128b}']:
+    if values != [f'{int(build_id, 16):0128b}'] * instances:
         raise ValueError('controls compiled 128-bit identity differs')
     return build_id
 

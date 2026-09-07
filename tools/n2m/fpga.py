@@ -322,7 +322,7 @@ def timing_evidence(folder, target, *, build_id=None):
     if fpga_v05.board_target(target):
         evidence["board_uart"] = fpga_controls.verify(folder, system_clock=fpga_pll.SYSTEM_CLOCK,
             system_net=fpga_pll.SYSTEM_NET, chains=fpga_v05.UART_CHAINS, top="v05_proof")
-        evidence["board_build_id"] = fpga_controls.verify_identity(folder, build_id, macro="N2M_V05_BUILD_ID")
+        evidence["board_build_id"] = fpga_controls.verify_identity(folder, build_id, macro="N2M_V05_BUILD_ID", instances=2)
     return evidence
 
 

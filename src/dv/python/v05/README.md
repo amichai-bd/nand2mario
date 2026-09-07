@@ -8,6 +8,8 @@ implementation targets preload ROM; no target uses snapshots as its every-frame 
 
 | Target | Required outcome |
 |---|---|
+| python-v05-identity | Read an independent 128-bit build identity through the actual UART and product Client |
+| python-v05-identity-fault | The same checker rejects one changed DUT identity bit |
 | python-v05-startup | Original build, full UART load/readback, blank and first normal frame, checked pause |
 | python-v05-continuous | The same startup followed by all 600 intervals and 18 input transitions |
 | python-v05-image-fault | Actual ROM write at 0200 changes F3 to 00; LOAD_END rejects BAD_IMAGE |

@@ -5,6 +5,10 @@ UART_CHAINS = (("uart", "uart_rx", "u_system|u_uart|u_serial_rx|rx_meta",
                 "u_system|u_uart|u_serial_rx|rx_sync"),)
 BOARD_INPUTS = {"clk_reference": "PIN_P11", "board_reset_n": "PIN_B8",
                 "uart_rx": "PIN_AB5", "uart_tx": "PIN_AB6"}
+BOARD_PINS = dict(BOARD_INPUTS, **dict(zip(fpga_vga.PORTS, (
+    "PIN_AA1", "PIN_V1", "PIN_Y2", "PIN_Y1",
+    "PIN_W1", "PIN_T2", "PIN_R2", "PIN_R1",
+    "PIN_P1", "PIN_T1", "PIN_P4", "PIN_N2", "PIN_N3", "PIN_N1"))))
 
 
 def board_target(target):
@@ -13,8 +17,7 @@ def board_target(target):
 
 def validate_board(target):
     if (target.get("top") != "v05_proof"
-            or any(target.get("pins", {}).get(port) != pin for port, pin in BOARD_INPUTS.items())
-            or set(target.get("pins", {})) != set(BOARD_INPUTS) | set(fpga_vga.PORTS)
+            or target.get("pins") != BOARD_PINS
             or set(target.get("virtual_pins", [])) != {"paused", "fault", "display_sequence[*]", "display_epoch[*]"}):
         raise ValueError("v05-board requires physical UART/reset and diagnostic-only virtual outputs")
 

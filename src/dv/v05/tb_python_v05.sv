@@ -1,7 +1,10 @@
 `timescale 1ns/1ps
 `default_nettype none
 // Passive owner-boundary samples. Python owns stimulus and all expectations.
-module tb_python_v05 #(parameter bit PRELOADED = 0);
+module tb_python_v05 #(
+    parameter bit PRELOADED = 0,
+    parameter logic [127:0] BUILD_ID = 128'h88000000000000000000000000000001
+);
     logic clk_sys, clk_pix, reset_sys, reset_pix, uart_rx, uart_tx;
     logic [3:0] red, green, blue;
     logic hsync_n, vsync_n;
@@ -46,7 +49,7 @@ module tb_python_v05 #(parameter bit PRELOADED = 0);
     assign wave_load = wave_enable ? {dut.rom_write, dut.rom_read,
         dut.rom_address, dut.rom_write_data, dut.rom_read_valid, dut.rom_read_data} : 34'd0;
 
-    n2m_v05_system #(.UART_BAUD(3125000)) dut (.*);
+    n2m_v05_system #(.UART_BAUD(3125000), .BUILD_ID(BUILD_ID)) dut (.*);
     defparam dut.u_stores.rom.SIM_INIT_FILE = PRELOADED ? "preload-rom.mif" : "UNUSED";
     defparam dut.u_uart.u_commands.u_load.u_presence.u_presence.SIM_INIT_FILE = PRELOADED ? "preload-presence.mif" : "UNUSED";
     defparam dut.u_uart.u_commands.u_load.SIM_PRELOAD = PRELOADED;
