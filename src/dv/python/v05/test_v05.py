@@ -56,8 +56,12 @@ async def run(dut, *, complete):
                 raw = known(dut.record_sample)
                 assert armed, 'V05_PAUSED_RETIREMENT'
                 value = unpack_retirement(f'{raw:x}')
-                monitor.retirement(value)
                 retirement.write(f"{value['seq']},{raw:096x}\n")
+                try:
+                    monitor.retirement(value)
+                except ValueError as error:
+                    observation('retirement_failure', actual=value, mismatch=str(error))
+                    raise
 
         async def writes():
             while True:
@@ -83,8 +87,12 @@ async def run(dut, *, complete):
                 assert dot == elapsed * 65536 // 390625, 'V05_PIXEL_ACTIVE_EDGE'
                 frame, index = divmod(monitor.pixels, 23040)
                 assert (epoch, start, abort, eligible) == (2, int(index == 0), 0, int(frame != 0)), 'V05_SOURCE_FLAGS'
-                monitor.pixel(frame, x, y, dot, shade)
                 pixels.write(f'{frame},{index},{dot},{shade}\n')
+                try:
+                    monitor.pixel(frame, x, y, dot, shade)
+                except ValueError as error:
+                    observation('pixel_failure', frame=frame, index=index, dot=dot, shade=shade, mismatch=str(error))
+                    raise
 
         async def inputs():
             while True:
