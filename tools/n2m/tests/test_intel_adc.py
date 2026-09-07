@@ -9,6 +9,7 @@ from unittest.mock import patch
 import test_builder
 from n2m import intel_adc, intel_memory, fpga_adc
 from n2m.records import file_hash
+from n2m.questa import diagnostic
 
 
 class IntelAdcTests(unittest.TestCase):
@@ -40,9 +41,42 @@ class IntelAdcTests(unittest.TestCase):
         compiler, run = self.root / "compile", self.root / "run"
         commands, maps, binding = intel_memory.commands(self.sim, compiler, run, descriptor)
         self.assertEqual(commands[0][0], fpga_adc.generation_command(self.generation))
-        self.assertEqual(commands[3][0], ["vlog", "-work", "n2m_intel_adc", str(self.source), str(compiler / "n2m_adc_pll.v")])
+        self.assertEqual(commands[3][0], ["vlog", "-work", "n2m_intel_adc_atoms", str(self.source)])
+        self.assertEqual(commands[6][0], ["vlog", "-work", "n2m_intel_adc", str(compiler / "n2m_adc_pll.v")])
         self.assertEqual(maps[0][0], ["vmap", "n2m_intel_adc", (compiler / "n2m_intel_adc").as_posix()])
-        self.assertEqual(binding, ["-L", "n2m_intel_adc"])
+        self.assertEqual(binding, ["-L", "n2m_intel_adc", "-L", "n2m_intel_adc_atoms"])
+
+    def test_canonical_control_source_is_separate_from_embedded_sync(self):
+        descriptor = self.resolve()
+        canonical = {"name": "quartus/libraries/megafunctions/altera_std_synchronizer.v",
+                     "path": str(self.installation / "canonical.v"), "sha256": "host-only"}
+        descriptor["sources"].append(canonical)
+        commands, _, _ = intel_adc.commands(self.sim, self.root, self.root, descriptor)
+        self.assertNotIn(canonical["path"], commands[3][0])
+        self.assertIn(canonical["path"], commands[6][0])
+        self.assertNotIn(str(self.source), commands[6][0])
+
+    def test_exact_lexical_warning_visible_and_all_variants_rejected(self):
+        descriptor = {"sources": [{"name": intel_adc.TOP_SOURCE, "path": "C:/vendor/top.v", "sha256": intel_adc.TOP_HASH}]}
+        warning = "** Warning: (vlog-2083) C:/vendor/top.v(24): Carriage return (0x0D) is not followed by a newline (0x0A)."
+        raw = warning + "\nErrors: 0, Warnings: 1\n"
+        checked, evidence = intel_adc.classify_compile_diagnostics(raw, descriptor, "intel-adc-control-compile.log")
+        self.assertIsNone(diagnostic(checked))
+        self.assertEqual(evidence[0]["raw"], warning)
+        self.assertEqual(evidence[0]["warning_count"], 1)
+        self.assertEqual(evidence[0]["raw_summary"], "Errors: 0, Warnings: 1")
+        for bad in ("Errors: 0, Warnings: 0\n", raw + warning, raw.replace("(24)", "(25)"),
+                    raw.replace("top.v", "other.v"), raw.replace("2083", "2275"),
+                    raw.replace("Warnings: 1", "Warnings: 2"), raw.replace("Errors: 0", "Errors: 1"),
+                    raw + "** Warning: other\n", raw + "Errors: 0, Warnings: 1\n"):
+            with self.assertRaisesRegex(ValueError, "diagnostic count, location, or summary"):
+                intel_adc.classify_compile_diagnostics(bad, descriptor, "intel-adc-control-compile.log")
+        for stage in ("sim.log", "intel-adc-atoms-compile.log", "compile.log"):
+            with self.assertRaisesRegex(ValueError, "control compilation stage"):
+                intel_adc.classify_compile_diagnostics(raw, descriptor, stage)
+        descriptor["sources"][0]["sha256"] = "changed"
+        with self.assertRaisesRegex(ValueError, "supported wrapper hash"):
+            intel_adc.classify_compile_diagnostics(raw, descriptor, "intel-adc-control-compile.log")
 
     def test_changed_or_missing_dependency_rejected_before_commands(self):
         self.resolve()

@@ -116,6 +116,8 @@ def simulate(root, build, args, simulator, provenance=None):
             if log.name == "adc-pll-generate.log":
                 record["generated_adc_pll"] = intel_adc.verify_generated(cwd)
             checked_output = result.stdout
+            if log.name == "intel-adc-control-compile.log":
+                checked_output, record["explained_compile_diagnostics"] = intel_adc.classify_compile_diagnostics(result.stdout, vendor_model, log.name)
             if log.name == "sim.log":
                 checked_output, record["explained_diagnostics"] = intel_memory.classify_diagnostics(result.stdout, vendor_model)
             problem = diagnostic(checked_output, target["signature"] if expected == "nonzero" else None)
