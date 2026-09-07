@@ -10,6 +10,7 @@ from unittest.mock import patch
 
 import test_builder
 from n2m import python_tb
+from n2m.simulation import load_target
 from n2m.questa import commands, diagnostic
 from n2m.records import atomic_json, read_json
 
@@ -46,6 +47,19 @@ class PythonTests(unittest.TestCase):
                 return SimpleNamespace(returncode=self.raw_exit, stdout="PASS python-joypad")
             return result
         self.sim.run = run
+
+    def test_python_runtime_remains_bounded(self):
+        registry = self.root / "src/dv/builder/targets.json"
+        targets = json.loads(registry.read_text())
+        for timeout in (1000, 1500):
+            targets["python-joypad"]["timeout_seconds"] = timeout
+            registry.write_text(json.dumps(targets))
+            self.assertEqual(load_target(self.root, "python-joypad")[0]["timeout_seconds"], timeout)
+        for timeout in (0, 1501, True):
+            targets["python-joypad"]["timeout_seconds"] = timeout
+            registry.write_text(json.dumps(targets))
+            with self.assertRaisesRegex(ValueError, "timeout_seconds"):
+                load_target(self.root, "python-joypad")
 
     def test_dispatch_identity_and_artifact_cache(self):
         result = self.run_stage()
