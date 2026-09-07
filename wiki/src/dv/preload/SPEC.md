@@ -4,6 +4,12 @@ This boundary belongs to [#168](https://github.com/amichai-bd/nand2mario/issues/
 It supplements the [real UART integration](../integration/SPEC.md); it does not
 replace loader, transport or end-to-end acceptance.
 
+PR169 delivers the user-approved checkpoint: validated initialization, loader
+lifecycle and checked preloaded execution. Issue168 remains open for complete
+real-UART/preload equivalence, comparable two-mode performance measurements and
+the unresolved execution-stall investigation. The comparison requirements below
+remain acceptance criteria; successful preload alone does not satisfy them.
+
 ## Image and state boundary
 
 The software pipeline supplies the complete original ROM and its SHA256.

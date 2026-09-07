@@ -61,7 +61,7 @@ jobs:
               re.findall(r"(?i)\bcloses\s+#([1-9][0-9]*)\b", body)
           )
           # User-authorized checkpoints; full acceptance stays in the linked issue.
-          checkpoints = {"162": "156", "163": "88"}
+          checkpoints = {"162": "156", "163": "88", "169": "168"}
           checkpoint = checkpoints.get(os.environ.get("PR_NUMBER", ""))
           if checkpoint:
               if primary_issue != checkpoint or not re.search(
