@@ -91,6 +91,13 @@ class PreloadComparisonTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'runtime modes or args'):
             module.compare(self.root, *self.paths)
 
+    def test_changed_python_runtime(self):
+        record = json.loads(self.paths[1].read_text())
+        record['options']['peer_python'] = {'sha256': 'different'}
+        self.paths[1].write_text(json.dumps(record))
+        with self.assertRaisesRegex(ValueError, 'Python peer runtimes'):
+            module.compare(self.root, *self.paths)
+
 
 if __name__ == '__main__':
     unittest.main()

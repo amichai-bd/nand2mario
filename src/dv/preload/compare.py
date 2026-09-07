@@ -41,6 +41,8 @@ def compare(root, normal_path, preload_path):
         raise ValueError(f'comparison source/tool inputs differ: {changed}')
     if records[0].get('options', {}).get('vendor_model') != records[1].get('options', {}).get('vendor_model'):
         raise ValueError('comparison Intel models differ')
+    if normal.get('peer_python') != preloaded.get('peer_python'):
+        raise ValueError('comparison Python peer runtimes differ')
     contents = []
     for record in records:
         selected = {}
