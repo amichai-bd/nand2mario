@@ -89,8 +89,8 @@ module tb_dma_io;
             if(event_case && cpu_phase==2)begin
                 if(bad_irq)force if_observe=5'h00;
                 #1;
-                if(ie_observe!==8'h1f || if_observe!==5'h04 || !access_read || access_store!=STORE_OAM)
-                    $fatal(1,"DMA_IO_IRQ_PRE_T3 expected_ie=1f actual_ie=%02x expected_if=04 actual_if=%02x raw_read=%0d",ie_observe,if_observe,access_read);
+                if(ie_observe!==8'h1f || if_observe!==5'h04 || !oam_request.read)
+                    $fatal(1,"DMA_IO_IRQ_PRE_T3 expected_ie=1f actual_ie=%02x expected_if=04 actual_if=%02x oam_read=%0d",ie_observe,if_observe,oam_request.read);
                 t3_checks=t3_checks+1;
             end
             gb_tick=1;bus_commit=valid_request && cpu_phase==3;address_effect_sample=bus_commit;
