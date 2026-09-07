@@ -20,6 +20,11 @@ and image verdicts. The composed pixel clock remains25.2MHz. The test requires
 final host-paused state and epoch2. It rejects an owner fault or more than one
 million dots.
 
+After autonomous simulation waits, the cocotb controller refreshes the Client's
+cached simulation clock before returning to synchronous command code. This
+excludes idle time from the next response deadline. It does not change the
+generated response timeout or call simulator APIs from a worker thread.
+
 Using the [pinned Python environment](../README.md), run:
 
 ```powershell

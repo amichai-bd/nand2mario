@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(ROOT / 'tools'))
 sys.path.insert(0, str(ROOT / 'src/dv/python/integration'))
 sys.path.insert(0, str(ROOT / 'src/dv/host_play'))
-from client_transport import connect, frames
+from client_transport import connect, frames, refresh_clock
 from image import build
 from n2m.host_play import play
 from n2m.host.client import RejectedCommand
@@ -90,6 +90,7 @@ async def host_play_contract(dut):
             observation('waited', **item)
             mark('wait_complete', stage=len(waits)-1, start=begin,
                  finish=item['finish'], requested=dots, wait_wall_seconds=item['wall_seconds'])
+            refresh_clock(client)
 
         def retain(stage, item, packed, pixels):
             Path(f'frame-{stage}.2bpp').write_bytes(packed)
