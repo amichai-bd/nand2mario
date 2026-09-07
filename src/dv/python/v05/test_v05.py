@@ -195,4 +195,3 @@ async def run(dut, *, complete):
 @cocotb.test(timeout_time=500, timeout_unit='ms')
 async def startup(dut):
     await run(dut, complete=False)
-
