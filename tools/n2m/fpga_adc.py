@@ -12,11 +12,15 @@ FSM = "u_adc|u_control|u_control_fsm|"
 SYS = r"\clk_sys~inputclkctrl_outclk"
 
 
-def verify_netlist(text, checks):
+def verify_netlist(text, checks, top="adc_proof"):
+    from .fpga_lock import ROW
+    if top not in ("adc_proof", "controls_proof"):
+        raise ValueError("unsupported ADC proof top")
+    reset = "u_adc_reset|" if top == "controls_proof" else "u_reset|"
     row = "n2m_adc_backend:u_adc|n2m_adc_pll:u_pll|altpll:altpll_component|n2m_adc_pll_altpll:auto_generated|pll_lock_sync"
-    if re.findall(r";\s*([^;\r\n]+?)\s*;\s*No clock feeds this register's clock port\.\s*;", checks) != [row]:
+    if re.findall(r";\s*([^;\r\n]+?)\s*;\s*No clock feeds this register's clock port\.\s*;", checks) != ([ROW, row] if top == "controls_proof" else [row]):
         raise ValueError("unexpected ADC no-clock endpoint")
-    _, cells, params, declarations, rhs, lhs = parse_netlist(text, "adc_proof")
+    _, cells, params, declarations, rhs, lhs = parse_netlist(text, top)
 
     def cell(name, kind):
         if cells.get(name, (None,))[0] != kind:
@@ -33,6 +37,15 @@ def verify_netlist(text, checks):
         if not condition:
             raise ValueError(message)
 
+    def reset_buffer(name, source):
+        ports = cell(name, "fiftyfivenm_clkctrl")
+        require(ports == {"ena": "vcc", "inclk": "{vcc,vcc,vcc," + source + "}",
+                         "clkselect": "2'b00", "devclrn": "devclrn", "devpor": "devpor",
+                         "outclk": "\\" + name + "_outclk"}
+                and params.get(name) == {"clock_type": '"global clock"', "ena_register_mode": '"none"'},
+                "ADC reset buffer is not an always-enabled identity")
+        return ports["outclk"]
+
     def register(name, reset, clock=SYS):
         ports = cell(name, "dffeas")
         require(ports.get("clk") == clock and ports.get("clrn") == reset and
@@ -44,17 +57,19 @@ def verify_netlist(text, checks):
         return ports
 
     pll = cell(PLL + "pll1", "fiftyfivenm_pll")
-    event = register(PLL + "pll_lock_sync", r"\u_reset|pll_areset~clkctrl_outclk", pll["locked"])
+    event = register(PLL + "pll_lock_sync", "\\" + reset + "pll_areset~clkctrl_outclk", pll["locked"])
     feeder = cell(PLL + "pll_lock_sync~feeder", "fiftyfivenm_lcell_comb")
     require(params[PLL + "pll_lock_sync~feeder"] == {"lut_mask": "16'hFFFF", "sum_lutc_input": '"datac"'} and
             event["d"] == feeder["combout"] and event["ena"] == "vcc" and event["sload"] == "gnd",
             "ADC lock event is not constant-one acquisition")
     require(pll["areset"] == "!" + event["clrn"], "ADC PLL/event reset differs")
-    reset_gate = cell("u_reset|lock_reset", "fiftyfivenm_lcell_comb")
-    reset_ff = cell("u_reset|pll_areset", "dffeas")
+    reset_gate = cell(reset + "lock_reset", "fiftyfivenm_lcell_comb")
+    reset_ff = cell(reset + "pll_areset", "dffeas")
+    require(reset_buffer(reset + "pll_areset~clkctrl", reset_ff["q"]) == event["clrn"],
+            "ADC PLL reset buffer differs")
     raw, acquired = pll["locked"], event["q"]
     gate_specs = {
-        "u_reset|lock_reset": ({raw, acquired, reset_ff["q"], "gnd"},
+        reset + "lock_reset": ({raw, acquired, reset_ff["q"], "gnd"},
                               lambda v: not (v[raw] and v[acquired] and v[reset_ff["q"]])),
         FSM + "ctrl_state.IDLE~0": ({raw, acquired, "\\" + FSM + "ctrl_state.IDLE~q", "gnd"},
                                     lambda v: v["\\" + FSM + "ctrl_state.IDLE~q"] or (v[raw] and v[acquired])),
@@ -76,22 +91,39 @@ def verify_netlist(text, checks):
     require(users(acquired) == {(n, p) for n in gate_specs for p, v in cells[n][1].items() if v == acquired}, "ADC event has extra fanout")
     require(users(raw) == {(PLL + "pll_lock_sync", "clk")} |
             {(n, p) for n in gate_specs for p, v in cells[n][1].items() if v == raw}, "ADC raw lock has extra fanout")
-    require(users(reset_gate["combout"]) == {(f"u_reset|lock_samples[{i}]", "clrn") for i in (0, 1)}, "ADC reset gate has extra fanout")
+    reset_net = reset_gate["combout"]
+    ready_net = "\\" + reset + "ready~q"
+    if top == "controls_proof":
+        require(users(reset_net) == {(reset + "lock_reset~clkctrl", "inclk")},
+                "ADC lock reset bypasses its buffer")
+        reset_net = reset_buffer(reset + "lock_reset~clkctrl", reset_net)
+        require(users(ready_net) == {(reset + "ready~clkctrl", "inclk"),
+                                   (reset + "ready~0", "datac")},
+                "ADC qualified ready has unexpected consumers")
+        ready_net = reset_buffer(reset + "ready~clkctrl", ready_net)
+        require(users(ready_net) == {(f"{reset}sys_release[{i}]", "clrn") for i in (0, 1)},
+                "ADC qualified reset buffer has unexpected consumers")
+    require(users(reset_net) == {(f"{reset}lock_samples[{i}]", "clrn") for i in (0, 1)}, "ADC reset gate has extra fanout")
     for i in (0, 1):
-        register(f"u_reset|lock_samples[{i}]", "!" + reset_gate["combout"])
-        register(f"u_reset|sys_release[{i}]", r"\u_reset|ready~q")
-    register("u_reset|ready", r"\u_reset|lock_samples[1]")
+        register(f"{reset}lock_samples[{i}]", "!" + reset_net)
+        register(f"{reset}sys_release[{i}]", ready_net)
+    register(reset + "ready", "\\" + reset + "lock_samples[1]")
     for i in range(10):
-        register(f"u_reset|lock_count[{i}]", r"\u_reset|lock_samples[1]")
+        register(f"{reset}lock_count[{i}]", "\\" + reset + "lock_samples[1]")
+    combinational_drivers = {}
+    for name, (kind, ports) in cells.items():
+        if kind == "fiftyfivenm_lcell_comb":
+            for port in ("combout", "cout"):
+                if ports.get(port):
+                    combinational_drivers.setdefault(ports[port], []).append((name, ports))
     def evaluate(net, values, visiting=()):
         if net in values:
             return values[net]
         if net.startswith("!"):
             return 1 - evaluate(net[1:], values, visiting)
         require(net not in visiting, "cyclic ADC reset qualification")
-        drivers = [(n, ps) for n, (kind, ps) in cells.items()
-                   if kind == "fiftyfivenm_lcell_comb" and net in (ps.get("combout"), ps.get("cout"))]
-        require(len(drivers) == 1 and drivers[0][0].startswith("u_reset|"), "unknown ADC qualification driver")
+        drivers = combinational_drivers.get(net, [])
+        require(len(drivers) == 1 and drivers[0][0].startswith(reset), "unknown ADC qualification driver")
         name, ports = drivers[0]
         require(set(params[name]) == {"lut_mask", "sum_lutc_input"} and
                 params[name]["sum_lutc_input"] in {'"datac"', '"cin"'}, "unsupported ADC qualification LUT")
@@ -107,26 +139,26 @@ def verify_netlist(text, checks):
         if not evaluate(ports["ena"], values):
             return values[ports["q"]]
         return evaluate(ports["asdata"] if evaluate(ports["sload"], values) else ports["d"], values)
-    ready = cells["u_reset|ready"][1]
+    ready = cells[reset + "ready"][1]
     for prefix in ("lock_samples", "sys_release"):
         for i in (0, 1):
-            ports = cells[f"u_reset|{prefix}[{i}]"][1]
+            ports = cells[f"{reset}{prefix}[{i}]"][1]
             require(ports["ena"] == "vcc" and ports["sload"] in {"vcc", "gnd"}, "ADC release stage control differs")
             data = ports["asdata"] if ports["sload"] == "vcc" else ports["d"]
             for prior in (0, 1):
-                values = {"gnd": 0, "vcc": 1, "\\u_reset|" + prefix + "[0]": prior}
+                values = {"gnd": 0, "vcc": 1, "\\" + reset + prefix + "[0]": prior}
                 require(evaluate(data, values) == (1 if i == 0 else prior), "ADC release stage bypassed")
     for held in (0, 1):
         for count in range(1024):
-            values = {r"\u_reset|lock_count[" + str(i) + "]": (count >> i) & 1 for i in range(10)}
+            values = {"\\" + reset + "lock_count[" + str(i) + "]": (count >> i) & 1 for i in range(10)}
             values.update({"gnd": 0, "vcc": 1, ready["q"]: held})
             require(next_register(ready, values) == (held or count == 1023), "ADC lock qualification is not 1024 cycles")
-            actual_count = sum(next_register(cells[f"u_reset|lock_count[{i}]"][1], values) << i for i in range(10))
+            actual_count = sum(next_register(cells[f"{reset}lock_count[{i}]"][1], values) << i for i in range(10))
             require(actual_count == (count if held or count == 1023 else count + 1),
                     "ADC lock counter transition/hold differs")
     for state, gate in (("IDLE", "ctrl_state.IDLE~0"), ("PWRDWN", "Selector1~1")):
         name = FSM + "ctrl_state." + state
-        ports = register(name, r"\u_reset|sys_release[1]")
+        ports = register(name, "\\" + reset + "sys_release[1]")
         require(ports["sload"] in {"gnd", "vcc"} and ports["ena"] == "vcc",
                 "ADC vendor lock load/enable differs")
         # Quartus may route the same synchronous input through D or ASDATA.
@@ -146,7 +178,7 @@ def verify_netlist(text, checks):
                 if kind == "fiftyfivenm_lcell_comb":
                     pending.extend(connections[p] for p in OUTPUTS[kind] if connections.get(p))
                 else:
-                    register(consumer, r"\u_reset|sys_release[1]")
+                    register(consumer, "\\" + reset + "sys_release[1]")
                     endpoints.add((consumer, input_port))
         expected = {(name, port)}
         if state == "PWRDWN":

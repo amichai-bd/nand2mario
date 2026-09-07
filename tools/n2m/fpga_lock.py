@@ -75,10 +75,13 @@ def parse_netlist(text, top):
 
 
 def verify(text, checks, top="clocking_proof"):
-    if top not in ("clocking_proof", "vga_proof", "ppu_proof", "intel_memory_proof"):
+    if top not in ("clocking_proof", "vga_proof", "ppu_proof", "intel_memory_proof", "controls_proof"):
         raise ValueError("unsupported PLL proof top")
     rows = re.findall(r";\s*([^;\r\n]+?)\s*;\s*No clock feeds this register's clock port\.\s*;", checks)
-    if rows != [ROW]:
+    expected_rows = [ROW]
+    if top == "controls_proof":
+        expected_rows.append("n2m_adc_backend:u_adc|n2m_adc_pll:u_pll|altpll:altpll_component|n2m_adc_pll_altpll:auto_generated|pll_lock_sync")
+    if rows != expected_rows:
         raise ValueError("unrecognized no-clock endpoint")
     text, cells, parameters, declarations, assignments, assigned_nets = parse_netlist(text, top)
 
