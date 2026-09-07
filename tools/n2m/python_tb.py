@@ -109,7 +109,7 @@ def prepare(target, attempt, root=None):
             from types import SimpleNamespace
             from sw.rom_build import build_target
             from .records import git_state
-            report = build_target(root, attempt / "software-preload",
+            report = build_target(root, attempt / "sw",
                                   SimpleNamespace(target="v05", rebuild=True), git_state(root))
             if report["status"] != "PASS":
                 raise ValueError("v05 preload software build failed")
