@@ -26,7 +26,16 @@ from n2m import generated_interfaces as abi
 async def host_play_contract(dut):
     started = time.monotonic()
     stamps = {'test_entry': datetime.now(timezone.utc).isoformat()}
+
+    def mark(phase, **values):
+        with Path('progress.jsonl').open('a') as progress:
+            progress.write(json.dumps(dict(phase=phase, wall_seconds=time.monotonic()-started,
+                                          **values))+'\n')
+            progress.flush()
+
+    mark('entry')
     image = build(ROOT, Path.cwd())
+    mark('image_built', bytes=len(image))
     received = Queue()
     entries = []
     waits = []
@@ -47,14 +56,20 @@ async def host_play_contract(dut):
                 received.put_nowait(encoded)
 
         async def guard():
+            last = time.monotonic()
             while True:
                 await Timer(1, unit='us')
                 await ReadOnly()
                 assert int(dut.fault.value) == 0, 'PLAY_OWNER_FAULT'
                 assert int(dut.dot_count.value) <= 1000000, 'PLAY_DOT_TIMEOUT'
+                if time.monotonic()-last >= 30:
+                    mark('heartbeat', simulation_ns=int(get_sim_time(unit='ns')),
+                         dot=int(dut.dot_count.value), completed_waits=len(waits))
+                    last = time.monotonic()
 
         await Timer(320, unit='ns')
         dut.reset_sys.value = 0
+        mark('reset_released')
         observation('reset', asserted=0)
         receiver = cocotb.start_soon(receive())
         watcher = cocotb.start_soon(guard())
@@ -65,6 +80,7 @@ async def host_play_contract(dut):
             assert dots == (200000 if not waits else 150000), 'PLAY_WAIT_RANGE'
             begin = int(dut.dot_count.value)
             wall = time.monotonic()
+            mark('wait_start', stage=len(waits), dot=begin, requested=dots)
             while int(dut.dot_count.value) < begin+dots:
                 await Timer(1, unit='us')
                 assert time.monotonic()-wall <= 300, 'PLAY_WAIT_WALL_BOUND'
@@ -72,18 +88,22 @@ async def host_play_contract(dut):
                         wall_seconds=time.monotonic()-wall)
             waits.append(item)
             observation('waited', **item)
+            mark('wait_complete', stage=len(waits)-1, **item)
 
         def retain(stage, item, packed, pixels):
             Path(f'frame-{stage}.2bpp').write_bytes(packed)
             grayscale = bytes(255-value*85 for value in pixels)
             Path(f'frame-{stage}.pgm').write_bytes(b'P5\n160 144\n255\n'+grayscale)
             Path(f'frame-{stage}.json').write_text(json.dumps(item, indent=2)+'\n')
+            if 'object' in item:
+                mark('image_checked', stage=stage, object=item['object'], frame=item['frame'])
 
         @bridge
         def scenario():
             return play(client, image, wait, retain, expected_epoch=2)
 
         try:
+            mark('scenario_start')
             result = await scenario()
             await Timer(1, unit='ns')
             assert int(dut.paused.value) == 1 and int(dut.epoch.value) == 2, 'PLAY_COMPLETION'
@@ -92,7 +112,9 @@ async def host_play_contract(dut):
             stamps['paused'] = datetime.now(timezone.utc).isoformat()
             Path('play.json').write_text(json.dumps(dict(result=result, waits=waits,
                 checkpoints_utc=stamps, wall_seconds=time.monotonic()-started), indent=2))
+            mark('complete')
         except Exception as error:
+            mark('failure', error=str(error))
             Path('play-error.json').write_text(json.dumps({'error': str(error), 'waits': waits}, indent=2))
             if (isinstance(error, RejectedCommand) and error.command == 'SNAPSHOT' and
                     error.status == abi.STATUS_NO_FRAME):
