@@ -204,12 +204,14 @@ def verify_netlist(text, checks, top="adc_proof"):
             "qualification_truth_cases": 2048}
 
 
-def verify(folder):
+def verify(folder, top="adc_proof"):
     result = verify_netlist((folder / "simulation/questa/design.vo").read_text(),
-                            (folder / "output/check_timing.rpt").read_text())
+                            (folder / "output/check_timing.rpt").read_text(), top)
     fit = (folder / "output/design.fit.rpt").read_text()
     summary = (folder / "output/design.fit.summary").read_text()
-    for label, expected in (("Total PLLs", 1), ("ADC blocks", 1), ("Total memory bits", 0)):
+    expected_resources = (("Total PLLs", 2), ("ADC blocks", 1)) if top == "controls_proof" else (
+        ("Total PLLs", 1), ("ADC blocks", 1), ("Total memory bits", 0))
+    for label, expected in expected_resources:
         values = re.findall(r"(?m)^" + re.escape(label) + r"\s*:\s*(\d+)\s*/", summary)
         if values != [str(expected)]:
             raise ValueError("ADC fit resource mismatch: " + label)
@@ -217,7 +219,8 @@ def verify(folder):
         rows = [row for row in fit.splitlines() if re.match(r";\s*" + pin + r"\s*;", row)]
         if len(rows) != 1 or not re.search(r";\s*" + signal + r"\s*;\s*input\s*;\s*3.3-V LVTTL\s*;", rows[0]):
             raise ValueError("ADC physical clock pin mismatch: " + pin)
-    if not re.search(r";\s*PLL mode\s*;\s*No Compensation\s*;", fit, re.I):
+    mode = r";\s*PLL mode\s*;\s*" + (r"Normal\s*;\s*" if top == "controls_proof" else "") + r"No Compensation\s*;"
+    if not re.search(mode, fit, re.I):
         raise ValueError("ADC fit compensation mode differs")
     return result
 

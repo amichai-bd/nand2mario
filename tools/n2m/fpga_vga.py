@@ -120,9 +120,11 @@ def audit(quote, *, lcd=False):
     return "\n".join(lines) + "\n"
 
 
-def verify_memory_netlist(text, *, lcd=False):
+def verify_memory_netlist(text, *, lcd=False, controls=False):
     """Check the fitted MAX 10 atoms, including clocks and one-edge read shape."""
     atoms = re.findall(r"fiftyfivenm_ram_block\s+\\(\S+)\s*\((.*?)\);", text, re.DOTALL)
+    if controls:
+        atoms = [(name, body) for name, body in atoms if name.startswith('u_bridge|')]
     if len(atoms) != 18 or len({name for name, _ in atoms}) != 18:
         raise ValueError("VGA physical RAM atom inventory differs")
     bits = {bank: [] for bank in range(3)}
@@ -172,7 +174,7 @@ def verify_memory_netlist(text, *, lcd=False):
     return evidence
 
 
-def verify(folder, *, lcd=False):
+def verify(folder, *, lcd=False, controls=False):
     output = folder / "output"
     reports = {}
     for name in required_reports(lcd=lcd):
@@ -187,10 +189,10 @@ def verify(folder, *, lcd=False):
         if line not in [f"{name} u_bridge|{name}[0]|{suffix}" for suffix in ("d", "asdata")]:
             raise ValueError("unsupported VGA first data pin")
     fit = (output / "design.fit.rpt").read_text(encoding="cp1252" if os.name == "nt" else "utf-8")
-    if [row[1] for row in rows(fit) if len(row) == 2 and row[0] == "M9Ks"] != ["18 / 182 ( 10 % )"]:
+    if [row[1] for row in rows(fit) if len(row) == 2 and row[0] == "M9Ks"] != (["27 / 182 ( 15 % )"] if controls else ["18 / 182 ( 10 % )"]):
         raise ValueError("unexpected total fitted M9K usage")
     memory = [row[1] for row in rows(fit) if len(row) == 2 and row[0] == "Total block memory bits"]
-    if memory != ["138,240 / 1,677,312 ( 8 % )"]:
+    if memory != (["181,744 / 1,677,312 ( 11 % )"] if controls else ["138,240 / 1,677,312 ( 8 % )"]):
         raise ValueError("unexpected total fitted memory bits")
     ram_rows = [row for row in rows(fit) if len(row) > 4 and row[1:4] == ["M9K", "True Dual Port", "Dual Clocks"]]
     expected_banks = {f"u_bridge|banks[{i}].u_ram|u_storage|ram|auto_generated|ALTSYNCRAM" for i in range(3)}
@@ -199,8 +201,15 @@ def verify(folder, *, lcd=False):
     for row in ram_rows:
         if len(row) != 27 or row[4:18] != ["23040", "2", "23040", "2", "yes", "no", "yes", "no", "46080", "23040", "2", "23040", "2", "46080"] or row[18] != "6" or row[19] != "None" or row[21:] != ["Don't care", "New data with NBE Read", "New data with NBE Read", "Off", "No", "No - Unknown"]:
             raise ValueError("VGA RAM dimensions, registers, M9K usage or initialization differ")
-    physical_ram = verify_memory_netlist((folder / "simulation/questa/design.vo").read_text(encoding="utf-8"), lcd=lcd)
+    netlist = (folder / "simulation/questa/design.vo").read_text(encoding="utf-8")
+    uart_ram = None
+    if controls:
+        from .fpga_controls import verify_uart_memory
+        uart_ram = verify_uart_memory(netlist, fit)
+    physical_ram = verify_memory_netlist(netlist, lcd=lcd, controls=controls)
     result = {"physical_ram": physical_ram, "ram_banks": 3, "memory_bits": 138240, "m9k_blocks": 18, "first_pins": pins, "corners": {}}
+    if uart_ram is not None:
+        result['uart_memory'] = uart_ram
     output_sources = dict(zip(PORTS, OUTPUT_REGISTERS))
     packed = [row for row in rows(fit) if len(row) > 6 and row[1:3] == ["Packed Register", "Register Packing"]
               and node(row[0]) in OUTPUT_REGISTERS]

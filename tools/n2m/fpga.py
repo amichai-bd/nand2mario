@@ -250,6 +250,8 @@ def timing_evidence(folder, target):
             raise ValueError(f"timing failure: {name}, slack={slack}, TNS={tns}")
         slacks[name] = slack
     for corner in ("Slow 1200mV 85C", "Slow 1200mV 0C", "Fast 1200mV 0C"):
+        if target["top"] == "controls_proof" and f"{corner} Model Minimum Pulse Width 'u_adc|u_pll|altpll_component|auto_generated|pll1|clk[0]'" not in slacks:
+            raise ValueError("missing ADC PLL pulse-width timing")
         for check in (("Setup", "Hold", "Recovery", "Removal", "Minimum Pulse Width") if "pll" in target else ("Setup", "Hold", "Minimum Pulse Width")):
             if not any(name.startswith(f"{corner} Model {check} '") for name in slacks):
                 raise ValueError(f"missing timing corner/check: {corner} {check}")
@@ -270,21 +272,23 @@ def timing_evidence(folder, target):
     if not TIMING_CHECKS.issubset(dict(rows)) or len(dict(rows)) != len(rows):
         raise ValueError("missing structural timing checks")
     lock_event = None
+    expected_lock_events = 2 if target["top"] == "controls_proof" else 1
     if "pll" in target:
-        if dict(rows).get("no_clock") != "1":
+        if dict(rows).get("no_clock") != str(expected_lock_events):
             raise ValueError("vendor lock event row missing or extra no-clock endpoints")
         lock_event = fpga_pll.verify_lock_event(folder, checks, target["top"])
         fpga_pll.verify_fit(folder, target)
     adc_evidence = None
-    if target["top"] == "adc_proof":
-        adc_evidence = fpga_adc.verify(folder)
-        lock_event = adc_evidence["lock_event"]
-    vga_evidence = fpga_vga.verify(folder, lcd=target["top"] == "ppu_proof") if target.get("top") in ("vga_proof", "ppu_proof", "controls_proof") else None
+    if target["top"] in ("adc_proof", "controls_proof"):
+        adc_evidence = fpga_adc.verify(folder, target["top"])
+        if target["top"] == "adc_proof":
+            lock_event = adc_evidence["lock_event"]
+    vga_evidence = fpga_vga.verify(folder, lcd=target["top"] == "ppu_proof", controls=target["top"] == "controls_proof") if target.get("top") in ("vga_proof", "ppu_proof", "controls_proof") else None
     memory_evidence = fpga_intel_memory.verify(folder) if target.get("top") == "intel_memory_proof" else None
     if target.get("top") == "n2m_memory_stores":
         memory_evidence = fpga_memory_stores.verify(folder)
     for name, count in rows:
-        if name == "no_clock" and int(count) == 1 and ("pll" in target or adc_evidence is not None):
+        if name == "no_clock" and int(count) == expected_lock_events and ("pll" in target or adc_evidence is not None):
             continue
         if int(count) and not (name == "virtual_clock" and int(count) == 1 and "No virtual clock was found." in checks):
             raise ValueError(f"structural timing failure: {name}={count}")

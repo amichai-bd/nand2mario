@@ -6,6 +6,56 @@ CHAINS = tuple((f"button{i}", f"buttons_n[{i}]", f"u_physical|u_buttons|button_m
     ("uart", "uart_rx", "u_uart|u_serial_rx|rx_meta", "u_uart|u_serial_rx|rx_sync"),)
 
 
+def verify_uart_memory(text, fit):
+    """Account for the six existing UART stores alongside the three VGA banks."""
+    from .fpga_lock import parse_netlist
+    _, cells, params, *_ = parse_netlist(text, 'controls_proof')
+    shapes = {'u_uart|u_packet_rx|stores|encoded': (270, 8, 1),
+              'u_uart|u_packet_rx|stores|decoded': (268, 8, 1),
+              'u_uart|u_commands|u_load|u_presence|u_presence': (32768, 1, 4)}
+    shapes.update({f'u_uart|u_exchange|stores|banks[{i}].memory': (268, 8, 1) for i in range(3)})
+    suffix = '|ram|auto_generated|'
+    expected = {owner + suffix + f'ram_block1a{i}': (depth, width)
+                for owner, (depth, width, count) in shapes.items() for i in range(count)}
+    actual = {n for n, (kind, _) in cells.items() if kind == 'fiftyfivenm_ram_block' and not n.startswith('u_bridge|')}
+    if actual != set(expected):
+        raise ValueError('combined UART RAM atom inventory differs')
+    for name, (depth, width) in expected.items():
+        p, ports = params[name], cells[name][1]
+        required = {'operation_mode': '"bidir_dual_port"', 'ram_block_type': '"M9K"',
+                    'power_up_uninitialized': '"true"', 'mixed_port_feed_through_mode': '"old"',
+                    'port_b_address_clock': '"clock0"', 'port_b_read_enable_clock': '"clock0"'}
+        for side in ('a', 'b'):
+            required.update({f'port_{side}_logical_ram_depth': str(depth), f'port_{side}_logical_ram_width': str(width),
+                             f'port_{side}_data_out_clock': '"none"', f'port_{side}_address_clear': '"none"',
+                             f'port_{side}_data_out_clear': '"none"', f'port_{side}_first_bit_number': '0',
+                             f'port_{side}_data_width': '1' if width == 1 else '18',
+                             f'port_{side}_address_width': '13' if width == 1 else '9',
+                             f'port_{side}_read_during_write_mode': '"new_data_with_nbe_read"'})
+        if any(p.get(k) != v for k, v in required.items()) or any(k.startswith(('mem_init', 'init_file')) for k in p):
+            raise ValueError('combined UART RAM dimensions/latency/initialization differ')
+        required_ports = {'clk0': r'\clk_sys~inputclkctrl_outclk', 'clk1': 'gnd', 'clr0': 'gnd', 'clr1': 'gnd',
+                          'portare': 'gnd', 'portbwe': 'gnd', 'portaaddrstall': 'gnd', 'portbaddrstall': 'gnd',
+                          'portabyteenamasks': "1'b1", 'portbbyteenamasks': "1'b1"}
+        if any(ports.get(k) != v for k, v in required_ports.items()):
+            raise ValueError('combined UART RAM clock/reset/port role differs')
+    rows = [r for r in fpga_vga.rows(fit) if len(r) > 4 and r[1:4] == ['M9K', 'True Dual Port', 'Single Clock']]
+    if len(rows) != len(shapes):
+        raise ValueError('combined UART fitted store count differs')
+    seen = set()
+    for row in rows:
+        owner = fpga_vga.node(row[0]).removesuffix(suffix + 'ALTSYNCRAM')
+        if owner not in shapes or owner in seen:
+            raise ValueError('combined UART fitted owner differs')
+        seen.add(owner)
+        depth, width, count = shapes[owner]
+        d, w, bits = str(depth), str(width), str(depth * width)
+        if (len(row) != 27 or row[4:19] != [d, w, d, w, 'yes', 'no', 'yes', 'no', bits, d, w, d, w, bits, str(count)]
+                or row[19] != 'None' or row[21:] != ['Old data', 'New data with NBE Read', 'New data with NBE Read', 'Off', 'No', 'No - Unknown']):
+            raise ValueError('combined UART fitted shape/ports differ')
+    return {'stores': len(shapes), 'atoms': len(expected), 'bits': sum(d*w for d,w,_ in shapes.values())}
+
+
 def constraints(quote):
     lines = []
     for name, port, first, second in CHAINS:
