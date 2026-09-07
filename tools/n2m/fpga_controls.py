@@ -54,21 +54,72 @@ def verify(folder):
                 result['paths'][report.name] = fpga_vga.number(rows[0][0])
     text = (folder / 'simulation/questa/design.vo').read_text()
     _, cells, params, declarations, rhs, lhs = parse_netlist(text, 'controls_proof')
-    for name, _, first, second in CHAINS:
+    def sinks(net):
+        token = re.compile(r'(?<![A-Za-z0-9_$\\|~])' + re.escape(net) + r'(?![A-Za-z0-9_$|~\[])')
+        if any(token.search(value) for value in rhs + lhs):
+            raise ValueError('control crossing has an unexpected alias')
+        return {(cell, port) for cell, (kind, ports) in cells.items()
+                for port, value in ports.items() if port not in OUTPUTS[kind] and token.search(value)}
+
+    def selected(register):
+        ports = cells[register][1]
+        if (ports.get('ena') != 'vcc' or ports.get('aload') != 'gnd'
+                or ports.get('sclr') != 'gnd' or ports.get('prn') != 'vcc'
+                or ports.get('devclrn') != 'devclrn' or ports.get('devpor') != 'devpor'
+                or ports.get('clk') != r'\clk_sys~inputclkctrl_outclk'
+                or ports.get('clrn') != r'\u_clocking|u_reset|sys_release[1]~clkctrl_outclk'
+                or params.get(register) != {'is_wysiwyg': '"true"', 'power_up': '"low"'}):
+            raise ValueError('control synchronizer clock/reset/load/enable differs')
+        port = {'gnd': 'd', 'vcc': 'asdata'}.get(ports.get('sload'))
+        if port is None:
+            raise ValueError('control synchronizer has dynamic selected input')
+        return port
+
+    def path(source, register, inverted):
+        """Accept one direct edge or one fully checked unary LUT, without fanout."""
+        port = selected(register)
+        target = cells[register][1][port]
+        if target == source:
+            if inverted or sinks(source) != {(register, port)}:
+                raise ValueError('control direct path polarity or fanout differs')
+            return []
+        drivers = [(n, p) for n, (kind, p) in cells.items()
+                   if kind == 'fiftyfivenm_lcell_comb' and p.get('combout') == target]
+        if len(drivers) != 1:
+            raise ValueError('control path does not have one unary LUT')
+        cell, ports = drivers[0]
+        mode = params.get(cell, {})
+        if (set(mode) != {'lut_mask', 'sum_lutc_input'}
+                or mode['sum_lutc_input'] != '"datac"'
+                or not re.fullmatch(r"16'h[0-9a-fA-F]{4}", mode['lut_mask'])
+                or ports.get('cin') != 'gnd' or ports.get('cout') != ''):
+            raise ValueError('control unary LUT mode differs')
+        inputs = [ports.get(p) for p in ('dataa', 'datab', 'datac', 'datad')]
+        if source not in inputs or not set(inputs) <= {source, 'gnd', 'vcc'}:
+            raise ValueError('control LUT has unrelated inputs')
+        mask = int(mode['lut_mask'][4:], 16)
+        for bit in (0, 1):
+            values = {source: bit, 'gnd': 0, 'vcc': 1}
+            index = sum(values[value] << i for i, value in enumerate(inputs))
+            if ((mask >> index) & 1) != (bit ^ inverted):
+                raise ValueError('control unary LUT polarity differs')
+        expected = {(cell, p) for p, value in ports.items() if value == source}
+        if sinks(source) != expected or sinks(target) != {(register, port)}:
+            raise ValueError('control unary path has bypass fanout')
+        return [cell]
+
+    for name, external, first, second in CHAINS:
         if any(c not in cells or cells[c][0] != 'dffeas' for c in (first, second)):
             raise ValueError('missing control synchronizer register')
-        first_ports, second_ports = cells[first][1], cells[second][1]
-        q = first_ports.get('q')
-        # Quartus may select either D or ASDATA, but no dynamic parallel load.
-        selected = {'gnd': 'd', 'vcc': 'asdata'}.get(second_ports.get('sload'))
-        if (not q or selected is None or second_ports.get(selected) != q
-                or second_ports.get('ena') != 'vcc'
-                or first_ports.get('clk') != second_ports.get('clk')):
-            raise ValueError('control synchronizer selected input or enable differs')
-        token = re.compile(r'(?<![A-Za-z0-9_$])' + re.escape(q) + r'(?![A-Za-z0-9_$])')
-        sinks = [(cell, port) for cell, (kind, ports) in cells.items()
-                 for port, value in ports.items() if port not in OUTPUTS[kind] and token.search(value)]
-        if sinks != [(second, selected)] or any(token.search(value) for value in rhs + lhs):
-            raise ValueError('control first stage has an unexpected sink or alias')
-        result['first_stage_sinks'][name] = [second, selected]
+        buffer = external + '~input'
+        if cells.get(buffer, (None,))[0] != 'fiftyfivenm_io_ibuf':
+            raise ValueError('control external input buffer missing')
+        ports = cells[buffer][1]
+        if (ports != {'i': external, 'ibar': 'gnd', 'nsleep': 'vcc', 'o': '\\' + external + '~input_o'}
+                or sinks(external) != {(buffer, 'i')}):
+            raise ValueError('control external port has bypass or unexpected buffer')
+        first_path = path(ports['o'], first, True)
+        second_path = path(cells[first][1]['q'], second, False)
+        result['first_stage_sinks'][name] = {'external_path': first_path,
+                                            'second_path': second_path, 'capture': second}
     return result
