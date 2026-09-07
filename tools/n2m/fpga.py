@@ -146,7 +146,7 @@ def checked_constraints(target):
     return text
 
 
-def diagnostics(output):
+def diagnostics(output, explained=()):
     classified = []
     for line in output.splitlines():
         line = line.strip()
@@ -154,7 +154,10 @@ def diagnostics(output):
             classified.append({"code": "TBBmalloc", "text": line})
         elif re.match(r"(?:Critical Warning|Warning|Error)(?:\s|:|\()", line, re.I):
             match = re.fullmatch(r"Warning \((\d+)\): (.*)", line)
-            if match and match[1] in CLASSIFIED and re.fullmatch(CLASSIFIED[match[1]], match[2]):
+            known = next((item for item in explained if item["text"] == line), None)
+            if known is not None:
+                classified.append(known)
+            elif match and match[1] in CLASSIFIED and re.fullmatch(CLASSIFIED[match[1]], match[2]):
                 classified.append({"code": match[1], "text": line})
             else:
                 raise ValueError(f"unexplained Quartus diagnostic: {line}")
@@ -187,7 +190,10 @@ def execute(argv, folder, log, timeout, record, build):
         raise RuntimeError(f"Quartus timeout after {timeout}s; see {log.name}")
     if process.returncode:
         raise RuntimeError(f"Quartus exit {process.returncode}; see {log.name}")
-    record["classified_diagnostics"].extend(diagnostics(text))
+    explained = ()
+    if log.name == "compile.log" and record.get("definition", {}).get("top") == "adc_proof":
+        explained = fpga_adc.explained_diagnostics(text, folder, record["tools"]["adc"])
+    record["classified_diagnostics"].extend(diagnostics(text, explained))
     return text
 
 

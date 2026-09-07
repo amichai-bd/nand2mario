@@ -30,12 +30,20 @@ VGA pins and the pixel clock remain owned by the existing display contract.
 ## Acquisition and filtering
 
 Use the installed Intel Modular ADC control core only, ADC1, internal 2.5 V
-reference, 125 ksample/s, and a dedicated ALTPLL c0 at10 MHz from N5. The
+reference, 125 ksample/s, and a dedicated ALTPLL c0 at10 MHz from N5 in
+no-compensation mode. This clock feeds the ADC's dedicated input; it need not
+align a fabric clock or external output to the reference phase. The
 control core's command and response interfaces run at50 MHz `clk_sys`; its
 hard-block crossing uses the vendor handshake and corresponding scoped SDC.
 The generated PLL, vendor HDL, atom models, and constraints remain build
 artifacts with recorded source hashes. There is no alternative behavioral ADC
 implementation in the product.
+
+The two-channel proof explains only the pinned Intel control core's unused
+dual-ADC next-state variable and twelve outputs of its unused channel17
+temperature-averaging FIFO. Its diagnostic checker requires the complete
+15-message inventory and exact vendor source hashes; all other diagnostics
+retain the shared builder's strict treatment. The raw messages remain evidence.
 
 The producer requests X then Y, holds each command until accepted, and
 publishes only complete ordered pairs. Start a pair every1 ms when the prior

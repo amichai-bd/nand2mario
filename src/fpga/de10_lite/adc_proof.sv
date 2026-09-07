@@ -7,7 +7,7 @@ module adc_proof (
     input logic board_reset_n,
     output logic ready,
     output logic response_valid,
-    output logic [4:0] response_channel,
+    output logic [1:0] response_channel,
     output logic [11:0] response_data
 );
     logic clk_adc;
@@ -21,6 +21,7 @@ module adc_proof (
     logic [4:0] channel_next;
     logic waiting_q;
     logic waiting_next;
+    logic [4:0] adc_response_channel;
 
     n2m_reset_control u_reset (
         .clk_sys(clk_sys), .clk_pix(clk_adc),
@@ -29,6 +30,7 @@ module adc_proof (
         .reset_sys(reset_sys), .reset_pix(reset_adc)
     );
     assign command_valid = !reset_sys && !waiting_q;
+    assign response_channel = adc_response_channel[1:0];
     always_comb begin
         channel_next = channel_q;
         waiting_next = waiting_q;
@@ -46,7 +48,7 @@ module adc_proof (
         .pll_areset(pll_areset), .reset_sys(reset_sys),
         .command_valid(command_valid), .command_channel(channel_q),
         .command_ready(command_ready), .response_valid(response_valid),
-        .response_channel(response_channel), .response_data(response_data),
+        .response_channel(adc_response_channel), .response_data(response_data),
         .clk_adc(clk_adc), .pll_locked(pll_locked)
     );
 endmodule
