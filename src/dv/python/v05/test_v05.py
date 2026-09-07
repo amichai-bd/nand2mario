@@ -46,7 +46,7 @@ def wave_windows(complete, *, short=False):
 async def run(dut, *, complete, short=False):
     entered = time.monotonic()
     dut._log.info("V05_PHASE entry")
-    report = build_target(ROOT, Path.cwd() / 'software',
+    report = build_target(ROOT, Path.cwd() / ('run' if short else 'software'),
                           SimpleNamespace(target='v05', rebuild=True), git_state(ROOT))
     dut._log.info("V05_PHASE software_built wall=%.3f", time.monotonic()-entered)
     assert report['status'] == 'PASS', 'V05_SOFTWARE_BUILD'
