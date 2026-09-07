@@ -7,7 +7,7 @@ from types import SimpleNamespace
 import cocotb
 from cocotb.queue import Queue
 from cocotb.task import bridge
-from cocotb.triggers import FallingEdge, ReadOnly, Timer, ValueChange
+from cocotb.triggers import FallingEdge, First, ReadOnly, Timer, ValueChange
 from cocotb.utils import get_sim_time
 
 ROOT = Path(__file__).resolve().parents[4]
@@ -78,6 +78,9 @@ async def run(dut, *, complete):
                 eligible, abort, start = raw & 1, (raw >> 1) & 1, (raw >> 2) & 1
                 shade, y, x = (raw >> 3) & 3, (raw >> 5) & 255, (raw >> 13) & 255
                 epoch, dot = (raw >> 21) & 0xffffffff, raw >> 53
+                assert run_time is not None, 'V05_PIXEL_BEFORE_RUN'
+                elapsed = (int(get_sim_time(unit='ps')) - run_time) // 40000
+                assert dot == elapsed * 65536 // 390625, 'V05_PIXEL_ACTIVE_EDGE'
                 frame, index = divmod(monitor.pixels, 23040)
                 assert (epoch, start, abort, eligible) == (2, int(index == 0), 0, int(frame != 0)), 'V05_SOURCE_FLAGS'
                 monitor.pixel(frame, x, y, dot, shade)
@@ -97,6 +100,15 @@ async def run(dut, *, complete):
         async def receiver():
             async for encoded in frames(dut):
                 received.put_nowait(encoded)
+
+        async def continuity():
+            while True:
+                await First(*(ValueChange(signal) for signal in (dut.reset_sys, dut.core_reset, dut.paused, dut.fault)))
+                await ReadOnly()
+                if armed:
+                    assert not known(dut.reset_sys) and not known(dut.core_reset) and not known(dut.fault), 'V05_CONTINUITY'
+                    if known(dut.paused):
+                        assert known(dut.dot_count) >= bound, 'V05_EARLY_PAUSE'
 
         async def time_progress():
             nonlocal run_time
@@ -118,7 +130,7 @@ async def run(dut, *, complete):
                     task.result()
 
         await Timer(1, unit='ns')
-        tasks = [cocotb.start_soon(fn()) for fn in (records, writes, source, inputs, receiver, time_progress)]
+        tasks = [cocotb.start_soon(fn()) for fn in (records, writes, source, inputs, receiver, continuity, time_progress)]
         await Timer(320, unit='ns')
         dut.reset_sys.value = 0
         dut.reset_pix.value = 0
