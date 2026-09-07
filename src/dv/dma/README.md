@@ -45,8 +45,8 @@ The HALT fixture checks the actual service output. The terminal fixture below su
 
 
 The dma-terminal fixture uses the actual object scanner and Intel OAM store.
-Only object39 is admitted before DMA. Synthetic twelve-clock dots exercise
-the phase2 pair79 response and captured attributes at12/24/36 clocks after
+Only object39 is admitted before DMA. Synthetic five/six-clock dots exercise
+the phase2 pair79 response and captured attributes at5/11/17 clocks after
 the final accepted byte, with old159=3C and new159=A5. A separately tagged
 pair78 probe rejects broadcasting the pending pair. Actual core reset cancels
 a later pending byte. This is a consumer-boundary fixture, not full PPU timing
@@ -71,13 +71,13 @@ fixture does not implement analog oscillator restart qualification.
 
 Four pause targets request host pause in each CPU phase. They require one
 accepting dot, then frozen phase/dots/transfer count for200 system clocks.
-Accepted writes may drain; after47 clocks every public effect output must be
+Accepted writes may drain; after23 clocks every public effect output must be
 quiet. Resume completes full byte/readback checks. The pause-fault target forces
 the actual raw write control during the held interval and requires
 DMA_PAUSE_SERVICE_DRAIN.
 
 
-The access fixture drives a legal twelve-clock-dot CPU boundary around the
+The access fixture drives a shortest-interval five/six-clock-dot CPU boundary around the
 actual DMA and Intel stores. Seven source cases cover C0, ROM00, VRAM80 with
 both write-gate states, absent A0, and E0/FE mirrors. It checks1,120 destination
 bytes and44 reads: accessible M1, conflicting prepared data, RAM AND feedback,
@@ -92,11 +92,11 @@ DMA_ACCESS_READ with the exact address and values.
 The restart fixture supplies four literal CPU-boundary timelines to the actual
 DMA and Intel stores: different-page restart at offset20, consecutive FF46
 triggers, a mature trigger at old159, and a new trigger arriving at old159.
-It checks985 physical writes at exactly25 system clocks after their accepted
+It checks985 physical writes at exactly13 system clocks after their accepted
 T4s and640 final readback bytes. The new trigger on159 is not yet mature:
 completion deactivates ownership, M1 writes no old byte, then new offset0
 follows. The early target injects a valid physical write one clock early and
-requires the independent expected25/actual24 timing failure.
+requires the independent expected13/actual12 timing failure.
 
 The reset fixture drives both global and core reset in four CPU phases during
 pending start, pending transfer, pending restart and corruption service. Its

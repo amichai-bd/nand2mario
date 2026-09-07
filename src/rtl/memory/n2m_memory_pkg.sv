@@ -1,5 +1,16 @@
 `default_nettype none
 package n2m_memory_pkg;
+    // One transaction on the authoritative even/odd OAM A banks.
+    typedef struct packed {
+        logic read;
+        logic [1:0] write_enable;
+        logic [6:0] pair;
+        logic [15:0] data;
+    } memory_oam_request_t;
+    typedef struct packed {
+        logic valid;
+        logic [15:0] data;
+    } memory_oam_response_t;
     // Internal store selector, not a CPU/host address or a wire ABI.
     typedef enum logic [2:0] {
         STORE_ROM = 3'd0,

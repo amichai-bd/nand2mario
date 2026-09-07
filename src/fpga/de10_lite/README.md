@@ -25,12 +25,12 @@ component fit/timing, not a complete system or physical monitor result. The
 owns the additional LCD-control crossing and RGB-path evidence.
 
 `v05` places the actual UART/CPU/memory/PPU/JOYP/interrupt/snapshot/VGA
-composition. P11 and N14 are proof clock inputs at 50 MHz and 25.2 MHz;
-the N14 period is an external-source assumption, not the board oscillator's
-frequency. This target must not be programmed as a board image. Qualified
-reset inputs and UART controls are virtual ports. No PLL relationship is
-assumed. The scoped adapter retains the six bridge synchronizers, exact
-mailbox bounds and VGA output reports under `u_system`; reset pins remain
-timed. A diagnostic fit is not full acceptance until all composed memory,
+composition. P11 supplies the 50 MHz reference to the real parallel system
+25 MHz and pixel25.2 MHz PLLs. Reset bootstrap uses the reference; release is
+qualified in each generated domain. UART/control observations remain virtual,
+so this target must not be programmed as a board image. The scoped adapter
+retains the six bridge synchronizers, exact mailbox bounds and VGA output
+reports under `u_system`. Only named asynchronous first stages are excepted;
+reset consumers remain timed. A diagnostic fit is not full acceptance until all composed memory,
 clock, reset and CDC evidence is checked against the
 [system boundary](../../../wiki/src/rtl/system/MAS_system.md).

@@ -21,7 +21,12 @@ nonzero and match their registered reason. A watchdog bounds hangs. Retained
 logs and VCD waves include transitions around long qualification/count windows;
 checking continues while wave dumping is disabled in their middle.
 
-The separate FPGA proof uses the actual generated vendor PLL and timing netlist.
+The `timebase25` target adds an independent absolute-rate oracle using
+4,194,304 / 25,000,000 rather than the reduced RTL fraction. It covers both
+five/six-edge dot gaps and 23/24-edge M-cycles over two complete periods;
+`timebase25-bad-numerator` changes the actual accumulator and must fail.
+
+The separate FPGA proof uses both actual generated vendor PLLs and the timing netlist.
 Virtual control/observation pins isolate this fit from board programming and
 physical acceptance. Its nominal and upper-reference evidence must meet the
 shared clock contract before issue completion.

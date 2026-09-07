@@ -1,6 +1,7 @@
 `timescale 1ns/1ps
 module tb_clocking;
     logic clk_sys;
+    logic clk_reference;
     logic clk_pix;
     logic pixel_running;
     logic board_reset_n;
@@ -8,14 +9,15 @@ module tb_clocking;
     logic core_reset;
     logic pause_request;
     logic pll_areset, ready, reset_sys, reset_pix, gb_tick, paused;
-    always #10 clk_sys = ~clk_sys;
+    always #10 clk_reference = ~clk_reference;
+    always #20 clk_sys = ~clk_sys;
     // Independent destination edges exercise reset control, not a vendor PLL model.
     always #19 if (pixel_running) clk_pix = ~clk_pix; else clk_pix = 0;
-    n2m_reset_control u_reset (.clk_sys, .clk_pix, .board_reset_n, .pll_locked,
+    n2m_reset_control u_reset (.clk_reference, .clk_sys, .clk_pix, .board_reset_n, .pll_locked,
                               .pll_areset, .ready, .reset_sys, .reset_pix);
     n2m_timebase u_tick (.clk_sys, .reset_sys, .core_reset, .pause_request, .gb_tick, .paused);
     logic [18:0] bad_sum;
-    assign bad_sum = u_tick.phase + 19'd32769;
+    assign bad_sum = u_tick.phase + 19'd65537;
     bit corrupt_numerator, corrupt_drop, corrupt_reset;
     string mode;
     longint unsigned active_edges;
@@ -26,7 +28,7 @@ module tb_clocking;
     bit expected_running;
     bit expected_carry;
     bit observed_carry;
-    int gaps11, gaps12;
+    int gaps5, gaps6;
 
     // Cumulative integer arithmetic is independent of the DUT accumulator.
     always @(posedge clk_sys) begin
@@ -38,27 +40,27 @@ module tb_clocking;
             if (gb_tick !== 0) $fatal(1, "TIMEBASE_RESET_TICK");
         end else begin
             expected_carry = expected_running &&
-                (((active_edges + 1) * 32768 / 390625) != (active_edges * 32768 / 390625));
-            observed_carry = gb_tick && !(corrupt_drop && active_edges == 11);
+                (((active_edges + 1) * 65536 / 390625) != (active_edges * 65536 / 390625));
+            observed_carry = gb_tick && !(corrupt_drop && active_edges == 5);
             if (expected_running) begin
                 active_edges++;
                 total_checked_edges++;
             end
             if (observed_carry) seen_ticks++;
-            expected_ticks = active_edges * 32768 / 390625;
+            expected_ticks = active_edges * 65536 / 390625;
             if (observed_carry !== expected_carry || seen_ticks != expected_ticks) begin
                 $dumpon;
                 $fatal(1, "TIMEBASE_MISMATCH mode=%s edge=%0d expected=%0d actual=%0d", mode, active_edges, expected_ticks, seen_ticks);
             end
             if (expected_carry) begin
                 if (previous_tick != 0) begin
-                    if (active_edges - previous_tick == 11) gaps11++;
-                    else if (active_edges - previous_tick == 12) gaps12++;
+                    if (active_edges - previous_tick == 5) gaps5++;
+                    else if (active_edges - previous_tick == 6) gaps6++;
                     else $fatal(1, "TIMEBASE_GAP");
                 end
                 previous_tick = active_edges;
                 // ceil(tick * denominator / numerator) is the independent jitter bound.
-                if (active_edges != (seen_ticks * 390625 + 32767) / 32768)
+                if (active_edges != (seen_ticks * 390625 + 65535) / 65536)
                     $fatal(1, "TIMEBASE_JITTER");
             end
             if (!expected_running && !pause_request) expected_running = 1;
@@ -78,12 +80,12 @@ module tb_clocking;
     task automatic qualify_board(input int remaining);
         int i;
         for (i = 1; i < remaining; i++) begin
-            step;
+            @(posedge clk_reference); #2;
             if (i == 32) $dumpoff;
             if (i == remaining - 32) $dumpon;
             reset_asserted;
         end
-        step;
+        @(posedge clk_reference); #2;
         if (pll_areset !== 0 || ready !== 0 || reset_sys !== 1 || reset_pix !== 1)
             $fatal(1, "RESET_QUALIFICATION_EDGE");
     endtask
@@ -105,6 +107,7 @@ module tb_clocking;
 
     initial begin
         clk_sys = 0;
+        clk_reference = 0;
         clk_pix = 0;
         pixel_running = 0;
         board_reset_n = 1;
@@ -117,8 +120,8 @@ module tb_clocking;
         total_checked_edges = 0;
         previous_tick = 0;
         expected_running = 0;
-        gaps11 = 0;
-        gaps12 = 0;
+        gaps5 = 0;
+        gaps6 = 0;
         $dumpfile("clocking.vcd"); $dumpvars(0, tb_clocking);
         corrupt_numerator = $test$plusargs("bad_numerator");
         corrupt_drop = $test$plusargs("drop_tick");
@@ -145,7 +148,7 @@ module tb_clocking;
         repeat (780500) step;
         $dumpon;
         repeat (200) step;
-        if (active_edges < 781250 || seen_ticks < 65536 || gaps11 == 0 || gaps12 == 0)
+        if (active_edges < 781250 || seen_ticks < 65536 || gaps5 == 0 || gaps6 == 0)
             $fatal(1, "TIMEBASE_PERIOD_COVERAGE");
         // Pause requested between dots completes the current dot before acknowledging.
         @(negedge clk_sys); pause_request = 1;

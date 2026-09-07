@@ -60,7 +60,8 @@ This is a bounded DV composition, not a new full board implementation.
 
 ## Live transport and completion
 
-The target uses an eight-system-edge serial bit period for bounded simulation;
+The target uses a 25 MHz system clock and an eight-system-edge serial bit
+period (3.125 Mbaud) for bounded simulation;
 the real receiver/transmitter and packet/command/load owners remain active.
 A builder-owned Python peer runs the product Client. A target-local Tcl driver
 bridges encoded request bytes into a DV serial transmitter and returns bytes
@@ -70,7 +71,9 @@ or writes product storage. Its loopback channel is not a physical serial port.
 Peer readiness has a five-second wall bound. Reply waiting and simulation
 progress use a120-second wall tolerance, checked between simulation chunks.
 The Client's simulated response deadline is unchanged. The target's outer
-runtime bound is600 seconds. The
+runtime bound is600 seconds. Its simulated watchdog is500 ms, preserving the
+12.5-million-system-edge budget while the slower test UART loads and reads back
+the complete image. Emulated instruction and frame bounds below are unchanged. The
 builder reaps the peer after success, simulator failure or timeout, retaining
 both outcomes. Success requires the live Client's successful exit and the DUT
 checker signature. The Client checks response deadlines in simulation time.

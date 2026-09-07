@@ -34,6 +34,7 @@ module tb_uart_snapshot;
     logic [63:0] observed_input_dot;
     logic [7:0] prior_buttons;
     n2m_uart #(.CLOCK_HZ(100000),.BAUD(12500)) dut (
+        .input_source_observe(),
         .clk_sys(clk_sys),.reset_sys(reset_sys),.uart_rx(uart_rx),.uart_tx(uart_tx),
         .build_id(128'hfedcba98765432100123456789abcdef),.gb_tick(gb_tick),.paused(paused),
         .core_initialized(core_initialized),.instruction_complete(instruction_complete),

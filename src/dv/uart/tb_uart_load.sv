@@ -16,7 +16,7 @@ module tb_uart_load;
     integer writes, reads, endings, trace;
     bit crc_fault, presence_fault, checking_crc, checking_presence;
     n2m_uart_load dut (.*);
-    n2m_memory_stores u_memory (
+    n2m_memory_stores u_memory (.oam_request('0), .oam_response(),
         .clk_sys(clk_sys), .reset_sys(reset_sys), .core_reset(1'b0), .init_done(init_done),
         .access_read(1'b0), .access_write(1'b0), .access_store(n2m_memory_pkg::STORE_ROM),
         .access_address(15'd0), .access_wdata(8'd0), .access_rdata(unused_access), .access_valid(unused_access_valid),

@@ -4,6 +4,9 @@ module tb_dma_io;
     import n2m_interfaces_pkg::*;
     import n2m_cpu_pkg::*;
     import n2m_memory_pkg::*;
+    integer lane;
+    memory_oam_request_t oam_request;
+    memory_oam_response_t oam_response;
     logic clk_sys, reset_sys, core_reset, init_done, memory_init_done, gb_tick;
     logic [1:0] cpu_phase;
     logic cpu_halted, cpu_stopped, request_valid, bus_commit;
@@ -48,7 +51,7 @@ module tb_dma_io;
     bit observe, seen_start, event_case, bad_irq;
     assign init_done=memory_init_done && !setup;
     n2m_dma dut (.*);
-    n2m_memory_stores stores (.clk_sys(clk_sys), .reset_sys(reset_sys), .core_reset(core_reset),
+    n2m_memory_stores stores (.oam_request, .oam_response, .clk_sys(clk_sys), .reset_sys(reset_sys), .core_reset(core_reset),
         .init_done(memory_init_done), .access_read(setup ? setup_read : access_read),
         .access_write(setup ? setup_write : access_write), .access_store(setup ? setup_store : access_store),
         .access_address(setup ? setup_address : access_address), .access_wdata(setup ? setup_data : access_wdata),
@@ -82,12 +85,12 @@ module tb_dma_io;
         owner_reply=expected_read;
         repeat(4)begin
             if(event_case && cpu_phase==2)source_event=5'h04;
-            repeat(11)@(negedge clk_sys);
+            repeat(cpu_phase==0 ? 4 : 5)@(negedge clk_sys);
             if(event_case && cpu_phase==2)begin
                 if(bad_irq)force if_observe=5'h00;
                 #1;
-                if(ie_observe!==8'h1f || if_observe!==5'h04 || !access_read || access_store!=STORE_OAM)
-                    $fatal(1,"DMA_IO_IRQ_PRE_T3 expected_ie=1f actual_ie=%02x expected_if=04 actual_if=%02x raw_read=%0d",ie_observe,if_observe,access_read);
+                if(ie_observe!==8'h1f || if_observe!==5'h04 || !oam_request.read)
+                    $fatal(1,"DMA_IO_IRQ_PRE_T3 expected_ie=1f actual_ie=%02x expected_if=04 actual_if=%02x oam_read=%0d",ie_observe,if_observe,oam_request.read);
                 t3_checks=t3_checks+1;
             end
             gb_tick=1;bus_commit=valid_request && cpu_phase==3;address_effect_sample=bus_commit;
@@ -117,6 +120,11 @@ module tb_dma_io;
             if(access_write && access_store==STORE_OAM)begin
                 if(access_address!==15'(writes) || access_wdata!==8'h7b)
                     $fatal(1,"DMA_IO_TRANSFER index=%0d actual=%0d:%02x",writes,access_address,access_wdata);
+                writes=writes+1;
+            end
+            for (lane=0; lane<2; lane=lane+1) if (oam_request.write_enable[lane]) begin
+                if((15'(oam_request.pair)*15'd2+15'(lane))!==15'(writes) || oam_request.data[8*lane +: 8]!==8'h7b)
+                    $fatal(1,"DMA_IO_TRANSFER index=%0d actual=%0d:%02x",writes,(15'(oam_request.pair)*15'd2+15'(lane)),oam_request.data[8*lane +: 8]);
                 writes=writes+1;
             end
         end

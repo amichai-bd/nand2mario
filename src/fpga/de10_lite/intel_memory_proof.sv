@@ -4,7 +4,7 @@
 // Virtual request/observation ports retain all four RAM configurations for fit.
 // This is a resource/timing proof, not a physical board acceptance image.
 module intel_memory_proof (
-    input var logic clk_sys,
+    input var logic clk_reference,
     input var logic board_reset_n,
     input var logic a_read,
     input var logic a_write,
@@ -26,10 +26,11 @@ module intel_memory_proof (
     output logic [2:0] b_valid,
     output logic frame_valid
 );
+    logic clk_sys;
     logic clk_pix, reset_sys, reset_pix;
     logic frame_read;
     logic [14:0] frame_address, frame_next_address;
-    n2m_clocking u_clocking (.clk_sys, .board_reset_n, .clk_pix, .reset_sys, .reset_pix, .ready);
+    n2m_clocking u_clocking (.clk_reference, .clk_sys, .board_reset_n, .clk_pix, .reset_sys, .reset_pix, .ready);
     // A real pixel-domain owner launches requests on the same clock tree as B.
     // This producer is outside the wrapper and adds no wrapper service stage.
     assign frame_next_address = frame_address == 15'd23039 ? 15'd0 : frame_address + 15'd1;

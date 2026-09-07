@@ -119,3 +119,44 @@ def verify_generated(folder):
     fpga_adc.verify_generated(folder)
     return {"path": str(folder / "n2m_adc_pll.v"), "sha256": file_hash(folder / "n2m_adc_pll.v"),
             "parameters_verified": True}
+
+
+def classify_sim_diagnostics(output, descriptor):
+    """Keep the exact pinned ADC model's elaboration diagnostics visible.
+
+    The same profile occurs with 50 MHz and 25 MHz control clocks. The FIFO
+    leaves its unused ECC output open. The encrypted vendor model also emits
+    seven internal width and nine ignored $rewind-return diagnostics. They do
+    not describe a product port connection; their hidden widths cannot be
+    inspected. Actual sample/channel/lock tests and fitted boundary checks
+    remain required. Any changed message, source, count or extra warning fails.
+    """
+    pins = {
+        "quartus/eda/sim_lib/mentor/fiftyfivenm_atoms_ncrypt.v":
+            "0600312e1d288b3354172dded919479e50752da5aa80d12dfdd82c1ee5d77c7b",
+        "ip/altera/altera_modular_adc/control/altera_modular_adc_control_avrg_fifo.v":
+            "e4570567d633185546949acf6d6f9d875ee6567a6adc44e27d22c296361accf8",
+    }
+    paths = []
+    for name, expected_hash in pins.items():
+        matches = [source for source in descriptor["sources"] if source["name"] == name]
+        if len(matches) != 1 or matches[0]["sha256"] != expected_hash:
+            raise ValueError("ADC simulation diagnostic requires the reviewed vendor source")
+        paths.append(matches[0]["path"])
+    atom, fifo = paths
+    expected = [f"# ** Warning: {atom}(38): (vopt-2241) Connection width does not match width of port '<protected>'.<protected>"] * 7
+    expected += [f"# ** Warning: {fifo}(79): (vopt-2685) [TFMPC] - Too few port connections for 'scfifo_component'.  Expected 13, found 12.",
+                 f"# ** Warning: {fifo}(79): (vopt-2718) [TFMPC] - Missing connection for port 'eccstatus'."]
+    expected += [f"# ** Warning: {atom}(38): (vopt-PLI-3691) Expected a system task, not a system function '$rewind'."] * 9
+    lines = output.splitlines()
+    warnings = [line for line in lines if re.search(r"\bWarning:", line)]
+    restored = "# ** Note: (vsim-12126) Error and warning message counts have been restored: Errors=0, Warnings=18."
+    summaries = [line for line in lines if re.fullmatch(r"# Errors: \d+, Warnings: \d+", line)]
+    if warnings != expected or lines.count(restored) != 1 or len(summaries) != 1 or not re.fullmatch(r"# Errors: [01], Warnings: 18", summaries[0]):
+        raise ValueError("ADC simulation diagnostic profile differs")
+    checked = "\n".join(line.replace("Warnings: 18", "Warnings: 0") if line == summaries[0] else line
+                        for line in lines if line not in expected and line != restored)
+    return checked, [{"id": "intel-adc-pinned-elaboration", "raw": warnings,
+                      "raw_summary": summaries[0], "raw_restored": restored,
+                      "sources": pins, "warning_count": 18,
+                      "reason": "Unchanged 50/25 MHz vendor profile: unused FIFO ECC output, encrypted model widths and ignored rewind returns; sample/channel/lock and fitted boundary checks remain required."}]

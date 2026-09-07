@@ -36,7 +36,7 @@ module tb_integration #(
     defparam dut.u_stores.rom.SIM_INIT_FILE = PRELOADED ? "preload-rom.mif" : "UNUSED";
     defparam dut.u_uart.u_commands.u_load.u_presence.u_presence.SIM_INIT_FILE = PRELOADED ? "preload-presence.mif" : "UNUSED";
     defparam dut.u_uart.u_commands.u_load.SIM_PRELOAD = PRELOADED;
-    always #10 clk_sys = !clk_sys;
+    always #20 clk_sys = !clk_sys;
     always @(posedge clk_sys) simulation_ns = $time;
 
     initial begin : transmit
@@ -169,5 +169,7 @@ module tb_integration #(
             begin if(pixel_fault) begin wait(frame_index==1); force dut.source_shade=2'd1; end end
         join_none
     end
-    initial begin #250000000; $fatal(1,"SMOKE_TIMEOUT"); end
+    // Retain the 12.5-million-system-edge watchdog at the 25 MHz clock.
+    // UART load/readback now takes twice the time at the legal 3.125 Mbaud.
+    initial begin #500000000; $fatal(1,"SMOKE_TIMEOUT"); end
 endmodule

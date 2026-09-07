@@ -2,7 +2,7 @@
 `include "src/rtl/common/macros.svh"
 // Original generated-shade fit fixture. Not a PPU or physical monitor result.
 module vga_proof (
-    input logic clk_sys, board_reset_n, core_reset, pause_request,
+    input logic clk_reference, board_reset_n, core_reset, pause_request,
     output logic [3:0] red, green, blue,
     output logic hsync_n, vsync_n,
     output logic ready, paused,
@@ -12,8 +12,9 @@ module vga_proof (
     output logic [14:0] observed_index,
     output logic observed_complete
 );
+    logic clk_sys;
     logic clk_pix, reset_sys, reset_pix, gb_tick;
-    n2m_clocking u_clocking (.clk_sys, .board_reset_n, .clk_pix, .reset_sys, .reset_pix, .ready);
+    n2m_clocking u_clocking (.clk_reference, .clk_sys, .board_reset_n, .clk_pix, .reset_sys, .reset_pix, .ready);
     n2m_timebase u_timebase (.clk_sys, .reset_sys, .core_reset, .pause_request, .gb_tick, .paused);
     logic [14:0] pixel_index;
     logic [63:0] source_dot;

@@ -25,7 +25,7 @@ module tb_integration;
     logic [63:0] simulation_ns;
     logic dumping;
     n2m_smoke_system #(.HOST_PLAY(1)) dut (.*);
-    always #10 clk_sys = !clk_sys;
+    always #20 clk_sys = !clk_sys;
     always @(posedge clk_sys) simulation_ns = $time;
 
     initial begin : transmit
@@ -96,5 +96,5 @@ module tb_integration;
             end end
         join_none
     end
-    initial begin #500000000; $fatal(1,"PLAY_TIMEOUT"); end
+    initial begin #1000000000; $fatal(1,"PLAY_TIMEOUT"); end
 endmodule

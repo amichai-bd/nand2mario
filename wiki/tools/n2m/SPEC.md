@@ -130,6 +130,17 @@ The exception applies only to the forbidden collision described by the memory
 MAS. Synthesis must use the same reviewed model source and must not produce
 Quartus critical warning 15003.
 
+The pinned ADC model has a separate, exact elaboration diagnostic profile:
+seven protected-model width messages, nine ignored `$rewind` return messages,
+and two messages for its unused FIFO `eccstatus` output. The same profile occurs
+with 50 MHz and 25 MHz control clocks. The protected internal widths cannot be
+inspected; this classification does not prove arbitrary ADC configurations.
+Actual channel/sample/lock recovery checks and fitted product port/clock checks
+remain required. The ADC classifier checks source hashes, complete messages,
+locations, counts and summary lines. Any drift or additional warning fails.
+Raw logs and the complete profile remain in `explained_diagnostics`; no simulator
+warning suppression is enabled.
+
 The [shared memory MAS](../../src/rtl/common/MAS_memory_primitives.md) owns the
 same-instance simulation/synthesis rule and the narrow supported port shapes.
 Missing-model and cache host tests use controlled original bytes and fake
@@ -150,7 +161,8 @@ may include NBE handling; the MAS permits simultaneous A read/write only with
 all public lanes enabled, where that mapping preserves the defined result.
 
 The `memory-stores` FPGA target constrains the seven direct-profile stores at
-50 MHz with virtual service inputs and outputs. Its checker requires the exact
+25 MHz with virtual service inputs and outputs, including explicit packed-struct
+member names for the paired OAM port. Its checker requires the exact
 seven logical depths, 395,640 bits and 52 fitted M9Ks. It checks both port
 register stages, the common clock, disabled B writes, whole-byte enables,
 physical bit inventory, and absent primitive reset/initialization. The ordinary
@@ -326,7 +338,13 @@ ASCII path letters, digits, underscore, hyphen, slash and period are accepted.
 Relative traversal, missing files, escapes, symlink files, cycles, dynamic names,
 extra include tokens and ambiguous source-directory shadow files fail before
 cache lookup or compilation. Closure is limited to 256 source/header files.
-Comments are ignored; includes in every conditional branch are dependencies.
+Comments are ignored; includes in every conditional branch are dependencies. FPGA file-I/O
+rejection selects branches using the tool-owned `SYNTHESIS` definition; unknown
+conditions retain both alternatives. Guaranteed simulation-only file reads are
+excluded from that check, while their source files remain fingerprinted. Source
+redefinition of `SYNTHESIS`, malformed conditions and unsupported inline
+conditional syntax are rejected. This is bounded guard handling, not a general
+preprocessor.
 This is deliberately bounded parsing, not a general preprocessor.
 
 The repository root is the compiler include directory for Questa and Quartus. Quartus QSF explicitly defines `SYNTHESIS=1`, matching synthesis dependency inspection and excluding simulation assertion checks/history. Normal Questa compilation leaves this macro undefined. Every transitive header and the resolver implementation is fingerprinted;
@@ -359,8 +377,8 @@ is `10M50DAF484C7G`; top names are identifiers. Inputs are unique existing
 repository-relative `.sv` and `.sdc` paths under `src/`, without traversal or
 symlink escapes. Physical pins are unique `PIN_<letters><digits>` names; port
 names permit an optional numeric or wildcard array index. Physical assignments
-use 3.3-V LVTTL. HDL uses the bounded [include contract](#hdl-includes); HDL file reads and
-external/dynamic SDC loads are rejected. SDC permits one literal clock,
+use 3.3-V LVTTL. HDL uses the bounded [include contract](#hdl-includes); HDL file reads that are not proven simulation-only and external/dynamic SDC
+loads are rejected. SDC permits one literal clock,
 delay, exception or uncertainty assignment per line, using the bounded command
 set in the [validator](../../../tools/n2m/fpga.py). Collection getters may select
 ports, clocks, pins, cells, registers, nets, inputs or outputs; nested bracket
@@ -771,10 +789,12 @@ An FPGA target may declare the bounded `pll` definition for `n2m_pixel_pll`:
 input period 20000 ps and output multiplier/divisor 63/125. The generator owns
 50% duty, zero phase, normal operation and CLK0 compensation. These settings
 implement the [clock contract](../../src/clocks-resets-cdc.md), which owns the
-selected rates. Other PLL definitions are rejected.
-This initial proof schema requires the `clocking_proof` top and its named wrapper
-hierarchy. A different integration hierarchy needs an explicit evidence-checker
-extension; it cannot inherit this topology classification implicitly.
+selected rates. The `system_divide: 2` field additionally generates
+`n2m_system_pll` from the same reference, divide-by-two with LOW bandwidth.
+Each instance has its own generated HDL and command log. Other ratios are
+rejected. Supported proof tops retain the exact `u_clocking` wrapper hierarchy;
+the v0.5 adapter scopes bridge path checks under `u_system`. Other hierarchies
+need an explicit checker extension.
 
 `qmegawiz` comes from the explicit Quartus directory. Its executable, ALTPLL
 definition/rules/wizard XML and primitive declaration hashes enter the request
@@ -797,22 +817,31 @@ The MAX 10 ALTPLL lock output contains the vendor's documented event latch when
 `areset` is enabled ([PLL control signals, section 2.3.6][lock-guide]). Its raw
 `locked` transition clocks a constant-one D input; PLL reset clears the latch,
 and output logic still propagates raw lock loss. This is not a periodic datapath
-clock. The builder may explain exactly that one `no_clock` row only after checking
+clock. A single-PLL proof has one such `no_clock` row; the parallel system/pixel
+wrapper has exactly two. The ADC composition adds its separately checked vendor
+row. The builder explains these rows only after checking
 the generated functional netlist: latch input/reset/initial state, the lock gate
 truth table, and all downstream buffers/fanout through the two lock sampling reset
-pins. Supported LUT, clock-control and register parameter sets are exact; default
+pins. For parallel PLLs, all 32 combinations of raw locks, event latches and
+reference reset release must propagate either lock loss to reset. Bootstrap
+runs on the raw reference; the lock sampling pipeline runs on the generated
+system clock. The checker resolves the selected D or synchronous-load data
+input, including constant/buffer feeder LUTs. Supported LUT, clock-control and register parameter sets are exact; default
 constant declarations/assignments and absence of extra drivers are checked.
 The installed atom/register model hashes join the generator fingerprint.
 Unsupported primitive modes, structural statements, extra consumers, or any other no-clock
 row fail. Synthetic topology mutations prove these rejections.
 
 The raw row and vendor netlist remain evidence. All functional unconstrained-path
-counts must stay zero. Both clocks require setup, hold, recovery, removal, and
+counts must stay zero. The reference and both generated clocks require setup, hold, recovery, removal, and
 minimum-pulse results at every required corner. Exact adjacent reset-stage
 setup/hold reports prove the release chain remains timed. CDC/MTBF reports are
 retained; their reset-chain identification is not a hardware reliability claim.
 The functional netlist writer's exact diagnostic 10905 explains that MAX 10
 supports functional, not timing, simulation netlists; TimeQuest supplies timing.
+The exact diagnostic 176127 is explained only for the verified system/pixel
+pair and its generated file: their distinct required ratios prevent PLL merging.
+Bandwidth, routing and other timing diagnostics remain failures.
 
 [lock-guide]: https://docs.altera.com/r/docs/683047/21.1/max-10-clocking-and-pll-user-guide/pll-control-signals
 ## Software oracle

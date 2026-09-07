@@ -8,7 +8,7 @@ module controls_proof #(
     parameter logic [127:0] BUILD_ID = 128'd0
 `endif
 ) (
-    input var logic clk_sys,
+    input var logic clk_reference,
     input var logic clk_adc_reference,
     input var logic board_reset_n,
     input var logic [3:0] buttons_n,
@@ -31,6 +31,7 @@ module controls_proof #(
     output logic [14:0] observed_index,
     output logic observed_complete
 );
+    logic clk_sys;
     logic clk_pix;
     logic reset_sys;
     logic reset_pix;
@@ -64,13 +65,13 @@ module controls_proof #(
     logic [31:0] source_epoch;
     logic [1:0] shade;
     n2m_clocking u_clocking (
-        .clk_sys(clk_sys), .board_reset_n(board_reset_n), .clk_pix(clk_pix),
+        .clk_reference, .clk_sys(clk_sys), .board_reset_n(board_reset_n), .clk_pix(clk_pix),
         .reset_sys(reset_sys), .reset_pix(reset_pix), .ready(ready)
     );
     // A system reset cancels the ADC generation as well as its sampler. ADC
     // lock loss alone resets only acquisition; buttons/UART/display stay live.
     n2m_reset_control u_adc_reset (
-        .clk_sys(clk_sys), .clk_pix(clk_adc), .board_reset_n(board_reset_n && !reset_sys),
+        .clk_reference(clk_reference), .clk_sys(clk_sys), .clk_pix(clk_adc), .board_reset_n(board_reset_n && !reset_sys),
         .pll_locked(adc_pll_locked), .pll_areset(adc_pll_reset), .ready(adc_ready),
         .reset_sys(adc_reset), .reset_pix(adc_domain_reset)
     );

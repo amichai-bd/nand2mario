@@ -11,7 +11,7 @@ the core paused. Deasserting the pause request leaves pause on that edge; the
 next edge is the first active accumulator edge. The host controller must hold
 its pause request through acknowledgement. It owns commands and their ordering.
 
-`n2m_reset_control` accepts the system and pixel clocks, raw active-low board
+`n2m_reset_control` accepts the always-running reference, generated system and pixel clocks, raw active-low board
 reset, and raw PLL lock. It produces PLL reset, qualified readiness, and the two
 asynchronous-assert/synchronous-release domain resets. Initialized state provides
 configuration startup. A board release chain controls its qualification counter;
@@ -33,7 +33,8 @@ named chain endpoint and asynchronous clear pin remains subject to the existing
 fit/timing audit without a topology waiver.
 
 The [FPGA wrapper](../../../../src/fpga/de10_lite/n2m_clocking.sv) contains the
-generated ALTPLL instance. Vendor files are generated under the build attempt.
+two parallel generated ALTPLL instances. Both take the same board reference;
+bootstrap state runs on that reference and cannot depend on a stopped PLL output. Vendor files are generated under the build attempt.
 The [portable test plan](../../../../src/dv/clocking/README.md) independently
 checks control behavior; it does not establish vendor PLL behavior. The shared
 [FPGA builder](../../../tools/n2m/SPEC.md) owns generation, dependency tracking,

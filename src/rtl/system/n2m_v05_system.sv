@@ -3,7 +3,9 @@
 `include "src/rtl/common/macros.svh"
 
 // Required owners for the original v0.5 program; unused destinations reject service.
-module n2m_v05_system (
+module n2m_v05_system #(
+    parameter integer UART_BAUD = 115200
+) (
     input var logic clk_sys,
     input var logic reset_sys,
     input var logic clk_pix,
@@ -79,11 +81,12 @@ module n2m_v05_system (
     assign core_initialized = memory_initialized && cpu_initialized;
     assign fault = cpu_fault || memory_fault || ppu_fault;
 
-    n2m_uart #(.CLOCK_HZ(50000000), .BAUD(6250000)) u_uart (
+    n2m_uart #(.CLOCK_HZ(25000000), .BAUD(UART_BAUD)) u_uart (
         .clk_sys, .reset_sys, .uart_rx, .uart_tx,
         .build_id(128'h88000000000000000000000000000001), .gb_tick, .paused,
         .core_initialized, .instruction_complete, .retirement_valid, .cpu_stopped,
         .physical_commit(1'b0), .physical_buttons(8'd0), .effective_buttons, .effective_update,
+        .input_source_observe(),
         .pause_request, .core_reset, .buttons, .epoch, .dot_count, .retirement_count,
         .profile, .image_valid, .endpoint_state, .rom_write, .rom_read, .rom_address,
         .rom_write_data, .rom_read_data, .rom_read_valid,
@@ -144,7 +147,7 @@ module n2m_v05_system (
             default: begin owner_service = 0; owner_valid = 0; end
         endcase
     end
-    n2m_memory_stores u_stores (
+    n2m_memory_stores u_stores (.oam_request('0), .oam_response(),
         .clk_sys, .reset_sys, .core_reset, .init_done(memory_initialized),
         .access_read(raw_read), .access_write(raw_write), .access_store(raw_store),
         .access_address(raw_offset), .access_wdata(write_data),

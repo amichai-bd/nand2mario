@@ -44,7 +44,7 @@ module tb_memory_service;
         ? {2'b0, owner_address[12:0]} : {7'b0, owner_address[7:0]}) : storage_offset;
     assign resolved_wdata = owner_prepare ? owner_wdata : storage_wdata;
 
-    n2m_memory_stores stores (
+    n2m_memory_stores stores (.oam_request('0), .oam_response(),
         .clk_sys(clk_sys), .reset_sys(reset_sys), .core_reset(core_reset), .init_done(init_done),
         .access_read(storage_read || policy_read), .access_write(storage_write || policy_write),
         .access_store(resolved_store), .access_address(resolved_offset), .access_wdata(resolved_wdata),

@@ -4,6 +4,9 @@ module tb_dma_overlay;
     import n2m_interfaces_pkg::*;
     import n2m_cpu_pkg::*;
     import n2m_memory_pkg::*;
+    integer lane;
+    memory_oam_request_t oam_request;
+    memory_oam_response_t oam_response;
     logic clk_sys, reset_sys, core_reset, init_done, memory_init_done, gb_tick;
     logic [1:0] cpu_phase;
     logic cpu_halted, cpu_stopped, request_valid, bus_commit;
@@ -46,7 +49,7 @@ module tb_dma_overlay;
     bit observe, overlay_job, corrupt;
     assign init_done=memory_init_done && !setup;
     n2m_dma dut (.*);
-    n2m_memory_stores stores (.clk_sys(clk_sys), .reset_sys(reset_sys), .core_reset(core_reset),
+    n2m_memory_stores stores (.oam_request, .oam_response, .clk_sys(clk_sys), .reset_sys(reset_sys), .core_reset(core_reset),
         .init_done(memory_init_done), .access_read(setup ? setup_read : access_read),
         .access_write(setup ? setup_write : access_write), .access_store(setup ? setup_store : access_store),
         .access_address(setup ? setup_address : access_address), .access_wdata(setup ? setup_data : access_wdata),
@@ -84,7 +87,7 @@ module tb_dma_overlay;
         request_valid=valid_request;bus_plan='0;bus_plan.address=address;
         bus_plan.write_enable=valid_request;bus_plan.write_data=data;
         repeat(4)begin
-            repeat(11)@(negedge clk_sys);gb_tick=1;bus_commit=valid_request && cpu_phase==3;
+            repeat(cpu_phase==0 ? 4 : 5)@(negedge clk_sys);gb_tick=1;bus_commit=valid_request && cpu_phase==3;
             address_effect_sample=cpu_phase==3 && (valid_request || address_effect.valid);
             @(negedge clk_sys);gb_tick=0;bus_commit=0;address_effect_sample=0;cpu_phase=cpu_phase+2'd1;
         end
@@ -112,6 +115,21 @@ module tb_dma_overlay;
             if(access_address!==15'(expected_address) || access_wdata!==expected_byte)
                 $fatal(1,"DMA_OVERLAY_WRITE case=%0d address=%0d expected=%02x actual=%02x",case_index,access_address,expected_byte,access_wdata);
             $fdisplay(trace,"%0d,%0d,%0d,%02x",case_index,writes,access_address,access_wdata);
+            writes=writes+1;total_writes=total_writes+1;
+        end
+            for (lane=0; lane<2; lane=lane+1) if (observe && oam_request.write_enable[lane]) begin
+            if(!overlay_job)begin expected_address=writes;expected_byte=source_byte(writes);end
+            else begin
+                case(writes-40)
+                    0:expected_address=44;1:expected_address=45;2:expected_address=40;3:expected_address=41;
+                    4:expected_address=42;5:expected_address=43;6:expected_address=46;7:expected_address=47;
+                    default:$fatal(1,"DMA_OVERLAY_EXTRA_WRITE");
+                endcase
+                expected_byte=result_byte(expected_address);
+            end
+            if((15'(oam_request.pair)*15'd2+15'(lane))!==15'(expected_address) || oam_request.data[8*lane +: 8]!==expected_byte)
+                $fatal(1,"DMA_OVERLAY_WRITE case=%0d address=%0d expected=%02x actual=%02x",case_index,(15'(oam_request.pair)*15'd2+15'(lane)),expected_byte,oam_request.data[8*lane +: 8]);
+            $fdisplay(trace,"%0d,%0d,%0d,%02x",case_index,writes,(15'(oam_request.pair)*15'd2+15'(lane)),oam_request.data[8*lane +: 8]);
             writes=writes+1;total_writes=total_writes+1;
         end
     end
@@ -166,8 +184,8 @@ module tb_dma_overlay;
     end
     initial begin
         wait(corrupt && case_index==1 && overlay_job);
-        wait(access_write && access_address==40);@(negedge clk_sys);
-        force dut.access_wdata=8'hf3;
+        wait(oam_request.write_enable[0] && oam_request.pair==20);@(negedge clk_sys);
+        force dut.oam_request.data[7:0]=8'hf3;
     end
     initial begin #10000000;$fatal(1,"DMA_OVERLAY_WATCHDOG");end
 endmodule

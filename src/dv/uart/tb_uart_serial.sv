@@ -49,7 +49,7 @@ module tb_uart_serial;
         .packet_address(packet_address), .packet_data(packet_data),
         .packet_data_valid(packet_data_valid)
     );
-    always #10 clk = !clk;
+    always #20 clk = !clk;
     always @(posedge clk) begin
         if (reset) previous_packet_valid = 1'b0;
         if (!reset) begin
@@ -83,13 +83,13 @@ module tb_uart_serial;
         tx_valid = 1'b0;
         // Literal independent rational-rate oracle, including every clock
         // of the start/data/stop cells, not a second UART decoding loopback.
-        for (cycle = 0; cycle < 4341; cycle = cycle + 1) begin
+        for (cycle = 0; cycle < 2171; cycle = cycle + 1) begin
             // Queue the next byte while busy and hold it through acceptance.
             if (value == 0 && cycle == 100) begin
                 tx_valid = 1'b1;
                 tx_data = 1;
             end
-            position = (cycle * 115200) / 50000000;
+            position = (cycle * 115200) / 25000000;
             if (position == 0) expected_level = 1'b0;
             else if (position == 9) expected_level = 1'b1;
             else expected_level = value[position-1];
@@ -196,7 +196,7 @@ module tb_uart_serial;
         repeat (600) @(negedge clk);
         if (received != 256 || frame_errors != 0)
             $fatal(1, "UART_SERIAL_FALSE_START");
-        for (phase = 1; phase <= 19; phase = phase + 6) begin
+        for (phase = 1; phase <= 37; phase = phase + 12) begin
             #(phase);
             expected_pending = 1'b1;
             expected_byte = 8'(phase) ^ 8'h9c;
@@ -213,7 +213,7 @@ module tb_uart_serial;
             @(posedge clk);
             #1;
             tx_valid = 1'b0;
-            repeat (bit_index * 434 + 100) @(negedge clk);
+            repeat (bit_index * 217 + 50) @(negedge clk);
             #3;
             reset = 1'b1;
             #1;

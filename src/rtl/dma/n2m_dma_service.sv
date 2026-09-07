@@ -36,6 +36,8 @@ module n2m_dma_service (
     output logic [7:0] access_wdata,
     input var logic [7:0] access_rdata,
     input var logic access_valid,
+    output n2m_memory_pkg::memory_oam_request_t oam_request,
+    input var n2m_memory_pkg::memory_oam_response_t oam_response,
     output logic fault
 );
     import n2m_memory_pkg::*;
@@ -63,6 +65,8 @@ module n2m_dma_service (
     logic pair_pending_q, pair_pending_next, pair_committed;
     logic [2:0] grant_kind, response_kind_q;
     logic [3:0] grant_index, response_index_q;
+    logic [2:0] pair_grant_kind, pair_response_kind_q;
+    logic [7:0] pair_response_offset_q;
     logic [15:0] grant_address, response_address_q;
     logic [4:0] response_row_q;
     logic missing_operands, missing_other, missing_raw, service_fault, accept;
@@ -79,9 +83,10 @@ module n2m_dma_service (
         effect_kind != OAM_NONE && (!operand_valid_q || operand_row_q != scan_row);
     assign missing_other = accept && dma_write &&
         (!other_valid_q || other_offset_q != dma_offset);
-    assign missing_raw = response_kind_q != READ_NONE && !access_valid;
+    assign missing_raw = (response_kind_q != READ_NONE && !access_valid) ||
+        (pair_response_kind_q != READ_NONE && !oam_response.valid);
     assign service_fault = missing_operands || missing_other || missing_raw ||
-        (accept && slot_q != 0 && slot_q < 6'd43);
+        (accept && slot_q != 0 && slot_q < 6'd21);
     `DFF_ARST_VAL(fault, fault || service_fault, clk_sys, reset, 1'b0)
     always_comb begin
         overlay_previous=previous_q;
@@ -115,11 +120,9 @@ module n2m_dma_service (
     end
     `DFF_RST_EN(held_q, held_next, clk_sys, accept && !service_fault, reset, 16'd0)
     assign dma_held_pair=held_q;
-    // Keep the accepted pair available until both physical bytes are current.
-    // A covered corruption writes low then high; an uncovered DMA writes one byte.
-    assign pair_committed=access_write && access_store==STORE_OAM &&
-        access_address[7:1]==dma_offset_q[7:1] &&
-        (uncovered_q || access_address[0]);
+    // Both banks commit one pair together; a DMA-only write enables one byte.
+    assign pair_committed=|oam_request.write_enable &&
+        oam_request.pair==dma_offset_q[7:1];
     always_comb begin
         pair_pending_next=pair_pending_q;
         if (pair_committed) pair_pending_next=0;
@@ -131,7 +134,7 @@ module n2m_dma_service (
     assign dma_pending_pair=dma_offset_q[7:1];
     always_comb begin
         slot_next=slot_q;
-        if (slot_q != 0) slot_next=slot_q==6'd46 ? 6'd0 : slot_q+6'd1;
+        if (slot_q != 0) slot_next=slot_q==6'd22 ? 6'd0 : slot_q+6'd1;
         if (accept && !service_fault) slot_next=6'd1;
     end
     `DFF_ARST_VAL(slot_q, slot_next, clk_sys, reset, 6'd0)
@@ -150,90 +153,91 @@ module n2m_dma_service (
 
     always_comb begin
         access_read=0; access_write=0; access_store=STORE_OAM;
-        access_address=0; access_wdata=0;
-        grant_kind=READ_NONE; grant_index=0; grant_address=0;
-        word_byte=0; selected_row=0;
-        if (slot_q>=1 && slot_q<=24) begin
-            selected_row=(int'(slot_q)-1)/8;
-            word_byte=(int'(slot_q)-1)%8;
+        access_address=0; access_wdata=0; oam_request='0;
+        grant_kind=READ_NONE; pair_grant_kind=READ_NONE;
+        grant_index=0; grant_address=0; word_byte=0; selected_row=0;
+        if (slot_q>=1 && slot_q<=12) begin
+            selected_row=(int'(slot_q)-1)/4;
+            word_byte=(int'(slot_q)-1)%4;
             if (selected_row==0) begin
                 case (word_byte)
-                    0: word_byte=4;
-                    1: word_byte=5;
-                    2: word_byte=0;
-                    3: word_byte=1;
-                    4: word_byte=2;
-                    5: word_byte=3;
+                    0: word_byte=2;
+                    1: word_byte=0;
+                    2: word_byte=1;
                     default: begin end
                 endcase
             end
-            access_write=mask_q[selected_row];
-            access_address=15'(8*(int'(job_row_q)-selected_row)+word_byte);
-            access_wdata=rows_q[selected_row][8*word_byte +: 8];
-        end else if (slot_q==25) begin
-            access_write=uncovered_q;
-            access_address={7'd0,dma_offset_q}; access_wdata=dma_byte_q;
-        end else if (slot_q>=26 && slot_q<=37 && job_prefetch_q) begin
-            access_read=1; grant_kind=READ_OPERAND; grant_index=4'(slot_q-26);
-            if(slot_q<=33) access_address=15'(8*int'(job_row_q)+int'(slot_q)-26);
-            else if(slot_q<=35) access_address=15'(8*(int'(job_row_q)-1)+int'(slot_q)-34);
-            else access_address=15'(8*(int'(job_row_q)+1)+int'(slot_q)-36);
-            // Row1 has no older operand; avoid an address below the OAM store.
-            if (job_row_q==0 && slot_q>=34 && slot_q<=35) access_read=0;
-        end else if(slot_q==39 && dma_source_request) begin
+            oam_request.write_enable={2{mask_q[selected_row]}};
+            oam_request.pair=7'(4*(int'(job_row_q)-selected_row)+word_byte);
+            oam_request.data=rows_q[selected_row][16*word_byte +: 16];
+        end else if (slot_q==13) begin
+            oam_request.write_enable=uncovered_q ? (dma_offset_q[0] ? 2'b10 : 2'b01) : 2'b00;
+            oam_request.pair=dma_offset_q[7:1]; oam_request.data={2{dma_byte_q}};
+        end else if (slot_q>=14 && slot_q<=19 && job_prefetch_q) begin
+            oam_request.read=1; pair_grant_kind=READ_OPERAND; grant_index=4'(slot_q-14);
+            if(slot_q<=17) oam_request.pair=7'(4*int'(job_row_q)+int'(slot_q)-14);
+            else if(slot_q==18) oam_request.pair=7'(4*(int'(job_row_q)-1));
+            else oam_request.pair=7'(4*(int'(job_row_q)+1));
+            if (job_row_q==0 && slot_q==18) oam_request.read=0;
+        end else if(slot_q==20 && dma_source_request) begin
+            // Source addresses are mirrored away from OAM by the DMA engine.
+            // These requests therefore use physically independent banks.
             access_read=source_destination!=MEMORY_ABSENT_CART;
             access_store=source_store; access_address=source_offset;
             grant_kind=READ_SOURCE; grant_address=dma_source_address;
-        end else if(slot_q==41 && dma_source_request) begin
-            access_read=1; access_address={7'd0,dma_source_address[7:0]^8'd1};
-            grant_kind=READ_OTHER; grant_address={8'd0,dma_source_address[7:0]};
-        end else if(slot_q==0 || slot_q>=43) begin
+            oam_request.read=1; oam_request.pair=dma_source_address[7:1];
+            pair_grant_kind=READ_OTHER;
+        end else if(slot_q==0 || slot_q>=21) begin
             access_read=cpu_read; access_store=cpu_store; access_address=cpu_offset;
             grant_kind=READ_CPU; grant_address=cpu_address;
         end
         if(cpu_write) begin
             access_read=0; access_write=1; access_store=cpu_store;
             access_address=cpu_offset; access_wdata=cpu_wdata; grant_kind=READ_NONE;
+            if(cpu_store==STORE_OAM) begin oam_request='0; pair_grant_kind=READ_NONE; end
         end
         if(reset || !init_done || fault || service_fault) begin
             access_read=0; access_write=0; grant_kind=READ_NONE;
+            oam_request='0; pair_grant_kind=READ_NONE;
         end
     end
+    `DFF_ARST_VAL(pair_response_kind_q, oam_request.read ? pair_grant_kind : READ_NONE, clk_sys, reset, READ_NONE)
+    `DFF_EN(pair_response_offset_q, dma_source_address[7:0], clk_sys, oam_request.read && pair_grant_kind==READ_OTHER)
     `DFF_ARST_VAL(response_kind_q, access_read ? grant_kind : READ_NONE, clk_sys, reset, READ_NONE)
-    `DFF_EN(response_index_q, grant_index, clk_sys, access_read)
+    `DFF_EN(response_index_q, grant_index, clk_sys, oam_request.read)
     `DFF_EN(response_address_q, grant_address, clk_sys, access_read)
-    `DFF_EN(response_row_q, job_row_q+5'd1, clk_sys, access_read && grant_kind==READ_OPERAND)
+    `DFF_EN(response_row_q, job_row_q+5'd1, clk_sys, oam_request.read && pair_grant_kind==READ_OPERAND)
     always_comb begin
         previous_next=previous_q; older_next=older_q; current_next=current_q;
         if(accept) older_next=0;
-        if(access_valid && response_kind_q==READ_OPERAND) begin
-            if(response_index_q<8) previous_next[8*int'(response_index_q) +: 8]=access_rdata;
-            else if(response_index_q<10) older_next[8*(int'(response_index_q)-8) +: 8]=access_rdata;
-            else current_next[8*(int'(response_index_q)-10) +: 8]=access_rdata;
+        if(oam_response.valid && pair_response_kind_q==READ_OPERAND) begin
+            if(response_index_q<4) previous_next[16*int'(response_index_q) +: 16]=oam_response.data;
+            else if(response_index_q==4) older_next=oam_response.data;
+            else current_next=oam_response.data;
         end
     end
     `DFF_ARST_VAL(previous_q, previous_next, clk_sys, reset, 64'd0)
     `DFF_ARST_VAL(older_q, older_next, clk_sys, reset, 16'd0)
     `DFF_ARST_VAL(current_q, current_next, clk_sys, reset, 16'd0)
     `DFF_RST_EN(operand_row_q, response_row_q, clk_sys,
-        access_valid && response_kind_q==READ_OPERAND && response_index_q==11, reset, 5'd0)
+        oam_response.valid && pair_response_kind_q==READ_OPERAND && response_index_q==5, reset, 5'd0)
     `DFF_ARST_VAL(operand_valid_q, accept ? 1'b0 : operand_valid_q ||
-        (access_valid && response_kind_q==READ_OPERAND && response_index_q==11), clk_sys, reset, 1'b0)
+        (oam_response.valid && pair_response_kind_q==READ_OPERAND && response_index_q==5), clk_sys, reset, 1'b0)
     `DFF_RST_EN(source_q, source_destination==MEMORY_ABSENT_CART ? 8'hff : access_rdata,
-        clk_sys, (slot_q==39 && dma_source_request && source_destination==MEMORY_ABSENT_CART) ||
+        clk_sys, (slot_q==20 && dma_source_request && source_destination==MEMORY_ABSENT_CART) ||
         (access_valid && response_kind_q==READ_SOURCE), reset, 8'd0)
     `DFF_RST_EN(source_address_q, dma_source_address, clk_sys,
-        slot_q==39 && dma_source_request, reset, 16'd0)
+        slot_q==20 && dma_source_request, reset, 16'd0)
     `DFF_ARST_VAL(source_valid_q, accept ? 1'b0 : source_valid_q ||
-        (slot_q==39 && dma_source_request && source_destination==MEMORY_ABSENT_CART) ||
+        (slot_q==20 && dma_source_request && source_destination==MEMORY_ABSENT_CART) ||
         (access_valid && response_kind_q==READ_SOURCE), clk_sys, reset, 1'b0)
     assign dma_source_data=source_q;
     assign dma_source_valid=!reset && !fault && source_valid_q && source_address_q==dma_source_address;
-    `DFF_RST_EN(other_q, access_rdata, clk_sys, access_valid && response_kind_q==READ_OTHER, reset, 8'd0)
-    `DFF_RST_EN(other_offset_q, response_address_q[7:0], clk_sys,
-        access_valid && response_kind_q==READ_OTHER, reset, 8'd0)
+    `DFF_RST_EN(other_q, pair_response_offset_q[0] ? oam_response.data[7:0] : oam_response.data[15:8], clk_sys, oam_response.valid && pair_response_kind_q==READ_OTHER, reset, 8'd0)
+    `DFF_RST_EN(other_offset_q, pair_response_offset_q, clk_sys,
+        oam_response.valid && pair_response_kind_q==READ_OTHER, reset, 8'd0)
     `DFF_ARST_VAL(other_valid_q, accept ? 1'b0 : other_valid_q ||
-        (access_valid && response_kind_q==READ_OTHER), clk_sys, reset, 1'b0)
+        (oam_response.valid && pair_response_kind_q==READ_OTHER), clk_sys, reset, 1'b0)
     `DFF_RST_EN(cpu_data_q, access_rdata, clk_sys, access_valid && response_kind_q==READ_CPU, reset, 8'd0)
     `DFF_RST_EN(cpu_address_q, response_address_q, clk_sys,
         access_valid && response_kind_q==READ_CPU, reset, 16'd0)
@@ -244,6 +248,8 @@ module n2m_dma_service (
     `N2M_ASSERT(DMA_RAW_SERVICE, clk_sys, reset, !missing_raw)
     `N2M_ASSERT(DMA_OPERAND_SERVICE, clk_sys, reset, !missing_operands)
     `N2M_ASSERT(DMA_PAIR_SERVICE, clk_sys, reset, !missing_other)
-    `N2M_ASSERT(DMA_JOB_DEADLINE, clk_sys, reset, !(accept && slot_q!=0 && slot_q<43))
+    `N2M_ASSERT(DMA_JOB_DEADLINE, clk_sys, reset, !(accept && slot_q!=0 && slot_q<21))
+    `N2M_ASSERT(DMA_SOURCE_SEPARATE_BANK, clk_sys, reset,
+        !(slot_q==20 && dma_source_request) || source_store!=STORE_OAM)
     `N2M_ASSERT(DMA_CPU_WRITE_SLOT, clk_sys, reset, !cpu_write || t4)
 endmodule

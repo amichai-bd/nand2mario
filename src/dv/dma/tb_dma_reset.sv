@@ -4,6 +4,8 @@ module tb_dma_reset;
     import n2m_interfaces_pkg::*;
     import n2m_cpu_pkg::*;
     import n2m_memory_pkg::*;
+    memory_oam_request_t oam_request;
+    memory_oam_response_t oam_response;
     logic clk_sys, reset_sys, core_reset, init_done, memory_init_done, gb_tick;
     logic [1:0] cpu_phase;
     logic cpu_halted, cpu_stopped, request_valid, bus_commit;
@@ -40,6 +42,7 @@ module tb_dma_reset;
     logic [7:0] setup_data, host_data, unused_host, unused_wave;
     logic [31:0] host_address;
     logic unused_wave_valid;
+    integer lane;
     integer case_index, reset_path, context_index, reset_phase, index, cycle_index;
     integer write_count, total_writes, readback_count, expected_count, expected_address;
     integer trace;
@@ -47,7 +50,7 @@ module tb_dma_reset;
     bit observe, clearing, stale_reset;
     assign init_done=memory_init_done && !setup;
     n2m_dma dut (.*);
-    n2m_memory_stores stores (.clk_sys(clk_sys), .reset_sys(reset_sys), .core_reset(core_reset),
+    n2m_memory_stores stores (.oam_request, .oam_response, .clk_sys(clk_sys), .reset_sys(reset_sys), .core_reset(core_reset),
         .init_done(memory_init_done), .access_read(setup ? setup_read : access_read),
         .access_write(setup ? setup_write : access_write), .access_store(setup ? setup_store : access_store),
         .access_address(setup ? setup_address : access_address), .access_wdata(setup ? setup_data : access_wdata),
@@ -64,7 +67,7 @@ module tb_dma_reset;
         setup_write=1;@(negedge clk_sys);setup_write=0;
     endtask
     task automatic dot_step;
-        repeat(11) @(negedge clk_sys);
+        repeat(cpu_phase==0 ? 4 : 5) @(negedge clk_sys);
         gb_tick=1;bus_commit=request_valid && cpu_phase==3;
         address_effect_sample=cpu_phase==3 && (request_valid || address_effect.valid);
         @(negedge clk_sys);gb_tick=0;bus_commit=0;address_effect_sample=0;cpu_phase=cpu_phase+2'd1;
@@ -76,7 +79,7 @@ module tb_dma_reset;
         repeat(4)dot_step();request_valid=0;bus_plan='0;
     endtask
     task automatic check_cancel;
-        if(dma_active || dut.engine_source_request || access_write || peripheral_commit ||
+        if(dma_active || dut.engine_source_request || access_write || (|oam_request.write_enable) || peripheral_commit ||
             ppu_oam_valid || dut.pair_pending || fault)
             $fatal(1,"DMA_RESET_CANCEL case=%0d active=%0d source=%0d write=%0d peripheral=%0d pair_valid=%0d pending=%0d fault=%0d",
                 case_index,dma_active,dut.engine_source_request,access_write,peripheral_commit,ppu_oam_valid,dut.pair_pending,fault);
@@ -99,6 +102,25 @@ module tb_dma_reset;
                 $fatal(1,"DMA_RESET_PREFIX case=%0d expected=%0d:%02x actual=%0d:%02x",
                     case_index,expected_address,expected_byte,access_address,access_wdata);
             $fdisplay(trace,"%0d,%0d,%0d,%02x",case_index,write_count,access_address,access_wdata);
+            write_count=write_count+1;total_writes=total_writes+1;
+        end
+        for (lane=0; lane<2; lane=lane+1) if(observe && !reset_sys && !core_reset && oam_request.write_enable[lane]) begin
+            if(clearing)$fatal(1,"DMA_RESET_LATE_WRITE case=%0d",case_index);
+            if(context_index==3) begin
+                case(write_count)
+                    0:expected_address=44;1:expected_address=45;2:expected_address=40;3:expected_address=41;
+                    4:expected_address=42;5:expected_address=43;6:expected_address=46;7:expected_address=47;
+                    default:$fatal(1,"DMA_RESET_EXTRA_CORRUPTION");
+                endcase
+                expected_byte=8'(expected_address+24);
+            end else begin
+                expected_address=write_count;expected_byte=8'(write_count)^8'h69;
+                if(context_index==0 || write_count>1)$fatal(1,"DMA_RESET_EXTRA_TRANSFER");
+            end
+            if((15'(oam_request.pair)*15'd2+15'(lane))!==15'(expected_address) || oam_request.data[8*lane +: 8]!==expected_byte)
+                $fatal(1,"DMA_RESET_PREFIX case=%0d expected=%0d:%02x actual=%0d:%02x",
+                    case_index,expected_address,expected_byte,(15'(oam_request.pair)*15'd2+15'(lane)),oam_request.data[8*lane +: 8]);
+            $fdisplay(trace,"%0d,%0d,%0d,%02x",case_index,write_count,(15'(oam_request.pair)*15'd2+15'(lane)),oam_request.data[8*lane +: 8]);
             write_count=write_count+1;total_writes=total_writes+1;
         end
         if(clearing && !reset_sys && !core_reset && (dma_active || dut.engine_source_request || peripheral_commit || fault))

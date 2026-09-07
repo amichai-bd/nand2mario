@@ -49,6 +49,7 @@ module tb_uart_endpoint;
     logic [63:0] observed_input_dot;
     logic [7:0] prior_buttons;
     n2m_uart #(.CLOCK_HZ(100000),.BAUD(12500)) dut (
+        .input_source_observe(),
         .clk_sys(clk_sys),.reset_sys(reset_sys),.uart_rx(uart_rx),.uart_tx(uart_tx),
         .build_id(128'hfedcba98765432100123456789abcdef),.gb_tick(gb_tick),.paused(paused),
         .core_initialized(core_initialized),.instruction_complete(instruction_complete),
@@ -78,7 +79,7 @@ module tb_uart_endpoint;
     );
     // This original program uses ROM and HRAM stack only. No peripheral decode
     // or full-system integration is claimed by this fixture's small responder.
-    n2m_memory_stores u_memory (
+    n2m_memory_stores u_memory (.oam_request('0), .oam_response(),
         .clk_sys(clk_sys),.reset_sys(reset_sys),.core_reset(core_reset),.init_done(memory_initialized),
         .access_read(memory_initialized && endpoint_state != 2 && request_valid && !write_enable),
         .access_write(memory_initialized && bus_commit && write_enable),

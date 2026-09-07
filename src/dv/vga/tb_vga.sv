@@ -18,7 +18,7 @@ module tb_vga;
     end
     `N2M_ASSERT_NO_RST(fixture_distinct_edges, clk_pix,
         (longint'($realtime * 1000.0) % 20000) != 10000)
-    n2m_reset_control u_reset (.clk_sys, .clk_pix, .board_reset_n, .pll_locked,
+    n2m_reset_control u_reset (.clk_reference(clk_sys), .clk_sys, .clk_pix, .board_reset_n, .pll_locked,
                               .pll_areset, .ready, .reset_sys, .reset_pix);
     logic source_valid, source_start;
     logic source_abort, blank_assert, source_display_eligible, observe_abort;

@@ -139,6 +139,39 @@ class IntelAdcTests(unittest.TestCase):
         raw = "Warning: unexpected ADC response"
         self.assertEqual(intel_memory.classify_diagnostics(raw, self.resolve()), (raw, []))
 
+    def test_simulation_profile_preserves_raw_and_rejects_drift(self):
+        import copy
+        descriptor = {"sources": [
+            {"name": "quartus/eda/sim_lib/mentor/fiftyfivenm_atoms_ncrypt.v", "path": "C:/vendor/atoms.v",
+             "sha256": "0600312e1d288b3354172dded919479e50752da5aa80d12dfdd82c1ee5d77c7b"},
+            {"name": "ip/altera/altera_modular_adc/control/altera_modular_adc_control_avrg_fifo.v", "path": "C:/vendor/fifo.v",
+             "sha256": "e4570567d633185546949acf6d6f9d875ee6567a6adc44e27d22c296361accf8"}]}
+        width = "# ** Warning: C:/vendor/atoms.v(38): (vopt-2241) Connection width does not match width of port '<protected>'.<protected>"
+        rewind = "# ** Warning: C:/vendor/atoms.v(38): (vopt-PLI-3691) Expected a system task, not a system function '$rewind'."
+        warnings = [width] * 7 + [
+            "# ** Warning: C:/vendor/fifo.v(79): (vopt-2685) [TFMPC] - Too few port connections for 'scfifo_component'.  Expected 13, found 12.",
+            "# ** Warning: C:/vendor/fifo.v(79): (vopt-2718) [TFMPC] - Missing connection for port 'eccstatus'."] + [rewind] * 9
+        restored = "# ** Note: (vsim-12126) Error and warning message counts have been restored: Errors=0, Warnings=18."
+        raw = "\n".join([*warnings, restored, "# Errors: 0, Warnings: 18"])
+        checked, evidence = intel_adc.classify_sim_diagnostics(raw, descriptor)
+        self.assertIsNone(diagnostic(checked))
+        self.assertEqual(evidence[0]["raw"], warnings)
+        self.assertEqual(evidence[0]["warning_count"], 18)
+        fault = raw.replace("# Errors: 0,", "# Errors: 1,") + "\n# ** Fatal: ADC_VENDOR_DATA"
+        checked, _ = intel_adc.classify_sim_diagnostics(fault, descriptor)
+        self.assertIsNone(diagnostic(checked, "ADC_VENDOR_DATA"))
+        self.assertIsNotNone(diagnostic(checked))
+        for bad in (raw.replace(width, width.replace("(38)", "(39)"), 1), raw + "\n" + width,
+                    raw.replace(rewind, "", 1), raw.replace("atoms.v", "dut.sv", 1),
+                    raw.replace("Warnings: 18", "Warnings: 17"), raw.replace(restored, ""),
+                    raw.replace("# Errors: 0,", "# Errors: 2,"), raw + "\n# ** Warning: DUT warning"):
+            with self.assertRaisesRegex(ValueError, "profile differs"):
+                intel_adc.classify_sim_diagnostics(bad, descriptor)
+        bad_source = copy.deepcopy(descriptor)
+        bad_source["sources"][0]["sha256"] = "changed"
+        with self.assertRaisesRegex(ValueError, "reviewed vendor source"):
+            intel_adc.classify_sim_diagnostics(raw, bad_source)
+
 
 if __name__ == "__main__":
     unittest.main()

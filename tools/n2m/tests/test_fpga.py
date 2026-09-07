@@ -68,6 +68,16 @@ class FpgaTests(unittest.TestCase):
         with patch.object(fpga, "tools", return_value=self.info), patch.object(fpga, "execute", side_effect=execute or self.execute):
             return fpga.build_fpga(self.root, self.build, self.args)
 
+    def test_struct_member_ports_are_bounded_names(self):
+        self.target["virtual_pins"] = ["request.read", "request.pair[*]", "response.data[0]"]
+        self.save_target()
+        self.assertEqual(fpga.target_definition(self.root,"smoke")["virtual_pins"],self.target["virtual_pins"])
+        for port in ("request..read", "request.*", "request.read;source bad", "request.read\nsource bad"):
+            self.target["virtual_pins"] = [port]
+            self.save_target()
+            with self.subTest(port=port),self.assertRaises(ValueError):
+                fpga.target_definition(self.root,"smoke")
+
     def test_headers_rebuild_and_preserve_external_dependency_rejection(self):
         source = self.root / "src/smoke.sv"
         source.write_text('`include "src/shared.svh"\n')

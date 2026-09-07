@@ -20,7 +20,7 @@ module tb_memory_cpu_port;
     integer index, phase, writes, owner_commits, fixed_reads, absent_reads, reset_phase, direction, reset_kind;
     bit duplicate_fault, missing_fault, write_fault, endpoint_loading;
     n2m_memory_cpu_port dut (.*);
-    n2m_memory_stores stores (
+    n2m_memory_stores stores (.oam_request('0), .oam_response(),
         .clk_sys(clk_sys), .reset_sys(reset_sys), .core_reset(core_reset), .init_done(init_done),
         .access_read(storage_read), .access_write(storage_write), .access_store(storage_store),
         .access_address(storage_offset), .access_wdata(storage_wdata),

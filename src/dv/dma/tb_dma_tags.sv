@@ -4,6 +4,9 @@ module tb_dma_tags;
     import n2m_interfaces_pkg::*;
     import n2m_cpu_pkg::*;
     import n2m_memory_pkg::*;
+    integer lane;
+    memory_oam_request_t oam_request;
+    memory_oam_response_t oam_response;
     logic clk_sys, reset_sys, core_reset, init_done, memory_init_done, gb_tick;
     logic [1:0] cpu_phase;
     logic cpu_halted, cpu_stopped, request_valid, bus_commit;
@@ -45,7 +48,7 @@ module tb_dma_tags;
     bit observe, raw_fault, operand_fault, pair_fault, data_fault, armed;
     assign init_done=memory_init_done && !setup;
     n2m_dma dut (.*);
-    n2m_memory_stores stores (.clk_sys(clk_sys), .reset_sys(reset_sys), .core_reset(core_reset),
+    n2m_memory_stores stores (.oam_request, .oam_response, .clk_sys(clk_sys), .reset_sys(reset_sys), .core_reset(core_reset),
         .init_done(memory_init_done), .access_read(setup ? setup_read : access_read),
         .access_write(setup ? setup_write : access_write), .access_store(setup ? setup_store : access_store),
         .access_address(setup ? setup_address : access_address), .access_wdata(setup ? setup_data : access_wdata),
@@ -68,7 +71,7 @@ module tb_dma_tags;
         address_effect='0;
         if(effect)address_effect={1'b1,16'hfe00,16'hffff,1'b1};
         repeat(4)begin
-            repeat(11)@(negedge clk_sys);gb_tick=1;bus_commit=page_write && cpu_phase==3;
+            repeat(cpu_phase==0 ? 4 : 5)@(negedge clk_sys);gb_tick=1;bus_commit=page_write && cpu_phase==3;
             address_effect_sample=cpu_phase==3 && (page_write || effect);
             @(negedge clk_sys);gb_tick=0;bus_commit=0;address_effect_sample=0;cpu_phase=cpu_phase+2'd1;
         end
@@ -84,6 +87,17 @@ module tb_dma_tags;
             expected_byte=8'(expected_address+24);
             if(access_address!==15'(expected_address) || access_wdata!==expected_byte)
                 $fatal(1,"DMA_TAG_FRESH_ROW address=%0d expected=%02x actual=%02x",access_address,expected_byte,access_wdata);
+            writes=writes+1;
+        end
+            for (lane=0; lane<2; lane=lane+1) if (observe && oam_request.write_enable[lane]) begin
+            case(writes)
+                0:expected_address=108;1:expected_address=109;2:expected_address=104;3:expected_address=105;
+                4:expected_address=106;5:expected_address=107;6:expected_address=110;7:expected_address=111;
+                default:$fatal(1,"DMA_TAG_EXTRA_WRITE");
+            endcase
+            expected_byte=8'(expected_address+24);
+            if((15'(oam_request.pair)*15'd2+15'(lane))!==15'(expected_address) || oam_request.data[8*lane +: 8]!==expected_byte)
+                $fatal(1,"DMA_TAG_FRESH_ROW address=%0d expected=%02x actual=%02x",(15'(oam_request.pair)*15'd2+15'(lane)),expected_byte,oam_request.data[8*lane +: 8]);
             writes=writes+1;
         end
     end
@@ -132,12 +146,12 @@ module tb_dma_tags;
         $display("PASS DMA scan tags row4 off row12 row13 writes=8 readback=8");$finish;
     end
     initial begin
-        wait(armed && raw_fault && access_read);@(negedge clk_sys);force access_valid=1'b0;
+        wait(armed && raw_fault && oam_request.read);@(negedge clk_sys);force oam_response.valid=1'b0;
     end
     initial begin
-        wait(armed && data_fault && access_read && access_address==100);
-        @(posedge clk_sys);@(negedge clk_sys);force access_rdata=8'h00;
-        @(negedge clk_sys);release access_rdata;
+        wait(armed && data_fault && oam_request.read && oam_request.pair==50);
+        @(posedge clk_sys);@(negedge clk_sys);force oam_response.data[7:0]=8'h00;
+        @(negedge clk_sys);release oam_response.data[7:0];
     end
     initial begin #10000000;$fatal(1,"DMA_TAG_WATCHDOG");end
 endmodule

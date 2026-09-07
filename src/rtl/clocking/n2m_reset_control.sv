@@ -2,6 +2,7 @@
 `include "src/rtl/common/macros.svh"
 // Contract: wiki/src/clocks-resets-cdc.md (reset and run control).
 module n2m_reset_control (
+    input  logic clk_reference,
     input  logic clk_sys,
     input  logic clk_pix,
     input  logic board_reset_n,
@@ -25,9 +26,9 @@ module n2m_reset_control (
             else release_count_next = release_count + 19'd1;
         end
     end
-    `DFF_INIT_ARST_N_VAL(board_release, {board_release[0], 1'b1}, clk_sys, board_reset_n, 2'b00)
-    `DFF_INIT_ARST_N_VAL(release_count, release_count_next, clk_sys, board_release[1], 19'd0)
-    `DFF_INIT_ARST_N_VAL(pll_areset, pll_areset_next, clk_sys, board_release[1], 1'b1)
+    `DFF_INIT_ARST_N_VAL(board_release, {board_release[0], 1'b1}, clk_reference, board_reset_n, 2'b00)
+    `DFF_INIT_ARST_N_VAL(release_count, release_count_next, clk_reference, board_release[1], 19'd0)
+    `DFF_INIT_ARST_N_VAL(pll_areset, pll_areset_next, clk_reference, board_release[1], 1'b1)
 
     logic lock_reset;
     assign lock_reset = pll_areset || !pll_locked;
@@ -56,9 +57,9 @@ module n2m_reset_control (
     `DFF_INIT_ARST_N_VAL(pix_release, {pix_release[0], 1'b1}, clk_pix, ready, 2'b00)
     assign reset_sys = !sys_release[1];
     assign reset_pix = !pix_release[1];
-    `N2M_ASSERT(release_count_in_range, clk_sys, !board_release[1], release_count <= 19'd499999)
+    `N2M_ASSERT(release_count_in_range, clk_reference, !board_release[1], release_count <= 19'd499999)
     `N2M_ASSERT_KNOWN(reset_control_known, clk_sys, !board_release[1], {release_count, pll_areset, lock_count, ready})
     `N2M_ASSERT_NEVER(no_ready_during_pll_reset, clk_sys, !board_release[1], ready && pll_areset)
-    `N2M_ASSERT_STABLE_WHEN(release_count_holds, clk_sys, !board_release[1], !pll_areset, release_count)
+    `N2M_ASSERT_STABLE_WHEN(release_count_holds, clk_reference, !board_release[1], !pll_areset, release_count)
     `N2M_ASSERT_STABLE_WHEN(lock_count_holds, clk_sys, !lock_samples[1], ready, lock_count)
 endmodule

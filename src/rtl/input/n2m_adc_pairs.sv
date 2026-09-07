@@ -1,8 +1,8 @@
 `timescale 1ns/1ps
 `include "src/rtl/common/macros.svh"
 module n2m_adc_pairs #(
-    parameter int unsigned INTERVAL_CYCLES = 50000,
-    parameter int unsigned LIMIT_CYCLES = 1000000
+    parameter int unsigned INTERVAL_CYCLES = 25000,
+    parameter int unsigned LIMIT_CYCLES = 500000
 ) (
     input var logic clk_sys,
     input var logic reset_sys,

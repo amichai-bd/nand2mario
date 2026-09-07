@@ -11,7 +11,7 @@ module n2m_timebase (
 );
     logic [18:0] phase;
     logic [18:0] sum;
-    assign sum = phase + 19'd32768;
+    assign sum = phase + 19'd65536;
     // Consumers sample this edge's carry, before the phase register advances.
     assign gb_tick = !reset_sys && !core_reset && !paused && (sum >= 19'd390625);
 

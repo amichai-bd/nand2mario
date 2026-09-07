@@ -148,7 +148,7 @@
       "+bad_numerator"
     ],
     "expected_exit": "nonzero",
-    "signature": "TIMEBASE_MISMATCH mode=numerator edge=751 expected=62 actual=63"
+    "signature": "TIMEBASE_MISMATCH mode=numerator edge=602 expected=100 actual=101"
   },
   "clocking-drop-tick": {
     "sources": [
@@ -161,7 +161,7 @@
       "+drop_tick"
     ],
     "expected_exit": "nonzero",
-    "signature": "TIMEBASE_MISMATCH mode=drop edge=12 expected=1 actual=0"
+    "signature": "TIMEBASE_MISMATCH mode=drop edge=6 expected=1 actual=0"
   },
   "clocking-early-reset": {
     "sources": [
@@ -5261,7 +5261,7 @@
     "top": "tb_dma_restart",
     "timeout_seconds": 60,
     "expected_exit": "nonzero",
-    "signature": "DMA_RESTART_WRITE_TIME expected_delta=25 actual_delta=24",
+    "signature": "DMA_RESTART_WRITE_TIME expected_delta=13 actual_delta=12",
     "vendor_model": "intel-memory",
     "args": [
       "+EARLY_WRITE"
@@ -6964,6 +6964,28 @@
     ],
     "expected_exit": "nonzero",
     "signature": "MEMORY_BANK_ENABLE store=6 address=0000"
+  },
+  "timebase25": {
+    "sources": [
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/dv/clocking/tb_timebase25.sv"
+    ],
+    "top": "tb_timebase25",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS TIMEBASE25 exact-rate shortest-dot=5 shortest-machine=23 pause reset"
+  },
+  "timebase25-bad-numerator": {
+    "sources": [
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/dv/clocking/tb_timebase25.sv"
+    ],
+    "top": "tb_timebase25",
+    "args": [
+      "+bad_numerator"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "TIMEBASE25_RATE"
   },
   "integration-preloaded": {
     "sources": [
