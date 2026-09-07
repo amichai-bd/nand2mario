@@ -439,6 +439,9 @@ class HostTests(unittest.TestCase):
             return b'\0'
         endpoint.read.side_effect = late_read
         transport = SerialTransport(endpoint, clock=lambda: now[0])
+        self.assertEqual(transport.read(1), b'')
+        now[0] = 0.0
+        endpoint.reset_mock()
         client = Client(transport, clock=lambda: now[0])
         with self.assertRaises(UncertainCompletion):
             client.request('PING')
