@@ -32,9 +32,12 @@ The wrapper's valid bits are ordinary shared-macro registers.
 `reset_a/b` immediately mask the corresponding valid output and inhibit that
 port's accesses; reset does not clear the array or data output. Each domain's
 owner must release reset synchronously. Owners initialize through real clear
-or load writes and prevent reads until their data is initialized. There is no
-MIF/HEX input, portable branch, private vendor-array loading or fabricated
-power-up fill. `power_up_uninitialized` is `TRUE`, and `init_file` is `UNUSED`.
+or load writes and prevent reads until their data is initialized. Default and
+synthesized memory has `power_up_uninitialized=TRUE` and `init_file=UNUSED`.
+The explicit [simulation preload](../../dv/preload/SPEC.md) may select a supported
+Intel initialization file through `SIM_INIT_FILE`; synthesis ignores it.
+There is no portable replacement array, private vendor-array loading or
+fabricated product power-up fill. Reset still does not reload any array.
 
 ## Writes and collisions
 
