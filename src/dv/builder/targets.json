@@ -8614,7 +8614,8 @@
         "wave_pixel",
         "wave_retirement",
         "wave_write",
-        "wave_input"
+        "wave_input",
+        "wave_load"
       ]
     }
   },
@@ -8736,7 +8737,8 @@
         "wave_pixel",
         "wave_retirement",
         "wave_write",
-        "wave_input"
+        "wave_input",
+        "wave_load"
       ]
     }
   },
@@ -8860,7 +8862,8 @@
         "wave_pixel",
         "wave_retirement",
         "wave_write",
-        "wave_input"
+        "wave_input",
+        "wave_load"
       ]
     }
   },
@@ -8983,7 +8986,8 @@
         "wave_pixel",
         "wave_retirement",
         "wave_write",
-        "wave_input"
+        "wave_input",
+        "wave_load"
       ]
     }
   }
