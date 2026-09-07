@@ -175,26 +175,26 @@ class Reference:
 INPUT_MASKS = (1, 0, 2, 0, 4, 0, 8, 0, 16, 0, 32, 0, 64, 0, 128, 0, 17, 0)
 
 
-def input_window(transition):
-    if not 1 <= transition <= 18:
+def input_window(transition, *, short=False):
+    if not 1 <= transition <= (2 if short else 18):
         raise ValueError('input transition outside original schedule')
-    first = FIRST_IMAGE_END + 20 * transition * FRAME_DOTS + 20000
+    first = FIRST_IMAGE_END + (1 if short else 20) * transition * FRAME_DOTS + 20000
     return first, first + 2000
 
 
-def frame_mask(frame):
+def frame_mask(frame, *, short=False):
     mask = 0
-    for j, value in enumerate(INPUT_MASKS, 1):
-        if frame >= 20 * j + 3:
+    for j, value in enumerate(INPUT_MASKS[:2] if short else INPUT_MASKS, 1):
+        if frame >= (1 if short else 20) * j + 3:
             mask = value
     return mask
 
 
-def pixel_shade(frame, x, y):
+def pixel_shade(frame, x, y, *, short=False):
     if frame == 0:
         return 0
     marker = x < 8 and y < 8
-    cell = x < 64 and 64 <= y < 72 and bool(frame_mask(frame) & (1 << (x // 8)))
+    cell = x < 64 and 64 <= y < 72 and bool(frame_mask(frame, short=short) & (1 << (x // 8)))
     return int(marker or cell)
 
 

@@ -37,3 +37,6 @@ phase, seed, applied public inputs and expected/actual outputs. Python reference
 state is represented in this trace; HDL waves record the simulated signals.
 Use `--seed` for repeatable random cases and `--rebuild` to bypass valid cache.
 Licensed simulation remains serialized; no hardware is accessed.
+
+For bounded public waveforms, use the optional `python.waves` selection described
+in the [builder contract](../../../wiki/tools/n2m/SPEC.md#testbench-types).

@@ -48,7 +48,8 @@ tools fail with diagnostics; there is no fallback simulator.
 The [target registry](../../../src/dv/builder/targets.json) defaults to
 `testbench: "systemverilog"`; existing SV commands and expected-exit rules stay
 unchanged. `testbench: "python"` explicitly selects cocotb with a closed `python`
-object containing `module`, `test` and `inputs`. The module/test are identifiers;
+object requiring `module`, `test` and `inputs`, with optional `waves`. No other
+keys are accepted. The module/test are identifiers;
 inputs name checked-in files including exactly one module file. Unsupported
 types, missing inputs, incompatible driver settings and nonzero
 raw-exit expectations fail without fallback. The first path accepts one named
@@ -56,13 +57,24 @@ Python test per target. The [usage guide](../../../src/dv/python/README.md) owns
 setup and commands; the [joypad plan](../../../src/dv/python/joypad/README.md)
 owns its bounded subsystem coverage.
 
+`waves`, when present, is a nonempty list of unique public signal identifiers
+from the top module. Hierarchical paths, wildcards and Tcl text are rejected.
+Both WLF and VCD select exactly those names. Omission retains the existing
+top-level selection. Passive projections may bound waveform activity while
+continuous functional monitors retain the complete required observations.
+
 Python targets may select `vendor_model: "intel-memory"` through the existing
 strict model resolution, hashing and library binding. Other vendor selections
 remain unsupported. `preload: "integration"` packages the original integration
 image and prepares/verifies the supported Intel initialization files before
 elaboration; it requires the software packager inputs in the Python fingerprint.
 The [integration plan](../../../src/dv/python/integration/README.md) owns its
-diagnostic scope and historical source comparison.
+diagnostic scope and historical source comparison. `preload: "v05"` uses the
+original v0.5 software build and its recorded image hash with the same preparation,
+verification and public loader adoption. It requires that software's source,
+layout and tool inputs. This is short execution evidence, not real UART loading
+or full milestone acceptance; the [v0.5 plan](../../../src/dv/python/v05/README.md)
+owns those separate gates.
 
 Python targets use the executing pinned interpreter and installed packages from
 the [separate dependency record](../../../src/dv/python/THIRD_PARTY.md). Normal
