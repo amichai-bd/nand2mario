@@ -52,5 +52,26 @@
         "sha256": "285cc200c113d57d81b27fbc422f1305a263771a449325b9e3770d83ca08ea9e"
       }
     }
+  },
+  "intel_adc": {
+    "version": "Quartus Prime 25.1std.0 Build1129",
+    "url": "https://www.altera.com/downloads/fpga-development-tools/quartus-prime-lite-edition-design-software-version-25-1-windows",
+    "license": "Proprietary Altera software/IP agreements; see installed source headers and distribution license files",
+    "purpose": "Unmodified installed ADC control and encrypted MAX10 ADC/PLL simulation models",
+    "local_changes": "none",
+    "redistribution": "No vendor source is committed; compiled library and generated PLL remain under ignored build tag",
+    "sources": {
+      "quartus/eda/sim_lib/altera_primitives.v": "7518a551688e52aa9bda3fbb913a84f8609f3ac0bcb0f3ab393c7c95ce59cad2",
+      "quartus/eda/sim_lib/altera_mf.v": "2ae09f97f9606626da216e9eb91007beec3ebbe023c5b9415be472417fe49d5e",
+      "quartus/eda/sim_lib/fiftyfivenm_atoms.v": "f545157b354bc56af1a27f5666cd4bc6479d7696412f652076fe8efec7aaf9b7",
+      "quartus/eda/sim_lib/mentor/fiftyfivenm_atoms_ncrypt.v": "0600312e1d288b3354172dded919479e50752da5aa80d12dfdd82c1ee5d77c7b",
+      "quartus/libraries/megafunctions/altera_std_synchronizer.v": "821c0bd5ba6b1bcbc9c6e38c08d117ff692bd2b6cbb27f6c3f7c16f2c12e28db",
+      "ip/altera/altera_modular_adc/control/altera_modular_adc_control.v": "03fb3f3602704606e33a477491da61ae2415409e1376212b71c95354ece49d92",
+      "ip/altera/altera_modular_adc/control/altera_modular_adc_control_fsm.v": "dd39a51bd11f96ddea56de2be9ef56e2184985d2063a1ab2bda4ca1506e40105",
+      "ip/altera/altera_modular_adc/control/altera_modular_adc_control_avrg_fifo.v": "e4570567d633185546949acf6d6f9d875ee6567a6adc44e27d22c296361accf8",
+      "ip/altera/altera_modular_adc/control/chsel_code_converter_sw_to_hw.v": "996facc16fb6312c1b6d45a4f1a157ce4ae64ae8510ec63e9288920fdbcf201a",
+      "ip/altera/altera_modular_adc/control/fiftyfivenm_adcblock_top_wrapper.v": "763f8c0fd1c25affc2614dd8d162dea9218b7acc0db2d0ee45921e9cfeb30247",
+      "ip/altera/altera_modular_adc/control/fiftyfivenm_adcblock_primitive_wrapper.v": "1c5741b5c96601a792e3645568ddae273951d70b8eb1bc3022183d86ae841536"
+    }
   }
 }

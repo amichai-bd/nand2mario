@@ -13,12 +13,7 @@ OUTPUTS = {
 }
 
 
-def verify(text, checks, top="clocking_proof"):
-    if top not in ("clocking_proof", "vga_proof", "ppu_proof", "intel_memory_proof"):
-        raise ValueError("unsupported PLL proof top")
-    rows = re.findall(r";\s*([^;\r\n]+?)\s*;\s*No clock feeds this register's clock port\.\s*;", checks)
-    if rows != [ROW]:
-        raise ValueError("unrecognized no-clock endpoint")
+def parse_netlist(text, top):
     text = re.sub(r"//[^\n]*", "", text)
     text = re.sub(r"(?m)^\s*`timescale[^\n]*", "", text)
     cells = {}
@@ -66,6 +61,30 @@ def verify(text, checks, top="clocking_proof"):
         ports = {key: re.sub(r"\s", "", value) for key, value in connections}
         cells[name] = (kind, ports)
 
+    for constant, declaration in {"gnd": "wire gnd", "vcc": "wire vcc", "devclrn": "tri1 devclrn", "devpor": "tri1 devpor"}.items():
+        if re.search(r"\\" + constant + r"\s", text) or [d for d in declarations if re.search(r"\b" + constant + r"$", d)] != [declaration]:
+            raise ValueError("vendor constant declaration differs")
+        values = [(lhs, rhs) for lhs, rhs in zip(assigned_nets, assignments) if re.search(r"\b" + constant + r"\b", lhs)]
+        if values != ([(constant, "1'b0")] if constant == "gnd" else [(constant, "1'b1")] if constant == "vcc" else []):
+            raise ValueError("vendor constant assignment differs")
+        if any(re.search(r"\b" + constant + r"\b", value) for kind, ports in cells.values() for port, value in ports.items()
+               if port in OUTPUTS[kind]):
+            raise ValueError("vendor constant has a primitive driver")
+
+    return text, cells, parameters, declarations, assignments, assigned_nets
+
+
+def verify(text, checks, top="clocking_proof"):
+    if top not in ("clocking_proof", "vga_proof", "ppu_proof", "intel_memory_proof", "controls_proof"):
+        raise ValueError("unsupported PLL proof top")
+    rows = re.findall(r";\s*([^;\r\n]+?)\s*;\s*No clock feeds this register's clock port\.\s*;", checks)
+    expected_rows = [ROW]
+    if top == "controls_proof":
+        expected_rows.append("n2m_adc_backend:u_adc|n2m_adc_pll:u_pll|altpll:altpll_component|n2m_adc_pll_altpll:auto_generated|pll_lock_sync")
+    if rows != expected_rows:
+        raise ValueError("unrecognized no-clock endpoint")
+    text, cells, parameters, declarations, assignments, assigned_nets = parse_netlist(text, top)
+
     def cell(name, kind):
         if name not in cells or cells[name][0] != kind:
             raise ValueError(f"vendor lock topology missing {name}")
@@ -81,16 +100,6 @@ def verify(text, checks, top="clocking_proof"):
     def modes(name, expected):
         if parameters.get(name) != expected:
             raise ValueError(f"unsupported primitive parameter set: {name}")
-
-    for constant, declaration in {"gnd": "wire gnd", "vcc": "wire vcc", "devclrn": "tri1 devclrn", "devpor": "tri1 devpor"}.items():
-        if re.search(r"\\" + constant + r"\s", text) or [d for d in declarations if re.search(r"\b" + constant + r"$", d)] != [declaration]:
-            raise ValueError("vendor constant declaration differs")
-        values = [(lhs, rhs) for lhs, rhs in zip(assigned_nets, assignments) if re.search(r"\b" + constant + r"\b", lhs)]
-        if values != ([(constant, "1'b0")] if constant == "gnd" else [(constant, "1'b1")] if constant == "vcc" else []):
-            raise ValueError("vendor constant assignment differs")
-        if any(re.search(r"\b" + constant + r"\b", value) for kind, ports in cells.values() for port, value in ports.items()
-               if port in OUTPUTS[kind]):
-            raise ValueError("vendor constant has a primitive driver")
 
     def users(net):
         result = {(name, port) for name, (kind, ports) in cells.items() for port, value in ports.items()

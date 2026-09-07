@@ -10,7 +10,7 @@ import uuid
 
 from .hdl import dependencies
 from .records import atomic_json, cache_matches, digest, file_hash, read_json
-from . import fpga_pll, fpga_constraints, fpga_vga, fpga_intel_memory, fpga_memory_stores, fpga_v05
+from . import fpga_pll, fpga_constraints, fpga_vga, fpga_intel_memory, fpga_memory_stores, fpga_adc, fpga_controls, fpga_v05
 
 DEVICE = "10M50DAF484C7G"
 REGISTRY = "src/fpga/de10_lite/targets.json"
@@ -69,7 +69,7 @@ def target_definition(root, name):
         raise ValueError("unknown FPGA target, fields, or device")
     if "pll" in target:
         fpga_pll.validate(target["pll"])
-        if target["top"] not in ("clocking_proof", "vga_proof", "ppu_proof", "intel_memory_proof") or "timing" not in target:
+        if target["top"] not in ("clocking_proof", "vga_proof", "ppu_proof", "intel_memory_proof", "controls_proof") or "timing" not in target:
             raise ValueError("PLL evidence currently requires the bounded clocking proof target")
     if "timing" in target:
         fpga_constraints.validate(target["timing"])
@@ -101,7 +101,7 @@ def target_definition(root, name):
     return target
 
 
-def prepare(root, folder, target):
+def prepare(root, folder, target, build_id=None):
     # Configurations are data; quote every value rather than evaluating user Tcl.
     lines = ['set_global_assignment -name FAMILY "MAX 10"',
              f'set_global_assignment -name DEVICE {DEVICE}',
@@ -110,19 +110,29 @@ def prepare(root, folder, target):
              'set_global_assignment -name VERILOG_MACRO "SYNTHESIS=1"',
              f'set_global_assignment -name SEARCH_PATH {tcl_word(root.resolve())}',
              'set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output']
+    if target["top"] == "controls_proof":
+        if not isinstance(build_id, str) or not re.fullmatch(r"[0-9a-f]{32}", build_id) or int(build_id, 16) == 0:
+            raise ValueError("physical controls build requires a nonzero fingerprint identity")
+        lines.append("set_global_assignment -name VERILOG_MACRO " + tcl_word("N2M_CONTROLS_BUILD_ID=128'h" + build_id))
     for field, assignment in (("sources", "SYSTEMVERILOG_FILE"), ("constraints", "SDC_FILE")):
         for name in target[field]:
             lines.append(f'set_global_assignment -name {assignment} {tcl_word((root / name).resolve())}')
     if "pll" in target:
         lines.append('set_global_assignment -name VERILOG_FILE n2m_pixel_pll.v')
+    if "src/rtl/input/n2m_adc_backend.sv" in target["sources"]:
+        lines.extend(fpga_adc.assignments())
     if "timing" in target or target["top"] == "v05_proof":
         (folder / "checked.sdc").write_text(checked_constraints(target), encoding="utf-8")
         lines.append('set_global_assignment -name SDC_FILE checked.sdc')
     for port, pin in target["pins"].items():
         lines.extend([f'set_location_assignment {pin} -to {tcl_word(port)}',
                       f'set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to {tcl_word(port)}'])
-        if target.get("top") in ("vga_proof", "ppu_proof", "v05_proof") and port in fpga_vga.PORTS:
+        if target.get("top") in ("vga_proof", "ppu_proof", "controls_proof", "v05_proof") and port in fpga_vga.PORTS:
             lines.append(f'set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to {tcl_word(port)}')
+        if target["top"] == "controls_proof" and (port == "uart_tx" or re.fullmatch(r"leds\[[0-9]\]", port)):
+            lines.append(f'set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to {tcl_word(port)}')
+    if target["top"] == "controls_proof":
+        lines.append('set_instance_assignment -name IO_STANDARD "3.3 V SCHMITT TRIGGER" -to board_reset_n')
     for port in target["virtual_pins"]:
         lines.append(f'set_instance_assignment -name VIRTUAL_PIN ON -to {tcl_word(port)}')
     (folder / "design.qsf").write_text('\n'.join(lines) + '\n', encoding="utf-8")
@@ -130,10 +140,12 @@ def prepare(root, folder, target):
     audit = AUDIT
     if "pll" in target:
         audit = audit.replace("project_close", "report_metastability -file output/metastability.rpt\nreport_clock_transfers -file output/clock_transfers.rpt\n" + fpga_pll.chain_audit(tcl_word) + "project_close")
-    if target.get("top") in ("vga_proof", "ppu_proof"):
+    if target.get("top") in ("vga_proof", "ppu_proof", "controls_proof"):
         audit = audit.replace("project_close", fpga_vga.audit(tcl_word, lcd=target["top"] == "ppu_proof") + "project_close")
     if target.get("top") == "intel_memory_proof":
         audit = audit.replace("project_close", fpga_intel_memory.audit(tcl_word) + "project_close")
+    if target["top"] == "controls_proof":
+        audit = audit.replace("project_close", fpga_controls.audit(tcl_word) + "project_close")
     if target.get("top") == "v05_proof":
         audit = audit.replace("project_close", fpga_v05.audit(tcl_word) + "project_close")
     (folder / "audit.tcl").write_text(audit, encoding="utf-8")
@@ -143,12 +155,14 @@ def checked_constraints(target):
     if target.get("top") == "v05_proof":
         return fpga_v05.constraints(tcl_word)
     text = fpga_constraints.generate(target["timing"], tcl_word)
-    if target.get("top") in ("vga_proof", "ppu_proof"):
+    if target.get("top") in ("vga_proof", "ppu_proof", "controls_proof"):
         text += fpga_vga.constraints(tcl_word, lcd=target["top"] == "ppu_proof")
+    if target["top"] == "controls_proof":
+        text += fpga_controls.constraints(tcl_word)
     return text
 
 
-def diagnostics(output):
+def diagnostics(output, explained=()):
     classified = []
     for line in output.splitlines():
         line = line.strip()
@@ -156,7 +170,10 @@ def diagnostics(output):
             classified.append({"code": "TBBmalloc", "text": line})
         elif re.match(r"(?:Critical Warning|Warning|Error)(?:\s|:|\()", line, re.I):
             match = re.fullmatch(r"Warning \((\d+)\): (.*)", line)
-            if match and match[1] in CLASSIFIED and re.fullmatch(CLASSIFIED[match[1]], match[2]):
+            known = next((item for item in explained if item["text"] == line), None)
+            if known is not None:
+                classified.append(known)
+            elif match and match[1] in CLASSIFIED and re.fullmatch(CLASSIFIED[match[1]], match[2]):
                 classified.append({"code": match[1], "text": line})
             else:
                 raise ValueError(f"unexplained Quartus diagnostic: {line}")
@@ -189,7 +206,10 @@ def execute(argv, folder, log, timeout, record, build):
         raise RuntimeError(f"Quartus timeout after {timeout}s; see {log.name}")
     if process.returncode:
         raise RuntimeError(f"Quartus exit {process.returncode}; see {log.name}")
-    record["classified_diagnostics"].extend(diagnostics(text))
+    explained = ()
+    if log.name == "compile.log" and record.get("definition", {}).get("top") in ("adc_proof", "controls_proof"):
+        explained = fpga_adc.explained_diagnostics(text, folder, record["tools"]["adc"])
+    record["classified_diagnostics"].extend(diagnostics(text, explained))
     return text
 
 
@@ -210,7 +230,7 @@ def tools(directory, folder, record, build, timeout):
     return identities
 
 
-def timing_evidence(folder, target):
+def timing_evidence(folder, target, *, build_id=None):
     if "timing" in target:
         if (folder / "checked.sdc").read_text(encoding="utf-8") != checked_constraints(target):
             raise ValueError("checked timing assignments differ from target")
@@ -234,6 +254,8 @@ def timing_evidence(folder, target):
             raise ValueError(f"timing failure: {name}, slack={slack}, TNS={tns}")
         slacks[name] = slack
     for corner in ("Slow 1200mV 85C", "Slow 1200mV 0C", "Fast 1200mV 0C"):
+        if target["top"] == "controls_proof" and f"{corner} Model Minimum Pulse Width 'u_adc|u_pll|altpll_component|auto_generated|pll1|clk[0]'" not in slacks:
+            raise ValueError("missing ADC PLL pulse-width timing")
         for check in (("Setup", "Hold", "Recovery", "Removal", "Minimum Pulse Width") if "pll" in target else ("Setup", "Hold", "Minimum Pulse Width")):
             if not any(name.startswith(f"{corner} Model {check} '") for name in slacks):
                 raise ValueError(f"missing timing corner/check: {corner} {check}")
@@ -254,22 +276,34 @@ def timing_evidence(folder, target):
     if not TIMING_CHECKS.issubset(dict(rows)) or len(dict(rows)) != len(rows):
         raise ValueError("missing structural timing checks")
     lock_event = None
+    expected_lock_events = 2 if target["top"] == "controls_proof" else 1
     if "pll" in target:
-        if dict(rows).get("no_clock") != "1":
+        if dict(rows).get("no_clock") != str(expected_lock_events):
             raise ValueError("vendor lock event row missing or extra no-clock endpoints")
         lock_event = fpga_pll.verify_lock_event(folder, checks, target["top"])
         fpga_pll.verify_fit(folder, target)
-    vga_evidence = fpga_vga.verify(folder, lcd=target["top"] == "ppu_proof") if target.get("top") in ("vga_proof", "ppu_proof") else None
+    adc_evidence = None
+    if target["top"] in ("adc_proof", "controls_proof"):
+        adc_evidence = fpga_adc.verify(folder, target["top"])
+        if target["top"] == "adc_proof":
+            lock_event = adc_evidence["lock_event"]
+    vga_evidence = fpga_vga.verify(folder, lcd=target["top"] == "ppu_proof", controls=target["top"] == "controls_proof") if target.get("top") in ("vga_proof", "ppu_proof", "controls_proof") else None
     memory_evidence = fpga_intel_memory.verify(folder) if target.get("top") == "intel_memory_proof" else None
     if target.get("top") == "n2m_memory_stores":
         memory_evidence = fpga_memory_stores.verify(folder)
     for name, count in rows:
-        if name == "no_clock" and int(count) == 1 and "pll" in target:
+        if name == "no_clock" and int(count) == expected_lock_events and ("pll" in target or adc_evidence is not None):
             continue
         if int(count) and not (name == "virtual_clock" and int(count) == 1 and "No virtual clock was found." in checks):
             raise ValueError(f"structural timing failure: {name}={count}")
-    return {"slack_ns": slacks, "fit_summary": fit, "unconstrained": "none", "ignored_constraints": "none", "vendor_lock_event": lock_event, "vga": vga_evidence, "intel_memory": memory_evidence,
+    evidence = {"slack_ns": slacks, "fit_summary": fit, "unconstrained": "none", "ignored_constraints": "none", "vendor_lock_event": lock_event, "vga": vga_evidence, "intel_memory": memory_evidence,
             "virtual_clock_check": "No virtual clock required for the physical-clock-referenced fixture" if "No virtual clock was found." in checks else "passed"}
+    if adc_evidence is not None:
+        evidence["adc"] = adc_evidence
+    if target.get("top") == "controls_proof":
+        evidence["controls"] = fpga_controls.verify(folder)
+        evidence["controls"]["build_id"] = fpga_controls.verify_identity(folder, build_id)
+    return evidence
 
 
 def complete_cache(record, fingerprint, root, build, target):
@@ -286,20 +320,26 @@ def complete_cache(record, fingerprint, root, build, target):
         if "pll" in target:
             required += [folder / "n2m_pixel_pll.v", folder / "generate-pll.log"]
             required += [folder / "output" / name for name in fpga_pll.required_reports()]
-        if "pll" in target or "src/rtl/common/n2m_intel_ram.sv" in target["sources"]:
+        if "src/rtl/input/n2m_adc_backend.sv" in target.get("sources", []):
+            required += [folder / name for name in (*fpga_adc.CONTROL, "n2m_adc_pll.v", "generate-adc-pll.log")]
+        if "pll" in target or any(p in target["sources"] for p in ("src/rtl/common/n2m_intel_ram.sv", "src/rtl/input/n2m_adc_backend.sv")):
             required += [folder / "simulation/questa/design.vo", folder / "netlist.log"]
         required += [folder / name for name in ("design.qpf", "design.qsf", "audit.tcl", "compile.log", "audit.log")]
         if "timing" in target or target.get("top") == "v05_proof":
             required.append(folder / "checked.sdc")
-        if target.get("top") in ("vga_proof", "ppu_proof"):
+        if target.get("top") in ("vga_proof", "ppu_proof", "controls_proof"):
             required += [folder / "output" / name for name in fpga_vga.required_reports(lcd=target["top"] == "ppu_proof")]
+        if target.get("top") == "controls_proof":
+            required += [folder / "output" / name for name in fpga_controls.required_reports()]
         if target.get("top") == "intel_memory_proof":
             required.append(folder / "output/intel_memory_inputs.rpt")
         if target.get("top") == "v05_proof":
             required += [folder / "output" / name for name in fpga_vga.required_reports(lcd=True)]
         if any(p.relative_to(root).as_posix() not in record["artifacts"] for p in required):
             return False
-        return timing_evidence(folder, target) == record["evidence"]
+        if target.get("top") == "controls_proof" and record.get("build_id") != fingerprint[:32]:
+            return False
+        return timing_evidence(folder, target, build_id=record.get("build_id")) == record["evidence"]
     except (KeyError, TypeError, ValueError, OSError):
         return False
 
@@ -331,20 +371,26 @@ def build_fpga(root, build, args, provenance=None):
             record["tools"]["altpll"] = fpga_pll.identity(args.quartus_bin)
         if "src/rtl/common/n2m_intel_ram.sv" in target["sources"]:
             record["tools"]["altsyncram"] = fpga_intel_memory.identity(args.quartus_bin)
+        if "src/rtl/input/n2m_adc_backend.sv" in target["sources"]:
+            record["tools"]["adc"] = fpga_adc.identity(args.quartus_bin)
         record["definition"] = target
         record["fingerprint"] = digest({"inputs": record["inputs"], "tools": record["tools"], "definition": target, "timeout": args.timeout})
+        if target["top"] == "controls_proof":
+            record["build_id"] = record["fingerprint"][:32]
         if not args.rebuild and complete_cache(old, record["fingerprint"], root, build, target):
             record.update(status="PASS", cache="CACHED", reused_result=old["attempt_result"], evidence=old["evidence"], evidence_directory=old["evidence_directory"])
             record["artifacts"].update(old["artifacts"])
         else:
+            if "adc" in record["tools"]:
+                fpga_adc.generate(folder, record["tools"]["adc"], execute, args.timeout, record, build)
             if "pll" in target:
                 fpga_pll.generate(folder, record["tools"]["altpll"], target["pll"], execute, args.timeout, record, build)
-            prepare(root, folder, target)
+            prepare(root, folder, target, build_id=record.get("build_id"))
             execute([record["tools"]["quartus_sh"]["path"], "--flow", "compile", "design"], folder, folder / "compile.log", args.timeout, record, build)
             execute([record["tools"]["quartus_sta"]["path"], "-t", "audit.tcl"], folder, folder / "audit.log", args.timeout, record, build)
-            if "pll" in target or "src/rtl/common/n2m_intel_ram.sv" in target["sources"]:
+            if "pll" in target or "adc" in record["tools"] or "src/rtl/common/n2m_intel_ram.sv" in target["sources"]:
                 execute([record["tools"]["quartus_eda"]["path"], "--simulation", "--tool=modelsim", "--format=verilog", "design"], folder, folder / "netlist.log", args.timeout, record, build)
-            record["evidence"] = timing_evidence(folder, target)
+            record["evidence"] = timing_evidence(folder, target, build_id=record.get("build_id"))
             record["evidence_directory"] = folder.relative_to(root).as_posix()
             record["status"] = "PASS"
     except Exception as error:

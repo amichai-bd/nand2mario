@@ -106,3 +106,9 @@ the preserved queued wake once. The wake boundary is explicit stimulus, not a
 claim about analog restart or the JOYP detector. Actual pause-output corruption
 must fail the independent freeze checker. The normal full wire endpoint test
 remains the affected command/status/reset/ROM regression after this control edit.
+
+`uart-validation` is the focused synthesis-correction regression for the actual
+host-register decoder and command validator. It checks all twenty literal host
+values, intervening unaligned bytes, high address aliases and unknown rejection,
+plus seven reply lengths and malformed lengths. Its 113 checks do not replace
+full serial endpoint evidence. The negative corrupts the actual build-ID word.

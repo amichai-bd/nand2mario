@@ -43,6 +43,27 @@ tools fail with diagnostics; there is no fallback simulator.
 
 ## Questa simulation
 
+### Installed Intel ADC model
+
+`vendor_model: "intel-adc"` resolves the pinned installed control core, canonical
+synchronizer, public and encrypted MAX10 atoms, and PLL models. It uses the same
+installation discovery and explicit `--intel-sim-lib` selection as memory.
+Every source hash and PLL generation dependency enters the fingerprint before
+reuse. Each attempt records the actual PLL generator command, verifies its
+parameters against the FPGA configuration, and retains the generated hash.
+Vendor compilation separates `n2m_intel_adc_atoms` from the control library
+`n2m_intel_adc`. Control resolves its canonical synchronizer locally; it does
+not overwrite the alternate definition embedded in `altera_mf.v`. Explicit
+run mappings and `-L` binding preserve that separation. Repository substitutes
+for these modules are rejected.
+
+The pinned top wrapper contains CR-CR-LF around its timescale. Only its exact
+vlog2083 line24 diagnostic is explained, with the supported source hash, path,
+single occurrence and one-warning/zero-error summary required. Raw logs and
+`explained_compile_diagnostics` retain that one actual warning. Other compiler
+or runtime warnings remain failures. No vendor bytes are edited or compiler
+warnings suppressed. Host dependency tests are not hardware behavior evidence.
+
 ### Installed Intel memory model
 
 A target declaring `vendor_model: "intel-memory"` requires the installed source

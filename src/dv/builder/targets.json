@@ -5916,6 +5916,211 @@
       "+MISSING_PAIR"
     ]
   },
+  "adc-pairs": {
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS adc pairs pairs=4",
+    "sources": [
+      "src/rtl/input/n2m_controls_pkg.sv",
+      "src/rtl/input/n2m_button_filter.sv",
+      "src/rtl/input/n2m_adc_pairs.sv",
+      "src/rtl/input/n2m_controls_mask.sv",
+      "src/rtl/input/n2m_physical_controls.sv",
+      "src/dv/input/tb_adc_pairs.sv"
+    ],
+    "top": "tb_adc_pairs"
+  },
+  "adc-pairs-corrupt": {
+    "args": [
+      "+CORRUPT_PAIR"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "ADC_PAIR_DATA",
+    "sources": [
+      "src/rtl/input/n2m_controls_pkg.sv",
+      "src/rtl/input/n2m_button_filter.sv",
+      "src/rtl/input/n2m_adc_pairs.sv",
+      "src/rtl/input/n2m_controls_mask.sv",
+      "src/rtl/input/n2m_physical_controls.sv",
+      "src/dv/input/tb_adc_pairs.sv"
+    ],
+    "top": "tb_adc_pairs"
+  },
+  "adc-pairs-channel": {
+    "args": [
+      "+WRONG_CHANNEL"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT adc_pair_response_contract",
+    "sources": [
+      "src/rtl/input/n2m_controls_pkg.sv",
+      "src/rtl/input/n2m_button_filter.sv",
+      "src/rtl/input/n2m_adc_pairs.sv",
+      "src/rtl/input/n2m_controls_mask.sv",
+      "src/rtl/input/n2m_physical_controls.sv",
+      "src/dv/input/tb_adc_pairs.sv"
+    ],
+    "top": "tb_adc_pairs"
+  },
+  "controls-mask": {
+    "sources": [
+      "src/rtl/input/n2m_controls_pkg.sv",
+      "src/rtl/input/n2m_button_filter.sv",
+      "src/rtl/input/n2m_controls_mask.sv",
+      "src/rtl/input/n2m_input_pkg.sv",
+      "src/rtl/input/n2m_input.sv",
+      "src/dv/input/tb_controls_mask.sv"
+    ],
+    "top": "tb_controls_mask",
+    "args": [],
+    "signature": "PASS controls mask checks=24",
+    "expected_exit": "zero"
+  },
+  "controls-mask-corrupt": {
+    "sources": [
+      "src/rtl/input/n2m_controls_pkg.sv",
+      "src/rtl/input/n2m_button_filter.sv",
+      "src/rtl/input/n2m_controls_mask.sv",
+      "src/rtl/input/n2m_input_pkg.sv",
+      "src/rtl/input/n2m_input.sv",
+      "src/dv/input/tb_controls_mask.sv"
+    ],
+    "top": "tb_controls_mask",
+    "args": [
+      "+CORRUPT_MASK"
+    ],
+    "signature": "CONTROLS_MASK expected=0a,0a actual=00,00",
+    "expected_exit": "nonzero"
+  },
+  "adc-backend": {
+    "sources": [
+      "src/rtl/clocking/n2m_reset_control.sv",
+      "src/rtl/input/n2m_adc_backend.sv",
+      "src/rtl/input/n2m_controls_pkg.sv",
+      "src/rtl/input/n2m_button_filter.sv",
+      "src/rtl/input/n2m_adc_pairs.sv",
+      "src/rtl/input/n2m_controls_mask.sv",
+      "src/rtl/input/n2m_physical_controls.sv",
+      "src/dv/input/tb_adc_backend.sv"
+    ],
+    "top": "tb_adc_backend",
+    "args": [],
+    "signature": "PASS actual ADC model replies=8 commands=9 lock-cancel",
+    "expected_exit": "zero",
+    "vendor_model": "intel-adc"
+  },
+  "adc-backend-corrupt": {
+    "sources": [
+      "src/rtl/clocking/n2m_reset_control.sv",
+      "src/rtl/input/n2m_adc_backend.sv",
+      "src/rtl/input/n2m_controls_pkg.sv",
+      "src/rtl/input/n2m_button_filter.sv",
+      "src/rtl/input/n2m_adc_pairs.sv",
+      "src/rtl/input/n2m_controls_mask.sv",
+      "src/rtl/input/n2m_physical_controls.sv",
+      "src/dv/input/tb_adc_backend.sv"
+    ],
+    "top": "tb_adc_backend",
+    "args": [
+      "+CORRUPT_ADC"
+    ],
+    "signature": "ADC_VENDOR_DATA",
+    "expected_exit": "nonzero",
+    "vendor_model": "intel-adc"
+  },
+  "controls-lifecycle": {
+    "sources": [
+      "src/rtl/input/n2m_controls_pkg.sv",
+      "src/rtl/input/n2m_input_pkg.sv",
+      "src/rtl/input/n2m_button_filter.sv",
+      "src/rtl/input/n2m_adc_pairs.sv",
+      "src/rtl/input/n2m_controls_mask.sv",
+      "src/rtl/input/n2m_physical_controls.sv",
+      "src/rtl/input/n2m_input.sv",
+      "src/dv/input/tb_controls_lifecycle.sv"
+    ],
+    "top": "tb_controls_lifecycle",
+    "args": [],
+    "signature": "PASS controls lifecycle checks=94 reset-cases=10",
+    "expected_exit": "zero"
+  },
+  "controls-lifecycle-corrupt": {
+    "sources": [
+      "src/rtl/input/n2m_controls_pkg.sv",
+      "src/rtl/input/n2m_input_pkg.sv",
+      "src/rtl/input/n2m_button_filter.sv",
+      "src/rtl/input/n2m_adc_pairs.sv",
+      "src/rtl/input/n2m_controls_mask.sv",
+      "src/rtl/input/n2m_physical_controls.sv",
+      "src/rtl/input/n2m_input.sv",
+      "src/dv/input/tb_controls_lifecycle.sv"
+    ],
+    "top": "tb_controls_lifecycle",
+    "args": [
+      "+CORRUPT_RECOVERY"
+    ],
+    "signature": "CONTROLS_LIFECYCLE scenario=3 method=1",
+    "expected_exit": "nonzero"
+  },
+  "controls-unsolicited": {
+    "sources": [
+      "src/rtl/input/n2m_controls_pkg.sv",
+      "src/rtl/input/n2m_input_pkg.sv",
+      "src/rtl/input/n2m_button_filter.sv",
+      "src/rtl/input/n2m_adc_pairs.sv",
+      "src/rtl/input/n2m_controls_mask.sv",
+      "src/rtl/input/n2m_physical_controls.sv",
+      "src/rtl/input/n2m_input.sv",
+      "src/dv/input/tb_controls_lifecycle.sv"
+    ],
+    "top": "tb_controls_lifecycle",
+    "args": [
+      "+UNSOLICITED"
+    ],
+    "signature": "N2M_ASSERT adc_pair_response_contract",
+    "expected_exit": "nonzero"
+  },
+  "controls-sticky": {
+    "sources": [
+      "src/rtl/input/n2m_controls_pkg.sv",
+      "src/rtl/input/n2m_input_pkg.sv",
+      "src/dv/input/tb_controls_sticky.sv"
+    ],
+    "top": "tb_controls_lifecycle",
+    "args": [
+      "+STICKY"
+    ],
+    "signature": "PASS controls sticky fault checks=8",
+    "expected_exit": "zero"
+  },
+  "uart-validation": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/uart/n2m_uart_host_registers.sv",
+      "src/rtl/uart/n2m_uart_validate.sv",
+      "src/dv/uart/tb_uart_validation.sv"
+    ],
+    "top": "tb_uart_validation",
+    "args": [],
+    "signature": "PASS UART validation checks=113",
+    "expected_exit": "zero"
+  },
+  "uart-validation-corrupt": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/uart/n2m_uart_host_registers.sv",
+      "src/rtl/uart/n2m_uart_validate.sv",
+      "src/dv/uart/tb_uart_validation.sv"
+    ],
+    "top": "tb_uart_validation",
+    "args": [
+      "+CORRUPT_HOST"
+    ],
+    "signature": "UART_HOST_VALUE address=00010030 expected=2468ace0 actual=00000000",
+    "expected_exit": "nonzero"
+  },
   "host-play": {
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
@@ -6628,6 +6833,104 @@
       "tb_integration.dut.g_play.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
       "tb_integration.dut.g_play.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
     ]
+  },
+  "controls-wire": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/input/n2m_input_pkg.sv",
+      "src/rtl/input/n2m_controls_pkg.sv",
+      "src/rtl/joypad/n2m_joypad_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/uart/n2m_uart_packet_store.sv",
+      "src/rtl/uart/n2m_uart_packet_rx.sv",
+      "src/rtl/uart/n2m_uart_exchange_store.sv",
+      "src/rtl/uart/n2m_uart_exchange.sv",
+      "src/rtl/uart/n2m_uart_tx.sv",
+      "src/rtl/uart/n2m_uart_packet_tx.sv",
+      "src/rtl/uart/n2m_uart_response.sv",
+      "src/rtl/uart/n2m_uart_presence_store.sv",
+      "src/rtl/uart/n2m_uart_load.sv",
+      "src/rtl/uart/n2m_uart_rx.sv",
+      "src/rtl/input/n2m_input.sv",
+      "src/rtl/uart/n2m_uart_core_control.sv",
+      "src/rtl/uart/n2m_uart_host_registers.sv",
+      "src/rtl/uart/n2m_uart_validate.sv",
+      "src/rtl/uart/n2m_uart_commands.sv",
+      "src/rtl/uart/n2m_uart.sv",
+      "src/rtl/vga/n2m_frame_ram.sv",
+      "src/rtl/vga/n2m_vga_scan.sv",
+      "src/rtl/vga/n2m_frame_bridge.sv",
+      "src/rtl/input/n2m_button_filter.sv",
+      "src/rtl/input/n2m_adc_pairs.sv",
+      "src/rtl/input/n2m_controls_mask.sv",
+      "src/rtl/input/n2m_physical_controls.sv",
+      "src/rtl/joypad/n2m_joypad_matrix.sv",
+      "src/rtl/joypad/n2m_joypad.sv",
+      "src/dv/input/tb_controls_wire.sv"
+    ],
+    "top": "tb_controls_wire",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS CONTROLS_WIRE commands=22 replies=22 pixels=96 paused=1",
+    "vendor_model": "intel-memory",
+    "intel_mixed_mode_instances": [
+      "tb_controls_wire.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_controls_wire.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_controls_wire.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
+    ],
+    "timeout_seconds": 180
+  },
+  "controls-wire-corrupt": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/input/n2m_input_pkg.sv",
+      "src/rtl/input/n2m_controls_pkg.sv",
+      "src/rtl/joypad/n2m_joypad_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/uart/n2m_uart_packet_store.sv",
+      "src/rtl/uart/n2m_uart_packet_rx.sv",
+      "src/rtl/uart/n2m_uart_exchange_store.sv",
+      "src/rtl/uart/n2m_uart_exchange.sv",
+      "src/rtl/uart/n2m_uart_tx.sv",
+      "src/rtl/uart/n2m_uart_packet_tx.sv",
+      "src/rtl/uart/n2m_uart_response.sv",
+      "src/rtl/uart/n2m_uart_presence_store.sv",
+      "src/rtl/uart/n2m_uart_load.sv",
+      "src/rtl/uart/n2m_uart_rx.sv",
+      "src/rtl/input/n2m_input.sv",
+      "src/rtl/uart/n2m_uart_core_control.sv",
+      "src/rtl/uart/n2m_uart_host_registers.sv",
+      "src/rtl/uart/n2m_uart_validate.sv",
+      "src/rtl/uart/n2m_uart_commands.sv",
+      "src/rtl/uart/n2m_uart.sv",
+      "src/rtl/vga/n2m_frame_ram.sv",
+      "src/rtl/vga/n2m_vga_scan.sv",
+      "src/rtl/vga/n2m_frame_bridge.sv",
+      "src/rtl/input/n2m_button_filter.sv",
+      "src/rtl/input/n2m_adc_pairs.sv",
+      "src/rtl/input/n2m_controls_mask.sv",
+      "src/rtl/input/n2m_physical_controls.sv",
+      "src/rtl/joypad/n2m_joypad_matrix.sv",
+      "src/rtl/joypad/n2m_joypad.sv",
+      "src/dv/input/tb_controls_wire.sv"
+    ],
+    "top": "tb_controls_wire",
+    "args": [
+      "+corrupt_mask"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "CONTROLS_WIRE_MASK expected=16 joypad=00",
+    "vendor_model": "intel-memory",
+    "intel_mixed_mode_instances": [
+      "tb_controls_wire.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_controls_wire.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_controls_wire.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
+    ],
+    "timeout_seconds": 180
   },
   "memory-bank-enables": {
     "vendor_model": "intel-memory",

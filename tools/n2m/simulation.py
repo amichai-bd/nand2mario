@@ -10,7 +10,7 @@ from .hdl import dependencies
 from .simulator import ToolError
 from .questa import commands as questa_commands, diagnostic
 from .records import atomic_json, atomic_text, cache_matches, digest, file_hash, read_json
-from . import intel_memory
+from . import intel_memory, intel_adc
 from .simulation_peer import Peer
 
 
@@ -52,7 +52,10 @@ def simulate(root, build, args, simulator, provenance=None):
     hdl_inputs = dependencies(root, target["sources"])
     vendor_model = intel_memory.resolve(root, simulator, target, getattr(args, "intel_sim_lib", None))
     if vendor_model is not None:
-        intel_memory.reject_shadow_models(root, hdl_inputs)
+        if vendor_model["selection"] == "intel-adc":
+            intel_adc.reject_shadow_models(root, hdl_inputs)
+        else:
+            intel_memory.reject_shadow_models(root, hdl_inputs)
     inputs = hdl_inputs + [registry.relative_to(root).as_posix(), "tools/build.py"]
     inputs += [str(p.relative_to(root)).replace("\\", "/") for p in (root / "tools/n2m").glob("*.py")]
     inputs += ["tools/n2m/dependencies.json"]
@@ -111,7 +114,11 @@ def simulate(root, build, args, simulator, provenance=None):
                     peer.close(result is not None and result.returncode == 0)
             if (result.returncode == 0) != (expected == "zero"):
                 raise RuntimeError(f"unexpected exit {result.returncode}; see {log.relative_to(root)}")
+            if log.name == "adc-pll-generate.log":
+                record["generated_adc_pll"] = intel_adc.verify_generated(cwd)
             checked_output = result.stdout
+            if log.name == "intel-adc-control-compile.log":
+                checked_output, record["explained_compile_diagnostics"] = intel_adc.classify_compile_diagnostics(result.stdout, vendor_model, log.name)
             if log.name == "sim.log":
                 checked_output, record["explained_diagnostics"] = intel_memory.classify_diagnostics(result.stdout, vendor_model)
             problem = diagnostic(checked_output, target["signature"] if expected == "nonzero" else None)

@@ -45,9 +45,10 @@ shared input boundary for the same eight Game Boy buttons and MMIO state;
 game ROMs need no custom host MMIO. Keep loading/control separate from input
 events. Preserve VGA output and UART source-frame observation.
 
-The shared boundary is planned in
-[#155](https://github.com/amichai-bd/nand2mario/issues/155), physical buttons and
-ADC joystick in [#156](https://github.com/amichai-bd/nand2mario/issues/156), and
+The [shared input owner](rtl/input/MAS_input.md) implements source selection.
+Physical buttons and ADC joystick are defined in the
+[board controls contract](fpga-controls.md) for
+[#156](https://github.com/amichai-bd/nand2mario/issues/156), and
 Python observation/play tools in
 [#157](https://github.com/amichai-bd/nand2mario/issues/157). These references do
 not claim implemented or physically verified controls. Existing UART commands

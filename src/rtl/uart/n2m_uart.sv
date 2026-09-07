@@ -22,6 +22,7 @@ module n2m_uart #(
     input var logic [7:0] physical_buttons,
     output logic [7:0] effective_buttons,
     output n2m_input_pkg::input_update_t effective_update,
+    output logic [7:0] input_source_observe,
     output logic [31:0] epoch,
     output logic [63:0] dot_count,
     output logic [63:0] retirement_count,
@@ -48,6 +49,7 @@ module n2m_uart #(
     import n2m_uart_pkg::*;
     n2m_input_pkg::input_write_t accepted_input;
     logic [7:0] input_source, physical_observe;
+    assign input_source_observe = input_source;
     logic rx_valid, rx_error, byte_valid, byte_ready;
     logic [7:0] rx_data, byte_data;
     logic request_valid, request_done;

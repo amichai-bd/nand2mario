@@ -32,18 +32,42 @@ def verify_lock_event(folder, checks, top="clocking_proof"):
 
 def verify_fit(folder, target):
     fit = (folder / "output/design.fit.rpt").read_text(encoding="cp1252" if os.name == "nt" else "utf-8")
+    combined = target.get("top") == "controls_proof"
+    adc_values = {"PLL mode": "No compensation", "Compensate clock": "--", "Input frequency 0": "10.0 MHz",
+                  "Nominal PFD frequency": "10.0 MHz", "Nominal VCO frequency": "400.0 MHz",
+                  "M value": "40", "N value": "1", "Inclk0 signal type": "Dedicated Pin"}
+    if combined:
+        names = re.findall(r";\s*SDC pin name\s*;\s*([^;]+?)\s*;\s*([^;]+?)\s*;", fit)
+        if names != [("u_clocking|u_pll|altpll_component|auto_generated|pll1",
+                      "u_adc|u_pll|altpll_component|auto_generated|pll1")]:
+            raise ValueError("combined PLL columns differ")
     for key, value in {"PLL mode": "Normal", "Compensate clock": "clock0", "Input frequency 0": "50.0 MHz",
                        "Nominal PFD frequency": "10.0 MHz", "Nominal VCO frequency": "630.0 MHz",
                        "M value": "63", "N value": "5", "Inclk0 signal type": "Dedicated Pin"}.items():
-        if re.findall(r";\s*" + re.escape(key) + r"\s*;\s*([^;]+?)\s*;", fit) != [value]:
+        rows = re.findall(r";\s*" + re.escape(key) + r"\s*;\s*([^;]+?)\s*;" +
+                          (r"\s*([^;]+?)\s*;" if combined else ""), fit)
+        if rows != ([(value, adc_values[key])] if combined else [value]):
             raise ValueError(f"PLL fit mismatch: {key}")
     usage = [line.split(';')[1:-1] for line in fit.splitlines() if '; clock0 ' in line and 'wire_pll1_clk' in line]
+    if combined:
+        adc_usage = [[v.strip() for v in row] for row in usage if 'n2m_adc_backend:u_adc|' in row[0]]
+        if (len(usage) != 2 or len(adc_usage) != 1 or adc_usage[0][1:6] != ["clock0", "1", "1", "10.0 MHz", "0 (0 ps)"]
+                or adc_usage[0][7:10] != ["50/50", "C0", "40"]):
+            raise ValueError("combined ADC PLL rate/phase/counter differs")
+        usage = [row for row in usage if 'n2m_clocking:u_clocking|' in row[0]]
     if len(usage) != 1 or [v.strip() for v in usage[0]][1:5] != ["clock0", "63", "125", "25.2 MHz"]:
         raise ValueError("PLL fit rate mismatch")
     row = [v.strip() for v in usage[0]]
     if row[5] != "0 (0 ps)" or row[7:10] != ["50/50", "C0", "25"]:
         raise ValueError("PLL fit phase, duty, or counter mismatch")
     sta = (folder / "output/design.sta.rpt").read_text(encoding="utf-8")
+    if combined:
+        adc_clocks = [[v.strip() for v in line.split(';')[1:-1]] for line in sta.splitlines()
+                      if re.match(r";\s*(?:clk_adc_reference|u_adc\|u_pll\|altpll_component\|auto_generated\|pll1\|clk\[0\])\s*;\s*(?:Base|Generated)\s*;", line)]
+        if (len(adc_clocks) != 2 or adc_clocks[0][:3] != ['clk_adc_reference', 'Base', '100.000']
+                or adc_clocks[1][:3] != ['u_adc|u_pll|altpll_component|auto_generated|pll1|clk[0]', 'Generated', '100.000']
+                or adc_clocks[1][6:9] != ['50.00', '1', '1'] or adc_clocks[1][14] != 'clk_adc_reference'):
+            raise ValueError('combined ADC generated clock relationship differs')
     clocks = [[v.strip() for v in line.split(';')[1:-1]] for line in sta.splitlines()
               if re.match(r";\s*(?:clk_sys|u_clocking\|u_pll\|altpll_component\|auto_generated\|pll1\|clk\[0\])\s*;\s*(?:Base|Generated)\s*;", line)]
     if len(clocks) != 2:
