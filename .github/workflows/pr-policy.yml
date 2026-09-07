@@ -24,6 +24,7 @@ jobs:
           PR_BRANCH: ${{ github.head_ref }}
           PR_BASE: ${{ github.base_ref }}
           PR_BODY: ${{ github.event.pull_request.body }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
           GH_REPOSITORY: ${{ github.repository }}
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -59,21 +60,35 @@ jobs:
           closing_issues = set(
               re.findall(r"(?i)\bcloses\s+#([1-9][0-9]*)\b", body)
           )
-          if not closing_issues:
+          # User-authorized checkpoints; full acceptance stays in the linked issue.
+          checkpoints = {"162": "156", "163": "88"}
+          checkpoint = checkpoints.get(os.environ.get("PR_NUMBER", ""))
+          if checkpoint:
+              if primary_issue != checkpoint or not re.search(
+                  rf"(?m)^Checkpoint for #{checkpoint}\s*$", body
+              ) or not re.search(rf"(?m)^Refs #{checkpoint}\s*$", body):
+                  print("::error::Approved checkpoint must reference its exact primary issue.")
+                  sys.exit(1)
+              if re.search(r"(?i)\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#", body):
+                  print("::error::Checkpoint must not close acceptance issues.")
+                  sys.exit(1)
+              linked_issues = {checkpoint}
+          elif not closing_issues:
               print("::error::PR body must contain at least one Closes #<number>.")
               sys.exit(1)
-
-          if primary_issue not in closing_issues:
+          elif primary_issue not in closing_issues:
               print(
                   f"::error::PR must close primary issue #{primary_issue} "
                   "from the branch name."
               )
               sys.exit(1)
+          else:
+              linked_issues = closing_issues
 
           repository = os.environ.get("GH_REPOSITORY", "")
           token = os.environ.get("GH_TOKEN", "")
           issue_owners = {}
-          for issue_number in sorted(closing_issues, key=int):
+          for issue_number in sorted(linked_issues, key=int):
               request = urllib.request.Request(
                   f"https://api.github.com/repos/{repository}/issues/{issue_number}",
                   headers={
@@ -108,10 +123,11 @@ jobs:
                   f"@{assignee['login']}" for assignee in issue["assignees"]
               )
 
-          closed = ", ".join(f"#{number}" for number in sorted(closing_issues, key=int))
+          linked = ", ".join(f"#{number}" for number in sorted(linked_issues, key=int))
           owners = "; ".join(
               f"#{number}: {issue_owners[number]}"
               for number in sorted(issue_owners, key=int)
           )
-          print(f"PR policy passed: {branch} closes {closed}; {owners}.")
+          action = "checkpoints" if checkpoint else "closes"
+          print(f"PR policy passed: {branch} {action} {linked}; {owners}.")
           PY
