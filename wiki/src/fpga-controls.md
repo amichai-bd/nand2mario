@@ -48,9 +48,18 @@ retain the shared builder's strict treatment. The raw messages remain evidence.
 The producer requests X then Y, holds each command until accepted, and
 publishes only complete ordered pairs. Start a pair every1 ms when the prior
 pair has completed. A missing response does not generate an emulated tick or
-block buttons. After20 ms without a complete pair, clear both axis directions;
-a later complete pair restores them. Unexpected response channels invalidate
-the pair and raise a named protocol fault in verification.
+block buttons. Each pair has a20 ms deadline starting at acceptance of its X
+command. Deadline expiration discards partial X. Expiration of a previously
+fresh pair's20 ms freshness interval also clears both axis directions and
+discards any partial replacement pair. Expiration wins over a response on the
+same edge.
+
+After expiration, drain and discard an outstanding response before issuing a
+new X command. Cancel a not-yet-accepted Y command. An indefinitely missing
+response leaves directions released while buttons continue. A late Y cannot
+combine with stale X; only a new complete pair restores freshness. Unexpected
+response channels latch a protocol fault, discard acquisition until global
+reset, and raise a named verification failure. They do not block buttons.
 
 Synchronize each button through two system registers. Accept a changed level
 after5 ms of consecutive agreement; bounce restarts only that button's counter.
