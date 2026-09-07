@@ -43,6 +43,44 @@ tools fail with diagnostics; there is no fallback simulator.
 
 ## Questa simulation
 
+### Testbench types
+
+The [target registry](../../../src/dv/builder/targets.json) defaults to
+`testbench: "systemverilog"`; existing SV commands and expected-exit rules stay
+unchanged. `testbench: "python"` explicitly selects cocotb with a closed `python`
+object containing `module`, `test` and `inputs`. The module/test are identifiers;
+inputs name checked-in files including exactly one module file. Unsupported
+types, missing inputs, incompatible driver/vendor-model settings and nonzero
+raw-exit expectations fail without fallback. The first path accepts one named
+Python test per target. The [usage guide](../../../src/dv/python/README.md) owns
+setup and commands; the [joypad plan](../../../src/dv/python/joypad/README.md)
+owns its bounded subsystem coverage.
+
+Python targets use the executing pinned interpreter and installed packages from
+the [separate dependency record](../../../src/dv/python/THIRD_PARTY.md). Normal
+SV use does not import or require cocotb. Execution does not install dependencies.
+The shared stage fingerprints Python input files, pins, interpreter, embedded
+Python library, cocotb native library and installed package content. It retains
+the shared timeout, command logs, input hashes, immutable attempts and result
+publication. Runtime environment settings for cocotb filters, test selection,
+seed, result paths and Python integration are replaced by the target settings;
+license environment remains available.
+
+Each Python attempt additionally retains `results.xml`, `transactions.jsonl`,
+`waves/simulation.vcd` and `waves/simulation.wlf`. PASS requires raw Questa exit
+zero, the expected transcript signature, one completed named passing XML test,
+and nonempty trace/wave evidence. Skipped, extra, incomplete, malformed, missing
+or failing Python tests cannot pass. Raw command exits and `python_results`
+remain distinct; a Python failure can accompany raw exit zero and still makes
+the builder exit 1. Negative Python targets remain FAIL and are never reused.
+Required evidence paths and hashes are checked before cache reuse.
+
+Classic waveform access uses `-no_autoacc` and `-voptargs=+acc=rnbp+/<top>`.
+The exact single vopt-10908 optimization warning and matching zero-error,
+one-warning summary/restored counts are explained in the record. This visibility
+cost is expected; other warnings and errors still fail. Python scheduling uses
+the simulator's time and does not introduce a second RTL execution engine.
+
 ### Installed Intel ADC model
 
 `vendor_model: "intel-adc"` resolves the pinned installed control core, canonical

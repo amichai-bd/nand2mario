@@ -25,11 +25,15 @@ def diagnostic(output, expected_failure=None):
     return None
 
 
-def commands(simulator, root, target, seed, compiler, attempt, *, prepare=True, vendor_model=None):
+def commands(simulator, root, target, seed, compiler, attempt, *, prepare=True, vendor_model=None, python_runtime=None):
     tools = simulator.tools
     library = (compiler / "work").as_posix()
     if prepare:
-        write_macro(attempt)
+        if python_runtime:
+            from .python_tb import prepare as prepare_python
+            prepare_python(target, attempt)
+        else:
+            write_macro(attempt)
     vendor_compile, vendor_map, vendor_binding = intel_commands(simulator, compiler, attempt, vendor_model)
     return [
         ([tools["vmap"], "-c"], compiler, compiler / "ini.log", "zero"),
@@ -42,7 +46,8 @@ def commands(simulator, root, target, seed, compiler, attempt, *, prepare=True, 
         ([tools["vmap"], "-c"], attempt, attempt / "ini.log", "zero"),
         ([tools["vmap"], "work", library], attempt, attempt / "map.log", "zero"),
         *vendor_map,
-        ([tools["vsim"], "-c", "-onfinish", "stop", "-wlf", "waves/simulation.wlf",
+        ([tools["vsim"], "-c", "-onfinish", "exit" if python_runtime else "stop", "-wlf", "waves/simulation.wlf",
+          *(["-pli", python_runtime["library"], "-no_autoacc", "-voptargs=+acc=rnbp+/" + target["top"]] if python_runtime else []),
           *vendor_binding,
           *(["-voptargs=" + " ".join("-access=rw+/" + target["top"] + "/" + name
               for name in target["driver"].get("access", []))] if target.get("driver", {}).get("access") else []),

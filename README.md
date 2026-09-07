@@ -24,6 +24,8 @@ has not started. [Preflight gaps](wiki/preflight-gaps.md) track what must come f
 
 Questa is the sole supported simulator. See the
 [build specification](wiki/tools/n2m/SPEC.md) for commands and output layout.
+The builder accepts existing SV targets and separate
+[Python testbenches](src/dv/python/README.md), beginning with the joypad owner.
 Hosted CI checks host contracts; licensed simulation currently requires local
 evidence. The [CI boundary](wiki/tools/n2m/SPEC.md#ci-execution-boundary) tracks
 the trusted remote route still due in #32.
