@@ -234,3 +234,13 @@ metadata before reply construction. NO_FRAME contains no payload. READ_FRAME
 uses the published host bank through its one-edge byte port. The separate snapshot
 owner retains published bytes and metadata across core reset and failed capture;
 this UART composition does not implement the observer or snapshot storage.
+
+## Simulation preload
+
+The explicit [preload mode](../../dv/preload/SPEC.md) initializes the same Intel
+ROM and presence store. Its first valid BEGIN may adopt those bytes only with
+the configured CRC; END still scans every byte and performs ordinary core
+initialization. The simulation-only adoption flag is consumed once and is not
+re-armed by global reset. Later BEGIN executes the normal full presence clear.
+Default simulation and synthesized loading do not take this path. No receipt
+count is substituted for presence or CRC, and no loader/control state is forced.

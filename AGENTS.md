@@ -55,8 +55,8 @@ output under `workdir/`.
 Prefer one issue per PR. Every PR starts as draft and closes its branch's
 issue with `Closes #<number>`. Combine issues only when one focused result meets
 all their success criteria.
-The user-authorized checkpoints PR162 and PR163 instead reference #156 and #88
-without closing them. Their unfinished acceptance stays in those issues; this
+The user-authorized checkpoints PR162, PR163 and PR169 instead reference
+#156, #88 and #168, respectively, without closing them. Their unfinished acceptance stays in those issues; this
 bounded exception is recorded in PR policy and does not authorize other checkpoints.
 The author owns delivery through independent review of the current PR SHA,
 passing required checks, resolved review conversations, and squash merge.
