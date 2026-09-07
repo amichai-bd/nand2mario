@@ -16,7 +16,7 @@ from n2m.cli import main
 from n2m.doctor import select_uart
 from n2m.host.client import Client, RejectedCommand, UncertainCompletion
 from n2m.host.package import read_package
-from n2m.host.transport import open_serial, session
+from n2m.host.transport import SerialTransport, open_serial, session
 from n2m.interface_codec import decode_packet, encode_packet, pack_record, unpack_record
 from n2m.records import atomic_json, file_hash
 from sw.package import package
@@ -377,13 +377,75 @@ class HostTests(unittest.TestCase):
         module = SimpleNamespace(VERSION='3.5', EIGHTBITS=8, PARITY_NONE='N', STOPBITS_ONE=1,
                                  Serial=unittest.mock.Mock(return_value=connection))
         with patch.dict(sys.modules, {'serial': module}):
-            self.assertIs(open_serial('COM92'), connection)
+            self.assertIs(open_serial('COM92').connection, connection)
         self.assertEqual(module.Serial.call_args.kwargs['port'], None)
         self.assertEqual(module.Serial.call_args.kwargs['baudrate'], abi.WIRE_BAUD)
+        self.assertEqual(module.Serial.call_args.kwargs['timeout'], 0)
         self.assertFalse(module.Serial.call_args.kwargs['xonxoff'])
         self.assertFalse(module.Serial.call_args.kwargs['rtscts'])
         self.assertFalse(module.Serial.call_args.kwargs['dsrdtr'])
         connection.open.assert_called_once()
+
+    def test_serial_deadline_does_not_reconfigure_pending_write(self):
+        class FixedPort(Endpoint):
+            @property
+            def timeout(self):
+                return 0
+
+            @timeout.setter
+            def timeout(self, value):
+                if hasattr(self, 'timeout_set'):
+                    raise AssertionError('port reconfigured during exchange')
+                self.timeout_set = True
+
+        endpoint = FixedPort()
+        transport = SerialTransport(endpoint)
+        identity = Client(transport).identify()
+        self.assertEqual(identity['abi'], abi.WIRE_ABI)
+        self.assertEqual(len(endpoint.requests), 6)
+
+    def test_serial_empty_reads_obey_short_deadline(self):
+        now = [0.0]
+        endpoint = unittest.mock.Mock()
+        endpoint.read.return_value = b''
+        sleeps = []
+        def sleep(seconds):
+            sleeps.append(seconds)
+            now[0] += seconds
+        transport = SerialTransport(endpoint, clock=lambda: now[0], sleep=sleep)
+        transport.timeout = 0.0025
+        self.assertEqual(transport.read(1), b'')
+        self.assertAlmostEqual(now[0], 0.0025)
+        self.assertTrue(all(0 < delay <= 0.001 for delay in sleeps))
+        self.assertEqual(endpoint.read.call_count, 3)
+
+    def test_serial_failure_remains_uncertain_without_replay(self):
+        endpoint = unittest.mock.Mock()
+        endpoint.write.side_effect = lambda packet: len(packet)
+        endpoint.read.side_effect = OSError('read failed')
+        client = Client(SerialTransport(endpoint))
+        with self.assertRaises(UncertainCompletion):
+            client.request('PING')
+        with self.assertRaises(UncertainCompletion):
+            client.request('PING')
+        endpoint.write.assert_called_once()
+
+    def test_serial_late_byte_is_not_accepted_or_replayed(self):
+        now = [0.0]
+        endpoint = unittest.mock.Mock()
+        endpoint.write.side_effect = lambda packet: len(packet)
+        def late_read(count):
+            now[0] += 3
+            return b'\0'
+        endpoint.read.side_effect = late_read
+        transport = SerialTransport(endpoint, clock=lambda: now[0])
+        client = Client(transport, clock=lambda: now[0])
+        with self.assertRaises(UncertainCompletion):
+            client.request('PING')
+        with self.assertRaises(UncertainCompletion):
+            client.request('PING')
+        endpoint.read.assert_called_once()
+        endpoint.write.assert_called_once()
 
     def test_sequence_wrap_and_valid_error_clear_pending(self):
         endpoint = Endpoint()

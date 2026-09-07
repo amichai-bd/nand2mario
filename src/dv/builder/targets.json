@@ -3282,7 +3282,7 @@
     ],
     "top": "tb_uart_serial",
     "args": [],
-    "signature": "PASS UART serial bytes=302 errors=2 packets=2 reset_bits=10",
+    "signature": "PASS UART serial bytes=446 errors=2 packets=10 reset_bits=10",
     "expected_exit": "zero",
     "timeout_seconds": 180
   },

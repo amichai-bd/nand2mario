@@ -53,6 +53,13 @@ selected OS port, configured to the generated baud and 8N1 without flow control.
 DTR/RTS are set inactive before open; driver-level glitches cannot be ruled out,
 so verified wiring and the physical workflow still apply.
 
+The serial device is configured once with nonblocking reads. A transport wrapper
+waits for received bytes with a monotonic deadline and sleeps at most one
+millisecond between empty reads. Client timeout updates change that local wait,
+not the device configuration. This avoids pyserial 3.5 on Windows reapplying
+line settings while a packet is transmitting. Packet writes remain whole and
+unpadded; there is no inter-byte pacing, flush loop or automatic replay.
+
 Only one request is outstanding. Replies must match generated version, response
 kind, sequence, command, status and exact payload shape/length, with valid COBS
 and CRC. Empty delimiters are ignored within a bounded overall response timeout.
