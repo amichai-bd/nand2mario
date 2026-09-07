@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 import test_builder
 from n2m import python_tb
-from n2m.questa import diagnostic
+from n2m.questa import commands, diagnostic
 from n2m.records import atomic_json, read_json
 
 
@@ -126,6 +126,31 @@ class PythonTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 self.run_stage()
         self.assertFalse(self.sim.calls)
+
+    def test_python_intel_binding_and_unsupported_preload(self):
+        target = read_json(self.root / "src/dv/builder/targets.json")["python-joypad"]
+        target["vendor_model"] = "intel-memory"
+        python_tb.validate(self.root, target)
+        vendor = {"selection": "intel-memory", "library": "n2m_altera_mf", "sources": [{"path": "installed model.v"}],
+                  "compile_options": ["-work", "n2m_altera_mf"],
+                  "binding_options": ["-L", "n2m_altera_mf"]}
+        argv = commands(self.sim, self.root, target, 1, self.build, self.build,
+                        prepare=False, vendor_model=vendor, python_runtime=self.runtime)
+        runtime = argv[-1][0]
+        self.assertIn("-pli", runtime)
+        self.assertEqual(runtime[runtime.index("-L") + 1], "n2m_altera_mf")
+        self.assertTrue(any("installed model.v" in command for command, *_ in argv))
+        for invalid in ({"vendor_model": "intel-adc"}, {"preload": "unknown"},
+                        {"preload": "integration"}, {"driver": {}}):
+            with self.assertRaises(ValueError):
+                python_tb.validate(self.root, {**target, **invalid})
+
+    def test_wave_scope_excludes_recursive_memory_arrays(self):
+        python_tb.prepare({}, self.build)
+        macro = (self.build / "run.do").read_text()
+        self.assertIn("log /*", macro)
+        self.assertIn("vcd add /*", macro)
+        self.assertNotIn("-r", macro)
 
     def test_discovery_unavailable_is_explicit(self):
         self.discovery.stop()

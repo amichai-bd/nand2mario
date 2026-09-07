@@ -2,6 +2,8 @@
 
 Python targets run through the same Questa builder as SystemVerilog targets.
 The first target is the [independent joypad test](joypad/README.md).
+The [integration diagnostic](integration/README.md) independently reproduces
+the retained preloaded UART execution sequence with the real composed subsystem.
 The [Python DV skill](../../../.agents/skills/dv-python/SKILL.md) owns the method.
 
 Create an isolated environment using a Python 3.12.14 executable:
