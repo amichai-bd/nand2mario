@@ -10,7 +10,7 @@ import uuid
 
 from .hdl import dependencies
 from .records import atomic_json, cache_matches, digest, file_hash, read_json
-from . import fpga_pll, fpga_constraints, fpga_vga, fpga_intel_memory, fpga_memory_stores, fpga_adc, fpga_controls
+from . import fpga_pll, fpga_constraints, fpga_vga, fpga_intel_memory, fpga_memory_stores, fpga_adc, fpga_controls, fpga_v05
 
 DEVICE = "10M50DAF484C7G"
 REGISTRY = "src/fpga/de10_lite/targets.json"
@@ -121,13 +121,13 @@ def prepare(root, folder, target, build_id=None):
         lines.append('set_global_assignment -name VERILOG_FILE n2m_pixel_pll.v')
     if "src/rtl/input/n2m_adc_backend.sv" in target["sources"]:
         lines.extend(fpga_adc.assignments())
-    if "timing" in target:
+    if "timing" in target or target["top"] == "v05_proof":
         (folder / "checked.sdc").write_text(checked_constraints(target), encoding="utf-8")
         lines.append('set_global_assignment -name SDC_FILE checked.sdc')
     for port, pin in target["pins"].items():
         lines.extend([f'set_location_assignment {pin} -to {tcl_word(port)}',
                       f'set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to {tcl_word(port)}'])
-        if target.get("top") in ("vga_proof", "ppu_proof", "controls_proof") and port in fpga_vga.PORTS:
+        if target.get("top") in ("vga_proof", "ppu_proof", "controls_proof", "v05_proof") and port in fpga_vga.PORTS:
             lines.append(f'set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to {tcl_word(port)}')
         if target["top"] == "controls_proof" and (port == "uart_tx" or re.fullmatch(r"leds\[[0-9]\]", port)):
             lines.append(f'set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to {tcl_word(port)}')
@@ -146,10 +146,14 @@ def prepare(root, folder, target, build_id=None):
         audit = audit.replace("project_close", fpga_intel_memory.audit(tcl_word) + "project_close")
     if target["top"] == "controls_proof":
         audit = audit.replace("project_close", fpga_controls.audit(tcl_word) + "project_close")
+    if target.get("top") == "v05_proof":
+        audit = audit.replace("project_close", fpga_v05.audit(tcl_word) + "project_close")
     (folder / "audit.tcl").write_text(audit, encoding="utf-8")
 
 
 def checked_constraints(target):
+    if target.get("top") == "v05_proof":
+        return fpga_v05.constraints(tcl_word)
     text = fpga_constraints.generate(target["timing"], tcl_word)
     if target.get("top") in ("vga_proof", "ppu_proof", "controls_proof"):
         text += fpga_vga.constraints(tcl_word, lcd=target["top"] == "ppu_proof")
@@ -321,7 +325,7 @@ def complete_cache(record, fingerprint, root, build, target):
         if "pll" in target or any(p in target["sources"] for p in ("src/rtl/common/n2m_intel_ram.sv", "src/rtl/input/n2m_adc_backend.sv")):
             required += [folder / "simulation/questa/design.vo", folder / "netlist.log"]
         required += [folder / name for name in ("design.qpf", "design.qsf", "audit.tcl", "compile.log", "audit.log")]
-        if "timing" in target:
+        if "timing" in target or target.get("top") == "v05_proof":
             required.append(folder / "checked.sdc")
         if target.get("top") in ("vga_proof", "ppu_proof", "controls_proof"):
             required += [folder / "output" / name for name in fpga_vga.required_reports(lcd=target["top"] == "ppu_proof")]
@@ -329,6 +333,8 @@ def complete_cache(record, fingerprint, root, build, target):
             required += [folder / "output" / name for name in fpga_controls.required_reports()]
         if target.get("top") == "intel_memory_proof":
             required.append(folder / "output/intel_memory_inputs.rpt")
+        if target.get("top") == "v05_proof":
+            required += [folder / "output" / name for name in fpga_vga.required_reports(lcd=True)]
         if any(p.relative_to(root).as_posix() not in record["artifacts"] for p in required):
             return False
         if target.get("top") == "controls_proof" and record.get("build_id") != fingerprint[:32]:
