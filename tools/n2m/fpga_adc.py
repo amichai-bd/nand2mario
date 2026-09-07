@@ -5,6 +5,169 @@ import re
 
 from .records import file_hash
 from . import fpga_pll
+from .fpga_lock import parse_netlist, OUTPUTS
+
+PLL = "u_adc|u_pll|altpll_component|auto_generated|"
+FSM = "u_adc|u_control|u_control_fsm|"
+SYS = r"\clk_sys~inputclkctrl_outclk"
+
+
+def verify_netlist(text, checks):
+    row = "n2m_adc_backend:u_adc|n2m_adc_pll:u_pll|altpll:altpll_component|n2m_adc_pll_altpll:auto_generated|pll_lock_sync"
+    if re.findall(r";\s*([^;\r\n]+?)\s*;\s*No clock feeds this register's clock port\.\s*;", checks) != [row]:
+        raise ValueError("unexpected ADC no-clock endpoint")
+    _, cells, params, declarations, rhs, lhs = parse_netlist(text, "adc_proof")
+
+    def cell(name, kind):
+        if cells.get(name, (None,))[0] != kind:
+            raise ValueError("missing ADC topology cell: " + name)
+        return cells[name][1]
+
+    def users(net):
+        if any(net in expression for expression in rhs):
+            raise ValueError("unexpected alias of ADC lock event")
+        return {(name, port) for name, (kind, ports) in cells.items()
+                for port, value in ports.items() if port not in OUTPUTS[kind] and net in value}
+
+    def require(condition, message):
+        if not condition:
+            raise ValueError(message)
+
+    def register(name, reset, clock=SYS):
+        ports = cell(name, "dffeas")
+        require(ports.get("clk") == clock and ports.get("clrn") == reset and
+                ports.get("prn") == "vcc" and ports.get("aload") == "gnd" and
+                ports.get("sclr") == "gnd" and params.get(name) ==
+                {"is_wysiwyg": '"true"', "power_up": '"low"'}, "ADC register clock/reset differs: " + name)
+        return ports
+
+    pll = cell(PLL + "pll1", "fiftyfivenm_pll")
+    event = register(PLL + "pll_lock_sync", r"\u_reset|pll_areset~clkctrl_outclk", pll["locked"])
+    feeder = cell(PLL + "pll_lock_sync~feeder", "fiftyfivenm_lcell_comb")
+    require(params[PLL + "pll_lock_sync~feeder"] == {"lut_mask": "16'hFFFF", "sum_lutc_input": '"datac"'} and
+            event["d"] == feeder["combout"] and event["ena"] == "vcc" and event["sload"] == "gnd",
+            "ADC lock event is not constant-one acquisition")
+    require(pll["areset"] == "!" + event["clrn"], "ADC PLL/event reset differs")
+    reset_gate = cell("u_reset|lock_reset", "fiftyfivenm_lcell_comb")
+    reset_ff = cell("u_reset|pll_areset", "dffeas")
+    raw, acquired = pll["locked"], event["q"]
+    gate_specs = {
+        "u_reset|lock_reset": ({raw, acquired, reset_ff["q"], "gnd"},
+                              lambda v: not (v[raw] and v[acquired] and v[reset_ff["q"]])),
+        FSM + "ctrl_state.IDLE~0": ({raw, acquired, "\\" + FSM + "ctrl_state.IDLE~q", "gnd"},
+                                    lambda v: v["\\" + FSM + "ctrl_state.IDLE~q"] or (v[raw] and v[acquired])),
+        FSM + "Selector1~1": ({raw, acquired, "\\" + FSM + "ctrl_state.IDLE~q", "\\" + FSM + "Selector1~0_combout"},
+                             lambda v: v["\\" + FSM + "Selector1~0_combout"] or
+                             (v[raw] and v[acquired] and not v["\\" + FSM + "ctrl_state.IDLE~q"]))}
+    for name, (allowed, oracle) in gate_specs.items():
+        gate = cell(name, "fiftyfivenm_lcell_comb")
+        require(set(gate[p] for p in ("dataa", "datab", "datac", "datad")) == allowed,
+                "ADC lock LUT inputs differ")
+        mode = params[name]
+        require(set(mode) == {"lut_mask", "sum_lutc_input"} and mode["sum_lutc_input"] == '"datac"', "ADC lock LUT mode differs")
+        mask = int(mode["lut_mask"].removeprefix("16'h"), 16)
+        variables = sorted(allowed - {"gnd"})
+        for bits in range(1 << len(variables)):
+            values = {net: (bits >> i) & 1 for i, net in enumerate(variables)} | {"gnd": 0}
+            index = sum(values[gate[p]] << i for i, p in enumerate(("dataa", "datab", "datac", "datad")))
+            require(bool((mask >> index) & 1) == bool(oracle(values)), "ADC lock LUT truth table differs")
+    require(users(acquired) == {(n, p) for n in gate_specs for p, v in cells[n][1].items() if v == acquired}, "ADC event has extra fanout")
+    require(users(raw) == {(PLL + "pll_lock_sync", "clk")} |
+            {(n, p) for n in gate_specs for p, v in cells[n][1].items() if v == raw}, "ADC raw lock has extra fanout")
+    require(users(reset_gate["combout"]) == {(f"u_reset|lock_samples[{i}]", "clrn") for i in (0, 1)}, "ADC reset gate has extra fanout")
+    for i in (0, 1):
+        register(f"u_reset|lock_samples[{i}]", "!" + reset_gate["combout"])
+        register(f"u_reset|sys_release[{i}]", r"\u_reset|ready~q")
+    register("u_reset|ready", r"\u_reset|lock_samples[1]")
+    for i in range(10):
+        register(f"u_reset|lock_count[{i}]", r"\u_reset|lock_samples[1]")
+    def evaluate(net, values, visiting=()):
+        if net in values:
+            return values[net]
+        require(net not in visiting, "cyclic ADC reset qualification")
+        drivers = [(n, ps) for n, (kind, ps) in cells.items()
+                   if kind == "fiftyfivenm_lcell_comb" and ps.get("combout") == net]
+        require(len(drivers) == 1 and drivers[0][0].startswith("u_reset|"), "unknown ADC qualification driver")
+        name, ports = drivers[0]
+        require(params[name].get("sum_lutc_input") == '"datac"', "unsupported ADC qualification LUT")
+        index = sum(evaluate(ports[p], values, (*visiting, net)) << i
+                    for i, p in enumerate(("dataa", "datab", "datac", "datad")))
+        return (int(params[name]["lut_mask"].removeprefix("16'h"), 16) >> index) & 1
+    ready = cells["u_reset|ready"][1]
+    for prefix in ("lock_samples", "sys_release"):
+        for i in (0, 1):
+            ports = cells[f"u_reset|{prefix}[{i}]"][1]
+            require(ports["ena"] == "vcc" and ports["sload"] in {"vcc", "gnd"}, "ADC release stage control differs")
+            data = ports["asdata"] if ports["sload"] == "vcc" else ports["d"]
+            for prior in (0, 1):
+                values = {"gnd": 0, "vcc": 1, "\\u_reset|" + prefix + "[0]": prior}
+                require(evaluate(data, values) == (1 if i == 0 else prior), "ADC release stage bypassed")
+    for held in (0, 1):
+        for count in range(1024):
+            values = {r"\u_reset|lock_count[" + str(i) + "]": (count >> i) & 1 for i in range(10)}
+            values.update({"gnd": 0, "vcc": 1, ready["q"]: held})
+            require(evaluate(ready["d"], values) == (held or count == 1023), "ADC lock qualification is not 1024 cycles")
+    for state, gate in (("IDLE", "ctrl_state.IDLE~0"), ("PWRDWN", "Selector1~1")):
+        name = FSM + "ctrl_state." + state
+        ports = register(name, r"\u_reset|sys_release[1]")
+        port = "d" if state == "IDLE" else "asdata"
+        require(ports["sload"] == ("gnd" if state == "IDLE" else "vcc"), "ADC vendor lock load differs")
+        pending = [cells[FSM + gate][1]["combout"]]
+        seen = set()
+        endpoints = set()
+        while pending:
+            net = pending.pop()
+            if net in seen:
+                continue
+            seen.add(net)
+            for consumer, input_port in users(net):
+                kind, connections = cells[consumer]
+                require(consumer.startswith(FSM), "ADC lock escapes vendor controller")
+                if kind == "fiftyfivenm_lcell_comb":
+                    pending.extend(connections[p] for p in OUTPUTS[kind] if connections.get(p))
+                else:
+                    register(consumer, r"\u_reset|sys_release[1]")
+                    endpoints.add((consumer, input_port))
+        expected = {(name, port)}
+        if state == "PWRDWN":
+            expected |= {(FSM + f"chsel[{i}]", "d") for i in range(3)}
+        require(endpoints == expected, "ADC vendor lock reset-qualified closure differs")
+
+    atom = "u_adc|u_control|adc_inst|adcblock_instance|primitive_instance"
+    adc = cell(atom, "fiftyfivenm_adcblock")
+    require({n for n, (k, _) in cells.items() if k == "fiftyfivenm_adcblock"} == {atom, "~QUARTUS_CREATED_ADC2~"}, "ADC atom inventory differs")
+    require(params[atom] == {"analog_input_pin_mask": "110", "clkdiv": "5", "device_partname_fivechar_prefix": '"10m50"',
+            "is_this_first_or_second_adc": "1", "prescalar": "0", "pwd": "0", "refsel": "1", "reserve_block": '"false"',
+            "testbits": "66", "tsclkdiv": "0", "tsclksel": "1"}, "ADC1 configuration differs")
+    reserved = cell("~QUARTUS_CREATED_ADC2~", "fiftyfivenm_adcblock")
+    require(reserved["usr_pwd"] == "vcc" and reserved["clkin_from_pll_c0"] == "gnd" and
+            params["~QUARTUS_CREATED_ADC2~"]["pwd"] == "1" and params["~QUARTUS_CREATED_ADC2~"]["reserve_block"] == '"true"', "ADC2 not reserved powered down")
+    require(adc["clkin_from_pll_c0"] == "\\" + PLL + "wire_pll1_clk[0]" and
+            (adc["clkin_from_pll_c0"], pll["clk"] + "[0]") in zip(lhs, rhs), "ADC clock is not dedicated PLL c0")
+    for key, value in {"operation_mode": '"no compensation"', "clk0_multiply_by": "1", "clk0_divide_by": "1",
+                       "inclk0_input_frequency": "100000", "m": "40", "n": "1", "c0_high": "20", "c0_low": "20"}.items():
+        require(params[PLL + "pll1"].get(key) == value, "ADC PLL physical parameter differs: " + key)
+    return {"active_adc": 1, "reserved_powered_down_adc": 1, "channel_mask": 6, "sample_rate_hz": 125000,
+            "pll_hz": 10000000, "lock_event": row, "lock_consumers": sorted(gate_specs), "qualified_reset_registers": 20,
+            "qualification_truth_cases": 2048}
+
+
+def verify(folder):
+    result = verify_netlist((folder / "simulation/questa/design.vo").read_text(),
+                            (folder / "output/check_timing.rpt").read_text())
+    fit = (folder / "output/design.fit.rpt").read_text()
+    summary = (folder / "output/design.fit.summary").read_text()
+    for label, expected in (("Total PLLs", 1), ("ADC blocks", 1), ("Total memory bits", 0)):
+        values = re.findall(r"(?m)^" + re.escape(label) + r"\s*:\s*(\d+)\s*/", summary)
+        if values != [str(expected)]:
+            raise ValueError("ADC fit resource mismatch: " + label)
+    for pin, signal in (("N5", "clk_adc_reference"), ("P11", "clk_sys")):
+        rows = [row for row in fit.splitlines() if re.match(r";\s*" + pin + r"\s*;", row)]
+        if len(rows) != 1 or not re.search(r";\s*" + signal + r"\s*;\s*input\s*;\s*3.3-V LVTTL\s*;", rows[0]):
+            raise ValueError("ADC physical clock pin mismatch: " + pin)
+    if not re.search(r";\s*PLL mode\s*;\s*No Compensation\s*;", fit, re.I):
+        raise ValueError("ADC fit compensation mode differs")
+    return result
 
 CONTROL = (
     "altera_modular_adc_control.v", "altera_modular_adc_control_fsm.v",

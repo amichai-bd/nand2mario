@@ -263,17 +263,24 @@ def timing_evidence(folder, target):
             raise ValueError("vendor lock event row missing or extra no-clock endpoints")
         lock_event = fpga_pll.verify_lock_event(folder, checks, target["top"])
         fpga_pll.verify_fit(folder, target)
+    adc_evidence = None
+    if target["top"] == "adc_proof":
+        adc_evidence = fpga_adc.verify(folder)
+        lock_event = adc_evidence["lock_event"]
     vga_evidence = fpga_vga.verify(folder, lcd=target["top"] == "ppu_proof") if target.get("top") in ("vga_proof", "ppu_proof") else None
     memory_evidence = fpga_intel_memory.verify(folder) if target.get("top") == "intel_memory_proof" else None
     if target.get("top") == "n2m_memory_stores":
         memory_evidence = fpga_memory_stores.verify(folder)
     for name, count in rows:
-        if name == "no_clock" and int(count) == 1 and "pll" in target:
+        if name == "no_clock" and int(count) == 1 and ("pll" in target or adc_evidence is not None):
             continue
         if int(count) and not (name == "virtual_clock" and int(count) == 1 and "No virtual clock was found." in checks):
             raise ValueError(f"structural timing failure: {name}={count}")
-    return {"slack_ns": slacks, "fit_summary": fit, "unconstrained": "none", "ignored_constraints": "none", "vendor_lock_event": lock_event, "vga": vga_evidence, "intel_memory": memory_evidence,
+    evidence = {"slack_ns": slacks, "fit_summary": fit, "unconstrained": "none", "ignored_constraints": "none", "vendor_lock_event": lock_event, "vga": vga_evidence, "intel_memory": memory_evidence,
             "virtual_clock_check": "No virtual clock required for the physical-clock-referenced fixture" if "No virtual clock was found." in checks else "passed"}
+    if adc_evidence is not None:
+        evidence["adc"] = adc_evidence
+    return evidence
 
 
 def complete_cache(record, fingerprint, root, build, target):
@@ -290,6 +297,8 @@ def complete_cache(record, fingerprint, root, build, target):
         if "pll" in target:
             required += [folder / "n2m_pixel_pll.v", folder / "generate-pll.log"]
             required += [folder / "output" / name for name in fpga_pll.required_reports()]
+        if "src/rtl/input/n2m_adc_backend.sv" in target.get("sources", []):
+            required += [folder / name for name in (*fpga_adc.CONTROL, "n2m_adc_pll.v", "generate-adc-pll.log")]
         if "pll" in target or any(p in target["sources"] for p in ("src/rtl/common/n2m_intel_ram.sv", "src/rtl/input/n2m_adc_backend.sv")):
             required += [folder / "simulation/questa/design.vo", folder / "netlist.log"]
         required += [folder / name for name in ("design.qpf", "design.qsf", "audit.tcl", "compile.log", "audit.log")]
