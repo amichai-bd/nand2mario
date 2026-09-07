@@ -1,5 +1,5 @@
 """Incremental v0.5 checks; expectations come from the fixed program contract."""
-from reference import (FIRST_IMAGE_END, FRAME_DOTS, INPUT_MASKS, WINDOW_END,
+from reference import (FIRST_IMAGE_END, FRAME_DOTS, INPUT_MASKS, WINDOW_END, LCD_COMMIT,
                        Reference, compare_record, input_window, pixel_shade)
 from collections import deque
 
@@ -49,7 +49,11 @@ class Online:
         expected = pixel_shade(frame, x, y)
         if shade != expected:
             raise ValueError(f"V05_PIXEL frame={frame} index={index} expected={expected} actual={shade}")
-        if frame:
+        if not frame:
+            expected_dot = LCD_COMMIT + (93 if y == 0 else 92 + y * 456) + x
+            if dot != expected_dot:
+                raise ValueError(f"V05_PIXEL_DOT expected={expected_dot} actual={dot}")
+        else:
             expected_dot = FIRST_IMAGE_END - 143 * 456 - 159 + (frame - 1) * FRAME_DOTS + y * 456 + x
             if dot != expected_dot:
                 raise ValueError(f"V05_PIXEL_DOT expected={expected_dot} actual={dot}")

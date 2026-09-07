@@ -81,6 +81,18 @@ retirement is accepted during sleep.
 
 The source-pixel observer checks each visible pixel directly, including startup
 and all intervening frames; immutable snapshots are not the every-frame oracle.
+For blank frame0, the completed-dot schedule is `C+93+x` on row0 and
+`C+92+456*y+x` on rows1..143. Literal boundaries are42077,42532 and107443.
+This is the selected digital mapping from pinned
+[scan reset/alternation](https://github.com/MiSTer-devel/Gameboy_MiSTer/blob/7a5ff50528cd9c1d13ffb675e7df8506bffaa078/rtl/sprites.v#L153)
+and [fetch/shift control](https://github.com/MiSTer-devel/Gameboy_MiSTer/blob/7a5ff50528cd9c1d13ffb675e7df8506bffaa078/rtl/video.v#L915).
+LCD-off scan index1 takes78 ticks to finish; six fetch ticks and eight clipped
+positions place the first visible pixel atC+93. The next line resets atC+453,
+starts index0 and first publishes atC+548; subsequent lines recur every456 dots.
+The [pixel qualifier](https://github.com/MiSTer-devel/Gameboy_MiSTer/blob/7a5ff50528cd9c1d13ffb675e7df8506bffaa078/rtl/video.v#L1181)
+uses pre-edge raw X. Public tags count the completed edge. The existing normal
+frame formula is unchanged. These are source-derived digital phases; Mooneye's
+coarse mode/LY brackets do not independently measure exact pixel edges.
 An independent active-system-edge watchdog enforces the timing contract and
 rejects reset, host pause or missing progress during the acceptance window.
 Full pixel/retirement traces are retained. Public waveform windows cover useful

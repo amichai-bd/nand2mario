@@ -21,11 +21,25 @@ class OnlineTests(unittest.TestCase):
 
     def test_pixel_mutation_and_gap(self):
         monitor = Online()
-        monitor.pixel(0, 0, 0, 0, 0)
+        monitor.pixel(0, 0, 0, 42077, 0)
         with self.assertRaisesRegex(ValueError, 'V05_PIXEL .*expected=0 actual=1'):
-            monitor.pixel(0, 1, 0, 0, 1)
+            monitor.pixel(0, 1, 0, 42078, 1)
         with self.assertRaisesRegex(ValueError, 'V05_PIXEL_ORDER'):
-            monitor.pixel(0, 2, 0, 0, 0)
+            monitor.pixel(0, 2, 0, 42079, 0)
+
+    def test_blank_cadence_literal_boundaries(self):
+        for index, dot in ((0,42077),(159,42236),(160,42532),(23039,107443)):
+            monitor = Online()
+            monitor.pixels = index
+            monitor.pixel(0, index % 160, index // 160, dot, 0)
+            monitor = Online()
+            monitor.pixels = index
+            with self.assertRaisesRegex(ValueError, 'V05_PIXEL_DOT'):
+                monitor.pixel(0, index % 160, index // 160, dot + 1, 0)
+        monitor = Online()
+        monitor.pixel(0,0,0,42077,0)
+        with self.assertRaisesRegex(ValueError, 'V05_PIXEL_ORDER'):
+            monitor.pixel(0,2,0,42079,0)
 
     def test_input_window_and_pending_event(self):
         monitor = Online()
