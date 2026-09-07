@@ -6,8 +6,9 @@ import tempfile
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from n2m.preload import prepare
+from n2m.preload import prepare, verify
 from sw.package import package
+from sw.expressions import AssemblyError
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -43,9 +44,21 @@ class PreloadTests(unittest.TestCase):
         image = bytearray(self.image)
         image[0x147] = 1
         image = bytes(image)
-        with self.assertRaises(Exception):
+        with self.assertRaises(AssemblyError):
             prepare(image, hashlib.sha256(image).hexdigest(), self.destination)
         self.assertEqual(list(self.destination.iterdir()), [])
+
+    def test_rechecks_generated_files_before_launch(self):
+        (self.destination / 'program.gb').write_bytes(self.image)
+        for name in ('preload-rom.mif', 'preload-presence.mif', 'preload-crc.hex', 'program.gb'):
+            with self.subTest(name=name):
+                (self.destination / 'program.gb').write_bytes(self.image)
+                prepare(self.image, self.digest, self.destination)
+                verify(self.destination)
+                path = self.destination / name
+                path.write_bytes(path.read_bytes() + b'0')
+                with self.assertRaisesRegex(ValueError, 'changed after preparation'):
+                    verify(self.destination)
 
 
 if __name__ == '__main__':

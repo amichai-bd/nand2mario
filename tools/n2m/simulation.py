@@ -34,8 +34,10 @@ def load_target(root, name):
             raise ValueError(f"missing or out-of-tree source: {source}")
     if "driver" in target:
         driver = target["driver"]
-        if not isinstance(driver, dict) or set(driver) - {"script", "peer", "inputs", "access"} or not {"script", "peer", "inputs"} <= set(driver) or not isinstance(driver["inputs"], list):
+        if not isinstance(driver, dict) or set(driver) - {"script", "peer", "inputs", "access", "preload"} or not {"script", "peer", "inputs"} <= set(driver) or not isinstance(driver["inputs"], list):
             raise ValueError("simulation driver requires script, peer and inputs")
+        if type(driver.get("preload", False)) is not bool:
+            raise ValueError("simulation driver preload must be a boolean")
         if not isinstance(driver.get("access", []), list) or any(not isinstance(name, str) or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name) for name in driver.get("access", [])):
             raise ValueError("driver access must name top-level DV objects")
         for source in [driver["script"], driver["peer"], *driver["inputs"]]:
@@ -101,6 +103,9 @@ def simulate(root, build, args, simulator, provenance=None):
                 if log.name == "sim.log" and "driver" in target:
                     peer = Peer(root, attempt, target["driver"]["peer"])
                     port = peer.start()
+                    if target["driver"].get("preload", False):
+                        from .preload import verify
+                        verify(attempt)
                     def tcl_path(path):
                         return "{" + path.as_posix().replace("{", "\\{").replace("}", "\\}") + "}"
                     macro = (attempt / "run.do").read_text(encoding="utf-8")

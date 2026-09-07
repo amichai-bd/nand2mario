@@ -9,7 +9,8 @@ module n2m_intel_ram #(
     parameter integer DATA_BITS = 8,
     parameter integer ADDRESS_BITS = $clog2(DEPTH),
     parameter integer BYTE_LANES = 1,
-    parameter bit DUAL_CLOCK = 0
+    parameter bit DUAL_CLOCK = 0,
+    parameter string SIM_INIT_FILE = "UNUSED"
 ) (
     input var logic clk_a,
     input var logic clk_b,
@@ -28,6 +29,11 @@ module n2m_intel_ram #(
     output logic b_valid
 );
     localparam integer PRIMITIVE_LANES = (DATA_BITS + 7) / 8;
+`ifdef SYNTHESIS
+    localparam string INIT_FILE = "UNUSED";
+`else
+    localparam string INIT_FILE = SIM_INIT_FILE;
+`endif
     logic read_a, write_a, read_b;
     logic primitive_write;
     logic valid_a, valid_b;
@@ -80,7 +86,7 @@ module n2m_intel_ram #(
         // Different-clock collisions have no defined device result. The pinned
         // Intel model's coercion diagnostic is recorded by the builder.
         .read_during_write_mode_mixed_ports(DUAL_CLOCK ? "DONT_CARE" : "OLD_DATA"),
-        .power_up_uninitialized("TRUE"), .init_file("UNUSED")
+        .power_up_uninitialized("TRUE"), .init_file(INIT_FILE)
     ) ram (
         .clock0(clk_a), .clock1(DUAL_CLOCK ? clk_b : 1'b1),
         .clocken0(1'b1), .clocken1(1'b1), .clocken2(1'b1), .clocken3(1'b1),

@@ -1,5 +1,6 @@
 """Live product Client over a byte-only simulated UART bridge."""
 import argparse
+import hashlib
 import json
 from pathlib import Path
 import socket
@@ -48,7 +49,7 @@ class Transport:
         return bytes([self.pending.pop(0)])
 
 
-def main():
+def main(*, preloaded=False):
     parser = argparse.ArgumentParser()
     parser.add_argument('--root', type=Path, required=True)
     parser.add_argument('--attempt', type=Path, required=True)
@@ -57,6 +58,9 @@ def main():
     from n2m.host.client import Client
     from n2m import generated_interfaces as abi
     image = build(args.root, args.attempt)
+    if preloaded:
+        from n2m.preload import prepare
+        preload = prepare(image, hashlib.sha256((args.attempt / 'program.gb').read_bytes()).hexdigest(), args.attempt)
     with socket.socket() as listener:
         listener.bind(('127.0.0.1', 0))
         listener.listen(1)
@@ -76,7 +80,11 @@ def main():
             records = []
             client = Client(transport, clock=lambda: transport.sim_time, record=records.append)
             identity = client.identify()
-            loaded = client.load(image)
+            if preloaded:
+                from n2m.preload import adopt
+                loaded = adopt(client, preload)
+            else:
+                loaded = client.load(image)
             client.control('INPUT', 0)
             client.control('RUN')
             transport.send('WAIT 136280')
