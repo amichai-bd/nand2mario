@@ -1,4 +1,4 @@
-"""Package the original smoke ROM; check literal bytes independently."""
+"""Assemble and package the original host-play ROM."""
 import json
 from pathlib import Path
 import sys

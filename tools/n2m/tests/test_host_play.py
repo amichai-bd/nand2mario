@@ -66,3 +66,40 @@ class HostPlayTests(unittest.TestCase):
         with self.assertRaisesRegex(PlayFailure,'COUNT'):
             play(endpoint,b'original',lambda dots:None,lambda *args:None)
         self.assertEqual(endpoint.masks,[0])
+
+    def test_driver_relative_wait_and_failure_propagation(self):
+        try:
+            import tkinter
+        except ImportError:
+            self.skipTest('Tcl unavailable; exercised in local Windows check')
+        tcl=tkinter.Tcl()
+        tcl.eval(r'''
+            set smoke_peer_port 1
+            set incoming 0
+            set advances 0
+            array set signals {simulation_ns 0 dot_count 100000 tx_count 0 tx_busy 0 rx_count 0 rx_done 0}
+            proc socket {args} { return play }
+            proc fconfigure {args} {}
+            proc flush {args} {}
+            proc puts {args} {}
+            proc gets {channel variable} {
+                global incoming
+                upvar 1 $variable line
+                incr incoming
+                if {$incoming==1} {set line "WAIT 150000"} else {set line "FAIL PLAY_IMAGE"}
+                return [string length $line]
+            }
+            proc examine {args} {
+                global signals
+                return $signals([lindex [split [lindex $args end] /] end])
+            }
+            proc run {amount units} {
+                global advances signals
+                if {$amount==100} {incr advances;incr signals(dot_count) 50000;incr signals(simulation_ns) 100000}
+            }
+        ''')
+        driver=(Path(__file__).resolve().parents[3]/'src/dv/host_play/driver.do').read_text()
+        with self.assertRaisesRegex(tkinter.TclError,'PLAY_IMAGE'):
+            tcl.eval(driver)
+        self.assertEqual(int(tcl.getvar('advances')),3)
+        self.assertEqual(int(tcl.getvar('signals(dot_count)')),250000)
