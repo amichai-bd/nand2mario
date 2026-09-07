@@ -3,7 +3,7 @@
 // Clock, public observation latches and supported memory initialization only.
 // All stimulus, expectations and verdicts belong to the Python test.
 module tb_python_integration;
-    logic clk_sys = 0, reset_sys = 1, uart_rx = 1, uart_tx;
+    logic clk_sys, reset_sys, uart_rx, uart_tx;
     logic gb_tick, paused, core_reset, retirement_valid, bus_commit, write_enable;
     logic [31:0] epoch;
     logic [63:0] dot_count;
@@ -16,7 +16,7 @@ module tb_python_integration;
     logic [7:0] source_x, source_y;
     logic [31:0] source_epoch;
     logic [63:0] source_dot;
-    logic bus_event = 0, record_event = 0, pixel_event = 0;
+    logic bus_event, record_event, pixel_event;
     logic [88:0] bus_sample;
     logic [383:0] record_sample;
     logic [116:0] pixel_sample;
@@ -47,6 +47,12 @@ module tb_python_integration;
         end
     end
     initial begin
+        clk_sys = 0;
+        reset_sys = 1;
+        uart_rx = 1;
+        bus_event = 0;
+        record_event = 0;
+        pixel_event = 0;
         if ($test$plusargs("pixel_fault")) begin
             wait(source_display_eligible);
             force dut.source_shade = 2'd1;
