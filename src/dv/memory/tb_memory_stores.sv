@@ -16,6 +16,7 @@ module tb_memory_stores;
     logic [3:0] wave_address;
     integer index, store_number, size, inspected;
     bit early;
+    bit range_probe, range_fault;
     n2m_memory_stores dut (.*);
 
     function automatic integer bytes_in_store(input integer number);
@@ -27,6 +28,24 @@ module tb_memory_stores;
             default: return 32768;
         endcase
     endfunction
+    task automatic inspect_enables(input bit writing);
+        logic [5:0] selected;
+        begin
+            selected = 0;
+            if (store_number < 6 && index < bytes_in_store(store_number)) selected[store_number] = 1;
+            if ({dut.wave_ram.a_read, dut.oam_low.a_read, dut.vram.a_read,
+                 dut.hram.a_read, dut.wram.a_read, dut.rom.b_read} !== (writing ? 6'd0 : selected) ||
+                dut.oam_high.a_read !== (!writing && selected[4]) ||
+                dut.rom.a_write !== 1'b0 ||
+                dut.wram.a_write !== (writing && selected[1]) ||
+                dut.hram.a_write !== (writing && selected[2]) ||
+                dut.vram.a_write !== (writing && selected[3]) ||
+                dut.oam_low.a_write !== (writing && selected[4] && index%2==0) ||
+                dut.oam_high.a_write !== (writing && selected[4] && index%2==1) ||
+                dut.wave_ram.a_write !== (writing && selected[5]))
+                $fatal(1,"MEMORY_BANK_ENABLE store=%0d address=%04h",store_number,access_address);
+        end
+    endtask
     function automatic logic [7:0] pattern(input integer number, offset);
         return 8'(number * 41 + offset * 29 + offset / 256);
     endfunction
@@ -79,14 +98,16 @@ module tb_memory_stores;
     endtask
     initial begin
         $dumpfile("memory-stores.vcd");
-        $dumpvars(1, tb_memory_stores);
-        $dumpvars(1, tb_memory_stores.dut.rom);
-        $dumpvars(1, tb_memory_stores.dut.wram);
-        $dumpvars(1, tb_memory_stores.dut.hram);
-        $dumpvars(1, tb_memory_stores.dut.vram);
-        $dumpvars(1, tb_memory_stores.dut.oam_low);
-        $dumpvars(1, tb_memory_stores.dut.oam_high);
-        $dumpvars(1, tb_memory_stores.dut.wave_ram);
+        $dumpvars(0, clk_sys, reset_sys, core_reset, init_done, access_read, access_write,
+            access_store, access_address, access_wdata, access_rdata, access_valid,
+            host_read, host_write, host_offset, host_wdata, host_rdata, host_valid,
+            ppu_vram_read, ppu_vram_address, ppu_vram_rdata, ppu_vram_valid,
+            ppu_oam_read, ppu_oam_pair, ppu_oam_rdata, ppu_oam_valid,
+            wave_read, wave_address, wave_rdata, wave_valid,
+            dut.rom.b_read, dut.rom.a_write, dut.wram.a_read, dut.wram.a_write,
+            dut.hram.a_read, dut.hram.a_write, dut.vram.a_read, dut.vram.a_write,
+            dut.oam_low.a_read, dut.oam_low.a_write, dut.oam_high.a_read,
+            dut.oam_high.a_write, dut.wave_ram.a_read, dut.wave_ram.a_write);
         clk_sys = 0; reset_sys = 1; core_reset = 0;
         access_read = 0; access_write = 0; access_store = STORE_ROM;
         access_address = 0; access_wdata = 0;
@@ -96,9 +117,28 @@ module tb_memory_stores;
         wave_read = 0; wave_address = 0;
         inspected = 0;
         early = $test$plusargs("early");
+        range_probe = $test$plusargs("range_probe");
+        range_fault = $test$plusargs("range_fault");
         edge_cycle();
         reset_sys = 0;
         wait_clear();
+        if (range_probe) begin
+            // Inspect the real primitive ports with the clock stopped. Invalid
+            // requests never reach an edge; normal tests exercise storage data.
+            for (store_number=0; store_number<8; store_number=store_number+1) begin
+                access_store=memory_store_t'(store_number);
+                for (index=0; index<32768; index=index+1) begin
+                    access_address=15'(index); access_read=1; access_write=0;
+                    if (range_fault && store_number==6 && index==0) force dut.wram.a_write=1'b1;
+                    #1; inspect_enables(0);
+                    access_read=0; access_write=1;
+                    #1; inspect_enables(1);
+                    access_write=0;
+                end
+            end
+            $display("PASS memory bank enables selectors=8 addresses=32768 directions=2");
+            $finish;
+        end
         inspect_ram(0);
         for (store_number = 1; store_number <= 5; store_number = store_number + 1) begin
             access_store = memory_store_t'(store_number);
