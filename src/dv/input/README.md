@@ -39,3 +39,12 @@ The fixture checks ordered responses, cancels an outstanding X by injecting
 PLL lock loss, then requires complete fresh pairs after recovery. Its negative
 changes the actual Y response. This proves digital model integration, not
 analog conversion accuracy or physical wiring.
+
+`controls-lifecycle` checks each button's press/release boundary, adjacent axis
+thresholds, retained extremes, and reset or ADC cancellation from five public
+transaction phases. It also checks deadline equality, stale replacement and
+missing-Y draining while buttons remain live. `controls-unsolicited` requires
+the normal named protocol failure. `controls-sticky` compiles the same producer
+with explicit `SYNTHESIS` assertion exclusion to observe the hardware fault
+persisting across ADC recovery, live buttons, and release only by global reset.
+The recovery negative corrupts the actual resumed physical mask.

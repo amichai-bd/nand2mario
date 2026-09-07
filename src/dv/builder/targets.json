@@ -6027,5 +6027,70 @@
     "signature": "ADC_VENDOR_DATA",
     "expected_exit": "nonzero",
     "vendor_model": "intel-adc"
+  },
+  "controls-lifecycle": {
+    "sources": [
+      "src/rtl/input/n2m_controls_pkg.sv",
+      "src/rtl/input/n2m_input_pkg.sv",
+      "src/rtl/input/n2m_button_filter.sv",
+      "src/rtl/input/n2m_adc_pairs.sv",
+      "src/rtl/input/n2m_controls_mask.sv",
+      "src/rtl/input/n2m_physical_controls.sv",
+      "src/rtl/input/n2m_input.sv",
+      "src/dv/input/tb_controls_lifecycle.sv"
+    ],
+    "top": "tb_controls_lifecycle",
+    "args": [],
+    "signature": "PASS controls lifecycle checks=94 reset-cases=10",
+    "expected_exit": "zero"
+  },
+  "controls-lifecycle-corrupt": {
+    "sources": [
+      "src/rtl/input/n2m_controls_pkg.sv",
+      "src/rtl/input/n2m_input_pkg.sv",
+      "src/rtl/input/n2m_button_filter.sv",
+      "src/rtl/input/n2m_adc_pairs.sv",
+      "src/rtl/input/n2m_controls_mask.sv",
+      "src/rtl/input/n2m_physical_controls.sv",
+      "src/rtl/input/n2m_input.sv",
+      "src/dv/input/tb_controls_lifecycle.sv"
+    ],
+    "top": "tb_controls_lifecycle",
+    "args": [
+      "+CORRUPT_RECOVERY"
+    ],
+    "signature": "CONTROLS_LIFECYCLE scenario=3 method=1",
+    "expected_exit": "nonzero"
+  },
+  "controls-unsolicited": {
+    "sources": [
+      "src/rtl/input/n2m_controls_pkg.sv",
+      "src/rtl/input/n2m_input_pkg.sv",
+      "src/rtl/input/n2m_button_filter.sv",
+      "src/rtl/input/n2m_adc_pairs.sv",
+      "src/rtl/input/n2m_controls_mask.sv",
+      "src/rtl/input/n2m_physical_controls.sv",
+      "src/rtl/input/n2m_input.sv",
+      "src/dv/input/tb_controls_lifecycle.sv"
+    ],
+    "top": "tb_controls_lifecycle",
+    "args": [
+      "+UNSOLICITED"
+    ],
+    "signature": "N2M_ASSERT adc_pair_response_contract",
+    "expected_exit": "nonzero"
+  },
+  "controls-sticky": {
+    "sources": [
+      "src/rtl/input/n2m_controls_pkg.sv",
+      "src/rtl/input/n2m_input_pkg.sv",
+      "src/dv/input/tb_controls_sticky.sv"
+    ],
+    "top": "tb_controls_lifecycle",
+    "args": [
+      "+STICKY"
+    ],
+    "signature": "PASS controls sticky fault checks=8",
+    "expected_exit": "zero"
   }
 }
