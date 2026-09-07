@@ -93,6 +93,11 @@ fault until global reset. Buttons remain live during recovery.
 
 LEDR[7:0] show the effective shared input mask, LEDR8 shows PHYSICAL selection,
 and LEDR9 shows fresh ADC pair availability. LED outputs are active high.
+The ten LED outputs and UART TX use explicit 8mA drive strength with 3.3-V
+LVTTL, matching the existing VGA output convention. This selects the MAX10
+output-driver setting; the board LED resistors and connected receiver determine
+load current. The combined fit must confirm legal assignments and no missing
+I/O properties before physical use.
 The shared input owner remains authoritative for UART isolation, physical
 shadow retention, source changes, and core-reset selection of UART.
 

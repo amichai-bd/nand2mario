@@ -129,6 +129,8 @@ def prepare(root, folder, target, build_id=None):
                       f'set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to {tcl_word(port)}'])
         if target.get("top") in ("vga_proof", "ppu_proof", "controls_proof") and port in fpga_vga.PORTS:
             lines.append(f'set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to {tcl_word(port)}')
+        if target["top"] == "controls_proof" and (port == "uart_tx" or re.fullmatch(r"leds\[[0-9]\]", port)):
+            lines.append(f'set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to {tcl_word(port)}')
     if target["top"] == "controls_proof":
         lines.append('set_instance_assignment -name IO_STANDARD "3.3 V SCHMITT TRIGGER" -to board_reset_n')
     for port in target["virtual_pins"]:
