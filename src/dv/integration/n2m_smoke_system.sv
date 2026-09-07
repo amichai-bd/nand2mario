@@ -3,7 +3,7 @@
 `include "src/rtl/common/macros.svh"
 
 // Bounded composition for the original smoke ROM, not a full board top.
-module n2m_smoke_system (
+module n2m_smoke_system #(parameter bit HOST_PLAY = 0) (
     input var logic clk_sys,
     input var logic reset_sys,
     input var logic uart_rx,
@@ -33,6 +33,11 @@ module n2m_smoke_system (
     logic [14:0] rom_address;
     logic [7:0] rom_write_data, rom_read_data;
     logic snapshot_request, frame_read;
+    logic snapshot_ready, snapshot_done, snapshot_ok, snapshot_valid, frame_valid;
+    snapshot_t snapshot_metadata;
+    logic [7:0] frame_data, effective_buttons, joyp_rdata;
+    n2m_input_pkg::input_update_t effective_update;
+    logic joyp_selected_active, joyp_event;
     logic [12:0] frame_address;
     logic request_valid, response_valid, cpu_initialized, cpu_fault, memory_fault, ppu_fault;
     logic memory_initialized, storage_read, storage_write;
@@ -58,7 +63,7 @@ module n2m_smoke_system (
     logic [1:0] oam_phase;
     logic [15:0] oam_data;
     logic oam_valid, vram_cpu_allow, oam_cpu_allow, stat_condition, vblank_condition;
-    logic reset;
+    logic reset, blank_assert;
     assign reset = reset_sys || core_reset;
     assign core_initialized = memory_initialized && cpu_initialized;
     assign fault = cpu_fault || memory_fault || ppu_fault;
@@ -67,19 +72,20 @@ module n2m_smoke_system (
         .clk_sys, .reset_sys, .uart_rx, .uart_tx,
         .build_id(128'h14000000000000000000000000000001), .gb_tick, .paused,
         .core_initialized, .instruction_complete, .retirement_valid, .cpu_stopped,
-        .physical_commit(1'b0), .physical_buttons(8'd0), .effective_buttons(), .effective_update(),
+        .physical_commit(1'b0), .physical_buttons(8'd0), .effective_buttons, .effective_update,
         .pause_request, .core_reset, .buttons, .epoch, .dot_count, .retirement_count,
         .profile, .image_valid, .endpoint_state, .rom_write, .rom_read, .rom_address,
         .rom_write_data, .rom_read_data, .rom_read_valid,
-        .snapshot_request, .snapshot_ready(1'b0), .snapshot_done(1'b0),
-        .snapshot_ok(1'b0), .snapshot_valid(1'b0), .snapshot_metadata('0),
-        .frame_read, .frame_address, .frame_data(8'd0), .frame_valid(1'b0)
+        .snapshot_request, .snapshot_ready, .snapshot_done,
+        .snapshot_ok, .snapshot_valid, .snapshot_metadata,
+        .frame_read, .frame_address, .frame_data, .frame_valid
     );
     n2m_timebase u_timebase (.clk_sys, .reset_sys, .core_reset, .pause_request, .gb_tick, .paused);
     n2m_cpu u_cpu (
         .clk_sys, .reset_sys, .core_reset, .gb_tick, .profile_id(profile), .epoch,
-        .dot_before(dot_count), .ie(ie_observe), .iflags(if_observe), .buttons,
-        .read_data, .response_valid, .joyp_selected_active(1'b0), .wake_request(1'b0),
+        .dot_before(dot_count), .ie(ie_observe), .iflags(if_observe),
+        .buttons(HOST_PLAY ? effective_buttons : buttons),
+        .read_data, .response_valid, .joyp_selected_active, .wake_request(1'b0),
         .request_valid, .address, .write_data, .write_enable, .bus_commit, .irq_ack,
         .access_kind(), .address_effect(), .address_effect_resolved(),
         .address_effect_sample(), .address_effect_phase(), .halted(), .stopped(cpu_stopped),
@@ -119,6 +125,11 @@ module n2m_smoke_system (
             end
             MEMORY_PPU: owner_rdata = ppu_rdata;
             MEMORY_IRQ: owner_rdata = irq_rdata;
+            MEMORY_JOYP: begin
+                owner_rdata = joyp_rdata;
+                owner_service = HOST_PLAY;
+                owner_valid = HOST_PLAY;
+            end
             default: begin owner_service = 0; owner_valid = 0; end
         endcase
     end
@@ -139,7 +150,7 @@ module n2m_smoke_system (
         .clk_sys, .reset_sys, .core_reset, .gb_tick,
         .io_commit(owner_commit && destination == MEMORY_IRQ), .io_write(owner_write),
         .io_address(owner_address), .io_wdata(owner_wdata),
-        .source_level({3'd0,stat_condition,vblank_condition}), .source_event(5'd0),
+        .source_level({3'd0,stat_condition,vblank_condition}), .source_event({joyp_event,4'd0}),
         .irq_ack, .io_selected(irq_selected), .io_rdata(irq_rdata),
         .ie_stored, .if_stored, .ie_observe, .if_observe
     );
@@ -152,9 +163,56 @@ module n2m_smoke_system (
         .dma_active(1'b0), .vram_cpu_allow, .oam_cpu_allow, .stat_condition,
         .vblank_condition, .stat_rise(), .vblank_rise(), .fault(ppu_fault),
         .source_valid, .source_start, .source_shade, .source_x, .source_y,
-        .source_epoch, .source_dot, .source_abort, .blank_assert(), .source_display_eligible
+        .source_epoch, .source_dot, .source_abort, .blank_assert, .source_display_eligible
     );
-    `N2M_ASSERT(SMOKE_NO_SNAPSHOT, clk_sys, reset_sys, !snapshot_request && !frame_read)
-    `N2M_ASSERT(SMOKE_RELEASED_INPUT, clk_sys, reset_sys, buttons == 0)
+    generate if (HOST_PLAY) begin : g_play
+        logic clk_pix;
+        logic observe_valid, observe_complete, observe_abort;
+        logic [14:0] observe_index;
+        logic [1:0] observe_shade;
+        logic [31:0] observe_epoch;
+        logic [63:0] observe_sequence, observe_dot;
+        // DV pixel clock only; this bounded system is not a physical board top.
+        initial clk_pix = 0;
+        always #20 clk_pix = !clk_pix;
+        n2m_joypad u_joypad (
+            .clk_sys, .reset_sys, .core_reset, .gb_tick,
+            .input_commit(effective_update.valid), .input_buttons(effective_update.buttons),
+            .io_commit(owner_commit && destination == MEMORY_JOYP), .io_write(owner_write),
+            .io_address(owner_address), .io_wdata(owner_wdata), .io_selected(),
+            .io_rdata(joyp_rdata), .buttons_observe(),
+            .selected_active(joyp_selected_active), .request_event(joyp_event)
+        );
+        n2m_frame_bridge u_bridge (
+            .clk_sys, .reset_sys, .core_reset, .clk_pix, .reset_pix(reset_sys),
+            .source_valid, .source_start, .source_abort, .blank_assert,
+            .source_display_eligible, .source_shade, .source_epoch, .source_dot,
+            .observe_valid, .observe_complete, .observe_abort, .observe_index,
+            .observe_shade, .observe_epoch, .observe_sequence, .observe_dot,
+            .discard_count(), .repeat_count(), .display_valid(), .display_sequence(),
+            .display_epoch(), .video_x(), .video_y(), .video_valid(), .video_active(),
+            .video_image(), .red(), .green(), .blue(), .hsync_n(), .vsync_n()
+        );
+        n2m_frame_snapshot u_snapshot (
+            .clk_sys, .reset_sys, .core_reset, .observe_valid, .observe_complete,
+            .observe_abort, .observe_index, .observe_shade, .observe_epoch,
+            .observe_sequence, .observe_dot, .snapshot_request, .snapshot_ready,
+            .snapshot_done, .snapshot_ok, .snapshot_valid, .snapshot_metadata,
+            .frame_read, .frame_address, .frame_valid, .frame_data
+        );
+    end else begin : g_smoke
+        assign snapshot_ready = 0;
+        assign snapshot_done = 0;
+        assign snapshot_ok = 0;
+        assign snapshot_valid = 0;
+        assign snapshot_metadata = '0;
+        assign frame_data = 0;
+        assign frame_valid = 0;
+        assign joyp_rdata = 0;
+        assign joyp_selected_active = 0;
+        assign joyp_event = 0;
+        `N2M_ASSERT(SMOKE_NO_SNAPSHOT, clk_sys, reset_sys, !snapshot_request && !frame_read)
+        `N2M_ASSERT(SMOKE_RELEASED_INPUT, clk_sys, reset_sys, buttons == 0)
+    end endgenerate
     `N2M_ASSERT(SMOKE_NO_STOP, clk_sys, reset, !cpu_stopped)
 endmodule
