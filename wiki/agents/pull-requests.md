@@ -18,6 +18,10 @@ independent review, author undrafting, squash merge, and root cleanup.
 
 The `PR policy` check requires a valid numbered branch, `main` base, and closing
 references to open assigned issues including the primary branch issue.
+The explicitly authorized checkpoints PR162 and PR163 use `Checkpoint for #156`
+and `Checkpoint for #88`, respectively, plus a matching `Refs` line. They keep
+those assigned acceptance issues open and contain no closing references. The
+policy records only these two exceptions; other PRs still close their issues.
 `Wiki check` validates the documentation build.
 
 Main requires passing up-to-date checks, linear history, and resolved review
