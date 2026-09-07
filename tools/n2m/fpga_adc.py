@@ -127,8 +127,11 @@ def verify_netlist(text, checks):
     for state, gate in (("IDLE", "ctrl_state.IDLE~0"), ("PWRDWN", "Selector1~1")):
         name = FSM + "ctrl_state." + state
         ports = register(name, r"\u_reset|sys_release[1]")
-        port = "d" if state == "IDLE" else "asdata"
-        require(ports["sload"] == ("gnd" if state == "IDLE" else "vcc"), "ADC vendor lock load differs")
+        require(ports["sload"] in {"gnd", "vcc"} and ports["ena"] == "vcc",
+                "ADC vendor lock load/enable differs")
+        # Quartus may route the same synchronous input through D or ASDATA.
+        # Accept only the port actually selected by the constant SLOAD control.
+        port = "asdata" if ports["sload"] == "vcc" else "d"
         pending = [cells[FSM + gate][1]["combout"]]
         seen = set()
         endpoints = set()
