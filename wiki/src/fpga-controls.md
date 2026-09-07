@@ -135,14 +135,23 @@ defines the control-only configuration; its
 permits10 MHz at125 ksample/s. Installed25.1std source parameters and physical
 fit must corroborate the selected implementation.
 
-Fixed-output ADC simulation disables user files and explicitly passes empty
-channel filenames, matching the installed IP generator. The control HDL's
-default strings `simfilename_ch0` through `simfilename_ch16` are placeholders,
-not packaged sample files. The generator's parameter defaults and forwarding
-come from `altera_modular_adc_hw.tcl` (SHA256
+ADC verification uses the vendor's user-stimulus simulation mode with original
+builder-generated two-column voltage files and recorded hashes. Channel1 has
+0.625V and channel2 has1.25V; inactive channels have0V. Each file has one row,
+which the documented model repeats. The independent expected codes are1024
+and2048. Simulation mode and filenames do not change the hardware clock,
+reference selection or channel mask.
+
+The installed generator encodes the reference as `(Vref / 3.3) * 65536`;
+the integer49648 represents the selected2.5V reference. Its voltage conversion
+uses integer truncation of `(Vin / Vref) * 4096`. Ideal2.5V and the encoded
+reference both produce the stated expected codes. These rules come from
+`altera_modular_adc_hw.tcl` (SHA256
 `0de2a5dab422d7c34100603413b6746ab86f77ca4aa3afe4740191692aee4669`,
-lines518-1598 and3904-3922). This configuration still requires checked actual
-model execution; expected samples alone do not excuse runtime diagnostics.
+lines3278,3905 and4638). The
+[official stimulus format](https://docs.altera.com/r/docs/683596/24.1/max-10-analog-to-digital-converter-user-guide/user-specified-adc-logic-simulation-output)
+defines file columns and repetition. Expected samples alone do not excuse
+runtime diagnostics; earlier fixed-mode failures remain failed evidence.
 
 Issue156 requires independent Questa filtering/fault/atomicity checks, early
 ADC fit, final constrained FPGA proof, and actual verified controls with

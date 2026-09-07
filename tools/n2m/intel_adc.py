@@ -1,4 +1,5 @@
 """Pinned installed Intel ADC/PLL model for the physical-controls proof."""
+import hashlib
 import json
 from pathlib import Path
 import re
@@ -30,7 +31,30 @@ def resolve(root, simulator, directory=None):
     return {"selection": "intel-adc", "library": LIBRARY, "version": pin["version"],
             "sources": sources, "generation_inputs": generation,
             "generation_command": fpga_adc.generation_command(generation),
-            "binding_options": ["-L", LIBRARY, "-L", ATOMS_LIBRARY], "mixed_mode_instances": []}
+            "binding_options": ["-L", LIBRARY, "-L", ATOMS_LIBRARY], "mixed_mode_instances": [],
+            "stimulus": stimulus_manifest()}
+
+
+def stimulus_manifest():
+    # Original test voltages, not measured hardware or redistributed vendor data.
+    files = {f"adc_ch{i}.txt": "0 " + ({1: "0.625", 2: "1.25"}.get(i, "0.0")) + "\n"
+             for i in range(17)}
+    return {"enable_usr_sim": 1, "reference_voltage_sim": 49648,
+            "files": {name: {"text": text, "sha256": hashlib.sha256(text.encode("ascii")).hexdigest()}
+                      for name, text in files.items()}}
+
+
+def prepare_stimulus(attempt, descriptor):
+    if descriptor.get("stimulus") != stimulus_manifest():
+        raise ValueError("ADC stimulus descriptor differs from the original voltage fixture")
+    for name, entry in descriptor["stimulus"]["files"].items():
+        path = attempt / name
+        data = entry["text"].encode("ascii")
+        if path.exists():
+            raise ValueError("ADC stimulus path already exists")
+        path.write_bytes(data)
+        if file_hash(path) != entry["sha256"]:
+            raise ValueError("ADC stimulus file hash differs")
 
 
 def reject_shadow_models(root, inputs):
@@ -47,6 +71,7 @@ def reject_shadow_models(root, inputs):
 
 
 def commands(simulator, compiler, attempt, descriptor):
+    prepare_stimulus(attempt, descriptor)
     tools = simulator.tools
     library = descriptor["library"]
     path = (compiler / library).as_posix()

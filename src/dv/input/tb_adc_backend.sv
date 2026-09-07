@@ -57,9 +57,9 @@ module tb_adc_backend;
             end
             if (response_valid) begin
                 if (!pending || response_channel !== pending_channel ||
-                    response_data !== (pending_channel == 5'd1 ? 12'd11 : 12'd12))
+                    response_data !== (pending_channel == 5'd1 ? 12'd1024 : 12'd2048))
                     $fatal(1, "ADC_VENDOR_DATA expected=%0d,%0d actual=%0d,%0d pending=%0b",
-                        pending_channel, pending_channel == 5'd1 ? 11 : 12, response_channel, response_data, pending);
+                        pending_channel, pending_channel == 5'd1 ? 1024 : 2048, response_channel, response_data, pending);
                 pending = 1'b0; replies = replies + 1;
             end
         end
@@ -78,14 +78,14 @@ module tb_adc_backend;
         repeat (10) @(negedge clk_sys);
         board_reset_n = 1'b1; global_reset = 1'b0;
         wait (replies == 4); @(negedge clk_sys);
-        if (!fresh || physical_buttons !== 8'h06 || fault) $fatal(1, "ADC_VENDOR_EFFECTIVE");
+        if (!fresh || physical_buttons !== 8'h08 || fault) $fatal(1, "ADC_VENDOR_EFFECTIVE");
         // The fifth command is an outstanding X when lock loss cancels it.
         wait (commands == 5); @(negedge clk_sys); force pll_locked = 1'b0;
         repeat (8) @(negedge clk_sys);
         if (fresh || physical_buttons !== 8'h00 || !adc_reset) $fatal(1, "ADC_VENDOR_LOCK_CANCEL");
         release pll_locked;
         wait (replies == 8); @(negedge clk_sys);
-        if (!fresh || physical_buttons !== 8'h06 || fault) $fatal(1, "ADC_VENDOR_RECOVERY");
+        if (!fresh || physical_buttons !== 8'h08 || fault) $fatal(1, "ADC_VENDOR_RECOVERY");
         $display("PASS actual ADC model replies=%0d commands=%0d lock-cancel", replies, commands);
         $finish;
     end

@@ -31,14 +31,19 @@ with a complete pair, hysteresis and reversed polarity, bounce, tick deferral,
 stale-axis release, source isolation and reset. The negative corrupts the actual
 physical mask. This bounded fixture does not replace acquisition or board proof.
 
-`adc-backend` uses the unchanged Intel configuration and installed encrypted
-ADC model with the real reset controller and producer. The fixed dual-ADC
-model returns ADC1 channel1=11 and channel2=12, as specified by Intel's
-[fixed simulation output table](https://docs.altera.com/r/docs/683596/24.1/max-10-analog-to-digital-converter-user-guide/fixed-adc-logic-simulation-output).
+`adc-backend` uses the installed encrypted ADC model, real reset controller and
+producer, with Intel's documented user-stimulus simulation mode. Original
+builder-generated two-column files supply channel1=0.625V and channel2=1.25V;
+the independently calculated expected codes are1024 and2048 for2.5V reference.
+All17 filenames are provided because the retained model opens each at startup.
+The [stimulus format](https://docs.altera.com/r/docs/683596/24.1/max-10-analog-to-digital-converter-user-guide/user-specified-adc-logic-simulation-output)
+defines row sequencing and repetition. The model configuration changes only
+simulation parameters; the actual clock, reference selection and channel mask
+remain those used by synthesis. Fixed-output attempts remain failed evidence.
 The fixture checks ordered responses, cancels an outstanding X by injecting
 PLL lock loss, then requires complete fresh pairs after recovery. Its negative
-changes the actual Y response. This proves digital model integration, not
-analog conversion accuracy or physical wiring.
+changes the actual Y response. Acceptance requires clean checked model execution; it does not prove analog
+conversion accuracy or physical wiring.
 
 `controls-lifecycle` checks each button's press/release boundary, adjacent axis
 thresholds, retained extremes, and reset or ADC cancellation from five public

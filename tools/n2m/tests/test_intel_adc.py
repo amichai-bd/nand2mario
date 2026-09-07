@@ -39,6 +39,7 @@ class IntelAdcTests(unittest.TestCase):
         self.assertEqual(descriptor["sources"][0]["sha256"], file_hash(self.source))
         self.assertEqual(descriptor["generation_inputs"], self.generation)
         compiler, run = self.root / "compile", self.root / "run"
+        run.mkdir()
         commands, maps, binding = intel_memory.commands(self.sim, compiler, run, descriptor)
         self.assertEqual(commands[0][0], fpga_adc.generation_command(self.generation))
         self.assertEqual(commands[3][0], ["vlog", "-work", "n2m_intel_adc_atoms", str(self.source)])
@@ -108,6 +109,31 @@ class IntelAdcTests(unittest.TestCase):
         generated.write_text(text.replace("100000", "200000"))
         with self.assertRaisesRegex(ValueError, "parameter mismatch"):
             intel_adc.verify_generated(self.root)
+
+    def test_original_stimulus_bytes_and_tampering(self):
+        import copy
+        from fractions import Fraction
+        descriptor = self.resolve()
+        folder = self.root / "stimulus"
+        folder.mkdir()
+        intel_adc.prepare_stimulus(folder, descriptor)
+        self.assertEqual(len(list(folder.iterdir())), 17)
+        for channel in range(17):
+            data = (folder / f"adc_ch{channel}.txt").read_bytes()
+            self.assertEqual(data, {1: b"0 0.625\n", 2: b"0 1.25\n"}.get(channel, b"0 0.0\n"))
+        # Both ideal2.5V and encoded2.4999755859375V yield the same literal codes.
+        for reference in (Fraction(5, 2), Fraction(33, 10) * Fraction(49648, 65536)):
+            self.assertEqual(int(Fraction(5, 8) / reference * 4096), 1024)
+            self.assertEqual(int(Fraction(5, 4) / reference * 4096), 2048)
+        with self.assertRaisesRegex(ValueError, "already exists"):
+            intel_adc.prepare_stimulus(folder, descriptor)
+        for change in ('missing', 'text', 'reference'):
+            mutated = copy.deepcopy(descriptor)
+            if change == 'missing': del mutated['stimulus']['files']['adc_ch16.txt']
+            elif change == 'text': mutated['stimulus']['files']['adc_ch1.txt']['text'] = '0 2.5\n'
+            else: mutated['stimulus']['reference_voltage_sim'] = 65536
+            with self.assertRaisesRegex(ValueError, "descriptor differs"):
+                intel_adc.prepare_stimulus(folder, mutated)
 
     def test_adc_does_not_classify_memory_warnings(self):
         raw = "Warning: unexpected ADC response"
