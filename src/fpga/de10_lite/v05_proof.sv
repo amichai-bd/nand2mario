@@ -11,11 +11,14 @@ module v05_proof (
     output logic uart_tx,
     output logic [3:0] red, green, blue,
     output logic hsync_n, vsync_n,
+    output logic [63:0] display_sequence,
+    output logic [31:0] display_epoch,
     output logic paused, fault
 );
     n2m_v05_system u_system (
         .clk_sys, .clk_pix, .reset_sys, .reset_pix, .uart_rx, .uart_tx,
         .red, .green, .blue, .hsync_n, .vsync_n, .paused, .fault,
+        .display_sequence, .display_epoch,
         .gb_tick(), .core_reset(), .epoch(), .dot_count(),
         .retirement_valid(), .retirement(), .bus_commit(), .write_enable(),
         .address(), .write_data(), .read_data(), .irq_ack(),

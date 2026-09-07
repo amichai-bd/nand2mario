@@ -12,6 +12,8 @@ module n2m_v05_system (
     output logic uart_tx,
     output logic [3:0] red, green, blue,
     output logic hsync_n, vsync_n,
+    output logic [63:0] display_sequence,
+    output logic [31:0] display_epoch,
     output logic gb_tick, paused, core_reset,
     output logic [31:0] epoch,
     output logic [63:0] dot_count,
@@ -188,8 +190,8 @@ module n2m_v05_system (
         .source_display_eligible, .source_shade, .source_epoch, .source_dot,
         .observe_valid, .observe_complete, .observe_abort, .observe_index,
         .observe_shade, .observe_epoch, .observe_sequence, .observe_dot,
-        .discard_count(), .repeat_count(), .display_valid(), .display_sequence(),
-        .display_epoch(), .video_x(), .video_y(), .video_valid(), .video_active(),
+        .discard_count(), .repeat_count(), .display_valid(), .display_sequence,
+        .display_epoch, .video_x(), .video_y(), .video_valid(), .video_active(),
         .video_image(), .red, .green, .blue, .hsync_n, .vsync_n
     );
     n2m_frame_snapshot u_snapshot (

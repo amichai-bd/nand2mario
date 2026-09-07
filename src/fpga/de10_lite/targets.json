@@ -1301,7 +1301,9 @@
         "uart_rx",
         "uart_tx",
         "paused",
-        "fault"
+        "fault",
+        "display_sequence[*]",
+        "display_epoch[*]"
       ]
     }
   }
