@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "mooneye": {
+    "commit": "31510e12eea6286d36eea060a6adde755e1067aa",
+    "url": "https://codeload.github.com/Gekkio/mooneye-test-suite/zip/31510e12eea6286d36eea060a6adde755e1067aa",
+    "sha256": "05cd9d7891a2a9b806e2838a99bb243be5ed629044fa580010aa8205bfbdd097",
+    "license": "MIT, with separately licensed font asset",
+    "license_sha256": "8a9a9fe1603b7566d56978c89a6442ae1db2dd96042fb94c20b9647c47afae88"
+  },
+  "wla_dx": {
+    "commit": "89a90a56be5c2b8cf19a9afa3e1b32384ddb1a97",
+    "version": "10.6",
+    "url": "https://codeload.github.com/vhelin/wla-dx/zip/89a90a56be5c2b8cf19a9afa3e1b32384ddb1a97",
+    "sha256": "bbc70a1921102d75c9461aa14af78627d288ddc9a958d9231e08ccd220758350",
+    "license": "GPL-2.0-or-later",
+    "license_sha256": "f31e10a5bccb40214596b32c3ed5df01f7a10b0192cc53f7afdec65f0f37d18c"
+  },
+  "font": {
+    "author": "Lisa Milne (Darkrose), 2014",
+    "source_page": "https://opengameart.org/content/8x8-ascii-bitmap-font-with-c-source",
+    "url": "https://opengameart.org/sites/default/files/font_0.zip",
+    "sha256": "e6eb1db4d6facc22d3171ba9452ea302e9c3db8de1dece80a47aad5d5c1514a8",
+    "source_sha256": "a7e7b7fff77d47db06148382610ae732283801305b0f7180e4cc81b55e4bf589",
+    "mooneye_font_sha256": "29f4022ac990575e2300ac5035ec66f57f40d3b54ca043905d0f113f91e87549",
+    "license": "GPL-3.0-or-later"
+  },
+  "selection": {
+    "source": "acceptance/bits/reg_f.s",
+    "model": "DMG",
+    "profile": "dmg-direct-v1",
+    "image_sha256": "2f54a0af2a2ed8c94421ad1021ef7de98c562851623d0ff2329c58ea882be1bc",
+    "image_bytes": 32768,
+    "entry": 256,
+    "completion_symbol": "quit@serial_dump",
+    "completion_address": 19073,
+    "completion_opcode": 64,
+    "pass_registers": {"b": 3, "c": 5, "d": 8, "e": 13, "h": 21, "l": 34}
+  }
+}
