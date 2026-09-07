@@ -17,16 +17,21 @@ module tb_python_v05;
     logic [7:0] source_x, source_y;
     logic [31:0] source_epoch;
     logic [63:0] source_dot;
-    logic record_event, pixel_event, input_event;
+    logic record_event, pixel_event, input_event, write_event;
     n2m_interfaces_pkg::retirement_t record_sample;
     logic [116:0] pixel_sample;
     logic [103:0] input_sample;
+    logic [87:0] write_sample;
 
     n2m_v05_system #(.UART_BAUD(3125000)) dut (.*);
     always #20 clk_sys = !clk_sys;
     always #19.841 clk_pix = !clk_pix;
 
     always @(posedge clk_sys) begin
+        if (!reset_sys && bus_commit && write_enable) begin
+            write_sample <= {64'(dot_count + 1), address, write_data};
+            write_event <= !write_event;
+        end
         // Effective update is consumed by JOYP on this edge, off gb_tick.
         if (!reset_sys && !core_reset && dut.effective_update.valid) begin
             input_sample <= {epoch, dot_count, dut.effective_update.buttons};
@@ -53,6 +58,7 @@ module tb_python_v05;
         record_event = 0;
         pixel_event = 0;
         input_event = 0;
+        write_event = 0;
         if ($test$plusargs("pixel_fault")) begin
             wait(source_display_eligible && source_x == 0 && source_y == 0);
             force dut.source_shade = 2'd0;

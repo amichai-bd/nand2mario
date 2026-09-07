@@ -1,6 +1,7 @@
 """Incremental v0.5 checks; expectations come from the fixed program contract."""
 from reference import (FIRST_IMAGE_END, FRAME_DOTS, INPUT_MASKS, WINDOW_END,
                        Reference, compare_record, input_window, pixel_shade)
+from collections import deque
 
 
 class Online:
@@ -10,6 +11,11 @@ class Online:
         self.retirements = 0
         self.pixels = 0
         self.last_dot = 0
+        self.writes = deque()
+        self.checked_writes = 0
+
+    def write(self, dot, address, data):
+        self.writes.append((dot, address, data))
 
     def input(self, dot, buttons):
         index = len(self.inputs) + 1
@@ -29,6 +35,11 @@ class Online:
         if expected is None:
             raise ValueError(f"V05_RETIRE_EXTRA seq={self.retirements}")
         compare_record(expected, actual)
+        for expected_write in self.reference.writes[self.checked_writes:]:
+            observed = self.writes.popleft() if self.writes else None
+            if observed != expected_write:
+                raise ValueError(f"V05_WRITE expected={expected_write} actual={observed}")
+            self.checked_writes += 1
         self.retirements += 1
 
     def pixel(self, frame, x, y, dot, shade):
@@ -58,5 +69,7 @@ class Online:
             raise ValueError(f"V05_PIXEL_MISSING count={self.pixels}")
         if self.reference.step(pause_dot) is not None:
             raise ValueError(f"V05_RETIRE_MISSING seq={self.retirements}")
+        if self.writes:
+            raise ValueError("V05_WRITE_EXTRA")
         return dict(retirements=self.retirements, pixels=self.pixels,
                     inputs=len(self.inputs), pause_dot=pause_dot)
