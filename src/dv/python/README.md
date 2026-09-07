@@ -38,8 +38,5 @@ state is represented in this trace; HDL waves record the simulated signals.
 Use `--seed` for repeatable random cases and `--rebuild` to bypass valid cache.
 Licensed simulation remains serialized; no hardware is accessed.
 
-A Python target may supply `python.waves` as a nonempty list of unique public
-signal names from its top module. Both WLF and VCD select exactly those signals;
-hierarchical paths, wildcards and Tcl text are rejected. Omitting the list keeps
-the existing top-level selection. A long test may expose a passive waveform
-projection during documented windows while its monitors remain continuous.
+For bounded public waveforms, use the optional `python.waves` selection described
+in the [builder contract](../../../wiki/tools/n2m/SPEC.md#testbench-types).
