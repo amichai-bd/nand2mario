@@ -21,7 +21,8 @@ Write one observable result using `wiki/agents/issues.md`.
 
 The script validates section order and passes UTF-8 body text to `gh` through
 stdin, without shell interpolation. Use `--check` before creation. Keep drafts
-locally after success or failure; never commit them. See
+in the owning worktree while needed; never commit or archive them. Remove them
+through [post-merge cleanup](../../../worktrees/README.md#clean-up-after-merge). See
 [safe draft handling](examples/scenarios.md) and
 [scope scenarios](examples/scenarios.md). Stop
 when the goal needs an unmade product decision or an unknown specification.

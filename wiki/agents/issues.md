@@ -52,7 +52,7 @@ in the PR; keep logs in build artifacts. Assignment, linked PRs, and automatic
 closure show the lifecycle.
 
 Use the [issue skill](https://github.com/amichai-bd/nand2mario/blob/main/.agents/skills/issue-author/SKILL.md)
-for retained Markdown drafts under `workdir/.tmp/issues/` and safe CLI bodies.
+for temporary Markdown drafts under `workdir/.tmp/issues/` and safe CLI bodies.
 
 See [Branches and pull requests](pull-requests.md) for closing references and CI.
 

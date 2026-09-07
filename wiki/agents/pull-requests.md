@@ -10,7 +10,7 @@ Closes #42
 ```
 
 The issue owns the goal; the PR describes the result and evidence. Use the
-[PR skill](https://github.com/amichai-bd/nand2mario/blob/main/.agents/skills/pr-author/SKILL.md) for retained body files and
+[PR skill](https://github.com/amichai-bd/nand2mario/blob/main/.agents/skills/pr-author/SKILL.md) for temporary body files and
 the [agent flow](https://github.com/amichai-bd/nand2mario/blob/main/.agents/skills/agent-flow/SKILL.md) for babysitting,
 independent review, author undrafting, squash merge, and root cleanup.
 

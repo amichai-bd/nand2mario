@@ -27,6 +27,6 @@ artifacts. This checklist is not a new CI gate.
 - [ ] Root verifies the merge, issue closure, and successful main
   [Pages deployment](../../.github/workflows/pages.yml), then completes
   [worktree and branch cleanup](../../worktrees/README.md#clean-up-after-merge).
-  Retain cleanup and deployment evidence in the PR or artifacts. Follow
+  Record a concise cleanup and deployment summary in the PR. Follow
   [preview cleanup](../../.agents/skills/agent-flow/references/preview-cleanup.md)
   when a local preview was used.

@@ -50,7 +50,7 @@ in branches, split orchestration trees, or close unfinished PRs to evade the cap
 Use branch `<number>-<slug>` and author worktree
 `<repo-root>/worktrees/<number>-<slug>/`. Record ownership in the orchestration
 handoff and PR. Edit, build, validate, and commit only there. Keep generated
-output under `workdir/`.
+output under the author or reviewer worktree's `workdir/`.
 
 Prefer one issue per PR. Every PR starts as draft and closes its branch's
 issue with `Closes #<number>`. Combine issues only when one focused result meets
@@ -61,7 +61,10 @@ bounded exception is recorded in PR policy and does not authorize other checkpoi
 The author owns delivery through independent review of the current PR SHA,
 passing required checks, resolved review conversations, and squash merge.
 Human review is not required. Root verifies merge, issue closure, main checks,
-deployment, and cleanup.
+deployment, and [cleanup](worktrees/README.md#clean-up-after-merge).
+After verified delivery, retain a concise validation summary in the PR and remove
+completed worktrees, artifacts, and merged branches. Do not archive build output
+or copy it into the primary checkout. Preserve unfinished work and dependencies.
 
 Read the issue and linked specification; stay within its success criteria.
 Proceed when requirements and conventions support a choice within existing
@@ -84,7 +87,8 @@ Choose routine steps and tools. Retain enough context for safe takeover; see
 Run the smallest useful test and required lower-level checks. Record exact
 commands and results. A simulation compiles, elaborates, runs, and checks an
 expected result. Treat unexplained warnings as failures. Preserve useful logs,
-seeds, traces, waves, and reports under the build tag.
+seeds, traces, waves, and reports under the build tag while work or review needs
+them; follow the cleanup policy after delivery.
 
 Merges to `main` automatically publish Pages with standing authorization.
 The repository is private; the site is public. Visibility or deployment policy

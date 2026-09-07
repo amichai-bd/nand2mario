@@ -53,22 +53,44 @@ If remote state is unclear, investigate before any retry or cleanup.
 
 ## Clean up after merge
 
-The author reports its squash merge. Root verifies the PR merged, its closing
-issues closed, and required main checks/deployment passed. Stop active worktree
-users before removal. If a worktree ran a local preview, follow
-[preview cleanup](../.agents/skills/agent-flow/references/preview-cleanup.md).
+The author reports its squash merge. Root verifies the PR merged, required main
+checks and deployment passed, and issues that the PR completes closed. Approved
+checkpoint issues remain open with their unfinished criteria; do not close them
+for cleanup.
 
-Check both worktrees are clean and their resolved full paths are inside this
-repository's `worktrees/`. Do not force-remove dirty worktrees.
-Retain temporary drafts by moving their ignored `workdir/.tmp/` content to root
-`workdir/.tmp/` before removal; preserve same-name collisions under distinct
-names. Keep useful evidence until its linked retention need is satisfied.
+Before deleting evidence, keep a concise summary in the PR: tested and reviewed
+SHAs, exact validation commands, tool versions, results, and limitations. During
+work, keep logs, waves, reports, build environments, and temporary drafts in the
+author or reviewer's own `workdir/`. Do not copy them into the primary checkout
+before deletion. Do not create routine artifact archives or retention manifests.
+Reproducing an intermittent failure or physical condition may require more work.
 
-Then remove the exact author and reviewer worktrees with `git worktree remove`.
+Check for active users and dependencies on each worktree and its artifacts.
+Preserve open PRs, unfinished work, checkpoint dependencies, and unrelated user
+files. A merged checkpoint does not establish that its evidence is disposable.
+Record a concrete remaining dependency in the handoff. Shared reviewer worktrees
+must wait until their other work is complete.
+
+Stop owned processes and verify their children ended before removal. For local
+previews, follow [preview cleanup](../.agents/skills/agent-flow/references/preview-cleanup.md).
+Inspect tracked, untracked, and ignored content. Confirm each resolved absolute
+path is the intended author or reviewer directory inside this repository's
+`worktrees/`. Preserve user changes; do not force-remove a dirty worktree.
+
+Remove eligible worktrees with `git worktree remove`. Delete their known build
+artifacts and temporary drafts with the worktree; follow the linked recovery
+procedure if ignored output prevents removal. Do not move that output elsewhere.
 Delete the verified merged local branch with `git branch -D 42-fix-timer`
 (squash merges do not retain branch ancestry). Delete its remote branch if still
-present, fetch with prune, and fast-forward root `main`. Do not delete unrelated
-branches or refs. End agent sessions through supported lifecycle tools.
+present, fetch with prune, and fast-forward root `main`, preserving user changes.
+If fast-forwarding is blocked, report it without resetting or discarding files.
+Do not delete unrelated branches or refs. End agent sessions through supported
+lifecycle tools.
+
+Apply the same completion and dependency checks to existing post-merge archives.
+Delete only verified eligible exact paths; never blanket-delete `workdir/`.
+Verify removal and report cleanup results in the PR or handoff, without creating
+another artifact archive.
 
 For interruption or ownership transfer, read
 [recovery](../.agents/skills/agent-flow/references/recovery.md).
