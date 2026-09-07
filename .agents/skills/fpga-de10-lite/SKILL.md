@@ -17,3 +17,7 @@ Read the board contract and verify the exact target before changing the project.
 Use [the run record](templates/hardware-run.md) for physical evidence. Read
 [the scenarios](examples/scenarios.md) before hardware access. Stop on device,
 voltage, wiring, pin, clock, or permission uncertainty.
+
+Follow the [authorized hardware preference](../../../wiki/agents/bootstrap-plan.md#verification-and-hardware-authorization)
+for bounded original-game checks. Standing authorization covers routine work
+within that scope; verify the documented setup and build before physical access.

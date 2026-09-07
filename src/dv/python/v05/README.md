@@ -16,13 +16,13 @@ implementation targets preload ROM; no target uses snapshots as its every-frame 
 | python-v05-progress-fault | Actual stopped gb_tick reaches the active-time watchdog |
 
 Fault runs require failing Python/XML and nonzero outer builder; preserve the
-actual raw simulator exit independently. The continuous target uses a 43200-second
-wall bound and an unchanged 12-second simulation deadline. The short complete-path
-proof took 405.563 seconds for six frames, including compilation, loader adoption
-and startup. Coarse scaling by simulated time or frame count suggests roughly
-10.1 to 11.3 hours for the full run. The twelve-hour bound adds finite margin;
-it is not measured steady throughput or a guarantee of completion. The full
-600-interval milestone remains open in #88 until its actual run passes.
+actual raw simulator exit independently. Every test follows the
+[600-second wall budget](../../../../wiki/tools/n2m/SPEC.md#test-wall-budget),
+including preparation and compilation. The full target retains its 12-second
+simulation deadline, all 600 intervals and 18 inputs. Its complete milestone
+remains unproven in [#88](https://github.com/amichai-bd/nand2mario/issues/88);
+the short complete-path proof does not establish it. Do not schedule a longer
+run to bypass the wall cap.
 
 Retirement/pixel CSV and public applied-input/UART JSONL observations remain
 continuous. Flushed phase markers and 10ms simulated heartbeats distinguish

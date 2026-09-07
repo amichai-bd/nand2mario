@@ -20,3 +20,7 @@ its `src/` consumers; retain evidence without duplicating generated constants.
 Use [the command record](templates/command.md) for physical evidence. Read
 [the scenarios](examples/scenarios.md) before serial access. Stop on protocol,
 port, voltage, wiring, direction, permission, or register-map uncertainty.
+
+Follow the [authorized hardware preference](../../../wiki/agents/bootstrap-plan.md#verification-and-hardware-authorization)
+for bounded original-game checks. Standing authorization covers routine work
+within that scope; verify the documented setup and build before physical access.
