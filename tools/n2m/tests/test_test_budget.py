@@ -1,5 +1,6 @@
 """Portable wall-budget tests; no simulator or hardware is launched."""
 import json
+import io
 from pathlib import Path
 import subprocess
 import sys
@@ -105,6 +106,17 @@ class BudgetTests(unittest.TestCase):
         targets = json.loads((root/'src/dv/builder/targets.json').read_text())
         self.assertTrue(all(type(row.get('timeout_seconds', 60)) is int and
                             1 <= row.get('timeout_seconds', 60) <= 600 for row in targets.values()))
+
+    def test_worker_stderr_does_not_corrupt_json_stdout(self):
+        with patch('sys.stderr', new_callable=io.StringIO) as errors:
+            code, text = supervise([sys.executable, '-c',
+                'import sys;print("{\\"status\\":\\"FAIL\\"}");print("diagnostic",file=sys.stderr)'],
+                self.root, 'json-output')
+        self.assertEqual(code, 0)
+        self.assertEqual(json.loads(text)['status'], 'FAIL')
+        self.assertEqual(errors.getvalue().strip(), 'diagnostic')
+        record = json.loads(next((self.root/'workdir/builds/json-output/wall-budget').glob('*.json')).read_text())
+        self.assertEqual((self.root/record['stderr']).read_text().strip(), 'diagnostic')
 
 
 if __name__ == '__main__':

@@ -24,15 +24,17 @@ def supervise(command, root, tag):
     started = time.monotonic()
     options = {"creationflags": subprocess.CREATE_NO_WINDOW} if os.name == "nt" else {"start_new_session": True}
     process = subprocess.Popen(command, cwd=root, stdout=subprocess.PIPE,
-                               stderr=subprocess.STDOUT, **options)
+                               stderr=subprocess.PIPE, **options)
     timed_out = False
+    errors = b""
     try:
-        output, _ = process.communicate(timeout=max(.001, 600 - (time.monotonic() - started)))
+        output, errors = process.communicate(timeout=max(.001, 600 - (time.monotonic() - started)))
     except subprocess.TimeoutExpired as error:
         timed_out = True
         # Same process-tree termination used by the Quartus executor. Reap before
         # returning so a timed-out compiler, simulator or peer cannot keep running.
         output = error.output or b""
+        errors = error.stderr or b""
         record["cleanup_complete"] = False
         try:
             if os.name == "nt":
@@ -43,12 +45,14 @@ def supervise(command, root, tag):
                     raise RuntimeError(f"process-tree cleanup failed: {cleanup.returncode}")
             else:
                 os.killpg(process.pid, signal.SIGKILL)
-            output, _ = process.communicate(timeout=5)
+            output, errors = process.communicate(timeout=5)
             record["cleanup_complete"] = True
         except (OSError, RuntimeError, subprocess.TimeoutExpired) as cleanup_error:
             record["cleanup_error"] = str(cleanup_error)
             if isinstance(cleanup_error, subprocess.TimeoutExpired) and cleanup_error.output:
                 output = cleanup_error.output
+            if isinstance(cleanup_error, subprocess.TimeoutExpired) and cleanup_error.stderr:
+                errors = cleanup_error.stderr
             # Reap the immediate worker if possible, but never wait indefinitely
             # for an inherited pipe held by a surviving descendant.
             try:
@@ -57,12 +61,16 @@ def supervise(command, root, tag):
             except (OSError, subprocess.TimeoutExpired) as reap_error:
                 record["reap_error"] = str(reap_error)
     text = output.decode("utf-8", errors="replace")
+    error_text = (errors or b"").decode("utf-8", errors="replace")
     record.update(status="TIMEOUT" if timed_out else "FINISHED", raw_exit_code=process.returncode,
                   elapsed_seconds=time.monotonic() - started,
                   finished=datetime.now(timezone.utc).isoformat())
     log = path.with_suffix(".log")
     log.write_text(text, encoding="utf-8")
     record["output"] = log.relative_to(root).as_posix()
+    error_log = path.with_suffix(".stderr.log")
+    error_log.write_text(error_text, encoding="utf-8")
+    record["stderr"] = error_log.relative_to(root).as_posix()
     atomic_json(path, record)
     if timed_out:
         return 1, json.dumps({"status": "FAIL", "error": "test wall timeout after 600 seconds",
@@ -70,6 +78,8 @@ def supervise(command, root, tag):
                               "raw_exit_code": process.returncode,
                               "cleanup_complete": record["cleanup_complete"],
                               "cleanup_error": record.get("cleanup_error")}) + "\n"
+    # Keep --json stdout parseable even when discovery/git emits stderr.
+    print(error_text, end="", file=sys.stderr)
     return process.returncode, text
 
 
