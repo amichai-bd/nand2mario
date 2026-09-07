@@ -16,10 +16,13 @@ implementation targets preload ROM; no target uses snapshots as its every-frame 
 | python-v05-progress-fault | Actual stopped gb_tick reaches the active-time watchdog |
 
 Fault runs require failing Python/XML and nonzero outer builder; preserve the
-actual raw simulator exit independently. The continuous target uses a 36000s
-wall bound and 12s simulation deadline. The measured startup completed 307.348ms
-in 758.318s; scaling that rate to about 10.4s and adding margin gives the finite
-full-run budget. This is a budget estimate, not measured full-run throughput.
+actual raw simulator exit independently. The continuous target uses a 43200-second
+wall bound and an unchanged 12-second simulation deadline. The short complete-path
+proof took 405.563 seconds for six frames, including compilation, loader adoption
+and startup. Coarse scaling by simulated time or frame count suggests roughly
+10.1 to 11.3 hours for the full run. The twelve-hour bound adds finite margin;
+it is not measured steady throughput or a guarantee of completion. The full
+600-interval milestone remains open in #88 until its actual run passes.
 
 Retirement/pixel CSV and public applied-input/UART JSONL observations remain
 continuous. Flushed phase markers and 10ms simulated heartbeats distinguish
