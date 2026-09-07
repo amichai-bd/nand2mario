@@ -16,6 +16,15 @@ ports and the [FPGA README](../../../../src/fpga/de10_lite/README.md)
 explicitly excludes board programming. Its fitted SOF alone
 does not establish a usable UART-connected board image.
 
+For the composed game, select the additive `v05-board` target and verify its
+current fit, identity and UART crossing evidence. Its functional inputs have
+physical pins; remaining virtual outputs are diagnostic only. The
+[FPGA README](../../../../src/fpga/de10_lite/README.md) owns this distinction.
+Use `quartus_pgm --help` from the installed Quartus directory to inspect actual
+programming syntax; verified 25.1 help exposes cable, mode and operation options.
+Help output is not evidence that a bitstream has been programmed. Keep concrete
+programming commands and resulting device state in the physical run record.
+
 Verified CLI help: `python tools/build.py fpga build --help` describes building,
 not programming; no FPGA programming subcommand exists. `host load --help`
 requires an immutable `sw/build/<target>/runs/<attempt>/result.json` through
