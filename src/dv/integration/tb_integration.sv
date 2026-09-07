@@ -147,5 +147,7 @@ module tb_integration;
             begin if(pixel_fault) begin wait(frame_index==1); force dut.source_shade=2'd1; end end
         join_none
     end
-    initial begin #250000000; $fatal(1,"SMOKE_TIMEOUT"); end
+    // Retain the 12.5-million-system-edge watchdog at the 25 MHz clock.
+    // UART load/readback now takes twice the time at the legal 3.125 Mbaud.
+    initial begin #500000000; $fatal(1,"SMOKE_TIMEOUT"); end
 endmodule

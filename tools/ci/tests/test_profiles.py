@@ -223,13 +223,17 @@ class ProfileTests(unittest.TestCase):
             self.write(self.bin.parent / name)
         info['altpll'] = fpga_pll.identity(self.bin)
         argv = [[info[n]['path'], '--version'] for n in fpga.TOOLS]
-        argv += [fpga_pll.generation_command(info['altpll'], definition['pll']),
-                 [info['quartus_sh']['path'], '--flow', 'compile', 'design']]
+        argv += [fpga_pll.generation_command(info['altpll'], definition['pll'])]
+        if definition['pll'].get('system_divide') == 2:
+            argv += [fpga_pll._command(info['altpll'], 'n2m_system_pll', 20000, 1, 2, 'LOW')]
+        argv += [[info['quartus_sh']['path'], '--flow', 'compile', 'design']]
         if not invalid:
             argv += [[info['quartus_sta']['path'], '-t', 'audit.tcl'],
                      [info['quartus_eda']['path'], '--simulation', '--tool=modelsim', '--format=verilog', 'design']]
         names = ['design.qpf', 'design.qsf', 'checked.sdc', 'audit.tcl', 'n2m_pixel_pll.v',
                  'generate-pll.log', 'compile.log']
+        if definition['pll'].get('system_divide') == 2:
+            names += ['n2m_system_pll.v', 'generate-system-pll.log']
         if invalid: names += ['failure.log']
         else:
             names += ['audit.log', 'netlist.log', 'simulation/questa/design.vo']
@@ -269,7 +273,7 @@ class ProfileTests(unittest.TestCase):
         with patch.object(fpga, 'timing_evidence', return_value={'synthetic_timing_stub': True}):
             self.assertEqual(self.fpga_check()['target'], 'clocking-nominal')
             for name in ('output/design.sof', 'checked.sdc', 'simulation/questa/design.vo',
-                         'output/chain_pix_release_hold.rpt', 'generate-pll.log'):
+                         'output/chain_pix_release_hold.rpt', 'generate-pll.log', 'n2m_system_pll.v', 'generate-system-pll.log'):
                 with self.subTest(name=name):
                     path = self.attempt / name; raw = path.read_bytes()
                     path.unlink(); self.fpga_republish()

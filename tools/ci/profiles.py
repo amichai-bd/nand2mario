@@ -98,24 +98,31 @@ def check_record(root, req, profile, target, tag, raw_exit, printed, selected_to
     else:
         require(record['target'] == target and record['definition'] == fpga.target_definition(root, target),
                 'FPGA target identity')
+        parallel = record['definition']['pll'].get('system_divide') == 2
+        generators = ['qmegawiz'] * (2 if parallel else 1)
         if target == 'clocking-nominal':
             require(raw_exit == 0 and record['status'] == 'PASS' and
                     fpga.complete_cache(record, record['fingerprint'], root, build, record['definition']),
                     'complete checked FPGA evidence')
-            for name in ('generate-pll.log', 'compile.log', 'audit.log', 'netlist.log'):
-                fpga.diagnostics((attempt / name).read_text(encoding='utf-8'))
+            logs = ['generate-pll.log', 'compile.log', 'audit.log', 'netlist.log']
+            if parallel: logs.append('generate-system-pll.log')
+            for name in logs:
+                text = (attempt / name).read_text(encoding='utf-8')
+                explained = fpga_pll.explained_diagnostics(text, attempt, record['definition']['pll']) if 'Warning (176127)' in text else []
+                fpga.diagnostics(text, explained)
             names = [Path(c['argv'][0]).stem.lower() for c in record['commands']]
-            require(names == [*fpga.TOOLS, 'qmegawiz', 'quartus_sh', 'quartus_sta', 'quartus_eda'] and
+            require(names == [*fpga.TOOLS, *generators, 'quartus_sh', 'quartus_sta', 'quartus_eda'] and
                     all(c['exit_code'] == 0 for c in record['commands']), 'fresh complete FPGA tool chain')
         else:
             require(raw_exit == 1 and record['status'] == 'FAIL', 'intended FPGA negative result')
             commands = record['commands']
             require([Path(c['argv'][0]).stem.lower() for c in commands] ==
-                    [*fpga.TOOLS, 'qmegawiz', 'quartus_sh'] and
+                    [*fpga.TOOLS, *generators, 'quartus_sh'] and
                     all(c['exit_code'] == 0 for c in commands[:-1]) and commands[-1]['exit_code'] == 3,
                     'intended negative reached compile after successful generation')
             required = ['design.qpf', 'design.qsf', 'checked.sdc', 'audit.tcl',
                         'n2m_pixel_pll.v', 'generate-pll.log', 'compile.log', 'failure.log']
+            if parallel: required += ['n2m_system_pll.v', 'generate-system-pll.log']
             required += [f'{name}-version.log' for name in fpga.TOOLS]
             for name in required:
                 path = attempt / name
@@ -124,6 +131,7 @@ def check_record(root, req, profile, target, tag, raw_exit, printed, selected_to
             require((attempt / 'checked.sdc').read_text(encoding='utf-8') ==
                     fpga.checked_constraints(record['definition']), 'invalid-target checked constraints')
             fpga.diagnostics((attempt / 'generate-pll.log').read_text(encoding='utf-8'))
+            if parallel: fpga.diagnostics((attempt / 'generate-system-pll.log').read_text(encoding='utf-8'))
             text = (attempt / 'compile.log').read_text(encoding='utf-8')
             invalid_compile(text, attempt, selected_tools['quartus'])
             require(record['error'] == 'Quartus exit 3; see compile.log', 'exact invalid constraint diagnostic')
@@ -175,8 +183,10 @@ def validate_commands(root, profile, record, attempt, build, target, selected_to
             fpga.diagnostics(text)
         require(len({info[name]['version'] for name in fpga.TOOLS}) == 1, 'matched Quartus versions')
         expected = [[paths[name], '--version'] for name in fpga.TOOLS]
-        expected += [fpga_pll.generation_command(info['altpll'], record['definition']['pll']),
-                     [paths['quartus_sh'], '--flow', 'compile', 'design']]
+        expected += [fpga_pll.generation_command(info['altpll'], record['definition']['pll'])]
+        if record['definition']['pll'].get('system_divide') == 2:
+            expected += [fpga_pll._command(info['altpll'], 'n2m_system_pll', 20000, 1, 2, 'LOW')]
+        expected += [[paths['quartus_sh'], '--flow', 'compile', 'design']]
         if target == 'clocking-nominal':
             expected += [[paths['quartus_sta'], '-t', 'audit.tcl'],
                          [paths['quartus_eda'], '--simulation', '--tool=modelsim', '--format=verilog', 'design']]

@@ -76,7 +76,7 @@ during initialization and host loading. The snapshot boundary is an explicit
 completion/read model, covering NO_FRAME, metadata, last-byte bounds and published
 host retention across core reset. It does not claim full peripheral routing or
 #93 storage composition. The wire clock ratio is deliberately eight clocks per
-bit to bound the full-image test; physical 50 MHz/115200 timing remains covered
+bit to bound the full-image test; physical 25 MHz/115200 timing remains covered
 by the retained serial slice. Already-STOPped STEP returns immediate STEP_LIMIT without advancing time.
 
 
