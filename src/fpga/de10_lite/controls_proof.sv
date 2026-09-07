@@ -15,12 +15,21 @@ module controls_proof #(
     output logic [3:0] green,
     output logic [3:0] blue,
     output logic hsync_n,
-    output logic vsync_n
+    output logic vsync_n,
+    // Virtual proof observations retain the existing bridge CDC metadata paths.
+    output logic ready,
+    output logic paused,
+    output logic [63:0] discard_count,
+    output logic [63:0] repeat_count,
+    output logic [63:0] display_sequence,
+    output logic [31:0] display_epoch,
+    output logic [63:0] observed_sequence,
+    output logic [14:0] observed_index,
+    output logic observed_complete
 );
     logic clk_pix;
     logic reset_sys;
     logic reset_pix;
-    logic ready;
     logic clk_adc;
     logic adc_pll_reset;
     logic adc_pll_locked;
@@ -42,13 +51,13 @@ module controls_proof #(
     n2m_input_pkg::input_update_t effective_update;
     logic core_reset;
     logic pause_request;
-    logic paused;
     logic gb_tick;
     logic [7:0] joypad_buttons;
     logic [3:0] display_divider;
     logic display_sample;
     logic [14:0] pixel_index;
     logic [63:0] display_dot;
+    logic [31:0] source_epoch;
     logic [1:0] shade;
     n2m_clocking u_clocking (
         .clk_sys(clk_sys), .board_reset_n(board_reset_n), .clk_pix(clk_pix),
@@ -102,17 +111,18 @@ module controls_proof #(
     assign display_sample = display_divider == 4'd11;
     `DFF_ARST_VAL(display_divider, display_sample ? 4'd0 : display_divider + 4'd1, clk_sys, reset_sys, 4'd0)
     `DFF_RST_EN(pixel_index, pixel_index == 15'd23039 ? 15'd0 : pixel_index + 15'd1,
-        clk_sys, display_sample, reset_sys, 15'd0)
-    `DFF_RST_EN(display_dot, display_dot + 64'd1, clk_sys, display_sample, reset_sys, 64'd0)
+        clk_sys, display_sample, reset_sys || core_reset, 15'd0)
+    `DFF_RST_EN(display_dot, display_dot + 64'd1, clk_sys, display_sample, reset_sys || core_reset, 64'd0)
+    `DFF_RST_EN(source_epoch, source_epoch + 32'd1, clk_sys, core_reset, reset_sys, 32'd0)
     assign shade = pixel_index[1:0] ^ pixel_index[9:8] ^ joypad_buttons[1:0] ^
         joypad_buttons[3:2] ^ joypad_buttons[5:4] ^ joypad_buttons[7:6];
     n2m_frame_bridge u_bridge (
-        .clk_sys(clk_sys), .reset_sys(reset_sys), .core_reset(1'b0), .clk_pix(clk_pix), .reset_pix(reset_pix),
+        .clk_sys(clk_sys), .reset_sys(reset_sys), .core_reset(core_reset), .clk_pix(clk_pix), .reset_pix(reset_pix),
         .source_valid(display_sample), .source_start(pixel_index == 0), .source_shade(shade),
-        .source_dot(display_dot), .source_epoch(32'd0), .source_abort(1'b0), .blank_assert(1'b0),
-        .source_display_eligible(1'b1), .observe_abort(), .observe_valid(), .observe_complete(),
-        .observe_index(), .observe_shade(), .observe_epoch(), .observe_sequence(), .observe_dot(),
-        .discard_count(), .repeat_count(), .display_valid(), .display_sequence(), .display_epoch(),
+        .source_dot(display_dot), .source_epoch(source_epoch), .source_abort(1'b0), .blank_assert(1'b0),
+        .source_display_eligible(1'b1), .observe_abort(), .observe_valid(), .observe_complete(observed_complete),
+        .observe_index(observed_index), .observe_shade(), .observe_epoch(), .observe_sequence(observed_sequence), .observe_dot(),
+        .discard_count(discard_count), .repeat_count(repeat_count), .display_valid(), .display_sequence(display_sequence), .display_epoch(display_epoch),
         .video_x(), .video_y(), .video_valid(), .video_active(), .video_image(),
         .red(red), .green(green), .blue(blue), .hsync_n(hsync_n), .vsync_n(vsync_n)
     );

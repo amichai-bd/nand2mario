@@ -118,6 +118,10 @@ System reset cancels the ADC backend as well as the sampler. ADC lock loss
 alone invalidates acquisition while buttons, UART and VGA continue. The
 combined project's pin, clock, reset and timing proof is required independently
 of earlier component fits. Its implementation does not close physical acceptance.
+The bridge's existing counter/sequence observations remain virtual proof
+outputs so its checked CDC metadata paths survive synthesis. They add no
+physical output assignments. Core reset restarts the diagnostic source epoch
+and frame assembly through the existing bridge contract.
 
 ## Sources and acceptance
 
