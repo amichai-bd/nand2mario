@@ -43,7 +43,6 @@ module n2m_uart_load (
     logic [7:0] held_data, held_data_next, status_next;
     logic presence_write, presence_read, presence_value, presence_valid;
     logic [31:0] updated_crc;
-    logic [32:0] range_end;
 
     assign busy = state != IDLE;
     assign done = state == COMPLETE;
@@ -57,7 +56,6 @@ module n2m_uart_load (
     assign presence_write = (state == CLEAR || rom_write) && !reset_sys;
     assign presence_read = state == SCAN_FETCH && !reset_sys;
     assign updated_crc = crc32_byte(crc, rom_read_data);
-    assign range_end = {1'b0, offset} + {17'b0, count};
     n2m_uart_presence_store u_presence (
         .clk_sys(clk_sys), .reset_sys(reset_sys),
         .write_enable(presence_write), .write_address(address),
@@ -147,7 +145,7 @@ module n2m_uart_load (
     `N2M_ASSERT(UART_LOAD_START_IDLE, clk_sys, reset_sys, start |-> !busy)
     `N2M_ASSERT(UART_LOAD_RANGE, clk_sys, reset_sys,
         start && (operation == UART_LOAD_WRITE || operation == UART_LOAD_READ) |->
-        count != 0 && count <= WIRE_MAX_PAYLOAD && range_end <= PROFILE_ROM_BYTES)
+        count != 0 && count <= WIRE_MAX_PAYLOAD && ({1'b0, offset} + {17'b0, count}) <= PROFILE_ROM_BYTES)
     `N2M_ASSERT(UART_LOAD_CLEAR_REQUIRED, clk_sys, reset_sys,
         start && (operation == UART_LOAD_WRITE || operation == UART_LOAD_END) |-> cleared)
     `N2M_ASSERT(UART_LOAD_ROM_SERVICE, clk_sys, reset_sys,

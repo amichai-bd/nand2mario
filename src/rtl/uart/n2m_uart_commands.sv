@@ -254,7 +254,7 @@ module n2m_uart_commands (
             SNAPSHOT_START: if (snapshot_ready) state_next = SNAPSHOT_WAIT;
             SNAPSHOT_WAIT: if (snapshot_done) begin
                 reply_status_next = snapshot_ok ? STATUS_OK : STATUS_NO_FRAME;
-                reply_length_next = snapshot_ok ? SNAPSHOT_BYTES : 0;
+                reply_length_next = snapshot_ok ? 16'(SNAPSHOT_BYTES) : 16'd0;
                 reply_value_next = snapshot_metadata;
                 state_next = REPLY_START;
             end

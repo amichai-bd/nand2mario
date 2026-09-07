@@ -6628,5 +6628,38 @@
       "tb_integration.dut.g_play.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
       "tb_integration.dut.g_play.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
     ]
+  },
+  "memory-bank-enables": {
+    "vendor_model": "intel-memory",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/memory/n2m_memory_stores.sv",
+      "src/dv/memory/tb_memory_stores.sv"
+    ],
+    "top": "tb_memory_stores",
+    "args": [
+      "+range_probe"
+    ],
+    "expected_exit": "zero",
+    "signature": "PASS memory bank enables selectors=8 addresses=32768 directions=2"
+  },
+  "memory-bank-enables-fault": {
+    "vendor_model": "intel-memory",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/memory/n2m_memory_stores.sv",
+      "src/dv/memory/tb_memory_stores.sv"
+    ],
+    "top": "tb_memory_stores",
+    "args": [
+      "+range_probe",
+      "+range_fault"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "MEMORY_BANK_ENABLE store=6 address=0000"
   }
 }

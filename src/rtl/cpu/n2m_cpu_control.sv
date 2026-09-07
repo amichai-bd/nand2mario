@@ -53,7 +53,9 @@ module n2m_cpu_control (
     logic [4:0] dispatch;
     logic [4:0] selected_irq;
     logic [15:0] selected_vector;
+`ifndef SYNTHESIS
     logic hold_address_effect;
+`endif
 
     function automatic cpu_registers_t profile_registers;
         cpu_registers_t r;
@@ -107,8 +109,10 @@ module n2m_cpu_control (
     assign address_effect_phase = phase;
     assign address_effect_sample = gb_tick && phase == 3 && initialized &&
         !fault && !reset_sys && !core_reset && (!active || cycle_end);
+`ifndef SYNTHESIS
     assign hold_address_effect = initialized && !fault &&
         (phase != 0 || gb_tick) && !(gb_tick && phase == 3);
+`endif
 
     // Incomplete source mappings are visible to the future consumer. They
     // never masquerade as resolved cycles without an additional effect.

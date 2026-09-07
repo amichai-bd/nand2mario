@@ -45,7 +45,8 @@ module n2m_memory_stores (
     logic [12:0] clear_address, clear_next;
     logic [14:0] ram_address;
     logic [7:0] ram_wdata;
-    logic access_range, access_read_enable, access_write_enable, host_range;
+    logic access_range, access_read_enable, host_range;
+    logic [5:0] selected_range, bank_read, bank_write;
     memory_store_t response_store;
     logic [5:0][7:0] data_a;
     logic [5:0] valid_a;
@@ -76,20 +77,18 @@ module n2m_memory_stores (
     `DFF_ARST_VAL(clear_address, clear_next, clk_sys, reset_sys, 13'd0)
     assign ram_address = clearing ? {2'b0, clear_address} : access_address;
     assign ram_wdata = clearing ? PROFILE_RAM_FILL : access_wdata;
-    always_comb begin
-        access_range = 0;
-        case (access_store)
-            STORE_ROM: access_range = int'(access_address) < int'(PROFILE_ROM_BYTES);
-            STORE_WRAM: access_range = int'(access_address) < WRAM_BYTES;
-            STORE_HRAM: access_range = int'(access_address) < HRAM_BYTES;
-            STORE_VRAM: access_range = int'(access_address) < VRAM_BYTES;
-            STORE_OAM: access_range = int'(access_address) < OAM_BYTES;
-            STORE_WAVE: access_range = int'(access_address) < WAVE_BYTES;
-            default: begin end
-        endcase
-    end
+    // Each physical bank gets its own address qualification. Do not put the
+    // selected-size mux in series with every bank's RAM enable.
+    assign selected_range[STORE_ROM] = access_store == STORE_ROM && int'(access_address) < int'(PROFILE_ROM_BYTES);
+    assign selected_range[STORE_WRAM] = access_store == STORE_WRAM && int'(access_address) < int'(WRAM_BYTES);
+    assign selected_range[STORE_HRAM] = access_store == STORE_HRAM && int'(access_address) < int'(HRAM_BYTES);
+    assign selected_range[STORE_VRAM] = access_store == STORE_VRAM && int'(access_address) < int'(VRAM_BYTES);
+    assign selected_range[STORE_OAM] = access_store == STORE_OAM && int'(access_address) < int'(OAM_BYTES);
+    assign selected_range[STORE_WAVE] = access_store == STORE_WAVE && int'(access_address) < int'(WAVE_BYTES);
+    assign access_range = |selected_range;
+    assign bank_read = selected_range & {6{access_read && init_done}};
+    assign bank_write = selected_range & {6{access_write && init_done}};
     assign access_read_enable = access_read && init_done && access_range;
-    assign access_write_enable = access_write && init_done && access_range;
     assign host_range = host_offset < 32'(PROFILE_ROM_BYTES);
     `DFF_EN(response_store, access_store, clk_sys, access_read_enable)
     `DFF_EN(response_odd, access_address[0], clk_sys, access_read_enable)
@@ -102,41 +101,41 @@ module n2m_memory_stores (
     n2m_intel_ram #(.DEPTH(PROFILE_ROM_BYTES), .ADDRESS_BITS(15)) rom (
         .clk_a(clk_sys), .clk_b(clk_sys), .reset_a(reset), .reset_b(reset), .a_byte_enable(1'b1), .a_read(host_read && host_range), .a_write(host_write && host_range),
         .a_address(host_offset[14:0]), .a_wdata(host_wdata), .a_rdata(rom_a_data), .a_valid(rom_a_valid),
-        .b_read(access_read_enable && access_store == STORE_ROM), .b_address(access_address),
+        .b_read(bank_read[STORE_ROM]), .b_address(access_address),
         .b_rdata(data_a[STORE_ROM]), .b_valid(valid_a[STORE_ROM])
     );
     assign host_rdata = rom_a_data;
     assign host_valid = rom_a_valid && !reset;
     n2m_intel_ram #(.DEPTH(WRAM_BYTES), .ADDRESS_BITS(13)) wram (
-        .clk_a(clk_sys), .clk_b(clk_sys), .reset_a(reset), .reset_b(reset), .a_byte_enable(1'b1), .a_read(access_read_enable && access_store == STORE_WRAM),
-        .a_write(clearing || (access_write_enable && access_store == STORE_WRAM)),
+        .clk_a(clk_sys), .clk_b(clk_sys), .reset_a(reset), .reset_b(reset), .a_byte_enable(1'b1), .a_read(bank_read[STORE_WRAM]),
+        .a_write(clearing || (bank_write[STORE_WRAM])),
         .a_address(ram_address[12:0]), .a_wdata(ram_wdata), .a_rdata(data_a[STORE_WRAM]), .a_valid(valid_a[STORE_WRAM]),
         .b_read(1'b0), .b_address(13'd0), .b_rdata(unused_b_wram), .b_valid(unused_b_wram_valid)
     );
     n2m_intel_ram #(.DEPTH(HRAM_BYTES), .ADDRESS_BITS(7)) hram (
-        .clk_a(clk_sys), .clk_b(clk_sys), .reset_a(reset), .reset_b(reset), .a_byte_enable(1'b1), .a_read(access_read_enable && access_store == STORE_HRAM),
-        .a_write((clearing && int'(clear_address) < HRAM_BYTES) || (access_write_enable && access_store == STORE_HRAM)),
+        .clk_a(clk_sys), .clk_b(clk_sys), .reset_a(reset), .reset_b(reset), .a_byte_enable(1'b1), .a_read(bank_read[STORE_HRAM]),
+        .a_write((clearing && int'(clear_address) < HRAM_BYTES) || (bank_write[STORE_HRAM])),
         .a_address(ram_address[6:0]), .a_wdata(ram_wdata), .a_rdata(data_a[STORE_HRAM]), .a_valid(valid_a[STORE_HRAM]),
         .b_read(1'b0), .b_address(7'd0), .b_rdata(unused_b_hram), .b_valid(unused_b_hram_valid)
     );
     n2m_intel_ram #(.DEPTH(VRAM_BYTES), .ADDRESS_BITS(13)) vram (
-        .clk_a(clk_sys), .clk_b(clk_sys), .reset_a(reset), .reset_b(reset), .a_byte_enable(1'b1), .a_read(access_read_enable && access_store == STORE_VRAM),
-        .a_write(clearing || (access_write_enable && access_store == STORE_VRAM)),
+        .clk_a(clk_sys), .clk_b(clk_sys), .reset_a(reset), .reset_b(reset), .a_byte_enable(1'b1), .a_read(bank_read[STORE_VRAM]),
+        .a_write(clearing || (bank_write[STORE_VRAM])),
         .a_address(ram_address[12:0]), .a_wdata(ram_wdata), .a_rdata(data_a[STORE_VRAM]), .a_valid(valid_a[STORE_VRAM]),
         .b_read(ppu_vram_read && init_done), .b_address(ppu_vram_address),
         .b_rdata(ppu_vram_rdata), .b_valid(ppu_vram_valid)
     );
     n2m_intel_ram #(.DEPTH(OAM_BYTES/2), .ADDRESS_BITS(7)) oam_low (
-        .clk_a(clk_sys), .clk_b(clk_sys), .reset_a(reset), .reset_b(reset), .a_byte_enable(1'b1), .a_read(access_read_enable && access_store == STORE_OAM),
+        .clk_a(clk_sys), .clk_b(clk_sys), .reset_a(reset), .reset_b(reset), .a_byte_enable(1'b1), .a_read(bank_read[STORE_OAM]),
         .a_write((clearing && int'(clear_address) < OAM_BYTES && !clear_address[0]) ||
-            (access_write_enable && access_store == STORE_OAM && !access_address[0])),
+            (bank_write[STORE_OAM] && !access_address[0])),
         .a_address(ram_address[7:1]), .a_wdata(ram_wdata), .a_rdata(oam_a_even), .a_valid(oam_a_valid),
         .b_read(ppu_oam_read && init_done), .b_address(ppu_oam_pair), .b_rdata(oam_even), .b_valid(oam_even_valid)
     );
     n2m_intel_ram #(.DEPTH(OAM_BYTES/2), .ADDRESS_BITS(7)) oam_high (
-        .clk_a(clk_sys), .clk_b(clk_sys), .reset_a(reset), .reset_b(reset), .a_byte_enable(1'b1), .a_read(access_read_enable && access_store == STORE_OAM),
+        .clk_a(clk_sys), .clk_b(clk_sys), .reset_a(reset), .reset_b(reset), .a_byte_enable(1'b1), .a_read(bank_read[STORE_OAM]),
         .a_write((clearing && int'(clear_address) < OAM_BYTES && clear_address[0]) ||
-            (access_write_enable && access_store == STORE_OAM && access_address[0])),
+            (bank_write[STORE_OAM] && access_address[0])),
         .a_address(ram_address[7:1]), .a_wdata(ram_wdata), .a_rdata(oam_a_odd), .a_valid(valid_a[STORE_OAM]),
         .b_read(ppu_oam_read && init_done), .b_address(ppu_oam_pair), .b_rdata(oam_odd), .b_valid(oam_odd_valid)
     );
@@ -144,8 +143,8 @@ module n2m_memory_stores (
     assign ppu_oam_rdata = {oam_odd, oam_even};
     assign ppu_oam_valid = oam_even_valid && oam_odd_valid;
     n2m_intel_ram #(.DEPTH(WAVE_BYTES), .ADDRESS_BITS(4)) wave_ram (
-        .clk_a(clk_sys), .clk_b(clk_sys), .reset_a(reset), .reset_b(reset), .a_byte_enable(1'b1), .a_read(access_read_enable && access_store == STORE_WAVE),
-        .a_write((clearing && int'(clear_address) < WAVE_BYTES) || (access_write_enable && access_store == STORE_WAVE)),
+        .clk_a(clk_sys), .clk_b(clk_sys), .reset_a(reset), .reset_b(reset), .a_byte_enable(1'b1), .a_read(bank_read[STORE_WAVE]),
+        .a_write((clearing && int'(clear_address) < WAVE_BYTES) || (bank_write[STORE_WAVE])),
         .a_address(ram_address[3:0]), .a_wdata(ram_wdata), .a_rdata(data_a[STORE_WAVE]), .a_valid(valid_a[STORE_WAVE]),
         .b_read(wave_read && init_done), .b_address(wave_address), .b_rdata(wave_rdata), .b_valid(wave_valid)
     );

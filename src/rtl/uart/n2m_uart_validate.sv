@@ -32,23 +32,23 @@ module n2m_uart_validate (
         response_length = 0;
         range_end = {1'b0, range_fields.offset} + {17'b0, range_fields.count};
         case (header.command)
-            COMMAND_PING: response_length = WORD_BYTES;
+            COMMAND_PING: response_length = 16'(WORD_BYTES);
             COMMAND_READ_HOST: begin
                 length_valid = header.length == READ_HOST_BYTES;
                 value_valid = host_address_valid;
-                response_length = WORD_BYTES;
+                response_length = 16'(WORD_BYTES);
             end
             COMMAND_RESET: state_valid = endpoint_state != STATE_LOADING && image_valid;
             COMMAND_RUN: state_valid = endpoint_state == STATE_PAUSED && image_valid;
             COMMAND_HALT: begin
                 state_valid = endpoint_state != STATE_LOADING;
-                response_length = DOT_BYTES;
+                response_length = 16'(DOT_BYTES);
             end
             COMMAND_STEP: begin
                 length_valid = header.length == WORD_BYTES;
                 value_valid = arguments[31:0] != 0 && arguments[31:0] <= WIRE_STEP_MAX_DOTS;
                 state_valid = endpoint_state == STATE_PAUSED && image_valid;
-                response_length = DOT_BYTES;
+                response_length = 16'(DOT_BYTES);
             end
             COMMAND_LOAD_BEGIN: begin
                 length_valid = header.length == LOAD_BEGIN_BYTES;
@@ -77,16 +77,16 @@ module n2m_uart_validate (
                     (write_fields.address == HOST_REG_INPUT_SOURCE &&
                     (write_fields.value & ~HOST_WRITE_MASK_INPUT_SOURCE) == 0);
                 state_valid = endpoint_state != STATE_LOADING;
-                response_length = DOT_BYTES;
+                response_length = 16'(DOT_BYTES);
             end
             COMMAND_INPUT: begin
                 length_valid = header.length == INPUT_BYTES;
                 state_valid = endpoint_state != STATE_LOADING;
-                response_length = DOT_BYTES;
+                response_length = 16'(DOT_BYTES);
             end
             COMMAND_SNAPSHOT: begin
                 state_valid = endpoint_state != STATE_LOADING;
-                response_length = SNAPSHOT_BYTES;
+                response_length = 16'(SNAPSHOT_BYTES);
             end
             default: command_known = 0;
         endcase

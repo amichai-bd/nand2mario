@@ -26,7 +26,9 @@ module n2m_cpu_bus (
     logic fault_next;
     logic required_read;
     logic terminal;
+`ifndef SYNTHESIS
     logic hold_plan;
+`endif
 
     always_comb begin
         phase_next = phase;
@@ -49,7 +51,9 @@ module n2m_cpu_bus (
     assign terminal = gb_tick && phase == 3 && active && !fault && !reset_sys && !core_reset;
     assign cycle_end = terminal && complete_enable && (!required_read || response_valid);
     assign commit = cycle_end && request_valid;
+`ifndef SYNTHESIS
     assign hold_plan = active && (phase != 0 || gb_tick) && !terminal;
+`endif
 
     `DFF_ARST_VAL(phase, phase_next, clk_sys, reset_sys, 2'b0)
     `DFF_ARST_VAL(fault, fault_next, clk_sys, reset_sys, 1'b0)

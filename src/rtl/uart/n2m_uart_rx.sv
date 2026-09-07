@@ -16,8 +16,10 @@ module n2m_uart_rx #(
 );
     localparam integer PHASE_BITS = $clog2(CLOCK_HZ + BAUD);
     typedef enum logic [1:0] { IDLE, START, DATA, STOP } state_t;
-    (* ASYNC_REG = "TRUE" *) logic rx_meta;
-    (* ASYNC_REG = "TRUE" *) logic rx_sync;
+    (* preserve, altera_attribute = "-name SYNCHRONIZER_IDENTIFICATION FORCED" *)
+    logic rx_meta;
+    (* preserve, altera_attribute = "-name SYNCHRONIZER_IDENTIFICATION FORCED" *)
+    logic rx_sync;
     state_t state;
     state_t state_next;
     logic [PHASE_BITS-1:0] phase;
