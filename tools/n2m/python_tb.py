@@ -72,11 +72,13 @@ def environment(root, target, attempt, seed, runtime):
            if not k.startswith(("COCOTB_", "GPI_", "PYGPI_")) and k not in ("PYTHONHOME", "PYTHONPATH", "LIBPYTHON_LOC")}
     config = target["python"]
     module = next(root / p for p in config["inputs"] if Path(p).stem == config["module"])
-    env.update(PYTHONPATH=os.pathsep.join([str(module.parent), *[p for p in sys.path if p]]),
+    prefixes = (Path(sys.prefix).resolve(), Path(sys.base_prefix).resolve())
+    runtime_paths = [p for p in sys.path if p and any(Path(p).resolve().is_relative_to(base) for base in prefixes)]
+    env.update(PYTHONPATH=os.pathsep.join([str(module.parent), *runtime_paths]),
                PYGPI_PYTHON_BIN=runtime["executable"], LIBPYTHON_LOC=runtime["libpython"],
                COCOTB_TOPLEVEL=target["top"], COCOTB_TEST_MODULES=config["module"],
                COCOTB_RESULTS_FILE=str(attempt / "results.xml"), COCOTB_RANDOM_SEED=str(seed),
-               PYTHONDONTWRITEBYTECODE="1")
+               PYTHONDONTWRITEBYTECODE="1", PYTHONNOUSERSITE="1")
     return env
 
 

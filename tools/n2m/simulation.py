@@ -141,11 +141,11 @@ def simulate(root, build, args, simulator, provenance=None):
                 checked_output, explained = python_tb.classify(checked_output)
                 if explained:
                     record.setdefault("explained_python_diagnostics", []).extend(explained)
+            if log.name == "sim.log" and python_runtime and record["python_results"]["status"] != "PASS":
+                raise RuntimeError(f"Python test failed: {record['python_results']}")
             problem = diagnostic(checked_output, target["signature"] if expected == "nonzero" else None)
             if problem:
                 raise RuntimeError(f"{problem}; see {log.relative_to(root)}")
-            if log.name == "sim.log" and python_runtime and record["python_results"]["status"] != "PASS":
-                raise RuntimeError(f"Python test failed: {record['python_results']}")
         if target["signature"] not in result.stdout:
             raise RuntimeError(f"missing expected signature: {target['signature']}")
         record["status"] = "PASS"
