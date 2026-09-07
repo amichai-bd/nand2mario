@@ -71,6 +71,11 @@ def simulate(root, build, args, simulator, provenance=None):
     options = {"seed": args.seed, "target": args.target, "definition": target, "vendor_model": vendor_model}
     if python_runtime:
         options["python_runtime"] = python_runtime
+    fixture_tools = None
+    if target.get('preload') == 'mooneye-reg-f':
+        from .mooneye import tool_identity
+        fixture_tools = tool_identity(root, Path(simulator.tools['vlog']).resolve().parents[2])
+        options['fixture_tools'] = fixture_tools
     if "driver" in target:
         options["peer_python"] = {"path": sys.executable, "sha256": file_hash(Path(sys.executable)), "version": sys.version}
     fingerprint = digest({"inputs": hashes, "tools": simulator.info, "options": options})
@@ -95,7 +100,7 @@ def simulate(root, build, args, simulator, provenance=None):
     atomic_json(current, record)
     log = compile_dir / "prepare.log"
     try:
-        commands = questa_commands(simulator, root, target, args.seed, compile_dir, attempt, vendor_model=vendor_model, python_runtime=python_runtime)
+        commands = questa_commands(simulator, root, target, args.seed, compile_dir, attempt, vendor_model=vendor_model, python_runtime=python_runtime, fixture_tools=fixture_tools)
         for argv, cwd, log, expected in commands:
             command = simulator.command(argv)
             record["commands"].append({"argv": command, "cwd": str(cwd)})

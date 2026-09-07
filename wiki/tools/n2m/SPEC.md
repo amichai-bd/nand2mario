@@ -76,6 +76,13 @@ layout and tool inputs. This is short execution evidence, not real UART loading
 or full milestone acceptance; the [v0.5 plan](../../../src/dv/python/v05/README.md)
 owns those separate gates.
 
+`preload: "mooneye-reg-f"` selects only the [locked external fixture](../../../src/dv/mooneye/README.md).
+Its builder verifies source archives, installed build-tool identities, the
+unmodified ROM and linked completion symbol before the same Intel-file emission.
+The pins, separate license notices and compiler/CMake inputs enter the record.
+This named validator does not change original-software validation or the product
+loader. Generated files are rechecked before simulator launch.
+
 Python targets use the executing pinned interpreter and installed packages from
 the [separate dependency record](../../../src/dv/python/THIRD_PARTY.md). Normal
 SV use does not import or require cocotb. Execution does not install dependencies.

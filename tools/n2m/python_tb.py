@@ -29,7 +29,7 @@ def validate(root, target):
         raise ValueError("python testbench requires zero raw exit and no driver")
     if target.get("vendor_model") not in (None, "intel-memory"):
         raise ValueError("Python testbench supports only Intel memory models")
-    if target.get("preload") not in (None, "integration", "v05"):
+    if target.get("preload") not in (None, "integration", "v05", "mooneye-reg-f"):
         raise ValueError("unknown Python preload")
     if not isinstance(target.get("top"), str) or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", target["top"]):
         raise ValueError("python top must be an HDL identifier")
@@ -56,6 +56,11 @@ def validate(root, target):
                         if p.suffix in (".py", ".json"))
         if target.get("vendor_model") != "intel-memory" or not required <= set(config["inputs"]):
             raise ValueError("preload requires Intel memory and all software image inputs")
+    if target.get('preload') == 'mooneye-reg-f':
+        required = {'src/dv/mooneye/pins.json', 'src/dv/mooneye/THIRD_PARTY.md',
+                    'src/rtl/ppu/GPL-3.0.txt'}
+        if target.get('vendor_model') != 'intel-memory' or not required <= set(config['inputs']):
+            raise ValueError('Mooneye preload requires Intel memory and pinned source notices')
 
 
 def discover():
@@ -100,7 +105,10 @@ def environment(root, target, attempt, seed, runtime):
     return env
 
 
-def prepare(target, attempt, root=None):
+def prepare(target, attempt, root=None, fixture_tools=None):
+    if target.get('preload') == 'mooneye-reg-f':
+        from .mooneye import prepare as prepare_mooneye
+        prepare_mooneye(root, attempt, fixture_tools)
     if target.get("preload") in ("integration", "v05"):
         import hashlib
         import importlib.util

@@ -34,6 +34,31 @@
     "completion_symbol": "quit@serial_dump",
     "completion_address": 19073,
     "completion_opcode": 64,
-    "pass_registers": {"b": 3, "c": 5, "d": 8, "e": 13, "h": 21, "l": 34}
+    "pass_registers": {
+      "b": 3,
+      "c": 5,
+      "d": 8,
+      "e": 13,
+      "h": 21,
+      "l": 34
+    }
+  },
+  "host_tools": {
+    "gcc": {
+      "path": "questa_fse/gcc-7.4.0-mingw64vc16/bin/gcc.exe",
+      "sha256": "bc6530fd66a591346479f903945fd0c82c9bd9c3e4725ee58d5bc231e0681dac"
+    },
+    "ar": {
+      "path": "questa_fse/gcc-7.4.0-mingw64vc16/libexec/gcc/x86_64-w64-mingw32/7.4.0/ar.exe",
+      "sha256": "19f4c385e2b05f0fe9bd27c68fb181675400ab222138f493a4b36a5db078cd0f"
+    },
+    "cmake": {
+      "path": "riscfree/build_tools/cmake/bin/cmake.exe",
+      "sha256": "cbdde34bb615c1b61a95987d60b16410507867c323f0c1d17ba95db6b3775006"
+    },
+    "make": {
+      "path": "riscfree/build_tools/bin/make.exe",
+      "sha256": "459fc453668766fa9b4e27c344d9aec0b44f75f166f18de5c71d9819dd3551d3"
+    }
   }
 }
