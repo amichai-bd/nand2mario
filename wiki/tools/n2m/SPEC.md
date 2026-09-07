@@ -216,15 +216,27 @@ commands, and input/tool hashes remain beneath the tag. Unexpected warnings,
 errors, timeouts, or missing signatures fail; expected nonzero targets require
 their full diagnostic and reject additional errors.
 
-A target may set integer `timeout_seconds` from 1 through 600, through 1500 for
-a declared Python-peer driver, or through 43200 for a Python testbench. The
-finite Python ceiling accommodates continuous 600-interval verification; each
-long target must choose its actual bound from measured execution and retain its
-simulation-time deadline. This value bounds its Questa runtime command; the default and all preparation/compile commands remain 60
-seconds. The value enters the target fingerprint and each command records its
-effective bound. Long raster tests retain independent simulation-time watchdogs.
-A wall-clock timeout is a failed harness run, not a checked DUT verdict; partial
-output remains available. Increasing a bound does not reduce required coverage.
+### Test wall budget
+
+Every test has a maximum 600-second wall budget. No target, environment setting
+or public command option extends it. `python tools/build.py sim test` supervises
+the complete worker process tree: discovery, preparation, compilation, simulation
+and checking share the same 600 seconds. Expiry terminates the worker and its
+children, returns failure and retains a `wall-budget` record with the raw killed
+process exit and partial output. Existing attempt artifacts remain partial;
+TIMEOUT is never a checked DUT result. Tree termination and pipe draining each
+have a five-second cleanup bound, followed by at most two seconds to reap the
+immediate worker. Cleanup may finish after the execution deadline. A failed
+cleanup records `cleanup_complete: false`; inspect and stop remaining children
+before releasing shared tool ownership. Never treat that failure as a clean exit.
+
+A target may set integer `timeout_seconds` from 1 through 600 for its Questa
+runtime command. The default and individual preparation/compile commands remain
+60 seconds, subject to the overall ceiling. The value enters the fingerprint and
+each command records its effective bound. Independent simulation-time watchdogs
+and required emulated coverage remain unchanged. If a milestone cannot complete
+within this wall budget, keep it open and report the missing evidence; do not
+schedule a longer run or shorten its oracle to claim completion.
 
 Backend, tool identity, source, target, seed, or runner changes invalidate cache.
 Damaged artifacts also invalidate it. A matching successful result may be

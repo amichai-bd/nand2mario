@@ -129,3 +129,11 @@ also reject early completion, missing input/pixel/retirement and extra writes.
 The accepted real-UART startup/readback and actual image/pixel mutations remain
 separate evidence. Short completion and current-source review can deliver the
 harness implementation while #88's full continuous run stays explicitly open.
+
+## Wall-time limit
+
+Every execution obeys the [600-second test wall budget](../../../tools/n2m/SPEC.md#test-wall-budget).
+This does not change the full 600-interval, 18-input or 12-second simulation bounds.
+The complete simulation milestone remains open in
+[#88](https://github.com/amichai-bd/nand2mario/issues/88) until all required evidence
+exists; bounded implementation or physical checks do not silently replace it.

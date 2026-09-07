@@ -105,6 +105,11 @@ models fail through the shared builder.
 
 ## Verification tiers
 
+All tests obey the [600-second wall budget](../../../tools/n2m/SPEC.md#test-wall-budget).
+Prefer the [authorized bounded FPGA/UART game checks](../../../agents/bootstrap-plan.md#verification-and-hardware-authorization)
+after their build and setup gates pass. Required affected simulation and named
+full simulation milestones retain their separate acceptance criteria.
+
 Select gates by affected behavior and the scoped issue. Use existing preload,
 continuous Python, Intel models, builders, validators and targets; no additional
 regression framework is required. Required CI remains in force. Evidence reuse

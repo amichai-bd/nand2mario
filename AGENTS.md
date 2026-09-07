@@ -98,7 +98,9 @@ expensive acceptance run, exercise its complete harness at a short duration,
 including final pause, completion and watchdog handling. Do not hide warnings,
 bypass checks or claim incomplete acceptance complete.
 
-Run the smallest useful test and required lower-level checks. Record exact
+Run the smallest useful test and required lower-level checks. Every test must
+finish within the [600-second wall budget](wiki/tools/n2m/SPEC.md#test-wall-budget);
+never extend it to finish a milestone. Record exact
 commands and results. A simulation compiles, elaborates, runs, and checks an
 expected result. Treat unexplained warnings as failures. Preserve useful logs,
 seeds, traces, waves, and reports under the build tag while work or review needs

@@ -32,6 +32,14 @@ and voltage, a suitable reviewed build with applicable constraints and timing
 evidence, and exclusive serialized access. Missing setup facts or access block
 the dependent physical work.
 
+Prefer bounded original-game checks on the FPGA through the connected UART
+loader, debugger and inputs once the reviewed build and setup checks above pass.
+This work has standing user authorization; do not request routine approval
+again. Keep affected simulation within the
+[test wall budget](../tools/n2m/SPEC.md#test-wall-budget).
+Hardware results do not automatically replace the full simulation milestone in
+[#88](https://github.com/amichai-bd/nand2mario/issues/88).
+
 Authorization is not evidence. Simulation must compile, elaborate, run, and check
 expected results, including required positive and deliberately failing cases.
 Independent review, passing CI, source privacy, and trusted-runner isolation

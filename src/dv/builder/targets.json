@@ -6182,7 +6182,7 @@
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS host play five immutable images four transitions",
-    "timeout_seconds": 1500,
+    "timeout_seconds": 600,
     "vendor_model": "intel-memory",
     "driver": {
       "script": "src/dv/host_play/driver.do",
@@ -6325,7 +6325,7 @@
     ],
     "expected_exit": "nonzero",
     "signature": "PLAY_OBJECT_COUNT",
-    "timeout_seconds": 1500,
+    "timeout_seconds": 600,
     "vendor_model": "intel-memory",
     "driver": {
       "script": "src/dv/host_play/driver.do",
@@ -6468,7 +6468,7 @@
     ],
     "expected_exit": "nonzero",
     "signature": "PLAY_MISSING_FRAME",
-    "timeout_seconds": 1500,
+    "timeout_seconds": 600,
     "vendor_model": "intel-memory",
     "driver": {
       "script": "src/dv/host_play/driver.do",
@@ -6611,7 +6611,7 @@
     ],
     "expected_exit": "nonzero",
     "signature": "PLAY_IMAGE",
-    "timeout_seconds": 1500,
+    "timeout_seconds": 600,
     "vendor_model": "intel-memory",
     "driver": {
       "script": "src/dv/host_play/driver.do",
@@ -6754,7 +6754,7 @@
     ],
     "expected_exit": "nonzero",
     "signature": "PLAY_IMAGE",
-    "timeout_seconds": 1500,
+    "timeout_seconds": 600,
     "vendor_model": "intel-memory",
     "driver": {
       "script": "src/dv/host_play/driver.do",
@@ -8012,7 +8012,7 @@
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS python-host-play five immutable images four transitions",
-    "timeout_seconds": 1500,
+    "timeout_seconds": 600,
     "vendor_model": "intel-memory",
     "intel_mixed_mode_instances": [
       "tb_python_host_play.dut.g_play.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
@@ -8121,7 +8121,7 @@
     ],
     "expected_exit": "zero",
     "signature": "PASS python-host-play five immutable images four transitions",
-    "timeout_seconds": 1500,
+    "timeout_seconds": 600,
     "vendor_model": "intel-memory",
     "intel_mixed_mode_instances": [
       "tb_python_host_play.dut.g_play.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
@@ -8230,7 +8230,7 @@
     ],
     "expected_exit": "zero",
     "signature": "PASS python-host-play five immutable images four transitions",
-    "timeout_seconds": 1500,
+    "timeout_seconds": 600,
     "vendor_model": "intel-memory",
     "intel_mixed_mode_instances": [
       "tb_python_host_play.dut.g_play.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
@@ -8339,7 +8339,7 @@
     ],
     "expected_exit": "zero",
     "signature": "PASS python-host-play five immutable images four transitions",
-    "timeout_seconds": 1500,
+    "timeout_seconds": 600,
     "vendor_model": "intel-memory",
     "intel_mixed_mode_instances": [
       "tb_python_host_play.dut.g_play.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
@@ -8448,7 +8448,7 @@
     ],
     "expected_exit": "zero",
     "signature": "PASS python-host-play five immutable images four transitions",
-    "timeout_seconds": 1500,
+    "timeout_seconds": 600,
     "vendor_model": "intel-memory",
     "intel_mixed_mode_instances": [
       "tb_python_host_play.dut.g_play.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
@@ -8557,7 +8557,7 @@
     ],
     "expected_exit": "zero",
     "signature": "PASS V05 startup",
-    "timeout_seconds": 1000,
+    "timeout_seconds": 600,
     "vendor_model": "intel-memory",
     "intel_mixed_mode_instances": [
       "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
@@ -8680,7 +8680,7 @@
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS V05 startup",
-    "timeout_seconds": 1000,
+    "timeout_seconds": 600,
     "vendor_model": "intel-memory",
     "intel_mixed_mode_instances": [
       "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
@@ -8805,7 +8805,7 @@
     ],
     "expected_exit": "zero",
     "signature": "PASS V05 startup",
-    "timeout_seconds": 1000,
+    "timeout_seconds": 600,
     "vendor_model": "intel-memory",
     "intel_mixed_mode_instances": [
       "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
@@ -8928,7 +8928,7 @@
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS V05 continuous",
-    "timeout_seconds": 43200,
+    "timeout_seconds": 600,
     "vendor_model": "intel-memory",
     "intel_mixed_mode_instances": [
       "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
