@@ -77,7 +77,7 @@ the actual raw write control during the held interval and requires
 DMA_PAUSE_SERVICE_DRAIN.
 
 
-The access fixture drives a legal twelve-clock-dot CPU boundary around the
+The access fixture drives a shortest-interval five/six-clock-dot CPU boundary around the
 actual DMA and Intel stores. Seven source cases cover C0, ROM00, VRAM80 with
 both write-gate states, absent A0, and E0/FE mirrors. It checks1,120 destination
 bytes and44 reads: accessible M1, conflicting prepared data, RAM AND feedback,

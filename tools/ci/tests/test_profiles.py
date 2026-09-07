@@ -26,13 +26,18 @@ def negative_text(attempt, binary):
         'Critical Warning (332008): Read_sdc failed due to errors in the SDC file',
         "Error (171000): Can't fit design in device",
         'Warning (169177): 1 pins must meet Intel FPGA requirements for 3.3-, 3.0-, and 2.5-V interfaces. For more information, refer to AN 447: Interfacing MAX 10 Devices with 3.3/3.0/2.5-V LVTTL/LVCMOS I/O Systems.',
-        'Error: Quartus Prime Fitter was unsuccessful. 2 errors, 4 warnings',
-        'Error (293001): Quartus Prime Full Compilation was unsuccessful. 4 errors, 5 warnings',
+        'Error: Quartus Prime Fitter was unsuccessful. 2 errors, 5 warnings',
+        'Error (293001): Quartus Prime Full Compilation was unsuccessful. 4 errors, 6 warnings',
         f'Error: Flow compile (for project {(attempt / "design").as_posix()}) was not successful',
         'Error: ERROR: Error(s) found while running an executable. See report file(s) for error message(s). Message log indicates which executable was run last.',
         f'Error (23031): Evaluation of Tcl script {(binary.parent / "common/tcl/internal/qsh_flow.tcl").as_posix()} unsuccessful',
-        'Error: Quartus Prime Shell was unsuccessful. 11 errors, 5 warnings',
+        'Error: Quartus Prime Shell was unsuccessful. 11 errors, 6 warnings',
     ]
+    lines.insert(2, 'Warning (176127): The parameters of the PLL '
+                 'n2m_clocking:u_clocking|n2m_pixel_pll:u_pll|altpll:altpll_component|n2m_pixel_pll_altpll:auto_generated|pll1 '
+                 'and the PLL n2m_clocking:u_clocking|n2m_system_pll:u_system_pll|altpll:altpll_component|n2m_system_pll_altpll:auto_generated|pll1 '
+                 'do not have the same values - hence these PLLs cannot be merged File: '
+                 + (attempt / 'db/n2m_pixel_pll_altpll.v').resolve().as_posix() + ' Line: 93')
     lines += ['    Error: Peak virtual memory: 123 megabytes',
               '    Error: Processing ended: Sun Sep  6 01:43:38 2026',
               '    Error: Elapsed time: 00:00:02',
@@ -239,6 +244,15 @@ class ProfileTests(unittest.TestCase):
             names += ['audit.log', 'netlist.log', 'simulation/questa/design.vo']
             names += ['output/' + n for n in (*fpga.REQUIRED_REPORTS, *fpga_pll.required_reports())]
         for name in names: self.write(self.attempt / name)
+        if definition['pll'].get('system_divide') == 2:
+            for module,multiply,divide,bandwidth in (('n2m_pixel_pll',63,125,None),('n2m_system_pll',1,2,'LOW')):
+                parameters = {'clk0_divide_by':str(divide), 'clk0_multiply_by':str(multiply), 'clk0_duty_cycle':'50',
+                              'clk0_phase_shift':'"0"', 'inclk0_input_frequency':'20000', 'intended_device_family':'"MAX 10"',
+                              'operation_mode':'"NORMAL"','compensate_clock':'"CLK0"','self_reset_on_loss_lock':'"OFF"',
+                              'port_areset':'"PORT_USED"','port_locked':'"PORT_USED"'}
+                if bandwidth: parameters['bandwidth_type']='"LOW"'
+                self.write(self.attempt / (module+'.v'), '// Synthetic parameter fixture, not vendor HDL.\nmodule '+module+' ();\n'+
+                           '\n'.join('defparam altpll_component.'+key+' = '+value+';' for key,value in parameters.items())+'\nendmodule\n')
         self.write(self.attempt / 'checked.sdc', fpga.checked_constraints(definition))
         if invalid:
             self.write(self.attempt / 'compile.log', negative_text(self.attempt, self.bin))
@@ -322,7 +336,7 @@ class ProfileTests(unittest.TestCase):
             self.write(self.attempt / 'compile.log', original + suffix); self.fpga_republish()
             with self.assertRaises(ValueError): self.fpga_check()
         for text in (original.replace('missing_register[0]', 'other_register[0]'),
-                     original.replace('2 errors, 4 warnings', '3 errors, 4 warnings'),
+                     original.replace('2 errors, 5 warnings', '3 errors, 5 warnings'),
                      original.replace('Read_sdc failed due to errors in the SDC file', 'unrelated failure')):
             self.write(self.attempt / 'compile.log', text); self.fpga_republish()
             with self.assertRaises(ValueError): self.fpga_check()

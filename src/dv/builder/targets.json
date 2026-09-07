@@ -148,7 +148,7 @@
       "+bad_numerator"
     ],
     "expected_exit": "nonzero",
-    "signature": "TIMEBASE_MISMATCH mode=numerator edge=751 expected=62 actual=63"
+    "signature": "TIMEBASE_MISMATCH mode=numerator edge=602 expected=100 actual=101"
   },
   "clocking-drop-tick": {
     "sources": [
@@ -161,7 +161,7 @@
       "+drop_tick"
     ],
     "expected_exit": "nonzero",
-    "signature": "TIMEBASE_MISMATCH mode=drop edge=12 expected=1 actual=0"
+    "signature": "TIMEBASE_MISMATCH mode=drop edge=6 expected=1 actual=0"
   },
   "clocking-early-reset": {
     "sources": [

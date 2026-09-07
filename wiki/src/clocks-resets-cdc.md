@@ -42,8 +42,8 @@ support two PLLs from the reference group. Use no PLL cascade. Generate the
 pixel clock on a global network, nominal
 50% duty and zero requested phase. The candidate counters `M=63, N=5, C=25`
 give 630 MHz VCO, 10 MHz PFD, and 25.2 MHz output by the vendor ratio equation.
-This is a feasibility candidate, not a proven IP configuration. The pinned
-Quartus generation and fit must confirm legal counters, routing, duty, jitter,
+The system PLL uses `M=104, N=8, C=26`, with 650 MHz VCO and
+6.25 MHz PFD. Each pinned Quartus generation and fit must confirm counters, routing, duty, jitter,
 and the requested output ratio; record the actual generated settings. Do not
 silently substitute 25 MHz. No clock switching or dynamic PLL reconfiguration.
 
@@ -253,7 +253,7 @@ are absent from the top. SDRAM constraints cannot be inferred from this plan.
 
 ## Required verification
 
-- Tick simulation checks the first edge, 11/12 spacing, full 390625-edge count,
+- Tick simulation checks the first edge, 5/6 spacing, full 390625-edge count,
   exact formula over multiple periods, reset phase, and pause/resume. An
   independent integer oracle computes cumulative ticks; an altered numerator
   and a dropped tick each fail for the expected mismatch.

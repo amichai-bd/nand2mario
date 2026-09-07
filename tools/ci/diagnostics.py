@@ -2,11 +2,11 @@
 from collections import Counter
 import re
 from pathlib import Path
-from tools.n2m import fpga
+from tools.n2m import fpga, fpga_pll
 from .model import require
 
 
-def invalid_compile(text, attempt, quartus_directory):
+def invalid_compile(text, attempt, quartus_directory, *, pll=None):
     sdc = (attempt / 'checked.sdc').as_posix()
     project = (attempt / 'design').as_posix()
     script = (Path(quartus_directory).parent / 'common/tcl/internal/qsh_flow.tcl').as_posix()
@@ -31,6 +31,13 @@ def invalid_compile(text, attempt, quartus_directory):
         'elapsed': r'Elapsed time: [0-9]+:[0-9]{2}:[0-9]{2}',
         'cpu': r'Total CPU time \(on all processors\): [0-9]+:[0-9]{2}:[0-9]{2}',
     }
+    if pll is not None and pll.get('system_divide') == 2:
+        explained = fpga_pll.explained_diagnostics(text, attempt, pll)
+        require(len(explained) == 1, 'missing exact parallel PLL diagnostic')
+        coded['176127'] = ('warning', re.escape(explained[0]['text'].split(': ', 1)[1]))
+        coded['293001'] = ('error', r'Quartus Prime Full Compilation was unsuccessful\. 4 errors, 6 warnings')
+        summaries['fitter'] = r'Quartus Prime Fitter was unsuccessful\. 2 errors, 5 warnings'
+        summaries['shell'] = r'Quartus Prime Shell was unsuccessful\. 11 errors, 6 warnings'
     counts = Counter()
     for raw in text.splitlines():
         line = raw.strip().replace('\\', '/')

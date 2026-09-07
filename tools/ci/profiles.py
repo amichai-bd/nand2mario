@@ -133,7 +133,7 @@ def check_record(root, req, profile, target, tag, raw_exit, printed, selected_to
             fpga.diagnostics((attempt / 'generate-pll.log').read_text(encoding='utf-8'))
             if parallel: fpga.diagnostics((attempt / 'generate-system-pll.log').read_text(encoding='utf-8'))
             text = (attempt / 'compile.log').read_text(encoding='utf-8')
-            invalid_compile(text, attempt, selected_tools['quartus'])
+            invalid_compile(text, attempt, selected_tools['quartus'], pll=record['definition']['pll'])
             require(record['error'] == 'Quartus exit 3; see compile.log', 'exact invalid constraint diagnostic')
     return {'target': target, 'record': record, 'source_inventory': source_inventory,
             'complete_build_inventory': inventory(build)}

@@ -46,6 +46,16 @@ class ParallelClockTests(unittest.TestCase):
         text,checks=fixture()
         self.assertEqual(fpga_lock.verify_parallel(text,checks,"clocking_proof")["truth_cases"],32)
 
+    def test_synchronous_load_keeps_the_same_pipeline(self):
+        text,checks=fixture()
+        lines=text.splitlines()
+        for i,line in enumerate(lines):
+            if line.startswith(r"dffeas \u_clocking|u_reset|lock_samples[1] "):
+                lines[i]=line.replace(r".d(\u_clocking|u_reset|lock_samples[0]),.asdata(vcc)",
+                                      r".d(gnd),.asdata(\u_clocking|u_reset|lock_samples[0])").replace(".sload(gnd)",".sload(vcc)")
+                self.assertNotEqual(lines[i],line)
+        self.assertEqual(fpga_lock.verify_parallel("\n".join(lines),checks,"clocking_proof")["truth_cases"],32)
+
     def test_unsafe_topologies_fail_closed(self):
         text,checks=fixture()
         mutations = {
@@ -58,6 +68,7 @@ class ParallelClockTests(unittest.TestCase):
             "event functional fanout": text + r"dffeas bad (.clk(\raw0));",
             "extra raw driver": text + r"dffeas bad (.q(\raw0));",
             "aliased raw": text + r"assign extra = \raw0;",
+            "sample stage bypassed": text.replace(r".d(\u_clocking|u_reset|lock_samples[0])", ".d(vcc)"),
             "constant changed": text.replace("assign vcc = 1'b1", "assign vcc = 1'b0"),
         }
         for name,mutated in mutations.items():
