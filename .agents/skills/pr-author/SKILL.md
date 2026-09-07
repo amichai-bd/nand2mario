@@ -9,7 +9,8 @@ Follow `agent-flow` and `wiki/agents/pull-requests.md`.
 
 1. Confirm the issue, branch, worktree, and validation.
 2. Fill [the PR body](templates/pull-request.md) at
-   `workdir/.tmp/pr/<pr-title-slug>.md`. Keep it locally after use.
+   `workdir/.tmp/pr/<pr-title-slug>.md`. Keep it while work or review needs it; remove it through
+   [post-merge cleanup](../../../worktrees/README.md#clean-up-after-merge).
 3. Open early with `gh pr create --draft --base main --title '<title>' --body-file <path>`.
 4. Update evidence with `gh pr edit <number> --body-file <path>`.
 5. Babysit CI and independent review. Post the returned report from a file,

@@ -14,7 +14,8 @@ independent reviewer.
 Keep the orchestration handoff in root's ignored `workdir/` and give its location
 to delegated agents. It must identify unfinished work, its owner and worktree,
 verified results, pending work, and the next action or blocker. Link existing
-issue, PR, and artifact evidence.
+issue, PR, and artifact evidence. Keep active artifacts in their owning worktrees;
+the root handoff is a summary, not an artifact archive.
 Use any concise format; routine progress logs are unnecessary. Update ownership
 and next actions when they change so recovery does not depend on chat history.
 
