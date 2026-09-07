@@ -173,8 +173,11 @@ async def integration_contract(dut):
                     replies.append(decoded)
                     frame.clear()
 
+        # HDL initial assignments can produce event-toggle transitions at time
+        # zero. Arm only after they settle while reset is still asserted.
+        await Timer(1, unit="ns")
         tasks = [cocotb.start_soon(fn()) for fn in (monitor_record, monitor_pixel, monitor_bus, monitor_uart)]
-        await Timer(320, unit="ns")
+        await Timer(319, unit="ns")
         dut.reset_sys.value = 0
         observation("reset", asserted=0)
         for sequence, (time_ns, command, payload) in enumerate(requests(image)):
