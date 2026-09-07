@@ -9,9 +9,23 @@ sys.path.insert(0, str(ROOT / 'tools'))
 spec = importlib.util.spec_from_file_location('v05_reference', ROOT / 'src/dv/v05/reference.py')
 reference = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(reference)
+sys.path.insert(0, str(ROOT / 'src/dv/v05'))
+check_spec = importlib.util.spec_from_file_location('v05_check', ROOT / 'src/dv/v05/check.py')
+checker = importlib.util.module_from_spec(check_spec)
+check_spec.loader.exec_module(checker)
 
 
 class V05ReferenceTests(unittest.TestCase):
+    def test_applied_journal_rejects_missing_reordered_and_late_events(self):
+        events = [{'dot': reference.input_window(i)[0], 'buttons': mask}
+                  for i, mask in enumerate(reference.INPUT_MASKS, 1)]
+        self.assertEqual(len(checker.validate_inputs(events)), 18)
+        for bad in (events[:-1], [events[1], events[0], *events[2:]],
+                    [dict(events[0], dot=events[0]['dot'] + 2001), *events[1:]],
+                    [dict(events[0], buttons=True), *events[1:]]):
+            with self.assertRaisesRegex(ValueError, 'V05_INPUT_'):
+                checker.validate_inputs(bad)
+
     def test_initialization_and_first_wake(self):
         model = reference.Reference()
         rows = list(model.records(108156))
