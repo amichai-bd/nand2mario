@@ -1237,6 +1237,152 @@
         "response_channel[*]",
         "response_data[*]"
       ]
+    },
+    "controls-board": {
+      "device": "10M50DAF484C7G",
+      "top": "controls_proof",
+      "sources": [
+        "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+        "src/rtl/input/n2m_input_pkg.sv",
+        "src/rtl/input/n2m_controls_pkg.sv",
+        "src/rtl/joypad/n2m_joypad_pkg.sv",
+        "src/rtl/clocking/n2m_timebase.sv",
+        "src/rtl/common/n2m_intel_ram.sv",
+        "src/rtl/uart/n2m_uart_pkg.sv",
+        "src/rtl/uart/n2m_uart_packet_store.sv",
+        "src/rtl/uart/n2m_uart_packet_rx.sv",
+        "src/rtl/uart/n2m_uart_exchange_store.sv",
+        "src/rtl/uart/n2m_uart_exchange.sv",
+        "src/rtl/uart/n2m_uart_tx.sv",
+        "src/rtl/uart/n2m_uart_packet_tx.sv",
+        "src/rtl/uart/n2m_uart_response.sv",
+        "src/rtl/uart/n2m_uart_presence_store.sv",
+        "src/rtl/uart/n2m_uart_load.sv",
+        "src/rtl/uart/n2m_uart_rx.sv",
+        "src/rtl/input/n2m_input.sv",
+        "src/rtl/uart/n2m_uart_core_control.sv",
+        "src/rtl/uart/n2m_uart_host_registers.sv",
+        "src/rtl/uart/n2m_uart_validate.sv",
+        "src/rtl/uart/n2m_uart_commands.sv",
+        "src/rtl/uart/n2m_uart.sv",
+        "src/rtl/clocking/n2m_reset_control.sv",
+        "src/fpga/de10_lite/n2m_clocking.sv",
+        "src/rtl/vga/n2m_frame_ram.sv",
+        "src/rtl/vga/n2m_vga_scan.sv",
+        "src/rtl/vga/n2m_frame_bridge.sv",
+        "src/rtl/input/n2m_adc_backend.sv",
+        "src/rtl/input/n2m_button_filter.sv",
+        "src/rtl/input/n2m_adc_pairs.sv",
+        "src/rtl/input/n2m_controls_mask.sv",
+        "src/rtl/input/n2m_physical_controls.sv",
+        "src/rtl/joypad/n2m_joypad_matrix.sv",
+        "src/rtl/joypad/n2m_joypad.sv",
+        "src/fpga/de10_lite/controls_proof.sv"
+      ],
+      "constraints": [
+        "src/fpga/de10_lite/controls.sdc"
+      ],
+      "pins": {
+        "clk_sys": "PIN_P11",
+        "red[0]": "PIN_AA1",
+        "red[1]": "PIN_V1",
+        "red[2]": "PIN_Y2",
+        "red[3]": "PIN_Y1",
+        "green[0]": "PIN_W1",
+        "green[1]": "PIN_T2",
+        "green[2]": "PIN_R2",
+        "green[3]": "PIN_R1",
+        "blue[0]": "PIN_P1",
+        "blue[1]": "PIN_T1",
+        "blue[2]": "PIN_P4",
+        "blue[3]": "PIN_N2",
+        "hsync_n": "PIN_N3",
+        "vsync_n": "PIN_N1",
+        "clk_adc_reference": "PIN_N5",
+        "board_reset_n": "PIN_B8",
+        "uart_rx": "PIN_AB5",
+        "uart_tx": "PIN_AB6",
+        "buttons_n[0]": "PIN_AB7",
+        "buttons_n[1]": "PIN_AB8",
+        "buttons_n[2]": "PIN_AB9",
+        "buttons_n[3]": "PIN_Y10",
+        "leds[0]": "PIN_A8",
+        "leds[1]": "PIN_A9",
+        "leds[2]": "PIN_A10",
+        "leds[3]": "PIN_B10",
+        "leds[4]": "PIN_D13",
+        "leds[5]": "PIN_C13",
+        "leds[6]": "PIN_E14",
+        "leds[7]": "PIN_D14",
+        "leds[8]": "PIN_A11",
+        "leds[9]": "PIN_B11"
+      },
+      "virtual_pins": [
+        "ready",
+        "paused",
+        "discard_count[*]",
+        "repeat_count[*]",
+        "display_sequence[*]",
+        "display_epoch[*]",
+        "observed_sequence[*]",
+        "observed_index[*]",
+        "observed_complete"
+      ],
+      "pll": {
+        "module": "n2m_pixel_pll",
+        "input_ps": 20000,
+        "multiply": 63,
+        "divide": 125
+      },
+      "timing": {
+        "async_reset_pins": [
+          "u_clocking|u_reset|board_release[0]|clrn",
+          "u_clocking|u_reset|board_release[1]|clrn",
+          "u_clocking|u_reset|lock_samples[0]|clrn",
+          "u_clocking|u_reset|lock_samples[1]|clrn",
+          "u_clocking|u_reset|sys_release[0]|clrn",
+          "u_clocking|u_reset|sys_release[1]|clrn",
+          "u_clocking|u_reset|pix_release[0]|clrn",
+          "u_clocking|u_reset|pix_release[1]|clrn",
+          "u_adc_reset|board_release[0]|clrn",
+          "u_adc_reset|board_release[1]|clrn",
+          "u_adc_reset|lock_samples[0]|clrn",
+          "u_adc_reset|lock_samples[1]|clrn",
+          "u_adc_reset|sys_release[0]|clrn",
+          "u_adc_reset|sys_release[1]|clrn"
+        ],
+        "output_delays": [
+          {
+            "clock": "clk_sys",
+            "ports": [
+              "ready",
+              "paused",
+              "discard_count[*]",
+              "observed_sequence[*]",
+              "observed_index[*]",
+              "observed_complete",
+              "leds[*]",
+              "uart_tx"
+            ],
+            "count": 157
+          },
+          {
+            "clock": "u_clocking|u_pll|altpll_component|auto_generated|pll1|clk[0]",
+            "ports": [
+              "repeat_count[*]",
+              "display_sequence[*]",
+              "display_epoch[*]",
+              "red[*]",
+              "green[*]",
+              "blue[*]",
+              "hsync_n",
+              "vsync_n"
+            ],
+            "count": 174
+          }
+        ],
+        "reference_ns": "20.000"
+      }
     }
   }
 }
