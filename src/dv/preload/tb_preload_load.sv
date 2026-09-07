@@ -48,6 +48,7 @@ module tb_preload_load;
         @(negedge clk_sys); wait(!busy);
     endtask
     initial begin
+        integer block_index, byte_index;
         clk_sys=0; reset_sys=1; start=0; operation=UART_LOAD_BEGIN;
         offset=0; count=0; expected_crc=0; input_valid=0; input_data=0; output_ready=1;
         clear_writes=0; rom_reads=0; cycles=0; crc_fault=$test$plusargs("crc_fault");
@@ -75,10 +76,10 @@ module tb_preload_load;
         if(clear_writes!=32768) $fatal(1,"PRELOAD_RESET_REARMED");
         launch(UART_LOAD_END); finish_status(STATUS_BAD_IMAGE);
         // Direct load owner accepts bounded chunks only: write128 chunks256.
-        for(integer block_index=0;block_index<128;block_index=block_index+1) begin
+        for(block_index=0;block_index<128;block_index=block_index+1) begin
             offset=32'(block_index*256); count=16'd256;
             launch(UART_LOAD_WRITE);
-            for(integer byte_index=0;byte_index<256;byte_index=byte_index+1) begin
+            for(byte_index=0;byte_index<256;byte_index=byte_index+1) begin
                 @(negedge clk_sys); input_valid=1;
                 input_data=expected_bytes[block_index*256+byte_index];
             end

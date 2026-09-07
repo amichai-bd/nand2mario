@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import socket
 import sys
+import time
 
 from image import build
 
@@ -80,11 +81,19 @@ def main(*, preloaded=False):
             records = []
             client = Client(transport, clock=lambda: transport.sim_time, record=records.append)
             identity = client.identify()
+            setup_wall = time.monotonic()
+            setup_sim = transport.sim_time
             if preloaded:
                 from n2m.preload import adopt
                 loaded = adopt(client, preload)
             else:
                 loaded = client.load(image)
+                from n2m.preload import observe_initial
+                loaded['initial_state'] = observe_initial(client)
+            timings = {'setup_wall_seconds': time.monotonic() - setup_wall,
+                       'setup_sim_seconds': transport.sim_time - setup_sim}
+            execution_wall = time.monotonic()
+            execution_sim = transport.sim_time
             client.control('INPUT', 0)
             client.control('RUN')
             transport.send('WAIT 136280')
@@ -92,7 +101,9 @@ def main(*, preloaded=False):
             client.control('HALT')
             if client.read_host(abi.HOST_REG_STATE) != abi.STATE_PAUSED:
                 raise ValueError('integration did not pause after selected frame')
-            result = {'identity': identity, 'load': loaded, 'requests': records}
+            timings.update(execution_wall_seconds=time.monotonic() - execution_wall,
+                           execution_sim_seconds=transport.sim_time - execution_sim)
+            result = {'identity': identity, 'load': loaded, 'requests': records, 'timings': timings}
             (args.attempt / 'client.json').write_text(json.dumps(result, indent=2) + '\n')
             transport.send('DONE')
     print('PASS integration live Client load and control', flush=True)

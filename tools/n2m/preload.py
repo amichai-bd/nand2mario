@@ -69,6 +69,12 @@ def adopt(client, record):
         'profile': abi.PROFILE_DIRECT_ID, 'size': record['image_bytes'],
         'crc32': record['image_crc32']}))
     client.request('LOAD_END')
+    return {'mode': 'preloaded-execution', 'image_sha256': record['image_sha256'],
+            'crc_scanned_bytes': record['image_bytes'], 'initial_state': observe_initial(client)}
+
+
+def observe_initial(client):
+    """The same public expectation applies after either loading mode."""
     fields = {'STATE': abi.STATE_PAUSED, 'IMAGE_VALID': 1,
               'PROFILE': abi.PROFILE_DIRECT_ID, 'DOT_LO': 0, 'DOT_HI': 0,
               'RETIRE_LO': 0, 'RETIRE_HI': 0, 'INPUT': 0,
@@ -77,5 +83,4 @@ def adopt(client, record):
     observed = {name: client.read_host(getattr(abi, 'HOST_REG_' + name)) for name in fields}
     if observed != fields:
         raise ValueError(f'preload initial public state mismatch: {observed}')
-    return {'mode': 'preloaded-execution', 'image_sha256': record['image_sha256'],
-            'crc_scanned_bytes': record['image_bytes'], 'initial_state': observed}
+    return observed
