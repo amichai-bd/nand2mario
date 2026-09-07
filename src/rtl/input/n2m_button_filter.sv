@@ -6,7 +6,8 @@ module n2m_button_filter #(
     input var logic clk_sys,
     input var logic reset_sys,
     input var logic [3:0] buttons_n,
-    output logic [3:0] pressed
+    output logic [3:0] pressed,
+    output logic [3:0] accepted_pressed
 );
     localparam int unsigned COUNT_BITS = $clog2(STABLE_CYCLES + 1);
     (* preserve, altera_attribute = "-name SYNCHRONIZER_IDENTIFICATION FORCED" *)
@@ -29,6 +30,8 @@ module n2m_button_filter #(
                 count_next = '0;
             end else count_next = count_q + COUNT_BITS'(1);
         end
+        // Proposal for this edge lets axes and debounce acceptance commit together.
+        assign accepted_pressed[i] = reset_sys ? 1'b0 : pressed_next;
         `DFF_ARST_VAL(count_q, count_next, clk_sys, reset_sys, '0)
         `DFF_ARST_VAL(pressed[i], pressed_next, clk_sys, reset_sys, 1'b0)
         `N2M_ASSERT(button_count_range, clk_sys, reset_sys,

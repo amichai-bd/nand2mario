@@ -24,3 +24,9 @@ ADC availability loss. Its data corruption and wrong-channel targets sensitize
 the public-pair oracle and named assertion. This fixture drives the public ADC
 response interface; it does not replace installed Intel model, button/axis,
 shared-input composition, or physical board evidence.
+
+`controls-mask` composes the actual button filter, calibrated mask and shared
+input owner. Its 24 literal checks include a debounce completion coincident
+with a complete pair, hysteresis and reversed polarity, bounce, tick deferral,
+stale-axis release, source isolation and reset. The negative corrupts the actual
+physical mask. This bounded fixture does not replace acquisition or board proof.

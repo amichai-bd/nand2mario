@@ -31,11 +31,12 @@ module n2m_physical_controls #(
     output logic adc_fault
 );
     logic [3:0] buttons_pressed;
+    logic [3:0] buttons_accepted;
     logic pair_valid;
     logic [11:0] pair_x;
     logic [11:0] pair_y;
     n2m_button_filter #(.STABLE_CYCLES(BUTTON_CYCLES)) u_buttons (
-        .clk_sys(clk_sys), .reset_sys(reset_sys), .buttons_n(buttons_n), .pressed(buttons_pressed)
+        .clk_sys(clk_sys), .reset_sys(reset_sys), .buttons_n(buttons_n), .pressed(buttons_pressed), .accepted_pressed(buttons_accepted)
     );
     n2m_adc_pairs #(.INTERVAL_CYCLES(INTERVAL_CYCLES), .LIMIT_CYCLES(LIMIT_CYCLES)) u_pairs (
         .clk_sys(clk_sys), .reset_sys(reset_sys), .adc_available(adc_available),
@@ -45,7 +46,7 @@ module n2m_physical_controls #(
     );
     n2m_controls_mask #(.X_MIN(X_MIN), .X_CENTER(X_CENTER), .X_MAX(X_MAX),
         .Y_MIN(Y_MIN), .Y_CENTER(Y_CENTER), .Y_MAX(Y_MAX), .X_REVERSE(X_REVERSE), .Y_REVERSE(Y_REVERSE)) u_mask (
-        .clk_sys(clk_sys), .reset_sys(reset_sys), .gb_tick(gb_tick), .buttons_pressed(buttons_pressed),
+        .clk_sys(clk_sys), .reset_sys(reset_sys), .gb_tick(gb_tick), .buttons_pressed(buttons_accepted),
         .pair_valid(pair_valid), .pair_x(pair_x), .pair_y(pair_y), .fresh(adc_fresh),
         .physical_commit(physical_commit), .physical_buttons(physical_buttons)
     );

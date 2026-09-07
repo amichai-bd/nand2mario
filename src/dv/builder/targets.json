@@ -5961,5 +5961,35 @@
       "src/dv/input/tb_adc_pairs.sv"
     ],
     "top": "tb_adc_pairs"
+  },
+  "controls-mask": {
+    "sources": [
+      "src/rtl/input/n2m_controls_pkg.sv",
+      "src/rtl/input/n2m_button_filter.sv",
+      "src/rtl/input/n2m_controls_mask.sv",
+      "src/rtl/input/n2m_input_pkg.sv",
+      "src/rtl/input/n2m_input.sv",
+      "src/dv/input/tb_controls_mask.sv"
+    ],
+    "top": "tb_controls_mask",
+    "args": [],
+    "signature": "PASS controls mask checks=24",
+    "expected_exit": "zero"
+  },
+  "controls-mask-corrupt": {
+    "sources": [
+      "src/rtl/input/n2m_controls_pkg.sv",
+      "src/rtl/input/n2m_button_filter.sv",
+      "src/rtl/input/n2m_controls_mask.sv",
+      "src/rtl/input/n2m_input_pkg.sv",
+      "src/rtl/input/n2m_input.sv",
+      "src/dv/input/tb_controls_mask.sv"
+    ],
+    "top": "tb_controls_mask",
+    "args": [
+      "+CORRUPT_MASK"
+    ],
+    "signature": "CONTROLS_MASK expected=0a,0a actual=00,00",
+    "expected_exit": "nonzero"
   }
 }

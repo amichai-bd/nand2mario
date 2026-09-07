@@ -64,6 +64,8 @@ reset, and raise a named verification failure. They do not block buttons.
 Synchronize each button through two system registers. Accept a changed level
 after5 ms of consecutive agreement; bounce restarts only that button's counter.
 All four buttons can change together. Reset initializes them released.
+The filter exposes the button proposal accepted on the current edge. The mask
+combines that proposal with the axis pair accepted on that same edge.
 
 Each axis has build-time minimum, center, maximum, and polarity calibration.
 Initial nominal values are0,1352,2703. These are design defaults, not measured
@@ -84,6 +86,9 @@ coherent mask. Pause, HALT, STOP, and core reset do not stop acquisition.
 Global reset releases controls and discards incomplete samples. ADC PLL lock
 loss invalidates axis data and restarts acquisition after synchronized lock
 recovery; it does not create a clock or reset the Game Boy.
+Unlike a missing-response timeout, backend reset abandons an outstanding ADC
+transaction because its response may never arrive. It preserves a protocol
+fault until global reset. Buttons remain live during recovery.
 
 LEDR[7:0] show the effective shared input mask, LEDR8 shows PHYSICAL selection,
 and LEDR9 shows fresh ADC pair availability. LED outputs are active high.
