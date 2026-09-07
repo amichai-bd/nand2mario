@@ -43,6 +43,19 @@ tools fail with diagnostics; there is no fallback simulator.
 
 ## Questa simulation
 
+### Installed Intel ADC model
+
+`vendor_model: "intel-adc"` resolves the pinned installed control core, canonical
+synchronizer, public and encrypted MAX10 atoms, and PLL models. It uses the same
+installation discovery and explicit `--intel-sim-lib` selection as memory.
+Every source hash and PLL generation dependency enters the fingerprint before
+reuse. Each attempt records the actual PLL generator command, verifies its
+parameters against the FPGA configuration, and retains the generated hash.
+Vendor compilation and run mapping use the isolated `n2m_intel_adc` library and
+explicit `-L` binding. Repository substitutes for these modules are rejected.
+There is no ADC diagnostic waiver or alternative model. Host dependency tests
+do not count as hardware behavior evidence.
+
 ### Installed Intel memory model
 
 A target declaring `vendor_model: "intel-memory"` requires the installed source

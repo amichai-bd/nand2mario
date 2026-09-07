@@ -267,12 +267,19 @@ def generate(folder, sources, execute, timeout, record, build):
         if file_hash(source) != sources[name]["sha256"]:
             raise ValueError("Intel ADC dependency changed before generation")
         shutil.copyfile(source, folder / name)
-    command = [sources["generator"]["path"], "-silent", "module=altpll",
+    execute(generation_command(sources), folder, folder / "generate-adc-pll.log", timeout, record, build)
+    verify_generated(folder)
+
+
+def generation_command(sources):
+    return [sources["generator"]["path"], "-silent", "module=altpll",
                "INTENDED_DEVICE_FAMILY=MAX 10", "INCLK0_INPUT_FREQUENCY=100000",
                "CLK0_MULTIPLY_BY=1", "CLK0_DIVIDE_BY=1", "CLK0_DUTY_CYCLE=50",
                "CLK0_PHASE_SHIFT=0", "COMPENSATE_CLOCK=CLK0", "OPERATION_MODE=NO_COMPENSATION",
                "areset=used", "locked=used", "clk0=used", "OPTIONAL_FILES=NONE", "n2m_adc_pll.v"]
-    execute(command, folder, folder / "generate-adc-pll.log", timeout, record, build)
+
+
+def verify_generated(folder):
     text = (folder / "n2m_adc_pll.v").read_text()
     expected = {"clk0_divide_by": "1", "clk0_multiply_by": "1", "clk0_duty_cycle": "50",
                 "clk0_phase_shift": '"0"', "inclk0_input_frequency": "100000",

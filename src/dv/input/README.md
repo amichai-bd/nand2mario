@@ -30,3 +30,12 @@ input owner. Its 24 literal checks include a debounce completion coincident
 with a complete pair, hysteresis and reversed polarity, bounce, tick deferral,
 stale-axis release, source isolation and reset. The negative corrupts the actual
 physical mask. This bounded fixture does not replace acquisition or board proof.
+
+`adc-backend` uses the unchanged Intel configuration and installed encrypted
+ADC model with the real reset controller and producer. The fixed dual-ADC
+model returns ADC1 channel1=11 and channel2=12, as specified by Intel's
+[fixed simulation output table](https://docs.altera.com/r/docs/683596/24.1/max-10-analog-to-digital-converter-user-guide/fixed-adc-logic-simulation-output).
+The fixture checks ordered responses, cancels an outstanding X by injecting
+PLL lock loss, then requires complete fresh pairs after recovery. Its negative
+changes the actual Y response. This proves digital model integration, not
+analog conversion accuracy or physical wiring.

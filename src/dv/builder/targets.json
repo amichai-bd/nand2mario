@@ -5991,5 +5991,41 @@
     ],
     "signature": "CONTROLS_MASK expected=0a,0a actual=00,00",
     "expected_exit": "nonzero"
+  },
+  "adc-backend": {
+    "sources": [
+      "src/rtl/clocking/n2m_reset_control.sv",
+      "src/rtl/input/n2m_adc_backend.sv",
+      "src/rtl/input/n2m_controls_pkg.sv",
+      "src/rtl/input/n2m_button_filter.sv",
+      "src/rtl/input/n2m_adc_pairs.sv",
+      "src/rtl/input/n2m_controls_mask.sv",
+      "src/rtl/input/n2m_physical_controls.sv",
+      "src/dv/input/tb_adc_backend.sv"
+    ],
+    "top": "tb_adc_backend",
+    "args": [],
+    "signature": "PASS actual ADC model replies=8 commands=9 lock-cancel",
+    "expected_exit": "zero",
+    "vendor_model": "intel-adc"
+  },
+  "adc-backend-corrupt": {
+    "sources": [
+      "src/rtl/clocking/n2m_reset_control.sv",
+      "src/rtl/input/n2m_adc_backend.sv",
+      "src/rtl/input/n2m_controls_pkg.sv",
+      "src/rtl/input/n2m_button_filter.sv",
+      "src/rtl/input/n2m_adc_pairs.sv",
+      "src/rtl/input/n2m_controls_mask.sv",
+      "src/rtl/input/n2m_physical_controls.sv",
+      "src/dv/input/tb_adc_backend.sv"
+    ],
+    "top": "tb_adc_backend",
+    "args": [
+      "+CORRUPT_ADC"
+    ],
+    "signature": "ADC_VENDOR_DATA",
+    "expected_exit": "nonzero",
+    "vendor_model": "intel-adc"
   }
 }
