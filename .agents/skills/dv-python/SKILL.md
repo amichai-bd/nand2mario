@@ -19,6 +19,15 @@ oracle. Sharing the unchanged DUT and specification is appropriate. Inspect an
 older testbench only after establishing independent expectations, when comparison
 is explicitly part of the task.
 
+Select checks using the [verification tiers](../../../wiki/src/dv/integration/SPEC.md#verification-tiers).
+Use the accepted continuous Python path for composed execution and shared Intel
+preload for functional iteration; retain focused SV unit tests. Reuse existing
+builders, validators and targets. Exercise final pause, completion and watchdog
+handling in a short complete-harness run before expensive acceptance. Select
+faults for affected behavior and stop at the shortest meaningful witness; reuse
+valid unchanged negative evidence. Keep historical Tcl investigation off unrelated
+delivery paths unless a concrete requirement depends on it.
+
 ## Small first experiment
 
 Choose the smallest contract with observable success and failure. State what
