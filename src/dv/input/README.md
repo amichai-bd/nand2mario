@@ -15,3 +15,12 @@ precedence, cache replay and reset. The power fixture uses both sources with act
 updates and effective-mask successor retirement checks. Legacy endpoint,
 snapshot, stopped-STEP and integration checks preserve existing contracts.
 [PR160](https://github.com/amichai-bd/nand2mario/pull/160) retains run evidence.
+
+The physical acquisition fixture follows the
+[board controls contract](../../../wiki/src/fpga-controls.md). `adc-pairs`
+checks four literal X/Y publications, stalled-command ordering, timeout drain,
+Y acceptance on the expiry edge, late-response rejection, and cancellation on
+ADC availability loss. Its data corruption and wrong-channel targets sensitize
+the public-pair oracle and named assertion. This fixture drives the public ADC
+response interface; it does not replace installed Intel model, button/axis,
+shared-input composition, or physical board evidence.

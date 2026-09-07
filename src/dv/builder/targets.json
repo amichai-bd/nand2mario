@@ -5915,5 +5915,51 @@
     "args": [
       "+MISSING_PAIR"
     ]
+  },
+  "adc-pairs": {
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS adc pairs pairs=4",
+    "sources": [
+      "src/rtl/input/n2m_controls_pkg.sv",
+      "src/rtl/input/n2m_button_filter.sv",
+      "src/rtl/input/n2m_adc_pairs.sv",
+      "src/rtl/input/n2m_controls_mask.sv",
+      "src/rtl/input/n2m_physical_controls.sv",
+      "src/dv/input/tb_adc_pairs.sv"
+    ],
+    "top": "tb_adc_pairs"
+  },
+  "adc-pairs-corrupt": {
+    "args": [
+      "+CORRUPT_PAIR"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "ADC_PAIR_DATA",
+    "sources": [
+      "src/rtl/input/n2m_controls_pkg.sv",
+      "src/rtl/input/n2m_button_filter.sv",
+      "src/rtl/input/n2m_adc_pairs.sv",
+      "src/rtl/input/n2m_controls_mask.sv",
+      "src/rtl/input/n2m_physical_controls.sv",
+      "src/dv/input/tb_adc_pairs.sv"
+    ],
+    "top": "tb_adc_pairs"
+  },
+  "adc-pairs-channel": {
+    "args": [
+      "+WRONG_CHANNEL"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT adc_pair_response_contract",
+    "sources": [
+      "src/rtl/input/n2m_controls_pkg.sv",
+      "src/rtl/input/n2m_button_filter.sv",
+      "src/rtl/input/n2m_adc_pairs.sv",
+      "src/rtl/input/n2m_controls_mask.sv",
+      "src/rtl/input/n2m_physical_controls.sv",
+      "src/dv/input/tb_adc_pairs.sv"
+    ],
+    "top": "tb_adc_pairs"
   }
 }
