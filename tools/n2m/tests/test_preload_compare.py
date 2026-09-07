@@ -1,5 +1,6 @@
 """Comparison must reject incomplete, changed and reordered execution evidence."""
 import hashlib
+import copy
 import importlib.util
 import json
 from pathlib import Path
@@ -23,7 +24,16 @@ class PreloadComparisonTests(unittest.TestCase):
         for mode in ('normal', 'preloaded'):
             folder = self.root / mode
             folder.mkdir()
-            record = {'status': 'PASS', 'inputs': {'rtl': 'same'}, 'tools': {}, 'artifacts': {}}
+            definition = {'top': 'tb_integration', 'args': [], 'expected_exit': 'zero',
+                          'sources': ['rtl'], 'driver': {'peer': 'src/dv/integration/peer.py', 'inputs': []}}
+            record = {'status': 'PASS', 'inputs': {'rtl': 'same'}, 'tools': {}, 'artifacts': {},
+                      'seed': 1, 'options': {'target': 'integration-smoke', 'definition': definition}}
+            if mode == 'preloaded':
+                record['options']['target'] = 'integration-preloaded'
+                definition['args'] = ['-gPRELOADED=1']
+                definition['driver'].update(peer='src/dv/preload/peer.py', preload=True,
+                                            inputs=['src/dv/integration/peer.py'])
+                record['inputs']['src/dv/preload/peer.py'] = 'extra'
             values = {'program.gb': b'original', 'initial-state.csv': b'epoch\n2\n',
                       'retirement.csv': b'seq,data\n0,01\n1,02\n', 'bus.csv': b'bus\nread\n',
                       'pixels.csv': b'pixel\n0\n1\n',
@@ -54,14 +64,32 @@ class PreloadComparisonTests(unittest.TestCase):
             module.compare(self.root, *self.paths)
 
     def test_incomplete_or_changed_source(self):
+        baseline = json.loads(self.paths[1].read_text())
         for field, value, expected in (('status', 'FAIL', 'two accepted'),
-                                       ('inputs', {'rtl': 'changed'}, 'source/tool')):
-            record = json.loads(self.paths[1].read_text())
-            record.update(status='PASS', inputs={'rtl': 'same'})
+                                       ('inputs', {'rtl': 'changed', 'src/dv/preload/peer.py': 'extra'}, 'source/tool')):
+            record = copy.deepcopy(baseline)
             record[field] = value
             self.paths[1].write_text(json.dumps(record))
             with self.assertRaisesRegex(ValueError, expected):
                 module.compare(self.root, *self.paths)
+
+    def test_rejects_two_preloaded_records(self):
+        with self.assertRaisesRegex(ValueError, 'target modes'):
+            module.compare(self.root, self.paths[1], self.paths[1])
+
+    def test_missing_hdl_input(self):
+        record = json.loads(self.paths[1].read_text())
+        del record['inputs']['rtl']
+        self.paths[1].write_text(json.dumps(record))
+        with self.assertRaisesRegex(ValueError, 'HDL inputs'):
+            module.compare(self.root, *self.paths)
+
+    def test_changed_runtime_args(self):
+        record = json.loads(self.paths[1].read_text())
+        record['options']['definition']['args'].append('+pixel_fault')
+        self.paths[1].write_text(json.dumps(record))
+        with self.assertRaisesRegex(ValueError, 'runtime modes or args'):
+            module.compare(self.root, *self.paths)
 
 
 if __name__ == '__main__':

@@ -1,5 +1,6 @@
 """Compare retained real-load and preloaded executions without relabeling them."""
 import argparse
+import copy
 import hashlib
 import json
 from pathlib import Path
@@ -9,6 +10,31 @@ def compare(root, normal_path, preload_path):
     records = [json.loads(path.read_text(encoding='utf-8')) for path in (normal_path, preload_path)]
     if any(record['status'] != 'PASS' for record in records):
         raise ValueError('complete execution equivalence requires two accepted runs')
+    normal, preloaded = (record['options'] for record in records)
+    real_peer = 'src/dv/integration/peer.py'
+    preload_peer = 'src/dv/preload/peer.py'
+    if normal.get('target') != 'integration-smoke' or preloaded.get('target') != 'integration-preloaded':
+        raise ValueError('comparison requires real-UART then preloaded target modes')
+    left, right = normal['definition'], preloaded['definition']
+    if (left['driver']['peer'] != real_peer or left['driver'].get('preload', False) or
+            right['driver']['peer'] != preload_peer or right['driver'].get('preload') is not True or
+            left['args'] != [] or right['args'] != ['-gPRELOADED=1'] or
+            left['top'] != 'tb_integration' or left['expected_exit'] != 'zero'):
+        raise ValueError('comparison runtime modes or args differ')
+    canonical = copy.deepcopy(right)
+    canonical['args'] = []
+    canonical['driver']['peer'] = real_peer
+    canonical['driver'].pop('preload')
+    if real_peer not in canonical['driver']['inputs']:
+        raise ValueError('preload is missing its shared execution peer input')
+    canonical['driver']['inputs'].remove(real_peer)
+    if canonical != left or records[0]['seed'] != records[1]['seed']:
+        raise ValueError('comparison runtime definitions or seeds differ')
+    if any(not set(option['definition']['sources']) <= set(record['inputs'])
+           for option, record in zip((normal, preloaded), records)):
+        raise ValueError('comparison is missing declared HDL inputs')
+    if set(records[1]['inputs']) != set(records[0]['inputs']) | {preload_peer}:
+        raise ValueError('comparison relevant input sets differ')
     common = set(records[0]['inputs']) & set(records[1]['inputs'])
     changed = [name for name in sorted(common) if records[0]['inputs'][name] != records[1]['inputs'][name]]
     if changed or records[0]['tools'] != records[1]['tools']:
