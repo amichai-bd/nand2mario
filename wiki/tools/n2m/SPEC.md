@@ -50,11 +50,19 @@ The [target registry](../../../src/dv/builder/targets.json) defaults to
 unchanged. `testbench: "python"` explicitly selects cocotb with a closed `python`
 object containing `module`, `test` and `inputs`. The module/test are identifiers;
 inputs name checked-in files including exactly one module file. Unsupported
-types, missing inputs, incompatible driver/vendor-model settings and nonzero
+types, missing inputs, incompatible driver settings and nonzero
 raw-exit expectations fail without fallback. The first path accepts one named
 Python test per target. The [usage guide](../../../src/dv/python/README.md) owns
 setup and commands; the [joypad plan](../../../src/dv/python/joypad/README.md)
 owns its bounded subsystem coverage.
+
+Python targets may select `vendor_model: "intel-memory"` through the existing
+strict model resolution, hashing and library binding. Other vendor selections
+remain unsupported. `preload: "integration"` packages the original integration
+image and prepares/verifies the supported Intel initialization files before
+elaboration; it requires the software packager inputs in the Python fingerprint.
+The [integration plan](../../../src/dv/python/integration/README.md) owns its
+diagnostic scope and historical source comparison.
 
 Python targets use the executing pinned interpreter and installed packages from
 the [separate dependency record](../../../src/dv/python/THIRD_PARTY.md). Normal
@@ -76,6 +84,8 @@ the builder exit 1. Negative Python targets remain FAIL and are never reused.
 Required evidence paths and hashes are checked before cache reuse.
 
 Classic waveform access uses `-no_autoacc` and `-voptargs=+acc=rnbp+/<top>`.
+WLF and VCD log top-level signals, including explicit observation latches,
+without recursively dumping memory arrays.
 The exact single vopt-10908 optimization warning and matching zero-error,
 one-warning summary/restored counts are explained in the record. This visibility
 cost is expected; other warnings and errors still fail. Python scheduling uses

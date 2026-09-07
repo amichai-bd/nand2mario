@@ -21,8 +21,12 @@ def validate(root, target):
     config = target.get("python")
     if not isinstance(config, dict) or set(config) != {"module", "test", "inputs"}:
         raise ValueError("python testbench requires module, test and inputs")
-    if "driver" in target or "vendor_model" in target or target["expected_exit"] != "zero":
-        raise ValueError("python testbench requires zero raw exit and no driver/vendor model")
+    if "driver" in target or target["expected_exit"] != "zero":
+        raise ValueError("python testbench requires zero raw exit and no driver")
+    if target.get("vendor_model") not in (None, "intel-memory"):
+        raise ValueError("Python testbench supports only Intel memory models")
+    if target.get("preload") not in (None, "integration"):
+        raise ValueError("unknown Python preload")
     if not isinstance(target.get("top"), str) or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", target["top"]):
         raise ValueError("python top must be an HDL identifier")
     if not all(isinstance(config[k], str) and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", config[k]) for k in ("module", "test")):
@@ -38,6 +42,14 @@ def validate(root, target):
     matches = [p for p in config["inputs"] if Path(p).name == config["module"] + ".py"]
     if len(matches) != 1:
         raise ValueError("python inputs must contain exactly one named test module")
+    if target.get("preload") == "integration":
+        required = {"src/dv/integration/image.py", "src/dv/integration/program.asm",
+                    "src/dv/integration/program.json", "src/dv/integration/retirement.json",
+                    "src/sw/generated/interfaces.inc"}
+        required.update(p.relative_to(root).as_posix() for p in (root / "tools/sw").glob("*")
+                        if p.suffix in (".py", ".json"))
+        if target.get("vendor_model") != "intel-memory" or not required <= set(config["inputs"]):
+            raise ValueError("integration preload requires Intel memory and all software image inputs")
 
 
 def discover():
@@ -82,10 +94,20 @@ def environment(root, target, attempt, seed, runtime):
     return env
 
 
-def prepare(target, attempt):
+def prepare(target, attempt, root=None):
+    if target.get("preload") == "integration":
+        import hashlib
+        import importlib.util
+        from .preload import prepare as prepare_preload, verify
+        spec = importlib.util.spec_from_file_location("integration_image", root / "src/dv/integration/image.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        image = module.build(root, attempt)
+        prepare_preload(image, hashlib.sha256(image).hexdigest(), attempt)
+        verify(attempt)
     (attempt / "run.do").write_text(
-        "onerror {quit -code 1}\nlog -r /*\nvcd file waves/simulation.vcd\n"
-        "vcd add -r /*\nrun -all\nquit -code 0\n", encoding="utf-8")
+        "onerror {quit -code 1}\nlog /*\nvcd file waves/simulation.vcd\n"
+        "vcd add /*\nrun -all\nquit -code 0\n", encoding="utf-8")
 
 
 def classify(output):

@@ -31,7 +31,7 @@ def commands(simulator, root, target, seed, compiler, attempt, *, prepare=True, 
     if prepare:
         if python_runtime:
             from .python_tb import prepare as prepare_python
-            prepare_python(target, attempt)
+            prepare_python(target, attempt, root)
         else:
             write_macro(attempt)
     vendor_compile, vendor_map, vendor_binding = intel_commands(simulator, compiler, attempt, vendor_model)
