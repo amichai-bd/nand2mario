@@ -111,8 +111,9 @@ RUN request and final paused. The builder's recorded stage start precedes image
 preparation, compilation and model startup. Subtracting that start from the
 loaded checkpoint includes those costs, but excludes earlier tool discovery,
 source hashing and environment installation. Loader-command and loaded-to-paused
-intervals are reported separately. The full stage duration includes final result
-processing. Reject unordered timestamps; do not infer a performance improvement
+intervals are reported separately. Stage duration ends after result checks,
+before final artifact hashing and publication. Reject unordered timestamps;
+do not infer a performance improvement
 from unlike configurations or these intervals alone.
 
 Successful continuous execution establishes the checked correspondence under
