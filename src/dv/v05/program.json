@@ -1,0 +1,395 @@
+{
+  "note": "Original independent literal instruction recipe; conditional JR is2M when not taken. No DUT or assembler output used.",
+  "instructions": [
+    {
+      "pc": 256,
+      "bytes": "00",
+      "mcycles": 1,
+      "operation": "nop"
+    },
+    {
+      "pc": 257,
+      "bytes": "c30002",
+      "mcycles": 4,
+      "operation": "jp_0200"
+    },
+    {
+      "pc": 512,
+      "bytes": "f3",
+      "mcycles": 1,
+      "operation": "di"
+    },
+    {
+      "pc": 513,
+      "bytes": "31fedf",
+      "mcycles": 3,
+      "operation": "sp_dffe"
+    },
+    {
+      "pc": 516,
+      "bytes": "af",
+      "mcycles": 1,
+      "operation": "xor_a"
+    },
+    {
+      "pc": 517,
+      "bytes": "e040",
+      "mcycles": 3,
+      "operation": "lcdc_write"
+    },
+    {
+      "pc": 519,
+      "bytes": "e00f",
+      "mcycles": 3,
+      "operation": "if_write"
+    },
+    {
+      "pc": 521,
+      "bytes": "eaffff",
+      "mcycles": 4,
+      "operation": "ie_write"
+    },
+    {
+      "pc": 524,
+      "bytes": "e042",
+      "mcycles": 3,
+      "operation": "scy_write"
+    },
+    {
+      "pc": 526,
+      "bytes": "e043",
+      "mcycles": 3,
+      "operation": "scx_write"
+    },
+    {
+      "pc": 528,
+      "bytes": "210098",
+      "mcycles": 3,
+      "operation": "hl_9800"
+    },
+    {
+      "pc": 531,
+      "bytes": "010004",
+      "mcycles": 3,
+      "operation": "bc_0400"
+    },
+    {
+      "pc": 534,
+      "bytes": "af",
+      "mcycles": 1,
+      "operation": "xor_a"
+    },
+    {
+      "pc": 535,
+      "bytes": "22",
+      "mcycles": 2,
+      "operation": "write_hli"
+    },
+    {
+      "pc": 536,
+      "bytes": "0b",
+      "mcycles": 2,
+      "operation": "dec_bc"
+    },
+    {
+      "pc": 537,
+      "bytes": "78",
+      "mcycles": 1,
+      "operation": "a_b"
+    },
+    {
+      "pc": 538,
+      "bytes": "b1",
+      "mcycles": 1,
+      "operation": "or_c"
+    },
+    {
+      "pc": 539,
+      "bytes": "20f9",
+      "mcycles": 3,
+      "operation": "jr_nz"
+    },
+    {
+      "pc": 541,
+      "bytes": "210080",
+      "mcycles": 3,
+      "operation": "hl_8000"
+    },
+    {
+      "pc": 544,
+      "bytes": "0610",
+      "mcycles": 2,
+      "operation": "b_10"
+    },
+    {
+      "pc": 546,
+      "bytes": "af",
+      "mcycles": 1,
+      "operation": "xor_a"
+    },
+    {
+      "pc": 547,
+      "bytes": "22",
+      "mcycles": 2,
+      "operation": "write_hli"
+    },
+    {
+      "pc": 548,
+      "bytes": "05",
+      "mcycles": 1,
+      "operation": "dec_b"
+    },
+    {
+      "pc": 549,
+      "bytes": "20fb",
+      "mcycles": 3,
+      "operation": "jr_nz"
+    },
+    {
+      "pc": 551,
+      "bytes": "0608",
+      "mcycles": 2,
+      "operation": "b_08"
+    },
+    {
+      "pc": 553,
+      "bytes": "3eff",
+      "mcycles": 2,
+      "operation": "a_ff"
+    },
+    {
+      "pc": 555,
+      "bytes": "22",
+      "mcycles": 2,
+      "operation": "write_hli"
+    },
+    {
+      "pc": 556,
+      "bytes": "af",
+      "mcycles": 1,
+      "operation": "xor_a"
+    },
+    {
+      "pc": 557,
+      "bytes": "22",
+      "mcycles": 2,
+      "operation": "write_hli"
+    },
+    {
+      "pc": 558,
+      "bytes": "05",
+      "mcycles": 1,
+      "operation": "dec_b"
+    },
+    {
+      "pc": 559,
+      "bytes": "20f8",
+      "mcycles": 3,
+      "operation": "jr_nz"
+    },
+    {
+      "pc": 561,
+      "bytes": "3e01",
+      "mcycles": 2,
+      "operation": "a_01"
+    },
+    {
+      "pc": 563,
+      "bytes": "ea0098",
+      "mcycles": 4,
+      "operation": "marker_write"
+    },
+    {
+      "pc": 566,
+      "bytes": "eaffff",
+      "mcycles": 4,
+      "operation": "ie_write"
+    },
+    {
+      "pc": 569,
+      "bytes": "3ee4",
+      "mcycles": 2,
+      "operation": "a_e4"
+    },
+    {
+      "pc": 571,
+      "bytes": "e047",
+      "mcycles": 3,
+      "operation": "bgp_write"
+    },
+    {
+      "pc": 573,
+      "bytes": "3e91",
+      "mcycles": 2,
+      "operation": "a_91"
+    },
+    {
+      "pc": 575,
+      "bytes": "e040",
+      "mcycles": 3,
+      "operation": "lcdc_write"
+    },
+    {
+      "pc": 577,
+      "bytes": "af",
+      "mcycles": 1,
+      "operation": "xor_a"
+    },
+    {
+      "pc": 578,
+      "bytes": "e00f",
+      "mcycles": 3,
+      "operation": "if_write"
+    },
+    {
+      "pc": 580,
+      "bytes": "76",
+      "mcycles": 1,
+      "operation": "halt"
+    },
+    {
+      "pc": 581,
+      "bytes": "3e20",
+      "mcycles": 2,
+      "operation": "a_20"
+    },
+    {
+      "pc": 583,
+      "bytes": "e000",
+      "mcycles": 3,
+      "operation": "joyp_write"
+    },
+    {
+      "pc": 585,
+      "bytes": "f000",
+      "mcycles": 3,
+      "operation": "joyp_read"
+    },
+    {
+      "pc": 587,
+      "bytes": "2f",
+      "mcycles": 1,
+      "operation": "cpl"
+    },
+    {
+      "pc": 588,
+      "bytes": "e60f",
+      "mcycles": 2,
+      "operation": "and_0f"
+    },
+    {
+      "pc": 590,
+      "bytes": "47",
+      "mcycles": 1,
+      "operation": "b_a"
+    },
+    {
+      "pc": 591,
+      "bytes": "3e10",
+      "mcycles": 2,
+      "operation": "a_10"
+    },
+    {
+      "pc": 593,
+      "bytes": "e000",
+      "mcycles": 3,
+      "operation": "joyp_write"
+    },
+    {
+      "pc": 595,
+      "bytes": "f000",
+      "mcycles": 3,
+      "operation": "joyp_read"
+    },
+    {
+      "pc": 597,
+      "bytes": "2f",
+      "mcycles": 1,
+      "operation": "cpl"
+    },
+    {
+      "pc": 598,
+      "bytes": "e60f",
+      "mcycles": 2,
+      "operation": "and_0f"
+    },
+    {
+      "pc": 600,
+      "bytes": "cb37",
+      "mcycles": 2,
+      "operation": "swap_a"
+    },
+    {
+      "pc": 602,
+      "bytes": "b0",
+      "mcycles": 1,
+      "operation": "or_b"
+    },
+    {
+      "pc": 603,
+      "bytes": "4f",
+      "mcycles": 1,
+      "operation": "c_a"
+    },
+    {
+      "pc": 604,
+      "bytes": "210099",
+      "mcycles": 3,
+      "operation": "hl_9900"
+    },
+    {
+      "pc": 607,
+      "bytes": "0608",
+      "mcycles": 2,
+      "operation": "b_08"
+    },
+    {
+      "pc": 609,
+      "bytes": "5f",
+      "mcycles": 1,
+      "operation": "e_a"
+    },
+    {
+      "pc": 610,
+      "bytes": "e601",
+      "mcycles": 2,
+      "operation": "and_01"
+    },
+    {
+      "pc": 612,
+      "bytes": "22",
+      "mcycles": 2,
+      "operation": "write_hli"
+    },
+    {
+      "pc": 613,
+      "bytes": "7b",
+      "mcycles": 1,
+      "operation": "a_e"
+    },
+    {
+      "pc": 614,
+      "bytes": "0f",
+      "mcycles": 1,
+      "operation": "rrca"
+    },
+    {
+      "pc": 615,
+      "bytes": "05",
+      "mcycles": 1,
+      "operation": "dec_b"
+    },
+    {
+      "pc": 616,
+      "bytes": "20f7",
+      "mcycles": 3,
+      "operation": "jr_nz"
+    },
+    {
+      "pc": 618,
+      "bytes": "18d5",
+      "mcycles": 3,
+      "operation": "jr"
+    }
+  ]
+}

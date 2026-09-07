@@ -5,6 +5,7 @@ names follow the implementation owner, not a second software hierarchy.
 
 | Implementation owner | Requirements | Design and observable rules | Verification |
 |---|---|---|---|
+| `src/sw/v05` and `src/dv/v05` | [#88](https://github.com/amichai-bd/nand2mario/issues/88) | [v0.5 acceptance](src/dv/v05/SPEC.md) | Literal instruction and pixel oracles, continuous run and real loader |
 | `src/rtl/system` | [#88](https://github.com/amichai-bd/nand2mario/issues/88) | [MAS_system](src/rtl/system/MAS_system.md) | Original v0.5 program and composed instruction/pixel acceptance |
 | [tools/n2m/host_play.py](../tools/n2m/host_play.py) | [#157](https://github.com/amichai-bd/nand2mario/issues/157) | [Host play SPEC](tools/host-play/SPEC.md) | Original ROM, immutable images and real UART input loop |
 | `src/rtl/dma` | [#132](https://github.com/amichai-bd/nand2mario/issues/132) | [MAS_dma](src/rtl/dma/MAS_dma.md) | FF46 transfer, OAM access/corruption and shared-store service |

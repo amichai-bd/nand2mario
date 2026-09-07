@@ -2,8 +2,7 @@
 
 `n2m_v05_system` composes the delivered owners used by the original
 [issue88](https://github.com/amichai-bd/nand2mario/issues/88) program. It does not
-add CPU, memory, interrupt or pixel semantics. The program and acceptance remain
-under the [charter](../../project-charter.md#release-acceptance) and
+add CPU, memory, interrupt or pixel semantics. The program and acceptance follow the [v0.5 fixture](../../dv/v05/SPEC.md) under the [charter](../../project-charter.md#release-acceptance) and
 [software specification](../../../tools/sw/SPEC.md).
 
 The module accepts 50MHz `clk_sys`, 25.2MHz `clk_pix` and their qualified,

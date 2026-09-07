@@ -6,7 +6,8 @@
 module n2m_v05_system (
     input var logic clk_sys,
     input var logic reset_sys,
-    input var logic clk_pix, reset_pix,
+    input var logic clk_pix,
+    input var logic reset_pix,
     input var logic uart_rx,
     output logic uart_tx,
     output logic [3:0] red, green, blue,
@@ -200,3 +201,4 @@ module n2m_v05_system (
     );
     `N2M_ASSERT(V05_NO_STOP, clk_sys, reset, !cpu_stopped)
 endmodule
+
