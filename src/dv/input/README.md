@@ -63,5 +63,5 @@ Five four-register wire readbacks cover UART-default isolation, explicit physica
 selection and debounced A/B plus directional masks. Two writes make 22 replies.
 The paused timebase must remain paused while the diagnostic VGA producer advances;
 96 displayed samples are checked from literal geometry and shade arithmetic.
-The negative changes actual JOYP observation from 1A to zero. Physical wiring,
+The negative changes actual JOYP observation from 16 to zero. Physical wiring,
 ADC accuracy, and the generated board clocks are separate acceptance evidence.

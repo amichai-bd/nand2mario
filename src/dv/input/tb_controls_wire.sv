@@ -214,7 +214,7 @@ module tb_controls_wire;
         word_request(32'h10044); expect_word({24'd0,source}); exchange(2,4,0,4);
         word_request(32'h10048); expect_word({24'd0,physical}); exchange(2,4,0,4);
         word_request(32'h1004c); expect_word({24'd0,effective}); exchange(2,4,0,4);
-        if (corrupt_mask && effective == 8'h1a) force joypad_buttons = 8'h00;
+        if (corrupt_mask && effective == 8'h16) force joypad_buttons = 8'h00;
         if (joypad_buttons !== effective || leds !== {1'b1,source[0],effective})
             $fatal(1,"CONTROLS_WIRE_MASK expected=%02h joypad=%02h leds=%03h",effective,joypad_buttons,leds);
         if (!paused || gb_tick) $fatal(1,"CONTROLS_WIRE_PAUSED");
@@ -238,13 +238,13 @@ module tb_controls_wire;
         masks(8'h5a,0,0,8'h5a);
         @(negedge clk_sys);buttons_n=4'hd;sample_x=0;sample_y=0;
         repeat(100) @(negedge clk_sys);
-        masks(8'h5a,0,8'h2a,8'h5a);
+        masks(8'h5a,0,8'h26,8'h5a);
         for(zero_index=0;zero_index<8;zero_index=zero_index+1) expected_payload[zero_index]=0;
         host_write_request(32'h10044,1); exchange(14,8,0,8);
-        masks(8'h5a,1,8'h2a,8'h2a);
+        masks(8'h5a,1,8'h26,8'h26);
         @(negedge clk_sys);buttons_n=4'he;sample_x=0;sample_y=0;
         repeat(100) @(negedge clk_sys);
-        masks(8'h5a,1,8'h1a,8'h1a);
+        masks(8'h5a,1,8'h16,8'h16);
         // After two more display publications every sampled image pixel has the stable mask.
         repeat(2) @(posedge observed_complete);
         repeat(2) @(negedge vsync_n);
@@ -254,7 +254,7 @@ module tb_controls_wire;
                 integer index, expected_shade;
                 logic [3:0] expected_gray;
                 index=((int'(video_y)-24)/3)*160+(int'(video_x)-80)/3;
-                expected_shade=((index&3)^((index>>8)&3)^1);
+                expected_shade=((index&3)^((index>>8)&3)^2);
                 case(expected_shade)
                     0: expected_gray=15;
                     1: expected_gray=10;
