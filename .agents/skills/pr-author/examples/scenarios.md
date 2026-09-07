@@ -8,7 +8,8 @@ gh pr edit 51 --body-file workdir/.tmp/pr/fix-timer.md
 gh pr comment 51 --body-file workdir/.tmp/pr/review-51.md
 ```
 
-Keep these ignored drafts after success. Markdown backticks and line breaks
+Keep these ignored drafts while work or review needs them, then remove them with
+the worktree. Markdown backticks and line breaks
 remain literal because the CLI reads the file.
 
 Bad: Pass multiline Markdown through an interpolated shell string, claim

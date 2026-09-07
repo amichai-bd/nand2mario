@@ -25,10 +25,14 @@ allowed only after that PID matches the recorded preview.
 1. Check `git worktree list --porcelain` before retrying Git cleanup.
 2. Resolve the leftover path. Confirm it is the exact target under this
    repository's `worktrees/` directory.
-3. Inspect all leftover content, including hidden files. Preserve and report any
-   content; do not force-delete it.
-4. Remove only a verified empty leftover directory with an exact, non-recursive
-   path. Then run `git worktree prune` and verify the result.
+3. Inspect all leftover content, including hidden files. Apply the worktree guide's
+   [completion and dependency checks](../../../../worktrees/README.md#clean-up-after-merge).
+   Preserve unfinished work and unrelated user files. Known completed artifacts
+   and drafts may be deleted; do not archive them in the primary checkout.
+4. Remove only the verified eligible exact path. On Windows, use native PowerShell
+   file operations with `-LiteralPath`, after confirming the resolved absolute
+   target remains in the intended directory. Do not combine shells for deletion.
+   Then run `git worktree prune` and verify the result.
 
 Do not claim cleanup from an interrupt, a missing Git registration, or a failed
 remove command. Verify the listener, process, registration, and path state.

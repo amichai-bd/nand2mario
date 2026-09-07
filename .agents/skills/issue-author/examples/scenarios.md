@@ -34,7 +34,7 @@ python .agents/skills/issue-author/scripts/create_issue.py --check workdir/.tmp/
 python .agents/skills/issue-author/scripts/create_issue.py workdir/.tmp/issues/fix-timer.md
 ```
 
-Keep the draft. The helper sends only the body through stdin, stripping metadata.
+Keep the draft while work or review needs it; remove it with the worktree. The helper sends only the body through stdin, stripping metadata.
 For edits, save a body-only Markdown file and use
 `gh issue edit 42 --body-file workdir/.tmp/issues/fix-timer-body.md`.
 Do not pass the metadata template directly as an edit body.
