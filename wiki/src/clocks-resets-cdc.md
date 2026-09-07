@@ -9,6 +9,40 @@ integration, and physical proof remain outstanding in
 
 ## Clock domains
 
+### Approved 25 MHz migration
+
+[#164](https://github.com/amichai-bd/nand2mario/issues/164) replaces the 50 MHz
+system implementation below with a 25 MHz PLL output. This section records the
+approved design; implementation and fit evidence are still pending. CPU, memory,
+peripherals and UART remain in one system domain. The VGA clock stays 25.2 MHz
+and the ADC retains its independent PLL and lock-loss isolation.
+
+Use the P11 50 MHz reference for reset bootstrap and an upstream system PLL.
+The pixel PLL takes the 25 MHz system output with ratio 126/125. Use LOW upstream
+and HIGH downstream bandwidth as required by the
+[MAX 10 cascading rule](https://docs.altera.com/r/docs/683047/21.1/max-10-clocking-and-pll-user-guide/pll-to-pll-cascading).
+Generation alone does not prove legal placement or routing; fit the composed
+clock and memory design before treating this migration as accepted.
+
+At 25 MHz the exact tick accumulator adds 65536 modulo390625. The first tick is
+edge6, then gaps are5 or6 edges; four-dot machine cycles span23 or24 edges.
+The average remains4194304 dots/s, with quantization below40 ns. Reset, pause,
+instruction, bus, input and frame ordering retain their existing contracts.
+Service deadlines must fit the shortest interval, not its average.
+
+The existing DMA byte schedule cannot meet23 edges. The migration must use the
+authoritative even/odd OAM banks together: twelve pair writes, one uncovered-byte
+slot, six operand-pair reads, parallel non-OAM source and OAM destination reads,
+then CPU preparation before the next T4. Pair tags, PPU collision recovery and
+all combined corruption cases remain acceptance requirements. No extra emulated
+cycles, duplicate authoritative memory, or timing exceptions may hide a miss.
+
+Audit UART divisors and accelerated test rates, reset qualification and PLL
+startup, physical-input timers, snapshot completion bounds, constraints and
+all test assumptions together. Preserve10 ms board reset qualification using
+the always-running50 MHz reference. Slower system logic must never control the
+release of the PLL that supplies its own clock.
+
 Target DE10-Lite `10M50DAF484C7G`. Use `MAX10_CLK1_50` on `PIN_P11`, nominal
 50 MHz, as `clk_sys` and the PLL reference. These are manual-derived design
 constraints, not verification of the connected board. The second 50 MHz input,
