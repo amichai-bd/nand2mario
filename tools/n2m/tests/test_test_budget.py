@@ -68,6 +68,38 @@ class BudgetTests(unittest.TestCase):
                 supervise(['worker'], self.root, '../outside')
             launch.assert_not_called()
 
+    def test_reap_timeout_is_bounded_even_after_successful_tree_kill(self):
+        process = Mock(pid=123, returncode=None)
+        process.communicate.side_effect = [subprocess.TimeoutExpired('worker', 600),
+                                           subprocess.TimeoutExpired('pipe', 5, output=b'last')]
+        with patch('n2m.test_budget.subprocess.Popen', return_value=process), \
+             patch('n2m.test_budget.subprocess.run', return_value=Mock(returncode=0)), \
+             patch('n2m.test_budget.os.killpg', create=True):
+            code, text = supervise(['worker'], self.root, 'reap-failure')
+        self.assertEqual(code, 1)
+        self.assertFalse(json.loads(text)['cleanup_complete'])
+        self.assertEqual(process.communicate.call_args.kwargs['timeout'], 5)
+        process.wait.assert_called_once_with(timeout=2)
+
+    @unittest.skipUnless(sys.platform == 'win32', 'Windows taskkill failure')
+    def test_failed_tree_cleanup_cannot_wait_forever_on_surviving_pipe(self):
+        process = Mock(pid=123, returncode=None)
+        process.communicate.side_effect = subprocess.TimeoutExpired('worker', 600, output=b'partial')
+        process.wait.side_effect = subprocess.TimeoutExpired('worker', 2)
+        with patch('n2m.test_budget.subprocess.Popen', return_value=process), \
+             patch('n2m.test_budget.subprocess.run', return_value=Mock(returncode=1)) as cleanup:
+            code, text = supervise(['worker'], self.root, 'cleanup-failure')
+        self.assertEqual(code, 1)
+        self.assertFalse(json.loads(text)['cleanup_complete'])
+        self.assertEqual(cleanup.call_args.kwargs['timeout'], 5)
+        process.wait.assert_called_once_with(timeout=2)
+        process.communicate.assert_called_once()
+        record = json.loads(next((self.root/'workdir/builds/cleanup-failure/wall-budget').glob('*.json')).read_text())
+        self.assertEqual(record['status'], 'TIMEOUT')
+        self.assertIn('cleanup failed', record['cleanup_error'])
+        self.assertIn('reap_error', record)
+        self.assertEqual((self.root/record['output']).read_text(), 'partial')
+
     def test_registry_has_no_long_exception(self):
         root = Path(__file__).resolve().parents[3]
         targets = json.loads((root/'src/dv/builder/targets.json').read_text())

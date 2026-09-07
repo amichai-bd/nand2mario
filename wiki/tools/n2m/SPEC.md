@@ -224,8 +224,11 @@ the complete worker process tree: discovery, preparation, compilation, simulatio
 and checking share the same 600 seconds. Expiry terminates the worker and its
 children, returns failure and retains a `wall-budget` record with the raw killed
 process exit and partial output. Existing attempt artifacts remain partial;
-TIMEOUT is never a checked DUT result. Reaping and recording cancellation may
-finish after the execution deadline.
+TIMEOUT is never a checked DUT result. Tree termination and pipe draining each
+have a five-second cleanup bound, followed by at most two seconds to reap the
+immediate worker. Cleanup may finish after the execution deadline. A failed
+cleanup records `cleanup_complete: false`; inspect and stop remaining children
+before releasing shared tool ownership. Never treat that failure as a clean exit.
 
 A target may set integer `timeout_seconds` from 1 through 600 for its Questa
 runtime command. The default and individual preparation/compile commands remain
