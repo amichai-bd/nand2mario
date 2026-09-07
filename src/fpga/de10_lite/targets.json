@@ -1214,6 +1214,29 @@
         ],
         "reference_ns": "19.998"
       }
+    },
+    "adc-early": {
+      "device": "10M50DAF484C7G",
+      "top": "adc_proof",
+      "sources": [
+        "src/rtl/clocking/n2m_reset_control.sv",
+        "src/rtl/input/n2m_adc_backend.sv",
+        "src/fpga/de10_lite/adc_proof.sv"
+      ],
+      "constraints": [
+        "src/fpga/de10_lite/adc.sdc"
+      ],
+      "pins": {
+        "clk_sys": "PIN_P11",
+        "clk_adc_reference": "PIN_N5"
+      },
+      "virtual_pins": [
+        "board_reset_n",
+        "ready",
+        "response_valid",
+        "response_channel[*]",
+        "response_data[*]"
+      ]
     }
   }
 }

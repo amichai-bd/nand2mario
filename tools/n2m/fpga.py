@@ -10,7 +10,7 @@ import uuid
 
 from .hdl import dependencies
 from .records import atomic_json, cache_matches, digest, file_hash, read_json
-from . import fpga_pll, fpga_constraints, fpga_vga, fpga_intel_memory, fpga_memory_stores
+from . import fpga_pll, fpga_constraints, fpga_vga, fpga_intel_memory, fpga_memory_stores, fpga_adc
 
 DEVICE = "10M50DAF484C7G"
 REGISTRY = "src/fpga/de10_lite/targets.json"
@@ -115,6 +115,8 @@ def prepare(root, folder, target):
             lines.append(f'set_global_assignment -name {assignment} {tcl_word((root / name).resolve())}')
     if "pll" in target:
         lines.append('set_global_assignment -name VERILOG_FILE n2m_pixel_pll.v')
+    if "src/rtl/input/n2m_adc_backend.sv" in target["sources"]:
+        lines.extend(fpga_adc.assignments())
     if "timing" in target:
         (folder / "checked.sdc").write_text(checked_constraints(target), encoding="utf-8")
         lines.append('set_global_assignment -name SDC_FILE checked.sdc')
@@ -282,7 +284,7 @@ def complete_cache(record, fingerprint, root, build, target):
         if "pll" in target:
             required += [folder / "n2m_pixel_pll.v", folder / "generate-pll.log"]
             required += [folder / "output" / name for name in fpga_pll.required_reports()]
-        if "pll" in target or "src/rtl/common/n2m_intel_ram.sv" in target["sources"]:
+        if "pll" in target or any(p in target["sources"] for p in ("src/rtl/common/n2m_intel_ram.sv", "src/rtl/input/n2m_adc_backend.sv")):
             required += [folder / "simulation/questa/design.vo", folder / "netlist.log"]
         required += [folder / name for name in ("design.qpf", "design.qsf", "audit.tcl", "compile.log", "audit.log")]
         if "timing" in target:
@@ -325,18 +327,22 @@ def build_fpga(root, build, args, provenance=None):
             record["tools"]["altpll"] = fpga_pll.identity(args.quartus_bin)
         if "src/rtl/common/n2m_intel_ram.sv" in target["sources"]:
             record["tools"]["altsyncram"] = fpga_intel_memory.identity(args.quartus_bin)
+        if "src/rtl/input/n2m_adc_backend.sv" in target["sources"]:
+            record["tools"]["adc"] = fpga_adc.identity(args.quartus_bin)
         record["definition"] = target
         record["fingerprint"] = digest({"inputs": record["inputs"], "tools": record["tools"], "definition": target, "timeout": args.timeout})
         if not args.rebuild and complete_cache(old, record["fingerprint"], root, build, target):
             record.update(status="PASS", cache="CACHED", reused_result=old["attempt_result"], evidence=old["evidence"], evidence_directory=old["evidence_directory"])
             record["artifacts"].update(old["artifacts"])
         else:
+            if "adc" in record["tools"]:
+                fpga_adc.generate(folder, record["tools"]["adc"], execute, args.timeout, record, build)
             if "pll" in target:
                 fpga_pll.generate(folder, record["tools"]["altpll"], target["pll"], execute, args.timeout, record, build)
             prepare(root, folder, target)
             execute([record["tools"]["quartus_sh"]["path"], "--flow", "compile", "design"], folder, folder / "compile.log", args.timeout, record, build)
             execute([record["tools"]["quartus_sta"]["path"], "-t", "audit.tcl"], folder, folder / "audit.log", args.timeout, record, build)
-            if "pll" in target or "src/rtl/common/n2m_intel_ram.sv" in target["sources"]:
+            if "pll" in target or "adc" in record["tools"] or "src/rtl/common/n2m_intel_ram.sv" in target["sources"]:
                 execute([record["tools"]["quartus_eda"]["path"], "--simulation", "--tool=modelsim", "--format=verilog", "design"], folder, folder / "netlist.log", args.timeout, record, build)
             record["evidence"] = timing_evidence(folder, target)
             record["evidence_directory"] = folder.relative_to(root).as_posix()

@@ -1,0 +1,91 @@
+# DE10-Lite physical controls
+
+Status: implementation contract for [issue156](https://github.com/amichai-bd/nand2mario/issues/156).
+Board execution and acceptance remain unproven. The
+[shared input owner](rtl/input/MAS_input.md) already implements source selection;
+this producer supplies its physical mask.
+
+## Electrical boundary
+
+Use a passive two-axis potentiometer joystick and four normally-open switches.
+Supply the potentiometers from 3.3 V and common ground. Connect each button
+between its input and ground with an external 10 kohm pull-up to 3.3 V.
+Do not connect an unidentified module, a powered 5 V digital output, or an
+unknown terminal orientation. Actual part ratings, terminal order, measured
+supply, common ground, and wiring must be recorded before programming.
+
+| Function | Connector | FPGA resource |
+|---|---|---|
+| X, low means left | A0 / ADC_IN0 | ADC1 channel1 |
+| Y, low means up | A1 / ADC_IN1 | ADC1 channel2 |
+| A, B, Start, Select | D2, D3, D4, D5 | AB7, AB8, AB9, Y10; inputs, 3.3-V LVTTL |
+| UART receive, transmit | D0, D1 | AB5, AB6; existing UART owner |
+| ADC reference clock | ADC_CLK_10 | N5, 10 MHz; dedicated PLL input |
+
+JP8 halves the analog header voltage before ADC1. A 3.3 V input therefore
+corresponds nominally to code2703, not4095, with the 2.5 V ADC reference.
+Only A0/A1 are enabled. Other header pins are not driven by this producer.
+VGA pins and the pixel clock remain owned by the existing display contract.
+
+## Acquisition and filtering
+
+Use the installed Intel Modular ADC control core only, ADC1, internal 2.5 V
+reference, 125 ksample/s, and a dedicated ALTPLL c0 at10 MHz from N5. The
+control core's command and response interfaces run at50 MHz `clk_sys`; its
+hard-block crossing uses the vendor handshake and corresponding scoped SDC.
+The generated PLL, vendor HDL, atom models, and constraints remain build
+artifacts with recorded source hashes. There is no alternative behavioral ADC
+implementation in the product.
+
+The producer requests X then Y, holds each command until accepted, and
+publishes only complete ordered pairs. Start a pair every1 ms when the prior
+pair has completed. A missing response does not generate an emulated tick or
+block buttons. After20 ms without a complete pair, clear both axis directions;
+a later complete pair restores them. Unexpected response channels invalidate
+the pair and raise a named protocol fault in verification.
+
+Synchronize each button through two system registers. Accept a changed level
+after5 ms of consecutive agreement; bounce restarts only that button's counter.
+All four buttons can change together. Reset initializes them released.
+
+Each axis has build-time minimum, center, maximum, and polarity calibration.
+Initial nominal values are0,1352,2703. These are design defaults, not measured
+calibration. Physical acceptance records measured endpoints and center and
+uses the reviewed matching build. Require minimum < center < maximum and
+at least512 codes on each side. Enter a direction at one third of that side's
+calibrated span from center; release it within one quarter of the span.
+Integer thresholds round down. The space between thresholds supplies
+hysteresis. Crossing directly to the other direction releases the old one
+and selects the new one from the same sample.
+
+## Input, reset, and indication
+
+Build the complete eight-bit mask in the shared owner's documented bit order.
+Commit changes only on a `clk_sys` edge with `gb_tick=0`; retain pending changes
+until that edge. A simultaneous axis pair and button change produce one
+coherent mask. Pause, HALT, STOP, and core reset do not stop acquisition.
+Global reset releases controls and discards incomplete samples. ADC PLL lock
+loss invalidates axis data and restarts acquisition after synchronized lock
+recovery; it does not create a clock or reset the Game Boy.
+
+LEDR[7:0] show the effective shared input mask, LEDR8 shows PHYSICAL selection,
+and LEDR9 shows fresh ADC pair availability. LED outputs are active high.
+The shared input owner remains authoritative for UART isolation, physical
+shadow retention, source changes, and core-reset selection of UART.
+
+## Sources and acceptance
+
+The [Terasic manual](https://www.terasic.com.tw/cgi-bin/page/archive_download.pl?Language=English&No=1021&FID=a13a2782811152b477e60203d34b1baa),
+footer October17,2022, tables3-2/3-5/3-8 and figure3-20, defines board clocks,
+LEDs, digital pins and analog scaling. Retained PDF SHA256:
+`ab2c47e5a7e4ac26874013bfe05df31e2d498bc9a7f9f6b33bd931c64db848ac`.
+The [Intel ADC guide](https://www.intel.com/content/www/us/en/docs/programmable/683596/22-1/configuration-4-adc-control-core-only.html)
+defines the control-only configuration; its
+[clock table](https://www.intel.com/content/www/us/en/docs/programmable/683596/22-1/valid-adc-sample-rate-and-input-clock.html)
+permits10 MHz at125 ksample/s. Installed25.1std source parameters and physical
+fit must corroborate the selected implementation.
+
+Issue156 requires independent Questa filtering/fault/atomicity checks, early
+ADC fit, final constrained FPGA proof, and actual verified controls with
+visible indication and UART isolation. Simulation does not satisfy the
+physical criterion. Missing hardware facts leave that criterion open.

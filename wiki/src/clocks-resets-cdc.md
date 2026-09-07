@@ -12,7 +12,9 @@ integration, and physical proof remain outstanding in
 Target DE10-Lite `10M50DAF484C7G`. Use `MAX10_CLK1_50` on `PIN_P11`, nominal
 50 MHz, as `clk_sys` and the PLL reference. These are manual-derived design
 constraints, not verification of the connected board. The second 50 MHz input,
-ADC clock, SDRAM, and physical audio are unused in the initial fixed-ROM design.
+SDRAM and physical audio are unused in the initial fixed-ROM design. The
+[board controls contract](fpga-controls.md) adds the independent N5 ADC clock
+and its dedicated PLL for physical input acquisition.
 Adding SDRAM requires a separate storage/timing contract before integration.
 
 | Name | Nominal rate | Consumers | Required accuracy |
@@ -21,7 +23,9 @@ Adding SDRAM requires a separate storage/timing contract before integration.
 | `gb_tick` | 4,194,304 enables/s | One DMG dot/T-cycle per enabled rising `clk_sys` edge | Exact average relative to nominal reference; bounded quantization below |
 | `clk_pix` | 25,200,000 Hz; 39.68253968 ns | VGA counters, frame reads, registered RGB/sync | Exact PLL ratio 63/125 relative to reference; inherits its ppm error |
 
-Only `clk_sys` and `clk_pix` clock sequential logic. `gb_tick`, UART baud ticks,
+Product logic uses `clk_sys` and `clk_pix`; the Intel ADC hard block additionally
+uses its dedicated clock and vendor crossing defined by the board contract.
+`gb_tick`, UART baud ticks,
 and memory completion are enables, never fabric-generated clocks. CPU, PPU,
 timers, DMA, and host registers share `clk_sys`; their synchronous arbitration
 must finish before the applicable emulated edge without silently stretching DMG
