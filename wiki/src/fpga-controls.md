@@ -21,6 +21,7 @@ supply, common ground, and wiring must be recorded before programming.
 | A, B, Start, Select | D2, D3, D4, D5 | AB7, AB8, AB9, Y10; inputs, 3.3-V LVTTL |
 | UART receive, transmit | D0, D1 | AB5, AB6; existing UART owner |
 | ADC reference clock | ADC_CLK_10 | N5, 10 MHz; dedicated PLL input |
+| Diagnostic board reset | KEY0 | B8, active low; 3.3-V Schmitt trigger |
 
 JP8 halves the analog header voltage before ADC1. A 3.3 V input therefore
 corresponds nominally to code2703, not4095, with the 2.5 V ADC reference.
@@ -94,6 +95,29 @@ LEDR[7:0] show the effective shared input mask, LEDR8 shows PHYSICAL selection,
 and LEDR9 shows fresh ADC pair availability. LED outputs are active high.
 The shared input owner remains authoritative for UART isolation, physical
 shadow retention, source changes, and core-reset selection of UART.
+
+## Board diagnostic composition
+
+`controls_proof` connects the actual producer to `n2m_uart`, whose input owner
+is the sole selector, then sends its effective update to `n2m_joypad`. LEDs use
+the owner's effective mask and source observation. A generated-shade VGA source
+uses the existing clocking, frame bridge, Intel memories and scan output. Its
+pattern includes the JOYP button observation and continues while the emulation
+timebase is paused. It is a diagnostic image, not a PPU frame or gameplay proof.
+
+This diagnostic supports PING, host-register reads, INPUT and input-source
+writes through the real serial endpoint. It has no CPU, ROM service or snapshot
+owner. Their completion/valid inputs remain deasserted; no successful execution,
+initialization or frame reply is fabricated. RESET, RUN and STEP reject the
+missing valid image. LOAD_BEGIN, READ_ROM and SNAPSHOT are unsupported diagnostic
+operations and can wait indefinitely; use KEY0 to recover if one is sent.
+The physical test uses only the supported input operations. The build must
+provide a nonzero recorded identity before physical use.
+
+System reset cancels the ADC backend as well as the sampler. ADC lock loss
+alone invalidates acquisition while buttons, UART and VGA continue. The
+combined project's pin, clock, reset and timing proof is required independently
+of earlier component fits. Its implementation does not close physical acceptance.
 
 ## Sources and acceptance
 
