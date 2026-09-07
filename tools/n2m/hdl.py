@@ -13,7 +13,19 @@ def synthesis_text(text):
     stack = []
     enabled = True
     result = []
+    continued = False
     for line in text.splitlines():
+        # A continued macro body is not a source-level conditional branch.
+        # Reject guard tokens in continuation contexts rather than expanding
+        # macros or accidentally hiding active file reads after the definition.
+        continuation = continued or re.match(r"\s*`define\b", line)
+        continued = line.rstrip().endswith("\\")
+        if continuation:
+            if re.search(r"`(?:ifdef|ifndef|elsif|else|endif)\b", line):
+                raise ValueError("unsupported FPGA conditional in macro continuation")
+            if enabled:
+                result.append(line)
+            continue
         match = re.fullmatch(r"\s*`(ifdef|ifndef|elsif)\s+([A-Za-z_][A-Za-z0-9_]*)\s*", line)
         end = re.fullmatch(r"\s*`(else|endif)\s*", line)
         if match:

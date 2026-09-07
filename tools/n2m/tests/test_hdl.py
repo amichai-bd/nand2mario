@@ -54,7 +54,13 @@ class HdlTests(unittest.TestCase):
         parent = Path(__file__).resolve().parents[3] / "workdir/builds/hdl-tests"
         parent.mkdir(parents=True, exist_ok=True)
         read = '$readmemh("rom.hex", storage);\n'
+        continued = "\\\n"
         cases = [
+            ('`define UNUSED_A ' + continued + '`ifndef SYNTHESIS\n' + read
+             + '`define UNUSED_B ' + continued + '`endif\n', False),
+            ('`define REGISTER(Q, D) ' + continued + 'always_ff @(posedge clk) ' + continued
+             + 'Q <= D;\n`ifndef SYNTHESIS\n' + read + '`endif\n', True),
+            ('`define GUARD `ifndef SYNTHESIS\n' + read + '`endif\n', False),
             ('`ifndef SYNTHESIS\n' + read + '`endif\n', True),
             ('`ifdef SYNTHESIS\nwire ready;\n`else\n' + read + '`endif\n', True),
             ('`ifdef UNKNOWN\nwire ready;\n`elsif SYNTHESIS\nwire other;\n`else\n' + read + '`endif\n', True),
