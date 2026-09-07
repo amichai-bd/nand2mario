@@ -2,6 +2,7 @@
 import json
 from pathlib import Path
 import sys
+import time
 from types import SimpleNamespace
 
 import cocotb
@@ -13,7 +14,7 @@ from cocotb.utils import get_sim_time
 ROOT = Path(__file__).resolve().parents[4]
 sys.path[:0] = [str(ROOT / 'tools'), str(ROOT / 'src/dv/v05'),
                str(ROOT / 'src/dv/python/integration')]
-from client_transport import connect, frames
+from client_transport import connect, frames, refresh_clock
 from online import Online
 from reference import FIRST_IMAGE_END, INPUT_MASKS, WINDOW_END, input_window, unpack_retirement
 from n2m.records import git_state
@@ -26,8 +27,11 @@ def known(signal):
 
 
 async def run(dut, *, complete):
+    entered = time.monotonic()
+    dut._log.info("V05_PHASE entry")
     report = build_target(ROOT, Path.cwd() / 'software',
                           SimpleNamespace(target='v05', rebuild=True), git_state(ROOT))
+    dut._log.info("V05_PHASE software_built wall=%.3f", time.monotonic()-entered)
     assert report['status'] == 'PASS', 'V05_SOFTWARE_BUILD'
     image = (ROOT / report['rom']).read_bytes()
     recipe = json.loads((ROOT / 'src/dv/v05/program.json').read_text())
@@ -48,6 +52,19 @@ async def run(dut, *, complete):
 
         def observation(kind, **fields):
             trace.write(json.dumps(dict(kind=kind, time_ps=int(get_sim_time(unit='ps')), **fields)) + '\n')
+
+        def phase(name):
+            observation('phase', name=name, elapsed_wall_seconds=time.monotonic()-entered)
+            trace.flush()
+            dut._log.info("V05_PHASE %s", name)
+
+        async def heartbeat():
+            while True:
+                await Timer(10, unit='ms')
+                await ReadOnly()
+                observation('heartbeat', dot=str(dut.dot_count.value), paused=str(dut.paused.value), epoch=str(dut.epoch.value), elapsed_wall_seconds=time.monotonic()-entered)
+                trace.flush()
+                dut._log.info("V05_HEARTBEAT")
 
         async def records():
             while True:
@@ -150,11 +167,14 @@ async def run(dut, *, complete):
                 if task.done():
                     task.result()
 
+        phase('before_first_timer')
         await Timer(1, unit='ns')
-        tasks = [cocotb.start_soon(fn()) for fn in (records, writes, source, inputs, receiver, continuity, time_progress)]
+        phase('after_first_timer')
+        tasks = [cocotb.start_soon(fn()) for fn in (records, writes, source, inputs, receiver, continuity, time_progress, heartbeat)]
         await Timer(320, unit='ns')
         dut.reset_sys.value = 0
         dut.reset_pix.value = 0
+        phase('reset_released')
         client = connect(dut, received, observation, entries)
 
         @bridge
@@ -163,16 +183,24 @@ async def run(dut, *, complete):
             loaded = client.load(image)
             return identity, loaded
 
+        phase('load_start')
         identity, loaded = await load()
+        phase('load_completed')
         assert loaded['verified_bytes'] == 32768, 'V05_FULL_READBACK'
         assert known(dut.epoch) == 2 and known(dut.dot_count) == 0 and known(dut.paused), 'V05_INITIAL_STATE'
         armed = True
 
         @bridge
-        def control(action, value=None):
+        def bridged_control(action, value=None):
             return client.control(action, value)
 
+        async def control(action, value=None):
+            refresh_clock(client)
+            return await bridged_control(action, value)
+
+        phase('run_request')
         await control('RUN')
+        phase('run_reply')
         if complete:
             for index, mask in enumerate(INPUT_MASKS, 1):
                 low, high = input_window(index)
