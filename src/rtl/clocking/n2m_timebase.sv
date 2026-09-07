@@ -2,10 +2,10 @@
 `include "src/rtl/common/macros.svh"
 // Contract: wiki/src/clocks-resets-cdc.md (exact emulated time and run control).
 module n2m_timebase (
-    input  logic clk_sys,
-    input  logic reset_sys,
-    input  logic core_reset,
-    input  logic pause_request,
+    input var logic clk_sys,
+    input var logic reset_sys,
+    input var logic core_reset,
+    input var logic pause_request,
     output logic gb_tick,
     output logic paused
 );
