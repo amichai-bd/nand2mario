@@ -78,8 +78,12 @@ def main():
             from n2m.host_play import play, PlayFailure
             from n2m.host.client import RejectedCommand
             def wait(dots):
-                transport.send('WAIT ' + str(dots))
-                transport.receive('WAITED')
+                connection.settimeout(300)
+                try:
+                    transport.send('WAIT ' + str(dots))
+                    transport.receive('WAITED')
+                finally:
+                    connection.settimeout(120)
             def retain(stage, item, packed, pixels):
                 (args.attempt / f'frame-{stage}.2bpp').write_bytes(packed)
                 grayscale = bytes(255 - value * 85 for value in pixels)

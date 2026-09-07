@@ -123,7 +123,8 @@ commands, and input/tool hashes remain beneath the tag. Unexpected warnings,
 errors, timeouts, or missing signatures fail; expected nonzero targets require
 their full diagnostic and reject additional errors.
 
-A target may set integer `timeout_seconds` from 1 through 600 for its Questa
+A target may set integer `timeout_seconds` from 1 through 600 (1500 for a declared
+Python-peer driver workload) for its Questa
 runtime command; the default and all preparation/compile commands remain 60
 seconds. The value enters the target fingerprint and each command records its
 effective bound. Long raster tests retain independent simulation-time watchdogs.

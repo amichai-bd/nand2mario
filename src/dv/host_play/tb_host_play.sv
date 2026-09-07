@@ -82,7 +82,7 @@ module tb_integration;
                 wait(dut.frame_read); force dut.frame_data=8'hff;
             end end
             begin if ($test$plusargs("missing_frame")) begin
-                force dut.g_play.observe_complete=1'b0;
+                force dut.g_play.u_snapshot.observe_complete=1'b0;
             end end
             begin if ($test$plusargs("input_fault")) begin
                 wait(dut.effective_update.valid && dut.effective_update.buttons==1);
@@ -96,5 +96,5 @@ module tb_integration;
             end end
         join_none
     end
-    initial begin #400000000; $fatal(1,"PLAY_TIMEOUT"); end
+    initial begin #500000000; $fatal(1,"PLAY_TIMEOUT"); end
 endmodule

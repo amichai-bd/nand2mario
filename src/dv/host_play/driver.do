@@ -3,16 +3,23 @@ proc observe {name} { return [examine -radix unsigned sim:/tb_integration/$name]
 proc deposit {name value} { force -deposit sim:/tb_integration/$name 10#$value }
 proc advance {} { run 100 us }
 proc progress {phase} {
-    global ordinal started
-    puts "SMOKE_DRIVER phase=$phase ordinal=$ordinal wall_ms=[expr {[clock milliseconds]-$started}] sim_ns=[observe simulation_ns] tx_count=[observe tx_count] tx_busy=[observe tx_busy] rx_count=[observe rx_count] rx_done=[observe rx_done]"
+    global ordinal started progress_log
+    set line "SMOKE_DRIVER phase=$phase ordinal=$ordinal wall_ms=[expr {[clock milliseconds]-$started}] sim_ns=[observe simulation_ns] dot=[observe dot_count] tx_count=[observe tx_count] tx_busy=[observe tx_busy] rx_count=[observe rx_count] rx_done=[observe rx_done]"
+    puts $line
+    puts $progress_log $line
+    flush $progress_log
 }
-proc bounded_wait {expression} {
-    set deadline [expr {[clock milliseconds] + 120000}]
+proc bounded_wait {expression {wall_ms 120000}} {
+    set deadline [expr {[clock milliseconds] + $wall_ms}]
+    set advances 0
     while {![uplevel 1 [list expr $expression]]} {
         if {[clock milliseconds] >= $deadline} { error "SMOKE_DRIVER_RESPONSE_TIMEOUT" }
         advance
+        incr advances
+        if {$advances % 50 == 0} {progress waiting}
     }
 }
+set progress_log [open "driver-progress.log" w]
 set ordinal 0
 set started [clock milliseconds]
 set channel [socket 127.0.0.1 $smoke_peer_port]
@@ -59,13 +66,16 @@ while {1} {
     } elseif {[regexp {^WAIT ([0-9]+)$} $line whole wanted]} {
         if {$wanted != 200000 && $wanted != 150000} { error "SMOKE_DRIVER_WAIT_RANGE" }
         set target [expr {[observe dot_count] + $wanted}]
-        bounded_wait {[observe dot_count] >= $target}
+        progress wait_start
+        bounded_wait {[observe dot_count] >= $target} 300000
+        progress wait_complete
         puts $channel "WAITED [observe simulation_ns]"
         flush $channel
     } elseif {[regexp {^FAIL (PLAY_[A-Z_]+)$} $line whole reason]} {
         error $reason
     } elseif {$line eq "DONE"} {
         close $channel
+        close $progress_log
         deposit finish_request 1
         run 1 us
         error "SMOKE_DRIVER_MISSING_FINISH"

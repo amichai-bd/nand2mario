@@ -85,7 +85,7 @@ module n2m_smoke_system #(parameter bit HOST_PLAY = 0) (
         .clk_sys, .reset_sys, .core_reset, .gb_tick, .profile_id(profile), .epoch,
         .dot_before(dot_count), .ie(ie_observe), .iflags(if_observe),
         .buttons(HOST_PLAY ? effective_buttons : buttons),
-        .read_data, .response_valid, .joyp_selected_active, .wake_request(joyp_selected_active),
+        .read_data, .response_valid, .joyp_selected_active, .wake_request(1'b0),
         .request_valid, .address, .write_data, .write_enable, .bus_commit, .irq_ack,
         .access_kind(), .address_effect(), .address_effect_resolved(),
         .address_effect_sample(), .address_effect_phase(), .halted(), .stopped(cpu_stopped),

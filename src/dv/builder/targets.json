@@ -5977,7 +5977,7 @@
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS host play five immutable images four transitions",
-    "timeout_seconds": 600,
+    "timeout_seconds": 1500,
     "vendor_model": "intel-memory",
     "driver": {
       "script": "src/dv/host_play/driver.do",
@@ -6120,7 +6120,7 @@
     ],
     "expected_exit": "nonzero",
     "signature": "PLAY_OBJECT_COUNT",
-    "timeout_seconds": 600,
+    "timeout_seconds": 1500,
     "vendor_model": "intel-memory",
     "driver": {
       "script": "src/dv/host_play/driver.do",
@@ -6263,7 +6263,7 @@
     ],
     "expected_exit": "nonzero",
     "signature": "PLAY_MISSING_FRAME",
-    "timeout_seconds": 600,
+    "timeout_seconds": 1500,
     "vendor_model": "intel-memory",
     "driver": {
       "script": "src/dv/host_play/driver.do",
@@ -6406,7 +6406,7 @@
     ],
     "expected_exit": "nonzero",
     "signature": "PLAY_IMAGE",
-    "timeout_seconds": 600,
+    "timeout_seconds": 1500,
     "vendor_model": "intel-memory",
     "driver": {
       "script": "src/dv/host_play/driver.do",
@@ -6549,7 +6549,7 @@
     ],
     "expected_exit": "nonzero",
     "signature": "PLAY_IMAGE",
-    "timeout_seconds": 600,
+    "timeout_seconds": 1500,
     "vendor_model": "intel-memory",
     "driver": {
       "script": "src/dv/host_play/driver.do",

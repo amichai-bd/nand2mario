@@ -79,6 +79,7 @@ class HostPlayTests(unittest.TestCase):
             set advances 0
             array set signals {simulation_ns 0 dot_count 100000 tx_count 0 tx_busy 0 rx_count 0 rx_done 0}
             proc socket {args} { return play }
+            proc open {args} { return progress }
             proc fconfigure {args} {}
             proc flush {args} {}
             proc puts {args} {}
@@ -103,3 +104,25 @@ class HostPlayTests(unittest.TestCase):
             tcl.eval(driver)
         self.assertEqual(int(tcl.getvar('advances')),3)
         self.assertEqual(int(tcl.getvar('signals(dot_count)')),250000)
+
+    def test_driver_budget_preserves_ordinary_limit(self):
+        import json
+        import tempfile
+        from n2m.simulation import load_target
+        base=Path(__file__).resolve().parents[3]/'workdir/builds/play-budget-unit'
+        base.mkdir(parents=True,exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=base) as folder:
+            root=Path(folder)
+            registry=root/'src/dv/builder/targets.json'
+            registry.parent.mkdir(parents=True)
+            (root/'driver.do').write_text('# fixture')
+            (root/'peer.py').write_text('# fixture')
+            target={'signature':'PASS','sources':[],'expected_exit':'zero'}
+            for driver,budget,valid in ((False,600,True),(False,601,False),(True,1500,True),(True,1501,False),(True,True,False)):
+                row=dict(target,timeout_seconds=budget)
+                if driver:row['driver']={'script':'driver.do','peer':'peer.py','inputs':[]}
+                registry.write_text(json.dumps({'play':row}))
+                if valid:
+                    self.assertEqual(load_target(root,'play')[0]['timeout_seconds'],budget)
+                else:
+                    with self.assertRaisesRegex(ValueError,'timeout_seconds'):load_target(root,'play')
