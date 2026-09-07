@@ -19,8 +19,12 @@ def validate(root, target):
             raise ValueError("python configuration requires testbench=python")
         return
     config = target.get("python")
-    if not isinstance(config, dict) or set(config) != {"module", "test", "inputs"}:
+    if not isinstance(config, dict) or not {"module", "test", "inputs"} <= set(config) or set(config) - {"module", "test", "inputs", "waves"}:
         raise ValueError("python testbench requires module, test and inputs")
+    if "waves" in config:
+        waves = config["waves"]
+        if not isinstance(waves, list) or not waves or any(not isinstance(name, str) or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name) for name in waves) or len(set(waves)) != len(waves):
+            raise ValueError("Python waves require unique public top-level signal names")
     if "driver" in target or target["expected_exit"] != "zero":
         raise ValueError("python testbench requires zero raw exit and no driver")
     if target.get("vendor_model") not in (None, "intel-memory"):
@@ -105,9 +109,10 @@ def prepare(target, attempt, root=None):
         image = module.build(root, attempt)
         prepare_preload(image, hashlib.sha256(image).hexdigest(), attempt)
         verify(attempt)
+    wave_paths = " ".join(f"/{target['top']}/{name}" for name in target.get("python", {}).get("waves", [])) or "/*"
     (attempt / "run.do").write_text(
-        "onerror {quit -code 1}\nlog /*\nvcd file waves/simulation.vcd\n"
-        "vcd add /*\nrun -all\nquit -code 0\n", encoding="utf-8")
+        f"onerror {{quit -code 1}}\nlog {wave_paths}\nvcd file waves/simulation.vcd\n"
+        f"vcd add {wave_paths}\nrun -all\nquit -code 0\n", encoding="utf-8")
 
 
 def classify(output):

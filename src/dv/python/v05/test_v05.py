@@ -16,7 +16,7 @@ sys.path[:0] = [str(ROOT / 'tools'), str(ROOT / 'src/dv/v05'),
                str(ROOT / 'src/dv/python/integration')]
 from client_transport import connect, frames, refresh_clock
 from online import Online
-from reference import FIRST_IMAGE_END, INPUT_MASKS, WINDOW_END, input_window, unpack_retirement
+from reference import FIRST_IMAGE_END, INPUT_MASKS, WINDOW_END, LCD_COMMIT, FRAME_DOTS, input_window, unpack_retirement
 from n2m.records import git_state
 from sw.rom_build import build_target
 
@@ -24,6 +24,21 @@ from sw.rom_build import build_target
 def known(signal):
     assert signal.value.is_resolvable, f'V05_UNKNOWN {signal._name}'
     return int(signal.value)
+
+
+def wave_windows(complete):
+    windows = [(0,64), (LCD_COMMIT-32,LCD_COMMIT+256),
+               (FIRST_IMAGE_END-32,FIRST_IMAGE_END+64)]
+    if complete:
+        for j in range(1,19):
+            low,high = input_window(j)
+            windows.append((low-32, high+128))
+            first = LCD_COMMIT+70316+(20*j+2)*FRAME_DOTS
+            wake = first - 4652
+            windows.append((wake-32,wake+508+32))
+            windows.append((first-32,first+256))
+        windows.append((WINDOW_END-32,WINDOW_END+2000))
+    return sorted(windows)
 
 
 async def run(dut, *, complete):
@@ -65,6 +80,19 @@ async def run(dut, *, complete):
                 observation('heartbeat', dot=str(dut.dot_count.value), paused=str(dut.paused.value), epoch=str(dut.epoch.value), elapsed_wall_seconds=time.monotonic()-entered)
                 trace.flush()
                 dut._log.info("V05_HEARTBEAT")
+
+        async def waveform_windows():
+            await FallingEdge(dut.paused)
+            for first, last in wave_windows(complete):
+                while known(dut.dot_count) < first:
+                    await Timer(1, unit='us')
+                await Timer(1, unit='ns')
+                dut.wave_enable.value = 1
+                observation('wave_open', first=first, last=last, dot=known(dut.dot_count))
+                while known(dut.dot_count) <= last:
+                    await Timer(1, unit='us')
+                dut.wave_enable.value = 0
+                observation('wave_close', dot=known(dut.dot_count))
 
         async def records():
             while True:
@@ -170,7 +198,7 @@ async def run(dut, *, complete):
         phase('before_first_timer')
         await Timer(1, unit='ns')
         phase('after_first_timer')
-        tasks = [cocotb.start_soon(fn()) for fn in (records, writes, source, inputs, receiver, continuity, time_progress, heartbeat)]
+        tasks = [cocotb.start_soon(fn()) for fn in (records, writes, source, inputs, receiver, continuity, time_progress, heartbeat, waveform_windows)]
         await Timer(320, unit='ns')
         dut.reset_sys.value = 0
         dut.reset_pix.value = 0
@@ -184,7 +212,13 @@ async def run(dut, *, complete):
             return identity, loaded
 
         phase('load_start')
-        identity, loaded = await load()
+        try:
+            identity, loaded = await load()
+        except Exception as error:
+            observation('load_failure', command=getattr(error, 'command', None),
+                        status=getattr(error, 'status', None), mismatch=str(error))
+            trace.flush()
+            raise
         phase('load_completed')
         assert loaded['verified_bytes'] == 32768, 'V05_FULL_READBACK'
         assert known(dut.epoch) == 2 and known(dut.dot_count) == 0 and known(dut.paused), 'V05_INITIAL_STATE'

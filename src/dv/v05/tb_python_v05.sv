@@ -23,6 +23,26 @@ module tb_python_v05;
     logic [103:0] input_sample;
     logic [87:0] write_sample;
 
+    // Python opens fixed public-boundary observation windows. This projection
+    // changes only waveform storage; stimulus/checkers stay continuous.
+    logic wave_enable, wave_clock;
+    logic [63:0] wave_dot;
+    logic [31:0] wave_epoch;
+    logic [7:0] wave_control;
+    logic [116:0] wave_pixel;
+    logic [383:0] wave_retirement;
+    logic [23:0] wave_write;
+    logic [103:0] wave_input;
+    assign wave_clock = wave_enable && clk_sys;
+    assign wave_dot = wave_enable ? dot_count : 64'd0;
+    assign wave_epoch = wave_enable ? epoch : 32'd0;
+    assign wave_control = wave_enable ? {reset_sys, core_reset, paused, fault,
+        gb_tick, retirement_valid, bus_commit, source_valid} : 8'd0;
+    assign wave_pixel = wave_enable ? pixel_sample : 117'd0;
+    assign wave_retirement = wave_enable ? record_sample : 384'd0;
+    assign wave_write = wave_enable ? {address,write_data} : 24'd0;
+    assign wave_input = wave_enable ? input_sample : 104'd0;
+
     n2m_v05_system #(.UART_BAUD(3125000)) dut (.*);
     always #20 clk_sys = !clk_sys;
     always #19.841 clk_pix = !clk_pix;
@@ -49,7 +69,21 @@ module tb_python_v05;
         end
     end
 
+    // Original ROM byte at0200 is DI/F3. Mutate only the actual storage write.
     initial begin
+        if ($test$plusargs("image_fault")) begin
+            do @(negedge clk_sys);
+            while (!(!reset_sys && dut.rom_write && dut.rom_address == 15'h0200));
+            if (dut.rom_write_data !== 8'hf3) $fatal(1, "V05_IMAGE_FAULT_SOURCE");
+            force dut.rom_write_data = 8'h00;
+            @(posedge clk_sys);
+            @(negedge clk_sys);
+            release dut.rom_write_data;
+        end
+    end
+
+    initial begin
+        wave_enable = 0;
         clk_sys = 0;
         clk_pix = 0;
         reset_sys = 1;
