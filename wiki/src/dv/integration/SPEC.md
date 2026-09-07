@@ -58,7 +58,19 @@ timer overflow, JOYP selection nor snapshot commands. Unsupported owner requests
 fail service, and assertions reject STOP, nonzero input and snapshot commands.
 This is a bounded DV composition, not a new full board implementation.
 
-## Live transport and completion
+## Execution modes
+
+Use the accepted [continuous Python Client modes](../../../../src/dv/python/integration/README.md#continuous-real-uart-mode)
+for current delivery. Shared preload initializes the actual Intel model from the
+exact software-produced ROM and establishes the loaded-and-paused contract;
+record its hash. Subsequent memory latency, arbitration, reset and execution
+remain real. Preloaded execution proves execution, not UART loading. Real-UART
+mode uploads and reads back the full image before the same execution checks.
+
+## Legacy live transport and completion
+
+The following finite-Tcl transport describes the historical target. It is not
+the default delivery path or a prerequisite for unrelated continuous Python work.
 
 The target uses a 25 MHz system clock and an eight-system-edge serial bit
 period (3.125 Mbaud) for bounded simulation;
@@ -83,7 +95,7 @@ After the selected frame the Client sends HALT and verifies paused state. Requir
 complete frames. The CPU-dot watchdog is220000 after RUN. All selected records,
 bus transactions and pixels are retained with explicit public wave signals.
 
-## Final acceptance and regression tiers
+## Bounded integration target acceptance
 
 One full positive is followed by actual returned-data, IRQ-connection and pixel
 mutations. Expected records/pixels remain unchanged. A second clean run must
@@ -91,7 +103,58 @@ match the selected retirement, bus and pixel observations. Preserve exact source
 configuration, Python, simulator and Intel model identities; missing or shadow
 models fail through the shared builder.
 
-Use measured compile and execution durations to propose merge smoke plus affected
-units, milestone broad suites and full #88 runs. Recheck relevant mutations when
-their observation/checking infrastructure changes. Record queue/review time
-separately when available. No speedup claim or recurring schedule is implied.
+## Verification tiers
+
+Select gates by affected behavior and the scoped issue. Use existing preload,
+continuous Python, Intel models, builders, validators and targets; no additional
+regression framework is required. Required CI remains in force. Evidence reuse
+requires unchanged relevant source, configuration, tool and model identities;
+record why retained coverage still applies. Independent expectations come from
+the contract and original program, never DUT internal results.
+
+### Fast development and ordinary PR acceptance
+
+Run affected unit tests and a short composed smoke when the changed behavior
+warrants it. Use a deterministic original software-built ROM through Intel-model
+preload. Check selected instructions, memory operations, an interrupt, bounded
+pixel activity and clean completion against independent expectations. Full-frame
+rendering and UART ROM upload are not universal gates for each edit. Select
+fault tests for affected behavior and stop at the shortest meaningful failure
+witness. Recheck mutations when relevant checking infrastructure changes.
+
+Aim for roughly 60 seconds for the default local suite. This is a development
+goal, not a coverage waiver or a reason for prolonged harness optimization. The
+existing `python-integration-client-preloaded` target is a usable baseline:
+69 retirement records, 145 bus observations, RAM and interrupt checks, two full
+frames and final host pause. Its measured stage runtime was 96.987663 seconds
+in [PR179](https://github.com/amichai-bd/nand2mario/pull/179#issuecomment-5573412250).
+This existing target checks more pixels than the tier's minimum; a shorter
+selection must still meet its own stated criteria. No 60-second suite is claimed
+as measured. Add affected units to the reported total rather than treating this
+single target's runtime as the whole suite.
+
+### Transport and integration acceptance
+
+Run focused UART, protocol and loading tests when those behaviors change.
+Require full upload/readback and UART-versus-preload comparison when the changed
+behavior affects loading or startup equivalence. Label each mode's proof and
+reuse valid evidence for unrelated unchanged paths. The matched real-UART
+baseline in PR179 took 439.684165 seconds versus 96.987663 seconds preloaded;
+these are one measured pair, not a guaranteed runtime. The bounded integration
+target's full oracle and faults above remain available acceptance, not mandatory
+transport work for every unrelated PR.
+
+### Milestone acceptance
+
+The full [v0.5 contract](../v05/SPEC.md) and
+[#88](https://github.com/amichai-bd/nand2mario/issues/88) retain 600 continuous
+intervals, every pixel and retirement, and all prescribed inputs. Physical
+acceptance remains in its owning contracts and open
+[#156](https://github.com/amichai-bd/nand2mario/issues/156) and
+[#28](https://github.com/amichai-bd/nand2mario/issues/28).
+These are explicit milestone gates, not automatic implementation-PR gates.
+Broader regressions belong to scheduled or milestone runs; this policy does not
+create a scheduler. Before an expensive run, exercise the complete harness at
+a short duration, including final pause, completion and watchdog handling. A
+startup-only slice does not test that complete path. Short success never counts
+as full milestone acceptance; leave unmet requirements in named open issues.

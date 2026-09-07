@@ -16,7 +16,17 @@ Follow [AGENTS](../../../AGENTS.md#work):
    its success criteria. Keep one acceptance checklist mapping each criterion to
    evidence or a concrete gap. Defer optional improvements to follow-up issues;
    do not expand the active change or weaken acceptance to make it smaller.
-   Iterate using relevant focused skills and the smallest affected tests.
+   For an authorized split, update issue boundaries and name the open milestone
+   issue before applying the scoped criteria; follow the [PR policy](../../../wiki/agents/pull-requests.md#scoped-implementation-and-milestones).
+   Select the [verification tier](../../../wiki/src/dv/integration/SPEC.md#verification-tiers)
+   from changed behavior. Freeze unfinished implementation, missing evidence,
+   review findings and external dependencies in one remaining-to-merge checklist.
+   Mark checks waiting for the shared tool slot separately from unfinished work.
+   Iterate using affected tests, then complete the scoped acceptance set. Before
+   long runs, check the full harness's short completion path. Reuse existing
+   validators; avoid repeated artifact audits and unchanged diagnostics. Measure
+   execution, queue and review time where practical; do not optimize an unmeasured
+   bottleneck or start optional work while a useful change waits for review.
    Run authorized routine tools under existing locks without per-batch root
    permission; retain explicit hardware and safety approval boundaries.
 3. Use [pr-author](../pr-author/SKILL.md) to open and maintain the draft PR.

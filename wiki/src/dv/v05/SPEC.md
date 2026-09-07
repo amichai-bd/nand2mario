@@ -81,6 +81,18 @@ retirement is accepted during sleep.
 
 The source-pixel observer checks each visible pixel directly, including startup
 and all intervening frames; immutable snapshots are not the every-frame oracle.
+For blank frame0, the completed-dot schedule is `C+93+x` on row0 and
+`C+92+456*y+x` on rows1..143. Literal boundaries are42077,42532 and107443.
+This is the selected digital mapping from pinned
+[scan reset/alternation](https://github.com/MiSTer-devel/Gameboy_MiSTer/blob/7a5ff50528cd9c1d13ffb675e7df8506bffaa078/rtl/sprites.v#L153)
+and [fetch/shift control](https://github.com/MiSTer-devel/Gameboy_MiSTer/blob/7a5ff50528cd9c1d13ffb675e7df8506bffaa078/rtl/video.v#L915).
+LCD-off scan index1 takes78 ticks to finish; six fetch ticks and eight clipped
+positions place the first visible pixel atC+93. The next line resets atC+453,
+starts index0 and first publishes atC+548; subsequent lines recur every456 dots.
+The [pixel qualifier](https://github.com/MiSTer-devel/Gameboy_MiSTer/blob/7a5ff50528cd9c1d13ffb675e7df8506bffaa078/rtl/video.v#L1181)
+uses pre-edge raw X. Public tags count the completed edge. The existing normal
+frame formula is unchanged. These are source-derived digital phases; Mooneye's
+coarse mode/LY brackets do not independently measure exact pixel edges.
 An independent active-system-edge watchdog enforces the timing contract and
 rejects reset, host pause or missing progress during the acceptance window.
 Full pixel/retirement traces are retained. Public waveform windows cover useful
@@ -88,7 +100,32 @@ startup/input/update boundaries without recording clocks for the entire run.
 
 Two fresh software-build tags must produce identical complete images. The real
 UART loader must read back that complete image. Actual corrupt-load and producer
-pixel mutations must fail for their specified reasons with raw nonzero exits.
+pixel mutations must fail for their specified reasons. Python execution requires
+a failing checker and result XML, the exact intended mismatch, and a nonzero
+outer builder exit. Retain the raw simulator exit separately: cocotb can report
+a failed test while the simulator exits zero. That zero does not establish a
+passing test and must never be reported as a nonzero simulator exit.
 The new composed Intel-model and constrained-fit evidence is required. A short
 measured diagnostic determines wall/storage bounds before the long run; it does
-not replace the 60/600-interval acceptance. Final runtime evidence remains pending.
+not replace the 60/600-interval acceptance. Full 600-interval runtime evidence remains a named #88 milestone.
+
+## Short implementation proof
+
+Issue #178 delivers the executable full target and a shorter complete-path
+proof. The short proof uses the same original program and monitors, supported
+Intel preload with verified software hash, and real UART loader adoption,
+INPUT and HALT commands. It does not stand in for actual loading/readback.
+
+Its fixed inputs are Right press/release at completed dots 267891..269891 and
+338115..340115. The same HALT/VBlank update contract predicts the changed image
+at normal frame 4 and released image at frame 5. Completion is 458563, after all
+six frames (blank plus five normal), 138240 pixels and every retirement/write
+through actual final pause within 2000 further dots. The full default remains
+42312067, 602 frames and the original 18 transitions; no milestone is shortened.
+
+A stopped-tick mutation during CPU HALT at dot 50000 must reach the existing
+active-time watchdog and failing Python/XML/outer result. Focused host tests
+also reject early completion, missing input/pixel/retirement and extra writes.
+The accepted real-UART startup/readback and actual image/pixel mutations remain
+separate evidence. Short completion and current-source review can deliver the
+harness implementation while #88's full continuous run stays explicitly open.
