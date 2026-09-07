@@ -226,7 +226,7 @@ def tools(directory, folder, record, build, timeout):
     return identities
 
 
-def timing_evidence(folder, target):
+def timing_evidence(folder, target, *, build_id=None):
     if "timing" in target:
         if (folder / "checked.sdc").read_text(encoding="utf-8") != checked_constraints(target):
             raise ValueError("checked timing assignments differ from target")
@@ -298,6 +298,7 @@ def timing_evidence(folder, target):
         evidence["adc"] = adc_evidence
     if target.get("top") == "controls_proof":
         evidence["controls"] = fpga_controls.verify(folder)
+        evidence["controls"]["build_id"] = fpga_controls.verify_identity(folder, build_id)
     return evidence
 
 
@@ -330,7 +331,9 @@ def complete_cache(record, fingerprint, root, build, target):
             required.append(folder / "output/intel_memory_inputs.rpt")
         if any(p.relative_to(root).as_posix() not in record["artifacts"] for p in required):
             return False
-        return timing_evidence(folder, target) == record["evidence"]
+        if target.get("top") == "controls_proof" and record.get("build_id") != fingerprint[:32]:
+            return False
+        return timing_evidence(folder, target, build_id=record.get("build_id")) == record["evidence"]
     except (KeyError, TypeError, ValueError, OSError):
         return False
 
@@ -381,7 +384,7 @@ def build_fpga(root, build, args, provenance=None):
             execute([record["tools"]["quartus_sta"]["path"], "-t", "audit.tcl"], folder, folder / "audit.log", args.timeout, record, build)
             if "pll" in target or "adc" in record["tools"] or "src/rtl/common/n2m_intel_ram.sv" in target["sources"]:
                 execute([record["tools"]["quartus_eda"]["path"], "--simulation", "--tool=modelsim", "--format=verilog", "design"], folder, folder / "netlist.log", args.timeout, record, build)
-            record["evidence"] = timing_evidence(folder, target)
+            record["evidence"] = timing_evidence(folder, target, build_id=record.get("build_id"))
             record["evidence_directory"] = folder.relative_to(root).as_posix()
             record["status"] = "PASS"
     except Exception as error:

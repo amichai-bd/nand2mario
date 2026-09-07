@@ -6,6 +6,21 @@ CHAINS = tuple((f"button{i}", f"buttons_n[{i}]", f"u_physical|u_buttons|button_m
     ("uart", "uart_rx", "u_uart|u_serial_rx|rx_meta", "u_uart|u_serial_rx|rx_sync"),)
 
 
+def verify_identity(folder, build_id):
+    import re
+    if not isinstance(build_id, str) or not re.fullmatch('[0-9a-f]{32}', build_id) or int(build_id, 16) == 0:
+        raise ValueError('controls proof requires its nonzero producing build identity')
+    qsf = (folder / 'design.qsf').read_text()
+    lines = [line for line in qsf.splitlines() if 'N2M_CONTROLS_BUILD_ID' in line]
+    if lines != [f'set_global_assignment -name VERILOG_MACRO "N2M_CONTROLS_BUILD_ID=128\'h{build_id}"']:
+        raise ValueError('controls generated macro differs from producing identity')
+    report = (folder / 'output/design.map.rpt').read_text()
+    values = re.findall(r';\s*BUILD_ID\s*;\s*([01]+)\s*;\s*Unsigned Binary\s*;', report)
+    if values != [f'{int(build_id, 16):0128b}']:
+        raise ValueError('controls compiled 128-bit identity differs')
+    return build_id
+
+
 def verify_uart_memory(text, fit):
     """Account for the six existing UART stores alongside the three VGA banks."""
     from .fpga_lock import parse_netlist
