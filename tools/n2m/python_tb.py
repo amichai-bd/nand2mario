@@ -69,7 +69,7 @@ def discover():
 def environment(root, target, attempt, seed, runtime):
     # External filters, result locations or seed settings must not alter a target.
     env = {k: v for k, v in os.environ.items()
-           if not k.startswith(("COCOTB_", "GPI_", "PYGPI_")) and k not in ("PYTHONHOME", "PYTHONPATH", "LIBPYTHON_LOC")}
+           if not k.startswith(("COCOTB_", "GPI_", "PYGPI_", "PYTHON")) and k != "LIBPYTHON_LOC"}
     config = target["python"]
     module = next(root / p for p in config["inputs"] if Path(p).stem == config["module"])
     prefixes = (Path(sys.prefix).resolve(), Path(sys.base_prefix).resolve())
@@ -78,7 +78,7 @@ def environment(root, target, attempt, seed, runtime):
                PYGPI_PYTHON_BIN=runtime["executable"], LIBPYTHON_LOC=runtime["libpython"],
                COCOTB_TOPLEVEL=target["top"], COCOTB_TEST_MODULES=config["module"],
                COCOTB_RESULTS_FILE=str(attempt / "results.xml"), COCOTB_RANDOM_SEED=str(seed),
-               PYTHONDONTWRITEBYTECODE="1", PYTHONNOUSERSITE="1")
+               PYTHONDONTWRITEBYTECODE="1", PYTHONNOUSERSITE="1", PYTHONOPTIMIZE="0")
     return env
 
 

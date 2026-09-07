@@ -102,7 +102,7 @@ class PythonTests(unittest.TestCase):
     def test_environment_owns_filters_seed_and_runtime(self):
         overrides = dict(COCOTB_TEST_FILTER="nothing", COCOTB_TESTCASE="other", COCOTB_RANDOM_SEED="42",
                          COCOTB_RESOLVE_X="ZEROS", PYTHONPATH="foreign", PYGPI_PYTHON_BIN="foreign",
-                         LIBPYTHON_LOC="foreign", GPI_EXTRA="foreign", MGLS_LICENSE_FILE="license")
+                         LIBPYTHON_LOC="foreign", GPI_EXTRA="foreign", MGLS_LICENSE_FILE="license", PYTHONOPTIMIZE="1")
         with patch.dict(os.environ, overrides):
             result = self.run_stage()
         self.assertEqual(result["status"], "PASS")
@@ -112,6 +112,7 @@ class PythonTests(unittest.TestCase):
         self.assertEqual(self.env["COCOTB_RANDOM_SEED"], "1")
         self.assertEqual(self.env["MGLS_LICENSE_FILE"], "license")
         self.assertEqual(self.env["LIBPYTHON_LOC"], "libpython.dll")
+        self.assertEqual(self.env["PYTHONOPTIMIZE"], "0")
 
     def test_invalid_configuration_has_no_silent_fallback(self):
         registry = self.root / "src/dv/builder/targets.json"

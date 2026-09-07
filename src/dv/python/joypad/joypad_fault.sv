@@ -29,4 +29,3 @@ module joypad_fault (
     );
     assign io_rdata = correct_read | 8'h01;
 endmodule
-
