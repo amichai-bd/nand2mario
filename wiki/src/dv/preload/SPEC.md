@@ -1,6 +1,6 @@
 # Preloaded execution simulations
 
-This boundary is being implemented for [#168](https://github.com/amichai-bd/nand2mario/issues/168).
+This boundary belongs to [#168](https://github.com/amichai-bd/nand2mario/issues/168).
 It supplements the [real UART integration](../integration/SPEC.md); it does not
 replace loader, transport or end-to-end acceptance.
 
@@ -44,5 +44,37 @@ claim without matching workloads.
 Required checks include invalid image/hash and CRC rejection, one-shot adoption,
 reset followed by normal clearing, successful installed-model execution and an
 actual failing case. Real-UART evidence remains separately identified.
-The current source is a contract/preparation increment; RTL and runtime proof
-are still pending.
+
+## Reuse and measurements
+
+`integration-preloaded` selects the existing integration scenario with
+`PRELOADED=1`. Its peer uses `n2m.preload.prepare` before simulator startup and
+`n2m.preload.adopt` for the real BEGIN/END commands. The target's explicit
+`driver.preload` flag requires a fresh file/hash check before launch.
+`integration-smoke` retains the full real load and readback path.
+
+A new simulation composition selects `SIM_INIT_FILE` on its ROM and presence
+wrapper instances and `SIM_PRELOAD` on the load owner. These are declared module
+parameters, not access to vendor internals. All three must refer to the same
+prepared image/configuration. Other memory instances retain `UNUSED`, and all
+synthesized instances ignore simulation initialization.
+
+The focused `preload-lifecycle` and `preload-crc-fault` targets check the load
+boundary with the same installed Intel model. The offline comparison command is:
+
+```text
+python src/dv/preload/compare.py --root <workspace> --normal <real-result.json> --preloaded <preload-result.json>
+```
+
+It requires accepted results from the distinct declared modes, matching source,
+seed, simulator, Python runtime and trace configuration. It verifies retained
+hashes before comparing the complete image and ordered initial-state,
+retirement, bus and pixel files. Partial or failed runs cannot establish full
+equivalence. Request/cache histories remain different by design.
+
+`loader_command_wall_seconds` excludes preparation and model startup.
+`peer_to_loaded_wall_seconds` includes software/MIF preparation, model startup,
+identification and loader completion, but excludes compilation before the peer
+starts. The retained builder start and loaded-checkpoint timestamps permit a
+separately labeled compile-inclusive duration. Execution wall/simulation times
+cover the same INPUT/RUN/WAIT/HALT sequence in both modes.
