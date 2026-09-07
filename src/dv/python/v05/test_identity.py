@@ -7,6 +7,7 @@ import cocotb
 from cocotb.queue import Queue
 from cocotb.task import bridge
 from cocotb.triggers import Timer
+from cocotb.utils import get_sim_time
 
 ROOT = Path(__file__).resolve().parents[4]
 sys.path[:0] = [str(ROOT / 'tools'), str(ROOT / 'src/dv/python/integration')]
@@ -17,9 +18,9 @@ from client_transport import connect, frames
 async def board_identity(dut):
     received = Queue()
     entries = []
-    with Path('identity-transactions.jsonl').open('w') as trace:
+    with Path('transactions.jsonl').open('w') as trace:
         def observe(kind, **fields):
-            trace.write(json.dumps(dict(kind=kind, **fields)) + '\n')
+            trace.write(json.dumps(dict(kind=kind, time_ps=int(get_sim_time(unit='ps')), **fields)) + '\n')
 
         async def receiver():
             async for encoded in frames(dut):
