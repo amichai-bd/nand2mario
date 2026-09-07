@@ -4,7 +4,9 @@
 
 // Bounded ROM/presence service. Command validation and core initialization are
 // separate owners; success here never starts the CPU or publishes image_valid.
-module n2m_uart_load (
+module n2m_uart_load #(
+    parameter bit SIM_PRELOAD = 0
+) (
     input var logic clk_sys,
     input var logic reset_sys,
     input var logic start,
@@ -43,6 +45,27 @@ module n2m_uart_load (
     logic [7:0] held_data, held_data_next, status_next;
     logic presence_write, presence_read, presence_value, presence_valid;
     logic [31:0] updated_crc;
+    logic adopt_preload;
+`ifdef SYNTHESIS
+    assign adopt_preload = 1'b0;
+`else
+    // Simulation configuration lifetime, deliberately not reset-owned state.
+    // The real command/CRC/core-reset owners establish all loaded metadata.
+    logic preload_available;
+    logic [31:0] preload_crc [0:0];
+    initial begin
+        preload_available = SIM_PRELOAD;
+        if (SIM_PRELOAD) $readmemh("preload-crc.hex", preload_crc);
+    end
+    always @(posedge clk_sys) begin
+        if (!reset_sys && start && operation == UART_LOAD_BEGIN)
+            preload_available <= 1'b0;
+    end
+    assign adopt_preload = SIM_PRELOAD && preload_available;
+    `N2M_ASSERT(UART_PRELOAD_CRC, clk_sys, reset_sys,
+        !(start && operation == UART_LOAD_BEGIN && adopt_preload) ||
+        (!$isunknown(preload_crc[0]) && expected_crc == preload_crc[0]))
+`endif
 
     assign busy = state != IDLE;
     assign done = state == COMPLETE;
@@ -84,6 +107,10 @@ module n2m_uart_load (
                         address_next = '0;
                         cleared_next = 0;
                         state_next = CLEAR;
+                        if (adopt_preload) begin
+                            cleared_next = 1;
+                            state_next = COMPLETE;
+                        end
                     end
                     UART_LOAD_WRITE: state_next = WRITE_BYTES;
                     UART_LOAD_END: begin

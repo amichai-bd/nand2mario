@@ -1,9 +1,11 @@
 """Live product Client over a byte-only simulated UART bridge."""
 import argparse
+import hashlib
 import json
 from pathlib import Path
 import socket
 import sys
+import time
 
 from image import build
 
@@ -48,7 +50,9 @@ class Transport:
         return bytes([self.pending.pop(0)])
 
 
-def main():
+def main(*, preloaded=False):
+    peer_started_wall = time.monotonic()
+    peer_started_unix_ns = time.time_ns()
     parser = argparse.ArgumentParser()
     parser.add_argument('--root', type=Path, required=True)
     parser.add_argument('--attempt', type=Path, required=True)
@@ -57,6 +61,9 @@ def main():
     from n2m.host.client import Client
     from n2m import generated_interfaces as abi
     image = build(args.root, args.attempt)
+    if preloaded:
+        from n2m.preload import prepare
+        preload = prepare(image, hashlib.sha256((args.attempt / 'program.gb').read_bytes()).hexdigest(), args.attempt)
     with socket.socket() as listener:
         listener.bind(('127.0.0.1', 0))
         listener.listen(1)
@@ -76,7 +83,22 @@ def main():
             records = []
             client = Client(transport, clock=lambda: transport.sim_time, record=records.append)
             identity = client.identify()
-            loaded = client.load(image)
+            setup_wall = time.monotonic()
+            setup_sim = transport.sim_time
+            if preloaded:
+                from n2m.preload import adopt
+                loaded = adopt(client, preload)
+            else:
+                loaded = client.load(image)
+                from n2m.preload import observe_initial
+                loaded['initial_state'] = observe_initial(client)
+            timings = {'loader_command_wall_seconds': time.monotonic() - setup_wall,
+                       'loader_command_sim_seconds': transport.sim_time - setup_sim,
+                       'peer_to_loaded_wall_seconds': time.monotonic() - peer_started_wall,
+                       'peer_started_unix_ns': peer_started_unix_ns,
+                       'loaded_checkpoint_unix_ns': time.time_ns()}
+            execution_wall = time.monotonic()
+            execution_sim = transport.sim_time
             client.control('INPUT', 0)
             client.control('RUN')
             transport.send('WAIT 136280')
@@ -84,7 +106,10 @@ def main():
             client.control('HALT')
             if client.read_host(abi.HOST_REG_STATE) != abi.STATE_PAUSED:
                 raise ValueError('integration did not pause after selected frame')
-            result = {'identity': identity, 'load': loaded, 'requests': records}
+            timings.update(execution_wall_seconds=time.monotonic() - execution_wall,
+                           execution_sim_seconds=transport.sim_time - execution_sim,
+                           execution_finished_unix_ns=time.time_ns())
+            result = {'identity': identity, 'load': loaded, 'requests': records, 'timings': timings}
             (args.attempt / 'client.json').write_text(json.dumps(result, indent=2) + '\n')
             transport.send('DONE')
     print('PASS integration live Client load and control', flush=True)

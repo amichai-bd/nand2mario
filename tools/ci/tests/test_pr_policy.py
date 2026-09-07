@@ -34,7 +34,7 @@ class PrPolicyTests(unittest.TestCase):
         return 0
 
     def test_approved_pairs(self):
-        for number, issue in (("162", "156"), ("163", "88")):
+        for number, issue in (("162", "156"), ("163", "88"), ("169", "168")):
             with self.subTest(number=number):
                 self.assertEqual(0, self.run_policy(
                     number, f"{issue}-checkpoint", f"Checkpoint for #{issue}\nRefs #{issue}"))

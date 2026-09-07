@@ -1,6 +1,8 @@
 `timescale 1ns/1ps
 `default_nettype none
-module tb_integration;
+module tb_integration #(
+    parameter bit PRELOADED = 0
+);
     logic clk_sys, reset_sys, uart_rx, uart_tx;
     logic gb_tick, paused, core_reset;
     logic [31:0] epoch;
@@ -25,12 +27,15 @@ module tb_integration;
     logic [63:0] simulation_ns;
     logic [383:0] expected_records [0:68];
     integer event_index, pixel_index, frame_index, ram_writes, stack_writes, video_writes;
-    integer records_file, pixels_file, bus_file;
+    integer records_file, pixels_file, bus_file, initial_file;
     logic [63:0] expected_pixel_dot;
     logic [1:0] expected_shade;
-    bit data_fault, irq_fault, pixel_fault, dumping;
+    bit data_fault, irq_fault, pixel_fault, dumping, initial_seen;
     string root_path;
     n2m_smoke_system dut (.*);
+    defparam dut.u_stores.rom.SIM_INIT_FILE = PRELOADED ? "preload-rom.mif" : "UNUSED";
+    defparam dut.u_uart.u_commands.u_load.u_presence.u_presence.SIM_INIT_FILE = PRELOADED ? "preload-presence.mif" : "UNUSED";
+    defparam dut.u_uart.u_commands.u_load.SIM_PRELOAD = PRELOADED;
     always #20 clk_sys = !clk_sys;
     always @(posedge clk_sys) simulation_ns = $time;
 
@@ -91,6 +96,23 @@ module tb_integration;
         end
         #1;
         if(!reset_sys) begin
+            if(dut.u_uart.image_valid && !initial_seen) begin
+                if(epoch!==32'd2 || dot_count!==64'd0 || !paused || core_reset ||
+                    !dut.u_uart.core_initialized || dut.u_uart.retirement_count!==64'd0 ||
+                    dut.u_uart.profile!==n2m_interfaces_pkg::PROFILE_DIRECT_ID ||
+                    dut.u_uart.endpoint_state!==n2m_interfaces_pkg::STATE_PAUSED ||
+                    dut.u_uart.buttons!==8'd0 || dut.u_uart.effective_buttons!==8'd0 ||
+                    bus_commit || retirement_valid || source_valid)
+                    $fatal(1,"SMOKE_LOADED_INITIAL_STATE");
+                initial_seen=1;
+                initial_file=$fopen("initial-state.csv","w");
+                if(!initial_file) $fatal(1,"SMOKE_INITIAL_TRACE");
+                $fdisplay(initial_file,"epoch,dot,retirements,paused,initialized,profile,state,host,effective");
+                $fdisplay(initial_file,"%0d,%0d,%0d,%0d,%0d,%0d,%0d,%0d,%0d",
+                    epoch,dot_count,dut.u_uart.retirement_count,paused,dut.u_uart.core_initialized,
+                    dut.u_uart.profile,dut.u_uart.endpoint_state,dut.u_uart.buttons,dut.u_uart.effective_buttons);
+                $fclose(initial_file);
+            end
             if(fault) $fatal(1,"SMOKE_OWNER_FAULT");
             if(dot_count>220000) $fatal(1,"SMOKE_DOT_TIMEOUT");
             if(dot_count!=0 && !dumping) begin dumping=1; $dumpon; end
@@ -118,7 +140,7 @@ module tb_integration;
                 else pixel_index=pixel_index+1;
             end
             if(finish_request) begin
-                if(event_index!=69 || frame_index!=2 || ram_writes!=3 || stack_writes!=4 || video_writes!=16 || !paused)
+                if(!initial_seen || event_index!=69 || frame_index!=2 || ram_writes!=3 || stack_writes!=4 || video_writes!=16 || !paused)
                     $fatal(1,"SMOKE_COMPLETION records=%0d frames=%0d ram=%0d stack=%0d video=%0d",event_index,frame_index,ram_writes,stack_writes,video_writes);
                 $fclose(records_file); $fclose(pixels_file); $fclose(bus_file);
                 $display("PASS integration records=69 frames=2 pixels=46080 ram=3 stack=4 video=16"); $finish;
@@ -128,7 +150,7 @@ module tb_integration;
     initial begin
         clk_sys=0; reset_sys=1; uart_rx=1; simulation_ns=0;
         tx_go=0; tx_busy=0; rx_done=0; finish_request=0; tx_count=0; rx_count=0;
-        event_index=0; pixel_index=0; frame_index=0; ram_writes=0; stack_writes=0; video_writes=0; dumping=0;
+        event_index=0; pixel_index=0; frame_index=0; ram_writes=0; stack_writes=0; video_writes=0; dumping=0; initial_seen=0;
         data_fault=$test$plusargs("data_fault"); irq_fault=$test$plusargs("irq_fault"); pixel_fault=$test$plusargs("pixel_fault");
         if(!$value$plusargs("smoke_root=%s",root_path)) $fatal(1,"SMOKE_ROOT");
         $readmemh("retirement.hex",expected_records);

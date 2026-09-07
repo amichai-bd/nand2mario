@@ -831,3 +831,13 @@ same tag/cache/failure rules. `sw asset-conformance` verifies the original fixtu
 with an independent decoder; plane/bit-order mutations must fail. The
 [asset contract](../sw/SPEC.md#original-assets) owns schema, ordering, diagnostics
 and retained evidence. No licensed simulation is involved.
+
+## Preloaded execution target
+
+A declared simulation driver may set boolean `preload` to select the
+[validated preload boundary](../../src/dv/preload/SPEC.md). Its peer prepares the
+software image and Intel initialization files before readiness. The builder
+rechecks the image and every declared initialization-file hash immediately
+before launching Questa; missing or changed artifacts fail the attempt and
+reap the peer. Generated files remain under the immutable attempt directory.
+This target is separate from real-UART loading and does not replace its checks.
