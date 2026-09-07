@@ -8,6 +8,7 @@ import zlib
 import cocotb
 from cocotb.triggers import FallingEdge, ReadOnly, Timer, ValueChange
 from cocotb.utils import get_sim_time
+from cocotb.queue import Queue
 
 ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(ROOT / "tools"))
@@ -87,15 +88,19 @@ def known(signal):
     return int(value)
 
 
-@cocotb.test(timeout_time=210, timeout_unit="ms")
-async def integration_contract(dut):
+async def run_contract(dut, *, real_uart=False):
     expected = json.loads((ROOT / "src/dv/integration/retirement.json").read_text())
     assert len(expected) == 69 and expected[0]["fields"]["dot"] == 8
     assert expected[-1]["fields"]["dot"] == 600
+    if real_uart:
+        sys.path.insert(0, str(ROOT / "src/dv/integration"))
+        from image import build
+        build(ROOT, Path.cwd())
     image = Path("program.gb").read_bytes()
     counts = dict(records=0, pixels=0, bus=0)
     writes = []
     replies = []
+    received = Queue()
     with Path("transactions.jsonl").open("w") as trace, \
          Path("retirement.csv").open("w") as records, \
          Path("pixels.csv").open("w") as pixels, Path("bus.csv").open("w") as bus:
@@ -171,6 +176,7 @@ async def integration_contract(dut):
                     observation("response", encoded=(frame + b"\0").hex(), decoded=decoded)
                     assert decoded[0] == len(replies), "INTEGRATION_RESPONSE_SEQUENCE"
                     replies.append(decoded)
+                    received.put_nowait(bytes(frame) + b"\0")
                     frame.clear()
 
         # HDL initial assignments can produce event-toggle transitions at time
@@ -180,38 +186,48 @@ async def integration_contract(dut):
         await Timer(319, unit="ns")
         dut.reset_sys.value = 0
         observation("reset", asserted=0)
-        for sequence, (time_ns, command, payload) in enumerate(requests(image)):
-            await Timer(time_ns * 1000 + 1 - int(get_sim_time(unit="ps")), unit="ps")
-            if sequence == 19:
-                assert (known(dut.epoch), known(dut.dot_count), known(dut.paused)) == (2, 0, 1), "INTEGRATION_INITIAL_STATE"
-                assert counts == dict(records=0, pixels=0, bus=0), "INTEGRATION_PAUSED_ACTIVITY"
-            encoded = packet(sequence, command, payload)
-            observation("request", sequence=sequence, command=command, payload=payload.hex(), encoded=encoded.hex())
-            # Original starts on the next falling clock edge. Byte-to-byte has
-            # one extra system edge after the ten serial bits.
-            start_ns = time_ns + 40
-            for index, byte in enumerate(encoded):
-                for bit, value in enumerate([0, *[(byte >> n) & 1 for n in range(8)], 1]):
-                    when = (start_ns + index * 3240 + bit * 320) * 1000
-                    await Timer(when - int(get_sim_time(unit="ps")), unit="ps")
-                    dut.uart_rx.value = value
-                    await ReadOnly()
-                    actual = known(dut.uart_rx)
-                    observation("uart_rx", sequence=sequence, byte=index, bit=bit, intended=value, actual=actual)
-                    assert actual == value, "INTEGRATION_DRIVE_MISMATCH"
-        # Polling is in simulation time and does not invoke finite simulator runs.
-        while known(dut.dot_count) < 136280:
-            await Timer(1, unit="us")
-            assert not known(dut.fault), "INTEGRATION_OWNER_FAULT"
+        if real_uart:
+            from client_transport import execute
+            await execute(dut, image, received, observation, counts)
+        else:
+            for sequence, (time_ns, command, payload) in enumerate(requests(image)):
+                await Timer(time_ns * 1000 + 1 - int(get_sim_time(unit="ps")), unit="ps")
+                if sequence == 19:
+                    assert (known(dut.epoch), known(dut.dot_count), known(dut.paused)) == (2, 0, 1), "INTEGRATION_INITIAL_STATE"
+                    assert counts == dict(records=0, pixels=0, bus=0), "INTEGRATION_PAUSED_ACTIVITY"
+                encoded = packet(sequence, command, payload)
+                observation("request", sequence=sequence, command=command, payload=payload.hex(), encoded=encoded.hex())
+                # Original starts on the next falling clock edge. Byte-to-byte has
+                # one extra system edge after the ten serial bits.
+                start_ns = time_ns + 40
+                for index, byte in enumerate(encoded):
+                    for bit, value in enumerate([0, *[(byte >> n) & 1 for n in range(8)], 1]):
+                        when = (start_ns + index * 3240 + bit * 320) * 1000
+                        await Timer(when - int(get_sim_time(unit="ps")), unit="ps")
+                        dut.uart_rx.value = value
+                        await ReadOnly()
+                        actual = known(dut.uart_rx)
+                        observation("uart_rx", sequence=sequence, byte=index, bit=bit, intended=value, actual=actual)
+                        assert actual == value, "INTEGRATION_DRIVE_MISMATCH"
+            # Polling is in simulation time and does not invoke finite simulator runs.
+            while known(dut.dot_count) < 136280:
+                await Timer(1, unit="us")
+                assert not known(dut.fault), "INTEGRATION_OWNER_FAULT"
         for task in tasks:
             if task.done():
                 task.result()
             task.cancel()
         assert counts == dict(records=69, pixels=46080, bus=145), f"INTEGRATION_COUNTS {counts}"
-        assert len(replies) == 21 and replies[-1][1] == 4, f"INTEGRATION_REPLIES {replies}"
+        if not real_uart:
+            assert len(replies) == 21 and replies[-1][1] == 4, f"INTEGRATION_REPLIES {replies}"
         selected = [(address, data) for address, data in writes if 0xc000 <= address <= 0xc002]
         assert selected == [(0xc000, 0x3c), (0xc001, 0x41), (0xc002, 0xa7)], f"INTEGRATION_RAM {selected}"
         assert [(a, d) for a, d in writes if 0xdffa <= a <= 0xdffd] == [(0xdffd, 2), (0xdffc, 0x22), (0xdffb, 1), (0xdffa, 0x20)], "INTEGRATION_STACK"
         assert [(a, d) for a, d in writes if 0x8000 <= a <= 0x800f] == [(0x8000 + i, 0x55 if i % 2 == 0 else 0x33) for i in range(16)], "INTEGRATION_TILE"
         observation("complete", counts=counts, dot=known(dut.dot_count))
     dut._log.info("PASS python-integration records=69 pixels=46080 bus=145")
+
+
+@cocotb.test(timeout_time=210, timeout_unit="ms")
+async def integration_contract(dut):
+    await run_contract(dut)
