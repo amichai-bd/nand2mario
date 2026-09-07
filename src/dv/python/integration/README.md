@@ -70,3 +70,29 @@ Client, halt through the final host command, or replace #164/#168 acceptance.
 Success narrows the timeout to a dependence on the verification/execution path;
 it does not by itself identify a defective Tcl operation, prove all RTL correct,
 or justify a testbench migration. Runtime conclusions belong to the PR evidence.
+
+## Continuous real-UART mode
+
+Issue176 adds `python-integration-uart` alongside the preloaded diagnostic.
+It uses the unchanged product Client through cocotb2.0.1 `task.bridge` and
+`task.resume`. The transport drives actual UART RX bits and returns only bytes
+decoded from UART TX; the independent diagnostic monitors check execution.
+The wrapper selects PRELOADED0, leaving Intel ROM/presence initialization UNUSED
+and requiring real LOAD_BEGIN/LOAD_WRITE/LOAD_END followed by full ROM readback.
+
+The original software pipeline builds program.gb in the attempt. Client verifies
+all32768 bytes, profile and valid paused state. Independent initial observations
+require epoch2, dot0 and no execution activity. INPUT0/RUN start the program;
+after136280 dots, HALT and STATE_PAUSED complete the sequence. The full69 records,
+145 bus observations and46080 pixels keep their existing expectations.
+
+The test has a500ms simulated bound and600s builder bound at25MHz/3.125Mbaud.
+The data/IRQ/pixel fault targets change actual DUT observations using the same
+fault locations as the integration contract. They must fail the unchanged checker.
+Acceptance requires a positive, a clean repeat with byte-identical retirement,
+bus and pixel CSVs, and all three intended fault failures. Run the four
+`python-integration-uart` targets with distinct build tags; use the positive
+target again for the repeat. Run `python-integration` to check compatibility
+with the default preloaded mode after changes to the shared wrapper or monitors.
+Legacy targets and the preloaded historical diagnostic remain available;
+this mode does not close parent issues.

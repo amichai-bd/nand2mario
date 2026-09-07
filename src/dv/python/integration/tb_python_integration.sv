@@ -2,7 +2,7 @@
 `default_nettype none
 // Clock, public observation latches and supported memory initialization only.
 // All stimulus, expectations and verdicts belong to the Python test.
-module tb_python_integration;
+module tb_python_integration #(parameter bit PRELOADED = 1);
     logic clk_sys, reset_sys, uart_rx, uart_tx;
     logic gb_tick, paused, core_reset, retirement_valid, bus_commit, write_enable;
     logic [31:0] epoch;
@@ -22,9 +22,9 @@ module tb_python_integration;
     logic [116:0] pixel_sample;
 
     n2m_smoke_system dut (.*);
-    defparam dut.u_stores.rom.SIM_INIT_FILE = "preload-rom.mif";
-    defparam dut.u_uart.u_commands.u_load.u_presence.u_presence.SIM_INIT_FILE = "preload-presence.mif";
-    defparam dut.u_uart.u_commands.u_load.SIM_PRELOAD = 1;
+    defparam dut.u_stores.rom.SIM_INIT_FILE = PRELOADED ? "preload-rom.mif" : "UNUSED";
+    defparam dut.u_uart.u_commands.u_load.u_presence.u_presence.SIM_INIT_FILE = PRELOADED ? "preload-presence.mif" : "UNUSED";
+    defparam dut.u_uart.u_commands.u_load.SIM_PRELOAD = PRELOADED;
     always #20 clk_sys = !clk_sys;
 
     // Bus commits describe the consumed pre-edge transaction. Retirement and
@@ -53,6 +53,14 @@ module tb_python_integration;
         bus_event = 0;
         record_event = 0;
         pixel_event = 0;
+        fork
+            begin if ($test$plusargs("data_fault")) begin
+                wait(address == 16'he000); force dut.read_data = 8'h3d;
+            end end
+            begin if ($test$plusargs("irq_fault")) begin
+                wait(irq_ack != 0); force dut.irq_ack = 5'd0;
+            end end
+        join_none
         if ($test$plusargs("pixel_fault")) begin
             wait(source_display_eligible);
             force dut.source_shade = 2'd1;
