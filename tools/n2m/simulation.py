@@ -25,8 +25,9 @@ def load_target(root, name):
     if target["expected_exit"] not in ("zero", "nonzero"):
         raise ValueError("expected_exit must be zero or nonzero")
     timeout = target.get("timeout_seconds", 60)
-    if type(timeout) is not int or not 1 <= timeout <= 600:
-        raise ValueError("simulation target timeout_seconds must be an integer in 1..600")
+    maximum_timeout = 1500 if "driver" in target else 600
+    if type(timeout) is not int or not 1 <= timeout <= maximum_timeout:
+        raise ValueError(f"simulation target timeout_seconds must be an integer in 1..{maximum_timeout}")
     for source in target["sources"]:
         path = (root / source).resolve()
         if not path.is_relative_to(root.resolve()) or not path.is_file():
