@@ -300,7 +300,13 @@ ASCII path letters, digits, underscore, hyphen, slash and period are accepted.
 Relative traversal, missing files, escapes, symlink files, cycles, dynamic names,
 extra include tokens and ambiguous source-directory shadow files fail before
 cache lookup or compilation. Closure is limited to 256 source/header files.
-Comments are ignored; includes in every conditional branch are dependencies.
+Comments are ignored; includes in every conditional branch are dependencies. FPGA file-I/O
+rejection selects branches using the tool-owned `SYNTHESIS` definition; unknown
+conditions retain both alternatives. Guaranteed simulation-only file reads are
+excluded from that check, while their source files remain fingerprinted. Source
+redefinition of `SYNTHESIS`, malformed conditions and unsupported inline
+conditional syntax are rejected. This is bounded guard handling, not a general
+preprocessor.
 This is deliberately bounded parsing, not a general preprocessor.
 
 The repository root is the compiler include directory for Questa and Quartus. Quartus QSF explicitly defines `SYNTHESIS=1`, matching synthesis dependency inspection and excluding simulation assertion checks/history. Normal Questa compilation leaves this macro undefined. Every transitive header and the resolver implementation is fingerprinted;
@@ -333,8 +339,8 @@ is `10M50DAF484C7G`; top names are identifiers. Inputs are unique existing
 repository-relative `.sv` and `.sdc` paths under `src/`, without traversal or
 symlink escapes. Physical pins are unique `PIN_<letters><digits>` names; port
 names permit an optional numeric or wildcard array index. Physical assignments
-use 3.3-V LVTTL. HDL uses the bounded [include contract](#hdl-includes); HDL file reads and
-external/dynamic SDC loads are rejected. SDC permits one literal clock,
+use 3.3-V LVTTL. HDL uses the bounded [include contract](#hdl-includes); HDL file reads that are not proven simulation-only and external/dynamic SDC
+loads are rejected. SDC permits one literal clock,
 delay, exception or uncertainty assignment per line, using the bounded command
 set in the [validator](../../../tools/n2m/fpga.py). Collection getters may select
 ports, clocks, pins, cells, registers, nets, inputs or outputs; nested bracket

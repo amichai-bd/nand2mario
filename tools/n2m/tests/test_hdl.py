@@ -49,3 +49,41 @@ class HdlTests(unittest.TestCase):
             shadow.write_text('// ambiguous compiler search\n')
             with self.assertRaisesRegex(ValueError, "ambiguous"):
                 dependencies(root, ["src/test.sv"])
+
+    def test_synthesis_file_io_guards_and_conservative_unknowns(self):
+        parent = Path(__file__).resolve().parents[3] / "workdir/builds/hdl-tests"
+        parent.mkdir(parents=True, exist_ok=True)
+        read = '$readmemh("rom.hex", storage);\n'
+        cases = [
+            ('`ifndef SYNTHESIS\n' + read + '`endif\n', True),
+            ('`ifdef SYNTHESIS\nwire ready;\n`else\n' + read + '`endif\n', True),
+            ('`ifdef UNKNOWN\nwire ready;\n`elsif SYNTHESIS\nwire other;\n`else\n' + read + '`endif\n', True),
+            ('`ifndef SYNTHESIS\n`ifdef UNKNOWN\n' + read + '`endif\n`endif\n', True),
+            ('`ifdef SYNTHESIS\n' + read + '`endif\n', False),
+            ('`ifndef SYNTHESIS\nwire ready;\n`else\n' + read + '`endif\n', False),
+            ('`ifdef UNKNOWN\n' + read + '`endif\n', False),
+            ('`ifdef UNKNOWN\nwire ready;\n`else\n' + read + '`endif\n', False),
+            ('`ifndef SYNTHESIS\nwire ready;\n`elsif UNKNOWN\n' + read + '`endif\n', False),
+            ('`undef SYNTHESIS\n`ifndef SYNTHESIS\n' + read + '`endif\n', False),
+            ('`define SYNTHESIS\n', False),
+            ('`undefineall\n', False),
+            ('`ifndef SYNTHESIS\n' + read, False),
+            ('`ifdef SYNTHESIS\n`else\n`else\n`endif\n', False),
+            ('`ifdef UNKNOWN\n`else\n`elsif OTHER\n`endif\n', False),
+            ('`ifndef SYNTHESIS\nwire ready; `else\n' + read + '`endif\n', False),
+        ]
+        with tempfile.TemporaryDirectory(dir=parent) as folder:
+            root = Path(folder)
+            (root / "src").mkdir()
+            source = root / "src/test.sv"
+            for text, allowed in cases:
+                source.write_text(text)
+                with self.subTest(text=text, allowed=allowed):
+                    if allowed:
+                        self.assertEqual(dependencies(root, ["src/test.sv"], synthesis=True), ["src/test.sv"])
+                    else:
+                        with self.assertRaises(ValueError):
+                            dependencies(root, ["src/test.sv"], synthesis=True)
+            source.write_text('`ifndef SYNTHESIS\n/* preserve\nlines */\n' + read + '`include "src/sim.svh"\n`endif\n')
+            (root / "src/sim.svh").write_text('// still fingerprinted\n')
+            self.assertEqual(dependencies(root, ["src/test.sv"], synthesis=True), ["src/test.sv", "src/sim.svh"])
