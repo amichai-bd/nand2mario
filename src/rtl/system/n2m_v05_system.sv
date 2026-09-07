@@ -4,7 +4,8 @@
 
 // Required owners for the original v0.5 program; unused destinations reject service.
 module n2m_v05_system #(
-    parameter integer UART_BAUD = 115200
+    parameter integer UART_BAUD = 115200,
+    parameter logic [127:0] BUILD_ID = 128'h88000000000000000000000000000001
 ) (
     input var logic clk_sys,
     input var logic reset_sys,
@@ -83,7 +84,7 @@ module n2m_v05_system #(
 
     n2m_uart #(.CLOCK_HZ(25000000), .BAUD(UART_BAUD)) u_uart (
         .clk_sys, .reset_sys, .uart_rx, .uart_tx,
-        .build_id(128'h88000000000000000000000000000001), .gb_tick, .paused,
+        .build_id(BUILD_ID), .gb_tick, .paused,
         .core_initialized, .instruction_complete, .retirement_valid, .cpu_stopped,
         .physical_commit(1'b0), .physical_buttons(8'd0), .effective_buttons, .effective_update,
         .input_source_observe(),
@@ -206,4 +207,3 @@ module n2m_v05_system #(
     );
     `N2M_ASSERT(V05_NO_STOP, clk_sys, reset, !cpu_stopped)
 endmodule
-

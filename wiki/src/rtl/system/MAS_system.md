@@ -14,6 +14,13 @@ UART defaults to 115200 baud. Simulation may explicitly override `UART_BAUD`,
 subject to the UART owner's minimum eight system clocks per bit. An accelerated
 transport test does not establish physical UART acceptance.
 
+The additive `v05-board` target uses the same composition with physical UART
+D0/D1 and KEY0 reset, following the [board pin contract](../../fpga-controls.md).
+Only diagnostic outputs remain virtual. `BUILD_ID` propagates the producing
+128-bit build identity to the UART owner; the placement/simulation default stays
+unchanged. Physical execution remains unproven under #28 and #88 until the
+documented setup and actual board checks pass.
+
 The UART owner supplies core reset, profile, epoch, pause and effective input.
 Initialization completes only when CPU and backing-store initialization complete.
 The CPU uses resolved IF/IE for observation, the memory CPU port for prepared
