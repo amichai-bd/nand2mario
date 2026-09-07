@@ -6092,5 +6092,33 @@
     ],
     "signature": "PASS controls sticky fault checks=8",
     "expected_exit": "zero"
+  },
+  "uart-validation": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/uart/n2m_uart_host_registers.sv",
+      "src/rtl/uart/n2m_uart_validate.sv",
+      "src/dv/uart/tb_uart_validation.sv"
+    ],
+    "top": "tb_uart_validation",
+    "args": [],
+    "signature": "PASS UART validation checks=113",
+    "expected_exit": "zero"
+  },
+  "uart-validation-corrupt": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/uart/n2m_uart_host_registers.sv",
+      "src/rtl/uart/n2m_uart_validate.sv",
+      "src/dv/uart/tb_uart_validation.sv"
+    ],
+    "top": "tb_uart_validation",
+    "args": [
+      "+CORRUPT_HOST"
+    ],
+    "signature": "UART_HOST_VALUE address=00010030 expected=2468ace0 actual=00000000",
+    "expected_exit": "nonzero"
   }
 }
