@@ -53,3 +53,15 @@ the normal named protocol failure. `controls-sticky` compiles the same producer
 with explicit `SYNTHESIS` assertion exclusion to observe the hardware fault
 persisting across ADC recovery, live buttons, and release only by global reset.
 The recovery negative corrupts the actual resumed physical mask.
+
+`controls-wire` connects the actual producer, UART shared input owner, JOYP,
+timebase and Intel-backed VGA bridge. Public ADC command/response stimulus
+supplies center and low-axis samples; it does not replace or validate the
+unaccepted vendor ADC simulation. Eight-clock serial bits and shortened filter
+intervals bound this composition test; the board parameters remain unchanged.
+Five four-register wire readbacks cover UART-default isolation, explicit physical
+selection and debounced A/B plus directional masks. Two writes make 22 replies.
+The paused timebase must remain paused while the diagnostic VGA producer advances;
+96 displayed samples are checked from literal geometry and shade arithmetic.
+The negative changes actual JOYP observation from 1A to zero. Physical wiring,
+ADC accuracy, and the generated board clocks are separate acceptance evidence.
