@@ -26,6 +26,12 @@ accept the known-good fixture and detect its known defect through Questa, retain
 or hardware coverage from this fixture.
 
 Questa is the sole simulator under [#106](https://github.com/amichai-bd/nand2mario/issues/106).
+The shared builder also supports independent Python testbenches alongside SV
+under [#172](https://github.com/amichai-bd/nand2mario/issues/172), using the same
+tagged evidence and cache rules. Python failures must fail the command even
+when the simulator returns zero. The [testbench contract](SPEC.md#testbench-types)
+defines explicit selection and the first joypad proof; it does not replace
+existing acceptance or authorize a wider verification migration.
 Product memory simulation must use the installed Intel model for the same
 explicit wrapper used by MAX 10 synthesis. [#137](https://github.com/amichai-bd/nand2mario/issues/137)
 requires checked model selection, retained source hashes and binding, and

@@ -46,10 +46,10 @@ class Simulator:
             self.info["tools"][name] = detail
         self.compiler, self.runtime = self.tools["vlog"], self.tools["vsim"]
 
-    def run(self, argv, cwd=None, timeout=60):
+    def run(self, argv, cwd=None, timeout=60, env=None):
         command = argv
         try:
-            return subprocess.run(command, cwd=cwd, text=True, encoding="utf-8",
+            return subprocess.run(command, cwd=cwd, env=env, text=True, encoding="utf-8",
                                   errors="replace", stdout=subprocess.PIPE,
                                   stderr=subprocess.STDOUT, timeout=timeout)
         except (OSError, subprocess.TimeoutExpired) as error:

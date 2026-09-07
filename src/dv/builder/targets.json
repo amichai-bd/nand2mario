@@ -7207,5 +7207,49 @@
       ],
       "preload": true
     }
+  },
+  "python-joypad": {
+    "testbench": "python",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/joypad/n2m_joypad_pkg.sv",
+      "src/rtl/joypad/n2m_joypad_matrix.sv",
+      "src/rtl/joypad/n2m_joypad.sv"
+    ],
+    "top": "n2m_joypad",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS python-joypad",
+    "timeout_seconds": 60,
+    "python": {
+      "module": "test_joypad",
+      "test": "joypad_contract",
+      "inputs": [
+        "src/dv/python/joypad/test_joypad.py"
+      ]
+    }
+  },
+  "python-joypad-fault": {
+    "testbench": "python",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/joypad/n2m_joypad_pkg.sv",
+      "src/rtl/joypad/n2m_joypad_matrix.sv",
+      "src/rtl/joypad/n2m_joypad.sv",
+      "src/dv/python/joypad/joypad_fault.sv"
+    ],
+    "top": "joypad_fault",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS python-joypad",
+    "timeout_seconds": 60,
+    "python": {
+      "module": "test_joypad",
+      "test": "joypad_contract",
+      "inputs": [
+        "src/dv/python/joypad/test_joypad.py"
+      ]
+    }
   }
 }
+

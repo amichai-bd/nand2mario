@@ -10,7 +10,7 @@ from .hdl import dependencies
 from .simulator import ToolError
 from .questa import commands as questa_commands, diagnostic
 from .records import atomic_json, atomic_text, cache_matches, digest, file_hash, read_json
-from . import intel_memory, intel_adc
+from . import intel_memory, intel_adc, python_tb
 from .simulation_peer import Peer
 
 
@@ -46,11 +46,13 @@ def load_target(root, name):
             path = (root / source).resolve()
             if not path.is_relative_to(root.resolve()) or not path.is_file():
                 raise ValueError(f"missing or out-of-tree driver input: {source}")
+    python_tb.validate(root, target)
     return target, registry
 
 
 def simulate(root, build, args, simulator, provenance=None):
     target, registry = load_target(root, args.target)
+    python_runtime = python_tb.discover() if target.get("testbench") == "python" else None
     hdl_inputs = dependencies(root, target["sources"])
     vendor_model = intel_memory.resolve(root, simulator, target, getattr(args, "intel_sim_lib", None))
     if vendor_model is not None:
@@ -63,15 +65,19 @@ def simulate(root, build, args, simulator, provenance=None):
     inputs += ["tools/n2m/dependencies.json"]
     if "driver" in target:
         inputs += [target["driver"]["script"], target["driver"]["peer"], *target["driver"]["inputs"]]
+    if python_runtime:
+        inputs += target["python"]["inputs"] + ["src/dv/python/requirements.txt", "src/dv/python/THIRD_PARTY.md"]
     hashes = {p: file_hash(root / p) for p in inputs}
     options = {"seed": args.seed, "target": args.target, "definition": target, "vendor_model": vendor_model}
+    if python_runtime:
+        options["python_runtime"] = python_runtime
     if "driver" in target:
         options["peer_python"] = {"path": sys.executable, "sha256": file_hash(Path(sys.executable)), "version": sys.version}
     fingerprint = digest({"inputs": hashes, "tools": simulator.info, "options": options})
     stage = build / "sim/test" / args.target
     current = stage / "result.json"
     old = read_json(current)
-    if not args.rebuild and cache_matches(old, fingerprint, root, build):
+    if not args.rebuild and cache_matches(old, fingerprint, root, build) and (not python_runtime or python_tb.evidence(root, old, target["python"])):
         return {**old, "cache": "CACHED"}
     attempt_id = uuid.uuid4().hex
     attempt = stage / "attempts" / attempt_id
@@ -89,7 +95,7 @@ def simulate(root, build, args, simulator, provenance=None):
     atomic_json(current, record)
     log = compile_dir / "prepare.log"
     try:
-        commands = questa_commands(simulator, root, target, args.seed, compile_dir, attempt, vendor_model=vendor_model)
+        commands = questa_commands(simulator, root, target, args.seed, compile_dir, attempt, vendor_model=vendor_model, python_runtime=python_runtime)
         for argv, cwd, log, expected in commands:
             command = simulator.command(argv)
             record["commands"].append({"argv": command, "cwd": str(cwd)})
@@ -97,6 +103,9 @@ def simulate(root, build, args, simulator, provenance=None):
                 stream.write(json.dumps(record["commands"][-1]) + "\n")
             call_options = {"timeout": target["timeout_seconds"]} if log.name == "sim.log" and "timeout_seconds" in target else {}
             record["commands"][-1]["timeout_seconds"] = call_options.get("timeout", 60)
+            if log.name == "sim.log" and python_runtime:
+                call_options["env"] = python_tb.environment(root, target, attempt, args.seed, python_runtime)
+                record["python_results_file"] = (attempt / "results.xml").relative_to(root).as_posix()
             peer = None
             result = None
             try:
@@ -114,6 +123,8 @@ def simulate(root, build, args, simulator, provenance=None):
                 result = simulator.run(argv, cwd=cwd, **call_options)
                 log.write_text(result.stdout, encoding="utf-8")
                 record["commands"][-1]["exit_code"] = result.returncode
+                if log.name == "sim.log" and python_runtime:
+                    record["python_results"] = python_tb.results(attempt / "results.xml", target["python"])
             finally:
                 if peer is not None:
                     peer.close(result is not None and result.returncode == 0)
@@ -126,9 +137,15 @@ def simulate(root, build, args, simulator, provenance=None):
                 checked_output, record["explained_compile_diagnostics"] = intel_adc.classify_compile_diagnostics(result.stdout, vendor_model, log.name)
             if log.name == "sim.log":
                 checked_output, record["explained_diagnostics"] = intel_memory.classify_diagnostics(result.stdout, vendor_model)
+            if python_runtime:
+                checked_output, explained = python_tb.classify(checked_output)
+                if explained:
+                    record.setdefault("explained_python_diagnostics", []).extend(explained)
             problem = diagnostic(checked_output, target["signature"] if expected == "nonzero" else None)
             if problem:
                 raise RuntimeError(f"{problem}; see {log.relative_to(root)}")
+            if log.name == "sim.log" and python_runtime and record["python_results"]["status"] != "PASS":
+                raise RuntimeError(f"Python test failed: {record['python_results']}")
         if target["signature"] not in result.stdout:
             raise RuntimeError(f"missing expected signature: {target['signature']}")
         record["status"] = "PASS"
@@ -142,6 +159,8 @@ def simulate(root, build, args, simulator, provenance=None):
     record["finished"] = datetime.now(timezone.utc).isoformat()
     artifacts = [p for base in (compile_dir, attempt) for p in base.rglob("*") if p.is_file()]
     record["artifacts"] = {p.relative_to(root).as_posix(): file_hash(p) for p in artifacts}
+    if python_runtime and record["status"] == "PASS" and not python_tb.evidence(root, record, target["python"]):
+        record.update(status="FAIL", error="incomplete Python test evidence")
     atomic_json(attempt / "result.json", record)
     # result.json is authoritative. Immutable attempt paths keep old readers
     # valid while the publication pointer changes in one atomic replace.

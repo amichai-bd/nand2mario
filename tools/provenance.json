@@ -87,6 +87,16 @@
       "purpose": "Approved private GPL-3.0-or-later DMG logic adaptation with independent contract/tests",
       "local_changes": "Planned changes and import state are authoritative in the owner manifest",
       "storage": "src/rtl/ppu; no platform, boot ROM or game assets"
+    },
+    {
+      "name": "Python hardware verification environment",
+      "record": "../src/dv/python/THIRD_PARTY.md",
+      "locks": [
+        "../src/dv/python/requirements.txt"
+      ],
+      "purpose": "Independent cocotb stimulus and checks through shared Questa builder",
+      "local_changes": "none",
+      "storage": "Ignored isolated environment under workdir/builds; upstream notices retained in packages"
     }
   ]
 }
