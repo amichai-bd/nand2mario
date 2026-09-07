@@ -81,6 +81,11 @@ def connect(dut, received, observation, entries):
     return client
 
 
+def refresh_clock(client):
+    """Call from the cocotb controller after idle, before entering bridge code."""
+    client.transport.sim_time = float(get_sim_time(unit="sec"))
+
+
 async def execute(dut, image, received, observation, counts, *, preloaded=False, test_entry=None):
     started = time.monotonic()
     entries = []
@@ -121,6 +126,7 @@ async def execute(dut, image, received, observation, counts, *, preloaded=False,
         stamps['run'] = datetime.now(timezone.utc).isoformat()
         client.control("RUN")
 
+    refresh_clock(client)
     await start()
     while int(dut.dot_count.value) < 136280:
         await Timer(1, unit="us")
@@ -131,6 +137,7 @@ async def execute(dut, image, received, observation, counts, *, preloaded=False,
         client.control("HALT")
         assert client.read_host(abi.HOST_REG_STATE) == abi.STATE_PAUSED, "INTEGRATION_FINAL_STATE"
 
+    refresh_clock(client)
     await halt()
     await Timer(1, unit="ns")
     assert int(dut.paused.value) == 1, "INTEGRATION_FINAL_PAUSED"

@@ -204,9 +204,11 @@ commands, and input/tool hashes remain beneath the tag. Unexpected warnings,
 errors, timeouts, or missing signatures fail; expected nonzero targets require
 their full diagnostic and reject additional errors.
 
-A target may set integer `timeout_seconds` from 1 through 600 (1500 for a declared
-Python-peer driver workload) for its Questa
-runtime command; the default and all preparation/compile commands remain 60
+A target may set integer `timeout_seconds` from 1 through 600, through 1500 for
+a declared Python-peer driver, or through 43200 for a Python testbench. The
+finite Python ceiling accommodates continuous 600-interval verification; each
+long target must choose its actual bound from measured execution and retain its
+simulation-time deadline. This value bounds its Questa runtime command; the default and all preparation/compile commands remain 60
 seconds. The value enters the target fingerprint and each command records its
 effective bound. Long raster tests retain independent simulation-time watchdogs.
 A wall-clock timeout is a failed harness run, not a checked DUT verdict; partial
