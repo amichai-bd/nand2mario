@@ -6,7 +6,7 @@ import tempfile
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from n2m import fpga, fpga_v05, fpga_controls
+from n2m import fpga, fpga_v05, fpga_controls, fpga_memory_stores, fpga_vga, fpga_pll
 
 
 class BoardTests(unittest.TestCase):
@@ -65,6 +65,33 @@ class BoardTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 fpga_controls.verify_identity(self.folder, identity,
                     macro='N2M_V05_BUILD_ID', instances=2)
+
+    def test_composed_snapshot_partition_and_mutations(self):
+        from test_fpga_memory_stores import fixture
+        owner = 'u_system|u_snapshot|banks[0].u_source'
+        text = '\n'.join(line for line in fixture().splitlines() if '\\wram|' in line)
+        text = text.replace('wram|', owner + '|').replace('"8192"', '"5760"')
+        text = text.replace(r'\clk_sys~inputclkctrl_outclk', fpga_pll.SYSTEM_NET)
+        args = dict(stores={owner: (5760, 8)}, scoped=True, system_clock=fpga_pll.SYSTEM_NET)
+        self.assertEqual(len(fpga_memory_stores.verify_netlist(text, **args)), 8)
+        for changed in (text.replace('.clr0(gnd)', '.clr0(vcc)', 1),
+                        text.replace('"5760"', '"8192"', 1),
+                        text.replace('"none"', '"clock0"', 1)):
+            with self.assertRaises(ValueError):
+                fpga_memory_stores.verify_netlist(changed, **args)
+
+    def test_composed_vga_shade_and_clock(self):
+        from test_fpga_vga import memory_netlist
+        text = memory_netlist(lcd=True).replace('u_bridge|', 'u_system|u_bridge|')
+        text = text.replace('u_ppu|', 'u_system|u_ppu|')
+        text = text.replace(r'\clk_sys~inputclkctrl_outclk', fpga_pll.SYSTEM_NET)
+        args = dict(lcd=True, system_net=fpga_pll.SYSTEM_NET,
+                    bridge_prefix='u_system|u_bridge|', shade='u_system|u_ppu|source_shade')
+        self.assertEqual(len(fpga_vga.verify_memory_netlist(text, **args)), 18)
+        for changed in (text.replace('source_shade', 'wrong_shade', 1),
+                        text.replace(fpga_pll.SYSTEM_NET, 'wrong_clock', 1)):
+            with self.assertRaises(ValueError):
+                fpga_vga.verify_memory_netlist(changed, **args)
 
 
 if __name__ == '__main__':

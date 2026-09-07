@@ -120,17 +120,17 @@ def audit(quote, *, lcd=False):
     return "\n".join(lines) + "\n"
 
 
-def verify_memory_netlist(text, *, lcd=False, controls=False, system_net=r"\clk_sys~inputclkctrl_outclk"):
+def verify_memory_netlist(text, *, lcd=False, controls=False, system_net=r"\clk_sys~inputclkctrl_outclk", bridge_prefix="u_bridge|", shade="u_ppu|source_shade"):
     """Check the fitted MAX 10 atoms, including clocks and one-edge read shape."""
     atoms = re.findall(r"fiftyfivenm_ram_block\s+\\(\S+)\s*\((.*?)\);", text, re.DOTALL)
-    if controls:
-        atoms = [(name, body) for name, body in atoms if name.startswith('u_bridge|')]
+    if controls or bridge_prefix != "u_bridge|":
+        atoms = [(name, body) for name, body in atoms if name.startswith(bridge_prefix)]
     if len(atoms) != 18 or len({name for name, _ in atoms}) != 18:
         raise ValueError("VGA physical RAM atom inventory differs")
     bits = {bank: [] for bank in range(3)}
     evidence = {}
     for name, body in atoms:
-        owner = re.fullmatch(r"u_bridge\|banks\[([0-2])\]\.u_ram\|u_storage\|ram\|auto_generated\|ram_block1a[0-5]", name)
+        owner = re.fullmatch(re.escape(bridge_prefix) + r"banks\[([0-2])\]\.u_ram\|u_storage\|ram\|auto_generated\|ram_block1a[0-5]", name)
         if not owner:
             raise ValueError("unexpected VGA physical RAM owner")
         bank = int(owner[1])
@@ -162,7 +162,7 @@ def verify_memory_netlist(text, *, lcd=False, controls=False, system_net=r"\clk_
         first = params.get("port_a_first_bit_number")
         if first not in ("0", "1") or params.get("port_b_first_bit_number") != first:
             raise ValueError("VGA physical RAM bit identity differs")
-        expected_input = "{\\u_ppu|source_shade[" + first + "]}"
+        expected_input = "{\\" + shade + "[" + first + "]}"
         input_matches = ports.get("portadatain") == expected_input if lcd else bool(
             re.fullmatch(r"\{\\shade\[" + first + r"\]~\d+_combout\}", ports.get("portadatain", "")))
         if not input_matches:
@@ -194,13 +194,7 @@ def verify(folder, *, lcd=False, controls=False, system_clock="clk_sys", system_
     memory = [row[1] for row in rows(fit) if len(row) == 2 and row[0] == "Total block memory bits"]
     if memory != (["181,744 / 1,677,312 ( 11 % )"] if controls else ["138,240 / 1,677,312 ( 8 % )"]):
         raise ValueError("unexpected total fitted memory bits")
-    ram_rows = [row for row in rows(fit) if len(row) > 4 and row[1:4] == ["M9K", "True Dual Port", "Dual Clocks"]]
-    expected_banks = {f"u_bridge|banks[{i}].u_ram|u_storage|ram|auto_generated|ALTSYNCRAM" for i in range(3)}
-    if len(ram_rows) != 3 or {node(row[0]) for row in ram_rows} != expected_banks:
-        raise ValueError("missing or extra fitted dual-clock VGA RAM banks")
-    for row in ram_rows:
-        if len(row) != 27 or row[4:18] != ["23040", "2", "23040", "2", "yes", "no", "yes", "no", "46080", "23040", "2", "23040", "2", "46080"] or row[18] != "6" or row[19] != "None" or row[21:] != ["Don't care", "New data with NBE Read", "New data with NBE Read", "Off", "No", "No - Unknown"]:
-            raise ValueError("VGA RAM dimensions, registers, M9K usage or initialization differ")
+    verify_memory_rows(fit)
     netlist = (folder / "simulation/questa/design.vo").read_text(encoding="utf-8")
     uart_ram = None
     if controls:
@@ -342,3 +336,14 @@ def verify_paths(reports, *, lcd=False, system_clock="clk_sys", bridge_prefix="u
         if lcd:
             result[corner]["blank_control_slack_ns"] = blank_slacks
     return result
+
+
+def verify_memory_rows(fit, *, bridge_prefix="u_bridge|"):
+    ram_rows = [row for row in rows(fit) if len(row) > 4 and row[1:4] == ["M9K", "True Dual Port", "Dual Clocks"]]
+    expected_banks = {f"{bridge_prefix}banks[{i}].u_ram|u_storage|ram|auto_generated|ALTSYNCRAM" for i in range(3)}
+    if len(ram_rows) != 3 or {node(row[0]) for row in ram_rows} != expected_banks:
+        raise ValueError("missing or extra fitted dual-clock VGA RAM banks")
+    for row in ram_rows:
+        if len(row) != 27 or row[4:18] != ["23040", "2", "23040", "2", "yes", "no", "yes", "no", "46080", "23040", "2", "23040", "2", "46080"] or row[18] != "6" or row[19] != "None" or row[21:] != ["Don't care", "New data with NBE Read", "New data with NBE Read", "Off", "No", "No - Unknown"]:
+            raise ValueError("VGA RAM dimensions, registers, M9K usage or initialization differ")
+    return ram_rows

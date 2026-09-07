@@ -402,6 +402,15 @@ excepted; all three-corner setup/hold paths to the second stage remain checked,
 along with the existing PLL, reset, memory and VGA evidence. Physical and full
 milestone acceptance remain separate in #28 and #88.
 
+The composed memory check accounts for every logical store and physical atom:
+seven direct-profile stores (52 atoms), four 5760-byte snapshot stores (32),
+three dual-clock VGA banks (18), and six UART stores (9). The complete inventory
+is 20 logical stores, 111 M9Ks and 761,704 bits. Existing store, VGA and UART
+checkers validate their explicit composed hierarchy, clock/reset roles,
+initialization, read shape and bit partitions; the outer inventory rejects
+missing or extra atoms and inconsistent fitted capacity. Diagnostic placement
+targets retain their own scoped evidence.
+
 ```powershell
 python tools/build.py fpga build builder-smoke --quartus-bin <directory> --tag fpga-smoke --json
 python tools/build.py fpga build builder-invalid --quartus-bin <directory> --tag fpga-invalid --json

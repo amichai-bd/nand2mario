@@ -21,18 +21,19 @@ def verify_identity(folder, build_id, *, macro="N2M_CONTROLS_BUILD_ID", instance
     return build_id
 
 
-def verify_uart_memory(text, fit, *, system_net=r"\clk_sys~inputclkctrl_outclk"):
+def verify_uart_memory(text, fit, *, system_net=r"\clk_sys~inputclkctrl_outclk", prefix="", top="controls_proof"):
     """Account for the six existing UART stores alongside the three VGA banks."""
     from .fpga_lock import parse_netlist
-    _, cells, params, *_ = parse_netlist(text, 'controls_proof')
+    _, cells, params, *_ = parse_netlist(text, top)
     shapes = {'u_uart|u_packet_rx|stores|encoded': (270, 8, 1),
               'u_uart|u_packet_rx|stores|decoded': (268, 8, 1),
               'u_uart|u_commands|u_load|u_presence|u_presence': (32768, 1, 4)}
     shapes.update({f'u_uart|u_exchange|stores|banks[{i}].memory': (268, 8, 1) for i in range(3)})
+    shapes = {prefix + owner: shape for owner, shape in shapes.items()}
     suffix = '|ram|auto_generated|'
     expected = {owner + suffix + f'ram_block1a{i}': (depth, width)
                 for owner, (depth, width, count) in shapes.items() for i in range(count)}
-    actual = {n for n, (kind, _) in cells.items() if kind == 'fiftyfivenm_ram_block' and not n.startswith('u_bridge|')}
+    actual = {n for n, (kind, _) in cells.items() if kind == 'fiftyfivenm_ram_block' and (n.startswith(prefix + 'u_uart|') if prefix else not n.startswith('u_bridge|'))}
     if actual != set(expected):
         raise ValueError('combined UART RAM atom inventory differs')
     for name, (depth, width) in expected.items():
@@ -55,6 +56,8 @@ def verify_uart_memory(text, fit, *, system_net=r"\clk_sys~inputclkctrl_outclk")
         if any(ports.get(k) != v for k, v in required_ports.items()):
             raise ValueError('combined UART RAM clock/reset/port role differs')
     rows = [r for r in fpga_vga.rows(fit) if len(r) > 4 and r[1:4] == ['M9K', 'True Dual Port', 'Single Clock']]
+    if prefix:
+        rows = [r for r in rows if fpga_vga.node(r[0]).startswith(prefix + 'u_uart|')]
     if len(rows) != len(shapes):
         raise ValueError('combined UART fitted store count differs')
     seen = set()
