@@ -17,6 +17,7 @@ module n2m_button_filter #(
     `DFF_ARST_VAL(button_meta, buttons_n, clk_sys, reset_sys, 4'hF)
     `DFF_ARST_VAL(button_sync, button_meta, clk_sys, reset_sys, 4'hF)
     genvar i;
+    generate
     for (i = 0; i < 4; i++) begin : g_button
         logic [COUNT_BITS-1:0] count_q;
         logic [COUNT_BITS-1:0] count_next;
@@ -37,6 +38,7 @@ module n2m_button_filter #(
         `N2M_ASSERT(button_count_range, clk_sys, reset_sys,
             count_q < COUNT_BITS'(STABLE_CYCLES))
     end
+    endgenerate
     `N2M_ASSERT(button_filter_parameter, clk_sys, reset_sys, STABLE_CYCLES >= 1)
     `N2M_ASSERT_KNOWN(button_filter_known, clk_sys, reset_sys, pressed)
 endmodule
