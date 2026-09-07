@@ -37,7 +37,9 @@ def verify_netlist(text, checks):
         ports = cell(name, "dffeas")
         require(ports.get("clk") == clock and ports.get("clrn") == reset and
                 ports.get("prn") == "vcc" and ports.get("aload") == "gnd" and
-                ports.get("sclr") == "gnd" and params.get(name) ==
+                ports.get("sclr") == "gnd" and ports.get("devclrn") == "devclrn" and
+                ports.get("devpor") == "devpor" and set(ports) ==
+                {"clk", "clrn", "prn", "aload", "sclr", "sload", "ena", "d", "asdata", "q", "devclrn", "devpor"} and params.get(name) ==
                 {"is_wysiwyg": '"true"', "power_up": '"low"'}, "ADC register clock/reset differs: " + name)
         return ports
 
@@ -84,15 +86,27 @@ def verify_netlist(text, checks):
     def evaluate(net, values, visiting=()):
         if net in values:
             return values[net]
+        if net.startswith("!"):
+            return 1 - evaluate(net[1:], values, visiting)
         require(net not in visiting, "cyclic ADC reset qualification")
         drivers = [(n, ps) for n, (kind, ps) in cells.items()
-                   if kind == "fiftyfivenm_lcell_comb" and ps.get("combout") == net]
+                   if kind == "fiftyfivenm_lcell_comb" and net in (ps.get("combout"), ps.get("cout"))]
         require(len(drivers) == 1 and drivers[0][0].startswith("u_reset|"), "unknown ADC qualification driver")
         name, ports = drivers[0]
-        require(params[name].get("sum_lutc_input") == '"datac"', "unsupported ADC qualification LUT")
-        index = sum(evaluate(ports[p], values, (*visiting, net)) << i
-                    for i, p in enumerate(("dataa", "datab", "datac", "datad")))
+        require(set(params[name]) == {"lut_mask", "sum_lutc_input"} and
+                params[name]["sum_lutc_input"] in {'"datac"', '"cin"'}, "unsupported ADC qualification LUT")
+        # Pinned fiftyfivenm_atoms.v lcell_comb: combout selects datac/cin;
+        # carry uses LUT(dataa, datab, cin, 0), independently of that selector.
+        carry = ports.get("cout") == net
+        third = "cin" if carry or params[name]["sum_lutc_input"] == '"cin"' else "datac"
+        inputs = (ports["dataa"], ports["datab"], ports[third], "gnd" if carry else ports["datad"])
+        index = sum(evaluate(value, values, (*visiting, net)) << i for i, value in enumerate(inputs))
         return (int(params[name]["lut_mask"].removeprefix("16'h"), 16) >> index) & 1
+
+    def next_register(ports, values):
+        if not evaluate(ports["ena"], values):
+            return values[ports["q"]]
+        return evaluate(ports["asdata"] if evaluate(ports["sload"], values) else ports["d"], values)
     ready = cells["u_reset|ready"][1]
     for prefix in ("lock_samples", "sys_release"):
         for i in (0, 1):
@@ -106,7 +120,10 @@ def verify_netlist(text, checks):
         for count in range(1024):
             values = {r"\u_reset|lock_count[" + str(i) + "]": (count >> i) & 1 for i in range(10)}
             values.update({"gnd": 0, "vcc": 1, ready["q"]: held})
-            require(evaluate(ready["d"], values) == (held or count == 1023), "ADC lock qualification is not 1024 cycles")
+            require(next_register(ready, values) == (held or count == 1023), "ADC lock qualification is not 1024 cycles")
+            actual_count = sum(next_register(cells[f"u_reset|lock_count[{i}]"][1], values) << i for i in range(10))
+            require(actual_count == (count if held or count == 1023 else count + 1),
+                    "ADC lock counter transition/hold differs")
     for state, gate in (("IDLE", "ctrl_state.IDLE~0"), ("PWRDWN", "Selector1~1")):
         name = FSM + "ctrl_state." + state
         ports = register(name, r"\u_reset|sys_release[1]")
