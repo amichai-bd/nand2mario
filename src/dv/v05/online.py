@@ -14,7 +14,8 @@ class Online:
     def input(self, dot, buttons):
         index = len(self.inputs) + 1
         low, high = input_window(index)
-        if type(dot) is not int or not low <= dot <= high or buttons != INPUT_MASKS[index - 1]:
+        if (type(dot) is not int or type(buttons) is not int
+                or not low <= dot <= high or buttons != INPUT_MASKS[index - 1]):
             raise ValueError(f"V05_INPUT_WINDOW transition={index} dot={dot} buttons={buttons}")
         # Windows fall in HALT. Queue only authentic, observed future events;
         # later register/pixel data never selects the expected input value.

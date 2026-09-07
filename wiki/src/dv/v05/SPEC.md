@@ -88,7 +88,11 @@ startup/input/update boundaries without recording clocks for the entire run.
 
 Two fresh software-build tags must produce identical complete images. The real
 UART loader must read back that complete image. Actual corrupt-load and producer
-pixel mutations must fail for their specified reasons with raw nonzero exits.
+pixel mutations must fail for their specified reasons. Python execution requires
+a failing checker and result XML, the exact intended mismatch, and a nonzero
+outer builder exit. Retain the raw simulator exit separately: cocotb can report
+a failed test while the simulator exits zero. That zero does not establish a
+passing test and must never be reported as a nonzero simulator exit.
 The new composed Intel-model and constrained-fit evidence is required. A short
 measured diagnostic determines wall/storage bounds before the long run; it does
 not replace the 60/600-interval acceptance. Final runtime evidence remains pending.
