@@ -33,11 +33,9 @@ module tb_integration #(
     bit data_fault, irq_fault, pixel_fault, dumping;
     string root_path;
     n2m_smoke_system dut (.*);
-    generate if (PRELOADED) begin : preload_configuration
-        defparam dut.u_stores.rom.SIM_INIT_FILE = "preload-rom.mif";
-        defparam dut.u_uart.u_commands.u_load.u_presence.u_presence.SIM_INIT_FILE = "preload-presence.mif";
-        defparam dut.u_uart.u_commands.u_load.SIM_PRELOAD = 1;
-    end endgenerate
+    defparam dut.u_stores.rom.SIM_INIT_FILE = PRELOADED ? "preload-rom.mif" : "UNUSED";
+    defparam dut.u_uart.u_commands.u_load.u_presence.u_presence.SIM_INIT_FILE = PRELOADED ? "preload-presence.mif" : "UNUSED";
+    defparam dut.u_uart.u_commands.u_load.SIM_PRELOAD = PRELOADED;
     always #10 clk_sys = !clk_sys;
     always @(posedge clk_sys) simulation_ns = $time;
 
