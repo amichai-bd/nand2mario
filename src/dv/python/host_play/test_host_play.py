@@ -88,7 +88,8 @@ async def host_play_contract(dut):
                         wall_seconds=time.monotonic()-wall)
             waits.append(item)
             observation('waited', **item)
-            mark('wait_complete', stage=len(waits)-1, **item)
+            mark('wait_complete', stage=len(waits)-1, start=begin,
+                 finish=item['finish'], requested=dots, wait_wall_seconds=item['wall_seconds'])
 
         def retain(stage, item, packed, pixels):
             Path(f'frame-{stage}.2bpp').write_bytes(packed)
