@@ -92,6 +92,17 @@ The exception applies only to the forbidden collision described by the memory
 MAS. Synthesis must use the same reviewed model source and must not produce
 Quartus critical warning 15003.
 
+The pinned ADC model has a separate, exact elaboration diagnostic profile:
+seven protected-model width messages, nine ignored `$rewind` return messages,
+and two messages for its unused FIFO `eccstatus` output. The same profile occurs
+with 50 MHz and 25 MHz control clocks. The protected internal widths cannot be
+inspected; this classification does not prove arbitrary ADC configurations.
+Actual channel/sample/lock recovery checks and fitted product port/clock checks
+remain required. The ADC classifier checks source hashes, complete messages,
+locations, counts and summary lines. Any drift or additional warning fails.
+Raw logs and the complete profile remain in `explained_diagnostics`; no simulator
+warning suppression is enabled.
+
 The [shared memory MAS](../../src/rtl/common/MAS_memory_primitives.md) owns the
 same-instance simulation/synthesis rule and the narrow supported port shapes.
 Missing-model and cache host tests use controlled original bytes and fake

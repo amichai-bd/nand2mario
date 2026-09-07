@@ -120,7 +120,10 @@ def simulate(root, build, args, simulator, provenance=None):
             if log.name == "intel-adc-control-compile.log":
                 checked_output, record["explained_compile_diagnostics"] = intel_adc.classify_compile_diagnostics(result.stdout, vendor_model, log.name)
             if log.name == "sim.log":
-                checked_output, record["explained_diagnostics"] = intel_memory.classify_diagnostics(result.stdout, vendor_model)
+                if vendor_model and vendor_model["selection"] == "intel-adc":
+                    checked_output, record["explained_diagnostics"] = intel_adc.classify_sim_diagnostics(result.stdout, vendor_model)
+                else:
+                    checked_output, record["explained_diagnostics"] = intel_memory.classify_diagnostics(result.stdout, vendor_model)
             problem = diagnostic(checked_output, target["signature"] if expected == "nonzero" else None)
             if problem:
                 raise RuntimeError(f"{problem}; see {log.relative_to(root)}")

@@ -1,6 +1,7 @@
 `timescale 1ns/1ps
 module tb_adc_backend;
     logic clk_sys;
+    logic clk_board_reference;
     logic clk_reference;
     logic clk_adc;
     logic board_reset_n;
@@ -27,7 +28,7 @@ module tb_adc_backend;
     integer replies;
     bit corrupt;
     n2m_reset_control u_reset (
-        .clk_reference(clk_sys), .clk_sys(clk_sys), .clk_pix(clk_adc), .board_reset_n(board_reset_n), .pll_locked(pll_locked),
+        .clk_reference(clk_board_reference), .clk_sys(clk_sys), .clk_pix(clk_adc), .board_reset_n(board_reset_n), .pll_locked(pll_locked),
         .pll_areset(pll_reset), .ready(adc_ready), .reset_sys(adc_reset), .reset_pix(adc_domain_reset)
     );
     n2m_adc_backend u_adc (
@@ -43,7 +44,8 @@ module tb_adc_backend;
         .response_channel(response_channel), .response_data(response_data),
         .physical_commit(physical_commit), .physical_buttons(physical_buttons), .adc_fresh(fresh), .adc_fault(fault)
     );
-    initial begin clk_sys = 1'b0; forever #10 clk_sys = !clk_sys; end
+    initial begin clk_sys = 1'b0; forever #20 clk_sys = !clk_sys; end
+    initial begin clk_board_reference = 1'b0; forever #10 clk_board_reference = !clk_board_reference; end
     initial begin clk_reference = 1'b0; forever #50 clk_reference = !clk_reference; end
     always @(posedge clk_sys) begin
         if (global_reset || adc_reset) begin pending = 1'b0; next_channel = 5'd1; end
@@ -72,7 +74,7 @@ module tb_adc_backend;
         pending = 1'b0; next_channel = 5'd1; pending_channel = 5'd0;
         commands = 0; replies = 0; corrupt = $test$plusargs("CORRUPT_ADC");
         $dumpfile("waves.vcd");
-        $dumpvars(0, clk_sys, clk_reference, clk_adc, board_reset_n, global_reset, pll_reset,
+        $dumpvars(0, clk_sys, clk_board_reference, clk_reference, clk_adc, board_reset_n, global_reset, pll_reset,
             pll_locked, adc_ready, adc_reset, command_valid, command_channel, command_ready,
             response_valid, response_channel, response_data, physical_commit, physical_buttons, fresh, fault);
         repeat (10) @(negedge clk_sys);
