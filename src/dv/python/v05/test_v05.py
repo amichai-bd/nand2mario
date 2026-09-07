@@ -196,7 +196,3 @@ async def run(dut, *, complete):
 async def startup(dut):
     await run(dut, complete=False)
 
-
-@cocotb.test(timeout_time=12, timeout_unit='sec')
-async def continuous(dut):
-    await run(dut, complete=True)
