@@ -69,7 +69,12 @@ remain unsupported. `preload: "integration"` packages the original integration
 image and prepares/verifies the supported Intel initialization files before
 elaboration; it requires the software packager inputs in the Python fingerprint.
 The [integration plan](../../../src/dv/python/integration/README.md) owns its
-diagnostic scope and historical source comparison.
+diagnostic scope and historical source comparison. `preload: "v05"` uses the
+original v0.5 software build and its recorded image hash with the same preparation,
+verification and public loader adoption. It requires that software's source,
+layout and tool inputs. This is short execution evidence, not real UART loading
+or full milestone acceptance; the [v0.5 plan](../../../src/dv/python/v05/README.md)
+owns those separate gates.
 
 Python targets use the executing pinned interpreter and installed packages from
 the [separate dependency record](../../../src/dv/python/THIRD_PARTY.md). Normal

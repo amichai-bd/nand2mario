@@ -107,4 +107,25 @@ a failed test while the simulator exits zero. That zero does not establish a
 passing test and must never be reported as a nonzero simulator exit.
 The new composed Intel-model and constrained-fit evidence is required. A short
 measured diagnostic determines wall/storage bounds before the long run; it does
-not replace the 60/600-interval acceptance. Final runtime evidence remains pending.
+not replace the 60/600-interval acceptance. Full 600-interval runtime evidence remains a named #88 milestone.
+
+## Short implementation proof
+
+Issue #178 delivers the executable full target and a shorter complete-path
+proof. The short proof uses the same original program and monitors, supported
+Intel preload with verified software hash, and real UART loader adoption,
+INPUT and HALT commands. It does not stand in for actual loading/readback.
+
+Its fixed inputs are Right press/release at completed dots 267891..269891 and
+338115..340115. The same HALT/VBlank update contract predicts the changed image
+at normal frame 4 and released image at frame 5. Completion is 458563, after all
+six frames (blank plus five normal), 138240 pixels and every retirement/write
+through actual final pause within 2000 further dots. The full default remains
+42312067, 602 frames and the original 18 transitions; no milestone is shortened.
+
+A stopped-tick mutation during CPU HALT at dot 50000 must reach the existing
+active-time watchdog and failing Python/XML/outer result. Focused host tests
+also reject early completion, missing input/pixel/retirement and extra writes.
+The accepted real-UART startup/readback and actual image/pixel mutations remain
+separate evidence. Short completion and current-source review can deliver the
+harness implementation while #88's full continuous run stays explicitly open.

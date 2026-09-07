@@ -5,7 +5,11 @@ from collections import deque
 
 
 class Online:
-    def __init__(self):
+    def __init__(self, *, short=False):
+        self.short = short
+        self.input_masks = INPUT_MASKS[:2] if short else INPUT_MASKS
+        self.end = FIRST_IMAGE_END + 4 * FRAME_DOTS if short else WINDOW_END
+        self.frame_count = 6 if short else 602
         self.reference = Reference()
         self.inputs = []
         self.retirements = 0
@@ -19,9 +23,9 @@ class Online:
 
     def input(self, dot, buttons):
         index = len(self.inputs) + 1
-        low, high = input_window(index)
+        low, high = input_window(index, short=self.short)
         if (type(dot) is not int or type(buttons) is not int
-                or not low <= dot <= high or buttons != INPUT_MASKS[index - 1]):
+                or not low <= dot <= high or buttons != self.input_masks[index - 1]):
             raise ValueError(f"V05_INPUT_WINDOW transition={index} dot={dot} buttons={buttons}")
         # Windows fall in HALT. Queue only authentic, observed future events;
         # later register/pixel data never selects the expected input value.
@@ -44,9 +48,9 @@ class Online:
 
     def pixel(self, frame, x, y, dot, shade):
         expected_frame, index = divmod(self.pixels, 23040)
-        if expected_frame >= 602 or (frame, x, y) != (expected_frame, index % 160, index // 160):
+        if expected_frame >= self.frame_count or (frame, x, y) != (expected_frame, index % 160, index // 160):
             raise ValueError(f"V05_PIXEL_ORDER count={self.pixels} frame={frame} x={x} y={y}")
-        expected = pixel_shade(frame, x, y)
+        expected = pixel_shade(frame, x, y, short=self.short)
         if shade != expected:
             raise ValueError(f"V05_PIXEL frame={frame} index={index} expected={expected} actual={shade}")
         if not frame:
@@ -60,16 +64,16 @@ class Online:
         self.pixels += 1
 
     def running(self, dot, *, reset, paused, fault):
-        if reset or fault or (paused and dot < WINDOW_END) or dot < self.last_dot:
+        if reset or fault or (paused and dot < self.end) or dot < self.last_dot:
             raise ValueError(f"V05_CONTINUITY dot={dot} reset={reset} paused={paused} fault={fault}")
         self.last_dot = dot
 
     def finish(self, pause_dot):
-        if not WINDOW_END <= pause_dot <= WINDOW_END + 2000:
+        if not self.end <= pause_dot <= self.end + 2000:
             raise ValueError("V05_PAUSE_WINDOW")
-        if len(self.inputs) != 18:
+        if len(self.inputs) != len(self.input_masks):
             raise ValueError("V05_INPUT_COUNT")
-        if self.pixels != 602 * 23040:
+        if self.pixels != self.frame_count * 23040:
             raise ValueError(f"V05_PIXEL_MISSING count={self.pixels}")
         if self.reference.step(pause_dot) is not None:
             raise ValueError(f"V05_RETIRE_MISSING seq={self.retirements}")

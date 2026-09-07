@@ -29,7 +29,7 @@ def validate(root, target):
         raise ValueError("python testbench requires zero raw exit and no driver")
     if target.get("vendor_model") not in (None, "intel-memory"):
         raise ValueError("Python testbench supports only Intel memory models")
-    if target.get("preload") not in (None, "integration"):
+    if target.get("preload") not in (None, "integration", "v05"):
         raise ValueError("unknown Python preload")
     if not isinstance(target.get("top"), str) or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", target["top"]):
         raise ValueError("python top must be an HDL identifier")
@@ -46,14 +46,16 @@ def validate(root, target):
     matches = [p for p in config["inputs"] if Path(p).name == config["module"] + ".py"]
     if len(matches) != 1:
         raise ValueError("python inputs must contain exactly one named test module")
-    if target.get("preload") == "integration":
+    if target.get("preload") in ("integration", "v05"):
         required = {"src/dv/integration/image.py", "src/dv/integration/program.asm",
                     "src/dv/integration/program.json", "src/dv/integration/retirement.json",
                     "src/sw/generated/interfaces.inc"}
+        if target["preload"] == "v05":
+            required = {"src/sw/v05/main.asm", "src/sw/v05/layout.json", "src/sw/generated/interfaces.inc"}
         required.update(p.relative_to(root).as_posix() for p in (root / "tools/sw").glob("*")
                         if p.suffix in (".py", ".json"))
         if target.get("vendor_model") != "intel-memory" or not required <= set(config["inputs"]):
-            raise ValueError("integration preload requires Intel memory and all software image inputs")
+            raise ValueError("preload requires Intel memory and all software image inputs")
 
 
 def discover():
@@ -99,15 +101,28 @@ def environment(root, target, attempt, seed, runtime):
 
 
 def prepare(target, attempt, root=None):
-    if target.get("preload") == "integration":
+    if target.get("preload") in ("integration", "v05"):
         import hashlib
         import importlib.util
         from .preload import prepare as prepare_preload, verify
-        spec = importlib.util.spec_from_file_location("integration_image", root / "src/dv/integration/image.py")
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        image = module.build(root, attempt)
-        prepare_preload(image, hashlib.sha256(image).hexdigest(), attempt)
+        if target["preload"] == "v05":
+            from types import SimpleNamespace
+            from sw.rom_build import build_target
+            from .records import git_state
+            report = build_target(root, attempt / "software-preload",
+                                  SimpleNamespace(target="v05", rebuild=True), git_state(root))
+            if report["status"] != "PASS":
+                raise ValueError("v05 preload software build failed")
+            image = (root / report["rom"]).read_bytes()
+            expected_sha = report["artifacts"][report["rom"]]
+            (attempt / "program.gb").write_bytes(image)
+        else:
+            spec = importlib.util.spec_from_file_location("integration_image", root / "src/dv/integration/image.py")
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            image = module.build(root, attempt)
+            expected_sha = hashlib.sha256(image).hexdigest()
+        prepare_preload(image, expected_sha, attempt)
         verify(attempt)
     wave_paths = " ".join(f"/{target['top']}/{name}" for name in target.get("python", {}).get("waves", [])) or "/*"
     (attempt / "run.do").write_text(

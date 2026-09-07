@@ -1,7 +1,7 @@
 `timescale 1ns/1ps
 `default_nettype none
 // Passive owner-boundary samples. Python owns stimulus and all expectations.
-module tb_python_v05;
+module tb_python_v05 #(parameter bit PRELOADED = 0);
     logic clk_sys, clk_pix, reset_sys, reset_pix, uart_rx, uart_tx;
     logic [3:0] red, green, blue;
     logic hsync_n, vsync_n;
@@ -47,6 +47,9 @@ module tb_python_v05;
         dut.rom_address, dut.rom_write_data, dut.rom_read_valid, dut.rom_read_data} : 34'd0;
 
     n2m_v05_system #(.UART_BAUD(3125000)) dut (.*);
+    defparam dut.u_stores.rom.SIM_INIT_FILE = PRELOADED ? "preload-rom.mif" : "UNUSED";
+    defparam dut.u_uart.u_commands.u_load.u_presence.u_presence.SIM_INIT_FILE = PRELOADED ? "preload-presence.mif" : "UNUSED";
+    defparam dut.u_uart.u_commands.u_load.SIM_PRELOAD = PRELOADED;
     always #20 clk_sys = !clk_sys;
     always #19.841 clk_pix = !clk_pix;
 
@@ -69,6 +72,15 @@ module tb_python_v05;
             pixel_sample <= {source_dot, source_epoch, source_x, source_y,
                              source_shade, source_start, source_abort, source_display_eligible};
             pixel_event <= !pixel_event;
+        end
+    end
+
+    // Stop actual emulated progress during CPU HALT; the Python watchdog must fail.
+    initial begin
+        if ($test$plusargs("progress_fault")) begin
+            wait(dot_count >= 64'd50000);
+            @(negedge clk_sys);
+            force dut.gb_tick = 1'b0;
         end
     end
 

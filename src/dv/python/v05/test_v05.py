@@ -18,6 +18,7 @@ from client_transport import connect, frames, refresh_clock
 from online import Online
 from reference import FIRST_IMAGE_END, INPUT_MASKS, WINDOW_END, LCD_COMMIT, FRAME_DOTS, input_window, unpack_retirement
 from n2m.records import git_state
+from n2m.preload import adopt, verify
 from sw.rom_build import build_target
 
 
@@ -26,22 +27,23 @@ def known(signal):
     return int(signal.value)
 
 
-def wave_windows(complete):
+def wave_windows(complete, *, short=False):
     windows = [(0,64), (LCD_COMMIT-32,LCD_COMMIT+256),
                (FIRST_IMAGE_END-32,FIRST_IMAGE_END+64)]
     if complete:
-        for j in range(1,19):
-            low,high = input_window(j)
+        for j in range(1,3 if short else 19):
+            low,high = input_window(j, short=short)
             windows.append((low-32, high+128))
-            first = LCD_COMMIT+70316+(20*j+2)*FRAME_DOTS
+            first = LCD_COMMIT+70316+((1 if short else 20)*j+2)*FRAME_DOTS
             wake = first - 4652
             windows.append((wake-32,wake+508+32))
             windows.append((first-32,first+256))
-        windows.append((WINDOW_END-32,WINDOW_END+2000))
+        end = FIRST_IMAGE_END + 4*FRAME_DOTS if short else WINDOW_END
+        windows.append((end-32,end+2000))
     return sorted(windows)
 
 
-async def run(dut, *, complete):
+async def run(dut, *, complete, short=False):
     entered = time.monotonic()
     dut._log.info("V05_PHASE entry")
     report = build_target(ROOT, Path.cwd() / 'software',
@@ -53,12 +55,12 @@ async def run(dut, *, complete):
     for row in recipe['instructions']:
         literal = bytes.fromhex(row['bytes'])
         assert image[row['pc']:row['pc'] + len(literal)] == literal, 'V05_IMAGE_RECIPE'
-    monitor = Online()
+    monitor = Online(short=short)
     received = Queue()
     entries = []
     armed = False
     run_time = None
-    bound = WINDOW_END if complete else FIRST_IMAGE_END
+    bound = monitor.end if complete else FIRST_IMAGE_END
     journal = []
     tasks = []
     with Path('transactions.jsonl').open('w') as trace, Path('retirement.csv').open('w') as retirement, Path('pixels.csv').open('w') as pixels:
@@ -83,7 +85,7 @@ async def run(dut, *, complete):
 
         async def waveform_windows():
             await FallingEdge(dut.paused)
-            for first, last in wave_windows(complete):
+            for first, last in wave_windows(complete, short=short):
                 while known(dut.dot_count) < first:
                     await Timer(1, unit='us')
                 await Timer(1, unit='ns')
@@ -185,7 +187,11 @@ async def run(dut, *, complete):
                 await ReadOnly()
                 elapsed = (int(get_sim_time(unit='ps')) - run_time) // 40000
                 expected = elapsed * 65536 // 390625
-                assert known(dut.dot_count) == expected, f'V05_TICK_PROGRESS expected={expected} actual={known(dut.dot_count)}'
+                actual = known(dut.dot_count)
+                if actual != expected:
+                    observation('progress_failure', expected=expected, actual=actual)
+                    trace.flush()
+                    raise AssertionError(f'V05_TICK_PROGRESS expected={expected} actual={actual}')
                 assert not known(dut.core_reset) and not known(dut.reset_sys) and not known(dut.fault), 'V05_CONTINUITY'
                 await Timer(10, unit='us')
             assert known(dut.dot_count) >= bound, 'V05_EARLY_PAUSE'
@@ -208,7 +214,12 @@ async def run(dut, *, complete):
         @bridge
         def load():
             identity = client.identify()
-            loaded = client.load(image)
+            if short:
+                prepared = verify(Path.cwd())
+                assert (Path.cwd() / 'program.gb').read_bytes() == image, 'V05_PRELOAD_IMAGE'
+                loaded = adopt(client, prepared)
+            else:
+                loaded = client.load(image)
             return identity, loaded
 
         phase('load_start')
@@ -220,7 +231,8 @@ async def run(dut, *, complete):
             trace.flush()
             raise
         phase('load_completed')
-        assert loaded['verified_bytes'] == 32768, 'V05_FULL_READBACK'
+        if not short:
+            assert loaded['verified_bytes'] == 32768, 'V05_FULL_READBACK'
         assert known(dut.epoch) == 2 and known(dut.dot_count) == 0 and known(dut.paused), 'V05_INITIAL_STATE'
         armed = True
 
@@ -236,8 +248,8 @@ async def run(dut, *, complete):
         await control('RUN')
         phase('run_reply')
         if complete:
-            for index, mask in enumerate(INPUT_MASKS, 1):
-                low, high = input_window(index)
+            for index, mask in enumerate(monitor.input_masks, 1):
+                low, high = input_window(index, short=short)
                 while known(dut.dot_count) < low:
                     await Timer(1, unit='us')
                     check_tasks()
@@ -256,6 +268,7 @@ async def run(dut, *, complete):
         assert known(dut.paused) and bound <= pause_dot <= bound + 2000, 'V05_PAUSE_WINDOW'
         if complete:
             summary = monitor.finish(pause_dot)
+            summary['scope'] = 'short complete-path only' if short else '600-interval milestone'
         else:
             assert monitor.pixels == 46080, 'V05_STARTUP_PIXELS'
             assert monitor.reference.step(pause_dot) is None, 'V05_RETIRE_MISSING'

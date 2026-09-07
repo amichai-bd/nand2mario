@@ -6,6 +6,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / 'src/dv/v05'))
 from online import Online
+from reference import input_window, pixel_shade
 
 
 class OnlineTests(unittest.TestCase):
@@ -58,6 +59,39 @@ class OnlineTests(unittest.TestCase):
                 Online().running(100, **flags)
         with self.assertRaisesRegex(ValueError, 'V05_INPUT_COUNT'):
             Online().finish(42312067)
+
+
+    def test_short_literal_schedule_and_full_default(self):
+        self.assertEqual(input_window(1, short=True), (267891,269891))
+        self.assertEqual(input_window(2, short=True), (338115,340115))
+        with self.assertRaises(ValueError):
+            input_window(3, short=True)
+        self.assertEqual([pixel_shade(f,0,64,short=True) for f in (3,4,5)], [0,1,0])
+        self.assertEqual((Online(short=True).end, Online(short=True).frame_count), (458563,6))
+        self.assertEqual((Online().end, Online().frame_count), (42312067,602))
+        self.assertEqual(len(Online().input_masks),18)
+
+    def test_short_finish_missing_and_extra_observations(self):
+        m = Online(short=True)
+        with self.assertRaisesRegex(ValueError, 'V05_PAUSE_WINDOW'):
+            m.finish(458562)
+        with self.assertRaisesRegex(ValueError, 'V05_INPUT_COUNT'):
+            m.finish(458563)
+        m.inputs = [(267891,1),(338115,0)]
+        with self.assertRaisesRegex(ValueError, 'V05_PIXEL_MISSING'):
+            m.finish(458563)
+        m.pixels = 138240
+        with self.assertRaisesRegex(ValueError, 'V05_RETIRE_MISSING'):
+            m.finish(458563)
+        m.reference.step = lambda _: None
+        m.write(1,0xc000,0)
+        with self.assertRaisesRegex(ValueError, 'V05_WRITE_EXTRA'):
+            m.finish(458563)
+        m.writes.clear()
+        self.assertEqual(m.finish(458563)['pixels'],138240)
+        m.inputs.append((338116,0))
+        with self.assertRaisesRegex(ValueError, 'V05_INPUT_COUNT'):
+            m.finish(458563)
 
 
 if __name__ == '__main__':
