@@ -135,6 +135,15 @@ defines the control-only configuration; its
 permits10 MHz at125 ksample/s. Installed25.1std source parameters and physical
 fit must corroborate the selected implementation.
 
+Fixed-output ADC simulation disables user files and explicitly passes empty
+channel filenames, matching the installed IP generator. The control HDL's
+default strings `simfilename_ch0` through `simfilename_ch16` are placeholders,
+not packaged sample files. The generator's parameter defaults and forwarding
+come from `altera_modular_adc_hw.tcl` (SHA256
+`0de2a5dab422d7c34100603413b6746ab86f77ca4aa3afe4740191692aee4669`,
+lines518-1598 and3904-3922). This configuration still requires checked actual
+model execution; expected samples alone do not excuse runtime diagnostics.
+
 Issue156 requires independent Questa filtering/fault/atomicity checks, early
 ADC fit, final constrained FPGA proof, and actual verified controls with
 visible indication and UART isolation. Simulation does not satisfy the
