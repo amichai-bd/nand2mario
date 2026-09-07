@@ -7359,7 +7359,8 @@
         "tools/sw/shade.schema.json",
         "tools/sw/symbols.schema.json",
         "tools/sw/targets.py",
-        "tools/sw/targets.schema.json"
+        "tools/sw/targets.schema.json",
+        "src/dv/python/integration/client_transport.py"
       ]
     }
   },
@@ -7451,7 +7452,8 @@
         "tools/sw/shade.schema.json",
         "tools/sw/symbols.schema.json",
         "tools/sw/targets.py",
-        "tools/sw/targets.schema.json"
+        "tools/sw/targets.schema.json",
+        "src/dv/python/integration/client_transport.py"
       ]
     }
   },

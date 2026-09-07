@@ -157,27 +157,13 @@ async def run_contract(dut, *, real_uart=False):
                 counts["bus"] += 1
 
         async def monitor_uart():
-            frame = bytearray()
-            while True:
-                await FallingEdge(dut.uart_tx)
-                await Timer(480, unit="ns")
-                byte = 0
-                for bit in range(8):
-                    await ReadOnly()
-                    byte |= known(dut.uart_tx) << bit
-                    await Timer(320, unit="ns")
-                await ReadOnly()
-                assert known(dut.uart_tx) == 1, "INTEGRATION_RESPONSE_STOP"
-                if byte:
-                    frame.append(byte)
-                    assert len(frame) < 272, "INTEGRATION_RESPONSE_BOUND"
-                else:
-                    decoded = response(frame)
-                    observation("response", encoded=(frame + b"\0").hex(), decoded=decoded)
-                    assert decoded[0] == len(replies), "INTEGRATION_RESPONSE_SEQUENCE"
-                    replies.append(decoded)
-                    received.put_nowait(bytes(frame) + b"\0")
-                    frame.clear()
+            from client_transport import frames
+            async for encoded in frames(dut):
+                decoded = response(encoded[:-1])
+                observation("response", encoded=encoded.hex(), decoded=decoded)
+                assert decoded[0] == len(replies), "INTEGRATION_RESPONSE_SEQUENCE"
+                replies.append(decoded)
+                received.put_nowait(encoded)
 
         # HDL initial assignments can produce event-toggle transitions at time
         # zero. Arm only after they settle while reset is still asserted.

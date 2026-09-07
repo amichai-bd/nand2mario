@@ -4,17 +4,37 @@ import json
 import time
 
 from cocotb.task import bridge, resume
-from cocotb.triggers import ReadOnly, Timer, with_timeout
+from cocotb.triggers import FallingEdge, ReadOnly, Timer, with_timeout
 from cocotb.utils import get_sim_time
 
 from n2m import generated_interfaces as abi
-from n2m.host.client import Client
 from n2m.preload import observe_initial
 
 
-async def execute(dut, image, received, observation, counts):
-    started = time.monotonic()
-    entries = []
+async def frames(dut):
+    """Receive complete encoded responses at the existing eight-clock bit rate."""
+    frame = bytearray()
+    while True:
+        await FallingEdge(dut.uart_tx)
+        await Timer(480, unit="ns")
+        byte = 0
+        for bit in range(8):
+            await ReadOnly()
+            assert dut.uart_tx.value.is_resolvable, "INTEGRATION_RESPONSE_UNKNOWN"
+            byte |= int(dut.uart_tx.value) << bit
+            await Timer(320, unit="ns")
+        await ReadOnly()
+        assert int(dut.uart_tx.value) == 1, "INTEGRATION_RESPONSE_STOP"
+        if byte:
+            frame.append(byte)
+            assert len(frame) < 272, "INTEGRATION_RESPONSE_BOUND"
+        else:
+            yield bytes(frame) + b"\0"
+            frame.clear()
+
+
+def connect(dut, received, observation, entries):
+    from n2m.host.client import Client
 
     class Transport:
         def __init__(self):
@@ -56,6 +76,14 @@ async def execute(dut, image, received, observation, counts):
 
     transport = Transport()
     client = Client(transport, clock=lambda: transport.sim_time, record=entries.append)
+    return client
+
+
+async def execute(dut, image, received, observation, counts):
+    started = time.monotonic()
+    entries = []
+
+    client = connect(dut, received, observation, entries)
 
     @bridge
     def load():
