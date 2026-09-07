@@ -67,8 +67,12 @@ async def run(dut, *, complete):
             while True:
                 await ValueChange(dut.write_event)
                 await ReadOnly()
-                assert armed, 'V05_PAUSED_WRITE'
-                raw = known(dut.write_sample)
+                try:
+                    assert armed, 'V05_PAUSED_WRITE'
+                    raw = known(dut.write_sample)
+                except AssertionError as error:
+                    observation('write_sample_failure', raw=str(dut.write_sample.value), armed=armed, mismatch=str(error))
+                    raise
                 dot, address, data = raw >> 24, (raw >> 8) & 65535, raw & 255
                 monitor.write(dot, address, data)
                 observation('cpu_write', dot=dot, address=address, data=data)
@@ -77,16 +81,25 @@ async def run(dut, *, complete):
             while True:
                 await ValueChange(dut.pixel_event)
                 await ReadOnly()
-                assert armed, 'V05_PAUSED_PIXEL'
-                raw = known(dut.pixel_sample)
+                raw_text = str(dut.pixel_sample.value)
+                try:
+                    assert armed, 'V05_PAUSED_PIXEL'
+                    raw = known(dut.pixel_sample)
+                except AssertionError:
+                    observation('pixel_sample_failure', raw=raw_text, armed=armed)
+                    raise
                 eligible, abort, start = raw & 1, (raw >> 1) & 1, (raw >> 2) & 1
                 shade, y, x = (raw >> 3) & 3, (raw >> 5) & 255, (raw >> 13) & 255
                 epoch, dot = (raw >> 21) & 0xffffffff, raw >> 53
-                assert run_time is not None, 'V05_PIXEL_BEFORE_RUN'
-                elapsed = (int(get_sim_time(unit='ps')) - run_time) // 40000
-                assert dot == elapsed * 65536 // 390625, 'V05_PIXEL_ACTIVE_EDGE'
                 frame, index = divmod(monitor.pixels, 23040)
-                assert (epoch, start, abort, eligible) == (2, int(index == 0), 0, int(frame != 0)), 'V05_SOURCE_FLAGS'
+                try:
+                    assert run_time is not None, 'V05_PIXEL_BEFORE_RUN'
+                    elapsed = (int(get_sim_time(unit='ps')) - run_time) // 40000
+                    assert dot == elapsed * 65536 // 390625, 'V05_PIXEL_ACTIVE_EDGE'
+                    assert (epoch, start, abort, eligible) == (2, int(index == 0), 0, int(frame != 0)), 'V05_SOURCE_FLAGS'
+                except AssertionError as error:
+                    observation('pixel_boundary_failure', raw=raw_text, frame=frame, index=index, dot=dot, x=x, y=y, shade=shade, epoch=epoch, start=start, abort=abort, eligible=eligible, mismatch=str(error))
+                    raise
                 pixels.write(f'{frame},{index},{dot},{shade}\n')
                 try:
                     monitor.pixel(frame, x, y, dot, shade)
