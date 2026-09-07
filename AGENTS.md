@@ -84,6 +84,20 @@ Choose routine steps and tools. Retain enough context for safe takeover; see
 
 ## Verification and safety
 
+Use the [verification tiers](wiki/src/dv/integration/SPEC.md#verification-tiers)
+for proportionate acceptance. Ordinary PRs must meet their own scoped criteria,
+required CI and independent current-head review; full milestone gates apply to
+milestone completion. Keep unfinished milestone requirements in named open issues.
+Make authorized issue-boundary changes explicit before using the revised criteria;
+the listed checkpoint exceptions are not a blanket waiver. Correctness defects
+and regressions introduced by a PR remain its blockers.
+
+Default to existing continuous Python and Intel-model preload for composed
+execution tests. Reuse valid evidence for unchanged relevant inputs. Before an
+expensive acceptance run, exercise its complete harness at a short duration,
+including final pause, completion and watchdog handling. Do not hide warnings,
+bypass checks or claim incomplete acceptance complete.
+
 Run the smallest useful test and required lower-level checks. Record exact
 commands and results. A simulation compiles, elaborates, runs, and checks an
 expected result. Treat unexplained warnings as failures. Preserve useful logs,

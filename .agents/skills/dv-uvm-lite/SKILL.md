@@ -12,6 +12,15 @@ rules to independent checks, `src/` and `tools/` implementation, and evidence.
 Follow the [separate declaration and assignment rule](../../../wiki/src/rtl-reference-style.md#separate-declarations-and-assignments),
 including `logic` signal declarations, loop variables and time-zero stimulus ordering.
 
+Select checks using the [verification tiers](../../../wiki/src/dv/integration/SPEC.md#verification-tiers).
+Use the accepted continuous Python path for composed execution and shared Intel
+preload for functional iteration; retain focused SV unit tests. Reuse existing
+builders, validators and targets. Exercise final pause, completion and watchdog
+handling in a short complete-harness run before expensive acceptance. Select
+faults for affected behavior and stop at the shortest meaningful witness; reuse
+valid unchanged negative evidence. Keep historical Tcl investigation off unrelated
+delivery paths unless a concrete requirement depends on it.
+
 1. Write a test plan with normal, edge, reset, error, and ordering cases.
 2. Follow the [typed boundary convention](../../../wiki/src/rtl-reference-style.md#typed-module-and-timing-boundaries)
    when observing package records. Adapt interface packing and fault paths without
