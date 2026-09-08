@@ -4,6 +4,7 @@
 #include "Core/gb.h"
 #include "Core/memory.h"
 #include "Core/display.h"
+#include "n2m_profile.h"
 static uint32_t pixels[160*144];
 static uint32_t encode(GB_gameboy_t *gb,uint8_t r,uint8_t g,uint8_t b) { return (r<<16)|(g<<8)|b; }
 static unsigned ticks, step, frame;
@@ -57,14 +58,15 @@ int main(int argc, char **argv) {
     GB_set_write_memory_callback(&gb, write_observer);
     GB_set_read_memory_callback(&gb, read_observer);
     /* Native observations remain unprojected; this is not an ABI comparison. */
-    for (step = 0; step < 100; step++) {
+    for (step = 0; step < PROBE_EVENT_BOUND; step++) {
         unsigned before = gb.pc;
         ticks += GB_run(&gb);
         printf("event=%u before=%04x after=%04x dot=%u af=%04x bc=%04x de=%04x hl=%04x sp=%04x ime=%u delay=%u halt=%u stop=%u bug=%u ie=%02x if=%02x\n", step, before, gb.pc, ticks/2, gb.af, gb.bc, gb.de, gb.hl, gb.sp, gb.ime, gb.ime_toggle, gb.halted, gb.stopped, gb.halt_bug, gb.interrupt_enable, gb.io_registers[GB_IO_IF]);
         if (gb.halted) break;
     }
+    if (!gb.halted) { fprintf(stderr,"native event bound reached before HALT\n"); return 4; }
     /* Continue authoritative HALT/peripheral service without idle retirements. */
-    while (ticks/2 < 140600) {
+    while (ticks/2 < PROBE_DOT_BOUND) {
         step++;
         ticks += GB_run(&gb);
         if (!gb.halted) { fprintf(stderr,"unexpected HALT exit\n"); return 4; }
