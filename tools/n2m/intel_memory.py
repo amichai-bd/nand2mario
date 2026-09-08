@@ -14,9 +14,14 @@ def resolve(root, simulator, target, directory=None):
     selection = target.get("vendor_model")
     if selection is None:
         return None
-    if selection == "intel-adc":
+    if selection in ("intel-adc", "intel-controls"):
         from . import intel_adc
-        return intel_adc.resolve(root, simulator, directory)
+        descriptor = intel_adc.resolve(root, simulator, directory)
+        if selection == "intel-controls":
+            memory = resolve(root, simulator, {**target, "vendor_model": "intel-memory"}, directory)
+            descriptor["selection"] = selection
+            descriptor["memory_diagnostics"] = memory
+        return descriptor
     if selection != "intel-memory":
         raise ValueError("unsupported vendor model; expected intel-memory or intel-adc")
     pin = json.loads((root / "tools/n2m/dependencies.json").read_text(encoding="utf-8"))["intel_memory"]
@@ -80,7 +85,7 @@ def reject_shadow_models(root, inputs):
 def commands(simulator, compiler, attempt, descriptor):
     if descriptor is None:
         return [], [], []
-    if descriptor["selection"] == "intel-adc":
+    if descriptor["selection"] in ("intel-adc", "intel-controls"):
         from . import intel_adc
         return intel_adc.commands(simulator, compiler, attempt, descriptor)
     library = descriptor["library"]

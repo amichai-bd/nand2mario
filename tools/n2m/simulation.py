@@ -56,8 +56,9 @@ def simulate(root, build, args, simulator, provenance=None):
     hdl_inputs = dependencies(root, target["sources"])
     vendor_model = intel_memory.resolve(root, simulator, target, getattr(args, "intel_sim_lib", None))
     if vendor_model is not None:
-        if vendor_model["selection"] == "intel-adc":
+        if vendor_model["selection"] in ("intel-adc", "intel-controls"):
             intel_adc.reject_shadow_models(root, hdl_inputs)
+            intel_memory.reject_shadow_models(root, hdl_inputs)
         else:
             intel_memory.reject_shadow_models(root, hdl_inputs)
     inputs = hdl_inputs + [registry.relative_to(root).as_posix(), "tools/build.py"]
@@ -136,8 +137,13 @@ def simulate(root, build, args, simulator, provenance=None):
             if log.name == "intel-adc-control-compile.log":
                 checked_output, record["explained_compile_diagnostics"] = intel_adc.classify_compile_diagnostics(result.stdout, vendor_model, log.name)
             if log.name == "sim.log":
-                if vendor_model and vendor_model["selection"] == "intel-adc":
-                    checked_output, record["explained_diagnostics"] = intel_adc.classify_sim_diagnostics(result.stdout, vendor_model)
+                if vendor_model and vendor_model["selection"] in ("intel-adc", "intel-controls"):
+                    memory_explained = []
+                    if vendor_model["selection"] == "intel-controls":
+                        checked_output, memory_explained = intel_memory.classify_diagnostics(checked_output, vendor_model["memory_diagnostics"])
+                    checked_output, adc_explained = intel_adc.classify_sim_diagnostics(checked_output, vendor_model,
+                        python_access=bool(python_runtime) and vendor_model["selection"] == "intel-controls")
+                    record["explained_diagnostics"] = memory_explained + adc_explained
                 else:
                     checked_output, record["explained_diagnostics"] = intel_memory.classify_diagnostics(result.stdout, vendor_model)
             if python_runtime:

@@ -28,8 +28,8 @@ def validate(root, target):
             raise ValueError("Python waves require unique public top-level signal names")
     if "driver" in target or target["expected_exit"] != "zero":
         raise ValueError("python testbench requires zero raw exit and no driver")
-    if target.get("vendor_model") not in (None, "intel-memory"):
-        raise ValueError("Python testbench supports only Intel memory models")
+    if target.get("vendor_model") not in (None, "intel-memory", "intel-controls"):
+        raise ValueError("Python testbench requires supported Intel memory or controls models")
     if target.get("preload") not in (None, "integration", "v05", "palette-fc", "palette-00", "startup-read", "startup-write", "vram-read", "vram-write", "late-fe9c", "late-fe9d", "late-fe20", "timer234", "dma239"):
         raise ValueError("unknown Python preload")
     if not isinstance(target.get("top"), str) or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", target["top"]):
@@ -68,7 +68,7 @@ def validate(root, target):
             required.update(p.relative_to(root).as_posix() for p in (root/'src/dv/sameboy').iterdir() if p.suffix in ('.py','.c','.json','.patch'))
         required.update(p.relative_to(root).as_posix() for p in (root / "tools/sw").glob("*")
                         if p.suffix in (".py", ".json"))
-        if target.get("vendor_model") != "intel-memory" or not required <= set(config["inputs"]):
+        if target.get("vendor_model") not in ("intel-memory", "intel-controls") or not required <= set(config["inputs"]):
             raise ValueError("preload requires Intel memory and all software image inputs")
 
 

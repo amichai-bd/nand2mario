@@ -162,3 +162,30 @@ Issue156 requires independent Questa filtering/fault/atomicity checks, early
 ADC fit, final constrained FPGA proof, and actual verified controls with
 visible indication and UART isolation. Simulation does not satisfy the
 physical criterion. Missing hardware facts leave that criterion open.
+
+## Actual-system controls target
+
+`v05-controls-board` uses `v05_controls_proof` to connect this same ADC backend,
+reset qualifier and physical producer to `n2m_v05_system`. The actual system
+owns UART, input selection, timebase, JOYP, CPU/PPU, frame bridge and snapshot.
+There is no second selector or diagnostic VGA generator. The producer receives
+the actual `gb_tick` and global reset; core reset retains acquisition and its
+physical shadow while the input owner returns to UART mode. ADC lock loss
+resets acquisition only. LEDs keep the effective/source/fresh mapping above.
+
+The target preserves the diagnostic's33 physical assignments and the actual
+system's25 MHz/25.2 MHz parallel PLLs. Its dedicated10 MHz ADC PLL is the third
+PLL. The fit must retain the full system memory partition and prove all three
+clock/reset paths, the four button and UART synchronizers, and the real bridge
+CDC paths. Existing diagnostic fits do not establish this composition's timing.
+Its default calibration remains nominal. Physical acceptance under #156 still
+requires verified components, electrical setup, measured calibration and actual
+all-eight-control/UART-isolation/VGA evidence.
+
+The board shell retains `n2m_clocking` and supplies its qualified clocks and
+resets to the shared controls/system module. That module owns the ADC reset,
+backend, physical producer and actual system connections. Functional simulation
+uses this same module with specified 25 MHz/25.2 MHz clocks and qualified reset
+inputs. It retains the real ADC PLL, Intel memory and default acquisition reset
+qualification. The board fit separately proves all three PLLs and the complete
+new hierarchy; the functional proof does not replace that obligation.

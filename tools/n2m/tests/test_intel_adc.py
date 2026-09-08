@@ -157,6 +157,18 @@ class IntelAdcTests(unittest.TestCase):
         self.assertIsNone(diagnostic(checked))
         self.assertEqual(evidence[0]["raw"], warnings)
         self.assertEqual(evidence[0]["warning_count"], 18)
+        access = "# ** Warning: (vopt-10908) Some optimizations are turned off because the +acc switch is in effect."
+        combined = access + "\n" + raw.replace("Warnings=18", "Warnings=19").replace("Warnings: 18", "Warnings: 19")
+        checked, combined_evidence = intel_adc.classify_sim_diagnostics(combined, descriptor, python_access=True)
+        self.assertIsNone(diagnostic(checked))
+        self.assertEqual(combined_evidence[0]["warning_count"], 19)
+        for bad in (combined + "\n" + access, combined.replace(access, ""),
+                    combined.replace("Warnings: 19", "Warnings: 18"),
+                    combined.replace("vopt-10908", "vopt-10909")):
+            with self.assertRaisesRegex(ValueError, "profile differs"):
+                intel_adc.classify_sim_diagnostics(bad, descriptor, python_access=True)
+        with self.assertRaisesRegex(ValueError, "profile differs"):
+            intel_adc.classify_sim_diagnostics(combined, descriptor)
         fault = raw.replace("# Errors: 0,", "# Errors: 1,") + "\n# ** Fatal: ADC_VENDOR_DATA"
         checked, _ = intel_adc.classify_sim_diagnostics(fault, descriptor)
         self.assertIsNone(diagnostic(checked, "ADC_VENDOR_DATA"))
@@ -171,6 +183,20 @@ class IntelAdcTests(unittest.TestCase):
         bad_source["sources"][0]["sha256"] = "changed"
         with self.assertRaisesRegex(ValueError, "reviewed vendor source"):
             intel_adc.classify_sim_diagnostics(raw, bad_source)
+
+
+    def test_controls_profile_retains_real_adc_at_qualified_clock_boundary(self):
+        descriptor = self.resolve()
+        descriptor["selection"] = "intel-controls"
+        run = self.root / "controls-run"
+        run.mkdir()
+        commands, _, binding = intel_adc.commands(self.sim, self.root, run, descriptor)
+        self.assertEqual([entry[2].name for entry in commands if "generate" in entry[2].name],
+                         ["adc-pll-generate.log"])
+        self.assertEqual(commands[-1][0][-1], str(self.root / "n2m_adc_pll.v"))
+        self.assertFalse(any("n2m_pixel_pll" in str(entry) or "n2m_system_pll" in str(entry)
+                             for entry in commands))
+        self.assertEqual(binding, ["-L", intel_adc.LIBRARY, "-L", intel_adc.ATOMS_LIBRARY])
 
 
 if __name__ == "__main__":
