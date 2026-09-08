@@ -19,7 +19,7 @@ integration case remains100 events. Core runs normally through HALT. Its
 26-field retirement projection is checked at every event, including IF across
 VBlank. A first retirement mismatch fails before pixel conclusions.
 
-The [PPU contract](../../../wiki/src/rtl/ppu/MAS_ppu.md#spatial-and-temporal-sampling)
+The [PPU contract](../../../wiki/src/rtl/ppu/MAS_ppu.md#digital-ports)
 samples the old palette on a coincident write. DUT normal-frame x0 completes at
 70908 and uses E4. Subsequent pixels use the new palette. Pinned Core's
 `sm83_cpu.c` palette conflict advances to70902, stores `old|new`, advances one
