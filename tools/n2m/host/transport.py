@@ -3,11 +3,47 @@ from contextlib import contextmanager
 import hashlib
 import json
 import os
+import time
 from pathlib import Path
 
 from .. import generated_interfaces as abi
 from ..doctor import uart
 from ..records import atomic_json
+
+
+class SerialTransport:
+    """Keep line configuration fixed while the Client changes read deadlines.
+
+    pyserial's Windows timeout setter reapplies SetCommState, including baud,
+    even during a pending packet write. Configure nonblocking reads once and
+    wait here instead; use only the supported serial API.
+    """
+    def __init__(self, connection, *, clock=time.monotonic, sleep=time.sleep):
+        self.connection = connection
+        self.timeout = abi.WIRE_RESPONSE_TIMEOUT_MS / 1000
+        self.clock = clock
+        self.sleep = sleep
+
+    def write(self, packet):
+        return self.connection.write(packet)
+
+    def read(self, count):
+        deadline = self.clock() + self.timeout
+        while True:
+            if self.clock() >= deadline:
+                return b''
+            data = self.connection.read(count)
+            if self.clock() >= deadline:
+                return b''
+            if data:
+                return data
+            remaining = deadline - self.clock()
+            if remaining <= 0:
+                return b''
+            self.sleep(min(0.001, remaining))
+
+    def close(self):
+        self.connection.close()
 
 
 def open_serial(port):
@@ -16,7 +52,7 @@ def open_serial(port):
         raise RuntimeError('install the pinned pyserial 3.5 dependency before serial access')
     connection = serial.Serial(port=None, baudrate=abi.WIRE_BAUD,
                                bytesize=serial.EIGHTBITS, parity=serial.PARITY_NONE,
-                               stopbits=serial.STOPBITS_ONE, timeout=abi.WIRE_RESPONSE_TIMEOUT_MS / 1000,
+                               stopbits=serial.STOPBITS_ONE, timeout=0,
                                write_timeout=abi.WIRE_RESPONSE_TIMEOUT_MS / 1000,
                                xonxoff=False, rtscts=False, dsrdtr=False)
     connection.dtr = False
@@ -27,7 +63,7 @@ def open_serial(port):
     except Exception:
         connection.close()
         raise
-    return connection
+    return SerialTransport(connection)
 
 
 @contextmanager

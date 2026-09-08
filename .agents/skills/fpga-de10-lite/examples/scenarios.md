@@ -25,6 +25,20 @@ programming syntax; verified 25.1 help exposes cable, mode and operation options
 Help output is not evidence that a bitstream has been programmed. Keep concrete
 programming commands and resulting device state in the physical run record.
 
+Verified Quartus 25.1 volatile programming syntax is
+`quartus_pgm -c <verified-cable> -m JTAG -o "P;<reviewed-sof>@<verified-device-index>"`.
+Check the SOF hash against its producing evidence and verify the JTAG chain
+before execution. Require zero exit status and affirmative configuration and
+operation success messages; inspect errors and warnings. A host postprocessing
+failure does not undo programming. Preserve the raw result and classify it
+before deciding whether another hardware operation is necessary.
+
+After programming, verify the wire build ID against the producing build. Then
+use an immutable original software package for full upload/readback, loaded and
+paused state, UART input writes, execution and snapshot checks. Compare pixels
+with independent program expectations. Record diagnostic transport settings
+separately; see the [UART timeout procedure](../../uart-host-tool/examples/scenarios.md#physical-timeout-diagnosis).
+
 Verified CLI help: `python tools/build.py fpga build --help` describes building,
 not programming; no FPGA programming subcommand exists. `host load --help`
 requires an immutable `sw/build/<target>/runs/<attempt>/result.json` through
