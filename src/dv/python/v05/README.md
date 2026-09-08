@@ -6,7 +6,8 @@ actual UART endpoint and observe the composed CPU, PPU and shared input owner.
 Existing loading faults use real UART loading; named short targets preload ROM.
 The [revised matrix](../../../../wiki/src/dv/v05/SPEC.md#revised-milestone-matrix)
 defaults composed execution to Intel preload with separate actual UART proof.
-Its new window/loading-mode separation remains open in #244. No target uses
+Its window/loading-mode separation is implemented below; complete qualification
+remains in #244. No target uses
 snapshots as its every-frame oracle.
 
 `known()` reads one public logic snapshot. It accepts `0/1/L/H`, normalizes weak
@@ -28,6 +29,9 @@ to check scalar and packed values, single reads, and resolver independence.
 | python-v05-pixel-fault | Actual first eligible source shade changes 1 to 0; exact pixel mismatch |
 | python-v05-short | Preloaded complete path, two inputs, six frames and final pause |
 | python-v05-progress-fault | Actual stopped gb_tick reaches the active-time watchdog |
+| python-v05-bounded | Intel preload, real initialization, first-HALT Right+A, blank-to-normal input rows and every observation through actual pause |
+| python-v05-bounded-pixel | Same bounded oracle rejects the actual first eligible shade changed1 to0 |
+| python-v05-bounded-progress | Same bounded harness rejects actual stopped tick during first HALT |
 
 Fault runs require failing Python/XML and nonzero outer builder; preserve the
 actual raw simulator exit independently. Every test follows the
@@ -65,3 +69,15 @@ Preload uses the actual original software pipeline and recorded image hash,
 supported Intel ROM/presence initialization, and the real loader's CRC scan and
 public initial-state reads. It does not inject CPU state or replace the retained
 real UART loading/readback and actual image/pixel defect proofs.
+
+## Bounded matrix execution
+
+The named bounded target selects duration independently of loading mode. Its
+fixed Right+A apply window is50000..52000 after the validated first HALT.
+Request HALT at145132, then keep every monitor live through actual pause within
+2000 additional dots. The owning fixed pixel schedule determines the expected
+partial-row count from pause, never from the observed count. All valid pauses
+require6357 complete retirement records, program writes, one input and both
+blank startup and normal-frame input rows. The50 ms simulation watchdog is
+independent of the300-second total host supervisor (288-second worker allowance).
+The120-second runtime target is not claimed before measurement.

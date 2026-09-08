@@ -6,7 +6,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / 'src/dv/v05'))
 from online import Online
-from reference import input_window, pixel_shade
+from reference import input_window, pixel_shade, bounded_pixel_count, Reference
 
 
 class OnlineTests(unittest.TestCase):
@@ -92,6 +92,54 @@ class OnlineTests(unittest.TestCase):
         m.inputs.append((338116,0))
         with self.assertRaisesRegex(ValueError, 'V05_INPUT_COUNT'):
             m.finish(458563)
+
+    def test_bounded_literal_input_and_program_tail(self):
+        self.assertEqual(input_window(1, bounded=True), (50000,52000))
+        with self.assertRaises(ValueError):
+            input_window(2, bounded=True)
+        for dot in (50000,52000):
+            reference = Reference([(dot,0x11)])
+            records = list(reference.records(147132))
+            self.assertEqual(len(records),6357)
+            self.assertEqual((records[-1]['dot'],records[-1]['halted'],records[-1]['buttons']),
+                             (108156,1,0x11))
+        self.assertEqual([pixel_shade(1,x,64,bounded=True) for x in (0,8,32,40)], [1,0,1,0])
+        with self.assertRaisesRegex(ValueError,'V05_INPUT_WINDOW'):
+            Online(bounded=True).input(49999,0x11)
+
+    def test_bounded_partial_last_pixel_and_order(self):
+        self.assertEqual(bounded_pixel_count(145132),34561)
+        self.assertEqual(bounded_pixel_count(145333),34720)
+        self.assertEqual(bounded_pixel_count(147132),35360)
+        m=Online(bounded=True)
+        m.pixels=34560
+        m.pixel(1,0,72,145132,0)
+        with self.assertRaisesRegex(ValueError,'V05_PIXEL_ORDER'):
+            m.pixel(1,2,72,145134,0)
+        with self.assertRaisesRegex(ValueError,'V05_PIXEL_DOT'):
+            m.pixel(1,1,72,145134,0)
+
+    def test_bounded_finish_requires_every_postbound_pixel_and_record(self):
+        m=Online(bounded=True)
+        m.input(50000,0x11)
+        m.pixels=34561
+        with self.assertRaisesRegex(ValueError,'V05_PIXEL_MISSING'):
+            m.finish(145333)  # Checking only through the requested bound misses159.
+        m.pixels=34719
+        with self.assertRaisesRegex(ValueError,'V05_PIXEL_MISSING'):
+            m.finish(145333)
+        m.pixels=34721
+        with self.assertRaisesRegex(ValueError,'V05_PIXEL_MISSING'):
+            m.finish(145333)
+        m.pixels=34720
+        with self.assertRaisesRegex(ValueError,'V05_RETIRE_MISSING'):
+            m.finish(145333)
+        m.reference.step=lambda _: None
+        m.write(145300,0xc000,1)
+        with self.assertRaisesRegex(ValueError,'V05_WRITE_EXTRA'):
+            m.finish(145333)
+        m.writes.clear()
+        self.assertEqual(m.finish(145333)['pixels'],34720)
 
 
 if __name__ == '__main__':
