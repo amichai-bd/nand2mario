@@ -129,15 +129,19 @@ witness. Recheck mutations when relevant checking infrastructure changes.
 
 Target at most 120 seconds per simulation and 300 seconds aggregate for ordinary
 pre-merge checks. These are goals, not coverage waivers or a reason for prolonged
-harness optimization. Report the measured total and any unmet target. The
-existing `python-integration-client-preloaded` target is a usable baseline:
-69 retirement records, 145 bus observations, RAM and interrupt checks, two full
-frames and final host pause. Its measured stage runtime was 96.987663 seconds
-in [PR179](https://github.com/amichai-bd/nand2mario/pull/179#issuecomment-5573412250).
-This existing target checks more pixels than the tier's minimum; a shorter
-selection must still meet its own stated criteria. No 300-second aggregate is claimed
-as measured. Add affected units to the reported total rather than treating this
-single target's runtime as the whole suite.
+harness optimization. Report the measured total and any unmet target. Use
+`python-v05-timer` as a bounded short composed candidate: [PR235](https://github.com/amichai-bd/nand2mario/pull/235)
+measured 21.250 seconds for 110 retirement records with all 26 fields, 16 selected
+register/RAM bus transactions, timer overflow, IRQ entry, CPU HALT wake, a handler
+RAM marker and final host pause. It checked 510 ordered startup white pixels
+against a criterion of at least 320; it does not prove a complete normal frame or
+UART ROM upload. Keep `python-integration-client-preloaded` when its broader
+69-record, 145-bus-observation RAM/IRQ and two-full-frame coverage is relevant
+([PR179](https://github.com/amichai-bd/nand2mario/pull/179#issuecomment-5573412250)).
+Its measured stage runtime was 96.987663 seconds. These targets have different
+coverage; their runtimes are not a matched speed comparison. A shorter selection
+must still meet its own stated criteria. Neither individual result measures a
+whole 300-second suite; add affected units to the reported total.
 
 ### Transport and integration acceptance
 
