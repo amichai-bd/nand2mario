@@ -51,27 +51,9 @@ gh issue view <issue> --json state,closedAt
 If merged, report the merge commit and local error to root; do not retry.
 If remote state is unclear, investigate before any retry or cleanup.
 
-### Externally blocked hosted checks
-
-Apply the [standing fallback](../wiki/agents/pull-requests.md#external-ci-fallback)
-only after local equivalents and independent exact-head review are complete.
-Re-read the PR head and base, confirm mergeability and resolved conversations,
-and abort if the reviewed head or assessed base changed. First try the normal exact-head merge.
-If only external hosted checks block it, use the same squash/head arguments with
-`--admin`; do not use that option to bypass an actual validation or review failure.
-
-If admin merge is still blocked solely by required status checks, serialize the
-operation with root. Save the exact current protection settings in the owning
-worktree before any mutation. In a `try`/`finally` operation, temporarily remove
-only the required-status-check constraint, recheck head/base and issue the
-exact-head squash merge. Restore that saved constraint, including strictness and
-check/app identities, in `finally` whether merge succeeds, fails or is uncertain.
-Keep other protections unchanged; verify the restored settings against the saved
-values and inspect remote merge state before retrying. If restoration fails,
-stop further delivery and cleanup and report the exact unresolved change. Never
-leave protection weakened, replace concurrent configuration changes, or broaden
-this fallback to unrelated rules. Missing admin rights blocks this step; it does
-not authorize a different bypass.
+For externally blocked hosted checks, use the
+[standing fallback procedure](../.agents/skills/agent-flow/references/external-ci.md).
+It preserves exact-head review and restores any temporary administrator setting.
 
 ## Clean up after merge
 

@@ -34,7 +34,7 @@ Follow [AGENTS](../../../AGENTS.md#work):
    Assess the whole checklist in one pass and list remaining gaps together.
    Reuse evidence only while its inputs and covered behavior remain valid;
    satisfy required checks and current-SHA review before merging. For external
-   hosted failures, apply the [standing fallback](../../../wiki/agents/pull-requests.md#external-ci-fallback).
+   hosted failures, apply the [standing fallback](references/external-ci.md).
 4. With a current ready verdict and required validation satisfied, post the report,
    undraft, and follow the [merge method](../../../worktrees/README.md#merge).
    Merge promptly without waiting for unrelated work. Report the outcome to root.

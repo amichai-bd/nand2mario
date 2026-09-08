@@ -89,12 +89,12 @@ local equivalents of required checks and meet scoped acceptance, using valid
 unchanged evidence where applicable. Continue reviewed delivery without asking
 for per-PR approval again. Real code, test, policy and review failures remain
 blockers. Report actual hosted status; never fabricate green checks or Pages
-publication. Follow the [external CI fallback](wiki/agents/pull-requests.md#external-ci-fallback)
+publication. Follow the [external CI fallback](.agents/skills/agent-flow/references/external-ci.md)
 for exact-head merge, temporary protection restoration and post-merge cleanup.
 
 Use the [verification tiers](wiki/src/dv/integration/SPEC.md#verification-tiers)
 for proportionate acceptance. Ordinary PRs must meet their own scoped criteria,
-required CI and independent current-head review; full milestone gates apply to
+required checks under the external fallback and independent current-head review; full milestone gates apply to
 milestone completion. Keep unfinished milestone requirements in named open issues.
 Make authorized issue-boundary changes explicit before using the revised criteria;
 the listed checkpoint exceptions are not a blanket waiver. Correctness defects
