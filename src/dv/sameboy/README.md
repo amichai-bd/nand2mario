@@ -62,21 +62,36 @@ next actual opcode fetch plus that fetch's four pending T-cycles. The initial
 fetch produces no preceding event. The IRQ discarded fetch closes the previous
 instruction, the handler fetch closes interrupt entry, and HALT's explicit dummy
 fetch closes HALT. These three call sites are observed without changing Core
-execution. The declared mapping follows MAS_cpu150–171; it is not applied to
+execution. A read-only end-of-advance hook captures IE/IF and verifies released
+keys at the actual four-dot fetch completion after Core peripheral service. An
+overshot boundary fails instead of sampling late. Architectural registers remain
+the completed event's saved state. The declared mapping follows MAS_cpu150–171; it is not applied to
 peripheral writes or pixels. Actual operand bytes come from recorded reads, with
-strict sequential address and supported-instruction-size checks. This selected
-program has no intervening enabled PPU/timer event that changes IF during the
-closing fetch; general interrupt snapshots need separate qualification.
+strict sequential address and supported-instruction-size checks. Closing snapshots are separate from native instruction-return samples; duplicate,
+missing, unknown, orphan and reordered observations fail. Generated ABI packing
+validates the complete record. General instructions remain outside this selected
+original-program decoder.
 
-Epoch2 represents the two specified loader initializations as metadata; the
+Epoch2 represents LOAD_BEGIN then LOAD_END, each entering COMMAND_RESET in
+the delivered endpoint, as metadata; the
 reference does not claim to execute the UART loader. Version1 and the released
 input schedule are the approved fixed ABI for this probe. All27 fields compare
 exactly against the separate literal diagnostic. That diagnostic is not DUT
 equivalence. Raw samples remain separate from projected records.
 
-Normal `GB_run` continues HALT and all peripherals. Core can batch entire lines
-through `render_line`, bypassing the slow pixel callback. This remains an explicit
-observation gap; no synthetic per-pixel timestamps are emitted for batched lines.
+Normal `GB_run` continues HALT and all peripherals. Observer-enabled builds
+disable only the line batching optimization, selecting Core's existing cycle
+path. `--baseline` builds pristine Core for comparison of native CPU events,
+frame publication and complete visible framebuffers. The actual vblank callback
+records the authoritative frame after Core's startup white fill. Raw per-pixel
+assignments stay separate; they do not substitute for those visible values.
+
+The pending display budget is measured in8MHz ticks. The source state machine
+acts at `(native_ticks - pending_display_ticks)/2`, before its following sleep
+consumes the dot. This action identity is retained without fitting offsets to
+DUT data. `compare_diagnostic.py` compares all retirement fields and visible
+shades with retained DUT CSVs and reports the first unresolved timing difference;
+historical DUT traces are not automatically current-head acceptance.
 
 ## Remaining #102 acceptance
 

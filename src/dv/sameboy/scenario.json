@@ -1,0 +1,15 @@
+{
+  "profile": "dmg-direct-v1",
+  "trace_version": 1,
+  "initializations": [
+    "LOAD_BEGIN",
+    "LOAD_END"
+  ],
+  "inputs": [
+    {
+      "completed_dot": 0,
+      "buttons": 0
+    }
+  ],
+  "native_bound_dots": 140600
+}

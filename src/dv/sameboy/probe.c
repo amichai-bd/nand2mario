@@ -1,12 +1,36 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "Core/gb.h"
 #include "Core/memory.h"
 #include "Core/display.h"
 static uint32_t pixels[160*144];
 static uint32_t encode(GB_gameboy_t *gb,uint8_t r,uint8_t g,uint8_t b) { return (r<<16)|(g<<8)|b; }
-static unsigned ticks, step;
+static unsigned ticks, step, frame;
+bool n2m_pixel_observation_enabled(void) { return true; }
+static void visible_frame(GB_gameboy_t *gb, GB_vblank_type_t type) {
+    printf("frame index=%u type=%u native_ticks8mhz=%u skip=%u\n",frame,type,ticks+gb->cycles_since_run,gb->frame_skip_state);
+    for (unsigned y=0;y<144;y++) for (unsigned x=0;x<160;x++)
+        printf("visible frame=%u x=%u y=%u rgb=%06x\n",frame,x,y,pixels[y*160+x]);
+    frame++;
+}
+static int closing_step = -1;
+static unsigned closing_tick;
+void n2m_observe_advance(GB_gameboy_t *gb) {
+    unsigned now=ticks+gb->cycles_since_run;
+    if (closing_step<0 || now<closing_tick) return;
+    if (now!=closing_tick) { fprintf(stderr,"closing fetch boundary overshot\n"); exit(5); }
+    for (unsigned p=0;p<4;p++) for(unsigned key=0;key<GB_KEY_MAX;key++)
+        if(gb->keys[p][key]) { fprintf(stderr,"unsupported input change\n"); exit(5); }
+    printf("closing step=%d native_dot=%u ie=%02x if=%02x buttons=0\n",closing_step,now/2,gb->interrupt_enable,gb->io_registers[GB_IO_IF]);
+    closing_step=-1;
+}
 void n2m_observe_fetch_boundary(GB_gameboy_t *gb, unsigned kind) {
+    if (closing_step>=0) { fprintf(stderr,"overlapping fetch observations\n"); exit(5); }
+    if(step || kind==2) {
+        closing_step=kind==2 ? (int)step : (int)step-1;
+        closing_tick=ticks+gb->cycles_since_run+gb->pending_cycles*2;
+    }
     printf("fetch step=%u kind=%u native_dot=%u pending=%u\n",step,kind,(ticks+gb->cycles_since_run)/2,gb->pending_cycles);
 }
 void n2m_observe_pixel(GB_gameboy_t *gb, unsigned x, unsigned y, uint32_t rgb) {
@@ -27,6 +51,7 @@ int main(int argc, char **argv) {
     if (!n2m_direct_profile(&gb,argv[1])) return 3;
     GB_set_rgb_encode_callback(&gb,encode);
     GB_set_pixels_output(&gb,pixels);
+    GB_set_vblank_callback(&gb,visible_frame);
     GB_set_palette(&gb,&GB_PALETTE_GREY);
     printf("profile joyp=%02x sc=%02x div=%u stat=%02x pending=%u dma=%02x\n",GB_read_memory(&gb,0xFF00),GB_read_memory(&gb,0xFF02),gb.div_counter,GB_read_memory(&gb,0xFF41),gb.pending_cycles,gb.dma_current_dest);
     GB_set_write_memory_callback(&gb, write_observer);

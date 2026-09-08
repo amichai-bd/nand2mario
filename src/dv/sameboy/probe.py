@@ -27,6 +27,7 @@ def linux_path(path):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--baseline', action='store_true', help='Build untouched Core for observer equivalence')
     parser.add_argument('--source', type=Path, required=True)
     parser.add_argument('--rom', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
@@ -69,7 +70,7 @@ def main():
             shutil.copy2(path, target)
             result['inputs']['Core/' + name] = expected
         for path in [HERE / 'profile.c', HERE / 'probe.c', HERE / 'observe.patch',
-                     HERE / 'sources.json', Path(__file__), ROOT / 'cfg/interfaces.json', args.rom]:
+                     HERE / 'sources.json', HERE / 'scenario.json', HERE / 'retirement.py', Path(__file__), ROOT / 'cfg/interfaces.json', args.rom]:
             result['inputs'][str(path.resolve())] = digest(path)
         # Apply only the recorded original observer; pristine inputs remain elsewhere.
         patch = (HERE / 'observe.patch').read_text(encoding='utf-8')
@@ -77,7 +78,9 @@ def main():
             patch = patch.replace('\n', '\r\n')
         (output / 'observe.patch').write_bytes(patch.encode('utf-8'))
         result['applied_patch_sha256'] = digest(output / 'observe.patch')
-        run(['patch', '--binary', '-p1', '-i', linux_path(output / 'observe.patch')], 'patch', observed)
+        if not args.baseline:
+            run(['patch', '--binary', '-p1', '-i', linux_path(output / 'observe.patch')], 'patch', observed)
+        result['observation_mode'] = 'untouched-baseline' if args.baseline else 'observed-cycle-path'
         config = json.loads((ROOT / 'cfg/interfaces.json').read_text())
         header = '/* Generated from cfg/interfaces.json for this attempt. */\n'
         header += ''.join(f'#define PROFILE_{v["name"]} {v["value"]}\n'

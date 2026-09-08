@@ -6,6 +6,11 @@ is a separate diagnostic input, never a source of projected fields.
 import argparse
 import json
 from pathlib import Path
+import sys
+ROOT=Path(__file__).resolve().parents[3]
+sys.path.insert(0,str(ROOT))
+from tools.n2m import generated_interfaces as abi
+from tools.n2m.interface_codec import pack_record
 
 # SM83 instruction sizes for the deliberately selected original program.
 LENGTHS = {**dict.fromkeys((0x00,0x22,0x76,0x78,0x79,0xAF,0xD9,0xF1,0xF3,0xF5,0xFB),1),
@@ -20,24 +25,53 @@ def fields(line):
 
 
 def project(log):
-    events, reads, fetches = [], {}, {}
+    scenario=json.loads((Path(__file__).parent/'scenario.json').read_text())
+    if scenario['profile']!='dmg-direct-v1' or scenario['trace_version']!=abi.TRACE_VERSION or scenario['inputs']!=[{'completed_dot':0,'buttons':0}] or scenario['initializations']!=['LOAD_BEGIN','LOAD_END']:
+        raise ValueError('unsupported declared lifecycle/input scenario')
+    events, reads, fetches, snapshots = [], {}, {}, {}
+    last_step=-1
+    completed=set()
     for line in log.splitlines():
+        if line.startswith(('event=','read ','fetch ')):
+            item=fields(line); step=item.get('step',item.get('event'))
+            if step<last_step or step in completed:
+                raise ValueError('reordered native observation')
+            last_step=step
+            if line.startswith('event='): completed.add(step)
         if line.startswith('event='): events.append(fields(line))
         elif line.startswith('read '):
             item=fields(line); reads.setdefault(item['step'],[]).append(item)
         elif line.startswith('fetch '):
             item=fields(line); fetches.setdefault(item['step'],[]).append(item)
+        elif line.startswith('closing '):
+            item=fields(line)
+            if item['step'] in snapshots: raise ValueError('duplicate closing snapshot')
+            snapshots[item['step']]=item
+    steps=set(range(len(events)))
+    if set(reads)!=steps or set(fetches)!=steps or set(snapshots)!=steps:
+        raise ValueError('missing/orphan native observations')
     result=[]
     for index,event in enumerate(events):
         if event['event'] != index: raise ValueError('missing/reordered native event')
         current=fetches[index]
-        irq=current[0]['kind']==1
+        pattern=[f['kind'] for f in current]
+        if pattern not in ([0],[1],[0,2]) or (event['halt']!=int(pattern==[0,2])):
+            raise ValueError(f'unexpected fetch pattern at event {index}: {pattern}')
+        if any(f['pending']!=4 for f in current) or any(a['native_dot']>=b['native_dot'] for a,b in zip(current,current[1:])):
+            raise ValueError('invalid fetch timing')
+        if any(a['dot']>b['dot'] for a,b in zip(reads[index],reads[index][1:])):
+            raise ValueError('reordered native reads')
+        irq=pattern==[1]
         if event['halt']:
             closing=[f for f in current if f['kind']==2]
         else:
             closing=fetches.get(index+1,[])[:1]
         if len(closing)!=1 or closing[0]['pending']!=4:
             raise ValueError(f'missing four-dot final fetch at event {index}')
+        snapshot=snapshots[index]
+        if snapshot['native_dot']!=closing[0]['native_dot']+4:
+            raise ValueError('closing snapshot differs from actual fetch completion')
+        if snapshot['buttons']!=0: raise ValueError('unsupported applied inputs')
         opcode=length=0
         if not irq:
             actual=reads[index]
@@ -48,16 +82,17 @@ def project(log):
                 if actual[byte]['address'] != (event['before']+byte)&0xffff:
                     raise ValueError(f'nonsequential fetched operand at event {index}')
                 opcode |= actual[byte]['data'] << (8*byte)
-        record={'version':1,'kind':int(irq),'epoch':2,'seq':index,
-                'dot':closing[0]['native_dot']+closing[0]['pending'],
+        record={'version':abi.TRACE_VERSION,'kind':abi.TRACE_INTERRUPT if irq else abi.TRACE_INSTRUCTION,'epoch':len(scenario['initializations']),'seq':index,
+                'dot':snapshot['native_dot'],
                 'pc_before':event['before'],'pc_after':event['after'],
                 'opcode':opcode,'opcode_length':length,'sp':event['sp'],
                 'ime':event['ime'],'ime_delay':event['delay'],'halted':event['halt'],
                 'stopped':event['stop'],'halt_bug':event['bug'],
-                'ie':event['ie'],'iflags':event['if'],'buttons':0}
+                'ie':snapshot['ie'],'iflags':snapshot['if'],'buttons':snapshot['buttons']}
         for pair in ('af','bc','de','hl'):
             record[pair[0]]=event[pair]>>8
             record[pair[1]]=event[pair]&255
+        pack_record('retirement',record)
         result.append(record)
     return result
 
