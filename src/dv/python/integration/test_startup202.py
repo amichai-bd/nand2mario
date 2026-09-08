@@ -24,6 +24,10 @@ async def startup_access(dut):
                 records.write(f'{i},{raw:096x}\n');records.flush()
                 want=expected[i] if i<len(expected) else None
                 log('retirement',expected=want,actual=actual)
+                if actual['dot']==536:
+                    boundary=next((item for item in accesses if item[0]==532),None)
+                    wanted=(532,int(contract['case']=='write'),129 if contract['case']=='write' else 255)
+                    assert boundary==wanted,f'STARTUP202_ACCESS expected={wanted} actual={boundary}'
                 assert actual==want,f'STARTUP202_RECORD index={i} expected={want} actual={actual}'
                 counts['records']+=1
         async def bus():
@@ -34,9 +38,6 @@ async def startup_access(dut):
                     writes.append((dot,data));log('lcdc',dot=dot,data=data)
                 if address==0xfe00:
                     accesses.append((dot,write,data));log('oam',dot=dot,write=write,data=data)
-                    if dot==532:
-                        want=(532,int(contract['case']=='write'),129 if contract['case']=='write' else 255)
-                        assert accesses[-1]==want,f'STARTUP202_ACCESS expected={want} actual={accesses[-1]}'
         async def uart():
             async for encoded in frames(dut):
                 decoded=response(encoded[:-1]);log('response',decoded=decoded)
