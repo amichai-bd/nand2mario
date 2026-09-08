@@ -133,7 +133,7 @@ def verify_generated(folder):
             "parameters_verified": True}
 
 
-def classify_sim_diagnostics(output, descriptor):
+def classify_sim_diagnostics(output, descriptor, *, python_access=False):
     """Keep the exact pinned ADC model's elaboration diagnostics visible.
 
     The same profile occurs with 50 MHz and 25 MHz control clocks. The FIFO
@@ -160,15 +160,18 @@ def classify_sim_diagnostics(output, descriptor):
     expected += [f"# ** Warning: {fifo}(79): (vopt-2685) [TFMPC] - Too few port connections for 'scfifo_component'.  Expected 13, found 12.",
                  f"# ** Warning: {fifo}(79): (vopt-2718) [TFMPC] - Missing connection for port 'eccstatus'."]
     expected += [f"# ** Warning: {atom}(38): (vopt-PLI-3691) Expected a system task, not a system function '$rewind'."] * 9
+    if python_access:
+        expected.insert(0, "# ** Warning: (vopt-10908) Some optimizations are turned off because the +acc switch is in effect.")
+    count = 19 if python_access else 18
     lines = output.splitlines()
     warnings = [line for line in lines if re.search(r"\bWarning:", line)]
-    restored = "# ** Note: (vsim-12126) Error and warning message counts have been restored: Errors=0, Warnings=18."
+    restored = f"# ** Note: (vsim-12126) Error and warning message counts have been restored: Errors=0, Warnings={count}."
     summaries = [line for line in lines if re.fullmatch(r"# Errors: \d+, Warnings: \d+", line)]
-    if warnings != expected or lines.count(restored) != 1 or len(summaries) != 1 or not re.fullmatch(r"# Errors: [01], Warnings: 18", summaries[0]):
+    if warnings != expected or lines.count(restored) != 1 or len(summaries) != 1 or not re.fullmatch(rf"# Errors: [01], Warnings: {count}", summaries[0]):
         raise ValueError("ADC simulation diagnostic profile differs")
-    checked = "\n".join(line.replace("Warnings: 18", "Warnings: 0") if line == summaries[0] else line
+    checked = "\n".join(line.replace(f"Warnings: {count}", "Warnings: 0") if line == summaries[0] else line
                         for line in lines if line not in expected and line != restored)
     return checked, [{"id": "intel-adc-pinned-elaboration", "raw": warnings,
                       "raw_summary": summaries[0], "raw_restored": restored,
-                      "sources": pins, "warning_count": 18,
+                      "sources": pins, "warning_count": count, "python_access": python_access,
                       "reason": "Unchanged 50/25 MHz vendor profile: unused FIFO ECC output, encrypted model widths and ignored rewind returns; sample/channel/lock and fitted boundary checks remain required."}]

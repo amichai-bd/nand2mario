@@ -157,6 +157,18 @@ class IntelAdcTests(unittest.TestCase):
         self.assertIsNone(diagnostic(checked))
         self.assertEqual(evidence[0]["raw"], warnings)
         self.assertEqual(evidence[0]["warning_count"], 18)
+        access = "# ** Warning: (vopt-10908) Some optimizations are turned off because the +acc switch is in effect."
+        combined = access + "\n" + raw.replace("Warnings=18", "Warnings=19").replace("Warnings: 18", "Warnings: 19")
+        checked, combined_evidence = intel_adc.classify_sim_diagnostics(combined, descriptor, python_access=True)
+        self.assertIsNone(diagnostic(checked))
+        self.assertEqual(combined_evidence[0]["warning_count"], 19)
+        for bad in (combined + "\n" + access, combined.replace(access, ""),
+                    combined.replace("Warnings: 19", "Warnings: 18"),
+                    combined.replace("vopt-10908", "vopt-10909")):
+            with self.assertRaisesRegex(ValueError, "profile differs"):
+                intel_adc.classify_sim_diagnostics(bad, descriptor, python_access=True)
+        with self.assertRaisesRegex(ValueError, "profile differs"):
+            intel_adc.classify_sim_diagnostics(combined, descriptor)
         fault = raw.replace("# Errors: 0,", "# Errors: 1,") + "\n# ** Fatal: ADC_VENDOR_DATA"
         checked, _ = intel_adc.classify_sim_diagnostics(fault, descriptor)
         self.assertIsNone(diagnostic(checked, "ADC_VENDOR_DATA"))

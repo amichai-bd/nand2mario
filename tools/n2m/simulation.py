@@ -146,7 +146,8 @@ def simulate(root, build, args, simulator, provenance=None):
                     memory_explained = []
                     if vendor_model["selection"] == "intel-controls":
                         checked_output, memory_explained = intel_memory.classify_diagnostics(checked_output, vendor_model["memory_diagnostics"])
-                    checked_output, adc_explained = intel_adc.classify_sim_diagnostics(checked_output, vendor_model)
+                    checked_output, adc_explained = intel_adc.classify_sim_diagnostics(checked_output, vendor_model,
+                        python_access=bool(python_runtime) and vendor_model["selection"] == "intel-controls")
                     record["explained_diagnostics"] = memory_explained + adc_explained
                 else:
                     checked_output, record["explained_diagnostics"] = intel_memory.classify_diagnostics(result.stdout, vendor_model)

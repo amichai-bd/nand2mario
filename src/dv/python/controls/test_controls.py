@@ -1,6 +1,7 @@
 """Paused actual-board controls through real UART, ADC and clock models."""
 import json
 from pathlib import Path
+import sys
 
 import cocotb
 from cocotb.queue import Queue
@@ -8,6 +9,8 @@ from cocotb.task import bridge
 from cocotb.triggers import ReadOnly, Timer
 from cocotb.utils import get_sim_time
 
+ROOT = Path(__file__).resolve().parents[4]
+sys.path[:0] = [str(ROOT / 'tools'), str(ROOT / 'src/dv/python/integration')]
 from client_transport import connect, frames, refresh_clock
 from n2m import generated_interfaces as abi
 from n2m.preload import adopt, verify
