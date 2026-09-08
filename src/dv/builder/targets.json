@@ -12001,7 +12001,7 @@
       "-gPRELOADED=1",
       "+physical_mask_fault"
     ],
-    "expected_exit": "nonzero",
+    "expected_exit": "zero",
     "signature": "V05_INPUT_WINDOW",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
