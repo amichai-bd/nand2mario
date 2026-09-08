@@ -10171,7 +10171,7 @@
     "top": "tb_oam_late_write",
     "args": [],
     "expected_exit": "zero",
-    "signature": "PASS OAM late owner checks=9"
+    "signature": "PASS OAM late owner checks=12"
   },
   "oam-late-write-collision": {
     "vendor_model": "intel-memory",

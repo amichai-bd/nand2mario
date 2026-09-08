@@ -114,14 +114,32 @@ module tb_oam_late_write;
         expected[38] = 8'he1; expected[39] = 8'h06;
         write_late(16'hfe20, 8'h81); inspect();
         write_late(16'hfe20, 8'h81); inspect();
+        // Blocked ordinary commit does not create pair writes or change RAM.
+        prepare = 1; address = 16'hfe20; data = 8'h22;
+        repeat (12) edge_cycle(); commit = 1; late_window = 0;
+        #1; if (busy || late_commit) $fatal(1, "OAM_LATE_BLOCKED");
+        edge_cycle(); commit = 0; prepare = 0; inspect();
+        // An ordinary allowed byte uses the unchanged raw port at its T4.
+        prepare = 1; address = 16'hfe20; data = 8'h22;
+        repeat (12) edge_cycle(); commit = 1;
+        raw_write = 1; raw_address = 15'h20; raw_data = 8'h22;
+        edge_cycle(); raw_write = 0; commit = 0; prepare = 0;
+        expected[32] = 8'h22; inspect();
+        // Reset after A cancels the drain; the existing clear owns both banks.
+        prepare = 1; address = 16'hfe20; data = 8'h81;
+        repeat (12) edge_cycle(); commit = 1; late_window = 1; edge_cycle();
+        commit = 0; prepare = 0; late_window = 0; core_reset = 1; edge_cycle();
+        core_reset = 0; repeat (8192) edge_cycle();
+        for (index = 0; index < 160; index = index + 1) expected[index] = 0;
+        inspect();
         // Reset drops a partially prepared transaction; no stale completion.
         prepare = 1; address = 16'hfe9c; data = 8'h81;
         repeat (3) edge_cycle(); core_reset = 1; edge_cycle();
         prepare = 0; core_reset = 0; repeat (8192) edge_cycle();
         for (index = 0; index < 160; index = index + 1) expected[index] = 0;
         inspect();
-        if (fault || checks != 9) $fatal(1, "OAM_LATE_CHECKS count=%0d", checks);
-        $display("PASS OAM late owner checks=9");
+        if (fault || checks != 12) $fatal(1, "OAM_LATE_CHECKS count=%0d", checks);
+        $display("PASS OAM late owner checks=12");
         $finish;
     end
     initial begin #2000000; $fatal(1, "OAM_LATE_TIMEOUT"); end
