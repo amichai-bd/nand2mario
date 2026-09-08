@@ -1,9 +1,10 @@
 # Independent SameBoy adapter
 
-This is the initial runnable Core probe for [#102](https://github.com/amichai-bd/nand2mario/issues/102).
-It builds the pinned reference and records its native CPU, memory and framebuffer
-observations. A successful probe means execution completed. It does **not** mean
-retirement or pixel equivalence passed.
+This adapter for [#102](https://github.com/amichai-bd/nand2mario/issues/102)
+builds the pinned reference and compares its retirement records and visible
+framebuffer pixels with the original integration program's DUT observations.
+A successful native probe means execution completed; the separate comparison
+must also pass.
 
 ## Run
 
@@ -93,18 +94,30 @@ DUT data. `compare_diagnostic.py` compares all retirement fields and visible
 shades with retained DUT CSVs and reports the first unresolved timing difference;
 historical DUT traces are not automatically current-head acceptance.
 
-## Remaining #102 acceptance
+## Acceptance boundary
 
-- Independently review the full initial-state mapping and verify state groups.
-- Define actual fetched-byte and post-event retirement hooks, IRQ/idle handling,
-  exact ABI fields, and source-proven timing projection. The public execution
-  callback precedes instruction effects and is insufficient alone.
-- Resolve Core final pixel/blank-frame timing against the approved public source
-  stream. A system-edge A-to-B publication adds no emulated dot.
-- Compare every ordered retirement field and every source-frame pixel for the
-  selected original program. Preserve the first exact mismatch without resync.
-- Prove corrupt fields/pixels, missing and reordered records fail with bounded
-  expected/actual context; then run the bounded existing Python/Questa path.
+Run the existing `python-integration` target with Intel memory preload, then:
 
-The unresolved pixel timing prerequisite is tracked in [#194](https://github.com/amichai-bd/nand2mario/issues/194). The original full #102 criteria remain open. This probe is not a scoped closure
-or a replacement for required DUT verification.
+```powershell
+python -X utf8 -B src/dv/sameboy/compare_acceptance.py workdir/builds/sameboy-probe/observations.log <dut-attempt-directory> workdir/builds/sameboy-probe/acceptance.json
+python -X utf8 -B -m unittest discover -s tools/n2m/tests -p 'test_sameboy_*.py' -q
+```
+
+The comparison requires all 69 retirement records, all 26 ABI fields including
+completed-dot identity, and both complete ordered source frames (46,080 pixels).
+The DUT test retains its own source-pixel timing, progress and completion checks.
+Preload proves execution after initialization; it does not repeat UART loading.
+Corrupt fields or pixels, missing observations and reordered observations fail
+at the first expected/actual context without resynchronization.
+
+The [baseline contract](../../../wiki/src/dv/baseline/SPEC.md#independent-emulator-and-retirement-traces)
+requires exact retirement fields and ordered visible source pixels. It does not
+require Core's internal framebuffer-action timestamps to equal DUT source-event
+timestamps. `compare_diagnostic.py` separately retains that unresolved difference
+and its nonzero exit. [#194](https://github.com/amichai-bd/nand2mario/issues/194)
+tracks it; it is not a #102 prerequisite or a hardware timing claim.
+
+The remaining delivery checks are current DUT runtime/comparison evidence,
+independent current-head review, and required repository checks. Pinned native
+baseline/observer equivalence and the reviewed direct-entry/hook mapping remain
+required evidence, with their original producing fingerprints retained.

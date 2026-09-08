@@ -11,18 +11,13 @@ from tools.n2m.interface_codec import unpack_record
 from src.dv.sameboy.retirement import compare, fields, project
 
 
-def main():
-    parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('core',type=Path)
-    parser.add_argument('dut',type=Path)
-    parser.add_argument('output',type=Path)
-    args=parser.parse_args()
-    log=args.core.read_text()
+def compare_values(log, dut_directory):
+    """Compare complete retirement ABI and ordered visible framebuffer values."""
     reference=project(log)
-    with (args.dut/'retirement.csv').open() as stream:
+    with (dut_directory/'retirement.csv').open() as stream:
         actual=[unpack_record('retirement',bytes.fromhex(row['record'])[::-1]) for row in csv.DictReader(stream)]
     compare(reference,actual)
-    with (args.dut/'pixels.csv').open() as stream:
+    with (dut_directory/'pixels.csv').open() as stream:
         dut=[{k:int(v) for k,v in row.items()} for row in csv.DictReader(stream)]
     visible=[];raw=[];enable=[]
     for line in log.splitlines():
@@ -35,14 +30,32 @@ def main():
         elif line.startswith('write '):
             row=fields(line)
             if row['address']==0xff40 and row['data']==0x91:enable.append(row['dot'])
+    compare_pixels(visible,dut)
+    return reference,visible,raw,dut,enable
+
+
+def compare_pixels(visible,dut):
     # The configured upstream GB_PALETTE_GREY is a display encoding, not a DUT oracle.
     shades={0xffffff:0,0xaaaaaa:1,0x555555:2,0x000000:3}
-    if len(visible)!=len(dut) or len(raw)!=len(dut):raise ValueError('pixel observation count differs')
-    first_time=None
-    for index,(screen,pixel,observed) in enumerate(zip(visible,raw,dut,strict=True)):
+    for index in range(max(len(visible),len(dut))):
+        if index>=len(visible) or index>=len(dut):
+            raise ValueError(f'pixel count at {index}: expected={len(visible)} actual={len(dut)}')
+        screen,observed=visible[index],dut[index]
         expected=(screen['frame'],screen['y']*160+screen['x'],shades[screen['rgb']])
         actual=(observed['frame'],observed['index'],observed['shade'])
         if expected!=actual:raise ValueError(f'pixel {index}: expected={expected} actual={actual}')
+
+
+def main():
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('core',type=Path)
+    parser.add_argument('dut',type=Path)
+    parser.add_argument('output',type=Path)
+    args=parser.parse_args()
+    reference,visible,raw,dut,enable=compare_values(args.core.read_text(),args.dut)
+    if len(raw)!=len(dut):raise ValueError('raw pixel observation count differs')
+    first_time=None
+    for screen,pixel,observed in zip(visible,raw,dut,strict=True):
         if (pixel['x'],pixel['y'])!=(screen['x'],screen['y']):raise ValueError('raw/public pixel order differs')
         ticks=pixel['native_ticks8mhz']-pixel['pending_display_ticks8mhz']
         if ticks%2:raise ValueError('fractional native PPU action')
