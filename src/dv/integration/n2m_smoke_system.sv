@@ -50,6 +50,9 @@ module n2m_smoke_system #(parameter bit HOST_PLAY = 0) (
     logic [7:0] owner_wdata, owner_rdata;
     logic owner_valid, owner_service;
     logic raw_read, raw_write, video_owner, video_allowed, video_read;
+    logic oam_cpu_late_write, late_busy, late_fault, oam_read_allowed;
+    memory_oam_request_t late_request;
+    memory_oam_response_t late_response;
     logic video_pending;
     logic [15:0] video_address;
     logic [7:0] ppu_rdata, irq_rdata;
@@ -66,7 +69,7 @@ module n2m_smoke_system #(parameter bit HOST_PLAY = 0) (
     logic reset, blank_assert;
     assign reset = reset_sys || core_reset;
     assign core_initialized = memory_initialized && cpu_initialized;
-    assign fault = cpu_fault || memory_fault || ppu_fault;
+    assign fault = cpu_fault || memory_fault || ppu_fault || late_fault;
 
     n2m_uart #(.CLOCK_HZ(25000000), .BAUD(3125000)) u_uart (
         .clk_sys, .reset_sys, .uart_rx, .uart_tx,
@@ -108,10 +111,12 @@ module n2m_smoke_system #(parameter bit HOST_PLAY = 0) (
     // PPU permissions apply to CPU video accesses; its own B reads remain live.
     assign video_owner = destination == MEMORY_VRAM || destination == MEMORY_OAM;
     assign video_allowed = destination == MEMORY_VRAM ? (owner_write ? vram_cpu_allow : vram_cpu_read_allow)
-        : (owner_write ? oam_cpu_allow : oam_cpu_read_allow);
-    assign video_read = owner_prepare && video_owner && video_allowed && !owner_write;
+        : (owner_write ? (oam_cpu_allow || oam_cpu_late_write) : oam_cpu_read_allow);
+    assign video_read = owner_prepare && video_owner && video_allowed && !owner_write
+        && !(destination == MEMORY_OAM && late_busy);
     assign raw_read = storage_read || video_read;
-    assign raw_write = storage_write || (owner_commit && video_owner && video_allowed && owner_write);
+    assign raw_write = storage_write || (owner_commit && video_owner && video_allowed && owner_write
+        && !(destination == MEMORY_OAM && (late_busy || oam_cpu_late_write)));
     assign raw_store = video_owner ? (destination == MEMORY_VRAM ? STORE_VRAM : STORE_OAM) : storage_store;
     assign raw_offset = video_owner ? (destination == MEMORY_VRAM ? {2'd0,address[12:0]} : {7'd0,address[7:0]}) : storage_offset;
     `DFF_ARST_VAL(video_pending, video_read, clk_sys, reset, 1'b0)
@@ -135,7 +140,16 @@ module n2m_smoke_system #(parameter bit HOST_PLAY = 0) (
             default: begin owner_service = 0; owner_valid = 0; end
         endcase
     end
-    n2m_memory_stores u_stores (.oam_request('0), .oam_response(),
+    n2m_oam_late_write u_oam_late (
+        .clk_sys, .reset_sys, .core_reset,
+        .prepare(owner_prepare && destination == MEMORY_OAM && owner_write),
+        .commit(owner_commit && destination == MEMORY_OAM && owner_write),
+        .late_window(oam_cpu_late_write), .address(owner_address), .data(owner_wdata),
+        .ppu_read(oam_phase != 0), .ppu_pair(oam_pair_address),
+        .response(late_response), .request(late_request), .raw_oam_busy(late_busy),
+        .late_commit(), .ppu_read_allowed(oam_read_allowed), .fault(late_fault)
+    );
+    n2m_memory_stores u_stores (.oam_request(late_request), .oam_response(late_response),
         .clk_sys, .reset_sys, .core_reset, .init_done(memory_initialized),
         .access_read(raw_read), .access_write(raw_write), .access_store(raw_store),
         .access_address(raw_offset), .access_wdata(write_data),
@@ -144,7 +158,7 @@ module n2m_smoke_system #(parameter bit HOST_PLAY = 0) (
         .host_wdata(rom_write_data), .host_rdata(rom_read_data), .host_valid(rom_read_valid),
         .ppu_vram_read(vram_request), .ppu_vram_address(vram_address),
         .ppu_vram_rdata(vram_data), .ppu_vram_valid(vram_valid),
-        .ppu_oam_read(oam_phase != 0), .ppu_oam_pair(oam_pair_address),
+        .ppu_oam_read(oam_read_allowed), .ppu_oam_pair(oam_pair_address),
         .ppu_oam_rdata(oam_data), .ppu_oam_valid(oam_valid),
         .wave_read(1'b0), .wave_address(4'd0), .wave_rdata(), .wave_valid()
     );
@@ -162,7 +176,7 @@ module n2m_smoke_system #(parameter bit HOST_PLAY = 0) (
         .io_address(owner_address), .io_wdata(owner_wdata), .io_selected(ppu_selected),
         .io_rdata(ppu_rdata), .vram_request, .vram_address, .vram_data, .vram_valid,
         .oam_pair_address, .oam_phase, .oam_scan_index(), .oam_data, .oam_valid,
-        .dma_active(1'b0), .vram_cpu_allow, .oam_cpu_allow, .vram_cpu_read_allow, .oam_cpu_read_allow, .stat_condition,
+        .dma_active(1'b0), .vram_cpu_allow, .oam_cpu_allow, .vram_cpu_read_allow, .oam_cpu_read_allow, .oam_cpu_late_write, .stat_condition,
         .vblank_condition, .stat_rise(), .vblank_rise(), .fault(ppu_fault),
         .source_valid, .source_start, .source_shade, .source_x, .source_y,
         .source_epoch, .source_dot, .source_abort, .blank_assert, .source_display_eligible

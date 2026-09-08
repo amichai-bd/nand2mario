@@ -3763,6 +3763,7 @@
       "src/rtl/ppu/n2m_ppu_shift.sv",
       "src/rtl/ppu/n2m_ppu_timing.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/memory/n2m_oam_late_write.sv",
       "src/dv/integration/n2m_smoke_system.sv",
       "src/dv/integration/tb_integration.sv"
     ],
@@ -3892,6 +3893,7 @@
       "src/rtl/ppu/n2m_ppu_shift.sv",
       "src/rtl/ppu/n2m_ppu_timing.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/memory/n2m_oam_late_write.sv",
       "src/dv/integration/n2m_smoke_system.sv",
       "src/dv/integration/tb_integration.sv"
     ],
@@ -4023,6 +4025,7 @@
       "src/rtl/ppu/n2m_ppu_shift.sv",
       "src/rtl/ppu/n2m_ppu_timing.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/memory/n2m_oam_late_write.sv",
       "src/dv/integration/n2m_smoke_system.sv",
       "src/dv/integration/tb_integration.sv"
     ],
@@ -4154,6 +4157,7 @@
       "src/rtl/ppu/n2m_ppu_shift.sv",
       "src/rtl/ppu/n2m_ppu_timing.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/memory/n2m_oam_late_write.sv",
       "src/dv/integration/n2m_smoke_system.sv",
       "src/dv/integration/tb_integration.sv"
     ],
@@ -6175,6 +6179,7 @@
       "src/rtl/vga/n2m_vga_scan.sv",
       "src/rtl/vga/n2m_frame_bridge.sv",
       "src/rtl/snapshot/n2m_frame_snapshot.sv",
+      "src/rtl/memory/n2m_oam_late_write.sv",
       "src/dv/integration/n2m_smoke_system.sv",
       "src/dv/host_play/tb_host_play.sv"
     ],
@@ -6316,6 +6321,7 @@
       "src/rtl/vga/n2m_vga_scan.sv",
       "src/rtl/vga/n2m_frame_bridge.sv",
       "src/rtl/snapshot/n2m_frame_snapshot.sv",
+      "src/rtl/memory/n2m_oam_late_write.sv",
       "src/dv/integration/n2m_smoke_system.sv",
       "src/dv/host_play/tb_host_play.sv"
     ],
@@ -6459,6 +6465,7 @@
       "src/rtl/vga/n2m_vga_scan.sv",
       "src/rtl/vga/n2m_frame_bridge.sv",
       "src/rtl/snapshot/n2m_frame_snapshot.sv",
+      "src/rtl/memory/n2m_oam_late_write.sv",
       "src/dv/integration/n2m_smoke_system.sv",
       "src/dv/host_play/tb_host_play.sv"
     ],
@@ -6602,6 +6609,7 @@
       "src/rtl/vga/n2m_vga_scan.sv",
       "src/rtl/vga/n2m_frame_bridge.sv",
       "src/rtl/snapshot/n2m_frame_snapshot.sv",
+      "src/rtl/memory/n2m_oam_late_write.sv",
       "src/dv/integration/n2m_smoke_system.sv",
       "src/dv/host_play/tb_host_play.sv"
     ],
@@ -6745,6 +6753,7 @@
       "src/rtl/vga/n2m_vga_scan.sv",
       "src/rtl/vga/n2m_frame_bridge.sv",
       "src/rtl/snapshot/n2m_frame_snapshot.sv",
+      "src/rtl/memory/n2m_oam_late_write.sv",
       "src/dv/integration/n2m_smoke_system.sv",
       "src/dv/host_play/tb_host_play.sv"
     ],
@@ -7033,6 +7042,7 @@
       "src/rtl/ppu/n2m_ppu_shift.sv",
       "src/rtl/ppu/n2m_ppu_timing.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/memory/n2m_oam_late_write.sv",
       "src/dv/integration/n2m_smoke_system.sv",
       "src/dv/integration/tb_integration.sv"
     ],
@@ -7319,6 +7329,7 @@
       "src/rtl/ppu/n2m_ppu_shift.sv",
       "src/rtl/ppu/n2m_ppu_timing.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/memory/n2m_oam_late_write.sv",
       "src/dv/integration/n2m_smoke_system.sv",
       "src/dv/python/integration/tb_python_integration.sv"
     ],
@@ -7410,6 +7421,7 @@
       "src/rtl/ppu/n2m_ppu_shift.sv",
       "src/rtl/ppu/n2m_ppu_timing.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/memory/n2m_oam_late_write.sv",
       "src/dv/integration/n2m_smoke_system.sv",
       "src/dv/python/integration/tb_python_integration.sv"
     ],
@@ -7503,6 +7515,7 @@
       "src/rtl/ppu/n2m_ppu_shift.sv",
       "src/rtl/ppu/n2m_ppu_timing.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/memory/n2m_oam_late_write.sv",
       "src/dv/integration/n2m_smoke_system.sv",
       "src/dv/python/integration/tb_python_integration.sv"
     ],
@@ -7601,6 +7614,7 @@
       "src/rtl/ppu/n2m_ppu_shift.sv",
       "src/rtl/ppu/n2m_ppu_timing.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/memory/n2m_oam_late_write.sv",
       "src/dv/integration/n2m_smoke_system.sv",
       "src/dv/python/integration/tb_python_integration.sv"
     ],
@@ -7700,6 +7714,7 @@
       "src/rtl/ppu/n2m_ppu_shift.sv",
       "src/rtl/ppu/n2m_ppu_timing.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/memory/n2m_oam_late_write.sv",
       "src/dv/integration/n2m_smoke_system.sv",
       "src/dv/python/integration/tb_python_integration.sv"
     ],
@@ -7799,6 +7814,7 @@
       "src/rtl/ppu/n2m_ppu_shift.sv",
       "src/rtl/ppu/n2m_ppu_timing.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/memory/n2m_oam_late_write.sv",
       "src/dv/integration/n2m_smoke_system.sv",
       "src/dv/python/integration/tb_python_integration.sv"
     ],
@@ -7898,6 +7914,7 @@
       "src/rtl/ppu/n2m_ppu_shift.sv",
       "src/rtl/ppu/n2m_ppu_timing.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/memory/n2m_oam_late_write.sv",
       "src/dv/integration/n2m_smoke_system.sv",
       "src/dv/python/integration/tb_python_integration.sv"
     ],
@@ -8005,6 +8022,7 @@
       "src/rtl/vga/n2m_vga_scan.sv",
       "src/rtl/vga/n2m_frame_bridge.sv",
       "src/rtl/snapshot/n2m_frame_snapshot.sv",
+      "src/rtl/memory/n2m_oam_late_write.sv",
       "src/dv/integration/n2m_smoke_system.sv",
       "src/dv/python/host_play/tb_python_host_play.sv"
     ],
@@ -8112,6 +8130,7 @@
       "src/rtl/vga/n2m_vga_scan.sv",
       "src/rtl/vga/n2m_frame_bridge.sv",
       "src/rtl/snapshot/n2m_frame_snapshot.sv",
+      "src/rtl/memory/n2m_oam_late_write.sv",
       "src/dv/integration/n2m_smoke_system.sv",
       "src/dv/python/host_play/tb_python_host_play.sv"
     ],
@@ -8221,6 +8240,7 @@
       "src/rtl/vga/n2m_vga_scan.sv",
       "src/rtl/vga/n2m_frame_bridge.sv",
       "src/rtl/snapshot/n2m_frame_snapshot.sv",
+      "src/rtl/memory/n2m_oam_late_write.sv",
       "src/dv/integration/n2m_smoke_system.sv",
       "src/dv/python/host_play/tb_python_host_play.sv"
     ],
@@ -8330,6 +8350,7 @@
       "src/rtl/vga/n2m_vga_scan.sv",
       "src/rtl/vga/n2m_frame_bridge.sv",
       "src/rtl/snapshot/n2m_frame_snapshot.sv",
+      "src/rtl/memory/n2m_oam_late_write.sv",
       "src/dv/integration/n2m_smoke_system.sv",
       "src/dv/python/host_play/tb_python_host_play.sv"
     ],
@@ -8439,6 +8460,7 @@
       "src/rtl/vga/n2m_vga_scan.sv",
       "src/rtl/vga/n2m_frame_bridge.sv",
       "src/rtl/snapshot/n2m_frame_snapshot.sv",
+      "src/rtl/memory/n2m_oam_late_write.sv",
       "src/dv/integration/n2m_smoke_system.sv",
       "src/dv/python/host_play/tb_python_host_play.sv"
     ],
@@ -8548,6 +8570,7 @@
       "src/rtl/vga/n2m_vga_scan.sv",
       "src/rtl/vga/n2m_frame_bridge.sv",
       "src/rtl/snapshot/n2m_frame_snapshot.sv",
+      "src/rtl/memory/n2m_oam_late_write.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -8673,6 +8696,7 @@
       "src/rtl/vga/n2m_vga_scan.sv",
       "src/rtl/vga/n2m_frame_bridge.sv",
       "src/rtl/snapshot/n2m_frame_snapshot.sv",
+      "src/rtl/memory/n2m_oam_late_write.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -8796,6 +8820,7 @@
       "src/rtl/vga/n2m_vga_scan.sv",
       "src/rtl/vga/n2m_frame_bridge.sv",
       "src/rtl/snapshot/n2m_frame_snapshot.sv",
+      "src/rtl/memory/n2m_oam_late_write.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -8921,6 +8946,7 @@
       "src/rtl/vga/n2m_vga_scan.sv",
       "src/rtl/vga/n2m_frame_bridge.sv",
       "src/rtl/snapshot/n2m_frame_snapshot.sv",
+      "src/rtl/memory/n2m_oam_late_write.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -9045,6 +9071,7 @@
       "src/rtl/vga/n2m_vga_scan.sv",
       "src/rtl/vga/n2m_frame_bridge.sv",
       "src/rtl/snapshot/n2m_frame_snapshot.sv",
+      "src/rtl/memory/n2m_oam_late_write.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -9172,6 +9199,7 @@
       "src/rtl/vga/n2m_vga_scan.sv",
       "src/rtl/vga/n2m_frame_bridge.sv",
       "src/rtl/snapshot/n2m_frame_snapshot.sv",
+      "src/rtl/memory/n2m_oam_late_write.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -9300,6 +9328,7 @@
       "src/rtl/vga/n2m_vga_scan.sv",
       "src/rtl/vga/n2m_frame_bridge.sv",
       "src/rtl/snapshot/n2m_frame_snapshot.sv",
+      "src/rtl/memory/n2m_oam_late_write.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -9392,6 +9421,7 @@
       "src/rtl/vga/n2m_vga_scan.sv",
       "src/rtl/vga/n2m_frame_bridge.sv",
       "src/rtl/snapshot/n2m_frame_snapshot.sv",
+      "src/rtl/memory/n2m_oam_late_write.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -9476,6 +9506,7 @@
       "src/rtl/ppu/n2m_ppu_shift.sv",
       "src/rtl/ppu/n2m_ppu_timing.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/memory/n2m_oam_late_write.sv",
       "src/dv/integration/n2m_smoke_system.sv",
       "src/dv/python/integration/tb_python_integration.sv"
     ],
@@ -9579,6 +9610,7 @@
       "src/rtl/ppu/n2m_ppu_shift.sv",
       "src/rtl/ppu/n2m_ppu_timing.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/memory/n2m_oam_late_write.sv",
       "src/dv/integration/n2m_smoke_system.sv",
       "src/dv/python/integration/tb_python_integration.sv"
     ],
@@ -9708,6 +9740,7 @@
       "src/rtl/ppu/n2m_ppu_shift.sv",
       "src/rtl/ppu/n2m_ppu_timing.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/memory/n2m_oam_late_write.sv",
       "src/dv/integration/n2m_smoke_system.sv",
       "src/dv/python/integration/tb_python_integration.sv"
     ],
@@ -9801,6 +9834,7 @@
       "src/rtl/ppu/n2m_ppu_shift.sv",
       "src/rtl/ppu/n2m_ppu_timing.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/memory/n2m_oam_late_write.sv",
       "src/dv/integration/n2m_smoke_system.sv",
       "src/dv/python/integration/tb_python_integration.sv"
     ],
@@ -9938,6 +9972,7 @@
       "src/rtl/ppu/n2m_ppu_shift.sv",
       "src/rtl/ppu/n2m_ppu_timing.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/memory/n2m_oam_late_write.sv",
       "src/dv/integration/n2m_smoke_system.sv",
       "src/dv/python/integration/tb_python_integration.sv"
     ],
@@ -10031,6 +10066,7 @@
       "src/rtl/ppu/n2m_ppu_shift.sv",
       "src/rtl/ppu/n2m_ppu_timing.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/memory/n2m_oam_late_write.sv",
       "src/dv/integration/n2m_smoke_system.sv",
       "src/dv/python/integration/tb_python_integration.sv"
     ],
@@ -10121,5 +10157,37 @@
     "expected_exit": "nonzero",
     "signature": "PPU_VRAM_READ_WINDOW expected=0/1 actual=1/1",
     "timeout_seconds": 60
+  },
+  "oam-late-write": {
+    "vendor_model": "intel-memory",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/memory/n2m_memory_stores.sv",
+      "src/rtl/memory/n2m_oam_late_write.sv",
+      "src/dv/memory/tb_oam_late_write.sv"
+    ],
+    "top": "tb_oam_late_write",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS OAM late owner checks=9"
+  },
+  "oam-late-write-collision": {
+    "vendor_model": "intel-memory",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/memory/n2m_memory_stores.sv",
+      "src/rtl/memory/n2m_oam_late_write.sv",
+      "src/dv/memory/tb_oam_late_write.sv"
+    ],
+    "top": "tb_oam_late_write",
+    "args": [
+      "+collision"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT INTEL_RAM_MIXED_PORT_A"
   }
 }

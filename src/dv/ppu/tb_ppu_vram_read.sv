@@ -12,7 +12,7 @@ module tb_ppu_vram_read;
     logic [12:0] vram_address;
     logic [6:0] oam_pair_address;
     logic [1:0] oam_phase;
-    logic stat_condition, stat_rise, fault;
+    logic stat_condition, stat_rise, fault, oam_cpu_late_write;
     integer cases;
     logic vram_cpu_read_allow, vram_cpu_allow, oam_cpu_allow, oam_cpu_read_allow, dma_active;
     logic [63:0] enable_dot;
@@ -22,7 +22,7 @@ module tb_ppu_vram_read;
         .io_commit, .io_write, .io_address, .io_wdata, .io_rdata, .io_selected,
         .vram_request, .vram_address, .vram_data(8'd0), .vram_valid,
         .oam_pair_address, .oam_phase, .oam_scan_index(), .oam_data(16'd0),
-        .oam_valid, .dma_active, .vram_cpu_allow, .oam_cpu_allow, .vram_cpu_read_allow, .oam_cpu_read_allow,
+        .oam_valid, .dma_active, .vram_cpu_allow, .oam_cpu_allow, .vram_cpu_read_allow, .oam_cpu_read_allow, .oam_cpu_late_write,
         .stat_condition, .stat_rise, .vblank_condition(), .vblank_rise(), .fault,
         .source_valid(), .source_start(), .source_shade(), .source_x(), .source_y(),
         .source_epoch(), .source_dot(), .source_abort(), .blank_assert(),
@@ -61,6 +61,8 @@ module tb_ppu_vram_read;
         do @(posedge clk_sys); while (!(gb_tick && dot_before == enable_dot + 64'(elapsed)));
         if (cpu_phase != 3) $fatal(1, "PPU_VRAM_READ_PHASE");
         check_permissions(read_allowed, write_allowed);
+        if (oam_cpu_late_write !== (elapsed == 532 || elapsed == 988))
+            $fatal(1, "PPU_OAM_LATE_WINDOW elapsed=%0d", elapsed);
         @(negedge clk_sys);
     endtask
     task automatic hold_before(input integer elapsed);

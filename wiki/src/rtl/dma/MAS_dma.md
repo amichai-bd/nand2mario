@@ -14,7 +14,7 @@ the PPU's [scan and fetch port](../ppu/MAS_ppu.md#oam-scan-and-fetch-port).
 There is no second OAM image or retirement-based reconstruction of CPU effects.
 
 All state uses clk_sys. The shared [clock contract](../../clocks-resets-cdc.md)
-owns gb_tick and the eleven/twelve-system-edge dot spacing. The exported CPU
+owns gb_tick and the five/six-system-edge dot spacing at 25 MHz. The exported CPU
 address_effect_phase directly follows its bus phase, including HALT and idle
 cycles. Periodic preparation uses gb_tick and phase3, independently of the
 address_effect_sample pulse. Host pause and STOP tick withholding hold phase;
