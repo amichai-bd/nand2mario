@@ -57,8 +57,6 @@ module n2m_uart_commands (
     input var logic [7:0] frame_data,
     input var logic frame_valid
 );
-    import n2m_interfaces_pkg::*;
-    import n2m_uart_pkg::*;
     typedef enum logic [4:0] {
         IDLE, ARG_FETCH, ARG_USE, VALIDATE, CORE_START, CORE_WAIT,
         LOAD_START, LOAD_WAIT, WRITE_FETCH, WRITE_USE,
@@ -66,13 +64,13 @@ module n2m_uart_commands (
         REPLY_ROM, FRAME_FETCH, FRAME_USE, REPLY_WAIT
     } state_t;
     state_t state, state_next;
-    logic [LOAD_BEGIN_BYTES*8-1:0] arguments, arguments_next;
+    logic [n2m_interfaces_pkg::LOAD_BEGIN_BYTES*8-1:0] arguments, arguments_next;
     logic [3:0] arg_index, arg_index_next, arg_limit, arg_limit_next;
-    logic [UART_ADDRESS_BITS-1:0] index, index_next;
+    logic [n2m_uart_pkg::UART_ADDRESS_BITS-1:0] index, index_next;
     logic loading, loading_next, image_valid_next;
     logic [7:0] profile_next, reply_status, reply_status_next;
     logic [15:0] reply_length, reply_length_next;
-    logic [SNAPSHOT_BYTES*8-1:0] reply_value, reply_value_next;
+    logic [n2m_interfaces_pkg::SNAPSHOT_BYTES*8-1:0] reply_value, reply_value_next;
     logic [7:0] validation_status;
     logic [15:0] validation_length;
     logic host_address_valid;
@@ -81,40 +79,40 @@ module n2m_uart_commands (
     logic [7:0] core_command, core_status;
     logic [63:0] core_completed_dot;
     logic load_start, load_busy, load_done;
-    uart_load_operation_t load_operation;
+    n2m_uart_pkg::uart_load_operation_t load_operation;
     logic [7:0] load_status, load_output_data;
     logic [15:0] load_count;
     logic load_input_valid, load_input_ready, load_output_valid, load_output_ready;
     logic reply_start, reply_busy, reply_done, payload_valid, payload_ready;
     logic [7:0] payload_data;
     n2m_input_pkg::input_write_t core_input;
-    write_host_t write_fields;
-    load_begin_t begin_fields;
-    read_range_t range_fields;
-    assign write_fields = arguments[WRITE_HOST_BYTES*8-1:0];
+    n2m_interfaces_pkg::write_host_t write_fields;
+    n2m_interfaces_pkg::load_begin_t begin_fields;
+    n2m_interfaces_pkg::read_range_t range_fields;
+    assign write_fields = arguments[n2m_interfaces_pkg::WRITE_HOST_BYTES*8-1:0];
     assign core_input.valid = 1'b1;
-    assign core_input.source_write = request_header.command == COMMAND_WRITE_HOST && write_fields.address == HOST_REG_INPUT_SOURCE;
-    assign core_input.value = request_header.command == COMMAND_WRITE_HOST ? write_fields.value[7:0] : arguments[7:0];
+    assign core_input.source_write = request_header.command == n2m_interfaces_pkg::COMMAND_WRITE_HOST && write_fields.address == n2m_interfaces_pkg::HOST_REG_INPUT_SOURCE;
+    assign core_input.value = request_header.command == n2m_interfaces_pkg::COMMAND_WRITE_HOST ? write_fields.value[7:0] : arguments[7:0];
     assign begin_fields = arguments;
-    assign range_fields = arguments[READ_RANGE_BYTES*8-1:0];
-    assign endpoint_state = loading ? STATE_LOADING : (paused ? STATE_PAUSED : STATE_RUNNING);
+    assign range_fields = arguments[n2m_interfaces_pkg::READ_RANGE_BYTES*8-1:0];
+    assign endpoint_state = loading ? n2m_interfaces_pkg::STATE_LOADING : (paused ? n2m_interfaces_pkg::STATE_PAUSED : n2m_interfaces_pkg::STATE_RUNNING);
     assign packet_read = (state == ARG_FETCH || state == WRITE_FETCH) && !reset_sys;
-    assign packet_address = state == ARG_FETCH ? UART_ADDRESS_BITS'(PACKET_HEADER_BYTES + arg_index)
-        : UART_ADDRESS_BITS'(PACKET_HEADER_BYTES + OFFSET_BYTES) + index;
+    assign packet_address = state == ARG_FETCH ? n2m_uart_pkg::UART_ADDRESS_BITS'(n2m_interfaces_pkg::PACKET_HEADER_BYTES + arg_index)
+        : n2m_uart_pkg::UART_ADDRESS_BITS'(n2m_interfaces_pkg::PACKET_HEADER_BYTES + n2m_interfaces_pkg::OFFSET_BYTES) + index;
     assign core_start = state == CORE_START;
-    assign core_command = request_header.command == COMMAND_LOAD_BEGIN || request_header.command == COMMAND_LOAD_END
-        ? COMMAND_RESET : (request_header.command == COMMAND_WRITE_HOST ? COMMAND_INPUT : request_header.command);
+    assign core_command = request_header.command == n2m_interfaces_pkg::COMMAND_LOAD_BEGIN || request_header.command == n2m_interfaces_pkg::COMMAND_LOAD_END
+        ? n2m_interfaces_pkg::COMMAND_RESET : (request_header.command == n2m_interfaces_pkg::COMMAND_WRITE_HOST ? n2m_interfaces_pkg::COMMAND_INPUT : request_header.command);
     assign load_start = state == LOAD_START;
     always_comb begin
         case (request_header.command)
-            COMMAND_LOAD_BEGIN: load_operation = UART_LOAD_BEGIN;
-            COMMAND_LOAD_WRITE: load_operation = UART_LOAD_WRITE;
-            COMMAND_LOAD_END: load_operation = UART_LOAD_END;
-            default: load_operation = UART_LOAD_READ;
+            n2m_interfaces_pkg::COMMAND_LOAD_BEGIN: load_operation = n2m_uart_pkg::UART_LOAD_BEGIN;
+            n2m_interfaces_pkg::COMMAND_LOAD_WRITE: load_operation = n2m_uart_pkg::UART_LOAD_WRITE;
+            n2m_interfaces_pkg::COMMAND_LOAD_END: load_operation = n2m_uart_pkg::UART_LOAD_END;
+            default: load_operation = n2m_uart_pkg::UART_LOAD_READ;
         endcase
     end
-    assign load_count = request_header.command == COMMAND_LOAD_WRITE
-        ? request_header.length - 16'(OFFSET_BYTES) : range_fields.count;
+    assign load_count = request_header.command == n2m_interfaces_pkg::COMMAND_LOAD_WRITE
+        ? request_header.length - 16'(n2m_interfaces_pkg::OFFSET_BYTES) : range_fields.count;
     assign load_input_valid = state == WRITE_USE && packet_data_valid;
     assign load_output_ready = state == REPLY_ROM && payload_ready;
     assign reply_start = state == REPLY_START;
@@ -189,11 +187,11 @@ module n2m_uart_commands (
             IDLE: if (command_valid) begin
                 arguments_next = 0;
                 arg_index_next = 0;
-                arg_limit_next = request_header.length < LOAD_BEGIN_BYTES ? 4'(request_header.length) : 4'(LOAD_BEGIN_BYTES);
+                arg_limit_next = request_header.length < n2m_interfaces_pkg::LOAD_BEGIN_BYTES ? 4'(request_header.length) : 4'(n2m_interfaces_pkg::LOAD_BEGIN_BYTES);
                 index_next = 0;
-                if (command_forced_status != STATUS_OK || request_header.version != WIRE_VERSION ||
-                    request_header.length > WIRE_MAX_PAYLOAD ||
-                    32'(request_bytes) != PACKET_HEADER_BYTES + 32'(request_header.length) + 2 || request_header.length == 0)
+                if (command_forced_status != n2m_interfaces_pkg::STATUS_OK || request_header.version != n2m_interfaces_pkg::WIRE_VERSION ||
+                    request_header.length > n2m_interfaces_pkg::WIRE_MAX_PAYLOAD ||
+                    32'(request_bytes) != n2m_interfaces_pkg::PACKET_HEADER_BYTES + 32'(request_header.length) + 2 || request_header.length == 0)
                     state_next = VALIDATE;
                 else state_next = ARG_FETCH;
             end
@@ -207,38 +205,38 @@ module n2m_uart_commands (
                 reply_status_next = validation_status;
                 reply_length_next = validation_length;
                 reply_value_next = 0;
-                if (validation_status != STATUS_OK) state_next = REPLY_START;
+                if (validation_status != n2m_interfaces_pkg::STATUS_OK) state_next = REPLY_START;
                 else case (request_header.command)
-                    COMMAND_PING: begin reply_value_next[31:0] = WIRE_ABI; state_next = REPLY_START; end
-                    COMMAND_READ_HOST: begin reply_value_next[31:0] = host_data; state_next = REPLY_START; end
-                    COMMAND_RESET, COMMAND_RUN, COMMAND_HALT, COMMAND_STEP, COMMAND_INPUT, COMMAND_WRITE_HOST: state_next = CORE_START;
-                    COMMAND_LOAD_BEGIN: begin
+                    n2m_interfaces_pkg::COMMAND_PING: begin reply_value_next[31:0] = n2m_interfaces_pkg::WIRE_ABI; state_next = REPLY_START; end
+                    n2m_interfaces_pkg::COMMAND_READ_HOST: begin reply_value_next[31:0] = host_data; state_next = REPLY_START; end
+                    n2m_interfaces_pkg::COMMAND_RESET, n2m_interfaces_pkg::COMMAND_RUN, n2m_interfaces_pkg::COMMAND_HALT, n2m_interfaces_pkg::COMMAND_STEP, n2m_interfaces_pkg::COMMAND_INPUT, n2m_interfaces_pkg::COMMAND_WRITE_HOST: state_next = CORE_START;
+                    n2m_interfaces_pkg::COMMAND_LOAD_BEGIN: begin
                         loading_next = 1;
                         image_valid_next = 0;
                         profile_next = begin_fields.profile;
                         state_next = CORE_START;
                     end
-                    COMMAND_LOAD_WRITE, COMMAND_LOAD_END, COMMAND_READ_ROM: state_next = LOAD_START;
-                    COMMAND_SNAPSHOT: state_next = SNAPSHOT_START;
-                    COMMAND_READ_FRAME: state_next = REPLY_START;
+                    n2m_interfaces_pkg::COMMAND_LOAD_WRITE, n2m_interfaces_pkg::COMMAND_LOAD_END, n2m_interfaces_pkg::COMMAND_READ_ROM: state_next = LOAD_START;
+                    n2m_interfaces_pkg::COMMAND_SNAPSHOT: state_next = SNAPSHOT_START;
+                    n2m_interfaces_pkg::COMMAND_READ_FRAME: state_next = REPLY_START;
                     default: state_next = REPLY_START;
                 endcase
             end
             CORE_START: state_next = CORE_WAIT;
             CORE_WAIT: if (core_done) begin
-                if (request_header.command == COMMAND_LOAD_BEGIN) state_next = LOAD_START;
+                if (request_header.command == n2m_interfaces_pkg::COMMAND_LOAD_BEGIN) state_next = LOAD_START;
                 else begin
-                    if (request_header.command == COMMAND_LOAD_END) begin loading_next = 0; image_valid_next = 1; end
+                    if (request_header.command == n2m_interfaces_pkg::COMMAND_LOAD_END) begin loading_next = 0; image_valid_next = 1; end
                     reply_status_next = core_status;
-                    if (core_status != STATUS_OK) reply_length_next = 0;
+                    if (core_status != n2m_interfaces_pkg::STATUS_OK) reply_length_next = 0;
                     reply_value_next[63:0] = core_completed_dot;
                     state_next = REPLY_START;
                 end
             end
             LOAD_START: begin
                 index_next = 0;
-                if (request_header.command == COMMAND_LOAD_WRITE) state_next = WRITE_FETCH;
-                else if (request_header.command == COMMAND_READ_ROM) state_next = REPLY_START;
+                if (request_header.command == n2m_interfaces_pkg::COMMAND_LOAD_WRITE) state_next = WRITE_FETCH;
+                else if (request_header.command == n2m_interfaces_pkg::COMMAND_READ_ROM) state_next = REPLY_START;
                 else state_next = LOAD_WAIT;
             end
             WRITE_FETCH: state_next = WRITE_USE;
@@ -248,21 +246,21 @@ module n2m_uart_commands (
             end
             LOAD_WAIT: if (load_done) begin
                 reply_status_next = load_status;
-                if (load_status != STATUS_OK) begin reply_length_next = 0; state_next = REPLY_START; end
-                else state_next = request_header.command == COMMAND_LOAD_END ? CORE_START : REPLY_START;
+                if (load_status != n2m_interfaces_pkg::STATUS_OK) begin reply_length_next = 0; state_next = REPLY_START; end
+                else state_next = request_header.command == n2m_interfaces_pkg::COMMAND_LOAD_END ? CORE_START : REPLY_START;
             end
             SNAPSHOT_START: if (snapshot_ready) state_next = SNAPSHOT_WAIT;
             SNAPSHOT_WAIT: if (snapshot_done) begin
-                reply_status_next = snapshot_ok ? STATUS_OK : STATUS_NO_FRAME;
-                reply_length_next = snapshot_ok ? 16'(SNAPSHOT_BYTES) : 16'd0;
+                reply_status_next = snapshot_ok ? n2m_interfaces_pkg::STATUS_OK : n2m_interfaces_pkg::STATUS_NO_FRAME;
+                reply_length_next = snapshot_ok ? 16'(n2m_interfaces_pkg::SNAPSHOT_BYTES) : 16'd0;
                 reply_value_next = snapshot_metadata;
                 state_next = REPLY_START;
             end
             REPLY_START: begin
                 index_next = 0;
                 if (reply_length == 0) state_next = REPLY_WAIT;
-                else if (request_header.command == COMMAND_READ_ROM) state_next = REPLY_ROM;
-                else if (request_header.command == COMMAND_READ_FRAME) state_next = FRAME_FETCH;
+                else if (request_header.command == n2m_interfaces_pkg::COMMAND_READ_ROM) state_next = REPLY_ROM;
+                else if (request_header.command == n2m_interfaces_pkg::COMMAND_READ_FRAME) state_next = FRAME_FETCH;
                 else state_next = REPLY_SMALL;
             end
             REPLY_SMALL: if (payload_ready) begin
@@ -286,7 +284,7 @@ module n2m_uart_commands (
     `DFF_ARST_VAL(loading, loading_next, clk_sys, reset_sys, 1'b0)
     `DFF_ARST_VAL(image_valid, image_valid_next, clk_sys, reset_sys, 1'b0)
     `DFF_ARST_VAL(profile, profile_next, clk_sys, reset_sys, '0)
-    `DFF_ARST_VAL(reply_status, reply_status_next, clk_sys, reset_sys, STATUS_OK)
+    `DFF_ARST_VAL(reply_status, reply_status_next, clk_sys, reset_sys, n2m_interfaces_pkg::STATUS_OK)
     `DFF_ARST_VAL(reply_length, reply_length_next, clk_sys, reset_sys, '0)
     `DFF_ARST_VAL(reply_value, reply_value_next, clk_sys, reset_sys, '0)
     `N2M_ASSERT(UART_COMMAND_ACTIVE, clk_sys, reset_sys, state != IDLE |-> command_valid)

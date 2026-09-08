@@ -20,15 +20,14 @@ module n2m_uart_packet_store (
     output logic [7:0] decoded_read_data,
     output logic decoded_read_valid
 );
-    import n2m_uart_pkg::*;
     logic [7:0] encoded_unused_data;
     logic encoded_unused_valid;
     logic [7:0] decoded_unused_data;
     logic decoded_unused_valid;
 
     n2m_intel_ram #(
-        .DEPTH(UART_ENCODED_MAX), .DATA_BITS(8),
-        .ADDRESS_BITS(UART_ADDRESS_BITS)
+        .DEPTH(n2m_uart_pkg::UART_ENCODED_MAX), .DATA_BITS(8),
+        .ADDRESS_BITS(n2m_uart_pkg::UART_ADDRESS_BITS)
     ) encoded (
         .clk_a(clk_sys), .clk_b(clk_sys),
         .reset_a(reset_sys), .reset_b(reset_sys),
@@ -40,8 +39,8 @@ module n2m_uart_packet_store (
         .b_rdata(encoded_read_data), .b_valid(encoded_read_valid)
     );
     n2m_intel_ram #(
-        .DEPTH(UART_RAW_MAX), .DATA_BITS(8),
-        .ADDRESS_BITS(UART_ADDRESS_BITS)
+        .DEPTH(n2m_uart_pkg::UART_RAW_MAX), .DATA_BITS(8),
+        .ADDRESS_BITS(n2m_uart_pkg::UART_ADDRESS_BITS)
     ) decoded (
         .clk_a(clk_sys), .clk_b(clk_sys),
         .reset_a(reset_sys), .reset_b(reset_sys),
