@@ -146,10 +146,11 @@ def prepare(root, attempt, identity):
             if isinstance(output, bytes):
                 output = output.decode('utf-8', errors='replace')
         (attempt / (name+'.log')).write_text(output)
+        linux_timeout = identity.get('backend') == 'wsl' and code in (124, 137)
         commands.append({'argv': [str(value) for value in argv], 'cwd': str(attempt),
-                         'exit_code': code, 'timed_out': expired is not None})
+                         'exit_code': code, 'timed_out': expired is not None or linux_timeout})
         (attempt / 'mooneye-build-commands.json').write_text(json.dumps(commands, indent=2))
-        if expired is not None:
+        if expired is not None or linux_timeout:
             raise ValueError(f'MOONEYE_BUILD_TIMEOUT {name}') from expired
         if code:
             raise ValueError(f'MOONEYE_BUILD {name}')

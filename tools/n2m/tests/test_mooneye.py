@@ -1,10 +1,11 @@
 """Locked fixture boundaries; no network or simulator needed by these tests."""
 import importlib.util
+import json
 from pathlib import Path
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 import zipfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -76,6 +77,19 @@ class MooneyeTests(unittest.TestCase):
         with patch.object(mooneye_wsl.shutil, 'which', return_value=None):
             with self.assertRaisesRegex(ValueError, 'MISSING_TOOL'):
                 mooneye_wsl.snapshot()
+
+    def test_linux_timeout_retains_raw_exit_and_timeout_status(self):
+        identity = {'backend': 'wsl', 'tools': {name: '/usr/bin/'+name for name in ('cmake', 'make', 'gcc', 'ar')}}
+        with patch.object(mooneye, 'verify_tools'), patch.object(mooneye, 'download'), \
+             patch.object(mooneye, 'extract'), patch.object(mooneye, 'checked'), \
+             patch.object(mooneye.shutil, 'copyfile'), \
+             patch.object(mooneye_wsl, 'command', side_effect=lambda argv, cwd: argv), \
+             patch.object(mooneye.subprocess, 'run', return_value=Mock(stdout='timeout', returncode=124)):
+            with self.assertRaisesRegex(ValueError, 'MOONEYE_BUILD_TIMEOUT mooneye-configure'):
+                mooneye.prepare(ROOT, self.path, identity)
+        record = json.loads((self.path/'mooneye-build-commands.json').read_text())
+        self.assertEqual(record[0]['exit_code'], 124)
+        self.assertTrue(record[0]['timed_out'])
 
     def test_archive_escape_and_symlink_rejected(self):
         for index, entry in enumerate(('../escape', '/escape', 'link')):

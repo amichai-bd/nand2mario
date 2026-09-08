@@ -24,7 +24,7 @@ def linux_path(path):
 
 def snapshot():
     """Hash compiler inputs, build modules, link libraries and executable tools."""
-    tools = {name: shutil.which(name) for name in ('gcc', 'ar', 'as', 'ld', 'cmake', 'make', 'python3', 'timeout')}
+    tools = {name: shutil.which(name) for name in ('gcc', 'ar', 'as', 'ld', 'cmake', 'make', 'sh', 'python3', 'timeout')}
     if not all(tools.values()):
         raise ValueError('MOONEYE_WSL_MISSING_TOOL')
     roots = [Path('/usr/include'), Path('/usr/lib/gcc'), Path('/usr/lib/x86_64-linux-gnu')]

@@ -62,7 +62,7 @@
     }
   },
   "wsl_host": {
-    "sha256": "e8a9967f937f1e434dbeed1aa8890a5de5b9bf5181f4e5b478fac0e7b9fb538d",
+    "sha256": "2d73c29e1a5c6fe2b6583ca32a81c6a64d402ada71c25549d24ed8e44579d26c",
     "description": "Ubuntu 24.04 x86_64 host compiler inputs, libraries and CMake modules",
     "versions": {
       "ar": "GNU ar (GNU Binutils for Ubuntu) 2.42",
