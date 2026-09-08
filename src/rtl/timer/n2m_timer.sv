@@ -14,10 +14,8 @@ module n2m_timer (
     output logic [7:0] io_rdata,
     output n2m_timer_pkg::timer_request_t interrupt_request
 );
-    import n2m_interfaces_pkg::*;
-    import n2m_timer_pkg::*;
-    timer_state_t state_q, state_next;
-    timer_request_t request_q, request_next;
+    n2m_timer_pkg::timer_state_t state_q, state_next;
+    n2m_timer_pkg::timer_request_t request_q, request_next;
     logic reset, write_div, write_tima, write_tma, write_tac;
     logic old_signal, advanced_signal, final_signal, falling;
     logic [15:0] advanced_divider;
@@ -33,21 +31,21 @@ module n2m_timer (
         endcase
         return tac[2] && selected;
     endfunction
-    function automatic timer_state_t reset_state();
-        timer_state_t value;
+    function automatic n2m_timer_pkg::timer_state_t reset_state();
+        n2m_timer_pkg::timer_state_t value;
         value = '0;
-        value.divider = {PROFILE_PERIPHERAL_FILL,PROFILE_PERIPHERAL_FILL};
-        value.tima = PROFILE_PERIPHERAL_FILL;
-        value.tma = PROFILE_PERIPHERAL_FILL;
-        value.tac = PROFILE_PERIPHERAL_FILL[2:0];
+        value.divider = {n2m_interfaces_pkg::PROFILE_PERIPHERAL_FILL,n2m_interfaces_pkg::PROFILE_PERIPHERAL_FILL};
+        value.tima = n2m_interfaces_pkg::PROFILE_PERIPHERAL_FILL;
+        value.tma = n2m_interfaces_pkg::PROFILE_PERIPHERAL_FILL;
+        value.tac = n2m_interfaces_pkg::PROFILE_PERIPHERAL_FILL[2:0];
         return value;
     endfunction
     assign reset = reset_sys || core_reset;
-    assign io_selected = io_address >= GB_REG_DIV && io_address <= GB_REG_TAC;
-    assign write_div = io_commit && io_write && io_address == GB_REG_DIV;
-    assign write_tima = io_commit && io_write && io_address == GB_REG_TIMA;
-    assign write_tma = io_commit && io_write && io_address == GB_REG_TMA;
-    assign write_tac = io_commit && io_write && io_address == GB_REG_TAC;
+    assign io_selected = io_address >= n2m_interfaces_pkg::GB_REG_DIV && io_address <= n2m_interfaces_pkg::GB_REG_TAC;
+    assign write_div = io_commit && io_write && io_address == n2m_interfaces_pkg::GB_REG_DIV;
+    assign write_tima = io_commit && io_write && io_address == n2m_interfaces_pkg::GB_REG_TIMA;
+    assign write_tma = io_commit && io_write && io_address == n2m_interfaces_pkg::GB_REG_TMA;
+    assign write_tac = io_commit && io_write && io_address == n2m_interfaces_pkg::GB_REG_TAC;
     always_comb begin
         state_next = state_q;
         request_next = '0;
@@ -83,14 +81,14 @@ module n2m_timer (
     end
     `DFF_ARST_VAL(state_q,state_next,clk_sys,reset,reset_state())
     `DFF_ARST_VAL(request_q,request_next,clk_sys,reset,'0)
-    assign interrupt_request = reset ? timer_request_t'('0) : request_q;
+    assign interrupt_request = reset ? n2m_timer_pkg::timer_request_t'('0) : request_q;
     always_comb begin
         io_rdata = 0;
         case (io_address)
-            GB_REG_DIV: io_rdata = reset ? PROFILE_PERIPHERAL_FILL : state_q.divider[15:8];
-            GB_REG_TIMA: io_rdata = reset ? PROFILE_PERIPHERAL_FILL : state_q.tima;
-            GB_REG_TMA: io_rdata = reset ? PROFILE_PERIPHERAL_FILL : state_q.tma;
-            GB_REG_TAC: io_rdata = {5'b11111,reset ? PROFILE_PERIPHERAL_FILL[2:0] : state_q.tac};
+            n2m_interfaces_pkg::GB_REG_DIV: io_rdata = reset ? n2m_interfaces_pkg::PROFILE_PERIPHERAL_FILL : state_q.divider[15:8];
+            n2m_interfaces_pkg::GB_REG_TIMA: io_rdata = reset ? n2m_interfaces_pkg::PROFILE_PERIPHERAL_FILL : state_q.tima;
+            n2m_interfaces_pkg::GB_REG_TMA: io_rdata = reset ? n2m_interfaces_pkg::PROFILE_PERIPHERAL_FILL : state_q.tma;
+            n2m_interfaces_pkg::GB_REG_TAC: io_rdata = {5'b11111,reset ? n2m_interfaces_pkg::PROFILE_PERIPHERAL_FILL[2:0] : state_q.tac};
             default: begin end
         endcase
     end

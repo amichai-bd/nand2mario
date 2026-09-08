@@ -17,8 +17,7 @@ module n2m_input (
     output logic [7:0] effective_buttons,
     output n2m_input_pkg::input_update_t effective_update
 );
-    import n2m_input_pkg::*;
-    input_host_state_t host_q, host_next;
+    n2m_input_pkg::input_host_state_t host_q, host_next;
     logic [7:0] physical_q, physical_next, effective_next;
     logic reset;
     assign reset = reset_sys || core_reset;

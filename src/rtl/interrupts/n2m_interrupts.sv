@@ -23,20 +23,18 @@ module n2m_interrupts (
     output logic [7:0] ie_observe,
     output logic [4:0] if_observe
 );
-    import n2m_interfaces_pkg::*;
-    import n2m_interrupts_pkg::*;
     logic reset, pending;
     logic [4:0] source_history, source_rise, flags_q, flags_next;
     logic [7:0] enable_q, enable_next;
-    interrupt_operation_t operation_a, operation_b;
+    n2m_interrupts_pkg::interrupt_operation_t operation_a, operation_b;
 
     assign reset = reset_sys || core_reset;
-    assign io_selected = io_address == GB_REG_IF || io_address == GB_REG_IE;
+    assign io_selected = io_address == n2m_interfaces_pkg::GB_REG_IF || io_address == n2m_interfaces_pkg::GB_REG_IE;
     assign source_rise = source_level & ~source_history;
     always_comb begin
         operation_a = '0;
-        operation_a.write_if = io_commit && io_write && io_address == GB_REG_IF;
-        operation_a.write_ie = io_commit && io_write && io_address == GB_REG_IE;
+        operation_a.write_if = io_commit && io_write && io_address == n2m_interfaces_pkg::GB_REG_IF;
+        operation_a.write_ie = io_commit && io_write && io_address == n2m_interfaces_pkg::GB_REG_IE;
         operation_a.data = io_wdata;
         operation_a.ack = irq_ack;
 
@@ -52,15 +50,15 @@ module n2m_interrupts (
     `DFF_ARST_VAL(pending, gb_tick, clk_sys, reset, 1'b0)
     `DFF_ARST_VAL(operation_b, gb_tick ? operation_a : operation_b, clk_sys, reset, '0)
     `DFF_ARST_VAL(source_history, source_level, clk_sys, reset, 5'd0)
-    `DFF_ARST_VAL(flags_q, flags_next, clk_sys, reset, PROFILE_PERIPHERAL_FILL[4:0])
-    `DFF_ARST_VAL(enable_q, enable_next, clk_sys, reset, PROFILE_PERIPHERAL_FILL)
+    `DFF_ARST_VAL(flags_q, flags_next, clk_sys, reset, n2m_interfaces_pkg::PROFILE_PERIPHERAL_FILL[4:0])
+    `DFF_ARST_VAL(enable_q, enable_next, clk_sys, reset, n2m_interfaces_pkg::PROFILE_PERIPHERAL_FILL)
 
-    assign if_stored = reset ? PROFILE_PERIPHERAL_FILL[4:0] : flags_q;
-    assign ie_stored = reset ? PROFILE_PERIPHERAL_FILL : enable_q;
-    assign if_observe = reset ? PROFILE_PERIPHERAL_FILL[4:0] : flags_next;
-    assign ie_observe = reset ? PROFILE_PERIPHERAL_FILL : enable_next;
-    assign io_rdata = io_address == GB_REG_IF ? {3'b111, if_stored} :
-        (io_address == GB_REG_IE ? ie_stored : 8'd0);
+    assign if_stored = reset ? n2m_interfaces_pkg::PROFILE_PERIPHERAL_FILL[4:0] : flags_q;
+    assign ie_stored = reset ? n2m_interfaces_pkg::PROFILE_PERIPHERAL_FILL : enable_q;
+    assign if_observe = reset ? n2m_interfaces_pkg::PROFILE_PERIPHERAL_FILL[4:0] : flags_next;
+    assign ie_observe = reset ? n2m_interfaces_pkg::PROFILE_PERIPHERAL_FILL : enable_next;
+    assign io_rdata = io_address == n2m_interfaces_pkg::GB_REG_IF ? {3'b111, if_stored} :
+        (io_address == n2m_interfaces_pkg::GB_REG_IE ? ie_stored : 8'd0);
 
     `N2M_ASSERT(INTERRUPT_CAPTURE_SPACING, clk_sys, reset, !(pending && gb_tick))
     `N2M_ASSERT(INTERRUPT_COMMIT_BOUNDARY, clk_sys, reset,
