@@ -36,7 +36,7 @@ module n2m_memory_stores (
     output logic [7:0] wave_rdata,
     output logic wave_valid
 );
-    // Quartus 25.1 misresolves package constants inside instance connections.
+    // Quartus 25.1 misresolves package constants in instance connections and assignment indices.
     localparam n2m_memory_pkg::memory_store_t ROM_STORE = n2m_memory_pkg::STORE_ROM;
     localparam n2m_memory_pkg::memory_store_t WRAM_STORE = n2m_memory_pkg::STORE_WRAM;
     localparam n2m_memory_pkg::memory_store_t HRAM_STORE = n2m_memory_pkg::STORE_HRAM;
@@ -162,7 +162,7 @@ module n2m_memory_stores (
         .a_address(oam_address), .a_wdata(oam_wdata[15:8]), .a_rdata(oam_a_odd), .a_valid(valid_a[OAM_STORE]),
         .b_read(ppu_oam_read && init_done), .b_address(ppu_oam_pair), .b_rdata(oam_odd), .b_valid(oam_odd_valid)
     );
-    assign data_a[n2m_memory_pkg::STORE_OAM] = response_odd ? oam_a_odd : oam_a_even;
+    assign data_a[OAM_STORE] = response_odd ? oam_a_odd : oam_a_even;
     assign ppu_oam_rdata = {oam_odd, oam_even};
     assign ppu_oam_valid = oam_even_valid && oam_odd_valid;
     n2m_intel_ram #(.DEPTH(WAVE_BYTES), .ADDRESS_BITS(4)) wave_ram (
