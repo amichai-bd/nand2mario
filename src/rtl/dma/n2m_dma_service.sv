@@ -43,6 +43,8 @@ module n2m_dma_service (
     input var n2m_memory_pkg::memory_oam_response_t oam_response,
     output logic fault
 );
+    // Preserve the enum binding in Quartus 25.1 instance expressions.
+    localparam n2m_oam_pkg::oam_effect_t NO_OAM_EFFECT = n2m_oam_pkg::OAM_NONE;
     logic [5:0] slot_q, slot_next;
     logic [4:0] job_row_q, operand_row_q;
     logic job_prefetch_q, operand_valid_q;
@@ -129,7 +131,7 @@ module n2m_dma_service (
         end
     end
     n2m_oam_corrupt transform (.clk_sys(clk_sys), .reset(reset),
-        .row_index(scan_row), .kind(scan_active ? effect_kind : n2m_oam_pkg::OAM_NONE),
+        .row_index(scan_row), .kind(scan_active ? effect_kind : NO_OAM_EFFECT),
         .current_row(overlay_current), .previous_row(overlay_previous), .older_row(overlay_older),
         .current_result(result_current), .previous_result(result_previous),
         .older_result(result_older), .write_mask(result_mask), .invalid_row(invalid_row));
