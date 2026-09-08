@@ -215,7 +215,7 @@ The builder pins the installed primitive definition/declaration/model for every
 consumer of the shared RAM, and requires a retained device netlist in its cache.
 
 The Intel-model raster regression retains the original per-pixel oracle and
-coverage. Its 600-second limit accommodates the installed vendor model, with
+coverage. Its runtime is subject to the [300-second total simulation cap](../../../tools/n2m/SPEC.md#test-wall-budget), with
 raster progress messages and sampled first/last-column pixel traces. Bounded
 public wave windows cover reset and first-image output. An actual extra RAM
 response edge must fail the independent coordinate/shade comparison. A timeout

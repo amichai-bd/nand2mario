@@ -29,15 +29,15 @@ class BudgetTests(unittest.TestCase):
                 self.assertEqual(text.strip(), 'done')
                 record = json.loads(next((self.root/f'workdir/builds/run{code}/wall-budget').glob('*.json')).read_text())
                 self.assertEqual(record['raw_exit_code'], code)
-                self.assertEqual(record['wall_limit_seconds'], 600)
+                self.assertEqual(record['wall_limit_seconds'], 300)
 
     def test_timeout_reaps_real_host_process_and_preserves_partial_output(self):
-        # Charge 598 seconds of prior work; exercise the same hard 600-second
-        # budget with only two seconds of real host execution.
+        # Charge 286 seconds of prior work, leaving two seconds before the
+        # 288-second execution deadline and twelve seconds for cleanup.
         marker = self.root / 'orphan.txt'
         child = f"import time;from pathlib import Path;time.sleep(3);Path({str(marker)!r}).write_text('orphan')"
         parent = f"import subprocess,sys,time;subprocess.Popen([sys.executable,'-c',{child!r}]);print('partial',flush=True);time.sleep(30)"
-        with patch('n2m.test_budget.time', Mock(monotonic=Mock(side_effect=[0, 598, 600.1]))):
+        with patch('n2m.test_budget.time', Mock(monotonic=Mock(side_effect=[0, 286, 288.1, 288.2, 288.3, 288.4]))):
             code, text = supervise([sys.executable, '-u', '-c', parent], self.root, 'expiry')
         time.sleep(1.5)
         self.assertFalse(marker.exists(), 'timed-out descendant survived')
@@ -50,7 +50,7 @@ class BudgetTests(unittest.TestCase):
 
     def test_expiry_uses_process_tree_cleanup(self):
         process = Mock(pid=123, returncode=9)
-        process.communicate.side_effect = [subprocess.TimeoutExpired('worker', 600), (b'partial', None)]
+        process.communicate.side_effect = [subprocess.TimeoutExpired('worker', 300), (b'partial', None)]
         with patch('n2m.test_budget.subprocess.Popen', return_value=process), \
              patch('n2m.test_budget.subprocess.run') as cleanup, \
              patch('n2m.test_budget.os.killpg', create=True) as kill_group:
@@ -69,9 +69,35 @@ class BudgetTests(unittest.TestCase):
                 supervise(['worker'], self.root, '../outside')
             launch.assert_not_called()
 
+    def test_preparation_and_launch_consume_the_execution_budget(self):
+        process = Mock(pid=123, returncode=0)
+        process.communicate.return_value = (b'done', b'')
+        with patch('n2m.test_budget.subprocess.Popen', return_value=process), \
+             patch('n2m.test_budget.time', Mock(monotonic=Mock(side_effect=[10, 30, 31]))):
+            code, _ = supervise(['worker'], self.root, 'preparation')
+        self.assertEqual(code, 0)
+        process.communicate.assert_called_once_with(timeout=268)
+
+    def test_cleanup_timeouts_shrink_to_absolute_deadline(self):
+        process = Mock(pid=123, returncode=None)
+        process.communicate.side_effect = [subprocess.TimeoutExpired('worker', 288),
+                                          subprocess.TimeoutExpired('pipe', .5)]
+        clock = Mock(monotonic=Mock(side_effect=[0, 1, 299, 299.5, 299.8, 300]))
+        with patch('n2m.test_budget.subprocess.Popen', return_value=process), \
+             patch('n2m.test_budget.subprocess.run', return_value=Mock(returncode=0)) as cleanup, \
+             patch('n2m.test_budget.os.killpg', create=True), \
+             patch('n2m.test_budget.time', clock):
+            code, text = supervise(['worker'], self.root, 'shrinking')
+        self.assertEqual(code, 1)
+        self.assertFalse(json.loads(text)['cleanup_complete'])
+        if sys.platform == 'win32':
+            self.assertEqual(cleanup.call_args.kwargs['timeout'], 1)
+            self.assertEqual(process.communicate.call_args.kwargs['timeout'], .5)
+            self.assertAlmostEqual(process.wait.call_args.kwargs['timeout'], .2)
+
     def test_reap_timeout_is_bounded_even_after_successful_tree_kill(self):
         process = Mock(pid=123, returncode=None)
-        process.communicate.side_effect = [subprocess.TimeoutExpired('worker', 600),
+        process.communicate.side_effect = [subprocess.TimeoutExpired('worker', 300),
                                            subprocess.TimeoutExpired('pipe', 5, output=b'last')]
         with patch('n2m.test_budget.subprocess.Popen', return_value=process), \
              patch('n2m.test_budget.subprocess.run', return_value=Mock(returncode=0)), \
@@ -85,7 +111,7 @@ class BudgetTests(unittest.TestCase):
     @unittest.skipUnless(sys.platform == 'win32', 'Windows taskkill failure')
     def test_failed_tree_cleanup_cannot_wait_forever_on_surviving_pipe(self):
         process = Mock(pid=123, returncode=None)
-        process.communicate.side_effect = subprocess.TimeoutExpired('worker', 600, output=b'partial')
+        process.communicate.side_effect = subprocess.TimeoutExpired('worker', 300, output=b'partial')
         process.wait.side_effect = subprocess.TimeoutExpired('worker', 2)
         with patch('n2m.test_budget.subprocess.Popen', return_value=process), \
              patch('n2m.test_budget.subprocess.run', return_value=Mock(returncode=1)) as cleanup:
@@ -105,7 +131,7 @@ class BudgetTests(unittest.TestCase):
         root = Path(__file__).resolve().parents[3]
         targets = json.loads((root/'src/dv/builder/targets.json').read_text())
         self.assertTrue(all(type(row.get('timeout_seconds', 60)) is int and
-                            1 <= row.get('timeout_seconds', 60) <= 600 for row in targets.values()))
+                            1 <= row.get('timeout_seconds', 60) <= 300 for row in targets.values()))
 
     def test_worker_stderr_does_not_corrupt_json_stdout(self):
         with patch('sys.stderr', new_callable=io.StringIO) as errors:
