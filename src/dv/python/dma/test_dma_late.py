@@ -14,7 +14,7 @@ async def late_write(dut):
     for name in ('record_event','record_sample','inspection_enable','inspection_request',
                  'inspection_response','lcdc_observe','service_slot','capture_scan'):
         getattr(dut,name)
-    with Path('retirement.csv').open('w') as records, Path('observations.jsonl').open('w') as trace:
+    with Path('retirement.csv').open('w') as records, Path('transactions.jsonl').open('w') as trace:
         records.write('seq,record\n')
         def log(kind,**values):
             trace.write(json.dumps(dict(kind=kind,**values))+'\n');trace.flush()
