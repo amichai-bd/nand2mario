@@ -10493,7 +10493,7 @@
     "top": "tb_dma_late",
     "timeout_seconds": 60,
     "expected_exit": "zero",
-    "signature": "PASS DMA late owner checks=9",
+    "signature": "PASS DMA late owner checks=23",
     "vendor_model": "intel-memory",
     "args": []
   },
