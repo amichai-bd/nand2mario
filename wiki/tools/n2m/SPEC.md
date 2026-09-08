@@ -239,25 +239,44 @@ their full diagnostic and reject additional errors.
 
 ### Test wall budget
 
-Every test has a maximum 600-second wall budget. No target, environment setting
+Every simulation has a maximum 300-second total wall budget. Target at most 120
+seconds per simulation and 300 seconds aggregate for ordinary pre-merge checks;
+declare broader milestone aggregates before execution. No target, environment setting
 or public command option extends it. `python tools/build.py sim test` supervises
 the complete worker process tree: discovery, preparation, compilation, simulation
-and checking share the same 600 seconds. Expiry terminates the worker and its
+and checking share the same budget. The absolute deadline starts before record
+preparation and process launch. Reserve 12 seconds for cleanup, leaving at most 288
+seconds for worker execution. Expiry terminates the worker and its
 children, returns failure and retains a `wall-budget` record with the raw killed
 process exit and partial output. Existing attempt artifacts remain partial;
 TIMEOUT is never a checked DUT result. Tree termination and pipe draining each
 have a five-second cleanup bound, followed by at most two seconds to reap the
-immediate worker. Cleanup may finish after the execution deadline. A failed
+immediate worker. Each blocking cleanup timeout is clamped to the remaining
+absolute 300-second budget. A failed
 cleanup records `cleanup_complete: false`; inspect and stop remaining children
 before releasing shared tool ownership. Never treat that failure as a clean exit.
 
-A target may set integer `timeout_seconds` from 1 through 600 for its Questa
+A target may set integer `timeout_seconds` from 1 through 300 for its Questa
 runtime command. The default and individual preparation/compile commands remain
 60 seconds, subject to the overall ceiling. The value enters the fingerprint and
-each command records its effective bound. Independent simulation-time watchdogs
-and required emulated coverage remain unchanged. If a milestone cannot complete
+each command records its effective bound. The outer execution deadline takes
+precedence over a longer nested timeout. The palette-case native reference
+build also has a 300-second nested command limit. Separate environment
+preparation is not a DUT test. FPGA compilation remains separately measured
+under its owning tool limits.
+Independent simulation-time watchdogs remain required. If a milestone cannot complete
 within this wall budget, keep it open and report the missing evidence; do not
-schedule a longer run or shorten its oracle to claim completion.
+schedule a longer run or shorten its oracle to claim completion. An explicitly
+authorized acceptance revision must name the new matrix and leave missing proof
+open, as in [v0.5](../../src/dv/v05/SPEC.md#revised-milestone-matrix).
+
+Elapsed time is captured before final evidence-file writes. OS scheduling,
+process launch and synchronous filesystem calls are not preemptible Python
+timeouts; the supervisor does not claim to measure or bound those final writes.
+Report cleanup failures and measured overruns honestly. Changing timeout metadata
+invalidates exact target cache fingerprints. Retained behavior evidence may be
+qualified against unchanged RTL, models, stimulus and oracles, but is not a
+fresh300-second PASS; the 537.281-second six-frame baseline remains historical.
 
 Backend, tool identity, source, target, seed, or runner changes invalidate cache.
 Damaged artifacts also invalidate it. A matching successful result may be

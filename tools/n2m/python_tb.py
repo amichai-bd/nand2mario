@@ -170,7 +170,7 @@ def prepare(target, attempt, root=None):
                      '--case',target['preload'],'--source',str(root/'workdir/research/sameboy/source'),
                      '--rom',str(attempt/'program.gb'),'--output',str(attempt/'reference')]
             with (attempt/'reference-build.log').open('w') as output:
-                subprocess.run(command,cwd=root,stdout=output,stderr=subprocess.STDOUT,timeout=600,check=True)
+                subprocess.run(command,cwd=root,stdout=output,stderr=subprocess.STDOUT,timeout=300,check=True)
         else:
             spec = importlib.util.spec_from_file_location("integration_image", root / "src/dv/integration/image.py")
             module = importlib.util.module_from_spec(spec)

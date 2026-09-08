@@ -11,6 +11,16 @@ import uuid
 
 
 def supervise(command, root, tag):
+    started = time.monotonic()
+    deadline = started + 300
+    # Reserve the existing 5s tree kill, 5s pipe drain and 2s fallback reap.
+    execution_deadline = deadline - 12
+    def remaining(limit, end=deadline):
+        seconds = end - time.monotonic()
+        if seconds <= 0:
+            raise subprocess.TimeoutExpired(command, 300)
+        return min(limit, seconds)
+
     from n2m.records import atomic_json, valid_tag
     if not valid_tag(tag):
         raise ValueError("invalid test budget tag")
@@ -18,17 +28,17 @@ def supervise(command, root, tag):
     if build.is_symlink() or build.resolve().parent != (root / "workdir/builds").resolve():
         raise ValueError("test budget path escapes builds")
     record = {"started": datetime.now(timezone.utc).isoformat(),
-              "wall_limit_seconds": 600, "command": command, "status": "RUNNING"}
+              "wall_limit_seconds": 300, "execution_limit_seconds": 288,
+              "command": command, "status": "RUNNING"}
     path = build / "wall-budget" / (uuid.uuid4().hex + ".json")
     atomic_json(path, record)
-    started = time.monotonic()
     options = {"creationflags": subprocess.CREATE_NO_WINDOW} if os.name == "nt" else {"start_new_session": True}
     process = subprocess.Popen(command, cwd=root, stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE, **options)
     timed_out = False
     errors = b""
     try:
-        output, errors = process.communicate(timeout=max(.001, 600 - (time.monotonic() - started)))
+        output, errors = process.communicate(timeout=remaining(288, execution_deadline))
     except subprocess.TimeoutExpired as error:
         timed_out = True
         # Same process-tree termination used by the Quartus executor. Reap before
@@ -39,13 +49,13 @@ def supervise(command, root, tag):
         try:
             if os.name == "nt":
                 cleanup = subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"],
-                                         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=5)
+                                         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=remaining(5))
                 record["cleanup_exit_code"] = cleanup.returncode
                 if cleanup.returncode:
                     raise RuntimeError(f"process-tree cleanup failed: {cleanup.returncode}")
             else:
                 os.killpg(process.pid, signal.SIGKILL)
-            output, errors = process.communicate(timeout=5)
+            output, errors = process.communicate(timeout=remaining(5))
             record["cleanup_complete"] = True
         except (OSError, RuntimeError, subprocess.TimeoutExpired) as cleanup_error:
             record["cleanup_error"] = str(cleanup_error)
@@ -57,7 +67,7 @@ def supervise(command, root, tag):
             # for an inherited pipe held by a surviving descendant.
             try:
                 process.kill()
-                process.wait(timeout=2)
+                process.wait(timeout=remaining(2))
             except (OSError, subprocess.TimeoutExpired) as reap_error:
                 record["reap_error"] = str(reap_error)
     text = output.decode("utf-8", errors="replace")
@@ -73,7 +83,7 @@ def supervise(command, root, tag):
     record["stderr"] = error_log.relative_to(root).as_posix()
     atomic_json(path, record)
     if timed_out:
-        return 1, json.dumps({"status": "FAIL", "error": "test wall timeout after 600 seconds",
+        return 1, json.dumps({"status": "FAIL", "error": "test wall budget exhausted (300 seconds total, 12 reserved for cleanup)",
                               "tag": tag, "wall_budget": path.relative_to(root).as_posix(),
                               "raw_exit_code": process.returncode,
                               "cleanup_complete": record["cleanup_complete"],

@@ -20,6 +20,7 @@ Follow [AGENTS](../../../AGENTS.md#work):
    issue before applying the scoped criteria; follow the [PR policy](../../../wiki/agents/pull-requests.md#scoped-implementation-and-milestones).
    Select the [verification tier](../../../wiki/src/dv/integration/SPEC.md#verification-tiers)
    from changed behavior. Freeze unfinished implementation, missing evidence,
+   measured per-test/aggregate budgets,
    review findings and external dependencies in one remaining-to-merge checklist.
    Mark checks waiting for the shared tool slot separately from unfinished work.
    Iterate using affected tests, then complete the scoped acceptance set. Before

@@ -66,10 +66,11 @@ System and pixel resets remain distinct; core reset follows the existing
 bridge/snapshot ownership rules. VGA outputs are exposed. All product stores
 use the shared Intel wrapper, with the same parameters in simulation and fit.
 
-The acceptance run must remain unpaused by the host throughout the first-image
-and 600-interval bounds. CPU HALT preserves peripheral ticks. Independent
+The [revised acceptance matrix](../../dv/v05/SPEC.md#revised-milestone-matrix)
+keeps its selected simulation window unpaused by the host until final completion.
+CPU HALT preserves peripheral ticks. Independent
 observation checks every source pixel and retirement, including activity while
 UART input transactions run. Snapshots cannot substitute for that observation.
 
-Combined constrained fit and full issue88 execution are required before claiming
+Qualified constrained fit and the complete revised issue88 matrix are required before claiming
 acceptance. Existing component results support their own unchanged scope only.
