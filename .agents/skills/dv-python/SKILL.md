@@ -20,6 +20,10 @@ older testbench only after establishing independent expectations, when compariso
 is explicitly part of the task.
 
 Select checks using the [verification tiers](../../../wiki/src/dv/integration/SPEC.md#verification-tiers).
+Target 120 seconds per simulation and 300 seconds ordinary pre-merge aggregate;
+obey the linked total wall cap and declare broader milestone aggregates. Use
+the owning complementary matrix for bounded execution and separate transport/
+physical endurance evidence; never relabel historical longer runs as new-budget PASS.
 Use the accepted continuous Python path for composed execution and shared Intel
 preload for functional iteration; retain focused SV unit tests. Reuse existing
 builders, validators and targets. Exercise final pause, completion and watchdog

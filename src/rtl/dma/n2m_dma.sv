@@ -63,6 +63,8 @@ module n2m_dma (
     input var logic [15:0] raw_oam_data,
     input var logic raw_oam_valid
 );
+    // Preserve the enum binding in Quartus 25.1 instance expressions.
+    localparam n2m_memory_pkg::memory_destination_t DMA_DESTINATION = n2m_memory_pkg::MEMORY_DMA;
     logic reset, t4, engine_fault, service_fault, port_fault, observation_fault;
     logic engine_source_request, engine_source_valid, engine_write;
     logic [15:0] engine_source_address, held_pair;
@@ -102,7 +104,7 @@ module n2m_dma (
     n2m_dma_engine engine (.clk_sys(clk_sys), .reset_sys(reset_sys), .core_reset(core_reset),
         .gb_tick(gb_tick && !fault && !invalid_observation), .cpu_phase(cpu_phase),
         .progress_enable(!cpu_halted && !cpu_stopped),
-        .ff46_write(owner_commit && owner_destination==n2m_memory_pkg::MEMORY_DMA && owner_write && !invalid_observation),
+        .ff46_write(owner_commit && owner_destination==DMA_DESTINATION && owner_write && !invalid_observation),
         .ff46_wdata(owner_wdata), .source_data(engine_source_data), .source_valid(engine_source_valid),
         .ff46_rdata(page), .source_request(engine_source_request), .source_address(engine_source_address),
         .write_valid(engine_write), .write_offset(engine_offset), .write_data(engine_data),

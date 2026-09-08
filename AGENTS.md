@@ -106,9 +106,15 @@ expensive acceptance run, exercise its complete harness at a short duration,
 including final pause, completion and watchdog handling. Do not hide warnings,
 bypass checks or claim incomplete acceptance complete.
 
-Run the smallest useful test and required lower-level checks. Every test must
-finish within the [600-second wall budget](wiki/tools/n2m/SPEC.md#test-wall-budget);
-never extend it to finish a milestone. Record exact
+Run the smallest useful test and required lower-level checks. Target at most
+120 seconds per simulation and 300 seconds for ordinary pre-merge aggregate
+checks. Every simulation must finish within the
+[300-second total wall budget](wiki/tools/n2m/SPEC.md#test-wall-budget), including
+setup, build, run and checking; never extend it to finish a milestone. Declare
+broader milestone aggregates before execution. Use the
+[complementary matrix](wiki/src/dv/integration/SPEC.md#milestone-acceptance), with
+bounded FPGA endurance and separate transport proof, rather than long continuous
+simulation. FPGA compilation remains separately measured. Record exact
 commands and results. A simulation compiles, elaborates, runs, and checks an
 expected result. Treat unexplained warnings as failures. Preserve useful logs,
 seeds, traces, waves, and reports under the build tag while work or review needs

@@ -9,6 +9,8 @@ Follow [AGENTS](../../../AGENTS.md#work):
 
 1. Root checks the work caps and selects the smallest independently useful change
    in an assigned issue. Clear review and merge queues before starting more work.
+   After relevant main merges and before selecting work, refresh open PR heads,
+   bases, conflicts, review/check status and actual blockers.
    Delegate its author using
    [worktree setup](../../../worktrees/README.md#create) and
    [capacity guidance](references/recovery.md).
@@ -20,6 +22,7 @@ Follow [AGENTS](../../../AGENTS.md#work):
    issue before applying the scoped criteria; follow the [PR policy](../../../wiki/agents/pull-requests.md#scoped-implementation-and-milestones).
    Select the [verification tier](../../../wiki/src/dv/integration/SPEC.md#verification-tiers)
    from changed behavior. Freeze unfinished implementation, missing evidence,
+   measured per-test/aggregate budgets,
    review findings and external dependencies in one remaining-to-merge checklist.
    Mark checks waiting for the shared tool slot separately from unfinished work.
    Iterate using affected tests, then complete the scoped acceptance set. Before
