@@ -22,9 +22,13 @@ from n2m.preload import adopt, verify
 from sw.rom_build import build_target
 
 
+_WEAK_BITS = str.maketrans('LH', '01')
+
+
 def known(signal):
-    assert signal.value.is_resolvable, f'V05_UNKNOWN {signal._name}'
-    return int(signal.value)
+    bits = str(signal.value)
+    assert not bits.strip('01LH'), f'V05_UNKNOWN {signal._name}'
+    return int(bits.translate(_WEAK_BITS), 2)
 
 
 def wave_windows(complete, *, short=False):

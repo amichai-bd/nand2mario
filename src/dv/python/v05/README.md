@@ -6,6 +6,15 @@ actual UART endpoint and observe the composed CPU, PPU and shared input owner.
 The milestone and loading faults use real UART loading. Only the named short
 implementation targets preload ROM; no target uses snapshots as its every-frame oracle.
 
+`known()` reads one public logic snapshot. It accepts `0/1/L/H`, normalizes weak
+bits, and rejects `X/Z/U/W/-` with `V05_UNKNOWN <signal>`. The conversion avoids
+per-bit objects and does not consult `COCOTB_RESOLVE_X`. The runner already removes
+that ambient setting. In cocotb 2.0.1, direct scalar `int(Logic('L'))` under the
+ambient `error` resolver raises despite `is_resolvable`; this unused resolver
+corner is not part of the runner's observation contract. Run
+`python -B src/dv/python/v05/test_known.py` in the pinned Python DV environment
+to check scalar and packed values, single reads, and resolver independence.
+
 | Target | Required outcome |
 |---|---|
 | python-v05-identity | Read an independent 128-bit build identity through the actual UART and product Client |
