@@ -28,6 +28,7 @@ module n2m_ppu (
     input var logic oam_valid,
     input var logic dma_active,
     output logic vram_cpu_allow,
+    output logic vram_cpu_read_allow,
     output logic oam_cpu_allow,
     output logic oam_cpu_read_allow,
     output logic stat_condition,
@@ -77,7 +78,7 @@ module n2m_ppu (
     logic lyc_write;
     logic [7:0] render_bgp, render_obp0, render_obp1;
     logic [7:0] readable_ly;
-    logic early_oam_read_block;
+    logic early_oam_read_block, early_vram_read_block;
     assign reset = reset_sys || core_reset;
     assign fault = fetch_fault || object_fault;
     assign fault_now = fetch_fault_now || object_fault_now;
@@ -155,6 +156,11 @@ module n2m_ppu (
         : {1'b0, object_row_address, 1'b1};
     assign oam_phase = reset || fault_now ? 2'd0 : object_oam_phase;
     assign vram_cpu_allow = !mode3;
+    // The final scan T4 blocks VRAM reads before write permission closes.
+    // Scan activity excludes the initial LCD-on mode0 interval and VBlank.
+    assign early_vram_read_block = scan_active
+        && line_quarter == 7'd19 && quarter_phase == 2'd3;
+    assign vram_cpu_read_allow = vram_cpu_allow && !early_vram_read_block;
     assign oam_cpu_allow = !(scan_active || mode3 || dma_active);
     // Legal T4 before the next ordinary scan blocks reads while writes remain
     // allowed. Use renderer LY, not the exceptional CPU-readable LY153 value.

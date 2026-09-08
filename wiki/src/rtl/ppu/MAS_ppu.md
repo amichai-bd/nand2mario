@@ -187,6 +187,21 @@ This table fixes the intended digital transaction abstraction. Directed
 before/on/after register writes and imported-core phase comparison must establish
 its behavior; it is not an assertion of cartridge-pin phase equivalence.
 
+## Early VRAM read blocking
+
+CPU VRAM reads use `vram_cpu_read_allow`; writes retain `vram_cpu_allow`.
+Both read preparation and final readback apply the selected direction. During
+ordinary visible-line scan, `scan_active && line_quarter == 19 &&
+quarter_phase == 3` denies reads one legal T4 before mode3 blocks writes.
+Use held dot state, not a pulse gated by `gb_tick`, so pause retains permission.
+Scan activity excludes initial LCD-on mode0 and VBlank. This changes neither
+renderer capture timing nor the write/Intel collision contract.
+
+The same pinned primary LCD-on read/write tables used by the
+[original access witnesses](../../../../src/dv/ppu/startup204.md) require VRAM
+read FF/write81 at enable+532 and+988, with preceding reads allowed and following
+reads/writes blocked. They report DMG/MGB/SGB/SGB2, not a specific DMG revision.
+
 ## STAT-write timing
 
 The pinned [SameBoy DMG conflict implementation](https://github.com/LIJI32/SameBoy/blob/213a12ce93d66b105a113debd9396306066a7cfc/Core/sm83_cpu.c#L148)
@@ -342,9 +357,8 @@ source pixel, scan timing or raw RAM write changes.
 Memory owners apply the selected read allowance to both preparation and final
 response; an earlier RAM read must not bypass it. The independent
 [startup witnesses](../../../../src/dv/ppu/startup202.md) own the primary table,
-nearby/repeated and exclusion checks. Late-scan read/write permissions and
-same-address scan collisions remain tracked in
-[#204](https://github.com/amichai-bd/nand2mario/issues/204); raw startup cadence
+nearby/repeated and exclusion checks. Late OAM write/corruption arbitration remains open in
+[#208](https://github.com/amichai-bd/nand2mario/issues/208); raw startup cadence
 remains [#205](https://github.com/amichai-bd/nand2mario/issues/205).
 
 ### Controller phase convention

@@ -1,7 +1,7 @@
 `timescale 1ns/1ps
 `default_nettype none
 `include "src/rtl/common/macros.svh"
-module tb_ppu_oam_read;
+module tb_ppu_vram_read;
     logic clk_sys, reset_sys, core_reset, gb_tick, paused, pause_request;
     logic [1:0] cpu_phase;
     logic [63:0] dot_before;
@@ -14,7 +14,7 @@ module tb_ppu_oam_read;
     logic [1:0] oam_phase;
     logic stat_condition, stat_rise, fault;
     integer cases;
-    logic vram_cpu_allow, oam_cpu_allow, oam_cpu_read_allow, dma_active;
+    logic vram_cpu_read_allow, vram_cpu_allow, oam_cpu_allow, oam_cpu_read_allow, dma_active;
     logic [63:0] enable_dot;
     n2m_timebase timebase (.*);
     n2m_ppu dut (
@@ -22,7 +22,7 @@ module tb_ppu_oam_read;
         .io_commit, .io_write, .io_address, .io_wdata, .io_rdata, .io_selected,
         .vram_request, .vram_address, .vram_data(8'd0), .vram_valid,
         .oam_pair_address, .oam_phase, .oam_scan_index(), .oam_data(16'd0),
-        .oam_valid, .dma_active, .vram_cpu_allow, .oam_cpu_allow, .vram_cpu_read_allow(), .oam_cpu_read_allow,
+        .oam_valid, .dma_active, .vram_cpu_allow, .oam_cpu_allow, .vram_cpu_read_allow, .oam_cpu_read_allow,
         .stat_condition, .stat_rise, .vblank_condition(), .vblank_rise(), .fault,
         .source_valid(), .source_start(), .source_shade(), .source_x(), .source_y(),
         .source_epoch(), .source_dot(), .source_abort(), .blank_assert(),
@@ -50,16 +50,16 @@ module tb_ppu_oam_read;
         pending_write = 0;
     endtask
     task automatic check_permissions(input logic read_allowed, input logic write_allowed);
-        if (oam_cpu_read_allow !== read_allowed || oam_cpu_allow !== write_allowed)
-            $fatal(1, "PPU_OAM_READ_WINDOW expected=%0d/%0d actual=%0d/%0d",
-                read_allowed, write_allowed, oam_cpu_read_allow, oam_cpu_allow);
+        if (vram_cpu_read_allow !== read_allowed || vram_cpu_allow !== write_allowed)
+            $fatal(1, "PPU_VRAM_READ_WINDOW expected=%0d/%0d actual=%0d/%0d",
+                read_allowed, write_allowed, vram_cpu_read_allow, vram_cpu_allow);
         cases = cases + 1;
     endtask
     task automatic check_at(input integer elapsed, input logic read_allowed, input logic write_allowed);
         @(negedge clk_sys);
-        if (elapsed == 452 && $test$plusargs("read_corrupt")) force dut.oam_cpu_read_allow = 1'b1;
+        if (elapsed == 532 && $test$plusargs("read_corrupt")) force dut.vram_cpu_read_allow = 1'b1;
         do @(posedge clk_sys); while (!(gb_tick && dot_before == enable_dot + 64'(elapsed)));
-        if (cpu_phase != 3) $fatal(1, "PPU_OAM_READ_PHASE");
+        if (cpu_phase != 3) $fatal(1, "PPU_VRAM_READ_PHASE");
         check_permissions(read_allowed, write_allowed);
         @(negedge clk_sys);
     endtask
@@ -71,16 +71,16 @@ module tb_ppu_oam_read;
         repeat (20) begin
             @(negedge clk_sys);
             if (gb_tick || dot_before != enable_dot + 64'(elapsed)
-                || oam_cpu_read_allow !== 1'b0 || oam_cpu_allow !== 1'b1)
-                $fatal(1, "PPU_OAM_READ_PAUSE");
+                || vram_cpu_read_allow !== 1'b0 || vram_cpu_allow !== 1'b1)
+                $fatal(1, "PPU_VRAM_READ_PAUSE");
         end
         check_permissions(0, 1);
     endtask
     initial begin
-        $dumpfile("waves/oam-read.vcd");
+        $dumpfile("waves/vram-read.vcd");
         $dumpvars(0, clk_sys, reset_sys, core_reset, gb_tick, dot_before,
-            cpu_phase, io_commit, io_address, io_wdata, oam_cpu_read_allow,
-            oam_cpu_allow, dma_active, cases, fault, pause_request, paused);
+            cpu_phase, io_commit, io_address, io_wdata, vram_cpu_read_allow,
+            vram_cpu_allow, dma_active, cases, fault, pause_request, paused);
         clk_sys = 0; reset_sys = 1; core_reset = 0; pause_request = 0;
         pending_write = 0; io_write = 1; io_address = 0; io_wdata = 0;
         dma_active = 0; cases = 0; enable_dot = 0;
@@ -91,27 +91,24 @@ module tb_ppu_oam_read;
         check_at(8, 1, 1);
         check_at(76, 1, 1);
         check_at(80, 0, 0);
-        check_at(448, 1, 1);
-        hold_before(452);
+        check_at(528, 1, 1);
+        hold_before(532);
         pause_request = 0;
-        check_at(452, 0, 1);
-        check_at(456, 0, 0);
-        check_at(904, 1, 1);
-        check_at(908, 0, 1);
-        check_at(912, 0, 0);
-        // Renderer LY is144 at this boundary; early read denial is excluded.
-        check_at(65660, 1, 1);
-        // At the next frame boundary internal LY0 must block again.
-        hold_before(70220);
-        dma_active = 1; @(negedge clk_sys); check_permissions(0, 0);
-        dma_active = 0; @(negedge clk_sys); check_permissions(0, 1);
+        check_at(532, 0, 1);
+        check_at(536, 0, 0);
+        check_at(984, 1, 1);
+        check_at(988, 0, 1);
+        check_at(992, 0, 0);
+        // Same counter phase in VBlank must not deny access.
+        check_at(65740, 1, 1);
+        check_at(66272, 1, 1);
         core_reset = 1; repeat (3) @(negedge clk_sys); check_permissions(1, 1);
-        if (cases != 16) $fatal(1, "PPU_OAM_READ_COUNT");
-        $display("PASS PPU early OAM read window cases=16");
+        if (cases != 14) $fatal(1, "PPU_VRAM_READ_COUNT");
+        $display("PASS PPU early VRAM read window cases=14");
         $finish;
     end
     initial begin
         #30000000;
-        $fatal(1, "PPU_OAM_READ_TIMEOUT");
+        $fatal(1, "PPU_VRAM_READ_TIMEOUT");
     end
 endmodule
