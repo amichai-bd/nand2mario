@@ -49,3 +49,12 @@ Record subsequent tested tool/CLI/debug commands, tool versions and observed
 pitfalls here or in a linked focused reference. Label untested steps as assumptions;
 link the owning board contract for pins, voltage, clocks and reset behavior.
 Do not promote a simulation or fit procedure into physical evidence.
+
+Quartus 25.1 PLL generation on Windows can exit3 before HDL with a TBBmalloc
+unknown `_msize` prologue diagnostic. Preserve the failure. Intel documents
+[`TBB_MALLOC_DISABLE_REPLACEMENT=1`](https://www.intel.com/content/www/us/en/docs/onetbb/developer-guide-api-reference/2021-11/windows-os-c-c-dynamic-memory-interface.html)
+to retain the standard allocator. A process-only setting was verified with
+`python tools/build.py fpga build v05-board --quartus-bin <installed-bin> --timeout 600 --rebuild --tag <fresh-tag> --json`
+under the existing 600-second supervisor and shared lock. Record the environment
+override, restore it in `finally`, and require a fresh complete accepted fit.
+This changes no DLL or security policy and does not relabel failed attempts.
