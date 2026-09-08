@@ -115,3 +115,22 @@ async def controls_complete(dut):
 @cocotb.test()
 async def controls_corrupt(dut):
     await run(dut, corrupt=True)
+
+
+@cocotb.test()
+async def controls_startup(dut):
+    """Bounded diagnostic only; no controls acceptance claim."""
+    def mark(label):
+        with Path('startup-progress.jsonl').open('a') as stream:
+            stream.write(json.dumps(dict(label=label, time_ns=float(get_sim_time(unit='ns')),
+                reset=str(dut.board_reset_n.value), leds=str(dut.leds.value))) + '\n')
+            stream.flush()
+    mark('entry')
+    await Timer(1, unit='ns')
+    mark('1ns')
+    await Timer(999, unit='ns')
+    mark('1us')
+    dut.board_reset_n.value = 1
+    await Timer(999, unit='us')
+    mark('1ms')
+    print('CONTROLS_STARTUP_DIAGNOSTIC')
