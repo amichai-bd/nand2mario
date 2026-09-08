@@ -2,10 +2,8 @@
 `timescale 1ns/1ps
 `default_nettype none
 module tb_preload_load;
-    import n2m_interfaces_pkg::*;
-    import n2m_uart_pkg::*;
     logic clk_sys, reset_sys, start, busy, done;
-    uart_load_operation_t operation;
+    n2m_uart_pkg::uart_load_operation_t operation;
     logic [31:0] offset, expected_crc;
     logic [15:0] count;
     logic [7:0] status, input_data, output_data;
@@ -38,7 +36,7 @@ module tb_preload_load;
         end
         if(cycles>400000) $fatal(1,"PRELOAD_LOAD_WATCHDOG");
     end
-    task automatic launch(input uart_load_operation_t op);
+    task automatic launch(input n2m_uart_pkg::uart_load_operation_t op);
         @(negedge clk_sys); operation=op; start=1;
         @(negedge clk_sys); start=0;
     endtask
@@ -49,7 +47,7 @@ module tb_preload_load;
     endtask
     initial begin
         integer block_index, byte_index;
-        clk_sys=0; reset_sys=1; start=0; operation=UART_LOAD_BEGIN;
+        clk_sys=0; reset_sys=1; start=0; operation=n2m_uart_pkg::UART_LOAD_BEGIN;
         offset=0; count=0; expected_crc=0; input_valid=0; input_data=0; output_ready=1;
         clear_writes=0; rom_reads=0; cycles=0; crc_fault=$test$plusargs("crc_fault");
         $readmemh("preload-crc.hex",crc_word);
@@ -59,34 +57,34 @@ module tb_preload_load;
             rom_address,rom_read_data,rom_read_valid,expected_crc,clear_writes,rom_reads);
         repeat(4) @(negedge clk_sys); reset_sys=0;
         expected_crc=crc_word[0] ^ (crc_fault ? 32'd1 : 32'd0);
-        launch(UART_LOAD_BEGIN); finish_status(STATUS_OK);
+        launch(n2m_uart_pkg::UART_LOAD_BEGIN); finish_status(n2m_interfaces_pkg::STATUS_OK);
         if(clear_writes!=0) $fatal(1,"PRELOAD_FIRST_CLEAR");
-        launch(UART_LOAD_END); finish_status(STATUS_OK);
+        launch(n2m_uart_pkg::UART_LOAD_END); finish_status(n2m_interfaces_pkg::STATUS_OK);
         if(rom_reads!=32768) $fatal(1,"PRELOAD_SCAN_COUNT");
         offset=32'h200; count=1;
-        launch(UART_LOAD_WRITE);
+        launch(n2m_uart_pkg::UART_LOAD_WRITE);
         @(negedge clk_sys); input_valid=1; input_data=expected_bytes[512]^8'h01;
         @(negedge clk_sys); input_valid=0;
-        finish_status(STATUS_OK);
-        launch(UART_LOAD_END); finish_status(STATUS_BAD_IMAGE);
+        finish_status(n2m_interfaces_pkg::STATUS_OK);
+        launch(n2m_uart_pkg::UART_LOAD_END); finish_status(n2m_interfaces_pkg::STATUS_BAD_IMAGE);
         // Reset must not re-arm adoption or initialize a replacement memory.
         @(negedge clk_sys); reset_sys=1;
         repeat(3) @(negedge clk_sys); reset_sys=0;
-        launch(UART_LOAD_BEGIN); finish_status(STATUS_OK);
+        launch(n2m_uart_pkg::UART_LOAD_BEGIN); finish_status(n2m_interfaces_pkg::STATUS_OK);
         if(clear_writes!=32768) $fatal(1,"PRELOAD_RESET_REARMED");
-        launch(UART_LOAD_END); finish_status(STATUS_BAD_IMAGE);
+        launch(n2m_uart_pkg::UART_LOAD_END); finish_status(n2m_interfaces_pkg::STATUS_BAD_IMAGE);
         // Direct load owner accepts bounded chunks only: write128 chunks256.
         for(block_index=0;block_index<128;block_index=block_index+1) begin
             offset=32'(block_index*256); count=16'd256;
-            launch(UART_LOAD_WRITE);
+            launch(n2m_uart_pkg::UART_LOAD_WRITE);
             for(byte_index=0;byte_index<256;byte_index=byte_index+1) begin
                 @(negedge clk_sys); input_valid=1;
                 input_data=expected_bytes[block_index*256+byte_index];
             end
             @(negedge clk_sys); input_valid=0;
-            finish_status(STATUS_OK);
+            finish_status(n2m_interfaces_pkg::STATUS_OK);
         end
-        launch(UART_LOAD_END); finish_status(STATUS_OK);
+        launch(n2m_uart_pkg::UART_LOAD_END); finish_status(n2m_interfaces_pkg::STATUS_OK);
         if(rom_reads!=131072) $fatal(1,"PRELOAD_FINAL_SCAN_COUNT");
         $display("PASS preload lifecycle bytes=32768 clear=32768 scans=4");
         $finish;

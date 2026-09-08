@@ -1,8 +1,7 @@
 `timescale 1ns/1ps
 module tb_interfaces;
-  import n2m_interfaces_pkg::*;
-  packet_header_t header;
-  retirement_t retired;
+  n2m_interfaces_pkg::packet_header_t header;
+  n2m_interfaces_pkg::retirement_t retired;
   logic [79:0] expected;
   initial begin
     $dumpfile("interfaces.vcd");
@@ -21,15 +20,15 @@ module tb_interfaces;
     #1;
     if (header !== expected)
       $fatal(1, "INTERFACE_MISMATCH expected=%h actual=%h", expected, header);
-    if ($bits(header) != 80 || PACKET_HEADER_BYTES != 10 ||
-        PACKET_HEADER_SEQ_OFFSET != 2 || PACKET_HEADER_LENGTH_OFFSET != 8)
+    if ($bits(header) != 80 || n2m_interfaces_pkg::PACKET_HEADER_BYTES != 10 ||
+        n2m_interfaces_pkg::PACKET_HEADER_SEQ_OFFSET != 2 || n2m_interfaces_pkg::PACKET_HEADER_LENGTH_OFFSET != 8)
       $fatal(1, "INTERFACE_WIDTH_MISMATCH header");
-    if ($bits(retired) != 384 || RETIREMENT_BYTES != 48)
+    if ($bits(retired) != 384 || n2m_interfaces_pkg::RETIREMENT_BYTES != 48)
       $fatal(1, "INTERFACE_WIDTH_MISMATCH retirement bits=%0d", $bits(retired));
-    if (GB_REG_JOYP != 16'hff00 || HOST_REG_ABI != 32'h00010000 ||
-        $bits(GB_REG_JOYP) != 16 || $bits(HOST_REG_ABI) != 32 ||
-        HOST_REG_ABI <= 32'hffff || PROFILE_PC != 16'h0100 ||
-        PROFILE_SP != 16'hfffe || PROFILE_ROM_BYTES != 32768)
+    if (n2m_interfaces_pkg::GB_REG_JOYP != 16'hff00 || n2m_interfaces_pkg::HOST_REG_ABI != 32'h00010000 ||
+        $bits(n2m_interfaces_pkg::GB_REG_JOYP) != 16 || $bits(n2m_interfaces_pkg::HOST_REG_ABI) != 32 ||
+        n2m_interfaces_pkg::HOST_REG_ABI <= 32'hffff || n2m_interfaces_pkg::PROFILE_PC != 16'h0100 ||
+        n2m_interfaces_pkg::PROFILE_SP != 16'hfffe || n2m_interfaces_pkg::PROFILE_ROM_BYTES != 32768)
       $fatal(1, "INTERFACE_ADDRESS_MISMATCH");
     retired.version = 1;
     retired.epoch = 32'h12345678;

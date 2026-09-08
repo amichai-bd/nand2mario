@@ -1,12 +1,11 @@
 `timescale 1ns/1ps
 module tb_uart_validation;
-    import n2m_interfaces_pkg::*;
     logic [31:0] address;
     logic [31:0] data;
     logic address_valid;
     logic [7:0] endpoint_state;
-    snapshot_t metadata;
-    packet_header_t header;
+    n2m_interfaces_pkg::snapshot_t metadata;
+    n2m_interfaces_pkg::packet_header_t header;
     logic [8:0] packet_bytes;
     logic [71:0] arguments;
     logic [7:0] status;

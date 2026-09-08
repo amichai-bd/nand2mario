@@ -1,6 +1,5 @@
 `timescale 1ns/1ps
 module tb_controls_lifecycle;
-    import n2m_input_pkg::*;
     logic clk;
     logic reset;
     logic available;
@@ -18,8 +17,8 @@ module tb_controls_lifecycle;
     logic fresh;
     logic fault;
     logic [7:0] expected;
-    input_write_t host_write;
-    input_update_t update;
+    n2m_input_pkg::input_write_t host_write;
+    n2m_input_pkg::input_update_t update;
     integer checks;
     integer scenario;
     integer method;

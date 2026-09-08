@@ -1,9 +1,8 @@
 `timescale 1ns/1ps
 `default_nettype none
 module tb_uart_load;
-    import n2m_uart_pkg::*;
     logic clk_sys, reset_sys, start, busy, done;
-    uart_load_operation_t operation;
+    n2m_uart_pkg::uart_load_operation_t operation;
     logic [31:0] offset, expected_crc;
     logic [15:0] count;
     logic [7:0] status, input_data, output_data, rom_write_data, rom_read_data;
@@ -36,7 +35,7 @@ module tb_uart_load;
             $fdisplay(trace,"write,%0d,%02h",rom_address,rom_write_data);
         end
     end
-    task automatic launch(input uart_load_operation_t op, input integer at, input integer size);
+    task automatic launch(input n2m_uart_pkg::uart_load_operation_t op, input integer at, input integer size);
         @(negedge clk_sys); operation = op; offset = 32'(at); count = 16'(size); start = 1;
         @(negedge clk_sys); start = 0;
     endtask
@@ -51,13 +50,13 @@ module tb_uart_load;
                 force dut.presence_value = 1'b1;
         end
         if (!done || status !== expected_status) $fatal(1,"UART_LOAD_RESULT op=%0d expected=%0d actual=%0d",operation,expected_status,status);
-        if (operation == UART_LOAD_END) endings = endings + 1;
+        if (operation == n2m_uart_pkg::UART_LOAD_END) endings = endings + 1;
         @(negedge clk_sys);
         if (busy || done || rom_write || rom_read) $fatal(1,"UART_LOAD_IDLE");
     endtask
     task automatic write_bytes(input integer at, input integer size, input bit wrong);
         integer index, old_writes;
-        old_writes = writes; launch(UART_LOAD_WRITE,at,size);
+        old_writes = writes; launch(n2m_uart_pkg::UART_LOAD_WRITE,at,size);
         for (index = 0; index < size; index = index + 1) begin
             if (!input_ready) $fatal(1,"UART_LOAD_WRITE_READY");
             input_data = image_byte(at+index) ^ (wrong ? 8'hff : 8'h00); input_valid = 1;
@@ -80,7 +79,7 @@ module tb_uart_load;
     endtask
     task automatic read_chunk(input integer at, input integer size);
         integer index, cycles;
-        launch(UART_LOAD_READ,at,size); index = 0; cycles = 0;
+        launch(n2m_uart_pkg::UART_LOAD_READ,at,size); index = 0; cycles = 0;
         while (!done && cycles < 3000) begin
             if (output_valid) begin
                 if (output_data !== image_byte(at+index)) $fatal(1,"UART_LOAD_READBACK index=%0d",at+index);
@@ -97,7 +96,7 @@ module tb_uart_load;
     endtask
     initial begin
         integer block, old_writes;
-        clk_sys = 0; reset_sys = 1; start = 0; operation = UART_LOAD_BEGIN;
+        clk_sys = 0; reset_sys = 1; start = 0; operation = n2m_uart_pkg::UART_LOAD_BEGIN;
         offset = 0; count = 0; expected_crc = 32'h2633e694;
         input_valid = 0; input_data = 0; output_ready = 0;
         writes = 0; reads = 0; endings = 0; checking_crc = 0; checking_presence = 0;
@@ -113,31 +112,31 @@ module tb_uart_load;
         // Expected whole-image CRC is supplied by a Python zlib calculation,
         // independently of the product's reflected bit recurrence.
         expected_crc = 32'h2633e694;
-        launch(UART_LOAD_BEGIN,0,0);
+        launch(n2m_uart_pkg::UART_LOAD_BEGIN,0,0);
         repeat (71) @(negedge clk_sys);
         old_writes = writes; #2; reset_sys = 1; #1;
         if (busy || done || rom_write || rom_read) $fatal(1,"UART_LOAD_RESET_CLEAR");
         repeat (3) @(negedge clk_sys); reset_sys = 0;
-        launch(UART_LOAD_BEGIN,0,0); complete(0);
+        launch(n2m_uart_pkg::UART_LOAD_BEGIN,0,0); complete(0);
         if (writes != old_writes) $fatal(1,"UART_LOAD_CLEAR_ROM_WRITE");
-        write_missing_image(); launch(UART_LOAD_END,0,0); complete(6);
+        write_missing_image(); launch(n2m_uart_pkg::UART_LOAD_END,0,0); complete(6);
         write_bytes(7777,1,0); checking_crc = 1;
-        launch(UART_LOAD_END,0,0); complete(0); checking_crc = 0;
-        write_bytes(100,1,1); launch(UART_LOAD_END,0,0); complete(6);
-        write_bytes(100,1,0); launch(UART_LOAD_END,0,0); complete(0);
+        launch(n2m_uart_pkg::UART_LOAD_END,0,0); complete(0); checking_crc = 0;
+        write_bytes(100,1,1); launch(n2m_uart_pkg::UART_LOAD_END,0,0); complete(6);
+        write_bytes(100,1,0); launch(n2m_uart_pkg::UART_LOAD_END,0,0); complete(0);
         for (block = 0; block < 128; block = block + 1) read_chunk(block*256,256);
         // Old correct ROM bytes cannot substitute for this load's presence.
-        launch(UART_LOAD_BEGIN,0,0); complete(0); write_missing_image();
-        checking_presence = 1; launch(UART_LOAD_END,0,0); complete(6); checking_presence = 0;
-        write_bytes(7777,1,0); launch(UART_LOAD_END,0,0); complete(0);
+        launch(n2m_uart_pkg::UART_LOAD_BEGIN,0,0); complete(0); write_missing_image();
+        checking_presence = 1; launch(n2m_uart_pkg::UART_LOAD_END,0,0); complete(6); checking_presence = 0;
+        write_bytes(7777,1,0); launch(n2m_uart_pkg::UART_LOAD_END,0,0); complete(0);
         // Interrupted public write retains prior committed ROM bytes; a new
         // BEGIN must nevertheless replace all presence metadata before END.
-        launch(UART_LOAD_WRITE,0,2); input_data = image_byte(0); input_valid = 1;
+        launch(n2m_uart_pkg::UART_LOAD_WRITE,0,2); input_data = image_byte(0); input_valid = 1;
         @(negedge clk_sys); input_valid = 0; #2; reset_sys = 1; #1;
         if (rom_write || done || busy) $fatal(1,"UART_LOAD_RESET_WRITE");
         repeat (3) @(negedge clk_sys); reset_sys = 0;
         read_chunk(0,2);
-        launch(UART_LOAD_BEGIN,0,0); complete(0); launch(UART_LOAD_END,0,0); complete(6);
+        launch(n2m_uart_pkg::UART_LOAD_BEGIN,0,0); complete(0); launch(n2m_uart_pkg::UART_LOAD_END,0,0); complete(6);
         if (reads != 32770 || endings != 7 || writes != 65539) $fatal(1,"UART_LOAD_COUNTS writes=%0d reads=%0d ends=%0d",writes,reads,endings);
         $fclose(trace); $display("PASS UART load full_ROM CRC32 presence repair overlap readback reset"); $finish;
     end

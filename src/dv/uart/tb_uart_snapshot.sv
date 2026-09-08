@@ -1,7 +1,6 @@
 `timescale 1ns/1ps
 `default_nettype none
 module tb_uart_snapshot;
-    import n2m_interfaces_pkg::*;
     logic clk_sys, reset_sys, uart_rx, uart_tx;
     logic gb_tick, paused, pause_request, core_reset, core_initialized;
     logic instruction_complete, retirement_valid, cpu_stopped;
@@ -12,7 +11,7 @@ module tb_uart_snapshot;
     logic [14:0] rom_address;
     logic [7:0] rom_write_data, rom_read_data;
     logic snapshot_request, snapshot_ready, snapshot_done, snapshot_ok, snapshot_valid;
-    snapshot_t snapshot_metadata;
+    n2m_interfaces_pkg::snapshot_t snapshot_metadata;
     logic frame_read, frame_valid;
     logic [12:0] frame_address;
     logic [7:0] frame_data;
@@ -57,7 +56,7 @@ module tb_uart_snapshot;
     logic [63:0] observe_sequence, observe_dot;
     integer init_delay, publication_count, checked_bytes;
     logic was_valid;
-    snapshot_t old_metadata;
+    n2m_interfaces_pkg::snapshot_t old_metadata;
     bit copy_active, corrupt_frame;
     n2m_frame_snapshot u_snapshot (.*);
     // This fixture exercises snapshot commands only. Core initialization is

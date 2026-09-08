@@ -1,6 +1,5 @@
 `timescale 1ns/1ps
 module tb_controls_mask;
-    import n2m_input_pkg::*;
     logic clk;
     logic reset;
     logic core_reset;
@@ -20,8 +19,8 @@ module tb_controls_mask;
     logic [7:0] host_observe;
     logic [7:0] source_observe;
     logic [7:0] effective_buttons;
-    input_write_t host_write;
-    input_update_t effective_update;
+    n2m_input_pkg::input_write_t host_write;
+    n2m_input_pkg::input_update_t effective_update;
     integer checks;
     bit corrupt;
     n2m_button_filter #(.STABLE_CYCLES(3)) u_buttons (
