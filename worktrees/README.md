@@ -35,11 +35,11 @@ Once [review readiness](../.agents/skills/agent-flow/references/review.md#verdic
 and the [delivery obligations](../AGENTS.md#work) are met, the author runs:
 
 ```powershell
-gh pr merge <number> --squash
+gh pr merge <number> --squash --match-head-commit <reviewed-sha>
 ```
 
 Do not pass `--delete-branch` from an author worktree. Root owns worktree and
-branch deletion after it verifies the merge and deployment.
+branch deletion after the post-merge verification below.
 
 If the command errors after sending the merge request, inspect remote state:
 
@@ -51,10 +51,35 @@ gh issue view <issue> --json state,closedAt
 If merged, report the merge commit and local error to root; do not retry.
 If remote state is unclear, investigate before any retry or cleanup.
 
+### Externally blocked hosted checks
+
+Apply the [standing fallback](../wiki/agents/pull-requests.md#external-ci-fallback)
+only after local equivalents and independent exact-head review are complete.
+Re-read the PR head and base, confirm mergeability and resolved conversations,
+and abort if the reviewed head or assessed base changed. First try the normal exact-head merge.
+If only external hosted checks block it, use the same squash/head arguments with
+`--admin`; do not use that option to bypass an actual validation or review failure.
+
+If admin merge is still blocked solely by required status checks, serialize the
+operation with root. Save the exact current protection settings in the owning
+worktree before any mutation. In a `try`/`finally` operation, temporarily remove
+only the required-status-check constraint, recheck head/base and issue the
+exact-head squash merge. Restore that saved constraint, including strictness and
+check/app identities, in `finally` whether merge succeeds, fails or is uncertain.
+Keep other protections unchanged; verify the restored settings against the saved
+values and inspect remote merge state before retrying. If restoration fails,
+stop further delivery and cleanup and report the exact unresolved change. Never
+leave protection weakened, replace concurrent configuration changes, or broaden
+this fallback to unrelated rules. Missing admin rights blocks this step; it does
+not authorize a different bypass.
+
 ## Clean up after merge
 
 The author reports its squash merge. Root verifies the PR merged, required main
-checks and deployment passed, and issues that the PR completes closed. Approved
+checks and deployment passed (or records the actual external blockage and local
+validation under the [fallback](../wiki/agents/pull-requests.md#external-ci-fallback)),
+and issues that the PR completes closed. Do not claim Pages publication from a
+local build. Approved
 checkpoint issues remain open with their unfinished criteria; do not close them
 for cleanup.
 

@@ -1,6 +1,6 @@
 ---
 name: agent-flow
-description: Run a nand2mario issue through its worktree, peer review, green CI, merge, and cleanup. Use when starting, continuing, reviewing, or finishing repository work.
+description: Run a nand2mario issue through its worktree, peer review, required validation, merge, and cleanup. Use when starting, continuing, reviewing, or finishing repository work.
 ---
 
 # Agent flow
@@ -33,8 +33,9 @@ Follow [AGENTS](../../../AGENTS.md#work):
    Resolve CI failures and obtain [independent review](references/review.md).
    Assess the whole checklist in one pass and list remaining gaps together.
    Reuse evidence only while its inputs and covered behavior remain valid;
-   complete all required checks and current-SHA review before merging.
-4. With a current ready verdict and required checks passing, post the report,
+   satisfy required checks and current-SHA review before merging. For external
+   hosted failures, apply the [standing fallback](../../../wiki/agents/pull-requests.md#external-ci-fallback).
+4. With a current ready verdict and required validation satisfied, post the report,
    undraft, and follow the [merge method](../../../worktrees/README.md#merge).
    Merge promptly without waiting for unrelated work. Report the outcome to root.
 5. Root performs [verification and cleanup](../../../worktrees/README.md#clean-up-after-merge).

@@ -17,7 +17,9 @@ Follow `agent-flow` and `wiki/agents/pull-requests.md`.
    [post-merge cleanup](../../../worktrees/README.md#clean-up-after-merge).
 3. Open early with `gh pr create --draft --base main --title '<title>' --body-file <path>`.
 4. Update evidence with `gh pr edit <number> --body-file <path>`.
-5. Babysit CI and independent review. Post the returned report from a file,
+5. Babysit CI and independent review. When hosted checks are externally blocked,
+   use the [standing fallback](../../../wiki/agents/pull-requests.md#external-ci-fallback)
+   without repeating approval requests. Post the returned report from a file,
    undraft with `gh pr ready <number>`, then use the worktree guide's
    [merge method](../../../worktrees/README.md#merge).
 

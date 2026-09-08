@@ -59,7 +59,7 @@ The user-authorized checkpoints PR162, PR163, PR167, PR169 and PR179 instead ref
 #156, #88, #164, #168 and #168, respectively, without closing them. Their unfinished acceptance stays in those issues; this
 bounded exception is recorded in PR policy and does not authorize other checkpoints.
 The author owns delivery through independent review of the current PR SHA,
-passing required checks, resolved review conversations, and squash merge.
+satisfying required checks, resolved review conversations, and squash merge.
 Human review is not required. Root verifies merge, issue closure, main checks,
 deployment, and [cleanup](worktrees/README.md#clean-up-after-merge).
 After verified delivery, retain a concise validation summary in the PR and remove
@@ -83,6 +83,14 @@ Choose routine steps and tools. Retain enough context for safe takeover; see
 [recovery](.agents/skills/agent-flow/references/recovery.md).
 
 ## Verification and safety
+
+When hosted CI is blocked by an external service or account condition, run the
+local equivalents of required checks and meet scoped acceptance, using valid
+unchanged evidence where applicable. Continue reviewed delivery without asking
+for per-PR approval again. Real code, test, policy and review failures remain
+blockers. Report actual hosted status; never fabricate green checks or Pages
+publication. Follow the [external CI fallback](wiki/agents/pull-requests.md#external-ci-fallback)
+for exact-head merge, temporary protection restoration and post-merge cleanup.
 
 Use the [verification tiers](wiki/src/dv/integration/SPEC.md#verification-tiers)
 for proportionate acceptance. Ordinary PRs must meet their own scoped criteria,

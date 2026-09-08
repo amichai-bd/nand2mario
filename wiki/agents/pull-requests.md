@@ -24,7 +24,7 @@ state what lands, its required proof, and what remains in each open issue. Do no
 label a partial subsystem or milestone complete. A known defect that undermines
 the scoped result still blocks that PR, and introduced regressions remain its
 responsibility. Finish the finite checklist and merge when scoped acceptance,
-required CI, independent current-head review and conversations are satisfied.
+required validation, independent current-head review and conversations are satisfied.
 
 For the authorized current split, [#178](https://github.com/amichai-bd/nand2mario/issues/178)
 owns delivery and bounded complete-path proof of the continuous v0.5 harness;
@@ -45,10 +45,44 @@ those assigned acceptance issues open and contain no closing references. The
 policy records only these five exceptions; other PRs still close their issues.
 `Wiki check` validates the documentation build.
 
-Main requires passing up-to-date checks, linear history, and resolved review
-conversations. Force pushes and branch deletion are blocked on main. Human
+Main normally requires passing up-to-date hosted checks, linear history, and resolved review
+conversations. The authorized external-blockage fallback below supplies equivalent local validation. Force pushes and branch deletion are blocked on main. Human
 approval is not required. Independent review and code/spec alignment are agent
 responsibilities; they are not enforced by scripts or approval counts.
 
-A merge closes the referenced issues and automatically deploys Pages. See
+A merge closes its closing references and triggers Pages deployment. A trigger is not
+proof that publication succeeded. See
 [GitHub issue linking](https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/linking-a-pull-request-to-an-issue).
+
+
+## External CI fallback
+
+The user gives standing authorization to use local equivalents when a hosted
+service or account condition prevents required checks from executing. Record the
+specific external cause and actual run status/link. A job that ran and found a
+code, test, policy or review failure still blocks delivery; an unexplained
+failure is not evidence of an external outage.
+
+Identify the currently required checks from protection and run their workflow
+commands locally at the reviewed head, including live issue/PR metadata checks.
+Meet the PR's scoped acceptance too. Reuse prior results only with explicit
+relevant-input and behavior equivalence; record the producing SHA, commands,
+results and limitations. Advisory jobs are selected by affected scope, not
+automatically rerun merely because hosted CI is unavailable. If an equivalent
+cannot be established, pause that delivery and name the missing evidence.
+
+Independent current-SHA readiness and resolved conversations remain mandatory.
+Record the local equivalents and actual hosted state in the PR, then follow the
+[exact-head merge procedure](../../worktrees/README.md#merge). Do not wait for
+hosted green or ask again for approval when this fallback applies. Do not write
+synthetic check statuses, alter workflows to report success, or permanently
+weaken protection.
+
+After merge, root verifies remote merge state and the intended issue disposition.
+For externally blocked main checks or deployment, record their actual status and
+local equivalent validation (or qualified reuse). A local wiki/browser build
+supports documentation validation, not Pages publication. Report deployment as
+unverified or blocked until observed successful. Routine
+[cleanup](../../worktrees/README.md#clean-up-after-merge) may proceed once the PR
+summary is complete and no active user or dependency needs the worktree; an
+external hosted outage alone does not require keeping it.
