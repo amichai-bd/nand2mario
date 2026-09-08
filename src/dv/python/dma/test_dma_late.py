@@ -1,8 +1,10 @@
 """Original image on the combined owner; no UART or loading acceptance claim."""
 import json
 from pathlib import Path
+import sys
 import cocotb
 from cocotb.triggers import Timer, RisingEdge, FallingEdge, ValueChange, ReadOnly
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'integration'))
 from test_integration import decode_record, known
 
 @cocotb.test(timeout_time=5, timeout_unit='ms')
