@@ -50,6 +50,9 @@ module tb_dma_restart;
     integer trace;
     bit observe, early_write;
     assign init_done=memory_init_done && !setup;
+    logic oam_cpu_late_write, oam_late_future;
+    assign oam_cpu_late_write=1'b0;
+    assign oam_late_future=1'b0;
     n2m_dma dut (.*);
     n2m_memory_stores stores (.oam_request, .oam_response, .clk_sys(clk_sys), .reset_sys(reset_sys), .core_reset(core_reset),
         .init_done(memory_init_done), .access_read(setup ? setup_read : access_read),

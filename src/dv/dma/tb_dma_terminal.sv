@@ -52,6 +52,9 @@ module tb_dma_terminal;
     bit corrupt;
     assign init_done=memory_init_done && !setup;
     assign ppu_oam_pair=other_pair ? 7'd78 : object_pair;
+    logic oam_cpu_late_write, oam_late_future;
+    assign oam_cpu_late_write=1'b0;
+    assign oam_late_future=1'b0;
     n2m_dma dut (.*);
     n2m_ppu_objects objects (.clk_sys(clk_sys), .reset(reset_sys || core_reset),
         .gb_tick(gb_tick), .lcd_on(1'b1), .size16(1'b0), .object_enable(1'b1),

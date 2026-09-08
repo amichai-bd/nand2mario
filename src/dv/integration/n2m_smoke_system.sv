@@ -176,7 +176,7 @@ module n2m_smoke_system #(parameter bit HOST_PLAY = 0) (
         .io_address(owner_address), .io_wdata(owner_wdata), .io_selected(ppu_selected),
         .io_rdata(ppu_rdata), .vram_request, .vram_address, .vram_data, .vram_valid,
         .oam_pair_address, .oam_phase, .oam_scan_index(), .oam_data, .oam_valid,
-        .dma_active(1'b0), .vram_cpu_allow, .oam_cpu_allow, .vram_cpu_read_allow, .oam_cpu_read_allow, .oam_cpu_late_write, .stat_condition,
+        .dma_active(1'b0), .vram_cpu_allow, .oam_cpu_allow, .vram_cpu_read_allow, .oam_cpu_read_allow, .oam_late_future(), .oam_cpu_late_write, .stat_condition,
         .vblank_condition, .stat_rise(), .vblank_rise(), .fault(ppu_fault),
         .source_valid, .source_start, .source_shade, .source_x, .source_y,
         .source_epoch, .source_dot, .source_abort, .blank_assert, .source_display_eligible
