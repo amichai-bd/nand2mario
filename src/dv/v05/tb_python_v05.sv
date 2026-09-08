@@ -6,6 +6,8 @@ module tb_python_v05 #(
     parameter logic [127:0] BUILD_ID = 128'h88000000000000000000000000000001
 );
     logic clk_sys, clk_pix, reset_sys, reset_pix, uart_rx, uart_tx;
+    logic physical_commit;
+    logic [7:0] physical_buttons, effective_buttons, input_source_observe;
     logic [3:0] red, green, blue;
     logic hsync_n, vsync_n;
     logic [63:0] display_sequence, dot_count;
@@ -100,6 +102,13 @@ module tb_python_v05 #(
 
     // Stop actual emulated progress during CPU HALT; the Python watchdog must fail.
     initial begin
+        if ($test$plusargs("physical_mask_fault")) begin
+            @(negedge clk_sys);
+            force dut.u_uart.physical_buttons = 8'd1;
+        end
+    end
+
+    initial begin
         if ($test$plusargs("progress_fault")) begin
             wait(dot_count >= 64'd50000);
             @(negedge clk_sys);
@@ -151,6 +160,8 @@ module tb_python_v05 #(
         reset_sys = 1;
         reset_pix = 1;
         uart_rx = 1;
+        physical_commit = 0;
+        physical_buttons = 0;
         record_event = 0;
         pixel_event = 0;
         input_event = 0;

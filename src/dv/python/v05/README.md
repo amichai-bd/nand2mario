@@ -32,6 +32,8 @@ to check scalar and packed values, single reads, and resolver independence.
 | python-v05-bounded | Intel preload, real initialization, first-HALT Right+A, blank-to-normal input rows and every observation through actual pause |
 | python-v05-bounded-pixel | Same bounded oracle rejects the actual first eligible shade changed1 to0 |
 | python-v05-bounded-progress | Same bounded harness rejects actual stopped tick during first HALT |
+| python-v05-physical | Same bounded original program receives atomic physical Right+A; actual UART selection, source isolation and switch-back readbacks |
+| python-v05-physical-mask | Actual physical connection loses A; unchanged Right+A checker rejects the applied mask |
 
 Fault runs require failing Python/XML and nonzero outer builder; preserve the
 actual raw simulator exit independently. Every test follows the
@@ -81,3 +83,28 @@ require6357 complete retirement records, program writes, one input and both
 blank startup and normal-frame input rows. The50 ms simulation watchdog is
 independent of the300-second total host supervisor (288-second worker allowance).
 The120-second runtime target is not claimed before measurement.
+
+## Physical system boundary
+
+Issue247 reuses that exact bounded ROM and oracle. After real load initialization,
+the four host observations `(source, host, physical, effective)` must be
+`(0,0,0,0)`. Select PHYSICAL through the actual UART while paused, expecting
+`(1,0,0,0)`. During first HALT at50000..52000, drive public physical mask17 and
+one commit on a system edge with `gb_tick=0`. This is the sole effective input
+event and the unchanged oracle still requires6357 complete retirements and all
+source pixels through actual final pause.
+
+Readbacks then require `(1,0,17,17)`. UART INPUT2 must produce `(1,2,17,17)`;
+INPUT17 and selecting UART produce `(0,17,17,17)`. A public physical commit0
+then produces `(0,17,0,17)`. No step after the first physical commit may emit
+another effective input event. Public source/effective ports must agree with
+the independently prescribed states. These transactions occur before the
+first VBlank; no expected CPU or pixel state is selected from observed values.
+The original program checks JOYP by reading both rows and publishing its mask
+through ordered retirement and map writes.
+
+The mask fault changes the actual UART owner's physical input to1. The
+unchanged checker must report `V05_INPUT_WINDOW` for expected17, actual1.
+The board wrapper and legacy test modes retain inactive physical inputs.
+This proof does not acquire ADC values or establish physical board controls;
+those remain in issue156.

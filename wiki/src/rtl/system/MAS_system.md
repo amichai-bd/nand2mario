@@ -29,6 +29,15 @@ JOYP owner atomically; its event feeds the interrupt event input. VBlank and STA
 levels and the timer request feed the interrupt level inputs. CPU completion controls STEP through the
 existing UART boundary.
 
+The public `physical_commit` and `physical_buttons` inputs use the same
+`clk_sys`, coherent mask and off-tick acceptance contract as the
+[shared input owner](../input/MAS_input.md). They connect directly to that
+owner inside UART. `effective_buttons` and `input_source_observe` expose its
+existing authoritative observations. UART remains the reset default. No input
+queue, producer, synchronization or extra state is added here. The current
+`v05_proof` board wrapper ties physical input inactive; board acquisition,
+component wiring and calibration remain in issue156.
+
 The [DMA owner](../dma/MAS_dma.md) arbitrates CPU and transfer traffic against
 one Intel backing store. It owns FF46 and routes video accesses through the
 PPU's read or write permission selected by the prepared CPU plan. Both PPU
