@@ -63,8 +63,10 @@ def verify(destination):
         if record['fixture'] != 'mooneye-reg-f':
             raise ValueError('unknown preload fixture')
         from .mooneye import validate_image
+        build = json.loads((destination / 'mooneye-build.json').read_text())
         validate_image(Path(__file__).resolve().parents[2], image,
-                       (destination / 'program.sym').read_text())
+                       (destination / 'program.sym').read_text(),
+                       backend=build['host_tools'].get('backend', 'windows'))
     required = {'preload-rom.mif', 'preload-presence.mif', 'preload-crc.hex'}
     if set(record.get('files', {})) != required:
         raise ValueError('incomplete preload files')

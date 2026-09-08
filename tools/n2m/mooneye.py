@@ -1,6 +1,7 @@
 """Build the single locked reg_f fixture; no upstream source or ROM rewriting."""
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import shutil
@@ -26,6 +27,15 @@ def checked(path, expected):
 def tool_identity(root, installation):
     """The selected installed compiler/build tools enter the simulation identity."""
     lock = pins(root)
+    backend = os.environ.get('N2M_MOONEYE_BUILD_HOST', 'windows')
+    if backend == 'wsl':
+        from .mooneye_wsl import identity, identity_hash
+        result = identity()
+        if identity_hash(result) != lock['wsl_host']['sha256']:
+            raise ValueError('MOONEYE_WSL_HOST_HASH')
+        return result
+    if backend != 'windows':
+        raise ValueError('MOONEYE_BUILD_HOST')
     tools = {name: str(checked(installation / spec['path'], spec['sha256']))
              for name, spec in lock['host_tools'].items()}
     # Include compiler headers/libraries and CMake modules, not only launchers.
@@ -37,6 +47,11 @@ def tool_identity(root, installation):
 
 
 def verify_tools(identity):
+    if identity.get('backend') == 'wsl':
+        from .mooneye_wsl import identity as current
+        if current() != identity:
+            raise ValueError('MOONEYE_WSL_HOST_CHANGED')
+        return
     for path, digest in identity['files'].items():
         checked(Path(path), digest)
 
@@ -85,8 +100,13 @@ def extract(archive, destination, prefix='', *, omit_tests=False):
                 path.write_bytes(source.read(row))
 
 
-def validate_image(root, image, symbols):
-    selection = pins(root)['selection']
+def validate_image(root, image, symbols, *, backend='windows'):
+    lock = pins(root)
+    selection = dict(lock['selection'])
+    if backend == 'wsl':
+        selection['image_sha256'] = lock['wsl_host']['image_sha256']
+    elif backend != 'windows':
+        raise ValueError('MOONEYE_BUILD_HOST')
     if len(image) != 32768 or hashlib.sha256(image).hexdigest() != selection['image_sha256']:
         raise ValueError('MOONEYE_IMAGE_HASH')
     if image[0x100:0x104] != bytes.fromhex('00c35001') or any(image[a] for a in (0x143, 0x146, 0x147, 0x148, 0x149)):
@@ -111,6 +131,9 @@ def prepare(root, attempt, identity):
     commands = []
 
     def run(argv, name):
+        if identity.get('backend') == 'wsl':
+            from .mooneye_wsl import command
+            argv = command(argv, attempt)
         expired = None
         try:
             result = subprocess.run([str(value) for value in argv], cwd=attempt,
@@ -138,6 +161,12 @@ def prepare(root, attempt, identity):
                   '  to tell CMake that the project requires at least <min> but has been updated\n'
                   '  to work with policies introduced by <max> or earlier.\n')
         output = output.replace(notice, '')
+        wsl_notice = ('CMake Deprecation Warning at CMakeLists.txt:1 (cmake_minimum_required):\n'
+                      '  Compatibility with CMake < 3.5 will be removed from a future version of\n'
+                      '  CMake.\n\n'
+                      '  Update the VERSION argument <min> value or use a ...<max> suffix to tell\n'
+                      '  CMake that the project does not need compatibility with older versions.\n')
+        output = output.replace(wsl_notice, '')
         if re.search(r'\b(warning|error)\b', output, re.I):
             raise ValueError(f'MOONEYE_BUILD_DIAGNOSTIC {name}')
 
@@ -156,16 +185,24 @@ def prepare(root, attempt, identity):
     shutil.copyfile(root/'src/dv/mooneye/THIRD_PARTY.md', dependencies/'THIRD_PARTY.md')
     tools = identity['tools']
     build = attempt/'w'
-    run([tools['cmake'], '-S', wla, '-B', build, '-G', 'MinGW Makefiles',
+    is_wsl = identity.get('backend') == 'wsl'
+    run([tools['cmake'], '-S', wla, '-B', build, '-G', 'Unix Makefiles' if is_wsl else 'MinGW Makefiles',
          '-DCMAKE_MAKE_PROGRAM='+tools['make'], '-DCMAKE_C_COMPILER='+tools['gcc'],
          '-DCMAKE_AR='+tools['ar'], '-DCMAKE_BUILD_TYPE=Release'], 'mooneye-configure')
     run([tools['cmake'], '--build', build, '--target', 'wla-gb', 'wlalink', '--parallel', '2'], 'mooneye-tools')
-    assembler, linker = build/'binaries/wla-gb.exe', build/'binaries/wlalink.exe'
+    suffix = '' if is_wsl else '.exe'
+    assembler, linker = build/('binaries/wla-gb'+suffix), build/('binaries/wlalink'+suffix)
     run([assembler, '-I', source/'common', '-o', attempt/'reg_f.o', source/lock['selection']['source']], 'mooneye-assemble')
-    (attempt/'reg_f.link').write_text('[objects]\n'+(attempt/'reg_f.o').as_posix()+'\n')
+    object_path = (attempt/'reg_f.o').as_posix()
+    if is_wsl:
+        from .mooneye_wsl import linux_path
+        object_path = linux_path(attempt/'reg_f.o')
+    (attempt/'reg_f.link').write_text('[objects]\n"'+object_path+'"\n')
     run([linker, '-d', '-S', attempt/'reg_f.link', attempt/'program.gb'], 'mooneye-link')
     image = (attempt/'program.gb').read_bytes()
-    selection = validate_image(root, image, (attempt/'program.sym').read_text())
+    verify_tools(identity)
+    selection = validate_image(root, image, (attempt/'program.sym').read_text(),
+                               backend=identity.get('backend', 'windows'))
     record = {'selection': selection, 'pins': lock, 'commands': commands,
               'extraction': {'wla_dx_omitted': ['tests/'],
                              'reason': 'Unused upstream filename-regression fixtures exceed Windows MAX_PATH; complete archive retained.'},

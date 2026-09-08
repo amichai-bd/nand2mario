@@ -12,6 +12,7 @@ import uuid
 
 def supervise(command, root, tag):
     started = time.monotonic()
+    wall_started = datetime.now(timezone.utc).timestamp()
     deadline = started + 300
     # Reserve the existing 5s tree kill, 5s pipe drain and 2s fallback reap.
     execution_deadline = deadline - 12
@@ -33,8 +34,11 @@ def supervise(command, root, tag):
     path = build / "wall-budget" / (uuid.uuid4().hex + ".json")
     atomic_json(path, record)
     options = {"creationflags": subprocess.CREATE_NO_WINDOW} if os.name == "nt" else {"start_new_session": True}
+    environment = dict(os.environ)
+    # Cross-OS children need their own deadline; Windows taskkill cannot reap WSL.
+    environment['N2M_TEST_EXECUTION_DEADLINE'] = str(wall_started + 288)
     process = subprocess.Popen(command, cwd=root, stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE, **options)
+                               stderr=subprocess.PIPE, env=environment, **options)
     timed_out = False
     errors = b""
     try:

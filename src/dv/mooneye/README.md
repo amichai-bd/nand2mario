@@ -38,9 +38,28 @@ Use the [shared Python builder](../python/README.md) with targets
 `mooneye-reg-f`, `mooneye-corrupt` and `mooneye-missing`. Each builds the locked
 tool and unmodified case before simulation. The declared Python inputs include
 the pins and notices; compiler files and CMake modules enter the stage identity.
+Set `$env:N2M_MOONEYE_BUILD_HOST='wsl'` in PowerShell to build with the locked
+Ubuntu host toolchain. The default remains the pinned Windows toolchain; unknown
+hosts fail. WSL builds in the same ignored attempt directory through its mounted
+Windows path. No ROM import or tool-build cache bypass is used. The host identity
+hash covers executables, compiler headers, GCC support files, system libraries
+and CMake modules, and is rechecked before and after building. A changed host
+requires a reviewed pin update. Questa and Intel memory simulation stay on Windows.
+
+WLA 10.6 sorts equal-priority, equal-size sections without returning equality in
+`wlalink/write.c:_sections_sort`. Linux and Windows therefore place eight helper
+labels differently. The lock retains one exact ROM hash for each host. Both use
+the unchanged reg_f instructions and completion address; the Linux build is not
+expected to reproduce the Windows byte layout. The selected host's exact hash,
+complete checksums and completion symbol are required again before simulation.
+Link-file object paths are quoted so build tags may contain spaces.
+
 Build commands have a 120-second timeout with retained output, including timeout
 failures. Only WLA's unused `tests/` extraction is omitted to avoid intentional
 long-filename fixtures on Windows; the complete archive remains in the attempt.
+Linux commands also have a 110-second process-group timeout and a two-second kill
+grace. The public test supervisor supplies its execution deadline so Linux groups
+terminate before the Windows process-tree cleanup deadline.
 
 The controller checks loaded-and-paused epoch 2 before RUN. The simulation uses
 the existing 25 MHz clock and 3.125 Mbaud UART, a 500 ms total simulated bound,

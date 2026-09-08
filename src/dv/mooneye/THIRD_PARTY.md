@@ -23,8 +23,9 @@ Installed compiler/build tools are external host dependencies. Their exact
 versions, file identities, commands and resulting WLA binaries belong to the
 build record. They are not copied into product sources or redistributed.
 
-The locked WLA CMake file declares minimum version 2.8.12. CMake 3.31.1 reports
-its exact minimum-version deprecation warning; the builder explains only that
-known text. Other warning/error text fails preparation. The build uses CMake's
+The locked WLA CMake file declares minimum version 2.8.12. CMake 3.31.1 and the
+WSL host's 3.28.3 report different minimum-version deprecation warnings; the
+builder explains only those exact known texts. Other warning/error text fails
+preparation. The build uses CMake's
 unchanged `wla-gb` and `wlalink` targets, which do not reference upstream `tests/`.
 That unused directory stays in the retained archive but is not extracted.

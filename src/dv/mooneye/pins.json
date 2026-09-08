@@ -60,5 +60,19 @@
       "path": "riscfree/build_tools/bin/make.exe",
       "sha256": "459fc453668766fa9b4e27c344d9aec0b44f75f166f18de5c71d9819dd3551d3"
     }
+  },
+  "wsl_host": {
+    "sha256": "e8a9967f937f1e434dbeed1aa8890a5de5b9bf5181f4e5b478fac0e7b9fb538d",
+    "description": "Ubuntu 24.04 x86_64 host compiler inputs, libraries and CMake modules",
+    "versions": {
+      "ar": "GNU ar (GNU Binutils for Ubuntu) 2.42",
+      "cmake": "cmake version 3.28.3",
+      "gcc": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+      "ld": "GNU ld (GNU Binutils for Ubuntu) 2.42",
+      "make": "GNU Make 4.3",
+      "python3": "Python 3.12.3",
+      "timeout": "timeout (GNU coreutils) 9.4"
+    },
+    "image_sha256": "4b193e887ee3ac82b38b796729e1503e9a78da3e1140f8bd5600d0884f2e2627"
   }
 }

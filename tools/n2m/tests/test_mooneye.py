@@ -9,6 +9,7 @@ import zipfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from n2m import mooneye, preload
+from n2m import mooneye_wsl
 
 ROOT = Path(__file__).resolve().parents[3]
 spec = importlib.util.spec_from_file_location('mooneye_check', ROOT/'src/dv/mooneye/check.py')
@@ -39,6 +40,42 @@ class MooneyeTests(unittest.TestCase):
     def test_locked_image_cannot_be_replaced(self):
         with self.assertRaisesRegex(ValueError, 'IMAGE_HASH'):
             mooneye.validate_image(ROOT, bytes(32768), '01:4a81 quit@serial_dump')
+        with self.assertRaisesRegex(ValueError, 'IMAGE_HASH'):
+            mooneye.validate_image(ROOT, bytes(32768), '01:4a81 quit@serial_dump', backend='wsl')
+
+    def test_wsl_host_pin_and_changed_inputs(self):
+        identity = {'backend': 'wsl', 'tools': {}, 'files': {}}
+        lock = {'wsl_host': {'sha256': mooneye_wsl.identity_hash(identity)}}
+        with patch.dict('os.environ', {'N2M_MOONEYE_BUILD_HOST': 'wsl'}), \
+             patch.object(mooneye, 'pins', return_value=lock), \
+             patch.object(mooneye_wsl, 'identity', return_value=identity):
+            self.assertEqual(mooneye.tool_identity(ROOT, self.path), identity)
+            mooneye.verify_tools(identity)
+            with self.assertRaisesRegex(ValueError, 'HOST_CHANGED'):
+                mooneye.verify_tools(dict(identity, files={'changed': '0'}))
+            lock['wsl_host']['sha256'] = '0'*64
+            with self.assertRaisesRegex(ValueError, 'HOST_HASH'):
+                mooneye.tool_identity(ROOT, self.path)
+
+    def test_wsl_deadline_and_space_arguments(self):
+        with patch.dict('os.environ', {'N2M_TEST_EXECUTION_DEADLINE': '1020'}), \
+             patch.object(mooneye_wsl.time, 'time', return_value=1000), \
+             patch.object(mooneye_wsl, 'linux_path', side_effect=lambda p: '/mnt/c/'+p.name):
+            argv = mooneye_wsl.command(['/usr/bin/cmake', Path('with spaces')], Path('build dir'))
+            self.assertEqual(argv, ['wsl.exe', '--cd', '/mnt/c/build dir', '--exec', 'timeout',
+                                    '--kill-after=2', '15', '/usr/bin/cmake', '/mnt/c/with spaces'])
+        with patch.dict('os.environ', {'N2M_TEST_EXECUTION_DEADLINE': '1004'}), \
+             patch.object(mooneye_wsl.time, 'time', return_value=1000):
+            with self.assertRaisesRegex(ValueError, 'BUILD_DEADLINE'):
+                mooneye_wsl.timeout_seconds(110)
+
+    def test_missing_and_unknown_build_host(self):
+        with patch.dict('os.environ', {'N2M_MOONEYE_BUILD_HOST': 'other'}):
+            with self.assertRaisesRegex(ValueError, 'BUILD_HOST'):
+                mooneye.tool_identity(ROOT, self.path)
+        with patch.object(mooneye_wsl.shutil, 'which', return_value=None):
+            with self.assertRaisesRegex(ValueError, 'MISSING_TOOL'):
+                mooneye_wsl.snapshot()
 
     def test_archive_escape_and_symlink_rejected(self):
         for index, entry in enumerate(('../escape', '/escape', 'link')):
