@@ -118,7 +118,7 @@ async def controls_corrupt(dut):
 async def controls_startup(dut):
     """Bounded diagnostic only; no controls acceptance claim."""
     def mark(label):
-        with Path('startup-progress.jsonl').open('a') as stream:
+        with Path('transactions.jsonl').open('a') as stream:
             stream.write(json.dumps(dict(label=label, time_ns=float(get_sim_time(unit='ns')),
                 reset=str(dut.board_reset_n.value), leds=str(dut.leds.value))) + '\n')
             stream.flush()
@@ -130,4 +130,7 @@ async def controls_startup(dut):
     dut.board_reset_n.value = 1
     await Timer(999, unit='us')
     mark('1ms')
+    for target_ms in (10, 11, 20, 21, 23):
+        await Timer(target_ms * 1000000 - int(get_sim_time(unit='ns')), unit='ns')
+        mark(f'{target_ms}ms')
     print('CONTROLS_STARTUP_DIAGNOSTIC')

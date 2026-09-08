@@ -12427,7 +12427,7 @@
     "args": [],
     "expected_exit": "zero",
     "signature": "CONTROLS_STARTUP_DIAGNOSTIC",
-    "timeout_seconds": 30,
+    "timeout_seconds": 90,
     "vendor_model": "intel-controls",
     "intel_mixed_mode_instances": [
       "tb_python_controls.dut.u_system.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",

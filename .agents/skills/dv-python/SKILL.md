@@ -42,6 +42,10 @@ plain assertions. Add classes, queues, background tasks, or pyuvm only when the
 protocol's concurrency or reuse warrants them. Do not reproduce UVM phases or
 component hierarchies by default.
 
+Use one decorated test entry point per target module and share undecorated
+helpers. The [builder's test identity](../../../wiki/tools/n2m/SPEC.md#testbench-types)
+is checked after execution; it does not filter cocotb scheduling.
+
 Keep three responsibilities easy to inspect, without requiring three frameworks:
 
 - Drive public inputs at defined safe times.
