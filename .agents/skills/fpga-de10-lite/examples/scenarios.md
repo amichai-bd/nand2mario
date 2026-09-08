@@ -58,3 +58,33 @@ to retain the standard allocator. A process-only setting was verified with
 under the existing 600-second supervisor and shared lock. Record the environment
 override, restore it in `finally`, and require a fresh complete accepted fit.
 This changes no DLL or security policy and does not relabel failed attempts.
+
+## Package constants in Quartus 25.1
+
+Quartus 25.1std.0 Build 1129 reported error10162 for selected package-qualified
+constants in instance expressions and one continuous-assignment LHS array index,
+although the affected Questa simulations passed. This is the observed tool
+limitation, not a ban on package qualification. Keep the mandatory
+[RTL reference style](../../../../wiki/src/rtl-reference-style.md).
+
+Use a module-local constant initialized from the qualified owning package where
+this limitation occurs. Preserve the original enum or integer type, width,
+signedness and value; use the alias only at the affected expression. For example:
+
+```systemverilog
+localparam n2m_memory_pkg::memory_store_t OAM_STORE = n2m_memory_pkg::STORE_OAM;
+```
+
+Do not substitute numeric copies or restore wildcard imports. Review the alias
+against the original binding, including uses introduced by macros. The verified
+fix used eleven typed aliases across twelve affected sites;
+[PR229](https://github.com/amichai-bd/nand2mario/pull/229) owns the failed attempts,
+exact commands, versions and passing synthesis/simulation evidence. The subsequent
+[board check](https://github.com/amichai-bd/nand2mario/issues/225#issuecomment-5588100639)
+qualified the reviewed image through bounded original-program checks.
+
+When changing these constructs in product RTL, run actual affected Quartus HDL
+compilation and the existing target's required fit/timing checks before claiming
+synthesis acceptance. A passing Questa check alone does not establish that proof.
+Preserve failed attempts and qualify reuse by the changed inputs and behavior.
+This requirement does not add a full fit to pure DV or documentation changes.
