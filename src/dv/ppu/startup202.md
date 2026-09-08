@@ -3,7 +3,8 @@
 Issue #202 remains an investigation. These original programs test the legal
 CPU-visible first-line OAM boundary independently of internal pixel timestamps.
 The correction blocks only early OAM reads; writes and source timing are unchanged.
-Late-scan permissions remain #204 and raw startup cadence remains #205. No
+Early VRAM reads belong to #204; late OAM writes/corruption remain #208,
+and raw startup cadence remains #205. No
 hardware-revision claim follows from a model disagreement.
 
 The [pinned primary read table](https://github.com/Gekkio/mooneye-test-suite/blob/31510e12eea6286d36eea060a6adde755e1067aa/acceptance/ppu/lcdon_timing-GS.s)
