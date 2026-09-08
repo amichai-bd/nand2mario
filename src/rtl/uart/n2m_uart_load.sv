@@ -30,9 +30,7 @@ module n2m_uart_load #(
     input var logic [7:0] rom_read_data,
     input var logic rom_read_valid
 );
-    import n2m_interfaces_pkg::*;
-    import n2m_uart_pkg::*;
-    localparam integer ADDRESS_BITS = $clog2(PROFILE_ROM_BYTES);
+    localparam integer ADDRESS_BITS = $clog2(n2m_interfaces_pkg::PROFILE_ROM_BYTES);
     typedef enum logic [3:0] {
         IDLE, CLEAR, WRITE_BYTES, SCAN_FETCH, SCAN_USE,
         READ_FETCH, READ_USE, READ_SEND, COMPLETE
@@ -58,12 +56,12 @@ module n2m_uart_load #(
         if (SIM_PRELOAD) $readmemh("preload-crc.hex", preload_crc);
     end
     always @(posedge clk_sys) begin
-        if (!reset_sys && start && operation == UART_LOAD_BEGIN)
+        if (!reset_sys && start && operation == n2m_uart_pkg::UART_LOAD_BEGIN)
             preload_available <= 1'b0;
     end
     assign adopt_preload = SIM_PRELOAD && preload_available;
     `N2M_ASSERT(UART_PRELOAD_CRC, clk_sys, reset_sys,
-        !(start && operation == UART_LOAD_BEGIN && adopt_preload) ||
+        !(start && operation == n2m_uart_pkg::UART_LOAD_BEGIN && adopt_preload) ||
         (!$isunknown(preload_crc[0]) && expected_crc == preload_crc[0]))
 `endif
 
@@ -78,7 +76,7 @@ module n2m_uart_load #(
     assign rom_write_data = input_data;
     assign presence_write = (state == CLEAR || rom_write) && !reset_sys;
     assign presence_read = state == SCAN_FETCH && !reset_sys;
-    assign updated_crc = crc32_byte(crc, rom_read_data);
+    assign updated_crc = n2m_uart_pkg::crc32_byte(crc, rom_read_data);
     n2m_uart_presence_store u_presence (
         .clk_sys(clk_sys), .reset_sys(reset_sys),
         .write_enable(presence_write), .write_address(address),
@@ -98,11 +96,11 @@ module n2m_uart_load #(
         status_next = status;
         case (state)
             IDLE: if (start) begin
-                status_next = STATUS_OK;
+                status_next = n2m_interfaces_pkg::STATUS_OK;
                 address_next = offset[ADDRESS_BITS-1:0];
                 remaining_next = count;
                 case (operation)
-                    UART_LOAD_BEGIN: begin
+                    n2m_uart_pkg::UART_LOAD_BEGIN: begin
                         image_crc_next = expected_crc;
                         address_next = '0;
                         cleared_next = 0;
@@ -112,20 +110,20 @@ module n2m_uart_load #(
                             state_next = COMPLETE;
                         end
                     end
-                    UART_LOAD_WRITE: state_next = WRITE_BYTES;
-                    UART_LOAD_END: begin
+                    n2m_uart_pkg::UART_LOAD_WRITE: state_next = WRITE_BYTES;
+                    n2m_uart_pkg::UART_LOAD_END: begin
                         address_next = '0;
-                        crc_next = WIRE_CRC32_INIT;
+                        crc_next = n2m_interfaces_pkg::WIRE_CRC32_INIT;
                         missing_next = 0;
                         state_next = SCAN_FETCH;
                     end
-                    UART_LOAD_READ: state_next = READ_FETCH;
+                    n2m_uart_pkg::UART_LOAD_READ: state_next = READ_FETCH;
                     default: state_next = IDLE;
                 endcase
             end
             CLEAR: begin
                 address_next = address + 1'b1;
-                if (address == PROFILE_ROM_BYTES - 1) begin
+                if (address == n2m_interfaces_pkg::PROFILE_ROM_BYTES - 1) begin
                     cleared_next = 1;
                     state_next = COMPLETE;
                 end
@@ -140,9 +138,9 @@ module n2m_uart_load #(
                 missing_next = missing || !presence_value;
                 crc_next = updated_crc;
                 address_next = address + 1'b1;
-                if (address == PROFILE_ROM_BYTES - 1) begin
-                    status_next = missing_next || (updated_crc ^ WIRE_CRC32_INIT) != image_crc
-                        ? STATUS_BAD_IMAGE : STATUS_OK;
+                if (address == n2m_interfaces_pkg::PROFILE_ROM_BYTES - 1) begin
+                    status_next = missing_next || (updated_crc ^ n2m_interfaces_pkg::WIRE_CRC32_INIT) != image_crc
+                        ? n2m_interfaces_pkg::STATUS_BAD_IMAGE : n2m_interfaces_pkg::STATUS_OK;
                     state_next = COMPLETE;
                 end else state_next = SCAN_FETCH;
             end
@@ -163,18 +161,18 @@ module n2m_uart_load #(
     `DFF_ARST_VAL(state, state_next, clk_sys, reset_sys, IDLE)
     `DFF_ARST_VAL(address, address_next, clk_sys, reset_sys, '0)
     `DFF_ARST_VAL(remaining, remaining_next, clk_sys, reset_sys, '0)
-    `DFF_ARST_VAL(crc, crc_next, clk_sys, reset_sys, WIRE_CRC32_INIT)
+    `DFF_ARST_VAL(crc, crc_next, clk_sys, reset_sys, n2m_interfaces_pkg::WIRE_CRC32_INIT)
     `DFF_ARST_VAL(image_crc, image_crc_next, clk_sys, reset_sys, '0)
     `DFF_ARST_VAL(missing, missing_next, clk_sys, reset_sys, 1'b0)
     `DFF_ARST_VAL(cleared, cleared_next, clk_sys, reset_sys, 1'b0)
     `DFF_ARST_VAL(held_data, held_data_next, clk_sys, reset_sys, '0)
-    `DFF_ARST_VAL(status, status_next, clk_sys, reset_sys, STATUS_OK)
+    `DFF_ARST_VAL(status, status_next, clk_sys, reset_sys, n2m_interfaces_pkg::STATUS_OK)
     `N2M_ASSERT(UART_LOAD_START_IDLE, clk_sys, reset_sys, start |-> !busy)
     `N2M_ASSERT(UART_LOAD_RANGE, clk_sys, reset_sys,
-        start && (operation == UART_LOAD_WRITE || operation == UART_LOAD_READ) |->
-        count != 0 && count <= WIRE_MAX_PAYLOAD && ({1'b0, offset} + {17'b0, count}) <= PROFILE_ROM_BYTES)
+        start && (operation == n2m_uart_pkg::UART_LOAD_WRITE || operation == n2m_uart_pkg::UART_LOAD_READ) |->
+        count != 0 && count <= n2m_interfaces_pkg::WIRE_MAX_PAYLOAD && ({1'b0, offset} + {17'b0, count}) <= n2m_interfaces_pkg::PROFILE_ROM_BYTES)
     `N2M_ASSERT(UART_LOAD_CLEAR_REQUIRED, clk_sys, reset_sys,
-        start && (operation == UART_LOAD_WRITE || operation == UART_LOAD_END) |-> cleared)
+        start && (operation == n2m_uart_pkg::UART_LOAD_WRITE || operation == n2m_uart_pkg::UART_LOAD_END) |-> cleared)
     `N2M_ASSERT(UART_LOAD_ROM_SERVICE, clk_sys, reset_sys,
         state == SCAN_USE || state == READ_USE |-> rom_read_valid)
     `N2M_ASSERT(UART_LOAD_PRESENCE_SERVICE, clk_sys, reset_sys,
