@@ -100,7 +100,7 @@ is retained in its pinned CPU conflict path for all three palettes. The digital
 old/conflict/new sample sequence preserves our architectural commit and source
 boundary. It does not assert equality of internal Core PPU action timestamps
 or resolve the separate startup first-line interval difference in
-[#197](https://github.com/amichai-bd/nand2mario/issues/197).
+[#202](https://github.com/amichai-bd/nand2mario/issues/202).
 
 The actual negedge LCDC/LYC write block still requires an explicit relative-order
 mapping: renderer sampling precedes those register changes. No generated clock,
