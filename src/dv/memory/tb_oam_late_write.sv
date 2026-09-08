@@ -1,13 +1,12 @@
 `timescale 1ns/1ps
 `default_nettype none
 module tb_oam_late_write;
-    import n2m_memory_pkg::*;
     logic clk_sys, reset_sys, core_reset, init_done;
     logic prepare, commit, late_window, busy, late_commit, fault;
     logic [15:0] address;
     logic [7:0] data;
-    memory_oam_request_t request;
-    memory_oam_response_t response;
+    n2m_memory_pkg::memory_oam_request_t request;
+    n2m_memory_pkg::memory_oam_response_t response;
     logic raw_read, raw_write, access_read, access_write, access_valid;
     logic [14:0] raw_address;
     logic [7:0] raw_data, access_rdata;
@@ -26,7 +25,7 @@ module tb_oam_late_write;
     assign access_write = raw_write && !busy;
     n2m_memory_stores stores (
         .clk_sys, .reset_sys, .core_reset, .init_done,
-        .access_read, .access_write, .access_store(STORE_OAM),
+        .access_read, .access_write, .access_store(n2m_memory_pkg::STORE_OAM),
         .access_address(raw_address), .access_wdata(raw_data), .access_rdata, .access_valid,
         .oam_request(request), .oam_response(response),
         .host_read(1'b0), .host_write(1'b0), .host_offset(32'd0), .host_wdata(8'd0),

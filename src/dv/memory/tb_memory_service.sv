@@ -2,16 +2,15 @@
 `default_nettype none
 `include "src/rtl/common/macros.svh"
 module tb_memory_service;
-    import n2m_memory_pkg::*;
     logic clk_sys, reset_sys, core_reset, init_done;
     logic request_valid, write_enable, bus_commit, response_valid, contract_fault;
     logic [15:0] address, owner_address;
     logic [7:0] write_data, read_data, storage_wdata, storage_rdata, owner_wdata, owner_rdata;
     logic storage_read, storage_write, storage_valid;
-    memory_store_t storage_store, resolved_store;
+    n2m_memory_pkg::memory_store_t storage_store, resolved_store;
     logic [14:0] storage_offset, resolved_offset;
     logic owner_prepare, owner_commit, owner_write, owner_valid, owner_service_available;
-    memory_destination_t owner_destination;
+    n2m_memory_pkg::memory_destination_t owner_destination;
     logic policy_blocked, policy_ram, policy_read, policy_write, previous_owner;
     logic [15:0] previous_owner_address;
     logic [7:0] resolved_wdata;
@@ -27,20 +26,20 @@ module tb_memory_service;
 
     // Synthetic selected-policy adapter: explicit test of the external132
     // boundary, not a DMA engine or transition-edge arbitration implementation.
-    assign policy_ram = owner_destination == MEMORY_VRAM || owner_destination == MEMORY_OAM;
-    assign owner_service_available = policy_ram || owner_destination == MEMORY_UNUSABLE;
+    assign policy_ram = owner_destination == n2m_memory_pkg::MEMORY_VRAM || owner_destination == n2m_memory_pkg::MEMORY_OAM;
+    assign owner_service_available = policy_ram || owner_destination == n2m_memory_pkg::MEMORY_UNUSABLE;
     assign policy_read = owner_prepare && !owner_write && policy_ram && !policy_blocked;
     assign policy_write = owner_commit && owner_write && policy_ram && !policy_blocked;
     assign owner_rdata = policy_blocked ? 8'hFF :
-        (owner_destination == MEMORY_UNUSABLE ? 8'h00 : storage_rdata);
+        (owner_destination == n2m_memory_pkg::MEMORY_UNUSABLE ? 8'h00 : storage_rdata);
     assign owner_valid = owner_prepare && !owner_write &&
-        (policy_blocked || owner_destination == MEMORY_UNUSABLE ||
+        (policy_blocked || owner_destination == n2m_memory_pkg::MEMORY_UNUSABLE ||
          (previous_owner && previous_owner_address == owner_address && storage_valid));
     `DFF_ARST_VAL(previous_owner, policy_read, clk_sys, reset_sys, 1'b0)
     `DFF_EN(previous_owner_address, owner_address, clk_sys, policy_read)
     assign resolved_store = owner_prepare ?
-        (owner_destination == MEMORY_VRAM ? STORE_VRAM : STORE_OAM) : storage_store;
-    assign resolved_offset = owner_prepare ? (owner_destination == MEMORY_VRAM
+        (owner_destination == n2m_memory_pkg::MEMORY_VRAM ? n2m_memory_pkg::STORE_VRAM : n2m_memory_pkg::STORE_OAM) : storage_store;
+    assign resolved_offset = owner_prepare ? (owner_destination == n2m_memory_pkg::MEMORY_VRAM
         ? {2'b0, owner_address[12:0]} : {7'b0, owner_address[7:0]}) : storage_offset;
     assign resolved_wdata = owner_prepare ? owner_wdata : storage_wdata;
 

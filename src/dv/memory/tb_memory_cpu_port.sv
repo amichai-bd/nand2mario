@@ -1,16 +1,15 @@
 `timescale 1ns/1ps
 `default_nettype none
 module tb_memory_cpu_port;
-    import n2m_memory_pkg::*;
     logic clk_sys, reset_sys, core_reset, init_done;
     logic request_valid, write_enable, bus_commit, response_valid, contract_fault;
     logic [15:0] address, owner_address;
     logic [7:0] write_data, read_data, storage_wdata, storage_rdata, owner_wdata, owner_rdata;
     logic storage_read, storage_write, storage_valid;
-    memory_store_t storage_store;
+    n2m_memory_pkg::memory_store_t storage_store;
     logic [14:0] storage_offset;
     logic owner_prepare, owner_commit, owner_write, owner_valid, owner_service_available;
-    memory_destination_t owner_destination;
+    n2m_memory_pkg::memory_destination_t owner_destination;
     logic [7:0] host_rdata, unused_vram, unused_wave;
     logic [15:0] unused_oam;
     logic host_valid, unused_vram_valid, unused_oam_valid, unused_wave_valid;
@@ -221,7 +220,7 @@ module tb_memory_cpu_port;
         // not a timer, DMA or PPU implementation or its acceptance evidence.
         address = 16'hFF46; write_enable = 0; owner_service_available = 1; owner_valid = 1;
         owner_rdata = 8'h35; #1;
-        if (owner_destination != MEMORY_DMA || !owner_prepare || !response_valid || read_data !== 8'h35)
+        if (owner_destination != n2m_memory_pkg::MEMORY_DMA || !owner_prepare || !response_valid || read_data !== 8'h35)
             $fatal(1, "MEMORY_CPU_OWNER_PREPARE");
         owner_rdata = 8'hC7; #1;
         if (read_data !== 8'hC7) $fatal(1, "MEMORY_CPU_OWNER_PRE_T4");

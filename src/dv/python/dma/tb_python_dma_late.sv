@@ -1,12 +1,9 @@
 `timescale 1ns/1ps
 `default_nettype none
 module tb_python_dma_late;
-    import n2m_interfaces_pkg::*;
-    import n2m_cpu_pkg::*;
-    import n2m_memory_pkg::*;
     integer lane;
-    memory_oam_request_t oam_request;
-    memory_oam_response_t oam_response;
+    n2m_memory_pkg::memory_oam_request_t oam_request;
+    n2m_memory_pkg::memory_oam_response_t oam_response;
     logic clk_sys, reset_sys, core_reset, init_done, memory_init_done, gb_tick, paused, run_enable;
     logic [63:0] dot_before;
     logic [1:0] cpu_phase;
@@ -17,18 +14,18 @@ module tb_python_dma_late;
     integer held_count;
     bit halt_case, stop_case, power_case, seen_wake, resumed_dma;
     logic test_wake, stop_execute;
-    cpu_stop_action_t clock_stop_action;
+    n2m_cpu_pkg::cpu_stop_action_t clock_stop_action;
     logic [63:0] sleep_dot, pause_dot;
     logic [1:0] pause_sample_phase;
     integer pause_phase, pause_count, pause_edge;
     bit pause_done, corrupt_pause;
-    cpu_bus_plan_t bus_plan;
-    cpu_address_effect_t address_effect;
+    n2m_cpu_pkg::cpu_bus_plan_t bus_plan;
+    n2m_cpu_pkg::cpu_address_effect_t address_effect;
     logic address_effect_resolved, address_effect_sample;
     logic [7:0] read_data;
     logic response_valid, fault, cpu_fault, ppu_fault;
     logic peripheral_prepare, peripheral_commit, peripheral_write;
-    memory_destination_t peripheral_destination;
+    n2m_memory_pkg::memory_destination_t peripheral_destination;
     logic [15:0] peripheral_address;
     logic [7:0] peripheral_wdata, peripheral_rdata;
     logic peripheral_valid, peripheral_available, ppu_selected;
@@ -43,7 +40,7 @@ module tb_python_dma_late;
     logic [15:0] ppu_oam_data;
     logic ppu_oam_valid, dma_active;
     logic access_read, access_write, access_valid;
-    memory_store_t access_store;
+    n2m_memory_pkg::memory_store_t access_store;
     logic [14:0] access_address;
     logic [7:0] access_wdata, access_rdata;
     logic raw_vram_read, raw_vram_valid, raw_oam_read, raw_oam_valid;
@@ -52,17 +49,17 @@ module tb_python_dma_late;
     logic [6:0] raw_oam_pair;
     logic [15:0] raw_oam_data;
     logic setup, setup_read, setup_write, host_write, host_valid;
-    memory_store_t setup_store;
+    n2m_memory_pkg::memory_store_t setup_store;
     logic [14:0] setup_address;
     logic [7:0] setup_data, host_data, unused_host, unused_wave;
     logic [31:0] host_address;
     logic unused_wave_valid;
     logic retirement_valid, record_event, bus_event;
-    retirement_t retirement;
+    n2m_interfaces_pkg::retirement_t retirement;
     logic [383:0] record_sample;
     logic [88:0] bus_sample;
     logic inspection_enable;
-    memory_oam_request_t inspection_request, store_request;
+    n2m_memory_pkg::memory_oam_request_t inspection_request, store_request;
     logic [16:0] inspection_response;
     logic [7:0] lcdc_observe;
     logic [5:0] service_slot;
@@ -77,9 +74,9 @@ module tb_python_dma_late;
         .enabled_pending(|(test_ie[4:0] & test_if)), .execute(stop_execute),
         .action(clock_stop_action), .padding(), .divider_reset());
     n2m_timebase timebase (.clk_sys(clk_sys), .reset_sys(reset_sys), .core_reset(core_reset),
-        .pause_request(!run_enable || cpu_stopped || (stop_execute && clock_stop_action==STOP_OSCILLATOR)), .paused(paused), .gb_tick(gb_tick));
+        .pause_request(!run_enable || cpu_stopped || (stop_execute && clock_stop_action==n2m_cpu_pkg::STOP_OSCILLATOR)), .paused(paused), .gb_tick(gb_tick));
     n2m_cpu cpu (.clk_sys(clk_sys), .reset_sys(reset_sys), .core_reset(core_reset),
-        .gb_tick(gb_tick), .profile_id(PROFILE_DIRECT_ID), .epoch(32'd2), .dot_before(dot_before),
+        .gb_tick(gb_tick), .profile_id(n2m_interfaces_pkg::PROFILE_DIRECT_ID), .epoch(32'd2), .dot_before(dot_before),
         .ie(test_ie), .iflags(test_if), .buttons(8'd0), .read_data(read_data), .response_valid(response_valid),
         .joyp_selected_active(1'b0), .wake_request(test_wake), .request_valid(request_valid),
         .address(bus_plan.address), .write_data(bus_plan.write_data), .write_enable(bus_plan.write_enable),
@@ -138,7 +135,7 @@ module tb_python_dma_late;
     end
     initial begin
         clk_sys=0;reset_sys=1;core_reset=0;setup=0;setup_read=0;setup_write=0;
-        setup_store=STORE_OAM;setup_address=0;setup_data=0;
+        setup_store=n2m_memory_pkg::STORE_OAM;setup_address=0;setup_data=0;
         host_write=0;host_address=0;host_data=0;
         run_enable=0;test_ie=0;test_if=0;test_wake=0;
         dot_before=0;record_event=0;bus_event=0;
