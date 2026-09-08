@@ -10077,5 +10077,49 @@
         "src/dv/ppu/startup204.py"
       ]
     }
+  },
+  "ppu-vram-read": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_vram_read.sv"
+    ],
+    "top": "tb_ppu_vram_read",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS PPU early VRAM read window cases=14",
+    "timeout_seconds": 60
+  },
+  "ppu-vram-read-corrupt": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/ppu/n2m_ppu_mix.sv",
+      "src/rtl/ppu/n2m_ppu_shift.sv",
+      "src/rtl/ppu/n2m_ppu_fetch.sv",
+      "src/rtl/ppu/n2m_ppu_timing.sv",
+      "src/rtl/ppu/n2m_ppu_objects.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/rtl/ppu/n2m_ppu_position.sv",
+      "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/ppu/n2m_ppu.sv",
+      "src/dv/ppu/tb_ppu_vram_read.sv"
+    ],
+    "top": "tb_ppu_vram_read",
+    "args": [
+      "+read_corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "PPU_VRAM_READ_WINDOW expected=0/1 actual=1/1",
+    "timeout_seconds": 60
   }
 }

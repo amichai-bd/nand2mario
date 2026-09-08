@@ -228,5 +228,8 @@ waves and32 literal boundary checks are retained with positive and fault evidenc
 
 The [early OAM read boundary](startup202.md) has separate read/write observations
 and original CPU witnesses. Late-scan direction-specific windows remain in
-[#204](https://github.com/amichai-bd/nand2mario/issues/204), and startup raster
+[#208](https://github.com/amichai-bd/nand2mario/issues/208), and startup raster
 cadence remains in [#205](https://github.com/amichai-bd/nand2mario/issues/205).
+
+The [early VRAM read witness](startup204.md) checks the distinct read permission
+without changing late-scan writes.

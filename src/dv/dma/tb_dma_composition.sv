@@ -33,6 +33,7 @@ module tb_dma_composition;
     logic [7:0] peripheral_wdata, peripheral_rdata;
     logic peripheral_valid, peripheral_available, ppu_selected;
     logic ppu_oam_write_allow, ppu_oam_read_allow;
+    logic ppu_vram_write_allow, ppu_vram_read_allow;
     logic vram_cpu_allow, oam_cpu_allow, ppu_vram_request, ppu_vram_valid;
     logic [12:0] ppu_vram_address;
     logic [7:0] ppu_vram_data;
@@ -77,6 +78,7 @@ module tb_dma_composition;
     bit corrupt_row_case, row_fault_ready;
     logic [14:0] row_fault_address;
     assign init_done=memory_init_done && !setup;
+    assign vram_cpu_allow = bus_plan.write_enable ? ppu_vram_write_allow : ppu_vram_read_allow;
     assign oam_cpu_allow = bus_plan.write_enable ? ppu_oam_write_allow : ppu_oam_read_allow;
     n2m_dma dut (.*);
     // Stop at the accepting carry, before registered stopped becomes visible.
@@ -102,8 +104,8 @@ module tb_dma_composition;
         .vram_request(ppu_vram_request), .vram_address(ppu_vram_address),
         .vram_data(ppu_vram_data), .vram_valid(ppu_vram_valid), .oam_pair_address(ppu_oam_pair),
         .oam_phase(ppu_oam_phase), .oam_scan_index(ppu_scan_index), .oam_data(ppu_oam_data),
-        .oam_valid(ppu_oam_valid), .dma_active(dma_active), .vram_cpu_allow(vram_cpu_allow),
-        .oam_cpu_allow(ppu_oam_write_allow), .oam_cpu_read_allow(ppu_oam_read_allow), .stat_condition(), .vblank_condition(), .stat_rise(),
+        .oam_valid(ppu_oam_valid), .dma_active(dma_active), .vram_cpu_allow(ppu_vram_write_allow),
+        .oam_cpu_allow(ppu_oam_write_allow), .vram_cpu_read_allow(ppu_vram_read_allow), .oam_cpu_read_allow(ppu_oam_read_allow), .stat_condition(), .vblank_condition(), .stat_rise(),
         .vblank_rise(), .fault(ppu_fault), .source_valid(), .source_start(), .source_shade(),
         .source_x(), .source_y(), .source_epoch(), .source_dot(), .source_abort(),
         .blank_assert(), .source_display_eligible());

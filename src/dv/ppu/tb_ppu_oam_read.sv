@@ -22,7 +22,7 @@ module tb_ppu_oam_read;
         .io_commit, .io_write, .io_address, .io_wdata, .io_rdata, .io_selected,
         .vram_request, .vram_address, .vram_data(8'd0), .vram_valid,
         .oam_pair_address, .oam_phase, .oam_scan_index(), .oam_data(16'd0),
-        .oam_valid, .dma_active, .vram_cpu_allow, .oam_cpu_allow, .oam_cpu_read_allow,
+        .oam_valid, .dma_active, .vram_cpu_allow, .oam_cpu_allow, .vram_cpu_read_allow(), .oam_cpu_read_allow,
         .stat_condition, .stat_rise, .vblank_condition(), .vblank_rise(), .fault,
         .source_valid(), .source_start(), .source_shade(), .source_x(), .source_y(),
         .source_epoch(), .source_dot(), .source_abort(), .blank_assert(),
@@ -57,7 +57,7 @@ module tb_ppu_oam_read;
     endtask
     task automatic check_at(input integer elapsed, input logic read_allowed, input logic write_allowed);
         @(negedge clk_sys);
-        if (elapsed == 452 && $test$plusargs("read_corrupt")) force dut.oam_cpu_read_allow = 1'b1;
+        if (elapsed == 452 && $test$plusargs("read_corrupt")) force dut.vram_cpu_read_allow(), .oam_cpu_read_allow = 1'b1;
         do @(posedge clk_sys); while (!(gb_tick && dot_before == enable_dot + 64'(elapsed)));
         if (cpu_phase != 3) $fatal(1, "PPU_OAM_READ_PHASE");
         check_permissions(read_allowed, write_allowed);
