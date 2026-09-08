@@ -44,7 +44,8 @@ long-filename fixtures on Windows; the complete archive remains in the attempt.
 
 The controller checks loaded-and-paused epoch 2 before RUN. The simulation uses
 the existing 25 MHz clock and 3.125 Mbaud UART, a 500 ms total simulated bound,
-and a 1500-second wall bound. After RUN, dots must advance at each 10 us check.
+and the shared 300-second hard wall bound, with a 120-second runtime target.
+That target is not a measured result. After RUN, dots must advance at each 10 us check.
 Completion must occur within 1,000,000 dots. All instruction retirements and bus
 commits are recorded; this test checks the selected upstream verdict, not an
 independent instruction-by-instruction oracle for the reporting library.
