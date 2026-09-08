@@ -8571,6 +8571,8 @@
       "src/rtl/vga/n2m_frame_bridge.sv",
       "src/rtl/snapshot/n2m_frame_snapshot.sv",
       "src/rtl/memory/n2m_oam_late_write.sv",
+      "src/rtl/timer/n2m_timer_pkg.sv",
+      "src/rtl/timer/n2m_timer.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -8697,6 +8699,8 @@
       "src/rtl/vga/n2m_frame_bridge.sv",
       "src/rtl/snapshot/n2m_frame_snapshot.sv",
       "src/rtl/memory/n2m_oam_late_write.sv",
+      "src/rtl/timer/n2m_timer_pkg.sv",
+      "src/rtl/timer/n2m_timer.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -8821,6 +8825,8 @@
       "src/rtl/vga/n2m_frame_bridge.sv",
       "src/rtl/snapshot/n2m_frame_snapshot.sv",
       "src/rtl/memory/n2m_oam_late_write.sv",
+      "src/rtl/timer/n2m_timer_pkg.sv",
+      "src/rtl/timer/n2m_timer.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -8947,6 +8953,8 @@
       "src/rtl/vga/n2m_frame_bridge.sv",
       "src/rtl/snapshot/n2m_frame_snapshot.sv",
       "src/rtl/memory/n2m_oam_late_write.sv",
+      "src/rtl/timer/n2m_timer_pkg.sv",
+      "src/rtl/timer/n2m_timer.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -9072,6 +9080,8 @@
       "src/rtl/vga/n2m_frame_bridge.sv",
       "src/rtl/snapshot/n2m_frame_snapshot.sv",
       "src/rtl/memory/n2m_oam_late_write.sv",
+      "src/rtl/timer/n2m_timer_pkg.sv",
+      "src/rtl/timer/n2m_timer.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -9200,6 +9210,8 @@
       "src/rtl/vga/n2m_frame_bridge.sv",
       "src/rtl/snapshot/n2m_frame_snapshot.sv",
       "src/rtl/memory/n2m_oam_late_write.sv",
+      "src/rtl/timer/n2m_timer_pkg.sv",
+      "src/rtl/timer/n2m_timer.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -9329,6 +9341,8 @@
       "src/rtl/vga/n2m_frame_bridge.sv",
       "src/rtl/snapshot/n2m_frame_snapshot.sv",
       "src/rtl/memory/n2m_oam_late_write.sv",
+      "src/rtl/timer/n2m_timer_pkg.sv",
+      "src/rtl/timer/n2m_timer.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -9422,6 +9436,8 @@
       "src/rtl/vga/n2m_frame_bridge.sv",
       "src/rtl/snapshot/n2m_frame_snapshot.sv",
       "src/rtl/memory/n2m_oam_late_write.sv",
+      "src/rtl/timer/n2m_timer_pkg.sv",
+      "src/rtl/timer/n2m_timer.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
