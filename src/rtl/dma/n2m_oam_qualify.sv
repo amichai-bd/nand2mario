@@ -18,7 +18,6 @@ module n2m_oam_qualify (
     output logic [4:0] row_index,
     output logic invalid_observation
 );
-    import n2m_oam_pkg::*;
     logic ordinary_oam, idu_oam, read_effect, write_effect, scan;
     assign row_index = ppu_scan_index[5:1];
     assign scan = ppu_oam_phase == 2'd1 && ppu_scan_index < 6'd40;
@@ -30,11 +29,11 @@ module n2m_oam_qualify (
     assign read_effect = ordinary_oam && !bus_plan.write_enable;
     assign write_effect = (ordinary_oam && bus_plan.write_enable) || idu_oam;
     always_comb begin
-        kind = OAM_NONE;
+        kind = n2m_oam_pkg::OAM_NONE;
         if (!reset && !invalid_observation && scan && effect_sample) begin
-            if (read_effect && write_effect) kind = OAM_READ_WRITE;
-            else if (read_effect) kind = OAM_READ;
-            else if (write_effect) kind = OAM_WRITE;
+            if (read_effect && write_effect) kind = n2m_oam_pkg::OAM_READ_WRITE;
+            else if (read_effect) kind = n2m_oam_pkg::OAM_READ;
+            else if (write_effect) kind = n2m_oam_pkg::OAM_WRITE;
         end
     end
     `N2M_ASSERT(OAM_OBSERVATION_RESOLVED, clk_sys, reset, !invalid_observation)

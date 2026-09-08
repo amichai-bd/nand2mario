@@ -43,8 +43,6 @@ module n2m_dma_service (
     input var n2m_memory_pkg::memory_oam_response_t oam_response,
     output logic fault
 );
-    import n2m_memory_pkg::*;
-    import n2m_oam_pkg::*;
     logic [5:0] slot_q, slot_next;
     logic [4:0] job_row_q, operand_row_q;
     logic job_prefetch_q, operand_valid_q;
@@ -78,8 +76,8 @@ module n2m_dma_service (
     logic [7:0] late_data_q;
     logic [63:0] late_row_q, late_row_next, late_result;
     logic [15:0] late_word_q;
-    memory_destination_t source_destination;
-    memory_store_t source_store;
+    n2m_memory_pkg::memory_destination_t source_destination;
+    n2m_memory_pkg::memory_store_t source_store;
     logic [14:0] source_offset;
     integer word_byte, selected_row;
     localparam logic [2:0] READ_NONE=0, READ_OPERAND=1, READ_SOURCE=2,
@@ -88,7 +86,7 @@ module n2m_dma_service (
         .destination(source_destination), .store(source_store), .offset(source_offset));
     assign accept = t4 && init_done && !reset && !fault;
     assign missing_operands = accept && !late_commit && scan_active && scan_row != 0 &&
-        effect_kind != OAM_NONE && (!operand_valid_q || operand_row_q != scan_row);
+        effect_kind != n2m_oam_pkg::OAM_NONE && (!operand_valid_q || operand_row_q != scan_row);
     assign select_late = slot_q==14 ? future_q && late_prepare : late_selected_q;
     assign missing_late = accept && ((late_commit && (!late_selected_q || !late_ready_q
         || !late_prepare || late_address_q!=cpu_address || late_data_q!=cpu_wdata))
@@ -116,7 +114,7 @@ module n2m_dma_service (
         oam_response.valid && pair_response_kind_q==READ_LATE && response_index_q==4, reset, 16'd0)
     `DFF_ARST_VAL(late_ready_q, accept ? 1'b0 : late_ready_q ||
         (oam_response.valid && pair_response_kind_q==READ_LATE && response_index_q==4), clk_sys, reset, 1'b0)
-    assign late_result=oam_late_result(late_row_q, late_word_q, late_address_q[2:0], late_data_q);
+    assign late_result=n2m_memory_pkg::oam_late_result(late_row_q, late_word_q, late_address_q[2:0], late_data_q);
     always_comb begin
         overlay_previous=previous_q;
         overlay_current={48'd0,current_q};
@@ -131,7 +129,7 @@ module n2m_dma_service (
         end
     end
     n2m_oam_corrupt transform (.clk_sys(clk_sys), .reset(reset),
-        .row_index(scan_row), .kind(scan_active ? effect_kind : OAM_NONE),
+        .row_index(scan_row), .kind(scan_active ? effect_kind : n2m_oam_pkg::OAM_NONE),
         .current_row(overlay_current), .previous_row(overlay_previous), .older_row(overlay_older),
         .current_result(result_current), .previous_result(result_previous),
         .older_result(result_older), .write_mask(result_mask), .invalid_row(invalid_row));
@@ -181,7 +179,7 @@ module n2m_dma_service (
         clk_sys, accept && !service_fault, reset, 1'b0)
 
     always_comb begin
-        access_read=0; access_write=0; access_store=STORE_OAM;
+        access_read=0; access_write=0; access_store=n2m_memory_pkg::STORE_OAM;
         access_address=0; access_wdata=0; oam_request='0;
         grant_kind=READ_NONE; pair_grant_kind=READ_NONE;
         grant_index=0; grant_address=0; word_byte=0; selected_row=0;
@@ -214,7 +212,7 @@ module n2m_dma_service (
         end else if(slot_q==20 && dma_source_request) begin
             // Source addresses are mirrored away from OAM by the DMA engine.
             // These requests therefore use physically independent banks.
-            access_read=source_destination!=MEMORY_ABSENT_CART;
+            access_read=source_destination!=n2m_memory_pkg::MEMORY_ABSENT_CART;
             access_store=source_store; access_address=source_offset;
             grant_kind=READ_SOURCE; grant_address=dma_source_address;
             oam_request.read=1; oam_request.pair=dma_source_address[7:1];
@@ -226,7 +224,7 @@ module n2m_dma_service (
         if(cpu_write) begin
             access_read=0; access_write=1; access_store=cpu_store;
             access_address=cpu_offset; access_wdata=cpu_wdata; grant_kind=READ_NONE;
-            if(cpu_store==STORE_OAM) begin oam_request='0; pair_grant_kind=READ_NONE; end
+            if(cpu_store==n2m_memory_pkg::STORE_OAM) begin oam_request='0; pair_grant_kind=READ_NONE; end
         end
         if(reset || !init_done || fault || service_fault) begin
             access_read=0; access_write=0; grant_kind=READ_NONE;
@@ -255,13 +253,13 @@ module n2m_dma_service (
         oam_response.valid && pair_response_kind_q==READ_OPERAND && response_index_q==5, reset, 5'd0)
     `DFF_ARST_VAL(operand_valid_q, accept ? 1'b0 : operand_valid_q ||
         (oam_response.valid && pair_response_kind_q==READ_OPERAND && response_index_q==5), clk_sys, reset, 1'b0)
-    `DFF_RST_EN(source_q, source_destination==MEMORY_ABSENT_CART ? 8'hff : access_rdata,
-        clk_sys, (slot_q==20 && dma_source_request && source_destination==MEMORY_ABSENT_CART) ||
+    `DFF_RST_EN(source_q, source_destination==n2m_memory_pkg::MEMORY_ABSENT_CART ? 8'hff : access_rdata,
+        clk_sys, (slot_q==20 && dma_source_request && source_destination==n2m_memory_pkg::MEMORY_ABSENT_CART) ||
         (access_valid && response_kind_q==READ_SOURCE), reset, 8'd0)
     `DFF_RST_EN(source_address_q, dma_source_address, clk_sys,
         slot_q==20 && dma_source_request, reset, 16'd0)
     `DFF_ARST_VAL(source_valid_q, accept ? 1'b0 : source_valid_q ||
-        (slot_q==20 && dma_source_request && source_destination==MEMORY_ABSENT_CART) ||
+        (slot_q==20 && dma_source_request && source_destination==n2m_memory_pkg::MEMORY_ABSENT_CART) ||
         (access_valid && response_kind_q==READ_SOURCE), clk_sys, reset, 1'b0)
     assign dma_source_data=source_q;
     assign dma_source_valid=!reset && !fault && source_valid_q && source_address_q==dma_source_address;
@@ -284,6 +282,6 @@ module n2m_dma_service (
     `N2M_ASSERT(DMA_PAIR_SERVICE, clk_sys, reset, !missing_other)
     `N2M_ASSERT(DMA_JOB_DEADLINE, clk_sys, reset, !(accept && slot_q!=0 && slot_q<21))
     `N2M_ASSERT(DMA_SOURCE_SEPARATE_BANK, clk_sys, reset,
-        !(slot_q==20 && dma_source_request) || source_store!=STORE_OAM)
+        !(slot_q==20 && dma_source_request) || source_store!=n2m_memory_pkg::STORE_OAM)
     `N2M_ASSERT(DMA_CPU_WRITE_SLOT, clk_sys, reset, !cpu_write || t4)
 endmodule

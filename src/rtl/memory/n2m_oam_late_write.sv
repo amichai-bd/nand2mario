@@ -19,7 +19,6 @@ module n2m_oam_late_write (
     output logic raw_oam_busy, late_commit, ppu_read_allowed,
     output logic fault
 );
-    import n2m_memory_pkg::*;
     // 1..5 issue operands, 6 captures the final operand, 7 waits for T4.
     // 8..10 drain the remaining three words after the selected word at T4.
     logic [3:0] phase, phase_next;
@@ -53,7 +52,7 @@ module n2m_oam_late_write (
     assign preferred = ppu_pair[6:2] == saved_address[7:3] ? ppu_pair[1:0] : 2'd2;
     assign drain_word = remaining_word(saved_address[2:1], saved_preferred, 2'(phase - 4'd8));
 
-    assign transformed = oam_late_result(last_row, target_word, saved_address[2:0], saved_data);
+    assign transformed = n2m_memory_pkg::oam_late_result(last_row, target_word, saved_address[2:0], saved_data);
 
     always_comb begin
         request = '0;
