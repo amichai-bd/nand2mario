@@ -1,22 +1,19 @@
 `timescale 1ns/1ps
 `default_nettype none
 module tb_dma_io;
-    import n2m_interfaces_pkg::*;
-    import n2m_cpu_pkg::*;
-    import n2m_memory_pkg::*;
     integer lane;
-    memory_oam_request_t oam_request;
-    memory_oam_response_t oam_response;
+    n2m_memory_pkg::memory_oam_request_t oam_request;
+    n2m_memory_pkg::memory_oam_response_t oam_response;
     logic clk_sys, reset_sys, core_reset, init_done, memory_init_done, gb_tick;
     logic [1:0] cpu_phase;
     logic cpu_halted, cpu_stopped, request_valid, bus_commit;
-    cpu_bus_plan_t bus_plan;
-    cpu_address_effect_t address_effect;
+    n2m_cpu_pkg::cpu_bus_plan_t bus_plan;
+    n2m_cpu_pkg::cpu_address_effect_t address_effect;
     logic address_effect_resolved, address_effect_sample;
     logic [7:0] read_data;
     logic response_valid, fault, ppu_fault;
     logic peripheral_prepare, peripheral_commit, peripheral_write;
-    memory_destination_t peripheral_destination;
+    n2m_memory_pkg::memory_destination_t peripheral_destination;
     logic [15:0] peripheral_address;
     logic [7:0] peripheral_wdata, peripheral_rdata;
     logic peripheral_valid, peripheral_available;
@@ -29,7 +26,7 @@ module tb_dma_io;
     logic [15:0] ppu_oam_data;
     logic ppu_oam_valid, dma_active;
     logic access_read, access_write, access_valid;
-    memory_store_t access_store;
+    n2m_memory_pkg::memory_store_t access_store;
     logic [14:0] access_address;
     logic [7:0] access_wdata, access_rdata;
     logic raw_vram_read, raw_vram_valid, raw_oam_read, raw_oam_valid;
@@ -38,7 +35,7 @@ module tb_dma_io;
     logic [6:0] raw_oam_pair;
     logic [15:0] raw_oam_data;
     logic setup, setup_read, setup_write, host_write, host_valid;
-    memory_store_t setup_store;
+    n2m_memory_pkg::memory_store_t setup_store;
     logic [14:0] setup_address;
     logic [7:0] setup_data, host_data, unused_host, unused_wave;
     logic [31:0] host_address;
@@ -46,7 +43,7 @@ module tb_dma_io;
     logic irq_selected;
     logic [7:0] irq_rdata, ie_stored, ie_observe, owner_reply;
     logic [4:0] if_stored, if_observe, source_event;
-    memory_destination_t expected_destination;
+    n2m_memory_pkg::memory_destination_t expected_destination;
     integer index, writes, age, commits, reads, t3_checks;
     bit observe, seen_start, event_case, bad_irq;
     assign init_done=memory_init_done && !setup;
@@ -67,7 +64,7 @@ module tb_dma_io;
         .wave_rdata(unused_wave), .wave_valid(unused_wave_valid));
     always #5 clk_sys=~clk_sys;
     n2m_interrupts interrupts (.clk_sys(clk_sys),.reset_sys(reset_sys),.core_reset(core_reset),
-        .gb_tick(gb_tick),.io_commit(peripheral_commit && peripheral_destination==MEMORY_IRQ),
+        .gb_tick(gb_tick),.io_commit(peripheral_commit && peripheral_destination==n2m_memory_pkg::MEMORY_IRQ),
         .io_write(peripheral_write),.io_address(peripheral_address),.io_wdata(peripheral_wdata),
         .source_level(5'd0),.source_event(source_event),.irq_ack(5'd0),
         .io_selected(irq_selected),.io_rdata(irq_rdata),.ie_stored(ie_stored),.if_stored(if_stored),
@@ -76,12 +73,12 @@ module tb_dma_io;
     assign peripheral_rdata=irq_selected ? irq_rdata:owner_reply;
     assign peripheral_valid=1'b1;
     assign peripheral_available=1'b1;
-    task automatic load_byte(input memory_store_t bank,input integer offset,input logic[7:0] value);
+    task automatic load_byte(input n2m_memory_pkg::memory_store_t bank,input integer offset,input logic[7:0] value);
         @(negedge clk_sys);setup_store=bank;setup_address=15'(offset);setup_data=value;
         setup_write=1;@(negedge clk_sys);setup_write=0;
     endtask
     task automatic transaction(input logic valid_request,input logic wr,input logic[15:0] address,
-        input logic[7:0] value,input memory_destination_t destination,input logic[7:0] expected_read);
+        input logic[7:0] value,input n2m_memory_pkg::memory_destination_t destination,input logic[7:0] expected_read);
         if(cpu_phase!=0)$fatal(1,"DMA_IO_PREPARE_PHASE");
         request_valid=valid_request;bus_plan='0;bus_plan.address=address;
         bus_plan.write_enable=wr;bus_plan.write_data=value;expected_destination=destination;
@@ -98,7 +95,7 @@ module tb_dma_io;
             end
             gb_tick=1;bus_commit=valid_request && cpu_phase==3;address_effect_sample=bus_commit;
             #1;
-            if(valid_request && destination!=MEMORY_DMA)begin
+            if(valid_request && destination!=n2m_memory_pkg::MEMORY_DMA)begin
                 if(!peripheral_prepare || peripheral_destination!==destination || peripheral_address!==address ||
                     peripheral_write!==wr || peripheral_wdata!==value || peripheral_commit!==bus_commit)
                     $fatal(1,"DMA_IO_ROUTE address=%04x destination=%0d actual=%0d commit=%0d",address,destination,peripheral_destination,peripheral_commit);
@@ -120,7 +117,7 @@ module tb_dma_io;
                 if(bus_commit && bus_plan.address==16'hff46)begin seen_start=1;age=0;end
                 else if(seen_start)age=age+1;
             end
-            if(access_write && access_store==STORE_OAM)begin
+            if(access_write && access_store==n2m_memory_pkg::STORE_OAM)begin
                 if(access_address!==15'(writes) || access_wdata!==8'h7b)
                     $fatal(1,"DMA_IO_TRANSFER index=%0d actual=%0d:%02x",writes,access_address,access_wdata);
                 writes=writes+1;
@@ -134,10 +131,10 @@ module tb_dma_io;
     end
     initial begin
         clk_sys=0;reset_sys=1;core_reset=0;setup=1;setup_read=0;setup_write=0;
-        setup_store=STORE_OAM;setup_address=0;setup_data=0;host_write=0;host_address=0;host_data=0;
+        setup_store=n2m_memory_pkg::STORE_OAM;setup_address=0;setup_data=0;host_write=0;host_address=0;host_data=0;
         gb_tick=0;cpu_phase=0;cpu_halted=0;cpu_stopped=0;request_valid=0;bus_commit=0;
         bus_plan='0;address_effect='0;address_effect_resolved=1;address_effect_sample=0;
-        owner_reply=0;source_event=0;expected_destination=MEMORY_IRQ;
+        owner_reply=0;source_event=0;expected_destination=n2m_memory_pkg::MEMORY_IRQ;
         vram_cpu_allow=1;oam_cpu_allow=1;ppu_vram_request=0;ppu_vram_address=0;
         ppu_oam_phase=0;ppu_scan_index=8;ppu_oam_pair=0;
         writes=0;age=0;commits=0;reads=0;t3_checks=0;observe=0;seen_start=0;event_case=0;
@@ -149,28 +146,28 @@ module tb_dma_io;
             access_store,access_address,access_wdata,ie_observe,if_observe,source_event,dma_active,
             expected_destination,writes,commits,reads,t3_checks,fault);
         repeat(3)@(negedge clk_sys);reset_sys=0;wait(memory_init_done);repeat(3)@(negedge clk_sys);
-        for(index=0;index<160;index=index+1)begin load_byte(STORE_WRAM,index,8'h7b);load_byte(STORE_OAM,index,8'h10);end
+        for(index=0;index<160;index=index+1)begin load_byte(n2m_memory_pkg::STORE_WRAM,index,8'h7b);load_byte(n2m_memory_pkg::STORE_OAM,index,8'h10);end
         setup=0;observe=1;
-        transaction(1,1,16'hffff,8'h1f,MEMORY_IRQ,0);
-        transaction(1,1,16'hff0f,0,MEMORY_IRQ,0);
+        transaction(1,1,16'hffff,8'h1f,n2m_memory_pkg::MEMORY_IRQ,0);
+        transaction(1,1,16'hff0f,0,n2m_memory_pkg::MEMORY_IRQ,0);
         ppu_oam_phase=1;
-        transaction(1,1,16'hff46,8'hc0,MEMORY_DMA,0);transaction(0,0,0,0,MEMORY_DIRECT,0);
-        event_case=1;transaction(1,0,16'hff0f,0,MEMORY_IRQ,8'he4);event_case=0;
-        transaction(1,0,16'hffff,0,MEMORY_IRQ,8'h1f);
-        transaction(1,1,16'hff00,8'h20,MEMORY_JOYP,0);transaction(1,0,16'hff00,0,MEMORY_JOYP,8'hc3);
-        transaction(1,1,16'hff04,8'h99,MEMORY_TIMER,0);transaction(1,0,16'hff04,0,MEMORY_TIMER,8'ha4);
-        transaction(1,1,16'hff10,8'h23,MEMORY_APU,0);transaction(1,0,16'hff10,0,MEMORY_APU,8'hb5);
-        transaction(1,1,16'hff40,8'h93,MEMORY_PPU,0);transaction(1,0,16'hff40,0,MEMORY_PPU,8'h96);
-        transaction(1,1,16'hff01,8'h5a,MEMORY_SERIAL,0);transaction(1,0,16'hff01,0,MEMORY_SERIAL,8'h67);
-        transaction(1,1,16'hff0f,8'h01,MEMORY_IRQ,0);transaction(1,0,16'hff0f,0,MEMORY_IRQ,8'he1);
-        transaction(1,1,16'hffff,8'ha5,MEMORY_IRQ,0);transaction(1,0,16'hffff,0,MEMORY_IRQ,8'ha5);
-        while(age<161)transaction(0,0,0,0,MEMORY_DIRECT,0);
+        transaction(1,1,16'hff46,8'hc0,n2m_memory_pkg::MEMORY_DMA,0);transaction(0,0,0,0,n2m_memory_pkg::MEMORY_DIRECT,0);
+        event_case=1;transaction(1,0,16'hff0f,0,n2m_memory_pkg::MEMORY_IRQ,8'he4);event_case=0;
+        transaction(1,0,16'hffff,0,n2m_memory_pkg::MEMORY_IRQ,8'h1f);
+        transaction(1,1,16'hff00,8'h20,n2m_memory_pkg::MEMORY_JOYP,0);transaction(1,0,16'hff00,0,n2m_memory_pkg::MEMORY_JOYP,8'hc3);
+        transaction(1,1,16'hff04,8'h99,n2m_memory_pkg::MEMORY_TIMER,0);transaction(1,0,16'hff04,0,n2m_memory_pkg::MEMORY_TIMER,8'ha4);
+        transaction(1,1,16'hff10,8'h23,n2m_memory_pkg::MEMORY_APU,0);transaction(1,0,16'hff10,0,n2m_memory_pkg::MEMORY_APU,8'hb5);
+        transaction(1,1,16'hff40,8'h93,n2m_memory_pkg::MEMORY_PPU,0);transaction(1,0,16'hff40,0,n2m_memory_pkg::MEMORY_PPU,8'h96);
+        transaction(1,1,16'hff01,8'h5a,n2m_memory_pkg::MEMORY_SERIAL,0);transaction(1,0,16'hff01,0,n2m_memory_pkg::MEMORY_SERIAL,8'h67);
+        transaction(1,1,16'hff0f,8'h01,n2m_memory_pkg::MEMORY_IRQ,0);transaction(1,0,16'hff0f,0,n2m_memory_pkg::MEMORY_IRQ,8'he1);
+        transaction(1,1,16'hffff,8'ha5,n2m_memory_pkg::MEMORY_IRQ,0);transaction(1,0,16'hffff,0,n2m_memory_pkg::MEMORY_IRQ,8'ha5);
+        while(age<161)transaction(0,0,0,0,n2m_memory_pkg::MEMORY_DIRECT,0);
         repeat(30)@(negedge clk_sys);
         if(dma_active || writes!=160 || commits!=18 || reads!=9 || t3_checks!=1)
             $fatal(1,"DMA_IO_TOTAL bytes=%0d commits=%0d reads=%0d t3=%0d",writes,commits,reads,t3_checks);
         observe=0;setup=1;
         for(index=0;index<160;index=index+1)begin
-            @(negedge clk_sys);setup_store=STORE_OAM;setup_address=15'(index);setup_read=1;
+            @(negedge clk_sys);setup_store=n2m_memory_pkg::STORE_OAM;setup_address=15'(index);setup_read=1;
             @(negedge clk_sys);if(!access_valid || access_rdata!==8'h7b)$fatal(1,"DMA_IO_READBACK");
         end
         $display("PASS DMA IO bytes=160 owner_commits=18 reads=9 preT3=1 readback=160");$finish;

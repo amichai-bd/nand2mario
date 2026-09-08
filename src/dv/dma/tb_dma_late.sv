@@ -1,22 +1,19 @@
 `timescale 1ns/1ps
 `default_nettype none
 module tb_dma_late;
-    import n2m_interfaces_pkg::*;
-    import n2m_cpu_pkg::*;
-    import n2m_memory_pkg::*;
     integer lane;
-    memory_oam_request_t oam_request;
-    memory_oam_response_t oam_response;
+    n2m_memory_pkg::memory_oam_request_t oam_request;
+    n2m_memory_pkg::memory_oam_response_t oam_response;
     logic clk_sys, reset_sys, core_reset, init_done, memory_init_done, gb_tick;
     logic [1:0] cpu_phase;
     logic cpu_halted, cpu_stopped, request_valid, bus_commit;
-    cpu_bus_plan_t bus_plan;
-    cpu_address_effect_t address_effect;
+    n2m_cpu_pkg::cpu_bus_plan_t bus_plan;
+    n2m_cpu_pkg::cpu_address_effect_t address_effect;
     logic address_effect_resolved, address_effect_sample;
     logic [7:0] read_data;
     logic response_valid, fault, ppu_fault;
     logic peripheral_prepare, peripheral_commit, peripheral_write;
-    memory_destination_t peripheral_destination;
+    n2m_memory_pkg::memory_destination_t peripheral_destination;
     logic [15:0] peripheral_address;
     logic [7:0] peripheral_wdata, peripheral_rdata;
     logic peripheral_valid, peripheral_available;
@@ -29,7 +26,7 @@ module tb_dma_late;
     logic [15:0] ppu_oam_data;
     logic ppu_oam_valid, dma_active;
     logic access_read, access_write, access_valid;
-    memory_store_t access_store;
+    n2m_memory_pkg::memory_store_t access_store;
     logic [14:0] access_address;
     logic [7:0] access_wdata, access_rdata;
     logic raw_vram_read, raw_vram_valid, raw_oam_read, raw_oam_valid;
@@ -38,7 +35,7 @@ module tb_dma_late;
     logic [6:0] raw_oam_pair;
     logic [15:0] raw_oam_data;
     logic setup, setup_read, setup_write, host_write, host_valid;
-    memory_store_t setup_store;
+    n2m_memory_pkg::memory_store_t setup_store;
     logic [14:0] setup_address;
     logic [7:0] setup_data, host_data, unused_host, unused_wave;
     logic [31:0] host_address;
@@ -78,7 +75,7 @@ module tb_dma_late;
         if(fault) $fatal(1,"DMA_LATE_FAULT case=%0d",case_index);
     endtask
     task automatic readback;
-        setup=1; setup_store=STORE_OAM;
+        setup=1; setup_store=n2m_memory_pkg::STORE_OAM;
         for(index=0;index<160;index=index+1) begin
             @(negedge clk_sys); setup_address=15'(index); setup_read=1;
             @(negedge clk_sys);
@@ -91,7 +88,7 @@ module tb_dma_late;
     endtask
     initial begin
         clk_sys=0; reset_sys=1; core_reset=0; setup=1; setup_read=0; setup_write=0;
-        setup_store=STORE_OAM; setup_address=0; setup_data=0; host_write=0; host_address=0; host_data=0;
+        setup_store=n2m_memory_pkg::STORE_OAM; setup_address=0; setup_data=0; host_write=0; host_address=0; host_data=0;
         gb_tick=0; cpu_phase=0; cpu_halted=0; cpu_stopped=0; request_valid=0;
         bus_plan='0; bus_commit=0; address_effect='0; address_effect_resolved=1; address_effect_sample=0;
         peripheral_rdata=0; peripheral_valid=1; peripheral_available=1;
@@ -111,9 +108,9 @@ module tb_dma_late;
             setup=1; core_reset=1; @(negedge clk_sys); core_reset=0;
             wait(memory_init_done); cpu_phase=0;
             request_valid=0;bus_plan='0;address_effect='0;oam_cpu_late_write=0;oam_late_future=0;
-            ppu_oam_phase=0;setup_store=STORE_WRAM;
+            ppu_oam_phase=0;setup_store=n2m_memory_pkg::STORE_WRAM;
             for(index=0;index<160;index=index+1) load_byte(index,index==159 ? 8'h5a : 8'(37*index+11));
-            setup_store=STORE_OAM;
+            setup_store=n2m_memory_pkg::STORE_OAM;
             for(index=0;index<160;index=index+1) begin
                 expected_oam[index]=8'(37*index+11); load_byte(index,expected_oam[index]);
             end

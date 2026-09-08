@@ -1,22 +1,19 @@
 `timescale 1ns/1ps
 `default_nettype none
 module tb_dma_restart;
-    import n2m_interfaces_pkg::*;
-    import n2m_cpu_pkg::*;
-    import n2m_memory_pkg::*;
     integer lane;
-    memory_oam_request_t oam_request;
-    memory_oam_response_t oam_response;
+    n2m_memory_pkg::memory_oam_request_t oam_request;
+    n2m_memory_pkg::memory_oam_response_t oam_response;
     logic clk_sys, reset_sys, core_reset, init_done, memory_init_done, gb_tick;
     logic [1:0] cpu_phase;
     logic cpu_halted, cpu_stopped, request_valid, bus_commit;
-    cpu_bus_plan_t bus_plan;
-    cpu_address_effect_t address_effect;
+    n2m_cpu_pkg::cpu_bus_plan_t bus_plan;
+    n2m_cpu_pkg::cpu_address_effect_t address_effect;
     logic address_effect_resolved, address_effect_sample;
     logic [7:0] read_data;
     logic response_valid, fault, ppu_fault;
     logic peripheral_prepare, peripheral_commit, peripheral_write;
-    memory_destination_t peripheral_destination;
+    n2m_memory_pkg::memory_destination_t peripheral_destination;
     logic [15:0] peripheral_address;
     logic [7:0] peripheral_wdata, peripheral_rdata;
     logic peripheral_valid, peripheral_available;
@@ -29,7 +26,7 @@ module tb_dma_restart;
     logic [15:0] ppu_oam_data;
     logic ppu_oam_valid, dma_active;
     logic access_read, access_write, access_valid;
-    memory_store_t access_store;
+    n2m_memory_pkg::memory_store_t access_store;
     logic [14:0] access_address;
     logic [7:0] access_wdata, access_rdata;
     logic raw_vram_read, raw_vram_valid, raw_oam_read, raw_oam_valid;
@@ -38,7 +35,7 @@ module tb_dma_restart;
     logic [6:0] raw_oam_pair;
     logic [15:0] raw_oam_data;
     logic setup, setup_read, setup_write, host_write, host_valid;
-    memory_store_t setup_store;
+    n2m_memory_pkg::memory_store_t setup_store;
     logic [14:0] setup_address;
     logic [7:0] setup_data, host_data, unused_host, unused_wave;
     logic [31:0] host_address;
@@ -69,7 +66,7 @@ module tb_dma_restart;
     function automatic logic [7:0] value_at(input logic page,input integer offset);
         value_at=8'(offset) ^ (page ? 8'hc3 : 8'h69);
     endfunction
-    task automatic load_byte(input memory_store_t bank,input integer offset,input logic[7:0] value);
+    task automatic load_byte(input n2m_memory_pkg::memory_store_t bank,input integer offset,input logic[7:0] value);
         @(negedge clk_sys);setup_store=bank;setup_address=15'(offset);setup_data=value;
         setup_write=1;@(negedge clk_sys);setup_write=0;
     endtask
@@ -99,7 +96,7 @@ module tb_dma_restart;
         if(expected_pending || dma_active) $fatal(1,"DMA_RESTART_INCOMPLETE");
         observe=0;setup=1;
         for(index=0;index<160;index=index+1) begin
-            @(negedge clk_sys);setup_store=STORE_OAM;setup_address=15'(index);setup_read=1;
+            @(negedge clk_sys);setup_store=n2m_memory_pkg::STORE_OAM;setup_address=15'(index);setup_read=1;
             @(negedge clk_sys);
             if(!access_valid || access_rdata!==value_at(1,index) || access_rdata!==expected_oam[index])
                 $fatal(1,"DMA_RESTART_READBACK case=%0d offset=%0d expected=%02x actual=%02x",case_index,index,value_at(1,index),access_rdata);
@@ -108,7 +105,7 @@ module tb_dma_restart;
     endtask
     always @(posedge clk_sys) begin
         system_edges=system_edges+1;
-        if(observe && access_write && access_store==STORE_OAM) begin
+        if(observe && access_write && access_store==n2m_memory_pkg::STORE_OAM) begin
             if(!expected_pending) $fatal(1,"DMA_RESTART_UNEXPECTED_WRITE");
             if(system_edges!=expected_edge)
                 $fatal(1,"DMA_RESTART_WRITE_TIME expected_delta=13 actual_delta=%0d",system_edges-accepted_edge);
@@ -129,7 +126,7 @@ module tb_dma_restart;
     end
     initial begin
         clk_sys=0;reset_sys=1;core_reset=0;setup=1;setup_read=0;setup_write=0;
-        setup_store=STORE_OAM;setup_address=0;setup_data=0;host_write=0;host_address=0;host_data=0;
+        setup_store=n2m_memory_pkg::STORE_OAM;setup_address=0;setup_data=0;host_write=0;host_address=0;host_data=0;
         gb_tick=0;cpu_phase=0;cpu_halted=0;cpu_stopped=0;request_valid=0;bus_commit=0;
         bus_plan='0;address_effect='0;address_effect_resolved=1;address_effect_sample=0;
         peripheral_rdata=0;peripheral_valid=1;peripheral_available=1;
@@ -144,8 +141,8 @@ module tb_dma_restart;
             expected_offset,expected_byte,system_edges,accepted_edge,expected_edge,write_count,case_index);
         repeat(3) @(negedge clk_sys);reset_sys=0;wait(memory_init_done);repeat(3) @(negedge clk_sys);
         for(index=0;index<160;index=index+1) begin
-            load_byte(STORE_WRAM,index,value_at(0,index));load_byte(STORE_WRAM,256+index,value_at(1,index));
-            load_byte(STORE_OAM,index,0);expected_oam[index]=0;
+            load_byte(n2m_memory_pkg::STORE_WRAM,index,value_at(0,index));load_byte(n2m_memory_pkg::STORE_WRAM,256+index,value_at(1,index));
+            load_byte(n2m_memory_pkg::STORE_OAM,index,0);expected_oam[index]=0;
         end
         setup=0;observe=1;
         // Different-page restart at20: old20, new21, new0.

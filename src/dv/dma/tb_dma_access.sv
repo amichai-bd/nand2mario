@@ -1,22 +1,19 @@
 `timescale 1ns/1ps
 `default_nettype none
 module tb_dma_access;
-    import n2m_interfaces_pkg::*;
-    import n2m_cpu_pkg::*;
-    import n2m_memory_pkg::*;
     integer lane;
-    memory_oam_request_t oam_request;
-    memory_oam_response_t oam_response;
+    n2m_memory_pkg::memory_oam_request_t oam_request;
+    n2m_memory_pkg::memory_oam_response_t oam_response;
     logic clk_sys, reset_sys, core_reset, init_done, memory_init_done, gb_tick;
     logic [1:0] cpu_phase;
     logic cpu_halted, cpu_stopped, request_valid, bus_commit;
-    cpu_bus_plan_t bus_plan;
-    cpu_address_effect_t address_effect;
+    n2m_cpu_pkg::cpu_bus_plan_t bus_plan;
+    n2m_cpu_pkg::cpu_address_effect_t address_effect;
     logic address_effect_resolved, address_effect_sample;
     logic [7:0] read_data;
     logic response_valid, fault, ppu_fault;
     logic peripheral_prepare, peripheral_commit, peripheral_write;
-    memory_destination_t peripheral_destination;
+    n2m_memory_pkg::memory_destination_t peripheral_destination;
     logic [15:0] peripheral_address;
     logic [7:0] peripheral_wdata, peripheral_rdata;
     logic peripheral_valid, peripheral_available;
@@ -29,7 +26,7 @@ module tb_dma_access;
     logic [15:0] ppu_oam_data;
     logic ppu_oam_valid, dma_active;
     logic access_read, access_write, access_valid;
-    memory_store_t access_store;
+    n2m_memory_pkg::memory_store_t access_store;
     logic [14:0] access_address;
     logic [7:0] access_wdata, access_rdata;
     logic raw_vram_read, raw_vram_valid, raw_oam_read, raw_oam_valid;
@@ -38,7 +35,7 @@ module tb_dma_access;
     logic [6:0] raw_oam_pair;
     logic [15:0] raw_oam_data;
     logic setup, setup_read, setup_write, host_write, host_valid;
-    memory_store_t setup_store;
+    n2m_memory_pkg::memory_store_t setup_store;
     logic [14:0] setup_address;
     logic [7:0] setup_data, host_data, unused_host, unused_wave;
     logic [31:0] host_address;
@@ -68,7 +65,7 @@ module tb_dma_access;
     function automatic logic [7:0] source_byte(input integer offset);
         source_byte=8'(offset+129);
     endfunction
-    task automatic load_byte(input memory_store_t bank,input integer offset,input logic [7:0] value);
+    task automatic load_byte(input n2m_memory_pkg::memory_store_t bank,input integer offset,input logic [7:0] value);
         @(negedge clk_sys); setup_store=bank; setup_address=15'(offset); setup_data=value;
         setup_write=1; @(negedge clk_sys); setup_write=0;
     endtask
@@ -91,7 +88,7 @@ module tb_dma_access;
         repeat(4) dot_step();
         request_valid=0; bus_plan='0; check_read=0;
     endtask
-    task automatic readback(input memory_store_t bank,input integer offset,input logic[7:0] expected);
+    task automatic readback(input n2m_memory_pkg::memory_store_t bank,input integer offset,input logic[7:0] expected);
         @(negedge clk_sys); setup_store=bank; setup_address=15'(offset); setup_read=1;
         @(negedge clk_sys);
         if(!access_valid || access_rdata!==expected)
@@ -108,7 +105,7 @@ module tb_dma_access;
                 if(case_index==0 && probe_index==1) expected_oam[probe_index]=8'h02;
             end
         end
-        if(observe && access_write && access_store==STORE_OAM) begin
+        if(observe && access_write && access_store==n2m_memory_pkg::STORE_OAM) begin
             if(access_address!=15'(writes) || access_wdata!==expected_oam[writes])
                 $fatal(1,"DMA_ACCESS_WRITE case=%0d index=%0d address=%0d expected=%02x actual=%02x",case_index,writes,access_address,expected_oam[writes],access_wdata);
             writes=writes+1;
@@ -121,7 +118,7 @@ module tb_dma_access;
     end
     initial begin
         clk_sys=0; reset_sys=1; core_reset=0; setup=1; setup_read=0; setup_write=0;
-        setup_store=STORE_OAM; setup_address=0; setup_data=0; host_write=0; host_address=0; host_data=0;
+        setup_store=n2m_memory_pkg::STORE_OAM; setup_address=0; setup_data=0; host_write=0; host_address=0; host_data=0;
         gb_tick=0; cpu_phase=0; cpu_halted=0; cpu_stopped=0; request_valid=0;
         bus_plan='0; bus_commit=0; address_effect='0; address_effect_resolved=1; address_effect_sample=0;
         peripheral_rdata=0; peripheral_valid=1; peripheral_available=1;
@@ -143,15 +140,15 @@ module tb_dma_access;
                 5:active_page=8'he0; default:active_page=8'hfe;
             endcase
             for(index=0;index<160;index=index+1) begin
-                expected_oam[index]=0; load_byte(STORE_OAM,index,0);
-                load_byte(STORE_WRAM,index,source_byte(index));
-                load_byte(STORE_WRAM,16'h1e00+index,source_byte(index));
-                load_byte(STORE_VRAM,index,source_byte(index));
+                expected_oam[index]=0; load_byte(n2m_memory_pkg::STORE_OAM,index,0);
+                load_byte(n2m_memory_pkg::STORE_WRAM,index,source_byte(index));
+                load_byte(n2m_memory_pkg::STORE_WRAM,16'h1e00+index,source_byte(index));
+                load_byte(n2m_memory_pkg::STORE_VRAM,index,source_byte(index));
                 @(negedge clk_sys);host_write=1;host_address=32'(index);host_data=source_byte(index);
                 @(negedge clk_sys);host_write=0;
             end
-            load_byte(STORE_WRAM,16'h123,8'h55);load_byte(STORE_VRAM,16'h1000,8'h66);
-            load_byte(STORE_HRAM,0,8'h5a);
+            load_byte(n2m_memory_pkg::STORE_WRAM,16'h123,8'h55);load_byte(n2m_memory_pkg::STORE_VRAM,16'h1000,8'h66);
+            load_byte(n2m_memory_pkg::STORE_HRAM,0,8'h5a);
             setup=0;observe=1;
             transaction(1,1,16'hff46,active_page,0,0); // M0
             transaction(1,0,16'hc123,0,1,8'h55); // M1 remains accessible before activation
@@ -174,10 +171,10 @@ module tb_dma_access;
             repeat(30) @(negedge clk_sys);
             if(dma_active || writes!=160) $fatal(1,"DMA_ACCESS_COUNT case=%0d writes=%0d",case_index,writes);
             observe=0;setup=1;
-            for(index=0;index<160;index=index+1) readback(STORE_OAM,index,expected_oam[index]);
-            readback(STORE_WRAM,16'h123,8'h55);
-            readback(STORE_VRAM,16'h1000,8'h66);
-            readback(STORE_VRAM,0,case_index==2 ? 8'hd4 : 8'h81);
+            for(index=0;index<160;index=index+1) readback(n2m_memory_pkg::STORE_OAM,index,expected_oam[index]);
+            readback(n2m_memory_pkg::STORE_WRAM,16'h123,8'h55);
+            readback(n2m_memory_pkg::STORE_VRAM,16'h1000,8'h66);
+            readback(n2m_memory_pkg::STORE_VRAM,0,case_index==2 ? 8'hd4 : 8'h81);
         end
         if(reads_checked!=44) $fatal(1,"DMA_ACCESS_READ_COUNT expected=44 actual=%0d",reads_checked);
         $display("PASS DMA access seven source cases bytes=1120 reads=%0d",reads_checked);$finish;

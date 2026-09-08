@@ -1,10 +1,9 @@
 `timescale 1ns/1ps
 `default_nettype none
 module tb_oam_corrupt;
-    import n2m_oam_pkg::*;
     logic clk_sys, reset;
     logic [4:0] row_index;
-    oam_effect_t kind;
+    n2m_oam_pkg::oam_effect_t kind;
     logic [63:0] current_row, previous_row, older_row;
     logic [63:0] current_result, previous_result, older_result;
     logic [2:0] write_mask;
@@ -56,7 +55,7 @@ module tb_oam_corrupt;
 
     task automatic check_case;
         row_index=5'(row);
-        kind=oam_effect_t'(operation);
+        kind=n2m_oam_pkg::oam_effect_t'(operation);
         for (r=0; r<3; r=r+1)
             for (w=0; w<4; w=w+1)
                 input_rows[r][w]=16'(16'h1234*(r+1)+16'h2311*w+16'h0137*row);
@@ -93,7 +92,7 @@ module tb_oam_corrupt;
     endtask
 
     initial begin
-        clk_sys=0; reset=1; row_index=0; kind=OAM_NONE;
+        clk_sys=0; reset=1; row_index=0; kind=n2m_oam_pkg::OAM_NONE;
         current_row=0; previous_row=0; older_row=0; count=0;
         output_fault=$test$plusargs("output-fault");
         mask_fault=$test$plusargs("mask-fault");

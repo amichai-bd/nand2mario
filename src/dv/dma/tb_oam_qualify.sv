@@ -1,15 +1,13 @@
 `timescale 1ns/1ps
 `default_nettype none
 module tb_oam_qualify;
-    import n2m_cpu_pkg::*;
-    import n2m_oam_pkg::*;
     logic clk_sys, reset, effect_sample, effect_resolved;
-    cpu_address_effect_t address_effect;
-    cpu_bus_plan_t bus_plan;
+    n2m_cpu_pkg::cpu_address_effect_t address_effect;
+    n2m_cpu_pkg::cpu_bus_plan_t bus_plan;
     logic bus_commit;
     logic [1:0] ppu_oam_phase;
     logic [5:0] ppu_scan_index;
-    oam_effect_t kind;
+    n2m_oam_pkg::oam_effect_t kind;
     logic [4:0] row_index;
     logic invalid_observation;
     logic [1:0] expected_kind;
@@ -55,7 +53,7 @@ module tb_oam_qualify;
             address_effect.address=16'hfe00;address_effect.known_mask=16'h00ff;
             repeat(2)@(negedge clk_sys);$fatal(1,"OAM_QUALIFIER_MASK_NOT_REJECTED");
         end
-        if(corrupt)force dut.kind=OAM_WRITE;
+        if(corrupt)force dut.kind=n2m_oam_pkg::OAM_WRITE;
         // Literal address-list membership is independent of DUT address slicing.
         for(ordinary_mode=0;ordinary_mode<3;ordinary_mode=ordinary_mode+1)
         for(idu_mode=0;idu_mode<3;idu_mode=idu_mode+1)
