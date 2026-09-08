@@ -117,6 +117,20 @@ before the next source frame begins. Observers remain live until that pause.
 
 ## Independent checks
 
+The named `python-v05-physical` system-boundary proof reuses the bounded
+original program and its sole effective Right+A event. It selects PHYSICAL
+through UART while paused with both shadows zero, then accepts public coherent
+mask17 off-tick during50000..52000. UART writes2 and17 affect only the host
+shadow while PHYSICAL is selected. Selecting UART with both shadows17 creates
+no extra event; a subsequent physical commit0 remains isolated. Source and
+shadow readbacks and public effective/source observations must match each
+prescribed state. Every retirement, write and pixel remains checked through
+the actual bounded final pause. `python-v05-physical-mask` changes the actual
+physical connection17 to1 and must fail the unchanged applied-input checker.
+The [driver notes](../../../../src/dv/python/v05/README.md#physical-system-boundary)
+record the exact state sequence. This is not ADC acquisition or physical
+board integration; issue156 retains that scope.
+
 `src/dv/v05/program.json` owns original literal bytes and instruction cycles;
 `reference.py` applies the program's register/flag effects without reading DUT
 instruction decode or choosing the next instruction from an actual trace.
