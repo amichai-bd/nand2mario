@@ -155,9 +155,9 @@ transport work for every unrelated PR.
 The revised [v0.5 matrix](../v05/SPEC.md#revised-milestone-matrix) combines precise
 bounded startup/cross-frame observation, timer/DMA proofs, real UART loading and
 all prescribed inputs, with separately bounded FPGA endurance. It replaces the
-former 600-continuous-interval criterion, which was never passed. #88 remains
-open; [#244](https://github.com/amichai-bd/nand2mario/issues/244) owns new window,
-fault and endurance qualification. No exhaustive physical retirement/pixel or
+former 600-continuous-interval criterion, which was never passed. #88 tracks
+the revised milestone; [PR246](https://github.com/amichai-bd/nand2mario/pull/246)
+records window, fault and endurance qualification. No exhaustive physical retirement/pixel or
 600-frame claim follows from this revision. Declare each broader milestone's
 test selection, total expected cost, physical duration/inputs/sampling and
 reset/hang checks before execution. Later release matrices remain separate.

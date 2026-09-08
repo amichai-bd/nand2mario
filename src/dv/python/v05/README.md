@@ -6,8 +6,8 @@ actual UART endpoint and observe the composed CPU, PPU and shared input owner.
 Existing loading faults use real UART loading; named short targets preload ROM.
 The [revised matrix](../../../../wiki/src/dv/v05/SPEC.md#revised-milestone-matrix)
 defaults composed execution to Intel preload with separate actual UART proof.
-Its window/loading-mode separation is implemented below; complete qualification
-remains in #244. No target uses
+Its window/loading-mode separation is implemented below; qualification is
+recorded in [PR246](https://github.com/amichai-bd/nand2mario/pull/246). No target uses
 snapshots as its every-frame oracle.
 
 `known()` reads one public logic snapshot. It accepts `0/1/L/H`, normalizes weak
@@ -38,8 +38,8 @@ actual raw simulator exit independently. Every test follows the
 [300-second total wall budget](../../../../wiki/tools/n2m/SPEC.md#test-wall-budget),
 including preparation, compilation, execution and checking. Target 120 seconds
 per simulation and 300 seconds ordinary pre-merge aggregate. The legacy full
-stimulus remains for historical interpretation, not execution. #88's revised
-matrix and #244's new window/fault/endurance proof remain unpassed. Do not
+stimulus remains for historical interpretation, not execution. #88 owns the
+revised matrix; PR246 records window/fault/endurance qualification. Do not
 schedule a longer run to bypass the cap or treat timeout changes as new evidence.
 
 Retirement/pixel CSV and public applied-input/UART JSONL observations remain

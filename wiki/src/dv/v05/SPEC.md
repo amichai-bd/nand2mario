@@ -30,9 +30,8 @@ frame is the PPU contract's blank frame, with every pixel shade 0.
 
 The user-authorized revision replaces the former 600-continuous-interval
 criterion; it was never passed. [#88](https://github.com/amichai-bd/nand2mario/issues/88)
-remains open. [#244](https://github.com/amichai-bd/nand2mario/issues/244) owns the
-new window, fault qualification and endurance evidence; this specification
-does not claim that work is complete.
+tracks the revised milestone. [PR246](https://github.com/amichai-bd/nand2mario/pull/246)
+records window, fault, complementary evidence and endurance qualification.
 
 - Build the exact original ROM twice and compare all bytes. Default composed
   execution to supported Intel preload with real initialization and loader
@@ -67,10 +66,9 @@ does not claim that work is complete.
   observation. Declare the broader matrix aggregate and measured result.
 
 Every new simulation follows the 300-second total cap, targeting120 seconds;
-ordinary pre-merge aggregate target is 300 seconds. The measured #242 profile
-reached dot 144239 at 176 seconds, so the proposed window is plausibly below the
-hard ceiling but has not met the 120-second target. Do not launch the obsolete
-long target. FPGA compilation is a separately measured prerequisite.
+ordinary pre-merge aggregate target is 300 seconds. Record actual per-test and
+aggregate costs in the acceptance evidence, including any unmet target. Do not
+launch the obsolete long target. FPGA compilation is separately measured.
 
 ## Original timing and legacy input schedule
 
