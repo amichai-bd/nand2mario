@@ -12113,6 +12113,7 @@
       "src/rtl/ppu/n2m_ppu_shift.sv",
       "src/rtl/ppu/n2m_ppu_timing.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/memory/n2m_oam_late_write.sv",
       "src/dv/integration/n2m_smoke_system.sv",
       "src/dv/mooneye/tb_python_mooneye.sv"
     ],
@@ -12218,6 +12219,7 @@
       "src/rtl/ppu/n2m_ppu_shift.sv",
       "src/rtl/ppu/n2m_ppu_timing.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/memory/n2m_oam_late_write.sv",
       "src/dv/integration/n2m_smoke_system.sv",
       "src/dv/mooneye/tb_python_mooneye.sv"
     ],
@@ -12325,6 +12327,7 @@
       "src/rtl/ppu/n2m_ppu_shift.sv",
       "src/rtl/ppu/n2m_ppu_timing.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
+      "src/rtl/memory/n2m_oam_late_write.sv",
       "src/dv/integration/n2m_smoke_system.sv",
       "src/dv/mooneye/tb_python_mooneye.sv"
     ],
