@@ -14,12 +14,12 @@ SYS = r"\clk_sys~inputclkctrl_outclk"
 
 def verify_netlist(text, checks, top="adc_proof", *, parallel=False, system_net=SYS):
     from .fpga_lock import ROW
-    prefix = "u_controls|" if top == "v05_controls_proof" else ""
-    pll_path, fsm_path = prefix + PLL, prefix + FSM
+    hierarchy_prefix = "u_controls|" if top == "v05_controls_proof" else ""
+    pll_path, fsm_path = hierarchy_prefix + PLL, hierarchy_prefix + FSM
     if top not in ("adc_proof", "controls_proof", "v05_controls_proof"):
         raise ValueError("unsupported ADC proof top")
-    reset = prefix + "u_adc_reset|" if top in ("controls_proof", "v05_controls_proof") else "u_reset|"
-    row = ("n2m_controls_system:u_controls|" if prefix else "") + "n2m_adc_backend:u_adc|n2m_adc_pll:u_pll|altpll:altpll_component|n2m_adc_pll_altpll:auto_generated|pll_lock_sync"
+    reset = hierarchy_prefix + "u_adc_reset|" if top in ("controls_proof", "v05_controls_proof") else "u_reset|"
+    row = ("n2m_controls_system:u_controls|" if hierarchy_prefix else "") + "n2m_adc_backend:u_adc|n2m_adc_pll:u_pll|altpll:altpll_component|n2m_adc_pll_altpll:auto_generated|pll_lock_sync"
     expected_rows = [ROW, row] if top in ("controls_proof", "v05_controls_proof") else [row]
     if parallel:
         expected_rows.append("n2m_clocking:u_clocking|n2m_system_pll:u_system_pll|altpll:altpll_component|n2m_system_pll_altpll:auto_generated|pll_lock_sync")
@@ -192,7 +192,7 @@ def verify_netlist(text, checks, top="adc_proof", *, parallel=False, system_net=
             expected |= {(fsm_path + f"chsel[{i}]", "d") for i in range(3)}
         require(endpoints == expected, "ADC vendor lock reset-qualified closure differs")
 
-    atom = prefix + "u_adc|u_control|adc_inst|adcblock_instance|primitive_instance"
+    atom = hierarchy_prefix + "u_adc|u_control|adc_inst|adcblock_instance|primitive_instance"
     adc = cell(atom, "fiftyfivenm_adcblock")
     require({n for n, (k, _) in cells.items() if k == "fiftyfivenm_adcblock"} == {atom, "~QUARTUS_CREATED_ADC2~"}, "ADC atom inventory differs")
     require(params[atom] == {"analog_input_pin_mask": "110", "clkdiv": "5", "device_partname_fivechar_prefix": '"10m50"',
