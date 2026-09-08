@@ -23,13 +23,11 @@ module n2m_dma_engine (
     output logic active,
     output logic fault
 );
-    import n2m_interfaces_pkg::*;
-    import n2m_dma_pkg::*;
-    dma_state_t state_q, state_next, reset_value;
+    n2m_dma_pkg::dma_state_t state_q, state_next, reset_value;
     logic reset, advance, missing_response;
     logic [7:0] source_page;
     assign reset = reset_sys || core_reset;
-    assign reset_value = {PROFILE_PERIPHERAL_FILL, 8'd0, 3'b000};
+    assign reset_value = {n2m_interfaces_pkg::PROFILE_PERIPHERAL_FILL, 8'd0, 3'b000};
     assign advance = !reset && !state_q.fault && gb_tick &&
         cpu_phase == 2'd3 && progress_enable;
     assign missing_response = advance && state_q.active && !source_valid;
@@ -38,7 +36,7 @@ module n2m_dma_engine (
     assign source_request = !reset && !state_q.fault && state_q.active;
     assign active = source_request;
     assign fault = !reset && state_q.fault;
-    assign ff46_rdata = reset ? PROFILE_PERIPHERAL_FILL : state_q.page;
+    assign ff46_rdata = reset ? n2m_interfaces_pkg::PROFILE_PERIPHERAL_FILL : state_q.page;
     assign write_valid = advance && state_q.active && source_valid;
     assign write_offset = state_q.offset;
     assign write_data = source_data;
