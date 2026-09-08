@@ -46,6 +46,8 @@ def project(log):
         elif line.startswith('closing '):
             item=fields(line)
             if item['step'] in snapshots: raise ValueError('duplicate closing snapshot')
+            if item['step']!=len(snapshots) or (snapshots and item['native_dot']<=snapshots[item['step']-1]['native_dot']):
+                raise ValueError('reordered closing snapshot')
             snapshots[item['step']]=item
     steps=set(range(len(events)))
     if set(reads)!=steps or set(fetches)!=steps or set(snapshots)!=steps:

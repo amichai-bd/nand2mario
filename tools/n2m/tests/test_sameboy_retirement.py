@@ -44,3 +44,9 @@ class RetirementProjection(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'event 0 a: expected=0 actual=1'):compare(expected,actual)
         with self.assertRaisesRegex(ValueError,'event count at 1'):compare(expected,expected[:1])
         with self.assertRaisesRegex(ValueError,'event 0 seq: expected=0 actual=1'):compare(expected,list(reversed(expected)))
+
+    def test_swapped_closing_snapshots_fail_without_reordering_dictionary(self):
+        first='closing step=0 native_dot=8 ie=00 if=00 buttons=0'
+        second='closing step=1 native_dot=12 ie=00 if=00 buttons=0'
+        swapped=RAW.replace(first,'TEMP').replace(second,first).replace('TEMP',second)
+        with self.assertRaisesRegex(ValueError,'reordered closing snapshot'):project(swapped)
