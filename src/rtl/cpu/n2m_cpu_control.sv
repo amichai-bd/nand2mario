@@ -43,13 +43,11 @@ module n2m_cpu_control (
     output logic ime_delay_observe,
     output logic stop_execute
 );
-    import n2m_cpu_pkg::*;
-    import n2m_interfaces_pkg::*;
 
-    cpu_control_t control;
-    cpu_control_t control_next;
-    cpu_registers_t registers;
-    cpu_registers_t registers_next;
+    n2m_cpu_pkg::cpu_control_t control;
+    n2m_cpu_pkg::cpu_control_t control_next;
+    n2m_cpu_pkg::cpu_registers_t registers;
+    n2m_cpu_pkg::cpu_registers_t registers_next;
     logic [4:0] dispatch;
     logic [4:0] selected_irq;
     logic [15:0] selected_vector;
@@ -57,29 +55,29 @@ module n2m_cpu_control (
     logic hold_address_effect;
 `endif
 
-    function automatic cpu_registers_t profile_registers;
-        cpu_registers_t r;
-        r.a = PROFILE_A;
-        r.f = PROFILE_F;
-        r.b = PROFILE_B;
-        r.c = PROFILE_C;
-        r.d = PROFILE_D;
-        r.e = PROFILE_E;
-        r.h = PROFILE_H;
-        r.l = PROFILE_L;
-        r.sp = PROFILE_SP;
+    function automatic n2m_cpu_pkg::cpu_registers_t profile_registers;
+        n2m_cpu_pkg::cpu_registers_t r;
+        r.a = n2m_interfaces_pkg::PROFILE_A;
+        r.f = n2m_interfaces_pkg::PROFILE_F;
+        r.b = n2m_interfaces_pkg::PROFILE_B;
+        r.c = n2m_interfaces_pkg::PROFILE_C;
+        r.d = n2m_interfaces_pkg::PROFILE_D;
+        r.e = n2m_interfaces_pkg::PROFILE_E;
+        r.h = n2m_interfaces_pkg::PROFILE_H;
+        r.l = n2m_interfaces_pkg::PROFILE_L;
+        r.sp = n2m_interfaces_pkg::PROFILE_SP;
         return r;
     endfunction
 
-    function automatic cpu_control_t profile_control;
-        cpu_control_t c;
+    function automatic n2m_cpu_pkg::cpu_control_t profile_control;
+        n2m_cpu_pkg::cpu_control_t c;
         c = '0;
-        c.mode = PROFILE_CPU_STOP[0] ? MODE_STOP : (PROFILE_CPU_HALT[0] ? MODE_HALT : MODE_FETCH);
-        c.pc = PROFILE_PC;
-        c.instruction_pc = PROFILE_PC;
-        c.ime = PROFILE_IME[0];
-        c.ime_delay = PROFILE_IME_DELAY[0];
-        c.halt_bug = PROFILE_HALT_BUG[0];
+        c.mode = n2m_interfaces_pkg::PROFILE_CPU_STOP[0] ? n2m_cpu_pkg::MODE_STOP : (n2m_interfaces_pkg::PROFILE_CPU_HALT[0] ? n2m_cpu_pkg::MODE_HALT : n2m_cpu_pkg::MODE_FETCH);
+        c.pc = n2m_interfaces_pkg::PROFILE_PC;
+        c.instruction_pc = n2m_interfaces_pkg::PROFILE_PC;
+        c.ime = n2m_interfaces_pkg::PROFILE_IME[0];
+        c.ime_delay = n2m_interfaces_pkg::PROFILE_IME_DELAY[0];
+        c.halt_bug = n2m_interfaces_pkg::PROFILE_HALT_BUG[0];
         return c;
     endfunction
 
@@ -95,16 +93,16 @@ module n2m_cpu_control (
 
     assign fault = bus_fault || control.profile_fault;
     assign initialized = control.initialized;
-    assign active = initialized && !fault && (control.mode == MODE_FETCH || control.mode == MODE_EXECUTE || control.mode == MODE_INTERRUPT || control.mode == MODE_HALT);
-    assign complete_enable = control.mode != MODE_HALT || pending_irq;
-    assign halted = control.mode == MODE_HALT;
-    assign stopped = control.mode == MODE_STOP;
-    assign locked = control.mode == MODE_LOCK;
+    assign active = initialized && !fault && (control.mode == n2m_cpu_pkg::MODE_FETCH || control.mode == n2m_cpu_pkg::MODE_EXECUTE || control.mode == n2m_cpu_pkg::MODE_INTERRUPT || control.mode == n2m_cpu_pkg::MODE_HALT);
+    assign complete_enable = control.mode != n2m_cpu_pkg::MODE_HALT || pending_irq;
+    assign halted = control.mode == n2m_cpu_pkg::MODE_HALT;
+    assign stopped = control.mode == n2m_cpu_pkg::MODE_STOP;
+    assign locked = control.mode == n2m_cpu_pkg::MODE_LOCK;
     assign ime_observe = control.ime;
     assign ime_delay_observe = control.ime_delay;
     assign pending_irq = |control.irq_snapshot;
     assign dispatch = control.irq_snapshot;
-    assign stop_execute = control.mode == MODE_EXECUTE && execute_result.stop_request && cycle_end;
+    assign stop_execute = control.mode == n2m_cpu_pkg::MODE_EXECUTE && execute_result.stop_request && cycle_end;
 
     assign address_effect_phase = phase;
     assign address_effect_sample = gb_tick && phase == 3 && initialized &&
@@ -119,11 +117,11 @@ module n2m_cpu_control (
     always_comb begin
         address_effect = '0;
         address_effect_resolved = 1;
-        if (control.mode == MODE_FETCH || control.mode == MODE_HALT) begin
+        if (control.mode == n2m_cpu_pkg::MODE_FETCH || control.mode == n2m_cpu_pkg::MODE_HALT) begin
             address_effect_resolved = !control.observation_resume;
             address_effect.valid = !control.observation_resume;
             address_effect.address = control.observation_resume ? 16'b0 : control.pc;
-        end else if (control.mode == MODE_EXECUTE) begin
+        end else if (control.mode == n2m_cpu_pkg::MODE_EXECUTE) begin
             address_effect = execute_result.address_effect;
             if (execute_result.finish && !execute_result.halt_request && !execute_result.stop_request) begin
                 address_effect.valid = 1;
@@ -135,7 +133,7 @@ module n2m_cpu_control (
                 address_effect.valid = 1;
                 address_effect.address = control.pc;
             end
-        end else if (control.mode == MODE_INTERRUPT) begin
+        end else if (control.mode == n2m_cpu_pkg::MODE_INTERRUPT) begin
             if (control.step == 0) begin
                 address_effect_resolved = !control.observation_resume;
                 address_effect.valid = !control.observation_resume;
@@ -148,7 +146,7 @@ module n2m_cpu_control (
                 address_effect.valid = 1;
                 address_effect.address = control.pc;
             end
-        end else if (control.mode == MODE_STOP)
+        end else if (control.mode == n2m_cpu_pkg::MODE_STOP)
             address_effect_resolved = 0;
         if (address_effect.valid) begin
             if (address_effect.known_mask == 0) address_effect.known_mask = 16'hffff;
@@ -164,31 +162,31 @@ module n2m_cpu_control (
         bus_plan.address = control.pc;
         bus_plan.write_data = 0;
         bus_plan.write_enable = 0;
-        bus_plan.access_kind = ACCESS_IDLE;
-        if (control.mode == MODE_FETCH || control.mode == MODE_HALT) bus_plan.access_kind = ACCESS_OPCODE;
-        else if (control.mode == MODE_EXECUTE) begin
+        bus_plan.access_kind = n2m_cpu_pkg::ACCESS_IDLE;
+        if (control.mode == n2m_cpu_pkg::MODE_FETCH || control.mode == n2m_cpu_pkg::MODE_HALT) bus_plan.access_kind = n2m_cpu_pkg::ACCESS_OPCODE;
+        else if (control.mode == n2m_cpu_pkg::MODE_EXECUTE) begin
             bus_plan.address = execute_result.plan.address;
             bus_plan.write_data = execute_result.plan.write_data;
             bus_plan.write_enable = execute_result.plan.write_enable;
             bus_plan.access_kind = execute_result.plan.access_kind;
-        end else if (control.mode == MODE_INTERRUPT) begin
+        end else if (control.mode == n2m_cpu_pkg::MODE_INTERRUPT) begin
             if (control.step == 2 || control.step == 3) begin
                 bus_plan.address = registers.sp;
                 bus_plan.write_enable = 1;
                 bus_plan.write_data = control.step == 2 ? control.irq_pc[15:8] : control.irq_pc[7:0];
-                bus_plan.access_kind = ACCESS_STACK;
-            end else if (control.step == 4) bus_plan.access_kind = ACCESS_OPCODE;
+                bus_plan.access_kind = n2m_cpu_pkg::ACCESS_STACK;
+            end else if (control.step == 4) bus_plan.access_kind = n2m_cpu_pkg::ACCESS_OPCODE;
         end
     end
 
     always_comb begin
         selected_irq = 0;
         selected_vector = 0;
-        if (dispatch[0]) begin selected_irq = 5'b00001; selected_vector = VECTOR_VBLANK; end
-        else if (dispatch[1]) begin selected_irq = 5'b00010; selected_vector = VECTOR_STAT; end
-        else if (dispatch[2]) begin selected_irq = 5'b00100; selected_vector = VECTOR_TIMER; end
-        else if (dispatch[3]) begin selected_irq = 5'b01000; selected_vector = VECTOR_SERIAL; end
-        else if (dispatch[4]) begin selected_irq = 5'b10000; selected_vector = VECTOR_JOYPAD; end
+        if (dispatch[0]) begin selected_irq = 5'b00001; selected_vector = n2m_interfaces_pkg::VECTOR_VBLANK; end
+        else if (dispatch[1]) begin selected_irq = 5'b00010; selected_vector = n2m_interfaces_pkg::VECTOR_STAT; end
+        else if (dispatch[2]) begin selected_irq = 5'b00100; selected_vector = n2m_interfaces_pkg::VECTOR_TIMER; end
+        else if (dispatch[3]) begin selected_irq = 5'b01000; selected_vector = n2m_interfaces_pkg::VECTOR_SERIAL; end
+        else if (dispatch[4]) begin selected_irq = 5'b10000; selected_vector = n2m_interfaces_pkg::VECTOR_JOYPAD; end
     end
 
     always_comb begin
@@ -212,8 +210,8 @@ module n2m_cpu_control (
         // retains a one-edge pulse even while host pause withholds ticks.
         // Approved digital restart uses ordinary fetch/IRQ behavior even when
         // IME-enabled requests arrived during oscillator restart.
-        if (control.mode == MODE_STOP && wake_request && phase == 0 && !gb_tick) begin
-            control_next.mode = MODE_FETCH;
+        if (control.mode == n2m_cpu_pkg::MODE_STOP && wake_request && phase == 0 && !gb_tick) begin
+            control_next.mode = n2m_cpu_pkg::MODE_FETCH;
             control_next.observation_resume = 0;
         end
         if (cycle_end) begin
@@ -221,7 +219,7 @@ module n2m_cpu_control (
                 // HALT continuously prepares this read, but only its frozen
                 // pending request enables completion. Wake captures fresh data
                 // at this T4; it never reuses the discarded pre-sleep byte.
-                MODE_FETCH, MODE_HALT: begin
+                n2m_cpu_pkg::MODE_FETCH, n2m_cpu_pkg::MODE_HALT: begin
                     control_next.observation_resume = control.observation_resume && control.ime && pending_irq;
                     control_next.opcode = read_data;
                     control_next.fetched = {16'b0, read_data};
@@ -231,18 +229,18 @@ module n2m_cpu_control (
                     control_next.step = 0;
                     control_next.cb_bank = 0;
                     control_next.halt_bug = 0;
-                    control_next.mode = MODE_EXECUTE;
+                    control_next.mode = n2m_cpu_pkg::MODE_EXECUTE;
                     if (control.ime && pending_irq) begin
-                        control_next.mode = MODE_INTERRUPT;
+                        control_next.mode = n2m_cpu_pkg::MODE_INTERRUPT;
                         control_next.irq_pc = control.pc;
                     end
                 end
-                MODE_EXECUTE: begin
+                n2m_cpu_pkg::MODE_EXECUTE: begin
                     registers_next = execute_result.registers_after;
                     control_next.pc = execute_result.pc_after;
                     control_next.temporary = execute_result.temporary_after;
                     control_next.step = control.step + 3'd1;
-                    if (execute_result.plan.access_kind == ACCESS_OPERAND) begin
+                    if (execute_result.plan.access_kind == n2m_cpu_pkg::ACCESS_OPERAND) begin
                         case (control.length)
                             1: control_next.fetched[15:8] = read_data;
                             2: control_next.fetched[23:16] = read_data;
@@ -255,7 +253,7 @@ module n2m_cpu_control (
                         control_next.cb_bank = 1;
                         control_next.step = 0;
                     end
-                    if (execute_result.illegal) control_next.mode = MODE_LOCK;
+                    if (execute_result.illegal) control_next.mode = n2m_cpu_pkg::MODE_LOCK;
                     if (execute_result.finish) begin
                         retire_capture.valid = 1;
                         retire_capture.pc_after = execute_result.pc_after;
@@ -283,7 +281,7 @@ module n2m_cpu_control (
                                     control_next.pc = control.instruction_pc + 16'd1;
                                 end else control_next.halt_bug = 1;
                             end else begin
-                                control_next.mode = MODE_HALT;
+                                control_next.mode = n2m_cpu_pkg::MODE_HALT;
                                 retire_capture.halted_after = 1;
                             end
                         end
@@ -293,23 +291,23 @@ module n2m_cpu_control (
                                 retire_capture.fetched_length = 2;
                                 retire_capture.pc_after = execute_result.pc_after + 16'd1;
                             end
-                            if (stop_action != STOP_CONTINUE) begin
-                                control_next.observation_resume = stop_action == STOP_OSCILLATOR;
+                            if (stop_action != n2m_cpu_pkg::STOP_CONTINUE) begin
+                                control_next.observation_resume = stop_action == n2m_cpu_pkg::STOP_OSCILLATOR;
                                 control_next.pc = retire_capture.pc_after;
-                                control_next.mode = stop_action == STOP_HALT ? MODE_HALT : MODE_STOP;
-                                retire_capture.halted_after = stop_action == STOP_HALT;
-                                retire_capture.stopped_after = stop_action == STOP_OSCILLATOR;
+                                control_next.mode = stop_action == n2m_cpu_pkg::STOP_HALT ? n2m_cpu_pkg::MODE_HALT : n2m_cpu_pkg::MODE_STOP;
+                                retire_capture.halted_after = stop_action == n2m_cpu_pkg::STOP_HALT;
+                                retire_capture.stopped_after = stop_action == n2m_cpu_pkg::STOP_OSCILLATOR;
                             end
                         end
                         if (control_next.ime && pending_irq && !retire_capture.stopped_after) begin
-                            control_next.mode = MODE_INTERRUPT;
+                            control_next.mode = n2m_cpu_pkg::MODE_INTERRUPT;
                             control_next.irq_pc = retire_capture.pc_after;
                             retire_capture.halted_after = 0;
                             control_next.halt_bug = 0;
                         end
                     end
                 end
-                MODE_INTERRUPT: begin
+                n2m_cpu_pkg::MODE_INTERRUPT: begin
                     control_next.step = control.step + 3'd1;
                     control_next.ime = 0;
                     control_next.ime_delay = 0;
@@ -327,7 +325,7 @@ module n2m_cpu_control (
                         retire_capture.is_interrupt = 1;
                         retire_capture.pc_before = control.irq_pc;
                         retire_capture.pc_after = control.pc;
-                        control_next.mode = MODE_EXECUTE;
+                        control_next.mode = n2m_cpu_pkg::MODE_EXECUTE;
                         control_next.step = 0;
                         control_next.cb_bank = 0;
                         control_next.instruction_pc = control.pc;
@@ -342,8 +340,8 @@ module n2m_cpu_control (
         end
         if (core_reset) begin
             control_next = profile_control();
-            control_next.initialized = profile_id == PROFILE_DIRECT_ID;
-            control_next.profile_fault = profile_id != PROFILE_DIRECT_ID;
+            control_next.initialized = profile_id == n2m_interfaces_pkg::PROFILE_DIRECT_ID;
+            control_next.profile_fault = profile_id != n2m_interfaces_pkg::PROFILE_DIRECT_ID;
             registers_next = profile_registers();
             retire_capture.valid = 0;
             irq_ack = 0;
@@ -367,7 +365,7 @@ module n2m_cpu_control (
     `N2M_ASSERT_KNOWN(CPU_STOP_SELECTED_KNOWN, clk_sys, reset_sys || core_reset,
         joyp_selected_active)
     `N2M_ASSERT(CPU_PROFILE_ID, clk_sys, reset_sys,
-        core_reset |-> profile_id == PROFILE_DIRECT_ID)
+        core_reset |-> profile_id == n2m_interfaces_pkg::PROFILE_DIRECT_ID)
     `N2M_ASSERT(CPU_IRQ_ACK_ONEHOT, clk_sys, reset_sys || core_reset, $onehot0(irq_ack))
     `N2M_ASSERT_STABLE_WHEN(CPU_IDU_PLAN_STABLE, clk_sys, reset_sys || core_reset,
         hold_address_effect, {address_effect_resolved, address_effect})
