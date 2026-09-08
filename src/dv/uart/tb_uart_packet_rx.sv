@@ -1,18 +1,16 @@
 `timescale 1ns/1ps
 module tb_uart_packet_rx;
-    import n2m_interfaces_pkg::*;
-    import n2m_uart_pkg::*;
     logic clk;
     logic reset;
     logic rx_valid;
     logic [7:0] rx_data;
     logic rx_error;
     logic request_valid;
-    packet_header_t header;
-    logic [UART_ADDRESS_BITS-1:0] request_bytes;
+    n2m_interfaces_pkg::packet_header_t header;
+    logic [n2m_uart_pkg::UART_ADDRESS_BITS-1:0] request_bytes;
     logic done;
     logic packet_read;
-    logic [UART_ADDRESS_BITS-1:0] packet_address;
+    logic [n2m_uart_pkg::UART_ADDRESS_BITS-1:0] packet_address;
     logic [7:0] packet_data;
     logic packet_valid;
     byte unsigned raw [0:299];
@@ -143,7 +141,7 @@ module tb_uart_packet_rx;
             $fatal(1, "UART_RX_HEADER actual=%h", header);
         repeat (3) @(negedge clk);
         for (index = 0; index < raw_size; index = index + 1) begin
-            packet_address = UART_ADDRESS_BITS'(index);
+            packet_address = n2m_uart_pkg::UART_ADDRESS_BITS'(index);
             packet_read = 1'b1;
             if (bad_read) packet_address = request_bytes;
             if (corrupt && index == 2) force dut.stores.decoded_read_data = 8'h00;
@@ -190,8 +188,8 @@ module tb_uart_packet_rx;
         crc32 = 32'hffffffff;
         for (index = 0; index < 9; index = index + 1) begin
             raw[index] = 8'(49 + index);
-            crc16 = crc16_byte(crc16, raw[index]);
-            crc32 = crc32_byte(crc32, raw[index]);
+            crc16 = n2m_uart_pkg::crc16_byte(crc16, raw[index]);
+            crc32 = n2m_uart_pkg::crc32_byte(crc32, raw[index]);
         end
         if (reference_crc(9) != 16'h29b1 || crc16 != 16'h29b1 ||
             (crc32 ^ 32'hffffffff) != 32'hcbf43926)

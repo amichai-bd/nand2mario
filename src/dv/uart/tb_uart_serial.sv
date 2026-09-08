@@ -1,7 +1,5 @@
 `timescale 1ns/1ps
 module tb_uart_serial;
-    import n2m_interfaces_pkg::*;
-    import n2m_uart_pkg::*;
     logic clk;
     logic reset;
     logic tx_valid;
@@ -21,11 +19,11 @@ module tb_uart_serial;
     integer pin_samples;
     logic corrupt;
     logic packet_request_valid;
-    packet_header_t packet_header;
-    logic [UART_ADDRESS_BITS-1:0] packet_bytes;
+    n2m_interfaces_pkg::packet_header_t packet_header;
+    logic [n2m_uart_pkg::UART_ADDRESS_BITS-1:0] packet_bytes;
     logic packet_done;
     logic packet_read;
-    logic [UART_ADDRESS_BITS-1:0] packet_address;
+    logic [n2m_uart_pkg::UART_ADDRESS_BITS-1:0] packet_address;
     logic [7:0] packet_data;
     logic packet_data_valid;
     logic previous_packet_valid;
@@ -126,7 +124,7 @@ module tb_uart_serial;
             $fatal(1, "UART_SERIAL_PACKET_HEADER valid=%b bytes=%0d header=%h", packet_request_valid, packet_bytes, packet_header);
         for (index = 0; index < 12; index = index + 1) begin
             packet_read = 1'b1;
-            packet_address = UART_ADDRESS_BITS'(index);
+            packet_address = n2m_uart_pkg::UART_ADDRESS_BITS'(index);
             @(posedge clk);
             #1;
             if (!packet_data_valid || packet_data !== raw_vector[index*8 +: 8])
@@ -174,7 +172,7 @@ module tb_uart_serial;
         for (index = 0; index < 16; index = index + 1) begin
             @(negedge clk);
             packet_read = 1'b1;
-            packet_address = UART_ADDRESS_BITS'(index);
+            packet_address = n2m_uart_pkg::UART_ADDRESS_BITS'(index);
             @(posedge clk);
             #1;
             if (!packet_data_valid || packet_data !== raw_bytes[index*8 +: 8])
