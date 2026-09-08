@@ -99,8 +99,8 @@ checks all color transitions and identifies bitwise OR; SameBoy's
 is retained in its pinned CPU conflict path for all three palettes. The digital
 old/conflict/new sample sequence preserves our architectural commit and source
 boundary. It does not assert equality of internal Core PPU action timestamps
-or resolve the separate startup first-line interval difference in
-[#202](https://github.com/amichai-bd/nand2mario/issues/202).
+or equate the raw startup intervals described in the
+[startup observation boundary](#startup-observation-boundary).
 
 The actual negedge LCDC/LYC write block still requires an explicit relative-order
 mapping: renderer sampling precedes those register changes. No generated clock,
@@ -287,6 +287,37 @@ Global reset keeps the existing invalid-bank black startup behavior.
 The [test plan](../../../../src/dv/ppu/README.md) maps these obligations to
 independent checks.
 
+### Startup observation boundary
+
+The retained 454/455-dot first-row intervals describe different events.
+Pinned [Core display actions](https://github.com/LIJI32/SameBoy/blob/213a12ce93d66b105a113debd9396306066a7cfc/Core/display.c#L1660)
+write internal pixels before
+[whole-frame startup whitening](https://github.com/LIJI32/SameBoy/blob/213a12ce93d66b105a113debd9396306066a7cfc/Core/display.c#L173).
+This PPU emits final shade-0 source events online. The later replacement of a
+complete framebuffer supplies final values, not equivalent per-pixel timestamps.
+The raw interval diagnostic remains `TIMING_MISMATCH_UNRESOLVED`; neither a
+constant offset nor final white-frame agreement makes it a timing PASS.
+
+The common comparison boundary is the complete ordered final source-frame
+values and all architectural retirement fields, including completed dots, as
+required by the [independent reference contract](../../dv/baseline/SPEC.md#independent-emulator-and-retirement-traces).
+The [original program comparison](https://github.com/amichai-bd/nand2mario/pull/195)
+checks 69 complete 26-field retirements and 46,080 pixels. The
+[FC control](https://github.com/amichai-bd/nand2mario/pull/201) checks 10,114
+complete retirements and 46,080 pixels. Each includes the first white frame and
+the following rendered frame. These retained comparisons support equal final
+images for those scenes, not equal internal pixel-action timing. Their producing
+inputs remain explicit in the evidence; this clarification does not rename them
+as current-head runs or relax this PPU's source-dot checks.
+
+This interpretation does not establish universal startup mode, STAT/IRQ or
+memory-access equivalence, or identify a silicon revision. Direction-specific
+access uses the [original CPU witnesses](../../../../src/dv/ppu/startup204.md);
+late OAM write/corruption and capture ordering remain
+[#208](https://github.com/amichai-bd/nand2mario/issues/208). The full continuous
+every-pixel and every-retirement milestone remains
+[#88](https://github.com/amichai-bd/nand2mario/issues/88).
+
 ## Verification obligations
 
 An independent source model determines expected pixels from original VRAM/OAM
@@ -359,7 +390,7 @@ response; an earlier RAM read must not bypass it. The independent
 [startup witnesses](../../../../src/dv/ppu/startup202.md) own the primary table,
 nearby/repeated and exclusion checks. Late OAM write/corruption arbitration remains open in
 [#208](https://github.com/amichai-bd/nand2mario/issues/208); raw startup cadence
-remains [#205](https://github.com/amichai-bd/nand2mario/issues/205).
+uses the [startup observation boundary](#startup-observation-boundary).
 
 ### Controller phase convention
 
