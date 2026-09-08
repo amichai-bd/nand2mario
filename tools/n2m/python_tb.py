@@ -30,7 +30,7 @@ def validate(root, target):
         raise ValueError("python testbench requires zero raw exit and no driver")
     if target.get("vendor_model") not in (None, "intel-memory"):
         raise ValueError("Python testbench supports only Intel memory models")
-    if target.get("preload") not in (None, "integration", "v05", "palette-fc", "palette-00", "startup-read", "startup-write"):
+    if target.get("preload") not in (None, "integration", "v05", "palette-fc", "palette-00", "startup-read", "startup-write", "vram-read", "vram-write"):
         raise ValueError("unknown Python preload")
     if not isinstance(target.get("top"), str) or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", target["top"]):
         raise ValueError("python top must be an HDL identifier")
@@ -47,7 +47,7 @@ def validate(root, target):
     matches = [p for p in config["inputs"] if Path(p).name == config["module"] + ".py"]
     if len(matches) != 1:
         raise ValueError("python inputs must contain exactly one named test module")
-    if target.get("preload") in ("integration", "v05", "palette-fc", "palette-00", "startup-read", "startup-write"):
+    if target.get("preload") in ("integration", "v05", "palette-fc", "palette-00", "startup-read", "startup-write", "vram-read", "vram-write"):
         required = {"src/dv/integration/image.py", "src/dv/integration/program.asm",
                     "src/dv/integration/program.json", "src/dv/integration/retirement.json",
                     "src/sw/generated/interfaces.inc"}
@@ -55,6 +55,8 @@ def validate(root, target):
             required = {"src/sw/v05/main.asm", "src/sw/v05/layout.json", "src/sw/generated/interfaces.inc"}
         if target['preload'].startswith('startup-'):
             required = {'src/dv/ppu/startup202.py', 'src/sw/generated/interfaces.inc'}
+        if target['preload'].startswith('vram-'):
+            required = {'src/dv/ppu/startup204.py', 'src/sw/generated/interfaces.inc'}
         if target['preload'].startswith('palette-'):
             required.update({'src/dv/ppu/palette194.py','src/dv/ppu/palette194.json'})
             required.update(p.relative_to(root).as_posix() for p in (root/'src/dv/sameboy').iterdir() if p.suffix in ('.py','.c','.json','.patch'))
@@ -107,7 +109,7 @@ def environment(root, target, attempt, seed, runtime):
 
 
 def prepare(target, attempt, root=None):
-    if target.get("preload") in ("integration", "v05", "palette-fc", "palette-00", "startup-read", "startup-write"):
+    if target.get("preload") in ("integration", "v05", "palette-fc", "palette-00", "startup-read", "startup-write", "vram-read", "vram-write"):
         import hashlib
         import importlib.util
         from .preload import prepare as prepare_preload, verify
@@ -124,6 +126,12 @@ def prepare(target, attempt, root=None):
             (attempt / "program.gb").write_bytes(image)
         elif target['preload'].startswith('startup-'):
             spec=importlib.util.spec_from_file_location('startup202_image',root/'src/dv/ppu/startup202.py')
+            module=importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            image=module.build(root,attempt,target['preload'].split('-')[1])
+            expected_sha=hashlib.sha256(image).hexdigest()
+        elif target['preload'].startswith('vram-'):
+            spec=importlib.util.spec_from_file_location('startup204_image',root/'src/dv/ppu/startup204.py')
             module=importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
             image=module.build(root,attempt,target['preload'].split('-')[1])
