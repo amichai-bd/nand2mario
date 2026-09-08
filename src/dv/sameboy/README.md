@@ -75,7 +75,7 @@ original-program decoder.
 Epoch2 represents LOAD_BEGIN then LOAD_END, each entering COMMAND_RESET in
 the delivered endpoint, as metadata; the
 reference does not claim to execute the UART loader. Version1 and the released
-input schedule are the approved fixed ABI for this probe. All27 fields compare
+input schedule are the approved fixed ABI for this probe. All26 fields compare
 exactly against the separate literal diagnostic. That diagnostic is not DUT
 equivalence. Raw samples remain separate from projected records.
 
@@ -106,5 +106,6 @@ historical DUT traces are not automatically current-head acceptance.
 - Prove corrupt fields/pixels, missing and reordered records fail with bounded
   expected/actual context; then run the bounded existing Python/Questa path.
 
-The original full #102 criteria remain open. This probe is not a scoped closure
+The unresolved pixel timing prerequisite is tracked in [#194](https://github.com/amichai-bd/nand2mario/issues/194). The original full #102 criteria remain open. This probe is not a scoped closure
 or a replacement for required DUT verification.
+
