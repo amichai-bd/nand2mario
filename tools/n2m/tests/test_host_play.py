@@ -118,7 +118,7 @@ class HostPlayTests(unittest.TestCase):
             (root/'driver.do').write_text('# fixture')
             (root/'peer.py').write_text('# fixture')
             target={'signature':'PASS','sources':[],'expected_exit':'zero'}
-            for driver,budget,valid in ((False,600,True),(False,601,False),(True,1500,True),(True,1501,False),(True,True,False)):
+            for driver,budget,valid in ((False,300,True),(False,301,False),(True,300,True),(True,301,False),(True,1500,False),(True,True,False)):
                 row=dict(target,timeout_seconds=budget)
                 if driver:row['driver']={'script':'driver.do','peer':'peer.py','inputs':[]}
                 registry.write_text(json.dumps({'play':row}))

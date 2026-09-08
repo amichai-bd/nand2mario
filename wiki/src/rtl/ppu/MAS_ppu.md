@@ -82,6 +82,26 @@ and metadata from pre-edge state at the emulated-dot edge; later output staging
 may only forward that event. The upstream `ce_n` path belongs to excluded extra
 sprites, not the normal pixel-output phase.
 
+DMG BGP/OBP0/OBP1 writes also have a one-dot palette conflict. The CPU-visible
+register commits normally at T4. The coincident A sample uses the old palette;
+the following emulated-dot sample uses `old | new` for the written palette,
+then subsequent samples use new. Other palettes are unchanged. The pending
+conflict expires on that following `gb_tick` even with no visible pixel, LCD
+disabled or FIFO stalled; it is not a pixel-count delay. Pause holds the pending
+state and reset clears it. No CPU wait, readback delay or source-dot shift is
+introduced. Architectural palette bytes and this transient render selection
+have one owner in `n2m_ppu_registers`.
+
+This corrects the selected MiSTer adaptation's missing DMG conflict. The primary
+[DMG-CPU B/blob report](https://github.com/LIJI32/SameBoy/issues/65#issuecomment-381519110)
+checks all color transitions and identifies bitwise OR; SameBoy's
+[hardware-verified timing correction](https://github.com/LIJI32/SameBoy/commit/249acb04cc59eeefd215eded0c69a19740e39058)
+is retained in its pinned CPU conflict path for all three palettes. The digital
+old/conflict/new sample sequence preserves our architectural commit and source
+boundary. It does not assert equality of internal Core PPU action timestamps
+or equate the raw startup intervals described in the
+[startup observation boundary](#startup-observation-boundary).
+
 The actual negedge LCDC/LYC write block still requires an explicit relative-order
 mapping: renderer sampling precedes those register changes. No generated clock,
 blind same-edge substitution or extra emulated dot is allowed. CPU reads,
@@ -166,6 +186,21 @@ before the memory-facing module is frozen.
 This table fixes the intended digital transaction abstraction. Directed
 before/on/after register writes and imported-core phase comparison must establish
 its behavior; it is not an assertion of cartridge-pin phase equivalence.
+
+## Early VRAM read blocking
+
+CPU VRAM reads use `vram_cpu_read_allow`; writes retain `vram_cpu_allow`.
+Both read preparation and final readback apply the selected direction. During
+ordinary visible-line scan, `scan_active && line_quarter == 19 &&
+quarter_phase == 3` denies reads one legal T4 before mode3 blocks writes.
+Use held dot state, not a pulse gated by `gb_tick`, so pause retains permission.
+Scan activity excludes initial LCD-on mode0 and VBlank. This changes neither
+renderer capture timing nor the write/Intel collision contract.
+
+The same pinned primary LCD-on read/write tables used by the
+[original access witnesses](../../../../src/dv/ppu/startup204.md) require VRAM
+read FF/write81 at enable+532 and+988, with preceding reads allowed and following
+reads/writes blocked. They report DMG/MGB/SGB/SGB2, not a specific DMG revision.
 
 ## STAT-write timing
 
@@ -252,6 +287,37 @@ Global reset keeps the existing invalid-bank black startup behavior.
 The [test plan](../../../../src/dv/ppu/README.md) maps these obligations to
 independent checks.
 
+### Startup observation boundary
+
+The retained 454/455-dot first-row intervals describe different events.
+Pinned [Core display actions](https://github.com/LIJI32/SameBoy/blob/213a12ce93d66b105a113debd9396306066a7cfc/Core/display.c#L1660)
+write internal pixels before
+[whole-frame startup whitening](https://github.com/LIJI32/SameBoy/blob/213a12ce93d66b105a113debd9396306066a7cfc/Core/display.c#L173).
+This PPU emits final shade-0 source events online. The later replacement of a
+complete framebuffer supplies final values, not equivalent per-pixel timestamps.
+The raw interval diagnostic remains `TIMING_MISMATCH_UNRESOLVED`; neither a
+constant offset nor final white-frame agreement makes it a timing PASS.
+
+The common comparison boundary is the complete ordered final source-frame
+values and all architectural retirement fields, including completed dots, as
+required by the [independent reference contract](../../dv/baseline/SPEC.md#independent-emulator-and-retirement-traces).
+The [original program comparison](https://github.com/amichai-bd/nand2mario/pull/195)
+checks 69 complete 26-field retirements and 46,080 pixels. The
+[FC control](https://github.com/amichai-bd/nand2mario/pull/201) checks 10,114
+complete retirements and 46,080 pixels. Each includes the first white frame and
+the following rendered frame. These retained comparisons support equal final
+images for those scenes, not equal internal pixel-action timing. Their producing
+inputs remain explicit in the evidence; this clarification does not rename them
+as current-head runs or relax this PPU's source-dot checks.
+
+This interpretation does not establish universal startup mode, STAT/IRQ or
+memory-access equivalence, or identify a silicon revision. Direction-specific
+access uses the [original CPU witnesses](../../../../src/dv/ppu/startup204.md);
+late OAM write/corruption and capture ordering remain
+[#208](https://github.com/amichai-bd/nand2mario/issues/208). The full continuous
+every-pixel and every-retirement milestone remains
+[#88](https://github.com/amichai-bd/nand2mario/issues/88).
+
 ## Verification obligations
 
 An independent source model determines expected pixels from original VRAM/OAM
@@ -306,6 +372,25 @@ All state has explicit synchronous system reset independent of gb_tick. Missing
 promised VRAM data latches the common PPU fault and suppresses load publication;
 the top-level owner performs the single source abort. This helper does not own
 LCD startup, window trigger quirks, OAM selection or bus arbitration.
+
+### Early OAM read boundary
+
+CPU OAM reads use `oam_cpu_read_allow`; writes retain `oam_cpu_allow`.
+The existing scan/transfer/DMA denial applies to both. Additionally, reads are
+blocked when LCDC is enabled, renderer LY is below144, line quarter is113 and
+quarter phase is3. This is the legal T4 immediately before an ordinary scan:
+enable-relative452 and908 deny reads while preserving accepted writes.
+Use renderer LY, not early CPU-readable LY153. The condition is derived from
+held dot state, so pause cannot bypass it. Reset/LCD-off clear the condition;
+VBlank entry is excluded because renderer LY advanced on phase2. No CPU T4,
+source pixel, scan timing or raw RAM write changes.
+
+Memory owners apply the selected read allowance to both preparation and final
+response; an earlier RAM read must not bypass it. The independent
+[startup witnesses](../../../../src/dv/ppu/startup202.md) own the primary table,
+nearby/repeated and exclusion checks. Late OAM write/corruption arbitration remains open in
+[#208](https://github.com/amichai-bd/nand2mario/issues/208); raw startup cadence
+uses the [startup observation boundary](#startup-observation-boundary).
 
 ### Controller phase convention
 

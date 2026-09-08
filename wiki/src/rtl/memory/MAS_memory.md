@@ -59,6 +59,40 @@ The completion edge writes offset 8191 before asserting `init_done`. A repeated
 sampled core reset restarts this schedule. No ROM array clear is performed.
 The [DMA owner](../dma/MAS_dma.md) arbitrates pair operations and PPU collisions.
 
+### Direct-path late OAM writes
+
+The v05 and integration-smoke paths share `n2m_oam_late_write` over the same
+pair-A port for [#208](https://github.com/amichai-bd/nand2mario/issues/208).
+The [combined DMA schedule](../dma/MAS_dma.md#qualified-late-writes) consumes
+the same class using its existing service slots. Both owners use the shared
+combinational transform; the direct schedule below remains unchanged.
+
+At the legal final scan T4, the selected digital extension transforms the
+addressed eight-byte row. Other words copy the last OAM row. Each byte of the
+addressed word becomes the bitwise majority of its old byte, byte FE9C, and
+the corresponding last-row byte. The explicit CPU byte replaces its result
+last. This qualifies the allowed A0 write path in pinned SameBoy Core
+`213a12ce93d66b105a113debd9396306066a7cfc` (`memory.c`), not a universal
+silicon data claim. The primary LCD-on permission table and its revision
+limits remain in the [PPU contract](../ppu/MAS_ppu.md).
+
+Prepare four last-row pairs and the addressed pair before accepted T4 A.
+Five requests plus the final response fit the stable prepared CPU write;
+require complete operands and matching address/data at A. Write the addressed
+pair, including the final CPU byte, at A. Drain the other three pairs at
+A+1 through A+3, prioritizing a requested PPU pair. Suppress B requests only
+on an actual same-pair write. A fresh B read at A+4 supplies the earliest
+next capture at A+5. Do not change CPU T4 or renderer clocks and timestamps.
+
+Pair work excludes raw OAM preparation, including its CPU response-valid
+capture. A following CPU request may appear immediately after A; resume its
+qualified raw read after the drain, before its next T4. Invalidate operands
+after every commit, including repeated identical writes. Preparation while
+paused has no memory effect; an accepted job drains on system edges without
+inventing ticks. Reset cancels the job and the existing store clear owns RAM.
+Missing operands or overlapping commits are fatal integration faults, never
+permission to stretch or replay the CPU cycle.
+
 ## Fixed service and CPU commit
 
 ### Address ownership decoder

@@ -1,9 +1,8 @@
 `timescale 1ns/1ps
 `default_nettype none
 module tb_uart_packet_tx;
-    import n2m_uart_pkg::*;
     logic clk_sys, reset_sys, transmit_valid, transmit_done, transmit_read;
-    logic [UART_ADDRESS_BITS-1:0] transmit_bytes, transmit_address;
+    logic [n2m_uart_pkg::UART_ADDRESS_BITS-1:0] transmit_bytes, transmit_address;
     logic [7:0] transmit_data, byte_data;
     logic transmit_data_valid, byte_valid, byte_ready, tx_pin;
     logic [7:0] raw [0:267];
@@ -62,7 +61,7 @@ module tb_uart_packet_tx;
     task automatic send_response(input integer size);
         integer cycles, before_replies, before_busy;
         encode_expected(size); accepted = 0; before_replies = replies; before_busy = busy_edges;
-        @(negedge clk_sys); transmit_bytes = UART_ADDRESS_BITS'(size); transmit_valid = 1;
+        @(negedge clk_sys); transmit_bytes = n2m_uart_pkg::UART_ADDRESS_BITS'(size); transmit_valid = 1;
         cycles = 0;
         while (!transmit_done && cycles < 40000) begin
             @(negedge clk_sys); cycles = cycles + 1;

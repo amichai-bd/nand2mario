@@ -6,6 +6,7 @@ FRAME_DOTS = 70224
 LCD_COMMIT = 41984
 FIRST_IMAGE_END = 177667
 WINDOW_END = FIRST_IMAGE_END + 600 * FRAME_DOTS
+BOUNDED_END = 145132  # Normal frame1 row72 start; all input rows have completed.
 
 
 def selected_lines(select, buttons):
@@ -175,14 +176,20 @@ class Reference:
 INPUT_MASKS = (1, 0, 2, 0, 4, 0, 8, 0, 16, 0, 32, 0, 64, 0, 128, 0, 17, 0)
 
 
-def input_window(transition, *, short=False):
+def input_window(transition, *, short=False, bounded=False):
+    if bounded:
+        if transition != 1:
+            raise ValueError('input transition outside bounded schedule')
+        return 50000, 52000  # First HALT42008, before first VBlank107646.
     if not 1 <= transition <= (2 if short else 18):
         raise ValueError('input transition outside original schedule')
     first = FIRST_IMAGE_END + (1 if short else 20) * transition * FRAME_DOTS + 20000
     return first, first + 2000
 
 
-def frame_mask(frame, *, short=False):
+def frame_mask(frame, *, short=False, bounded=False):
+    if bounded:
+        return 0x11 if frame >= 1 else 0
     mask = 0
     for j, value in enumerate(INPUT_MASKS[:2] if short else INPUT_MASKS, 1):
         if frame >= (1 if short else 20) * j + 3:
@@ -190,12 +197,21 @@ def frame_mask(frame, *, short=False):
     return mask
 
 
-def pixel_shade(frame, x, y, *, short=False):
+def pixel_shade(frame, x, y, *, short=False, bounded=False):
     if frame == 0:
         return 0
     marker = x < 8 and y < 8
-    cell = x < 64 and 64 <= y < 72 and bool(frame_mask(frame, short=short) & (1 << (x // 8)))
+    cell = x < 64 and 64 <= y < 72 and bool(frame_mask(frame, short=short, bounded=bounded) & (1 << (x // 8)))
     return int(marker or cell)
+
+
+def bounded_pixel_count(pause_dot):
+    """Fixed source schedule through pause, including every command-latency pixel."""
+    if not BOUNDED_END <= pause_dot <= BOUNDED_END + 2000:
+        raise ValueError('V05_PAUSE_WINDOW')
+    # Startup frame is complete. Normal-frame row y starts112300+456*y.
+    return 23040 + sum(max(0, min(160, pause_dot - (112300 + 456*y) + 1))
+                       for y in range(144))
 
 
 def unpack_retirement(hex_value):

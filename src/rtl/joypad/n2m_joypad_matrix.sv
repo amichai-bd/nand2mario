@@ -7,12 +7,11 @@ module n2m_joypad_matrix (
     output logic [7:0] read_data,
     output logic selected_active
 );
-    import n2m_interfaces_pkg::*;
     logic [3:0] directions, actions, pressed;
-    assign directions = {|(buttons & BUTTON_DOWN), |(buttons & BUTTON_UP),
-        |(buttons & BUTTON_LEFT), |(buttons & BUTTON_RIGHT)};
-    assign actions = {|(buttons & BUTTON_START), |(buttons & BUTTON_SELECT),
-        |(buttons & BUTTON_B), |(buttons & BUTTON_A)};
+    assign directions = {|(buttons & n2m_interfaces_pkg::BUTTON_DOWN), |(buttons & n2m_interfaces_pkg::BUTTON_UP),
+        |(buttons & n2m_interfaces_pkg::BUTTON_LEFT), |(buttons & n2m_interfaces_pkg::BUTTON_RIGHT)};
+    assign actions = {|(buttons & n2m_interfaces_pkg::BUTTON_START), |(buttons & n2m_interfaces_pkg::BUTTON_SELECT),
+        |(buttons & n2m_interfaces_pkg::BUTTON_B), |(buttons & n2m_interfaces_pkg::BUTTON_A)};
     assign pressed = (select_bits[0] ? 4'd0 : directions) |
         (select_bits[1] ? 4'd0 : actions);
     assign read_data = {2'b11, select_bits, ~pressed};

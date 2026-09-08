@@ -26,12 +26,56 @@ frame the fixed marker covers x0..7/y0..7 at shade 1. A pressed bit i adds
 shade 1 at x(8*i)..(8*i+7)/y64..71. Every other pixel is shade 0. The first enabled
 frame is the PPU contract's blank frame, with every pixel shade 0.
 
-## Frozen timing and inputs
+## Revised milestone matrix
+
+The user-authorized revision replaces the former 600-continuous-interval
+criterion; it was never passed. [#88](https://github.com/amichai-bd/nand2mario/issues/88)
+tracks the revised milestone. [PR246](https://github.com/amichai-bd/nand2mario/pull/246)
+records window, fault, complementary evidence and endurance qualification.
+
+- Build the exact original ROM twice and compare all bytes. Default composed
+  execution to supported Intel preload with real initialization and loader
+  adoption; separately qualify actual full UART upload/readback.
+- Run continuously from reset/initialization through the first normal frame's
+  input rows. Apply Right+A during the first CPU HALT before the first VBlank.
+  The apply-dot window is 50000..52000, after first HALT42008 and before
+  VBlank107646; exactly0x11 is accepted and the UART reply must match its apply dot.
+  Request final pause no earlier than 145132 (normal frame 1 row 72 start; row 71's
+  last pixel is 144835), with at most 2000 additional dots. Compare every expected
+  retirement field, program write and source pixel through actual pause, including
+  command latency. Derive the count from the fixed schedule and pause boundary,
+  never from observed pixels. Preserve blank startup, cross-frame update, actual
+  final pause/completion and independent progress watchdog.
+  The next wake177872 is later than the maximum pause147132. Thus all valid
+  pauses require6357 retirements (6281 setup plus76 update), with the last HALT
+  at108156. Expected pixel count is23040 plus, for each y0..143,
+  `clamp(pause_dot-(112300+456*y)+1,0,160)`:34561 at145132 and35360 at147132.
+  This includes partial active rows after the requested bound; collectors do
+  not stop when the controller requests HALT.
+- Qualify complementary timer/IRQ/HALT and DMA/HRAM/160-byte transfer proofs.
+  Qualify actual image, source-pixel and stopped-progress mutations with unchanged
+  independent expectations and exact failing results.
+- On the verified FPGA image, qualify full real UART loading/readback and all
+  eight button presses/releases plus Right+A/release, checking input registers
+  and full sampled frames against the literal image above. Existing #241 evidence
+  is reusable only with explicit relevant-source qualification.
+- Before execution, declare at least 10 seconds of continuous FPGA endurance,
+  exact inputs, progress/reset/hang checks, sampled full-frame checkpoints and
+  its finite total budget. End PAUSED/input0 with a certain session. Samples do
+  not establish every retirement or pixel during endurance, nor a human monitor
+  observation. Declare the broader matrix aggregate and measured result.
+
+Every new simulation follows the 300-second total cap, targeting120 seconds;
+ordinary pre-merge aggregate target is 300 seconds. Record actual per-test and
+aggregate costs in the acceptance evidence, including any unmet target. Do not
+launch the obsolete long target. FPGA compilation is separately measured.
+
+## Original timing and legacy input schedule
 
 Dots below count completed enabled ticks, not host wall time. The literal
 instruction recipe includes the direct-profile NOP/JP frontend. Setup enables
 LCD at C=41984 and retires the first HALT at 42008. No host pause is permitted
-from RUN until the full acceptance bound completes; CPU HALT leaves ticks live.
+from RUN until the selected bound completes; CPU HALT leaves ticks live.
 
 The pinned PPU mapping puts VBlank at C+65662+n*70224. T3 captures it before
 wake T4 at C+65664+n*70224. The first following LD A,20 retires eight dots later.
@@ -40,7 +84,9 @@ wake T4. All eight tile writes finish during VBlank, before the next visible fet
 
 Normal frame 1 starts at completed dot 112300; pixel(x,y) occurs at
 112300+456*y+x+(frame-1)*70224. Its final pixel is D=177667, well before the
-60-interval limit. Check startup frame 0 as blank and every pixel of normal
+former60-interval limit. The following legacy full schedule is retained for
+trace interpretation only, not authorized execution or current acceptance.
+It checked startup frame 0 as blank and every pixel of normal
 frame 1. The watch interval (D,D+600*70224] then includes exactly normal frames 2
 through 601, ending at 42312067. There is no omitted leading/trailing visible
 portion in this interval. Every retirement from the direct entry through the
@@ -81,7 +127,7 @@ retirement is accepted during sleep.
 
 The source-pixel observer checks each visible pixel directly, including startup
 and all intervening frames; immutable snapshots are not the every-frame oracle.
-For blank frame0, the completed-dot schedule is `C+93+x` on row0 and
+For blank frame 0, the completed-dot schedule is `C+93+x` on row0 and
 `C+92+456*y+x` on rows1..143. Literal boundaries are42077,42532 and107443.
 This is the selected digital mapping from pinned
 [scan reset/alternation](https://github.com/MiSTer-devel/Gameboy_MiSTer/blob/7a5ff50528cd9c1d13ffb675e7df8506bffaa078/rtl/sprites.v#L153)
@@ -105,9 +151,9 @@ a failing checker and result XML, the exact intended mismatch, and a nonzero
 outer builder exit. Retain the raw simulator exit separately: cocotb can report
 a failed test while the simulator exits zero. That zero does not establish a
 passing test and must never be reported as a nonzero simulator exit.
-The new composed Intel-model and constrained-fit evidence is required. A short
-measured diagnostic determines wall/storage bounds before the long run; it does
-not replace the 60/600-interval acceptance. Full 600-interval runtime evidence remains a named #88 milestone.
+Composed Intel-model and constrained-fit evidence requires current relevant-input
+qualification. The revised matrix above owns current milestone acceptance;
+historical short proof does not establish its new window or endurance criteria.
 
 ## Short implementation proof
 
@@ -120,12 +166,20 @@ Its fixed inputs are Right press/release at completed dots 267891..269891 and
 338115..340115. The same HALT/VBlank update contract predicts the changed image
 at normal frame 4 and released image at frame 5. Completion is 458563, after all
 six frames (blank plus five normal), 138240 pixels and every retirement/write
-through actual final pause within 2000 further dots. The full default remains
-42312067, 602 frames and the original 18 transitions; no milestone is shortened.
+through actual final pause within2000 further dots. The legacy full target still
+encodes 42312067, 602 frames and 18 transitions, but is not authorized to run.
 
 A stopped-tick mutation during CPU HALT at dot 50000 must reach the existing
 active-time watchdog and failing Python/XML/outer result. Focused host tests
 also reject early completion, missing input/pixel/retirement and extra writes.
 The accepted real-UART startup/readback and actual image/pixel mutations remain
 separate evidence. Short completion and current-source review can deliver the
-harness implementation while #88's full continuous run stays explicitly open.
+harness implementation. #88 now tracks the explicitly revised matrix, not an
+unperformed full continuous run disguised as passed.
+
+## Wall-time limit
+
+Every new simulation obeys the [300-second total wall budget](../../../tools/n2m/SPEC.md#test-wall-budget).
+Legacy targets retain historical stimulus only; lowering their timeout does not
+make them feasible or passed. #88 remains open until its revised matrix is
+actually qualified. Physical evidence retains its explicit sampling limitations.

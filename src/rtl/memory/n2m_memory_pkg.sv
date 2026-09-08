@@ -11,6 +11,25 @@ package n2m_memory_pkg;
         logic valid;
         logic [15:0] data;
     } memory_oam_response_t;
+    // Source-qualified late addressed-row class; architectural byte is last.
+    function automatic logic [63:0] oam_late_result(
+        input logic [63:0] last_row,
+        input logic [15:0] target_word,
+        input logic [2:0] byte_index,
+        input logic [7:0] data
+    );
+        logic [7:0] pivot;
+        integer lane;
+        pivot = last_row[39:32];
+        oam_late_result = last_row;
+        for (lane = 0; lane < 2; lane = lane + 1) begin
+            oam_late_result[16*int'(byte_index[2:1])+8*lane +: 8] =
+                (target_word[8*lane +: 8] & pivot)
+                | (target_word[8*lane +: 8] & last_row[16*int'(byte_index[2:1])+8*lane +: 8])
+                | (pivot & last_row[16*int'(byte_index[2:1])+8*lane +: 8]);
+        end
+        oam_late_result[8*int'(byte_index) +: 8] = data;
+    endfunction
     // Internal store selector, not a CPU/host address or a wire ABI.
     typedef enum logic [2:0] {
         STORE_ROM = 3'd0,

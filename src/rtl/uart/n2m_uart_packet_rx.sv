@@ -20,19 +20,17 @@ module n2m_uart_packet_rx #(
     output logic [7:0] packet_data,
     output logic packet_data_valid
 );
-    import n2m_interfaces_pkg::*;
-    import n2m_uart_pkg::*;
-    localparam integer TIMEOUT_CYCLES = (CLOCK_HZ / 1000) * WIRE_FRAME_TIMEOUT_MS;
+    localparam integer TIMEOUT_CYCLES = (CLOCK_HZ / 1000) * n2m_interfaces_pkg::WIRE_FRAME_TIMEOUT_MS;
     localparam integer TIMER_BITS = $clog2(TIMEOUT_CYCLES + 1);
     typedef enum logic [2:0] { RECEIVE, FETCH, DECODE, INSERT_ZERO, CHECK, HOLD } state_t;
     state_t state;
     state_t state_next;
-    logic [UART_ADDRESS_BITS-1:0] encoded_count;
-    logic [UART_ADDRESS_BITS-1:0] encoded_count_next;
-    logic [UART_ADDRESS_BITS-1:0] encoded_index;
-    logic [UART_ADDRESS_BITS-1:0] encoded_index_next;
-    logic [UART_ADDRESS_BITS-1:0] decoded_count;
-    logic [UART_ADDRESS_BITS-1:0] decoded_count_next;
+    logic [n2m_uart_pkg::UART_ADDRESS_BITS-1:0] encoded_count;
+    logic [n2m_uart_pkg::UART_ADDRESS_BITS-1:0] encoded_count_next;
+    logic [n2m_uart_pkg::UART_ADDRESS_BITS-1:0] encoded_index;
+    logic [n2m_uart_pkg::UART_ADDRESS_BITS-1:0] encoded_index_next;
+    logic [n2m_uart_pkg::UART_ADDRESS_BITS-1:0] decoded_count;
+    logic [n2m_uart_pkg::UART_ADDRESS_BITS-1:0] decoded_count_next;
     logic [TIMER_BITS-1:0] idle_count;
     logic [TIMER_BITS-1:0] idle_count_next;
     logic discard_input;
@@ -47,8 +45,8 @@ module n2m_uart_packet_rx #(
     logic [15:0] crc_next;
     logic [15:0] tail;
     logic [15:0] tail_next;
-    packet_header_t header;
-    packet_header_t header_next;
+    n2m_interfaces_pkg::packet_header_t header;
+    n2m_interfaces_pkg::packet_header_t header_next;
     logic encoded_write;
     logic encoded_read;
     logic [7:0] encoded_data;
@@ -65,8 +63,8 @@ module n2m_uart_packet_rx #(
     assign more_encoded = encoded_index + 1'b1 < encoded_count;
     assign encoded_read = state == FETCH;
     assign encoded_write = state == RECEIVE && rx_valid && !rx_error && rx_data != 0 &&
-                           !discard_input && encoded_count < UART_ENCODED_MAX;
-    assign decoded_write = emit_byte && decoded_count < UART_RAW_MAX;
+                           !discard_input && encoded_count < n2m_uart_pkg::UART_ENCODED_MAX;
+    assign decoded_write = emit_byte && decoded_count < n2m_uart_pkg::UART_RAW_MAX;
     assign decoded_read = request_valid && packet_read;
 
     n2m_uart_packet_store stores (
@@ -114,12 +112,12 @@ module n2m_uart_packet_rx #(
                             remaining_next = '0;
                             insert_between_next = 1'b0;
                             header_next = '0;
-                            crc_next = WIRE_CRC_INIT;
+                            crc_next = n2m_interfaces_pkg::WIRE_CRC_INIT;
                             tail_next = '0;
                             state_next = FETCH;
                         end else encoded_count_next = '0;
                     end else if (!discard_input) begin
-                        if (encoded_count < UART_ENCODED_MAX)
+                        if (encoded_count < n2m_uart_pkg::UART_ENCODED_MAX)
                             encoded_count_next = encoded_count + 1'b1;
                         else begin
                             discard_input_next = 1'b1;
@@ -169,8 +167,8 @@ module n2m_uart_packet_rx #(
                 state_next = FETCH;
             end
             CHECK: begin
-                if (decoded_count >= PACKET_HEADER_BYTES + 2 && crc == tail &&
-                    header.kind == WIRE_REQUEST && header.status == STATUS_OK)
+                if (decoded_count >= n2m_interfaces_pkg::PACKET_HEADER_BYTES + 2 && crc == tail &&
+                    header.kind == n2m_interfaces_pkg::WIRE_REQUEST && header.status == n2m_interfaces_pkg::STATUS_OK)
                     state_next = HOLD;
                 else begin
                     state_next = RECEIVE;
@@ -189,15 +187,15 @@ module n2m_uart_packet_rx #(
         endcase
 
         if (emit_byte) begin
-            if (decoded_count >= UART_RAW_MAX) begin
+            if (decoded_count >= n2m_uart_pkg::UART_RAW_MAX) begin
                 state_next = RECEIVE;
                 encoded_count_next = '0;
             end else begin
-                if (decoded_count < PACKET_HEADER_BYTES)
+                if (decoded_count < n2m_interfaces_pkg::PACKET_HEADER_BYTES)
                     header_next[8 * decoded_count +: 8] = emitted_data;
                 // Delay two bytes so the received little-endian CRC itself
                 // never enters the header/payload CRC accumulator.
-                if (decoded_count >= 2) crc_next = crc16_byte(crc, tail[7:0]);
+                if (decoded_count >= 2) crc_next = n2m_uart_pkg::crc16_byte(crc, tail[7:0]);
                 tail_next = {emitted_data, tail[15:8]};
                 decoded_count_next = decoded_count + 1'b1;
             end
@@ -223,7 +221,7 @@ module n2m_uart_packet_rx #(
     `DFF_ARST_VAL(need_code, need_code_next, clk_sys, reset_sys, 1'b1)
     `DFF_ARST_VAL(insert_between, insert_between_next, clk_sys, reset_sys, 1'b0)
     `DFF_ARST_VAL(remaining, remaining_next, clk_sys, reset_sys, '0)
-    `DFF_ARST_VAL(crc, crc_next, clk_sys, reset_sys, WIRE_CRC_INIT)
+    `DFF_ARST_VAL(crc, crc_next, clk_sys, reset_sys, n2m_interfaces_pkg::WIRE_CRC_INIT)
     `DFF_ARST_VAL(tail, tail_next, clk_sys, reset_sys, '0)
     `DFF_ARST_VAL(header, header_next, clk_sys, reset_sys, '0)
 

@@ -59,7 +59,7 @@ The user-authorized checkpoints PR162, PR163, PR167, PR169 and PR179 instead ref
 #156, #88, #164, #168 and #168, respectively, without closing them. Their unfinished acceptance stays in those issues; this
 bounded exception is recorded in PR policy and does not authorize other checkpoints.
 The author owns delivery through independent review of the current PR SHA,
-passing required checks, resolved review conversations, and squash merge.
+satisfying required checks, resolved review conversations, and squash merge.
 Human review is not required. Root verifies merge, issue closure, main checks,
 deployment, and [cleanup](worktrees/README.md#clean-up-after-merge).
 After verified delivery, retain a concise validation summary in the PR and remove
@@ -84,9 +84,17 @@ Choose routine steps and tools. Retain enough context for safe takeover; see
 
 ## Verification and safety
 
+When hosted CI is blocked by an external service or account condition, run the
+local equivalents of required checks and meet scoped acceptance, using valid
+unchanged evidence where applicable. Continue reviewed delivery without asking
+for per-PR approval again. Real code, test, policy and review failures remain
+blockers. Report actual hosted status; never fabricate green checks or Pages
+publication. Follow the [external CI fallback](.agents/skills/agent-flow/references/external-ci.md)
+for exact-head merge, temporary protection restoration and post-merge cleanup.
+
 Use the [verification tiers](wiki/src/dv/integration/SPEC.md#verification-tiers)
 for proportionate acceptance. Ordinary PRs must meet their own scoped criteria,
-required CI and independent current-head review; full milestone gates apply to
+required checks under the external fallback and independent current-head review; full milestone gates apply to
 milestone completion. Keep unfinished milestone requirements in named open issues.
 Make authorized issue-boundary changes explicit before using the revised criteria;
 the listed checkpoint exceptions are not a blanket waiver. Correctness defects
@@ -98,7 +106,15 @@ expensive acceptance run, exercise its complete harness at a short duration,
 including final pause, completion and watchdog handling. Do not hide warnings,
 bypass checks or claim incomplete acceptance complete.
 
-Run the smallest useful test and required lower-level checks. Record exact
+Run the smallest useful test and required lower-level checks. Target at most
+120 seconds per simulation and 300 seconds for ordinary pre-merge aggregate
+checks. Every simulation must finish within the
+[300-second total wall budget](wiki/tools/n2m/SPEC.md#test-wall-budget), including
+setup, build, run and checking; never extend it to finish a milestone. Declare
+broader milestone aggregates before execution. Use the
+[complementary matrix](wiki/src/dv/integration/SPEC.md#milestone-acceptance), with
+bounded FPGA endurance and separate transport proof, rather than long continuous
+simulation. FPGA compilation remains separately measured. Record exact
 commands and results. A simulation compiles, elaborates, runs, and checks an
 expected result. Treat unexplained warnings as failures. Preserve useful logs,
 seeds, traces, waves, and reports under the build tag while work or review needs

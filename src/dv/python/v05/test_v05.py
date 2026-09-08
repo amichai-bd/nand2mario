@@ -16,18 +16,25 @@ sys.path[:0] = [str(ROOT / 'tools'), str(ROOT / 'src/dv/v05'),
                str(ROOT / 'src/dv/python/integration')]
 from client_transport import connect, frames, refresh_clock
 from online import Online
-from reference import FIRST_IMAGE_END, INPUT_MASKS, WINDOW_END, LCD_COMMIT, FRAME_DOTS, input_window, unpack_retirement
+from reference import FIRST_IMAGE_END, INPUT_MASKS, WINDOW_END, LCD_COMMIT, FRAME_DOTS, BOUNDED_END, input_window, unpack_retirement
 from n2m.records import git_state
 from n2m.preload import adopt, verify
 from sw.rom_build import build_target
 
 
+_WEAK_BITS = str.maketrans('LH', '01')
+
+
 def known(signal):
-    assert signal.value.is_resolvable, f'V05_UNKNOWN {signal._name}'
-    return int(signal.value)
+    bits = str(signal.value)
+    assert not bits.strip('01LH'), f'V05_UNKNOWN {signal._name}'
+    return int(bits.translate(_WEAK_BITS), 2)
 
 
-def wave_windows(complete, *, short=False):
+def wave_windows(complete, *, short=False, bounded=False):
+    if bounded:
+        return [(0,64), (LCD_COMMIT-32,LCD_COMMIT+256), (49968,52128), (107616,108192),
+                (112268,112556), (BOUNDED_END-32,BOUNDED_END+2000)]
     windows = [(0,64), (LCD_COMMIT-32,LCD_COMMIT+256),
                (FIRST_IMAGE_END-32,FIRST_IMAGE_END+64)]
     if complete:
@@ -43,10 +50,10 @@ def wave_windows(complete, *, short=False):
     return sorted(windows)
 
 
-async def run(dut, *, complete, short=False):
+async def run(dut, *, complete, short=False, bounded=False, preloaded=False):
     entered = time.monotonic()
     dut._log.info("V05_PHASE entry")
-    report = build_target(ROOT, Path.cwd() / ('run' if short else 'software'),
+    report = build_target(ROOT, Path.cwd() / ('run' if preloaded else 'software'),
                           SimpleNamespace(target='v05', rebuild=True), git_state(ROOT))
     dut._log.info("V05_PHASE software_built wall=%.3f", time.monotonic()-entered)
     assert report['status'] == 'PASS', 'V05_SOFTWARE_BUILD'
@@ -55,7 +62,7 @@ async def run(dut, *, complete, short=False):
     for row in recipe['instructions']:
         literal = bytes.fromhex(row['bytes'])
         assert image[row['pc']:row['pc'] + len(literal)] == literal, 'V05_IMAGE_RECIPE'
-    monitor = Online(short=short)
+    monitor = Online(short=short, bounded=bounded)
     received = Queue()
     entries = []
     armed = False
@@ -85,7 +92,7 @@ async def run(dut, *, complete, short=False):
 
         async def waveform_windows():
             await FallingEdge(dut.paused)
-            for first, last in wave_windows(complete, short=short):
+            for first, last in wave_windows(complete, short=short, bounded=bounded):
                 while known(dut.dot_count) < first:
                     await Timer(1, unit='us')
                 await Timer(1, unit='ns')
@@ -214,7 +221,7 @@ async def run(dut, *, complete, short=False):
         @bridge
         def load():
             identity = client.identify()
-            if short:
+            if preloaded:
                 prepared = verify(Path.cwd())
                 assert (Path.cwd() / 'program.gb').read_bytes() == image, 'V05_PRELOAD_IMAGE'
                 loaded = adopt(client, prepared)
@@ -231,7 +238,7 @@ async def run(dut, *, complete, short=False):
             trace.flush()
             raise
         phase('load_completed')
-        if not short:
+        if not preloaded:
             assert loaded['verified_bytes'] == 32768, 'V05_FULL_READBACK'
         assert known(dut.epoch) == 2 and known(dut.dot_count) == 0 and known(dut.paused), 'V05_INITIAL_STATE'
         armed = True
@@ -249,10 +256,12 @@ async def run(dut, *, complete, short=False):
         phase('run_reply')
         if complete:
             for index, mask in enumerate(monitor.input_masks, 1):
-                low, high = input_window(index, short=short)
+                low, high = input_window(index, short=short, bounded=bounded)
                 while known(dut.dot_count) < low:
                     await Timer(1, unit='us')
                     check_tasks()
+                if bounded:
+                    assert monitor.reference.halted, 'V05_INPUT_BEFORE_FIRST_HALT'
                 reply = await control('INPUT', mask)
                 observation('input_reply', transition=index, reply=reply)
                 assert len(journal) == index, 'V05_INPUT_REPLY_WITHOUT_APPLY'
@@ -268,7 +277,7 @@ async def run(dut, *, complete, short=False):
         assert known(dut.paused) and bound <= pause_dot <= bound + 2000, 'V05_PAUSE_WINDOW'
         if complete:
             summary = monitor.finish(pause_dot)
-            summary['scope'] = 'short complete-path only' if short else '600-interval milestone'
+            summary['scope'] = 'bounded startup/cross-frame' if bounded else 'short complete-path only' if short else 'legacy 600-interval'
         else:
             assert monitor.pixels == 46080, 'V05_STARTUP_PIXELS'
             assert monitor.reference.step(pause_dot) is None, 'V05_RETIRE_MISSING'

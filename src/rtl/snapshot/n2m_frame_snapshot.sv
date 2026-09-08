@@ -22,8 +22,7 @@ module n2m_frame_snapshot (
     output logic frame_valid,
     output logic [7:0] frame_data
 );
-    import n2m_snapshot_pkg::*;
-    snapshot_state_t state_q, state_next, reset_value;
+    n2m_snapshot_pkg::snapshot_state_t state_q, state_next, reset_value;
     logic done_next, ok_next;
     logic accept_pixel, write_byte, acquire, pin_latest;
     logic copy_read, copy_write, read_bank;

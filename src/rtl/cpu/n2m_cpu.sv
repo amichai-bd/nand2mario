@@ -43,12 +43,11 @@ module n2m_cpu (
     output logic retirement_valid,
     output n2m_interfaces_pkg::retirement_t retirement
 );
-    import n2m_cpu_pkg::*;
-    cpu_execute_request_t execute_request;
-    cpu_execute_result_t execute_result;
-    cpu_bus_plan_t bus_plan;
-    cpu_retire_capture_t retire_capture;
-    cpu_stop_action_t stop_action;
+    n2m_cpu_pkg::cpu_execute_request_t execute_request;
+    n2m_cpu_pkg::cpu_execute_result_t execute_result;
+    n2m_cpu_pkg::cpu_bus_plan_t bus_plan;
+    n2m_cpu_pkg::cpu_retire_capture_t retire_capture;
+    n2m_cpu_pkg::cpu_stop_action_t stop_action;
     logic stop_padding;
     logic active;
     logic complete_enable;

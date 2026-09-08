@@ -24,7 +24,7 @@ state what lands, its required proof, and what remains in each open issue. Do no
 label a partial subsystem or milestone complete. A known defect that undermines
 the scoped result still blocks that PR, and introduced regressions remain its
 responsibility. Finish the finite checklist and merge when scoped acceptance,
-required CI, independent current-head review and conversations are satisfied.
+required validation, independent current-head review and conversations are satisfied.
 
 For the authorized current split, [#178](https://github.com/amichai-bd/nand2mario/issues/178)
 owns delivery and bounded complete-path proof of the continuous v0.5 harness;
@@ -45,10 +45,21 @@ those assigned acceptance issues open and contain no closing references. The
 policy records only these five exceptions; other PRs still close their issues.
 `Wiki check` validates the documentation build.
 
-Main requires passing up-to-date checks, linear history, and resolved review
-conversations. Force pushes and branch deletion are blocked on main. Human
+Main normally requires passing up-to-date hosted checks, linear history, and resolved review
+conversations. The authorized external-blockage fallback below supplies equivalent local validation. Force pushes and branch deletion are blocked on main. Human
 approval is not required. Independent review and code/spec alignment are agent
 responsibilities; they are not enforced by scripts or approval counts.
 
-A merge closes the referenced issues and automatically deploys Pages. See
+A merge closes its closing references and triggers Pages deployment. A trigger is not
+proof that publication succeeded. See
 [GitHub issue linking](https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/linking-a-pull-request-to-an-issue).
+
+
+## External CI fallback
+
+The [mandatory rule](https://github.com/amichai-bd/nand2mario/blob/main/AGENTS.md#verification-and-safety)
+authorizes equivalent local required checks when hosted execution is externally
+blocked. Real failures and missing scoped evidence remain blockers. Follow the
+[skill procedure](https://github.com/amichai-bd/nand2mario/blob/main/.agents/skills/agent-flow/references/external-ci.md)
+for evidence, exact-head merge, restoration and honest deployment status. This
+standing authorization needs no repeated per-PR approval.

@@ -1,12 +1,9 @@
 `timescale 1ns/1ps
 `default_nettype none
 module tb_dma_composition;
-    import n2m_interfaces_pkg::*;
-    import n2m_cpu_pkg::*;
-    import n2m_memory_pkg::*;
     integer lane;
-    memory_oam_request_t oam_request;
-    memory_oam_response_t oam_response;
+    n2m_memory_pkg::memory_oam_request_t oam_request;
+    n2m_memory_pkg::memory_oam_response_t oam_response;
     logic clk_sys, reset_sys, core_reset, init_done, memory_init_done, gb_tick, paused, run_enable;
     logic [63:0] dot_before;
     logic [1:0] cpu_phase;
@@ -17,21 +14,23 @@ module tb_dma_composition;
     integer held_count;
     bit halt_case, stop_case, power_case, seen_wake, resumed_dma;
     logic test_wake, stop_execute;
-    cpu_stop_action_t clock_stop_action;
+    n2m_cpu_pkg::cpu_stop_action_t clock_stop_action;
     logic [63:0] sleep_dot, pause_dot;
     logic [1:0] pause_sample_phase;
     integer pause_phase, pause_count, pause_edge;
     bit pause_done, corrupt_pause;
-    cpu_bus_plan_t bus_plan;
-    cpu_address_effect_t address_effect;
+    n2m_cpu_pkg::cpu_bus_plan_t bus_plan;
+    n2m_cpu_pkg::cpu_address_effect_t address_effect;
     logic address_effect_resolved, address_effect_sample;
     logic [7:0] read_data;
     logic response_valid, fault, cpu_fault, ppu_fault;
     logic peripheral_prepare, peripheral_commit, peripheral_write;
-    memory_destination_t peripheral_destination;
+    n2m_memory_pkg::memory_destination_t peripheral_destination;
     logic [15:0] peripheral_address;
     logic [7:0] peripheral_wdata, peripheral_rdata;
     logic peripheral_valid, peripheral_available, ppu_selected;
+    logic ppu_oam_write_allow, ppu_oam_read_allow;
+    logic ppu_vram_write_allow, ppu_vram_read_allow;
     logic vram_cpu_allow, oam_cpu_allow, ppu_vram_request, ppu_vram_valid;
     logic [12:0] ppu_vram_address;
     logic [7:0] ppu_vram_data;
@@ -41,7 +40,7 @@ module tb_dma_composition;
     logic [15:0] ppu_oam_data;
     logic ppu_oam_valid, dma_active;
     logic access_read, access_write, access_valid;
-    memory_store_t access_store;
+    n2m_memory_pkg::memory_store_t access_store;
     logic [14:0] access_address;
     logic [7:0] access_wdata, access_rdata;
     logic raw_vram_read, raw_vram_valid, raw_oam_read, raw_oam_valid;
@@ -50,7 +49,7 @@ module tb_dma_composition;
     logic [6:0] raw_oam_pair;
     logic [15:0] raw_oam_data;
     logic setup, setup_read, setup_write, host_write, host_valid;
-    memory_store_t setup_store;
+    n2m_memory_pkg::memory_store_t setup_store;
     logic [14:0] setup_address;
     logic [7:0] setup_data, host_data, unused_host, unused_wave;
     logic [31:0] host_address;
@@ -76,15 +75,18 @@ module tb_dma_composition;
     bit corrupt_row_case, row_fault_ready;
     logic [14:0] row_fault_address;
     assign init_done=memory_init_done && !setup;
+    assign vram_cpu_allow = bus_plan.write_enable ? ppu_vram_write_allow : ppu_vram_read_allow;
+    assign oam_cpu_allow = bus_plan.write_enable ? ppu_oam_write_allow : ppu_oam_read_allow;
+    logic oam_cpu_late_write, oam_late_future;
     n2m_dma dut (.*);
     // Stop at the accepting carry, before registered stopped becomes visible.
     n2m_cpu_stop_policy clock_stop_policy (.selected_active(1'b0),
         .enabled_pending(|(test_ie[4:0] & test_if)), .execute(stop_execute),
         .action(clock_stop_action), .padding(), .divider_reset());
     n2m_timebase timebase (.clk_sys(clk_sys), .reset_sys(reset_sys), .core_reset(core_reset),
-        .pause_request(!run_enable || cpu_stopped || (stop_execute && clock_stop_action==STOP_OSCILLATOR)), .paused(paused), .gb_tick(gb_tick));
+        .pause_request(!run_enable || cpu_stopped || (stop_execute && clock_stop_action==n2m_cpu_pkg::STOP_OSCILLATOR)), .paused(paused), .gb_tick(gb_tick));
     n2m_cpu cpu (.clk_sys(clk_sys), .reset_sys(reset_sys), .core_reset(core_reset),
-        .gb_tick(gb_tick), .profile_id(PROFILE_DIRECT_ID), .epoch(32'd1), .dot_before(dot_before),
+        .gb_tick(gb_tick), .profile_id(n2m_interfaces_pkg::PROFILE_DIRECT_ID), .epoch(32'd1), .dot_before(dot_before),
         .ie(test_ie), .iflags(test_if), .buttons(8'd0), .read_data(read_data), .response_valid(response_valid),
         .joyp_selected_active(1'b0), .wake_request(test_wake), .request_valid(request_valid),
         .address(bus_plan.address), .write_data(bus_plan.write_data), .write_enable(bus_plan.write_enable),
@@ -100,8 +102,8 @@ module tb_dma_composition;
         .vram_request(ppu_vram_request), .vram_address(ppu_vram_address),
         .vram_data(ppu_vram_data), .vram_valid(ppu_vram_valid), .oam_pair_address(ppu_oam_pair),
         .oam_phase(ppu_oam_phase), .oam_scan_index(ppu_scan_index), .oam_data(ppu_oam_data),
-        .oam_valid(ppu_oam_valid), .dma_active(dma_active), .vram_cpu_allow(vram_cpu_allow),
-        .oam_cpu_allow(oam_cpu_allow), .stat_condition(), .vblank_condition(), .stat_rise(),
+        .oam_valid(ppu_oam_valid), .dma_active(dma_active), .vram_cpu_allow(ppu_vram_write_allow),
+        .oam_cpu_allow(ppu_oam_write_allow), .vram_cpu_read_allow(ppu_vram_read_allow), .oam_cpu_read_allow(ppu_oam_read_allow), .oam_late_future(oam_late_future), .oam_cpu_late_write(oam_cpu_late_write), .stat_condition(), .vblank_condition(), .stat_rise(),
         .vblank_rise(), .fault(ppu_fault), .source_valid(), .source_start(), .source_shade(),
         .source_x(), .source_y(), .source_epoch(), .source_dot(), .source_abort(),
         .blank_assert(), .source_display_eligible());
@@ -127,7 +129,7 @@ module tb_dma_composition;
             default: sprite_byte=8'((offset/4)&7);
         endcase
     endfunction
-    task automatic load_byte(input memory_store_t bank, input integer offset, input logic [7:0] value);
+    task automatic load_byte(input n2m_memory_pkg::memory_store_t bank, input integer offset, input logic [7:0] value);
         @(negedge clk_sys); setup_store=bank; setup_address=15'(offset); setup_data=value;
         setup_write=1; @(negedge clk_sys); setup_write=0;
     endtask
@@ -238,7 +240,7 @@ module tb_dma_composition;
                 if(seen_start && !cpu_halted && !cpu_stopped && dma_age>=2 && dma_age<=161)
                     expected_held={expected_oam[(selected_offset/2)*2+1],expected_oam[(selected_offset/2)*2]};
             end
-            if(access_write && access_store==STORE_OAM) begin
+            if(access_write && access_store==n2m_memory_pkg::STORE_OAM) begin
                 if(access_wdata!==expected_oam[access_address])
                     $fatal(1,"DMA_COMPOSITION_WRITE address=%0d expected=%02x actual=%02x",access_address,expected_oam[access_address],access_wdata);
                 $fdisplay(trace,"%0d,%0d,%02x,%02x",dot_before,access_address,expected_oam[access_address],access_wdata);
@@ -254,7 +256,7 @@ module tb_dma_composition;
     end
     initial begin
         clk_sys=0; reset_sys=1; core_reset=0; run_enable=0; setup=1;
-        setup_read=0; setup_write=0; setup_store=STORE_ROM; setup_address=0; setup_data=0;
+        setup_read=0; setup_write=0; setup_store=n2m_memory_pkg::STORE_ROM; setup_address=0; setup_data=0;
         host_write=0; host_address=0; host_data=0; observe=0; seen_start=0;
         dma_age=0; dma_count=0; checks=0; effects=0; expected_held=0;
         previous_pair=0; previous_pair_request=0; dot_before=0;
@@ -297,8 +299,8 @@ module tb_dma_composition;
         core_reset=1; repeat(2) @(negedge clk_sys); core_reset=0;
         wait(memory_init_done); repeat(3) @(negedge clk_sys);
         for(index=0;index<160;index=index+1) begin
-            load_byte(STORE_WRAM,index,power_case && index==1 ? 8'h27 : sprite_byte(index));
-            load_byte(STORE_OAM,index,sprite_byte(index)); expected_oam[index]=sprite_byte(index);
+            load_byte(n2m_memory_pkg::STORE_WRAM,index,power_case && index==1 ? 8'h27 : sprite_byte(index));
+            load_byte(n2m_memory_pkg::STORE_OAM,index,sprite_byte(index)); expected_oam[index]=sprite_byte(index);
         end
         for(index=0;index<128;index=index+1) program_bytes[index]=0;
         // Original HRAM program: LCD on, HL=FE00, DMA C000,64 IDU increments.
@@ -334,7 +336,7 @@ module tb_dma_composition;
                 program_bytes[11]='h76; program_bytes[12]='h18; program_bytes[13]='hfe;
             end
         end
-        for(index=0;index<127;index=index+1) load_byte(STORE_HRAM,index,program_bytes[index]);
+        for(index=0;index<127;index=index+1) load_byte(n2m_memory_pkg::STORE_HRAM,index,program_bytes[index]);
         for(index=0;index<3;index=index+1) begin
             @(negedge clk_sys); host_address=32'('h100+index);
             case(index) 0: host_data='hc3; 1: host_data='h80; default: host_data='hff; endcase
@@ -392,7 +394,7 @@ module tb_dma_composition;
                 $fatal(1,"DMA_LCD_REQUEST_CANCEL phase=%0d valid=%0d request=%0d",ppu_oam_phase,ppu_oam_valid,raw_oam_read);
         end
         if(corrupt_pop_idu) begin
-            wait(request_valid && bus_plan.access_kind==ACCESS_STACK && bus_plan.address==16'hfe00);
+            wait(request_valid && bus_plan.access_kind==n2m_cpu_pkg::ACCESS_STACK && bus_plan.address==16'hfe00);
             @(negedge clk_sys);
             force address_effect={1'b1,16'hfe00,16'hffff,1'b0};
         end
@@ -434,7 +436,7 @@ module tb_dma_composition;
         if(family_pop && scan_reads==0)$fatal(1,"DMA_FAMILY_POP_SECOND_READ");
         observe=0; setup=1;
         for(index=0;index<160;index=index+1) begin
-            @(negedge clk_sys); setup_read=1; setup_store=STORE_OAM; setup_address=15'(index);
+            @(negedge clk_sys); setup_read=1; setup_store=n2m_memory_pkg::STORE_OAM; setup_address=15'(index);
             @(negedge clk_sys);
             if(!access_valid || access_rdata!==expected_oam[index])
                 $fatal(1,"DMA_COMPOSITION_READBACK offset=%0d expected=%02x actual=%02x",index,expected_oam[index],access_rdata);

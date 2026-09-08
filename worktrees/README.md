@@ -35,11 +35,11 @@ Once [review readiness](../.agents/skills/agent-flow/references/review.md#verdic
 and the [delivery obligations](../AGENTS.md#work) are met, the author runs:
 
 ```powershell
-gh pr merge <number> --squash
+gh pr merge <number> --squash --match-head-commit <reviewed-sha>
 ```
 
 Do not pass `--delete-branch` from an author worktree. Root owns worktree and
-branch deletion after it verifies the merge and deployment.
+branch deletion after the post-merge verification below.
 
 If the command errors after sending the merge request, inspect remote state:
 
@@ -51,10 +51,17 @@ gh issue view <issue> --json state,closedAt
 If merged, report the merge commit and local error to root; do not retry.
 If remote state is unclear, investigate before any retry or cleanup.
 
+For externally blocked hosted checks, use the
+[standing fallback procedure](../.agents/skills/agent-flow/references/external-ci.md).
+It preserves exact-head review and restores any temporary administrator setting.
+
 ## Clean up after merge
 
 The author reports its squash merge. Root verifies the PR merged, required main
-checks and deployment passed, and issues that the PR completes closed. Approved
+checks and deployment passed (or records the actual external blockage and local
+validation under the [fallback](../wiki/agents/pull-requests.md#external-ci-fallback)),
+and issues that the PR completes closed. Do not claim Pages publication from a
+local build. Approved
 checkpoint issues remain open with their unfinished criteria; do not close them
 for cleanup.
 

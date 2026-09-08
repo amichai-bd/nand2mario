@@ -34,7 +34,6 @@ module n2m_memory_cpu_port (
     input var logic owner_valid,
     input var logic owner_service_available
 );
-    import n2m_memory_pkg::*;
     logic reset, active, direct, fixed_ff, committed, service_available;
     logic prepared_read;
     logic [15:0] prepared_address;
@@ -46,11 +45,11 @@ module n2m_memory_cpu_port (
     );
     assign reset = reset_sys || core_reset;
     assign active = !reset && !contract_fault && init_done && request_valid;
-    assign direct = owner_destination == MEMORY_DIRECT;
+    assign direct = owner_destination == n2m_memory_pkg::MEMORY_DIRECT;
     // The direct profile has no cartridge RAM or writable unused/boot state.
     // These destinations return the approved fixed FF digital value.
-    assign fixed_ff = owner_destination == MEMORY_UNUSED_IO || owner_destination == MEMORY_BOOT
-        || owner_destination == MEMORY_ABSENT_CART;
+    assign fixed_ff = owner_destination == n2m_memory_pkg::MEMORY_UNUSED_IO || owner_destination == n2m_memory_pkg::MEMORY_BOOT
+        || owner_destination == n2m_memory_pkg::MEMORY_ABSENT_CART;
     assign service_available = direct || fixed_ff || owner_service_available;
     assign committed = active && bus_commit && service_available && (write_enable || response_valid);
     assign storage_read = active && direct && !write_enable;

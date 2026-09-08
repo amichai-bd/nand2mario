@@ -12,15 +12,18 @@ STORES = {"rom": (32768, 32), "wram": (8192, 8), "vram": (8192, 8),
           "wave_ram": (16, 1)}
 
 
-def verify_netlist(text):
+def verify_netlist(text, *, stores=STORES, system_clock=SYS_CLOCK, scoped=False):
     atoms = re.findall(r"fiftyfivenm_ram_block\s+\\(\S+)\s*\((.*?)\);", text, re.DOTALL)
-    if len(atoms) != 52 or len({name for name, _ in atoms}) != 52:
+    if scoped:
+        atoms = [(name, body) for name, body in atoms if any(name.startswith(owner + "|ram|") for owner in stores)]
+    count = sum(blocks for _, blocks in stores.values())
+    if len(atoms) != count or len({name for name, _ in atoms}) != count:
         raise ValueError("memory store physical atom count differs")
     evidence = {}
-    partitions = {owner: [] for owner in STORES}
+    partitions = {owner: [] for owner in stores}
     for name, body in atoms:
-        owner = name.split("|", 1)[0]
-        if owner not in STORES or not name.startswith(owner + "|ram|auto_generated|ram_block"):
+        owner = next((owner for owner in stores if name.startswith(owner + "|ram|auto_generated|ram_block")), None)
+        if owner is None:
             raise ValueError("unexpected memory store physical owner")
         ports = {key: re.sub(r"\s+", "", value) for key, value in
                  re.findall(r"\.(\w+)\((.*?)\)(?:,|$)", body, re.DOTALL)}
@@ -28,8 +31,8 @@ def verify_netlist(text):
         params = {key: value.strip().strip('"') for key, value in pairs}
         if len(params) != len(pairs):
             raise ValueError("duplicate memory store physical parameter")
-        depth, _ = STORES[owner]
-        wide = depth < 8192
+        depth, blocks = stores[owner]
+        wide = blocks == 1
         expected = {"operation_mode": "bidir_dual_port", "ram_block_type": "M9K",
                     "power_up_uninitialized": "true", "mixed_port_feed_through_mode": "old",
                     "port_b_address_clock": "clock0", "port_b_read_enable_clock": "clock0"}
@@ -47,7 +50,7 @@ def verify_netlist(text):
             raise ValueError(f"memory store physical parameter differs: {name}")
         if any(key.startswith(("mem_init", "init_file")) for key in params):
             raise ValueError("memory store initialization unexpectedly present")
-        required_ports = {"clk0": SYS_CLOCK, "clk1": "gnd", "clr0": "gnd", "clr1": "gnd",
+        required_ports = {"clk0": system_clock, "clk1": "gnd", "clr0": "gnd", "clr1": "gnd",
                           "portbwe": "gnd", "portabyteenamasks": "1'b1", "portbbyteenamasks": "1'b1",
                           "portaaddrstall": "gnd", "portbaddrstall": "gnd"}
         if any(ports.get(key) != value for key, value in required_ports.items()):
@@ -57,8 +60,8 @@ def verify_netlist(text):
             raise ValueError("memory store A/B bit partition differs")
         partitions[owner].append(first)
         evidence[name] = {"ports": ports, "parameters": params}
-    for owner, (depth, count) in STORES.items():
-        expected = [0] if depth < 8192 else [bit for bit in range(8) for _ in range(count // 8)]
+    for owner, (depth, count) in stores.items():
+        expected = [0] if count == 1 else [bit for bit in range(8) for _ in range(count // 8)]
         if sorted(partitions[owner]) != expected:
             raise ValueError(f"memory store physical bit inventory differs: {owner}")
     return evidence
@@ -66,11 +69,25 @@ def verify_netlist(text):
 
 def verify(folder):
     fit = (folder / "output/design.fit.rpt").read_text(encoding="cp1252" if os.name == "nt" else "utf-8")
+    evidence = verify_rows(fit)
+    totals = [row[1] for row in rows(fit) if len(row) == 2 and row[0] == "Total block memory bits"]
+    if len(totals) != 1 or not totals[0].startswith("395,640 /"):
+        raise ValueError("memory store total capacity differs")
+    text = (folder / "simulation/questa/design.vo").read_text()
+    if re.search(r"(?i)black.?box", text):
+        raise ValueError("memory store black box present")
+    evidence["physical_atoms"] = verify_netlist(text)
+    return evidence
+
+
+def verify_rows(fit, *, stores=STORES, scoped=False):
     memories = [row for row in rows(fit) if len(row) >= 24 and row[1] == "M9K"]
-    if len(memories) != 7:
+    if scoped:
+        memories = [row for row in memories if any(node(row[0]).startswith(owner + "|ram|") for owner in stores)]
+    if len(memories) != len(stores):
         raise ValueError("memory store logical inventory differs")
     evidence = {}
-    for owner, (depth, blocks) in STORES.items():
+    for owner, (depth, blocks) in stores.items():
         matches = [row for row in memories if node(row[0]).startswith(owner + "|ram|")]
         if len(matches) != 1:
             raise ValueError(f"memory store missing or duplicated: {owner}")
@@ -80,11 +97,4 @@ def verify(folder):
                 or row[21:24] != ["Old data", "New data with NBE Read", "New data with NBE Read"]):
             raise ValueError(f"memory store fitted service differs: {owner}")
         evidence[owner] = {"depth": depth, "width": 8, "m9ks": blocks, "row": row}
-    totals = [row[1] for row in rows(fit) if len(row) == 2 and row[0] == "Total block memory bits"]
-    if len(totals) != 1 or not totals[0].startswith("395,640 /"):
-        raise ValueError("memory store total capacity differs")
-    text = (folder / "simulation/questa/design.vo").read_text()
-    if re.search(r"(?i)black.?box", text):
-        raise ValueError("memory store black box present")
-    evidence["physical_atoms"] = verify_netlist(text)
     return evidence

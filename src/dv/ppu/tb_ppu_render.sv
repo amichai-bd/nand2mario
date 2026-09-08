@@ -46,7 +46,7 @@ module tb_ppu_render;
     logic [7:0] lo, hi;
     logic [1:0] color, expected;
     n2m_timebase timebase (.*);
-    n2m_ppu dut (.*);
+    n2m_ppu dut (.vram_cpu_read_allow(), .oam_cpu_read_allow(), .oam_late_future(), .oam_cpu_late_write(), .*);
     assign io_commit = write_pending && cpu_phase == 3 && gb_tick;
     `DFF_RST_EN(cpu_phase, cpu_phase + 2'd1, clk_sys, gb_tick, reset_sys || core_reset, 2'd0)
     `DFF_RST_EN(dot_before, dot_before + 64'd1, clk_sys, gb_tick, reset_sys || core_reset, 64'd0)
@@ -131,8 +131,10 @@ module tb_ppu_render;
                 palette_write_dot[palette_index] = 0;
             end
         end else if (gb_tick) begin
-            sampled_bgp = ref_bgp; sampled_obp0 = ref_obp0; sampled_obp1 = ref_obp1;
             sampled_dot = dot_before + 64'd1;
+            sampled_bgp = sampled_dot == palette_write_dot[0] + 64'd1 ? prior_palette[0] | ref_bgp : ref_bgp;
+            sampled_obp0 = sampled_dot == palette_write_dot[1] + 64'd1 ? prior_palette[1] | ref_obp0 : ref_obp0;
+            sampled_obp1 = sampled_dot == palette_write_dot[2] + 64'd1 ? prior_palette[2] | ref_obp1 : ref_obp1;
             sampled_write = 3;
             if (io_commit && io_write) begin
                 case (io_address)

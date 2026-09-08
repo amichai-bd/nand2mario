@@ -6,33 +6,34 @@ CHAINS = tuple((f"button{i}", f"buttons_n[{i}]", f"u_physical|u_buttons|button_m
     ("uart", "uart_rx", "u_uart|u_serial_rx|rx_meta", "u_uart|u_serial_rx|rx_sync"),)
 
 
-def verify_identity(folder, build_id):
+def verify_identity(folder, build_id, *, macro="N2M_CONTROLS_BUILD_ID", instances=1):
     import re
     if not isinstance(build_id, str) or not re.fullmatch('[0-9a-f]{32}', build_id) or int(build_id, 16) == 0:
         raise ValueError('controls proof requires its nonzero producing build identity')
     qsf = (folder / 'design.qsf').read_text()
-    lines = [line for line in qsf.splitlines() if 'N2M_CONTROLS_BUILD_ID' in line]
-    if lines != [f'set_global_assignment -name VERILOG_MACRO "N2M_CONTROLS_BUILD_ID=128\'h{build_id}"']:
+    lines = [line for line in qsf.splitlines() if macro in line]
+    if lines != [f'set_global_assignment -name VERILOG_MACRO "{macro}=128\'h{build_id}"']:
         raise ValueError('controls generated macro differs from producing identity')
     report = (folder / 'output/design.map.rpt').read_text()
     values = re.findall(r';\s*BUILD_ID\s*;\s*([01]+)\s*;\s*Unsigned Binary\s*;', report)
-    if values != [f'{int(build_id, 16):0128b}']:
+    if values != [f'{int(build_id, 16):0128b}'] * instances:
         raise ValueError('controls compiled 128-bit identity differs')
     return build_id
 
 
-def verify_uart_memory(text, fit, *, system_net=r"\clk_sys~inputclkctrl_outclk"):
+def verify_uart_memory(text, fit, *, system_net=r"\clk_sys~inputclkctrl_outclk", prefix="", top="controls_proof"):
     """Account for the six existing UART stores alongside the three VGA banks."""
     from .fpga_lock import parse_netlist
-    _, cells, params, *_ = parse_netlist(text, 'controls_proof')
+    _, cells, params, *_ = parse_netlist(text, top)
     shapes = {'u_uart|u_packet_rx|stores|encoded': (270, 8, 1),
               'u_uart|u_packet_rx|stores|decoded': (268, 8, 1),
               'u_uart|u_commands|u_load|u_presence|u_presence': (32768, 1, 4)}
     shapes.update({f'u_uart|u_exchange|stores|banks[{i}].memory': (268, 8, 1) for i in range(3)})
+    shapes = {prefix + owner: shape for owner, shape in shapes.items()}
     suffix = '|ram|auto_generated|'
     expected = {owner + suffix + f'ram_block1a{i}': (depth, width)
                 for owner, (depth, width, count) in shapes.items() for i in range(count)}
-    actual = {n for n, (kind, _) in cells.items() if kind == 'fiftyfivenm_ram_block' and not n.startswith('u_bridge|')}
+    actual = {n for n, (kind, _) in cells.items() if kind == 'fiftyfivenm_ram_block' and (n.startswith(prefix + 'u_uart|') if prefix else not n.startswith('u_bridge|'))}
     if actual != set(expected):
         raise ValueError('combined UART RAM atom inventory differs')
     for name, (depth, width) in expected.items():
@@ -55,6 +56,8 @@ def verify_uart_memory(text, fit, *, system_net=r"\clk_sys~inputclkctrl_outclk")
         if any(ports.get(k) != v for k, v in required_ports.items()):
             raise ValueError('combined UART RAM clock/reset/port role differs')
     rows = [r for r in fpga_vga.rows(fit) if len(r) > 4 and r[1:4] == ['M9K', 'True Dual Port', 'Single Clock']]
+    if prefix:
+        rows = [r for r in rows if fpga_vga.node(r[0]).startswith(prefix + 'u_uart|')]
     if len(rows) != len(shapes):
         raise ValueError('combined UART fitted store count differs')
     seen = set()
@@ -71,9 +74,9 @@ def verify_uart_memory(text, fit, *, system_net=r"\clk_sys~inputclkctrl_outclk")
     return {'stores': len(shapes), 'atoms': len(expected), 'bits': sum(d*w for d,w,_ in shapes.values())}
 
 
-def constraints(quote):
+def constraints(quote, *, chains=CHAINS):
     lines = []
-    for name, port, first, second in CHAINS:
+    for name, port, first, second in chains:
         lines += fpga_vga.collection("ports", [port], "controls_" + name, quote)
         pins = " ".join(quote(first + "|" + pin) for pin in ("d", "asdata"))
         lines += [f"set controls_first_{name} [get_pins -nowarn [list {pins}]]",
@@ -82,11 +85,11 @@ def constraints(quote):
     return "\n".join(lines) + "\n"
 
 
-def audit(quote):
+def audit(quote, *, chains=CHAINS):
     lines = []
     for corner, model, temperature in fpga_vga.CORNERS:
         lines += [f"set_operating_conditions -model {model} -voltage 1200 -temperature {temperature}", "update_timing_netlist"]
-        for name, port, first, second in CHAINS:
+        for name, port, first, second in chains:
             lines += fpga_vga.collection("registers", [first], "controls_launch_" + name, quote)
             lines += fpga_vga.collection("registers", [second], "controls_capture_" + name, quote)
             for check in ("setup", "hold"):
@@ -94,19 +97,19 @@ def audit(quote):
     return "\n".join(lines) + "\n"
 
 
-def required_reports():
+def required_reports(*, chains=CHAINS):
     return [f"controls_{corner}_{name}_{check}.rpt" for corner, _, _ in fpga_vga.CORNERS
-            for name, _, _, _ in CHAINS for check in ("setup", "hold")]
+            for name, _, _, _ in chains for check in ("setup", "hold")]
 
 
-def verify(folder, *, system_clock="clk_sys", system_net=r"\clk_sys~inputclkctrl_outclk"):
+def verify(folder, *, system_clock="clk_sys", system_net=r"\clk_sys~inputclkctrl_outclk", chains=CHAINS, top="controls_proof"):
     """Check every external-control synchronizer path and its sole first-stage sink."""
     from .fpga_lock import parse_netlist, OUTPUTS
     import re
     output = folder / 'output'
     result = {'paths': {}, 'first_stage_sinks': {}}
     for corner, _, _ in fpga_vga.CORNERS:
-        for name, _, first, second in CHAINS:
+        for name, _, first, second in chains:
             for check in ('setup', 'hold'):
                 report = output / f'controls_{corner}_{name}_{check}.rpt'
                 text = report.read_text()
@@ -118,7 +121,7 @@ def verify(folder, *, system_clock="clk_sys", system_net=r"\clk_sys~inputclkctrl
                     raise ValueError('control synchronizer timing endpoints or clocks differ')
                 result['paths'][report.name] = fpga_vga.number(rows[0][0])
     text = (folder / 'simulation/questa/design.vo').read_text()
-    _, cells, params, declarations, rhs, lhs = parse_netlist(text, 'controls_proof')
+    _, cells, params, declarations, rhs, lhs = parse_netlist(text, top)
     def sinks(net):
         token = re.compile(r'(?<![A-Za-z0-9_$\\|~])' + re.escape(net) + r'(?![A-Za-z0-9_$|~\[])')
         if any(token.search(value) for value in rhs + lhs):
@@ -173,7 +176,7 @@ def verify(folder, *, system_clock="clk_sys", system_net=r"\clk_sys~inputclkctrl
             raise ValueError('control unary path has bypass fanout')
         return [cell]
 
-    for name, external, first, second in CHAINS:
+    for name, external, first, second in chains:
         if any(c not in cells or cells[c][0] != 'dffeas' for c in (first, second)):
             raise ValueError('missing control synchronizer register')
         buffer = external + '~input'

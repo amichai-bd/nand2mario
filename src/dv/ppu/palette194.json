@@ -1,0 +1,11 @@
+{
+  "profile": "dmg-direct-v1",
+  "native_event_bound": 10120,
+  "native_bound_dots": 140600,
+  "retirements": 10114,
+  "bgp_commit": 70908,
+  "images": {
+    "palette-fc": {"length": 32768, "sha256": "90afd1b950894fab2c9551a806cd80166dfd74d4a7613e03454518101424593b", "palette": 252},
+    "palette-00": {"length": 32768, "sha256": "d4e2dbc8678dfda57452899c41efdf37fd50fcc9e768b117dd30780df83270b4", "palette": 0}
+  }
+}

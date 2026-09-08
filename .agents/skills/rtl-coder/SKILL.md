@@ -39,6 +39,8 @@ requirements/design aligned with `src/rtl/`, verification, and evidence.
    [review guide](../agent-flow/references/review.md).
 5. Run the smallest compile and checked Questa simulation that prove the contract.
    Use Questa only for new simulation evidence; do not start Icarus runs.
+   Apply the [verified Quartus package-binding guidance](../fpga-de10-lite/examples/scenarios.md#package-constants-in-quartus-251)
+   when changing affected product expressions; simulation alone is not synthesis proof.
 
 Run `python .agents/skills/rtl-coder/scripts/check_sv_style.py` before review.
 The lexical guard checks tracked SV/SVH built-in and locally typedef-named

@@ -13,10 +13,9 @@ module n2m_cpu_retire (
     output logic retirement_valid,
     output n2m_interfaces_pkg::retirement_t retirement
 );
-    import n2m_interfaces_pkg::*;
-    retirement_t capture_t4;
-    retirement_t capture_t4_next;
-    retirement_t retirement_b_next;
+    n2m_interfaces_pkg::retirement_t capture_t4;
+    n2m_interfaces_pkg::retirement_t capture_t4_next;
+    n2m_interfaces_pkg::retirement_t retirement_b_next;
     logic pending_t4;
     logic pending_t4_next;
     logic retirement_valid_next;
@@ -37,8 +36,8 @@ module n2m_cpu_retire (
         end
         if (capture.valid) begin
             capture_t4_next = '0;
-            capture_t4_next.version = TRACE_VERSION;
-            capture_t4_next.kind = capture.is_interrupt ? TRACE_INTERRUPT : TRACE_INSTRUCTION;
+            capture_t4_next.version = n2m_interfaces_pkg::TRACE_VERSION;
+            capture_t4_next.kind = capture.is_interrupt ? n2m_interfaces_pkg::TRACE_INTERRUPT : n2m_interfaces_pkg::TRACE_INSTRUCTION;
             capture_t4_next.epoch = capture.epoch;
             capture_t4_next.seq = sequence_number;
             capture_t4_next.dot = capture.dot_after;

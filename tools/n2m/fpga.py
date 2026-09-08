@@ -67,6 +67,8 @@ def target_definition(root, name):
     fields = {"device", "top", "sources", "constraints", "pins", "virtual_pins"}
     if not isinstance(target, dict) or not fields.issubset(target) or set(target) - fields - {"pll", "timing"} or target["device"] != DEVICE:
         raise ValueError("unknown FPGA target, fields, or device")
+    if name == "v05-board":
+        fpga_v05.validate_board(target)
     if "pll" in target:
         fpga_pll.validate(target["pll"])
         if target["top"] not in ("clocking_proof", "vga_proof", "ppu_proof", "intel_memory_proof", "controls_proof", "v05_proof") or "timing" not in target:
@@ -114,6 +116,12 @@ def prepare(root, folder, target, build_id=None):
         if not isinstance(build_id, str) or not re.fullmatch(r"[0-9a-f]{32}", build_id) or int(build_id, 16) == 0:
             raise ValueError("physical controls build requires a nonzero fingerprint identity")
         lines.append("set_global_assignment -name VERILOG_MACRO " + tcl_word("N2M_CONTROLS_BUILD_ID=128'h" + build_id))
+    if fpga_v05.board_target(target):
+        fpga_v05.validate_board(target)
+        if not isinstance(build_id, str) or not re.fullmatch(r"[0-9a-f]{32}", build_id) or int(build_id, 16) == 0:
+            raise ValueError("physical v05 build requires a nonzero fingerprint identity")
+        lines.append("set_global_assignment -name VERILOG_MACRO " + tcl_word("N2M_V05_BUILD_ID=128'h" + build_id))
+        lines.append('set_global_assignment -name RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED"')
     for field, assignment in (("sources", "SYSTEMVERILOG_FILE"), ("constraints", "SDC_FILE")):
         for name in target[field]:
             lines.append(f'set_global_assignment -name {assignment} {tcl_word((root / name).resolve())}')
@@ -131,9 +139,9 @@ def prepare(root, folder, target, build_id=None):
                       f'set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to {tcl_word(port)}'])
         if target.get("top") in ("vga_proof", "ppu_proof", "controls_proof", "v05_proof") and port in fpga_vga.PORTS:
             lines.append(f'set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to {tcl_word(port)}')
-        if target["top"] == "controls_proof" and (port == "uart_tx" or re.fullmatch(r"leds\[[0-9]\]", port)):
+        if (target["top"] == "controls_proof" or fpga_v05.board_target(target)) and (port == "uart_tx" or re.fullmatch(r"leds\[[0-9]\]", port)):
             lines.append(f'set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to {tcl_word(port)}')
-    if target["top"] == "controls_proof":
+    if target["top"] == "controls_proof" or fpga_v05.board_target(target):
         lines.append('set_instance_assignment -name IO_STANDARD "3.3 V SCHMITT TRIGGER" -to board_reset_n')
     for port in target["virtual_pins"]:
         lines.append(f'set_instance_assignment -name VIRTUAL_PIN ON -to {tcl_word(port)}')
@@ -149,13 +157,13 @@ def prepare(root, folder, target, build_id=None):
     if target["top"] == "controls_proof":
         audit = audit.replace("project_close", fpga_controls.audit(tcl_word) + "project_close")
     if target.get("top") == "v05_proof":
-        audit = audit.replace("project_close", fpga_v05.audit(tcl_word) + "project_close")
+        audit = audit.replace("project_close", fpga_v05.audit(tcl_word, board=fpga_v05.board_target(target)) + "project_close")
     (folder / "audit.tcl").write_text(audit, encoding="utf-8")
 
 
 def checked_constraints(target):
     if target.get("top") == "v05_proof":
-        return fpga_constraints.generate(target["timing"], tcl_word) + fpga_v05.constraints(tcl_word)
+        return fpga_constraints.generate(target["timing"], tcl_word) + fpga_v05.constraints(tcl_word, board=fpga_v05.board_target(target))
     text = fpga_constraints.generate(target["timing"], tcl_word)
     if target.get("top") in ("vga_proof", "ppu_proof", "controls_proof"):
         text += fpga_vga.constraints(tcl_word, lcd=target["top"] == "ppu_proof")
@@ -311,6 +319,11 @@ def timing_evidence(folder, target, *, build_id=None):
     if target.get("top") == "controls_proof":
         evidence["controls"] = fpga_controls.verify(folder, **system_profile)
         evidence["controls"]["build_id"] = fpga_controls.verify_identity(folder, build_id)
+    if fpga_v05.board_target(target):
+        evidence["intel_memory"] = fpga_v05.verify_memory(folder, system_net=fpga_pll.SYSTEM_NET)
+        evidence["board_uart"] = fpga_controls.verify(folder, system_clock=fpga_pll.SYSTEM_CLOCK,
+            system_net=fpga_pll.SYSTEM_NET, chains=fpga_v05.UART_CHAINS, top="v05_proof")
+        evidence["board_build_id"] = fpga_controls.verify_identity(folder, build_id, macro="N2M_V05_BUILD_ID", instances=2)
     return evidence
 
 
@@ -345,9 +358,11 @@ def complete_cache(record, fingerprint, root, build, target):
             required.append(folder / "output/intel_memory_inputs.rpt")
         if target.get("top") == "v05_proof":
             required += [folder / "output" / name for name in fpga_vga.required_reports(lcd=True)]
+        if fpga_v05.board_target(target):
+            required += [folder / "output" / name for name in fpga_controls.required_reports(chains=fpga_v05.UART_CHAINS)]
         if any(p.relative_to(root).as_posix() not in record["artifacts"] for p in required):
             return False
-        if target.get("top") == "controls_proof" and record.get("build_id") != fingerprint[:32]:
+        if (target.get("top") == "controls_proof" or fpga_v05.board_target(target)) and record.get("build_id") != fingerprint[:32]:
             return False
         return timing_evidence(folder, target, build_id=record.get("build_id")) == record["evidence"]
     except (KeyError, TypeError, ValueError, OSError):
@@ -385,7 +400,7 @@ def build_fpga(root, build, args, provenance=None):
             record["tools"]["adc"] = fpga_adc.identity(args.quartus_bin)
         record["definition"] = target
         record["fingerprint"] = digest({"inputs": record["inputs"], "tools": record["tools"], "definition": target, "timeout": args.timeout})
-        if target["top"] == "controls_proof":
+        if target["top"] == "controls_proof" or fpga_v05.board_target(target):
             record["build_id"] = record["fingerprint"][:32]
         if not args.rebuild and complete_cache(old, record["fingerprint"], root, build, target):
             record.update(status="PASS", cache="CACHED", reused_result=old["attempt_result"], evidence=old["evidence"], evidence_directory=old["evidence_directory"])

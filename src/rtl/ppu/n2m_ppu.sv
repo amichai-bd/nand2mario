@@ -28,7 +28,11 @@ module n2m_ppu (
     input var logic oam_valid,
     input var logic dma_active,
     output logic vram_cpu_allow,
+    output logic vram_cpu_read_allow,
     output logic oam_cpu_allow,
+    output logic oam_cpu_late_write,
+    output logic oam_late_future,
+    output logic oam_cpu_read_allow,
     output logic stat_condition,
     output logic vblank_condition,
     output logic stat_rise,
@@ -74,7 +78,9 @@ module n2m_ppu (
     logic pending_pixel, captured_start, pending_abort, pending_blank;
     logic first_frame_blank, fault_seen, vblank_history;
     logic lyc_write;
+    logic [7:0] render_bgp, render_obp0, render_obp1;
     logic [7:0] readable_ly;
+    logic early_oam_read_block, early_vram_read_block;
     assign reset = reset_sys || core_reset;
     assign fault = fetch_fault || object_fault;
     assign fault_now = fetch_fault_now || object_fault_now;
@@ -82,7 +88,8 @@ module n2m_ppu (
         .clk_sys, .reset, .gb_tick, .io_commit, .io_write, .io_address, .io_wdata,
         .ly(readable_ly), .mode, .coincidence, .quarter_phase, .io_selected, .io_rdata,
         .lcdc, .scy, .scx, .lyc, .bgp, .obp0, .obp1, .wy, .wx, .stat_enable,
-        .stat_write, .lyc_write, .lcd_enable, .lcd_disable
+        .stat_write, .lyc_write, .lcd_enable, .lcd_disable,
+        .render_bgp, .render_obp0, .render_obp1
     );
     n2m_ppu_timing timing (
         .clk_sys, .reset, .gb_tick, .lcd_on(lcdc[7]), .lcd_disable, .ly_compare(lyc), .stat_enable, .stat_write, .lyc_write, .write_data(io_wdata),
@@ -132,8 +139,8 @@ module n2m_ppu (
     n2m_ppu_mix mixer (
         .background_enable(lcdc[0]), .object_enable(lcdc[1]),
         .background_color, .object_color, .object_behind_background(behind_background),
-        .object_palette_select(palette_select), .background_palette(bgp),
-        .object_palette0(obp0), .object_palette1(obp1), .shade
+        .object_palette_select(palette_select), .background_palette(render_bgp),
+        .object_palette0(render_obp0), .object_palette1(render_obp1), .shade
     );
     assign background_y = ly + scy;
     assign background_x = raw_x + scx;
@@ -151,7 +158,22 @@ module n2m_ppu (
         : {1'b0, object_row_address, 1'b1};
     assign oam_phase = reset || fault_now ? 2'd0 : object_oam_phase;
     assign vram_cpu_allow = !mode3;
+    // The final scan T4 blocks VRAM reads before write permission closes.
+    // Scan activity excludes the initial LCD-on mode0 interval and VBlank.
+    assign early_vram_read_block = scan_active
+        && line_quarter == 7'd19 && quarter_phase == 2'd3;
+    assign vram_cpu_read_allow = vram_cpu_allow && !early_vram_read_block;
     assign oam_cpu_allow = !(scan_active || mode3 || dma_active);
+    // Only integrations with the late-write owner may consume this indication.
+    assign oam_cpu_late_write = !reset && !fault_now && !dma_active && early_vram_read_block;
+    // Sample at preceding T4; remains a prediction across withheld dots.
+    assign oam_late_future = !reset && !fault_now && scan_active
+        && line_quarter == 7'd18 && quarter_phase == 2'd3;
+    // Legal T4 before the next ordinary scan blocks reads while writes remain
+    // allowed. Use renderer LY, not the exceptional CPU-readable LY153 value.
+    assign early_oam_read_block = lcdc[7] && ly < 8'd144
+        && line_quarter == 7'd113 && quarter_phase == 2'd3;
+    assign oam_cpu_read_allow = oam_cpu_allow && !early_oam_read_block;
     assign vblank_rise = vblank_condition && !vblank_history && !reset;
     `DFF_RST(vblank_history, vblank_condition, clk_sys, reset)
     assign pixel_capture = gb_tick && source_event && !lcd_disable && !fault_now && !reset;

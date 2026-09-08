@@ -14,7 +14,7 @@ the PPU's [scan and fetch port](../ppu/MAS_ppu.md#oam-scan-and-fetch-port).
 There is no second OAM image or retirement-based reconstruction of CPU effects.
 
 All state uses clk_sys. The shared [clock contract](../../clocks-resets-cdc.md)
-owns gb_tick and the eleven/twelve-system-edge dot spacing. The exported CPU
+owns gb_tick and the five/six-system-edge dot spacing at 25 MHz. The exported CPU
 address_effect_phase directly follows its bus phase, including HALT and idle
 cycles. Periodic preparation uses gb_tick and phase3, independently of the
 address_effect_sample pulse. Host pause and STOP tick withholding hold phase;
@@ -104,6 +104,43 @@ request for the pending pair receives its forwarded data. Register selection
 and data with the request, including the physical commit edge; subsequent
 raw reads supply the committed pair. Reset and fault invalidate this forwarding.
 No pending pair may be broadcast to unrelated OAM addresses.
+
+### Qualified late writes
+
+The [addressed-row late class](../memory/MAS_memory.md#direct-path-late-oam-writes)
+also applies to this owner under [#211](https://github.com/amichai-bd/nand2mario/issues/211).
+It retains the pinned permission evidence, conditional data semantics and
+revision limits of that class. It does not replace ordinary scanned-row or
+IDU-only transformations.
+
+At the preceding accepted T4 P, retain the PPU prediction: enabled active scan,
+line quarter18, phase3. The next accepted T4 reaches quarter19/phase3. This
+prediction survives host pause; selecting from the live phase at a later system
+edge would lose it when dots stop but memory service drains.
+
+At slot14, a retained prediction, stable prepared FE00-FE9F CPU write and inactive
+DMA select late operands instead of normal prefetch. Read last-row pairs76-79
+at slots14-17 and the addressed pair at18; capture finishes at19. All preceding
+corruption and DMA writes finish by13, so these operands include their changes.
+Otherwise the normal six-read prefetch is unchanged. Preparation authorizes no
+write. At actual T4 A, require the late permission, matching address/data and
+complete tagged operands. An inconsistent selected transaction faults rather
+than consuming stale normal operands. Reset cancels it; pause retains it.
+
+The selected result is the addressed row, with the CPU byte applied last by the
+same transform used by the direct owner. Suppress the raw CPU byte write and
+normal scanned-row result for this class. Write its words2,0,1,3 at A+1..4.
+For row19 this restores pair78 at A+1, permits a fresh B read at A+2 and supplies
+the next capture by A+5. Other addressed rows do not collide with that capture.
+CPU raw OAM preparation resumes in the existing slot21 window, with its full
+response address tag. Each accepted T4 invalidates late readiness, including
+consecutive writes to the same address.
+
+Pre-edge active DMA excludes late permission, including accepted byte159 and
+restart. Those simultaneous cases retain the ordinary projection and held-pair
+forwarding. A terminal DMA byte at P may finish at P+13; the next late operands
+then include that physical write. No simultaneous allowed DMA/late class or
+additional memory port is introduced.
 
 Unavailable operands, other-byte data, or a granted raw read response raise
 named faults. An unresolved CPU sample cancels same-edge effects and latches

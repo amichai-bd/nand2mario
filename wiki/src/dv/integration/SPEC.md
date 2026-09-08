@@ -83,7 +83,7 @@ or writes product storage. Its loopback channel is not a physical serial port.
 Peer readiness has a five-second wall bound. Reply waiting and simulation
 progress use a120-second wall tolerance, checked between simulation chunks.
 The Client's simulated response deadline is unchanged. The target's outer
-runtime bound is600 seconds. Its simulated watchdog is500 ms, preserving the
+runtime bound is 300 seconds, subject to the total supervisor deadline. Its simulated watchdog is500 ms, preserving the
 12.5-million-system-edge budget while the slower test UART loads and reads back
 the complete image. Emulated instruction and frame bounds below are unchanged. The
 builder reaps the peer after success, simulator failure or timeout, retaining
@@ -105,6 +105,11 @@ models fail through the shared builder.
 
 ## Verification tiers
 
+All simulations obey the [300-second total wall budget](../../../tools/n2m/SPEC.md#test-wall-budget).
+Prefer the [authorized bounded FPGA/UART game checks](../../../agents/bootstrap-plan.md#verification-and-hardware-authorization)
+after their build and setup gates pass. Required affected simulation and named
+milestones use explicitly declared complementary simulation/physical matrices.
+
 Select gates by affected behavior and the scoped issue. Use existing preload,
 continuous Python, Intel models, builders, validators and targets; no additional
 regression framework is required. Required CI remains in force. Evidence reuse
@@ -122,16 +127,21 @@ rendering and UART ROM upload are not universal gates for each edit. Select
 fault tests for affected behavior and stop at the shortest meaningful failure
 witness. Recheck mutations when relevant checking infrastructure changes.
 
-Aim for roughly 60 seconds for the default local suite. This is a development
-goal, not a coverage waiver or a reason for prolonged harness optimization. The
-existing `python-integration-client-preloaded` target is a usable baseline:
-69 retirement records, 145 bus observations, RAM and interrupt checks, two full
-frames and final host pause. Its measured stage runtime was 96.987663 seconds
-in [PR179](https://github.com/amichai-bd/nand2mario/pull/179#issuecomment-5573412250).
-This existing target checks more pixels than the tier's minimum; a shorter
-selection must still meet its own stated criteria. No 60-second suite is claimed
-as measured. Add affected units to the reported total rather than treating this
-single target's runtime as the whole suite.
+Target at most 120 seconds per simulation and 300 seconds aggregate for ordinary
+pre-merge checks. These are goals, not coverage waivers or a reason for prolonged
+harness optimization. Report the measured total and any unmet target. Use
+`python-v05-timer` as a bounded short composed candidate: [PR235](https://github.com/amichai-bd/nand2mario/pull/235)
+measured 21.250 seconds for 110 retirement records with all 26 fields, 16 selected
+register/RAM bus transactions, timer overflow, IRQ entry, CPU HALT wake, a handler
+RAM marker and final host pause. It checked 510 ordered startup white pixels
+against a criterion of at least 320; it does not prove a complete normal frame or
+UART ROM upload. Keep `python-integration-client-preloaded` when its broader
+69-record, 145-bus-observation RAM/IRQ and two-full-frame coverage is relevant
+([PR179](https://github.com/amichai-bd/nand2mario/pull/179#issuecomment-5573412250)).
+Its measured stage runtime was 96.987663 seconds. These targets have different
+coverage; their runtimes are not a matched speed comparison. A shorter selection
+must still meet its own stated criteria. Neither individual result measures a
+whole 300-second suite; add affected units to the reported total.
 
 ### Transport and integration acceptance
 
@@ -146,13 +156,16 @@ transport work for every unrelated PR.
 
 ### Milestone acceptance
 
-The full [v0.5 contract](../v05/SPEC.md) and
-[#88](https://github.com/amichai-bd/nand2mario/issues/88) retain 600 continuous
-intervals, every pixel and retirement, and all prescribed inputs. Physical
-acceptance remains in its owning contracts and open
-[#156](https://github.com/amichai-bd/nand2mario/issues/156) and
-[#28](https://github.com/amichai-bd/nand2mario/issues/28).
-These are explicit milestone gates, not automatic implementation-PR gates.
+The revised [v0.5 matrix](../v05/SPEC.md#revised-milestone-matrix) combines precise
+bounded startup/cross-frame observation, timer/DMA proofs, real UART loading and
+all prescribed inputs, with separately bounded FPGA endurance. It replaces the
+former 600-continuous-interval criterion, which was never passed. #88 tracks
+the revised milestone; [PR246](https://github.com/amichai-bd/nand2mario/pull/246)
+records window, fault and endurance qualification. No exhaustive physical retirement/pixel or
+600-frame claim follows from this revision. Declare each broader milestone's
+test selection, total expected cost, physical duration/inputs/sampling and
+reset/hang checks before execution. Later release matrices remain separate.
+These are milestone gates, not automatic implementation-PR gates.
 Broader regressions belong to scheduled or milestone runs; this policy does not
 create a scheduler. Before an expensive run, exercise the complete harness at
 a short duration, including final pause, completion and watchdog handling. A

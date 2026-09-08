@@ -51,11 +51,11 @@ class PythonTests(unittest.TestCase):
     def test_python_runtime_remains_bounded(self):
         registry = self.root / "src/dv/builder/targets.json"
         targets = json.loads(registry.read_text())
-        for timeout in (1000, 43200):
+        for timeout in (1, 300):
             targets["python-joypad"]["timeout_seconds"] = timeout
             registry.write_text(json.dumps(targets))
             self.assertEqual(load_target(self.root, "python-joypad")[0]["timeout_seconds"], timeout)
-        for timeout in (0, 43201, True):
+        for timeout in (0, 301, 1000, 1500, 43200, True):
             targets["python-joypad"]["timeout_seconds"] = timeout
             registry.write_text(json.dumps(targets))
             with self.assertRaisesRegex(ValueError, "timeout_seconds"):

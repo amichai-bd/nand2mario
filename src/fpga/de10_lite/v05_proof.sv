@@ -2,7 +2,13 @@
 `default_nettype none
 
 // Composed placement proof with real board-reference PLLs and qualified resets.
-module v05_proof (
+module v05_proof #(
+`ifdef N2M_V05_BUILD_ID
+    parameter logic [127:0] BUILD_ID = `N2M_V05_BUILD_ID
+`else
+    parameter logic [127:0] BUILD_ID = 128'h88000000000000000000000000000001
+`endif
+) (
     input var logic clk_reference,
     input var logic board_reset_n,
     input var logic uart_rx,
@@ -21,7 +27,7 @@ module v05_proof (
         .clk_reference, .board_reset_n, .clk_sys, .clk_pix,
         .reset_sys, .reset_pix, .ready()
     );
-    n2m_v05_system u_system (
+    n2m_v05_system #(.BUILD_ID(BUILD_ID)) u_system (
         .clk_sys, .clk_pix, .reset_sys, .reset_pix, .uart_rx, .uart_tx,
         .red, .green, .blue, .hsync_n, .vsync_n, .paused, .fault,
         .display_sequence, .display_epoch,

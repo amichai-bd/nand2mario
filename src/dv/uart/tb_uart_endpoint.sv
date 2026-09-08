@@ -1,7 +1,6 @@
 `timescale 1ns/1ps
 `default_nettype none
 module tb_uart_endpoint;
-    import n2m_interfaces_pkg::*;
     logic clk_sys, reset_sys, uart_rx, uart_tx;
     logic gb_tick, paused, pause_request, core_reset, core_initialized;
     logic instruction_complete, retirement_valid, cpu_stopped;
@@ -12,7 +11,7 @@ module tb_uart_endpoint;
     logic [14:0] rom_address;
     logic [7:0] rom_write_data, rom_read_data;
     logic snapshot_request, snapshot_ready, snapshot_done, snapshot_ok, snapshot_valid;
-    snapshot_t snapshot_metadata;
+    n2m_interfaces_pkg::snapshot_t snapshot_metadata;
     logic frame_read, frame_valid;
     logic [12:0] frame_address;
     logic [7:0] frame_data;
@@ -24,7 +23,7 @@ module tb_uart_endpoint;
     logic response_valid;
     logic [4:0] iflags, irq_ack;
     n2m_cpu_pkg::access_kind_t access_kind;
-    retirement_t retirement;
+    n2m_interfaces_pkg::retirement_t retirement;
     logic memory_initialized;
     logic [7:0] unused_vram, unused_wave;
     logic [15:0] unused_oam;

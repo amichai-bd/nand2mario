@@ -1,0 +1,22 @@
+--- a/Core/display.c
++++ b/Core/display.c
+@@ -797,0 +798,5 @@
++    /* Original observer: inspect the committed DMG framebuffer value only. */
++    if (gb->model == GB_MODEL_DMG_B && dest) {
++        extern void n2m_observe_pixel(GB_gameboy_t *, unsigned, unsigned, uint32_t);
++        n2m_observe_pixel(gb, gb->lcd_x, gb->current_line, *dest);
++    }
+@@ -1472,0 +1478,2 @@
++    extern bool n2m_pixel_observation_enabled(void);
++    if (n2m_pixel_observation_enabled()) return 0;
+--- a/Core/sm83_cpu.c
++++ b/Core/sm83_cpu.c
+@@ -83,0 +84,2 @@
++
++extern void n2m_observe_fetch_boundary(GB_gameboy_t *, unsigned);
+@@ -1034,0 +1037 @@
++    n2m_observe_fetch_boundary(gb, 2);
+@@ -1665,0 +1669 @@
++        n2m_observe_fetch_boundary(gb, 1);
+@@ -1704,0 +1709 @@
++        n2m_observe_fetch_boundary(gb, 0);

@@ -1,7 +1,5 @@
 `timescale 1ns/1ps
 module tb_uart_serial;
-    import n2m_interfaces_pkg::*;
-    import n2m_uart_pkg::*;
     logic clk;
     logic reset;
     logic tx_valid;
@@ -21,17 +19,18 @@ module tb_uart_serial;
     integer pin_samples;
     logic corrupt;
     logic packet_request_valid;
-    packet_header_t packet_header;
-    logic [UART_ADDRESS_BITS-1:0] packet_bytes;
+    n2m_interfaces_pkg::packet_header_t packet_header;
+    logic [n2m_uart_pkg::UART_ADDRESS_BITS-1:0] packet_bytes;
     logic packet_done;
     logic packet_read;
-    logic [UART_ADDRESS_BITS-1:0] packet_address;
+    logic [n2m_uart_pkg::UART_ADDRESS_BITS-1:0] packet_address;
     logic [7:0] packet_data;
     logic packet_data_valid;
     logic previous_packet_valid;
     integer packet_accepted;
     logic [111:0] wire_vector;
     logic [95:0] raw_vector;
+    integer idle_bits;
     assign rx_pin = loopback ? tx_pin : manual_rx;
     n2m_uart_tx tx (
         .clk_sys(clk), .reset_sys(reset), .byte_valid(tx_valid),
@@ -125,7 +124,7 @@ module tb_uart_serial;
             $fatal(1, "UART_SERIAL_PACKET_HEADER valid=%b bytes=%0d header=%h", packet_request_valid, packet_bytes, packet_header);
         for (index = 0; index < 12; index = index + 1) begin
             packet_read = 1'b1;
-            packet_address = UART_ADDRESS_BITS'(index);
+            packet_address = n2m_uart_pkg::UART_ADDRESS_BITS'(index);
             @(posedge clk);
             #1;
             if (!packet_data_valid || packet_data !== raw_vector[index*8 +: 8])
@@ -149,7 +148,41 @@ module tb_uart_serial;
         manual_rx = good_stop;
         #8680.555556;
         manual_rx = 1'b1;
-        #17361.111112;
+        #(8680.555556 * idle_bits);
+    endtask
+
+    // Captured host requests, decoded independently with the host codec.
+    // Check physical-rate reception with no idle beyond the one stop bit.
+    task automatic burst_request(input logic [143:0] wire_bytes,
+                                 input logic [127:0] raw_bytes);
+        integer index;
+        integer cycles;
+        for (index = 0; index < 18; index = index + 1) begin
+            expected_byte = wire_bytes[index*8 +: 8];
+            expected_pending = 1'b1;
+            manual_byte(expected_byte, 1'b1);
+        end
+        cycles = 0;
+        while (!packet_request_valid && cycles < 1000) begin
+            @(negedge clk);
+            cycles = cycles + 1;
+        end
+        if (!packet_request_valid || packet_bytes != 16 || packet_header !== raw_bytes[79:0])
+            $fatal(1, "UART_BURST_HEADER valid=%b bytes=%0d", packet_request_valid, packet_bytes);
+        for (index = 0; index < 16; index = index + 1) begin
+            @(negedge clk);
+            packet_read = 1'b1;
+            packet_address = n2m_uart_pkg::UART_ADDRESS_BITS'(index);
+            @(posedge clk);
+            #1;
+            if (!packet_data_valid || packet_data !== raw_bytes[index*8 +: 8])
+                $fatal(1, "UART_BURST_BYTE index=%0d", index);
+        end
+        @(negedge clk);
+        packet_read = 1'b0;
+        packet_done = 1'b1;
+        @(negedge clk);
+        packet_done = 1'b0;
     endtask
 
     initial begin
@@ -157,6 +190,7 @@ module tb_uart_serial;
         integer bit_index;
         integer phase;
         clk = 1'b0;
+        idle_bits = 2;
         reset = 1'b1;
         tx_valid = 1'b0;
         tx_data = 0;
@@ -242,11 +276,24 @@ module tb_uart_serial;
         check_packet();
         if (packet_accepted != 2 || received != 302 || frame_errors != 2)
             $fatal(1, "UART_SERIAL_FINAL_COUNTS packets=%0d received=%0d errors=%0d", packet_accepted, received, frame_errors);
+        idle_bits = 0;
+        for (phase = 1; phase <= 37; phase = phase + 12) begin
+            @(negedge clk);
+            #(phase);
+            burst_request(144'h004a75030102300204020202010105020102,
+                          128'h4a750001003000040002000000050001);
+            @(negedge clk);
+            #(phase);
+            burst_request(144'h003fc30301023c0204020202010111020102,
+                          128'h3fc30001003c00040002000000110001);
+        end
+        if (packet_accepted != 10 || received != 446 || frame_errors != 2)
+            $fatal(1, "UART_BURST_COUNTS packets=%0d received=%0d errors=%0d", packet_accepted, received, frame_errors);
         $display("PASS UART serial bytes=%0d errors=%0d packets=%0d reset_bits=10 pin_samples=%0d", received, frame_errors, packet_accepted, pin_samples);
         $finish;
     end
     initial begin
-        #35000000;
+        #50000000;
         $fatal(1, "UART_SERIAL_WATCHDOG");
     end
 endmodule

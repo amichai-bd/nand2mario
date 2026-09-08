@@ -83,6 +83,27 @@ The pins, separate license notices and compiler/CMake inputs enter the record.
 This named validator does not change original-software validation or the product
 loader. Generated files are rechecked before simulator launch.
 
+`preload: "startup-read"` and `"startup-write"` package the original
+[startup OAM boundary witnesses](../../../src/dv/ppu/startup202.md), validating
+literal instructions and declared image hashes through the same Intel preload
+preparation. Their source and software tools are fingerprinted inputs.
+
+`preload: "late-fe9c"`, `"late-fe9d"` and `"late-fe20"` use the same
+preparation for the original [nonuniform late OAM witnesses](../../../src/dv/ppu/late208.md).
+The producer verifies literal instructions and a declared whole-image hash;
+its source and software tools are required fingerprinted inputs.
+
+`preload: "timer234"` packages the original [actual-v0.5 timer program](../../../src/dv/timer/README.md#actual-v05-timer-program)
+through the same validated Intel preparation and public loader adoption. Its
+literal instruction/hash producer and software tool inputs are required in the
+fingerprint. It proves bounded execution, not physical UART loading.
+
+`preload: "dma239"` uses the same preparation for the original
+[actual-v0.5 DMA program](../../../src/dv/dma/README.md#actual-v05-dma-program).
+Its literal instruction/hash producer and software tools are required inputs.
+The image executes CPU writes to seed WRAM and HRAM; preloading does not supply
+the transferred OAM bytes or bypass subsequent memory arbitration.
+
 Python targets use the executing pinned interpreter and installed packages from
 the [separate dependency record](../../../src/dv/python/THIRD_PARTY.md). Normal
 SV use does not import or require cocotb. Execution does not install dependencies.
@@ -223,15 +244,46 @@ commands, and input/tool hashes remain beneath the tag. Unexpected warnings,
 errors, timeouts, or missing signatures fail; expected nonzero targets require
 their full diagnostic and reject additional errors.
 
-A target may set integer `timeout_seconds` from 1 through 600, through 1500 for
-a declared Python-peer driver, or through 43200 for a Python testbench. The
-finite Python ceiling accommodates continuous 600-interval verification; each
-long target must choose its actual bound from measured execution and retain its
-simulation-time deadline. This value bounds its Questa runtime command; the default and all preparation/compile commands remain 60
-seconds. The value enters the target fingerprint and each command records its
-effective bound. Long raster tests retain independent simulation-time watchdogs.
-A wall-clock timeout is a failed harness run, not a checked DUT verdict; partial
-output remains available. Increasing a bound does not reduce required coverage.
+### Test wall budget
+
+Every simulation has a maximum 300-second total wall budget. Target at most 120
+seconds per simulation and 300 seconds aggregate for ordinary pre-merge checks;
+declare broader milestone aggregates before execution. No target, environment setting
+or public command option extends it. `python tools/build.py sim test` supervises
+the complete worker process tree: discovery, preparation, compilation, simulation
+and checking share the same budget. The absolute deadline starts before record
+preparation and process launch. Reserve 12 seconds for cleanup, leaving at most 288
+seconds for worker execution. Expiry terminates the worker and its
+children, returns failure and retains a `wall-budget` record with the raw killed
+process exit and partial output. Existing attempt artifacts remain partial;
+TIMEOUT is never a checked DUT result. Tree termination and pipe draining each
+have a five-second cleanup bound, followed by at most two seconds to reap the
+immediate worker. Each blocking cleanup timeout is clamped to the remaining
+absolute 300-second budget. A failed
+cleanup records `cleanup_complete: false`; inspect and stop remaining children
+before releasing shared tool ownership. Never treat that failure as a clean exit.
+
+A target may set integer `timeout_seconds` from 1 through 300 for its Questa
+runtime command. The default and individual preparation/compile commands remain
+60 seconds, subject to the overall ceiling. The value enters the fingerprint and
+each command records its effective bound. The outer execution deadline takes
+precedence over a longer nested timeout. The palette-case native reference
+build also has a 300-second nested command limit. Separate environment
+preparation is not a DUT test. FPGA compilation remains separately measured
+under its owning tool limits.
+Independent simulation-time watchdogs remain required. If a milestone cannot complete
+within this wall budget, keep it open and report the missing evidence; do not
+schedule a longer run or shorten its oracle to claim completion. An explicitly
+authorized acceptance revision must name the new matrix and leave missing proof
+open, as in [v0.5](../../src/dv/v05/SPEC.md#revised-milestone-matrix).
+
+Elapsed time is captured before final evidence-file writes. OS scheduling,
+process launch and synchronous filesystem calls are not preemptible Python
+timeouts; the supervisor does not claim to measure or bound those final writes.
+Report cleanup failures and measured overruns honestly. Changing timeout metadata
+invalidates exact target cache fingerprints. Retained behavior evidence may be
+qualified against unchanged RTL, models, stimulus and oracles, but is not a
+fresh300-second PASS; the 537.281-second six-frame baseline remains historical.
 
 Backend, tool identity, source, target, seed, or runner changes invalidate cache.
 Damaged artifacts also invalidate it. A matching successful result may be
@@ -386,6 +438,25 @@ file reads; constraints retain their separate SDC checks. The
 and includes its header hashes in each fresh manifest, without caching.
 
 ## FPGA build
+
+The `v05-board` target uses the existing composed system with the physical pins
+in the [system contract](../../src/rtl/system/MAS_system.md). It requires a
+nonzero producing fingerprint identity through `N2M_V05_BUILD_ID`; generated
+assignments and compiled identity must agree. UART TX uses 8 mA drive, KEY0 uses
+the established Schmitt-trigger input standard, and unused package pins are
+reserved as tri-stated inputs. Only the UART asynchronous first stage is
+excepted; all three-corner setup/hold paths to the second stage remain checked,
+along with the existing PLL, reset, memory and VGA evidence. Physical and full
+milestone acceptance remain separate in #28 and #88.
+
+The composed memory check accounts for every logical store and physical atom:
+seven direct-profile stores (52 atoms), four 5760-byte snapshot stores (32),
+three dual-clock VGA banks (18), and six UART stores (9). The complete inventory
+is 20 logical stores, 111 M9Ks and 761,704 bits. Existing store, VGA and UART
+checkers validate their explicit composed hierarchy, clock/reset roles,
+initialization, read shape and bit partitions; the outer inventory rejects
+missing or extra atoms and inconsistent fitted capacity. Diagnostic placement
+targets retain their own scoped evidence.
 
 ```powershell
 python tools/build.py fpga build builder-smoke --quartus-bin <directory> --tag fpga-smoke --json

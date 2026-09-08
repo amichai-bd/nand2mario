@@ -1,15 +1,14 @@
 `timescale 1ns/1ps
 `default_nettype none
 module tb_uart_response;
-    import n2m_uart_pkg::*;
     logic clk_sys, reset_sys, start, busy, done;
     logic [31:0] sequence_token;
     logic [7:0] command, status, payload_data, response_data;
     logic [15:0] payload_bytes;
     logic payload_valid, payload_ready, response_write;
-    logic [UART_ADDRESS_BITS-1:0] response_address, response_bytes;
+    logic [n2m_uart_pkg::UART_ADDRESS_BITS-1:0] response_address, response_bytes;
     logic read_enable;
-    logic [UART_ADDRESS_BITS-1:0] read_address;
+    logic [n2m_uart_pkg::UART_ADDRESS_BITS-1:0] read_address;
     logic [23:0] read_data;
     logic [2:0] read_valid;
     integer scenario, writes, payload_index, completed, reads;
@@ -19,10 +18,10 @@ module tb_uart_response;
     n2m_uart_exchange_store u_store (
         .clk_sys(clk_sys), .reset_sys(reset_sys),
         .write_enable({response_write, 2'b0}),
-        .write_address({response_address, {2*UART_ADDRESS_BITS{1'b0}}}),
+        .write_address({response_address, {2*n2m_uart_pkg::UART_ADDRESS_BITS{1'b0}}}),
         .write_data({response_data, 16'b0}),
         .read_enable({read_enable, 2'b0}),
-        .read_address({read_address, {2*UART_ADDRESS_BITS{1'b0}}}),
+        .read_address({read_address, {2*n2m_uart_pkg::UART_ADDRESS_BITS{1'b0}}}),
         .read_data(read_data), .read_valid(read_valid)
     );
     `include "src/dv/uart/response_expected.svh"
@@ -67,7 +66,7 @@ module tb_uart_response;
         @(posedge clk_sys); #1;
         if (completed != before_completed + 1) $fatal(1,"UART_RESPONSE_DONE_COUNT");
         for (offset = 0; offset < writes; offset = offset + 1) begin
-            @(negedge clk_sys); read_enable = 1; read_address = UART_ADDRESS_BITS'(offset);
+            @(negedge clk_sys); read_enable = 1; read_address = n2m_uart_pkg::UART_ADDRESS_BITS'(offset);
             @(posedge clk_sys); #1;
             if (!read_valid[2] || read_data[23:16] !== expected_byte(scenario, offset))
                 $fatal(1,"UART_RESPONSE_STORED case=%0d index=%0d",scenario,offset);

@@ -1,0 +1,98 @@
+"""Physical board configuration checks; no physical execution is implied."""
+import copy
+from pathlib import Path
+import sys
+import tempfile
+import unittest
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from n2m import fpga, fpga_v05, fpga_controls, fpga_memory_stores, fpga_vga, fpga_pll
+
+
+class BoardTests(unittest.TestCase):
+    def setUp(self):
+        self.root = Path(__file__).resolve().parents[3]
+        self.target = fpga.target_definition(self.root, 'v05-board')
+        base = self.root / 'workdir/builds/board-host-tests'
+        base.mkdir(parents=True, exist_ok=True)
+        self.temp = tempfile.TemporaryDirectory(dir=base)
+        self.addCleanup(self.temp.cleanup)
+        self.folder = Path(self.temp.name)
+
+    def test_physical_inputs_and_generated_assignments(self):
+        fpga.prepare(self.root, self.folder, self.target, build_id='1234567890abcdef' * 2)
+        qsf = (self.folder / 'design.qsf').read_text()
+        self.assertIn('N2M_V05_BUILD_ID=128\'h1234567890abcdef1234567890abcdef', qsf)
+        self.assertIn('RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED"', qsf)
+        self.assertIn('IO_STANDARD "3.3 V SCHMITT TRIGGER" -to board_reset_n', qsf)
+        self.assertIn('CURRENT_STRENGTH_NEW "8MA" -to "uart_tx"', qsf)
+        for port in fpga_v05.BOARD_PINS:
+            self.assertNotIn(f'VIRTUAL_PIN ON -to "{port}"', qsf)
+        sdc = (self.folder / 'checked.sdc').read_text()
+        self.assertIn('u_system|u_uart|u_serial_rx|rx_meta', sdc)
+        self.assertNotIn('rx_sync', sdc)
+        self.assertEqual(len(fpga_controls.required_reports(chains=fpga_v05.UART_CHAINS)), 6)
+
+    def test_invalid_board_mapping_and_identity_rejected(self):
+        for port in fpga_v05.BOARD_PINS:
+            with self.subTest(port=port):
+                target = copy.deepcopy(self.target)
+                target['pins'][port] = 'PIN_A1'
+                with self.assertRaises(ValueError):
+                    fpga_v05.validate_board(target)
+        for identity in (None, '0' * 32, 'bad'):
+            with self.subTest(identity=identity), self.assertRaises(ValueError):
+                fpga.prepare(self.root, self.folder, self.target, build_id=identity)
+
+    def test_placement_proof_remains_distinct(self):
+        target = fpga.target_definition(self.root, 'v05')
+        self.assertFalse(fpga_v05.board_target(target))
+        self.assertIn('uart_rx', target['virtual_pins'])
+        self.assertTrue(fpga_v05.board_target(self.target))
+
+    def test_both_compiled_identities_must_match(self):
+        identity = '1234567890abcdef' * 2
+        fpga.prepare(self.root, self.folder, self.target, build_id=identity)
+        output = self.folder / 'output'
+        output.mkdir()
+        row = f'; BUILD_ID ; {int(identity, 16):0128b} ; Unsigned Binary ;\n'
+        report = output / 'design.map.rpt'
+        report.write_text(row * 2)
+        self.assertEqual(fpga_controls.verify_identity(self.folder, identity,
+            macro='N2M_V05_BUILD_ID', instances=2), identity)
+        for bad in ('', row, row * 3, row + row.replace('0001', '0011', 1)):
+            report.write_text(bad)
+            with self.assertRaises(ValueError):
+                fpga_controls.verify_identity(self.folder, identity,
+                    macro='N2M_V05_BUILD_ID', instances=2)
+
+    def test_composed_snapshot_partition_and_mutations(self):
+        from test_fpga_memory_stores import fixture
+        owner = 'u_system|u_snapshot|banks[0].u_source'
+        text = '\n'.join(line for line in fixture().splitlines() if '\\wram|' in line)
+        text = text.replace('wram|', owner + '|').replace('"8192"', '"5760"')
+        text = text.replace(r'\clk_sys~inputclkctrl_outclk', fpga_pll.SYSTEM_NET)
+        args = dict(stores={owner: (5760, 8)}, scoped=True, system_clock=fpga_pll.SYSTEM_NET)
+        self.assertEqual(len(fpga_memory_stores.verify_netlist(text, **args)), 8)
+        for changed in (text.replace('.clr0(gnd)', '.clr0(vcc)', 1),
+                        text.replace('"5760"', '"8192"', 1),
+                        text.replace('"none"', '"clock0"', 1)):
+            with self.assertRaises(ValueError):
+                fpga_memory_stores.verify_netlist(changed, **args)
+
+    def test_composed_vga_shade_and_clock(self):
+        from test_fpga_vga import memory_netlist
+        text = memory_netlist(lcd=True).replace('u_bridge|', 'u_system|u_bridge|')
+        text = text.replace('u_ppu|', 'u_system|u_ppu|')
+        text = text.replace(r'\clk_sys~inputclkctrl_outclk', fpga_pll.SYSTEM_NET)
+        args = dict(lcd=True, system_net=fpga_pll.SYSTEM_NET,
+                    bridge_prefix='u_system|u_bridge|', shade='u_system|u_ppu|source_shade')
+        self.assertEqual(len(fpga_vga.verify_memory_netlist(text, **args)), 18)
+        for changed in (text.replace('source_shade', 'wrong_shade', 1),
+                        text.replace(fpga_pll.SYSTEM_NET, 'wrong_clock', 1)):
+            with self.assertRaises(ValueError):
+                fpga_vga.verify_memory_netlist(changed, **args)
+
+
+if __name__ == '__main__':
+    unittest.main()

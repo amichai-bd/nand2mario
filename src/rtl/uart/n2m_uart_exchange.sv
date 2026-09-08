@@ -32,8 +32,6 @@ module n2m_uart_exchange (
     output logic transmit_data_valid,
     input var logic transmit_done
 );
-    import n2m_interfaces_pkg::*;
-    import n2m_uart_pkg::*;
     typedef enum logic [3:0] {
         IDLE, COMPARE_FETCH, COMPARE_USE, EXECUTE,
         COPY_REQUEST_FETCH, COPY_REQUEST_USE,
@@ -45,14 +43,14 @@ module n2m_uart_exchange (
     logic cache_valid_next;
     logic [31:0] cached_sequence;
     logic [31:0] cached_sequence_next;
-    logic [UART_ADDRESS_BITS-1:0] cached_request_bytes;
-    logic [UART_ADDRESS_BITS-1:0] cached_request_bytes_next;
-    logic [UART_ADDRESS_BITS-1:0] cached_response_bytes;
-    logic [UART_ADDRESS_BITS-1:0] cached_response_bytes_next;
-    logic [UART_ADDRESS_BITS-1:0] staged_bytes;
-    logic [UART_ADDRESS_BITS-1:0] staged_bytes_next;
-    logic [UART_ADDRESS_BITS-1:0] index;
-    logic [UART_ADDRESS_BITS-1:0] index_next;
+    logic [n2m_uart_pkg::UART_ADDRESS_BITS-1:0] cached_request_bytes;
+    logic [n2m_uart_pkg::UART_ADDRESS_BITS-1:0] cached_request_bytes_next;
+    logic [n2m_uart_pkg::UART_ADDRESS_BITS-1:0] cached_response_bytes;
+    logic [n2m_uart_pkg::UART_ADDRESS_BITS-1:0] cached_response_bytes_next;
+    logic [n2m_uart_pkg::UART_ADDRESS_BITS-1:0] staged_bytes;
+    logic [n2m_uart_pkg::UART_ADDRESS_BITS-1:0] staged_bytes_next;
+    logic [n2m_uart_pkg::UART_ADDRESS_BITS-1:0] index;
+    logic [n2m_uart_pkg::UART_ADDRESS_BITS-1:0] index_next;
     logic replace_cache;
     logic replace_cache_next;
     logic transmit_cached;
@@ -60,10 +58,10 @@ module n2m_uart_exchange (
     logic [7:0] forced_status;
     logic [7:0] forced_status_next;
     logic [2:0] write_enable;
-    logic [3*UART_ADDRESS_BITS-1:0] write_address;
+    logic [3*n2m_uart_pkg::UART_ADDRESS_BITS-1:0] write_address;
     logic [23:0] write_data;
     logic [2:0] read_enable;
-    logic [3*UART_ADDRESS_BITS-1:0] read_address;
+    logic [3*n2m_uart_pkg::UART_ADDRESS_BITS-1:0] read_address;
     logic [23:0] read_data;
     logic [2:0] read_valid;
 
@@ -107,13 +105,13 @@ module n2m_uart_exchange (
                     index_next = '0;
                     transmit_cached_next = 1'b0;
                     replace_cache_next = 1'b1;
-                    forced_status_next = STATUS_OK;
+                    forced_status_next = n2m_interfaces_pkg::STATUS_OK;
                     if (cache_valid && request_header.seq == cached_sequence) begin
                         replace_cache_next = 1'b0;
                         if (request_bytes == cached_request_bytes)
                             state_next = COMPARE_FETCH;
                         else begin
-                            forced_status_next = STATUS_SEQUENCE;
+                            forced_status_next = n2m_interfaces_pkg::STATUS_SEQUENCE;
                             state_next = EXECUTE;
                         end
                     end else state_next = EXECUTE;
@@ -123,12 +121,12 @@ module n2m_uart_exchange (
                 packet_read = 1'b1;
                 packet_address = index;
                 read_enable[0] = 1'b1;
-                read_address[0 +: UART_ADDRESS_BITS] = index;
+                read_address[0 +: n2m_uart_pkg::UART_ADDRESS_BITS] = index;
                 state_next = COMPARE_USE;
             end
             COMPARE_USE: begin
                 if (packet_data != read_data[7:0]) begin
-                    forced_status_next = STATUS_SEQUENCE;
+                    forced_status_next = n2m_interfaces_pkg::STATUS_SEQUENCE;
                     state_next = EXECUTE;
                 end else if (index + 1'b1 == request_bytes) begin
                     transmit_cached_next = 1'b1;
@@ -142,7 +140,7 @@ module n2m_uart_exchange (
                 packet_read = command_packet_read;
                 packet_address = command_packet_address;
                 write_enable[2] = response_write;
-                write_address[2*UART_ADDRESS_BITS +: UART_ADDRESS_BITS] = response_address;
+                write_address[2*n2m_uart_pkg::UART_ADDRESS_BITS +: n2m_uart_pkg::UART_ADDRESS_BITS] = response_address;
                 write_data[23:16] = response_data;
                 if (command_done) begin
                     staged_bytes_next = response_bytes;
@@ -157,7 +155,7 @@ module n2m_uart_exchange (
             end
             COPY_REQUEST_USE: begin
                 write_enable[0] = 1'b1;
-                write_address[0 +: UART_ADDRESS_BITS] = index;
+                write_address[0 +: n2m_uart_pkg::UART_ADDRESS_BITS] = index;
                 write_data[7:0] = packet_data;
                 if (index + 1'b1 == request_bytes) begin
                     index_next = '0;
@@ -169,12 +167,12 @@ module n2m_uart_exchange (
             end
             COPY_RESPONSE_FETCH: begin
                 read_enable[2] = 1'b1;
-                read_address[2*UART_ADDRESS_BITS +: UART_ADDRESS_BITS] = index;
+                read_address[2*n2m_uart_pkg::UART_ADDRESS_BITS +: n2m_uart_pkg::UART_ADDRESS_BITS] = index;
                 state_next = COPY_RESPONSE_USE;
             end
             COPY_RESPONSE_USE: begin
                 write_enable[1] = 1'b1;
-                write_address[UART_ADDRESS_BITS +: UART_ADDRESS_BITS] = index;
+                write_address[n2m_uart_pkg::UART_ADDRESS_BITS +: n2m_uart_pkg::UART_ADDRESS_BITS] = index;
                 write_data[15:8] = read_data[23:16];
                 if (index + 1'b1 == staged_bytes) begin
                     cache_valid_next = 1'b1;
@@ -192,10 +190,10 @@ module n2m_uart_exchange (
                 if (transmit_read) begin
                     if (transmit_cached) begin
                         read_enable[1] = 1'b1;
-                        read_address[UART_ADDRESS_BITS +: UART_ADDRESS_BITS] = transmit_address;
+                        read_address[n2m_uart_pkg::UART_ADDRESS_BITS +: n2m_uart_pkg::UART_ADDRESS_BITS] = transmit_address;
                     end else begin
                         read_enable[2] = 1'b1;
-                        read_address[2*UART_ADDRESS_BITS +: UART_ADDRESS_BITS] = transmit_address;
+                        read_address[2*n2m_uart_pkg::UART_ADDRESS_BITS +: n2m_uart_pkg::UART_ADDRESS_BITS] = transmit_address;
                     end
                 end
                 if (transmit_done) state_next = IDLE;
@@ -213,12 +211,12 @@ module n2m_uart_exchange (
     `DFF_ARST_VAL(index, index_next, clk_sys, reset_sys, '0)
     `DFF_ARST_VAL(replace_cache, replace_cache_next, clk_sys, reset_sys, 1'b0)
     `DFF_ARST_VAL(transmit_cached, transmit_cached_next, clk_sys, reset_sys, 1'b0)
-    `DFF_ARST_VAL(forced_status, forced_status_next, clk_sys, reset_sys, STATUS_OK)
+    `DFF_ARST_VAL(forced_status, forced_status_next, clk_sys, reset_sys, n2m_interfaces_pkg::STATUS_OK)
 
     `N2M_ASSERT(UART_EXCHANGE_REQUEST_HELD, clk_sys, reset_sys,
         state != IDLE |-> request_valid)
     `N2M_ASSERT(UART_EXCHANGE_REQUEST_SIZE, clk_sys, reset_sys,
-        request_valid |-> request_bytes >= PACKET_HEADER_BYTES + 2 && request_bytes <= UART_RAW_MAX)
+        request_valid |-> request_bytes >= n2m_interfaces_pkg::PACKET_HEADER_BYTES + 2 && request_bytes <= n2m_uart_pkg::UART_RAW_MAX)
     `N2M_ASSERT(UART_EXCHANGE_PACKET_SERVICE, clk_sys, reset_sys,
         state == COMPARE_USE || state == COPY_REQUEST_USE |-> packet_data_valid)
     `N2M_ASSERT(UART_EXCHANGE_COMPARE_SERVICE, clk_sys, reset_sys,
@@ -226,9 +224,9 @@ module n2m_uart_exchange (
     `N2M_ASSERT(UART_EXCHANGE_RESPONSE_SERVICE, clk_sys, reset_sys,
         state == COPY_RESPONSE_USE |-> read_valid[2])
     `N2M_ASSERT(UART_EXCHANGE_RESPONSE_WRITE, clk_sys, reset_sys,
-        response_write |-> command_valid && response_address < UART_RAW_MAX)
+        response_write |-> command_valid && response_address < n2m_uart_pkg::UART_RAW_MAX)
     `N2M_ASSERT(UART_EXCHANGE_COMMAND_DONE, clk_sys, reset_sys,
-        command_done |-> command_valid && response_bytes >= PACKET_HEADER_BYTES + 2 && response_bytes <= UART_RAW_MAX)
+        command_done |-> command_valid && response_bytes >= n2m_interfaces_pkg::PACKET_HEADER_BYTES + 2 && response_bytes <= n2m_uart_pkg::UART_RAW_MAX)
     `N2M_ASSERT(UART_EXCHANGE_TRANSMIT_READ, clk_sys, reset_sys,
         transmit_read |-> transmit_valid && transmit_address < transmit_bytes)
     `N2M_ASSERT(UART_EXCHANGE_TRANSMIT_DONE, clk_sys, reset_sys,

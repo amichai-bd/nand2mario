@@ -1,30 +1,28 @@
 `timescale 1ns/1ps
 module tb_uart_exchange;
-    import n2m_interfaces_pkg::*;
-    import n2m_uart_pkg::*;
     logic clk;
     logic reset;
     logic request_valid;
-    packet_header_t request_header;
-    logic [UART_ADDRESS_BITS-1:0] request_bytes;
+    n2m_interfaces_pkg::packet_header_t request_header;
+    logic [n2m_uart_pkg::UART_ADDRESS_BITS-1:0] request_bytes;
     logic request_done;
     logic packet_read;
-    logic [UART_ADDRESS_BITS-1:0] packet_address;
+    logic [n2m_uart_pkg::UART_ADDRESS_BITS-1:0] packet_address;
     logic [7:0] packet_data;
     logic packet_data_valid;
     logic command_valid;
     logic [7:0] forced_status;
     logic command_packet_read;
-    logic [UART_ADDRESS_BITS-1:0] command_packet_address;
+    logic [n2m_uart_pkg::UART_ADDRESS_BITS-1:0] command_packet_address;
     logic response_write;
-    logic [UART_ADDRESS_BITS-1:0] response_address;
+    logic [n2m_uart_pkg::UART_ADDRESS_BITS-1:0] response_address;
     logic [7:0] response_data;
     logic command_done;
-    logic [UART_ADDRESS_BITS-1:0] response_bytes;
+    logic [n2m_uart_pkg::UART_ADDRESS_BITS-1:0] response_bytes;
     logic transmit_valid;
-    logic [UART_ADDRESS_BITS-1:0] transmit_bytes;
+    logic [n2m_uart_pkg::UART_ADDRESS_BITS-1:0] transmit_bytes;
     logic transmit_read;
-    logic [UART_ADDRESS_BITS-1:0] transmit_address;
+    logic [n2m_uart_pkg::UART_ADDRESS_BITS-1:0] transmit_address;
     logic [7:0] transmit_data;
     logic transmit_data_valid;
     logic transmit_done;
@@ -96,9 +94,9 @@ module tb_uart_exchange;
         request_header = '0;
         request_header.version = 1;
         request_header.seq = sequence_token;
-        request_header.command = COMMAND_INPUT;
+        request_header.command = n2m_interfaces_pkg::COMMAND_INPUT;
         request_header.length = 16'(count-12);
-        request_bytes = UART_ADDRESS_BITS'(count);
+        request_bytes = n2m_uart_pkg::UART_ADDRESS_BITS'(count);
         for (index = 0; index < count; index = index + 1)
             request[index] = 8'(index) ^ salt;
         for (index = 0; index < 10; index = index + 1)
@@ -142,15 +140,15 @@ module tb_uart_exchange;
             for (index = 0; index < reply_size; index = index + 1) begin
                 @(negedge clk);
                 response_write = 1'b1;
-                response_address = UART_ADDRESS_BITS'(index);
+                response_address = n2m_uart_pkg::UART_ADDRESS_BITS'(index);
                 response_data = expected[index];
                 if (transmit_valid) $fatal(1, "UART_EXCHANGE_PREMATURE_REPLY");
             end
             @(negedge clk);
             response_write = 1'b0;
-            response_bytes = UART_ADDRESS_BITS'(reply_size);
+            response_bytes = n2m_uart_pkg::UART_ADDRESS_BITS'(reply_size);
             command_done = 1'b1;
-            core_reset_effect = request_header.command == COMMAND_RESET && status == 0;
+            core_reset_effect = request_header.command == n2m_interfaces_pkg::COMMAND_RESET && status == 0;
             @(negedge clk);
             command_done = 1'b0;
             core_reset_effect = 1'b0;
@@ -175,7 +173,7 @@ module tb_uart_exchange;
         if (request_done) $fatal(1, "UART_EXCHANGE_EARLY_RELEASE");
         for (index = 0; index < expected_size; index = index + 1) begin
             transmit_read = 1'b1;
-            transmit_address = UART_ADDRESS_BITS'(index);
+            transmit_address = n2m_uart_pkg::UART_ADDRESS_BITS'(index);
             if (corrupt && !execute && index == 2)
                 force dut.stores.read_data = 24'h000000;
             @(posedge clk);
@@ -253,8 +251,8 @@ module tb_uart_exchange;
         exchange(1, 0, 268, 8'h76);
         // A core RESET command remains an ordinary cached exchange.
         make_request(3, 12, 8'h73);
-        request_header.command = COMMAND_RESET;
-        request[6] = COMMAND_RESET;
+        request_header.command = n2m_interfaces_pkg::COMMAND_RESET;
+        request[6] = n2m_interfaces_pkg::COMMAND_RESET;
         finish_request_crc();
         exchange(1, 0, 12, 8'h67);
         exchange(0, 0, 0, 0);

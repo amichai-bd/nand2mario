@@ -24,8 +24,6 @@ module n2m_smoke_system #(parameter bit HOST_PLAY = 0) (
     output logic [63:0] source_dot,
     output logic fault
 );
-    import n2m_interfaces_pkg::*;
-    import n2m_memory_pkg::*;
     logic pause_request, core_initialized, instruction_complete, cpu_stopped;
     logic [7:0] buttons, profile, endpoint_state;
     logic [63:0] retirement_count;
@@ -34,15 +32,15 @@ module n2m_smoke_system #(parameter bit HOST_PLAY = 0) (
     logic [7:0] rom_write_data, rom_read_data;
     logic snapshot_request, frame_read;
     logic snapshot_ready, snapshot_done, snapshot_ok, snapshot_valid, frame_valid;
-    snapshot_t snapshot_metadata;
+    n2m_interfaces_pkg::snapshot_t snapshot_metadata;
     logic [7:0] frame_data, effective_buttons, joyp_rdata;
     n2m_input_pkg::input_update_t effective_update;
     logic joyp_selected_active, joyp_event;
     logic [12:0] frame_address;
     logic request_valid, response_valid, cpu_initialized, cpu_fault, memory_fault, ppu_fault;
     logic memory_initialized, storage_read, storage_write;
-    memory_store_t storage_store, raw_store;
-    memory_destination_t destination;
+    n2m_memory_pkg::memory_store_t storage_store, raw_store;
+    n2m_memory_pkg::memory_destination_t destination;
     logic [14:0] storage_offset, raw_offset;
     logic [7:0] storage_wdata, storage_rdata;
     logic storage_valid, owner_prepare, owner_commit, owner_write;
@@ -50,6 +48,9 @@ module n2m_smoke_system #(parameter bit HOST_PLAY = 0) (
     logic [7:0] owner_wdata, owner_rdata;
     logic owner_valid, owner_service;
     logic raw_read, raw_write, video_owner, video_allowed, video_read;
+    logic oam_cpu_late_write, late_busy, late_fault, oam_read_allowed;
+    n2m_memory_pkg::memory_oam_request_t late_request;
+    n2m_memory_pkg::memory_oam_response_t late_response;
     logic video_pending;
     logic [15:0] video_address;
     logic [7:0] ppu_rdata, irq_rdata;
@@ -62,11 +63,11 @@ module n2m_smoke_system #(parameter bit HOST_PLAY = 0) (
     logic [6:0] oam_pair_address;
     logic [1:0] oam_phase;
     logic [15:0] oam_data;
-    logic oam_valid, vram_cpu_allow, oam_cpu_allow, stat_condition, vblank_condition;
+    logic oam_valid, vram_cpu_allow, vram_cpu_read_allow, oam_cpu_allow, oam_cpu_read_allow, stat_condition, vblank_condition;
     logic reset, blank_assert;
     assign reset = reset_sys || core_reset;
     assign core_initialized = memory_initialized && cpu_initialized;
-    assign fault = cpu_fault || memory_fault || ppu_fault;
+    assign fault = cpu_fault || memory_fault || ppu_fault || late_fault;
 
     n2m_uart #(.CLOCK_HZ(25000000), .BAUD(3125000)) u_uart (
         .clk_sys, .reset_sys, .uart_rx, .uart_tx,
@@ -106,13 +107,16 @@ module n2m_smoke_system #(parameter bit HOST_PLAY = 0) (
     );
     // One raw A port: the public CPU address can select only one destination.
     // PPU permissions apply to CPU video accesses; its own B reads remain live.
-    assign video_owner = destination == MEMORY_VRAM || destination == MEMORY_OAM;
-    assign video_allowed = destination == MEMORY_VRAM ? vram_cpu_allow : oam_cpu_allow;
-    assign video_read = owner_prepare && video_owner && video_allowed && !owner_write;
+    assign video_owner = destination == n2m_memory_pkg::MEMORY_VRAM || destination == n2m_memory_pkg::MEMORY_OAM;
+    assign video_allowed = destination == n2m_memory_pkg::MEMORY_VRAM ? (owner_write ? vram_cpu_allow : vram_cpu_read_allow)
+        : (owner_write ? (oam_cpu_allow || oam_cpu_late_write) : oam_cpu_read_allow);
+    assign video_read = owner_prepare && video_owner && video_allowed && !owner_write
+        && !(destination == n2m_memory_pkg::MEMORY_OAM && late_busy);
     assign raw_read = storage_read || video_read;
-    assign raw_write = storage_write || (owner_commit && video_owner && video_allowed && owner_write);
-    assign raw_store = video_owner ? (destination == MEMORY_VRAM ? STORE_VRAM : STORE_OAM) : storage_store;
-    assign raw_offset = video_owner ? (destination == MEMORY_VRAM ? {2'd0,address[12:0]} : {7'd0,address[7:0]}) : storage_offset;
+    assign raw_write = storage_write || (owner_commit && video_owner && video_allowed && owner_write
+        && !(destination == n2m_memory_pkg::MEMORY_OAM && (late_busy || oam_cpu_late_write)));
+    assign raw_store = video_owner ? (destination == n2m_memory_pkg::MEMORY_VRAM ? n2m_memory_pkg::STORE_VRAM : n2m_memory_pkg::STORE_OAM) : storage_store;
+    assign raw_offset = video_owner ? (destination == n2m_memory_pkg::MEMORY_VRAM ? {2'd0,address[12:0]} : {7'd0,address[7:0]}) : storage_offset;
     `DFF_ARST_VAL(video_pending, video_read, clk_sys, reset, 1'b0)
     `DFF_EN(video_address, address, clk_sys, video_read)
     always_comb begin
@@ -120,13 +124,13 @@ module n2m_smoke_system #(parameter bit HOST_PLAY = 0) (
         owner_valid = 1;
         owner_rdata = 0;
         case (destination)
-            MEMORY_VRAM, MEMORY_OAM: begin
+            n2m_memory_pkg::MEMORY_VRAM, n2m_memory_pkg::MEMORY_OAM: begin
                 owner_rdata = video_allowed ? storage_rdata : 8'hff;
                 owner_valid = !video_allowed || (video_pending && video_address == address && storage_valid);
             end
-            MEMORY_PPU: owner_rdata = ppu_rdata;
-            MEMORY_IRQ: owner_rdata = irq_rdata;
-            MEMORY_JOYP: begin
+            n2m_memory_pkg::MEMORY_PPU: owner_rdata = ppu_rdata;
+            n2m_memory_pkg::MEMORY_IRQ: owner_rdata = irq_rdata;
+            n2m_memory_pkg::MEMORY_JOYP: begin
                 owner_rdata = joyp_rdata;
                 owner_service = HOST_PLAY;
                 owner_valid = HOST_PLAY;
@@ -134,7 +138,16 @@ module n2m_smoke_system #(parameter bit HOST_PLAY = 0) (
             default: begin owner_service = 0; owner_valid = 0; end
         endcase
     end
-    n2m_memory_stores u_stores (.oam_request('0), .oam_response(),
+    n2m_oam_late_write u_oam_late (
+        .clk_sys, .reset_sys, .core_reset,
+        .prepare(owner_prepare && destination == n2m_memory_pkg::MEMORY_OAM && owner_write),
+        .commit(owner_commit && destination == n2m_memory_pkg::MEMORY_OAM && owner_write),
+        .late_window(oam_cpu_late_write), .address(owner_address), .data(owner_wdata),
+        .ppu_read(oam_phase != 0), .ppu_pair(oam_pair_address),
+        .response(late_response), .request(late_request), .raw_oam_busy(late_busy),
+        .late_commit(), .ppu_read_allowed(oam_read_allowed), .fault(late_fault)
+    );
+    n2m_memory_stores u_stores (.oam_request(late_request), .oam_response(late_response),
         .clk_sys, .reset_sys, .core_reset, .init_done(memory_initialized),
         .access_read(raw_read), .access_write(raw_write), .access_store(raw_store),
         .access_address(raw_offset), .access_wdata(write_data),
@@ -143,13 +156,13 @@ module n2m_smoke_system #(parameter bit HOST_PLAY = 0) (
         .host_wdata(rom_write_data), .host_rdata(rom_read_data), .host_valid(rom_read_valid),
         .ppu_vram_read(vram_request), .ppu_vram_address(vram_address),
         .ppu_vram_rdata(vram_data), .ppu_vram_valid(vram_valid),
-        .ppu_oam_read(oam_phase != 0), .ppu_oam_pair(oam_pair_address),
+        .ppu_oam_read(oam_read_allowed), .ppu_oam_pair(oam_pair_address),
         .ppu_oam_rdata(oam_data), .ppu_oam_valid(oam_valid),
         .wave_read(1'b0), .wave_address(4'd0), .wave_rdata(), .wave_valid()
     );
     n2m_interrupts u_interrupts (
         .clk_sys, .reset_sys, .core_reset, .gb_tick,
-        .io_commit(owner_commit && destination == MEMORY_IRQ), .io_write(owner_write),
+        .io_commit(owner_commit && destination == n2m_memory_pkg::MEMORY_IRQ), .io_write(owner_write),
         .io_address(owner_address), .io_wdata(owner_wdata),
         .source_level({3'd0,stat_condition,vblank_condition}), .source_event({joyp_event,4'd0}),
         .irq_ack, .io_selected(irq_selected), .io_rdata(irq_rdata),
@@ -157,11 +170,11 @@ module n2m_smoke_system #(parameter bit HOST_PLAY = 0) (
     );
     n2m_ppu u_ppu (
         .clk_sys, .reset_sys, .core_reset, .gb_tick, .epoch, .dot_before(dot_count),
-        .io_commit(owner_commit && destination == MEMORY_PPU), .io_write(owner_write),
+        .io_commit(owner_commit && destination == n2m_memory_pkg::MEMORY_PPU), .io_write(owner_write),
         .io_address(owner_address), .io_wdata(owner_wdata), .io_selected(ppu_selected),
         .io_rdata(ppu_rdata), .vram_request, .vram_address, .vram_data, .vram_valid,
         .oam_pair_address, .oam_phase, .oam_scan_index(), .oam_data, .oam_valid,
-        .dma_active(1'b0), .vram_cpu_allow, .oam_cpu_allow, .stat_condition,
+        .dma_active(1'b0), .vram_cpu_allow, .oam_cpu_allow, .vram_cpu_read_allow, .oam_cpu_read_allow, .oam_late_future(), .oam_cpu_late_write, .stat_condition,
         .vblank_condition, .stat_rise(), .vblank_rise(), .fault(ppu_fault),
         .source_valid, .source_start, .source_shade, .source_x, .source_y,
         .source_epoch, .source_dot, .source_abort, .blank_assert, .source_display_eligible
@@ -179,7 +192,7 @@ module n2m_smoke_system #(parameter bit HOST_PLAY = 0) (
         n2m_joypad u_joypad (
             .clk_sys, .reset_sys, .core_reset, .gb_tick,
             .input_commit(effective_update.valid), .input_buttons(effective_update.buttons),
-            .io_commit(owner_commit && destination == MEMORY_JOYP), .io_write(owner_write),
+            .io_commit(owner_commit && destination == n2m_memory_pkg::MEMORY_JOYP), .io_write(owner_write),
             .io_address(owner_address), .io_wdata(owner_wdata), .io_selected(),
             .io_rdata(joyp_rdata), .buttons_observe(),
             .selected_active(joyp_selected_active), .request_event(joyp_event)

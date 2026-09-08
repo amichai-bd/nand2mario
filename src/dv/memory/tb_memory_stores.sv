@@ -1,12 +1,11 @@
 `timescale 1ns/1ps
 `default_nettype none
 module tb_memory_stores;
-    import n2m_memory_pkg::*;
     logic clk_sys, reset_sys, core_reset, init_done;
     logic access_read, access_write, access_valid, host_read, host_write, host_valid;
-    memory_store_t access_store;
-    memory_oam_request_t oam_request;
-    memory_oam_response_t oam_response;
+    n2m_memory_pkg::memory_store_t access_store;
+    n2m_memory_pkg::memory_oam_request_t oam_request;
+    n2m_memory_pkg::memory_oam_response_t oam_response;
     logic [14:0] access_address;
     logic [7:0] access_wdata, access_rdata, host_wdata, host_rdata;
     logic [31:0] host_offset;
@@ -82,7 +81,7 @@ module tb_memory_stores;
     endtask
     task automatic inspect_ram(input bit patterned);
         for (store_number = 1; store_number <= 5; store_number = store_number + 1) begin
-            access_store = memory_store_t'(store_number);
+            access_store = n2m_memory_pkg::memory_store_t'(store_number);
             access_read = 1;
             size = bytes_in_store(store_number);
             for (index = 0; index < size; index = index + 1) begin
@@ -112,7 +111,7 @@ module tb_memory_stores;
             dut.oam_low.a_read, dut.oam_low.a_write, dut.oam_high.a_read,
             dut.oam_high.a_write, dut.wave_ram.a_read, dut.wave_ram.a_write);
         clk_sys = 0; reset_sys = 1; core_reset = 0;
-        access_read = 0; access_write = 0; access_store = STORE_ROM;
+        access_read = 0; access_write = 0; access_store = n2m_memory_pkg::STORE_ROM;
         access_address = 0; access_wdata = 0;
         host_read = 0; host_write = 0; host_offset = 0; host_wdata = 0;
         ppu_vram_read = 0; ppu_vram_address = 0;
@@ -129,7 +128,7 @@ module tb_memory_stores;
             // Inspect the real primitive ports with the clock stopped. Invalid
             // requests never reach an edge; normal tests exercise storage data.
             for (store_number=0; store_number<8; store_number=store_number+1) begin
-                access_store=memory_store_t'(store_number);
+                access_store=n2m_memory_pkg::memory_store_t'(store_number);
                 for (index=0; index<32768; index=index+1) begin
                     access_address=15'(index); access_read=1; access_write=0;
                     if (range_fault && store_number==6 && index==0) force dut.wram.a_write=1'b1;
@@ -144,7 +143,7 @@ module tb_memory_stores;
         end
         inspect_ram(0);
         for (store_number = 1; store_number <= 5; store_number = store_number + 1) begin
-            access_store = memory_store_t'(store_number);
+            access_store = n2m_memory_pkg::memory_store_t'(store_number);
             access_write = 1;
             size = bytes_in_store(store_number);
             for (index = 0; index < size; index = index + 1) begin
@@ -175,14 +174,14 @@ module tb_memory_stores;
             oam_request.write_enable=2'b01; oam_request.data=16'hff5a; edge_cycle();
             oam_request.write_enable=2'b10; oam_request.data=16'ha5ff; edge_cycle();
             oam_request.write_enable=0; oam_request.read=1;
-            access_read=1; access_store=STORE_WRAM; access_address=15'(index);
+            access_read=1; access_store=n2m_memory_pkg::STORE_WRAM; access_address=15'(index);
             ppu_oam_read=1; ppu_oam_pair=7'(index); edge_cycle();
             if (!oam_response.valid || oam_response.data!==16'ha55a ||
                 !access_valid || access_rdata!==pattern(1,index) ||
                 !ppu_oam_valid || ppu_oam_rdata!==16'ha55a)
                 $fatal(1,"MEMORY_OAM_PARALLEL_PAIR index=%0d",index);
             oam_request='0; ppu_oam_read=0;
-            access_store=STORE_OAM; access_address=15'(index*2); edge_cycle();
+            access_store=n2m_memory_pkg::STORE_OAM; access_address=15'(index*2); edge_cycle();
             if (!access_valid || access_rdata!==8'h5a) $fatal(1,"MEMORY_OAM_LOW_BYTE");
             access_address=15'(index*2+1); edge_cycle();
             if (!access_valid || access_rdata!==8'ha5) $fatal(1,"MEMORY_OAM_HIGH_BYTE");
@@ -195,7 +194,7 @@ module tb_memory_stores;
         end
         host_write = 0;
         // CPU/store writes to ROM cannot perform loading.
-        access_store = STORE_ROM; access_write = 1; access_address = 15'd32767; access_wdata = 8'h33;
+        access_store = n2m_memory_pkg::STORE_ROM; access_write = 1; access_address = 15'd32767; access_wdata = 8'h33;
         edge_cycle();
         access_write = 0;
         // Cancel actual outstanding valid responses between clock edges.
@@ -214,7 +213,7 @@ module tb_memory_stores;
         core_reset = 0;
         wait_clear();
         inspect_ram(0);
-        host_read = 1; access_read = 1; access_store = STORE_ROM;
+        host_read = 1; access_read = 1; access_store = n2m_memory_pkg::STORE_ROM;
         for (index = 0; index < 32768; index = index + 1) begin
             host_offset = 32'(index); access_address = 15'(32767 - index);
             edge_cycle();
@@ -238,7 +237,7 @@ module tb_memory_stores;
         core_reset = 1; edge_cycle(); core_reset = 0;
         wait_clear();
         inspect_ram(0);
-        host_read = 1; access_read = 1; access_store = STORE_ROM;
+        host_read = 1; access_read = 1; access_store = n2m_memory_pkg::STORE_ROM;
         for (index = 0; index < 32768; index = index + 1) begin
             host_offset = 32'(index); access_address = 15'(32767 - index);
             edge_cycle();

@@ -17,7 +17,6 @@ module n2m_oam_corrupt (
     output logic [2:0] write_mask,
     output logic invalid_row
 );
-    import n2m_oam_pkg::*;
     logic [15:0] a, b, c, d, transformed;
     // clk_sys/reset sample invariants only. The transformation has no flops.
     always_comb begin
@@ -31,8 +30,8 @@ module n2m_oam_corrupt (
         c = 0;
         d = 0;
         transformed = 0;
-        if (!invalid_row && row_index != 0 && kind != OAM_NONE) begin
-            if (kind == OAM_READ_WRITE && row_index >= 4 && row_index < 19) begin
+        if (!invalid_row && row_index != 0 && kind != n2m_oam_pkg::OAM_NONE) begin
+            if (kind == n2m_oam_pkg::OAM_READ_WRITE && row_index >= 4 && row_index < 19) begin
                 a = older_row[15:0];
                 b = previous_row[15:0];
                 c = current_row[15:0];
@@ -47,7 +46,7 @@ module n2m_oam_corrupt (
             a = current_result[15:0];
             b = previous_result[15:0];
             c = previous_result[47:32];
-            transformed = kind == OAM_WRITE ? ((a ^ c) & (b ^ c)) ^ c : b | (a & c);
+            transformed = kind == n2m_oam_pkg::OAM_WRITE ? ((a ^ c) & (b ^ c)) ^ c : b | (a & c);
             current_result = {previous_result[63:16], transformed};
         end
     end

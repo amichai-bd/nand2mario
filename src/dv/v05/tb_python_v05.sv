@@ -1,7 +1,10 @@
 `timescale 1ns/1ps
 `default_nettype none
 // Passive owner-boundary samples. Python owns stimulus and all expectations.
-module tb_python_v05 #(parameter bit PRELOADED = 0);
+module tb_python_v05 #(
+    parameter bit PRELOADED = 0,
+    parameter logic [127:0] BUILD_ID = 128'h88000000000000000000000000000001
+);
     logic clk_sys, clk_pix, reset_sys, reset_pix, uart_rx, uart_tx;
     logic [3:0] red, green, blue;
     logic hsync_n, vsync_n;
@@ -17,7 +20,11 @@ module tb_python_v05 #(parameter bit PRELOADED = 0);
     logic [7:0] source_x, source_y;
     logic [31:0] source_epoch;
     logic [63:0] source_dot;
-    logic record_event, pixel_event, input_event, write_event;
+    logic record_event, pixel_event, input_event, write_event, bus_event;
+    logic [88:0] bus_sample;
+    logic dma_event, oam_store_event;
+    logic [81:0] dma_sample;
+    logic [88:0] oam_store_sample;
     n2m_interfaces_pkg::retirement_t record_sample;
     logic [116:0] pixel_sample;
     logic [103:0] input_sample;
@@ -46,7 +53,7 @@ module tb_python_v05 #(parameter bit PRELOADED = 0);
     assign wave_load = wave_enable ? {dut.rom_write, dut.rom_read,
         dut.rom_address, dut.rom_write_data, dut.rom_read_valid, dut.rom_read_data} : 34'd0;
 
-    n2m_v05_system #(.UART_BAUD(3125000)) dut (.*);
+    n2m_v05_system #(.UART_BAUD(3125000), .BUILD_ID(BUILD_ID)) dut (.*);
     defparam dut.u_stores.rom.SIM_INIT_FILE = PRELOADED ? "preload-rom.mif" : "UNUSED";
     defparam dut.u_uart.u_commands.u_load.u_presence.u_presence.SIM_INIT_FILE = PRELOADED ? "preload-presence.mif" : "UNUSED";
     defparam dut.u_uart.u_commands.u_load.SIM_PRELOAD = PRELOADED;
@@ -54,6 +61,22 @@ module tb_python_v05 #(parameter bit PRELOADED = 0);
     always #19.841 clk_pix = !clk_pix;
 
     always @(posedge clk_sys) begin
+        if (!reset_sys && !core_reset && gb_tick && dut.cpu_phase == 2'd3) begin
+            dma_sample <= {64'(dot_count + 1), dut.dma_active,
+                dut.u_dma.engine_write, dut.dma_active ? dut.u_dma.engine_offset : 8'd0,
+                dut.u_dma.engine_write ? dut.u_dma.engine_data : 8'd0};
+            dma_event <= !dma_event;
+        end
+        if (!reset_sys && !core_reset && |dut.oam_request.write_enable) begin
+            oam_store_sample <= {dot_count, dut.oam_request.pair,
+                dut.oam_request.write_enable, dut.oam_request.data};
+            oam_store_event <= !oam_store_event;
+        end
+        if (!reset_sys && bus_commit) begin
+            bus_sample <= {64'(dot_count + 1), address, write_enable,
+                           write_enable ? write_data : read_data};
+            bus_event <= !bus_event;
+        end
         if (!reset_sys && bus_commit && write_enable) begin
             write_sample <= {64'(dot_count + 1), address, write_data};
             write_event <= !write_event;
@@ -84,6 +107,27 @@ module tb_python_v05 #(parameter bit PRELOADED = 0);
         end
     end
 
+    // Corrupt the actual timer read route; the independent DIV expectation stays1.
+    initial begin
+        if ($test$plusargs("timer_read_fault")) begin
+            @(negedge clk_sys);
+            force dut.timer_rdata = 8'd0;
+        end
+    end
+
+    // Mutate the first byte at the actual Intel OAM pair-write boundary.
+    initial begin
+        if ($test$plusargs("dma_byte_fault")) begin
+            do @(negedge clk_sys);
+            while (!(dut.oam_request.write_enable == 2'b01 && dut.oam_request.pair == 0));
+            if (dut.oam_request.data[7:0] !== 8'ha5) $fatal(1, "DMA239_FAULT_SOURCE");
+            force dut.oam_request.data = 16'd0;
+            @(posedge clk_sys);
+            @(negedge clk_sys);
+            release dut.oam_request.data;
+        end
+    end
+
     // Original ROM byte at0200 is DI/F3. Mutate only the actual storage write.
     initial begin
         if ($test$plusargs("image_fault")) begin
@@ -111,6 +155,9 @@ module tb_python_v05 #(parameter bit PRELOADED = 0);
         pixel_event = 0;
         input_event = 0;
         write_event = 0;
+        bus_event = 0;
+        dma_event = 0;
+        oam_store_event = 0;
         if ($test$plusargs("pixel_fault")) begin
             wait(source_display_eligible && source_x == 0 && source_y == 0);
             force dut.source_shade = 2'd0;
