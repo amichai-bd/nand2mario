@@ -5,7 +5,8 @@ adapter initial-fetch latency. The FC case checks its full execution across
 VBlank. [#197](https://github.com/amichai-bd/nand2mario/issues/197) corrects the
 hardware-supported palette conflict; residual startup cadence remains in
 [#202](https://github.com/amichai-bd/nand2mario/issues/202). Neither model is
-assumed to be the silicon oracle. No RTL change is made.
+assumed to be the silicon oracle. The original programs are independent
+stimulus for the separately reviewed RTL correction.
 
 The original integration setup is unchanged through LCDC commit592 and
 retirement596. Its terminal HALT is replaced by `LD BC,2510`, then 2510 iterations
