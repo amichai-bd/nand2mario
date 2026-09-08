@@ -83,7 +83,7 @@
       "path": "n2m_ppu.sv",
       "source": "rtl/video.v and rtl/sprites.v",
       "section": "Composed DMG renderer and selected memory address priority",
-      "local_changes": "Connect separately adapted helpers; original project A/B source-event forwarding, cancellation, first-frame shade suppression and display qualification; external memory and epoch/dot interfaces; no platform/snapshot store"
+      "local_changes": "Connect separately adapted helpers; original project A/B source-event forwarding, cancellation, first-frame shade suppression and display qualification; external memory and epoch/dot interfaces; no platform/snapshot store; original separate early OAM read-block permission at the ordinary line boundary based on pinned primary read/write tables, preserving existing write/scanner/source timing"
     }
   ]
 }

@@ -76,6 +76,11 @@ layout and tool inputs. This is short execution evidence, not real UART loading
 or full milestone acceptance; the [v0.5 plan](../../../src/dv/python/v05/README.md)
 owns those separate gates.
 
+`preload: "startup-read"` and `"startup-write"` package the original
+[startup OAM boundary witnesses](../../../src/dv/ppu/startup202.md), validating
+literal instructions and declared image hashes through the same Intel preload
+preparation. Their source and software tools are fingerprinted inputs.
+
 Python targets use the executing pinned interpreter and installed packages from
 the [separate dependency record](../../../src/dv/python/THIRD_PARTY.md). Normal
 SV use does not import or require cocotb. Execution does not install dependencies.
