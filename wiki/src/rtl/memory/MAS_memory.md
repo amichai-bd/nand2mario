@@ -63,9 +63,9 @@ The [DMA owner](../dma/MAS_dma.md) arbitrates pair operations and PPU collisions
 
 The v05 and integration-smoke paths share `n2m_oam_late_write` over the same
 pair-A port for [#208](https://github.com/amichai-bd/nand2mario/issues/208).
-Only these integrations consume the PPU's distinct late-write indication.
-Combined DMA retains its existing permissions and projections until
-[#211](https://github.com/amichai-bd/nand2mario/issues/211).
+The [combined DMA schedule](../dma/MAS_dma.md#qualified-late-writes) consumes
+the same class using its existing service slots. Both owners use the shared
+combinational transform; the direct schedule below remains unchanged.
 
 At the legal final scan T4, the selected digital extension transforms the
 addressed eight-byte row. Other words copy the last OAM row. Each byte of the

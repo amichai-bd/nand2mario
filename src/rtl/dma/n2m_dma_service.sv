@@ -23,6 +23,9 @@ module n2m_dma_service (
     output logic [6:0] dma_pending_pair,
     input var logic cpu_read,
     input var logic cpu_write,
+    input var logic late_future,
+    input var logic late_prepare,
+    input var logic late_commit,
     input var n2m_memory_pkg::memory_store_t cpu_store,
     input var logic [14:0] cpu_offset,
     input var logic [15:0] cpu_address,
@@ -70,24 +73,50 @@ module n2m_dma_service (
     logic [15:0] grant_address, response_address_q;
     logic [4:0] response_row_q;
     logic missing_operands, missing_other, missing_raw, service_fault, accept;
+    logic future_q, late_selected_q, select_late, late_ready_q, missing_late;
+    logic [15:0] late_address_q;
+    logic [7:0] late_data_q;
+    logic [63:0] late_row_q, late_row_next, late_result;
+    logic [15:0] late_word_q;
     memory_destination_t source_destination;
     memory_store_t source_store;
     logic [14:0] source_offset;
     integer word_byte, selected_row;
     localparam logic [2:0] READ_NONE=0, READ_OPERAND=1, READ_SOURCE=2,
-        READ_OTHER=3, READ_CPU=4;
+        READ_OTHER=3, READ_CPU=4, READ_LATE=5;
     n2m_memory_decode source_decode (.address(dma_source_address),
         .destination(source_destination), .store(source_store), .offset(source_offset));
     assign accept = t4 && init_done && !reset && !fault;
-    assign missing_operands = accept && scan_active && scan_row != 0 &&
+    assign missing_operands = accept && !late_commit && scan_active && scan_row != 0 &&
         effect_kind != OAM_NONE && (!operand_valid_q || operand_row_q != scan_row);
+    assign select_late = slot_q==14 ? future_q && late_prepare : late_selected_q;
+    assign missing_late = accept && ((late_commit && (!late_selected_q || !late_ready_q
+        || !late_prepare || late_address_q!=cpu_address || late_data_q!=cpu_wdata))
+        || (late_selected_q && !late_commit));
     assign missing_other = accept && dma_write &&
         (!other_valid_q || other_offset_q != dma_offset);
     assign missing_raw = (response_kind_q != READ_NONE && !access_valid) ||
         (pair_response_kind_q != READ_NONE && !oam_response.valid);
-    assign service_fault = missing_operands || missing_other || missing_raw ||
+    assign service_fault = missing_operands || missing_other || missing_raw || missing_late ||
         (accept && slot_q != 0 && slot_q < 6'd21);
     `DFF_ARST_VAL(fault, fault || service_fault, clk_sys, reset, 1'b0)
+    // Capture the predictor at P; pause before slot14 must not lose it.
+    `DFF_RST_EN(future_q, late_future, clk_sys, accept, reset, 1'b0)
+    `DFF_ARST_VAL(late_selected_q, accept ? 1'b0 : slot_q==14 ? select_late : late_selected_q,
+        clk_sys, reset, 1'b0)
+    `DFF_EN(late_address_q, cpu_address, clk_sys, slot_q==14 && select_late)
+    `DFF_EN(late_data_q, cpu_wdata, clk_sys, slot_q==14 && select_late)
+    always_comb begin
+        late_row_next=late_row_q;
+        if(oam_response.valid && pair_response_kind_q==READ_LATE && response_index_q<4)
+            late_row_next[16*int'(response_index_q) +: 16]=oam_response.data;
+    end
+    `DFF_ARST_VAL(late_row_q, late_row_next, clk_sys, reset, 64'd0)
+    `DFF_RST_EN(late_word_q, oam_response.data, clk_sys,
+        oam_response.valid && pair_response_kind_q==READ_LATE && response_index_q==4, reset, 16'd0)
+    `DFF_ARST_VAL(late_ready_q, accept ? 1'b0 : late_ready_q ||
+        (oam_response.valid && pair_response_kind_q==READ_LATE && response_index_q==4), clk_sys, reset, 1'b0)
+    assign late_result=oam_late_result(late_row_q, late_word_q, late_address_q[2:0], late_data_q);
     always_comb begin
         overlay_previous=previous_q;
         overlay_current={48'd0,current_q};
@@ -138,11 +167,11 @@ module n2m_dma_service (
         if (accept && !service_fault) slot_next=6'd1;
     end
     `DFF_ARST_VAL(slot_q, slot_next, clk_sys, reset, 6'd0)
-    `DFF_RST_EN(job_row_q, scan_row, clk_sys, accept, reset, 5'd0)
+    `DFF_RST_EN(job_row_q, late_commit ? late_address_q[7:3] : scan_row, clk_sys, accept, reset, 5'd0)
     `DFF_RST_EN(job_prefetch_q, scan_active && scan_row<19, clk_sys, accept, reset, 1'b0)
-    `DFF_RST_EN(rows_q, {result_older,result_previous,result_current}, clk_sys,
+    `DFF_RST_EN(rows_q, late_commit ? {128'd0,late_result} : {result_older,result_previous,result_current}, clk_sys,
         accept && !service_fault, reset, 192'd0)
-    `DFF_RST_EN(mask_q, result_mask, clk_sys, accept && !service_fault, reset, 3'd0)
+    `DFF_RST_EN(mask_q, late_commit ? 3'b001 : result_mask, clk_sys, accept && !service_fault, reset, 3'd0)
     `DFF_RST_EN(dma_offset_q, dma_offset, clk_sys, accept, reset, 8'd0)
     `DFF_RST_EN(dma_byte_q, dma_byte, clk_sys, accept, reset, 8'd0)
     `DFF_RST_EN(uncovered_q, dma_write &&
@@ -173,7 +202,10 @@ module n2m_dma_service (
         end else if (slot_q==13) begin
             oam_request.write_enable=uncovered_q ? (dma_offset_q[0] ? 2'b10 : 2'b01) : 2'b00;
             oam_request.pair=dma_offset_q[7:1]; oam_request.data={2{dma_byte_q}};
-        end else if (slot_q>=14 && slot_q<=19 && job_prefetch_q) begin
+        end else if (slot_q>=14 && slot_q<=18 && select_late) begin
+            oam_request.read=1; pair_grant_kind=READ_LATE; grant_index=4'(slot_q-14);
+            oam_request.pair=slot_q==18 ? late_address_q[7:1] : 7'(76+int'(slot_q)-14);
+        end else if (slot_q>=14 && slot_q<=19 && job_prefetch_q && !select_late) begin
             oam_request.read=1; pair_grant_kind=READ_OPERAND; grant_index=4'(slot_q-14);
             if(slot_q<=17) oam_request.pair=7'(4*int'(job_row_q)+int'(slot_q)-14);
             else if(slot_q==18) oam_request.pair=7'(4*(int'(job_row_q)-1));
@@ -245,6 +277,8 @@ module n2m_dma_service (
         (access_valid && response_kind_q==READ_CPU), clk_sys, reset, 1'b0)
     assign cpu_rdata=cpu_data_q;
     assign cpu_valid=!reset && !fault && cpu_valid_q && cpu_address_q==cpu_address;
+    `N2M_ASSERT(DMA_LATE_READY, clk_sys, reset, !missing_late)
+    `N2M_ASSERT(DMA_LATE_EXCLUSIVE, clk_sys, reset, !(late_commit && (dma_write || cpu_write)))
     `N2M_ASSERT(DMA_RAW_SERVICE, clk_sys, reset, !missing_raw)
     `N2M_ASSERT(DMA_OPERAND_SERVICE, clk_sys, reset, !missing_operands)
     `N2M_ASSERT(DMA_PAIR_SERVICE, clk_sys, reset, !missing_other)

@@ -29,8 +29,6 @@ module n2m_oam_late_write (
     logic [3:0][15:0] last_row, last_row_next, transformed, result;
     logic [15:0] target_word, target_word_next;
     logic [1:0] preferred, saved_preferred, drain_word;
-    logic [7:0] pivot;
-    integer lane;
 
     function automatic logic [1:0] remaining_word(
         input logic [1:0] selected, first,
@@ -52,21 +50,10 @@ module n2m_oam_late_write (
     assign start = !reset && !fault && phase == 0 && prepare;
     assign late_attempt = !reset && commit && late_window;
     assign late_commit = late_attempt && !fault && phase == 7 && identity;
-    assign pivot = last_row[2][7:0];
     assign preferred = ppu_pair[6:2] == saved_address[7:3] ? ppu_pair[1:0] : 2'd2;
     assign drain_word = remaining_word(saved_address[2:1], saved_preferred, 2'(phase - 4'd8));
 
-    always_comb begin
-        transformed = last_row;
-        for (lane = 0; lane < 2; lane = lane + 1) begin
-            transformed[saved_address[2:1]][lane*8 +: 8] =
-                (target_word[lane*8 +: 8] & pivot)
-                | (target_word[lane*8 +: 8] & last_row[saved_address[2:1]][lane*8 +: 8])
-                | (pivot & last_row[saved_address[2:1]][lane*8 +: 8]);
-        end
-        // The architectural byte is the final operation of this digital class.
-        transformed[saved_address[2:1]][int'(saved_address[0])*8 +: 8] = saved_data;
-    end
+    assign transformed = oam_late_result(last_row, target_word, saved_address[2:0], saved_data);
 
     always_comb begin
         request = '0;

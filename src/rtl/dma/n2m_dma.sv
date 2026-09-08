@@ -33,6 +33,8 @@ module n2m_dma (
     input var logic peripheral_available,
     input var logic vram_cpu_allow,
     input var logic oam_cpu_allow,
+    input var logic oam_cpu_late_write,
+    input var logic oam_late_future,
     input var logic ppu_vram_request,
     input var logic [12:0] ppu_vram_address,
     output logic [7:0] ppu_vram_data,
@@ -87,6 +89,7 @@ module n2m_dma (
     logic invalid_observation;
     logic oam_dma_response_q, oam_request_q;
     logic pair_pending, forward_pair;
+    logic late_prepare, late_commit;
     logic [6:0] pending_pair;
     logic [15:0] held_response_q;
     assign reset=reset_sys || core_reset;
@@ -118,7 +121,11 @@ module n2m_dma (
     assign local_owner=owner_destination==MEMORY_DMA || owner_destination==MEMORY_OAM ||
         owner_destination==MEMORY_VRAM || owner_destination==MEMORY_UNUSABLE;
     assign local_memory=owner_destination==MEMORY_OAM || owner_destination==MEMORY_VRAM;
-    assign local_allowed=owner_destination==MEMORY_VRAM ? vram_cpu_allow : (oam_cpu_allow && !dma_active);
+    assign local_allowed=owner_destination==MEMORY_VRAM ? vram_cpu_allow :
+        ((oam_cpu_allow || (owner_write && oam_cpu_late_write)) && !dma_active);
+    assign late_prepare=owner_prepare && owner_destination==MEMORY_OAM && owner_write && !dma_active;
+    assign late_commit=owner_commit && owner_destination==MEMORY_OAM && owner_write
+        && oam_cpu_late_write && !dma_active && !fault && !invalid_observation;
     assign peripheral_prepare=owner_prepare && !local_owner;
     assign peripheral_commit=owner_commit && !local_owner && !invalid_observation;
     assign peripheral_destination=owner_destination;
@@ -154,7 +161,7 @@ module n2m_dma (
     assign response_valid=port_valid && (!conflict || engine_source_valid) && !fault;
     assign service_read=!conflict && (direct_read ||
         (owner_prepare && local_memory && local_allowed && !owner_write));
-    assign service_write=!fault && ((!conflict && direct_write) ||
+    assign service_write=!fault && !late_commit && ((!conflict && direct_write) ||
         (!conflict && owner_commit && local_memory && local_allowed && owner_write) || redirect_write);
     assign service_cpu_store=redirect_write ? STORE_VRAM : direct_store;
     assign service_cpu_offset=redirect_write ? {2'd0,engine_source_address[12:0]} : direct_offset;
@@ -165,6 +172,7 @@ module n2m_dma (
         .dma_source_data(engine_source_data), .dma_source_valid(engine_source_valid), .dma_held_pair(held_pair),
         .dma_pair_pending(pair_pending), .dma_pending_pair(pending_pair),
         .cpu_read(service_read), .cpu_write(service_write), .cpu_store(service_cpu_store),
+        .late_future(oam_late_future), .late_prepare(late_prepare), .late_commit(late_commit),
         .cpu_offset(service_cpu_offset), .cpu_address(bus_plan.address), .cpu_wdata(bus_plan.write_data),
         .cpu_rdata(cache_data), .cpu_valid(cache_valid), .access_read(access_read), .access_write(access_write),
         .access_store(access_store), .access_address(access_address), .access_wdata(access_wdata),
