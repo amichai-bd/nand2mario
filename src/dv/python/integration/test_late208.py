@@ -2,7 +2,6 @@
 import json
 from pathlib import Path
 import cocotb
-from cocotb.handle import Force, Release
 from cocotb.triggers import Timer, ReadOnly, ValueChange, RisingEdge, FallingEdge
 from cocotb.utils import get_sim_time
 from test_integration import packet, requests, response, decode_record, known
@@ -11,6 +10,14 @@ from client_transport import frames
 
 @cocotb.test(timeout_time=20, timeout_unit='ms')
 async def late_write(dut):
+    # Bind the entire observation/inspection seam before UART setup.
+    for name in ('oam_observe','inspection_enable','inspection_request','inspection_response'):
+        getattr(dut,name)
+    def observe():
+        value=known(dut.oam_observe)
+        return dict(capture=value&1,data=(value>>1)&65535,valid=(value>>17)&1,
+                    pair=(value>>18)&127,pending=(value>>25)&1,destination=(value>>26)&15,
+                    busy=(value>>30)&1,phase=(value>>31)&15,lcdc=(value>>35)&255)
     image=Path('program.gb').read_bytes()
     contract=json.loads(Path('late208.json').read_text())
     expected=contract['events']; counts={'records':0,'captures':0,'drain_edges':0}; replies=[]; accesses=[]; writes=[]
@@ -45,16 +52,16 @@ async def late_write(dut):
                 await FallingEdge(dut.clk_sys);await Timer(19,unit='ns')
                 if known(dut.reset_sys) or known(dut.core_reset):continue
                 dot=known(dut.dot_count)
-                if dot==4456 and known(dut.dut.late_busy):
+                state=observe()
+                if dot==4456 and state['busy']:
                     sample=dict(dot=dot,address=known(dut.address),
-                        destination=known(dut.dut.destination),pending=known(dut.dut.video_pending))
+                        destination=state['destination'],pending=state['pending'])
                     log('next_request',**sample)
                     store=next(event for event in expected if event['dot']==4460)
                     assert sample==dict(dot=4456,address=store['pc_after'],destination=0,pending=0)
                     counts['drain_edges']+=1
                 if known(dut.gb_tick) and dot+1==4457:
-                    sample=dict(pair=known(dut.dut.oam_pair_address),valid=known(dut.dut.oam_valid),
-                        data=known(dut.dut.oam_data),capture=known(dut.dut.u_ppu.objects.capture_scan))
+                    sample={name:state[name] for name in ('pair','valid','data','capture')}
                     log('ppu_capture',dot=4457,**sample)
                     assert sample==dict(pair=78,valid=1,data=contract['oam'][156]|contract['oam'][157]<<8,capture=1),f'LATE208_CAPTURE {sample}'
                     counts['captures']+=1
@@ -93,22 +100,24 @@ async def late_write(dut):
             assert not known(dut.fault),'LATE208_PAUSE_FAULT'
         assert counts==dict(records=624,captures=1,drain_edges=3),f'LATE208_LIVE_COUNTS {counts}'
         assert expected[-1]['halted']==1
-        assert known(dut.dut.u_ppu.lcdc)==0,'LATE208_LCD_OFF'
-        assert known(dut.dut.u_oam_late.phase)==0 and not known(dut.dut.late_busy)
+        assert observe()['lcdc']==0,'LATE208_LCD_OFF'
+        assert observe()['phase']==0 and not observe()['busy']
         # Read-only DV inspection of the actual Intel A port, not UART readback.
         inspected=[]
         try:
             for pair in range(80):
                 await FallingEdge(dut.clk_sys)
-                dut.dut.u_stores.oam_request.value=Force((1<<25)|(pair<<16))
+                dut.inspection_request.value=(1<<25)|(pair<<16)
+                dut.inspection_enable.value=1
                 await RisingEdge(dut.clk_sys);await ReadOnly()
-                raw=known(dut.dut.u_stores.oam_response)
+                raw=known(dut.inspection_response)
                 log('inspection',pair=pair,response=raw)
                 assert raw>>16==1,'LATE208_INSPECT_VALID'
                 inspected.extend([raw&255,(raw>>8)&255])
         finally:
             await FallingEdge(dut.clk_sys)
-            dut.dut.u_stores.oam_request.value=Release()
+            dut.inspection_enable.value=0
+            dut.inspection_request.value=0
         assert inspected==contract['oam'],f'LATE208_FULL_OAM expected={contract["oam"]} actual={inspected}'
         for task in tasks:
             if task.done():task.result()
