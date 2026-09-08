@@ -7,6 +7,8 @@ import shutil
 import subprocess
 import sys
 import time
+sys.path.insert(0,str(Path(__file__).resolve().parents[3]))
+from tools.n2m.records import digest as record_digest
 
 ROOT = Path(__file__).resolve().parents[3]
 HERE = Path(__file__).resolve().parent
@@ -106,6 +108,9 @@ def main():
         raise
     finally:
         result['elapsed_seconds'] = time.monotonic() - started
+        result['artifacts'] = {path.name:digest(path) for path in output.iterdir()
+                               if path.is_file() and path.name!='result.json'}
+        result['fingerprint'] = record_digest(result['inputs'])
         (output / 'result.json').write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')
 
 

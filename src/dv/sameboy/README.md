@@ -105,6 +105,9 @@ python -X utf8 -B -m unittest discover -s tools/n2m/tests -p 'test_sameboy_*.py'
 
 The comparison requires all 69 retirement records, all 26 ABI fields including
 completed-dot identity, and both complete ordered source frames (46,080 pixels).
+It first validates both producing result records, successful commands, current
+source/profile/ABI identities, pinned Core mode and original image. Shared
+artifact and preload validators bind the observed files to successful producers.
 The DUT test retains its own source-pixel timing, progress and completion checks.
 Preload proves execution after initialization; it does not repeat UART loading.
 Corrupt fields or pixels, missing observations and reordered observations fail
