@@ -9,12 +9,11 @@ module n2m_cpu_stop_policy (
     output logic padding,
     output logic divider_reset
 );
-    import n2m_cpu_pkg::*;
 
     always_comb begin
         padding = !enabled_pending;
-        if (selected_active) action = enabled_pending ? STOP_CONTINUE : STOP_HALT;
-        else action = STOP_OSCILLATOR;
+        if (selected_active) action = enabled_pending ? n2m_cpu_pkg::STOP_CONTINUE : n2m_cpu_pkg::STOP_HALT;
+        else action = n2m_cpu_pkg::STOP_OSCILLATOR;
         divider_reset = execute && !selected_active;
     end
 endmodule

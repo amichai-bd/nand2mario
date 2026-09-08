@@ -21,7 +21,6 @@ module n2m_cpu_bus (
     output logic cycle_end,
     output logic fault
 );
-    import n2m_cpu_pkg::*;
     logic [1:0] phase_next;
     logic fault_next;
     logic required_read;
@@ -42,7 +41,7 @@ module n2m_cpu_bus (
         end
     end
 
-    assign request_valid = active && !fault && !reset_sys && !core_reset && plan.access_kind != ACCESS_IDLE;
+    assign request_valid = active && !fault && !reset_sys && !core_reset && plan.access_kind != n2m_cpu_pkg::ACCESS_IDLE;
     assign address = plan.address;
     assign write_data = plan.write_data;
     assign write_enable = plan.write_enable;
@@ -65,7 +64,7 @@ module n2m_cpu_bus (
     `N2M_ASSERT(CPU_BUS_RESPONSE, clk_sys, reset_sys || core_reset,
         (terminal && complete_enable && required_read) |-> (response_valid === 1'b1))
     `N2M_ASSERT(CPU_BUS_WRITE_KIND, clk_sys, reset_sys || core_reset,
-        (request_valid && plan.write_enable) |-> (plan.access_kind == ACCESS_DATA || plan.access_kind == ACCESS_STACK))
+        (request_valid && plan.write_enable) |-> (plan.access_kind == n2m_cpu_pkg::ACCESS_DATA || plan.access_kind == n2m_cpu_pkg::ACCESS_STACK))
     `N2M_ASSERT_KNOWN(CPU_BUS_REQUEST_KNOWN, clk_sys, reset_sys || core_reset,
         {active, complete_enable, gb_tick, plan.access_kind, plan.address, plan.write_enable, plan.write_data})
     `N2M_ASSERT_STABLE_WHEN(CPU_BUS_PLAN_STABLE, clk_sys, reset_sys || core_reset,
