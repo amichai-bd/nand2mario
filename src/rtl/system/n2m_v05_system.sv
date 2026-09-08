@@ -38,6 +38,10 @@ module n2m_v05_system #(
     localparam n2m_memory_pkg::memory_destination_t IRQ_DESTINATION = n2m_memory_pkg::MEMORY_IRQ;
     localparam n2m_memory_pkg::memory_destination_t PPU_DESTINATION = n2m_memory_pkg::MEMORY_PPU;
     localparam n2m_memory_pkg::memory_destination_t JOYP_DESTINATION = n2m_memory_pkg::MEMORY_JOYP;
+    localparam n2m_memory_pkg::memory_destination_t TIMER_DESTINATION = n2m_memory_pkg::MEMORY_TIMER;
+    n2m_timer_pkg::timer_request_t timer_request;
+    logic divider_reset_request;
+    logic [7:0] timer_rdata;
     logic pause_request, core_initialized, instruction_complete, cpu_stopped;
     logic [7:0] buttons, profile, endpoint_state;
     logic [63:0] retirement_count;
@@ -111,7 +115,7 @@ module n2m_v05_system #(
         .access_kind(), .address_effect(), .address_effect_resolved(),
         .address_effect_sample(), .address_effect_phase(), .halted(), .stopped(cpu_stopped),
         .locked(), .initialized(cpu_initialized), .fault(cpu_fault), .ime_observe(),
-        .ime_delay_observe(), .stop_execute(), .divider_reset_request(),
+        .ime_delay_observe(), .stop_execute(), .divider_reset_request,
         .instruction_complete, .retirement_valid, .retirement
     );
     n2m_memory_cpu_port u_cpu_port (
@@ -147,6 +151,7 @@ module n2m_v05_system #(
                 owner_rdata = video_allowed ? storage_rdata : 8'hff;
                 owner_valid = !video_allowed || (video_pending && video_address == address && storage_valid);
             end
+            n2m_memory_pkg::MEMORY_TIMER: owner_rdata = timer_rdata;
             n2m_memory_pkg::MEMORY_PPU: owner_rdata = ppu_rdata;
             n2m_memory_pkg::MEMORY_IRQ: owner_rdata = irq_rdata;
             n2m_memory_pkg::MEMORY_JOYP: begin
@@ -179,11 +184,17 @@ module n2m_v05_system #(
         .ppu_oam_rdata(oam_data), .ppu_oam_valid(oam_valid),
         .wave_read(1'b0), .wave_address(4'd0), .wave_rdata(), .wave_valid()
     );
+    n2m_timer u_timer (
+        .clk_sys, .reset_sys, .core_reset, .gb_tick, .divider_reset_request,
+        .io_commit(owner_commit && destination == TIMER_DESTINATION), .io_write(owner_write),
+        .io_address(owner_address), .io_wdata(owner_wdata),
+        .io_selected(), .io_rdata(timer_rdata), .interrupt_request(timer_request)
+    );
     n2m_interrupts u_interrupts (
         .clk_sys, .reset_sys, .core_reset, .gb_tick,
         .io_commit(owner_commit && destination == IRQ_DESTINATION), .io_write(owner_write),
         .io_address(owner_address), .io_wdata(owner_wdata),
-        .source_level({3'd0,stat_condition,vblank_condition}), .source_event({joyp_event,4'd0}),
+        .source_level({2'd0,timer_request.request,stat_condition,vblank_condition}), .source_event({joyp_event,4'd0}),
         .irq_ack, .io_selected(irq_selected), .io_rdata(irq_rdata),
         .ie_stored, .if_stored, .ie_observe, .if_observe
     );

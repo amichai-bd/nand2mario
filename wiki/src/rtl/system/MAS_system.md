@@ -26,16 +26,25 @@ Initialization completes only when CPU and backing-store initialization complete
 The CPU uses resolved IF/IE for observation, the memory CPU port for prepared
 reads and committed writes, and the shared timebase. Host input reaches the real
 JOYP owner atomically; its event feeds the interrupt event input. VBlank and STAT
-levels feed the interrupt level inputs. CPU completion controls STEP through the
+levels and the timer request feed the interrupt level inputs. CPU completion controls STEP through the
 existing UART boundary.
 
 The memory CPU port routes ROM/RAM to the explicit Intel backing stores and
 video accesses through PPU permissions. The PPU independently uses the stores'
-VRAM and OAM read ports. JOYP, interrupt and PPU registers have their actual
+VRAM and OAM read ports. Timer, JOYP, interrupt and PPU registers have their actual
 owners. Unused peripheral destinations reject service. The original program
 must not access them or execute STOP; the named `V05_NO_STOP` assertion makes
-that bounded program condition explicit. Timer, DMA, serial transfer and audio
+that bounded program condition explicit. DMA, serial transfer and audio
 behavior are not implemented by this composition.
+
+The [timer owner](../timer/MAS_timer.md) provides side-effect-free pre-A reads
+and receives accepted T4 writes for DIV/TIMA/TMA/TAC through `MEMORY_TIMER`.
+It uses the shared system clock, global/core reset and `gb_tick`; host pause
+holds elapsed timer time while CPU HALT does not. The typed request pulse feeds
+interrupt level bit2 through the existing post-A/B capture, including a B edge
+after host pause. CPU `divider_reset_request` reaches the timer, but this wiring
+does not expand the composition's STOP/power contract. Timer reload, write
+priority, reset values and request semantics remain owned by MAS_timer.
 
 The PPU source feeds the actual frame bridge and immutable snapshot owner.
 System and pixel resets remain distinct; core reset follows the existing
