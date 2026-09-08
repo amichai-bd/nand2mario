@@ -18,23 +18,22 @@ module n2m_uart_packet_tx (
     output logic [7:0] byte_data,
     input var logic byte_ready
 );
-    import n2m_uart_pkg::*;
     typedef enum logic [3:0] {
         IDLE, BLOCK_START, SCAN_FETCH, SCAN_USE, CODE,
         DATA_FETCH, DATA_USE, DATA_SEND, DELIMITER, DRAIN
     } state_t;
     state_t state, state_next;
-    logic [UART_ADDRESS_BITS-1:0] cursor, cursor_next;
-    logic [UART_ADDRESS_BITS-1:0] block_start, block_start_next;
+    logic [n2m_uart_pkg::UART_ADDRESS_BITS-1:0] cursor, cursor_next;
+    logic [n2m_uart_pkg::UART_ADDRESS_BITS-1:0] block_start, block_start_next;
     logic [7:0] block_bytes, block_bytes_next;
     logic [7:0] index, index_next;
     logic [7:0] held_data, held_data_next;
     logic more, more_next;
-    logic [UART_ADDRESS_BITS-1:0] scan_address;
-    assign scan_address = block_start + UART_ADDRESS_BITS'(block_bytes);
+    logic [n2m_uart_pkg::UART_ADDRESS_BITS-1:0] scan_address;
+    assign scan_address = block_start + n2m_uart_pkg::UART_ADDRESS_BITS'(block_bytes);
     assign transmit_read = state == SCAN_FETCH || state == DATA_FETCH;
     assign transmit_address = state == SCAN_FETCH ? scan_address
-        : block_start + UART_ADDRESS_BITS'(index);
+        : block_start + n2m_uart_pkg::UART_ADDRESS_BITS'(index);
     assign byte_valid = state == CODE || state == DATA_SEND || state == DELIMITER;
     assign byte_data = state == CODE ? block_bytes + 8'd1
         : (state == DATA_SEND ? held_data : 8'd0);
@@ -106,7 +105,7 @@ module n2m_uart_packet_tx (
     `DFF_ARST_VAL(held_data, held_data_next, clk_sys, reset_sys, '0)
     `DFF_ARST_VAL(more, more_next, clk_sys, reset_sys, 1'b0)
     `N2M_ASSERT(UART_TX_REQUEST_SIZE, clk_sys, reset_sys,
-        transmit_valid |-> transmit_bytes >= n2m_interfaces_pkg::PACKET_HEADER_BYTES + 2 && transmit_bytes <= UART_RAW_MAX)
+        transmit_valid |-> transmit_bytes >= n2m_interfaces_pkg::PACKET_HEADER_BYTES + 2 && transmit_bytes <= n2m_uart_pkg::UART_RAW_MAX)
     `N2M_ASSERT(UART_TX_REQUEST_ACTIVE, clk_sys, reset_sys, state != IDLE |-> transmit_valid)
     `N2M_ASSERT(UART_TX_READ_RANGE, clk_sys, reset_sys,
         transmit_read |-> transmit_address < transmit_bytes)

@@ -46,7 +46,6 @@ module n2m_uart #(
     input var logic [7:0] frame_data,
     input var logic frame_valid
 );
-    import n2m_uart_pkg::*;
     n2m_input_pkg::input_write_t accepted_input;
     logic [7:0] input_source, physical_observe;
     assign input_source_observe = input_source;
@@ -54,18 +53,18 @@ module n2m_uart #(
     logic [7:0] rx_data, byte_data;
     logic request_valid, request_done;
     n2m_interfaces_pkg::packet_header_t request_header;
-    logic [UART_ADDRESS_BITS-1:0] request_bytes;
+    logic [n2m_uart_pkg::UART_ADDRESS_BITS-1:0] request_bytes;
     logic packet_read, packet_data_valid;
-    logic [UART_ADDRESS_BITS-1:0] packet_address;
+    logic [n2m_uart_pkg::UART_ADDRESS_BITS-1:0] packet_address;
     logic [7:0] packet_data;
     logic command_valid, command_done, command_packet_read;
     logic [7:0] command_forced_status;
-    logic [UART_ADDRESS_BITS-1:0] command_packet_address;
+    logic [n2m_uart_pkg::UART_ADDRESS_BITS-1:0] command_packet_address;
     logic response_write;
-    logic [UART_ADDRESS_BITS-1:0] response_address, response_bytes;
+    logic [n2m_uart_pkg::UART_ADDRESS_BITS-1:0] response_address, response_bytes;
     logic [7:0] response_data;
     logic transmit_valid, transmit_read, transmit_data_valid, transmit_done;
-    logic [UART_ADDRESS_BITS-1:0] transmit_bytes, transmit_address;
+    logic [n2m_uart_pkg::UART_ADDRESS_BITS-1:0] transmit_bytes, transmit_address;
     logic [7:0] transmit_data;
     n2m_input u_input (
         .clk_sys(clk_sys), .reset_sys(reset_sys), .core_reset(core_reset), .gb_tick(gb_tick),

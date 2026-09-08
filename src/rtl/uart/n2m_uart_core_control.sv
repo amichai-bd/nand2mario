@@ -27,7 +27,6 @@ module n2m_uart_core_control (
     output logic [7:0] status,
     output logic [63:0] completed_dot
 );
-    import n2m_interfaces_pkg::*;
     typedef enum logic [3:0] {
         IDLE, HALT_WAIT, RUN_WAIT, RESET_WAIT, RESET_ASSERT, INIT_WAIT,
         INPUT_APPLY, STEP_RUN, STEP_PAUSE, COMPLETE
@@ -50,7 +49,7 @@ module n2m_uart_core_control (
     // A new HALT/RESET at the current A edge must stop after that very dot.
     // paused is registered in the timebase, so this creates no tick loop.
     assign pause_request = host_pause || stop_step ||
-        (start && (command == COMMAND_HALT || command == COMMAND_RESET));
+        (start && (command == n2m_interfaces_pkg::COMMAND_HALT || command == n2m_interfaces_pkg::COMMAND_RESET));
     always_comb begin
         state_next = state;
         host_pause_next = host_pause;
@@ -63,17 +62,17 @@ module n2m_uart_core_control (
         completed_dot_next = completed_dot;
         case (state)
             IDLE: if (start) begin
-                status_next = STATUS_OK;
+                status_next = n2m_interfaces_pkg::STATUS_OK;
                 case (command)
-                    COMMAND_HALT: begin host_pause_next = 1; state_next = HALT_WAIT; end
-                    COMMAND_RUN: begin host_pause_next = 0; state_next = RUN_WAIT; end
-                    COMMAND_RESET: begin host_pause_next = 1; state_next = RESET_WAIT; end
-                    COMMAND_INPUT: begin pending_input_next = input_write; state_next = INPUT_APPLY; end
-                    COMMAND_STEP: begin
+                    n2m_interfaces_pkg::COMMAND_HALT: begin host_pause_next = 1; state_next = HALT_WAIT; end
+                    n2m_interfaces_pkg::COMMAND_RUN: begin host_pause_next = 0; state_next = RUN_WAIT; end
+                    n2m_interfaces_pkg::COMMAND_RESET: begin host_pause_next = 1; state_next = RESET_WAIT; end
+                    n2m_interfaces_pkg::COMMAND_INPUT: begin pending_input_next = input_write; state_next = INPUT_APPLY; end
+                    n2m_interfaces_pkg::COMMAND_STEP: begin
                         if (cpu_stopped) begin
                             // An already sleeping oscillator cannot spend a dot
                             // budget. Preserve pause/input and any queued wake.
-                            status_next = STATUS_STEP_LIMIT;
+                            status_next = n2m_interfaces_pkg::STATUS_STEP_LIMIT;
                             completed_dot_next = dot_count;
                             state_next = COMPLETE;
                         end else begin
@@ -109,7 +108,7 @@ module n2m_uart_core_control (
                 remaining_next = remaining - 1'b1;
                 if (stop_step) begin
                     host_pause_next = 1;
-                    status_next = instruction_complete ? STATUS_OK : STATUS_STEP_LIMIT;
+                    status_next = instruction_complete ? n2m_interfaces_pkg::STATUS_OK : n2m_interfaces_pkg::STATUS_STEP_LIMIT;
                     completed_dot_next = dot_next;
                     state_next = STEP_PAUSE;
                 end
@@ -127,18 +126,18 @@ module n2m_uart_core_control (
     `DFF_ARST_VAL(epoch, epoch_next, clk_sys, reset_sys, '0)
     `DFF_ARST_VAL(dot_count, dot_next, clk_sys, reset_sys, '0)
     `DFF_ARST_VAL(retirement_count, retirement_next, clk_sys, reset_sys, '0)
-    `DFF_ARST_VAL(status, status_next, clk_sys, reset_sys, STATUS_OK)
+    `DFF_ARST_VAL(status, status_next, clk_sys, reset_sys, n2m_interfaces_pkg::STATUS_OK)
     `DFF_ARST_VAL(completed_dot, completed_dot_next, clk_sys, reset_sys, '0)
     `N2M_ASSERT(UART_CORE_START_IDLE, clk_sys, reset_sys, start |-> !busy)
     `N2M_ASSERT(UART_CORE_RESET_PAUSED, clk_sys, reset_sys, core_reset |-> paused && !gb_tick)
     `N2M_ASSERT(UART_CORE_INIT_FROZEN, clk_sys, reset_sys, state == INIT_WAIT |-> paused && !gb_tick)
     `N2M_ASSERT(UART_STEP_BUDGET, clk_sys, reset_sys,
-        start && command == COMMAND_STEP |-> paused && step_budget != 0 && step_budget <= WIRE_STEP_MAX_DOTS)
+        start && command == n2m_interfaces_pkg::COMMAND_STEP |-> paused && step_budget != 0 && step_budget <= n2m_interfaces_pkg::WIRE_STEP_MAX_DOTS)
     `N2M_ASSERT(UART_STEP_ASLEEP_COMPLETE, clk_sys, reset_sys,
-        start && command == COMMAND_STEP && cpu_stopped |=>
-            done && status == STATUS_STEP_LIMIT && pause_request && paused && !gb_tick)
+        start && command == n2m_interfaces_pkg::COMMAND_STEP && cpu_stopped |=>
+            done && status == n2m_interfaces_pkg::STATUS_STEP_LIMIT && pause_request && paused && !gb_tick)
     `N2M_ASSERT_STABLE_WHEN(UART_STEP_ASLEEP_TIME, clk_sys, reset_sys,
-        start && command == COMMAND_STEP && cpu_stopped, dot_count)
+        start && command == n2m_interfaces_pkg::COMMAND_STEP && cpu_stopped, dot_count)
     `N2M_ASSERT_KNOWN(UART_CORE_CONTROLS, clk_sys, reset_sys,
         ({start, gb_tick, paused, core_initialized, instruction_complete, retirement_valid, cpu_stopped, state}))
 endmodule
