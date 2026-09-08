@@ -260,9 +260,10 @@ A target may set integer `timeout_seconds` from 1 through 300 for its Questa
 runtime command. The default and individual preparation/compile commands remain
 60 seconds, subject to the overall ceiling. The value enters the fingerprint and
 each command records its effective bound. The outer execution deadline takes
-precedence over a longer nested timeout. Python environment installation also
-has a 300-second command limit; separate environment preparation is not a DUT
-test. FPGA compilation remains separately measured under its owning tool limits.
+precedence over a longer nested timeout. The palette-case native reference
+build also has a 300-second nested command limit. Separate environment
+preparation is not a DUT test. FPGA compilation remains separately measured
+under its owning tool limits.
 Independent simulation-time watchdogs remain required. If a milestone cannot complete
 within this wall budget, keep it open and report the missing evidence; do not
 schedule a longer run or shorten its oracle to claim completion. An explicitly
