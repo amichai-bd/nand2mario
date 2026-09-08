@@ -69,8 +69,8 @@ tests cocotb schedules from the module.
 
 Python targets may select `vendor_model: "intel-memory"` through the existing
 strict model resolution, hashing and library binding. The explicit
-`intel-controls` profile adds the same pinned ADC models and three real generated
-board PLLs for the [paused controls proof](../../../src/dv/python/controls/README.md).
+`intel-controls` profile adds the same pinned ADC models and real ADC PLL
+at the specified system/pixel clock boundary for the [paused controls proof](../../../src/dv/python/controls/README.md).
 It checks the exact ADC diagnostics plus the existing Python access warning and
 declared frame-RAM diagnostics. Other vendor selections remain unsupported.
 `preload: "integration"` packages the original integration

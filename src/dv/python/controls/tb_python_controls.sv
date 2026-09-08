@@ -1,9 +1,10 @@
 `timescale 1ns/1ps
 `default_nettype none
-// Real board clocks and owners; Python drives only board pins and UART.
+// Qualified clock/reset boundary; the board instantiates this same module.
 module tb_python_controls;
     logic clk_reference;
     logic clk_adc_reference;
+    logic clk_sys, clk_pix, reset_sys, reset_pix;
     logic board_reset_n;
     logic [3:0] buttons_n;
     logic uart_rx;
@@ -18,16 +19,24 @@ module tb_python_controls;
     initial begin
         clk_reference = 0;
         clk_adc_reference = 0;
+        clk_sys = 0;
+        clk_pix = 0;
+        reset_sys = 1;
+        reset_pix = 1;
         board_reset_n = 0;
         buttons_n = 4'hF;
         uart_rx = 1;
         corrupt = 0;
         injection_done = 0;
     end
-    v05_controls_proof #(.UART_BAUD(3125000)) dut (.*);
+    n2m_controls_system #(.UART_BAUD(3125000)) dut (.*);
     defparam dut.u_system.u_stores.rom.SIM_INIT_FILE = "preload-rom.mif";
     defparam dut.u_system.u_uart.u_commands.u_load.u_presence.u_presence.SIM_INIT_FILE = "preload-presence.mif";
     defparam dut.u_system.u_uart.u_commands.u_load.SIM_PRELOAD = 1;
+    always @(negedge clk_sys) reset_sys = !board_reset_n;
+    always @(negedge clk_pix) reset_pix = !board_reset_n;
+    always #20 clk_sys = !clk_sys;
+    always #19.84127 clk_pix = !clk_pix;
     always #10 clk_reference = !clk_reference;
     always #50 clk_adc_reference = !clk_adc_reference;
     always @(posedge corrupt) begin

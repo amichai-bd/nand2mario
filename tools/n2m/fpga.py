@@ -218,7 +218,7 @@ def execute(argv, folder, log, timeout, record, build):
         raise RuntimeError(f"Quartus exit {process.returncode}; see {log.name}")
     explained = ()
     if log.name == "compile.log" and record.get("definition", {}).get("top") in ("adc_proof", "controls_proof", "v05_controls_proof"):
-        explained = fpga_adc.explained_diagnostics(text, folder, record["tools"]["adc"])
+        explained = fpga_adc.explained_diagnostics(text, folder, record["tools"]["adc"], record["definition"]["top"])
     if log.name == "compile.log" and "pll" in record.get("definition", {}):
         explained = [*explained, *fpga_pll.explained_diagnostics(text, folder, record["definition"]["pll"])]
     record["classified_diagnostics"].extend(diagnostics(text, explained))
@@ -268,7 +268,8 @@ def timing_evidence(folder, target, *, build_id=None):
             raise ValueError(f"timing failure: {name}, slack={slack}, TNS={tns}")
         slacks[name] = slack
     for corner in ("Slow 1200mV 85C", "Slow 1200mV 0C", "Fast 1200mV 0C"):
-        if target["top"] in ("controls_proof", "v05_controls_proof") and f"{corner} Model Minimum Pulse Width 'u_adc|u_pll|altpll_component|auto_generated|pll1|clk[0]'" not in slacks:
+        adc_prefix = "u_controls|" if fpga_v05.control_target(target) else ""
+        if target["top"] in ("controls_proof", "v05_controls_proof") and f"{corner} Model Minimum Pulse Width '{adc_prefix}u_adc|u_pll|altpll_component|auto_generated|pll1|clk[0]'" not in slacks:
             raise ValueError("missing ADC PLL pulse-width timing")
         for check in (("Setup", "Hold", "Recovery", "Removal", "Minimum Pulse Width") if "pll" in target else ("Setup", "Hold", "Minimum Pulse Width")):
             if not any(name.startswith(f"{corner} Model {check} '") for name in slacks):
@@ -313,7 +314,7 @@ def timing_evidence(folder, target, *, build_id=None):
     evidence = {"slack_ns": slacks, "fit_summary": fit, "unconstrained": "none", "ignored_constraints": "none", "vendor_lock_event": lock_event, "vga": vga_evidence, "intel_memory": memory_evidence,
             "virtual_clock_check": "No virtual clock required for the physical-clock-referenced fixture" if "No virtual clock was found." in checks else "passed"}
     if target["top"] in ("v05_proof", "v05_controls_proof"):
-        evidence["vga_paths"] = fpga_v05.verify_paths(folder, system_clock=fpga_pll.SYSTEM_CLOCK)
+        evidence["vga_paths"] = fpga_v05.verify_paths(folder, system_clock=fpga_pll.SYSTEM_CLOCK, controls=fpga_v05.control_target(target))
     if adc_evidence is not None:
         evidence["adc"] = adc_evidence
     if target.get("top") == "controls_proof":
@@ -323,7 +324,7 @@ def timing_evidence(folder, target, *, build_id=None):
         evidence["intel_memory"] = fpga_v05.verify_memory(folder, system_net=fpga_pll.SYSTEM_NET, top=target["top"])
         evidence["board_uart"] = fpga_controls.verify(folder, system_clock=fpga_pll.SYSTEM_CLOCK,
             system_net=fpga_pll.SYSTEM_NET, chains=fpga_v05.chains(target), top=target["top"])
-        evidence["board_build_id"] = fpga_controls.verify_identity(folder, build_id, macro="N2M_V05_BUILD_ID", instances=2)
+        evidence["board_build_id"] = fpga_controls.verify_identity(folder, build_id, macro="N2M_V05_BUILD_ID", instances=3 if fpga_v05.control_target(target) else 2)
     return evidence
 
 

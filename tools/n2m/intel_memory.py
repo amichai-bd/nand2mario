@@ -18,13 +18,9 @@ def resolve(root, simulator, target, directory=None):
         from . import intel_adc
         descriptor = intel_adc.resolve(root, simulator, directory)
         if selection == "intel-controls":
-            from . import fpga_pll
             memory = resolve(root, simulator, {**target, "vendor_model": "intel-memory"}, directory)
             descriptor["selection"] = selection
             descriptor["memory_diagnostics"] = memory
-            descriptor["board_pll"] = {"module": "n2m_pixel_pll", "input_ps": 20000,
-                                       "multiply": 63, "divide": 125, "system_divide": 2}
-            descriptor["board_generation_inputs"] = fpga_pll.identity(Path(descriptor["generation_inputs"]["generator"]["path"]).parent)
         return descriptor
     if selection != "intel-memory":
         raise ValueError("unsupported vendor model; expected intel-memory or intel-adc")

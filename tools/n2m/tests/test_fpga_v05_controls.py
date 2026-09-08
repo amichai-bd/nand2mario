@@ -24,8 +24,8 @@ class ControlsSystemTests(unittest.TestCase):
         text=fpga.checked_constraints(self.target)
         self.assertEqual(text.count('set_false_path -from $controls_'),5)
         self.assertEqual(text.count('set_false_path -from $launch_'),6)
-        self.assertIn('u_system|u_uart|u_serial_rx|rx_meta',text)
-        self.assertIn('u_physical|u_buttons|button_meta',text)
+        self.assertIn('u_controls|u_system|u_uart|u_serial_rx|rx_meta',text)
+        self.assertIn('u_controls|u_physical|u_buttons|button_meta',text)
         self.assertNotIn('set_clock_groups',text)
         audit=fpga_v05.audit(fpga.tcl_word,board=True,controls=True)
         for name in ('button0','button1','button2','button3','uart'):

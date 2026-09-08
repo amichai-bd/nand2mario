@@ -34,8 +34,8 @@ async def run(dut, *, corrupt=False):
     client = connect(dut, received, observe, entries)
     await Timer(1, unit='us')
     dut.board_reset_n.value = 1
-    # Two real 10 ms qualifiers, then a complete 1 ms ADC pair interval.
-    await Timer(23, unit='ms')
+    # Default ADC 10 ms qualifier plus acquisition; validate this margin in startup.
+    await Timer(13, unit='ms')
 
     @bridge
     def initialize():
@@ -130,7 +130,7 @@ async def controls_startup(dut):
     dut.board_reset_n.value = 1
     await Timer(999, unit='us')
     mark('1ms')
-    for target_ms in (10, 11, 20, 21, 23):
+    for target_ms in (10, 11, 12, 13):
         await Timer(target_ms * 1000000 - int(get_sim_time(unit='ns')), unit='ns')
         mark(f'{target_ms}ms')
     print('CONTROLS_STARTUP_DIAGNOSTIC')

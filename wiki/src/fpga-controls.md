@@ -181,3 +181,11 @@ CDC paths. Existing diagnostic fits do not establish this composition's timing.
 Its default calibration remains nominal. Physical acceptance under #156 still
 requires verified components, electrical setup, measured calibration and actual
 all-eight-control/UART-isolation/VGA evidence.
+
+The board shell retains `n2m_clocking` and supplies its qualified clocks and
+resets to the shared controls/system module. That module owns the ADC reset,
+backend, physical producer and actual system connections. Functional simulation
+uses this same module with specified 25 MHz/25.2 MHz clocks and qualified reset
+inputs. It retains the real ADC PLL, Intel memory and default acquisition reset
+qualification. The board fit separately proves all three PLLs and the complete
+new hierarchy; the functional proof does not replace that obligation.

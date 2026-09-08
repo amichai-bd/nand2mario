@@ -19,7 +19,8 @@ CONTROL_PINS = dict(BOARD_PINS, clk_adc_reference="PIN_N5", **dict(zip(
     [f"buttons_n[{i}]" for i in range(4)], ("PIN_AB7", "PIN_AB8", "PIN_AB9", "PIN_Y10"))))
 CONTROL_PINS.update(dict(zip([f"leds[{i}]" for i in range(10)],
     ("PIN_A8", "PIN_A9", "PIN_A10", "PIN_B10", "PIN_D13", "PIN_C13", "PIN_E14", "PIN_D14", "PIN_A11", "PIN_B11"))))
-CONTROL_CHAINS = fpga_controls.CHAINS[:4] + UART_CHAINS
+CONTROL_CHAINS = tuple((name, port, "u_controls|" + first, "u_controls|" + second)
+                       for name, port, first, second in fpga_controls.CHAINS[:4] + UART_CHAINS)
 
 
 def control_target(target):
@@ -37,27 +38,27 @@ def validate_board(target):
         raise ValueError("v05-board requires physical UART/reset and diagnostic-only virtual outputs")
 
 
-def hierarchy(text):
-    return text.replace("u_bridge|", "u_system|u_bridge|")
+def hierarchy(text, controls=False):
+    return text.replace("u_bridge|", ("u_controls|" if controls else "") + "u_system|u_bridge|")
 
 
 def constraints(quote, *, board=False, controls=False):
     text = fpga_vga.constraints(quote, lcd=True)
-    return hierarchy(text) + (fpga_controls.constraints(quote, chains=CONTROL_CHAINS if controls else UART_CHAINS) if board else "")
+    return hierarchy(text, controls) + (fpga_controls.constraints(quote, chains=CONTROL_CHAINS if controls else UART_CHAINS) if board else "")
 
 
 def audit(quote, *, board=False, controls=False):
-    return hierarchy(fpga_vga.audit(quote, lcd=True)) + (fpga_controls.audit(quote, chains=CONTROL_CHAINS if controls else UART_CHAINS) if board else "")
+    return hierarchy(fpga_vga.audit(quote, lcd=True), controls) + (fpga_controls.audit(quote, chains=CONTROL_CHAINS if controls else UART_CHAINS) if board else "")
 
 
-def verify_paths(folder, *, system_clock):
+def verify_paths(folder, *, system_clock, controls=False):
     reports = {}
     for name in fpga_vga.required_reports(lcd=True):
         path = folder / "output" / name
         if not path.is_file() or not path.stat().st_size:
             raise ValueError("missing composed VGA path evidence: " + name)
         reports[name] = path.read_text(encoding="utf-8")
-    return fpga_vga.verify_paths(reports,lcd=True,system_clock=system_clock,bridge_prefix="u_system|u_bridge|")
+    return fpga_vga.verify_paths(reports,lcd=True,system_clock=system_clock,bridge_prefix=("u_controls|" if controls else "") + "u_system|u_bridge|")
 
 
 def verify_memory(folder, *, system_net, top="v05_proof"):
@@ -66,18 +67,19 @@ def verify_memory(folder, *, system_net, top="v05_proof"):
     import os
     text = (folder / 'simulation/questa/design.vo').read_text(encoding='utf-8')
     fit = (folder / 'output/design.fit.rpt').read_text(encoding='cp1252' if os.name == 'nt' else 'utf-8')
-    stores = {'u_system|u_stores|' + owner: shape for owner, shape in fpga_memory_stores.STORES.items()}
-    stores.update({f'u_system|u_snapshot|banks[{bank}].u_{side}': (5760, 8)
+    prefix = "u_controls|" if top == "v05_controls_proof" else ""
+    stores = {prefix + 'u_system|u_stores|' + owner: shape for owner, shape in fpga_memory_stores.STORES.items()}
+    stores.update({f'{prefix}u_system|u_snapshot|banks[{bank}].u_{side}': (5760, 8)
                    for bank in range(2) for side in ('source', 'host')})
     backing = fpga_memory_stores.verify_netlist(text, stores=stores, system_clock=system_net, scoped=True)
     fpga_memory_stores.verify_rows(fit, stores=stores, scoped=True)
     vga = fpga_vga.verify_memory_netlist(text, lcd=True, system_net=system_net,
-        bridge_prefix='u_system|u_bridge|', shade='u_system|u_ppu|source_shade')
-    fpga_vga.verify_memory_rows(fit, bridge_prefix='u_system|u_bridge|')
+        bridge_prefix=prefix + 'u_system|u_bridge|', shade=prefix + 'u_system|u_ppu|source_shade')
+    fpga_vga.verify_memory_rows(fit, bridge_prefix=prefix + 'u_system|u_bridge|')
     uart = fpga_controls.verify_uart_memory(text, fit, system_net=system_net,
-        prefix='u_system|', top=top)
+        prefix=prefix + 'u_system|', top=top)
     names = re.findall(r'fiftyfivenm_ram_block\s+\\(\S+)\s*\(', text)
-    uart_names = {name for name in names if name.startswith('u_system|u_uart|')}
+    uart_names = {name for name in names if name.startswith(prefix + 'u_system|u_uart|')}
     if (len(names) != 111 or len(set(names)) != 111
             or set(names) != set(backing) | set(vga) | uart_names):
         raise ValueError('composed memory atom partition differs')

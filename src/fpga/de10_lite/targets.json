@@ -1766,6 +1766,7 @@
         "src/rtl/input/n2m_adc_pairs.sv",
         "src/rtl/input/n2m_controls_mask.sv",
         "src/rtl/input/n2m_physical_controls.sv",
+        "src/fpga/de10_lite/n2m_controls_system.sv",
         "src/fpga/de10_lite/v05_controls_proof.sv"
       ],
       "constraints": [
@@ -1829,12 +1830,12 @@
           "u_clocking|u_reset|sys_release[1]|clrn",
           "u_clocking|u_reset|pix_release[0]|clrn",
           "u_clocking|u_reset|pix_release[1]|clrn",
-          "u_adc_reset|board_release[0]|clrn",
-          "u_adc_reset|board_release[1]|clrn",
-          "u_adc_reset|lock_samples[0]|clrn",
-          "u_adc_reset|lock_samples[1]|clrn",
-          "u_adc_reset|sys_release[0]|clrn",
-          "u_adc_reset|sys_release[1]|clrn"
+          "u_controls|u_adc_reset|board_release[0]|clrn",
+          "u_controls|u_adc_reset|board_release[1]|clrn",
+          "u_controls|u_adc_reset|lock_samples[0]|clrn",
+          "u_controls|u_adc_reset|lock_samples[1]|clrn",
+          "u_controls|u_adc_reset|sys_release[0]|clrn",
+          "u_controls|u_adc_reset|sys_release[1]|clrn"
         ],
         "output_delays": [
           {

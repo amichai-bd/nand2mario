@@ -133,11 +133,6 @@ def simulate(root, build, args, simulator, provenance=None):
                 raise RuntimeError(f"unexpected exit {result.returncode}; see {log.relative_to(root)}")
             if log.name == "adc-pll-generate.log":
                 record["generated_adc_pll"] = intel_adc.verify_generated(cwd)
-            if log.name == "controls-system-pll-generate.log":
-                from . import fpga_pll
-                fpga_pll.verify(cwd, vendor_model["board_pll"])
-                record["generated_board_plls"] = {name: file_hash(cwd / name)
-                    for name in ("n2m_pixel_pll.v", "n2m_system_pll.v")}
             checked_output = result.stdout
             if log.name == "intel-adc-control-compile.log":
                 checked_output, record["explained_compile_diagnostics"] = intel_adc.classify_compile_diagnostics(result.stdout, vendor_model, log.name)

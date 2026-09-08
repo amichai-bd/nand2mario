@@ -185,26 +185,18 @@ class IntelAdcTests(unittest.TestCase):
             intel_adc.classify_sim_diagnostics(raw, bad_source)
 
 
-    def test_controls_profile_generates_both_real_board_plls(self):
+    def test_controls_profile_retains_real_adc_at_qualified_clock_boundary(self):
         descriptor = self.resolve()
-        descriptor.update(selection="intel-controls", board_generation_inputs=self.generation,
-            board_pll={"module": "n2m_pixel_pll", "input_ps": 20000,
-                       "multiply": 63, "divide": 125, "system_divide": 2})
+        descriptor["selection"] = "intel-controls"
         run = self.root / "controls-run"
         run.mkdir()
         commands, _, binding = intel_adc.commands(self.sim, self.root, run, descriptor)
-        self.assertIn("CLK0_MULTIPLY_BY=63", commands[1][0])
-        self.assertIn("CLK0_DIVIDE_BY=125", commands[1][0])
-        self.assertIn("CLK0_MULTIPLY_BY=1", commands[2][0])
-        self.assertIn("CLK0_DIVIDE_BY=2", commands[2][0])
-        self.assertIn("BANDWIDTH_TYPE=LOW", commands[2][0])
-        self.assertEqual(commands[-1][0][-2:], [str(self.root / "n2m_pixel_pll.v"), str(self.root / "n2m_system_pll.v")])
+        self.assertEqual([entry[2].name for entry in commands if "generate" in entry[2].name],
+                         ["adc-pll-generate.log"])
+        self.assertEqual(commands[-1][0][-1], str(self.root / "n2m_adc_pll.v"))
+        self.assertFalse(any("n2m_pixel_pll" in str(entry) or "n2m_system_pll" in str(entry)
+                             for entry in commands))
         self.assertEqual(binding, ["-L", intel_adc.LIBRARY, "-L", intel_adc.ATOMS_LIBRARY])
-        descriptor["board_pll"]["divide"] = 124
-        bad = self.root / "bad-controls-run"
-        bad.mkdir()
-        with self.assertRaisesRegex(ValueError, "unsupported PLL"):
-            intel_adc.commands(self.sim, self.root, bad, descriptor)
 
 
 if __name__ == "__main__":

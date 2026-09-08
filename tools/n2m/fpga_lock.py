@@ -80,7 +80,7 @@ def verify(text, checks, top="clocking_proof"):
     rows = re.findall(r";\s*([^;\r\n]+?)\s*;\s*No clock feeds this register's clock port\.\s*;", checks)
     expected_rows = [ROW]
     if top in ("controls_proof", "v05_controls_proof"):
-        expected_rows.append("n2m_adc_backend:u_adc|n2m_adc_pll:u_pll|altpll:altpll_component|n2m_adc_pll_altpll:auto_generated|pll_lock_sync")
+        expected_rows.append(("n2m_controls_system:u_controls|" if top == "v05_controls_proof" else "") + "n2m_adc_backend:u_adc|n2m_adc_pll:u_pll|altpll:altpll_component|n2m_adc_pll_altpll:auto_generated|pll_lock_sync")
     if rows != expected_rows:
         raise ValueError("unrecognized no-clock endpoint")
     text, cells, parameters, declarations, assignments, assigned_nets = parse_netlist(text, top)
@@ -193,7 +193,7 @@ def verify_parallel(text, checks, top):
     system_row = "n2m_clocking:u_clocking|n2m_system_pll:u_system_pll|altpll:altpll_component|n2m_system_pll_altpll:auto_generated|pll_lock_sync"
     expected_rows = [ROW, system_row]
     if top in ("controls_proof", "v05_controls_proof"):
-        expected_rows.append("n2m_adc_backend:u_adc|n2m_adc_pll:u_pll|altpll:altpll_component|n2m_adc_pll_altpll:auto_generated|pll_lock_sync")
+        expected_rows.append(("n2m_controls_system:u_controls|" if top == "v05_controls_proof" else "") + "n2m_adc_backend:u_adc|n2m_adc_pll:u_pll|altpll:altpll_component|n2m_adc_pll_altpll:auto_generated|pll_lock_sync")
     rows = re.findall(r";\s*([^;\r\n]+?)\s*;\s*No clock feeds this register's clock port\.\s*;", checks)
     if sorted(rows) != sorted(expected_rows):
         raise ValueError("parallel lock event inventory differs")
