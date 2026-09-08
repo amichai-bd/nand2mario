@@ -57,9 +57,9 @@ module tb_ppu_oam_read;
     endtask
     task automatic check_at(input integer elapsed, input logic read_allowed, input logic write_allowed);
         @(negedge clk_sys);
+        if (elapsed == 452 && $test$plusargs("read_corrupt")) force dut.oam_cpu_read_allow = 1'b1;
         do @(posedge clk_sys); while (!(gb_tick && dot_before == enable_dot + 64'(elapsed)));
         if (cpu_phase != 3) $fatal(1, "PPU_OAM_READ_PHASE");
-        if (elapsed == 452 && $test$plusargs("read_corrupt")) force dut.oam_cpu_read_allow = 1'b1;
         check_permissions(read_allowed, write_allowed);
         @(negedge clk_sys);
     endtask
