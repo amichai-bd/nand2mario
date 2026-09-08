@@ -210,7 +210,7 @@ module tb_dma_late;
         end
         // Reset during operand preparation and after the first drain write.
         for(r=0;r<2;r=r+1) begin
-            core_reset=1;request_valid=0;bus_plan='0;oam_cpu_late_write=0;
+            core_reset=1;request_valid=0;bus_plan='0;oam_cpu_late_write=0;ppu_oam_phase=0;
             @(negedge clk_sys);core_reset=0;wait(memory_init_done);
             setup=0;cpu_phase=0;ppu_oam_phase=1;ppu_scan_index=37;oam_late_future=1;
             repeat(4) dot_step();oam_late_future=0;
@@ -220,7 +220,7 @@ module tb_dma_late;
                 repeat(3) dot_step();ppu_scan_index=39;oam_cpu_late_write=1;dot_step();
                 @(negedge clk_sys);
             end
-            core_reset=1;request_valid=0;bus_plan='0;oam_cpu_late_write=0;
+            core_reset=1;request_valid=0;bus_plan='0;oam_cpu_late_write=0;ppu_oam_phase=0;
             @(negedge clk_sys);
             if(oam_request.read || |oam_request.write_enable || access_write || dut.service.late_ready_q
                 || ppu_oam_valid || fault) $fatal(1,"DMA_LATE_RESET_CANCEL");
