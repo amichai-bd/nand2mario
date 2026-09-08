@@ -13,6 +13,8 @@ Read the board contract and verify the exact target before changing the project.
 2. Constrain every clock and reviewed timing exception.
 3. Treat unconstrained paths and unexplained warnings as failures.
 4. Record Quartus version, commit, resource use, timing, and artifact hashes.
+   Follow the [verified package-binding guidance](examples/scenarios.md#package-constants-in-quartus-251)
+   for affected product expressions and their synthesis evidence.
 5. Program or drive physical I/O only with explicit approval and an exclusive
    board lock.
 
