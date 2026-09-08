@@ -30,6 +30,7 @@ def linux_path(path):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--baseline', action='store_true', help='Build untouched Core for observer equivalence')
+    parser.add_argument('--case', choices=('integration','palette-fc','palette-00'), default='integration')
     parser.add_argument('--source', type=Path, required=True)
     parser.add_argument('--rom', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
@@ -59,8 +60,12 @@ def main():
     try:
         manifest = json.loads((HERE / 'sources.json').read_text())
         result['pin'] = manifest['pin']
+        case_path=ROOT/'src/dv/ppu/palette194.json'
+        case=json.loads(case_path.read_text()) if args.case!='integration' else None
+        image_contract=case['images'][args.case] if case else manifest['image']
+        result['case']=args.case
         image = args.rom.read_bytes()
-        if len(image) != manifest['image']['length'] or digest(args.rom) != manifest['image']['sha256']:
+        if len(image) != image_contract['length'] or digest(args.rom) != image_contract['sha256']:
             raise ValueError('Original integration image length/hash mismatch before Core load')
         observed = output / 'core'
         for name, expected in manifest['files'].items():
@@ -74,6 +79,7 @@ def main():
         for path in [HERE / 'profile.c', HERE / 'probe.c', HERE / 'observe.patch',
                      HERE / 'sources.json', HERE / 'scenario.json', HERE / 'retirement.py', Path(__file__), ROOT / 'cfg/interfaces.json', args.rom]:
             result['inputs'][str(path.resolve())] = digest(path)
+        if case:result['inputs'][str(case_path.resolve())]=digest(case_path)
         # Apply only the recorded original observer; pristine inputs remain elsewhere.
         patch = (HERE / 'observe.patch').read_text(encoding='utf-8')
         if b'\r\n' in (observed / 'Core/display.c').read_bytes():
@@ -87,6 +93,8 @@ def main():
         header = '/* Generated from cfg/interfaces.json for this attempt. */\n'
         header += ''.join(f'#define PROFILE_{v["name"]} {v["value"]}\n'
                           for v in config['groups']['profile'])
+        header += f'#define PROBE_EVENT_BOUND {case["native_event_bound"] if case else 100}\n'
+        header += f'#define PROBE_DOT_BOUND {case["native_bound_dots"] if case else 140600}\n'
         (output / 'n2m_profile.h').write_text(header, encoding='utf-8')
         result['profile_header_sha256'] = digest(output / 'n2m_profile.h')
         result['tool_versions'] = run(['clang', '--version'], 'clang-version')

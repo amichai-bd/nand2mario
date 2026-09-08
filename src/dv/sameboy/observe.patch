@@ -20,8 +20,3 @@
 +        n2m_observe_fetch_boundary(gb, 1);
 @@ -1704,0 +1709 @@
 +        n2m_observe_fetch_boundary(gb, 0);
---- a/Core/timing.c
-+++ b/Core/timing.c
-@@ -518,0 +519,2 @@
-+    extern void n2m_observe_advance(GB_gameboy_t *);
-+    n2m_observe_advance(gb);

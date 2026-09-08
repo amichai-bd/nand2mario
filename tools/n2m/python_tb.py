@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import re
 import sys
+import subprocess
 import xml.etree.ElementTree as ET
 
 from .records import file_hash
@@ -29,7 +30,7 @@ def validate(root, target):
         raise ValueError("python testbench requires zero raw exit and no driver")
     if target.get("vendor_model") not in (None, "intel-memory"):
         raise ValueError("Python testbench supports only Intel memory models")
-    if target.get("preload") not in (None, "integration", "v05"):
+    if target.get("preload") not in (None, "integration", "v05", "palette-fc", "palette-00"):
         raise ValueError("unknown Python preload")
     if not isinstance(target.get("top"), str) or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", target["top"]):
         raise ValueError("python top must be an HDL identifier")
@@ -46,12 +47,15 @@ def validate(root, target):
     matches = [p for p in config["inputs"] if Path(p).name == config["module"] + ".py"]
     if len(matches) != 1:
         raise ValueError("python inputs must contain exactly one named test module")
-    if target.get("preload") in ("integration", "v05"):
+    if target.get("preload") in ("integration", "v05", "palette-fc", "palette-00"):
         required = {"src/dv/integration/image.py", "src/dv/integration/program.asm",
                     "src/dv/integration/program.json", "src/dv/integration/retirement.json",
                     "src/sw/generated/interfaces.inc"}
         if target["preload"] == "v05":
             required = {"src/sw/v05/main.asm", "src/sw/v05/layout.json", "src/sw/generated/interfaces.inc"}
+        if target['preload'].startswith('palette-'):
+            required.update({'src/dv/ppu/palette194.py','src/dv/ppu/palette194.json'})
+            required.update(p.relative_to(root).as_posix() for p in (root/'src/dv/sameboy').iterdir() if p.suffix in ('.py','.c','.json','.patch'))
         required.update(p.relative_to(root).as_posix() for p in (root / "tools/sw").glob("*")
                         if p.suffix in (".py", ".json"))
         if target.get("vendor_model") != "intel-memory" or not required <= set(config["inputs"]):
@@ -101,7 +105,7 @@ def environment(root, target, attempt, seed, runtime):
 
 
 def prepare(target, attempt, root=None):
-    if target.get("preload") in ("integration", "v05"):
+    if target.get("preload") in ("integration", "v05", "palette-fc", "palette-00"):
         import hashlib
         import importlib.util
         from .preload import prepare as prepare_preload, verify
@@ -116,6 +120,17 @@ def prepare(target, attempt, root=None):
             image = (root / report["rom"]).read_bytes()
             expected_sha = report["artifacts"][report["rom"]]
             (attempt / "program.gb").write_bytes(image)
+        elif target['preload'].startswith('palette-'):
+            spec=importlib.util.spec_from_file_location('palette194_image',root/'src/dv/ppu/palette194.py')
+            module=importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            image=module.build(root,attempt,int(target['preload'][-2:],16))
+            expected_sha=hashlib.sha256(image).hexdigest()
+            command=[sys.executable,'-X','utf8','-B',str(root/'src/dv/sameboy/probe.py'),
+                     '--case',target['preload'],'--source',str(root/'workdir/research/sameboy/source'),
+                     '--rom',str(attempt/'program.gb'),'--output',str(attempt/'reference')]
+            with (attempt/'reference-build.log').open('w') as output:
+                subprocess.run(command,cwd=root,stdout=output,stderr=subprocess.STDOUT,timeout=600,check=True)
         else:
             spec = importlib.util.spec_from_file_location("integration_image", root / "src/dv/integration/image.py")
             module = importlib.util.module_from_spec(spec)
