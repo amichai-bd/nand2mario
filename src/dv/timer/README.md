@@ -46,3 +46,16 @@ The pixel witness uses zero-filled profile VRAM/BGP and the existing startup
 source schedule: row0 first dot is LCD commit+93, row1 is+548, then456 dots per
 line. It checks bounded ordered source pixels and a final public host pause,
 not a complete frame, full v0.5 interval milestone or physical display.
+'
+`python-v05-timer` runs this original image on the actual composition through
+continuous Python, current Client commands and validated Intel preloading.
+Public loader commands establish the metadata and scan the full ROM CRC; this
+is preloaded execution, not a wire upload/readback claim. The checker records
+all retirements and consumed timer/marker bus transactions, verifies ordered
+pixels through final pause, and checks early tick progress while the CPU sleeps.
+
+`python-v05-timer-fault` forces the actual timer read route to zero without
+changing expectations. The first DIV read must fail at retirement index70,
+completed dot324, with A expected01 and actual00. This is a failing Python/XML
+test and nonzero outer builder result; the actual simulator exit remains zero.
+The failed result stays FAIL as evidence of the intended defect detection.

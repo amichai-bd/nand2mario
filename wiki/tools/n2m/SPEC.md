@@ -86,6 +86,11 @@ preparation for the original [nonuniform late OAM witnesses](../../../src/dv/ppu
 The producer verifies literal instructions and a declared whole-image hash;
 its source and software tools are required fingerprinted inputs.
 
+`preload: "timer234"` packages the original [actual-v0.5 timer program](../../../src/dv/timer/README.md#actual-v05-timer-program)
+through the same validated Intel preparation and public loader adoption. Its
+literal instruction/hash producer and software tool inputs are required in the
+fingerprint. It proves bounded execution, not physical UART loading.
+
 Python targets use the executing pinned interpreter and installed packages from
 the [separate dependency record](../../../src/dv/python/THIRD_PARTY.md). Normal
 SV use does not import or require cocotb. Execution does not install dependencies.
