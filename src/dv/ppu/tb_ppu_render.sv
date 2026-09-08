@@ -131,8 +131,10 @@ module tb_ppu_render;
                 palette_write_dot[palette_index] = 0;
             end
         end else if (gb_tick) begin
-            sampled_bgp = ref_bgp; sampled_obp0 = ref_obp0; sampled_obp1 = ref_obp1;
             sampled_dot = dot_before + 64'd1;
+            sampled_bgp = sampled_dot == palette_write_dot[0] + 64'd1 ? prior_palette[0] | ref_bgp : ref_bgp;
+            sampled_obp0 = sampled_dot == palette_write_dot[1] + 64'd1 ? prior_palette[1] | ref_obp0 : ref_obp0;
+            sampled_obp1 = sampled_dot == palette_write_dot[2] + 64'd1 ? prior_palette[2] | ref_obp1 : ref_obp1;
             sampled_write = 3;
             if (io_commit && io_write) begin
                 case (io_address)

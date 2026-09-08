@@ -65,7 +65,7 @@
       "path": "n2m_ppu_registers.sv",
       "source": "rtl/video.v",
       "section": "DMG LCD register writes and readback",
-      "local_changes": "Use generated addresses/direct-entry fill and CPU T4 commit interface; exclude FF46/CGB/save-state; expose LCD transitions and STAT-write event separately from timing/IRQ; enforce tick/quarter alignment with named assertions; use shared macros"
+      "local_changes": "Use generated addresses/direct-entry fill and CPU T4 commit interface; exclude FF46/CGB/save-state; expose LCD transitions and STAT-write event separately from timing/IRQ; enforce tick/quarter alignment with named assertions; use shared macros; original DMG palette-conflict projection preserves architectural readback and selects old|new for the next emulated-dot render sample, based on the primary hardware evidence linked in MAS_ppu"
     },
     {
       "path": "n2m_ppu_position.sv",

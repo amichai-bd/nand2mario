@@ -26,6 +26,9 @@ module n2m_ppu_registers (
     output logic [7:0] bgp,
     output logic [7:0] obp0,
     output logic [7:0] obp1,
+    output logic [7:0] render_bgp,
+    output logic [7:0] render_obp0,
+    output logic [7:0] render_obp1,
     output logic [7:0] wy,
     output logic [7:0] wx,
     output logic [3:0] stat_enable,
@@ -35,7 +38,31 @@ module n2m_ppu_registers (
     output logic lcd_disable
 );
     import n2m_interfaces_pkg::*;
-    logic write_commit, lcdc_write;
+    logic write_commit, lcdc_write, palette_write, palette_pending;
+    logic [1:0] palette_id, palette_id_next;
+    logic [7:0] palette_conflict, palette_old;
+    assign palette_write = write_commit && (io_address == GB_REG_BGP
+        || io_address == GB_REG_OBP0 || io_address == GB_REG_OBP1);
+    always_comb begin
+        palette_id_next = 2'd0;
+        palette_old = bgp;
+        case (io_address)
+            GB_REG_OBP0: begin palette_id_next = 2'd1; palette_old = obp0; end
+            GB_REG_OBP1: begin palette_id_next = 2'd2; palette_old = obp1; end
+            default: begin end
+        endcase
+    end
+    // A normal write updates readback now. The following dot samples the DMG
+    // old|new conflict, even if no visible pixel is emitted on that dot.
+    `DFF_RST_EN(palette_pending, palette_write, clk_sys, gb_tick, reset, 1'b0)
+    `DFF_RST_EN(palette_id, palette_id_next, clk_sys, palette_write, reset, 2'd0)
+    `DFF_RST_EN(palette_conflict, palette_old | io_wdata, clk_sys, palette_write, reset, 8'd0)
+    assign render_bgp = palette_pending && palette_id == 2'd0 ? palette_conflict : bgp;
+    assign render_obp0 = palette_pending && palette_id == 2'd1 ? palette_conflict : obp0;
+    assign render_obp1 = palette_pending && palette_id == 2'd2 ? palette_conflict : obp1;
+    `N2M_ASSERT(ppu_palette_conflict_id, clk_sys, reset, !palette_pending || palette_id < 2'd3)
+    `N2M_ASSERT_KNOWN(ppu_palette_conflict_known, clk_sys, reset,
+        {palette_pending, palette_id, palette_conflict})
     assign write_commit = gb_tick && io_commit && io_write && !reset;
     assign lcdc_write = write_commit && io_address == GB_REG_LCDC;
     assign lyc_write = write_commit && io_address == GB_REG_LYC;

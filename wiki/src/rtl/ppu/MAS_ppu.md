@@ -82,6 +82,26 @@ and metadata from pre-edge state at the emulated-dot edge; later output staging
 may only forward that event. The upstream `ce_n` path belongs to excluded extra
 sprites, not the normal pixel-output phase.
 
+DMG BGP/OBP0/OBP1 writes also have a one-dot palette conflict. The CPU-visible
+register commits normally at T4. The coincident A sample uses the old palette;
+the following emulated-dot sample uses `old | new` for the written palette,
+then subsequent samples use new. Other palettes are unchanged. The pending
+conflict expires on that following `gb_tick` even with no visible pixel, LCD
+disabled or FIFO stalled; it is not a pixel-count delay. Pause holds the pending
+state and reset clears it. No CPU wait, readback delay or source-dot shift is
+introduced. Architectural palette bytes and this transient render selection
+have one owner in `n2m_ppu_registers`.
+
+This corrects the selected MiSTer adaptation's missing DMG conflict. The primary
+[DMG-CPU B/blob report](https://github.com/LIJI32/SameBoy/issues/65#issuecomment-381519110)
+checks all color transitions and identifies bitwise OR; SameBoy's
+[hardware-verified timing correction](https://github.com/LIJI32/SameBoy/commit/249acb04cc59eeefd215eded0c69a19740e39058)
+is retained in its pinned CPU conflict path for all three palettes. The digital
+old/conflict/new sample sequence preserves our architectural commit and source
+boundary. It does not assert equality of internal Core PPU action timestamps
+or resolve the separate startup first-line interval difference in
+[#202](https://github.com/amichai-bd/nand2mario/issues/202).
+
 The actual negedge LCDC/LYC write block still requires an explicit relative-order
 mapping: renderer sampling precedes those register changes. No generated clock,
 blind same-edge substitution or extra emulated dot is allowed. CPU reads,

@@ -9635,5 +9635,31 @@
         "src/dv/sameboy/sources.json"
       ]
     }
+  },
+  "ppu-palette-conflict": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/dv/ppu/tb_ppu_palette_conflict.sv"
+    ],
+    "top": "tb_ppu_palette_conflict",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS PPU palette conflict palettes=3",
+    "timeout_seconds": 60
+  },
+  "ppu-palette-conflict-corrupt": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/ppu/n2m_ppu_registers.sv",
+      "src/dv/ppu/tb_ppu_palette_conflict.sv"
+    ],
+    "top": "tb_ppu_palette_conflict",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "PPU_PALETTE_CONFLICT palette=0 expected=0000ff actual=000055",
+    "timeout_seconds": 60
   }
 }

@@ -74,6 +74,7 @@ module n2m_ppu (
     logic pending_pixel, captured_start, pending_abort, pending_blank;
     logic first_frame_blank, fault_seen, vblank_history;
     logic lyc_write;
+    logic [7:0] render_bgp, render_obp0, render_obp1;
     logic [7:0] readable_ly;
     assign reset = reset_sys || core_reset;
     assign fault = fetch_fault || object_fault;
@@ -82,7 +83,8 @@ module n2m_ppu (
         .clk_sys, .reset, .gb_tick, .io_commit, .io_write, .io_address, .io_wdata,
         .ly(readable_ly), .mode, .coincidence, .quarter_phase, .io_selected, .io_rdata,
         .lcdc, .scy, .scx, .lyc, .bgp, .obp0, .obp1, .wy, .wx, .stat_enable,
-        .stat_write, .lyc_write, .lcd_enable, .lcd_disable
+        .stat_write, .lyc_write, .lcd_enable, .lcd_disable,
+        .render_bgp, .render_obp0, .render_obp1
     );
     n2m_ppu_timing timing (
         .clk_sys, .reset, .gb_tick, .lcd_on(lcdc[7]), .lcd_disable, .ly_compare(lyc), .stat_enable, .stat_write, .lyc_write, .write_data(io_wdata),
@@ -132,8 +134,8 @@ module n2m_ppu (
     n2m_ppu_mix mixer (
         .background_enable(lcdc[0]), .object_enable(lcdc[1]),
         .background_color, .object_color, .object_behind_background(behind_background),
-        .object_palette_select(palette_select), .background_palette(bgp),
-        .object_palette0(obp0), .object_palette1(obp1), .shade
+        .object_palette_select(palette_select), .background_palette(render_bgp),
+        .object_palette0(render_obp0), .object_palette1(render_obp1), .shade
     );
     assign background_y = ly + scy;
     assign background_x = raw_x + scx;

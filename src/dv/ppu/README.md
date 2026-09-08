@@ -82,13 +82,21 @@ legal CPU phase; an impossible T4 stimulus is not composed evidence.
 addressing, 8x8 objects and eight distinct row patterns. Its oracle independently
 selects raw BG/object color and winning palette from original scene memory.
 Palette shadows update only from CPU input commits; each A snapshot precedes
-that edge's write and is bound to the completed source dot at B. A rotating
+that edge's write and is bound to the completed source dot at B. The next
+emulated-dot snapshot uses old|new for the written palette before reverting to
+new, including when no visible pixel is emitted. A rotating
 legal T4 schedule changes BGP/OBP0/OBP1. Acceptance requires sensitive same-edge
 old-palette pixels and later new-palette pixels for all three registers, along
 with every-pixel comparison. The negative substitutes the new-palette shade
 at an actual sensitive commit pixel. Existing static wrappers preserve the
 unsigned/8x16 scene; this variant does not claim dynamic scrolling/window edges.
-The variant has retained positive and deliberate-fault evidence.
+Earlier variant evidence applies to its original palette contract. The DMG
+conflict correction requires affected current positive/fault evidence.
+`ppu-palette-conflict` directly checks all three palette outputs and immediate
+architectural readback using literal55/AA/FF values, both transition directions,
+same-value writes, other-palette isolation, pause, dot expiration with LCD off,
+and reset cancellation. Its negative replaces the actual conflict output with
+old55 where FF is required.
 
 `ppu-stat-off` checks fourteen public readback/shared-line observations across off-state writes, equal and unequal restart, pause and core reset. `ppu-stat-off-corrupt` changes the actual retained line while off and must fail the corresponding independent check. HBlank/OAM transition coverage remains separate.
 
