@@ -57,21 +57,20 @@ CPU samples follow `GB_run`; memory callbacks retain every raw read
 and write, including LCDC split writes. No PC resynchronization, field masking,
 pixel substitution occurs.
 
-`retirement.py` projects only this original program. It retains each native
-post-event architectural sample and obtains its completed-dot identity from the
-next actual opcode fetch plus that fetch's four pending T-cycles. The initial
-fetch produces no preceding event. The IRQ discarded fetch closes the previous
-instruction, the handler fetch closes interrupt entry, and HALT's explicit dummy
-fetch closes HALT. These three call sites are observed without changing Core
-execution. A read-only end-of-advance hook captures IE/IF and verifies released
-keys at the actual four-dot fetch completion after Core peripheral service. An
-overshot boundary fails instead of sampling late. Architectural registers remain
-the completed event's saved state. The declared mapping follows MAS_cpu150–171; it is not applied to
-peripheral writes or pixels. Actual operand bytes come from recorded reads, with
-strict sequential address and supported-instruction-size checks. Closing snapshots are separate from native instruction-return samples; duplicate,
-missing, unknown, orphan and reordered observations fail. Generated ABI packing
-validates the complete record. General instructions remain outside this selected
-original-program decoder.
+`retirement.py` projects the selected original program. Direct entry starts with
+four pending T-cycles for its initial opcode fetch; paused initialization itself
+advances no clocks. Each `GB_run` returns after `GB_cpu_run` flushes pending cycles,
+so its actual return supplies both the completed-dot identity and architectural
+registers, IE/IF and released-button state. The observer does not borrow state
+from a later fetch. HALT's dummy read occurs at that event's actual completion;
+Core discards its newly pending cycles. Normal, interrupt and HALT fetch hooks
+remain read-only checks of event kind, count and ordering. This initial-fetch
+mapping follows MAS_cpu150–171 and the pinned Core cycle-read/flush path; it does
+not shift peripheral writes or pixels after execution. Actual operand bytes come
+from recorded reads, with strict sequential address and supported-size checks.
+Missing, duplicate, unknown, orphan and reordered observations fail. Generated
+ABI packing validates every field. General instructions remain outside this
+selected original-program decoder.
 
 Epoch2 represents LOAD_BEGIN then LOAD_END, each entering COMMAND_RESET in
 the delivered endpoint, as metadata; the
@@ -117,7 +116,7 @@ The [baseline contract](../../../wiki/src/dv/baseline/SPEC.md#independent-emulat
 requires exact retirement fields and ordered visible source pixels. It does not
 require Core's internal framebuffer-action timestamps to equal DUT source-event
 timestamps. `compare_diagnostic.py` separately retains that unresolved difference
-and its nonzero exit. [#194](https://github.com/amichai-bd/nand2mario/issues/194)
+and its nonzero exit. [#197](https://github.com/amichai-bd/nand2mario/issues/197)
 tracks it; it is not a #102 prerequisite or a hardware timing claim.
 
 The remaining delivery checks are current DUT runtime/comparison evidence,

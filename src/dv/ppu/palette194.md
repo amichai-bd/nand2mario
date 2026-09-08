@@ -1,8 +1,10 @@
 # Palette boundary discriminator
 
-[#194](https://github.com/amichai-bd/nand2mario/issues/194) investigates a
-source-derived phase difference; these cases do not assume either model is the
-silicon oracle. No RTL change is made.
+[#194](https://github.com/amichai-bd/nand2mario/issues/194) corrects the native
+adapter initial-fetch latency. The FC case checks its full execution across
+VBlank. Residual cadence and palette diagnosis remains in
+[#197](https://github.com/amichai-bd/nand2mario/issues/197); neither model is
+assumed to be the silicon oracle. No RTL change is made.
 
 The original integration setup is unchanged through LCDC commit592 and
 retirement596. Its terminal HALT is replaced by `LD BC,2510`, then 2510 iterations
@@ -22,9 +24,9 @@ VBlank. A first retirement mismatch fails before pixel conclusions.
 The [PPU contract](../../../wiki/src/rtl/ppu/MAS_ppu.md#digital-ports)
 samples the old palette on a coincident write. DUT normal-frame x0 completes at
 70908 and uses E4. Subsequent pixels use the new palette. Pinned Core's
-`sm83_cpu.c` palette conflict advances to70902, stores `old|new`, advances one
-dot, then stores new at70903; display synchronization renders earlier pending
-actions before each store. Its normal x0 action is70901.
+`sm83_cpu.c` palette conflict advances to70906, stores `old|new`, advances one
+dot, then stores new at70907; display synchronization renders earlier pending
+actions before each store. Its normal x0 action is70905.
 
 - E4→FC is monotonic, so both native writes are FC. Expected first normal pixels
   are0,3,3,3,0,3,3,3. This checks the common visible write boundary.
@@ -41,6 +43,11 @@ test command retains the existing600-second total wall bound. The pinned Core
 checkout must be present at `workdir/research/sameboy/source`; all selected files
 are hash-checked before compilation. No UART loading or physical proof is claimed.
 
-Remaining work: reviewed bounded control/discriminator outcomes, identification
-of a responsible observable assumption, then any approved correction and its
-required negative proof. The previously merged #102 scope remains unchanged.
+The first FC attempt with the old adapter failed at retirement9446/dot66252:
+its future snapshot reported IF1 while the DUT reported IF0. The corrected
+profile starts with four pending initial-fetch cycles, then projects actual
+post-`GB_run` state. It does not relabel that failed attempt. The FC retry must
+compare every field and both complete frames. The00 discriminator and residual
+PPU interpretation belong to #197; they are not completion criteria for the
+scoped initial-fetch correction. Merged #102 evidence retains its producing
+source identity.

@@ -26,7 +26,8 @@ bool n2m_direct_profile(GB_gameboy_t *gb, const char *rom)
     gb->ime = PROFILE_IME; gb->ime_toggle = PROFILE_IME_DELAY;
     gb->halted = PROFILE_CPU_HALT; gb->stopped = PROFILE_CPU_STOP;
     gb->halt_bug = PROFILE_HALT_BUG;
-    gb->pending_cycles = 0;
+    /* The direct-entry opcode fetch consumes four T-cycles on first GB_run. */
+    gb->pending_cycles = 4;
     memset(gb->ram, PROFILE_RAM_FILL, gb->ram_size);
     memset(gb->vram, PROFILE_RAM_FILL, gb->vram_size);
     memset(gb->hram, PROFILE_RAM_FILL, sizeof(gb->hram));

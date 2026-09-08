@@ -28,7 +28,7 @@ def project(log):
     scenario=json.loads((Path(__file__).parent/'scenario.json').read_text())
     if scenario['profile']!='dmg-direct-v1' or scenario['trace_version']!=abi.TRACE_VERSION or scenario['inputs']!=[{'completed_dot':0,'buttons':0}] or scenario['initializations']!=['LOAD_BEGIN','LOAD_END']:
         raise ValueError('unsupported declared lifecycle/input scenario')
-    events, reads, fetches, snapshots = [], {}, {}, {}
+    events, reads, fetches = [], {}, {}
     last_step=-1
     completed=set()
     for line in log.splitlines():
@@ -44,13 +44,9 @@ def project(log):
         elif line.startswith('fetch '):
             item=fields(line); fetches.setdefault(item['step'],[]).append(item)
         elif line.startswith('closing '):
-            item=fields(line)
-            if item['step'] in snapshots: raise ValueError('duplicate closing snapshot')
-            if item['step']!=len(snapshots) or (snapshots and item['native_dot']<=snapshots[item['step']-1]['native_dot']):
-                raise ValueError('reordered closing snapshot')
-            snapshots[item['step']]=item
+            raise ValueError('obsolete future closing observation')
     steps=set(range(len(events)))
-    if set(reads)!=steps or set(fetches)!=steps or set(snapshots)!=steps:
+    if set(reads)!=steps or set(fetches)!=steps:
         raise ValueError('missing/orphan native observations')
     result=[]
     for index,event in enumerate(events):
@@ -64,16 +60,12 @@ def project(log):
         if any(a['dot']>b['dot'] for a,b in zip(reads[index],reads[index][1:])):
             raise ValueError('reordered native reads')
         irq=pattern==[1]
-        if event['halt']:
-            closing=[f for f in current if f['kind']==2]
-        else:
-            closing=fetches.get(index+1,[])[:1]
-        if len(closing)!=1 or closing[0]['pending']!=4:
-            raise ValueError(f'missing four-dot final fetch at event {index}')
-        snapshot=snapshots[index]
-        if snapshot['native_dot']!=closing[0]['native_dot']+4:
-            raise ValueError('closing snapshot differs from actual fetch completion')
-        if snapshot['buttons']!=0: raise ValueError('unsupported applied inputs')
+        expected_start=events[index-1]['dot'] if index else 4
+        if current[0]['native_dot']!=expected_start or event['dot']<expected_start+4:
+            raise ValueError('invalid initial fetch or actual event completion')
+        if event['halt'] and current[-1]['native_dot']!=event['dot']:
+            raise ValueError('HALT dummy fetch differs from actual completion')
+        if event['buttons']!=0: raise ValueError('unsupported applied inputs')
         opcode=length=0
         if not irq:
             actual=reads[index]
@@ -85,12 +77,12 @@ def project(log):
                     raise ValueError(f'nonsequential fetched operand at event {index}')
                 opcode |= actual[byte]['data'] << (8*byte)
         record={'version':abi.TRACE_VERSION,'kind':abi.TRACE_INTERRUPT if irq else abi.TRACE_INSTRUCTION,'epoch':len(scenario['initializations']),'seq':index,
-                'dot':snapshot['native_dot'],
+                'dot':event['dot'],
                 'pc_before':event['before'],'pc_after':event['after'],
                 'opcode':opcode,'opcode_length':length,'sp':event['sp'],
                 'ime':event['ime'],'ime_delay':event['delay'],'halted':event['halt'],
                 'stopped':event['stop'],'halt_bug':event['bug'],
-                'ie':snapshot['ie'],'iflags':snapshot['if'],'buttons':snapshot['buttons']}
+                'ie':event['ie'],'iflags':event['if'],'buttons':event['buttons']}
         for pair in ('af','bc','de','hl'):
             record[pair[0]]=event[pair]>>8
             record[pair[1]]=event[pair]&255
