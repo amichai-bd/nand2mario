@@ -30,21 +30,28 @@ frame is the PPU contract's blank frame, with every pixel shade 0.
 
 The user-authorized revision replaces the former 600-continuous-interval
 criterion; it was never passed. [#88](https://github.com/amichai-bd/nand2mario/issues/88)
-remains open. [#244](https://github.com/amichai-bd/nand2mario/issues/244) owns the
-new window, fault qualification and endurance evidence; this specification
-does not claim that work is complete.
+tracks the revised milestone. [PR246](https://github.com/amichai-bd/nand2mario/pull/246)
+records window, fault, complementary evidence and endurance qualification.
 
 - Build the exact original ROM twice and compare all bytes. Default composed
   execution to supported Intel preload with real initialization and loader
   adoption; separately qualify actual full UART upload/readback.
 - Run continuously from reset/initialization through the first normal frame's
   input rows. Apply Right+A during the first CPU HALT before the first VBlank.
+  The apply-dot window is 50000..52000, after first HALT42008 and before
+  VBlank107646; exactly0x11 is accepted and the UART reply must match its apply dot.
   Request final pause no earlier than 145132 (normal frame 1 row 72 start; row 71's
   last pixel is 144835), with at most 2000 additional dots. Compare every expected
   retirement field, program write and source pixel through actual pause, including
   command latency. Derive the count from the fixed schedule and pause boundary,
   never from observed pixels. Preserve blank startup, cross-frame update, actual
   final pause/completion and independent progress watchdog.
+  The next wake177872 is later than the maximum pause147132. Thus all valid
+  pauses require6357 retirements (6281 setup plus76 update), with the last HALT
+  at108156. Expected pixel count is23040 plus, for each y0..143,
+  `clamp(pause_dot-(112300+456*y)+1,0,160)`:34561 at145132 and35360 at147132.
+  This includes partial active rows after the requested bound; collectors do
+  not stop when the controller requests HALT.
 - Qualify complementary timer/IRQ/HALT and DMA/HRAM/160-byte transfer proofs.
   Qualify actual image, source-pixel and stopped-progress mutations with unchanged
   independent expectations and exact failing results.
@@ -59,10 +66,9 @@ does not claim that work is complete.
   observation. Declare the broader matrix aggregate and measured result.
 
 Every new simulation follows the 300-second total cap, targeting120 seconds;
-ordinary pre-merge aggregate target is 300 seconds. The measured #242 profile
-reached dot 144239 at 176 seconds, so the proposed window is plausibly below the
-hard ceiling but has not met the 120-second target. Do not launch the obsolete
-long target. FPGA compilation is a separately measured prerequisite.
+ordinary pre-merge aggregate target is 300 seconds. Record actual per-test and
+aggregate costs in the acceptance evidence, including any unmet target. Do not
+launch the obsolete long target. FPGA compilation is separately measured.
 
 ## Original timing and legacy input schedule
 

@@ -1,15 +1,19 @@
 """Incremental v0.5 checks; expectations come from the fixed program contract."""
 from reference import (FIRST_IMAGE_END, FRAME_DOTS, INPUT_MASKS, WINDOW_END, LCD_COMMIT,
-                       Reference, compare_record, input_window, pixel_shade)
+                       Reference, compare_record, input_window, pixel_shade,
+                       BOUNDED_END, bounded_pixel_count)
 from collections import deque
 
 
 class Online:
-    def __init__(self, *, short=False):
+    def __init__(self, *, short=False, bounded=False):
+        if short and bounded:
+            raise ValueError('conflicting v05 schedules')
         self.short = short
-        self.input_masks = INPUT_MASKS[:2] if short else INPUT_MASKS
-        self.end = FIRST_IMAGE_END + 4 * FRAME_DOTS if short else WINDOW_END
-        self.frame_count = 6 if short else 602
+        self.bounded = bounded
+        self.input_masks = (0x11,) if bounded else INPUT_MASKS[:2] if short else INPUT_MASKS
+        self.end = BOUNDED_END if bounded else FIRST_IMAGE_END + 4 * FRAME_DOTS if short else WINDOW_END
+        self.frame_count = 2 if bounded else 6 if short else 602
         self.reference = Reference()
         self.inputs = []
         self.retirements = 0
@@ -23,7 +27,7 @@ class Online:
 
     def input(self, dot, buttons):
         index = len(self.inputs) + 1
-        low, high = input_window(index, short=self.short)
+        low, high = input_window(index, short=self.short, bounded=self.bounded)
         if (type(dot) is not int or type(buttons) is not int
                 or not low <= dot <= high or buttons != self.input_masks[index - 1]):
             raise ValueError(f"V05_INPUT_WINDOW transition={index} dot={dot} buttons={buttons}")
@@ -50,7 +54,7 @@ class Online:
         expected_frame, index = divmod(self.pixels, 23040)
         if expected_frame >= self.frame_count or (frame, x, y) != (expected_frame, index % 160, index // 160):
             raise ValueError(f"V05_PIXEL_ORDER count={self.pixels} frame={frame} x={x} y={y}")
-        expected = pixel_shade(frame, x, y, short=self.short)
+        expected = pixel_shade(frame, x, y, short=self.short, bounded=self.bounded)
         if shade != expected:
             raise ValueError(f"V05_PIXEL frame={frame} index={index} expected={expected} actual={shade}")
         if not frame:
@@ -73,7 +77,8 @@ class Online:
             raise ValueError("V05_PAUSE_WINDOW")
         if len(self.inputs) != len(self.input_masks):
             raise ValueError("V05_INPUT_COUNT")
-        if self.pixels != self.frame_count * 23040:
+        expected_pixels = bounded_pixel_count(pause_dot) if self.bounded else self.frame_count * 23040
+        if self.pixels != expected_pixels:
             raise ValueError(f"V05_PIXEL_MISSING count={self.pixels}")
         if self.reference.step(pause_dot) is not None:
             raise ValueError(f"V05_RETIRE_MISSING seq={self.retirements}")
