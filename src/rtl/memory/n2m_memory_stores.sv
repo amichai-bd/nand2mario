@@ -36,6 +36,13 @@ module n2m_memory_stores (
     output logic [7:0] wave_rdata,
     output logic wave_valid
 );
+    // Quartus 25.1 misresolves package constants inside instance connections.
+    localparam n2m_memory_pkg::memory_store_t ROM_STORE = n2m_memory_pkg::STORE_ROM;
+    localparam n2m_memory_pkg::memory_store_t WRAM_STORE = n2m_memory_pkg::STORE_WRAM;
+    localparam n2m_memory_pkg::memory_store_t HRAM_STORE = n2m_memory_pkg::STORE_HRAM;
+    localparam n2m_memory_pkg::memory_store_t VRAM_STORE = n2m_memory_pkg::STORE_VRAM;
+    localparam n2m_memory_pkg::memory_store_t OAM_STORE = n2m_memory_pkg::STORE_OAM;
+    localparam n2m_memory_pkg::memory_store_t WAVE_STORE = n2m_memory_pkg::STORE_WAVE;
     localparam integer WRAM_BYTES = int'(n2m_interfaces_pkg::GB_WRAM_END) - int'(n2m_interfaces_pkg::GB_WRAM_START) + 1;
     localparam integer VRAM_BYTES = int'(n2m_interfaces_pkg::GB_VRAM_END) - int'(n2m_interfaces_pkg::GB_VRAM_START) + 1;
     localparam integer HRAM_BYTES = int'(n2m_interfaces_pkg::GB_HRAM_END) - int'(n2m_interfaces_pkg::GB_HRAM_START) + 1;
@@ -119,49 +126,49 @@ module n2m_memory_stores (
     n2m_intel_ram #(.DEPTH(n2m_interfaces_pkg::PROFILE_ROM_BYTES), .ADDRESS_BITS(15)) rom (
         .clk_a(clk_sys), .clk_b(clk_sys), .reset_a(reset), .reset_b(reset), .a_byte_enable(1'b1), .a_read(host_read && host_range), .a_write(host_write && host_range),
         .a_address(host_offset[14:0]), .a_wdata(host_wdata), .a_rdata(rom_a_data), .a_valid(rom_a_valid),
-        .b_read(access_read_enable && access_store == n2m_memory_pkg::STORE_ROM), .b_address(access_address),
-        .b_rdata(data_a[n2m_memory_pkg::STORE_ROM]), .b_valid(valid_a[n2m_memory_pkg::STORE_ROM])
+        .b_read(access_read_enable && access_store == ROM_STORE), .b_address(access_address),
+        .b_rdata(data_a[ROM_STORE]), .b_valid(valid_a[ROM_STORE])
     );
     assign host_rdata = rom_a_data;
     assign host_valid = rom_a_valid && !reset;
     n2m_intel_ram #(.DEPTH(WRAM_BYTES), .ADDRESS_BITS(13)) wram (
-        .clk_a(clk_sys), .clk_b(clk_sys), .reset_a(reset), .reset_b(reset), .a_byte_enable(1'b1), .a_read(access_read_enable && access_store == n2m_memory_pkg::STORE_WRAM),
-        .a_write(clearing || (access_write_enable && access_store == n2m_memory_pkg::STORE_WRAM)),
-        .a_address(ram_address[12:0]), .a_wdata(ram_wdata), .a_rdata(data_a[n2m_memory_pkg::STORE_WRAM]), .a_valid(valid_a[n2m_memory_pkg::STORE_WRAM]),
+        .clk_a(clk_sys), .clk_b(clk_sys), .reset_a(reset), .reset_b(reset), .a_byte_enable(1'b1), .a_read(access_read_enable && access_store == WRAM_STORE),
+        .a_write(clearing || (access_write_enable && access_store == WRAM_STORE)),
+        .a_address(ram_address[12:0]), .a_wdata(ram_wdata), .a_rdata(data_a[WRAM_STORE]), .a_valid(valid_a[WRAM_STORE]),
         .b_read(1'b0), .b_address(13'd0), .b_rdata(unused_b_wram), .b_valid(unused_b_wram_valid)
     );
     n2m_intel_ram #(.DEPTH(HRAM_BYTES), .ADDRESS_BITS(7)) hram (
-        .clk_a(clk_sys), .clk_b(clk_sys), .reset_a(reset), .reset_b(reset), .a_byte_enable(1'b1), .a_read(access_read_enable && access_store == n2m_memory_pkg::STORE_HRAM),
-        .a_write((clearing && int'(clear_address) < HRAM_BYTES) || (access_write_enable && access_store == n2m_memory_pkg::STORE_HRAM)),
-        .a_address(ram_address[6:0]), .a_wdata(ram_wdata), .a_rdata(data_a[n2m_memory_pkg::STORE_HRAM]), .a_valid(valid_a[n2m_memory_pkg::STORE_HRAM]),
+        .clk_a(clk_sys), .clk_b(clk_sys), .reset_a(reset), .reset_b(reset), .a_byte_enable(1'b1), .a_read(access_read_enable && access_store == HRAM_STORE),
+        .a_write((clearing && int'(clear_address) < HRAM_BYTES) || (access_write_enable && access_store == HRAM_STORE)),
+        .a_address(ram_address[6:0]), .a_wdata(ram_wdata), .a_rdata(data_a[HRAM_STORE]), .a_valid(valid_a[HRAM_STORE]),
         .b_read(1'b0), .b_address(7'd0), .b_rdata(unused_b_hram), .b_valid(unused_b_hram_valid)
     );
     n2m_intel_ram #(.DEPTH(VRAM_BYTES), .ADDRESS_BITS(13)) vram (
-        .clk_a(clk_sys), .clk_b(clk_sys), .reset_a(reset), .reset_b(reset), .a_byte_enable(1'b1), .a_read(access_read_enable && access_store == n2m_memory_pkg::STORE_VRAM),
-        .a_write(clearing || (access_write_enable && access_store == n2m_memory_pkg::STORE_VRAM)),
-        .a_address(ram_address[12:0]), .a_wdata(ram_wdata), .a_rdata(data_a[n2m_memory_pkg::STORE_VRAM]), .a_valid(valid_a[n2m_memory_pkg::STORE_VRAM]),
+        .clk_a(clk_sys), .clk_b(clk_sys), .reset_a(reset), .reset_b(reset), .a_byte_enable(1'b1), .a_read(access_read_enable && access_store == VRAM_STORE),
+        .a_write(clearing || (access_write_enable && access_store == VRAM_STORE)),
+        .a_address(ram_address[12:0]), .a_wdata(ram_wdata), .a_rdata(data_a[VRAM_STORE]), .a_valid(valid_a[VRAM_STORE]),
         .b_read(ppu_vram_read && init_done), .b_address(ppu_vram_address),
         .b_rdata(ppu_vram_rdata), .b_valid(ppu_vram_valid)
     );
     n2m_intel_ram #(.DEPTH(OAM_BYTES/2), .ADDRESS_BITS(7)) oam_low (
-        .clk_a(clk_sys), .clk_b(clk_sys), .reset_a(reset), .reset_b(reset), .a_byte_enable(1'b1), .a_read(pair_read || (access_read_enable && access_store == n2m_memory_pkg::STORE_OAM)),
+        .clk_a(clk_sys), .clk_b(clk_sys), .reset_a(reset), .reset_b(reset), .a_byte_enable(1'b1), .a_read(pair_read || (access_read_enable && access_store == OAM_STORE)),
         .a_write(oam_write[0]),
         .a_address(oam_address), .a_wdata(oam_wdata[7:0]), .a_rdata(oam_a_even), .a_valid(oam_a_valid),
         .b_read(ppu_oam_read && init_done), .b_address(ppu_oam_pair), .b_rdata(oam_even), .b_valid(oam_even_valid)
     );
     n2m_intel_ram #(.DEPTH(OAM_BYTES/2), .ADDRESS_BITS(7)) oam_high (
-        .clk_a(clk_sys), .clk_b(clk_sys), .reset_a(reset), .reset_b(reset), .a_byte_enable(1'b1), .a_read(pair_read || (access_read_enable && access_store == n2m_memory_pkg::STORE_OAM)),
+        .clk_a(clk_sys), .clk_b(clk_sys), .reset_a(reset), .reset_b(reset), .a_byte_enable(1'b1), .a_read(pair_read || (access_read_enable && access_store == OAM_STORE)),
         .a_write(oam_write[1]),
-        .a_address(oam_address), .a_wdata(oam_wdata[15:8]), .a_rdata(oam_a_odd), .a_valid(valid_a[n2m_memory_pkg::STORE_OAM]),
+        .a_address(oam_address), .a_wdata(oam_wdata[15:8]), .a_rdata(oam_a_odd), .a_valid(valid_a[OAM_STORE]),
         .b_read(ppu_oam_read && init_done), .b_address(ppu_oam_pair), .b_rdata(oam_odd), .b_valid(oam_odd_valid)
     );
     assign data_a[n2m_memory_pkg::STORE_OAM] = response_odd ? oam_a_odd : oam_a_even;
     assign ppu_oam_rdata = {oam_odd, oam_even};
     assign ppu_oam_valid = oam_even_valid && oam_odd_valid;
     n2m_intel_ram #(.DEPTH(WAVE_BYTES), .ADDRESS_BITS(4)) wave_ram (
-        .clk_a(clk_sys), .clk_b(clk_sys), .reset_a(reset), .reset_b(reset), .a_byte_enable(1'b1), .a_read(access_read_enable && access_store == n2m_memory_pkg::STORE_WAVE),
-        .a_write((clearing && int'(clear_address) < WAVE_BYTES) || (access_write_enable && access_store == n2m_memory_pkg::STORE_WAVE)),
-        .a_address(ram_address[3:0]), .a_wdata(ram_wdata), .a_rdata(data_a[n2m_memory_pkg::STORE_WAVE]), .a_valid(valid_a[n2m_memory_pkg::STORE_WAVE]),
+        .clk_a(clk_sys), .clk_b(clk_sys), .reset_a(reset), .reset_b(reset), .a_byte_enable(1'b1), .a_read(access_read_enable && access_store == WAVE_STORE),
+        .a_write((clearing && int'(clear_address) < WAVE_BYTES) || (access_write_enable && access_store == WAVE_STORE)),
+        .a_address(ram_address[3:0]), .a_wdata(ram_wdata), .a_rdata(data_a[WAVE_STORE]), .a_valid(valid_a[WAVE_STORE]),
         .b_read(wave_read && init_done), .b_address(wave_address), .b_rdata(wave_rdata), .b_valid(wave_valid)
     );
     `N2M_ASSERT(MEMORY_ACCESS_RANGE, clk_sys, reset,
