@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 import re
 
-from . import fpga_adc
+from . import fpga_adc, fpga_pll
 from .records import file_hash
 
 LIBRARY = "n2m_intel_adc"
@@ -62,7 +62,7 @@ def reject_shadow_models(root, inputs):
              "altera_modular_adc_control_avrg_fifo", "chsel_code_converter_sw_to_hw",
              "fiftyfivenm_adcblock_top_wrapper", "fiftyfivenm_adcblock_primitive_wrapper",
              "altera_std_synchronizer", "fiftyfivenm_adcblock", "fiftyfivenm_adcblock_encrypted",
-             "fiftyfivenm_pll", "altpll", "n2m_adc_pll")
+             "fiftyfivenm_pll", "altpll", "n2m_adc_pll", "n2m_pixel_pll", "n2m_system_pll")
     for name in inputs:
         text = (root / name).read_text()
         text = re.sub(r"//[^\n]*|/\*[\s\S]*?\*/", " ", text)
@@ -78,14 +78,26 @@ def commands(simulator, compiler, attempt, descriptor):
     atoms_path = (compiler / ATOMS_LIBRARY).as_posix()
     atoms = [source["path"] for source in descriptor["sources"] if source["name"].startswith("quartus/eda/sim_lib/")]
     control = [source["path"] for source in descriptor["sources"] if not source["name"].startswith("quartus/eda/sim_lib/")]
+    board_commands = []
+    board_sources = []
+    if descriptor.get("selection") == "intel-controls":
+        identity = descriptor["board_generation_inputs"]
+        board_commands = [
+            (fpga_pll.generation_command(identity, descriptor["board_pll"]), compiler,
+             compiler / "controls-pixel-pll-generate.log", "zero"),
+            (fpga_pll._command(identity, "n2m_system_pll", 20000, 1, 2, "LOW"), compiler,
+             compiler / "controls-system-pll-generate.log", "zero"),
+        ]
+        board_sources = [str(compiler / name) for name in ("n2m_pixel_pll.v", "n2m_system_pll.v")]
     return [
         (descriptor["generation_command"], compiler, compiler / "adc-pll-generate.log", "zero"),
+        *board_commands,
         ([tools["vlib"], ATOMS_LIBRARY], compiler, compiler / "intel-adc-atoms-library.log", "zero"),
         ([tools["vmap"], ATOMS_LIBRARY, atoms_path], compiler, compiler / "intel-adc-atoms-map.log", "zero"),
         ([tools["vlog"], "-work", ATOMS_LIBRARY, *atoms], compiler, compiler / "intel-adc-atoms-compile.log", "zero"),
         ([tools["vlib"], library], compiler, compiler / "intel-adc-library.log", "zero"),
         ([tools["vmap"], library, path], compiler, compiler / "intel-adc-map.log", "zero"),
-        ([tools["vlog"], "-work", library, *control, str(compiler / "n2m_adc_pll.v")],
+        ([tools["vlog"], "-work", library, *control, str(compiler / "n2m_adc_pll.v"), *board_sources],
          compiler, compiler / "intel-adc-control-compile.log", "zero"),
     ], [([tools["vmap"], library, path], attempt, attempt / "intel-adc-map.log", "zero"),
         ([tools["vmap"], ATOMS_LIBRARY, atoms_path], attempt, attempt / "intel-adc-atoms-map.log", "zero")], descriptor["binding_options"]
