@@ -13,6 +13,10 @@ module n2m_v05_system #(
     input var logic reset_pix,
     input var logic uart_rx,
     output logic uart_tx,
+    input var logic physical_commit,
+    input var logic [7:0] physical_buttons,
+    output logic [7:0] effective_buttons,
+    output logic [7:0] input_source_observe,
     output logic [3:0] red, green, blue,
     output logic hsync_n, vsync_n,
     output logic [63:0] display_sequence,
@@ -50,7 +54,7 @@ module n2m_v05_system #(
     logic snapshot_request, frame_read;
     logic snapshot_ready, snapshot_done, snapshot_ok, snapshot_valid, frame_valid;
     n2m_interfaces_pkg::snapshot_t snapshot_metadata;
-    logic [7:0] frame_data, effective_buttons, joyp_rdata;
+    logic [7:0] frame_data, joyp_rdata;
     n2m_input_pkg::input_update_t effective_update;
     logic joyp_selected_active, joyp_event;
     logic [12:0] frame_address;
@@ -102,8 +106,8 @@ module n2m_v05_system #(
         .clk_sys, .reset_sys, .uart_rx, .uart_tx,
         .build_id(BUILD_ID), .gb_tick, .paused,
         .core_initialized, .instruction_complete, .retirement_valid, .cpu_stopped,
-        .physical_commit(1'b0), .physical_buttons(8'd0), .effective_buttons, .effective_update,
-        .input_source_observe(),
+        .physical_commit, .physical_buttons, .effective_buttons, .effective_update,
+        .input_source_observe,
         .pause_request, .core_reset, .buttons, .epoch, .dot_count, .retirement_count,
         .profile, .image_valid, .endpoint_state, .rom_write, .rom_read, .rom_address,
         .rom_write_data, .rom_read_data, .rom_read_valid,

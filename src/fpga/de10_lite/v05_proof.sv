@@ -29,6 +29,8 @@ module v05_proof #(
     );
     n2m_v05_system #(.BUILD_ID(BUILD_ID)) u_system (
         .clk_sys, .clk_pix, .reset_sys, .reset_pix, .uart_rx, .uart_tx,
+        .physical_commit(1'b0), .physical_buttons(8'd0),
+        .effective_buttons(), .input_source_observe(),
         .red, .green, .blue, .hsync_n, .vsync_n, .paused, .fault,
         .display_sequence, .display_epoch,
         .gb_tick(), .core_reset(), .epoch(), .dot_count(),

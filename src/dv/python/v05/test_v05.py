@@ -18,6 +18,7 @@ from client_transport import connect, frames, refresh_clock
 from online import Online
 from reference import FIRST_IMAGE_END, INPUT_MASKS, WINDOW_END, LCD_COMMIT, FRAME_DOTS, BOUNDED_END, input_window, unpack_retirement
 from n2m.records import git_state
+from n2m import generated_interfaces as abi
 from n2m.preload import adopt, verify
 from sw.rom_build import build_target
 
@@ -50,7 +51,8 @@ def wave_windows(complete, *, short=False, bounded=False):
     return sorted(windows)
 
 
-async def run(dut, *, complete, short=False, bounded=False, preloaded=False):
+async def run(dut, *, complete, short=False, bounded=False, preloaded=False, physical=False):
+    assert not physical or (bounded and preloaded), 'V05_PHYSICAL_PROFILE'
     entered = time.monotonic()
     dut._log.info("V05_PHASE entry")
     report = build_target(ROOT, Path.cwd() / ('run' if preloaded else 'software'),
@@ -251,6 +253,48 @@ async def run(dut, *, complete, short=False, bounded=False, preloaded=False):
             refresh_clock(client)
             return await bridged_control(action, value)
 
+        @bridge
+        def selected(source):
+            return client.select_input_source(source)
+
+        @bridge
+        def input_state():
+            return tuple(client.read_host(address) for address in
+                         (abi.HOST_REG_INPUT_SOURCE, abi.HOST_REG_INPUT,
+                          abi.HOST_REG_INPUT_PHYSICAL, abi.HOST_REG_INPUT_EFFECTIVE))
+
+        async def check_input(expected):
+            refresh_clock(client)
+            actual = await input_state()
+            observation('input_state', expected=expected, actual=actual)
+            assert actual == expected, f'V05_PHYSICAL_STATE expected={expected} actual={actual}'
+            assert (known(dut.input_source_observe), known(dut.effective_buttons)) == (expected[0], expected[3]), 'V05_PUBLIC_INPUT_STATE'
+            check_tasks()
+
+        async def select(source):
+            refresh_clock(client)
+            await selected(source)
+
+        async def physical_commit(mask):
+            # Tick is stable from the falling edge through the accepting edge.
+            while True:
+                await FallingEdge(dut.clk_sys)
+                if not known(dut.gb_tick):
+                    break
+            dut.physical_buttons.value = mask
+            dut.physical_commit.value = 1
+            dot = known(dut.dot_count)
+            await FallingEdge(dut.clk_sys)
+            dut.physical_commit.value = 0
+            observation('physical_commit', dot=dot, buttons=mask)
+            check_tasks()
+            return dot
+
+        if physical:
+            await check_input((0, 0, 0, 0))
+            await select(abi.INPUT_SOURCE_PHYSICAL)
+            await check_input((1, 0, 0, 0))
+
         phase('run_request')
         await control('RUN')
         phase('run_reply')
@@ -262,10 +306,23 @@ async def run(dut, *, complete, short=False, bounded=False, preloaded=False):
                     check_tasks()
                 if bounded:
                     assert monitor.reference.halted, 'V05_INPUT_BEFORE_FIRST_HALT'
-                reply = await control('INPUT', mask)
-                observation('input_reply', transition=index, reply=reply)
-                assert len(journal) == index, 'V05_INPUT_REPLY_WITHOUT_APPLY'
-                assert reply['dot'] == journal[-1]['dot'], 'V05_INPUT_REPLY_DOT'
+                if physical:
+                    dot = await physical_commit(mask)
+                    assert len(journal) == 1 and journal[0] == dict(dot=dot, buttons=17), 'V05_PHYSICAL_APPLY'
+                    await check_input((1, 0, 17, 17))
+                    await control('INPUT', 2)
+                    await check_input((1, 2, 17, 17))
+                    await control('INPUT', 17)
+                    await select(abi.INPUT_SOURCE_UART)
+                    await check_input((0, 17, 17, 17))
+                    await physical_commit(0)
+                    await check_input((0, 17, 0, 17))
+                    assert len(journal) == 1, 'V05_INPUT_ISOLATION'
+                else:
+                    reply = await control('INPUT', mask)
+                    observation('input_reply', transition=index, reply=reply)
+                    assert len(journal) == index, 'V05_INPUT_REPLY_WITHOUT_APPLY'
+                    assert reply['dot'] == journal[-1]['dot'], 'V05_INPUT_REPLY_DOT'
         while known(dut.dot_count) < bound:
             await Timer(1, unit='us')
             check_tasks()
@@ -278,6 +335,8 @@ async def run(dut, *, complete, short=False, bounded=False, preloaded=False):
         if complete:
             summary = monitor.finish(pause_dot)
             summary['scope'] = 'bounded startup/cross-frame' if bounded else 'short complete-path only' if short else 'legacy 600-interval'
+            if physical:
+                summary['input_scope'] = 'public physical commit, UART isolation and source switch'
         else:
             assert monitor.pixels == 46080, 'V05_STARTUP_PIXELS'
             assert monitor.reference.step(pause_dot) is None, 'V05_RETIRE_MISSING'
