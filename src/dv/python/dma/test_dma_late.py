@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 import sys
 import cocotb
-from cocotb.triggers import Timer, RisingEdge, FallingEdge, ValueChange, ReadOnly
+from cocotb.triggers import Timer, RisingEdge, FallingEdge, ValueChange, ReadOnly, with_timeout
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'integration'))
 from test_integration import decode_record, known
 
@@ -56,8 +56,11 @@ async def late_write(dut):
         await Timer(1,unit='ns')
         tasks=[cocotb.start_soon(fn()) for fn in (retirement,bus,capture,progress)]
         await Timer(319,unit='ns');dut.reset_sys.value=0
-        await RisingEdge(dut.memory_init_done)
-        if not known(dut.cpu_initialized):await RisingEdge(dut.cpu_initialized)
+        # Global reset clears initialization; the real core reset adopts the profile.
+        await FallingEdge(dut.clk_sys);dut.core_reset.value=1
+        await FallingEdge(dut.clk_sys);await FallingEdge(dut.clk_sys);dut.core_reset.value=0
+        await with_timeout(RisingEdge(dut.memory_init_done),500,'us')
+        assert known(dut.cpu_initialized)==1,'DMA_LATE_PROFILE_NOT_ADOPTED'
         await FallingEdge(dut.clk_sys)
         assert known(dut.dot_before)==0 and known(dut.paused)==1
         Path('initial-state.json').write_text(json.dumps(dict(profile='direct',epoch=2,dot=0,
