@@ -108,4 +108,3 @@ historical DUT traces are not automatically current-head acceptance.
 
 The unresolved pixel timing prerequisite is tracked in [#194](https://github.com/amichai-bd/nand2mario/issues/194). The original full #102 criteria remain open. This probe is not a scoped closure
 or a replacement for required DUT verification.
-
