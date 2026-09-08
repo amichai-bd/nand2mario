@@ -20,7 +20,8 @@ module tb_python_v05 #(
     logic [7:0] source_x, source_y;
     logic [31:0] source_epoch;
     logic [63:0] source_dot;
-    logic record_event, pixel_event, input_event, write_event;
+    logic record_event, pixel_event, input_event, write_event, bus_event;
+    logic [88:0] bus_sample;
     n2m_interfaces_pkg::retirement_t record_sample;
     logic [116:0] pixel_sample;
     logic [103:0] input_sample;
@@ -57,6 +58,11 @@ module tb_python_v05 #(
     always #19.841 clk_pix = !clk_pix;
 
     always @(posedge clk_sys) begin
+        if (!reset_sys && bus_commit) begin
+            bus_sample <= {64'(dot_count + 1), address, write_enable,
+                           write_enable ? write_data : read_data};
+            bus_event <= !bus_event;
+        end
         if (!reset_sys && bus_commit && write_enable) begin
             write_sample <= {64'(dot_count + 1), address, write_data};
             write_event <= !write_event;
@@ -87,6 +93,14 @@ module tb_python_v05 #(
         end
     end
 
+    // Corrupt the actual timer read route; the independent DIV expectation stays1.
+    initial begin
+        if ($test$plusargs("timer_read_fault")) begin
+            @(negedge clk_sys);
+            force dut.timer_rdata = 8'd0;
+        end
+    end
+
     // Original ROM byte at0200 is DI/F3. Mutate only the actual storage write.
     initial begin
         if ($test$plusargs("image_fault")) begin
@@ -114,6 +128,7 @@ module tb_python_v05 #(
         pixel_event = 0;
         input_event = 0;
         write_event = 0;
+        bus_event = 0;
         if ($test$plusargs("pixel_fault")) begin
             wait(source_display_eligible && source_x == 0 && source_y == 0);
             force dut.source_shade = 2'd0;
