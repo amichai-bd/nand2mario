@@ -89,13 +89,12 @@ module n2m_v05_system #(
     logic [1:0] oam_phase;
     logic [15:0] oam_data;
     logic oam_valid, vram_cpu_allow, vram_cpu_read_allow, oam_cpu_allow, oam_cpu_read_allow, stat_condition, vblank_condition;
-    logic reset, blank_assert;
+    logic blank_assert;
     logic observe_valid, observe_complete, observe_abort;
     logic [14:0] observe_index;
     logic [1:0] observe_shade;
     logic [31:0] observe_epoch;
     logic [63:0] observe_sequence, observe_dot;
-    assign reset = reset_sys || core_reset;
     assign core_initialized = memory_initialized && cpu_initialized;
     assign fault = cpu_fault || memory_fault || ppu_fault;
 
@@ -236,5 +235,5 @@ module n2m_v05_system #(
         .snapshot_done, .snapshot_ok, .snapshot_valid, .snapshot_metadata,
         .frame_read, .frame_address, .frame_valid, .frame_data
     );
-    `N2M_ASSERT(V05_NO_STOP, clk_sys, reset, !cpu_stopped)
+    `N2M_ASSERT(V05_NO_STOP, clk_sys, reset_sys || core_reset, !cpu_stopped)
 endmodule
