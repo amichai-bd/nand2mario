@@ -23,19 +23,34 @@ documented setup and actual board checks pass.
 
 The UART owner supplies core reset, profile, epoch, pause and effective input.
 Initialization completes only when CPU and backing-store initialization complete.
-The CPU uses resolved IF/IE for observation, the memory CPU port for prepared
-reads and committed writes, and the shared timebase. Host input reaches the real
+The CPU uses resolved IF/IE for observation, the DMA owner's memory CPU port for
+prepared reads and committed writes, and the shared timebase. Host input reaches the real
 JOYP owner atomically; its event feeds the interrupt event input. VBlank and STAT
 levels and the timer request feed the interrupt level inputs. CPU completion controls STEP through the
 existing UART boundary.
 
-The memory CPU port routes ROM/RAM to the explicit Intel backing stores and
-video accesses through PPU permissions. The PPU independently uses the stores'
-VRAM and OAM read ports. Timer, JOYP, interrupt and PPU registers have their actual
+The [DMA owner](../dma/MAS_dma.md) arbitrates CPU and transfer traffic against
+one Intel backing store. It owns FF46 and routes video accesses through the
+PPU's read or write permission selected by the prepared CPU plan. Both PPU
+read ports pass through the owner's collision suppression and registered OAM
+forwarding. Timer, JOYP, interrupt and PPU registers have their actual
 owners. Unused peripheral destinations reject service. The original program
 must not access them or execute STOP; the named `V05_NO_STOP` assertion makes
-that bounded program condition explicit. DMA, serial transfer and audio
+that bounded program condition explicit. Serial transfer and audio
 behavior are not implemented by this composition.
+
+The CPU supplies its complete typed bus plan, address effect, resolved/sample
+qualification, continuous M-cycle phase and HALT/STOP state to the DMA owner.
+The PPU supplies its scan index, pair phase, late-write indication and future
+late window. Host pause withholds the shared tick; CPU HALT suspends transfer
+progress as specified by MAS_dma. The raw store write data comes from the DMA
+arbiter, including its existing corruption and transfer projections.
+
+A registered CPU fault suppresses subsequent DMA ticks, initialization/service
+enable, requests, commits and address-effect qualification. It does not reset
+memory or other peripheral owners, nor cancel the accepting edge which first
+detects a missing CPU response. No response-valid feedback gates DMA work.
+UART loading and backing-store initialization retain their existing ports.
 
 The [timer owner](../timer/MAS_timer.md) provides side-effect-free pre-A reads
 and receives accepted T4 writes for DIV/TIMA/TMA/TAC through `MEMORY_TIMER`.

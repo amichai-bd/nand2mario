@@ -30,7 +30,7 @@ def validate(root, target):
         raise ValueError("python testbench requires zero raw exit and no driver")
     if target.get("vendor_model") not in (None, "intel-memory"):
         raise ValueError("Python testbench supports only Intel memory models")
-    if target.get("preload") not in (None, "integration", "v05", "palette-fc", "palette-00", "startup-read", "startup-write", "vram-read", "vram-write", "late-fe9c", "late-fe9d", "late-fe20", "timer234"):
+    if target.get("preload") not in (None, "integration", "v05", "palette-fc", "palette-00", "startup-read", "startup-write", "vram-read", "vram-write", "late-fe9c", "late-fe9d", "late-fe20", "timer234", "dma239"):
         raise ValueError("unknown Python preload")
     if not isinstance(target.get("top"), str) or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", target["top"]):
         raise ValueError("python top must be an HDL identifier")
@@ -47,10 +47,12 @@ def validate(root, target):
     matches = [p for p in config["inputs"] if Path(p).name == config["module"] + ".py"]
     if len(matches) != 1:
         raise ValueError("python inputs must contain exactly one named test module")
-    if target.get("preload") in ("integration", "v05", "palette-fc", "palette-00", "startup-read", "startup-write", "vram-read", "vram-write", "late-fe9c", "late-fe9d", "late-fe20", "timer234"):
+    if target.get("preload") in ("integration", "v05", "palette-fc", "palette-00", "startup-read", "startup-write", "vram-read", "vram-write", "late-fe9c", "late-fe9d", "late-fe20", "timer234", "dma239"):
         required = {"src/dv/integration/image.py", "src/dv/integration/program.asm",
                     "src/dv/integration/program.json", "src/dv/integration/retirement.json",
                     "src/sw/generated/interfaces.inc"}
+        if target["preload"] == "dma239":
+            required = {"src/dv/dma/program239.py", "src/sw/generated/interfaces.inc"}
         if target["preload"] == "timer234":
             required = {"src/dv/timer/program234.py", "src/sw/generated/interfaces.inc"}
         if target["preload"] == "v05":
@@ -113,7 +115,7 @@ def environment(root, target, attempt, seed, runtime):
 
 
 def prepare(target, attempt, root=None):
-    if target.get("preload") in ("integration", "v05", "palette-fc", "palette-00", "startup-read", "startup-write", "vram-read", "vram-write", "late-fe9c", "late-fe9d", "late-fe20", "timer234"):
+    if target.get("preload") in ("integration", "v05", "palette-fc", "palette-00", "startup-read", "startup-write", "vram-read", "vram-write", "late-fe9c", "late-fe9d", "late-fe20", "timer234", "dma239"):
         import hashlib
         import importlib.util
         from .preload import prepare as prepare_preload, verify
@@ -128,6 +130,12 @@ def prepare(target, attempt, root=None):
             image = (root / report["rom"]).read_bytes()
             expected_sha = report["artifacts"][report["rom"]]
             (attempt / "program.gb").write_bytes(image)
+        elif target['preload'] == 'dma239':
+            spec=importlib.util.spec_from_file_location('dma239_image',root/'src/dv/dma/program239.py')
+            module=importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            image=module.build(root,attempt)
+            expected_sha=hashlib.sha256(image).hexdigest()
         elif target['preload'] == 'timer234':
             spec=importlib.util.spec_from_file_location('timer234_image',root/'src/dv/timer/program234.py')
             module=importlib.util.module_from_spec(spec)
