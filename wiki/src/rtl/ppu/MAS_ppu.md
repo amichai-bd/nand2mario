@@ -327,6 +327,26 @@ promised VRAM data latches the common PPU fault and suppresses load publication;
 the top-level owner performs the single source abort. This helper does not own
 LCD startup, window trigger quirks, OAM selection or bus arbitration.
 
+### Early OAM read boundary
+
+CPU OAM reads use `oam_cpu_read_allow`; writes retain `oam_cpu_allow`.
+The existing scan/transfer/DMA denial applies to both. Additionally, reads are
+blocked when LCDC is enabled, renderer LY is below144, line quarter is113 and
+quarter phase is3. This is the legal T4 immediately before an ordinary scan:
+enable-relative452 and908 deny reads while preserving accepted writes.
+Use renderer LY, not early CPU-readable LY153. The condition is derived from
+held dot state, so pause cannot bypass it. Reset/LCD-off clear the condition;
+VBlank entry is excluded because renderer LY advanced on phase2. No CPU T4,
+source pixel, scan timing or raw RAM write changes.
+
+Memory owners apply the selected read allowance to both preparation and final
+response; an earlier RAM read must not bypass it. The independent
+[startup witnesses](../../../../src/dv/ppu/startup202.md) own the primary table,
+nearby/repeated and exclusion checks. Late-scan read/write permissions and
+same-address scan collisions remain tracked in
+[#204](https://github.com/amichai-bd/nand2mario/issues/204); raw startup cadence
+remains [#205](https://github.com/amichai-bd/nand2mario/issues/205).
+
 ### Controller phase convention
 
 The adapted timing controller retains the selected source's divide-by-four

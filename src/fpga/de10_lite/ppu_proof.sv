@@ -51,7 +51,7 @@ module ppu_proof (
         .io_commit, .io_write, .io_address, .io_wdata, .io_selected, .io_rdata,
         .vram_request, .vram_address, .vram_data, .vram_valid,
         .oam_pair_address, .oam_phase, .oam_scan_index, .oam_data, .oam_valid, .dma_active,
-        .vram_cpu_allow, .oam_cpu_allow, .stat_condition, .stat_rise,
+        .vram_cpu_allow, .oam_cpu_allow, .oam_cpu_read_allow(), .stat_condition, .stat_rise,
         .vblank_condition, .vblank_rise, .fault,
         .source_valid, .source_start, .source_shade, .source_x(), .source_y(),
         .source_epoch, .source_dot, .source_abort, .blank_assert, .source_display_eligible

@@ -29,6 +29,7 @@ module n2m_ppu (
     input var logic dma_active,
     output logic vram_cpu_allow,
     output logic oam_cpu_allow,
+    output logic oam_cpu_read_allow,
     output logic stat_condition,
     output logic vblank_condition,
     output logic stat_rise,
@@ -76,6 +77,7 @@ module n2m_ppu (
     logic lyc_write;
     logic [7:0] render_bgp, render_obp0, render_obp1;
     logic [7:0] readable_ly;
+    logic early_oam_read_block;
     assign reset = reset_sys || core_reset;
     assign fault = fetch_fault || object_fault;
     assign fault_now = fetch_fault_now || object_fault_now;
@@ -154,6 +156,11 @@ module n2m_ppu (
     assign oam_phase = reset || fault_now ? 2'd0 : object_oam_phase;
     assign vram_cpu_allow = !mode3;
     assign oam_cpu_allow = !(scan_active || mode3 || dma_active);
+    // Legal T4 before the next ordinary scan blocks reads while writes remain
+    // allowed. Use renderer LY, not the exceptional CPU-readable LY153 value.
+    assign early_oam_read_block = lcdc[7] && ly < 8'd144
+        && line_quarter == 7'd113 && quarter_phase == 2'd3;
+    assign oam_cpu_read_allow = oam_cpu_allow && !early_oam_read_block;
     assign vblank_rise = vblank_condition && !vblank_history && !reset;
     `DFF_RST(vblank_history, vblank_condition, clk_sys, reset)
     assign pixel_capture = gb_tick && source_event && !lcd_disable && !fault_now && !reset;
