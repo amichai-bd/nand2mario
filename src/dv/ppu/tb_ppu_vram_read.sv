@@ -57,7 +57,7 @@ module tb_ppu_vram_read;
     endtask
     task automatic check_at(input integer elapsed, input logic read_allowed, input logic write_allowed);
         @(negedge clk_sys);
-        if (elapsed == 532 && $test$plusargs("read_corrupt")) force dut.vram_cpu_read_allow, .oam_cpu_read_allow = 1'b1;
+        if (elapsed == 532 && $test$plusargs("read_corrupt")) force dut.vram_cpu_read_allow = 1'b1;
         do @(posedge clk_sys); while (!(gb_tick && dot_before == enable_dot + 64'(elapsed)));
         if (cpu_phase != 3) $fatal(1, "PPU_VRAM_READ_PHASE");
         check_permissions(read_allowed, write_allowed);
