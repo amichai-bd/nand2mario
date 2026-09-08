@@ -1,5 +1,32 @@
 # OAM DMA verification
 
+## Actual v0.5 DMA program
+
+`program239.py` builds an original 32KiB image with the existing assembler,
+linker and packager. Literal instructions and whole-image hash are checked.
+CPU stores seed C000-C09F with byte(index)=index XOR A5 and copy eleven original
+instruction bytes to FF80-FF8A. The CPU then executes from HRAM, committing
+FF46=C0 at dot4180. M0/M1 have no transfer; M2-M161 accept bytes0-159 at
+dots4188-4824. The HRAM loop continues through the transfer, then jumps to ROM.
+
+`python-v05-dma` observes the actual v0.5 composition through continuous Python
+and validated Intel preload adoption. It compares all638 ordered retirements
+and all26 fields, every DMA phase, all160 actual OAM byte commits and subsequent
+CPU readbacks. DMA-only byte writes occur at system edge13 after their accepting
+T4; their completed-dot observation is two dots later. FF46 readback at5012
+returnsC0. LCDC91 commits7608 and HALT retires7616. Zero profile VRAM and BGP0
+produce a bounded white-pixel witness under the existing source schedule
+(first row+93, next row+548, later rows456 dots apart). A real Client HALT ends
+execution; an independent early-progress watchdog detects stalled ticks.
+
+`python-v05-dma-byte` changes the first actual Intel pair-write data fromA5 to00
+with only the low byte enabled. Unchanged physical-write expectations must fail
+at byte0. Preserve the failing Python/XML result and nonzero outer status;
+the simulator's raw exit may remain zero. This is bounded composition proof,
+not physical UART loading, a new DMA compatibility model or full issue88 proof.
+
+## Component fixtures
+
 Full scope follows [DMA MAS](../../../wiki/src/rtl/dma/MAS_dma.md) and #132.
 The fixtures below cover pure corruption and composed arbitration. The adopted
 digital policies and physical-model limits are defined in the MAS.

@@ -91,6 +91,12 @@ through the same validated Intel preparation and public loader adoption. Its
 literal instruction/hash producer and software tool inputs are required in the
 fingerprint. It proves bounded execution, not physical UART loading.
 
+`preload: "dma239"` uses the same preparation for the original
+[actual-v0.5 DMA program](../../../src/dv/dma/README.md#actual-v05-dma-program).
+Its literal instruction/hash producer and software tools are required inputs.
+The image executes CPU writes to seed WRAM and HRAM; preloading does not supply
+the transferred OAM bytes or bypass subsequent memory arbitration.
+
 Python targets use the executing pinned interpreter and installed packages from
 the [separate dependency record](../../../src/dv/python/THIRD_PARTY.md). Normal
 SV use does not import or require cocotb. Execution does not install dependencies.
