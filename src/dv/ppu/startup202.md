@@ -2,7 +2,9 @@
 
 Issue #202 remains an investigation. These original programs test the legal
 CPU-visible first-line OAM boundary independently of internal pixel timestamps.
-No RTL correction or hardware-revision claim follows from a model disagreement.
+The correction blocks only early OAM reads; writes and source timing are unchanged.
+Late-scan permissions remain #204 and raw startup cadence remains #205. No
+hardware-revision claim follows from a model disagreement.
 
 The [pinned primary read table](https://github.com/Gekkio/mooneye-test-suite/blob/31510e12eea6286d36eea060a6adde755e1067aa/acceptance/ppu/lcdon_timing-GS.s)
 requires FF after LCDC81,111 NOPs,LD A,(DE=FE00). The
@@ -32,3 +34,14 @@ resynchronization. A mismatch may concern read/write access sampling rather
 than the454/455 startup pixel interval. The paired control, defect sensitivity,
 independent review and any required product correction remain contingent on
 that diagnosis; no passing status or resolved#202 is claimed by adding targets.
+
+## Scoped correction checks
+
+`ppu-oam-read` checks the unchanged write allowance and distinct read allowance
+at448/452/456 and904/908/912, startup8/76/80, VBlank entry and next-frame
+entry. A held pre-T4 state proves pause cannot bypass the read block; DMA still
+denies both directions and core reset clears the early condition. The actual
+read output is forced allowed in `ppu-oam-read-corrupt`, which must fail the
+unchanged0/1 versus1/1 check. No new write or mixed-port collision is enabled.
+The two original CPU targets then check the corrected architectural read and
+unchanged write/readback. All raw earlier failures remain failed evidence.

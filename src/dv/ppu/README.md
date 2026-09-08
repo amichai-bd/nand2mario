@@ -224,3 +224,9 @@ IF. Legal T4 IF writes clear at65656/65664; the fourth case also clears on the
 natural OAM event at65660, proving write priority without an illegal VBlank-edge
 CPU commit. A public VBlank-rise fault must fail the exact65662 check. Public
 waves and32 literal boundary checks are retained with positive and fault evidence.
+
+
+The [early OAM read boundary](startup202.md) has separate read/write observations
+and original CPU witnesses. Late-scan direction-specific windows remain in
+[#204](https://github.com/amichai-bd/nand2mario/issues/204), and startup raster
+cadence remains in [#205](https://github.com/amichai-bd/nand2mario/issues/205).

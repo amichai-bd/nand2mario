@@ -62,7 +62,7 @@ module n2m_smoke_system #(parameter bit HOST_PLAY = 0) (
     logic [6:0] oam_pair_address;
     logic [1:0] oam_phase;
     logic [15:0] oam_data;
-    logic oam_valid, vram_cpu_allow, oam_cpu_allow, stat_condition, vblank_condition;
+    logic oam_valid, vram_cpu_allow, oam_cpu_allow, oam_cpu_read_allow, stat_condition, vblank_condition;
     logic reset, blank_assert;
     assign reset = reset_sys || core_reset;
     assign core_initialized = memory_initialized && cpu_initialized;
@@ -107,7 +107,8 @@ module n2m_smoke_system #(parameter bit HOST_PLAY = 0) (
     // One raw A port: the public CPU address can select only one destination.
     // PPU permissions apply to CPU video accesses; its own B reads remain live.
     assign video_owner = destination == MEMORY_VRAM || destination == MEMORY_OAM;
-    assign video_allowed = destination == MEMORY_VRAM ? vram_cpu_allow : oam_cpu_allow;
+    assign video_allowed = destination == MEMORY_VRAM ? vram_cpu_allow
+        : (owner_write ? oam_cpu_allow : oam_cpu_read_allow);
     assign video_read = owner_prepare && video_owner && video_allowed && !owner_write;
     assign raw_read = storage_read || video_read;
     assign raw_write = storage_write || (owner_commit && video_owner && video_allowed && owner_write);
@@ -161,7 +162,7 @@ module n2m_smoke_system #(parameter bit HOST_PLAY = 0) (
         .io_address(owner_address), .io_wdata(owner_wdata), .io_selected(ppu_selected),
         .io_rdata(ppu_rdata), .vram_request, .vram_address, .vram_data, .vram_valid,
         .oam_pair_address, .oam_phase, .oam_scan_index(), .oam_data, .oam_valid,
-        .dma_active(1'b0), .vram_cpu_allow, .oam_cpu_allow, .stat_condition,
+        .dma_active(1'b0), .vram_cpu_allow, .oam_cpu_allow, .oam_cpu_read_allow, .stat_condition,
         .vblank_condition, .stat_rise(), .vblank_rise(), .fault(ppu_fault),
         .source_valid, .source_start, .source_shade, .source_x, .source_y,
         .source_epoch, .source_dot, .source_abort, .blank_assert, .source_display_eligible
