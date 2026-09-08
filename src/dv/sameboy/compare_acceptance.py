@@ -67,7 +67,7 @@ def main():
            Path(__file__).with_name('compare_diagnostic.py'),Path(__file__).with_name('retirement.py'),
            Path(__file__).with_name('scenario.json'),ROOT/'cfg/interfaces.json']
     report={'command':sys.argv,'input_sha256':{str(p.resolve()):hashlib.sha256(p.read_bytes()).hexdigest() for p in paths},
-            'scope':'exact retirement ABI and ordered visible pixel values; DUT timing checks remain separate; #194 timing diagnostic is unresolved'}
+            'scope':'exact retirement ABI and ordered visible pixel values; DUT timing checks remain separate; #197 timing diagnostic is unresolved'}
     try:
         producers=require_producers(args.core,args.dut)
         report['producer_sha256']={str(p):file_hash(p) for p in producers}
