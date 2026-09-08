@@ -56,7 +56,7 @@ def verify_fit(folder, target):
     if target["pll"].get("system_divide") == 2:
         return verify_parallel_fit(folder, target)
     fit = (folder / "output/design.fit.rpt").read_text(encoding="cp1252" if os.name == "nt" else "utf-8")
-    combined = target.get("top") == "controls_proof"
+    combined = target.get("top") in ("controls_proof", "v05_controls_proof")
     adc_values = {"PLL mode": "No compensation", "Compensate clock": "--", "Input frequency 0": "10.0 MHz",
                   "Nominal PFD frequency": "10.0 MHz", "Nominal VCO frequency": "400.0 MHz",
                   "M value": "40", "N value": "1", "Inclk0 signal type": "Dedicated Pin"}
@@ -126,7 +126,7 @@ def verify_parallel_fit(folder, target):
         SYSTEM_PLL: ("Normal", "clock0", "50.0 MHz", "6.3 MHz", "650.0 MHz", "104", "8", "Dedicated Pin"),
         PIXEL_PLL: ("Normal", "clock0", "50.0 MHz", "10.0 MHz", "630.0 MHz", "63", "5", "Dedicated Pin"),
     }
-    if target["top"] == "controls_proof":
+    if target["top"] in ("controls_proof", "v05_controls_proof"):
         expected[ADC_PLL] = ("No compensation", "--", "10.0 MHz", "10.0 MHz", "400.0 MHz", "40", "1", "Dedicated Pin")
     headings = [r[1:] for r in rows if r and r[0] == "SDC pin name"]
     if len(headings) != 1 or len(headings[0]) != len(expected) or set(headings[0]) != set(expected):

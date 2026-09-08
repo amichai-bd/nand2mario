@@ -14,11 +14,11 @@ SYS = r"\clk_sys~inputclkctrl_outclk"
 
 def verify_netlist(text, checks, top="adc_proof", *, parallel=False, system_net=SYS):
     from .fpga_lock import ROW
-    if top not in ("adc_proof", "controls_proof"):
+    if top not in ("adc_proof", "controls_proof", "v05_controls_proof"):
         raise ValueError("unsupported ADC proof top")
-    reset = "u_adc_reset|" if top == "controls_proof" else "u_reset|"
+    reset = "u_adc_reset|" if top in ("controls_proof", "v05_controls_proof") else "u_reset|"
     row = "n2m_adc_backend:u_adc|n2m_adc_pll:u_pll|altpll:altpll_component|n2m_adc_pll_altpll:auto_generated|pll_lock_sync"
-    expected_rows = [ROW, row] if top == "controls_proof" else [row]
+    expected_rows = [ROW, row] if top in ("controls_proof", "v05_controls_proof") else [row]
     if parallel:
         expected_rows.append("n2m_clocking:u_clocking|n2m_system_pll:u_system_pll|altpll:altpll_component|n2m_system_pll_altpll:auto_generated|pll_lock_sync")
     actual_rows = re.findall(r";\s*([^;\r\n]+?)\s*;\s*No clock feeds this register's clock port\.\s*;", checks)
@@ -98,7 +98,7 @@ def verify_netlist(text, checks, top="adc_proof", *, parallel=False, system_net=
             {(n, p) for n in gate_specs for p, v in cells[n][1].items() if v == raw}, "ADC raw lock has extra fanout")
     reset_net = reset_gate["combout"]
     ready_net = "\\" + reset + "ready~q"
-    if top == "controls_proof":
+    if top in ("controls_proof", "v05_controls_proof"):
         require(users(reset_net) == {(reset + "lock_reset~clkctrl", "inclk")},
                 "ADC lock reset bypasses its buffer")
         reset_net = reset_buffer(reset + "lock_reset~clkctrl", reset_net)
@@ -214,7 +214,7 @@ def verify(folder, top="adc_proof", *, parallel=False, system_net=SYS):
                             (folder / "output/check_timing.rpt").read_text(), top, parallel=parallel, system_net=system_net)
     fit = (folder / "output/design.fit.rpt").read_text()
     summary = (folder / "output/design.fit.summary").read_text()
-    expected_resources = (("Total PLLs", 3 if parallel else 2), ("ADC blocks", 1)) if top == "controls_proof" else (
+    expected_resources = (("Total PLLs", 3 if parallel else 2), ("ADC blocks", 1)) if top in ("controls_proof", "v05_controls_proof") else (
         ("Total PLLs", 1), ("ADC blocks", 1), ("Total memory bits", 0))
     for label, expected in expected_resources:
         values = re.findall(r"(?m)^" + re.escape(label) + r"\s*:\s*(\d+)\s*/", summary)
@@ -224,7 +224,7 @@ def verify(folder, top="adc_proof", *, parallel=False, system_net=SYS):
         rows = [row for row in fit.splitlines() if re.match(r";\s*" + pin + r"\s*;", row)]
         if len(rows) != 1 or not re.search(r";\s*" + signal + r"\s*;\s*input\s*;\s*3.3-V LVTTL\s*;", rows[0]):
             raise ValueError("ADC physical clock pin mismatch: " + pin)
-    mode = r";\s*PLL mode\s*;\s*" + (r"Normal\s*;\s*" * (2 if parallel else 1) if top == "controls_proof" else "") + r"No Compensation\s*;"
+    mode = r";\s*PLL mode\s*;\s*" + (r"Normal\s*;\s*" * (2 if parallel else 1) if top in ("controls_proof", "v05_controls_proof") else "") + r"No Compensation\s*;"
     if not re.search(mode, fit, re.I):
         raise ValueError("ADC fit compensation mode differs")
     return result

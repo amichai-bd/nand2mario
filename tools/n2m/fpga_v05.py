@@ -12,12 +12,27 @@ BOARD_PINS = dict(BOARD_INPUTS, **dict(zip(fpga_vga.PORTS, (
 
 
 def board_target(target):
-    return target.get("top") == "v05_proof" and "uart_rx" in target.get("pins", {})
+    return target.get("top") in ("v05_proof", "v05_controls_proof") and "uart_rx" in target.get("pins", {})
+
+
+CONTROL_PINS = dict(BOARD_PINS, clk_adc_reference="PIN_N5", **dict(zip(
+    [f"buttons_n[{i}]" for i in range(4)], ("PIN_AB7", "PIN_AB8", "PIN_AB9", "PIN_Y10"))))
+CONTROL_PINS.update(dict(zip([f"leds[{i}]" for i in range(10)],
+    ("PIN_A8", "PIN_A9", "PIN_A10", "PIN_B10", "PIN_D13", "PIN_C13", "PIN_E14", "PIN_D14", "PIN_A11", "PIN_B11"))))
+CONTROL_CHAINS = fpga_controls.CHAINS[:4] + UART_CHAINS
+
+
+def control_target(target):
+    return target.get("top") == "v05_controls_proof"
+
+
+def chains(target):
+    return CONTROL_CHAINS if control_target(target) else UART_CHAINS
 
 
 def validate_board(target):
-    if (target.get("top") != "v05_proof"
-            or target.get("pins") != BOARD_PINS
+    if (target.get("top") not in ("v05_proof", "v05_controls_proof")
+            or target.get("pins") != (CONTROL_PINS if control_target(target) else BOARD_PINS)
             or set(target.get("virtual_pins", [])) != {"paused", "fault", "display_sequence[*]", "display_epoch[*]"}):
         raise ValueError("v05-board requires physical UART/reset and diagnostic-only virtual outputs")
 
@@ -26,13 +41,13 @@ def hierarchy(text):
     return text.replace("u_bridge|", "u_system|u_bridge|")
 
 
-def constraints(quote, *, board=False):
+def constraints(quote, *, board=False, controls=False):
     text = fpga_vga.constraints(quote, lcd=True)
-    return hierarchy(text) + (fpga_controls.constraints(quote, chains=UART_CHAINS) if board else "")
+    return hierarchy(text) + (fpga_controls.constraints(quote, chains=CONTROL_CHAINS if controls else UART_CHAINS) if board else "")
 
 
-def audit(quote, *, board=False):
-    return hierarchy(fpga_vga.audit(quote, lcd=True)) + (fpga_controls.audit(quote, chains=UART_CHAINS) if board else "")
+def audit(quote, *, board=False, controls=False):
+    return hierarchy(fpga_vga.audit(quote, lcd=True)) + (fpga_controls.audit(quote, chains=CONTROL_CHAINS if controls else UART_CHAINS) if board else "")
 
 
 def verify_paths(folder, *, system_clock):
@@ -45,7 +60,7 @@ def verify_paths(folder, *, system_clock):
     return fpga_vga.verify_paths(reports,lcd=True,system_clock=system_clock,bridge_prefix="u_system|u_bridge|")
 
 
-def verify_memory(folder, *, system_net):
+def verify_memory(folder, *, system_net, top="v05_proof"):
     """Partition the complete composition across existing memory checkers."""
     import re
     import os
@@ -60,7 +75,7 @@ def verify_memory(folder, *, system_net):
         bridge_prefix='u_system|u_bridge|', shade='u_system|u_ppu|source_shade')
     fpga_vga.verify_memory_rows(fit, bridge_prefix='u_system|u_bridge|')
     uart = fpga_controls.verify_uart_memory(text, fit, system_net=system_net,
-        prefix='u_system|', top='v05_proof')
+        prefix='u_system|', top=top)
     names = re.findall(r'fiftyfivenm_ram_block\s+\\(\S+)\s*\(', text)
     uart_names = {name for name in names if name.startswith('u_system|u_uart|')}
     if (len(names) != 111 or len(set(names)) != 111

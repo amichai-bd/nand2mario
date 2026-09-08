@@ -71,7 +71,7 @@ def target_definition(root, name):
         fpga_v05.validate_board(target)
     if "pll" in target:
         fpga_pll.validate(target["pll"])
-        if target["top"] not in ("clocking_proof", "vga_proof", "ppu_proof", "intel_memory_proof", "controls_proof", "v05_proof") or "timing" not in target:
+        if target["top"] not in ("clocking_proof", "vga_proof", "ppu_proof", "intel_memory_proof", "controls_proof", "v05_proof", "v05_controls_proof") or "timing" not in target:
             raise ValueError("PLL evidence currently requires the bounded clocking proof target")
     if "timing" in target:
         fpga_constraints.validate(target["timing"])
@@ -131,13 +131,13 @@ def prepare(root, folder, target, build_id=None):
             lines.append('set_global_assignment -name VERILOG_FILE n2m_system_pll.v')
     if "src/rtl/input/n2m_adc_backend.sv" in target["sources"]:
         lines.extend(fpga_adc.assignments())
-    if "timing" in target or target["top"] == "v05_proof":
+    if "timing" in target or target["top"] in ("v05_proof", "v05_controls_proof"):
         (folder / "checked.sdc").write_text(checked_constraints(target), encoding="utf-8")
         lines.append('set_global_assignment -name SDC_FILE checked.sdc')
     for port, pin in target["pins"].items():
         lines.extend([f'set_location_assignment {pin} -to {tcl_word(port)}',
                       f'set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to {tcl_word(port)}'])
-        if target.get("top") in ("vga_proof", "ppu_proof", "controls_proof", "v05_proof") and port in fpga_vga.PORTS:
+        if target.get("top") in ("vga_proof", "ppu_proof", "controls_proof", "v05_proof", "v05_controls_proof") and port in fpga_vga.PORTS:
             lines.append(f'set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to {tcl_word(port)}')
         if (target["top"] == "controls_proof" or fpga_v05.board_target(target)) and (port == "uart_tx" or re.fullmatch(r"leds\[[0-9]\]", port)):
             lines.append(f'set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to {tcl_word(port)}')
@@ -156,14 +156,14 @@ def prepare(root, folder, target, build_id=None):
         audit = audit.replace("project_close", fpga_intel_memory.audit(tcl_word) + "project_close")
     if target["top"] == "controls_proof":
         audit = audit.replace("project_close", fpga_controls.audit(tcl_word) + "project_close")
-    if target.get("top") == "v05_proof":
-        audit = audit.replace("project_close", fpga_v05.audit(tcl_word, board=fpga_v05.board_target(target)) + "project_close")
+    if target.get("top") in ("v05_proof", "v05_controls_proof"):
+        audit = audit.replace("project_close", fpga_v05.audit(tcl_word, board=fpga_v05.board_target(target), controls=fpga_v05.control_target(target)) + "project_close")
     (folder / "audit.tcl").write_text(audit, encoding="utf-8")
 
 
 def checked_constraints(target):
-    if target.get("top") == "v05_proof":
-        return fpga_constraints.generate(target["timing"], tcl_word) + fpga_v05.constraints(tcl_word, board=fpga_v05.board_target(target))
+    if target.get("top") in ("v05_proof", "v05_controls_proof"):
+        return fpga_constraints.generate(target["timing"], tcl_word) + fpga_v05.constraints(tcl_word, board=fpga_v05.board_target(target), controls=fpga_v05.control_target(target))
     text = fpga_constraints.generate(target["timing"], tcl_word)
     if target.get("top") in ("vga_proof", "ppu_proof", "controls_proof"):
         text += fpga_vga.constraints(tcl_word, lcd=target["top"] == "ppu_proof")
@@ -217,7 +217,7 @@ def execute(argv, folder, log, timeout, record, build):
     if process.returncode:
         raise RuntimeError(f"Quartus exit {process.returncode}; see {log.name}")
     explained = ()
-    if log.name == "compile.log" and record.get("definition", {}).get("top") in ("adc_proof", "controls_proof"):
+    if log.name == "compile.log" and record.get("definition", {}).get("top") in ("adc_proof", "controls_proof", "v05_controls_proof"):
         explained = fpga_adc.explained_diagnostics(text, folder, record["tools"]["adc"])
     if log.name == "compile.log" and "pll" in record.get("definition", {}):
         explained = [*explained, *fpga_pll.explained_diagnostics(text, folder, record["definition"]["pll"])]
@@ -268,7 +268,7 @@ def timing_evidence(folder, target, *, build_id=None):
             raise ValueError(f"timing failure: {name}, slack={slack}, TNS={tns}")
         slacks[name] = slack
     for corner in ("Slow 1200mV 85C", "Slow 1200mV 0C", "Fast 1200mV 0C"):
-        if target["top"] == "controls_proof" and f"{corner} Model Minimum Pulse Width 'u_adc|u_pll|altpll_component|auto_generated|pll1|clk[0]'" not in slacks:
+        if target["top"] in ("controls_proof", "v05_controls_proof") and f"{corner} Model Minimum Pulse Width 'u_adc|u_pll|altpll_component|auto_generated|pll1|clk[0]'" not in slacks:
             raise ValueError("missing ADC PLL pulse-width timing")
         for check in (("Setup", "Hold", "Recovery", "Removal", "Minimum Pulse Width") if "pll" in target else ("Setup", "Hold", "Minimum Pulse Width")):
             if not any(name.startswith(f"{corner} Model {check} '") for name in slacks):
@@ -290,14 +290,14 @@ def timing_evidence(folder, target, *, build_id=None):
     if not TIMING_CHECKS.issubset(dict(rows)) or len(dict(rows)) != len(rows):
         raise ValueError("missing structural timing checks")
     lock_event = None
-    expected_lock_events = (2 if target["top"] == "controls_proof" else 1) + int(parallel)
+    expected_lock_events = (2 if target["top"] in ("controls_proof", "v05_controls_proof") else 1) + int(parallel)
     if "pll" in target:
         if dict(rows).get("no_clock") != str(expected_lock_events):
             raise ValueError("vendor lock event row missing or extra no-clock endpoints")
         lock_event = fpga_pll.verify_lock_event(folder, checks, target["top"], parallel=parallel)
         fpga_pll.verify_fit(folder, target)
     adc_evidence = None
-    if target["top"] in ("adc_proof", "controls_proof"):
+    if target["top"] in ("adc_proof", "controls_proof", "v05_controls_proof"):
         adc_evidence = fpga_adc.verify(folder, target["top"], **({"parallel": True, "system_net": fpga_pll.SYSTEM_NET} if parallel else {}))
         if target["top"] == "adc_proof":
             lock_event = adc_evidence["lock_event"]
@@ -312,7 +312,7 @@ def timing_evidence(folder, target, *, build_id=None):
             raise ValueError(f"structural timing failure: {name}={count}")
     evidence = {"slack_ns": slacks, "fit_summary": fit, "unconstrained": "none", "ignored_constraints": "none", "vendor_lock_event": lock_event, "vga": vga_evidence, "intel_memory": memory_evidence,
             "virtual_clock_check": "No virtual clock required for the physical-clock-referenced fixture" if "No virtual clock was found." in checks else "passed"}
-    if target["top"] == "v05_proof":
+    if target["top"] in ("v05_proof", "v05_controls_proof"):
         evidence["vga_paths"] = fpga_v05.verify_paths(folder, system_clock=fpga_pll.SYSTEM_CLOCK)
     if adc_evidence is not None:
         evidence["adc"] = adc_evidence
@@ -320,9 +320,9 @@ def timing_evidence(folder, target, *, build_id=None):
         evidence["controls"] = fpga_controls.verify(folder, **system_profile)
         evidence["controls"]["build_id"] = fpga_controls.verify_identity(folder, build_id)
     if fpga_v05.board_target(target):
-        evidence["intel_memory"] = fpga_v05.verify_memory(folder, system_net=fpga_pll.SYSTEM_NET)
+        evidence["intel_memory"] = fpga_v05.verify_memory(folder, system_net=fpga_pll.SYSTEM_NET, top=target["top"])
         evidence["board_uart"] = fpga_controls.verify(folder, system_clock=fpga_pll.SYSTEM_CLOCK,
-            system_net=fpga_pll.SYSTEM_NET, chains=fpga_v05.UART_CHAINS, top="v05_proof")
+            system_net=fpga_pll.SYSTEM_NET, chains=fpga_v05.chains(target), top=target["top"])
         evidence["board_build_id"] = fpga_controls.verify_identity(folder, build_id, macro="N2M_V05_BUILD_ID", instances=2)
     return evidence
 
@@ -348,7 +348,7 @@ def complete_cache(record, fingerprint, root, build, target):
         if "pll" in target or any(p in target["sources"] for p in ("src/rtl/common/n2m_intel_ram.sv", "src/rtl/input/n2m_adc_backend.sv")):
             required += [folder / "simulation/questa/design.vo", folder / "netlist.log"]
         required += [folder / name for name in ("design.qpf", "design.qsf", "audit.tcl", "compile.log", "audit.log")]
-        if "timing" in target or target.get("top") == "v05_proof":
+        if "timing" in target or target.get("top") in ("v05_proof", "v05_controls_proof"):
             required.append(folder / "checked.sdc")
         if target.get("top") in ("vga_proof", "ppu_proof", "controls_proof"):
             required += [folder / "output" / name for name in fpga_vga.required_reports(lcd=target["top"] == "ppu_proof")]
@@ -356,10 +356,10 @@ def complete_cache(record, fingerprint, root, build, target):
             required += [folder / "output" / name for name in fpga_controls.required_reports()]
         if target.get("top") == "intel_memory_proof":
             required.append(folder / "output/intel_memory_inputs.rpt")
-        if target.get("top") == "v05_proof":
+        if target.get("top") in ("v05_proof", "v05_controls_proof"):
             required += [folder / "output" / name for name in fpga_vga.required_reports(lcd=True)]
         if fpga_v05.board_target(target):
-            required += [folder / "output" / name for name in fpga_controls.required_reports(chains=fpga_v05.UART_CHAINS)]
+            required += [folder / "output" / name for name in fpga_controls.required_reports(chains=fpga_v05.chains(target))]
         if any(p.relative_to(root).as_posix() not in record["artifacts"] for p in required):
             return False
         if (target.get("top") == "controls_proof" or fpga_v05.board_target(target)) and record.get("build_id") != fingerprint[:32]:
