@@ -11170,9 +11170,11 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "args": [],
+    "args": [
+      "-gPRELOADED=1"
+    ],
     "expected_exit": "zero",
-    "signature": "PASS TIMER234 actual-v05 records=110 marker=7b",
+    "signature": "PASS DMA239 actual-v05 records=638 bytes=160",
     "timeout_seconds": 600,
     "vendor_model": "intel-memory",
     "intel_mixed_mode_instances": [
@@ -11307,10 +11309,11 @@
     ],
     "top": "tb_python_v05",
     "args": [
+      "-gPRELOADED=1",
       "+dma_byte_fault"
     ],
     "expected_exit": "zero",
-    "signature": "PASS TIMER234 actual-v05 records=110 marker=7b",
+    "signature": "PASS DMA239 actual-v05 records=638 bytes=160",
     "timeout_seconds": 600,
     "vendor_model": "intel-memory",
     "intel_mixed_mode_instances": [
