@@ -12190,6 +12190,7 @@
         "tools/n2m/host/command.py",
         "tools/n2m/host/package.py",
         "tools/n2m/host/transport.py",
+        "src/dv/python/controls/controls.py",
         "src/dv/python/controls/test_controls.py"
       ],
       "waves": [
@@ -12295,7 +12296,7 @@
     ],
     "testbench": "python",
     "python": {
-      "module": "test_controls",
+      "module": "test_controls_corrupt",
       "test": "controls_corrupt",
       "inputs": [
         "src/dv/python/integration/client_transport.py",
@@ -12329,7 +12330,8 @@
         "tools/n2m/host/command.py",
         "tools/n2m/host/package.py",
         "tools/n2m/host/transport.py",
-        "src/dv/python/controls/test_controls.py"
+        "src/dv/python/controls/controls.py",
+        "src/dv/python/controls/test_controls_corrupt.py"
       ],
       "waves": [
         "board_reset_n",
@@ -12434,7 +12436,7 @@
     ],
     "testbench": "python",
     "python": {
-      "module": "test_controls",
+      "module": "test_controls_startup",
       "test": "controls_startup",
       "inputs": [
         "src/dv/python/integration/client_transport.py",
@@ -12468,7 +12470,8 @@
         "tools/n2m/host/command.py",
         "tools/n2m/host/package.py",
         "tools/n2m/host/transport.py",
-        "src/dv/python/controls/test_controls.py"
+        "src/dv/python/controls/controls.py",
+        "src/dv/python/controls/test_controls_startup.py"
       ],
       "waves": [
         "board_reset_n",
