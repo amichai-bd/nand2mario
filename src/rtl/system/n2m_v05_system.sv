@@ -33,6 +33,11 @@ module n2m_v05_system #(
     output logic [63:0] source_dot,
     output logic fault
 );
+    // Quartus 25.1 misresolves package constants inside instance connections.
+    localparam n2m_memory_pkg::memory_destination_t OAM_DESTINATION = n2m_memory_pkg::MEMORY_OAM;
+    localparam n2m_memory_pkg::memory_destination_t IRQ_DESTINATION = n2m_memory_pkg::MEMORY_IRQ;
+    localparam n2m_memory_pkg::memory_destination_t PPU_DESTINATION = n2m_memory_pkg::MEMORY_PPU;
+    localparam n2m_memory_pkg::memory_destination_t JOYP_DESTINATION = n2m_memory_pkg::MEMORY_JOYP;
     logic pause_request, core_initialized, instruction_complete, cpu_stopped;
     logic [7:0] buttons, profile, endpoint_state;
     logic [63:0] retirement_count;
@@ -154,8 +159,8 @@ module n2m_v05_system #(
     end
     n2m_oam_late_write u_oam_late (
         .clk_sys, .reset_sys, .core_reset,
-        .prepare(owner_prepare && destination == n2m_memory_pkg::MEMORY_OAM && owner_write),
-        .commit(owner_commit && destination == n2m_memory_pkg::MEMORY_OAM && owner_write),
+        .prepare(owner_prepare && destination == OAM_DESTINATION && owner_write),
+        .commit(owner_commit && destination == OAM_DESTINATION && owner_write),
         .late_window(oam_cpu_late_write), .address(owner_address), .data(owner_wdata),
         .ppu_read(oam_phase != 0), .ppu_pair(oam_pair_address),
         .response(late_response), .request(late_request), .raw_oam_busy(late_busy),
@@ -176,7 +181,7 @@ module n2m_v05_system #(
     );
     n2m_interrupts u_interrupts (
         .clk_sys, .reset_sys, .core_reset, .gb_tick,
-        .io_commit(owner_commit && destination == n2m_memory_pkg::MEMORY_IRQ), .io_write(owner_write),
+        .io_commit(owner_commit && destination == IRQ_DESTINATION), .io_write(owner_write),
         .io_address(owner_address), .io_wdata(owner_wdata),
         .source_level({3'd0,stat_condition,vblank_condition}), .source_event({joyp_event,4'd0}),
         .irq_ack, .io_selected(irq_selected), .io_rdata(irq_rdata),
@@ -184,7 +189,7 @@ module n2m_v05_system #(
     );
     n2m_ppu u_ppu (
         .clk_sys, .reset_sys, .core_reset, .gb_tick, .epoch, .dot_before(dot_count),
-        .io_commit(owner_commit && destination == n2m_memory_pkg::MEMORY_PPU), .io_write(owner_write),
+        .io_commit(owner_commit && destination == PPU_DESTINATION), .io_write(owner_write),
         .io_address(owner_address), .io_wdata(owner_wdata), .io_selected(ppu_selected),
         .io_rdata(ppu_rdata), .vram_request, .vram_address, .vram_data, .vram_valid,
         .oam_pair_address, .oam_phase, .oam_scan_index(), .oam_data, .oam_valid,
@@ -196,7 +201,7 @@ module n2m_v05_system #(
     n2m_joypad u_joypad (
         .clk_sys, .reset_sys, .core_reset, .gb_tick,
         .input_commit(effective_update.valid), .input_buttons(effective_update.buttons),
-        .io_commit(owner_commit && destination == n2m_memory_pkg::MEMORY_JOYP), .io_write(owner_write),
+        .io_commit(owner_commit && destination == JOYP_DESTINATION), .io_write(owner_write),
         .io_address(owner_address), .io_wdata(owner_wdata), .io_selected(),
         .io_rdata(joyp_rdata), .buttons_observe(),
         .selected_active(joyp_selected_active), .request_event(joyp_event)
