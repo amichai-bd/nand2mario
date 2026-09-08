@@ -81,6 +81,11 @@ owns those separate gates.
 literal instructions and declared image hashes through the same Intel preload
 preparation. Their source and software tools are fingerprinted inputs.
 
+`preload: "late-fe9c"`, `"late-fe9d"` and `"late-fe20"` use the same
+preparation for the original [nonuniform late OAM witnesses](../../../src/dv/ppu/late208.md).
+The producer verifies literal instructions and a declared whole-image hash;
+its source and software tools are required fingerprinted inputs.
+
 Python targets use the executing pinned interpreter and installed packages from
 the [separate dependency record](../../../src/dv/python/THIRD_PARTY.md). Normal
 SV use does not import or require cocotb. Execution does not install dependencies.

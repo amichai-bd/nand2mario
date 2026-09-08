@@ -30,6 +30,7 @@ module n2m_ppu (
     output logic vram_cpu_allow,
     output logic vram_cpu_read_allow,
     output logic oam_cpu_allow,
+    output logic oam_cpu_late_write,
     output logic oam_cpu_read_allow,
     output logic stat_condition,
     output logic vblank_condition,
@@ -162,6 +163,8 @@ module n2m_ppu (
         && line_quarter == 7'd19 && quarter_phase == 2'd3;
     assign vram_cpu_read_allow = vram_cpu_allow && !early_vram_read_block;
     assign oam_cpu_allow = !(scan_active || mode3 || dma_active);
+    // Only integrations with the late-write owner may consume this indication.
+    assign oam_cpu_late_write = !reset && !fault_now && !dma_active && early_vram_read_block;
     // Legal T4 before the next ordinary scan blocks reads while writes remain
     // allowed. Use renderer LY, not the exceptional CPU-readable LY153 value.
     assign early_oam_read_block = lcdc[7] && ly < 8'd144

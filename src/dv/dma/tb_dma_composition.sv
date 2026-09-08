@@ -105,7 +105,7 @@ module tb_dma_composition;
         .vram_data(ppu_vram_data), .vram_valid(ppu_vram_valid), .oam_pair_address(ppu_oam_pair),
         .oam_phase(ppu_oam_phase), .oam_scan_index(ppu_scan_index), .oam_data(ppu_oam_data),
         .oam_valid(ppu_oam_valid), .dma_active(dma_active), .vram_cpu_allow(ppu_vram_write_allow),
-        .oam_cpu_allow(ppu_oam_write_allow), .vram_cpu_read_allow(ppu_vram_read_allow), .oam_cpu_read_allow(ppu_oam_read_allow), .stat_condition(), .vblank_condition(), .stat_rise(),
+        .oam_cpu_allow(ppu_oam_write_allow), .vram_cpu_read_allow(ppu_vram_read_allow), .oam_cpu_read_allow(ppu_oam_read_allow), .oam_cpu_late_write(), .stat_condition(), .vblank_condition(), .stat_rise(),
         .vblank_rise(), .fault(ppu_fault), .source_valid(), .source_start(), .source_shade(),
         .source_x(), .source_y(), .source_epoch(), .source_dot(), .source_abort(),
         .blank_assert(), .source_display_eligible());

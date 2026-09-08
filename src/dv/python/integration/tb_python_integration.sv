@@ -20,8 +20,26 @@ module tb_python_integration #(parameter bit PRELOADED = 1);
     logic [88:0] bus_sample;
     logic [383:0] record_sample;
     logic [116:0] pixel_sample;
+    // Stable DV observations; no reliance on optimized hierarchical VPI names.
+    logic [42:0] oam_observe;
+    logic inspection_enable;
+    n2m_memory_pkg::memory_oam_request_t inspection_request;
+    n2m_memory_pkg::memory_oam_response_t inspection_response;
 
     n2m_smoke_system dut (.*);
+    assign oam_observe = {dut.u_ppu.lcdc, dut.u_oam_late.phase, dut.late_busy,
+        dut.destination, dut.video_pending, dut.oam_pair_address, dut.oam_valid,
+        dut.oam_data, dut.u_ppu.objects.capture_scan};
+    assign inspection_response = dut.u_stores.oam_response;
+    always @(inspection_enable) begin
+        if (inspection_enable) force dut.u_stores.oam_request = inspection_request;
+        else release dut.u_stores.oam_request;
+    end
+    always @(posedge clk_sys) begin
+        if (inspection_enable && (!paused || dut.u_ppu.lcdc != 0
+            || dut.u_oam_late.phase != 0 || inspection_request.write_enable != 0))
+            $fatal(1, "OAM_INSPECTION_READ_ONLY");
+    end
     defparam dut.u_stores.rom.SIM_INIT_FILE = PRELOADED ? "preload-rom.mif" : "UNUSED";
     defparam dut.u_uart.u_commands.u_load.u_presence.u_presence.SIM_INIT_FILE = PRELOADED ? "preload-presence.mif" : "UNUSED";
     defparam dut.u_uart.u_commands.u_load.SIM_PRELOAD = PRELOADED;
@@ -53,6 +71,8 @@ module tb_python_integration #(parameter bit PRELOADED = 1);
         bus_event = 0;
         record_event = 0;
         pixel_event = 0;
+        inspection_enable = 0;
+        inspection_request = '0;
         fork
             begin if ($test$plusargs("data_fault")) begin
                 wait(address == 16'he000); force dut.read_data = 8'h3d;

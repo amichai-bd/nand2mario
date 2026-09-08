@@ -1457,7 +1457,8 @@
         "src/rtl/vga/n2m_vga_scan.sv",
         "src/rtl/vga/n2m_frame_bridge.sv",
         "src/rtl/snapshot/n2m_frame_snapshot.sv",
-        "src/rtl/system/n2m_v05_system.sv",
+        "src/rtl/memory/n2m_oam_late_write.sv",
+      "src/rtl/system/n2m_v05_system.sv",
         "src/rtl/clocking/n2m_reset_control.sv",
         "src/fpga/de10_lite/n2m_clocking.sv",
         "src/fpga/de10_lite/v05_proof.sv"
@@ -1592,7 +1593,8 @@
         "src/rtl/vga/n2m_vga_scan.sv",
         "src/rtl/vga/n2m_frame_bridge.sv",
         "src/rtl/snapshot/n2m_frame_snapshot.sv",
-        "src/rtl/system/n2m_v05_system.sv",
+        "src/rtl/memory/n2m_oam_late_write.sv",
+      "src/rtl/system/n2m_v05_system.sv",
         "src/rtl/clocking/n2m_reset_control.sv",
         "src/fpga/de10_lite/n2m_clocking.sv",
         "src/fpga/de10_lite/v05_proof.sv"
