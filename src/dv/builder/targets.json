@@ -7371,7 +7371,8 @@
         "tools/sw/symbols.schema.json",
         "tools/sw/targets.py",
         "tools/sw/targets.schema.json",
-        "src/dv/python/integration/client_transport.py"
+        "src/dv/python/integration/client_transport.py",
+        "tools/sw/columns.py"
       ]
     }
   },
@@ -7465,7 +7466,8 @@
         "tools/sw/symbols.schema.json",
         "tools/sw/targets.py",
         "tools/sw/targets.schema.json",
-        "src/dv/python/integration/client_transport.py"
+        "src/dv/python/integration/client_transport.py",
+        "tools/sw/columns.py"
       ]
     }
   },
@@ -7963,7 +7965,8 @@
         "tools/n2m/host/package.py",
         "tools/n2m/host/transport.py",
         "tools/n2m/host/__init__.py",
-        "src/dv/python/integration/test_client_preloaded.py"
+        "src/dv/python/integration/test_client_preloaded.py",
+        "tools/sw/columns.py"
       ]
     },
     "preload": "integration"
@@ -9173,7 +9176,8 @@
         "tools/n2m/host/command.py",
         "tools/n2m/host/package.py",
         "tools/n2m/host/transport.py",
-        "src/dv/python/v05/test_short.py"
+        "src/dv/python/v05/test_short.py",
+        "tools/sw/columns.py"
       ],
       "waves": [
         "wave_enable",
@@ -9311,7 +9315,8 @@
         "tools/n2m/host/command.py",
         "tools/n2m/host/package.py",
         "tools/n2m/host/transport.py",
-        "src/dv/python/v05/test_short.py"
+        "src/dv/python/v05/test_short.py",
+        "tools/sw/columns.py"
       ],
       "waves": [
         "wave_enable",
@@ -9632,7 +9637,8 @@
         "src/dv/sameboy/profile.c",
         "src/dv/sameboy/retirement.py",
         "src/dv/sameboy/scenario.json",
-        "src/dv/sameboy/sources.json"
+        "src/dv/sameboy/sources.json",
+        "tools/sw/columns.py"
       ]
     }
   },
@@ -9736,7 +9742,8 @@
         "src/dv/sameboy/profile.c",
         "src/dv/sameboy/retirement.py",
         "src/dv/sameboy/scenario.json",
-        "src/dv/sameboy/sources.json"
+        "src/dv/sameboy/sources.json",
+        "tools/sw/columns.py"
       ]
     }
   },
@@ -9856,7 +9863,8 @@
         "src/dv/python/integration/client_transport.py",
         "src/dv/python/integration/test_integration.py",
         "src/dv/python/integration/test_startup202.py",
-        "src/dv/ppu/startup202.py"
+        "src/dv/ppu/startup202.py",
+        "tools/sw/columns.py"
       ]
     }
   },
@@ -9950,7 +9958,8 @@
         "src/dv/python/integration/client_transport.py",
         "src/dv/python/integration/test_integration.py",
         "src/dv/python/integration/test_startup202.py",
-        "src/dv/ppu/startup202.py"
+        "src/dv/ppu/startup202.py",
+        "tools/sw/columns.py"
       ]
     }
   },
@@ -10088,7 +10097,8 @@
         "src/dv/python/integration/client_transport.py",
         "src/dv/python/integration/test_integration.py",
         "src/dv/python/integration/test_startup204.py",
-        "src/dv/ppu/startup204.py"
+        "src/dv/ppu/startup204.py",
+        "tools/sw/columns.py"
       ]
     }
   },
@@ -10182,7 +10192,8 @@
         "src/dv/python/integration/client_transport.py",
         "src/dv/python/integration/test_integration.py",
         "src/dv/python/integration/test_startup204.py",
-        "src/dv/ppu/startup204.py"
+        "src/dv/ppu/startup204.py",
+        "tools/sw/columns.py"
       ]
     }
   },
@@ -10352,7 +10363,8 @@
         "src/dv/python/integration/client_transport.py",
         "src/dv/python/integration/test_integration.py",
         "src/dv/python/integration/test_late208.py",
-        "src/dv/ppu/late208.py"
+        "src/dv/ppu/late208.py",
+        "tools/sw/columns.py"
       ]
     }
   },
@@ -10446,7 +10458,8 @@
         "src/dv/python/integration/client_transport.py",
         "src/dv/python/integration/test_integration.py",
         "src/dv/python/integration/test_late208.py",
-        "src/dv/ppu/late208.py"
+        "src/dv/ppu/late208.py",
+        "tools/sw/columns.py"
       ]
     }
   },
@@ -10540,7 +10553,8 @@
         "src/dv/python/integration/client_transport.py",
         "src/dv/python/integration/test_integration.py",
         "src/dv/python/integration/test_late208.py",
-        "src/dv/ppu/late208.py"
+        "src/dv/ppu/late208.py",
+        "tools/sw/columns.py"
       ]
     }
   },
@@ -10671,7 +10685,8 @@
         "src/dv/python/integration/client_transport.py",
         "src/dv/python/integration/test_integration.py",
         "src/dv/python/dma/test_dma_late.py",
-        "src/dv/ppu/late208.py"
+        "src/dv/ppu/late208.py",
+        "tools/sw/columns.py"
       ]
     }
   },
@@ -10750,7 +10765,8 @@
         "src/dv/python/integration/client_transport.py",
         "src/dv/python/integration/test_integration.py",
         "src/dv/python/dma/test_dma_late.py",
-        "src/dv/ppu/late208.py"
+        "src/dv/ppu/late208.py",
+        "tools/sw/columns.py"
       ]
     }
   },
@@ -10829,7 +10845,8 @@
         "src/dv/python/integration/client_transport.py",
         "src/dv/python/integration/test_integration.py",
         "src/dv/python/dma/test_dma_late.py",
-        "src/dv/ppu/late208.py"
+        "src/dv/ppu/late208.py",
+        "tools/sw/columns.py"
       ]
     }
   },
@@ -10948,7 +10965,8 @@
         "tools/n2m/host/client.py",
         "tools/n2m/host/command.py",
         "tools/n2m/host/package.py",
-        "tools/n2m/host/transport.py"
+        "tools/n2m/host/transport.py",
+        "tools/sw/columns.py"
       ],
       "waves": [
         "clk_sys",
@@ -11083,7 +11101,8 @@
         "tools/n2m/host/client.py",
         "tools/n2m/host/command.py",
         "tools/n2m/host/package.py",
-        "tools/n2m/host/transport.py"
+        "tools/n2m/host/transport.py",
+        "tools/sw/columns.py"
       ],
       "waves": [
         "clk_sys",
@@ -11217,7 +11236,8 @@
         "tools/n2m/host/client.py",
         "tools/n2m/host/command.py",
         "tools/n2m/host/package.py",
-        "tools/n2m/host/transport.py"
+        "tools/n2m/host/transport.py",
+        "tools/sw/columns.py"
       ],
       "waves": [
         "clk_sys",
@@ -11356,7 +11376,8 @@
         "tools/n2m/host/client.py",
         "tools/n2m/host/command.py",
         "tools/n2m/host/package.py",
-        "tools/n2m/host/transport.py"
+        "tools/n2m/host/transport.py",
+        "tools/sw/columns.py"
       ],
       "waves": [
         "clk_sys",
@@ -11499,7 +11520,8 @@
         "tools/n2m/host/command.py",
         "tools/n2m/host/package.py",
         "tools/n2m/host/transport.py",
-        "src/dv/python/v05/test_bounded.py"
+        "src/dv/python/v05/test_bounded.py",
+        "tools/sw/columns.py"
       ],
       "waves": [
         "wave_enable",
@@ -11637,7 +11659,8 @@
         "tools/n2m/host/command.py",
         "tools/n2m/host/package.py",
         "tools/n2m/host/transport.py",
-        "src/dv/python/v05/test_bounded.py"
+        "src/dv/python/v05/test_bounded.py",
+        "tools/sw/columns.py"
       ],
       "waves": [
         "wave_enable",
@@ -11775,7 +11798,8 @@
         "tools/n2m/host/command.py",
         "tools/n2m/host/package.py",
         "tools/n2m/host/transport.py",
-        "src/dv/python/v05/test_bounded.py"
+        "src/dv/python/v05/test_bounded.py",
+        "tools/sw/columns.py"
       ],
       "waves": [
         "wave_enable",
@@ -11912,7 +11936,8 @@
         "tools/n2m/host/command.py",
         "tools/n2m/host/package.py",
         "tools/n2m/host/transport.py",
-        "src/dv/python/v05/test_physical.py"
+        "src/dv/python/v05/test_physical.py",
+        "tools/sw/columns.py"
       ],
       "waves": [
         "wave_enable",
@@ -12050,7 +12075,8 @@
         "tools/n2m/host/command.py",
         "tools/n2m/host/package.py",
         "tools/n2m/host/transport.py",
-        "src/dv/python/v05/test_physical.py"
+        "src/dv/python/v05/test_physical.py",
+        "tools/sw/columns.py"
       ],
       "waves": [
         "wave_enable",
@@ -12190,7 +12216,8 @@
         "tools/n2m/host/package.py",
         "tools/n2m/host/transport.py",
         "src/dv/python/controls/controls.py",
-        "src/dv/python/controls/test_controls.py"
+        "src/dv/python/controls/test_controls.py",
+        "tools/sw/columns.py"
       ],
       "waves": [
         "board_reset_n",
@@ -12329,7 +12356,8 @@
         "tools/n2m/host/package.py",
         "tools/n2m/host/transport.py",
         "src/dv/python/controls/controls.py",
-        "src/dv/python/controls/test_controls_corrupt.py"
+        "src/dv/python/controls/test_controls_corrupt.py",
+        "tools/sw/columns.py"
       ],
       "waves": [
         "board_reset_n",
@@ -12468,7 +12496,8 @@
         "tools/n2m/host/package.py",
         "tools/n2m/host/transport.py",
         "src/dv/python/controls/controls.py",
-        "src/dv/python/controls/test_controls_startup.py"
+        "src/dv/python/controls/test_controls_startup.py",
+        "tools/sw/columns.py"
       ],
       "waves": [
         "board_reset_n",
@@ -13036,7 +13065,11 @@
         "src/dv/springtrail/interaction_cases.py",
         "src/sw/springtrail/oam_dma.asm",
         "src/sw/springtrail/courier.asm",
-        "src/sw/springtrail/assets/courier/unique-tiles.json"
+        "src/sw/springtrail/assets/courier/unique-tiles.json",
+        "tools/sw/columns.py",
+        "src/sw/springtrail/columns.asm",
+        "src/sw/springtrail/hud.asm",
+        "src/sw/springtrail/assets/core/core-tiles.json"
       ],
       "waves": [
         "wave_dot",
@@ -13200,7 +13233,11 @@
         "src/dv/springtrail/interaction_cases.py",
         "src/sw/springtrail/oam_dma.asm",
         "src/sw/springtrail/courier.asm",
-        "src/sw/springtrail/assets/courier/unique-tiles.json"
+        "src/sw/springtrail/assets/courier/unique-tiles.json",
+        "tools/sw/columns.py",
+        "src/sw/springtrail/columns.asm",
+        "src/sw/springtrail/hud.asm",
+        "src/sw/springtrail/assets/core/core-tiles.json"
       ],
       "waves": [
         "wave_dot",
@@ -13355,7 +13392,10 @@
         "src/sw/springtrail/stream.asm",
         "src/sw/springtrail/oam_dma.asm",
         "src/sw/springtrail/courier.asm",
-        "src/sw/springtrail/assets/courier/unique-tiles.json"
+        "src/sw/springtrail/assets/courier/unique-tiles.json",
+        "tools/sw/columns.py",
+        "src/sw/springtrail/columns.asm",
+        "src/sw/springtrail/hud.asm"
       ],
       "waves": [
         "wave_dot",
@@ -13497,7 +13537,8 @@
         "src/dv/stackdrop/reference.py",
         "src/dv/stackdrop/cases.py",
         "src/dv/stackdrop/unit_check.py",
-        "src/dv/stackdrop/test_short.py"
+        "src/dv/stackdrop/test_short.py",
+        "tools/sw/columns.py"
       ],
       "waves": [
         "wave_dot",
@@ -13639,7 +13680,8 @@
         "src/dv/stackdrop/reference.py",
         "src/dv/stackdrop/cases.py",
         "src/dv/stackdrop/unit_check.py",
-        "src/dv/stackdrop/test_unit.py"
+        "src/dv/stackdrop/test_unit.py",
+        "tools/sw/columns.py"
       ],
       "waves": [
         "wave_dot",
@@ -13782,7 +13824,8 @@
         "src/dv/stackdrop/reference.py",
         "src/dv/stackdrop/cases.py",
         "src/dv/stackdrop/unit_check.py",
-        "src/dv/stackdrop/test_unit.py"
+        "src/dv/stackdrop/test_unit.py",
+        "tools/sw/columns.py"
       ],
       "waves": [
         "wave_dot",
@@ -13925,7 +13968,8 @@
         "src/dv/stackdrop/cases.py",
         "src/dv/stackdrop/test_game.py",
         "src/dv/stackdrop/game_check.py",
-        "src/dv/stackdrop/screen.py"
+        "src/dv/stackdrop/screen.py",
+        "tools/sw/columns.py"
       ],
       "waves": [
         "wave_dot",
@@ -14082,7 +14126,10 @@
         "src/sw/springtrail/stream.asm",
         "src/sw/springtrail/oam_dma.asm",
         "src/sw/springtrail/courier.asm",
-        "src/sw/springtrail/assets/courier/unique-tiles.json"
+        "src/sw/springtrail/assets/courier/unique-tiles.json",
+        "tools/sw/columns.py",
+        "src/sw/springtrail/columns.asm",
+        "src/sw/springtrail/hud.asm"
       ],
       "waves": [
         "wave_dot",
@@ -14239,7 +14286,10 @@
         "src/sw/springtrail/stream.asm",
         "src/sw/springtrail/oam_dma.asm",
         "src/sw/springtrail/courier.asm",
-        "src/sw/springtrail/assets/courier/unique-tiles.json"
+        "src/sw/springtrail/assets/courier/unique-tiles.json",
+        "tools/sw/columns.py",
+        "src/sw/springtrail/columns.asm",
+        "src/sw/springtrail/hud.asm"
       ],
       "waves": [
         "wave_dot",
@@ -14397,7 +14447,10 @@
         "src/sw/springtrail/stream.asm",
         "src/sw/springtrail/oam_dma.asm",
         "src/sw/springtrail/courier.asm",
-        "src/sw/springtrail/assets/courier/unique-tiles.json"
+        "src/sw/springtrail/assets/courier/unique-tiles.json",
+        "tools/sw/columns.py",
+        "src/sw/springtrail/columns.asm",
+        "src/sw/springtrail/hud.asm"
       ],
       "waves": [
         "wave_dot",
@@ -14557,7 +14610,10 @@
         "src/sw/springtrail/stream.asm",
         "src/sw/springtrail/oam_dma.asm",
         "src/sw/springtrail/courier.asm",
-        "src/sw/springtrail/assets/courier/unique-tiles.json"
+        "src/sw/springtrail/assets/courier/unique-tiles.json",
+        "tools/sw/columns.py",
+        "src/sw/springtrail/columns.asm",
+        "src/sw/springtrail/hud.asm"
       ],
       "waves": [
         "wave_dot",
@@ -14717,7 +14773,10 @@
         "src/sw/springtrail/stream.asm",
         "src/sw/springtrail/oam_dma.asm",
         "src/sw/springtrail/courier.asm",
-        "src/sw/springtrail/assets/courier/unique-tiles.json"
+        "src/sw/springtrail/assets/courier/unique-tiles.json",
+        "tools/sw/columns.py",
+        "src/sw/springtrail/columns.asm",
+        "src/sw/springtrail/hud.asm"
       ],
       "waves": [
         "wave_dot",
@@ -14878,7 +14937,10 @@
         "src/sw/springtrail/stream.asm",
         "src/sw/springtrail/oam_dma.asm",
         "src/sw/springtrail/courier.asm",
-        "src/sw/springtrail/assets/courier/unique-tiles.json"
+        "src/sw/springtrail/assets/courier/unique-tiles.json",
+        "tools/sw/columns.py",
+        "src/sw/springtrail/columns.asm",
+        "src/sw/springtrail/hud.asm"
       ],
       "waves": [
         "wave_dot",
@@ -15041,7 +15103,11 @@
         "src/dv/springtrail/interaction_cases.py",
         "src/sw/springtrail/oam_dma.asm",
         "src/sw/springtrail/courier.asm",
-        "src/sw/springtrail/assets/courier/unique-tiles.json"
+        "src/sw/springtrail/assets/courier/unique-tiles.json",
+        "tools/sw/columns.py",
+        "src/sw/springtrail/columns.asm",
+        "src/sw/springtrail/hud.asm",
+        "src/sw/springtrail/assets/core/core-tiles.json"
       ],
       "waves": [
         "wave_dot",
@@ -15204,7 +15270,11 @@
         "src/dv/springtrail/interaction_cases.py",
         "src/sw/springtrail/oam_dma.asm",
         "src/sw/springtrail/courier.asm",
-        "src/sw/springtrail/assets/courier/unique-tiles.json"
+        "src/sw/springtrail/assets/courier/unique-tiles.json",
+        "tools/sw/columns.py",
+        "src/sw/springtrail/columns.asm",
+        "src/sw/springtrail/hud.asm",
+        "src/sw/springtrail/assets/core/core-tiles.json"
       ],
       "waves": [
         "wave_dot",
@@ -15368,7 +15438,11 @@
         "src/dv/springtrail/interaction_cases.py",
         "src/sw/springtrail/oam_dma.asm",
         "src/sw/springtrail/courier.asm",
-        "src/sw/springtrail/assets/courier/unique-tiles.json"
+        "src/sw/springtrail/assets/courier/unique-tiles.json",
+        "tools/sw/columns.py",
+        "src/sw/springtrail/columns.asm",
+        "src/sw/springtrail/hud.asm",
+        "src/sw/springtrail/assets/core/core-tiles.json"
       ],
       "waves": [
         "wave_dot",
@@ -15572,7 +15646,8 @@
         "src/dv/display308/program.py",
         "src/dv/display308/scene.py",
         "src/dv/display308/sequence.py",
-        "src/dv/display308/test_short.py"
+        "src/dv/display308/test_short.py",
+        "tools/sw/columns.py"
       ],
       "waves": [
         "clk_sys",
@@ -15714,7 +15789,8 @@
         "src/dv/display308/program.py",
         "src/dv/display308/scene.py",
         "src/dv/display308/sequence.py",
-        "src/dv/display308/test_display.py"
+        "src/dv/display308/test_display.py",
+        "tools/sw/columns.py"
       ],
       "waves": [
         "clk_sys",
@@ -15857,7 +15933,8 @@
         "src/dv/display308/program.py",
         "src/dv/display308/scene.py",
         "src/dv/display308/sequence.py",
-        "src/dv/display308/test_display.py"
+        "src/dv/display308/test_display.py",
+        "tools/sw/columns.py"
       ],
       "waves": [
         "clk_sys",
@@ -16000,7 +16077,8 @@
         "src/dv/springtrail/dma_reference.py",
         "src/dv/springtrail/dma_check.py",
         "src/sw/springtrail/oam_dma.asm",
-        "src/dv/springtrail/test_dma_short.py"
+        "src/dv/springtrail/test_dma_short.py",
+        "tools/sw/columns.py"
       ],
       "waves": [
         "clk_sys",
@@ -16143,7 +16221,8 @@
         "src/dv/springtrail/dma_reference.py",
         "src/dv/springtrail/dma_check.py",
         "src/sw/springtrail/oam_dma.asm",
-        "src/dv/springtrail/test_dma_publisher.py"
+        "src/dv/springtrail/test_dma_publisher.py",
+        "tools/sw/columns.py"
       ],
       "waves": [
         "clk_sys",
@@ -16287,7 +16366,8 @@
         "src/dv/springtrail/dma_reference.py",
         "src/dv/springtrail/dma_check.py",
         "src/sw/springtrail/oam_dma.asm",
-        "src/dv/springtrail/test_dma_publisher.py"
+        "src/dv/springtrail/test_dma_publisher.py",
+        "tools/sw/columns.py"
       ],
       "waves": [
         "clk_sys",
@@ -16452,7 +16532,10 @@
         "src/dv/springtrail/movement_reference.py",
         "src/dv/springtrail/test_composition_short.py",
         "src/sw/springtrail/assets/courier/unique-tiles.json",
-        "src/sw/springtrail/assets/courier/poses.json"
+        "src/sw/springtrail/assets/courier/poses.json",
+        "tools/sw/columns.py",
+        "src/sw/springtrail/columns.asm",
+        "src/sw/springtrail/hud.asm"
       ],
       "waves": [
         "clk_sys",
@@ -16617,7 +16700,10 @@
         "src/dv/springtrail/movement_reference.py",
         "src/dv/springtrail/test_composition_unit.py",
         "src/sw/springtrail/assets/courier/unique-tiles.json",
-        "src/sw/springtrail/assets/courier/poses.json"
+        "src/sw/springtrail/assets/courier/poses.json",
+        "tools/sw/columns.py",
+        "src/sw/springtrail/columns.asm",
+        "src/sw/springtrail/hud.asm"
       ],
       "waves": [
         "clk_sys",
@@ -16791,7 +16877,11 @@
         "src/dv/springtrail/composition_game_check.py",
         "src/dv/springtrail/composition_game_reference.py",
         "src/dv/springtrail/composition_reference.py",
-        "src/sw/springtrail/assets/courier/poses.json"
+        "src/sw/springtrail/assets/courier/poses.json",
+        "tools/sw/columns.py",
+        "src/sw/springtrail/columns.asm",
+        "src/sw/springtrail/hud.asm",
+        "src/sw/springtrail/assets/core/core-tiles.json"
       ],
       "waves": [
         "wave_dot",
@@ -16955,7 +17045,11 @@
         "src/dv/springtrail/composition_game_check.py",
         "src/dv/springtrail/composition_game_reference.py",
         "src/dv/springtrail/composition_reference.py",
-        "src/sw/springtrail/assets/courier/poses.json"
+        "src/sw/springtrail/assets/courier/poses.json",
+        "tools/sw/columns.py",
+        "src/sw/springtrail/columns.asm",
+        "src/sw/springtrail/hud.asm",
+        "src/sw/springtrail/assets/core/core-tiles.json"
       ],
       "waves": [
         "wave_dot",
@@ -17120,7 +17214,11 @@
         "src/dv/springtrail/composition_game_check.py",
         "src/dv/springtrail/composition_game_reference.py",
         "src/dv/springtrail/composition_reference.py",
-        "src/sw/springtrail/assets/courier/poses.json"
+        "src/sw/springtrail/assets/courier/poses.json",
+        "tools/sw/columns.py",
+        "src/sw/springtrail/columns.asm",
+        "src/sw/springtrail/hud.asm",
+        "src/sw/springtrail/assets/core/core-tiles.json"
       ],
       "waves": [
         "wave_dot",
