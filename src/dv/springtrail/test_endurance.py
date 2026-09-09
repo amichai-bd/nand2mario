@@ -21,6 +21,13 @@ class Fake:
         self.wall=0.; self.dot=0; self.epoch=6; self.mask=0; self.running=False
         self.sequence=177017; self.uncertain=False; self.fault=fault
         self.game=Game(); self.next_vb=0; self.frames={}; self.calls=[]
+        self.run_origin=0; self.terminal_clock=0
+
+    def clock(self):
+        if self.terminal_clock:
+            self.terminal_clock-=1
+            if self.terminal_clock==0:return self.wall-5
+        return self.wall
 
     def tick(self, seconds):
         self.wall += seconds
@@ -28,6 +35,8 @@ class Fake:
             self.advance(self.dot+round(seconds*DOT_HZ))
 
     def advance(self, target):
+        if self.running and self.fault=='dot-duration':
+            target=min(target,self.run_origin+19*DOT_HZ)
         while LCD+self.next_vb*PERIOD+65664 <= target:
             self.game=update(self.game,self.mask)
             self.frames[self.next_vb+2]=self.game
@@ -47,9 +56,10 @@ class Fake:
 
     def read_host(self, addr):
         self.call('read')
+        retired=(self.run_origin if self.running and self.fault=='progress' else self.dot)//8
         return {abi.HOST_REG_DOT_LO:self.dot&0xffffffff,
-            abi.HOST_REG_DOT_HI:self.dot>>32,abi.HOST_REG_RETIRE_LO:(self.dot//8)&0xffffffff,
-            abi.HOST_REG_RETIRE_HI:(self.dot//8)>>32,
+            abi.HOST_REG_DOT_HI:self.dot>>32,abi.HOST_REG_RETIRE_LO:retired&0xffffffff,
+            abi.HOST_REG_RETIRE_HI:retired>>32,
             abi.HOST_REG_STATE:int(self.running),abi.HOST_REG_IMAGE_VALID:1,
             abi.HOST_REG_INPUT_SOURCE:0,abi.HOST_REG_INPUT:self.mask,
             abi.HOST_REG_INPUT_EFFECTIVE:self.mask}[addr]
@@ -59,7 +69,7 @@ class Fake:
         if name=='HALT' and self.calls.count('load')==4 and self.fault=='cleanup':
             self.uncertain=True
             raise RuntimeError('final HALT reply lost')
-        if name=='RUN':self.running=True
+        if name=='RUN':self.running=True;self.run_origin=self.dot
         if name=='HALT':self.running=False
         if name=='RESET':self.epoch+=1;self.dot=0
         if name=='INPUT':
@@ -83,6 +93,10 @@ class Fake:
         if self.fault=='stale':meta['dot']-=5*PERIOD;meta['seq']-=5
         if self.fault=='uncertain':self.uncertain=True;raise RuntimeError('lost reply')
         self.tick(1.6)
+        if self.fault=='duration' and self.calls.count('snapshot')==7:
+            # The final valid sample is logged, then the elapsed-time source
+            # reports a duration shorter than the frozen minimum.
+            self.terminal_clock=2
         return meta,data
 
 
@@ -127,6 +141,23 @@ class EnduranceTests(unittest.TestCase):
                         clock=lambda:client.wall,sleep=client.tick)
                 self.assertFalse((Path(directory)/'run/result.json').read_text().find('"status": "PASS"')>=0)
                 if fault=='uncertain':self.assertTrue(client.uncertain)
+
+    def test_progress_and_both_duration_guards(self):
+        import json
+        for fault,guard in (('progress','ENDURANCE_PROGRESS'),
+                            ('duration','ENDURANCE_DURATION'),
+                            ('dot-duration','ENDURANCE_DOT_DURATION')):
+            with self.subTest(fault=fault),tempfile.TemporaryDirectory() as directory:
+                client=Fake(fault);root=Path(directory)/'run'
+                with self.assertRaisesRegex(AssertionError,guard):
+                    run(client,bytes(32768),root,epoch=6,cycles=1,
+                        clock=client.clock,sleep=client.tick)
+                result=json.loads((root/'result.json').read_text())
+                self.assertEqual(result['status'],'FAIL')
+                self.assertIn(guard,result['error'])
+                self.assertFalse(result['uncertain'])
+                self.assertFalse(client.running);self.assertEqual(client.mask,0)
+                self.assertIn('final',result)
 
 
 if __name__=='__main__':unittest.main()

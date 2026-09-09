@@ -1,6 +1,6 @@
 # Continuous UART play and lifecycle
 
-Planned proof for [#291](https://github.com/amichai-bd/nand2mario/issues/291),
+Proof for [#291](https://github.com/amichai-bd/nand2mario/issues/291),
 under the [physical contract](../../../wiki/src/dv/springtrail/SPEC.md#physical-acceptance).
 This does not close #264/#28/#156 or prove monitor/keyboard/physical buttons.
 Reuse the accepted #263 deterministic baseline and qualified actual faults;
@@ -43,6 +43,9 @@ depends on prior idle length; all other pixels and score/mode are independent.
 The player falls before reaching patrol minimum240, so every legal enemy phase
 has the same terminal player/camera/item result. Host tests check this invariant.
 At spawn the patrol is completely offscreen, including during game pause.
+For a0-to49 change between JOYP row reads, the possible first masks0/1/48/49
+converge to that same terminal result while49 remains held. Start changes only
+the action row; the settled sample tolerates the earlier or later update.
 
 One extra second after the final boundary accommodates clock phase; then check
 the final PLAY image while still RUNNING. Require both monotonic duration and
@@ -61,15 +64,26 @@ commands. The caller owns released session/lock and whole-process evidence.
 ## Finite acceptance and budgets
 
 - Host checks: independent terminal/region invariants, complete short fake lifecycle,
-  first pixel/epoch/stale/input/progress/lifecycle/cleanup failures. These test host
+  pixel/epoch/stale/input/progress/duration/lifecycle/cleanup failures. These test host
   infrastructure, not FPGA fault injection. Existing qualified actual faults remain
   in PR276/PR282/#263.
 - Short physical: one complete cycle plus all three lifecycle cycles and cleanup,
-  existing300-total supervisor. Forecast60-100 seconds, unmeasured until execution.
-- Full physical: freeze an explicit total budget from the accepted short result
-  before execution; it must cover1800 continuous seconds, initial full load,
-  three complete lifecycle cycles, checking and cleanup. This is not a simulation
-  exception or a300-second paused-batch workaround. No automatic extension/replay.
+  existing300-total supervisor. Accepted short whole time83.205 seconds includes
+  22.425 continuous seconds and all three lifecycle cycles.
+- Full physical: the short measured overhead gives1863.205 seconds extrapolated;
+  forecast1900 with1980 total hard cap, including initial full load,1800 continuous
+  seconds, three complete lifecycle cycles, checking and cleanup. Interrupt the
+  worker at1956; outer tree cleanup starts by1968 and every wait uses the remaining
+  deadline. This is not a simulation exception or a paused-batch workaround.
+  No automatic extension/replay.
 - Final source/setup/runner review precedes hardware. Exact commands, raw results,
   input/sample journals, immutable artifacts, measured wall time and final current
   head review are required. No full acceptance is claimed from the short case.
+
+[PR295](https://github.com/amichai-bd/nand2mario/pull/295) records the accepted full
+run:1802.403 continuous seconds,90 gameplay cycles,191 sampled images with
+4,366,080 checked pixels, all three lifecycle cycles and safe final state.
+Whole physical time1863.033 seconds met the declared cap. The PR owns commands,
+raw records, failure history, source qualifications and independent review.
+This completes only the automated child proof, not the outstanding actual
+VGA/keyboard/shared physical-control gates in #264/#28/#156.
