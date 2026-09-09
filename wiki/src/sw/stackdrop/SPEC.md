@@ -10,25 +10,32 @@ or the hardware milestone criteria. The following rules are frozen for implement
 
 The well is eight columns by twelve rows, with no hidden rows. Coordinates start
 at the upper left. Empty and occupied cells are binary; pieces cannot overlap
-occupied cells or cross any edge. The fixed repeating piece cycle is beam,
-right elbow, beam, left elbow. Each has three cells in a 3-by-3 local grid:
+occupied cells or cross any edge. The fixed repeating cycle is I, O, T, L, J,
+S, Z. These are mathematical four-cell shapes, with original art and layout.
+Each uses a 4-by-4 local grid:
 
 | Piece | Spawn cells (x,y) |
 |---|---|
-| Beam | (0,1), (1,1), (2,1) |
-| Right elbow | (0,0), (0,1), (1,1) |
-| Left elbow | (1,0), (0,1), (1,1) |
+| I | (0,1), (1,1), (2,1), (3,1) |
+| O | (1,0), (2,0), (1,1), (2,1) |
+| T | (1,0), (0,1), (1,1), (2,1) |
+| L | (2,0), (0,1), (1,1), (2,1) |
+| J | (0,0), (0,1), (1,1), (2,1) |
+| S | (1,0), (2,0), (0,1), (1,1) |
+| Z | (0,0), (1,0), (1,1), (2,1) |
 
-A piece spawns at local origin (2,0), rotation zero. Clockwise rotation maps
-(x,y) to (2-y,x); there are no wall kicks. Reject a colliding move or rotation
-without changing state. The two beam entries are intentional. No random state,
-held piece, hidden preview queue, music or speed level is required.
-
+A piece spawns at local origin (2,0), rotation zero. For I, clockwise rotation
+maps (x,y) to (3-y,x); O remains unchanged. For other shapes rotate within their
+3-by-3 region using (x,y) to (2-y,x). There are no wall kicks. Reject a colliding
+move or rotation without changing state. No random state, held piece, hidden
+preview queue, music or speed level is required. Independent table checks require
+four distinct occupied cells in every orientation and return to the spawn shape
+after four rotations.
 ## Inputs and update order
 
 Start on the title starts a fresh game; Start after game over returns directly
 to a fresh game. Start during play is ignored. A new game clears the board,
-score and gravity counter, and starts the cycle at its first beam. The initial
+score and gravity counter, and starts the cycle at its first I piece. The initial
 screen is a title with an empty well. Spawn overlap ends the game.
 
 Read ordinary JOYP once per VBlank, with both row reads forming one software
@@ -56,7 +63,7 @@ locked cells shade2 interiors, and active cells shade3 interiors. Borders and
 original tile details must not obscure the center 4-by-4 classification region.
 The well's fixed rectangle is the public visual coordinate system.
 
-A next-piece preview occupies a 3-by-3 tile box at (120,32), using the same
+A next-piece preview occupies a 4-by-4 tile box at (120,32), using the same
 spawn geometry. Four original decimal digit tiles at (64,128) display the score
 with leading zeroes. A fixed status tile at (32,16) visibly distinguishes title,
 playing and game over. Document the literal tile atlas beside its source.
