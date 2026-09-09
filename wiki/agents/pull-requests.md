@@ -6,7 +6,7 @@ Use a lowercase branch slug, such as `42-fix-timer`.
 Each closing reference has its own line:
 
 ```text
-Closes #42
+Closes #<issue-number>
 ```
 
 The issue owns the goal; the PR describes the result and evidence. Use the

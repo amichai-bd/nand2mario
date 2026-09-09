@@ -103,7 +103,7 @@ models fail through the shared builder.
 ## Verification tiers
 
 All simulations obey the [total wall budget](../../../tools/n2m/SPEC.md#test-wall-budget):
-300 seconds ordinarily, with only the user's three named issue103 Mooneye cases
+300 seconds ordinarily, with only the user's three named Mooneye cases
 allowed 1500 seconds each. That wall-time exception does not change their
 simulation-time watchdogs, signatures, fault checks or required evidence.
 Prefer the [authorized bounded FPGA/UART game checks](../../../agents/bootstrap-plan.md#verification-and-hardware-authorization)
