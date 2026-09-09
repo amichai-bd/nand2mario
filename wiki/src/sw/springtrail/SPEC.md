@@ -64,10 +64,33 @@ item is optional. Death takes precedence over collection or winning on the same
 update. Pause/restart decisions precede world updates. A small HUD distinguishes
 score, pause, retry and win without relying on host-only state.
 
-The foundation issue freezes numeric speeds, acceleration/gravity, jump impulse,
-camera anchor, collision rounding/update order, patrol endpoints and literal
-level/collectible/goal placements before their dependent implementation. These
-parameters are not yet implemented or tested; do not choose them from DUT output.
+The following constants are frozen for dependent implementation. Positions and
+velocities use signed 16-bit units of 1/16 pixel (range -2048..2047.9375).
+Walking speed is 1 pixel/frame and running
+speed is 2; horizontal velocity changes immediately with intent (no acceleration
+or momentum). Gravity is 1/4 pixel/frame squared, jump impulse is -5.25 pixels/frame,
+and downward velocity is capped at 4 pixels/frame. The initial player top-left is
+(24, 112), grounded on tile row 16, with camera x=0. The camera anchor is screen
+x=72 and its clamp is 0..608 pixels. The enemy starts at (256, 120), moves right
+at 1/2 pixel/frame, and patrols x=240..296 inclusive.
+
+Each VBlank samples JOYP once. Process restart/pause first, then horizontal
+intent, grounded jump edge, gravity, horizontal motion/collision, vertical
+motion/collision, enemy motion, death, collection, goal, and camera, in that
+order. A jump applies its impulse before that update's gravity. Resolve each axis
+against all solid tiles touched by the half-open collision box, using floor of
+the fixed-point coordinate. Snap to the contacted tile edge and clear velocity
+on that axis; only downward contact sets grounded. Test interactions after both
+axes. Falling means player top-left y >=144. The enemy uses an 8-by-8 box.
+
+The literal level has ground in rows 16 and 17 except gap columns 22..25,
+46..49, and 70..73. Additional solid platforms occupy row 12 columns 10..14,
+row 10 columns 31..35, row 12 columns 56..60, and row 11 columns 80..84.
+All other cells are empty. Collectibles are 8-by-8 boxes at (96, 88), (264, 72),
+(464, 88), and (656, 80); the 8-by-16 goal starts at (736, 112). Collectible
+and goal tests use half-open rectangle overlap. These mechanics are planned;
+the foundation displays the initial view without implementing movement or
+interactions. No parameter is selected from DUT output.
 Update the game once per normal emulated frame using a documented input-sampling
 point. There are no wall-clock or nondeterministic random inputs.
 

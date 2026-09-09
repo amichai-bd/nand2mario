@@ -8,6 +8,13 @@ No game-specific runtime or physical acceptance is claimed here.
 
 ## Independent expectations
 
+The [foundation test definition](../../../../src/dv/springtrail/README.md)
+freezes the original title/Start/first-world schedule for #260. Its two targets
+check all startup/title/world source pixels, ordinary WRAM state writes and a
+real UART Start input on the actual composed system. An actual source-shade
+fault uses the unchanged oracle. This bounded checkpoint does not claim the
+later complete-game reference or release criteria below are met.
+
 Use original SM83 code and assets built by the existing Python pipeline. Two
 clean builds must produce identical 32768-byte images. Pin source, asset, tool,
 layout, header and ROM hashes, plus the exact direct-entry profile and reference
