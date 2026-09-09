@@ -50,3 +50,23 @@ def raster(data, tiles, width=160, height=144):
                     out[y*width+x]=value
                     break
     return bytes(out)
+
+
+def scene(game, facing=False):
+    p=game.player
+    pose=0 if game.mode==0 else 5 if game.mode==2 else 4 if not p.grounded else 1 if p.vx else 0
+    left=p.vx<0 if p.vx else facing
+    data=bytearray(courier(pose,left,p.x//16-p.camera-4,p.y//16,p.fell))
+    world=[(game.enemy_x//16,120,16,False)]
+    world += [(x,y,18,bool(game.collected&(1<<i))) for i,(x,y) in enumerate(
+        ((96,88),(264,72),(464,88),(656,80)))]
+    world += [(736,112,20,False)]
+    objects=[(x-p.camera,y,t,h) for x,y,t,h in world]
+    objects += [(144,0,22+2*game.score,False),(72,0,32+2*game.mode,False)]
+    for x,y,tile,hidden in objects:
+        for dy in (0,8):
+            py=y+dy
+            visible=not hidden and -7<=x<160 and -7<=py<144
+            data.extend(((py+16)&255 if visible else 0,(x+8)&255,tile+dy//8,0))
+    assert len(data)==80
+    return bytes(data)+bytes(80)
