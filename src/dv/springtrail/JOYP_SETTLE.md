@@ -33,5 +33,14 @@ The finite acceptance map is:
 Native short/full forecast12 seconds together; composed forecast180 seconds.
 Each invocation retains the300-second total supervisor and12-second cleanup;
 ordinary aggregate target300 seconds. No hardware execution is part of this fix.
-Runtime acceptance is pending. #263's full reference/DUT milestone and #264's
-physical release remain open with their existing criteria.
+At41ed3d4, native short/full passed in6.542/5.480 seconds: all6/14 callback
+images and sampled masks matched. The original retained native output failed
+the unchanged independent pixel comparison at callback4/index17148.
+The composed run passed in183.116 seconds with69120 pixels, all publications,
+normal pause286976 and END. Its last publication write was3876 dots after
+VBlank began, below3968. Aggregate195.137 seconds met300; the composed run
+missed the120-second target but met its hard limit. No failed attempt is relabeled.
+Exact commands, clean-build qualification and historical unchanged-harness
+evidence reuse are retained in [PR282](https://github.com/amichai-bd/nand2mario/pull/282).
+#263's full reference/DUT milestone and #264's physical release remain open
+with their existing criteria.
