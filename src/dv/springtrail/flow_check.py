@@ -5,7 +5,7 @@ import sys
 import cocotb
 from cocotb.queue import Queue
 from cocotb.task import bridge
-from cocotb.triggers import Timer, ReadOnly
+from cocotb.triggers import Timer, ReadOnly, ValueChange
 
 ROOT=Path(__file__).resolve().parents[3]
 sys.path[:0]=[str(ROOT/'tools'),str(ROOT/'src/dv/python/integration')]
@@ -16,14 +16,21 @@ from flow_reference import Check, START_WINDOW
 
 
 async def run(dut, short=False):
-    received=Queue(); entries=[]; check=Check(short); tasks=[]
+    received=Queue(); entries=[]; check=Check(short); tasks=[]; dma=[]
     with Path('transactions.jsonl').open('w') as journal:
         def log(kind,**fields):
             journal.write(json.dumps(dict(kind=kind,**fields))+'\n');journal.flush()
         async def receiver():
             async for frame in frames(dut):received.put_nowait(frame)
+        async def transfers():
+            while True:
+                await ValueChange(dut.dma_event);await ReadOnly()
+                raw=known(dut.dma_sample)
+                if (raw>>16)&1:
+                    dma.append(raw);log('dma',raw=raw)
         await Timer(1,unit='ns')
         tasks.append(cocotb.start_soon(receiver()))
+        tasks.append(cocotb.start_soon(transfers()))
         await Timer(320,unit='ns');dut.reset_sys.value=0;dut.reset_pix.value=0
         client=connect(dut,received,log,entries)
         @bridge
@@ -60,7 +67,7 @@ async def run(dut, short=False):
                 assert known(dut.paused) and not known(dut.fault), 'SPRINGTRAIL_FINAL_PAUSE'
                 await Timer(1,unit='ns');dut.public_trace_close.value=1
                 await Timer(100,unit='ns');consume()
-                summary=check.finish(pause)
+                summary=check.finish(pause,dma)
                 for frame,data in enumerate(check.frames):Path(f'frame-{frame}.shades').write_bytes(data)
                 Path('summary.json').write_text(json.dumps(summary,indent=2)+'\n')
                 log('complete',**summary)
