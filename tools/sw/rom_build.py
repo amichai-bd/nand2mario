@@ -23,7 +23,7 @@ def require_legacy_scene(root, target):
     if target in ('render', 'render-s'):
         source=(root/'src/sw/springtrail/scene.asm').read_bytes().replace(b'\r\n',b'\n')
         if hashlib.sha256(source).hexdigest()!='148686f9b770a167dc3e0597659f9bb20d8c75783009ffba730e14966cdc8e75':
-            fail('HISTORICAL_RENDER_SOURCE', 'old renderer fixture requires #316 scene; use courier-unit and composition checks')
+            fail('HISTORICAL_RENDER_SOURCE', 'old renderer fixture requires #316 scene; use current HUD unit and game checks')
 
 
 def build_target(root, build, args, provenance):

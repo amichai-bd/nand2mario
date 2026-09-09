@@ -12,10 +12,11 @@ sys.path[:0]=[str(ROOT/'tools'),str(ROOT/'src/dv/python/integration')]
 from client_transport import connect, frames, refresh_clock
 from test_integration import known
 from n2m.preload import verify, adopt
-from composition_game_reference import Check
+from composition_game_reference import Check,require_baseline_rom
 
 
 async def run(dut, short=False):
+    require_baseline_rom(Path("program.gb").read_bytes())
     received=Queue(); entries=[]; check=Check(short); tasks=[]
     with Path('transactions.jsonl').open('w') as journal:
         def log(kind,**fields):

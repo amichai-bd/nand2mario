@@ -3,6 +3,13 @@ from composition_reference import scene,title_image
 from interactions_reference import Game,update
 from interaction_cases import ADDRESSES,state_bytes
 
+# The #318 oracle describes its exact pre-HUD image and active object count.
+BASELINE_ROM_SHA256='ec8dfb327d1650d2a206df9180cc56059abfeef956b55d3a0f9571170d9e785f'
+
+def require_baseline_rom(rom):
+    import hashlib
+    assert hashlib.sha256(rom).hexdigest()==BASELINE_ROM_SHA256, 'HISTORICAL_COMPOSITION_ROM: use python-hgs/python-hgu'
+
 PERIOD=70224
 
 
