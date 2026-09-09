@@ -95,6 +95,14 @@ reviewed before milestone runs; selected snapshots cannot silently replace the
 required frame/input checkpoints. Springtrail and these later releases remain
 planned, not delivered by the scope revision.
 
+The user-approved [future milestone selection policy](dv/integration/SPEC.md#milestone-acceptance)
+distinguishes the unchanged #263 complete baseline from later validation.
+After acceptance, that baseline is reusable with explicit qualification rather
+than an automatic 3600-interval repeat. Future milestones select deterministic
+distinct-transition coverage, focused faults and sampled endurance under that
+policy. The v1.0 full load/readback, actual VGA/keyboard operation, continuous
+30 minutes and three reset/load/start cycles remain required.
+
 ## Dependencies and authority
 
 The [gap register](../preflight-gaps.md) owns closure evidence and the
