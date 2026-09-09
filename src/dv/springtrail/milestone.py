@@ -36,5 +36,5 @@ def plan(short=False):
                      reference_offset=(f+2)*23040,
                      input_after=inputs[f-1]['buttons'] if 1 <= f < count-1 else None)
                 for f in range(count)]
-    return dict(inputs=inputs, captures=captures, normal_frames=count,
+    return dict(image_sha256=ROM_SHA256, inputs=inputs, captures=captures, normal_frames=count,
                 end_dot=checkpoint(count), scripted_updates=len(buttons))

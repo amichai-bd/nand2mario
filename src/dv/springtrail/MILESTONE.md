@@ -52,3 +52,37 @@ build, epoch, sequence, paused dot, input history and native ledger across batch
 no reset, replay or skipped frame may recover an incomplete batch. Image/pixel/
 input/progress fault coverage and current-head review remain required. #264's
 continuous physical milestone and #28/#156 remain separate.
+
+## Native completion
+
+The existing probe's explicit `springtrail-milestone-short` case executes eight
+normal callbacks and continues to checkpoint642852; the full
+`springtrail-milestone` executes3604 normal callbacks and continues to253168356.
+Retain the two initialization callbacks, schedule.json, every row-major image,
+actual key applications and terminal record. End may be at most24 dots after the
+fixed checkpoint because the native public API advances an instruction. No
+additional normal callback is allowed. Normal callback spacing must be70224.
+
+The checker compares every pixel with the independent original model, and checks
+sampled C019/mode using fixed indices. At native callback j, displayed model state
+is update max(0,j-5); sampled input is zero for j<5 and script input j-5 otherwise;
+logical mode is update max(0,j-4). Initial callbacks and first normal frame are
+blank. No callback, mask or offset is selected from DUT observations.
+
+Native short forecast10 seconds; full forecast60-180 seconds including model
+image comparison, unmeasured until the short completes. Each invocation keeps
+the existing300-total/288-worker/12-cleanup supervisor and canonical mutex.
+The input and progress faults retain their actual key mutation/truncated execution;
+frame fault remains explicitly a serialized-image mutation. New native execution
+and acquisition proof are pending. The complete aggregate is declared after
+short native/acquisition measurements, before the full hardware matrix.
+
+| Fault boundary | Scoped evidence and remaining witness |
+|---|---|
+| Immutable image | PR282 rejects old image identity before native tools; #283 must validate full upload/readback and reject changed expected image/hash before acquisition. |
+| Actual DUT pixel | PR276's real source-shade mutation and unchanged checker rejection, qualified in PR282; native serialization/host readback mutations only test their own new infrastructure. |
+| Input | Existing native actual zero-key fault; exercise it on the new schedule. #283 checks exact applied mask/dot and rejects mismatched transport/plan input. |
+| Progress | Existing native actual early-exit fault; exercise it on the fixed end-checkpoint path. #283 rejects partial RUN_DOTS, missing/duplicate frames and unbound continuation. |
+
+These proofs complement every-frame positive execution; they do not claim a
+host-file mutation is an actual DUT defect or remove any required interval.

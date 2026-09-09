@@ -61,11 +61,16 @@ def check(folder, contract, case):
     end = rows[-1]
     assert end == dict(kind='end', frames=count+2, normal_frames=count, inputs=len(inputs), dot=end['dot']), 'REFERENCE_END_COUNTS'
     assert last_dot <= end['dot'] <= contract['dot_bound'], 'REFERENCE_PROGRESS'
+    assert end['dot'] >= contract.get('end_dot', 0), 'REFERENCE_END_TIME'
     data = (folder/'frames.shades').read_bytes()
     size = contract['frame_bytes']
     assert len(data) == len(frames)*size and all(v < 4 for v in data), 'REFERENCE_FRAME_BYTES'
     assert data[:size] == bytes(size), 'REFERENCE_BLANK_FRAME'
-    assert frames[0]['mode'] == 0 and frames[-1]['mode'] == 1, 'REFERENCE_GAME_FLOW'
+    if 'milestone' in contract:
+        from src.dv.sameboy.milestone import check_frames
+        check_frames(frames, data, contract['milestone'])
+    else:
+        assert frames[0]['mode'] == 0 and frames[-1]['mode'] == 1, 'REFERENCE_GAME_FLOW'
     if 'settled' in case:
         assert [f['buttons'] for f in frames] == [0,0,0,129]+[1]*(count-2), 'REFERENCE_GAME_BUTTONS'
         compare_game_images(data, count)
