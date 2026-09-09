@@ -12831,7 +12831,8 @@
       "test": "vga_crc",
       "inputs": [
         "src/dv/python/vga/test_vga_crc.py",
-        "src/dv/python/vga/reference.py"
+        "src/dv/python/vga/reference.py",
+        "src/dv/python/vga/public_trace.py"
       ],
       "waves": [
         "clk_sys",
@@ -12872,7 +12873,8 @@
       "test": "vga_crc",
       "inputs": [
         "src/dv/python/vga/test_vga_crc.py",
-        "src/dv/python/vga/reference.py"
+        "src/dv/python/vga/reference.py",
+        "src/dv/python/vga/public_trace.py"
       ],
       "waves": [
         "clk_sys",

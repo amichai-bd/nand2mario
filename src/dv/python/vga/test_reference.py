@@ -1,6 +1,7 @@
 """Small host checks for the independent canonical format and failure paths."""
 import unittest
 from reference import EXPECTED_CRC, Raster, crc, frame
+from public_trace import Trace
 
 
 class ReferenceTests(unittest.TestCase):
@@ -40,6 +41,28 @@ class ReferenceTests(unittest.TestCase):
         model.edge = 656 + 1
         with self.assertRaisesRegex(AssertionError, 'VGA_CRC_RGB'):
             model.sample(3)  # hsync must already be low at x=656
+
+    def test_partial_trace_and_incomplete_end(self):
+        trace = Trace()
+        self.assertEqual(list(trace.feed('00000001,000000000000')), [])
+        self.assertEqual(list(trace.feed('5169,4003\n')), [(20841, 0x4003)])
+        with self.assertRaisesRegex(AssertionError, 'INCOMPLETE'):
+            trace.finish()
+        with self.assertRaisesRegex(AssertionError, 'SHORT'):
+            list(trace.feed('END\n'))
+
+    def test_bad_trace_records(self):
+        records = [('00000002,0000000000005169,4003\n', 'ORDER'),
+                   ('00000001,0000000000005168,4003\n', 'TIME'),
+                   ('00000001,0000000000005169,4x03\n', 'FORMAT_UNKNOWN')]
+        for record, failure in records:
+            with self.assertRaisesRegex(AssertionError, failure):
+                list(Trace().feed(record))
+        trace = Trace()
+        record = '00000001,0000000000005169,4003\n'
+        list(trace.feed(record))
+        with self.assertRaisesRegex(AssertionError, 'ORDER'):
+            list(trace.feed(record))
 
 
 if __name__ == '__main__':

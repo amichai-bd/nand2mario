@@ -7,6 +7,7 @@ from cocotb.triggers import RisingEdge, FallingEdge, ReadOnly, Timer
 from cocotb.utils import get_sim_time
 
 from reference import EXPECTED_CRC, Raster, crc, frame
+from public_trace import Trace
 
 
 def known(handle):
@@ -20,7 +21,6 @@ async def vga_crc(dut):
     # Resolve every required public handle before the first stimulus.
     source = {name: getattr(dut, name) for name in
               ('source_valid', 'source_start', 'source_shade', 'source_dot', 'reset_sys')}
-    pins = dut.public_raster
     journal = Path('transactions.jsonl').open('w', encoding='utf-8')
     def record(kind, **fields):
         journal.write(json.dumps({'kind': kind, 'time_ns': get_sim_time(unit='ns'), **fields}) + '\n')
@@ -53,24 +53,33 @@ async def vga_crc(dut):
 
     driver = cocotb.start_soon(drive())
     model = Raster()
+    trace = Trace()
+    stream = None
     try:
-        # Include all geometry/sync/border samples through the second complete raster.
-        while model.edge < 3 * 800 * 525 + 1:
-            await RisingEdge(dut.clk_pix)
-            await ReadOnly()
-            public = known(pins)
-            if public & (1 << 14):
-                assert model.edge == 0
-                continue
-            try:
-                complete = model.sample(public)
-            except AssertionError as error:
-                record('mismatch', edge=model.edge, actual=public, message=str(error))
-                raise
-            if complete:
-                record('output_complete', **complete)
-            if model.edge % 420000 == 0:
-                record('raster_progress', edge=model.edge)
+        # One continuous simulator run. Transfer all passive samples every 2 ms.
+        # The HDL closes the trace after the exact frozen observation window.
+        for _ in range(26):
+            await Timer(2, unit='ms')
+            if stream is None:
+                stream = Path('public-raster.txt').open(encoding='ascii')
+            for timestamp, public in trace.feed(stream.read()):
+                if public & (1 << 14):
+                    assert trace.count <= 26 and model.edge == 0, 'VGA_CRC_RESET_ORDER'
+                    continue
+                assert trace.count > 26, 'VGA_CRC_EARLY_RESET_RELEASE'
+                try:
+                    complete = model.sample(public)
+                except AssertionError as error:
+                    record('mismatch', edge=model.edge, sample_time_ps=timestamp,
+                           actual=public, message=str(error))
+                    raise
+                if complete:
+                    record('output_complete', sample_time_ps=timestamp, **complete)
+                if model.edge % 420000 == 0:
+                    record('raster_progress', edge=model.edge, sample_time_ps=timestamp)
+            if trace.ended:
+                break
+        trace.finish()
         await driver
         model.finish()
         for number, data in enumerate(model.canonical):
@@ -82,6 +91,8 @@ async def vga_crc(dut):
         Path('summary.json').write_text(json.dumps(summary, indent=2), encoding='utf-8')
         record('complete', **summary)
     finally:
+        if stream is not None:
+            stream.close()
         if not driver.done():
             driver.cancel()
         journal.close()

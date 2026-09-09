@@ -34,12 +34,22 @@ Black borders, blanking and exact sync intervals are checked independently.
 
 ## Runs and evidence
 
-`python-vga-crc` completes at about 50 ms simulated time, with a 55 ms HDL
+`python-vga-crc` observes about 50 ms and completes by 52 ms simulated time, with a 55 ms HDL
 watchdog. `python-vga-crc-corrupt` forces the actual bridge red output to zero
 at fixed time 17 ms, before the first image. The unchanged checker must reject
 the first image pixel at raster 1, x=80, y=24. The fault is not an expected-data
 mutation. Raw simulator status is retained separately from failing Python XML
 and the required nonzero builder command result.
+
+The passive fixture captures every settled public RGB/sync/reset sample 1 ns
+after the pixel rising edge. Its trace has contiguous indices and exact 1 ps
+timestamps. There are 26 reset samples followed by 1260001 pipeline/raster
+samples, then an explicit end marker and file close. Every 2048 records are
+flushed; continuous Python reads at 2 ms intervals and applies the unchanged
+raster checker to every record. Missing, duplicate, unknown, mistimed, extra
+or truncated records fail. This reduces transfer callbacks, not observations.
+The fault's first failing sample time is retained separately from the later
+Python batch-check time.
 
 Both targets use the existing 300-second whole-command cap, including setup and
 cleanup. The per-test target is 120 seconds and selected pair aggregate target
