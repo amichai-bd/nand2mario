@@ -1,5 +1,6 @@
 """Tagged, uncached host operations with private-safe packet summaries."""
 from datetime import datetime, timezone
+from contextlib import ExitStack
 import json
 import subprocess
 import uuid
@@ -21,10 +22,12 @@ def run(root, build, args, provenance):
         with journal.open('a', encoding='utf-8') as stream:
             stream.write(json.dumps({'time': datetime.now(timezone.utc).isoformat(), **entry}, sort_keys=True) + '\n')
     try:
-        if args.action == 'crc-proof':
+        if args.action in ('crc-proof', 'keyboard'):
             import re
             if args.endpoint_restarted or not re.fullmatch('[0-9a-fA-F]{32}', args.expected_build_id):
-                raise ValueError('CRC proof requires a reviewed build ID and an already certain session')
+                raise ValueError('operation requires a reviewed build ID and an already certain session')
+        if args.action == 'keyboard' and args.json:
+            raise ValueError('keyboard is an interactive console command; use its tagged result.json for records')
         image = None
         if args.action == 'load':
             image, report['package'] = read_package(root, args.package)
@@ -41,10 +44,25 @@ def run(root, build, args, provenance):
         common = subprocess.check_output(['git', '-C', str(root), 'rev-parse', '--path-format=absolute', '--git-common-dir'], text=True).strip()
         from pathlib import Path
         state_root = Path(common).parent / 'workdir/host-sessions'
-        with session(folder, args, state_root) as (transport, sequence, persist, selected):
+        with ExitStack() as stack:
+            if args.action == 'keyboard':
+                from .console import Console
+                from ci.storage import machine_lock
+                console = stack.enter_context(Console())
+                stack.enter_context(machine_lock(1357311510))
+            transport, sequence, persist, selected = stack.enter_context(session(folder, args, state_root))
             client = Client(transport, sequence=sequence, record=record, persist=persist)
             report['endpoint'] = client.identify()
-            if args.action == 'crc-proof':
+            if args.action == 'keyboard':
+                if report['endpoint']['build_id'] != args.expected_build_id.lower():
+                    raise ValueError('keyboard build identity mismatch')
+                from .keyboard import run as keyboard
+                print('Release mapped keys before playing. Arrows: move; Z: A; X: B; right Shift: Select; Enter: Start. Escape/Ctrl+C: exit. Focus loss releases and exits.')
+                try:
+                    report['result'] = keyboard(client, console)
+                finally:
+                    report.update(sequence=client.sequence, uncertain=client.uncertain)
+            elif args.action == 'crc-proof':
                 if report['endpoint']['build_id'] != args.expected_build_id.lower():
                     raise ValueError('CRC proof build identity mismatch')
                 from .crc_proof import run as crc_proof

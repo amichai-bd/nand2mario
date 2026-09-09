@@ -4,6 +4,12 @@ Provide verified Python ROM loading, host execution control, complete button
 masks and immutable frame readback through the shared builder.
 [Issue #92](https://github.com/amichai-bd/nand2mario/issues/92) owns delivery.
 
+The focused Windows console keyboard path ([#296](https://github.com/amichai-bd/nand2mario/issues/296))
+turns real down/up events into complete UART masks, preserving holds and chords.
+It captures only its foreground classic console, releases on ordinary exit or
+focus loss when completion is certain, and never retries an uncertain request.
+It does not start/load the game or replace physical display/control acceptance.
+
 The [Stackdrop player comparison](../../../src/sw/stackdrop/SPEC.md#pixel-player-comparison)
 uses these public controls and rendered snapshots for software decisions.
 It must preserve the same package, identity, uncertainty and safe-stop rules;

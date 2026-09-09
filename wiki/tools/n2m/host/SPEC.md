@@ -36,6 +36,7 @@ is not device authentication or proof of correct wiring.
 | `host step --dots <budget>` | One instruction with generated budget bounds; STEP_LIMIT is a known failure with consumed time retained. |
 | `host run-dots --dots <count>` | Exact bounded real-dot execution; return completed dot, executed count and COUNT/STOPPED reason. |
 | `host input --mask <integer>` | Replace the complete active-high eight-button mask, preserving simultaneous/opposite states. Decimal or prefixed hexadecimal is accepted. |
+| `host keyboard --expected-build-id <32hex>` | Focused Windows classic-console key down/up to complete INPUT masks; see keyboard behavior below. |
 | `host write --address <integer> --value <integer>` | Write the generated INPUT mask or INPUT_SOURCE selector; reject read-only/unknown addresses and reserved value bits before opening the port. |
 | `host snapshot` | One SNAPSHOT followed by all READ_FRAME chunks; retain metadata and packed shades. No new snapshot during readback. |
 | `host crc-proof --expected-build-id <32hex>` | Fixed bad-CRC PING diagnostic on an already certain, reviewed endpoint. Requires the physical verification workflow below. |
@@ -62,6 +63,48 @@ No expected byte values are logged on mismatch. Each write leaves space for its
 generated offset record; every byte is read back after LOAD_END before success.
 
 ## Transport and recovery
+
+### Focused keyboard
+
+`host keyboard` supports a local Windows10/11 classic console with native input,
+a visible console window and foreground ownership. Windows Terminal/ConPTY,
+WSL/SSH and redirected input are unsupported and rejected before serial open.
+To open the supported console without changing defaults, use Windows Run with
+`conhost.exe cmd.exe`, change to the repository, then invoke:
+
+```text
+python tools/build.py host keyboard --uart-port <verified-port> --expected-build-id <reviewed-wire-id> --tag <tag>
+```
+
+Release mapped keys before invocation. Arrows map to directions, Z to A, X to B,
+right Shift to Select and Enter to Start. Down adds a button; up removes it.
+Each changed union is one ordinary INPUT with its acknowledged dot retained.
+Repeated downs are ignored; chords/opposite directions are preserved. Unmapped
+characters are neither sent nor logged. Ctrl/Alt-modified downs are ignored;
+releases still clear held keys. Escape, Ctrl+C and Windows keys exit.
+
+Require a certain durable session, expected build/ABI, valid image, UART source
+and initial host/effective0. No implicit source selection, RUN/HALT, load or reset
+occurs. Existing machine/device locks serialize the whole session. `--json` and
+`--endpoint-restarted` are rejected for this interactive operation; tagged
+result/transaction files retain its outcome.
+
+Native events and foreground ownership are polled with20ms idle waits; an
+outstanding UART exchange may delay observation until its existing deadline.
+Focus loss exits without rearming or consuming queued gameplay keys. Ordinary
+exit/read failure sends INPUT0 once if the Client is certain, and requires an
+acknowledgement before claiming release. Ambiguous transmission/completion
+retains pending and sends nothing further. Console mode is restored on exit;
+a restoration failure reports failure without inventing wire pending. Killing
+the process or unplugging the adapter cannot guarantee a released mask.
+
+The implementation uses native console events, not global key-state polling or
+hooks. [Windows key records](https://learn.microsoft.com/en-us/windows/console/key-event-record-str)
+carry down/up and repeats. A
+[pseudoconsole window](https://learn.microsoft.com/en-us/windows/console/getconsolewindow)
+is not its displayed terminal, so it cannot satisfy this foreground check.
+Native injected-event tests prove the event path; actual manual keyboard/VGA
+release acceptance remains in #264.
 
 Discovery reuses the doctor without running its licensed probes. The optional
 [pinned serial backend](../../../../tools/n2m/host/THIRD_PARTY.md) opens only the
