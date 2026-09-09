@@ -1,12 +1,17 @@
 ; Approved pose placement. No gameplay state is modified here.
 SECTION "courier",ROM
 SelectCourier:
+; Reset the remembered neutral facing, then honor this update's movement.
 LD A,[NewLevel]
 OR A,A
-JR NZ,CourierFaceRight
+JR NZ,CourierResetFacing
 LD A,[GameMode]
 OR A,A
-JR Z,CourierFaceRight
+JR NZ,CourierVelocity
+CourierResetFacing:
+XOR A,A
+LD [CourierFacing],A
+CourierVelocity:
 LD A,[VelocityX]
 LD B,A
 LD A,[VelocityX+1]
