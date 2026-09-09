@@ -1,5 +1,6 @@
 """Tagged, uncached host operations with private-safe packet summaries."""
 from datetime import datetime, timezone
+from contextlib import ExitStack
 import json
 import subprocess
 import uuid
@@ -8,7 +9,7 @@ from .. import generated_interfaces as abi
 from ..records import atomic_json, file_hash
 from .client import Client, summary
 from .package import read_package
-from .transport import session
+from .transport import open_serial, session
 
 
 def run(root, build, args, provenance):
@@ -17,14 +18,17 @@ def run(root, build, args, provenance):
     report = {'status': 'FAIL', 'action': args.action, 'wire_abi': abi.WIRE_ABI,
               'profile': abi.PROFILE_NAME, **provenance}
     journal = folder / 'transactions.jsonl'
+    client = None
     def record(entry):
         with journal.open('a', encoding='utf-8') as stream:
             stream.write(json.dumps({'time': datetime.now(timezone.utc).isoformat(), **entry}, sort_keys=True) + '\n')
     try:
-        if args.action == 'crc-proof':
+        if args.action in ('crc-proof', 'keyboard'):
             import re
             if args.endpoint_restarted or not re.fullmatch('[0-9a-fA-F]{32}', args.expected_build_id):
-                raise ValueError('CRC proof requires a reviewed build ID and an already certain session')
+                raise ValueError('operation requires a reviewed build ID and an already certain session')
+        if args.action == 'keyboard' and args.json:
+            raise ValueError('keyboard is an interactive console command; use its tagged result.json for records')
         image = None
         if args.action == 'load':
             image, report['package'] = read_package(root, args.package)
@@ -41,10 +45,34 @@ def run(root, build, args, provenance):
         common = subprocess.check_output(['git', '-C', str(root), 'rev-parse', '--path-format=absolute', '--git-common-dir'], text=True).strip()
         from pathlib import Path
         state_root = Path(common).parent / 'workdir/host-sessions'
-        with session(folder, args, state_root) as (transport, sequence, persist, selected):
+        with ExitStack() as stack:
+            if args.action == 'keyboard':
+                from .console import Console
+                from ci.storage import machine_lock
+                console = stack.enter_context(Console())
+                stack.enter_context(machine_lock(1357311510))
+                def opener(port):
+                    console.discard_pending()
+                    if not console.focused():
+                        raise RuntimeError('console lost foreground before serial open')
+                    return open_serial(port)
+                connection = session(folder, args, state_root, opener=opener)
+            else:
+                connection = session(folder, args, state_root)
+            transport, sequence, persist, selected = stack.enter_context(connection)
             client = Client(transport, sequence=sequence, record=record, persist=persist)
             report['endpoint'] = client.identify()
-            if args.action == 'crc-proof':
+            if args.action == 'keyboard':
+                if report['endpoint']['build_id'] != args.expected_build_id.lower():
+                    raise ValueError('keyboard build identity mismatch')
+                from .keyboard import run as keyboard
+                print('Release mapped keys before playing. Arrows: move; Z: A; X: B; right Shift: Select; Enter: Start. Escape/Ctrl+C: exit. Focus loss releases and exits.')
+                console.discard_pending()
+                try:
+                    report['result'] = keyboard(client, console)
+                finally:
+                    report.update(sequence=client.sequence, uncertain=client.uncertain)
+            elif args.action == 'crc-proof':
                 if report['endpoint']['build_id'] != args.expected_build_id.lower():
                     raise ValueError('CRC proof build identity mismatch')
                 from .crc_proof import run as crc_proof
@@ -70,6 +98,13 @@ def run(root, build, args, provenance):
     except Exception as error:
         report['error'] = str(error)
         record({'event': 'failure', 'reason': str(error)})
+    except KeyboardInterrupt:
+        if args.action != 'keyboard':
+            raise
+        report['error'] = 'keyboard interrupted'
+        record({'event': 'failure', 'reason': report['error']})
+    if args.action == 'keyboard' and client is not None:
+        report.update(sequence=client.sequence, uncertain=client.uncertain)
     report['artifacts'] = {path.relative_to(root).as_posix(): file_hash(path)
                            for path in folder.iterdir() if path.is_file()}
     atomic_json(folder / 'result.json', report)
