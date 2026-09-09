@@ -81,6 +81,44 @@ Keep the 25 MHz system, DMG dot/frame cadence and standard JOYP interface. ROM
 banking is separate: remain within 32 KiB until a demonstrated storage need and
 the reviewed #307 memory/loader/packager/fit contract permit a banked image.
 
+## Shared asset checklist
+
+The 2026-09-09 asset amendment assigns deliverables to the existing feature
+owners below. Reuse suitable approved sources; create only missing original
+content required by that issue. This adds no feature families or asset framework.
+
+| Owner | Scoped content to account for |
+|---|---|
+| #292 | Approved courier tiles and pose maps in [CHARACTER_ART.md](CHARACTER_ART.md); composition and game allocation |
+| #300 | Terrain/column tiles and fixed HUD graphics |
+| #301 | Motion poses, reusing approved poses where suitable; identify any missing state visuals |
+| #302 | Power, damage and projectile visuals; identify missing transitions separately from approved courier poses |
+| #303 | Interactive blocks, released items and pickups |
+| #304 | Progression displays and original fixture maps |
+| #305 | Selected enemy, hazard and moving/falling-platform art |
+| #306 | Later-content inventory only; no core-release asset implementation |
+
+Each owning specification records a compact list with visible state/use,
+existing source to reuse or missing asset to create, exact tile/pose/map source
+path, and approval/integration status. Keep editable integer shade grids and
+pose/map data with the implementation owner. Render tile sheets and assembled
+SVG previews from those values using repository tools, showing 8x8 boundaries
+and IDs where useful. Link the preview from both the owning wiki specification
+and issue; the editable values remain authoritative.
+
+Unchanged courier art remains approved. Before integrating newly created or
+materially changed game artwork, obtain visual approval tied to its exact source
+revision and rendered preview. Approval gates only that artwork's integration:
+continue independent code and tests while it is pending. Diagnostic placeholders
+are not approved final game art. Pose timing, collision geometry and feature
+behavior remain separate contracts.
+
+Each feature packages and uses its required assets, checks tile/palette/placement
+references, and supplies a short independent rendered-state proof against the
+approved appearance. Reuse suitable existing checks. Artwork alone does not
+require a full-game replay, another FPGA build or longer simulations; the
+existing budgets still apply. This documentation contract creates no assets.
+
 ## Baseline and bounded acceptance
 
 ### First aligned release matrix
