@@ -163,6 +163,7 @@ def prepare(target, attempt, root=None, fixture_tools=None):
             spec=importlib.util.spec_from_file_location('hud_render300_image',root/'src/dv/springtrail/hud_render_program.py')
             module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
             image=module.build(root,attempt)
+            expected_sha=hashlib.sha256(image).hexdigest()
         elif target['preload'] in ('hud300','hud300-s'):
             spec=importlib.util.spec_from_file_location('hud300_image',root/'src/dv/springtrail/hud_program.py')
             module=importlib.util.module_from_spec(spec)
