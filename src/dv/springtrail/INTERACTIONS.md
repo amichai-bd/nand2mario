@@ -14,9 +14,9 @@ No v0.9 or physical release acceptance is implied by these focused checks.
 | Rendering and restored map | Exact prepared OAM/map bytes and timed VBlank writes; current complete-game initialization/input/frame proof and affected output fault |
 | Delivery | Current scoped evidence, required checks and independent review |
 
-The model/routines can be checked independently of the frame-loop scheduling
-decision. They are linked into the game image, but are not yet called by its
-frame loop. No added display latency has been implemented or accepted here.
+The approved frame loop publishes the previously prepared state and computes
+the next state once per frame from the sampled input. The composed proof below checks
+this one-frame display delay. Physical route evidence remains separate.
 
 ## Actual CPU routine checkpoint
 
@@ -49,8 +49,8 @@ simulation watchdog is separate. This routine-only bound does not prove the
 forthcoming combined rendering budget. The existing 300-second whole-process
 limit includes preparation, compile, run, checks and 12-second cleanup reserve.
 
-Before measurement, forecast the three-report smoke at 20â€“40 seconds and full
-unit at 90â€“140 seconds. A later composed game/fault pair is provisionally
+Before measurement, forecast the three-report smoke at 20-40 seconds and full
+unit at 90-140 seconds. A later composed game/fault pair is provisionally
 180/80 seconds: the planned selected aggregate may exceed the 300-second target.
 These are forecasts, not measured results or cap extensions. Final render and
 physical routes must be frozen and reviewed before their execution; unchanged
@@ -76,38 +76,38 @@ retained as a setup failure, not a functional result.
 
 ## Inactive map restoration helper
 
-`map_restore.asm` is linked but not called by the current frame loop.
+`map_restore.asm` runs from the VBlank publication path.
 `BeginMapRestore` selects static9800, clears SCX/history and restarts column0;
 `RestoreMapPair` writes two complete18-row columns into9C00. The final pair
 selects9C00 only after column31's final write. Other LCDC bits are preserved.
-The future caller must invoke these routines only during VBlank and ensure
+The caller invokes these routines only during VBlank and ensures
 static9800 is the restored initial view. Streaming must never modify9800.
 
 Instruction counting gives Begin96 dots and each column792 dots including
 RET. The pair takes1764 dots normally or1800 on its final switch, excluding
 the caller's24-dot CALL. These are source counts, not measured execution.
-The two-column plus OAM/HUD bound, map equality, repeated partial restart and
-pause behavior still require the combined renderer proof before activation.
+The combined renderer proof checks two-column plus OAM/HUD timing, map
+equality and repeated partial restart; the physical route checks pause behavior.
 
 ## Scene preparation boundary
 
 `PrepareScene` writes36 ordinary WRAM bytes at C100 for nine OAM entries:
-player, enemy, four items, goal, score and mode. It is not called by the frame
-loop yet. Signed coordinate flooring and camera subtraction precede byte
+player, enemy, four items, goal, score and mode. The frame loop prepares them
+during visible time. Signed coordinate flooring and camera subtraction precede byte
 encoding; fully off-screen or collected objects use OAM Y0. Score and mode
 are screen-relative at (144,0) and (72,0). `scene_reference.py` owns the
 independent expected bytes, including a literal initial scene and clipping
 at x=-8/-7 with fractional Y.
 
 The original tile pairs are player12, enemy16, item18, goal20,
-score22+2*score and mode32+2*mode. The new art pairs are installed in the atlas; the OAM publisher is linked
-but not called by the live loop. Lower tiles are blank for eight-pixel objects.
-The original16 tiles are unchanged. No extra display frame is active.
-Actual CPU scene/map byte and combined VBlank budget checks remain pending.
+score22+2*score and mode32+2*mode. The atlas and live OAM publisher use these
+pairs. Lower tiles are blank for eight-pixel objects. The original16 tiles are
+unchanged. Actual CPU scene/map checks and composed publication checks pass.
 
 The static and scrolling maps contain terrain and title lettering only; item
 and old fixed-counter background markers have been removed. Items and score
-will use OAM. New atlas and restored full pixels remain pending checks.
+use OAM. Literal atlas and full composed-image checks cover their appearance;
+physical restart images also check restored pixels.
 
 ## Combined routine proof
 
@@ -192,3 +192,13 @@ actual output-shade fault is forecast110 seconds, with unchanged expectations.
 These further checks increase the already declared aggregate target miss;
 no individual hard-cap exception is introduced. Existing python-springtrail
 and python-springtrail-x names now select the current flow checker as well.
+
+The completed composed short/full/fault took136.194/180.803/95.066 seconds.
+All11 raw tool/simulator exits were zero in each run. Short and full passed
+XML, every pixel, preparation/publication and pause/END; the affected fault
+failed XML and the outer command at frame1/index1/dot147281 (shade0 to1).
+The full run applied Start+Right at137356 and paused at286976. Its longest
+observed display publication ended3828 dots after VBlank began, within the
+3920 source bound. All nine scoped simulations total799.887 seconds, above
+the ordinary aggregate target; every individual300-second hard cap was met.
+Durable results and source qualification belong to [PR276](https://github.com/amichai-bd/nand2mario/pull/276).
