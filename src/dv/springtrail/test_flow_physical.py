@@ -161,6 +161,33 @@ class FlowPhysical(unittest.TestCase):
         self.assertFalse(endpoint.loaded)
         self.assertEqual(endpoint.calls, [])
 
+    def test_run_response_time_is_not_added_to_sleep(self):
+        class Delayed(Endpoint):
+            now = 0
+
+            def control(self, name, value=None):
+                result = super().control(name, value)
+                if name == 'RUN':
+                    self.now += .012
+                    self.dots += round(.012*DOT_HZ)
+                return result
+
+            def sleep(self, seconds):
+                self.now += seconds
+                super().sleep(seconds)
+
+        endpoint, records = Delayed(), []
+        with tempfile.TemporaryDirectory() as folder:
+            run(endpoint, bytes(32768), folder, records.append,
+                'original', self.prior(), LCD, 'feasibility', renderer=render,
+                sleep=endpoint.sleep, clock=lambda: endpoint.now)
+        pacing = [record for record in records if record['kind'] == 'pacing']
+        for record in pacing:
+            self.assertAlmostEqual(record['run_seconds'], .012)
+            self.assertAlmostEqual(record['sleep_seconds'], max(0,
+                (record['start']-record['before_dot'])/DOT_HZ-.012))
+            self.assertLess(record['halt_dot'], record['end'])
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -12,7 +12,7 @@ DOT_HZ = 4194304
 
 
 def run(client, rom, folder, log, expected_build, prior, lcd, mode,
-        *, renderer=None, sleep=time.sleep):
+        *, renderer=None, sleep=time.sleep, clock=time.monotonic):
     """Caller owns verified setup, immutable package, session and300s supervisor."""
     folder = Path(folder)
     segments, captures = plan(mode)
@@ -54,9 +54,18 @@ def run(client, rom, folder, log, expected_build, prior, lcd, mode,
             assert current < end, 'FLOW_MISSED_WINDOW'
             if current >= start:
                 return current
+            began = clock()
             client.control('RUN')
-            sleep(max(.001, (start-current)/DOT_HZ-.003))
+            run_elapsed = clock()-began
+            requested_sleep = max(0, (start-current)/DOT_HZ-run_elapsed)
+            sleep(requested_sleep)
+            halt_began = clock()
             returned = client.control('HALT')['dot']
+            halt_elapsed = clock()-halt_began
+            log(dict(kind='pacing', frame=frame, start=start, end=end,
+                     before_dot=current, halt_dot=returned, advance=returned-current,
+                     run_seconds=run_elapsed, sleep_seconds=requested_sleep,
+                     halt_seconds=halt_elapsed, elapsed_seconds=clock()-began))
             assert dot() == returned, 'FLOW_HALT_DOT'
         raise AssertionError('FLOW_WINDOW_PROGRESS')
 
