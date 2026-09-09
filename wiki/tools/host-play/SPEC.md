@@ -1,6 +1,6 @@
 # Original UART play loop
 
-Issue [#157](https://github.com/amichai-bd/nand2mario/issues/157) owns this bounded scenario. It uses the existing [host Client](../n2m/host/SPEC.md), [input owner](../../src/rtl/input/MAS_input.md) and [immutable snapshot](../../src/rtl/snapshot/MAS_snapshot.md). It adds no hardware register or commercial-game interpretation.
+The [host-play driver](../../../tools/n2m/host_play.py) implements this bounded scenario. It uses the existing [host Client](../n2m/host/SPEC.md), [input owner](../../src/rtl/input/MAS_input.md) and [immutable snapshot](../../src/rtl/snapshot/MAS_snapshot.md). It adds no hardware register or commercial-game interpretation.
 
 The original ROM draws one solid 8-by-8 background tile at map column8,row8. All other map entries and tile0 are explicitly cleared by CPU instructions while LCD is off. Tile1 has low bytes FF and high bytes00. SCY is0. BGP E4 maps tile color1 to shade1; EC maps it to shade3. SCX0 places the object at (64,64); SCX F8 places it at (72,64). The ROM selects the direction row at JOYP and polls Right/Left. Right chooses F8, Left chooses0, and neither preserves position. A press selects EC; release selects E4. No DMA, timer or interrupt handler is used.
 
@@ -20,7 +20,7 @@ Each change occurs while host-paused, followed by RUN, a bounded observation int
 
 The host loop takes an existing Client and a bounded run-wait callback, so the same command/image path can support later authorized physical operation. Simulation waits observe only elapsed public dots; they do not signal game position or alter product state. Physical execution still requires the repository hardware checks and is not part of this simulation evidence.
 
-Verification uses the real UART byte transport, CPU/memory, JOYP/IF, PPU, frame bridge and dedicated Intel snapshot stores. Actual wrong snapshot data, missing frame completion, wrong button and missing release updates must fail the host's independent checks. These faults do not alter the expected image. Portable image/metadata/failure tests and current-head review complement the composed checks; #88 and #140 acceptance remain unchanged.
+Verification uses the real UART byte transport, CPU/memory, JOYP/IF, PPU, frame bridge and dedicated Intel snapshot stores. Actual wrong snapshot data, missing frame completion, wrong button and missing release updates must fail the host's independent checks. These faults do not alter the expected image. Portable image/metadata/failure tests and current-head review complement the composed checks; the [v0.5 matrix](../../src/dv/v05/SPEC.md) and [integration contract](../../src/dv/integration/SPEC.md) retain their separate acceptance.
 
 The host-play fixture uses the shared 25 MHz system clock, an eight-system-edge UART bit period (3.125 Mbaud), and a separate 25.2 MHz pixel clock. Its watchdog permits one second of simulation time, preserving the former 25-million-system-edge budget for full ROM load/readback and five snapshot downloads. The original 800000-dot sequence and independent image expectations remain unchanged.
 
