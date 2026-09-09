@@ -32,8 +32,14 @@ Neutral drain execution remains in the reference interval; it is not a reset or
 an omitted interval. Display lag means its newly computed state is not required
 to appear in a frame that was already complete.
 
-`milestone.py` freezes the script: the existing original success route followed
-by ordinary Start restart and another route, repeated to3600 updates. Its first
+`milestone.py` freezes the script: the existing original success route, ordinary
+Start restart, existing death/retry route, pause/resume and Select restart, then
+success/restart routes repeated to3600 updates. Fixed checkpoints include WON360,
+death RETRY548, Start retry549, pause551/resume553, pause555/Select restart557,
+and pause558/resume560. Later wins occur920/1281/1642/2003/2364/2725/3086/3447.
+The final scripted state is PLAYING, score1, camera256; no expected state comes
+from a DUT. Repeated contact/once-only score and exact restoration component
+proofs from PR276 remain qualified separately from this full frame sequence. Its first
 new route holds Start from the restart, preserving edge semantics. The short
 complete lifecycle uses four updates129/1/1/1 and two neutral drains, eight source
 frames, allowing two four-frame acquisition batches. Full route/model and native

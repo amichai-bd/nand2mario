@@ -1,5 +1,5 @@
 """Fixed milestone input and capture indices, chosen before DUT observations."""
-from interaction_routes import SUCCESS
+from interaction_routes import SUCCESS, DEATH_RETRY
 
 LCD = 76964
 PERIOD = 70224
@@ -15,7 +15,11 @@ def masks(short=False):
     if short:
         return [129, 1, 1, 1]
     success = [mask for mask, count in SUCCESS for _ in range(count)]
-    result = success[:]
+    death = [mask for mask, count in DEATH_RETRY for _ in range(count)]
+    # After the first win, exercise the existing fall/retry route, then pause,
+    # resume and Select restart. Resume with Start held restores the route's
+    # initial edge history without advancing the freshly reset world.
+    result = success + [128] + death + [0,128,0,128,0,128,0,64,128,0,128] + success
     # Start resets WON to PLAYING; the following held Start in the original
     # route has no new edge. Its first moving update restores the route phase.
     while len(result) < 3600:
