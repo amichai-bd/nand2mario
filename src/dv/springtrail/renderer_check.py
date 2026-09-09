@@ -1,4 +1,4 @@
-"""Actual CPU flow proof through the existing passive public trace."""
+"""Historical nine-object fixture; current composition uses courier-unit."""
 import json
 import sys
 from pathlib import Path
@@ -14,9 +14,11 @@ from client_transport import connect, frames, refresh_clock
 from test_integration import known, decode_record
 from n2m.preload import verify, adopt
 from renderer_oracle import Check
+from sw.rom_build import require_legacy_scene
 
 
 async def run(dut, count):
+    require_legacy_scene(ROOT,'render')
     checker = Check(count)
     lines = records = last_retire = 0
     terminal = ended = False

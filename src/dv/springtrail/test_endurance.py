@@ -4,6 +4,8 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+import hashlib
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]/'tools'))
 from n2m import generated_interfaces as abi
@@ -120,6 +122,7 @@ class EnduranceTests(unittest.TestCase):
             data[-1]^=64
             with self.assertRaisesRegex(AssertionError,'ENDURANCE_PIXELS'):check_pixels(data,mode)
 
+    @patch('flow_reference.BASELINE_ROM_SHA256',hashlib.sha256(bytes(32768)).hexdigest())
     def test_complete_short_and_three_lifecycles(self):
         with tempfile.TemporaryDirectory() as directory:
             client=Fake()
@@ -132,6 +135,7 @@ class EnduranceTests(unittest.TestCase):
             start=client.calls.index('RUN');end=client.calls.index('HALT',start)
             self.assertFalse(set(client.calls[start+1:end]) & {'RUN_DOTS','load','RESET'})
 
+    @patch('flow_reference.BASELINE_ROM_SHA256',hashlib.sha256(bytes(32768)).hexdigest())
     def test_failures_never_pass(self):
         for fault in ('pixel','epoch','stale','input','uncertain','stopped','lifecycle','cleanup'):
             with self.subTest(fault=fault),tempfile.TemporaryDirectory() as directory:
@@ -142,6 +146,7 @@ class EnduranceTests(unittest.TestCase):
                 self.assertFalse((Path(directory)/'run/result.json').read_text().find('"status": "PASS"')>=0)
                 if fault=='uncertain':self.assertTrue(client.uncertain)
 
+    @patch('flow_reference.BASELINE_ROM_SHA256',hashlib.sha256(bytes(32768)).hexdigest())
     def test_progress_and_both_duration_guards(self):
         import json
         for fault,guard in (('progress','ENDURANCE_PROGRESS'),
@@ -160,5 +165,13 @@ class EnduranceTests(unittest.TestCase):
                 self.assertIn('final',result)
 
 
-if __name__=='__main__':unittest.main()
+    def test_wrong_rom_before_any_side_effect(self):
+        with tempfile.TemporaryDirectory() as directory:
+            client=Fake();root=Path(directory)/'run'
+            with self.assertRaisesRegex(AssertionError,'HISTORICAL_SPRINGTRAIL_ROM'):
+                run(client,bytes(32768),root,epoch=6,cycles=1)
+            self.assertEqual(client.calls,[])
+            self.assertFalse(root.exists())
 
+
+if __name__=='__main__':unittest.main()
