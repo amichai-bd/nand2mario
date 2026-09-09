@@ -1,9 +1,12 @@
 """Native ledger validation must reject missing, changed and unfinished output."""
 import copy
 import json
+import os
 from pathlib import Path
 import tempfile
 import unittest
+from unittest import mock
+from src.dv.sameboy import probe
 from src.dv.sameboy.springtrail import check
 
 CONTRACT = json.loads(Path('src/dv/sameboy/springtrail.json').read_text())
@@ -12,13 +15,14 @@ CONTRACT = json.loads(Path('src/dv/sameboy/springtrail.json').read_text())
 class NativeLedger(unittest.TestCase):
     def fixture(self):
         rows = [dict(kind='frame', index=0, type=1, dot=70224, mode=0),
+                dict(kind='frame', index=1, type=2, dot=76963, mode=0),
                 dict(kind='input', index=0, dot=137000, buttons=129),
-                dict(kind='frame', index=1, type=0, dot=142628, mode=0),
+                dict(kind='frame', index=2, type=0, dot=142628, mode=0),
                 dict(kind='input', index=1, dot=207224, buttons=1)]
-        rows += [dict(kind='frame', index=i, type=0, dot=142628+(i-1)*70224, mode=1)
-                 for i in range(2, 5)]
-        rows += [dict(kind='end', frames=5, normal_frames=4, inputs=2, dot=353300)]
-        return rows, bytes(23040*5)
+        rows += [dict(kind='frame', index=i, type=0, dot=142628+(i-2)*70224, mode=1)
+                 for i in range(3, 6)]
+        rows += [dict(kind='end', frames=6, normal_frames=4, inputs=2, dot=353300)]
+        return rows, bytes(23040*6)
 
     def run_check(self, rows, data):
         with tempfile.TemporaryDirectory() as folder:
@@ -28,7 +32,7 @@ class NativeLedger(unittest.TestCase):
             return check(path, CONTRACT, 'springtrail-short')
 
     def test_complete(self):
-        self.assertEqual(len(self.run_check(*self.fixture())['frames']), 5)
+        self.assertEqual(len(self.run_check(*self.fixture())['frames']), 6)
 
     def test_missing_frame(self):
         rows, data = self.fixture()
@@ -48,13 +52,13 @@ class NativeLedger(unittest.TestCase):
 
     def test_changed_input(self):
         rows, data = self.fixture()
-        rows[1]['buttons'] = 0
+        rows[2]['buttons'] = 0
         with self.assertRaisesRegex(AssertionError, 'REFERENCE_INPUT_MASK'):
             self.run_check(rows, data)
 
     def test_late_input(self):
         rows, data = self.fixture()
-        rows[1]['dot'] += 25
+        rows[2]['dot'] += 25
         with self.assertRaisesRegex(AssertionError, 'REFERENCE_INPUT_TIME'):
             self.run_check(rows, data)
 
@@ -68,3 +72,21 @@ class NativeLedger(unittest.TestCase):
         rows.insert(-1, copy.deepcopy(rows[-2]))
         with self.assertRaisesRegex(AssertionError, 'REFERENCE_ORDER'):
             self.run_check(rows, data)
+
+    def test_wrong_callback_type(self):
+        rows, data = self.fixture()
+        rows[1]['type'] = 0
+        with self.assertRaisesRegex(AssertionError, 'REFERENCE_FRAME_COUNT'):
+            self.run_check(rows, data)
+
+    def test_original_image_boundary(self):
+        for size in (32767, 32768):
+            with self.subTest(size=size), tempfile.TemporaryDirectory() as folder:
+                p = Path(folder)
+                (p/'rom.gb').write_bytes(bytes(size))
+                argv = ['probe', '--case', 'springtrail-short', '--source', str(p/'missing'),
+                        '--rom', str(p/'rom.gb'), '--output', str(p/'output')]
+                with mock.patch('sys.argv', argv), mock.patch.dict(os.environ, {'N2M_TEST_EXECUTION_DEADLINE':'9999999999'}), mock.patch.object(probe.subprocess, 'run') as run:
+                    with self.assertRaisesRegex(ValueError, 'length/hash mismatch before Core load'):
+                        probe.main()
+                    run.assert_not_called()

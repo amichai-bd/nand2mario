@@ -13,7 +13,9 @@ image frozen in `springtrail.json`; both input and artifact records are retained
 
 `springtrail-short` stops normally after four native normal-frame callbacks;
 `springtrail` stops after twelve. Retain the initial LCD-off callback too:
-one type1 callback precedes the type0 frames. Do not discard artificial frames,
+one type1 callback and one type2 LCD-enable callback precede the type0 frames.
+Pinned `Core/memory.c:1503-1512` emits the artificial callback because LCD
+enable occurs more than4560 dots after the preceding callback. Do not discard artificial frames,
 substitute startup pixels or choose expected state from observed DUT output.
 The raw callback identity, completed native dot and software mode accompany
 each frame. All23040 public RGB pixels map exactly white/AA/55/black to
@@ -48,3 +50,7 @@ raw native exit0. Bad ROM size/hash is rejected before Core or tools execute.
 Host negatives also cover truncated images, missing/duplicate callbacks and
 missing terminal output. These are reference-runner faults, not DUT fault proof.
 Legacy fixed-image cases and #263's full milestone criteria remain unchanged.
+
+The initial `s277` native run finished normally in5.932 seconds but its checker
+rejected the omitted type2 prefix expectation. That attempt remains FAIL; the
+corrected contract retains and requires this callback and its complete image.

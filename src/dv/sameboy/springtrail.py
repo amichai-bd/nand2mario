@@ -24,10 +24,10 @@ def check(folder, contract, case):
             assert row['index'] == len(frames), 'REFERENCE_FRAME_INDEX'
             frames.append(row)
     count = contract['cases'][case]
-    assert len(frames) == count+1 and [f['type'] for f in frames] == [1]+[0]*count, 'REFERENCE_FRAME_COUNT'
+    assert len(frames) == count+2 and [f['type'] for f in frames] == [1, 2]+[0]*count, 'REFERENCE_FRAME_COUNT'
     assert len(inputs) == len(contract['inputs']), 'REFERENCE_INPUT_MISSING'
     end = rows[-1]
-    assert end == dict(kind='end', frames=count+1, normal_frames=count, inputs=len(inputs), dot=end['dot']), 'REFERENCE_END_COUNTS'
+    assert end == dict(kind='end', frames=count+2, normal_frames=count, inputs=len(inputs), dot=end['dot']), 'REFERENCE_END_COUNTS'
     assert last_dot <= end['dot'] <= contract['dot_bound'], 'REFERENCE_PROGRESS'
     data = (folder/'frames.shades').read_bytes()
     size = contract['frame_bytes']
