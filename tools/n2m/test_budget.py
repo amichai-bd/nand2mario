@@ -26,11 +26,11 @@ def supervise(command, root, tag, *, target=None):
     deadline = started + limit
     # Reserve the existing 5s tree kill, 5s pipe drain and 2s fallback reap.
     execution_deadline = deadline - 12
-    def remaining(limit, end=deadline):
+    def remaining(wait_limit, end=deadline):
         seconds = end - time.monotonic()
         if seconds <= 0:
             raise subprocess.TimeoutExpired(command, limit)
-        return min(limit, seconds)
+        return min(wait_limit, seconds)
 
     from n2m.records import atomic_json, valid_tag
     if not valid_tag(tag):
