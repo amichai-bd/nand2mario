@@ -53,7 +53,8 @@ Python batch-check time.
 
 Both targets use the existing 300-second whole-command cap, including setup and
 cleanup. The per-test target is 120 seconds and selected pair aggregate target
-is 300 seconds; these are not yet measured. No historical 600-second VGA run is
+is 300 seconds. [Delivery evidence](https://github.com/amichai-bd/nand2mario/pull/258)
+records measured outcomes and failed attempts. No historical 600-second VGA run is
 relabelled. Positive runs before the fault. Current-head independent review of
 this schedule, fixture and budgets precedes execution.
 
