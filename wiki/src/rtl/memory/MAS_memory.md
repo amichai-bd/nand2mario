@@ -1,6 +1,7 @@
 # Direct-profile memory
 
-Status: proposed under [#130](https://github.com/amichai-bd/nand2mario/issues/130).
+Implementation: [memory stores](../../../../src/rtl/memory/n2m_memory_stores.sv)
+and [CPU dispatch](../../../../src/rtl/memory/n2m_memory_cpu_port.sv).
 This owner connects storage to the CPU, PPU and host endpoint. It does not supply
 missing peripheral or DMA behavior. The [shared interfaces](../interfaces/MAS_interfaces.md)
 own numeric ranges, fills, profile and load semantics.
@@ -13,9 +14,9 @@ own numeric ranges, fills, profile and load semantics.
 | WRAM | Memory | CPU commits and the separately arbitrated DMA read port. Echo uses the same low thirteen address bits, with no second store. |
 | HRAM | Memory | CPU commits; no alias at IE or the host address range. |
 | VRAM | Memory | CPU access policy comes from PPU/arbitration; PPU reads the same store through its fixed service port. |
-| OAM | Memory | CPU, DMA and corruption updates reach one resolved write port. The PPU receives the arbitrated pair from #132, not a second OAM array. |
+| OAM | Memory | CPU, DMA and corruption updates reach one resolved write port. The PPU receives the arbitrated pair from the [DMA owner](../dma/MAS_dma.md), not a second OAM array. |
 | Wave RAM | Memory | An APU gateway owns CPU wave-access semantics and playback addressing; raw storage and generated reset fill belong here. An absent gateway is a service failure, not a synthetic audio register. |
-| Peripheral registers and state | Their behavior owners | Timer #128, DMA/arbitration #132, IF/IE #133, JOYP #134, PPU #120, and future serial/APU owners. No generic shadow I/O register file. |
+| Peripheral registers and state | Their behavior owners | [Timer](../timer/MAS_timer.md), [DMA/arbitration](../dma/MAS_dma.md), [IF/IE](../interrupts/MAS_interrupts.md), [JOYP](../joypad/MAS_joypad.md), [PPU](../ppu/MAS_ppu.md), and unimplemented serial/APU owners. No generic shadow I/O register file. |
 
 All RAM arrays initialize by a bounded sweep using the generated RAM fill.
 ROM is retained across core reset and remains invalid until the endpoint's
@@ -40,9 +41,9 @@ asynchronously; a sampled core reset restarts the sweep at offset zero.
 |---|---|---|
 | Resolved access | Read/write, store selector, fifteen-bit local byte offset and byte data. Offset must fit the selected generated region. | Registered byte and valid after a read edge. ROM writes have no effect. |
 | OAM pair service | Package-owned read or two byte-write enables, pair index0-79 and sixteen-bit data. Mutually exclusive with a resolved OAM byte request. Other stores remain independent. | Registered pair and valid; both parity banks remain the sole authoritative storage. |
-| Host ROM | Independently enabled read/write, bounded thirty-two-bit offset and byte data. Endpoint #91 must authorize writes. | Registered read byte and valid. RAM clearing alone does not block this port. |
+| Host ROM | Independently enabled read/write, bounded thirty-two-bit offset and byte data. The [UART endpoint](../uart/MAS_uart.md) must authorize writes. | Registered read byte and valid. RAM clearing alone does not block this port. |
 | PPU VRAM | Read enable and thirteen-bit byte offset. | Registered byte and valid. |
-| PPU raw OAM | Read enable and seven-bit pair index, zero through 79. | Registered sixteen-bit pair, lower-address byte in bits 7:0. #132 resolves the pair presented to PPU. |
+| PPU raw OAM | Read enable and seven-bit pair index, zero through 79. | Registered sixteen-bit pair, lower-address byte in bits 7:0. DMA arbitration resolves the pair presented to PPU. |
 | Wave playback | Read enable and four-bit byte offset. | Registered byte and valid. The APU gateway owns playback and CPU access restrictions. |
 
 RAM ports are unavailable while clearing; the upstream router must suppress
@@ -62,7 +63,7 @@ The [DMA owner](../dma/MAS_dma.md) arbitrates pair operations and PPU collisions
 ### Direct-path late OAM writes
 
 The v05 and integration-smoke paths share `n2m_oam_late_write` over the same
-pair-A port for [#208](https://github.com/amichai-bd/nand2mario/issues/208).
+pair-A port; the [late-write fixture](../../../../src/dv/memory/tb_oam_late_write.sv) checks this schedule.
 The [combined DMA schedule](../dma/MAS_dma.md#qualified-late-writes) consumes
 the same class using its existing service slots. Both owners use the shared
 combinational transform; the direct schedule below remains unchanged.
@@ -152,11 +153,11 @@ or stale response survives.
 The same fixture holds CPU request/commit inactive during an interrupted
 public-port ROM load, resets after seventeen written bytes, verifies those
 bytes through permitted incomplete-load readback, then fills the remaining
-direct image. This models only the endpoint's stop/reset coordination. #91
+direct image. This models only the endpoint's stop/reset coordination. The UART endpoint
 still owns image completeness, CRC/presence and RUN authorization; raw memory
 does not invent an image-valid flag or define unwritten-byte read values.
 
-CPU #118 at `9a984d0` agrees that request fields are prepared before T1 and held
+The [CPU bus contract](../cpu/MAS_cpu.md) requires request fields to be prepared before T1 and held
 through T4. `read_data` and `response_valid` are consumed before the T4 edge;
 T3 samples IE/IF only, not memory data. A synchronous RAM result from a preceding
 system edge therefore meets the read boundary. Read preparation has no side
@@ -183,7 +184,7 @@ service must fail, not be replaced by a convenient constant.
 
 ## PPU and arbitration boundary
 
-PPU #120 proposes `vram_request`, thirteen-bit byte address, and a registered
+The [PPU port](../ppu/MAS_ppu.md#digital-ports) uses `vram_request`, thirteen-bit byte address, and a registered
 one-system-edge data/valid response. That response must already exist before
 the consuming A dot; a response first registered at A is too late. The OAM
 raw store reads a seven-bit pair address and returns lower-address byte in
@@ -207,7 +208,7 @@ fail with the exact nonzero mismatch diagnostic.
 The PPU owner agrees to the previous-request registered response and pre-A
 sampling boundary. The raw RAM follows the shared Intel primitive contract;
 contested-bus selection and access-gating corner traces remain separate gates.
-#132 owns CPU bus conflicts,
+The [DMA owner](../dma/MAS_dma.md) owns CPU bus conflicts,
 OAM write priority, corruption rows and the pair presented to PPU. Its resolved
 raw-store operations may be implemented independently of its engine; a tied-off
 DMA fixture cannot claim arbitration acceptance. Pending behavior is not

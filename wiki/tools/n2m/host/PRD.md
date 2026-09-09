@@ -2,9 +2,8 @@
 
 Provide verified Python ROM loading, host execution control, complete button
 masks and immutable frame readback through the shared builder.
-[Issue #92](https://github.com/amichai-bd/nand2mario/issues/92) owns delivery.
 
-The focused Windows console keyboard path ([#296](https://github.com/amichai-bd/nand2mario/issues/296))
+The [Windows console keyboard path](../../../../tools/n2m/host/keyboard.py)
 turns real down/up events into complete UART masks, preserving holds and chords.
 It captures only its foreground classic console, releases on ordinary exit or
 focus loss when completion is certain, and never retries an uncertain request.

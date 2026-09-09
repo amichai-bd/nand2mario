@@ -1,6 +1,7 @@
 # UART endpoint
 
-Status: implemented under [#91](https://github.com/amichai-bd/nand2mario/issues/91). Already-STOPped STEP returns immediately without consuming time.
+The [UART owner](../../../../src/rtl/uart/n2m_uart.sv) implements this boundary.
+Already-STOPped STEP returns immediately without consuming time.
 
 The [shared interface contract](../interfaces/MAS_interfaces.md) owns packet,
 command, duplicate and core-transition behavior. Its generated package supplies
@@ -99,20 +100,20 @@ pauses, invalidates the image, restarts presence tracking and resets the core.
 LOAD_END checks complete presence and reads the actual ROM bytes to compute
 CRC32 before reinitializing and publishing valid PAUSED state. A presence bitmap
 alone cannot prove data integrity. Running ROM writes are rejected before the
-memory port is enabled. The memory implementation from #130 remains its own owner; endpoint composition
+memory port is enabled. The [memory implementation](../memory/MAS_memory.md) remains its own owner; endpoint composition
 binds its reviewed ROM ports rather than copying backing storage.
 
-The snapshot owner in #93 supplies a separate completion/read boundary; UART
+The [snapshot owner](../snapshot/MAS_snapshot.md) supplies a separate completion/read boundary; UART
 does not read or lease VGA banks. CPU, PPU, DMA, JOYP and endpoint framing are
-distinct owners. Boundary fixtures do not claim those pending implementations
-are composed or physically tested.
+distinct owners. Boundary fixtures do not establish their full system composition
+or physical operation; the [system contract](../system/MAS_system.md) owns composition.
 
 ## Verification
 
 The [test plan](../../../../src/dv/uart/README.md) separates serial framing,
 packet integrity, duplicate handling and completed control effects. Required
 actual runs use Questa and the installed Intel model, through the shared builder.
-No physical transmission is part of this issue's acceptance.
+Component simulation does not establish physical transmission acceptance.
 
 ## Serial byte boundary
 

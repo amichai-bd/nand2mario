@@ -1,12 +1,12 @@
 # SM83 CPU
 
-Status: implemented under [#118](https://github.com/amichai-bd/nand2mario/issues/118).
+Implementation: [CPU owner](../../../../src/rtl/cpu/n2m_cpu.sv).
 The byte ALU, instruction cycle planner, digital bus and retirement recorder
 have component Questa evidence. The integrated controller has checked programs,
 selected instruction vectors and directed control-state fixtures; the public
 wrapper is implemented. The approved digital
 STOP restart rule below is part of the implementation. This owner covers the complete legal
-base and CB instruction sets; a subset does not complete the issue.
+base and CB instruction sets; a subset does not satisfy this contract.
 
 ## Authority and model
 
@@ -103,8 +103,8 @@ A high-byte write to IE has committed before the following T3 snapshot and can
 cancel or reprioritize entry. A low-byte write to IE or IF occurs after that
 snapshot and cannot replace it. No selected bit gives vector zero, no IF
 acknowledgement, and IME remains clear. This selection observation is separate
-from the resolved post-event IF snapshot captured for retirement. The future IF
-owner resolves register/event/ack collisions; this CPU contract does not invent
+from the resolved post-event IF snapshot captured for retirement. The [IF
+owner](../interrupts/MAS_interrupts.md) resolves register/event/ack collisions; this CPU contract does not invent
 their priority from HDL scheduling.
 
 Once asleep, HALT wakes from the captured enabled request at the next T4
@@ -331,7 +331,7 @@ but not executed; a one-byte event leaves it as the next instruction address.
 The system completes the following bookkeeping edge before withholding further
 emulated ticks for STOP. HALT does not withhold peripheral ticks. Neither host
 pause nor a canceled/reset STOP attempt may create a divider-reset pulse. The
-future timer and JOYP owners consume these boundaries; the CPU does not add
+[timer](../timer/MAS_timer.md) and [JOYP](../joypad/MAS_joypad.md) owners consume these boundaries; the CPU does not add
 another divider counter or duplicate selected-line computation.
 
 ### Qualified STOP wake

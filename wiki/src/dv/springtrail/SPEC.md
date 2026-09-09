@@ -1,31 +1,31 @@
 # Original platformer verification
 
-Status: the original [#263 baseline](https://github.com/amichai-bd/nand2mario/pull/288)
-is delivered; [#264](https://github.com/amichai-bd/nand2mario/issues/264) physical
+The original complete-game baseline is qualified;
+[#264](https://github.com/amichai-bd/nand2mario/issues/264) physical
 release acceptance remains open. The
 [game specification](../../sw/springtrail/SPEC.md) owns gameplay;
 the [charter](../../project-charter.md#release-acceptance) owns release criteria.
-The [foundation proof](https://github.com/amichai-bd/nand2mario/pull/266) checks
+The [foundation proof](../../../../src/dv/springtrail/README.md) checks
 the original title and initial world. The
-[movement proof](https://github.com/amichai-bd/nand2mario/pull/270) covers the matrix
+[movement proof](../../../../src/dv/springtrail/MOVEMENT.md) covers the matrix
 below, including selected physical scrolling frames. The
-[interaction proof](https://github.com/amichai-bd/nand2mario/pull/276) adds
+[interaction proof](../../../../src/dv/springtrail/INTERACTIONS.md) adds
 actual CPU rules/rendering, composed publication checks and selected UART
 success/retry/flow images. Full milestone and physical release acceptance
-are qualified by the delivered #263 proof and open #264 criteria, respectively.
+have separate qualification boundaries below.
 
 The [next SML1-aligned release](../../sw/springtrail/sml1-alignment.md) owns the
 staged divergence matrix and dependent measurement gates. Apply the bounded
 milestone policy below to changed behavior; old ROM/image evidence remains
-qualified only for unchanged inputs and claims. Combined 8x8/DMA/STAT
-qualification #308 precedes renderer end-to-end claims without blocking
-independent software or host preparation.
+qualified only for unchanged inputs and claims. Reuse the combined 8x8/DMA/STAT
+qualification only for unchanged relevant hardware; renderer changes require
+their own end-to-end checks.
 
 ## Independent expectations
 
 ### Movement matrix
 
-Issue #261 uses complementary proofs without accelerating the game's frame
+Movement uses complementary proofs without accelerating the game's frame
 cadence. A host integer model freezes walk/run, opposing directions, jump edge
 and held-A behavior, landing/side/head collisions, gap fall and world/camera
 limits. An original CPU unit ROM calls the byte-identical assembled gameplay
@@ -50,10 +50,10 @@ alignment and camera boundaries. Snapshot metadata may confirm the independently
 known frame; observed pixels/CRCs must not choose expected state. Freeze the
 exact input/run/checkpoint script before execution and verify current build,
 device/setup, full ROM upload/readback and final paused/zero-input state.
-This is neither physical-monitor acceptance nor the later #263/#264 milestone.
+This is neither physical-monitor acceptance nor complete milestone acceptance.
 
 The [foundation test definition](../../../../src/dv/springtrail/README.md)
-retains the historical title/Start/first-world schedule for #260. Its two targets
+defines the title/Start/first-world schedule. Its two targets
 check all startup/title/world source pixels, ordinary WRAM state writes and a
 real UART Start input on the actual composed system. An actual source-shade
 fault uses the unchanged oracle. This bounded checkpoint does not claim the
@@ -84,7 +84,7 @@ or a general engine/AI framework to make the proof pass.
 
 ## Functional and milestone coverage
 
-Issue #262 uses the [interaction proof](../../../../src/dv/springtrail/INTERACTIONS.md):
+Interactions use the [interaction proof](../../../../src/dv/springtrail/INTERACTIONS.md):
 independent state rules, an original CPU routine ROM, actual initialization and
 render checkpoints with a meaningful fault, and ordinary-input complete-level
 and failure/retry routes. Its short harness must complete before the full unit.
@@ -101,9 +101,8 @@ and independently predicted observable checkpoints.
 
 ## V0.9 milestone
 
-This is the one-time complete baseline owned by #263. Its current frozen script,
-every-frame/input comparisons and failure rules remain unchanged. After it is
-accepted, later milestones use the
+This is the one-time complete baseline. Its frozen script,
+every-frame/input comparisons and failure rules remain unchanged. Later milestones use the
 [future coverage selection and reuse policy](../integration/SPEC.md#milestone-acceptance),
 not an automatic repeat of this full sequence. Select bounded scripts from the
 delivered success, death/retry and flow routes to cover the required distinct
@@ -116,7 +115,7 @@ existing UART Client and immutable SNAPSHOT/READ_FRAME across bounded
 host batches. Freeze ROM/build/reference bytes, input script and timing before
 comparison. This short prerequisite does not complete the milestone matrix.
 
-For the historical JOYP-corrected ROM qualified by #263, LCD starts at dot 76964
+For the qualified pre-DMA-publisher ROM, LCD starts at dot 76964
 and the period is 70224 dots. The later
 [DMA publisher proof](../../../../src/dv/springtrail/OAM_DMA.md) owns the new
 startup anchor; do not relabel this retained acquisition schedule.
@@ -152,7 +151,7 @@ Retain the planned mask across intermediate boundaries. Release it only at a
 scripted change or final cleanup. Each batch uses the existing 300-second total
 supervisor including cleanup. First qualify two consecutive short batches and
 a certain final PAUSED/UART/input-zero state. Full interval/drain counts and
-measured aggregate remain #263 acceptance.
+measured aggregate remain part of complete baseline acceptance.
 
 For v0.9, identify the exact self-built ROM and independent reference profile.
 Reach the named boot checkpoint within 600 emulated frame intervals, then run
@@ -170,8 +169,7 @@ matrix is still an explicit prerequisite, not an assumed 3600-frame runtime or
 a new time-limit exception. No unlimited or automatically extended simulation
 is authorized by this specification.
 
-The user [explicitly approved paused full-frame acquisition](https://github.com/amichai-bd/nand2mario/issues/263#issuecomment-5603781487)
-for #263. An exact bounded dot command may pause at each frame boundary so every
+An exact bounded dot command may pause at each frame boundary so every
 pixel of all3600 intervals is read and checked, with every scripted input
 retained. This is one emulation history: do not reload, reset or replay between
 batches. Each host batch remains at most300 seconds; record aggregate measured
@@ -204,7 +202,7 @@ Report sampling limits honestly; the duration does not imply every physical
 retirement/frame was observed. End in the documented safe paused/input state and
 verify child processes, sessions and locks are released.
 
-Reuse qualified #263 deterministic gameplay/reference and fault evidence when
+Reuse qualified complete-baseline deterministic gameplay/reference and fault evidence when
 relevant identities and behavior remain unchanged; select affected checks for
 changes. Use the required lifecycle upload/readback to provide applicable
 transport evidence rather than adding a duplicate unchanged transport suite.
@@ -225,7 +223,7 @@ issue's success criteria are waived by this plan.
 
 ## Interaction display timing
 
-For #262, the user approved one additional displayed frame. Freeze input
+The renderer uses one displayed frame of input-to-publication delay. Freeze input
 samples by the documented VBlank boundary and compare each complete image
 against the preceding prepared state, including title, pause and restart.
 Independent expected images must apply the same single-frame relationship;

@@ -1,6 +1,6 @@
 # OAM DMA and access arbitration
 
-Implemented for [#132](https://github.com/amichai-bd/nand2mario/issues/132).
+Implementation: [DMA owner](../../../../src/rtl/dma/n2m_dma.sv).
 The four adopted digital compatibility projections below define the selected
 model. The verification boundary distinguishes component, composed and physical
 claims.
@@ -42,8 +42,8 @@ establishes E0-FF source-page mirroring to C0-DF, including FE to DE and FF to
 DF. The direct profile's approved absent-cartridge policy still supplies FF
 for A000-BFFF; it does not allocate the upstream test's MBC5 RAM.
 
-These MIT-licensed tests report verified model scope. Their sources and notice
-are retained with hashes; they have not been executed locally for this issue.
+These MIT-licensed tests report their verified model scope. They are technical
+sources; citing them does not establish a passing local test run.
 
 ## Corruption qualification and combined service
 
@@ -108,7 +108,7 @@ No pending pair may be broadcast to unrelated OAM addresses.
 ### Qualified late writes
 
 The [addressed-row late class](../memory/MAS_memory.md#direct-path-late-oam-writes)
-also applies to this owner under [#211](https://github.com/amichai-bd/nand2mario/issues/211).
+also applies to this owner through the [DMA service](../../../../src/rtl/dma/n2m_dma_service.sv).
 It retains the pinned permission evidence, conditional data semantics and
 revision limits of that class. It does not replace ordinary scanned-row or
 IDU-only transformations.
@@ -234,7 +234,7 @@ fixtures cover transfer/time, CPU address effects, concurrent PPU consumption,
 reset/pause/HALT/STOP and deliberate actual faults against the shared Intel
 store. A normal copy or pure formula alone is not acceptance. Exact sources,
 commands, traces and independent review remain in PR evidence and artifacts.
-This issue does not claim analog DMG measurements, board execution or whole-system
+These component checks do not establish analog DMG measurements, board execution or whole-system
 acceptance.
 
 ## Settled transformation component

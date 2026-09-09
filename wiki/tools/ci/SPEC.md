@@ -1,9 +1,9 @@
 # Trusted product CI design
 
-Status: inactive bootstrap under #115. The [requirements](PRD.md) define scope.
+Status: inactive. The [requirements](PRD.md) define scope.
 The checked-in configuration has `enabled: false`, and the hosted waiter job has
 an unconditional false guard. Neither a command flag nor remote input can override
-these gates. Activation requires a separately reviewed change under #32, including
+these gates. Activation remains an [open implementation and verification gap](https://github.com/amichai-bd/nand2mario/issues/32), including
 real repository/workflow/account/environment identity verification and exact-source
 licensed positive/negative samples. Existing Pages and required checks stay intact.
 
@@ -40,7 +40,7 @@ Acquire a fixed machine-wide exclusive lock before any status mutation or tool
 execution. Hold it through evidence finalization. A persistent machine journal records the repository/run/attempt/profile tuple
 before pending publication. It is independent of checkout location: the OS machine
 application-data directory on Windows, or `/var/lib` on POSIX, followed by
-`nand2mario/workdir/trusted-ci/<repository-id>`. #32 must provision this directory
+`nand2mario/workdir/trusted-ci/<repository-id>`. Trusted-route activation must provision this directory
 with access limited to the trusted controller account; missing access fails closed.
 There is no command-line journal-path override. Any existing
 journal entry or remote exact-context status rejects reuse, including an interrupted
@@ -107,7 +107,7 @@ missing/truncated artifact records, negative signatures, and stale/ambiguous sta
 The shipped CLI fails before API calls or tool execution while disabled. No real
 licensed invocation or status post is required or permitted by this bootstrap.
 
-#32 separately reviews activation, existing environment policy, permissions and
+The open activation work separately reviews existing environment policy, permissions and
 actual dispatch/controller samples. A main-only licensed attestation is a postmerge
 signal; making it a required incoming-PR context would create a merge deadlock.
 Do not substitute an ancestor's status or dummy success for premerge proof.
@@ -125,7 +125,7 @@ python -m unittest discover -s tools/ci/tests -v
 ```
 
 The configured entry points currently return FAIL with an inactive-bootstrap
-explanation before API or licensed calls. After separately reviewed #32 activation,
+explanation before API or licensed calls. After separately reviewed trusted-route activation,
 the local command form is:
 
 ```text

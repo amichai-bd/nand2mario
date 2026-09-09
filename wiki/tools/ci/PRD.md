@@ -5,7 +5,7 @@ Questa and Quartus profiles, without registering a self-hosted runner or accepti
 remote commands. The [design](SPEC.md) owns admission, evidence, locking and
 status interpretation; [the builder](../n2m/SPEC.md) owns tool execution records.
 
-The bootstrap [#115](https://github.com/amichai-bd/nand2mario/issues/115) must be
+The [controller](../../../tools/ci/controller.py) must be
 reviewable and testable with host fixtures while remaining inactive. Admission
 must bind repository, workflow identity/content, source SHA, account, active run,
 attempt and profile. Cancellation, replay, changed trust state and incomplete
@@ -17,8 +17,8 @@ prove unseen local logs or artifacts. Independent review must audit retained
 command, input, tool and artifact evidence bound by the canonical envelope digest.
 
 Actual configured licensed execution and activation remain
-[#32](https://github.com/amichai-bd/nand2mario/issues/32). This bootstrap neither
-closes that issue nor changes repository protection, environments, credentials or
+[an open CI gap](https://github.com/amichai-bd/nand2mario/issues/32). The inactive
+implementation does not change repository protection, environments, credentials or
 runner registration. Physical execution is absent; setup and acceptance remain
-[#28](https://github.com/amichai-bd/nand2mario/issues/28). Explicit invocation is
+[an open board gap](https://github.com/amichai-bd/nand2mario/issues/28). Explicit invocation is
 not unattended CI and does not establish proof for a different revision.

@@ -1,6 +1,6 @@
 # DMG picture processing
 
-Owner contract for [#120](https://github.com/amichai-bd/nand2mario/issues/120).
+Implementation: [PPU owner](../../../../src/rtl/ppu/n2m_ppu.sv).
 Detailed timing choices and their source limits are defined below.
 This owner covers LCD registers, background/window/object rendering, mode and
 interrupt timing, and the final source-pixel boundary. It does not claim a
@@ -14,7 +14,7 @@ this model. This does not waive DMG-B quirks or release criteria. The [clock con
 owns emulated dots, pause and reset. The [interface contract](../interfaces/MAS_interfaces.md)
 owns direct-entry initialization and frame identity. The
 [VGA owner](../vga/MAS_vga.md) owns presentation banks and scanout; dedicated host
-snapshot stores remain #93.
+snapshot stores belong to the [snapshot owner](../snapshot/MAS_snapshot.md).
 
 ## Sources and evidence boundary
 
@@ -29,10 +29,9 @@ Independent hardware-tested expectations come from
 at `31510e12eea6286d36eea060a6adde755e1067aa`, and
 [Mealybug](https://github.com/mattcurrie/mealybug-tearoom-tests/tree/70e88fb90b59d19dfbb9c3ac36c64105202bb1f4)
 at `70e88fb90b59d19dfbb9c3ac36c64105202bb1f4`. Both use MIT licenses.
-These are behavior research sources. Original asymmetric scene fixtures and
-public-boundary checks will be independently authored; no test ROM or expected
-image has been imported. Exact downloaded text hashes and notices are retained
-in the issue's research artifacts. The older [Wilbert Pol fork](https://github.com/wilbertpol/mooneye-gb/tree/b78dd21f0b6d00513bdeab20f7950e897a0379b3/tests/acceptance/gpu)
+These are behavior research sources. [Original asymmetric scenes](../../../../src/dv/ppu/scene.py)
+and public-boundary checks provide independent expectations; this source record
+does not import test ROMs or expected images. The older [Wilbert Pol fork](https://github.com/wilbertpol/mooneye-gb/tree/b78dd21f0b6d00513bdeab20f7950e897a0379b3/tests/acceptance/gpu)
 at `b78dd21f0b6d00513bdeab20f7950e897a0379b3` is GPL-3.0-or-later research
 only. Its LY153 cases identify MGB verification and explicitly unchecked DMG;
 those results must not be relabeled direct DMG-B measurements.
@@ -49,13 +48,13 @@ those results must not be relabeled direct DMG-B measurements.
 
 The sections below define LY153 comparison edges, STAT-write transient
 alignment, startup dot numbering and WX boundary behavior with independent
-expectations and explicit source limits. [DMA/access arbitration #132](https://github.com/amichai-bd/nand2mario/issues/132)
+expectations and explicit source limits. [DMA/access arbitration](../dma/MAS_dma.md)
 owns FF46 transfer scheduling and application of DMG-B OAM corruption from CPU
-bus/IDU activity. [Memory #130](https://github.com/amichai-bd/nand2mario/issues/130)
+bus/IDU activity. [Memory](../memory/MAS_memory.md)
 owns the single backing store and routing. This PPU owns OAM scan timing and
 explicit access/arbitration signals; mode blocking does not prove corruption.
-The upstream DMA engine will be removed structurally, not silently omitted from
-the product goal.
+The PPU does not contain the upstream DMA engine; the separate DMA owner
+implements the transfer and corruption boundary.
 
 LCDC bit0 disabling BG/window selects raw background color0, which still passes
 through BGP. [dmg-acid2's Hair explanation](https://github.com/mattcurrie/dmg-acid2/blob/8a98ce731f96dde032ffb22ec36dc985d78fdb18/README.md#hair)
@@ -72,7 +71,7 @@ its exact pin, file hashes, import state and local changes; the
 [notices](../../../../src/rtl/ppu/THIRD_PARTY.md) retain its GPL terms.
 Derived files remain GPL-covered. The public wiki contains original explanatory
 prose and links, not copied HDL. No source/bitstream release or visibility change
-is part of this issue. Independent DMG-B behavior and integration evidence remain
+is authorized by this contract. Independent DMG-B behavior and integration evidence remain
 required after adaptation.
 
 The upstream output register samples pixel, validity and palettes together on
@@ -165,9 +164,9 @@ advance the PPU dot, or reread a palette to alter that event.
 The CPU register port is `io_commit`, `io_write`, `io_address[15:0]`,
 `io_wdata[7:0]`, and combinational `io_rdata[7:0]`/`io_selected`.
 Commit is valid only with `gb_tick`. Generated addresses identify LCD registers;
-FF46 belongs to #132. IRQ condition levels and one-system-cycle rising-edge
+FF46 belongs to the [DMA owner](../dma/MAS_dma.md). IRQ condition levels and one-system-cycle rising-edge
 requests are exposed separately for trace and integration. Their same-edge
-interaction with IF writes belongs to [the interrupt owner](https://github.com/amichai-bd/nand2mario/issues/133). That owner supplies the combinational post-event IF observation before B, including the A-updated PPU condition and its specified CPU-write/ack priority. CPU retirement samples that observation at B, rather than the pre-B stored IF. A registered pulse first visible after B cannot be the sole event input for this observation. Edge history prevents repeated requests; CPU dispatch retains its separately specified snapshot.
+interaction with IF writes belongs to [the interrupt owner](../interrupts/MAS_interrupts.md). That owner supplies the combinational post-event IF observation before B, including the A-updated PPU condition and its specified CPU-write/ack priority. CPU retirement samples that observation at B, rather than the pre-B stored IF. A registered pulse first visible after B cannot be the sole event input for this observation. Edge history prevents repeated requests; CPU dispatch retains its separately specified snapshot.
 
 The VRAM port provides `vram_request`, `vram_address[12:0]` and receives
 `vram_data[7:0]` plus `vram_data_valid`. The memory owner supplies a registered
@@ -180,7 +179,7 @@ observations, and receives the arbitrated sixteen-bit bus pair, data validity
 and DMA-active state. There is one external OAM store. The arbiter owns which
 bus data is presented during contention; DMA-active suppression of scan capture
 is explicit and does not stretch scan time. It is distinct from a missing
-promised bus response. The final named phase encoding must agree with #132
+promised bus response. The named phase encoding must agree with the DMA owner
 before the memory-facing module is frozen.
 
 This table fixes the intended digital transaction abstraction. Directed
@@ -220,7 +219,7 @@ The ordinary mapping is:
 |---|---|
 | Before write A | Stored enables determine the old shared condition; address preparation has no effect |
 | Write A | Renderer/read sampling uses old state; writable STAT bits commit, and a transient-enable flag becomes active after A |
-| Before B | Effective enables include the transient; the resulting condition contributes to owner #133 next-IF before retirement capture |
+| Before B | Effective enables include the transient; the resulting condition contributes to the interrupt owner's next-IF before retirement capture |
 | Following dot A | The transient expires after this edge; stored written enables then determine the condition |
 | Pause after write A | No new emulated dot occurs, so the transient retains its emulated duration; edge history still prevents repeated requests |
 | Reset | Clear transient and interrupt edge history without waiting for a tick |
@@ -270,7 +269,7 @@ request blank presentation.
 
 The first complete enabled frame is a real blank source frame: every observed
 pixel has final shade 0, including through the independent every-frame observer
-and future snapshot assembly. Internally rendered colors from that startup
+and snapshot assembly. Internally rendered colors from that startup
 frame are not exposed as final source shades. Subsequent frames expose rendered
 shades. Partial disable interrupts either kind of frame in the same way.
 
@@ -301,22 +300,19 @@ constant offset nor final white-frame agreement makes it a timing PASS.
 The common comparison boundary is the complete ordered final source-frame
 values and all architectural retirement fields, including completed dots, as
 required by the [independent reference contract](../../dv/baseline/SPEC.md#independent-emulator-and-retirement-traces).
-The [original program comparison](https://github.com/amichai-bd/nand2mario/pull/195)
-checks 69 complete 26-field retirements and 46,080 pixels. The
-[FC control](https://github.com/amichai-bd/nand2mario/pull/201) checks 10,114
-complete retirements and 46,080 pixels. Each includes the first white frame and
-the following rendered frame. These retained comparisons support equal final
-images for those scenes, not equal internal pixel-action timing. Their producing
-inputs remain explicit in the evidence; this clarification does not rename them
-as current-head runs or relax this PPU's source-dot checks.
+The [independent reference adapter](../../../../src/dv/sameboy/README.md) and
+[palette comparison](../../../../src/dv/ppu/palette194.md) distinguish final
+image equality from internal pixel-action timing. Include the first white frame
+and the following rendered frame when checking that boundary. Equal final images
+do not relax this PPU's source-dot checks or establish raw interval agreement.
 
 This interpretation does not establish universal startup mode, STAT/IRQ or
 memory-access equivalence, or identify a silicon revision. Direction-specific
 access uses the [original CPU witnesses](../../../../src/dv/ppu/startup204.md);
-late OAM write/corruption and capture ordering remain
-[#208](https://github.com/amichai-bd/nand2mario/issues/208). The full continuous
-every-pixel and every-retirement milestone remains
-[#88](https://github.com/amichai-bd/nand2mario/issues/88).
+late OAM write/corruption and capture ordering use the
+[late-write contract](../memory/MAS_memory.md#direct-path-late-oam-writes).
+The [composed verification matrix](../../dv/v05/SPEC.md#revised-milestone-matrix)
+owns every-pixel and every-retirement acceptance.
 
 ## Verification obligations
 
@@ -388,8 +384,8 @@ source pixel, scan timing or raw RAM write changes.
 Memory owners apply the selected read allowance to both preparation and final
 response; an earlier RAM read must not bypass it. The independent
 [startup witnesses](../../../../src/dv/ppu/startup202.md) own the primary table,
-nearby/repeated and exclusion checks. Late OAM write/corruption arbitration remains open in
-[#208](https://github.com/amichai-bd/nand2mario/issues/208); raw startup cadence
+nearby/repeated and exclusion checks. Late OAM write/corruption arbitration follows
+the [DMA schedule](../dma/MAS_dma.md#qualified-late-writes); raw startup cadence
 uses the [startup observation boundary](#startup-observation-boundary).
 
 ### Controller phase convention
@@ -476,7 +472,7 @@ match. The renderer's increasing X position supplies DMG X priority.
 Phase1 alternates request/capture dots and saves the captured Y/X on the next
 dot. DMA-active suppresses the Y/X capture as in the selected source; its
 existing captured pair is retained. Phase2 samples the arbitrated pair at object
-fetch phase1. The external owner #132 controls the actual bus pair during DMA;
+fetch phase1. The external DMA owner controls the actual bus pair during DMA;
 these scan observations do not themselves implement or prove OAM corruption.
 A promised sample without response-valid faults without stretching a dot.
 There is no local OAM RAM, FF46 register or DMA engine. Reset initializes all
