@@ -3,8 +3,8 @@
 [#263](https://github.com/amichai-bd/nand2mario/issues/263) preserves boot within600
 frame intervals followed by3600 scripted intervals. Host-paused full-frame
 acquisition is approved; [#283](https://github.com/amichai-bd/nand2mario/issues/283)
-delivered its reusable driver in PR284. The full DUT matrix below is planned,
-not milestone acceptance.
+delivered its reusable driver in PR284. [PR288](https://github.com/amichai-bd/nand2mario/pull/288)
+records the complete paused DUT execution of the matrix below.
 [#286](https://github.com/amichai-bd/nand2mario/issues/286) owns delivery of the
 complete native schedule/ledger prerequisite; it does not close #263.
 
@@ -45,8 +45,8 @@ from a DUT. Repeated contact/once-only score and exact restoration component
 proofs from PR276 remain qualified separately from this full frame sequence. Its first
 new route holds Start from the restart, preserving edge semantics. The short
 complete lifecycle uses four updates129/1/1/1 and two neutral drains, eight source
-frames, allowing two four-frame acquisition batches. Full route/model and native
-execution remain to be measured before any full DUT matrix.
+frames, allowing two four-frame acquisition batches. PR287 qualified the full
+route/model and native execution before the full DUT matrix.
 
 Every batch must finish within300 seconds including identity checks, run, full
 readback, comparison, pause and cleanup. Measure the short lifecycle before
@@ -72,15 +72,15 @@ is update max(0,j-5); sampled input is zero for j<5 and script input j-5 otherwi
 logical mode is update max(0,j-4). Initial callbacks and first normal frame are
 blank. No callback, mask or offset is selected from DUT observations.
 
-Native short forecast10 seconds; full forecast60-180 seconds including model
-image comparison, unmeasured until the short completes. Each invocation keeps
+The native pre-run forecast was10 seconds short and60-180 seconds full, including
+model image comparison; measured results follow below. Each invocation keeps
 the existing300-total/288-worker/12-cleanup supervisor and canonical mutex.
 The input fault changes actual key API masks. The milestone progress fault stops
 after the final required callback but before the terminal checkpoint, requiring
 END_TIME rejection despite complete frame/input counts. Legacy progress faults
 retain their original100000-dot stop. This is actual truncated execution;
 frame fault remains explicitly a serialized-image mutation. Native execution
-is complete as recorded below; acquisition proof is pending. Its aggregate is declared after
+is complete as recorded below. The full acquisition aggregate was declared after
 short native/acquisition measurements, before the full hardware matrix.
 
 | Fault boundary | Scoped evidence and remaining witness |
@@ -117,7 +117,7 @@ inferred from this reference result; #263 retains the full DUT comparison.
 The reviewed short lifecycle in [PR284](https://github.com/amichai-bd/nand2mario/pull/284)
 captured four frames after full ROM load/readback in18.089420 seconds and four
 more in a separate continuation in8.336349 seconds. All eight frames matched
-the native reference. These are the measurements; no80-frame batch is yet measured.
+the native reference. These measurements preceded selection of80-frame batches.
 
 The full run uses46 batches:45 batches of80 frames and a final batch of4.
 Scaling the continuation measurement gives166.727 seconds per80; adding the
@@ -148,3 +148,19 @@ Capture every source sequence0..3603 and input0..3601, including boot and both
 neutral drain intervals. Retain/account both native initialization callbacks;
 none are substituted for source frames. No physical buttons/camera or continuous
 #264 release result is claimed by this paused verification.
+
+## Full acquisition result
+
+At producing commit204cefbb, all46 batches passed:3604 complete source frames,
+83,036,160 compared pixels and3602 exact input checkpoints in one epoch6 history.
+The initial corrected-ROM upload/readback verified all32768 bytes. The final
+frontier was PAUSED at253168356 dots,6028674 retired instructions, UART input0
+and a certain session. No reset, reload, replay or frame omission occurred after
+the initial load. Captures verify pre-VGA source images, not monitor output.
+
+Measured batch aggregate was5318.1169044 seconds (88m38s). First80 took127.3057574
+seconds and exceeded the120-second target; every other batch met that target,
+and all46 met300 seconds total. The final four-frame batch took12.9698733 seconds.
+PR288 retains exact commands, immutable reference/setup/launcher identities,
+all batch receipts and independent review. Later documentation changes do not
+change the producing hardware, software, capture driver or reference inputs.
