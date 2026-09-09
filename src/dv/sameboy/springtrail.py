@@ -8,9 +8,23 @@ import zlib
 def compare_game_images(data, count):
     """Fixed callback/state mapping, from the script and approved display delay."""
     import sys
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'springtrail'))
-    from interactions_reference import Game, update
-    from flow_frames import image
+    names = ('interactions_reference', 'movement_reference', 'reference',
+             'flow_frames', 'scene_reference', 'scene_art')
+    saved = {name: sys.modules.get(name) for name in names}
+    old_path = sys.path[:]
+    try:
+        for name in saved:
+            sys.modules.pop(name, None)
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'springtrail'))
+        from interactions_reference import Game, update
+        from flow_frames import image
+    finally:
+        sys.path[:] = old_path
+        for name, module in saved.items():
+            if module is None:
+                sys.modules.pop(name, None)
+            else:
+                sys.modules[name] = module
     state = Game()
     expected = [bytes(23040)]*3 + [image(state)]
     for index in range(count-2):
