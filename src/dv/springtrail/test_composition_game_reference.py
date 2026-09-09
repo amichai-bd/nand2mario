@@ -1,6 +1,6 @@
 import unittest
 from composition_game_reference import Check
-from composition_reference import approved
+from composition_reference import approved,scene
 
 
 class GameChecker(unittest.TestCase):
@@ -26,6 +26,18 @@ class GameChecker(unittest.TestCase):
             c=Check();c.lcd=120000
             with self.assertRaisesRegex(AssertionError,'INPUT'):c.line('I '+format(value,'x'))
         with self.assertRaisesRegex(AssertionError,'INPUT'):Check(True).line('I '+format(raw,'x'))
+
+    def test_finish_input_binding(self):
+        c=Check();c.lcd=120000;c.ended=True;c.ready=[119000,215000]
+        c.triggers=[119100,186000,256300];c.pixels=46080;c.input_dot=180100
+        for publication,trigger in enumerate(c.triggers):
+            for offset,value in enumerate(scene(c.states[max(0,publication-1)])):
+                c.dma.append(((trigger+8+4*offset)<<18)|(1<<16)|(offset<<8)|value)
+        for observed in ([],[180101]):
+            c.inputs=observed
+            with self.assertRaisesRegex(AssertionError,'APPLIED_INPUT'):c.finish(257000,b'')
+        c.inputs=[180100]
+        self.assertEqual(c.finish(257000,b'')['input_dot'],180100)
 
     def test_visible_oam_and_phase(self):
         c=Check();c.lcd=120000
