@@ -13026,7 +13026,8 @@
         "src/sw/springtrail/map_restore.asm",
         "src/sw/springtrail/scene.asm",
         "src/sw/springtrail/render-unit.asm",
-        "src/sw/springtrail/render-unit-layout.json"
+        "src/sw/springtrail/render-unit-layout.json",
+        "src/sw/springtrail/stream.asm"
       ],
       "waves": [
         "wave_dot",
@@ -13180,7 +13181,8 @@
         "src/sw/springtrail/map_restore.asm",
         "src/sw/springtrail/scene.asm",
         "src/sw/springtrail/render-unit.asm",
-        "src/sw/springtrail/render-unit-layout.json"
+        "src/sw/springtrail/render-unit-layout.json",
+        "src/sw/springtrail/stream.asm"
       ],
       "waves": [
         "wave_dot",
@@ -13331,7 +13333,8 @@
         "src/sw/springtrail/map_restore.asm",
         "src/sw/springtrail/scene.asm",
         "src/sw/springtrail/render-unit.asm",
-        "src/sw/springtrail/render-unit-layout.json"
+        "src/sw/springtrail/render-unit-layout.json",
+        "src/sw/springtrail/stream.asm"
       ],
       "waves": [
         "wave_dot",
@@ -14054,7 +14057,8 @@
         "src/sw/springtrail/map_restore.asm",
         "src/sw/springtrail/scene.asm",
         "src/sw/springtrail/render-unit.asm",
-        "src/sw/springtrail/render-unit-layout.json"
+        "src/sw/springtrail/render-unit-layout.json",
+        "src/sw/springtrail/stream.asm"
       ],
       "waves": [
         "wave_dot",
@@ -14207,7 +14211,8 @@
         "src/sw/springtrail/map_restore.asm",
         "src/sw/springtrail/scene.asm",
         "src/sw/springtrail/render-unit.asm",
-        "src/sw/springtrail/render-unit-layout.json"
+        "src/sw/springtrail/render-unit-layout.json",
+        "src/sw/springtrail/stream.asm"
       ],
       "waves": [
         "wave_dot",
@@ -14361,7 +14366,8 @@
         "src/sw/springtrail/map_restore.asm",
         "src/sw/springtrail/scene.asm",
         "src/sw/springtrail/render-unit.asm",
-        "src/sw/springtrail/render-unit-layout.json"
+        "src/sw/springtrail/render-unit-layout.json",
+        "src/sw/springtrail/stream.asm"
       ],
       "waves": [
         "wave_dot",
@@ -14517,7 +14523,8 @@
         "src/dv/springtrail/renderer_check.py",
         "src/dv/springtrail/renderer_oracle.py",
         "src/dv/springtrail/renderer_cases.py",
-        "src/dv/springtrail/scene_reference.py"
+        "src/dv/springtrail/scene_reference.py",
+        "src/sw/springtrail/stream.asm"
       ],
       "waves": [
         "wave_dot",
@@ -14673,7 +14680,8 @@
         "src/dv/springtrail/renderer_check.py",
         "src/dv/springtrail/renderer_oracle.py",
         "src/dv/springtrail/renderer_cases.py",
-        "src/dv/springtrail/scene_reference.py"
+        "src/dv/springtrail/scene_reference.py",
+        "src/sw/springtrail/stream.asm"
       ],
       "waves": [
         "wave_dot",
@@ -14830,7 +14838,8 @@
         "src/dv/springtrail/renderer_check.py",
         "src/dv/springtrail/renderer_oracle.py",
         "src/dv/springtrail/renderer_cases.py",
-        "src/dv/springtrail/scene_reference.py"
+        "src/dv/springtrail/scene_reference.py",
+        "src/sw/springtrail/stream.asm"
       ],
       "waves": [
         "wave_dot",

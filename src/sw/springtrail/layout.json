@@ -54,6 +54,12 @@
       "section": "scene",
       "region": "ROM0",
       "address": 13824
+    },
+    {
+      "unit": "main.asm",
+      "section": "stream",
+      "region": "ROM0",
+      "address": 15360
     }
   ]
 }

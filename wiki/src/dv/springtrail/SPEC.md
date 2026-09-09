@@ -136,3 +136,13 @@ reviewed local delivery under the existing external-CI policy.
 [#168](https://github.com/amichai-bd/nand2mario/issues/168) retains the historical
 finite-Tcl diagnostic and is off the original-game delivery path. No existing
 issue's success criteria are waived by this plan.
+
+## Interaction display timing
+
+For #262, the user approved one additional displayed frame. Freeze input
+samples by the documented VBlank boundary and compare each complete image
+against the preceding prepared state, including title, pause and restart.
+Independent expected images must apply the same single-frame relationship;
+never choose a state from observed pixels. Check visible-time computation
+has no display-memory/register writes and publication completes in VBlank.
+The existing per-test and aggregate budgets and physical acceptance remain.

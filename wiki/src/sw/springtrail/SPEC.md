@@ -4,7 +4,7 @@ Status: the original title/Start/initial-world foundation is implemented in
 [PR #266](https://github.com/amichai-bd/nand2mario/pull/266).
 Movement and scrolling are implemented in
 [PR #270](https://github.com/amichai-bd/nand2mario/pull/270).
-Interactions and release acceptance remain planned under #262–#264.
+Interactions and release acceptance remain planned under #262â€“#264.
 The [charter](../../project-charter.md) owns the hardware and release boundaries;
 the [game verification plan](../../dv/springtrail/SPEC.md) owns acceptance.
 
@@ -76,6 +76,17 @@ and downward velocity is capped at 4 pixels/frame. The initial player top-left i
 (24, 112), grounded on tile row 16, with camera x=0. The camera anchor is screen
 x=72 and its clamp is 0..608 pixels. The enemy starts at (256, 120), moves right
 at 1/2 pixel/frame, and patrols x=240..296 inclusive.
+
+The approved interaction renderer adds exactly one displayed frame (about
+16.7 ms) relative to the earlier same-VBlank movement renderer. Each VBlank
+samples JOYP and publishes the scene prepared from the preceding sample.
+During the following visible interval, apply that new sample once to game
+state and prepare its next scene. No VRAM, OAM, SCX or map-selection writes
+occur during that visible computation. This preserves one input/game update
+per normal frame; it does not add another queued update or display frame.
+Title removal and restart map/SCX changes accompany the published scene,
+not the newly computed logical transition. Pause freezes game state while
+publication continues; inactive map restoration may continue while paused.
 
 Each VBlank samples JOYP once. Process restart/pause first, then horizontal
 intent, grounded jump edge, gravity, horizontal motion/collision, vertical

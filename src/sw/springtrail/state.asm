@@ -30,3 +30,4 @@ SceneHidden EQU $C03B
 SceneTile EQU $C03C
 SceneX EQU $C03D
 SceneBuffer EQU $C100
+TitleCleared EQU $C030
