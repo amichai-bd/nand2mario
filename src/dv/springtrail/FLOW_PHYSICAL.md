@@ -1,10 +1,11 @@
-# Bounded interaction flow preparation
+# Bounded interaction flow proof
 
-This extends the existing physical driver pattern for #262. It is not yet a
-physical result or a claim that Windows UART latency meets these windows.
+This extends the existing physical driver pattern for #262. Retained execution
+results and source qualification are in [PR276](https://github.com/amichai-bd/nand2mario/pull/276).
+A successful run does not guarantee future Windows UART latency.
 The owning game contract supplies the approved one-frame prepared-image lag.
-The author must freeze the exact source-derived LCD anchor and `flow_frames.image`
-with the assembled game before execution; no value is selected from observed pixels.
+The frozen source-derived LCD anchor is76964 dots; `flow_frames.image` supplies
+independent images for the assembled game. No value is selected from observed pixels.
 
 `flow_physical_reference.py` maps planned source frame n>=1 to the independent
 Game state after n-1 logical updates. Public INPUT application dots determine
@@ -73,4 +74,4 @@ not replay of the route or permission to infer an unobserved winning image.
 Identity failure sends no cleanup controls. After verified preflight, known
 failures attempt HALT/INPUT0; uncertain completion forbids further traffic.
 Record packet journals, actual applied windows, all packed snapshots and final
-PAUSED/UART/input0/certainty. No hardware traffic was used to prepare these files.
+PAUSED/UART/input0/certainty. These checks do not establish the separate physical release milestone.

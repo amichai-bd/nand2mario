@@ -7,8 +7,11 @@ the [charter](../../project-charter.md#release-acceptance) owns release criteria
 The [foundation proof](https://github.com/amichai-bd/nand2mario/pull/266) checks
 the original title and initial world. The
 [movement proof](https://github.com/amichai-bd/nand2mario/pull/270) covers the matrix
-below, including selected physical scrolling frames. No complete-game or physical release
-acceptance is claimed here.
+below, including selected physical scrolling frames. The
+[interaction proof](https://github.com/amichai-bd/nand2mario/pull/276) adds
+actual CPU rules/rendering, composed publication checks and selected UART
+success/retry/flow images. Full milestone and physical release acceptance
+remain in #263 and #264.
 
 ## Independent expectations
 
