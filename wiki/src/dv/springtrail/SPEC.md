@@ -7,8 +7,11 @@ the [charter](../../project-charter.md#release-acceptance) owns release criteria
 The [foundation proof](https://github.com/amichai-bd/nand2mario/pull/266) checks
 the original title and initial world. The
 [movement proof](https://github.com/amichai-bd/nand2mario/pull/270) covers the matrix
-below, including selected physical scrolling frames. No complete-game or physical release
-acceptance is claimed here.
+below, including selected physical scrolling frames. The
+[interaction proof](https://github.com/amichai-bd/nand2mario/pull/276) adds
+actual CPU rules/rendering, composed publication checks and selected UART
+success/retry/flow images. Full milestone and physical release acceptance
+remain in #263 and #264.
 
 ## Independent expectations
 
@@ -73,6 +76,14 @@ or a general engine/AI framework to make the proof pass.
 
 ## Functional and milestone coverage
 
+Issue #262 uses the [interaction proof](../../../../src/dv/springtrail/INTERACTIONS.md):
+independent state rules, an original CPU routine ROM, actual initialization and
+render checkpoints with a meaningful fault, and ordinary-input complete-level
+and failure/retry routes. Its short harness must complete before the full unit.
+Logical state restoration alone does not prove restored map/OAM pixels; check
+both, including pause and repeated restart during map preparation. Keep exact
+render scheduling and physical input plans frozen before their dependent runs.
+
 Focused stages cover initialization/title/start, walk/run/opposing directions,
 jump/landing/wall/ceiling/gap behavior, camera and tile-column transitions,
 enemy patrol/contact, one-time collection, win, retry and pause/resume/restart.
@@ -128,3 +139,13 @@ reviewed local delivery under the existing external-CI policy.
 [#168](https://github.com/amichai-bd/nand2mario/issues/168) retains the historical
 finite-Tcl diagnostic and is off the original-game delivery path. No existing
 issue's success criteria are waived by this plan.
+
+## Interaction display timing
+
+For #262, the user approved one additional displayed frame. Freeze input
+samples by the documented VBlank boundary and compare each complete image
+against the preceding prepared state, including title, pause and restart.
+Independent expected images must apply the same single-frame relationship;
+never choose a state from observed pixels. Check visible-time computation
+has no display-memory/register writes and publication completes in VBlank.
+The existing per-test and aggregate budgets and physical acceptance remain.

@@ -1,4 +1,4 @@
-; Original Springtrail game. One movement/render update per VBlank.
+; One sampled update per frame; publish the previous prepared scene in VBlank.
 SECTION "code",ROM
 Start:
 DI
@@ -9,9 +9,15 @@ LDH [$FF0F],A
 LD [$FFFF],A
 LDH [$FF42],A
 LDH [$FF43],A
-LD [$C000],A
+LD [Buttons],A
+CALL InitGame
+XOR A,A
+LD [GameMode],A
+LD [NewLevel],A
+LD [TitleCleared],A
 LD [OldCameraTile],A
-CALL InitPlayer
+LD A,32
+LD [MapRestoreColumn],A
 LD HL,$FE00
 LD B,160
 XOR A,A
@@ -21,7 +27,7 @@ DEC B
 JR NZ,ClearObjects
 LD DE,Tiles
 LD HL,$8000
-LD BC,$0100
+LD BC,$02A0
 CopyTiles:
 LD A,[DE]
 INC DE
@@ -44,7 +50,8 @@ JR NZ,CopyMap
 LD A,$E4
 LDH [$FF47],A
 LDH [$FF48],A
-CALL RenderPlayer
+CALL PrepareScene
+CALL PublishScene
 LD A,$01
 LD [$FFFF],A
 LD A,$97
@@ -54,17 +61,56 @@ XOR A,A
 LDH [$FF0F],A
 HALT
 CALL ReadButtons
-LD A,[$C000]
+; Game variables and SceneBuffer still describe the preceding prepared scene.
+LD A,[GameMode]
 OR A,A
-JR Z,TitleInput
-CP A,2
-JR Z,WaitFrame
-JR PlayFrame
-TitleInput:
-LD A,[Buttons]
-AND A,$80
-JR Z,WaitFrame
-; Erase the two eleven-character title rows within this VBlank.
+JR Z,PublishFrame
+LD A,[NewLevel]
+OR A,A
+JR Z,ContinueMap
+XOR A,A
+LD [NewLevel],A
+LD A,[TitleCleared]
+OR A,A
+JR NZ,RestartMap
+CALL ClearTitle
+LD A,1
+LD [TitleCleared],A
+RestartMap:
+CALL BeginMapRestore
+ContinueMap:
+LD A,[MapRestoreColumn]
+CP A,32
+JR NC,StreamFrame
+CALL RestoreMapPair
+JR PublishFrame
+StreamFrame:
+CALL StreamMap
+PublishFrame:
+CALL PublishScene
+; No display writes follow this point until the next VBlank publication.
+WaitVisible:
+LDH A,[$FF44]
+CP A,144
+JR NC,WaitVisible
+LD A,[GameMode]
+OR A,A
+JR NZ,UpdateActive
+CALL UpdateGame
+LD A,[GameMode]
+OR A,A
+JR Z,PrepareFrame
+LD A,1
+LD [NewLevel],A
+JR PrepareFrame
+UpdateActive:
+CALL UpdateGame
+PrepareFrame:
+CALL PrepareScene
+JR WaitFrame
+
+ClearTitle:
+; These rows disappear with the published transition out of title.
 LD HL,$98A4
 LD B,$0B
 ClearName:
@@ -79,17 +125,7 @@ XOR A,A
 LD [HL+],A
 DEC B
 JR NZ,ClearPrompt
-LD A,$01
-LD [$C000],A
-PlayFrame:
-CALL StepPlayer
-CALL RenderPlayer
-LD A,[Fell]
-OR A,A
-JR Z,WaitFrame
-LD A,2
-LD [$C000],A
-JR WaitFrame
+RET
 EXPORT Start
 SECTION "assets",ROM
 Tiles:
@@ -100,3 +136,7 @@ INCLUDE "movement.asm"
 INCLUDE "render.asm"
 INCLUDE "world.asm"
 INCLUDE "collision.asm"
+INCLUDE "interactions.asm"
+INCLUDE "map_restore.asm"
+INCLUDE "scene.asm"
+INCLUDE "stream.asm"

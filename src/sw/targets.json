@@ -146,6 +146,70 @@
       "version": 1,
       "profile": "dmg-direct-v1",
       "interface_schema_version": 1
+    },
+    "flow": {
+      "directory": "springtrail",
+      "sources": [
+        "flow-unit.asm"
+      ],
+      "assets": {},
+      "layout": "flow-unit-layout.json",
+      "entry": {
+        "unit": "flow-unit.asm",
+        "symbol": "Start"
+      },
+      "title": "TRAIL FLOW",
+      "version": 1,
+      "profile": "dmg-direct-v1",
+      "interface_schema_version": 1
+    },
+    "flow-s": {
+      "directory": "springtrail",
+      "sources": [
+        "flow-unit.asm"
+      ],
+      "assets": {},
+      "layout": "flow-unit-layout.json",
+      "entry": {
+        "unit": "flow-unit.asm",
+        "symbol": "ShortStart"
+      },
+      "title": "TRAIL FLOW",
+      "version": 1,
+      "profile": "dmg-direct-v1",
+      "interface_schema_version": 1
+    },
+    "render": {
+      "directory": "springtrail",
+      "sources": [
+        "render-unit.asm"
+      ],
+      "assets": {},
+      "layout": "render-unit-layout.json",
+      "entry": {
+        "unit": "render-unit.asm",
+        "symbol": "Start"
+      },
+      "title": "TRAIL RENDER",
+      "version": 1,
+      "profile": "dmg-direct-v1",
+      "interface_schema_version": 1
+    },
+    "render-s": {
+      "directory": "springtrail",
+      "sources": [
+        "render-unit.asm"
+      ],
+      "assets": {},
+      "layout": "render-unit-layout.json",
+      "entry": {
+        "unit": "render-unit.asm",
+        "symbol": "ShortStart"
+      },
+      "title": "TRAIL RENDER",
+      "version": 1,
+      "profile": "dmg-direct-v1",
+      "interface_schema_version": 1
     }
   }
 }

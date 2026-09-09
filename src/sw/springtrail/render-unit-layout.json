@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "sections": [
+    {
+      "unit": "render-unit.asm",
+      "section": "code",
+      "region": "ROM0",
+      "address": 512
+    },
+    {
+      "unit": "render-unit.asm",
+      "section": "unit",
+      "region": "ROM0",
+      "address": 768
+    },
+    {
+      "unit": "render-unit.asm",
+      "section": "cases",
+      "region": "ROM0",
+      "address": 4096
+    },
+    {
+      "unit": "render-unit.asm",
+      "section": "world",
+      "region": "ROM0",
+      "address": 5120
+    },
+    {
+      "unit": "render-unit.asm",
+      "section": "movement",
+      "region": "ROM0",
+      "address": 8192
+    },
+    {
+      "unit": "render-unit.asm",
+      "section": "map_restore",
+      "region": "ROM0",
+      "address": 13312
+    },
+    {
+      "unit": "render-unit.asm",
+      "section": "scene",
+      "region": "ROM0",
+      "address": 13824
+    },
+    {
+      "unit": "render-unit.asm",
+      "section": "collision",
+      "region": "ROM1",
+      "address": 16384
+    }
+  ]
+}

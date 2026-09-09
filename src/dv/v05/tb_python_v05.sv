@@ -158,6 +158,35 @@ module tb_python_v05 #(
         end
     end
 
+    // Corrupt only the first prepared Y store; publication must read it back.
+    initial begin
+        if ($test$plusargs("render_scene_fault")) begin
+            do @(negedge clk_sys);
+            while (!(dut.raw_write && dut.raw_store == n2m_memory_pkg::STORE_WRAM &&
+                     dut.raw_offset == 15'h0100 && dut.raw_wdata == 8'd128));
+            $display("RENDER_SCENE_MUTATION expected=128 actual=0 dot=%0d", dot_count);
+            force dut.u_stores.ram_wdata = 8'd0;
+            @(posedge clk_sys);
+            @(negedge clk_sys);
+            release dut.u_stores.ram_wdata;
+        end
+    end
+
+    // Drop the first collected bit in the actual store only. The public CPU
+    // write remains one; the next call must expose a second score increment.
+    initial begin
+        if ($test$plusargs("flow_item_fault")) begin
+            do @(negedge clk_sys);
+            while (!(dut.raw_write && dut.raw_store == n2m_memory_pkg::STORE_WRAM &&
+                     dut.raw_offset == 15'h002c && dut.raw_wdata == 8'd1));
+            $display("FLOW_ITEM_MUTATION expected=1 actual=0 dot=%0d", dot_count);
+            force dut.u_stores.ram_wdata = 8'd0;
+            @(posedge clk_sys);
+            @(negedge clk_sys);
+            release dut.u_stores.ram_wdata;
+        end
+    end
+
     // Change one real WRAM store after the original unit's first call marker.
     // The later prepared-image read must expose the corrupt stored cell.
     initial begin

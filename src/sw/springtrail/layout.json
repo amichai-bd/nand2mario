@@ -11,7 +11,7 @@
       "unit": "main.asm",
       "section": "assets",
       "region": "ROM0",
-      "address": 4096
+      "address": 3072
     },
     {
       "unit": "main.asm",
@@ -36,6 +36,30 @@
       "section": "collision",
       "region": "ROM1",
       "address": 16384
+    },
+    {
+      "unit": "main.asm",
+      "section": "interactions",
+      "region": "ROM0",
+      "address": 12288
+    },
+    {
+      "unit": "main.asm",
+      "section": "map_restore",
+      "region": "ROM0",
+      "address": 13312
+    },
+    {
+      "unit": "main.asm",
+      "section": "scene",
+      "region": "ROM0",
+      "address": 13824
+    },
+    {
+      "unit": "main.asm",
+      "section": "stream",
+      "region": "ROM0",
+      "address": 15360
     }
   ]
 }
