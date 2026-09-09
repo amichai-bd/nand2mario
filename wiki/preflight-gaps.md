@@ -195,9 +195,11 @@ cover timebase/reset behavior and retained timing checks. The
 [VGA delivery review](https://github.com/amichai-bd/nand2mario/pull/111) covers
 frame ownership, crossings, line/frame geometry, buffer swaps and RAM inference.
 
-This gap remains open for composed-system clock/reset/CDC verification and
-separate physical acceptance. The isolated proofs do not establish all future
-control crossings or connected-board behavior; [GAP-005](#gap-005-board-wiring-and-safe-bring-up)
+The [25 MHz composed timing and runtime evidence](https://github.com/amichai-bd/nand2mario/issues/164)
+and [controls/system review](https://github.com/amichai-bd/nand2mario/pull/250#issuecomment-5592587441)
+extend those isolated proofs to the implemented compositions. This gap retains
+separate physical acceptance. These bounded results do not establish future
+control crossings or connected-board display behavior; [GAP-005](#gap-005-board-wiring-and-safe-bring-up)
 and [GAP-012](#gap-012-vga-frame-crossing) retain the physical display gates.
 
 **Risk**
@@ -396,8 +398,10 @@ three-bank RAM inference and timing audits. The clocking proof and its
 [#113 macro conversion evidence](https://github.com/amichai-bd/nand2mario/pull/114)
 are linked in [GAP-006](#gap-006-clock-reset-and-cdc-plan).
 
-Composed PPU/display integration and frame-CRC acceptance remain open. The
-source fixtures do not establish those end-to-end results. Actual monitor
+The [bounded composed source/snapshot evidence](https://github.com/amichai-bd/nand2mario/pull/246#issuecomment-5591105712)
+establishes checked source pixels and selected UART frame snapshots. It does
+not establish matching CRCs before and after the VGA adapter. That check remains
+open, as does physical display acceptance. Actual monitor
 tolerance, test-card/scaled-image operation, and connected pin/wiring/voltage
 verification also remain open under [GAP-005](#gap-005-board-wiring-and-safe-bring-up).
 Simulation and fit evidence do not replace physical acceptance.

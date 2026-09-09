@@ -2,16 +2,18 @@
 
 Status: shared implementation contract from
 [#29](https://github.com/amichai-bd/nand2mario/issues/29).
-[Clocking and timebase](rtl/clocking/MAS_clocking.md) implement the clock/reset
-subset with simulation and generated FPGA timing checks. Frame crossings,
-integration, and physical proof remain outstanding in
+[Clocking and timebase](rtl/clocking/MAS_clocking.md), frame crossings and bounded
+composed verification have simulation and generated FPGA timing evidence.
+The delivered evidence and remaining physical limits are recorded in
 [GAP-006](../preflight-gaps.md#gap-006-clock-reset-and-cdc-plan).
 
 ## Clock domains
 
 The 25 MHz migration is implemented under
-[#164](https://github.com/amichai-bd/nand2mario/issues/164). Final composed
-acceptance is pending; historical 50 MHz evidence does not establish this design.
+[#164](https://github.com/amichai-bd/nand2mario/issues/164), including
+[composed FPGA timing](https://github.com/amichai-bd/nand2mario/pull/167#issuecomment-5570831659)
+and the later [runtime acceptance](https://github.com/amichai-bd/nand2mario/pull/182#issuecomment-5574390844).
+Historical 50 MHz evidence does not establish this design.
 
 Target DE10-Lite `10M50DAF484C7G`. Use `MAX10_CLK1_50` on `PIN_P11`, nominal
 50 MHz, as `clk_reference` for reset bootstrap and both system/pixel PLLs. These are manual-derived design
@@ -127,8 +129,9 @@ minimum eight system clocks per bit. Reference reset qualification remains
 (40.96 us), followed by each destination's two release edges. Host pause stops
 only Game Boy enables. Already accepted services may drain; reset cancels them.
 
-Timer, serial-transfer and audio owners are still incomplete in the bounded
-v0.5 composition. Their existing milestone requirements remain open; this table
+The [timer is integrated](https://github.com/amichai-bd/nand2mario/pull/235).
+Serial-transfer and audio owners are still incomplete in the bounded v0.5
+composition. Their existing milestone requirements remain open; this table
 does not invent a service guarantee for missing implementations.
 
 ## Reset and run control
