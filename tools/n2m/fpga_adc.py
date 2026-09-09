@@ -14,11 +14,13 @@ SYS = r"\clk_sys~inputclkctrl_outclk"
 
 def verify_netlist(text, checks, top="adc_proof", *, parallel=False, system_net=SYS):
     from .fpga_lock import ROW
-    if top not in ("adc_proof", "controls_proof"):
+    hierarchy_prefix = "u_controls|" if top == "v05_controls_proof" else ""
+    pll_path, fsm_path = hierarchy_prefix + PLL, hierarchy_prefix + FSM
+    if top not in ("adc_proof", "controls_proof", "v05_controls_proof"):
         raise ValueError("unsupported ADC proof top")
-    reset = "u_adc_reset|" if top == "controls_proof" else "u_reset|"
-    row = "n2m_adc_backend:u_adc|n2m_adc_pll:u_pll|altpll:altpll_component|n2m_adc_pll_altpll:auto_generated|pll_lock_sync"
-    expected_rows = [ROW, row] if top == "controls_proof" else [row]
+    reset = hierarchy_prefix + "u_adc_reset|" if top in ("controls_proof", "v05_controls_proof") else "u_reset|"
+    row = ("n2m_controls_system:u_controls|" if hierarchy_prefix else "") + "n2m_adc_backend:u_adc|n2m_adc_pll:u_pll|altpll:altpll_component|n2m_adc_pll_altpll:auto_generated|pll_lock_sync"
+    expected_rows = [ROW, row] if top in ("controls_proof", "v05_controls_proof") else [row]
     if parallel:
         expected_rows.append("n2m_clocking:u_clocking|n2m_system_pll:u_system_pll|altpll:altpll_component|n2m_system_pll_altpll:auto_generated|pll_lock_sync")
     actual_rows = re.findall(r";\s*([^;\r\n]+?)\s*;\s*No clock feeds this register's clock port\.\s*;", checks)
@@ -61,10 +63,10 @@ def verify_netlist(text, checks, top="adc_proof", *, parallel=False, system_net=
                 {"is_wysiwyg": '"true"', "power_up": '"low"'}, "ADC register clock/reset differs: " + name)
         return ports
 
-    pll = cell(PLL + "pll1", "fiftyfivenm_pll")
-    event = register(PLL + "pll_lock_sync", "\\" + reset + "pll_areset~clkctrl_outclk", pll["locked"])
-    feeder = cell(PLL + "pll_lock_sync~feeder", "fiftyfivenm_lcell_comb")
-    require(params[PLL + "pll_lock_sync~feeder"] == {"lut_mask": "16'hFFFF", "sum_lutc_input": '"datac"'} and
+    pll = cell(pll_path + "pll1", "fiftyfivenm_pll")
+    event = register(pll_path + "pll_lock_sync", "\\" + reset + "pll_areset~clkctrl_outclk", pll["locked"])
+    feeder = cell(pll_path + "pll_lock_sync~feeder", "fiftyfivenm_lcell_comb")
+    require(params[pll_path + "pll_lock_sync~feeder"] == {"lut_mask": "16'hFFFF", "sum_lutc_input": '"datac"'} and
             event["d"] == feeder["combout"] and event["ena"] == "vcc" and event["sload"] == "gnd",
             "ADC lock event is not constant-one acquisition")
     require(pll["areset"] == "!" + event["clrn"], "ADC PLL/event reset differs")
@@ -76,11 +78,11 @@ def verify_netlist(text, checks, top="adc_proof", *, parallel=False, system_net=
     gate_specs = {
         reset + "lock_reset": ({raw, acquired, reset_ff["q"], "gnd"},
                               lambda v: not (v[raw] and v[acquired] and v[reset_ff["q"]])),
-        FSM + "ctrl_state.IDLE~0": ({raw, acquired, "\\" + FSM + "ctrl_state.IDLE~q", "gnd"},
-                                    lambda v: v["\\" + FSM + "ctrl_state.IDLE~q"] or (v[raw] and v[acquired])),
-        FSM + "Selector1~1": ({raw, acquired, "\\" + FSM + "ctrl_state.IDLE~q", "\\" + FSM + "Selector1~0_combout"},
-                             lambda v: v["\\" + FSM + "Selector1~0_combout"] or
-                             (v[raw] and v[acquired] and not v["\\" + FSM + "ctrl_state.IDLE~q"]))}
+        fsm_path + "ctrl_state.IDLE~0": ({raw, acquired, "\\" + fsm_path + "ctrl_state.IDLE~q", "gnd"},
+                                    lambda v: v["\\" + fsm_path + "ctrl_state.IDLE~q"] or (v[raw] and v[acquired])),
+        fsm_path + "Selector1~1": ({raw, acquired, "\\" + fsm_path + "ctrl_state.IDLE~q", "\\" + fsm_path + "Selector1~0_combout"},
+                             lambda v: v["\\" + fsm_path + "Selector1~0_combout"] or
+                             (v[raw] and v[acquired] and not v["\\" + fsm_path + "ctrl_state.IDLE~q"]))}
     for name, (allowed, oracle) in gate_specs.items():
         gate = cell(name, "fiftyfivenm_lcell_comb")
         require(set(gate[p] for p in ("dataa", "datab", "datac", "datad")) == allowed,
@@ -94,11 +96,11 @@ def verify_netlist(text, checks, top="adc_proof", *, parallel=False, system_net=
             index = sum(values[gate[p]] << i for i, p in enumerate(("dataa", "datab", "datac", "datad")))
             require(bool((mask >> index) & 1) == bool(oracle(values)), "ADC lock LUT truth table differs")
     require(users(acquired) == {(n, p) for n in gate_specs for p, v in cells[n][1].items() if v == acquired}, "ADC event has extra fanout")
-    require(users(raw) == {(PLL + "pll_lock_sync", "clk")} |
+    require(users(raw) == {(pll_path + "pll_lock_sync", "clk")} |
             {(n, p) for n in gate_specs for p, v in cells[n][1].items() if v == raw}, "ADC raw lock has extra fanout")
     reset_net = reset_gate["combout"]
     ready_net = "\\" + reset + "ready~q"
-    if top == "controls_proof":
+    if top in ("controls_proof", "v05_controls_proof"):
         require(users(reset_net) == {(reset + "lock_reset~clkctrl", "inclk")},
                 "ADC lock reset bypasses its buffer")
         reset_net = reset_buffer(reset + "lock_reset~clkctrl", reset_net)
@@ -162,14 +164,14 @@ def verify_netlist(text, checks, top="adc_proof", *, parallel=False, system_net=
             require(actual_count == (count if held or count == 1023 else count + 1),
                     "ADC lock counter transition/hold differs")
     for state, gate in (("IDLE", "ctrl_state.IDLE~0"), ("PWRDWN", "Selector1~1")):
-        name = FSM + "ctrl_state." + state
+        name = fsm_path + "ctrl_state." + state
         ports = register(name, "\\" + reset + "sys_release[1]")
         require(ports["sload"] in {"gnd", "vcc"} and ports["ena"] == "vcc",
                 "ADC vendor lock load/enable differs")
         # Quartus may route the same synchronous input through D or ASDATA.
         # Accept only the port actually selected by the constant SLOAD control.
         port = "asdata" if ports["sload"] == "vcc" else "d"
-        pending = [cells[FSM + gate][1]["combout"]]
+        pending = [cells[fsm_path + gate][1]["combout"]]
         seen = set()
         endpoints = set()
         while pending:
@@ -179,7 +181,7 @@ def verify_netlist(text, checks, top="adc_proof", *, parallel=False, system_net=
             seen.add(net)
             for consumer, input_port in users(net):
                 kind, connections = cells[consumer]
-                require(consumer.startswith(FSM), "ADC lock escapes vendor controller")
+                require(consumer.startswith(fsm_path), "ADC lock escapes vendor controller")
                 if kind == "fiftyfivenm_lcell_comb":
                     pending.extend(connections[p] for p in OUTPUTS[kind] if connections.get(p))
                 else:
@@ -187,10 +189,10 @@ def verify_netlist(text, checks, top="adc_proof", *, parallel=False, system_net=
                     endpoints.add((consumer, input_port))
         expected = {(name, port)}
         if state == "PWRDWN":
-            expected |= {(FSM + f"chsel[{i}]", "d") for i in range(3)}
+            expected |= {(fsm_path + f"chsel[{i}]", "d") for i in range(3)}
         require(endpoints == expected, "ADC vendor lock reset-qualified closure differs")
 
-    atom = "u_adc|u_control|adc_inst|adcblock_instance|primitive_instance"
+    atom = hierarchy_prefix + "u_adc|u_control|adc_inst|adcblock_instance|primitive_instance"
     adc = cell(atom, "fiftyfivenm_adcblock")
     require({n for n, (k, _) in cells.items() if k == "fiftyfivenm_adcblock"} == {atom, "~QUARTUS_CREATED_ADC2~"}, "ADC atom inventory differs")
     require(params[atom] == {"analog_input_pin_mask": "110", "clkdiv": "5", "device_partname_fivechar_prefix": '"10m50"',
@@ -199,11 +201,11 @@ def verify_netlist(text, checks, top="adc_proof", *, parallel=False, system_net=
     reserved = cell("~QUARTUS_CREATED_ADC2~", "fiftyfivenm_adcblock")
     require(reserved["usr_pwd"] == "vcc" and reserved["clkin_from_pll_c0"] == "gnd" and
             params["~QUARTUS_CREATED_ADC2~"]["pwd"] == "1" and params["~QUARTUS_CREATED_ADC2~"]["reserve_block"] == '"true"', "ADC2 not reserved powered down")
-    require(adc["clkin_from_pll_c0"] == "\\" + PLL + "wire_pll1_clk[0]" and
+    require(adc["clkin_from_pll_c0"] == "\\" + pll_path + "wire_pll1_clk[0]" and
             (adc["clkin_from_pll_c0"], pll["clk"] + "[0]") in zip(lhs, rhs), "ADC clock is not dedicated PLL c0")
     for key, value in {"operation_mode": '"no compensation"', "clk0_multiply_by": "1", "clk0_divide_by": "1",
                        "inclk0_input_frequency": "100000", "m": "40", "n": "1", "c0_high": "20", "c0_low": "20"}.items():
-        require(params[PLL + "pll1"].get(key) == value, "ADC PLL physical parameter differs: " + key)
+        require(params[pll_path + "pll1"].get(key) == value, "ADC PLL physical parameter differs: " + key)
     return {"active_adc": 1, "reserved_powered_down_adc": 1, "channel_mask": 6, "sample_rate_hz": 125000,
             "pll_hz": 10000000, "lock_event": row, "lock_consumers": sorted(gate_specs), "qualified_reset_registers": 20,
             "qualification_truth_cases": 2048}
@@ -214,7 +216,7 @@ def verify(folder, top="adc_proof", *, parallel=False, system_net=SYS):
                             (folder / "output/check_timing.rpt").read_text(), top, parallel=parallel, system_net=system_net)
     fit = (folder / "output/design.fit.rpt").read_text()
     summary = (folder / "output/design.fit.summary").read_text()
-    expected_resources = (("Total PLLs", 3 if parallel else 2), ("ADC blocks", 1)) if top == "controls_proof" else (
+    expected_resources = (("Total PLLs", 3 if parallel else 2), ("ADC blocks", 1)) if top in ("controls_proof", "v05_controls_proof") else (
         ("Total PLLs", 1), ("ADC blocks", 1), ("Total memory bits", 0))
     for label, expected in expected_resources:
         values = re.findall(r"(?m)^" + re.escape(label) + r"\s*:\s*(\d+)\s*/", summary)
@@ -224,7 +226,7 @@ def verify(folder, top="adc_proof", *, parallel=False, system_net=SYS):
         rows = [row for row in fit.splitlines() if re.match(r";\s*" + pin + r"\s*;", row)]
         if len(rows) != 1 or not re.search(r";\s*" + signal + r"\s*;\s*input\s*;\s*3.3-V LVTTL\s*;", rows[0]):
             raise ValueError("ADC physical clock pin mismatch: " + pin)
-    mode = r";\s*PLL mode\s*;\s*" + (r"Normal\s*;\s*" * (2 if parallel else 1) if top == "controls_proof" else "") + r"No Compensation\s*;"
+    mode = r";\s*PLL mode\s*;\s*" + (r"Normal\s*;\s*" * (2 if parallel else 1) if top in ("controls_proof", "v05_controls_proof") else "") + r"No Compensation\s*;"
     if not re.search(mode, fit, re.I):
         raise ValueError("ADC fit compensation mode differs")
     return result
@@ -242,7 +244,7 @@ SUPPORTED_CONTROL = {
 }
 
 
-def explained_diagnostics(text, folder, sources):
+def explained_diagnostics(text, folder, sources, top="adc_proof"):
     """Exact unused dual-ADC and temperature paths in the two-channel proof.
 
     This does not permit general unused logic/RAM warnings. Raw lines, source
@@ -259,7 +261,8 @@ def explained_diagnostics(text, folder, sources):
               + (folder / 'altera_modular_adc_control_fsm.v').as_posix() + ' Line: 70')
     required = [unused, 'Warning (14284): Synthesized away the following node(s):',
                 'Warning (14285): Synthesized away the following RAM node(s):']
-    prefix = ('Warning (14320): Synthesized away node "n2m_adc_backend:u_adc|'
+    prefix = ('Warning (14320): Synthesized away node "' +
+              ('n2m_controls_system:u_controls|' if top == 'v05_controls_proof' else '') + 'n2m_adc_backend:u_adc|'
               'altera_modular_adc_control:u_control|altera_modular_adc_control_fsm:u_control_fsm|'
               'altera_modular_adc_control_avrg_fifo:ts_avrg_fifo|scfifo:scfifo_component|')
     for bit in range(12):

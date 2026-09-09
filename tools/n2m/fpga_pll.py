@@ -56,7 +56,7 @@ def verify_fit(folder, target):
     if target["pll"].get("system_divide") == 2:
         return verify_parallel_fit(folder, target)
     fit = (folder / "output/design.fit.rpt").read_text(encoding="cp1252" if os.name == "nt" else "utf-8")
-    combined = target.get("top") == "controls_proof"
+    combined = target.get("top") in ("controls_proof", "v05_controls_proof")
     adc_values = {"PLL mode": "No compensation", "Compensate clock": "--", "Input frequency 0": "10.0 MHz",
                   "Nominal PFD frequency": "10.0 MHz", "Nominal VCO frequency": "400.0 MHz",
                   "M value": "40", "N value": "1", "Inclk0 signal type": "Dedicated Pin"}
@@ -122,12 +122,13 @@ def verify_parallel_fit(folder, target):
     """Bind each fitted column and clock to its declared physical owner."""
     fit = (folder / "output/design.fit.rpt").read_text(encoding="cp1252" if os.name == "nt" else "utf-8")
     rows = [[v.strip() for v in line.split(';')[1:-1]] for line in fit.splitlines()]
+    adc_pll = ("u_controls|" if target["top"] == "v05_controls_proof" else "") + ADC_PLL
     expected = {
         SYSTEM_PLL: ("Normal", "clock0", "50.0 MHz", "6.3 MHz", "650.0 MHz", "104", "8", "Dedicated Pin"),
         PIXEL_PLL: ("Normal", "clock0", "50.0 MHz", "10.0 MHz", "630.0 MHz", "63", "5", "Dedicated Pin"),
     }
-    if target["top"] == "controls_proof":
-        expected[ADC_PLL] = ("No compensation", "--", "10.0 MHz", "10.0 MHz", "400.0 MHz", "40", "1", "Dedicated Pin")
+    if target["top"] in ("controls_proof", "v05_controls_proof"):
+        expected[adc_pll] = ("No compensation", "--", "10.0 MHz", "10.0 MHz", "400.0 MHz", "40", "1", "Dedicated Pin")
     headings = [r[1:] for r in rows if r and r[0] == "SDC pin name"]
     if len(headings) != 1 or len(headings[0]) != len(expected) or set(headings[0]) != set(expected):
         raise ValueError("parallel PLL owner columns differ")
@@ -137,7 +138,7 @@ def verify_parallel_fit(folder, target):
         if actual != [[expected[name][index] for name in headings[0]]]:
             raise ValueError("parallel PLL configuration differs: " + key)
     shapes = {SYSTEM_PLL: ["1", "2", "25.0 MHz", "26"], PIXEL_PLL: ["63", "125", "25.2 MHz", "25"],
-              ADC_PLL: ["1", "1", "10.0 MHz", "40"]}
+              adc_pll: ["1", "1", "10.0 MHz", "40"]}
     usage = [r for r in rows if len(r) == 15 and r[1] == "clock0" and "wire_pll1_clk" in r[0]]
     if len(usage) != len(expected):
         raise ValueError("parallel PLL output count differs")
@@ -155,9 +156,9 @@ def verify_parallel_fit(folder, target):
     wanted = {"clk_reference": ("Base", reference, None, None),
               SYSTEM_CLOCK: ("Generated", reference*2, ["50.00", "2", "1"], "clk_reference"),
               PIXEL_PLL + "|clk[0]": ("Generated", reference*125/63, ["50.00", "125", "63"], "clk_reference")}
-    if ADC_PLL in expected:
+    if adc_pll in expected:
         wanted.update({"clk_adc_reference": ("Base", 100.0, None, None),
-                       ADC_PLL + "|clk[0]": ("Generated", 100.0, ["50.00", "1", "1"], "clk_adc_reference")})
+                       adc_pll + "|clk[0]": ("Generated", 100.0, ["50.00", "1", "1"], "clk_adc_reference")})
     if len(clocks) != len(wanted) or {r[0] for r in clocks} != set(wanted):
         raise ValueError("parallel PLL clock inventory differs")
     for row in clocks:

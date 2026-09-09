@@ -63,9 +63,17 @@ Both WLF and VCD select exactly those names. Omission retains the existing
 top-level selection. Passive projections may bound waveform activity while
 continuous functional monitors retain the complete required observations.
 
+Each Python target module registers one decorated cocotb test. The declared
+`test` field validates the completed XML identity; it does not select which
+tests cocotb schedules from the module.
+
 Python targets may select `vendor_model: "intel-memory"` through the existing
-strict model resolution, hashing and library binding. Other vendor selections
-remain unsupported. `preload: "integration"` packages the original integration
+strict model resolution, hashing and library binding. The explicit
+`intel-controls` profile adds the same pinned ADC models and real ADC PLL
+at the specified system/pixel clock boundary for the [paused controls proof](../../../src/dv/python/controls/README.md).
+It checks the exact ADC diagnostics plus the existing Python access warning and
+declared frame-RAM diagnostics. Other vendor selections remain unsupported.
+`preload: "integration"` packages the original integration
 image and prepares/verifies the supported Intel initialization files before
 elaboration; it requires the software packager inputs in the Python fingerprint.
 The [integration plan](../../../src/dv/python/integration/README.md) owns its

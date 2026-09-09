@@ -48,6 +48,19 @@ class AdcDiagnosticsTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "copied ADC source"):
                 self.classify()
 
+    def test_controls_system_requires_exact_relocated_vendor_owner(self):
+        relocated = self.text.replace('n2m_adc_backend:u_adc|',
+            'n2m_controls_system:u_controls|n2m_adc_backend:u_adc|')
+        result = fpga_adc.explained_diagnostics(relocated, self.folder, self.sources,
+                                               'v05_controls_proof')
+        self.assertEqual(len(result), 15)
+        for bad in (self.text, relocated.replace('u_controls|', 'wrong_controls|')):
+            with self.assertRaises(ValueError):
+                fpga_adc.explained_diagnostics(bad, self.folder, self.sources,
+                                              'v05_controls_proof')
+        with self.assertRaises(ValueError):
+            self.classify(relocated)
+
     def test_no_global_warning_code_waiver(self):
         with self.assertRaisesRegex(ValueError, "unexplained"):
             fpga.diagnostics(self.text)
