@@ -981,6 +981,24 @@
         "bits": 32,
         "value": 4294967295,
         "description": "Initial CRC32 register and final XOR value"
+      },
+      {
+        "name": "RUN_DOTS_MAX",
+        "bits": 32,
+        "value": 70224,
+        "description": "Maximum exact-dot request"
+      },
+      {
+        "name": "RUN_DOTS_COUNT",
+        "bits": 8,
+        "value": 0,
+        "description": "Requested tick count completed"
+      },
+      {
+        "name": "RUN_DOTS_STOPPED",
+        "bits": 8,
+        "value": 1,
+        "description": "CPU STOP ended bounded execution"
       }
     ],
     "status": [
@@ -1175,6 +1193,12 @@
         "bits": 8,
         "value": 14,
         "description": "Write a whitelisted host control register."
+      },
+      {
+        "name": "RUN_DOTS",
+        "bits": 8,
+        "value": 15,
+        "description": "Run a bounded number of real dots and pause"
       }
     ],
     "input_source": [
@@ -1468,6 +1492,23 @@
         "bits": 32,
         "description": "Value with all reserved bits zero."
       }
+    ],
+    "run_dots": [
+      {
+        "name": "dot",
+        "bits": 64,
+        "description": "Completed emulated dot at pause"
+      },
+      {
+        "name": "executed",
+        "bits": 32,
+        "description": "Actual ticks executed by this operation"
+      },
+      {
+        "name": "reason",
+        "bits": 8,
+        "description": "COUNT or STOPPED completion"
+      }
     ]
   },
   "commands": [
@@ -1554,6 +1595,12 @@
       "request": "write_host",
       "response": "dot",
       "state": "Not LOADING."
+    },
+    {
+      "name": "RUN_DOTS",
+      "request": "word",
+      "response": "run_dots",
+      "state": "paused valid image"
     }
   ],
   "references": [

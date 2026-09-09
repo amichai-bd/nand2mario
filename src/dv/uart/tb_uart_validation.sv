@@ -80,13 +80,21 @@ module tb_uart_validation;
         command_case(8'h05,16'd0,16'd8);
         arguments = 72'd1;
         command_case(8'h06,16'd4,16'd8);
+        command_case(8'h0F,16'd4,16'd13);
+        packet_bytes = 9'd16;
+        arguments = 72'd70224; check_reply(8'h00,16'd13);
+        arguments = 72'd0; check_reply(8'h04,16'd0);
+        arguments = 72'd70225; check_reply(8'h04,16'd0);
+        arguments = 72'd1; endpoint_state = 8'h01; check_reply(8'h05,16'd0);
+        endpoint_state = 8'h02; check_reply(8'h05,16'd0);
+        endpoint_state = 8'h00;
         command_case(8'h0B,16'd1,16'd8);
         command_case(8'h0C,16'd0,16'd24);
         arguments = '0; arguments[31:0] = 32'h00010020; arguments[63:32] = 32'h5A;
         command_case(8'h0E,16'd8,16'd8);
         address = 32'hDEADBEEF; header.command = 8'h02; header.length = 16'd4; packet_bytes = 9'd16;
         check_reply(8'h04,16'd0);
-        if (checks != 113) $fatal(1, "UART_VALIDATE_COVERAGE");
+        if (checks != 120) $fatal(1, "UART_VALIDATE_COVERAGE");
         $display("PASS UART validation checks=%0d", checks); $finish;
     end
 endmodule

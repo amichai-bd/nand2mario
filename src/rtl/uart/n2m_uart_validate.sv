@@ -49,6 +49,12 @@ module n2m_uart_validate (
                 state_valid = endpoint_state == n2m_interfaces_pkg::STATE_PAUSED && image_valid;
                 response_length = 16'(n2m_interfaces_pkg::DOT_BYTES);
             end
+            n2m_interfaces_pkg::COMMAND_RUN_DOTS: begin
+                length_valid = header.length == n2m_interfaces_pkg::WORD_BYTES;
+                value_valid = arguments[31:0] != 0 && arguments[31:0] <= n2m_interfaces_pkg::WIRE_RUN_DOTS_MAX;
+                state_valid = endpoint_state == n2m_interfaces_pkg::STATE_PAUSED && image_valid;
+                response_length = 16'(n2m_interfaces_pkg::RUN_DOTS_BYTES);
+            end
             n2m_interfaces_pkg::COMMAND_LOAD_BEGIN: begin
                 length_valid = header.length == n2m_interfaces_pkg::LOAD_BEGIN_BYTES;
                 value_valid = begin_fields.profile == n2m_interfaces_pkg::PROFILE_DIRECT_ID && begin_fields.size == n2m_interfaces_pkg::PROFILE_ROM_BYTES;

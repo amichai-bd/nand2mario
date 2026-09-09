@@ -85,6 +85,10 @@ but their execution matrices must be named and reviewed before work: use short
 complementary simulations under the [total wall cap](../tools/n2m/SPEC.md#test-wall-budget)
 and separately declared bounded physical endurance. The v0.9 emulated frame
 quantities and v1.0 physical duration are not simulation wall-time allowances.
+For v0.9 only, the user approved [paused full-frame acquisition](dv/springtrail/SPEC.md#v09-milestone):
+every pixel of all3600 intervals and all inputs remain required in one emulation
+history, without reload/reset/replay between bounded host batches. The v1.0
+continuous30-minute requirement is unchanged.
 The [original-game verification plan](dv/springtrail/SPEC.md) and its milestone
 issues retain these obligations. A complete measured execution matrix must be
 reviewed before milestone runs; selected snapshots cannot silently replace the

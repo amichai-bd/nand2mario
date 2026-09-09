@@ -133,6 +133,37 @@ discarded; the host must recover the outstanding response before proceeding.
 
 ## Commands and ordering
 
+### Bounded dot execution
+
+`RUN_DOTS` (command 15) carries one little-endian 32-bit count from 1 through 70224.
+It requires PAUSED and a valid image. Zero or an excessive count is BAD_VALUE;
+wrong length/state uses the existing validation order and has no effects.
+RUN, HALT and instruction STEP retain their meanings.
+
+Resume the retained timebase phase and count real `gb_tick` edges, independently
+of instruction retirement or CPU HALT. Request pause on the requested final
+tick, so no extra tick occurs. Reply after the final tick's ordinary B-edge
+settlement, with the timebase paused. The 13-byte success payload is completed
+dot (64 bits), executed count (32 bits) and completion reason (8 bits), all little-endian. Reason 0 means
+COUNT: executed equals requested and completed dot equals the initial dot plus
+that count modulo 2^64. Reason 1 means STOPPED: an already STOPped CPU does not
+unpause and returns zero/current dot; STOP entered during the operation finishes
+at the next natural tick with the actual partial count. Reaching the requested
+count on that tick takes precedence over STOPPED. Neither path changes input,
+wake state, phase, epoch or reset except for normal execution effects.
+
+STOPPED is a completed operation with an explicit reason, not an exact-count
+success. The host must check the reason and count before accepting frame advance.
+Malformed requests remain error-status/empty-payload replies. Identical duplicate
+tokens return the cached result without executing again; conflicting tokens
+return SEQUENCE. Global reset cancels in-flight work/cache as before; loss of a
+reply leaves host completion uncertain. RESET cannot interleave with an
+outstanding request. With the documented active system clock, the existing
+timebase supplies a tick within six edges. Clock loss is not synthesized progress:
+the ordinary host timeout leaves uncertainty instead of claiming completion.
+CPU/profile faults do not themselves cancel COUNT while real ticks continue;
+the acquisition harness must check the existing fault/progress observations.
+
 Validate payload length, ranges and permitted state before effects; invalid
 commands do not partially change state. PING and status reads work in any state.
 Host registers are read-only except INPUT and INPUT_SOURCE. `WRITE_HOST` accepts
@@ -185,8 +216,8 @@ unidentified simulation fixtures; it is not a device identity/authentication key
   selected rows combine pressed bits; neither selected returns a released low
   nibble. Opposite directions and simultaneous buttons are preserved. Joypad
   interrupt edge behavior belongs to the joypad subsystem contract. Deterministic
-  scripts may HALT then INPUT then RUN; acceptance run bounds still prohibit
-  host pauses, so the future simulation input driver also schedules masks at
+  scripts may HALT then INPUT then RUN; acceptance run bounds prohibit
+  host pauses except the explicitly approved v0.9 full-frame acquisition. The simulation input driver schedules masks at
   exact dot boundaries on this same input interface without UART timing jitter.
 
 Synchronous priority is core reset, host transition/input latch, then emulated

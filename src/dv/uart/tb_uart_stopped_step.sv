@@ -5,6 +5,7 @@ module tb_uart_stopped_step;
     logic core_initialized, instruction_complete, retirement_valid, cpu_stopped;
     logic [7:0] command, input_buttons, buttons, status;
     logic [31:0] step_budget, epoch;
+    n2m_interfaces_pkg::run_dots_t run_dots_result;
     logic [63:0] dot_count, retirement_count, completed_dot;
     logic busy, done, request_valid, write_enable, bus_commit, fault;
     logic [15:0] address;

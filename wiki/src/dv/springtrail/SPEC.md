@@ -91,6 +91,8 @@ Include held/new-button distinctions and deterministic state restoration.
 Freeze an ordinary successful route and a death/retry route with input times
 and independently predicted observable checkpoints.
 
+## V0.9 milestone
+
 For v0.9, identify the exact self-built ROM and independent reference profile.
 Reach the named boot checkpoint within 600 emulated frame intervals, then run
 3600 intervals of scripted start/movement/action. Every frame and input
@@ -106,6 +108,15 @@ snapshots, omit intervals or label unchecked frames as passed. A workable full
 matrix is still an explicit prerequisite, not an assumed 3600-frame runtime or
 a new time-limit exception. No unlimited or automatically extended simulation
 is authorized by this specification.
+
+The user [explicitly approved paused full-frame acquisition](https://github.com/amichai-bd/nand2mario/issues/263#issuecomment-5603781487)
+for #263. An exact bounded dot command may pause at each frame boundary so every
+pixel of all3600 intervals is read and checked, with every scripted input
+retained. This is one emulation history: do not reload, reset or replay between
+batches. Each host batch remains at most300 seconds; record aggregate measured
+duration. Preserve startup and all interval identities across batches. CRC-only
+checks, selected frames and missing pixels do not satisfy this approval. It does
+not change the separate v1.0 continuous30-minute criterion.
 
 Use actual Intel memories/models and the approved clocks/reset/input boundaries.
 Each scoped harness must finish, report final pause/end state and enforce its

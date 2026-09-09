@@ -83,7 +83,8 @@ frame intervals from phase zero, the required elapsed active edges are
 outside that interval. Instruction HALT must not halt this timebase or PPU.
 A deliberate host pause freezes emulated state and phase at a dot boundary;
 UART, CDC handshakes, and VGA continue. Resume starts from retained phase with
-no catch-up ticks. Acceptance runs prohibit host pauses during their run bounds.
+  no catch-up ticks. Acceptance runs prohibit host pauses during their run bounds
+  except the explicitly approved [v0.9 full-frame acquisition](dv/springtrail/SPEC.md#v09-milestone).
 
 ## VGA timing
 
