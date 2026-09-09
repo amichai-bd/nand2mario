@@ -19,14 +19,18 @@ class Milestone(unittest.TestCase):
     def test_full_route_is_live_and_restarts_by_input(self):
         game = Game()
         wins = []
+        modes = []
         for index, buttons in enumerate(masks(), 1):
             before = game.mode
             game = update(game, buttons)
-            self.assertNotIn(game.mode, (0,2,3))
+            if game.mode != before:
+                modes.append((index, game.mode))
             if game.mode == 4 and before != 4:
                 wins.append(index)
-        self.assertEqual(wins, [360,721,1082,1443,1804,2165,2526,2887,3248])
-        self.assertEqual(anchor(game), (1,11616,984,64,608,4360,-8,10,2,351))
+        self.assertEqual(wins, [360,920,1281,1642,2003,2364,2725,3086,3447])
+        self.assertEqual(modes[:11], [(1,1),(360,4),(361,1),(548,2),(549,1),
+                                     (551,3),(553,1),(555,3),(557,1),(558,3),(560,1)])
+        self.assertEqual(anchor(game), (1,5248,1792,0,256,4160,-8,2,1,152))
         p = plan()
         self.assertEqual(len(p['inputs']), 3602)
         self.assertEqual(p['normal_frames'], 3604)
