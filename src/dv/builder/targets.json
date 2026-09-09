@@ -12538,7 +12538,7 @@
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS mooneye-reg-f bank=1 pc=4a81 registers=3,5,8,13,21,34",
-    "timeout_seconds": 300,
+    "timeout_seconds": 1500,
     "vendor_model": "intel-memory",
     "testbench": "python",
     "python": {
@@ -12646,7 +12646,7 @@
     ],
     "expected_exit": "zero",
     "signature": "PASS mooneye-reg-f bank=1 pc=4a81 registers=3,5,8,13,21,34",
-    "timeout_seconds": 300,
+    "timeout_seconds": 1500,
     "vendor_model": "intel-memory",
     "testbench": "python",
     "python": {
@@ -12754,7 +12754,7 @@
     ],
     "expected_exit": "zero",
     "signature": "PASS mooneye-reg-f bank=1 pc=4a81 registers=3,5,8,13,21,34",
-    "timeout_seconds": 300,
+    "timeout_seconds": 1500,
     "vendor_model": "intel-memory",
     "testbench": "python",
     "python": {

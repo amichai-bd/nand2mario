@@ -25,7 +25,8 @@ def load_target(root, name):
     if target["expected_exit"] not in ("zero", "nonzero"):
         raise ValueError("expected_exit must be zero or nonzero")
     timeout = target.get("timeout_seconds", 60)
-    maximum_timeout = 300
+    from .test_budget import wall_limit
+    maximum_timeout = wall_limit(name)
     if type(timeout) is not int or not 1 <= timeout <= maximum_timeout:
         raise ValueError(f"simulation target timeout_seconds must be an integer in 1..{maximum_timeout}")
     for source in target["sources"]:

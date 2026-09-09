@@ -63,8 +63,11 @@ terminate before the Windows process-tree cleanup deadline.
 
 The controller checks loaded-and-paused epoch 2 before RUN. The simulation uses
 the existing 25 MHz clock and 3.125 Mbaud UART, a 500 ms total simulated bound,
-and the shared 300-second hard wall bound, with a 120-second runtime target.
-That target is not a measured result. After RUN, dots must advance at each 10 us check.
+and the user's [named 1500-second total wall exception](../../../wiki/tools/n2m/SPEC.md#test-wall-budget)
+for these three milestone targets. Ordinary tests retain their 120-second target
+and 300-second cap. Run positive first, then corrupt and missing completion only
+after a valid positive result; the declared aggregate is at most 75 minutes.
+This allowance is not measured acceptance. After RUN, dots must advance at each 10 us check.
 Completion must occur within 1,000,000 dots. All instruction retirements and bus
 commits are recorded; this test checks the selected upstream verdict, not an
 independent instruction-by-instruction oracle for the reporting library.

@@ -1,6 +1,7 @@
 """Portable wall-budget tests; no simulator or hardware is launched."""
 import json
 import io
+from datetime import datetime, timezone
 from pathlib import Path
 import subprocess
 import sys
@@ -10,7 +11,7 @@ import unittest
 from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from n2m.test_budget import supervise
+from n2m.test_budget import supervise, wall_limit, MILESTONE_TARGETS
 
 
 class BudgetTests(unittest.TestCase):
@@ -127,11 +128,74 @@ class BudgetTests(unittest.TestCase):
         self.assertIn('reap_error', record)
         self.assertEqual((self.root/record['output']).read_text(), 'partial')
 
-    def test_registry_has_no_long_exception(self):
+    def test_only_exact_authorized_names_receive_milestone_budget(self):
+        self.assertEqual(MILESTONE_TARGETS, {'mooneye-reg-f', 'mooneye-corrupt', 'mooneye-missing'})
+        with patch.dict('os.environ', {'N2M_TEST_WALL_SECONDS': '99999'}):
+            for name in MILESTONE_TARGETS:
+                self.assertEqual(wall_limit(name), 1500)
+            for name in (None, '', 'ordinary', 'mooneye-reg-f-extra', 'MOONEYE-REG-F', 'mooneye', 'mooneye-missing '):
+                self.assertEqual(wall_limit(name), 300)
+
+    def test_selected_deadline_includes_preparation_and_overwrites_environment(self):
+        process = Mock(pid=123, returncode=0)
+        process.communicate.return_value = (b'done', b'')
+        fixed = datetime(2026, 9, 9, tzinfo=timezone.utc)
+        with patch('n2m.test_budget.subprocess.Popen', return_value=process) as launch, \
+             patch('n2m.test_budget.time', Mock(monotonic=Mock(side_effect=[10, 30, 31]))), \
+             patch('n2m.test_budget.datetime', Mock(now=Mock(return_value=fixed))), \
+             patch.dict('os.environ', {'N2M_TEST_EXECUTION_DEADLINE': '9999999999'}):
+            code, _ = supervise(['worker'], self.root, 'selected', target='mooneye-reg-f')
+        self.assertEqual(code, 0)
+        process.communicate.assert_called_once_with(timeout=1468)
+        self.assertEqual(float(launch.call_args.kwargs['env']['N2M_TEST_EXECUTION_DEADLINE']), fixed.timestamp()+1488)
+        record = json.loads(next((self.root/'workdir/builds/selected/wall-budget').glob('*.json')).read_text())
+        self.assertEqual((record['target'], record['wall_limit_seconds'], record['execution_limit_seconds']),
+                         ('mooneye-reg-f', 1500, 1488))
+
+    def test_selected_cleanup_still_shrinks_to_absolute_deadline(self):
+        process = Mock(pid=123, returncode=None)
+        process.communicate.side_effect = [subprocess.TimeoutExpired('worker', 1488),
+                                          subprocess.TimeoutExpired('pipe', .5)]
+        clock = Mock(monotonic=Mock(side_effect=[0, 1, 1499, 1499.5, 1499.8, 1500]))
+        with patch('n2m.test_budget.subprocess.Popen', return_value=process), \
+             patch('n2m.test_budget.subprocess.run', return_value=Mock(returncode=0)) as cleanup, \
+             patch('n2m.test_budget.os.killpg', create=True), \
+             patch('n2m.test_budget.time', clock):
+            code, text = supervise(['worker'], self.root, 'selected-expiry', target='mooneye-missing')
+        self.assertEqual(code, 1)
+        self.assertIn('1500 seconds total', json.loads(text)['error'])
+        self.assertFalse(json.loads(text)['cleanup_complete'])
+        if sys.platform == 'win32':
+            self.assertEqual(cleanup.call_args.kwargs['timeout'], 1)
+            self.assertEqual(process.communicate.call_args.kwargs['timeout'], .5)
+            self.assertAlmostEqual(process.wait.call_args.kwargs['timeout'], .2)
+
+    def test_public_supervisor_binds_budget_to_parsed_target(self):
+        from n2m.test_budget import main
+        with patch('sys.argv', ['tools/build.py', 'sim', 'test', 'mooneye-corrupt', '--tag', 'selected']), \
+             patch('n2m.test_budget.supervise', return_value=(0, '{}')) as run, \
+             patch('sys.stdout', new_callable=io.StringIO):
+            self.assertEqual(main(), 0)
+        self.assertEqual(run.call_args.kwargs, {'target': 'mooneye-corrupt'})
+        self.assertIn('mooneye-corrupt', run.call_args.args[0])
+
+    def test_registry_and_validator_share_exact_budget(self):
+        from n2m.simulation import load_target
         root = Path(__file__).resolve().parents[3]
         targets = json.loads((root/'src/dv/builder/targets.json').read_text())
+        long_targets = {name for name, row in targets.items() if row.get('timeout_seconds', 60) > 300}
+        self.assertEqual(long_targets, MILESTONE_TARGETS)
         self.assertTrue(all(type(row.get('timeout_seconds', 60)) is int and
-                            1 <= row.get('timeout_seconds', 60) <= 300 for row in targets.values()))
+                            1 <= row.get('timeout_seconds', 60) <= wall_limit(name) for name, row in targets.items()))
+        for name in MILESTONE_TARGETS:
+            self.assertEqual(load_target(root, name)[0]['timeout_seconds'], 1500)
+            with patch('n2m.simulation.json.loads', return_value={name: {**targets[name], 'timeout_seconds': 1501}}):
+                with self.assertRaisesRegex(ValueError, '1..1500'):
+                    load_target(root, name)
+        ordinary = next(name for name in targets if name not in MILESTONE_TARGETS)
+        with patch('n2m.simulation.json.loads', return_value={ordinary: {**targets[ordinary], 'timeout_seconds': 301}}):
+            with self.assertRaisesRegex(ValueError, '1..300'):
+                load_target(root, ordinary)
 
     def test_worker_stderr_does_not_corrupt_json_stdout(self):
         with patch('sys.stderr', new_callable=io.StringIO) as errors:
