@@ -483,3 +483,22 @@ They are not rearranged into the paired left/right 8 by 16 objects of a game
 character. Sprite assembly, OAM and frame selection remain software integration
 work. The fixture is an original generic pattern; unapproved character drafts
 are not part of this command's checked-in example.
+
+## Core artwork compositions
+
+`python -m tools.sw.core_art --tag core-review` reconstructs the approved
+[Springtrail core artwork](../../src/sw/springtrail/CORE_ART.md) from its tile
+banks/maps and the original courier owner. It uses the sprite renderer above
+for seven fixed PNG/SVG review layouts, and exports per-asset strict shade JSON
+and 2bpp under `workdir/builds/<tag>/core-art/`. The scene composition uses the
+same sources; it is illustrative software artwork, not a gameplay test.
+
+Tags have the same character/length limits as sprite review. Existing tags and
+symlink output paths are rejected. Invalid tile indices, dimensions, placement,
+coverage or flip flags fail; partial failed output requires a fresh tag. A final
+`result.json` records PASS, commit, Python and input/output hashes after output
+completion. There is no cache, source rewrite, game build or automatic wiki update.
+The helper owns review layout/scene positions; source banks and maps own pixels.
+[Focused checks](../../../tools/n2m/tests/test_core_art.py) verify reconstruction,
+invalid references, asymmetric flipping, independent 2bpp decoding and exact
+committed SVG reproduction. These checks do not qualify gameplay integration.
