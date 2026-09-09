@@ -104,3 +104,38 @@ score22+2*score and mode32+2*mode. The new art pairs and OAM publisher are not
 yet installed. Their lower tile must be blank for eight-pixel objects.
 This helper changes neither the live atlas nor the current display timing.
 Actual CPU scene/map byte and combined VBlank budget checks remain pending.
+
+Integration must remove the current background item tile14 markers from both
+static and scrolling maps. OAM hiding alone would leave a collected item
+visible. New atlas and restored full pixels remain explicit pending checks.
+
+## Combined routine proof
+
+`python-rs` executes three complete renderer reports, including a second
+restart of a partially restored map, then reads all576 map bytes, pauses and
+requires trace END. `python-ru` executes18 reports: two initial pairs, then
+restart and all16 pairs through final map selection. Both initialize the
+inactive map with ordinary zero stores; six fixed scene operands exercise
+fractional/negative coordinates, both horizontal clipping edges, collected
+masks, score/mode, fallen player and far-camera cases. They do not claim
+normal once-per-frame gameplay or pause scheduling.
+
+For each report, require all36 prepared WRAM bytes, exact ordered map and
+OAM writes, actual36-byte OAM readback, actual LCDC/SCX readback and complete
+begin/end markers. The final576-byte VRAM readback must equal the independently
+tracked map; partial, missing and duplicate output fails. Preparation is
+bounded below12000 dots. The publisher/restoration bracket, including its
+CALLs and marker overhead, must be below4200 dots, leaving268+64 dots for the
+previously counted game-loop overhead/wake margin within4560. Caller timing
+and the final combined game path remain separate integration obligations.
+
+`python-rx` changes one actual prepared Y store128 to0 across its accepting
+WRAM edge. The public preparation intent remains128, but the publisher reads
+zero and must fail unchanged `RENDER_PUBLISH index=0`. Require mutation,
+raw simulator zero, failing XML and outer failure. It is not a changed oracle.
+
+Before measurement, forecast short50–70 seconds, full120–180 and fault30–50,
+each under the unchanged300-second hard total limit. Added to the accepted
+routine set142.479 seconds, the declared selected aggregate may exceed the
+300-second target. Measure the complete short harness before the full run.
+No extra simulation cap, live display latency or milestone waiver is implied.

@@ -178,6 +178,38 @@
       "version": 1,
       "profile": "dmg-direct-v1",
       "interface_schema_version": 1
+    },
+    "render": {
+      "directory": "springtrail",
+      "sources": [
+        "render-unit.asm"
+      ],
+      "assets": {},
+      "layout": "render-unit-layout.json",
+      "entry": {
+        "unit": "render-unit.asm",
+        "symbol": "Start"
+      },
+      "title": "TRAIL RENDER",
+      "version": 1,
+      "profile": "dmg-direct-v1",
+      "interface_schema_version": 1
+    },
+    "render-s": {
+      "directory": "springtrail",
+      "sources": [
+        "render-unit.asm"
+      ],
+      "assets": {},
+      "layout": "render-unit-layout.json",
+      "entry": {
+        "unit": "render-unit.asm",
+        "symbol": "ShortStart"
+      },
+      "title": "TRAIL RENDER",
+      "version": 1,
+      "profile": "dmg-direct-v1",
+      "interface_schema_version": 1
     }
   }
 }
