@@ -7,6 +7,8 @@ XOR A,A
 LDH [$FF40],A
 LDH [$FF0F],A
 LD [$FFFF],A
+CALL InitSceneDMA
+XOR A,A
 LDH [$FF42],A
 LDH [$FF43],A
 LD [Buttons],A

@@ -11,14 +11,24 @@ Future #292 composition owns its active count and clears the remaining entries;
 the publisher always transfers all 160 bytes without interpreting that count.
 Zero Y hides an unused object, and the entire unused entry is zero.
 
-Initialize a small original routine at FF80 while LCD is off. PublishScene calls
+Initialize the nine bytes `E0 46 06 28 00 05 20 FC C9` at FF80 while LCD is off. PublishScene calls
 it with A=C1; the routine writes FF46 and executes only from HRAM through transfer
 completion, then returns. The existing DFFE stack remains: CALL writes precede
 the FF46 trigger, RET reads follow completion. No stack access occurs during DMA.
 Reuse #308's qualified 160-byte/4-dot transfer timing and HRAM wait. Initialize
 and publish once before LCD enable; subsequent calls stay in the existing
 VBlank slot after map work and before visible-time game calculation. Include
-the longer publisher in the reachable whole-VBlank bound before execution.
+the publisher in the reachable whole-VBlank bound before execution.
+
+The publisher body is 880 dots (including its RET), versus the old 904; the
+caller CALL costs 24 in both cases. The 40-iteration HRAM NOP/DEC/JR wait costs
+796 dots plus LD B's 8, exceeding the qualified final-byte boundary. The
+whole-VBlank bound becomes 3944 dots from 3968, below 4560. Initialization adds
+428 dots for CALL/setup/nine copies/RET and 4 to restore A=0. Tail clearing adds
+3980 dots to visible-time preparation, well inside its existing 20000-dot ready
+window. Thus LCD enable is 81352 = 76964 + 432 + 3980 - 24; state-update cadence
+and displayed images remain unchanged. These are instruction-derived anchors,
+to be checked against actual execution rather than fitted to its observations.
 
 ## Finite acceptance
 

@@ -245,6 +245,20 @@ module tb_python_v05 #(
 
     // Mutate the first byte at the actual Intel OAM pair-write boundary.
     initial begin
+        if ($test$plusargs("oam_last_fault")) begin
+            do @(negedge clk_sys);
+            while (!(dut.oam_request.write_enable == 2'b10 && dut.oam_request.pair == 79));
+            if (dut.oam_request.data[15:8] !== 8'h70) $fatal(1, "OAM299_FAULT_SOURCE");
+            $display("OAM299_FAULT last byte 70 -> 00 at dot %0d", dot_count);
+            force dut.oam_request.data = 16'd0;
+            @(posedge clk_sys);
+            @(negedge clk_sys);
+            release dut.oam_request.data;
+        end
+    end
+
+    // Mutate the first byte at the actual Intel OAM pair-write boundary.
+    initial begin
         if ($test$plusargs("dma_byte_fault")) begin
             do @(negedge clk_sys);
             while (!(dut.oam_request.write_enable == 2'b01 && dut.oam_request.pair == 0));

@@ -18,6 +18,7 @@ LD A,$17
 LDH [$FF40],A
 XOR A,A
 LD [$FFFF],A
+CALL InitSceneDMA
 LD HL,$9C00
 LD BC,576
 ClearMap:
