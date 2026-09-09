@@ -1,14 +1,11 @@
 # VGA frame bridge
 
-Design for [#80](https://github.com/amichai-bd/nand2mario/issues/80).
 The [shared clock/reset/CDC contract](../../clocks-resets-cdc.md) owns raster
 geometry, scaling, reset, bank transfer order and physical timing budgets.
 This page defines the module boundaries and presentation choices. The
 [bridge](../../../../src/rtl/vga/n2m_frame_bridge.sv),
 [scanout](../../../../src/rtl/vga/n2m_vga_scan.sv) and
 [RAM](../../../../src/rtl/vga/n2m_frame_ram.sv) implement these boundaries.
-Measured resource/timing and simulation evidence is retained with
-[the implementation review](https://github.com/amichai-bd/nand2mario/pull/111).
 
 ## Source and observation
 
@@ -38,10 +35,10 @@ pixel 23039. They are derived before presentation selection and have no ready
 input. A passive verification sink therefore sees even presentation-discarded
 frames. Gaps and resets suppress observer validity; partial frames are not complete.
 
-This stream is also the stable assembly boundary for the future
+This stream is also the stable assembly boundary for the
 [dedicated snapshot stores](../interfaces/MAS_interfaces.md#immutable-frame-snapshot).
 The observer sees stable pixel values at the sampling edge; it does not grant
-random access to a VGA bank. #93 owns assembly, atomic publication, immutable
+random access to a VGA bank. The [snapshot owner](../snapshot/MAS_snapshot.md) owns assembly, atomic publication, immutable
 host readback, packed byte format and snapshot command behavior. No host command
 may lease any of these three banks.
 
@@ -169,7 +166,7 @@ Actual generated PLL and Quartus evidence must prove three explicit dual-clock
 banks, fit resources, exact bundle endpoints and delay bounds, synchronizer
 stages, output bounds and both reference-frequency timing analyses. This design
 description is not that evidence. Physical monitor, pin/wiring and voltage proof
-remain #28/GAP-012.
+remain an open [board bring-up gap](https://github.com/amichai-bd/nand2mario/issues/28).
 
 The [FPGA proof](../../../../src/fpga/de10_lite/vga_proof.sv) feeds original shades
 from the emulated tick and exposes domain-local status through virtual ports.

@@ -1,7 +1,7 @@
 # Verification baseline
 
-Status: shared fixture harness and regression runner implemented. CPU vectors,
-ROM acceptance adapters and independent emulator integration are planned below.
+The shared fixture harness and regression runner are implemented. CPU vectors,
+ROM acceptance adapters and independent emulator integration have separate boundaries below.
 No Game Boy instruction or board behavior is implemented by this harness.
 
 ## Fixture contract
@@ -93,31 +93,32 @@ The runner checks artifact hashes and confines them to the child build, requires
 nonempty waveform/log/trace, checks the raw runtime exit, and validates ordered
 row count, seed and the exact negative mismatch. It rejects omissions, extra rows
 and unexpected mismatches. The independent reference/scoreboard remains the
-behavior oracle; no golden trace is updated from DUT output. Historical dual-engine
-comparisons remain prior evidence, not a current execution requirement.
+behavior oracle; no golden trace is updated from DUT output.
 The summary `workdir/builds/<tag>/regression.json` records each child command,
 exit and log plus aggregate result/elapsed time and manifest hash. Child manifests
 own the detailed versions and artifacts. Comparator unit tests inject missing,
 extra, reordered, seed-corrupt and value-corrupt rows and missing-wave/wrong-exit
 reports. These host tests supplement real simulation; they cannot replace it.
 
-## Future adapter plans
+<a id="future-adapter-plans"></a>
 
-These are reviewed designs and reuse plans, not implemented adapters. Select a
-CPU boundary/model contract before enabling vectors, and preserve model-specific
-unsupported cases explicitly. Import no commercial ROMs, boot images, saves or
+## Independent adapter boundaries
+
+The adapters below implement bounded selections against the CPU and system
+contracts. Preserve model-specific unsupported cases explicitly. Import no
+commercial ROMs, boot images, saves or
 private metadata into tracked sources or Pages. Downloads/builds remain under
 ignored `workdir/`; external code is never copied into product RTL.
 
-| Planned input | Immutable review pin | License and reuse boundary |
+| Pinned input | Immutable revision | License and reuse boundary |
 |---|---|---|
 | [SingleStepTests SM83](https://github.com/SingleStepTests/sm83/tree/f9c30210245dd691661db39f5ace022c465ecc2f) | `f9c30210245dd691661db39f5ace022c465ecc2f` | [MIT](https://github.com/SingleStepTests/sm83/blob/f9c30210245dd691661db39f5ace022c465ecc2f/LICENSE); preserve copyright/permission with imported test data |
 | [Mooneye test suite](https://github.com/Gekkio/mooneye-test-suite/tree/31510e12eea6286d36eea060a6adde755e1067aa) | `31510e12eea6286d36eea060a6adde755e1067aa` | [MIT](https://github.com/Gekkio/mooneye-test-suite/blob/31510e12eea6286d36eea060a6adde755e1067aa/LICENSE); preserve notice with selected source and built test artifacts |
 | [SameBoy core](https://github.com/LIJI32/SameBoy/tree/213a12ce93d66b105a113debd9396306066a7cfc/Core) | `213a12ce93d66b105a113debd9396306066a7cfc` | [Expat/MIT](https://github.com/LIJI32/SameBoy/blob/213a12ce93d66b105a113debd9396306066a7cfc/LICENSE) for Core; exclude iOS and HexFiend exceptions and unrelated frontends/assets |
 
-These upstream license files were read at the named commits. No external test
-or core content is imported here. An implementation must fetch only the exact
-commit, verify the archive/content hash in its dependency lock, record selected
+Adapter manifests record selected inputs and notices, including the tracked
+SingleStep vector selection. Fetch only the exact commit, verify the
+archive/content hash in its dependency lock, record selected
 files, retain notices and identify any original glue/patches separately. Recheck
 component headers/transitive build dependencies before importing or upgrading.
 Missing notices, mutable revisions or unreviewed dependencies block that adapter.
@@ -128,7 +129,7 @@ build commands and output hashes; RGBDS is not this upstream's assembler.
 
 ### SingleStep vectors
 
-Implementation follows [#101](https://github.com/amichai-bd/nand2mario/issues/101).
+The [CPU vector adapter](../../../../src/dv/cpu/singlestep/README.md) implements this boundary.
 
 Parse the pinned [format](https://github.com/SingleStepTests/sm83/blob/f9c30210245dd691661db39f5ace022c465ecc2f/README.MD)
 into an isolated CPU with flat test RAM, not the system MMIO map. Apply initial
@@ -144,7 +145,7 @@ an independent Ares differential oracle. Preserve exclusions in the run report.
 
 ### Mooneye acceptance
 
-Implementation follows [#103](https://github.com/amichai-bd/nand2mario/issues/103).
+The [Mooneye adapter](../../../../src/dv/mooneye/README.md) defines the selected test scope.
 
 Select only tests compatible with the approved DMG model/revision and implemented
 peripherals. Build the pinned selected source with the pinned assembler. The
@@ -160,14 +161,14 @@ other-model and undefined-state tests remain outside a reviewed test selection.
 
 ### Independent emulator and retirement traces
 
-Implementation follows [#102](https://github.com/amichai-bd/nand2mario/issues/102).
+The [SameBoy adapter](../../../../src/dv/sameboy/README.md) implements this boundary.
 
-The planned original SameBoy Core adapter runs separately from the DUT and its
+The original SameBoy Core adapter runs separately from the DUT and its
 reference model. Select an explicit DMG model and apply the same documented
 `dmg-direct-v1` initial state/input schedule; do not depend on a boot ROM. Before
 execution, retain core commit, build options, model, image hash, interface ABI,
-and adapter revision. Add a reviewed original observation hook where needed;
-this plan does not claim an existing core API already exposes every field.
+and adapter revision. The adapter's original observation hooks expose the
+comparison fields; a generic upstream API is not assumed to supply them all.
 
 Both sides serialize the existing [retirement ABI](../../rtl/interfaces/MAS_interfaces.md#retirement-records)
 and [generated layout](../../../cfg/interfaces.md#retirement-record) without a

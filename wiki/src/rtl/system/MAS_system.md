@@ -1,7 +1,7 @@
 # v0.5 system composition
 
-`n2m_v05_system` composes the delivered owners used by the original
-[issue88](https://github.com/amichai-bd/nand2mario/issues/88) program. It does not
+[`n2m_v05_system`](../../../../src/rtl/system/n2m_v05_system.sv) composes the owners used by the original
+[v0.5 program](../../../../src/sw/v05/main.asm). It does not
 add CPU, memory, interrupt or pixel semantics. The program and acceptance follow the [v0.5 fixture](../../dv/v05/SPEC.md) under the [charter](../../project-charter.md#release-acceptance) and
 [software specification](../../../tools/sw/SPEC.md).
 
@@ -18,8 +18,9 @@ The additive `v05-board` target uses the same composition with physical UART
 D0/D1 and KEY0 reset, following the [board pin contract](../../fpga-controls.md).
 Only diagnostic outputs remain virtual. `BUILD_ID` propagates the producing
 128-bit build identity to the UART owner; the placement/simulation default stays
-unchanged. Physical execution remains unproven under #28 and #88 until the
-documented setup and actual board checks pass.
+unchanged. Physical pin, wiring and voltage qualification remains an open
+[board bring-up gap](https://github.com/amichai-bd/nand2mario/issues/28);
+simulation and placement proofs do not satisfy it.
 
 The UART owner supplies core reset, profile, epoch, pause and effective input.
 Initialization completes only when CPU and backing-store initialization complete.
@@ -35,8 +36,11 @@ The public `physical_commit` and `physical_buttons` inputs use the same
 owner inside UART. `effective_buttons` and `input_source_observe` expose its
 existing authoritative observations. UART remains the reset default. No input
 queue, producer, synchronization or extra state is added here. The current
-`v05_proof` board wrapper ties physical input inactive; board acquisition,
-component wiring and calibration remain in issue156.
+`v05_proof` board wrapper ties physical input inactive. The separate
+[`n2m_controls_system`](../../../../src/fpga/de10_lite/n2m_controls_system.sv)
+composition instantiates physical acquisition and connects it to the system.
+Actual component wiring, calibration and physical verification remain an open
+[physical controls gap](https://github.com/amichai-bd/nand2mario/issues/156).
 
 The [DMA owner](../dma/MAS_dma.md) arbitrates CPU and transfer traffic against
 one Intel backing store. It owns FF46 and routes video accesses through the
@@ -81,5 +85,5 @@ CPU HALT preserves peripheral ticks. Independent
 observation checks every source pixel and retirement, including activity while
 UART input transactions run. Snapshots cannot substitute for that observation.
 
-Qualified constrained fit and the complete revised issue88 matrix are required before claiming
+Qualified constrained fit and the complete revised milestone matrix are required before claiming
 acceptance. Existing component results support their own unchanged scope only.

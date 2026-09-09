@@ -159,3 +159,8 @@ are published. The collector never runs automatically in CI, posts to GitHub,
 changes issues or measures active labor, authorship, hardware readiness or
 completeness. Preserve the measured SHA and collection timestamp when refreshing
 all page tables and charts together.
+
+The collector and publication refresh are currently manual. The open
+[post-merge statistics gap](https://github.com/amichai-bd/nand2mario/issues/319)
+plans automatic refresh after merges to `main`, not on PR checks or every CI run.
+That automation is not implemented by the current collector.

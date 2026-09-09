@@ -24,7 +24,9 @@ List boundary and conflicting events in priority order.
 ## Verification
 
 Link owning `src/` or `tools/` implementation, tests proving the rules, and
-retained evidence. Mark planned behavior and link its open implementation issue.
+verification boundaries. Mark implementation or verification gaps explicitly,
+state what closes each gap, and link only its open issue. Do not add internal
+PR history or completed issues; keep delivery evidence in PRs.
 
 ## References
 

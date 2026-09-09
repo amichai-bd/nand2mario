@@ -1,6 +1,6 @@
 # Immutable source-frame snapshots
 
-Implemented under [#93](https://github.com/amichai-bd/nand2mario/issues/93).
+Implementation: [frame snapshot owner](../../../../src/rtl/snapshot/n2m_frame_snapshot.sv).
 The [shared snapshot contract](../interfaces/MAS_interfaces.md#immutable-frame-snapshot)
 owns byte order, immutable readback, reset persistence and the permitted
 convenience-frame omission during copy. The [Intel memory boundary](../common/MAS_memory_primitives.md)
@@ -60,7 +60,7 @@ clearing primitive arrays. No read can expose uninitialized storage.
 
 The [test plan](../../../../src/dv/snapshot/README.md) maps independent byte,
 metadata, publication, reset and composed VGA checks to this boundary. Actual
-Intel simulation and constrained MAX 10 resource/timing evidence are retained in
-the [delivery PR](https://github.com/amichai-bd/nand2mario/pull/151). Primitive
+Intel simulation and the [constrained MAX 10 fixture](../../../../src/fpga/de10_lite/snapshot_proof.sv)
+check the shared primitive and resource/timing boundary. Primitive
 arrays are never initialized or inspected privately. This service does not prove
 UART framing, PPU pixel correctness or physical display operation.

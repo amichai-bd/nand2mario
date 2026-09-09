@@ -13,7 +13,12 @@ rules between pages. Keep shared and generated contracts at their mapped owner.
 1. Name scope, terms, inputs, outputs, state, timing, reset, and error behavior.
 2. Use observable rules with units, bit order, clock domain, and edge cases.
 3. Separate requirements from rationale, planned behavior, and open questions.
-4. Link primary sources and related contracts. Do not copy issue history.
+4. Describe current source and verification. Link source, tests and contracts,
+   not internal PR history or completed issues. An internal issue link is allowed
+   only beside an explicit implementation or verification gap, with a verified
+   open issue and a close condition. Remove it when the gap closes. External
+   issue/PR citations may support technical facts. The repository statistics
+   page alone may retain delivery history and issue/PR measurements.
 5. Check links and source/test alignment using the
    [review guide](../agent-flow/references/review.md).
 

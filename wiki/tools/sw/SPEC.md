@@ -37,7 +37,8 @@ independently authored literal region bytes, total size, fill byte and selected
 symbol addresses from `expected.json`; it compares the whole output, including
 padding. It does not read project opcode tables, encode instructions or resolve
 relocations. These samples establish the oracle path, not exhaustive instruction
-or CPU coverage. #85 owns exhaustive assembler conformance.
+or CPU coverage. The [assembler conformance runner](../../../tools/sw/conformance.py)
+checks the complete documented instruction forms separately.
 
 `--expected <file>` selects an explicit expectation JSON for independent and
 negative checks. Changing an expected byte must return failure with the offset
@@ -197,14 +198,14 @@ parent traversal, symlink escapes, duplicate resolved sources and output overlap
 
 Hardware registers, memory regions, vectors, runtime reset/entry state and host
 constants come from generated exports of
-[#30](https://github.com/amichai-bd/nand2mario/issues/30). Import its assembly
+[the interface source](../../../cfg/interfaces.json). Import its assembly
 constants as explicit fingerprinted inputs. This page owns cartridge file
-construction, not a duplicate hardware address map. The planned
+construction, not a duplicate hardware address map. The
 [original platformer](../../src/sw/springtrail/SPEC.md) uses this pipeline and
 the existing mapperless profile; it has no commercial-ROM dependency. External
 ROMs, if separately authorized, remain runtime inputs under the
 [source policy](../provenance.md), never assembly assets.
-The builder supplies #30's canonical generated assembly prelude as a separately
+The builder supplies the canonical [generated assembly prelude](../../../src/sw/generated/interfaces.inc) as a separately
 allowlisted input before target sources, even when its path is outside the target
 tree. Targets select its schema/profile identity, not an arbitrary external path.
 Normal `INCLUDE` confinement still applies; do not copy generated constants into
@@ -226,7 +227,7 @@ for `ADD`, `ADC`, `SUB`, `SBC`, `AND`, `OR`, `XOR`, `CP`; use `JP HL` and
 is operandless and emits its zero padding byte. Reject omitted-accumulator and
 `[HLI]`/`[HLD]` aliases, undocumented/Z80 instructions, invalid operands and
 automatic jump expansion. `LDH` immediates are full high-memory addresses,
-validated against #30's generated region, not truncated offsets.
+validated against the generated region, not truncated offsets.
 
 Literals are decimal, `$` hex, or `%` binary, without separators. Parentheses
 group expressions. Precedence, strongest first: unary `+ - ~`, `* /`, binary
@@ -275,7 +276,7 @@ survive unresolved expressions. Resolve labels after placement. Unknown,
 ambiguous, cyclic or unimported cross-unit references fail. Every import must
 resolve; exports are globally unique, other symbols remain unit-local.
 
-Layout assigns every section to a generated #30 region and fixed address or
+Layout assigns every section to a generated interface region and fixed address or
 floating placement with power-of-two alignment (default 1). Fixed addresses
 must satisfy alignment. Place fixed sections first, then floating sections in
 target-input and declaration order at the lowest aligned free address. Reject
@@ -283,7 +284,7 @@ duplicate/unassigned sections, overlap, absent regions, exhaustion, overflow
 and boundary crossing. RAM allocations emit no ROM bytes or initialization.
 
 The profile contains two contiguous 16 KiB ROM banks, no mapper/cartridge RAM.
-Require #30's CPU-to-file mapping to match that size and contiguity. Sections
+Require the generated CPU-to-file mapping to match that size and contiguity. Sections
 cannot straddle banks. Reserve the header and generated interrupt/restart
 vectors before placement; only explicitly named vector sections may occupy
 vector reservations. The packager alone owns the header and entry stub.
@@ -305,7 +306,7 @@ at an emitted instruction boundary in a ROM section outside reservations.
 No guessed entry default or entry into emitted data.
 
 `dmg-direct-v1` deliberately zeroes the 48-byte logo field, copies no Nintendo
-logo/boot asset and does not use Nintendo's stock boot ROM. #30 owns the explicit
+logo/boot asset and does not use Nintendo's stock boot ROM. The [interface contract](../../src/rtl/interfaces/MAS_interfaces.md) owns the explicit
 CPU/peripheral reset state and direct-entry transition; the independent
 reference starts from that identical state without preinitialized program
 results. This is the original `v0.5` program's profile; it does not modify the
@@ -341,7 +342,7 @@ No PNG decoding, inferred palette or commercial image extraction is needed.
 Emit tiles in row-major tile order, each 8 by 8. Each row emits low plane then
 high plane; x=0 is bit 7. Preserve duplicates; no implicit flip, deduplication,
 remap or alignment. Output size is `width * height / 4` bytes. Tilemaps and
-palette programming are explicit program data/code using #30 exports.
+palette programming are explicit program data/code using generated interface exports.
 An independent decoder must round-trip every emitted pixel to its input shade.
 
 Malformed UTF-8/JSON or duplicate keys produce `ASSET_JSON`; missing/unknown
@@ -394,7 +395,7 @@ and a final newline. The exact schemas ship with their owning implementation.
 ROM/object/map/symbol/listing bytes must match across fresh tags and checkout
 paths: target-relative paths only, no timestamps/random values/host text.
 Separate stage records retain commit, actual tool versions, hashes and commands.
-Fingerprint all source/include/asset/layout/generated #30 inputs, schemas,
+Fingerprint all source/include/asset/layout/generated interface inputs, schemas,
 implementation and options; validate output hashes before cache reuse. Changed
 includes, corrupt objects, stale headers and missing ROMs must rebuild or fail.
 
@@ -417,7 +418,7 @@ semantics. The original program must then pass all charter run/pixel/retirement/
 input checks with our build, including identical clean-build bytes.
 
 Loading consumes immutable ROM/manifest, validates profile/length and follows
-#30's versioned load/readback/start protocol without editing the image. Transport
+the versioned [load/readback/start protocol](../../src/rtl/interfaces/MAS_interfaces.md) without editing the image. Transport
 retries/device selection belong to the host contract; software build opens no
 device. Full load/readback and runtime validation remain required end-to-end
 evidence. Physical transmission follows the
@@ -425,21 +426,15 @@ evidence. Physical transmission follows the
 
 ## Delivery order
 
-Implementation issues below own executable schemas/tools/tests. The spec leads
-implementation until they close. C-like compilation, mapper breadth, commercial
-assets and physical loader execution remain outside this contract.
-
-1. [Oracle provisioning #84](https://github.com/amichai-bd/nand2mario/issues/84)
-   establishes independent executable evidence.
-2. [Assembler #85](https://github.com/amichai-bd/nand2mario/issues/85) owns complete
-   forms and object schema; uses #84 and generated #30 constants.
-3. [Linker/packager #86](https://github.com/amichai-bd/nand2mario/issues/86) uses
-   #85/#30 and owns layout, final artifacts and software stage integration.
-4. [Assets #87](https://github.com/amichai-bd/nand2mario/issues/87) integrates with
-   the #85/#86 software interface and can prepare independent fixtures earlier.
-5. [Original program #88](https://github.com/amichai-bd/nand2mario/issues/88)
-   consumes these tools and the required hardware/loader/verification deliveries
-   to prove the full `v0.5` acceptance. Root schedules those dependencies.
+The [RGBDS adapter](../../../tools/n2m/rgbds.py) provisions the independent oracle.
+The [assembler](../../../tools/sw/assembler.py) owns instruction forms and objects;
+the [conformance runner](../../../tools/sw/conformance.py) compares its encodings.
+The [linker](../../../tools/sw/linker.py) and [packager](../../../tools/sw/package.py)
+own layout and final images. The [asset converter](../../../tools/sw/assets.py)
+supplies tile bytes to that pipeline. The [original program](../../../src/sw/v05/main.asm)
+consumes these outputs under the [composed acceptance contract](../../src/dv/v05/SPEC.md).
+C-like compilation, mapper breadth, commercial assets and physical loader execution
+remain outside this toolchain contract.
 
 [isa]: https://github.com/gbdev/rgbds/blob/307846b03ea89ee57bf75f179d5f8051175ac60d/man/gbz80.7
 [header]: https://github.com/gbdev/pandocs/blob/fe246067b695b5404a4a6a47efb4fd6d921ececb/src/The_Cartridge_Header.md

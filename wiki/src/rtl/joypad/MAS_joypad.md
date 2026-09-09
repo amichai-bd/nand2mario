@@ -1,6 +1,6 @@
 # DMG joypad
 
-Status: implemented under [#134](https://github.com/amichai-bd/nand2mario/issues/134).
+Implementation: [JOYP owner](../../../../src/rtl/joypad/n2m_joypad.sv).
 The matrix, register updates and selected-line event transport are implemented.
 The independent test plan covers the agreed event and IF boundary.
 

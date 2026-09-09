@@ -1,6 +1,6 @@
 # DMG interrupt registers
 
-Status: implemented under [#133](https://github.com/amichai-bd/nand2mario/issues/133).
+Implementation: [interrupt owner](../../../../src/rtl/interrupts/n2m_interrupts.sv).
 This owner stores IF/IE and resolves requests, CPU writes and acknowledgement.
 CPU owns priority selection, IME, delayed EI and dispatch timing. Numeric
 addresses and direct-profile reset fill belong to the
@@ -102,4 +102,4 @@ CPU next-state into the oracle or claim these scripts execute the full CPU.
 Actual source/ack/observed-state faults must cause exact nonzero named mismatch
 diagnostics. Retain positive and negative Questa logs, source/tool identities,
 public waveforms, sequence/counts and expected/actual register traces. This
-acceptance does not close any peripheral or whole-system issue.
+acceptance does not establish peripheral or whole-system acceptance.

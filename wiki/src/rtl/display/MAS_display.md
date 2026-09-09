@@ -53,7 +53,7 @@ clock generation, or dependency on reference HDL.
 
 This unit does not fetch tiles, access registers, arbitrate VRAM/OAM, resolve
 objects, or define LCD/VGA timing. The palette is an input snapshot; when a
-future PPU samples BGP is a separate contract. No game assets are included.
+PPU samples BGP belongs to the [PPU contract](../ppu/MAS_ppu.md). No game assets are included.
 See the [bounded phase](../../../agents/bootstrap-plan.md#current-phase).
 
 ## Alignment and verification

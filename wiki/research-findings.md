@@ -178,9 +178,8 @@ Recommended independent evidence:
 
 Use a UVM-lite structure first: interfaces, transactions, drivers, monitors,
 scoreboards, assertions, coverage, and reference models. Questa is the
-sole supported SystemVerilog simulator under
-[#106](https://github.com/amichai-bd/nand2mario/issues/106). Earlier tool inventory
-is historical and does not authorize another simulation backend.
+sole supported SystemVerilog simulator under the
+[builder contract](tools/n2m/SPEC.md#testbench-types).
 
 A model generated from the same opcode table as the RTL is not an independent
 oracle. At least one test path must use an independent implementation or published
@@ -192,7 +191,7 @@ The repository separates:
 
 - `src/` contains RTL, verification, target software, and FPGA files.
 - `tools/` contains checked-in build and automation code.
-- `cfg/` contains only small, project-wide YAML configuration.
+- `cfg/` contains small, project-wide configuration and interface schemas.
 - `wiki/` contains short documentation for source, tools, and agents.
 - `.agents/` and `.github/` contain agent and GitHub integration metadata.
 - ignored `workdir/` contains downloaded tools, cache, tagged builds, and logs.
@@ -200,21 +199,10 @@ The repository separates:
 Owner-specific configuration stays with its owner. Do not create speculative
 configuration directories.
 
-Keep the planned command small and consistent:
-
-```text
-python tools/build.py doctor
-python tools/build.py check
-python tools/build.py sim test <test>
-python tools/build.py sim regress <level>
-python tools/build.py fpga build|program
-python tools/build.py uart ping|load-rom|press|release|tap
-python tools/build.py docs build|serve
-```
-
-The command is not implemented. It should be a modular, standard-library-first
-Python package with JSON results, dry runs where useful, and reproducible
-manifests. All tools should use it rather than duplicate shell commands.
+The implemented [builder entry point](../tools/build.py) dispatches small Python
+modules with JSON results and reproducible manifests. Its
+[command specification](tools/n2m/SPEC.md) lists supported commands and gaps;
+tools should use that interface instead of duplicating shell commands.
 
 An explicit build tag reopens a persistent workspace and reuses stages whose
 content fingerprints still match. Without a tag, the build uses a UTC timestamp.

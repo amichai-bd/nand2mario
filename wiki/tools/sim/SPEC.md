@@ -68,5 +68,5 @@ The [workflow](../../../.github/workflows/tile-pixel.yml) runs standalone host
 contracts on pull requests and main. Its check is named `Tile runner checks`;
 it does not claim licensed RTL execution. Actual local positive/corrupt Questa
 evidence remains required. The [trusted CI boundary](../n2m/SPEC.md#ci-execution-boundary)
-records the unconfigured route owned by #32. See
+records the [open trusted-route activation gap](https://github.com/amichai-bd/nand2mario/issues/32). See
 [tool provenance](../../../tools/sim/THIRD_PARTY.md).

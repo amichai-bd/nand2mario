@@ -1,10 +1,10 @@
 # Gaps before implementation
 
-Status: product P0 gaps remain open; GAP-001, GAP-002, GAP-003, GAP-004, GAP-007, GAP-008, and GAP-009 closed
+Implementation boundaries and remaining verification gaps.
 
 ## Purpose
 
-This register distinguishes post-research gaps from completed infrastructure.
+This register states current prerequisites and remaining verification gaps.
 
 The [current phase](agents/bootstrap-plan.md#current-phase) defines which work
 may start. Gap priority and close conditions describe future requirements, not
@@ -25,17 +25,17 @@ Priorities:
 
 | ID | Priority | State | Issue | Gap | Closed when |
 |---|---|---|---|---|---|
-| GAP-001 | P0 | Closed | [#24](https://github.com/amichai-bd/nand2mario/issues/24) | Scope and success contract | DMG target, releases, and non-goals are approved |
-| GAP-002 | P0 | Closed | [#25](https://github.com/amichai-bd/nand2mario/issues/25) | License, ROM policy, and provenance | Approved private source policy, provenance rules, and practical content safeguards are committed |
-| GAP-003 | P0 | Closed | [#26](https://github.com/amichai-bd/nand2mario/issues/26) | Build command | A minimal `n2m` command runs from a fresh shell |
-| GAP-004 | P0 | Closed | [#27](https://github.com/amichai-bd/nand2mario/issues/27) | Real environment doctor | Checked smoke and read-only identity checks work; licensed runtime evidence is recorded in GAP-008 |
+| GAP-001 | P0 | Closed | — | Scope and success contract | DMG target, releases, and non-goals are approved |
+| GAP-002 | P0 | Closed | — | License, ROM policy, and provenance | Approved private source policy, provenance rules, and practical content safeguards are committed |
+| GAP-003 | P0 | Closed | — | Build command | A minimal `n2m` command runs from a fresh shell |
+| GAP-004 | P0 | Closed | — | Real environment doctor | Checked smoke and read-only identity checks work; runtime checks are described in GAP-008 |
 | GAP-005 | P0 | Open | [#28](https://github.com/amichai-bd/nand2mario/issues/28) | Board wiring and safe bring-up | VGA test card and UART ping pass with documented wiring |
-| GAP-006 | P0 | Open | [#29](https://github.com/amichai-bd/nand2mario/issues/29) | Clock, reset, and CDC plan | Frequencies, crossings, resets, and SDC rules are approved |
-| GAP-007 | P0 | Closed | [#30](https://github.com/amichai-bd/nand2mario/issues/30) | Executable interface contracts | Address maps, host registers, and trace formats have one source |
-| GAP-008 | P0 | Closed | [#31](https://github.com/amichai-bd/nand2mario/issues/31) | Verification baseline | A known-good DUT and deliberately failing DUT prove the harness |
-| GAP-009 | P0 | Closed | [#14](https://github.com/amichai-bd/nand2mario/issues/14) | Initial agent skills | Core skills exist and have concise trigger tests and examples |
-| GAP-010 | P0 | Open | [#32](https://github.com/amichai-bd/nand2mario/issues/32) | GitHub workflow, CI, and Pages | Templates, checks, rules, and deployment pass end to end |
-| GAP-011 | P1 | Closed | [#260](https://github.com/amichai-bd/nand2mario/issues/260) | Original game image and build facts | Original 32 KiB mapperless image, header, provenance and reproducible build are verified |
+| GAP-006 | P0 | Physical gap | [#28](https://github.com/amichai-bd/nand2mario/issues/28) | Clock, reset, and CDC plan | Implemented timing still needs connected-board display acceptance |
+| GAP-007 | P0 | Closed | — | Executable interface contracts | Address maps, host registers, and trace formats have one source |
+| GAP-008 | P0 | Closed | — | Verification baseline | A known-good DUT and deliberately failing DUT prove the harness |
+| GAP-009 | P0 | Closed | — | Initial agent skills | Core skills exist and have concise trigger tests and examples |
+| GAP-010 | P0 | Open | [#32](https://github.com/amichai-bd/nand2mario/issues/32) | Trusted product CI | Licensed execution route and protected physical runner are not activated |
+| GAP-011 | P1 | Closed | — | Original game image and build facts | Original 32 KiB mapperless image, header, provenance and reproducible build are verified |
 | GAP-012 | P1 | Later | — | VGA frame crossing | Buffering and monitor timing pass simulation and hardware tests |
 | GAP-013 | P1 | Later | — | External dependencies | Tests and tools are pinned, licensed, and reproducible |
 | GAP-014 | P2 | Later | — | Physical audio path | Output method and acceptance test are selected |
@@ -47,10 +47,9 @@ Priorities:
 
 The [charter](src/project-charter.md) records the approved end-to-end DMG direction
 and approved DMG-family policy, bounded release acceptance, and deferred
-features. Issue #24 records the original decision; the authorized
-[original-game revision](https://github.com/amichai-bd/nand2mario/issues/259)
-replaces the commercial-cartridge target while retaining release verification.
-This scope gap remains closed; game implementation is planned separately.
+features. The target uses the [original platformer](src/sw/springtrail/SPEC.md)
+and retains separate release verification. This scope gap is closed; the game
+contract distinguishes implemented behavior from planned features.
 
 **Risk**
 
@@ -65,10 +64,6 @@ before the core can run a test ROM.
 - CGB, SGB, link hardware, mapper breadth, and custom compiler timing are listed
   as included or deferred.
 - The original platformer has observable boot, video, input, and stability checks.
-
-**Recommended first issue**
-
-Create `Project charter and release acceptance` with no RTL changes.
 
 ## GAP-002 — License, ROM policy, and provenance
 
@@ -99,17 +94,16 @@ can evade automated checks. Independent provenance and diff review remain needed
 **Reference reuse**
 
 Treat reference HDL as behavioral research until file-level reuse permission is
-confirmed. Future dependency fetching remains in GAP-013.
+confirmed. Dependency fetching requirements remain in GAP-013.
 
 ## GAP-003 — Build command
 
 **Current state**
 
 The [build command](tools/n2m/SPEC.md) implements tagged doctor, builder
-checks and self-checking simulation. Issue [#26](https://github.com/amichai-bd/nand2mario/issues/26)
-originally delivered a portable simulator path. That historical evidence remains;
-[#106](https://github.com/amichai-bd/nand2mario/issues/106) replaces active simulation
-with Questa only. Later scoped doctor, baseline and FPGA results are linked below.
+checks and self-checking simulation through Questa. The
+[builder implementation](../tools/n2m/cli.py) dispatches scoped doctor, software,
+simulation, regression and FPGA stages with tagged evidence.
 
 **Risk**
 
@@ -133,10 +127,9 @@ Agents may invent different commands, directories, or tool invocations.
 
 The [environment doctor](tools/n2m/SPEC.md#environment-doctor) implements
 checked Questa smoke runs, Quartus edition reporting, and read-only
-JTAG/UART enumeration. Earlier portable smoke, selected UART health/identity, expected
-JTAG identity, and scoped Quartus version checks satisfy the implementation
-criteria in #27. Full environment readiness remains unproven; licensed runtime
-evidence is recorded under [GAP-008](#gap-008-verification-baseline).
+JTAG/UART enumeration. It reports selected UART health/identity, expected JTAG
+identity and Quartus version independently. Each run must establish current
+environment readiness; executable discovery alone is not licensed runtime proof.
 
 **Risk**
 
@@ -158,16 +151,16 @@ Checking only executable names can report success while every simulation fails.
 
 **Current state**
 
-JTAG and a UART adapter are visible. Physical UART wire crossing, voltage, target
-pins, reset polarity, and VGA monitor behavior remain unproven here.
-
-Reference `frog-bui` assignments suggest:
+The [board target definitions](../src/fpga/de10_lite/targets.json) specify the
+UART and display pins. Connected wiring, voltage and monitor qualification remain
+incomplete under the open board gap. UART assignments are:
 
 - FPGA UART RX: Arduino D0, `PIN_AB5`;
 - FPGA UART TX: Arduino D1, `PIN_AB6`;
 - 3.3 V LVTTL with adapter TX connected to FPGA RX.
 
-These reference values are not yet accepted project constraints.
+These are committed project constraints. They do not establish that the attached
+hardware matches the [electrical boundary](src/fpga-controls.md#electrical-boundary).
 
 **Risk**
 
@@ -190,20 +183,12 @@ The wrong device or bitstream could be programmed.
 
 The [timing contract](src/clocks-resets-cdc.md) defines clocks, enables, reset
 and CDC requirements. The [clocking implementation](src/rtl/clocking/MAS_clocking.md)
-and [VGA frame bridge](src/rtl/vga/MAS_vga.md) now have bounded independent
-Questa and generated nominal/upper-reference FPGA evidence. The
-[clocking delivery](https://github.com/amichai-bd/nand2mario/pull/107) and
-[macro conversion review](https://github.com/amichai-bd/nand2mario/pull/114)
-cover timebase/reset behavior and retained timing checks. The
-[VGA delivery review](https://github.com/amichai-bd/nand2mario/pull/111) covers
-frame ownership, crossings, line/frame geometry, buffer swaps and RAM inference.
-
-The [25 MHz composed timing and runtime evidence](https://github.com/amichai-bd/nand2mario/issues/164)
-and [controls/system review](https://github.com/amichai-bd/nand2mario/pull/250#issuecomment-5592587441)
-extend those isolated proofs to the implemented compositions. This gap retains
-separate physical acceptance. These bounded results do not establish future
-control crossings or connected-board display behavior; [GAP-005](#gap-005-board-wiring-and-safe-bring-up)
-and [GAP-012](#gap-012-vga-frame-crossing) retain the physical display gates.
+and [VGA frame bridge](src/rtl/vga/MAS_vga.md) have dedicated
+[clocking](../src/dv/clocking/README.md) and [raster/ownership](../src/dv/vga/README.md)
+checks. The [system composition](src/rtl/system/MAS_system.md) uses the specified
+25 MHz system clock and separate VGA clock. Physical display acceptance remains
+unproven under [GAP-005](#gap-005-board-wiring-and-safe-bring-up)
+and [GAP-012](#gap-012-vga-frame-crossing).
 
 **Risk**
 
@@ -228,8 +213,8 @@ The [executable contract](src/rtl/interfaces/MAS_interfaces.md) owns one checked
 for Game Boy/host spaces, UART packets, direct-entry state and retirement
 records, with generated SV/Python/wiki exports. Required CI checks regeneration,
 byte/width/space tests and real positive/corrupt portable simulation. This closes
-the interface-data gap; endpoint, loader, snapshot and verification implementations
-remain tracked by the contract's delivery issues.
+the interface-data gap. The endpoint, loader, snapshot and verification consumers
+have their own behavior and tests in the [ownership map](ownership.md).
 
 **Risk**
 
@@ -254,16 +239,10 @@ The [shared baseline](src/dv/baseline/SPEC.md) supplies separate stimulus,
 observation, integer reference, scoreboard, assertions and fixture coverage.
 Its known-good and deliberately broken examples run through Questa with checked
 logs, seed, expected/actual CSV and waves. The regression runner checks raw failure
-exits, complete traces and artifact integrity. Prior #31 dual-engine evidence
-is historical; #106 removes the second simulator from current requirements.
-
-[#31](https://github.com/amichai-bd/nand2mario/issues/31) records baseline delivery.
-Reviewed adapter designs, licenses, immutable pins, retirement comparison format
-and bounded regression levels satisfy this prerequisite. Adapter implementations
-remain planned in [#101](https://github.com/amichai-bd/nand2mario/issues/101),
-[#102](https://github.com/amichai-bd/nand2mario/issues/102) and
-[#103](https://github.com/amichai-bd/nand2mario/issues/103). Fixture coverage is
-not CPU, full-system, licensed environment or physical acceptance.
+exits, complete traces and artifact integrity. Questa is the sole simulator.
+The [baseline specification](src/dv/baseline/SPEC.md) links independent adapters,
+their licenses, immutable pins, comparison formats and bounded regression levels.
+Baseline fixture coverage is not CPU, full-system or physical acceptance.
 
 **Questa evidence**
 
@@ -272,20 +251,12 @@ supersedes the earlier general Questa deferral. Required Questa simulation must 
 and deliberately failing checks, independent review, and passing CI remain
 required for affected delivery; compilation alone is not a simulation pass.
 
-The [tile/doctor correction](https://github.com/amichai-bd/nand2mario/pull/77)
-establishes licensed elaboration, normal and deliberately corrupt tile runs,
-and the doctor's 22-observation checked smoke in Questa 2025.2. This is scoped
-runtime evidence; it does not prove full environment or hardware readiness.
-
-The [shared Questa backend](https://github.com/amichai-bd/nand2mario/issues/76)
-also establishes registered smoke and tile normal/failure execution through the
-builder, with isolated libraries and checked cache reuse. The deliberately
-failing smoke remains FAIL; only the exact expected tile corruption is accepted.
-This does not establish the planned shared verification harness or adapters.
-
-The shared good/broken baseline has licensed runtime proof, with historical
-portable results retained. Each affected later issue must identify and execute
-its own required Questa coverage. Failed doctor checks
+The [tile runner](tools/sim/SPEC.md) checks normal and deliberately corrupt runs;
+the [doctor](tools/n2m/SPEC.md#environment-doctor) checks smoke observations.
+Isolated libraries and validated cache reuse belong to the shared backend.
+The deliberately failing smoke remains FAIL; only exact expected tile corruption
+is accepted. Each affected change must execute its own required Questa coverage.
+Failed doctor checks
 remain FAIL. Closing this baseline gap does not waive later subsystem,
 independent adapter or physical verification.
 
@@ -308,15 +279,10 @@ flags, timing, memory traffic, or interrupts.
 
 **Current state**
 
-Closed by issues [#7](https://github.com/amichai-bd/nand2mario/issues/7)
-through [#10](https://github.com/amichai-bd/nand2mario/issues/10) and the
-end-to-end audit in [#14](https://github.com/amichai-bd/nand2mario/issues/14).
-Focused skills have short methods, separate templates, and examples.
-Issue-helper validation tests pass. [#34](https://github.com/amichai-bd/nand2mario/issues/34)
-aligns the flow and review guidance with the agreed operating rules.
-Structural skill validation does not prove agent behavior; the
-[scaffolding audit](https://github.com/amichai-bd/nand2mario/issues/36) links
-observed workflow evidence.
+Focused [skills](../.agents/skills/agent-flow/SKILL.md) have short methods,
+separate templates and examples. The issue helper has validation tests.
+The [agent rules](../AGENTS.md) govern flow and independent review. Structural
+skill validation does not prove agent behavior; review evidence belongs in PRs.
 
 **Risk**
 
@@ -341,13 +307,9 @@ or PR evidence drift.
 
 A private GitHub repository, issue forms, a PR template, required PR and wiki
 checks, protected `main`, labels, and automatic Pages deployment are proven.
-[#34](https://github.com/amichai-bd/nand2mario/issues/34) defines the revised
-agent workflow. [#40](https://github.com/amichai-bd/nand2mario/issues/40) and
-[#41](https://github.com/amichai-bd/nand2mario/issues/41) provide the custom HTML
-wiki and presentations, reusing original sources; the
-[wiki contract](tools/wiki/SPEC.md) owns its behavior. [#36](https://github.com/amichai-bd/nand2mario/issues/36)
-records the final review, delivery, and cleanup evidence.
-Hosted Builder and Tile runner jobs check host contracts only after #106.
+The [wiki contract](tools/wiki/SPEC.md) defines custom HTML navigation and
+presentations rendered from original sources.
+Hosted Builder and Tile runner jobs check host contracts only.
 Actual local Questa evidence remains mandatory; automated licensed simulation
 is unavailable until the [trusted route](tools/n2m/SPEC.md#ci-execution-boundary)
 is configured. Required product checks and the protected physical runner remain
@@ -375,12 +337,13 @@ job could run untrusted code on this PC or allow concurrent access to the FPGA.
 
 The authorized goal is the [original platformer](src/sw/springtrail/SPEC.md),
 built as a 32768-byte mapperless SM83 ROM with no cartridge RAM. There is no
-commercial file, title or mapper to obtain. [The foundation proof](https://github.com/amichai-bd/nand2mario/pull/266)
-records original source/assets, two identical clean builds and the supported
-header/profile. Its actual Intel-backed composed-system test checks the title,
-normal UART Start and initial-world frames, with a deliberate output fault.
-Movement, interactions, complete-game verification and physical acceptance
-remain separate planned work under #261–#264.
+commercial file, title or mapper to obtain. The
+[software build](tools/sw/SPEC.md) checks original source/assets and the supported
+header/profile. Its [composed-system tests](src/dv/springtrail/SPEC.md) check
+title, input and world frames with deliberate output faults. Movement and
+interactions are implemented; expanded features are explicitly planned in the
+game specification. Physical release verification remains incomplete in
+[#264](https://github.com/amichai-bd/nand2mario/issues/264).
 
 **Risk**
 
@@ -403,19 +366,11 @@ or compatibility defect. Original content must not inherit copied game assets.
 
 The [VGA contract](src/rtl/vga/MAS_vga.md) specifies buffer format, ownership,
 scaling and shade mapping under the shared clock/reset/CDC contract.
-[Delivered #80 evidence](https://github.com/amichai-bd/nand2mario/pull/111)
-includes independent Questa ownership and raster checks, intended bank-reuse
-and active-swap failures, and actual nominal/upper-reference Quartus fit,
-three-bank RAM inference and timing audits. The clocking proof and its
-[#113 macro conversion evidence](https://github.com/amichai-bd/nand2mario/pull/114)
-are linked in [GAP-006](#gap-006-clock-reset-and-cdc-plan).
-
-The [bounded composed source/snapshot evidence](https://github.com/amichai-bd/nand2mario/pull/246#issuecomment-5591105712)
-establishes checked source pixels and selected UART frame snapshots. It does
-not establish VGA output. The focused [source-to-VGA proof](https://github.com/amichai-bd/nand2mario/pull/258)
-checks two original frames through the Intel-backed adapter at 25/25.2 MHz,
-including every RGB replica and matching canonical source/output CRCs. This
-component proof leaves physical display acceptance open. Actual monitor
+The [VGA tests](../src/dv/vga/README.md) check ownership, raster geometry,
+bank reuse, active-swap failures and source-to-VGA RGB replicas with canonical
+source/output CRCs. FPGA checks cover three-bank RAM inference and constrained
+timing. Source/snapshot comparison is separate from VGA-output checking.
+These component checks leave physical display acceptance open. Actual monitor
 tolerance, test-card/scaled-image operation, and connected pin/wiring/voltage
 verification also remain open under [GAP-005](#gap-005-board-wiring-and-safe-bring-up).
 Simulation and fit evidence do not replace physical acceptance.
@@ -439,10 +394,10 @@ frames, or rejects timing.
 **Current state**
 
 The [RGBDS oracle](tools/sw/SPEC.md#implemented-oracle) is pinned, hash-verified,
-provisioned and exercised by local and hosted checks delivered in
-[#84](https://github.com/amichai-bd/nand2mario/issues/84). Future emulator/test-suite
-adapters still need their planned reproducible fetching and executable acceptance;
-[their reviewed plans](src/dv/baseline/SPEC.md#future-adapter-plans) remain open.
+provisioned and exercised by local and hosted checks. Independent adapters have
+their own pinned fetching and executable acceptance contracts in the
+[baseline specification](src/dv/baseline/SPEC.md). Each dependency must satisfy
+the requirements below; adding a pin alone does not prove an adapter works.
 
 **Risk**
 
@@ -483,8 +438,9 @@ This does not block silent video and input bring-up.
 
 **Current state**
 
-“Software compiler” may mean an assembler/linker toolchain, C compiler, or new
-higher-level language, each with different costs and interfaces.
+The [native software toolchain](tools/sw/SPEC.md) implements assembly, linking,
+ROM packaging and asset conversion. A C compiler or new higher-level language
+is outside that implemented scope and needs a separate approved contract.
 
 **Risk**
 
@@ -502,9 +458,8 @@ RGBDS support for open test ROMs.
 
 **Recommended default**
 
-Use pinned RGBDS for bring-up. Build a native assembler, linker, disassembler,
-ROM-header tool, runtime, and asset converter after the ISA contract is stable.
-Treat a C-like compiler as a separate later epic.
+Use the existing native toolchain and pinned RGBDS oracle. Treat any C-like
+compiler, language runtime or broader development environment as later work.
 
 ## Required closing order
 

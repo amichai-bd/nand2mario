@@ -26,12 +26,12 @@ frame the fixed marker covers x0..7/y0..7 at shade 1. A pressed bit i adds
 shade 1 at x(8*i)..(8*i+7)/y64..71. Every other pixel is shade 0. The first enabled
 frame is the PPU contract's blank frame, with every pixel shade 0.
 
-## Revised milestone matrix
+<a id="revised-milestone-matrix"></a>
 
-The user-authorized revision replaces the former 600-continuous-interval
-criterion; it was never passed. [#88](https://github.com/amichai-bd/nand2mario/issues/88)
-tracks the revised milestone. [PR246](https://github.com/amichai-bd/nand2mario/pull/246)
-records window, fault, complementary evidence and endurance qualification.
+## Milestone matrix
+
+The [composed fixture](../../../../src/dv/v05/tb_python_v05.sv) uses the following
+bounded window, fault, complementary and endurance requirements.
 
 - Build the exact original ROM twice and compare all bytes. Default composed
   execution to supported Intel preload with real initialization and loader
@@ -57,7 +57,7 @@ records window, fault, complementary evidence and endurance qualification.
   independent expectations and exact failing results.
 - On the verified FPGA image, qualify full real UART loading/readback and all
   eight button presses/releases plus Right+A/release, checking input registers
-  and full sampled frames against the literal image above. Existing #241 evidence
+  and full sampled frames against the literal image above. Existing evidence
   is reusable only with explicit relevant-source qualification.
 - Before execution, declare at least 10 seconds of continuous FPGA endurance,
   exact inputs, progress/reset/hang checks, sampled full-frame checkpoints and
@@ -128,8 +128,10 @@ prescribed state. Every retirement, write and pixel remains checked through
 the actual bounded final pause. `python-v05-physical-mask` changes the actual
 physical connection17 to1 and must fail the unchanged applied-input checker.
 The [driver notes](../../../../src/dv/python/v05/README.md#physical-system-boundary)
-record the exact state sequence. This is not ADC acquisition or physical
-board integration; issue156 retains that scope.
+record the exact state sequence. This test does not exercise ADC acquisition.
+The separate [controls composition](../../rtl/system/MAS_system.md) implements
+that path; actual wiring, calibration and physical verification remain an
+[open controls gap](https://github.com/amichai-bd/nand2mario/issues/156).
 
 `src/dv/v05/program.json` owns original literal bytes and instruction cycles;
 `reference.py` applies the program's register/flag effects without reading DUT
@@ -167,12 +169,11 @@ a failed test while the simulator exits zero. That zero does not establish a
 passing test and must never be reported as a nonzero simulator exit.
 Composed Intel-model and constrained-fit evidence requires current relevant-input
 qualification. The revised matrix above owns current milestone acceptance;
-historical short proof does not establish its new window or endurance criteria.
+the separate six-frame mode does not establish this window or endurance criteria.
 
-## Short implementation proof
+## Six-frame test mode
 
-Issue #178 delivers the executable full target and a shorter complete-path
-proof. The short proof uses the same original program and monitors, supported
+The shorter complete-path proof uses the same original program and monitors, supported
 Intel preload with verified software hash, and real UART loader adoption,
 INPUT and HALT commands. It does not stand in for actual loading/readback.
 
@@ -186,14 +187,11 @@ encodes 42312067, 602 frames and 18 transitions, but is not authorized to run.
 A stopped-tick mutation during CPU HALT at dot 50000 must reach the existing
 active-time watchdog and failing Python/XML/outer result. Focused host tests
 also reject early completion, missing input/pixel/retirement and extra writes.
-The accepted real-UART startup/readback and actual image/pixel mutations remain
-separate evidence. Short completion and current-source review can deliver the
-harness implementation. #88 now tracks the explicitly revised matrix, not an
-unperformed full continuous run disguised as passed.
+Real-UART startup/readback and actual image/pixel mutations remain separate
+checks. Six-frame completion does not replace qualification of the matrix above.
 
 ## Wall-time limit
 
 Every new simulation obeys the [300-second total wall budget](../../../tools/n2m/SPEC.md#test-wall-budget).
 Legacy targets retain historical stimulus only; lowering their timeout does not
-make them feasible or passed. #88 remains open until its revised matrix is
-actually qualified. Physical evidence retains its explicit sampling limitations.
+make them feasible or passed. Physical evidence retains its explicit sampling limitations.

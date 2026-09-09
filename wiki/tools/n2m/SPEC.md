@@ -1,6 +1,6 @@
 # Build system
 
-Status: `doctor`, `check`, Questa `sim test`, MAX 10 `fpga build`, and [host load/control](host/SPEC.md) implemented; other stages planned.
+Status: `doctor`, `check`, Questa `sim test`, MAX 10 `fpga build`, [software build/conformance](../sw/SPEC.md), and [host load/control](host/SPEC.md) are implemented; aggregate regression and cleanup commands remain unimplemented.
 
 ## Purpose
 
@@ -256,8 +256,8 @@ their full diagnostic and reject additional errors.
 
 Ordinary simulations have a maximum 300-second total wall budget. Target at most 120
 seconds per simulation and 300 seconds aggregate for ordinary pre-merge checks;
-declare broader milestone aggregates before execution. The user's issue103
-authorization permits exactly `mooneye-reg-f`, `mooneye-corrupt` and
+declare broader milestone aggregates before execution. The user's bounded
+Mooneye authorization permits exactly `mooneye-reg-f`, `mooneye-corrupt` and
 `mooneye-missing` up to 1500 seconds (25 minutes) total each. The three-case
 aggregate is at most 75 minutes. This exception changes wall time only; selected
 source, models, simulation-time watchdogs, complete signature and fault criteria
@@ -374,7 +374,7 @@ updates `workdir/latest.txt`. This extends the previous binary exit contract.
 Quartus license scope follows the [Intel 24.3 overview](https://www.intel.com/content/www/us/en/docs/programmable/683472/24-3/design-suite-overview.html).
 Installed `jtagconfig --help` defines the read-only enumeration invocation.
 The [gap register](../../preflight-gaps.md#gap-008-verification-baseline) records
-the doctor's scoped licensed runtime evidence and the completed shared baseline from [#31](https://github.com/amichai-bd/nand2mario/issues/31). A failed
+the doctor's scoped licensed runtime evidence and the [shared baseline](../../src/dv/baseline/SPEC.md). A failed
 environment check still reports FAIL; a passing smoke is not full readiness.
 
 ## Installation
@@ -408,7 +408,8 @@ before activation and acceptance. The inactive
 [controller bootstrap](../ci/SPEC.md) owns its fixed admission and attestation
 contract; it does not establish the configured licensed route. Untrusted PR code must never execute on the
 physical/self-hosted runner. Missing tools or licensing is a failure, never a
-skipped job presented as a successful simulation. Quartus/board gates remain #32.
+skipped job presented as a successful simulation. Quartus and board CI activation
+remain part of that same open trusted-route gap.
 
 ## First simulation target
 
@@ -463,7 +464,9 @@ the established Schmitt-trigger input standard, and unused package pins are
 reserved as tri-stated inputs. Only the UART asynchronous first stage is
 excepted; all three-corner setup/hold paths to the second stage remain checked,
 along with the existing PLL, reset, memory and VGA evidence. Physical and full
-milestone acceptance remain separate in #28 and #88.
+milestone acceptance remain separate: [board bring-up](https://github.com/amichai-bd/nand2mario/issues/28)
+is an open physical-verification gap, and the [v0.5 matrix](../../src/dv/v05/SPEC.md#revised-milestone-matrix)
+defines composed acceptance.
 
 The composed memory check accounts for every logical store and physical atom:
 seven direct-profile stores (52 atoms), four 5760-byte snapshot stores (32),
@@ -483,8 +486,8 @@ The first command compiles, fits, assembles, and checks the owned MAX 10 fixture
 The invalid target deliberately supplies a negative clock period and must FAIL
 with exit 1; it never becomes a passing build. No command programs the board,
 opens UART, or proves physical operation. Design-specific PLL/frame/fit evidence
-belongs to [#79](https://github.com/amichai-bd/nand2mario/issues/79) and
-[#80](https://github.com/amichai-bd/nand2mario/issues/80), using the
+belongs to the [clocking](../../src/rtl/clocking/MAS_clocking.md) and
+[VGA](../../src/rtl/vga/MAS_vga.md) owners, using the
 [timing contract](../../src/clocks-resets-cdc.md).
 
 The [target registry](../../../src/fpga/de10_lite/targets.json) has exactly
@@ -608,8 +611,9 @@ profile; no generated image is accepted on RAM bit count alone.
 ### PPU and LCD-control proof profile
 
 The bounded `ppu_proof` target connects the actual PPU to the frame bridge,
-with explicitly timed virtual CPU/memory ports. It does not supply #130 backing
-stores, a complete CPU/system or physical monitor proof. Its nominal/upper
+with explicitly timed virtual CPU/memory ports. It does not supply [system backing
+stores](../../src/rtl/memory/MAS_memory.md),
+a complete CPU/system or physical monitor proof. Its nominal/upper
 profiles preserve the existing device, generated PLL, manual-derived VGA pins,
 three-bank memory shape, complete timing checks and strict diagnostic policy.
 
@@ -745,7 +749,7 @@ after the requested command succeeds.
 ## Output layout
 
 Implemented commands create only their needed directories. The larger layout
-below includes implemented FPGA attempts and reserves planned regression and software locations.
+below includes implemented FPGA and software attempts and reserves regression locations.
 
 ```text
 workdir/builds/<tag>/

@@ -25,6 +25,12 @@ mirrors. Review wiki requirements/design against `src/`, `tools/`, tests, and
 retained evidence using the
 [review guide](.agents/skills/agent-flow/references/review.md).
 Track allowed drift in an open issue; never accept it silently.
+The wiki describes current source and verification. Keep an internal issue link
+only beside an explicit implementation or verification gap tracked by an open
+issue. Remove closed-issue references, PR history, and delivery narratives from
+specifications; link source, tests, and contracts instead. External issue/PR
+citations may support technical facts. The repository statistics page is the
+explicit exception for delivery history and issue/PR measurements.
 
 ## Style
 

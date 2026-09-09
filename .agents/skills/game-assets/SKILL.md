@@ -50,7 +50,9 @@ must be shown here and approved by the user before publishing it as approved or
 integrating it; do not ask again for a revision already approved in this session.
 Record the approved revision and scope on the owning wiki page. Copy generated
 SVG review views into that page's image folder and link authoritative source/maps,
-the reproduction command and the existing feature issue. Keep PNGs, encoded
+and the reproduction command. Link an existing open feature issue only for an
+explicit remaining integration or verification gap; remove it when the gap
+closes, following [wiki writing](../wiki-spec-writer/SKILL.md). Keep PNGs, encoded
 bytes and temporary exports in the worktree's `workdir/`. Update existing issues
 with source/spec links and remaining integration criteria; do not create extra
 issues unless the user requests them. Preserve other assets while approval waits.

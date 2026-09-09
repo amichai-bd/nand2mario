@@ -1,19 +1,14 @@
 # Clocks, resets, and CDC
 
-Status: shared implementation contract from
-[#29](https://github.com/amichai-bd/nand2mario/issues/29).
 [Clocking and timebase](rtl/clocking/MAS_clocking.md), frame crossings and bounded
 composed verification have simulation and generated FPGA timing evidence.
-The delivered evidence and remaining physical limits are recorded in
+The remaining physical limits are recorded in
 [GAP-006](../preflight-gaps.md#gap-006-clock-reset-and-cdc-plan).
 
 ## Clock domains
 
-The 25 MHz migration is implemented under
-[#164](https://github.com/amichai-bd/nand2mario/issues/164), including
-[composed FPGA timing](https://github.com/amichai-bd/nand2mario/pull/167#issuecomment-5570831659)
-and the later [runtime acceptance](https://github.com/amichai-bd/nand2mario/pull/182#issuecomment-5574390844).
-Historical 50 MHz evidence does not establish this design.
+The [clocking implementation](rtl/clocking/MAS_clocking.md) supplies the
+25 MHz system domain. Timing acceptance must use this clock configuration.
 
 Target DE10-Lite `10M50DAF484C7G`. Use `MAX10_CLK1_50` on `PIN_P11`, nominal
 50 MHz, as `clk_reference` for reset bootstrap and both system/pixel PLLs. These are manual-derived design
@@ -130,7 +125,7 @@ minimum eight system clocks per bit. Reference reset qualification remains
 (40.96 us), followed by each destination's two release edges. Host pause stops
 only Game Boy enables. Already accepted services may drain; reset cancels them.
 
-The [timer is integrated](https://github.com/amichai-bd/nand2mario/pull/235).
+The [system composition](rtl/system/MAS_system.md) includes the timer.
 Serial-transfer and audio owners are still incomplete in the bounded v0.5
 composition. Their existing milestone requirements remain open; this table
 does not invent a service guarantee for missing implementations.
@@ -284,11 +279,10 @@ are absent from the top. SDRAM constraints cannot be inferred from this plan.
 Questa simulation must compile, elaborate, run, and check both positive and
 negative results. Questa and physical execution follow the
 [current authorization](../agents/bootstrap-plan.md#verification-and-hardware-authorization).
-A contract merge closes #29's design
-criteria; it does not close GAP-006 or GAP-012 implementation evidence.
-[Timebase/reset implementation](https://github.com/amichai-bd/nand2mario/issues/79)
-and [VGA/frame bridge implementation](https://github.com/amichai-bd/nand2mario/issues/80)
-own the remaining generated design, simulation, and timing evidence.
+The [clocking](rtl/clocking/MAS_clocking.md) and [VGA/frame bridge](rtl/vga/MAS_vga.md)
+contracts own generated design, simulation and timing requirements. These checks
+do not establish the remaining physical acceptance in GAP-012 and
+[#28](https://github.com/amichai-bd/nand2mario/issues/28).
 
 ## Primary references
 

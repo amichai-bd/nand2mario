@@ -1,6 +1,5 @@
 # Intel memory primitives
 
-Proposed under [#137](https://github.com/amichai-bd/nand2mario/issues/137).
 All product RAM and ROM backing stores must use the explicit Intel `altsyncram`
 boundary in [`n2m_intel_ram`](../../../../src/rtl/common/n2m_intel_ram.sv).
 Questa compiles the installed Intel model for the same instance and parameters
@@ -18,7 +17,7 @@ single-clock mode, as required by its unused-port convention. The current width/
 stay within the declared depth even when the address encoding has spare values.
 The one-bit shape serves the UART ROM-presence bitmap; the two-bit shape serves
 frame shades; byte stores serve system memory; the
-32-bit shape proves the issue's four byte enables. This is not a mapper or
+32-bit shape provides four byte enables. This is not a mapper or
 general memory-generator interface.
 
 At an enabled port's rising edge, the primitive captures the address and read
@@ -89,11 +88,11 @@ Vendor source remains in the licensed tool installation; compiled libraries and
 evidence stay under the build tag. This foundation changes no Game Boy bus,
 clock, host command or framebuffer ownership contract.
 
-| Consumer | Required shape | Migration owner |
+| Consumer | Required shape | Implementation owner |
 |---|---|---|
-| System ROM/RAM | Single-clock A read/write and B read, one request edge | [#130](https://github.com/amichai-bd/nand2mario/issues/130); its earlier inferred-memory draft is not acceptance for this boundary. |
-| VGA frame storage | Dual-clock A write and B read, two-bit shades, one request edge | [#138](https://github.com/amichai-bd/nand2mario/issues/138); current inferred frame arrays remain tracked migration debt. |
-| Host snapshots | Frozen frame copy and host read service | [#93](https://github.com/amichai-bd/nand2mario/issues/93); consumer defines its ownership and port schedule before implementation. |
+| System ROM/RAM | Single-clock A read/write and B read, one request edge | [Memory stores](../../../../src/rtl/memory/n2m_memory_stores.sv) |
+| VGA frame storage | Dual-clock A write and B read, two-bit shades, one request edge | [Frame RAM](../../../../src/rtl/vga/n2m_frame_ram.sv) |
+| Host snapshots | Frozen frame copy and host read service | [Snapshot storage](../../../../src/rtl/snapshot/n2m_frame_snapshot.sv) |
 
 Independent wrapper fixtures must prove first/last addresses, enable holding,
 defined writes and byte lanes, reset visibility and actual-port initialization.

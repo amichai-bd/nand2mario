@@ -2,8 +2,8 @@
 
 The pinned RGBDS oracle, complete documented SM83 assembler, deterministic linker,
 direct-profile cartridge packager, and original shade-asset conversion are
-implemented. The original program remains assigned to #88 and depends on its
-CPU/PPU/loader and execution evidence.
+implemented. The [original program](../../../src/sw/v05/main.asm) uses those tools;
+its [composed acceptance](../../src/dv/v05/SPEC.md) depends on CPU, PPU, loader and execution evidence.
 
 The [SPEC](SPEC.md) owns the assembly language, object schema, independent
 conformance, deterministic artifacts and remaining delivery dependencies. The
