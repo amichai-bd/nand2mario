@@ -67,6 +67,11 @@ class NativeLedger(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, 'REFERENCE_END'):
             self.run_check(rows[:-1], data)
 
+    def test_early_terminal_with_complete_frames(self):
+        with mock.patch.dict(CONTRACT, {'end_dot':353301}):
+            with self.assertRaisesRegex(AssertionError, 'REFERENCE_END_TIME'):
+                self.run_check(*self.fixture())
+
     def test_duplicate_frame(self):
         rows, data = self.fixture()
         rows.insert(-1, copy.deepcopy(rows[-2]))

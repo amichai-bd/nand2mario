@@ -52,11 +52,14 @@ int main(int argc, char **argv)
     GB_set_pixels_output(&gb, pixels);
     GB_set_vblank_callback(&gb, visible_frame);
     GB_set_palette(&gb, &GB_PALETTE_GREY);
-    const unsigned input_dots[] = {INPUT_DOT_0, INPUT_DOT_1};
-    const uint8_t masks[] = {INPUT_MASK_0, INPUT_MASK_1};
-    while (normal_frames < PROBE_FRAME_COUNT && ticks / 2 < PROBE_DOT_BOUND) {
-        if (!strcmp(fault, "progress") && ticks / 2 >= 100000) break;
-        if (applied < 2 && ticks / 2 >= input_dots[applied]) {
+    const unsigned input_dots[] = INPUT_DOTS;
+    const uint8_t masks[] = INPUT_MASKS;
+    while ((normal_frames < PROBE_FRAME_COUNT || ticks / 2 < PROBE_END_DOT)
+           && ticks / 2 < PROBE_DOT_BOUND) {
+        if (!strcmp(fault, "progress") &&
+            ((PROBE_END_DOT && normal_frames >= PROBE_FRAME_COUNT) ||
+             (!PROBE_END_DOT && ticks / 2 >= 100000))) break;
+        if (applied < PROBE_INPUT_COUNT && ticks / 2 >= input_dots[applied]) {
             buttons = masks[applied];
             if (!strcmp(fault, "input")) buttons = 0;
             for (unsigned key = 0; key < GB_KEY_MAX; key++)
