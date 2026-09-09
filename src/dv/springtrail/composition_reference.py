@@ -70,3 +70,27 @@ def scene(game, facing=False):
             data.extend(((py+16)&255 if visible else 0,(x+8)&255,tile+dy//8,0))
     assert len(data)==80
     return bytes(data)+bytes(80)
+
+
+def title_image():
+    from interactions_reference import Game
+    from movement_reference import solid
+    from reference import ART,GLYPHS
+    from scene_art import PAIRS
+    # Existing art remains the independently literal scene rows; courier comes
+    # directly from the user-approved bank, never game OAM or rendered output.
+    tiles=[[[0]*8 for _ in range(8)] for _ in range(74)]
+    for tile,rows in PAIRS.items():
+        for half in range(2):tiles[tile+half]=[list(map(int,row)) for row in rows[half*8:half*8+8]]
+    for tile in range(32):tiles[42+tile]=[row[tile*8:tile*8+8] for row in BANK]
+    objects=raster(scene(Game()),tiles)
+    pixels=bytearray(23040)
+    for y in range(144):
+        for x in range(160):
+            if solid(x//8,y//8):pixels[y*160+x]=int(ART['ground'][y%8][x%8])
+            if y//8 in (5,7) and 4<=x//8<15:
+                letter=('SPRINGTRAIL' if y//8==5 else 'PRESS START')[x//8-4]
+                if letter!=' ' and y%8<7 and 1<=x%8<=5:
+                    pixels[y*160+x]=3 if GLYPHS[letter][y%8]&(1<<(5-x%8)) else 0
+            if objects[y*160+x]:pixels[y*160+x]=objects[y*160+x]
+    return bytes(pixels)
