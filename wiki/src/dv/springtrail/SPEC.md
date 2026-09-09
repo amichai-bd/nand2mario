@@ -27,12 +27,15 @@ Each test obeys the existing 300-second total limit and 120-second target, with
 the selected simulation aggregate measured against the 300-second target.
 
 Scrolling uses the actual complete ROM on the reviewed FPGA build. Normal
-paused INPUT and bounded STEP commands preserve emulated frame timing while
-making a frozen sequence of public snapshot frames predictable. Compare every
+paused INPUT and bounded RUN/HALT intervals preserve emulated frame timing.
+Predict state from exact public INPUT application dots and fixed VBlank cadence;
+reject input changes during the VBlank/update interval to exclude mixed JOYP-row
+sampling. STEP completes one instruction and is not an advance-N-dots command.
+Compare every
 pixel of the selected frames, including entering tile columns, sprite/camera
 alignment and camera boundaries. Snapshot metadata may confirm the independently
 known frame; observed pixels/CRCs must not choose expected state. Freeze the
-exact input/step/checkpoint script before execution and verify current build,
+exact input/run/checkpoint script before execution and verify current build,
 device/setup, full ROM upload/readback and final paused/zero-input state.
 This is neither physical-monitor acceptance nor the later #263/#264 milestone.
 
