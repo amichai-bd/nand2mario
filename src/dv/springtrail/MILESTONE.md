@@ -3,7 +3,8 @@
 [#263](https://github.com/amichai-bd/nand2mario/issues/263) preserves boot within600
 frame intervals followed by3600 scripted intervals. Host-paused full-frame
 acquisition is approved; [#283](https://github.com/amichai-bd/nand2mario/issues/283)
-owns its reusable driver. This matrix is planned, not milestone acceptance.
+delivered its reusable driver in PR284. The full DUT matrix below is planned,
+not milestone acceptance.
 [#286](https://github.com/amichai-bd/nand2mario/issues/286) owns delivery of the
 complete native schedule/ledger prerequisite; it does not close #263.
 
@@ -84,10 +85,10 @@ short native/acquisition measurements, before the full hardware matrix.
 
 | Fault boundary | Scoped evidence and remaining witness |
 |---|---|
-| Immutable image | PR282 rejects old image identity before native tools; #283 must validate full upload/readback and reject changed expected image/hash before acquisition. |
+| Immutable image | PR282 rejects old image identity before native tools; PR284 validates full upload/readback and rejects changed expected image/hash before acquisition. Repeat full corrected-ROM load/readback only at the full-run origin. |
 | Actual DUT pixel | PR276's real source-shade mutation and unchanged checker rejection, qualified in PR282; native serialization/host readback mutations only test their own new infrastructure. |
-| Input | Existing native actual zero-key fault; exercise it on the new schedule. #283 checks exact applied mask/dot and rejects mismatched transport/plan input. |
-| Progress | Native actual exit after all callbacks but before the fixed checkpoint must fail END_TIME. #283 rejects partial RUN_DOTS, missing/duplicate frames and unbound continuation. |
+| Input | PR287 actual zero-key fault fails INPUT_MASK on the new schedule. PR284 checks exact applied mask/dot and rejects mismatched transport/plan input; full execution retains every checkpoint. |
+| Progress | PR287 actual exit after all callbacks before the fixed checkpoint fails END_TIME. PR284 rejects partial RUN_DOTS, missing/duplicate frames and unbound continuation. |
 
 These proofs complement every-frame positive execution; they do not claim a
 host-file mutation is an actual DUT defect or remove any required interval.
@@ -109,4 +110,41 @@ and native command exited0; intended checker failures returned outer1. Aggregate
 50.621 seconds met300; each invocation met120 target and300 hard limit. The fault
 branch changes no positive behavior. [PR287](https://github.com/amichai-bd/nand2mario/pull/287)
 owns exact commands, identities and review. No DUT/full milestone acceptance is
-inferred from this reference result; #263 and #283 retain that work.
+inferred from this reference result; #263 retains the full DUT comparison.
+
+## Full paused acquisition budget
+
+The reviewed short lifecycle in [PR284](https://github.com/amichai-bd/nand2mario/pull/284)
+captured four frames after full ROM load/readback in18.089420 seconds and four
+more in a separate continuation in8.336349 seconds. All eight frames matched
+the native reference. These are the measurements; no80-frame batch is yet measured.
+
+The full run uses46 batches:45 batches of80 frames and a final batch of4.
+Scaling the continuation measurement gives166.727 seconds per80; adding the
+measured9.753-second first-load difference gives176.480 seconds for the first80.
+Allow200 seconds per80 for full83,082,240-byte reference validation, cumulative
+checkpoint/artifact verification and other overhead. Forecast about2h35 total
+physical wall time including coordination; the completed native50.621-second
+matrix is recorded separately. These are forecasts, not guaranteed runtimes.
+Individual80-frame batches are expected to miss120-second targets. Every batch
+still has a300-second total hard limit, including setup, comparison and cleanup.
+
+The first80 is the beginning of the one full execution history, not a disposable
+timing run. Before advancing, verify its actual successful outer supervisor,
+all80 complete frames/pixels, input frontier and durable checkpoint, then review
+the measured remaining forecast. Never reset/replay the first batch to improve
+its timing. Every continuation binds the preceding successful outer result,
+checkpoint and artifact hashes, same ROM/build/epoch, paused dot, input history
+and complete native ledger. Cumulative validation stays inside each300-second cap.
+Any timeout or incomplete checkpoint stops further advancement for concrete
+failure review; missing intervals cannot be repaired by silent replay or reset.
+
+The first invocation verifies fresh device/setup and the reviewed programmed
+build, then performs the corrected-ROM full upload/readback and binds its actual
+new epoch. Later invocations do not reload/reset. Serialized machine/session
+access, exact RUN_DOTS completion, immutable full snapshot readback, final
+PAUSED/UART/neutral/certain state and failure evidence remain mandatory.
+Capture every source sequence0..3603 and input0..3601, including boot and both
+neutral drain intervals. Retain/account both native initialization callbacks;
+none are substituted for source frames. No physical buttons/camera or continuous
+#264 release result is claimed by this paused verification.
