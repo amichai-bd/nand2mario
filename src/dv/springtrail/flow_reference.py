@@ -33,6 +33,7 @@ class Check:
         self.ended = False
         self.dma_triggers = []
         self.tails = [[] for _ in self.expected]
+        self.ready = []
 
     def pixel(self, value):
         frame, index = divmod(self.pixels, 23040)
@@ -80,6 +81,8 @@ class Check:
                 index=len(self.prepared)-1
                 assert 0<=index<self.count and (address,data)==(0xc124+len(self.tails[index]),0),'FLOW_GAME_UNUSED'
                 self.tails[index].append(data)
+                assert (dot<LCD if index==0 else LCD+index*PERIOD<=dot<LCD+index*PERIOD+20000),'FLOW_GAME_FULL_READY_TIME'
+                if len(self.tails[index])==124:self.ready.append(dot)
             if address == 0xff40:
                 self.lcd.append((dot,data))
             if 0xc100 <= address < 0xc124:
@@ -123,4 +126,4 @@ class Check:
             want += [(0xff46,0xc1)]
             assert self.publish[frame]==want, f'FLOW_GAME_PUBLICATION frame={frame} expected={want} actual={self.publish[frame]}'
         assert self.end<=pause<=self.end+1000 and self.records>5000, 'FLOW_GAME_FINAL_PAUSE'
-        return dict(pixels=self.pixels,records=self.records,inputs=self.inputs,prepared=self.prepared,pause_dot=pause,crc32=[f'{zlib.crc32(f):08x}' for f in self.frames])
+        return dict(pixels=self.pixels,records=self.records,inputs=self.inputs,prepared=self.prepared,full_ready=self.ready,pause_dot=pause,crc32=[f'{zlib.crc32(f):08x}' for f in self.frames])

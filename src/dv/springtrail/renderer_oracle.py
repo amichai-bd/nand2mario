@@ -48,7 +48,7 @@ class Check:
             want += self.map_writes[index]
             if index == 17:
                 want += [(0xff40, 0x1f)]
-            want += list(enumerate(image(self.cases[index]['game']), 0xfe00))
+            want += [(0xff46,0xc1)]
             assert self.publish == want, f'RENDER_PUBLISH index={index} expected={want} actual={self.publish}'
             self.begin = None
         elif address == 0xc0e0:
@@ -72,7 +72,7 @@ class Check:
             assert not any((self.prepared, self.publish, self.objects, self.registers)), 'RENDER_TERMINAL_PENDING'
             assert bytes(self.map_read) == self.final_map, 'RENDER_MAP_READBACK'
             self.terminal = True
-        elif 0x8000 <= address <= 0x9fff or 0xfe00 <= address <= 0xfe9f or address in (0xff40, 0xff43):
+        elif 0x8000 <= address <= 0x9fff or 0xfe00 <= address <= 0xfe9f or address in (0xff40, 0xff43, 0xff46):
             if self.begin is not None:
                 self.publish.append((address, data))
             elif address == 0xff40 and data == 0x17 and not self.initial:
