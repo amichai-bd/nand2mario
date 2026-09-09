@@ -400,8 +400,10 @@ are linked in [GAP-006](#gap-006-clock-reset-and-cdc-plan).
 
 The [bounded composed source/snapshot evidence](https://github.com/amichai-bd/nand2mario/pull/246#issuecomment-5591105712)
 establishes checked source pixels and selected UART frame snapshots. It does
-not establish matching CRCs before and after the VGA adapter. That check remains
-open, as does physical display acceptance. Actual monitor
+not establish VGA output. The focused [source-to-VGA proof](https://github.com/amichai-bd/nand2mario/pull/258)
+checks two original frames through the Intel-backed adapter at 25/25.2 MHz,
+including every RGB replica and matching canonical source/output CRCs. This
+component proof leaves physical display acceptance open. Actual monitor
 tolerance, test-card/scaled-image operation, and connected pin/wiring/voltage
 verification also remain open under [GAP-005](#gap-005-board-wiring-and-safe-bring-up).
 Simulation and fit evidence do not replace physical acceptance.

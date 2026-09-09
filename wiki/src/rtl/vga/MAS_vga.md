@@ -150,6 +150,11 @@ it does not change stored shades or the snapshot ABI.
 
 ## Verification boundary
 
+The focused [source-to-VGA preservation plan](../../../../src/dv/python/vga/README.md)
+defines two original frames, canonical CRCs, current clock rates and independent
+public RGB reconstruction. It retains physical monitor acceptance as a separate
+requirement.
+
 The [test plan](../../../../src/dv/vga/README.md) and
 [independent source oracle](../../../../src/dv/vga/tb_vga.sv) supply asymmetric frame/row/column patterns and
 records every observer completion. A raster oracle checks every output coordinate,
