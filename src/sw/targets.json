@@ -82,6 +82,22 @@
       "version": 1,
       "profile": "dmg-direct-v1",
       "interface_schema_version": 1
+    },
+    "stackdrop": {
+      "directory": "stackdrop",
+      "sources": [
+        "main.asm"
+      ],
+      "assets": {},
+      "layout": "layout.json",
+      "entry": {
+        "unit": "main.asm",
+        "symbol": "Start"
+      },
+      "title": "STACKDROP",
+      "version": 1,
+      "profile": "dmg-direct-v1",
+      "interface_schema_version": 1
     }
   }
 }
