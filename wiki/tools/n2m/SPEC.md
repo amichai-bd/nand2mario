@@ -513,6 +513,11 @@ flow uses Quartus Prime Lite 25.1std; a different installation must satisfy
 the same reports and diagnostics. `--timeout` bounds each tool to 1–3600 seconds
 (default 600; discovery at most 60). Timeout kills the invoked process tree and
 retains partial output. Missing tools, nonzero exits, and incomplete reports fail.
+Tool stdout and stderr share the attempt's binary log file directly; output is
+retained while the process runs. After termination, decode UTF-8 with replacement
+for the returned text and existing strict diagnostic checks, without rewriting
+the raw log. Timeout cleanup allows five seconds for tree termination, five for
+reaping and two for fallback reaping; incomplete cleanup remains a failure.
 
 Each request gets an immutable attempt under
 `workdir/builds/<tag>/fpga/<target>/attempts/<id>/`. Generated QPF/QSF and the
