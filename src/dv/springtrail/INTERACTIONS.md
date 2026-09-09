@@ -20,9 +20,9 @@ frame loop. No added display latency has been implemented or accepted here.
 
 ## Actual CPU routine checkpoint
 
-`python-flow-short` executes the first three reports and finishes through the
+`python-fs` executes the first three reports and finishes through the
 same terminal marker, normal UART HALT, trace END and cleanup as
-`python-flow-unit`. It is the complete-harness check before the longer run.
+`python-fu`. It is the complete-harness check before the longer run.
 Both use actual Intel preload, normal CRC scan/adoption and the existing
 continuous Python/public write trace. Software initializes ordinary operand
 WRAM; no expected result is stored in the unit ROM. Complete movement,

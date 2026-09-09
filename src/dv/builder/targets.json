@@ -13904,7 +13904,7 @@
     },
     "preload": "stackdrop"
   },
-  "python-flow-short": {
+  "python-fs": {
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/cpu/n2m_cpu_pkg.sv",
@@ -14051,9 +14051,9 @@
         "wave_load"
       ]
     },
-    "preload": "springtrail-flow-short"
+    "preload": "flow-s"
   },
-  "python-flow-unit": {
+  "python-fu": {
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/cpu/n2m_cpu_pkg.sv",
@@ -14200,6 +14200,6 @@
         "wave_load"
       ]
     },
-    "preload": "springtrail-flow"
+    "preload": "flow"
   }
 }

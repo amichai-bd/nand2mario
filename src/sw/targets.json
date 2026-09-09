@@ -147,7 +147,7 @@
       "profile": "dmg-direct-v1",
       "interface_schema_version": 1
     },
-    "springtrail-flow": {
+    "flow": {
       "directory": "springtrail",
       "sources": [
         "flow-unit.asm"
@@ -163,7 +163,7 @@
       "profile": "dmg-direct-v1",
       "interface_schema_version": 1
     },
-    "springtrail-flow-short": {
+    "flow-s": {
       "directory": "springtrail",
       "sources": [
         "flow-unit.asm"
