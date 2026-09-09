@@ -1,13 +1,8 @@
 # Springtrail
 
-Status: the original title/Start/initial-world foundation is implemented in
-[PR #266](https://github.com/amichai-bd/nand2mario/pull/266).
-Movement and scrolling are implemented in
-[PR #270](https://github.com/amichai-bd/nand2mario/pull/270).
-Interactions and game flow are implemented in
-[PR #276](https://github.com/amichai-bd/nand2mario/pull/276).
-The original full milestone is delivered in [PR #288](https://github.com/amichai-bd/nand2mario/pull/288);
-physical release acceptance remains in #264.
+The [original game source](../../../../src/sw/springtrail/main.asm) implements
+title/start, movement, scrolling, interactions and game flow. Physical release
+acceptance remains in [#264](https://github.com/amichai-bd/nand2mario/issues/264).
 The [charter](../../project-charter.md) owns the hardware and release boundaries;
 the [game verification plan](../../dv/springtrail/SPEC.md) owns acceptance.
 
@@ -103,8 +98,8 @@ and downward velocity is capped at 4 pixels/frame. The initial player top-left i
 x=72 and its clamp is 0..608 pixels. The enemy starts at (256, 120), moves right
 at 1/2 pixel/frame, and patrols x=240..296 inclusive.
 
-The approved interaction renderer adds exactly one displayed frame (about
-16.7 ms) relative to the earlier same-VBlank movement renderer. Each VBlank
+The renderer has one displayed frame of input-to-publication delay (about
+16.7 ms). Each VBlank
 samples JOYP and publishes the scene prepared from the preceding sample.
 During the following visible interval, apply that new sample once to game
 state and prepare its next scene. No VRAM, OAM, SCX or map-selection writes
@@ -128,24 +123,17 @@ The literal level has ground in rows 16 and 17 except gap columns 22..25,
 row 10 columns 31..35, row 12 columns 56..60, and row 11 columns 80..84.
 All other cells are empty. Collectibles are 8-by-8 boxes at (96, 88), (264, 72),
 (464, 88), and (656, 80); the 8-by-16 goal starts at (736, 112). Collectible
-and goal tests use half-open rectangle overlap. These mechanics are planned;
-the foundation displays the initial view without implementing movement or
-interactions. No parameter is selected from DUT output.
+and goal tests use half-open rectangle overlap. The [interaction routines](../../../../src/sw/springtrail/interactions.asm)
+implement these mechanics. No parameter is selected from DUT output.
 Update the game once per normal emulated frame using a documented input-sampling
 point. There are no wall-clock or nondeterministic random inputs.
 
-## Delivery sequence
+<a id="delivery-sequence"></a>
 
-| Stage | Scope and prerequisite |
-|---|---|
-| [#260 Foundation](https://github.com/amichai-bd/nand2mario/issues/260) | Original build/header/assets, numeric rules, title/start and first world view |
-| [#261 Movement/world](https://github.com/amichai-bd/nand2mario/issues/261) | Run/jump, collision, gaps and the complete scrolling level after foundation |
-| [#262 Interactions](https://github.com/amichai-bd/nand2mario/issues/262) | Enemy, collectibles, win/retry and pause after movement |
-| [#263 v0.9 verification](https://github.com/amichai-bd/nand2mario/issues/263) | Independent complete-game reference and the preserved release criteria |
-| [#264 v1.0 physical acceptance](https://github.com/amichai-bd/nand2mario/issues/264) | Reviewed board execution and endurance after applicable simulation/setup gates |
+## Regression boundary
 
-The foundation has bounded frame/state evidence; later stages remain planned.
-The original v0.5
+The [verification plan](../../dv/springtrail/SPEC.md) defines composed, rule and
+physical acceptance separately. The original v0.5
 program and its [accepted matrix](../../dv/v05/SPEC.md#revised-milestone-matrix)
 remain a separate regression baseline. Preserve its qualified results without
 claiming they implement or verify Springtrail.

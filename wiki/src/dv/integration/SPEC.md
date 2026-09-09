@@ -1,10 +1,7 @@
 # Integration smoke
 
-This bounded simulation implements [#140](https://github.com/amichai-bd/nand2mario/issues/140).
-It does not replace the complete release acceptance in
-[#88](https://github.com/amichai-bd/nand2mario/issues/88) or any component's acceptance.
-Runtime evidence and measured regression tiers are recorded in
-[PR159](https://github.com/amichai-bd/nand2mario/pull/159).
+This bounded simulation does not replace the [complete v0.5 release matrix](../v05/SPEC.md#revised-milestone-matrix)
+or any component's acceptance.
 
 ## Original program and oracle
 
@@ -133,16 +130,13 @@ witness. Recheck mutations when relevant checking infrastructure changes.
 Target at most 120 seconds per simulation and 300 seconds aggregate for ordinary
 pre-merge checks. These are goals, not coverage waivers or a reason for prolonged
 harness optimization. Report the measured total and any unmet target. Use
-`python-v05-timer` as a bounded short composed candidate: [PR235](https://github.com/amichai-bd/nand2mario/pull/235)
-measured 21.250 seconds for 110 retirement records with all 26 fields, 16 selected
+`python-v05-timer` as a bounded short composed candidate. It checks 110 retirement records with all 26 fields, 16 selected
 register/RAM bus transactions, timer overflow, IRQ entry, CPU HALT wake, a handler
-RAM marker and final host pause. It checked 510 ordered startup white pixels
-against a criterion of at least 320; it does not prove a complete normal frame or
+RAM marker and final host pause. It requires at least 320 ordered startup white pixels;
+it does not prove a complete normal frame or
 UART ROM upload. Keep `python-integration-client-preloaded` when its broader
-69-record, 145-bus-observation RAM/IRQ and two-full-frame coverage is relevant
-([PR179](https://github.com/amichai-bd/nand2mario/pull/179#issuecomment-5573412250)).
-Its measured stage runtime was 96.987663 seconds. These targets have different
-coverage; their runtimes are not a matched speed comparison. A shorter selection
+69-record, 145-bus-observation RAM/IRQ and two-full-frame coverage is relevant.
+These targets have different coverage. A shorter selection
 must still meet its own stated criteria. Neither individual result measures a
 whole 300-second suite; add affected units to the reported total.
 
@@ -151,16 +145,13 @@ whole 300-second suite; add affected units to the reported total.
 Run focused UART, protocol and loading tests when those behaviors change.
 Require full upload/readback and UART-versus-preload comparison when the changed
 behavior affects loading or startup equivalence. Label each mode's proof and
-reuse valid evidence for unrelated unchanged paths. The matched real-UART
-baseline in PR179 took 439.684165 seconds versus 96.987663 seconds preloaded;
-these are one measured pair, not a guaranteed runtime. The bounded integration
+reuse valid evidence for unrelated unchanged paths. The bounded integration
 target's full oracle and faults above remain available acceptance, not mandatory
 transport work for every unrelated PR.
 
 ### Milestone acceptance
 
-Future milestones use the coverage selection approved in
-[#289](https://github.com/amichai-bd/nand2mario/issues/289). Default to a shorter
+Default to a shorter
 deterministic sequence that checks every pixel of its selected frames and covers
 the distinct required transitions, with focused meaningful faults and separately
 sampled continuous endurance. Select the exact bounded script from delivered
@@ -177,19 +168,17 @@ receive affected checks; changed checking infrastructure receives meaningful
 sensitivity checks. Distinguish actual DUT faults from native or host artifact
 mutations. This policy adds no framework and changes no ordinary-PR gate or budget.
 
-The ongoing [#263](https://github.com/amichai-bd/nand2mario/issues/263) complete
-baseline keeps its frozen every-frame/input scope and failure rules. Once
-accepted, it is a one-time baseline, not an automatic repeat for future milestones.
+The [complete original-game baseline](../springtrail/SPEC.md#v09-milestone)
+keeps its frozen every-frame/input scope and failure rules. It is a one-time
+baseline, not an automatic repeat for future milestones.
 Named physical duration, lifecycle and actual I/O obligations still apply;
 qualified gameplay evidence cannot substitute for them.
 
 The revised [v0.5 matrix](../v05/SPEC.md#revised-milestone-matrix) combines precise
 bounded startup/cross-frame observation, timer/DMA proofs, real UART loading and
-all prescribed inputs, with separately bounded FPGA endurance. It replaces the
-former 600-continuous-interval criterion, which was never passed. #88 tracks
-the revised milestone; [PR246](https://github.com/amichai-bd/nand2mario/pull/246)
-records window, fault and endurance qualification. No exhaustive physical retirement/pixel or
-600-frame claim follows from this revision. Declare each broader milestone's
+all prescribed inputs, with separately bounded FPGA endurance. No exhaustive
+physical retirement/pixel or 600-frame claim follows from this matrix.
+Declare each broader milestone's
 test selection, total expected cost, physical duration/inputs/sampling and
 reset/hang checks before execution. Later release matrices remain separate.
 These are milestone gates, not automatic implementation-PR gates.

@@ -1,7 +1,7 @@
 # Verification baseline
 
-Status: shared fixture harness and regression runner implemented. CPU vectors,
-ROM acceptance adapters and independent emulator integration are planned below.
+The shared fixture harness and regression runner are implemented. CPU vectors,
+ROM acceptance adapters and independent emulator integration have separate boundaries below.
 No Game Boy instruction or board behavior is implemented by this harness.
 
 ## Fixture contract
@@ -128,7 +128,7 @@ build commands and output hashes; RGBDS is not this upstream's assembler.
 
 ### SingleStep vectors
 
-Implementation follows [#101](https://github.com/amichai-bd/nand2mario/issues/101).
+The [CPU vector adapter](../../../../src/dv/cpu/singlestep/README.md) implements this boundary.
 
 Parse the pinned [format](https://github.com/SingleStepTests/sm83/blob/f9c30210245dd691661db39f5ace022c465ecc2f/README.MD)
 into an isolated CPU with flat test RAM, not the system MMIO map. Apply initial
@@ -144,7 +144,7 @@ an independent Ares differential oracle. Preserve exclusions in the run report.
 
 ### Mooneye acceptance
 
-Implementation follows [#103](https://github.com/amichai-bd/nand2mario/issues/103).
+The [Mooneye adapter](../../../../src/dv/mooneye/README.md) defines the selected test scope.
 
 Select only tests compatible with the approved DMG model/revision and implemented
 peripherals. Build the pinned selected source with the pinned assembler. The
@@ -160,9 +160,9 @@ other-model and undefined-state tests remain outside a reviewed test selection.
 
 ### Independent emulator and retirement traces
 
-Implementation follows [#102](https://github.com/amichai-bd/nand2mario/issues/102).
+The [SameBoy adapter](../../../../src/dv/sameboy/README.md) implements this boundary.
 
-The planned original SameBoy Core adapter runs separately from the DUT and its
+The original SameBoy Core adapter runs separately from the DUT and its
 reference model. Select an explicit DMG model and apply the same documented
 `dmg-direct-v1` initial state/input schedule; do not depend on a boot ROM. Before
 execution, retain core commit, build options, model, image hash, interface ABI,

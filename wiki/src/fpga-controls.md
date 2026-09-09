@@ -1,7 +1,7 @@
 # DE10-Lite physical controls
 
-Status: implementation contract for [issue156](https://github.com/amichai-bd/nand2mario/issues/156).
-Board execution and acceptance remain unproven. The
+Physical board qualification remains open in [#156](https://github.com/amichai-bd/nand2mario/issues/156).
+The
 [shared input owner](rtl/input/MAS_input.md) already implements source selection;
 this producer supplies its physical mask.
 

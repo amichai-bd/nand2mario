@@ -1,9 +1,8 @@
 # Stackdrop
 
 Stackdrop is an original, silent falling-block side quest for the existing
-32 KiB direct-entry SM83 profile. [#272](https://github.com/amichai-bd/nand2mario/issues/272)
-owns the game and manual FPGA play; [#273](https://github.com/amichai-bd/nand2mario/issues/273)
-owns the later pixel-based Python strategy. These do not replace Springtrail
+32 KiB direct-entry SM83 profile. The [game source](../../../../src/sw/stackdrop/main.asm)
+and pixel-based Python strategy do not replace Springtrail
 or the hardware milestone criteria. The following rules are frozen for implementation.
 
 ## Board and pieces
@@ -95,12 +94,12 @@ The manual FPGA proof uses the reviewed board build and verified setup, complete
 UART upload/readback, and snapshot-derived action choices. Show legal movement,
 rotation, hard drop and a scored line clear from a fresh game, retaining full
 images and journals. End PAUSED, UART selected, input/effective mask zero and
-session certain. Stop on uncertain transport completion. Automated play and its
-comparative higher-score proof remain in #273.
+session certain. Stop on uncertain transport completion. Automated play uses the
+comparative higher-score proof below.
 
 ## Pixel player comparison
 
-The #273 player uses the immutable rendered snapshot, including the visible
+The pixel player uses the immutable rendered snapshot, including the visible
 rotation digit and next-piece preview, to identify the active piece and board.
 It rejects ambiguous geometry and stale frame identities. It reads no gameplay
 WRAM. Each decision is retained with the actual frame and resulting UART action.

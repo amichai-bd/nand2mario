@@ -1,8 +1,7 @@
 # Staged SML1 alignment
 
-Status: planned contract under [#298](https://github.com/amichai-bd/nand2mario/issues/298),
-authorized on 2026-09-09. This page owns the next Springtrail release direction;
-the [game specification](SPEC.md) describes the delivered baseline.
+This page owns the next Springtrail release direction and explicitly tracked
+implementation gaps. The [game specification](SPEC.md) describes current behavior.
 
 ## Scope and evidence
 
@@ -29,8 +28,8 @@ Confidence applies to the reference observation, not to future implementation.
 | Area | Current implementation | Pinned reference locator and confidence | Original replacement and acceptance owner |
 |---|---|---|---|
 | Character composition | `scene.asm` builds nine 8x16 objects; `main.asm` selects that global object mode | `bank0.asm` sprite paths; geometry/anchors need measurement | [#292](https://github.com/amichai-bd/nand2mario/issues/292): 8x8 pieces, whole-pose mirroring, clipping and object limits; preserve approved art and current collision until its owner changes it |
-| Publication | `PublishScene` now transfers the complete C100 shadow page through HRAM DMA; current preparation builds nine entries and clears the tail | `VBlank`, `DMARoutine`, initialization HRAM copy: source-confirmed DMA organization | [#299](https://github.com/amichai-bd/nand2mario/issues/299) owns the [publisher proof](../../../../src/dv/springtrail/OAM_DMA.md); #292 still owns variable composition, with #308 hardware qualification reused |
-| HUD and scrolling | `stream.asm`, `world.asm`, `map_restore.asm`, `scene.asm`: raw columns, inactive-map restoration and object HUD | `DrawColumn`, `VBlank`, `LCDStatus`: source-confirmed organization; exact visible boundary unmeasured | [#300](https://github.com/amichai-bd/nand2mario/issues/300): original column encoding and fixed top HUD, STAT playfield scroll; freeze coordinate and publication schedule with #308 |
+| Publication | `PublishScene` transfers the complete C100 shadow page through HRAM DMA; preparation builds nine entries and clears the tail | `VBlank`, `DMARoutine`, initialization HRAM copy: source-confirmed DMA organization | [Publisher proof](../../../../src/dv/springtrail/OAM_DMA.md); #292 still owns variable composition |
+| HUD and scrolling | `stream.asm`, `world.asm`, `map_restore.asm`, `scene.asm`: raw columns, inactive-map restoration and object HUD | `DrawColumn`, `VBlank`, `LCDStatus`: source-confirmed organization; exact visible boundary unmeasured | [#300](https://github.com/amichai-bd/nand2mario/issues/300): original column encoding and fixed top HUD, STAT playfield scroll; freeze coordinate and publication schedule against qualified hardware |
 | Movement and animation | `movement.asm`, `collision.asm`: immediate walk/run speed, fixed jump/gravity, no integrated walk cycle | `Call_1D26`, `Call_16F5`, `Call_1736`: state/cycle paths; numeric response unmeasured | [#301](https://github.com/amichai-bd/nand2mario/issues/301): measured start/stop/reverse, jump edges/hold/air control, collisions and pose cadence |
 | Player contact and power | `interactions.asm`: contact death, one player size | `bank0.asm` player/contact paths and `enemies.asm` states: behavior table pending | [#302](https://github.com/amichai-bd/nand2mario/issues/302): stomp/damage precedence, growth/shrink, protection, invincibility and projectile power; freeze boxes and durations |
 | Blocks and rewards | `collision.asm`, `interactions.asm`: solid terrain and four once-only pickups | `Call_1B86`, `AddScore`: source locators; category/reward rules pending | [#303](https://github.com/amichai-bd/nand2mario/issues/303): original mutable blocks, head hits, releases and persistent consumed state; coordinate power/entity/reward owners |
@@ -40,13 +39,13 @@ Confidence applies to the reference observation, not to future implementation.
 
 ## Release order and shared contracts
 
-The **first aligned release includes #292, #299, #300 and #301 through #305**,
+The **first aligned release includes composition, DMA publication, HUD, movement,
+interactions, blocks, progression and entities**,
 in these three stages. An intermediate stage is not completion of that release.
 
-1. Qualify the combined 8x8-object, HRAM DMA and STAT sequence in
-   [#308](https://github.com/amichai-bd/nand2mario/issues/308), using original
-   diagnostic patterns. Then integrate composition #292, publication #299 and
-   HUD/column scheduling #300. Existing RTL is not presumed defective; any actual
+1. Reuse qualified combined 8x8-object, HRAM DMA and STAT behavior with original
+   diagnostic patterns and the [publisher proof](../../../../src/dv/springtrail/OAM_DMA.md).
+   Integrate composition #292 and HUD/column scheduling #300. Existing RTL is not presumed defective; any actual
    violation belongs in a focused hardware bug with its owning contract.
 2. Freeze and implement measured movement/animation #301 against those explicit
    display coordinates. Coordinate size/contact contracts with #302.
@@ -68,13 +67,13 @@ tile attributes. Use approved poses where suitable; #301/#302 request only
 necessary missing skid, crouch, growth or projectile visuals. Missing art gates
 its dependent visual integration, not independent physics measurement.
 
-#299/#300 must share one publisher and freeze input sampling, prepared-scene
+HUD/column integration must reuse one publisher and freeze input sampling, prepared-scene
 ownership, DMA completion and IRQ ordering. Preserve the current once-per-frame
 game update and approved one additional displayed frame unless an explicit
 measured contract revision authorizes a change. Current `DI`/`HALT`/IF polling
 does not imply ISR equivalence. Do not lose an update or interrupt while changing
 dispatch. #300 reserves the planned 16-pixel HUD but must define its world-to-screen
-offset and exact visible split with #308 before calibrating motion. Copying an
+offset and exact visible split against qualified hardware before calibrating motion. Copying an
 LCDC byte would also change tile addressing and map selection; qualify each bit.
 
 Keep the 25 MHz system, DMG dot/frame cadence and standard JOYP interface. ROM
@@ -83,8 +82,7 @@ the reviewed #307 memory/loader/packager/fit contract permit a banked image.
 
 ## Shared asset checklist
 
-The 2026-09-09 asset amendment assigns deliverables to the existing feature
-owners below. Reuse suitable approved sources; create only missing original
+The feature owners below track remaining asset integration. Reuse suitable approved sources; create only missing original
 content required by that issue. This adds no feature families or asset framework.
 
 | Owner | Scoped content to account for |
@@ -128,7 +126,7 @@ Child completion alone does not establish composed FPGA behavior.
 
 | Capability | Required evidence |
 |---|---|
-| Composition, publication, HUD/scroll | Qualified #308 diagnostic plus #292/#299/#300 proofs of object limits, DMA/IRQ ordering, split pixels and column boundaries |
+| Composition, publication, HUD/scroll | Qualified combined hardware diagnostic and publisher proof plus #292/#300 proofs of object limits, DMA/IRQ ordering, split pixels and column boundaries |
 | Motion and poses | #301 independent per-update state/pose cases, including direction changes, jump and collision transitions |
 | Interactions and world state | #302/#303/#305 contact/power/block/entity cases, persistence and player/platform interactions |
 | Progression | #304 life/timer/death/retry/level-transition cases and their shared HUD/state ownership |
@@ -142,11 +140,9 @@ repeat the old full baseline automatically. Retain actual results and safe
 completion. This is FPGA source-frame/gameplay acceptance, not a substitute for
 the separate physical monitor/control gates.
 
-The delivered 32768-byte ROM SHA-256
-`b551c56252761d953bcf3b64270d819e3342b710299c3bff6866d4dcae8ba667`
-and its [#263 baseline proof](https://github.com/amichai-bd/nand2mario/pull/288)
-remain identities of the old rules and images. Neither approved art nor this
-contract changes that ROM. Retain qualified evidence for unchanged behavior;
+The [complete-game baseline](../../dv/springtrail/SPEC.md#v09-milestone)
+qualifies only its identified ROM, rules and images. Approved art does not
+establish game integration. Retain qualified evidence for unchanged behavior;
 changed state, timing or pixels require new independent expectations, not a
 relabeled old result.
 

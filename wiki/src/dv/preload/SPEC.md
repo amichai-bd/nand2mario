@@ -1,14 +1,13 @@
 # Preloaded execution simulations
 
-This boundary belongs to [#168](https://github.com/amichai-bd/nand2mario/issues/168).
-It supplements the [real UART integration](../integration/SPEC.md); it does not
+This boundary supplements the [real UART integration](../integration/SPEC.md); it does not
 replace loader, transport or end-to-end acceptance.
 
-PR169 delivers the user-approved checkpoint: validated initialization, loader
-lifecycle and checked preloaded execution. Issue168 remains open for complete
-real-UART/preload equivalence, comparable two-mode performance measurements and
-the unresolved execution-stall investigation. The comparison requirements below
-remain acceptance criteria; successful preload alone does not satisfy them.
+Validated initialization, loader lifecycle, checked execution and matched
+real-UART/preload state, trace and performance comparisons are implemented.
+[#168](https://github.com/amichai-bd/nand2mario/issues/168) retains only the exact
+finite-Tcl execution-delay investigation and its final review. The comparison
+requirements below remain the criteria for qualifying equivalence on changed inputs.
 
 ## Image and state boundary
 
