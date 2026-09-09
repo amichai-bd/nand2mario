@@ -17,6 +17,16 @@ class GameChecker(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError,'END'):c.line('END 0')
         with self.assertRaisesRegex(AssertionError,'INCOMPLETE'):Check(True).finish(0,b'')
 
+    def test_input_record(self):
+        raw=(2<<72)|(180100<<8)|129
+        c=Check();c.lcd=120000;c.line('I '+format(raw,'x'))
+        self.assertEqual(c.inputs,[180100])
+        with self.assertRaisesRegex(AssertionError,'INPUT'):c.line('I '+format(raw,'x'))
+        for value in (raw^1,raw^(1<<72),(2<<72)|(179000<<8)|129):
+            c=Check();c.lcd=120000
+            with self.assertRaisesRegex(AssertionError,'INPUT'):c.line('I '+format(value,'x'))
+        with self.assertRaisesRegex(AssertionError,'INPUT'):Check(True).line('I '+format(raw,'x'))
+
     def test_visible_oam_and_phase(self):
         c=Check();c.lcd=120000
         for address in (0xfe00,0xfe9f,0x8000,0xff43):

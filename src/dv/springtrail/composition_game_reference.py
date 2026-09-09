@@ -13,7 +13,7 @@ class Check:
         self.images=[bytes(23040),title_image()]
         self.pixels=0;self.frames=[bytearray(),bytearray()];self.triggers=[];self.dma=[]
         self.ended=False;self.records=0;self.last_record=0;self.input_dot=None
-        self.tiles=[];self.lines=0
+        self.tiles=[];self.lines=0;self.inputs=[]
 
     def pixel(self,value):
         frame,index=divmod(self.pixels,23040)
@@ -34,6 +34,11 @@ class Check:
         self.lines+=1
         value=int(raw,16)
         if kind=='P':self.pixel(value);return
+        if kind=='I':
+            epoch,dot,buttons=value>>72,(value>>8)&((1<<64)-1),value&255
+            assert not self.short and not self.inputs and epoch==2 and buttons==129,'COMPOSITION_INPUT'
+            assert self.lcd is not None and self.lcd+60000<=dot<=self.lcd+62000,'COMPOSITION_INPUT_WINDOW'
+            self.inputs.append(dot);return
         if kind=='R':
             from test_integration import decode_record
             row=decode_record(value)
@@ -88,6 +93,7 @@ class Check:
         else:
             assert self.pixels==46080 and len(self.ready)==2,'COMPOSITION_FRAME_COUNT'
             assert self.lcd+60000<=self.input_dot<=self.lcd+62000,'COMPOSITION_INPUT_WINDOW'
+            assert self.inputs==[self.input_dot],'COMPOSITION_APPLIED_INPUT'
             assert self.triggers[-1]+644<pause<self.lcd+2*PERIOD,'COMPOSITION_FINAL_WINDOW'
         return dict(pixels=self.pixels,records=self.records,lcd=self.lcd,ready=self.ready,
                     dma_bytes=len(self.dma),input_dot=self.input_dot,pause=pause)
