@@ -75,9 +75,12 @@ an expected image or state.
 - Required checks, final owning game/DV/composition links and independent
   current-head review, then normal merge. Physical release gates remain open.
 
-Target120 seconds each and300 seconds aggregate; hard300 each. Initial forecast
-is short90, CPU45, game240, renderer120, fault130 seconds (625 aggregate). This
-exceeds the ordinary aggregate target, not the per-run hard limit. Freeze exact
+Target120 seconds each and300 seconds aggregate; hard300 each. Measured first
+four complete supervisors total454.797 seconds; the fault adds130.078 and the
+renderer208.219, giving793.094 seconds for the six completed simulations.
+The separate renderer setup failure is retained and excluded from that sum.
+This exceeds the initial625-second forecast and ordinary aggregate target;
+every completed simulation remains below its300-second hard limit. Freeze exact
 fixture dots and supervisor commands before launch; use the measured short to
 reduce redundant coverage or stop an infeasible run without weakening criteria.
 No new framework, unchanged milestone replay or hardware execution is included.
