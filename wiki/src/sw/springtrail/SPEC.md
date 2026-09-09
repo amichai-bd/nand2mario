@@ -2,7 +2,9 @@
 
 Status: the original title/Start/initial-world foundation is implemented in
 [PR #266](https://github.com/amichai-bd/nand2mario/pull/266).
-Movement, interactions and release acceptance remain planned under #261–#264.
+Movement and scrolling are implemented in
+[PR #270](https://github.com/amichai-bd/nand2mario/pull/270).
+Interactions and release acceptance remain planned under #262–#264.
 The [charter](../../project-charter.md) owns the hardware and release boundaries;
 the [game verification plan](../../dv/springtrail/SPEC.md) owns acceptance.
 

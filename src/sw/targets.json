@@ -83,6 +83,22 @@
       "profile": "dmg-direct-v1",
       "interface_schema_version": 1
     },
+    "springtrail-unit": {
+      "directory": "springtrail",
+      "sources": [
+        "unit.asm"
+      ],
+      "assets": {},
+      "layout": "unit-layout.json",
+      "entry": {
+        "unit": "unit.asm",
+        "symbol": "Start"
+      },
+      "title": "TRAIL UNIT",
+      "version": 1,
+      "profile": "dmg-direct-v1",
+      "interface_schema_version": 1
+    },
     "stackdrop": {
       "directory": "stackdrop",
       "sources": [
