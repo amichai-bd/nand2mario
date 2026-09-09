@@ -51,6 +51,11 @@ focus, without making the whole page overflow. Link to a normal section fragment
 and set the matching `data-line` for the embedded viewer; always linking line 1
 makes readers search the contract again.
 
+Mark scrolling diagrams `data-scroll-region` so the shared engine leaves their
+arrow/Home/End keys alone. Verify scroll position changes without changing the
+slide. A fixed aspect ratio can let longer content overlap the controls; the
+series uses a 16:9 minimum height with intrinsic growth, including open reasoning.
+
 Record local generation, hosted checks and actual publication separately. During
 this series' delivery, the existing Pages run was externally blocked before
 execution by an account condition. This observation justifies inspecting workflow

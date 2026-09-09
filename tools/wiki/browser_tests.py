@@ -134,6 +134,31 @@ def interactions(browser, base):
         frame.get_by_role('link', name='Read the presentation contract').click()
         expect(page.locator('#path')).to_have_text('wiki/presentations/README.md')
 
+        # Longer educational slides must grow instead of covering source links
+        # with their controls; scrolling diagrams retain native keyboard input.
+        page.goto(base + '/?page=wiki/presentations/cpu-execution.html')
+        frame = page.frame_locator('#document iframe')
+        frame.get_by_role('button', name='Next', exact=True).click()
+        frame.get_by_role('link', name='Source: Time, bus and retirement').click()
+        expect(page.locator('#source-title')).to_have_text('wiki/src/rtl/cpu/MAS_cpu.md')
+        expect(page.locator('#source-lines .selected')).to_contain_text('## Time, bus and retirement')
+        page.locator('#close-source').click()
+        page.goto(base + '/files/wiki/presentations/cpu-execution.html')
+        page.set_viewport_size({'width': 390, 'height': 844})
+        page.get_by_role('button', name='Next', exact=True).click()
+        region = page.locator('[data-scroll-region]')
+        region.focus()
+        page.keyboard.press('ArrowRight')
+        page.wait_for_function('document.querySelector("[data-scroll-region]").scrollLeft > 0')
+        expect(page.locator('[data-progress]')).to_have_text('2 / 6')
+        assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), 'Deck causes page overflow'
+        page.locator('[data-slide]:not([hidden]) summary').click()
+        source_bottom = page.locator('[data-slide]:not([hidden]) .sources').evaluate('e => e.getBoundingClientRect().bottom')
+        controls_top = page.locator('.deck-controls').evaluate('e => e.getBoundingClientRect().top')
+        assert source_bottom < controls_top, 'Expanded reasoning overlaps controls'
+        page.set_viewport_size({'width': 1440, 'height': 1000})
+        page.goto(base + '/?page=wiki/presentations/README.md')
+
         page.screenshot(path=str(OUTPUT / 'documentation.png'), full_page=True)
         page.goto(base + '/?page=wiki/src/dv/baseline/SPEC.md')
         expect(page.locator('#document')).to_contain_text('Harness boundaries')

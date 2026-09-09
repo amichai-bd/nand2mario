@@ -4,9 +4,10 @@
 .concept-series.clocks, .concept-series.build { --accent: #f5cc83; }
 .concept-series.graphics, .concept-series.verification { --accent: #cbb4ff; }
 .concept-series.uart { --accent: #ffb7c5; }
-.concept-series .deck { max-width: 1200px; }
+.concept-series .deck { max-width: 1200px; container-type: inline-size; }
 .series-home { display: inline-block; margin-bottom: 16px; font-size: .9rem; }
 .concept-series [data-slide] { border-top: 4px solid var(--accent); padding: clamp(22px, 4vw, 46px); }
+.concept-series .deck.is-ready [data-slide] { aspect-ratio: auto; min-height: 56.25cqw; }
 .concept-series h1, .concept-series h2 { max-width: 28ch; font-size: clamp(1.9rem, 3.6vw, 3rem); margin-bottom: 18px; }
 .concept-series .lead { max-width: 70ch; margin-block: 0 20px; }
 .concept-series svg { max-height: none; margin-block: 25px; overflow: visible; }
@@ -26,6 +27,7 @@
 .concept-series details p { font-size: 1rem; max-width: 76ch; }
 .concept-series .sources { font-size: .85rem; margin-bottom: 0; }
 @media (max-width: 600px) {
+  .concept-series .deck.is-ready [data-slide] { min-height: 65vh; }
   .comparison { grid-template-columns: 1fr; }
   .concept-series .wide-flow { display: none; }
   .concept-series .narrow-flow { display: block; max-width: 300px; margin-inline: auto; }
