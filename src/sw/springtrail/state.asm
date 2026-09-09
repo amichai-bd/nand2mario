@@ -26,3 +26,7 @@ ObjectHeight EQU $C038
 ObjectMask EQU $C03A
 GameMode EQU $C000
 MapRestoreColumn EQU $C02F
+SceneHidden EQU $C03B
+SceneTile EQU $C03C
+SceneX EQU $C03D
+SceneBuffer EQU $C100

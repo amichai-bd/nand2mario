@@ -88,3 +88,19 @@ RET. The pair takes1764 dots normally or1800 on its final switch, excluding
 the caller's24-dot CALL. These are source counts, not measured execution.
 The two-column plus OAM/HUD bound, map equality, repeated partial restart and
 pause behavior still require the combined renderer proof before activation.
+
+## Scene preparation boundary
+
+`PrepareScene` writes36 ordinary WRAM bytes at C100 for nine OAM entries:
+player, enemy, four items, goal, score and mode. It is not called by the frame
+loop yet. Signed coordinate flooring and camera subtraction precede byte
+encoding; fully off-screen or collected objects use OAM Y0. Score and mode
+are screen-relative at (144,0) and (72,0). `scene_reference.py` owns the
+independent expected bytes, including a literal initial scene and clipping
+at x=-8/-7 with fractional Y.
+
+The planned original tile pairs are player12, enemy16, item18, goal20,
+score22+2*score and mode32+2*mode. The new art pairs and OAM publisher are not
+yet installed. Their lower tile must be blank for eight-pixel objects.
+This helper changes neither the live atlas nor the current display timing.
+Actual CPU scene/map byte and combined VBlank budget checks remain pending.

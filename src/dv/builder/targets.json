@@ -13023,7 +13023,8 @@
         "src/sw/springtrail/flow-unit-layout.json",
         "src/sw/springtrail/flow-unit.asm",
         "src/sw/springtrail/interactions.asm",
-        "src/sw/springtrail/map_restore.asm"
+        "src/sw/springtrail/map_restore.asm",
+        "src/sw/springtrail/scene.asm"
       ],
       "waves": [
         "wave_dot",
@@ -13174,7 +13175,8 @@
         "src/sw/springtrail/flow-unit-layout.json",
         "src/sw/springtrail/flow-unit.asm",
         "src/sw/springtrail/interactions.asm",
-        "src/sw/springtrail/map_restore.asm"
+        "src/sw/springtrail/map_restore.asm",
+        "src/sw/springtrail/scene.asm"
       ],
       "waves": [
         "wave_dot",
@@ -13322,7 +13324,8 @@
         "src/sw/springtrail/flow-unit-layout.json",
         "src/sw/springtrail/flow-unit.asm",
         "src/sw/springtrail/interactions.asm",
-        "src/sw/springtrail/map_restore.asm"
+        "src/sw/springtrail/map_restore.asm",
+        "src/sw/springtrail/scene.asm"
       ],
       "waves": [
         "wave_dot",
@@ -14042,7 +14045,8 @@
         "src/dv/springtrail/interaction_cases.py",
         "src/dv/springtrail/interactions_reference.py",
         "src/dv/springtrail/movement_reference.py",
-        "src/sw/springtrail/map_restore.asm"
+        "src/sw/springtrail/map_restore.asm",
+        "src/sw/springtrail/scene.asm"
       ],
       "waves": [
         "wave_dot",
@@ -14192,7 +14196,8 @@
         "src/dv/springtrail/interaction_cases.py",
         "src/dv/springtrail/interactions_reference.py",
         "src/dv/springtrail/movement_reference.py",
-        "src/sw/springtrail/map_restore.asm"
+        "src/sw/springtrail/map_restore.asm",
+        "src/sw/springtrail/scene.asm"
       ],
       "waves": [
         "wave_dot",
@@ -14343,7 +14348,8 @@
         "src/dv/springtrail/interaction_cases.py",
         "src/dv/springtrail/interactions_reference.py",
         "src/dv/springtrail/movement_reference.py",
-        "src/sw/springtrail/map_restore.asm"
+        "src/sw/springtrail/map_restore.asm",
+        "src/sw/springtrail/scene.asm"
       ],
       "waves": [
         "wave_dot",

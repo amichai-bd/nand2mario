@@ -48,6 +48,12 @@
       "section": "map_restore",
       "region": "ROM0",
       "address": 13312
+    },
+    {
+      "unit": "main.asm",
+      "section": "scene",
+      "region": "ROM0",
+      "address": 13824
     }
   ]
 }
