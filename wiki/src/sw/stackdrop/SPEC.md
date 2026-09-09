@@ -66,7 +66,7 @@ The well's fixed rectangle is the public visual coordinate system.
 A next-piece preview occupies a 4-by-4 tile box at (120,32), using the same
 spawn geometry. Four original decimal digit tiles at (64,128) display the score
 with leading zeroes. A fixed status tile at (32,16) visibly distinguishes title,
-playing and game over. Document the literal tile atlas beside its source.
+playing and game over. An original decimal tile at (32,24) shows rotation0..3, including visually equivalent I/O orientations. Document the literal tile atlas beside its source.
 Decode board, active cells, next piece, digits and status from these rendered
 pixels, rejecting unknown or mixed encodings. No gameplay WRAM reads, sprite
 MMIO shortcut or RTL debug port is part of the host interface.

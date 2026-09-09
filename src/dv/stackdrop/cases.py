@@ -36,7 +36,7 @@ def buffer(game):
             values[(game.y+y)*8+game.x+x] = 3
     for x, y in cells((game.piece+1) % 7, 0):
         values[96+y*4+x] = 3
-    return bytes(values+[10+int(d) for d in f'{game.score:04d}']+[4+game.status])
+    return bytes(values+[10+int(d) for d in f'{game.score:04d}']+[4+game.status, 10+game.rotation])
 
 
 def expected():

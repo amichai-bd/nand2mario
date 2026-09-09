@@ -98,6 +98,10 @@ JR NZ,PrepareScore
 LD A,[Status]
 ADD A,4
 LD [DE],A
+INC DE
+LD A,[Rotation]
+ADD A,10
+LD [DE],A
 RET
 
 ; Eight writes per row are unrolled to leave time for JOYP and preview/HUD.
@@ -157,7 +161,8 @@ DEC B
 JR NZ,RenderPreview
 LD DE,$9A08
 CALL CopyFour
-LD A,[HL]
+LD A,[HL+]
 LD [$9844],A
+LD A,[HL]
+LD [$9864],A
 RET
-

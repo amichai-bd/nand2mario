@@ -2,8 +2,15 @@
 INCLUDE "state.asm"
 SECTION "code",ROM
 Start:
+LD A,73
+LD [$C0FD],A
+JP Unit
+ShortStart:
+LD A,3
+LD [$C0FD],A
 JP Unit
 EXPORT Start
+EXPORT ShortStart
 SECTION "unit",ROM
 Unit:
 DI
@@ -22,6 +29,7 @@ LD A,0
 LD [$C0EF],A
 LD A,0
 LD [$C0FE],A
+CALL CheckEnd
 LD A,128
 LD [Buttons],A
 LD A,1
@@ -31,6 +39,7 @@ LD A,1
 LD [$C0EF],A
 LD A,1
 LD [$C0FE],A
+CALL CheckEnd
 LD A,0
 LD [Buttons],A
 LD A,2
@@ -41,6 +50,7 @@ LD [$C0EF],A
 CALL Prepare
 LD A,2
 LD [$C0FE],A
+CALL CheckEnd
 LD DE,Case1
 CALL LoadCase
 LD A,16
@@ -52,6 +62,7 @@ LD A,3
 LD [$C0EF],A
 LD A,3
 LD [$C0FE],A
+CALL CheckEnd
 LD A,0
 LD [Buttons],A
 LD A,4
@@ -61,6 +72,7 @@ LD A,4
 LD [$C0EF],A
 LD A,4
 LD [$C0FE],A
+CALL CheckEnd
 LD A,16
 LD [Buttons],A
 LD A,5
@@ -70,6 +82,7 @@ LD A,5
 LD [$C0EF],A
 LD A,5
 LD [$C0FE],A
+CALL CheckEnd
 LD A,0
 LD [Buttons],A
 LD A,6
@@ -79,6 +92,7 @@ LD A,6
 LD [$C0EF],A
 LD A,6
 LD [$C0FE],A
+CALL CheckEnd
 LD A,16
 LD [Buttons],A
 LD A,7
@@ -88,6 +102,7 @@ LD A,7
 LD [$C0EF],A
 LD A,7
 LD [$C0FE],A
+CALL CheckEnd
 LD A,0
 LD [Buttons],A
 LD A,8
@@ -97,6 +112,7 @@ LD A,8
 LD [$C0EF],A
 LD A,8
 LD [$C0FE],A
+CALL CheckEnd
 LD A,16
 LD [Buttons],A
 LD A,9
@@ -107,6 +123,7 @@ LD [$C0EF],A
 CALL Prepare
 LD A,9
 LD [$C0FE],A
+CALL CheckEnd
 LD DE,Case2
 CALL LoadCase
 LD A,16
@@ -118,6 +135,7 @@ LD A,10
 LD [$C0EF],A
 LD A,10
 LD [$C0FE],A
+CALL CheckEnd
 LD A,0
 LD [Buttons],A
 LD A,11
@@ -127,6 +145,7 @@ LD A,11
 LD [$C0EF],A
 LD A,11
 LD [$C0FE],A
+CALL CheckEnd
 LD A,16
 LD [Buttons],A
 LD A,12
@@ -136,6 +155,7 @@ LD A,12
 LD [$C0EF],A
 LD A,12
 LD [$C0FE],A
+CALL CheckEnd
 LD A,0
 LD [Buttons],A
 LD A,13
@@ -145,6 +165,7 @@ LD A,13
 LD [$C0EF],A
 LD A,13
 LD [$C0FE],A
+CALL CheckEnd
 LD A,16
 LD [Buttons],A
 LD A,14
@@ -154,6 +175,7 @@ LD A,14
 LD [$C0EF],A
 LD A,14
 LD [$C0FE],A
+CALL CheckEnd
 LD A,0
 LD [Buttons],A
 LD A,15
@@ -163,6 +185,7 @@ LD A,15
 LD [$C0EF],A
 LD A,15
 LD [$C0FE],A
+CALL CheckEnd
 LD A,16
 LD [Buttons],A
 LD A,16
@@ -173,6 +196,7 @@ LD [$C0EF],A
 CALL Prepare
 LD A,16
 LD [$C0FE],A
+CALL CheckEnd
 LD DE,Case3
 CALL LoadCase
 LD A,16
@@ -184,6 +208,7 @@ LD A,17
 LD [$C0EF],A
 LD A,17
 LD [$C0FE],A
+CALL CheckEnd
 LD A,0
 LD [Buttons],A
 LD A,18
@@ -193,6 +218,7 @@ LD A,18
 LD [$C0EF],A
 LD A,18
 LD [$C0FE],A
+CALL CheckEnd
 LD A,16
 LD [Buttons],A
 LD A,19
@@ -202,6 +228,7 @@ LD A,19
 LD [$C0EF],A
 LD A,19
 LD [$C0FE],A
+CALL CheckEnd
 LD A,0
 LD [Buttons],A
 LD A,20
@@ -211,6 +238,7 @@ LD A,20
 LD [$C0EF],A
 LD A,20
 LD [$C0FE],A
+CALL CheckEnd
 LD A,16
 LD [Buttons],A
 LD A,21
@@ -220,6 +248,7 @@ LD A,21
 LD [$C0EF],A
 LD A,21
 LD [$C0FE],A
+CALL CheckEnd
 LD A,0
 LD [Buttons],A
 LD A,22
@@ -229,6 +258,7 @@ LD A,22
 LD [$C0EF],A
 LD A,22
 LD [$C0FE],A
+CALL CheckEnd
 LD A,16
 LD [Buttons],A
 LD A,23
@@ -239,6 +269,7 @@ LD [$C0EF],A
 CALL Prepare
 LD A,23
 LD [$C0FE],A
+CALL CheckEnd
 LD DE,Case4
 CALL LoadCase
 LD A,16
@@ -250,6 +281,7 @@ LD A,24
 LD [$C0EF],A
 LD A,24
 LD [$C0FE],A
+CALL CheckEnd
 LD A,0
 LD [Buttons],A
 LD A,25
@@ -259,6 +291,7 @@ LD A,25
 LD [$C0EF],A
 LD A,25
 LD [$C0FE],A
+CALL CheckEnd
 LD A,16
 LD [Buttons],A
 LD A,26
@@ -268,6 +301,7 @@ LD A,26
 LD [$C0EF],A
 LD A,26
 LD [$C0FE],A
+CALL CheckEnd
 LD A,0
 LD [Buttons],A
 LD A,27
@@ -277,6 +311,7 @@ LD A,27
 LD [$C0EF],A
 LD A,27
 LD [$C0FE],A
+CALL CheckEnd
 LD A,16
 LD [Buttons],A
 LD A,28
@@ -286,6 +321,7 @@ LD A,28
 LD [$C0EF],A
 LD A,28
 LD [$C0FE],A
+CALL CheckEnd
 LD A,0
 LD [Buttons],A
 LD A,29
@@ -295,6 +331,7 @@ LD A,29
 LD [$C0EF],A
 LD A,29
 LD [$C0FE],A
+CALL CheckEnd
 LD A,16
 LD [Buttons],A
 LD A,30
@@ -305,6 +342,7 @@ LD [$C0EF],A
 CALL Prepare
 LD A,30
 LD [$C0FE],A
+CALL CheckEnd
 LD DE,Case5
 CALL LoadCase
 LD A,16
@@ -316,6 +354,7 @@ LD A,31
 LD [$C0EF],A
 LD A,31
 LD [$C0FE],A
+CALL CheckEnd
 LD A,0
 LD [Buttons],A
 LD A,32
@@ -325,6 +364,7 @@ LD A,32
 LD [$C0EF],A
 LD A,32
 LD [$C0FE],A
+CALL CheckEnd
 LD A,16
 LD [Buttons],A
 LD A,33
@@ -334,6 +374,7 @@ LD A,33
 LD [$C0EF],A
 LD A,33
 LD [$C0FE],A
+CALL CheckEnd
 LD A,0
 LD [Buttons],A
 LD A,34
@@ -343,6 +384,7 @@ LD A,34
 LD [$C0EF],A
 LD A,34
 LD [$C0FE],A
+CALL CheckEnd
 LD A,16
 LD [Buttons],A
 LD A,35
@@ -352,6 +394,7 @@ LD A,35
 LD [$C0EF],A
 LD A,35
 LD [$C0FE],A
+CALL CheckEnd
 LD A,0
 LD [Buttons],A
 LD A,36
@@ -361,6 +404,7 @@ LD A,36
 LD [$C0EF],A
 LD A,36
 LD [$C0FE],A
+CALL CheckEnd
 LD A,16
 LD [Buttons],A
 LD A,37
@@ -371,6 +415,7 @@ LD [$C0EF],A
 CALL Prepare
 LD A,37
 LD [$C0FE],A
+CALL CheckEnd
 LD DE,Case6
 CALL LoadCase
 LD A,16
@@ -382,6 +427,7 @@ LD A,38
 LD [$C0EF],A
 LD A,38
 LD [$C0FE],A
+CALL CheckEnd
 LD A,0
 LD [Buttons],A
 LD A,39
@@ -391,6 +437,7 @@ LD A,39
 LD [$C0EF],A
 LD A,39
 LD [$C0FE],A
+CALL CheckEnd
 LD A,16
 LD [Buttons],A
 LD A,40
@@ -400,6 +447,7 @@ LD A,40
 LD [$C0EF],A
 LD A,40
 LD [$C0FE],A
+CALL CheckEnd
 LD A,0
 LD [Buttons],A
 LD A,41
@@ -409,6 +457,7 @@ LD A,41
 LD [$C0EF],A
 LD A,41
 LD [$C0FE],A
+CALL CheckEnd
 LD A,16
 LD [Buttons],A
 LD A,42
@@ -418,6 +467,7 @@ LD A,42
 LD [$C0EF],A
 LD A,42
 LD [$C0FE],A
+CALL CheckEnd
 LD A,0
 LD [Buttons],A
 LD A,43
@@ -427,6 +477,7 @@ LD A,43
 LD [$C0EF],A
 LD A,43
 LD [$C0FE],A
+CALL CheckEnd
 LD A,16
 LD [Buttons],A
 LD A,44
@@ -437,6 +488,7 @@ LD [$C0EF],A
 CALL Prepare
 LD A,44
 LD [$C0FE],A
+CALL CheckEnd
 LD DE,Case7
 CALL LoadCase
 LD A,16
@@ -448,6 +500,7 @@ LD A,45
 LD [$C0EF],A
 LD A,45
 LD [$C0FE],A
+CALL CheckEnd
 LD A,0
 LD [Buttons],A
 LD A,46
@@ -457,6 +510,7 @@ LD A,46
 LD [$C0EF],A
 LD A,46
 LD [$C0FE],A
+CALL CheckEnd
 LD A,16
 LD [Buttons],A
 LD A,47
@@ -466,6 +520,7 @@ LD A,47
 LD [$C0EF],A
 LD A,47
 LD [$C0FE],A
+CALL CheckEnd
 LD A,0
 LD [Buttons],A
 LD A,48
@@ -475,6 +530,7 @@ LD A,48
 LD [$C0EF],A
 LD A,48
 LD [$C0FE],A
+CALL CheckEnd
 LD A,16
 LD [Buttons],A
 LD A,49
@@ -484,6 +540,7 @@ LD A,49
 LD [$C0EF],A
 LD A,49
 LD [$C0FE],A
+CALL CheckEnd
 LD A,0
 LD [Buttons],A
 LD A,50
@@ -493,6 +550,7 @@ LD A,50
 LD [$C0EF],A
 LD A,50
 LD [$C0FE],A
+CALL CheckEnd
 LD A,16
 LD [Buttons],A
 LD A,51
@@ -503,6 +561,7 @@ LD [$C0EF],A
 CALL Prepare
 LD A,51
 LD [$C0FE],A
+CALL CheckEnd
 LD DE,Case8
 CALL LoadCase
 LD A,2
@@ -514,6 +573,7 @@ LD A,52
 LD [$C0EF],A
 LD A,52
 LD [$C0FE],A
+CALL CheckEnd
 LD A,3
 LD [Buttons],A
 LD A,53
@@ -523,6 +583,7 @@ LD A,53
 LD [$C0EF],A
 LD A,53
 LD [$C0FE],A
+CALL CheckEnd
 LD A,1
 LD [Buttons],A
 LD A,54
@@ -532,6 +593,7 @@ LD A,54
 LD [$C0EF],A
 LD A,54
 LD [$C0FE],A
+CALL CheckEnd
 LD A,0
 LD [Buttons],A
 LD A,55
@@ -541,6 +603,7 @@ LD A,55
 LD [$C0EF],A
 LD A,55
 LD [$C0FE],A
+CALL CheckEnd
 LD A,1
 LD [Buttons],A
 LD A,56
@@ -550,6 +613,7 @@ LD A,56
 LD [$C0EF],A
 LD A,56
 LD [$C0FE],A
+CALL CheckEnd
 LD A,1
 LD [Buttons],A
 LD A,57
@@ -559,6 +623,7 @@ LD A,57
 LD [$C0EF],A
 LD A,57
 LD [$C0FE],A
+CALL CheckEnd
 LD A,0
 LD [Buttons],A
 LD A,58
@@ -568,6 +633,7 @@ LD A,58
 LD [$C0EF],A
 LD A,58
 LD [$C0FE],A
+CALL CheckEnd
 LD A,2
 LD [Buttons],A
 LD A,59
@@ -578,6 +644,7 @@ LD [$C0EF],A
 CALL Prepare
 LD A,59
 LD [$C0FE],A
+CALL CheckEnd
 LD DE,Case9
 CALL LoadCase
 LD A,0
@@ -589,6 +656,7 @@ LD A,60
 LD [$C0EF],A
 LD A,60
 LD [$C0FE],A
+CALL CheckEnd
 LD A,0
 LD [Buttons],A
 LD A,61
@@ -598,6 +666,7 @@ LD A,61
 LD [$C0EF],A
 LD A,61
 LD [$C0FE],A
+CALL CheckEnd
 LD A,8
 LD [Buttons],A
 LD A,62
@@ -607,6 +676,7 @@ LD A,62
 LD [$C0EF],A
 LD A,62
 LD [$C0FE],A
+CALL CheckEnd
 LD A,8
 LD [Buttons],A
 LD A,63
@@ -617,6 +687,7 @@ LD [$C0EF],A
 CALL Prepare
 LD A,63
 LD [$C0FE],A
+CALL CheckEnd
 LD DE,Case10
 CALL LoadCase
 LD A,40
@@ -628,6 +699,7 @@ LD A,64
 LD [$C0EF],A
 LD A,64
 LD [$C0FE],A
+CALL CheckEnd
 LD A,32
 LD [Buttons],A
 LD A,65
@@ -638,6 +710,7 @@ LD [$C0EF],A
 CALL Prepare
 LD A,65
 LD [$C0FE],A
+CALL CheckEnd
 LD DE,Case11
 CALL LoadCase
 LD A,16
@@ -649,6 +722,7 @@ LD A,66
 LD [$C0EF],A
 LD A,66
 LD [$C0FE],A
+CALL CheckEnd
 LD A,8
 LD [Buttons],A
 LD A,67
@@ -659,6 +733,7 @@ LD [$C0EF],A
 CALL Prepare
 LD A,67
 LD [$C0FE],A
+CALL CheckEnd
 LD DE,Case12
 CALL LoadCase
 LD A,8
@@ -671,6 +746,7 @@ LD [$C0EF],A
 CALL Prepare
 LD A,68
 LD [$C0FE],A
+CALL CheckEnd
 LD DE,Case13
 CALL LoadCase
 LD A,8
@@ -689,6 +765,7 @@ LD A,1
 LD [$C0F2],A
 LD A,69
 LD [$C0FE],A
+CALL CheckEnd
 LD DE,Case14
 CALL LoadCase
 LD A,8
@@ -700,6 +777,7 @@ LD A,70
 LD [$C0EF],A
 LD A,70
 LD [$C0FE],A
+CALL CheckEnd
 LD A,128
 LD [Buttons],A
 LD A,71
@@ -709,6 +787,7 @@ LD A,71
 LD [$C0EF],A
 LD A,71
 LD [$C0FE],A
+CALL CheckEnd
 LD A,128
 LD [Buttons],A
 LD A,72
@@ -719,11 +798,20 @@ LD [$C0EF],A
 CALL Prepare
 LD A,72
 LD [$C0FE],A
+CALL CheckEnd
+Finish:
 LD A,$A5
 LD [$C0FF],A
 Done:
 HALT
 JR Done
+CheckEnd:
+INC A
+LD B,A
+LD A,[$C0FD]
+CP A,B
+RET NZ
+JP Finish
 LoadCase:
 LD HL,$C000
 LD B,13

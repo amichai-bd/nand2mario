@@ -11,10 +11,10 @@ copies it in VBlank, and `tables.asm` contains the literal seven shape tables,
 20 DMG tiles and initial background map. Tiles0/1/2/3 are empty/border/locked/
 active;4/5/6 are title/playing/game-over icons;10..19 are decimal digits.
 
-The copy's instruction-derived cost is4264 dots including its RET: well rows
-3340, preview736, score/status188. ReadButtons plus its CALL costs160; Render's
-CALL adds24, for4448 dots from the first CALL through the Render return. This
-leaves112 of4560 VBlank dots before accounting for the bounded HALT wake edge.
+The copy's instruction-derived cost is4288 dots including its RET: well rows
+3340, preview736, score/status212. ReadButtons plus its CALL costs160; Render's
+CALL adds24, for4472 dots from the first CALL through the Render return. This
+leaves88 of4560 VBlank dots before accounting for the bounded HALT wake edge.
 Actual CPU timing and worst lock/multiple-clear execution remain required;
 assembly and this arithmetic alone are not runtime evidence.
 
