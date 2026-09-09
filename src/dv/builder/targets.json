@@ -16642,7 +16642,7 @@
     },
     "preload": "courier292"
   },
-  "python-courier-game-short": {
+  "python-cgs": {
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/cpu/n2m_cpu_pkg.sv",
@@ -16806,7 +16806,7 @@
     },
     "preload": "springtrail"
   },
-  "python-courier-game": {
+  "python-cgu": {
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/cpu/n2m_cpu_pkg.sv",
@@ -16970,7 +16970,7 @@
     },
     "preload": "springtrail"
   },
-  "python-courier-game-fault": {
+  "python-cgx": {
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/cpu/n2m_cpu_pkg.sv",
