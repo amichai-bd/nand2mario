@@ -1,7 +1,8 @@
 # Original platformer verification
 
-Status: planned under [#263](https://github.com/amichai-bd/nand2mario/issues/263)
-and [#264](https://github.com/amichai-bd/nand2mario/issues/264). The
+Status: the original [#263 baseline](https://github.com/amichai-bd/nand2mario/pull/288)
+is delivered; [#264](https://github.com/amichai-bd/nand2mario/issues/264) physical
+release acceptance remains open. The
 [game specification](../../sw/springtrail/SPEC.md) owns gameplay;
 the [charter](../../project-charter.md#release-acceptance) owns release criteria.
 The [foundation proof](https://github.com/amichai-bd/nand2mario/pull/266) checks
@@ -11,7 +12,14 @@ below, including selected physical scrolling frames. The
 [interaction proof](https://github.com/amichai-bd/nand2mario/pull/276) adds
 actual CPU rules/rendering, composed publication checks and selected UART
 success/retry/flow images. Full milestone and physical release acceptance
-remain in #263 and #264.
+are qualified by the delivered #263 proof and open #264 criteria, respectively.
+
+The [next SML1-aligned release](../../sw/springtrail/sml1-alignment.md) owns the
+staged divergence matrix and dependent measurement gates. Apply the bounded
+milestone policy below to changed behavior; old ROM/image evidence remains
+qualified only for unchanged inputs and claims. Combined 8x8/DMA/STAT
+qualification #308 precedes renderer end-to-end claims without blocking
+independent software or host preparation.
 
 ## Independent expectations
 

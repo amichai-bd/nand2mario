@@ -6,11 +6,17 @@ Movement and scrolling are implemented in
 [PR #270](https://github.com/amichai-bd/nand2mario/pull/270).
 Interactions and game flow are implemented in
 [PR #276](https://github.com/amichai-bd/nand2mario/pull/276).
-Full milestone and physical release acceptance remain in #263 and #264.
+The original full milestone is delivered in [PR #288](https://github.com/amichai-bd/nand2mario/pull/288);
+physical release acceptance remains in #264.
 The [charter](../../project-charter.md) owns the hardware and release boundaries;
 the [game verification plan](../../dv/springtrail/SPEC.md) owns acceptance.
 
 ## Product and implementation boundary
+
+The next release follows the [staged SML1 alignment contract](sml1-alignment.md).
+The rules and 32 KiB profile below remain the delivered baseline until their
+named implementation issues replace them with measured original equivalents.
+Separate banking qualification does not change this baseline profile.
 
 Springtrail is a working title for a silent, original monochrome platformer:
 one scrolling trail, a small courier character, platforms and gaps, a walking
