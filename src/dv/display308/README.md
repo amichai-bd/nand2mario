@@ -20,8 +20,8 @@ Thus the background shade is ((x//8)+(y//8)) modulo4 above the split and
 execution; observed interrupt or CRC values never select an expected row.
 
 Tile4 has low/high bytes AA/00 on every row. Tile5 is00/FF. Tile6 has
-low byte(80 >> row) and high byteFF. The five literal(Y,X,tile,flags)
-entries are (36,24,4,0), (36,28,5,0), (36,28,6,0), (36,48,5,80),
+low byte80 on rows0..2 and00 otherwise, with high byteFF. The five literal(Y,X,tile,flags)
+entries are (36,24,4,0), (36,28,5,0), (36,28,6,0), (36,40,5,80),
 (36,64,6,60), with flags written in hexadecimal. This covers overlapping objects with lower-X and equal-X
 OAM-index priority, transparent color0, BG-priority and X/Y reflection; odd tile
 indices distinguish the selected8x8 mode. Remaining entries have Y=0. No object
@@ -50,13 +50,15 @@ For B = LCD-enable T4 + frame*70224 +15*456, the selected LY/comparison
 projection requests LYC15 at B-1. A request generated at T3 cannot be consumed
 by that same pre-T3 snapshot. HALT wake is no later than B+4; five-M-cycle
 entry ends by B+24, vector JP costs16 and PUSH AF16. The first mode-read T4
-is therefore by B+64, well after the early mode2 transition and before mode3
+is therefore by B+68, well after the early mode2 transition and before mode3
 ends. No active instruction completion adds latency because the main loop is
 already halted; the checker must confirm it.
 
 The unstalled line emits its160 pixels at B+92..B+251. The selected readable
-HBlank transition is bounded B+252..B+256, allowing its one-M-cycle visibility
-projection rather than equating raster LY and readable mode. One missed poll
+HBlank transition is conservatively bounded B+248..B+256, allowing its one-M-cycle visibility
+projection rather than equating raster LY and readable mode. The qualified
+`src/dv/ppu/tb_ppu_access.sv` brackets mode3 at elapsed704 and mode0 at708
+on line1 (nominal B456); the enlarged bracket includes commit numbering. One missed poll
 adds at most32dots: latest SCY = B+256+32+48 = B+336. The declared broader
 B+280..B+352 check encloses both writes, and is104dots before the next line
 start (its first map/Y sample is later, after mode2). This projection and the
