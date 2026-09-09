@@ -1,5 +1,8 @@
 # Independent SameBoy adapter
 
+The [Springtrail native case](SPRINGTRAIL.md) adds a complete frame/input
+ledger prerequisite for #263, without using the selected retirement decoder below.
+
 This adapter for [#102](https://github.com/amichai-bd/nand2mario/issues/102)
 builds the pinned reference and compares its retirement records and visible
 framebuffer pixels with the original integration program's DUT observations.
