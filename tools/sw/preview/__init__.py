@@ -10,8 +10,8 @@ import subprocess
 import sys
 import zlib
 
-from .assets import parse_shades, encode_shades
-from .expressions import AssemblyError
+from ..assets import parse_shades, encode_shades
+from ..expressions import AssemblyError
 
 # Tiny original 3x5 label glyphs. Both output formats use these exact pixels.
 GLYPHS = dict(zip('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -', (
@@ -117,7 +117,7 @@ def preview(root, source, tag, **options):
             'options_sha256':sha256(json.dumps(options,sort_keys=True).encode()).hexdigest(),
             'python':platform.python_version(),'zlib':zlib.ZLIB_RUNTIME_VERSION,
             'tools':{p.name:sha256(p.read_bytes()).hexdigest() for p in
-                     (Path(__file__),Path(__file__).with_name('assets.py'),Path(__file__).with_name('expressions.py'))},
+                     (Path(__file__),Path(__file__).with_name('__main__.py'),Path(__file__).parent.parent/'assets.py',Path(__file__).parent.parent/'expressions.py')},
             'outputs':hashes}
     (stage/'result.json').write_text(json.dumps(report,sort_keys=True,indent=2)+'\n',encoding='utf-8',newline='\n')
     return stage
@@ -134,7 +134,7 @@ def main():
     parser.add_argument('--labels',help='comma-separated uppercase labels in atlas row-major order')
     args=parser.parse_args()
     try:
-        stage=preview(Path(__file__).resolve().parents[2],args.source,args.tag,
+        stage=preview(Path(__file__).resolve().parents[3],args.source,args.tag,
                       width=args.frame_width,height=args.frame_height,scale=args.scale,
                       mirror=args.mirror,labels=args.labels.split(',') if args.labels is not None else None)
     except (ValueError,OSError,AssemblyError,subprocess.SubprocessError) as error:
@@ -143,6 +143,3 @@ def main():
     print(stage)
     return 0
 
-
-if __name__=='__main__':
-    raise SystemExit(main())
