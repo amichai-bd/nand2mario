@@ -1,7 +1,9 @@
 # Project charter and release acceptance
 
 Status: scope and acceptance approved in
-[#24](https://github.com/amichai-bd/nand2mario/issues/24). The releases below are
+[#24](https://github.com/amichai-bd/nand2mario/issues/24), with the user-authorized
+original-game scope revision in [#259](https://github.com/amichai-bd/nand2mario/issues/259).
+The releases below are
 required results, not claims of implemented or verified behavior.
 
 ## Approved direction
@@ -9,7 +11,10 @@ required results, not claims of implemented or verified behavior.
 Build an original-DMG-compatible Game Boy for the DE10-Lite. Design and verify
 the hardware, build Python software tools that produce loadable programs, and
 prove the complete system in simulation before board execution. Provide VGA
-output and PC keyboard input over UART.
+output and PC keyboard input over UART. The game goal is
+[Springtrail](sw/springtrail/SPEC.md), a planned original silent platformer with
+one scrolling level, run/jump movement and original characters, art and code.
+Build our own SM83 ROM; do not obtain, copy or reproduce a commercial cartridge.
 
 Use the repository's issue, specification, implementation, verification, and
 review flow. Keep software and hardware aligned through shared interface
@@ -26,16 +31,19 @@ before using them to define a subsystem contract. Resolve undocumented or
 revision-dependent behavior explicitly before affected RTL. Do not claim exact
 silicon identity or universal compatibility.
 
-Start with a self-authored fixed-ROM program. For `v0.9`, implement the mapper
-and storage required by the privately selected Mario ROM. Defer other mappers,
+The completed self-authored v0.5 program remains a qualified hardware baseline.
+For `v0.9`, build the original platformer in the existing 32 KiB mapperless
+`dmg-direct-v1` profile, with no cartridge RAM. No MBC or commercial-ROM identity
+is a prerequisite. Keep gameplay in software and fix hardware only for actual
+compatibility defects in its owning contract. Defer additional mappers,
 CGB, SGB, and link support. Full APU completion and physical audio are deferred;
 these releases prove silent video and input, not full DMG compatibility.
 
 Build a Python assembler/linker, ROM packager, asset tools, and loader through
 the shared builder. `v0.5` must use our software build. Use a pinned,
 license-reviewed assembler as an independent encoding oracle. A C-like compiler
-and rebuilding external game source are later work. Commercial ROMs already
-contain machine code; our tools build our own programs.
+and rebuilding external game source are outside this delivery. Use the existing
+pipeline for the original game; no new general engine or compiler is required.
 
 ## Input boundary
 
@@ -67,7 +75,7 @@ bound to pass the implementation.
 | Release | Required checks |
 |---|---|
 | `v0.5` | Two clean builds produce identical original-program bytes; actual full UART load/readback matches. Use the [bounded complementary matrix](dv/v05/SPEC.md#revised-milestone-matrix): real initialization and first image, precise continuous cross-frame retirement/write/pixel checks, timer/DMA proofs, all eight button presses/releases plus a pair, actual image/pixel/progress faults, and declared bounded FPGA endurance with sampled independent frames and reset/hang checks. #88 tracks acceptance; no 600-continuous-interval or exhaustive physical observation claim. |
-| `v0.9` | Privately identify ROM and reference configuration. Named boot checkpoint within 600 frame intervals; then 3,600 intervals of scripted start/movement/action. Every frame and input checkpoint agrees with the reference; no unexplained mismatch, hang, or reset. |
+| `v0.9` | Identify the exact self-built original platformer ROM and independent reference configuration. Named boot checkpoint within 600 frame intervals; then 3,600 intervals of scripted start/movement/action. Every frame and input checkpoint agrees with the reference; no unexplained mismatch, hang, or reset. |
 | `v1.0` | After separate board approval and wiring/timing proof: full load/readback, scripted checkpoints and pre-VGA frame hashes match simulation; VGA and keyboard work; 30-minute continuous run without unexpected reset/lost input; repeat reset/load/start three times. Silent output. |
 
 The v0.5 matrix replaces its former 600-continuous-interval criterion by explicit
@@ -77,13 +85,18 @@ but their execution matrices must be named and reviewed before work: use short
 complementary simulations under the [total wall cap](../tools/n2m/SPEC.md#test-wall-budget)
 and separately declared bounded physical endurance. The v0.9 emulated frame
 quantities and v1.0 physical duration are not simulation wall-time allowances.
+The [original-game verification plan](dv/springtrail/SPEC.md) and its milestone
+issues retain these obligations. A complete measured execution matrix must be
+reviewed before milestone runs; selected snapshots cannot silently replace the
+required frame/input checkpoints. Springtrail and these later releases remain
+planned, not delivered by the scope revision.
 
 ## Dependencies and authority
 
 The [gap register](../preflight-gaps.md) owns closure evidence and the
 [current phase](../agents/bootstrap-plan.md#current-phase) governs work order.
-Exact Mario title and local ROM identity are required before cartridge work,
-not before `v0.5`. Original sources remain private for now; source, ROM, and
+The [original-game build facts](../preflight-gaps.md#gap-011-original-game-image-and-build-facts)
+replace the former commercial-ROM/mapper prerequisite. Original sources remain private for now; source, ROM, and
 reuse policy delivery belongs to
 [#25](https://github.com/amichai-bd/nand2mario/issues/25).
 

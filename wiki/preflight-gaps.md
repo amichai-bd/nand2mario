@@ -35,7 +35,7 @@ Priorities:
 | GAP-008 | P0 | Closed | [#31](https://github.com/amichai-bd/nand2mario/issues/31) | Verification baseline | A known-good DUT and deliberately failing DUT prove the harness |
 | GAP-009 | P0 | Closed | [#14](https://github.com/amichai-bd/nand2mario/issues/14) | Initial agent skills | Core skills exist and have concise trigger tests and examples |
 | GAP-010 | P0 | Open | [#32](https://github.com/amichai-bd/nand2mario/issues/32) | GitHub workflow, CI, and Pages | Templates, checks, rules, and deployment pass end to end |
-| GAP-011 | P1 | Later | — | Cartridge and target ROM facts | Header is inspected privately and required mapper is specified |
+| GAP-011 | P1 | Planned | [#260](https://github.com/amichai-bd/nand2mario/issues/260) | Original game image and build facts | Original 32 KiB mapperless image, header, provenance and reproducible build are verified |
 | GAP-012 | P1 | Later | — | VGA frame crossing | Buffering and monitor timing pass simulation and hardware tests |
 | GAP-013 | P1 | Later | — | External dependencies | Tests and tools are pinned, licensed, and reproducible |
 | GAP-014 | P2 | Later | — | Physical audio path | Output method and acceptance test are selected |
@@ -47,7 +47,10 @@ Priorities:
 
 The [charter](src/project-charter.md) records the approved end-to-end DMG direction
 and approved DMG-family policy, bounded release acceptance, and deferred
-features. Issue #24 records the decision; its charter closes this gap.
+features. Issue #24 records the original decision; the authorized
+[original-game revision](https://github.com/amichai-bd/nand2mario/issues/259)
+replaces the commercial-cartridge target while retaining release verification.
+This scope gap remains closed; game implementation is planned separately.
 
 **Risk**
 
@@ -61,7 +64,7 @@ before the core can run a test ROM.
 - `v0.5`, `v0.9`, and `v1.0` acceptance criteria are approved.
 - CGB, SGB, link hardware, mapper breadth, and custom compiler timing are listed
   as included or deferred.
-- “Mario works” has observable boot, video, input, and stability checks.
+- The original platformer has observable boot, video, input, and stability checks.
 
 **Recommended first issue**
 
@@ -366,24 +369,30 @@ job could run untrusted code on this PC or allow concurrent access to the FPGA.
 - The physical runner uses concurrency control and a protected environment.
 - One sample issue completes branch, PR, checks, merge, and Pages deployment.
 
-## GAP-011 — Cartridge and target ROM facts
+## GAP-011 — Original game image and build facts
 
 **Current state**
 
-The exact Mario file, header, size, mapper, RAM, and region are unknown. Do not
-add a ROM to the repository to resolve them.
+The authorized goal is the [original platformer](src/sw/springtrail/SPEC.md),
+built as a 32768-byte mapperless SM83 ROM with no cartridge RAM. There is no
+commercial file, title or mapper to obtain. The game's source/assets, header,
+build hashes and first working image remain planned under
+[#260](https://github.com/amichai-bd/nand2mario/issues/260).
 
 **Risk**
 
-The wrong mapper or storage backend could be called Mario-compatible.
+A non-reproducible image or unsupported header/profile could conceal a build
+or compatibility defect. Original content must not inherit copied game assets.
 
 **Close when**
 
-- The user supplies a local ROM path outside version control.
-- A tool reports title, hashes, header checksum, ROM size, RAM size, and mapper.
-- Only hashes and technical header facts are retained in private/local results.
-- The required mapper has a short contract and directed tests.
-- The selected on-chip or SDRAM storage backend fits the image.
+- Original source, character/art/level assets and their provenance are recorded.
+- Two clean software builds produce identical image bytes and hashes.
+- The built header/checksums identify the supported 32 KiB ROM-only/no-RAM profile.
+- The image uses the existing direct-entry and Intel-backed storage contracts,
+  with no MBC or SDRAM dependency.
+- The original image loads and reaches the independently checked foundation
+  checkpoint; later game verification and physical acceptance remain separate.
 
 ## GAP-012 — VGA frame crossing
 
@@ -476,7 +485,7 @@ higher-level language, each with different costs and interfaces.
 
 **Risk**
 
-Compiler work can delay hardware despite precompiled commercial cartridges and
+Compiler work can delay delivery despite the existing original-program pipeline and
 RGBDS support for open test ROMs.
 
 **Close when**

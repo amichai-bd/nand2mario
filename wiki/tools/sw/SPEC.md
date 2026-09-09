@@ -199,8 +199,11 @@ Hardware registers, memory regions, vectors, runtime reset/entry state and host
 constants come from generated exports of
 [#30](https://github.com/amichai-bd/nand2mario/issues/30). Import its assembly
 constants as explicit fingerprinted inputs. This page owns cartridge file
-construction, not a duplicate hardware address map. Privately selected ROMs are
-runtime inputs under the [source policy](../provenance.md), never assembly assets.
+construction, not a duplicate hardware address map. The planned
+[original platformer](../../src/sw/springtrail/SPEC.md) uses this pipeline and
+the existing mapperless profile; it has no commercial-ROM dependency. External
+ROMs, if separately authorized, remain runtime inputs under the
+[source policy](../provenance.md), never assembly assets.
 The builder supplies #30's canonical generated assembly prelude as a separately
 allowlisted input before target sources, even when its path is outside the target
 tree. Targets select its schema/profile identity, not an arbitrary external path.

@@ -46,11 +46,13 @@ The LDH view intentionally overlaps I/O, HRAM and IE; views are not new decoders
 Register constants identify addresses only. They do not define read masks,
 write effects, bus blocking, timer edges or undocumented behavior. The direct
 profile has no mapper or cartridge RAM. Other profiles require new reviewed
-contracts before loading; privately selected v0.9 images remain unmodified.
+contracts before loading. The planned original v0.9 platformer uses this same
+profile; loading and execution preserve the exact built image bytes.
 
 ## Direct entry and reset
 
-`dmg-direct-v1` is a project-defined entry state for original v0.5 software,
+`dmg-direct-v1` is the project-defined entry state for original v0.5 software
+and the planned original platformer,
 not a claim about DMG power-on or Nintendo post-boot state. The generated
 profile sets PC/SP, all eight byte registers, IME and pending-EI/HALT/STOP/bug
 state. The cartridge entry stub executes first. There is no boot ROM mapping.

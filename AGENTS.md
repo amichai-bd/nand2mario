@@ -1,7 +1,9 @@
 # Agent rules
 
 Build a verified, original-DMG-compatible Game Boy for the DE10-Lite, with VGA
-display and UART controls. Follow the [current phase](wiki/agents/bootstrap-plan.md#current-phase)
+display and UART controls, running our own original SM83 platformer under the
+[charter](wiki/src/project-charter.md). Keep gameplay in software; no commercial
+cartridge or copied game assets are required. Follow the [current phase](wiki/agents/bootstrap-plan.md#current-phase)
 before selecting work. Read [preflight gaps](wiki/preflight-gaps.md) before
 implementation; open product prerequisites are not permission to start them.
 
