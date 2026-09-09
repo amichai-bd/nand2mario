@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Time without lost events</title>
+  <link rel="stylesheet" href="../../tools/wiki/assets/presentation.css">
+  <link rel="stylesheet" href="assets/concepts.css">
+  <script src="../../tools/wiki/assets/presentation.js" defer></script>
+</head>
+<body class="concept-series clocks">
+  <main class="deck" aria-label="Time without lost events">
+    <a class="series-home" href="README.md">← Presentation library</a>
+    <section data-slide aria-labelledby="slide-1">
+      <p class="eyebrow">03 · Clocks and CDC · 01</p>
+      <h1 id="slide-1">One board has several notions of time</h1>
+      <p class="lead">System logic runs at 25 MHz; emulated DMG time advances on enables. VGA scanout runs in a separate 25.2 MHz pixel domain.</p>
+      <div class="diagram-scroll" tabindex="0" role="region" aria-label="Parallel PLL clock derivation and system enable; scroll horizontally on a narrow screen"><svg viewBox="0 0 840 210" role="img" aria-label="Parallel PLL clock derivation and system enable"><rect x="5" y="73" width="170" height="60" rx="8"/><text x="90.0" y="110.0">50 MHz ref</text><path d="M175 103H220V40H280 M220 103V166H280"/><rect x="280" y="12" width="205" height="56" rx="8"/><text x="382.5" y="47.0">System PLL ÷2</text><rect x="280" y="138" width="205" height="56" rx="8"/><text x="382.5" y="173.0">Pixel PLL ×63/125</text><path d="M485 40H540 M485 166H540"/><rect x="540" y="12" width="285" height="56" rx="8"/><text x="682.5" y="47.0">25 MHz → gb_tick enable</text><rect x="540" y="138" width="285" height="56" rx="8"/><text x="682.5" y="173.0">25.2 MHz → VGA counters</text></svg></div><p class="diagram-caption">Both PLLs use the reference directly; gb_tick is an enable within clk_sys.</p>
+      <details><summary>Explore the reasoning</summary><p>The arrows summarize clock derivation, not a PLL cascade: both PLLs take the same reference in parallel. Clock frequency and emulated event rate are different concepts.</p></details>
+      <p class="sources"><a href="../../wiki/src/clocks-resets-cdc.md#clock-domains" data-source="wiki/src/clocks-resets-cdc.md" data-line="10">Source: Clock domains</a></p>
+    </section>
+    <section data-slide aria-labelledby="slide-2">
+      <p class="eyebrow">03 · Clocks and CDC · 02</p>
+      <h2 id="slide-2">An enable is not another clock</h2>
+      <p class="lead">The phase accumulator adds 65536 each system edge and wraps at 390625. Its carry advances one DMG dot.</p>
+      <svg class="wide-flow" viewBox="0 0 840 120" role="img" aria-label="Phase +: 65536 then At 390625: subtract threshold then Carry: one gb_tick"><rect x="4.0" y="12" width="252.0" height="94" rx="12"/><text x="130.0" y="49">Phase +</text><text x="130.0" y="75">65536</text><path d="M258.0 59h22m-8-7 8 7-8 7"/><rect x="284.0" y="12" width="252.0" height="94" rx="12"/><text x="410.0" y="49">At 390625</text><text x="410.0" y="75">subtract threshold</text><path d="M538.0 59h22m-8-7 8 7-8 7"/><rect x="564.0" y="12" width="252.0" height="94" rx="12"/><text x="690.0" y="49">Carry</text><text x="690.0" y="75">one gb_tick</text></svg><svg class="narrow-flow" viewBox="0 0 300 300" role="img" aria-label="Phase +: 65536 then At 390625: subtract threshold then Carry: one gb_tick"><rect x="15" y="4" width="270" height="78" rx="12"/><text x="150" y="34">Phase +</text><text x="150" y="60">65536</text><path d="M150 82v20m-7-8 7 8 7-8"/><rect x="15" y="104" width="270" height="78" rx="12"/><text x="150" y="134">At 390625</text><text x="150" y="160">subtract threshold</text><path d="M150 182v20m-7-8 7 8 7-8"/><rect x="15" y="204" width="270" height="78" rx="12"/><text x="150" y="234">Carry</text><text x="150" y="260">one gb_tick</text></svg>
+      <details><summary>Explore the reasoning</summary><p>After N active edges there are floor(N × 65536 / 390625) ticks. Multiplying the ratio by 25 MHz gives 4,194,304 enables per second; all consumers still use clk_sys.</p></details>
+      <p class="sources"><a href="../../wiki/src/clocks-resets-cdc.md#exact-emulated-time" data-source="wiki/src/clocks-resets-cdc.md" data-line="57">Source: Exact emulated time</a></p>
+    </section>
+    <section data-slide aria-labelledby="slide-3">
+      <p class="eyebrow">03 · Clocks and CDC · 03</p>
+      <h2 id="slide-3">Budget for the shortest gap</h2>
+      <p class="lead">Tick gaps are five or six system edges. A four-dot M-cycle spans 23 or 24 edges, so memory service must fit the 23-edge case.</p>
+      <div class="comparison"><div><strong>Average</strong><p>Exact nominal DMG rate over each accumulator period.</p></div><div><strong>Worst case</strong><p>Five edges to the next dot; 23 to the next M-cycle boundary.</p></div><div><strong>Failure</strong><p>Missing service must fault rather than discard a tick.</p></div></div>
+      <details><summary>Explore the reasoning</summary><p>Average throughput cannot prove a deadline. Ask whether a service taking 24 edges is safe: some M-cycles allow it, but the shortest does not.</p></details>
+      <p class="sources"><a href="../../wiki/src/clocks-resets-cdc.md#system-service-budgets" data-source="wiki/src/clocks-resets-cdc.md" data-line="106">Source: System service budgets</a></p>
+    </section>
+    <section data-slide aria-labelledby="slide-4">
+      <p class="eyebrow">03 · Clocks and CDC · 04</p>
+      <h2 id="slide-4">Cross ownership, not a changing image</h2>
+      <p class="lead">The frame bridge transfers a completed bank. Pixel scanout keeps its display bank while the system writes another.</p>
+      <svg class="wide-flow" viewBox="0 0 840 120" role="img" aria-label="System domain: complete bank then Mailbox: offer / acknowledge then Pixel domain: safe-boundary swap"><rect x="4.0" y="12" width="252.0" height="94" rx="12"/><text x="130.0" y="49">System domain</text><text x="130.0" y="75">complete bank</text><path d="M258.0 59h22m-8-7 8 7-8 7"/><rect x="284.0" y="12" width="252.0" height="94" rx="12"/><text x="410.0" y="49">Mailbox</text><text x="410.0" y="75">offer / acknowledge</text><path d="M538.0 59h22m-8-7 8 7-8 7"/><rect x="564.0" y="12" width="252.0" height="94" rx="12"/><text x="690.0" y="49">Pixel domain</text><text x="690.0" y="75">safe-boundary swap</text></svg><svg class="narrow-flow" viewBox="0 0 300 300" role="img" aria-label="System domain: complete bank then Mailbox: offer / acknowledge then Pixel domain: safe-boundary swap"><rect x="15" y="4" width="270" height="78" rx="12"/><text x="150" y="34">System domain</text><text x="150" y="60">complete bank</text><path d="M150 82v20m-7-8 7 8 7-8"/><rect x="15" y="104" width="270" height="78" rx="12"/><text x="150" y="134">Mailbox</text><text x="150" y="160">offer / acknowledge</text><path d="M150 182v20m-7-8 7 8 7-8"/><rect x="15" y="204" width="270" height="78" rx="12"/><text x="150" y="234">Pixel domain</text><text x="150" y="260">safe-boundary swap</text></svg>
+      <details><summary>Explore the reasoning</summary><p>Synchronizing every pixel bus bit independently would not make a coherent frame. The crossing protocol keeps the offered bank stable while control passes between domains.</p></details>
+      <p class="sources"><a href="../../wiki/src/rtl/vga/MAS_vga.md#ownership-and-storage" data-source="wiki/src/rtl/vga/MAS_vga.md" data-line="96">Source: Ownership and storage</a></p>
+    </section>
+    <section data-slide aria-labelledby="slide-5">
+      <p class="eyebrow">03 · Clocks and CDC · 05</p>
+      <h2 id="slide-5">Pause does not stop the monitor</h2>
+      <p class="lead">Host pause freezes emulated phase and state. UART, CDC handshakes and VGA continue, so the host can inspect a stable machine.</p>
+      <div class="comparison"><div><strong>Freeze</strong><p>CPU/PPU emulated progress and fractional phase.</p></div><div><strong>Continue</strong><p>Transport and scanout on their running clocks.</p></div><div><strong>Resume</strong><p>Continue retained phase without catch-up dots.</p></div></div>
+      <details><summary>Explore the reasoning</summary><p>A hardware clock stopped indiscriminately would also stop the debugger that must resume it. Reset release still follows each domain’s synchronization contract.</p></details>
+      <p class="sources"><a href="../../wiki/src/clocks-resets-cdc.md#exact-emulated-time" data-source="wiki/src/clocks-resets-cdc.md" data-line="57">Source: Exact emulated time and reset</a></p>
+    </section>
+    <section data-slide aria-labelledby="slide-6">
+      <p class="eyebrow">03 · Clocks and CDC · 06</p>
+      <h2 id="slide-6">Each proof answers a different question</h2>
+      <p class="lead">Simulation checks event ordering. FPGA timing checks constrained paths. A monitor test checks the connected display and clock tolerance.</p>
+      <svg class="wide-flow" viewBox="0 0 840 120" role="img" aria-label="Simulation: protocol + counts then Fit / timing: implementation then Board: physical display"><rect x="4.0" y="12" width="252.0" height="94" rx="12"/><text x="130.0" y="49">Simulation</text><text x="130.0" y="75">protocol + counts</text><path d="M258.0 59h22m-8-7 8 7-8 7"/><rect x="284.0" y="12" width="252.0" height="94" rx="12"/><text x="410.0" y="49">Fit / timing</text><text x="410.0" y="75">implementation</text><path d="M538.0 59h22m-8-7 8 7-8 7"/><rect x="564.0" y="12" width="252.0" height="94" rx="12"/><text x="690.0" y="49">Board</text><text x="690.0" y="75">physical display</text></svg><svg class="narrow-flow" viewBox="0 0 300 300" role="img" aria-label="Simulation: protocol + counts then Fit / timing: implementation then Board: physical display"><rect x="15" y="4" width="270" height="78" rx="12"/><text x="150" y="34">Simulation</text><text x="150" y="60">protocol + counts</text><path d="M150 82v20m-7-8 7 8 7-8"/><rect x="15" y="104" width="270" height="78" rx="12"/><text x="150" y="134">Fit / timing</text><text x="150" y="160">implementation</text><path d="M150 182v20m-7-8 7 8 7-8"/><rect x="15" y="204" width="270" height="78" rx="12"/><text x="150" y="234">Board</text><text x="150" y="260">physical display</text></svg>
+      <details><summary>Explore the reasoning</summary><p>Nominal 60 Hz VGA and about 59.73 Hz DMG source frames intentionally differ. Simulation and generated timing evidence do not close the open physical acceptance gaps.</p></details>
+      <p class="sources"><a href="../../wiki/preflight-gaps.md#gap-006-clock-reset-and-cdc-plan" data-source="wiki/preflight-gaps.md" data-line="187">Source: Clock and display evidence gaps</a></p>
+    </section>
+  </main>
+</body>
+</html>

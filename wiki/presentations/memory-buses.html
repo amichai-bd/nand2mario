@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>One address, one owner</title>
+  <link rel="stylesheet" href="../../tools/wiki/assets/presentation.css">
+  <link rel="stylesheet" href="assets/concepts.css">
+  <script src="../../tools/wiki/assets/presentation.js" defer></script>
+</head>
+<body class="concept-series memory">
+  <main class="deck" aria-label="One address, one owner">
+    <a class="series-home" href="README.md">← Presentation library</a>
+    <section data-slide aria-labelledby="slide-1">
+      <p class="eyebrow">02 · Memory buses · 01</p>
+      <h1 id="slide-1">An address selects behavior</h1>
+      <p class="lead">A CPU read is more than an array index. Decoding chooses storage or a peripheral owner; arbitration decides whether the access is allowed.</p>
+      <svg class="wide-flow" viewBox="0 0 840 120" role="img" aria-label="CPU address: 16 bits then Decode: owner + offset then Service: byte + validity"><rect x="4.0" y="12" width="252.0" height="94" rx="12"/><text x="130.0" y="49">CPU address</text><text x="130.0" y="75">16 bits</text><path d="M258.0 59h22m-8-7 8 7-8 7"/><rect x="284.0" y="12" width="252.0" height="94" rx="12"/><text x="410.0" y="49">Decode</text><text x="410.0" y="75">owner + offset</text><path d="M538.0 59h22m-8-7 8 7-8 7"/><rect x="564.0" y="12" width="252.0" height="94" rx="12"/><text x="690.0" y="49">Service</text><text x="690.0" y="75">byte + validity</text></svg><svg class="narrow-flow" viewBox="0 0 300 300" role="img" aria-label="CPU address: 16 bits then Decode: owner + offset then Service: byte + validity"><rect x="15" y="4" width="270" height="78" rx="12"/><text x="150" y="34">CPU address</text><text x="150" y="60">16 bits</text><path d="M150 82v20m-7-8 7 8 7-8"/><rect x="15" y="104" width="270" height="78" rx="12"/><text x="150" y="134">Decode</text><text x="150" y="160">owner + offset</text><path d="M150 182v20m-7-8 7 8 7-8"/><rect x="15" y="204" width="270" height="78" rx="12"/><text x="150" y="234">Service</text><text x="150" y="260">byte + validity</text></svg>
+      <details><summary>Explore the reasoning</summary><p>Memory-mapped I/O means a register is reached through the address space. Reading a timer register and reading RAM can share bus wires while having different behavior.</p></details>
+      <p class="sources"><a href="../../wiki/src/rtl/memory/MAS_memory.md#address-ownership-decoder" data-source="wiki/src/rtl/memory/MAS_memory.md" data-line="98">Source: Address ownership decoder</a></p>
+    </section>
+    <section data-slide aria-labelledby="slide-2">
+      <p class="eyebrow">02 · Memory buses · 02</p>
+      <h2 id="slide-2">Two addresses can name one byte</h2>
+      <p class="lead">The integration program writes <code>3C</code> to <code>C000</code> and reads it through <code>E000</code>. WRAM echo uses the same low thirteen address bits.</p>
+      <div class="diagram-scroll" tabindex="0" role="region" aria-label="WRAM alias addresses converge on the same byte; scroll horizontally on a narrow screen"><svg viewBox="0 0 840 210" role="img" aria-label="WRAM alias addresses converge on the same byte"><rect x="20" y="15" width="190" height="55" rx="8"/><text x="115.0" y="49.5">C000 → write 3C</text><rect x="20" y="130" width="190" height="55" rx="8"/><text x="115.0" y="164.5">E000 → read 3C</text><path d="M210 42H360V100H460 M210 157H360V100"/><rect x="460" y="60" width="190" height="80" rx="8"/><text x="555.0" y="107.0">WRAM[0000]</text><text x="740" y="108">3C</text></svg></div><p class="diagram-caption">C000 and E000 converge on offset 0000; there is no echo copy to update.</p>
+      <details><summary>Explore the reasoning</summary><p>There is one WRAM store. A second echo array could pass simple reads after reset but fail when either alias is written. This example is part of the bounded integration program.</p></details>
+      <p class="sources"><a href="../../wiki/src/dv/integration/SPEC.md#original-program-and-oracle" data-source="wiki/src/dv/integration/SPEC.md" data-line="9">Source: Original program and oracle</a></p>
+    </section>
+    <section data-slide aria-labelledby="slide-3">
+      <p class="eyebrow">02 · Memory buses · 03</p>
+      <h2 id="slide-3">A register has a behavior owner</h2>
+      <p class="lead">FF46 belongs to DMA, even though neighboring addresses belong to the PPU. A generic shadow register array would lose the command’s meaning.</p>
+      <div class="comparison"><div><strong>Decode</strong><p>Choose DMA for FF46 using generated address constants.</p></div><div><strong>Behavior</strong><p>The DMA owner interprets a committed write.</p></div><div><strong>Storage</strong><p>Memory remains the sole owner of the actual OAM bytes.</p></div></div>
+      <details><summary>Explore the reasoning</summary><p>Separate numeric address ownership from behavioral implementation. A decoder can select a future owner without proving that owner exists or behaves correctly.</p></details>
+      <p class="sources"><a href="../../wiki/src/rtl/memory/MAS_memory.md#address-ownership-decoder" data-source="wiki/src/rtl/memory/MAS_memory.md" data-line="98">Source: Stores and address ownership</a></p>
+    </section>
+    <section data-slide aria-labelledby="slide-4">
+      <p class="eyebrow">02 · Memory buses · 04</p>
+      <h2 id="slide-4">Synchronous RAM needs a schedule</h2>
+      <p class="lead">A read result arrives after a clocked read edge. The system must tag and deliver that result before the CPU’s fixed T4 consumption edge.</p>
+      <svg class="wide-flow" viewBox="0 0 840 120" role="img" aria-label="Prepared: address + tag then System edge: registered read then T4: consume valid"><rect x="4.0" y="12" width="252.0" height="94" rx="12"/><text x="130.0" y="49">Prepared</text><text x="130.0" y="75">address + tag</text><path d="M258.0 59h22m-8-7 8 7-8 7"/><rect x="284.0" y="12" width="252.0" height="94" rx="12"/><text x="410.0" y="49">System edge</text><text x="410.0" y="75">registered read</text><path d="M538.0 59h22m-8-7 8 7-8 7"/><rect x="564.0" y="12" width="252.0" height="94" rx="12"/><text x="690.0" y="49">T4</text><text x="690.0" y="75">consume valid</text></svg><svg class="narrow-flow" viewBox="0 0 300 300" role="img" aria-label="Prepared: address + tag then System edge: registered read then T4: consume valid"><rect x="15" y="4" width="270" height="78" rx="12"/><text x="150" y="34">Prepared</text><text x="150" y="60">address + tag</text><path d="M150 82v20m-7-8 7 8 7-8"/><rect x="15" y="104" width="270" height="78" rx="12"/><text x="150" y="134">System edge</text><text x="150" y="160">registered read</text><path d="M150 182v20m-7-8 7 8 7-8"/><rect x="15" y="204" width="270" height="78" rx="12"/><text x="150" y="234">T4</text><text x="150" y="260">consume valid</text></svg>
+      <details><summary>Explore the reasoning</summary><p>Tags associate a response with its request. A stale valid byte can look plausible while belonging to an earlier address. Fixed service budgets make this a correctness condition.</p></details>
+      <p class="sources"><a href="../../wiki/src/rtl/memory/MAS_memory.md#raw-store-service" data-source="wiki/src/rtl/memory/MAS_memory.md" data-line="29">Source: Raw store service</a></p>
+    </section>
+    <section data-slide aria-labelledby="slide-5">
+      <p class="eyebrow">02 · Memory buses · 05</p>
+      <h2 id="slide-5">Arbitration preserves one truth</h2>
+      <p class="lead">CPU, PPU and DMA share logical video storage. Access policy, paired OAM service and collision handling belong to named owners.</p>
+      <div class="comparison"><div><strong>CPU</strong><p>Commit through the access policy.</p></div><div><strong>PPU</strong><p>Read the same VRAM/OAM data through its service ports.</p></div><div><strong>DMA</strong><p>Resolve writes and collisions before the shared store.</p></div></div>
+      <details><summary>Explore the reasoning</summary><p>Multiple physical ports do not imply multiple logical copies. This distinction keeps a sprite update visible to the renderer without a separate synchronization copy.</p></details>
+      <p class="sources"><a href="../../wiki/src/rtl/memory/MAS_memory.md#stores-and-ownership" data-source="wiki/src/rtl/memory/MAS_memory.md" data-line="8">Source: Stores and ownership</a></p>
+    </section>
+    <section data-slide aria-labelledby="slide-6">
+      <p class="eyebrow">02 · Memory buses · 06</p>
+      <h2 id="slide-6">Test aliases and side effects</h2>
+      <p class="lead">Check all decode boundaries, then check that preparation is harmless and a commit happens once. A byte-only test cannot expose every bus defect.</p>
+      <svg class="wide-flow" viewBox="0 0 840 120" role="img" aria-label="Address space: boundary cases then Commit trace: ordering + count then Independent check: aliases + effects"><rect x="4.0" y="12" width="252.0" height="94" rx="12"/><text x="130.0" y="49">Address space</text><text x="130.0" y="75">boundary cases</text><path d="M258.0 59h22m-8-7 8 7-8 7"/><rect x="284.0" y="12" width="252.0" height="94" rx="12"/><text x="410.0" y="49">Commit trace</text><text x="410.0" y="75">ordering + count</text><path d="M538.0 59h22m-8-7 8 7-8 7"/><rect x="564.0" y="12" width="252.0" height="94" rx="12"/><text x="690.0" y="49">Independent check</text><text x="690.0" y="75">aliases + effects</text></svg><svg class="narrow-flow" viewBox="0 0 300 300" role="img" aria-label="Address space: boundary cases then Commit trace: ordering + count then Independent check: aliases + effects"><rect x="15" y="4" width="270" height="78" rx="12"/><text x="150" y="34">Address space</text><text x="150" y="60">boundary cases</text><path d="M150 82v20m-7-8 7 8 7-8"/><rect x="15" y="104" width="270" height="78" rx="12"/><text x="150" y="134">Commit trace</text><text x="150" y="160">ordering + count</text><path d="M150 182v20m-7-8 7 8 7-8"/><rect x="15" y="204" width="270" height="78" rx="12"/><text x="150" y="234">Independent check</text><text x="150" y="260">aliases + effects</text></svg>
+      <details><summary>Explore the reasoning</summary><p>The decoder’s documented fixture enumerates all 65,536 addresses and includes a wrong-echo-offset mutation. That proof is narrower than full peripheral or board acceptance.</p></details>
+      <p class="sources"><a href="../../wiki/src/rtl/memory/MAS_memory.md#address-ownership-decoder" data-source="wiki/src/rtl/memory/MAS_memory.md" data-line="98">Source: Decoder verification</a></p>
+    </section>
+  </main>
+</body>
+</html>

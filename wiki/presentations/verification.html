@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Prove the checker can disagree</title>
+  <link rel="stylesheet" href="../../tools/wiki/assets/presentation.css">
+  <link rel="stylesheet" href="assets/concepts.css">
+  <script src="../../tools/wiki/assets/presentation.js" defer></script>
+</head>
+<body class="concept-series verification">
+  <main class="deck" aria-label="Prove the checker can disagree">
+    <a class="series-home" href="README.md">← Presentation library</a>
+    <section data-slide aria-labelledby="slide-1">
+      <p class="eyebrow">06 · Verification · 01</p>
+      <h1 id="slide-1">A test needs an independent expectation</h1>
+      <p class="lead">Driving a program and observing activity is not enough. A scoreboard compares the observed result with an expectation fixed independently of the DUT.</p>
+      <div class="diagram-scroll" tabindex="0" role="region" aria-label="Independent oracle and observed DUT output meet at scoreboard; scroll horizontally on a narrow screen"><svg viewBox="0 0 840 210" role="img" aria-label="Independent oracle and observed DUT output meet at scoreboard"><rect x="10" y="15" width="220" height="60" rx="8"/><text x="120.0" y="52.0">Known stimulus</text><rect x="10" y="130" width="220" height="60" rx="8"/><text x="120.0" y="167.0">Independent oracle</text><path d="M230 45H310 M230 160H575V130"/><rect x="310" y="15" width="220" height="60" rx="8"/><text x="420.0" y="52.0">DUT → monitor</text><path d="M530 45H710V100"/><rect x="550" y="100" width="280" height="90" rx="8"/><text x="690.0" y="152.0">Compare expected / actual</text></svg></div><p class="diagram-caption">The expected path is independent of the DUT implementation and its decoded state.</p>
+      <details><summary>Explore the reasoning</summary><p>An oracle is a source of expected results. Reusing the DUT decoder as the oracle can make both implementations agree on the same mistake.</p></details>
+      <p class="sources"><a href="../../wiki/src/dv/baseline/SPEC.md#verification-baseline" data-source="wiki/src/dv/baseline/SPEC.md" data-line="1">Source: Verification baseline</a></p>
+    </section>
+    <section data-slide aria-labelledby="slide-2">
+      <p class="eyebrow">06 · Verification · 02</p>
+      <h2 id="slide-2">Start with one observable transaction</h2>
+      <p class="lead">The integration witness writes 3C to C000, reads its E000 echo, adds 05 and writes 41 to C001. State, address and value make a precise claim.</p>
+      <svg class="wide-flow" viewBox="0 0 840 120" role="img" aria-label="Write C000: 3C then Read E000: 3C then Write C001: 41"><rect x="4.0" y="12" width="252.0" height="94" rx="12"/><text x="130.0" y="49">Write C000</text><text x="130.0" y="75">3C</text><path d="M258.0 59h22m-8-7 8 7-8 7"/><rect x="284.0" y="12" width="252.0" height="94" rx="12"/><text x="410.0" y="49">Read E000</text><text x="410.0" y="75">3C</text><path d="M538.0 59h22m-8-7 8 7-8 7"/><rect x="564.0" y="12" width="252.0" height="94" rx="12"/><text x="690.0" y="49">Write C001</text><text x="690.0" y="75">41</text></svg><svg class="narrow-flow" viewBox="0 0 300 300" role="img" aria-label="Write C000: 3C then Read E000: 3C then Write C001: 41"><rect x="15" y="4" width="270" height="78" rx="12"/><text x="150" y="34">Write C000</text><text x="150" y="60">3C</text><path d="M150 82v20m-7-8 7 8 7-8"/><rect x="15" y="104" width="270" height="78" rx="12"/><text x="150" y="134">Read E000</text><text x="150" y="160">3C</text><path d="M150 182v20m-7-8 7 8 7-8"/><rect x="15" y="204" width="270" height="78" rx="12"/><text x="150" y="234">Write C001</text><text x="150" y="260">41</text></svg>
+      <details><summary>Explore the reasoning</summary><p>A final 41 alone is weak evidence: the wrong read could be hidden by a later overwrite. The bus trace establishes the route as well as the final state.</p></details>
+      <p class="sources"><a href="../../wiki/src/dv/integration/SPEC.md#original-program-and-oracle" data-source="wiki/src/dv/integration/SPEC.md" data-line="9">Source: Original program and oracle</a></p>
+    </section>
+    <section data-slide aria-labelledby="slide-3">
+      <p class="eyebrow">06 · Verification · 03</p>
+      <h2 id="slide-3">Observe three different boundaries</h2>
+      <p class="lead">The same run checks retirement records, memory transactions and pixels. Each catches a different class of defect.</p>
+      <div class="comparison"><div><strong>Retirement</strong><p>Wrong PC, flags, instruction bytes or event kind.</p></div><div><strong>Bus</strong><p>Wrong address, order, write count or stack traffic.</p></div><div><strong>Pixels</strong><p>Wrong shade, coordinate, start marker or timing.</p></div></div>
+      <details><summary>Explore the reasoning</summary><p>Correlate these with epoch and emulated dot where their contracts provide them. A frame proves less about instruction details than a complete retirement comparison does.</p></details>
+      <p class="sources"><a href="../../wiki/src/dv/integration/SPEC.md#bounded-integration-target-acceptance" data-source="wiki/src/dv/integration/SPEC.md" data-line="98">Source: Bounded integration target acceptance</a></p>
+    </section>
+    <section data-slide aria-labelledby="slide-4">
+      <p class="eyebrow">06 · Verification · 04</p>
+      <h2 id="slide-4">Break the output, keep the oracle</h2>
+      <p class="lead">A deliberate returned-data, interrupt-connection or pixel mutation must fail for its intended mismatch. That proves the checker can reject an actual defect.</p>
+      <svg class="wide-flow" viewBox="0 0 840 120" role="img" aria-label="Same oracle: unchanged then Injected fault: DUT path changes then Required result: named failure"><rect x="4.0" y="12" width="252.0" height="94" rx="12"/><text x="130.0" y="49">Same oracle</text><text x="130.0" y="75">unchanged</text><path d="M258.0 59h22m-8-7 8 7-8 7"/><rect x="284.0" y="12" width="252.0" height="94" rx="12"/><text x="410.0" y="49">Injected fault</text><text x="410.0" y="75">DUT path changes</text><path d="M538.0 59h22m-8-7 8 7-8 7"/><rect x="564.0" y="12" width="252.0" height="94" rx="12"/><text x="690.0" y="49">Required result</text><text x="690.0" y="75">named failure</text></svg><svg class="narrow-flow" viewBox="0 0 300 300" role="img" aria-label="Same oracle: unchanged then Injected fault: DUT path changes then Required result: named failure"><rect x="15" y="4" width="270" height="78" rx="12"/><text x="150" y="34">Same oracle</text><text x="150" y="60">unchanged</text><path d="M150 82v20m-7-8 7 8 7-8"/><rect x="15" y="104" width="270" height="78" rx="12"/><text x="150" y="134">Injected fault</text><text x="150" y="160">DUT path changes</text><path d="M150 182v20m-7-8 7 8 7-8"/><rect x="15" y="204" width="270" height="78" rx="12"/><text x="150" y="234">Required result</text><text x="150" y="260">named failure</text></svg>
+      <details><summary>Explore the reasoning</summary><p>Changing expected data together with the fault would erase the experiment. Keep the raw failing exit and first mismatch; an unexpected failure reason is not the intended proof.</p></details>
+      <p class="sources"><a href="../../wiki/src/dv/integration/SPEC.md#bounded-integration-target-acceptance" data-source="wiki/src/dv/integration/SPEC.md" data-line="98">Source: Bounded integration target acceptance</a></p>
+    </section>
+    <section data-slide aria-labelledby="slide-5">
+      <p class="eyebrow">06 · Verification · 05</p>
+      <h2 id="slide-5">A watchdog must outlive a stuck DUT</h2>
+      <p class="lead">Measure progress with an independent system-cycle bound. A watchdog driven by the DUT’s frame_done can stop counting precisely when the DUT hangs.</p>
+      <div class="comparison"><div><strong>Simulation time</strong><p>Bound expected events and completion.</p></div><div><strong>Wall time</strong><p>Include setup, build, run, checking and cleanup.</p></div><div><strong>Finish path</strong><p>Exercise final pause and completion in a short run first.</p></div></div>
+      <details><summary>Explore the reasoning</summary><p>The normal total simulation budget is 300 seconds. The three explicitly named longer Mooneye cases are exceptions, not permission to make every test longer.</p></details>
+      <p class="sources"><a href="../../wiki/tools/n2m/SPEC.md#test-wall-budget" data-source="wiki/tools/n2m/SPEC.md" data-line="255">Source: Test wall budget</a></p>
+    </section>
+    <section data-slide aria-labelledby="slide-6">
+      <p class="eyebrow">06 · Verification · 06</p>
+      <h2 id="slide-6">Choose evidence to match the claim</h2>
+      <p class="lead">Unit behavior, composed execution, fitted hardware and physical endurance answer different questions. Preserve each result’s scope.</p>
+      <svg class="wide-flow" viewBox="0 0 840 120" role="img" aria-label="Component: local contract then Composition: real connections then Physical: connected system"><rect x="4.0" y="12" width="252.0" height="94" rx="12"/><text x="130.0" y="49">Component</text><text x="130.0" y="75">local contract</text><path d="M258.0 59h22m-8-7 8 7-8 7"/><rect x="284.0" y="12" width="252.0" height="94" rx="12"/><text x="410.0" y="49">Composition</text><text x="410.0" y="75">real connections</text><path d="M538.0 59h22m-8-7 8 7-8 7"/><rect x="564.0" y="12" width="252.0" height="94" rx="12"/><text x="690.0" y="49">Physical</text><text x="690.0" y="75">connected system</text></svg><svg class="narrow-flow" viewBox="0 0 300 300" role="img" aria-label="Component: local contract then Composition: real connections then Physical: connected system"><rect x="15" y="4" width="270" height="78" rx="12"/><text x="150" y="34">Component</text><text x="150" y="60">local contract</text><path d="M150 82v20m-7-8 7 8 7-8"/><rect x="15" y="104" width="270" height="78" rx="12"/><text x="150" y="134">Composition</text><text x="150" y="160">real connections</text><path d="M150 182v20m-7-8 7 8 7-8"/><rect x="15" y="204" width="270" height="78" rx="12"/><text x="150" y="234">Physical</text><text x="150" y="260">connected system</text></svg>
+      <details><summary>Explore the reasoning</summary><p>The repository defines proportional verification tiers and a complementary milestone matrix. A documentation change needs wiki validation, not a new FPGA simulation; a milestone still needs its named acceptance gates.</p></details>
+      <p class="sources"><a href="../../wiki/src/dv/integration/SPEC.md#verification-tiers" data-source="wiki/src/dv/integration/SPEC.md" data-line="106">Source: Verification tiers and milestone acceptance</a></p>
+    </section>
+  </main>
+</body>
+</html>
