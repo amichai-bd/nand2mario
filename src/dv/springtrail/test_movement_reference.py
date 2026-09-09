@@ -43,5 +43,15 @@ class MovementRules(unittest.TestCase):
         self.assertTrue(solid(35,10));self.assertFalse(solid(36,10))
         self.assertTrue(solid(84,11));self.assertFalse(solid(85,11))
 
+    def test_reachable_airborne_camera_corner(self):
+        # An earlier walk gives odd x; running and jumping preserve that phase.
+        p=Player(x=153*16,camera=81)
+        for buttons in (49,33,33):p=step(p,buttons)
+        self.assertEqual((p.x,p.y,p.vy,p.camera),(2544,1564,-72,87))
+        moved=step(p,33)
+        self.assertEqual((moved.x,moved.y,moved.camera),(2576,1496,89))
+        self.assertEqual(list(range(p.y//128,(p.y+255)//128+1)),[12,13,14])
+        self.assertEqual(list(range(moved.x//128,(moved.x+127)//128+1)),[20,21])
+
 
 if __name__=='__main__':unittest.main()

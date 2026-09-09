@@ -38,7 +38,7 @@ def groups():
         ('fraction-land',Player(x=80*16+8,y=79*16+8,vy=32,grounded=False,camera=8),[0]),
         # Reachable fourth jump update: three horizontal rows and two vertical
         # columns, with a new camera tile on the same normal frame.
-        ('camera-air-corner',Player(x=2528,y=1564,vx=32,vy=-72,grounded=False,previous=33,camera=86),[33])]
+        ('camera-air-corner',Player(x=2544,y=1564,vx=32,vy=-72,grounded=False,previous=33,camera=87),[33])]
 
 
 def packed(player,buttons):
