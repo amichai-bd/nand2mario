@@ -134,3 +134,28 @@ repository is private; its Pages site is public.
 
 The build/deploy split follows process ideas from `frog-bui`; no code was copied.
 See [GitHub Pages custom workflows](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages).
+
+## Repository statistics
+
+The optional read-only `tools/wiki/repository_stats.py` collector supports the
+[dated statistics page](../../project-statistics.md). Run it from a repository
+checkout with `--revision <commit>` and `--output workdir/<tag>`. It resolves the
+commit and reads regular tracked Git blobs directly, reporting files, UTF-8
+physical/nonblank lines, bytes, exclusive path/type categories and daily
+first-parent growth. Comments remain included. Nonregular entries are reported
+as skipped; NUL or invalid UTF-8 blobs are binary and excluded from line totals.
+
+`--github` additionally reads paginated issues and PRs through authenticated `gh`;
+`--repo owner/name` overrides repository discovery. Without that flag no network
+is used. `--exclude-closed-issue <number>` excludes a reused issue from the
+issue-duration summary and may be repeated. GitHub collection is sequential and
+records its completion time; it does not reconstruct historical state. PR durations
+use creation to merge; closed-issue durations use creation to current closure.
+Percentiles use linear interpolation. Nested closing-reference truncation is
+reported explicitly; do not publish a complete-reference claim if it is true.
+
+JSON artifacts stay under ignored `workdir/`; only curated Markdown/SVG summaries
+are published. The collector never runs automatically in CI, posts to GitHub,
+changes issues or measures active labor, authorship, hardware readiness or
+completeness. Preserve the measured SHA and collection timestamp when refreshing
+all page tables and charts together.
