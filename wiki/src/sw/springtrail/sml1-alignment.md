@@ -27,8 +27,8 @@ Confidence applies to the reference observation, not to future implementation.
 
 | Area | Current implementation | Pinned reference locator and confidence | Original replacement and acceptance owner |
 |---|---|---|---|
-| Character composition | `scene.asm` builds nine 8x16 objects; `main.asm` selects that global object mode | `bank0.asm` sprite paths; geometry/anchors need measurement | [#292](https://github.com/amichai-bd/nand2mario/issues/292): 8x8 pieces, whole-pose mirroring, clipping and object limits; preserve approved art and current collision until its owner changes it |
-| Publication | `PublishScene` transfers the complete C100 shadow page through HRAM DMA; preparation builds nine entries and clears the tail | `VBlank`, `DMARoutine`, initialization HRAM copy: source-confirmed DMA organization | [Publisher proof](../../../../src/dv/springtrail/OAM_DMA.md); #292 still owns variable composition |
+| Character composition | `courier.asm` composes all twelve approved maps as global 8x8 pieces | `bank0.asm` sprite paths; original anchors are defined in [composition](COMPOSITION.md) | Composition implemented; animation cadence and runtime size behavior remain in their separate rows |
+| Publication | `PublishScene` transfers the complete C100 shadow page through HRAM DMA; preparation builds twenty entries and clears the tail | `VBlank`, `DMARoutine`, initialization HRAM copy: source-confirmed DMA organization | [Publisher proof](../../../../src/dv/springtrail/OAM_DMA.md) and current [composition](COMPOSITION.md) |
 | HUD and scrolling | `stream.asm`, `world.asm`, `map_restore.asm`, `scene.asm`: raw columns, inactive-map restoration and object HUD | `DrawColumn`, `VBlank`, `LCDStatus`: source-confirmed organization; exact visible boundary unmeasured | [#300](https://github.com/amichai-bd/nand2mario/issues/300): original column encoding and fixed top HUD, STAT playfield scroll; freeze coordinate and publication schedule against qualified hardware |
 | Movement and animation | `movement.asm`, `collision.asm`: immediate walk/run speed, fixed jump/gravity, no integrated walk cycle | `Call_1D26`, `Call_16F5`, `Call_1736`: state/cycle paths; numeric response unmeasured | [#301](https://github.com/amichai-bd/nand2mario/issues/301): measured start/stop/reverse, jump edges/hold/air control, collisions and pose cadence |
 | Player contact and power | `interactions.asm`: contact death, one player size | `bank0.asm` player/contact paths and `enemies.asm` states: behavior table pending | [#302](https://github.com/amichai-bd/nand2mario/issues/302): stomp/damage precedence, growth/shrink, protection, invincibility and projectile power; freeze boxes and durations |
@@ -45,7 +45,7 @@ in these three stages. An intermediate stage is not completion of that release.
 
 1. Reuse qualified combined 8x8-object, HRAM DMA and STAT behavior with original
    diagnostic patterns and the [publisher proof](../../../../src/dv/springtrail/OAM_DMA.md).
-   Integrate composition #292 and HUD/column scheduling #300. Existing RTL is not presumed defective; any actual
+   Reuse current [composition](COMPOSITION.md) and integrate HUD/column scheduling #300. Existing RTL is not presumed defective; any actual
    violation belongs in a focused hardware bug with its owning contract.
 2. Freeze and implement measured movement/animation #301 against those explicit
    display coordinates. Coordinate size/contact contracts with #302.
@@ -55,13 +55,13 @@ in these three stages. An intermediate stage is not completion of that release.
    stages remain the separate [#306 inventory](https://github.com/amichai-bd/nand2mario/issues/306).
 
 The [approved art](CHARACTER_ART.md) fixes original small 16x16 and large 16x24
-canvases. These are not measured SML1 dimensions. #292 defines logical anchors,
+canvases. These are not measured SML1 dimensions. [Composition](COMPOSITION.md) defines logical anchors,
 piece offsets, facing and screen clipping independently of collision boxes;
 #301/#302 own those boxes and power transitions. New art needs approval; already
 approved art does not. Record intentional geometry differences without changing
 approved pixels to satisfy an assumed reference size.
 
-The approved tile IDs are local asset indices; #292 owns VRAM allocation and
+The approved tile IDs are local asset indices; [composition](COMPOSITION.md) defines VRAM allocation and
 preserves shade/palette ordering. Mirroring reflects piece positions as well as
 tile attributes. Use approved poses where suitable; #301/#302 request only
 necessary missing skid, crouch, growth or projectile visuals. Missing art gates
@@ -87,7 +87,7 @@ content required by that issue. This adds no feature families or asset framework
 
 | Owner | Scoped content to account for |
 |---|---|
-| #292 | Approved courier tiles and pose maps in [CHARACTER_ART.md](CHARACTER_ART.md); composition and game allocation |
+| [Composition](COMPOSITION.md) | Approved courier tiles and pose maps in [CHARACTER_ART.md](CHARACTER_ART.md); current composition and game allocation |
 | #300 | Terrain/column tiles and fixed HUD graphics |
 | #301 | Motion poses, reusing approved poses where suitable; identify any missing state visuals |
 | #302 | Power, damage and projectile visuals; identify missing transitions separately from approved courier poses |
@@ -126,7 +126,7 @@ Child completion alone does not establish composed FPGA behavior.
 
 | Capability | Required evidence |
 |---|---|
-| Composition, publication, HUD/scroll | Qualified combined hardware diagnostic and publisher proof plus #292/#300 proofs of object limits, DMA/IRQ ordering, split pixels and column boundaries |
+| Composition, publication, HUD/scroll | Qualified combined hardware diagnostic, publisher and [composition](COMPOSITION.md) proofs; #300 retains HUD split pixels and column boundaries |
 | Motion and poses | #301 independent per-update state/pose cases, including direction changes, jump and collision transitions |
 | Interactions and world state | #302/#303/#305 contact/power/block/entity cases, persistence and player/platform interactions |
 | Progression | #304 life/timer/death/retry/level-transition cases and their shared HUD/state ownership |

@@ -31,3 +31,15 @@ SceneTile EQU $C03C
 SceneX EQU $C03D
 SceneBuffer EQU $C100
 TitleCleared EQU $C030
+
+; Rendering operands only; game collision and movement never read these.
+CourierFacing EQU $C040
+CourierPose EQU $C041
+SceneBaseX EQU $C042
+SceneBaseY EQU $C044
+PieceX EQU $C046
+PieceY EQU $C047
+PieceFlags EQU $C048
+PieceCount EQU $C049
+PieceHidden EQU $C04A
+SceneY EQU $C04B

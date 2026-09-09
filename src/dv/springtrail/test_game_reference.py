@@ -1,8 +1,13 @@
 import unittest,zlib
-from flow_reference import Check,LCD,CRC
+from flow_reference import Check,LCD,CRC,require_baseline_rom,BASELINE_ROM_SHA256
 
 
 class GameFrames(unittest.TestCase):
+    def test_historical_image_guard(self):
+        self.assertEqual(BASELINE_ROM_SHA256,'97f5d9da3c9d77d2da927fde77889c36fbb54d6ac2f5f79e6edb76e2a593b513')
+        with self.assertRaisesRegex(AssertionError,'HISTORICAL_SPRINGTRAIL_ROM'):
+            require_baseline_rom(bytes(32768))
+
     def test_complete_coordinates_and_literal_crc(self):
         check=Check()
         for number,frame in enumerate(check.expected):

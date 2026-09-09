@@ -42,18 +42,19 @@ engine, an AI framework, a compiler or audio to deliver this game.
 
 The [shadow OAM publisher](../../../../src/dv/springtrail/OAM_DMA.md) transfers
 the complete C100-C19F image through standard FF46=C1 DMA from HRAM at FF80.
-Scene preparation writes the current nine entries and clears all remaining
-bytes. The shared publisher supports all 40 entries without interpreting an
-active count; future composition owns that count and its unused tail. Initialize
+Scene preparation writes twenty 8x8 entries and clears all remaining bytes.
+The shared publisher supports all 40 entries without interpreting an active
+count; the [composition contract](COMPOSITION.md) owns geometry and limits. Initialize
 the HRAM routine before LCD enable, then publish in the existing VBlank slot
 after map work. Its wait keeps CPU accesses in HRAM until transfer completion;
 the ordinary stack is accessed only before and after DMA. Input sampling,
 once-per-frame updates and the approved prepared-scene delay are unchanged.
 
-The [approved original character art](CHARACTER_ART.md) defines the next courier
-tile bank and pose geometry. Its integration remains in
-[#292](https://github.com/amichai-bd/nand2mario/issues/292); the running game
-continues to use the existing renderer and rules below.
+The [approved original character art](CHARACTER_ART.md) supplies the 32-tile
+courier bank and twelve pose maps. The [8x8 composer](COMPOSITION.md) supports
+both facing directions, signed clipping and small/large geometry. Normal play
+uses small poses; animation cadence and runtime size transitions remain
+separate open work in the alignment contract.
 
 The game has title, playing, paused, retry and won states. Core reset starts at
 the title. A retry or restart restores the initial player, camera, enemy,

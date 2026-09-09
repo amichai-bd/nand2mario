@@ -1,5 +1,6 @@
 """Immutable tagged software build publication with complete output inventories."""
 import json
+import hashlib
 from pathlib import Path
 import re
 import uuid
@@ -17,6 +18,14 @@ def json_bytes(value):
     return (json.dumps(value, sort_keys=True, indent=2) + '\n').encode('utf-8')
 
 
+def require_legacy_scene(root, target):
+    """The old renderer fixture is tied to its nine-object scene implementation."""
+    if target in ('render', 'render-s'):
+        source=(root/'src/sw/springtrail/scene.asm').read_bytes().replace(b'\r\n',b'\n')
+        if hashlib.sha256(source).hexdigest()!='148686f9b770a167dc3e0597659f9bb20d8c75783009ffba730e14966cdc8e75':
+            fail('HISTORICAL_RENDER_SOURCE', 'old renderer fixture requires #316 scene; use courier-unit and composition checks')
+
+
 def build_target(root, build, args, provenance):
     safe = args.target if re.fullmatch('[a-z0-9][a-z0-9_-]*', args.target) else 'invalid-target'
     stage = build / 'sw/build' / safe
@@ -32,6 +41,7 @@ def build_target(root, build, args, provenance):
             fail('SCHEMA_MISMATCH', 'invalid software target registry')
         target = definitions['targets'].get(args.target)
         validate_target(target, require_package=True, stage='link')
+        require_legacy_scene(root,args.target)
         def confined(base, name):
             if type(name) is not str or not name or Path(name).is_absolute() or '..' in Path(name).parts or ':' in name or '\\' in name:
                 fail('PRIVATE_PATH', 'target-relative confined path required')

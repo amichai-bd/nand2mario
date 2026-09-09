@@ -1,4 +1,4 @@
-"""Continuous actual-system title/Start/world proof with passive public trace."""
+"""Historical #316 game proof; current composition uses python-cgs/python-cgu."""
 import json
 from pathlib import Path
 import sys
@@ -12,10 +12,11 @@ sys.path[:0]=[str(ROOT/'tools'),str(ROOT/'src/dv/python/integration')]
 from client_transport import connect, frames, refresh_clock
 from test_integration import known
 from n2m.preload import verify, adopt
-from flow_reference import Check, START_WINDOW
+from flow_reference import Check, START_WINDOW, require_baseline_rom, BASELINE_ROM_SHA256
 
 
 async def run(dut, short=False):
+    require_baseline_rom(Path('program.gb').read_bytes())
     received=Queue(); entries=[]; check=Check(short); tasks=[]; dma=[]
     with Path('transactions.jsonl').open('w') as journal:
         def log(kind,**fields):
@@ -35,7 +36,9 @@ async def run(dut, short=False):
         client=connect(dut,received,log,entries)
         @bridge
         def load():
-            identity=client.identify();prepared=verify(Path.cwd())
+            prepared=verify(Path.cwd())
+            assert prepared['image_sha256']==BASELINE_ROM_SHA256,'HISTORICAL_SPRINGTRAIL_PRELOAD'
+            identity=client.identify()
             return identity,adopt(client,prepared)
         identity,loaded=await load();log('load',identity=identity,loaded=loaded)
         assert (known(dut.epoch),known(dut.dot_count),known(dut.paused))==(2,0,1)

@@ -1,13 +1,14 @@
 # Springtrail shadow OAM publication
 
-Issue #299 replaces only the publisher. The existing nine-entry scene, art,
-physics and one-update/one-prepared-frame display cadence remain unchanged.
+The publisher transfers the complete prepared scene without interpreting its
+object count. Physics and one-update/one-prepared-frame cadence are unchanged.
 
 ## Contract
 
 SceneBuffer is C100-C19F: one aligned 160-byte image, 40 four-byte objects.
-PrepareScene clears unused bytes after its current 36-byte result every time.
-Future #292 composition owns its active count and clears the remaining entries;
+PrepareScene clears unused bytes after its current 80-byte result every time.
+The [composition contract](../../../wiki/src/sw/springtrail/COMPOSITION.md)
+owns the active count and clears the remaining entries;
 the publisher always transfers all 160 bytes without interpreting that count.
 Zero Y hides an unused object, and the entire unused entry is zero.
 
@@ -23,12 +24,16 @@ the publisher in the reachable whole-VBlank bound before execution.
 The publisher body is 880 dots (including its RET), versus the old 904; the
 caller CALL costs 24 in both cases. The 40-iteration HRAM NOP/DEC/JR wait costs
 796 dots plus LD B's 8, exceeding the qualified final-byte boundary. The
-whole-VBlank bound becomes 3944 dots from 3968, below 4560. Initialization adds
-428 dots for CALL/setup/nine copies/RET and 4 to restore A=0. Tail clearing adds
-3980 dots to visible-time preparation, well inside its existing 20000-dot ready
-window. Thus LCD enable is 81352 = 76964 + 432 + 3980 - 24; state-update cadence
-and displayed images remain unchanged. These are instruction-derived anchors,
-to be checked against actual execution rather than fitted to its observations.
+whole-VBlank bound is 3944 dots, below 4560. Initialization adds 428 dots for
+CALL/setup/nine copies/RET and 4 to restore A=0.
+
+The historical nine-object fixture used a 36-byte scene, a 20000-dot ready
+window and LCD enable at 81352 = 76964 + 432 + 3980 - 24. Those timestamps do
+not qualify the current courier ROM. Its composition checker bounds initial
+LCD enable at 100000..130000 dots and combined visible preparation at 46000
+dots, preserving the same following VBlank. The current actual enable is
+119948; expected pixels and state are independent of that observed phase
+origin. The shared 880-dot publisher body and DMA byte timing are unchanged.
 
 ## Finite acceptance
 

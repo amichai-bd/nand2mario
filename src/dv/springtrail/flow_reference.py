@@ -1,5 +1,6 @@
 """Fixed input/frame schedule and public writes for the approved renderer."""
 import zlib
+import hashlib
 from interactions_reference import Game, update
 from interaction_cases import ADDRESSES, state_bytes
 from scene_reference import image as oam
@@ -7,6 +8,13 @@ from flow_frames import image
 from movement_reference import world_tile
 
 LCD = 81352
+BASELINE_ROM_SHA256 = '97f5d9da3c9d77d2da927fde77889c36fbb54d6ac2f5f79e6edb76e2a593b513'
+
+
+def require_baseline_rom(rom):
+    """Old nine-object images/timing apply only to the delivered #316 ROM."""
+    assert hashlib.sha256(rom).hexdigest()==BASELINE_ROM_SHA256, 'HISTORICAL_SPRINGTRAIL_ROM: use current composition checks'
+
 PERIOD = 70224
 CRC = (0xb15161f6, 0x6fc2f93a, 0xfa8827ff)
 START_WINDOW = (LCD+60000, LCD+62000)

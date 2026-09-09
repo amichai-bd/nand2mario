@@ -230,3 +230,15 @@ Independent expected images must apply the same single-frame relationship;
 never choose a state from observed pixels. Check visible-time computation
 has no display-memory/register writes and publication completes in VBlank.
 The existing per-test and aggregate budgets and physical acceptance remain.
+
+## Courier composition checks
+
+The [composition contract](../../sw/springtrail/COMPOSITION.md) defines the
+current geometry, allocation and readiness bounds. Independent CPU cases check
+every approved pose/facing, signed clipping, complete scene tails and unchanged
+gameplay state. The composed proof checks full blank/TITLE pixels, then the next
+gameplay state and complete DMA publication before the following visible frame.
+An actual wrong-piece OAM write must fail the unchanged oracle. This scoped
+proof does not claim a new full gameplay or physical milestone. Historical
+nine-object frame, renderer and endurance helpers reject mismatched ROM/source
+identities; they must not silently validate the current composer.

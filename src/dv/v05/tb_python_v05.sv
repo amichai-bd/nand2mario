@@ -243,6 +243,22 @@ module tb_python_v05 #(
         end
     end
 
+    // One real tile-byte corruption on the first LCD-on publication. The
+    // initial LCD-off DMA is deliberately skipped; its bytes are overwritten.
+    initial begin
+        if ($test$plusargs("courier_piece_fault")) begin
+            do @(negedge clk_sys);
+            while (!(dut.u_ppu.lcdc[7] && dut.oam_request.write_enable == 2'b01
+                     && dut.oam_request.pair == 1));
+            if (dut.oam_request.data[7:0] !== 8'd42) $fatal(1, "COURIER292_FAULT_SOURCE");
+            $display("COURIER292_FAULT tile 42 -> 0 at dot %0d", dot_count);
+            force dut.oam_request.data = 16'd0;
+            @(posedge clk_sys);
+            @(negedge clk_sys);
+            release dut.oam_request.data;
+        end
+    end
+
     // Mutate the first byte at the actual Intel OAM pair-write boundary.
     initial begin
         if ($test$plusargs("oam_last_fault")) begin

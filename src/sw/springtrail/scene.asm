@@ -1,7 +1,8 @@
-; Build nine ordinary OAM entries in WRAM; this routine never touches VRAM.
+; Complete 8x8 scene in the aligned shadow page; publisher remains shared.
 SECTION "scene",ROM
 PrepareScene:
 LD DE,SceneBuffer
+CALL SelectCourier
 LD A,[PlayerX]
 LD [ObjectX],A
 LD A,[PlayerX+1]
@@ -12,9 +13,15 @@ LD A,[PlayerY+1]
 LD [ObjectY+1],A
 LD A,[Fell]
 LD [SceneHidden],A
-LD A,12
-LD [SceneTile],A
-CALL AppendScene
+CALL ScenePosition
+; Center approved 16-wide artwork on the existing 8-wide collision box.
+LD A,[SceneBaseX]
+SUB A,4
+LD [SceneBaseX],A
+LD A,[SceneBaseX+1]
+SBC A,0
+LD [SceneBaseX+1],A
+CALL ComposeCourier
 LD A,[EnemyX]
 LD [ObjectX],A
 LD A,[EnemyX+1]
@@ -97,46 +104,45 @@ LD [SceneHidden],A
 LD A,20
 LD [SceneTile],A
 CALL AppendScene
-; Fixed HUD entries are screen-relative: score at144,0 and mode at72,0.
-LD A,16
-LD [DE],A
-INC DE
-LD A,152
-LD [DE],A
-INC DE
+; Fixed HUD pairs preserve their old 8x16 pixels and screen positions.
+XOR A,A
+LD [SceneHidden],A
+LD [SceneBaseX+1],A
+LD [SceneBaseY],A
+LD [SceneBaseY+1],A
+LD A,144
+LD [SceneBaseX],A
 LD A,[Score]
 ADD A,A
 ADD A,22
-LD [DE],A
-INC DE
-XOR A,A
-LD [DE],A
-INC DE
-LD A,16
-LD [DE],A
-INC DE
-LD A,80
-LD [DE],A
-INC DE
+LD [SceneTile],A
+CALL EmitPair
+LD A,72
+LD [SceneBaseX],A
 LD A,[GameMode]
 ADD A,A
 ADD A,32
-LD [DE],A
-INC DE
+LD [SceneTile],A
+CALL EmitPair
+; DE is within C100..C158; clear through C19F after either player size.
 XOR A,A
-LD [DE],A
-INC DE
-; Clear every unused byte, including stale entries from a larger prior scene.
-LD B,124
 ClearSceneTail:
 LD [DE],A
 INC DE
-DEC B
-JR NZ,ClearSceneTail
+LD A,E
+CP A,$A0
+JR Z,SceneComplete
+XOR A,A
+JR ClearSceneTail
+SceneComplete:
 RET
 
 AppendScene:
-; Signed floor and full-width camera subtraction precede OAM byte encoding.
+CALL ScenePosition
+JP EmitPair
+
+ScenePosition:
+; Signed Q4 floor and full-width camera subtraction, before OAM wrapping.
 LD A,[ObjectX]
 LD L,A
 LD A,[ObjectX+1]
@@ -148,72 +154,20 @@ LD A,[Camera+1]
 LD B,A
 LD A,L
 SUB A,C
-LD L,A
+LD [SceneBaseX],A
 LD A,H
 SBC A,B
-LD H,A
-OR A,A
-JR Z,SceneXPositive
-CP A,$FF
-JR NZ,SceneOffscreen
-LD A,L
-CP A,249
-JR C,SceneOffscreen
-JR SceneXReady
-SceneXPositive:
-LD A,L
-CP A,160
-JR NC,SceneOffscreen
-JR SceneXReady
-SceneOffscreen:
-LD A,1
-LD [SceneHidden],A
-SceneXReady:
-LD A,L
-ADD A,8
-LD [SceneX],A
+LD [SceneBaseX+1],A
 LD A,[ObjectY]
 LD L,A
 LD A,[ObjectY+1]
 LD H,A
 CALL PixelFloor
+LD A,L
+LD [SceneBaseY],A
 LD A,H
-OR A,A
-JR Z,SceneYPositive
-CP A,$FF
-JR NZ,SceneYHidden
-LD A,L
-CP A,241
-JR C,SceneYHidden
-JR SceneYReady
-SceneYPositive:
-LD A,L
-CP A,144
-JR C,SceneYReady
-SceneYHidden:
-LD A,1
-LD [SceneHidden],A
-SceneYReady:
-LD A,[SceneHidden]
-OR A,A
-JR NZ,SceneHiddenY
-LD A,L
-ADD A,16
-JR SceneStore
-SceneHiddenY:
-XOR A,A
-SceneStore:
-LD [DE],A
-INC DE
-LD A,[SceneX]
-LD [DE],A
-INC DE
-LD A,[SceneTile]
-LD [DE],A
-INC DE
-XOR A,A
-LD [DE],A
-INC DE
+LD [SceneBaseY+1],A
 RET
 
 INCLUDE "oam_dma.asm"
+INCLUDE "courier.asm"

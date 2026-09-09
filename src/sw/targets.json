@@ -71,6 +71,10 @@
         "Tiles": {
           "source": "tiles.json",
           "author": "Original Springtrail lettering, courier and terrain by the nand2mario project; no external source"
+        },
+        "Courier": {
+          "source": "assets/courier/unique-tiles.json",
+          "author": "Original approved courier tiles by the nand2mario project; CHARACTER_ART.md"
         }
       },
       "layout": "layout.json",
