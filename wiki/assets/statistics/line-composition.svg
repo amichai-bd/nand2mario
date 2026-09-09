@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="350" viewBox="0 0 960 350" role="img" aria-labelledby="title desc">
+<title id="title">Why repository lines are not code size</title>
+<desc id="desc">Exclusive ownership groups; physical lines including comments. Implementation and test code: 59,923; Generated CPU vectors/manifest: 74,519; Game pixel and pose JSON: 21,125; Generated SVG previews: 33,856; Other docs, data and configuration: 45,669</desc>
+<rect width="960" height="350" rx="14" fill="#10212e"/>
+<g font-family="Arial, sans-serif" fill="#edf5fa">
+<text x="28" y="36" font-size="24" font-weight="bold">Why repository lines are not code size</text>
+<text x="28" y="61" font-size="14" fill="#b7cbd7">Exclusive ownership groups; physical lines including comments</text>
+<text x="28" y="108" font-size="15">Implementation and test code</text>
+<rect x="310" y="91" width="402.07" height="25" rx="4" fill="#4cc9b0"/>
+<text x="722.0699999999999" y="109" font-size="15">59,923</text>
+<text x="28" y="156" font-size="15">Generated CPU vectors/manifest</text>
+<rect x="310" y="139" width="500.0" height="25" rx="4" fill="#4cc9b0"/>
+<text x="820.0" y="157" font-size="15">74,519</text>
+<text x="28" y="204" font-size="15">Game pixel and pose JSON</text>
+<rect x="310" y="187" width="141.74" height="25" rx="4" fill="#4cc9b0"/>
+<text x="461.74" y="205" font-size="15">21,125</text>
+<text x="28" y="252" font-size="15">Generated SVG previews</text>
+<rect x="310" y="235" width="227.16" height="25" rx="4" fill="#4cc9b0"/>
+<text x="547.16" y="253" font-size="15">33,856</text>
+<text x="28" y="300" font-size="15">Other docs, data and configuration</text>
+<rect x="310" y="283" width="306.43" height="25" rx="4" fill="#4cc9b0"/>
+<text x="626.4300000000001" y="301" font-size="15">45,669</text>
+</g>
+</svg>
