@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "sections": [
+    {
+      "unit": "unit.asm",
+      "section": "code",
+      "region": "ROM0",
+      "address": 512
+    },
+    {
+      "unit": "unit.asm",
+      "section": "rules",
+      "region": "ROM0",
+      "address": 2048
+    },
+    {
+      "unit": "unit.asm",
+      "section": "render",
+      "region": "ROM0",
+      "address": 4096
+    },
+    {
+      "unit": "unit.asm",
+      "section": "tables",
+      "region": "ROM0",
+      "address": 6144
+    },
+    {
+      "unit": "unit.asm",
+      "section": "unit",
+      "region": "ROM1",
+      "address": 16384
+    },
+    {
+      "unit": "unit.asm",
+      "section": "cases",
+      "region": "ROM1",
+      "address": 24576
+    }
+  ]
+}
+

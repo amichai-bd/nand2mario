@@ -98,6 +98,54 @@
       "version": 1,
       "profile": "dmg-direct-v1",
       "interface_schema_version": 1
+    },
+    "stackdrop": {
+      "directory": "stackdrop",
+      "sources": [
+        "main.asm"
+      ],
+      "assets": {},
+      "layout": "layout.json",
+      "entry": {
+        "unit": "main.asm",
+        "symbol": "Start"
+      },
+      "title": "STACKDROP",
+      "version": 1,
+      "profile": "dmg-direct-v1",
+      "interface_schema_version": 1
+    },
+    "stackdrop-unit": {
+      "directory": "stackdrop",
+      "sources": [
+        "unit.asm"
+      ],
+      "assets": {},
+      "layout": "unit-layout.json",
+      "entry": {
+        "unit": "unit.asm",
+        "symbol": "Start"
+      },
+      "title": "STACKDROP UNIT",
+      "version": 1,
+      "profile": "dmg-direct-v1",
+      "interface_schema_version": 1
+    },
+    "stackdrop-short": {
+      "directory": "stackdrop",
+      "sources": [
+        "unit.asm"
+      ],
+      "assets": {},
+      "layout": "unit-layout.json",
+      "entry": {
+        "unit": "unit.asm",
+        "symbol": "ShortStart"
+      },
+      "title": "STACKDROP SHORT",
+      "version": 1,
+      "profile": "dmg-direct-v1",
+      "interface_schema_version": 1
     }
   }
 }

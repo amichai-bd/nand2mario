@@ -148,9 +148,29 @@ module tb_python_v05 #(
             public_trace = $fopen("springtrail.trace", "w");
             if (!public_trace) $fatal(1, "SPRINGTRAIL_TRACE_OPEN");
         end
+        if ($test$plusargs("stackdrop_trace")) begin
+            public_trace = $fopen("stackdrop.trace", "w");
+            if (!public_trace) $fatal(1, "STACKDROP_TRACE_OPEN");
+        end
         if ($test$plusargs("physical_mask_fault")) begin
             @(negedge clk_sys);
             force dut.u_uart.physical_buttons = 8'd1;
+        end
+    end
+
+    // Change one real WRAM store after the original unit's first call marker.
+    // The later prepared-image read must expose the corrupt stored cell.
+    initial begin
+        if ($test$plusargs("stackdrop_cell_fault")) begin
+            wait(bus_commit && write_enable && address == 16'hc0ee);
+            do @(negedge clk_sys);
+            while (!(dut.raw_write && dut.raw_store == n2m_memory_pkg::STORE_WRAM && dut.raw_offset == 15'h0100));
+            if (dut.raw_wdata !== 8'd0) $fatal(1, "STACKDROP_FAULT_SOURCE");
+            $display("STACKDROP_CELL_MUTATION expected=0 actual=1 dot=%0d", dot_count);
+            force dut.raw_wdata = 8'd1;
+            @(posedge clk_sys);
+            @(negedge clk_sys);
+            release dut.raw_wdata;
         end
     end
 
