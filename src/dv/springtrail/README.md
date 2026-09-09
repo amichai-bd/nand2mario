@@ -5,7 +5,7 @@
 preload builds the immutable original image, initializes Intel ROM/presence
 models, and runs the real CRC scan and normal Client adoption. It does not claim
 a full serial ROM upload. Product RTL and all game expectations are unchanged
-between positive and `python-springtrail-fault`.
+between positive and `python-springtrail-x`.
 
 The fixed assembly schedule gives LCD enable commit43512: entry24, setup100,
 tile-copy setup36 plus256*52-4, map-copy setup36 plus576*52-4, finalsetup64,

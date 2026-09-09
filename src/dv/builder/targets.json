@@ -13024,7 +13024,7 @@
     },
     "preload": "springtrail"
   },
-  "python-springtrail-fault": {
+  "python-springtrail-x": {
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/cpu/n2m_cpu_pkg.sv",
