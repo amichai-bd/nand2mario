@@ -45,6 +45,18 @@ class Renderer(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, 'RENDER_OAM_READBACK'):
             replay(rows)
 
+    def test_early_register(self):
+        rows = events()
+        rows.insert(0, (0xc0e2, 0x17))
+        with self.assertRaisesRegex(AssertionError, 'RENDER_REGISTER_OUTSIDE'):
+            replay(rows)
+
+    def test_trailing_register(self):
+        rows = events()
+        rows.insert(-1, (0xc0e3, 0))
+        with self.assertRaisesRegex(AssertionError, 'RENDER_REGISTER_OUTSIDE'):
+            replay(rows)
+
     def test_truncated_map(self):
         rows = events()
         i = next(i for i, row in enumerate(rows) if row[0] == 0xc0e1)

@@ -55,6 +55,7 @@ class Check:
             assert self.call_dots is not None, 'RENDER_READ_BEFORE_PUBLISH'
             self.objects.append(data)
         elif address in (0xc0e2, 0xc0e3):
+            assert self.call_dots is not None and self.begin is None and self.prep is None, 'RENDER_REGISTER_OUTSIDE'
             self.registers.append((address, data))
         elif address == 0xc0e1:
             assert index == len(self.cases), 'RENDER_EARLY_MAP_READ'
@@ -68,6 +69,7 @@ class Check:
             self.prepared, self.publish, self.objects, self.registers = [], [], [], []
         elif address == 0xc0ff:
             assert data == 165 and index == len(self.cases) and self.begin is None and self.prep is None and self.prep_dots is None and self.call_dots is None, 'RENDER_TERMINAL'
+            assert not any((self.prepared, self.publish, self.objects, self.registers)), 'RENDER_TERMINAL_PENDING'
             assert bytes(self.map_read) == self.final_map, 'RENDER_MAP_READBACK'
             self.terminal = True
         elif 0x8000 <= address <= 0x9fff or 0xfe00 <= address <= 0xfe9f or address in (0xff40, 0xff43):
