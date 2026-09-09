@@ -4,6 +4,11 @@ Date: 2026-09-04
 
 Status: research baseline complete
 
+Historical scope note: the commercial-cartridge goal and delivery sequence in
+this dated research were superseded by the [original-game charter](src/project-charter.md).
+Keep the technical findings as research evidence, not current implementation
+status or permission to obtain a commercial ROM.
+
 ## Conclusion
 
 The connected PC and DE10-Lite are suitable for this project. Quartus, Questa,
@@ -14,7 +19,7 @@ Start with a small environment milestone. It must prove the build command,
 simulation, VGA, UART, and safe board programming before functional Game Boy RTL.
 
 The original monochrome Game Boy (DMG) should be the first target. The first
-visible goal is a user-supplied Mario ROM running over VGA with CLI-controlled
+visible goal proposed here was a user-supplied Mario ROM running over VGA with CLI-controlled
 input. Full DMG completion, audio, more cartridge mappers, and a native software
 compiler follow in explicit milestones.
 
@@ -106,8 +111,9 @@ Patterns to improve:
   an interrupt on a selected high-to-low transition.
 - OAM DMA, timer overflow, interrupt entry, EI delay, and the HALT bug need
   directed timing tests.
-- Cartridge hardware varies. The exact Mario ROM header must determine the
-  required mapper and storage capacity.
+- Cartridge hardware varies. Under the former commercial-game scope, its header
+  would have determined mapper/storage capacity. The current original game uses
+  the existing mapperless profile defined by the charter.
 
 Primary behavior references:
 
@@ -234,6 +240,9 @@ See the complete layout in the
 procedures. The wiki holds behavior. Issues hold goals. PRs hold change evidence.
 
 ## Recommended delivery sequence
+
+This is the historical research proposal; the linked charter and current phase
+supersede its commercial-ROM step and work ordering.
 
 1. Close the preflight blockers and create the environment bootstrap.
 2. Prove a known-good simulation, VGA test card, UART ping, and safe programming.

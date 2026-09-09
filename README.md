@@ -1,10 +1,15 @@
 # nand2mario
 
-A planned recreation of the original monochrome Game Boy on the DE10-Lite.
-The goal is VGA video and game controls sent from a host CLI over UART.
+A verified, bounded original-DMG-compatible system on the DE10-Lite, with VGA
+and shared UART/physical input. The current goal is
+[Springtrail](wiki/src/sw/springtrail/SPEC.md), our own planned silent platformer
+with original SM83 code, characters, art and level design.
 
-The agent tooling and repository scaffold are in place. Game Boy implementation
-has not started. [Preflight gaps](wiki/preflight-gaps.md) track what must come first.
+The original [v0.5 hardware/software proof](https://github.com/amichai-bd/nand2mario/pull/246)
+is complete within its stated limits; Springtrail is not implemented yet.
+The [charter](wiki/src/project-charter.md) defines the revised goal and preserved
+release checks. [Preflight gaps](wiki/preflight-gaps.md) retain outstanding
+physical and integration requirements. No commercial cartridge is needed.
 
 - [Documentation](https://amichai-bd.github.io/nand2mario/)
 - [Open issues](https://github.com/amichai-bd/nand2mario/issues)

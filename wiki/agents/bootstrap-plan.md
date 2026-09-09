@@ -8,7 +8,11 @@ Authorized hardware design, verification, and the Python software stack toward
 [the approved charter](../src/project-charter.md), delivered through focused
 issues and the shared [builder](../tools/n2m/SPEC.md). Begin with prerequisite
 contracts and their executable evidence, then implement each dependent unit.
-The root selects assigned work and delegates separate author worktrees.
+The root selects assigned work and delegates separate author worktrees. The
+current game goal is the planned [original platformer](../src/sw/springtrail/SPEC.md),
+delivered through its foundation, movement, interactions and verification issues.
+Its implementation is separate from the completed v0.5 hardware baseline; no
+commercial cartridge or new mapper is a prerequisite.
 
 The [reference study](../src/rtl-reference-style.md) informs style without
 authorizing HDL reuse. Existing tile, builder, and doctor results retain their
@@ -98,7 +102,7 @@ independent prerequisites may proceed in parallel.
    ([#32](https://github.com/amichai-bd/nand2mario/issues/32)).
 
 Later integration also depends on
-[GAP-011](../preflight-gaps.md#gap-011-cartridge-and-target-rom-facts),
+[GAP-011](../preflight-gaps.md#gap-011-original-game-image-and-build-facts),
 [GAP-012](../preflight-gaps.md#gap-012-vga-frame-crossing), and
 [GAP-013](../preflight-gaps.md#gap-013-external-dependencies).
 [GAP-014](../preflight-gaps.md#gap-014-physical-audio-path) and
