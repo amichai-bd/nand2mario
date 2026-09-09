@@ -42,6 +42,12 @@
       "section": "interactions",
       "region": "ROM0",
       "address": 12288
+    },
+    {
+      "unit": "main.asm",
+      "section": "map_restore",
+      "region": "ROM0",
+      "address": 13312
     }
   ]
 }

@@ -73,3 +73,18 @@ is forecast below 70 seconds under the same 300-second hard cap. The earlier
 `s262` attempt failed before HDL because its new target names made a Windows
 temporary path 267 characters; shorter names reduce that path to 240. It is
 retained as a setup failure, not a functional result.
+
+## Inactive map restoration helper
+
+`map_restore.asm` is linked but not called by the current frame loop.
+`BeginMapRestore` selects static9800, clears SCX/history and restarts column0;
+`RestoreMapPair` writes two complete18-row columns into9C00. The final pair
+selects9C00 only after column31's final write. Other LCDC bits are preserved.
+The future caller must invoke these routines only during VBlank and ensure
+static9800 is the restored initial view. Streaming must never modify9800.
+
+Instruction counting gives Begin96 dots and each column792 dots including
+RET. The pair takes1764 dots normally or1800 on its final switch, excluding
+the caller's24-dot CALL. These are source counts, not measured execution.
+The two-column plus OAM/HUD bound, map equality, repeated partial restart and
+pause behavior still require the combined renderer proof before activation.

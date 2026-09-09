@@ -25,3 +25,4 @@ ObjectY EQU $C036
 ObjectHeight EQU $C038
 ObjectMask EQU $C03A
 GameMode EQU $C000
+MapRestoreColumn EQU $C02F
