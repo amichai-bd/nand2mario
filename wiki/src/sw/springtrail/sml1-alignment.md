@@ -30,7 +30,7 @@ Confidence applies to the reference observation, not to future implementation.
 |---|---|---|---|
 | Character composition | `scene.asm` builds nine 8x16 objects; `main.asm` selects that global object mode | `bank0.asm` sprite paths; geometry/anchors need measurement | [#292](https://github.com/amichai-bd/nand2mario/issues/292): 8x8 pieces, whole-pose mirroring, clipping and object limits; preserve approved art and current collision until its owner changes it |
 | Publication | `PublishScene` copies 36 bytes directly to OAM | `VBlank`, `DMARoutine`, initialization HRAM copy: source-confirmed DMA organization | [#299](https://github.com/amichai-bd/nand2mario/issues/299): complete aligned shadow page, HRAM transfer, inactive entries and bounded CPU resume; combined qualification #308 first |
-| HUD and scrolling | `render.asm`, `map_restore.asm`, `scene.asm`: raw columns, inactive-map restoration and object HUD | `DrawColumn`, `VBlank`, `LCDStatus`: source-confirmed organization; exact visible boundary unmeasured | [#300](https://github.com/amichai-bd/nand2mario/issues/300): original column encoding and fixed top HUD, STAT playfield scroll; freeze coordinate and publication schedule with #308 |
+| HUD and scrolling | `stream.asm`, `world.asm`, `map_restore.asm`, `scene.asm`: raw columns, inactive-map restoration and object HUD | `DrawColumn`, `VBlank`, `LCDStatus`: source-confirmed organization; exact visible boundary unmeasured | [#300](https://github.com/amichai-bd/nand2mario/issues/300): original column encoding and fixed top HUD, STAT playfield scroll; freeze coordinate and publication schedule with #308 |
 | Movement and animation | `movement.asm`, `collision.asm`: immediate walk/run speed, fixed jump/gravity, no integrated walk cycle | `Call_1D26`, `Call_16F5`, `Call_1736`: state/cycle paths; numeric response unmeasured | [#301](https://github.com/amichai-bd/nand2mario/issues/301): measured start/stop/reverse, jump edges/hold/air control, collisions and pose cadence |
 | Player contact and power | `interactions.asm`: contact death, one player size | `bank0.asm` player/contact paths and `enemies.asm` states: behavior table pending | [#302](https://github.com/amichai-bd/nand2mario/issues/302): stomp/damage precedence, growth/shrink, protection, invincibility and projectile power; freeze boxes and durations |
 | Blocks and rewards | `collision.asm`, `interactions.asm`: solid terrain and four once-only pickups | `Call_1B86`, `AddScore`: source locators; category/reward rules pending | [#303](https://github.com/amichai-bd/nand2mario/issues/303): original mutable blocks, head hits, releases and persistent consumed state; coordinate power/entity/reward owners |
@@ -82,6 +82,27 @@ banking is separate: remain within 32 KiB until a demonstrated storage need and
 the reviewed #307 memory/loader/packager/fit contract permit a banked image.
 
 ## Baseline and bounded acceptance
+
+### First aligned release matrix
+
+Completion requires all rows below for one identified final original ROM.
+Child completion alone does not establish composed FPGA behavior.
+
+| Capability | Required evidence |
+|---|---|
+| Composition, publication, HUD/scroll | Qualified #308 diagnostic plus #292/#299/#300 proofs of object limits, DMA/IRQ ordering, split pixels and column boundaries |
+| Motion and poses | #301 independent per-update state/pose cases, including direction changes, jump and collision transitions |
+| Interactions and world state | #302/#303/#305 contact/power/block/entity cases, persistence and player/platform interactions |
+| Progression | #304 life/timer/death/retry/level-transition cases and their shared HUD/state ownership |
+| Final build and FPGA composition | Reproducible clean ROM builds with exact hashes, full UART upload/readback, and independently expected source-frame/gameplay checkpoints exercising the changed capabilities above on a qualified FPGA build |
+
+Before that final run, freeze the smallest deterministic original input script,
+checkpoint expectations, relevant faults, evidence-reuse qualification and total
+budget in the game DV plan. Account for all required capabilities using valid
+child evidence plus affected composed checks; do not invent a frame quota or
+repeat the old full baseline automatically. Retain actual results and safe
+completion. This is FPGA source-frame/gameplay acceptance, not a substitute for
+the separate physical monitor/control gates.
 
 The delivered 32768-byte ROM SHA-256
 `b551c56252761d953bcf3b64270d819e3342b710299c3bff6866d4dcae8ba667`
