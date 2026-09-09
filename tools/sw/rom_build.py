@@ -42,6 +42,9 @@ def build_target(root, build, args, provenance):
         target = definitions['targets'].get(args.target)
         validate_target(target, require_package=True, stage='link')
         require_legacy_scene(root,args.target)
+        if args.target == 'springtrail':
+            from .columns import validate as validate_columns
+            validate_columns(root)
         def confined(base, name):
             if type(name) is not str or not name or Path(name).is_absolute() or '..' in Path(name).parts or ':' in name or '\\' in name:
                 fail('PRIVATE_PATH', 'target-relative confined path required')

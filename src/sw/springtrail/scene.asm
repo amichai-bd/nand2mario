@@ -104,27 +104,7 @@ LD [SceneHidden],A
 LD A,20
 LD [SceneTile],A
 CALL AppendScene
-; Fixed HUD pairs preserve their old 8x16 pixels and screen positions.
-XOR A,A
-LD [SceneHidden],A
-LD [SceneBaseX+1],A
-LD [SceneBaseY],A
-LD [SceneBaseY+1],A
-LD A,144
-LD [SceneBaseX],A
-LD A,[Score]
-ADD A,A
-ADD A,22
-LD [SceneTile],A
-CALL EmitPair
-LD A,72
-LD [SceneBaseX],A
-LD A,[GameMode]
-ADD A,A
-ADD A,32
-LD [SceneTile],A
-CALL EmitPair
-; DE is within C100..C158; clear through C19F after either player size.
+; Remaining OAM bytes are inactive; mode/score now belong to the BG HUD.
 XOR A,A
 ClearSceneTail:
 LD [DE],A

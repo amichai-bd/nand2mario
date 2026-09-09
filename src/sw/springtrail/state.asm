@@ -43,3 +43,11 @@ PieceFlags EQU $C048
 PieceCount EQU $C049
 PieceHidden EQU $C04A
 SceneY EQU $C04B
+
+; Publication/interrupt ownership; not gameplay state.
+FramePending EQU $C050
+PublishedCamera EQU $C051
+PreparedColumn EQU $C052
+PreparedColumns EQU $C053
+ColumnCache EQU $C200
+HUDCache EQU $C220

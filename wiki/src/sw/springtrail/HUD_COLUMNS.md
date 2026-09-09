@@ -47,7 +47,9 @@ that completed cache; it does not decompress content. The destination is
 map row2 through17, column(worldColumn AND31). At most one entering column is
 needed per ordinary update because horizontal speed is at most2 pixels.
 Moving right publishes floor(Camera/8)+20; moving left publishes floor(Camera/8).
-No-change tile position publishes none. Reject world columns outside0..95;
+No-change tile position publishes none. At the valid final camera608 clamp,
+the computed right-margin column96 is offscreen: publish none, never decode96.
+Reject malformed encoded indices outside0..95;
 the camera remains within its unchanged0..608 range. SCX uses Camera modulo256.
 
 Preserve restart restoration: static9800 contains the initial world and HUD,
@@ -57,7 +59,8 @@ per update until all32 columns of9C00 are restored. Switch only after final
 VRAM writes. At16 moving updates player x is at most56, before camera movement.
 Pause may continue restoration while world state remains paused. Repeated
 restart discards partial preparation and restarts the restoration counter.
-Streaming never modifies the static initial-world rows.
+Streaming never modifies the static initial-world rows. Publish each prepared
+HUD update to both maps, including the final restoration/switch frame.
 
 ## Frame and interrupt ownership
 
@@ -67,7 +70,11 @@ belong to one logical update and publish together in the following VBlank.
 Title removal and restart map selection use the published transition.
 
 Use real VBlank and LYC interrupts: IE3, STAT40, LYC15. Clear IF during setup;
-do not clear pending STAT as a side effect of the main frame wait. VBlank resets
+do not clear pending STAT as a side effect of the main frame wait. A VBlank token
+alone authorizes the main update; a STAT-only HALT wake must return to waiting.
+Mask interrupts across FF46 trigger through completed DMA, then reenable IME
+without clearing pending sources: no interrupt entry/stack access may occur
+during HRAM ownership. VBlank resets
 SCX/SCY to0, disables objects for the HUD, and signals one main-loop publication.
 Main samples inputs and publishes only in VBlank, then computes the next update
 during visible time. The STAT handler saves every register it modifies, waits

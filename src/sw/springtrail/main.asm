@@ -52,16 +52,38 @@ JR NZ,CopyMap
 LD A,$E4
 LDH [$FF47],A
 LDH [$FF48],A
+CALL InitHUD
 CALL PrepareScene
+CALL PrepareHUD
+CALL PrepareMap
+CALL PublishHUD
 CALL PublishScene
-LD A,$01
-LD [$FFFF],A
-LD A,$93
-LDH [$FF40],A
-WaitFrame:
 XOR A,A
+LD [FramePending],A
+LD [PublishedCamera],A
 LDH [$FF0F],A
+LD A,15
+LDH [$FF45],A
+LD A,$40
+LDH [$FF41],A
+LD A,3
+LD [$FFFF],A
+LD A,$91
+LDH [$FF40],A
+EI
+WaitFrame:
+; DI closes the token-check/HALT race; EI takes effect after HALT.
+DI
+LD A,[FramePending]
+OR A,A
+JR NZ,ConsumeFrame
+EI
 HALT
+JR WaitFrame
+ConsumeFrame:
+XOR A,A
+LD [FramePending],A
+EI
 CALL ReadButtons
 ; Game variables and SceneBuffer still describe the preceding prepared scene.
 LD A,[GameMode]
@@ -89,7 +111,13 @@ JR PublishFrame
 StreamFrame:
 CALL StreamMap
 PublishFrame:
+LD A,[Camera]
+LD [PublishedCamera],A
+CALL PublishHUD
+; No interrupt entry or stack access may overlap OAM bus ownership.
+DI
 CALL PublishScene
+EI
 ; No display writes follow this point until the next VBlank publication.
 WaitVisible:
 LDH A,[$FF44]
@@ -109,7 +137,9 @@ UpdateActive:
 CALL UpdateGame
 PrepareFrame:
 CALL PrepareScene
-JR WaitFrame
+CALL PrepareHUD
+CALL PrepareMap
+JP WaitFrame
 
 ClearTitle:
 ; These rows disappear with the published transition out of title.
@@ -144,3 +174,5 @@ INCLUDE "interactions.asm"
 INCLUDE "map_restore.asm"
 INCLUDE "scene.asm"
 INCLUDE "stream.asm"
+INCLUDE "hud.asm"
+INCLUDE "columns.asm"
