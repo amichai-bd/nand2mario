@@ -26,8 +26,14 @@ unmeasured here: if a window is missed, preserve the failed record. Do not retry
 the same full route or claim the360-update model route proves UART feasibility.
 A separately frozen robust waypoint/held-edge plan would then be needed.
 
-The candidate success flow retains the canonical360-update alive goal/score2
-route. It then checks win retry, pause with held Start, held-A resume without a
+The candidate success flow retains every world-state checkpoint of the
+canonical360-update alive goal/score2 route. Each A pulse is held for10 updates,
+subtracting nine from the following Right+B interval; initial Start+Right+B is
+held for nine updates. Only previous-button history changes. Host checks compare
+every state field other than that explicit history for all360/188 updates.
+Longer holds do not establish absolute-window feasibility; the same diagnostic
+and overshoot failure remain required. The success flow then checks win retry,
+pause with held Start, held-A resume without a
 queued jump, Select/Start restart priority, Select ignored during play, and
 another Select restart during map reconstruction. The final16 right-run updates
 remain at camera0. Logical UpdateGame never freezes for reconstruction; the

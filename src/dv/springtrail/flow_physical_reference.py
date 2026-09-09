@@ -5,7 +5,17 @@ from interaction_routes import SUCCESS, DEATH_RETRY
 PERIOD = 70224
 VISIBLE = 65664
 
-SUCCESS_FLOW = SUCCESS + (
+HELD_SUCCESS = (
+    (161, 9), (49, 10), (33, 24), (49, 10), (33, 40), (49, 10),
+    (33, 52), (49, 10), (33, 32), (49, 10), (33, 24), (49, 10),
+    (33, 40), (49, 10), (33, 21), (49, 10), (33, 37), (0, 1),
+)
+HELD_DEATH_RETRY = (
+    (161, 9), (49, 10), (33, 24), (49, 10), (33, 40), (49, 10),
+    (33, 84), (128, 1),
+)
+
+SUCCESS_FLOW = HELD_SUCCESS + (
     (128, 1), (0, 2), (128, 3), (16, 1), (144, 1), (16, 1),
     (128, 1), (192, 2), (64, 1), (128, 1), (0, 1), (64, 2),
     (0, 1), (33, 16),
@@ -21,7 +31,7 @@ CAPTURES = {
 def plan(mode):
     assert mode in CAPTURES, 'FLOW_MODE'
     segments = ((0, 8),) if mode == 'feasibility' else (
-        SUCCESS_FLOW if mode == 'success' else DEATH_RETRY)
+        SUCCESS_FLOW if mode == 'success' else HELD_DEATH_RETRY)
     return segments, CAPTURES[mode]
 
 

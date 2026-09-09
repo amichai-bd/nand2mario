@@ -2,12 +2,15 @@
 import sys
 import tempfile
 import unittest
+from dataclasses import replace
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]/'tools'))
 from n2m import generated_interfaces as abi
 from interactions_reference import TITLE, PLAYING, PAUSED, WON
-from flow_physical_reference import (PERIOD, VISIBLE, SUCCESS_FLOW, plan,
+from interaction_routes import SUCCESS, DEATH_RETRY, expected
+from flow_physical_reference import (PERIOD, VISIBLE, SUCCESS_FLOW, HELD_SUCCESS,
+                                     HELD_DEATH_RETRY, plan,
                                      schedule, predict, expected_snapshot)
 from flow_physical_driver import run, DOT_HZ
 
@@ -97,6 +100,18 @@ class FlowPhysical(unittest.TestCase):
             self.assertEqual((state.mode, state.timer, state.player.x), (mode, timer, x*16))
             self.assertEqual(state.player.y, 112*16)
             self.assertEqual(state.player.camera, 0)
+
+    def test_longer_holds_preserve_every_canonical_world_state(self):
+        for original, held in ((SUCCESS, HELD_SUCCESS), (DEATH_RETRY, HELD_DEATH_RETRY)):
+            before, after = expected(original), expected(held)
+            self.assertEqual(len(before), len(after))
+            for a, b in zip(before, after):
+                # Only explicit held-button history differs. No position, mode,
+                # velocity, timer, enemy, pickup or score checkpoint is relaxed.
+                game = b['state']
+                normalized = replace(game, previous=a['state'].previous,
+                                     player=replace(game.player, previous=a['state'].player.previous))
+                self.assertEqual(normalized, a['state'], a['update'])
 
     def test_metadata_confirms_planned_frame_and_window(self):
         metadata = dict(epoch=6, seq=2, dot=LCD+2*PERIOD+65459)
