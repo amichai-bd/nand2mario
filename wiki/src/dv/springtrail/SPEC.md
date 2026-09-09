@@ -93,6 +93,45 @@ and independently predicted observable checkpoints.
 
 ## V0.9 milestone
 
+### Paused frame acquisition
+
+Planned under [#283](https://github.com/amichai-bd/nand2mario/issues/283):
+use the existing UART Client and immutable SNAPSHOT/READ_FRAME across bounded
+host batches. Freeze ROM/build/reference bytes, input script and timing before
+comparison. This short prerequisite does not complete the milestone matrix.
+
+For the corrected ROM, LCD starts at dot 76964 and the period is 70224 dots.
+Capture ordinal n starts at 1: pause at C(n) = 76964 + n * 70224 + 4096;
+expect literal snapshot sequence n-1 and native callback n+1. C(1) therefore
+captures source sequence 0/callback 2 (blank), C(2) sequence 1/callback 3 (title).
+Reach C(1)=151284 from reset with counts 70224, 70224, 10836. Later captures
+each advance 70224. Require COUNT, exact executed amount/completed dot and
+public PAUSED/dot observations. No capture is omitted between checkpoints.
+
+Apply the first gameplay input at C(2), before zero-based source frame 2's
+VBlank. The prepared-map pipeline keeps sequences 2 and 3 on the title;
+sequence 4 first displays that input's logical update. Reference prefixes and
+final pipeline drains must be explicit in the separately reviewed matrix.
+Each planned capture fixes its expected sequence, completion-dot range, epoch
+and reference offset before SNAPSHOT. Retain all 5760 packed bytes and compare
+all 23040 unpacked shades. Observed pixels/metadata never select the expected
+state or index. Record every planned INPUT, applied dot and public source/mask.
+
+Publish a continuation record only after all batch frames/inputs and the final
+paused frontier are checked and stored. Bind the complete ordered evidence,
+immutable plan/reference/ROM/build identities, epoch, next frame/input indices,
+exact dot and durable UART next sequence. Before advancing, the next process
+checks these bindings, the certain session and the same public paused frontier.
+Reset/reload, changed input history, missing/duplicate frames, corruption, stale
+state or an unfinished batch forbid continuation. Preserve failure without
+reset or replay; uncertain replies retain the existing durable session rule.
+
+Retain the planned mask across intermediate boundaries. Release it only at a
+scripted change or final cleanup. Each batch uses the existing 300-second total
+supervisor including cleanup. First qualify two consecutive short batches and
+a certain final PAUSED/UART/input-zero state. Full interval/drain counts and
+measured aggregate remain #263 acceptance.
+
 For v0.9, identify the exact self-built ROM and independent reference profile.
 Reach the named boot checkpoint within 600 emulated frame intervals, then run
 3600 intervals of scripted start/movement/action. Every frame and input
