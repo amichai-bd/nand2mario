@@ -5,6 +5,15 @@ through `python tools/build.py host`. The [PRD](PRD.md) owns requirements.
 The [interface MAS](../../../src/rtl/interfaces/MAS_interfaces.md) and generated
 exports own all wire, register, profile and frame values.
 
+The focused `python tools/stackdrop_player.py` entrypoint uses this same Client,
+package validator and durable session for the
+[frozen Stackdrop comparison](../../../src/sw/stackdrop/SPEC.md#pixel-player-comparison).
+Its explicit private setup/state files bind the verified device, board build,
+prior paused dots, frame identity and durable sequence. Run baseline once, then
+strategy once; an attempted or uncertain run cannot be silently restarted.
+Each invocation uses the existing300-second supervisor and canonical machine
+lock. Pixel observations and packet journals are retained under its build tag.
+
 ## Commands
 
 Every operation accepts `--tag`, `--json` and the doctor's `--uart-port`,
