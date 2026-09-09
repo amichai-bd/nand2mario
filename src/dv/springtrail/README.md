@@ -29,8 +29,12 @@ literal frame/state checkpoints, not every CPU register against a new model.
 The optional wrapper capture is passive and default-off. It records every
 public write/input before the system edge and settled retirement/pixel after
 the edge, flushes in batches, and closes with an exact line-count trailer after
-actual pause. Continuous Python consumes complete lines every50us; unknown,
-extra, reordered, incomplete or missing observations cannot pass. The fault
+actual pause. Continuous Python consumes complete lines every50us. Exact pixel,
+input and selected-write expectations reject missing, extra or reordered events;
+the trailer binds the total transported line count and unknown values fail.
+Other writes are retained without an independent value oracle. Retirement
+checks cover sequence, epoch and increasing dots, not an exact terminal count
+or every register. The fault
 forces the actual source-shade output to1 after the first eligible pixel; the
 unchanged next white-pixel expectation must reject it.
 
