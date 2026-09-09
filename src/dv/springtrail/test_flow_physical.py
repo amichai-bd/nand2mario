@@ -232,6 +232,33 @@ class FlowPhysical(unittest.TestCase):
         self.assertFalse(endpoint.running)
         self.assertEqual(endpoint.mask, 0)
 
+    def test_bound_prefix_continues_without_load(self):
+        class Existing(Endpoint):
+            def load(self, rom):
+                raise AssertionError('must not reload')
+
+            def snapshot(self):
+                metadata, packed = super().snapshot()
+                metadata['epoch'] = 4
+                return metadata, packed
+
+        endpoint = Existing()
+        endpoint.loaded = True
+        endpoint.dots = LCD+359*PERIOD+62410
+        endpoint.events = [(LCD+n*PERIOD+8192, mask)
+                           for n, mask in schedule(HELD_SUCCESS)[0][:-1]]
+        endpoint.events.append((endpoint.dots, 0))
+        prior = self.prior()
+        prior['halt_dot'] = endpoint.dots
+        continuation = dict(events=endpoint.events, source_sha256='bound-journal')
+        with tempfile.TemporaryDirectory() as folder:
+            result = run(endpoint, bytes(32768), folder, lambda row: None,
+                'original', prior, LCD, 'success', renderer=render,
+                sleep=endpoint.sleep, continuation=continuation)
+        self.assertEqual(result['epoch'], 4)
+        self.assertEqual(result['checkpoints'][0]['state']['mode'], WON)
+        self.assertEqual(result['load'], dict(reused_from='bound-journal'))
+
 
 if __name__ == '__main__':
     unittest.main()

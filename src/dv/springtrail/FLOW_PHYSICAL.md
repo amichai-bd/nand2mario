@@ -65,6 +65,11 @@ Read SNAPSHOT_VALID/EPOCH/SEQ and READ_FRAME against the prior captured hash;
 do not issue a new SNAPSHOT during preflight, since later RUN may have advanced
 the producer. Recovery from a certain failed run binds its actual acknowledged
 HALT/INPUT0 and its last acquired snapshot, not an inferred newer image.
+An explicitly reviewed no-reload continuation may bind a complete prior input
+journal plus acknowledged neutral cleanup before the terminal sample. It checks
+the same retained snapshot and paused state, preserves epoch, and runs only the
+missing terminal capture and staged tail. The prior failure stays FAIL. This is
+not replay of the route or permission to infer an unobserved winning image.
 Identity failure sends no cleanup controls. After verified preflight, known
 failures attempt HALT/INPUT0; uncertain completion forbids further traffic.
 Record packet journals, actual applied windows, all packed snapshots and final

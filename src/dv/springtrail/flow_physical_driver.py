@@ -14,7 +14,7 @@ DOT_HZ = 4194304
 
 
 def run(client, rom, folder, log, expected_build, prior, lcd, mode,
-        *, renderer=None, sleep=time.sleep, clock=time.monotonic):
+        *, renderer=None, sleep=time.sleep, clock=time.monotonic, continuation=None):
     """Caller owns verified setup, immutable package, session and300s supervisor."""
     folder = Path(folder)
     segments, captures = plan(mode)
@@ -30,6 +30,13 @@ def run(client, rom, folder, log, expected_build, prior, lcd, mode,
     for number in captures:
         tasks.setdefault(number+2, {})['capture'] = number
     events, checks = [], []
+    if continuation is not None:
+        assert mode == 'success', 'FLOW_CONTINUATION_MODE'
+        events = [tuple(event) for event in continuation['events']]
+        assert events[-1] == (prior['halt_dot'], 0), 'FLOW_CONTINUATION_NEUTRAL'
+        # Caller binds the prior full-load and actual journal, including cleanup.
+        # Only the missing terminal capture and existing stages remain.
+        tasks = {count+2: {'capture': count}}
     armed = completed = False
     mask = 0
 
@@ -107,11 +114,14 @@ def run(client, rom, folder, log, expected_build, prior, lcd, mode,
             previous['sequence'] >> 32), 'FLOW_PRIOR_FRAME'
         old = client.read_storage('READ_FRAME', 5760)
         assert hashlib.sha256(old).hexdigest() == prior['snapshot_sha256'], 'FLOW_PRIOR_PIXELS'
-        epoch = (previous['epoch']+2) % 2**32
+        epoch = previous['epoch'] if continuation is not None else (previous['epoch']+2) % 2**32
         armed = True
-        loaded = client.load(rom)
-        safe()
-        assert dot() == 0, 'FLOW_LOAD_DOT'
+        if continuation is None:
+            loaded = client.load(rom)
+            safe()
+            assert dot() == 0, 'FLOW_LOAD_DOT'
+        else:
+            loaded = dict(reused_from=continuation['source_sha256'])
         for frame, task in sorted(tasks.items()):
             stable = mode != 'feasibility' and task.get('capture') == count
             late = 8 if stable else 0
