@@ -67,6 +67,14 @@ class Client:
 
 
 class CaptureTests(unittest.TestCase):
+    def test_new_rom_cannot_use_historical_schedule(self):
+        with tempfile.TemporaryDirectory() as temp:
+            client=Client()
+            with self.assertRaisesRegex(AssertionError,'CAPTURE_BASELINE_ROM'):
+                acquire(client,Path(temp),PLAN,REFERENCE,
+                        dict(IDENTITY,rom_sha256='00'*32),4,origin={})
+            self.assertEqual(client.calls,[])
+
     def origin(self, client):
         frontier=public_state(client)
         return dict(binding=IDENTITY,frontier=frontier,next_sequence=client.sequence)
