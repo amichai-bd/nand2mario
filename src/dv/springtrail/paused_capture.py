@@ -65,7 +65,8 @@ def acquire(client, root, plan, reference, identity, stop, *, origin=None, previ
     """Caller owns the verified setup, session lock and existing total supervisor.
 
     origin binds a separately verified full load. previous is a completed local
-    checkpoint, never an instruction to recover an uncertain endpoint.
+    checkpoint, never an instruction to recover an uncertain endpoint. The
+    caller also verifies the preceding whole-supervisor success before resume.
     """
     root = Path(root).resolve()
     validate_plan(plan, reference)

@@ -125,6 +125,9 @@ checks these bindings, the certain session and the same public paused frontier.
 Reset/reload, changed input history, missing/duplicate frames, corruption, stale
 state or an unfinished batch forbid continuation. Preserve failure without
 reset or replay; uncertain replies retain the existing durable session rule.
+A checkpoint alone is insufficient: continuation also binds the preceding
+outer supervisor's successful completion within its total wall budget. The
+initial origin binds a verified full load/readback and its known reset epoch.
 
 Retain the planned mask across intermediate boundaries. Release it only at a
 scripted change or final cleanup. Each batch uses the existing 300-second total
