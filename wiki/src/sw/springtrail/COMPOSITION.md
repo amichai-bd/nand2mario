@@ -29,12 +29,14 @@ owns power sizes. Facing follows the last nonzero horizontal velocity; initial
 and restarted neutral state faces right. Whole-pose reflection maps x to8-x and
 XORs the tile X-flip bit. Approved Y-flip flags are preserved.
 
-Global LCDC object-size bit becomes0. Every old8x16 enemy, pickup, goal and HUD
-entry becomes a vertical pair of adjacent tiles; their pixels/anchors stay the
-same. Keep player, enemy, four pickups, goal, score, mode OAM priority order.
-Player pieces are row-major. At most20 small/22 large entries are emitted;
-remaining bytes of the160-byte shadow are zero. At most2 courier pieces and
-one from each of8 other objects intersect a scanline: maximum10.
+Global LCDC object-size bit is0. Each enemy, pickup and goal uses a vertical pair
+of adjacent tiles with unchanged pixels and anchors. Keep player, enemy, four
+pickups and goal OAM priority order. Score and mode use the background
+[HUD](HUD_COLUMNS.md), with no OAM entries. Player pieces are row-major.
+At most16 small/18 large entries are emitted; the remaining96/88 bytes of the
+160-byte shadow are zero. At most2 courier pieces and one from each of6 other
+objects intersect a scanline: maximum8, below the hardware10-object limit.
+The HUD disables objects on rows0..15; lower pixels of crossing pieces remain.
 Use the [HRAM DMA publisher](../../../../src/sw/springtrail/oam_dma.asm)
 unchanged, once per prepared publication.
 
@@ -43,7 +45,7 @@ unchanged, once per prepared publication.
 - Exact approved32-tile encoding, all12 pose maps and24 facing reconstructions;
   compare independently assembled shades, palette, offsets and tile references.
 - Actual SM83 composer cases cover all24 facings, screen edges, signed camera,
-  hidden/partially clipped pieces, stale-tail clearing and20/22-object bounds.
+  hidden/partially clipped pieces, stale-tail clearing and current object bounds.
 - Existing game state/collision fixtures qualify unchanged rules; independent
   scene expectations cover every other object in global8x8 mode.
 - Short actual Intel-preloaded composed pixel proof and one wrong-piece fault
@@ -63,6 +65,12 @@ supports the composition structure only. Our geometry, asset bytes and code
 are original; no commercial data or instruction sequence is copied.
 
 ## CPU fixture budget
+
+The following budget and composed-image schedule qualify the historical
+20-entry scene with OAM HUD. They do not describe the current background HUD.
+The [HUD/column matrix](../../../../src/dv/springtrail/HUD_COLUMNS.md) owns current
+scene tails, readiness, split pixels and consumer guards. Direct pose geometry
+and unchanged gameplay routines retain their scoped qualification.
 
 The32 cases are24 pose/facing calls, four clip/hidden calls, three directional
 start/restart scenes and one signed-camera/fractional scene. Poisoning occurs
@@ -88,7 +96,7 @@ identical bytes for all nine shared non-code/non-asset sections.
 
 ## Bounded composed proof
 
-The current game proof uses the actual ROM and all 74 loaded tiles. It checks
+The historical pre-background-HUD game proof uses its ROM and all 74 loaded tiles. It checks
 all 23,040 pixels of the initial blank frame and all 23,040 pixels of the next
 TITLE frame against independent original-art expectations. INPUT 129 is applied
 60,000 through 62,000 dots after the initial LCD-enable write. The next visible
@@ -115,6 +123,6 @@ It skips the initial LCD-off DMA, which would be overwritten before TITLE is
 visible. The unchanged full-frame oracle must reject the resulting image.
 
 The older nine-object frame and renderer helpers are historical-only. Their
-ROM/source guards reject this composition. Current checks are
+ROM/source guards reject that composition. Its checks are
 `python-courier-unit`, `python-cgs`, `python-cgu` and `python-cgx`; historical
 endurance cannot silently validate a new ROM.

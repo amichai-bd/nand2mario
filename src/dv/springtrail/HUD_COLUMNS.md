@@ -1,8 +1,8 @@
 # HUD/column acceptance
 
 The [owning contract](../../../wiki/src/sw/springtrail/HUD_COLUMNS.md) defines
-the coordinate, encoding and interrupt changes. This is the finite #300
-remaining-to-merge checklist; runtime results are pending.
+the coordinate, encoding and interrupt changes. This matrix separates host,
+shared-routine, actual-game and fixed-renderer coverage.
 
 ## Instruction bounds
 
@@ -57,9 +57,10 @@ an expected image or state.
   following DMA and final settled HALT. Check all retained pixels, applied input,
   VBlank tokens/STAT order, no extra game update on STAT wake, exact split writes,
   no interrupt or stack access during DMA, and the4480 publication ceiling.
-- Shared-renderer composed fixture: independently seeded88-to96 camera ring
+- Shared-renderer composed fixture: independently seeded95-to97 camera ring
   transition, one full normal frame including ground/entering column, fixed HUD
-  and an object crossing y15/16. Use the actual linked publisher/column/HUD/ISR
+  and an object crossing y15/16 (player world x120/y12). Entering column32 is
+  visible at screen x159. Use the actual linked publisher/column/HUD/ISR
   routines; fixture state setup is explicit, not a claim of natural reachability.
   A real accepted column-data or LYC mutation must fail the unchanged pixel/
   boundary checker. Select its earliest downstream witness and preserve failure.
@@ -68,13 +69,14 @@ an expected image or state.
 - Consumer reconciliation: prior composition game and courier full-scene
   expectations become historical or are updated explicitly; direct pose-only
   checks and movement/interaction rules remain qualified where unchanged.
-  Existing #316 flow/endurance and old renderer guards stay pinned. Do not
-  reinterpret #263/#291 historical ROMs or rerun their physical milestones.
+  Existing pre-composition flow/endurance and old renderer guards stay pinned.
+  Do not reinterpret historical acquisition/endurance ROMs or rerun their
+  physical milestones.
 - Required checks, final owning game/DV/composition links and independent
   current-head review, then normal merge. Physical release gates remain open.
 
 Target120 seconds each and300 seconds aggregate; hard300 each. Initial forecast
-is short90, CPU45, game240, renderer120, fault45 seconds (540 aggregate). This
+is short90, CPU45, game240, renderer120, fault130 seconds (625 aggregate). This
 exceeds the ordinary aggregate target, not the per-run hard limit. Freeze exact
 fixture dots and supervisor commands before launch; use the measured short to
 reduce redundant coverage or stop an infeasible run without weakening criteria.

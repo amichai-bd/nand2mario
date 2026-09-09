@@ -1,7 +1,8 @@
 # HUD and prepared columns
 
-This contract freezes the implementation and verification scope of
-[#300](https://github.com/amichai-bd/nand2mario/issues/300). Implementation is pending.
+The [HUD routines](../../../../src/sw/springtrail/hud.asm) and
+[column preparation/publisher](../../../../src/sw/springtrail/stream.asm)
+implement the stationary HUD and scrolling playfield.
 The [alignment owner](sml1-alignment.md) defines the staged release.
 
 ## Coordinates and artwork
@@ -26,10 +27,39 @@ it introduces no life or timer value. Exact glyph sources are the named
 `glyph-*` maps in [core-maps.json](../../../../src/sw/springtrail/assets/core/core-maps.json)
 and [core-tiles.json](../../../../src/sw/springtrail/assets/core/core-tiles.json).
 Existing terrain remains [tiles.json](../../../../src/sw/springtrail/tiles.json).
-Keep shade0..3 and E4 palettes. Allocate only selected glyph tiles after the
-existing74 tiles, with explicit build bounds. A generated tile sheet and
-assembled HUD/world SVG must link here and in the issue before final acceptance.
-Unchanged artwork needs no renewed approval; any changed pixels do.
+Keep shade0..3 and E4 palettes. The20 glyphs in order
+`01234ACDEILNOPRSTUWY` use tile IDs74..93, VRAM84A0..85DF.
+Their approved source atlas is linked at ROM6000; only those glyphs are loaded
+after the existing74 tiles. The mapperless32 KiB layout retains overlap checks.
+Map row0 columns1..6 hold the mode word padded with blank tile0; SCORE occupies
+columns12..16 and score0..4 occupies column18. All other HUD pixels are blank.
+Both9800 and9C00 receive the same prepared six mode tiles and score tile.
+
+## Reference previews
+
+These are source-reference images, not FPGA photographs or measured frames.
+The PLAY view uses fixed renderer-fixture operands: camera97, player world
+x120/y12, score0. It shows the partial sprite below y15 and entering column32
+at screen x159; it does not claim this state was reached by gameplay.
+
+![TITLE source reference](hud-columns/title.svg)
+
+![PLAY source reference](hud-columns/play.svg)
+
+![Selected glyph tiles, IDs74 through93](hud-columns/glyphs.svg)
+
+The tile sheet's checkerboard and ID labels are review overlays. The composed
+views use opaque background shade0. Reproduce all three views from the approved
+sources and independent [pixel reference](../../../../src/dv/springtrail/hud_reference.py):
+
+```text
+python src/dv/springtrail/hud_preview.py --tag hud-review
+```
+
+The [narrow helper](../../../../src/dv/springtrail/hud_preview.py) calls the existing
+SVG/PNG renderer and writes to `workdir/builds/hud-review/hud-preview/`.
+Copy its SVGs into this page's `hud-columns/` folder; keep PNGs in workdir.
+Unchanged artwork retains its existing approval; changed pixels need review.
 
 ## Original encoding and publication
 
@@ -97,7 +127,13 @@ cache, DrawColumn publishes into a wrapping map, and VBlank/LCDStatus separate
 HUD scroll. These establish organization only. The encoding, maps, code and
 pixels here are original; uncertain annotations supply no timing oracle.
 
-## Remaining acceptance
+## Verification boundary
+
+The [finite matrix](../../../../src/dv/springtrail/HUD_COLUMNS.md) owns exact
+instruction bounds, cases and target scope. Its actual-game proof covers blank
+and TITLE pixels plus one ordinary update's next preparation/publication.
+The separate renderer fixture owns the fixed ring transition and HUD-crossing
+pixels. Neither substitutes for complete gameplay or physical release evidence.
 
 - Validate encoding bounds and every decoded column against independent terrain;
   build malformed/truncated/overflow/unallocated-tile negatives.
