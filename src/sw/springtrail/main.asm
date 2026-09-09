@@ -118,7 +118,7 @@ CALL PublishHUD
 DI
 CALL PublishScene
 EI
-; No display writes follow this point until the next VBlank publication.
+; Only the specified line15 STAT split writes display registers during visible time.
 WaitVisible:
 LDH A,[$FF44]
 CP A,144
