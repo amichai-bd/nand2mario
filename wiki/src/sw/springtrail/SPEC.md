@@ -39,6 +39,11 @@ engine, an AI framework, a compiler or audio to deliver this game.
 
 ## Player-visible rules
 
+The [approved original character art](CHARACTER_ART.md) defines the next courier
+tile bank and pose geometry. Its integration remains in
+[#292](https://github.com/amichai-bd/nand2mario/issues/292); the running game
+continues to use the existing renderer and rules below.
+
 The game has title, playing, paused, retry and won states. Core reset starts at
 the title. A retry or restart restores the initial player, camera, enemy,
 collectibles and score; it does not preserve a hidden life counter or randomness.
