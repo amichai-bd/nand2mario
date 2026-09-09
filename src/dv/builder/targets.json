@@ -15346,5 +15346,33 @@
       ]
     },
     "preload": "springtrail"
+  },
+  "uart-run-dots": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/input/n2m_input_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/uart/n2m_uart_core_control.sv",
+      "src/dv/uart/tb_uart_run_dots.sv"
+    ],
+    "top": "tb_uart_run_dots",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS UART RUN_DOTS cases=9 exact_ticks phase STOP settlement reset STEP"
+  },
+  "uart-run-dots-corrupt": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/input/n2m_input_pkg.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/uart/n2m_uart_core_control.sv",
+      "src/dv/uart/tb_uart_run_dots.sv"
+    ],
+    "top": "tb_uart_run_dots",
+    "args": [
+      "+CORRUPT_RESULT"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "RUN_DOTS_RESULT"
   }
 }

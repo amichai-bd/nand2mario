@@ -162,6 +162,8 @@ reply leaves host completion uncertain. RESET cannot interleave with an
 outstanding request. With the documented active system clock, the existing
 timebase supplies a tick within six edges. Clock loss is not synthesized progress:
 the ordinary host timeout leaves uncertainty instead of claiming completion.
+CPU/profile faults do not themselves cancel COUNT while real ticks continue;
+the acquisition harness must check the existing fault/progress observations.
 
 Validate payload length, ranges and permitted state before effects; invalid
 commands do not partially change state. PING and status reads work in any state.

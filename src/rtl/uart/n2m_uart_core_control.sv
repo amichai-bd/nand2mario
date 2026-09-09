@@ -25,11 +25,12 @@ module n2m_uart_core_control (
     output logic busy,
     output logic done,
     output logic [7:0] status,
-    output logic [63:0] completed_dot
+    output logic [63:0] completed_dot,
+    output n2m_interfaces_pkg::run_dots_t run_dots_result
 );
     typedef enum logic [3:0] {
         IDLE, HALT_WAIT, RUN_WAIT, RESET_WAIT, RESET_ASSERT, INIT_WAIT,
-        INPUT_APPLY, STEP_RUN, STEP_PAUSE, COMPLETE
+        INPUT_APPLY, STEP_RUN, STEP_PAUSE, COMPLETE, DOTS_RUN
     } state_t;
     state_t state, state_next;
     logic host_pause, host_pause_next;
@@ -39,6 +40,12 @@ module n2m_uart_core_control (
     logic [31:0] epoch_next;
     logic [63:0] dot_next, retirement_next, completed_dot_next;
     logic stop_step;
+    logic stop_dots;
+    logic [31:0] executed, executed_next;
+    logic [7:0] reason, reason_next;
+    assign run_dots_result.dot = completed_dot;
+    assign run_dots_result.executed = executed;
+    assign run_dots_result.reason = reason;
     assign accepted_input.valid = state == INPUT_APPLY && !gb_tick && !reset_sys && !core_reset;
     assign accepted_input.source_write = pending_input.source_write;
     assign accepted_input.value = pending_input.value;
@@ -46,14 +53,17 @@ module n2m_uart_core_control (
     assign done = state == COMPLETE;
     assign core_reset = state == RESET_ASSERT && !reset_sys;
     assign stop_step = state == STEP_RUN && gb_tick && (instruction_complete || remaining == 1);
+    assign stop_dots = state == DOTS_RUN && gb_tick && (remaining == 1 || cpu_stopped);
     // A new HALT/RESET at the current A edge must stop after that very dot.
     // paused is registered in the timebase, so this creates no tick loop.
-    assign pause_request = host_pause || stop_step ||
+    assign pause_request = host_pause || stop_step || stop_dots ||
         (start && (command == n2m_interfaces_pkg::COMMAND_HALT || command == n2m_interfaces_pkg::COMMAND_RESET));
     always_comb begin
         state_next = state;
         host_pause_next = host_pause;
         remaining_next = remaining;
+        executed_next = executed;
+        reason_next = reason;
         pending_input_next = pending_input;
         epoch_next = epoch;
         dot_next = dot_count + (gb_tick ? 64'd1 : 64'd0);
@@ -79,6 +89,19 @@ module n2m_uart_core_control (
                             remaining_next = step_budget;
                             host_pause_next = 0;
                             state_next = STEP_RUN;
+                        end
+                    end
+                    n2m_interfaces_pkg::COMMAND_RUN_DOTS: begin
+                        executed_next = 0;
+                        remaining_next = step_budget;
+                        reason_next = n2m_interfaces_pkg::WIRE_RUN_DOTS_COUNT;
+                        if (cpu_stopped) begin
+                            reason_next = n2m_interfaces_pkg::WIRE_RUN_DOTS_STOPPED;
+                            completed_dot_next = dot_count;
+                            state_next = COMPLETE;
+                        end else begin
+                            host_pause_next = 0;
+                            state_next = DOTS_RUN;
                         end
                     end
                     default: begin end
@@ -113,6 +136,16 @@ module n2m_uart_core_control (
                     state_next = STEP_PAUSE;
                 end
             end
+            DOTS_RUN: if (gb_tick) begin
+                executed_next = executed + 1'b1;
+                remaining_next = remaining - 1'b1;
+                if (stop_dots) begin
+                    host_pause_next = 1;
+                    reason_next = remaining == 1 ? n2m_interfaces_pkg::WIRE_RUN_DOTS_COUNT : n2m_interfaces_pkg::WIRE_RUN_DOTS_STOPPED;
+                    completed_dot_next = dot_next;
+                    state_next = STEP_PAUSE;
+                end
+            end
             // Allow the finishing A capture to publish at B before replying.
             STEP_PAUSE: if (paused) state_next = COMPLETE;
             COMPLETE: state_next = IDLE;
@@ -122,6 +155,8 @@ module n2m_uart_core_control (
     `DFF_ARST_VAL(state, state_next, clk_sys, reset_sys, IDLE)
     `DFF_ARST_VAL(host_pause, host_pause_next, clk_sys, reset_sys, 1'b1)
     `DFF_ARST_VAL(remaining, remaining_next, clk_sys, reset_sys, '0)
+    `DFF_ARST_VAL(executed, executed_next, clk_sys, reset_sys, '0)
+    `DFF_ARST_VAL(reason, reason_next, clk_sys, reset_sys, n2m_interfaces_pkg::WIRE_RUN_DOTS_COUNT)
     `DFF_ARST_VAL(pending_input, pending_input_next, clk_sys, reset_sys, '0)
     `DFF_ARST_VAL(epoch, epoch_next, clk_sys, reset_sys, '0)
     `DFF_ARST_VAL(dot_count, dot_next, clk_sys, reset_sys, '0)
@@ -133,6 +168,10 @@ module n2m_uart_core_control (
     `N2M_ASSERT(UART_CORE_INIT_FROZEN, clk_sys, reset_sys, state == INIT_WAIT |-> paused && !gb_tick)
     `N2M_ASSERT(UART_STEP_BUDGET, clk_sys, reset_sys,
         start && command == n2m_interfaces_pkg::COMMAND_STEP |-> paused && step_budget != 0 && step_budget <= n2m_interfaces_pkg::WIRE_STEP_MAX_DOTS)
+    `N2M_ASSERT(UART_DOTS_BUDGET, clk_sys, reset_sys,
+        start && command == n2m_interfaces_pkg::COMMAND_RUN_DOTS |-> paused && step_budget != 0 && step_budget <= n2m_interfaces_pkg::WIRE_RUN_DOTS_MAX)
+    `N2M_ASSERT(UART_DOTS_STOP_BOUNDARY, clk_sys, reset_sys,
+        stop_dots |=> paused && !gb_tick)
     `N2M_ASSERT(UART_STEP_ASLEEP_COMPLETE, clk_sys, reset_sys,
         start && command == n2m_interfaces_pkg::COMMAND_STEP && cpu_stopped |=>
             done && status == n2m_interfaces_pkg::STATUS_STEP_LIMIT && pause_request && paused && !gb_tick)

@@ -87,6 +87,12 @@ class Client:
                 result = response
             else:
                 result = unpack_record(definition['response'], response)
+            if name == 'RUN_DOTS' and header['status'] == abi.STATUS_OK:
+                requested = unpack_record('word', payload)['value']
+                complete = result['reason'] == abi.WIRE_RUN_DOTS_COUNT and result['executed'] == requested
+                stopped = result['reason'] == abi.WIRE_RUN_DOTS_STOPPED and result['executed'] < requested
+                if not (complete or stopped):
+                    raise ValueError('invalid RUN_DOTS completion')
             self.record({'event': 'response', 'command': name, 'sequence': sequence,
                          'status': header['status'], 'payload': summary(response),
                          'fields': result if isinstance(result, dict) else None})
@@ -150,9 +156,10 @@ class Client:
         return bytes(result)
 
     def control(self, action, value=None):
-        if action == 'STEP':
-            if type(value) is not int or not 1 <= value <= abi.WIRE_STEP_MAX_DOTS:
-                raise ValueError('step budget outside generated bounds')
+        if action in ('STEP', 'RUN_DOTS'):
+            maximum = abi.WIRE_STEP_MAX_DOTS if action == 'STEP' else abi.WIRE_RUN_DOTS_MAX
+            if type(value) is not int or not 1 <= value <= maximum:
+                raise ValueError('dot budget outside generated bounds')
             payload = pack_record('word', {'value': value})
         elif action == 'INPUT':
             payload = pack_record('input', {'buttons': value})
@@ -161,6 +168,9 @@ class Client:
         else:
             raise ValueError('unknown host control')
         return self.request(action, payload)
+
+    def run_dots(self, count):
+        return self.control('RUN_DOTS', count)
 
     def snapshot(self):
         metadata = self.request('SNAPSHOT')
