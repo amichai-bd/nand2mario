@@ -1,5 +1,6 @@
 """Synthetic host scheduling/failure checks, not physical frame evidence."""
 import sys
+import hashlib
 import tempfile
 import unittest
 from dataclasses import replace
@@ -9,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]/'tools'))
 from n2m import generated_interfaces as abi
 from interactions_reference import TITLE, PLAYING, PAUSED, WON
 from interaction_routes import SUCCESS, DEATH_RETRY, expected
-from flow_physical_reference import (PERIOD, VISIBLE, SUCCESS_FLOW, HELD_SUCCESS,
+from flow_physical_reference import (PERIOD, VISIBLE, STAGES, SUCCESS_FLOW, HELD_SUCCESS,
                                      HELD_DEATH_RETRY, plan,
                                      schedule, predict, expected_snapshot)
 from flow_physical_driver import run, DOT_HZ
@@ -58,7 +59,13 @@ class Endpoint:
                 abi.HOST_REG_INPUT_SOURCE: abi.INPUT_SOURCE_UART,
                 abi.HOST_REG_INPUT: self.mask, abi.HOST_REG_INPUT_EFFECTIVE: self.mask,
                 abi.HOST_REG_IMAGE_VALID: 1, abi.HOST_REG_DOT_HI: self.dots >> 32,
+                abi.HOST_REG_SNAPSHOT_VALID: 1, abi.HOST_REG_SNAPSHOT_EPOCH: 4,
+                abi.HOST_REG_SNAPSHOT_SEQ_LO: 7, abi.HOST_REG_SNAPSHOT_SEQ_HI: 0,
                 abi.HOST_REG_DOT_LO: self.dots & 0xffffffff}[address]
+
+    def read_storage(self, command, size):
+        assert command == 'READ_FRAME' and size == 5760
+        return bytes(size)
 
     def sleep(self, seconds):
         assert self.running
@@ -83,6 +90,7 @@ class Endpoint:
 class FlowPhysical(unittest.TestCase):
     def prior(self):
         return dict(sequence=7, build_id='original', halt_dot=1000000,
+                    snapshot_sha256=hashlib.sha256(bytes(5760)).hexdigest(),
                     frame=dict(epoch=4, sequence=7, dot=999000))
 
     def test_one_frame_lag_and_literal_pause_flow(self):
@@ -127,7 +135,8 @@ class FlowPhysical(unittest.TestCase):
             with tempfile.TemporaryDirectory() as folder:
                 result = run(endpoint, bytes(32768), folder, lambda entry: None,
                              'original', self.prior(), LCD, mode, renderer=render, sleep=endpoint.sleep)
-            self.assertEqual(len(result['checkpoints']), len(plan(mode)[1]))
+            additional = len(STAGES) if mode == 'success' else int(mode == 'death-retry')
+            self.assertEqual(len(result['checkpoints']), len(plan(mode)[1])+additional)
             self.assertFalse(endpoint.running)
             self.assertEqual(endpoint.mask, 0)
             if mode == 'feasibility':
@@ -187,6 +196,41 @@ class FlowPhysical(unittest.TestCase):
             self.assertAlmostEqual(record['sleep_seconds'], max(0,
                 (record['start']-record['before_dot'])/DOT_HZ-.012))
             self.assertLess(record['halt_dot'], record['end'])
+
+    def test_stable_win_window_precedes_retry(self):
+        class LateCapture(Endpoint):
+            def sleep(self, seconds):
+                late = LCD+359*PERIOD <= self.dots < LCD+360*PERIOD
+                super().sleep(seconds)
+                if late:
+                    self.dots += 2*PERIOD
+
+        endpoint, records = LateCapture(), []
+        with tempfile.TemporaryDirectory() as folder:
+            result = run(endpoint, bytes(32768), folder, records.append,
+                'original', self.prior(), LCD, 'success', renderer=render, sleep=endpoint.sleep)
+        terminal = next(c for c in result['checkpoints'] if c['name'] == 'update-360')
+        self.assertGreater(terminal['logical_update'], 360)
+        self.assertEqual((terminal['state']['mode'], terminal['state']['score']), (WON, 2))
+        win = next(i for i, row in enumerate(records) if row.get('name') == 'update-360')
+        retry = next(i for i, row in enumerate(records) if row.get('stage') == 'restart')
+        self.assertLess(win, retry)
+
+    def test_wrong_terminal_image_prevents_retry(self):
+        class BadWin(Endpoint):
+            def snapshot(self):
+                metadata, packed = super().snapshot()
+                if self.loaded and metadata['seq'] >= 361:
+                    packed = bytes([packed[0] ^ 1])+packed[1:]
+                return metadata, packed
+
+        endpoint = BadWin()
+        with tempfile.TemporaryDirectory() as folder, self.assertRaisesRegex(AssertionError, 'FLOW_PIXELS'):
+            run(endpoint, bytes(32768), folder, lambda row: None,
+                'original', self.prior(), LCD, 'success', renderer=render, sleep=endpoint.sleep)
+        self.assertNotIn(('INPUT', 128), endpoint.calls)
+        self.assertFalse(endpoint.running)
+        self.assertEqual(endpoint.mask, 0)
 
 
 if __name__ == '__main__':

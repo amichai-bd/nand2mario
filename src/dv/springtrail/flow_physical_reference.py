@@ -22,16 +22,19 @@ SUCCESS_FLOW = HELD_SUCCESS + (
 )
 CAPTURES = {
     'feasibility': (8,),
-    'success': (80, 117, 180, 270, 313, 360, 361, 363, 364, 366,
-                367, 368, 369, 370, 371, 373, 374, 376, 391, 392, 394),
-    'death-retry': (117, 180, 187, 188),
+    'success': (80, 117, 180, 270, 313, 360),
+    'death-retry': (117, 180, 187),
 }
+STAGES = (("restart", 128), ("release", 0), ("pause", 128),
+          ("held-a", 16), ("resume", 144), ("release-again", 0),
+          ("pause-again", 128), ("select-restart", 192),
+          ("select-held", 64), ("select-release", 0), ("select-playing", 64))
 
 
 def plan(mode):
     assert mode in CAPTURES, 'FLOW_MODE'
     segments = ((0, 8),) if mode == 'feasibility' else (
-        SUCCESS_FLOW if mode == 'success' else HELD_DEATH_RETRY)
+        HELD_SUCCESS if mode == 'success' else HELD_DEATH_RETRY[:-1])
     return segments, CAPTURES[mode]
 
 
