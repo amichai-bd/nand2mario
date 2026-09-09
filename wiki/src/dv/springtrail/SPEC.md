@@ -227,14 +227,17 @@ The renderer uses one displayed frame of input-to-publication delay. Freeze inpu
 samples by the documented VBlank boundary and compare each complete image
 against the preceding prepared state, including title, pause and restart.
 Independent expected images must apply the same single-frame relationship;
-never choose a state from observed pixels. Check visible-time computation
+never choose a state from observed pixels. Check visible-time game computation
 has no display-memory/register writes and publication completes in VBlank.
+The separate STAT handler's bounded line15 HBlank scroll/object-enable commits
+are checked against the [HUD contract](../../sw/springtrail/HUD_COLUMNS.md).
 The existing per-test and aggregate budgets and physical acceptance remain.
 
 ## Courier composition checks
 
 The [composition contract](../../sw/springtrail/COMPOSITION.md) defines the
-current geometry, allocation and readiness bounds. Independent CPU cases check
+current geometry and allocation. Its historical pre-HUD timing/images do not
+describe the current ROM. Independent CPU cases check
 every approved pose/facing, signed clipping, complete scene tails and unchanged
 gameplay state. The composed proof checks full blank/TITLE pixels, then the next
 gameplay state and complete DMA publication before the following visible frame.
@@ -242,3 +245,20 @@ An actual wrong-piece OAM write must fail the unchanged oracle. This scoped
 proof does not claim a new full gameplay or physical milestone. Historical
 nine-object frame, renderer and endurance helpers reject mismatched ROM/source
 identities; they must not silently validate the current composer.
+
+## Background HUD and prepared columns
+
+The [HUD/column matrix](../../../../src/dv/springtrail/HUD_COLUMNS.md) owns current
+readiness and interrupt/publication bounds. Literal world rules check all1536
+decoded cells; malformed encodings fail before assembly. Shared CPU fixtures
+check nineteen finite cases, including complete caches, map addresses, paused
+restoration, repeated restart, ring wrap, camera limits and160-byte scene/DMA.
+Current scenes use16 small or18 large objects with96/88 zero tail bytes.
+
+The actual game proof checks every pixel of blank and TITLE frames, one ordinary
+Start+Right update, and its next complete OAM/cache/HUD publication. The separate
+renderer fixture seeds explicit camera95-to97 and player x120/y12 operands;
+it checks fixed HUD, entering-column and partial-object pixels using shared
+game routines. Seeded renderer operands do not establish gameplay reachability.
+The downstream fault must fail unchanged expectations. No new physical output,
+full-game route or milestone result follows from these bounded proofs.

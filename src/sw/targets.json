@@ -75,6 +75,10 @@
         "Courier": {
           "source": "assets/courier/unique-tiles.json",
           "author": "Original approved courier tiles by the nand2mario project; CHARACTER_ART.md"
+        },
+        "Core": {
+          "source": "assets/core/core-tiles.json",
+          "author": "Original approved core font pixels; CORE_ART.md, only selected glyphs loaded into VRAM"
         }
       },
       "layout": "layout.json",

@@ -1,6 +1,32 @@
-; Existing entering-column algorithm targets the completed scrolling map.
+; Prepare immutable caches during visible time, publish only during VBlank.
 SECTION "stream",ROM
-StreamMap:
+PrepareMap:
+XOR A,A
+LD [PreparedColumns],A
+LD A,[GameMode]
+OR A,A
+RET Z
+LD A,[NewLevel]
+OR A,A
+JR Z,PrepareExistingMap
+XOR A,A
+JR PrepareRestore
+PrepareExistingMap:
+LD A,[MapRestoreColumn]
+CP A,32
+JR NC,PrepareEntering
+PrepareRestore:
+LD [PreparedColumn],A
+LD DE,ColumnCache
+CALL DecodeColumn
+LD A,[PreparedColumn]
+INC A
+LD DE,ColumnCache+16
+CALL DecodeColumn
+LD A,2
+LD [PreparedColumns],A
+RET
+PrepareEntering:
 LD A,[Camera]
 LD L,A
 LD A,[Camera+1]
@@ -13,135 +39,163 @@ SRL H
 RR L
 LD A,[OldCameraTile]
 CP A,L
-JP Z,StreamScrollRegister
+RET Z
 LD B,A
 LD A,L
-LD [OldCameraTile],A
 CP A,B
-JR C,StreamEnteringColumn
+JR C,PrepareLeftColumn
 ADD A,20
-StreamEnteringColumn:
+PrepareLeftColumn:
 CP A,96
-JP NC,StreamScrollRegister
-LD [Column],A
+RET NC
+LD [PreparedColumn],A
+LD DE,ColumnCache
+CALL DecodeColumn
+LD A,1
+LD [PreparedColumns],A
+RET
+
+DecodeColumn:
+; Build validation proves index0..95, complete16 rows and bounded run counts.
 LD L,A
 LD H,0
-LD DE,WorldMap
-ADD HL,DE
-LD A,[Column]
+ADD HL,HL
+LD BC,ColumnPointers
+ADD HL,BC
+LD A,[HL+]
+LD C,A
+LD A,[HL]
+LD H,A
+LD L,C
+DecodeRun:
+LD A,[HL+]
+OR A,A
+RET Z
+LD B,A
+LD A,[HL+]
+DecodeRepeat:
+LD [DE],A
+INC DE
+DEC B
+JR NZ,DecodeRepeat
+JR DecodeRun
+
+StreamMap:
+LD A,[PreparedColumns]
+OR A,A
+JR Z,RememberCameraTile
+CALL PublishColumns
+RememberCameraTile:
+LD A,[Camera]
+LD L,A
+LD A,[Camera+1]
+LD H,A
+SRL H
+RR L
+SRL H
+RR L
+SRL H
+RR L
+LD A,L
+LD [OldCameraTile],A
+RET
+
+PublishColumns:
+LD A,[PreparedColumns]
+OR A,A
+RET Z
+LD HL,ColumnCache
+LD A,[PreparedColumn]
+CALL PublishColumn
+LD A,[PreparedColumns]
+CP A,2
+RET NZ
+LD A,[PreparedColumn]
+INC A
+; HL already points at the second completed cache.
+PublishColumn:
 AND A,31
+ADD A,$40
 LD E,A
 LD D,$9C
-; Fixed eighteen-row column: carry occurs only after rows7 and15.
-; BC is the constant ROM stride; no per-row counter or carry branch.
-LD BC,96
-LD A,[HL]
+; Fixed row2..17; destination carry follows rows7 and15.
+LD A,[HL+]
 LD [DE],A
-ADD HL,BC
 LD A,E
 ADD A,32
 LD E,A
-LD A,[HL]
+LD A,[HL+]
 LD [DE],A
-ADD HL,BC
 LD A,E
 ADD A,32
 LD E,A
-LD A,[HL]
+LD A,[HL+]
 LD [DE],A
-ADD HL,BC
 LD A,E
 ADD A,32
 LD E,A
-LD A,[HL]
+LD A,[HL+]
 LD [DE],A
-ADD HL,BC
 LD A,E
 ADD A,32
 LD E,A
-LD A,[HL]
+LD A,[HL+]
 LD [DE],A
-ADD HL,BC
 LD A,E
 ADD A,32
 LD E,A
-LD A,[HL]
+LD A,[HL+]
 LD [DE],A
-ADD HL,BC
-LD A,E
-ADD A,32
-LD E,A
-LD A,[HL]
-LD [DE],A
-ADD HL,BC
-LD A,E
-ADD A,32
-LD E,A
-LD A,[HL]
-LD [DE],A
-ADD HL,BC
 LD A,E
 ADD A,32
 LD E,A
 INC D
-LD A,[HL]
+LD A,[HL+]
 LD [DE],A
-ADD HL,BC
 LD A,E
 ADD A,32
 LD E,A
-LD A,[HL]
+LD A,[HL+]
 LD [DE],A
-ADD HL,BC
 LD A,E
 ADD A,32
 LD E,A
-LD A,[HL]
+LD A,[HL+]
 LD [DE],A
-ADD HL,BC
 LD A,E
 ADD A,32
 LD E,A
-LD A,[HL]
+LD A,[HL+]
 LD [DE],A
-ADD HL,BC
 LD A,E
 ADD A,32
 LD E,A
-LD A,[HL]
+LD A,[HL+]
 LD [DE],A
-ADD HL,BC
 LD A,E
 ADD A,32
 LD E,A
-LD A,[HL]
+LD A,[HL+]
 LD [DE],A
-ADD HL,BC
 LD A,E
 ADD A,32
 LD E,A
-LD A,[HL]
+LD A,[HL+]
 LD [DE],A
-ADD HL,BC
 LD A,E
 ADD A,32
 LD E,A
-LD A,[HL]
+LD A,[HL+]
 LD [DE],A
-ADD HL,BC
 LD A,E
 ADD A,32
 LD E,A
 INC D
-LD A,[HL]
+LD A,[HL+]
 LD [DE],A
-ADD HL,BC
 LD A,E
 ADD A,32
 LD E,A
-LD A,[HL]
+LD A,[HL+]
 LD [DE],A
-StreamScrollRegister:
-LD A,[Camera]
-LDH [$FF43],A
 RET

@@ -42,7 +42,7 @@ engine, an AI framework, a compiler or audio to deliver this game.
 
 The [shadow OAM publisher](../../../../src/dv/springtrail/OAM_DMA.md) transfers
 the complete C100-C19F image through standard FF46=C1 DMA from HRAM at FF80.
-Scene preparation writes twenty 8x8 entries and clears all remaining bytes.
+Scene preparation writes sixteen 8x8 entries and clears all remaining bytes.
 The shared publisher supports all 40 entries without interpreting an active
 count; the [composition contract](COMPOSITION.md) owns geometry and limits. Initialize
 the HRAM routine before LCD enable, then publish in the existing VBlank slot
@@ -86,8 +86,11 @@ its specified patrol endpoints. No stomp or combat mechanic is required.
 Each collectible increments the visible counter once and disappears until
 restart. Touching the finish marker while alive enters won; collecting every
 item is optional. Death takes precedence over collection or winning on the same
-update. Pause/restart decisions precede world updates. A small HUD distinguishes
-score, pause, retry and win without relying on host-only state.
+update. Pause/restart decisions precede world updates. The stationary background
+[HUD](HUD_COLUMNS.md) occupies screen rows 0..15 and shows score and mode.
+The playfield retains world y coordinates in rows 16..143; neither the collision
+world nor the ground at y=128 moves. HUD clipping hides only object pixels above
+row 16, preserving the lower part of a crossing piece.
 
 The following constants are frozen for dependent implementation. Positions and
 velocities use signed 16-bit units of 1/16 pixel (range -2048..2047.9375).
@@ -103,8 +106,10 @@ The renderer has one displayed frame of input-to-publication delay (about
 16.7 ms). Each VBlank
 samples JOYP and publishes the scene prepared from the preceding sample.
 During the following visible interval, apply that new sample once to game
-state and prepare its next scene. No VRAM, OAM, SCX or map-selection writes
-occur during that visible computation. This preserves one input/game update
+state and prepare its next scene and HUD/column caches. That computation does
+not write display memory or registers. The separate line-15 STAT handler applies
+the published camera and enables playfield objects in HBlank; VBlank resets
+scroll and disables objects for the next HUD. This preserves one input/game update
 per normal frame; it does not add another queued update or display frame.
 Title removal and restart map/SCX changes accompany the published scene,
 not the newly computed logical transition. Pause freezes game state while

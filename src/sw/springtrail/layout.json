@@ -66,6 +66,44 @@
       "section": "courier",
       "region": "ROM1",
       "address": 20992
+    },
+    {
+      "unit": "main.asm",
+      "section": "hud",
+      "region": "ROM0",
+      "address": 11008
+    },
+    {
+      "unit": "main.asm",
+      "section": "irq",
+      "region": "ROM0",
+      "address": 2560
+    },
+    {
+      "unit": "main.asm",
+      "section": "core_assets",
+      "region": "ROM1",
+      "address": 24576
+    },
+    {
+      "unit": "main.asm",
+      "section": "columns",
+      "region": "ROM1",
+      "address": 29696
+    },
+    {
+      "unit": "main.asm",
+      "section": "vb_vector",
+      "region": "ROM0",
+      "address": 64,
+      "vector": "VBLANK"
+    },
+    {
+      "unit": "main.asm",
+      "section": "stat_vector",
+      "region": "ROM0",
+      "address": 72,
+      "vector": "STAT"
     }
   ]
 }

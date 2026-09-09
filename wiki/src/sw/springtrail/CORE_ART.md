@@ -32,8 +32,8 @@ remain independent; their union need not be resident simultaneously.
 ![Additional player actions](core-art/player-actions.svg)
 
 Small and large skid, throw, hurt and crouch designs supplement the original
-poses. [#292](https://github.com/amichai-bd/nand2mario/issues/292) owns character
-assembly; [#301](https://github.com/amichai-bd/nand2mario/issues/301) owns movement
+poses. [Composition](COMPOSITION.md) owns character assembly;
+[#301](https://github.com/amichai-bd/nand2mario/issues/301) owns movement
 and animation; [#302](https://github.com/amichai-bd/nand2mario/issues/302) owns
 power and damage states. Visual approval does not choose collision anchors,
 state transitions, frame cadence or optional mechanics.
@@ -42,9 +42,10 @@ state transitions, frame cadence or optional mechanics.
 
 ![Terrain, blocks and items](core-art/terrain-items-review.svg)
 
-[#300](https://github.com/amichai-bd/nand2mario/issues/300) owns world/HUD
-integration and [#303](https://github.com/amichai-bd/nand2mario/issues/303) owns
-blocks/items. The scene below also shows the cloud, bush and arch sources.
+The current [HUD/column renderer](HUD_COLUMNS.md) preserves the existing terrain
+bank and selects approved core glyphs; it does not replace terrain with this
+entire review sheet. [#303](https://github.com/amichai-bd/nand2mario/issues/303)
+owns blocks/items. The scene below also shows the cloud, bush and arch sources.
 Water/spike and pickup designs do not authorize additional mechanics.
 
 ### Enemies and platforms
@@ -64,6 +65,10 @@ and labels are review overlays, not game pixels.
 
 These supply dust, sparkle, projectile, life/heart/clock and uppercase letter,
 digit and dash designs. The core map also includes the full HUD composition.
+The current [stationary HUD](HUD_COLUMNS.md#reference-previews) integrates twenty
+unchanged uppercase/digit glyphs for mode and score. That page owns exact VRAM
+allocation and assembled reference previews; the larger approved HUD composition
+and remaining icons do not imply life, timer or power mechanics are implemented.
 Shade zero is transparent for objects but is a visible palette index for
 background/window tiles. The review tool's checkerboard is only an inspection
 convention; UI screens and the assembled scene show background zero as white.
