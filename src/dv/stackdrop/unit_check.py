@@ -15,6 +15,15 @@ from n2m.preload import verify, adopt
 from cases import expected
 
 
+def check_tail(kind, terminal, pending=(), writes=()):
+    if kind == 'W':
+        assert not terminal, 'STACKDROP_WRITE_AFTER_TERMINAL'
+        return
+    assert kind in ('terminal', 'END'), 'STACKDROP_TAIL_KIND'
+    assert terminal == (kind == 'END'), 'STACKDROP_TERMINAL_ORDER'
+    assert all(value is None for value in pending) and not writes, 'STACKDROP_PENDING_TAIL'
+
+
 async def run(dut, count):
     wants = expected()[:count]
     memory, reports, vram = {}, [], []
@@ -62,7 +71,8 @@ async def run(dut, count):
                         assert not ended, 'STACKDROP_AFTER_END'
                         kind, raw = line.strip().split(' ')
                         if kind == 'END':
-                            assert int(raw) == lines and terminal and begin is None and render_begin is None and routine_dots is None and render_dots is None and not vram, 'STACKDROP_END'
+                            check_tail('END', terminal, (begin, render_begin, routine_dots, render_dots), vram)
+                            assert int(raw) == lines, 'STACKDROP_END'
                             ended = True
                             continue
                         widths = {'W': 22, 'R': 96, 'I': 26, 'P': 30}
@@ -77,7 +87,7 @@ async def run(dut, count):
                             last_retire = row['dot']
                             continue
                         dot, address, data = value >> 24, (value >> 8) & 65535, value & 255
-                        assert not terminal, 'STACKDROP_WRITE_AFTER_TERMINAL'
+                        check_tail('W', terminal)
                         if 0xc000 <= address < 0xc300:
                             memory[address] = data
                         if 0x9800 <= address < 0x9c00:
@@ -121,7 +131,8 @@ async def run(dut, count):
                             routine_dots = render_dots = None
                             vram = []
                         elif address == 0xc0ff:
-                            assert not terminal and data == 165 and len(reports) == count and begin is None and render_begin is None and routine_dots is None and render_dots is None and not vram, 'STACKDROP_TERMINAL'
+                            check_tail('terminal', terminal, (begin, render_begin, routine_dots, render_dots), vram)
+                            assert data == 165 and len(reports) == count, 'STACKDROP_TERMINAL'
                             terminal = True
                 refresh_clock(client)
                 await control('RUN')
