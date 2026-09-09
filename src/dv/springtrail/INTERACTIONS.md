@@ -105,9 +105,9 @@ yet installed. Their lower tile must be blank for eight-pixel objects.
 This helper changes neither the live atlas nor the current display timing.
 Actual CPU scene/map byte and combined VBlank budget checks remain pending.
 
-Integration must remove the current background item tile14 markers from both
-static and scrolling maps. OAM hiding alone would leave a collected item
-visible. New atlas and restored full pixels remain explicit pending checks.
+The static and scrolling maps contain terrain and title lettering only; item
+and old fixed-counter background markers have been removed. Items and score
+will use OAM. New atlas and restored full pixels remain pending checks.
 
 ## Combined routine proof
 
@@ -139,3 +139,11 @@ each under the unchanged300-second hard total limit. Added to the accepted
 routine set142.479 seconds, the declared selected aggregate may exceed the
 300-second target. Measure the complete short harness before the full run.
 No extra simulation cap, live display latency or milestone waiver is implied.
+
+The three-report renderer harness completed in62.914 seconds, including its
+full576-byte map readback and pause/END. Its publisher brackets were2860,
+2740 and2860 dots. Before the full run, background item/counter markers were
+removed from both maps and the independent tile rule; all1728 world entries
+match the frozen terrain. This data change does not alter collision solids,
+routines, timing expectations, sampling or completion mechanics. The full
+run will check the resulting marker-free map rather than qualify old pixels.

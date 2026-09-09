@@ -18,8 +18,6 @@ def solid(column,row):
 
 def world_tile(column,row):
     if solid(column,row):return 11
-    if (column,row) in ((12,11),(33,9),(58,11),(82,10)):return 14
-    if (column,row)==(1,0):return 15
     return 0
 
 
