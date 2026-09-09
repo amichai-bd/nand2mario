@@ -1,6 +1,7 @@
 """Independent key edges and real Client packets; no keyboard or UART opened."""
 from contextlib import nullcontext
 from pathlib import Path
+import json
 import sys
 import tempfile
 from types import SimpleNamespace
@@ -13,8 +14,10 @@ from n2m.host.client import Client, UncertainCompletion
 from n2m.host.keyboard import run
 from n2m.host.command import run as command
 from n2m.host.console import Console
+from n2m.host.transport import session
+from n2m.doctor import select_uart
 from n2m.interface_codec import decode_packet, encode_packet, pack_record, unpack_record
-from n2m.tests.test_host import Endpoint
+from n2m.tests.test_host import Endpoint, DEVICE
 
 
 class Wire(Endpoint):
@@ -47,6 +50,9 @@ class Events:
         if isinstance(event, BaseException):
             raise event
         return event
+
+    def discard_pending(self):pass
+    def focused(self):return True
 
 
 def key(code, down=True, modifiers=0):
@@ -103,6 +109,30 @@ class KeyboardTests(unittest.TestCase):
         with self.assertRaises(UncertainCompletion):run(client,Events(key(0x1b)))
         self.assertEqual(masks(wire),[0]);self.assertTrue(client.uncertain)
 
+    def test_real_session_pending_blocks_reopen(self):
+        root=Path(__file__).resolve().parents[3]
+        args=SimpleNamespace(uart_port='COM92',uart_vid=None,uart_pid=None,uart_identity=None,endpoint_restarted=False)
+        with tempfile.TemporaryDirectory(dir=root/'workdir') as temp:
+            folder=Path(temp);state=folder/'state';wire=Wire('timeout')
+            with session(folder,args,state,discover=lambda p,a:select_uart([DEVICE],a),opener=lambda _:wire) as (transport,sequence,persist,_):
+                with self.assertRaises(UncertainCompletion):run(Client(transport,sequence=sequence,persist=persist),Events(key(0x27)))
+            self.assertTrue(wire.closed);self.assertFalse(list(state.glob('*.lock')))
+            self.assertTrue(json.loads(next(state.glob('*.json')).read_text())['pending'])
+            opener=Mock()
+            with self.assertRaisesRegex(RuntimeError,'uncertain'):
+                with session(folder,args,state,discover=lambda p,a:select_uart([DEVICE],a),opener=opener):pass
+            opener.assert_not_called()
+
+    def test_interrupt_after_write_never_sends_release(self):
+        class Interrupted(Wire):
+            def write(self,packet):
+                result=super().write(packet)
+                if decode_packet(packet)[0]['command']==abi.COMMAND_INPUT:raise KeyboardInterrupt()
+                return result
+        wire=Interrupted();pending=[];client=Client(wire,persist=lambda s,p:pending.append(p))
+        with self.assertRaises(KeyboardInterrupt):run(client,Events(key(0x27)))
+        self.assertEqual(masks(wire),[1]);self.assertTrue(client.uncertain);self.assertTrue(pending[-1])
+
     def test_command_console_gate_before_session_and_build_gate(self):
         root=Path(__file__).resolve().parents[3]
         args=SimpleNamespace(action='keyboard',json=False,endpoint_restarted=False,expected_build_id='1'*32)
@@ -115,6 +145,14 @@ class KeyboardTests(unittest.TestCase):
                 result=command(root,Path(temp),args,{})
                 self.assertEqual(result['status'],'FAIL');self.assertIn('build identity mismatch',result['error'])
                 self.assertEqual(masks(wire),[])
+            console=Events(key(0x1b));console.focused=lambda:False
+            def at_open(folder,args,state_root,opener):
+                opener('COM92')
+                raise AssertionError('unreachable')
+            with patch('n2m.host.console.Console',return_value=nullcontext(console)), patch('ci.storage.machine_lock',return_value=nullcontext()), patch('n2m.host.command.session',side_effect=at_open), patch('n2m.host.command.open_serial') as serial_open:
+                result=command(root,Path(temp),args,{})
+                self.assertEqual(result['status'],'FAIL');self.assertIn('foreground',result['error'])
+                serial_open.assert_not_called()
 
     def test_console_restore_failure_does_not_mark_wire_uncertain(self):
         class BrokenRestore:
@@ -137,7 +175,7 @@ class NativeConsoleTests(unittest.TestCase):
         def mode(handle,out):out._obj.value=0x67;return True
         kernel.GetConsoleMode.side_effect=mode;kernel.SetConsoleMode.return_value=True
         kernel.WaitForSingleObject.return_value=0
-        def count(handle,out):out._obj.value=1;return True
+        def count(handle,out):out._obj.value=0;return True
         kernel.GetNumberOfConsoleInputEvents.side_effect=count
         def read(handle,out,limit,count):
             out._obj.kind=1;out._obj.data.key.code=code;out._obj.data.key.scan=scan
@@ -171,6 +209,32 @@ class NativeConsoleTests(unittest.TestCase):
                 kernel.WaitForSingleObject.return_value=0;kernel.ReadConsoleInputW.return_value=False
                 kernel.ReadConsoleInputW.side_effect=None
                 with self.assertRaisesRegex(RuntimeError,'read failed'):console.next_event()
+
+    def test_recorded_focus_loss_survives_regain(self):
+        kernel,user=self.native()
+        with patch('n2m.host.console.os.name','nt'),patch('ctypes.WinDLL',side_effect=[kernel,user],create=True):
+            with Console() as console:
+                def loss(handle,out,limit,count):
+                    out._obj.kind=0x10;out._obj.data.focus=False;count._obj.value=1;return True
+                kernel.ReadConsoleInputW.side_effect=loss
+                self.assertTrue(console.focused())
+                self.assertEqual(console.next_event(),('focus-lost',))
+
+    def test_prestart_queue_is_discarded_and_held_repeat_quarantined(self):
+        kernel,user=self.native()
+        queued=[True,True]
+        def count(handle,out):out._obj.value=len(queued);return True
+        def read(handle,out,limit,count):
+            out._obj.kind=1;out._obj.data.key.code=0x27;out._obj.data.key.down=queued.pop(0);count._obj.value=1;return True
+        kernel.GetNumberOfConsoleInputEvents.side_effect=count
+        kernel.ReadConsoleInputW.side_effect=read
+        with patch('n2m.host.console.os.name','nt'),patch('ctypes.WinDLL',side_effect=[kernel,user],create=True):
+            with Console() as console:
+                self.assertEqual(queued,[]);self.assertEqual(console.blocked,{0x27})
+                queued.extend([True,False,True])
+                self.assertIsNone(console.next_event())
+                self.assertIsNone(console.next_event())
+                self.assertEqual(console.next_event(),('key',0x27,True,0))
 
 
 if __name__=='__main__':unittest.main()

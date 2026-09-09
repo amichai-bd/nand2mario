@@ -10,7 +10,7 @@ class Key(ctypes.Structure):
 
 
 class Data(ctypes.Union):
-    _fields_ = [('key', Key), ('raw', ctypes.c_byte * 16)]
+    _fields_ = [('key', Key), ('focus', w.BOOL), ('raw', ctypes.c_byte * 16)]
 
 
 class Record(ctypes.Structure):
@@ -48,10 +48,41 @@ class Console:
         # changes belong to this console and are restored, not global defaults.
         if not self.kernel.SetConsoleMode(self.handle, (self.mode.value | 0x80) & ~0x47):
             raise ctypes.WinError(ctypes.get_last_error())
+        self.blocked = set()
+        try:
+            self.discard_pending()
+        except BaseException:
+            self.__exit__()
+            raise
         return self
 
     def focused(self):
         return self.user.GetForegroundWindow() == self.window
+
+    def discard_pending(self):
+        """Discard pre-capture edges; a queued held key needs its release first."""
+        from .keyboard import KEYS
+        held = set(self.blocked)
+        self.blocked = set()
+        drained = 0
+        while True:
+            if not self.focused():
+                raise RuntimeError('console lost foreground before capture')
+            count = w.DWORD()
+            if not self.kernel.GetNumberOfConsoleInputEvents(self.handle, ctypes.byref(count)):
+                raise ctypes.WinError(ctypes.get_last_error())
+            if not count.value:
+                break
+            drained += 1
+            if drained > 256:
+                raise RuntimeError('console startup queue exceeded 256 events')
+            event = self.next_event()
+            if event and event[0] == 'focus-lost':
+                raise RuntimeError('queued console focus loss before capture')
+            if event and event[0] == 'key' and event[1] in KEYS:
+                if event[2]: held.add(event[1])
+                else: held.discard(event[1])
+        self.blocked = held
 
     def next_event(self):
         if not self.focused():
@@ -74,7 +105,13 @@ class Console:
         if record.kind == 1:
             key = record.data.key
             code = 0xa1 if key.code == 0x10 and key.scan == 0x36 else key.code
+            if code in self.blocked:
+                if not key.down:
+                    self.blocked.remove(code)
+                return None
             return ('key', code, bool(key.down), key.modifiers)
+        if record.kind == 0x10 and not record.data.focus:
+            return ('focus-lost',)
         return None
 
     def __exit__(self, *_):

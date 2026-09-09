@@ -82,6 +82,9 @@ Each changed union is one ordinary INPUT with its acknowledged dot retained.
 Repeated downs are ignored; chords/opposite directions are preserved. Unmapped
 characters are neither sent nor logged. Ctrl/Alt-modified downs are ignored;
 releases still clear held keys. Escape, Ctrl+C and Windows keys exit.
+Pre-capture queued events are discarded, and a mapped key observed held in that
+queue is ignored until its release. Foreground ownership is checked again at
+serial open. This observes console events, not unreported physical key state.
 
 Require a certain durable session, expected build/ABI, valid image, UART source
 and initial host/effective0. No implicit source selection, RUN/HALT, load or reset
@@ -91,7 +94,8 @@ result/transaction files retain its outcome.
 
 Native events and foreground ownership are polled with20ms idle waits; an
 outstanding UART exchange may delay observation until its existing deadline.
-Focus loss exits without rearming or consuming queued gameplay keys. Ordinary
+Recorded focus-loss events also cause exit if focus returned before the next
+poll. Focus loss exits without rearming or consuming queued gameplay keys. Ordinary
 exit/read failure sends INPUT0 once if the Client is certain, and requires an
 acknowledgement before claiming release. Ambiguous transmission/completion
 retains pending and sends nothing further. Console mode is restored on exit;
