@@ -27,6 +27,9 @@ Use its generated constants, entry state and normal Game Boy graphics, timer,
 interrupt and JOYP registers. The game reads standard JOYP; UART and physical
 controls reach it through the existing shared input owner, without game-specific
 hardware MMIO. ROM bytes remain immutable while running.
+After each JOYP row-select write, wait at least24 DMG dots before reading the
+selected row. This prevents transitional direction bits from becoming actions;
+the [settling proof](../../../../src/dv/springtrail/JOYP_SETTLE.md) owns validation.
 
 Do not put movement, enemies or game state in RTL. Keep the approved original-DMG
 model, 25 MHz system architecture, register macros, Intel storage/models and

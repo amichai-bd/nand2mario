@@ -5,6 +5,24 @@ from pathlib import Path
 import zlib
 
 
+def compare_game_images(data, count):
+    """Fixed callback/state mapping, from the script and approved display delay."""
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'springtrail'))
+    from interactions_reference import Game, update
+    from flow_frames import image
+    state = Game()
+    expected = [bytes(23040)]*3 + [image(state)]
+    for index in range(count-2):
+        state = update(state, 129 if index == 0 else 1)
+        expected.append(image(state))
+    assert len(data) == len(expected)*23040, 'REFERENCE_GAME_LENGTH'
+    for index, want in enumerate(expected):
+        actual = data[index*23040:(index+1)*23040]
+        mismatch = next((p for p,(a,b) in enumerate(zip(actual,want)) if a != b), None)
+        assert mismatch is None, f'REFERENCE_GAME_PIXELS frame={index} index={mismatch}'
+
+
 def check(folder, contract, case):
     rows = [json.loads(line) for line in (folder/'observations.log').read_text().splitlines()]
     assert rows and rows[-1]['kind'] == 'end', 'REFERENCE_END'
@@ -34,6 +52,9 @@ def check(folder, contract, case):
     assert len(data) == len(frames)*size and all(v < 4 for v in data), 'REFERENCE_FRAME_BYTES'
     assert data[:size] == bytes(size), 'REFERENCE_BLANK_FRAME'
     assert frames[0]['mode'] == 0 and frames[-1]['mode'] == 1, 'REFERENCE_GAME_FLOW'
+    if 'settled' in case:
+        assert [f['buttons'] for f in frames] == [0,0,0,129]+[1]*(count-2), 'REFERENCE_GAME_BUTTONS'
+        compare_game_images(data, count)
     ledger = []
     for i, row in enumerate(frames):
         image = data[i*size:(i+1)*size]

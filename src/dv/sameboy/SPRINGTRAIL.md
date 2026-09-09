@@ -63,3 +63,11 @@ callback-expectation failure adds5.932 seconds separately. Every invocation
 met120-second target and300-second hard limit. No milestone runtime is inferred.
 Exact commands, tool provenance, output hashes and source qualification are in
 [PR279](https://github.com/amichai-bd/nand2mario/pull/279).
+
+The separate `springtrail-settled-short` and `springtrail-settled` cases own the
+[#281 input correction](../springtrail/JOYP_SETTLE.md), with four/twelve normal
+frames and the same input script. They require `settled_image`, observe sampled
+buttons at C019, and compare every frame byte to independently computed scenes.
+The fixed callback mapping is three blank images, title, then successive game
+updates129 followed by1. The original cases/image and their historical ledgers
+remain unchanged; they do not claim this new game-image agreement.

@@ -32,9 +32,11 @@ static void visible_frame(GB_gameboy_t *gb, GB_vblank_type_t type)
     }
     if (!strcmp(fault, "frame") && frames == 0) shades[0] ^= 1;
     if (fwrite(shades, 1, sizeof(shades), images) != sizeof(shades)) exit(5);
-    printf("{\"kind\":\"frame\",\"index\":%u,\"type\":%u,\"dot\":%llu,\"mode\":%u}\n",
+    printf("{\"kind\":\"frame\",\"index\":%u,\"type\":%u,\"dot\":%llu,\"mode\":%u",
            frames++, type, (unsigned long long)((ticks + gb->cycles_since_run) / 2),
            GB_read_memory(gb, 0xc000));
+    if (PROBE_BUTTONS) printf(",\"buttons\":%u", GB_read_memory(gb, 0xc019));
+    puts("}");
     if (type == GB_VBLANK_TYPE_NORMAL_FRAME) normal_frames++;
 }
 
