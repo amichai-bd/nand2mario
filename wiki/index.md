@@ -5,6 +5,9 @@ development guidance in version control.
 
 ## Current documents
 
+- [Repository statistics](project-statistics.md) measures source size, disciplines
+  and issue-to-PR delivery at a dated snapshot.
+
 - [Documentation ownership](ownership.md) maps tool PRDs/SPECs and RTL
   microarchitecture to implementation and verification.
 
