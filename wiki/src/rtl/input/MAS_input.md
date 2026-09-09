@@ -53,9 +53,9 @@ existing JOYP/IF boundary; oscillator restart remains the approved CPU contract.
 
 ## Verification
 
-The full issue155 gate includes generated address/value rejection before
+The [input verification](../../../../src/dv/input/README.md) covers generated address/value rejection before
 transport and before RTL effects; equivalent masks across both sources and all
 four JOYP row selections; isolation and atomic switching; reset and physical
 shadow retention; actual CPU HALT/STOP and pause; cached replay; and actual
-mask/source/event faults plus a named assertion failure. Implementation and
-runtime completion are tracked in PR160, not asserted by this specification.
+mask/source/event faults plus a named assertion failure. These component checks
+do not establish physical wiring or acquisition acceptance.

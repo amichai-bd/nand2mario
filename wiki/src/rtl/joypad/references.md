@@ -8,6 +8,6 @@ These pins inform original code; no upstream implementation is copied.
 - [GateBoy joypad](https://github.com/aappleby/metroboy/blob/36797ad4cf77b3e04ffe45716218a79b5280076a/src/GateBoyLib/GateBoyJoypad.cpp#L140) and [interrupts](https://github.com/aappleby/metroboy/blob/36797ad4cf77b3e04ffe45716218a79b5280076a/src/GateBoyLib/GateBoyInterrupts.cpp#L88): die-based aggregate input and four-stage filter model. Its external matrix model uses an if/else row choice, so it is not an oracle for the specified both-row digital matrix. No repository-root license was found at this pin; reference-only, no copied source.
 
 The generated direct profile takes precedence over physical boot reset comments.
-Physical switch bounce is outside #134. GateBoy filtering must not be silently
+Physical switch bounce is outside the [JOYP owner](MAS_joypad.md). GateBoy filtering must not be silently
 invented as an additional delay, nor may emulator behavior be called measured
 silicon. Event transport is reviewed against the existing IF and CPU boundaries.

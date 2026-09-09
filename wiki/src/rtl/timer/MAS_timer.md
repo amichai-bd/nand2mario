@@ -1,6 +1,6 @@
 # DMG timer
 
-Status: implemented in [#128](https://github.com/amichai-bd/nand2mario/issues/128).
+Implementation: [timer owner](../../../../src/rtl/timer/n2m_timer.sv).
 The owner implements DIV, TIMA, TMA and TAC for the approved DMG-B digital
 model. CPU, interrupt storage and peripheral clock generation remain separate
 owners. The [source record](references.md) distinguishes hardware-tested
