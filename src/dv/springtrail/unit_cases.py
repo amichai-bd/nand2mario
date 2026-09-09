@@ -3,6 +3,22 @@ from dataclasses import replace
 from movement_reference import Player,step,world_tile
 
 
+def timing_marker(begin,elapsed,address,dot,data,buttons):
+    """One measured call must precede each software report."""
+    if address==0xc0ee:
+        assert begin is None and elapsed is None and data==buttons,'MOVEMENT_BEGIN'
+        return dot,None
+    assert address==0xc0ef and begin is not None and elapsed is None and data==0,'MOVEMENT_END'
+    elapsed=dot-begin
+    assert 0<elapsed<4560,'MOVEMENT_VBLANK_BUDGET'
+    return None,elapsed
+
+
+def timing_report(begin,elapsed):
+    assert begin is None and elapsed is not None,'MOVEMENT_REPORT_TIMING'
+    return elapsed
+
+
 def groups():
     return [
         ('walk-run-opposed',Player(),[1,33,35,2,0]),

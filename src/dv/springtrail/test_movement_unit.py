@@ -11,7 +11,7 @@ sys.path[:0]=[str(ROOT/'tools'),str(ROOT/'src/dv/python/integration')]
 from client_transport import connect,frames,refresh_clock
 from test_integration import known
 from n2m.preload import verify,adopt
-from unit_cases import expected
+from unit_cases import expected,timing_marker,timing_report
 
 
 @cocotb.test(timeout_time=90,timeout_unit='ms')
@@ -44,6 +44,7 @@ async def movement_unit(dut):
                         kind,raw=line.strip().split(' ')
                         if kind=='END':
                             assert int(raw)==lines,'MOVEMENT_TRACE_COUNT'
+                            assert terminal and begin is None and elapsed is None and not pending and not writes,'MOVEMENT_END_PENDING'
                             ended=True;continue
                         widths={'W':22,'R':96,'I':26,'P':30}
                         assert kind in widths and len(raw)==widths[kind] and all(c in '0123456789abcdef' for c in raw.lower()),'MOVEMENT_TRACE_UNKNOWN'
@@ -51,19 +52,17 @@ async def movement_unit(dut):
                         assert kind not in ('I','P'),'MOVEMENT_UNIT_UNEXPECTED_IO'
                         if kind!='W':continue
                         value=int(raw,16);address=(value>>8)&65535;data=value&255
-                        if address==0xc0ee:
-                            assert begin is None,'MOVEMENT_BEGIN'
-                            begin=value>>24
-                        elif address==0xc0ef:
-                            assert begin is not None,'MOVEMENT_END'
-                            elapsed=(value>>24)-begin;begin=None
-                            assert 0<elapsed<4560,'MOVEMENT_VBLANK_BUDGET'
+                        if address in (0xc0ee,0xc0ef):
+                            assert not terminal and len(reports)<len(wants),'MOVEMENT_EXTRA_CALL'
+                            begin,elapsed=timing_marker(begin,elapsed,address,value>>24,data,wants[len(reports)]['buttons'])
                         elif address in (0xff43,0xfe00,0xfe01,0xfe02,0xfe03) or 0x9800<=address<0x9c00:
                             writes.append((address,data))
                         elif 0xc100<=address<=0xc10d:
+                            timing_report(begin,elapsed)
                             assert address==0xc100+len(pending),'MOVEMENT_REPORT_ORDER'
                             pending.append(data)
                         elif address==0xc0f0:
+                            timing_report(begin,elapsed)
                             index=len(reports)
                             assert data==index and index<len(wants),'MOVEMENT_REPORT_COUNT'
                             actual=bytes(pending).hex();want=wants[index]
@@ -71,7 +70,8 @@ async def movement_unit(dut):
                             assert writes==want['writes'],f'MOVEMENT_RENDER index={index} expected={want["writes"]} actual={writes}'
                             reports.append(dict(index=index,dot=value>>24,routine_dots=elapsed,**want));pending=[];writes=[];elapsed=None
                         elif address==0xc0ff:
-                            assert data==165 and len(reports)==len(wants),'MOVEMENT_TERMINAL'
+                            assert not terminal and data==165 and len(reports)==len(wants),'MOVEMENT_TERMINAL'
+                            assert begin is None and elapsed is None and not pending and not writes,'MOVEMENT_TERMINAL_PENDING'
                             terminal=True
                 refresh_clock(client);await control('RUN');prior=0
                 while not terminal:
@@ -82,7 +82,7 @@ async def movement_unit(dut):
                 refresh_clock(client);await control('HALT')
                 await Timer(1,unit='ns');assert known(dut.paused) and not known(dut.fault)
                 dut.public_trace_close.value=1;await Timer(100,unit='ns');consume()
-                assert ended and not pending and len(reports)==84,'MOVEMENT_UNIT_MISSING'
+                assert ended and begin is None and elapsed is None and not pending and not writes and len(reports)==84,'MOVEMENT_UNIT_MISSING'
                 summary=dict(reports=reports,pause_dot=known(dut.dot_count),status='PASS')
                 Path('summary.json').write_text(json.dumps(summary,indent=2)+'\n');log('complete',**summary)
         finally:receiver.cancel()
