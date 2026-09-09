@@ -1,6 +1,6 @@
 # Courier composition
 
-Planned implementation for [#292](https://github.com/amichai-bd/nand2mario/issues/292).
+The [composer](../../../../src/sw/springtrail/courier.asm) emits ordinary OAM pieces.
 The [approved art](CHARACTER_ART.md) owns all pixels and twelve pose maps.
 
 ## Coordinates and allocation
@@ -35,7 +35,8 @@ same. Keep player, enemy, four pickups, goal, score, mode OAM priority order.
 Player pieces are row-major. At most20 small/22 large entries are emitted;
 remaining bytes of the160-byte shadow are zero. At most2 courier pieces and
 one from each of8 other objects intersect a scanline: maximum10.
-Reuse the #299 publisher and HRAM DMA unchanged, once per prepared publication.
+Use the [HRAM DMA publisher](../../../../src/sw/springtrail/oam_dma.asm)
+unchanged, once per prepared publication.
 
 ## Finite acceptance
 
@@ -65,18 +66,16 @@ are original; no commercial data or instruction sequence is copied.
 
 The32 cases are24 pose/facing calls, four clip/hidden calls, three directional
 start/restart scenes and one signed-camera/fractional scene. Poisoning occurs
-only initially and before the first full scene. The complete one-case harness
-finished in26.719s, with3304 routine dots and settled pause at7672.
+only initially and before the first full scene. The one-case harness checks
+terminal completion and settled pause before full execution.
 
 A longest syntactic branch path through EmitPiece costs at most580 dots;
 CourierPiece overhead is bounded by296 per piece and setup220 per pose.
 There are140 direct pieces, then four20-piece scenes. Full-scene overhead
 includes signed coordinate conversion, state selection and the80-byte tail.
 Allow260000 total dots, including both160-byte poison loops, operand writes,
-three UpdateGame calls and terminal readiness. This replaces the provisional
-220000 bound before full execution; the70ms simulation watchdog and300s whole
-wall bound remain fixed. Forecast170-210s for the full CPU run; the120s target
-may be missed. Measure actual full costs before further composed execution.
+three UpdateGame calls and terminal readiness. The 70-ms simulation watchdog
+and 300-second whole-process wall bound remain fixed.
 
 Conservative dot accounting: direct pieces140*(580+296)+28*220=128800;
 four scenes at25000 each=100000 (includes their80 pieces, seven signed
@@ -108,13 +107,14 @@ finish within 46,000 visible dots, before the same next VBlank at 65,664.
 A complete short harness stops after at least 160 blank pixels, with initial
 DMA, trace END, ordinary HALT and settled pause checked. The full target has a
 285,000-dot progress limit and an 80-ms simulation watchdog. Each execution
-retains the ordinary 300-second whole-process limit. The completed unit cost
-252.406 seconds, so the 120-second target and ordinary 300-second aggregate
-target are already missed once the remaining composed checks are included.
-The short/full/fault forecasts are 120/240/220 seconds respectively; these are
-forecasts, not permission to exceed the per-execution cap.
+retains the ordinary 300-second whole-process limit.
 
 The negative changes tile 42 to tile 0 once at the actual Intel OAM write
 boundary of the first LCD-on publication, after checking the original byte.
 It skips the initial LCD-off DMA, which would be overwritten before TITLE is
 visible. The unchanged full-frame oracle must reject the resulting image.
+
+The older nine-object frame and renderer helpers are historical-only. Their
+ROM/source guards reject this composition. Current checks are
+`python-courier-unit`, `python-cgs`, `python-cgu` and `python-cgx`; historical
+endurance cannot silently validate a new ROM.
