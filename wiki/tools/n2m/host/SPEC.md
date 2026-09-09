@@ -5,7 +5,7 @@ through `python tools/build.py host`. The [PRD](PRD.md) owns requirements.
 The [interface MAS](../../../src/rtl/interfaces/MAS_interfaces.md) and generated
 exports own all wire, register, profile and frame values.
 
-The planned [paused Springtrail acquisition](../../../src/dv/springtrail/SPEC.md#paused-frame-acquisition)
+The [paused Springtrail acquisition](../../../src/dv/springtrail/SPEC.md#paused-frame-acquisition)
 reuses Client/session and full immutable frame readback. Its DV contract owns
 the fixed reference mapping, complete batch evidence and fail-closed continuation;
 ordinary host commands and recovery semantics do not change.

@@ -95,8 +95,8 @@ and independently predicted observable checkpoints.
 
 ### Paused frame acquisition
 
-Planned under [#283](https://github.com/amichai-bd/nand2mario/issues/283):
-use the existing UART Client and immutable SNAPSHOT/READ_FRAME across bounded
+The [capture driver](../../../../src/dv/springtrail/paused_capture.py) uses the
+existing UART Client and immutable SNAPSHOT/READ_FRAME across bounded
 host batches. Freeze ROM/build/reference bytes, input script and timing before
 comparison. This short prerequisite does not complete the milestone matrix.
 
