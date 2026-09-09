@@ -114,7 +114,9 @@ Prefer higher score, then fewer actions, then lexicographic action order
 Left, Right, Rotate, Drop. There is no lookahead or parameter tuning between runs.
 
 Both runs load the same original ROM af11fbfae2ddf1607ca3c70f32d47eadb62fd5a1c5b5c3f3ead8ea6f2afa0c74,
-start a fresh game, and stop after eight hard drops or game over. Each has the
+start a fresh game, and stop after eight issued B-edge actions or game over.
+This is not eight total piece locks: gravity may lock a piece during an action.
+Each has the
 same64-action ceiling and300-second whole-process deadline, including cleanup.
 An action-limit or deadline failure is incomplete evidence, not a selected score.
 The strategy must obtain a strictly higher visible score than the baseline;
@@ -124,6 +126,7 @@ Before each edge, advance neutral input across at least two actual frame periods
 hold the chosen edge across at least three. Measure progress through public dots,
 not wall-clock sleeps. Decode a new complete image after each action and plan
 again from that observation so gravity or pipeline latency is not hidden state.
+Execute only the first edge of the selected path, never the entire stored path.
 Use the existing verified device/build, immutable package, durable session,
 machine lock and packet journals. Warm load derives the new epoch from the
 observed old epoch plus two; it does not reset session history. End each certain
