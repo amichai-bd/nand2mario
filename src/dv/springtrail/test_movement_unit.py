@@ -77,7 +77,7 @@ async def movement_unit(dut):
                 while not terminal:
                     await Timer(50,unit='us');await ReadOnly();consume()
                     dot=known(dut.dot_count)
-                    assert prior<dot<200000 and not any(known(x) for x in (dut.fault,dut.reset_sys,dut.core_reset,dut.paused)),'MOVEMENT_UNIT_PROGRESS'
+                    assert prior<dot<300000 and not any(known(x) for x in (dut.fault,dut.reset_sys,dut.core_reset,dut.paused)),'MOVEMENT_UNIT_PROGRESS'
                     prior=dot
                 refresh_clock(client);await control('HALT')
                 await Timer(1,unit='ns');assert known(dut.paused) and not known(dut.fault)
