@@ -2,12 +2,17 @@
 from pathlib import Path
 import sys
 import unittest
+from contextlib import contextmanager
+from tempfile import TemporaryDirectory
+from types import SimpleNamespace
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from n2m import generated_interfaces as abi
 from n2m.host.client import Client
 from n2m.host.crc_proof import run
 from n2m.host.transport import SerialTransport
+from n2m.host.command import run as command
 from n2m.interface_codec import cobs_decode, decode_packet, encode_packet, pack_record, unpack_record
 
 
@@ -119,6 +124,34 @@ class CrcProofTests(unittest.TestCase):
                 self.assertGreaterEqual(now[0], 2)
                 if not edge:
                     self.assertGreater(len(calls), 1)
+
+    def test_command_rejects_restart_or_bad_identity_before_open(self):
+        for restarted, expected in ((True, '1' * 32), (False, 'bad')):
+            with self.subTest(restarted=restarted), TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                args = SimpleNamespace(action='crc-proof', endpoint_restarted=restarted,
+                                       expected_build_id=expected)
+                with patch('n2m.host.command.session') as session:
+                    report = command(root, root, args, {})
+                self.assertEqual(report['status'], 'FAIL')
+                session.assert_not_called()
+
+    def test_command_identity_mismatch_never_injects(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            args = SimpleNamespace(action='crc-proof', endpoint_restarted=False,
+                                   expected_build_id='1' * 32)
+            @contextmanager
+            def session(*args):
+                yield object(), 1, lambda *args: None, {}
+            with patch('n2m.host.command.session', session), \
+                    patch('n2m.host.command.subprocess.check_output', return_value=str(root / '.git')), \
+                    patch('n2m.host.command.Client') as client, \
+                    patch('n2m.host.crc_proof.run') as proof:
+                client.return_value.identify.return_value = {'abi': 1, 'build_id': '2' * 32}
+                report = command(root, root, args, {})
+            self.assertEqual(report['status'], 'FAIL')
+            proof.assert_not_called()
 
 
 if __name__ == '__main__':
