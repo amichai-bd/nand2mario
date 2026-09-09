@@ -11,7 +11,7 @@
       "unit": "main.asm",
       "section": "assets",
       "region": "ROM0",
-      "address": 4096
+      "address": 3072
     },
     {
       "unit": "main.asm",

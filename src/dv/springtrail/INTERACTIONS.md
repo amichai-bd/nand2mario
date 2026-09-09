@@ -49,8 +49,8 @@ simulation watchdog is separate. This routine-only bound does not prove the
 forthcoming combined rendering budget. The existing 300-second whole-process
 limit includes preparation, compile, run, checks and 12-second cleanup reserve.
 
-Before measurement, forecast the three-report smoke at 20–40 seconds and full
-unit at 90–140 seconds. A later composed game/fault pair is provisionally
+Before measurement, forecast the three-report smoke at 20â€“40 seconds and full
+unit at 90â€“140 seconds. A later composed game/fault pair is provisionally
 180/80 seconds: the planned selected aggregate may exceed the 300-second target.
 These are forecasts, not measured results or cap extensions. Final render and
 physical routes must be frozen and reviewed before their execution; unchanged
@@ -99,10 +99,10 @@ are screen-relative at (144,0) and (72,0). `scene_reference.py` owns the
 independent expected bytes, including a literal initial scene and clipping
 at x=-8/-7 with fractional Y.
 
-The planned original tile pairs are player12, enemy16, item18, goal20,
-score22+2*score and mode32+2*mode. The new art pairs and OAM publisher are not
-yet installed. Their lower tile must be blank for eight-pixel objects.
-This helper changes neither the live atlas nor the current display timing.
+The original tile pairs are player12, enemy16, item18, goal20,
+score22+2*score and mode32+2*mode. The new art pairs are installed in the atlas; the OAM publisher is linked
+but not called by the live loop. Lower tiles are blank for eight-pixel objects.
+The original16 tiles are unchanged. No extra display frame is active.
 Actual CPU scene/map byte and combined VBlank budget checks remain pending.
 
 The static and scrolling maps contain terrain and title lettering only; item
@@ -134,7 +134,7 @@ WRAM edge. The public preparation intent remains128, but the publisher reads
 zero and must fail unchanged `RENDER_PUBLISH index=0`. Require mutation,
 raw simulator zero, failing XML and outer failure. It is not a changed oracle.
 
-Before measurement, forecast short50�70 seconds, full120�180 and fault30�50,
+Before measurement, forecast short50–70 seconds, full120–180 and fault30–50,
 each under the unchanged300-second hard total limit. Added to the accepted
 routine set142.479 seconds, the declared selected aggregate may exceed the
 300-second target. Measure the complete short harness before the full run.
@@ -147,3 +147,11 @@ removed from both maps and the independent tile rule; all1728 world entries
 match the frozen terrain. This data change does not alter collision solids,
 routines, timing expectations, sampling or completion mechanics. The full
 run will check the resulting marker-free map rather than qualify old pixels.
+
+The renderer full run completed in149.302 seconds:18 reports,648 OAM and576
+map readback bytes, with maximum preparation6068 and publisher2860 dots.
+The affected stored-Y fault was rejected in33.129 seconds. All three renderer
+runs meet the300-second hard cap; the full run misses the120-second target.
+Together with the routine set, measured simulation time is387.825 seconds,
+above the declared300-second aggregate target. Full game integration and
+physical routes remain open; these component results do not close#262.

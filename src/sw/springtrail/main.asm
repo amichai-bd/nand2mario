@@ -21,7 +21,7 @@ DEC B
 JR NZ,ClearObjects
 LD DE,Tiles
 LD HL,$8000
-LD BC,$0100
+LD BC,$02A0
 CopyTiles:
 LD A,[DE]
 INC DE
