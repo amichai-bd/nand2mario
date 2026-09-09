@@ -90,6 +90,7 @@ async def vga_crc(dut):
                    'raster_samples': model.edge, 'crc32': [f'{v:08x}' for v in EXPECTED_CRC]}
         Path('summary.json').write_text(json.dumps(summary, indent=2), encoding='utf-8')
         record('complete', **summary)
+        dut._log.info('PASS python-vga-crc')
     finally:
         if stream is not None:
             stream.close()
