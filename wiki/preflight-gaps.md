@@ -438,8 +438,9 @@ This does not block silent video and input bring-up.
 
 **Current state**
 
-“Software compiler” may mean an assembler/linker toolchain, C compiler, or new
-higher-level language, each with different costs and interfaces.
+The [native software toolchain](tools/sw/SPEC.md) implements assembly, linking,
+ROM packaging and asset conversion. A C compiler or new higher-level language
+is outside that implemented scope and needs a separate approved contract.
 
 **Risk**
 
@@ -457,9 +458,8 @@ RGBDS support for open test ROMs.
 
 **Recommended default**
 
-Use pinned RGBDS for bring-up. Build a native assembler, linker, disassembler,
-ROM-header tool, runtime, and asset converter after the ISA contract is stable.
-Treat a C-like compiler as a separate later epic.
+Use the existing native toolchain and pinned RGBDS oracle. Treat any C-like
+compiler, language runtime or broader development environment as later work.
 
 ## Required closing order
 
