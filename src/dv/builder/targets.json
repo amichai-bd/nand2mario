@@ -13018,7 +13018,8 @@
         "src/sw/springtrail/state.asm",
         "src/sw/springtrail/unit-layout.json",
         "src/sw/springtrail/unit.asm",
-        "src/sw/springtrail/world.asm"
+        "src/sw/springtrail/world.asm",
+        "src/sw/springtrail/collision.asm"
       ],
       "waves": [
         "wave_dot",
@@ -13164,7 +13165,8 @@
         "src/sw/springtrail/state.asm",
         "src/sw/springtrail/unit-layout.json",
         "src/sw/springtrail/unit.asm",
-        "src/sw/springtrail/world.asm"
+        "src/sw/springtrail/world.asm",
+        "src/sw/springtrail/collision.asm"
       ],
       "waves": [
         "wave_dot",
@@ -13252,7 +13254,7 @@
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
-    "signature": "PASS SPRINGTRAIL movement unit cases=84",
+    "signature": "PASS SPRINGTRAIL movement unit cases=85",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
     "intel_mixed_mode_instances": [
@@ -13307,7 +13309,8 @@
         "src/sw/springtrail/tiles.json",
         "src/sw/springtrail/unit-layout.json",
         "src/sw/springtrail/unit.asm",
-        "src/sw/springtrail/world.asm"
+        "src/sw/springtrail/world.asm",
+        "src/sw/springtrail/collision.asm"
       ],
       "waves": [
         "wave_dot",

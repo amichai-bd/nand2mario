@@ -82,8 +82,8 @@ async def movement_unit(dut):
                 refresh_clock(client);await control('HALT')
                 await Timer(1,unit='ns');assert known(dut.paused) and not known(dut.fault)
                 dut.public_trace_close.value=1;await Timer(100,unit='ns');consume()
-                assert ended and begin is None and elapsed is None and not pending and not writes and len(reports)==84,'MOVEMENT_UNIT_MISSING'
+                assert ended and begin is None and elapsed is None and not pending and not writes and len(reports)==85,'MOVEMENT_UNIT_MISSING'
                 summary=dict(reports=reports,pause_dot=known(dut.dot_count),status='PASS')
                 Path('summary.json').write_text(json.dumps(summary,indent=2)+'\n');log('complete',**summary)
         finally:receiver.cancel()
-    dut._log.info('PASS SPRINGTRAIL movement unit cases=84')
+    dut._log.info('PASS SPRINGTRAIL movement unit cases=85')

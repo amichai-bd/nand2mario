@@ -24,6 +24,12 @@
       "section": "render",
       "region": "ROM0",
       "address": 10240
+    },
+    {
+      "unit": "unit.asm",
+      "section": "collision",
+      "region": "ROM1",
+      "address": 16384
     }
   ]
 }

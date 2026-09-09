@@ -1,10 +1,41 @@
 {
   "schema_version": 1,
   "sections": [
-    {"unit": "main.asm", "section": "code", "region": "ROM0", "address": 512},
-    {"unit": "main.asm", "section": "assets", "region": "ROM0", "address": 4096},
-    {"unit": "main.asm", "section": "world", "region": "ROM0", "address": 5120},
-    {"unit": "main.asm", "section": "movement", "region": "ROM0", "address": 8192},
-    {"unit": "main.asm", "section": "render", "region": "ROM0", "address": 10240}
+    {
+      "unit": "main.asm",
+      "section": "code",
+      "region": "ROM0",
+      "address": 512
+    },
+    {
+      "unit": "main.asm",
+      "section": "assets",
+      "region": "ROM0",
+      "address": 4096
+    },
+    {
+      "unit": "main.asm",
+      "section": "world",
+      "region": "ROM0",
+      "address": 5120
+    },
+    {
+      "unit": "main.asm",
+      "section": "movement",
+      "region": "ROM0",
+      "address": 8192
+    },
+    {
+      "unit": "main.asm",
+      "section": "render",
+      "region": "ROM0",
+      "address": 10240
+    },
+    {
+      "unit": "main.asm",
+      "section": "collision",
+      "region": "ROM1",
+      "address": 16384
+    }
   ]
 }

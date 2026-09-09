@@ -637,6 +637,16 @@ CALL RenderPlayer
 LD A,0
 LD [$C0EF],A
 CALL Report
+LD DE,Case15
+CALL LoadCase
+LD A,33
+LD [Buttons],A
+LD [$C0EE],A
+CALL StepPlayer
+CALL RenderPlayer
+LD A,0
+LD [$C0EF],A
+CALL Report
 LD A,$A5
 LD [$C0FF],A
 HALT
@@ -709,6 +719,9 @@ Case13:
 DB 120,4,128,5,0,0,0,0,0,0,0,0,0,0
 Case14:
 DB 8,5,248,4,0,0,32,0,0,0,0,8,0,0
+Case15:
+DB 224,9,28,6,32,0,184,255,0,0,33,86,0,0
 INCLUDE "movement.asm"
 INCLUDE "render.asm"
 INCLUDE "world.asm"
+INCLUDE "collision.asm"

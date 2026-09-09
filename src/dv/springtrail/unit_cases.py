@@ -10,7 +10,7 @@ def timing_marker(begin,elapsed,address,dot,data,buttons):
         return dot,None
     assert address==0xc0ef and begin is not None and elapsed is None and data==0,'MOVEMENT_END'
     elapsed=dot-begin
-    assert 0<elapsed<4560,'MOVEMENT_VBLANK_BUDGET'
+    assert 0<elapsed<4200,'MOVEMENT_VBLANK_BUDGET'
     return None,elapsed
 
 
@@ -35,7 +35,10 @@ def groups():
         ('camera-wrap',Player(x=326*16,camera=254),[33]),
         ('camera-limit',Player(x=678*16,camera=606),[33]),
         ('fraction-side',Player(x=71*16+8,y=88*16,grounded=False),[33]),
-        ('fraction-land',Player(x=80*16+8,y=79*16+8,vy=32,grounded=False,camera=8),[0])]
+        ('fraction-land',Player(x=80*16+8,y=79*16+8,vy=32,grounded=False,camera=8),[0]),
+        # Reachable fourth jump update: three horizontal rows and two vertical
+        # columns, with a new camera tile on the same normal frame.
+        ('camera-air-corner',Player(x=2528,y=1564,vx=32,vy=-72,grounded=False,previous=33,camera=86),[33])]
 
 
 def packed(player,buttons):

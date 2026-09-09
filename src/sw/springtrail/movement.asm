@@ -140,10 +140,15 @@ LD DE,$00FF
 ADD HL,DE
 CALL TileIndex
 LD [LastCell],A
+CALL CollisionPointer
 XCells:
-CALL WorldTile
+LD A,[Row]
+CP A,18
+JR NC,XEmpty
+LD A,[HL]
 CP A,$0B
 JR Z,BlockX
+XEmpty:
 LD A,[LastCell]
 LD B,A
 LD A,[Row]
@@ -151,6 +156,7 @@ CP A,B
 JR Z,Vertical
 INC A
 LD [Row],A
+INC H
 JR XCells
 BlockX:
 LD A,[VelocityX+1]
@@ -208,8 +214,12 @@ LD DE,$007F
 ADD HL,DE
 CALL TileIndex
 LD [LastCell],A
+LD A,[Row]
+CP A,18
+JP NC,FinishMove
+CALL CollisionPointer
 YCells:
-CALL WorldTile
+LD A,[HL]
 CP A,$0B
 JR Z,BlockY
 LD A,[LastCell]
@@ -219,6 +229,7 @@ CP A,B
 JR Z,FinishMove
 INC A
 LD [Column],A
+INC L
 JR YCells
 BlockY:
 LD A,[VelocityY+1]
@@ -313,35 +324,15 @@ RR L
 SRA H
 RR L
 RET
-; Literal row-major 96-column world. Non-world cells are empty.
-WorldTile:
-LD A,[Column]
-CP A,96
-JR NC,EmptyTile
+; Page-aligned rows keep collision scans cheap enough for normal VBlank.
+; X is clamped before either scan, so its box stays in columns0..95.
+; Callers reject out-of-world rows before reading. X scans advance H; Y scans L.
+CollisionPointer:
 LD A,[Row]
-CP A,18
-JR NC,EmptyTile
-LD L,A
-LD H,0
-ADD HL,HL
-ADD HL,HL
-ADD HL,HL
-ADD HL,HL
-ADD HL,HL
-LD D,H
-LD E,L
-ADD HL,HL
-ADD HL,DE
+ADD A,HIGH(CollisionMap)
+LD H,A
 LD A,[Column]
-LD E,A
-LD D,0
-ADD HL,DE
-LD DE,WorldMap
-ADD HL,DE
-LD A,[HL]
-RET
-EmptyTile:
-XOR A,A
+LD L,A
 RET
 EXPORT InitPlayer
 EXPORT StepPlayer

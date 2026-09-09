@@ -4,9 +4,9 @@ from movement_frames import image
 from movement_reference import Player,step
 
 # Instruction-derived LCD commit; inputs precede the second VBlank.
-LCD=48708
-START_WINDOW=(178708,180708)
-END=254616
+LCD=48528
+START_WINDOW=(178528,180528)
+END=254436
 FIRST_WORLD=step(Player(),129)
 FRAMES=(bytes(23040),image(title=True),image(FIRST_WORLD))
 CRC=(0xb15161f6,0x5324bc1f,0xae96d493)
