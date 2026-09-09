@@ -30,7 +30,7 @@
   prev.addEventListener('click', () => show(index - 1));
   next.addEventListener('click', () => show(index + 1));
   document.addEventListener('keydown', event => {
-    if (event.altKey || event.ctrlKey || event.metaKey || event.target.closest('input, textarea, select, [contenteditable]')) return;
+    if (event.altKey || event.ctrlKey || event.metaKey || event.target.closest('input, textarea, select, [contenteditable], [data-scroll-region]')) return;
     const target = {ArrowLeft: index - 1, ArrowRight: index + 1, Home: 0, End: slides.length - 1}[event.key];
     if (target !== undefined) { event.preventDefault(); show(target, true); }
   });

@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Trust a command before acting</title>
+  <link rel="stylesheet" href="../../tools/wiki/assets/presentation.css">
+  <link rel="stylesheet" href="assets/concepts.css">
+  <script src="../../tools/wiki/assets/presentation.js" defer></script>
+</head>
+<body class="concept-series uart">
+  <main class="deck" aria-label="Trust a command before acting">
+    <a class="series-home" href="README.md">← Presentation library</a>
+    <section data-slide aria-labelledby="slide-1">
+      <p class="eyebrow">05 · UART debugging · 01</p>
+      <h1 id="slide-1">Serial bytes are not commands yet</h1>
+      <p class="lead">The endpoint receives bytes, frames a packet, checks integrity, then validates a command before allowing any effect.</p>
+      <svg class="wide-flow" viewBox="0 0 840 120" role="img" aria-label="8N1 bytes: synchronized RX then COBS + CRC: bounded packet then Dispatcher: validate + act"><rect x="4.0" y="12" width="252.0" height="94" rx="12"/><text x="130.0" y="49">8N1 bytes</text><text x="130.0" y="75">synchronized RX</text><path d="M258.0 59h22m-8-7 8 7-8 7"/><rect x="284.0" y="12" width="252.0" height="94" rx="12"/><text x="410.0" y="49">COBS + CRC</text><text x="410.0" y="75">bounded packet</text><path d="M538.0 59h22m-8-7 8 7-8 7"/><rect x="564.0" y="12" width="252.0" height="94" rx="12"/><text x="690.0" y="49">Dispatcher</text><text x="690.0" y="75">validate + act</text></svg><svg class="narrow-flow" viewBox="0 0 300 300" role="img" aria-label="8N1 bytes: synchronized RX then COBS + CRC: bounded packet then Dispatcher: validate + act"><rect x="15" y="4" width="270" height="78" rx="12"/><text x="150" y="34">8N1 bytes</text><text x="150" y="60">synchronized RX</text><path d="M150 82v20m-7-8 7 8 7-8"/><rect x="15" y="104" width="270" height="78" rx="12"/><text x="150" y="134">COBS + CRC</text><text x="150" y="160">bounded packet</text><path d="M150 182v20m-7-8 7 8 7-8"/><rect x="15" y="204" width="270" height="78" rx="12"/><text x="150" y="234">Dispatcher</text><text x="150" y="260">validate + act</text></svg>
+      <details><summary>Explore the reasoning</summary><p>COBS gives delimiter-safe framing; the CRC detects corruption within the checked packet. Neither a delimiter nor a plausible opcode alone authorizes execution.</p></details>
+      <p class="sources"><a href="../../wiki/src/rtl/uart/MAS_uart.md#module-boundaries" data-source="wiki/src/rtl/uart/MAS_uart.md" data-line="11">Source: Module boundaries</a></p>
+    </section>
+    <section data-slide aria-labelledby="slide-2">
+      <p class="eyebrow">05 · UART debugging · 02</p>
+      <h2 id="slide-2">A lost reply must not repeat a step</h2>
+      <p class="lead">An identical immediate retry replays the cached response. It does not assert a new command and execute STEP a second time.</p>
+      <div class="diagram-scroll" data-scroll-region tabindex="0" role="region" aria-label="Lost reply followed by cached retry; scroll horizontally on a narrow screen"><svg viewBox="0 0 840 210" role="img" aria-label="Lost reply followed by cached retry"><text x="110" y="25">Host</text><text x="620" y="25">Endpoint</text><path d="M110 40V200 M620 40V200 M110 65H620m-9-6 9 6-9 6 M620 110H310 M300 102l16 16m0-16-16 16 M110 150H620m-9-6 9 6-9 6 M620 190H110m9-6-9 6 9 6"/><text x="355" y="55">STEP → execute once</text><text x="465" y="101">Reply lost</text><text x="350" y="142">Identical retry</text><text x="350" y="182">Cached response</text></svg></div><p class="diagram-caption">The retry arrow reaches the cache comparison; it does not create a second STEP.</p>
+      <details><summary>Explore the reasoning</summary><p>The comparison uses the complete decoded request, not just its sequence number or encoded byte spelling. This is bounded duplicate suppression for the last completed exchange.</p></details>
+      <p class="sources"><a href="../../wiki/src/rtl/uart/MAS_uart.md#module-boundaries" data-source="wiki/src/rtl/uart/MAS_uart.md" data-line="11">Source: Exchange cache</a></p>
+    </section>
+    <section data-slide aria-labelledby="slide-3">
+      <p class="eyebrow">05 · UART debugging · 03</p>
+      <h2 id="slide-3">The same sequence can still conflict</h2>
+      <p class="lead">A retry with the same sequence but different content returns SEQUENCE. It leaves the completed cache and emulated state unchanged.</p>
+      <div class="comparison"><div><strong>Identical</strong><p>Replay the retained response.</p></div><div><strong>Conflicting</strong><p>Return SEQUENCE without command effects.</p></div><div><strong>Reset</strong><p>Core reset preserves the cache; global reset invalidates it.</p></div></div>
+      <details><summary>Explore the reasoning</summary><p>Ask why core reset cannot simply erase transport history: if reset’s reply is lost, the host still needs a safe retry of that completed exchange.</p></details>
+      <p class="sources"><a href="../../wiki/src/rtl/uart/MAS_uart.md#module-boundaries" data-source="wiki/src/rtl/uart/MAS_uart.md" data-line="11">Source: Command validation and duplicate handling</a></p>
+    </section>
+    <section data-slide aria-labelledby="slide-4">
+      <p class="eyebrow">05 · UART debugging · 04</p>
+      <h2 id="slide-4">Loading is a transaction</h2>
+      <p class="lead">LOAD_BEGIN invalidates the image and resets the core. LOAD_END requires every byte and checks CRC32 by reading actual ROM storage before publishing valid PAUSED state.</p>
+      <svg class="wide-flow" viewBox="0 0 840 120" role="img" aria-label="Begin: invalidate + reset then Bytes: presence tracking then End: readback CRC32"><rect x="4.0" y="12" width="252.0" height="94" rx="12"/><text x="130.0" y="49">Begin</text><text x="130.0" y="75">invalidate + reset</text><path d="M258.0 59h22m-8-7 8 7-8 7"/><rect x="284.0" y="12" width="252.0" height="94" rx="12"/><text x="410.0" y="49">Bytes</text><text x="410.0" y="75">presence tracking</text><path d="M538.0 59h22m-8-7 8 7-8 7"/><rect x="564.0" y="12" width="252.0" height="94" rx="12"/><text x="690.0" y="49">End</text><text x="690.0" y="75">readback CRC32</text></svg><svg class="narrow-flow" viewBox="0 0 300 300" role="img" aria-label="Begin: invalidate + reset then Bytes: presence tracking then End: readback CRC32"><rect x="15" y="4" width="270" height="78" rx="12"/><text x="150" y="34">Begin</text><text x="150" y="60">invalidate + reset</text><path d="M150 82v20m-7-8 7 8 7-8"/><rect x="15" y="104" width="270" height="78" rx="12"/><text x="150" y="134">Bytes</text><text x="150" y="160">presence tracking</text><path d="M150 182v20m-7-8 7 8 7-8"/><rect x="15" y="204" width="270" height="78" rx="12"/><text x="150" y="234">End</text><text x="150" y="260">readback CRC32</text></svg>
+      <details><summary>Explore the reasoning</summary><p>A checksum over received bytes alone could miss a storage-write defect. The endpoint validates the resulting image. No execution should observe a half-loaded ROM.</p></details>
+      <p class="sources"><a href="../../wiki/src/rtl/uart/MAS_uart.md#core-and-storage-integration" data-source="wiki/src/rtl/uart/MAS_uart.md" data-line="88">Source: Core and storage integration</a></p>
+    </section>
+    <section data-slide aria-labelledby="slide-5">
+      <p class="eyebrow">05 · UART debugging · 05</p>
+      <h2 id="slide-5">STEP ends at instruction completion</h2>
+      <p class="lead">The endpoint pauses on accepted instruction completion, before following-edge retirement publication finishes. An interrupt-entry record alone does not complete STEP.</p>
+      <svg class="wide-flow" viewBox="0 0 840 120" role="img" aria-label="Resume: emulated ticks then Instruction T4: request pause then Following edge: publish record"><rect x="4.0" y="12" width="252.0" height="94" rx="12"/><text x="130.0" y="49">Resume</text><text x="130.0" y="75">emulated ticks</text><path d="M258.0 59h22m-8-7 8 7-8 7"/><rect x="284.0" y="12" width="252.0" height="94" rx="12"/><text x="410.0" y="49">Instruction T4</text><text x="410.0" y="75">request pause</text><path d="M538.0 59h22m-8-7 8 7-8 7"/><rect x="564.0" y="12" width="252.0" height="94" rx="12"/><text x="690.0" y="49">Following edge</text><text x="690.0" y="75">publish record</text></svg><svg class="narrow-flow" viewBox="0 0 300 300" role="img" aria-label="Resume: emulated ticks then Instruction T4: request pause then Following edge: publish record"><rect x="15" y="4" width="270" height="78" rx="12"/><text x="150" y="34">Resume</text><text x="150" y="60">emulated ticks</text><path d="M150 82v20m-7-8 7 8 7-8"/><rect x="15" y="104" width="270" height="78" rx="12"/><text x="150" y="134">Instruction T4</text><text x="150" y="160">request pause</text><path d="M150 182v20m-7-8 7 8 7-8"/><rect x="15" y="204" width="270" height="78" rx="12"/><text x="150" y="234">Following edge</text><text x="150" y="260">publish record</text></svg>
+      <details><summary>Explore the reasoning</summary><p>Transport logic keeps running during pause. An already STOPped STEP returns immediately without consuming time; a debugger must report actual state rather than invent an instruction.</p></details>
+      <p class="sources"><a href="../../wiki/src/rtl/cpu/MAS_cpu.md#step-completion-boundary" data-source="wiki/src/rtl/cpu/MAS_cpu.md" data-line="442">Source: STEP completion boundary</a></p>
+    </section>
+    <section data-slide aria-labelledby="slide-6">
+      <p class="eyebrow">05 · UART debugging · 06</p>
+      <h2 id="slide-6">Separate transport from execution proof</h2>
+      <p class="lead">A preloaded Intel-model run proves execution of those bytes. A real-UART load/readback run additionally exercises the transport path.</p>
+      <div class="comparison"><div><strong>Preload</strong><p>Validate image and model initialization, then execute.</p></div><div><strong>UART path</strong><p>Send, store, read back and verify through the actual endpoint.</p></div><div><strong>Board</strong><p>Physical serial wiring and hardware remain separate evidence.</p></div></div>
+      <details><summary>Explore the reasoning</summary><p>Preload is useful for bounded simulations but cannot establish that serial upload worked. This distinction makes a test’s claim match the route it actually exercised.</p></details>
+      <p class="sources"><a href="../../wiki/src/dv/integration/SPEC.md#execution-modes" data-source="wiki/src/dv/integration/SPEC.md" data-line="61">Source: Execution modes</a></p>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,8 +1,31 @@
 # Presentations
 
-Presentations are editable HTML decks under this directory. Use the
-[authoring skill](../../.agents/skills/html-presentation/SKILL.md) and
-[scaffold tour](scaffold-tour.html).
+Explore eight short lessons connecting development concepts to this project.
+Each deck has six slides, worked examples, editable diagrams, source links and
+expandable reasoning. Read them in order or choose a discipline.
+
+| Lesson | Question | Project connection |
+|---|---|---|
+| [01 · CPU execution](cpu-execution.html) | When is an instruction complete? | NOP/JP timing, bus commit and retirement |
+| [02 · Memory buses](memory-buses.html) | Who owns an addressed byte? | WRAM echo, peripheral decoding and shared storage |
+| [03 · Clocks and CDC](clocks-and-cdc.html) | How do different clocks cooperate? | Fractional enables, deadlines and frame ownership |
+| [04 · Graphics](graphics-pipeline.html) | How does a tile bit reach VGA? | Shades, complete frames and 3× scaling |
+| [05 · UART debugging](uart-debugging.html) | What makes a retry safe? | Packet validation, cached replies and loading |
+| [06 · Verification](verification.html) | How do we know a checker works? | Independent oracles, fault injection and bounded evidence |
+| [07 · Reproducible builds](reproducible-builds.html) | What does a cached PASS mean? | Input identity, artifact integrity and publication |
+| [08 · Original software](springtrail-software.html) | Where does gameplay belong? | Springtrail's ROM and planned deterministic movement |
+
+Use Left/Right or the buttons to navigate; Home/End jump to the first/last slide.
+Open **Explore the reasoning** for definitions and discussion prompts. Detailed
+wide diagrams scroll horizontally on small screens; simpler flows stack.
+Source links open canonical documentation in the embedded wiki viewer.
+
+These decks explain linked contracts; they do not replace them. Springtrail's
+foundation is implemented while later gameplay and physical acceptance remain
+planned in its source specification.
+
+For authoring, use the [presentation skill](../../.agents/skills/html-presentation/SKILL.md).
+The [scaffold tour](scaffold-tour.html) introduces the wiki's source navigation.
 
 ## Shared behavior
 
@@ -17,6 +40,9 @@ Previous/next buttons, Left/Right, Home/End, and a progress label navigate.
 Controls keep keyboard focus; slide headings receive focus after keyboard
 navigation. Motion respects the reduced-motion preference. Without JavaScript,
 all slides remain readable. Escape exits fullscreen through browser controls.
+Focused regions marked `data-scroll-region` retain native arrow/Home/End behavior
+for diagram scrolling instead of navigating slides. The educational series keeps
+a 16:9 minimum canvas and expands for longer content or opened reasoning panels.
 
 The fullscreen button requests `n2m:fullscreen` from the wiki shell when embedded;
 the shell includes its source overlay. If the browser requires a direct gesture,
