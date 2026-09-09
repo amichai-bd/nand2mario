@@ -12805,5 +12805,85 @@
       ]
     },
     "preload": "mooneye-reg-f"
+  },
+  "python-vga-crc": {
+    "sources": [
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/vga/n2m_frame_ram.sv",
+      "src/rtl/vga/n2m_vga_scan.sv",
+      "src/rtl/vga/n2m_frame_bridge.sv",
+      "src/dv/python/vga/tb_python_vga.sv"
+    ],
+    "vendor_model": "intel-memory",
+    "intel_mixed_mode_instances": [
+      "tb_python_vga.dut.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_python_vga.dut.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_python_vga.dut.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
+    ],
+    "top": "tb_python_vga",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS python-vga-crc",
+    "timeout_seconds": 300,
+    "testbench": "python",
+    "python": {
+      "module": "test_vga_crc",
+      "test": "vga_crc",
+      "inputs": [
+        "src/dv/python/vga/test_vga_crc.py",
+        "src/dv/python/vga/reference.py"
+      ],
+      "waves": [
+        "clk_sys",
+        "clk_pix",
+        "reset_sys",
+        "reset_pix",
+        "source_valid",
+        "source_start",
+        "source_shade",
+        "public_raster"
+      ]
+    }
+  },
+  "python-vga-crc-corrupt": {
+    "sources": [
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/vga/n2m_frame_ram.sv",
+      "src/rtl/vga/n2m_vga_scan.sv",
+      "src/rtl/vga/n2m_frame_bridge.sv",
+      "src/dv/python/vga/tb_python_vga.sv"
+    ],
+    "vendor_model": "intel-memory",
+    "intel_mixed_mode_instances": [
+      "tb_python_vga.dut.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_python_vga.dut.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
+      "tb_python_vga.dut.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
+    ],
+    "top": "tb_python_vga",
+    "args": [
+      "+rgb_corrupt"
+    ],
+    "expected_exit": "zero",
+    "signature": "PASS python-vga-crc",
+    "timeout_seconds": 300,
+    "testbench": "python",
+    "python": {
+      "module": "test_vga_crc",
+      "test": "vga_crc",
+      "inputs": [
+        "src/dv/python/vga/test_vga_crc.py",
+        "src/dv/python/vga/reference.py"
+      ],
+      "waves": [
+        "clk_sys",
+        "clk_pix",
+        "reset_sys",
+        "reset_pix",
+        "source_valid",
+        "source_start",
+        "source_shade",
+        "public_raster"
+      ]
+    }
   }
 }
