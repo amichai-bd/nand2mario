@@ -83,7 +83,7 @@ async def run(dut,short=False):
             while not halted:
                 await Timer(2,unit='us');await ReadOnly();healthy()
                 dot=known(dut.dot_count)
-                assert prior<dot<(10000 if short else 220000) and not known(dut.fault),'COURIER_PROGRESS'
+                assert prior<dot<(10000 if short else 260000) and not known(dut.fault),'COURIER_PROGRESS'
                 prior=dot
             refresh_clock(client);await control('HALT')
             await Timer(1,unit='ns');await ReadOnly();healthy()

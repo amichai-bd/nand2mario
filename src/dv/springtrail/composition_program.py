@@ -61,7 +61,7 @@ def build(root,destination,short=False):
         (destination/'program.gb').write_bytes(image)
         record=dict(sha256=hashlib.sha256(image).hexdigest(),cases=len(selected),
                     shared_sections={row['section']:hashlib.sha256(image[row['address']:row['address']+row['size']]).hexdigest() for row in linked['map']['sections'] if row['section']!='code'},
-                    end_bound=10000 if short else 220000)
+                    end_bound=10000 if short else 260000)
         (destination/'composition.json').write_text(json.dumps(record,indent=2)+'\n')
         (destination/'composition-listing.json').write_text(json.dumps(linked['listing'],indent=2)+'\n')
         return image

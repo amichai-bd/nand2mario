@@ -60,3 +60,28 @@ bank0 Call_1736 delegates to bank3 Call_4823. That renderer selects coordinate
 and tile tables, reflects offsets for facing and emits OAM attributes. This
 supports the composition structure only. Our geometry, asset bytes and code
 are original; no commercial data or instruction sequence is copied.
+
+## CPU fixture budget
+
+The32 cases are24 pose/facing calls, four clip/hidden calls, three directional
+start/restart scenes and one signed-camera/fractional scene. Poisoning occurs
+only initially and before the first full scene. The complete one-case harness
+finished in26.719s, with3304 routine dots and settled pause at7672.
+
+A longest syntactic branch path through EmitPiece costs at most580 dots;
+CourierPiece overhead is bounded by296 per piece and setup220 per pose.
+There are140 direct pieces, then four20-piece scenes. Full-scene overhead
+includes signed coordinate conversion, state selection and the80-byte tail.
+Allow260000 total dots, including both160-byte poison loops, operand writes,
+three UpdateGame calls and terminal readiness. This replaces the provisional
+220000 bound before full execution; the70ms simulation watchdog and300s whole
+wall bound remain fixed. Forecast170-210s for the full CPU run; the120s target
+may be missed. Measure actual full costs before further composed execution.
+
+Conservative dot accounting: direct pieces140*(580+296)+28*220=128800;
+four scenes at25000 each=100000 (includes their80 pieces, seven signed
+coordinate projections, selection and tail clearing); two poison loops7728;
+operand/setup instructions10000; three bounded UpdateGame calls12000; terminal
+and pause allowance1024. Sum259552 is below260000. These are ceilings, not
+claims that the actual execution consumes them. The game and unit image have
+identical bytes for all nine shared non-code/non-asset sections.
