@@ -36,8 +36,12 @@ to be checked against actual execution rather than fitted to its observations.
    identity and complete image layout. A CPU fixture calls that exact publisher
    with ordinary software-written representative multi-piece records, including
    first/last entries, then a smaller scene with explicit inactive clearing.
-2. A short complete actual-system fixture observes every source read, destination
-   byte and CPU return, then pauses and checks completion. The full case adds
+2. A short complete actual-system fixture observes all software source writes,
+   accepted DMA byte data and CPU destination readback/return, then pauses and
+   checks completion. It reuses #308's unchanged DMA read-path qualification;
+   this fixture does not independently observe every raw RAM read. CPU bus
+   commits stay in HRAM throughout the qualified active interval and a settled
+   post-ack hold proves no dot/retirement progress. The full case adds
    the second publication and all 160-byte stale-entry checks. Actual wrong-byte
    fault must fail the unchanged downstream checker; focused host omissions and
    stale-tail negatives exercise completion/count boundaries.

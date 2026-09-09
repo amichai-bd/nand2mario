@@ -30,6 +30,8 @@ async def run(dut,short=False):
                 raw=known(dut.bus_sample)
                 dot,address,write,data=raw>>25,(raw>>9)&65535,(raw>>8)&1,raw&255
                 log('bus',dot=dot,address=address,write=write,data=data)
+                if check.triggers and check.triggers[-1]+8<=dot<=check.triggers[-1]+644:
+                    assert 0xff80<=address<=0xfffe,'OAM_DMA_CPU_BUS'
                 check.bus(dot,address,write,data)
                 if address==0xc0ff and write:
                     assert data==0xa5 and len(check.reports)==check.count,'OAM_TERMINAL'
@@ -74,6 +76,9 @@ async def run(dut,short=False):
             refresh_clock(client);await control('HALT')
             await Timer(1,unit='ns');await ReadOnly();healthy()
             assert known(dut.paused) and not known(dut.fault),'OAM_PAUSE'
+            settled=(known(dut.dot_count),records)
+            await Timer(1,unit='us');await ReadOnly();healthy()
+            assert (known(dut.dot_count),records)==settled and known(dut.paused),'OAM_PAUSE_HOLD'
             summary=check.finish();summary.update(pause=known(dut.dot_count),records=records)
             Path('summary.json').write_text(json.dumps(summary,indent=2)+'\n')
             log('complete',**summary)
