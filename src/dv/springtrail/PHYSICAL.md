@@ -73,5 +73,7 @@ End with normal HALT and INPUT0, public PAUSED/UART/zero effective mask and a
 certain durable session. On a known failure, attempt that same safe cleanup.
 An uncertain Client completion forbids further traffic and remains a failure;
 do not silently reset or replay it. The outer supervisor must report all owned
-processes ended and locks released. Physical acceptance remains pending until
-the reviewed launcher and actual retained result meet these conditions.
+processes ended and locks released. The
+[PR270 evidence](https://github.com/amichai-bd/nand2mario/pull/270) records the
+reviewed launcher and actual result against these conditions. This scoped proof
+does not complete the later physical release milestone.

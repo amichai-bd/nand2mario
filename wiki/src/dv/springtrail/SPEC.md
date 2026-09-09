@@ -5,7 +5,9 @@ and [#264](https://github.com/amichai-bd/nand2mario/issues/264). The
 [game specification](../../sw/springtrail/SPEC.md) owns gameplay;
 the [charter](../../project-charter.md#release-acceptance) owns release criteria.
 The [foundation proof](https://github.com/amichai-bd/nand2mario/pull/266) checks
-the original title and initial world. No complete-game or physical release
+the original title and initial world. The
+[movement proof](https://github.com/amichai-bd/nand2mario/pull/270) covers the matrix
+below, including selected physical scrolling frames. No complete-game or physical release
 acceptance is claimed here.
 
 ## Independent expectations
@@ -40,11 +42,13 @@ device/setup, full ROM upload/readback and final paused/zero-input state.
 This is neither physical-monitor acceptance nor the later #263/#264 milestone.
 
 The [foundation test definition](../../../../src/dv/springtrail/README.md)
-freezes the original title/Start/first-world schedule for #260. Its two targets
+retains the historical title/Start/first-world schedule for #260. Its two targets
 check all startup/title/world source pixels, ordinary WRAM state writes and a
 real UART Start input on the actual composed system. An actual source-shade
 fault uses the unchanged oracle. This bounded checkpoint does not claim the
-later complete-game reference or release criteria below are met.
+later complete-game reference or release criteria below are met. The current
+targets use the [movement definition](../../../../src/dv/springtrail/MOVEMENT.md)
+and its independently updated initialization and sprite expectations.
 
 Use original SM83 code and assets built by the existing Python pipeline. Two
 clean builds must produce identical 32768-byte images. Pin source, asset, tool,

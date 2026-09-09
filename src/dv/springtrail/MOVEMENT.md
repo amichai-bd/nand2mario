@@ -45,8 +45,9 @@ driver is `src/sw/springtrail/unit.asm`.
 
 Declare the existing 300-second whole-process cap, 120-second target and
 300000-dot unit progress bound. Host/model and section-identity checks plus
-independent source review precede this first actual CPU run. Its measured
-duration will inform the selected aggregate; no budget exception is implied.
+independent source review precede actual CPU execution. The
+[PR270 evidence](https://github.com/amichai-bd/nand2mario/pull/270) records measured
+durations, retained failures and the selected aggregate; no budget exception is implied.
 
 ## Short composed game
 
@@ -77,7 +78,6 @@ pause within2000 dots, complete trace trailer, all69120 pixels and no fault/rese
 The existing actual output-shade fault remains checked by the unchanged pixel
 oracle. Its first nonwhite forced title pixel must fail; a setup failure is not
 fault evidence. Both simulations retain the300-second total cap and120-second
-target. The initial unit prefix measured124.389 seconds before its underestimated
-dot guard stopped it. The revised unit plus game and fault forecast is390â€“405
-seconds in aggregate, exceeding the300-second ordinary target. Each test still
-obeys its300-second hard cap; no budget allowance or coverage waiver is introduced.
+target. Record the selected unit, game and fault durations together against the
+300-second ordinary aggregate target. Each test still obeys its 300-second hard
+cap; a target miss is not a budget allowance or coverage waiver.
