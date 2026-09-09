@@ -97,3 +97,37 @@ rotation, hard drop and a scored line clear from a fresh game, retaining full
 images and journals. End PAUSED, UART selected, input/effective mask zero and
 session certain. Stop on uncertain transport completion. Automated play and its
 comparative higher-score proof remain in #273.
+
+## Pixel player comparison
+
+The #273 player uses the immutable rendered snapshot, including the visible
+rotation digit and next-piece preview, to identify the active piece and board.
+It rejects ambiguous geometry and stale frame identities. It reads no gameplay
+WRAM. Each decision is retained with the actual frame and resulting UART action.
+
+Freeze two runs before physical execution: baseline always hard-drops; strategy
+enumerates reachable placements using legal left, right and clockwise rotation
+edges, then hard-drops. Score each resulting board as 1000 times cleared rows,
+minus50 times holes, minus5 times summed column heights, minus2 times adjacent
+height differences. A hole is an empty cell below an occupied cell in its column.
+Prefer higher score, then fewer actions, then lexicographic action order
+Left, Right, Rotate, Drop. There is no lookahead or parameter tuning between runs.
+
+Both runs load the same original ROM af11fbfae2ddf1607ca3c70f32d47eadb62fd5a1c5b5c3f3ead8ea6f2afa0c74,
+start a fresh game, and stop after eight issued B-edge actions or game over.
+This is not eight total piece locks: gravity may lock a piece during an action.
+Each has the
+same64-action ceiling and300-second whole-process deadline, including cleanup.
+An action-limit or deadline failure is incomplete evidence, not a selected score.
+The strategy must obtain a strictly higher visible score than the baseline;
+all outcomes remain recorded without selecting a favorable restart.
+
+Before each edge, advance neutral input across at least two actual frame periods;
+hold the chosen edge across at least three. Measure progress through public dots,
+not wall-clock sleeps. Decode a new complete image after each action and plan
+again from that observation so gravity or pipeline latency is not hidden state.
+Execute only the first edge of the selected path, never the entire stored path.
+Use the existing verified device/build, immutable package, durable session,
+machine lock and packet journals. Warm load derives the new epoch from the
+observed old epoch plus two; it does not reset session history. End each certain
+session PAUSED with UART input zero; uncertain completion remains blocked.
