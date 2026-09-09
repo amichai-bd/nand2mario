@@ -216,13 +216,12 @@ initialization. The system owner gates CPU memory service during initialization
 and host loading. It supplies fixed one-edge ROM and snapshot read service.
 
 `n2m_uart_core_control` owns host pause, epoch and dot/retirement counters. It
-will also own the planned [RUN_DOTS countdown](../interfaces/MAS_interfaces.md#bounded-dot-execution)
-under #278. The ordinary timebase supplies every counted edge; a final-tick pause
+also owns the [RUN_DOTS countdown](../interfaces/MAS_interfaces.md#bounded-dot-execution).
+The ordinary timebase supplies every counted edge; a final-tick pause
 uses the same boundary and B-edge settlement as STEP. Count completion ignores
 instruction completion. Existing duplicate caching and error validation apply.
 
-The control owner
-uses the existing timebase's tick and registered paused acknowledgement. RESET
+The control owner uses the existing timebase's tick and registered paused acknowledgement. RESET
 increments epoch and clears counters; the [shared input owner](../input/MAS_input.md)
 restores UART source and released host buttons. INPUT and WRITE_HOST(INPUT)
 normalize to one accepted mask operation between dot edges, returning that

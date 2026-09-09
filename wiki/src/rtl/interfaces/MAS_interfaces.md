@@ -135,8 +135,7 @@ discarded; the host must recover the outstanding response before proceeding.
 
 ### Bounded dot execution
 
-Planned under [#278](https://github.com/amichai-bd/nand2mario/issues/278):
-`RUN_DOTS` (command15) carries one little-endian32-bit count from1 through70224.
+`RUN_DOTS` (command 15) carries one little-endian 32-bit count from 1 through 70224.
 It requires PAUSED and a valid image. Zero or an excessive count is BAD_VALUE;
 wrong length/state uses the existing validation order and has no effects.
 RUN, HALT and instruction STEP retain their meanings.
@@ -144,10 +143,10 @@ RUN, HALT and instruction STEP retain their meanings.
 Resume the retained timebase phase and count real `gb_tick` edges, independently
 of instruction retirement or CPU HALT. Request pause on the requested final
 tick, so no extra tick occurs. Reply after the final tick's ordinary B-edge
-settlement, with the timebase paused. The13-byte success payload is completed
-dot64, executed count32 and completion reason8, all little-endian. Reason0 means
+settlement, with the timebase paused. The 13-byte success payload is completed
+dot (64 bits), executed count (32 bits) and completion reason (8 bits), all little-endian. Reason 0 means
 COUNT: executed equals requested and completed dot equals the initial dot plus
-that count modulo2^64. Reason1 means STOPPED: an already STOPped CPU does not
+that count modulo 2^64. Reason 1 means STOPPED: an already STOPped CPU does not
 unpause and returns zero/current dot; STOP entered during the operation finishes
 at the next natural tick with the actual partial count. Reaching the requested
 count on that tick takes precedence over STOPPED. Neither path changes input,

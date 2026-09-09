@@ -29,7 +29,7 @@ is not device authentication or proof of correct wiring.
 | `host run` | Resume through generated RUN. |
 | `host halt` | Pause through HALT; return completed dots. |
 | `host step --dots <budget>` | One instruction with generated budget bounds; STEP_LIMIT is a known failure with consumed time retained. |
-| `host run-dots --dots <count>` | Planned #278: exact bounded real-dot execution; return completed dot, executed count and COUNT/STOPPED reason. |
+| `host run-dots --dots <count>` | Exact bounded real-dot execution; return completed dot, executed count and COUNT/STOPPED reason. |
 | `host input --mask <integer>` | Replace the complete active-high eight-button mask, preserving simultaneous/opposite states. Decimal or prefixed hexadecimal is accepted. |
 | `host write --address <integer> --value <integer>` | Write the generated INPUT mask or INPUT_SOURCE selector; reject read-only/unknown addresses and reserved value bits before opening the port. |
 | `host snapshot` | One SNAPSHOT followed by all READ_FRAME chunks; retain metadata and packed shades. No new snapshot during readback. |
