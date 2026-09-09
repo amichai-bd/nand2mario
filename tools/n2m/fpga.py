@@ -197,21 +197,37 @@ def execute(argv, folder, log, timeout, record, build):
     with (build / "commands.log").open("a", encoding="utf-8") as stream:
         stream.write(json.dumps(command) + '\n')
     # Windows timeout cleanup uses taskkill /T, not console control events.
-    process = subprocess.Popen(argv, cwd=folder, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, **options)
     timed_out = False
-    try:
-        output, _ = process.communicate(timeout=timeout)
-    except subprocess.TimeoutExpired:
-        timed_out = True
-        if os.name == "nt":
-            subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        else:
-            import signal
-            os.killpg(process.pid, signal.SIGKILL)
-        output, _ = process.communicate()
-    text = output.decode("utf-8", errors="replace")
-    log.write_text(text, encoding="utf-8")
-    command.update(exit_code=process.returncode, timed_out=timed_out)
+    # Give native tools a regular output handle and retain bytes while they run.
+    # The matched PLL probe found intermittent crashes with pipe-backed output;
+    # this avoids that observed launch condition without claiming its root cause.
+    with log.open("wb") as stream:
+        process = subprocess.Popen(argv, cwd=folder, stdout=stream, stderr=subprocess.STDOUT, **options)
+        try:
+            process.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            timed_out = True
+            try:
+                if os.name == "nt":
+                    cleanup = subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=5)
+                    command['cleanup_exit_code'] = cleanup.returncode
+                    if cleanup.returncode:
+                        raise RuntimeError('Quartus process-tree cleanup failed')
+                else:
+                    import signal
+                    os.killpg(process.pid, signal.SIGKILL)
+                process.wait(timeout=5)
+                command['cleanup_complete'] = True
+            except (OSError, RuntimeError, subprocess.TimeoutExpired) as error:
+                command['cleanup_complete'] = False
+                command['cleanup_error'] = str(error)
+                process.kill()
+                process.wait(timeout=2)
+                raise RuntimeError('Quartus timeout cleanup incomplete') from error
+        finally:
+            command.update(exit_code=process.returncode, timed_out=timed_out)
+    text = log.read_bytes().decode("utf-8", errors="replace")
     if timed_out:
         raise RuntimeError(f"Quartus timeout after {timeout}s; see {log.name}")
     if process.returncode:
