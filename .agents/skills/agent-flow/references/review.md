@@ -44,6 +44,14 @@ Check tool specs and tests for tooling changes. Unexplained mismatches block
 readiness. A linked issue does not waive this PR's success criteria.
 These are agent instructions, not a semantic CI check.
 
+Read each issue/PR reference in changed wiki content. Internal issue links must
+explain a current implementation or verification gap and point to an open issue;
+closed issues and internal PR history belong outside specifications. Replace
+delivery narratives with current source/test/contract links. External issue/PR
+technical citations are allowed. The repository statistics page is the explicit
+exception for delivery history and issue/PR measurements. Search may inventory
+references, but judge and revise their surrounding prose manually.
+
 ## Verdict and PR state
 
 Return findings, validation, residual risks, and `ready`, `changes requested`,
