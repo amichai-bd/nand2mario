@@ -1,4 +1,4 @@
-# Pre-RTL bootstrap plan
+# Project phase and implementation gates
 
 The [gap register](../preflight-gaps.md) owns gap status and close conditions.
 
@@ -9,10 +9,12 @@ Authorized hardware design, verification, and the Python software stack toward
 issues and the shared [builder](../tools/n2m/SPEC.md). Begin with prerequisite
 contracts and their executable evidence, then implement each dependent unit.
 The root selects assigned work and delegates separate author worktrees. The
-current game goal is the planned [original platformer](../src/sw/springtrail/SPEC.md),
-delivered through its foundation, movement, interactions and verification issues.
-Its implementation is separate from the completed v0.5 hardware baseline; no
-commercial cartridge or new mapper is a prerequisite.
+current [original platformer](../src/sw/springtrail/SPEC.md) implements its
+foundation, movement and interaction baseline. Expanded sprite, movement and
+gameplay behavior remains planned in the
+[SML1 alignment contract](../src/sw/springtrail/sml1-alignment.md), with explicit
+open gaps. Game acceptance is separate from the v0.5 hardware baseline; no
+commercial cartridge or new mapper is a prerequisite for the mapperless game.
 
 The [reference study](../src/rtl-reference-style.md) informs style without
 authorizing HDL reuse. Existing tile, builder, and doctor results retain their
