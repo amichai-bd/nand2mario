@@ -235,7 +235,9 @@ module tb_uart_endpoint;
         integer cycles;
         expected_token=token;expected_command=cmd;expected_status=result_status;expected_size=result_size;waiting_reply=1;
         send_request(token,cmd,size,declared,version);cycles=0;
-        while(waiting_reply && cycles<180000) begin @(negedge clk_sys);cycles=cycles+1;end
+        while(waiting_reply && cycles<(cmd==15 ? 500000 : 180000)) begin
+            @(negedge clk_sys);cycles=cycles+1;
+        end
         if(waiting_reply) $fatal(1,"UART_ENDPOINT_TIMEOUT token=%0d command=%0d",token,cmd);
         repeat(4) @(negedge clk_sys);token=token+1;command_count=command_count+1;
     endtask
@@ -277,6 +279,12 @@ module tb_uart_endpoint;
     task automatic expect_dot(input logic [63:0] value);
         integer item;
         for(item=0;item<8;item=item+1) expected_payload[item]=8'(value>>(item*8));
+    endtask
+    task automatic expect_run_dots(input logic [63:0] value, input logic [31:0] count);
+        integer item;
+        expect_dot(value);
+        for(item=0;item<4;item=item+1) expected_payload[8+item]=8'(count>>(item*8));
+        expected_payload[12]=0;
     endtask
     task automatic begin_image;
         request_payload[0]=1;request_payload[1]=0;request_payload[2]=128;request_payload[3]=0;request_payload[4]=0;
@@ -344,6 +352,9 @@ module tb_uart_endpoint;
         expect_word(1);exchange(1,0,0,4);
         word_request(32'h1000c);expect_word(0);exchange(2,4,0,4);
         exchange(3,0,5,0);exchange(4,0,5,0);
+        if($test$plusargs("RUN_DOTS_WIRE")) begin
+            word_request(1);exchange(15,4,5,0);
+        end
         word_request(32'h10001);exchange(2,4,4,0);word_request(32'hffff);exchange(2,4,4,0);
         exchange(255,0,2,0);request_payload[0]=1;exchange(1,1,3,0);
         exchange_header(1,0,0,2,1,0);exchange_header(1,0,1,1,3,0);
@@ -358,6 +369,9 @@ module tb_uart_endpoint;
         token=saved_token;
         if(reset_count!=before_resets || rom_writes!=before_writes) $fatal(1,"UART_ENDPOINT_SEQUENCE_EFFECT");
         exchange(9,0,6,0);exchange(4,0,5,0);exchange(3,0,5,0);exchange(11,1,5,0);
+        if($test$plusargs("RUN_DOTS_WIRE")) begin
+            word_request(1);exchange(15,4,5,0);
+        end
         for(at=0;at<32768;at=at+252) begin
             amount=32768-at<252 ? 32768-at : 252;
             word_request(32'(at));for(item=0;item<amount;item=item+1)request_payload[4+item]=image_byte(at+item);
@@ -371,6 +385,29 @@ module tb_uart_endpoint;
             word_request(32'(at));request_payload[4]=0;request_payload[5]=1;
             for(item=0;item<256;item=item+1) expected_payload[item]=image_byte(at+item);
             exchange(10,6,0,256);
+        end
+        if($test$plusargs("RUN_DOTS_WIRE")) begin
+            word_request(0);exchange(15,4,4,0);
+            word_request(70225);exchange(15,4,4,0);
+            word_request(1);exchange(15,3,3,0);exchange(15,5,3,0);
+            expect_run_dots(1,1);exchange(15,4,0,13);
+            saved_token=token;token=saved_token-1;
+            exchange(15,4,0,13);
+            token=saved_token-1;word_request(2);exchange(15,4,9,0);
+            token=saved_token-1;word_request(1);exchange(15,4,0,13);
+            token=saved_token;
+            if(dot_count!=1 || !paused)$fatal(1,"UART_RUN_DOTS_REPLAY");
+            word_request(7);expect_run_dots(8,7);exchange(15,4,0,13);
+            // The original program reaches HALT; dots must keep advancing without retirement.
+            word_request(70224);expect_run_dots(70232,70224);exchange(15,4,0,13);
+            if(dot_count!=70232 || !paused)$fatal(1,"UART_RUN_DOTS_COUNT");
+            exchange(4,0,0,0);word_request(1);exchange(15,4,5,0);
+            dot_reply=1;exchange(5,0,0,8);dot_reply=0;
+            exchange(3,0,0,0);
+            if(dot_count!=0 || !paused || !image_valid)$fatal(1,"UART_RUN_DOTS_RESET");
+            word_request(1);expect_run_dots(1,1);exchange(15,4,0,13);
+            $fclose(trace);
+            $display("PASS UART RUN_DOTS wire ROM32768 counts replay errors HALT reset");$finish;
         end
         word_request(32'hffffffff);request_payload[4]=1;request_payload[5]=0;exchange(10,6,4,0);
         word_request(32768);request_payload[4]=1;exchange(10,6,4,0);

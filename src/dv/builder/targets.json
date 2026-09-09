@@ -6107,7 +6107,7 @@
     ],
     "top": "tb_uart_validation",
     "args": [],
-    "signature": "PASS UART validation checks=113",
+    "signature": "PASS UART validation checks=120",
     "expected_exit": "zero"
   },
   "uart-validation-corrupt": {
@@ -15374,5 +15374,49 @@
     ],
     "expected_exit": "nonzero",
     "signature": "RUN_DOTS_RESULT"
+  },
+  "uart-run-dots-wire": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/cpu/n2m_cpu_alu.sv",
+      "src/rtl/cpu/n2m_cpu_execute.sv",
+      "src/rtl/cpu/n2m_cpu_bus.sv",
+      "src/rtl/cpu/n2m_cpu_retire.sv",
+      "src/rtl/cpu/n2m_cpu_stop_policy.sv",
+      "src/rtl/cpu/n2m_cpu_control.sv",
+      "src/rtl/cpu/n2m_cpu.sv",
+      "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/memory/n2m_memory_stores.sv",
+      "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/uart/n2m_uart_packet_store.sv",
+      "src/rtl/uart/n2m_uart_packet_rx.sv",
+      "src/rtl/uart/n2m_uart_exchange_store.sv",
+      "src/rtl/uart/n2m_uart_exchange.sv",
+      "src/rtl/uart/n2m_uart_tx.sv",
+      "src/rtl/uart/n2m_uart_packet_tx.sv",
+      "src/rtl/uart/n2m_uart_response.sv",
+      "src/rtl/uart/n2m_uart_presence_store.sv",
+      "src/rtl/uart/n2m_uart_load.sv",
+      "src/rtl/uart/n2m_uart_rx.sv",
+      "src/rtl/input/n2m_input_pkg.sv",
+      "src/rtl/input/n2m_input.sv",
+      "src/rtl/uart/n2m_uart_core_control.sv",
+      "src/rtl/uart/n2m_uart_host_registers.sv",
+      "src/rtl/uart/n2m_uart_validate.sv",
+      "src/rtl/uart/n2m_uart_commands.sv",
+      "src/rtl/uart/n2m_uart.sv",
+      "src/dv/uart/tb_uart_endpoint.sv"
+    ],
+    "top": "tb_uart_endpoint",
+    "args": [
+      "+RUN_DOTS_WIRE"
+    ],
+    "expected_exit": "zero",
+    "signature": "PASS UART RUN_DOTS wire ROM32768 counts replay errors HALT reset",
+    "vendor_model": "intel-memory",
+    "timeout_seconds": 300
   }
 }

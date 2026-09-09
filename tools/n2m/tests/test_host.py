@@ -348,7 +348,7 @@ class HostTests(unittest.TestCase):
 
     def test_cli_zero_build_stops_before_product_commands(self):
         path, _ = self.manifest()
-        for action in ('load', 'run', 'reset', 'halt', 'step', 'input', 'snapshot'):
+        for action in ('load', 'run', 'reset', 'halt', 'step', 'run-dots', 'input', 'snapshot'):
             with self.subTest(action=action):
                 endpoint = Endpoint('zero-build')
                 def fake_session(folder, args, state_root):
@@ -358,7 +358,7 @@ class HostTests(unittest.TestCase):
                 command = ['host', action, '--uart-port', 'COM92', '--json']
                 if action == 'load':
                     command += ['--package', str(path)]
-                if action == 'step':
+                if action in ('step', 'run-dots'):
                     command += ['--dots', '4']
                 if action == 'input':
                     command += ['--mask', '255']
