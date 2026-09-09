@@ -62,7 +62,7 @@ async def run(dut, count):
                         assert not ended, 'STACKDROP_AFTER_END'
                         kind, raw = line.strip().split(' ')
                         if kind == 'END':
-                            assert int(raw) == lines and terminal, 'STACKDROP_END'
+                            assert int(raw) == lines and terminal and begin is None and render_begin is None and routine_dots is None and render_dots is None and not vram, 'STACKDROP_END'
                             ended = True
                             continue
                         widths = {'W': 22, 'R': 96, 'I': 26, 'P': 30}
@@ -77,6 +77,7 @@ async def run(dut, count):
                             last_retire = row['dot']
                             continue
                         dot, address, data = value >> 24, (value >> 8) & 65535, value & 255
+                        assert not terminal, 'STACKDROP_WRITE_AFTER_TERMINAL'
                         if 0xc000 <= address < 0xc300:
                             memory[address] = data
                         if 0x9800 <= address < 0x9c00:
@@ -120,7 +121,7 @@ async def run(dut, count):
                             routine_dots = render_dots = None
                             vram = []
                         elif address == 0xc0ff:
-                            assert data == 165 and len(reports) == count and begin is None and render_begin is None, 'STACKDROP_TERMINAL'
+                            assert not terminal and data == 165 and len(reports) == count and begin is None and render_begin is None and routine_dots is None and render_dots is None and not vram, 'STACKDROP_TERMINAL'
                             terminal = True
                 refresh_clock(client)
                 await control('RUN')

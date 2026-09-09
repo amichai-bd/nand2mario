@@ -164,7 +164,7 @@ module tb_python_v05 #(
         if ($test$plusargs("stackdrop_cell_fault")) begin
             wait(bus_commit && write_enable && address == 16'hc0ee);
             do @(negedge clk_sys);
-            while (!(dut.raw_write && dut.raw_store == n2m_memory_pkg::STORE_WRAM && dut.raw_offset == 0));
+            while (!(dut.raw_write && dut.raw_store == n2m_memory_pkg::STORE_WRAM && dut.raw_offset == 15'h0100));
             if (dut.raw_wdata !== 8'd0) $fatal(1, "STACKDROP_FAULT_SOURCE");
             $display("STACKDROP_CELL_MUTATION expected=0 actual=1 dot=%0d", dot_count);
             force dut.raw_wdata = 8'd1;
