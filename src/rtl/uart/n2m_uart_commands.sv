@@ -78,6 +78,7 @@ module n2m_uart_commands (
     logic core_start, core_busy, core_done;
     logic [7:0] core_command, core_status;
     logic [63:0] core_completed_dot;
+    n2m_interfaces_pkg::run_dots_t run_dots_result;
     logic load_start, load_busy, load_done;
     n2m_uart_pkg::uart_load_operation_t load_operation;
     logic [7:0] load_status, load_output_data;
@@ -153,7 +154,7 @@ module n2m_uart_commands (
         .retirement_valid(retirement_valid), .cpu_stopped(cpu_stopped), .pause_request(pause_request),
         .core_reset(core_reset), .accepted_input(accepted_input), .epoch(epoch), .dot_count(dot_count),
         .retirement_count(retirement_count), .busy(core_busy), .done(core_done), .status(core_status),
-        .completed_dot(core_completed_dot)
+        .completed_dot(core_completed_dot), .run_dots_result(run_dots_result)
     );
     n2m_uart_load u_load (
         .clk_sys(clk_sys), .reset_sys(reset_sys), .start(load_start), .operation(load_operation),
@@ -209,7 +210,7 @@ module n2m_uart_commands (
                 else case (request_header.command)
                     n2m_interfaces_pkg::COMMAND_PING: begin reply_value_next[31:0] = n2m_interfaces_pkg::WIRE_ABI; state_next = REPLY_START; end
                     n2m_interfaces_pkg::COMMAND_READ_HOST: begin reply_value_next[31:0] = host_data; state_next = REPLY_START; end
-                    n2m_interfaces_pkg::COMMAND_RESET, n2m_interfaces_pkg::COMMAND_RUN, n2m_interfaces_pkg::COMMAND_HALT, n2m_interfaces_pkg::COMMAND_STEP, n2m_interfaces_pkg::COMMAND_INPUT, n2m_interfaces_pkg::COMMAND_WRITE_HOST: state_next = CORE_START;
+                    n2m_interfaces_pkg::COMMAND_RESET, n2m_interfaces_pkg::COMMAND_RUN, n2m_interfaces_pkg::COMMAND_HALT, n2m_interfaces_pkg::COMMAND_STEP, n2m_interfaces_pkg::COMMAND_RUN_DOTS, n2m_interfaces_pkg::COMMAND_INPUT, n2m_interfaces_pkg::COMMAND_WRITE_HOST: state_next = CORE_START;
                     n2m_interfaces_pkg::COMMAND_LOAD_BEGIN: begin
                         loading_next = 1;
                         image_valid_next = 0;
@@ -230,6 +231,8 @@ module n2m_uart_commands (
                     reply_status_next = core_status;
                     if (core_status != n2m_interfaces_pkg::STATUS_OK) reply_length_next = 0;
                     reply_value_next[63:0] = core_completed_dot;
+                    if (request_header.command == n2m_interfaces_pkg::COMMAND_RUN_DOTS)
+                        reply_value_next[n2m_interfaces_pkg::RUN_DOTS_BYTES*8-1:0] = run_dots_result;
                     state_next = REPLY_START;
                 end
             end

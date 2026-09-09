@@ -2,7 +2,7 @@
 
 Generated from cfg/interfaces.json by tools/n2m/interfaces.py; DO NOT EDIT.
 
-Source SHA-256: `c8444489d6170daad0103cdfb00d7da4372a8c2f8471d2629892b0dc8b898f21`.
+Source SHA-256: `b6cc59f5f13dd806be95bfe01aab969acf0bba07fb2ff4efa43f87ccfc29775e`.
 
 See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior, reset, framing and tests.
 
@@ -215,6 +215,9 @@ See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior,
 | `WIRE_ABI` | 32 | `0x1` | Host register ABI |
 | `WIRE_CRC32_POLY` | 32 | `0xEDB88320` | Reflected CRC-32/ISO-HDLC polynomial |
 | `WIRE_CRC32_INIT` | 32 | `0xFFFFFFFF` | Initial CRC32 register and final XOR value |
+| `WIRE_RUN_DOTS_MAX` | 32 | `0x11250` | Maximum exact-dot request |
+| `WIRE_RUN_DOTS_COUNT` | 8 | `0x0` | Requested tick count completed |
+| `WIRE_RUN_DOTS_STOPPED` | 8 | `0x1` | CPU STOP ended bounded execution |
 
 ## Status
 
@@ -266,6 +269,7 @@ See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior,
 | `COMMAND_SNAPSHOT` | 8 | `0xC` | Copy last completed source frame to dedicated immutable host snapshot; fail if none since core reset. |
 | `COMMAND_READ_FRAME` | 8 | `0xD` | Read dedicated snapshot, unchanged until next successful SNAPSHOT or global reset. |
 | `COMMAND_WRITE_HOST` | 8 | `0xE` | Write a whitelisted host control register. |
+| `COMMAND_RUN_DOTS` | 8 | `0xF` | Run a bounded number of real dots and pause |
 
 ## Input Source
 
@@ -406,6 +410,16 @@ See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior,
 | `address` | 0 | 32 | Whitelisted host register address. |
 | `value` | 4 | 32 | Value with all reserved bits zero. |
 
+## Run Dots record
+
+13 bytes, in listed order; each field is unsigned little-endian.
+
+| Field | Byte offset | Bits | Meaning |
+|---|---|---|---|
+| `dot` | 0 | 64 | Completed emulated dot at pause |
+| `executed` | 8 | 32 | Actual ticks executed by this operation |
+| `reason` | 12 | 8 | COUNT or STOPPED completion |
+
 ## Commands
 
 | Name | Request payload | Successful response | Allowed state |
@@ -424,6 +438,7 @@ See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior,
 | `SNAPSHOT` | `empty` | `snapshot` | not loading |
 | `READ_FRAME` | `read_range` | `bytes` | snapshot valid |
 | `WRITE_HOST` | `write_host` | `dot` | Not LOADING. |
+| `RUN_DOTS` | `word` | `run_dots` | paused valid image |
 
 ## Provenance
 

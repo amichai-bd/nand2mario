@@ -24,7 +24,7 @@ module tb_input_power;
         .input_write(input_write),.gb_tick(gb_tick),.paused(paused),.core_initialized(core_initialized),
         .instruction_complete(instruction_complete),.retirement_valid(retirement_valid),.cpu_stopped(cpu_stopped),
         .pause_request(pause_request),.core_reset(core_reset),.accepted_input(accepted_input),.epoch(epoch),
-        .dot_count(dot_count),.retirement_count(retirement_count),.busy(busy),.done(done),.status(status),.completed_dot(completed_dot)
+        .dot_count(dot_count),.retirement_count(retirement_count),.busy(busy),.done(done),.status(status),.completed_dot(completed_dot),.run_dots_result()
     );
     n2m_input dut (
         .clk_sys(clk_sys),.reset_sys(reset_sys),.core_reset(core_reset),.gb_tick(gb_tick),
