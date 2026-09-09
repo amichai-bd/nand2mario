@@ -31,7 +31,7 @@ def linux_path(path):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--baseline', action='store_true', help='Build untouched Core for observer equivalence')
-    parser.add_argument('--case', choices=('integration','palette-fc','palette-00','springtrail-short','springtrail','springtrail-settled-short','springtrail-settled'), default='integration')
+    parser.add_argument('--case', choices=('integration','palette-fc','palette-00','springtrail-short','springtrail','springtrail-settled-short','springtrail-settled','springtrail-milestone-short','springtrail-milestone'), default='integration')
     parser.add_argument('--fault', choices=('none','frame','input','progress'), default='none')
     parser.add_argument('--source', type=Path, required=True)
     parser.add_argument('--rom', type=Path, required=True)
@@ -84,7 +84,10 @@ def main():
         result['pin'] = manifest['pin']
         case_path=HERE/'springtrail.json' if springtrail else ROOT/'src/dv/ppu/palette194.json'
         case=json.loads(case_path.read_text()) if args.case!='integration' else None
-        image_contract=case['settled_image' if 'settled' in args.case else 'image'] if springtrail else case['images'][args.case] if case else manifest['image']
+        if 'milestone' in args.case:
+            from src.dv.sameboy.milestone import contract
+            case=contract(case,args.case)
+        image_contract=case['settled_image' if any(x in args.case for x in ('settled','milestone')) else 'image'] if springtrail else case['images'][args.case] if case else manifest['image']
         result['case']=args.case
         result['fault']=args.fault
         image = args.rom.read_bytes()
@@ -106,11 +109,15 @@ def main():
         if springtrail:
             for path in (HERE/'springtrail.c', HERE/'springtrail.py', ROOT/'tools/n2m/test_budget.py'):
                 result['inputs'][str(path.resolve())]=digest(path)
-            if 'settled' in args.case:
+            if any(x in args.case for x in ('settled','milestone')):
                 for name in ('flow_frames.py','interactions_reference.py','movement_reference.py',
                              'reference.py','scene_reference.py','scene_art.py'):
                     path=ROOT/'src/dv/springtrail'/name
                     result['inputs'][str(path.resolve())]=digest(path)
+            if 'milestone' in args.case:
+                for path in (HERE/'milestone.py',ROOT/'src/dv/springtrail/milestone.py',ROOT/'src/dv/springtrail/interaction_routes.py'):
+                    result['inputs'][str(path.resolve())]=digest(path)
+                (output/'schedule.json').write_text(json.dumps(case['milestone'],indent=2)+'\n',encoding='utf-8')
         # Apply only the recorded original observer; pristine inputs remain elsewhere.
         patch = (HERE / 'observe.patch').read_text(encoding='utf-8')
         if b'\r\n' in (observed / 'Core/display.c').read_bytes():
@@ -126,10 +133,11 @@ def main():
                           for v in config['groups']['profile'])
         if springtrail:
             header += f'#define PROBE_FRAME_COUNT {case["cases"][args.case]}\n'
-            header += f'#define PROBE_BUTTONS {int("settled" in args.case)}\n'
+            header += f'#define PROBE_BUTTONS {int(any(x in args.case for x in ("settled","milestone")))}\n'
             header += f'#define PROBE_DOT_BOUND {case["dot_bound"]}\n'
-            for i, event in enumerate(case['inputs']):
-                header += f'#define INPUT_DOT_{i} {event["dot"]}\n#define INPUT_MASK_{i} {event["buttons"]}\n'
+            header += f'#define PROBE_END_DOT {case.get("end_dot",0)}\n#define PROBE_INPUT_COUNT {len(case["inputs"])}\n'
+            header += '#define INPUT_DOTS {'+','.join(str(e['dot']) for e in case['inputs'])+'}\n'
+            header += '#define INPUT_MASKS {'+','.join(str(e['buttons']) for e in case['inputs'])+'}\n'
         else:
             header += f'#define PROBE_EVENT_BOUND {case["native_event_bound"] if case else 100}\n'
             header += f'#define PROBE_DOT_BOUND {case["native_bound_dots"] if case else 140600}\n'
