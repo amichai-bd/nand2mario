@@ -55,3 +55,21 @@ unit at 90–140 seconds. A later composed game/fault pair is provisionally
 These are forecasts, not measured results or cap extensions. Final render and
 physical routes must be frozen and reviewed before their execution; unchanged
 accepted movement evidence may be qualified, not relabeled as interaction proof.
+
+## Collected-store fault
+
+`python-fx` runs the unchanged full oracle and ROM. At the first WRAM
+Collected write of one, the fixture forces only the storage input to zero
+across its accepting system edge and releases it on the next falling edge.
+The CPU/public write remains one. The next ordinary update reads the missing
+bit, collects the same item again and increments score to two. The unchanged
+`FLOW_STATE index=10 group=first-once` comparison must reject that downstream
+result. Require the mutation record, raw simulator zero, failing Python XML
+and nonzero outer result; an unrelated setup failure is not fault evidence.
+
+The completed three-report harness took 26.305 seconds and the full 27-report
+run took 70.565 seconds, both including setup and cleanup. The affected fault
+is forecast below 70 seconds under the same 300-second hard cap. The earlier
+`s262` attempt failed before HDL because its new target names made a Windows
+temporary path 267 characters; shorter names reduce that path to 240. It is
+retained as a setup failure, not a functional result.
