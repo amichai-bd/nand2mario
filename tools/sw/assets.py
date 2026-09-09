@@ -30,6 +30,15 @@ def validate_shades(value, file='asset.json'):
 
 
 def load_shades(path, file):
+    try:
+        content=path.read_bytes()
+    except OSError as error:
+        fail('ASSET_JSON','invalid/unreadable UTF-8 shade JSON: '+type(error).__name__,file)
+    return parse_shades(content,file)
+
+
+def parse_shades(content, file='asset.json'):
+    """Validate one byte snapshot, shared by assembly and review rendering."""
     def fields(pairs):
         obj={}
         for key,value in pairs:
@@ -37,7 +46,7 @@ def load_shades(path, file):
             obj[key]=value
         return obj
     try:
-        data=json.loads(path.read_text(encoding='utf-8'),object_pairs_hook=fields)
+        data=json.loads(content.decode('utf-8'),object_pairs_hook=fields)
     except json.JSONDecodeError as error:
         fail('ASSET_JSON',error.msg,file,error.lineno,error.colno)
     except (ValueError,UnicodeError,OSError) as error:

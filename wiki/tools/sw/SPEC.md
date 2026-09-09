@@ -443,3 +443,43 @@ assets and physical loader execution remain outside this contract.
 
 [isa]: https://github.com/gbdev/rgbds/blob/307846b03ea89ee57bf75f179d5f8051175ac60d/man/gbz80.7
 [header]: https://github.com/gbdev/pandocs/blob/fe246067b695b5404a4a6a47efb4fd6d921ececb/src/The_Cartridge_Header.md
+
+## Sprite review sheets
+
+The original [pattern fixture](../../../src/sw/assets/original-pattern/shades.json)
+can be previewed without graphics libraries or a simulator:
+
+```powershell
+python -m tools.sw.preview src/sw/assets/original-pattern/shades.json --tag sprite-example --frame-width 16 --frame-height 16 --scale 8 --mirror --labels "PATTERN1,PATTERN2"
+```
+
+Run from the worktree root. This standalone asset-review command shares the
+assembler's strict shade JSON parser and encoder. Frames are nonoverlapping
+rectangles selected in atlas row-major order. Dimensions default to 16 by 16,
+must be positive multiples of eight and must divide the atlas exactly. Integer
+scale is 1 through 32, with nearest-neighbor enlargement. At most 64 frames and
+4096 pixels per rendered dimension are supported. Optional labels require one
+comma-separated uppercase ASCII letter/digit/space/hyphen string per frame,
+1 through 20 characters. An original bitmap font keeps labels identical in
+both formats. The first sheet row is the source facing; `--mirror` adds horizontal
+reflections in a second row, without mirroring the labels.
+
+Shade zero is shown as a two-source-pixel checkerboard to visualize sprite
+transparency. Shades one, two and three display as RGB 208, 104 and 24 grayscale,
+respectively. This fixed review palette does not infer the game's palette
+register. PNG and SVG are opaque review sheets including the checkerboard,
+not transparent game textures. No artwork, physics or animation state is changed.
+
+A fresh lowercase alphanumeric/underscore/hyphen tag creates
+`workdir/builds/<tag>/sprite-preview/` with `sheet.png`, `sheet.svg`, `tiles.2bpp`,
+the exact input snapshot `source.json`, and `result.json`. Existing tags and
+output paths traversing symlinks are rejected. The result records the commit,
+source/options/tool/output hashes, Python and zlib versions; PASS is written
+only after all outputs finish. Failed attempts may leave partial artifacts and
+require a fresh tag. No cache is reused and no previous result is overwritten.
+
+The encoded bytes retain the existing **8 by 8 tile row-major atlas order**.
+They are not rearranged into the paired left/right 8 by 16 objects of a game
+character. Sprite assembly, OAM and frame selection remain software integration
+work. The fixture is an original generic pattern; unapproved character drafts
+are not part of this command's checked-in example.
