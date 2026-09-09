@@ -84,7 +84,7 @@ def parser():
     asset_check.add_argument("--tag")
     asset_check.add_argument("--json", action="store_true")
     host = commands.add_parser('host', help='explicit UART load/control; follows verified hardware workflow').add_subparsers(dest='action', required=True)
-    for action in ('status', 'load', 'reset', 'run', 'halt', 'step', 'input', 'write', 'snapshot'):
+    for action in ('status', 'load', 'reset', 'run', 'halt', 'step', 'input', 'write', 'snapshot', 'crc-proof'):
         leaf = host.add_parser(action)
         for option in ('uart-port', 'uart-vid', 'uart-pid', 'uart-identity'):
             leaf.add_argument('--' + option)
@@ -92,6 +92,8 @@ def parser():
                           help='declare a separately completed endpoint global reset after uncertain completion; sends no reset')
         leaf.add_argument('--tag')
         leaf.add_argument('--json', action='store_true')
+        if action == 'crc-proof':
+            leaf.add_argument('--expected-build-id', required=True, help='reviewed 32-hex wire build identity')
         if action == 'load':
             leaf.add_argument('--package', required=True, help='immutable sw/build/<target>/runs/<attempt>/result.json')
         if action == 'step':

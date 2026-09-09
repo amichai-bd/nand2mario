@@ -21,6 +21,10 @@ def run(root, build, args, provenance):
         with journal.open('a', encoding='utf-8') as stream:
             stream.write(json.dumps({'time': datetime.now(timezone.utc).isoformat(), **entry}, sort_keys=True) + '\n')
     try:
+        if args.action == 'crc-proof':
+            import re
+            if args.endpoint_restarted or not re.fullmatch('[0-9a-fA-F]{32}', args.expected_build_id):
+                raise ValueError('CRC proof requires a reviewed build ID and an already certain session')
         image = None
         if args.action == 'load':
             image, report['package'] = read_package(root, args.package)
@@ -38,7 +42,12 @@ def run(root, build, args, provenance):
         with session(folder, args, state_root) as (transport, sequence, persist, selected):
             client = Client(transport, sequence=sequence, record=record, persist=persist)
             report['endpoint'] = client.identify()
-            if args.action == 'load':
+            if args.action == 'crc-proof':
+                if report['endpoint']['build_id'] != args.expected_build_id.lower():
+                    raise ValueError('CRC proof build identity mismatch')
+                from .crc_proof import run as crc_proof
+                report['result'] = crc_proof(client)
+            elif args.action == 'load':
                 report['result'] = client.load(image)
             elif args.action == 'snapshot':
                 metadata, pixels = client.snapshot()

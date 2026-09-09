@@ -23,6 +23,7 @@ is not device authentication or proof of correct wiring.
 | `host input --mask <integer>` | Replace the complete active-high eight-button mask, preserving simultaneous/opposite states. Decimal or prefixed hexadecimal is accepted. |
 | `host write --address <integer> --value <integer>` | Write the generated INPUT mask or INPUT_SOURCE selector; reject read-only/unknown addresses and reserved value bits before opening the port. |
 | `host snapshot` | One SNAPSHOT followed by all READ_FRAME chunks; retain metadata and packed shades. No new snapshot during readback. |
+| `host crc-proof --expected-build-id <32hex>` | Fixed bad-CRC PING diagnostic on an already certain, reviewed endpoint. Requires the physical verification workflow below. |
 
 `Client.write_host(address, value)` uses the same whitelist.
 `Client.select_input_source(source)` selects UART or PHYSICAL through that write.
@@ -83,6 +84,21 @@ condition because it preserves the endpoint retry cache. An immediate retry
 within an uninterrupted session is not exposed by this initial host UI.
 
 ## Evidence and tests
+
+The CRC proof requires a matching reviewed wire build ID, PAUSED state, UART
+source and zero requested/effective input. It rejects `--endpoint-restarted`.
+After the prerequisites, it reserves a token and sends an empty PING with one
+CRC bit flipped before COBS encoding. Any received byte in the generated
+two-second response window fails. A fresh-token normal PING must return ABI1;
+subsequent state and stable paused dot/retirement reads must match the baseline.
+The diagnostic keeps its durable session pending through all recovery reads and
+clears it only after the entire proof succeeds. Failures stop without retry or
+state-changing commands. Ordinary Client timeout handling is unchanged.
+Run physical proof under the existing 60-second whole-process supervisor,
+including its standard cleanup reserve, with verified setup and exclusive access.
+This observes silence and recovery, not an internal discard counter or monitor
+output; the remaining [board criteria](https://github.com/amichai-bd/nand2mario/issues/28)
+remain separate.
 
 Every invocation is fresh, never cached. Unique attempt artifacts live under
 `workdir/builds/<tag>/host/<action>/<attempt>/`: discovery, device identity,

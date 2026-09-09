@@ -45,6 +45,18 @@ class SerialTransport:
     def close(self):
         self.connection.close()
 
+    def observe(self, seconds):
+        """CRC diagnostic silence window: never drop bytes returned at its edge."""
+        deadline = self.clock() + seconds
+        while True:
+            data = self.connection.read(1)
+            if data:
+                return data
+            remaining = deadline - self.clock()
+            if remaining <= 0:
+                return b''
+            self.sleep(min(0.001, remaining))
+
 
 def open_serial(port):
     import serial
