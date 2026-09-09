@@ -12,7 +12,8 @@ scene, a C000-aligned 160-byte shadow OAM page and an HRAM routine. LCDC is 93:
 LCD/BG/OBJ enabled, unsigned tiles, 9800 map, 8x8 objects, window disabled.
 BGP/OBP0/OBP1 are E4. Map cell (column,row) is (column+row) modulo4;
 tiles0..3 contain their literal constant shade. Initialize all map cells fetched
-by the first32 lines, including the eight-pixel scroll margin.
+by the first32 lines and bounded final-HALT tail (six map rows), including the
+eight-pixel scroll margin.
 
 Normal-frame rows0..15 use SCX=SCY=0. Rows16..31 use SCX=SCY=8.
 Thus the background shade is ((x//8)+(y//8)) modulo4 above the split and
@@ -89,3 +90,9 @@ fault35 plus host checks). Hard300s each including prep/check/12s cleanup;
 30ms simulated watchdog and flushed progress. Freeze exact program dot bounds
 before launch and use short measured throughput to assess the positive. No
 historical Tcl path, timing bypass, memory replacement or automatic hardware run.
+
+The encoded fixture enables LCD at dot11640. Short stop is12664 and full
+stop96456; ordinary HALT completion must remain within1024 further dots.
+The existing VBlank literal projection requests at LCD+65662; STAT requests
+are LCD+6839 and LCD+70224+6839. The complete positive ends before a second
+VBlank, with one DMA and three completed ISR returns.

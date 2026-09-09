@@ -28,7 +28,7 @@ def build(root, destination):
     tiles.extend([0,255]*8)
     for y in range(8):tiles.extend([0x80 if y<3 else 0,255])
     for i,value in enumerate(tiles):store(0x8000+i,value)
-    for y in range(5):
+    for y in range(6):
         for x in range(32):store(0x9800+y*32+x,(x+y)%4)
     oam=[36,24,4,0,36,28,5,0,36,28,6,0,36,40,5,0x80,36,64,6,0x60]+[0]*140
     for i,value in enumerate(oam):store(0xc000+i,value)

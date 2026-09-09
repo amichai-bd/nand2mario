@@ -25,6 +25,9 @@ module tb_python_v05 #(
     logic record_event, pixel_event, input_event, write_event, bus_event;
     logic [88:0] bus_sample;
     logic dma_event, oam_store_event;
+    logic irq_source_event;
+    logic [65:0] irq_source_sample;
+    logic [1:0] prior_sources;
     logic [81:0] dma_sample;
     logic [88:0] oam_store_sample;
     n2m_interfaces_pkg::retirement_t record_sample;
@@ -102,6 +105,14 @@ module tb_python_v05 #(
             end
         end
         #1;
+        if (reset_sys || core_reset) prior_sources = 0;
+        else begin
+            if (({dut.stat_condition,dut.vblank_condition} & ~prior_sources) != 0) begin
+                irq_source_sample <= {dot_count, ({dut.stat_condition,dut.vblank_condition} & ~prior_sources)};
+                irq_source_event <= !irq_source_event;
+            end
+            prior_sources = {dut.stat_condition,dut.vblank_condition};
+        end
         if (!reset_sys && retirement_valid) begin
             record_sample <= retirement;
             record_event <= !record_event;
@@ -219,6 +230,19 @@ module tb_python_v05 #(
         end
     end
 
+    // One accepted LYC write is wrong; CPU program and checker stay unchanged.
+    initial begin
+        if ($test$plusargs("display_boundary_fault")) begin
+            do @(negedge clk_sys);
+            while (!(bus_commit && write_enable && address == 16'hff45));
+            if (dut.owner_wdata !== 8'd15) $fatal(1, "DISPLAY308_FAULT_SOURCE");
+            force dut.owner_wdata = 8'd16;
+            @(posedge clk_sys);
+            @(negedge clk_sys);
+            release dut.owner_wdata;
+        end
+    end
+
     // Mutate the first byte at the actual Intel OAM pair-write boundary.
     initial begin
         if ($test$plusargs("dma_byte_fault")) begin
@@ -263,6 +287,9 @@ module tb_python_v05 #(
         write_event = 0;
         bus_event = 0;
         dma_event = 0;
+        irq_source_event = 0;
+        irq_source_sample = 0;
+        prior_sources = 0;
         oam_store_event = 0;
         if ($test$plusargs("pixel_fault")) begin
             wait(source_display_eligible && source_x == 0 && source_y == 0);
