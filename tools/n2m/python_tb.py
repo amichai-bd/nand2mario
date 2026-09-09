@@ -30,7 +30,7 @@ def validate(root, target):
         raise ValueError("python testbench requires zero raw exit and no driver")
     if target.get("vendor_model") not in (None, "intel-memory", "intel-controls"):
         raise ValueError("Python testbench requires supported Intel memory or controls models")
-    if target.get("preload") not in (None, "integration", "v05", "palette-fc", "palette-00", "startup-read", "startup-write", "vram-read", "vram-write", "late-fe9c", "late-fe9d", "late-fe20", "timer234", "dma239", "display308", "oam299", "oam299-s", "courier292", "courier292-s", "hud300", "hud300-s", "springtrail", "springtrail-unit", "flow", "flow-s", "render", "render-s", "stackdrop", "stackdrop-unit", "stackdrop-short", "mooneye-reg-f"):
+    if target.get("preload") not in (None, "integration", "v05", "palette-fc", "palette-00", "startup-read", "startup-write", "vram-read", "vram-write", "late-fe9c", "late-fe9d", "late-fe20", "timer234", "dma239", "display308", "oam299", "oam299-s", "courier292", "courier292-s", "hud300", "hud300-s", "hud-render300", "springtrail", "springtrail-unit", "flow", "flow-s", "render", "render-s", "stackdrop", "stackdrop-unit", "stackdrop-short", "mooneye-reg-f"):
         raise ValueError("unknown Python preload")
     if not isinstance(target.get("top"), str) or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", target["top"]):
         raise ValueError("python top must be an HDL identifier")
@@ -47,10 +47,13 @@ def validate(root, target):
     matches = [p for p in config["inputs"] if Path(p).name == config["module"] + ".py"]
     if len(matches) != 1:
         raise ValueError("python inputs must contain exactly one named test module")
-    if target.get("preload") in ("integration", "v05", "palette-fc", "palette-00", "startup-read", "startup-write", "vram-read", "vram-write", "late-fe9c", "late-fe9d", "late-fe20", "timer234", "dma239", "display308", "oam299", "oam299-s", "courier292", "courier292-s", "hud300", "hud300-s", "springtrail", "springtrail-unit", "flow", "flow-s", "render", "render-s", "stackdrop", "stackdrop-unit", "stackdrop-short"):
+    if target.get("preload") in ("integration", "v05", "palette-fc", "palette-00", "startup-read", "startup-write", "vram-read", "vram-write", "late-fe9c", "late-fe9d", "late-fe20", "timer234", "dma239", "display308", "oam299", "oam299-s", "courier292", "courier292-s", "hud300", "hud300-s", "hud-render300", "springtrail", "springtrail-unit", "flow", "flow-s", "render", "render-s", "stackdrop", "stackdrop-unit", "stackdrop-short"):
         required = {"src/dv/integration/image.py", "src/dv/integration/program.asm",
                     "src/dv/integration/program.json", "src/dv/integration/retirement.json",
                     "src/sw/generated/interfaces.inc"}
+        if target['preload'] == 'hud-render300':
+            required = {'src/dv/springtrail/hud_render_program.py','src/sw/generated/interfaces.inc','src/sw/springtrail/layout.json','src/sw/springtrail/assets/core/core-tiles.json'}
+            required.update(p.relative_to(root).as_posix() for p in (root/'src/sw/springtrail').glob('*.asm'))
         if target['preload'] in ('hud300','hud300-s'):
             required = {'src/dv/springtrail/hud_program.py','src/dv/springtrail/hud_unit_cases.py',
                         'src/sw/generated/interfaces.inc','src/sw/springtrail/layout.json',
@@ -141,7 +144,7 @@ def prepare(target, attempt, root=None, fixture_tools=None):
     if target.get('preload') == 'mooneye-reg-f':
         from .mooneye import prepare as prepare_mooneye
         prepare_mooneye(root, attempt, fixture_tools)
-    if target.get("preload") in ("integration", "v05", "palette-fc", "palette-00", "startup-read", "startup-write", "vram-read", "vram-write", "late-fe9c", "late-fe9d", "late-fe20", "timer234", "dma239", "display308", "oam299", "oam299-s", "courier292", "courier292-s", "hud300", "hud300-s", "springtrail", "springtrail-unit", "flow", "flow-s", "render", "render-s", "stackdrop", "stackdrop-unit", "stackdrop-short"):
+    if target.get("preload") in ("integration", "v05", "palette-fc", "palette-00", "startup-read", "startup-write", "vram-read", "vram-write", "late-fe9c", "late-fe9d", "late-fe20", "timer234", "dma239", "display308", "oam299", "oam299-s", "courier292", "courier292-s", "hud300", "hud300-s", "hud-render300", "springtrail", "springtrail-unit", "flow", "flow-s", "render", "render-s", "stackdrop", "stackdrop-unit", "stackdrop-short"):
         import hashlib
         import importlib.util
         from .preload import prepare as prepare_preload, verify
@@ -156,6 +159,10 @@ def prepare(target, attempt, root=None, fixture_tools=None):
             image = (root / report["rom"]).read_bytes()
             expected_sha = report["artifacts"][report["rom"]]
             (attempt / "program.gb").write_bytes(image)
+        elif target['preload'] == 'hud-render300':
+            spec=importlib.util.spec_from_file_location('hud_render300_image',root/'src/dv/springtrail/hud_render_program.py')
+            module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+            image=module.build(root,attempt)
         elif target['preload'] in ('hud300','hud300-s'):
             spec=importlib.util.spec_from_file_location('hud300_image',root/'src/dv/springtrail/hud_program.py')
             module=importlib.util.module_from_spec(spec)
