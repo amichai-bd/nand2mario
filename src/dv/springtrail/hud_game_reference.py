@@ -87,6 +87,7 @@ class Check:
             else:
                 assert len(self.ready)==n,'HUD_PUBLISH_READY'
                 assert self.lcd+(n-1)*PERIOD+65664<=dot<self.lcd+n*PERIOD-644,'HUD_VBLANK_DMA'
+                assert dot+644<=self.lcd+(n-1)*PERIOD+65664+4480,'HUD_DMA_COMPLETION_BOUND'
             self.triggers.append(dot)
         if address==0xff0f:assert self.lcd is None,'HUD_PENDING_IRQ_CLEAR'
         if address==0xc019 and self.lcd is not None:

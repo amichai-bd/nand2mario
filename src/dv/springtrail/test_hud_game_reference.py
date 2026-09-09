@@ -37,3 +37,8 @@ class HudGameGuards(unittest.TestCase):
             check.line(write(check.lcd+65664+4480,0x9801,1))
         with self.assertRaisesRegex(AssertionError,'HUD_INCOMPLETE'):
             self.checker().finish(140000+PERIOD,b'')
+
+    def test_dma_completion_exceeds_bound_before_vblank_end(self):
+        check=self.checker();check.triggers=[100];check.ready=[200]
+        with self.assertRaisesRegex(AssertionError,'HUD_DMA_COMPLETION_BOUND'):
+            check.line(write(check.lcd+65664+3900,0xff46,0xc1))
