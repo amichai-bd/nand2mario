@@ -2,7 +2,8 @@
 
 The owning [verification matrix](../../../wiki/src/dv/springtrail/SPEC.md#movement-matrix)
 separates the actual CPU routine proof, short composed game and whole-game FPGA
-scrolling. Actual execution evidence is still pending.
+scrolling. The [PR270 evidence](https://github.com/amichai-bd/nand2mario/pull/270)
+records the completed scoped proofs.
 
 ## CPU unit checkpoint
 
