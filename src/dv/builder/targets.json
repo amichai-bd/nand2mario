@@ -12961,7 +12961,7 @@
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
-    "signature": "PASS SPRINGTRAIL foundation title start world",
+    "signature": "PASS SPRINGTRAIL movement title start world",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
     "intel_mixed_mode_instances": [
@@ -12971,8 +12971,8 @@
     ],
     "testbench": "python",
     "python": {
-      "module": "test_foundation",
-      "test": "foundation",
+      "module": "test_movement_game",
+      "test": "movement_game",
       "inputs": [
         "src/dv/python/integration/client_transport.py",
         "src/dv/python/integration/test_integration.py",
@@ -13003,13 +13003,22 @@
         "tools/n2m/host/command.py",
         "tools/n2m/host/package.py",
         "tools/n2m/host/transport.py",
-        "src/dv/springtrail/test_foundation.py",
         "src/dv/springtrail/reference.py",
         "src/sw/targets.json",
         "src/sw/springtrail/layout.json",
         "src/sw/springtrail/main.asm",
         "src/sw/springtrail/map.asm",
-        "src/sw/springtrail/tiles.json"
+        "src/sw/springtrail/tiles.json",
+        "src/dv/springtrail/test_movement_game.py",
+        "src/dv/springtrail/game_reference.py",
+        "src/dv/springtrail/movement_frames.py",
+        "src/dv/springtrail/movement_reference.py",
+        "src/sw/springtrail/movement.asm",
+        "src/sw/springtrail/render.asm",
+        "src/sw/springtrail/state.asm",
+        "src/sw/springtrail/unit-layout.json",
+        "src/sw/springtrail/unit.asm",
+        "src/sw/springtrail/world.asm"
       ],
       "waves": [
         "wave_dot",
@@ -13098,7 +13107,7 @@
       "+springtrail_pixel_fault"
     ],
     "expected_exit": "zero",
-    "signature": "SPRINGTRAIL_PIXEL",
+    "signature": "PASS SPRINGTRAIL movement title start world",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
     "intel_mixed_mode_instances": [
@@ -13108,8 +13117,8 @@
     ],
     "testbench": "python",
     "python": {
-      "module": "test_foundation",
-      "test": "foundation",
+      "module": "test_movement_game",
+      "test": "movement_game",
       "inputs": [
         "src/dv/python/integration/client_transport.py",
         "src/dv/python/integration/test_integration.py",
@@ -13140,13 +13149,22 @@
         "tools/n2m/host/command.py",
         "tools/n2m/host/package.py",
         "tools/n2m/host/transport.py",
-        "src/dv/springtrail/test_foundation.py",
         "src/dv/springtrail/reference.py",
         "src/sw/targets.json",
         "src/sw/springtrail/layout.json",
         "src/sw/springtrail/main.asm",
         "src/sw/springtrail/map.asm",
-        "src/sw/springtrail/tiles.json"
+        "src/sw/springtrail/tiles.json",
+        "src/dv/springtrail/test_movement_game.py",
+        "src/dv/springtrail/game_reference.py",
+        "src/dv/springtrail/movement_frames.py",
+        "src/dv/springtrail/movement_reference.py",
+        "src/sw/springtrail/movement.asm",
+        "src/sw/springtrail/render.asm",
+        "src/sw/springtrail/state.asm",
+        "src/sw/springtrail/unit-layout.json",
+        "src/sw/springtrail/unit.asm",
+        "src/sw/springtrail/world.asm"
       ],
       "waves": [
         "wave_dot",
