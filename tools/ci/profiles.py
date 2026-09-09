@@ -72,7 +72,8 @@ def check_record(root, req, profile, target, tag, raw_exit, printed, selected_to
     if profile == 'questa-baseline':
         definition, _ = simulation.load_target(root, target)
         require(raw_exit == 0 and record['status'] == 'PASS' and record['seed'] == 1
-                and record['options'] == {'seed': 1, 'target': target, 'definition': definition},
+                and record['options'] == {'seed': 1, 'target': target, 'definition': definition,
+                                          'vendor_model': None},
                 'Questa target outcome')
         commands = record['commands']
         names = [Path(c['argv'][0]).stem.lower() for c in commands]
