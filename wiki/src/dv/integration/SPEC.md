@@ -159,6 +159,30 @@ transport work for every unrelated PR.
 
 ### Milestone acceptance
 
+Future milestones use the coverage selection approved in
+[#289](https://github.com/amichai-bd/nand2mario/issues/289). Default to a shorter
+deterministic sequence that checks every pixel of its selected frames and covers
+the distinct required transitions, with focused meaningful faults and separately
+sampled continuous endurance. Select the exact bounded script from delivered
+routes before execution; there is no universal frame count or coverage quota.
+Map every named criterion to new checks or qualified retained evidence. Missing
+cases, unexplained mismatches and real defects remain blockers.
+
+Freeze independent expectations, input times, complete-frame identities, fault
+boundaries, endurance sample identities/cadence, reset/hang/lost-input checks,
+failure handling, end state and measured runtime forecast before execution.
+State sampling limits; sampled endurance is not exhaustive frame observation.
+Reuse requires the relevant identity and behavior qualification above. Changes
+receive affected checks; changed checking infrastructure receives meaningful
+sensitivity checks. Distinguish actual DUT faults from native or host artifact
+mutations. This policy adds no framework and changes no ordinary-PR gate or budget.
+
+The ongoing [#263](https://github.com/amichai-bd/nand2mario/issues/263) complete
+baseline keeps its frozen every-frame/input scope and failure rules. Once
+accepted, it is a one-time baseline, not an automatic repeat for future milestones.
+Named physical duration, lifecycle and actual I/O obligations still apply;
+qualified gameplay evidence cannot substitute for them.
+
 The revised [v0.5 matrix](../v05/SPEC.md#revised-milestone-matrix) combines precise
 bounded startup/cross-frame observation, timer/DMA proofs, real UART loading and
 all prescribed inputs, with separately bounded FPGA endurance. It replaces the
