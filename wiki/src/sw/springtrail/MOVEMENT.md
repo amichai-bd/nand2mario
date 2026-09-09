@@ -71,7 +71,7 @@ No guessed product implementation or per-update oracle is authorized by this
 research table. Resolve these seams explicitly before changing the first
 success criterion or asserting complete reference equivalence.
 
-## Proposed resolution â€” not approved or implemented
+## Proposed resolution - not approved or implemented
 
 Recommend reference-informed movement with explicit original seams, rather than
 unverified normal-frame SML1 equivalence. The existing mode/input-edge handling,
@@ -89,16 +89,32 @@ one update per frame and prepared-scene display delay remain unchanged.
   ascent indices 0..1 use 4 pixels, 2..3 use 3, 4..12 use 2, 13..19 use 1, and 20..25 use
   0,1,0,1,0,0; then descend in reverse. Implement the behavior originally, without
   copying a commercial table or routine. Non-run starts at index 2; run starts at
-  index 0. Apply the source-described release cut at 15 and saved-index restoration
-  before vertical evaluation. Landing clears both indices; after the finite
-  descent, continue falling at the existing 4 pixels per update until collision.
+  index 0. An accepted jump clears the saved release index.
+- Before vertical evaluation, an ascending player with A released and index below
+  15 saves index minus 1 and sets index 15. For index 0, save 0 instead of wrapping
+  to 255: this is an original underflow rule. Then, on either ascent or descent,
+  restore and clear the saved index only when saved is nonzero and current index
+  is below 15. A saved 0 means no restoration. These operations occur once each,
+  in that order, per update; restoration does not change ascent/descent state.
+- Ascent subtracts the current profile value and increments the index. At index
+  26, change to descent, apply index 25's downward value in that same update,
+  then store index 24. Descent adds the current value and decrements the index.
+  After index 0 is consumed, mark descent exhausted; the following update and
+  later updates fall 4 pixels each. Walking off support enters this same 4-pixel
+  fall immediately. There is no extra apex or exhaustion idle update.
+- A ceiling collision clamps the upward candidate to the contact boundary,
+  changes to descent at index 0 and clears the saved index. Do not also move down
+  that update; the next update consumes descent index 0. Landing clamps to the
+  support boundary, sets grounded and clears jump state and both indices.
 - Keep the original 8x16 collision box, world coordinates and approved art anchors.
   No new art, feature family, clock change or additional display delay is proposed.
 
 The generic evaluator/profile and player helper's non-run index 2/release cut 15
 are source-described local facts. Player profile binding, run index 0 reset,
-once-per-update dispatch, pose preparation order, landing reset and sustained
-fall are proposed original choices, not confirmed Mario behavior. Exact cases
+once-per-update dispatch, pose preparation order, underflow handling, ceiling
+transition, landing reset and sustained fall are proposed original choices, not
+confirmed Mario behavior. The immediate sentinel descent follows the generic
+evaluator; its normal-player timing remains an original binding. Exact cases
 must retain that distinction when the contract is frozen after approval.
 
 Only these two issue criteria would be replaced after approval:
