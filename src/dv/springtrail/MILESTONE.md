@@ -74,7 +74,10 @@ blank. No callback, mask or offset is selected from DUT observations.
 Native short forecast10 seconds; full forecast60-180 seconds including model
 image comparison, unmeasured until the short completes. Each invocation keeps
 the existing300-total/288-worker/12-cleanup supervisor and canonical mutex.
-The input and progress faults retain their actual key mutation/truncated execution;
+The input fault changes actual key API masks. The milestone progress fault stops
+after the final required callback but before the terminal checkpoint, requiring
+END_TIME rejection despite complete frame/input counts. Legacy progress faults
+retain their original100000-dot stop. This is actual truncated execution;
 frame fault remains explicitly a serialized-image mutation. New native execution
 and acquisition proof are pending. The complete aggregate is declared after
 short native/acquisition measurements, before the full hardware matrix.
@@ -84,7 +87,7 @@ short native/acquisition measurements, before the full hardware matrix.
 | Immutable image | PR282 rejects old image identity before native tools; #283 must validate full upload/readback and reject changed expected image/hash before acquisition. |
 | Actual DUT pixel | PR276's real source-shade mutation and unchanged checker rejection, qualified in PR282; native serialization/host readback mutations only test their own new infrastructure. |
 | Input | Existing native actual zero-key fault; exercise it on the new schedule. #283 checks exact applied mask/dot and rejects mismatched transport/plan input. |
-| Progress | Existing native actual early-exit fault; exercise it on the fixed end-checkpoint path. #283 rejects partial RUN_DOTS, missing/duplicate frames and unbound continuation. |
+| Progress | Native actual exit after all callbacks but before the fixed checkpoint must fail END_TIME. #283 rejects partial RUN_DOTS, missing/duplicate frames and unbound continuation. |
 
 These proofs complement every-frame positive execution; they do not claim a
 host-file mutation is an actual DUT defect or remove any required interval.
