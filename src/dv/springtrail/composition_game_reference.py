@@ -13,7 +13,7 @@ class Check:
         self.images=[bytes(23040),title_image()]
         self.pixels=0;self.frames=[bytearray(),bytearray()];self.triggers=[];self.dma=[]
         self.ended=False;self.records=0;self.last_record=0;self.input_dot=None
-        self.tiles=[]
+        self.tiles=[];self.lines=0
 
     def pixel(self,value):
         frame,index=divmod(self.pixels,23040)
@@ -29,8 +29,9 @@ class Check:
         assert not self.ended,'COMPOSITION_AFTER_END'
         kind,raw=text.strip().split(' ')
         if kind=='END':
-            assert int(raw)==0 and not self.partial,'COMPOSITION_END'
+            assert int(raw)==self.lines and not self.partial,'COMPOSITION_END'
             self.ended=True;return
+        self.lines+=1
         value=int(raw,16)
         if kind=='P':self.pixel(value);return
         if kind=='R':

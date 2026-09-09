@@ -85,3 +85,36 @@ operand/setup instructions10000; three bounded UpdateGame calls12000; terminal
 and pause allowance1024. Sum259552 is below260000. These are ceilings, not
 claims that the actual execution consumes them. The game and unit image have
 identical bytes for all nine shared non-code/non-asset sections.
+
+
+## Bounded composed proof
+
+The current game proof uses the actual ROM and all 74 loaded tiles. It checks
+all 23,040 pixels of the initial blank frame and all 23,040 pixels of the next
+TITLE frame against independent original-art expectations. INPUT 129 is applied
+60,000 through 62,000 dots after the initial LCD-enable write. The next visible
+interval executes one ordinary update and prepares its complete 160-byte scene.
+The following VBlank publishes those bytes through DMA before the test pauses.
+It does not claim to capture pixels of that third frame.
+
+The public LCD-enable write supplies the phase origin, not an expected image or
+state. Startup must lie between 100,000 and 130,000 dots: the prior 81,352-dot
+initialization gains 512 tile bytes at 52 dots each; replacing its at-least
+5,996-dot preparation with the conservative 25,000-dot scene bound gives an
+upper bound of 126,980 dots. The unchanged UpdateGame bound is below 20,000 dots;
+PrepareScene is below 25,000 and dispatch below 1,000. Thus preparation must
+finish within 46,000 visible dots, before the same next VBlank at 65,664.
+
+A complete short harness stops after at least 160 blank pixels, with initial
+DMA, trace END, ordinary HALT and settled pause checked. The full target has a
+285,000-dot progress limit and an 80-ms simulation watchdog. Each execution
+retains the ordinary 300-second whole-process limit. The completed unit cost
+252.406 seconds, so the 120-second target and ordinary 300-second aggregate
+target are already missed once the remaining composed checks are included.
+The short/full/fault forecasts are 120/240/220 seconds respectively; these are
+forecasts, not permission to exceed the per-execution cap.
+
+The negative changes tile 42 to tile 0 once at the actual Intel OAM write
+boundary of the first LCD-on publication, after checking the original byte.
+It skips the initial LCD-off DMA, which would be overwritten before TITLE is
+visible. The unchanged full-frame oracle must reject the resulting image.
