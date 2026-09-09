@@ -15,7 +15,7 @@ class Scene(unittest.TestCase):
         # Lower X wins its opaque stripes; transparent stripes reveal object1.
         self.assertEqual([shade(x,20) for x in range(20,28)],
                          [1,2,1,2,2,2,2,2])
-        # Object1 wins equal-X over object2's diagonal color3.
+        # Object1 wins equal-X over object2's corner color3.
         self.assertEqual(shade(20,20),1)
         self.assertEqual(shade(24,24),2)
         # Behind-BG applies only after selecting the object color.

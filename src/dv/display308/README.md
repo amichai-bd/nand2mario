@@ -48,7 +48,7 @@ mode-read T4 commits there are32dots. From the final read T4 to SCX T4
 there are36dots and to SCY T4 there are48dots (A remains8).
 
 For B = LCD-enable T4 + frame*70224 +15*456, the selected LY/comparison
-projection requests LYC15 at B-2. A request generated at T3 cannot be consumed
+projection raises the LYC15 condition at B-2. A request generated at T3 cannot be consumed
 by that same pre-T3 snapshot. HALT wake is no later than B+4; five-M-cycle
 entry ends by B+24, vector JP costs16 and PUSH AF16. The first mode-read T4
 is therefore by B+68, well after the early mode2 transition and before mode3
@@ -93,7 +93,7 @@ historical Tcl path, timing bypass, memory replacement or automatic hardware run
 
 The encoded fixture enables LCD at dot11640. Short stop is12664 and full
 stop96456; ordinary HALT completion must remain within1024 further dots.
-The existing VBlank literal projection requests at LCD+65662; STAT requests
+The existing VBlank literal projection condition rises at LCD+65662; STAT conditions rise
 are LCD+6838 and LCD+70224+6838. The complete positive ends before a second
 VBlank, with one DMA and three completed ISR returns.
 
@@ -104,6 +104,6 @@ that condition with the updated completed-dot count. IF consumes it on a later
 system edge without adding an emulated dot. The original B-1 assumption added
 a nonexistent dot; p308a remains a failed checker attempt, not an RTL failure.
 This follows the selected pinned controller's comparison-stage/output sequence
-([video.v lines305–318](https://github.com/MiSTer-devel/Gameboy_MiSTer/blob/7a5ff50528cd9c1d13ffb675e7df8506bffaa078/rtl/video.v#L305)).
+([video.v lines305-318](https://github.com/MiSTer-devel/Gameboy_MiSTer/blob/7a5ff50528cd9c1d13ffb675e7df8506bffaa078/rtl/video.v#L305)).
 VBlank independently uses LY144 at65659, stage65661 and output65662; it is not
 shifted by the LYC correction. Scroll windows and expected pixels are unchanged.
