@@ -46,3 +46,29 @@ fault. The fault changes one actual WRAM store after the first update marker;
 subsequent CPU reads preparing the image must fail the unchanged image oracle.
 No product RTL behavior or positive stimulus changes for the fault.
 
+
+## Whole-game timing
+
+The instruction-derived LCD enable commit is116872 dots. The prefix is128 dots
+through setting the768-byte clear count,36852 for that clear,36 setup+16636
+for320 tile bytes,36 setup+53244 for1024 map bytes,5564 for the initial title
+Prepare call,4312 for Render, then64 for palette/IE/LCDC setup. The checker
+rejects a different LCD commit immediately; the observed value never selects
+its oracle.
+
+Drive one real UART Start128 at146872..148872, safely before the first VBlank.
+Check all69120 pixels of startup white, title and the first playing image.
+The first VBlank copies the prepared title and computes NewGame; the second
+copies that prepared playing image. For each complete copy check all118 ordered
+VRAM writes within the real4560-dot window, and the final WRAM preparation byte
+before the following VBlank. Check per-line pixel time, epoch, shade and every
+retirement's sequence/time. Normal HALT after the third checked image may leave
+an exact prefix of the next VBlank copy; this is explicit and does not claim that
+third update complete. The first two update/copy windows are complete proofs.
+
+`python-stackdrop-game` is this short composed proof, with existing300-second
+whole cap. The static host fixture exercises its complete pixel/VRAM/input/end
+checks and rejects a bad pixel, input window, VRAM deadline and prepare deadline.
+Its source/state selection is independent of DUT outputs. The game package and
+pixel decoder are also reused for root's separate manual FPGA development play;
+that early session does not replace the full remaining simulation criteria.
