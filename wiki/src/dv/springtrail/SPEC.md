@@ -93,6 +93,14 @@ and independently predicted observable checkpoints.
 
 ## V0.9 milestone
 
+This is the one-time complete baseline owned by #263. Its current frozen script,
+every-frame/input comparisons and failure rules remain unchanged. After it is
+accepted, later milestones use the
+[future coverage selection and reuse policy](../integration/SPEC.md#milestone-acceptance),
+not an automatic repeat of this full sequence. Select bounded scripts from the
+delivered success, death/retry and flow routes to cover the required distinct
+transitions, retaining independent expectations and explicit evidence mapping.
+
 ### Paused frame acquisition
 
 The [capture driver](../../../../src/dv/springtrail/paused_capture.py) uses the
@@ -184,6 +192,17 @@ their observability before the run, with a separately reviewed physical budget.
 Report sampling limits honestly; the duration does not imply every physical
 retirement/frame was observed. End in the documented safe paused/input state and
 verify child processes, sessions and locks are released.
+
+Reuse qualified #263 deterministic gameplay/reference and fault evidence when
+relevant identities and behavior remain unchanged; select affected checks for
+changes. Use the required lifecycle upload/readback to provide applicable
+transport evidence rather than adding a duplicate unchanged transport suite.
+This removes no required full load/readback or reset/load/start cycle. Freeze
+the selected script and continuous session's input/sampling/failure plan under
+the linked milestone policy. Paused deterministic acquisition does not count
+toward continuous endurance. A connected monitor or simulation result alone
+does not prove actual VGA, keyboard or shared physical control operation;
+missing #28/#156 evidence remains a release blocker.
 
 These requirements do not close GAP-012 or #28 by simulation. Silent output is
 intentional. [#32](https://github.com/amichai-bd/nand2mario/issues/32) still owns
