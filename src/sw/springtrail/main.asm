@@ -29,7 +29,7 @@ DEC B
 JR NZ,ClearObjects
 LD DE,Tiles
 LD HL,$8000
-LD BC,$02A0
+LD BC,$04A0
 CopyTiles:
 LD A,[DE]
 INC DE
@@ -56,7 +56,7 @@ CALL PrepareScene
 CALL PublishScene
 LD A,$01
 LD [$FFFF],A
-LD A,$97
+LD A,$93
 LDH [$FF40],A
 WaitFrame:
 XOR A,A
@@ -132,6 +132,8 @@ EXPORT Start
 SECTION "assets",ROM
 Tiles:
 ASSET "Tiles"
+CourierTiles:
+ASSET "Courier"
 TitleMap:
 INCLUDE "map.asm"
 INCLUDE "movement.asm"

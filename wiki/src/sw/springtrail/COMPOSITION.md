@@ -7,7 +7,7 @@ The [approved art](CHARACTER_ART.md) owns all pixels and twelve pose maps.
 
 Keep the logical 8x16 collision box and all movement/input/update rules.
 The original artwork is centered on that box: its left is floor(PlayerX/16)-4,
-its feet are floor(PlayerY/16)+16. Small top is PlayerY; large top is PlayerY-8.
+its feet are floor(PlayerY/16)+16. Small top is floor(PlayerY/16); large top is floor(PlayerY/16)-8 pixels.
 These are intentional original anchors, not claimed SML1 dimensions.
 For camera subtraction use full signed pixel coordinates before OAM encoding.
 Each 8x8 piece is visible only when -7 <= x < 160 and -7 <= y < 144;
@@ -17,7 +17,7 @@ use Y=0. Hardware handles the remaining partial pixel clipping.
 Existing tiles 0..41 stay at VRAM8000..829F. The approved 32-tile courier bank
 uses IDs42..73, VRAM82A0..849F (512 bytes). OBP0=E4 preserves shade ordering;
 shade0 stays transparent. Tiles and map plus courier bank remain in the assets
-ROM section0C00..13FF; composer tables/code use a separate ROM1 section after
+ROM section0C00..13FF; composer tables/code use a separate ROM1 section at5200, after
 collision, with linker overlap checks. Mapperless32768-byte profile is unchanged.
 
 Pose order is STAND,WALK1,WALK2,WALK3,JUMP,RETRY for small, then large.

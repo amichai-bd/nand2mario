@@ -60,6 +60,12 @@
       "section": "stream",
       "region": "ROM0",
       "address": 15360
+    },
+    {
+      "unit": "main.asm",
+      "section": "courier",
+      "region": "ROM1",
+      "address": 20992
     }
   ]
 }
