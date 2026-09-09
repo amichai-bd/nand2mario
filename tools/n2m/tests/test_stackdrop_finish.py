@@ -25,6 +25,12 @@ class Client:
 
 
 class FinishTests(unittest.TestCase):
+    def test_identity_failure_never_arms_cleanup(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            client = Client()
+            command.finish(client, {'status':'FAIL'}, Path(tmp)/'result.json', armed=False)
+            self.assertEqual(client.calls, [])
+
     def test_certain_and_uncertain(self):
         with tempfile.TemporaryDirectory() as tmp:
             for uncertain in (False, True):

@@ -21,10 +21,10 @@ from n2m.test_budget import supervise
 ROM = 'af11fbfae2ddf1607ca3c70f32d47eadb62fd5a1c5b5c3f3ead8ea6f2afa0c74'
 
 
-def finish(client, result, path):
+def finish(client, result, path, *, armed=True):
     """Never issue recovery commands after uncertain completion."""
     try:
-        if not client.uncertain:
+        if armed and not client.uncertain:
             client.control('HALT')
             client.control('INPUT', 0)
     except Exception:
@@ -79,11 +79,15 @@ def worker(args):
             state['attempted'] = args.mode
             atomic_json(state_path, state)
             client = Client(transport, sequence=sequence, record=record, persist=persist)
+            armed = False
+            def ready():
+                nonlocal armed
+                armed = True
             try:
-                outcome = play(client, image, state['current'], args.mode, decode, retain)
+                outcome = play(client, image, state['current'], args.mode, decode, retain, ready=ready)
                 result.update(outcome, status='PASS')
             finally:
-                finish(client, result, folder/'result.json')
+                finish(client, result, folder/'result.json', armed=armed)
             state['current'] = {k: result[k] for k in ('frame','halt_dot','build_id','sequence')}
             state['completed'].append(args.mode)
             state['scores'][args.mode] = result['score']

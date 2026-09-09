@@ -88,10 +88,12 @@ class SessionTests(unittest.TestCase):
     def test_reject_changed_identity_before_load(self):
         for field, value in (('sequence', 11), ('build_id', 'wrong'), ('halt_dot', 2)):
             board = Board()
+            armed = []
             with self.assertRaises(ValueError):
                 play(board, b'', dict(self.prior(), **{field:value}), 'baseline', decode,
-                     lambda *args: None, sleep=board.sleep)
+                     lambda *args: None, sleep=board.sleep, ready=lambda: armed.append(True))
             self.assertFalse(board.loaded)
+            self.assertEqual(armed, [])
 
     def test_reject_surviving_old_snapshot(self):
         board = Board()

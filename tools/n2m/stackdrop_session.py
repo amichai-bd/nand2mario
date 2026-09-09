@@ -9,7 +9,7 @@ FRAME = 70224
 
 
 def play(client, image, prior, mode, decode, retain, *, sleep=time.sleep,
-         clock=time.monotonic):
+         clock=time.monotonic, ready=lambda: None):
     """One frozen comparison run; prior binds a known certain paused session."""
     def reg(name):
         return client.read_host(getattr(abi, 'HOST_REG_'+name))
@@ -59,6 +59,7 @@ def play(client, image, prior, mode, decode, retain, *, sleep=time.sleep,
             old['seq'] != prior['frame']['sequence'] or
             old['dot'] != prior['frame']['dot']):
         raise ValueError('STACKDROP_OLD_FRAME_CHANGED')
+    ready()
     loaded = client.load(image)
     epoch = (old['epoch']+2) % 2**32
     client.control('INPUT', 0)
