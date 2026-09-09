@@ -78,8 +78,8 @@ The input fault changes actual key API masks. The milestone progress fault stops
 after the final required callback but before the terminal checkpoint, requiring
 END_TIME rejection despite complete frame/input counts. Legacy progress faults
 retain their original100000-dot stop. This is actual truncated execution;
-frame fault remains explicitly a serialized-image mutation. New native execution
-and acquisition proof are pending. The complete aggregate is declared after
+frame fault remains explicitly a serialized-image mutation. Native execution
+is complete as recorded below; acquisition proof is pending. Its aggregate is declared after
 short native/acquisition measurements, before the full hardware matrix.
 
 | Fault boundary | Scoped evidence and remaining witness |
@@ -91,3 +91,22 @@ short native/acquisition measurements, before the full hardware matrix.
 
 These proofs complement every-frame positive execution; they do not claim a
 host-file mutation is an actual DUT defect or remove any required interval.
+
+## Native result
+
+The complete short at c736d40 retained10 callbacks/eight normal frames/six inputs,
+ending642856 in6.047 seconds. Its unchanged executable behavior is qualified
+across the child-worktree move; the producing artifacts remain in263.
+Full b44ad16 passed in27.741 seconds:3606 complete images,3604 normal frames,
+3602 inputs and exact end253168356. Measured qualification0.071s, build4.720s,
+link0.428s, native execution3.667s and image checking17.978s are component timings,
+not an exhaustive disjoint wall total.
+
+At f91c8dd, serialized-image/input/late-progress faults failed their intended
+BLANK_FRAME/INPUT_MASK/END_TIME checks in5.928/5.562/5.343 seconds. The progress
+case retained all callbacks/inputs but ended634196 before642852. Every raw tool
+and native command exited0; intended checker failures returned outer1. Aggregate
+50.621 seconds met300; each invocation met120 target and300 hard limit. The fault
+branch changes no positive behavior. [PR287](https://github.com/amichai-bd/nand2mario/pull/287)
+owns exact commands, identities and review. No DUT/full milestone acceptance is
+inferred from this reference result; #263 and #283 retain that work.
