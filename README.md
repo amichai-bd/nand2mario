@@ -7,8 +7,9 @@ with original SM83 code, characters, art and level design.
 
 The original [v0.5 hardware/software proof](https://github.com/amichai-bd/nand2mario/pull/246)
 is complete within its stated limits. The [Springtrail foundation](https://github.com/amichai-bd/nand2mario/pull/266)
-implements the title, Start and initial world; movement, interactions and release
-acceptance remain planned.
+implements the title, Start and initial world. [Movement and scrolling](https://github.com/amichai-bd/nand2mario/pull/270)
+add walking, running, jumping, collisions and the complete trail. Interactions
+and release acceptance remain planned.
 The [charter](wiki/src/project-charter.md) defines the revised goal and preserved
 release checks. [Preflight gaps](wiki/preflight-gaps.md) retain outstanding
 physical and integration requirements. No commercial cartridge is needed.

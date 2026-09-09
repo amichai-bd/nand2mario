@@ -1,4 +1,9 @@
-# Foundation proof
+# Historical foundation proof
+
+This retains the original [PR266](https://github.com/amichai-bd/nand2mario/pull/266)
+definition and evidence boundary. Current `python-springtrail` targets use the
+[movement proof](MOVEMENT.md), whose initialization and sprite rendering change
+the frame schedule below. These historical numbers are not current target checks.
 
 `python-springtrail` uses the actual composed system, current Intel memories,
 25 MHz system clock and existing 25.2 MHz pixel-clock fixture. The existing

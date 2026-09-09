@@ -34,6 +34,7 @@ module tb_python_v05 #(
     integer public_trace;
     integer public_lines;
     integer public_flushed;
+    integer public_flush_age;
     logic public_trace_close;
 
     // Python opens fixed public-boundary observation windows. This projection
@@ -119,9 +120,15 @@ module tb_python_v05 #(
                 public_lines = public_lines + 1;
             end
         end
-        if (public_trace && public_lines != public_flushed && (public_lines - public_flushed >= 512 || paused)) begin
+        // A final partial batch must become visible even when software HALTs
+        // and produces no more events. This changes file visibility only.
+        if (public_trace && public_lines != public_flushed)
+            public_flush_age = public_flush_age + 1;
+        if (public_trace && public_lines != public_flushed &&
+            (public_lines - public_flushed >= 512 || public_flush_age >= 1024 || paused)) begin
             $fflush(public_trace);
             public_flushed = public_lines;
+            public_flush_age = 0;
         end
         if (public_trace && public_trace_close) begin
             $fdisplay(public_trace, "END %0d", public_lines);
@@ -135,6 +142,7 @@ module tb_python_v05 #(
         public_trace = 0;
         public_lines = 0;
         public_flushed = 0;
+        public_flush_age = 0;
         public_trace_close = 0;
         if ($test$plusargs("springtrail_trace")) begin
             public_trace = $fopen("springtrail.trace", "w");
