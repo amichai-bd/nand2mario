@@ -7,6 +7,7 @@ from n2m import generated_interfaces as abi
 from n2m.records import atomic_json, file_hash
 
 LCD = 76964
+BASELINE_ROM = 'b551c56252761d953bcf3b64270d819e3342b710299c3bff6866d4dcae8ba667'
 PERIOD = 70224
 PIXELS = 23040
 
@@ -71,6 +72,8 @@ def acquire(client, root, plan, reference, identity, stop, *, origin=None, previ
     root = Path(root).resolve()
     validate_plan(plan, reference)
     assert set(identity) == {'rom_sha256', 'build_id', 'epoch'}, 'CAPTURE_IDENTITY_FIELDS'
+    # This retained #263 schedule is not a current-game timing oracle.
+    assert identity['rom_sha256'] == BASELINE_ROM, 'CAPTURE_BASELINE_ROM'
     assert type(identity['epoch']) is int and 0 <= identity['epoch'] < 2**32, 'CAPTURE_EPOCH'
     binding = dict(plan_sha256=digest(plan), reference_sha256=hashlib.sha256(reference).hexdigest(), **identity)
     assert (origin is None) != (previous is None), 'CAPTURE_ORIGIN'

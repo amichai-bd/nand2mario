@@ -16,7 +16,7 @@ def events(count=3):
         result += writes[i]
         if i == 17:
             result += [(0xff40, 0x1f)]
-        result += list(enumerate(scene, 0xfe00)) + [(0xc0ef, i)]
+        result += [(0xff46,0xc1), (0xc0ef, i)]
         result += [(0xc0e0, b) for b in scene]
         result += [(0xc0e2, 0x1f if i == 17 else 0x17), (0xc0e3, 0), (0xc0fe, i)]
     return result + [(0xc0e1, b) for b in final] + [(0xc0ff, 165)]
@@ -66,7 +66,7 @@ class Renderer(unittest.TestCase):
 
     def test_duplicate_published_byte(self):
         rows = events()
-        i = next(i for i, row in enumerate(rows) if row[0] == 0xfe00)
+        i = next(i for i, row in enumerate(rows) if row[0] == 0xff46)
         rows.insert(i, rows[i])
         with self.assertRaisesRegex(AssertionError, 'RENDER_PUBLISH'):
             replay(rows)

@@ -8,7 +8,8 @@ from n2m.records import atomic_json, file_hash
 from interactions_reference import Game, PLAYING, PAUSED, RETRY, update
 from flow_frames import image
 
-LCD, PERIOD, DOT_HZ = 76964, 70224, 4194304
+# Current DMA-publisher ROM; retained #291 runs use their old producer/76964.
+LCD, PERIOD, DOT_HZ = 81352, 70224, 4194304
 CYCLE_SECONDS = 20
 
 

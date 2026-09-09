@@ -45,6 +45,16 @@ engine, an AI framework, a compiler or audio to deliver this game.
 
 ## Player-visible rules
 
+The [shadow OAM publisher](../../../../src/dv/springtrail/OAM_DMA.md) transfers
+the complete C100-C19F image through standard FF46=C1 DMA from HRAM at FF80.
+Scene preparation writes the current nine entries and clears all remaining
+bytes. The shared publisher supports all 40 entries without interpreting an
+active count; future composition owns that count and its unused tail. Initialize
+the HRAM routine before LCD enable, then publish in the existing VBlank slot
+after map work. Its wait keeps CPU accesses in HRAM until transfer completion;
+the ordinary stack is accessed only before and after DMA. Input sampling,
+once-per-frame updates and the approved prepared-scene delay are unchanged.
+
 The [approved original character art](CHARACTER_ART.md) defines the next courier
 tile bank and pose geometry. Its integration remains in
 [#292](https://github.com/amichai-bd/nand2mario/issues/292); the running game

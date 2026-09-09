@@ -116,7 +116,10 @@ existing UART Client and immutable SNAPSHOT/READ_FRAME across bounded
 host batches. Freeze ROM/build/reference bytes, input script and timing before
 comparison. This short prerequisite does not complete the milestone matrix.
 
-For the corrected ROM, LCD starts at dot 76964 and the period is 70224 dots.
+For the historical JOYP-corrected ROM qualified by #263, LCD starts at dot 76964
+and the period is 70224 dots. The later
+[DMA publisher proof](../../../../src/dv/springtrail/OAM_DMA.md) owns the new
+startup anchor; do not relabel this retained acquisition schedule.
 Capture ordinal n starts at 1: pause at C(n) = 76964 + n * 70224 + 4096;
 expect literal snapshot sequence n-1 and native callback n+1. C(1) therefore
 captures source sequence 0/callback 2 (blank), C(2) sequence 1/callback 3 (title).

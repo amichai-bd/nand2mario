@@ -6,7 +6,7 @@ from scene_reference import image as oam
 from flow_frames import image
 from movement_reference import world_tile
 
-LCD = 76964
+LCD = 81352
 PERIOD = 70224
 CRC = (0xb15161f6, 0x6fc2f93a, 0xfa8827ff)
 START_WINDOW = (LCD+60000, LCD+62000)
@@ -31,6 +31,9 @@ class Check:
         self.publish = [[] for _ in self.expected]
         self.lcd = []
         self.ended = False
+        self.dma_triggers = []
+        self.tails = [[] for _ in self.expected]
+        self.ready = []
 
     def pixel(self, value):
         frame, index = divmod(self.pixels, 23040)
@@ -71,6 +74,15 @@ class Check:
         else:
             dot, address, data = value>>24, (value>>8)&65535, value&255
             self.memory[address] = data
+            if address==0xff46:
+                assert data==0xc1 and len(self.dma_triggers)<self.count+1,'FLOW_GAME_DMA_TRIGGER'
+                self.dma_triggers.append(dot)
+            if 0xc124<=address<0xc1a0:
+                index=len(self.prepared)-1
+                assert 0<=index<self.count and (address,data)==(0xc124+len(self.tails[index]),0),'FLOW_GAME_UNUSED'
+                self.tails[index].append(data)
+                assert (dot<LCD if index==0 else LCD+index*PERIOD<=dot<LCD+index*PERIOD+20000),'FLOW_GAME_FULL_READY_TIME'
+                if len(self.tails[index])==124:self.ready.append(dot)
             if address == 0xff40:
                 self.lcd.append((dot,data))
             if 0xc100 <= address < 0xc124:
@@ -87,16 +99,22 @@ class Check:
                     assert bytes(self.memory[a] for a in ADDRESSES)==state_bytes(game, 0 if self.short or index==0 else 129), 'FLOW_GAME_STATE'
                     self.prepared.append(dot)
                     self.partial = []
-            if dot>LCD and (0x8000<=address<0xa000 or 0xfe00<=address<0xfea0 or address in (0xff40,0xff43)):
+            if dot>LCD and (0x8000<=address<0xa000 or 0xfe00<=address<0xfea0 or address in (0xff40,0xff43,0xff46)):
                 frame, position = divmod(dot-LCD, PERIOD)
                 assert frame < self.count and 65664<=position<PERIOD, 'FLOW_GAME_VBLANK_WRITE'
                 self.publish[frame].append((address,data))
 
-    def finish(self, pause):
+    def finish(self, pause, dma=()):
         assert self.ended and not self.partial and len(self.prepared)==self.count, 'FLOW_GAME_PREP_MISSING'
         assert self.pixels==self.count*23040 and len(self.inputs)==(0 if self.short else 1), 'FLOW_GAME_MISSING'
         assert self.lcd[:2]==[(52,0),(LCD,151)], self.lcd
         assert len(self.lcd)==(2 if self.short else 3), self.lcd
+        assert all(len(t)==124 for t in self.tails),'FLOW_GAME_UNUSED_MISSING'
+        assert len(self.dma_triggers)==self.count+1 and len(dma)==160*(self.count+1),'FLOW_GAME_DMA_MISSING'
+        for i,raw in enumerate(dma):
+            publication,offset=divmod(i,160)
+            data=(oam(self.states[max(0,publication-1)])+bytes(124))[offset]
+            assert (raw>>18,(raw>>8)&255,raw&255)==(self.dma_triggers[publication]+8+4*offset,offset,data),'FLOW_GAME_DMA_BYTE'
         for frame in range(self.count):
             want = []
             if not self.short and frame>0:
@@ -105,7 +123,7 @@ class Check:
                     want += [(0xff43,0),(0xff40,151)]
                 for column in (2*(frame-1),2*(frame-1)+1):
                     want += [(0x9c00+row*32+column,world_tile(column,row)) for row in range(18)]
-            want += list(enumerate(oam(self.states[frame]),0xfe00))
+            want += [(0xff46,0xc1)]
             assert self.publish[frame]==want, f'FLOW_GAME_PUBLICATION frame={frame} expected={want} actual={self.publish[frame]}'
         assert self.end<=pause<=self.end+1000 and self.records>5000, 'FLOW_GAME_FINAL_PAUSE'
-        return dict(pixels=self.pixels,records=self.records,inputs=self.inputs,prepared=self.prepared,pause_dot=pause,crc32=[f'{zlib.crc32(f):08x}' for f in self.frames])
+        return dict(pixels=self.pixels,records=self.records,inputs=self.inputs,prepared=self.prepared,full_ready=self.ready,pause_dot=pause,crc32=[f'{zlib.crc32(f):08x}' for f in self.frames])

@@ -10,9 +10,9 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]/'tools'))
 from n2m import generated_interfaces as abi
 from n2m.records import file_hash
-from paused_capture import acquire, public_state
+from paused_capture import acquire, public_state, BASELINE_ROM
 
-IDENTITY = dict(rom_sha256='ab'*32, build_id='cd'*16, epoch=4)
+IDENTITY = dict(rom_sha256=BASELINE_ROM, build_id='cd'*16, epoch=4)
 PLAN = dict(captures=[dict(seq=f, pause_dot=151284+f*70224,
     reference_offset=(f+2)*23040, input_after=(None,129,1,1,1,0,0,None)[f]) for f in range(8)],
     inputs=[dict(dot=221508+i*70224, buttons=v) for i,v in enumerate((129,1,1,1,0,0))],
@@ -67,6 +67,14 @@ class Client:
 
 
 class CaptureTests(unittest.TestCase):
+    def test_new_rom_cannot_use_historical_schedule(self):
+        with tempfile.TemporaryDirectory() as temp:
+            client=Client()
+            with self.assertRaisesRegex(AssertionError,'CAPTURE_BASELINE_ROM'):
+                acquire(client,Path(temp),PLAN,REFERENCE,
+                        dict(IDENTITY,rom_sha256='00'*32),4,origin={})
+            self.assertEqual(client.calls,[])
+
     def origin(self, client):
         frontier=public_state(client)
         return dict(binding=IDENTITY,frontier=frontier,next_sequence=client.sequence)
