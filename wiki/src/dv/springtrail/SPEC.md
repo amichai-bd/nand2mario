@@ -73,6 +73,14 @@ or a general engine/AI framework to make the proof pass.
 
 ## Functional and milestone coverage
 
+Issue #262 uses the [interaction proof](../../../../src/dv/springtrail/INTERACTIONS.md):
+independent state rules, an original CPU routine ROM, actual initialization and
+render checkpoints with a meaningful fault, and ordinary-input complete-level
+and failure/retry routes. Its short harness must complete before the full unit.
+Logical state restoration alone does not prove restored map/OAM pixels; check
+both, including pause and repeated restart during map preparation. Keep exact
+render scheduling and physical input plans frozen before their dependent runs.
+
 Focused stages cover initialization/title/start, walk/run/opposing directions,
 jump/landing/wall/ceiling/gap behavior, camera and tile-column transitions,
 enemy patrol/contact, one-time collection, win, retry and pause/resume/restart.
