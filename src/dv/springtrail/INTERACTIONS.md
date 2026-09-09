@@ -155,3 +155,40 @@ runs meet the300-second hard cap; the full run misses the120-second target.
 Together with the routine set, measured simulation time is387.825 seconds,
 above the declared300-second aggregate target. Full game integration and
 physical routes remain open; these component results do not close#262.
+
+## Integrated frame schedule
+
+The user approved one added displayed frame in
+[issue262](https://github.com/amichai-bd/nand2mario/issues/262#issuecomment-5602361911).
+The live loop samples JOYP in VBlank, publishes the prior prepared scene,
+waits for LY below144, then calls UpdateGame and PrepareScene once. Title
+removal and restart map/SCX changes occur with the published transition.
+The completed ring uses the existing entering-column algorithm at9C00.
+
+The instruction-derived LCD commit is76964 dots: entry stub20, prolog1124,
+OAM clear3860, tile copy34976, title-map copy29984, palette32, scene preparation
+5996, publication928 and final enable44. The first title-to-world publication
+is bounded by3920 dots including64 wake margin, ReadButtons160, ClearTitle688,
+BeginRestore120, first pair1788, PublishScene928 and all branches/setup.
+The measured2860 helper bound already includes map restoration and publication;
+it must not be added to another map-pair maximum. Visible preparation and
+actual integrated VBlank writes still receive independent runtime checks.
+
+`python-gs` is the complete short harness: blank plus title frames, no input,
+all preparation/publication observations, pause and END. `python-gu` uses one
+normal UART Start+Right129 applied at dots136964..138964, before first VBlank.
+It checks blank, title and first-world complete frames, the next prepared
+world state and its final VBlank publication. Both check every pixel with
+sprite-variable timing bounded inside independently numbered456-dot rows,
+all23 state bytes at prepared-scene completion, and all display writes only
+in VBlank. Input identity, epoch, retirement continuity and exact trace END
+are checked. Full literal frame CRCs are b15161f6/6fc2f93a/fa8827ff.
+
+Short pause request is215852; full is286576. Each must actually pause within
+1000 dots, before the following frame, without extra pixels. The100ms simulator
+watchdog is separate from the300-second whole-process cap. The short completes
+before the full run. Forecast short150 and full220 seconds; the affected
+actual output-shade fault is forecast110 seconds, with unchanged expectations.
+These further checks increase the already declared aggregate target miss;
+no individual hard-cap exception is introduced. Existing python-springtrail
+and python-springtrail-x names now select the current flow checker as well.
