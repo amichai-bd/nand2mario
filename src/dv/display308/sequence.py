@@ -22,7 +22,7 @@ async def run(dut,short=False):
     oam=[value for top,left,tile,flags in OBJECTS for value in (top+16,left+8,tile,flags)]+[0]*140
     assert plan['expected_oam']==oam and lcd==11640,'DISPLAY308_FIXTURE'
     stop=plan['short_end' if short else 'end']
-    source_requests=[(lcd+6839,2),(lcd+65662,1),(lcd+70224+6839,2)]
+    source_requests=[(lcd+6838,2),(lcd+65662,1),(lcd+70224+6838,2)]
     received=Queue();entries=[];tasks=[];counts={'pixels':0,'records':0}
     requests=[];interrupts=[];writes=[];dma=[];stores=[];halts=[];returns=[]
     trigger=None;armed=False

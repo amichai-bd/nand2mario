@@ -20,6 +20,11 @@ class Program(unittest.TestCase):
         self.assertEqual(record['expected_oam'],[v for y,x,t,f in OBJECTS for v in (y+16,x+8,t,f)]+[0]*140)
         self.assertEqual(image[0x300:0x30f],bytes.fromhex('f5f041e60320fa3e08e043e042f1d9'))
 
+    def test_condition_projection(self):
+        # Ordinary line increment, phase0 compare and next-dot condition.
+        self.assertEqual(15*456-5+2+1,6838)
+        self.assertEqual(144*456-5+2+1,65662)
+
     def test_poll_budget(self):
         # The selected readable HBlank interval and every possible poll offset.
         for transition in range(248,257):
