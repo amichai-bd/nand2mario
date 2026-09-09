@@ -14,6 +14,11 @@ prove the complete system in simulation before board execution. Provide VGA
 output and PC keyboard input over UART. The game goal is
 [Springtrail](sw/springtrail/SPEC.md), a planned original silent platformer with
 one scrolling level, run/jump movement and original characters, art and code.
+Its next release follows the [staged SML1 alignment contract](sw/springtrail/sml1-alignment.md),
+which owns the first aligned release, dependent measurements and separate banking
+qualification. Alignment preserves original implementation and excludes audio;
+the delivered 32 KiB baseline and physical release gates below remain qualified
+separately.
 Build our own SM83 ROM; do not obtain, copy or reproduce a commercial cartridge.
 
 Use the repository's issue, specification, implementation, verification, and
