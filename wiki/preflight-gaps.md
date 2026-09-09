@@ -35,7 +35,7 @@ Priorities:
 | GAP-008 | P0 | Closed | [#31](https://github.com/amichai-bd/nand2mario/issues/31) | Verification baseline | A known-good DUT and deliberately failing DUT prove the harness |
 | GAP-009 | P0 | Closed | [#14](https://github.com/amichai-bd/nand2mario/issues/14) | Initial agent skills | Core skills exist and have concise trigger tests and examples |
 | GAP-010 | P0 | Open | [#32](https://github.com/amichai-bd/nand2mario/issues/32) | GitHub workflow, CI, and Pages | Templates, checks, rules, and deployment pass end to end |
-| GAP-011 | P1 | Planned | [#260](https://github.com/amichai-bd/nand2mario/issues/260) | Original game image and build facts | Original 32 KiB mapperless image, header, provenance and reproducible build are verified |
+| GAP-011 | P1 | Closed | [#260](https://github.com/amichai-bd/nand2mario/issues/260) | Original game image and build facts | Original 32 KiB mapperless image, header, provenance and reproducible build are verified |
 | GAP-012 | P1 | Later | — | VGA frame crossing | Buffering and monitor timing pass simulation and hardware tests |
 | GAP-013 | P1 | Later | — | External dependencies | Tests and tools are pinned, licensed, and reproducible |
 | GAP-014 | P2 | Later | — | Physical audio path | Output method and acceptance test are selected |
@@ -375,9 +375,12 @@ job could run untrusted code on this PC or allow concurrent access to the FPGA.
 
 The authorized goal is the [original platformer](src/sw/springtrail/SPEC.md),
 built as a 32768-byte mapperless SM83 ROM with no cartridge RAM. There is no
-commercial file, title or mapper to obtain. The game's source/assets, header,
-build hashes and first working image remain planned under
-[#260](https://github.com/amichai-bd/nand2mario/issues/260).
+commercial file, title or mapper to obtain. [The foundation proof](https://github.com/amichai-bd/nand2mario/pull/266)
+records original source/assets, two identical clean builds and the supported
+header/profile. Its actual Intel-backed composed-system test checks the title,
+normal UART Start and initial-world frames, with a deliberate output fault.
+Movement, interactions, complete-game verification and physical acceptance
+remain separate planned work under #261–#264.
 
 **Risk**
 

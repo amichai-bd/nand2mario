@@ -1,7 +1,8 @@
 # Springtrail
 
-Status: planned original game under [#259](https://github.com/amichai-bd/nand2mario/issues/259).
-No Springtrail code, assets or gameplay are delivered by this specification.
+Status: the original title/Start/initial-world foundation is implemented in
+[PR #266](https://github.com/amichai-bd/nand2mario/pull/266).
+Movement, interactions and release acceptance remain planned under #261–#264.
 The [charter](../../project-charter.md) owns the hardware and release boundaries;
 the [game verification plan](../../dv/springtrail/SPEC.md) owns acceptance.
 
@@ -14,7 +15,7 @@ level layouts, text and code are original. Familiar run/jump mechanics do not
 authorize copying a commercial game's characters, graphics, music, maps or ROM.
 There is no commercial cartridge to locate, download, rebuild or reproduce.
 
-Implement gameplay as SM83 assembly in planned `src/sw/springtrail`, built by the
+Implement gameplay as SM83 assembly in `src/sw/springtrail`, built by the
 existing [Python software pipeline](../../../tools/sw/SPEC.md). Use exactly
 32768 ROM bytes, no mapper and no cartridge RAM, in the existing
 [`dmg-direct-v1` profile](../../rtl/interfaces/MAS_interfaces.md#direct-entry-and-reset).
@@ -104,7 +105,8 @@ point. There are no wall-clock or nondeterministic random inputs.
 | [#263 v0.9 verification](https://github.com/amichai-bd/nand2mario/issues/263) | Independent complete-game reference and the preserved release criteria |
 | [#264 v1.0 physical acceptance](https://github.com/amichai-bd/nand2mario/issues/264) | Reviewed board execution and endurance after applicable simulation/setup gates |
 
-These issues are planned work, not completion evidence. The original v0.5
+The foundation has bounded frame/state evidence; later stages remain planned.
+The original v0.5
 program and its [accepted matrix](../../dv/v05/SPEC.md#revised-milestone-matrix)
 remain a separate regression baseline. Preserve its qualified results without
 claiming they implement or verify Springtrail.

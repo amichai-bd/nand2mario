@@ -4,7 +4,9 @@ Status: planned under [#263](https://github.com/amichai-bd/nand2mario/issues/263
 and [#264](https://github.com/amichai-bd/nand2mario/issues/264). The
 [game specification](../../sw/springtrail/SPEC.md) owns gameplay;
 the [charter](../../project-charter.md#release-acceptance) owns release criteria.
-No game-specific runtime or physical acceptance is claimed here.
+The [foundation proof](https://github.com/amichai-bd/nand2mario/pull/266) checks
+the original title and initial world. No complete-game or physical release
+acceptance is claimed here.
 
 ## Independent expectations
 
