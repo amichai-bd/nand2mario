@@ -84,6 +84,13 @@ layout and tool inputs. This is short execution evidence, not real UART loading
 or full milestone acceptance; the [v0.5 plan](../../../src/dv/python/v05/README.md)
 owns those separate gates.
 
+`preload: "mooneye-reg-f"` selects only the [locked external fixture](../../../src/dv/mooneye/README.md).
+Its builder verifies source archives, installed build-tool identities, the
+unmodified ROM and linked completion symbol before the same Intel-file emission.
+The pins, separate license notices and compiler/CMake inputs enter the record.
+This named validator does not change original-software validation or the product
+loader. Generated files are rechecked before simulator launch.
+
 `preload: "startup-read"` and `"startup-write"` package the original
 [startup OAM boundary witnesses](../../../src/dv/ppu/startup202.md), validating
 literal instructions and declared image hashes through the same Intel preload
@@ -247,25 +254,33 @@ their full diagnostic and reject additional errors.
 
 ### Test wall budget
 
-Every simulation has a maximum 300-second total wall budget. Target at most 120
+Ordinary simulations have a maximum 300-second total wall budget. Target at most 120
 seconds per simulation and 300 seconds aggregate for ordinary pre-merge checks;
-declare broader milestone aggregates before execution. No target, environment setting
-or public command option extends it. `python tools/build.py sim test` supervises
+declare broader milestone aggregates before execution. The user's issue103
+authorization permits exactly `mooneye-reg-f`, `mooneye-corrupt` and
+`mooneye-missing` up to 1500 seconds (25 minutes) total each. The three-case
+aggregate is at most 75 minutes. This exception changes wall time only; selected
+source, models, simulation-time watchdogs, complete signature and fault criteria
+remain unchanged. No unlisted target, environment setting or public numeric option
+extends its budget. `python tools/build.py sim test` supervises
 the complete worker process tree: discovery, preparation, compilation, simulation
 and checking share the same budget. The absolute deadline starts before record
 preparation and process launch. Reserve 12 seconds for cleanup, leaving at most 288
-seconds for worker execution. Expiry terminates the worker and its
+seconds for ordinary worker execution or 1488 seconds for those three named cases.
+Expiry terminates the worker and its
 children, returns failure and retains a `wall-budget` record with the raw killed
 process exit and partial output. Existing attempt artifacts remain partial;
 TIMEOUT is never a checked DUT result. Tree termination and pipe draining each
 have a five-second cleanup bound, followed by at most two seconds to reap the
 immediate worker. Each blocking cleanup timeout is clamped to the remaining
-absolute 300-second budget. A failed
+absolute selected budget. A failed
 cleanup records `cleanup_complete: false`; inspect and stop remaining children
 before releasing shared tool ownership. Never treat that failure as a clean exit.
 
-A target may set integer `timeout_seconds` from 1 through 300 for its Questa
-runtime command. The default and individual preparation/compile commands remain
+A target may set integer `timeout_seconds` from 1 through its named total budget
+for its Questa runtime command: 300 normally, 1500 only for the three names above.
+The supervisor and target validator use the same exact-name selection. The
+default and individual preparation/compile commands remain
 60 seconds, subject to the overall ceiling. The value enters the fingerprint and
 each command records its effective bound. The outer execution deadline takes
 precedence over a longer nested timeout. The palette-case native reference

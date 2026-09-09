@@ -22,6 +22,11 @@ def prepare(image, expected_sha256, destination):
     entry = int.from_bytes(image[0x102:0x104], 'little')
     title = image[0x134:0x144].rstrip(b'\0').decode('ascii')
     validate_image(image, entry, title, image[0x14c])
+    return emit(image, destination, digest, entry, title, image[0x14c])
+
+
+def emit(image, destination, digest, entry, title, version, *, fixture=None):
+    """Common encoding after the caller's original or named-fixture validation."""
     destination = Path(destination)
     destination.mkdir(parents=True, exist_ok=True)
     rom = destination / 'preload-rom.mif'
@@ -36,9 +41,11 @@ def prepare(image, expected_sha256, destination):
     record = {'schema_version': 1, 'mode': 'preloaded-execution',
               'image_sha256': digest, 'image_bytes': len(image),
               'image_crc32': zlib.crc32(image), 'entry': entry,
-              'title': title, 'version': image[0x14c],
+              'title': title, 'version': version,
               'files': {path.name: hashlib.sha256(path.read_bytes()).hexdigest()
                         for path in (rom, presence, crc)}}
+    if fixture is not None:
+        record['fixture'] = fixture
     (destination / 'preload.json').write_text(json.dumps(record, indent=2) + '\n', encoding='utf-8')
     return record
 
@@ -52,6 +59,14 @@ def verify(destination):
     image = (destination / 'program.gb').read_bytes()
     if len(image) != abi.PROFILE_ROM_BYTES or hashlib.sha256(image).hexdigest() != record.get('image_sha256'):
         raise ValueError('preload image changed after preparation')
+    if 'fixture' in record:
+        if record['fixture'] != 'mooneye-reg-f':
+            raise ValueError('unknown preload fixture')
+        from .mooneye import validate_image
+        build = json.loads((destination / 'mooneye-build.json').read_text())
+        validate_image(Path(__file__).resolve().parents[2], image,
+                       (destination / 'program.sym').read_text(),
+                       backend=build['host_tools'].get('backend', 'windows'))
     required = {'preload-rom.mif', 'preload-presence.mif', 'preload-crc.hex'}
     if set(record.get('files', {})) != required:
         raise ValueError('incomplete preload files')

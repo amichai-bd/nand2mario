@@ -22,6 +22,9 @@ is explicitly part of the task.
 Select checks using the [verification tiers](../../../wiki/src/dv/integration/SPEC.md#verification-tiers).
 Target 120 seconds per simulation and 300 seconds ordinary pre-merge aggregate;
 obey the linked total wall cap and declare broader milestone aggregates. Use
+only the explicitly authorized named exceptions in that contract; no other
+target inherits a milestone allowance. Complete independent budget-change review
+before a longer run, then run positive before its intended failure cases. Use
 the owning complementary matrix for bounded execution and separate transport/
 physical endurance evidence; never relabel historical longer runs as new-budget PASS.
 Use the accepted continuous Python path for composed execution and shared Intel

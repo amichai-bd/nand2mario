@@ -25,13 +25,13 @@ def diagnostic(output, expected_failure=None):
     return None
 
 
-def commands(simulator, root, target, seed, compiler, attempt, *, prepare=True, vendor_model=None, python_runtime=None):
+def commands(simulator, root, target, seed, compiler, attempt, *, prepare=True, vendor_model=None, python_runtime=None, fixture_tools=None):
     tools = simulator.tools
     library = (compiler / "work").as_posix()
     if prepare:
         if python_runtime:
             from .python_tb import prepare as prepare_python
-            prepare_python(target, attempt, root)
+            prepare_python(target, attempt, root, fixture_tools)
         else:
             write_macro(attempt)
     vendor_compile, vendor_map, vendor_binding = intel_commands(simulator, compiler, attempt, vendor_model)

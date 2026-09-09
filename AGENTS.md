@@ -109,8 +109,10 @@ bypass checks or claim incomplete acceptance complete.
 Run the smallest useful test and required lower-level checks. Target at most
 120 seconds per simulation and 300 seconds for ordinary pre-merge aggregate
 checks. Every simulation must finish within the
-[300-second total wall budget](wiki/tools/n2m/SPEC.md#test-wall-budget), including
-setup, build, run and checking; never extend it to finish a milestone. Declare
+[total wall budget](wiki/tools/n2m/SPEC.md#test-wall-budget), normally 300 seconds,
+including setup, build, run, checking and cleanup. The user's issue103 exception
+allows only `mooneye-reg-f`, `mooneye-corrupt` and `mooneye-missing` up to 1500
+seconds total each. No other target inherits it. Declare
 broader milestone aggregates before execution. Use the
 [complementary matrix](wiki/src/dv/integration/SPEC.md#milestone-acceptance), with
 bounded FPGA endurance and separate transport proof, rather than long continuous

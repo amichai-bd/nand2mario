@@ -121,8 +121,10 @@ commit, verify the archive/content hash in its dependency lock, record selected
 files, retain notices and identify any original glue/patches separately. Recheck
 component headers/transitive build dependencies before importing or upgrading.
 Missing notices, mutable revisions or unreviewed dependencies block that adapter.
-The existing [RGBDS pin](../../../../tools/n2m/dependencies.json) is the planned
-Mooneye build oracle; its invocation and output hashes must also be recorded.
+The pinned Mooneye Makefile uses WLA-DX, and its CI pins version10.6 at
+`89a90a56be5c2b8cf19a9afa3e1b32384ddb1a97`. The [selected adapter](../../../../src/dv/mooneye/README.md)
+records that tool pin and the separately licensed font dependency. Preserve
+build commands and output hashes; RGBDS is not this upstream's assembler.
 
 ### SingleStep vectors
 

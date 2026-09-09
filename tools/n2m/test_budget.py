@@ -10,16 +10,27 @@ import time
 import uuid
 
 
-def supervise(command, root, tag):
+# User-authorized issue103 milestone cases; this is not a configurable override.
+MILESTONE_TARGETS = frozenset({'mooneye-reg-f', 'mooneye-corrupt', 'mooneye-missing'})
+
+
+def wall_limit(target):
+    return 1500 if target in MILESTONE_TARGETS else 300
+
+
+def supervise(command, root, tag, *, target=None):
+    limit = wall_limit(target)
+    execution_limit = limit - 12
     started = time.monotonic()
-    deadline = started + 300
+    wall_started = datetime.now(timezone.utc).timestamp()
+    deadline = started + limit
     # Reserve the existing 5s tree kill, 5s pipe drain and 2s fallback reap.
     execution_deadline = deadline - 12
-    def remaining(limit, end=deadline):
+    def remaining(wait_limit, end=deadline):
         seconds = end - time.monotonic()
         if seconds <= 0:
-            raise subprocess.TimeoutExpired(command, 300)
-        return min(limit, seconds)
+            raise subprocess.TimeoutExpired(command, limit)
+        return min(wait_limit, seconds)
 
     from n2m.records import atomic_json, valid_tag
     if not valid_tag(tag):
@@ -28,17 +39,21 @@ def supervise(command, root, tag):
     if build.is_symlink() or build.resolve().parent != (root / "workdir/builds").resolve():
         raise ValueError("test budget path escapes builds")
     record = {"started": datetime.now(timezone.utc).isoformat(),
-              "wall_limit_seconds": 300, "execution_limit_seconds": 288,
+              "wall_limit_seconds": limit, "execution_limit_seconds": execution_limit,
+              "target": target,
               "command": command, "status": "RUNNING"}
     path = build / "wall-budget" / (uuid.uuid4().hex + ".json")
     atomic_json(path, record)
     options = {"creationflags": subprocess.CREATE_NO_WINDOW} if os.name == "nt" else {"start_new_session": True}
+    environment = dict(os.environ)
+    # Cross-OS children need their own deadline; Windows taskkill cannot reap WSL.
+    environment['N2M_TEST_EXECUTION_DEADLINE'] = str(wall_started + execution_limit)
     process = subprocess.Popen(command, cwd=root, stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE, **options)
+                               stderr=subprocess.PIPE, env=environment, **options)
     timed_out = False
     errors = b""
     try:
-        output, errors = process.communicate(timeout=remaining(288, execution_deadline))
+        output, errors = process.communicate(timeout=remaining(execution_limit, execution_deadline))
     except subprocess.TimeoutExpired as error:
         timed_out = True
         # Same process-tree termination used by the Quartus executor. Reap before
@@ -83,7 +98,7 @@ def supervise(command, root, tag):
     record["stderr"] = error_log.relative_to(root).as_posix()
     atomic_json(path, record)
     if timed_out:
-        return 1, json.dumps({"status": "FAIL", "error": "test wall budget exhausted (300 seconds total, 12 reserved for cleanup)",
+        return 1, json.dumps({"status": "FAIL", "error": f"test wall budget exhausted ({limit} seconds total, 12 reserved for cleanup)",
                               "tag": tag, "wall_budget": path.relative_to(root).as_posix(),
                               "raw_exit_code": process.returncode,
                               "cleanup_complete": record["cleanup_complete"],
@@ -106,7 +121,7 @@ def main():
     root = Path(__file__).resolve().parents[2]
     command = [sys.executable, str(Path(__file__).resolve()), *argv]
     try:
-        code, output = supervise(command, root, tag)
+        code, output = supervise(command, root, tag, target=args.target)
     except (OSError, ValueError) as error:
         code, output = 1, json.dumps({"status": "FAIL", "error": str(error)}) + "\n"
     print(output, end="")
