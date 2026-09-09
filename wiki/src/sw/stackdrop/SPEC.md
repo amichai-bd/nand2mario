@@ -50,7 +50,7 @@ have no effect. Holding an action does not repeat it; release is required.
 After locking, remove all full rows simultaneously, preserving the relative
 order of surviving rows and inserting empty rows at the top. Award 100 points
 per removed row, saturating at 9999. Advance the cycle and spawn immediately,
-then render. A new piece receives no further actions in the locking update.
+then prepare the next image. A new piece receives no further actions in the locking update.
 The previous input sample persists across spawning and restart, preventing a
 held button from becoming a new edge. Gameplay advances only on frame updates;
 host HALT is separate and freezes emulated time through the existing interface.
@@ -71,7 +71,7 @@ Decode board, active cells, next piece, digits and status from these rendered
 pixels, rejecting unknown or mixed encodings. No gameplay WRAM reads, sprite
 MMIO shortcut or RTL debug port is part of the host interface.
 
-All map changes complete in VBlank before the next visible image. The game
+At each VBlank, sample both JOYP rows, copy the previously prepared image to VRAM, then calculate the sampled action and prepare the next image in ordinary WRAM during visible time. The resulting state becomes visible at the following VBlank: this one-frame pipeline delay is intentional. Initialization prepares the title before enabling LCD. Each update must finish before the next VBlank, including the worst lock, multiple-clear and score case; the prepared map copy must fit within4560 dots. Actual CPU timing checks cover both bounds. All map changes complete in VBlank before the next visible image. The game
 uses ordinary CPU code, VRAM and JOYP; it does not disable LCD around updates
 or replace the existing PPU. Hardware snapshots are complete immutable images,
 not every-frame verification. During manual play the agent may HALT, inspect a
