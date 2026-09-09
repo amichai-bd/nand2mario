@@ -4,6 +4,8 @@
 frame intervals followed by3600 scripted intervals. Host-paused full-frame
 acquisition is approved; [#283](https://github.com/amichai-bd/nand2mario/issues/283)
 owns its reusable driver. This matrix is planned, not milestone acceptance.
+[#286](https://github.com/amichai-bd/nand2mario/issues/286) owns delivery of the
+complete native schedule/ledger prerequisite; it does not close #263.
 
 Freeze the corrected32768-byte ROM SHA256
 `b551c56252761d953bcf3b64270d819e3342b710299c3bff6866d4dcae8ba667`, untouched

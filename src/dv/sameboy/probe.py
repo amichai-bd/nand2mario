@@ -66,6 +66,7 @@ def main():
         return max(0.001, 600-(time.monotonic()-started))
 
     def run(command, name, cwd=None):
+        command_started = time.monotonic()
         command = ['timeout', '--kill-after=1s', f'{max(0.001, remaining()-2):.3f}s', *command]
         actual = prefix + command
         if sys.platform == 'win32' and cwd:
@@ -75,6 +76,7 @@ def main():
                                        stdout=log, stderr=subprocess.STDOUT,
                                        timeout=remaining())
         result['commands'].append({'argv': actual, 'returncode': completed.returncode,
+                                   'elapsed_seconds': time.monotonic()-command_started,
                                    'log': name + '.log'})
         completed.check_returncode()
         return (output / (name + '.log')).read_text(encoding='utf-8')
@@ -143,6 +145,7 @@ def main():
             header += f'#define PROBE_DOT_BOUND {case["native_bound_dots"] if case else 140600}\n'
         (output / 'n2m_profile.h').write_text(header, encoding='utf-8')
         result['profile_header_sha256'] = digest(output / 'n2m_profile.h')
+        result['qualification_seconds'] = time.monotonic()-started
         result['tool_versions'] = run(['clang', '--version'], 'clang-version')
         paths = run(['which', 'clang', 'make', 'ar', 'ld'], 'tool-paths').splitlines()
         result['tool_hashes'] = run(['sha256sum', *paths], 'tool-hashes')
@@ -160,9 +163,11 @@ def main():
             command += [linux_path(output/'frames.shades'), args.fault]
         run(command, 'observations')
         if springtrail:
+            check_started = time.monotonic()
             from src.dv.sameboy.springtrail import check
             ledger = check(output, case, args.case)
             (output/'ledger.json').write_text(json.dumps(ledger, indent=2)+'\n', encoding='utf-8')
+            result['check_seconds'] = time.monotonic()-check_started
         result['status'] = 'PASS'
     except Exception as error:
         result['error'] = str(error)
