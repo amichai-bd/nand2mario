@@ -85,7 +85,13 @@ def parser():
     asset_check.add_argument("--json", action="store_true")
     host = commands.add_parser('host', help='explicit UART load/control; follows verified hardware workflow').add_subparsers(dest='action', required=True)
     for action in ('status', 'load', 'reset', 'run', 'halt', 'step', 'run-dots', 'input', 'write', 'snapshot', 'crc-proof', 'keyboard'):
-        leaf = host.add_parser(action)
+        description = None
+        if action == 'keyboard':
+            description = ('Focused Windows classic console only (conhost.exe cmd.exe); Windows Terminal/WSL are unsupported. '
+                           'Release keys before starting. Arrows: directions; Z: A; X: B; right Shift: Select; Enter: Start. '
+                           'Escape/Ctrl+C or focus loss releases when certain and exits. No load/run/reset; requires UART/neutral input. '
+                           '--json and --endpoint-restarted are not accepted.')
+        leaf = host.add_parser(action, description=description)
         for option in ('uart-port', 'uart-vid', 'uart-pid', 'uart-identity'):
             leaf.add_argument('--' + option)
         leaf.add_argument('--endpoint-restarted', action='store_true',
