@@ -5,8 +5,8 @@ names follow the implementation owner, not a second software hierarchy.
 
 | Implementation owner | Requirements | Design and observable rules | Verification |
 |---|---|---|---|
-| Planned `src/sw/springtrail` | [Original-game scope #259](https://github.com/amichai-bd/nand2mario/issues/259), staged #260–#262 | [Springtrail SPEC](src/sw/springtrail/SPEC.md) | Original ROM/asset builds and independent gameplay checkpoints |
-| Planned `src/dv/springtrail` | [v0.9 #263](https://github.com/amichai-bd/nand2mario/issues/263), [v1.0 #264](https://github.com/amichai-bd/nand2mario/issues/264) | [Game verification SPEC](src/dv/springtrail/SPEC.md) | Frozen independent reference, bounded execution matrix and separate physical endurance |
+| `src/sw/springtrail` | [Original-game scope #259](https://github.com/amichai-bd/nand2mario/issues/259), staged #260–#262 | [Springtrail SPEC](src/sw/springtrail/SPEC.md) | Original ROM/asset builds and independent gameplay checkpoints |
+| `src/dv/springtrail` | [v0.9 #263](https://github.com/amichai-bd/nand2mario/issues/263), [v1.0 #264](https://github.com/amichai-bd/nand2mario/issues/264) | [Game verification SPEC](src/dv/springtrail/SPEC.md) | Frozen independent reference, bounded execution matrix and separate physical endurance |
 | `src/sw/v05` and `src/dv/v05` | [#88](https://github.com/amichai-bd/nand2mario/issues/88) | [v0.5 acceptance](src/dv/v05/SPEC.md) | Literal instruction and pixel oracles, continuous run and real loader |
 | `src/rtl/system` | [#88](https://github.com/amichai-bd/nand2mario/issues/88) | [MAS_system](src/rtl/system/MAS_system.md) | Original v0.5 program and composed instruction/pixel acceptance |
 | [tools/n2m/host_play.py](../tools/n2m/host_play.py) | [#157](https://github.com/amichai-bd/nand2mario/issues/157) | [Host play SPEC](tools/host-play/SPEC.md) | Original ROM, immutable images and real UART input loop |

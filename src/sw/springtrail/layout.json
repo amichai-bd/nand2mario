@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "sections": [
+    {"unit": "main.asm", "section": "code", "region": "ROM0", "address": 512},
+    {"unit": "main.asm", "section": "assets", "region": "ROM0", "address": 4096}
+  ]
+}

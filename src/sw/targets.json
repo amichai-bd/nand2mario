@@ -61,6 +61,27 @@
       "version": 1,
       "profile": "dmg-direct-v1",
       "interface_schema_version": 1
+    },
+    "springtrail": {
+      "directory": "springtrail",
+      "sources": [
+        "main.asm"
+      ],
+      "assets": {
+        "Tiles": {
+          "source": "tiles.json",
+          "author": "Original Springtrail lettering, courier and terrain by the nand2mario project; no external source"
+        }
+      },
+      "layout": "layout.json",
+      "entry": {
+        "unit": "main.asm",
+        "symbol": "Start"
+      },
+      "title": "SPRINGTRAIL",
+      "version": 1,
+      "profile": "dmg-direct-v1",
+      "interface_schema_version": 1
     }
   }
 }

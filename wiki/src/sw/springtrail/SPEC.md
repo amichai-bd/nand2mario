@@ -1,7 +1,8 @@
 # Springtrail
 
-Status: planned original game under [#259](https://github.com/amichai-bd/nand2mario/issues/259).
-No Springtrail code, assets or gameplay are delivered by this specification.
+Status: the original title/Start/initial-world foundation is implemented in
+[PR #266](https://github.com/amichai-bd/nand2mario/pull/266).
+Movement, interactions and release acceptance remain planned under #261–#264.
 The [charter](../../project-charter.md) owns the hardware and release boundaries;
 the [game verification plan](../../dv/springtrail/SPEC.md) owns acceptance.
 
@@ -14,7 +15,7 @@ level layouts, text and code are original. Familiar run/jump mechanics do not
 authorize copying a commercial game's characters, graphics, music, maps or ROM.
 There is no commercial cartridge to locate, download, rebuild or reproduce.
 
-Implement gameplay as SM83 assembly in planned `src/sw/springtrail`, built by the
+Implement gameplay as SM83 assembly in `src/sw/springtrail`, built by the
 existing [Python software pipeline](../../../tools/sw/SPEC.md). Use exactly
 32768 ROM bytes, no mapper and no cartridge RAM, in the existing
 [`dmg-direct-v1` profile](../../rtl/interfaces/MAS_interfaces.md#direct-entry-and-reset).
@@ -64,10 +65,33 @@ item is optional. Death takes precedence over collection or winning on the same
 update. Pause/restart decisions precede world updates. A small HUD distinguishes
 score, pause, retry and win without relying on host-only state.
 
-The foundation issue freezes numeric speeds, acceleration/gravity, jump impulse,
-camera anchor, collision rounding/update order, patrol endpoints and literal
-level/collectible/goal placements before their dependent implementation. These
-parameters are not yet implemented or tested; do not choose them from DUT output.
+The following constants are frozen for dependent implementation. Positions and
+velocities use signed 16-bit units of 1/16 pixel (range -2048..2047.9375).
+Walking speed is 1 pixel/frame and running
+speed is 2; horizontal velocity changes immediately with intent (no acceleration
+or momentum). Gravity is 1/4 pixel/frame squared, jump impulse is -5.25 pixels/frame,
+and downward velocity is capped at 4 pixels/frame. The initial player top-left is
+(24, 112), grounded on tile row 16, with camera x=0. The camera anchor is screen
+x=72 and its clamp is 0..608 pixels. The enemy starts at (256, 120), moves right
+at 1/2 pixel/frame, and patrols x=240..296 inclusive.
+
+Each VBlank samples JOYP once. Process restart/pause first, then horizontal
+intent, grounded jump edge, gravity, horizontal motion/collision, vertical
+motion/collision, enemy motion, death, collection, goal, and camera, in that
+order. A jump applies its impulse before that update's gravity. Resolve each axis
+against all solid tiles touched by the half-open collision box, using floor of
+the fixed-point coordinate. Snap to the contacted tile edge and clear velocity
+on that axis; only downward contact sets grounded. Test interactions after both
+axes. Falling means player top-left y >=144. The enemy uses an 8-by-8 box.
+
+The literal level has ground in rows 16 and 17 except gap columns 22..25,
+46..49, and 70..73. Additional solid platforms occupy row 12 columns 10..14,
+row 10 columns 31..35, row 12 columns 56..60, and row 11 columns 80..84.
+All other cells are empty. Collectibles are 8-by-8 boxes at (96, 88), (264, 72),
+(464, 88), and (656, 80); the 8-by-16 goal starts at (736, 112). Collectible
+and goal tests use half-open rectangle overlap. These mechanics are planned;
+the foundation displays the initial view without implementing movement or
+interactions. No parameter is selected from DUT output.
 Update the game once per normal emulated frame using a documented input-sampling
 point. There are no wall-clock or nondeterministic random inputs.
 
@@ -81,7 +105,8 @@ point. There are no wall-clock or nondeterministic random inputs.
 | [#263 v0.9 verification](https://github.com/amichai-bd/nand2mario/issues/263) | Independent complete-game reference and the preserved release criteria |
 | [#264 v1.0 physical acceptance](https://github.com/amichai-bd/nand2mario/issues/264) | Reviewed board execution and endurance after applicable simulation/setup gates |
 
-These issues are planned work, not completion evidence. The original v0.5
+The foundation has bounded frame/state evidence; later stages remain planned.
+The original v0.5
 program and its [accepted matrix](../../dv/v05/SPEC.md#revised-milestone-matrix)
 remain a separate regression baseline. Preserve its qualified results without
 claiming they implement or verify Springtrail.

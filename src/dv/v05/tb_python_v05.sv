@@ -31,6 +31,10 @@ module tb_python_v05 #(
     logic [116:0] pixel_sample;
     logic [103:0] input_sample;
     logic [87:0] write_sample;
+    integer public_trace;
+    integer public_lines;
+    integer public_flushed;
+    logic public_trace_close;
 
     // Python opens fixed public-boundary observation windows. This projection
     // changes only waveform storage; stimulus/checkers stay continuous.
@@ -82,26 +86,60 @@ module tb_python_v05 #(
         if (!reset_sys && bus_commit && write_enable) begin
             write_sample <= {64'(dot_count + 1), address, write_data};
             write_event <= !write_event;
+            if (public_trace) begin
+                $fdisplay(public_trace, "W %022h", {64'(dot_count + 1), address, write_data});
+                public_lines = public_lines + 1;
+            end
         end
         // Effective update is consumed by JOYP on this edge, off gb_tick.
         if (!reset_sys && !core_reset && dut.effective_update.valid) begin
             input_sample <= {epoch, dot_count, dut.effective_update.buttons};
             input_event <= !input_event;
+            if (public_trace) begin
+                $fdisplay(public_trace, "I %026h", {epoch, dot_count, dut.effective_update.buttons});
+                public_lines = public_lines + 1;
+            end
         end
         #1;
         if (!reset_sys && retirement_valid) begin
             record_sample <= retirement;
             record_event <= !record_event;
+            if (public_trace) begin
+                $fdisplay(public_trace, "R %096h", retirement);
+                public_lines = public_lines + 1;
+            end
         end
         if (!reset_sys && source_valid) begin
             pixel_sample <= {source_dot, source_epoch, source_x, source_y,
                              source_shade, source_start, source_abort, source_display_eligible};
             pixel_event <= !pixel_event;
+            if (public_trace) begin
+                $fdisplay(public_trace, "P %030h", {source_dot, source_epoch, source_x, source_y,
+                    source_shade, source_start, source_abort, source_display_eligible});
+                public_lines = public_lines + 1;
+            end
+        end
+        if (public_trace && public_lines != public_flushed && (public_lines - public_flushed >= 512 || paused)) begin
+            $fflush(public_trace);
+            public_flushed = public_lines;
+        end
+        if (public_trace && public_trace_close) begin
+            $fdisplay(public_trace, "END %0d", public_lines);
+            $fclose(public_trace);
+            public_trace = 0;
         end
     end
 
     // Stop actual emulated progress during CPU HALT; the Python watchdog must fail.
     initial begin
+        public_trace = 0;
+        public_lines = 0;
+        public_flushed = 0;
+        public_trace_close = 0;
+        if ($test$plusargs("springtrail_trace")) begin
+            public_trace = $fopen("springtrail.trace", "w");
+            if (!public_trace) $fatal(1, "SPRINGTRAIL_TRACE_OPEN");
+        end
         if ($test$plusargs("physical_mask_fault")) begin
             @(negedge clk_sys);
             force dut.u_uart.physical_buttons = 8'd1;
@@ -172,6 +210,13 @@ module tb_python_v05 #(
         if ($test$plusargs("pixel_fault")) begin
             wait(source_display_eligible && source_x == 0 && source_y == 0);
             force dut.source_shade = 2'd0;
+        end
+    end
+    initial begin
+        if ($test$plusargs("springtrail_pixel_fault")) begin
+            wait(source_display_eligible && source_y == 0 && source_x == 0);
+            @(negedge clk_sys);
+            force dut.source_shade = 2'd1;
         end
     end
 endmodule
