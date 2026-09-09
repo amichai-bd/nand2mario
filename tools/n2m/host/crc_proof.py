@@ -45,7 +45,7 @@ def run(client):
     after = state(recovery)
     if after != before:
         raise ValueError('CRC proof changed public state or counters')
-    client.persist(recovery.sequence, False)
     client.record({'event': 'crc_proof_complete', 'before': before, 'after': after})
+    client.persist(recovery.sequence, False)
     return {'before': before, 'after': after, 'malformed_sequence': sequence,
             'recovery_sequence': following, 'silence_seconds': abi.WIRE_RESPONSE_TIMEOUT_MS / 1000}

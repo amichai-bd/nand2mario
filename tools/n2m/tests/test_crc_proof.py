@@ -107,6 +107,16 @@ class CrcProofTests(unittest.TestCase):
         self.assertIsNone(wire.bad)
         self.assertFalse(durable[-1][1])
 
+    def test_completion_journal_failure_keeps_pending(self):
+        client, wire, durable, _ = self.client()
+        def record(entry):
+            if entry['event'] == 'crc_proof_complete':
+                raise OSError('journal unavailable')
+        client.record = record
+        with self.assertRaises(OSError):
+            run(client)
+        self.assertTrue(durable[-1][1])
+
     def test_observation_keeps_boundary_bytes_and_waits_after_empty_reads(self):
         for edge in (False, True):
             with self.subTest(edge=edge):
