@@ -9,6 +9,7 @@ from types import SimpleNamespace
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT/'src/dv/stackdrop'))
 from screen import decode
+sys.path.pop(0)
 from ci.storage import machine_lock
 from n2m.host.client import Client
 from n2m.host.package import read_package
@@ -60,7 +61,9 @@ def worker(args):
                                uart_pid=None, uart_identity=None,
                                endpoint_restarted=False)
     result = dict(status='FAIL', mode=args.mode, package=package,
-                  source=subprocess_head(), fit_reuse_changed_inputs=changed)
+                  source=subprocess_head(), fit_reuse_changed_inputs=changed,
+                  setup_sha256=file_hash(Path(args.setup)),
+                  prior_state_sha256=file_hash(state_path))
     with machine_lock(1357311510), (folder/'packets.jsonl').open('w') as packets, (folder/'observations.jsonl').open('w') as observations:
         def record(entry):
             packets.write(json.dumps(entry)+'\n')

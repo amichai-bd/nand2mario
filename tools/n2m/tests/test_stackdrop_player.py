@@ -1,11 +1,7 @@
 """Independent visible geometry and legal path checks for the fixed player."""
-import sys
-from pathlib import Path
 import unittest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[3]/'src/dv/stackdrop'))
-from reference import Game, cells as reference_cells
-from screen import decode, image
+from stackdrop_support import Game, reference_cells, decode, image
 from n2m.stackdrop_player import cells, choose, evaluate, state
 
 

@@ -1,11 +1,7 @@
 """Public-client stand-in checks sequencing and identity, not FPGA acceptance."""
-import sys
-from pathlib import Path
 import unittest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[3]/'src/dv/stackdrop'))
-from reference import Game
-from screen import decode, image
+from stackdrop_support import Game, decode, image
 from n2m import generated_interfaces as abi
 from n2m.stackdrop_session import play, FRAME
 
