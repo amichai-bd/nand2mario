@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "sections": [
+    {
+      "unit": "unit.asm",
+      "section": "code",
+      "region": "ROM0",
+      "address": 512
+    },
+    {
+      "unit": "unit.asm",
+      "section": "world",
+      "region": "ROM0",
+      "address": 5120
+    },
+    {
+      "unit": "unit.asm",
+      "section": "movement",
+      "region": "ROM0",
+      "address": 8192
+    },
+    {
+      "unit": "unit.asm",
+      "section": "render",
+      "region": "ROM0",
+      "address": 10240
+    }
+  ]
+}
