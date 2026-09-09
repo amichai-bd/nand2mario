@@ -1,5 +1,7 @@
 """Independent report fixtures and stage failure/cache checks; no Quartus needed."""
 import json
+import os
+import subprocess
 from pathlib import Path
 from types import SimpleNamespace
 import tempfile
@@ -227,6 +229,71 @@ class FpgaTests(unittest.TestCase):
                          self.build, log, 0.5, record, self.build)
         self.assertIn("before timeout", log.read_text())
         self.assertTrue(record["commands"][0]["timed_out"])
+        self.assertTrue(record['commands'][0]['cleanup_complete'])
+
+    def test_execute_retains_merged_raw_output_and_exit(self):
+        record = {'commands': [], 'classified_diagnostics': []}
+        log = self.build / 'raw.log'
+        code = ("import os,stat; assert stat.S_ISREG(os.fstat(1).st_mode); "
+                "os.write(1,b'out\\r\\n'); os.write(2,b'err\\xff\\n')")
+        text = fpga.execute([sys.executable, '-c', code], self.build, log, 5, record, self.build)
+        self.assertEqual(log.read_bytes(), b'out\r\nerr\xff\n')
+        self.assertEqual(text, 'out\r\nerr\ufffd\n')
+        self.assertEqual(record['commands'][-1]['exit_code'], 0)
+        with self.assertRaisesRegex(RuntimeError, 'Quartus exit 7'):
+            fpga.execute([sys.executable, '-c', "print('failed'); raise SystemExit(7)"],
+                         self.build, log, 5, record, self.build)
+        self.assertEqual(record['commands'][-1]['exit_code'], 7)
+        self.assertIn('failed', log.read_text())
+
+    def test_execute_keeps_unexplained_warning_failure(self):
+        record = {'commands': [], 'classified_diagnostics': []}
+        log = self.build / 'warning.log'
+        with self.assertRaises(ValueError):
+            fpga.execute([sys.executable, '-c', "print('Warning (999): unexpected')"],
+                         self.build, log, 5, record, self.build)
+        self.assertIn('Warning (999)', log.read_text())
+        self.assertEqual(record['commands'][-1]['exit_code'], 0)
+
+    @unittest.skipUnless(os.name == 'nt', 'Windows owned-tree cleanup')
+    def test_timeout_reaps_descendant(self):
+        import ctypes
+        record = {'commands': [], 'classified_diagnostics': []}
+        log = self.build / 'descendant.log'
+        code = ("import subprocess,sys,time; p=subprocess.Popen([sys.executable,'-c','import time; time.sleep(30)']); "
+                "print(p.pid,flush=True); time.sleep(30)")
+        with self.assertRaisesRegex(RuntimeError, 'timeout'):
+            fpga.execute([sys.executable, '-u', '-c', code], self.build, log, 1, record, self.build)
+        pid = int(log.read_text().strip())
+        kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+        kernel.OpenProcess.argtypes = [ctypes.c_ulong, ctypes.c_int, ctypes.c_ulong]
+        kernel.OpenProcess.restype = ctypes.c_void_p
+        kernel.WaitForSingleObject.argtypes = [ctypes.c_void_p, ctypes.c_ulong]
+        kernel.CloseHandle.argtypes = [ctypes.c_void_p]
+        handle = kernel.OpenProcess(0x100000, False, pid)
+        if handle:
+            try:
+                self.assertEqual(kernel.WaitForSingleObject(handle, 0), 0)
+            finally:
+                kernel.CloseHandle(handle)
+        self.assertTrue(record['commands'][-1]['cleanup_complete'])
+
+    @unittest.skipUnless(os.name == 'nt', 'Windows cleanup failure branch')
+    def test_cleanup_failure_is_bounded_and_not_success(self):
+        record = {'commands': [], 'classified_diagnostics': []}
+        log = self.build / 'cleanup.log'
+        with patch.object(fpga.subprocess, 'Popen') as launch, patch.object(fpga.subprocess, 'run') as kill:
+            process = launch.return_value
+            process.wait.side_effect = [subprocess.TimeoutExpired('tool', 1), None]
+            process.returncode = 1
+            kill.return_value.returncode = 1
+            with self.assertRaisesRegex(RuntimeError, 'cleanup incomplete'):
+                fpga.execute(['tool'], self.build, log, 1, record, self.build)
+            self.assertEqual(kill.call_args.kwargs['timeout'], 5)
+            self.assertEqual(process.wait.call_args.kwargs['timeout'], 2)
+            process.kill.assert_called_once()
+            self.assertFalse(record['commands'][-1]['cleanup_complete'])
+        self.assertTrue(log.exists())
 
     def test_configuration_quotes_spaces_and_array_pins(self):
         fpga.prepare(self.root, self.build, self.target)
