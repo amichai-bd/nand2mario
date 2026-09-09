@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "sections": [
+    {
+      "unit": "flow-unit.asm",
+      "section": "code",
+      "region": "ROM0",
+      "address": 512
+    },
+    {
+      "unit": "flow-unit.asm",
+      "section": "unit",
+      "region": "ROM0",
+      "address": 768
+    },
+    {
+      "unit": "flow-unit.asm",
+      "section": "cases",
+      "region": "ROM0",
+      "address": 4096
+    },
+    {
+      "unit": "flow-unit.asm",
+      "section": "movement",
+      "region": "ROM0",
+      "address": 8192
+    },
+    {
+      "unit": "flow-unit.asm",
+      "section": "interactions",
+      "region": "ROM0",
+      "address": 12288
+    },
+    {
+      "unit": "flow-unit.asm",
+      "section": "collision",
+      "region": "ROM1",
+      "address": 16384
+    }
+  ]
+}

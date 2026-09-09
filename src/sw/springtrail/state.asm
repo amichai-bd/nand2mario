@@ -12,3 +12,16 @@ Column EQU $C020
 Row EQU $C021
 LastCell EQU $C022
 OldCameraTile EQU $C023
+GamePrevious EQU $C024
+EnemyX EQU $C026
+EnemyVX EQU $C028
+Score EQU $C029
+GameTimer EQU $C02A
+Collected EQU $C02C
+Pressed EQU $C02D
+NewLevel EQU $C02E
+ObjectX EQU $C034
+ObjectY EQU $C036
+ObjectHeight EQU $C038
+ObjectMask EQU $C03A
+GameMode EQU $C000

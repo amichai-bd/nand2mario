@@ -146,6 +146,38 @@
       "version": 1,
       "profile": "dmg-direct-v1",
       "interface_schema_version": 1
+    },
+    "springtrail-flow": {
+      "directory": "springtrail",
+      "sources": [
+        "flow-unit.asm"
+      ],
+      "assets": {},
+      "layout": "flow-unit-layout.json",
+      "entry": {
+        "unit": "flow-unit.asm",
+        "symbol": "Start"
+      },
+      "title": "TRAIL FLOW",
+      "version": 1,
+      "profile": "dmg-direct-v1",
+      "interface_schema_version": 1
+    },
+    "springtrail-flow-short": {
+      "directory": "springtrail",
+      "sources": [
+        "flow-unit.asm"
+      ],
+      "assets": {},
+      "layout": "flow-unit-layout.json",
+      "entry": {
+        "unit": "flow-unit.asm",
+        "symbol": "ShortStart"
+      },
+      "title": "TRAIL FLOW",
+      "version": 1,
+      "profile": "dmg-direct-v1",
+      "interface_schema_version": 1
     }
   }
 }

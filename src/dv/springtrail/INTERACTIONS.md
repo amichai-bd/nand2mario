@@ -1,0 +1,57 @@
+# Interaction proof
+
+The [game rules](../../../wiki/src/sw/springtrail/SPEC.md) and
+[verification matrix](../../../wiki/src/dv/springtrail/SPEC.md) own #262.
+No v0.9 or physical release acceptance is implied by these focused checks.
+
+## Finite acceptance map
+
+| Requirement | Proof |
+|---|---|
+| Patrol endpoints, contact, once-only collection, death priority and goal | Independent integer rules and actual CPU routine cases; composed and physical images for integration |
+| Pause, resume and Select-only-paused restart | Consecutive sampled input cases, preserved player/enemy/timer state, no queued jump; physical pause/resume/restart checkpoints |
+| Complete level and failure/retry | Ordinary UART inputs, full original ROM upload/readback and independently checked selected frames; no RAM injection |
+| Rendering and restored map | Exact prepared OAM/map bytes and timed VBlank writes; current complete-game initialization/input/frame proof and affected output fault |
+| Delivery | Current scoped evidence, required checks and independent review |
+
+The model/routines can be checked independently of the frame-loop scheduling
+decision. They are linked into the game image, but are not yet called by its
+frame loop. No added display latency has been implemented or accepted here.
+
+## Actual CPU routine checkpoint
+
+`python-flow-short` executes the first three reports and finishes through the
+same terminal marker, normal UART HALT, trace END and cleanup as
+`python-flow-unit`. It is the complete-harness check before the longer run.
+Both use actual Intel preload, normal CRC scan/adoption and the existing
+continuous Python/public write trace. Software initializes ordinary operand
+WRAM; no expected result is stored in the unit ROM. Complete movement,
+interaction and collision sections must match the linked game bytes.
+
+The full ROM has 27 reports in 15 groups, frozen in `interaction_cases.py`:
+title Start+Right, both endpoint reversals, contact/retry, exact enemy edge,
+each pickup and repeated overlap, death before pickup/goal, goal/restart,
+timer wrap, pause/held-A/resume, paused restart and Select ignored during play.
+Steps within a group preserve the actual preceding software state.
+
+Each report checks 23 bytes: mode; player x/y/vx/vy as signed little-endian
+sixteenth-pixel values; grounded, sampled buttons, previous player buttons,
+camera, fall; previous game buttons; enemy x/direction, score, timer and item
+mask. Input history and the independent model select expectations. Retirement
+epoch, sequence and increasing dots are checked, without a full CPU-register
+oracle. Require exactly one matching begin/end pair per report, all initialized
+state fields, exact ordered report indices, the final A5 marker and trace END.
+Reject unexpected input/pixels, extra writes after terminal, reset or fault.
+
+Each routine bracket must be less than 20000 dots. The 600000-dot progress bound
+covers 27 such brackets plus software initialization and reporting; the 200 ms
+simulation watchdog is separate. This routine-only bound does not prove the
+forthcoming combined rendering budget. The existing 300-second whole-process
+limit includes preparation, compile, run, checks and 12-second cleanup reserve.
+
+Before measurement, forecast the three-report smoke at 20–40 seconds and full
+unit at 90–140 seconds. A later composed game/fault pair is provisionally
+180/80 seconds: the planned selected aggregate may exceed the 300-second target.
+These are forecasts, not measured results or cap extensions. Final render and
+physical routes must be frozen and reviewed before their execution; unchanged
+accepted movement evidence may be qualified, not relabeled as interaction proof.

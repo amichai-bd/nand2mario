@@ -36,6 +36,12 @@
       "section": "collision",
       "region": "ROM1",
       "address": 16384
+    },
+    {
+      "unit": "main.asm",
+      "section": "interactions",
+      "region": "ROM0",
+      "address": 12288
     }
   ]
 }
