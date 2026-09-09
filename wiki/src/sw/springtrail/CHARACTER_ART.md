@@ -71,3 +71,7 @@ owns damage and power-state behavior. Pose names are asset identifiers, not a
 completed gameplay state machine. Collision boxes, transitions, palette writes
 and timing are not established by this art approval. No game layout, assembly,
 RTL or existing game asset file is changed here.
+
+The [approved core asset pack](CORE_ART.md) adds player actions, terrain, items,
+enemies, platforms, effects, fonts and UI compositions. It retains separate
+feature integration and visual approval boundaries.
