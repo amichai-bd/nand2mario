@@ -1,0 +1,714 @@
+{
+  "sod": {
+    "width": 8,
+    "height": 8,
+    "pieces": [
+      {
+        "x": 0,
+        "y": 0,
+        "tile": 0,
+        "x_flip": false,
+        "y_flip": false
+      }
+    ]
+  },
+  "soil": {
+    "width": 8,
+    "height": 8,
+    "pieces": [
+      {
+        "x": 0,
+        "y": 0,
+        "tile": 1,
+        "x_flip": false,
+        "y_flip": false
+      }
+    ]
+  },
+  "brick": {
+    "width": 8,
+    "height": 8,
+    "pieces": [
+      {
+        "x": 0,
+        "y": 0,
+        "tile": 2,
+        "x_flip": false,
+        "y_flip": false
+      }
+    ]
+  },
+  "stone": {
+    "width": 8,
+    "height": 8,
+    "pieces": [
+      {
+        "x": 0,
+        "y": 0,
+        "tile": 3,
+        "x_flip": false,
+        "y_flip": false
+      }
+    ]
+  },
+  "ledge": {
+    "width": 8,
+    "height": 8,
+    "pieces": [
+      {
+        "x": 0,
+        "y": 0,
+        "tile": 4,
+        "x_flip": false,
+        "y_flip": false
+      }
+    ]
+  },
+  "post": {
+    "width": 8,
+    "height": 8,
+    "pieces": [
+      {
+        "x": 0,
+        "y": 0,
+        "tile": 5,
+        "x_flip": false,
+        "y_flip": false
+      }
+    ]
+  },
+  "ridge": {
+    "width": 8,
+    "height": 8,
+    "pieces": [
+      {
+        "x": 0,
+        "y": 0,
+        "tile": 6,
+        "x_flip": false,
+        "y_flip": false
+      }
+    ]
+  },
+  "hill": {
+    "width": 8,
+    "height": 8,
+    "pieces": [
+      {
+        "x": 0,
+        "y": 0,
+        "tile": 7,
+        "x_flip": false,
+        "y_flip": false
+      }
+    ]
+  },
+  "water": {
+    "width": 8,
+    "height": 8,
+    "pieces": [
+      {
+        "x": 0,
+        "y": 0,
+        "tile": 8,
+        "x_flip": false,
+        "y_flip": false
+      }
+    ]
+  },
+  "spike": {
+    "width": 8,
+    "height": 8,
+    "pieces": [
+      {
+        "x": 0,
+        "y": 0,
+        "tile": 9,
+        "x_flip": false,
+        "y_flip": false
+      }
+    ]
+  },
+  "sealed": {
+    "width": 16,
+    "height": 16,
+    "pieces": [
+      {
+        "x": 0,
+        "y": 0,
+        "tile": 10,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 8,
+        "y": 0,
+        "tile": 11,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 0,
+        "y": 8,
+        "tile": 12,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 8,
+        "y": 8,
+        "tile": 13,
+        "x_flip": false,
+        "y_flip": false
+      }
+    ]
+  },
+  "used": {
+    "width": 16,
+    "height": 16,
+    "pieces": [
+      {
+        "x": 0,
+        "y": 0,
+        "tile": 14,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 8,
+        "y": 0,
+        "tile": 15,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 0,
+        "y": 8,
+        "tile": 16,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 8,
+        "y": 8,
+        "tile": 17,
+        "x_flip": false,
+        "y_flip": false
+      }
+    ]
+  },
+  "crack": {
+    "width": 16,
+    "height": 16,
+    "pieces": [
+      {
+        "x": 0,
+        "y": 0,
+        "tile": 18,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 8,
+        "y": 0,
+        "tile": 19,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 0,
+        "y": 8,
+        "tile": 20,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 8,
+        "y": 8,
+        "tile": 21,
+        "x_flip": false,
+        "y_flip": false
+      }
+    ]
+  },
+  "reveal": {
+    "width": 16,
+    "height": 16,
+    "pieces": [
+      {
+        "x": 0,
+        "y": 0,
+        "tile": 22,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 8,
+        "y": 0,
+        "tile": 23,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 0,
+        "y": 8,
+        "tile": 24,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 8,
+        "y": 8,
+        "tile": 25,
+        "x_flip": false,
+        "y_flip": false
+      }
+    ]
+  },
+  "shards": {
+    "width": 16,
+    "height": 16,
+    "pieces": [
+      {
+        "x": 0,
+        "y": 0,
+        "tile": 26,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 8,
+        "y": 0,
+        "tile": 27,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 0,
+        "y": 8,
+        "tile": 28,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 8,
+        "y": 8,
+        "tile": 29,
+        "x_flip": false,
+        "y_flip": false
+      }
+    ]
+  },
+  "coin1": {
+    "width": 16,
+    "height": 16,
+    "pieces": [
+      {
+        "x": 0,
+        "y": 0,
+        "tile": 30,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 8,
+        "y": 0,
+        "tile": 31,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 0,
+        "y": 8,
+        "tile": 32,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 8,
+        "y": 8,
+        "tile": 33,
+        "x_flip": false,
+        "y_flip": false
+      }
+    ]
+  },
+  "coin2": {
+    "width": 16,
+    "height": 16,
+    "pieces": [
+      {
+        "x": 0,
+        "y": 0,
+        "tile": 34,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 8,
+        "y": 0,
+        "tile": 35,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 0,
+        "y": 8,
+        "tile": 36,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 8,
+        "y": 8,
+        "tile": 37,
+        "x_flip": false,
+        "y_flip": false
+      }
+    ]
+  },
+  "leaf": {
+    "width": 16,
+    "height": 16,
+    "pieces": [
+      {
+        "x": 0,
+        "y": 0,
+        "tile": 38,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 8,
+        "y": 0,
+        "tile": 39,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 0,
+        "y": 8,
+        "tile": 40,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 8,
+        "y": 8,
+        "tile": 41,
+        "x_flip": false,
+        "y_flip": false
+      }
+    ]
+  },
+  "gem": {
+    "width": 16,
+    "height": 16,
+    "pieces": [
+      {
+        "x": 0,
+        "y": 0,
+        "tile": 42,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 8,
+        "y": 0,
+        "tile": 43,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 0,
+        "y": 8,
+        "tile": 44,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 8,
+        "y": 8,
+        "tile": 45,
+        "x_flip": false,
+        "y_flip": false
+      }
+    ]
+  },
+  "spark": {
+    "width": 16,
+    "height": 16,
+    "pieces": [
+      {
+        "x": 0,
+        "y": 0,
+        "tile": 46,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 8,
+        "y": 0,
+        "tile": 47,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 0,
+        "y": 8,
+        "tile": 48,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 8,
+        "y": 8,
+        "tile": 49,
+        "x_flip": false,
+        "y_flip": false
+      }
+    ]
+  },
+  "cloud": {
+    "width": 32,
+    "height": 16,
+    "pieces": [
+      {
+        "x": 0,
+        "y": 0,
+        "tile": 50,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 8,
+        "y": 0,
+        "tile": 51,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 16,
+        "y": 0,
+        "tile": 52,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 24,
+        "y": 0,
+        "tile": 53,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 0,
+        "y": 8,
+        "tile": 54,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 8,
+        "y": 8,
+        "tile": 55,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 16,
+        "y": 8,
+        "tile": 55,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 24,
+        "y": 8,
+        "tile": 56,
+        "x_flip": false,
+        "y_flip": false
+      }
+    ]
+  },
+  "bush": {
+    "width": 32,
+    "height": 16,
+    "pieces": [
+      {
+        "x": 0,
+        "y": 0,
+        "tile": 57,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 8,
+        "y": 0,
+        "tile": 58,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 16,
+        "y": 0,
+        "tile": 59,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 24,
+        "y": 0,
+        "tile": 60,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 0,
+        "y": 8,
+        "tile": 61,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 8,
+        "y": 8,
+        "tile": 62,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 16,
+        "y": 8,
+        "tile": 63,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 24,
+        "y": 8,
+        "tile": 64,
+        "x_flip": false,
+        "y_flip": false
+      }
+    ]
+  },
+  "arch": {
+    "width": 32,
+    "height": 32,
+    "pieces": [
+      {
+        "x": 0,
+        "y": 0,
+        "tile": 65,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 8,
+        "y": 0,
+        "tile": 65,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 16,
+        "y": 0,
+        "tile": 65,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 24,
+        "y": 0,
+        "tile": 65,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 0,
+        "y": 8,
+        "tile": 66,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 8,
+        "y": 8,
+        "tile": 67,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 16,
+        "y": 8,
+        "tile": 68,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 24,
+        "y": 8,
+        "tile": 69,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 0,
+        "y": 16,
+        "tile": 70,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 8,
+        "y": 16,
+        "tile": 71,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 16,
+        "y": 16,
+        "tile": 72,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 24,
+        "y": 16,
+        "tile": 73,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 0,
+        "y": 24,
+        "tile": 70,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 8,
+        "y": 24,
+        "tile": 71,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 16,
+        "y": 24,
+        "tile": 72,
+        "x_flip": false,
+        "y_flip": false
+      },
+      {
+        "x": 24,
+        "y": 24,
+        "tile": 73,
+        "x_flip": false,
+        "y_flip": false
+      }
+    ]
+  }
+}

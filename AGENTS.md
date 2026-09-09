@@ -133,3 +133,6 @@ tests need explicit authorization and serialized access. Never commit commercial
 ROMs, boot ROMs, saves, or credentials. Keep private machine and ROM facts out of
 published sources. Pin external code, tests, and tools; record licenses and
 provenance. Use `frog-bui` for process ideas until reuse terms are clear.
+
+Use [game-assets](.agents/skills/game-assets/SKILL.md) for original game artwork,
+scripted review previews and source/spec integration.
