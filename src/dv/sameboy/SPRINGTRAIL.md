@@ -54,3 +54,12 @@ Legacy fixed-image cases and #263's full milestone criteria remain unchanged.
 The initial `s277` native run finished normally in5.932 seconds but its checker
 rejected the omitted type2 prefix expectation. That attempt remains FAIL; the
 corrected contract retains and requires this callback and its complete image.
+
+The completed matrix at7499303 retained six callbacks for the short case and
+fourteen for the twelve-normal-frame case, including both initialization
+callbacks. Each native command exited0; the three intended checker failures
+returned outer1. Total successful/fault matrix28.176 seconds; the initial
+callback-expectation failure adds5.932 seconds separately. Every invocation
+met120-second target and300-second hard limit. No milestone runtime is inferred.
+Exact commands, tool provenance, output hashes and source qualification are in
+[PR279](https://github.com/amichai-bd/nand2mario/pull/279).
