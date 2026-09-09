@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from unittest import mock
 from src.dv.sameboy import probe
-from src.dv.sameboy.springtrail import check
+from src.dv.sameboy.springtrail import check, compare_game_images
 
 CONTRACT = json.loads(Path('src/dv/sameboy/springtrail.json').read_text())
 
@@ -90,3 +90,20 @@ class NativeLedger(unittest.TestCase):
                     with self.assertRaisesRegex(ValueError, 'length/hash mismatch before Core load'):
                         probe.main()
                     run.assert_not_called()
+
+    def test_settled_rejects_original_identity_before_tools(self):
+        with tempfile.TemporaryDirectory() as folder:
+            p = Path(folder)
+            (p/'rom.gb').write_bytes(bytes(32768))
+            argv = ['probe', '--case', 'springtrail-settled-short', '--source', str(p/'missing'),
+                    '--rom', str(p/'rom.gb'), '--output', str(p/'output')]
+            with mock.patch('sys.argv', argv), mock.patch.dict(os.environ, {'N2M_TEST_EXECUTION_DEADLINE':'9999999999'}), mock.patch.object(probe, 'digest', return_value=CONTRACT['image']['sha256']), mock.patch.object(probe.subprocess, 'run') as run:
+                with self.assertRaisesRegex(ValueError, 'length/hash mismatch before Core load'):
+                    probe.main()
+                run.assert_not_called()
+
+    def test_game_pixels_reject_missing_title_and_incomplete_output(self):
+        with self.assertRaisesRegex(AssertionError, 'REFERENCE_GAME_LENGTH'):
+            compare_game_images(bytes(23040*6-1), 4)
+        with self.assertRaisesRegex(AssertionError, 'REFERENCE_GAME_PIXELS frame=3'):
+            compare_game_images(bytes(23040*6), 4)

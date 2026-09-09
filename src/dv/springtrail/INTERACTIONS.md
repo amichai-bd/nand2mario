@@ -168,11 +168,13 @@ The completed ring uses the existing entering-column algorithm at9C00.
 The instruction-derived LCD commit is76964 dots: entry stub20, prolog1124,
 OAM clear3860, tile copy34976, title-map copy29984, palette32, scene preparation
 5996, publication928 and final enable44. The first title-to-world publication
-is bounded by3920 dots including64 wake margin, ReadButtons160, ClearTitle688,
+was bounded in PR276 by3920 dots including64 wake margin, ReadButtons160, ClearTitle688,
 BeginRestore120, first pair1788, PublishScene928 and all branches/setup.
 The measured2860 helper bound already includes map restoration and publication;
 it must not be added to another map-pair maximum. Visible preparation and
 actual integrated VBlank writes still receive independent runtime checks.
+The current [JOYP settling correction](JOYP_SETTLE.md) adds48 dots to ReadButtons
+and raises that source bound to3968; the historical measurements below remain unchanged.
 
 `python-gs` is the complete short harness: blank plus title frames, no input,
 all preparation/publication observations, pause and END. `python-gu` uses one

@@ -1,6 +1,7 @@
 {
   "image": {"length": 32768, "sha256": "7d63b067c61697d0c02f2dee9eca3cbdff3494a1f790c390304dbb0c8b6e15c9"},
-  "cases": {"springtrail-short": 4, "springtrail": 12},
+  "settled_image": {"length": 32768, "sha256": "b551c56252761d953bcf3b64270d819e3342b710299c3bff6866d4dcae8ba667"},
+  "cases": {"springtrail-short": 4, "springtrail": 12, "springtrail-settled-short": 4, "springtrail-settled": 12},
   "inputs": [{"dot": 137000, "buttons": 129}, {"dot": 207224, "buttons": 1}],
   "input_lateness_max": 24,
   "frame_bytes": 23040,

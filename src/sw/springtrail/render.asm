@@ -187,12 +187,25 @@ RET
 ReadButtons:
 LD A,$20
 LDH [$FF00],A
+; Allow the DMG matrix to settle before sampling the selected row.
+NOP
+NOP
+NOP
+NOP
+NOP
+NOP
 LDH A,[$FF00]
 CPL
 AND A,$0F
 LD B,A
 LD A,$10
 LDH [$FF00],A
+NOP
+NOP
+NOP
+NOP
+NOP
+NOP
 LDH A,[$FF00]
 CPL
 AND A,$0F
