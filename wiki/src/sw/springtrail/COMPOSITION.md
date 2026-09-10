@@ -1,7 +1,8 @@
 # Courier composition
 
 The [composer](../../../../src/sw/springtrail/courier.asm) emits ordinary OAM pieces.
-The [approved art](CHARACTER_ART.md) owns all pixels and twelve pose maps.
+The [approved courier art](CHARACTER_ART.md) owns the twelve base pose maps.
+The [approved core art](CORE_ART.md) supplies the additional small skid pixels.
 
 ## Coordinates and allocation
 
@@ -20,14 +21,20 @@ shade0 stays transparent. Tiles and map plus courier bank remain in the assets
 ROM section0C00..13FF; composer tables/code use a separate ROM1 section at5200, after
 collision, with linker overlap checks. Mapperless32768-byte profile is unchanged.
 
-Pose order is STAND,WALK1,WALK2,WALK3,JUMP,RETRY for small, then large.
-The composer supports all12 maps. Normal play uses small STAND when grounded
-and still, small WALK1 when grounded and moving, JUMP when airborne, RETRY in
-retry mode. Title uses STAND. Pause/WON use current grounded/motion pose.
-There is no animation counter or size transition: #301 owns cadence and #302
-owns power sizes. Facing follows the last nonzero horizontal velocity; initial
-and restarted neutral state faces right. Whole-pose reflection maps x to8-x and
-XORs the tile X-flip bit. Approved Y-flip flags are preserved.
+Base pose order is STAND,WALK1,WALK2,WALK3,JUMP,RETRY for small, then large.
+All twelve base maps remain supported. The approved small skid adds composer
+pose12 and four tiles94..97, VRAM85E0..861F, from core atlas tiles16..19.
+Its 64 bytes occupy ROM6100..613F and are loaded by InitMotionArt while LCD is off.
+The [movement contract](MOVEMENT.md) owns this allocation and state mapping.
+
+Normal play renders stored motion poses STAND, WALK1..3, JUMP or SKID; motion
+pose5 selects composer pose12. Title selects STAND and retry selects base RETRY.
+Pause/WON preserve the stored motion pose. The renderer never advances the
+animation counter. Accepted directional intent sets facing, including at a wall;
+reversal hold preserves facing. Neutral initialization/restart faces right.
+Whole-pose reflection maps x to8-x and XORs the tile X-flip bit. Approved Y-flip
+flags are preserved. Runtime power/size transitions remain owned by
+[#302](https://github.com/amichai-bd/nand2mario/issues/302).
 
 Global LCDC object-size bit is0. Each enemy, pickup and goal uses a vertical pair
 of adjacent tiles with unchanged pixels and anchors. Keep player, enemy, four

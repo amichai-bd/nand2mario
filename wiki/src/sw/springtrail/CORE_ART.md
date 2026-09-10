@@ -33,9 +33,10 @@ remain independent; their union need not be resident simultaneously.
 
 Small and large skid, throw, hurt and crouch designs supplement the original
 poses. [Composition](COMPOSITION.md) owns character assembly;
-[#301](https://github.com/amichai-bd/nand2mario/issues/301) owns movement
-and animation; [#302](https://github.com/amichai-bd/nand2mario/issues/302) owns
-power and damage states. Visual approval does not choose collision anchors,
+[movement and animation](MOVEMENT.md) integrates the approved small skid
+from core tiles16..19 as runtime tiles94..97 and composer pose12; [#302](https://github.com/amichai-bd/nand2mario/issues/302) owns
+power and damage states. The other supplementary action poses remain approved
+artwork awaiting their owning mechanics. Visual approval does not choose collision anchors,
 state transitions, frame cadence or optional mechanics.
 
 ### Terrain, blocks, items and scenery

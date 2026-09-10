@@ -27,10 +27,10 @@ Confidence applies to the reference observation, not to future implementation.
 
 | Area | Current implementation | Pinned reference locator and confidence | Original replacement and acceptance owner |
 |---|---|---|---|
-| Character composition | `courier.asm` composes all twelve approved maps as global 8x8 pieces | `bank0.asm` sprite paths; original anchors are defined in [composition](COMPOSITION.md) | Composition implemented; animation cadence and runtime size behavior remain in their separate rows |
+| Character composition | `courier.asm` composes all twelve approved maps as global 8x8 pieces | `bank0.asm` sprite paths; original anchors are defined in [composition](COMPOSITION.md) | Composition and motion cadence implemented; runtime size behavior remains in its separate row |
 | Publication | `PublishScene` transfers the complete C100 shadow page through HRAM DMA; preparation builds sixteen entries and clears the tail | `VBlank`, `DMARoutine`, initialization HRAM copy: source-confirmed DMA organization | [Publisher proof](../../../../src/dv/springtrail/OAM_DMA.md) and current [composition](COMPOSITION.md) |
 | HUD and scrolling | `stream.asm` prepares original encoded columns; `hud.asm` publishes background mode/score and separates HUD/playfield with VBlank/STAT | `DrawColumn`, `VBlank`, `LCDStatus`: source-confirmed organization, not a copied timing oracle | [HUD/column contract](HUD_COLUMNS.md) and its bounded pixel/publication matrix |
-| Movement and animation | `movement.asm`, `collision.asm`: immediate walk/run speed, fixed jump/gravity, no integrated walk cycle | `Call_1D26`, `Call_16F5`, `Call_1736`: state/cycle paths; numeric response unmeasured | [#301](https://github.com/amichai-bd/nand2mario/issues/301): measured start/stop/reverse, jump edges/hold/air control, collisions and pose cadence |
+| Movement and animation | `movement.asm`, `collision.asm`: counter/phase motion, jump profiles and stored walk/jump/skid poses | `Call_1D26`, `Call_16F5`, `Call_1736`: source-derived state/cycle rules; complete normal dispatcher unavailable | [Movement contract](MOVEMENT.md): approved original best-effort order/profile binding, literal per-update expectations and explicit reference limits |
 | Player contact and power | `interactions.asm`: contact death, one player size | `bank0.asm` player/contact paths and `enemies.asm` states: behavior table pending | [#302](https://github.com/amichai-bd/nand2mario/issues/302): stomp/damage precedence, growth/shrink, protection, invincibility and projectile power; freeze boxes and durations |
 | Blocks and rewards | `collision.asm`, `interactions.asm`: solid terrain and four once-only pickups | `Call_1B86`, `AddScore`: source locators; category/reward rules pending | [#303](https://github.com/amichai-bd/nand2mario/issues/303): original mutable blocks, head hits, releases and persistent consumed state; coordinate power/entity/reward owners |
 | Progression | `interactions.asm`: retry restores all state, one finish marker; no lives/timer | `UpdateLives`, `DisplayTimer`, level-state paths: source locators; survival/reset rules pending | [#304](https://github.com/amichai-bd/nand2mario/issues/304): measured lives/timer/death/continue/level transitions using minimal original levels |
@@ -47,8 +47,9 @@ in these three stages. An intermediate stage is not completion of that release.
    diagnostic patterns and the [publisher proof](../../../../src/dv/springtrail/OAM_DMA.md).
    Reuse current [composition](COMPOSITION.md) and [HUD/column scheduling](HUD_COLUMNS.md). Existing RTL is not presumed defective; any actual
    violation belongs in a focused hardware bug with its owning contract.
-2. Freeze and implement measured movement/animation #301 against those explicit
-   display coordinates. Coordinate size/contact contracts with #302.
+2. Reuse the [movement/animation contract](MOVEMENT.md) against those explicit
+   display coordinates. Its best-effort original choices do not establish full
+   reference equivalence. Coordinate size/contact contracts with #302.
 3. Deliver all core interaction, block, progression and entity scopes #302-#305.
    Agree shared state ownership before dependent code, rather than creating
    circular implementation waits. Additional families, bosses, bonus and vehicle
@@ -57,14 +58,15 @@ in these three stages. An intermediate stage is not completion of that release.
 The [approved art](CHARACTER_ART.md) fixes original small 16x16 and large 16x24
 canvases. These are not measured SML1 dimensions. [Composition](COMPOSITION.md) defines logical anchors,
 piece offsets, facing and screen clipping independently of collision boxes;
-#301/#302 own those boxes and power transitions. New art needs approval; already
+The [movement contract](MOVEMENT.md) preserves the current 8x16 collision box;
+#302 owns power geometry and transitions. New art needs approval; already
 approved art does not. Record intentional geometry differences without changing
 approved pixels to satisfy an assumed reference size.
 
 The approved tile IDs are local asset indices; [composition](COMPOSITION.md) defines VRAM allocation and
 preserves shade/palette ordering. Mirroring reflects piece positions as well as
-tile attributes. Use approved poses where suitable; #301/#302 request only
-necessary missing skid, crouch, growth or projectile visuals. Missing art gates
+tile attributes. Current movement reuses approved walk/jump and small skid art;
+#302 requests only necessary missing crouch, growth or projectile visuals. Missing art gates
 its dependent visual integration, not independent physics measurement.
 
 HUD/column integration reuses one publisher and binds input sampling, prepared-scene
@@ -89,7 +91,7 @@ content required by that issue. This adds no feature families or asset framework
 |---|---|
 | [Composition](COMPOSITION.md) | Approved courier tiles and pose maps in [CHARACTER_ART.md](CHARACTER_ART.md); current composition and game allocation |
 | [HUD/columns](HUD_COLUMNS.md) | Existing terrain, selected approved font tiles and fixed HUD previews |
-| #301 | Motion poses, reusing approved poses where suitable; identify any missing state visuals |
+| [Movement](MOVEMENT.md) | Approved base walk/jump poses and core small skid; stored pose/facing and cadence |
 | #302 | Power, damage and projectile visuals; identify missing transitions separately from approved courier poses |
 | #303 | Interactive blocks, released items and pickups |
 | #304 | Progression displays and original fixture maps |
@@ -127,7 +129,7 @@ Child completion alone does not establish composed FPGA behavior.
 | Capability | Required evidence |
 |---|---|
 | Composition, publication, HUD/scroll | Qualified combined hardware diagnostic, publisher, [composition](COMPOSITION.md) and [HUD/column](HUD_COLUMNS.md) proofs, including split pixels and column boundaries |
-| Motion and poses | #301 independent per-update state/pose cases, including direction changes, jump and collision transitions |
+| Motion and poses | [Movement matrix](../../../../src/dv/springtrail/MOVEMENT.md): independent per-update state/pose cases, including direction changes, jump and collision transitions |
 | Interactions and world state | #302/#303/#305 contact/power/block/entity cases, persistence and player/platform interactions |
 | Progression | #304 life/timer/death/retry/level-transition cases and their shared HUD/state ownership |
 | Final build and FPGA composition | Reproducible clean ROM builds with exact hashes, full UART upload/readback, and independently expected source-frame/gameplay checkpoints exercising the changed capabilities above on a qualified FPGA build |
