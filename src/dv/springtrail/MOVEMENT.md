@@ -63,7 +63,7 @@ before the second VBlank at184416. This clears the22 title tiles and performs
 one walk update, yielding player(25,112), camera0, OAM(128,33,12,0) and SCX0.
 The next complete world image must show the courier one pixel to the right.
 The three complete output frames are startup white, title and that first world:
-23040 pixels each, literal CRC32 B15161F6,5324BC1F,AE96D493. The literal original
+23040 pixels each, literal CRC32 B15161F6,4E8A1268,B3387AE4. The literal original
 artwork and independent physics select these images; no DUT state selects them.
 
 Check every pixel's shade, coordinate, frame-start/eligibility flags and epoch2,

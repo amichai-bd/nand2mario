@@ -90,6 +90,12 @@ jobs:
                   continue
               suite.addTests(unittest.defaultTestLoader.loadTestsFromModule(module))
           print('simulator entry modules not run here:', ' '.join(simulator))
+          # Pin both counts so a host module that acquires a cocotb import drops
+          # out loudly instead of shrinking this suite to a passing subset.
+          if len(simulator) != 21:
+              sys.exit(f'expected 21 simulator entry modules, found {len(simulator)}')
+          if suite.countTestCases() < 100:
+              sys.exit(f'expected at least 100 host tests, collected {suite.countTestCases()}')
           sys.exit(not unittest.TextTestRunner(verbosity=2).run(suite).wasSuccessful())
           PY
       - name: Report simulation scope
