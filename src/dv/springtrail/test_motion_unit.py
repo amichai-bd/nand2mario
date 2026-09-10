@@ -2,6 +2,6 @@
 import cocotb
 from motion_unit_check import run
 
-@cocotb.test()
+@cocotb.test(timeout_time=150, timeout_unit='ms')
 async def motion_unit(dut):
     await run(dut, short=False)
