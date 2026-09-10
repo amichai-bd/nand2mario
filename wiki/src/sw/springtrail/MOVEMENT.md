@@ -27,7 +27,7 @@ normal update. Inputs are logical buttons, independent of the reference's bit la
 | Area | Confirmed rule | Evidence and uncertainty resolution |
 | --- | --- | --- |
 | Direction priority | The horizontal routine tests Right before Left. Both held select Right unless an earlier reversal hold returns. | `Call_1D26`; replaces the misleading assumption that opposite directions cancel in the reference. |
-| Start and coast | A counter rises toward 6 on directed movement. At 6, class0 becomes class2. No-direction input clears the speed class, decreases a nonzero counter and follows the stored direction for that invocation. | `Call_1D26`; the counter is a state/timer, not a fixed-point velocity. |
+| Start and coast | From a grounded start, a counter rises toward 6 on directed movement; jump setup can instead set 48 and arithmetic remains modulo256. At 6, class0 becomes class2. No-direction input clears the speed class, decreases a nonzero counter and follows the stored direction for that invocation. | `Call_1D26`; the counter is a state/timer, not a fixed-point velocity. |
 | Horizontal displacement | Each displacement evaluation flips a one-bit phase. Class0 gives alternating 0/1 pixel, class2 gives 1 each, class4 gives alternating 1/2. | `Call_1D26.call_1EB4`; averages are 0.5/1/1.5 pixels per evaluation, not complete initial sequences. Initial phase and caller order remain unresolved. |
 | Reverse | Opposite intent enters a reversal state with counter8 and no displacement. Eight subsequent calls decrement it without motion; the next clears reversal without motion. New direction can be accepted on the following call. | `Call_1D26`; ten stationary invocations including entry/clear, not an acceleration ramp. Airborne reversal also holds horizontal motion. |
 | Facing | An accepted direction changes facing before the side-collision test. Reversal holds retain the old facing. | `Call_1D26`; collision can therefore block motion while facing changes. |
@@ -120,6 +120,49 @@ must retain that distinction when the contract is frozen before implementation.
 The issue retains all movement, collision, rendered-state, fault, asset and budget
 requirements. Its criteria distinguish confirmed local rules from these original
 choices; existing physical-release gates remain separate.
+
+## Original state and integration boundary
+
+`InitPlayer` and `StepPlayer` remain the shared entry points. Existing positions,
+velocities and collision operands retain their Q4 representation and addresses.
+New gameplay state occupies C060..C069 in this order:
+
+| Byte | Meaning and reset |
+| --- | --- |
+| C060 | Movement counter, 0; unsigned modulo256 arithmetic |
+| C061 | Direction: 0 none, 1 right, 2 left, 3 reversal; reset0 |
+| C062 | Speed class: 0,2,4; reset0 |
+| C063 | Alternating displacement phase, reset0 |
+| C064 | Animation counter, reset1; unsigned modulo256 arithmetic |
+| C065 | Motion pose: 0 stand,1..3 walk,4 jump,5 skid; reset0 |
+| C066 | Jump state: 0 supported,1 ascent,2 profile descent,3 terminal fall; reset0 |
+| C067 | Current profile index, reset0 |
+| C068 | Saved release index, reset0 |
+| C069 | Facing: 0 right or20 hexadecimal left; reset0 |
+
+Scene composition reads motion pose/facing and retains the existing title/retry
+mode overrides. It does not advance motion state. Logical skid uses the approved
+small-skid core pose; no power/large-state mechanics are introduced. Existing
+courier poses and core editable sources remain authoritative. The skid's four
+core tiles require explicit ROM/VRAM placement before the early image build;
+no other approved core state is added to this feature.
+
+Movement remains in the existing ROM2000..27FF allocation. New state does not
+alias scene/IRQ/cache operands. All motion and animation work runs in visible
+preparation; the existing4480-dot publication deadline remains required.
+
+Initial literal diagnostic anchors, before any DUT implementation:
+
+- From reset, seven Right updates produce X pixels25,25,26,26,27,27,28,
+  horizontal counters1,2,3,4,5,6,6 and poses0,0,0,1,1,1,1.
+- From reset, seven Right+B updates produce X pixels25,26,27,28,30,31,33;
+  initial phase0 is flipped once for each evaluated displacement.
+- A grounded reversal entered from rightward state holds X/facing for entry,
+  eight countdown calls and one clear call. The next accepted Left changes
+  facing even at a blocking wall.
+- A fresh non-run jump consumes profile index2 first:3 pixels upward. A fresh
+  run jump consumes index0 first:4 pixels upward. Landing and ceiling follow
+  the exact state transitions above, rather than an observed trajectory.
 
 ## Finite implementation/proof boundary
 
