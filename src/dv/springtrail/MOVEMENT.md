@@ -1,4 +1,63 @@
-# Movement proof
+# Movement and animation acceptance
+
+The [owning motion contract](../../../wiki/src/sw/springtrail/MOVEMENT.md)
+separates source-confirmed local rules from approved original choices. The pure
+`motion_reference.py` and its literal host cases were frozen before product
+movement changed. Current `motion_game_reference.py` checks original24-byte
+player/motion state plus existing game fields, complete prepared shadow pages,
+all98 tile loads, actual IRQ/JOYP/publication order and retained complete pixels.
+The actual CPU fixture also executes the existing UpdateGame mode dispatcher.
+
+## Current instruction and execution bounds
+
+Current startup LCD commit is139388 dots, derived from accepted HUD startup
+136560 plus280 for initializing ten motion bytes,2628 for CALL plus the64-byte
+approved skid copy, minus96 for the shorter title pose selector, plus16 for the
+new small-skid size branch. This is an instruction-derived anchor, not a value
+chosen from DUT output. `python-mgs` exercises that full startup through at least
+160 blank pixels, normal host HALT, settled hold and counted trace END. Its
+90ms simulation watchdog and existing300-second whole supervisor remain active.
+
+VBlank code is unchanged: retain the [HUD publication4388 bound/4480 ceiling](HUD_COLUMNS.md#instruction-bounds).
+The current visible StepPlayer/UpdateGame branch bound and exact CPU case total
+must be frozen before full execution; old4200 movement/VBlank arithmetic below
+is historical and cannot qualify current motion. The first game update expects
+X25,Y112,VX1,VY0, counter1,directionRight,speed0,phase1,animation2,STAND; it prepares
+that state after the first VBlank and publishes it at the next. The retained
+normal output frame is the prior prepared TITLE; independent rendered motion
+states are covered separately, not claimed as this run's visible gameplay.
+
+## Remaining acceptance matrix
+
+All rows remain incomplete until implementation and independently reviewed
+producing evidence exist. Host expectations must be frozen before motion code;
+exact instruction/dot bounds must be frozen before each licensed run.
+
+| Group | Required result | Planned execution |
+| --- | --- | --- |
+| Contract/model | Literal per-update walk/run/coast/reverse/opposite inputs; jump hold/release/apex/fall, steering, walls/ceiling/landing; phase/counter wrap; mode pause/resume/restart and pose/facing precedence | Independent pure Python cases, no DUT-fed expectations |
+| Shared CPU | Actual InitPlayer/StepPlayer and UpdateGame bytes; every expected state byte after each scripted call, completion and settled halt | Complete short harness, then finite full case set |
+| Game schedule | Actual game boot, sampled Start+Right, prior prepared title then first moved scene; complete pixels/state/input, one update/token and unchanged HUD/STAT/DMA ownership | Existing continuous Python/Intel preload, short completion then affected full game |
+| Rendered states | Approved WALK cycle and skid mappings, both facings, exact tile bytes and unchanged HUD masking; actual shared composer consumes seeded original operands | Host all-state pixels plus one bounded complete renderer fixture |
+| Fault | A real movement consumer mutation rejected at the first differing state by the unchanged positive checker; retain failed receipt | Shortest useful CPU case, after positive proof |
+| Consumer qualification | Historical fixed-physics/current-ROM consumers either gain independently current expectations or reject incompatible current ROM/source before use | Focused host guards; no relabelled old full-route evidence |
+| Delivery | Owning SW/DV/asset links and previews, original32KiB reproducible image, affected host checks, required CI and current-head independent review | No new art approval or full hardware milestone replay |
+
+Initial planning forecast: CPU short20 seconds, CPU full150, game short130,
+game full240, renderer220 and early CPU fault40 (800 seconds aggregate). These
+are extrapolations from prior harness costs, not measured301 results or relaxed
+limits. The ordinary300-second aggregate target may be missed; each simulation
+still has a hard300-second whole-run cap. Freeze smaller actual case bounds
+where feasible and report measured times; no extra duration or coverage quota
+is introduced. Unchanged hardware/transport/STAT baseline evidence is reused only
+with explicit input and behavior qualification.
+
+## Historical fixed-physics proof
+
+Everything below records the earlier fixed-physics ROM/routines. Its numeric
+contracts and85-step evidence are historical; current changed images must not
+consume these old expectations. Literal terrain helpers remain unchanged.
+
 
 The owning [verification matrix](../../../wiki/src/dv/springtrail/SPEC.md#movement-matrix)
 separates the actual CPU routine proof, short composed game and whole-game FPGA

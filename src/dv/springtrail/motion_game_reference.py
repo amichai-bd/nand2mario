@@ -81,7 +81,7 @@ class Check:
             if data==0:
                 assert self.lcd is None,'MOTION_LCD_OFF'
             elif self.lcd is None:
-                assert data==0x91 and 100000<dot<160000,'MOTION_STARTUP_BOUND'
+                assert data==0x91 and dot==139388,'MOTION_STARTUP_BOUND'
                 self.lcd=dot
             else:
                 assert data in (0x91,0x93),'MOTION_OBJECT_MODE'
