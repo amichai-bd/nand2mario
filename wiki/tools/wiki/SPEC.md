@@ -137,9 +137,11 @@ See [GitHub Pages custom workflows](https://docs.github.com/en/pages/getting-sta
 
 ## Repository statistics
 
-The optional read-only `tools/wiki/repository_stats.py` collector supports the
-[dated statistics page](../../project-statistics.md). Run it from a repository
-checkout with `--revision <commit>` and `--output workdir/<tag>`. It resolves the
+The manual `tools/wiki/repository_stats.py` collector generates the
+[HTML statistics report](../../statistics.html). Run it from a repository
+checkout with complete history, `--revision <commit>`, `--output workdir/<tag>` and
+`--html wiki/statistics.html`. The HTML output is the explicitly authorized
+committed generated report; scratch JSON stays under `workdir/`. It resolves the
 commit and reads regular tracked Git blobs directly, reporting files, UTF-8
 physical/nonblank lines, bytes, exclusive path/type categories and daily
 first-parent growth. Comments remain included. Nonregular entries are reported
@@ -152,15 +154,27 @@ issue-duration summary and may be repeated. GitHub collection is sequential and
 records its completion time; it does not reconstruct historical state. PR durations
 use creation to merge; closed-issue durations use creation to current closure.
 Percentiles use linear interpolation. Nested closing-reference truncation is
-reported explicitly; do not publish a complete-reference claim if it is true.
+rejected before publication. Failed API pagination, missing tools, shallow Git
+history and subprocess timeouts also fail without replacing the prior HTML.
+Each subprocess has a 120-second timeout. Collection and rendering finish before
+output writing; the HTML is replaced atomically. The tool never uses stale JSON
+as a substitute for a failed requested GitHub collection.
 
-JSON artifacts stay under ignored `workdir/`; only curated Markdown/SVG summaries
-are published. The collector never runs automatically in CI, posts to GitHub,
-changes issues or measures active labor, authorship, hardware readiness or
-completeness. Preserve the measured SHA and collection timestamp when refreshing
-all page tables and charts together.
+The report embeds CSS (including shared wiki design tokens), SVG and tables with
+no external runtime. It escapes data, distinguishes all-base PR metrics from the
+main-target count, reports current PR area-label groups (falling back to closing
+issue labels; groups can overlap), and
+shows empty samples honestly. It includes no raw issue/PR titles or descriptions.
+The **Stats** tab opens the HTML directly; the former Markdown page is only a
+stable entrypoint. Removed standalone charts are not separately maintained.
 
-The collector and publication refresh are currently manual. The open
-[post-merge statistics gap](https://github.com/amichai-bd/nand2mario/issues/319)
-plans automatic refresh after merges to `main`, not on PR checks or every CI run.
-That automation is not implemented by the current collector.
+The collector never runs automatically in CI, posts to GitHub or changes issues.
+CI validates/publishes the committed HTML and runs offline fixture tests; it does
+not collect live project statistics. Manual generation is the only refresh path,
+including after merges. Quantity and elapsed intervals do not measure active
+labor, complexity, authorship, hardware readiness or completeness. Tables and
+charts are generated together from the same source/GitHub data.
+
+Run `python -m unittest tools.wiki.test_repository_stats -v` for offline collector,
+empty-sample, escaping and atomic-failure checks. The wiki browser suite checks
+the Stats tab and report at desktop/mobile sizes.
