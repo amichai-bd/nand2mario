@@ -1,43 +1,175 @@
 # nand2mario
 
-A verified, bounded original-DMG-compatible system on the DE10-Lite, with VGA
-and shared UART/physical input. The current goal is
-[Springtrail](wiki/src/sw/springtrail/SPEC.md), our own planned silent platformer
-with original SM83 code, characters, art and level design.
+**nand2mario** is an original-DMG-compatible Game Boy implementation for the
+Terasic DE10-Lite FPGA board, built in SystemVerilog and verified with a
+specification-driven simulation flow. It provides VGA video, shared Game Boy
+input, UART loading/control, an original SM83 software toolchain, and original
+games built specifically for the hardware.
 
-The original [v0.5 hardware/software proof](https://github.com/amichai-bd/nand2mario/pull/246)
-is complete within its stated limits. The [Springtrail foundation](https://github.com/amichai-bd/nand2mario/pull/266)
-implements the title, Start and initial world. [Movement and scrolling](https://github.com/amichai-bd/nand2mario/pull/270)
-add walking, running, jumping, collisions and the complete trail. Interactions
-and release acceptance remain planned.
-The [charter](wiki/src/project-charter.md) defines the revised goal and preserved
-release checks. [Preflight gaps](wiki/preflight-gaps.md) retain outstanding
-physical and integration requirements. No commercial cartridge is needed.
+The project is intentionally self-contained: gameplay, programs, characters,
+art, maps, and tooling are original. It does not require a commercial cartridge,
+commercial ROM, copied game assets, or a custom game-specific hardware path.
 
-- [Documentation](https://amichai-bd.github.io/nand2mario/)
-- [Open issues](https://github.com/amichai-bd/nand2mario/issues)
-- [Research](wiki/research-findings.md)
+- [Project documentation](https://amichai-bd.github.io/nand2mario/)
+- [Project charter](wiki/src/project-charter.md)
+- [Springtrail specification](wiki/src/sw/springtrail/SPEC.md)
 - [Agent rules](AGENTS.md)
+- [Build system](wiki/tools/n2m/SPEC.md)
+
+## Current system
+
+The hardware targets the original monochrome DMG family and is organized as a
+real Game Boy-style system rather than a game implemented directly in RTL.
+Current source and specifications cover the SM83 CPU, memory system, PPU, DMA,
+timer, interrupts, joypad, UART, display/VGA path, clocking/reset, shared input,
+and top-level integration.
+
+The FPGA design runs from the DE10-Lite environment with a 25 MHz system
+architecture. Programs execute as ordinary SM83 software using normal Game Boy
+memory, graphics, timer, interrupt, DMA, and JOYP interfaces. UART and physical
+controls converge through the same Game Boy input boundary, so software does not
+need private host-control MMIO.
+
+The supported simulation environment is Questa. The repository also contains
+Quartus/MAX 10 FPGA build support, host-side loading and control tools, Python
+verification, cocotb integration, vendor-model simulation, deterministic build
+records, and checked output evidence.
+
+## Springtrail
+
+[Springtrail](wiki/src/sw/springtrail/SPEC.md) is the primary original game built
+for nand2mario. It is a silent monochrome scrolling platformer written in SM83
+assembly and packaged as a 32 KiB mapperless Game Boy image.
+
+The current game includes title/start flow, walking and running, jumping,
+scrolling, collision handling, pause/retry/win states, collectibles, an enemy,
+HUD behavior, a finish marker, and original character and environment artwork.
+Gameplay remains software-owned; the FPGA implements the Game Boy platform on
+which it runs.
+
+### Artwork previews
+
+The repository keeps reviewable SVG renderings beside the authoritative game-art
+sources. These are generated from exact 2bpp shade grids and placement maps, not
+hand-edited output images.
+
+![Springtrail scene preview](wiki/src/sw/springtrail/core-art/scene-preview.svg)
+
+![Springtrail progression screens](wiki/src/sw/springtrail/core-art/progression-screens.svg)
+
+More artwork and its editable-source mapping are documented in the
+[Springtrail core-art reference](wiki/src/sw/springtrail/CORE_ART.md).
+
+## Original software toolchain
+
+nand2mario includes its own Python-based SM83 software pipeline rather than
+depending on a prebuilt commercial image. The checked-in toolchain provides:
+
+- an SM83 assembler with explicit objects, symbols, sections, expressions, and
+  relocations;
+- a linker and 32 KiB ROM packager;
+- generated hardware/software interface constants;
+- asset conversion from original shade data to Game Boy 2bpp bytes;
+- deterministic build manifests, hashes, logs, and immutable run evidence;
+- conformance checks against a pinned independent RGBDS oracle; and
+- host tools for loading, controlling, observing, and validating the system.
+
+The common entry point is:
+
+```text
+python tools/build.py <command> [options]
+```
+
+See the [build specification](wiki/tools/n2m/SPEC.md) and
+[software-toolchain specification](wiki/tools/sw/SPEC.md) for the supported
+commands and contracts.
+
+## Verification
+
+Verification is treated as part of the product rather than an afterthought.
+Hardware and software changes are checked at the smallest useful level and then
+at the appropriate composed-system level.
+
+The repository combines SystemVerilog testbenches, Python/cocotb tests, pinned
+Intel simulation models, deterministic software images, traces, waveforms,
+frame/pixel checks, host-side observations, negative tests, and bounded FPGA
+proofs. Simulation must compile, elaborate, run, and check an expected result;
+a successful process exit alone is not considered evidence.
+
+The verification strategy and milestone boundaries are documented in the
+[integration verification specification](wiki/src/dv/integration/SPEC.md) and
+its linked subsystem and milestone verification contracts.
+
+## How the project is developed with AI agents
+
+The repository is designed for agent-driven engineering, but the workflow is
+repository-native rather than tied to one model or harness. `AGENTS.md` defines
+the mandatory operating rules, while focused skills under `.agents/skills/`
+encode reusable engineering methods.
+
+A typical change follows this loop:
+
+1. **Read the source of truth.** The agent starts from the relevant charter,
+   specification, interfaces, implementation, and verification contract instead
+   of inferring behavior from existing code alone.
+2. **Work in isolation.** Each author works in a dedicated short-lived Git
+   worktree and branch. The main checkout stays clean, and parallel agents do not
+   share mutable workspaces.
+3. **Keep specification and implementation aligned.** Observable behavior is
+   owned by the wiki/specification layer, implementation by `src/` and `tools/`,
+   and verification by executable tests and retained evidence. Changes update the
+   owning source instead of creating documentation mirrors.
+4. **Verify while developing.** Agents start with the smallest useful checks,
+   then run the verification tier appropriate to the changed behavior. Commands,
+   results, hashes, logs, traces, and important limitations remain reproducible.
+5. **Use independent review.** A reviewer separate from the author evaluates the
+   current change against its contract and verification evidence before it is
+   integrated.
+6. **Integrate and clean up.** Reviewed changes are squash-merged to `main`, the
+   published documentation is regenerated, and temporary worktrees/build output
+   are removed while durable source and evidence remain.
+
+The main orchestration method is documented in
+[`.agents/skills/agent-flow/SKILL.md`](.agents/skills/agent-flow/SKILL.md), with
+specialized skills for authoring, review, specification work, recovery, and game
+assets.
+
+### Agent-created game art
+
+Game artwork follows the same source-of-truth model. Agents edit exact shade JSON
+and placement maps under `src/sw/springtrail/assets/`; generated PNG/SVG files
+are review artifacts rather than authoritative sources. The tooling reconstructs
+approved sprite/tile banks, renders composed previews, converts pixels to Game
+Boy 2bpp data, and checks reproducibility before integration into the ROM.
+
+The method is documented in
+[`.agents/skills/game-assets/SKILL.md`](.agents/skills/game-assets/SKILL.md).
 
 ## Repository layout
 
-- `src/`: RTL, verification, software, and FPGA projects.
-- `wiki/`: specifications, decisions, and tool guidance.
-- `.agents/skills/`: agent methods, examples, and templates.
-- `.github/`: issue forms, PR template, labels, and workflows.
-- `cfg/`: small project configuration.
-- `tools/`: checked-in host scripts and automation.
-- `worktrees/`: isolated issue checkouts.
-- `workdir/`: local tools, temporary drafts, builds, and logs.
+- `src/` — RTL, verification, original software, assets, and FPGA projects.
+- `wiki/` — specifications, design decisions, verification contracts, and
+  generated documentation assets.
+- `.agents/skills/` — reusable agent workflows, review methods, examples, and
+  templates.
+- `.github/` — repository automation and validation workflows.
+- `tools/` — build system, assembler/linker, asset tooling, host tools, and wiki
+  generation.
+- `cfg/` — project configuration.
+- `worktrees/` — isolated short-lived author workspaces.
+- `workdir/` — local builds, logs, traces, temporary files, and generated
+  evidence.
 
-Questa is the sole supported simulator. See the
-[build specification](wiki/tools/n2m/SPEC.md) for commands and output layout.
-The builder accepts existing SV targets and separate
-[Python testbenches](src/dv/python/README.md), beginning with the joypad owner.
-Hosted CI checks host contracts; licensed simulation currently requires local
-evidence. The [CI boundary](wiki/tools/n2m/SPEC.md#ci-execution-boundary) tracks
-the trusted remote route still due in #32.
+## Project boundaries
 
-The repository is private; the documentation site is public and deploys after
-merge to `main`. Do not commit commercial ROMs, saves, or credentials. A project
-reuse grant is withheld under the [source and provenance policy](wiki/tools/provenance.md).
+The target is original-DMG-compatible behavior for this project, not a claim of
+exact silicon identity or universal cartridge compatibility. The current game
+profile is mapperless and silent; additional cartridge mappers, CGB/SGB support,
+full audio, and unrelated platform extensions are outside the present core goal.
+
+Commercial ROMs, boot ROMs, saves, credentials, and copied commercial game
+assets must not be committed. External code, tests, models, and tools are pinned
+and tracked under the repository's provenance rules.
+
+The repository is public, and documentation is published from `main` through
+GitHub Pages.
