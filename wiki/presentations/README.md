@@ -1,8 +1,19 @@
 # Presentations
 
-Explore eight short lessons connecting development concepts to this project.
-Each deck has six slides, worked examples, editable diagrams, source links and
-expandable reasoning. Read them in order or choose a discipline.
+Explore eight short lessons connecting development concepts to nand2mario. Each
+deck has six slides, worked examples, editable diagrams, source links and
+expandable reasoning. Read them in order or choose the path that matches what you
+want to understand.
+
+## Pick a route
+
+| Goal | Recommended path |
+|---|---|
+| Understand the machine | CPU execution → Memory buses → Clocks and CDC → Graphics |
+| Understand how we prove it | UART debugging → Verification → Reproducible builds |
+| Understand the game/software boundary | Original software, then Graphics and Verification |
+
+## Lesson library
 
 | Lesson | Question | Project connection |
 |---|---|---|
@@ -13,16 +24,20 @@ expandable reasoning. Read them in order or choose a discipline.
 | [05 · UART debugging](uart-debugging.html) | What makes a retry safe? | Packet validation, cached replies and loading |
 | [06 · Verification](verification.html) | How do we know a checker works? | Independent oracles, fault injection and bounded evidence |
 | [07 · Reproducible builds](reproducible-builds.html) | What does a cached PASS mean? | Input identity, artifact integrity and publication |
-| [08 · Original software](springtrail-software.html) | Where does gameplay belong? | Springtrail's ROM and planned deterministic movement |
+| [08 · Original software](springtrail-software.html) | Where does gameplay belong? | Springtrail ROM, movement, interactions and game flow |
 
 Use Left/Right or the buttons to navigate; Home/End jump to the first/last slide.
-Open **Explore the reasoning** for definitions and discussion prompts. Detailed
-wide diagrams scroll horizontally on small screens; simpler flows stack.
+A direct `#slide-N` fragment opens that slide, which makes individual explanations
+shareable. Open **Explore the reasoning** for definitions and discussion prompts.
+Detailed wide diagrams scroll horizontally on small screens; simpler flows stack.
+Printing a deck includes every slide rather than only the currently visible one.
 Source links open canonical documentation in the embedded wiki viewer.
 
 These decks explain linked contracts; they do not replace them. Springtrail's
-foundation is implemented while later gameplay and physical acceptance remain
-planned in its source specification.
+baseline title, movement, scrolling, interactions and game flow are implemented.
+Expanded alignment work and physical release acceptance remain separate from that
+implemented baseline; follow the linked canonical contracts for the current
+qualification boundary.
 
 For authoring, use the [presentation skill](../../.agents/skills/html-presentation/SKILL.md).
 The [scaffold tour](scaffold-tour.html) introduces the wiki's source navigation.
