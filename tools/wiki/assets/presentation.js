@@ -16,6 +16,12 @@
   const prev = controls.querySelector('[data-prev]');
   const next = controls.querySelector('[data-next]');
   let index = 0;
+  function indexFromFragment() {
+    const fragment = decodeURIComponent(location.hash.slice(1));
+    if (!fragment) return 0;
+    const found = slides.findIndex(slide => slide.querySelector(`#${CSS.escape(fragment)}`));
+    return found < 0 ? 0 : found;
+  }
   function show(value, focus = false) {
     index = Math.max(0, Math.min(slides.length - 1, value));
     slides.forEach((slide, i) => { slide.hidden = i !== index; });
@@ -47,6 +53,7 @@
       status.textContent = 'Use the wiki Fullscreen button to expand this presentation.';
     }
   });
+  window.addEventListener('hashchange', () => show(indexFromFragment()));
   controls.querySelector('[data-fullscreen]').addEventListener('click', async () => {
     if (embedded) {
       window.parent.postMessage({type: 'n2m:fullscreen'}, '*');
@@ -59,5 +66,5 @@
     } catch { status.textContent = 'Fullscreen was declined by the browser.'; }
   });
   deck.classList.add('is-ready');
-  show(0);
+  show(indexFromFragment());
 })();
