@@ -1,9 +1,9 @@
 # Movement and animation research contract
 
-This is the unfinished contract for [#301](https://github.com/amichai-bd/nand2mario/issues/301).
+This is the approved movement contract for [#301](https://github.com/amichai-bd/nand2mario/issues/301).
 The current [game behavior](SPEC.md) remains implemented. The table below records
-confirmed routine behavior, not yet complete per-frame SML1 equivalence.
-Implementation waits for the dispatcher/profile resolutions below.
+confirmed routine behavior, separately from the approved original choices below.
+It does not claim complete per-frame SML1 equivalence; implementation is open.
 
 ## Reference boundary
 
@@ -51,7 +51,7 @@ Routine-boundary examples fixed independently of new DUT output:
   through the ten stationary invocations. The next accepted Left faces left,
   including when its side test blocks displacement.
 
-## Pending observable decisions
+## Reference limits resolved by original choices
 
 The existing [HUD/column schedule](HUD_COLUMNS.md) already fixes one sampled
 input and one game update per frame with one prepared-scene display delay. It
@@ -67,14 +67,14 @@ The following cannot currently be labelled source-confirmed SML1 frame behavior:
 4. The original 8x16 collision box and 16x16/16x24 artwork remain distinct.
    Reference side/head sample offsets alone do not establish a replacement box.
 
-No guessed product implementation or per-update oracle is authorized by this
-research table. Resolve these seams explicitly before changing the first
-success criterion or asserting complete reference equivalence.
+The approved choices below resolve these missing seams for original implementation.
+The reference table alone does not establish complete reference equivalence.
 
-## Proposed resolution - not approved or implemented
+## Approved original resolution
 
-Recommend reference-informed movement with explicit original seams, rather than
-unverified normal-frame SML1 equivalence. The existing mode/input-edge handling,
+On 2026-09-10, the user approved best-effort reference alignment despite incomplete
+confirmation of original movement. This selects the independently reviewed
+original choices below; it does not establish unverified SML1 equivalence. The existing mode/input-edge handling,
 one update per frame and prepared-scene display delay remain unchanged.
 
 - Each PLAY update selects run/jump from prior state, decides the animation
@@ -107,34 +107,23 @@ one update per frame and prepared-scene display delay remain unchanged.
   that update; the next update consumes descent index 0. Landing clamps to the
   support boundary, sets grounded and clears jump state and both indices.
 - Keep the original 8x16 collision box, world coordinates and approved art anchors.
-  No new art, feature family, clock change or additional display delay is proposed.
+  No new art, feature family, clock change or additional display delay is included.
 
 The generic evaluator/profile and player helper's non-run index 2/release cut 15
 are source-described local facts. Player profile binding, run index 0 reset,
 once-per-update dispatch, pose preparation order, underflow handling, ceiling
-transition, landing reset and sustained fall are proposed original choices, not
+transition, landing reset and sustained fall are approved original choices, not
 confirmed Mario behavior. The immediate sentinel descent follows the generic
 evaluator; its normal-player timing remains an original binding. Exact cases
-must retain that distinction when the contract is frozen after approval.
+must retain that distinction when the contract is frozen before implementation.
 
-Only these two issue criteria would be replaced after approval:
-
-1. The owning spec pins the SML1 reference, distinguishes source-confirmed routine
-   rules from the explicitly approved original dispatcher/profile/reset choices,
-   and freezes original diagnostic inputs with per-update position/state/pose
-   expectations before implementation. It makes no unverified normal-frame SML1
-   equivalence claim and derives no expected constants from DUT output.
-2. Animation/facing follow source-confirmed local cycle/facing rules and the
-   explicitly approved original update/pose precedence. Pause/restart and
-   input-to-scene behavior remain deterministic and documented.
-
-These replace current criteria 1 and 3 respectively. All other movement, collision,
-rendered-state, fault, asset and budget requirements remain required. The live
-issue criteria and product are unchanged pending approval.
+The issue retains all movement, collision, rendered-state, fault, asset and budget
+requirements. Its criteria distinguish confirmed local rules from these original
+choices; existing physical-release gates remain separate.
 
 ## Finite implementation/proof boundary
 
-After resolution, freeze literal per-update cases for walk/run/coast/reversal,
+Before implementation, freeze literal per-update cases for walk/run/coast/reversal,
 opposite directions, jump press/hold/release and airborne steering, landing,
 wall/ceiling contact, facing/pose precedence, pause and full restart. Keep
 independent expected states separate from DUT observations. Use the shared
