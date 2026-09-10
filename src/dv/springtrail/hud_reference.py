@@ -54,7 +54,7 @@ def hud_tiles(game):
                  + [IDS[str(game.score)]])
 
 
-def image(game=Game(), facing=False):
+def image(game=Game(), facing=False, *, object_pixels=None):
     """One prepared state: fixed HUD, world-coordinate playfield and clipped OBJ."""
     tiles = [[[0]*8 for _ in range(8)] for _ in range(74)]
     for tile, rows in PAIRS.items():
@@ -64,7 +64,9 @@ def image(game=Game(), facing=False):
         tiles[42+tile] = [row[tile*8:tile*8+8] for row in BANK]
     # The former score/mode pairs are the last four entries. They no longer
     # consume OAM; the first sixteen retain their independent scene model.
-    objects = raster(scene(game, facing)[:64] + bytes(96), tiles)
+    objects = (raster(scene(game, facing)[:64] + bytes(96), tiles)
+               if object_pixels is None else object_pixels)
+    assert len(objects) == 23040
     pixels = bytearray(23040)
     for y in range(16, 144):
         for x in range(160):

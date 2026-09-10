@@ -57,3 +57,21 @@ class MotionAssets(unittest.TestCase):
                 expected = bytes([len(parts)]+[v for p in parts for v in
                     (p['x'], p['y'], p['tile'], 32*p['x_flip']+64*p['y_flip'])])
                 self.assertEqual(image[address:address+len(expected)], expected)
+
+    def test_all_motion_pose_pixels_and_facing(self):
+        from composition_reference import approved, raster
+        from motion_frames import courier, tiles
+        atlas = json.loads((ROOT/'src/sw/springtrail/assets/core/core-tiles.json').read_text())['pixels']
+        pieces = json.loads((ROOT/'src/sw/springtrail/assets/core/core-maps.json').read_text())['small-skid']['pieces']
+        rows = [[0]*16 for _ in range(16)]
+        for part in pieces:
+            for y in range(8):
+                for x in range(8):
+                    rows[part['y']+y][part['x']+x] = atlas[y][part['tile']*8+x]
+        for pose in (0, 1, 2, 3, 4, 12):
+            for left in (False, True):
+                pixels = raster(courier(pose, left, 24, 32), tiles())
+                expected = (approved(pose, left) if pose != 12 else
+                            bytes(v for row in rows for v in (row[::-1] if left else row)))
+                actual = bytes(pixels[y*160+x] for y in range(32, 48) for x in range(24, 40))
+                self.assertEqual(actual, expected)
