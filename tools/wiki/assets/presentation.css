@@ -22,11 +22,15 @@ button:disabled { opacity: 0.45; cursor: default; }
 @media (prefers-reduced-motion: no-preference) { button { transition: background-color 120ms ease; } }
 @media print {
   body { background: white; color: black; }
-  .deck { max-width: none; padding: 0; }
+  .deck {
+    max-width: none; padding: 0; color-scheme: light;
+    --text: #111; --muted: #444; --accent: #111;
+    --panel: white; --surface: white; --border: #999;
+  }
   .deck.is-ready [data-slide], [data-slide][hidden] {
-    display: block;
-    aspect-ratio: auto;
-    min-height: 0;
+    display: block !important;
+    aspect-ratio: auto !important;
+    min-height: 0 !important;
     margin: 0;
     break-after: page;
     border-color: #bbb;

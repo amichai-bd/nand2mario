@@ -17,9 +17,12 @@
   const next = controls.querySelector('[data-next]');
   let index = 0;
   function indexFromFragment() {
-    const fragment = decodeURIComponent(location.hash.slice(1));
+    let fragment;
+    try { fragment = decodeURIComponent(location.hash.slice(1)); }
+    catch { return 0; }
     if (!fragment) return 0;
-    const found = slides.findIndex(slide => slide.querySelector(`#${CSS.escape(fragment)}`));
+    const target = document.getElementById(fragment);
+    const found = slides.findIndex(slide => slide === target || slide.contains(target));
     return found < 0 ? 0 : found;
   }
   function show(value, focus = false) {

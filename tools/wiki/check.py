@@ -28,7 +28,7 @@ def main() -> int:
         output = ROOT / 'workdir/wiki/browser'
         output.mkdir(parents=True, exist_ok=True)
         (output / 'result.json').write_text('{"status": "starting"}', encoding='utf-8')
-        for name in ('failure.png', 'trace.zip'):
+        for name in ('failure.png', 'trace.zip', 'quality-result.json', 'quality-trace.zip'):
             (output / name).unlink(missing_ok=True)
     lock = LOCK.with_name('requirements-browser.txt') if args.browser else LOCK
     (ROOT / "workdir/wiki/docs").mkdir(parents=True, exist_ok=True)
@@ -78,6 +78,10 @@ def main() -> int:
     command = [str(python), 'tools/wiki/browser_tests.py']
     if args.browser_executable:
         command.extend(['--browser-executable', str(args.browser_executable.resolve())])
+    result = subprocess.run(command, cwd=ROOT, env=env, check=False).returncode
+    if result:
+        return result
+    command[1] = 'tools/wiki/browser_quality.py'
     return subprocess.run(command, cwd=ROOT, env=env, check=False).returncode
 
 
