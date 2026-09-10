@@ -101,12 +101,17 @@ one update per frame and prepared-scene display delay remain unchanged.
   then store index 24. Descent adds the current value and decrements the index.
   After index 0 is consumed, mark descent exhausted; the following update and
   later updates fall 4 pixels each. Walking off support enters this same 4-pixel
-  fall immediately. There is no extra apex or exhaustion idle update.
+  fall immediately and selects JUMP. There is no extra apex or exhaustion idle update.
 - A ceiling collision clamps the upward candidate to the contact boundary,
   changes to descent at index 0 and clears the saved index. Do not also move down
   that update; the next update consumes descent index 0. Landing clamps to the
   support boundary, sets grounded and clears jump state and both indices.
-- Keep the original 8x16 collision box, world coordinates and approved art anchors.
+- Horizontal box collision/clamping preserves the evaluated counter, phase and
+  animation progression and accepted facing; it does not roll them back. This
+  original post-movement collision order differs from the reference side-test
+  early return. A contact/clamp stores VelocityX0 even for a partial snap. With
+  no input, a nonzero counter and no stored direction, decrement once and remain
+  horizontally still; do not reproduce an intra-call counter-draining loop. Keep the original 8x16 collision box, world coordinates and approved art anchors.
   No new art, feature family, clock change or additional display delay is included.
 
 The generic evaluator/profile and player helper's non-run index 2/release cut 15
