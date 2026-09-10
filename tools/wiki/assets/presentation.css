@@ -20,3 +20,19 @@ button:disabled { opacity: 0.45; cursor: default; }
 [data-status] { min-height: 1.5em; color: var(--muted); font-size: 0.9rem; }
 @media (max-width: 600px) { .deck.is-ready [data-slide] { aspect-ratio: auto; min-height: 65vh; } }
 @media (prefers-reduced-motion: no-preference) { button { transition: background-color 120ms ease; } }
+@media print {
+  body { background: white; color: black; }
+  .deck { max-width: none; padding: 0; }
+  .deck.is-ready [data-slide], [data-slide][hidden] {
+    display: block;
+    aspect-ratio: auto;
+    min-height: 0;
+    margin: 0;
+    break-after: page;
+    border-color: #bbb;
+    background: white;
+  }
+  [data-slide]:last-of-type { break-after: auto; }
+  .deck-controls, [data-status], .series-home { display: none !important; }
+  a { color: inherit; }
+}
