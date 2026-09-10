@@ -198,6 +198,22 @@ module tb_python_v05 #(
         end
     end
 
+    // Corrupt the actual first rightward velocity store, not its public trace.
+    // The same StepPlayer call must consume zero and expose the wrong X result.
+    initial begin
+        if ($test$plusargs("motion_vx_fault")) begin
+            wait(bus_commit && write_enable && address == 16'hc0fc);
+            do @(negedge clk_sys);
+            while (!(dut.raw_write && dut.raw_store == n2m_memory_pkg::STORE_WRAM &&
+                     dut.raw_offset == 15'h0014 && dut.raw_wdata == 8'd16));
+            $display("MOTION_VX_MUTATION expected=16 actual=0 dot=%0d", dot_count);
+            force dut.u_stores.ram_wdata = 8'd0;
+            @(posedge clk_sys);
+            @(negedge clk_sys);
+            release dut.u_stores.ram_wdata;
+        end
+    end
+
     // Change one real WRAM store after the original unit's first call marker.
     // The later prepared-image read must expose the corrupt stored cell.
     initial begin

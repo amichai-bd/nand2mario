@@ -1,13 +1,16 @@
 """Bounded real-ROM route using ordinary Client operations and applied dots."""
-import json,math,time,zlib
+import json,math,time,zlib,hashlib
 from pathlib import Path
 from n2m import generated_interfaces as abi
 from physical_reference import LCD,PERIOD,predict,visible_boundary,expected_snapshot
+
+BASELINE_ROM_SHA256 = '470fc034aea9bb2c205feb8b351f1655c1ec7c8bbcd7761e71f2aa4700802705'
 
 DOT_HZ=4194304
 
 
 def run(client,rom,folder,log,expected_build,expected_epoch=2):
+    assert hashlib.sha256(rom).hexdigest() == BASELINE_ROM_SHA256, 'HISTORICAL_PHYSICAL_ROM: fixed-physics route requires its original ROM'
     folder=Path(folder);events=[];checks=[];dot=0;mask=0;completed=False
     def note(kind,**values):log(dict(kind=kind,**values))
     def pause_visible():

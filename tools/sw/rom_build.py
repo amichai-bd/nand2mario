@@ -26,6 +26,13 @@ def require_legacy_scene(root, target):
             fail('HISTORICAL_RENDER_SOURCE', 'old renderer fixture requires #316 scene; use current HUD unit and game checks')
 
 
+def require_legacy_movement(root, target):
+    if target in ('springtrail-unit', 'flow', 'flow-s'):
+        raw=(root/'src/sw/springtrail/movement.asm').read_bytes().replace(b'\r\n',b'\n')
+        if hashlib.sha256(raw).hexdigest()!='d78e43b6e8a800a8e8062ebda377c88ba3a22017c6b97d736a96c91679eb66b9':
+            fail('HISTORICAL_MOVEMENT_SOURCE', 'fixed-physics unit requires old movement; use python-mus/python-mut')
+
+
 def build_target(root, build, args, provenance):
     safe = args.target if re.fullmatch('[a-z0-9][a-z0-9_-]*', args.target) else 'invalid-target'
     stage = build / 'sw/build' / safe
@@ -42,6 +49,7 @@ def build_target(root, build, args, provenance):
         target = definitions['targets'].get(args.target)
         validate_target(target, require_package=True, stage='link')
         require_legacy_scene(root,args.target)
+        require_legacy_movement(root,args.target)
         if args.target == 'springtrail':
             from .columns import validate as validate_columns
             validate_columns(root)

@@ -1,5 +1,6 @@
 """Original HUD/terrain pixels and column expectations, independent of assembly."""
 import json
+import hashlib
 from pathlib import Path
 
 from composition_reference import BANK, raster, scene
@@ -88,3 +89,13 @@ def image(game=Game(), facing=False, *, object_pixels=None):
                 left = y*160+(start+offset)*8
                 pixels[left:left+8] = rows[y*8:y*8+8]
     return bytes(pixels)
+
+
+def require_historical_source(root):
+    """Old HUD fixtures seed no new motion state; retain their exact scene owner."""
+    expected = {'movement.asm':'d78e43b6e8a800a8e8062ebda377c88ba3a22017c6b97d736a96c91679eb66b9',
+                'courier.asm':'ed53d787575239370325edc6bd3744ebedda34601c3c122e258fcc047029b8bf'}
+    for name, digest in expected.items():
+        raw = (root/'src/sw/springtrail'/name).read_bytes().replace(b'\r\n',b'\n')
+        if hashlib.sha256(raw).hexdigest() != digest:
+            raise ValueError('HISTORICAL_HUD_SOURCE: use current motion CPU/game/render targets')

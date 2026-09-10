@@ -22,6 +22,9 @@ async def run(dut, short=False, renderer=False, motion=False):
         from hud_render_reference import Check
     else:
         from hud_game_reference import Check
+    if not motion and not renderer:
+        from hud_game_reference import require_baseline_rom
+        require_baseline_rom(Path('program.gb').read_bytes())
     received=Queue(); entries=[]; check=Check(short); tasks=[]
     with Path('transactions.jsonl').open('w') as journal:
         def log(kind,**fields):

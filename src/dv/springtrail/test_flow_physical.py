@@ -3,6 +3,7 @@ import sys
 import hashlib
 import tempfile
 import unittest
+from unittest.mock import patch
 from dataclasses import replace
 from pathlib import Path
 
@@ -87,6 +88,7 @@ class Endpoint:
         return metadata, bytes(packed)
 
 
+@patch('flow_physical_driver.BASELINE_ROM_SHA256',hashlib.sha256(bytes(32768)).hexdigest())
 class FlowPhysical(unittest.TestCase):
     def prior(self):
         return dict(sequence=7, build_id='original', halt_dot=1000000,

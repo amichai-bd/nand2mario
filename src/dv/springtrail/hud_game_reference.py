@@ -165,3 +165,11 @@ class Check:
             assert self.triggers[-1]+644<pause<self.lcd+2*PERIOD,'HUD_FINAL_WINDOW'
         return dict(pixels=self.pixels,records=self.records,lcd=self.lcd,ready=self.ready,
                     dma_bytes=len(self.dma),input_dot=self.input_dot,pause=pause,irq=self.irq,split=self.split,tokens=self.tokens,hud=self.hud,samples=self.samples,bus_count=self.bus_count)
+
+
+BASELINE_ROM_SHA256 = 'adbef6b04b5ca7c3896beace71b1735b6dd49115feda0c6ebe20f11ae109f369'
+
+
+def require_baseline_rom(rom):
+    import hashlib
+    assert hashlib.sha256(rom).hexdigest() == BASELINE_ROM_SHA256, 'HISTORICAL_HUD_ROM: use python-mgs/python-mgu'

@@ -1,5 +1,5 @@
 """Host control-flow checks only; synthetic frames are not DUT evidence."""
-import sys,tempfile,unittest
+import sys,tempfile,unittest,hashlib
 from pathlib import Path
 from unittest.mock import patch
 ROOT=Path(__file__).resolve().parents[3]
@@ -37,6 +37,7 @@ class Endpoint:
         return metadata,bytes(packed)
 
 
+@patch('physical_driver.BASELINE_ROM_SHA256',hashlib.sha256(bytes(32768)).hexdigest())
 class PhysicalControlFlow(unittest.TestCase):
     def test_complete_route_and_cleanup(self):
         endpoint=Endpoint()
