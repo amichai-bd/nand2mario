@@ -57,6 +57,9 @@ private/
 credentials.json
 secrets.json
 
+# Per-developer Claude Code state
+.claude/settings.local.json
+
 # Editors and operating systems
 .vscode/
 .idea/
