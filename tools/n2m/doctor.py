@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import uuid
 
+from .fpga import ALLOCATOR_NOTICE
 from .records import file_hash
 from .questa import write_macro, diagnostic
 
@@ -72,12 +73,16 @@ def quartus(folder, directory):
     output = execute([tool, "--version"], folder, "version.log")
     if "Quartus" not in output or "Version " not in output:
         raise RuntimeError("unrecognized Quartus version output")
-    if warning(output) or any(line.strip() and not line.startswith(("Quartus", "Version ", "Copyright"))
+    # The fitter owns this pinned text; only that exact notice is explained here.
+    explained = [line.strip() for line in output.splitlines() if line.strip() == ALLOCATOR_NOTICE]
+    if warning(output) or any(line.strip() and line.strip() != ALLOCATOR_NOTICE
+                              and not line.startswith(("Quartus", "Version ", "Copyright"))
                               for line in output.splitlines()):
         raise RuntimeError("unexplained Quartus diagnostic; see version.log")
     lite = "Lite Edition" in output
     return {"path": tool, "version": output.strip(),
             "license": "Lite requires no license file" if lite else "not verified; synthesis was not run",
+            "explained_diagnostics": [{"code": "TBBmalloc", "text": line} for line in explained],
             "synthesis": "not tested", "status": "PASS" if lite else "WARNING"}
 
 
