@@ -16,7 +16,9 @@ from hud_game_reference import Check
 
 
 async def run(dut, short=False, renderer=False, motion=False):
-    if motion:
+    if motion and renderer:
+        from motion_render_reference import Check
+    elif motion:
         from motion_game_reference import Check
     elif renderer:
         from hud_render_reference import Check

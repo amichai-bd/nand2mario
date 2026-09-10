@@ -19,9 +19,20 @@ chosen from DUT output. `python-mgs` exercises that full startup through at leas
 90ms simulation watchdog and existing300-second whole supervisor remain active.
 
 VBlank code is unchanged: retain the [HUD publication4388 bound/4480 ceiling](HUD_COLUMNS.md#instruction-bounds).
-The current visible StepPlayer/UpdateGame branch bound and exact CPU case total
-must be frozen before full execution; old4200 movement/VBlank arithmetic below
-is historical and cannot qualify current motion. The first game update expects
+Current shared CPU ceilings are7960 dots for StepPlayer including marker/call,
+892 for InitPlayer and18000 for UpdateGame. The static tally counts all branch
+bodies, then adds the bounded repeated work: at most three horizontal rows,
+two vertical/support columns and four item iterations. StepPlayer is
+7320+2*152+116+120+100=7960. UpdateGame is
+2900+7860+892+5*600+23*84+3*432+120=18000. These conservative sums intentionally
+include mutually exclusive branches. The fixture enforces8000/20000 call caps;
+40 calls (32 step, one init, seven actual mode dispatches),1700 setup per call
+and1000 tail give473000 dots, below its500000 guard. Short/full simulation
+watchdogs are35/150ms; neither this dot ceiling nor static proof establishes
+full-run wall feasibility. Measure the complete first-Right short before that
+decision. Old4200 arithmetic below cannot qualify current motion.
+
+The first game update expects
 X25,Y112,VX1,VY0, counter1,directionRight,speed0,phase1,animation2,STAND; it prepares
 that state after the first VBlank and publishes it at the next. The retained
 normal output frame is the prior prepared TITLE; independent rendered motion
@@ -42,6 +53,27 @@ exact instruction/dot bounds must be frozen before each licensed run.
 | Fault | A real movement consumer mutation rejected at the first differing state by the unchanged positive checker; retain failed receipt | Shortest useful CPU case, after positive proof |
 | Consumer qualification | Historical fixed-physics/current-ROM consumers either gain independently current expectations or reject incompatible current ROM/source before use | Focused host guards; no relabelled old full-route evidence |
 | Delivery | Owning SW/DV/asset links and previews, original32KiB reproducible image, affected host checks, required CI and current-head independent review | No new art approval or full hardware milestone replay |
+
+The fixed renderer seeds WALK2 facing right at world X120,Y12 and camera97,
+with prior published camera95. After the shared PrepareScene writes all160
+bytes, a second actual ComposeCourier writes16 approved SKID-left bytes at
+C140..C14F for screen X60,Y32. The checker requires both stages in order,
+the remaining80 zero tail, both complete160-byte DMA transfers, all98 loaded
+tiles and every pixel of the displayed frame. The entering column32 is visible
+at X159. No gameplay update or extra feature is inferred from these operands.
+`python-mr` uses the complete two-VBlank/terminal/settled-HALT harness, with
+LCD-off startup bounded by160000 dots and total progress by300000 dots.
+
+`python-mux` changes the actual first rightward VX store from16 to0 after the
+first CPU call marker. The public write trace remains unchanged; the unchanged
+positive checker must reject the consumed wrong X/state, with the mutation
+marker and failed receipt retained. Host artifact corruption is not this fault.
+
+Historical HUD fixtures pin the prior movement/courier sources; the old HUD
+game pins ROMadbef6b0. Earlier fixed-physics CPU units and physical route drivers
+also reject incompatible current sources/ROMs before assembly or traffic.
+Literal world/terrain helpers remain usable; old trajectory evidence is not
+relabelled. Current replacements are the motion CPU/game/renderer targets above.
 
 Initial planning forecast: CPU short20 seconds, CPU full150, game short130,
 game full240, renderer220 and early CPU fault40 (800 seconds aggregate). These
