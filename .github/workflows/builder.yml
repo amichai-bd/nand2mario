@@ -71,6 +71,27 @@ jobs:
             fi
             python -c "import json,sys; from pathlib import Path; r=json.loads(Path('workdir/builds/ci-assets/manifest.json').read_text()); expected='asset pixel mismatch x=0 y=0 expected=0 actual=1' if sys.argv[1]=='tiles' else 'asset basis case=1: asset pixel mismatch x=0 y=0 expected=1 actual=0'; assert r['status']=='FAIL' and r['error']==expected" "$mode"
           done
+      - name: Check Springtrail host verification fixtures
+        run: |
+          python - <<'PY'
+          import importlib, pathlib, sys, unittest
+          start = pathlib.Path('src/dv/springtrail')
+          sys.path.insert(0, str(start))
+          suite, simulator = unittest.TestSuite(), []
+          for path in sorted(start.glob('test_*.py')):
+              try:
+                  module = importlib.import_module(path.stem)
+              except ModuleNotFoundError as error:
+                  # Simulator entry points need cocotb, whose pinned 2.0.1
+                  # release does not build for this interpreter.
+                  if error.name != 'cocotb':
+                      raise
+                  simulator.append(path.name)
+                  continue
+              suite.addTests(unittest.defaultTestLoader.loadTestsFromModule(module))
+          print('simulator entry modules not run here:', ' '.join(simulator))
+          sys.exit(not unittest.TextTestRunner(verbosity=2).run(suite).wasSuccessful())
+          PY
       - name: Report simulation scope
         run: |
           echo "Host contracts and the actual pinned RGBDS oracle. Licensed Questa simulation is not run on hosted PR jobs; actual local evidence is required until the trusted route in issue #32 is configured." >> "$GITHUB_STEP_SUMMARY"

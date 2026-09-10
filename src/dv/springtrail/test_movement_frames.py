@@ -5,12 +5,15 @@ from movement_reference import Player,step
 
 class OriginalMovementFrames(unittest.TestCase):
     def test_title_and_first_movement(self):
-        self.assertEqual(zlib.crc32(image(title=True)),0x5324bc1f)
+        # Both images dropped their background item markers when map.asm and
+        # world.asm moved items to OAM objects. The retained historical frames
+        # in reference.py keep the earlier 0x5324bc1f title.
+        self.assertEqual(zlib.crc32(image(title=True)),0x4e8a1268)
         first=step(Player(),129)
         self.assertEqual((first.x,first.y,first.camera),(400,1792,0))
         frame=image(first)
         self.assertEqual(len(frame),23040)
-        self.assertEqual(zlib.crc32(frame),0xae96d493)
+        self.assertEqual(zlib.crc32(frame),0xb3387ae4)
         self.assertEqual(frame[112*160+27:112*160+31],bytes((0,3,3,0)))
 
     def test_fixed_round_trip(self):

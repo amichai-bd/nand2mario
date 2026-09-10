@@ -17,8 +17,11 @@ class Composition(unittest.TestCase):
             from sw.linker import link
             from sw.assets import encode_shades, load_shades
             source=ROOT/'src/sw/springtrail'
-            assets={name:encode_shades(load_shades(source/path,path),path) for name,path in
-                    (('Tiles','tiles.json'),('Courier','assets/courier/unique-tiles.json'))}
+            # Assemble the assets the shipped target declares, so a newly
+            # declared ASSET cannot leave this fixture behind.
+            declared=json.loads((ROOT/'src/sw/targets.json').read_text())['targets']['springtrail']['assets']
+            assets={name:encode_shades(load_shades(source/row['source'],row['source']),row['source'])
+                    for name,row in sorted(declared.items())}
             obj=assemble(source/'main.asm',source,ROOT/'src/sw/generated/interfaces.inc',assets)
             linked=link([('main.asm',obj)],json.loads((source/'layout.json').read_text()),
                         dict(unit='main.asm',symbol='Start'))
