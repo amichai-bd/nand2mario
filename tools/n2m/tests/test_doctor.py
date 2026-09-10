@@ -12,6 +12,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from n2m.doctor import doctor, execute, parse_jtag, questa, quartus, select_uart, uart, warning
+from n2m.fpga import ALLOCATOR_NOTICE
 from n2m.cli import main, parser
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -178,6 +179,25 @@ class DoctorTests(unittest.TestCase):
                 patch("n2m.doctor.execute", return_value="TBBmalloc: unknown prologue\nQuartus Prime Shell\nVersion 25.1 Lite Edition"):
             with self.assertRaisesRegex(RuntimeError, "diagnostic"):
                 quartus(self.folder, None)
+
+    def test_quartus_explains_only_the_pinned_allocator_notice(self):
+        banner = "Quartus Prime Shell\nVersion 25.1 Lite Edition"
+        with patch("n2m.doctor.executable", return_value="quartus_sh"), \
+                patch("n2m.doctor.execute", return_value=f"{ALLOCATOR_NOTICE}\n{banner}"):
+            report = quartus(self.folder, None)
+        self.assertEqual(report["status"], "PASS")
+        self.assertEqual(report["explained_diagnostics"],
+                         [{"code": "TBBmalloc", "text": ALLOCATOR_NOTICE}])
+        self.assertIn(ALLOCATOR_NOTICE, report["version"])
+        with patch("n2m.doctor.executable", return_value="quartus_sh"), \
+                patch("n2m.doctor.execute", return_value=banner):
+            self.assertEqual(quartus(self.folder, None)["explained_diagnostics"], [])
+        for unexpected in (f"{ALLOCATOR_NOTICE} extra", ALLOCATOR_NOTICE.replace("_msize", "_expand"),
+                           "Error (1): unrelated"):
+            with patch("n2m.doctor.executable", return_value="quartus_sh"), \
+                    patch("n2m.doctor.execute", return_value=f"{unexpected}\n{banner}"):
+                with self.assertRaisesRegex(RuntimeError, "diagnostic"):
+                    quartus(self.folder, None)
 
 
 if __name__ == "__main__":

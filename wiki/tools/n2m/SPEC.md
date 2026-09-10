@@ -347,7 +347,11 @@ The default profile checks Questa; the environment profile adds the remaining to
   required after a zero exit.
 - Quartus: report version and edition. Lite needs no license file; other editions
   report unverified licensing. Unexpected diagnostics fail. Version discovery
-  does not prove synthesis.
+  does not prove synthesis. The version output may carry exactly the pinned
+  allocator notice classified for the [build flow](#diagnostic-classification);
+  the check reuses that single definition, retains the line in the log and in the
+  result's `explained_diagnostics`, and continues. Any other text, including
+  different `TBBmalloc` wording, still fails.
 - JTAG: invoke only `jtagconfig` enumeration. Exactly one USB-Blaster chain must
   report `10M50DA`; `--jtag-cable <index>` selects among multiple chains. This is
   reported identity, not wiring, voltage, or programming proof.
