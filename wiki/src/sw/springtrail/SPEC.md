@@ -116,7 +116,7 @@ publication continues; inactive map restoration may continue while paused.
 
 Each VBlank samples JOYP once. Process restart/pause first. A playing update
 selects run/jump state, advances animation, resolves horizontal motion/collision,
-then vertical profile motion/collision, then interactions and camera. Scene
+then vertical profile motion/collision, updates camera, then resolves interactions. Scene
 preparation reads that resulting state without advancing animation. The
 [movement contract](MOVEMENT.md) fixes the exact precedence and original choices.
 Resolve each axis

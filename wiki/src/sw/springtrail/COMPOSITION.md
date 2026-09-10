@@ -133,3 +133,31 @@ The older nine-object frame and renderer helpers are historical-only. Their
 ROM/source guards reject that composition. Its checks are
 `python-courier-unit`, `python-cgs`, `python-cgu` and `python-cgx`; historical
 endurance cannot silently validate a new ROM.
+
+## Current reference previews
+
+![Fixed WALK2 right and SKID left reference](motion-previews/walk-skid.svg)
+
+This is an independent expected render from approved source pixels, not a DUT
+capture or FPGA photograph. The fixed renderer places the player at world
+(120,12), camera97, with WALK2 facing right. A diagnostic secondary small skid
+faces left at screen (60,32); it is not an additional gameplay entity. The HUD
+clips the player's upper rows while preserving its pixels at y>=16.
+
+![Approved pose atlas in both directions](motion-previews/poses.svg)
+
+Labels are composer pose IDs and R/L facing. IDs0..5 are small
+STAND/WALK1/WALK2/WALK3/JUMP/RETRY, IDs6..11 are the corresponding large maps,
+and ID12 is the approved small skid. Checkerboard and padding are review aids.
+Large poses remain composition support, not implemented power transitions.
+
+Reproduce both files from an author worktree with a fresh tag:
+
+```text
+python src/dv/springtrail/motion_preview.py --tag motion-preview
+```
+
+The [reproducer](../../../../src/dv/springtrail/motion_preview.py) uses the fixed
+independent renderer expectation and approved pose/asset sources through the
+existing SVG tool. It writes to `workdir/builds/<tag>/motion-preview/` and does
+not change assets or obtain expected pixels from an execution trace.
