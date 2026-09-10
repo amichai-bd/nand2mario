@@ -96,9 +96,9 @@ frame/pixel checks, host-side observations, negative tests, and bounded FPGA
 proofs. Simulation must compile, elaborate, run, and check an expected result;
 a successful process exit alone is not considered evidence.
 
-The verification strategy and milestone boundaries are documented under
-[`wiki/src/dv/`](wiki/src/dv/) and in the
-[integration verification specification](wiki/src/dv/integration/SPEC.md).
+The verification strategy and milestone boundaries are documented in the
+[integration verification specification](wiki/src/dv/integration/SPEC.md) and
+its linked subsystem and milestone verification contracts.
 
 ## How the project is developed with AI agents
 
