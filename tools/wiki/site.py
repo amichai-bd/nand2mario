@@ -71,6 +71,8 @@ def tracked_text(root: Path) -> dict[str, str]:
 
 
 def category(path: str) -> str:
+    if path == "wiki/statistics.html":
+        return "Stats"
     if path.startswith((".agents/", "wiki/agents/")):
         return "Agents/Skills"
     if path.startswith(("src/", "wiki/src/")):

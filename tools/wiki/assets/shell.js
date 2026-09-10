@@ -1,7 +1,7 @@
 /* Navigation uses the source path itself. The manifest contains only tracked text. */
 "use strict";
 const $ = (id) => document.getElementById(id);
-const categories = ["Home", "Src", "Agents/Skills", "Tools", "Cfg", "Presentations"];
+const categories = ["Home", "Src", "Agents/Skills", "Tools", "Cfg", "Presentations", "Stats"];
 let files = {}, current = "README.md", activeCategory = "Home", activeFrame = null;
 
 function link(path, fragment = "") {
