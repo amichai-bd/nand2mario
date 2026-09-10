@@ -1,54 +1,47 @@
 # nand2mario documentation
 
-This wiki records project behavior, architecture, decisions, verification, and
-development guidance in version control.
+Start here to explore the Game Boy platform, its original games, and the
+engineering workflow. The [project overview](../README.md) introduces the
+system; this guide points to the contracts that own the details.
 
-## Current documents
+## Choose a path
 
-- [Repository statistics](statistics.html) measures source size, disciplines
-  and issue-to-PR delivery in a manually generated HTML snapshot. Use the **Stats**
-  tab or the [refresh instructions](project-statistics.md).
+| I want to… | Start here | Continue with |
+|---|---|---|
+| Understand the project | [Project charter](src/project-charter.md) | [Current phase and gates](agents/bootstrap-plan.md#current-phase) |
+| Learn the architecture visually | [Eight illustrated lessons](presentations/README.md) | CPU, memory, clocks, graphics, UART, verification, builds and software |
+| Explore the game and artwork | [Springtrail](src/sw/springtrail/SPEC.md) | [8x8 tile composition](src/sw/springtrail/CHARACTER_ART.md) and [core asset gallery](src/sw/springtrail/CORE_ART.md) |
+| Build or test something | [Build entry point](tools/n2m/SPEC.md#available-commands) | [Software toolchain](tools/sw/SPEC.md) and [verification tiers](src/dv/integration/SPEC.md#verification-tiers) |
+| Find the owning specification | [Ownership map](ownership.md) | Tool PRDs/SPECs, RTL microarchitecture and verification contracts |
+| Interpret repository activity | [Statistics report](statistics.html) | [How to read and refresh the snapshot](project-statistics.md) |
+| Contribute with an agent | [Agent rules](../AGENTS.md) | [Agent flow](../.agents/skills/agent-flow/SKILL.md) and [worktree lifecycle](../worktrees/README.md) |
 
-- [Documentation ownership](ownership.md) maps tool PRDs/SPECs and RTL
-  microarchitecture to implementation and verification.
+## What exists, and what still needs proof
 
-- [Software toolchain](tools/sw/SPEC.md) defines the planned Python
-  assembler/linker, original assets and fixed-ROM packaging.
+The repository contains the DMG platform, a Python SM83 assembler/linker and
+ROM build pipeline, and Springtrail's title, movement, scrolling, interactions
+and game flow. See the [game contract](src/sw/springtrail/SPEC.md),
+[software toolchain](tools/sw/SPEC.md) and
+[build system](tools/n2m/SPEC.md) for their supported boundaries.
 
-- [Project charter](src/project-charter.md) records the approved direction and
-  approved release acceptance.
-- [Clocks, resets, and CDC](src/clocks-resets-cdc.md) defines the planned
-  system timebase, VGA timing, reset release, and frame ownership.
-- [RTL reference style](src/rtl-reference-style.md) compares frog-bui and FROG_FS
-  before display design.
-- [Research findings](research-findings.md) records the environment audit,
-  reference review, recommended architecture, and delivery sequence.
-- [Gaps before implementation](preflight-gaps.md) records unresolved work and
-  the evidence required to close it.
-- [Pre-RTL bootstrap plan](agents/bootstrap-plan.md) orders the remaining work
-  and defines the implementation gate.
-- [Build-system specification](tools/n2m/SPEC.md) defines tagged builds,
-  cache behavior, and simulation result paths.
-- [Wiki build](tools/wiki/SPEC.md) defines the local and pull-request check.
-- [Issues and labels](agents/issues.md) defines concise issue intake and the
-  reusable label model.
-- [Branches and pull requests](agents/pull-requests.md) defines issue-backed
-  branches, required closure, and the PR policy check.
-- [Worktree lifecycle](https://github.com/amichai-bd/nand2mario/blob/main/worktrees/README.md)
-  defines isolated agent checkouts.
-- [Agent working rules](https://github.com/amichai-bd/nand2mario/blob/main/AGENTS.md)
-  defines the concise rules used throughout the repository.
+Implementation is not the same as release qualification. The
+[verification plan](src/dv/springtrail/SPEC.md) separates the original baseline
+from later changes; the [charter](src/project-charter.md#release-acceptance)
+and [preflight register](preflight-gaps.md) retain physical acceptance and
+setup requirements. Approved artwork is a source/review asset, not proof that
+every depicted action is integrated or has run on the FPGA.
 
-## Status
+## Read the sources, not a second copy
 
-The agent workflow, repository structure, wiki checks, and Pages deployment are
-proven. Assigned P0 gaps still block functional RTL.
+The wiki owns behavior and design contracts. `src/` and `tools/` own their
+implementations. Presentations explain the contracts through worked examples;
+SVG galleries expose editable art sources. The statistics page is a dated
+measurement, not a live dashboard or readiness score.
 
-Keep future pages short, with one per subsystem or interface. Where practical, use:
+Use the category tabs and file filter to explore. **View source** shows the
+published document's original text. Implementation links open the repository;
+the documentation site does not mirror product source.
 
-1. Purpose
-2. Interface
-3. Behavior
-4. Edge cases
-5. Verification
-6. References
+The [wiki build contract](tools/wiki/SPEC.md) describes publication and link
+checks. Keep new pages focused and link the existing owner instead of copying
+requirements into another overview.

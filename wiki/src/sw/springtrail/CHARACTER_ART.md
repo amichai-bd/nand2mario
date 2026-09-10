@@ -1,11 +1,10 @@
 # Approved courier character art
 
-Status: the user approved these original pixel designs on 2026-09-09.
-This is an asset reference for planned integration in
-[#292](https://github.com/amichai-bd/nand2mario/issues/292), not a change to the
-[running game](SPEC.md). Approval covers the depicted pixels, shared tile bank
-and small 16x16 / large 16x24 pose geometry. These are original art choices;
-they are not verified Super Mario Land 1 character dimensions.
+Status: the user approved these original pixel designs on 2026-09-09. The
+current [composer](COMPOSITION.md) consumes the shared tile bank and pose maps as
+ordinary 8x8 Game Boy object pieces. Approval covers the depicted pixels, shared
+tile bank and small 16x16 / large 16x24 pose geometry. These are original art
+choices; they are not verified Super Mario Land 1 character dimensions.
 
 ## Tile bank and poses
 
@@ -24,8 +23,9 @@ six named poses under each of `small` and `large`: `STAND`, `WALK1`, `WALK2`,
 `WALK3`, `JUMP` and `RETRY`. A piece has `x` and `y` pixel offsets from its
 pose's top-left, a zero-based `tile` index, and `x_flip` / `y_flip` flags.
 All stored flags are false. Pieces are ordered by row then column, with four
-pieces per small pose and six per large pose. Offsets describe artwork
-placement; they do not yet specify OAM coordinate bias or gameplay anchors.
+pieces per small pose and six per large pose. Offsets describe artwork placement;
+OAM anchors, facing, clipping and object limits are owned by the
+[composition contract](COMPOSITION.md).
 
 ![Small 16x16 poses and their tile maps](character-art/small-tile-maps.svg)
 
@@ -58,20 +58,20 @@ a pose, start a transparent 16x16 or 16x24 shade grid, extract columns
 for each piece. Use the same preview tool on the resulting shade grid.
 The SVG layout is explanatory; JSON owns pixel and placement values.
 
-## Integration still pending
+## Runtime composition boundary
 
-[#292](https://github.com/amichai-bd/nand2mario/issues/292) owns loading and
-assembling these assets with 8x8 objects, defining facing/mirroring and anchors,
-and checking OAM capacity. It must preserve the approved geometry unless the
-user approves a later art revision. Reference-game anchor and assembly evidence
-remains useful without treating its pixel dimensions as approved replacements.
-[#301](https://github.com/amichai-bd/nand2mario/issues/301) owns movement and
-animation cadence; [#302](https://github.com/amichai-bd/nand2mario/issues/302)
-owns damage and power-state behavior. Pose names are asset identifiers, not a
-completed gameplay state machine. Collision boxes, transitions, palette writes
-and timing are not established by this art approval. No game layout, assembly,
-RTL or existing game asset file is changed here.
+The current SM83 composer reconstructs the approved poses from the shared bank
+and emits ordinary 8x8 OAM entries. The [composition contract](COMPOSITION.md)
+owns runtime tile allocation, anchors, whole-pose reflection, clipping and OAM
+capacity. The [game specification](SPEC.md) owns which poses are selected by
+current gameplay and which later movement/size transitions belong to staged
+alignment work.
+
+Artwork approval does not by itself define collision boxes, state transitions,
+palette writes or timing. Those behaviors remain in their owning game and
+verification contracts. Likewise, an SVG review view proves reproducible pixel
+composition, not FPGA display or physical release acceptance.
 
 The [approved core asset pack](CORE_ART.md) adds player actions, terrain, items,
 enemies, platforms, effects, fonts and UI compositions. It retains separate
-feature integration and visual approval boundaries.
+source, integration and verification boundaries.

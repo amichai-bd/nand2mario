@@ -32,6 +32,13 @@ recovery from a missing page. Unexpected console errors and page exceptions fail
 The browser's optional favicon request is handled locally. Waits observe page
 state without fixed sleeps.
 
+A second stage then checks quality regressions in the same browser: slide
+fragment deep links, safe fallback for unknown and malformed fragments, keyboard
+paging, print emulation showing every slide with readable dark diagram text, and
+statistics charts that scroll instead of shrinking at narrow widths. It writes
+`quality-result.json` and `quality-trace.zip` beside the interaction results. Both
+stages must pass; the first failure stops the run.
+
 The test owns an ephemeral loopback server thread and browser. Both close in
 `finally` blocks; a forced failure also exercises cleanup. The server's listener
 and thread are checked after shutdown. Results, trace, browser temporary files,
@@ -177,4 +184,5 @@ charts are generated together from the same source/GitHub data.
 
 Run `python -m unittest tools.wiki.test_repository_stats -v` for offline collector,
 empty-sample, escaping and atomic-failure checks. The wiki browser suite checks
-the Stats tab and report at desktop/mobile sizes.
+the Stats tab and report at desktop/mobile sizes, including the snapshot notice,
+documentation navigation and keyboard-scrollable chart regions.
