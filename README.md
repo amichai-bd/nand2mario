@@ -57,8 +57,40 @@ hand-edited output images.
 
 ![Springtrail progression screens](wiki/src/sw/springtrail/core-art/progression-screens.svg)
 
+#### Character construction from 8x8 tiles
+
+The courier artwork demonstrates how larger character poses are assembled from
+ordinary 8x8 Game Boy object pieces. The shared bank contains 32 unique tiles;
+pose maps select and place those tiles rather than storing a separate bitmap for
+every pose.
+
+![Shared numbered 8x8 tile bank](wiki/src/sw/springtrail/character-art/tile-bank.svg)
+
+Small poses are 16x16 pixels and use four 8x8 pieces:
+
+![Small 16x16 poses and their tile maps](wiki/src/sw/springtrail/character-art/small-tile-maps.svg)
+
+Large poses are 16x24 pixels and use six 8x8 pieces:
+
+![Large 16x24 poses and their tile maps](wiki/src/sw/springtrail/character-art/large-tile-maps.svg)
+
+The pose sheets show the tile IDs used to reconstruct each character pose. The
+SM83 composer emits those pieces as ordinary OAM entries, including positioning,
+clipping and facing. The editable shade data and pose maps under
+`src/sw/springtrail/assets/` remain authoritative; these SVGs are generated
+review views.
+
+#### Additional asset sheets
+
+The same asset flow is used for the rest of the original game artwork:
+
+![Player actions](wiki/src/sw/springtrail/core-art/player-actions.svg)
+
+![Terrain and items](wiki/src/sw/springtrail/core-art/terrain-items-review.svg)
+
 More artwork and its editable-source mapping are documented in the
-[Springtrail core-art reference](wiki/src/sw/springtrail/CORE_ART.md).
+[Springtrail character-art reference](wiki/src/sw/springtrail/CHARACTER_ART.md)
+and [core-art reference](wiki/src/sw/springtrail/CORE_ART.md).
 
 ## Original software toolchain
 
