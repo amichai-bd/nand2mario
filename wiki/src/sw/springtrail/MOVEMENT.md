@@ -144,7 +144,9 @@ Scene composition reads motion pose/facing and retains the existing title/retry
 mode overrides. It does not advance motion state. Logical skid uses the approved
 small-skid core pose; no power/large-state mechanics are introduced. Existing
 courier poses and core editable sources remain authoritative. The skid's four
-core tiles require explicit ROM/VRAM placement before the early image build;
+core tiles16..19 stay at ROM6100..613F and are copied at LCD-off startup to
+VRAM tiles94..97 (85E0..861F). Courier pose12 uses these four pieces; existing
+pose indices0..11 retain their mappings. This allocation needs no extra ROM atlas;
 no other approved core state is added to this feature.
 
 Movement remains in the existing ROM2000..27FF allocation. New state does not
@@ -183,3 +185,28 @@ No simulation is authorized by a speculative performance estimate.
 
 [bank0]: https://github.com/kaspermeerts/supermarioland/blob/618d00ed6c330928e106719533c6e294ae5d5726/bank0.asm
 [bank3]: https://github.com/kaspermeerts/supermarioland/blob/618d00ed6c330928e106719533c6e294ae5d5726/bank3.asm
+
+## Remaining acceptance matrix
+
+All rows remain incomplete until implementation and independently reviewed
+producing evidence exist. Host expectations must be frozen before motion code;
+exact instruction/dot bounds must be frozen before each licensed run.
+
+| Group | Required result | Planned execution |
+| --- | --- | --- |
+| Contract/model | Literal per-update walk/run/coast/reverse/opposite inputs; jump hold/release/apex/fall, steering, walls/ceiling/landing; phase/counter wrap; mode pause/resume/restart and pose/facing precedence | Independent pure Python cases, no DUT-fed expectations |
+| Shared CPU | Actual InitPlayer/StepPlayer and UpdateGame bytes; every expected state byte after each scripted call, completion and settled halt | Complete short harness, then finite full case set |
+| Game schedule | Actual game boot, sampled Start+Right, prior prepared title then first moved scene; complete pixels/state/input, one update/token and unchanged HUD/STAT/DMA ownership | Existing continuous Python/Intel preload, short completion then affected full game |
+| Rendered states | Approved WALK cycle and skid mappings, both facings, exact tile bytes and unchanged HUD masking; actual shared composer consumes seeded original operands | Host all-state pixels plus one bounded complete renderer fixture |
+| Fault | A real movement consumer mutation rejected at the first differing state by the unchanged positive checker; retain failed receipt | Shortest useful CPU case, after positive proof |
+| Consumer qualification | Historical fixed-physics/current-ROM consumers either gain independently current expectations or reject incompatible current ROM/source before use | Focused host guards; no relabelled old full-route evidence |
+| Delivery | Owning SW/DV/asset links and previews, original32KiB reproducible image, affected host checks, required CI and current-head independent review | No new art approval or full hardware milestone replay |
+
+Initial planning forecast: CPU short20 seconds, CPU full150, game short130,
+game full240, renderer220 and early CPU fault40 (800 seconds aggregate). These
+are extrapolations from prior harness costs, not measured301 results or relaxed
+limits. The ordinary300-second aggregate target may be missed; each simulation
+still has a hard300-second whole-run cap. Freeze smaller actual case bounds
+where feasible and report measured times; no extra duration or coverage quota
+is introduced. Unchanged hardware/transport/STAT baseline evidence is reused only
+with explicit input and behavior qualification.

@@ -49,10 +49,25 @@ CourierStorePose:
 LD [CourierPose],A
 RET
 
+InitMotionArt:
+; Approved core small-skid tiles16..19 -> free VRAM tiles94..97, LCD off.
+LD HL,CoreTiles+$0100
+LD DE,$85E0
+LD B,64
+MotionTileCopy:
+LD A,[HL+]
+LD [DE],A
+INC DE
+DEC B
+JR NZ,MotionTileCopy
+RET
+
 ; DE=next OAM slot; signed SceneBaseX/Y are small-pose top-left pixels.
 ; CourierPose=0..11, CourierFacing=0 or20. Large shares the same feet.
 ComposeCourier:
 LD A,[CourierPose]
+CP A,12
+JR NC,CourierTable
 CP A,6
 JR C,CourierTable
 LD A,[SceneBaseY]
@@ -211,6 +226,7 @@ DW Courier_large_WALK2
 DW Courier_large_WALK3
 DW Courier_large_JUMP
 DW Courier_large_RETRY
+DW Courier_small_SKID
 Courier_small_STAND:
 DB 4
 DB 0,0,0,0
@@ -295,3 +311,10 @@ DB 0,8,28,0
 DB 8,8,29,0
 DB 0,16,18,0
 DB 8,16,19,0
+
+Courier_small_SKID:
+DB 4
+DB 0,0,52,0
+DB 8,0,53,0
+DB 0,8,54,0
+DB 8,8,55,0
