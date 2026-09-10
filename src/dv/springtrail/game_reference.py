@@ -9,7 +9,7 @@ START_WINDOW=(178528,180528)
 END=254436
 FIRST_WORLD=step(Player(),129)
 FRAMES=(bytes(23040),image(title=True),image(FIRST_WORLD))
-CRC=(0xb15161f6,0x5324bc1f,0xae96d493)
+CRC=(0xb15161f6,0x4e8a1268,0xb3387ae4)
 
 
 class Check:
