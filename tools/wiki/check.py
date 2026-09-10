@@ -75,14 +75,12 @@ def main() -> int:
     if args.install_browser:
         subprocess.run([str(python), '-m', 'playwright', 'install', '--with-deps', '--only-shell', 'chromium'],
                        cwd=ROOT, env=env, check=True)
-    command = [str(python), 'tools/wiki/browser_tests.py']
-    if args.browser_executable:
-        command.extend(['--browser-executable', str(args.browser_executable.resolve())])
-    result = subprocess.run(command, cwd=ROOT, env=env, check=False).returncode
-    if result:
-        return result
-    command[1] = 'tools/wiki/browser_quality.py'
-    return subprocess.run(command, cwd=ROOT, env=env, check=False).returncode
+    extra = ['--browser-executable', str(args.browser_executable.resolve())] if args.browser_executable else []
+    for script in ('tools/wiki/browser_tests.py', 'tools/wiki/browser_quality.py'):
+        result = subprocess.run([str(python), script, *extra], cwd=ROOT, env=env, check=False).returncode
+        if result:
+            return result
+    return 0
 
 
 if __name__ == "__main__":

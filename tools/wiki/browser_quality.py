@@ -9,9 +9,7 @@ ROOT = Path(__file__).resolve().parents[2]
 OUTPUT = ROOT / 'workdir/wiki/browser'
 
 
-def check_views(browser, base, load=None):
-    """Use generated pages; load may supply exact local documents for DOM-only checks."""
-    load = load or (lambda page, path: page.goto(base + path))
+def check_views(browser, base):
     context = browser.new_context(viewport={'width': 1440, 'height': 1000})
     context.tracing.start(screenshots=True, snapshots=True)
     context.route('**/favicon.ico', lambda route: route.fulfill(status=204))
@@ -29,7 +27,7 @@ def check_views(browser, base, load=None):
             page = new_page()
             # Heading IDs differ between the series and scaffold; both are valid.
             path = f'/files/wiki/presentations/{name}.html'
-            load(page, path)
+            page.goto(base + path)
             headings = page.locator('[data-slide] h1, [data-slide] h2')
             target = headings.nth(1).get_attribute('id')
             page.evaluate('id => { location.hash = id; }', target)
@@ -58,14 +56,14 @@ def check_views(browser, base, load=None):
 
         for fragment, expected in (('#slide-4', '4 / 6'), ('#missing', '1 / 6'), ('#%E0%A4%A', '1 / 6')):
             page = new_page()
-            load(page, '/files/wiki/presentations/cpu-execution.html' + fragment)
+            page.goto(base + '/files/wiki/presentations/cpu-execution.html' + fragment)
             expect(page.locator('[data-progress]')).to_have_text(expected)
             page.close()
 
         for width in (1440, 390):
             page = new_page()
             page.set_viewport_size({'width': width, 'height': 844})
-            load(page, '/files/wiki/statistics.html')
+            page.goto(base + '/files/wiki/statistics.html')
             expect(page.locator('.snapshot')).to_contain_text('Frozen manual snapshot.')
             expect(page.get_by_role('navigation', name='Project documentation')).to_be_visible()
             assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), 'Statistics page overflows'
