@@ -12,14 +12,60 @@ import uuid
 
 # The user's bounded Mooneye authorization; this is not a configurable override.
 MILESTONE_TARGETS = frozenset({'mooneye-reg-f', 'mooneye-corrupt', 'mooneye-missing'})
+# Every target that declares nothing gets exactly this.
+WALL_DEFAULT = 300
+# The owner's hard ceiling for a declared per-target allowance. Not a default.
+WALL_ALLOWANCE_CEILING = 900
 
 
-def wall_limit(target):
-    return 1500 if target in MILESTONE_TARGETS else 300
+def declared_allowance(name, row):
+    """Return a target row's declared wall allowance, or None when it declares none.
+
+    A malformed, over-ceiling or reasonless declaration raises; it is never
+    clamped, because a silent clamp would hide the budget the target needs.
+    """
+    if not isinstance(row, dict) or "wall_allowance" not in row:
+        return None
+    allowance = row["wall_allowance"]
+    if not isinstance(allowance, dict) or set(allowance) != {"seconds", "reason"}:
+        raise ValueError(f"{name} wall_allowance requires exactly seconds and reason")
+    seconds = allowance["seconds"]
+    if type(seconds) is not int or not WALL_DEFAULT < seconds <= WALL_ALLOWANCE_CEILING:
+        raise ValueError(f"{name} wall_allowance seconds must be an integer in "
+                         f"{WALL_DEFAULT + 1}..{WALL_ALLOWANCE_CEILING}")
+    reason = allowance["reason"]
+    if not isinstance(reason, str) or not reason.strip():
+        raise ValueError(f"{name} wall_allowance requires a recorded reason")
+    return seconds, reason.strip()
+
+
+def target_selection(name, row):
+    """Return (limit, reason) for one registry row."""
+    if name in MILESTONE_TARGETS:
+        return 1500, None
+    allowance = declared_allowance(name, row)
+    return allowance if allowance else (WALL_DEFAULT, None)
+
+
+def wall_selection(target, root=None):
+    """Resolve (limit, reason) for a target name by reading the target registry."""
+    if target in MILESTONE_TARGETS:
+        return 1500, None
+    if not isinstance(target, str) or not target:
+        return WALL_DEFAULT, None
+    root = Path(__file__).resolve().parents[2] if root is None else Path(root)
+    registry = root / "src/dv/builder/targets.json"
+    if not registry.is_file():
+        return WALL_DEFAULT, None
+    return target_selection(target, json.loads(registry.read_text(encoding="utf-8")).get(target))
+
+
+def wall_limit(target, root=None):
+    return wall_selection(target, root)[0]
 
 
 def supervise(command, root, tag, *, target=None):
-    limit = wall_limit(target)
+    limit, allowance_reason = wall_selection(target, root)
     execution_limit = limit - 12
     started = time.monotonic()
     wall_started = datetime.now(timezone.utc).timestamp()
@@ -42,6 +88,8 @@ def supervise(command, root, tag, *, target=None):
               "wall_limit_seconds": limit, "execution_limit_seconds": execution_limit,
               "target": target,
               "command": command, "status": "RUNNING"}
+    if allowance_reason is not None:
+        record["wall_allowance_reason"] = allowance_reason
     path = build / "wall-budget" / (uuid.uuid4().hex + ".json")
     atomic_json(path, record)
     options = {"creationflags": subprocess.CREATE_NO_WINDOW} if os.name == "nt" else {"start_new_session": True}

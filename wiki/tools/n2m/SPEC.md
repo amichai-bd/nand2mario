@@ -256,7 +256,9 @@ their full diagnostic and reject additional errors.
 
 Ordinary simulations have a maximum 300-second total wall budget. Target at most 120
 seconds per simulation and 300 seconds aggregate for ordinary pre-merge checks;
-declare broader milestone aggregates before execution. The user's bounded
+declare broader milestone aggregates before execution. A target that demonstrably
+needs more may [declare an allowance](#declared-wall-allowance) above 300 and up to
+900 seconds; 300 remains the default for every target that declares nothing. The user's bounded
 Mooneye authorization permits exactly `mooneye-reg-f`, `mooneye-corrupt` and
 `mooneye-missing` up to 1500 seconds (25 minutes) total each. The three-case
 aggregate is at most 75 minutes. This exception changes wall time only; selected
@@ -277,8 +279,9 @@ absolute selected budget. A failed
 cleanup records `cleanup_complete: false`; inspect and stop remaining children
 before releasing shared tool ownership. Never treat that failure as a clean exit.
 
-A target may set integer `timeout_seconds` from 1 through its named total budget
-for its Questa runtime command: 300 normally, 1500 only for the three names above.
+A target may set integer `timeout_seconds` from 1 through its selected total budget
+for its Questa runtime command: 300 normally, its declared allowance when it has one,
+and 1500 only for the three names above.
 The supervisor and target validator use the same exact-name selection. The
 default and individual preparation/compile commands remain
 60 seconds, subject to the overall ceiling. The value enters the fingerprint and
@@ -318,6 +321,29 @@ Do not kill another author's simulator or change license settings to bypass it.
 
 The [gap register](../../preflight-gaps.md#gap-008-verification-baseline) records
 the licensed tests established by this integration and outstanding coverage.
+
+#### Declared wall allowance
+
+300 seconds is the default and stays the default. A target that measurably cannot
+finish within it declares its own allowance in `src/dv/builder/targets.json`:
+
+```json
+"example-target": {
+  "wall_allowance": {"seconds": 420, "reason": "measured 289-second run leaves no room for setup and checking"}
+}
+```
+
+`seconds` is an integer above 300 and at most 900, the hard ceiling. `reason`
+is a nonempty string recording why the target needs the time. Both keys are
+required and no other key is allowed. A declaration above 900, a non-integer or
+out-of-range value, a missing or empty reason, and an unexpected key each fail the
+target validator and the supervisor with an error; nothing is clamped silently.
+The supervisor records the selected `wall_limit_seconds` and the
+`wall_allowance_reason` in the `wall-budget` record. A target that declares no
+allowance keeps exactly 300 seconds, and the reserved 12 cleanup seconds apply to
+the selected budget unchanged. The allowance is not an environment or command-line
+option and cannot extend the three named Mooneye cases. Declaring one changes
+target metadata and so invalidates that target's cache fingerprint.
 
 ## Environment doctor
 
