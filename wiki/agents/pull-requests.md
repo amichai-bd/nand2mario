@@ -29,12 +29,10 @@ required validation, independent current-head review and conversations are satis
 ## Policy and protection
 
 The `PR policy` check requires a valid numbered branch, `main` base, and closing
-references to open assigned issues including the primary branch issue.
-Only the fixed checkpoint exceptions in the
-[agent rules](https://github.com/amichai-bd/nand2mario/blob/main/AGENTS.md#work)
-may use matching checkpoint and `Refs` lines without a closing reference.
-Those exceptions do not authorize new checkpoints; other PRs close their issues.
-`Wiki check` validates the documentation build.
+references to open assigned issues including the primary branch issue. Only the
+fixed [checkpoint exceptions](#checkpoint-exceptions) below may use matching
+checkpoint and `Refs` lines without a closing reference. Other PRs close their
+issues. `Wiki check` validates the documentation build.
 
 Main normally requires passing up-to-date hosted checks, linear history, and resolved review
 conversations. The authorized external-blockage fallback below supplies equivalent local validation. Force pushes and branch deletion are blocked on main. Human
@@ -45,6 +43,24 @@ A merge closes its closing references and triggers Pages deployment. A trigger i
 proof that publication succeeded. See
 [GitHub issue linking](https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/linking-a-pull-request-to-an-issue).
 
+
+## Checkpoint exceptions
+
+This set is closed. It is a record of PRs the user authorized to merge without a
+closing reference, each carrying matching `Checkpoint for #<number>` and
+`Refs #<number>` lines for the issue it referenced when it merged. It authorizes
+no further checkpoint, and no PR may be added to it.
+
+The set is PR162, PR163, PR167, PR169 and PR179, all merged.
+
+Each kept its acceptance in the issue it referenced when it merged; whether that
+issue is still open today is a question for that issue, not for this record. The
+pairing itself is not repeated here: the `PR policy` check holds it in its own
+fixed map, keyed by PR number, and each PR body carries its own `Checkpoint for`
+and `Refs` lines. That map is also why the set cannot grow by editing this page.
+
+Every other PR closes its branch's issue. A PR that merely references an issue
+without closing it, outside this set, does not satisfy the policy.
 
 ## External CI fallback
 
