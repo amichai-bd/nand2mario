@@ -49,9 +49,11 @@ def solid(states, column, row, ascending=False):
     if index is None:
         return False
     kind, state = BLOCKS[index][2], states[index]
+    if state == BROKEN:
+        return False
     if kind == HIDDEN:
-        return state == USED or (state == INTACT and ascending)
-    return state != BROKEN
+        return state == USED or ascending
+    return True
 
 
 def appearance(states, index):

@@ -74,21 +74,19 @@ ADD HL,BC
 LD A,[HL]
 POP HL
 LD C,A
+; A broken block is passable whatever its kind.
+CP A,2
+JR Z,CellSolidNoPop
 INC HL
 INC HL
 LD A,[HL]
 CP A,2
-JR Z,CellSolidHidden
-; An item or brick cell is solid until it is broken.
-LD A,C
-CP A,2
-JR Z,CellSolidNoPop
-JR CellSolidYesPop
-CellSolidHidden:
+JR NZ,CellSolidYesPop
+; A revealed hidden block is solid to every scan; an intact one exists only
+; for the ascending head scan.
 LD A,C
 OR A,A
 JR NZ,CellSolidYesPop
-; An intact hidden block exists only for the ascending head scan.
 LD A,[ScanUp]
 OR A,A
 JR Z,CellSolidNoPop
