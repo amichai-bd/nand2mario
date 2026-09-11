@@ -78,6 +78,8 @@ after that point, including readback and the valid, paused and profile checks,
 is identical for both sources. Each pinned image is a reviewed freely licensed
 release recorded under the [provenance policy](../../provenance.md); the
 manifest names the title, author, release and licence text beside the pin.
+The [Libbet play record](../../../../src/dv/libbet/README.md) drives the pinned
+image through these commands on the board and retains its frames.
 
 ## Transport and recovery
 
