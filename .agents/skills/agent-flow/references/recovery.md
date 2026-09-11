@@ -5,9 +5,9 @@ Otherwise root spawns the reviewer, which posts its report on the PR. Authors
 never pick unrelated backlog work.
 
 Check the [work caps](../../../../AGENTS.md#work) and runtime capacity before
-spawning; reserve a reviewer slot. If full, finish or pause independent work
-before requesting review. Native review does not remove the need for an
-independent reviewer.
+spawning. The reviewer takes one of the two crewmate slots, so pause or finish
+the author before requesting review rather than running both at once. Native
+review does not remove the need for an independent reviewer.
 
 ## Retained context
 
