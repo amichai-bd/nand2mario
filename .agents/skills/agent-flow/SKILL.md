@@ -14,6 +14,9 @@ Follow [AGENTS](../../../AGENTS.md#work):
    Delegate its author using
    [worktree setup](../../../worktrees/README.md#create) and
    [capacity guidance](references/recovery.md).
+   Root owns the user boundary throughout: delegated agents report inside the
+   tree and raise questions to root, and root reports outcomes and open
+   decisions to the user.
 2. Author reads the issue and linked spec, aligning changes and validation with
    its success criteria. Keep one acceptance checklist mapping each criterion to
    evidence or a concrete gap. Defer optional improvements to follow-up issues;
