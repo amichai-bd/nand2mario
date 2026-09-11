@@ -33,8 +33,8 @@ second is the general atlas renderer; point it at any strict shade JSON. Use
 `--frame-width 8 --frame-height 8` for individual tiles (at most 64 frames per
 sheet). See the [tool contract](../../../wiki/tools/sw/SPEC.md#sprite-review-sheets)
 for limits, output paths and labels. Inspect PNGs at nearest-neighbor scale and
-send them in the conversation for review. Use actual composed views as well as
-8x8 pieces when tile reuse or seams matter.
+send them for review; a delegated agent routes them through root. Use actual
+composed views as well as 8x8 pieces when tile reuse or seams matter.
 
 Shade data is 2bpp: each 8x8 tile is 16 bytes, low/high plane per row, leftmost
 pixel in bit 7. Shade 0 is OBJ-transparent but a visible BG/window palette index;
@@ -46,8 +46,9 @@ anchor; flipping each tile in place alone is insufficient.
 ## Approval and publication
 
 Carry forward approval for unchanged source pixels. New or visually changed art
-must be shown here and approved by the user before publishing it as approved or
-integrating it; do not ask again for a revision already approved in this session.
+must be approved by the user before publishing it as approved or integrating it;
+a delegated agent routes the preview and the answer through root. Do not ask
+again for a revision already approved for this change.
 Record the approved revision and scope on the owning wiki page. Copy generated
 SVG review views into that page's image folder and link authoritative source/maps,
 and the reproduction command. Link an existing open feature issue only for an

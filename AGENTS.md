@@ -45,6 +45,15 @@ Follow [agent-flow](.agents/skills/agent-flow/SKILL.md). One root orchestrator
 selects assigned issues and delegates authors to separate worktrees. Keep the
 root checkout clean on `main`; never share a worktree.
 
+Root is the user's single point of contact. Authors, reviewers and nested agents
+report inside the orchestration tree, never to the user. Root reads their work
+and reports the outcome: what changed, what it costs, what is still open, and
+any decision the user owns. Report results, findings and evidence; leave
+worktree paths, agent identifiers and raw transcripts out unless they are the
+point. A delegated agent that must ask raises the question to root; root asks
+the user and returns the answer. Escalate promptly; never let a pending decision
+or a real failure stay below deck.
+
 Each root orchestration tree may have at most three open PRs, including its authors'
 drafts, and three active subagents, including nested agents. These are ceilings,
 not targets; lower runtime limits still apply. Default to two authors and a reviewer
