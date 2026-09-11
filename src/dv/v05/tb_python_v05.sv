@@ -295,6 +295,15 @@ module tb_python_v05 #(
         end
     end
 
+    // Break the actual LY observation route into the host register map. The
+    // host-side checker must notice; nothing else in the composition changes.
+    initial begin
+        if ($test$plusargs("io_peek_ly_fault")) begin
+            @(negedge clk_sys);
+            force dut.io_ly = 8'd0;
+        end
+    end
+
     // Corrupt the actual timer read route; the independent DIV expectation stays1.
     initial begin
         if ($test$plusargs("timer_read_fault")) begin

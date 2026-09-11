@@ -831,6 +831,114 @@
         "bits": 32,
         "value": 65612,
         "description": "Effective Game Boy button mask; read only."
+      },
+      {
+        "name": "IO_LCDC",
+        "bits": 32,
+        "value": 65616,
+        "description": "DMG LCDC committed byte; read-only live view"
+      },
+      {
+        "name": "IO_STAT",
+        "bits": 32,
+        "value": 65620,
+        "description": "DMG STAT enables, coincidence and live mode; bit 7 zero; read-only live view"
+      },
+      {
+        "name": "IO_SCY",
+        "bits": 32,
+        "value": 65624,
+        "description": "DMG SCY committed byte; read-only live view"
+      },
+      {
+        "name": "IO_SCX",
+        "bits": 32,
+        "value": 65628,
+        "description": "DMG SCX committed byte; read-only live view"
+      },
+      {
+        "name": "IO_LY",
+        "bits": 32,
+        "value": 65632,
+        "description": "DMG readable LY; read-only live view"
+      },
+      {
+        "name": "IO_LYC",
+        "bits": 32,
+        "value": 65636,
+        "description": "DMG LYC committed byte; read-only live view"
+      },
+      {
+        "name": "IO_BGP",
+        "bits": 32,
+        "value": 65640,
+        "description": "DMG BGP committed byte; read-only live view"
+      },
+      {
+        "name": "IO_OBP0",
+        "bits": 32,
+        "value": 65644,
+        "description": "DMG OBP0 committed byte; read-only live view"
+      },
+      {
+        "name": "IO_OBP1",
+        "bits": 32,
+        "value": 65648,
+        "description": "DMG OBP1 committed byte; read-only live view"
+      },
+      {
+        "name": "IO_WY",
+        "bits": 32,
+        "value": 65652,
+        "description": "DMG WY committed byte; read-only live view"
+      },
+      {
+        "name": "IO_WX",
+        "bits": 32,
+        "value": 65656,
+        "description": "DMG WX committed byte; read-only live view"
+      },
+      {
+        "name": "IO_DIV",
+        "bits": 32,
+        "value": 65660,
+        "description": "DMG DIV, the upper byte of the internal divider; read-only live view"
+      },
+      {
+        "name": "IO_TIMA",
+        "bits": 32,
+        "value": 65664,
+        "description": "DMG TIMA committed byte; read-only live view"
+      },
+      {
+        "name": "IO_TMA",
+        "bits": 32,
+        "value": 65668,
+        "description": "DMG TMA committed byte; read-only live view"
+      },
+      {
+        "name": "IO_TAC",
+        "bits": 32,
+        "value": 65672,
+        "description": "DMG TAC committed control in bits 2:0; read-only live view"
+      },
+      {
+        "name": "IO_IF",
+        "bits": 32,
+        "value": 65676,
+        "description": "DMG IF committed request flags in bits 4:0; read-only live view"
+      },
+      {
+        "name": "IO_IE",
+        "bits": 32,
+        "value": 65680,
+        "description": "DMG IE committed byte; read-only live view"
+      },
+      {
+        "name": "IO_LCD_STATUS",
+        "bits": 32,
+        "value": 65684,
+        "description": "LCDC, STAT and LY sampled on one edge; LY in bits 7:0; read-only live view"
       }
     ],
     "state": [

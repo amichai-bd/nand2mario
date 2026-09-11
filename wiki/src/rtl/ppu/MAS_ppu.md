@@ -594,3 +594,17 @@ only subsequent complete rendered frames qualify. Core reset cancels pending
 pixels; an already committed blank assertion is retained through B so resetting
 PPU control cannot silently undo a presentation request. VGA owns the persistent
 blank state, qualifying acknowledgement, actual swap and public observer.
+
+## Host observations
+
+`n2m_ppu` publishes `lcdc_observe`, `stat_observe`, `ly_observe`, `lyc_observe`,
+`scy_observe`, `scx_observe`, `wy_observe`, `wx_observe`, `bgp_observe`,
+`obp0_observe` and `obp1_observe` for the host register map. `ly_observe` is the
+CPU-readable LY, so it follows the LY153 early-wrap rules above rather than the
+renderer's line counter. `stat_observe` is the same composition the CPU reads
+with bit 7 left zero. The palette observations are the committed bytes, not the
+renderer's one-dot old-or-new conflict value. All are combinational reads of
+existing state and reach no register enable, so a host read cannot disturb
+rendering or a STAT edge. The
+[host SPEC](../../../tools/n2m/host/SPEC.md#dmg-io-register-view) owns the
+exposed table.

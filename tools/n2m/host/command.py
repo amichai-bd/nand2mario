@@ -93,6 +93,12 @@ def run(root, build, args, provenance):
                 # Do not read mutable split counters while the endpoint is running.
                 report['result'] = {name: client.read_host(getattr(abi, 'HOST_REG_' + name))
                                     for name in ('STATE', 'IMAGE_VALID', 'PROFILE', 'INPUT')}
+            elif args.action == 'io':
+                # Live register reads. The endpoint is not paused or stepped.
+                result = client.sample_io(args.samples)
+                (folder / 'io_samples.json').write_text(json.dumps(result['samples'], indent=2), encoding='utf-8')
+                report['result'] = {'samples': len(result['samples']), 'registers': result['registers'],
+                                    'first': result['samples'][0], 'last': result['samples'][-1]}
             elif args.action == 'run-dots':
                 report['result'] = client.run_dots(args.dots)
             else:

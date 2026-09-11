@@ -1,5 +1,5 @@
 // Generated from cfg/interfaces.json by tools/n2m/interfaces.py; DO NOT EDIT.
-// Source SHA-256: b6cc59f5f13dd806be95bfe01aab969acf0bba07fb2ff4efa43f87ccfc29775e
+// Source SHA-256: 80618216aec777c06eace757549d9bab43315603dc0655f78ee9b833f72a429a
 `timescale 1ns/1ps
 package n2m_interfaces_pkg;
   localparam logic [7:0] GB_ADDRESS_BITS = 8'h10;
@@ -138,6 +138,24 @@ package n2m_interfaces_pkg;
   localparam logic [31:0] HOST_REG_INPUT_SOURCE = 32'h10044;
   localparam logic [31:0] HOST_REG_INPUT_PHYSICAL = 32'h10048;
   localparam logic [31:0] HOST_REG_INPUT_EFFECTIVE = 32'h1004C;
+  localparam logic [31:0] HOST_REG_IO_LCDC = 32'h10050;
+  localparam logic [31:0] HOST_REG_IO_STAT = 32'h10054;
+  localparam logic [31:0] HOST_REG_IO_SCY = 32'h10058;
+  localparam logic [31:0] HOST_REG_IO_SCX = 32'h1005C;
+  localparam logic [31:0] HOST_REG_IO_LY = 32'h10060;
+  localparam logic [31:0] HOST_REG_IO_LYC = 32'h10064;
+  localparam logic [31:0] HOST_REG_IO_BGP = 32'h10068;
+  localparam logic [31:0] HOST_REG_IO_OBP0 = 32'h1006C;
+  localparam logic [31:0] HOST_REG_IO_OBP1 = 32'h10070;
+  localparam logic [31:0] HOST_REG_IO_WY = 32'h10074;
+  localparam logic [31:0] HOST_REG_IO_WX = 32'h10078;
+  localparam logic [31:0] HOST_REG_IO_DIV = 32'h1007C;
+  localparam logic [31:0] HOST_REG_IO_TIMA = 32'h10080;
+  localparam logic [31:0] HOST_REG_IO_TMA = 32'h10084;
+  localparam logic [31:0] HOST_REG_IO_TAC = 32'h10088;
+  localparam logic [31:0] HOST_REG_IO_IF = 32'h1008C;
+  localparam logic [31:0] HOST_REG_IO_IE = 32'h10090;
+  localparam logic [31:0] HOST_REG_IO_LCD_STATUS = 32'h10094;
   localparam logic [7:0] STATE_PAUSED = 8'h0;
   localparam logic [7:0] STATE_RUNNING = 8'h1;
   localparam logic [7:0] STATE_LOADING = 8'h2;

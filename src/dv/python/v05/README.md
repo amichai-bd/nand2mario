@@ -28,6 +28,8 @@ to check scalar and packed values, single reads, and resolver independence.
 | python-v05-image-fault | Actual ROM write at 0200 changes F3 to 00; LOAD_END rejects BAD_IMAGE |
 | python-v05-pixel-fault | Actual first eligible source shade changes 1 to 0; exact pixel mismatch |
 | python-v05-short | Preloaded complete path, two inputs, six frames and final pause |
+| python-v05-iopeek | Live DMG I/O reads over actual UART pins while RUNNING: 120 LCD samples, advancing dots and divider, clear reserved bits, mode matching the scanline |
+| python-v05-iopeek-fault | The same checker rejects a broken actual LY observation route |
 | python-v05-progress-fault | Actual stopped gb_tick reaches the active-time watchdog |
 | python-v05-bounded | Intel preload, real initialization, first-HALT Right+A, blank-to-normal input rows and every observation through actual pause |
 | python-v05-bounded-pixel | Same bounded oracle rejects the actual first eligible shade changed1 to0 |

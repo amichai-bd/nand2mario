@@ -132,7 +132,7 @@ class InterfaceTests(unittest.TestCase):
 
     def test_address_spaces_and_range_neighbors(self):
         self.assertEqual(codec.host_address(0x10000),0x10000)
-        for bad in (0xff00,0xffff,0x10001,0x10050,-1,1<<32):
+        for bad in (0xff00,0xffff,0x10001,0x10098,-1,1<<32):
             with self.assertRaises(ValueError):codec.host_address(bad)
         for address in (0,0x3fff,0x4000,0x7fff):self.assertEqual(codec.rom_offset(address),address)
         for bad in (-1,0x8000,0xff00,0x10000):

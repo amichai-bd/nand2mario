@@ -1,5 +1,5 @@
 """Generated from cfg/interfaces.json by tools/n2m/interfaces.py; DO NOT EDIT.
-Source SHA-256: b6cc59f5f13dd806be95bfe01aab969acf0bba07fb2ff4efa43f87ccfc29775e
+Source SHA-256: 80618216aec777c06eace757549d9bab43315603dc0655f78ee9b833f72a429a
 """
 GB_ADDRESS_BITS = 16
 GB_DATA_BITS = 8
@@ -137,6 +137,24 @@ HOST_REG_SNAPSHOT_EPOCH = 65600
 HOST_REG_INPUT_SOURCE = 65604
 HOST_REG_INPUT_PHYSICAL = 65608
 HOST_REG_INPUT_EFFECTIVE = 65612
+HOST_REG_IO_LCDC = 65616
+HOST_REG_IO_STAT = 65620
+HOST_REG_IO_SCY = 65624
+HOST_REG_IO_SCX = 65628
+HOST_REG_IO_LY = 65632
+HOST_REG_IO_LYC = 65636
+HOST_REG_IO_BGP = 65640
+HOST_REG_IO_OBP0 = 65644
+HOST_REG_IO_OBP1 = 65648
+HOST_REG_IO_WY = 65652
+HOST_REG_IO_WX = 65656
+HOST_REG_IO_DIV = 65660
+HOST_REG_IO_TIMA = 65664
+HOST_REG_IO_TMA = 65668
+HOST_REG_IO_TAC = 65672
+HOST_REG_IO_IF = 65676
+HOST_REG_IO_IE = 65680
+HOST_REG_IO_LCD_STATUS = 65684
 STATE_PAUSED = 0
 STATE_RUNNING = 1
 STATE_LOADING = 2
@@ -265,8 +283,8 @@ RUN_DOTS_EXECUTED_OFFSET = 8
 RUN_DOTS_REASON_OFFSET = 12
 
 PROFILE_NAME = 'dmg-direct-v1'
-HOST_REGISTERS = {65536: 'ABI', 65540: 'STATE', 65544: 'IMAGE_VALID', 65548: 'PROFILE', 65552: 'DOT_LO', 65556: 'DOT_HI', 65560: 'RETIRE_LO', 65564: 'RETIRE_HI', 65568: 'INPUT', 65572: 'SNAPSHOT_VALID', 65576: 'SNAPSHOT_SEQ_LO', 65580: 'SNAPSHOT_SEQ_HI', 65584: 'BUILD_ID_0', 65588: 'BUILD_ID_1', 65592: 'BUILD_ID_2', 65596: 'BUILD_ID_3', 65600: 'SNAPSHOT_EPOCH', 65604: 'INPUT_SOURCE', 65608: 'INPUT_PHYSICAL', 65612: 'INPUT_EFFECTIVE'}
+HOST_REGISTERS = {65536: 'ABI', 65540: 'STATE', 65544: 'IMAGE_VALID', 65548: 'PROFILE', 65552: 'DOT_LO', 65556: 'DOT_HI', 65560: 'RETIRE_LO', 65564: 'RETIRE_HI', 65568: 'INPUT', 65572: 'SNAPSHOT_VALID', 65576: 'SNAPSHOT_SEQ_LO', 65580: 'SNAPSHOT_SEQ_HI', 65584: 'BUILD_ID_0', 65588: 'BUILD_ID_1', 65592: 'BUILD_ID_2', 65596: 'BUILD_ID_3', 65600: 'SNAPSHOT_EPOCH', 65604: 'INPUT_SOURCE', 65608: 'INPUT_PHYSICAL', 65612: 'INPUT_EFFECTIVE', 65616: 'IO_LCDC', 65620: 'IO_STAT', 65624: 'IO_SCY', 65628: 'IO_SCX', 65632: 'IO_LY', 65636: 'IO_LYC', 65640: 'IO_BGP', 65644: 'IO_OBP0', 65648: 'IO_OBP1', 65652: 'IO_WY', 65656: 'IO_WX', 65660: 'IO_DIV', 65664: 'IO_TIMA', 65668: 'IO_TMA', 65672: 'IO_TAC', 65676: 'IO_IF', 65680: 'IO_IE', 65684: 'IO_LCD_STATUS'}
 HOST_WRITABLE_REGISTERS = {65568: 255, 65604: 1}
 RECORDS = {'packet_header': [{'name': 'version', 'bits': 8, 'description': 'Wire ABI'}, {'name': 'kind', 'bits': 8, 'description': 'Request or response'}, {'name': 'seq', 'bits': 32, 'description': 'Client correlation token'}, {'name': 'command', 'bits': 8, 'description': 'Command ID'}, {'name': 'status', 'bits': 8, 'description': 'Zero in requests'}, {'name': 'length', 'bits': 16, 'description': 'Payload byte length'}], 'read_host': [{'name': 'address', 'bits': 32, 'description': 'Aligned host register address'}], 'word': [{'name': 'value', 'bits': 32, 'description': 'Unsigned value'}], 'load_begin': [{'name': 'profile', 'bits': 8, 'description': 'Direct profile ID'}, {'name': 'size', 'bits': 32, 'description': 'Exact image byte length'}, {'name': 'crc32', 'bits': 32, 'description': 'Whole image CRC-32/ISO-HDLC'}], 'offset': [{'name': 'offset', 'bits': 32, 'description': 'ROM file offset or snapshot byte offset'}], 'read_range': [{'name': 'offset', 'bits': 32, 'description': 'Byte offset'}, {'name': 'count', 'bits': 16, 'description': '1 through maximum payload bytes'}], 'input': [{'name': 'buttons', 'bits': 8, 'description': 'All eight active-high button states'}], 'dot': [{'name': 'dot', 'bits': 64, 'description': 'Number of completed emulated dots at transition'}], 'snapshot': [{'name': 'epoch', 'bits': 32, 'description': 'Core-reset epoch of source frame'}, {'name': 'seq', 'bits': 64, 'description': 'Source frame sequence'}, {'name': 'dot', 'bits': 64, 'description': 'Source frame completion dot'}, {'name': 'size', 'bits': 32, 'description': 'Packed frame bytes'}], 'retirement': [{'name': 'version', 'bits': 8, 'description': 'Trace ABI'}, {'name': 'kind', 'bits': 8, 'description': 'Instruction or interrupt entry'}, {'name': 'epoch', 'bits': 32, 'description': 'Core-reset epoch since global reset'}, {'name': 'seq', 'bits': 64, 'description': 'Event index from zero within epoch'}, {'name': 'dot', 'bits': 64, 'description': 'Completed dots at event end'}, {'name': 'pc_before', 'bits': 16, 'description': 'PC before instruction or interrupt entry'}, {'name': 'pc_after', 'bits': 16, 'description': 'PC after completion'}, {'name': 'opcode', 'bits': 24, 'description': 'Fetched bytes in bits 7:0 then 15:8 then 23:16; unused bytes zero'}, {'name': 'opcode_length', 'bits': 8, 'description': '1..3 for instruction; zero for interrupt entry'}, {'name': 'a', 'bits': 8, 'description': 'Post-event CPU register'}, {'name': 'f', 'bits': 8, 'description': 'Post-event flags; low nibble zero'}, {'name': 'b', 'bits': 8, 'description': 'Post-event CPU register'}, {'name': 'c', 'bits': 8, 'description': 'Post-event CPU register'}, {'name': 'd', 'bits': 8, 'description': 'Post-event CPU register'}, {'name': 'e', 'bits': 8, 'description': 'Post-event CPU register'}, {'name': 'h', 'bits': 8, 'description': 'Post-event CPU register'}, {'name': 'l', 'bits': 8, 'description': 'Post-event CPU register'}, {'name': 'sp', 'bits': 16, 'description': 'Post-event stack pointer'}, {'name': 'ime', 'bits': 8, 'description': 'Post-event interrupt master enable: 0 or 1'}, {'name': 'ime_delay', 'bits': 8, 'description': 'Deferred EI state: 0 or 1'}, {'name': 'halted', 'bits': 8, 'description': 'CPU HALT: 0 or 1'}, {'name': 'stopped', 'bits': 8, 'description': 'CPU STOP: 0 or 1'}, {'name': 'halt_bug', 'bits': 8, 'description': 'Pending suppressed PC increment: 0 or 1'}, {'name': 'ie', 'bits': 8, 'description': 'Interrupt-enable storage byte'}, {'name': 'iflags', 'bits': 8, 'description': 'Interrupt-request low five storage bits'}, {'name': 'buttons', 'bits': 8, 'description': 'Effective Game Boy button mask at event end'}], 'write_host': [{'name': 'address', 'bits': 32, 'description': 'Whitelisted host register address.'}, {'name': 'value', 'bits': 32, 'description': 'Value with all reserved bits zero.'}], 'run_dots': [{'name': 'dot', 'bits': 64, 'description': 'Completed emulated dot at pause'}, {'name': 'executed', 'bits': 32, 'description': 'Actual ticks executed by this operation'}, {'name': 'reason', 'bits': 8, 'description': 'COUNT or STOPPED completion'}]}
 COMMANDS = [{'name': 'PING', 'request': 'empty', 'response': 'word', 'state': 'any'}, {'name': 'READ_HOST', 'request': 'read_host', 'response': 'word', 'state': 'any'}, {'name': 'RESET', 'request': 'empty', 'response': 'empty', 'state': 'not loading; valid image'}, {'name': 'RUN', 'request': 'empty', 'response': 'empty', 'state': 'paused valid image'}, {'name': 'HALT', 'request': 'empty', 'response': 'dot', 'state': 'not loading'}, {'name': 'STEP', 'request': 'word', 'response': 'dot', 'state': 'paused valid image'}, {'name': 'LOAD_BEGIN', 'request': 'load_begin', 'response': 'empty', 'state': 'any'}, {'name': 'LOAD_WRITE', 'request': 'offset+bytes', 'response': 'empty', 'state': 'loading'}, {'name': 'LOAD_END', 'request': 'empty', 'response': 'empty', 'state': 'loading'}, {'name': 'READ_ROM', 'request': 'read_range', 'response': 'bytes', 'state': 'paused or loading'}, {'name': 'INPUT', 'request': 'input', 'response': 'dot', 'state': 'not loading'}, {'name': 'SNAPSHOT', 'request': 'empty', 'response': 'snapshot', 'state': 'not loading'}, {'name': 'READ_FRAME', 'request': 'read_range', 'response': 'bytes', 'state': 'snapshot valid'}, {'name': 'WRITE_HOST', 'request': 'write_host', 'response': 'dot', 'state': 'Not LOADING.'}, {'name': 'RUN_DOTS', 'request': 'word', 'response': 'run_dots', 'state': 'paused valid image'}]
-SOURCE_SHA256 = 'b6cc59f5f13dd806be95bfe01aab969acf0bba07fb2ff4efa43f87ccfc29775e'
+SOURCE_SHA256 = '80618216aec777c06eace757549d9bab43315603dc0655f78ee9b833f72a429a'

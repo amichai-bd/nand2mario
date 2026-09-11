@@ -29,6 +29,7 @@ is not device authentication or proof of correct wiring.
 | Command | Result |
 |---|---|
 | `host status` | ABI/build identity and single-word state, image-valid, profile and input registers. No incoherent live split counters. |
+| `host io --samples <n>` | Repeated live LCD triple and dot readings plus one pass over the frozen DMG I/O set. Reads only; the endpoint is never paused or stepped. Samples land in `io_samples.json`. |
 | `host load --package <result.json>` | Validated immutable software attempt, load begin/write/end, complete byte-for-byte readback, valid/paused/profile checks. Does not run the ROM. |
 | `host load --external <name>` | Same transmission and verification from a pinned external image fetched at run time. Exactly one of `--package` or `--external` is accepted. |
 | `host reset` | Generated core RESET, acknowledged after initialization. |
@@ -244,6 +245,18 @@ raw ROM request/readback bytes. Snapshot shades remain ignored private artifacts
 The builder retains commit/dirty fingerprint, requested command and artifact
 hashes; failures retain their reason and transaction prefix. Build and device
 paths/identities remain local and must not be pasted into public documentation.
+
+The DMG I/O view is checked at three levels. `uart-validation` sweeps every
+literal host address, the unaligned bytes between them and the unassigned words
+above the map. `io-peek` runs two identical copies of every owning module on one
+stimulus, peeks only one, and requires their committed state, interrupt flags and
+timer progression to stay identical; `io-peek-disturb` routes the peek through
+copy A's DMG port instead and must be caught. `python-v05-iopeek` samples the
+registers over real UART pins while the composed core runs, and checks the
+endpoint stayed RUNNING, that dots and the divider advanced, that reserved bits
+stayed clear and that the mode matched the scanline; `python-v05-iopeek-fault`
+breaks the LY route and must fail. Whole-frame coverage including VBlank belongs
+to the board session, not to simulation.
 
 [Fake endpoint tests](../../../../tools/n2m/tests/test_host.py) drive encoded
 packets, verify all load/readback chunks including the final byte, all input

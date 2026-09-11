@@ -17,6 +17,11 @@ class RejectedCommand(RuntimeError):
         super().__init__(f'{command} rejected with status {status}')
 
 
+# The frozen DMG I/O view; the host SPEC owns its read semantics and evidence.
+IO_REGISTERS = ('LCDC', 'STAT', 'SCY', 'SCX', 'LY', 'LYC', 'BGP', 'OBP0', 'OBP1',
+                'WY', 'WX', 'DIV', 'TIMA', 'TMA', 'TAC', 'IF', 'IE')
+
+
 def summary(raw):
     return {'bytes': len(raw), 'sha256': hashlib.sha256(raw).hexdigest()}
 
@@ -108,6 +113,27 @@ class Client:
     def read_host(self, address):
         from ..interface_codec import host_address
         return self.request('READ_HOST', pack_record('read_host', {'address': host_address(address)}))['value']
+
+    def read_io_registers(self):
+        """One live read per exposed DMG register; no pause and no state change."""
+        return {name: self.read_host(getattr(abi, 'HOST_REG_IO_' + name)) for name in IO_REGISTERS}
+
+    def read_lcd_status(self):
+        """LCDC, STAT and LY sampled on one endpoint edge, so the triple is coherent."""
+        word = self.read_host(abi.HOST_REG_IO_LCD_STATUS)
+        return {'ly': word & 0xFF, 'stat': (word >> 8) & 0xFF,
+                'lcdc': (word >> 16) & 0xFF, 'mode': (word >> 8) & 0x3}
+
+    def sample_io(self, samples):
+        """Repeated live LCD samples with the dot each was taken at."""
+        if type(samples) is not int or not 1 <= samples <= 5000:
+            raise ValueError('sample count outside 1..5000')
+        rows = []
+        for _ in range(samples):
+            row = self.read_lcd_status()
+            row['dot_lo'] = self.read_host(abi.HOST_REG_DOT_LO)
+            rows.append(row)
+        return {'samples': rows, 'registers': self.read_io_registers()}
 
     def write_host(self, address, value):
         from ..interface_codec import host_write
