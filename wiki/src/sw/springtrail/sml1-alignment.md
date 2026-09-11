@@ -31,7 +31,7 @@ Confidence applies to the reference observation, not to future implementation.
 | Publication | `PublishScene` transfers the complete C100 shadow page through HRAM DMA; preparation builds sixteen entries and clears the tail | `VBlank`, `DMARoutine`, initialization HRAM copy: source-confirmed DMA organization | [Publisher proof](../../../../src/dv/springtrail/OAM_DMA.md) and current [composition](COMPOSITION.md) |
 | HUD and scrolling | `stream.asm` prepares original encoded columns; `hud.asm` publishes background mode/score and separates HUD/playfield with VBlank/STAT | `DrawColumn`, `VBlank`, `LCDStatus`: source-confirmed organization, not a copied timing oracle | [HUD/column contract](HUD_COLUMNS.md) and its bounded pixel/publication matrix |
 | Movement and animation | `movement.asm`, `collision.asm`: counter/phase motion, jump profiles and stored walk/jump/skid poses | `Call_1D26`, `Call_16F5`, `Call_1736`: source-derived state/cycle rules; complete normal dispatcher unavailable | [Movement contract](MOVEMENT.md): approved original best-effort order/profile binding, literal per-update expectations and explicit reference limits |
-| Player contact and power | `interactions.asm`: contact death, one player size | `bank0.asm` player/contact paths and `enemies.asm` states: behavior table pending | [#302](https://github.com/amichai-bd/nand2mario/issues/302): stomp/damage precedence, growth/shrink, protection, invincibility and projectile power; freeze boxes and durations |
+| Player contact and power | `power.asm`, `interactions.asm`: invincible/stomp/hit classes, small/large/thrower states, GROW/HURT/SAFE windows, crouch and one bouncing shot | `Call_84E`, `InjureMario`, `Call_1F03`: source-confirmed test order, box adjust and star value; durations and dispatcher binding unavailable | [Power contract](POWER.md): approved original choices, literal cases and explicit reference limits; pickups that call `PowerUp`/`GrantStar` remain with #303 |
 | Blocks and rewards | `collision.asm`, `interactions.asm`: solid terrain and four once-only pickups | `Call_1B86`, `AddScore`: source locators; category/reward rules pending | [#303](https://github.com/amichai-bd/nand2mario/issues/303): original mutable blocks, head hits, releases and persistent consumed state; coordinate power/entity/reward owners |
 | Progression | `interactions.asm`: retry restores all state, one finish marker; no lives/timer | `UpdateLives`, `DisplayTimer`, level-state paths: source locators; survival/reset rules pending | [#304](https://github.com/amichai-bd/nand2mario/issues/304): measured lives/timer/death/continue/level transitions using minimal original levels |
 | Entities | `StepEnemy` patrol; stationary terrain platforms | `enemies.asm` platform/stomped/falling entries: classes identified, dynamics unmeasured | [#305](https://github.com/amichai-bd/nand2mario/issues/305): bounded patrol, hazard, moving and falling platform classes; define spawn/despawn, contacts and exhausted capacity |
@@ -59,15 +59,17 @@ The [approved art](CHARACTER_ART.md) fixes original small 16x16 and large 16x24
 canvases. These are not measured SML1 dimensions. [Composition](COMPOSITION.md) defines logical anchors,
 piece offsets, facing and screen clipping independently of collision boxes;
 The [movement contract](MOVEMENT.md) preserves the current 8x16 collision box;
-#302 owns power geometry and transitions. New art needs approval; already
+the [power contract](POWER.md) keeps that terrain box for every size and adds
+a 2-pixel contact-box lift for standing large players. New art needs approval; already
 approved art does not. Record intentional geometry differences without changing
 approved pixels to satisfy an assumed reference size.
 
 The approved tile IDs are local asset indices; [composition](COMPOSITION.md) defines VRAM allocation and
 preserves shade/palette ordering. Mirroring reflects piece positions as well as
-tile attributes. Current movement reuses approved walk/jump and small skid art;
-#302 requests only necessary missing crouch, growth or projectile visuals. Missing art gates
-its dependent visual integration, not independent physics measurement.
+tile attributes. Current movement reuses approved walk/jump and small skid art; power states
+reuse approved hurt, crouch, throw, large skid and shot pixels without new
+art. Missing art would gate only its dependent visual integration, not
+independent physics measurement.
 
 HUD/column integration reuses one publisher and binds input sampling, prepared-scene
 ownership, DMA completion and IRQ ordering. Preserve the current once-per-frame
@@ -92,7 +94,7 @@ content required by that issue. This adds no feature families or asset framework
 | [Composition](COMPOSITION.md) | Approved courier tiles and pose maps in [CHARACTER_ART.md](CHARACTER_ART.md); current composition and game allocation |
 | [HUD/columns](HUD_COLUMNS.md) | Existing terrain, selected approved font tiles and fixed HUD previews |
 | [Movement](MOVEMENT.md) | Approved base walk/jump poses and core small skid; stored pose/facing and cadence |
-| #302 | Power, damage and projectile visuals; identify missing transitions separately from approved courier poses |
+| [Power](POWER.md) | Approved core hurt, crouch, throw, large skid and shot tiles at VRAM 98..107; no new art |
 | #303 | Interactive blocks, released items and pickups |
 | #304 | Progression displays and original fixture maps |
 | #305 | Selected enemy, hazard and moving/falling-platform art |
@@ -130,7 +132,7 @@ Child completion alone does not establish composed FPGA behavior.
 |---|---|
 | Composition, publication, HUD/scroll | Qualified combined hardware diagnostic, publisher, [composition](COMPOSITION.md) and [HUD/column](HUD_COLUMNS.md) proofs, including split pixels and column boundaries |
 | Motion and poses | [Movement matrix](../../../../src/dv/springtrail/MOVEMENT.md): independent per-update state/pose cases, including direction changes, jump and collision transitions |
-| Interactions and world state | #302/#303/#305 contact/power/block/entity cases, persistence and player/platform interactions |
+| Interactions and world state | [Power matrix](../../../../src/dv/springtrail/POWER.md) plus #303/#305 block/entity cases, persistence and player/platform interactions |
 | Progression | #304 life/timer/death/retry/level-transition cases and their shared HUD/state ownership |
 | Final build and FPGA composition | Reproducible clean ROM builds with exact hashes, full UART upload/readback, and independently expected source-frame/gameplay checkpoints exercising the changed capabilities above on a qualified FPGA build |
 

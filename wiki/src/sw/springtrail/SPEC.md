@@ -53,8 +53,8 @@ once-per-frame updates and the approved prepared-scene delay are unchanged.
 The [approved original character art](CHARACTER_ART.md) supplies the 32-tile
 courier bank and twelve pose maps. The [8x8 composer](COMPOSITION.md) supports
 both facing directions, signed clipping and small/large geometry. Normal play
-uses small poses with the [movement and animation contract](MOVEMENT.md).
-Runtime power/size transitions remain open in the alignment contract.
+uses the [movement and animation contract](MOVEMENT.md) in the size selected by
+the [contact and power contract](POWER.md).
 
 The game has title, playing, paused, retry and won states. Core reset starts at
 the title. A retry or restart restores the initial player, camera, enemy,
@@ -63,11 +63,12 @@ collectibles and score; it does not preserve a hidden life counter or randomness
 | Button | Behavior |
 |---|---|
 | Left / Right | Move horizontally while playing; Right takes priority when both are held, subject to reversal hold |
-| B | Select the run speed class under the movement contract |
+| B | Select the run speed class under the movement contract; a new press throws one shot while the player is a thrower |
 | A | Jump on a new press while grounded; holding A does not queue another jump |
 | Start | Title: start; playing: pause; paused: resume; retry/won: restart the level |
 | Select | Restart the level only while paused; ignored elsewhere |
-| Up / Down | No gameplay action in this level |
+| Down | Crouch while large and grounded under the power contract; small players ignore it |
+| Up | No gameplay action in this level |
 
 Pause freezes player/world simulation, enemy movement, collection and the game
 timer, while the ROM's display/input loop and host transport remain active.
@@ -80,13 +81,16 @@ The camera follows horizontal player position, clamped to the level edges;
 camera movement cannot change world-space collisions. Platforms are solid from
 all sides; there are no slopes, moving platforms or one-way surfaces. Vertical motion,
 jump, landing and wall/ceiling collision must be deterministic. Falling below
-the level or contacting the enemy enters retry. The walking enemy reverses at
-its specified patrol endpoints. No stomp or combat mechanic is required.
+the level enters retry. The walking enemy reverses at its specified patrol
+endpoints while alive. The [contact and power contract](POWER.md) classifies
+enemy contact as invincible, stomp or hit: a stomp or a live shot kills the
+enemy until restart; a hit shrinks a large player into a protection window and
+sends a small player to retry.
 
 Each collectible increments the visible counter once and disappears until
 restart. Touching the finish marker while alive enters won; collecting every
 item is optional. Death takes precedence over collection or winning on the same
-update. Pause/restart decisions precede world updates. The stationary background
+update; a stomp or a non-fatal hit does not. Pause/restart decisions precede world updates. The stationary background
 [HUD](HUD_COLUMNS.md) occupies screen rows 0..15 and shows score and mode.
 The playfield retains world y coordinates in rows 16..143; neither the collision
 world nor the ground at y=128 moves. HUD clipping hides only object pixels above
@@ -115,10 +119,12 @@ not the newly computed logical transition. Pause freezes game state while
 publication continues; inactive map restoration may continue while paused.
 
 Each VBlank samples JOYP once. Process restart/pause first. A playing update
-selects run/jump state, advances animation, resolves horizontal motion/collision,
-then vertical profile motion/collision, updates camera, then resolves interactions. Scene
-preparation reads that resulting state without advancing animation. The
-[movement contract](MOVEMENT.md) fixes the exact precedence and original choices.
+advances power timers, decides crouch and throw, selects run/jump state,
+advances animation, resolves horizontal motion/collision, then vertical profile
+motion/collision, updates camera, moves the enemy and shot, then resolves
+interactions. Scene preparation reads that resulting state without advancing
+animation. The [movement contract](MOVEMENT.md) and the
+[power contract](POWER.md) fix the exact precedence and original choices.
 Resolve each axis
 against all solid tiles touched by the half-open collision box, using floor of
 the fixed-point coordinate. Snap to the contacted tile edge and clear velocity
@@ -130,8 +136,10 @@ The literal level has ground in rows 16 and 17 except gap columns 22..25,
 row 10 columns 31..35, row 12 columns 56..60, and row 11 columns 80..84.
 All other cells are empty. Collectibles are 8-by-8 boxes at (96, 88), (264, 72),
 (464, 88), and (656, 80); the 8-by-16 goal starts at (736, 112). Collectible
-and goal tests use half-open rectangle overlap. The [interaction routines](../../../../src/sw/springtrail/interactions.asm)
-implement these mechanics. No parameter is selected from DUT output.
+and goal tests use half-open rectangle overlap against the power contract's
+contact box. The [interaction routines](../../../../src/sw/springtrail/interactions.asm)
+and [power routines](../../../../src/sw/springtrail/power.asm) implement these
+mechanics. No parameter is selected from DUT output.
 Update the game once per normal emulated frame using a documented input-sampling
 point. There are no wall-clock or nondeterministic random inputs.
 

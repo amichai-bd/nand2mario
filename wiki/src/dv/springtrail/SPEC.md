@@ -298,6 +298,17 @@ does not claim a new full gameplay or physical milestone. Historical nine-object
 frame, renderer and endurance helpers reject mismatched ROM/source identities;
 they must not silently validate the current composer, and no target runs them.
 
+## Contact and power checks
+
+The [power contract](../../sw/springtrail/POWER.md) freezes contact classes,
+power states, protection windows, crouch and the shot. The
+[power matrix](../../../../src/dv/springtrail/POWER.md) owns its acceptance:
+independent literal histories, two bounded halves of shared-CPU cases through
+`UpdateGame`, `PowerUp`, `GrantStar` and `InitGame`, one actual consumer fault
+on the stomp's enemy-alive store, and a rendered thrower/shot/hurt fixture. The
+six motion targets are rerun because the shared ROM, startup anchor, VRAM tile
+count and operand ranges changed. No physical or milestone result follows.
+
 ## Background HUD and prepared columns
 
 The [HUD/column matrix](../../../../src/dv/springtrail/HUD_COLUMNS.md) owns current

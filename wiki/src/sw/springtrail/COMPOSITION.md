@@ -24,25 +24,31 @@ collision, with linker overlap checks. Mapperless32768-byte profile is unchanged
 Base pose order is STAND,WALK1,WALK2,WALK3,JUMP,RETRY for small, then large.
 All twelve base maps remain supported. The approved small skid adds composer
 pose12 and four tiles94..97, VRAM85E0..861F, from core atlas tiles16..19.
-Its 64 bytes occupy ROM6100..613F and are loaded by InitMotionArt while LCD is off.
-The [movement contract](MOVEMENT.md) owns this allocation and state mapping.
+The [power contract](POWER.md) adds poses13..17 (large skid, small hurt,
+large hurt, crouch, large throw) and the shot tile from core atlas tiles
+21..26, 43..45 and54 at VRAM98..107. InitMotionArt copies all fourteen core
+tiles (224 bytes) while LCD is off. A six-piece pose is large and raises its
+top-left by eight pixels; crouch composes its four visible pieces as a small
+pose sharing the same feet.
 
-Normal play renders stored motion poses STAND, WALK1..3, JUMP or SKID; motion
-pose5 selects composer pose12. Title selects STAND and retry selects base RETRY.
+Normal play renders stored motion poses STAND, WALK1..3, JUMP or SKID in the
+current size; motion pose5 selects composer pose12 or13. Title selects STAND
+and retry selects RETRY of the current size. Hurt, throw, crouch and growth
+overrides follow the [power contract's pose precedence](POWER.md#visible-poses).
 Pause/WON preserve the stored motion pose. The renderer never advances the
 animation counter. Accepted directional intent sets facing, including at a wall;
 reversal hold preserves facing. Neutral initialization/restart faces right.
 Whole-pose reflection maps x to8-x and XORs the tile X-flip bit. Approved Y-flip
-flags are preserved. Runtime power/size transitions remain owned by
-[#302](https://github.com/amichai-bd/nand2mario/issues/302).
+flags are preserved.
 
 Global LCDC object-size bit is0. Each enemy, pickup and goal uses a vertical pair
 of adjacent tiles with unchanged pixels and anchors. Keep player, enemy, four
-pickups and goal OAM priority order. Score and mode use the background
-[HUD](HUD_COLUMNS.md), with no OAM entries. Player pieces are row-major.
-At most16 small/18 large entries are emitted; the remaining96/88 bytes of the
-160-byte shadow are zero. At most2 courier pieces and one from each of6 other
-objects intersect a scanline: maximum8, below the hardware10-object limit.
+pickups and goal OAM priority order; one live shot follows the goal. Score and
+mode use the background [HUD](HUD_COLUMNS.md), with no OAM entries. Player
+pieces are row-major. At most16 small/18 large entries plus one shot are
+emitted; the remaining bytes of the 160-byte shadow are zero. At most2 courier
+pieces and one from each of7 other objects intersect a scanline: maximum9,
+below the hardware10-object limit.
 The HUD disables objects on rows0..15; lower pixels of crossing pieces remain.
 Use the [HRAM DMA publisher](../../../../src/sw/springtrail/oam_dma.asm)
 unchanged, once per prepared publication.
@@ -151,7 +157,9 @@ clips the player's upper rows while preserving its pixels at y>=16.
 Labels are composer pose IDs and R/L facing. IDs0..5 are small
 STAND/WALK1/WALK2/WALK3/JUMP/RETRY, IDs6..11 are the corresponding large maps,
 and ID12 is the approved small skid. Checkerboard and padding are review aids.
-Large poses remain composition support, not implemented power transitions.
+The [power contract](POWER.md#visible-poses) binds large poses and IDs13..17 to
+runtime state; the [player-actions preview](core-art/player-actions.svg) shows
+those approved sources.
 
 Reproduce both files from an author worktree with a fresh tag:
 

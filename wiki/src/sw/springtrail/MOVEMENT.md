@@ -148,7 +148,8 @@ New gameplay state occupies C060..C069 in this order:
 
 Scene composition reads motion pose/facing and retains the existing title/retry
 mode overrides. It does not advance motion state. Logical skid uses the approved
-small-skid core pose; no power/large-state mechanics are introduced. Existing
+skid core pose of the current size; the [power contract](POWER.md) owns size,
+crouch and hurt overrides. Existing
 courier poses and core editable sources remain authoritative. The skid's four
 core tiles16..19 stay at ROM6100..613F and are copied at LCD-off startup to
 VRAM tiles94..97 (85E0..861F). Courier pose12 uses these four pieces; existing
