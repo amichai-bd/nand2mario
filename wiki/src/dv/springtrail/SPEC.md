@@ -2,7 +2,8 @@
 
 The original complete-game baseline is qualified and the UART-observable
 `v1.0` checks are proven on the current image; physical-presence
-acceptance remains open in [#28](https://github.com/amichai-bd/nand2mario/issues/28). The
+acceptance remains open in the charter's
+[remote acceptance](../../project-charter.md#remote-acceptance) split. The
 [game specification](../../sw/springtrail/SPEC.md) owns gameplay;
 the [charter](../../project-charter.md#release-acceptance) owns release criteria.
 The [foundation proof](../../../../src/dv/springtrail/README.md) checks
@@ -223,9 +224,12 @@ only with exact relevant-input and behavior qualification; v0.5 is not v0.9.
 
 ## Physical acceptance
 
-V1.0 requires the applicable [#28 board/display](https://github.com/amichai-bd/nand2mario/issues/28)
-evidence, reviewed current FPGA fit/timing/build identity and verified device, wiring,
-ground, voltage and exclusive access. Standing authorization does not replace
+V1.0 requires the applicable board and display evidence —
+[board bring-up](../../board-bring-up.md) for wiring, checked programming and
+UART-readable frame content, and
+[#417](https://github.com/amichai-bd/nand2mario/issues/417) for the monitor
+picture — plus reviewed current FPGA fit/timing/build identity and verified
+device, wiring, ground, voltage and exclusive access. Standing authorization does not replace
 those checks. Preserve the existing UART and physical source-selection contract.
 
 Fully upload and read back the exact original game image over UART. Scripted
@@ -253,11 +257,12 @@ This removes no required full load/readback or reset/load/start cycle. Freeze
 the selected script and continuous session's input/sampling/failure plan under
 the linked milestone policy. Paused deterministic acquisition does not count
 toward continuous endurance. A connected monitor or simulation result alone
-does not prove actual VGA or keyboard operation; missing #28 evidence remains
-a physical release blocker. The [charter](../../project-charter.md#remote-acceptance)
+does not prove actual VGA or keyboard operation; missing physical-presence
+evidence remains a physical release blocker. The [charter](../../project-charter.md#remote-acceptance)
 separates the checks proven over UART from those needing physical presence.
 
-These requirements do not close GAP-012 or #28 by simulation. Silent output is
+These requirements do not close GAP-012 or
+[#417](https://github.com/amichai-bd/nand2mario/issues/417) by simulation. Silent output is
 intentional. Trusted CI/hardware-job activation is out of scope;
 [GAP-010](../../../preflight-gaps.md#gap-010-github-remote-issues-ci-and-pages)
 keeps the record, and its absence does not block ordinary reviewed local

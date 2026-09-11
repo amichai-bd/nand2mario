@@ -139,7 +139,11 @@ chains to the asserted state, even if the button is never pressed. Generated
 implementation must prove a supported MAX 10 power-up initialization or wrapper
 reset source establishes these values without a running pixel clock.
 The board wrapper maps the active-low manual
-reset input; #28 must verify its pin/polarity on hardware. Assert reset without
+reset input. [Board bring-up](board-bring-up.md) shows the design releasing
+from reset and answering over UART, so the released level is not inverted;
+pressing KEY0 is unverified and still needs physical presence under the
+charter's [remote acceptance](project-charter.md#remote-acceptance) split.
+Assert reset without
 waiting for a clock. After release, synchronize the raw input through two flops
 and require 500000 consecutive released reference edges (10 ms nominal) before
 releasing PLL `areset`. Any reassertion restarts the qualification.
@@ -246,8 +250,13 @@ For each board output, require an explicit register-to-pin bound: VGA RGB/sync
 maximum 10 ns and skew between those outputs at most 2 ns; UART TX maximum
 20 ns. These are internal design budgets, not measured cable/monitor guarantees.
 Constrain them with explicit datapath max/min (minimum 0 ns) and skew checks,
-or equivalent reviewed virtual-clock I/O constraints. #28 owns pin, I/O standard,
-board electrical proof and any additional external budget. Unused board ports
+or equivalent reviewed virtual-clock I/O constraints.
+[Board bring-up](board-bring-up.md) records the pin and I/O standard. A
+measured board electrical proof and any additional external budget stay open:
+[#417](https://github.com/amichai-bd/nand2mario/issues/417) owns the check on a
+connected display, and
+[GAP-012](../preflight-gaps.md#gap-012-vga-frame-crossing) owns monitor timing
+tolerance. Unused board ports
 are absent from the top. SDRAM constraints cannot be inferred from this plan.
 
 ## Required verification
@@ -282,7 +291,7 @@ negative results. Questa and physical execution follow the
 The [clocking](rtl/clocking/MAS_clocking.md) and [VGA/frame bridge](rtl/vga/MAS_vga.md)
 contracts own generated design, simulation and timing requirements. These checks
 do not establish the remaining physical acceptance in GAP-012 and
-[#28](https://github.com/amichai-bd/nand2mario/issues/28).
+[#417](https://github.com/amichai-bd/nand2mario/issues/417).
 
 ## Primary references
 

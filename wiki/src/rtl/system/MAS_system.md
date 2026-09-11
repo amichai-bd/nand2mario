@@ -18,9 +18,9 @@ The additive `v05-board` target uses the same composition with physical UART
 D0/D1 and KEY0 reset, following the [board pin contract](../../fpga-controls.md).
 Only diagnostic outputs remain virtual. `BUILD_ID` propagates the producing
 128-bit build identity to the UART owner; the placement/simulation default stays
-unchanged. Physical pin, wiring and voltage qualification remains an open
-[board bring-up gap](https://github.com/amichai-bd/nand2mario/issues/28);
-simulation and placement proofs do not satisfy it.
+unchanged. Physical pin, wiring and voltage qualification is recorded in
+[board bring-up](../../board-bring-up.md); simulation and placement proofs do
+not satisfy it.
 
 The UART owner supplies core reset, profile, epoch, pause and effective input.
 Initialization completes only when CPU and backing-store initialization complete.

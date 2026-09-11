@@ -20,6 +20,7 @@ Actual configured licensed execution and activation are out of scope;
 [GAP-010](../../preflight-gaps.md#gap-010-github-remote-issues-ci-and-pages)
 keeps the record. The inactive
 implementation does not change repository protection, environments, credentials or
-runner registration. Physical execution is absent; setup and acceptance remain
-[an open board gap](https://github.com/amichai-bd/nand2mario/issues/28). Explicit invocation is
+runner registration. Physical execution is absent; hardware-job setup and
+acceptance stay out of scope under the
+[remote working scope](../../preflight-gaps.md#remote-working-scope). Explicit invocation is
 not unattended CI and does not establish proof for a different revision.

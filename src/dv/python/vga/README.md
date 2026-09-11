@@ -62,4 +62,4 @@ Artifacts retain applied and reconstructed frame bytes, per-frame CRC/counts,
 source/output completion times, progress, exact mismatch context, simulator
 waves, XML and the normal builder input/artifact hashes. The broader legacy
 ownership/reset scenarios remain separate; this proof does not close GAP-012
-or #28 and does not show pixels on a physical monitor.
+or #417 and does not show pixels on a physical monitor.
