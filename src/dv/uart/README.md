@@ -108,7 +108,17 @@ must fail the independent freeze checker. The normal full wire endpoint test
 remains the affected command/status/reset/ROM regression after this control edit.
 
 `uart-validation` is the focused synthesis-correction regression for the actual
-host-register decoder and command validator. It checks all twenty literal host
-values, intervening unaligned bytes, high address aliases and unknown rejection,
-plus seven reply lengths and malformed lengths. Its 113 checks do not replace
-full serial endpoint evidence. The negative corrupts the actual build-ID word.
+host-register decoder and command validator. It checks all thirty-eight literal
+host values, intervening unaligned bytes, the unassigned words above the map,
+high address aliases and unknown rejection, plus seven reply lengths and
+malformed lengths. Its 200 checks do not replace full serial endpoint evidence.
+The negative corrupts the actual build-ID word.
+
+`io-peek` proves a host read of the DMG I/O view disturbs nothing. Two identical
+copies of `n2m_timer`, `n2m_interrupts` and `n2m_ppu_registers` run on one
+stimulus; only copy A is peeked, with the decode sweeping every exposed address
+each edge. Every committed observation, interrupt flag, timer output and register
+readback must match on every edge, and each peeked word must equal copy A's live
+value. `io-peek-disturb` routes the peek through copy A's DMG I/O port instead,
+which is the wiring mistake the design avoids, and must fail with
+`IO_PEEK_DIVERGENCE signal=tima`.

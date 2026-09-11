@@ -15,6 +15,25 @@ module n2m_uart_host_registers (
     input var logic snapshot_valid,
     input var n2m_interfaces_pkg::snapshot_t snapshot_metadata,
     input var logic [127:0] build_id,
+    // Live DMG I/O observations. Each is a committed flop of its owning
+    // module; this decode only selects among them and never drives them.
+    input var logic [7:0] io_lcdc,
+    input var logic [7:0] io_stat,
+    input var logic [7:0] io_ly,
+    input var logic [7:0] io_lyc,
+    input var logic [7:0] io_scy,
+    input var logic [7:0] io_scx,
+    input var logic [7:0] io_wy,
+    input var logic [7:0] io_wx,
+    input var logic [7:0] io_bgp,
+    input var logic [7:0] io_obp0,
+    input var logic [7:0] io_obp1,
+    input var logic [7:0] io_div,
+    input var logic [7:0] io_tima,
+    input var logic [7:0] io_tma,
+    input var logic [7:0] io_tac,
+    input var logic [7:0] io_if,
+    input var logic [7:0] io_ie,
     output logic address_valid,
     output logic [31:0] data
 );
@@ -41,6 +60,25 @@ module n2m_uart_host_registers (
         else if (address == n2m_interfaces_pkg::HOST_REG_BUILD_ID_2) data = build_id[95:64];
         else if (address == n2m_interfaces_pkg::HOST_REG_BUILD_ID_3) data = build_id[127:96];
         else if (address == n2m_interfaces_pkg::HOST_REG_SNAPSHOT_EPOCH) data = snapshot_metadata.epoch;
+        else if (address == n2m_interfaces_pkg::HOST_REG_IO_LCDC) data = {24'b0, io_lcdc};
+        else if (address == n2m_interfaces_pkg::HOST_REG_IO_STAT) data = {24'b0, io_stat};
+        else if (address == n2m_interfaces_pkg::HOST_REG_IO_LY) data = {24'b0, io_ly};
+        else if (address == n2m_interfaces_pkg::HOST_REG_IO_LYC) data = {24'b0, io_lyc};
+        else if (address == n2m_interfaces_pkg::HOST_REG_IO_SCY) data = {24'b0, io_scy};
+        else if (address == n2m_interfaces_pkg::HOST_REG_IO_SCX) data = {24'b0, io_scx};
+        else if (address == n2m_interfaces_pkg::HOST_REG_IO_WY) data = {24'b0, io_wy};
+        else if (address == n2m_interfaces_pkg::HOST_REG_IO_WX) data = {24'b0, io_wx};
+        else if (address == n2m_interfaces_pkg::HOST_REG_IO_BGP) data = {24'b0, io_bgp};
+        else if (address == n2m_interfaces_pkg::HOST_REG_IO_OBP0) data = {24'b0, io_obp0};
+        else if (address == n2m_interfaces_pkg::HOST_REG_IO_OBP1) data = {24'b0, io_obp1};
+        else if (address == n2m_interfaces_pkg::HOST_REG_IO_DIV) data = {24'b0, io_div};
+        else if (address == n2m_interfaces_pkg::HOST_REG_IO_TIMA) data = {24'b0, io_tima};
+        else if (address == n2m_interfaces_pkg::HOST_REG_IO_TMA) data = {24'b0, io_tma};
+        else if (address == n2m_interfaces_pkg::HOST_REG_IO_TAC) data = {24'b0, io_tac};
+        else if (address == n2m_interfaces_pkg::HOST_REG_IO_IF) data = {24'b0, io_if};
+        else if (address == n2m_interfaces_pkg::HOST_REG_IO_IE) data = {24'b0, io_ie};
+        else if (address == n2m_interfaces_pkg::HOST_REG_IO_LCD_STATUS)
+            data = {8'b0, io_lcdc, io_stat, io_ly};
         else address_valid = 0;
     end
 endmodule

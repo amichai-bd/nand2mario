@@ -2,7 +2,7 @@
 
 Generated from cfg/interfaces.json by tools/n2m/interfaces.py; DO NOT EDIT.
 
-Source SHA-256: `b6cc59f5f13dd806be95bfe01aab969acf0bba07fb2ff4efa43f87ccfc29775e`.
+Source SHA-256: `80618216aec777c06eace757549d9bab43315603dc0655f78ee9b833f72a429a`.
 
 See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior, reset, framing and tests.
 
@@ -176,6 +176,24 @@ See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior,
 | `HOST_REG_INPUT_SOURCE` | 32 | `0x10044` | Selected input source: UART or physical. |
 | `HOST_REG_INPUT_PHYSICAL` | 32 | `0x10048` | Latest coherent physical button mask; read only. |
 | `HOST_REG_INPUT_EFFECTIVE` | 32 | `0x1004C` | Effective Game Boy button mask; read only. |
+| `HOST_REG_IO_LCDC` | 32 | `0x10050` | DMG LCDC committed byte; read-only live view |
+| `HOST_REG_IO_STAT` | 32 | `0x10054` | DMG STAT enables, coincidence and live mode; bit 7 zero; read-only live view |
+| `HOST_REG_IO_SCY` | 32 | `0x10058` | DMG SCY committed byte; read-only live view |
+| `HOST_REG_IO_SCX` | 32 | `0x1005C` | DMG SCX committed byte; read-only live view |
+| `HOST_REG_IO_LY` | 32 | `0x10060` | DMG readable LY; read-only live view |
+| `HOST_REG_IO_LYC` | 32 | `0x10064` | DMG LYC committed byte; read-only live view |
+| `HOST_REG_IO_BGP` | 32 | `0x10068` | DMG BGP committed byte; read-only live view |
+| `HOST_REG_IO_OBP0` | 32 | `0x1006C` | DMG OBP0 committed byte; read-only live view |
+| `HOST_REG_IO_OBP1` | 32 | `0x10070` | DMG OBP1 committed byte; read-only live view |
+| `HOST_REG_IO_WY` | 32 | `0x10074` | DMG WY committed byte; read-only live view |
+| `HOST_REG_IO_WX` | 32 | `0x10078` | DMG WX committed byte; read-only live view |
+| `HOST_REG_IO_DIV` | 32 | `0x1007C` | DMG DIV, the upper byte of the internal divider; read-only live view |
+| `HOST_REG_IO_TIMA` | 32 | `0x10080` | DMG TIMA committed byte; read-only live view |
+| `HOST_REG_IO_TMA` | 32 | `0x10084` | DMG TMA committed byte; read-only live view |
+| `HOST_REG_IO_TAC` | 32 | `0x10088` | DMG TAC committed control in bits 2:0; read-only live view |
+| `HOST_REG_IO_IF` | 32 | `0x1008C` | DMG IF committed request flags in bits 4:0; read-only live view |
+| `HOST_REG_IO_IE` | 32 | `0x10090` | DMG IE committed byte; read-only live view |
+| `HOST_REG_IO_LCD_STATUS` | 32 | `0x10094` | LCDC, STAT and LY sampled on one edge; LY in bits 7:0; read-only live view |
 
 ## State
 

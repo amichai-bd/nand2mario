@@ -208,6 +208,14 @@ the held request's public port, then orders storage, core and snapshot completio
 before publishing a raw reply. READ_HOST uses only the generated host word table;
 unknown and unaligned addresses return BAD_VALUE. It never decodes DMG memory.
 
+`n2m_uart_host_registers` also decodes the DMG I/O view. Each owning module
+publishes its committed register value as a combinational observation output,
+and the decode selects among those inputs; it drives nothing back. The selected
+value is a flop and no commit, enable or handshake is derived from the address,
+so these reads are allowed while the core runs and need no pause. The
+[host SPEC](../../../tools/n2m/host/SPEC.md#dmg-io-register-view) freezes which
+registers are exposed, at which address, and how each differs from a CPU read.
+
 LOAD_BEGIN invalidates the image and enters LOADING, stops the existing timebase,
 resets and awaits aggregate core initialization, then completes the presence
 sweep. LOAD_END publishes validity only after actual presence/ROM CRC success

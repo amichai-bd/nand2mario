@@ -14,7 +14,8 @@ module tb_ppu_palette_conflict;
     logic corrupt;
     integer palette, checks, trace_file;
     logic [23:0] expected_render;
-    n2m_ppu_registers dut (.*);
+    n2m_ppu_registers dut (.*, .stat_observe()
+    );
     always #5 clk_sys = ~clk_sys;
 
     task automatic check(input logic [7:0] expected, input logic [7:0] readback);

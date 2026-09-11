@@ -103,3 +103,14 @@ Actual source/ack/observed-state faults must cause exact nonzero named mismatch
 diagnostics. Retain positive and negative Questa logs, source/tool identities,
 public waveforms, sequence/counts and expected/actual register traces. This
 acceptance does not establish peripheral or whole-system acceptance.
+
+## Host observations
+
+`if_stored` and `ie_stored` are the committed flags and enables. The host
+register map exposes those, not `if_observe`/`ie_observe`, so a host read
+reports settled state rather than the same-edge combinational value the CPU
+consumes. The host word carries the stored five request bits with the upper bits
+zero; a CPU read of FF0F stuffs bits 7:5. Reading changes no flag and no
+acknowledgement. The
+[host SPEC](../../../tools/n2m/host/SPEC.md#dmg-io-register-view) owns the
+exposed table.

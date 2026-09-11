@@ -96,3 +96,14 @@ Actual counter/edge and reload/request faults must produce intended nonzero
 Questa failures. Include a named local assertion failure. Retain exact sources,
 commands, tool identities, register/event CSV and public waves. External suite
 execution, whole CPU execution and physical accuracy are not claimed here.
+
+## Host observations
+
+`div_observe`, `tima_observe`, `tma_observe` and `tac_observe` publish the same
+committed divider byte, counter, modulo and control the CPU port reports, under
+the same reset qualification. They are combinational reads of `state_q`: no
+write, commit or divider reset is derived from them, so sampling them cannot
+advance or clear the timer. `tac_observe` reports the stored three bits with the
+upper bits zero rather than the CPU read's stuffed ones. The
+[host SPEC](../../../tools/n2m/host/SPEC.md#dmg-io-register-view) owns the
+exposed table.

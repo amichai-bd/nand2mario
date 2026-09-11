@@ -93,6 +93,9 @@ module n2m_v05_system #(
     logic wave_valid;
     logic ppu_selected, irq_selected;
     logic [7:0] ie_stored, ie_observe;
+    // Committed DMG I/O observations published to the host register map.
+    logic [7:0] io_lcdc, io_stat, io_ly, io_lyc, io_scy, io_scx, io_wy, io_wx;
+    logic [7:0] io_bgp, io_obp0, io_obp1, io_div, io_tima, io_tma, io_tac;
     logic [4:0] if_stored, if_observe;
     logic vram_request, vram_valid;
     logic [12:0] vram_address;
@@ -113,6 +116,9 @@ module n2m_v05_system #(
     n2m_uart #(.CLOCK_HZ(25000000), .BAUD(UART_BAUD)) u_uart (
         .clk_sys, .reset_sys, .uart_rx, .uart_tx,
         .build_id(BUILD_ID), .gb_tick, .paused,
+        .io_lcdc, .io_stat, .io_ly, .io_lyc, .io_scy, .io_scx, .io_wy, .io_wx,
+        .io_bgp, .io_obp0, .io_obp1, .io_div, .io_tima, .io_tma, .io_tac,
+        .io_if({3'b0, if_stored}), .io_ie(ie_stored),
         .core_initialized, .instruction_complete, .retirement_valid, .cpu_stopped,
         .physical_commit, .physical_buttons, .effective_buttons, .effective_update,
         .input_source_observe,
@@ -214,7 +220,8 @@ module n2m_v05_system #(
         .clk_sys, .reset_sys, .core_reset, .gb_tick, .divider_reset_request,
         .io_commit(owner_commit && destination == TIMER_DESTINATION), .io_write(owner_write),
         .io_address(owner_address), .io_wdata(owner_wdata),
-        .io_selected(), .io_rdata(timer_rdata), .interrupt_request(timer_request)
+        .io_selected(), .io_rdata(timer_rdata), .interrupt_request(timer_request),
+        .div_observe(io_div), .tima_observe(io_tima), .tma_observe(io_tma), .tac_observe(io_tac)
     );
     n2m_interrupts u_interrupts (
         .clk_sys, .reset_sys, .core_reset, .gb_tick,
@@ -233,7 +240,10 @@ module n2m_v05_system #(
         .dma_active, .vram_cpu_allow, .oam_cpu_allow, .vram_cpu_read_allow, .oam_cpu_read_allow, .oam_late_future, .oam_cpu_late_write, .stat_condition,
         .vblank_condition, .stat_rise(), .vblank_rise(), .fault(ppu_fault),
         .source_valid, .source_start, .source_shade, .source_x, .source_y,
-        .source_epoch, .source_dot, .source_abort, .blank_assert, .source_display_eligible
+        .source_epoch, .source_dot, .source_abort, .blank_assert, .source_display_eligible,
+        .lcdc_observe(io_lcdc), .stat_observe(io_stat), .ly_observe(io_ly), .lyc_observe(io_lyc),
+        .scy_observe(io_scy), .scx_observe(io_scx), .wy_observe(io_wy), .wx_observe(io_wx),
+        .bgp_observe(io_bgp), .obp0_observe(io_obp0), .obp1_observe(io_obp1)
     );
     n2m_serial u_serial (
         .clk_sys, .reset_sys, .core_reset, .gb_tick,

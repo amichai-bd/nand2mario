@@ -21,6 +21,24 @@ module n2m_uart_commands (
     output logic command_done,
     output logic [n2m_uart_pkg::UART_ADDRESS_BITS-1:0] response_bytes,
     input var logic [127:0] build_id,
+    // Live DMG I/O observations forwarded to the host register decode.
+    input var logic [7:0] io_lcdc,
+    input var logic [7:0] io_stat,
+    input var logic [7:0] io_ly,
+    input var logic [7:0] io_lyc,
+    input var logic [7:0] io_scy,
+    input var logic [7:0] io_scx,
+    input var logic [7:0] io_wy,
+    input var logic [7:0] io_wx,
+    input var logic [7:0] io_bgp,
+    input var logic [7:0] io_obp0,
+    input var logic [7:0] io_obp1,
+    input var logic [7:0] io_div,
+    input var logic [7:0] io_tima,
+    input var logic [7:0] io_tma,
+    input var logic [7:0] io_tac,
+    input var logic [7:0] io_if,
+    input var logic [7:0] io_ie,
     input var logic gb_tick,
     input var logic paused,
     input var logic core_initialized,
@@ -139,7 +157,8 @@ module n2m_uart_commands (
         .profile(profile), .dot_count(dot_count), .retirement_count(retirement_count),
         .buttons(buttons), .input_source(input_source), .physical_buttons(physical_buttons),
         .effective_buttons(effective_buttons), .snapshot_valid(snapshot_valid), .snapshot_metadata(snapshot_metadata),
-        .build_id(build_id), .address_valid(host_address_valid), .data(host_data)
+        .build_id(build_id), .io_lcdc, .io_stat, .io_ly, .io_lyc, .io_scy, .io_scx, .io_wy, .io_wx, .io_bgp, .io_obp0, .io_obp1, .io_div, .io_tima, .io_tma, .io_tac, .io_if, .io_ie,
+        .address_valid(host_address_valid), .data(host_data)
     );
     n2m_uart_validate u_validate (
         .header(request_header), .packet_bytes(request_bytes), .arguments(arguments),

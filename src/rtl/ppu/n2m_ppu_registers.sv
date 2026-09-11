@@ -32,6 +32,7 @@ module n2m_ppu_registers (
     output logic [7:0] wy,
     output logic [7:0] wx,
     output logic [3:0] stat_enable,
+    output logic [7:0] stat_observe,
     output logic stat_write,
     output logic lyc_write,
     output logic lcd_enable,
@@ -62,6 +63,9 @@ module n2m_ppu_registers (
     `N2M_ASSERT(ppu_palette_conflict_id, clk_sys, reset, !palette_pending || palette_id < 2'd3)
     `N2M_ASSERT_KNOWN(ppu_palette_conflict_known, clk_sys, reset,
         {palette_pending, palette_id, palette_conflict})
+    // Host observation of STAT. Same composition the CPU reads, with bit 7
+    // left zero: the host reports held storage, not CPU read bit stuffing.
+    assign stat_observe = {1'b0, stat_enable, coincidence, mode};
     assign write_commit = gb_tick && io_commit && io_write && !reset;
     assign lcdc_write = write_commit && io_address == n2m_interfaces_pkg::GB_REG_LCDC;
     assign lyc_write = write_commit && io_address == n2m_interfaces_pkg::GB_REG_LYC;

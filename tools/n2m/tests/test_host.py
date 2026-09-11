@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from n2m import generated_interfaces as abi
 from n2m.cli import main
 from n2m.doctor import select_uart
-from n2m.host.client import Client, RejectedCommand, UncertainCompletion
+from n2m.host.client import IO_REGISTERS, Client, RejectedCommand, UncertainCompletion
 from n2m.host.package import read_package
 from n2m.host.transport import SerialTransport, open_serial, session
 from n2m.interface_codec import decode_packet, encode_packet, pack_record, unpack_record
@@ -40,6 +40,7 @@ class Endpoint:
         self.profile = 0
         self.buttons = 0
         self.dot = 0
+        self.line = 0
         self.expected_crc = None
         self.frame = bytes((index * 37 + 11) % 256 for index in range(abi.FRAME_BYTES))
         self.snapshot_calls = 0
@@ -59,6 +60,18 @@ class Endpoint:
                       abi.HOST_REG_IMAGE_VALID: self.valid, abi.HOST_REG_PROFILE: self.profile,
                       abi.HOST_REG_INPUT: self.buttons}
             values.update({getattr(abi, f'HOST_REG_BUILD_ID_{i}'): 0x12340000 + i for i in range(4)})
+            # A live DMG view: each read advances the fake's own scanline model,
+            # which the endpoint's real registers do on their own.
+            from n2m.host.client import IO_REGISTERS
+            values.update({getattr(abi, 'HOST_REG_IO_' + name): index for index, name in enumerate(IO_REGISTERS)})
+            values[abi.HOST_REG_IO_LY] = self.line
+            values[abi.HOST_REG_IO_STAT] = 0x40 | (1 if self.line >= 144 else 3)
+            values[abi.HOST_REG_IO_LCDC] = 0x91
+            values[abi.HOST_REG_IO_LCD_STATUS] = (0x91 << 16) | (values[abi.HOST_REG_IO_STAT] << 8) | self.line
+            values[abi.HOST_REG_DOT_LO] = self.dot
+            if address in (abi.HOST_REG_IO_LCD_STATUS, abi.HOST_REG_IO_LY):
+                self.line = (self.line + 7) % 154
+                self.dot += 456
             if self.defect == 'zero-build':
                 values.update({getattr(abi, f'HOST_REG_BUILD_ID_{i}'): 0 for i in range(4)})
             response = pack_record('word', {'value': values[address]})
@@ -181,6 +194,28 @@ class HostTests(unittest.TestCase):
         with patch.object(client, 'request', return_value={'dot': 18}) as request:
             self.assertEqual(client.select_input_source(1), {'dot': 18})
             request.assert_called_once_with('WRITE_HOST', bytes.fromhex('44 00 01 00 01 00 00 00'))
+
+    def test_live_io_registers_read_without_pausing(self):
+        endpoint = Endpoint()
+        endpoint.state = abi.STATE_RUNNING
+        client = Client(endpoint)
+        result = client.sample_io(30)
+        self.assertEqual(len(result['samples']), 30)
+        # Reads are ordinary READ_HOST commands; nothing pauses or steps.
+        self.assertEqual({name for name, _, _ in endpoint.requests}, {'READ_HOST'})
+        self.assertEqual(endpoint.state, abi.STATE_RUNNING)
+        for row in result['samples']:
+            self.assertEqual(row['lcdc'], 0x91)
+            self.assertLess(row['stat'], 0x80)
+            self.assertLessEqual(row['ly'], 153)
+            self.assertEqual(row['ly'] >= 144, row['mode'] == 1)
+        dots = [row['dot_lo'] for row in result['samples']]
+        self.assertEqual(dots, sorted(dots))
+        self.assertGreaterEqual(len({row['ly'] for row in result['samples']}), 20)
+        self.assertEqual(sorted(result['registers']), sorted(IO_REGISTERS))
+        for count in (0, 5001, 'many'):
+            with self.assertRaises(ValueError):
+                client.sample_io(count)
 
     def test_complete_load_readback_and_controls(self):
         endpoint = Endpoint()

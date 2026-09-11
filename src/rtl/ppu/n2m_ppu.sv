@@ -47,7 +47,20 @@ module n2m_ppu (
     output logic [63:0] source_dot,
     output logic source_abort,
     output logic blank_assert,
-    output logic source_display_eligible
+    output logic source_display_eligible,
+    // Host observations of the committed PPU registers. Combinational
+    // views of existing state; nothing here reaches a register enable.
+    output logic [7:0] lcdc_observe,
+    output logic [7:0] stat_observe,
+    output logic [7:0] ly_observe,
+    output logic [7:0] lyc_observe,
+    output logic [7:0] scy_observe,
+    output logic [7:0] scx_observe,
+    output logic [7:0] wy_observe,
+    output logic [7:0] wx_observe,
+    output logic [7:0] bgp_observe,
+    output logic [7:0] obp0_observe,
+    output logic [7:0] obp1_observe
 );
     logic reset, lcd_enable, lcd_disable, stat_write;
     logic [7:0] lcdc, scy, scx, lyc, bgp, obp0, obp1, wy, wx, ly;
@@ -83,11 +96,21 @@ module n2m_ppu (
     logic early_oam_read_block, early_vram_read_block;
     assign reset = reset_sys || core_reset;
     assign fault = fetch_fault || object_fault;
+    assign lcdc_observe = lcdc;
+    assign ly_observe = readable_ly;
+    assign lyc_observe = lyc;
+    assign scy_observe = scy;
+    assign scx_observe = scx;
+    assign wy_observe = wy;
+    assign wx_observe = wx;
+    assign bgp_observe = bgp;
+    assign obp0_observe = obp0;
+    assign obp1_observe = obp1;
     assign fault_now = fetch_fault_now || object_fault_now;
     n2m_ppu_registers registers (
         .clk_sys, .reset, .gb_tick, .io_commit, .io_write, .io_address, .io_wdata,
         .ly(readable_ly), .mode, .coincidence, .quarter_phase, .io_selected, .io_rdata,
-        .lcdc, .scy, .scx, .lyc, .bgp, .obp0, .obp1, .wy, .wx, .stat_enable,
+        .lcdc, .scy, .scx, .lyc, .bgp, .obp0, .obp1, .wy, .wx, .stat_enable, .stat_observe,
         .stat_write, .lyc_write, .lcd_enable, .lcd_disable,
         .render_bgp, .render_obp0, .render_obp1
     );

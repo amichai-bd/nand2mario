@@ -16,13 +16,18 @@ module tb_uart_validation;
     integer checks;
     integer byte_index;
     integer bit_index;
-    logic [31:0] words [0:19];
+    logic [31:0] words [0:39];
     n2m_uart_host_registers u_host (
         .address(address), .endpoint_state(endpoint_state), .image_valid(1'b1), .profile(8'hA6),
         .dot_count(64'h1122334455667788), .retirement_count(64'h99AABBCCDDEEFF00),
         .buttons(8'h5A), .input_source(8'h01), .physical_buttons(8'hA5), .effective_buttons(8'h3C),
         .snapshot_valid(1'b1), .snapshot_metadata(metadata),
-        .build_id(128'h0123456789ABCDEF13579BDF2468ACE0), .address_valid(address_valid), .data(data)
+        .build_id(128'h0123456789ABCDEF13579BDF2468ACE0),
+        .io_lcdc(8'h91), .io_stat(8'h43), .io_ly(8'h5A), .io_lyc(8'h5B), .io_scy(8'h11),
+        .io_scx(8'h22), .io_wy(8'h33), .io_wx(8'h44), .io_bgp(8'hE4), .io_obp0(8'hD2),
+        .io_obp1(8'hC1), .io_div(8'hAB), .io_tima(8'h7F), .io_tma(8'h80), .io_tac(8'h05),
+        .io_if(8'h13), .io_ie(8'h1F),
+        .address_valid(address_valid), .data(data)
     );
     n2m_uart_validate u_validate (
         .header(header), .packet_bytes(packet_bytes), .arguments(arguments), .forced_status(8'h00),
@@ -57,7 +62,10 @@ module tb_uart_validation;
     initial begin
         words = '{32'h1,32'h2,32'h1,32'hA6,32'h55667788,32'h11223344,32'hDDEEFF00,32'h99AABBCC,
                   32'h5A,32'h1,32'hABCDEF01,32'h23456789,32'h2468ACE0,32'h13579BDF,32'h89ABCDEF,
-                  32'h01234567,32'hA5A6A7A8,32'h1,32'hA5,32'h3C};
+                  32'h01234567,32'hA5A6A7A8,32'h1,32'hA5,32'h3C,
+                  32'h91,32'h43,32'h11,32'h22,32'h5A,32'h5B,32'hE4,32'hD2,32'hC1,32'h33,
+                  32'h44,32'hAB,32'h7F,32'h80,32'h05,32'h13,32'h1F,32'h0091435A,
+                  32'h0,32'h0};
         metadata = '0; metadata.seq = 64'h23456789ABCDEF01; metadata.epoch = 32'hA5A6A7A8;
         endpoint_state = 8'h02; header = '0; header.version = 8'h01; header.kind = 8'h01;
         packet_bytes = 9'd12; arguments = '0; checks = 0; address = 0;
@@ -65,10 +73,12 @@ module tb_uart_validation;
         $dumpfile("waves.vcd");
         $dumpvars(0, address, data, address_valid, expected_data, expected_valid, endpoint_state,
             header, packet_bytes, arguments, status, response_length, checks);
-        // All bytes around the twenty literal aligned ABI addresses, then high aliases.
-        for (byte_index = 0; byte_index < 80; byte_index = byte_index + 1)
-            check_address(32'h00010000 + 32'(byte_index), byte_index % 4 == 0,
-                          byte_index % 4 == 0 ? words[byte_index / 4] : 32'd0);
+        // All bytes around the thirty-eight literal aligned ABI addresses, then
+        // two unassigned words above the map, then high aliases.
+        for (byte_index = 0; byte_index < 160; byte_index = byte_index + 1)
+            check_address(32'h00010000 + 32'(byte_index),
+                          byte_index % 4 == 0 && byte_index < 152,
+                          byte_index % 4 == 0 && byte_index < 152 ? words[byte_index / 4] : 32'd0);
         for (bit_index = 17; bit_index < 32; bit_index = bit_index + 1)
             check_address(32'h00010000 | (32'd1 << bit_index), 1'b0, 32'd0);
         check_address(32'h00000000, 1'b0, 32'd0);
@@ -94,7 +104,7 @@ module tb_uart_validation;
         command_case(8'h0E,16'd8,16'd8);
         address = 32'hDEADBEEF; header.command = 8'h02; header.length = 16'd4; packet_bytes = 9'd16;
         check_reply(8'h04,16'd0);
-        if (checks != 120) $fatal(1, "UART_VALIDATE_COVERAGE");
+        if (checks != 200) $fatal(1, "UART_VALIDATE_COVERAGE");
         $display("PASS UART validation checks=%0d", checks); $finish;
     end
 endmodule

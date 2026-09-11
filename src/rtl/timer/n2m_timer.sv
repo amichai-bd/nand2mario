@@ -12,7 +12,11 @@ module n2m_timer (
     input var logic [7:0] io_wdata,
     output logic io_selected,
     output logic [7:0] io_rdata,
-    output n2m_timer_pkg::timer_request_t interrupt_request
+    output n2m_timer_pkg::timer_request_t interrupt_request,
+    output logic [7:0] div_observe,
+    output logic [7:0] tima_observe,
+    output logic [7:0] tma_observe,
+    output logic [7:0] tac_observe
 );
     n2m_timer_pkg::timer_state_t state_q, state_next;
     n2m_timer_pkg::timer_request_t request_q, request_next;
@@ -82,6 +86,12 @@ module n2m_timer (
     `DFF_ARST_VAL(state_q,state_next,clk_sys,reset,reset_state())
     `DFF_ARST_VAL(request_q,request_next,clk_sys,reset,'0)
     assign interrupt_request = reset ? n2m_timer_pkg::timer_request_t'('0) : request_q;
+    // Host observations. Pure reads of the same committed state the CPU port
+    // reports; no write, commit or divider reset is derived from them.
+    assign div_observe = reset ? n2m_interfaces_pkg::PROFILE_PERIPHERAL_FILL : state_q.divider[15:8];
+    assign tima_observe = reset ? n2m_interfaces_pkg::PROFILE_PERIPHERAL_FILL : state_q.tima;
+    assign tma_observe = reset ? n2m_interfaces_pkg::PROFILE_PERIPHERAL_FILL : state_q.tma;
+    assign tac_observe = {5'b0, reset ? n2m_interfaces_pkg::PROFILE_PERIPHERAL_FILL[2:0] : state_q.tac};
     always_comb begin
         io_rdata = 0;
         case (io_address)

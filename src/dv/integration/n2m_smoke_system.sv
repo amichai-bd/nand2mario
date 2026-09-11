@@ -80,7 +80,12 @@ module n2m_smoke_system #(parameter bit HOST_PLAY = 0) (
         .rom_write_data, .rom_read_data, .rom_read_valid,
         .snapshot_request, .snapshot_ready, .snapshot_done,
         .snapshot_ok, .snapshot_valid, .snapshot_metadata,
-        .frame_read, .frame_address, .frame_data, .frame_valid
+        .frame_read, .frame_address, .frame_data, .frame_valid,
+        // This fixture has no timer or full I/O view; no test reads them here.
+        .io_lcdc(8'd0), .io_stat(8'd0), .io_ly(8'd0), .io_lyc(8'd0), .io_scy(8'd0),
+        .io_scx(8'd0), .io_wy(8'd0), .io_wx(8'd0), .io_bgp(8'd0), .io_obp0(8'd0),
+        .io_obp1(8'd0), .io_div(8'd0), .io_tima(8'd0), .io_tma(8'd0), .io_tac(8'd0),
+        .io_if(8'd0), .io_ie(8'd0)
     );
     n2m_timebase u_timebase (.clk_sys, .reset_sys, .core_reset, .pause_request, .gb_tick, .paused);
     n2m_cpu u_cpu (
@@ -177,7 +182,10 @@ module n2m_smoke_system #(parameter bit HOST_PLAY = 0) (
         .dma_active(1'b0), .vram_cpu_allow, .oam_cpu_allow, .vram_cpu_read_allow, .oam_cpu_read_allow, .oam_late_future(), .oam_cpu_late_write, .stat_condition,
         .vblank_condition, .stat_rise(), .vblank_rise(), .fault(ppu_fault),
         .source_valid, .source_start, .source_shade, .source_x, .source_y,
-        .source_epoch, .source_dot, .source_abort, .blank_assert, .source_display_eligible
+        .source_epoch, .source_dot, .source_abort, .blank_assert, .source_display_eligible,
+        .lcdc_observe(), .stat_observe(), .ly_observe(), .lyc_observe(),
+        .scy_observe(), .scx_observe(), .wy_observe(), .wx_observe(),
+        .bgp_observe(), .obp0_observe(), .obp1_observe()
     );
     generate if (HOST_PLAY) begin : g_play
         logic clk_pix;

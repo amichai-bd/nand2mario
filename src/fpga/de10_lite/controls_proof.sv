@@ -102,7 +102,11 @@ module controls_proof #(
         .rom_write(), .rom_read(), .rom_address(), .rom_write_data(), .rom_read_data(8'd0), .rom_read_valid(1'b0),
         .snapshot_request(), .snapshot_ready(1'b0), .snapshot_done(1'b0), .snapshot_ok(1'b0),
         .snapshot_valid(1'b0), .snapshot_metadata('0), .frame_read(), .frame_address(),
-        .frame_data(8'd0), .frame_valid(1'b0)
+        .frame_data(8'd0), .frame_valid(1'b0),
+        .io_lcdc(8'd0), .io_stat(8'd0), .io_ly(8'd0), .io_lyc(8'd0), .io_scy(8'd0),
+        .io_scx(8'd0), .io_wy(8'd0), .io_wx(8'd0), .io_bgp(8'd0), .io_obp0(8'd0),
+        .io_obp1(8'd0), .io_div(8'd0), .io_tima(8'd0), .io_tma(8'd0), .io_tac(8'd0),
+        .io_if(8'd0), .io_ie(8'd0)
     );
     n2m_joypad u_joypad (
         .clk_sys(clk_sys), .reset_sys(reset_sys), .core_reset(core_reset), .gb_tick(gb_tick),
