@@ -81,6 +81,59 @@ manifest names the title, author, release and licence text beside the pin.
 The [Libbet play record](../../../../src/dv/libbet/README.md) drives the pinned
 image through these commands on the board and retains its frames.
 
+## DMG I/O register view
+
+The host register map exposes the DMG's own I/O registers so a running board can
+be observed directly. This table is frozen: it names every exposed register, the
+host address, what the endpoint samples, and how that differs from a CPU read of
+the same DMG address. The [generated tables](../../../cfg/interfaces.md#host-reg)
+own the literal address values; this section owns the read semantics.
+
+Reads are live. Every entry is a combinational view of a `clk_sys` flop reached
+through the existing `READ_HOST` decode, so a read is allowed in `RUNNING` as
+well as `PAUSED`, and nothing is cleared, latched or advanced by reading. No
+pause, opcode, RAM port or chunked payload is involved. The map stays read-only:
+`host write` still rejects every address outside the generated write mask.
+
+One rule covers the whole table. The host observes the committed storage of the
+owning module, zero-extended into the 32-bit word. It does not reproduce the
+bit-stuffing a CPU read performs on unimplemented bits, because that stuffing
+hides which bits the endpoint actually holds. Where a CPU read differs, the
+difference column states it.
+
+| Register | Host address | Endpoint value | Difference from a CPU read | Evidence |
+|---|---|---|---|---|
+| LCDC | `HOST_REG_IO_LCDC` | `lcdc` committed byte | none | [Pan Docs LCDC](https://github.com/gbdev/pandocs/blob/fe246067b695b5404a4a6a47efb4fd6d921ececb/src/LCDC.md); [MAS_ppu](../../../src/rtl/ppu/MAS_ppu.md) |
+| STAT | `HOST_REG_IO_STAT` | `{1'b0, stat_enable, coincidence, mode}` | CPU read sets bit 7; the host leaves it zero | [Pan Docs STAT](https://github.com/gbdev/pandocs/blob/fe246067b695b5404a4a6a47efb4fd6d921ececb/src/STAT.md); [readable STAT rules](../../../src/rtl/ppu/MAS_ppu.md#stat-write-timing) |
+| SCY | `HOST_REG_IO_SCY` | `scy` committed byte | none | [Pan Docs Scrolling](https://github.com/gbdev/pandocs/blob/fe246067b695b5404a4a6a47efb4fd6d921ececb/src/Scrolling.md) |
+| SCX | `HOST_REG_IO_SCX` | `scx` committed byte | none | [Pan Docs Scrolling](https://github.com/gbdev/pandocs/blob/fe246067b695b5404a4a6a47efb4fd6d921ececb/src/Scrolling.md) |
+| LY | `HOST_REG_IO_LY` | readable LY, the same value the PPU presents to the CPU | none | [Pan Docs STAT](https://github.com/gbdev/pandocs/blob/fe246067b695b5404a4a6a47efb4fd6d921ececb/src/STAT.md); [LY153 comparison](../../../src/rtl/ppu/MAS_ppu.md) |
+| LYC | `HOST_REG_IO_LYC` | `lyc` committed byte | none | [Pan Docs STAT](https://github.com/gbdev/pandocs/blob/fe246067b695b5404a4a6a47efb4fd6d921ececb/src/STAT.md) |
+| BGP | `HOST_REG_IO_BGP` | `bgp` committed byte | none; the renderer's one-dot old-or-new conflict value is not exposed | [Pan Docs Palettes](https://github.com/gbdev/pandocs/blob/fe246067b695b5404a4a6a47efb4fd6d921ececb/src/Palettes.md); [MAS_ppu](../../../src/rtl/ppu/MAS_ppu.md) |
+| OBP0 | `HOST_REG_IO_OBP0` | `obp0` committed byte | as BGP | [Pan Docs Palettes](https://github.com/gbdev/pandocs/blob/fe246067b695b5404a4a6a47efb4fd6d921ececb/src/Palettes.md) |
+| OBP1 | `HOST_REG_IO_OBP1` | `obp1` committed byte | as BGP | [Pan Docs Palettes](https://github.com/gbdev/pandocs/blob/fe246067b695b5404a4a6a47efb4fd6d921ececb/src/Palettes.md) |
+| WY | `HOST_REG_IO_WY` | `wy` committed byte | none | [Pan Docs Window](https://github.com/gbdev/pandocs/blob/fe246067b695b5404a4a6a47efb4fd6d921ececb/src/Window.md) |
+| WX | `HOST_REG_IO_WX` | `wx` committed byte | none | [Pan Docs Window](https://github.com/gbdev/pandocs/blob/fe246067b695b5404a4a6a47efb4fd6d921ececb/src/Window.md) |
+| DIV | `HOST_REG_IO_DIV` | upper byte of the 16-bit internal divider | none; the low byte stays internal, and reading never resets the divider as a CPU write to FF04 does | [Pan Docs timer registers](https://github.com/gbdev/pandocs/blob/fe246067b695b5404a4a6a47efb4fd6d921ececb/src/Timer_and_Divider_Registers.md); [MAS_timer](../../../src/rtl/timer/MAS_timer.md) |
+| TIMA | `HOST_REG_IO_TIMA` | `tima` committed byte | none; the reload delay and hold are internal and are not disturbed | [Pan Docs obscure timer behavior](https://github.com/gbdev/pandocs/blob/fe246067b695b5404a4a6a47efb4fd6d921ececb/src/Timer_Obscure_Behaviour.md) |
+| TMA | `HOST_REG_IO_TMA` | `tma` committed byte | none | [Pan Docs timer registers](https://github.com/gbdev/pandocs/blob/fe246067b695b5404a4a6a47efb4fd6d921ececb/src/Timer_and_Divider_Registers.md) |
+| TAC | `HOST_REG_IO_TAC` | committed 3-bit control in bits 2:0 | CPU read sets bits 7:3; the host leaves them zero | [Pan Docs timer registers](https://github.com/gbdev/pandocs/blob/fe246067b695b5404a4a6a47efb4fd6d921ececb/src/Timer_and_Divider_Registers.md) |
+| IF | `HOST_REG_IO_IF` | committed 5-bit request flags in bits 4:0 | CPU read sets bits 7:5; the host leaves them zero, and the host shows the committed flops, not the same-edge combinational observation the CPU uses | [Pan Docs Interrupts](https://github.com/gbdev/pandocs/blob/fe246067b695b5404a4a6a47efb4fd6d921ececb/src/Interrupts.md); [interrupt sources](../../../src/rtl/interrupts/references.md) |
+| IE | `HOST_REG_IO_IE` | `ie_stored` committed byte, all eight bits | none; the upper three bits are storage on DMG and are reported as stored | [Pan Docs Interrupts](https://github.com/gbdev/pandocs/blob/fe246067b695b5404a4a6a47efb4fd6d921ececb/src/Interrupts.md); [MAS_interrupts](../../../src/rtl/interrupts/MAS_interrupts.md) |
+| LCD status triple | `HOST_REG_IO_LCD_STATUS` | `{8'b0, LCDC, STAT, LY}`, the three bytes above sampled on one edge | same per byte | this section |
+
+The triple exists because a scanline is 456 dots while one `READ_HOST` round trip
+costs milliseconds. Reading LY and STAT as separate commands pairs values from
+different frames' worth of emulated time; the triple makes the pair coherent, so
+a board capture can check the mode progression across a frame.
+
+During global or core reset each owner drives its documented reset fill, and the
+host view carries that same value rather than a separate default.
+
+Audio channel registers, JOYP, DMA and the boot-disable latch are not exposed.
+They are not part of this frozen set and require their own evidence before any
+are added.
+
 ## Transport and recovery
 
 ### Focused keyboard
