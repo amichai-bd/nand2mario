@@ -63,9 +63,10 @@ output under the author or reviewer worktree's `workdir/`.
 Prefer one issue per PR. Every PR starts as draft and closes its branch's
 issue with `Closes #<number>`. Combine issues only when one focused result meets
 all their success criteria.
-The user-authorized checkpoints PR162, PR163, PR167, PR169 and PR179 instead reference
-#156, #88, #164, #168 and #168, respectively, without closing them. Their unfinished acceptance stays in those issues; this
-bounded exception is recorded in PR policy and does not authorize other checkpoints.
+A fixed, closed set of user-authorized checkpoint PRs instead used matching
+`Checkpoint for` and `Refs` lines without a closing reference. The
+[PR policy](wiki/agents/pull-requests.md#checkpoint-exceptions) records that set
+and the `PR policy` check enforces it. No further checkpoint is authorized.
 The author owns delivery through independent review of the current PR SHA,
 satisfying required checks, resolved review conversations, and squash merge.
 Human review is not required. Root verifies merge, issue closure, main checks,
