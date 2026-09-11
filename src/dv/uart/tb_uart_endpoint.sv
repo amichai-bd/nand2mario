@@ -63,10 +63,10 @@ module tb_uart_endpoint;
         .snapshot_done(snapshot_done),.snapshot_ok(snapshot_ok),.snapshot_valid(snapshot_valid),
         .snapshot_metadata(snapshot_metadata),.frame_read(frame_read),.frame_address(frame_address),
         .frame_data(frame_data),.frame_valid(frame_valid),
-        .io_lcdc(8'd0), .io_stat(8'd0), .io_ly(8'd0), .io_lyc(8'd0), .io_scy(8'd0),
-        .io_scx(8'd0), .io_wy(8'd0), .io_wx(8'd0), .io_bgp(8'd0), .io_obp0(8'd0),
-        .io_obp1(8'd0), .io_div(8'd0), .io_tima(8'd0), .io_tma(8'd0), .io_tac(8'd0),
-        .io_if(8'd0), .io_ie(8'd0)
+        .io_lcdc(8'h91), .io_stat(8'h43), .io_ly(8'h5a), .io_lyc(8'h5b), .io_scy(8'h11),
+        .io_scx(8'h22), .io_wy(8'h33), .io_wx(8'h44), .io_bgp(8'he4), .io_obp0(8'hd2),
+        .io_obp1(8'hc1), .io_div(8'hab), .io_tima(8'h7f), .io_tma(8'h80), .io_tac(8'h05),
+        .io_if(8'h13), .io_ie(8'h1f)
     );
     n2m_timebase u_timebase (.*);
     n2m_cpu u_cpu (
@@ -458,7 +458,12 @@ module tb_uart_endpoint;
             exchange(2,4,0,4);
         end
         word_request(32'h10040);expect_word(epoch-1);exchange(2,4,0,4);
-        word_request(32'h10050);exchange(2,4,4,0);
+        word_request(32'h10098);exchange(2,4,4,0);
+        word_request(32'h10050);expect_word(32'h91);exchange(2,4,0,4);
+        word_request(32'h10060);expect_word(32'h5a);exchange(2,4,0,4);
+        word_request(32'h1007c);expect_word(32'hab);exchange(2,4,0,4);
+        word_request(32'h1008c);expect_word(32'h13);exchange(2,4,0,4);
+        word_request(32'h10094);expect_word(32'h0091435a);exchange(2,4,0,4);
         word_request(32'h10030);expect_word(32'h89abcdef);exchange(2,4,0,4);
         word_request(32'h10034);expect_word(32'h01234567);exchange(2,4,0,4);
         word_request(32'h10038);expect_word(32'h76543210);exchange(2,4,0,4);
