@@ -48,7 +48,8 @@ runs at `$0200` and contains no Nintendo logo or borrowed program content.
 Host tests cover cache hits/misses, corrupted downloads/notices/executables,
 missing tools, wrong versions, timeout/raw failure, byte/symbol mismatches and
 space-containing paths. Retained actual upstream runs prove positive and changed
-expectation outcomes; hosted Builder CI also runs the actual pinned Linux oracle.
+expectation outcomes. Local runs exercise the package for the author's host;
+the pinned Linux package runs only when the Builder workflow is dispatched.
 The source and cache hashes connect this evidence to the reviewed implementation.
 
 ## Implemented assembler
@@ -183,8 +184,8 @@ RGBFIX or logo assets. `--mutate relocation` must fail with an exact changed
 byte diagnostic; `--mutate checksum` must fail the independent package comparison.
 `--offline` requires the same verified cache policy as the existing oracle.
 Commands, raw exits, source/object/expected/actual bytes, symbols and a complete
-immutable tool cache snapshot are retained per attempt. Hosted Builder CI runs
-these actual software checks; no licensed simulator is needed.
+immutable tool cache snapshot are retained per attempt. These actual software
+checks run locally before merge; no hosted job or licensed simulator is needed.
 
 ## Inputs and ownership
 
@@ -379,7 +380,7 @@ swaps local y=0/4, and `--mutate tiles` swaps adjacent tiles. These real proof
 commands must fail, preventing repeating patterns from hiding a position remap.
 The passing basis retains coordinates, shades and each encoded digest. Host tests also cover tall/wide tile arrays, strict rejection,
 undeclared assets, corruption, dependency invalidation and identical builds across
-tags and checkout paths. Hosted Builder runs the positive case and all five deliberate failures.
+tags and checkout paths. The local Builder sequence runs the positive case and all five deliberate failures.
 This evidence establishes asset tooling, not PPU rendering or program execution.
 
 ## Artifacts and independent conformance

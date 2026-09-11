@@ -62,8 +62,8 @@ other dependencies; open availability alone is insufficient.
 ## Enforced checks and limits
 
 `.gitignore` excludes generated output, private directories, cartridge/save
-formats, memory images, and common credential files. The required `Wiki check`
-and Pages build scan every tracked file before publication. They reject those
+formats, memory images, and common credential files. The local pre-merge wiki
+check and the Pages build scan every tracked file before publication. They reject those
 private paths and protected extensions even after `git add -f`, plus binary
 signatures, invalid UTF-8, and binary control bytes. The existing text-only rule
 also excludes binary screenshots and generated images.

@@ -36,6 +36,6 @@ requires checked model selection, retained source hashes and binding, and
 failure on a missing, modified or shadow model. A host double cannot establish
 primitive behavior. The [shared memory MAS](../../src/rtl/common/MAS_memory_primitives.md)
 owns port timing and consumer migration boundaries.
-Hosted checks verify host contracts only; the [CI boundary](SPEC.md#ci-execution-boundary)
+Pre-merge host checks verify host contracts only; the [CI boundary](SPEC.md#ci-execution-boundary)
 requires actual local evidence while the [trusted licensed route](https://github.com/amichai-bd/nand2mario/issues/32)
 remains an open activation and verification gap.

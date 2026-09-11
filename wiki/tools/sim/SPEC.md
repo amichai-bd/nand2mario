@@ -65,8 +65,9 @@ output failures. Host command-construction tests do not prove Questa execution. 
 [baseline contract](../../src/dv/baseline/SPEC.md) owns broader verification.
 
 The [workflow](../../../.github/workflows/tile-pixel.yml) runs standalone host
-contracts on pull requests and main. Its check is named `Tile runner checks`;
-it does not claim licensed RTL execution. Actual local positive/corrupt Questa
+contracts by dispatch; authors run the same command
+[locally before merge](../../agents/pull-requests.md#hosted-and-local-checks).
+Its check is named `Tile runner checks`; it does not claim licensed RTL execution. Actual local positive/corrupt Questa
 evidence remains required. The [trusted CI boundary](../n2m/SPEC.md#ci-execution-boundary)
 records the [open trusted-route activation gap](https://github.com/amichai-bd/nand2mario/issues/32). See
 [tool provenance](../../../tools/sim/THIRD_PARTY.md).

@@ -72,7 +72,7 @@ before the core can run a test ROM.
 The [source policy](tools/provenance.md) records the owner's decision to keep
 original hardware and software private with no reuse grant. No open-source
 license is selected. The [provenance index](../tools/provenance.json) links the
-existing dependency pins and notices. Ignore rules and required wiki checks
+existing dependency pins and notices. Ignore rules and the wiki check
 reject protected file extensions and private paths, including forced tracked
 ASCII save files. The policy states detection limits and review duties.
 
@@ -305,11 +305,12 @@ or PR evidence drift.
 
 **Current state**
 
-A private GitHub repository, issue forms, a PR template, required PR and wiki
-checks, protected `main`, labels, and automatic Pages deployment are proven.
+A private GitHub repository, issue forms, a PR template, a required PR policy
+check, protected `main`, labels, and automatic Pages deployment are proven.
 The [wiki contract](tools/wiki/SPEC.md) defines custom HTML navigation and
 presentations rendered from original sources.
-Hosted Builder and Tile runner jobs check host contracts only.
+Builder and Tile runner checks run locally before merge and by dispatch; they
+check host contracts only.
 Actual local Questa evidence remains mandatory; automated licensed simulation
 is unavailable until the [trusted route](tools/n2m/SPEC.md#ci-execution-boundary)
 is configured. Required product checks and the protected physical runner remain
@@ -325,7 +326,7 @@ job could run untrusted code on this PC or allow concurrent access to the FPGA.
 - Issue and PR templates are installed and tested.
 - GitHub labels match `.github/labels.yml`.
 - `main` requires focused host/product checks with honest licensed execution evidence.
-- Wiki build and link checks run on PRs.
+- Wiki build and link checks run locally before merge and in the Pages build.
 - Pages deploys only from merged `main`.
 - Questa, Quartus, and board jobs run only for trusted code.
 - The physical runner uses concurrency control and a protected environment.
@@ -394,7 +395,7 @@ frames, or rejects timing.
 **Current state**
 
 The [RGBDS oracle](tools/sw/SPEC.md#implemented-oracle) is pinned, hash-verified,
-provisioned and exercised by local and hosted checks. Independent adapters have
+provisioned and exercised by local checks and dispatched Builder runs. Independent adapters have
 their own pinned fetching and executable acceptance contracts in the
 [baseline specification](src/dv/baseline/SPEC.md). Each dependency must satisfy
 the requirements below; adding a pin alone does not prove an adapter works.

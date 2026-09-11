@@ -13,9 +13,9 @@ artifacts. This checklist is not a new CI gate.
 - [ ] Follow [agent flow](../../.agents/skills/agent-flow/SKILL.md) and the issue's
   linked specifications. Fix only demonstrated guide gaps within the issue.
 - [ ] Run the existing [wiki and browser checks](../tools/wiki/SPEC.md#browser-checks)
-  and the issue-helper test command in the [Wiki workflow](../../.github/workflows/wiki.yml).
+  and the [local pre-merge commands](pull-requests.md#hosted-and-local-checks).
   Record exact commands, results, and artifact paths; identify any local browser
-  override. CI must pass its pinned browser run.
+  override. The Pages build must pass its pinned browser run after merge.
 - [ ] Use [pr-author](../../.agents/skills/pr-author/SKILL.md) to open a draft PR
   with ownership, a closing reference, and retained evidence. Confirm the
   required [PR checks](pull-requests.md#policy-and-protection) pass.

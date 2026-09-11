@@ -218,11 +218,12 @@ See the complete layout in the
 - The PR links the issue, lists up to three changes, declares spec impact, and
   records exact verification commands.
 - Behavioral changes update specification, code, and tests together.
-- Hosted CI runs documentation and Python host checks; local Questa evidence is required.
+- Hosted CI runs only the PR policy check and the Pages build; documentation,
+  Python host checks and Questa evidence are local.
 - Trusted Questa, Quartus and board jobs remain planned in
   [#32](https://github.com/amichai-bd/nand2mario/issues/32); see the
   [actual CI boundary](tools/n2m/SPEC.md#ci-execution-boundary).
-- Wiki checks run on pull requests. Pages deploys only after merge to `main`.
+- Wiki checks run locally before merge. Pages deploys only after merge to `main`.
 
 `AGENTS.md` should remain a short constitution and map. Skills hold focused
 procedures. The wiki holds behavior. Issues hold goals. PRs hold change evidence.

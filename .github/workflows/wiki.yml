@@ -1,12 +1,10 @@
 name: Wiki
 
+# Dispatch only. Pull requests run the PR policy check; authors run these
+# commands locally before merge (wiki/agents/pull-requests.md). The Pages
+# workflow repeats the wiki build and browser check on main before publishing.
 on:
-  pull_request:
-    types:
-      - opened
-      - reopened
-      - synchronize
-      - ready_for_review
+  workflow_dispatch:
 
 permissions:
   contents: read

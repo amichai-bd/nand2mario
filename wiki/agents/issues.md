@@ -64,8 +64,9 @@ From the repository root, run:
 python -m unittest discover -s .agents/skills/issue-author/scripts -p test_create_issue.py -v
 ```
 
-The required PR `Wiki check` and main Pages build run this suite before the
-wiki build. A failed test stops publication. The tests mock GitHub calls;
+The main Pages build runs this suite before the wiki build, and authors run it
+locally [before merge](pull-requests.md#hosted-and-local-checks). A failed test
+stops publication. The tests mock GitHub calls;
 they do not create issues.
 
 ## Labels

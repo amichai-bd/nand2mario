@@ -71,7 +71,7 @@ The manifest owns the seed lists and aggregate wall budgets. `smoke` uses one
 seed and both good/broken targets for changed-unit PR checks. `regression` uses
 four seeds, including zero and the largest accepted seed, for baseline delivery
 and later scheduled or affected integration runs. Required local delivery runs
-Questa; hosted CI checks host contracts only. The
+Questa; host contracts are checked locally, and no hosted job runs them. The
 [trusted route](../../../tools/n2m/SPEC.md#ci-execution-boundary) remains due in #32. Future CPU/system regressions must add separately reviewed
 lists and budgets; no unimplemented CPU coverage is silently included.
 

@@ -1,21 +1,26 @@
 # Externally blocked hosted checks
 
-Apply the [standing authorization](../../../../AGENTS.md#verification-and-safety)
-when evidence shows a hosted service or account condition prevented execution.
-Record the cause and actual run status/link. A job that found a code, test,
-policy or review failure still blocks delivery; unexplained failure is not an
-external outage.
+Local validation is the normal path: the
+[PR policy](../../../../wiki/agents/pull-requests.md#hosted-and-local-checks)
+lists the commands an author runs before merge, and only `PR policy` on pull
+requests and the `Pages` build on `main` remain hosted. This procedure covers
+those two jobs when a hosted service or account condition prevents their
+execution. Apply the [standing authorization](../../../../AGENTS.md#verification-and-safety)
+only when evidence shows that condition. Record the cause and actual run
+status/link. A job that found a code, test, policy or review failure still
+blocks delivery; unexplained failure is not an external outage.
 
 ## Validate and review
 
 Read the currently required checks from protection and run their workflow
-commands locally at the reviewed head, including live PR/issue metadata. Meet
-scoped acceptance too. Reuse results only with explicit relevant-input/behavior
-equivalence, producing SHA, commands, outcomes and limitations. Select advisory
-jobs by affected scope; do not rerun them solely because hosting is unavailable.
-If a required equivalent cannot be established, name the missing evidence and
-pause delivery. Independent current-SHA readiness and resolved conversations
-remain mandatory. Record local results and actual hosted state in the PR.
+commands locally at the reviewed head. For `PR policy`, that is the workflow's
+embedded script with live PR/issue metadata; `tools/ci/tests/test_pr_policy.py`
+exercises the same script. Meet scoped acceptance and the normal local checks
+too. Reuse results only with explicit relevant-input/behavior equivalence,
+producing SHA, commands, outcomes and limitations. If a required equivalent
+cannot be established, name the missing evidence and pause delivery.
+Independent current-SHA readiness and resolved conversations remain mandatory.
+Record local results and actual hosted state in the PR.
 
 ## Merge and restore
 
