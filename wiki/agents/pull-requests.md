@@ -75,8 +75,9 @@ python .agents/skills/rtl-coder/scripts/check_sv_style.py
 These replace the former `Wiki check`. Add `--install-browser` on the first
 wiki run. Then, by changed scope:
 
-- Any change under `tools/`, `cfg/`, `src/sw/` or `src/dv/springtrail/` runs the
-  Builder sequence:
+- Any change under `tools/`, `cfg/`, `src/sw/`, `src/dv/springtrail/`,
+  `src/rtl/interfaces/`, `wiki/cfg/` or `.github/workflows/pr-policy.yml` runs
+  the Builder sequence:
 
   ```text
   python tools/n2m/interfaces.py --check
@@ -92,7 +93,12 @@ wiki run. Then, by changed scope:
 
   followed by the deliberate `--mutate` runs, their expected manifest errors
   and the Springtrail host-fixture loader exactly as written in
-  `builder.yml`; each mutation must fail with the recorded error.
+  `builder.yml`; each mutation must fail with the recorded error. The manifest
+  asserts and the fixture loader exist only inline in `builder.yml`; run them
+  through git-bash, not PowerShell. `sw oracle` selects the RGBDS package for
+  the local host, so the pinned Linux package in `tools/n2m/dependencies.json`
+  is exercised only by an explicit dispatch of `builder.yml`; dispatch it on
+  any change to `tools/n2m/dependencies.json` or `tools/n2m/rgbds.py`.
 - Any change under `tools/sim/` or `src/rtl/display/` runs
   `python -m unittest discover -s tools/sim -p test_tile_pixel.py -v`.
 - The scoped [verification tier](../src/dv/integration/SPEC.md#verification-tiers)

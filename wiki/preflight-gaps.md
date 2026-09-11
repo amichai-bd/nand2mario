@@ -326,7 +326,7 @@ job could run untrusted code on this PC or allow concurrent access to the FPGA.
 - Issue and PR templates are installed and tested.
 - GitHub labels match `.github/labels.yml`.
 - `main` requires focused host/product checks with honest licensed execution evidence.
-- Wiki build and link checks run on PRs.
+- Wiki build and link checks run locally before merge and in the Pages build.
 - Pages deploys only from merged `main`.
 - Questa, Quartus, and board jobs run only for trusted code.
 - The physical runner uses concurrency control and a protected environment.
@@ -395,7 +395,7 @@ frames, or rejects timing.
 **Current state**
 
 The [RGBDS oracle](tools/sw/SPEC.md#implemented-oracle) is pinned, hash-verified,
-provisioned and exercised by local and hosted checks. Independent adapters have
+provisioned and exercised by local checks and dispatched Builder runs. Independent adapters have
 their own pinned fetching and executable acceptance contracts in the
 [baseline specification](src/dv/baseline/SPEC.md). Each dependency must satisfy
 the requirements below; adding a pin alone does not prove an adapter works.
