@@ -17,6 +17,9 @@ Follow [AGENTS](../../../AGENTS.md#work):
    Root owns the user boundary throughout: delegated agents report inside the
    tree and raise questions to root, and root reports outcomes and open
    decisions to the user.
+   Root selects and dispatches, arranges the independent reviewer, verifies
+   merge, `main` checks, deployment and cleanup, and escalates decisions to the
+   user. The author and reviewer perform every delivery step between.
 2. Author reads the issue and linked spec, aligning changes and validation with
    its success criteria. Keep one acceptance checklist mapping each criterion to
    evidence or a concrete gap. Defer optional improvements to follow-up issues;
@@ -37,12 +40,17 @@ Follow [AGENTS](../../../AGENTS.md#work):
    permission; retain explicit hardware and safety approval boundaries.
 3. Use [pr-author](../pr-author/SKILL.md) to open and maintain the draft PR.
    Resolve CI failures and obtain [independent review](references/review.md).
+   The reviewer posts its own report as a PR comment. When `main` moves, the
+   author rebases, compares the reviewed diff against the rebased diff to
+   prove the reviewed content survived, and keeps the PR body accurate.
    Assess the whole checklist in one pass and list remaining gaps together.
    Reuse evidence only while its inputs and covered behavior remain valid;
    satisfy required checks and current-SHA review before merging. For external
    hosted failures, apply the [standing fallback](references/external-ci.md).
-4. With a current ready verdict and required validation satisfied, post the report,
-   undraft, and follow the [merge method](../../../worktrees/README.md#merge).
+4. With a ready verdict on the current head and required validation satisfied,
+   the author undrafts, waits for the re-triggered required checks, and performs
+   the exact-head squash merge using the
+   [merge method](../../../worktrees/README.md#merge).
    Merge promptly without waiting for unrelated work. Report the outcome to root.
 5. Root performs [verification and cleanup](../../../worktrees/README.md#clean-up-after-merge).
 

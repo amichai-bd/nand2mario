@@ -1,7 +1,8 @@
 # Independent review
 
-The author requests another agent to review the exact PR head SHA in a separate
-detached worktree. Authors never review their own changes.
+The author requests review and root arranges another agent to review the exact
+PR head SHA in a separate detached worktree. Authors never review their own
+changes.
 
 Use the installed native `review-agent` skill when available. Read its local
 `SKILL.md`; it inspects the diff and returns findings without editing, posting,
@@ -58,6 +59,7 @@ Return findings, validation, residual risks, and `ready`, `changes requested`,
 or `blocked`, tied to the reviewed SHA. Re-review changed material; after any
 push, confirm the current SHA before readiness.
 
-The author posts the independent report unchanged in meaning. Same-account
-agents use comments, not GitHub approval. The author fixes findings and obtains
-a fresh ready verdict before undrafting and merging. Reviewers stay read-only.
+The reviewer posts its own report as a PR comment. Same-account agents use
+comments, not GitHub approval. The author fixes findings and obtains a fresh
+ready verdict before undrafting and merging. Reviewers do not edit, push, or
+merge the branch.

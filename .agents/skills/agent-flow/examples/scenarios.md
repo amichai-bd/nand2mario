@@ -2,8 +2,8 @@
 
 Good: Root delegates issue 42 to an author in `worktrees/42-fix-timer/`.
 The author opens a draft PR, fixes a CI failure, and gets an independent review.
-A fix changes the SHA, so the reviewer checks again. The author posts the ready
-report, undrafts, and squash merges. Root verifies closure and cleans up.
+A fix changes the SHA, so the reviewer checks again and posts the ready report.
+The author undrafts and squash merges. Root verifies closure and cleans up.
 
 Good: A spec describes planned behavior before implementation. The PR names the
 open implementation issue and closure criteria. The reviewer checks that the

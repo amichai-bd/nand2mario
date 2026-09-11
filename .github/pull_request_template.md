@@ -41,4 +41,4 @@ State the main risk or `None`.
 - Verdict: pending
 - Findings and disposition:
 
-The author posts the independent report and undrafts only when ready.
+The reviewer posts its report; the author undrafts only when ready.

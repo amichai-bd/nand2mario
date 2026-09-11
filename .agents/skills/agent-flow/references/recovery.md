@@ -1,8 +1,8 @@
 # Delegation and recovery
 
 An author may request a review subagent when nested delegation is supported.
-Otherwise root spawns the reviewer and returns its report. Authors never pick
-unrelated backlog work.
+Otherwise root spawns the reviewer, which posts its report on the PR. Authors
+never pick unrelated backlog work.
 
 Check the [work caps](../../../../AGENTS.md#work) and runtime capacity before
 spawning; reserve a reviewer slot. If full, finish or pause independent work

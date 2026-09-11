@@ -19,8 +19,10 @@ Follow `agent-flow` and `wiki/agents/pull-requests.md`.
 4. Update evidence with `gh pr edit <number> --body-file <path>`.
 5. Babysit CI and independent review. When hosted checks are externally blocked,
    use the [standing fallback](../agent-flow/references/external-ci.md)
-   without repeating approval requests. Post the returned report from a file,
-   undraft with `gh pr ready <number>`, then use the worktree guide's
+   without repeating approval requests. If `main` moves, rebase, confirm the
+   reviewed diff survived, and update the body. Once the reviewer's posted
+   verdict is ready for the current head, undraft with `gh pr ready <number>`,
+   wait for the re-triggered required checks, then use the worktree guide's
    [merge method](../../../worktrees/README.md#merge).
 
 Use [the scenarios](examples/scenarios.md) for body handling and issue scope.
