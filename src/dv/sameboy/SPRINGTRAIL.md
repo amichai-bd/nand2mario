@@ -10,6 +10,10 @@ The Springtrail case uses the untouched Core, public framebuffer/VBlank and
 key APIs. It does not apply the legacy observer patch or retirement projection.
 Two clean MISS builds in the #263 assessment produced the exact32768-byte
 image frozen in `springtrail.json`; both input and artifact records are retained.
+`springtrail.json` pins only those retired images (`7d63b067...6e15c9` and
+the settled `b551c562...8ba667`); the native cases refuse the image the
+repository builds today, whose proofs the
+[image binding table](../../../wiki/src/dv/springtrail/SPEC.md#image-binding) lists.
 
 `springtrail-short` stops normally after four native normal-frame callbacks;
 `springtrail` stops after twelve. Retain the initial LCD-off callback too:

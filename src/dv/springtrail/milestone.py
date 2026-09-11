@@ -1,4 +1,9 @@
-"""Fixed milestone input and capture indices, chosen before DUT observations."""
+"""Fixed milestone input and capture indices, chosen before DUT observations.
+
+Bound to the retired image `b551c562...8ba667` (`ROM_SHA256`) and the
+fixed-physics routes; it describes no frame of the image the repository
+builds today.
+"""
 from interaction_routes import SUCCESS, DEATH_RETRY
 
 LCD = 76964

@@ -134,6 +134,7 @@ names its image:
 | [Pause and restart](../../../../src/dv/springtrail/MILESTONE.md#current-image-pause-and-restart-proof) | `python-pgs`, `python-pgu`, `python-pgx` | the built image, no hash guard | The first world frame, a neutral frame, the PAUSED frame, the Select-restart frame, their publications and the restart's map restoration |
 | [Re-qualification](../../../../src/dv/springtrail/MILESTONE.md#current-rom-re-qualification) | `python-hgs`, `python-hgu`, `python-hgx` | retired `adbef6b0...e109f369`; the checker refuses the current build | Boot, the title frame, the first input, its publication and the settled pause on the pre-#301 image |
 | [Continuous UART endurance](../../../../src/dv/springtrail/ENDURANCE.md#current-image-script) | `endurance.py` | the built image; the launcher builds it from current sources and the driver refuses bytes whose hash differs from that build's own manifest | Sampled 30-minute UART play with title, spawn, RETRY and PAUSED frames from the current motion player, the frozen interaction flow over that player and `motion_frames`, then three reset/load-readback/start cycles; UART-observable only |
+| [Scrolling, win and death/retry frames](../../../../src/dv/springtrail/FRAME_PROOFS.md) | `frame_proofs.py` | the built image; the launcher builds it from current sources and the driver refuses bytes whose hash differs from that build's own manifest | Paused every-pixel captures on one continuous history: title, spawn, the first camera-moving frame, entering column 32, the ring wrap at camera 256, the camera 608 clamp, WON and its Start restart, RETRY after the first-gap fall and its Start restart; UART-observable only |
 | Every-frame acquisition | `paused_capture.py`, `milestone.py` | retired `b551c562...8ba667` | The complete v0.9 baseline; no current-image claim |
 | Historical flow and courier composition references | none | retired `97f5d9da...a593b513` and `ec8dfb32...0d9e785f` | Host-guarded expectations only; their hash guards refuse every other image |
 
@@ -142,10 +143,10 @@ refuse it. Their pre-#301 contract is now covered on the built image by
 `python-mgs` and `python-mgu`, so their retirement is a pending decision, not
 a coverage gap.
 
-Scrolling frames, the win route and the death/retry route have no current-image
-proof: the composed simulation cannot reach them inside the wall ceiling, and
-[#384](https://github.com/amichai-bd/nand2mario/issues/384) owns a bounded
-physical script for them. The physical
+The composed simulation cannot reach scrolling frames, the win route or the
+death/retry route inside the wall ceiling; the
+[frame proof](../../../../src/dv/springtrail/FRAME_PROOFS.md) captures them
+from the paused board on the built image instead. The physical
 [scrolling](../../../../src/dv/springtrail/PHYSICAL.md) and
 [flow](../../../../src/dv/springtrail/FLOW_PHYSICAL.md) proofs remain bound to
 the retired images their documents record.
