@@ -55,19 +55,31 @@ instruction listing, not adopted from the DUT.
 
 ## Measured durations
 
-Whole-run supervisor walls from each receipt's `wall-budget` record are
-recorded here once the targets run; a pending row is not evidence.
+Whole-run supervisor walls from each receipt's `wall-budget` record, all at
+this head on Questa Altera Starter FPGA Edition 2025.2 with Python 3.12.14 and
+cocotb 2.0.1 from `workdir/builds/python-dv-env/.venv`:
 
 | Target | Wall (s) | Limit (s) | Result |
 | --- | --- | --- | --- |
-| `python-pus` | pending | 300 | pending |
-| `python-pux` | pending | 300 | pending |
-| `python-pua` | pending | 300 | pending |
-| `python-pub` | pending | 300 | pending |
-| `python-pr` | pending | 420 declared | pending |
-| `python-mus` | pending | 300 | pending |
-| `python-mux` | pending | 300 | pending |
-| `python-mut` | pending | 300 | pending |
-| `python-mgs` | pending | 300 | pending |
-| `python-mgu` | pending | 420 declared | pending |
-| `python-mr` | pending | 420 declared | pending |
+| `python-pus` | 55.2 | 300 | PASS, crouch then stomp, `UpdateGame` 7168 and 7324 dots |
+| `python-pux` | 37.3 | 300 | intended fault: `POWER_CROUCH_MUTATION expected=8 actual=9 dot=2847`, `MOTION_STATE crouch` rejected, receipt retained |
+| `python-pua` | 235.7 | 300 | PASS, 23 cases, longest call 8348 dots |
+| `python-pub` | 263.1 | 300 | PASS, 23 cases, longest call 8980 dots |
+| `python-pr` | 293.3 | 420 declared | PASS, thrower/shot/hurt fixture, all 108 tiles |
+| `python-mus` | 43.5 | 300 | PASS |
+| `python-mux` | 45.0 | 300 | intended fault, `MOTION_STATE first-right` X 0180 versus 0190 |
+| `python-mut` | 207.5 | 300 | PASS |
+| `python-mgs` | 244.3 | 300 | PASS, LCD enable at dot 146500 |
+| `python-mgu` | 311.9 | 420 declared | PASS |
+| `python-mr` | 378.3 | 420 declared | PASS |
+
+The declared aggregate is 2115 seconds across the eleven targets, each inside
+its own selected wall. `python-pr` declares 420 seconds: under host contention
+it exhausted the 300 default at 288 seconds with the trace at dot 213088 of
+its 300000-dot bound, and on a quiet host it needed 293 seconds, above the
+288-second execution limit that the default leaves after cleanup. A first
+contended pass also exhausted the default for `python-mgs` and `python-mut`
+(561 dots per second against about 900 unloaded) while another tool consumed
+the host; the quiet reruns above are the evidence, and no other allowance was
+declared. Licence refusals while another QuestaSim instance held the
+nodelocked seat were retried, never counted.

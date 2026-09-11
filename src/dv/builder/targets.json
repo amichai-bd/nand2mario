@@ -19695,7 +19695,7 @@
     "preload": "power-render302",
     "wall_allowance": {
       "seconds": 420,
-      "reason": "measured 288-second budget exhaustion at the 300 default with the trace at dot 213088 of the renderer's 300000-dot bound; the fixture shares python-mr's shape and needs about 390 simulator seconds plus preload, compile check and cleanup"
+      "reason": "measured 288-second budget exhaustion at the 300 default under host load with the trace at dot 213088 of the renderer's 300000-dot bound, and 293 seconds on a quiet host, above the 288-second execution limit the default leaves after cleanup"
     }
   }
 }
