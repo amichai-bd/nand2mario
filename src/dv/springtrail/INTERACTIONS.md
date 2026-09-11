@@ -191,9 +191,10 @@ Short pause request is215852; full is286576. Each must actually pause within
 watchdog is separate from the300-second whole-process cap. The short completes
 before the full run. Forecast short150 and full220 seconds; the affected
 actual output-shade fault is forecast110 seconds, with unchanged expectations.
-These further checks increase the already declared aggregate target miss;
-no individual hard-cap exception is introduced. Existing python-springtrail
-and python-springtrail-x names now select the current flow checker as well.
+These further checks increased the already declared aggregate target miss;
+no individual hard-cap exception was introduced. The python-springtrail and
+python-springtrail-x names selected this flow checker until their
+[retirement](MILESTONE.md#retired-targets).
 
 The completed composed short/full/fault took136.194/180.803/95.066 seconds.
 All11 raw tool/simulator exits were zero in each run. Short and full passed
@@ -204,3 +205,6 @@ observed display publication ended3828 dots after VBlank began, within the
 3920 source bound. All nine scoped simulations total799.887 seconds, above
 the ordinary aggregate target; every individual300-second hard cap was met.
 Durable results and source qualification belong to [PR276](https://github.com/amichai-bd/nand2mario/pull/276).
+These composed targets and their flow checker bind image `97f5d9da...a593b513`
+and are [retired](MILESTONE.md#retired-targets); the current image's composed
+proofs are the HUD game and pause/restart targets.

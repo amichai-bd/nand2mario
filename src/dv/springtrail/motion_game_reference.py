@@ -3,7 +3,7 @@ from dataclasses import replace
 from motion_frames import scene, image
 from hud_reference import hud_tiles, column
 from motion_reference import Player, step
-from interactions_reference import Game
+from interactions_reference import Game, update as flow_update
 from interaction_cases import ADDRESSES as OLD_ADDRESSES, state_bytes as old_bytes
 
 ADDRESSES = OLD_ADDRESSES + list(range(0xc060, 0xc06a))
@@ -13,6 +13,11 @@ def state_bytes(game, buttons=0):
     p = game.player
     return old_bytes(game, buttons) + bytes((p.counter, p.direction, p.speed,
         p.phase, p.animation, p.pose, p.jump, p.index, p.saved, p.facing))
+
+
+def update(game, buttons):
+    """Interaction flow over the current motion model; no observed inputs."""
+    return flow_update(game, buttons, step)
 
 
 def initial_states():

@@ -25,7 +25,7 @@ def overlap(player, x, y, height=8):
             and player.y < y + height * 16 and player.y + 256 > y)
 
 
-def world_update(game, buttons):
+def world_update(game, buttons, step=step):
     player = step(game.player, buttons)
     x = game.enemy_x + game.enemy_vx
     vx = game.enemy_vx
@@ -46,12 +46,16 @@ def world_update(game, buttons):
                    score=collected.bit_count())
 
 
-def update(game, buttons):
-    """Flow decisions precede world updates; resume never queues a jump."""
+def update(game, buttons, step=step):
+    """Flow decisions precede world updates; resume never queues a jump.
+
+    `step` selects the player model; a restart resets that model's player.
+    """
+    fresh = type(game.player)
     edges = buttons & ~game.previous
     if game.mode == PAUSED:
         if edges & 64:
-            return Game(player=replace(Player(), previous=buttons),
+            return Game(player=replace(fresh(), previous=buttons),
                         mode=PLAYING, previous=buttons)
         if edges & 128:
             return replace(game, mode=PLAYING, previous=buttons,
@@ -60,7 +64,7 @@ def update(game, buttons):
                        player=replace(game.player, previous=buttons))
     if game.mode in (RETRY, WON):
         if edges & 128:
-            return Game(player=replace(Player(), previous=buttons),
+            return Game(player=replace(fresh(), previous=buttons),
                         mode=PLAYING, previous=buttons)
         return replace(game, previous=buttons)
     if game.mode == TITLE:
@@ -71,4 +75,4 @@ def update(game, buttons):
     elif edges & 128:
         return replace(game, mode=PAUSED, previous=buttons,
                        player=replace(game.player, previous=buttons))
-    return world_update(game, buttons)
+    return world_update(game, buttons, step)

@@ -230,6 +230,21 @@ module tb_python_v05 #(
         end
     end
 
+    // Drop the actual paused-mode store only. The public CPU write remains 3;
+    // the next prepared HUD and the following update must expose the lost pause.
+    initial begin
+        if ($test$plusargs("pause_mode_fault")) begin
+            do @(negedge clk_sys);
+            while (!(dut.raw_write && dut.raw_store == n2m_memory_pkg::STORE_WRAM &&
+                     dut.raw_offset == 15'h0000 && dut.raw_wdata == 8'd3));
+            $display("PAUSE_MODE_MUTATION expected=3 actual=1 dot=%0d", dot_count);
+            force dut.u_stores.ram_wdata = 8'd1;
+            @(posedge clk_sys);
+            @(negedge clk_sys);
+            release dut.u_stores.ram_wdata;
+        end
+    end
+
     initial begin
         if ($test$plusargs("progress_fault")) begin
             wait(dot_count >= 64'd50000);

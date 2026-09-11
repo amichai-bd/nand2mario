@@ -9,16 +9,17 @@ frames are not yet re-established there, and
 [#363](https://github.com/amichai-bd/nand2mario/issues/363) owns restoring them.
 
 This retains the original [PR266](https://github.com/amichai-bd/nand2mario/pull/266)
-definition and evidence boundary. Current `python-springtrail` targets use the
+definition and evidence boundary. The `python-springtrail` targets later used the
 [movement proof](MOVEMENT.md), whose initialization and sprite rendering change
-the frame schedule below. These historical numbers are not current target checks.
+the frame schedule below, and are now [retired](MILESTONE.md#retired-targets).
+These historical numbers are not current target checks.
 
-`python-springtrail` uses the actual composed system, current Intel memories,
-25 MHz system clock and existing 25.2 MHz pixel-clock fixture. The existing
-preload builds the immutable original image, initializes Intel ROM/presence
-models, and runs the real CRC scan and normal Client adoption. It does not claim
-a full serial ROM upload. Product RTL and all game expectations are unchanged
-between positive and `python-springtrail-x`.
+`python-springtrail` used the actual composed system, the Intel memories of
+its time, the 25 MHz system clock and the existing 25.2 MHz pixel-clock
+fixture. Its preload built the then-current image, initialized Intel
+ROM/presence models, and ran the real CRC scan and normal Client adoption. It
+did not claim a full serial ROM upload. Product RTL and all game expectations
+were unchanged between the positive target and `python-springtrail-x`.
 
 The fixed assembly schedule gives LCD enable commit43512: entry24, setup100,
 tile-copy setup36 plus256*52-4, map-copy setup36 plus576*52-4, finalsetup64,
