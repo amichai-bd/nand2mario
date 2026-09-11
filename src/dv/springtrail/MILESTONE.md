@@ -403,7 +403,8 @@ physical script for those frames.
 ### Measured result
 
 Python 3.12.14, cocotb 2.0.1, Questa Altera Starter FPGA Edition-64 2025.2
-(2025.05), Intel memory models from Quartus 25.1, at commit `ee4251c`. Every
+(2025.05), Intel memory models from Quartus 25.1, at commit `ee4251c`, whose
+tree is `f80237a` after the rebase onto `4fe909a` with no content change. Every
 run used the image the build produced, `adbef6b0...e109f369` in each attempt's
 `preload.json`. A Quartus fit for other work shared the host during the two
 long runs, so their rates are slower than `python-hgu`'s 4.1 seconds per
