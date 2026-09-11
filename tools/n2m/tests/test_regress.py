@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -204,8 +205,13 @@ class RegressTests(unittest.TestCase):
         link = builds / "linked"
         linked = True
         try:
-            os.symlink(outside.parent, link, target_is_directory=True)
-        except OSError:
+            if os.name == "nt":
+                # A junction needs no privilege on Windows; a symlink usually does.
+                subprocess.run(["cmd", "/c", "mklink", "/J", str(link), str(outside.parent)],
+                               check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            else:
+                os.symlink(outside.parent, link, target_is_directory=True)
+        except (OSError, subprocess.CalledProcessError):
             linked = False
         for tag, message in (("../outside", "valid build tag"), (str(outside.parent), "valid build tag"),
                              ("..", "valid build tag"), ("workdir", "no build tag"), ("locked", "locked"),
@@ -216,6 +222,7 @@ class RegressTests(unittest.TestCase):
         with self.assertRaises(SystemExit):
             with contextlib.redirect_stderr(io.StringIO()):
                 main(["clean"], self.root)
+        self.assertTrue(linked, "linked-tag case did not run on this host")
         self.assertEqual(outside.read_text(), "keep")
         self.assertTrue((builds / "locked/.lock").exists())
         self.assertTrue(self.root.is_dir())

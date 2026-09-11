@@ -164,7 +164,7 @@ def clean(root, tag):
         raise ValueError("clean requires one valid build tag")
     builds = root / "workdir/builds"
     build = builds / tag
-    if build.is_symlink():
+    if build.is_symlink() or build.is_junction():
         raise ValueError(f"tag {tag} is a link; refusing to clean through it")
     if not build.is_dir():
         raise ValueError(f"no build tag {tag}")
