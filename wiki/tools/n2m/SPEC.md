@@ -559,8 +559,10 @@ the established Schmitt-trigger input standard, and unused package pins are
 reserved as tri-stated inputs. Only the UART asynchronous first stage is
 excepted; all three-corner setup/hold paths to the second stage remain checked,
 along with the existing PLL, reset, memory and VGA evidence. Physical and full
-milestone acceptance remain separate: [board bring-up](https://github.com/amichai-bd/nand2mario/issues/28)
-is an open physical-verification gap, and the [v0.5 matrix](../../src/dv/v05/SPEC.md#revised-milestone-matrix)
+milestone acceptance remain separate: [board bring-up](../../src/board-bring-up.md)
+records the physical verification and leaves the monitor picture to
+[#417](https://github.com/amichai-bd/nand2mario/issues/417), and the
+[v0.5 matrix](../../src/dv/v05/SPEC.md#revised-milestone-matrix)
 defines composed acceptance.
 
 The composed memory check accounts for every logical store and physical atom:

@@ -54,7 +54,7 @@ choosing full batch size and declaring aggregate wall time. Preserve exact ROM,
 build, epoch, sequence, paused dot, input history and native ledger across batches;
 no reset, replay or skipped frame may recover an incomplete batch. Image/pixel/
 input/progress fault coverage and current-head review remain required. #264's
-continuous physical milestone and #28/#156 remain separate.
+continuous physical milestone and #417/#156 remain separate.
 
 ## Native completion
 

@@ -362,7 +362,8 @@ title, input and world frames with deliberate output faults. Movement and
 interactions are implemented; expanded features are explicitly planned in the
 game specification. The UART-observable `v1.0` checks are proven on the
 current image ([endurance record](../src/dv/springtrail/ENDURANCE.md#current-image-script));
-physical-presence verification remains open in [#28](https://github.com/amichai-bd/nand2mario/issues/28).
+physical-presence verification remains open in the charter's
+[remote acceptance](src/project-charter.md#remote-acceptance) split.
 
 **Risk**
 
@@ -534,9 +535,13 @@ hosted. On 2026-09-11 the owner settled three consequences:
   [charter](src/project-charter.md#remote-acceptance) states which `v1.0`
   checks are proven over UART and which need physical presence.
 
-[#28](https://github.com/amichai-bd/nand2mario/issues/28) stays open as
-scoped. It gates physical display and physical release claims only; it does
-not block UART-observable, simulation or host work. Reopen the closed issues
+Board I/O itself is proven: [board bring-up](src/board-bring-up.md) records the
+wiring, checked programming and the UART-readable heartbeat, frame content,
+ping, build ID and CRC rejection.
+[#417](https://github.com/amichai-bd/nand2mario/issues/417) stays open as
+scoped for the monitor picture, and the KEY0 board reset still needs hands at
+the board. Those gate physical display and physical release claims only; they
+do not block UART-observable, simulation or host work. Reopen the closed issues
 if the board becomes physically reachable or a runner can be hosted.
 
 ## Required closing order

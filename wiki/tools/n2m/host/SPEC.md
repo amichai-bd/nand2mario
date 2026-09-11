@@ -127,7 +127,9 @@ carry down/up and repeats. A
 [pseudoconsole window](https://learn.microsoft.com/en-us/windows/console/getconsolewindow)
 is not its displayed terminal, so it cannot satisfy this foreground check.
 Native injected-event tests prove the event path; actual manual keyboard/VGA
-release acceptance remains an [open physical-presence gap](https://github.com/amichai-bd/nand2mario/issues/28).
+release acceptance stays in the charter's
+[remote acceptance](../../../src/project-charter.md#remote-acceptance) split,
+whose monitor entry is [#417](https://github.com/amichai-bd/nand2mario/issues/417).
 
 Discovery reuses the doctor without running its licensed probes. The optional
 [pinned serial backend](../../../../tools/n2m/host/THIRD_PARTY.md) opens only the
@@ -178,8 +180,8 @@ state-changing commands. Ordinary Client timeout handling is unchanged.
 Run physical proof under the existing 60-second whole-process supervisor,
 including its standard cleanup reserve, with verified setup and exclusive access.
 This observes silence and recovery, not an internal discard counter or monitor
-output; the remaining [board criteria](https://github.com/amichai-bd/nand2mario/issues/28)
-remain separate.
+output; the remaining [board criteria](../../../src/board-bring-up.md) remain
+separate.
 
 Every invocation is fresh, never cached. Unique attempt artifacts live under
 `workdir/builds/<tag>/host/<action>/<attempt>/`: discovery, device identity,
