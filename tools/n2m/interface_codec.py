@@ -27,6 +27,22 @@ def unpack_record(name, raw):
     return result
 
 
+def decode_record(value, name='retirement'):
+    """Split one bit-packed record integer into its fields, lowest field first.
+
+    The simulator samples a whole record as a single wide signal, so this is the
+    bit form of unpack_record. Keeping it here lets host fixtures decode records
+    without importing a cocotb testbench.
+    """
+    result = {}
+    for field in abi.RECORDS[name]:
+        width = field['bits']
+        result[field['name']] = value & ((1 << width) - 1)
+        value >>= width
+    assert value == 0
+    return result
+
+
 def crc16(raw):
     crc = abi.WIRE_CRC_INIT
     for byte in raw:
