@@ -54,7 +54,7 @@ point. A delegated agent that must ask raises the question to root; root asks
 the user and returns the answer. Escalate promptly; never let a pending decision
 or a real failure stay below deck.
 
-Each root orchestration tree may have at most three open PRs, including its authors'
+Each root orchestration tree may have at most six open PRs, including its authors'
 drafts, and five active subagents, including nested agents. The ceilings differ
 because reviewers and scout tasks use a subagent slot without opening a PR.
 These are ceilings, not targets; lower runtime limits still apply. Default to
@@ -62,7 +62,7 @@ two authors and a reviewer independent of each change's author; root coordinates
 delivery. Prioritize existing ready PRs, finishing, reviewing, and merging over
 starting more work.
 If already over either cap, preserve existing work and reduce concurrency before
-adding more. Open a PR only when that tree has fewer than three open. Separately
+adding more. Open a PR only when that tree has fewer than six open. Separately
 user-authorized work outside that tree does not consume its slots. Do not hide work
 in branches, split orchestration trees, or close unfinished PRs to evade the cap.
 

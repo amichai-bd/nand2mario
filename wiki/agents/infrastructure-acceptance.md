@@ -22,8 +22,8 @@ artifacts. This checklist is not a new CI gate.
 - [ ] Obtain an [independent review](../../.agents/skills/agent-flow/references/review.md)
   of the complete diff in a separate detached checkout. Retain the report and
   alignment assessment; confirm its ready verdict names the current head SHA.
-- [ ] Author resolves findings, babysits checks, posts the review, undrafts, and
-  uses the [squash merge method](../../worktrees/README.md#merge).
+- [ ] Reviewer posts the review. Author resolves findings, babysits checks,
+  undrafts, and uses the [squash merge method](../../worktrees/README.md#merge).
 - [ ] Root verifies the merge, issue closure, and successful main
   [Pages deployment](../../.github/workflows/pages.yml), then completes
   [worktree and branch cleanup](../../worktrees/README.md#clean-up-after-merge).
