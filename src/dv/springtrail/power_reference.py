@@ -1,6 +1,7 @@
 """Independent per-update model of the approved contact/power contract."""
 from dataclasses import dataclass, replace
 
+import blocks_reference as blocks
 from movement_reference import solid
 from motion_reference import Player, step, UNIT, HEIGHT, TILE
 
@@ -11,6 +12,7 @@ ITEMS = ((96, 88), (264, 72), (464, 88), (656, 80))
 ENEMY_Y = 120 * UNIT
 GROW_UPDATES, HURT_UPDATES, SAFE_UPDATES = 32, 32, 96
 STAR_UPDATES, THROW_UPDATES, SHOT_UPDATES = 248, 8, 64
+BLOCK_RESET = blocks.reset()
 
 
 @dataclass(frozen=True)
@@ -40,6 +42,17 @@ class World:
     alive: bool = True
     crouch: bool = False
     shot: Shot = Shot()
+    blocks: tuple = BLOCK_RESET
+    coins: int = 0
+    effect_tile: int = 0
+    effect_x: int = 0
+    effect_y: int = 0
+    effect_timer: int = 0
+
+
+def block_layer(world):
+    """The solidity override #303 adds to terrain for one world state."""
+    return lambda column, row, ascending: blocks.solid(world.blocks, column, row, ascending)
 
 
 def contact_top(world):
@@ -83,22 +96,30 @@ def _timers(world):
         w = replace(w, invincible=w.invincible - 1)
     if w.throw:
         w = replace(w, throw=w.throw - 1)
+    if w.effect_timer:
+        left = w.effect_timer - 1
+        w = replace(w, effect_timer=left, effect_y=w.effect_y - UNIT,
+                    effect_tile=w.effect_tile if left else 0)
     return w
 
 
-def _move_x(x, y, vx):
+def _blocked(extra, column, row):
+    return solid(column, row) or bool(extra and extra(column, row, False))
+
+
+def _move_x(x, y, vx, extra=None):
     """One shot axis; a solid tile at the leading edge cancels and reverses."""
     nx = x + vx
     column = (nx + 127) // TILE if vx > 0 else nx // TILE
-    if any(solid(column, row) for row in range(y // TILE, (y + 127) // TILE + 1)):
+    if any(_blocked(extra, column, row) for row in range(y // TILE, (y + 127) // TILE + 1)):
         return x, -vx
     return nx, vx
 
 
-def _move_y(x, y, vy):
+def _move_y(x, y, vy, extra=None):
     ny = y + vy
     row = (ny + 127) // TILE if vy > 0 else ny // TILE
-    if any(solid(column, row) for column in range(x // TILE, (x + 127) // TILE + 1)):
+    if any(_blocked(extra, column, row) for column in range(x // TILE, (x + 127) // TILE + 1)):
         return y, -vy
     return ny, vy
 
@@ -107,8 +128,9 @@ def _shot(world):
     s = world.shot
     if not s.ttl:
         return world
-    x, vx = _move_x(s.x, s.y, s.vx)
-    y, vy = _move_y(x, s.y, s.vy)
+    extra = block_layer(world)
+    x, vx = _move_x(s.x, s.y, s.vx, extra)
+    y, vy = _move_y(x, s.y, s.vy, extra)
     ttl = s.ttl - 1
     if x < 0 or x >= 760 * UNIT or y < 0 or y >= 144 * UNIT:
         ttl = 0
@@ -130,7 +152,10 @@ def world_update(world, buttons):
                     2 * UNIT, SHOT_UPDATES)
         w = replace(w, shot=shot, throw=THROW_UPDATES)
     masked = buttons & ~3 if crouch else buttons
-    p = step(p, masked)
+    report = []
+    p = step(p, masked, block_layer(w), report)
+    w = _resolve_block(replace(w, player=p), report[0] if report else None)
+    p = w.player
     x, vx = w.enemy_x, w.enemy_vx
     if w.alive:
         x = x + vx
@@ -161,6 +186,21 @@ def world_update(world, buttons):
             collected |= 1 << index
     mode = WON if overlap(w, 736 * UNIT, 112 * UNIT, 16) else PLAYING
     return replace(w, mode=mode, collected=collected, score=collected.bit_count())
+
+
+def _resolve_block(world, hit):
+    """One head hit, before the enemy step and every other contact."""
+    states, coins, tile, x, y, grant = blocks.resolve(
+        world.blocks, world.coins, world.power, hit)
+    if tile:
+        world = replace(world, effect_tile=tile, effect_x=x * UNIT,
+                        effect_y=y * UNIT, effect_timer=blocks.EFFECT_UPDATES)
+    world = replace(world, blocks=states, coins=coins)
+    if grant == 'power':
+        return power_up(world)
+    if grant == 'star':
+        return grant_star(world)
+    return world
 
 
 def update(world, buttons):

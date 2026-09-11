@@ -9,6 +9,11 @@ HEIGHT = 16 * UNIT
 TILE = 8 * UNIT
 
 
+def _solid(extra, column, row, ascending=False):
+    """Terrain, then the optional block layer #303 supplies. Terrain always wins."""
+    return solid(column, row) or bool(extra and extra(column, row, ascending))
+
+
 @dataclass(frozen=True)
 class Player:
     x: int = 24 * UNIT
@@ -63,7 +68,7 @@ def _select(player, buttons):
     return p
 
 
-def _horizontal(player, buttons):
+def _horizontal(player, buttons, extra=None):
     p = replace(player, vx=0)
     if p.direction == 3:
         if p.counter:
@@ -96,14 +101,14 @@ def _horizontal(player, buttons):
     blocked = x != p.x + dx
     if dx:
         column = (x + WIDTH - 1) // TILE if dx > 0 else x // TILE
-        if any(solid(column, row) for row in range(p.y // TILE, (p.y + HEIGHT - 1) // TILE + 1)):
+        if any(_solid(extra, column, row) for row in range(p.y // TILE, (p.y + HEIGHT - 1) // TILE + 1)):
             x = column * TILE - WIDTH if dx > 0 else (column + 1) * TILE
             blocked = True
     return replace(p, x=x, vx=0 if blocked else dx, phase=phase,
                    animation=(p.animation + (1 if intent == 1 else -1)) & 255)
 
 
-def _vertical(player, buttons):
+def _vertical(player, buttons, extra=None, report=None):
     p = player
     if p.jump == 1 and not buttons & 16 and p.index < 15:
         p = replace(p, saved=max(0, p.index - 1), index=15)
@@ -111,7 +116,7 @@ def _vertical(player, buttons):
         p = replace(p, index=p.saved, saved=0)
     if p.jump == 0:
         support = p.y + HEIGHT
-        if support % TILE == 0 and any(solid(column, support // TILE)
+        if support % TILE == 0 and any(_solid(extra, column, support // TILE)
                 for column in range(p.x // TILE, (p.x + WIDTH - 1) // TILE + 1)):
             return replace(p, vy=0, grounded=True)
         p = replace(p, jump=3, grounded=False, pose=4)
@@ -127,21 +132,31 @@ def _vertical(player, buttons):
     y = p.y + dy
     if dy:
         row = (y + HEIGHT - 1) // TILE if dy > 0 else y // TILE
-        if any(solid(column, row) for column in range(p.x // TILE, (p.x + WIDTH - 1) // TILE + 1)):
+        columns = range(p.x // TILE, (p.x + WIDTH - 1) // TILE + 1)
+        hit = next((c for c in columns if _solid(extra, c, row, dy < 0)), None)
+        if hit is not None:
             if dy > 0:
                 return replace(p, y=row * TILE - HEIGHT, vy=0, grounded=True,
                                jump=0, index=0, saved=0)
+            # The ascending scan reports the first solid cell so #303 can resolve it.
+            if report is not None:
+                report.append((hit, row))
             return replace(p, y=(row + 1) * TILE, vy=0, grounded=False,
                            jump=2, index=0, saved=0)
     return replace(p, y=y, vy=dy, grounded=False)
 
 
-def step(player, buttons):
-    """One PLAY update. Mode pause/restart is owned by the interaction caller."""
+def step(player, buttons, blocked=None, report=None):
+    """One PLAY update. Mode pause/restart is owned by the interaction caller.
+
+    `blocked(column, row, ascending)` adds solid cells outside the terrain map;
+    `report` collects the ascending scan's first solid cell as (column, row).
+    """
     if not isinstance(buttons, int) or not 0 <= buttons <= 255:
         raise ValueError('buttons must be a byte')
     if player.fell:
         return replace(player, previous=buttons)
-    p = _vertical(_horizontal(_select(player, buttons), buttons), buttons)
+    p = _vertical(_horizontal(_select(player, buttons), buttons, blocked),
+                  buttons, blocked, report)
     return replace(p, previous=buttons, camera=max(0, min(608, p.x // UNIT - 72)),
                    fell=p.y >= 144 * UNIT)

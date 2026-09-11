@@ -25,7 +25,8 @@ class PowerReferenceTests(unittest.TestCase):
         self.assertEqual([f.name for f in fields(World)], [
             'player', 'mode', 'enemy_x', 'enemy_vx', 'collected', 'score', 'timer',
             'previous', 'power', 'phase', 'phase_timer', 'invincible', 'throw',
-            'alive', 'crouch', 'shot'])
+            'alive', 'crouch', 'shot', 'blocks', 'coins', 'effect_tile',
+            'effect_x', 'effect_y', 'effect_timer'])
         reset = World()
         self.assertEqual((reset.power, reset.phase, reset.alive, reset.shot), (0, 0, True, Shot()))
         with self.assertRaises(FrozenInstanceError):
