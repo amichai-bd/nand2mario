@@ -10,8 +10,8 @@
     {
       "unit": "unit.asm",
       "section": "world",
-      "region": "ROM0",
-      "address": 5120
+      "region": "ROM1",
+      "address": 16384
     },
     {
       "unit": "unit.asm",
@@ -24,12 +24,6 @@
       "section": "render",
       "region": "ROM0",
       "address": 10240
-    },
-    {
-      "unit": "unit.asm",
-      "section": "collision",
-      "region": "ROM1",
-      "address": 16384
     }
   ]
 }

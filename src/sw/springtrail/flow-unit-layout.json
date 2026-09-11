@@ -33,15 +33,15 @@
     },
     {
       "unit": "flow-unit.asm",
-      "section": "collision",
-      "region": "ROM1",
-      "address": 16384
-    },
-    {
-      "unit": "flow-unit.asm",
       "section": "courier",
       "region": "ROM1",
       "address": 20992
+    },
+    {
+      "unit": "flow-unit.asm",
+      "section": "world",
+      "region": "ROM1",
+      "address": 16384
     }
   ]
 }

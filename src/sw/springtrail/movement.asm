@@ -46,15 +46,21 @@ LD D,A
 ADD HL,DE
 BIT 7,H
 JR NZ,LeftBound
+PUSH HL
+CALL StageXLimit
+LD D,H
+LD E,L
+POP HL
 LD A,H
-CP A,$2F
+CP A,D
 JR C,SaveCandidateX
 JR NZ,RightBound
 LD A,L
-CP A,$81
+CP A,E
 JR C,SaveCandidateX
+JR Z,SaveCandidateX
 RightBound:
-LD HL,$2F80
+CALL StageXLimit
 JR StopAtBound
 LeftBound:
 LD HL,0
@@ -249,15 +255,18 @@ LD DE,$FFB8
 ADD HL,DE
 BIT 7,H
 JR NZ,CameraLeft
+CALL StageCameraLimit
 LD A,H
-CP A,$02
+CP A,D
 JR C,SaveCamera
 JR NZ,CameraRight
 LD A,L
-CP A,$61
+CP A,E
 JR C,SaveCamera
+JR Z,SaveCamera
 CameraRight:
-LD HL,$0260
+LD H,D
+LD L,E
 JR SaveCamera
 CameraLeft:
 LD HL,0
@@ -699,14 +708,18 @@ SRA H
 RR L
 RET
 ; Page-aligned rows keep collision scans cheap enough for normal VBlank.
-; X is clamped before either scan, so its box stays in columns0..95.
+; X is clamped before either scan, so its box stays inside the stage, and
+; the stage base keeps every index inside the one256-column page.
 ; Callers reject out-of-world rows before reading. X scans advance H; Y scans L.
 CollisionPointer:
+CALL StageBaseColumn
+LD B,A
+LD A,[Column]
+ADD A,B
+LD L,A
 LD A,[Row]
 ADD A,HIGH(CollisionMap)
 LD H,A
-LD A,[Column]
-LD L,A
 RET
 EXPORT InitPlayer
 EXPORT StepPlayer

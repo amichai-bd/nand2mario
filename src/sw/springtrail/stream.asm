@@ -66,8 +66,12 @@ CP A,B
 JR C,PrepareLeftColumn
 ADD A,20
 PrepareLeftColumn:
-CP A,96
-RET NC
+LD B,A
+CALL StageColumnCount
+CP A,B
+RET Z
+RET C
+LD A,B
 LD [PreparedColumn],A
 LD DE,ColumnCache
 CALL DecodeColumn
@@ -76,8 +80,12 @@ LD [PreparedColumns],A
 RET
 
 DecodeColumn:
-; Build validation proves index0..95, complete16 rows and bounded run counts.
-; The block layer overwrites rows 10 and 11 of the completed cache.
+; Build validation proves index0..255, complete16 rows and bounded run counts.
+; The block layer overwrites rows 10 and 11 of the completed cache. It is keyed
+; on the page column, so its stage-0 table matches nothing on the other stages.
+LD B,A
+CALL StageBaseColumn
+ADD A,B
 LD [DecodeIndex],A
 LD A,E
 LD [DecodeBase],A

@@ -7,17 +7,35 @@ WIDTH=128
 HEIGHT=256
 
 
-def solid(column,row):
-    if not 0<=column<96 or not 0<=row<18:
+# Stage base column, width, player x limit and camera limit; the three stages
+# share one 256-column collision page. Stage0 is the unchanged original world.
+STAGE_BASE=(0,96,176)
+STAGE_COLUMNS=(96,80,80)
+STAGE_X_MAX=(760,632,632)
+STAGE_CAMERA_MAX=(608,480,480)
+
+
+def solid(column,row,stage=0):
+    if not 0<=column<STAGE_COLUMNS[stage] or not 0<=row<18:
         return False
+    if stage==0:
+        if row in (16,17):
+            return not (22<=column<=25 or 46<=column<=49 or 70<=column<=73)
+        return ((row==12 and (10<=column<=14 or 56<=column<=60))
+                or (row==10 and 31<=column<=35) or (row==11 and 80<=column<=84))
+    if stage==1:
+        if row in (16,17):
+            return not (18<=column<=21 or 40<=column<=43 or 62<=column<=65)
+        return ((row==12 and 8<=column<=12) or (row==11 and 30<=column<=34)
+                or (row==10 and 52<=column<=56) or (row==13 and 70<=column<=74))
     if row in (16,17):
-        return not (22<=column<=25 or 46<=column<=49 or 70<=column<=73)
-    return ((row==12 and (10<=column<=14 or 56<=column<=60))
-            or (row==10 and 31<=column<=35) or (row==11 and 80<=column<=84))
+        return not (14<=column<=17 or 30<=column<=33 or 46<=column<=49 or 62<=column<=65)
+    return ((row==13 and 6<=column<=10) or (row==12 and (24<=column<=28 or 70<=column<=74))
+            or (row==11 and 38<=column<=42) or (row==10 and 54<=column<=58))
 
 
-def world_tile(column,row):
-    if solid(column,row):return 11
+def world_tile(column,row,stage=0):
+    if solid(column,row,stage):return 11
     return 0
 
 

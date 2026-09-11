@@ -108,7 +108,8 @@ now means the stage was cleared; modes 5 TIMEUP and 6 OVER are new.
 | 5 TIMEUP | the consumed zero timer | identical to mode 2 |
 | 6 OVER | a life removal at 0 lives | reset |
 
-- A reset sets lives 2, stage 0, mode 0 and then enters stage 0. It is reached
+- A reset sets lives 2 and stage 0 and then enters stage 0, so it resumes in
+  mode 1 PLAY exactly as the existing paused Select restart does. It is reached
   from Select while paused, from A in mode 6, and after clearing stage 2.
 - Entering a stage resets the player, the enemy, the collected mask, the score,
   every power byte, the timer and `NewLevel`. It never touches `Lives` or
@@ -121,8 +122,10 @@ now means the stage was cleared; modes 5 TIMEUP and 6 OVER are new.
 
 ### Precedence and edges
 
-- PLAY update order: power timers, timer tick, time-up death, power input,
+- PLAY update order: power timers, time-up death, timer tick, power input,
   player motion, enemy patrol, shot, fall death, enemy contact, items, goal.
+  The grade is raised by one update and consumed at the top of the next, so a
+  zero timer always leaves one visible 000 update.
 - Fall death precedes the enemy contact, the items and the goal, so a death and
   a finish in the same update are a death. A consumed time-up precedes all of
   them, so an expired timer beats a goal reached on the same update.
@@ -197,7 +200,7 @@ Literal anchors fixed independently of DUT output:
   same press leaves `Lives` `$00` and mode 6.
 - Mode 4 with `StageIndex` 0 and A pressed leaves `StageIndex` 1, mode 1, the
   stage 1 timer start 300 and `Lives` unchanged. With `StageIndex` 2 the same
-  press leaves mode 0, `StageIndex` 0 and `Lives` `$02`.
+  press leaves mode 1, `StageIndex` 0, timer 400 and `Lives` `$02`.
 - `Lives` `$99` with `PendingLife` 1 stays `$99`; `PendingLife` becomes 0.
 - On stage 1 a player at x 632 cannot move right and the camera stops at 480.
 - The stage 2 goal box spans x 608 to 616, so a player at x 604 does not reach

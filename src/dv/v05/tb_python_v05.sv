@@ -247,6 +247,23 @@ module tb_python_v05 #(
         end
     end
 
+    // Corrupt the actual pending life request store ($FF -> $01), not its
+    // public trace. The same UpdateGame call's UpdateLives must then take the
+    // award path and leave the wrong life count.
+    initial begin
+        if ($test$plusargs("progress_request_fault")) begin
+            wait(bus_commit && write_enable && address == 16'hc0fc);
+            do @(negedge clk_sys);
+            while (!(dut.raw_write && dut.raw_store == n2m_memory_pkg::STORE_WRAM &&
+                     dut.raw_offset == 15'h0091 && dut.raw_wdata == 8'hff));
+            $display("PROGRESS_REQUEST_MUTATION expected=255 actual=1 dot=%0d", dot_count);
+            force dut.u_stores.ram_wdata = 8'd1;
+            @(posedge clk_sys);
+            @(negedge clk_sys);
+            release dut.u_stores.ram_wdata;
+        end
+    end
+
     // Change one real WRAM store after the original unit's first call marker.
     // The later prepared-image read must expose the corrupt stored cell.
     initial begin

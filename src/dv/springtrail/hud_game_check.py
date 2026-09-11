@@ -120,6 +120,8 @@ async def run(dut, short=False, renderer=False, motion=False, power=False):
                     tile_bytes += rom[0x6100:0x6140]+rom[0x6150:0x61b0]+rom[0x62b0:0x62e0]+rom[0x6360:0x6370]
                     # Approved terrain copies at VRAM108..139.
                     tile_bytes += rom[0x77a0:0x7920]+rom[0x7960:0x79e0]
+                    # Progression copies at VRAM140..148: digits5..9, M, V, life, clock.
+                    tile_bytes += rom[0x6570:0x65c0]+rom[0x6440:0x6450]+rom[0x64d0:0x64e0]+rom[0x6340:0x6360]
                 summary=check.finish(pause,tile_bytes)
                 for frame,data in enumerate(check.frames):Path(f'frame-{frame}.shades').write_bytes(data)
                 Path('summary.json').write_text(json.dumps(summary,indent=2)+'\n')

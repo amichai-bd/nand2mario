@@ -1,16 +1,26 @@
 ; Original game flow. No routine writes VRAM or changes the LCD clock.
 SECTION "interactions",ROM
+; A reset clears the lives and the stage; a stage entry keeps both.
 InitGame:
+XOR A,A
+LD [StageIndex],A
+LD [PendingLife],A
+LD A,2
+LD [Lives],A
+EnterStage:
 LD A,[Buttons]
 PUSH AF
 CALL InitPlayer
 XOR A,A
-LD [EnemyX],A
 LD [Score],A
 LD [Collected],A
 LD [GameTimer],A
 LD [GameTimer+1],A
-LD A,$10
+LD HL,StageEnemyStart
+CALL StageWordHL
+LD A,E
+LD [EnemyX],A
+LD A,D
 LD [EnemyX+1],A
 LD A,8
 LD [EnemyVX],A
@@ -25,6 +35,7 @@ INC A
 LD [EnemyAlive],A
 LD [GameMode],A
 LD [NewLevel],A
+CALL ResetStageTimer
 POP AF
 LD [Buttons],A
 LD [Previous],A
@@ -42,11 +53,15 @@ LD A,[Buttons]
 LD [GamePrevious],A
 LD A,[GameMode]
 CP A,3
-JR Z,PausedInput
+JP Z,PausedInput
 CP A,2
-JR Z,RetryInput
+JP Z,RetryInput
+CP A,5
+JP Z,RetryInput
 CP A,4
-JR Z,RetryInput
+JP Z,ClearInput
+CP A,6
+JP Z,OverInput
 OR A,A
 JR Z,StartInput
 LD A,[Pressed]
@@ -69,11 +84,32 @@ RememberIdle:
 LD A,[Buttons]
 LD [Previous],A
 RET
+; A transition consumes its own A edge, so one held press never crosses two.
 RetryInput:
 LD A,[Pressed]
 AND A,$80
-JP NZ,InitGame
-RET
+RET Z
+LD A,$FF
+LD [PendingLife],A
+CALL UpdateLives
+OR A,A
+RET Z
+JP EnterStage
+ClearInput:
+LD A,[Pressed]
+AND A,$80
+RET Z
+LD A,[StageIndex]
+CP A,2
+JP NC,InitGame
+INC A
+LD [StageIndex],A
+JP EnterStage
+OverInput:
+LD A,[Pressed]
+AND A,$80
+RET Z
+JP InitGame
 StartInput:
 LD A,[Pressed]
 AND A,$80
@@ -84,6 +120,10 @@ LD [GameMode],A
 UpdateWorld:
 CALL PowerTimers
 CALL BlockTimers
+CALL CheckTimeUp
+OR A,A
+JP NZ,RememberIdle
+CALL TickTimer
 CALL PowerInput
 CALL StepPlayer
 CALL ResolveBlockHit
@@ -126,7 +166,8 @@ LD [GameMode],A
 RET
 
 CollectItems:
-LD DE,ItemBoxes
+LD HL,StageItems
+CALL StageWordHL
 LD B,4
 CollectNext:
 LD A,[DE]
@@ -173,14 +214,9 @@ ItemAdvance:
 DEC B
 JR NZ,CollectNext
 ; The goal is checked only after death and once-only collection.
+CALL StageGoalBox
 XOR A,A
-LD [ObjectX],A
-LD [ObjectY],A
 LD [ObjectHeight],A
-LD A,$2E
-LD [ObjectX+1],A
-LD A,7
-LD [ObjectY+1],A
 LD A,1
 LD [ObjectHeight+1],A
 CALL OverlapObject
@@ -189,12 +225,6 @@ RET Z
 LD A,4
 LD [GameMode],A
 RET
-
-ItemBoxes:
-DB 1,$00,$06,$80,$05
-DB 2,$80,$10,$80,$04
-DB 4,$00,$1D,$80,$05
-DB 8,$00,$29,$00,$05
 
 StepEnemy:
 LD A,[EnemyVX]
@@ -209,28 +239,39 @@ LD L,A
 LD A,[EnemyX+1]
 LD H,A
 ADD HL,DE
+PUSH HL
+LD HL,StageEnemyHi
+CALL StageWordHL
+POP HL
 LD A,H
-CP A,$12
+CP A,D
 JR C,EnemyLeftTest
 JR NZ,EnemyRight
 LD A,L
-CP A,$80
+CP A,E
 JR C,EnemyLeftTest
 EnemyRight:
-LD HL,$1280
+LD H,D
+LD L,E
 LD A,$F8
 LD [EnemyVX],A
 JR SaveEnemy
 EnemyLeftTest:
+PUSH HL
+LD HL,StageEnemyLo
+CALL StageWordHL
+POP HL
 LD A,H
-CP A,$0F
+CP A,D
 JR C,EnemyLeft
 JR NZ,SaveEnemy
 LD A,L
-OR A,A
-JR NZ,SaveEnemy
+CP A,E
+JR Z,EnemyLeft
+JR NC,SaveEnemy
 EnemyLeft:
-LD HL,$0F00
+LD H,D
+LD L,E
 LD A,8
 LD [EnemyVX],A
 SaveEnemy:
