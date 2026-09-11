@@ -51,7 +51,8 @@ def build_target(root, build, args, provenance):
         require_legacy_scene(root,args.target)
         require_legacy_movement(root,args.target)
         if args.target == 'springtrail':
-            from .columns import validate as validate_columns
+            # columns.asm is generated from world.asm; a stale committed table fails here.
+            from .columns import validate as validate_columns, inputs as column_inputs
             validate_columns(root)
         def confined(base, name):
             if type(name) is not str or not name or Path(name).is_absolute() or '..' in Path(name).parts or ':' in name or '\\' in name:
@@ -87,6 +88,8 @@ def build_target(root, build, args, provenance):
         inputs = dict(assembly['inputs'])
         inputs[layout_path.relative_to(root).as_posix()] = file_hash(layout_path)
         inputs['tools/n2m/interfaces.py'] = file_hash(root / 'tools/n2m/interfaces.py')
+        if args.target == 'springtrail':
+            inputs.update({path.relative_to(root).as_posix(): file_hash(path) for path in column_inputs(root)})
         for path in sorted((root / 'tools/sw').glob('*')):
             if path.suffix in ('.py', '.json'):
                 inputs[path.relative_to(root).as_posix()] = file_hash(path)
