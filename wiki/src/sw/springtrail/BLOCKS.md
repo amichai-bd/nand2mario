@@ -127,6 +127,11 @@ collision and grants nothing.
   never respawns its content.
 - `InitGame` clears all eleven persistent bytes, so restart and retry restore
   every block to intact with no duplicate reward.
+- The static initial map at 9800 carries terrain only, so for the sixteen
+  restoration frames after a restart the blocks are solid but not drawn. The
+  restoration repaints all thirty-two columns of 9C00 through the same override
+  before the display switches, and the player is at most at x 56 in those
+  frames, so no block is reachable while it is undrawn.
 
 ## Artwork
 
@@ -160,9 +165,9 @@ which are world rows 10 and 11, only when the state has a non-blank appearance.
 The effect object emits the same four tiles as four OAM entries at
 `(0,0)`, `(8,0)`, `(0,8)` and `(8,8)`.
 
-![Block and item states](core-art/block-states.svg)
+![Block and item states](blocks/block-states.svg)
 
-![A used block releasing its mushroom](core-art/block-release.svg)
+![A used block releasing its mushroom](blocks/block-release.svg)
 
 The second view is a source-reference composition of one modelled update, not
 an FPGA photograph. Reproduce both from the approved sources and the
@@ -171,6 +176,9 @@ independent reference:
 ```text
 python src/dv/springtrail/blocks_preview.py --tag block-review
 ```
+
+Copy its SVGs into this page's `blocks/` folder and keep the PNGs in workdir.
+Unchanged artwork retains its existing approval.
 
 ## State and integration boundary
 

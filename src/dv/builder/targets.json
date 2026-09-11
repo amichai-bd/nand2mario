@@ -16661,7 +16661,8 @@
         "src/dv/springtrail/pause_game_reference.py",
         "src/dv/springtrail/test_pause_game_short.py",
         "src/sw/springtrail/blocks.asm",
-        "src/sw/springtrail/assets/core/terrain-tiles.json"
+        "src/sw/springtrail/assets/core/terrain-tiles.json",
+        "src/sw/springtrail/power.asm"
       ],
       "waves": [
         "wave_dot",
@@ -16838,7 +16839,8 @@
         "src/dv/springtrail/pause_game_reference.py",
         "src/dv/springtrail/test_pause_game_full.py",
         "src/sw/springtrail/blocks.asm",
-        "src/sw/springtrail/assets/core/terrain-tiles.json"
+        "src/sw/springtrail/assets/core/terrain-tiles.json",
+        "src/sw/springtrail/power.asm"
       ],
       "waves": [
         "wave_dot",
@@ -17020,7 +17022,8 @@
         "src/dv/springtrail/pause_game_reference.py",
         "src/dv/springtrail/test_pause_game_full.py",
         "src/sw/springtrail/blocks.asm",
-        "src/sw/springtrail/assets/core/terrain-tiles.json"
+        "src/sw/springtrail/assets/core/terrain-tiles.json",
+        "src/sw/springtrail/power.asm"
       ],
       "waves": [
         "wave_dot",
