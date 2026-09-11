@@ -59,7 +59,11 @@ Focused regions marked `data-scroll-region` retain native arrow/Home/End behavio
 for diagram scrolling instead of navigating slides.
 Diagrams marked `data-animated` replay a flow with CSS animation only. Their
 authored SVG is the finished figure, so printing or a reduced-motion preference
-shows the complete diagram without motion. The educational series keeps
+shows the complete diagram without motion. A terminal session is a generated
+loop from [`wiki/showcase/`](../showcase/README.md) embedded as an image with
+class `terminal-session` inside a scroll region; its keystrokes, output, still
+and colours live in the file, and the showcase page records its inputs.
+The educational series keeps
 a 16:9 minimum canvas and expands for longer content or opened reasoning panels.
 
 The fullscreen button requests `n2m:fullscreen` from the wiki shell when embedded;

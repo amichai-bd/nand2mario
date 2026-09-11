@@ -120,11 +120,14 @@ def check_views(browser, base):
         expect(figure).to_contain_text('PAUSED')
         page.screenshot(path=str(OUTPUT / 'quality-showcase-game.png'))
         page.close()
-        # The terminal loops share one block cursor (.cur) that walks the
-        # keystrokes; in the still it must be the only caret, resting on the
-        # empty prompt row below the last line (no transform), and no typed
-        # row may keep a caret of its own.
-        for name, last_line in (('build-and-tests', 'TESTS=1 PASS=1'), ('board-session', '"silence_seconds": 2.0')):
+        # The terminal loops (README and lesson decks) share one block cursor
+        # (.cur) that walks the keystrokes; in the still it must be the only
+        # caret, resting on the empty prompt row below the last line (no
+        # transform), and no typed row may keep a caret of its own.
+        for name, last_line in (('build-and-tests', 'TESTS=1 PASS=1'), ('board-session', '"silence_seconds": 2.0'),
+                                ('reproducible-builds', 'git checkout -- src/sw/springtrail/world.asm'),
+                                ('uart-debugging', '"seq": 457'),
+                                ('verification', 'JOYP_MISMATCH cycle=3 phase=post signal=io_rdata expected=238 actual=239')):
             page = new_page()
             page.goto(base + f'/files/wiki/showcase/{name}.svg')
             first, cursor = page.locator('.t1').first, page.locator('.cur')
@@ -145,6 +148,23 @@ def check_views(browser, base):
                     && rows.filter(r => r.bottom > cursor.top + 1).length === 1;
             }"""), 'A caret is visible on a command line in the still'
             page.screenshot(path=str(OUTPUT / f'quality-showcase-{name}.png'))
+            page.close()
+
+        # Each lesson deck embeds its terminal session as an image on one
+        # slide: it must load at its authored width and stay on the page in print.
+        for name in ('reproducible-builds', 'uart-debugging', 'verification'):
+            page = new_page()
+            page.goto(base + f'/files/wiki/presentations/{name}.html')
+            image = page.locator('img.terminal-session')
+            expect(image).to_have_count(1)
+            slide = page.locator('section[data-slide]:has(img.terminal-session)')
+            page.evaluate('id => { location.hash = id; }', slide.locator('h1, h2').first.get_attribute('id'))
+            expect(image).to_be_visible()
+            assert image.evaluate('e => e.complete && e.naturalWidth === 800'), f'{name} terminal session did not load'
+            page.emulate_media(media='print')
+            expect(image).to_be_visible()
+            if name == 'verification':
+                page.screenshot(path=str(OUTPUT / 'quality-lesson-terminal-print.png'), full_page=True)
             page.close()
 
         for fragment, expected in (('#slide-4', '4 / 6'), ('#missing', '1 / 6'), ('#%E0%A4%A', '1 / 6')):
@@ -174,7 +194,7 @@ def check_views(browser, base):
             page.close()
         assert not errors, '\n'.join(errors)
         return {'status': 'passed', 'browser': browser.version, 'viewports': [1440, 390],
-                'checks': ['slide fragments', 'malformed fragments', 'keyboard', 'print visibility and contrast', 'animated diagram motion, completeness and print contrast', 'README showcase motion and reduced-motion still', 'chart scrolling']}
+                'checks': ['slide fragments', 'malformed fragments', 'keyboard', 'print visibility and contrast', 'animated diagram motion, completeness and print contrast', 'README showcase motion and reduced-motion still', 'lesson terminal sessions and deck embeds', 'chart scrolling']}
     except BaseException:
         if page is not None and not page.is_closed():
             page.screenshot(path=str(OUTPUT / 'failure.png'), full_page=True)

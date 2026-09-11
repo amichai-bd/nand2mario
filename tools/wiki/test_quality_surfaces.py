@@ -48,6 +48,7 @@ class DocumentationQualityTests(unittest.TestCase):
     def test_animated_diagrams_gate_motion_and_stay_complete_without_it(self):
         stylesheet = (ROOT / 'wiki/presentations/assets/concepts.css').read_text(encoding='utf-8')
         decks = ('cpu-execution', 'graphics-pipeline', 'uart-debugging', 'springtrail-software')
+        lessons = ('reproducible-builds', 'uart-debugging', 'verification')
 
         motion = stylesheet.split('@media screen and (prefers-reduced-motion: no-preference)', 1)
         self.assertEqual(len(motion), 2, 'Motion must be gated behind screen and no-preference')
@@ -58,15 +59,22 @@ class DocumentationQualityTests(unittest.TestCase):
             self.assertNotIn('<animate', markup, deck)
             self.assertNotIn('opacity="0"', markup, deck)
             self.assertNotIn('<style', markup, deck)
+        # A lesson terminal session is one generated SVG image inside a scroll
+        # region; the deck adds no motion of its own to it.
+        for deck in lessons:
+            markup = (ROOT / f'wiki/presentations/{deck}.html').read_text(encoding='utf-8')
+            self.assertEqual(markup.count('class="terminal-session"'), 1, deck)
+            self.assertIn(f'<img class="terminal-session" src="../showcase/{deck}.svg" alt="', markup, deck)
+            self.assertIn('data-scroll-region tabindex="0" role="region" aria-label="Terminal session:', markup, deck)
 
-    def test_readme_showcases_are_self_contained_and_match_their_generator(self):
+    def test_showcases_are_self_contained_and_match_their_generator(self):
         from tools.wiki import showcase
-        readme = (ROOT / 'README.md').read_text(encoding='utf-8')
         generated = showcase.documents()
-        for name in ('build-and-tests', 'board-session', 'game-start'):
+        self.assertEqual(sorted(generated), sorted(showcase.EMBEDS))
+        for name, page in showcase.EMBEDS.items():
             markup = (ROOT / f'wiki/showcase/{name}.svg').read_text(encoding='utf-8')
             self.assertEqual(markup, generated[name], f'{name}.svg differs from tools/wiki/showcase.py output')
-            self.assertIn(f'wiki/showcase/{name}.svg', readme)
+            self.assertIn(f'showcase/{name}.svg', (ROOT / page).read_text(encoding='utf-8'), f'{page} does not embed {name}.svg')
             for forbidden in ('<script', '<foreignObject', 'href=', 'url(', '<animate', '@import'):
                 self.assertNotIn(forbidden, markup, name)
             gate = markup.split('@media (prefers-reduced-motion:no-preference){', 1)

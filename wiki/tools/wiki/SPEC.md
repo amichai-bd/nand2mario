@@ -213,10 +213,12 @@ and keyboard-scrollable chart regions.
 
 ## README showcases
 
-The manual `tools/wiki/showcase.py` generator writes the three animated SVGs
-under [`wiki/showcase/`](../../showcase/README.md) that the project overview
-embeds. Each is self-contained: CSS keyframes gated behind
+The manual `tools/wiki/showcase.py` generator writes the animated SVGs under
+[`wiki/showcase/`](../../showcase/README.md): the three the project overview
+embeds and the three terminal sessions the lesson decks embed as images. Each
+is self-contained: CSS keyframes gated behind
 `prefers-reduced-motion: no-preference`, no script, no external reference, and
 the authored markup is the finished still. The quality tests require the
-committed files to equal the generator's output, so edit the generator and
-rerun it; the showcase page records where every shown line and pixel comes from.
+committed files to equal the generator's output and each embedding page to
+reference its file, so edit the generator and rerun it; the showcase page
+records where every shown line and pixel comes from.

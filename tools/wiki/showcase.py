@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
-"""Generate the README showcase SVGs: real terminal transcripts and exact game frames.
+"""Generate the showcase SVGs: real terminal transcripts and exact game frames.
 
-Writes wiki/showcase/build-and-tests.svg, board-session.svg and game-start.svg.
+Writes the README loops wiki/showcase/build-and-tests.svg, board-session.svg
+and game-start.svg, and the lesson-deck terminal sessions
+reproducible-builds.svg, uart-debugging.svg and verification.svg.
 Every terminal line is captured or recorded text (see wiki/showcase/README.md);
 every game pixel comes from the independent Springtrail frame references under
 src/dv/springtrail. The SVGs are self-contained: CSS keyframes only, no script,
@@ -28,6 +30,12 @@ WIDTH, LINE, PAD, BAR = 800, 18, 16, 30
 # font metrics, so the keystroke reveal tracks a stable column regardless of
 # which system font ui-monospace resolves to.
 CHAR_W, TYPE_RATE, MIN_TYPE = 7.2, 0.028, 0.35
+# The page that embeds each loop; the quality tests check the reference and
+# that the committed SVG equals this generator's output.
+EMBEDS = {'build-and-tests': 'README.md', 'board-session': 'README.md', 'game-start': 'README.md',
+          'reproducible-builds': 'wiki/presentations/reproducible-builds.html',
+          'uart-debugging': 'wiki/presentations/uart-debugging.html',
+          'verification': 'wiki/presentations/verification.html'}
 
 # --- Loop 1: build and tests. Captured at 5ce0aa0 on 2026-09-11; long JSON lines
 # are shortened with an ellipsis, every kept field is verbatim; wrap() breaks
@@ -78,7 +86,93 @@ BOARD = [
 ]
 BOARD_LOOP = 24.0
 
-HIGHLIGHT = re.compile(r'"status": "PASS"|\bPASS\b|\bOK\b|\bBUILT\b|\bMISS\b|"dot": \d+|"verified_bytes": 32768|"silence_seconds": 2\.0')
+# --- Lesson loops. Each teaches one deck's subject with the commands it is
+# about; wiki/showcase/README.md records where every shown line comes from.
+
+# Reproducible builds: captured at 396b0b4 on 2026-09-11 in one shell. Two
+# clean tags build the same fingerprint and image hash; the same tag again is
+# a cache HIT; one appended comment line in world.asm changes the source hash,
+# so the fingerprint misses and a fresh attempt builds byte-identical bytes.
+LESSON_A = 'workdir/builds/lesson-a/sw/build/springtrail/runs/8f9e24a33197/image.gb'
+LESSON_B = 'workdir/builds/lesson-b/sw/build/springtrail/runs/9ad388c6093e/image.gb'
+LESSON_C = 'workdir/builds/lesson-a/sw/build/springtrail/runs/76c8b79b8fe7/image.gb'
+IMAGE_SHA = '616de11b49e0807539837358824a570776459b9bf13a4b9424dbf42adfe5c983'
+BUILDS = [
+    (0.0, 'cmd', 'python tools/build.py sw build springtrail --tag lesson-a --json'),
+    (1.2, 'out', '{"artifacts": {…}, "attempt": "8f9e24a33197", "cache": "MISS", "commit": "396b0b4c…", …, "fingerprint": "e3a381f906d5ee45…", …, "status": "PASS", …}'),
+    (3.0, 'cmd', 'python tools/build.py sw build springtrail --tag lesson-b --json'),
+    (4.2, 'out', '{"artifacts": {…}, "attempt": "9ad388c6093e", "cache": "MISS", "commit": "396b0b4c…", …, "fingerprint": "e3a381f906d5ee45…", …, "status": "PASS", …}'),
+    (6.4, 'cmd', f'sha256sum {LESSON_A} {LESSON_B}'),
+    (6.8, 'out', f'{IMAGE_SHA} *{LESSON_A}'),
+    (6.8, 'out', f'{IMAGE_SHA} *{LESSON_B}'),
+    (8.8, 'cmd', 'python tools/build.py sw build springtrail --tag lesson-a --json'),
+    (9.6, 'out', '{"artifacts": {…}, "attempt": "8f9e24a33197", "cache": "HIT", "commit": "396b0b4c…", …, "fingerprint": "e3a381f906d5ee45…", …, "reused_from": "396b0b4c…", "status": "PASS", …}'),
+    (11.6, 'cmd', "printf '; lesson: one comment line changes the source hash\\r\\n' >> src/sw/springtrail/world.asm"),
+    (13.2, 'cmd', 'python tools/build.py sw build springtrail --tag lesson-a --json'),
+    (14.4, 'out', '{"artifacts": {…}, "attempt": "76c8b79b8fe7", "cache": "MISS", "commit": "396b0b4c…", …, "fingerprint": "dbb46f91643c8b0d…", …, "status": "PASS", …}'),
+    (16.4, 'cmd', f'sha256sum {LESSON_C}'),
+    (16.8, 'out', f'{IMAGE_SHA} *{LESSON_C}'),
+    (18.4, 'cmd', 'git checkout -- src/sw/springtrail/world.asm'),
+]
+BUILDS_LOOP = 21.0
+
+# UART debugging: the recorded Libbet play session from src/dv/libbet/README.md
+# ("Start at 8 s: title, play, one roll"), not a live capture and nothing sent
+# to a board for this page. Command lines and reply shapes follow
+# wiki/tools/n2m/host/SPEC.md; the wire build ID, image hash and size are the
+# recorded pin; every dot, seq and the three-frame Start hold are the record's
+# values. The snapshot epoch and pixel hashes are elided.
+LIBBET_SHA = '3607412031c8287c…'
+SESSION = [
+    (0.0, 'cmd', 'python tools/build.py host status --tag lesson --json'),
+    (0.8, 'out', '{"action": "status", …, "endpoint": {"abi": 1, "build_id": "bb02588d127b72ce6458a07ff1145c57"}, …, "result": {"IMAGE_VALID": 1, "INPUT": 0, "PROFILE": 1, "STATE": 0}, "status": "PASS", …}'),
+    (2.6, 'cmd', 'python tools/build.py host load --external libbet --tag lesson --json'),
+    (6.0, 'out', f'{{"action": "load", …, "external": {{"license": "Zlib", "pin": "libbet", "sha256": "{LIBBET_SHA}", "size": 32768, …}}, …, "result": {{"image": {{"bytes": 32768, "sha256": "{LIBBET_SHA}"}}, "verified_bytes": 32768}}, "status": "PASS", …}}'),
+    (8.0, 'cmd', 'python tools/build.py host run --tag lesson --json'),
+    (8.6, 'out', '{"action": "run", …, "result": null, "status": "PASS", …}'),
+    (10.4, 'cmd', 'python tools/build.py host halt --tag lesson --json'),
+    (11.0, 'out', '{"action": "halt", …, "result": {"dot": 33631192}, "status": "PASS", …}'),
+    (12.4, 'cmd', 'python tools/build.py host snapshot --tag lesson --json'),
+    (13.8, 'out', '{"action": "snapshot", …, "result": {"pixels": {"bytes": 5760, "sha256": "…"}, "snapshot": {"dot": 33605475, "epoch": …, "seq": 456, "size": 5760}}, "status": "PASS", …}'),
+    (15.6, 'cmd', 'python tools/build.py host input --mask 128 --tag lesson --json'),
+    (16.2, 'out', '{"action": "input", …, "result": {"dot": 33631192}, "status": "PASS", …}'),
+    (17.4, 'cmd', 'python tools/build.py host run-dots --dots 70224 --tag lesson --json'),
+    (18.0, 'out', '{"action": "run-dots", …, "result": {"dot": 33701416, "executed": 70224, "reason": 0}, "status": "PASS", …}'),
+    (19.0, 'cmd', 'python tools/build.py host run-dots --dots 70224 --tag lesson --json'),
+    (19.6, 'out', '{"action": "run-dots", …, "result": {"dot": 33771640, "executed": 70224, "reason": 0}, "status": "PASS", …}'),
+    (20.6, 'cmd', 'python tools/build.py host run-dots --dots 70224 --tag lesson --json'),
+    (21.2, 'out', '{"action": "run-dots", …, "result": {"dot": 33841864, "executed": 70224, "reason": 0}, "status": "PASS", …}'),
+    (22.4, 'cmd', 'python tools/build.py host input --mask 0 --tag lesson --json'),
+    (23.0, 'out', '{"action": "input", …, "result": {"dot": 33841864}, "status": "PASS", …}'),
+    (24.2, 'cmd', 'python tools/build.py host snapshot --tag lesson --json'),
+    (25.6, 'out', '{"action": "snapshot", …, "result": {"pixels": {"bytes": 5760, "sha256": "…"}, "snapshot": {"dot": 33675699, "epoch": …, "seq": 457, "size": 5760}}, "status": "PASS", …}'),
+]
+SESSION_LOOP = 28.6
+
+# Accent words: results a reader scans for. FAIL and the expected fault line
+# take the warm colour so a deliberate failure reads as one.
+HIGHLIGHT = re.compile(r'"status": "PASS"|\bPASS\b|\bOK\b|\bBUILT\b|\bMISS\b|\bHIT\b|"dot": \d+|"verified_bytes": 32768|"silence_seconds": 2\.0')
+WARN = re.compile(r"'status': 'FAIL'|^Python test failed|JOYP_MISMATCH[^']*")
+
+# Verification: captured at 396b0b4 on 2026-09-11 with the isolated Python
+# 3.12.14 DV environment (src/dv/python/README.md) and Questa. The passing
+# target's cocotb summary and the deliberate DUT fault's exact expected line
+# are grep results from the retained sim.log of each run; the fault target
+# exits 1 with the FAIL diagnostic the contract requires.
+DV = 'workdir/builds/python-dv-env/.venv/Scripts/python.exe'
+TESTS = [
+    (0.0, 'cmd', f'{DV} tools/build.py sim test python-joypad --tag lesson'),
+    (3.6, 'out', 'BUILT: sim tag=lesson'),
+    (5.2, 'cmd', 'grep -o "TESTS=.*" workdir/builds/lesson/sim/test/python-joypad/sim.log'),
+    (5.8, 'out', 'TESTS=1 PASS=1 FAIL=0 SKIP=0              21442.00           5.06       4241.67  **'),
+    (7.6, 'cmd', f'{DV} tools/build.py sim test python-joypad-fault --tag lesson'),
+    (10.8, 'out', 'BUILT: sim tag=lesson'),
+    (10.8, 'out', "Python test failed: {'status': 'FAIL', 'test': 'joypad_contract', 'diagnostics': [{'error_type': 'AssertionError', 'error_msg': 'JOYP_MISMATCH cycle=3 phase=post signal=io_rdata expected=238 actual=239', 'kind': 'failure'}]}"),
+    (12.6, 'cmd', 'grep -o "JOYP_MISMATCH.*" workdir/builds/lesson/sim/test/python-joypad-fault/sim.log'),
+    (13.2, 'out', 'JOYP_MISMATCH cycle=3 phase=post signal=io_rdata expected=238 actual=239'),
+    (13.2, 'out', 'JOYP_MISMATCH cycle=3 phase=post signal=io_rdata expected=238 actual=239'),
+]
+TESTS_LOOP = 17.0
 
 
 def esc(text):
@@ -93,10 +187,14 @@ def spans(kind, text):
     if kind == 'cmd+':
         return esc(text)
     parts, last = [], 0
-    for match in HIGHLIGHT.finditer(text):
-        parts.append(esc(text[last:match.start()]))
-        parts.append(f'<tspan fill="{ACCENT}">{esc(match.group())}</tspan>')
-        last = match.end()
+    matches = sorted([(m.start(), m.end(), ACCENT) for m in HIGHLIGHT.finditer(text)]
+                     + [(m.start(), m.end(), WARM) for m in WARN.finditer(text)])
+    for start, end, fill in matches:
+        if start < last:
+            continue  # the earlier match already covers this span
+        parts.append(esc(text[last:start]))
+        parts.append(f'<tspan fill="{fill}">{esc(text[start:end])}</tspan>')
+        last = end
     parts.append(esc(text[last:]))
     return f'<tspan fill="{MUTED}">{"".join(parts)}</tspan>'
 
@@ -507,6 +605,15 @@ def documents():
                                   'Commands/replies follow wiki/tools/n2m/host/SPEC.md; dots follow the 70224-dot frame; IDs elided.',
                                   BOARD, BOARD_LOOP),
         'game-start': game(),
+        'reproducible-builds': terminal('Two clean builds, one identity · nand2mario at 396b0b4 · 2026-09-11',
+                                        'Real sw build output in one shell; JSON shortened with …, every shown field verbatim; the tree is restored.',
+                                        BUILDS, BUILDS_LOOP),
+        'uart-debugging': terminal('Board session over UART · the recorded Libbet play, not a live capture',
+                                   'Shapes follow wiki/tools/n2m/host/SPEC.md; dots, seq and IDs from src/dv/libbet/README.md; hashes elided.',
+                                   SESSION, SESSION_LOOP),
+        'verification': terminal('A checker that can fail · nand2mario at 396b0b4 · 2026-09-11',
+                                 'Real output of the Python joypad target and its deliberate DUT fault; summary lines grepped from each sim.log.',
+                                 TESTS, TESTS_LOOP),
     }
 
 
