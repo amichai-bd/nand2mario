@@ -6,7 +6,7 @@ import subprocess
 import sys
 import time
 
-from .records import atomic_text
+from .records import atomic_text, published_bytes
 
 
 class Peer:
@@ -33,7 +33,7 @@ class Peer:
                 if time.monotonic() >= deadline:
                     raise RuntimeError('simulation peer readiness timeout')
                 time.sleep(.01)
-            data = json.loads(ready.read_text(encoding='utf-8'))
+            data = json.loads(published_bytes(ready).decode('utf-8'))
             if data.get('host') != '127.0.0.1' or type(data.get('port')) is not int or not 1 <= data['port'] <= 65535:
                 raise RuntimeError('invalid simulation peer listener')
             self.record['listener'] = data

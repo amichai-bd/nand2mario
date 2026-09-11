@@ -33,7 +33,10 @@ class PeerTests(unittest.TestCase):
         return Peer(self.root, self.attempt, 'child.py')
 
     def ready(self):
-        return "(p/'peer-ready.json').write_text(json.dumps({'host':'127.0.0.1','port':12345}))\n"
+        # Publish like the product peers: the parent polls exists() then reads,
+        # so a bare write_text can expose an empty file under host load.
+        return ("(p/'peer-ready.tmp').write_text(json.dumps({'host':'127.0.0.1','port':12345}))\n"
+                "(p/'peer-ready.tmp').replace(p/'peer-ready.json')\n")
 
     def test_success_in_path_with_spaces(self):
         peer = self.script(self.ready())
