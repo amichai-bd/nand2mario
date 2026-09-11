@@ -68,10 +68,16 @@ Whole-run supervisor walls at this head on Questa Altera Starter FPGA Edition
 
 | Target | Wall (s) | Limit (s) | Result |
 | --- | --- | --- | --- |
-| `python-gps` | pending | 300 | pending |
-| `python-gpx` | pending | 300 | pending |
-| `python-gpa` | pending | 300 | pending |
-| `python-gpb` | pending | 300 | pending |
+| `python-gps` | 48 | 300 | PASS, the retry spend then one timer unit |
+| `python-gpx` | 37 | 300 | intended fault: `PROGRESS_REQUEST_MUTATION expected=255 actual=1 dot=4839`, `MOTION_STATE retry-spend` rejected on the life count alone, receipt retained |
+| `python-gpa` | 149 | 300 | PASS, 20 cases |
+| `python-gpb` | 187 | 300 | PASS, 20 cases |
+| `python-mgs` | 216 | 300 | FAIL, `MOTION_STARTUP_BOUND`: the derivation below is not yet correct |
+
+The startup derivation is open. The hand count above predicts 156160 and the
+actual first `LCDC` commit is 156152, so exactly one term is 8 dots too high.
+Find and correct that term in the instruction listing; do not adopt 156152 as
+the expectation. Every other affected target is unrun.
 
 Licence refusals while the other nodelocked QuestaSim session held the seat
 were retried, never counted and never killed.
