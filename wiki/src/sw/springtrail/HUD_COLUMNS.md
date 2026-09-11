@@ -63,8 +63,10 @@ Unchanged artwork retains its existing approval; changed pixels need review.
 
 ## Original encoding and publication
 
-Keep the literal collision world as its existing owner. Encode each display
-column independently, in top-to-bottom order, using original count/tile pairs.
+Keep the literal collision world as its existing owner; `columns.asm` is
+generated from it under the
+[generated-table contract](../../../tools/sw/SPEC.md#generated-tables), never
+edited by hand. Encode each display column independently, in top-to-bottom order, using original count/tile pairs.
 Count1..16 repeats the following tile that many rows; count0 ends the column.
 Exactly16 rows must precede the terminator. Blank runs use tile0. There are
 at most16 pairs and33 bytes per column, and96 explicitly indexed columns.

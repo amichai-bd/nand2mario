@@ -261,6 +261,27 @@ Include cycles fail with the chain; repeated noncyclic includes repeat text.
 No macros, conditional assembly, mutable symbols, implicit globals, binary
 inclusion, relaxation, or general RGBDS source compatibility is promised.
 
+## Generated tables
+
+Repetitive table data has one source and one checked, committed generated
+output. This is a data-generation step outside the assembler: the contract
+above is unchanged and gains no macros, conditional assembly or compiler.
+[The column generator](../../../tools/sw/columns.py) produces
+`src/sw/springtrail/columns.asm` from the literal world in
+`src/sw/springtrail/world.asm`: 96 `DW` pointers, then per column a label and
+one greedy count/tile run list ending in 0, under the
+[encoding rules](../../src/sw/springtrail/HUD_COLUMNS.md#original-encoding-and-publication).
+Run `python tools/sw/columns.py` to regenerate the committed file, keeping its
+line endings; `--check` compares without writing. Every `sw build springtrail`
+runs the same comparison before assembly. A committed table that differs from
+generation fails with `COLUMN_STALE` naming the first differing line; a world
+that is not literal 96x18 tiles below 94 fails with `COLUMN_WORLD`. The
+generator, `world.asm` and `columns.asm` are fingerprinted build inputs, so a
+world change never reuses a cached ROM.
+[Tests](../../../tools/n2m/tests/test_columns.py) cover committed equality,
+corrupted world and table, regeneration and the script exit codes. The
+hand-unrolled column writes in `render.asm` and `stream.asm` remain hand-written.
+
 ## Objects and linking
 
 Emit a versioned UTF-8 JSON object per translation unit: source hashes, ordered
