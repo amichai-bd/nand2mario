@@ -1,6 +1,6 @@
 # Build system
 
-Status: `doctor`, `check`, Questa `sim test`, MAX 10 `fpga build`, [software build/conformance](../sw/SPEC.md), and [host load/control](host/SPEC.md) are implemented; aggregate regression and cleanup commands remain unimplemented.
+Status: `doctor`, `check`, Questa `sim test`, MAX 10 `fpga build`, [software build/conformance](../sw/SPEC.md), [host load/control](host/SPEC.md), [declared regression subsets](#regression-subsets) and [tagged cleanup](#cleanup) are implemented.
 
 ## Purpose
 
@@ -23,10 +23,14 @@ python tools/build.py check --tag builder-check --json
 python tools/build.py sim test builder-smoke --tag smoke --seed 1 --json
 python tools/build.py sim test builder-smoke --tag smoke --json
 python tools/build.py sim test builder-smoke-fail --tag deliberate-failure --json
+python tools/build.py regress pre-merge --tag pre-merge --json
+python tools/build.py regress builder-fault --tag deliberate-aggregate --json
+python tools/build.py clean --tag deliberate-aggregate --json
 ```
 
 The second identical simulation reports `CACHED`. The deliberate-failure target
-must exit 1 and retain its mismatch log and waveform. Other successful commands
+must exit 1 and retain its mismatch log and waveform. The `builder-fault` subset
+must exit 1 naming `builder-smoke-fail`. Other successful commands
 exit 0; errors exit nonzero. `--json` emits one result object on stdout.
 
 `doctor` defaults to `--profile simulation`: it compiles, elaborates and runs
@@ -321,6 +325,55 @@ Do not kill another author's simulator or change license settings to bypass it.
 
 The [gap register](../../preflight-gaps.md#gap-008-verification-baseline) records
 the licensed tests established by this integration and outstanding coverage.
+
+### Regression subsets
+
+`regress <name>` runs one subset declared in
+[`src/dv/builder/regressions.json`](../../../src/dv/builder/regressions.json)
+and reports one aggregate result with a per-target outcome. Subsets are declared
+in the repository, never assembled on the command line; an unknown name fails
+with `unknown regression subset: <name>` before any simulator time is spent.
+The file holds `version` 1 and a nonempty `subsets` object. Each subset has
+exactly:
+
+- `tier`: `ordinary`, `transport` or `milestone`, the
+  [verification tier](../../src/dv/integration/SPEC.md#verification-tiers) the
+  subset serves;
+- `purpose`: a nonempty sentence saying what the subset proves;
+- `budget_seconds`: an integer aggregate wall budget from 1 through the sum of
+  its members' selected [per-target budgets](#test-wall-budget); and
+- `targets`: a nonempty ordered list of distinct registered target names.
+
+An `ordinary` subset cannot declare more than 300 seconds, the pre-merge
+aggregate guidance. Any subset above 300 seconds is a broader declared
+aggregate: `regress` refuses it unless `--broader` is passed, and records the
+flag. Every declared subset is validated whenever the file is read, so one bad
+declaration fails every `regress` invocation. Every member of the selected
+subset also passes the target validator before the first child runs.
+
+Members run in order, each as the public `sim test` command under the same tag
+with the regression's `--seed` (default 1), `--rebuild`, `--questa-bin` and
+`--intel-sim-lib`. Each child keeps its own selected wall budget and declared
+allowance, capped by the aggregate seconds remaining; the `wall-budget` record
+notes the cap as `wall_ceiling_seconds`. A member reached with fewer than 13
+seconds left is `SKIPPED` without launching. A member is `PASS` only when its
+child exits 0 with a `PASS` result; anything else, including a child wall-budget
+expiry, is `FAIL` with the child's error. A `CACHED` member is a valid reuse of
+unchanged inputs; use `--rebuild` for fresh evidence. Later members still run
+after a failure, so the aggregate reports every outcome.
+
+The aggregate is `PASS` only when every member passes within the budget.
+Otherwise it is `FAIL` and the error names each non-passing member and its
+status, for example `regression builder-fault failed: builder-smoke-fail FAIL`.
+The result records the subset, tier, purpose, budget, `broader`, seed, the
+subset file hash, `targets` keyed by name with status, cache, exit code,
+elapsed seconds, error and the child `result.json` path, the `failed` list,
+elapsed seconds and provenance. It is published as
+`workdir/builds/<tag>/sim/regress/summary.json` and as the tag's `manifest.json`;
+`workdir/latest.txt` moves only on aggregate `PASS`. Children take the tag lock
+one at a time; `sim/regress/.lock` holds the tag for the whole regression, so a
+second `regress` on the same tag fails as locked. Serialize regressions with
+other licensed runs as [above](#test-wall-budget).
 
 #### Declared wall allowance
 
@@ -781,7 +834,7 @@ after the requested command succeeds.
 ## Output layout
 
 Implemented commands create only their needed directories. The larger layout
-below includes implemented FPGA and software attempts and reserves regression locations.
+below includes implemented FPGA and software attempts and regression summaries.
 
 ```text
 workdir/builds/<tag>/
@@ -795,14 +848,7 @@ workdir/builds/<tag>/
 │   ├── test/
 │   │   └── <test-name>/
 │   └── regress/
-│       ├── summary.json
-│       ├── junit.xml
-│       ├── level0/
-│       │   ├── summary.json
-│       │   └── <test-name>/
-│       └── level1/
-│           ├── summary.json
-│           └── <test-name>/
+│       └── summary.json
 ├── fpga/
 │   └── <target>/
 │       ├── result.json
@@ -841,10 +887,11 @@ An explicitly selected test writes to:
 workdir/builds/<tag>/sim/test/<test-name>/
 ```
 
-A regression test writes to:
+A [regression subset](#regression-subsets) member writes to the same
+`sim/test/<test-name>/` location, and the aggregate to:
 
 ```text
-workdir/builds/<tag>/sim/regress/level0/<test-name>/
+workdir/builds/<tag>/sim/regress/summary.json
 ```
 
 The implemented simulation stage publishes `result.json` atomically. It records
@@ -862,14 +909,8 @@ Discovery or preparation failure also invalidates that target's prior success.
 latest pointer changes only after command success; it records the last successful
 invocation's tag, whose later contents may change when explicitly reused.
 
-Planned regression layout:
-
-For multiple test seeds, use `seed-<number>/` below the test name. The
-level directory contains an aggregate `summary.json`. The full regression also
-produces `summary.json` and `junit.xml`.
-
-Verification sources under `src/dv/` will define regression membership and
-levels. Directory placement reflects output; it does not define regressions.
+`src/dv/builder/regressions.json` defines regression membership. Directory
+placement reflects output; it does not define regressions.
 
 ## Manifest
 
@@ -886,20 +927,19 @@ levels. Directory placement reflects output; it does not define regressions.
 Do not record credentials, commercial ROM paths, or private ROM hashes in a
 committed file. Build manifests remain ignored under `workdir/`.
 
-## Planned cleanup
+## Cleanup
 
-Timestamp builds can consume significant disk space. These cleanup commands
-are planned; the current CLI rejects them:
-
-```text
-python tools/build.py builds list
-python tools/build.py builds inspect <tag>
-python tools/build.py builds clean <tag>
-python tools/build.py builds prune --keep 10
-```
-
-Cleanup resolves and validates the exact path under `workdir/builds/` before
-removal. It never removes checked-in tools or source files.
+`clean --tag <tag>` removes exactly `workdir/builds/<tag>/`, including its
+attempts, compile libraries, waves and records, and reports the removed path,
+file count and byte total. `--tag` is required; there is no bulk prune and the
+command never removes `workdir/` itself, another tag, checked-in tools or
+source files. The tag must satisfy the [tag rule](#build-tags), so a path,
+`..` or an absolute name fails validation. The command then resolves
+the directory and refuses a link, a directory whose resolved parent is not
+`workdir/builds/`, a missing tag (`no build tag <tag>`), and a tag holding a
+`.lock` or `sim/regress/.lock` from an unfinished writer. Links inside the tag
+are removed as links; their targets are untouched. When `workdir/latest.txt`
+names the removed tag it is deleted and the result records `latest_cleared`.
 
 ## Interface generation
 

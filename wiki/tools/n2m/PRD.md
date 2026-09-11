@@ -4,8 +4,8 @@ The build system gives agents and people one predictable command to create
 tagged workspaces, reuse valid results, and record evidence.
 
 The [SPEC](SPEC.md) owns available commands, environment readiness, installation,
-cache rules, and result records. Its status distinguishes implemented commands
-from unimplemented aggregate regression and cleanup stages. The
+cache rules, [declared regression subsets](SPEC.md#regression-subsets),
+[tagged cleanup](SPEC.md#cleanup) and result records. The
 [FPGA build contract](SPEC.md#fpga-build) requires checked MAX 10 fit/timing
 evidence without physical execution. Acceptance links
 command results to the [gap register](../../preflight-gaps.md#gap-003-build-command)
