@@ -101,7 +101,9 @@ def parser():
         if action in ('crc-proof', 'keyboard'):
             leaf.add_argument('--expected-build-id', required=True, help='reviewed 32-hex wire build identity')
         if action == 'load':
-            leaf.add_argument('--package', required=True, help='immutable sw/build/<target>/runs/<attempt>/result.json')
+            source = leaf.add_mutually_exclusive_group(required=True)
+            source.add_argument('--package', help='immutable sw/build/<target>/runs/<attempt>/result.json')
+            source.add_argument('--external', help='pinned external image name from tools/n2m/dependencies.json')
         if action in ('step', 'run-dots'):
             leaf.add_argument('--dots', type=int, required=True)
         if action == 'input':

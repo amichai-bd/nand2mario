@@ -23,22 +23,49 @@ def atomic_json(path, value):
     atomic_text(path, json.dumps(value, indent=2, sort_keys=True) + "\n")
 
 
+def sharing_denial(error):
+    """A Windows replace blocked by another handle on the destination."""
+    return getattr(error, "winerror", None) in (5, 32, 33)
+
+
+def retry_denials(action, transient=sharing_denial, limit=6):
+    """Retry the brief denials a concurrent reader or scanner causes. Any other
+    error, and a denial that outlasts the backoff, propagates unchanged."""
+    for attempt in range(limit):
+        try:
+            return action()
+        except PermissionError as error:
+            if not transient(error) or attempt == limit - 1:
+                raise
+            time.sleep(.01 * 2 ** attempt)
+
+
+def published_bytes(path):
+    """Read a file another writer may be replacing. Windows denies the open for
+    the width of the replace, reporting a bare EACCES with no winerror."""
+    def opening(error):
+        return os.name == "nt" or sharing_denial(error)
+    return retry_denials(Path(path).read_bytes, opening)
+
+
 def atomic_text(path, text):
+    _publish(path, lambda temp: temp.write_text(text, encoding="utf-8", newline="\n"))
+
+
+def atomic_bytes(path, data):
+    _publish(path, lambda temp: temp.write_bytes(data))
+
+
+def _publish(path, write):
+    """Write an owned temporary sibling, then replace the destination in one step."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     temp = path.with_name(path.name + "." + uuid.uuid4().hex + ".tmp")
     try:
-        temp.write_text(text, encoding="utf-8", newline="\n")
-        # Windows readers may briefly deny delete sharing. Never unlink the
-        # destination: readers must see the complete old or new record.
-        for attempt in range(6):
-            try:
-                os.replace(temp, path)
-                break
-            except PermissionError as error:
-                if getattr(error, "winerror", None) not in (5, 32, 33) or attempt == 5:
-                    raise
-                time.sleep(.01 * 2 ** attempt)
+        write(temp)
+        # Never unlink the destination: readers must see the complete old or
+        # new record, so a held handle is waited out rather than worked around.
+        retry_denials(lambda: os.replace(temp, path))
     finally:
         # Do not mask a publication failure if a handle also blocks cleanup.
         try:
