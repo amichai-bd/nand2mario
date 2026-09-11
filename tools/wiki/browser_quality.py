@@ -1,4 +1,4 @@
-"""Browser regressions for slide fragments, printable diagrams and chart layout."""
+"""Browser regressions for slide fragments, animated and printable diagrams, and chart layout."""
 import argparse
 import json
 from pathlib import Path
@@ -7,6 +7,15 @@ from playwright.sync_api import expect
 
 ROOT = Path(__file__).resolve().parents[2]
 OUTPUT = ROOT / 'workdir/wiki/browser'
+
+
+def placement(figure, selector):
+    """Horizontal centre of a diagram part, as a fraction of the diagram width."""
+    return figure.evaluate("""(svg, selector) => {
+        const frame = svg.getBoundingClientRect();
+        const part = svg.querySelector(selector).getBoundingClientRect();
+        return (part.left + part.width / 2 - frame.left) / frame.width;
+    }""", selector)
 
 
 def check_views(browser, base):
@@ -54,6 +63,30 @@ def check_views(browser, base):
             expect(page.locator('[data-slide]:visible')).to_have_count(1)
             page.close()
 
+        page = new_page()
+        page.goto(base + '/files/wiki/presentations/uart-debugging.html#slide-1')
+        figure = page.locator('[data-animated]').first
+        expect(figure).to_be_visible()
+        request, ack = figure.locator('.uart-request'), figure.locator('.uart-ack')
+        assert request.evaluate('e => getComputedStyle(e).animationName') == 'n2m-uart-request'
+        assert ack.evaluate('e => getComputedStyle(e).animationName') == 'n2m-uart-ack'
+        # Suppressed motion must leave the arrived packet and its returned reply, not a mid-flight frame.
+        page.emulate_media(reduced_motion='reduce')
+        for part in (request, ack, figure.locator('.uart-check')):
+            assert part.evaluate('e => getComputedStyle(e).animationName') == 'none'
+            expect(part).to_be_visible()
+        assert placement(figure, '.uart-request') > 0.55, 'Request packet did not reach the endpoint'
+        assert placement(figure, '.uart-ack') < 0.45, 'Reply did not return to the host'
+        expect(figure).to_contain_text('CRC-16 matched')
+        expect(figure).to_contain_text('02 01 02 07 01 01 02 05 02 04 02 18 01 01 03 3B 0A')
+        # Diagram text must not inherit the pale screen palette on white paper.
+        page.emulate_media(media='print')
+        expect(figure.locator('text').first).to_have_css('fill', 'rgb(17, 17, 17)')
+        expect(figure.locator('.tiny').first).to_have_css('fill', 'rgb(68, 68, 68)')
+        assert request.evaluate('e => getComputedStyle(e).animationName') == 'none'
+        page.screenshot(path=str(OUTPUT / 'quality-animated-print.png'), full_page=True)
+        page.close()
+
         for fragment, expected in (('#slide-4', '4 / 6'), ('#missing', '1 / 6'), ('#%E0%A4%A', '1 / 6')):
             page = new_page()
             page.goto(base + '/files/wiki/presentations/cpu-execution.html' + fragment)
@@ -81,7 +114,7 @@ def check_views(browser, base):
             page.close()
         assert not errors, '\n'.join(errors)
         return {'status': 'passed', 'browser': browser.version, 'viewports': [1440, 390],
-                'checks': ['slide fragments', 'malformed fragments', 'keyboard', 'print visibility and contrast', 'chart scrolling']}
+                'checks': ['slide fragments', 'malformed fragments', 'keyboard', 'print visibility and contrast', 'animated diagram motion, completeness and print contrast', 'chart scrolling']}
     except BaseException:
         if page is not None and not page.is_closed():
             page.screenshot(path=str(OUTPUT / 'failure.png'), full_page=True)
