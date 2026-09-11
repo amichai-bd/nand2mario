@@ -106,8 +106,8 @@ All simulations obey the [total wall budget](../../../tools/n2m/SPEC.md#test-wal
 300 seconds by default. A target that measurably cannot finish within 300
 seconds [declares its own allowance](../../../tools/n2m/SPEC.md#declared-wall-allowance)
 in `src/dv/builder/targets.json`, up to 900 seconds, with a recorded reason;
-`python-mgu` and `python-mr` declare 420; `python-pgu` and `python-pgx`
-declare 900. Only the user's three named Mooneye
+`python-mgu`, `python-mr` and `python-pr` declare 420; `python-pgu` and
+`python-pgx` declare 900. Only the user's three named Mooneye
 cases are allowed 1500 seconds each. Neither extension changes a target's
 simulation-time watchdogs, signatures, fault checks or required evidence.
 Prefer the [authorized bounded FPGA/UART game checks](../../../agents/bootstrap-plan.md#verification-and-hardware-authorization)

@@ -19583,7 +19583,7 @@
     ],
     "expected_exit": "zero",
     "signature": "PASS HUD game complete",
-    "timeout_seconds": 300,
+    "timeout_seconds": 420,
     "vendor_model": "intel-memory",
     "intel_mixed_mode_instances": [
       "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
@@ -19692,6 +19692,10 @@
         "wave_load"
       ]
     },
-    "preload": "power-render302"
+    "preload": "power-render302",
+    "wall_allowance": {
+      "seconds": 420,
+      "reason": "measured 288-second budget exhaustion at the 300 default with the trace at dot 213088 of the renderer's 300000-dot bound; the fixture shares python-mr's shape and needs about 390 simulator seconds plus preload, compile check and cleanup"
+    }
   }
 }

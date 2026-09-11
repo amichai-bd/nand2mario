@@ -31,12 +31,15 @@ most two cells each, bounds, one overlap test), `EnemyContact` 260,
 update therefore stays below the 20000-dot `UpdateGame` cap; the measured
 per-case durations in each receipt's `summary.json` are the evidence.
 
-Current startup LCD commit is 146544 dots: the accepted motion anchor 139388
-plus 6584 for the fourteen-tile core copy replacing the four-tile copy, 380 for
-initializing fourteen power bytes, 28 for the title pose selector call, 112 for
-the hidden-flag helper, 20 for the enemy-alive hide test and 32 for the shot
-test. This is an instruction-derived anchor checked by `python-mgs`, not a
-value read from the DUT.
+Current startup LCD commit is 146500 dots: the accepted motion anchor 139388
+plus 6584 for the fourteen-tile core copy replacing the four-tile copy, 368 for
+initializing fourteen power bytes (the loop's `INC A` replaces the old
+`LD A,1`), 28 for the title pose selector call, 112 for the hidden-flag helper,
+20 for the enemy-alive hide test and 32 for the shot test, minus 32 because the
+count-driven large adjust drops the two pose-range compares. This is an
+instruction-derived anchor checked by `python-mgs` and `python-mgu`; a first
+derivation of 146544 omitted the last two terms and was corrected from the
+instruction listing, not adopted from the DUT.
 
 ## Acceptance matrix
 
@@ -61,7 +64,7 @@ recorded here once the targets run; a pending row is not evidence.
 | `python-pux` | pending | 300 | pending |
 | `python-pua` | pending | 300 | pending |
 | `python-pub` | pending | 300 | pending |
-| `python-pr` | pending | 300 | pending |
+| `python-pr` | pending | 420 declared | pending |
 | `python-mus` | pending | 300 | pending |
 | `python-mux` | pending | 300 | pending |
 | `python-mut` | pending | 300 | pending |
