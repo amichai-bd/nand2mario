@@ -55,7 +55,9 @@ def load_subsets(root):
 
 
 def child_command(root, tag, target, args):
-    command = [sys.executable, str(root / "tools/build.py"), "sim", "test", target,
+    # The worker entry, as test_budget.main launches it: the regression's own
+    # supervise call is the one wall budget, not a second nested supervisor.
+    command = [sys.executable, str(root / "tools/n2m/test_budget.py"), "sim", "test", target,
                "--tag", tag, "--seed", str(args.seed), "--json"]
     if args.rebuild:
         command.append("--rebuild")
@@ -66,7 +68,7 @@ def child_command(root, tag, target, args):
 
 
 def run_target(root, tag, target, args, remaining):
-    """Run one member as the public sim-test command under its own wall budget,
+    """Run one member as the sim-test worker under its own wall budget,
     capped by the aggregate seconds that remain."""
     command = child_command(root, tag, target, args)
     started = time.monotonic()

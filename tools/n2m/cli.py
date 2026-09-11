@@ -211,7 +211,8 @@ def main(argv=None, root=None):
             report = regress(root, args, header, publish)
         elif args.command == "clean":
             # No workspace: the tag directory itself is what clean removes.
-            report = {**header(args.tag), **clean(root, args.tag)}
+            report = header(args.tag)
+            report.update(clean(root, args.tag))
         else:
             report = tagged(root, args, header, publish)
     except Exception as error:

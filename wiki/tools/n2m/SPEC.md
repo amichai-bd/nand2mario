@@ -351,11 +351,12 @@ flag. Every declared subset is validated whenever the file is read, so one bad
 declaration fails every `regress` invocation. Every member of the selected
 subset also passes the target validator before the first child runs.
 
-Members run in order, each as the public `sim test` command under the same tag
-with the regression's `--seed` (default 1), `--rebuild`, `--questa-bin` and
-`--intel-sim-lib`. Each child keeps its own selected wall budget and declared
-allowance, capped by the aggregate seconds remaining; the `wall-budget` record
-notes the cap as `wall_ceiling_seconds`. A member reached with fewer than 13
+Members run in order, each as the `sim test` worker under the same tag with the
+regression's `--seed` (default 1), `--rebuild`, `--questa-bin` and
+`--intel-sim-lib`. The regression supervises each child exactly as a standalone
+`sim test` is supervised: the child keeps its own selected wall budget and
+declared allowance, capped by the aggregate seconds remaining, and its one
+`wall-budget` record notes the cap as `wall_ceiling_seconds`. A member reached with fewer than 13
 seconds left is `SKIPPED` without launching. A member is `PASS` only when its
 child exits 0 with a `PASS` result; anything else, including a child wall-budget
 expiry, is `FAIL` with the child's error. A `CACHED` member is a valid reuse of

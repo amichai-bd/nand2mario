@@ -46,7 +46,7 @@ class RegressTests(unittest.TestCase):
         """Stand in for the public sim-test child: record the call, publish the
         result a real child would leave, and answer with its JSON line."""
         self.children.append({"command": command, "tag": tag, "target": target, "ceiling": ceiling})
-        self.assertEqual(command[:4], [sys.executable, str(root / "tools/build.py"), "sim", "test"])
+        self.assertEqual(command[:4], [sys.executable, str(root / "tools/n2m/test_budget.py"), "sim", "test"])
         self.assertEqual(command[4], target)
         self.assertEqual(command[command.index("--tag") + 1], tag)
         status, code = self.outcomes.get(target, ("PASS", 0))
