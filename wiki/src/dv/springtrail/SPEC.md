@@ -122,9 +122,11 @@ covering the current build.
 
 Every registered simulation target either checks the image it builds or pins a
 named retired image and refuses every other. The current image's deterministic
-evidence is bounded scripts selected under the reuse policy above; their
-checkers pin no hash, so their expectations follow the build. Each proof names
-its image:
+evidence is bounded scripts selected under the reuse policy above. Those
+targets pin no hash: expectations come from the independent models over the
+same sources, and each run's `preload.json` records the image it checked. A
+frozen hash belongs only to a proof fixed for one retired image. Each proof
+names its image:
 
 | Proof | Targets | Image | Covers |
 |---|---|---|---|

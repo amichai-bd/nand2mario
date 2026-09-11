@@ -380,6 +380,14 @@ Budget: `python-pgu` simulates about 140 ms and `python-pgx` about 100 ms. At
 300 seconds, so each declares a 900-second `wall_allowance` in `targets.json`
 with that measured basis; `python-pgs` keeps the default 300.
 
+Image binding: these targets pin no hash. The `springtrail` preload builds the
+image from the current sources, and every expectation comes from the
+independent models over the same rules and artwork, so the proof follows each
+source change and the run's `preload.json` records which image it checked. A
+frozen hash belongs only to a proof whose expectations were fixed for one
+retired image, such as the every-frame acquisition and the two historical
+references above.
+
 ### Why scrolling, win and death/retry do not fit
 
 The player starts at x 24 and runs 2 pixels per update; the camera is
@@ -394,4 +402,42 @@ physical script for those frames.
 
 ### Measured result
 
-MEASURED_RESULT_PLACEHOLDER
+Python 3.12.14, cocotb 2.0.1, Questa Altera Starter FPGA Edition-64 2025.2
+(2025.05), Intel memory models from Quartus 25.1, at commit `ee4251c`. Every
+run used the image the build produced, `adbef6b0...e109f369` in each attempt's
+`preload.json`. A Quartus fit for other work shared the host during the two
+long runs, so their rates are slower than `python-hgu`'s 4.1 seconds per
+simulated millisecond.
+
+| Command | Whole seconds | Result |
+|---|---|---|
+| `python tools/build.py sim test python-pgs --tag issue363-pgs --json` | 221 | PASS `pause_game_short`: 186 pixels, one initialization DMA, HUD cache at 134760, settled pause at 137133, trace END |
+| `python tools/build.py sim test python-pgu --tag issue363-pgu --json` | 788 | PASS `pause_game_full`, 138.45 ms simulated, 780.0 s of cocotb test time, inside the 900-second allowance |
+| `python tools/build.py sim test python-pgx --tag issue363-pgx --json` | 495 | Intended checker FAIL `PAUSE_HUD_CACHE` at 93.43 ms, outer exit 1 |
+| springtrail host fixtures, the `builder.yml` loader over `src/dv/springtrail/test_*.py` | 22 | PASS, 112 tests |
+
+The passing full run reports 138240 checked pixels, 34511 retirement records,
+LCD at dot 136560, shadow scenes ready at 134316, 233236, 302836, 367744,
+438752 and 513248, 1120 published DMA bytes, 903 HRAM bus observations during
+DMA, inputs applied at 196915, 267067, 337428 and 407579 inside their declared
+windows, six VBlank JOYP samples matching the script, the restart's two
+visible-time sample rewrites (0, then 64) in frame 4, twelve split writes,
+IRQ vectors `0x48,0x40` in every frame, 160 column cache bytes and a settled
+pause at 556863 after the seventh DMA.
+
+The fault run's actual store mutation is recorded at dot 347083, inside
+visible frame 3. Its first witness is the seventh HUD cache byte of update 3:
+the ROM prepared `PLAY` where the unchanged model expects `PAUSED`. Every raw
+tool and simulator command exited 0 in all three runs; the fault's Python XML
+records the failure and the outer command returned 1. The positive result is
+therefore not vacuous on the new frames.
+
+### What this establishes
+
+Established on the built image: the first world frame, the neutral frame, the
+PAUSED frame and the Select-restart frame, every pixel; the one-frame display
+delay for pause and restart; every publication write of six VBlanks in source
+order, including the restart's map reselect and restored columns; and a
+settled paused end state. Not established: pause/resume with Start, Start
+restart from RETRY or WON, scrolling frames, the win route and the death/retry
+route. #384 owns those on hardware.
