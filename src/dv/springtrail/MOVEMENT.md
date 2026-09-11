@@ -84,14 +84,28 @@ also reject incompatible current sources/ROMs before assembly or traffic.
 Literal world/terrain helpers remain usable; old trajectory evidence is not
 relabelled. Current replacements are the motion CPU/game/renderer targets above.
 
-Initial planning forecast: CPU short20 seconds, CPU full150, game short130,
-game full240, renderer220 and early CPU fault40 (800 seconds aggregate). These
-are extrapolations from prior harness costs, not measured301 results or relaxed
-limits. The ordinary300-second aggregate target may be missed; each simulation
-still has a hard300-second whole-run cap. Freeze smaller actual case bounds
-where feasible and report measured times; no extra duration or coverage quota
-is introduced. Unchanged hardware/transport/STAT baseline evidence is reused only
-with explicit input and behavior qualification.
+## Measured durations
+
+Measured whole-run walls: `python-mus`26 seconds, `python-mut`173,
+`python-mgs`164 and `python-mux`29, a392-second declared aggregate across the
+four completed targets. `python-mgs` reached39.081802 ms of simulated time in
+156.19 simulator seconds, a250223 ns-per-second rate.
+
+`python-mgu` and `python-mr` exhaust the300-second whole-run cap: both stop at
+the288-second execution limit with12 seconds reserved for cleanup, once with a
+cold compile and once with the compile cached. Neither overrun is a checker or
+DUT defect; no partial result is claimed for them. The per-target
+`timeout_seconds` schema also refuses any value above300, so no configuration
+raises either limit. At the measured rate the full game's roughly256500 dots
+need about244 simulator seconds and the renderer's300000-dot bound about286,
+which leaves neither room for setup, preload and cleanup inside300. Both
+fixtures therefore need a smaller frozen case bound before they can qualify;
+the earlier240/220-second planning forecast understated them.
+
+Freeze smaller actual case bounds where feasible and report measured times; no
+extra duration or coverage quota is introduced. Unchanged
+hardware/transport/STAT baseline evidence is reused only with explicit input and
+behavior qualification.
 
 ## Historical fixed-physics proof
 
