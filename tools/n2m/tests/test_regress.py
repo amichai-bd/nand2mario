@@ -54,6 +54,9 @@ class RegressTests(unittest.TestCase):
         if status == "FAIL":
             record["error"] = "unexpected exit 1; see sim.log"
         atomic_json(root / "workdir/builds" / tag / "sim/test" / target / "result.json", record)
+        if status == "PASS":
+            # The worker's publish moves latest.txt on its own PASS.
+            (root / "workdir/latest.txt").write_text(tag + "\n")
         return code, "note on stdout\n" + json.dumps(record) + "\n"
 
     def run_cli(self, *argv):
@@ -94,8 +97,11 @@ class RegressTests(unittest.TestCase):
         # Later members still run; the aggregate reports each outcome.
         self.assertEqual(report["targets"]["tile-pixel"]["status"], "PASS")
         self.assertFalse((self.root / "workdir/latest.txt").exists())
+        (self.root / "workdir/latest.txt").write_text("before\n")
         code, text = self.run_cli("regress", "mixed", "--tag", "agg2")
         self.assertIn("builder-smoke-fail: FAIL", text)
+        # The passing first member moved latest.txt; the failed aggregate restored it.
+        self.assertEqual((self.root / "workdir/latest.txt").read_text(), "before\n")
 
     def test_unknown_subset_and_invalid_declarations_fail_before_any_child(self):
         code, report = self.run_cli("regress", "nightly", "--tag", "agg", "--json")
@@ -165,6 +171,72 @@ class RegressTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "ceiling"):
             supervise([sys.executable, "-c", "print('ok')"], self.root, "cap", ceiling=12)
 
+    def test_member_killed_at_its_wall_budget_frees_the_tag_and_later_members_run(self):
+        """The real supervisor kills a child holding the tag lock, as the sim-test
+        worker does; the leftover lock must not break later members, the
+        aggregate publish or a later clean."""
+        preamble = ("import json, sys; sys.path.insert(0, 'tools'); from pathlib import Path\n"
+                    "from n2m.records import atomic_json, workspace\n")
+        scripts = {"builder-smoke": preamble + "import time\nwith workspace(Path('.'), 'agg'): time.sleep(60)\n",
+                   "tile-pixel": preamble + ("with workspace(Path('.'), 'agg') as build:\n"
+                                             "    atomic_json(build / 'sim/test/tile-pixel/result.json', {'status': 'PASS', 'cache': 'BUILT'})\n"
+                                             "print(json.dumps({'status': 'PASS', 'cache': 'BUILT'}))\n")}
+
+        def child(root, tag, target, args):
+            return [sys.executable, "-c", scripts[target]]
+
+        def capped(command, root, tag, *, target=None, ceiling=None):
+            # The smallest ceiling: one second of execution, then the kill.
+            return supervise(command, root, tag, target=target, ceiling=13)
+        with patch("n2m.regress.child_command", side_effect=child), patch("n2m.regress.supervise", side_effect=capped), \
+                patch("n2m.cli.git_state", return_value={"commit": "test"}), contextlib.redirect_stdout(io.StringIO()) as output:
+            code = main(["regress", "good", "--tag", "agg", "--json"], self.root)
+        report = json.loads(output.getvalue())
+        self.assertEqual(code, 1)
+        self.assertEqual(report["status"], "FAIL")
+        self.assertEqual(report["failed"], ["builder-smoke"])
+        self.assertEqual(report["error"], "regression good failed: builder-smoke FAIL")
+        killed = report["targets"]["builder-smoke"]
+        self.assertEqual(killed["status"], "FAIL")
+        self.assertIn("test wall budget exhausted (13 seconds total", killed["error"])
+        self.assertTrue(killed["stale_lock_removed"])
+        self.assertEqual(report["targets"]["tile-pixel"]["status"], "PASS")
+        self.assertNotIn("stale_lock_removed", report["targets"]["tile-pixel"])
+        build = self.root / "workdir/builds/agg"
+        self.assertEqual(read_json(build / "manifest.json")["status"], "FAIL")
+        self.assertEqual(read_json(build / "status.json")["status"], "FAIL")
+        self.assertEqual(read_json(build / "sim/regress/summary.json")["failed"], ["builder-smoke"])
+        self.assertFalse((build / ".lock").exists())
+        self.assertFalse((build / "sim/regress/.lock").exists())
+        records = [read_json(path) for path in (build / "wall-budget").glob("*.json")]
+        self.assertEqual(sorted(record["status"] for record in records), ["FINISHED", "TIMEOUT"])
+        self.assertTrue(all(record["wall_ceiling_seconds"] == 13 for record in records))
+        with patch("n2m.cli.git_state", return_value={"commit": "test"}), contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(main(["clean", "--tag", "agg", "--json"], self.root), 0)
+        self.assertEqual(json.loads(output.getvalue())["removed"], "workdir/builds/agg")
+        self.assertFalse(build.exists())
+
+    def test_incomplete_child_cleanup_keeps_the_lock_and_still_reports_the_aggregate(self):
+        """Without proof the writer is dead the lock stays; the aggregate is
+        reported with the lock error and the tag is left RUNNING."""
+        def fake(command, root, tag, *, target=None, ceiling=None):
+            (root / "workdir/builds" / tag / ".lock").write_text("pid=1")
+            return 1, json.dumps({"status": "FAIL", "error": "test wall budget exhausted (13 seconds total, 12 reserved for cleanup)",
+                                  "cleanup_complete": False, "cleanup_error": "process-tree cleanup failed: 128"}) + "\n"
+        with patch("n2m.regress.supervise", side_effect=fake), patch("n2m.cli.git_state", return_value={"commit": "test"}), \
+                contextlib.redirect_stdout(io.StringIO()) as output:
+            code = main(["regress", "good", "--tag", "agg", "--json"], self.root)
+        report = json.loads(output.getvalue())
+        self.assertEqual(code, 1)
+        self.assertEqual(report["failed"], ["builder-smoke", "tile-pixel"])
+        self.assertIn("regression good failed: builder-smoke FAIL, tile-pixel FAIL; tag agg is locked", report["error"])
+        self.assertNotIn("stale_lock_removed", report["targets"]["builder-smoke"])
+        build = self.root / "workdir/builds/agg"
+        self.assertTrue((build / ".lock").exists())
+        self.assertEqual(read_json(build / "manifest.json")["status"], "RUNNING")
+        with self.assertRaisesRegex(ValueError, "locked"):
+            module.clean(self.root, "agg")
+
     def test_regress_guard_refuses_a_second_runner_on_the_tag(self):
         guard = self.root / "workdir/builds/agg/sim/regress/.lock"
         guard.parent.mkdir(parents=True)
@@ -194,6 +266,29 @@ class RegressTests(unittest.TestCase):
         with patch("n2m.cli.git_state", return_value={"commit": "test"}), contextlib.redirect_stdout(io.StringIO()) as output:
             self.assertEqual(main(["clean", "--tag", "agg", "--json"], self.root), 1)
         self.assertEqual(json.loads(output.getvalue())["error"], "no build tag agg")
+
+    def test_clean_counts_only_the_tags_own_files(self):
+        outside = self.root / "outside/keep.txt"
+        outside.parent.mkdir()
+        outside.write_text("keep six")
+        builds = self.root / "workdir/builds"
+        (builds / "sibling").mkdir()
+        (builds / "sibling/s.txt").write_text("s")
+        (builds / "agg/sub").mkdir(parents=True)
+        (builds / "agg/own.txt").write_text("0123456789")
+        (builds / "agg/sub/deep.txt").write_text("12")
+        links = (("agg/sub/esc", outside.parent), ("agg/tosib", builds / "sibling"))
+        if os.name != "nt":
+            self.skipTest("junctions are a Windows case")
+        for link, target in links:
+            subprocess.run(["cmd", "/c", "mklink", "/J", str(builds / link), str(target)],
+                           check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        self.assertTrue(sum(1 for _ in (builds / "agg").rglob("*") if _.is_file()) > 2, "rglob did not enter the junctions")
+        report = module.clean(self.root, "agg")
+        self.assertEqual((report["files"], report["bytes"]), (2, 12))
+        self.assertFalse((builds / "agg").exists())
+        self.assertEqual(outside.read_text(), "keep six")
+        self.assertEqual((builds / "sibling/s.txt").read_text(), "s")
 
     def test_clean_refuses_paths_outside_the_tag_and_locked_tags(self):
         outside = self.root / "outside/keep.txt"

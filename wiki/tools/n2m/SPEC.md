@@ -359,7 +359,14 @@ declared allowance, capped by the aggregate seconds remaining, and its one
 `wall-budget` record notes the cap as `wall_ceiling_seconds`. A member reached with fewer than 13
 seconds left is `SKIPPED` without launching. A member is `PASS` only when its
 child exits 0 with a `PASS` result; anything else, including a child wall-budget
-expiry, is `FAIL` with the child's error. A `CACHED` member is a valid reuse of
+expiry, is `FAIL` with the child's error. A child killed at its wall budget
+never releases the tag `.lock` it holds. When the supervisor reports its
+process-tree cleanup complete, the writer is dead and the regression removes
+that lock, recording `stale_lock_removed` on the member, so later members and
+the aggregate publish take the tag normally. When cleanup did not complete the
+lock stays: the aggregate is still reported with the lock error appended, the
+tag stays `RUNNING`, and `clean` refuses it until its writer is confirmed
+stopped. A `CACHED` member is a valid reuse of
 unchanged inputs; use `--rebuild` for fresh evidence. Later members still run
 after a failure, so the aggregate reports every outcome.
 
@@ -370,8 +377,10 @@ The result records the subset, tier, purpose, budget, `broader`, seed, the
 subset file hash, `targets` keyed by name with status, cache, exit code,
 elapsed seconds, error and the child `result.json` path, the `failed` list,
 elapsed seconds and provenance. It is published as
-`workdir/builds/<tag>/sim/regress/summary.json` and as the tag's `manifest.json`;
-`workdir/latest.txt` moves only on aggregate `PASS`. Children take the tag lock
+`workdir/builds/<tag>/sim/regress/summary.json` and as the tag's `manifest.json`.
+A passing child moves `workdir/latest.txt` as any `sim test` does; unless the
+aggregate is `PASS`, the regression restores its previous content (or absence)
+before it returns. Children take the tag lock
 one at a time; `sim/regress/.lock` holds the tag for the whole regression, so a
 second `regress` on the same tag fails as locked. Serialize regressions with
 other licensed runs as [above](#test-wall-budget).
@@ -939,7 +948,8 @@ source files. The tag must satisfy the [tag rule](#build-tags), so a path,
 the directory and refuses a link, a directory whose resolved parent is not
 `workdir/builds/`, a missing tag (`no build tag <tag>`), and a tag holding a
 `.lock` or `sim/regress/.lock` from an unfinished writer. Links inside the tag
-are removed as links; their targets are untouched. When `workdir/latest.txt`
+are removed as links; their targets are untouched and never counted, so the
+file count and byte total are the tag's own files. When `workdir/latest.txt`
 names the removed tag it is deleted and the result records `latest_cleared`.
 
 ## Interface generation

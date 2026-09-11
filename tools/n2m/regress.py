@@ -9,7 +9,7 @@ import shutil
 import sys
 import time
 
-from .records import atomic_json, file_hash, valid_tag, workspace
+from .records import atomic_json, atomic_text, file_hash, valid_tag, workspace
 from .simulation import load_target
 from .test_budget import supervise, target_selection
 
@@ -87,6 +87,15 @@ def run_target(root, tag, target, args, remaining):
     outcome["status"] = "PASS" if code == 0 and child.get("status") == "PASS" else "FAIL"
     if outcome["status"] == "FAIL" and "error" not in outcome:
         outcome["error"] = f"child exit {code} with status {child.get('status')}"
+    # Only the supervisor's own wall-budget result carries cleanup_complete.
+    # A killed child never ran its finally, so the tag lock it held is a
+    # leftover of a dead process tree: remove it so later members and the
+    # aggregate publish can take the tag. An incomplete cleanup leaves it.
+    if child.get("cleanup_complete") is True:
+        lock = root / "workdir/builds" / tag / ".lock"
+        if lock.is_file():
+            lock.unlink()
+            outcome["stale_lock_removed"] = True
     result = root / "workdir/builds" / tag / "sim/test" / target / "result.json"
     if result.is_file():
         outcome["result"] = result.relative_to(root).as_posix()
@@ -140,6 +149,10 @@ def regress(root, args, header, publish):
         atomic_json(build / "manifest.json", report)
     guard = build / "sim/regress/.lock"
     guard.parent.mkdir(parents=True, exist_ok=True)
+    # A passing child moves latest.txt as any sim test does; only an aggregate
+    # PASS may leave it on this tag.
+    latest = root / "workdir/latest.txt"
+    previous = latest.read_text(encoding="utf-8") if latest.is_file() else None
     try:
         try:
             os.close(os.open(guard, os.O_CREAT | os.O_EXCL | os.O_WRONLY))
@@ -153,10 +166,20 @@ def regress(root, args, header, publish):
             report["summary"] = summary.relative_to(root).as_posix()
         finally:
             guard.unlink()
+            if report.get("status") != "PASS":
+                if previous is None:
+                    latest.unlink(missing_ok=True)
+                else:
+                    atomic_text(latest, previous)
     except Exception as error:
         report.update(status="FAIL", error=str(error))
-    with workspace(root, build.name) as build:
-        publish(build, report)
+    try:
+        with workspace(root, build.name) as build:
+            publish(build, report)
+    except ValueError as error:
+        # A child whose cleanup did not complete may still hold the tag, so
+        # nothing is published; the aggregate itself is still reported.
+        report.update(status="FAIL", error=f"{report.get('error', 'aggregate not published')}; {error}")
     return report
 
 
@@ -174,8 +197,7 @@ def clean(root, tag):
         raise ValueError("tag path escapes workdir/builds")
     if (build / ".lock").exists() or (build / "sim/regress/.lock").exists():
         raise ValueError(f"tag {tag} is locked; confirm its writer stopped before cleaning")
-    files = [path for path in build.rglob("*") if path.is_file() and not path.is_symlink()]
-    size = sum(path.stat().st_size for path in files)
+    files, size = own_files(build)
     # rmtree removes links and junctions themselves, never their targets.
     shutil.rmtree(build)
     latest = root / "workdir/latest.txt"
@@ -183,4 +205,22 @@ def clean(root, tag):
     if cleared:
         latest.unlink()
     return {"status": "PASS", "removed": build.relative_to(root).as_posix(),
-            "files": len(files), "bytes": size, "latest_cleared": cleared}
+            "files": files, "bytes": size, "latest_cleared": cleared}
+
+
+def own_files(build):
+    """Count and size the files rmtree will delete: links and junctions are
+    removed as entries, never entered, so nothing behind them is counted."""
+    count, size = 0, 0
+    pending = [build]
+    while pending:
+        with os.scandir(pending.pop()) as entries:
+            for entry in entries:
+                if entry.is_symlink() or Path(entry.path).is_junction():
+                    continue
+                if entry.is_dir(follow_symlinks=False):
+                    pending.append(Path(entry.path))
+                elif entry.is_file(follow_symlinks=False):
+                    count += 1
+                    size += entry.stat(follow_symlinks=False).st_size
+    return count, size
