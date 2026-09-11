@@ -18,8 +18,9 @@ HTTP for local viewing. The command does not deploy.
 First run `python tools/wiki/check.py --browser --install-browser`.
 This installs the pinned Chromium headless shell and its OS dependencies. Later,
 `python tools/wiki/check.py --browser` reuses the browser under ignored
-`workdir/tools/playwright/`. CI uses the first command on PRs and on `main` before
-publication. A browser failure blocks the existing Wiki check or Pages build.
+`workdir/tools/playwright/`. The Pages build uses the first command on `main` before publication; authors
+run the second [locally before merge](../../agents/pull-requests.md#hosted-and-local-checks).
+A browser failure blocks the Pages build.
 
 If downloads are unavailable locally, add `--browser-executable <path>` to use
 a compatible cached Chromium executable. Its version is recorded; this explicit
@@ -121,7 +122,8 @@ under `wiki/presentations/`. Source files remain the authority for all content.
 
 ## Text-only policy and deployment
 
-The required Wiki check scans all tracked files, including unpublished ones.
+The wiki check scans all tracked files, including unpublished ones, locally
+before merge and in the Pages build.
 It also enforces the protected extensions and private path rules in the
 [source and provenance policy](../provenance.md#enforced-checks-and-limits).
 It rejects binary extensions (including PNG, JPEG, PDF, PPT/PPTX),

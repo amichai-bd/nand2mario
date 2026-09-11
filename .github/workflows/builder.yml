@@ -1,9 +1,9 @@
 name: Builder
 
+# Dispatch only. Pull requests run the PR policy check; authors run these
+# commands locally before merge (wiki/agents/pull-requests.md).
 on:
-  pull_request:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -110,7 +110,7 @@ jobs:
           PY
       - name: Report simulation scope
         run: |
-          echo "Host contracts and the actual pinned RGBDS oracle. Licensed Questa simulation is not run on hosted PR jobs; actual local evidence is required until the trusted route in issue #32 is configured." >> "$GITHUB_STEP_SUMMARY"
+          echo "Host contracts and the actual pinned RGBDS oracle. Licensed Questa simulation is not run on hosted jobs; actual local evidence is required until the trusted route in issue #32 is configured." >> "$GITHUB_STEP_SUMMARY"
       - name: Retain build evidence
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6

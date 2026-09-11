@@ -78,7 +78,8 @@ and check reset/clock transitions and configuration startup in Questa. Prove
 FPGA power-up inference in Quartus when moving product initialization.
 
 Run `python .agents/skills/rtl-coder/scripts/check_sv_style.py` before review.
-The required Wiki check runs this source guard and its negative fixtures.
+The [local pre-merge checks](../agents/pull-requests.md#hosted-and-local-checks)
+run this source guard and its negative fixtures.
 
 ## Product register convention
 

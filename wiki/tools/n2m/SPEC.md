@@ -421,11 +421,12 @@ claim a pinned proprietary distribution.
 
 ## CI execution boundary
 
-Hosted PR/main [Builder checks](../../../.github/workflows/builder.yml) validate
-generation and host contracts. [Tile runner checks](../../../.github/workflows/tile-pixel.yml)
-validate standalone host contracts. Neither job executes a simulator or reports
-licensed RTL acceptance. Their summaries state this limitation. Required
-`PR policy` and `Wiki check` protection settings are unchanged.
+[Builder checks](../../../.github/workflows/builder.yml) validate generation
+and host contracts. [Tile runner checks](../../../.github/workflows/tile-pixel.yml)
+validate standalone host contracts. Both run locally before merge and by
+`workflow_dispatch`, per the [PR policy](../../agents/pull-requests.md#hosted-and-local-checks);
+neither executes a simulator or reports licensed RTL acceptance, and their
+summaries state this limitation. `PR policy` is the only required hosted check.
 
 Actual local Questa positive and deliberately failing runs are mandatory author
 and independent-review evidence. No trusted remote Questa runner is currently
@@ -909,7 +910,7 @@ checked documentation export.
 Run `python tools/n2m/interfaces.py` to regenerate the marked SV package, Python
 exports, assembly prelude and Markdown tables. `python tools/n2m/interfaces.py --check` renders
 in memory and fails on a missing or changed export, including documentation.
-The required Builder check runs this and the interface unit tests. The normal
+The Builder sequence runs this and the interface unit tests. The normal
 wiki renderer publishes the generated Markdown tables as HTML; no separate
 hand-maintained HTML copy exists.
 

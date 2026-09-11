@@ -32,10 +32,10 @@ The `PR policy` check requires a valid numbered branch, `main` base, and closing
 references to open assigned issues including the primary branch issue. Only the
 fixed [checkpoint exceptions](#checkpoint-exceptions) below may use matching
 checkpoint and `Refs` lines without a closing reference. Other PRs close their
-issues. `Wiki check` validates the documentation build.
+issues. It is the only check that runs automatically on a pull request.
 
-Main normally requires passing up-to-date hosted checks, linear history, and resolved review
-conversations. The authorized external-blockage fallback below supplies equivalent local validation. Force pushes and branch deletion are blocked on main. Human
+Main requires a passing up-to-date `PR policy` check, linear history, and resolved
+review conversations. Force pushes and branch deletion are blocked on main. Human
 approval is not required. Independent review and code/spec alignment are agent
 responsibilities; they are not enforced by scripts or approval counts.
 
@@ -43,6 +43,63 @@ A merge closes its closing references and triggers Pages deployment. A trigger i
 proof that publication succeeded. See
 [GitHub issue linking](https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/linking-a-pull-request-to-an-issue).
 
+## Hosted and local checks
+
+The repository is private, so hosted runner minutes are billed. Only two
+workflows run automatically:
+
+- `PR policy` on every pull request event: metadata only, a few seconds, no
+  build or test.
+- `Pages` on every push to `main`: the issue-helper tests, then
+  `python tools/wiki/check.py --browser --install-browser` before publication.
+  It is the last hosted gate on the wiki.
+
+Everything else runs locally before merge. The
+[Builder](https://github.com/amichai-bd/nand2mario/blob/main/.github/workflows/builder.yml),
+[Tile pixel](https://github.com/amichai-bd/nand2mario/blob/main/.github/workflows/tile-pixel.yml)
+and [Wiki](https://github.com/amichai-bd/nand2mario/blob/main/.github/workflows/wiki.yml)
+workflows keep their command sequences and run only by `workflow_dispatch`
+(`gh workflow run <file> --ref <branch>`), for a second opinion on a clean
+runner when an author or reviewer asks for one.
+
+Before undrafting, the author runs from the worktree root, on the reviewed head,
+and records commands and results in the PR:
+
+```text
+python tools/wiki/check.py --browser
+python -m unittest discover -s .agents/skills/issue-author/scripts -p test_create_issue.py -v
+python -m unittest discover -s .agents/skills/rtl-coder/scripts -p test_check_sv_style.py -v
+python .agents/skills/rtl-coder/scripts/check_sv_style.py
+```
+
+These replace the former `Wiki check`. Add `--install-browser` on the first
+wiki run. Then, by changed scope:
+
+- Any change under `tools/`, `cfg/`, `src/sw/` or `src/dv/springtrail/` runs the
+  Builder sequence:
+
+  ```text
+  python tools/n2m/interfaces.py --check
+  python tools/build.py check --tag ci-check --json
+  python -m unittest discover -s tools/ci/tests -v
+  python tools/build.py sw oracle --tag ci-rgbds --json
+  python tools/build.py sw assemble assembler-basic --tag ci-assembler --json
+  python tools/build.py sw conformance --tag ci-conformance --json
+  python tools/build.py sw build linker-basic --tag ci-linker --json
+  python tools/build.py sw link-conformance --tag ci-link-proof --json
+  python tools/build.py sw asset-conformance --tag ci-assets --json
+  ```
+
+  followed by the deliberate `--mutate` runs, their expected manifest errors
+  and the Springtrail host-fixture loader exactly as written in
+  `builder.yml`; each mutation must fail with the recorded error.
+- Any change under `tools/sim/` or `src/rtl/display/` runs
+  `python -m unittest discover -s tools/sim -p test_tile_pixel.py -v`.
+- The scoped [verification tier](../src/dv/integration/SPEC.md#verification-tiers)
+  supplies simulation, FPGA and hardware evidence; no hosted job ever ran those.
+
+A failure in any of these blocks the merge exactly as a red hosted check did.
+Reuse results only for an unchanged head with unchanged relevant inputs.
 
 ## Checkpoint exceptions
 
@@ -65,8 +122,9 @@ without closing it, outside this set, does not satisfy the policy.
 ## External CI fallback
 
 The [mandatory rule](https://github.com/amichai-bd/nand2mario/blob/main/AGENTS.md#verification-and-safety)
-authorizes equivalent local required checks when hosted execution is externally
-blocked. Real failures and missing scoped evidence remain blockers. Follow the
+authorizes equivalent local execution of the remaining hosted checks, `PR policy`
+and the `Pages` build, when their hosted execution is externally blocked. Real
+failures and missing scoped evidence remain blockers. Follow the
 [skill procedure](https://github.com/amichai-bd/nand2mario/blob/main/.agents/skills/agent-flow/references/external-ci.md)
 for evidence, exact-head merge, restoration and honest deployment status. This
 standing authorization needs no repeated per-PR approval.
