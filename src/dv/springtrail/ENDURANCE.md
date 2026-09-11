@@ -1,12 +1,117 @@
 # Continuous UART play and lifecycle
 
-Proof for [#291](https://github.com/amichai-bd/nand2mario/issues/291),
-under the [physical contract](../../../wiki/src/dv/springtrail/SPEC.md#physical-acceptance).
-This does not close #264/#28/#156 or prove monitor/keyboard/physical buttons.
-Reuse the accepted #263 deterministic baseline and qualified actual faults;
-do not repeat its every-frame acquisition. Product ROM/RTL remain unchanged.
+Proof for [#264](https://github.com/amichai-bd/nand2mario/issues/264) under
+its remote scope and for the retired [#291](https://github.com/amichai-bd/nand2mario/issues/291)
+child, under the [physical contract](../../../wiki/src/dv/springtrail/SPEC.md#physical-acceptance).
+Everything is observed over UART: no monitor, keyboard or physical button is
+claimed. Product ROM/RTL remain unchanged.
 
-## Frozen schedule
+## Current-image script
+
+Frozen before execution; `endurance.py` is the launcher and driver.
+
+Image binding: the launcher runs `sw build springtrail` from current sources
+and passes the build's own image hash to the driver, which refuses any other
+bytes (`ENDURANCE_ROM`) before opening a directory or sending a command. No
+hash constant is stored. The expected wire build is given on the command line
+and checked against the endpoint's build identity before traffic. The board's
+paused snapshot supplies the prior reset epoch; each `Client.load` adds two
+and each explicit RESET adds one.
+
+Expected frames come from the independent models only: `motion_reference`
+for the player, the frozen flow in `interactions_reference` (parametrised by
+that player) for modes, enemy, items and goal, and `motion_frames.image` for
+pixels. LCD commit 139388 and period 70224 are the source-derived anchors
+`motion_game_reference` checks in simulation; no value is taken from the DUT.
+
+Setup, paused: load with full 32768-byte upload and byte-exact readback,
+INPUT 0, dot 0, advance by RUN_DOTS to C2=284932 and check every pixel of
+`title` (source frame 1); Start 128 at C2, C3, release 0, C5=495604 and check
+every pixel of `play` (spawn, frame 4). Then RUN; the monotonic origin is
+taken after the RUN reply.
+
+Continuous interval, RUNNING throughout, no HALT/RUN_DOTS/RESET/load: `short`
+runs 2 fixed 20-second cycles (40 s), `full` runs 90 (1800 s). Cycle i:
+
+1. Apply 33 (Right+B, even i) or 17 (Right+A, odd i); hold 5.5 s. Both
+   routes run into the first gap from spawn and end in a settled RETRY:
+   33 at x187/camera115 after 110 updates, 17 at x183/camera111 after at
+   most 267 (the A-first sample variant). Check `retry-<route>` when the
+   frame completes at least 280 periods after the applied dot: 23040
+   pixels minus the enemy patrol projection x(240-camera)..(303-camera),
+   y120..135 (560 pixels for 33, 496 for 17). The host tests prove every
+   JOYP first-sample variant (0, direction row, action row, both) and every
+   enemy phase reach the same terminal, that it stays settled while held,
+   and that the exclusion is exactly the union of enemy pixels.
+2. Release 0, wait 0.1 s, Start 128, wait 0.15 s, check every pixel of
+   `play` at least 3 periods after the applied dot; release 0. Only one
+   JOYP row changes per transition here, so no variant exists.
+3. Cycles 0, 30 and 60 additionally press Start for `paused` and again for
+   `play` (resume), each checked the same way.
+4. Stay RUNNING until the fixed boundary. A cycle over 20 s fails; the next
+   must begin within 1 s of its fixed start.
+
+Every sample checks PAUSED/RUNNING state, valid image, UART source, host and
+effective mask equal to the commanded one, 64-bit dot/retirement counters
+read without tearing, epoch, frame size, completion inside row 143 of its
+numbered frame, freshness within 2 periods, and increasing sequence/dot.
+The RETRY sample also requires dot and retirement progress over the previous
+cycle. Retained per sample: packed frame, its hash, metadata and both counter
+readings; the journal holds every applied input dot. This is sampled
+endurance: 2 samples per cycle plus pauses, not every frame.
+
+End: one extra second, check `play` while still RUNNING, require both the
+monotonic and the emulated (dot delta at 4194304/s) durations to cover the
+planned seconds, HALT, INPUT 0. Then three explicit RESET / full load with
+readback / title / Start / `play` cycles with the same checkpoints. Final
+state PAUSED, UART, input 0, effective 0, certain session.
+
+Failure: any assertion or transport error ends the run FAIL with the dot,
+state and journal retained; cleanup attempts HALT and INPUT 0 only when the
+Client is certain, and an uncertain completion sends nothing more. The
+worker refuses to start a cycle or a lifecycle after `cap-24` s; the
+launcher kills the worker tree at `cap-12` s and records `budget.json`.
+Caps: 300 s short, 1980 s full. Forecast: short about 110 s (40 s
+continuous, four loads, 15 samples); full about 1870 s (1800 s continuous,
+four loads, 195 samples, 4,000,000-plus checked pixels). The short run
+exercises both routes, pause/resume, the final sample and all three
+lifecycles before the full run. No automatic extension or replay.
+
+### Measured result
+
+Producing commit `e3bdf69` (the freeze; rebased with identical content as
+`f36c0b3`, then onto #385 as `bfa9654`: the only driver change is the call
+`flow_update(game, buttons, step=step)`, because `interactions_reference`
+now derives the restart player from `type(game.player)`; `SPAWN` already
+holds the motion player, so behaviour is unchanged and the run was not
+repeated), Python 3.14.5, pyserial 3.5, wire
+build `bb02588d127b72ce6458a07ff1145c57`, image
+`616de11b49e0807539837358824a570776459b9bf13a4b9424dbf42adfe5c983` built from
+current sources at each launch (cache hit, same bytes). The board was not
+reprogrammed. Doctor: JTAG, Quartus and UART PASS; Questa refused a second
+nodelocked licence, and no simulation is part of this proof. Both runs used
+`python src/dv/springtrail/endurance.py <plan> --uart-port COM3 --expected-build-id bb02588d127b72ce6458a07ff1145c57 --tag endurance264`.
+
+| Plan | Whole (s) | Continuous (s) | Dots | Samples | Checked pixels | Loads | Epochs | Result |
+|---|---|---|---|---|---|---|---|---|
+| `short` | 105.3 (cap 300) | 42.483 | 177,550,584 | 15 | 344,544 | 4 | 11..20 | PASS |
+| `full` | 1865.9 (cap 1980) | 1802.413 | 7,559,303,931 | 195 | 4,445,280 | 4 | 22..31 | PASS |
+
+The full run sampled 90 RETRY frames (45 per route), 98 `play`, 3 `paused`
+and 4 `title` frames, applied 386 inputs, and kept the core RUNNING from the
+origin `play` sample to `continuous-final` at frame 107585, dot
+7,555,253,887, 335,479,229 retired instructions; the dot counter crossed its
+32-bit boundary inside epoch 22 without a torn read. Every load uploaded and
+read back all 32768 bytes. Both runs ended PAUSED at dot 494604, UART, input
+0, effective 0, with the durable session certain (sequence 208401, then
+221401). The title frame completing at dot 275071 confirms the 139388 anchor
+on hardware. No reset, hang, lost input or pixel mismatch occurred.
+
+Sampling limits: two samples per cycle plus pauses; the RETRY samples exclude
+the enemy patrol footprint. Nothing here observes the monitor or physical
+controls.
+
+## Retired-image schedule (b551c562...8ba667)
 
 Use corrected ROM b551c56252761d953bcf3b64270d819e3342b710299c3bff6866d4dcae8ba667
 and the reviewed current board image. The caller binds fresh setup, image/source,
@@ -90,15 +195,10 @@ VGA/keyboard/shared physical-control gates in #264/#28/#156.
 
 ## Image scope
 
-Everything above applies to image
-`b551c56252761d953bcf3b64270d819e3342b710299c3bff6866d4dcae8ba667` only. The
-repository now builds
-`adbef6b04b5ca7c3896beace71b1735b6dd49115feda0c6ebe20f11ae109f369`; #310, #314,
-#316, #318 and #321 separate them, and the last three change every displayed
-frame. `endurance.py` calls `require_baseline_rom`, so the driver refuses any
-other image and the recorded 90-cycle result cannot be read as covering the
-current one.
-
-Continuous physical endurance on the current image is therefore unproven. #264
-owns it. The deterministic per-image evidence for the current build is the
-[re-qualification section](MILESTONE.md#current-rom-re-qualification).
+The retired-image schedule and its PR295 result apply to image
+`b551c56252761d953bcf3b64270d819e3342b710299c3bff6866d4dcae8ba667` only; #310,
+#314, #316, #318, #321 and #301 separate it from the current build and change
+every displayed frame. That result cannot be read as covering the current
+image. The current-image script above is the only endurance evidence for the
+image the repository builds; the deterministic per-image evidence for that
+build is the [re-qualification section](MILESTONE.md#current-rom-re-qualification).
