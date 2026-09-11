@@ -191,7 +191,7 @@ run:1802.403 continuous seconds,90 gameplay cycles,191 sampled images with
 Whole physical time1863.033 seconds met the declared cap. The PR owns commands,
 raw records, failure history, source qualifications and independent review.
 This completes only the automated child proof, not the outstanding actual
-VGA/keyboard/shared physical-control gates in #264/#28/#156.
+VGA/keyboard/shared physical-control gates in #264/#417/#156.
 
 ## Image scope
 

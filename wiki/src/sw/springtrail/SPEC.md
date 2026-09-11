@@ -2,7 +2,8 @@
 
 The [original game source](../../../../src/sw/springtrail/main.asm) implements
 title/start, movement, scrolling, interactions and game flow. Physical-presence
-release acceptance remains in [#28](https://github.com/amichai-bd/nand2mario/issues/28).
+release acceptance remains in the charter's
+[remote acceptance](../../project-charter.md#remote-acceptance) split.
 The [charter](../../project-charter.md) owns the hardware and release boundaries;
 the [game verification plan](../../dv/springtrail/SPEC.md) owns acceptance.
 

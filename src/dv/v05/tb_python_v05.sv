@@ -286,6 +286,15 @@ module tb_python_v05 #(
         end
     end
 
+    // Hold the actual joypad wake source inactive; the checker and its stimulus
+    // stay unchanged, so the stopped CPU must miss its documented wake deadline.
+    initial begin
+        if ($test$plusargs("joypad_wake_fault")) begin
+            @(negedge clk_sys);
+            force dut.joyp_event = 1'b0;
+        end
+    end
+
     // Corrupt the actual timer read route; the independent DIV expectation stays1.
     initial begin
         if ($test$plusargs("timer_read_fault")) begin

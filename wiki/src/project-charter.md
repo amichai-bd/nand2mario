@@ -120,8 +120,8 @@ bound to pass the implementation.
 | `v1.0` | After separate board approval and wiring/timing proof: full load/readback, scripted checkpoints and pre-VGA frame hashes match simulation; VGA and keyboard work; 30-minute continuous run without unexpected reset/lost input; repeat reset/load/start three times. Silent output. |
 
 The v0.5 and original v0.9 baselines are qualified separately from physical
-release acceptance, whose physical-presence column remains open in [#28](https://github.com/amichai-bd/nand2mario/issues/28)
-within the [remote acceptance](#remote-acceptance) split below.
+release acceptance, whose physical-presence column remains open within the
+[remote acceptance](#remote-acceptance) split below.
 Functional boot/input/checkpoint requirements are preserved,
 but their execution matrices must be named and reviewed before work: use short
 complementary simulations under the [total wall cap](../tools/n2m/SPEC.md#test-wall-budget)
@@ -162,13 +162,16 @@ prove and which need physical presence.
 | VGA works | Frame hashes prove the source frames; the VGA owner is simulation- and fit-verified | Observing the monitor: timing tolerance, tearing, colors |
 | 30-minute continuous run, no unexpected reset or lost input | Yes: UART-driven input, periodic snapshots, build ID and core-reset epoch | — |
 | Three reset/load/start cycles | Yes with the UART core reset | KEY0 board reset |
-| Wiring, voltage and timing proof at the board | — | Yes, under [#28](https://github.com/amichai-bd/nand2mario/issues/28) |
+| Wiring, voltage and timing proof at the board | — | [Board bring-up](board-bring-up.md): wiring and pins documented, timing by static analysis, supply not measured |
 
 A `v1.0` claim built on the UART column alone must say so. The UART column
 is proven on the current image by the
 [endurance record](../../src/dv/springtrail/ENDURANCE.md#current-image-script).
-The physical column stays open in [#28](https://github.com/amichai-bd/nand2mario/issues/28); that issue gates physical claims
-only, not UART-observable, simulation or host work.
+Two entries in the physical column stay open: observing the monitor, under
+[#417](https://github.com/amichai-bd/nand2mario/issues/417), and the KEY0 board
+reset, which needs hands at the board and has no issue while the board is
+worked remotely. They gate physical claims only, not UART-observable,
+simulation or host work.
 
 ## Dependencies and authority
 

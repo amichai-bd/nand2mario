@@ -60,6 +60,7 @@ module n2m_v05_system #(
     logic [7:0] frame_data, joyp_rdata;
     n2m_input_pkg::input_update_t effective_update;
     logic joyp_selected_active, joyp_event;
+    logic core_active_reset, wake_pending, wake_request, emulated_tick;
     logic [12:0] frame_address;
     logic request_valid, response_valid, cpu_initialized, cpu_fault, memory_fault, ppu_fault;
     logic memory_initialized, storage_valid;
@@ -122,12 +123,17 @@ module n2m_v05_system #(
         .snapshot_ok, .snapshot_valid, .snapshot_metadata,
         .frame_read, .frame_address, .frame_data, .frame_valid
     );
-    n2m_timebase u_timebase (.clk_sys, .reset_sys, .core_reset, .pause_request, .gb_tick, .paused);
+    n2m_timebase u_timebase (.clk_sys, .reset_sys, .core_reset, .pause_request,
+        .gb_tick(emulated_tick), .paused);
+    // STOP withholds emulated ticks from every owner, so no dot elapses while
+    // the CPU sleeps. The completing T4 still ticks: stopped is registered, so
+    // that bookkeeping edge lands the M-cycle phase on zero for the wake.
+    assign gb_tick = emulated_tick && !cpu_stopped;
     n2m_cpu u_cpu (
         .clk_sys, .reset_sys, .core_reset, .gb_tick, .profile_id(profile), .epoch,
         .dot_before(dot_count), .ie(ie_observe), .iflags(if_observe),
         .buttons(effective_buttons),
-        .read_data, .response_valid, .joyp_selected_active, .wake_request(1'b0),
+        .read_data, .response_valid, .joyp_selected_active, .wake_request,
         .request_valid, .address, .write_data, .write_enable, .bus_commit, .irq_ack,
         .access_kind(bus_plan.access_kind), .address_effect, .address_effect_resolved,
         .address_effect_sample, .address_effect_phase(cpu_phase), .halted(cpu_halted), .stopped(cpu_stopped),
@@ -268,7 +274,18 @@ module n2m_v05_system #(
         .snapshot_done, .snapshot_ok, .snapshot_valid, .snapshot_metadata,
         .frame_read, .frame_address, .frame_valid, .frame_data
     );
-    `N2M_ASSERT(V05_NO_STOP, clk_sys, reset_sys || core_reset, !cpu_stopped)
+    // This composition is the CPU's power owner. It retains one joypad
+    // selected-line event raised while the CPU sleeps and presents it on the
+    // boundary the CPU accepts: phase 0 before T1, with no tick on that edge.
+    // Events outside STOP are not retained; only a fall during sleep wakes.
+    assign core_active_reset = reset_sys || core_reset;
+    assign wake_request = wake_pending && cpu_stopped && cpu_phase == 2'd0 && !gb_tick;
+    `DFF_ARST_VAL(wake_pending, (wake_pending || (joyp_event && cpu_stopped)) && !wake_request,
+        clk_sys, core_active_reset, 1'b0)
+    `N2M_ASSERT(V05_STOP_WAKE_BOUNDARY, clk_sys, reset_sys || core_reset,
+        !wake_request || (cpu_stopped && cpu_phase == 2'd0 && !gb_tick))
+    `N2M_ASSERT_NEVER(V05_WAKE_WITHOUT_STOP, clk_sys, reset_sys || core_reset,
+        wake_pending && !cpu_stopped)
     // Every destination reaching this composition has an owner. A missing arm
     // would fault the CPU port instead of returning a DMG value.
     `N2M_ASSERT(V05_OWNER_SERVICE, clk_sys, reset_sys || core_reset,

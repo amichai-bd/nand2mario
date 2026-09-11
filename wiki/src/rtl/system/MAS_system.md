@@ -18,9 +18,9 @@ The additive `v05-board` target uses the same composition with physical UART
 D0/D1 and KEY0 reset, following the [board pin contract](../../fpga-controls.md).
 Only diagnostic outputs remain virtual. `BUILD_ID` propagates the producing
 128-bit build identity to the UART owner; the placement/simulation default stays
-unchanged. Physical pin, wiring and voltage qualification remains an open
-[board bring-up gap](https://github.com/amichai-bd/nand2mario/issues/28);
-simulation and placement proofs do not satisfy it.
+unchanged. Physical pin, wiring and voltage qualification is recorded in
+[board bring-up](../../board-bring-up.md); simulation and placement proofs do
+not satisfy it.
 
 The UART owner supplies core reset, profile, epoch, pause and effective input.
 Initialization completes only when CPU and backing-store initialization complete.
@@ -54,9 +54,27 @@ values without serial transfer or audio synthesis. The gateway drives the
 memory owner's wave read and write port. Every destination reaching this
 composition now has an owner, and the named `V05_OWNER_SERVICE` assertion makes
 a missing arm fatal instead of a silent CPU-port fault. The serial interrupt
-level stays inactive: the composition drives IF source bit 3 low. The original
-program must not execute STOP; the named `V05_NO_STOP` assertion makes that
-bounded program condition explicit.
+level stays inactive: the composition drives IF source bit 3 low.
+
+## STOP and joypad wake
+
+A program may execute STOP. This composition is the CPU's
+[power owner](../cpu/MAS_cpu.md#qualified-stop-wake). It retains one JOYP
+selected-line event raised while the CPU reports STOP and presents it as
+`wake_request` on the boundary the CPU accepts: phase zero with `gb_tick` low.
+An event outside STOP is not retained, so only a fall during sleep wakes; the
+named `V05_STOP_WAKE_BOUNDARY` and `V05_WAKE_WITHOUT_STOP` assertions make both
+rules explicit. The composition performs no oscillator restart modelling and
+adds no settling delay.
+
+STOP withholds emulated ticks from every owner, so no dot elapses while the CPU
+sleeps. The completing T4 still ticks: `cpu_stopped` is registered, so that
+bookkeeping edge lands the M-cycle phase on zero for the wake, and the timebase
+output is gated by `cpu_stopped` on every later edge. Host pause is unchanged
+and stays separate from STOP: the endpoint keeps reporting a running core. An
+outstanding host dot budget cannot be spent by a sleeping oscillator, so the
+[UART owner](../uart/MAS_uart.md) completes it on the stopped level with the
+`STOPPED` reason rather than waiting for a tick that never comes.
 
 The CPU supplies its complete typed bus plan, address effect, resolved/sample
 qualification, continuous M-cycle phase and HALT/STOP state to the DMA owner.

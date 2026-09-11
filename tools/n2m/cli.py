@@ -15,6 +15,7 @@ from .simulator import Simulator, ToolError
 from .doctor import doctor
 from .host.command import run as host_command
 from .fpga import build_fpga
+from .fpga_program import program as program_fpga
 from .rgbds import oracle
 from .regress import clean, regress
 from sw.build import assemble_target
@@ -68,6 +69,13 @@ def parser():
     build.add_argument("--rebuild", action="store_true")
     build.add_argument("--tag")
     build.add_argument("--json", action="store_true")
+    program_parser = fpga.add_parser("program", help="write a checked .sof to the connected board; USB-Blaster/10M50DA identity checked first")
+    program_parser.add_argument("--sof", required=True, help="path to a design.sof built by 'fpga build'")
+    program_parser.add_argument("--quartus-bin", required=True, help="explicit directory containing Quartus executables")
+    program_parser.add_argument("--jtag-cable", help="required JTAG chain index if more than one is ever present")
+    program_parser.add_argument("--timeout", type=int, default=60)
+    program_parser.add_argument("--tag")
+    program_parser.add_argument("--json", action="store_true")
     sw = commands.add_parser("sw").add_subparsers(dest="action", required=True)
     rgbds = sw.add_parser("oracle", help="check original fixtures with pinned upstream RGBDS")
     rgbds.add_argument("--offline", action="store_true", help="require verified cached downloads")
@@ -149,7 +157,15 @@ def tagged(root, args, header, publish):
                 report.update(doctor(root, build, args, provenance))
             elif args.command == "fpga":
                 provenance = {k: report[k] for k in ("commit", "dirty_tree_fingerprint", "host", "python") if k in report}
-                report.update(build_fpga(root, build, args, provenance))
+                if args.action == "build":
+                    report.update(build_fpga(root, build, args, provenance))
+                else:
+                    folder = build / "fpga-program" / uuid.uuid4().hex[:12]
+                    folder.mkdir(parents=True)
+                    result = program_fpga(root, folder, Path(args.sof), quartus_bin=args.quartus_bin,
+                                          cable=args.jtag_cable, timeout=args.timeout)
+                    report.update(status="PASS", provenance=provenance, **result,
+                                 artifacts={p.relative_to(root).as_posix(): file_hash(p) for p in folder.rglob("*") if p.is_file()})
             elif args.command == 'host':
                 provenance = {k: report[k] for k in ('commit', 'dirty_tree_fingerprint', 'host', 'python') if k in report}
                 report.update(host_command(root, build, args, provenance))

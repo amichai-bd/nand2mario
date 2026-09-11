@@ -1,6 +1,6 @@
 ---
 name: game-assets
-description: Create, revise, preview and integrate original Springtrail pixel assets, linking editable sources, user-approved images and wiki specifications. Use for sprite, tile, font and screen artwork; not RTL behavior.
+description: Create, revise, preview and integrate original Springtrail pixel assets, linking editable sources, published images and wiki specifications. Use for sprite, tile, font and screen artwork; not RTL behavior.
 ---
 
 # Game assets
@@ -43,20 +43,19 @@ indices, not VRAM addresses. Whole-character horizontal mirroring must move each
 piece to `width - 8 - x` and toggle its X-flip, as well as respecting the gameplay
 anchor; flipping each tile in place alone is insufficient.
 
-## Approval and publication
+## Publication
 
-Carry forward approval for unchanged source pixels. New or visually changed art
-must be approved by the user before publishing it as approved or integrating it;
-a delegated agent routes the preview and the answer through root. Do not ask
-again for a revision already approved for this change.
-Record the approved revision and scope on the owning wiki page. Copy generated
-SVG review views into that page's image folder and link authoritative source/maps,
-and the reproduction command. Link an existing open feature issue only for an
-explicit remaining integration or verification gap; remove it when the gap
-closes, following [wiki writing](../wiki-spec-writer/SKILL.md). Keep PNGs, encoded
-bytes and temporary exports in the worktree's `workdir/`. Update existing issues
+New or visually changed art does not need user approval. Choose artwork that is
+nice, simple, practical and achievable within the owning feature scope, then
+publish and integrate it under that scope. Record the published revision and
+scope on the owning wiki page. Copy generated SVG review views into that page's
+image folder and link authoritative source/maps, and the reproduction command.
+Link an existing open feature issue only for an explicit remaining integration
+or verification gap; remove it when the gap closes, following
+[wiki writing](../wiki-spec-writer/SKILL.md). Keep PNGs, encoded bytes and
+temporary exports in the worktree's `workdir/`. Update existing issues
 with source/spec links and remaining integration criteria; do not create extra
-issues unless the user requests them. Preserve other assets while approval waits.
+issues unless the user requests them. Preserve assets owned by other features.
 
 ## Integrate when authorized
 

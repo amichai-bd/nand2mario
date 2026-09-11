@@ -41,4 +41,4 @@ outputs are diagnostic observations. The builder supplies and verifies the
 producing build ID, checks the UART synchronizer and leaves unused package pins
 as inputs without pull-ups. A passing board fit is still not physical acceptance:
 verify wiring, voltage, device and reviewed evidence before programming, then
-record actual bring-up separately under #28 and game acceptance under #88.
+record actual bring-up in wiki/src/board-bring-up.md and game acceptance under #88.
