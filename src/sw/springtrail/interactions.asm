@@ -15,7 +15,7 @@ LD [EnemyX+1],A
 LD A,8
 LD [EnemyVX],A
 LD HL,PowerState
-LD B,36
+LD B,38
 XOR A,A
 InitPowerLoop:
 LD [HL+],A

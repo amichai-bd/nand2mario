@@ -205,6 +205,10 @@ LD H,0
 LD DE,BlockState
 ADD HL,DE
 LD [HL],C
+; Mark the block's two display columns so the next update republishes them.
+LD A,[EffectColumn]
+INC A
+LD [BlockDirty],A
 RET
 
 ; A = effect tile base; the effect starts at the block's top-left world pixel.

@@ -10,8 +10,8 @@ from power_reference import (World, Shot, update, PLAYING, PAUSED, RETRY,
 
 __all__ = ['ADDRESSES', 'RANGES', 'state_bytes', 'cases', 'parts', 'SHORT', 'SHORT_BOUND']
 
-ADDRESSES = MOTION_ADDRESSES + list(range(0xc078, 0xc083))
-RANGES = MOTION_RANGES + ((0xc078, 11),)
+ADDRESSES = MOTION_ADDRESSES + list(range(0xc078, 0xc084))
+RANGES = MOTION_RANGES + ((0xc078, 12),)
 # The short harness runs the item hit first, so the consumer fault can corrupt
 # that update's head-hit column store and be consumed by the same call.
 SHORT = 2
@@ -22,7 +22,7 @@ def state_bytes(world, buttons=0, new_level=0):
     blocks = bytes(world.blocks) + bytes((world.coins, world.effect_tile))
     effect = ((world.effect_x & 65535).to_bytes(2, 'little')
               + (world.effect_y & 65535).to_bytes(2, 'little')
-              + bytes((world.effect_timer,)))
+              + bytes((world.effect_timer, world.block_dirty)))
     return power_bytes(world, buttons, new_level) + blocks + effect
 
 
@@ -100,7 +100,8 @@ def cases():
     dirty = replace(playing(x=700 * 16, camera=608), power=LARGE, phase=SAFE,
                     phase_timer=9, blocks=(B.USED, B.BROKEN, B.USED, B.USED),
                     coins=7, effect_tile=B.GEM, effect_x=512 * 16, effect_y=70 * 16,
-                    effect_timer=5, collected=15, score=4, timer=42, mode=PAUSED)
+                    effect_timer=5, block_dirty=65, collected=15, score=4,
+                    timer=42, mode=PAUSED)
     add('pause-holds', dirty, 16)
     add('reset', replace(dirty, mode=RETRY), 128, 'reset')
     return result

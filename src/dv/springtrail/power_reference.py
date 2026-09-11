@@ -48,6 +48,7 @@ class World:
     effect_x: int = 0
     effect_y: int = 0
     effect_timer: int = 0
+    block_dirty: int = 0
 
 
 def block_layer(world):
@@ -193,8 +194,11 @@ def _resolve_block(world, hit):
     states, coins, tile, x, y, grant = blocks.resolve(
         world.blocks, world.coins, world.power, hit)
     if tile:
+        # The changed block's display columns are republished by the streamer,
+        # which runs outside this update, so the mark survives it.
         world = replace(world, effect_tile=tile, effect_x=x * UNIT,
-                        effect_y=y * UNIT, effect_timer=blocks.EFFECT_UPDATES)
+                        effect_y=y * UNIT, effect_timer=blocks.EFFECT_UPDATES,
+                        block_dirty=x // 8 + 1)
     world = replace(world, blocks=states, coins=coins)
     if grant == 'power':
         return power_up(world)

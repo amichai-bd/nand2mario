@@ -133,6 +133,14 @@ class ResolveTests(unittest.TestCase):
 
 
 class WorldTests(unittest.TestCase):
+    def test_a_changed_block_marks_its_columns_for_republication(self):
+        world = rise(playing(x=64 * 16, y=112 * 16), 8)
+        self.assertEqual(world.block_dirty, 9)
+        broken = rise(replace(playing(x=144 * 16, y=112 * 16), power=LARGE), 8)
+        self.assertEqual(broken.block_dirty, 19)
+        # A small player's inert brick bump marks nothing.
+        self.assertEqual(rise(playing(x=144 * 16, y=112 * 16), 8).block_dirty, 0)
+
     def test_jump_under_block_zero_grows_the_player_and_pops_a_leaf(self):
         world = rise(playing(x=64 * 16, y=112 * 16), 8)
         self.assertEqual(world.player.y, 96 * 16)
@@ -190,7 +198,8 @@ class WorldTests(unittest.TestCase):
         world = rise(playing(x=64 * 16, y=112 * 16), 8)
         fresh = update(replace(world, mode=RETRY, coins=7), 128)
         self.assertEqual((fresh.blocks, fresh.coins, fresh.effect_tile,
-                          fresh.effect_timer), (B.reset(), 0, 0, 0))
+                          fresh.effect_timer, fresh.block_dirty),
+                         (B.reset(), 0, 0, 0, 0))
 
     def test_a_broken_brick_no_longer_supports_a_falling_player(self):
         above = replace(playing(x=144 * 16, y=80 * 16 - 16 * 16, grounded=False, jump=3),

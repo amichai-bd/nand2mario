@@ -20,12 +20,14 @@ class BlocksUnitCheckTests(unittest.TestCase):
         self.assertEqual(len(rows), 20)
         self.assertEqual([len(v) for v in parts().values()], [10, 10])
         self.assertEqual([r['name'] for r in rows[:2]], ['item-hit', 'effect-rise'])
-        self.assertEqual(len(set(ADDRESSES)), 59)
-        self.assertEqual(len(rows[0]['before']), 59)
+        self.assertEqual(len(set(ADDRESSES)), 60)
+        self.assertEqual(len(rows[0]['before']), 60)
         # Block 0 goes intact to used and releases the approved leaf tile.
         self.assertEqual((rows[0]['before'][48], rows[0]['after'][48]), (0, 1))
         self.assertEqual(rows[0]['after'][53], 132)
         self.assertEqual(rows[0]['after'][58], 16)
+        # The hit block's own column is marked for republication.
+        self.assertEqual(rows[0]['after'][59], 9)
 
     def test_operand_slot_holds_every_half(self):
         # The unit fixture's assets section is 2 KiB of operand snapshots.

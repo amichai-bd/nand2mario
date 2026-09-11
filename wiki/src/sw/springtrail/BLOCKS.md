@@ -122,6 +122,11 @@ collision and grants nothing.
 
 - Block state, `Coins` and the effect bytes change only inside a PLAY update.
   Pause freezes them with the rest of the world.
+- A state change stores the block's column plus one in `BlockDirty`. The next
+  `PrepareMap` decodes that block's two columns instead of the entering column,
+  publishes them and leaves `OldCameraTile` alone, so the entering column
+  follows one update later rather than being lost. The camera moves at most two
+  pixels per update, so one update of deferral never skips a column.
 - Scrolling away and back re-decodes the column from `BlockTable` and the
   current state, so a used, broken or revealed block keeps its appearance and
   never respawns its content.
@@ -192,13 +197,16 @@ New gameplay state occupies C078..C086:
 | C07E..C07F | Effect X, signed 1/16 pixel; reset 0 |
 | C080..C081 | Effect Y, signed 1/16 pixel; reset 0 |
 | C082 | Effect updates remaining; reset 0 |
-| C083 | Head hit pending; reset 0 |
-| C084 | Head hit column; reset 0 |
-| C085 | Head hit row; reset 0 |
-| C086 | Scan is ascending; reset 0 |
+| C083 | Changed block column plus one, 0 none; reset 0 |
+| C084 | Head hit pending; reset 0 |
+| C085 | Head hit column; reset 0 |
+| C086 | Head hit row; reset 0 |
+| C087 | Scan is ascending; reset 0 |
 
-C083..C086 are per-scan scratch, written and consumed inside one update, and
-are not part of the checked snapshot. C078..C082 are the persistent state.
+C084..C08F are per-scan, per-resolution and per-decode scratch, written and
+consumed inside one routine, and are not part of the checked snapshot.
+C078..C083 are the persistent state. `BlockDirty` survives the update that sets
+it because the streamer that consumes it runs in the following frame.
 
 The effect appears as four extra objects after the shot only while live; all
 other scene bytes are unchanged. Scene preparation and the retained 4480-dot
