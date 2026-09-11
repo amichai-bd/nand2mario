@@ -8,6 +8,7 @@ import uuid
 from .. import generated_interfaces as abi
 from ..records import atomic_json, file_hash
 from .client import Client, summary
+from .external import read_external
 from .package import read_package
 from .transport import open_serial, session
 
@@ -31,7 +32,10 @@ def run(root, build, args, provenance):
             raise ValueError('keyboard is an interactive console command; use its tagged result.json for records')
         image = None
         if args.action == 'load':
-            image, report['package'] = read_package(root, args.package)
+            if args.package:
+                image, report['package'] = read_package(root, args.package)
+            else:
+                image, report['external'] = read_external(root, args.external)
         if args.action == 'step' and not 1 <= args.dots <= abi.WIRE_STEP_MAX_DOTS:
             raise ValueError('step budget outside generated bounds')
         if args.action == 'run-dots' and not 1 <= args.dots <= abi.WIRE_RUN_DOTS_MAX:

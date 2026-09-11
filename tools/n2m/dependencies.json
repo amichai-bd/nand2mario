@@ -11,6 +11,14 @@
       "altera_mf.v": "2ae09f97f9606626da216e9eb91007beec3ebbe023c5b9415be472417fe49d5e"
     }
   },
+  "external_roms": {
+    "purpose": "Freely licensed third-party Game Boy images loaded over UART; verified against this pin before any byte is transmitted",
+    "local_changes": "none",
+    "storage": "Fetched at run time into ignored workdir/private/external-roms/<name>/; no image bytes are committed",
+    "redistribution": "No image or notice is copied into this repository; each entry keeps its upstream terms",
+    "fields": "Each images entry records url (https), sha256, size (exactly the direct-profile image size), license, and optional notices as name -> {url, sha256, size}",
+    "images": {}
+  },
   "python": {
     "version": "3.14.5",
     "url": "https://www.python.org/downloads/release/python-3145/",

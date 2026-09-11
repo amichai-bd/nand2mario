@@ -33,6 +33,13 @@
       "storage": "Ignored workdir/builds/<tag>/sw/oracle/cache with retained notices"
     },
     {
+      "name": "External Game Boy images for host load",
+      "record": "n2m/dependencies.json",
+      "purpose": "Run freely licensed third-party images on the board through the same verified load path as original builds",
+      "local_changes": "none",
+      "storage": "Fetched at run time into ignored workdir/private/external-roms; no image bytes or notices are committed; the pin list is empty until a reviewed licensed image is selected"
+    },
+    {
       "name": "Pan Docs interface research",
       "record": "../cfg/interfaces.json",
       "purpose": "Pinned DMG addresses, vectors and joypad matrix; CC0-1.0 research only",

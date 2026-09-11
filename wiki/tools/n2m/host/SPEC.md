@@ -30,6 +30,7 @@ is not device authentication or proof of correct wiring.
 |---|---|
 | `host status` | ABI/build identity and single-word state, image-valid, profile and input registers. No incoherent live split counters. |
 | `host load --package <result.json>` | Validated immutable software attempt, load begin/write/end, complete byte-for-byte readback, valid/paused/profile checks. Does not run the ROM. |
+| `host load --external <name>` | Same transmission and verification from a pinned external image fetched at run time. Exactly one of `--package` or `--external` is accepted. |
 | `host reset` | Generated core RESET, acknowledged after initialization. |
 | `host run` | Resume through generated RUN. |
 | `host halt` | Pause through HALT; return completed dots. |
@@ -61,6 +62,19 @@ check its hash, exact size and strict owned header/checksums using the packager
 validator, then keep immutable bytes for transmission and full comparison.
 No expected byte values are logged on mismatch. Each write leaves space for its
 generated offset record; every byte is read back after LOAD_END before success.
+
+`--external <name>` selects an `external_roms.images` entry of the
+[dependency manifest](../../../../tools/n2m/dependencies.json) instead. The pin
+records the https source URL, SHA-256, size and license, and optional upstream
+notices with their own URL, hash and size. The image is fetched at run time into
+ignored `workdir/private/external-roms/<name>/`; no image bytes enter the
+repository. Size is checked first, then SHA-256, on the downloaded bytes before
+the cache is written and again on every cached read. An unknown pin, a missing
+field, a non-https URL, a size differing from the direct-profile image size, or
+any hash mismatch fails before the serial port opens, so no partial image is
+written. Everything after that point, including readback and the valid, paused
+and profile checks, is identical for both sources. The pin list is empty until a
+reviewed licensed image is selected.
 
 ## Transport and recovery
 
