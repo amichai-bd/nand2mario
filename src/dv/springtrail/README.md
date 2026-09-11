@@ -2,11 +2,12 @@
 
 Everything below is bound to the frozen `b551c562...8ba667` milestone image, not
 the image the repository builds today. For the current image, read
-[MILESTONE.md](MILESTONE.md#current-rom-re-qualification): `python-hgs`,
-`python-hgu` and `python-hgx` establish boot, title, the first scripted input
-and its publication; scrolling, win, death/retry and pause/resume/restart
-frames are not yet re-established there, and
-[#363](https://github.com/amichai-bd/nand2mario/issues/363) owns restoring them.
+the [image binding table](../../../wiki/src/dv/springtrail/SPEC.md#image-binding):
+`python-mgs` and `python-mgu` establish boot, title, the first scripted input
+and its publication, and `python-pgs`, `python-pgu` and `python-pgx` the first
+world, PAUSED and Select-restart frames; scrolling, win and death/retry frames
+are not re-established there, and
+[#384](https://github.com/amichai-bd/nand2mario/issues/384) owns them.
 
 This retains the original [PR266](https://github.com/amichai-bd/nand2mario/pull/266)
 definition and evidence boundary. The `python-springtrail` targets later used the

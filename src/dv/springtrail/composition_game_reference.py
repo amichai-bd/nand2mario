@@ -8,7 +8,7 @@ BASELINE_ROM_SHA256='ec8dfb327d1650d2a206df9180cc56059abfeef956b55d3a0f9571170d9
 
 def require_baseline_rom(rom):
     import hashlib
-    assert hashlib.sha256(rom).hexdigest()==BASELINE_ROM_SHA256, 'HISTORICAL_COMPOSITION_ROM: use python-hgs/python-hgu'
+    assert hashlib.sha256(rom).hexdigest()==BASELINE_ROM_SHA256, 'HISTORICAL_COMPOSITION_ROM: use python-mgs/python-mgu'
 
 PERIOD=70224
 
