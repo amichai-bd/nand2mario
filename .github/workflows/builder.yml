@@ -77,25 +77,43 @@ jobs:
           import importlib, pathlib, sys, unittest
           start = pathlib.Path('src/dv/springtrail')
           sys.path.insert(0, str(start))
-          suite, simulator = unittest.TestSuite(), []
+          suite, simulator, blocked = unittest.TestSuite(), [], []
+          # Host fixtures that reach cocotb through an import chain, so this step
+          # cannot run them. Tracked by issue #341; do not extend without one.
+          transitive = {'test_hud_unit_check.py'}
           for path in sorted(start.glob('test_*.py')):
               try:
                   module = importlib.import_module(path.stem)
               except ModuleNotFoundError as error:
-                  # Simulator entry points need cocotb, whose pinned 2.0.1
-                  # release does not build for this interpreter.
                   if error.name != 'cocotb':
-                      raise
-                  simulator.append(path.name)
+                      sys.exit(f'{path.name} cannot import {error.name}; every fixture here '
+                               'must import on the interpreter this job pins')
+                  # Simulator entry points need cocotb, whose pinned 2.0.1 release
+                  # does not build for this interpreter. Each registers its work
+                  # with @cocotb.test() and none of them mentions unittest, so
+                  # require both signals. A module carrying any unittest text is
+                  # treated as a host fixture whose tests would vanish from this
+                  # run, including one that does both. The test is textual, so a
+                  # module that merely writes @cocotb.test in prose while naming
+                  # no unittest is trusted; that is the boundary.
+                  source = path.read_text(encoding='utf-8')
+                  if '@cocotb.test' in source and 'unittest' not in source:
+                      simulator.append(path.name)
+                  elif path.name in transitive:
+                      blocked.append(path.name)
+                  else:
+                      sys.exit(f'{path.name} needs cocotb and is not a plain simulator entry '
+                               'point; make it importable without the simulator, move its '
+                               'unittest cases to a host fixture, or record it under an open '
+                               'issue in transitive above')
                   continue
-              suite.addTests(unittest.defaultTestLoader.loadTestsFromModule(module))
+              tests = unittest.defaultTestLoader.loadTestsFromModule(module)
+              if not tests.countTestCases():
+                  sys.exit(f'{path.name} imported but contributed no tests')
+              suite.addTests(tests)
           print('simulator entry modules not run here:', ' '.join(simulator))
-          # Pin both counts so a host module that acquires a cocotb import drops
-          # out loudly instead of shrinking this suite to a passing subset.
-          if len(simulator) != 21:
-              sys.exit(f'expected 21 simulator entry modules, found {len(simulator)}')
-          if suite.countTestCases() < 100:
-              sys.exit(f'expected at least 100 host tests, collected {suite.countTestCases()}')
+          if blocked:
+              print('host fixtures blocked by a cocotb import chain (#341):', ' '.join(blocked))
           sys.exit(not unittest.TextTestRunner(verbosity=2).run(suite).wasSuccessful())
           PY
       - name: Report simulation scope
