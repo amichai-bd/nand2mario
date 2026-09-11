@@ -217,7 +217,7 @@ These requirements do not close GAP-012 or #28 by simulation. Silent output is
 intentional. [#32](https://github.com/amichai-bd/nand2mario/issues/32) still owns
 trusted CI/hardware-job activation; its unfinished route does not block ordinary
 reviewed local delivery under the existing external-CI policy.
-[#168](https://github.com/amichai-bd/nand2mario/issues/168) retains the historical
+[#337](https://github.com/amichai-bd/nand2mario/issues/337) retains the historical
 finite-Tcl diagnostic and is off the original-game delivery path. No existing
 issue's success criteria are waived by this plan.
 

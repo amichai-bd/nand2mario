@@ -5,8 +5,8 @@ replace loader, transport or end-to-end acceptance.
 
 Validated initialization, loader lifecycle, checked execution and matched
 real-UART/preload state, trace and performance comparisons are implemented.
-[#168](https://github.com/amichai-bd/nand2mario/issues/168) retains only the exact
-finite-Tcl execution-delay investigation and its final review. The comparison
+[#337](https://github.com/amichai-bd/nand2mario/issues/337) carries the unresolved
+finite-Tcl execution-delay characterization; it gates no acceptance here. The comparison
 requirements below remain the criteria for qualifying equivalence on changed inputs.
 
 ## Image and state boundary
@@ -117,4 +117,5 @@ from unlike configurations or these intervals alone.
 
 Successful continuous execution establishes the checked correspondence under
 this mechanism. It does not identify the exact cause of the retained finite-Tcl
-failures. Those failures and that limitation remain explicit in issue168.
+failures. Those failures and that limitation remain explicit in
+[#337](https://github.com/amichai-bd/nand2mario/issues/337).
