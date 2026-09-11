@@ -74,7 +74,21 @@ class ExternalRomTests(unittest.TestCase):
 
     def test_committed_pin_list_holds_no_image_bytes(self):
         manifest = json.loads((ROOT / 'tools/n2m/dependencies.json').read_text(encoding='utf-8'))
-        self.assertEqual(manifest['external_roms']['images'], {})
+        images = manifest['external_roms']['images']
+        self.assertIn('libbet', images)
+        for name, pin in images.items():
+            self.assertRegex(name, '[a-z0-9][a-z0-9-]{0,63}')
+            self.assertTrue(str(pin['url']).startswith('https://'))
+            self.assertRegex(pin['sha256'], '[0-9a-f]{64}')
+            self.assertEqual(pin['size'], abi.PROFILE_ROM_BYTES)
+            self.assertTrue(pin['license'])
+            # A pin describes where the image lives; it never carries image bytes.
+            self.assertFalse({'data', 'bytes', 'base64', 'hex'} & set(pin))
+            for notice, item in pin.get('notices', {}).items():
+                self.assertRegex(notice, '[A-Za-z0-9][A-Za-z0-9._-]{0,63}')
+                self.assertTrue(str(item['url']).startswith('https://'))
+                self.assertRegex(item['sha256'], '[0-9a-f]{64}')
+                self.assertGreater(item['size'], 0)
 
     def test_verified_pin_is_fetched_once_and_reread_from_cache(self):
         download = Download(self.image)

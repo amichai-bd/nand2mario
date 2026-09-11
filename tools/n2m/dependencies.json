@@ -16,8 +16,28 @@
     "local_changes": "none",
     "storage": "Fetched at run time into ignored workdir/private/external-roms/<name>/; no image bytes are committed",
     "redistribution": "No image or notice is copied into this repository; each entry keeps its upstream terms",
-    "fields": "Each images entry records url (https), sha256, size (exactly the direct-profile image size), license, and optional notices as name -> {url, sha256, size}",
-    "images": {}
+    "fields": "Each images entry records url (https), sha256, size (exactly the direct-profile image size), license, and optional notices as name -> {url, sha256, size}; descriptive keys (name, author, source, release, commit, cartridge) identify the reviewed release",
+    "images": {
+      "libbet": {
+        "name": "Libbet and the Magic Floor v0.08",
+        "author": "Damian Yerrick (pinobatch)",
+        "source": "https://github.com/pinobatch/libbet",
+        "release": "v0.08",
+        "commit": "46a765a2c01701bffb8c0b7dd6e4be3a6b193090",
+        "url": "https://github.com/pinobatch/libbet/releases/download/v0.08/libbet.gb",
+        "sha256": "3607412031c8287cf878299ce96e581e85b852dde703806343b95576fa3ff1a9",
+        "size": 32768,
+        "license": "Zlib",
+        "cartridge": "ROM ONLY; upstream makefile links with rgbfix -m ROM and the header byte at 0x0147 reads 0x00",
+        "notices": {
+          "LICENSE": {
+            "url": "https://raw.githubusercontent.com/pinobatch/libbet/46a765a2c01701bffb8c0b7dd6e4be3a6b193090/LICENSE",
+            "sha256": "7bd353e765c8d32a7a048929d008e9bb17fa28d7ee4b619f80b67538e9bb82ff",
+            "size": 897
+          }
+        }
+      }
+    }
   },
   "python": {
     "version": "3.14.5",
