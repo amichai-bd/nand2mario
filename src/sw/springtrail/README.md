@@ -12,8 +12,12 @@ independent expected pixels. Eight-pixel objects have a blank lower tile in
 0C00; the title map follows it. World collision terrain is unchanged.
 
 Movement and scrolling are implemented. The shared interaction and renderer
-routines have bounded CPU proofs, but their live game-loop integration remains
-in progress under#262. No added frame of display latency is active. The numeric
-world and mechanics contract belongs to the [game spec](../../../wiki/src/sw/springtrail/SPEC.md).
+routines have bounded CPU proofs and run live in the game loop: `main.asm`
+calls `InitGame`, `UpdateGame`, `PrepareScene`, `PrepareHUD`, `PrepareMap`,
+`PublishScene`, `PublishHUD` and `StreamMap` every frame. The renderer has one
+displayed frame of input-to-publication delay: each VBlank publishes the scene
+prepared from the preceding sample, then the visible interval that follows
+computes and prepares the next one. The numeric world and mechanics contract
+belongs to the [game spec](../../../wiki/src/sw/springtrail/SPEC.md).
 
 Build: `python tools/build.py sw build springtrail --tag <fresh-tag> --json`.
