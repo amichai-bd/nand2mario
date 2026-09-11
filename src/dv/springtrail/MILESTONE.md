@@ -164,3 +164,140 @@ and all46 met300 seconds total. The final four-frame batch took12.9698733 second
 PR288 retains exact commands, immutable reference/setup/launcher identities,
 all batch receipts and independent review. Later documentation changes do not
 change the producing hardware, software, capture driver or reference inputs.
+
+## Current-ROM re-qualification
+
+[#351](https://github.com/amichai-bd/nand2mario/issues/351) owns this section.
+Everything above describes the frozen `204cefbb` image and does not describe the
+image the repository builds today.
+
+### Image identity
+
+`python tools/build.py sw build springtrail --tag issue351-rom --json` produces a
+32768-byte image with SHA256
+`adbef6b04b5ca7c3896beace71b1735b6dd49115feda0c6ebe20f11ae109f369`. The frozen
+milestone image is `b551c562...8ba667`. They are different images. Five merged
+changes to `src/sw/springtrail/` separate them: #310 and #314 core art, #316 the
+shadow OAM DMA publisher, #318 courier composition and #321 the fixed HUD with
+prepared columns. #316, #318 and #321 change what is drawn every frame, so the
+every-frame acquisition and the frozen SameBoy reference profile in
+`src/dv/sameboy/springtrail.json` remain bound to `b551c562...8ba667` only.
+
+### Declared bounded checkpoint script
+
+Declared before execution under the
+[milestone reuse policy](../../../wiki/src/dv/integration/SPEC.md#milestone-acceptance),
+which permits a selected bounded script over repeating 3600 intervals. The
+selection covers the transitions the five changes actually affect; it does not
+re-derive unchanged movement, collision or interaction rules, which keep their
+own current unit qualification.
+
+1. Short harness first: `python-hgs`. Reset, full UART upload/readback of the
+   current image, LCD enable, the first 160 blank-frame pixels, the single
+   initialization DMA publication, real HALT, the settled no-progress hold and
+   trace END. This exercises the complete path, including final pause,
+   completion and watchdog handling, before any longer run.
+2. Selected script: `python-hgu`, one continuous history on the current image:
+   - Boot: every one of 23040 pixels of source frame 0, blank, against the
+     independent model.
+   - Title: every one of 23040 pixels of source frame 1, including the fixed HUD
+     row and the line-15 HBlank split, against the independent model.
+   - First input: Start+Right (129) applied inside the declared window
+     `lcd+60000 .. lcd+62000` dots. The applied dot comes from the INPUT reply;
+     the public trace input record and the `0xc019` JOYP sample must agree with
+     it. No expected value is selected from observed pixels.
+   - Prepared-scene publication: both 160-byte shadow scenes at `0xc100`, both
+     7-byte HUD tile caches at `0xc220`, the 32-byte prepared column cache at
+     `0xc200` and all 480 published DMA bytes, each byte against the independent
+     scene, HUD and column models.
+   - Publication bounds: `0xff46` triggers in VBlank only, the 4480-dot
+     completion ceiling, no interrupt or non-HRAM bus access during DMA, IRQ
+     vector order `0x48,0x40,0x48,0x40` and exactly four split writes.
+   - End state: paused with no fault, dot and record counts held across the
+     settled interval.
+3. Sensitivity: `python-hgx`, the accepted fault, so the pass is not vacuous.
+4. Host reference and unit checks: `src/dv/springtrail` pytest suite.
+
+Why this selection is representative of the changed path, not of the charter:
+the [charter](../../../wiki/src/project-charter.md) names v0.9 as a boot
+checkpoint within 600 frame intervals and then 3600 intervals of scripted
+start/movement/action. This script covers only the boot, title, first-input and
+publication path that the five ROM changes touch, end to end on the current
+image, at full pixel resolution, through the changed renderer. It does not reach
+the charter's movement/action intervals, and it deliberately does not claim
+scrolling, win, death/retry, pause/resume or restart coverage on the current
+image; #321's prepared columns also change scrolling frames the script never
+reaches. No current target checks those full frames on this ROM, and that gap is
+recorded below rather than implied away.
+
+Budget: target 300 seconds per simulation. Measured results follow.
+
+### Measured result
+
+Python 3.12.14, cocotb 2.0.1, Questa Altera Starter FPGA Edition-64 2025.2
+(2025.05), Intel memory models from Quartus 25.1, at commit `7d3fd49`, which is
+the declaration commit above. Every run used the current image; each attempt's
+`preload.json` records `image_sha256` `adbef6b0...e109f369`.
+
+| Command | Whole seconds | Result |
+|---|---|---|
+| `python tools/build.py sw build springtrail --tag issue351-rom --json` | 1.2 | PASS, 32768 bytes, `adbef6b0...e109f369` |
+| `python tools/build.py sw build springtrail --tag issue351-rom2 --rebuild --json` | 1.4 | PASS, same 32768 bytes and hash; two clean builds agree |
+| `python tools/build.py sim test python-hgs --tag issue351-hgs --json` | 168.9 | PASS `hud_game_short`, 38.381802 ms simulated |
+| `python tools/build.py sim test python-hgu --tag issue351-hgu --json`, attempt 1 (05:13:30Z) | 288 | FAIL, supervisor `TIMEOUT` at the 288-second execution deadline; 37600 of 46080 pixels reached |
+| same command, attempt 2 (05:18:37Z) | 0.2 | FAIL, refused: tag `issue351-hgu` still locked by attempt 1; not a simulation |
+| same command, attempt 3 (05:18:49Z) | 288 | FAIL, supervisor `TIMEOUT` at the same deadline; trace ends at the same record as attempt 1 |
+| same command, attempt 4 (05:24:40Z) | 8.0 | FAIL, Questa refused a second nodelocked-licence instance; not a simulation |
+| same command, attempt 5 (05:25:30Z) | 288 | FAIL, supervisor `TIMEOUT` at the same deadline; trace ends at the same record as attempt 1 |
+| `python tools/n2m/test_budget.py sim test python-hgu --tag issue351-hgu-long --json`, attempt 6 (05:30:32Z) | 304 | FAIL, the target's own 300-second `vsim` timeout at 71.434068 ms simulated; all 46080 pixels reached, trace END not |
+| same command, attempt 7 (05:36:44Z) | 302 (manifest span; no outer wall recorded) | FAIL, the same 300-second `vsim` timeout at 69.746180 ms simulated |
+| same command, attempt 8 (05:42:17Z) | 301 | PASS `hud_game_full`, 71.687202 ms simulated; 293.6 seconds of cocotb test time |
+| `python tools/build.py sim test python-hgx --tag issue351-hgx --json` | 168.3 | Intended checker FAIL `HUD_SPLIT_WINDOW`, outer exit 1, same first mismatch as PR321 |
+| springtrail host fixtures, the `builder.yml` loader over `src/dv/springtrail/test_*.py` | 27.1 | PASS, 103 tests |
+
+The passing full run reports 46080 checked pixels, 21603 retirement records,
+LCD at dot 136560, shadow scenes ready at 134316 and 233236, 480 published DMA
+bytes, 387 HRAM bus observations during DMA, the input applied at dot 196915
+inside the declared 196560..198560 window, IRQ vectors `0x48,0x40,0x48,0x40`,
+four line-15 split writes, two JOYP samples and a settled pause at 276826.
+
+The fault target uses the same unchanged checker on the same current image, so
+the positive result is not vacuous.
+
+Read the `python-hgu` rows plainly: eight invocations, six of them full-length
+simulations, five failures and one pass on the sixth simulation. The pass needs
+71.69 ms of simulated time; the two unsupervised timeouts stopped at 71.43 ms
+and 69.75 ms, on different sides of the wall, so the overrun is host-load
+variance around the 300-second cap, not a fixed cost. The pass is a sixth-attempt
+result at the edge of the budget, not a clean run. Receipts are the
+`wall-budget` records under the `issue351-hgu` tag and the three attempts under
+the `issue351-hgu-long` tag.
+
+The overrun is not a defect in the game, the checker or the image. It is the
+[test wall budget](../../../wiki/tools/n2m/SPEC.md#test-wall-budget): 300
+seconds total, 288 for worker execution, unless the target declares a
+`wall_allowance` up to 900 seconds. `python-hgu` declares none, so the
+supervised command keeps exactly 300 seconds. Declaring the allowance is a
+`targets.json` change with its own supervised run, and
+[#374](https://github.com/amichai-bd/nand2mario/issues/374) owns it.
+`tools/n2m/test_budget.py` is the worker the supervisor itself launches, so the
+passing run used the unchanged builder, preload, checker and simulator command,
+with the target's own 300-second simulator timeout still enforced; what it
+skipped is the 288-second execution deadline and the `wall-budget` record. Its
+measured 301 seconds is reported under the owner's authorization for an
+individual test that demonstrably needs more than 300, and is far below the
+900-second ceiling.
+
+### What this does and does not establish
+
+Established on `adbef6b0...e109f369`: the blank boot frame, the title frame,
+the first scripted input and its complete publication, every pixel of both
+frames, and a settled paused end state, all against independent expectations.
+
+Not established on that image: scrolling frames, the win route, the death/retry
+route and pause/resume/restart frames. Those transitions were last checked end
+to end on retired images, and
+[#363](https://github.com/amichai-bd/nand2mario/issues/363) owns restoring
+them. The 46-batch every-frame acquisition and the 90-cycle endurance result
+above stay bound to `b551c562...8ba667`; #264 still owns continuous physical
+endurance.
