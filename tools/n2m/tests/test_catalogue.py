@@ -252,6 +252,14 @@ class Contention(unittest.TestCase):
             outcome = module.run_simulation(root, "t", "x", args, 100)
         self.assertEqual((outcome["status"], outcome["reason"]), ("SKIPPED", "questa-contention"))
 
+    def test_a_cached_simulation_reports_its_cache_hit(self):
+        args = type("Args", (), {"seed": 1, "rebuild": False, "questa_bin": None,
+                                 "intel_sim_lib": None})()
+        with patch("n2m.catalogue.supervise",
+                   return_value=(0, json.dumps({"status": "PASS", "cache": "CACHED"}) + "\n")):
+            outcome = module.run_simulation(ROOT, "tag", "builder-smoke", args, 100)
+        self.assertEqual((outcome["status"], outcome["cache"]), ("PASS", "CACHED"))
+
     def test_a_real_simulation_failure_is_still_a_failure(self):
         args = type("Args", (), {"seed": 1, "rebuild": False, "questa_bin": None,
                                  "intel_sim_lib": None})()

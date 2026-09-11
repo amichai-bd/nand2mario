@@ -385,8 +385,8 @@ def run_unit(root, path, entry):
     outcome = {"command": command, "exit_code": result.returncode, "elapsed_seconds": elapsed,
                "status": "PASS" if result.returncode == 0 else "FAIL"}
     if result.returncode:
-        outcome["error"] = (result.stdout or "").strip().splitlines()[-1:] or ["no output"]
-        outcome["error"] = outcome["error"][0]
+        reported = (result.stdout or "").strip().splitlines()
+        outcome["error"] = reported[-1] if reported else "no output"
         outcome["output"] = result.stdout
     return outcome
 
@@ -507,7 +507,10 @@ def run_selection(root, model, path, tag, args, budget, provenance):
             record["skipped"].append(name)
         elif outcome["status"] != "PASS":
             record["failed"].append(name)
-        if "elapsed_seconds" in outcome and outcome["status"] != "SKIPPED":
+        # Only an actual run has a wall worth recording: a skipped unit never
+        # ran, and a CACHED simulation reports the cache check, not the work.
+        if ("elapsed_seconds" in outcome and outcome["status"] != "SKIPPED"
+                and outcome.get("cache") != "CACHED"):
             durations[name] = round(outcome["elapsed_seconds"], 2)
     record["elapsed_seconds"] = time.monotonic() - started
     record["finished"] = datetime.now(timezone.utc).isoformat()
