@@ -98,6 +98,33 @@ def check_views(browser, base):
         page.screenshot(path=str(OUTPUT / 'quality-animated-print.png'), full_page=True)
         page.close()
 
+        # README showcases are plain SVG documents: motion plays, and the reduced-motion still is the finished state.
+        page = new_page()
+        page.goto(base + '/files/wiki/showcase/game-start.svg')
+        figure = page.locator('svg').first
+        walk, stand, title = page.locator('.walk'), page.locator('.stand'), page.locator('.title')
+        assert walk.evaluate('e => getComputedStyle(e).animationName') == 'walk'
+        page.emulate_media(reduced_motion='reduce')
+        for part in (walk, stand, title, page.locator('.k-start rect').first):
+            assert part.evaluate('e => getComputedStyle(e).animationName') == 'none'
+        assert stand.evaluate('e => getComputedStyle(e).opacity') == '1', 'Courier missing from the still'
+        assert title.evaluate('e => getComputedStyle(e).opacity') == '0', 'Title text over the PLAY still'
+        assert placement(figure, '.stand') > 0.2, 'Courier did not end 48 px to the right'
+        expect(figure).to_contain_text('host input --mask 0')
+        page.screenshot(path=str(OUTPUT / 'quality-showcase-game.png'))
+        page.close()
+        page = new_page()
+        page.goto(base + '/files/wiki/showcase/build-and-tests.svg')
+        first = page.locator('.t1').first
+        assert first.evaluate('e => getComputedStyle(e).animationName') == 't1'
+        page.emulate_media(reduced_motion='reduce')
+        assert first.evaluate('e => getComputedStyle(e).animationName') == 'none'
+        for line in page.locator('text').all():
+            assert line.evaluate('e => getComputedStyle(e).opacity') == '1', 'Terminal line hidden in the still'
+        expect(page.locator('svg')).to_contain_text('TESTS=1 PASS=1')
+        page.screenshot(path=str(OUTPUT / 'quality-showcase-terminal.png'))
+        page.close()
+
         for fragment, expected in (('#slide-4', '4 / 6'), ('#missing', '1 / 6'), ('#%E0%A4%A', '1 / 6')):
             page = new_page()
             page.goto(base + '/files/wiki/presentations/cpu-execution.html' + fragment)
@@ -125,7 +152,7 @@ def check_views(browser, base):
             page.close()
         assert not errors, '\n'.join(errors)
         return {'status': 'passed', 'browser': browser.version, 'viewports': [1440, 390],
-                'checks': ['slide fragments', 'malformed fragments', 'keyboard', 'print visibility and contrast', 'animated diagram motion, completeness and print contrast', 'chart scrolling']}
+                'checks': ['slide fragments', 'malformed fragments', 'keyboard', 'print visibility and contrast', 'animated diagram motion, completeness and print contrast', 'README showcase motion and reduced-motion still', 'chart scrolling']}
     except BaseException:
         if page is not None and not page.is_closed():
             page.screenshot(path=str(OUTPUT / 'failure.png'), full_page=True)

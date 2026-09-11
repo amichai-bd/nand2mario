@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="372" viewBox="0 0 800 372" role="img" aria-label="Build and tests · nand2mario at 5ce0aa0 · 2026-09-11">
+<title>Build and tests · nand2mario at 5ce0aa0 · 2026-09-11</title><style>text{font:12px ui-monospace,Consolas,"Liberation Mono",Menlo,monospace;fill:#e4eaf2}.h{font-size:11px;fill:#a9b6c7}@keyframes cur{0%{transform:translateY(-252px)}8.42%{transform:translateY(-216px)}18.95%{transform:translateY(-198px)}23.16%{transform:translateY(-180px)}24.21%{transform:translateY(-108px)}33.68%{transform:translateY(-90px)}45.26%{transform:translateY(-72px)}53.68%{transform:translateY(-54px)}71.58%{transform:translateY(-36px)}76.84%{transform:translateY(-18px)}80%{transform:translateY(0px)}100%{transform:translateY(0)}}@keyframes blink{50%{opacity:0}}@keyframes t1{0%,8.37%{opacity:0}8.42%,100%{opacity:1}}@keyframes t2{0%,18.89%{opacity:0}18.95%,100%{opacity:1}}@keyframes t3{0%,23.11%{opacity:0}23.16%,100%{opacity:1}}@keyframes t4{0%,24.16%{opacity:0}24.21%,100%{opacity:1}}@keyframes t5{0%,33.63%{opacity:0}33.68%,100%{opacity:1}}@keyframes t6{0%,45.21%{opacity:0}45.26%,100%{opacity:1}}@keyframes t7{0%,53.63%{opacity:0}53.68%,100%{opacity:1}}@keyframes t8{0%,71.53%{opacity:0}71.58%,100%{opacity:1}}@keyframes t9{0%,76.79%{opacity:0}76.84%,100%{opacity:1}}@keyframes t10{0%,79.95%{opacity:0}80%,100%{opacity:1}}@media (prefers-reduced-motion:no-preference){.t1{animation:t1 19.0s linear infinite}.t2{animation:t2 19.0s linear infinite}.t3{animation:t3 19.0s linear infinite}.t4{animation:t4 19.0s linear infinite}.t5{animation:t5 19.0s linear infinite}.t6{animation:t6 19.0s linear infinite}.t7{animation:t7 19.0s linear infinite}.t8{animation:t8 19.0s linear infinite}.t9{animation:t9 19.0s linear infinite}.t10{animation:t10 19.0s linear infinite}.cur{animation:cur 19.0s step-end infinite,blink 1s step-end infinite}}</style>
+<rect x=".5" y=".5" width="799" height="371" rx="10" fill="#171c24" stroke="#303a48"/>
+<path d="M0 30.5H800" stroke="#303a48"/>
+<circle cx="18" cy="15" r="5" fill="#ff5f57"/><circle cx="36" cy="15" r="5" fill="#febc2e"/><circle cx="54" cy="15" r="5" fill="#28c840"/>
+<text class="h" x="400.0" y="19" text-anchor="middle">Build and tests · nand2mario at 5ce0aa0 · 2026-09-11</text>
+<text x="16" y="60" xml:space="preserve"><tspan fill="#93e7bd">$ </tspan>python tools/build.py sw build springtrail --tag readme --json</text>
+<text class="t1" x="16" y="78" xml:space="preserve"><tspan fill="#a9b6c7">{"artifacts": {…}, "attempt": "f5c2e3ef0619", "cache": "<tspan fill="#93e7bd">MISS</tspan>", "commit": "5ce0aa0d…", …</tspan></text>
+<text class="t1" x="16" y="96" xml:space="preserve"><tspan fill="#a9b6c7"> "rom": "workdir/builds/readme/sw/build/springtrail/runs/f5c2e3ef0619/image.gb", <tspan fill="#93e7bd">"status": "PASS"</tspan>, …}</tspan></text>
+<text class="t2" x="16" y="114" xml:space="preserve"><tspan fill="#93e7bd">$ </tspan>python -m unittest tools.n2m.tests.test_core_art tools.n2m.tests.test_sprite_preview</text>
+<text class="t3" x="16" y="132" xml:space="preserve"><tspan fill="#a9b6c7">.........</tspan></text>
+<text class="t4" x="16" y="150" xml:space="preserve"><tspan fill="#a9b6c7">----------------------------------------------------------------------</tspan></text>
+<text class="t4" x="16" y="168" xml:space="preserve"><tspan fill="#a9b6c7">Ran 9 tests in 0.600s</tspan></text>
+<text class="t4" x="16" y="186" xml:space="preserve"><tspan fill="#a9b6c7"></tspan></text>
+<text class="t4" x="16" y="204" xml:space="preserve"><tspan fill="#a9b6c7"><tspan fill="#93e7bd">OK</tspan></tspan></text>
+<text class="t5" x="16" y="222" xml:space="preserve"><tspan fill="#93e7bd">$ </tspan>python tools/build.py check --tag readme</text>
+<text class="t6" x="16" y="240" xml:space="preserve"><tspan fill="#a9b6c7"><tspan fill="#93e7bd">PASS</tspan>: check tag=readme</tspan></text>
+<text class="t7" x="16" y="258" xml:space="preserve"><tspan fill="#93e7bd">$ </tspan>workdir/builds/python-dv-env/.venv/Scripts/python.exe tools/build.py sim test python-joypad --tag readme</text>
+<text class="t8" x="16" y="276" xml:space="preserve"><tspan fill="#a9b6c7"><tspan fill="#93e7bd">BUILT</tspan>: sim tag=readme</tspan></text>
+<text class="t9" x="16" y="294" xml:space="preserve"><tspan fill="#93e7bd">$ </tspan>grep -o "TESTS=.*" workdir/builds/readme/sim/test/python-joypad/sim.log</text>
+<text class="t10" x="16" y="312" xml:space="preserve"><tspan fill="#a9b6c7">TESTS=1 <tspan fill="#93e7bd">PASS</tspan>=1 FAIL=0 SKIP=0              21442.00           3.58       5985.43  **</tspan></text>
+<text x="16" y="330" xml:space="preserve"><tspan fill="#93e7bd">$ </tspan></text>
+<rect class="cur" x="31" y="318" width="7" height="14" fill="#93e7bd"/>
+<text class="h" x="16" y="360">Real command output captured in one session. Long JSON lines are shortened with …; every shown field is verbatim.</text>
+</svg>
