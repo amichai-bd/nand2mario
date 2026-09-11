@@ -108,7 +108,7 @@ CALL AppendScene
 ; One live shot follows the goal as a single approved 8x8 piece.
 LD A,[ShotTTL]
 OR A,A
-JR Z,ClearSceneTail
+JR Z,SceneEffect
 LD A,[ShotX]
 LD [ObjectX],A
 LD A,[ShotX+1]
@@ -127,7 +127,7 @@ LD [SceneTile],A
 CALL ScenePosition
 CALL EmitPiece
 ; One 16 by 16 release effect follows the shot while it is live.
-ClearSceneTail:
+SceneEffect:
 LD A,[EffectTile]
 OR A,A
 JR Z,SceneTail
