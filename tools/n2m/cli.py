@@ -18,6 +18,7 @@ from .fpga import build_fpga
 from .fpga_program import program as program_fpga
 from .rgbds import oracle
 from .regress import clean, regress
+from . import catalogue
 from sw.build import assemble_target
 from sw.rom_build import build_target
 from sw.link_conformance import proof as link_proof
@@ -58,6 +59,25 @@ def parser():
     subset.add_argument("--sim", choices=("questa",), default="questa")
     subset.add_argument("--tag")
     subset.add_argument("--json", action="store_true")
+    tests = commands.add_parser("tests", help="one catalogue of every runnable test; select by level and label").add_subparsers(dest="action", required=True)
+    validate = tests.add_parser("validate", help="prove the catalogue still covers every test in the tree")
+    listing = tests.add_parser("list", help="name the tests one selection would run")
+    runner = tests.add_parser("run", help="run one selection and write each measured wall back")
+    for leaf in (listing, runner):
+        leaf.add_argument("--level", type=int, choices=catalogue.LEVELS,
+                          help="run this level and every level below it")
+        leaf.add_argument("--label", action="append", default=[],
+                          help="require this declared label; repeat to require several")
+    runner.add_argument("--seed", type=int, default=1)
+    runner.add_argument("--rebuild", action="store_true")
+    runner.add_argument("--budget", type=int, help="aggregate wall budget in seconds")
+    runner.add_argument("--broader", action="store_true",
+                        help="declare a budget above the ordinary 300-second pre-merge aggregate")
+    runner.add_argument("--questa-bin")
+    runner.add_argument("--intel-sim-lib")
+    for leaf in (validate, listing, runner):
+        leaf.add_argument("--tag")
+        leaf.add_argument("--json", action="store_true")
     remove = commands.add_parser("clean", help="remove generated output under exactly one build tag")
     remove.add_argument("--tag", required=True)
     remove.add_argument("--json", action="store_true")
@@ -150,8 +170,15 @@ def tagged(root, args, header, publish):
                                         stderr=subprocess.STDOUT, timeout=180)
                 (build / "check.log").write_text(result.stdout, encoding="utf-8")
                 (build / "commands.log").write_text(json.dumps(command) + "\n", encoding="utf-8")
-                report.update(status="PASS" if result.returncode == 0 else "FAIL",
-                              commands=[command], artifacts=[str((build / "check.log").relative_to(root))])
+                # A test in the tree but not in the catalogue fails this check.
+                model, _ = catalogue.load(root)
+                problems = catalogue.coverage(root, model)
+                report.update(status="PASS" if result.returncode == 0 and not problems else "FAIL",
+                              commands=[command], catalogue_units=len(model["units"]),
+                              catalogue_problems=problems,
+                              artifacts=[str((build / "check.log").relative_to(root))])
+                if problems:
+                    report["error"] = problems[0]
             elif args.command == "doctor":
                 provenance = {k: report[k] for k in ("commit", "dirty_tree_fingerprint", "host", "python") if k in report}
                 report.update(doctor(root, build, args, provenance))
@@ -225,6 +252,8 @@ def main(argv=None, root=None):
     try:
         if args.command == "regress":
             report = regress(root, args, header, publish)
+        elif args.command == "tests":
+            report = catalogue.command(root, args, header, publish)
         elif args.command == "clean":
             # No workspace: the tag directory itself is what clean removes.
             report = header(args.tag)
@@ -239,6 +268,22 @@ def main(argv=None, root=None):
         print(f"{report.get('cache', report['status'])}: {args.command} tag={report.get('tag', '-')}")
         if "error" in report:
             print(report["error"])
+        if args.command == "tests" and "units" in report and isinstance(report["units"], dict):
+            for name, outcome in report["units"].items():
+                if outcome["status"] != "PASS":
+                    print(f"{name}: {outcome['status']} {outcome.get('reason', outcome.get('error', ''))}".rstrip())
+            print(f"{report['selector']}: {report['selected']} selected, "
+                  f"{len(report.get('failed', []))} failed, {len(report.get('skipped', []))} skipped")
+            print(f"Elapsed: {report.get('elapsed_seconds', 0):.1f}s of {report.get('budget_seconds')}s budget")
+        if args.command == "tests" and "tests" in report:
+            for name in report["tests"]:
+                print(name)
+            print(f"{report['selector']}: {report['selected']} selected, "
+                  f"{report['measured']} measured, {report['measured_seconds']:.1f}s last measured total")
+        if args.command == "tests" and "problems" in report:
+            for problem in report["problems"]:
+                print(problem)
+            print(f"{report['units']} units, {len(report['not_runnable'])} not runnable")
         if args.command == "regress" and "targets" in report:
             for name, outcome in report["targets"].items():
                 print(f"{name}: {outcome['status']} {outcome.get('cache', '')} {outcome.get('error', '')}".rstrip())

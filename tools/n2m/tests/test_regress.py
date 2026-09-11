@@ -13,7 +13,8 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from n2m.cli import main
-from n2m.records import atomic_json, read_json
+from n2m.records import atomic_json, atomic_text, read_json
+from n2m import catalogue
 from n2m import regress as module
 from n2m.test_budget import supervise
 
@@ -38,9 +39,21 @@ class RegressTests(unittest.TestCase):
         self.outcomes = {"builder-smoke-fail": ("FAIL", 1)}
 
     def declare(self, subsets, budget=300, tier="ordinary"):
-        plan = {"version": 1, "subsets": {name: {"tier": tier, "purpose": "test", "budget_seconds": budget, "targets": members}
-                                          for name, members in subsets.items()}}
+        """Declare subset metadata, and label its members in the catalogue.
+
+        A subset no longer carries its own target list: membership is the
+        catalogue label of the same name, so the repository holds one list.
+        """
+        plan = {"version": 1, "subsets": {name: {"tier": tier, "purpose": "test", "budget_seconds": budget}
+                                          for name in subsets}}
         atomic_json(self.subsets, plan)
+        model, path = catalogue.load(self.root)
+        for name, members in subsets.items():
+            model["labels"].setdefault(name, "declared by a regression subset test")
+            for unit, entry in model["units"].items():
+                wanted = {name} if unit in members else set()
+                entry["labels"] = sorted(set(entry["labels"]) - {name} | wanted)
+        atomic_text(path, catalogue.format_document(model))
 
     def fake_supervise(self, command, root, tag, *, target=None, ceiling=None):
         """Stand in for the public sim-test child: record the call, publish the
@@ -109,19 +122,27 @@ class RegressTests(unittest.TestCase):
         self.assertEqual(report["error"], "unknown regression subset: nightly")
         self.assertEqual(self.children, [])
         self.assertEqual(read_json(self.root / "workdir/builds/agg/manifest.json")["status"], "FAIL")
-        for plan, message in (({"version": 2, "subsets": {}}, "version 1"),
-                              ({"version": 1, "subsets": {"x": {"tier": "ordinary", "purpose": "p", "budget_seconds": 300}}}, "exactly"),
-                              ({"version": 1, "subsets": {"x": {"tier": "nightly", "purpose": "p", "budget_seconds": 300, "targets": ["builder-smoke"]}}}, "tier"),
-                              ({"version": 1, "subsets": {"x": {"tier": "ordinary", "purpose": " ", "budget_seconds": 300, "targets": ["builder-smoke"]}}}, "purpose"),
-                              ({"version": 1, "subsets": {"x": {"tier": "ordinary", "purpose": "p", "budget_seconds": 300, "targets": ["builder-smoke", "builder-smoke"]}}}, "distinct"),
-                              ({"version": 1, "subsets": {"x": {"tier": "ordinary", "purpose": "p", "budget_seconds": 300, "targets": ["missing"]}}}, "registered"),
-                              ({"version": 1, "subsets": {"x": {"tier": "ordinary", "purpose": "p", "budget_seconds": 301, "targets": ["builder-smoke"]}}}, "1..300"),
-                              ({"version": 1, "subsets": {"x": {"tier": "milestone", "purpose": "p", "budget_seconds": 301, "targets": ["builder-smoke"]}}}, "1..300"),
-                              ({"version": 1, "subsets": {"x": {"tier": "ordinary", "purpose": "p", "budget_seconds": 300.0, "targets": ["builder-smoke"]}}}, "integer"),
-                              ({"version": 1, "subsets": {"x": {"tier": "ordinary", "purpose": "p", "budget_seconds": 900, "targets": ["builder-smoke", "tile-pixel", "tile-pixel-corrupt"]}}}, "ordinary")):
-            atomic_json(self.subsets, plan)
+        self.declare({"x": ["builder-smoke", "tile-pixel", "tile-pixel-corrupt"]})
+
+        def plan(**fields):
+            return {"version": 1, "subsets": {"x": {"tier": "ordinary", "purpose": "p",
+                                                    "budget_seconds": 300, **fields}}}
+
+        for declaration, message in (({"version": 2, "subsets": {}}, "version 1"),
+                                     (plan(targets=["builder-smoke"]), "exactly"),
+                                     (plan(tier="nightly"), "tier"),
+                                     (plan(purpose=" "), "purpose"),
+                                     (plan(budget_seconds=0), "1\\.\\."),
+                                     (plan(budget_seconds=901), "1\\.\\."),
+                                     (plan(budget_seconds=300.0), "integer"),
+                                     (plan(budget_seconds=900), "ordinary")):
+            atomic_json(self.subsets, declaration)
             with self.assertRaisesRegex(ValueError, message):
                 module.load_subsets(self.root)
+        # A subset whose label names no catalogue target declares nothing at all.
+        self.declare({"x": []})
+        with self.assertRaisesRegex(ValueError, "must label at least one"):
+            module.load_subsets(self.root)
         self.assertEqual(self.children, [])
 
     def test_unrunnable_member_fails_before_any_child(self):
