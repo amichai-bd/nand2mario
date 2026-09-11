@@ -16817,7 +16817,6 @@
         "src/sw/springtrail/oam_dma.asm",
         "src/sw/springtrail/courier.asm",
         "src/sw/springtrail/assets/courier/unique-tiles.json",
-        "src/dv/springtrail/composition_game_check.py",
         "src/dv/springtrail/composition_game_reference.py",
         "src/dv/springtrail/composition_reference.py",
         "src/sw/springtrail/assets/courier/poses.json",
@@ -17369,7 +17368,7 @@
     "preload": "springtrail",
     "wall_allowance": {
       "seconds": 900,
-      "reason": "six full frames through VBlank 5 need about 140 ms of simulated time; python-hgu measured 301 seconds for 72 ms of simulated time on this image"
+      "reason": "six full frames through VBlank 5 need about 140 ms of simulated time; measured 844-second whole-run wall for 139 ms on the current image at 6.0 wall seconds per simulated millisecond"
     }
   },
   "python-pgx": {
@@ -17548,7 +17547,7 @@
     "preload": "springtrail",
     "wall_allowance": {
       "seconds": 900,
-      "reason": "the accepted fault is witnessed during frame 3, about 100 ms of simulated time; python-hgu measured 301 seconds for 72 ms of simulated time on this image"
+      "reason": "the accepted fault is witnessed during frame 3, about 100 ms of simulated time; measured 723-second whole-run wall for 94 ms on the current image"
     }
   },
   "serial-registers": {
@@ -17820,7 +17819,6 @@
         "src/sw/springtrail/oam_dma.asm",
         "src/sw/springtrail/courier.asm",
         "src/sw/springtrail/assets/courier/unique-tiles.json",
-        "src/dv/springtrail/composition_game_check.py",
         "src/dv/springtrail/composition_game_reference.py",
         "src/dv/springtrail/composition_reference.py",
         "src/sw/springtrail/assets/courier/poses.json",
@@ -18001,7 +17999,6 @@
         "src/sw/springtrail/oam_dma.asm",
         "src/sw/springtrail/courier.asm",
         "src/sw/springtrail/assets/courier/unique-tiles.json",
-        "src/dv/springtrail/composition_game_check.py",
         "src/dv/springtrail/composition_game_reference.py",
         "src/dv/springtrail/composition_reference.py",
         "src/sw/springtrail/assets/courier/poses.json",
@@ -18726,7 +18723,6 @@
         "src/sw/springtrail/oam_dma.asm",
         "src/sw/springtrail/courier.asm",
         "src/sw/springtrail/assets/courier/unique-tiles.json",
-        "src/dv/springtrail/composition_game_check.py",
         "src/dv/springtrail/composition_game_reference.py",
         "src/dv/springtrail/composition_reference.py",
         "src/sw/springtrail/assets/courier/poses.json",

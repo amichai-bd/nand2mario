@@ -3,6 +3,7 @@ import zlib
 from pause_game_reference import (Check, FRAMES, PERIOD, PUBLICATIONS, TITLE_ROWS,
                                   publication_writes, restoration, samples, states)
 from hud_reference import column, hud_tiles
+from motion_game_reference import initial_states, state_bytes
 from interactions_reference import PAUSED, PLAYING, TITLE
 
 
@@ -26,12 +27,21 @@ class PauseScript(unittest.TestCase):
         self.assertEqual(games[4].enemy_x, 256*16)
         self.assertEqual(samples(), (129, 0, 128, 64, 64, 64))
 
-    def test_frames_are_literal_and_distinct(self):
+    def test_frames_are_literal(self):
         check = Check()
         self.assertEqual(len(check.images), FRAMES)
         self.assertEqual([f'{zlib.crc32(i):08x}' for i in check.images],
-                         ['b15161f6', '9b162de2', 'e5a96898', '2a877964', 'a20ef3f5', 'e1736456'])
-        self.assertEqual(len(set(check.images)), FRAMES)
+                         ['b15161f6', '9b162de2', '2a877964', '2a877964', 'a20ef3f5', 'e1736456'])
+        # The neutral frame repeats the first world frame's pixels: STAND holds
+        # until the fourth animation step. Its state bytes still differ.
+        self.assertEqual(len(set(check.images)), FRAMES-1)
+        games = states()
+        self.assertEqual([g.player.animation for g in games], [1, 2, 3, 3, 1, 1])
+        self.assertEqual([g.player.direction for g in games], [0, 1, 1, 1, 0, 0])
+        self.assertNotEqual(state_bytes(games[1], 129), state_bytes(games[2], 0))
+
+    def test_first_world_state_is_the_motion_composition_state(self):
+        self.assertEqual(states()[1], initial_states()[1])
 
     def test_restoration_restarts_at_the_select_edge(self):
         pairs, reselect = restoration(states())

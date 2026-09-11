@@ -5,10 +5,11 @@ update is computed in visible frame n+1, published in VBlank n+1 and displayed
 in frame n+2. Frames 0..5 are checked pixel by pixel: blank, TITLE, the first
 world frame, a neutral frame, the PAUSED frame and the Select-restart frame.
 """
-from hud_game_reference import PERIOD, scene
-from hud_reference import image, hud_tiles, column
-from interactions_reference import Game, TITLE, PLAYING, update
-from interaction_cases import ADDRESSES, state_bytes
+from motion_frames import scene, image
+from motion_game_reference import ADDRESSES, PERIOD, state_bytes, update
+from motion_reference import Player
+from hud_reference import hud_tiles, column
+from interactions_reference import Game, TITLE, PLAYING
 
 # Sampled JOYP masks for VBlank 0..4; VBlank 5 samples the held final mask.
 SCRIPT = (129, 0, 128, 64, 64)
@@ -20,7 +21,7 @@ TITLE_ROWS = tuple(range(0x98a4, 0x98af)) + tuple(range(0x98e4, 0x98ef))
 
 
 def states():
-    result = [Game()]
+    result = [Game(player=Player())]
     for mask in SCRIPT:
         result.append(update(result[-1], mask))
     return result
@@ -162,7 +163,7 @@ class Check:
         assert kind == 'W', 'PAUSE_TRACE_KIND'
         dot, address, data = value >> 24, (value >> 8) & 65535, value & 255
         self.memory[address] = data
-        if 0x8000 <= address < 0x85e0:
+        if 0x8000 <= address < 0x8620:
             assert self.lcd is None, 'PAUSE_LATE_TILES'
             self.tiles.append((address, data))
         if address == 0xff40:

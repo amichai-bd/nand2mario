@@ -321,11 +321,16 @@ their checkers guard retired hashes. None could pass, so none is retained:
 
 | Target | Checker and image | Disposition |
 |---|---|---|
-| `python-springtrail`, `python-gu` | `flow_reference` three-frame flow game on `97f5d9da...a593b513` | Retired. Boot, title, first input and publication are `python-hgu` on the current image; the first world frame is `python-pgu` below. |
-| `python-gs` | `flow_reference` two-frame short harness | Retired; `python-hgs` is the current short harness. |
-| `python-springtrail-x`, `python-gx` | `flow_reference` with the source-shade fault | Retired; `python-hgx` and `python-pgx` are the current faults. |
-| `python-cgs`, `python-cgu` | `composition_game_reference` blank/TITLE/publication on `ec8dfb32...0d9e785f` | Retired; the same contract is `python-hgs`/`python-hgu` on the current image. |
-| `python-cgx` | `composition_game_reference` with the wrong-piece OAM fault | Retired; `python-hgx` is the current accepted-write fault. |
+| `python-springtrail`, `python-gu` | `flow_reference` three-frame flow game on `97f5d9da...a593b513` | Retired. Boot, title, first input and publication are `python-mgu` on the current image; the first world frame is `python-pgu` below. |
+| `python-gs` | `flow_reference` two-frame short harness | Retired; `python-mgs` and `python-pgs` are the current short harnesses. |
+| `python-springtrail-x`, `python-gx` | `flow_reference` with the source-shade fault | Retired; `python-pgx` is the current-image fault. |
+| `python-cgs`, `python-cgu` | `composition_game_reference` blank/TITLE/publication on `ec8dfb32...0d9e785f` | Retired; the same contract is `python-mgs`/`python-mgu` on the current image. |
+| `python-cgx` | `composition_game_reference` with the wrong-piece OAM fault | Retired; `python-hgx` keeps the accepted-write fault on the retired `adbef6b0...e109f369` image only. |
+
+`python-hgs`, `python-hgu` and `python-hgx` are outside this record: they pin
+`adbef6b0...e109f369` and refuse the image the repository now builds, as the
+[verification matrix](../../../wiki/src/dv/springtrail/SPEC.md#image-binding)
+states.
 
 The two historical reference modules keep their hash guards and host unit tests
 so no consumer can silently apply their expectations to another image; their
@@ -341,12 +346,17 @@ Declared before execution under the
 `pause_game_reference.py` freezes JOYP masks 129, 0, 128, 64 sampled in VBlank
 0..3, with 64 held through VBlank 5. Mask n is sampled in VBlank n, computed in
 visible frame n+1, published in VBlank n+1 and displayed in frame n+2. The
-independent states are title; PLAYING at x 25 walking; PLAYING at x 25 standing;
-PAUSED; PLAYING restarted at x 24 with score 0, timer 0 and the enemy at 256;
-and one restarted update. Source frames 0..5 are therefore blank, TITLE, the
-first world frame, the neutral frame, the PAUSED frame and the Select-restart
-frame. Their literal CRC32 values are `b15161f6`, `9b162de2`, `e5a96898`,
-`2a877964`, `a20ef3f5` and `e1736456`; all six images differ.
+independent states come from the interaction flow rules over the current
+motion model (`motion_reference`, `motion_frames`): title; PLAYING at x 25,
+STAND, animation counter 2; PLAYING at x 25, STAND, animation counter 3;
+PAUSED; PLAYING restarted at x 24 with the motion state reset, score 0, timer 0
+and the enemy at 256; and one restarted update. Source frames 0..5 are
+therefore blank, TITLE, the first world frame, the neutral frame, the PAUSED
+frame and the Select-restart frame. Their literal CRC32 values are `b15161f6`,
+`9b162de2`, `2a877964`, `2a877964`, `a20ef3f5` and `e1736456`. The neutral
+frame repeats the first world frame's pixels because STAND holds until the
+fourth animation step; its shadow state bytes, including the ten motion bytes
+at `0xc060..0xc069`, still differ and are checked.
 
 1. `python-pgs`: the complete short harness, the same driver stopped after the
    first 160 blank pixels, with real HALT, settled hold and trace END.
@@ -375,63 +385,76 @@ frame. Their literal CRC32 values are `b15161f6`, `9b162de2`, `e5a96898`,
    next prepared HUD cache must fail the unchanged `PAUSE_HUD_CACHE` check.
 4. Host fixtures: `test_pause_game_reference.py` in the springtrail suite.
 
-Budget: `python-pgu` simulates about 140 ms and `python-pgx` about 100 ms. At
-`python-hgu`'s measured 4.1 wall seconds per simulated millisecond both exceed
-300 seconds, so each declares a 900-second `wall_allowance` in `targets.json`
-with that measured basis; `python-pgs` keeps the default 300.
+Budget: `python-pgu` simulates about 140 ms and `python-pgx` about 100 ms. The
+measured rate on the current image is 6.0 wall seconds per simulated
+millisecond on a free seat (`python-pgu` below), so both exceed 300 seconds and
+each declares a 900-second `wall_allowance` in `targets.json` with that measured
+basis; `python-pgs` keeps the default 300. The full run leaves 56 seconds of
+margin on a free seat and none under contention, so a licence refusal or a
+concurrent simulation shows as a supervisor timeout, not a checked result.
 
 Image binding: these targets pin no hash. The `springtrail` preload builds the
 image from the current sources, and every expectation comes from the
-independent models over the same rules and artwork, so the proof follows each
-source change and the run's `preload.json` records which image it checked. A
+independent models of the same rules and artwork: the flow rules of
+`interactions_reference` over the motion model of `motion_reference`, rendered
+by `motion_frames`. The first world state is the same state `python-mgu`
+checks. The proof follows each source change only while those models follow
+the same source; the run's `preload.json` records which image it checked. A
 frozen hash belongs only to a proof whose expectations were fixed for one
-retired image, such as the every-frame acquisition and the two historical
-references above.
+retired image, such as the every-frame acquisition, the two historical
+references above and `python-hg*`.
 
 ### Why scrolling, win and death/retry do not fit
 
-The player starts at x 24 and runs 2 pixels per update; the camera is
-`max(0, x-72)`, so it first moves at update 25, displayed in source frame 29 at
-about 535 ms simulated. At the measured rate that is about 2200 wall seconds.
-The death/retry route reaches RETRY at update 187 and the success route WON at
-update 360: about 3.2 and 6.1 simulated seconds, or 13000 and 25000 wall
-seconds. Each exceeds the 900-second ceiling by at least a factor of two, so no
-composed simulation target is declared for them.
+The player starts at x 24; the camera is `max(0, x-72)`. Under the motion
+model the earliest camera movement is update 34 with B and Right held from the
+first update (`motion_reference.step`), displayed in source frame 35 at about
+640 ms simulated; walking alone reaches it at update 52, frame 53. At the
+measured 6.0 wall seconds per simulated millisecond that is about 3800 wall
+seconds. The death/retry and success routes lie beyond the first camera
+movement, so they are later still. Each exceeds the 900-second ceiling by at
+least a factor of four, so no composed simulation target is declared for them.
 [#384](https://github.com/amichai-bd/nand2mario/issues/384) owns a bounded
 physical script for those frames.
 
 ### Measured result
 
 Python 3.12.14, cocotb 2.0.1, Questa Altera Starter FPGA Edition-64 2025.2
-(2025.05), Intel memory models from Quartus 25.1, at commit `ee4251c`, whose
-tree is `f80237a` after the rebase onto `4fe909a` with no content change. Every
-run used the image the build produced, `adbef6b0...e109f369` in each attempt's
-`preload.json`. A Quartus fit for other work shared the host during the two
-long runs, so their rates are slower than `python-hgu`'s 4.1 seconds per
-simulated millisecond.
+(2025.05), Intel memory models from Quartus 25.1, on the tree rebased onto
+`a1983ef` (#301's motion image). Every run used the image the build produced,
+`616de11b49e0807539837358824a570776459b9bf13a4b9424dbf42adfe5c983` in each
+attempt's `preload.json`. The three runs were serialized on one Questa seat with
+no other simulation or fit; a first `python-pgu` attempt was refused a licence
+by another QuestaSim instance after 9 seconds and was rerun.
 
 | Command | Whole seconds | Result |
 |---|---|---|
-| `python tools/build.py sim test python-pgs --tag issue363-pgs --json` | 221 | PASS `pause_game_short`: 186 pixels, one initialization DMA, HUD cache at 134760, settled pause at 137133, trace END |
-| `python tools/build.py sim test python-pgu --tag issue363-pgu --json` | 788 | PASS `pause_game_full`, 138.45 ms simulated, 780.0 s of cocotb test time, inside the 900-second allowance |
-| `python tools/build.py sim test python-pgx --tag issue363-pgx --json` | 495 | Intended checker FAIL `PAUSE_HUD_CACHE` at 93.43 ms, outer exit 1 |
-| springtrail host fixtures, the `builder.yml` loader over `src/dv/springtrail/test_*.py` | 22 | PASS, 112 tests |
+| `python tools/build.py sim test python-pgs --tag issue363b-pgs --json` | 227 | PASS `pause_game_short`: 294 pixels, one initialization DMA, HUD cache at 137588, settled pause at 140069, trace END; 219.0 s of cocotb time for 39.08 ms |
+| `python tools/build.py sim test python-pgx --tag issue363b-pgx --json` | 723 | Intended checker FAIL `PAUSE_HUD_CACHE` at 94.08 ms, outer exit 1; 714.8 s of cocotb time |
+| `python tools/build.py sim test python-pgu --tag issue363b-pgu-2 --json` | 844 | PASS `pause_game_full`, 139.12 ms simulated, 836.2 s of cocotb test time, inside the 900-second allowance with 56 seconds of margin |
+| springtrail host fixtures, the `builder.yml` loader over `src/dv/springtrail/test_*.py` | 27 | PASS, 135 tests |
 
-The passing full run reports 138240 checked pixels, 34511 retirement records,
-LCD at dot 136560, shadow scenes ready at 134316, 233236, 302836, 367744,
-438752 and 513248, 1120 published DMA bytes, 903 HRAM bus observations during
-DMA, inputs applied at 196915, 267067, 337428 and 407579 inside their declared
+The short harness now uses 227 of its 300 seconds: #301's `InitMotionArt`
+moved the LCD origin from 136560 to 139388 and lengthened startup, so its
+margin fell from 79 to 73 seconds here and to 40 seconds in the independent
+review's measurement on a loaded host.
+
+The passing full run reports 138240 checked pixels, 34873 retirement records,
+LCD at dot 139388, shadow scenes ready at 137144, 236260, 306004, 370448,
+441744 and 516140, 1120 published DMA bytes, 903 HRAM bus observations during
+DMA, inputs applied at 199642, 270003, 340154 and 410305 inside their declared
 windows, six VBlank JOYP samples matching the script, the restart's two
 visible-time sample rewrites (0, then 64) in frame 4, twelve split writes,
 IRQ vectors `0x48,0x40` in every frame, 160 column cache bytes and a settled
-pause at 556863 after the seventh DMA.
+pause at 559673 after the seventh DMA.
 
-The fault run's actual store mutation is recorded at dot 347083, inside
-visible frame 3. Its first witness is the seventh HUD cache byte of update 3:
-the ROM prepared `PLAY` where the unchanged model expects `PAUSED`. Every raw
-tool and simulator command exited 0 in all three runs; the fault's Python XML
-records the failure and the outer command returned 1. The positive result is
-therefore not vacuous on the new frames.
+The fault run's actual store mutation is recorded at dot 349911, phase 70075
+of frame 2, in the last 150 dots of VBlank 2. Its first witness is the seventh
+HUD cache byte of update 3, in visible frame 3: the ROM prepared `PLAY` where
+the unchanged model expects `PAUSED`. Every raw tool and simulator command
+exited 0 in all three runs; the fault's Python XML records the failure and the
+outer command returned 1. The positive result is therefore not vacuous on the
+new frames.
 
 ### What this establishes
 

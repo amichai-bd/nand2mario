@@ -106,6 +106,7 @@ async def run(dut, short=False):
                 rom=Path('program.gb').read_bytes()
                 from hud_reference import CHARS,MAPS
                 tile_bytes=rom[0xc00:0x10a0]+b''.join(rom[0x6000+MAPS['glyph-'+c]['pieces'][0]['tile']*16:0x6010+MAPS['glyph-'+c]['pieces'][0]['tile']*16] for c in CHARS)
+                tile_bytes+=rom[0x6100:0x6140]
                 summary=check.finish(pause,tile_bytes)
                 for frame,data in enumerate(check.frames):Path(f'frame-{frame}.shades').write_bytes(data)
                 Path('summary.json').write_text(json.dumps(summary,indent=2)+'\n')
