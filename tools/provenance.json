@@ -37,7 +37,7 @@
       "record": "n2m/dependencies.json",
       "purpose": "Run freely licensed third-party images on the board through the same verified load path as original builds",
       "local_changes": "none",
-      "storage": "Fetched at run time into ignored workdir/private/external-roms; no image bytes or notices are committed; the pin list is empty until a reviewed licensed image is selected"
+      "storage": "Fetched at run time into ignored workdir/private/external-roms; no image bytes or notices are committed; the pin list names each reviewed licensed image with its upstream URL, hash, size and licence"
     },
     {
       "name": "Pan Docs interface research",

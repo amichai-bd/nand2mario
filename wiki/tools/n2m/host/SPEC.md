@@ -75,8 +75,9 @@ from the direct-profile image size, or any hash mismatch fails before the serial
 port opens, so no partial image is written. Verified bytes replace the cache
 file in one step, so an interrupted run leaves no truncated cache. Everything
 after that point, including readback and the valid, paused and profile checks,
-is identical for both sources. The pin list is empty until a
-reviewed licensed image is selected.
+is identical for both sources. Each pinned image is a reviewed freely licensed
+release recorded under the [provenance policy](../../provenance.md); the
+manifest names the title, author, release and licence text beside the pin.
 
 ## Transport and recovery
 
