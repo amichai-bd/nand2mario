@@ -34,7 +34,9 @@ module tb_oam_late_write;
         .ppu_oam_read(ppu_read_allowed), .ppu_oam_pair(ppu_pair),
         .ppu_oam_rdata(ppu_data), .ppu_oam_valid(ppu_valid),
         .wave_read(1'b0), .wave_write(1'b0), .wave_wdata(8'd0), .wave_address(4'd0), .wave_rdata(), .wave_valid()
-    );
+    ,
+        .core_paused(1'b0), .peek_read(1'b0), .peek_select(8'd0), .peek_offset(13'd0),
+        .peek_rdata(), .peek_valid());
     task automatic edge_cycle;
         #20; clk_sys = 1;
         #1;

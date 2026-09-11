@@ -31,6 +31,9 @@ module n2m_smoke_system #(parameter bit HOST_PLAY = 0) (
     logic [14:0] rom_address;
     logic [7:0] rom_write_data, rom_read_data;
     logic snapshot_request, frame_read;
+    logic peek_read, peek_valid;
+    logic [7:0] peek_select, peek_rdata;
+    logic [12:0] peek_offset;
     logic snapshot_ready, snapshot_done, snapshot_ok, snapshot_valid, frame_valid;
     n2m_interfaces_pkg::snapshot_t snapshot_metadata;
     logic [7:0] frame_data, effective_buttons, joyp_rdata;
@@ -85,7 +88,8 @@ module n2m_smoke_system #(parameter bit HOST_PLAY = 0) (
         .io_lcdc(8'd0), .io_stat(8'd0), .io_ly(8'd0), .io_lyc(8'd0), .io_scy(8'd0),
         .io_scx(8'd0), .io_wy(8'd0), .io_wx(8'd0), .io_bgp(8'd0), .io_obp0(8'd0),
         .io_obp1(8'd0), .io_div(8'd0), .io_tima(8'd0), .io_tma(8'd0), .io_tac(8'd0),
-        .io_if(8'd0), .io_ie(8'd0)
+        .io_if(8'd0), .io_ie(8'd0),
+        .peek_read, .peek_select, .peek_offset, .peek_rdata, .peek_valid
     );
     n2m_timebase u_timebase (.clk_sys, .reset_sys, .core_reset, .pause_request, .gb_tick, .paused);
     n2m_cpu u_cpu (
@@ -163,7 +167,8 @@ module n2m_smoke_system #(parameter bit HOST_PLAY = 0) (
         .ppu_vram_rdata(vram_data), .ppu_vram_valid(vram_valid),
         .ppu_oam_read(oam_read_allowed), .ppu_oam_pair(oam_pair_address),
         .ppu_oam_rdata(oam_data), .ppu_oam_valid(oam_valid),
-        .wave_read(1'b0), .wave_write(1'b0), .wave_wdata(8'd0), .wave_address(4'd0), .wave_rdata(), .wave_valid()
+        .wave_read(1'b0), .wave_write(1'b0), .wave_wdata(8'd0), .wave_address(4'd0), .wave_rdata(), .wave_valid(),
+        .core_paused(paused), .peek_read, .peek_select, .peek_offset, .peek_rdata, .peek_valid
     );
     n2m_interrupts u_interrupts (
         .clk_sys, .reset_sys, .core_reset, .gb_tick,

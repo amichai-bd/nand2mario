@@ -60,7 +60,9 @@ module tb_dma_reset;
         .ppu_vram_address(raw_vram_address), .ppu_vram_rdata(raw_vram_data), .ppu_vram_valid(raw_vram_valid),
         .ppu_oam_read(raw_oam_read), .ppu_oam_pair(raw_oam_pair), .ppu_oam_rdata(raw_oam_data),
         .ppu_oam_valid(raw_oam_valid), .wave_read(1'b0), .wave_write(1'b0), .wave_wdata(8'd0), .wave_address(4'd0),
-        .wave_rdata(unused_wave), .wave_valid(unused_wave_valid));
+        .wave_rdata(unused_wave), .wave_valid(unused_wave_valid),
+        .core_paused(1'b0), .peek_read(1'b0), .peek_select(8'd0), .peek_offset(13'd0),
+        .peek_rdata(), .peek_valid());
     always #5 clk_sys=~clk_sys;
     task automatic load_byte(input n2m_memory_pkg::memory_store_t bank,input integer offset,input logic[7:0] value);
         @(negedge clk_sys);setup_store=bank;setup_address=15'(offset);setup_data=value;

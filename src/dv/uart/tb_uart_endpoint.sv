@@ -25,6 +25,9 @@ module tb_uart_endpoint;
     n2m_cpu_pkg::access_kind_t access_kind;
     n2m_interfaces_pkg::retirement_t retirement;
     logic memory_initialized;
+    logic peek_read, peek_valid;
+    logic [7:0] peek_select, peek_rdata;
+    logic [12:0] peek_offset;
     logic [7:0] unused_vram, unused_wave;
     logic [15:0] unused_oam;
     logic unused_vram_valid, unused_wave_valid, unused_oam_valid;
@@ -66,7 +69,9 @@ module tb_uart_endpoint;
         .io_lcdc(8'h91), .io_stat(8'h43), .io_ly(8'h5a), .io_lyc(8'h5b), .io_scy(8'h11),
         .io_scx(8'h22), .io_wy(8'h33), .io_wx(8'h44), .io_bgp(8'he4), .io_obp0(8'hd2),
         .io_obp1(8'hc1), .io_div(8'hab), .io_tima(8'h7f), .io_tma(8'h80), .io_tac(8'h05),
-        .io_if(8'h13), .io_ie(8'h1f)
+        .io_if(8'h13), .io_ie(8'h1f),
+        .peek_read(peek_read),.peek_select(peek_select),.peek_offset(peek_offset),
+        .peek_rdata(peek_rdata),.peek_valid(peek_valid)
     );
     n2m_timebase u_timebase (.*);
     n2m_cpu u_cpu (
@@ -93,7 +98,9 @@ module tb_uart_endpoint;
         .host_wdata(rom_write_data),.host_rdata(rom_read_data),.host_valid(rom_read_valid),
         .ppu_vram_read(1'b0),.ppu_vram_address(13'd0),.ppu_vram_rdata(unused_vram),.ppu_vram_valid(unused_vram_valid),
         .ppu_oam_read(1'b0),.ppu_oam_pair(7'd0),.ppu_oam_rdata(unused_oam),.ppu_oam_valid(unused_oam_valid),
-        .wave_read(1'b0), .wave_write(1'b0), .wave_wdata(8'd0),.wave_address(4'd0),.wave_rdata(unused_wave),.wave_valid(unused_wave_valid)
+        .wave_read(1'b0), .wave_write(1'b0), .wave_wdata(8'd0),.wave_address(4'd0),.wave_rdata(unused_wave),.wave_valid(unused_wave_valid),
+        .core_paused(paused),.peek_read(peek_read),.peek_select(peek_select),.peek_offset(peek_offset),
+        .peek_rdata(peek_rdata),.peek_valid(peek_valid)
     );
     assign core_initialized = memory_initialized && cpu_initialized;
     assign snapshot_ready = snapshot_delay == 0;

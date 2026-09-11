@@ -15,9 +15,13 @@ module tb_memory_stores;
     logic [6:0] ppu_oam_pair;
     logic [15:0] ppu_oam_rdata;
     logic [3:0] wave_address;
-    integer index, store_number, size, inspected;
+    logic core_paused, peek_read, peek_valid;
+    logic [7:0] peek_select, peek_rdata;
+    logic [12:0] peek_offset;
+    integer index, store_number, size, inspected, peeked;
     bit early;
     bit range_probe, range_fault;
+    bit peek_running;
     n2m_memory_stores dut (.*);
 
     function automatic integer bytes_in_store(input integer number);
@@ -79,6 +83,29 @@ module tb_memory_stores;
         end
         if (!init_done) $fatal(1, "MEMORY_STORES_LATE_INIT");
     endtask
+    // Host peek sweeps port B while paused and must return the same bytes the
+    // core's own port A path stored, without disturbing them.
+    task automatic peek_sweep;
+        integer selector;
+        core_paused = 1;
+        peek_read = 1;
+        for (selector = 1; selector <= 5; selector = selector + 1) begin
+            peek_select = 8'(selector);
+            size = bytes_in_store(selector);
+            for (index = 0; index < size; index = index + 1) begin
+                peek_offset = 13'(index);
+                edge_cycle();
+                if (!peek_valid || peek_rdata !== pattern(selector, index))
+                    $fatal(1, "MEMORY_PEEK_BYTE store=%0d offset=%0d expected=%02h actual=%02h valid=%0d",
+                        selector, index, pattern(selector, index), peek_rdata, peek_valid);
+                peeked = peeked + 1;
+            end
+        end
+        peek_read = 0;
+        edge_cycle();
+        if (peek_valid) $fatal(1, "MEMORY_PEEK_STALE_VALID");
+        core_paused = 0;
+    endtask
     task automatic inspect_ram(input bit patterned);
         for (store_number = 1; store_number <= 5; store_number = store_number + 1) begin
             access_store = n2m_memory_pkg::memory_store_t'(store_number);
@@ -106,6 +133,7 @@ module tb_memory_stores;
             ppu_vram_read, ppu_vram_address, ppu_vram_rdata, ppu_vram_valid,
             ppu_oam_read, ppu_oam_pair, ppu_oam_rdata, ppu_oam_valid,
             wave_read, wave_address, wave_rdata, wave_valid,
+            core_paused, peek_read, peek_select, peek_offset, peek_rdata, peek_valid,
             dut.rom.b_read, dut.rom.a_write, dut.wram.a_read, dut.wram.a_write,
             dut.hram.a_read, dut.hram.a_write, dut.vram.a_read, dut.vram.a_write,
             dut.oam_low.a_read, dut.oam_low.a_write, dut.oam_high.a_read,
@@ -117,8 +145,10 @@ module tb_memory_stores;
         ppu_vram_read = 0; ppu_vram_address = 0;
         ppu_oam_read = 0; ppu_oam_pair = 0;
         wave_read = 0; wave_write = 0; wave_address = 0; wave_wdata = 0;
-        inspected = 0;
+        core_paused = 0; peek_read = 0; peek_select = 0; peek_offset = 0;
+        inspected = 0; peeked = 0;
         early = $test$plusargs("early");
+        peek_running = $test$plusargs("peek_running");
         range_probe = $test$plusargs("range_probe");
         range_fault = $test$plusargs("range_fault");
         edge_cycle();
@@ -153,6 +183,16 @@ module tb_memory_stores;
             end
         end
         access_write = 0;
+        inspect_ram(1);
+        if (peek_running) begin
+            // Negative witness: the same in-range request with the core running
+            // must be refused by MEMORY_PEEK_PAUSED, not served.
+            core_paused = 0; peek_select = 8'd1; peek_offset = 13'd0; peek_read = 1;
+            edge_cycle();
+            $fatal(1, "MEMORY_PEEK_RUNNING_SERVED valid=%0d", peek_valid);
+        end
+        peek_sweep();
+        // Port B has no write. Every byte still reads back through port A.
         inspect_ram(1);
         ppu_vram_read = 1; ppu_oam_read = 1; wave_read = 1;
         for (index = 0; index < 8192; index = index + 1) begin
@@ -245,7 +285,7 @@ module tb_memory_stores;
                 || !access_valid || access_rdata !== pattern(0, 32767 - index))
                 $fatal(1, "MEMORY_STORES_GLOBAL_ROM_RETAIN offset=%0d", index);
         end
-        $display("PASS memory stores RAM_inspected=%0d ROM_bytes=32768 clear_edges=8192", inspected);
+        $display("PASS memory stores RAM_inspected=%0d peeked=%0d ROM_bytes=32768 clear_edges=8192", inspected, peeked);
         $finish;
     end
     initial begin

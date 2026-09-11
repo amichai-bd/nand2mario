@@ -53,7 +53,7 @@ def validate(data):
     integer(data['schema_version'], 1, 1, 'schema_version')
     if data['byte_order'] != 'little' or data['profile_name'] != 'dmg-direct-v1':
         raise ValueError('unsupported byte order or profile')
-    keys(data['groups'], 'gb gb_reg gb_view vector profile host host_reg state button wire status trace frame command input_source host_write_mask', 'groups')
+    keys(data['groups'], 'gb gb_reg gb_view vector profile host host_reg state button wire status trace frame command peek input_source host_write_mask', 'groups')
     constants = {}
     for group, entries in data['groups'].items():
         if type(entries) is not list or not entries:
@@ -102,7 +102,7 @@ def validate(data):
         name(reference['revision'], '[0-9a-f]{40}', 'reference revision')
     if not data['references']:
         raise ValueError('pinned references required')
-    for group in ('gb_reg', 'host_reg', 'command', 'status', 'button', 'vector'):
+    for group in ('gb_reg', 'host_reg', 'command', 'status', 'button', 'vector', 'peek'):
         values = [row['value'] for row in data['groups'][group]]
         if len(values) != len(set(values)):
             raise ValueError('duplicate address/ID in ' + group)

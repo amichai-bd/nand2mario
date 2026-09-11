@@ -1307,6 +1307,44 @@
         "bits": 8,
         "value": 15,
         "description": "Run a bounded number of real dots and pause"
+      },
+      {
+        "name": "PEEK",
+        "bits": 8,
+        "value": 16,
+        "description": "Read exact bytes from one paused non-ROM store; read-only, rejected unless paused."
+      }
+    ],
+    "peek": [
+      {
+        "name": "WRAM",
+        "bits": 8,
+        "value": 1,
+        "description": "Work RAM peek selector"
+      },
+      {
+        "name": "HRAM",
+        "bits": 8,
+        "value": 2,
+        "description": "High RAM peek selector"
+      },
+      {
+        "name": "VRAM",
+        "bits": 8,
+        "value": 3,
+        "description": "Video RAM peek selector"
+      },
+      {
+        "name": "OAM",
+        "bits": 8,
+        "value": 4,
+        "description": "Object attribute memory peek selector; both halves in byte order"
+      },
+      {
+        "name": "WAVE",
+        "bits": 8,
+        "value": 5,
+        "description": "Wave pattern RAM peek selector"
       }
     ],
     "input_source": [
@@ -1414,6 +1452,23 @@
         "name": "offset",
         "bits": 32,
         "description": "Byte offset"
+      },
+      {
+        "name": "count",
+        "bits": 16,
+        "description": "1 through maximum payload bytes"
+      }
+    ],
+    "peek_range": [
+      {
+        "name": "store",
+        "bits": 8,
+        "description": "Peek store selector"
+      },
+      {
+        "name": "offset",
+        "bits": 32,
+        "description": "Byte offset inside the selected store"
       },
       {
         "name": "count",
@@ -1709,6 +1764,12 @@
       "request": "word",
       "response": "run_dots",
       "state": "paused valid image"
+    },
+    {
+      "name": "PEEK",
+      "request": "peek_range",
+      "response": "bytes",
+      "state": "paused"
     }
   ],
   "references": [
