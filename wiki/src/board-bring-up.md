@@ -11,8 +11,8 @@ content, ping, build ID and CRC rejection.
 No agent has a monitor attached to this board. Every result below is a
 UART-readable proxy or a static Quartus report. Visual confirmation of the VGA
 picture on an actual monitor is not claimed here; it remains the board owner's
-open item, tracked with the rest of connected-board display acceptance under
-[GAP-006](../preflight-gaps.md#gap-006-clock-reset-and-cdc-plan).
+open item under [GAP-006](../preflight-gaps.md#gap-006-clock-reset-and-cdc-plan),
+tracked by [#417](https://github.com/amichai-bd/nand2mario/issues/417).
 
 ## Wiring, voltage, ground, and reset polarity
 
@@ -150,6 +150,8 @@ run evidence.
 ## Open items
 
 Visual confirmation that the VGA test card displays correctly on an actual
-monitor is deferred to the board owner. No agent operating this board has a
-monitor attached, so this page and its retained evidence prove the generator,
-UART proxies, and timing closure only; they do not claim the picture was seen.
+monitor is deferred to the board owner and tracked by
+[#417](https://github.com/amichai-bd/nand2mario/issues/417). No agent operating
+this board has a monitor attached, so this page and its retained evidence prove
+the generator, UART proxies, and timing closure only; they do not claim the
+picture was seen.

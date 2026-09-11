@@ -34,7 +34,7 @@ stay recorded so the decision can be reversed. The
 | GAP-003 | P0 | Closed | — | Build command | A minimal `n2m` command runs from a fresh shell |
 | GAP-004 | P0 | Closed | — | Real environment doctor | Checked smoke and read-only identity checks work; runtime checks are described in GAP-008 |
 | GAP-005 | P0 | Closed | — | Board wiring and safe bring-up | Frame content and UART ping pass over UART with documented wiring; the monitor picture stays with GAP-006 |
-| GAP-006 | P0 | Physical gap | [#28](https://github.com/amichai-bd/nand2mario/issues/28) | Clock, reset, and CDC plan | Implemented timing still needs connected-board display acceptance |
+| GAP-006 | P0 | Physical gap | [#417](https://github.com/amichai-bd/nand2mario/issues/417) | Clock, reset, and CDC plan | Implemented timing still needs connected-board display acceptance |
 | GAP-007 | P0 | Closed | — | Executable interface contracts | Address maps, host registers, and trace formats have one source |
 | GAP-008 | P0 | Closed | — | Verification baseline | A known-good DUT and deliberately failing DUT prove the harness |
 | GAP-009 | P0 | Closed | — | Initial agent skills | Core skills exist and have concise trigger tests and examples |
@@ -199,8 +199,9 @@ checks. The [system composition](src/rtl/system/MAS_system.md) uses the specifie
 25 MHz system clock and separate VGA clock.
 [GAP-005](#gap-005-board-wiring-and-safe-bring-up) closed the connected board's
 wiring, programming and UART-readable frame content. Acceptance of the picture
-on an actual monitor remains unproven here and under
-[GAP-012](#gap-012-vga-frame-crossing).
+on an actual monitor remains unproven; a person must look at a connected
+display under [#417](https://github.com/amichai-bd/nand2mario/issues/417).
+Tolerance across displays stays with [GAP-012](#gap-012-vga-frame-crossing).
 
 **Risk**
 
@@ -391,8 +392,10 @@ timing. Source/snapshot comparison is separate from VGA-output checking.
 These component checks leave physical display acceptance open. Connected
 pin, wiring and voltage verification closed under
 [GAP-005](#gap-005-board-wiring-and-safe-bring-up), which also read the scanned
-frame back over UART. Actual monitor tolerance and scaled-image operation on a
-display remain open under [GAP-006](#gap-006-clock-reset-and-cdc-plan).
+frame back over UART. The first confirmation that one monitor shows the picture
+correctly is [#417](https://github.com/amichai-bd/nand2mario/issues/417) under
+[GAP-006](#gap-006-clock-reset-and-cdc-plan); tolerance across displays and
+scaled-image operation stay open here.
 Simulation and fit evidence do not replace physical acceptance.
 
 **Risk**
