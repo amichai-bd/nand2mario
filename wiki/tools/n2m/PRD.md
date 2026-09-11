@@ -37,5 +37,5 @@ failure on a missing, modified or shadow model. A host double cannot establish
 primitive behavior. The [shared memory MAS](../../src/rtl/common/MAS_memory_primitives.md)
 owns port timing and consumer migration boundaries.
 Pre-merge host checks verify host contracts only; the [CI boundary](SPEC.md#ci-execution-boundary)
-requires actual local evidence while the [trusted licensed route](https://github.com/amichai-bd/nand2mario/issues/32)
-remains an open activation and verification gap.
+requires actual local evidence while the trusted licensed route stays out of
+scope under [GAP-010](../../preflight-gaps.md#gap-010-github-remote-issues-ci-and-pages).

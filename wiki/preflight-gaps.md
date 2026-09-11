@@ -21,6 +21,10 @@ Priorities:
 - **P2** — planned later; does not block early implementation.
 - **Deferred** — intentionally waiting for user authorization or a later phase.
 
+State `Out of scope` means the owner set the gap aside; its close conditions
+stay recorded so the decision can be reversed. The
+[remote working scope](#remote-working-scope) lists those decisions.
+
 ## Gap summary
 
 | ID | Priority | State | Issue | Gap | Closed when |
@@ -34,12 +38,13 @@ Priorities:
 | GAP-007 | P0 | Closed | — | Executable interface contracts | Address maps, host registers, and trace formats have one source |
 | GAP-008 | P0 | Closed | — | Verification baseline | A known-good DUT and deliberately failing DUT prove the harness |
 | GAP-009 | P0 | Closed | — | Initial agent skills | Core skills exist and have concise trigger tests and examples |
-| GAP-010 | P0 | Open | [#32](https://github.com/amichai-bd/nand2mario/issues/32) | Trusted product CI | Licensed execution route and protected physical runner are not activated |
+| GAP-010 | P0 | Out of scope | — | Trusted product CI | Licensed execution route and protected physical runner are not activated; set aside while no runner can be hosted |
 | GAP-011 | P1 | Closed | — | Original game image and build facts | Original 32 KiB mapperless image, header, provenance and reproducible build are verified |
 | GAP-012 | P1 | Later | — | VGA frame crossing | Buffering and monitor timing pass simulation and hardware tests |
 | GAP-013 | P1 | Later | — | External dependencies | Tests and tools are pinned, licensed, and reproducible |
 | GAP-014 | P2 | Later | — | Physical audio path | Output method and acceptance test are selected |
 | GAP-015 | P2 | Later | — | Native compiler scope | Language, ABI, outputs, and compatibility goal are approved |
+| GAP-016 | Deferred | Later | — | Audio synthesis RTL | Channels, frame sequencer, mixer and PCM output exist and pass independent tests |
 
 ## GAP-001 — Scope and success contract
 
@@ -313,8 +318,12 @@ Builder and Tile runner checks run locally before merge and by dispatch; they
 check host contracts only.
 Actual local Questa evidence remains mandatory; automated licensed simulation
 is unavailable until the [trusted route](tools/n2m/SPEC.md#ci-execution-boundary)
-is configured. Required product checks and the protected physical runner remain
-open in [#32](https://github.com/amichai-bd/nand2mario/issues/32).
+is configured. The owner set the required product checks and the protected
+physical runner out of scope on 2026-09-11 because no runner that executes our
+CI can be hosted; see the [remote working scope](#remote-working-scope). This
+gap keeps the record. Required checks stay on hosted GitHub Actions; local
+equivalents run under the
+[external CI fallback](../.agents/skills/agent-flow/references/external-ci.md).
 
 **Risk**
 
@@ -418,8 +427,9 @@ results may differ.
 
 **Current state**
 
-The full DMG goal includes APU behavior, but the requested VGA and UART setup
-does not define a physical audio connection.
+The requested VGA and UART setup does not define a physical audio connection.
+This gap owns only the output path; the absent synthesis RTL is
+[GAP-016](#gap-016-audio-synthesis-rtl).
 
 **Risk**
 
@@ -461,6 +471,61 @@ RGBDS support for open test ROMs.
 
 Use the existing native toolchain and pinned RGBDS oracle. Treat any C-like
 compiler, language runtime or broader development environment as later work.
+
+## GAP-016 — Audio synthesis RTL
+
+**Current state**
+
+`src/rtl/` contains no audio synthesis. The
+[audio gateway](src/rtl/audio/MAS_audio.md) serves `FF10`-`FF26` register
+access and `FF30`-`FF3F` wave RAM so the CPU never faults on them, and returns
+the DMG read-back masks of a never-powered APU. Its
+[known divergence](src/rtl/audio/MAS_audio.md#known-divergence) records what a
+game observes: `NR52` never reports power on, and no channel, frame sequencer,
+length, envelope, sweep, DAC or mixer exists. The
+[charter](src/project-charter.md#compatibility-scope) defers audio; every
+release proves silent output.
+
+**Risk**
+
+A reader may take the register owner for a working APU, or a game that waits
+on channel status may hang. The gateway is a fault guard, not audio.
+
+**Close when**
+
+- A pinned DMG audio reference and independent tests are selected.
+- Four channels, the frame sequencer, length, envelope and sweep timers, DACs
+  and the mixer are implemented in their own owner under the memory decoder.
+- `NR52` power-on and channel status follow the pinned reference.
+- A simulation PCM format exists and the channel tests pass in Questa.
+- The charter states which release, if any, requires audio.
+
+This is deferred by the charter; it does not block video and input work.
+[GAP-014](#gap-014-physical-audio-path) owns the physical output path.
+
+## Remote working scope
+
+The owner works the DE10-Lite remotely. The board is connected and answers
+over UART, but no one is at it, and no runner that executes our CI can be
+hosted. On 2026-09-11 the owner settled three consequences:
+
+- Physical buttons and an ADC joystick are out of scope.
+  [#156](https://github.com/amichai-bd/nand2mario/issues/156) is closed. The
+  [board controls](src/fpga-controls.md) RTL exists and is simulation-verified;
+  wiring, orientation, calibration and an exercised all-eight-control check
+  need hands on the hardware. UART input is the supported path.
+- Trusted product CI and hardware jobs are out of scope.
+  [#32](https://github.com/amichai-bd/nand2mario/issues/32) is closed;
+  [GAP-010](#gap-010-github-remote-issues-ci-and-pages) keeps the record.
+- Release acceptance is split by what a remote operator can observe. The
+  [charter](src/project-charter.md#remote-acceptance) states which `v1.0`
+  checks are proven over UART and which need physical presence.
+
+[#28](https://github.com/amichai-bd/nand2mario/issues/28) and
+[#264](https://github.com/amichai-bd/nand2mario/issues/264) stay open as
+scoped. They gate physical display and physical release claims only; they do
+not block UART-observable, simulation or host work. Reopen the closed issues
+if the board becomes physically reachable or a runner can be hosted.
 
 ## Required closing order
 

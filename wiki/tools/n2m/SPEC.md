@@ -430,9 +430,10 @@ summaries state this limitation. `PR policy` is the only required hosted check.
 
 Actual local Questa positive and deliberately failing runs are mandatory author
 and independent-review evidence. No trusted remote Questa runner is currently
-configured. [Issue #32](https://github.com/amichai-bd/nand2mario/issues/32) owns
-its protected trusted-revision route and required product checks. That route
-requires independent review of concrete workflow/launcher/configuration before
+configured. The protected trusted-revision route and required product checks
+are out of scope while no runner can be hosted;
+[GAP-010](../../preflight-gaps.md#gap-010-github-remote-issues-ci-and-pages)
+keeps the record. That route, if resumed, requires independent review of concrete workflow/launcher/configuration before
 activation; an actual dispatched licensed sample must then prove it. If its
 workflow must first land on main for dispatch, review and land the inert bootstrap
 before activation and acceptance. The inactive
@@ -440,7 +441,7 @@ before activation and acceptance. The inactive
 contract; it does not establish the configured licensed route. Untrusted PR code must never execute on the
 physical/self-hosted runner. Missing tools or licensing is a failure, never a
 skipped job presented as a successful simulation. Quartus and board CI activation
-remain part of that same open trusted-route gap.
+remain part of that same recorded gap.
 
 ## First simulation target
 

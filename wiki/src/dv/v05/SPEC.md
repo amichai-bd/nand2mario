@@ -158,8 +158,8 @@ physical connection17 to1 and must fail the unchanged applied-input checker.
 The [driver notes](../../../../src/dv/python/v05/README.md#physical-system-boundary)
 record the exact state sequence. This test does not exercise ADC acquisition.
 The separate [controls composition](../../rtl/system/MAS_system.md) implements
-that path; actual wiring, calibration and physical verification remain an
-[open controls gap](https://github.com/amichai-bd/nand2mario/issues/156).
+that path; actual wiring, calibration and physical verification are out of
+scope under the [remote working scope](../../../preflight-gaps.md#remote-working-scope).
 
 `src/dv/v05/program.json` owns original literal bytes and instruction cycles;
 `reference.py` applies the program's register/flag effects without reading DUT

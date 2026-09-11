@@ -79,8 +79,10 @@ independent prerequisites may proceed in parallel.
 4. Establish executable interfaces and trusted verification:
    [GAP-007](../preflight-gaps.md#gap-007-executable-interface-contracts) and
    [GAP-008](../preflight-gaps.md#gap-008-verification-baseline).
-5. Finish trusted product CI and hardware-job isolation:
-   [GAP-010](../preflight-gaps.md#gap-010-github-remote-issues-ci-and-pages).
+5. Trusted product CI and hardware-job isolation,
+   [GAP-010](../preflight-gaps.md#gap-010-github-remote-issues-ci-and-pages),
+   is out of scope while no runner can be hosted; the register keeps its
+   close conditions.
 
 Later integration also depends on
 [GAP-011](../preflight-gaps.md#gap-011-original-game-image-and-build-facts),

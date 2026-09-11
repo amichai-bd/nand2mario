@@ -69,5 +69,5 @@ contracts by dispatch; authors run the same command
 [locally before merge](../../agents/pull-requests.md#hosted-and-local-checks).
 Its check is named `Tile runner checks`; it does not claim licensed RTL execution. Actual local positive/corrupt Questa
 evidence remains required. The [trusted CI boundary](../n2m/SPEC.md#ci-execution-boundary)
-records the [open trusted-route activation gap](https://github.com/amichai-bd/nand2mario/issues/32). See
+records the [out-of-scope trusted route](../../preflight-gaps.md#gap-010-github-remote-issues-ci-and-pages). See
 [tool provenance](../../../tools/sim/THIRD_PARTY.md).

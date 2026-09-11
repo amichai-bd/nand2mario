@@ -39,8 +39,8 @@ queue, producer, synchronization or extra state is added here. The current
 `v05_proof` board wrapper ties physical input inactive. The separate
 [`n2m_controls_system`](../../../../src/fpga/de10_lite/n2m_controls_system.sv)
 composition instantiates physical acquisition and connects it to the system.
-Actual component wiring, calibration and physical verification remain an open
-[physical controls gap](https://github.com/amichai-bd/nand2mario/issues/156).
+Actual component wiring, calibration and physical verification are out of
+scope under the [remote working scope](../../../preflight-gaps.md#remote-working-scope).
 
 The [DMA owner](../dma/MAS_dma.md) arbitrates CPU and transfer traffic against
 one Intel backing store. It owns FF46 and routes video accesses through the

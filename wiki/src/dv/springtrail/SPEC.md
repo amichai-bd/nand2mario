@@ -210,14 +210,15 @@ only with exact relevant-input and behavior qualification; v0.5 is not v0.9.
 ## Physical acceptance
 
 V1.0 requires the applicable [#28 board/display](https://github.com/amichai-bd/nand2mario/issues/28)
-and [#156 controls](https://github.com/amichai-bd/nand2mario/issues/156) evidence,
-reviewed current FPGA fit/timing/build identity and verified device, wiring,
+evidence, reviewed current FPGA fit/timing/build identity and verified device, wiring,
 ground, voltage and exclusive access. Standing authorization does not replace
 those checks. Preserve the existing UART and physical source-selection contract.
 
 Fully upload and read back the exact original game image over UART. Scripted
 play checkpoints and pre-VGA frame hashes must agree with qualified simulation;
-actual VGA, keyboard and shared physical controls must work. Complete one
+actual VGA and UART keyboard input must work; physical controls are out of
+scope under the [remote working scope](../../../preflight-gaps.md#remote-working-scope).
+Complete one
 30-minute continuous session without unexpected reset or lost input, then
 repeat reset/load/start three times. Freeze input/endurance checkpoints and
 their observability before the run, with a separately reviewed physical budget.
@@ -235,13 +236,15 @@ This removes no required full load/readback or reset/load/start cycle. Freeze
 the selected script and continuous session's input/sampling/failure plan under
 the linked milestone policy. Paused deterministic acquisition does not count
 toward continuous endurance. A connected monitor or simulation result alone
-does not prove actual VGA, keyboard or shared physical control operation;
-missing #28/#156 evidence remains a release blocker.
+does not prove actual VGA or keyboard operation; missing #28 evidence remains
+a physical release blocker. The [charter](../../project-charter.md#remote-acceptance)
+separates the checks proven over UART from those needing physical presence.
 
 These requirements do not close GAP-012 or #28 by simulation. Silent output is
-intentional. [#32](https://github.com/amichai-bd/nand2mario/issues/32) still owns
-trusted CI/hardware-job activation; its unfinished route does not block ordinary
-reviewed local delivery under the existing external-CI policy.
+intentional. Trusted CI/hardware-job activation is out of scope;
+[GAP-010](../../../preflight-gaps.md#gap-010-github-remote-issues-ci-and-pages)
+keeps the record, and its absence does not block ordinary reviewed local
+delivery under the existing external-CI policy.
 [#337](https://github.com/amichai-bd/nand2mario/issues/337) retains the historical
 finite-Tcl diagnostic and is off the original-game delivery path. No existing
 issue's success criteria are waived by this plan.

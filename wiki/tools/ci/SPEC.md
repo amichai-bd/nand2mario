@@ -3,8 +3,10 @@
 Status: inactive. The [requirements](PRD.md) define scope.
 The checked-in configuration has `enabled: false`, and the hosted waiter job has
 an unconditional false guard. Neither a command flag nor remote input can override
-these gates. Activation remains an [open implementation and verification gap](https://github.com/amichai-bd/nand2mario/issues/32), including
-real repository/workflow/account/environment identity verification and exact-source
+these gates. Activation is out of scope while no runner can be hosted;
+[GAP-010](../../preflight-gaps.md#gap-010-github-remote-issues-ci-and-pages)
+keeps the record. Activation, if resumed, requires real
+repository/workflow/account/environment identity verification and exact-source
 licensed positive/negative samples. Existing Pages and required checks stay intact.
 
 ## Admission

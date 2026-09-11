@@ -16,8 +16,9 @@ The hosted result is authenticated controller attestation. It does not independe
 prove unseen local logs or artifacts. Independent review must audit retained
 command, input, tool and artifact evidence bound by the canonical envelope digest.
 
-Actual configured licensed execution and activation remain
-[an open CI gap](https://github.com/amichai-bd/nand2mario/issues/32). The inactive
+Actual configured licensed execution and activation are out of scope;
+[GAP-010](../../preflight-gaps.md#gap-010-github-remote-issues-ci-and-pages)
+keeps the record. The inactive
 implementation does not change repository protection, environments, credentials or
 runner registration. Physical execution is absent; setup and acceptance remain
 [an open board gap](https://github.com/amichai-bd/nand2mario/issues/28). Explicit invocation is
