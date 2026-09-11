@@ -220,7 +220,11 @@ and host loading. It supplies fixed one-edge ROM and snapshot read service.
 also owns the [RUN_DOTS countdown](../interfaces/MAS_interfaces.md#bounded-dot-execution).
 The ordinary timebase supplies every counted edge; a final-tick pause
 uses the same boundary and B-edge settlement as STEP. Count completion ignores
-instruction completion. Existing duplicate caching and error validation apply.
+instruction completion. A CPU that enters STOP during the budget receives no
+further tick, so the countdown completes on that stopped level with the STOPPED
+reason and the dots already delivered. A budget whose final dot is the tick that
+completes STOP still reports COUNT, because that edge precedes the registered
+stopped level. Existing duplicate caching and error validation apply.
 
 The control owner uses the existing timebase's tick and registered paused acknowledgement. RESET
 increments epoch and clears counters; the [shared input owner](../input/MAS_input.md)

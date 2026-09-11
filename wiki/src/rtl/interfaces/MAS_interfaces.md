@@ -145,9 +145,10 @@ COUNT: executed equals requested and completed dot equals the initial dot plus
 that count modulo 2^64. Reason 1 means STOPPED: an already STOPped CPU does not
 unpause and returns zero/current dot; STOP entered during the operation withholds
 every further emulated tick, so it finishes on the stopped level at the dot
-already reached, with the actual partial count. Reaching the requested count on
-the entering tick takes precedence over STOPPED. Neither path changes input,
-wake state, phase, epoch or reset except for normal execution effects.
+already reached, with the actual partial count. A budget whose final dot is the
+tick that completes STOP reports COUNT, because that edge precedes the
+registered stopped level. Neither path changes input, wake state, phase, epoch
+or reset except for normal execution effects.
 
 STOPPED is a completed operation with an explicit reason, not an exact-count
 success. The host must check the reason and count before accepting frame advance.

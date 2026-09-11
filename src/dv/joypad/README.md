@@ -43,10 +43,10 @@ and phase fixtures also pass with the new event input tied low.
 ## Composed STOP wake
 
 `python-stop349` runs the original STOP program built by `program349.py` beside
-this plan on the actual composed system through continuous
-Python, current Client commands and validated Intel preloading. The program
-disables the LCD, selects the direction row, executes STOP at dot68, and after
-wake stores `5A` to `C011` before HALT. The checker compares all eleven
+this plan on the actual composed system, through continuous Python, current
+Client commands and validated Intel preloading. The program disables the LCD,
+selects the direction row, executes STOP at dot68, and after wake stores `5A` to
+`C011` before HALT. The checker compares all eleven
 retirements literally, holds two quarter-millisecond sleeping windows in which
 no dot elapses and nothing retires, observes the stopped state publicly through
 a `RUN_DOTS` reply with the `STOPPED` reason and zero executed dots, proves an

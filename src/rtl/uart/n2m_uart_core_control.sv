@@ -174,8 +174,11 @@ module n2m_uart_core_control (
         start && command == n2m_interfaces_pkg::COMMAND_STEP |-> paused && step_budget != 0 && step_budget <= n2m_interfaces_pkg::WIRE_STEP_MAX_DOTS)
     `N2M_ASSERT(UART_DOTS_BUDGET, clk_sys, reset_sys,
         start && command == n2m_interfaces_pkg::COMMAND_RUN_DOTS |-> paused && step_budget != 0 && step_budget <= n2m_interfaces_pkg::WIRE_RUN_DOTS_MAX)
+    // The stopped arm decides without a tick, and the composition has already
+    // withheld the next one, so the reachable boundary is host pause with no
+    // further counted dot. Registered paused still gates the reply in STEP_PAUSE.
     `N2M_ASSERT(UART_DOTS_STOP_BOUNDARY, clk_sys, reset_sys,
-        stop_dots |=> paused && !gb_tick)
+        stop_dots |=> host_pause && !gb_tick)
     `N2M_ASSERT(UART_STEP_ASLEEP_COMPLETE, clk_sys, reset_sys,
         start && command == n2m_interfaces_pkg::COMMAND_STEP && cpu_stopped |=>
             done && status == n2m_interfaces_pkg::STATUS_STEP_LIMIT && pause_request && paused && !gb_tick)
