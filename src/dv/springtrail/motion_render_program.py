@@ -82,7 +82,8 @@ def build(root, destination, variant='motion'):
         assets = {}
         for name, relative in (('Tiles', 'tiles.json'),
                                ('Courier', 'assets/courier/unique-tiles.json'),
-                               ('Core', 'assets/core/core-tiles.json')):
+                               ('Core', 'assets/core/core-tiles.json'),
+                               ('Terrain', 'assets/core/terrain-tiles.json')):
             asset = source/relative
             assets[name] = encode_shades(load_shades(asset, str(asset)), str(asset))
         assert len(assets['Tiles'])+len(assets['Courier']) == 1184

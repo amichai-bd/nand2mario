@@ -56,7 +56,7 @@ reason.
 | Published background | The restored and streamed column caches carry the block layer's tiles, not the bare terrain value | `python-mgs`, `python-mgu`, `python-pgs`, `python-pgu` through the block-aware `hud_reference.column` |
 | Republication mark | `BlockDirty` carries the changed block's column plus one out of the update that set it | `test_blocks_reference`, `python-bks`, `python-bka`, `python-bkb` |
 | Assets | Approved terrain pixels reproduced by the ROM table, the startup copies and the loaded VRAM image; each design an unflipped four-tile approved map; the rendered used block equal to its approved pixels | `test_blocks_assets` |
-| Affected regression | Contact/power short/halves and fault, motion short/full and fault, game short/full, pause short/full and renderer on the changed ROM, anchor and tile count | `python-pus`, `python-pua`, `python-pub`, `python-pux`, `python-mus`, `python-mut`, `python-mux`, `python-mgs`, `python-mgu`, `python-mr`, `python-pgs`, `python-pr` |
+| Affected regression | Contact/power short/halves and fault, motion short/full and fault, game short/full, pause short/full and the motion renderer on the changed ROM, anchor and tile count | `python-pus`, `python-pua`, `python-pub`, `python-pux`, `python-mus`, `python-mut`, `python-mux`, `python-mgs`, `python-mgu`, `python-mr`, `python-pgs`, `python-pgu` |
 | Delivery | Owning SW/DV links, 32 KiB reproducible mapperless image, host checks, required CI and current-head review | No new art approval or milestone replay |
 
 ## Measured durations
@@ -74,6 +74,12 @@ cocotb 2.0.1 from `workdir/builds/python-dv-env/.venv`.
 
 No new wall allowance is declared: every block target finishes well inside the
 300-second default.
+
+`python-pr` is not in that set. Its declared inputs still name
+`src/dv/springtrail/composition_game_check.py`, which #385 deleted, so the
+target fails validation before it builds anything and already failed that way
+on `main`. `python-mr` exercises the same renderer path on the same changed
+ROM; restoring `python-pr` belongs to its own issue.
 
 ## Coverage limit
 
