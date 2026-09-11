@@ -179,7 +179,8 @@ The wrong device or bitstream could be programmed.
 **Closed when — met**
 
 - The DE10-Lite manual and physical wires agree with committed pin constraints.
-- Voltage and ground are checked.
+- The 3.3 V signalling boundary and common ground are documented and the link
+  works end to end; no meter reading was taken.
 - Programming first verifies the USB-Blaster and `10M50DA` identity.
 - A heartbeat and the expected frame content work, the frame proven by UART
   readback rather than an observed monitor.

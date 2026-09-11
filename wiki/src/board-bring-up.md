@@ -4,9 +4,10 @@ This records the proof that the connected DE10-Lite path is safe and
 operational, using the existing `v05-board`
 [target](../../src/fpga/de10_lite/targets.json) and UART host tooling. It
 closes the UART-provable part of
-[GAP-005](../preflight-gaps.md#gap-005-board-wiring-and-safe-bring-up): wiring,
-voltage, ground, pins, reset polarity, checked programming, heartbeat, frame
-content, ping, build ID and CRC rejection.
+[GAP-005](../preflight-gaps.md#gap-005-board-wiring-and-safe-bring-up):
+documented wiring, signalling boundary, ground, pins and reset polarity, then
+checked programming, heartbeat, frame content, ping, build ID and CRC
+rejection. Nothing here is a meter or oscilloscope reading.
 
 No agent has a monitor attached to this board. Every result below is a
 UART-readable proxy or a static Quartus report. Visual confirmation of the VGA
@@ -40,7 +41,10 @@ ground is tied to the DE10-Lite ground pin on the Arduino header; both boards
 share a common ground through that connection and through USB to the same
 host. `board_reset_n` uses the DE10-Lite's onboard Schmitt-trigger KEY0 input,
 so no external reset wiring is used and no reset polarity inversion exists
-outside the FPGA fabric. UART RX/TX direction was confirmed by the adapter's
+outside the FPGA fabric. The design released from reset and answered over UART,
+which shows the released level is not inverted; nobody pressed KEY0, so its
+asserted direction is unverified and needs physical presence.
+UART RX/TX direction was confirmed by the adapter's
 own TX/RX labeling and by a successful `PING` round trip (below); a swapped
 pair produces silence, not a false pass, because `PING` requires a matching
 response sequence and CRC.

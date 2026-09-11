@@ -162,7 +162,7 @@ prove and which need physical presence.
 | VGA works | Frame hashes prove the source frames; the VGA owner is simulation- and fit-verified | Observing the monitor: timing tolerance, tearing, colors |
 | 30-minute continuous run, no unexpected reset or lost input | Yes: UART-driven input, periodic snapshots, build ID and core-reset epoch | — |
 | Three reset/load/start cycles | Yes with the UART core reset | KEY0 board reset |
-| Wiring, voltage and timing proof at the board | — | Done: [board bring-up](board-bring-up.md) |
+| Wiring, voltage and timing proof at the board | — | [Board bring-up](board-bring-up.md): wiring and pins documented, timing by static analysis, supply not measured |
 
 A `v1.0` claim built on the UART column alone must say so. The UART column
 is proven on the current image by the
