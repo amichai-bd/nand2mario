@@ -307,8 +307,9 @@ Not established on that image by this script: scrolling frames, the win route,
 the death/retry route and pause/resume/restart frames. The
 [pause and restart proof](#current-image-pause-and-restart-proof) below adds the
 first world frame, a neutral frame, the PAUSED frame and the Select-restart frame;
-[#384](https://github.com/amichai-bd/nand2mario/issues/384) owns scrolling, win
-and death/retry frames, which no simulation reaches inside the wall ceiling. The
+[FRAME_PROOFS.md](FRAME_PROOFS.md) captures scrolling, win and death/retry
+frames from the paused board, since no simulation reaches them inside the
+wall ceiling. The
 46-batch every-frame acquisition and the 90-cycle endurance result above stay
 bound to `b551c562...8ba667`; #264 still owns continuous physical endurance.
 
@@ -414,8 +415,8 @@ measured 6.0 wall seconds per simulated millisecond that is about 3800 wall
 seconds. The death/retry and success routes lie beyond the first camera
 movement, so they are later still. Each exceeds the 900-second ceiling by at
 least a factor of four, so no composed simulation target is declared for them.
-[#384](https://github.com/amichai-bd/nand2mario/issues/384) owns a bounded
-physical script for those frames.
+[FRAME_PROOFS.md](FRAME_PROOFS.md) is the bounded physical script for those
+frames.
 
 ### Measured result
 
@@ -464,4 +465,4 @@ delay for pause and restart; every publication write of six VBlanks in source
 order, including the restart's map reselect and restored columns; and a
 settled paused end state. Not established: pause/resume with Start, Start
 restart from RETRY or WON, scrolling frames, the win route and the death/retry
-route. #384 owns those on hardware.
+route. [FRAME_PROOFS.md](FRAME_PROOFS.md) captures those on hardware.

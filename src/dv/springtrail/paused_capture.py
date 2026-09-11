@@ -1,4 +1,9 @@
-"""Complete paused frame batches; expectations are supplied before UART access."""
+"""Complete paused frame batches; expectations are supplied before UART access.
+
+Bound to the retired image `b551c562...8ba667` (`BASELINE_ROM`) and its LCD
+anchor 76964; it refuses the image the repository builds today, whose paused
+captures are `frame_proofs.py`.
+"""
 import hashlib
 import json
 from pathlib import Path
