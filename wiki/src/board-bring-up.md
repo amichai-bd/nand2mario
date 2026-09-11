@@ -119,6 +119,29 @@ well-formed `PING` still succeeds and that all public state and counters are
 unchanged. Both run under the same session and exclusive lock as the heartbeat
 and test-card checks.
 
+## Live DMG I/O register session
+
+`host io --samples 600` on the programmed `v05-board` build read the exposed
+[DMG I/O view](../tools/n2m/host/SPEC.md#dmg-io-register-view) while the v0.5
+program ran, with no pause and no step. The endpoint stayed in RUNNING and the
+dot counter increased strictly across all 600 samples, spanning 82,030,780
+dots, about 1,168 frames.
+
+The capture covered 150 of the 154 scanlines, including VBlank. Every sample
+with LY 144 or above reported STAT mode 1 and no sample on lines 1 to 143 did,
+so the mode progression across a frame matches expectation. STAT bit 7 never
+read back set, confirming the committed-storage rule the table states. LCDC read
+`0x91`, BGP `0xE4` and IE `0x01` throughout, which are the exact values the
+program writes to FF40, FF47 and FFFF.
+
+Four samples reported LY 0 with mode 1. That is the documented LY153 early wrap
+described in [MAS_ppu](rtl/ppu/MAS_ppu.md): readable LY returns to 0 early on
+line 153 while the PPU is still in VBlank, and a CPU read sees the same value.
+Simulation does not reach VBlank inside its wall budget, so this window is
+observed here and not there.
+
+The session left the board PAUSED with input 0 and a valid image.
+
 ## Run record
 
 Each physical run's evidence records the exact bitstream commit and whether
