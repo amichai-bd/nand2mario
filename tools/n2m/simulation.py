@@ -25,8 +25,10 @@ def load_target(root, name):
     if target["expected_exit"] not in ("zero", "nonzero"):
         raise ValueError("expected_exit must be zero or nonzero")
     timeout = target.get("timeout_seconds", 60)
-    from .test_budget import wall_limit
-    maximum_timeout = wall_limit(name)
+    from .test_budget import target_selection
+    # The validator and the supervisor read the same row, so a declared
+    # allowance bounds the nested command exactly as it bounds the wall.
+    maximum_timeout = target_selection(name, target)[0]
     if type(timeout) is not int or not 1 <= timeout <= maximum_timeout:
         raise ValueError(f"simulation target timeout_seconds must be an integer in 1..{maximum_timeout}")
     for source in target["sources"]:

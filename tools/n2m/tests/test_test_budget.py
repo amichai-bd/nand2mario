@@ -11,7 +11,8 @@ import unittest
 from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from n2m.test_budget import supervise, wall_limit, MILESTONE_TARGETS
+from n2m.test_budget import (supervise, wall_limit, wall_selection, declared_allowance,
+                            MILESTONE_TARGETS, WALL_DEFAULT, WALL_ALLOWANCE_CEILING)
 
 
 class BudgetTests(unittest.TestCase):
@@ -195,6 +196,91 @@ class BudgetTests(unittest.TestCase):
         ordinary = next(name for name in targets if name not in MILESTONE_TARGETS)
         with patch('n2m.simulation.json.loads', return_value={ordinary: {**targets[ordinary], 'timeout_seconds': 301}}):
             with self.assertRaisesRegex(ValueError, '1..300'):
+                load_target(root, ordinary)
+
+    def registry(self, rows):
+        """Write a target registry under this test root and return that root."""
+        path = self.root / 'src/dv/builder/targets.json'
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(rows), encoding='utf-8')
+        return self.root
+
+    def test_declared_allowance_raises_the_limit_up_to_the_ceiling(self):
+        for seconds in (301, 420, WALL_ALLOWANCE_CEILING):
+            with self.subTest(seconds=seconds):
+                root = self.registry({'slow': {'wall_allowance': {'seconds': seconds,
+                                                                 'reason': 'measured 289s of work'}}})
+                self.assertEqual(wall_selection('slow', root), (seconds, 'measured 289s of work'))
+
+    def test_declaration_above_the_ceiling_is_refused_not_clamped(self):
+        root = self.registry({'slow': {'wall_allowance': {'seconds': WALL_ALLOWANCE_CEILING + 1,
+                                                          'reason': 'too long'}}})
+        with self.assertRaisesRegex(ValueError, '301..900'):
+            wall_selection('slow', root)
+
+    def test_non_integer_or_below_default_declaration_is_refused(self):
+        for seconds in (300, 0, -1, 420.0, True, '420'):
+            with self.subTest(seconds=seconds):
+                with self.assertRaisesRegex(ValueError, '301..900'):
+                    declared_allowance('slow', {'wall_allowance': {'seconds': seconds, 'reason': 'why'}})
+
+    def test_allowance_without_a_recorded_reason_is_refused(self):
+        with self.assertRaisesRegex(ValueError, 'exactly seconds and reason'):
+            declared_allowance('slow', {'wall_allowance': {'seconds': 420}})
+        for reason in ('', '   ', None, 7):
+            with self.subTest(reason=reason):
+                with self.assertRaisesRegex(ValueError, 'recorded reason'):
+                    declared_allowance('slow', {'wall_allowance': {'seconds': 420, 'reason': reason}})
+        with self.assertRaisesRegex(ValueError, 'exactly seconds and reason'):
+            declared_allowance('slow', {'wall_allowance': {'seconds': 420, 'reason': 'why', 'extra': 1}})
+        with self.assertRaisesRegex(ValueError, 'exactly seconds and reason'):
+            declared_allowance('slow', {'wall_allowance': 420})
+
+    def test_targets_that_declare_nothing_keep_the_default(self):
+        root = self.registry({'ordinary': {'timeout_seconds': 120},
+                              'slow': {'wall_allowance': {'seconds': 900, 'reason': 'why'}}})
+        for name in ('ordinary', 'missing', '', None, 'SLOW', 'slow '):
+            with self.subTest(name=name):
+                self.assertEqual(wall_selection(name, root), (WALL_DEFAULT, None))
+        self.assertEqual(wall_limit('ordinary', root), 300)
+
+    def test_no_shipped_target_declares_an_allowance_yet(self):
+        root = Path(__file__).resolve().parents[3]
+        targets = json.loads((root / 'src/dv/builder/targets.json').read_text(encoding='utf-8'))
+        self.assertEqual([name for name, row in targets.items() if 'wall_allowance' in row], [])
+        for name in targets:
+            self.assertEqual(wall_limit(name, root), 1500 if name in MILESTONE_TARGETS else 300)
+
+    def test_supervisor_enforces_and_records_a_declared_allowance(self):
+        root = self.registry({'slow': {'wall_allowance': {'seconds': 480, 'reason': 'preload dominates'}}})
+        process = Mock(pid=123, returncode=0)
+        process.communicate.return_value = (b'done', b'')
+        fixed = datetime(2026, 9, 9, tzinfo=timezone.utc)
+        with patch('n2m.test_budget.subprocess.Popen', return_value=process) as launch,              patch('n2m.test_budget.time', Mock(monotonic=Mock(side_effect=[10, 30, 31]))),              patch('n2m.test_budget.datetime', Mock(now=Mock(return_value=fixed))):
+            code, _ = supervise(['worker'], root, 'declared', target='slow')
+        self.assertEqual(code, 0)
+        process.communicate.assert_called_once_with(timeout=448)
+        self.assertEqual(float(launch.call_args.kwargs['env']['N2M_TEST_EXECUTION_DEADLINE']), fixed.timestamp() + 468)
+        record = json.loads(next((root / 'workdir/builds/declared/wall-budget').glob('*.json')).read_text())
+        self.assertEqual((record['wall_limit_seconds'], record['execution_limit_seconds'],
+                          record['wall_allowance_reason']), (480, 468, 'preload dominates'))
+
+    def test_validator_accepts_a_declared_timeout_and_refuses_above_it(self):
+        from n2m.simulation import load_target
+        root = Path(__file__).resolve().parents[3]
+        targets = json.loads((root / 'src/dv/builder/targets.json').read_text(encoding='utf-8'))
+        ordinary = next(name for name in targets if name not in MILESTONE_TARGETS)
+        declared = {**targets[ordinary], 'wall_allowance': {'seconds': 600, 'reason': 'measured 289s of work'},
+                    'timeout_seconds': 600}
+        with patch('n2m.simulation.json.loads', return_value={ordinary: declared}):
+            self.assertEqual(load_target(root, ordinary)[0]['timeout_seconds'], 600)
+        with patch('n2m.simulation.json.loads', return_value={ordinary: {**declared, 'timeout_seconds': 601}}):
+            with self.assertRaisesRegex(ValueError, '1..600'):
+                load_target(root, ordinary)
+        with patch('n2m.simulation.json.loads',
+                   return_value={ordinary: {**targets[ordinary],
+                                            'wall_allowance': {'seconds': 901, 'reason': 'why'}}}):
+            with self.assertRaisesRegex(ValueError, '301..900'):
                 load_target(root, ordinary)
 
     def test_worker_stderr_does_not_corrupt_json_stdout(self):
