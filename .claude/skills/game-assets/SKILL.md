@@ -1,6 +1,6 @@
 ---
 name: game-assets
-description: Create, revise, preview and integrate original Springtrail pixel assets, linking editable sources, user-approved images and wiki specifications. Use for sprite, tile, font and screen artwork; not RTL behavior.
+description: Create, revise, preview and integrate original Springtrail pixel assets, linking editable sources, published images and wiki specifications. Use for sprite, tile, font and screen artwork; not RTL behavior.
 ---
 
 # Game assets
