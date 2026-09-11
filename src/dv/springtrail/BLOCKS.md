@@ -60,7 +60,7 @@ grew.
 | Published background | The decoder writes the block layer's tiles over rows 10 and 11 of the column it is decoding, and leaves every other row and column exactly as `columns.asm` encodes them | `test_blocks_reference` through `blocks_frames.column`. No DUT fixture covers it: every block is beyond column 31, so the thirty-two column ring the game and pause fixtures publish never contains one, and `hud_reference.column` stays terrain-only for those checks |
 | Republication mark | `BlockDirty` carries the changed block's column plus one out of the update that set it | `test_blocks_reference`, `python-bks`, `python-bka`, `python-bkb` |
 | Assets | Approved terrain pixels reproduced by the ROM table, the startup copies and the loaded VRAM image; each design an unflipped four-tile approved map; the rendered used block equal to its approved pixels | `test_blocks_assets` |
-| Affected regression | Contact/power short/halves and fault, motion short/full and fault, game short/full, pause short/full and the motion renderer on the changed ROM, anchor and tile count | `python-pus`, `python-pua`, `python-pub`, `python-pux`, `python-mus`, `python-mut`, `python-mux`, `python-mgs`, `python-mgu`, `python-mr`, `python-pgs`, `python-pgu` |
+| Affected regression | Contact/power short/halves and fault, motion short/full and fault, game short/full, pause short/full and the motion renderer on the changed ROM, anchor and tile count | `python-pus`, `python-pua`, `python-pub`, `python-pux`, `python-mus`, `python-mut`, `python-mux`, `python-mgs`, `python-mgu`, `python-mr`, `python-pgs`, `python-pgu`, `python-pgx` |
 | Delivery | Owning SW/DV links, 32 KiB reproducible mapperless image, host checks, required CI and current-head review | No new art approval or milestone replay |
 
 ## Measured durations
@@ -87,8 +87,9 @@ cocotb 2.0.1 from `workdir/builds/python-dv-env/.venv`.
 | `python-mgu` | 359.5 | 420 declared | PASS |
 | `python-mr` | 335.6 | 420 declared | PASS |
 | `python-pgu` | 645.7 | 880 declared | PASS |
+| `python-pgx` | 478.2 | 880 declared | intended fault, `PAUSE_MODE_MUTATION expected=3 actual=1 dot=378363`, `PAUSE_HUD_CACHE` rejected |
 
-The aggregate is 2750 seconds across sixteen targets, each inside its own
+The aggregate is 3228 seconds across seventeen targets, each inside its own
 selected wall. No new allowance is declared: every block target finishes well
 inside the 300-second default, and the three declared walls are the existing
 ones those targets already carried. Licence refusals while another QuestaSim
