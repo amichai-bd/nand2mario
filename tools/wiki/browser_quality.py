@@ -1,12 +1,21 @@
 """Browser regressions for slide fragments, animated and printable diagrams, and chart layout."""
 import argparse
 import json
+import sys
 from pathlib import Path
 
 from playwright.sync_api import expect
 
 ROOT = Path(__file__).resolve().parents[2]
 OUTPUT = ROOT / 'workdir/wiki/browser'
+sys.path.insert(0, str(ROOT / 'tools'))
+from n2m import generated_interfaces as abi, interface_codec as codec  # noqa: E402
+
+
+def step_frame():
+    """The COBS frame the codec produces for the STEP request drawn on the UART slide."""
+    frame = codec.encode_packet(7, abi.COMMAND_STEP, codec.pack_record('word', {'value': 24}))
+    return frame.hex(' ').upper()
 
 
 def placement(figure, selector):
@@ -78,7 +87,9 @@ def check_views(browser, base):
         assert placement(figure, '.uart-request') > 0.55, 'Request packet did not reach the endpoint'
         assert placement(figure, '.uart-ack') < 0.45, 'Reply did not return to the host'
         expect(figure).to_contain_text('CRC-16 matched')
-        expect(figure).to_contain_text('02 01 02 07 01 01 02 05 02 04 02 18 01 01 03 3B 0A')
+        # The drawn frame must be the codec's own STEP output, delimiter included.
+        expect(figure).to_contain_text(step_frame()[:-3])
+        expect(figure).to_contain_text(step_frame()[-2:])
         # Diagram text must not inherit the pale screen palette on white paper.
         page.emulate_media(media='print')
         expect(figure.locator('text').first).to_have_css('fill', 'rgb(17, 17, 17)')
