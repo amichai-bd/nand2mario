@@ -14,6 +14,8 @@ from cocotb.queue import Queue
 ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(ROOT / "tools"))
 from n2m.generated_interfaces import RECORDS
+# Re-exported for the testbenches that import it from here.
+from n2m.interface_codec import decode_record
 
 
 def packet(sequence, command, payload=b""):
@@ -49,16 +51,6 @@ def requests(image):
     for index, address in enumerate((4, 8, 12, 16, 20, 24, 28, 32, 68, 76, 36)):
         plan.append((4801000 + index * 200000, 2, struct.pack("<I", 0x10000 + address)))
     return plan + [(150001000, 11, b"\0"), (150201000, 4, b"")]
-
-
-def decode_record(value):
-    result = {}
-    for field in RECORDS["retirement"]:
-        width = field["bits"]
-        result[field["name"]] = value & ((1 << width) - 1)
-        value >>= width
-    assert value == 0
-    return result
 
 
 def response(frame):
