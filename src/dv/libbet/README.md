@@ -77,8 +77,8 @@ divergence.
 | up-held | 551 | 40683023 | `2761bee7` | 261 | Roll starts; HUD `1 Combo 25% 1/04` |
 | up+8 | 559 | 41244815 | `3665d188` | 14 | Rolling |
 | up+32 | 583 | 42930191 | `8e5a9220` | 82 | Libbet on the top-right cell; bottom-right cell marked |
-| right-held | 586 | 43140863 | `215d6acf` | 52 | Faces right (off the floor); combo busts to `0 Combo` |
-| right+8, right+32 | 594, 618 | 43702655, 45388031 | `5a6b2249` | 133, 0 | Wrong-move settle, then unchanged |
+| right-held | 586 | 43140863 | `215d6acf` | 52 | Faces right (off the floor); still `1 Combo 25% 1/04` |
+| right+8, right+32 | 594, 618 | 43702655, 45388031 | `5a6b2249` | 133, 0 | Wrong-move settle; combo busts to `0 Combo`, then unchanged |
 | down-held | 621 | 45598703 | `7cb4a859` | 8 | Faces down; no roll, as the reverse of a one-shade roll is invalid |
 | down+8, down+32 | 629, 653 | 46160495, 47845871 | `7cb4a859`, `cab1534d` | 0, 16 | Idle animation |
 
