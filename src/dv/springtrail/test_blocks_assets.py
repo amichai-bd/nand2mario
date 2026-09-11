@@ -95,19 +95,19 @@ class BlockAssets(unittest.TestCase):
 
     def test_rendered_states_match_the_approved_designs(self):
         # Clear the live effect so the block's own pixels are the only layer.
-        world = replace(update(under(8), 16), effect_tile=0, effect_timer=0)
+        world = replace(update(under(38), 16), effect_tile=0, effect_timer=0)
         pixels = background(world)
         base = B.appearance(world.blocks, 0)
         self.assertEqual(base, B.USED_TILE)
         for piece, tile in enumerate(atlas(base)):
-            ox = 64 + 8 * (piece & 1) - world.player.camera
+            ox = 304 + 8 * (piece & 1) - world.player.camera
             oy = 80 + 8 * (piece >> 1)
             for y in range(8):
                 row = pixels[(oy + y) * 160 + ox:(oy + y) * 160 + ox + 8]
                 self.assertEqual(list(row), list(TERRAIN[y][tile * 8:tile * 8 + 8]))
 
     def test_the_release_effect_uses_the_content_design(self):
-        world = update(under(8), 16)
+        world = update(under(38), 16)
         self.assertEqual(DESIGNS[world.effect_tile], 'leaf')
         self.assertEqual(DESIGNS[B.SHARDS], 'shards')
         self.assertEqual(DESIGNS[B.COIN_TILE], 'coin1')

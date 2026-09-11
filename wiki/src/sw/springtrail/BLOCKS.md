@@ -44,15 +44,19 @@ are the contract.
   `(column, row)` and covering `column..column+1` by `row..row+1`. All blocks
   sit in rows 10 and 11, so every probe outside those two rows skips the block
   layer entirely.
-- The level has exactly four blocks. `BlockTable` is a ROM table of
+- The level has exactly four blocks, all beyond the restored ring.
+  `BlockTable` is a ROM table of
   `column, row, kind, content` bytes in this order:
 
 | Index | Column, row | Kind | Content | Pixels |
 | --- | --- | --- | --- | --- |
-| 0 | 8, 10 | item | mushroom | x 64..79, y 80..95 |
-| 1 | 18, 10 | brick | none | x 144..159, y 80..95 |
-| 2 | 40, 10 | item | coin | x 320..335, y 80..95 |
-| 3 | 64, 10 | hidden | star | x 512..527, y 80..95 |
+| 0 | 38, 10 | item | mushroom | x 304..319, y 80..95 |
+| 1 | 52, 10 | brick | none | x 416..431, y 80..95 |
+| 2 | 64, 10 | item | coin | x 512..527, y 80..95 |
+| 3 | 88, 10 | hidden | star | x 704..719, y 80..95 |
+
+Every block sits beyond column 31, so the thirty-two column ring that a
+restart restores and every existing display fixture publishes is unchanged.
 
 - A brick's content is always none; an item or hidden block always has a
   content. The reference model asserts both, so a content-carrying brick is
@@ -132,11 +136,9 @@ collision and grants nothing.
   never respawns its content.
 - `InitGame` clears all eleven persistent bytes, so restart and retry restore
   every block to intact with no duplicate reward.
-- The static initial map at 9800 carries terrain only, so for the sixteen
-  restoration frames after a restart the blocks are solid but not drawn. The
-  restoration repaints all thirty-two columns of 9C00 through the same override
-  before the display switches, and the player is at most at x 56 in those
-  frames, so no block is reachable while it is undrawn.
+- The static initial map at 9800 carries terrain only. It covers columns 0..31
+  and every block is beyond column 31, so it never omits a block: the camera is
+  still 0 while the restoration repaints 9C00 through the same override.
 
 ## Artwork
 
@@ -215,16 +217,16 @@ because no world tile changes.
 
 Literal anchors fixed independently of DUT output:
 
-- A small player at x=64, y=112 pressing A rises under block 0. On the update
-  whose candidate top enters row 11 the scan finds column 8 solid, the player
+- A small player at x=304, y=112 pressing A rises under block 0. On the update
+  whose candidate top enters row 11 the scan finds column 38 solid, the player
   stops with its top at y=96, block 0 becomes used and `PowerUp` makes the
   player large with GROW 32.
-- The same approach to block 1 while small leaves the brick intact and changes
-  no state byte. While large it sets the brick broken, and the next ascending
-  update passes through the now-empty cells.
+- The same approach to block 1 at x=416 while small leaves the brick intact and
+  changes no state byte. While large it sets the brick broken, and the next
+  ascending update passes through the now-empty cells.
 - Block 3 is passable from the side and from above while intact: a player
-  walking at y=88 through x 512..527 is not stopped, and only an ascending head
-  scan reveals it.
+  walking at y=88 through x 704..719 is not stopped, and only an ascending head
+  scan reveals it. Once revealed it stops that same walker and supports a fall.
 - After block 2 is used, `Coins` is 1 and the displayed score is unchanged. A
   second hit on the same block leaves `Coins` at 1.
 

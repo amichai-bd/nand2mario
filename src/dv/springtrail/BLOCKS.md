@@ -42,9 +42,9 @@ returns and the outer `CALL`), 576 for initializing 38 rather than 14 gameplay
 bytes, and 32 for the scene's new effect test. Nothing else on the startup path
 changed: `PrepareMap` still returns at `GameMode` 0 and `StreamMap` does not
 run before the LCD commit. This is an instruction-derived
-anchor checked by `python-mgs` and `python-mgu`; the pause fixture's loose
-startup window widens from 100000..160000 to 100000..200000 for the same
-reason.
+anchor checked by `python-mgs` and `python-mgu`. The pause fixture's loose
+startup window widens from 100000..160000 to 100000..200000 and its progress
+watchdog's startup allowance from 160000 to 200000 dots for the same reason.
 
 ## Acceptance matrix
 

@@ -15,7 +15,8 @@ from n2m.preload import verify, adopt
 from pause_game_reference import Check, SCRIPT, FRAMES, PERIOD
 
 # The full script ends in VBlank 5; the short harness stops in frame 0.
-WATCHDOG=160000+FRAMES*PERIOD
+# The startup allowance matches the reference's widened PAUSE_STARTUP_BOUND.
+WATCHDOG=200000+FRAMES*PERIOD
 
 
 async def run(dut, short=False):

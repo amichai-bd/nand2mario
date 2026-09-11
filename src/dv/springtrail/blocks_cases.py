@@ -59,48 +59,47 @@ def cases():
                            after=state_bytes(after, out, after_level)))
         return after
 
-    # Block 0: an item block releasing a mushroom into PowerUp.
-    used = add('item-hit', under(8), 16)
+    # Block 0 at column 38: an item block releasing a mushroom into PowerUp.
+    used = add('item-hit', under(38), 16)
     add('effect-rise', used, 16)
-    add('item-again', hold(replace(used, player=replace(Player(), x=64 * 16)), 7), 16)
+    add('item-again', hold(replace(used, player=replace(Player(), x=304 * 16)), 7), 16)
     add('effect-end', replace(used, effect_timer=1))
-    add('rise-no-hit', under(8, blocks=(B.USED, 0, 0, 0))._replace_free(), 16) \
-        if False else add('rise-no-hit', hold(playing(x=64 * 16, y=112 * 16), 3), 16)
+    add('rise-no-hit', hold(playing(x=304 * 16, y=112 * 16), 3), 16)
 
-    # Block 1: a brick that only a large or thrower player breaks.
-    add('brick-small', under(18), 16)
-    broken = add('brick-large', under(18, power=LARGE), 16)
-    add('brick-passes', hold(replace(broken, player=replace(Player(), x=144 * 16),
+    # Block 1 at column 52: a brick only a large or thrower player breaks.
+    add('brick-small', under(52), 16)
+    broken = add('brick-large', under(52, power=LARGE), 16)
+    add('brick-passes', hold(replace(broken, player=replace(Player(), x=416 * 16),
                                      power=LARGE, effect_tile=0, effect_timer=0), 7), 16)
-    add('brick-no-support', replace(playing(x=144 * 16, y=64 * 16, grounded=False, jump=3),
+    add('brick-no-support', replace(playing(x=416 * 16, y=64 * 16, grounded=False, jump=3),
                                     blocks=(0, B.BROKEN, 0, 0)))
-    add('brick-support', playing(x=144 * 16, y=64 * 16, grounded=False, jump=3))
+    add('brick-support', playing(x=416 * 16, y=64 * 16, grounded=False, jump=3))
 
-    # Block 2: a coin block, with a saturating counter that never scores.
-    coin = add('coin-hit', under(40), 16)
-    add('coin-again', hold(replace(coin, player=replace(Player(), x=320 * 16),
+    # Block 2 at column 64: a coin block whose counter saturates and never scores.
+    coin = add('coin-hit', under(64), 16)
+    add('coin-again', hold(replace(coin, player=replace(Player(), x=512 * 16),
                                    effect_tile=0, effect_timer=0), 7), 16)
-    add('coin-cap', under(40, coins=255), 16)
+    add('coin-cap', under(64, coins=255), 16)
 
-    # Block 3: hidden until an ascending head scan reveals it.
-    add('hidden-side', playing(x=508 * 16, y=88 * 16, grounded=False, jump=2,
+    # Block 3 at column 88: hidden until an ascending head scan reveals it.
+    add('hidden-side', playing(x=700 * 16, y=88 * 16, grounded=False, jump=2,
                                counter=6, direction=1, speed=2), 1)
-    star = add('hidden-hit', under(64), 16)
-    add('hidden-revealed-side', replace(playing(x=508 * 16, y=88 * 16, grounded=False,
+    star = add('hidden-hit', under(88), 16)
+    add('hidden-revealed-side', replace(playing(x=700 * 16, y=88 * 16, grounded=False,
                                                 jump=2, counter=6, direction=1, speed=2),
                                         blocks=star.blocks, invincible=200), 1)
-    add('hidden-top-support', replace(playing(x=512 * 16, y=64 * 16, grounded=False, jump=3),
+    add('hidden-top-support', replace(playing(x=704 * 16, y=64 * 16, grounded=False, jump=3),
                                       blocks=star.blocks))
 
     # A shot reverses off a block exactly as it does off terrain.
-    add('shot-block', replace(playing(x=40 * 16), power=THROWER,
-                              shot=Shot(60 * 16, 90 * 16, 32, 32, 20)))
+    add('shot-block', replace(playing(x=280 * 16), power=THROWER,
+                              shot=Shot(300 * 16, 90 * 16, 32, 32, 20)))
 
     # Persistence: pause holds every block byte and restart clears them.
     dirty = replace(playing(x=700 * 16, camera=608), power=LARGE, phase=SAFE,
                     phase_timer=9, blocks=(B.USED, B.BROKEN, B.USED, B.USED),
-                    coins=7, effect_tile=B.GEM, effect_x=512 * 16, effect_y=70 * 16,
-                    effect_timer=5, block_dirty=65, collected=15, score=4,
+                    coins=7, effect_tile=B.GEM, effect_x=704 * 16, effect_y=70 * 16,
+                    effect_timer=5, block_dirty=89, collected=15, score=4,
                     timer=42, mode=PAUSED)
     add('pause-holds', dirty, 16)
     add('reset', replace(dirty, mode=RETRY), 128, 'reset')

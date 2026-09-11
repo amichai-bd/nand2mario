@@ -47,7 +47,7 @@ def build(root, destination, variant='motion'):
         lines += ['LD A,[HL+]', 'LD [DE],A', 'INC DE']*16
         lines += ['DEC B', 'JR NZ,TileBlock', 'LD HL,$9800', 'LD B,64',
                   'XOR A,A', 'ClearHUD:', 'LD [HL+],A', 'DEC B',
-                  'JR NZ,ClearHUD', 'CALL InitHUD', 'CALL InitMotionArt', 'LD A,$E4',
+                  'JR NZ,ClearHUD', 'CALL InitHUD', 'CALL InitMotionArt', 'CALL InitBlockArt', 'LD A,$E4',
                   'LDH [$FF47],A', 'LDH [$FF48],A', 'RingColumn:',
                   'LD A,[$C054]', 'LD DE,$C200', 'CALL DecodeColumn',
                   'LD A,[$C054]', 'LD HL,$C200', 'CALL PublishColumn',

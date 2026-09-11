@@ -27,7 +27,7 @@ class BlocksUnitCheckTests(unittest.TestCase):
         self.assertEqual(rows[0]['after'][53], 132)
         self.assertEqual(rows[0]['after'][58], 16)
         # The hit block's own column is marked for republication.
-        self.assertEqual(rows[0]['after'][59], 9)
+        self.assertEqual(rows[0]['after'][59], 39)
 
     def test_operand_slot_holds_every_half(self):
         # The unit fixture's assets section is 2 KiB of operand snapshots.

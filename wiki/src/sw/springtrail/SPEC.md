@@ -141,7 +141,7 @@ The literal level has ground in rows 16 and 17 except gap columns 22..25,
 46..49, and 70..73. Additional solid platforms occupy row 12 columns 10..14,
 row 10 columns 31..35, row 12 columns 56..60, and row 11 columns 80..84.
 All other cells are empty; the block layer adds no terrain and occupies world
-rows 10 and 11 at columns 8, 18, 40 and 64. Collectibles are 8-by-8 boxes at
+rows 10 and 11 at columns 38, 52, 64 and 88. Collectibles are 8-by-8 boxes at
 (96, 88), (264, 72), (464, 88), and (656, 80); the 8-by-16 goal starts at
 (736, 112). Collectible
 and goal tests use half-open rectangle overlap against the power contract's

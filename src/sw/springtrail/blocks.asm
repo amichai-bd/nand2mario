@@ -4,10 +4,10 @@ SECTION "blocks",ROM
 ; column, row, kind (0 item, 1 brick, 2 hidden), content (0 none, 1 coin,
 ; 2 mushroom, 3 star). Every block covers two columns and rows 10 and 11.
 BlockTable:
-DB 8,10,0,2
-DB 18,10,1,0
-DB 40,10,0,1
-DB 64,10,2,3
+DB 38,10,0,2
+DB 52,10,1,0
+DB 64,10,0,1
+DB 88,10,2,3
 
 ; B = column, C = row. A = the covering block index with HL at its entry,
 ; or $FF when the cell is outside the table.

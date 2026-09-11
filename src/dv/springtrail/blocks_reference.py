@@ -11,10 +11,10 @@ INTACT, USED, BROKEN = range(3)
 SMALL = 0
 
 # column, row, kind, content. Rows are always 10 and 11; see BLOCKS.md.
-BLOCKS = ((8, 10, ITEM, MUSHROOM),
-          (18, 10, BRICK, NONE),
-          (40, 10, ITEM, COIN),
-          (64, 10, HIDDEN, STAR))
+BLOCKS = ((38, 10, ITEM, MUSHROOM),
+          (52, 10, BRICK, NONE),
+          (64, 10, ITEM, COIN),
+          (88, 10, HIDDEN, STAR))
 ROWS = (10, 11)
 EFFECT_UPDATES = 16
 COIN_LIMIT = 255

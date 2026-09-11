@@ -43,7 +43,7 @@ def main():
     (output / 'block-states.svg').write_bytes(svg(canvas, 4))
     (output / 'block-states.png').write_bytes(png(canvas, 4))
     # One in-world view: block 0 used, with its released leaf part way up.
-    world = update(under(8), 16)
+    world = update(under(38), 16)
     for _ in range(10):
         world = update(world, 0)
     pixels = image(world)
