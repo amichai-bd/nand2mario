@@ -187,7 +187,9 @@ source/GitHub data.
 `tools/wiki/refresh_statistics.py` is the unattended refresh. It resolves the
 repository from its own path, fetches `origin`, and exits 0 without side effects
 when the `Source <code>` revision in `wiki/statistics.html` at `origin/main`
-equals `origin/main`. Otherwise it adds a worktree and branch
+equals `origin/main`, or when
+`git log <recorded>..origin/main -- . ':!wiki/statistics.html'` lists no commit,
+so a merged refresh does not trigger the next one. Otherwise it adds a worktree and branch
 `stats-refresh-<YYYYMMDD>T<HHMMSS>Z` from `origin/main`, runs the documented
 collector command with `--revision origin/main` inside it, and exits 0 after
 cleanup when the snapshot is unchanged. A change must be `wiki/statistics.html`
@@ -195,7 +197,11 @@ alone, both in the working tree and in the resulting commit; it then pushes,
 opens a non-draft PR titled `stats: refresh snapshot to <sha7>` with a
 `Refs #392` body line, waits for `PR policy`, squash-merges with
 `--match-head-commit`, confirms the `MERGED` state and deletes the remote
-branch. Every exit removes the worktree and local branch; a failure after the
+branch; a branch that `git ls-remote --heads origin` no longer lists, or that
+`push --delete` reports missing (`remote ref does not exist` or
+`unable to resolve reference`), is logged as already deleted because the
+repository deletes merged branches itself. Every exit removes the worktree and
+local branch; a failure after the
 PR opened closes it and deletes the pushed branch, then exits non-zero with a
 plain message. `--dry-run` stops before the push. A `workdir/stats-refresh.lock`
 file, created exclusively and removed on exit, refuses an overlapping run with
@@ -206,7 +212,8 @@ enforces the branch, title, body and changed-file forms.
 Run `python -m unittest tools.wiki.test_repository_stats -v` for offline collector,
 empty-sample, escaping and atomic-failure checks, and
 `python -m unittest tools.wiki.test_refresh_statistics -v` for the refresh
-no-change exit, changed-file guard, failure cleanup, dry run and lock with `git`
+no-change exits, changed-file guard, auto-deleted branch tolerance, failure
+cleanup, dry run and lock with `git`
 and `gh` stubbed. The wiki browser suite checks the Stats tab and report at
 desktop/mobile sizes, including the snapshot notice, documentation navigation
 and keyboard-scrollable chart regions.

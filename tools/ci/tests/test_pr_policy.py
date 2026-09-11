@@ -30,7 +30,8 @@ class PrPolicyTests(unittest.TestCase):
         def urlopen(request):
             self.urls.append(request.full_url)
             if request.full_url.endswith(f"/pulls/{number}/files?per_page=100"):
-                return io.StringIO(json.dumps([{"filename": name} for name in files]))
+                return io.StringIO(json.dumps([{"filename": name, "status": "modified"} if isinstance(name, str) else name
+                                               for name in files]))
             return io.StringIO(json.dumps(issue))
 
         self.urls = []
@@ -100,6 +101,8 @@ class PrPolicyTests(unittest.TestCase):
             "extra file": dict(files=["tools/wiki/refresh_statistics.py", "wiki/statistics.html"]),
             "other file": dict(files=["wiki/index.md"]),
             "no file": dict(files=[]),
+            "snapshot added": dict(files=[{"filename": "wiki/statistics.html", "status": "added"}]),
+            "snapshot removed": dict(files=[{"filename": "wiki/statistics.html", "status": "removed"}]),
             "base": dict(base="other"),
         }
         for name, override in cases.items():
