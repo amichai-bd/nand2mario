@@ -85,28 +85,35 @@ jobs:
               try:
                   module = importlib.import_module(path.stem)
               except ModuleNotFoundError as error:
+                  if error.name != 'cocotb':
+                      sys.exit(f'{path.name} cannot import {error.name}; every fixture here '
+                               'must import on the interpreter this job pins')
                   # Simulator entry points need cocotb, whose pinned 2.0.1 release
                   # does not build for this interpreter. Each registers its work
-                  # with @cocotb.test(), so require that positive evidence: any
-                  # other module needing cocotb is a host fixture whose tests
-                  # would vanish from this run, and unknown shapes fail closed.
-                  if error.name != 'cocotb':
-                      raise
-                  if '@cocotb.test' in path.read_text(encoding='utf-8'):
+                  # with @cocotb.test() and none of them mentions unittest, so
+                  # require both signals. A module carrying any unittest text is
+                  # treated as a host fixture whose tests would vanish from this
+                  # run, including one that does both. The test is textual, so a
+                  # module that merely writes @cocotb.test in prose while naming
+                  # no unittest is trusted; that is the boundary.
+                  source = path.read_text(encoding='utf-8')
+                  if '@cocotb.test' in source and 'unittest' not in source:
                       simulator.append(path.name)
                   elif path.name in transitive:
                       blocked.append(path.name)
                   else:
-                      sys.exit(f'{path.name} needs cocotb but registers no @cocotb.test; '
-                               'make it importable without the simulator, or record it '
-                               'under an open issue in transitive above')
+                      sys.exit(f'{path.name} needs cocotb and is not a plain simulator entry '
+                               'point; make it importable without the simulator, move its '
+                               'unittest cases to a host fixture, or record it under an open '
+                               'issue in transitive above')
                   continue
               tests = unittest.defaultTestLoader.loadTestsFromModule(module)
               if not tests.countTestCases():
                   sys.exit(f'{path.name} imported but contributed no tests')
               suite.addTests(tests)
           print('simulator entry modules not run here:', ' '.join(simulator))
-          print('host fixtures blocked by a cocotb import chain (#341):', ' '.join(blocked))
+          if blocked:
+              print('host fixtures blocked by a cocotb import chain (#341):', ' '.join(blocked))
           sys.exit(not unittest.TextTestRunner(verbosity=2).run(suite).wasSuccessful())
           PY
       - name: Report simulation scope
