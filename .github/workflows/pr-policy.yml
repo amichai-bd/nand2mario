@@ -60,7 +60,7 @@ jobs:
           closing_issues = set(
               re.findall(r"(?i)\bcloses\s+#([1-9][0-9]*)\b", body)
           )
-          # User-authorized checkpoints; full acceptance stays in the linked issue.
+          # User-authorized checkpoints; acceptance stayed in the linked issue at merge.
           checkpoints = {"162": "156", "163": "88", "167": "164", "169": "168", "179": "168"}
           checkpoint = checkpoints.get(os.environ.get("PR_NUMBER", ""))
           if checkpoint:

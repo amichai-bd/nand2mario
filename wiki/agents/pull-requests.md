@@ -51,18 +51,13 @@ closing reference, each carrying matching `Checkpoint for #<number>` and
 `Refs #<number>` lines for the issue it referenced when it merged. It authorizes
 no further checkpoint, and no PR may be added to it.
 
-| PR | Issue referenced at merge |
-|---|---|
-| PR162 | #156 |
-| PR163 | #88 |
-| PR167 | #164 |
-| PR169 | #168 |
-| PR179 | #168 |
+The set is PR162, PR163, PR167, PR169 and PR179, all merged.
 
-Each of those issues kept its unfinished acceptance when its checkpoint merged;
-whether one is still open today is a question for that issue, not for this
-record. The `PR policy` check enforces the pairing from its own fixed map, keyed
-by PR number, so the set cannot grow by editing this page.
+Each kept its acceptance in the issue it referenced when it merged; whether that
+issue is still open today is a question for that issue, not for this record. The
+pairing itself is not repeated here: the `PR policy` check holds it in its own
+fixed map, keyed by PR number, and each PR body carries its own `Checkpoint for`
+and `Refs` lines. That map is also why the set cannot grow by editing this page.
 
 Every other PR closes its branch's issue. A PR that merely references an issue
 without closing it, outside this set, does not satisfy the policy.

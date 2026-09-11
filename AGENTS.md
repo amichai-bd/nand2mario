@@ -106,7 +106,7 @@ for proportionate acceptance. Ordinary PRs must meet their own scoped criteria,
 required checks under the external fallback and independent current-head review; full milestone gates apply to
 milestone completion. Keep unfinished milestone requirements in named open issues.
 Make authorized issue-boundary changes explicit before using the revised criteria;
-the listed checkpoint exceptions are not a blanket waiver. Correctness defects
+the recorded checkpoint exceptions are not a blanket waiver. Correctness defects
 and regressions introduced by a PR remain its blockers.
 
 Default to existing continuous Python and Intel-model preload for composed
