@@ -49,8 +49,8 @@ in these three stages. An intermediate stage is not completion of that release.
    violation belongs in a focused hardware bug with its owning contract.
 2. Reuse the [movement/animation contract](MOVEMENT.md) against those explicit
    display coordinates. Its best-effort original choices do not establish full
-   reference equivalence. Coordinate size/contact contracts with #302.
-3. Deliver all core interaction, block, progression and entity scopes #302-#305.
+   reference equivalence. Size/contact rules are [POWER.md](POWER.md).
+3. Deliver the remaining block, progression and entity scopes #303-#305.
    Agree shared state ownership before dependent code, rather than creating
    circular implementation waits. Additional families, bosses, bonus and vehicle
    stages remain the separate [#306 inventory](https://github.com/amichai-bd/nand2mario/issues/306).

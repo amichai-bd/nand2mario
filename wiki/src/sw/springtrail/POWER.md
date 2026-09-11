@@ -157,7 +157,8 @@ Literal anchors fixed independently of DUT output:
 Literal cases in `src/dv/springtrail/power_reference.py` and
 `test_power_reference.py` were frozen before the code. The actual shared SM83
 routines run in the short complete CPU harness (`python-pus`), its bounded
-full case set (`python-put`), one actual consumer fault (`python-pux`) and
+full case set in two halves (`python-pua`, `python-pub`), one actual consumer
+fault (`python-pux`) and
 the rendered-state fixture (`python-pr`). The six motion targets are rerun as
 affected regression. The [owning DV plan](../../../../src/dv/springtrail/POWER.md)
 records the matrix and measured walls.
