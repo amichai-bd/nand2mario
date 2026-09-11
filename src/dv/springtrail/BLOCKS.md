@@ -71,13 +71,28 @@ cocotb 2.0.1 from `workdir/builds/python-dv-env/.venv`.
 
 | Target | Wall (s) | Limit (s) | Result |
 | --- | --- | --- | --- |
-| `python-bks` | 59.4 | 300 | PASS, item hit then effect rise, `UpdateGame` 8428 dots |
-| `python-bkx` | 32.9 | 300 | intended fault: `BLOCKS_HIT_MUTATION expected=8 actual=12 dot=5963`, `MOTION_STATE item-hit` rejected, receipt retained |
-| `python-bka` | 111.4 | 300 | PASS, 10 cases |
-| `python-bkb` | 112.2 | 300 | PASS, 10 cases |
+| `python-bks` | 47.9 | 300 | PASS, item hit then effect rise |
+| `python-bkx` | 32.5 | 300 | intended fault: `BLOCKS_HIT_MUTATION expected=38 actual=42 dot=5991`, `MOTION_STATE item-hit` rejected, receipt retained |
+| `python-bka` | 113.2 | 300 | PASS, 10 cases |
+| `python-bkb` | 111.4 | 300 | PASS, 10 cases |
+| `python-mus` | 28.3 | 300 | PASS |
+| `python-pus` | 38.8 | 300 | PASS |
+| `python-mux` | 25.2 | 300 | intended fault, `MOTION_STATE first-right` |
+| `python-pux` | 29.2 | 300 | intended fault, `MOTION_STATE crouch` |
+| `python-mgs` | 190.5 | 300 | PASS, LCD enable at dot 167840 |
+| `python-pgs` | 192.0 | 300 | PASS |
+| `python-pua` | 173.7 | 300 | PASS, 23 cases |
+| `python-pub` | 209.8 | 300 | PASS, 23 cases |
+| `python-mut` | 217.1 | 300 | PASS |
+| `python-mgu` | 359.5 | 420 declared | PASS |
+| `python-mr` | 335.6 | 420 declared | PASS |
+| `python-pgu` | 645.7 | 880 declared | PASS |
 
-No new wall allowance is declared: every block target finishes well inside the
-300-second default.
+The aggregate is 2750 seconds across sixteen targets, each inside its own
+selected wall. No new allowance is declared: every block target finishes well
+inside the 300-second default, and the three declared walls are the existing
+ones those targets already carried. Licence refusals while another QuestaSim
+instance held the nodelocked seat were retried, never counted.
 
 `python-pr` is not in that set. Its declared inputs still name
 `src/dv/springtrail/composition_game_check.py`, which #385 deleted, so the
