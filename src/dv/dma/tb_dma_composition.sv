@@ -106,7 +106,11 @@ module tb_dma_composition;
         .oam_cpu_allow(ppu_oam_write_allow), .vram_cpu_read_allow(ppu_vram_read_allow), .oam_cpu_read_allow(ppu_oam_read_allow), .oam_late_future(oam_late_future), .oam_cpu_late_write(oam_cpu_late_write), .stat_condition(), .vblank_condition(), .stat_rise(),
         .vblank_rise(), .fault(ppu_fault), .source_valid(), .source_start(), .source_shade(),
         .source_x(), .source_y(), .source_epoch(), .source_dot(), .source_abort(),
-        .blank_assert(), .source_display_eligible());
+        .blank_assert(), .source_display_eligible(),
+        .lcdc_observe(), .stat_observe(), .ly_observe(), .lyc_observe(),
+        .scy_observe(), .scx_observe(), .wy_observe(), .wx_observe(),
+        .bgp_observe(), .obp0_observe(), .obp1_observe()
+    );
     assign peripheral_valid=ppu_selected;
     assign peripheral_available=ppu_selected;
     n2m_memory_stores stores (.oam_request, .oam_response, .clk_sys(clk_sys), .reset_sys(reset_sys), .core_reset(core_reset),

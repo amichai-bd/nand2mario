@@ -26,7 +26,10 @@ module tb_ppu_access;
         .stat_condition, .stat_rise, .vblank_condition(), .vblank_rise(), .fault,
         .source_valid(), .source_start(), .source_shade(), .source_x(), .source_y(),
         .source_epoch(), .source_dot(), .source_abort(), .blank_assert(),
-        .source_display_eligible()
+        .source_display_eligible(),
+        .lcdc_observe(), .stat_observe(), .ly_observe(), .lyc_observe(),
+        .scy_observe(), .scx_observe(), .wy_observe(), .wx_observe(),
+        .bgp_observe(), .obp0_observe(), .obp1_observe()
     );
     assign io_commit = pending_write && cpu_phase == 3 && gb_tick;
     `DFF_RST_EN(cpu_phase, cpu_phase + 2'd1, clk_sys, gb_tick, reset_sys || core_reset, 2'd0)

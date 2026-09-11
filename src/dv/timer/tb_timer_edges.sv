@@ -13,6 +13,8 @@ module tb_timer_edges;
     integer new_selector,pattern,target_count,expected_count;
     logic [3:0] high_mask;
     bit edge_fault,bad_commit;
+    // Host observation outputs; this fixture checks the CPU read port.
+    logic [7:0] div_observe, tima_observe, tma_observe, tac_observe;
     n2m_timer dut (.*);
     assign sources={2'b00,interrupt_request.request,2'b00};
     n2m_interrupts u_interrupts (

@@ -54,7 +54,10 @@ module ppu_proof (
         .vram_cpu_allow, .oam_cpu_allow, .vram_cpu_read_allow(), .oam_cpu_read_allow(), .oam_late_future(), .oam_cpu_late_write(), .stat_condition, .stat_rise,
         .vblank_condition, .vblank_rise, .fault,
         .source_valid, .source_start, .source_shade, .source_x(), .source_y(),
-        .source_epoch, .source_dot, .source_abort, .blank_assert, .source_display_eligible
+        .source_epoch, .source_dot, .source_abort, .blank_assert, .source_display_eligible,
+        .lcdc_observe(), .stat_observe(), .ly_observe(), .lyc_observe(),
+        .scy_observe(), .scx_observe(), .wy_observe(), .wx_observe(),
+        .bgp_observe(), .obp0_observe(), .obp1_observe()
     );
     n2m_frame_bridge u_bridge (
         .clk_sys, .reset_sys, .core_reset, .clk_pix, .reset_pix,

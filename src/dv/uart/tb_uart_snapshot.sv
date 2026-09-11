@@ -46,7 +46,11 @@ module tb_uart_snapshot;
         .rom_read_valid(rom_read_valid),.snapshot_request(snapshot_request),.snapshot_ready(snapshot_ready),
         .snapshot_done(snapshot_done),.snapshot_ok(snapshot_ok),.snapshot_valid(snapshot_valid),
         .snapshot_metadata(snapshot_metadata),.frame_read(frame_read),.frame_address(frame_address),
-        .frame_data(frame_data),.frame_valid(frame_valid)
+        .frame_data(frame_data),.frame_valid(frame_valid),
+        .io_lcdc(8'd0), .io_stat(8'd0), .io_ly(8'd0), .io_lyc(8'd0), .io_scy(8'd0),
+        .io_scx(8'd0), .io_wy(8'd0), .io_wx(8'd0), .io_bgp(8'd0), .io_obp0(8'd0),
+        .io_obp1(8'd0), .io_div(8'd0), .io_tima(8'd0), .io_tma(8'd0), .io_tac(8'd0),
+        .io_if(8'd0), .io_ie(8'd0)
     );
 
     logic observe_valid, observe_complete, observe_abort;

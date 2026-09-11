@@ -38,7 +38,11 @@ module tb_ppu_scroll_window;
     logic [7:0] lo, hi;
     logic [1:0] color, expected;
     n2m_timebase timebase (.*);
-    n2m_ppu dut (.vram_cpu_read_allow(), .oam_cpu_read_allow(), .oam_late_future(), .oam_cpu_late_write(), .*);
+    n2m_ppu dut (.vram_cpu_read_allow(), .oam_cpu_read_allow(), .oam_late_future(), .oam_cpu_late_write(), .*,
+        .lcdc_observe(), .stat_observe(), .ly_observe(), .lyc_observe(),
+        .scy_observe(), .scx_observe(), .wy_observe(), .wx_observe(),
+        .bgp_observe(), .obp0_observe(), .obp1_observe()
+    );
     assign io_commit = write_pending && cpu_phase == 3 && gb_tick;
     `DFF_RST_EN(cpu_phase, cpu_phase + 2'd1, clk_sys, gb_tick, reset_sys || core_reset, 2'd0)
     `DFF_RST_EN(dot_before, dot_before + 64'd1, clk_sys, gb_tick, reset_sys || core_reset, 64'd0)

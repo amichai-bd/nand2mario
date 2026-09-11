@@ -30,7 +30,10 @@ module tb_ppu_vblank;
         .stat_condition, .stat_rise, .vblank_condition, .vblank_rise, .fault,
         .source_valid(), .source_start(), .source_shade(), .source_x(), .source_y(),
         .source_epoch(), .source_dot(), .source_abort(), .blank_assert(),
-        .source_display_eligible()
+        .source_display_eligible(),
+        .lcdc_observe(), .stat_observe(), .ly_observe(), .lyc_observe(),
+        .scy_observe(), .scx_observe(), .wy_observe(), .wx_observe(),
+        .bgp_observe(), .obp0_observe(), .obp1_observe()
     );
     assign irq_sources = {3'b000, stat_rise, vblank_rise};
     assign if_commit = io_commit && io_address == 16'hff0f;
