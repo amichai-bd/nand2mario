@@ -39,7 +39,7 @@ class Check(GameCheck):
         if address==0xff40:
             if data==0:assert self.lcd is None,'HUD_LCD_OFF'
             elif self.lcd is None:
-                assert data==0x99 and 0<dot<160000,'HUD_STARTUP_BOUND'
+                assert data==0x99 and 0<dot<200000,'HUD_STARTUP_BOUND'
                 self.lcd=dot
             else:assert data in (0x99,0x9b),'HUD_OBJECT_MODE'
         if 0xc100<=address<0xc1a0:

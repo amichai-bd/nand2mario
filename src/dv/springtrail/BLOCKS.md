@@ -44,7 +44,9 @@ changed: `PrepareMap` still returns at `GameMode` 0 and `StreamMap` does not
 run before the LCD commit. This is an instruction-derived
 anchor checked by `python-mgs` and `python-mgu`. The pause fixture's loose
 startup window widens from 100000..160000 to 100000..200000 and its progress
-watchdog's startup allowance from 160000 to 200000 dots for the same reason.
+watchdog's startup allowance from 160000 to 200000 dots for the same reason,
+and the renderer fixture's own startup bound from 160000 to 200000 because it
+now loads the block art too.
 
 ## Acceptance matrix
 
@@ -52,7 +54,7 @@ watchdog's startup allowance from 160000 to 200000 dots for the same reason.
 | --- | --- | --- |
 | Contract/model | Literal table, solidity per kind and state, appearance agreeing with solidity, one-shot release, coin saturation, brick breakage by power state, hidden reveal, effect rise, pause and restart | `test_blocks_reference`, no DUT-fed expectations |
 | Shared CPU | Actual `UpdateGame` and `InitGame` bytes; every expected state byte after each scripted call, completion and settled halt | `python-bks` short, then `python-bka` and `python-bkb` |
-| Fault | The item hit's actual `HitColumn` store forced from 8 to 12 after the call marker; the same call's `ResolveBlockHit` consumes the wrong cell, so block 0 stays intact, `PowerUp` is never called and no effect starts, and the unchanged checker rejects the first report's block, power and effect bytes. Each case re-seeds its operands, so only a store consumed inside its own call is a valid witness | `python-bkx`, after the positive short |
+| Fault | The item hit's actual `HitColumn` store forced from 38 to 42 after the call marker; the same call's `ResolveBlockHit` consumes the wrong cell, so block 0 stays intact, `PowerUp` is never called and no effect starts, and the unchanged checker rejects the first report's block, power and effect bytes. Each case re-seeds its operands, so only a store consumed inside its own call is a valid witness | `python-bkx`, after the positive short |
 | Published background | The restored and streamed column caches carry the block layer's tiles, not the bare terrain value | `python-mgs`, `python-mgu`, `python-pgs`, `python-pgu` through the block-aware `hud_reference.column` |
 | Republication mark | `BlockDirty` carries the changed block's column plus one out of the update that set it | `test_blocks_reference`, `python-bks`, `python-bka`, `python-bkb` |
 | Assets | Approved terrain pixels reproduced by the ROM table, the startup copies and the loaded VRAM image; each design an unflipped four-tile approved map; the rendered used block equal to its approved pixels | `test_blocks_assets` |

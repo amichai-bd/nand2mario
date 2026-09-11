@@ -230,7 +230,7 @@ module tb_python_v05 #(
         end
     end
 
-    // Corrupt the actual head-hit column store (8 -> 12), not its public trace.
+    // Corrupt the actual head-hit column store (38 -> 42), not its public trace.
     // The same UpdateGame call's ResolveBlockHit consumes the wrong cell, so
     // block 0 stays intact and releases nothing.
     initial begin
@@ -238,9 +238,9 @@ module tb_python_v05 #(
             wait(bus_commit && write_enable && address == 16'hc0fc);
             do @(negedge clk_sys);
             while (!(dut.raw_write && dut.raw_store == n2m_memory_pkg::STORE_WRAM &&
-                     dut.raw_offset == 15'h0085 && dut.raw_wdata == 8'd8));
-            $display("BLOCKS_HIT_MUTATION expected=8 actual=12 dot=%0d", dot_count);
-            force dut.u_stores.ram_wdata = 8'd12;
+                     dut.raw_offset == 15'h0085 && dut.raw_wdata == 8'd38));
+            $display("BLOCKS_HIT_MUTATION expected=38 actual=42 dot=%0d", dot_count);
+            force dut.u_stores.ram_wdata = 8'd42;
             @(posedge clk_sys);
             @(negedge clk_sys);
             release dut.u_stores.ram_wdata;
