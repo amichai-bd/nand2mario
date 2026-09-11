@@ -22,12 +22,16 @@ from test_host import DEVICE, Endpoint, ROOT
 
 class Download:
     """Minimal urlopen stand-in; serves exactly the bytes a test wants delivered."""
-    def __init__(self, payload):
+    def __init__(self, payload, final=None):
         self.payload = payload
+        self.final = final
         self.calls = []
+        self.url = None
 
     def __call__(self, url, timeout=None):
         self.calls.append(url)
+        # A real redirect reports the landing URL here, which may differ from the pin.
+        self.url = self.final or url
         return self
 
     def __enter__(self):
@@ -104,6 +108,37 @@ class ExternalRomTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'lowercase letters'):
                 read_external(ROOT, '../escape', self.pins())
         self.assertFalse(self.cache.exists())
+
+    def test_redirect_off_https_is_refused_even_though_the_pin_is_https(self):
+        download = Download(self.image, final='http://example.invalid/' + self.name + '.gb')
+        with patch('n2m.host.external.urllib.request.urlopen', download):
+            with self.assertRaisesRegex(ValueError, 'redirected off https'):
+                read_external(ROOT, self.name, self.pins())
+        self.assertEqual(download.calls, ['https://example.invalid/' + self.name + '.gb'])
+        self.assertFalse(self.cache.exists())
+
+    def test_notice_name_must_be_a_plain_file_name(self):
+        notice = {'url': 'https://example.invalid/notice.txt', 'sha256': self.digest,
+                  'size': len(self.image), 'license': 'CC0-1.0'}
+        for bad in ('../escape', 'sub/dir', '.hidden', ''):
+            with self.subTest(notice=bad):
+                shutil.rmtree(self.cache, ignore_errors=True)
+                with patch('n2m.host.external.urllib.request.urlopen', Download(self.image)):
+                    with self.assertRaisesRegex(ValueError, 'not a plain file name'):
+                        read_external(ROOT, self.name, self.pins(notices={bad: notice}))
+                # The guard runs before the fetch, so no notice file is ever created.
+                self.assertEqual(sorted(path.name for path in self.cache.rglob('*')), ['image.gb'])
+
+    def test_interrupted_cache_write_leaves_no_partial_file(self):
+        def interrupted(source, target):
+            raise OSError('interrupted before the cache was replaced')
+
+        with patch('n2m.host.external.urllib.request.urlopen', Download(self.image)),              patch('n2m.host.external.os.replace', interrupted):
+            with self.assertRaises(OSError):
+                read_external(ROOT, self.name, self.pins())
+        self.assertEqual(list((self.cache / 'image.gb').parent.glob('*')), [])
+        with patch('n2m.host.external.urllib.request.urlopen', Download(self.image)):
+            self.assertEqual(read_external(ROOT, self.name, self.pins())[0], self.image)
 
     def test_corrupt_cache_is_refused_and_never_silently_replaced(self):
         with patch('n2m.host.external.urllib.request.urlopen', Download(self.image)):

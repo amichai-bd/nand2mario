@@ -70,10 +70,12 @@ notices with their own URL, hash and size. The image is fetched at run time into
 ignored `workdir/private/external-roms/<name>/`; no image bytes enter the
 repository. Size is checked first, then SHA-256, on the downloaded bytes before
 the cache is written and again on every cached read. An unknown pin, a missing
-field, a non-https URL, a size differing from the direct-profile image size, or
-any hash mismatch fails before the serial port opens, so no partial image is
-written. Everything after that point, including readback and the valid, paused
-and profile checks, is identical for both sources. The pin list is empty until a
+field, a non-https pinned URL, a redirect that lands off https, a size differing
+from the direct-profile image size, or any hash mismatch fails before the serial
+port opens, so no partial image is written. Verified bytes replace the cache
+file in one step, so an interrupted run leaves no truncated cache. Everything
+after that point, including readback and the valid, paused and profile checks,
+is identical for both sources. The pin list is empty until a
 reviewed licensed image is selected.
 
 ## Transport and recovery

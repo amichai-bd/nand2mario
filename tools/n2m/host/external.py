@@ -1,8 +1,10 @@
 """Pinned freely licensed external images, fetched at run time and never committed."""
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
+import tempfile
 import urllib.request
 
 from .. import generated_interfaces as abi
@@ -28,10 +30,21 @@ def fetch(pin, path, name):
         raise ValueError(f'external pin must use an https source URL: {name}')
     if not path.exists():
         with urllib.request.urlopen(pin['url'], timeout=60) as response:
+            # A redirect may downgrade the pinned https URL; the final response must stay https.
+            if not str(response.url).startswith('https://'):
+                raise ValueError(f'external download was redirected off https: {name}')
             data = response.read(pin['size'] + 1)
         verify(data, pin, name)
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(data)
+        # Replace in one step so an interrupted write never leaves a truncated cache behind.
+        handle, temporary = tempfile.mkstemp(dir=path.parent, prefix=path.name + '.', suffix='.part')
+        try:
+            with os.fdopen(handle, 'wb') as opened:
+                opened.write(data)
+            os.replace(temporary, path)
+        except BaseException:
+            Path(temporary).unlink(missing_ok=True)
+            raise
     if path.is_symlink() or not path.is_file():
         raise ValueError(f'external cache is not a regular file: {name}')
     return verify(path.read_bytes(), pin, name)
