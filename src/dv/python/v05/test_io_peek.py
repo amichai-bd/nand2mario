@@ -86,10 +86,16 @@ async def io_registers(dut):
             assert all(row['ly'] <= 153 for row in rows), 'IO_PEEK_LY_RANGE'
             lit = [row for row in rows if row['lcdc'] & 0x80]
             assert lit, 'IO_PEEK_LCD_NEVER_ENABLED'
-            # Mode progression: VBlank is mode 1 exactly on lines 144 through 153.
+            # Mode progression. VBlank is mode 1 on lines 144 through 153, and
+            # readable LY wraps to 0 early during line 153 while the PPU is
+            # still in VBlank, so mode 1 with LY 0 is correct DMG behavior
+            # observed on the board. Lines 1 through 143 are never VBlank.
             for row in lit:
-                assert (row['ly'] >= 144) == (row['mode'] == 1), \
-                    f"IO_PEEK_MODE_PROGRESSION ly={row['ly']} stat={row['stat']:02x}"
+                if row['mode'] == 1:
+                    ok = row['ly'] >= 144 or row['ly'] == 0
+                else:
+                    ok = row['ly'] < 144
+                assert ok, f"IO_PEEK_MODE_PROGRESSION ly={row['ly']} stat={row['stat']:02x}"
             lines = {row['ly'] for row in lit}
             assert len(lines) >= 20, f'IO_PEEK_LY_PROGRESS lines={len(lines)}'
             # Simulation covers scanline progression within the wall budget.
