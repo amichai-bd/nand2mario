@@ -117,7 +117,7 @@ else. The repository now builds a different image; #310, #314, #316, #318,
 displayed frame. The frozen
 SameBoy profile in `src/dv/sameboy/springtrail.json` and the `paused_capture`
 and `milestone` drivers all pin that same retired hash, so neither the
-every-frame acquisition nor the continuous endurance result may be read as
+every-frame acquisition nor the retired-image endurance result may be read as
 covering the current build.
 
 Every registered simulation target either checks the image it builds or pins a
@@ -133,7 +133,8 @@ names its image:
 | [Motion composition](../../../../src/dv/springtrail/MOVEMENT.md) | `python-mgs`, `python-mgu` | the built image, no hash guard | Boot, the title frame, the first Start+Right input, its publication and the settled pause, with independent motion state |
 | [Pause and restart](../../../../src/dv/springtrail/MILESTONE.md#current-image-pause-and-restart-proof) | `python-pgs`, `python-pgu`, `python-pgx` | the built image, no hash guard | The first world frame, a neutral frame, the PAUSED frame, the Select-restart frame, their publications and the restart's map restoration |
 | [Re-qualification](../../../../src/dv/springtrail/MILESTONE.md#current-rom-re-qualification) | `python-hgs`, `python-hgu`, `python-hgx` | retired `adbef6b0...e109f369`; the checker refuses the current build | Boot, the title frame, the first input, its publication and the settled pause on the pre-#301 image |
-| Every-frame acquisition and endurance | `paused_capture.py`, `milestone.py`, `endurance.py` | retired `b551c562...8ba667` | The complete v0.9 baseline; no current-image claim |
+| [Continuous UART endurance](../../../../src/dv/springtrail/ENDURANCE.md#current-image-script) | `endurance.py` | the built image; the launcher builds it from current sources and the driver refuses bytes whose hash differs from that build's own manifest | Sampled 30-minute UART play with title, spawn, RETRY and PAUSED frames from the current motion player, the frozen interaction flow over that player and `motion_frames`, then three reset/load-readback/start cycles; UART-observable only |
+| Every-frame acquisition | `paused_capture.py`, `milestone.py` | retired `b551c562...8ba667` | The complete v0.9 baseline; no current-image claim |
 | Historical flow and courier composition references | none | retired `97f5d9da...a593b513` and `ec8dfb32...0d9e785f` | Host-guarded expectations only; their hash guards refuse every other image |
 
 `python-hgs`, `python-hgu` and `python-hgx` still build the current image and
@@ -246,8 +247,11 @@ verify child processes, sessions and locks are released.
 
 Reuse qualified complete-baseline deterministic gameplay/reference and fault evidence when
 relevant identities and behavior remain unchanged; select affected checks for
-changes. The completed automated endurance child proof is bound to the retired
-image above, so it supplies no evidence for the current build.
+changes. The retired-image endurance child proof supplies no evidence for the
+current build; the current-image endurance record in
+[ENDURANCE.md](../../../../src/dv/springtrail/ENDURANCE.md#current-image-script)
+is the UART-observable proof for the image the repository builds, and it
+claims nothing about the monitor or physical controls.
 Use the required lifecycle upload/readback to provide applicable
 transport evidence rather than adding a duplicate unchanged transport suite.
 This removes no required full load/readback or reset/load/start cycle. Freeze

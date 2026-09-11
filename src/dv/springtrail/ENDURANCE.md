@@ -39,7 +39,7 @@ runs 2 fixed 20-second cycles (40 s), `full` runs 90 (1800 s). Cycle i:
    most 267 (the A-first sample variant). Check `retry-<route>` when the
    frame completes at least 280 periods after the applied dot: 23040
    pixels minus the enemy patrol projection x(240-camera)..(303-camera),
-   y120..135 (280 pixels for 33, 248 for 17). The host tests prove every
+   y120..135 (560 pixels for 33, 496 for 17). The host tests prove every
    JOYP first-sample variant (0, direction row, action row, both) and every
    enemy phase reach the same terminal, that it stays settled while held,
    and that the exclusion is exactly the union of enemy pixels.
@@ -79,7 +79,32 @@ lifecycles before the full run. No automatic extension or replay.
 
 ### Measured result
 
-Recorded after execution; see the PR for the producing commit and commands.
+Producing commit `e3bdf69` (the freeze), Python 3.14.5, pyserial 3.5, wire
+build `bb02588d127b72ce6458a07ff1145c57`, image
+`616de11b49e0807539837358824a570776459b9bf13a4b9424dbf42adfe5c983` built from
+current sources at each launch (cache hit, same bytes). The board was not
+reprogrammed. Doctor: JTAG, Quartus and UART PASS; Questa refused a second
+nodelocked licence, and no simulation is part of this proof. Both runs used
+`python src/dv/springtrail/endurance.py <plan> --uart-port COM3 --expected-build-id bb02588d127b72ce6458a07ff1145c57 --tag endurance264`.
+
+| Plan | Whole (s) | Continuous (s) | Dots | Samples | Checked pixels | Loads | Epochs | Result |
+|---|---|---|---|---|---|---|---|---|
+| `short` | 105.3 (cap 300) | 42.483 | 177,550,584 | 15 | 344,544 | 4 | 11..20 | PASS |
+| `full` | 1865.9 (cap 1980) | 1802.413 | 7,559,303,931 | 195 | 4,445,280 | 4 | 22..31 | PASS |
+
+The full run sampled 90 RETRY frames (45 per route), 98 `play`, 3 `paused`
+and 4 `title` frames, applied 386 inputs, and kept the core RUNNING from the
+origin `play` sample to `continuous-final` at frame 107585, dot
+7,555,253,887, 335,479,229 retired instructions; the dot counter crossed its
+32-bit boundary inside epoch 22 without a torn read. Every load uploaded and
+read back all 32768 bytes. Both runs ended PAUSED at dot 494604, UART, input
+0, effective 0, with the durable session certain (sequence 208401, then
+221401). The title frame completing at dot 275071 confirms the 139388 anchor
+on hardware. No reset, hang, lost input or pixel mismatch occurred.
+
+Sampling limits: two samples per cycle plus pauses; the RETRY samples exclude
+the enemy patrol footprint. Nothing here observes the monitor or physical
+controls.
 
 ## Retired-image schedule (b551c562...8ba667)
 
