@@ -31,8 +31,10 @@ required validation, independent current-head review and conversations are satis
 The `PR policy` check requires a valid numbered branch, `main` base, and closing
 references to open assigned issues including the primary branch issue. Only the
 fixed [checkpoint exceptions](#checkpoint-exceptions) below may use matching
-checkpoint and `Refs` lines without a closing reference. Other PRs close their
-issues. It is the only check that runs automatically on a pull request.
+checkpoint and `Refs` lines without a closing reference, and only the
+[automated statistics refresh](#automated-statistics-refresh) may merge without
+independent review. Other PRs close their issues. It is the only check that
+runs automatically on a pull request.
 
 Main requires a passing up-to-date `PR policy` check, linear history, and resolved
 review conversations. Force pushes and branch deletion are blocked on main. Human
@@ -125,8 +127,37 @@ pairing itself is not repeated here: the `PR policy` check holds it in its own
 fixed map, keyed by PR number, and each PR body carries its own `Checkpoint for`
 and `Refs` lines. That map is also why the set cannot grow by editing this page.
 
-Every other PR closes its branch's issue. A PR that merely references an issue
-without closing it, outside this set, does not satisfy the policy.
+Every other PR closes its branch's issue, except the
+[automated statistics refresh](#automated-statistics-refresh). A PR that merely
+references an issue without closing it, outside this set and that class, does
+not satisfy the policy.
+
+## Automated statistics refresh
+
+The owner authorized on 2026-09-11 one class of pull request that lands without
+an agent, an independent review or a closing reference: the regenerated
+[statistics snapshot](../project-statistics.md#refresh-the-snapshot). It is the
+sole exemption from independent review. A regenerated `wiki/statistics.html`
+needs no judgement, and the exemption is mechanically bounded: `PR policy`
+accepts the class only when every field below matches, and the changed-file set
+is read from the PR files API rather than from the description.
+
+| Field | Required form |
+| --- | --- |
+| Branch | `stats-refresh-<YYYYMMDD>T<HHMMSS>Z` (UTC; exactly `^stats-refresh-\d{8}T\d{6}Z$`) |
+| Title | `stats: refresh snapshot to <sha7>` |
+| Body | contains a line `Refs #392`; no `Closes`, `Fixes` or `Resolves` reference |
+| Base | `main` |
+| Changed files | exactly `wiki/statistics.html` |
+
+Any mismatch fails the check; the branch form does not fall back to the
+numbered rules, so a hand-made branch of that form is refused too. Only
+[`tools/wiki/refresh_statistics.py`](https://github.com/amichai-bd/nand2mario/blob/main/tools/wiki/refresh_statistics.py)
+opens such PRs; it is non-draft, waits for `PR policy`, merges with the exact
+head pinned, and closes its PR on any failure. Its acceptance is the
+[policy tests](https://github.com/amichai-bd/nand2mario/blob/main/tools/ci/tests/test_pr_policy.py)
+and the [script tests](https://github.com/amichai-bd/nand2mario/blob/main/tools/wiki/test_refresh_statistics.py).
+No other automated class exists, and this one authorizes no other file.
 
 ## External CI fallback
 
