@@ -1,12 +1,18 @@
 # DE10-Lite board bring-up
 
-This closes [GAP-005](../preflight-gaps.md#gap-005-board-wiring-and-safe-bring-up):
-proof that the connected DE10-Lite path is safe and operational, using the
-existing `v05-board` [target](../../src/fpga/de10_lite/targets.json) and UART
-host tooling. No agent has a monitor attached to this board. Every result below
-is a UART-readable proxy or a static Quartus report; visual confirmation of the
-VGA picture on an actual monitor is an explicitly open item for the board
-owner, not claimed here.
+This records the proof that the connected DE10-Lite path is safe and
+operational, using the existing `v05-board`
+[target](../../src/fpga/de10_lite/targets.json) and UART host tooling. It
+closes the UART-provable part of
+[GAP-005](../preflight-gaps.md#gap-005-board-wiring-and-safe-bring-up): wiring,
+voltage, ground, pins, reset polarity, checked programming, heartbeat, frame
+content, ping, build ID and CRC rejection.
+
+No agent has a monitor attached to this board. Every result below is a
+UART-readable proxy or a static Quartus report. Visual confirmation of the VGA
+picture on an actual monitor is not claimed here; it remains the board owner's
+open item, tracked with the rest of connected-board display acceptance under
+[GAP-006](../preflight-gaps.md#gap-006-clock-reset-and-cdc-plan).
 
 ## Wiring, voltage, ground, and reset polarity
 
@@ -47,13 +53,16 @@ digital output, or unknown terminal order is connected to this board.
 ## Programming
 
 Programming always checks the attached JTAG identity before writing a
-bitstream. `n2m fpga program` (added by this change) requires `jtagconfig` to
-report exactly one selected USB-Blaster chain whose device name matches
-`10M50DA`, the same check `doctor.py` already performs read-only in its
-`environment` profile. Programming refuses to run if zero or more than one
-matching chain is present, or if the target's compiled `.sof` was not built
-for device `10M50DAF484C7G`. `quartus_pgm` is invoked in JTAG mode with `-o
-"p;<sof>"`; a nonzero exit fails the run before any host traffic is attempted.
+bitstream. `n2m fpga program` requires `jtagconfig` to report exactly one
+selected USB-Blaster chain whose device name matches `10M50DA`, the same check
+`doctor.py` already performs read-only in its `environment` profile.
+Programming refuses to run if zero or more than one matching chain is present,
+and refuses a `.sof` path that is missing, a symlink, or outside the
+repository. It does not inspect the bitstream's own target device: a `.sof`
+built for a different device is refused by `quartus_pgm` itself, which checks
+the file against the device it finds on the chain. `quartus_pgm` is invoked in
+JTAG mode with `-o "p;<sof>"`; a nonzero exit, or output without its explicit
+success line, fails the run before any host traffic is attempted.
 
 ## Heartbeat and VGA test-card proxies
 
@@ -108,12 +117,21 @@ and test-card checks.
 
 ## Run record
 
-Each physical run's evidence records the exact bitstream commit (the git SHA
-whose tree produced the programmed `.sof`, via the build's recorded
-fingerprint/`build_id`) and whether the board's configuration actually changed
-this run (freshly programmed vs. an already-matching prior bitstream, decided
-by comparing `identify()`'s `build_id` against the expected value before
-programming is attempted).
+Each physical run's evidence records the exact bitstream commit and whether
+board state changed:
+
+- The commit is the `commit` field of the `fpga build` record that produced the
+  programmed `.sof`, alongside that record's `fingerprint`/`build_id`.
+- Board state changed exactly when `n2m fpga program` ran. Programming
+  reconfigures the device unconditionally — nothing reads the board's current
+  identity first, because `program()` never opens the UART — so a run that
+  programs has changed board state, and a run that reuses an already-configured
+  board has not. The programmer's retained `program.log` is the record of which
+  happened.
+- After programming, `board_bringup.py` calls `identify()` and fails unless the
+  running wire `build_id` equals the expected one. That is a post-programming
+  confirmation that the intended build is live, not a decision about whether to
+  program.
 
 The evidence closing this gap: `jtagconfig` reported exactly one USB-Blaster
 chain with device `10M50DA(.|ES)/10M50DC` before programming;

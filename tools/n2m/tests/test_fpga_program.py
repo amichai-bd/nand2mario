@@ -1,4 +1,5 @@
-"""Programming refuses ambiguous identity and unsafe/wrong .sof paths; no hardware needed."""
+"""Programming refuses ambiguous identity and unsafe .sof paths; no hardware needed."""
+import json
 from pathlib import Path
 import tempfile
 import unittest
@@ -6,6 +7,7 @@ from unittest.mock import patch
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from n2m.cli import main
 from n2m.fpga_program import program
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -61,7 +63,7 @@ class FpgaProgramTests(unittest.TestCase):
                 patch("n2m.fpga_program.execute", side_effect=run):
             result = program(ROOT, self.folder, self.sof, quartus_bin="tools")
         self.assertEqual(result["cable"], "1")
-        self.assertEqual(result["device"], "10M50DAF484C7G")
+        self.assertEqual(result["devices"], ["10M50DA(.|ES)/10M50DC"], "report the chain's own device name")
         self.assertEqual(calls[1][:5], ["quartus_pgm", "-c", "1", "-m", "jtag"])
         self.assertEqual(calls[1][-1], f"p;{self.sof.resolve()}")
 
@@ -73,6 +75,31 @@ class FpgaProgramTests(unittest.TestCase):
                 patch("n2m.fpga_program.execute", side_effect=run):
             with self.assertRaises(RuntimeError):
                 program(ROOT, self.folder, self.sof, quartus_bin="tools")
+
+    def test_cli_program_action_reports_its_retained_log(self):
+        def fake(root, folder, sof, *, quartus_bin, cable, timeout):
+            (folder / "program.log").write_text("retained\n")
+            return {"cable": cable or "1", "sof": str(sof), "scope": "double"}
+
+        with patch("n2m.cli.program_fpga", side_effect=fake) as called:
+            code = main(["fpga", "program", "--sof", str(self.sof), "--quartus-bin", "tools",
+                         "--tag", "program-cli", "--json"], self.folder)
+        self.assertEqual(code, 0)
+        self.assertEqual(called.call_args.kwargs["quartus_bin"], "tools")
+        self.assertEqual(called.call_args.kwargs["timeout"], 60)
+        report = json.loads((self.folder / "workdir/builds/program-cli/manifest.json").read_text())
+        self.assertEqual(report["status"], "PASS")
+        self.assertEqual(report["scope"], "double")
+        self.assertTrue(any(name.endswith("program.log") for name in report["artifacts"]))
+
+    def test_cli_program_action_reports_a_refusal(self):
+        with patch("n2m.cli.program_fpga", side_effect=RuntimeError("expected one selected USB-Blaster chain")):
+            code = main(["fpga", "program", "--sof", str(self.sof), "--quartus-bin", "tools",
+                         "--tag", "program-cli-fail", "--json"], self.folder)
+        self.assertEqual(code, 1)
+        report = json.loads((self.folder / "workdir/builds/program-cli-fail/manifest.json").read_text())
+        self.assertEqual(report["status"], "FAIL")
+        self.assertIn("USB-Blaster", report["error"])
 
 
 if __name__ == "__main__":

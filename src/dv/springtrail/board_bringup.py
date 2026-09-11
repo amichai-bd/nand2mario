@@ -66,9 +66,12 @@ def run(client, rom, rom_sha256, folder, log, expected_build, crc_proof_run):
             reply = client.run_dots(amount)
             assert reply == dict(dot=current + amount, executed=amount, reason=abi.WIRE_RUN_DOTS_COUNT), 'BRINGUP_RUN_DOTS'
             current += amount
-        assert current > 0, 'BRINGUP_HEARTBEAT'
-        note('heartbeat', dot=current)
-        result['heartbeat'] = {'dot': current}
+        # `current` only counts what the host asked for. The heartbeat is the
+        # endpoint's own counter agreeing that it advanced from the zero above.
+        counted = wide(abi.HOST_REG_DOT_LO, abi.HOST_REG_DOT_HI)
+        assert counted == current > 0, 'BRINGUP_HEARTBEAT'
+        note('heartbeat', dot=counted, requested=current)
+        result['heartbeat'] = {'dot': counted, 'requested': current}
         meta, packed = client.snapshot()
         assert meta['epoch'] == epoch, 'BRINGUP_EPOCH'
         assert meta['size'] == 5760, 'BRINGUP_FRAME_SIZE'
@@ -101,12 +104,13 @@ def run(client, rom, rom_sha256, folder, log, expected_build, crc_proof_run):
         atomic_json(folder / 'result.json', result)
 
 
-def worker(args):
+def worker(args, clock=time.monotonic):
     from n2m.host.client import Client
     from n2m.host.transport import session
     from n2m.host.crc_proof import run as crc_proof_run
     from ci.storage import machine_lock
 
+    started = clock()
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     ns = SimpleNamespace(uart_port=args.uart_port, uart_vid=None, uart_pid=None, uart_identity=None,
@@ -125,12 +129,16 @@ def worker(args):
     rom_bytes = rom.read_bytes()
     session_record = dict(status='FAIL', args={k: str(v) for k, v in vars(args).items()}, out=out.as_posix(),
                           rom_build=package)
-    with machine_lock(MACHINE_MUTEX), session(out, ns, state_root) as (transport, sequence, persist, selected):
-        client = Client(transport, sequence=sequence, record=record, persist=persist)
-        session_record['uart_identity'] = {k: selected.get(k) for k in ('DeviceID', 'Name', 'PNPDeviceID')}
-        outcome = run(client, rom_bytes, rom_sha256, out, record, args.expected_build_id.lower(), crc_proof_run)
-        session_record.update(status=outcome['status'], result=outcome)
-    atomic_json(out / 'session.json', session_record)
+    try:
+        with machine_lock(MACHINE_MUTEX), session(out, ns, state_root) as (transport, sequence, persist, selected):
+            client = Client(transport, sequence=sequence, record=record, persist=persist)
+            session_record['uart_identity'] = {k: selected.get(k) for k in ('DeviceID', 'Name', 'PNPDeviceID')}
+            outcome = run(client, rom_bytes, rom_sha256, out, record, args.expected_build_id.lower(), crc_proof_run)
+            session_record.update(status=outcome['status'], result=outcome)
+    finally:
+        # Retained evidence must carry the measured wall time of a failed run too.
+        session_record['wall_seconds'] = clock() - started
+        atomic_json(out / 'session.json', session_record)
     return session_record
 
 
@@ -142,9 +150,7 @@ def main(argv=None):
     parser.add_argument('--uart-port')
     parser.add_argument('--endpoint-restarted', action='store_true')
     args = parser.parse_args(argv)
-    started = time.monotonic()
     result = worker(args)
-    result['wall_seconds'] = time.monotonic() - started
     assert result['wall_seconds'] <= WHOLE_PROCESS_BUDGET_SECONDS, 'BRINGUP_WALL_BUDGET'
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0 if result['status'] == 'PASS' else 1

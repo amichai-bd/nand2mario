@@ -33,7 +33,7 @@ stay recorded so the decision can be reversed. The
 | GAP-002 | P0 | Closed | — | License, ROM policy, and provenance | Approved private source policy, provenance rules, and practical content safeguards are committed |
 | GAP-003 | P0 | Closed | — | Build command | A minimal `n2m` command runs from a fresh shell |
 | GAP-004 | P0 | Closed | — | Real environment doctor | Checked smoke and read-only identity checks work; runtime checks are described in GAP-008 |
-| GAP-005 | P0 | Open | [#28](https://github.com/amichai-bd/nand2mario/issues/28) | Board wiring and safe bring-up | VGA test card and UART ping pass with documented wiring |
+| GAP-005 | P0 | Closed | — | Board wiring and safe bring-up | Frame content and UART ping pass over UART with documented wiring; the monitor picture stays with GAP-006 |
 | GAP-006 | P0 | Physical gap | [#28](https://github.com/amichai-bd/nand2mario/issues/28) | Clock, reset, and CDC plan | Implemented timing still needs connected-board display acceptance |
 | GAP-007 | P0 | Closed | — | Executable interface contracts | Address maps, host registers, and trace formats have one source |
 | GAP-008 | P0 | Closed | — | Verification baseline | A known-good DUT and deliberately failing DUT prove the harness |
@@ -156,28 +156,33 @@ Checking only executable names can report success while every simulation fails.
 
 **Current state**
 
-The [board target definitions](../src/fpga/de10_lite/targets.json) specify the
-UART and display pins. Connected wiring, voltage and monitor qualification remain
-incomplete under the open board gap. UART assignments are:
+[Board bring-up](src/board-bring-up.md) records the verified wiring, voltage,
+ground, pin assignments and reset polarity of the connected board, the checked
+programming path, and the retained physical run. The
+[board target definitions](../src/fpga/de10_lite/targets.json) specify the UART
+and display pins; UART assignments are:
 
 - FPGA UART RX: Arduino D0, `PIN_AB5`;
 - FPGA UART TX: Arduino D1, `PIN_AB6`;
 - 3.3 V LVTTL with adapter TX connected to FPGA RX.
 
-These are committed project constraints. They do not establish that the attached
-hardware matches the [electrical boundary](src/fpga-controls.md#electrical-boundary).
+Monitor qualification is not part of this gap's evidence. The frame the board
+scans out was checked by reading it back over UART and comparing every pixel
+against the independent reference; nobody observed the picture on a monitor.
+That acceptance stays with [GAP-006](#gap-006-clock-reset-and-cdc-plan).
 
 **Risk**
 
 Incorrect direction or voltage can block communication or damage equipment.
 The wrong device or bitstream could be programmed.
 
-**Close when**
+**Closed when — met**
 
 - The DE10-Lite manual and physical wires agree with committed pin constraints.
 - Voltage and ground are checked.
 - Programming first verifies the USB-Blaster and `10M50DA` identity.
-- A heartbeat and VGA test card work.
+- A heartbeat and the expected frame content work, the frame proven by UART
+  readback rather than an observed monitor.
 - A versioned UART ping and CRC failure test work.
 - Programming and hardware tests use an exclusive lock.
 - The resulting FPGA build ID can be read through UART.
@@ -191,9 +196,11 @@ and CDC requirements. The [clocking implementation](src/rtl/clocking/MAS_clockin
 and [VGA frame bridge](src/rtl/vga/MAS_vga.md) have dedicated
 [clocking](../src/dv/clocking/README.md) and [raster/ownership](../src/dv/vga/README.md)
 checks. The [system composition](src/rtl/system/MAS_system.md) uses the specified
-25 MHz system clock and separate VGA clock. Physical display acceptance remains
-unproven under [GAP-005](#gap-005-board-wiring-and-safe-bring-up)
-and [GAP-012](#gap-012-vga-frame-crossing).
+25 MHz system clock and separate VGA clock.
+[GAP-005](#gap-005-board-wiring-and-safe-bring-up) closed the connected board's
+wiring, programming and UART-readable frame content. Acceptance of the picture
+on an actual monitor remains unproven here and under
+[GAP-012](#gap-012-vga-frame-crossing).
 
 **Risk**
 
@@ -381,9 +388,11 @@ The [VGA tests](../src/dv/vga/README.md) check ownership, raster geometry,
 bank reuse, active-swap failures and source-to-VGA RGB replicas with canonical
 source/output CRCs. FPGA checks cover three-bank RAM inference and constrained
 timing. Source/snapshot comparison is separate from VGA-output checking.
-These component checks leave physical display acceptance open. Actual monitor
-tolerance, test-card/scaled-image operation, and connected pin/wiring/voltage
-verification also remain open under [GAP-005](#gap-005-board-wiring-and-safe-bring-up).
+These component checks leave physical display acceptance open. Connected
+pin, wiring and voltage verification closed under
+[GAP-005](#gap-005-board-wiring-and-safe-bring-up), which also read the scanned
+frame back over UART. Actual monitor tolerance and scaled-image operation on a
+display remain open under [GAP-006](#gap-006-clock-reset-and-cdc-plan).
 Simulation and fit evidence do not replace physical acceptance.
 
 **Risk**
