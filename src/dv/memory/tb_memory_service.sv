@@ -54,7 +54,7 @@ module tb_memory_service;
         .ppu_vram_rdata(ppu_vram_rdata), .ppu_vram_valid(ppu_vram_valid),
         .ppu_oam_read(ppu_oam_read), .ppu_oam_pair(ppu_oam_pair),
         .ppu_oam_rdata(ppu_oam_rdata), .ppu_oam_valid(ppu_oam_valid),
-        .wave_read(1'b0), .wave_address(4'd0), .wave_rdata(unused_wave), .wave_valid(unused_wave_valid)
+        .wave_read(1'b0), .wave_write(1'b0), .wave_wdata(8'd0), .wave_address(4'd0), .wave_rdata(unused_wave), .wave_valid(unused_wave_valid)
     );
 
     task automatic edge_cycle;

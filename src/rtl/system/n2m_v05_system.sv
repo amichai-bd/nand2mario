@@ -42,6 +42,9 @@ module n2m_v05_system #(
     localparam n2m_memory_pkg::memory_destination_t PPU_DESTINATION = n2m_memory_pkg::MEMORY_PPU;
     localparam n2m_memory_pkg::memory_destination_t JOYP_DESTINATION = n2m_memory_pkg::MEMORY_JOYP;
     localparam n2m_memory_pkg::memory_destination_t TIMER_DESTINATION = n2m_memory_pkg::MEMORY_TIMER;
+    localparam n2m_memory_pkg::memory_destination_t SERIAL_DESTINATION = n2m_memory_pkg::MEMORY_SERIAL;
+    localparam n2m_memory_pkg::memory_destination_t APU_DESTINATION = n2m_memory_pkg::MEMORY_APU;
+    localparam n2m_memory_pkg::memory_destination_t WAVE_DESTINATION = n2m_memory_pkg::MEMORY_WAVE;
     n2m_timer_pkg::timer_request_t timer_request;
     logic divider_reset_request;
     logic [7:0] timer_rdata;
@@ -82,7 +85,11 @@ module n2m_v05_system #(
     logic [7:0] raw_vram_data;
     logic [6:0] raw_oam_pair;
     logic [15:0] raw_oam_data;
-    logic [7:0] ppu_rdata, irq_rdata;
+    logic [7:0] ppu_rdata, irq_rdata, serial_rdata, apu_rdata;
+    logic apu_valid, apu_audio_io, wave_read, wave_write;
+    logic [3:0] wave_address;
+    logic [7:0] wave_wdata, wave_rdata;
+    logic wave_valid;
     logic ppu_selected, irq_selected;
     logic [7:0] ie_stored, ie_observe;
     logic [4:0] if_stored, if_observe;
@@ -173,9 +180,17 @@ module n2m_v05_system #(
                 owner_service = 1'b1;
                 owner_valid = 1'b1;
             end
+            n2m_memory_pkg::MEMORY_SERIAL: owner_rdata = serial_rdata;
+            // One gateway answers the audio registers and wave RAM. Wave reads
+            // return a registered store byte, so they carry their own validity.
+            n2m_memory_pkg::MEMORY_APU, n2m_memory_pkg::MEMORY_WAVE: begin
+                owner_rdata = apu_rdata;
+                owner_valid = apu_valid;
+            end
             default: begin owner_service = 0; owner_valid = 0; end
         endcase
     end
+    assign apu_audio_io = destination == APU_DESTINATION || destination == WAVE_DESTINATION;
     n2m_memory_stores u_stores (.oam_request, .oam_response,
         .clk_sys, .reset_sys, .core_reset, .init_done(memory_initialized),
         .access_read(raw_read), .access_write(raw_write), .access_store(raw_store),
@@ -187,7 +202,7 @@ module n2m_v05_system #(
         .ppu_vram_rdata(raw_vram_data), .ppu_vram_valid(raw_vram_valid),
         .ppu_oam_read(raw_oam_read), .ppu_oam_pair(raw_oam_pair),
         .ppu_oam_rdata(raw_oam_data), .ppu_oam_valid(raw_oam_valid),
-        .wave_read(1'b0), .wave_address(4'd0), .wave_rdata(), .wave_valid()
+        .wave_read, .wave_write, .wave_address, .wave_wdata, .wave_rdata, .wave_valid
     );
     n2m_timer u_timer (
         .clk_sys, .reset_sys, .core_reset, .gb_tick, .divider_reset_request,
@@ -213,6 +228,20 @@ module n2m_v05_system #(
         .vblank_condition, .stat_rise(), .vblank_rise(), .fault(ppu_fault),
         .source_valid, .source_start, .source_shade, .source_x, .source_y,
         .source_epoch, .source_dot, .source_abort, .blank_assert, .source_display_eligible
+    );
+    n2m_serial u_serial (
+        .clk_sys, .reset_sys, .core_reset, .gb_tick,
+        .io_commit(owner_commit && destination == SERIAL_DESTINATION), .io_write(owner_write),
+        .io_address(owner_address), .io_wdata(owner_wdata),
+        .io_selected(), .io_rdata(serial_rdata)
+    );
+    n2m_apu u_apu (
+        .clk_sys, .reset_sys, .core_reset, .gb_tick,
+        .io_prepare(owner_prepare && apu_audio_io),
+        .io_commit(owner_commit && apu_audio_io), .io_write(owner_write),
+        .io_address(owner_address), .io_wdata(owner_wdata),
+        .io_selected(), .io_rdata(apu_rdata), .io_valid(apu_valid),
+        .wave_read, .wave_write, .wave_address, .wave_wdata, .wave_rdata, .wave_valid
     );
     n2m_joypad u_joypad (
         .clk_sys, .reset_sys, .core_reset, .gb_tick,
@@ -240,4 +269,8 @@ module n2m_v05_system #(
         .frame_read, .frame_address, .frame_valid, .frame_data
     );
     `N2M_ASSERT(V05_NO_STOP, clk_sys, reset_sys || core_reset, !cpu_stopped)
+    // Every destination reaching this composition has an owner. A missing arm
+    // would fault the CPU port instead of returning a DMG value.
+    `N2M_ASSERT(V05_OWNER_SERVICE, clk_sys, reset_sys || core_reset,
+        !owner_prepare || owner_service)
 endmodule

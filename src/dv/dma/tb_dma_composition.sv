@@ -118,7 +118,7 @@ module tb_dma_composition;
         .host_rdata(unused_host), .host_valid(host_valid), .ppu_vram_read(raw_vram_read),
         .ppu_vram_address(raw_vram_address), .ppu_vram_rdata(raw_vram_data), .ppu_vram_valid(raw_vram_valid),
         .ppu_oam_read(raw_oam_read), .ppu_oam_pair(raw_oam_pair), .ppu_oam_rdata(raw_oam_data),
-        .ppu_oam_valid(raw_oam_valid), .wave_read(1'b0), .wave_address(4'd0),
+        .ppu_oam_valid(raw_oam_valid), .wave_read(1'b0), .wave_write(1'b0), .wave_wdata(8'd0), .wave_address(4'd0),
         .wave_rdata(unused_wave), .wave_valid(unused_wave_valid));
     always #5 clk_sys=~clk_sys;
     function automatic logic [7:0] sprite_byte(input integer offset);
