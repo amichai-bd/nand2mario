@@ -164,3 +164,66 @@ and all46 met300 seconds total. The final four-frame batch took12.9698733 second
 PR288 retains exact commands, immutable reference/setup/launcher identities,
 all batch receipts and independent review. Later documentation changes do not
 change the producing hardware, software, capture driver or reference inputs.
+
+## Current-ROM re-qualification
+
+[#351](https://github.com/amichai-bd/nand2mario/issues/351) owns this section.
+Everything above describes the frozen `204cefbb` image and does not describe the
+image the repository builds today.
+
+### Image identity
+
+`python tools/build.py sw build springtrail --tag issue351-rom --json` produces a
+32768-byte image with SHA256
+`adbef6b04b5ca7c3896beace71b1735b6dd49115feda0c6ebe20f11ae109f369`. The frozen
+milestone image is `b551c562...8ba667`. They are different images. Five merged
+changes to `src/sw/springtrail/` separate them: #310 and #314 core art, #316 the
+shadow OAM DMA publisher, #318 courier composition and #321 the fixed HUD with
+prepared columns. #316, #318 and #321 change what is drawn every frame, so the
+every-frame acquisition and the frozen SameBoy reference profile in
+`src/dv/sameboy/springtrail.json` remain bound to `b551c562...8ba667` only.
+
+### Declared bounded checkpoint script
+
+Declared before execution under the
+[milestone reuse policy](../../../wiki/src/dv/integration/SPEC.md#milestone-acceptance),
+which permits a selected bounded script over repeating 3600 intervals. The
+selection covers the transitions the five changes actually affect; it does not
+re-derive unchanged movement, collision or interaction rules, which keep their
+own current unit qualification.
+
+1. Short harness first: `python-hgs`. Reset, full UART upload/readback of the
+   current image, LCD enable, the first 160 blank-frame pixels, the single
+   initialization DMA publication, real HALT, the settled no-progress hold and
+   trace END. This exercises the complete path, including final pause,
+   completion and watchdog handling, before any longer run.
+2. Selected script: `python-hgu`, one continuous history on the current image:
+   - Boot: every one of 23040 pixels of source frame 0, blank, against the
+     independent model.
+   - Title: every one of 23040 pixels of source frame 1, including the fixed HUD
+     row and the line-15 HBlank split, against the independent model.
+   - First input: Start+Right (129) applied inside the declared window
+     `lcd+60000 .. lcd+62000` dots. The applied dot comes from the INPUT reply;
+     the public trace input record and the `0xc019` JOYP sample must agree with
+     it. No expected value is selected from observed pixels.
+   - Prepared-scene publication: both 160-byte shadow scenes at `0xc100`, both
+     7-byte HUD tile caches at `0xc220`, the 32-byte prepared column cache at
+     `0xc200` and all 480 published DMA bytes, each byte against the independent
+     scene, HUD and column models.
+   - Publication bounds: `0xff46` triggers in VBlank only, the 4480-dot
+     completion ceiling, no interrupt or non-HRAM bus access during DMA, IRQ
+     vector order `0x48,0x40,0x48,0x40` and exactly four split writes.
+   - End state: paused with no fault, dot and record counts held across the
+     settled interval.
+3. Sensitivity: `python-hgx`, the accepted fault, so the pass is not vacuous.
+4. Host reference and unit checks: `src/dv/springtrail` pytest suite.
+
+Why this selection is representative: the charter's v0.9 named transitions are
+boot, the first scripted input, its on-screen consequence and its publication.
+The script checks each of those end to end on the current image, at full pixel
+resolution, through the changed renderer. It deliberately does not claim
+scrolling, win, death/retry, pause/resume or restart coverage on the current
+image; no current target checks those full frames on this ROM, and that gap is
+recorded below rather than implied away.
+
+Budget: target 300 seconds per simulation. Measured results follow.
