@@ -57,6 +57,13 @@ RET
 
 DecodeColumn:
 ; Build validation proves index0..95, complete16 rows and bounded run counts.
+; The block layer overwrites rows 10 and 11 of the completed cache.
+LD [DecodeIndex],A
+LD A,E
+LD [DecodeBase],A
+LD A,D
+LD [DecodeBase+1],A
+LD A,[DecodeIndex]
 LD L,A
 LD H,0
 ADD HL,HL
@@ -70,7 +77,7 @@ LD L,C
 DecodeRun:
 LD A,[HL+]
 OR A,A
-RET Z
+JP Z,BlockOverride
 LD B,A
 LD A,[HL+]
 DecodeRepeat:

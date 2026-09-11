@@ -170,7 +170,7 @@ class Check:
             if data == 0:
                 assert self.lcd is None, 'PAUSE_LCD_OFF'
             elif self.lcd is None:
-                assert data == 0x91 and 100000 < dot < 160000, 'PAUSE_STARTUP_BOUND'
+                assert data == 0x91 and 100000 < dot < 200000, 'PAUSE_STARTUP_BOUND'
                 self.lcd = dot
             else:
                 assert data in (0x91, 0x93), 'PAUSE_OBJECT_MODE'

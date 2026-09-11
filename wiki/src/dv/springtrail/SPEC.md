@@ -304,6 +304,18 @@ fixture. The
 six motion targets are rerun because the shared ROM, startup anchor, VRAM tile
 count and operand ranges changed. No physical or milestone result follows.
 
+## Interactive block checks
+
+The [block contract](../../sw/springtrail/BLOCKS.md) freezes the block table,
+its solidity override, its appearance and one head hit per update. The
+[block matrix](../../../../src/dv/springtrail/BLOCKS.md) owns its acceptance:
+independent literal histories, two bounded halves of shared-CPU cases through
+`UpdateGame` and `InitGame`, one actual consumer fault on the head-hit column
+store, and an approved-pixel asset check. The power, motion, game, pause and
+renderer targets are rerun because the shared ROM, startup anchor, VRAM tile
+count, published columns and operand ranges changed. No physical or milestone
+result follows.
+
 ## Background HUD and prepared columns
 
 The [HUD/column matrix](../../../../src/dv/springtrail/HUD_COLUMNS.md) owns current

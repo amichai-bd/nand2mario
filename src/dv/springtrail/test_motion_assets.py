@@ -22,7 +22,8 @@ class MotionAssets(unittest.TestCase):
         assets = {name: encode_shades(load_shades(source/path, path), path)
                   for name, path in (('Tiles', 'tiles.json'),
                     ('Courier', 'assets/courier/unique-tiles.json'),
-                    ('Core', 'assets/core/core-tiles.json'))}
+                    ('Core', 'assets/core/core-tiles.json'),
+                    ('Terrain', 'assets/core/terrain-tiles.json'))}
         obj = assemble(source/'main.asm', source,
                        ROOT/'src/sw/generated/interfaces.inc', assets)
         linked = link([('main.asm', obj)], json.loads((source/'layout.json').read_text()),

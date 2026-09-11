@@ -162,7 +162,11 @@ The effect object emits the same four tiles as four OAM entries at
 
 ![Block and item states](core-art/block-states.svg)
 
-Reproduce this preview from the approved sources and the independent reference:
+![A used block releasing its mushroom](core-art/block-release.svg)
+
+The second view is a source-reference composition of one modelled update, not
+an FPGA photograph. Reproduce both from the approved sources and the
+independent reference:
 
 ```text
 python src/dv/springtrail/blocks_preview.py --tag block-review

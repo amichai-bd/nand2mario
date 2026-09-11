@@ -79,6 +79,10 @@
         "Core": {
           "source": "assets/core/core-tiles.json",
           "author": "Original approved core font pixels; CORE_ART.md, only selected glyphs loaded into VRAM"
+        },
+        "Terrain": {
+          "source": "assets/core/terrain-tiles.json",
+          "author": "Original approved core terrain, block and item pixels; CORE_ART.md, only selected tiles loaded into VRAM"
         }
       },
       "layout": "layout.json",

@@ -52,7 +52,8 @@ def entry(x, y, tile, hidden=False):
     return bytes(((y+16)&255 if visible else 0, (x+8)&255, tile, 0))
 
 
-def scene(world):
+def scene(world, extra=b''):
+    """`extra` is the block layer's release effect, appended after the shot."""
     p = world.player
     data = bytearray(courier(selected_pose(world), bool(p.facing),
                              p.x//16-p.camera-4, p.y//16, player_hidden(world)))
@@ -64,6 +65,7 @@ def scene(world):
             data += entry(x-p.camera, y+8*half, tile+half, hide)
     if world.shot.ttl:
         data += entry(world.shot.x//16-p.camera, world.shot.y//16, SHOT_TILE)
+    data += extra
     assert len(data) <= 160
     return bytes(data) + bytes(160-len(data))
 

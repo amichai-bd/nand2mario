@@ -50,12 +50,15 @@ def build(root, destination, short=False, suite='motion', part=None):
             values = case['before'] + bytes([KINDS[case['kind']]])
             lines.append('DB '+','.join(str(v) for v in values))
         for name in ('movement', 'render', 'world', 'collision', 'interactions',
-                     'map_restore', 'scene', 'stream', 'hud', 'columns', 'power'):
+                     'map_restore', 'scene', 'stream', 'hud', 'columns', 'power',
+                     'blocks'):
             lines.append(f'INCLUDE "{name}.asm"')
         path = destination/'program.asm'
         path.write_text('\n'.join(lines)+'\n', encoding='utf-8')
         core = source/'assets/core/core-tiles.json'
-        assets = {'Core':encode_shades(load_shades(core, str(core)), str(core))}
+        terrain = source/'assets/core/terrain-tiles.json'
+        assets = {'Core':encode_shades(load_shades(core, str(core)), str(core)),
+                  'Terrain':encode_shades(load_shades(terrain, str(terrain)), str(terrain))}
         obj = assemble(path, destination, root/'src/sw/generated/interfaces.inc', assets)
         layout = json.loads((source/'layout.json').read_text())
         layout['sections'] = [dict(row, unit='program.asm') for row in layout['sections']]

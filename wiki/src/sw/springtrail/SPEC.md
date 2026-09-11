@@ -87,6 +87,12 @@ enemy contact as invincible, stomp or hit: a stomp or a live shot kills the
 enemy until restart; a hit shrinks a large player into a protection window and
 sends a small player to retry.
 
+The [interactive block contract](BLOCKS.md) adds four 16-by-16 blocks over the
+unchanged terrain: an ascending head hit uses one block per update, an item or
+hidden block releases its content once, a brick breaks only under a large or
+thrower player, and the consumed state survives scrolling and pause until a
+restart. Coins increment an undisplayed counter, not the score.
+
 Each collectible increments the visible counter once and disappears until
 restart. Touching the finish marker while alive enters won; collecting every
 item is optional. Death takes precedence over collection or winning on the same
@@ -121,8 +127,8 @@ publication continues; inactive map restoration may continue while paused.
 Each VBlank samples JOYP once. Process restart/pause first. A playing update
 advances power timers, decides crouch and throw, selects run/jump state,
 advances animation, resolves horizontal motion/collision, then vertical profile
-motion/collision, updates camera, moves the enemy and shot, then resolves
-interactions. Scene preparation reads that resulting state without advancing
+motion/collision, updates camera, resolves one head-hit block, moves the enemy
+and shot, then resolves interactions. Scene preparation reads that resulting state without advancing
 animation. The [movement contract](MOVEMENT.md) and the
 [power contract](POWER.md) fix the exact precedence and original choices.
 Resolve each axis
@@ -134,11 +140,14 @@ axes. Falling means player top-left y >=144. The enemy uses an 8-by-8 box.
 The literal level has ground in rows 16 and 17 except gap columns 22..25,
 46..49, and 70..73. Additional solid platforms occupy row 12 columns 10..14,
 row 10 columns 31..35, row 12 columns 56..60, and row 11 columns 80..84.
-All other cells are empty. Collectibles are 8-by-8 boxes at (96, 88), (264, 72),
-(464, 88), and (656, 80); the 8-by-16 goal starts at (736, 112). Collectible
+All other cells are empty; the block layer adds no terrain and occupies world
+rows 10 and 11 at columns 8, 18, 40 and 64. Collectibles are 8-by-8 boxes at
+(96, 88), (264, 72), (464, 88), and (656, 80); the 8-by-16 goal starts at
+(736, 112). Collectible
 and goal tests use half-open rectangle overlap against the power contract's
 contact box. The [interaction routines](../../../../src/sw/springtrail/interactions.asm)
-and [power routines](../../../../src/sw/springtrail/power.asm) implement these
+[power routines](../../../../src/sw/springtrail/power.asm) and
+[block routines](../../../../src/sw/springtrail/blocks.asm) implement these
 mechanics. No parameter is selected from DUT output.
 Update the game once per normal emulated frame using a documented input-sampling
 point. There are no wall-clock or nondeterministic random inputs.

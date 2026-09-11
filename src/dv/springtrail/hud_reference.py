@@ -5,6 +5,7 @@ from pathlib import Path
 
 from composition_reference import BANK, raster, scene
 from interactions_reference import Game
+from blocks_reference import column_tiles, reset as blocks_reset
 from movement_reference import world_tile
 from reference import ART, GLYPHS
 from scene_art import PAIRS
@@ -31,10 +32,14 @@ def glyph(char):
     return bytes(out)
 
 
-def column(index):
+def column(index, blocks=None):
+    """Published background tiles; #303's block layer overrides rows 10 and 11."""
     if type(index) is not int or not 0 <= index < 96:
         raise ValueError('display column outside 0..95')
-    return bytes(world_tile(index, row) for row in range(2, 18))
+    tiles = [world_tile(index, row) for row in range(2, 18)]
+    for row, tile in column_tiles(blocks_reset() if blocks is None else blocks, index).items():
+        tiles[row-2] = tile
+    return bytes(tiles)
 
 
 def entering(oldcamera, newcamera):

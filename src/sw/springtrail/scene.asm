@@ -126,8 +126,25 @@ LD A,107
 LD [SceneTile],A
 CALL ScenePosition
 CALL EmitPiece
-; Remaining OAM bytes are inactive; mode/score now belong to the BG HUD.
+; One 16 by 16 release effect follows the shot while it is live.
 ClearSceneTail:
+LD A,[EffectTile]
+OR A,A
+JR Z,SceneTail
+LD A,[EffectX]
+LD [ObjectX],A
+LD A,[EffectX+1]
+LD [ObjectX+1],A
+LD A,[EffectY]
+LD [ObjectY],A
+LD A,[EffectY+1]
+LD [ObjectY+1],A
+XOR A,A
+LD [SceneHidden],A
+CALL ScenePosition
+CALL ComposeEffect
+; Remaining OAM bytes are inactive; mode/score now belong to the BG HUD.
+SceneTail:
 XOR A,A
 ClearSceneByte:
 LD [DE],A

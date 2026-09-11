@@ -28,7 +28,8 @@ def build():
     assets = {name: encode_shades(load_shades(SOURCE/path, path), path)
               for name, path in (('Tiles', 'tiles.json'),
                                  ('Courier', 'assets/courier/unique-tiles.json'),
-                                 ('Core', 'assets/core/core-tiles.json'))}
+                                 ('Core', 'assets/core/core-tiles.json'),
+                                 ('Terrain', 'assets/core/terrain-tiles.json'))}
     obj = assemble(SOURCE/'main.asm', SOURCE, ROOT/'src/sw/generated/interfaces.inc', assets)
     return link([('main.asm', obj)], json.loads((SOURCE/'layout.json').read_text()),
                 dict(unit='main.asm', symbol='Start'))
