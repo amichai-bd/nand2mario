@@ -123,10 +123,15 @@ difference column states it.
 | IE | `HOST_REG_IO_IE` | `ie_stored` committed byte, all eight bits | none; the upper three bits are storage on DMG and are reported as stored | [Pan Docs Interrupts](https://github.com/gbdev/pandocs/blob/fe246067b695b5404a4a6a47efb4fd6d921ececb/src/Interrupts.md); [MAS_interrupts](../../../src/rtl/interrupts/MAS_interrupts.md) |
 | LCD status triple | `HOST_REG_IO_LCD_STATUS` | `{8'b0, LCDC, STAT, LY}`, the three bytes above sampled on one edge | same per byte | this section |
 
-The triple exists because a scanline is 456 dots while one `READ_HOST` round trip
-costs milliseconds. Reading LY and STAT as separate commands pairs values from
-different frames' worth of emulated time; the triple makes the pair coherent, so
-a board capture can check the mode progression across a frame.
+### Why the LCD status triple exists
+
+A scanline is 456 dots; one `READ_HOST` round trip costs milliseconds. Reading
+LY and STAT as separate commands therefore pairs values taken from different
+frames' worth of emulated time, and a pair like LY 50 with VBlank mode looks
+like a defect that is not there. The triple samples all three bytes on one
+endpoint edge, so a board capture can check the mode progression across a frame
+against a coherent pair. It is the one register in this table that has no single
+DMG address behind it; the three bytes it carries are the three rows above.
 
 During global or core reset each owner drives its documented reset fill, and the
 host view carries that same value rather than a separate default.
