@@ -108,6 +108,29 @@ not an automatic repeat of this full sequence. Select bounded scripts from the
 delivered success, death/retry and flow routes to cover the required distinct
 transitions, retaining independent expectations and explicit evidence mapping.
 
+### Image binding
+
+The completed baseline covers image
+`b551c56252761d953bcf3b64270d819e3342b710299c3bff6866d4dcae8ba667` and nothing
+else. The repository now builds a different image; #310, #314, #316, #318 and
+#321 separate them, and the last three change every displayed frame. The frozen
+SameBoy profile in `src/dv/sameboy/springtrail.json` and the `paused_capture`
+and `milestone` drivers all pin that same retired hash, so neither the
+every-frame acquisition nor the continuous endurance result may be read as
+covering the current build.
+
+Current-image deterministic evidence is the declared bounded script and its
+measured result in the
+[re-qualification record](../../../../src/dv/springtrail/MILESTONE.md#current-rom-re-qualification),
+selected under the reuse policy above. Its stated limits are part of the claim:
+it covers boot, the title frame, the first input, its publication and the
+settled pause on the current image, and it does not cover scrolling, win,
+death/retry or pause/restart frames there. The historical flow and courier
+composition game checkers keep their own retired image hashes and refuse the
+current build by design;
+[#363](https://github.com/amichai-bd/nand2mario/issues/363) owns closing that
+coverage gap and the targets still pointed at those checkers.
+
 ### Paused frame acquisition
 
 The [capture driver](../../../../src/dv/springtrail/paused_capture.py) uses the
@@ -115,7 +138,7 @@ existing UART Client and immutable SNAPSHOT/READ_FRAME across bounded
 host batches. Freeze ROM/build/reference bytes, input script and timing before
 comparison. This short prerequisite does not complete the milestone matrix.
 
-For the qualified pre-DMA-publisher ROM, LCD starts at dot 76964
+For the qualified pre-DMA-publisher ROM `b551c562...8ba667`, LCD starts at dot 76964
 and the period is 70224 dots. The later
 [DMA publisher proof](../../../../src/dv/springtrail/OAM_DMA.md) owns the new
 startup anchor; do not relabel this retained acquisition schedule.
@@ -204,7 +227,9 @@ verify child processes, sessions and locks are released.
 
 Reuse qualified complete-baseline deterministic gameplay/reference and fault evidence when
 relevant identities and behavior remain unchanged; select affected checks for
-changes. Use the required lifecycle upload/readback to provide applicable
+changes. The completed automated endurance child proof is bound to the retired
+image above, so it supplies no evidence for the current build.
+Use the required lifecycle upload/readback to provide applicable
 transport evidence rather than adding a duplicate unchanged transport suite.
 This removes no required full load/readback or reset/load/start cycle. Freeze
 the selected script and continuous session's input/sampling/failure plan under

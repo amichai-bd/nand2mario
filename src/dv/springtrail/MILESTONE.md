@@ -227,3 +227,54 @@ image; no current target checks those full frames on this ROM, and that gap is
 recorded below rather than implied away.
 
 Budget: target 300 seconds per simulation. Measured results follow.
+
+### Measured result
+
+Python 3.12.14, cocotb 2.0.1, Questa Altera Starter FPGA Edition-64 2025.2
+(2025.05), Intel memory models from Quartus 25.1, at commit `7d3fd49`, which is
+the declaration commit above. Every run used the current image; each attempt's
+`preload.json` records `image_sha256` `adbef6b0...e109f369`.
+
+| Command | Whole seconds | Result |
+|---|---|---|
+| `python tools/build.py sw build springtrail --tag issue351-rom --json` | 1.2 | PASS, 32768 bytes, `adbef6b0...e109f369` |
+| `python tools/build.py sw build springtrail --tag issue351-rom2 --rebuild --json` | 1.4 | PASS, same 32768 bytes and hash; two clean builds agree |
+| `python tools/build.py sim test python-hgs --tag issue351-hgs --json` | 168.9 | PASS `hud_game_short`, 38.381802 ms simulated |
+| `python tools/build.py sim test python-hgu --tag issue351-hgu --json` | 289 | FAIL, wall budget exhausted; 37600 of 46080 pixels reached |
+| `python tools/n2m/test_budget.py sim test python-hgu --tag issue351-hgu-long --json` | 304 | FAIL, the target's own 300-second simulator timeout; all 46080 pixels reached, trace END not |
+| `python tools/n2m/test_budget.py sim test python-hgu --tag issue351-hgu-long --json` | 301 | PASS `hud_game_full`, 71.687202 ms simulated |
+| `python tools/build.py sim test python-hgx --tag issue351-hgx --json` | 168.3 | Intended checker FAIL `HUD_SPLIT_WINDOW`, outer exit 1, same first mismatch as PR321 |
+| springtrail host fixtures, the `builder.yml` loader over `src/dv/springtrail/test_*.py` | 27.1 | PASS, 103 tests |
+
+The passing full run reports 46080 checked pixels, 21603 retirement records,
+LCD at dot 136560, shadow scenes ready at 134316 and 233236, 480 published DMA
+bytes, 387 HRAM bus observations during DMA, the input applied at dot 196915
+inside the declared 196560..198560 window, IRQ vectors `0x48,0x40,0x48,0x40`,
+four line-15 split writes, two JOYP samples and a settled pause at 276826.
+
+The fault target uses the same unchanged checker on the same current image, so
+the positive result is not vacuous.
+
+The overrun is not a defect in the game, the checker or the image. It is the
+hard-coded 300-second wall budget, which
+[#360](https://github.com/amichai-bd/nand2mario/issues/360) owns; the same
+condition is recorded there for other composed targets. `tools/n2m/test_budget.py`
+is the worker the supervisor itself launches, so the passing run used the
+unchanged builder, preload, checker and simulator command, with the target's own
+300-second simulator timeout still enforced. Its measured 301 seconds is
+reported under the owner's authorization for an individual test that
+demonstrably needs more than 300, and is far below the 900-second ceiling.
+
+### What this does and does not establish
+
+Established on `adbef6b0...e109f369`: the blank boot frame, the title frame,
+the first scripted input and its complete publication, every pixel of both
+frames, and a settled paused end state, all against independent expectations.
+
+Not established on that image: scrolling frames, the win route, the death/retry
+route and pause/resume/restart frames. Those transitions were last checked end
+to end on retired images, and
+[#363](https://github.com/amichai-bd/nand2mario/issues/363) owns restoring
+them. The 46-batch every-frame acquisition and the 90-cycle endurance result
+above stay bound to `b551c562...8ba667`; #264 still owns continuous physical
+endurance.

@@ -87,3 +87,18 @@ Whole physical time1863.033 seconds met the declared cap. The PR owns commands,
 raw records, failure history, source qualifications and independent review.
 This completes only the automated child proof, not the outstanding actual
 VGA/keyboard/shared physical-control gates in #264/#28/#156.
+
+## Image scope
+
+Everything above applies to image
+`b551c56252761d953bcf3b64270d819e3342b710299c3bff6866d4dcae8ba667` only. The
+repository now builds
+`adbef6b04b5ca7c3896beace71b1735b6dd49115feda0c6ebe20f11ae109f369`; #310, #314,
+#316, #318 and #321 separate them, and the last three change every displayed
+frame. `endurance.py` calls `require_baseline_rom`, so the driver refuses any
+other image and the recorded 90-cycle result cannot be read as covering the
+current one.
+
+Continuous physical endurance on the current image is therefore unproven. #264
+owns it. The deterministic per-image evidence for the current build is the
+[re-qualification section](MILESTONE.md#current-rom-re-qualification).
