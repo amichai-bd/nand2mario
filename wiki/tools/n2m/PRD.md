@@ -3,8 +3,15 @@
 The build system gives agents and people one predictable command to create
 tagged workspaces, reuse valid results, and record evidence.
 
+Every runnable test is indexed once, so a selection can be asked for by the
+confidence it buys rather than by name, and a test cannot exist without a gate.
+The [test catalogue](SPEC.md#test-catalogue) owns that index: a test present in
+the tree but absent from it fails the build, and a selection matching nothing
+fails rather than passing quietly.
+
 The [SPEC](SPEC.md) owns available commands, environment readiness, installation,
-cache rules, [declared regression subsets](SPEC.md#regression-subsets),
+cache rules, the [test catalogue](SPEC.md#test-catalogue),
+[declared regression subsets](SPEC.md#regression-subsets),
 [tagged cleanup](SPEC.md#cleanup) and result records. The
 [FPGA build contract](SPEC.md#fpga-build) requires checked MAX 10 fit/timing
 evidence without physical execution. Acceptance links

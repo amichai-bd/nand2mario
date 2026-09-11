@@ -9,6 +9,7 @@ import shutil
 import sys
 import time
 
+from . import catalogue
 from .records import atomic_json, atomic_text, file_hash, valid_tag, workspace
 from .simulation import load_target
 from .test_budget import supervise, target_selection
@@ -24,26 +25,33 @@ NAME = re.compile(r"[a-z0-9][a-z0-9_-]*")
 
 
 def load_subsets(root):
-    """Return (subsets, registry path); every declared subset is validated."""
+    """Return (subsets, registry path); every declared subset is validated.
+
+    A subset declares only its tier, purpose and budget. Its members are the
+    catalogue simulation targets carrying the label of the same name, so the
+    repository holds one list of tests, not two.
+    """
     registry = root / "src/dv/builder/regressions.json"
     plan = json.loads(registry.read_text(encoding="utf-8"))
     if (not isinstance(plan, dict) or set(plan) != {"version", "subsets"} or plan["version"] != 1
             or not isinstance(plan["subsets"], dict) or not plan["subsets"]):
         raise ValueError("regression subsets require version 1 and a nonempty subsets object")
     targets = json.loads((root / "src/dv/builder/targets.json").read_text(encoding="utf-8"))
+    model, _ = catalogue.load(root)
     for name, subset in plan["subsets"].items():
         if not NAME.fullmatch(name):
             raise ValueError(f"invalid regression subset name: {name}")
-        if not isinstance(subset, dict) or set(subset) != {"tier", "purpose", "budget_seconds", "targets"}:
-            raise ValueError(f"subset {name} requires exactly tier, purpose, budget_seconds and targets")
+        if not isinstance(subset, dict) or set(subset) != {"tier", "purpose", "budget_seconds"}:
+            raise ValueError(f"subset {name} requires exactly tier, purpose and budget_seconds")
         if subset["tier"] not in TIERS:
             raise ValueError(f"subset {name} tier must be one of {', '.join(TIERS)}")
         if not isinstance(subset["purpose"], str) or not subset["purpose"].strip():
             raise ValueError(f"subset {name} requires a purpose")
-        members = subset["targets"]
-        if (not isinstance(members, list) or not members or len(set(members)) != len(members)
-                or any(not isinstance(member, str) or member not in targets for member in members)):
-            raise ValueError(f"subset {name} targets must be distinct registered target names")
+        members = sorted(unit for unit, entry in model["units"].items()
+                         if entry["kind"] == "sim" and name in entry["labels"])
+        if not members or any(member not in targets for member in members):
+            raise ValueError(f"subset {name} must label at least one registered catalogue target")
+        subset["targets"] = members
         # The most any member may consume; a budget above it declares nothing.
         ceiling = sum(target_selection(member, targets[member])[0] for member in members)
         budget = subset["budget_seconds"]

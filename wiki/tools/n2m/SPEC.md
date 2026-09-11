@@ -1,6 +1,6 @@
 # Build system
 
-Status: `doctor`, `check`, Questa `sim test`, MAX 10 `fpga build`, [software build/conformance](../sw/SPEC.md), [host load/control](host/SPEC.md), [declared regression subsets](#regression-subsets) and [tagged cleanup](#cleanup) are implemented.
+Status: `doctor`, `check`, Questa `sim test`, MAX 10 `fpga build`, [software build/conformance](../sw/SPEC.md), [host load/control](host/SPEC.md), the [test catalogue](#test-catalogue), [declared regression subsets](#regression-subsets) and [tagged cleanup](#cleanup) are implemented.
 
 ## Purpose
 
@@ -23,6 +23,10 @@ python tools/build.py check --tag builder-check --json
 python tools/build.py sim test builder-smoke --tag smoke --seed 1 --json
 python tools/build.py sim test builder-smoke --tag smoke --json
 python tools/build.py sim test builder-smoke-fail --tag deliberate-failure --json
+python tools/build.py tests validate --json
+python tools/build.py tests list --level 0 --json
+python tools/build.py tests run --level 0 --tag level0 --json
+python tools/build.py tests run --label springtrail --tag springtrail --budget 600 --broader --json
 python tools/build.py regress pre-merge --tag pre-merge --json
 python tools/build.py regress builder-fault --tag deliberate-aggregate --json
 python tools/build.py clean --tag deliberate-aggregate --json
@@ -38,12 +42,91 @@ a checked Questa smoke. Quartus and devices remain explicitly untested in this
 profile. See [environment doctor](#environment-doctor).
 `sim test` proves compile, elaboration, run, and the target's expected signature.
 `check` runs host contracts with controlled Questa doubles; these are not RTL
-or license evidence.
+or license evidence. It also proves the [test catalogue](#test-catalogue) still
+covers every test in the tree, and fails naming the first uncovered file.
 
 Questa is the sole supported simulator and the default. `--sim questa` remains
 an optional explicit spelling. Retired selections (`auto`, `icarus`,
 `wsl-icarus`) and Icarus/WSL executable options fail argument parsing. Missing
 tools fail with diagnostics; there is no fallback simulator.
+
+## Test catalogue
+
+[`src/dv/builder/catalogue.yaml`](../../../src/dv/builder/catalogue.yaml) holds
+one entry per **runnable unit**: every registered simulation target and every
+standalone `test_*.py` unittest file in the tree. A runnable unit is the
+smallest thing that can be executed alone, which is what makes a recorded
+duration meaningful.
+
+The file holds `version` 1, a `labels` vocabulary, a `units` mapping and a
+`not_runnable` mapping. Each unit declares exactly:
+
+- `kind`: `sim` for a registered target, `unit` for a `test_*.py` file;
+- `level`: `0`, `1` or `2`, single-valued and ordered. Level 0 buys simple
+  confidence that nothing broke and is optimised for speed; level 1 is more
+  thorough; level 2 is everything. Selecting a level runs every level below it.
+- `labels`: a set, orthogonal to level. Every label must be declared in the
+  file's own `labels` vocabulary; an undeclared label fails validation.
+- `duration_seconds`: the wall of the last actual run, or `null` before the
+  first. `tests run` writes it back; it is not edited by hand.
+
+`not_runnable` maps a `test_*.py` path to the reason nothing can run it. It
+covers the builder's own `tools/n2m/test_budget.py`, which is the wall-budget
+supervisor rather than a test, and two cocotb entry points under
+`src/dv/springtrail` that no registry target names.
+
+The file is a strict YAML subset so the builder keeps its stdlib-only
+dependencies: block mappings, flow mappings, flow sequences, plain and quoted
+scalars, and whole-line comments. Inline comments are refused, because a `#`
+inside an unquoted value would otherwise be silently truncated. `tests validate`
+rewrites nothing, and `tests run` rewrites only the unit lines it measured, so
+comments and order survive.
+
+### Coverage is a build gate
+
+`tests validate` and `check` both prove the catalogue still covers the tree. A
+`test_*.py` file present in the tree fails the build unless it is a catalogued
+unit, a `not_runnable` entry, or already an input of a catalogued registry
+target — the last case covers cocotb modules, which run through their target
+and never alone. A registered target absent from the catalogue, a catalogued
+target absent from the registry, and a catalogued path naming no file each fail
+the same way. This is the control that stops the catalogue drifting out of date.
+
+### Selection
+
+`tests list` and `tests run` select by `--level`, by `--label`, or by both.
+Repeated `--label` requires every named label. A selection needs at least one
+selector.
+
+Two failure modes are deliberately loud:
+
+- an undeclared selector label fails with `unknown label: <name>` before
+  anything runs; and
+- a selection matching zero units fails with
+  `selection matched no tests: <selector>`, naming any selector that carries
+  nothing. A typo that runs nothing and reports success is the same shape of
+  bug as an ungated suite.
+
+### Execution and contention
+
+A `sim` unit runs as the ordinary `sim test` worker under the run's tag, with
+the same `--seed`, `--rebuild`, `--questa-bin` and `--intel-sim-lib`, under the
+same [per-target wall budget](#test-wall-budget). A `unit` runs as
+`unittest discover` over exactly that one file, with the file's own directory as
+the top level and `tools/` on `PYTHONPATH`.
+
+Questa is one node-locked seat. A simulation whose license checkout is refused
+is reported by name as `SKIPPED` with reason `questa-contention`, and the run
+exits non-zero only when something actually failed. A unit labelled
+`needs-cocotb` is skipped with reason `cocotb-environment` when the pinned
+`src/dv/python` interpreter is absent. Contention is not a defect, and is never
+silently swallowed.
+
+The default aggregate budget is the ordinary 300-second pre-merge aggregate.
+`--budget` declares another; above 300 seconds it also needs `--broader`, as a
+regression subset does. The result is published as
+`workdir/builds/<tag>/tests/summary.json` and as the tag's `manifest.json`;
+`tests/.lock` holds the tag for the whole selection.
 
 ## Questa simulation
 
@@ -341,8 +424,12 @@ exactly:
   subset serves;
 - `purpose`: a nonempty sentence saying what the subset proves;
 - `budget_seconds`: an integer aggregate wall budget from 1 through the sum of
-  its members' selected [per-target budgets](#test-wall-budget); and
-- `targets`: a nonempty ordered list of distinct registered target names.
+  its members' selected [per-target budgets](#test-wall-budget).
+
+A subset carries no target list of its own. Its members are the
+[catalogue](#test-catalogue) simulation targets labelled with the subset's own
+name, in name order, so the repository holds one list of tests rather than two.
+A subset whose label names no catalogue target declares nothing and fails.
 
 An `ordinary` subset cannot declare more than 300 seconds, the pre-merge
 aggregate guidance. Any subset above 300 seconds is a broader declared

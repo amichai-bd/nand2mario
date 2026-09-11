@@ -1,0 +1,579 @@
+# Catalogue of every runnable test unit: one entry per registry target and
+# per standalone test_*.py file. Levels are ordered, so selecting a level runs
+# every level below it. Labels are a set, validated against the vocabulary
+# below. duration_seconds is the wall of the last actual run, written back by
+# `tools/build.py tests run`; it is never edited by hand.
+#
+# Whole-line comments only; see tools/n2m/catalogue.py for the accepted subset.
+version: 1
+labels:
+  agents: "Agent skill helper scripts under .agents/skills."
+  audio: "APU and audio service behavior."
+  baseline: "The test-only baseline fixture and harness."
+  broken: "Rejected by the registry validator today; recorded, not repaired."
+  builder: "The tagged build machinery of tools/n2m and tools/build.py."
+  builder-fault: "Migrated regressions.json subset: deliberate aggregate failure witness."
+  ci: "Trusted CI admission, recovery and status."
+  clocking: "Clock, reset and CDC control."
+  common: "Shared RTL macros, assertions and memory primitives."
+  composed-smoke: "Migrated regressions.json subset: the bounded composed candidate."
+  cpu: "SM83 core behavior."
+  display: "Tile and pixel display paths."
+  display308: "The display308 scene and program fixtures."
+  dma: "FF46 OAM transfer and shared-store service."
+  fault: "A deliberate negative case: the target must fail in the named way."
+  fpga: "MAX 10 fit, constraint and programming host checks."
+  host: "UART host transport, framing and CLI behavior."
+  host-play: "The host_play input loop and its fixtures."
+  input: "Input capture and control routing."
+  integration: "Composed system execution through Intel-model preload."
+  interfaces: "The generated interface tables shared by RTL, host and DV."
+  interrupts: "IF/IE dispatch and vector entry."
+  joypad: "JOYP matrix and STOP behavior."
+  memory: "Memory stores and routing."
+  milestone: "Carries the owner-authorized 1500-second Mooneye allowance."
+  mooneye: "Pinned upstream Mooneye fixtures."
+  needs-cocotb: "Imports cocotb; runs only on the pinned src/dv/python interpreter."
+  ppu: "Pixel pipeline, OAM scan and mode timing."
+  pre-merge: "Migrated regressions.json subset: the short ordinary pre-merge set."
+  preload: "Intel-model program preload and its comparison."
+  python-tb: "A cocotb testbench; the builder must run on the pinned interpreter."
+  sameboy: "SameBoy comparison probes."
+  serial: "Serial transfer and its service."
+  snapshot: "Frame snapshot capture."
+  springtrail: "The original Springtrail game, its reference and its fixtures."
+  stackdrop: "The Stackdrop fixture game and its reference."
+  sw: "The original assembler, linker, packager and asset converter."
+  system: "Whole-system composition above one RTL owner."
+  timer: "DIV/TIMA counting and overflow."
+  uart: "UART packet store and transport framing."
+  v05: "The v0.5 acceptance program and its oracles."
+  vga: "Frame bridge and VGA output."
+  wiki: "Publication, checks and repository statistics."
+units:
+  .agents/skills/issue-author/scripts/test_create_issue.py: {kind: unit, level: 0, labels: [agents], duration_seconds: 0.13}
+  .agents/skills/rtl-coder/scripts/test_check_sv_style.py: {kind: unit, level: 0, labels: [agents], duration_seconds: 0.08}
+  adc-backend: {kind: sim, level: 1, labels: [input], duration_seconds: 8.24}
+  adc-backend-corrupt: {kind: sim, level: 2, labels: [fault, input], duration_seconds: null}
+  adc-pairs: {kind: sim, level: 2, labels: [input], duration_seconds: null}
+  adc-pairs-channel: {kind: sim, level: 2, labels: [fault, input], duration_seconds: null}
+  adc-pairs-corrupt: {kind: sim, level: 2, labels: [fault, input], duration_seconds: null}
+  assert-synthesis: {kind: sim, level: 1, labels: [common], duration_seconds: 4.63}
+  async-assert-direct: {kind: sim, level: 2, labels: [common, fault], duration_seconds: null}
+  async-assert-hold: {kind: sim, level: 2, labels: [common, fault], duration_seconds: null}
+  async-assert-known: {kind: sim, level: 2, labels: [common, fault], duration_seconds: null}
+  async-assert-macros: {kind: sim, level: 2, labels: [common], duration_seconds: null}
+  async-assert-never: {kind: sim, level: 2, labels: [common, fault], duration_seconds: null}
+  async-assert-no_reset: {kind: sim, level: 2, labels: [common, fault], duration_seconds: null}
+  audio-mask-fault: {kind: sim, level: 2, labels: [audio, fault], duration_seconds: null}
+  audio-service: {kind: sim, level: 1, labels: [audio], duration_seconds: 6.06}
+  audio-service-fault: {kind: sim, level: 2, labels: [audio, fault], duration_seconds: null}
+  audio-wave-fault: {kind: sim, level: 2, labels: [audio, fault], duration_seconds: null}
+  baseline-broken: {kind: sim, level: 2, labels: [baseline, fault], duration_seconds: null}
+  baseline-good: {kind: sim, level: 1, labels: [baseline], duration_seconds: 4.69}
+  builder-smoke: {kind: sim, level: 0, labels: [builder, builder-fault, pre-merge], duration_seconds: 4.91}
+  builder-smoke-fail: {kind: sim, level: 2, labels: [builder, builder-fault], duration_seconds: null}
+  clocking: {kind: sim, level: 1, labels: [clocking], duration_seconds: 26.33}
+  clocking-bad-numerator: {kind: sim, level: 2, labels: [clocking, fault], duration_seconds: null}
+  clocking-drop-tick: {kind: sim, level: 2, labels: [clocking, fault], duration_seconds: null}
+  clocking-early-reset: {kind: sim, level: 2, labels: [clocking, fault], duration_seconds: null}
+  controls-lifecycle: {kind: sim, level: 2, labels: [input], duration_seconds: null}
+  controls-lifecycle-corrupt: {kind: sim, level: 2, labels: [fault, input], duration_seconds: null}
+  controls-mask: {kind: sim, level: 2, labels: [input], duration_seconds: null}
+  controls-mask-corrupt: {kind: sim, level: 2, labels: [fault, input], duration_seconds: null}
+  controls-sticky: {kind: sim, level: 2, labels: [input], duration_seconds: null}
+  controls-unsolicited: {kind: sim, level: 2, labels: [fault, input], duration_seconds: null}
+  controls-wire: {kind: sim, level: 2, labels: [input], duration_seconds: null}
+  controls-wire-corrupt: {kind: sim, level: 2, labels: [fault, input], duration_seconds: null}
+  cpu-alu: {kind: sim, level: 1, labels: [cpu], duration_seconds: 8.68}
+  cpu-alu-corrupt: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
+  cpu-bus: {kind: sim, level: 2, labels: [cpu], duration_seconds: null}
+  cpu-bus-changing-request: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
+  cpu-bus-late-active: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
+  cpu-bus-missing-response: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
+  cpu-execute: {kind: sim, level: 2, labels: [cpu], duration_seconds: null}
+  cpu-execute-idu-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
+  cpu-halt-bug-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
+  cpu-halt-lock: {kind: sim, level: 2, labels: [cpu], duration_seconds: null}
+  cpu-idu-arithmetic: {kind: sim, level: 2, labels: [cpu], duration_seconds: null}
+  cpu-idu-arithmetic-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
+  cpu-if-observation: {kind: sim, level: 2, labels: [cpu], duration_seconds: null}
+  cpu-if-observation-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
+  cpu-irq: {kind: sim, level: 2, labels: [cpu], duration_seconds: null}
+  cpu-irq-di-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
+  cpu-irq-idu: {kind: sim, level: 2, labels: [cpu], duration_seconds: null}
+  cpu-irq-idu-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
+  cpu-irq-reset: {kind: sim, level: 2, labels: [cpu], duration_seconds: null}
+  cpu-irq-reset-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
+  cpu-irq-snapshot-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
+  cpu-lock-event-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
+  cpu-program: {kind: sim, level: 2, labels: [cpu], duration_seconds: null}
+  cpu-program-idu-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
+  cpu-program-idu-missing: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
+  cpu-program-idu-page: {kind: sim, level: 2, labels: [cpu], duration_seconds: null}
+  cpu-program-idu-page-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
+  cpu-program-retirement-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
+  cpu-program-state-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
+  cpu-program-timing-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
+  cpu-reset: {kind: sim, level: 2, labels: [cpu], duration_seconds: null}
+  cpu-reset-lost-write: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
+  cpu-retire: {kind: sim, level: 2, labels: [cpu], duration_seconds: null}
+  cpu-retire-corrupt: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
+  cpu-step: {kind: sim, level: 2, labels: [cpu], duration_seconds: null}
+  cpu-step-missing: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
+  cpu-step-suppress: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
+  cpu-stop: {kind: sim, level: 2, labels: [cpu], duration_seconds: null}
+  cpu-stop-divider-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
+  cpu-stop-idu: {kind: sim, level: 2, labels: [cpu], duration_seconds: null}
+  cpu-stop-idu-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
+  cpu-stop-irq: {kind: sim, level: 2, labels: [cpu], duration_seconds: null}
+  cpu-stop-irq-effect: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
+  cpu-stop-irq-stack: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
+  cpu-stop-mode-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
+  cpu-stop-wake: {kind: sim, level: 2, labels: [cpu], duration_seconds: null}
+  cpu-stop-wake-stale: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
+  cpu-vectors: {kind: sim, level: 2, labels: [cpu], duration_seconds: null}
+  cpu-vectors-expected-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
+  cpu-vectors-missing: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
+  cpu-vectors-state-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
+  cpu-wake: {kind: sim, level: 2, labels: [cpu], duration_seconds: null}
+  cpu-wake-missing: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
+  cpu-wake-reset: {kind: sim, level: 2, labels: [cpu], duration_seconds: null}
+  cpu-wake-reset-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
+  cpu-wake-stale: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
+  cpu-wrap: {kind: sim, level: 2, labels: [cpu], duration_seconds: null}
+  cpu-wrap-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
+  dma-access: {kind: sim, level: 2, labels: [dma], duration_seconds: null}
+  dma-access-corrupt: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: null}
+  dma-composition: {kind: sim, level: 2, labels: [dma], duration_seconds: null}
+  dma-composition-byte: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: null}
+  dma-composition-fault-hardware: {kind: sim, level: 2, labels: [dma], duration_seconds: null}
+  dma-composition-halt: {kind: sim, level: 2, labels: [dma], duration_seconds: null}
+  dma-composition-pause-0: {kind: sim, level: 2, labels: [dma], duration_seconds: null}
+  dma-composition-pause-1: {kind: sim, level: 2, labels: [dma], duration_seconds: null}
+  dma-composition-pause-2: {kind: sim, level: 2, labels: [dma], duration_seconds: null}
+  dma-composition-pause-3: {kind: sim, level: 2, labels: [dma], duration_seconds: null}
+  dma-composition-pause-fault: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: null}
+  dma-composition-read: {kind: sim, level: 2, labels: [dma], duration_seconds: null}
+  dma-composition-read-increment: {kind: sim, level: 2, labels: [dma], duration_seconds: null}
+  dma-composition-read-row-fault: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: null}
+  dma-composition-stop: {kind: sim, level: 2, labels: [dma], duration_seconds: null}
+  dma-composition-unresolved: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: null}
+  dma-engine: {kind: sim, level: 2, labels: [dma], duration_seconds: null}
+  dma-engine-byte: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: null}
+  dma-engine-service: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: null}
+  dma-engine-time: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: null}
+  dma-family-pair: {kind: sim, level: 2, labels: [dma], duration_seconds: null}
+  dma-family-pop: {kind: sim, level: 2, labels: [dma], duration_seconds: null}
+  dma-family-pop-fault: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: null}
+  dma-family-sp: {kind: sim, level: 2, labels: [dma], duration_seconds: null}
+  dma-family-store: {kind: sim, level: 2, labels: [dma], duration_seconds: null}
+  dma-io: {kind: sim, level: 2, labels: [dma], duration_seconds: null}
+  dma-io-irq-fault: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: null}
+  dma-late: {kind: sim, level: 2, labels: [dma], duration_seconds: null}
+  dma-late-ready-fault: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: null}
+  dma-lcd-cancel-fault: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: null}
+  dma-lcd-restart: {kind: sim, level: 2, labels: [dma], duration_seconds: null}
+  dma-overlay: {kind: sim, level: 2, labels: [dma], duration_seconds: null}
+  dma-overlay-corrupt: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: null}
+  dma-reset: {kind: sim, level: 2, labels: [dma], duration_seconds: null}
+  dma-reset-stale: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: null}
+  dma-restart: {kind: sim, level: 2, labels: [dma], duration_seconds: null}
+  dma-restart-early: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: null}
+  dma-tags: {kind: sim, level: 2, labels: [dma], duration_seconds: null}
+  dma-tags-data: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: null}
+  dma-tags-operand: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: null}
+  dma-tags-pair: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: null}
+  dma-tags-raw: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: null}
+  dma-terminal: {kind: sim, level: 2, labels: [dma], duration_seconds: null}
+  dma-terminal-corrupt: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: null}
+  host-play: {kind: sim, level: 2, labels: [host-play, integration, memory], duration_seconds: null}
+  host-play-frame: {kind: sim, level: 2, labels: [fault, host-play, integration, memory], duration_seconds: null}
+  host-play-input: {kind: sim, level: 2, labels: [fault, host-play, integration, memory], duration_seconds: null}
+  host-play-missing: {kind: sim, level: 2, labels: [fault, host-play, integration, memory], duration_seconds: null}
+  host-play-release: {kind: sim, level: 2, labels: [fault, host-play, integration, memory], duration_seconds: null}
+  input-matrix: {kind: sim, level: 2, labels: [input], duration_seconds: null}
+  input-matrix-boundary: {kind: sim, level: 2, labels: [fault, input], duration_seconds: null}
+  input-matrix-data: {kind: sim, level: 2, labels: [fault, input], duration_seconds: null}
+  input-matrix-event: {kind: sim, level: 2, labels: [fault, input], duration_seconds: null}
+  input-matrix-source: {kind: sim, level: 2, labels: [fault, input], duration_seconds: null}
+  input-ordering: {kind: sim, level: 2, labels: [input], duration_seconds: null}
+  input-power: {kind: sim, level: 2, labels: [input], duration_seconds: null}
+  integration-preloaded: {kind: sim, level: 2, labels: [integration, memory], duration_seconds: null}
+  integration-smoke: {kind: sim, level: 2, labels: [builder, integration, memory], duration_seconds: null}
+  integration-smoke-data: {kind: sim, level: 2, labels: [builder, fault, integration, memory], duration_seconds: null}
+  integration-smoke-irq: {kind: sim, level: 2, labels: [builder, fault, integration, memory], duration_seconds: null}
+  integration-smoke-pixel: {kind: sim, level: 2, labels: [builder, fault, integration, memory], duration_seconds: null}
+  intel-memory: {kind: sim, level: 2, labels: [common], duration_seconds: null}
+  intel-memory-collision: {kind: sim, level: 2, labels: [common, fault], duration_seconds: null}
+  intel-memory-data: {kind: sim, level: 2, labels: [common, fault], duration_seconds: null}
+  intel-memory-latency: {kind: sim, level: 2, labels: [common, fault], duration_seconds: null}
+  interfaces: {kind: sim, level: 1, labels: [interfaces], duration_seconds: 4.28}
+  interfaces-corrupt: {kind: sim, level: 2, labels: [fault, interfaces], duration_seconds: null}
+  interrupt-ack-fault: {kind: sim, level: 2, labels: [fault, interrupts], duration_seconds: null}
+  interrupt-phases: {kind: sim, level: 1, labels: [interrupts], duration_seconds: 4.43}
+  interrupt-phases-fault: {kind: sim, level: 2, labels: [fault, interrupts], duration_seconds: null}
+  interrupts: {kind: sim, level: 2, labels: [interrupts], duration_seconds: null}
+  interrupts-duplicate: {kind: sim, level: 2, labels: [fault, interrupts], duration_seconds: null}
+  interrupts-lost: {kind: sim, level: 2, labels: [fault, interrupts], duration_seconds: null}
+  interrupts-priority: {kind: sim, level: 2, labels: [fault, interrupts], duration_seconds: null}
+  joypad-boundary-fault: {kind: sim, level: 2, labels: [fault, joypad], duration_seconds: null}
+  joypad-events: {kind: sim, level: 1, labels: [joypad], duration_seconds: 4.58}
+  joypad-events-duplicate: {kind: sim, level: 2, labels: [fault, joypad], duration_seconds: null}
+  joypad-events-lost: {kind: sim, level: 2, labels: [fault, joypad], duration_seconds: null}
+  joypad-matrix: {kind: sim, level: 2, labels: [joypad], duration_seconds: null}
+  joypad-matrix-fault: {kind: sim, level: 2, labels: [fault, joypad], duration_seconds: null}
+  joypad-register-fault: {kind: sim, level: 2, labels: [fault, joypad], duration_seconds: null}
+  joypad-registers: {kind: sim, level: 2, labels: [joypad], duration_seconds: null}
+  memory-bank-enables: {kind: sim, level: 1, labels: [memory], duration_seconds: 10.92}
+  memory-bank-enables-fault: {kind: sim, level: 2, labels: [fault, memory], duration_seconds: null}
+  memory-cpu-duplicate: {kind: sim, level: 2, labels: [fault, memory], duration_seconds: null}
+  memory-cpu-missing: {kind: sim, level: 2, labels: [fault, memory], duration_seconds: null}
+  memory-cpu-owner-fault: {kind: sim, level: 2, labels: [fault, memory], duration_seconds: null}
+  memory-cpu-port: {kind: sim, level: 2, labels: [memory], duration_seconds: null}
+  memory-cpu-sticky: {kind: sim, level: 2, labels: [memory], duration_seconds: null}
+  memory-decode: {kind: sim, level: 2, labels: [memory], duration_seconds: null}
+  memory-decode-alias: {kind: sim, level: 2, labels: [fault, memory], duration_seconds: null}
+  memory-service: {kind: sim, level: 2, labels: [memory], duration_seconds: null}
+  memory-service-corrupt: {kind: sim, level: 2, labels: [fault, memory], duration_seconds: null}
+  memory-stores: {kind: sim, level: 2, labels: [memory], duration_seconds: null}
+  memory-stores-early: {kind: sim, level: 2, labels: [fault, memory], duration_seconds: null}
+  mooneye-corrupt: {kind: sim, level: 2, labels: [integration, memory, milestone, mooneye, python-tb], duration_seconds: null}
+  mooneye-missing: {kind: sim, level: 2, labels: [integration, memory, milestone, mooneye, python-tb], duration_seconds: null}
+  mooneye-reg-f: {kind: sim, level: 2, labels: [integration, memory, milestone, mooneye, python-tb], duration_seconds: null}
+  oam-corrupt: {kind: sim, level: 1, labels: [dma], duration_seconds: 5.05}
+  oam-corrupt-mask: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: null}
+  oam-corrupt-output: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: null}
+  oam-late-write: {kind: sim, level: 2, labels: [memory], duration_seconds: null}
+  oam-late-write-collision: {kind: sim, level: 2, labels: [fault, memory], duration_seconds: null}
+  oam-qualify: {kind: sim, level: 2, labels: [dma], duration_seconds: null}
+  oam-qualify-corrupt: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: null}
+  oam-qualify-mask: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: null}
+  ppu-access: {kind: sim, level: 1, labels: [ppu], duration_seconds: 4.64}
+  ppu-access-corrupt: {kind: sim, level: 2, labels: [fault, ppu], duration_seconds: null}
+  ppu-fetch: {kind: sim, level: 2, labels: [ppu], duration_seconds: null}
+  ppu-fetch-missing: {kind: sim, level: 2, labels: [fault, ppu], duration_seconds: null}
+  ppu-fine-scroll: {kind: sim, level: 2, labels: [ppu], duration_seconds: null}
+  ppu-fine-scroll-corrupt: {kind: sim, level: 2, labels: [fault, ppu], duration_seconds: null}
+  ppu-lcd-video: {kind: sim, level: 2, labels: [ppu], duration_seconds: null}
+  ppu-lcd-video-corrupt: {kind: sim, level: 2, labels: [fault, ppu], duration_seconds: null}
+  ppu-lcdc-fetch: {kind: sim, level: 2, labels: [ppu], duration_seconds: null}
+  ppu-lcdc-fetch-corrupt: {kind: sim, level: 2, labels: [fault, ppu], duration_seconds: null}
+  ppu-live-scroll: {kind: sim, level: 2, labels: [ppu], duration_seconds: null}
+  ppu-live-scroll-corrupt: {kind: sim, level: 2, labels: [fault, ppu], duration_seconds: null}
+  ppu-ly153: {kind: sim, level: 2, labels: [ppu], duration_seconds: null}
+  ppu-ly153-corrupt: {kind: sim, level: 2, labels: [fault, ppu], duration_seconds: null}
+  ppu-ly153-extra-irq: {kind: sim, level: 2, labels: [fault, ppu], duration_seconds: null}
+  ppu-ly153-irq-corrupt: {kind: sim, level: 2, labels: [fault, ppu], duration_seconds: null}
+  ppu-mix: {kind: sim, level: 2, labels: [ppu], duration_seconds: null}
+  ppu-mix-corrupt: {kind: sim, level: 2, labels: [fault, ppu], duration_seconds: null}
+  ppu-oam-read: {kind: sim, level: 2, labels: [ppu], duration_seconds: null}
+  ppu-oam-read-corrupt: {kind: sim, level: 2, labels: [fault, ppu], duration_seconds: null}
+  ppu-object-zero: {kind: sim, level: 2, labels: [ppu], duration_seconds: null}
+  ppu-object-zero-corrupt: {kind: sim, level: 2, labels: [fault, ppu], duration_seconds: null}
+  ppu-objects: {kind: sim, level: 2, labels: [ppu], duration_seconds: null}
+  ppu-objects-missing: {kind: sim, level: 2, labels: [fault, ppu], duration_seconds: null}
+  ppu-palette: {kind: sim, level: 2, labels: [ppu], duration_seconds: null}
+  ppu-palette-conflict: {kind: sim, level: 2, labels: [ppu], duration_seconds: null}
+  ppu-palette-conflict-corrupt: {kind: sim, level: 2, labels: [fault, ppu], duration_seconds: null}
+  ppu-palette-corrupt: {kind: sim, level: 2, labels: [fault, ppu], duration_seconds: null}
+  ppu-render: {kind: sim, level: 2, labels: [ppu], duration_seconds: null}
+  ppu-render-corrupt: {kind: sim, level: 2, labels: [fault, ppu], duration_seconds: null}
+  ppu-render-temporal: {kind: sim, level: 2, labels: [ppu], duration_seconds: null}
+  ppu-render-timing-corrupt: {kind: sim, level: 2, labels: [fault, ppu], duration_seconds: null}
+  ppu-scroll-window: {kind: sim, level: 2, labels: [ppu], duration_seconds: null}
+  ppu-scroll-window-corrupt: {kind: sim, level: 2, labels: [fault, ppu], duration_seconds: null}
+  ppu-shift: {kind: sim, level: 2, labels: [ppu], duration_seconds: null}
+  ppu-shift-unknown: {kind: sim, level: 2, labels: [fault, ppu], duration_seconds: null}
+  ppu-stat: {kind: sim, level: 2, labels: [ppu], duration_seconds: null}
+  ppu-stat-corrupt: {kind: sim, level: 2, labels: [fault, ppu], duration_seconds: null}
+  ppu-stat-oam: {kind: sim, level: 2, labels: [ppu], duration_seconds: null}
+  ppu-stat-oam-corrupt: {kind: sim, level: 2, labels: [fault, ppu], duration_seconds: null}
+  ppu-stat-off: {kind: sim, level: 2, labels: [ppu], duration_seconds: null}
+  ppu-stat-off-corrupt: {kind: sim, level: 2, labels: [fault, ppu], duration_seconds: null}
+  ppu-vblank: {kind: sim, level: 2, labels: [ppu], duration_seconds: null}
+  ppu-vblank-corrupt: {kind: sim, level: 2, labels: [fault, ppu], duration_seconds: null}
+  ppu-video: {kind: sim, level: 2, labels: [ppu], duration_seconds: null}
+  ppu-video-corrupt: {kind: sim, level: 2, labels: [fault, ppu], duration_seconds: null}
+  ppu-vram-read: {kind: sim, level: 2, labels: [ppu], duration_seconds: null}
+  ppu-vram-read-corrupt: {kind: sim, level: 2, labels: [fault, ppu], duration_seconds: null}
+  ppu-window-disabled-wx: {kind: sim, level: 2, labels: [ppu], duration_seconds: null}
+  ppu-window-disabled-wx-corrupt: {kind: sim, level: 2, labels: [fault, ppu], duration_seconds: null}
+  ppu-window-repeated: {kind: sim, level: 2, labels: [ppu], duration_seconds: null}
+  ppu-window-repeated-corrupt: {kind: sim, level: 2, labels: [fault, ppu], duration_seconds: null}
+  ppu-window-wx0: {kind: sim, level: 2, labels: [ppu], duration_seconds: null}
+  ppu-window-wx166: {kind: sim, level: 2, labels: [ppu], duration_seconds: null}
+  ppu-window-wy: {kind: sim, level: 2, labels: [ppu], duration_seconds: null}
+  ppu-window-wy-late: {kind: sim, level: 2, labels: [ppu], duration_seconds: null}
+  preload-crc-fault: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: null}
+  preload-lifecycle: {kind: sim, level: 1, labels: [uart], duration_seconds: 18.96}
+  python-bka: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-bkb: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-bks: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-bkx: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-controls-startup: {kind: sim, level: 2, labels: [input, integration, python-tb, v05], duration_seconds: null}
+  python-controls-system: {kind: sim, level: 2, labels: [input, integration, python-tb, v05], duration_seconds: null}
+  python-controls-system-corrupt: {kind: sim, level: 2, labels: [input, integration, python-tb, v05], duration_seconds: null}
+  python-courier-short: {kind: sim, level: 2, labels: [broken, integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-courier-unit: {kind: sim, level: 2, labels: [broken, integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-display: {kind: sim, level: 2, labels: [display308, integration, python-tb, system, v05], duration_seconds: null}
+  python-display-boundary: {kind: sim, level: 2, labels: [display308, integration, python-tb, system, v05], duration_seconds: null}
+  python-display-short: {kind: sim, level: 2, labels: [display308, integration, python-tb, system, v05], duration_seconds: null}
+  python-dma-late-fe20: {kind: sim, level: 2, labels: [dma, integration, python-tb], duration_seconds: null}
+  python-dma-late-fe9c: {kind: sim, level: 2, labels: [dma, integration, python-tb], duration_seconds: null}
+  python-dma-late-fe9d: {kind: sim, level: 2, labels: [dma, integration, python-tb], duration_seconds: null}
+  python-fs: {kind: sim, level: 2, labels: [broken, integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-fu: {kind: sim, level: 2, labels: [broken, integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-fx: {kind: sim, level: 2, labels: [broken, integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-host-play: {kind: sim, level: 2, labels: [host-play, integration, memory, python-tb], duration_seconds: null}
+  python-host-play-frame: {kind: sim, level: 2, labels: [host-play, integration, memory, python-tb], duration_seconds: null}
+  python-host-play-input: {kind: sim, level: 2, labels: [host-play, integration, memory, python-tb], duration_seconds: null}
+  python-host-play-missing: {kind: sim, level: 2, labels: [host-play, integration, memory, python-tb], duration_seconds: null}
+  python-host-play-release: {kind: sim, level: 2, labels: [host-play, integration, memory, python-tb], duration_seconds: null}
+  python-hr: {kind: sim, level: 2, labels: [broken, integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-hus: {kind: sim, level: 2, labels: [broken, integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-hut: {kind: sim, level: 2, labels: [broken, integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-integration: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: null}
+  python-integration-client-preloaded: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: null}
+  python-integration-fault: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: null}
+  python-integration-uart: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: null}
+  python-integration-uart-data-fault: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: null}
+  python-integration-uart-irq-fault: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: null}
+  python-integration-uart-pixel-fault: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: null}
+  python-joypad: {kind: sim, level: 2, labels: [joypad, python-tb], duration_seconds: null}
+  python-joypad-fault: {kind: sim, level: 2, labels: [joypad, python-tb], duration_seconds: null}
+  python-mgs: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-mgu: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-mr: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-mus: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-mut: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-mux: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-oam-late-fe20: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: null}
+  python-oam-late-fe9c: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: null}
+  python-oam-late-fe9d: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: null}
+  python-os: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-ou: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-ox: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-palette194-00: {kind: sim, level: 2, labels: [broken, integration, memory, python-tb], duration_seconds: null}
+  python-palette194-fc: {kind: sim, level: 2, labels: [broken, integration, memory, python-tb], duration_seconds: null}
+  python-pgs: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-pgu: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-pgx: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-pr: {kind: sim, level: 2, labels: [broken, integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-pua: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-pub: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-pus: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-pux: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-rs: {kind: sim, level: 2, labels: [broken, integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-ru: {kind: sim, level: 2, labels: [broken, integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-rx: {kind: sim, level: 2, labels: [broken, integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-st-unit: {kind: sim, level: 2, labels: [broken, integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-stackdrop-game: {kind: sim, level: 2, labels: [integration, python-tb, stackdrop, system, v05], duration_seconds: null}
+  python-stackdrop-short: {kind: sim, level: 2, labels: [integration, python-tb, stackdrop, system, v05], duration_seconds: null}
+  python-stackdrop-unit: {kind: sim, level: 2, labels: [integration, python-tb, stackdrop, system, v05], duration_seconds: null}
+  python-stackdrop-unit-x: {kind: sim, level: 2, labels: [integration, python-tb, stackdrop, system, v05], duration_seconds: null}
+  python-startup202-read: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: null}
+  python-startup202-write: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: null}
+  python-stop349: {kind: sim, level: 2, labels: [integration, joypad, python-tb, system, v05], duration_seconds: null}
+  python-stop349-fault: {kind: sim, level: 2, labels: [integration, joypad, python-tb, system, v05], duration_seconds: null}
+  python-v05-bounded: {kind: sim, level: 2, labels: [integration, python-tb, system, v05], duration_seconds: null}
+  python-v05-bounded-pixel: {kind: sim, level: 2, labels: [integration, python-tb, system, v05], duration_seconds: null}
+  python-v05-bounded-progress: {kind: sim, level: 2, labels: [integration, python-tb, system, v05], duration_seconds: null}
+  python-v05-continuous: {kind: sim, level: 2, labels: [integration, python-tb, system, v05], duration_seconds: null}
+  python-v05-dma: {kind: sim, level: 2, labels: [dma, integration, python-tb, system, v05], duration_seconds: null}
+  python-v05-dma-byte: {kind: sim, level: 2, labels: [dma, integration, python-tb, system, v05], duration_seconds: null}
+  python-v05-identity: {kind: sim, level: 2, labels: [integration, python-tb, system, v05], duration_seconds: null}
+  python-v05-identity-fault: {kind: sim, level: 2, labels: [integration, python-tb, system, v05], duration_seconds: null}
+  python-v05-image-fault: {kind: sim, level: 2, labels: [integration, python-tb, system, v05], duration_seconds: null}
+  python-v05-physical: {kind: sim, level: 2, labels: [integration, python-tb, system, v05], duration_seconds: null}
+  python-v05-physical-mask: {kind: sim, level: 2, labels: [integration, python-tb, system, v05], duration_seconds: null}
+  python-v05-pixel-fault: {kind: sim, level: 2, labels: [integration, python-tb, system, v05], duration_seconds: null}
+  python-v05-progress-fault: {kind: sim, level: 2, labels: [integration, python-tb, system, v05], duration_seconds: null}
+  python-v05-short: {kind: sim, level: 2, labels: [integration, python-tb, system, v05], duration_seconds: null}
+  python-v05-startup: {kind: sim, level: 2, labels: [integration, python-tb, system, v05], duration_seconds: null}
+  python-v05-timer: {kind: sim, level: 2, labels: [composed-smoke, integration, python-tb, system, v05], duration_seconds: null}
+  python-v05-timer-fault: {kind: sim, level: 2, labels: [integration, python-tb, system, v05], duration_seconds: null}
+  python-vga-crc: {kind: sim, level: 2, labels: [python-tb, vga], duration_seconds: null}
+  python-vga-crc-corrupt: {kind: sim, level: 2, labels: [python-tb, vga], duration_seconds: null}
+  python-vram-read: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: null}
+  python-vram-write: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: null}
+  register-macros: {kind: sim, level: 2, labels: [common], duration_seconds: null}
+  register-macros-corrupt: {kind: sim, level: 2, labels: [common, fault], duration_seconds: null}
+  serial-boundary-fault: {kind: sim, level: 2, labels: [fault, serial], duration_seconds: null}
+  serial-register-fault: {kind: sim, level: 2, labels: [fault, serial], duration_seconds: null}
+  serial-registers: {kind: sim, level: 1, labels: [serial], duration_seconds: 4.41}
+  snapshot: {kind: sim, level: 1, labels: [snapshot], duration_seconds: 7.65}
+  snapshot-latency: {kind: sim, level: 2, labels: [fault, snapshot], duration_seconds: null}
+  snapshot-lifecycle: {kind: sim, level: 2, labels: [snapshot], duration_seconds: null}
+  snapshot-overwrite: {kind: sim, level: 2, labels: [fault, snapshot], duration_seconds: null}
+  snapshot-ownership: {kind: sim, level: 2, labels: [fault, snapshot], duration_seconds: null}
+  snapshot-vga: {kind: sim, level: 2, labels: [snapshot, vga], duration_seconds: null}
+  src/dv/display308/test_program.py: {kind: unit, level: 0, labels: [display308], duration_seconds: 0.27}
+  src/dv/display308/test_scene.py: {kind: unit, level: 0, labels: [display308], duration_seconds: 0.11}
+  src/dv/python/v05/test_known.py: {kind: unit, level: 2, labels: [needs-cocotb, python-tb, v05], duration_seconds: 0.08}
+  src/dv/python/vga/test_reference.py: {kind: unit, level: 0, labels: [python-tb, vga], duration_seconds: 0.16}
+  src/dv/springtrail/test_blocks_assets.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.53}
+  src/dv/springtrail/test_blocks_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.16}
+  src/dv/springtrail/test_blocks_unit_check.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.21}
+  src/dv/springtrail/test_board_bringup.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.17}
+  src/dv/springtrail/test_composition.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.63}
+  src/dv/springtrail/test_composition_game_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.30}
+  src/dv/springtrail/test_dma_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.09}
+  src/dv/springtrail/test_endurance.py: {kind: unit, level: 1, labels: [springtrail], duration_seconds: 35.83}
+  src/dv/springtrail/test_flow_physical.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 1.15}
+  src/dv/springtrail/test_frame_proofs.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 1.55}
+  src/dv/springtrail/test_game_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.25}
+  src/dv/springtrail/test_historical_composition.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.16}
+  src/dv/springtrail/test_historical_motion.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.24}
+  src/dv/springtrail/test_hud_game_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.26}
+  src/dv/springtrail/test_hud_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.54}
+  src/dv/springtrail/test_hud_render_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.26}
+  src/dv/springtrail/test_hud_unit_check.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.11}
+  src/dv/springtrail/test_interaction_routes.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.11}
+  src/dv/springtrail/test_interactions_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.11}
+  src/dv/springtrail/test_legacy_renderer.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.21}
+  src/dv/springtrail/test_milestone.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.15}
+  src/dv/springtrail/test_motion_assets.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.56}
+  src/dv/springtrail/test_motion_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.14}
+  src/dv/springtrail/test_motion_render_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.31}
+  src/dv/springtrail/test_motion_unit_check.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.16}
+  src/dv/springtrail/test_movement_frames.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.12}
+  src/dv/springtrail/test_movement_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.09}
+  src/dv/springtrail/test_pause_game_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 1.37}
+  src/dv/springtrail/test_paused_capture.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.60}
+  src/dv/springtrail/test_physical_driver.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.95}
+  src/dv/springtrail/test_physical_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.14}
+  src/dv/springtrail/test_power_assets.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.59}
+  src/dv/springtrail/test_power_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.15}
+  src/dv/springtrail/test_power_render_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.22}
+  src/dv/springtrail/test_power_unit_check.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.15}
+  src/dv/springtrail/test_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.22}
+  src/dv/springtrail/test_renderer_oracle.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.11}
+  src/dv/springtrail/test_scene_art.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.12}
+  src/dv/springtrail/test_scene_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.11}
+  src/dv/springtrail/test_unit_markers.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.11}
+  src/dv/stackdrop/test_game_check.py: {kind: unit, level: 0, labels: [stackdrop], duration_seconds: 0.25}
+  src/dv/stackdrop/test_reference.py: {kind: unit, level: 0, labels: [stackdrop], duration_seconds: 0.09}
+  src/dv/stackdrop/test_screen.py: {kind: unit, level: 0, labels: [stackdrop], duration_seconds: 0.30}
+  src/dv/stackdrop/test_tail.py: {kind: unit, level: 2, labels: [needs-cocotb, stackdrop], duration_seconds: 0.10}
+  tile-pixel: {kind: sim, level: 0, labels: [display, pre-merge], duration_seconds: 10.52}
+  tile-pixel-corrupt: {kind: sim, level: 2, labels: [display, fault], duration_seconds: null}
+  timebase25: {kind: sim, level: 2, labels: [clocking], duration_seconds: null}
+  timebase25-bad-numerator: {kind: sim, level: 2, labels: [clocking, fault], duration_seconds: null}
+  timer-commit-fault: {kind: sim, level: 2, labels: [fault, timer], duration_seconds: null}
+  timer-counter-fault: {kind: sim, level: 2, labels: [fault, timer], duration_seconds: null}
+  timer-edge-fault: {kind: sim, level: 2, labels: [fault, timer], duration_seconds: null}
+  timer-edges: {kind: sim, level: 2, labels: [timer], duration_seconds: null}
+  timer-reload: {kind: sim, level: 1, labels: [timer], duration_seconds: 4.96}
+  timer-request-fault: {kind: sim, level: 2, labels: [fault, timer], duration_seconds: null}
+  tools/ci/tests/test_pr_policy.py: {kind: unit, level: 0, labels: [ci], duration_seconds: 0.20}
+  tools/ci/tests/test_profiles.py: {kind: unit, level: 1, labels: [ci], duration_seconds: 14.77}
+  tools/ci/tests/test_trust.py: {kind: unit, level: 1, labels: [ci], duration_seconds: 3.08}
+  tools/n2m/tests/test_assembler.py: {kind: unit, level: 0, labels: [builder, sw], duration_seconds: 0.63}
+  tools/n2m/tests/test_assets.py: {kind: unit, level: 1, labels: [builder, sw], duration_seconds: 2.10}
+  tools/n2m/tests/test_baseline.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 0.20}
+  tools/n2m/tests/test_builder.py: {kind: unit, level: 1, labels: [builder], duration_seconds: 2.84}
+  tools/n2m/tests/test_catalogue.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 1.69}
+  tools/n2m/tests/test_columns.py: {kind: unit, level: 0, labels: [builder, springtrail, sw], duration_seconds: 0.14}
+  tools/n2m/tests/test_core_art.py: {kind: unit, level: 0, labels: [builder, springtrail, sw], duration_seconds: 0.75}
+  tools/n2m/tests/test_crc_proof.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 0.28}
+  tools/n2m/tests/test_doctor.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 0.59}
+  tools/n2m/tests/test_external_rom.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 2.00}
+  tools/n2m/tests/test_fpga.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 3.27}
+  tools/n2m/tests/test_fpga_adc.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.21}
+  tools/n2m/tests/test_fpga_clocking.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.31}
+  tools/n2m/tests/test_fpga_controls.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.12}
+  tools/n2m/tests/test_fpga_intel_memory.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.17}
+  tools/n2m/tests/test_fpga_memory_stores.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.19}
+  tools/n2m/tests/test_fpga_parallel.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.14}
+  tools/n2m/tests/test_fpga_program.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.75}
+  tools/n2m/tests/test_fpga_v05.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.18}
+  tools/n2m/tests/test_fpga_v05_controls.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.43}
+  tools/n2m/tests/test_fpga_vga.py: {kind: unit, level: 1, labels: [builder, fpga], duration_seconds: 27.60}
+  tools/n2m/tests/test_hdl.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 0.15}
+  tools/n2m/tests/test_host.py: {kind: unit, level: 1, labels: [builder, host], duration_seconds: 3.86}
+  tools/n2m/tests/test_host_play.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 0.22}
+  tools/n2m/tests/test_intel_adc.py: {kind: unit, level: 0, labels: [builder, memory], duration_seconds: 0.40}
+  tools/n2m/tests/test_intel_memory.py: {kind: unit, level: 0, labels: [builder, memory], duration_seconds: 0.84}
+  tools/n2m/tests/test_interfaces.py: {kind: unit, level: 0, labels: [builder, interfaces], duration_seconds: 0.17}
+  tools/n2m/tests/test_keyboard.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 0.49}
+  tools/n2m/tests/test_late208.py: {kind: unit, level: 0, labels: [builder, ppu], duration_seconds: 0.22}
+  tools/n2m/tests/test_linker.py: {kind: unit, level: 0, labels: [builder, sw], duration_seconds: 2.20}
+  tools/n2m/tests/test_mooneye.py: {kind: unit, level: 0, labels: [builder, mooneye], duration_seconds: 0.23}
+  tools/n2m/tests/test_ppu_scene.py: {kind: unit, level: 0, labels: [builder, ppu], duration_seconds: 0.10}
+  tools/n2m/tests/test_preload.py: {kind: unit, level: 0, labels: [builder, preload], duration_seconds: 0.24}
+  tools/n2m/tests/test_preload_compare.py: {kind: unit, level: 0, labels: [builder, preload], duration_seconds: 0.21}
+  tools/n2m/tests/test_preload_continuous.py: {kind: unit, level: 0, labels: [builder, preload], duration_seconds: 0.31}
+  tools/n2m/tests/test_program_art.py: {kind: unit, level: 0, labels: [builder, sw], duration_seconds: 0.65}
+  tools/n2m/tests/test_python_tb.py: {kind: unit, level: 1, labels: [builder, python-tb], duration_seconds: 3.25}
+  tools/n2m/tests/test_python_waves.py: {kind: unit, level: 0, labels: [builder, python-tb], duration_seconds: 0.51}
+  tools/n2m/tests/test_questa.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 1.88}
+  tools/n2m/tests/test_records.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 0.22}
+  tools/n2m/tests/test_regress.py: {kind: unit, level: 1, labels: [builder], duration_seconds: 4.42}
+  tools/n2m/tests/test_rgbds.py: {kind: unit, level: 0, labels: [builder, sw], duration_seconds: 0.55}
+  tools/n2m/tests/test_run_dots.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 0.11}
+  tools/n2m/tests/test_sameboy_acceptance.py: {kind: unit, level: 0, labels: [builder, sameboy], duration_seconds: 0.15}
+  tools/n2m/tests/test_sameboy_pixels.py: {kind: unit, level: 0, labels: [builder, sameboy], duration_seconds: 0.12}
+  tools/n2m/tests/test_sameboy_probe.py: {kind: unit, level: 0, labels: [builder, sameboy], duration_seconds: 0.16}
+  tools/n2m/tests/test_sameboy_retirement.py: {kind: unit, level: 0, labels: [builder, sameboy], duration_seconds: 0.10}
+  tools/n2m/tests/test_sim_client_clock.py: {kind: unit, level: 0, labels: [builder, python-tb], duration_seconds: 0.16}
+  tools/n2m/tests/test_simulation_peer.py: {kind: unit, level: 1, labels: [builder, python-tb], duration_seconds: 5.70}
+  tools/n2m/tests/test_springtrail_native.py: {kind: unit, level: 0, labels: [builder, springtrail], duration_seconds: 0.30}
+  tools/n2m/tests/test_sprite_preview.py: {kind: unit, level: 0, labels: [builder, sw], duration_seconds: 0.23}
+  tools/n2m/tests/test_stackdrop_finish.py: {kind: unit, level: 0, labels: [builder, stackdrop], duration_seconds: 0.25}
+  tools/n2m/tests/test_stackdrop_player.py: {kind: unit, level: 0, labels: [builder, stackdrop], duration_seconds: 0.50}
+  tools/n2m/tests/test_stackdrop_session.py: {kind: unit, level: 0, labels: [builder, stackdrop], duration_seconds: 0.32}
+  tools/n2m/tests/test_startup202.py: {kind: unit, level: 0, labels: [builder, ppu], duration_seconds: 0.18}
+  tools/n2m/tests/test_startup204.py: {kind: unit, level: 0, labels: [builder, ppu], duration_seconds: 0.19}
+  tools/n2m/tests/test_test_budget.py: {kind: unit, level: 1, labels: [builder], duration_seconds: 7.52}
+  tools/n2m/tests/test_v05_board.py: {kind: unit, level: 0, labels: [builder, v05], duration_seconds: 0.73}
+  tools/n2m/tests/test_v05_online.py: {kind: unit, level: 0, labels: [builder, v05], duration_seconds: 0.15}
+  tools/n2m/tests/test_v05_preload.py: {kind: unit, level: 0, labels: [builder, v05], duration_seconds: 0.34}
+  tools/n2m/tests/test_v05_reference.py: {kind: unit, level: 0, labels: [builder, v05], duration_seconds: 0.29}
+  tools/n2m/tests/test_vector_source.py: {kind: unit, level: 0, labels: [builder, cpu], duration_seconds: 0.18}
+  tools/sim/test_tile_pixel.py: {kind: unit, level: 0, labels: [builder, display], duration_seconds: 0.38}
+  tools/wiki/test_check.py: {kind: unit, level: 0, labels: [wiki], duration_seconds: 0.13}
+  tools/wiki/test_quality_surfaces.py: {kind: unit, level: 0, labels: [wiki], duration_seconds: 0.30}
+  tools/wiki/test_refresh_statistics.py: {kind: unit, level: 0, labels: [wiki], duration_seconds: 0.18}
+  tools/wiki/test_repository_stats.py: {kind: unit, level: 0, labels: [wiki], duration_seconds: 0.59}
+  tools/wiki/test_site.py: {kind: unit, level: 0, labels: [wiki], duration_seconds: 0.39}
+  uart-endpoint: {kind: sim, level: 2, labels: [uart], duration_seconds: null}
+  uart-endpoint-duplicate: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: null}
+  uart-endpoint-readback: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: null}
+  uart-exchange: {kind: sim, level: 2, labels: [uart], duration_seconds: null}
+  uart-exchange-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: null}
+  uart-exchange-duplicate: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: null}
+  uart-input-mmio: {kind: sim, level: 2, labels: [uart], duration_seconds: null}
+  uart-load: {kind: sim, level: 2, labels: [uart], duration_seconds: null}
+  uart-load-crc: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: null}
+  uart-load-presence: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: null}
+  uart-packet-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: null}
+  uart-packet-range: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: null}
+  uart-packet-rx: {kind: sim, level: 2, labels: [uart], duration_seconds: null}
+  uart-packet-tx: {kind: sim, level: 2, labels: [uart], duration_seconds: null}
+  uart-packet-tx-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: null}
+  uart-packet-tx-missing: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: null}
+  uart-response: {kind: sim, level: 2, labels: [uart], duration_seconds: null}
+  uart-response-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: null}
+  uart-run-dots: {kind: sim, level: 2, labels: [uart], duration_seconds: null}
+  uart-run-dots-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: null}
+  uart-run-dots-wire: {kind: sim, level: 2, labels: [uart], duration_seconds: null}
+  uart-serial: {kind: sim, level: 2, labels: [uart], duration_seconds: null}
+  uart-serial-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: null}
+  uart-snapshot: {kind: sim, level: 2, labels: [uart], duration_seconds: null}
+  uart-snapshot-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: null}
+  uart-stopped-step: {kind: sim, level: 2, labels: [uart], duration_seconds: null}
+  uart-stopped-step-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: null}
+  uart-validation: {kind: sim, level: 2, labels: [uart], duration_seconds: null}
+  uart-validation-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: null}
+  vga: {kind: sim, level: 1, labels: [vga], duration_seconds: 288.16}
+  vga-active-swap: {kind: sim, level: 2, labels: [fault, vga], duration_seconds: null}
+  vga-bank-reuse: {kind: sim, level: 2, labels: [fault, vga], duration_seconds: null}
+  vga-lcd: {kind: sim, level: 2, labels: [vga], duration_seconds: null}
+  vga-lcd-corrupt: {kind: sim, level: 2, labels: [fault, vga], duration_seconds: null}
+  vga-lcd-reset: {kind: sim, level: 2, labels: [vga], duration_seconds: null}
+  vga-read-latency: {kind: sim, level: 2, labels: [fault, vga], duration_seconds: null}
+not_runnable:
+  src/dv/springtrail/test_foundation.py: "A cocotb entry point no registry target names, so nothing can run it; recorded, not repaired."
+  src/dv/springtrail/test_movement_game.py: "A cocotb entry point no registry target names, so nothing can run it; recorded, not repaired."
+  tools/n2m/test_budget.py: "The builder wall-budget supervisor module, not a test; its cases are tools/n2m/tests/test_test_budget.py."
