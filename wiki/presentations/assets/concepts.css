@@ -35,7 +35,14 @@
 @media print {
   .concept-series [data-slide][hidden] { display: block; break-before: page; }
   .concept-series .deck-controls, .series-home { display: none; }
+  .terminal-session { break-inside: avoid; }
 }
+
+/* Terminal sessions are generated SVG loops (tools/wiki/showcase.py) embedded
+   as images: prompt, keystrokes and real output. Their motion, reduced-motion
+   still and dark panel colours live inside each file, so the deck only sizes
+   them; like the wide diagrams they scroll on a narrow screen. */
+.diagram-scroll .terminal-session { display: block; min-width: 650px; width: 100%; max-width: 800px; margin: 0; }
 
 /* Animated diagrams. The authored SVG attributes are the finished figure; every
    animation only departs from that state and returns to it, so a printed page or
