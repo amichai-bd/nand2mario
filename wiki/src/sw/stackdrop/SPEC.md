@@ -78,6 +78,40 @@ snapshot, decide an action, then INPUT/RUN/HALT through normal commands. It must
 retain actual applied and paused dots, release edges and frame metadata rather
 than assuming host sleeps advance an exact number of frames.
 
+## Previews
+
+The views below are generated from the built ROM: the tile bytes at `Tiles`,
+the initial map at `Map`, the shape table at `Shapes`, and the BGP, SCX and
+SCY values the code stores, composed where `Prepare` and `Render` place them.
+The game draws only background tiles; it has no object tiles or window.
+
+![Stackdrop tile bank](previews/tile-bank.svg)
+
+The bank sheet shows shade 0 as the review checkerboard; on screen it is
+BGP colour 0. Tiles 7 to 9 are unused padding before the digits.
+
+![Seven pieces in four rotations](previews/pieces.svg)
+
+![Title screen at LCD enable](previews/title.svg)
+
+![Play screen after a scripted input sequence](previews/play.svg)
+
+The title is the first image the ROM displays. The play screen shows the
+state the [independent rules model](../../../../src/dv/stackdrop/reference.py)
+reaches after the input script recorded in the generator: six locked pieces,
+a falling Z, the I preview and no cleared rows. Regenerate with a fresh tag
+from the worktree root:
+
+```text
+python -m tools.sw.program_art --tag program-review
+```
+
+The command writes `workdir/builds/program-review/program-art/stackdrop/`; the
+four SVG files are copied here unchanged. Unchanged inputs reproduce identical
+bytes; the [focused test](../../../../tools/n2m/tests/test_program_art.py) checks
+the committed views and compares the composed frames with the frame oracle.
+The [tool contract](../../../tools/sw/SPEC.md#program-previews) owns the generator.
+
 ## Finite verification
 
 Independent integer rules and literal images cover every piece rotation,

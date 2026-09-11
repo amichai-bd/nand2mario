@@ -26,6 +26,34 @@ frame the fixed marker covers x0..7/y0..7 at shade 1. A pressed bit i adds
 shade 1 at x(8*i)..(8*i+7)/y64..71. Every other pixel is shade 0. The first enabled
 frame is the PPU contract's blank frame, with every pixel shade 0.
 
+### Previews
+
+The [program preview generator](../../../tools/sw/SPEC.md#program-previews)
+runs the literal instruction recipe in `reference.py` against the built ROM and
+renders the tiles and map its VRAM writes produce. The program uses no objects
+or window; the tile bank sheet shows shade 0 as the review checkerboard.
+
+![v0.5 tiles](previews/tile-bank.svg)
+
+![Idle frame with no input](previews/idle.svg)
+
+![Right+A applied at dot 50000](previews/right-a.svg)
+
+![All eight buttons held](previews/all-buttons.svg)
+
+The idle frame has no input. The Right+A frame applies mask 11 at dot 50000,
+inside the bounded acceptance window. The last frame holds every button so all
+eight input cells are visible. Regenerate with a fresh tag from the worktree root:
+
+```text
+python -m tools.sw.program_art --tag program-review
+```
+
+The command writes `workdir/builds/program-review/program-art/v05/`; the four
+SVG files are copied here unchanged. Unchanged inputs reproduce identical
+bytes; the [focused test](../../../../tools/n2m/tests/test_program_art.py) checks
+the committed views against the literal image above.
+
 <a id="revised-milestone-matrix"></a>
 
 ## Milestone matrix
