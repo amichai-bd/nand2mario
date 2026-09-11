@@ -204,3 +204,6 @@ observed display publication ended3828 dots after VBlank began, within the
 3920 source bound. All nine scoped simulations total799.887 seconds, above
 the ordinary aggregate target; every individual300-second hard cap was met.
 Durable results and source qualification belong to [PR276](https://github.com/amichai-bd/nand2mario/pull/276).
+These composed targets and their flow checker bind image `97f5d9da...a593b513`
+and are [retired](MILESTONE.md#retired-targets); the current image's composed
+proofs are the HUD game and pause/restart targets.

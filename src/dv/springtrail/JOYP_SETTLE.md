@@ -25,7 +25,8 @@ The finite acceptance map is:
   it must reject the first world frame. This is the real software regression
   witness, not a DUT output mutation. Existing native transport faults remain
   qualified only for unchanged boundaries.
-- Run the affected existing three-frame composed Intel-model target `python-gu`,
+- Run the affected existing three-frame composed Intel-model target `python-gu`
+  (since [retired](MILESTONE.md#retired-targets)),
   checking all69120 pixels, state/publication writes and normal pause/END. Its
   existing short lifecycle and actual output-mutation evidence remain historical;
   qualify reuse explicitly against unchanged harness/checker/fixture behavior.

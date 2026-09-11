@@ -9,9 +9,10 @@ frames are not yet re-established there, and
 [#363](https://github.com/amichai-bd/nand2mario/issues/363) owns restoring them.
 
 This retains the original [PR266](https://github.com/amichai-bd/nand2mario/pull/266)
-definition and evidence boundary. Current `python-springtrail` targets use the
+definition and evidence boundary. The `python-springtrail` targets later used the
 [movement proof](MOVEMENT.md), whose initialization and sprite rendering change
-the frame schedule below. These historical numbers are not current target checks.
+the frame schedule below, and are now [retired](MILESTONE.md#retired-targets).
+These historical numbers are not current target checks.
 
 `python-springtrail` uses the actual composed system, current Intel memories,
 25 MHz system clock and existing 25.2 MHz pixel-clock fixture. The existing

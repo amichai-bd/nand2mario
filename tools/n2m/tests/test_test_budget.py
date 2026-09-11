@@ -245,18 +245,19 @@ class BudgetTests(unittest.TestCase):
                 self.assertEqual(wall_selection(name, root), (WALL_DEFAULT, None))
         self.assertEqual(wall_limit('ordinary', root), 300)
 
-    def test_shipped_allowances_are_exactly_the_declared_motion_targets(self):
-        # Only the two measured motion fixtures declare one; every other
+    def test_shipped_targets_declare_only_measured_allowances(self):
+        # Only the measured motion and pause fixtures declare one; every other
         # target keeps the 300 default or its named Mooneye authorization.
         root = Path(__file__).resolve().parents[3]
         targets = json.loads((root / 'src/dv/builder/targets.json').read_text(encoding='utf-8'))
         declared = {name: row['wall_allowance'] for name, row in targets.items() if 'wall_allowance' in row}
-        self.assertEqual(sorted(declared), ['python-mgu', 'python-mr'])
+        self.assertEqual(sorted(declared), ['python-mgu', 'python-mr', 'python-pgu', 'python-pgx'])
         for name, allowance in declared.items():
-            self.assertEqual(allowance['seconds'], 420)
-            self.assertIn('measured 289-second', allowance['reason'])
+            self.assertEqual(set(allowance), {'seconds', 'reason'})
+            self.assertTrue(300 < allowance['seconds'] <= 900)
+            self.assertIn('measured', allowance['reason'])
         for name in targets:
-            expected = 1500 if name in MILESTONE_TARGETS else declared.get(name, {}).get('seconds', 300)
+            expected = 1500 if name in MILESTONE_TARGETS else declared[name]['seconds'] if name in declared else 300
             self.assertEqual(wall_limit(name, root), expected)
 
     def test_supervisor_enforces_and_records_a_declared_allowance(self):

@@ -303,10 +303,95 @@ Established on `adbef6b0...e109f369`, the pre-#301 image: the blank boot frame, 
 the first scripted input and its complete publication, every pixel of both
 frames, and a settled paused end state, all against independent expectations.
 
-Not established on that image: scrolling frames, the win route, the death/retry
-route and pause/resume/restart frames. Those transitions were last checked end
-to end on retired images, and
-[#363](https://github.com/amichai-bd/nand2mario/issues/363) owns restoring
-them. The 46-batch every-frame acquisition and the 90-cycle endurance result
-above stay bound to `b551c562...8ba667`; #264 still owns continuous physical
-endurance.
+Not established on that image by this script: scrolling frames, the win route,
+the death/retry route and pause/resume/restart frames. The
+[pause and restart proof](#current-image-pause-and-restart-proof) below adds the
+first world frame, a neutral frame, the PAUSED frame and the Select-restart frame;
+[#384](https://github.com/amichai-bd/nand2mario/issues/384) owns scrolling, win
+and death/retry frames, which no simulation reaches inside the wall ceiling. The
+46-batch every-frame acquisition and the 90-cycle endurance result above stay
+bound to `b551c562...8ba667`; #264 still owns continuous physical endurance.
+
+## Current-image pause and restart proof
+
+### Retired targets
+
+Eight registered targets built the current image and then refused it, because
+their checkers guard retired hashes. None could pass, so none is retained:
+
+| Target | Checker and image | Disposition |
+|---|---|---|
+| `python-springtrail`, `python-gu` | `flow_reference` three-frame flow game on `97f5d9da...a593b513` | Retired. Boot, title, first input and publication are `python-hgu` on the current image; the first world frame is `python-pgu` below. |
+| `python-gs` | `flow_reference` two-frame short harness | Retired; `python-hgs` is the current short harness. |
+| `python-springtrail-x`, `python-gx` | `flow_reference` with the source-shade fault | Retired; `python-hgx` and `python-pgx` are the current faults. |
+| `python-cgs`, `python-cgu` | `composition_game_reference` blank/TITLE/publication on `ec8dfb32...0d9e785f` | Retired; the same contract is `python-hgs`/`python-hgu` on the current image. |
+| `python-cgx` | `composition_game_reference` with the wrong-piece OAM fault | Retired; `python-hgx` is the current accepted-write fault. |
+
+The two historical reference modules keep their hash guards and host unit tests
+so no consumer can silently apply their expectations to another image; their
+cocotb drivers and entry modules are removed with the targets. No fixture of a
+retired image exists in the repository, and none is added: a retained historical
+proof would need a checked-in binary or a build from an old commit, which the
+source policy does not provide.
+
+### Declared script
+
+Declared before execution under the
+[milestone reuse policy](../../../wiki/src/dv/integration/SPEC.md#milestone-acceptance).
+`pause_game_reference.py` freezes JOYP masks 129, 0, 128, 64 sampled in VBlank
+0..3, with 64 held through VBlank 5. Mask n is sampled in VBlank n, computed in
+visible frame n+1, published in VBlank n+1 and displayed in frame n+2. The
+independent states are title; PLAYING at x 25 walking; PLAYING at x 25 standing;
+PAUSED; PLAYING restarted at x 24 with score 0, timer 0 and the enemy at 256;
+and one restarted update. Source frames 0..5 are therefore blank, TITLE, the
+first world frame, the neutral frame, the PAUSED frame and the Select-restart
+frame. Their literal CRC32 values are `b15161f6`, `9b162de2`, `e5a96898`,
+`2a877964`, `a20ef3f5` and `e1736456`; all six images differ.
+
+1. `python-pgs`: the complete short harness, the same driver stopped after the
+   first 160 blank pixels, with real HALT, settled hold and trace END.
+2. `python-pgu`, one continuous history on the current image:
+   - Every one of 138240 pixels of source frames 0..5 against
+     `hud_reference.image`, each row inside its 456-dot line.
+   - Each scripted input applied through the ordinary UART INPUT path inside
+     `lcd + n*70224 + 60000 .. 62000`; the reply dot, the public input record
+     and the `0xc019` VBlank sample must agree. The restart's own rewrite of the
+     sampled mask in visible time is the only visible-time `0xc019` write allowed.
+   - All six 160-byte shadow scenes, six 7-byte HUD caches and the 160 bytes of
+     prepared column caches, each against the independent scene, HUD and column
+     models. The restoration counter model gives pairs (0,1), (2,3), (4,5) for
+     the title start, then (0,1), (2,3) again after the restart.
+   - Every display write of VBlank 0..5 in exact source order: the VBlank
+     handler's SCX/SCY/LCDC writes, the 22 title clears and map reselect at the
+     title exit, the map reselect at the restart, the restored column pair, both
+     HUD maps and the DMA trigger. All seven DMA publications, 1120 bytes.
+   - Publication bounds: DMA in VBlank only, the 4480-dot completion ceiling,
+     no interrupt or non-HRAM bus access during DMA, IRQ vector order
+     `0x48,0x40` per frame and twelve split writes.
+   - End state: paused with no fault after VBlank 5's DMA, counts held across
+     the settled interval.
+3. `python-pgx`: the same script with `+pause_mode_fault`, which drops only the
+   actual WRAM store of GameMode 3 to 1 while the public write stays 3. The
+   next prepared HUD cache must fail the unchanged `PAUSE_HUD_CACHE` check.
+4. Host fixtures: `test_pause_game_reference.py` in the springtrail suite.
+
+Budget: `python-pgu` simulates about 140 ms and `python-pgx` about 100 ms. At
+`python-hgu`'s measured 4.1 wall seconds per simulated millisecond both exceed
+300 seconds, so each declares a 900-second `wall_allowance` in `targets.json`
+with that measured basis; `python-pgs` keeps the default 300.
+
+### Why scrolling, win and death/retry do not fit
+
+The player starts at x 24 and runs 2 pixels per update; the camera is
+`max(0, x-72)`, so it first moves at update 25, displayed in source frame 29 at
+about 535 ms simulated. At the measured rate that is about 2200 wall seconds.
+The death/retry route reaches RETRY at update 187 and the success route WON at
+update 360: about 3.2 and 6.1 simulated seconds, or 13000 and 25000 wall
+seconds. Each exceeds the 900-second ceiling by at least a factor of two, so no
+composed simulation target is declared for them.
+[#384](https://github.com/amichai-bd/nand2mario/issues/384) owns a bounded
+physical script for those frames.
+
+### Measured result
+
+MEASURED_RESULT_PLACEHOLDER

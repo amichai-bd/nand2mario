@@ -120,22 +120,32 @@ and `milestone` drivers all pin that same retired hash, so neither the
 every-frame acquisition nor the continuous endurance result may be read as
 covering the current build.
 
-The declared bounded script and its measured result in the
-[re-qualification record](../../../../src/dv/springtrail/MILESTONE.md#current-rom-re-qualification)
-cover the pre-#301 image `adbef6b0...e109f369` only: boot, the title frame, the
-first input, its publication and the settled pause, and not scrolling, win,
-death/retry or pause/restart frames. The HUD game checkers behind `python-hgs`,
-`python-hgu` and `python-hgx` pin that hash and refuse the current build by
-design, as the historical flow and courier composition game checkers refuse
-their own retired hashes; the targets still pointed at those checkers are the
-gap [#363](https://github.com/amichai-bd/nand2mario/issues/363) owns.
+Every registered simulation target either checks the image it builds or pins a
+named retired image and refuses every other. The current image's deterministic
+evidence is bounded scripts selected under the reuse policy above; their
+checkers pin no hash, so their expectations follow the build. Each proof names
+its image:
 
-Current composed deterministic evidence is `python-mgs` and `python-mgu`. Their
-checker (`src/dv/springtrail/motion_game_reference.py`) pins no hash: it checks
-the image the target builds against literal expectations, so it stays bound to
-the current build. It covers boot, the title frame, the first Start+Right input,
-its publication and the settled pause, with independent motion state; scrolling,
-win, death/retry and pause/restart frames remain uncovered on the current image.
+| Proof | Targets | Image | Covers |
+|---|---|---|---|
+| [Motion composition](../../../../src/dv/springtrail/MOVEMENT.md) | `python-mgs`, `python-mgu` | the built image, no hash guard | Boot, the title frame, the first Start+Right input, its publication and the settled pause, with independent motion state |
+| [Pause and restart](../../../../src/dv/springtrail/MILESTONE.md#current-image-pause-and-restart-proof) | `python-pgs`, `python-pgu`, `python-pgx` | the built image, no hash guard | The first world frame, a neutral frame, the PAUSED frame, the Select-restart frame, their publications and the restart's map restoration |
+| [Re-qualification](../../../../src/dv/springtrail/MILESTONE.md#current-rom-re-qualification) | `python-hgs`, `python-hgu`, `python-hgx` | retired `adbef6b0...e109f369`; the checker refuses the current build | Boot, the title frame, the first input, its publication and the settled pause on the pre-#301 image |
+| Every-frame acquisition and endurance | `paused_capture.py`, `milestone.py`, `endurance.py` | retired `b551c562...8ba667` | The complete v0.9 baseline; no current-image claim |
+| Historical flow and courier composition references | none | retired `97f5d9da...a593b513` and `ec8dfb32...0d9e785f` | Host-guarded expectations only; their hash guards refuse every other image |
+
+`python-hgs`, `python-hgu` and `python-hgx` still build the current image and
+refuse it. Their pre-#301 contract is now covered on the built image by
+`python-mgs` and `python-mgu`, so their retirement is a pending decision, not
+a coverage gap.
+
+Scrolling frames, the win route and the death/retry route have no current-image
+proof: the composed simulation cannot reach them inside the wall ceiling, and
+[#384](https://github.com/amichai-bd/nand2mario/issues/384) owns a bounded
+physical script for them. The physical
+[scrolling](../../../../src/dv/springtrail/PHYSICAL.md) and
+[flow](../../../../src/dv/springtrail/FLOW_PHYSICAL.md) proofs remain bound to
+the retired images their documents record.
 
 ### Paused frame acquisition
 
@@ -273,12 +283,13 @@ The [composition contract](../../sw/springtrail/COMPOSITION.md) defines the
 current geometry and allocation. Its historical pre-HUD timing/images do not
 describe the current ROM. Independent CPU cases check
 every approved pose/facing, signed clipping, complete scene tails and unchanged
-gameplay state. The composed proof checks full blank/TITLE pixels, then the next
-gameplay state and complete DMA publication before the following visible frame.
-An actual wrong-piece OAM write must fail the unchanged oracle. This scoped
-proof does not claim a new full gameplay or physical milestone. Historical
-nine-object frame, renderer and endurance helpers reject mismatched ROM/source
-identities; they must not silently validate the current composer.
+gameplay state. The composed proof (`python-hgs`, `python-hgu`) checks full
+blank/TITLE pixels, then the next gameplay state and complete DMA publication
+before the following visible frame. An actual accepted-write fault
+(`python-hgx`, `python-pgx`) must fail the unchanged oracle. This scoped proof
+does not claim a new full gameplay or physical milestone. Historical nine-object
+frame, renderer and endurance helpers reject mismatched ROM/source identities;
+they must not silently validate the current composer, and no target runs them.
 
 ## Background HUD and prepared columns
 

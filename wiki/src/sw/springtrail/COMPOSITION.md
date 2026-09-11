@@ -131,8 +131,10 @@ visible. The unchanged full-frame oracle must reject the resulting image.
 
 The older nine-object frame and renderer helpers are historical-only. Their
 ROM/source guards reject that composition. Its checks are
-`python-courier-unit`, `python-cgs`, `python-cgu` and `python-cgx`; historical
-endurance cannot silently validate a new ROM.
+`python-courier-unit` and the current-image game targets in the
+[verification matrix](../../dv/springtrail/SPEC.md#image-binding); the older
+composition game checker keeps its image guard and has no target, and
+historical endurance cannot silently validate a new ROM.
 
 ## Current reference previews
 
