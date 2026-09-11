@@ -32,6 +32,15 @@ watchdogs are35/150ms; neither this dot ceiling nor static proof establishes
 full-run wall feasibility. Measure the complete first-Right short before that
 decision. Old4200 arithmetic below cannot qualify current motion.
 
+Visible preparation retains the49280 ceiling:25000 scene,3000 columns,512 HUD,
+20000 game update,512 STAT allowance and256 dispatch. The new UpdateGame bound
+is18000. The longest current pose selector is168 dots, shorter than the prior
+accepted selector's over200-dot moving path; ComposeCourier adds only16 dots
+to existing pose paths. Skid keeps four pieces and skips the large-Y adjustment.
+Unchanged piece loops and full tail clearing therefore remain within the broad
+25000 scene allowance. The current checker enforces the final full-shadow
+ready deadline, not only the first active entries.
+
 The first game update expects
 X25,Y112,VX1,VY0, counter1,directionRight,speed0,phase1,animation2,STAND; it prepares
 that state after the first VBlank and publishes it at the next. The retained
