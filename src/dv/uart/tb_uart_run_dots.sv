@@ -1,7 +1,7 @@
 `timescale 1ns/1ps
 `default_nettype none
 module tb_uart_run_dots;
-    logic clk_sys, reset_sys, start, gb_tick, paused, pause_request, core_reset;
+    logic clk_sys, reset_sys, start, gb_tick, emulated_tick, paused, pause_request, core_reset;
     logic core_initialized, instruction_complete, retirement_valid, cpu_stopped;
     logic [7:0] command, status;
     logic [31:0] step_budget, epoch;
@@ -11,7 +11,11 @@ module tb_uart_run_dots;
     n2m_interfaces_pkg::run_dots_t run_dots_result;
     integer ticks, phase, checks, cycles, before_ticks;
     bit corrupt;
-    n2m_timebase u_timebase (.*);
+    // Model the composition: STOP withholds the emulated tick from every owner,
+    // so a sleeping oscillator delivers no further dot to this countdown.
+    n2m_timebase u_timebase (.clk_sys, .reset_sys, .core_reset, .pause_request,
+        .gb_tick(emulated_tick), .paused);
+    assign gb_tick = emulated_tick && !cpu_stopped;
     n2m_uart_core_control u_control (.*);
     assign retirement_valid = gb_tick && instruction_complete;
     always #20 clk_sys = !clk_sys;
@@ -19,9 +23,13 @@ module tb_uart_run_dots;
     always @(posedge clk_sys) begin
         if (reset_sys || core_reset) begin ticks = 0; phase = 0; end
         else if (!paused) begin
-            if (gb_tick !== (phase+65536 >= 390625)) $fatal(1,"RUN_DOTS_PHASE");
+            if (emulated_tick !== (phase+65536 >= 390625)) $fatal(1,"RUN_DOTS_PHASE");
+            if (gb_tick !== (emulated_tick && !cpu_stopped)) $fatal(1,"RUN_DOTS_STOP_GATE");
             phase = phase+65536;
-            if (phase >= 390625) begin phase = phase-390625; ticks = ticks+1; end
+            if (phase >= 390625) begin
+                phase = phase-390625;
+                if (!cpu_stopped) ticks = ticks+1;
+            end
         end else if (gb_tick) $fatal(1,"RUN_DOTS_PAUSED_TICK");
     end
     task automatic request(input logic [7:0] op, input integer budget,
@@ -53,16 +61,16 @@ module tb_uart_run_dots;
         ticks=0; phase=0; checks=0; cycles=0; before_ticks=0;
         corrupt=$test$plusargs("CORRUPT_RESULT");
         $dumpfile("waves.vcd");
-        $dumpvars(0,clk_sys,reset_sys,start,command,step_budget,gb_tick,paused,pause_request,
+        $dumpvars(0,clk_sys,reset_sys,start,command,step_budget,gb_tick,emulated_tick,paused,pause_request,
             core_reset,cpu_stopped,instruction_complete,retirement_valid,dot_count,retirement_count,
             completed_dot,run_dots_result,busy,done,status,ticks,phase,checks);
         repeat(5) @(negedge clk_sys); reset_sys=0;
         request(15,1,-1,1,0,0);
         instruction_complete=1; request(15,7,-1,7,0,0);
         instruction_complete=0; request(15,70224,-1,70224,0,0);
-        request(15,10,3,4,1,0);
+        request(15,10,3,3,1,0);
         request(15,70224,-1,0,1,0);
-        cpu_stopped=0; request(15,4,3,4,0,0);
+        cpu_stopped=0; request(15,4,-1,4,0,0);
         cpu_stopped=0; instruction_complete=1; request(6,10,-1,1,0,0);
         instruction_complete=0; request(6,5,-1,5,0,8);
         // Global reset aborts an in-flight operation and resets the timebase.

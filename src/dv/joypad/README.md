@@ -39,3 +39,24 @@ at cases4 and5. Twenty-four explicit public signals accompany the CSV. Mode
 labels identify withheld-dot input scenarios; they do not claim composed CPU
 execution, UART transport or physical clock qualification. Existing IF truth
 and phase fixtures also pass with the new event input tied low.
+
+## Composed STOP wake
+
+`python-stop349` runs the original STOP program built by `program349.py` beside
+this plan on the actual composed system, through continuous Python, current
+Client commands and validated Intel preloading. The program disables the LCD,
+selects the direction row, executes STOP at dot68, and after wake stores `5A` to
+`C011` before HALT. The checker compares all eleven
+retirements literally, holds two quarter-millisecond sleeping windows in which
+no dot elapses and nothing retires, observes the stopped state publicly through
+a `RUN_DOTS` reply with the `STOPPED` reason and zero executed dots, proves an
+action-row press is not a wake source while the direction row is selected, and
+checks that the direction press resumes on the documented schedule: wake at
+dot80, marker write at dot92 and HALT at dot100.
+
+`python-stop349-fault` holds the actual joypad wake source inactive with
+`+joypad_wake_fault` and changes nothing else. The stopped CPU then misses its
+wake deadline and the test fails with `STOP349_WAKE_MISSING`. This is a failing
+Python/XML test and nonzero outer builder result; the actual simulator exit
+remains zero. The failed result stays FAIL as evidence of the intended
+defect detection.
