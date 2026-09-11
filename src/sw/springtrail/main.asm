@@ -54,6 +54,7 @@ LDH [$FF47],A
 LDH [$FF48],A
 CALL InitHUD
 CALL InitMotionArt
+CALL InitBlockArt
 CALL PrepareScene
 CALL PrepareHUD
 CALL PrepareMap
@@ -178,3 +179,4 @@ INCLUDE "stream.asm"
 INCLUDE "hud.asm"
 INCLUDE "columns.asm"
 INCLUDE "power.asm"
+INCLUDE "blocks.asm"

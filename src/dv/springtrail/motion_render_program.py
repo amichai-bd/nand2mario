@@ -47,7 +47,7 @@ def build(root, destination, variant='motion'):
         lines += ['LD A,[HL+]', 'LD [DE],A', 'INC DE']*16
         lines += ['DEC B', 'JR NZ,TileBlock', 'LD HL,$9800', 'LD B,64',
                   'XOR A,A', 'ClearHUD:', 'LD [HL+],A', 'DEC B',
-                  'JR NZ,ClearHUD', 'CALL InitHUD', 'CALL InitMotionArt', 'LD A,$E4',
+                  'JR NZ,ClearHUD', 'CALL InitHUD', 'CALL InitMotionArt', 'CALL InitBlockArt', 'LD A,$E4',
                   'LDH [$FF47],A', 'LDH [$FF48],A', 'RingColumn:',
                   'LD A,[$C054]', 'LD DE,$C200', 'CALL DecodeColumn',
                   'LD A,[$C054]', 'LD HL,$C200', 'CALL PublishColumn',
@@ -74,14 +74,16 @@ def build(root, destination, variant='motion'):
                   'SECTION "assets",ROM', 'Tiles:', 'ASSET "Tiles"',
                   'ASSET "Courier"']
         for name in ('movement', 'render', 'world', 'collision', 'interactions',
-                     'map_restore', 'scene', 'stream', 'hud', 'columns', 'power'):
+                     'map_restore', 'scene', 'stream', 'hud', 'columns', 'power',
+                     'blocks'):
             lines.append(f'INCLUDE "{name}.asm"')
         path = destination/'program.asm'
         path.write_text('\n'.join(lines)+'\n', encoding='utf-8')
         assets = {}
         for name, relative in (('Tiles', 'tiles.json'),
                                ('Courier', 'assets/courier/unique-tiles.json'),
-                               ('Core', 'assets/core/core-tiles.json')):
+                               ('Core', 'assets/core/core-tiles.json'),
+                               ('Terrain', 'assets/core/terrain-tiles.json')):
             asset = source/relative
             assets[name] = encode_shades(load_shades(asset, str(asset)), str(asset))
         assert len(assets['Tiles'])+len(assets['Courier']) == 1184

@@ -27,6 +27,26 @@ LD A,2
 LD [PreparedColumns],A
 RET
 PrepareEntering:
+; A changed block republishes its own pair first; the entering column keeps
+; OldCameraTile and follows on the next update.
+LD A,[BlockDirty]
+OR A,A
+JR Z,PrepareCamera
+DEC A
+LD [PreparedColumn],A
+LD DE,ColumnCache
+CALL DecodeColumn
+LD A,[PreparedColumn]
+INC A
+LD DE,ColumnCache+16
+CALL DecodeColumn
+LD A,2
+LD [PreparedColumns],A
+LD [DirtyPublish],A
+XOR A,A
+LD [BlockDirty],A
+RET
+PrepareCamera:
 LD A,[Camera]
 LD L,A
 LD A,[Camera+1]
@@ -57,6 +77,13 @@ RET
 
 DecodeColumn:
 ; Build validation proves index0..95, complete16 rows and bounded run counts.
+; The block layer overwrites rows 10 and 11 of the completed cache.
+LD [DecodeIndex],A
+LD A,E
+LD [DecodeBase],A
+LD A,D
+LD [DecodeBase+1],A
+LD A,[DecodeIndex]
 LD L,A
 LD H,0
 ADD HL,HL
@@ -70,7 +97,7 @@ LD L,C
 DecodeRun:
 LD A,[HL+]
 OR A,A
-RET Z
+JP Z,BlockOverride
 LD B,A
 LD A,[HL+]
 DecodeRepeat:
@@ -85,6 +112,12 @@ LD A,[PreparedColumns]
 OR A,A
 JR Z,RememberCameraTile
 CALL PublishColumns
+LD A,[DirtyPublish]
+OR A,A
+JR Z,RememberCameraTile
+XOR A,A
+LD [DirtyPublish],A
+RET
 RememberCameraTile:
 LD A,[Camera]
 LD L,A

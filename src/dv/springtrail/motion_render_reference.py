@@ -33,13 +33,13 @@ class Check(GameCheck):
         self.lines+=1
         value=int(raw,16);dot,address,data=value>>24,(value>>8)&65535,value&255
         self.memory[address]=data
-        if 0x8000<=address<0x86c0:
+        if 0x8000<=address<0x88c0:
             assert self.lcd is None,'HUD_LATE_TILES'
             self.tiles.append((address,data))
         if address==0xff40:
             if data==0:assert self.lcd is None,'HUD_LCD_OFF'
             elif self.lcd is None:
-                assert data==0x99 and 0<dot<160000,'HUD_STARTUP_BOUND'
+                assert data==0x99 and 0<dot<200000,'HUD_STARTUP_BOUND'
                 self.lcd=dot
             else:assert data in (0x99,0x9b),'HUD_OBJECT_MODE'
         if 0xc100<=address<0xc1a0:

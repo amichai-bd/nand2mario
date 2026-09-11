@@ -25,6 +25,10 @@ InitialPlayer:
 DB $80,$01,$00,$07,0,0,0,0,1,0,0,0,0,0
 
 StepPlayer:
+; Scans default to descending; only the head scan sets ScanUp.
+XOR A,A
+LD [ScanUp],A
+LD [HitValid],A
 LD A,[Fell]
 OR A,A
 JP NZ,RememberButtons
@@ -93,9 +97,9 @@ XCells:
 LD A,[Row]
 CP A,18
 JR NC,XEmpty
-LD A,[HL]
-CP A,$0B
-JR Z,BlockX
+CALL CellSolid
+OR A,A
+JR NZ,BlockX
 XEmpty:
 LD A,[LastCell]
 LD B,A
@@ -149,9 +153,13 @@ LD A,D
 OR A,E
 JP Z,FinishMove
 BIT 7,D
-JR NZ,YLeading
+JR NZ,YAscending
 LD DE,$00FF
 ADD HL,DE
+JR YLeading
+YAscending:
+LD A,1
+LD [ScanUp],A
 YLeading:
 CALL TileIndex
 LD [Row],A
@@ -172,9 +180,9 @@ CP A,18
 JP NC,FinishMove
 CALL CollisionPointer
 YCells:
-LD A,[HL]
-CP A,$0B
-JR Z,BlockY
+CALL CellSolid
+OR A,A
+JR NZ,BlockY
 LD A,[LastCell]
 LD B,A
 LD A,[Column]
@@ -199,6 +207,14 @@ DEC A
 DEC A
 JR YBoundary
 BlockHead:
+; Record the cell so the block layer can resolve one head hit per update.
+LD A,L
+LD [HitColumn],A
+LD A,H
+SUB A,HIGH(CollisionMap)
+LD [HitRow],A
+LD A,1
+LD [HitValid],A
 LD A,2
 LD [JumpState],A
 XOR A,A
@@ -632,9 +648,9 @@ CALL TileIndex
 LD [LastCell],A
 CALL CollisionPointer
 MotionSupportCells:
-LD A,[HL]
-CP A,$0B
-JR Z,MotionSupported
+CALL CellSolid
+OR A,A
+JR NZ,MotionSupported
 LD A,[Column]
 LD B,A
 LD A,[LastCell]

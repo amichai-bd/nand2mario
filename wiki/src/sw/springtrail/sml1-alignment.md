@@ -32,7 +32,7 @@ Confidence applies to the reference observation, not to future implementation.
 | HUD and scrolling | `stream.asm` prepares original encoded columns; `hud.asm` publishes background mode/score and separates HUD/playfield with VBlank/STAT | `DrawColumn`, `VBlank`, `LCDStatus`: source-confirmed organization, not a copied timing oracle | [HUD/column contract](HUD_COLUMNS.md) and its bounded pixel/publication matrix |
 | Movement and animation | `movement.asm`, `collision.asm`: counter/phase motion, jump profiles and stored walk/jump/skid poses | `Call_1D26`, `Call_16F5`, `Call_1736`: source-derived state/cycle rules; complete normal dispatcher unavailable | [Movement contract](MOVEMENT.md): approved original best-effort order/profile binding, literal per-update expectations and explicit reference limits |
 | Player contact and power | `power.asm`, `interactions.asm`: invincible/stomp/hit classes, small/large/thrower states, GROW/HURT/SAFE windows, crouch and one bouncing shot | `Call_84E`, `InjureMario`, `Call_1F03`: source-confirmed test order, box adjust and star value; durations and dispatcher binding unavailable | [Power contract](POWER.md): approved original choices, literal cases and explicit reference limits; pickups that call `PowerUp`/`GrantStar` remain with #303 |
-| Blocks and rewards | `collision.asm`, `interactions.asm`: solid terrain and four once-only pickups | `Call_1B86`, `AddScore`: source locators; category/reward rules pending | [#303](https://github.com/amichai-bd/nand2mario/issues/303): original mutable blocks, head hits, releases and persistent consumed state; coordinate power/entity/reward owners |
+| Blocks and rewards | `blocks.asm`: item, brick and hidden blocks over immutable terrain, head hits, conditional breakage, releases into `PowerUp`/`GrantStar`, a coin counter and persistent consumed state | `LoadNextColumn`, `CheckBlockForItem`: source-confirmed categories, position-keyed contents and the used tile; breakage comparison, hidden geometry and the bonus threshold live in the missing dispatcher | [Block contract](BLOCKS.md): approved original choices, literal cases and explicit reference limits; no coin threshold reward is adopted |
 | Progression | `interactions.asm`: retry restores all state, one finish marker; no lives/timer | `UpdateLives`, `DisplayTimer`, level-state paths: source locators; survival/reset rules pending | [#304](https://github.com/amichai-bd/nand2mario/issues/304): measured lives/timer/death/continue/level transitions using minimal original levels |
 | Entities | `StepEnemy` patrol; stationary terrain platforms | `enemies.asm` platform/stomped/falling entries: classes identified, dynamics unmeasured | [#305](https://github.com/amichai-bd/nand2mario/issues/305): bounded patrol, hazard, moving and falling platform classes; define spawn/despawn, contacts and exhausted capacity |
 | Storage | Mapperless 32768-byte `dmg-direct-v1` image | `bank0.asm` header declares four banks/MBC1; source-confirmed | Preserve baseline; [#307](https://github.com/amichai-bd/nand2mario/issues/307) separately owns 64 KiB MBC1/no-RAM profile and loader/fit qualification; no automatic renderer dependency |
@@ -50,7 +50,7 @@ in these three stages. An intermediate stage is not completion of that release.
 2. Reuse the [movement/animation contract](MOVEMENT.md) against those explicit
    display coordinates. Its best-effort original choices do not establish full
    reference equivalence. Size/contact rules are [POWER.md](POWER.md).
-3. Deliver the remaining block, progression and entity scopes #303-#305.
+3. Deliver the remaining progression and entity scopes #304-#305.
    Agree shared state ownership before dependent code, rather than creating
    circular implementation waits. Additional families, bosses, bonus and vehicle
    stages remain the separate [#306 inventory](https://github.com/amichai-bd/nand2mario/issues/306).
@@ -95,7 +95,7 @@ content required by that issue. This adds no feature families or asset framework
 | [HUD/columns](HUD_COLUMNS.md) | Existing terrain, selected approved font tiles and fixed HUD previews |
 | [Movement](MOVEMENT.md) | Approved base walk/jump poses and core small skid; stored pose/facing and cadence |
 | [Power](POWER.md) | Approved core hurt, crouch, throw, large skid and shot tiles at VRAM 98..107; no new art |
-| #303 | Interactive blocks, released items and pickups |
+| [Blocks](BLOCKS.md) | Approved core terrain block and item tiles at VRAM 108..139; no new art |
 | #304 | Progression displays and original fixture maps |
 | #305 | Selected enemy, hazard and moving/falling-platform art |
 | #306 | Later-content inventory only; no core-release asset implementation |

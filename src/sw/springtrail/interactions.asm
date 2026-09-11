@@ -15,7 +15,7 @@ LD [EnemyX+1],A
 LD A,8
 LD [EnemyVX],A
 LD HL,PowerState
-LD B,14
+LD B,38
 XOR A,A
 InitPowerLoop:
 LD [HL+],A
@@ -83,8 +83,10 @@ LD [GameMode],A
 
 UpdateWorld:
 CALL PowerTimers
+CALL BlockTimers
 CALL PowerInput
 CALL StepPlayer
+CALL ResolveBlockHit
 LD A,[EnemyAlive]
 OR A,A
 CALL NZ,StepEnemy

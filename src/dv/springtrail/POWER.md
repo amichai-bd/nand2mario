@@ -31,7 +31,9 @@ most two cells each, bounds, one overlap test), `EnemyContact` 260,
 update therefore stays below the 20000-dot `UpdateGame` cap; the measured
 per-case durations in each receipt's `summary.json` are the evidence.
 
-Current startup LCD commit is 146500 dots: the accepted motion anchor 139388
+This issue's startup LCD commit was 146500 dots; the
+[block plan](BLOCKS.md#case-set-and-execution-bounds) owns the current anchor.
+The 146500 derivation was the accepted motion anchor 139388
 plus 6584 for the fourteen-tile core copy replacing the four-tile copy, 368 for
 initializing fourteen power bytes (the loop's `INC A` replaces the old
 `LD A,1`), 28 for the title pose selector call, 112 for the hidden-flag helper,

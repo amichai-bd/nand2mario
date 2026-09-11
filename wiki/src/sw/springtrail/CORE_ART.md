@@ -47,9 +47,11 @@ state transitions, frame cadence or optional mechanics.
 
 The current [HUD/column renderer](HUD_COLUMNS.md) preserves the existing terrain
 bank and selects approved core glyphs; it does not replace terrain with this
-entire review sheet. [#303](https://github.com/amichai-bd/nand2mario/issues/303)
-owns blocks/items. The scene below also shows the cloud, bush and arch sources.
-Water/spike and pickup designs do not authorize additional mechanics.
+entire review sheet. The [block contract](BLOCKS.md) integrates the sealed,
+used, crack, reveal, shards, coin, leaf and gem designs from terrain tiles
+10..33 and 38..45 as runtime tiles 108..139. The scene below also shows the
+cloud, bush and arch sources. Water/spike and the remaining pickup designs do
+not authorize additional mechanics.
 
 ### Enemies and platforms
 

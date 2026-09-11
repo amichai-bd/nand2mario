@@ -95,6 +95,8 @@ StepShot:
 LD A,[ShotTTL]
 OR A,A
 RET Z
+XOR A,A
+LD [ScanUp],A
 LD A,[ShotVX]
 CALL ShotDelta
 LD A,[ShotX]
@@ -274,9 +276,9 @@ LD A,[Row]
 CP A,18
 JR NC,ShotSolidNext
 CALL CollisionPointer
-LD A,[HL]
-CP A,$0B
-JR Z,ShotSolidYes
+CALL CellSolid
+OR A,A
+JR NZ,ShotSolidYes
 ShotSolidNext:
 LD A,[LastCell]
 LD B,A
@@ -300,9 +302,9 @@ CP A,18
 JR NC,ShotSolidNo
 CALL CollisionPointer
 ShotSolidColumn:
-LD A,[HL]
-CP A,$0B
-JR Z,ShotSolidYes
+CALL CellSolid
+OR A,A
+JR NZ,ShotSolidYes
 LD A,[LastCell]
 LD B,A
 LD A,[Column]

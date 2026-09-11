@@ -77,3 +77,23 @@ ShotY EQU $C073
 ShotVX EQU $C075
 ShotVY EQU $C076
 ShotTTL EQU $C077
+
+; Original block layer. C078..C083 persist; C084..C08F are per-update scratch.
+BlockState EQU $C078
+Coins EQU $C07C
+EffectTile EQU $C07D
+EffectX EQU $C07E
+EffectY EQU $C080
+EffectTimer EQU $C082
+BlockDirty EQU $C083
+HitValid EQU $C084
+HitColumn EQU $C085
+HitRow EQU $C086
+ScanUp EQU $C087
+BlockIndex EQU $C088
+EffectColumn EQU $C089
+EffectRow EQU $C08A
+DecodeIndex EQU $C08B
+DecodeBase EQU $C08C
+BlockSub EQU $C08E
+DirtyPublish EQU $C08F

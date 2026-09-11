@@ -110,6 +110,18 @@
       "section": "power",
       "region": "ROM1",
       "address": 22016
+    },
+    {
+      "unit": "main.asm",
+      "section": "blocks",
+      "region": "ROM0",
+      "address": 14336
+    },
+    {
+      "unit": "main.asm",
+      "section": "block_assets",
+      "region": "ROM1",
+      "address": 30464
     }
   ]
 }
