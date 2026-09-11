@@ -120,7 +120,7 @@ bound to pass the implementation.
 | `v1.0` | After separate board approval and wiring/timing proof: full load/readback, scripted checkpoints and pre-VGA frame hashes match simulation; VGA and keyboard work; 30-minute continuous run without unexpected reset/lost input; repeat reset/load/start three times. Silent output. |
 
 The v0.5 and original v0.9 baselines are qualified separately from physical
-release acceptance, which remains open in [#264](https://github.com/amichai-bd/nand2mario/issues/264)
+release acceptance, whose physical-presence column remains open in [#28](https://github.com/amichai-bd/nand2mario/issues/28)
 within the [remote acceptance](#remote-acceptance) split below.
 Functional boot/input/checkpoint requirements are preserved,
 but their execution matrices must be named and reviewed before work: use short
@@ -164,10 +164,11 @@ prove and which need physical presence.
 | Three reset/load/start cycles | Yes with the UART core reset | KEY0 board reset |
 | Wiring, voltage and timing proof at the board | — | Yes, under [#28](https://github.com/amichai-bd/nand2mario/issues/28) |
 
-A `v1.0` claim built on the UART column alone must say so. The physical column
-stays open in [#28](https://github.com/amichai-bd/nand2mario/issues/28) and
-[#264](https://github.com/amichai-bd/nand2mario/issues/264); those issues gate
-physical claims only, not UART-observable, simulation or host work.
+A `v1.0` claim built on the UART column alone must say so. The UART column
+is proven on the current image by the
+[endurance record](../../src/dv/springtrail/ENDURANCE.md#current-image-script).
+The physical column stays open in [#28](https://github.com/amichai-bd/nand2mario/issues/28); that issue gates physical claims
+only, not UART-observable, simulation or host work.
 
 ## Dependencies and authority
 

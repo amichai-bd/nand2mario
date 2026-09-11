@@ -352,8 +352,9 @@ commercial file, title or mapper to obtain. The
 header/profile. Its [composed-system tests](src/dv/springtrail/SPEC.md) check
 title, input and world frames with deliberate output faults. Movement and
 interactions are implemented; expanded features are explicitly planned in the
-game specification. Physical release verification remains incomplete in
-[#264](https://github.com/amichai-bd/nand2mario/issues/264).
+game specification. The UART-observable `v1.0` checks are proven on the
+current image ([endurance record](../src/dv/springtrail/ENDURANCE.md#current-image-script));
+physical-presence verification remains open in [#28](https://github.com/amichai-bd/nand2mario/issues/28).
 
 **Risk**
 
@@ -521,9 +522,8 @@ hosted. On 2026-09-11 the owner settled three consequences:
   [charter](src/project-charter.md#remote-acceptance) states which `v1.0`
   checks are proven over UART and which need physical presence.
 
-[#28](https://github.com/amichai-bd/nand2mario/issues/28) and
-[#264](https://github.com/amichai-bd/nand2mario/issues/264) stay open as
-scoped. They gate physical display and physical release claims only; they do
+[#28](https://github.com/amichai-bd/nand2mario/issues/28) stays open as
+scoped. It gates physical display and physical release claims only; it does
 not block UART-observable, simulation or host work. Reopen the closed issues
 if the board becomes physically reachable or a runner can be hosted.
 

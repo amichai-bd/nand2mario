@@ -1,8 +1,8 @@
 # Original platformer verification
 
-The original complete-game baseline is qualified;
-[#264](https://github.com/amichai-bd/nand2mario/issues/264) physical
-release acceptance remains open. The
+The original complete-game baseline is qualified and the UART-observable
+`v1.0` checks are proven on the current image; physical-presence
+acceptance remains open in [#28](https://github.com/amichai-bd/nand2mario/issues/28). The
 [game specification](../../sw/springtrail/SPEC.md) owns gameplay;
 the [charter](../../project-charter.md#release-acceptance) owns release criteria.
 The [foundation proof](../../../../src/dv/springtrail/README.md) checks

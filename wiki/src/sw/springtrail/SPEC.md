@@ -1,8 +1,8 @@
 # Springtrail
 
 The [original game source](../../../../src/sw/springtrail/main.asm) implements
-title/start, movement, scrolling, interactions and game flow. Physical release
-acceptance remains in [#264](https://github.com/amichai-bd/nand2mario/issues/264).
+title/start, movement, scrolling, interactions and game flow. Physical-presence
+release acceptance remains in [#28](https://github.com/amichai-bd/nand2mario/issues/28).
 The [charter](../../project-charter.md) owns the hardware and release boundaries;
 the [game verification plan](../../dv/springtrail/SPEC.md) owns acceptance.
 

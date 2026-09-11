@@ -159,9 +159,8 @@ Declare broader milestone aggregates before execution and measure FPGA builds
 separately. Reuse qualified evidence and sampled continuous endurance; neither
 3600 frames nor a new multi-hour replay is an automatic child prerequisite.
 
-Physical VGA and release gates remain open in
-[#28](https://github.com/amichai-bd/nand2mario/issues/28) and
-[#264](https://github.com/amichai-bd/nand2mario/issues/264). They gate their own
+The physical VGA and release gate remains open in
+[#28](https://github.com/amichai-bd/nand2mario/issues/28). It gates its own
 claims, not independent software, DV or UART work. Physical controls are out
 of scope under the [remote working scope](../../../preflight-gaps.md#remote-working-scope). This contract does not claim
 hardware acceptance, full SML1 coverage or a complete physical release.

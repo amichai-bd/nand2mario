@@ -12,7 +12,7 @@ from n2m import generated_interfaces as abi
 from interactions_reference import PLAYING, PAUSED, RETRY
 from motion_frames import image
 from endurance import (run, update, expected, check_pixels, terminal, exclusion, first_samples,
-                       LCD, PERIOD, DOT_HZ, ROUTES, ROUTE_PERIODS, SPAWN, PLANS, CYCLE_SECONDS)
+                       supervise, LCD, PERIOD, DOT_HZ, ROUTES, ROUTE_PERIODS, SPAWN, PLANS, CYCLE_SECONDS)
 
 ZERO_ROM = bytes(32768)
 ZERO_SHA = hashlib.sha256(ZERO_ROM).hexdigest()
@@ -203,6 +203,19 @@ class RunnerTests(unittest.TestCase):
                 self.assertFalse(result['uncertain'])
                 self.assertFalse(client.running); self.assertEqual(client.mask, 0)
                 self.assertIn('final', result)
+
+    def test_supervisor_kills_and_records_an_overrunning_worker(self):
+        with tempfile.TemporaryDirectory() as directory:
+            out = Path(directory)
+            sleeper = [sys.executable, '-c', 'import time; time.sleep(60)']
+            self.assertEqual(supervise(sleeper, 13, out), 1)  # kill at cap-12 = 1 s
+            budget = json.loads((out/'budget.json').read_text())
+            self.assertEqual(budget['status'], 'TIMEOUT')
+            self.assertLess(budget['elapsed_seconds'], 12)
+            self.assertIn('raw_exit_code', budget)
+            quick = [sys.executable, '-c', 'pass']
+            self.assertEqual(supervise(quick, 13, out), 0)
+            self.assertEqual(json.loads((out/'budget.json').read_text())['status'], 'FINISHED')
 
     def test_wrong_rom_before_any_side_effect(self):
         with tempfile.TemporaryDirectory() as directory:

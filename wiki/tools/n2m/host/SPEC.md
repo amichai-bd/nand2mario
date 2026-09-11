@@ -127,7 +127,7 @@ carry down/up and repeats. A
 [pseudoconsole window](https://learn.microsoft.com/en-us/windows/console/getconsolewindow)
 is not its displayed terminal, so it cannot satisfy this foreground check.
 Native injected-event tests prove the event path; actual manual keyboard/VGA
-release acceptance remains an [open physical-play gap](https://github.com/amichai-bd/nand2mario/issues/264).
+release acceptance remains an [open physical-presence gap](https://github.com/amichai-bd/nand2mario/issues/28).
 
 Discovery reuses the doctor without running its licensed probes. The optional
 [pinned serial backend](../../../../tools/n2m/host/THIRD_PARTY.md) opens only the
