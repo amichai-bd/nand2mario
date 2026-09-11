@@ -16,6 +16,28 @@ commercial ROM, copied game assets, or a custom game-specific hardware path.
 - [Agent rules](AGENTS.md)
 - [Build system](wiki/tools/n2m/SPEC.md)
 
+## In action
+
+Three short loops show what using the repository looks like. Each is a
+self-contained animated SVG made from real output; the
+[showcase page](wiki/showcase/README.md) records the generating inputs.
+
+The build, unit tests, builder checks and one Questa simulation, as they print:
+
+![Build and tests](wiki/showcase/build-and-tests.svg)
+
+A board session over UART: load with full readback, status, an input mask,
+bounded execution, a frame snapshot and the CRC proof (recorded shapes, not a
+live capture):
+
+![Board session over UART](wiki/showcase/board-session.svg)
+
+A Springtrail playthrough: title screen, Start, a run, a jump over a gap, a
+pause and resume, then a run into a patrol that ends in RETRY, composed from
+the game's own reference frames:
+
+![Springtrail playthrough](wiki/showcase/game-start.svg)
+
 ## Current system
 
 The hardware targets the original monochrome DMG family and is organized as a

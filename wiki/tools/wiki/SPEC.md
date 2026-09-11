@@ -188,3 +188,13 @@ Run `python -m unittest tools.wiki.test_repository_stats -v` for offline collect
 empty-sample, escaping and atomic-failure checks. The wiki browser suite checks
 the Stats tab and report at desktop/mobile sizes, including the snapshot notice,
 documentation navigation and keyboard-scrollable chart regions.
+
+## README showcases
+
+The manual `tools/wiki/showcase.py` generator writes the three animated SVGs
+under [`wiki/showcase/`](../../showcase/README.md) that the project overview
+embeds. Each is self-contained: CSS keyframes gated behind
+`prefers-reduced-motion: no-preference`, no script, no external reference, and
+the authored markup is the finished still. The quality tests require the
+committed files to equal the generator's output, so edit the generator and
+rerun it; the showcase page records where every shown line and pixel comes from.

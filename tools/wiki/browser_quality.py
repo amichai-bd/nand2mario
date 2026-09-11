@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[2]
 OUTPUT = ROOT / 'workdir/wiki/browser'
 sys.path.insert(0, str(ROOT / 'tools'))
 from n2m import generated_interfaces as abi, interface_codec as codec  # noqa: E402
+from wiki import showcase  # noqa: E402
 
 
 def step_frame():
@@ -98,6 +99,54 @@ def check_views(browser, base):
         page.screenshot(path=str(OUTPUT / 'quality-animated-print.png'), full_page=True)
         page.close()
 
+        # README showcases are plain SVG documents: motion plays, and the reduced-motion still is the finished state.
+        # game-start.svg is a flipbook of real reference-model frames (title,
+        # Start, a run, a jump over a gap, a pause/resume, then a patrol
+        # collision ending in RETRY); the last sample (RETRY) is the authored
+        # still, .f0 is the title screen, .f2 is an early run frame.
+        last = len(showcase.SAMPLES) - 1
+        assert showcase.SAMPLES[last][0] == 'retry'
+        page = new_page()
+        page.goto(base + '/files/wiki/showcase/game-start.svg')
+        figure = page.locator('svg').first
+        retry, run1, title = page.locator(f'.f{last}'), page.locator('.f2'), page.locator('.f0')
+        assert run1.evaluate('e => getComputedStyle(e).animationName') == 'f2'
+        page.emulate_media(reduced_motion='reduce')
+        for part in (retry, run1, title, page.locator('.k7 rect').first):
+            assert part.evaluate('e => getComputedStyle(e).animationName') == 'none'
+        assert retry.evaluate('e => getComputedStyle(e).opacity') == '1', 'RETRY frame missing from the still'
+        assert title.evaluate('e => getComputedStyle(e).opacity') == '0', 'Title screen drawn over the RETRY still'
+        expect(figure).to_contain_text('Hits the patrol: RETRY')
+        expect(figure).to_contain_text('PAUSED')
+        page.screenshot(path=str(OUTPUT / 'quality-showcase-game.png'))
+        page.close()
+        # The terminal loops share one block cursor (.cur) that walks the
+        # keystrokes; in the still it must be the only caret, resting on the
+        # empty prompt row below the last line (no transform), and no typed
+        # row may keep a caret of its own.
+        for name, last_line in (('build-and-tests', 'TESTS=1 PASS=1'), ('board-session', '"silence_seconds": 2.0')):
+            page = new_page()
+            page.goto(base + f'/files/wiki/showcase/{name}.svg')
+            first, cursor = page.locator('.t1').first, page.locator('.cur')
+            assert first.evaluate('e => getComputedStyle(e).animationName') == 't1'
+            assert cursor.evaluate('e => getComputedStyle(e).animationName') == 'cur'
+            page.emulate_media(reduced_motion='reduce')
+            assert first.evaluate('e => getComputedStyle(e).animationName') == 'none'
+            for line in page.locator('text').all():
+                assert line.evaluate('e => getComputedStyle(e).opacity') == '1', 'Terminal line hidden in the still'
+            expect(page.locator('svg')).to_contain_text(last_line)
+            expect(page.locator('[class$="cur"]')).to_have_count(1)
+            assert cursor.evaluate('e => getComputedStyle(e).transform') == 'none', 'Cursor left mid-command in the still'
+            assert page.evaluate("""() => {
+                const cursor = document.querySelector('.cur rect').getBoundingClientRect();
+                const rows = [...document.querySelectorAll('text')].filter(t => !t.classList.contains('h')).map(t => t.getBoundingClientRect());
+                const carets = [...document.querySelectorAll('rect[width="7"], tspan')].filter(e => e.tagName === 'rect' || e.textContent === '█');
+                return carets.filter(e => e.checkVisibility({opacityProperty: true})).length === 1
+                    && rows.filter(r => r.bottom > cursor.top + 1).length === 1;
+            }"""), 'A caret is visible on a command line in the still'
+            page.screenshot(path=str(OUTPUT / f'quality-showcase-{name}.png'))
+            page.close()
+
         for fragment, expected in (('#slide-4', '4 / 6'), ('#missing', '1 / 6'), ('#%E0%A4%A', '1 / 6')):
             page = new_page()
             page.goto(base + '/files/wiki/presentations/cpu-execution.html' + fragment)
@@ -125,7 +174,7 @@ def check_views(browser, base):
             page.close()
         assert not errors, '\n'.join(errors)
         return {'status': 'passed', 'browser': browser.version, 'viewports': [1440, 390],
-                'checks': ['slide fragments', 'malformed fragments', 'keyboard', 'print visibility and contrast', 'animated diagram motion, completeness and print contrast', 'chart scrolling']}
+                'checks': ['slide fragments', 'malformed fragments', 'keyboard', 'print visibility and contrast', 'animated diagram motion, completeness and print contrast', 'README showcase motion and reduced-motion still', 'chart scrolling']}
     except BaseException:
         if page is not None and not page.is_closed():
             page.screenshot(path=str(OUTPUT / 'failure.png'), full_page=True)

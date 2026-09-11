@@ -9,6 +9,7 @@ system; this guide points to the contracts that own the details.
 | I want to… | Start here | Continue with |
 |---|---|---|
 | Understand the project | [Project charter](src/project-charter.md) | [Current phase and gates](agents/bootstrap-plan.md#current-phase) |
+| See it in action | [Animated showcases](showcase/README.md) | Build and tests, a UART board session and a Springtrail playthrough, from real output |
 | Learn the architecture visually | [Eight illustrated lessons](presentations/README.md) | CPU, memory, clocks, graphics, UART, verification, builds and software |
 | Explore the game and artwork | [Springtrail](src/sw/springtrail/SPEC.md) | [8x8 tile composition](src/sw/springtrail/CHARACTER_ART.md) and [core asset gallery](src/sw/springtrail/CORE_ART.md) |
 | Build or test something | [Build entry point](tools/n2m/SPEC.md#available-commands) | [Software toolchain](tools/sw/SPEC.md) and [verification tiers](src/dv/integration/SPEC.md#verification-tiers) |

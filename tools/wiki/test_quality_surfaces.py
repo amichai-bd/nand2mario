@@ -59,6 +59,20 @@ class DocumentationQualityTests(unittest.TestCase):
             self.assertNotIn('opacity="0"', markup, deck)
             self.assertNotIn('<style', markup, deck)
 
+    def test_readme_showcases_are_self_contained_and_match_their_generator(self):
+        from tools.wiki import showcase
+        readme = (ROOT / 'README.md').read_text(encoding='utf-8')
+        generated = showcase.documents()
+        for name in ('build-and-tests', 'board-session', 'game-start'):
+            markup = (ROOT / f'wiki/showcase/{name}.svg').read_text(encoding='utf-8')
+            self.assertEqual(markup, generated[name], f'{name}.svg differs from tools/wiki/showcase.py output')
+            self.assertIn(f'wiki/showcase/{name}.svg', readme)
+            for forbidden in ('<script', '<foreignObject', 'href=', 'url(', '<animate', '@import'):
+                self.assertNotIn(forbidden, markup, name)
+            gate = markup.split('@media (prefers-reduced-motion:no-preference){', 1)
+            self.assertEqual(len(gate), 2, 'Motion must be gated behind no-preference')
+            self.assertNotIn('animation:', gate[0], 'Animation outside the gate would ignore reduced motion')
+
     def test_statistics_renderer_marks_snapshot_and_links_back_to_docs(self):
         html = render(minimal_source())
 
