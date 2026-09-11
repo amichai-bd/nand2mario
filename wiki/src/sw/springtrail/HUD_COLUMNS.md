@@ -28,12 +28,19 @@ it introduces no life or timer value. Exact glyph sources are the named
 and [core-tiles.json](../../../../src/sw/springtrail/assets/core/core-tiles.json).
 Existing terrain remains [tiles.json](../../../../src/sw/springtrail/tiles.json).
 Keep shade0..3 and E4 palettes. The20 glyphs in order
-`01234ACDEILNOPRSTUWY` use tile IDs74..93, VRAM84A0..85DF.
+`01234ACDEILNOPRSTUWY` use tile IDs74..93, VRAM84A0..85DF. The progression row
+adds nine approved core tiles at IDs108..116, after the motion and power
+copies: digits5..9, then M and V for its two new mode words, then the life and
+clock icons.
 Their approved source atlas is linked at ROM6000; only those glyphs are loaded
 after the existing74 tiles. The mapperless32 KiB layout retains overlap checks.
 Map row0 columns1..6 hold the mode word padded with blank tile0; SCORE occupies
-columns12..16 and score0..4 occupies column18. All other HUD pixels are blank.
-Both9800 and9C00 receive the same prepared six mode tiles and score tile.
+columns12..16 and score0..4 occupies column18. Map row1 is the progression row
+the [progression contract](PROGRESS.md) owns: the life icon at column1 with the
+two lives digits, the clock icon at column12 with the three countdown digits,
+and the stage number at column18. All other HUD pixels are blank.
+Both9800 and9C00 receive the same prepared six mode tiles and score tile, the
+same six row1 value cells, and the same two static icons.
 
 ## Reference previews
 
@@ -69,10 +76,10 @@ generated from it under the
 edited by hand. Encode each display column independently, in top-to-bottom order, using original count/tile pairs.
 Count1..16 repeats the following tile that many rows; count0 ends the column.
 Exactly16 rows must precede the terminator. Blank runs use tile0. There are
-at most16 pairs and33 bytes per column, and96 explicitly indexed columns.
+at most16 pairs and33 bytes per column, and256 explicitly indexed columns, three stages in one page.
 The build rejects truncation, missing/early terminators, trailing bytes, invalid
 counts, overflow, unallocated tile IDs, invalid column counts and indices.
-Independent literal terrain rules must equal all1536 decoded cells.
+Independent literal terrain rules must equal all4608 decoded cells.
 
 Decode into a16-byte WRAM cache during scene preparation. VBlank publishes
 that completed cache; it does not decompress content. The destination is

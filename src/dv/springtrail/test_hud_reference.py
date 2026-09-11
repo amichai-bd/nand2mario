@@ -31,8 +31,10 @@ class HudReference(unittest.TestCase):
         for index, expected in COLUMNS.items():
             self.assertEqual(column(index), expected)
         actual = validate(ROOT)
-        self.assertEqual(len(actual), 96)
-        self.assertEqual(bytes(v for col in actual for v in col),
+        # The world now holds three stages in one256-column page; this file owns
+        # stage0's columns, and the progression tests own the other two.
+        self.assertEqual(len(actual), 256)
+        self.assertEqual(bytes(v for col in actual[:96] for v in col),
                          b''.join(column(i) for i in range(96)))
         self.assertEqual(decode([16, 0, 0]), [0]*16)
         self.assertEqual(decode([14, 0, 2, 11, 0]), list(COLUMNS[0]))
@@ -93,15 +95,26 @@ class HudReference(unittest.TestCase):
             for camera in (0, 248, 256, 608):
                 moved = replace(game, player=replace(game.player, camera=camera))
                 self.assertEqual(image(moved)[:2560], first[:2560])
-            self.assertEqual(first[1280:2560], bytes(1280))
+            # Row1 is the progression row; only its eight cells carry pixels.
+            used = {1, 2, 3, 12, 13, 14, 15, 18}
+            for col in range(20):
+                cell = b''.join(first[1280+row*160+col*8:1288+row*160+col*8]
+                                for row in range(8))
+                if col in used:
+                    self.assertNotEqual(cell, bytes(64), col)
+                else:
+                    self.assertEqual(cell, bytes(64), col)
             self.assertEqual(first[:8], bytes(8))
             self.assertEqual(first[18*8:19*8], glyph('4')[:8])
         # A courier starting at y12 crosses both HUD rows. Lower pixels survive
         # at y16; dropping the entire piece would fail this literal pose slice.
         game = replace(Game(), mode=1, player=Player(y=12*16))
+        # Row1 now carries the progression cells, so line15 is compared against
+        # the same HUD with the courier well clear of it.
+        clear = image(replace(Game(), mode=1, player=Player(y=112*16)))
         for facing in (False, True):
             pixels = image(game, facing)
-            self.assertEqual(pixels[15*160:16*160], bytes(160))
+            self.assertEqual(pixels[15*160:16*160], clear[15*160:16*160])
             self.assertEqual(pixels[16*160+20:16*160+36], approved(0, facing)[4*16:5*16])
             self.assertTrue(any(pixels[16*160+20:16*160+36]))
 

@@ -76,8 +76,12 @@ timer, while the ROM's display/input loop and host transport remain active.
 Resume continues the preserved state without queued movement/jump events.
 This in-game pause is distinct from host HALT and emulated CPU HALT.
 
-Use a single original 96-by-18 grid of 8-by-8 tiles, viewed through the normal
-160-by-144 DMG image. An 8-by-16 player has an axis-aligned collision box.
+Use three original stages inside one 18-by-256 grid of 8-by-8 tiles, viewed
+through the normal 160-by-144 DMG image. The
+[progression contract](PROGRESS.md) owns the stage table: stage 0 is the
+unchanged 96-column world at base column 0, and stages 1 and 2 are 80 columns
+wide at base columns 96 and 176. The stage index selects the collision base,
+the camera and player x limits, the goal, the enemy bounds and the items. An 8-by-16 player has an axis-aligned collision box.
 The camera follows horizontal player position, clamped to the level edges;
 camera movement cannot change world-space collisions. Platforms are solid from
 all sides; there are no slopes, moving platforms or one-way surfaces. Vertical motion,
@@ -94,11 +98,18 @@ hidden block releases its content once, a brick breaks only under a large or
 thrower player, and the consumed state survives scrolling and pause until a
 restart. Coins increment an undisplayed counter, not the score.
 
-Each collectible increments the visible counter once and disappears until
-restart. Touching the finish marker while alive enters won; collecting every
-item is optional. Death takes precedence over collection or winning on the same
-update; a stomp or a non-fatal hit does not. Pause/restart decisions precede world updates. The stationary background
-[HUD](HUD_COLUMNS.md) occupies screen rows 0..15 and shows score and mode.
+Each collectible increments the visible counter once and disappears until the
+next stage entry. Touching the finish marker while alive clears the stage;
+collecting every item is optional. Death takes precedence over collection or
+clearing on the same update; a stomp or a non-fatal hit does not. An expired
+countdown precedes every contact class.
+The [progression contract](PROGRESS.md) owns the lives, the countdown timer and
+the stage lifecycle: a retry spends one packed-BCD life and re-enters the
+current stage, a cleared stage advances to the next one, and the last stage or
+a spent last life resets the game to stage 0 with two lives. Pause/restart decisions precede world updates. The stationary background
+[HUD](HUD_COLUMNS.md) occupies screen rows 0..15. Row 0 shows the mode word and
+the score; row 1 shows the lives, the countdown and the stage number beside the
+approved life and clock icons.
 The playfield retains world y coordinates in rows 16..143; neither the collision
 world nor the ground at y=128 moves. HUD clipping hides only object pixels above
 row 16, preserving the lower part of a crossing piece.
@@ -108,9 +119,10 @@ coasting, reversal hold, run selection, jump profiles, release response and pose
 cadence. These are approved original best-effort rules, not a claim of complete
 SML1 equivalence. Positions and reported velocities use signed 16-bit units of
 1/16 pixel. The initial player top-left is (24, 112), grounded on tile row 16,
-with camera x=0. The camera anchor is screen x=72 and its clamp is 0..608 pixels.
-The enemy starts at (256, 120), moves right at 1/2 pixel/frame, and patrols
-x=240..296 inclusive.
+with camera x=0. The camera anchor is screen x=72 and its clamp is 0 to the
+stage's limit, 608 pixels on stage 0 and 480 on the other two. The enemy moves
+at 1/2 pixel/frame between the stage's patrol endpoints; on stage 0 it starts
+at (256, 120) and patrols x=240..296 inclusive.
 
 The renderer has one displayed frame of input-to-publication delay (about
 16.7 ms). Each VBlank
@@ -138,13 +150,15 @@ the fixed-point coordinate. Snap to the contacted tile edge and clear velocity
 on that axis; only downward contact sets grounded. Test interactions after both
 axes. Falling means player top-left y >=144. The enemy uses an 8-by-8 box.
 
-The literal level has ground in rows 16 and 17 except gap columns 22..25,
+Stage 0 has ground in rows 16 and 17 except gap columns 22..25,
 46..49, and 70..73. Additional solid platforms occupy row 12 columns 10..14,
 row 10 columns 31..35, row 12 columns 56..60, and row 11 columns 80..84.
 All other cells are empty; the block layer adds no terrain and occupies world
-rows 10 and 11 at columns 38, 52, 64 and 88. Collectibles are 8-by-8 boxes at
-(96, 88), (264, 72), (464, 88), and (656, 80); the 8-by-16 goal starts at
-(736, 112). Collectible
+rows 10 and 11 at page columns 38, 52, 64 and 88, which places every block on
+stage 0. Its collectibles are 8-by-8 boxes at (96, 88), (264, 72), (464, 88),
+and (656, 80); its 8-by-16 goal starts at (736, 112). The
+[progression contract](PROGRESS.md) lists the other two stages, whose literal
+rows live in the same [world source](../../../../src/sw/springtrail/world.asm). Collectible
 and goal tests use half-open rectangle overlap against the power contract's
 contact box. The [interaction routines](../../../../src/sw/springtrail/interactions.asm)
 [power routines](../../../../src/sw/springtrail/power.asm) and

@@ -32,7 +32,7 @@ PERIOD=70224
 # derived from the instruction listing by startup_anchor.derive and frozen
 # here. python-mgs proves the RTL commits at exactly this dot;
 # test_startup_anchor proves the image the repository builds still derives it.
-LCD=167840
+LCD=177492
 
 
 class Check:

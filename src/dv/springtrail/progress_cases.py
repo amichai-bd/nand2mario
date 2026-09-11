@@ -49,7 +49,10 @@ def cases():
             after, after_level = enter_stage(World(), buttons), 1
         else:
             after = update(world, buttons)
-            after_level = 1 if after.mode == PLAYING and world.mode != PLAYING else new_level
+            # Only a stage entry raises NewLevel. The title start just leaves
+            # TITLE for PLAY; main.asm owns that map transition, not UpdateGame.
+            entered = after.mode == PLAYING and world.mode in (RETRY, TIMEUP, WON, OVER, PAUSED)
+            after_level = 1 if entered else new_level
         out = buttons & ~3 if kind == 'game' and after.crouch else buttons
         result.append(dict(name=name, kind=kind, buttons=buttons,
                            before=state_bytes(world, buttons, new_level),

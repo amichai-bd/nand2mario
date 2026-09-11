@@ -58,12 +58,12 @@ class World:
     effect_y: int = 0
     effect_timer: int = 0
     block_dirty: int = 0
+    stage: int = 0
 
 
 def block_layer(world):
     """The solidity override #303 adds to terrain for one world state."""
     return lambda column, row, ascending: blocks.solid(world.blocks, column, row, ascending)
-    stage: int = 0
 
 
 

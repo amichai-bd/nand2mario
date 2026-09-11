@@ -31,7 +31,9 @@ class PauseScript(unittest.TestCase):
         check = Check()
         self.assertEqual(len(check.images), FRAMES)
         self.assertEqual([f'{zlib.crc32(i):08x}' for i in check.images],
-                         ['b15161f6', '9b162de2', '2a877964', '2a877964', 'a20ef3f5', 'e1736456'])
+                         # Row1's progression cells are new pixels in every world frame;
+                         # the title frame is unchanged because it publishes before them.
+                         ['b15161f6', '4a3bad02', 'fbaaf984', 'fbaaf984', '73237315', '305ee4b6'])
         # The neutral frame repeats the first world frame's pixels: STAND holds
         # until the fourth animation step. Its state bytes still differ.
         self.assertEqual(len(set(check.images)), FRAMES-1)

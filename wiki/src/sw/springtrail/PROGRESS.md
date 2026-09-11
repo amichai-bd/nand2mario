@@ -164,7 +164,20 @@ The new mode words reuse loaded glyphs only: mode 5 is `TIMEUP` and mode 6 is
 `screen-level-entry`, `screen-time-up`, `screen-game-over` and `screen-clear`
 compositions are the design source for this wording; this release integrates
 their text through the existing HUD word, which keeps the frozen one-update
-publication and the 32 KiB image intact.
+publication and the 32 KiB image intact. The published
+[progression previews](progress/stage-two.svg) show the row and the two new
+mode words, reproduced from the approved sources by
+[progress_preview.py](../../../../src/dv/springtrail/progress_preview.py).
+
+![Stage two in play](progress/stage-two.svg)
+
+![Time up](progress/time-up.svg)
+
+![Game over](progress/game-over.svg)
+
+![Stage clear](progress/stage-clear.svg)
+
+![Progression tiles, IDs108 through116](progress/tiles.svg)
 
 ## State and integration boundary
 
@@ -203,7 +216,7 @@ Literal anchors fixed independently of DUT output:
   press leaves mode 1, `StageIndex` 0, timer 400 and `Lives` `$02`.
 - `Lives` `$99` with `PendingLife` 1 stays `$99`; `PendingLife` becomes 0.
 - On stage 1 a player at x 632 cannot move right and the camera stops at 480.
-- The stage 2 goal box spans x 608 to 616, so a player at x 604 does not reach
+- The stage 2 goal box spans x 608 to 616, so a player at x 600 does not reach
   it and one at x 608 clears the stage.
 
 ## Finite proof boundary

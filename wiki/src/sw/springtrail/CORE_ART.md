@@ -82,9 +82,12 @@ convention; UI screens and the assembled scene show background zero as white.
 
 ![Progression screen designs](core-art/progression-screens.svg)
 
-[#304](https://github.com/amichai-bd/nand2mario/issues/304) owns progression-state integration under its existing contract. The title and
+The [progression contract](PROGRESS.md) owns progression-state integration. It
+takes the wording of these designs into the existing HUD word and adds the
+life and clock icons with digits5..9 to the HUD's second row; the full-screen
+compositions remain approved artwork. The title and
 pause designs are also available to existing UI owners; this approval does not
-require a title redesign or broaden that issue. Wording and appearance
+require a title redesign. Wording and appearance
 are approved; displayed values do not define timers, rewards or progression.
 Screen pixel maps are compositions for tilemap integration, not large objects.
 
