@@ -32,8 +32,9 @@ live capture):
 
 ![Board session over UART](wiki/showcase/board-session.svg)
 
-Springtrail starting: the title screen, a Start press, then running right,
-composed from the game's own reference frames:
+A Springtrail playthrough: title screen, Start, a run, a jump over a gap, a
+pause and resume, then a run into a patrol that ends in RETRY, composed from
+the game's own reference frames:
 
 ![Springtrail start](wiki/showcase/game-start.svg)
 

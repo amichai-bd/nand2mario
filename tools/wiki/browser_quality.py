@@ -99,18 +99,22 @@ def check_views(browser, base):
         page.close()
 
         # README showcases are plain SVG documents: motion plays, and the reduced-motion still is the finished state.
+        # game-start.svg is a flipbook of real reference-model frames (title,
+        # Start, a run, a jump over a gap, a pause/resume, then a patrol
+        # collision ending in RETRY); .f10 is the last frame (RETRY) and the
+        # authored still, .f0 is the title screen, .f2 is an early run frame.
         page = new_page()
         page.goto(base + '/files/wiki/showcase/game-start.svg')
         figure = page.locator('svg').first
-        walk, stand, title = page.locator('.walk'), page.locator('.stand'), page.locator('.title')
-        assert walk.evaluate('e => getComputedStyle(e).animationName') == 'walk'
+        retry, run1, title = page.locator('.f10'), page.locator('.f2'), page.locator('.f0')
+        assert run1.evaluate('e => getComputedStyle(e).animationName') == 'f2'
         page.emulate_media(reduced_motion='reduce')
-        for part in (walk, stand, title, page.locator('.k-start rect').first):
+        for part in (retry, run1, title, page.locator('.k7 rect').first):
             assert part.evaluate('e => getComputedStyle(e).animationName') == 'none'
-        assert stand.evaluate('e => getComputedStyle(e).opacity') == '1', 'Courier missing from the still'
-        assert title.evaluate('e => getComputedStyle(e).opacity') == '0', 'Title text over the PLAY still'
-        assert placement(figure, '.stand') > 0.2, 'Courier did not end 48 px to the right'
-        expect(figure).to_contain_text('host input --mask 0')
+        assert retry.evaluate('e => getComputedStyle(e).opacity') == '1', 'RETRY frame missing from the still'
+        assert title.evaluate('e => getComputedStyle(e).opacity') == '0', 'Title screen drawn over the RETRY still'
+        expect(figure).to_contain_text('Hits the patrol: RETRY')
+        expect(figure).to_contain_text('PAUSED')
         page.screenshot(path=str(OUTPUT / 'quality-showcase-game.png'))
         page.close()
         page = new_page()

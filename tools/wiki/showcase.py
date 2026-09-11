@@ -11,7 +11,6 @@ motion reader sees the complete final picture.
 from __future__ import annotations
 
 from collections import Counter
-from dataclasses import replace
 from pathlib import Path
 import re
 import sys
@@ -24,6 +23,11 @@ MONO = 'ui-monospace,Consolas,"Liberation Mono",Menlo,monospace'
 PANEL, BORDER, TEXT, MUTED, ACCENT, WARM = '#171c24', '#303a48', '#e4eaf2', '#a9b6c7', '#93e7bd', '#f5cc83'
 SHADES = ('#ffffff', '#d0d0d0', '#686868', '#181818')
 WIDTH, LINE, PAD, BAR = 800, 18, 16, 30
+# A typed command lays out its own characters at a fixed monospace advance
+# (0.6em at the 12px terminal font) instead of relying on the browser's own
+# font metrics, so the keystroke reveal tracks a stable column regardless of
+# which system font ui-monospace resolves to.
+CHAR_W, TYPE_RATE, MIN_TYPE = 7.2, 0.028, 0.35
 
 # --- Loop 1: build and tests. Captured at 5ce0aa0 on 2026-09-11; long JSON lines
 # are shortened with an ellipsis, every kept field is verbatim.
@@ -89,8 +93,6 @@ def pct(seconds, loop):
 
 
 def spans(kind, text):
-    if kind == 'cmd':
-        return f'<tspan fill="{ACCENT}">$ </tspan>{esc(text)}'
     if kind == 'cmd+':
         return esc(text)
     parts, last = [], 0
@@ -112,12 +114,52 @@ def reveal_css(prefix, times, loop):
     return css
 
 
-def wrap(lines, columns=112):
+def typed_row(line_id, text, start, end, loop):
+    """A command line typed one character at a time, with a blinking caret.
+
+    Each character sits at a fixed x (CHAR_W apart) instead of the browser's
+    own text flow, so the reveal tracks a stable column on every platform's
+    monospace font. The "$ " prompt itself is gated to appear right when
+    typing starts, so a later, not-yet-typed command stays fully hidden.
+    """
+    n = len(text)
+    css, motion, tspans = [], [], []
+    prompt = f'<tspan fill="{ACCENT}">$ </tspan>'
+    if n == 0:
+        return prompt, css, motion
+    if start > 0:
+        css.append(f'@keyframes k{line_id}p{{0%,{pct(start - 0.01, loop)}%{{opacity:0}}{pct(start, loop)}%,100%{{opacity:1}}}}')
+        motion.append(f'.k{line_id}p{{animation:k{line_id}p {loop}s step-end infinite}}')
+        prompt = f'<tspan class="k{line_id}p" fill="{ACCENT}">$ </tspan>'
+    dur = max(end - start, 0.01)
+    for i, ch in enumerate(text):
+        cls = f'k{line_id}c{i}'
+        x = PAD + (2 + i) * CHAR_W
+        tspans.append(f'<tspan class="{cls}" x="{x:.1f}">{esc(ch)}</tspan>')
+        t = start + (i / n) * dur
+        if t <= 0:
+            continue  # already typed when the loop starts
+        css.append(f'@keyframes {cls}{{0%,{pct(max(t - 0.01, 0), loop)}%{{opacity:0}}{pct(t, loop)}%,100%{{opacity:1}}}}')
+        motion.append(f'.{cls}{{animation:{cls} {loop}s step-end infinite}}')
+    caret = f'k{line_id}cur'
+    caret_x = PAD + (2 + n) * CHAR_W
+    tspans.append(f'<tspan class="{caret}" x="{caret_x:.1f}" fill="{ACCENT}">█</tspan>')
+    css.append(f'@keyframes {caret}{{0%,{pct(max(start - 0.01, 0), loop)}%{{opacity:0}}'
+               f'{pct(start, loop)}%,{pct(end - 0.01, loop)}%{{opacity:1}}{pct(end, loop)}%,100%{{opacity:0}}}}')
+    motion.append(f'.{caret}{{animation:{caret} {loop}s step-end infinite}}')
+    return prompt + ''.join(tspans), css, motion
+
+
+def wrap(lines, columns=104):
     """Continue a long command on the next row, as a terminal would."""
     out = []
     for seconds, kind, text in lines:
-        while len(text) > columns:
-            cut = text.rfind(' ', 0, columns) if kind == 'cmd' else columns
+        # A typed cmd row also carries the "$ " prompt and a trailing caret
+        # (see typed_row); keep it a few columns narrower so that overhead
+        # still fits the 800px viewBox at a 0.6em font.
+        limit = columns - 4 if kind == 'cmd' else columns
+        while len(text) > limit:
+            cut = text.rfind(' ', 0, limit) if kind == 'cmd' else limit
             out.append((seconds, kind, text[:cut]))
             text, kind = ('    ' if kind == 'cmd' else ' ') + text[cut:].lstrip(), kind + '+'
         out.append((seconds, kind, text))
@@ -126,17 +168,36 @@ def wrap(lines, columns=112):
 
 def terminal(title, footer, lines, loop):
     lines = wrap(lines)
+    # Lead in by LEAD seconds so the very first command has room to type
+    # before its own reveal time, instead of popping in fully typed; every
+    # line (and the loop length) shifts by the same fixed amount, so real
+    # gaps between commands and their output are unchanged.
+    LEAD = 0.8
+    lines = [(seconds + LEAD, kind, text) for seconds, kind, text in lines]
+    loop += LEAD
     times = sorted(set(seconds for seconds, _, _ in lines))
     index = {seconds: times.index(seconds) for seconds in times}
     height = BAR + PAD + LINE * (len(lines) + 1) + PAD + 22
-    body, rules = [], []
+    body, rules, motion = [], [], []
     for row, (seconds, kind, text) in enumerate(lines):
         y = BAR + PAD + LINE * (row + 1) - 4
-        cls = f' class="t{index[seconds]}"' if seconds else ''
-        body.append(f'<text{cls} x="{PAD}" y="{y}" xml:space="preserve">{spans(kind, text)}</text>')
+        if kind == 'cmd':
+            # Type the command in before it "runs": start early enough to
+            # finish exactly when the line's own reveal time arrives, so the
+            # output below still only appears once typing is done.
+            earlier = [s for s in times if s < seconds]
+            prev = earlier[-1] if earlier else 0.0
+            dur = min(max(len(text) * TYPE_RATE, MIN_TYPE), max(seconds - prev - 0.05, MIN_TYPE))
+            markup, css, mo = typed_row(row, text, max(seconds - dur, 0.0), seconds, loop)
+            rules += css
+            motion += mo
+            body.append(f'<text x="{PAD}" y="{y}" xml:space="preserve">{markup}</text>')
+        else:
+            cls = f' class="t{index[seconds]}"' if seconds else ''
+            body.append(f'<text{cls} x="{PAD}" y="{y}" xml:space="preserve">{spans(kind, text)}</text>')
     # The cursor waits below the last shown line while the loop plays.
     cursor_y = BAR + PAD + LINE * (len(lines) + 1) - 16
-    steps = []
+    steps = [(0.0, BAR + PAD + LINE - 16 - cursor_y)]  # no line shown yet, while the first command types in
     for seconds in times:
         rows = sum(1 for s, _, _ in lines if s <= seconds)
         steps.append((seconds, BAR + PAD + LINE * (rows + 1) - 16 - cursor_y))
@@ -147,7 +208,9 @@ def terminal(title, footer, lines, loop):
     rules.append('@keyframes cur{' + ''.join(frames) + '}')
     rules.append('@keyframes blink{50%{opacity:0}}')
     rules += reveal_css('t', times, loop)
-    motion = [f'.t{i}{{animation:t{i} {loop}s linear infinite}}' for i in range(1, len(times))]
+    # Every distinct reveal time now sits after LEAD > 0 (the type-in lead),
+    # so every t{i} class needs its own animation binding.
+    motion += [f'.t{i}{{animation:t{i} {loop}s linear infinite}}' for i in range(len(times))]
     motion.append(f'.cur{{animation:cur {loop}s step-end infinite,blink 1s step-end infinite}}')
     style = (f'text{{font:12px {MONO};fill:{TEXT}}}.h{{font-size:11px;fill:{MUTED}}}'
              + ''.join(rules) + '@media (prefers-reduced-motion:no-preference){' + ''.join(motion) + '}')
@@ -167,30 +230,38 @@ def terminal(title, footer, lines, loop):
 
 # --- Loop 3: game start from the independent Springtrail frame references.
 
-def frames():
-    from hud_reference import image
-    from interactions_reference import Game, update
-    title = Game()
-    started = update(title, 128)                       # Start edge on the title screen
-    walk = [started]
-    for _ in range(24):                                 # Right+B held: 2 px per update
-        walk.append(update(walk[-1], 33))
-    released = update(walk[-1], 0)
-    assert (started.mode, released.player.x // 16, released.player.camera) == (1, 72, 0)
-    hidden = replace(started, player=replace(started.player, fell=True))
-    def grid(game):
-        pixels = image(game)
-        return [pixels[y * 160:(y + 1) * 160] for y in range(144)]
-    return grid(title), grid(hidden), grid(started), [grid(g) for g in walk[1:]], grid(released)
+def story():
+    """A full Springtrail play: title, Start, a run, a jump over a gap, a
+    pause and resume, more running, then a patrol collision ends in RETRY.
 
-
-def diff(frame, base):
-    return {(x, y): frame[y][x] for y in range(144) for x in range(160) if frame[y][x] != base[y][x]}
-
-
-def normalise(pixels):
-    left = min(x for x, _ in pixels)
-    return left, {(x - left, y): shade for (x, y), shade in pixels.items()}
+    Every tick calls the independent interactions_reference.update() the same
+    way the reference model's own tests do; the asserts below pin the exact
+    button masks and outcomes so a change to the reference rules fails this
+    generator instead of silently drawing a different game.
+    """
+    from interactions_reference import Game, update, PLAYING, PAUSED, RETRY
+    states = {0: Game()}
+    g = update(states[0], 128); states[1] = g                     # Start edge on the title screen
+    for tick in range(2, 32):
+        g = update(g, 33); states[tick] = g                       # Right+B: run toward the first gap
+    assert (states[31].mode, states[31].player.x // 16, states[31].player.grounded) == (PLAYING, 84, True)
+    g = update(g, 128); states[32] = g                             # Start edge: pause
+    assert g.mode == PAUSED
+    g = update(g, 0); states[33] = g                               # release, so the next Start is an edge
+    g = update(g, 128); states[34] = g                             # Start edge: resume
+    assert (states[34].mode, states[34].player.x // 16) == (PLAYING, 84)
+    for tick in range(35, 75):
+        g = update(g, 33); states[tick] = g                       # run up to the gap
+    assert (states[74].player.x // 16, states[74].player.grounded) == (164, True)
+    g = update(g, 49); states[75] = g                              # Right+B+A edge: jump
+    assert not g.player.grounded
+    for tick in range(76, 117):
+        g = update(g, 33); states[tick] = g                       # airborne arc, clears the gap
+    assert (states[116].player.x // 16, states[116].player.grounded, states[116].mode) == (248, True, PLAYING)
+    for tick in range(117, 127):
+        g = update(g, 33); states[tick] = g                       # runs on, into the patrol
+    assert (states[126].mode, states[126].player.x // 16) == (RETRY, 268)
+    return states
 
 
 def paths(pixels):
@@ -224,76 +295,145 @@ def paths(pixels):
     return ''.join(out)
 
 
+# Each sample is one real tick of story(), held on screen for its own
+# duration: (id, tick or None for the title screen, hold seconds, INPUT mask
+# shown for it (None hides the readout), and a short legend line.
+SAMPLES = (
+    ('title', None, 2.0, None, 'TITLE screen: PRESS START'),
+    ('stand', 1, 1.0, 128, 'Start (128) → PLAY'),
+    ('run1', 20, 1.6, 33, 'Right+B (33): runs'),
+    ('paused', 32, 2.2, 128, 'Start (128) → PAUSED'),
+    ('resume', 34, 1.0, 128, 'Start (128): resumes'),
+    ('run2', 58, 1.8, 33, 'Right+B (33): runs on'),
+    ('prejump', 74, 1.0, 33, 'Nears the gap'),
+    ('jump', 95, 1.4, 49, 'A (16): jumps the gap'),
+    ('land', 116, 1.0, 33, 'Lands, keeps running'),
+    ('run3', 122, 1.2, 33, 'Right+B (33): runs on'),
+    ('retry', 126, 2.4, None, 'Hits the patrol: RETRY'),
+)
+BUTTONS = ('Right', 'Left', 'Up', 'Down', 'A', 'B', 'Select', 'Start')
+BUTTON_BITS = (1, 2, 4, 8, 16, 32, 64, 128)
+
+
+def frame_window(cls, start, end, loop):
+    """Visible only during [start, end); hidden the rest of the loop.
+
+    Reduced motion falls back to the element's own authored opacity, so the
+    last window (end == loop) is authored opaque as the finished still, and
+    every earlier window is authored hidden (see game()).
+    """
+    head = f'0%,{pct(start - 0.01, loop)}%{{opacity:0}}{pct(start, loop)}%' if start > 0 else '0%'
+    if end < loop:
+        tail = f'{pct(end - 0.01, loop)}%{{opacity:1}}{pct(end, loop)}%,100%{{opacity:0}}'
+    else:
+        tail = '100%{opacity:1}'
+    return f'@keyframes {cls}{{{head},{tail}}}'
+
+
+def segments_css(cls, prop, on, off, windows, loop):
+    """A property that switches to `on` during each of several windows."""
+    parts, cursor = [], 0.0
+    for start, end in windows:
+        if start > cursor:
+            parts.append(f'{pct(cursor, loop)}%,{pct(start - 0.01, loop)}%{{{prop}:{off}}}')
+        parts.append(f'{pct(start, loop)}%,{pct(end - 0.01, loop)}%{{{prop}:{on}}}')
+        cursor = end
+    if cursor < loop:
+        parts.append(f'{pct(cursor, loop)}%,100%{{{prop}:{off}}}')
+    return f'@keyframes {cls}{{' + ''.join(parts) + '}'
+
+
 def game():
-    title, base, started, walk, released = frames()
-    stand_left, stand = normalise(diff(started, base))
-    walk_left, first = normalise(diff(walk[0], base))
-    for index, frame in enumerate(walk):
-        left, pose = normalise(diff(frame, base))
-        assert pose == first and left == walk_left + 2 * index, 'walk pose changed or moved unevenly'
-    end_left, end = normalise(diff(released, base))
-    assert end == stand and end_left == stand_left + 48
-    stand_pixels = diff(started, base)
-    title_only = {k: v for k, v in diff(title, base).items() if stand_pixels.get(k) != v}
-    loop = 10.0
+    from hud_reference import image
+    states = story()
+    starts, elapsed = [], 0.0
+    for _, _, hold, _, _ in SAMPLES:
+        starts.append(elapsed)
+        elapsed += hold
+    loop = elapsed
+
+    def full_frame(g):
+        pixels = image(g)
+        return {(x, y): pixels[y * 160 + x] for y in range(144) for x in range(160) if pixels[y * 160 + x]}
+
+    frames_px = []
+    for sample_id, tick, _, _, _ in SAMPLES:
+        g = states[0] if tick is None else states[tick]
+        frames_px.append(full_frame(g))
+
     scale, sx, sy = 3, PAD, BAR + PAD
     px, py = sx + 160 * scale + 40, sy + 8
-    buttons = ['Right', 'Left', 'Up', 'Down', 'A', 'B', 'Select', 'Start']
     pills = []
-    for index, label in enumerate(buttons):
+    button_windows = {b: [] for b in BUTTONS}
+    for i, (sample_id, tick, hold, mask, _) in enumerate(SAMPLES):
+        if not mask:
+            continue
+        for label, bit in zip(BUTTONS, BUTTON_BITS):
+            if mask & bit:
+                button_windows[label].append((starts[i], starts[i] + hold))
+    for index, label in enumerate(BUTTONS):
         column, row = divmod(index, 4)
         x, y = px + column * 120, py + 30 + row * 34
-        cls = {'Start': ' class="k-start"', 'Right': ' class="k-run"', 'B': ' class="k-run"'}.get(label, '')
+        cls = f' class="k{index}"' if button_windows[label] else ''
         pills.append(f'<g{cls}><rect x="{x}" y="{y}" width="108" height="26" rx="13" fill="{PANEL}" stroke="{BORDER}"/>'
                      f'<text x="{x + 54}" y="{y + 17}" text-anchor="middle">{label}</text></g>')
     my = py + 30 + 4 * 34 + 14
-    masks = ''.join(f'<text class="{cls}" x="{px}" y="{my}"{hide} xml:space="preserve"><tspan fill="{MUTED}">host input --mask </tspan>{value}</text>'
-                    for cls, value, hide in (('m128', '128', ' opacity="0"'), ('m33', '33', ' opacity="0"'), ('m0', '0', '')))
-    steps = [('s1', 'TITLE screen: PRESS START'), ('s2', 'Start (mask 128) → PLAY'), ('s3', 'Right+B (mask 33): run 48 px')]
+    mask_values = sorted({mask for _, _, _, mask, _ in SAMPLES if mask})
+    masks = ''.join(f'<text class="mv{value}" x="{px}" y="{my}" opacity="0" xml:space="preserve">'
+                    f'<tspan fill="{MUTED}">host input --mask </tspan>{value}</text>' for value in mask_values)
     ly = my + 40
-    legend = ''.join(f'<text class="{cls}" x="{px}" y="{ly + i * 24}">{i + 1}  {esc(text)}</text>' for i, (cls, text) in enumerate(steps))
+    last_sample = len(SAMPLES) - 1
+    legend = ''.join(f'<text class="g{i}" x="{px}" y="{ly}" opacity="{1 if i == last_sample else 0}">{i + 1}  {esc(text)}</text>'
+                     for i, (_, _, _, _, text) in enumerate(SAMPLES))
     height = sy + 144 * scale + PAD + 22
-    css = [
+
+    rules = [
         f'text{{font:13px {MONO};fill:{TEXT}}}.h{{font-size:11px;fill:{MUTED}}}',
-        f'.k-start rect,.k-run rect{{fill:{PANEL}}}',
-        '@keyframes title{0%,28%{opacity:1}28.1%,100%{opacity:0}}',
-        '@keyframes stand{0%,36%{opacity:1;transform:translateX(0)}36.1%,75.9%{opacity:0;transform:translateX(48px)}76%,100%{opacity:1;transform:translateX(48px)}}',
-        '@keyframes walk{0%,36%{opacity:0;transform:translateX(0)}36.1%{opacity:1;transform:translateX(0)}76%{opacity:1;transform:translateX(48px)}76.1%,100%{opacity:0;transform:translateX(48px)}}',
-        f'@keyframes lit{{0%,23.9%{{fill:{PANEL}}}24%,30%{{fill:{ACCENT}}}30.1%,100%{{fill:{PANEL}}}}}',
-        f'@keyframes run{{0%,35.9%{{fill:{PANEL}}}36%,76%{{fill:{ACCENT}}}76.1%,100%{{fill:{PANEL}}}}}',
-        f'@keyframes lit-text{{0%,23.9%{{fill:{TEXT}}}24%,30%{{fill:{PANEL}}}30.1%,100%{{fill:{TEXT}}}}}',
-        f'@keyframes run-text{{0%,35.9%{{fill:{TEXT}}}36%,76%{{fill:{PANEL}}}76.1%,100%{{fill:{TEXT}}}}}',
-        '@keyframes m128{0%,23.9%{opacity:0}24%,35.9%{opacity:1}36%,100%{opacity:0}}',
-        '@keyframes m33{0%,35.9%{opacity:0}36%,76%{opacity:1}76.1%,100%{opacity:0}}',
-        '@keyframes m0{0%,23.9%{opacity:1}24%,76%{opacity:0}76.1%,100%{opacity:1}}',
-        f'@keyframes s1{{0%,24%{{fill:{ACCENT}}}24.1%,100%{{fill:{MUTED}}}}}',
-        f'@keyframes s2{{0%,23.9%{{fill:{MUTED}}}24%,36%{{fill:{ACCENT}}}36.1%,100%{{fill:{MUTED}}}}}',
-        f'@keyframes s3{{0%,35.9%{{fill:{MUTED}}}36%,100%{{fill:{ACCENT}}}}}',
-        '@media (prefers-reduced-motion:no-preference){'
-        + ''.join(f'.{cls}{{animation:{cls} {loop}s {timing} infinite}}' for cls, timing in (
-            ('title', 'step-end'), ('stand', 'step-end'), ('walk', 'steps(24,end)'), ('m128', 'step-end'),
-            ('m33', 'step-end'), ('m0', 'step-end'), ('s1', 'step-end'), ('s2', 'step-end'), ('s3', 'step-end')))
-        + f'.k-start rect{{animation:lit {loop}s step-end infinite}}.k-run rect{{animation:run {loop}s step-end infinite}}'
-        + f'.k-start text{{animation:lit-text {loop}s step-end infinite}}.k-run text{{animation:run-text {loop}s step-end infinite}}}}',
+        f'g[class^="k"] rect{{fill:{PANEL}}}',
     ]
-    label = 'Springtrail start: title screen, Start press, then running right; frames from the independent game reference'
+    motion = []
+    for i, (sample_id, tick, hold, mask, text) in enumerate(SAMPLES):
+        start, end = starts[i], starts[i] + hold
+        rules.append(frame_window(f'f{i}', start, end, loop))
+        motion.append(f'.f{i}{{animation:f{i} {loop}s step-end infinite}}')
+        rules.append(frame_window(f'g{i}', start, end, loop))
+        motion.append(f'.g{i}{{animation:g{i} {loop}s step-end infinite}}')
+    for value in mask_values:
+        windows = [(starts[i], starts[i] + hold) for i, (_, _, hold, mask, _) in enumerate(SAMPLES) if mask == value]
+        rules.append(segments_css(f'mv{value}', 'opacity', 1, 0, windows, loop))
+        motion.append(f'.mv{value}{{animation:mv{value} {loop}s step-end infinite}}')
+    for index, label in enumerate(BUTTONS):
+        windows = button_windows[label]
+        if not windows:
+            continue
+        rules.append(segments_css(f'kr{index}', 'fill', ACCENT, PANEL, windows, loop))
+        rules.append(segments_css(f'kt{index}', 'fill', PANEL, TEXT, windows, loop))
+        motion.append(f'.k{index} rect{{animation:kr{index} {loop}s step-end infinite}}'
+                     f'.k{index} text{{animation:kt{index} {loop}s step-end infinite}}')
+    style = (''.join(rules) + '@media (prefers-reduced-motion:no-preference){' + ''.join(motion) + '}')
+
+    last = len(SAMPLES) - 1
+    layers = []
+    for i, pixels in enumerate(frames_px):
+        opacity = '1' if i == last else '0'
+        layers.append(f'<g class="f{i}" opacity="{opacity}">{paths(pixels)}</g>')
+
+    label = ('Springtrail played through: title, Start, a run, a jump over a gap, a pause and '
+            'resume, then a run into a patrol; every frame from the independent game reference')
     svg = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{WIDTH}" height="{height}" viewBox="0 0 {WIDTH} {height}" role="img" aria-label="{label}">',
-           f'<title>{label}</title><style>{"".join(css)}</style>',
+           f'<title>{label}</title><style>{style}</style>',
            f'<rect x=".5" y=".5" width="{WIDTH - 1}" height="{height - 1}" rx="10" fill="{PANEL}" stroke="{BORDER}"/>',
            f'<path d="M0 {BAR}.5H{WIDTH}" stroke="{BORDER}"/>',
            f'<circle cx="18" cy="15" r="5" fill="#ff5f57"/><circle cx="36" cy="15" r="5" fill="#febc2e"/><circle cx="54" cy="15" r="5" fill="#28c840"/>',
            f'<text class="h" x="{WIDTH / 2}" y="19" text-anchor="middle">Springtrail on the Game Boy screen · 160 × 144 · played at one tenth speed</text>',
            f'<g transform="translate({sx} {sy}) scale({scale})" shape-rendering="crispEdges">',
            '<rect width="160" height="144" fill="#ffffff"/>',
-           paths({(x, y): base[y][x] for y in range(144) for x in range(160) if base[y][x]}),
-           f'<g class="title" opacity="0">{paths(title_only)}</g>',
-           f'<g class="stand" transform="translate(48 0)">{paths(diff(started, base))}</g>',
-           f'<g class="walk" opacity="0">{paths(diff(walk[0], base))}</g>',
+           *layers,
            '</g>',
            f'<rect x="{sx - .5}" y="{sy - .5}" width="{160 * scale + 1}" height="{144 * scale + 1}" fill="none" stroke="{BORDER}"/>',
            f'<text class="h" x="{px}" y="{py + 12}">JOYP buttons (UART INPUT mask)</text>',
            *pills, masks, legend,
-           f'<text class="h" x="{PAD}" y="{height - 12}">Exact frames from src/dv/springtrail references; Start on the title screen begins PLAY, then Right+B runs 2 px per update.</text>',
+           f'<text class="h" x="{PAD}" y="{height - 12}">Exact frames from src/dv/springtrail; every mode and mask above is the real reference state.</text>',
            '</svg>']
     return '\n'.join(svg) + '\n'
 
@@ -304,7 +444,7 @@ def documents():
                                     'Real command output captured in one session. Long JSON lines are shortened with …; every shown field is verbatim.',
                                     BUILD, BUILD_LOOP),
         'board-session': terminal('Board session over UART · recorded shapes, not a live capture',
-                                  'Commands and replies follow wiki/tools/n2m/host/SPEC.md; dots follow the 70224-dot frame. Build ID and counters elided.',
+                                  'Commands/replies follow wiki/tools/n2m/host/SPEC.md; dots follow the 70224-dot frame; IDs elided.',
                                   BOARD, BOARD_LOOP),
         'game-start': game(),
     }
