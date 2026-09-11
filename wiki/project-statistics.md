@@ -31,7 +31,9 @@ For the current architecture and implementation boundaries, start at the
 A scheduled script on the owner's PC refreshes the snapshot without an agent.
 `tools/wiki/refresh_statistics.py` fetches `origin`, and stops when the source
 revision recorded in `wiki/statistics.html` on `origin/main` already equals
-`origin/main`. Otherwise it creates a worktree `worktrees/stats-refresh-<utc>/`
+`origin/main`, or when every commit since that revision changes only
+`wiki/statistics.html`, as a merged refresh does. Otherwise it creates a
+worktree `worktrees/stats-refresh-<utc>/`
 on a branch of the same name, runs the collector command below with
 `--revision origin/main`, commits the changed `wiki/statistics.html` alone, pushes,
 opens a non-draft pull request under the

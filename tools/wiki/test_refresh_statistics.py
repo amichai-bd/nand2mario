@@ -20,9 +20,13 @@ class FakeCommands:
     """Answer the script's git/gh calls from a scripted repository state."""
 
     def __init__(self, root, main=NEW, recorded=OLD, status=' M wiki/statistics.html\n',
-                 diff='wiki/statistics.html\n', fail=None, merged='MERGED'):
+                 diff='wiki/statistics.html\n', fail=None, merged='MERGED', log='1234567 Change a source file\n',
+                 heads=None, delete_error=None):
         self.root, self.main, self.recorded = root, main, recorded
         self.status, self.diff, self.fail, self.merged = status, diff, fail, merged
+        self.log = log
+        self.heads = f'{main}\trefs/heads/{BRANCH}\n' if heads is None else heads
+        self.delete_error = delete_error
         self.calls = []
 
     def __call__(self, args, cwd=None, timeout=120, check=True):
@@ -33,6 +37,12 @@ class FakeCommands:
             raise refresh.RefreshError(f'{key} exploded')
         if key == 'git rev-parse':
             return self.main + '\n'
+        if key == 'git log':
+            return self.log
+        if key == 'git ls-remote':
+            return self.heads
+        if key == 'git push' and '--delete' in args and self.delete_error:
+            raise refresh.RefreshError(f'git push origin failed (1): {self.delete_error}')
         if key == 'git show':
             return HTML.replace(OLD, self.recorded)
         if key == 'git worktree' and args[2] == 'add':
@@ -83,6 +93,24 @@ class RefreshTests(unittest.TestCase):
         self.assertIn(f'already records origin/main {NEW}', out)
         self.assertFalse((self.root / 'worktrees').exists())
         self.assertFalse((self.root / 'workdir/stats-refresh.lock').exists())
+
+    def test_only_refresh_commits_since_the_snapshot_skip_without_a_worktree(self):
+        fake = FakeCommands(self.root, log='')
+        code, out = self.execute(fake)
+        self.assertEqual(0, code)
+        self.assertEqual(['git fetch', 'git rev-parse', 'git show', 'git log'], fake.keys())
+        self.assertEqual(['git', 'log', '--oneline', f'{OLD}..{NEW}', '--', '.', ':!wiki/statistics.html'],
+                         fake.calls[-1][1])
+        self.assertIn('no changes besides statistics refreshes', out)
+        self.assertFalse((self.root / 'worktrees').exists())
+
+    def test_other_commits_since_the_snapshot_proceed(self):
+        fake = FakeCommands(self.root, log='1234567 Change a source file\n')
+        code, out = self.execute(fake)
+        self.assertEqual(0, code, out)
+        self.assertIn('git commit', fake.keys())
+        self.assertIn('gh pr merge', fake.keys())
+        self.assertNotIn('no changes besides', out)
 
     def test_collector_without_diff_cleans_up_and_exits_zero(self):
         fake = FakeCommands(self.root, status='')
@@ -143,6 +171,37 @@ class RefreshTests(unittest.TestCase):
         self.assertEqual(['git', 'push', 'origin', '--delete', BRANCH],
                          [args for key, args, _ in fake.calls if key == 'git push'][-1])
         self.assertLess(keys.index('gh pr close'), keys.index('git branch'))
+        self.assertFalse((self.root / 'worktrees' / BRANCH).exists())
+        self.assertFalse((self.root / 'workdir/stats-refresh.lock').exists())
+
+    def test_branch_auto_deleted_after_merge_is_not_a_failure(self):
+        fake = FakeCommands(self.root, heads='')
+        code, out = self.execute(fake)
+        self.assertEqual(0, code, out)
+        self.assertIn('gh pr merge', fake.keys())
+        self.assertEqual([], [args for key, args, _ in fake.calls if key == 'git push' and '--delete' in args])
+        self.assertIn(f'remote branch {BRANCH} was already deleted', out)
+        self.assertNotIn('gh pr close', fake.keys())
+        self.assertFalse((self.root / 'worktrees' / BRANCH).exists())
+
+    def test_missing_ref_error_texts_after_merge_are_tolerated(self):
+        for text in ("error: unable to delete 'x': remote ref does not exist",
+                     " ! [remote rejected] x (cannot lock ref 'refs/heads/x': unable to resolve reference 'refs/heads/x')"):
+            with self.subTest(text=text):
+                fake = FakeCommands(self.root, delete_error=text)
+                code, out = self.execute(fake)
+                self.assertEqual(0, code, out)
+                self.assertEqual(['git', 'push', 'origin', '--delete', BRANCH],
+                                 [args for key, args, _ in fake.calls if key == 'git push'][-1])
+                self.assertIn(f'remote branch {BRANCH} was already deleted', out)
+                self.assertFalse((self.root / 'worktrees' / BRANCH).exists())
+
+    def test_genuine_delete_failure_after_merge_still_fails(self):
+        fake = FakeCommands(self.root, delete_error=' ! [remote rejected] x (permission denied)')
+        code, out = self.execute(fake)
+        self.assertEqual(1, code)
+        self.assertIn('permission denied', out)
+        self.assertNotIn('gh pr close', fake.keys())
         self.assertFalse((self.root / 'worktrees' / BRANCH).exists())
         self.assertFalse((self.root / 'workdir/stats-refresh.lock').exists())
 

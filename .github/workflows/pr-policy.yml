@@ -81,7 +81,7 @@ jobs:
                   print(f"::error::Could not read changed files of PR #{number}: HTTP {error.code}.")
                   sys.exit(1)
               changed = sorted(entry["filename"] for entry in files)
-              if changed != ["wiki/statistics.html"]:
+              if changed != ["wiki/statistics.html"] or files[0].get("status") != "modified":
                   print(
                       "::error::Automated refresh may change only wiki/statistics.html; "
                       f"changed: {', '.join(changed) or 'nothing'}."

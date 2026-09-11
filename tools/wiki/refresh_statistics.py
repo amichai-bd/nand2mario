@@ -1,7 +1,9 @@
 """Refresh the committed statistics snapshot unattended: collect, commit, push, PR, merge.
 
 A scheduled run needs no agent. It does nothing when the snapshot at origin/main
-already records origin/main; otherwise it regenerates wiki/statistics.html in its
+already records origin/main, or when every commit since the recorded revision
+touches only wiki/statistics.html (a merged refresh moves origin/main by itself);
+otherwise it regenerates wiki/statistics.html in its
 own worktree and lands it through the automated PR class that the PR policy
 recognises: branch stats-refresh-<utc>, title "stats: refresh snapshot to <sha7>",
 body line "Refs #392", changed-file set exactly wiki/statistics.html.
@@ -78,14 +80,33 @@ def watch_checks(number):
     raise RefreshError(f'PR #{number} reported no checks after {CHECK_ATTEMPTS * CHECK_DELAY} seconds')
 
 
+MISSING_REF_TEXTS = ('remote ref does not exist', 'unable to resolve reference')
+
+
 def delete_remote_branch(branch):
-    """Remove the pushed branch; one GitHub already auto-deleted after merge is not a failure."""
+    """Remove the pushed branch; one GitHub already auto-deleted after merge is not a failure.
+
+    The repository deletes merged branches itself, so ask origin first; the error text
+    of a late push --delete varies between git versions, so both known forms are tolerated.
+    """
+    if not run(['git', 'ls-remote', '--heads', 'origin', branch], timeout=300).strip():
+        log(f'remote branch {branch} was already deleted')
+        return
     try:
         run(['git', 'push', 'origin', '--delete', branch], timeout=300)
     except RefreshError as error:
-        if 'remote ref does not exist' not in str(error):
+        if not any(text in str(error) for text in MISSING_REF_TEXTS):
             raise
         log(f'remote branch {branch} was already deleted')
+
+
+def other_changes(recorded, sha):
+    """True when a commit after the recorded revision touches anything but the snapshot.
+
+    A merged refresh is itself a commit on origin/main; without this guard every
+    hourly run after one would open another PR that records only the previous one.
+    """
+    return bool(run(['git', 'log', '--oneline', f'{recorded}..{sha}', '--', '.', f':!{SNAPSHOT}']).strip())
 
 
 class Refresh:
@@ -174,6 +195,9 @@ class Refresh:
         recorded = recorded_revision(run(['git', 'show', f'origin/main:{SNAPSHOT}']))
         if recorded == sha:
             log(f'snapshot already records origin/main {sha}; nothing to do')
+            return 0
+        if not other_changes(recorded, sha):
+            log(f'no changes besides statistics refreshes between {recorded[:7]} and origin/main {sha[:7]}; nothing to do')
             return 0
         log(f'snapshot records {recorded[:7]}; origin/main is {sha[:7]}')
         try:

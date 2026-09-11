@@ -148,7 +148,7 @@ is read from the PR files API rather than from the description.
 | Title | `stats: refresh snapshot to <sha7>` |
 | Body | contains a line `Refs #392`; no `Closes`, `Fixes` or `Resolves` reference |
 | Base | `main` |
-| Changed files | exactly `wiki/statistics.html` |
+| Changed files | exactly `wiki/statistics.html`, with files-API status `modified` |
 
 Any mismatch fails the check; the branch form does not fall back to the
 numbered rules, so a hand-made branch of that form is refused too. Only
