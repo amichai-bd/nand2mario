@@ -238,7 +238,7 @@ module tb_python_v05 #(
             wait(bus_commit && write_enable && address == 16'hc0fc);
             do @(negedge clk_sys);
             while (!(dut.raw_write && dut.raw_store == n2m_memory_pkg::STORE_WRAM &&
-                     dut.raw_offset == 15'h0084 && dut.raw_wdata == 8'd8));
+                     dut.raw_offset == 15'h0085 && dut.raw_wdata == 8'd8));
             $display("BLOCKS_HIT_MUTATION expected=8 actual=12 dot=%0d", dot_count);
             force dut.u_stores.ram_wdata = 8'd12;
             @(posedge clk_sys);
