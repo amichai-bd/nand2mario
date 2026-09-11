@@ -88,7 +88,7 @@ async def run(dut, short=False, renderer=False, motion=False, power=False):
                     dot=known(dut.dot_count)
                     assert dot>prior and not any(known(s) for s in (dut.fault,dut.reset_sys,dut.core_reset,dut.paused)), 'SPRINGTRAIL_PROGRESS'
                     prior=dot;consume()
-                    assert dot<(300000 if renderer else 310000),'HUD_WATCHDOG'
+                    assert dot<(320000 if renderer else 310000),'HUD_WATCHDOG'
                     if check.lcd is not None:
                         if short and check.pixels>=160:break
                         if renderer and check.halted:break

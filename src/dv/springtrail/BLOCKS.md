@@ -45,8 +45,10 @@ run before the LCD commit. This is an instruction-derived
 anchor checked by `python-mgs` and `python-mgu`. The pause fixture's loose
 startup window widens from 100000..160000 to 100000..200000 and its progress
 watchdog's startup allowance from 160000 to 200000 dots for the same reason,
-and the renderer fixture's own startup bound from 160000 to 200000 because it
-now loads the block art too.
+and the renderer fixture's own startup bound from 160000 to 200000 and its
+progress watchdog from 300000 to 320000 dots, because it now loads the block
+art too. No game or unit target's bound moves: only the fixtures whose startup
+grew.
 
 ## Acceptance matrix
 
