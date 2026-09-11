@@ -53,6 +53,7 @@ LD A,$E4
 LDH [$FF47],A
 LDH [$FF48],A
 CALL InitHUD
+CALL InitMotionArt
 CALL PrepareScene
 CALL PrepareHUD
 CALL PrepareMap

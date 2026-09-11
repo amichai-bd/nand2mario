@@ -1,4 +1,130 @@
-# Movement proof
+# Movement and animation acceptance
+
+The [owning motion contract](../../../wiki/src/sw/springtrail/MOVEMENT.md)
+separates source-confirmed local rules from approved original choices. The pure
+`motion_reference.py` and its literal host cases were frozen before product
+movement changed. Current `motion_game_reference.py` checks original24-byte
+player/motion state plus existing game fields, complete prepared shadow pages,
+all98 tile loads, actual IRQ/JOYP/publication order and retained complete pixels.
+The actual CPU fixture also executes the existing UpdateGame mode dispatcher.
+
+## Current instruction and execution bounds
+
+Current startup LCD commit is139388 dots, derived from accepted HUD startup
+136560 plus280 for initializing ten motion bytes,2628 for CALL plus the64-byte
+approved skid copy, minus96 for the shorter title pose selector, plus16 for the
+new small-skid size branch. This is an instruction-derived anchor, not a value
+chosen from DUT output. `python-mgs` exercises that full startup through at least
+160 blank pixels, normal host HALT, settled hold and counted trace END. Its
+90ms simulation watchdog and existing300-second whole supervisor remain active.
+
+VBlank code is unchanged: retain the [HUD publication4388 bound/4480 ceiling](HUD_COLUMNS.md#instruction-bounds).
+Current shared CPU ceilings are7960 dots for StepPlayer including marker/call,
+892 for InitPlayer and18000 for UpdateGame. The static tally counts all branch
+bodies, then adds the bounded repeated work: at most three horizontal rows,
+two vertical/support columns and four item iterations. StepPlayer is
+7320+2*152+116+120+100=7960. UpdateGame is
+2900+7860+892+5*600+23*84+3*432+120=18000. These conservative sums intentionally
+include mutually exclusive branches. The fixture enforces8000/20000 call caps;
+40 calls (32 step, one init, seven actual mode dispatches),1700 setup per call
+and1000 tail give473000 dots, below its500000 guard. Short/full simulation
+watchdogs are35/150ms; neither this dot ceiling nor static proof establishes
+full-run wall feasibility. Measure the complete first-Right short before that
+decision. Old4200 arithmetic below cannot qualify current motion.
+
+Visible preparation retains the49280 ceiling:25000 scene,3000 columns,512 HUD,
+20000 game update,512 STAT allowance and256 dispatch. The new UpdateGame bound
+is18000. The longest current pose selector is168 dots, shorter than the prior
+accepted selector's over200-dot moving path; ComposeCourier adds only16 dots
+to existing pose paths. Skid keeps four pieces and skips the large-Y adjustment.
+Unchanged piece loops and full tail clearing therefore remain within the broad
+25000 scene allowance. The current checker enforces the final full-shadow
+ready deadline, not only the first active entries.
+
+The first game update expects
+X25,Y112,VX1,VY0, counter1,directionRight,speed0,phase1,animation2,STAND; it prepares
+that state after the first VBlank and publishes it at the next. The retained
+normal output frame is the prior prepared TITLE; independent rendered motion
+states are covered separately, not claimed as this run's visible gameplay.
+
+## Acceptance matrix
+
+This is the single acceptance matrix for #301. Host expectations in
+`motion_reference.py` and `motion_cases.py` were frozen before the motion code;
+the instruction/dot bounds above were frozen before each run. The
+[measured durations](#measured-durations) below record the producing evidence.
+
+| Group | Required result | Execution |
+| --- | --- | --- |
+| Contract/model | Literal per-update walk/run/coast/reverse/opposite inputs; jump hold/release/apex/fall, steering, walls/ceiling/landing; phase/counter wrap; mode pause/resume/restart and pose/facing precedence | Independent pure Python cases, no DUT-fed expectations |
+| Shared CPU | Actual InitPlayer/StepPlayer and UpdateGame bytes; every expected state byte after each scripted call, completion and settled halt | Complete short harness, then finite full case set |
+| Game schedule | Actual game boot, sampled Start+Right, prior prepared title then first moved scene; complete pixels/state/input, one update/token and unchanged HUD/STAT/DMA ownership | Existing continuous Python/Intel preload, short completion then affected full game |
+| Rendered states | Approved WALK cycle and skid mappings, both facings, exact tile bytes and unchanged HUD masking; actual shared composer consumes seeded original operands | Host all-state pixels plus one bounded complete renderer fixture |
+| Fault | A real movement consumer mutation rejected at the first differing state by the unchanged positive checker; retain failed receipt | Shortest useful CPU case, after positive proof |
+| Consumer qualification | Historical fixed-physics/current-ROM consumers either gain independently current expectations or reject incompatible current ROM/source before use | Focused host guards; no relabelled old full-route evidence |
+| Delivery | Owning SW/DV/asset links and previews, original32KiB reproducible image, affected host checks, required CI and current-head independent review | No new art approval or full hardware milestone replay |
+
+The fixed renderer seeds WALK2 facing right at world X120,Y12 and camera97,
+with prior published camera95. After the shared PrepareScene writes all160
+bytes, a second actual ComposeCourier writes16 approved SKID-left bytes at
+C140..C14F for screen X60,Y32. The checker requires both stages in order,
+the remaining80 zero tail, both complete160-byte DMA transfers, all98 loaded
+tiles and every pixel of the displayed frame. The entering column32 is visible
+at X159. No gameplay update or extra feature is inferred from these operands.
+`python-mr` uses the complete two-VBlank/terminal/settled-HALT harness, with
+LCD-off startup bounded by160000 dots and total progress by300000 dots.
+
+`python-mux` changes the actual first rightward VX store from16 to0 after the
+first CPU call marker. The public write trace remains unchanged; the unchanged
+positive checker must reject the consumed wrong X/state, with the mutation
+marker and failed receipt retained. Host artifact corruption is not this fault.
+
+Historical HUD fixtures pin the prior movement/courier sources; the old HUD
+game checkers pin ROM adbef6b0 and refuse the current image, a gap
+[#363](https://github.com/amichai-bd/nand2mario/issues/363) owns. Earlier fixed-physics CPU units and physical route drivers
+also reject incompatible current sources/ROMs before assembly or traffic.
+Literal world/terrain helpers remain usable; old trajectory evidence is not
+relabelled. Current replacements are the motion CPU/game/renderer targets above.
+
+## Measured durations
+
+All six targets complete on the actual simulator. Measured whole-run supervisor
+walls, from each receipt's `wall-budget` record:
+
+| Target | Wall (s) | Limit (s) | Result |
+| --- | --- | --- | --- |
+| `python-mus` | 35.1 | 300 | PASS, 6.92 ms simulated |
+| `python-mux` | 35.4 | 300 | intended fault, receipt retained |
+| `python-mgs` | 192.4 | 300 | PASS, 39.08 ms simulated |
+| `python-mut` | 217.1 | 300 | PASS, 47.07 ms simulated |
+| `python-mgu` | 378.0 | 420 declared | PASS, 72.37 ms simulated |
+| `python-mr` | 361.6 | 420 declared | PASS, 67.93 ms simulated |
+
+The declared aggregate is 1219 seconds across the six targets, each inside its
+own selected wall. `python-mgs` runs at about 250223 ns of simulated time per
+simulator second. At that rate the full game's roughly 256500 dots need about
+244 simulator seconds and the renderer's 300000-dot bound about 286, which
+leaves no room for preload, compile check and cleanup inside the 300-second
+default; both stopped at the 288-second execution limit before the allowance
+existed. Neither overrun was a checker or DUT defect. `python-mgu` and
+`python-mr` therefore declare a 420-second `wall_allowance` in
+`src/dv/builder/targets.json` with that measured reason, under the
+[declared wall allowance](../../../wiki/tools/n2m/SPEC.md#declared-wall-allowance)
+rule; the other four keep the 300-second default. The reserved 12 cleanup
+seconds apply unchanged, so the two declared targets execute within 408
+seconds, leaving 30 to 46 seconds of headroom on the measuring host. A slower
+host surfaces a supervised budget failure, not a wrong result.
+
+No extra duration or coverage quota is introduced. Unchanged
+hardware/transport/STAT baseline evidence is reused only with explicit input and
+behavior qualification.
+
+## Historical fixed-physics proof
+
+Everything below records the earlier fixed-physics ROM/routines. Its numeric
+contracts and85-step evidence are historical; current changed images must not
+consume these old expectations. Literal terrain helpers remain unchanged.
+
 
 The owning [verification matrix](../../../wiki/src/dv/springtrail/SPEC.md#movement-matrix)
 separates the actual CPU routine proof, short composed game and whole-game FPGA

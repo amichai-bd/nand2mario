@@ -10,12 +10,15 @@ from n2m import generated_interfaces as abi
 from flow_physical_reference import PERIOD, STAGES, plan, schedule, predict, expected_snapshot
 from interactions_reference import PLAYING, PAUSED, WON, RETRY
 
+BASELINE_ROM_SHA256 = '7d63b067c61697d0c02f2dee9eca3cbdff3494a1f790c390304dbb0c8b6e15c9'
+
 DOT_HZ = 4194304
 
 
 def run(client, rom, folder, log, expected_build, prior, lcd, mode,
         *, renderer=None, sleep=time.sleep, clock=time.monotonic, continuation=None):
     """Caller owns verified setup, immutable package, session and300s supervisor."""
+    assert hashlib.sha256(rom).hexdigest() == BASELINE_ROM_SHA256, 'HISTORICAL_PHYSICAL_ROM: fixed-physics route requires its original ROM'
     folder = Path(folder)
     segments, captures = plan(mode)
     changes, count = schedule(segments)

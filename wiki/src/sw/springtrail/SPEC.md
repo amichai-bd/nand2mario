@@ -53,8 +53,8 @@ once-per-frame updates and the approved prepared-scene delay are unchanged.
 The [approved original character art](CHARACTER_ART.md) supplies the 32-tile
 courier bank and twelve pose maps. The [8x8 composer](COMPOSITION.md) supports
 both facing directions, signed clipping and small/large geometry. Normal play
-uses small poses; animation cadence and runtime size transitions remain
-separate open work in the alignment contract.
+uses small poses with the [movement and animation contract](MOVEMENT.md).
+Runtime power/size transitions remain open in the alignment contract.
 
 The game has title, playing, paused, retry and won states. Core reset starts at
 the title. A retry or restart restores the initial player, camera, enemy,
@@ -62,8 +62,8 @@ collectibles and score; it does not preserve a hidden life counter or randomness
 
 | Button | Behavior |
 |---|---|
-| Left / Right | Move horizontally while playing; both held cancel horizontal intent |
-| B | Run while held with a direction; otherwise use walking speed |
+| Left / Right | Move horizontally while playing; Right takes priority when both are held, subject to reversal hold |
+| B | Select the run speed class under the movement contract |
 | A | Jump on a new press while grounded; holding A does not queue another jump |
 | Start | Title: start; playing: pause; paused: resume; retry/won: restart the level |
 | Select | Restart the level only while paused; ignored elsewhere |
@@ -78,7 +78,7 @@ Use a single original 96-by-18 grid of 8-by-8 tiles, viewed through the normal
 160-by-144 DMG image. An 8-by-16 player has an axis-aligned collision box.
 The camera follows horizontal player position, clamped to the level edges;
 camera movement cannot change world-space collisions. Platforms are solid from
-all sides; there are no slopes, moving platforms or one-way surfaces. Gravity,
+all sides; there are no slopes, moving platforms or one-way surfaces. Vertical motion,
 jump, landing and wall/ceiling collision must be deterministic. Falling below
 the level or contacting the enemy enters retry. The walking enemy reverses at
 its specified patrol endpoints. No stomp or combat mechanic is required.
@@ -92,15 +92,14 @@ The playfield retains world y coordinates in rows 16..143; neither the collision
 world nor the ground at y=128 moves. HUD clipping hides only object pixels above
 row 16, preserving the lower part of a crossing piece.
 
-The following constants are frozen for dependent implementation. Positions and
-velocities use signed 16-bit units of 1/16 pixel (range -2048..2047.9375).
-Walking speed is 1 pixel/frame and running
-speed is 2; horizontal velocity changes immediately with intent (no acceleration
-or momentum). Gravity is 1/4 pixel/frame squared, jump impulse is -5.25 pixels/frame,
-and downward velocity is capped at 4 pixels/frame. The initial player top-left is
-(24, 112), grounded on tile row 16, with camera x=0. The camera anchor is screen
-x=72 and its clamp is 0..608 pixels. The enemy starts at (256, 120), moves right
-at 1/2 pixel/frame, and patrols x=240..296 inclusive.
+The [movement contract](MOVEMENT.md) owns counter/phase-based acceleration,
+coasting, reversal hold, run selection, jump profiles, release response and pose
+cadence. These are approved original best-effort rules, not a claim of complete
+SML1 equivalence. Positions and reported velocities use signed 16-bit units of
+1/16 pixel. The initial player top-left is (24, 112), grounded on tile row 16,
+with camera x=0. The camera anchor is screen x=72 and its clamp is 0..608 pixels.
+The enemy starts at (256, 120), moves right at 1/2 pixel/frame, and patrols
+x=240..296 inclusive.
 
 The renderer has one displayed frame of input-to-publication delay (about
 16.7 ms). Each VBlank
@@ -115,10 +114,12 @@ Title removal and restart map/SCX changes accompany the published scene,
 not the newly computed logical transition. Pause freezes game state while
 publication continues; inactive map restoration may continue while paused.
 
-Each VBlank samples JOYP once. Process restart/pause first, then horizontal
-intent, grounded jump edge, gravity, horizontal motion/collision, vertical
-motion/collision, enemy motion, death, collection, goal, and camera, in that
-order. A jump applies its impulse before that update's gravity. Resolve each axis
+Each VBlank samples JOYP once. Process restart/pause first. A playing update
+selects run/jump state, advances animation, resolves horizontal motion/collision,
+then vertical profile motion/collision, updates camera, then resolves interactions. Scene
+preparation reads that resulting state without advancing animation. The
+[movement contract](MOVEMENT.md) fixes the exact precedence and original choices.
+Resolve each axis
 against all solid tiles touched by the half-open collision box, using floor of
 the fixed-point coordinate. Snap to the contacted tile edge and clear velocity
 on that axis; only downward contact sets grounded. Test interactions after both

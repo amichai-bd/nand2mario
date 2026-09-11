@@ -183,6 +183,15 @@ prepared columns. #316, #318 and #321 change what is drawn every frame, so the
 every-frame acquisition and the frozen SameBoy reference profile in
 `src/dv/sameboy/springtrail.json` remain bound to `b551c562...8ba667` only.
 
+#301 has since replaced movement and animation, so the repository no longer
+builds `adbef6b0...e109f369`. The HUD game checker pins that hash
+(`hud_game_reference.py`, `HISTORICAL_HUD_ROM`), so `python-hgs`, `python-hgu`
+and `python-hgx` refuse the current build; they join the targets
+[#363](https://github.com/amichai-bd/nand2mario/issues/363) owns. The
+composed proofs on the image the repository builds today are `python-mgs` and
+`python-mgu`, whose checker pins no hash; the
+[movement plan](MOVEMENT.md#measured-durations) records their results.
+
 ### Declared bounded checkpoint script
 
 Declared before execution under the
@@ -290,7 +299,7 @@ individual test that demonstrably needs more than 300, and is far below the
 
 ### What this does and does not establish
 
-Established on `adbef6b0...e109f369`: the blank boot frame, the title frame,
+Established on `adbef6b0...e109f369`, the pre-#301 image: the blank boot frame, the title frame,
 the first scripted input and its complete publication, every pixel of both
 frames, and a settled paused end state, all against independent expectations.
 

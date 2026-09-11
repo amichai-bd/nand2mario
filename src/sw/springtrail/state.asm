@@ -51,3 +51,15 @@ PreparedColumn EQU $C052
 PreparedColumns EQU $C053
 ColumnCache EQU $C200
 HUDCache EQU $C220
+
+; Original motion state. Scene preparation reads pose/facing without advancing it.
+MoveCounter EQU $C060
+MoveDirection EQU $C061
+MoveSpeed EQU $C062
+MovePhase EQU $C063
+AnimationCounter EQU $C064
+MotionPose EQU $C065
+JumpState EQU $C066
+JumpIndex EQU $C067
+SavedJumpIndex EQU $C068
+MotionFacing EQU $C069

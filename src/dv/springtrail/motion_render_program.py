@@ -1,4 +1,4 @@
-"""Original fixed renderer operands using unchanged game publication routines."""
+"""Fixed WALK2-right and approved SKID-left through shared renderer routines."""
 import hashlib
 import json
 import sys
@@ -8,21 +8,20 @@ def build(root, destination):
     prior = sys.path[:]
     try:
         sys.path[:0] = [str(root/'tools'), str(root/'src/dv/springtrail')]
-        from hud_reference import require_historical_source
-        require_historical_source(root)
         from sw.assembler import assemble
         from sw.linker import link
         from sw.package import package
         from sw.assets import load_shades, encode_shades
         from sw.columns import validate
-        from interaction_cases import ADDRESSES, state_bytes
-        from interactions_reference import Game, Player
+        from motion_cases import ADDRESSES, state_bytes
+        from interactions_reference import Game
+        from motion_reference import Player
         validate(root)
         destination.mkdir(parents=True, exist_ok=True)
         source = root/'src/sw/springtrail'
         for path in source.glob('*.asm'):
             (destination/path.name).write_bytes(path.read_bytes())
-        game = Game(mode=1, player=Player(x=120*16, y=12*16, camera=97))
+        game = Game(mode=1, player=Player(x=120*16, y=12*16, camera=97, pose=2))
         lines = ['SECTION "code",ROM', 'Start:', 'DI', 'LD SP,$DFFE',
                  'XOR A,A', 'LDH [$FF40],A', 'LDH [$FF0F],A',
                  'LD [$FFFF],A', 'LDH [$FF43],A', 'LDH [$FF42],A',
@@ -40,12 +39,17 @@ def build(root, destination):
         lines += ['LD A,[HL+]', 'LD [DE],A', 'INC DE']*16
         lines += ['DEC B', 'JR NZ,TileBlock', 'LD HL,$9800', 'LD B,64',
                   'XOR A,A', 'ClearHUD:', 'LD [HL+],A', 'DEC B',
-                  'JR NZ,ClearHUD', 'CALL InitHUD', 'LD A,$E4',
+                  'JR NZ,ClearHUD', 'CALL InitHUD', 'CALL InitMotionArt', 'LD A,$E4',
                   'LDH [$FF47],A', 'LDH [$FF48],A', 'RingColumn:',
                   'LD A,[$C054]', 'LD DE,$C200', 'CALL DecodeColumn',
                   'LD A,[$C054]', 'LD HL,$C200', 'CALL PublishColumn',
                   'LD A,[$C054]', 'INC A', 'LD [$C054],A', 'CP A,32',
-                  'JR NZ,RingColumn', 'CALL PrepareScene', 'CALL PrepareHUD',
+                  'JR NZ,RingColumn', 'CALL PrepareScene',
+                  'LD DE,$C140', 'LD A,60', 'LD [SceneBaseX],A',
+                  'LD A,32', 'LD [SceneBaseY],A', 'LD [CourierFacing],A',
+                  'XOR A,A', 'LD [SceneBaseX+1],A', 'LD [SceneBaseY+1],A',
+                  'LD [SceneHidden],A', 'LD A,12', 'LD [CourierPose],A',
+                  'CALL ComposeCourier', 'CALL PrepareHUD',
                   'CALL PrepareMap', 'CALL PublishHUD', 'CALL PublishScene',
                   'XOR A,A', 'LDH [$FF0F],A', 'LD A,15', 'LDH [$FF45],A',
                   'LD A,$40', 'LDH [$FF41],A', 'LD A,3', 'LD [$FFFF],A',
@@ -76,26 +80,29 @@ def build(root, destination):
         layout = json.loads((source/'layout.json').read_text())
         layout['sections'] = [dict(row, unit='program.asm') for row in layout['sections']]
         linked = link([('program.asm', obj)], layout, dict(unit='program.asm', symbol='Start'))
-        image = package(linked, 'HUD RENDER', 1)
+        image = package(linked, 'MOTION RENDER', 1)
         (destination/'program.gb').write_bytes(image)
         # Branch-inclusive startup allowances: each of 32 columns has at most
         # four runs/16 stores, one unrolled publication and counter overhead
-        # (<1875 dots). Font/HUD includes both cleared rows. Preparation includes
-        # the complete scene, one entering decode, both HUD copies and DMA.
+        # (<1875 dots). Font/HUD includes both cleared rows and InitMotionArt.
+        # Preparation includes the complete scene, four added skid pieces,
+        # one entering decode, both HUD copies and DMA. PrepareScene clears
+        # C140..C19F first; ComposeCourier replaces only C140..C14F.
         # The second VBlank is 135888 dots after LCD enable; 1112 covers its
         # shared ISR, token consumption, terminal write and final HALT.
         record = dict(sha256=hashlib.sha256(image).hexdigest(),
                       operands=dict(state=list(state_bytes(game)), old_camera=95,
-                                    camera=97, old_camera_tile=11, entering_column=32),
-                      lcd_bound=150000, end_bound=300000,
-                      budget=dict(tile_copy=29624, font_hud=20000, ring=60000,
-                                  preparation=30000, setup=10000,
-                                  lcd_off_total=149624, two_vblanks_and_tail=137000),
+                                    camera=97, old_camera_tile=11, entering_column=32,
+                                    secondary=dict(pose=12, facing=32, x=60, y=32, address=0xc140)),
+                      lcd_bound=160000, end_bound=300000,
+                      budget=dict(tile_copy=29624, font_hud=24000, ring=60000,
+                                  preparation=35000, setup=10000,
+                                  lcd_off_total=158624, two_vblanks_and_tail=137000),
                       shared_sections={row['section']:hashlib.sha256(image[row['address']:row['address']+row['size']]).hexdigest()
                                        for row in linked['map']['sections']
                                        if row['section'] not in ('code', 'assets')})
-        (destination/'hud-render.json').write_text(json.dumps(record, indent=2)+'\n')
-        (destination/'hud-render-listing.json').write_text(json.dumps(linked['listing'], indent=2)+'\n')
+        (destination/'motion-render.json').write_text(json.dumps(record, indent=2)+'\n')
+        (destination/'motion-render-listing.json').write_text(json.dumps(linked['listing'], indent=2)+'\n')
         return image
     finally:
         sys.path[:] = prior

@@ -15,11 +15,18 @@ from n2m.preload import verify, adopt
 from hud_game_reference import Check
 
 
-async def run(dut, short=False, renderer=False):
-    if renderer:
+async def run(dut, short=False, renderer=False, motion=False):
+    if motion and renderer:
+        from motion_render_reference import Check
+    elif motion:
+        from motion_game_reference import Check
+    elif renderer:
         from hud_render_reference import Check
     else:
         from hud_game_reference import Check
+    if not motion and not renderer:
+        from hud_game_reference import require_baseline_rom
+        require_baseline_rom(Path('program.gb').read_bytes())
     received=Queue(); entries=[]; check=Check(short); tasks=[]
     with Path('transactions.jsonl').open('w') as journal:
         def log(kind,**fields):
@@ -106,6 +113,8 @@ async def run(dut, short=False, renderer=False):
                 rom=Path('program.gb').read_bytes()
                 from hud_reference import CHARS,MAPS
                 tile_bytes=rom[0xc00:0x10a0]+b''.join(rom[0x6000+MAPS['glyph-'+c]['pieces'][0]['tile']*16:0x6010+MAPS['glyph-'+c]['pieces'][0]['tile']*16] for c in CHARS)
+                if motion:
+                    tile_bytes += rom[0x6100:0x6140]
                 summary=check.finish(pause,tile_bytes)
                 for frame,data in enumerate(check.frames):Path(f'frame-{frame}.shades').write_bytes(data)
                 Path('summary.json').write_text(json.dumps(summary,indent=2)+'\n')

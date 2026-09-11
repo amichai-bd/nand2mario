@@ -11,6 +11,15 @@ INC DE
 LD [HL+],A
 DEC B
 JR NZ,InitLoop
+LD HL,MoveCounter
+LD B,10
+XOR A,A
+InitMotionLoop:
+LD [HL+],A
+DEC B
+JR NZ,InitMotionLoop
+INC A
+LD [AnimationCounter],A
 RET
 InitialPlayer:
 DB $80,$01,$00,$07,0,0,0,0,1,0,0,0,0,0
@@ -19,69 +28,8 @@ StepPlayer:
 LD A,[Fell]
 OR A,A
 JP NZ,RememberButtons
-; Horizontal intent has no inertia. Both directions cancel.
-LD HL,0
-LD A,[Buttons]
-AND A,$03
-CP A,$01
-JR Z,GoRight
-CP A,$02
-JR Z,GoLeft
-JR SaveVX
-GoRight:
-LD HL,$0010
-LD A,[Buttons]
-AND A,$20
-JR Z,SaveVX
-LD HL,$0020
-JR SaveVX
-GoLeft:
-LD HL,$FFF0
-LD A,[Buttons]
-AND A,$20
-JR Z,SaveVX
-LD HL,$FFE0
-SaveVX:
-LD A,L
-LD [VelocityX],A
-LD A,H
-LD [VelocityX+1],A
-; A is an edge, not a queued held jump.
-LD A,[Buttons]
-AND A,$10
-JR Z,Gravity
-LD A,[Previous]
-AND A,$10
-JR NZ,Gravity
-LD A,[Grounded]
-OR A,A
-JR Z,Gravity
-LD A,$AC
-LD [VelocityY],A
-LD A,$FF
-LD [VelocityY+1],A
-Gravity:
-LD A,[VelocityY]
-LD L,A
-LD A,[VelocityY+1]
-LD H,A
-LD DE,$0004
-ADD HL,DE
-BIT 7,H
-JR NZ,SaveVY
-LD A,H
-OR A,A
-JR NZ,CapFall
-LD A,L
-CP A,$40
-JR C,SaveVY
-CapFall:
-LD HL,$0040
-SaveVY:
-LD A,L
-LD [VelocityY],A
-LD A,H
-LD [VelocityY+1],A
+CALL SelectMotion
+CALL HorizontalMotion
 ; Horizontal candidate, then world and tile boundaries.
 LD A,[PlayerX]
 LD L,A
@@ -177,6 +125,11 @@ XOR A,A
 LD [VelocityX],A
 LD [VelocityX+1],A
 Vertical:
+CALL VerticalMotion
+; A supported stationary player keeps contact without a synthetic gravity step.
+LD A,[JumpState]
+OR A,A
+JP Z,FinishMove
 XOR A,A
 LD [Grounded],A
 LD A,[PlayerY]
@@ -234,16 +187,24 @@ JR YCells
 BlockY:
 LD A,[VelocityY+1]
 BIT 7,A
-LD A,[Row]
 JR NZ,BlockHead
-DEC A
-DEC A
-PUSH AF
-LD A,1
+XOR A,A
+LD [JumpState],A
+LD [JumpIndex],A
+LD [SavedJumpIndex],A
+INC A
 LD [Grounded],A
-POP AF
+LD A,[Row]
+DEC A
+DEC A
 JR YBoundary
 BlockHead:
+LD A,2
+LD [JumpState],A
+XOR A,A
+LD [JumpIndex],A
+LD [SavedJumpIndex],A
+LD A,[Row]
 INC A
 YBoundary:
 CALL TileBoundary
@@ -292,6 +253,403 @@ LD [Camera+1],A
 RememberButtons:
 LD A,[Buttons]
 LD [Previous],A
+RET
+
+; Original implementation of the approved reference-informed update order.
+SelectMotion:
+LD A,[Buttons]
+BIT 5,A
+JR Z,MotionReleaseB
+LD A,[JumpState]
+OR A,A
+JR NZ,MotionJumpEdge
+LD A,[MoveCounter]
+CP A,3
+LD A,2
+JR C,MotionSpeed
+LD A,4
+MotionSpeed:
+LD [MoveSpeed],A
+JR MotionJumpEdge
+MotionReleaseB:
+LD A,[MoveSpeed]
+CP A,4
+JR NZ,MotionJumpEdge
+LD A,2
+LD [MoveSpeed],A
+MotionJumpEdge:
+LD A,[Buttons]
+BIT 4,A
+JR Z,MotionBEdge
+LD A,[Previous]
+BIT 4,A
+JR NZ,MotionBEdge
+LD A,[JumpState]
+OR A,A
+JR NZ,MotionBEdge
+LD A,[Grounded]
+OR A,A
+JR Z,MotionBEdge
+XOR A,A
+LD [Grounded],A
+LD [SavedJumpIndex],A
+LD [JumpIndex],A
+LD A,[MoveSpeed]
+CP A,4
+JR Z,MotionStartJump
+LD A,2
+LD [MoveSpeed],A
+LD [JumpIndex],A
+MotionStartJump:
+LD A,1
+LD [JumpState],A
+LD A,4
+LD [MotionPose],A
+LD A,48
+LD [MoveCounter],A
+MotionBEdge:
+LD A,[Buttons]
+BIT 5,A
+JR Z,MotionAnimate
+LD A,[Previous]
+BIT 5,A
+JR NZ,MotionAnimate
+LD A,[MoveCounter]
+CP A,6
+JR NZ,MotionAnimate
+XOR A,A
+LD [MoveCounter],A
+MotionAnimate:
+LD A,[Grounded]
+OR A,A
+RET Z
+LD A,[AnimationCounter]
+AND A,3
+RET NZ
+LD A,[MotionPose]
+CP A,3
+JR C,MotionAdvancePose
+XOR A,A
+MotionAdvancePose:
+INC A
+LD [MotionPose],A
+RET
+
+HorizontalMotion:
+XOR A,A
+LD [VelocityX],A
+LD [VelocityX+1],A
+LD A,[MoveDirection]
+CP A,3
+JR NZ,MotionIntent
+LD A,[MoveCounter]
+OR A,A
+JR Z,MotionClearReverse
+DEC A
+LD [MoveCounter],A
+RET
+MotionClearReverse:
+XOR A,A
+LD [MoveDirection],A
+JP MotionStand
+MotionIntent:
+LD A,[MoveCounter]
+CP A,6
+JR NZ,MotionButtons
+LD A,[MoveSpeed]
+OR A,A
+JR NZ,MotionButtons
+LD A,2
+LD [MoveSpeed],A
+MotionButtons:
+LD A,[Buttons]
+BIT 0,A
+LD B,1
+JR NZ,MotionDirection
+BIT 1,A
+LD B,2
+JR NZ,MotionDirection
+LD A,[MoveCounter]
+OR A,A
+JR Z,MotionStop
+DEC A
+LD [MoveCounter],A
+XOR A,A
+LD [MoveSpeed],A
+LD A,[MoveDirection]
+OR A,A
+RET Z
+LD B,A
+JR MotionDirection
+MotionStop:
+XOR A,A
+LD [MoveDirection],A
+JP MotionStand
+MotionDirection:
+LD A,[MoveDirection]
+OR A,A
+JR Z,MotionAcceptDirection
+CP A,B
+JR Z,MotionAcceptDirection
+LD A,3
+LD [MoveDirection],A
+LD A,8
+LD [MoveCounter],A
+LD A,[JumpState]
+OR A,A
+RET NZ
+LD A,5
+LD [MotionPose],A
+LD A,1
+LD [AnimationCounter],A
+RET
+MotionAcceptDirection:
+XOR A,A
+BIT 1,B
+JR Z,MotionFacingSaved
+LD A,$20
+MotionFacingSaved:
+LD [MotionFacing],A
+LD A,[Buttons]
+AND A,B
+JR Z,MotionDisplacement
+LD A,[MoveCounter]
+CP A,6
+JR Z,MotionDisplacement
+INC A
+LD [MoveCounter],A
+LD A,B
+LD [MoveDirection],A
+MotionDisplacement:
+LD A,[MovePhase]
+XOR A,1
+LD [MovePhase],A
+LD C,A
+LD A,[MoveSpeed]
+OR A,A
+LD A,C
+JR Z,MotionDistance
+LD A,[MoveSpeed]
+CP A,2
+LD A,1
+JR Z,MotionDistance
+ADD A,C
+MotionDistance:
+SWAP A
+LD L,A
+LD H,0
+BIT 1,B
+JR Z,MotionRightVelocity
+XOR A,A
+SUB A,L
+LD L,A
+SBC A,A
+LD H,A
+LD A,[AnimationCounter]
+DEC A
+JR MotionAnimationSaved
+MotionRightVelocity:
+LD A,[AnimationCounter]
+INC A
+MotionAnimationSaved:
+LD [AnimationCounter],A
+LD A,L
+LD [VelocityX],A
+LD A,H
+LD [VelocityX+1],A
+RET
+MotionStand:
+LD A,[JumpState]
+OR A,A
+RET NZ
+LD [MotionPose],A
+LD [MoveSpeed],A
+INC A
+LD [AnimationCounter],A
+RET
+
+VerticalMotion:
+LD A,[JumpState]
+CP A,1
+JR NZ,MotionRestoreIndex
+LD A,[Buttons]
+BIT 4,A
+JR NZ,MotionRestoreIndex
+LD A,[JumpIndex]
+CP A,15
+JR NC,MotionRestoreIndex
+OR A,A
+JR Z,MotionSaveRelease
+DEC A
+MotionSaveRelease:
+LD [SavedJumpIndex],A
+LD A,15
+LD [JumpIndex],A
+MotionRestoreIndex:
+LD A,[JumpState]
+CP A,1
+JR Z,MotionTryRestore
+CP A,2
+JR NZ,MotionCheckSupport
+MotionTryRestore:
+LD A,[JumpIndex]
+CP A,15
+JR NC,MotionCheckSupport
+LD A,[SavedJumpIndex]
+OR A,A
+JR Z,MotionCheckSupport
+LD [JumpIndex],A
+XOR A,A
+LD [SavedJumpIndex],A
+MotionCheckSupport:
+LD A,[JumpState]
+OR A,A
+JR NZ,MotionVerticalStep
+CALL MotionSupport
+OR A,A
+JR Z,MotionStartFall
+LD [Grounded],A
+XOR A,A
+LD [VelocityY],A
+LD [VelocityY+1],A
+RET
+MotionStartFall:
+LD A,3
+LD [JumpState],A
+LD A,4
+LD [MotionPose],A
+MotionVerticalStep:
+LD A,[JumpState]
+CP A,3
+JR Z,MotionTerminalFall
+CP A,1
+JR NZ,MotionDescending
+LD A,[JumpIndex]
+CP A,26
+JR NC,MotionApex
+CALL MotionProfile
+SWAP A
+LD C,A
+LD HL,JumpIndex
+INC [HL]
+LD L,C
+XOR A,A
+SUB A,L
+LD L,A
+SBC A,A
+LD H,A
+JR MotionSaveVertical
+MotionApex:
+LD A,25
+LD [JumpIndex],A
+LD A,2
+LD [JumpState],A
+MotionDescending:
+LD A,[JumpIndex]
+CALL MotionProfile
+SWAP A
+LD C,A
+LD A,[JumpIndex]
+OR A,A
+JR Z,MotionExhausted
+DEC A
+LD [JumpIndex],A
+JR MotionDownMagnitude
+MotionExhausted:
+LD A,3
+LD [JumpState],A
+MotionDownMagnitude:
+LD L,C
+LD H,0
+JR MotionSaveVertical
+MotionTerminalFall:
+LD HL,$0040
+MotionSaveVertical:
+LD A,L
+LD [VelocityY],A
+LD A,H
+LD [VelocityY+1],A
+RET
+
+; Original piecewise evaluator; no imported displacement table.
+MotionProfile:
+CP A,2
+JR NC,MotionProfile3
+LD A,4
+RET
+MotionProfile3:
+CP A,4
+JR NC,MotionProfile2
+LD A,3
+RET
+MotionProfile2:
+CP A,13
+JR NC,MotionProfile1
+LD A,2
+RET
+MotionProfile1:
+CP A,20
+JR NC,MotionProfileTail
+LD A,1
+RET
+MotionProfileTail:
+CP A,21
+JR Z,MotionTailOne
+CP A,23
+JR Z,MotionTailOne
+XOR A,A
+RET
+MotionTailOne:
+LD A,1
+RET
+
+; Full-width support probe at the existing half-open box's lower boundary.
+MotionSupport:
+LD A,[PlayerY]
+AND A,$7F
+JR NZ,MotionUnsupported
+LD A,[PlayerY]
+LD L,A
+LD A,[PlayerY+1]
+LD H,A
+LD DE,$0100
+ADD HL,DE
+CALL TileIndex
+CP A,18
+JR NC,MotionUnsupported
+LD [Row],A
+LD A,[PlayerX]
+LD L,A
+LD A,[PlayerX+1]
+LD H,A
+PUSH HL
+CALL TileIndex
+LD [Column],A
+POP HL
+LD DE,$007F
+ADD HL,DE
+CALL TileIndex
+LD [LastCell],A
+CALL CollisionPointer
+MotionSupportCells:
+LD A,[HL]
+CP A,$0B
+JR Z,MotionSupported
+LD A,[Column]
+LD B,A
+LD A,[LastCell]
+CP A,B
+JR Z,MotionUnsupported
+INC B
+LD A,B
+LD [Column],A
+INC L
+JR MotionSupportCells
+MotionUnsupported:
+XOR A,A
+RET
+MotionSupported:
+LD A,1
 RET
 
 ; Floor a sixteenth-pixel coordinate to its signed eight-pixel tile index.

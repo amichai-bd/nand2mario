@@ -8,6 +8,8 @@ def build(root, destination, short=False):
     prior = sys.path[:]
     try:
         sys.path[:0] = [str(root/'tools'), str(root/'src/dv/springtrail')]
+        from hud_reference import require_historical_source
+        require_historical_source(root)
         from sw.assembler import assemble
         from sw.linker import link
         from sw.package import package
