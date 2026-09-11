@@ -15,8 +15,8 @@ own numeric ranges, fills, profile and load semantics.
 | HRAM | Memory | CPU commits; no alias at IE or the host address range. |
 | VRAM | Memory | CPU access policy comes from PPU/arbitration; PPU reads the same store through its fixed service port. |
 | OAM | Memory | CPU, DMA and corruption updates reach one resolved write port. The PPU receives the arbitrated pair from the [DMA owner](../dma/MAS_dma.md), not a second OAM array. |
-| Wave RAM | Memory | An APU gateway owns CPU wave-access semantics and playback addressing; raw storage and generated reset fill belong here. An absent gateway is a service failure, not a synthetic audio register. |
-| Peripheral registers and state | Their behavior owners | [Timer](../timer/MAS_timer.md), [DMA/arbitration](../dma/MAS_dma.md), [IF/IE](../interrupts/MAS_interrupts.md), [JOYP](../joypad/MAS_joypad.md), [PPU](../ppu/MAS_ppu.md), and unimplemented serial/APU owners. No generic shadow I/O register file. |
+| Wave RAM | Memory | The [audio gateway](../audio/MAS_audio.md) owns CPU wave-access semantics and offset selection; raw storage and generated reset fill belong here. An absent gateway is a service failure, not a synthetic audio register. |
+| Peripheral registers and state | Their behavior owners | [Timer](../timer/MAS_timer.md), [DMA/arbitration](../dma/MAS_dma.md), [IF/IE](../interrupts/MAS_interrupts.md), [JOYP](../joypad/MAS_joypad.md), [PPU](../ppu/MAS_ppu.md), [serial](../serial/MAS_serial.md) and the [audio gateway](../audio/MAS_audio.md). The last two are present-but-unimplemented peripherals: they serve access and return DMG read values without transfer or synthesis. No generic shadow I/O register file. |
 
 All RAM arrays initialize by a bounded sweep using the generated RAM fill.
 ROM is retained across core reset and remains invalid until the endpoint's
@@ -44,7 +44,7 @@ asynchronously; a sampled core reset restarts the sweep at offset zero.
 | Host ROM | Independently enabled read/write, bounded thirty-two-bit offset and byte data. The [UART endpoint](../uart/MAS_uart.md) must authorize writes. | Registered read byte and valid. RAM clearing alone does not block this port. |
 | PPU VRAM | Read enable and thirteen-bit byte offset. | Registered byte and valid. |
 | PPU raw OAM | Read enable and seven-bit pair index, zero through 79. | Registered sixteen-bit pair, lower-address byte in bits 7:0. DMA arbitration resolves the pair presented to PPU. |
-| Wave playback | Read enable and four-bit byte offset. | Registered byte and valid. The APU gateway owns playback and CPU access restrictions. |
+| Wave access | Independently enabled read and write, four-bit byte offset and byte data. | Registered byte and valid after a read edge. The [audio gateway](../audio/MAS_audio.md) owns which CPU access reaches this port; clearing dominates its write. |
 
 RAM ports are unavailable while clearing; the upstream router must suppress
 their requests, with a named invariant detecting a violation. Host ROM requests
@@ -254,7 +254,8 @@ checks that no owner or storage effect escapes.
 
 All other defined DMG registers retain their explicit behavior owner and its
 read masks/effects. Readable-FF write-only audio registers are not unused
-addresses. Wave RAM remains behind the APU gateway. A000–BFFF is outside this
+addresses; the [audio gateway](../audio/MAS_audio.md) owns their read-back
+masks. Wave RAM remains behind that gateway. A000–BFFF is outside this
 I/O table and follows the separate approved digital rule above.
 
 ## Shared primitive and verification

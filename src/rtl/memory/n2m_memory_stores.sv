@@ -32,7 +32,9 @@ module n2m_memory_stores (
     output logic [15:0] ppu_oam_rdata,
     output logic ppu_oam_valid,
     input var logic wave_read,
+    input var logic wave_write,
     input var logic [3:0] wave_address,
+    input var logic [7:0] wave_wdata,
     output logic [7:0] wave_rdata,
     output logic wave_valid
 );
@@ -68,9 +70,12 @@ module n2m_memory_stores (
     logic rom_a_valid;
     logic [7:0] unused_b_wram, unused_b_hram;
     logic unused_b_wram_valid, unused_b_hram_valid;
+    logic wave_gateway_write;
 
     assign reset = reset_sys || core_reset;
     assign init_done = !reset && !clearing;
+    // The APU gateway owns CPU wave access; clearing still dominates its write.
+    assign wave_gateway_write = wave_write && init_done;
     always_comb begin
         clearing_next = clearing;
         clear_next = clear_address;
@@ -167,8 +172,9 @@ module n2m_memory_stores (
     assign ppu_oam_valid = oam_even_valid && oam_odd_valid;
     n2m_intel_ram #(.DEPTH(WAVE_BYTES), .ADDRESS_BITS(4)) wave_ram (
         .clk_a(clk_sys), .clk_b(clk_sys), .reset_a(reset), .reset_b(reset), .a_byte_enable(1'b1), .a_read(access_read_enable && access_store == WAVE_STORE),
-        .a_write((clearing && int'(clear_address) < WAVE_BYTES) || (access_write_enable && access_store == WAVE_STORE)),
-        .a_address(ram_address[3:0]), .a_wdata(ram_wdata), .a_rdata(data_a[WAVE_STORE]), .a_valid(valid_a[WAVE_STORE]),
+        .a_write((clearing && int'(clear_address) < WAVE_BYTES) || (access_write_enable && access_store == WAVE_STORE) || wave_gateway_write),
+        .a_address(wave_gateway_write ? wave_address : ram_address[3:0]),
+        .a_wdata(wave_gateway_write ? wave_wdata : ram_wdata), .a_rdata(data_a[WAVE_STORE]), .a_valid(valid_a[WAVE_STORE]),
         .b_read(wave_read && init_done), .b_address(wave_address), .b_rdata(wave_rdata), .b_valid(wave_valid)
     );
     `N2M_ASSERT(MEMORY_ACCESS_RANGE, clk_sys, reset,
@@ -181,7 +187,9 @@ module n2m_memory_stores (
     `N2M_ASSERT(MEMORY_HOST_RANGE, clk_sys, reset,
         !(host_read || host_write) || host_range)
     `N2M_ASSERT(MEMORY_NO_ACCESS_DURING_CLEAR, clk_sys, reset,
-        !clearing || !(access_read || access_write || ppu_vram_read || ppu_oam_read || wave_read))
+        !clearing || !(access_read || access_write || ppu_vram_read || ppu_oam_read || wave_read || wave_write))
+    `N2M_ASSERT(MEMORY_WAVE_SINGLE_WRITER, clk_sys, reset,
+        !wave_gateway_write || !(access_write_enable && access_store == n2m_memory_pkg::STORE_WAVE))
     `N2M_ASSERT(MEMORY_OAM_PAIR_VALID, clk_sys, reset,
         oam_even_valid == oam_odd_valid && oam_a_valid == valid_a[n2m_memory_pkg::STORE_OAM])
     `N2M_ASSERT(MEMORY_RESPONSE_OWNER_VALID, clk_sys, reset,

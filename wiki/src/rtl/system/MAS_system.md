@@ -47,10 +47,16 @@ one Intel backing store. It owns FF46 and routes video accesses through the
 PPU's read or write permission selected by the prepared CPU plan. Both PPU
 read ports pass through the owner's collision suppression and registered OAM
 forwarding. Timer, JOYP, interrupt and PPU registers have their actual
-owners. Unused peripheral destinations reject service. The original program
-must not access them or execute STOP; the named `V05_NO_STOP` assertion makes
-that bounded program condition explicit. Serial transfer and audio
-behavior are not implemented by this composition.
+owners. The [serial owner](../serial/MAS_serial.md) serves FF01-FF02 and the
+[audio gateway](../audio/MAS_audio.md) serves FF10-FF26 and FF30-FF3F; both are
+present-but-unimplemented peripherals, so the composition returns DMG read
+values without serial transfer or audio synthesis. The gateway drives the
+memory owner's wave read and write port. Every destination reaching this
+composition now has an owner, and the named `V05_OWNER_SERVICE` assertion makes
+a missing arm fatal instead of a silent CPU-port fault. The serial interrupt
+level stays inactive: the composition drives IF source bit 3 low. The original
+program must not execute STOP; the named `V05_NO_STOP` assertion makes that
+bounded program condition explicit.
 
 The CPU supplies its complete typed bus plan, address effect, resolved/sample
 qualification, continuous M-cycle phase and HALT/STOP state to the DMA owner.

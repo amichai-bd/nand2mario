@@ -26,6 +26,8 @@ names follow the implementation owner, not a second software hierarchy.
 | [src/rtl/clocking](../src/rtl/clocking/n2m_reset_control.sv) and its [FPGA wrapper](../src/fpga/de10_lite/n2m_clocking.sv) | [Clock/reset contract](src/clocks-resets-cdc.md) | [MAS_clocking](src/rtl/clocking/MAS_clocking.md) | [Clocking test plan](../src/dv/clocking/README.md) |
 | [src/rtl/vga](../src/rtl/vga/n2m_frame_bridge.sv) | [Clock/reset/CDC contract](src/clocks-resets-cdc.md) | [MAS_vga](src/rtl/vga/MAS_vga.md) | [Frame bridge test plan](../src/dv/vga/README.md) |
 | [src/rtl/input](../src/rtl/input/n2m_input.sv) | [Charter](src/project-charter.md) | [MAS_input](src/rtl/input/MAS_input.md) | [Input verification](../src/dv/input/README.md) |
+| [src/rtl/serial](../src/rtl/serial/n2m_serial.sv) | [Charter](src/project-charter.md) | [MAS_serial](src/rtl/serial/MAS_serial.md) | [Serial test plan](../src/dv/serial/README.md) |
+| [src/rtl/audio](../src/rtl/audio/n2m_apu.sv) | [Charter](src/project-charter.md) | [MAS_audio](src/rtl/audio/MAS_audio.md) | [Audio and serial service test plan](../src/dv/audio/README.md) |
 | [src/rtl/joypad](../src/rtl/joypad/n2m_joypad_matrix.sv) | [Charter](src/project-charter.md) | [MAS_joypad](src/rtl/joypad/MAS_joypad.md), [sources](src/rtl/joypad/references.md) | [JOYP test plan](../src/dv/joypad/README.md) |
 | [src/rtl/cpu](../src/rtl/cpu/n2m_cpu.sv) | [Charter](src/project-charter.md) | [MAS_cpu](src/rtl/cpu/MAS_cpu.md), [source boundaries](src/rtl/cpu/references.md) | [CPU test plan](../src/dv/cpu/README.md) |
 | [src/rtl/ppu](../src/rtl/ppu/README.md) | [Charter](src/project-charter.md) | [MAS_ppu](src/rtl/ppu/MAS_ppu.md) | [PPU test plan](../src/dv/ppu/README.md) |

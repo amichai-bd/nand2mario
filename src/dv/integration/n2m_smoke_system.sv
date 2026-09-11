@@ -158,7 +158,7 @@ module n2m_smoke_system #(parameter bit HOST_PLAY = 0) (
         .ppu_vram_rdata(vram_data), .ppu_vram_valid(vram_valid),
         .ppu_oam_read(oam_read_allowed), .ppu_oam_pair(oam_pair_address),
         .ppu_oam_rdata(oam_data), .ppu_oam_valid(oam_valid),
-        .wave_read(1'b0), .wave_address(4'd0), .wave_rdata(), .wave_valid()
+        .wave_read(1'b0), .wave_write(1'b0), .wave_wdata(8'd0), .wave_address(4'd0), .wave_rdata(), .wave_valid()
     );
     n2m_interrupts u_interrupts (
         .clk_sys, .reset_sys, .core_reset, .gb_tick,

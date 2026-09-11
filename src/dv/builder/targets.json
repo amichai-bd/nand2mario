@@ -8584,6 +8584,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -8719,6 +8721,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -8852,6 +8856,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -8987,6 +8993,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -9121,6 +9129,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -9259,6 +9269,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -9398,6 +9410,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -9500,6 +9514,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -10915,6 +10931,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -11050,6 +11068,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -11186,6 +11206,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -11325,6 +11347,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -11465,6 +11489,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -11603,6 +11629,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -11742,6 +11770,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -11881,6 +11911,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -12019,6 +12051,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -12158,6 +12192,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/rtl/clocking/n2m_reset_control.sv",
       "src/rtl/input/n2m_controls_pkg.sv",
@@ -12298,6 +12334,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/rtl/clocking/n2m_reset_control.sv",
       "src/rtl/input/n2m_controls_pkg.sv",
@@ -12438,6 +12476,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/rtl/clocking/n2m_reset_control.sv",
       "src/rtl/input/n2m_controls_pkg.sv",
@@ -12982,6 +13022,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -13149,6 +13191,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -13317,6 +13361,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -13475,6 +13521,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -13618,6 +13666,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -13761,6 +13811,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -13905,6 +13957,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -14049,6 +14103,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -14209,6 +14265,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -14369,6 +14427,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -14530,6 +14590,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -14693,6 +14755,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -14856,6 +14920,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -15020,6 +15086,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -15187,6 +15255,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -15354,6 +15424,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -15594,6 +15666,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -15737,6 +15811,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -15880,6 +15956,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -16024,6 +16102,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -16168,6 +16248,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -16312,6 +16394,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -16457,6 +16541,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -16625,6 +16711,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -16793,6 +16881,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -16961,6 +17051,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -17129,6 +17221,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -17298,6 +17392,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -17470,6 +17566,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -17642,6 +17740,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -17817,6 +17917,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -17992,6 +18094,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -18166,6 +18270,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
       "src/rtl/system/n2m_v05_system.sv",
       "src/dv/v05/tb_python_v05.sv"
     ],
@@ -18274,5 +18380,127 @@
       ]
     },
     "preload": "springtrail"
+  },
+  "serial-registers": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/dv/serial/tb_serial_registers.sv"
+    ],
+    "top": "tb_serial_registers",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS serial registers sb_writes=256 sc_writes=256 checks=1034 resets=2",
+    "timeout_seconds": 120
+  },
+  "serial-register-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/dv/serial/tb_serial_registers.sv"
+    ],
+    "top": "tb_serial_registers",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "SERIAL_REG_READ case=3 address=ff02 expected=7e actual=7c",
+    "timeout_seconds": 120
+  },
+  "serial-boundary-fault": {
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/dv/serial/tb_serial_registers.sv"
+    ],
+    "top": "tb_serial_registers",
+    "args": [
+      "+boundary_fault"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT SERIAL_COMMIT_BOUNDARY",
+    "timeout_seconds": 120
+  },
+  "audio-service": {
+    "vendor_model": "intel-memory",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/memory/n2m_memory_stores.sv",
+      "src/rtl/memory/n2m_memory_decode.sv",
+      "src/rtl/memory/n2m_memory_cpu_port.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
+      "src/dv/audio/tb_audio_service.sv"
+    ],
+    "top": "tb_audio_service",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS audio service register_reads=69 register_writes=46 wave_reads=48 wave_writes=32 serial_cases=7",
+    "timeout_seconds": 120
+  },
+  "audio-mask-fault": {
+    "vendor_model": "intel-memory",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/memory/n2m_memory_stores.sv",
+      "src/rtl/memory/n2m_memory_decode.sv",
+      "src/rtl/memory/n2m_memory_cpu_port.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
+      "src/dv/audio/tb_audio_service.sv"
+    ],
+    "top": "tb_audio_service",
+    "args": [
+      "+mask_corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "AUDIO_READ address=ff26 expected=70 actual=71",
+    "timeout_seconds": 120
+  },
+  "audio-wave-fault": {
+    "vendor_model": "intel-memory",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/memory/n2m_memory_stores.sv",
+      "src/rtl/memory/n2m_memory_decode.sv",
+      "src/rtl/memory/n2m_memory_cpu_port.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
+      "src/dv/audio/tb_audio_service.sv"
+    ],
+    "top": "tb_audio_service",
+    "args": [
+      "+wave_corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "AUDIO_READ address=ff30 expected=0f actual=00",
+    "timeout_seconds": 120
+  },
+  "audio-service-fault": {
+    "vendor_model": "intel-memory",
+    "sources": [
+      "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/rtl/memory/n2m_memory_stores.sv",
+      "src/rtl/memory/n2m_memory_decode.sv",
+      "src/rtl/memory/n2m_memory_cpu_port.sv",
+      "src/rtl/serial/n2m_serial.sv",
+      "src/rtl/audio/n2m_apu.sv",
+      "src/dv/audio/tb_audio_service.sv"
+    ],
+    "top": "tb_audio_service",
+    "args": [
+      "+drop_service"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT MEMORY_COMMIT_OWNER_SERVICE",
+    "timeout_seconds": 120
   }
 }
