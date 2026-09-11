@@ -63,3 +63,17 @@ JumpState EQU $C066
 JumpIndex EQU $C067
 SavedJumpIndex EQU $C068
 MotionFacing EQU $C069
+
+; Original contact/power state. Scene preparation reads it without advancing it.
+PowerState EQU $C06A
+PowerPhase EQU $C06B
+PowerTimer EQU $C06C
+Invincible EQU $C06D
+ThrowTimer EQU $C06E
+EnemyAlive EQU $C06F
+Crouch EQU $C070
+ShotX EQU $C071
+ShotY EQU $C073
+ShotVX EQU $C075
+ShotVY EQU $C076
+ShotTTL EQU $C077

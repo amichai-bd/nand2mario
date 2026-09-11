@@ -40,7 +40,7 @@ def complete():
 class MotionUnitCheckTests(unittest.TestCase):
     def test_addresses_and_fixed_integration_anchors(self):
         self.assertEqual(ADDRESSES, [a for start, count in RANGES for a in range(start, start+count)])
-        self.assertEqual(len(set(ADDRESSES)), 34)
+        self.assertEqual(len(set(ADDRESSES)), 48)
         rows = {c['name']:c for c in cases()}
         self.assertEqual(rows['first-right']['after'][1:3], bytes([0x90, 1]))
         for name in ('select-restart', 'retry-restart'):
@@ -48,7 +48,8 @@ class MotionUnitCheckTests(unittest.TestCase):
             self.assertEqual(row[0], 1)
             self.assertEqual(row[1:5], bytes([0x80, 1, 0, 7]))
             self.assertEqual(row[23:33], bytes([0, 0, 0, 0, 1, 0, 0, 0, 0, 0]))
-            self.assertEqual(row[-1], 1)
+            self.assertEqual(row[33], 1)
+            self.assertEqual(row[34:48], bytes((0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0)))
         for name in ('pause', 'paused-held', 'resume-held'):
             row = rows[name]
             self.assertEqual(row['before'][23:33], row['after'][23:33])

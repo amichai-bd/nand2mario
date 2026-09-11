@@ -2,7 +2,7 @@
 import json
 from pathlib import Path
 import sys
-from motion_cases import ADDRESSES, cases
+import motion_cases
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT/'tools'))
@@ -10,15 +10,18 @@ from n2m.interface_codec import decode_record
 
 
 class Check:
-    def __init__(self, short=False):
-        self.selected = cases()[:1] if short else cases()
+    def __init__(self, short=False, suite=None, part=None):
+        suite = suite or motion_cases
+        self.addresses = suite.ADDRESSES
+        self.selected = (suite.cases()[:1] if short else suite.parts()[part] if part
+                         else suite.cases())
         self.memory = {}; self.active = None; self.reports = []; self.durations = []
         self.lines = 0; self.records = 0; self.last_dot = -1
         self.terminal = False; self.halted = False; self.ended = False
 
     def snapshot(self):
-        assert all(a in self.memory for a in ADDRESSES), 'MOTION_UNINITIALIZED'
-        return bytes(self.memory[a] for a in ADDRESSES)
+        assert all(a in self.memory for a in self.addresses), 'MOTION_UNINITIALIZED'
+        return bytes(self.memory[a] for a in self.addresses)
 
     def write(self, dot, address, data):
         assert not self.terminal, 'MOTION_AFTER_TERMINAL'
@@ -73,7 +76,7 @@ class Check:
                     records=self.records, lines=self.lines, pause=pause)
 
 
-async def run(dut, short=False):
+async def run(dut, short=False, suite=None, part=None):
     import cocotb
     from cocotb.queue import Queue
     from cocotb.task import bridge
@@ -82,7 +85,7 @@ async def run(dut, short=False):
     from client_transport import connect, frames, refresh_clock
     from test_integration import known
     from n2m.preload import adopt, verify
-    check = Check(short); received = Queue(); tasks = []
+    check = Check(short, suite, part); received = Queue(); tasks = []
     with Path('transactions.jsonl').open('w') as journal:
         def log(kind, **values):
             journal.write(json.dumps(dict(kind=kind, **values))+'\n'); journal.flush()

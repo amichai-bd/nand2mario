@@ -104,6 +104,12 @@
       "region": "ROM0",
       "address": 72,
       "vector": "STAT"
+    },
+    {
+      "unit": "main.asm",
+      "section": "power",
+      "region": "ROM1",
+      "address": 22016
     }
   ]
 }

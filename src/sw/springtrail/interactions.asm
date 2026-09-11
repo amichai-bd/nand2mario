@@ -14,7 +14,15 @@ LD A,$10
 LD [EnemyX+1],A
 LD A,8
 LD [EnemyVX],A
-LD A,1
+LD HL,PowerState
+LD B,14
+XOR A,A
+InitPowerLoop:
+LD [HL+],A
+DEC B
+JR NZ,InitPowerLoop
+INC A
+LD [EnemyAlive],A
 LD [GameMode],A
 LD [NewLevel],A
 POP AF
@@ -74,8 +82,13 @@ LD A,1
 LD [GameMode],A
 
 UpdateWorld:
+CALL PowerTimers
+CALL PowerInput
 CALL StepPlayer
-CALL StepEnemy
+LD A,[EnemyAlive]
+OR A,A
+CALL NZ,StepEnemy
+CALL StepShot
 LD HL,GameTimer
 INC [HL]
 JR NZ,CheckDeath
@@ -85,6 +98,9 @@ CheckDeath:
 LD A,[Fell]
 OR A,A
 JR NZ,EnterRetry
+LD A,[EnemyAlive]
+OR A,A
+JR Z,CollectItems
 LD A,[EnemyX]
 LD [ObjectX],A
 LD A,[EnemyX+1]
@@ -97,6 +113,9 @@ LD [ObjectY+1],A
 XOR A,A
 LD [ObjectHeight+1],A
 CALL OverlapObject
+OR A,A
+JR Z,CollectItems
+CALL EnemyContact
 OR A,A
 JR Z,CollectItems
 EnterRetry:
@@ -219,7 +238,7 @@ LD A,H
 LD [EnemyX+1],A
 RET
 
-; Half-open fixed-point AABB. All objects are eight pixels wide.
+; Half-open fixed-point AABB against the contact box. All objects are eight pixels wide.
 OverlapObject:
 LD A,[PlayerX]
 LD L,A
@@ -269,6 +288,7 @@ LD A,[PlayerY]
 LD E,A
 LD A,[PlayerY+1]
 LD D,A
+CALL ContactTop
 CALL CompareSigned
 JR C,NoOverlap
 JR Z,NoOverlap

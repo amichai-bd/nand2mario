@@ -15,8 +15,10 @@ from n2m.preload import verify, adopt
 from hud_game_reference import Check
 
 
-async def run(dut, short=False, renderer=False, motion=False):
-    if motion and renderer:
+async def run(dut, short=False, renderer=False, motion=False, power=False):
+    if power:
+        from power_render_reference import Check
+    elif motion and renderer:
         from motion_render_reference import Check
     elif motion:
         from motion_game_reference import Check
@@ -114,7 +116,8 @@ async def run(dut, short=False, renderer=False, motion=False):
                 from hud_reference import CHARS,MAPS
                 tile_bytes=rom[0xc00:0x10a0]+b''.join(rom[0x6000+MAPS['glyph-'+c]['pieces'][0]['tile']*16:0x6010+MAPS['glyph-'+c]['pieces'][0]['tile']*16] for c in CHARS)
                 if motion:
-                    tile_bytes += rom[0x6100:0x6140]
+                    # Approved core copies at VRAM94..107, in startup order.
+                    tile_bytes += rom[0x6100:0x6140]+rom[0x6150:0x61b0]+rom[0x62b0:0x62e0]+rom[0x6360:0x6370]
                 summary=check.finish(pause,tile_bytes)
                 for frame,data in enumerate(check.frames):Path(f'frame-{frame}.shades').write_bytes(data)
                 Path('summary.json').write_text(json.dumps(summary,indent=2)+'\n')

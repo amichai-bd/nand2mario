@@ -5,14 +5,18 @@ from motion_reference import Player, step
 from interactions_reference import Game, ITEMS, overlap
 from interaction_cases import ADDRESSES as GAME_ADDRESSES, state_bytes as game_bytes
 
-ADDRESSES = GAME_ADDRESSES + list(range(0xc060, 0xc06a)) + [0xc02e]
-RANGES = ((0xc000, 1), (0xc010, 14), (0xc024, 1), (0xc026, 7), (0xc060, 10), (0xc02e, 1))
+ADDRESSES = (GAME_ADDRESSES + list(range(0xc060, 0xc06a)) + [0xc02e]
+             + list(range(0xc06a, 0xc078)))
+RANGES = ((0xc000, 1), (0xc010, 14), (0xc024, 1), (0xc026, 7), (0xc060, 10), (0xc02e, 1),
+          (0xc06a, 14))
+# Contact/power bytes at reset: small, normal, no timers, enemy alive, no shot.
+POWER_RESET = bytes((0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0))
 
 
 def state_bytes(game, buttons=0, new_level=0):
     p = game.player
     return game_bytes(game, buttons) + bytes((p.counter, p.direction, p.speed,
-        p.phase, p.animation, p.pose, p.jump, p.index, p.saved, p.facing, new_level))
+        p.phase, p.animation, p.pose, p.jump, p.index, p.saved, p.facing, new_level)) + POWER_RESET
 
 
 def game_update(game, buttons, new_level):
