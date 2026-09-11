@@ -18,25 +18,33 @@ class PowerUnitCheckTests(unittest.TestCase):
         rows = cases()
         self.assertEqual(len(rows), 46)
         self.assertEqual([len(v) for v in parts().values()], [23, 23])
-        self.assertEqual(rows[0]['name'], 'stomp')
-        self.assertEqual(rows[0]['before'][39], 1)   # enemy alive before
-        self.assertEqual(rows[0]['after'][39], 0)    # dead after the stomp
-        self.assertEqual(rows[0]['after'][29:31], bytes([1, 13]))  # jump state, index
+        self.assertEqual([r['name'] for r in rows[:2]], ['crouch', 'stomp'])
+        self.assertEqual((rows[0]['before'][10], rows[0]['after'][10]), (9, 8))  # masked Buttons
+        self.assertEqual((rows[0]['after'][23], rows[0]['after'][25], rows[0]['after'][40]), (5, 0, 1))
+        self.assertEqual(rows[1]['before'][39], 1)   # enemy alive before
+        self.assertEqual(rows[1]['after'][39], 0)    # dead after the stomp
+        self.assertEqual(rows[1]['after'][29:31], bytes([1, 13]))  # jump state, index
         self.assertEqual(len(set(ADDRESSES)), 48)
         self.assertEqual(len(rows[0]['before']), 48)
 
-    def test_stomp_state_and_alive_fault(self):
+    def test_crouch_fault_and_two_case_short(self):
         check = begin()
         for address, value in zip(ADDRESSES, cases()[0]['after']):
             check.write(3, address, value)
-        check.write(3, 0xc06f, 1)
-        with self.assertRaisesRegex(AssertionError, 'MOTION_STATE stomp'):
+        check.write(3, 0xc019, 9)
+        with self.assertRaisesRegex(AssertionError, 'MOTION_STATE crouch'):
             check.write(4, 0xc0fd, 1)
         check = begin()
-        for address, value in zip(ADDRESSES, cases()[0]['after']):
-            check.write(3, address, value)
-        check.write(4, 0xc0fd, 1)
-        check.write(5, 0xc0ff, 0xa5)
+        for index in range(2):
+            case = cases()[index]
+            if index:
+                for address, value in zip(ADDRESSES, case['before']):
+                    check.write(10, address, value)
+                check.write(11, 0xc0fc, 2)
+            for address, value in zip(ADDRESSES, case['after']):
+                check.write(12, address, value)
+            check.write(13, 0xc0fd, index+1)
+        check.write(14, 0xc0ff, 0xa5)
         self.assertTrue(check.terminal)
 
     def test_part_checker_uses_its_own_selection(self):

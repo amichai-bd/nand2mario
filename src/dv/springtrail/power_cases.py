@@ -7,7 +7,11 @@ from interaction_cases import state_bytes as game_bytes
 from power_reference import (World, Shot, update, power_up, grant_star,
                              LARGE, THROWER, GROW, HURT, SAFE, PLAYING, PAUSED, RETRY)
 
-__all__ = ['ADDRESSES', 'RANGES', 'state_bytes', 'cases', 'parts']
+__all__ = ['ADDRESSES', 'RANGES', 'state_bytes', 'cases', 'parts', 'SHORT', 'SHORT_BOUND']
+# The short harness runs crouch then stomp: a masked-direction fault is consumed
+# by the first call and the stomp exercises the enemy contact path.
+SHORT = 2
+SHORT_BOUND = 20000
 
 
 def state_bytes(world, buttons=0, new_level=0):
@@ -46,7 +50,10 @@ def cases():
                            after=state_bytes(after, out, after_level)))
         return after
 
-    # The short harness and the consumer fault use this stomp first.
+    # The short harness runs crouch then stomp; the consumer fault corrupts the
+    # crouch update's masked Buttons store, which the same call's motion consumes.
+    moving = replace(playing(counter=6, direction=1, speed=2, pose=2), power=LARGE)
+    crouch = add('crouch', moving, 9)
     stomp = add('stomp', playing(x=252*16, y=104*16, grounded=False, jump=3, pose=4))
     add('bounce', stomp)
     add('deep-hit-small', playing(x=252*16, y=108*16, grounded=False, jump=3, pose=4))
@@ -69,8 +76,6 @@ def cases():
     thrower = add('power-large', replace(large, phase=0, phase_timer=0), 0, 'power')
     add('power-thrower', thrower, 0, 'power')
     add('power-during-safe', replace(playing(), phase=SAFE, phase_timer=50), 0, 'power')
-    moving = replace(playing(counter=6, direction=1, speed=2, pose=2), power=LARGE)
-    crouch = add('crouch', moving, 9)
     add('crouch-small', replace(moving, power=0), 9)
     add('crouch-airborne', replace(moving, player=replace(moving.player, y=60*16,
                                                           grounded=False, jump=1, index=4)), 9)

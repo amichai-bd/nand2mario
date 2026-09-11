@@ -22,7 +22,8 @@ def build(root, destination, short=False, suite='motion', part=None):
         source = root/'src/sw/springtrail'
         for path in source.glob('*.asm'):
             (destination/path.name).write_bytes(path.read_bytes())
-        selected = cases()[:1] if short else module.parts()[part] if part else cases()
+        selected = (cases()[:getattr(module, 'SHORT', 1)] if short
+                    else module.parts()[part] if part else cases())
         lines = ['SECTION "code",ROM', 'Start:', 'DI', 'LD SP,$DFFE',
                  'XOR A,A', 'LDH [$FF40],A', 'LD [$FFFF],A',
                  'LD [$C0F0],A', 'LD HL,Operands', 'NextCase:']
@@ -62,7 +63,8 @@ def build(root, destination, short=False, suite='motion', part=None):
         image = package(linked, suite.upper() + ' UNIT', 1)
         (destination/'program.gb').write_bytes(image)
         record = dict(sha256=hashlib.sha256(image).hexdigest(), cases=len(selected),
-                      names=[c['name'] for c in selected], end_bound=10000 if short else 500000,
+                      names=[c['name'] for c in selected],
+                      end_bound=getattr(module, 'SHORT_BOUND', 10000) if short else 500000,
                       budget=dict(setup_per_case=1700, simple_calls=33,
                                   simple_ceiling=8000, game_calls=7, game_ceiling=20000,
                                   tail=1000, conservative_total=473000),

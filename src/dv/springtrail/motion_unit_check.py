@@ -13,8 +13,9 @@ class Check:
     def __init__(self, short=False, suite=None, part=None):
         suite = suite or motion_cases
         self.addresses = suite.ADDRESSES
-        self.selected = (suite.cases()[:1] if short else suite.parts()[part] if part
-                         else suite.cases())
+        self.selected = (suite.cases()[:getattr(suite, 'SHORT', 1)] if short
+                         else suite.parts()[part] if part else suite.cases())
+        self.short_bound = getattr(suite, 'SHORT_BOUND', 10000)
         self.memory = {}; self.active = None; self.reports = []; self.durations = []
         self.lines = 0; self.records = 0; self.last_dot = -1
         self.terminal = False; self.halted = False; self.ended = False
@@ -117,7 +118,7 @@ async def run(dut, short=False, suite=None, part=None):
                 while not check.halted:
                     await Timer(10, unit='us'); await ReadOnly(); healthy(); consume()
                     dot = known(dut.dot_count)
-                    assert prior < dot < (10000 if short else 500000) and not any(known(s) for s in (dut.fault, dut.paused, dut.reset_sys, dut.core_reset)), 'MOTION_PROGRESS'
+                    assert prior < dot < (check.short_bound if short else 500000) and not any(known(s) for s in (dut.fault, dut.paused, dut.reset_sys, dut.core_reset)), 'MOTION_PROGRESS'
                     prior = dot
                 refresh_clock(client); await control('HALT')
                 await Timer(1, unit='ns'); await ReadOnly(); healthy()

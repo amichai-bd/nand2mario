@@ -214,16 +214,16 @@ module tb_python_v05 #(
         end
     end
 
-    // Corrupt the actual enemy-alive clear of the first stomp, not its public
-    // trace. The same UpdateGame call must leave the enemy alive in state.
+    // Corrupt the actual crouch mask store of Buttons (8 -> 9), not its public
+    // trace. The same UpdateGame call's motion must consume the unmasked Right.
     initial begin
-        if ($test$plusargs("power_alive_fault")) begin
+        if ($test$plusargs("power_crouch_fault")) begin
             wait(bus_commit && write_enable && address == 16'hc0fc);
             do @(negedge clk_sys);
             while (!(dut.raw_write && dut.raw_store == n2m_memory_pkg::STORE_WRAM &&
-                     dut.raw_offset == 15'h006f && dut.raw_wdata == 8'd0));
-            $display("POWER_ALIVE_MUTATION expected=0 actual=1 dot=%0d", dot_count);
-            force dut.u_stores.ram_wdata = 8'd1;
+                     dut.raw_offset == 15'h0019 && dut.raw_wdata == 8'd8));
+            $display("POWER_CROUCH_MUTATION expected=8 actual=9 dot=%0d", dot_count);
+            force dut.u_stores.ram_wdata = 8'd9;
             @(posedge clk_sys);
             @(negedge clk_sys);
             release dut.u_stores.ram_wdata;

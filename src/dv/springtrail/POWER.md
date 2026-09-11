@@ -21,8 +21,8 @@ contact box against an item, the goal while large, fall death while large, a
 dead enemy, `InitGame` from a dirty state and pause holding every timer.
 
 The fixture's 2 KiB operand slot holds at most 41 snapshots, so the set runs
-as two halves of 23 (`python-pua`, `python-pub`) after the one-case short
-harness (`python-pus`). Each half keeps the motion fixture's caps: 8000 dots
+as two halves of 23 (`python-pua`, `python-pub`) after the two-case short
+harness (`python-pus`: crouch, then stomp, under a 20000-dot progress bound). Each half keeps the motion fixture's caps: 8000 dots
 per simple call, 20000 per `UpdateGame`, 1700 setup per case and the 500000-dot
 progress guard. Static ceilings for the new work, counting every branch body:
 `PowerTimers` 200, `PowerInput` 420, `StepShot` 2300 (two axis scans of at
@@ -44,7 +44,7 @@ value read from the DUT.
 | --- | --- | --- |
 | Contract/model | Literal stomp/hit/suppression/expiry, star, power-up chain, crouch masking, shot path/bounce/kill/limits, pose precedence, blink parity, contact box, pause/restart | `test_power_reference`, no DUT-fed expectations |
 | Shared CPU | Actual `UpdateGame`, `PowerUp`, `GrantStar` and `InitGame` bytes; every expected state byte after each scripted call, completion and settled halt | `python-pus` short, then `python-pua` and `python-pub` |
-| Fault | The stomp's actual enemy-alive store forced to 1 after the call marker; the unchanged checker rejects the first report | `python-pux`, after the positive short |
+| Fault | The crouch update's actual masked Buttons store forced from 8 to 9 after the call marker; the same call's motion consumes the unmasked Right, and the unchanged checker rejects the first report's counter, speed and button bytes. Each case re-seeds its operands, so only a store consumed inside its own call is a valid witness | `python-pux`, after the positive short |
 | Rendered states | Large WALK2 with a live shot, dead-enemy hiding and a second-stage large-hurt facing left; every pixel, all 108 tiles, both DMA transfers | `python-pr` fixed renderer |
 | Affected regression | Motion short/full CPU, fault, game short/full and renderer on the changed ROM, anchor and tile count | `python-mus`, `python-mut`, `python-mux`, `python-mgs`, `python-mgu`, `python-mr` |
 | Assets | Approved core pixels reproduced by the ROM tables and copies; composed poses 12..17 equal the approved maps in both facings | `test_power_assets`, `test_motion_assets` |

@@ -19394,7 +19394,7 @@
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace",
-      "+power_alive_fault"
+      "+power_crouch_fault"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
