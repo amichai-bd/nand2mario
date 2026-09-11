@@ -134,8 +134,9 @@ collision and grants nothing.
 - Scrolling away and back re-decodes the column from `BlockTable` and the
   current state, so a used, broken or revealed block keeps its appearance and
   never respawns its content.
-- `InitGame` clears all eleven persistent bytes, so restart and retry restore
-  every block to intact with no duplicate reward.
+- `InitGame` clears all twelve persistent bytes and the scratch behind them,
+  so restart and retry restore every block to intact with no duplicate reward.
+  The loop clears 38 bytes from C06A, which is every power and block byte.
 - The static initial map at 9800 carries terrain only. It covers columns 0..31
   and every block is beyond column 31, so it never omits a block: the camera is
   still 0 while the restoration repaints 9C00 through the same override.
@@ -189,7 +190,7 @@ Unchanged artwork retains its existing approval.
 
 ## State and integration boundary
 
-New gameplay state occupies C078..C086:
+New gameplay state occupies C078..C08F:
 
 | Byte | Meaning and reset |
 | --- | --- |
@@ -204,11 +205,18 @@ New gameplay state occupies C078..C086:
 | C085 | Head hit column; reset 0 |
 | C086 | Head hit row; reset 0 |
 | C087 | Scan is ascending; reset 0 |
+| C088 | Resolving block index; reset 0 |
+| C089..C08A | Resolving block column and row; reset 0 |
+| C08B | Decoding column index; reset 0 |
+| C08C..C08D | Decoding cache base; reset 0 |
+| C08E | Decoding sub-column; reset 0 |
+| C08F | A dirty pair is awaiting publication; reset 0 |
 
 C084..C08F are per-scan, per-resolution and per-decode scratch, written and
-consumed inside one routine, and are not part of the checked snapshot.
-C078..C083 are the persistent state. `BlockDirty` survives the update that sets
-it because the streamer that consumes it runs in the following frame.
+consumed inside one routine or frame, and are not part of the checked
+snapshot. C078..C083 are the twelve persistent bytes the snapshot covers.
+`BlockDirty` survives the update that sets it, and `DirtyPublish` the frame
+that sets it, because the streamer that consumes them runs in the next frame.
 
 The effect appears as four extra objects after the shot only while live; all
 other scene bytes are unchanged. Scene preparation and the retained 4480-dot

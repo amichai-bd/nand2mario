@@ -2,7 +2,7 @@
 import json
 
 import blocks_reference as B
-from hud_reference import image as hud_image
+from hud_reference import column as hud_column, image as hud_image
 from composition_reference import raster
 from motion_frames import SOURCE, TERRAIN, tiles
 from power_frames import scene as power_scene, entry
@@ -31,6 +31,15 @@ def effect(world):
 
 def scene(world):
     return power_scene(world, effect(world))
+
+
+def column(world, index):
+    """The sixteen tiles `DecodeColumn` publishes for one column.
+
+    `hud_reference.column` defaults to the terrain-only table `columns.asm`
+    encodes; the block layer is the explicit override this applies.
+    """
+    return hud_column(index, world.blocks)
 
 
 def background(world):

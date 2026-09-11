@@ -5,7 +5,7 @@ from pathlib import Path
 
 from composition_reference import BANK, raster, scene
 from interactions_reference import Game
-from blocks_reference import column_tiles, reset as blocks_reset
+from blocks_reference import column_tiles
 from movement_reference import world_tile
 from reference import ART, GLYPHS
 from scene_art import PAIRS
@@ -33,12 +33,18 @@ def glyph(char):
 
 
 def column(index, blocks=None):
-    """Published background tiles; #303's block layer overrides rows 10 and 11."""
+    """Published background tiles of one column.
+
+    The default is the terrain-only table `columns.asm` encodes. Pass #303's
+    block state to get what the decoder publishes once the block layer has
+    overridden rows 10 and 11.
+    """
     if type(index) is not int or not 0 <= index < 96:
         raise ValueError('display column outside 0..95')
     tiles = [world_tile(index, row) for row in range(2, 18)]
-    for row, tile in column_tiles(blocks_reset() if blocks is None else blocks, index).items():
-        tiles[row-2] = tile
+    if blocks is not None:
+        for row, tile in column_tiles(blocks, index).items():
+            tiles[row-2] = tile
     return bytes(tiles)
 
 

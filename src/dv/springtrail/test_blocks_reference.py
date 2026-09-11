@@ -84,6 +84,25 @@ class AppearanceTests(unittest.TestCase):
     def test_columns_without_a_block_are_untouched(self):
         self.assertEqual(B.column_tiles(B.reset(), 30), {})
 
+    def test_published_column_overrides_only_rows_ten_and_eleven(self):
+        from blocks_frames import column
+        from hud_reference import column as terrain
+        world = World(mode=PLAYING)
+        for index in range(96):
+            published, raw = column(world, index), terrain(index)
+            expected = bytearray(raw)
+            for row, tile in B.column_tiles(world.blocks, index).items():
+                expected[row - 2] = tile
+            self.assertEqual(published, bytes(expected), index)
+            self.assertEqual(published[:8] + published[10:], raw[:8] + raw[10:], index)
+
+    def test_published_column_follows_each_state(self):
+        from blocks_frames import column
+        used = World(mode=PLAYING, blocks=(B.USED, B.BROKEN, 0, B.USED))
+        self.assertEqual(column(used, 38)[8:10], bytes([B.USED_TILE, B.USED_TILE + 2]))
+        self.assertEqual(column(used, 52)[8:10], bytes([0, 0]))
+        self.assertEqual(column(used, 88)[8:10], bytes([B.REVEAL, B.REVEAL + 2]))
+
     def test_appearance_and_solidity_agree_on_every_state(self):
         # A visible block is solid and an invisible one is passable, for every
         # kind and state, except the deliberately invisible intact hidden block

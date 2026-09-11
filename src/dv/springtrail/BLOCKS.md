@@ -57,7 +57,7 @@ grew.
 | Contract/model | Literal table, solidity per kind and state, appearance agreeing with solidity, one-shot release, coin saturation, brick breakage by power state, hidden reveal, effect rise, pause and restart | `test_blocks_reference`, no DUT-fed expectations |
 | Shared CPU | Actual `UpdateGame` and `InitGame` bytes; every expected state byte after each scripted call, completion and settled halt | `python-bks` short, then `python-bka` and `python-bkb` |
 | Fault | The item hit's actual `HitColumn` store forced from 38 to 42 after the call marker; the same call's `ResolveBlockHit` consumes the wrong cell, so block 0 stays intact, `PowerUp` is never called and no effect starts, and the unchanged checker rejects the first report's block, power and effect bytes. Each case re-seeds its operands, so only a store consumed inside its own call is a valid witness | `python-bkx`, after the positive short |
-| Published background | The restored and streamed column caches carry the block layer's tiles, not the bare terrain value | `python-mgs`, `python-mgu`, `python-pgs`, `python-pgu` through the block-aware `hud_reference.column` |
+| Published background | The decoder writes the block layer's tiles over rows 10 and 11 of the column it is decoding, and leaves every other row and column exactly as `columns.asm` encodes them | `test_blocks_reference` through `blocks_frames.column`. No DUT fixture covers it: every block is beyond column 31, so the thirty-two column ring the game and pause fixtures publish never contains one, and `hud_reference.column` stays terrain-only for those checks |
 | Republication mark | `BlockDirty` carries the changed block's column plus one out of the update that set it | `test_blocks_reference`, `python-bks`, `python-bka`, `python-bkb` |
 | Assets | Approved terrain pixels reproduced by the ROM table, the startup copies and the loaded VRAM image; each design an unflipped four-tile approved map; the rendered used block equal to its approved pixels | `test_blocks_assets` |
 | Affected regression | Contact/power short/halves and fault, motion short/full and fault, game short/full, pause short/full and the motion renderer on the changed ROM, anchor and tile count | `python-pus`, `python-pua`, `python-pub`, `python-pux`, `python-mus`, `python-mut`, `python-mux`, `python-mgs`, `python-mgu`, `python-mr`, `python-pgs`, `python-pgu` |
@@ -104,9 +104,13 @@ ROM; restoring `python-pr` belongs to its own issue.
 
 The CPU fixtures call `UpdateGame`, `InitGame`, `PowerUp` and `GrantStar`; they
 never call `PrepareMap` or `StreamMap`. So the republication mark `BlockDirty`
-is proven by actual CPU stores, but the streamer branch that consumes it is
-covered only by the existing game and pause fixtures' unchanged column checks,
-whose scripted inputs never hit a block. That branch's correctness rests on the
-unchanged publisher it reuses and on the ring-slot argument in the contract: a
-block can only change state while the player touches it, so its columns are
-always inside the published window.
+is proven by actual CPU stores, but two things are not proven on the DUT: the
+streamer branch that consumes that mark, and the decoder's column override.
+Every block sits beyond column 31, so the thirty-two column ring the game,
+pause and renderer fixtures publish never contains one, and their scripted
+inputs never bring the camera near a block. Both rest on the model, on the
+unchanged publisher they reuse, and on the ring-slot argument in the contract:
+a block can only change state while the player touches it, so its columns are
+always inside the published window. A fixture that drives the player onto a
+block would close this; it needs its own scripted input and is not in scope
+here.
