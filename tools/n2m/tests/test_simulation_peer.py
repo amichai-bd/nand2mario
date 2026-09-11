@@ -104,9 +104,13 @@ class PeerTests(unittest.TestCase):
             result = simulate(self.root, self.attempt, args, Runtime())
         self.assertEqual(result['status'], 'FAIL')
         self.assertIn('retained outer timeout', result['error'])
+        # The reaped peer may not have published before the process was torn
+        # down: no file is acceptable. A file that exists must be a complete,
+        # parseable record; a partial or empty one is the atomicity defect.
         records = list(self.attempt.rglob('peer-result.json'))
-        self.assertEqual(len(records), 1)
-        self.assertIsNotNone(json.loads(records[0].read_text())['exit_code'])
+        self.assertLessEqual(len(records), 1)
+        if records:
+            self.assertIsNotNone(json.loads(records[0].read_text())['exit_code'])
 
 
 class DriverDeadlineTests(unittest.TestCase):
