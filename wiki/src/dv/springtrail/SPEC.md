@@ -132,16 +132,10 @@ names its image:
 |---|---|---|---|
 | [Motion composition](../../../../src/dv/springtrail/MOVEMENT.md) | `python-mgs`, `python-mgu` | the built image, no hash guard | Boot, the title frame, the first Start+Right input, its publication and the settled pause, with independent motion state |
 | [Pause and restart](../../../../src/dv/springtrail/MILESTONE.md#current-image-pause-and-restart-proof) | `python-pgs`, `python-pgu`, `python-pgx` | the built image, no hash guard | The first world frame, a neutral frame, the PAUSED frame, the Select-restart frame, their publications and the restart's map restoration |
-| [Re-qualification](../../../../src/dv/springtrail/MILESTONE.md#current-rom-re-qualification) | `python-hgs`, `python-hgu`, `python-hgx` | retired `adbef6b0...e109f369`; the checker refuses the current build | Boot, the title frame, the first input, its publication and the settled pause on the pre-#301 image |
 | [Continuous UART endurance](../../../../src/dv/springtrail/ENDURANCE.md#current-image-script) | `endurance.py` | the built image; the launcher builds it from current sources and the driver refuses bytes whose hash differs from that build's own manifest | Sampled 30-minute UART play with title, spawn, RETRY and PAUSED frames from the current motion player, the frozen interaction flow over that player and `motion_frames`, then three reset/load-readback/start cycles; UART-observable only |
 | [Scrolling, win and death/retry frames](../../../../src/dv/springtrail/FRAME_PROOFS.md) | `frame_proofs.py` | the built image; the launcher builds it from current sources and the driver refuses bytes whose hash differs from that build's own manifest | Paused every-pixel captures on one continuous history: title, spawn, the first camera-moving frame, entering column 32, the ring wrap at camera 256, the camera 608 clamp, WON and its Start restart, RETRY after the first-gap fall and its Start restart; UART-observable only |
 | Every-frame acquisition | `paused_capture.py`, `milestone.py` | retired `b551c562...8ba667` | The complete v0.9 baseline; no current-image claim |
-| Historical flow and courier composition references | none | retired `97f5d9da...a593b513` and `ec8dfb32...0d9e785f` | Host-guarded expectations only; their hash guards refuse every other image |
-
-`python-hgs`, `python-hgu` and `python-hgx` still build the current image and
-refuse it. Their pre-#301 contract is now covered on the built image by
-`python-mgs` and `python-mgu`, so their retirement is a pending decision, not
-a coverage gap.
+| Historical flow, courier composition and HUD game references | none | retired `97f5d9da...a593b513`, `ec8dfb32...0d9e785f` and `adbef6b0...e109f369` | Host-guarded expectations only; their hash guards refuse every other image |
 
 The composed simulation cannot reach scrolling frames, the win route or the
 death/retry route inside the wall ceiling; the
@@ -290,10 +284,10 @@ The [composition contract](../../sw/springtrail/COMPOSITION.md) defines the
 current geometry and allocation. Its historical pre-HUD timing/images do not
 describe the current ROM. Independent CPU cases check
 every approved pose/facing, signed clipping, complete scene tails and unchanged
-gameplay state. The composed proof (`python-hgs`, `python-hgu`) checks full
+gameplay state. The composed proof (`python-mgs`, `python-mgu`) checks full
 blank/TITLE pixels, then the next gameplay state and complete DMA publication
 before the following visible frame. An actual accepted-write fault
-(`python-hgx`, `python-pgx`) must fail the unchanged oracle. This scoped proof
+(`python-pgx`) must fail the unchanged oracle. This scoped proof
 does not claim a new full gameplay or physical milestone. Historical nine-object
 frame, renderer and endurance helpers reject mismatched ROM/source identities;
 they must not silently validate the current composer, and no target runs them.

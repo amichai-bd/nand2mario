@@ -185,11 +185,11 @@ every-frame acquisition and the frozen SameBoy reference profile in
 
 #301 has since replaced movement and animation, so the repository no longer
 builds `adbef6b0...e109f369`. The HUD game checker pins that hash
-(`hud_game_reference.py`, `HISTORICAL_HUD_ROM`), so `python-hgs`, `python-hgu`
-and `python-hgx` refuse the current build; they join the targets
-[#363](https://github.com/amichai-bd/nand2mario/issues/363) owns. The
-composed proofs on the image the repository builds today are `python-mgs` and
-`python-mgu`, whose checker pins no hash; the
+(`hud_game_reference.py`, `HISTORICAL_HUD_ROM`) and refuses the current build,
+so `python-hgs`, `python-hgu` and `python-hgx` are
+[retired](#retired-targets); the rows below are the record of what they
+established on that image. The composed proofs on the image the repository
+builds today are `python-mgs` and `python-mgu`, whose checker pins no hash; the
 [movement plan](MOVEMENT.md#measured-durations) records their results.
 
 ### Declared bounded checkpoint script
@@ -285,10 +285,9 @@ the `issue351-hgu-long` tag.
 The overrun is not a defect in the game, the checker or the image. It is the
 [test wall budget](../../../wiki/tools/n2m/SPEC.md#test-wall-budget): 300
 seconds total, 288 for worker execution, unless the target declares a
-`wall_allowance` up to 900 seconds. `python-hgu` declares none, so the
-supervised command keeps exactly 300 seconds. Declaring the allowance is a
-`targets.json` change with its own supervised run, and
-[#374](https://github.com/amichai-bd/nand2mario/issues/374) owns it.
+`wall_allowance` up to 900 seconds. `python-hgu` declared none, so the
+supervised command kept exactly 300 seconds. The target is retired without an
+allowance; `python-pgu` and `python-pgx` declare theirs from this measured rate.
 `tools/n2m/test_budget.py` is the worker the supervisor itself launches, so the
 passing run used the unchanged builder, preload, checker and simulator command,
 with the target's own 300-second simulator timeout still enforced; what it
@@ -317,7 +316,7 @@ bound to `b551c562...8ba667`; #264 still owns continuous physical endurance.
 
 ### Retired targets
 
-Eight registered targets built the current image and then refused it, because
+Eleven registered targets built the current image and then refused it, because
 their checkers guard retired hashes. None could pass, so none is retained:
 
 | Target | Checker and image | Disposition |
@@ -326,14 +325,11 @@ their checkers guard retired hashes. None could pass, so none is retained:
 | `python-gs` | `flow_reference` two-frame short harness | Retired; `python-mgs` and `python-pgs` are the current short harnesses. |
 | `python-springtrail-x`, `python-gx` | `flow_reference` with the source-shade fault | Retired; `python-pgx` is the current-image fault. |
 | `python-cgs`, `python-cgu` | `composition_game_reference` blank/TITLE/publication on `ec8dfb32...0d9e785f` | Retired; the same contract is `python-mgs`/`python-mgu` on the current image. |
-| `python-cgx` | `composition_game_reference` with the wrong-piece OAM fault | Retired; `python-hgx` keeps the accepted-write fault on the retired `adbef6b0...e109f369` image only. |
+| `python-cgx` | `composition_game_reference` with the wrong-piece OAM fault | Retired; `python-pgx` is the current-image fault. |
+| `python-hgs`, `python-hgu` | `hud_game_reference` blank/TITLE/publication on `adbef6b0...e109f369` | Retired; the same contract is `python-mgs`/`python-mgu` on the current image, through the same `hud_game_check` driver. |
+| `python-hgx` | `hud_game_reference` with the accepted-write fault | Retired; `python-pgx` is the current-image fault. |
 
-`python-hgs`, `python-hgu` and `python-hgx` are outside this record: they pin
-`adbef6b0...e109f369` and refuse the image the repository now builds, as the
-[verification matrix](../../../wiki/src/dv/springtrail/SPEC.md#image-binding)
-states.
-
-The two historical reference modules keep their hash guards and host unit tests
+The three historical reference modules keep their hash guards and host unit tests
 so no consumer can silently apply their expectations to another image; their
 cocotb drivers and entry modules are removed with the targets. No fixture of a
 retired image exists in the repository, and none is added: a retained historical
@@ -402,8 +398,8 @@ by `motion_frames`. The first world state is the same state `python-mgu`
 checks. The proof follows each source change only while those models follow
 the same source; the run's `preload.json` records which image it checked. A
 frozen hash belongs only to a proof whose expectations were fixed for one
-retired image, such as the every-frame acquisition, the two historical
-references above and `python-hg*`.
+retired image, such as the every-frame acquisition and the three historical
+references above.
 
 ### Why scrolling, win and death/retry do not fit
 
