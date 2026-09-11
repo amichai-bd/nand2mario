@@ -53,7 +53,9 @@ module n2m_uart_core_control (
     assign done = state == COMPLETE;
     assign core_reset = state == RESET_ASSERT && !reset_sys;
     assign stop_step = state == STEP_RUN && gb_tick && (instruction_complete || remaining == 1);
-    assign stop_dots = state == DOTS_RUN && gb_tick && (remaining == 1 || cpu_stopped);
+    // A sleeping oscillator spends no dot and receives no tick, so an
+    // outstanding budget completes on the stopped level rather than an edge.
+    assign stop_dots = state == DOTS_RUN && (cpu_stopped || (gb_tick && remaining == 1));
     // A new HALT/RESET at the current A edge must stop after that very dot.
     // paused is registered in the timebase, so this creates no tick loop.
     assign pause_request = host_pause || stop_step || stop_dots ||
@@ -136,12 +138,14 @@ module n2m_uart_core_control (
                     state_next = STEP_PAUSE;
                 end
             end
-            DOTS_RUN: if (gb_tick) begin
-                executed_next = executed + 1'b1;
-                remaining_next = remaining - 1'b1;
+            DOTS_RUN: begin
+                if (gb_tick) begin
+                    executed_next = executed + 1'b1;
+                    remaining_next = remaining - 1'b1;
+                end
                 if (stop_dots) begin
                     host_pause_next = 1;
-                    reason_next = remaining == 1 ? n2m_interfaces_pkg::WIRE_RUN_DOTS_COUNT : n2m_interfaces_pkg::WIRE_RUN_DOTS_STOPPED;
+                    reason_next = gb_tick && remaining == 1 ? n2m_interfaces_pkg::WIRE_RUN_DOTS_COUNT : n2m_interfaces_pkg::WIRE_RUN_DOTS_STOPPED;
                     completed_dot_next = dot_next;
                     state_next = STEP_PAUSE;
                 end

@@ -143,9 +143,10 @@ settlement, with the timebase paused. The 13-byte success payload is completed
 dot (64 bits), executed count (32 bits) and completion reason (8 bits), all little-endian. Reason 0 means
 COUNT: executed equals requested and completed dot equals the initial dot plus
 that count modulo 2^64. Reason 1 means STOPPED: an already STOPped CPU does not
-unpause and returns zero/current dot; STOP entered during the operation finishes
-at the next natural tick with the actual partial count. Reaching the requested
-count on that tick takes precedence over STOPPED. Neither path changes input,
+unpause and returns zero/current dot; STOP entered during the operation withholds
+every further emulated tick, so it finishes on the stopped level at the dot
+already reached, with the actual partial count. Reaching the requested count on
+the entering tick takes precedence over STOPPED. Neither path changes input,
 wake state, phase, epoch or reset except for normal execution effects.
 
 STOPPED is a completed operation with an explicit reason, not an exact-count
