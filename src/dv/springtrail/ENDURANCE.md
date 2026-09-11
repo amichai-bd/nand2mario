@@ -79,7 +79,12 @@ lifecycles before the full run. No automatic extension or replay.
 
 ### Measured result
 
-Producing commit `e3bdf69` (the freeze; rebased with identical content as `f36c0b3`), Python 3.14.5, pyserial 3.5, wire
+Producing commit `e3bdf69` (the freeze; rebased with identical content as
+`f36c0b3`, then onto #385 as `bfa9654`: the only driver change is the call
+`flow_update(game, buttons, step=step)`, because `interactions_reference`
+now derives the restart player from `type(game.player)`; `SPAWN` already
+holds the motion player, so behaviour is unchanged and the run was not
+repeated), Python 3.14.5, pyserial 3.5, wire
 build `bb02588d127b72ce6458a07ff1145c57`, image
 `616de11b49e0807539837358824a570776459b9bf13a4b9424dbf42adfe5c983` built from
 current sources at each launch (cache hit, same bytes). The board was not
