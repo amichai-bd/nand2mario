@@ -3555,6 +3555,7 @@
   "uart-snapshot": {
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/uart/n2m_uart_pkg.sv",
       "src/rtl/uart/n2m_uart_packet_store.sv",
@@ -3588,6 +3589,7 @@
   "uart-snapshot-corrupt": {
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/uart/n2m_uart_pkg.sv",
       "src/rtl/uart/n2m_uart_packet_store.sv",
@@ -6186,6 +6188,7 @@
   "uart-validation": {
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/uart/n2m_uart_pkg.sv",
       "src/rtl/uart/n2m_uart_host_registers.sv",
       "src/rtl/uart/n2m_uart_validate.sv",
@@ -6199,6 +6202,7 @@
   "uart-validation-corrupt": {
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/uart/n2m_uart_pkg.sv",
       "src/rtl/uart/n2m_uart_host_registers.sv",
       "src/rtl/uart/n2m_uart_validate.sv",
@@ -6932,6 +6936,7 @@
   "controls-wire": {
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/input/n2m_input_pkg.sv",
       "src/rtl/input/n2m_controls_pkg.sv",
       "src/rtl/joypad/n2m_joypad_pkg.sv",
@@ -6980,6 +6985,7 @@
   "controls-wire-corrupt": {
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/input/n2m_input_pkg.sv",
       "src/rtl/input/n2m_controls_pkg.sv",
       "src/rtl/joypad/n2m_joypad_pkg.sv",

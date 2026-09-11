@@ -137,6 +137,23 @@ def rom_offset(address):
     return address - abi.GB_ROM0_START
 
 
+# Peek store selectors and their exact byte sizes, both from the generated ABI.
+PEEK_STORES = {
+    'wram': (abi.PEEK_WRAM, abi.GB_WRAM_END - abi.GB_WRAM_START + 1),
+    'hram': (abi.PEEK_HRAM, abi.GB_HRAM_END - abi.GB_HRAM_START + 1),
+    'vram': (abi.PEEK_VRAM, abi.GB_VRAM_END - abi.GB_VRAM_START + 1),
+    'oam': (abi.PEEK_OAM, abi.GB_OAM_END - abi.GB_OAM_START + 1),
+    'wave': (abi.PEEK_WAVE, abi.GB_VIEW_WAVE_END - abi.GB_VIEW_WAVE_START + 1),
+}
+
+
+def peek_store(name):
+    """Reject an unknown store before the serial port is ever opened."""
+    if name not in PEEK_STORES:
+        raise ValueError('unknown peek store; expected one of ' + ', '.join(sorted(PEEK_STORES)))
+    return PEEK_STORES[name]
+
+
 def checked_range(offset, count, size):
     uint(offset, 32)
     uint(count, 16)

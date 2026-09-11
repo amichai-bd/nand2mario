@@ -45,6 +45,42 @@ asynchronously; a sampled core reset restarts the sweep at offset zero.
 | PPU VRAM | Read enable and thirteen-bit byte offset. | Registered byte and valid. |
 | PPU raw OAM | Read enable and seven-bit pair index, zero through 79. | Registered sixteen-bit pair, lower-address byte in bits 7:0. DMA arbitration resolves the pair presented to PPU. |
 | Wave access | Independently enabled read and write, four-bit byte offset and byte data. | Registered byte and valid after a read edge. The [audio gateway](../audio/MAS_audio.md) owns which CPU access reaches this port; clearing dominates its write. |
+| Host peek | Read enable, wire store selector and thirteen-bit byte offset, for the five non-ROM stores. Accepted only while the core is paused, initialization is complete and the offset lies inside the selected store. | Registered byte and valid. Read-only: it is served from port B, which has no write. |
+
+### Host peek on port B
+
+Every store is an [`n2m_intel_ram`](../common/MAS_memory_primitives.md) with two
+ports. Port A is the core's path: CPU and DMA traffic, the OAM pair port, the
+sweep, and ROM's host load. Port B carries the host peek, under one rule for all
+five non-ROM stores: **read-only, and rejected unless the core is paused.**
+
+Read-only is structural, not a convention. The shared primitive exposes
+`b_read`, `b_address`, `b_rdata` and `b_valid` and has no `b_write` or
+`b_wdata`, so a host peek is physically incapable of writing. This preserves the
+principle that the product has no register-write test port. ROM is not a peek
+target: loading needs writes that port B cannot perform, so ROM keeps port A for
+both its host load and its readback.
+
+WRAM and HRAM need no arbitration, because nothing else uses their second port.
+VRAM, both OAM parity banks and wave RAM mux the host against their existing
+port B consumer, and each mux also withholds the owner-facing valid so a peek
+response is never presented to the PPU or the audio reader as its own service.
+An OAM peek addresses a byte as pair `offset[7:1]` with `offset[0]` selecting
+the parity bank.
+
+Pause is what makes this safe rather than merely documented. The PPU, audio,
+DMA and timers all advance on `gb_tick`, which the system derives from
+`emulated_tick && !cpu_stopped`, so pausing idles every port B consumer and a
+host read displaces nothing. This matters concretely for OAM: mode-3 length
+depends on sprite X values fetched out of OAM, so a displaced OAM fetch would
+change CPU-visible STAT timing. Requiring pause removes that hazard instead of
+documenting it. A displaced VRAM fetch would corrupt only displayed pixels, but
+the same single rule covers it.
+
+Named invariants detect a caller that violates the contract: peek activity
+implies a paused core and completed initialization, implies an in-range known
+store, implies the target is not ROM, and implies no owner request is in flight
+on the same edge.
 
 RAM ports are unavailable while clearing; the upstream router must suppress
 their requests, with a named invariant detecting a violation. Host ROM requests
