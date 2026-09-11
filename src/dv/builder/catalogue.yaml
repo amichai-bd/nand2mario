@@ -217,6 +217,8 @@ units:
   interrupts-duplicate: {kind: sim, level: 2, labels: [fault, interrupts], duration_seconds: null}
   interrupts-lost: {kind: sim, level: 2, labels: [fault, interrupts], duration_seconds: null}
   interrupts-priority: {kind: sim, level: 2, labels: [fault, interrupts], duration_seconds: null}
+  io-peek: {kind: sim, level: 0, labels: [interrupts, ppu, timer, uart], duration_seconds: null}
+  io-peek-disturb: {kind: sim, level: 0, labels: [fault, interrupts, ppu, timer, uart], duration_seconds: null}
   joypad-boundary-fault: {kind: sim, level: 2, labels: [fault, joypad], duration_seconds: null}
   joypad-events: {kind: sim, level: 1, labels: [joypad], duration_seconds: 4.54}
   joypad-events-duplicate: {kind: sim, level: 2, labels: [fault, joypad], duration_seconds: null}
@@ -385,6 +387,8 @@ units:
   python-v05-identity: {kind: sim, level: 2, labels: [integration, python-tb, system, v05], duration_seconds: null}
   python-v05-identity-fault: {kind: sim, level: 2, labels: [integration, python-tb, system, v05], duration_seconds: null}
   python-v05-image-fault: {kind: sim, level: 2, labels: [integration, python-tb, system, v05], duration_seconds: null}
+  python-v05-iopeek: {kind: sim, level: 2, labels: [integration, python-tb, system, v05], duration_seconds: null}
+  python-v05-iopeek-fault: {kind: sim, level: 2, labels: [fault, integration, python-tb, system, v05], duration_seconds: null}
   python-v05-physical: {kind: sim, level: 2, labels: [integration, python-tb, system, v05], duration_seconds: null}
   python-v05-physical-mask: {kind: sim, level: 2, labels: [integration, python-tb, system, v05], duration_seconds: null}
   python-v05-pixel-fault: {kind: sim, level: 2, labels: [integration, python-tb, system, v05], duration_seconds: null}

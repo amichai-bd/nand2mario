@@ -130,9 +130,11 @@ dots, about 1,168 frames.
 The capture covered 150 of the 154 scanlines, including VBlank. Every sample
 with LY 144 or above reported STAT mode 1 and no sample on lines 1 to 143 did,
 so the mode progression across a frame matches expectation. STAT bit 7 never
-read back set, confirming the committed-storage rule the table states. LCDC read
-`0x91`, BGP `0xE4` and IE `0x01` throughout, which are the exact values the
-program writes to FF40, FF47 and FFFF.
+read back set across all 600 samples, confirming the committed-storage rule the
+table states, and LCDC read `0x91` in every one of them. BGP `0xE4` and IE
+`0x01` come from the single closing pass over the whole register set, not from
+every sample. All three are the exact values the program writes to FF40, FF47
+and FFFF.
 
 Four samples reported LY 0 with mode 1. That is the documented LY153 early wrap
 described in [MAS_ppu](rtl/ppu/MAS_ppu.md): readable LY returns to 0 early on
