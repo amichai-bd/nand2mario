@@ -33,7 +33,12 @@ operation success messages; inspect errors and warnings. A host postprocessing
 failure does not undo programming. Preserve the raw result and classify it
 before deciding whether another hardware operation is necessary.
 
-After programming, verify the wire build ID against the producing build. Then
+After programming, verify the wire build ID against the producing build. The
+fit record's `build_id` is the 128-bit `N2M_V05_BUILD_ID` macro; `host status`
+reports it as four little-endian 32-bit words, so the wire string is that hex
+value with its byte order reversed (verified: fit `575c14f1…8d5802bb` answered
+`bb02588d…f1145c57`). Declare the programmer's global restart on the first host
+command with `--endpoint-restarted`; the shared sequence counter continues. Then
 use an immutable original software package for full upload/readback, loaded and
 paused state, UART input writes, execution and snapshot checks. Compare pixels
 with independent program expectations. Record diagnostic transport settings
