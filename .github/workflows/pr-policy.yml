@@ -23,6 +23,7 @@ jobs:
         env:
           PR_BRANCH: ${{ github.head_ref }}
           PR_BASE: ${{ github.base_ref }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
           PR_BODY: ${{ github.event.pull_request.body }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           GH_REPOSITORY: ${{ github.repository }}
@@ -40,6 +41,54 @@ jobs:
           branch = os.environ.get("PR_BRANCH", "")
           base = os.environ.get("PR_BASE", "")
           body = os.environ.get("PR_BODY", "")
+          title = os.environ.get("PR_TITLE", "")
+          repository = os.environ.get("GH_REPOSITORY", "")
+          token = os.environ.get("GH_TOKEN", "")
+
+          def api(path):
+              request = urllib.request.Request(
+                  f"https://api.github.com/repos/{repository}/{path}",
+                  headers={
+                      "Accept": "application/vnd.github+json",
+                      "Authorization": f"Bearer {token}",
+                      "X-GitHub-Api-Version": "2022-11-28",
+                  },
+              )
+              with urllib.request.urlopen(request) as response:
+                  return json.load(response)
+
+          if base != "main":
+              print("::error::Pull requests must target main.")
+              sys.exit(1)
+
+          # Automated statistics refresh (owner authorization 2026-09-11, issue #392):
+          # the only class that merges without independent review. Every field is
+          # fixed and the diff must be the regenerated snapshot alone.
+          if re.fullmatch(r"stats-refresh-\d{8}T\d{6}Z", branch):
+              if not re.fullmatch(r"stats: refresh snapshot to [0-9a-f]{7}", title):
+                  print("::error::Automated refresh title must be 'stats: refresh snapshot to <sha7>'.")
+                  sys.exit(1)
+              if not re.search(r"(?m)^Refs #392\s*$", body):
+                  print("::error::Automated refresh body must contain a 'Refs #392' line.")
+                  sys.exit(1)
+              if re.search(r"(?i)\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#", body):
+                  print("::error::Automated refresh must not close issues.")
+                  sys.exit(1)
+              number = os.environ.get("PR_NUMBER", "")
+              try:
+                  files = api(f"pulls/{number}/files?per_page=100")
+              except urllib.error.HTTPError as error:
+                  print(f"::error::Could not read changed files of PR #{number}: HTTP {error.code}.")
+                  sys.exit(1)
+              changed = sorted(entry["filename"] for entry in files)
+              if changed != ["wiki/statistics.html"]:
+                  print(
+                      "::error::Automated refresh may change only wiki/statistics.html; "
+                      f"changed: {', '.join(changed) or 'nothing'}."
+                  )
+                  sys.exit(1)
+              print(f"PR policy passed: {branch} is an automated statistics refresh; refs #392.")
+              sys.exit(0)
 
           match = re.fullmatch(
               r"([1-9][0-9]*)-[a-z0-9]+(?:-[a-z0-9]+)*",
@@ -50,10 +99,6 @@ jobs:
                   "::error::Branch must match "
                   "<primary-number>-<lowercase-slug>."
               )
-              sys.exit(1)
-
-          if base != "main":
-              print("::error::Pull requests must target main.")
               sys.exit(1)
 
           primary_issue = match.group(1)
@@ -85,21 +130,10 @@ jobs:
           else:
               linked_issues = closing_issues
 
-          repository = os.environ.get("GH_REPOSITORY", "")
-          token = os.environ.get("GH_TOKEN", "")
           issue_owners = {}
           for issue_number in sorted(linked_issues, key=int):
-              request = urllib.request.Request(
-                  f"https://api.github.com/repos/{repository}/issues/{issue_number}",
-                  headers={
-                      "Accept": "application/vnd.github+json",
-                      "Authorization": f"Bearer {token}",
-                      "X-GitHub-Api-Version": "2022-11-28",
-                  },
-              )
               try:
-                  with urllib.request.urlopen(request) as response:
-                      issue = json.load(response)
+                  issue = api(f"issues/{issue_number}")
               except urllib.error.HTTPError as error:
                   print(
                       f"::error::Could not read closing issue #{issue_number}: "

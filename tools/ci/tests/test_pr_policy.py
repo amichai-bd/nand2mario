@@ -19,13 +19,23 @@ POLICY = textwrap.dedent(
 
 
 class PrPolicyTests(unittest.TestCase):
-    def run_policy(self, number, branch, body, issue=None, base="main"):
+    def run_policy(self, number, branch, body, issue=None, base="main", title="Title", files=None):
         if issue is None:
             issue = {"state": "open", "assignees": [{"login": "owner"}]}
-        env = {"PR_NUMBER": number, "PR_BRANCH": branch, "PR_BODY": body,
+        if files is None:
+            files = ["wiki/statistics.html"]
+        env = {"PR_NUMBER": number, "PR_BRANCH": branch, "PR_BODY": body, "PR_TITLE": title,
                "PR_BASE": base, "GH_REPOSITORY": "example/repo", "GH_TOKEN": "test"}
+
+        def urlopen(request):
+            self.urls.append(request.full_url)
+            if request.full_url.endswith(f"/pulls/{number}/files?per_page=100"):
+                return io.StringIO(json.dumps([{"filename": name} for name in files]))
+            return io.StringIO(json.dumps(issue))
+
+        self.urls = []
         with patch.dict(os.environ, env, clear=True), patch(
-            "urllib.request.urlopen", return_value=io.StringIO(json.dumps(issue))
+            "urllib.request.urlopen", urlopen
         ), contextlib.redirect_stdout(io.StringIO()):
             try:
                 exec(compile(POLICY, "pr-policy.yml", "exec"), {})
@@ -65,6 +75,42 @@ class PrPolicyTests(unittest.TestCase):
         self.assertEqual(1, self.run_policy("166", "165-policy", "Closes #164"))
         self.assertEqual(1, self.run_policy("166", "bad", "Closes #165"))
         self.assertEqual(1, self.run_policy("166", "165-policy", "Closes #165", base="other"))
+
+    AUTOMATED = ("400", "stats-refresh-20260911T120000Z", "Refresh the snapshot to `abc`.\n\nRefs #392\n")
+    AUTOMATED_TITLE = "stats: refresh snapshot to 0123abc"
+
+    def test_automated_statistics_refresh_accepted(self):
+        self.assertEqual(0, self.run_policy(*self.AUTOMATED, title=self.AUTOMATED_TITLE))
+        # The class reads only the changed-file set; it never needs #392 open.
+        self.assertEqual(["https://api.github.com/repos/example/repo/pulls/400/files?per_page=100"], self.urls)
+
+    def test_automated_statistics_refresh_rejections(self):
+        number, branch, body = self.AUTOMATED
+        title = self.AUTOMATED_TITLE
+        cases = {
+            "branch suffix": dict(branch="stats-refresh-20260911T120000Z-2"),
+            "branch case": dict(branch="stats-refresh-20260911t120000z"),
+            "title free text": dict(title="stats: refresh snapshot"),
+            "title long sha": dict(title="stats: refresh snapshot to 0123abcd"),
+            "title suffix": dict(title=title + " again"),
+            "body without refs": dict(body="Refresh the snapshot.\n"),
+            "body other issue": dict(body="Refs #391\n"),
+            "body closes": dict(body=body + "Closes #392\n"),
+            "body fixes": dict(body=body + "Fixes #7\n"),
+            "extra file": dict(files=["tools/wiki/refresh_statistics.py", "wiki/statistics.html"]),
+            "other file": dict(files=["wiki/index.md"]),
+            "no file": dict(files=[]),
+            "base": dict(base="other"),
+        }
+        for name, override in cases.items():
+            with self.subTest(case=name):
+                args = dict(number=number, branch=branch, body=body, title=title)
+                args.update(override)
+                self.assertEqual(1, self.run_policy(**args))
+
+    def test_ordinary_rules_ignore_the_automated_title(self):
+        self.assertEqual(1, self.run_policy("166", "165-policy", "Refs #392", title=self.AUTOMATED_TITLE))
+        self.assertEqual(0, self.run_policy("166", "165-policy", "Closes #165", title=self.AUTOMATED_TITLE))
 
 
 if __name__ == "__main__":
