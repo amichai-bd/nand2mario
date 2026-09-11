@@ -6,6 +6,8 @@ import subprocess
 import sys
 import time
 
+from .records import atomic_text
+
 
 class Peer:
     def __init__(self, root, attempt, script):
@@ -63,4 +65,4 @@ class Peer:
                 self.record['exit_code'] = self.process.returncode
             if self.stream is not None:
                 self.stream.close()
-            (self.attempt / 'peer-result.json').write_text(json.dumps(self.record, indent=2) + '\n')
+            atomic_text(self.attempt / 'peer-result.json', json.dumps(self.record, indent=2) + '\n')
