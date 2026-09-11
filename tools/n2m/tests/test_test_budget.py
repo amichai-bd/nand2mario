@@ -185,7 +185,8 @@ class BudgetTests(unittest.TestCase):
         root = Path(__file__).resolve().parents[3]
         targets = json.loads((root/'src/dv/builder/targets.json').read_text())
         long_targets = {name for name, row in targets.items() if row.get('timeout_seconds', 60) > 300}
-        self.assertEqual(long_targets, MILESTONE_TARGETS)
+        declared = {name for name, row in targets.items() if 'wall_allowance' in row}
+        self.assertEqual(long_targets, MILESTONE_TARGETS | declared)
         self.assertTrue(all(type(row.get('timeout_seconds', 60)) is int and
                             1 <= row.get('timeout_seconds', 60) <= wall_limit(name) for name, row in targets.items()))
         for name in MILESTONE_TARGETS:
@@ -244,12 +245,19 @@ class BudgetTests(unittest.TestCase):
                 self.assertEqual(wall_selection(name, root), (WALL_DEFAULT, None))
         self.assertEqual(wall_limit('ordinary', root), 300)
 
-    def test_no_shipped_target_declares_an_allowance_yet(self):
+    def test_shipped_allowances_are_exactly_the_declared_motion_targets(self):
+        # Only the two measured motion fixtures declare one; every other
+        # target keeps the 300 default or its named Mooneye authorization.
         root = Path(__file__).resolve().parents[3]
         targets = json.loads((root / 'src/dv/builder/targets.json').read_text(encoding='utf-8'))
-        self.assertEqual([name for name, row in targets.items() if 'wall_allowance' in row], [])
+        declared = {name: row['wall_allowance'] for name, row in targets.items() if 'wall_allowance' in row}
+        self.assertEqual(sorted(declared), ['python-mgu', 'python-mr'])
+        for name, allowance in declared.items():
+            self.assertEqual(allowance['seconds'], 420)
+            self.assertIn('measured 289-second', allowance['reason'])
         for name in targets:
-            self.assertEqual(wall_limit(name, root), 1500 if name in MILESTONE_TARGETS else 300)
+            expected = 1500 if name in MILESTONE_TARGETS else declared.get(name, {}).get('seconds', 300)
+            self.assertEqual(wall_limit(name, root), expected)
 
     def test_supervisor_enforces_and_records_a_declared_allowance(self):
         root = self.registry({'slow': {'wall_allowance': {'seconds': 480, 'reason': 'preload dominates'}}})

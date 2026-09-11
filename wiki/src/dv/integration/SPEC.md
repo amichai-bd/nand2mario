@@ -103,8 +103,11 @@ models fail through the shared builder.
 ## Verification tiers
 
 All simulations obey the [total wall budget](../../../tools/n2m/SPEC.md#test-wall-budget):
-300 seconds ordinarily, with only the user's three named Mooneye cases
-allowed 1500 seconds each. That wall-time exception does not change their
+300 seconds by default. A target that measurably cannot finish within 300
+seconds [declares its own allowance](../../../tools/n2m/SPEC.md#declared-wall-allowance)
+in `src/dv/builder/targets.json`, up to 900 seconds, with a recorded reason;
+`python-mgu` and `python-mr` declare 420. Only the user's three named Mooneye
+cases are allowed 1500 seconds each. Neither extension changes a target's
 simulation-time watchdogs, signatures, fault checks or required evidence.
 Prefer the [authorized bounded FPGA/UART game checks](../../../agents/bootstrap-plan.md#verification-and-hardware-authorization)
 after their build and setup gates pass. Required affected simulation and named
