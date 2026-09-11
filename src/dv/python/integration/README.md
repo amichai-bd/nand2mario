@@ -66,7 +66,8 @@ Historical success does not establish current-head acceptance. Current-source
 results and historical results must be labeled separately in review evidence.
 
 This diagnostic does not upload/read back the complete ROM, run the product
-Client, halt through the final host command, or replace #164/#168 acceptance.
+Client, halt through the final host command, or replace the 25 MHz system and
+preloaded-execution acceptance those contracts own.
 Success narrows the timeout to a dependence on the verification/execution path;
 it does not by itself identify a defective Tcl operation, prove all RTL correct,
 or justify a testbench migration. Runtime conclusions belong to the PR evidence.
