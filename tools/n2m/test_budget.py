@@ -10,7 +10,7 @@ import time
 import uuid
 
 
-# User-authorized issue103 milestone cases; this is not a configurable override.
+# The user's bounded Mooneye authorization; this is not a configurable override.
 MILESTONE_TARGETS = frozenset({'mooneye-reg-f', 'mooneye-corrupt', 'mooneye-missing'})
 
 
