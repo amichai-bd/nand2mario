@@ -47,13 +47,14 @@ that state after the first VBlank and publishes it at the next. The retained
 normal output frame is the prior prepared TITLE; independent rendered motion
 states are covered separately, not claimed as this run's visible gameplay.
 
-## Remaining acceptance matrix
+## Acceptance matrix
 
-All rows remain incomplete until implementation and independently reviewed
-producing evidence exist. Host expectations must be frozen before motion code;
-exact instruction/dot bounds must be frozen before each licensed run.
+This is the single acceptance matrix for #301. Host expectations in
+`motion_reference.py` and `motion_cases.py` were frozen before the motion code;
+the instruction/dot bounds above were frozen before each run. The
+[measured durations](#measured-durations) below record the producing evidence.
 
-| Group | Required result | Planned execution |
+| Group | Required result | Execution |
 | --- | --- | --- |
 | Contract/model | Literal per-update walk/run/coast/reverse/opposite inputs; jump hold/release/apex/fall, steering, walls/ceiling/landing; phase/counter wrap; mode pause/resume/restart and pose/facing precedence | Independent pure Python cases, no DUT-fed expectations |
 | Shared CPU | Actual InitPlayer/StepPlayer and UpdateGame bytes; every expected state byte after each scripted call, completion and settled halt | Complete short harness, then finite full case set |
@@ -79,31 +80,42 @@ positive checker must reject the consumed wrong X/state, with the mutation
 marker and failed receipt retained. Host artifact corruption is not this fault.
 
 Historical HUD fixtures pin the prior movement/courier sources; the old HUD
-game pins ROMadbef6b0. Earlier fixed-physics CPU units and physical route drivers
+game checkers pin ROM adbef6b0 and refuse the current image, a gap
+[#363](https://github.com/amichai-bd/nand2mario/issues/363) owns. Earlier fixed-physics CPU units and physical route drivers
 also reject incompatible current sources/ROMs before assembly or traffic.
 Literal world/terrain helpers remain usable; old trajectory evidence is not
 relabelled. Current replacements are the motion CPU/game/renderer targets above.
 
 ## Measured durations
 
-Measured whole-run walls: `python-mus`26 seconds, `python-mut`173,
-`python-mgs`164 and `python-mux`29, a392-second declared aggregate across the
-four completed targets. `python-mgs` reached39.081802 ms of simulated time in
-156.19 simulator seconds, a250223 ns-per-second rate.
+All six targets complete on the actual simulator. Measured whole-run supervisor
+walls, from each receipt's `wall-budget` record:
 
-`python-mgu` and `python-mr` exhaust the300-second whole-run cap: both stop at
-the288-second execution limit with12 seconds reserved for cleanup, once with a
-cold compile and once with the compile cached. Neither overrun is a checker or
-DUT defect; no partial result is claimed for them. The per-target
-`timeout_seconds` schema also refuses any value above300, so no configuration
-raises either limit. At the measured rate the full game's roughly256500 dots
-need about244 simulator seconds and the renderer's300000-dot bound about286,
-which leaves neither room for setup, preload and cleanup inside300. Both
-fixtures therefore need a smaller frozen case bound before they can qualify;
-the earlier240/220-second planning forecast understated them.
+| Target | Wall (s) | Limit (s) | Result |
+| --- | --- | --- | --- |
+| `python-mus` | 35.1 | 300 | PASS, 6.92 ms simulated |
+| `python-mux` | 35.4 | 300 | intended fault, receipt retained |
+| `python-mgs` | 192.4 | 300 | PASS, 39.08 ms simulated |
+| `python-mut` | 217.1 | 300 | PASS, 47.07 ms simulated |
+| `python-mgu` | 378.0 | 420 declared | PASS, 72.37 ms simulated |
+| `python-mr` | 361.6 | 420 declared | PASS, 67.93 ms simulated |
 
-Freeze smaller actual case bounds where feasible and report measured times; no
-extra duration or coverage quota is introduced. Unchanged
+The declared aggregate is 1219 seconds across the six targets, each inside its
+own selected wall. `python-mgs` runs at about 250223 ns of simulated time per
+simulator second. At that rate the full game's roughly 256500 dots need about
+244 simulator seconds and the renderer's 300000-dot bound about 286, which
+leaves no room for preload, compile check and cleanup inside the 300-second
+default; both stopped at the 288-second execution limit before the allowance
+existed. Neither overrun was a checker or DUT defect. `python-mgu` and
+`python-mr` therefore declare a 420-second `wall_allowance` in
+`src/dv/builder/targets.json` with that measured reason, under the
+[declared wall allowance](../../../wiki/tools/n2m/SPEC.md#declared-wall-allowance)
+rule; the other four keep the 300-second default. The reserved 12 cleanup
+seconds apply unchanged, so the two declared targets execute within 408
+seconds, leaving 30 to 46 seconds of headroom on the measuring host. A slower
+host surfaces a supervised budget failure, not a wrong result.
+
+No extra duration or coverage quota is introduced. Unchanged
 hardware/transport/STAT baseline evidence is reused only with explicit input and
 behavior qualification.
 

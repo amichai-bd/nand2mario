@@ -3,7 +3,8 @@
 This is the approved movement contract for [#301](https://github.com/amichai-bd/nand2mario/issues/301).
 The current [game behavior](SPEC.md) remains implemented. The table below records
 confirmed routine behavior, separately from the approved original choices below.
-It does not claim complete per-frame SML1 equivalence; implementation is open.
+It does not claim complete per-frame SML1 equivalence. `src/sw/springtrail/movement.asm`
+implements it against the independent `src/dv/springtrail/motion_reference.py`.
 
 ## Reference boundary
 
@@ -31,7 +32,7 @@ normal update. Inputs are logical buttons, independent of the reference's bit la
 | Horizontal displacement | Each displacement evaluation flips a one-bit phase. Class0 gives alternating 0/1 pixel, class2 gives 1 each, class4 gives alternating 1/2. | `Call_1D26.call_1EB4`; averages are 0.5/1/1.5 pixels per evaluation, not complete initial sequences. Initial phase and caller order remain unresolved. |
 | Reverse | Opposite intent enters a reversal state with counter8 and no displacement. Eight subsequent calls decrement it without motion; the next clears reversal without motion. New direction can be accepted on the following call. | `Call_1D26`; ten stationary invocations including entry/clear, not an acceleration ramp. Airborne reversal also holds horizontal motion. |
 | Facing | An accepted direction changes facing before the side-collision test. Reversal holds retain the old facing. | `Call_1D26`; collision can therefore block motion while facing changes. |
-| Walk cycle | Grounded nonvehicle animation advances when the movement counter is divisible by4, wrapping WALK3 to WALK1. Right increments that counter and Left decrements it, modulo256. | `Call_16F5`; instruction mask3 establishes four, despite the comment saying three. The faster branch compares speed class with35, not normal run class4. No faster run cycle is established. |
+| Walk cycle | Grounded nonvehicle animation advances when the animation counter is divisible by4, wrapping WALK3 to WALK1. Right increments that counter and Left decrements it, modulo256. | `Call_16F5`; instruction mask3 establishes four, despite the comment saying three. The faster branch compares speed class with35, not normal run class4. No faster run cycle is established. |
 | Composition order | The animation routine composes the existing pose before advancing the stored pose and invoking horizontal movement. | `Call_16F5` then `Call_1736`; bank3 `Call_4823` is pose-table composition, not a cadence update. Normal dispatcher order is still absent. |
 | Pose precedence | Grounded stop selects STAND and resets animation counter1. Grounded reversal selects skid; airborne reversal does not replace the airborne pose. Exact crouch is excluded from walk advancement. | `Call_1D26` and `Call_16F5`; power/crouch integration remains with #302. |
 | Run selection | With B held and jump state0, the input routine selects class2 below counter3, otherwise class4. B release demotes class4 to class2. A new B edge clears counter6 before projectile eligibility is checked. | bank3 `.jmp_4975`, `.jmp_498B`, `.jmp_49FD`; ground-only acceleration and B-edge effect are explicit, but relation to the horizontal invocation is not. |
@@ -119,8 +120,8 @@ are source-described local facts. Player profile binding, run index 0 reset,
 once-per-update dispatch, pose preparation order, underflow handling, ceiling
 transition, landing reset and sustained fall are approved original choices, not
 confirmed Mario behavior. The immediate sentinel descent follows the generic
-evaluator; its normal-player timing remains an original binding. Exact cases
-must retain that distinction when the contract is frozen before implementation.
+evaluator; its normal-player timing remains an original binding. The frozen
+cases in `src/dv/springtrail/motion_cases.py` retain that distinction.
 
 The issue retains all movement, collision, rendered-state, fault, asset and budget
 requirements. Its criteria distinguish confirmed local rules from these original
@@ -158,7 +159,7 @@ Movement remains in the existing ROM2000..27FF allocation. New state does not
 alias scene/IRQ/cache operands. All motion and animation work runs in visible
 preparation; the existing4480-dot publication deadline remains required.
 
-Initial literal diagnostic anchors, before any DUT implementation:
+Literal diagnostic anchors, fixed independently of DUT output:
 
 - From reset, seven Right updates produce X pixels25,25,26,26,27,27,28,
   horizontal counters1,2,3,4,5,6,6 and poses0,0,0,1,1,1,1.
@@ -171,22 +172,25 @@ Initial literal diagnostic anchors, before any DUT implementation:
   run jump consumes index0 first:4 pixels upward. Landing and ceiling follow
   the exact state transitions above, rather than an observed trajectory.
 
-## Finite implementation/proof boundary
+## Finite proof boundary
 
-Before implementation, freeze literal per-update cases for walk/run/coast/reversal,
-opposite directions, jump press/hold/release and airborne steering, landing,
-wall/ceiling contact, facing/pose precedence, pause and full restart. Keep
-independent expected states separate from DUT observations. Use the shared
-actual SM83 routines in a short complete CPU harness before its bounded full
-case, then the smallest affected composed pixel/input/publication proof and a
-meaningful actual consumer fault. Reuse unchanged HUD/STAT/DMA evidence with
+Literal per-update cases for walk/run/coast/reversal, opposite directions, jump
+press/hold/release and airborne steering, landing, wall/ceiling contact,
+facing/pose precedence, pause and full restart were frozen in
+`src/dv/springtrail/motion_reference.py` and `motion_cases.py` before the
+motion code. Independent expected states stay separate from DUT observations.
+The shared actual SM83 routines run in a short complete CPU harness
+(`python-mus`) and its bounded full case set (`python-mut`), then the smallest
+affected composed pixel/input/publication proof (`python-mgs`, `python-mgu`),
+the approved rendered-state fixture (`python-mr`) and a meaningful actual
+consumer fault (`python-mux`). Unchanged HUD/STAT/DMA evidence is reused with
 explicit source qualification. No RTL movement, new framework, full milestone
 replay or physical I/O claim is included.
 
-The exact test counts/dot ceilings and measured aggregate forecast must be
-frozen with implementation layout before licensed execution. Target120 seconds
-per simulation and300 ordinary aggregate; hard300 whole seconds for every run.
-No simulation is authorized by a speculative performance estimate.
+Each target obeys the [test wall budget](../../../tools/n2m/SPEC.md#test-wall-budget):
+300 whole seconds by default, or the allowance it declares with a measured
+reason. `python-mgu` and `python-mr` declare 420 seconds; the other four keep
+the default. The owning DV plan records the measured walls.
 
 [bank0]: https://github.com/kaspermeerts/supermarioland/blob/618d00ed6c330928e106719533c6e294ae5d5726/bank0.asm
 [bank3]: https://github.com/kaspermeerts/supermarioland/blob/618d00ed6c330928e106719533c6e294ae5d5726/bank3.asm
