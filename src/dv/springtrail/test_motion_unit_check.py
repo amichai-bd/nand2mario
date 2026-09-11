@@ -5,12 +5,11 @@ import unittest
 from motion_cases import ADDRESSES, RANGES, cases
 from motion_unit_check import Check
 
-prior = sys.path[:]
-try:
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'python/integration'))
-    from test_integration import RECORDS
-finally:
-    sys.path[:] = prior
+# Read the shared record layout from its generator, not from the cocotb
+# simulator fixture that re-exports it, so this host fixture imports without
+# the simulator.
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]/'tools'))
+from n2m.generated_interfaces import RECORDS
 
 
 def retirement(**values):

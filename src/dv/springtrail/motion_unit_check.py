@@ -5,6 +5,8 @@ import sys
 from motion_cases import ADDRESSES, cases
 
 ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(ROOT/'tools'))
+from n2m.interface_codec import decode_record
 
 
 class Check:
@@ -55,7 +57,6 @@ class Check:
         if kind == 'W':
             self.write(value >> 24, (value >> 8) & 65535, value & 255)
         elif kind == 'R':
-            from test_integration import decode_record
             row = decode_record(value)
             assert not self.halted and row['seq'] == self.records and row['epoch'] == 2 and not row['stopped'] and row['dot'] > self.last_dot, 'MOTION_RETIRE'
             self.records += 1; self.last_dot = row['dot']
