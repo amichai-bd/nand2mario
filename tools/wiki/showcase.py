@@ -30,11 +30,11 @@ WIDTH, LINE, PAD, BAR = 800, 18, 16, 30
 CHAR_W, TYPE_RATE, MIN_TYPE = 7.2, 0.028, 0.35
 
 # --- Loop 1: build and tests. Captured at 5ce0aa0 on 2026-09-11; long JSON lines
-# are shortened with an ellipsis, every kept field is verbatim.
+# are shortened with an ellipsis, every kept field is verbatim; wrap() breaks
+# them into rows.
 BUILD = [
     (0.0, 'cmd', 'python tools/build.py sw build springtrail --tag readme --json'),
-    (1.6, 'out', '{"artifacts": {…}, "attempt": "f5c2e3ef0619", "cache": "MISS", "commit": "5ce0aa0d…", …'),
-    (1.6, 'out', ' "rom": "workdir/builds/readme/sw/build/springtrail/runs/f5c2e3ef0619/image.gb", "status": "PASS", …}'),
+    (1.6, 'out', '{"artifacts": {…}, "attempt": "f5c2e3ef0619", "cache": "MISS", "commit": "5ce0aa0d…", …, "rom": "workdir/builds/readme/sw/build/springtrail/runs/f5c2e3ef0619/image.gb", "status": "PASS", …}'),
     (3.6, 'cmd', 'python -m unittest tools.n2m.tests.test_core_art tools.n2m.tests.test_sprite_preview'),
     (4.4, 'out', '.........'),
     (4.6, 'out', '----------------------------------------------------------------------'),
@@ -58,8 +58,7 @@ BUILD_LOOP = 19.0
 PACKAGE = 'workdir/builds/readme/sw/build/springtrail/runs/f5c2e3ef0619/result.json'
 BOARD = [
     (0.0, 'cmd', f'python tools/build.py host load --package {PACKAGE} --tag board --json'),
-    (3.4, 'out', '{"action": "load", …, "endpoint": {"abi": 1, "build_id": "…"}, …, "result": {"image": {"bytes": 32768,'),
-    (3.4, 'out', ' "sha256": "adbef6b04b5ca7c3…"}, "verified_bytes": 32768}, "status": "PASS", "tag": "board", "wire_abi": 1}'),
+    (3.4, 'out', '{"action": "load", …, "endpoint": {"abi": 1, "build_id": "…"}, …, "result": {"image": {"bytes": 32768, "sha256": "adbef6b04b5ca7c3…"}, "verified_bytes": 32768}, "status": "PASS", "tag": "board", "wire_abi": 1}'),
     (5.2, 'cmd', 'python tools/build.py host status --tag board --json'),
     (5.8, 'out', '{"action": "status", …, "result": {"IMAGE_VALID": 1, "INPUT": 0, "PROFILE": 1, "STATE": 0}, "status": "PASS", …}'),
     (7.2, 'cmd', 'python tools/build.py host input --mask 128 --tag board --json'),
@@ -71,15 +70,13 @@ BOARD = [
     (12.2, 'cmd', 'python tools/build.py host run-dots --dots 70224 --tag board --json'),
     (12.8, 'out', '{"action": "run-dots", …, "result": {"dot": 210672, "executed": 70224, "reason": 0}, "status": "PASS", …}'),
     (14.0, 'cmd', 'python tools/build.py host snapshot --tag board --json'),
-    (15.4, 'out', '{"action": "snapshot", …, "result": {"pixels": {"bytes": 5760, "sha256": "…"},'),
-    (15.4, 'out', ' "snapshot": {"dot": 142627, "epoch": 2, "seq": 0, "size": 5760}}, "status": "PASS", …}'),
+    (15.4, 'out', '{"action": "snapshot", …, "result": {"pixels": {"bytes": 5760, "sha256": "…"}, "snapshot": {"dot": 142627, "epoch": 2, "seq": 0, "size": 5760}}, "status": "PASS", …}'),
     (17.0, 'cmd', 'python tools/build.py host input --mask 0 --tag board --json'),
     (17.6, 'out', '{"action": "input", …, "result": {"dot": 210672}, "status": "PASS", …}'),
     (18.8, 'cmd', 'python tools/build.py host crc-proof --expected-build-id <reviewed-wire-id> --tag board --json'),
-    (21.6, 'out', '{"action": "crc-proof", …, "result": {"after": {"DOT_HI": 0, "DOT_LO": 210672, "INPUT": 0, "INPUT_EFFECTIVE": 0,'),
-    (21.6, 'out', ' "INPUT_SOURCE": 0, "STATE": 0, …}, "before": {…}, "silence_seconds": 2.0, …}, "status": "PASS", …}'),
+    (21.6, 'out', '{"action": "crc-proof", …, "result": {"after": {"DOT_HI": 0, "DOT_LO": 210672, "INPUT": 0, "INPUT_EFFECTIVE": 0, "INPUT_SOURCE": 0, "STATE": 0, …}, "before": {…}, "silence_seconds": 2.0, …}, "status": "PASS", …}'),
 ]
-BOARD_LOOP = 25.0
+BOARD_LOOP = 24.0
 
 HIGHLIGHT = re.compile(r'"status": "PASS"|\bPASS\b|\bOK\b|\bBUILT\b|\bMISS\b|"dot": \d+|"verified_bytes": 32768|"silence_seconds": 2\.0')
 
@@ -114,55 +111,93 @@ def reveal_css(prefix, times, loop):
     return css
 
 
-def typed_row(line_id, text, start, end, loop):
-    """A command line typed one character at a time, with a blinking caret.
+def typed_rows(rows, prompt_at, start, end, loop, y_of):
+    """Command rows typed one character at a time by the shared cursor.
 
-    Each character sits at a fixed x (CHAR_W apart) instead of the browser's
-    own text flow, so the reveal tracks a stable column on every platform's
-    monospace font. The "$ " prompt itself is gated to appear right when
-    typing starts, so a later, not-yet-typed command stays fully hidden.
+    `rows` is a cmd row and its cmd+ continuation rows, typed as one command
+    from `start` to `end`. Each character sits at a fixed x (CHAR_W apart)
+    instead of the browser's own text flow, so the reveal tracks a stable
+    column on every platform's monospace font. The "$ " prompt appears at
+    `prompt_at`, when the previous output has printed, so the cursor waits
+    at a real prompt before typing; a not-yet-typed command stays hidden.
+    Returns the text elements, keyframes, motion bindings and the cursor
+    steps (time, x after the typed character, row top).
     """
-    n = len(text)
-    css, motion, tspans = [], [], []
-    prompt = f'<tspan fill="{ACCENT}">$ </tspan>'
-    if n == 0:
-        return prompt, css, motion
-    if start > 0:
-        css.append(f'@keyframes k{line_id}p{{0%,{pct(start - 0.01, loop)}%{{opacity:0}}{pct(start, loop)}%,100%{{opacity:1}}}}')
-        motion.append(f'.k{line_id}p{{animation:k{line_id}p {loop}s step-end infinite}}')
-        prompt = f'<tspan class="k{line_id}p" fill="{ACCENT}">$ </tspan>'
-    dur = max(end - start, 0.01)
-    for i, ch in enumerate(text):
-        cls = f'k{line_id}c{i}'
-        x = PAD + (2 + i) * CHAR_W
-        tspans.append(f'<tspan class="{cls}" x="{x:.1f}">{esc(ch)}</tspan>')
-        t = start + (i / n) * dur
-        if t <= 0:
-            continue  # already typed when the loop starts
-        css.append(f'@keyframes {cls}{{0%,{pct(max(t - 0.01, 0), loop)}%{{opacity:0}}{pct(t, loop)}%,100%{{opacity:1}}}}')
-        motion.append(f'.{cls}{{animation:{cls} {loop}s step-end infinite}}')
-    caret = f'k{line_id}cur'
-    caret_x = PAD + (2 + n) * CHAR_W
-    tspans.append(f'<tspan class="{caret}" x="{caret_x:.1f}" fill="{ACCENT}">█</tspan>')
-    css.append(f'@keyframes {caret}{{0%,{pct(max(start - 0.01, 0), loop)}%{{opacity:0}}'
-               f'{pct(start, loop)}%,{pct(end - 0.01, loop)}%{{opacity:1}}{pct(end, loop)}%,100%{{opacity:0}}}}')
-    motion.append(f'.{caret}{{animation:{caret} {loop}s step-end infinite}}')
-    return prompt + ''.join(tspans), css, motion
+    css, motion, texts, steps = [], [], [], []
+    typed = sum(len(text.lstrip()) if kind == 'cmd+' else len(text) for _, kind, text in rows)
+    dur, k = max(end - start, 0.01), 0
+    for row, kind, text in rows:
+        y, x0 = y_of(row), PAD + (2 * CHAR_W if kind == 'cmd' else 0)
+        prompt, tspans = '', []
+        if kind == 'cmd':
+            prompt = f'<tspan fill="{ACCENT}">$ </tspan>'
+            if prompt_at > 0:
+                css.append(f'@keyframes k{row}p{{0%,{pct(prompt_at - 0.01, loop)}%{{opacity:0}}{pct(prompt_at, loop)}%,100%{{opacity:1}}}}')
+                motion.append(f'.k{row}p{{animation:k{row}p {loop}s step-end infinite}}')
+                prompt = f'<tspan class="k{row}p" fill="{ACCENT}">$ </tspan>'
+            steps.append((min(prompt_at, start), x0, y - 12))
+        # A continuation row's indent is layout, not keystrokes: it lands
+        # with the row's first typed character.
+        indent = len(text) - len(text.lstrip()) if kind == 'cmd+' else 0
+        for i, ch in enumerate(text):
+            cls, x = f'k{row}c{i}', x0 + i * CHAR_W
+            t = start + (k / typed) * dur
+            if i >= indent:
+                k += 1
+                steps.append((t, x + CHAR_W, y - 12))
+            tspans.append(f'<tspan class="{cls}" x="{x:.1f}">{esc(ch)}</tspan>')
+            if t <= 0:
+                continue  # already typed when the loop starts
+            css.append(f'@keyframes {cls}{{0%,{pct(max(t - 0.01, 0), loop)}%{{opacity:0}}{pct(t, loop)}%,100%{{opacity:1}}}}')
+            motion.append(f'.{cls}{{animation:{cls} {loop}s step-end infinite}}')
+        texts.append(f'<text x="{PAD}" y="{y}" xml:space="preserve">{prompt}{"".join(tspans)}</text>')
+    return texts, css, motion, steps
 
 
-def wrap(lines, columns=104):
-    """Continue a long command on the next row, as a terminal would."""
+def split_rows(text, limit, rows, separator):
+    """Break text into `rows` rows of at most `limit` characters, each ending
+    at the last `separator` before an even share; None when that cannot fit."""
+    out = []
+    for left in range(rows, 1, -1):
+        target = min(limit, -(-len(text) // left) + 8)
+        cut = text.rfind(separator, 0, target)
+        if cut <= 0:
+            cut = text.rfind(separator, 0, limit)  # no even share; take the longest row
+        if cut <= 0:
+            cut = text.rfind(' ', 0, target)
+        if cut <= 0:
+            return None
+        if text[cut:cut + len(separator)] == separator:
+            cut += len(separator) - 1  # keep the "," on this row
+        out.append(text[:cut])
+        text = ' ' + text[cut:].lstrip()
+    return out + [text] if len(text) <= limit else None
+
+
+def wrap(lines, columns=101):
+    """Continue a long line on the next rows, as a terminal would.
+
+    Rows are balanced so no continuation is a stub: each break lands at the
+    last space (commands) or ", " JSON separator (output) before an even
+    share of the text, so no field or value is cut in two.
+    """
     out = []
     for seconds, kind, text in lines:
-        # A typed cmd row also carries the "$ " prompt and a trailing caret
-        # (see typed_row); keep it a few columns narrower so that overhead
-        # still fits the 800px viewBox at a 0.6em font.
+        # A typed cmd row also carries the "$ " prompt and the cursor; keep it
+        # a few columns narrower so that overhead still fits the 800px viewBox
+        # at a 0.6em font.
         limit = columns - 4 if kind == 'cmd' else columns
-        while len(text) > limit:
-            cut = text.rfind(' ', 0, limit) if kind == 'cmd' else limit
-            out.append((seconds, kind, text[:cut]))
-            text, kind = ('    ' if kind == 'cmd' else ' ') + text[cut:].lstrip(), kind + '+'
-        out.append((seconds, kind, text))
+        rows = [text]
+        for count in range(2, 6):
+            if len(text) <= limit:
+                break
+            rows = split_rows(text, limit, count, ' ' if kind == 'cmd' else ', ')
+            if rows:
+                break
+        assert rows and all(len(row) <= limit for row in rows), text
+        out.append((seconds, kind, rows[0]))
+        # A continuation command row is indented under its prompt.
+        out += [(seconds, kind + '+', ('   ' if kind == 'cmd' else '') + row) for row in rows[1:]]
     return out
 
 
@@ -178,40 +213,59 @@ def terminal(title, footer, lines, loop):
     times = sorted(set(seconds for seconds, _, _ in lines))
     index = {seconds: times.index(seconds) for seconds in times}
     height = BAR + PAD + LINE * (len(lines) + 1) + PAD + 22
-    body, rules, motion = [], [], []
-    for row, (seconds, kind, text) in enumerate(lines):
-        y = BAR + PAD + LINE * (row + 1) - 4
-        if kind == 'cmd':
-            # Type the command in before it "runs": start early enough to
-            # finish exactly when the line's own reveal time arrives, so the
-            # output below still only appears once typing is done.
-            earlier = [s for s in times if s < seconds]
-            prev = earlier[-1] if earlier else 0.0
-            dur = min(max(len(text) * TYPE_RATE, MIN_TYPE), max(seconds - prev - 0.05, MIN_TYPE))
-            markup, css, mo = typed_row(row, text, max(seconds - dur, 0.0), seconds, loop)
-            rules += css
-            motion += mo
-            body.append(f'<text x="{PAD}" y="{y}" xml:space="preserve">{markup}</text>')
-        else:
+
+    def y_of(row):
+        return BAR + PAD + LINE * (row + 1) - 4
+
+    body, rules, motion, steps = [], [], [], []
+    row = 0
+    while row < len(lines):
+        seconds, kind, text = lines[row]
+        if kind != 'cmd':
             cls = f' class="t{index[seconds]}"' if seconds else ''
-            body.append(f'<text{cls} x="{PAD}" y="{y}" xml:space="preserve">{spans(kind, text)}</text>')
-    # The cursor waits below the last shown line while the loop plays.
-    cursor_y = BAR + PAD + LINE * (len(lines) + 1) - 16
-    steps = [(0.0, BAR + PAD + LINE - 16 - cursor_y)]  # no line shown yet, while the first command types in
+            body.append(f'<text{cls} x="{PAD}" y="{y_of(row)}" xml:space="preserve">{spans(kind, text)}</text>')
+            row += 1
+            continue
+        group = [(row, kind, text)]
+        while row + len(group) < len(lines) and lines[row + len(group)][1] == 'cmd+':
+            group.append((row + len(group),) + lines[row + len(group)][1:])
+        # Type the command in before it "runs": start early enough to finish
+        # exactly when the line's own reveal time arrives, so the output
+        # below still only appears once typing is done.
+        earlier = [s for s in times if s < seconds]
+        prev = earlier[-1] if earlier else 0.0
+        typed = sum(len(t.lstrip()) if k == 'cmd+' else len(t) for _, k, t in group)
+        dur = min(max(typed * TYPE_RATE, MIN_TYPE), max(seconds - prev - 0.05, MIN_TYPE))
+        texts, css, mo, st = typed_rows(group, prev, max(seconds - dur, 0.0), seconds, loop, y_of)
+        body += texts
+        rules += css
+        motion += mo
+        steps += st
+        row += len(group)
+    # One cursor: it walks along each command as it is typed, then waits on
+    # the row below the last shown line: at column 0 while output is still
+    # to come, after the "$ " prompt once it has printed. Its authored place
+    # (no transform) is the final prompt row, the still.
+    cursor_x, cursor_y = PAD + 2 * CHAR_W, BAR + PAD + LINE * (len(lines) + 1) - 16
     for seconds in times:
         rows = sum(1 for s, _, _ in lines if s <= seconds)
-        steps.append((seconds, BAR + PAD + LINE * (rows + 1) - 16 - cursor_y))
-    frames = [f'0%{{transform:translateY({steps[0][1]}px)}}']
-    for seconds, offset in steps[1:]:
-        frames.append(f'{pct(seconds, loop)}%{{transform:translateY({offset}px)}}')
-    frames.append('100%{transform:translateY(0)}')
+        at_prompt = rows == len(lines) or lines[rows][1] == 'cmd'
+        steps.append((seconds, cursor_x if at_prompt else PAD, BAR + PAD + LINE * (rows + 1) - 16))
+    steps.sort(key=lambda step: step[0])
+    if steps[0][0] > 0:
+        steps.insert(0, (0.0, PAD, BAR + PAD + LINE - 16))  # no line shown yet
+    frames = [f'{pct(t, loop) if t else 0}%{{transform:translate({x - cursor_x:.1f}px,{y - cursor_y}px)}}' for t, x, y in steps]
+    frames.append('100%{transform:translate(0,0)}')
     rules.append('@keyframes cur{' + ''.join(frames) + '}')
     rules.append('@keyframes blink{50%{opacity:0}}')
+    # Soften the loop seam: a short fade in and out of the whole session.
+    rules.append(f'@keyframes reel{{0%{{opacity:0}}{pct(0.3, loop)}%,{pct(loop - 0.5, loop)}%{{opacity:1}}100%{{opacity:0}}}}')
     rules += reveal_css('t', times, loop)
     # Every distinct reveal time now sits after LEAD > 0 (the type-in lead),
     # so every t{i} class needs its own animation binding.
     motion += [f'.t{i}{{animation:t{i} {loop}s linear infinite}}' for i in range(len(times))]
-    motion.append(f'.cur{{animation:cur {loop}s step-end infinite,blink 1s step-end infinite}}')
+    motion.append(f'.cur{{animation:cur {loop}s step-end infinite}}.bl{{animation:blink 1s step-end infinite}}')
+    motion.append(f'.reel{{animation:reel {loop}s linear infinite}}')
     style = (f'text{{font:12px {MONO};fill:{TEXT}}}.h{{font-size:11px;fill:{MUTED}}}'
              + ''.join(rules) + '@media (prefers-reduced-motion:no-preference){' + ''.join(motion) + '}')
     svg = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{WIDTH}" height="{height}" viewBox="0 0 {WIDTH} {height}" role="img" aria-label="{esc(title)}">',
@@ -220,9 +274,11 @@ def terminal(title, footer, lines, loop):
            f'<path d="M0 {BAR}.5H{WIDTH}" stroke="{BORDER}"/>',
            f'<circle cx="18" cy="15" r="5" fill="#ff5f57"/><circle cx="36" cy="15" r="5" fill="#febc2e"/><circle cx="54" cy="15" r="5" fill="#28c840"/>',
            f'<text class="h" x="{WIDTH / 2}" y="19" text-anchor="middle">{esc(title)}</text>',
+           '<g class="reel">',
            *body,
-           f'<text x="{PAD}" y="{cursor_y + 12}" xml:space="preserve"><tspan fill="{ACCENT}">$ </tspan></text>',
-           f'<rect class="cur" x="{PAD + 15}" y="{cursor_y}" width="7" height="14" fill="{ACCENT}"/>',
+           f'<text class="t{len(times) - 1}" x="{PAD}" y="{cursor_y + 12}" xml:space="preserve"><tspan fill="{ACCENT}">$ </tspan></text>',
+           f'<g class="cur"><rect class="bl" x="{cursor_x:.1f}" y="{cursor_y}" width="7" height="14" fill="{ACCENT}"/></g>',
+           '</g>',
            f'<text class="h" x="{PAD}" y="{height - 12}">{esc(footer)}</text>',
            '</svg>']
     return '\n'.join(svg) + '\n'
@@ -296,8 +352,9 @@ def paths(pixels):
 
 
 # Each sample is one real tick of story(), held on screen for its own
-# duration: (id, tick or None for the title screen, hold seconds, INPUT mask
-# shown for it (None hides the readout), and a short legend line.
+# duration: (id, tick or None for the title screen, hold seconds, the INPUT
+# mask update() consumed to produce that tick (None hides the readout), and a
+# short legend line. The jump is sampled along its arc so it reads as motion.
 SAMPLES = (
     ('title', None, 2.0, None, 'TITLE screen: PRESS START'),
     ('stand', 1, 1.0, 128, 'Start (128) → PLAY'),
@@ -306,7 +363,10 @@ SAMPLES = (
     ('resume', 34, 1.0, 128, 'Start (128): resumes'),
     ('run2', 58, 1.8, 33, 'Right+B (33): runs on'),
     ('prejump', 74, 1.0, 33, 'Nears the gap'),
-    ('jump', 95, 1.4, 49, 'A (16): jumps the gap'),
+    ('jump', 75, 0.5, 49, 'A (16): jumps'),
+    ('rise', 85, 0.4, 33, 'Right+B (33): clears the gap'),
+    ('apex', 95, 0.5, 33, 'Right+B (33): clears the gap'),
+    ('fall', 105, 0.4, 33, 'Right+B (33): clears the gap'),
     ('land', 116, 1.0, 33, 'Lands, keeps running'),
     ('run3', 122, 1.2, 33, 'Right+B (33): runs on'),
     ('retry', 126, 2.4, None, 'Hits the patrol: RETRY'),

@@ -36,7 +36,7 @@ A Springtrail playthrough: title screen, Start, a run, a jump over a gap, a
 pause and resume, then a run into a patrol that ends in RETRY, composed from
 the game's own reference frames:
 
-![Springtrail start](wiki/showcase/game-start.svg)
+![Springtrail playthrough](wiki/showcase/game-start.svg)
 
 ## Current system
 

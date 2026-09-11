@@ -15,9 +15,12 @@ the finished still. Under a reduced-motion preference nothing animates and the
 complete final state is shown. Text wraps at a column count sized for the
 widest system monospace font GitHub resolves `ui-monospace` to (about 0.6em
 per character on macOS/Linux, versus Consolas's 0.55em on Windows), so no line
-is clipped by the 800px viewBox on any platform. The terminal loops type each
-command in one character at a time, at a fixed per-character column, before
-its output appears, the way a real shell session reads.
+is clipped by the 800px viewBox on any platform; long lines continue on the
+next row, broken at a space or after a JSON separator so no field is cut. The
+terminal loops type each command in one character at a time, at a fixed
+per-character column, with one blinking block cursor that follows the
+keystrokes and then waits on the prompt row while output prints, the way a
+real shell session reads.
 
 ## Build and tests
 
@@ -58,9 +61,9 @@ sorted JSON object per command, shortened here with `…`. Values:
 - The endpoint build ID, the retirement counters, sequence tokens and frame
   hashes are elided as `…`.
 
-## Game start
+## Game playthrough
 
-![Game start](game-start.svg)
+![Springtrail playthrough](game-start.svg)
 
 Every pixel comes from the independent Springtrail references under
 `src/dv/springtrail`: [hud_reference.image](../../src/dv/springtrail/hud_reference.py)
@@ -73,9 +76,12 @@ level gap, a pause and resume (mask 128 each), more running, and a collision
 with the patrolling enemy that ends in RETRY. Asserts on the exact tick, mode,
 `player.x` and `grounded` pin this sequence to the reference rules, so a
 behavior change there fails the generator instead of silently drawing a
-different game. Eleven real states along that playthrough are rendered as full
-frames (including the camera scroll `hud_reference.image` derives from
-`player.camera`) and shown in sequence, each held long enough to read; the
-HUD word row (`TITLE`/`PLAY`/`PAUSED`/`RETRY`) is part of every rendered frame,
-not added separately. The JOYP pills, mask readout and legend line name the
-UART `host input` mask that produced each state.
+different game. Fourteen real states along that playthrough are rendered as
+full frames (including the camera scroll `hud_reference.image` derives from
+`player.camera`) and shown in sequence, each held long enough to read, with
+the jump sampled at four points of its arc; the HUD word row
+(`TITLE`/`PLAY`/`PAUSED`/`RETRY`) is part of every rendered frame, not added
+separately. The JOYP pills, mask readout and legend line name the UART
+`host input` mask `update()` consumed to produce each shown state: mask 49
+(Right+B+A) only on the tick of the A edge that starts the jump, mask 33
+while airborne.
