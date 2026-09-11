@@ -1,7 +1,8 @@
 # DE10-Lite physical controls
 
-Physical board qualification remains open in [#156](https://github.com/amichai-bd/nand2mario/issues/156).
-The
+Physical board qualification is out of scope while the board is worked
+remotely; see the [remote working scope](../preflight-gaps.md#remote-working-scope).
+The RTL below exists and is simulation-verified. The
 [shared input owner](rtl/input/MAS_input.md) already implements source selection;
 this producer supplies its physical mask.
 
@@ -158,10 +159,9 @@ lines3278,3905 and4638). The
 defines file columns and repetition. Expected samples alone do not excuse
 runtime diagnostics; earlier fixed-mode failures remain failed evidence.
 
-Issue156 requires independent Questa filtering/fault/atomicity checks, early
-ADC fit, final constrained FPGA proof, and actual verified controls with
-visible indication and UART isolation. Simulation does not satisfy the
-physical criterion. Missing hardware facts leave that criterion open.
+Physical acceptance needs actual verified controls with visible indication
+and UART isolation. Simulation does not satisfy that criterion, and it is out
+of scope while no one is at the board.
 
 ## Actual-system controls target
 
@@ -178,9 +178,9 @@ system's25 MHz/25.2 MHz parallel PLLs. Its dedicated10 MHz ADC PLL is the third
 PLL. The fit must retain the full system memory partition and prove all three
 clock/reset paths, the four button and UART synchronizers, and the real bridge
 CDC paths. Existing diagnostic fits do not establish this composition's timing.
-Its default calibration remains nominal. Physical acceptance under #156 still
-requires verified components, electrical setup, measured calibration and actual
-all-eight-control/UART-isolation/VGA evidence.
+Its default calibration remains nominal. Physical acceptance, if the board
+becomes reachable, requires verified components, electrical setup, measured
+calibration and actual all-eight-control/UART-isolation/VGA evidence.
 
 The board shell retains `n2m_clocking` and supplies its qualified clocks and
 resets to the shared controls/system module. That module owns the ADC reset,

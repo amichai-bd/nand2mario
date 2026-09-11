@@ -5,7 +5,11 @@ required results, not claims of implemented or verified behavior.
 
 ## Approved direction
 
-Build an original-DMG-compatible Game Boy for the DE10-Lite. Design and verify
+Build an original-DMG-compatible Game Boy for the DE10-Lite. Compatible means
+the core follows DMG behavior: CPU, PPU, timer, DMA, interrupts, joypad and the
+memory map match pinned DMG references and independent tests. It does not
+mean an arbitrary cartridge runs; the [compatibility scope](#compatibility-scope)
+states what each release runs. Design and verify
 the hardware, build Python software tools that produce loadable programs, and
 prove the complete system in simulation before board execution. Provide VGA
 output and PC keyboard input over UART. The game goal is
@@ -41,6 +45,41 @@ compatibility defects in its owning contract. Defer additional mappers,
 CGB, SGB, and link support. Full APU completion and physical audio are deferred;
 these releases prove silent video and input, not full DMG compatibility.
 
+## Compatibility scope
+
+Every release runs our own 32 KiB mapperless ROM on DMG-accurate core
+hardware. The table states what is offered; the gap register owns each
+deferral's close condition.
+
+| Scope | `v0.5` | `v0.9` | `v1.0` |
+|---|---|---|---|
+| Cartridge profile | 32 KiB `dmg-direct-v1`, no mapper, no cartridge RAM | Same | Same |
+| Program | Our v0.5 program | Our original platformer | Same |
+| Core: CPU, PPU, timer, DMA, interrupts, joypad, memory | DMG behavior, independently tested | Same | Same |
+| Serial `FF01`-`FF02` | Register access served, no transfer | Same | Same |
+| Audio `FF10`-`FF3F` | Register access served, never powered, no synthesis | Same | Same |
+| Output | VGA, silent | Same | Same |
+| Input | UART keyboard and scripted input | Same | Same |
+| Third-party ROM | Not offered | Not offered | Not offered |
+
+The [serial](rtl/serial/MAS_serial.md) and [audio](rtl/audio/MAS_audio.md)
+owners are present-but-unimplemented peripherals. They return DMG read values
+so the CPU never faults; the audio owner's
+[known divergence](rtl/audio/MAS_audio.md#known-divergence) records what a
+game observes. Absent synthesis is
+[GAP-016](../preflight-gaps.md#gap-016-audio-synthesis-rtl); the physical
+output path is [GAP-014](../preflight-gaps.md#gap-014-physical-audio-path).
+No mapper exists. A separate 64 KiB MBC1 profile for our own game is an open
+gap in [#307](https://github.com/amichai-bd/nand2mario/issues/307); it is not
+a release prerequisite.
+
+Third-party ROM support is not offered in any release. A freely licensed
+32 KiB mapperless ROM that uses only the implemented peripherals may run, but
+no ROM not authored here has been proven to run. The first third-party boot
+attempt is tracked in [#377](https://github.com/amichai-bd/nand2mario/issues/377).
+Its result adds evidence to the relevant owner contracts; it does not widen
+the offered scope. Loading a commercial cartridge is not a goal.
+
 Build a Python assembler/linker, ROM packager, asset tools, and loader through
 the shared builder. `v0.5` must use our software build. Use a pinned,
 license-reviewed assembler as an independent encoding oracle. A C-like compiler
@@ -49,16 +88,17 @@ pipeline for the original game; no new general engine or compiler is required.
 
 ## Input boundary
 
-Use UART for scripted testing and PC keyboard input. Physical buttons and an
-ADC joystick are planned controls. Route UART and physical controls through one
-shared input boundary for the same eight Game Boy buttons and MMIO state;
-game ROMs need no custom host MMIO. Keep loading/control separate from input
-events. Preserve VGA output and UART source-frame observation.
+Use UART for scripted testing and PC keyboard input; UART is the supported
+input path. Route UART and physical controls through one shared input boundary
+for the same eight Game Boy buttons and MMIO state; game ROMs need no custom
+host MMIO. Keep loading/control separate from input events. Preserve VGA output
+and UART source-frame observation.
 
 The [shared input owner](rtl/input/MAS_input.md) implements source selection.
-Physical buttons and ADC joystick are defined in the
-[board controls contract](fpga-controls.md); remaining physical qualification is
-tracked in [#156](https://github.com/amichai-bd/nand2mario/issues/156).
+Physical buttons and an ADC joystick are defined in the
+[board controls contract](fpga-controls.md). Their RTL exists and is
+simulation-verified; connecting and qualifying them is out of scope under the
+[remote working scope](#remote-acceptance).
 Python observation/play tools follow the [host tool specification](../tools/host-play/SPEC.md).
 Existing UART commands
 follow the [shared interface contract](rtl/interfaces/MAS_interfaces.md).
@@ -80,7 +120,8 @@ bound to pass the implementation.
 | `v1.0` | After separate board approval and wiring/timing proof: full load/readback, scripted checkpoints and pre-VGA frame hashes match simulation; VGA and keyboard work; 30-minute continuous run without unexpected reset/lost input; repeat reset/load/start three times. Silent output. |
 
 The v0.5 and original v0.9 baselines are qualified separately from physical
-release acceptance, which remains open in [#264](https://github.com/amichai-bd/nand2mario/issues/264).
+release acceptance, which remains open in [#264](https://github.com/amichai-bd/nand2mario/issues/264)
+within the [remote acceptance](#remote-acceptance) split below.
 Functional boot/input/checkpoint requirements are preserved,
 but their execution matrices must be named and reviewed before work: use short
 complementary simulations under the [total wall cap](../tools/n2m/SPEC.md#test-wall-budget)
@@ -102,6 +143,31 @@ than an automatic 3600-interval repeat. Future milestones select deterministic
 distinct-transition coverage, focused faults and sampled endurance under that
 policy. The v1.0 full load/readback, actual VGA/keyboard operation, continuous
 30 minutes and three reset/load/start cycles remain required.
+
+### Remote acceptance
+
+The owner works the board remotely; it is connected and answers over UART, but
+no one is at it. The [gap register](../preflight-gaps.md#remote-working-scope)
+records the 2026-09-11 decisions: physical controls and trusted CI are out of
+scope, with [#156](https://github.com/amichai-bd/nand2mario/issues/156) and
+[#32](https://github.com/amichai-bd/nand2mario/issues/32) closed. The `v1.0`
+checks above keep their wording; this table states which a remote operator can
+prove and which need physical presence.
+
+| `v1.0` check | Proven over UART | Needs physical presence |
+|---|---|---|
+| Full load and readback | Yes: byte-exact readback of the loaded image | — |
+| Scripted checkpoints and pre-VGA frame hashes | Yes: snapshots and frame hashes read over UART match simulation | — |
+| Keyboard works | Yes: UART keyboard input drives the shared input owner and JOYP | — |
+| VGA works | Frame hashes prove the source frames; the VGA owner is simulation- and fit-verified | Observing the monitor: timing tolerance, tearing, colors |
+| 30-minute continuous run, no unexpected reset or lost input | Yes: UART-driven input, periodic snapshots, build ID and core-reset epoch | — |
+| Three reset/load/start cycles | Yes with the UART core reset | KEY0 board reset |
+| Wiring, voltage and timing proof at the board | — | Yes, under [#28](https://github.com/amichai-bd/nand2mario/issues/28) |
+
+A `v1.0` claim built on the UART column alone must say so. The physical column
+stays open in [#28](https://github.com/amichai-bd/nand2mario/issues/28) and
+[#264](https://github.com/amichai-bd/nand2mario/issues/264); those issues gate
+physical claims only, not UART-observable, simulation or host work.
 
 ## Dependencies and authority
 

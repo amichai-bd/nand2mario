@@ -220,8 +220,8 @@ See the complete layout in the
 - Behavioral changes update specification, code, and tests together.
 - Hosted CI runs only the PR policy check and the Pages build; documentation,
   Python host checks and Questa evidence are local.
-- Trusted Questa, Quartus and board jobs remain planned in
-  [#32](https://github.com/amichai-bd/nand2mario/issues/32); see the
+- Trusted Questa, Quartus and board jobs are out of scope; see
+  [GAP-010](preflight-gaps.md#gap-010-github-remote-issues-ci-and-pages) and the
   [actual CI boundary](tools/n2m/SPEC.md#ci-execution-boundary).
 - Wiki checks run locally before merge. Pages deploys only after merge to `main`.
 
