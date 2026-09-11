@@ -103,6 +103,9 @@ wiki run. Then, by changed scope:
   `python -m unittest discover -s tools/sim -p test_tile_pixel.py -v`.
 - The scoped [verification tier](../src/dv/integration/SPEC.md#verification-tiers)
   supplies simulation, FPGA and hardware evidence; no hosted job ever ran those.
+  Run a [declared subset](../tools/n2m/SPEC.md#regression-subsets) rather than
+  naming targets by hand: `python tools/build.py regress pre-merge --tag <tag> --json`
+  is the short ordinary set, and `composed-smoke` the bounded composed candidate.
 
 A failure in any of these blocks the merge exactly as a red hosted check did.
 Reuse results only for an unchanged head with unchanged relevant inputs.

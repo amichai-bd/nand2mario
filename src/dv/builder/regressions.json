@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "subsets": {
+    "pre-merge": {
+      "tier": "ordinary",
+      "purpose": "Short ordinary pre-merge set: builder smoke and the exhaustive tile pixel check.",
+      "budget_seconds": 300,
+      "targets": [
+        "builder-smoke",
+        "tile-pixel"
+      ]
+    },
+    "composed-smoke": {
+      "tier": "ordinary",
+      "purpose": "The bounded composed candidate named by the ordinary tier: timer overflow, IRQ entry, HALT wake and final pause through Intel-model preload.",
+      "budget_seconds": 300,
+      "targets": [
+        "python-v05-timer"
+      ]
+    },
+    "builder-fault": {
+      "tier": "ordinary",
+      "purpose": "Deliberate aggregate failure witness: must exit 1 naming builder-smoke-fail while builder-smoke passes.",
+      "budget_seconds": 120,
+      "targets": [
+        "builder-smoke",
+        "builder-smoke-fail"
+      ]
+    }
+  }
+}

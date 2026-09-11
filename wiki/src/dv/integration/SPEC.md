@@ -133,7 +133,9 @@ witness. Recheck mutations when relevant checking infrastructure changes.
 Target at most 120 seconds per simulation and 300 seconds aggregate for ordinary
 pre-merge checks. These are goals, not coverage waivers or a reason for prolonged
 harness optimization. Report the measured total and any unmet target. Use
-`python-v05-timer` as a bounded short composed candidate. It checks 110 retirement records with all 26 fields, 16 selected
+`python-v05-timer` as a bounded short composed candidate; the builder declares
+it as the `composed-smoke` [regression subset](../../../tools/n2m/SPEC.md#regression-subsets)
+and the builder smoke plus tile pixel check as `pre-merge`. It checks 110 retirement records with all 26 fields, 16 selected
 register/RAM bus transactions, timer overflow, IRQ entry, CPU HALT wake, a handler
 RAM marker and final host pause. It requires at least 320 ordered startup white pixels;
 it does not prove a complete normal frame or

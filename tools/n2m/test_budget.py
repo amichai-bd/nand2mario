@@ -64,8 +64,14 @@ def wall_limit(target, root=None):
     return wall_selection(target, root)[0]
 
 
-def supervise(command, root, tag, *, target=None):
+def supervise(command, root, tag, *, target=None, ceiling=None):
     limit, allowance_reason = wall_selection(target, root)
+    # A regression caps a child at its remaining aggregate seconds. The cap
+    # only shrinks the selected budget; nothing here extends it.
+    if ceiling is not None:
+        if type(ceiling) is not int or ceiling < 13:
+            raise ValueError("wall ceiling must be an integer of at least 13 seconds")
+        limit = min(limit, ceiling)
     execution_limit = limit - 12
     started = time.monotonic()
     wall_started = datetime.now(timezone.utc).timestamp()
@@ -90,6 +96,8 @@ def supervise(command, root, tag, *, target=None):
               "command": command, "status": "RUNNING"}
     if allowance_reason is not None:
         record["wall_allowance_reason"] = allowance_reason
+    if ceiling is not None:
+        record["wall_ceiling_seconds"] = ceiling
     path = build / "wall-budget" / (uuid.uuid4().hex + ".json")
     atomic_json(path, record)
     options = {"creationflags": subprocess.CREATE_NO_WINDOW} if os.name == "nt" else {"start_new_session": True}
