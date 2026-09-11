@@ -498,3 +498,28 @@ The helper owns review layout/scene positions; source banks and maps own pixels.
 [Focused checks](../../../tools/n2m/tests/test_core_art.py) verify reconstruction,
 invalid references, asymmetric flipping, independent 2bpp decoding and exact
 committed SVG reproduction. These checks do not qualify gameplay integration.
+
+## Program previews
+
+`python -m tools.sw.program_art --tag program-review` renders the
+[Stackdrop](../../src/sw/stackdrop/SPEC.md#previews) and
+[v0.5](../../src/dv/v05/SPEC.md#previews) previews under
+`workdir/builds/<tag>/program-art/<program>/`. It assembles, links and packages
+each registered target in memory, then reads the data the program displays:
+Stackdrop's tile, map and shape tables at their linked symbols plus the BGP, SCX
+and SCY values from its listing; the v0.5 tiles, map and registers from the
+program writes of the literal instruction recipe in `src/dv/v05/reference.py`,
+after checking that recipe against the built ROM bytes. Stackdrop frames mirror
+`Prepare` and `Render` for the fresh-game title and one scripted play state from
+the independent rules model. Each program gets a tile-bank sheet, composed
+160x144 screens through the BGP register, PNG and SVG at fixed scales, the
+tile bank as strict shade JSON and 2bpp, each frame as shade JSON, and a
+`result.json` with commit and input/output hashes. The renderer supports a
+static background only: LCD and BG on, `$8000` tiles, `$9800` map, no window,
+objects or mid-frame writes, tile-aligned scroll.
+
+Tags follow the sprite review limits; existing tags and symlink output paths are
+rejected. There is no cache, source rewrite or automatic wiki update. The
+[focused test](../../../tools/n2m/tests/test_program_art.py) checks the bank
+against the ROM bytes, the composed frames against the independent Stackdrop
+frame oracle and the v0.5 literal image, and exact committed SVG reproduction.
