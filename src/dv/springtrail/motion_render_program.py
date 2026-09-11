@@ -4,7 +4,7 @@ import json
 import sys
 
 
-def build(root, destination):
+def build(root, destination, variant='motion'):
     prior = sys.path[:]
     try:
         sys.path[:0] = [str(root/'tools'), str(root/'src/dv/springtrail')]
@@ -13,15 +13,23 @@ def build(root, destination):
         from sw.package import package
         from sw.assets import load_shades, encode_shades
         from sw.columns import validate
-        from motion_cases import ADDRESSES, state_bytes
+        from motion_cases import ADDRESSES
         from interactions_reference import Game
         from motion_reference import Player
+        if variant == 'power':
+            from power_cases import state_bytes
+            from power_render_reference import GAME as game, SECONDARY
+            secondary = dict(pose=15, facing=32, x=60, y=32, address=SECONDARY)
+        else:
+            from motion_cases import state_bytes
+            secondary = dict(pose=12, facing=32, x=60, y=32, address=0xc140)
         validate(root)
         destination.mkdir(parents=True, exist_ok=True)
         source = root/'src/sw/springtrail'
         for path in source.glob('*.asm'):
             (destination/path.name).write_bytes(path.read_bytes())
-        game = Game(mode=1, player=Player(x=120*16, y=12*16, camera=97, pose=2))
+        if variant != 'power':
+            game = Game(mode=1, player=Player(x=120*16, y=12*16, camera=97, pose=2))
         lines = ['SECTION "code",ROM', 'Start:', 'DI', 'LD SP,$DFFE',
                  'XOR A,A', 'LDH [$FF40],A', 'LDH [$FF0F],A',
                  'LD [$FFFF],A', 'LDH [$FF43],A', 'LDH [$FF42],A',
@@ -45,10 +53,11 @@ def build(root, destination):
                   'LD A,[$C054]', 'LD HL,$C200', 'CALL PublishColumn',
                   'LD A,[$C054]', 'INC A', 'LD [$C054],A', 'CP A,32',
                   'JR NZ,RingColumn', 'CALL PrepareScene',
-                  'LD DE,$C140', 'LD A,60', 'LD [SceneBaseX],A',
-                  'LD A,32', 'LD [SceneBaseY],A', 'LD [CourierFacing],A',
+                  f"LD DE,${secondary['address']:04X}", f"LD A,{secondary['x']}", 'LD [SceneBaseX],A',
+                  f"LD A,{secondary['y']}", 'LD [SceneBaseY],A',
+                  f"LD A,{secondary['facing']}", 'LD [CourierFacing],A',
                   'XOR A,A', 'LD [SceneBaseX+1],A', 'LD [SceneBaseY+1],A',
-                  'LD [SceneHidden],A', 'LD A,12', 'LD [CourierPose],A',
+                  'LD [SceneHidden],A', f"LD A,{secondary['pose']}", 'LD [CourierPose],A',
                   'CALL ComposeCourier', 'CALL PrepareHUD',
                   'CALL PrepareMap', 'CALL PublishHUD', 'CALL PublishScene',
                   'XOR A,A', 'LDH [$FF0F],A', 'LD A,15', 'LDH [$FF45],A',
@@ -65,7 +74,7 @@ def build(root, destination):
                   'SECTION "assets",ROM', 'Tiles:', 'ASSET "Tiles"',
                   'ASSET "Courier"']
         for name in ('movement', 'render', 'world', 'collision', 'interactions',
-                     'map_restore', 'scene', 'stream', 'hud', 'columns'):
+                     'map_restore', 'scene', 'stream', 'hud', 'columns', 'power'):
             lines.append(f'INCLUDE "{name}.asm"')
         path = destination/'program.asm'
         path.write_text('\n'.join(lines)+'\n', encoding='utf-8')
@@ -80,7 +89,7 @@ def build(root, destination):
         layout = json.loads((source/'layout.json').read_text())
         layout['sections'] = [dict(row, unit='program.asm') for row in layout['sections']]
         linked = link([('program.asm', obj)], layout, dict(unit='program.asm', symbol='Start'))
-        image = package(linked, 'MOTION RENDER', 1)
+        image = package(linked, variant.upper()+' RENDER', 1)
         (destination/'program.gb').write_bytes(image)
         # Branch-inclusive startup allowances: each of 32 columns has at most
         # four runs/16 stores, one unrolled publication and counter overhead
@@ -93,7 +102,7 @@ def build(root, destination):
         record = dict(sha256=hashlib.sha256(image).hexdigest(),
                       operands=dict(state=list(state_bytes(game)), old_camera=95,
                                     camera=97, old_camera_tile=11, entering_column=32,
-                                    secondary=dict(pose=12, facing=32, x=60, y=32, address=0xc140)),
+                                    secondary=secondary),
                       lcd_bound=160000, end_bound=300000,
                       budget=dict(tile_copy=29624, font_hud=24000, ring=60000,
                                   preparation=35000, setup=10000,
@@ -101,8 +110,8 @@ def build(root, destination):
                       shared_sections={row['section']:hashlib.sha256(image[row['address']:row['address']+row['size']]).hexdigest()
                                        for row in linked['map']['sections']
                                        if row['section'] not in ('code', 'assets')})
-        (destination/'motion-render.json').write_text(json.dumps(record, indent=2)+'\n')
-        (destination/'motion-render-listing.json').write_text(json.dumps(linked['listing'], indent=2)+'\n')
+        (destination/(variant+'-render.json')).write_text(json.dumps(record, indent=2)+'\n')
+        (destination/(variant+'-render-listing.json')).write_text(json.dumps(linked['listing'], indent=2)+'\n')
         return image
     finally:
         sys.path[:] = prior

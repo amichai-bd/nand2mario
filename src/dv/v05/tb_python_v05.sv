@@ -214,6 +214,22 @@ module tb_python_v05 #(
         end
     end
 
+    // Corrupt the actual crouch mask store of Buttons (8 -> 9), not its public
+    // trace. The same UpdateGame call's motion must consume the unmasked Right.
+    initial begin
+        if ($test$plusargs("power_crouch_fault")) begin
+            wait(bus_commit && write_enable && address == 16'hc0fc);
+            do @(negedge clk_sys);
+            while (!(dut.raw_write && dut.raw_store == n2m_memory_pkg::STORE_WRAM &&
+                     dut.raw_offset == 15'h0019 && dut.raw_wdata == 8'd8));
+            $display("POWER_CROUCH_MUTATION expected=8 actual=9 dot=%0d", dot_count);
+            force dut.u_stores.ram_wdata = 8'd9;
+            @(posedge clk_sys);
+            @(negedge clk_sys);
+            release dut.u_stores.ram_wdata;
+        end
+    end
+
     // Change one real WRAM store after the original unit's first call marker.
     // The later prepared-image read must expose the corrupt stored cell.
     initial begin

@@ -34,7 +34,7 @@ normal update. Inputs are logical buttons, independent of the reference's bit la
 | Facing | An accepted direction changes facing before the side-collision test. Reversal holds retain the old facing. | `Call_1D26`; collision can therefore block motion while facing changes. |
 | Walk cycle | Grounded nonvehicle animation advances when the animation counter is divisible by4, wrapping WALK3 to WALK1. Right increments that counter and Left decrements it, modulo256. | `Call_16F5`; instruction mask3 establishes four, despite the comment saying three. The faster branch compares speed class with35, not normal run class4. No faster run cycle is established. |
 | Composition order | The animation routine composes the existing pose before advancing the stored pose and invoking horizontal movement. | `Call_16F5` then `Call_1736`; bank3 `Call_4823` is pose-table composition, not a cadence update. Normal dispatcher order is still absent. |
-| Pose precedence | Grounded stop selects STAND and resets animation counter1. Grounded reversal selects skid; airborne reversal does not replace the airborne pose. Exact crouch is excluded from walk advancement. | `Call_1D26` and `Call_16F5`; power/crouch integration remains with #302. |
+| Pose precedence | Grounded stop selects STAND and resets animation counter1. Grounded reversal selects skid; airborne reversal does not replace the airborne pose. Exact crouch is excluded from walk advancement. | `Call_1D26` and `Call_16F5`; power/crouch integration is [POWER.md](POWER.md). |
 | Run selection | With B held and jump state0, the input routine selects class2 below counter3, otherwise class4. B release demotes class4 to class2. A new B edge clears counter6 before projectile eligibility is checked. | bank3 `.jmp_4975`, `.jmp_498B`, `.jmp_49FD`; ground-only acceleration and B-edge effect are explicit, but relation to the horizontal invocation is not. |
 | Jump eligibility | A must be held and newly pressed; jump state0 and grounded are required. Accepted jump clears grounded, sets ascent and selects JUMP except exact crouch. | bank3 `.jmp_49BF`; held A cannot create another jump by itself. |
 | Jump setup | Non-run jump sets curve index2 and class2; run jump preserves its existing index. Normal noncrouch jump sets the horizontal counter48. | bank3 `.jmp_49BF`; the index reset before this call is not established by the missing dispatcher. |
@@ -148,7 +148,8 @@ New gameplay state occupies C060..C069 in this order:
 
 Scene composition reads motion pose/facing and retains the existing title/retry
 mode overrides. It does not advance motion state. Logical skid uses the approved
-small-skid core pose; no power/large-state mechanics are introduced. Existing
+skid core pose of the current size; the [power contract](POWER.md) owns size,
+crouch and hurt overrides. Existing
 courier poses and core editable sources remain authoritative. The skid's four
 core tiles16..19 stay at ROM6100..613F and are copied at LCD-off startup to
 VRAM tiles94..97 (85E0..861F). Courier pose12 uses these four pieces; existing

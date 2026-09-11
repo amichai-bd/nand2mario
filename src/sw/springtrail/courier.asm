@@ -3,28 +3,26 @@ SECTION "courier",ROM
 SelectCourier:
 LD A,[MotionFacing]
 LD [CourierFacing],A
-LD A,[GameMode]
-OR A,A
-JR Z,CourierStand
-CP A,2
-LD A,5
-JR Z,CourierStorePose
-LD A,[MotionPose]
-CP A,5
-JR NZ,CourierStorePose
-LD A,12
-JR CourierStorePose
-CourierStand:
-XOR A,A
-CourierStorePose:
+CALL SelectPowerPose
 LD [CourierPose],A
 RET
 
 InitMotionArt:
-; Approved core small-skid tiles16..19 -> free VRAM tiles94..97, LCD off.
+; Approved core tiles to free VRAM tiles94..107, LCD off: skid16..19, then
+; 21..26 (hurt head, crouch), 43..45 (large skid, throw arm) and54 (shot).
 LD HL,CoreTiles+$0100
 LD DE,$85E0
 LD B,64
+CALL MotionTileCopy
+LD HL,CoreTiles+$0150
+LD B,96
+CALL MotionTileCopy
+LD HL,CoreTiles+$02B0
+LD B,48
+CALL MotionTileCopy
+LD HL,CoreTiles+$0360
+LD B,16
+JP MotionTileCopy
 MotionTileCopy:
 LD A,[HL+]
 LD [DE],A
@@ -34,20 +32,9 @@ JR NZ,MotionTileCopy
 RET
 
 ; DE=next OAM slot; signed SceneBaseX/Y are small-pose top-left pixels.
-; CourierPose=0..11, CourierFacing=0 or20. Large shares the same feet.
+; CourierPose=0..17, CourierFacing=0 or20. Six-piece poses are large and
+; share the same feet, so their top-left is eight pixels higher.
 ComposeCourier:
-LD A,[CourierPose]
-CP A,12
-JR NC,CourierTable
-CP A,6
-JR C,CourierTable
-LD A,[SceneBaseY]
-SUB A,8
-LD [SceneBaseY],A
-LD A,[SceneBaseY+1]
-SBC A,0
-LD [SceneBaseY+1],A
-CourierTable:
 LD A,[CourierPose]
 ADD A,A
 LD C,A
@@ -61,6 +48,14 @@ LD H,A
 LD L,C
 LD A,[HL+]
 LD [PieceCount],A
+CP A,6
+JR NZ,CourierPiece
+LD A,[SceneBaseY]
+SUB A,8
+LD [SceneBaseY],A
+LD A,[SceneBaseY+1]
+SBC A,0
+LD [SceneBaseY+1],A
 CourierPiece:
 LD A,[HL+]
 LD B,A
@@ -198,6 +193,11 @@ DW Courier_large_WALK3
 DW Courier_large_JUMP
 DW Courier_large_RETRY
 DW Courier_small_SKID
+DW Courier_large_SKID
+DW Courier_small_HURT
+DW Courier_large_HURT
+DW Courier_large_CROUCH
+DW Courier_large_THROW
 Courier_small_STAND:
 DB 4
 DB 0,0,0,0
@@ -289,3 +289,42 @@ DB 0,0,52,0
 DB 8,0,53,0
 DB 0,8,54,0
 DB 8,8,55,0
+
+; Approved core maps; tile fields are VRAM ids minus42, so56..65 are the
+; core copies at VRAM98..107. Crouch omits its blank top row.
+Courier_large_SKID:
+DB 6
+DB 0,0,52,0
+DB 8,0,53,0
+DB 0,8,16,0
+DB 8,8,25,0
+DB 0,16,62,0
+DB 8,16,63,0
+Courier_small_HURT:
+DB 4
+DB 0,0,56,0
+DB 8,0,57,0
+DB 0,8,14,0
+DB 8,8,15,0
+Courier_large_HURT:
+DB 6
+DB 0,0,56,0
+DB 8,0,57,0
+DB 0,8,28,0
+DB 8,8,29,0
+DB 0,16,18,0
+DB 8,16,19,0
+Courier_large_CROUCH:
+DB 4
+DB 0,0,58,0
+DB 8,0,59,0
+DB 0,8,60,0
+DB 8,8,61,0
+Courier_large_THROW:
+DB 6
+DB 0,0,0,0
+DB 8,0,1,0
+DB 0,8,16,0
+DB 8,8,64,0
+DB 0,16,18,0
+DB 8,16,19,0

@@ -12,6 +12,7 @@ class Check(GameCheck):
         self.game=Game(mode=1,player=Player(x=120*16,y=12*16,camera=97,pose=2))
         self.base=scene(self.game)
         self.extra=courier(12,True,60,32)
+        self.secondary_base=0xc140
         self.shadow=self.base[:64]+self.extra+bytes(80)
         self.images=[bytes(23040),image(self.game,object_pixels=raster(self.shadow,tiles()))]
         self.secondary=[];self.secondary_ready=None
@@ -32,7 +33,7 @@ class Check(GameCheck):
         self.lines+=1
         value=int(raw,16);dot,address,data=value>>24,(value>>8)&65535,value&255
         self.memory[address]=data
-        if 0x8000<=address<0x8620:
+        if 0x8000<=address<0x86c0:
             assert self.lcd is None,'HUD_LATE_TILES'
             self.tiles.append((address,data))
         if address==0xff40:
@@ -50,9 +51,9 @@ class Check(GameCheck):
                     assert bytes(self.partial)==self.base,'MOTION_BASE_SHADOW'
                     self.ready.append(dot);self.partial=[]
             else:
-                assert self.secondary_ready is None and address==0xc140+len(self.secondary),'MOTION_SECONDARY_ORDER'
+                assert self.secondary_ready is None and address==self.secondary_base+len(self.secondary),'MOTION_SECONDARY_ORDER'
                 self.secondary.append(data)
-                if len(self.secondary)==16:
+                if len(self.secondary)==len(self.extra):
                     assert bytes(self.secondary)==self.extra,'MOTION_SECONDARY_SHADOW'
                     self.secondary_ready=dot
         if address==0xff46:
@@ -98,7 +99,7 @@ class Check(GameCheck):
 
     def finish(self,pause,tile_bytes):
         assert self.ended and not self.partial and not self.hud_partial,'HUD_INCOMPLETE'
-        assert len(self.secondary)==16 and self.ready[0]<self.secondary_ready<self.triggers[0],'MOTION_SECONDARY_COMPLETE'
+        assert len(self.secondary)==len(self.extra) and self.ready[0]<self.secondary_ready<self.triggers[0],'MOTION_SECONDARY_COMPLETE'
         assert self.tiles==list(enumerate(tile_bytes,0x8000)),'HUD_TILES'
         assert len(self.ready)==len(self.hud)==1 and self.bus_count>0 and self.records>100,'HUD_MISSING_PROGRESS'
         assert self.initial_columns==[(0x9c40+x+y*32,v) for x in range(32) for y,v in enumerate(column(x))],'HUD_INITIAL_RING'

@@ -4,6 +4,8 @@ from composition_reference import scene as original_scene
 from hud_reference import CORE, MAPS, glyph, CHARS, image as hud_image
 from scene_art import PAIRS
 
+CORE_TILES = (16, 17, 18, 19, 21, 22, 23, 24, 25, 26, 43, 44, 45, 54)
+
 
 def courier(pose, left=False, x=0, y=0, hidden=False):
     if pose != 12:
@@ -33,7 +35,7 @@ def scene(game):
 
 
 def tiles():
-    result = [[[0]*8 for _ in range(8)] for _ in range(98)]
+    result = [[[0]*8 for _ in range(8)] for _ in range(108)]
     for tile, rows in PAIRS.items():
         for half in range(2):
             result[tile+half] = [list(map(int, row)) for row in rows[half*8:half*8+8]]
@@ -42,8 +44,9 @@ def tiles():
     for index, char in enumerate(CHARS):
         pixels = glyph(char)
         result[74+index] = [list(pixels[y*8:y*8+8]) for y in range(8)]
-    for index in range(4):
-        result[94+index] = [row[(16+index)*8:(17+index)*8] for row in CORE]
+    # VRAM 94..107 hold approved core tiles 16..19, 21..26, 43..45 and 54.
+    for index, tile in enumerate(CORE_TILES):
+        result[94+index] = [row[tile*8:(tile+1)*8] for row in CORE]
     return result
 
 

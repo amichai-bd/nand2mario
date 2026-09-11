@@ -11,7 +11,7 @@ LD A,[PlayerY]
 LD [ObjectY],A
 LD A,[PlayerY+1]
 LD [ObjectY+1],A
-LD A,[Fell]
+CALL PowerHidden
 LD [SceneHidden],A
 CALL ScenePosition
 ; Center approved 16-wide artwork on the existing 8-wide collision box.
@@ -30,7 +30,8 @@ LD A,$80
 LD [ObjectY],A
 LD A,$07
 LD [ObjectY+1],A
-XOR A,A
+LD A,[EnemyAlive]
+XOR A,1
 LD [SceneHidden],A
 LD A,16
 LD [SceneTile],A
@@ -104,16 +105,38 @@ LD [SceneHidden],A
 LD A,20
 LD [SceneTile],A
 CALL AppendScene
-; Remaining OAM bytes are inactive; mode/score now belong to the BG HUD.
+; One live shot follows the goal as a single approved 8x8 piece.
+LD A,[ShotTTL]
+OR A,A
+JR Z,ClearSceneTail
+LD A,[ShotX]
+LD [ObjectX],A
+LD A,[ShotX+1]
+LD [ObjectX+1],A
+LD A,[ShotY]
+LD [ObjectY],A
+LD A,[ShotY+1]
+LD [ObjectY+1],A
 XOR A,A
+LD [SceneHidden],A
+LD [PieceX],A
+LD [PieceY],A
+LD [PieceFlags],A
+LD A,107
+LD [SceneTile],A
+CALL ScenePosition
+CALL EmitPiece
+; Remaining OAM bytes are inactive; mode/score now belong to the BG HUD.
 ClearSceneTail:
+XOR A,A
+ClearSceneByte:
 LD [DE],A
 INC DE
 LD A,E
 CP A,$A0
 JR Z,SceneComplete
 XOR A,A
-JR ClearSceneTail
+JR ClearSceneByte
 SceneComplete:
 RET
 
