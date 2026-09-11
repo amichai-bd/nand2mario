@@ -36,3 +36,35 @@
   .concept-series [data-slide][hidden] { display: block; break-before: page; }
   .concept-series .deck-controls, .series-home { display: none; }
 }
+
+/* Animated diagrams. The authored SVG attributes are the finished figure; every
+   animation only departs from that state and returns to it, so a printed page or
+   a reduced-motion reader still sees a complete, readable diagram. */
+.concept-series svg .tiny { font-size: 15px; fill: var(--muted); }
+.concept-series svg .bytes { font-family: var(--mono); font-size: 15px; }
+.concept-series svg .lhs { text-anchor: start; }
+.concept-series svg .mark { fill: var(--accent); stroke: none; }
+.concept-series svg .focus { fill: none; stroke-dasharray: 7 6; }
+.concept-series svg .dashed { stroke-dasharray: 5 7; }
+.concept-series svg .ppu-fill { fill: var(--accent); stroke: none; opacity: .2; transform-origin: 40px 60px; }
+.concept-series svg .cpu-sweep path { stroke-dasharray: 4 7; opacity: .6; }
+@keyframes n2m-uart-request { 0%, 6% { transform: translateX(0); } 42%, 100% { transform: translateX(370px); } }
+@keyframes n2m-uart-ack { 0%, 46% { transform: translateX(370px); opacity: 0; } 54% { transform: translateX(370px); opacity: 1; } 90%, 100% { transform: translateX(0); opacity: 1; } }
+@keyframes n2m-uart-check { 0%, 40% { opacity: 0; } 46%, 100% { opacity: 1; } }
+@keyframes n2m-cpu-sweep { 0%, 5% { transform: translateX(0); } 75%, 100% { transform: translateX(480px); } }
+@keyframes n2m-cpu-focus { 0%, 39.9% { transform: translateX(0); } 40%, 74.9% { transform: translateX(240px); } 75%, 100% { transform: translateX(480px); } }
+@keyframes n2m-ppu-fill { 0%, 4% { transform: scaleY(0); } 68%, 100% { transform: scaleY(1); } }
+@keyframes n2m-ppu-line { 0%, 4% { transform: translateY(0); } 68%, 100% { transform: translateY(137px); } }
+@keyframes n2m-ppu-done { 0%, 66% { opacity: 0; } 72%, 100% { opacity: 1; } }
+@keyframes n2m-frame-token { 0%, 8% { transform: translateX(0); } 28%, 48% { transform: translateX(185px); } 68%, 100% { transform: translateX(390px); } }
+@media screen and (prefers-reduced-motion: no-preference) {
+  .concept-series [data-animated] .uart-request { animation: n2m-uart-request 9s linear infinite; }
+  .concept-series [data-animated] .uart-ack { animation: n2m-uart-ack 9s linear infinite; }
+  .concept-series [data-animated] .uart-check { animation: n2m-uart-check 9s linear infinite; }
+  .concept-series [data-animated] .cpu-sweep { animation: n2m-cpu-sweep 9s linear infinite; }
+  .concept-series [data-animated] .cpu-focus { animation: n2m-cpu-focus 9s linear infinite; }
+  .concept-series [data-animated] .ppu-fill { animation: n2m-ppu-fill 7s linear infinite; }
+  .concept-series [data-animated] .ppu-line { animation: n2m-ppu-line 7s linear infinite; }
+  .concept-series [data-animated] .ppu-done { animation: n2m-ppu-done 7s linear infinite; }
+  .concept-series [data-animated] .frame-token { animation: n2m-frame-token 8s linear infinite; }
+}

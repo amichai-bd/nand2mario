@@ -56,7 +56,10 @@ Controls keep keyboard focus; slide headings receive focus after keyboard
 navigation. Motion respects the reduced-motion preference. Without JavaScript,
 all slides remain readable. Escape exits fullscreen through browser controls.
 Focused regions marked `data-scroll-region` retain native arrow/Home/End behavior
-for diagram scrolling instead of navigating slides. The educational series keeps
+for diagram scrolling instead of navigating slides.
+Diagrams marked `data-animated` replay a flow with CSS animation only. Their
+authored SVG is the finished figure, so printing or a reduced-motion preference
+shows the complete diagram without motion. The educational series keeps
 a 16:9 minimum canvas and expands for longer content or opened reasoning panels.
 
 The fullscreen button requests `n2m:fullscreen` from the wiki shell when embedded;
