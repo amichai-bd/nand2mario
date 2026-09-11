@@ -9,7 +9,7 @@ import unittest
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from n2m.records import atomic_text
+from n2m.records import atomic_bytes, atomic_text
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -85,6 +85,13 @@ class AtomicRecordsTests(unittest.TestCase):
 
     @unittest.skipUnless(os.name == "nt", "requires Windows file sharing")
     def test_native_handle_without_delete_sharing(self):
+        for publish in (lambda: atomic_text(self.path, "new"),
+                        lambda: atomic_bytes(self.path, b"new")):
+            with self.subTest(publish=publish):
+                self.path.write_text("old")
+                self.hold_open_across_replace(publish)
+
+    def hold_open_across_replace(self, publish):
         from ctypes import wintypes
         kernel = ctypes.WinDLL("kernel32", use_last_error=True)
         kernel.CreateFileW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
@@ -110,7 +117,7 @@ class AtomicRecordsTests(unittest.TestCase):
             print(f"native held-handle os.replace: WinError {caught.exception.winerror}")
             probe.unlink()
             with patch("time.sleep", side_effect=release) as sleep:
-                atomic_text(self.path, "new")
+                publish()
             self.assertEqual(sleep.call_count, 1)
             self.assert_preserved("new")
         finally:

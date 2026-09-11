@@ -7,6 +7,7 @@ from pathlib import Path
 import shutil
 import sys
 import tempfile
+import threading
 import unittest
 from unittest.mock import patch
 
@@ -133,12 +134,36 @@ class ExternalRomTests(unittest.TestCase):
         def interrupted(source, target):
             raise OSError('interrupted before the cache was replaced')
 
-        with patch('n2m.host.external.urllib.request.urlopen', Download(self.image)),              patch('n2m.host.external.os.replace', interrupted):
+        with patch('n2m.host.external.urllib.request.urlopen', Download(self.image)),              patch('n2m.records.os.replace', interrupted):
             with self.assertRaises(OSError):
                 read_external(ROOT, self.name, self.pins())
         self.assertEqual(list((self.cache / 'image.gb').parent.glob('*')), [])
         with patch('n2m.host.external.urllib.request.urlopen', Download(self.image)):
             self.assertEqual(read_external(ROOT, self.name, self.pins())[0], self.image)
+
+    def test_concurrent_readers_all_get_the_verified_image(self):
+        """Publishing the cache must not deny the writers or readers racing it."""
+        pins = self.pins()
+        start = threading.Barrier(8)
+        failures = []
+
+        def worker():
+            start.wait()
+            try:
+                for _ in range(15):
+                    self.assertEqual(read_external(ROOT, self.name, pins)[0], self.image)
+            except BaseException as error:  # reported, not raised, off the main thread
+                failures.append(error)
+
+        with patch('n2m.host.external.urllib.request.urlopen', Download(self.image)):
+            threads = [threading.Thread(target=worker) for _ in range(8)]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join()
+        self.assertEqual([repr(error) for error in failures], [])
+        self.assertEqual((self.cache / 'image.gb').read_bytes(), self.image)
+        self.assertEqual(sorted(path.name for path in self.cache.rglob('*')), ['image.gb'])
 
     def test_corrupt_cache_is_refused_and_never_silently_replaced(self):
         with patch('n2m.host.external.urllib.request.urlopen', Download(self.image)):

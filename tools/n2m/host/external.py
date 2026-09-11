@@ -1,13 +1,12 @@
 """Pinned freely licensed external images, fetched at run time and never committed."""
 import hashlib
 import json
-import os
 from pathlib import Path
 import re
-import tempfile
 import urllib.request
 
 from .. import generated_interfaces as abi
+from ..records import atomic_bytes, published_bytes
 
 PIN_FILE = 'tools/n2m/dependencies.json'
 # Ignored private location required by the source and provenance policy.
@@ -35,19 +34,13 @@ def fetch(pin, path, name):
                 raise ValueError(f'external download was redirected off https: {name}')
             data = response.read(pin['size'] + 1)
         verify(data, pin, name)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        # Replace in one step so an interrupted write never leaves a truncated cache behind.
-        handle, temporary = tempfile.mkstemp(dir=path.parent, prefix=path.name + '.', suffix='.part')
-        try:
-            with os.fdopen(handle, 'wb') as opened:
-                opened.write(data)
-            os.replace(temporary, path)
-        except BaseException:
-            Path(temporary).unlink(missing_ok=True)
-            raise
+        # Replace in one step so an interrupted write never leaves a truncated cache
+        # behind, retrying the Windows denials a concurrent reader causes.
+        atomic_bytes(path, data)
     if path.is_symlink() or not path.is_file():
         raise ValueError(f'external cache is not a regular file: {name}')
-    return verify(path.read_bytes(), pin, name)
+    # A concurrent publication leaves the cache briefly unopenable on Windows.
+    return verify(published_bytes(path), pin, name)
 
 
 def read_external(root, name, pin_file=None):
