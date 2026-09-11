@@ -127,7 +127,7 @@ def check_views(browser, base):
         for name, last_line in (('build-and-tests', 'TESTS=1 PASS=1'), ('board-session', '"silence_seconds": 2.0'),
                                 ('reproducible-builds', 'git checkout -- src/sw/springtrail/world.asm'),
                                 ('uart-debugging', '"seq": 457'),
-                                ('verification', 'JOYP_MISMATCH cycle=3 phase=post signal=io_rdata expected=238 actual=239')):
+                                ('verification', 'Fatal: count cycle=3 expected=7 actual=3 seed=1')):
             page = new_page()
             page.goto(base + f'/files/wiki/showcase/{name}.svg')
             first, cursor = page.locator('.t1').first, page.locator('.cur')

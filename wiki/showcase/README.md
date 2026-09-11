@@ -141,13 +141,15 @@ one sorted JSON object per command, shortened here with `…`. Values:
 
 ![A checker that can fail](verification.svg)
 
-Real command output captured at commit `396b0b4` on 2026-09-11 from the
-author worktree with the isolated Python 3.12.14
-[DV environment](../../src/dv/python/README.md) and Questa:
+From retained Questa receipts under `workdir/builds/` of the primary checkout,
+not a fresh capture: the single Questa seat was held by other work when this
+loop was made. Each `--json` line shortens the retained `result.json` (the
+report the command prints) with `…`; each `grep` line is the real grep result
+on the retained `sim.log`:
 
 | Shown line | Source |
 |---|---|
-| `sim test python-joypad --tag lesson` | Complete output of the first, uncached run |
-| `grep -o "TESTS=.*" …/python-joypad/sim.log` | The cocotb summary line from that run's retained log |
-| `sim test python-joypad-fault --tag lesson` | Complete output; the command exits 1 and prints the `FAIL` diagnostic the DV environment page requires |
-| `grep -o "JOYP_MISMATCH.*" …/python-joypad-fault/sim.log` | Both occurrences of the expected mismatch in that run's retained log |
+| `sim test python-joypad --tag standalone-verify2 --json` | The `standalone-verify2` receipt, run at commit `f6fff8f` with the isolated Python 3.12.14 [DV environment](../../src/dv/python/README.md): `cache`, `python_results` and `status` verbatim |
+| `grep -o "TESTS=.*" …/python-joypad/sim.log` | The cocotb summary line from that receipt's log |
+| `sim test builder-smoke-fail --tag deliberate-failure --json` | The `deliberate-failure` receipt, run at commit `c89b47d`: `cache`, `status` and `error` verbatim except the receipt path elided as `…` |
+| `grep -o "Fatal: .*" …/builder-smoke-fail/sim.log` | The `+inject_failure` fatal line from that receipt's log; the [builder contract](../tools/n2m/SPEC.md) names this deliberate-failure target |

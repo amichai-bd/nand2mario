@@ -152,27 +152,28 @@ SESSION_LOOP = 28.6
 # Accent words: results a reader scans for. FAIL and the expected fault line
 # take the warm colour so a deliberate failure reads as one.
 HIGHLIGHT = re.compile(r'"status": "PASS"|\bPASS\b|\bOK\b|\bBUILT\b|\bMISS\b|\bHIT\b|"dot": \d+|"verified_bytes": 32768|"silence_seconds": 2\.0')
-WARN = re.compile(r"'status': 'FAIL'|^Python test failed|JOYP_MISMATCH[^']*")
+WARN = re.compile(r'"status": "FAIL"|Fatal: [^"]*')
 
-# Verification: captured at 396b0b4 on 2026-09-11 with the isolated Python
-# 3.12.14 DV environment (src/dv/python/README.md) and Questa. The passing
-# target's cocotb summary and the deliberate DUT fault's exact expected line
-# are grep results from the retained sim.log of each run; the fault target
-# exits 1 with the FAIL diagnostic the contract requires.
+# Verification: from retained Questa receipts under workdir/builds of the
+# primary checkout, not a fresh capture (the single Questa seat was held).
+# The passing Python joypad target ran at f6fff8f (isolated Python 3.12.14
+# DV environment); the deliberate-failure builder target ran at c89b47d.
+# Each JSON line shortens the retained result.json (the --json report) with …,
+# keeping cache, python_results, error and status verbatim except the error's
+# elided receipt path; each grep line is the real grep result on the retained
+# sim.log.
 DV = 'workdir/builds/python-dv-env/.venv/Scripts/python.exe'
 TESTS = [
-    (0.0, 'cmd', f'{DV} tools/build.py sim test python-joypad --tag lesson'),
-    (3.6, 'out', 'BUILT: sim tag=lesson'),
-    (5.2, 'cmd', 'grep -o "TESTS=.*" workdir/builds/lesson/sim/test/python-joypad/sim.log'),
-    (5.8, 'out', 'TESTS=1 PASS=1 FAIL=0 SKIP=0              21442.00           5.06       4241.67  **'),
-    (7.6, 'cmd', f'{DV} tools/build.py sim test python-joypad-fault --tag lesson'),
-    (10.8, 'out', 'BUILT: sim tag=lesson'),
-    (10.8, 'out', "Python test failed: {'status': 'FAIL', 'test': 'joypad_contract', 'diagnostics': [{'error_type': 'AssertionError', 'error_msg': 'JOYP_MISMATCH cycle=3 phase=post signal=io_rdata expected=238 actual=239', 'kind': 'failure'}]}"),
-    (12.6, 'cmd', 'grep -o "JOYP_MISMATCH.*" workdir/builds/lesson/sim/test/python-joypad-fault/sim.log'),
-    (13.2, 'out', 'JOYP_MISMATCH cycle=3 phase=post signal=io_rdata expected=238 actual=239'),
-    (13.2, 'out', 'JOYP_MISMATCH cycle=3 phase=post signal=io_rdata expected=238 actual=239'),
+    (0.0, 'cmd', f'{DV} tools/build.py sim test python-joypad --tag standalone-verify2 --json'),
+    (3.6, 'out', '{"artifacts": {…}, "cache": "BUILT", …, "python_results": {"sim_time_ns": 21442.0, "status": "PASS", "test": "joypad_contract"}, …, "status": "PASS", …}'),
+    (5.4, 'cmd', 'grep -o "TESTS=.*" workdir/builds/standalone-verify2/sim/test/python-joypad/sim.log'),
+    (6.0, 'out', 'TESTS=1 PASS=1 FAIL=0 SKIP=0              21442.00           3.88       5527.10  **'),
+    (7.8, 'cmd', 'python tools/build.py sim test builder-smoke-fail --tag deliberate-failure --json'),
+    (10.6, 'out', '{"artifacts": {…}, "cache": "BUILT", …, "error": "unexpected exit 1; see workdir\\builds\\deliberate-failure\\…", …, "status": "FAIL", …}'),
+    (12.4, 'cmd', 'grep -o "Fatal: .*" workdir/builds/deliberate-failure/sim/test/builder-smoke-fail/sim.log'),
+    (13.0, 'out', 'Fatal: count cycle=3 expected=7 actual=3 seed=1'),
 ]
-TESTS_LOOP = 17.0
+TESTS_LOOP = 16.6
 
 
 def esc(text):
@@ -611,8 +612,8 @@ def documents():
         'uart-debugging': terminal('Board session over UART · the recorded Libbet play, not a live capture',
                                    'Shapes follow wiki/tools/n2m/host/SPEC.md; dots, seq and IDs from src/dv/libbet/README.md; hashes elided.',
                                    SESSION, SESSION_LOOP),
-        'verification': terminal('A checker that can fail · nand2mario at 396b0b4 · 2026-09-11',
-                                 'Real output of the Python joypad target and its deliberate DUT fault; summary lines grepped from each sim.log.',
+        'verification': terminal('A checker that can fail · from retained Questa receipts, not a fresh capture',
+                                 'Retained receipts, not a fresh run: python-joypad at f6fff8f, builder-smoke-fail at c89b47d; JSON shortened.',
                                  TESTS, TESTS_LOOP),
     }
 
