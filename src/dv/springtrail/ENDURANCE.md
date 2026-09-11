@@ -25,8 +25,8 @@ pixels. LCD commit 139388 and period 70224 are the source-derived anchors
 `motion_game_reference` checks in simulation; no value is taken from the DUT.
 
 Setup, paused: load with full 32768-byte upload and byte-exact readback,
-INPUT 0, dot 0, advance by RUN_DOTS to C2=284932 and check every pixel of
-`title` (source frame 1); Start 128 at C2, C3, release 0, C5=495604 and check
+INPUT 0, dot 0, advance by RUN_DOTS to C2=283932 and check every pixel of
+`title` (source frame 1); Start 128 at C2, C3, release 0, C5=494604 and check
 every pixel of `play` (spawn, frame 4). Then RUN; the monotonic origin is
 taken after the RUN reply.
 

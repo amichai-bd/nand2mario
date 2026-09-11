@@ -106,6 +106,34 @@ the serialized machine lock; the launcher does not program the board.
 
 ## Measured result
 
-Not yet executed on hardware. The pull request that runs the plans records
-the commit, image hash, wire build, whole and per-plan wall seconds, checked
-pixels and the final paused state here.
+Producing commit `55827b65` (the declaration), Python 3.14.5, pyserial 3.5,
+wire build `bb02588d127b72ce6458a07ff1145c57` on COM3, image
+`616de11b49e0807539837358824a570776459b9bf13a4b9424dbf42adfe5c983` built from
+current sources at each launch. The board was not reprogrammed. Doctor: JTAG
+and Quartus PASS, UART enumerated COM3; Questa refused a second nodelocked
+licence, and no simulation is part of this proof. Both runs used
+`python src/dv/springtrail/frame_proofs.py <plan> --uart-port COM3 --expected-build-id bb02588d127b72ce6458a07ff1145c57 --tag frames384`,
+serialized under the machine mutex, each after the endpoint's build identity
+and paused/neutral preflight and before any input.
+
+| Plan | Whole (s) | Worker (s) | Checkpoints | Captures | Checked pixels | Epoch | Final dot | Result |
+|---|---|---|---|---|---|---|---|---|
+| `short` | 23.3 (cap 300) | 23.0 | 101 | 4 | 92,160 | 33 | 7,236,108 | PASS |
+| `full` | 49.2 (cap 300) | 49.0 | 627 | 10 | 230,400 | 35 | 44,173,932 | PASS |
+
+The `short` run measured 0.064 s per checkpoint over the 96 checkpoints
+between `spawn` and `entering-column`, giving a `full` forecast of about
+60 s before it ran. Every capture carried the load's epoch, its planned
+sequence and a completion dot in row 143 of its frame (`title` at 275071,
+`won` at 33491023, `retry` at 42690370, `retry-restart` at 44165071), and
+matched all 23040 pixels. Applied inputs, in VBlank order: 161 at 2, 33 at 3,
+49 at 99/151/227/355 with 33 twelve VBlanks after each, 128 at 473, 0 at
+474, 33 at 494, 128 at 604, 0 at 605; every reply dot equalled its
+checkpoint. Frame CRC32s: `title` 9b162de2, `spawn` 2a877964, `first-camera`
+18129d7a, `entering-column` a3f88cd6, `scroll-wrap` 278fed6e, `camera-clamp`
+47fd650a, `won` fdaaedff, `retry` 60258ecc, both restarts e1736456, the same
+value the pause proof records for its Select-restart frame. Both runs ended
+PAUSED, UART source, input 0, effective 0, with the durable session certain
+(sequence 223470 after `full`). Retained per run: `build.json`,
+`session.json`, `budget.json`, `journal.json`, `result.json`, every packed
+frame and its PNG. Captures verify pre-VGA source frames, not monitor output.
