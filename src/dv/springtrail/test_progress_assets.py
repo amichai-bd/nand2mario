@@ -99,10 +99,11 @@ class ProgressPreviews(unittest.TestCase):
         from tools.sw.preview import svg
         import progress_preview as preview
         published = ROOT / 'wiki/src/sw/springtrail/progress'
+        # SVGs are Git text; compare complete UTF-8 content after checkout newline normalization.
         for name, world in preview.VIEWS:
             expected = svg(preview.canvas_of(image(world)), 4)
-            self.assertEqual((published / f'{name}.svg').read_bytes(), expected, name)
-        self.assertEqual((published / 'tiles.svg').read_bytes(),
+            self.assertEqual((published / f'{name}.svg').read_text(encoding='utf-8').encode('utf-8'), expected, name)
+        self.assertEqual((published / 'tiles.svg').read_text(encoding='utf-8').encode('utf-8'),
                          svg(preview.tile_sheet(), 4))
 
 

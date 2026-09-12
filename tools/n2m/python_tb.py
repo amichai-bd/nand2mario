@@ -20,7 +20,8 @@ FIXTURE_BUILDERS = {
     **dict.fromkeys(("v05", "springtrail", "springtrail-unit", "flow", "flow-s", "render", "render-s",
                      "stackdrop", "stackdrop-unit", "stackdrop-short"), "tools/sw/rom_build.py"),
     **dict.fromkeys(("motion301", "motion301-s", "power302", "power302-s", "power302-a", "power302-b",
-                     "blocks303-s", "blocks303-a", "blocks303-b"), "src/dv/springtrail/motion_program.py"),
+                     "blocks303-s", "blocks303-a", "blocks303-b",
+                     "progress304-s", "progress304-a", "progress304-b"), "src/dv/springtrail/motion_program.py"),
     **dict.fromkeys(("motion-render301", "power-render302"), "src/dv/springtrail/motion_render_program.py"),
     "hud-render300": "src/dv/springtrail/hud_render_program.py",
     **dict.fromkeys(("hud300", "hud300-s"), "src/dv/springtrail/hud_program.py"),
@@ -72,7 +73,7 @@ def validate(root, target, name=None):
     matches = [p for p in config["inputs"] if Path(p).name == config["module"] + ".py"]
     if len(matches) != 1:
         raise ValueError("python inputs must contain exactly one named test module")
-    if target.get("preload") in ("integration", "v05", "palette-fc", "palette-00", "startup-read", "startup-write", "vram-read", "vram-write", "late-fe9c", "late-fe9d", "late-fe20", "timer234", "stop349", "dma239", "display308", "oam299", "oam299-s", "courier292", "courier292-s", "hud300", "hud300-s", "hud-render300", "motion301", "motion301-s", "motion-render301", "power302", "power302-s", "power302-a", "power302-b", "power-render302", "blocks303-s", "blocks303-a", "blocks303-b", "springtrail", "springtrail-unit", "flow", "flow-s", "render", "render-s", "stackdrop", "stackdrop-unit", "stackdrop-short"):
+    if target.get("preload") in ("integration", "v05", "palette-fc", "palette-00", "startup-read", "startup-write", "vram-read", "vram-write", "late-fe9c", "late-fe9d", "late-fe20", "timer234", "stop349", "dma239", "display308", "oam299", "oam299-s", "courier292", "courier292-s", "hud300", "hud300-s", "hud-render300", "motion301", "motion301-s", "motion-render301", "power302", "power302-s", "power302-a", "power302-b", "power-render302", "blocks303-s", "blocks303-a", "blocks303-b", "progress304-s", "progress304-a", "progress304-b", "springtrail", "springtrail-unit", "flow", "flow-s", "render", "render-s", "stackdrop", "stackdrop-unit", "stackdrop-short"):
         required = {"src/dv/integration/image.py", "src/dv/integration/program.asm",
                     "src/dv/integration/program.json", "src/dv/integration/retirement.json",
                     "src/sw/generated/interfaces.inc"}
@@ -301,7 +302,7 @@ def prepare(target, attempt, root=None, fixture_tools=None):
     if target.get('preload') == 'mooneye-reg-f':
         from .mooneye import prepare as prepare_mooneye
         prepare_mooneye(root, attempt, fixture_tools)
-    if target.get("preload") in ("integration", "v05", "palette-fc", "palette-00", "startup-read", "startup-write", "vram-read", "vram-write", "late-fe9c", "late-fe9d", "late-fe20", "timer234", "stop349", "dma239", "display308", "oam299", "oam299-s", "courier292", "courier292-s", "hud300", "hud300-s", "hud-render300", "motion301", "motion301-s", "motion-render301", "power302", "power302-s", "power302-a", "power302-b", "progress304-s", "progress304-a", "progress304-b", "power-render302", "blocks303-s", "blocks303-a", "blocks303-b", "springtrail", "springtrail-unit", "flow", "flow-s", "render", "render-s", "stackdrop", "stackdrop-unit", "stackdrop-short"):
+    if target.get("preload") in ("integration", "v05", "palette-fc", "palette-00", "startup-read", "startup-write", "vram-read", "vram-write", "late-fe9c", "late-fe9d", "late-fe20", "timer234", "stop349", "dma239", "display308", "oam299", "oam299-s", "courier292", "courier292-s", "hud300", "hud300-s", "hud-render300", "motion301", "motion301-s", "motion-render301", "power302", "power302-s", "power302-a", "power302-b", "progress304-s", "progress304-a", "progress304-b", "power-render302", "blocks303-s", "blocks303-a", "blocks303-b", "progress304-s", "progress304-a", "progress304-b", "springtrail", "springtrail-unit", "flow", "flow-s", "render", "render-s", "stackdrop", "stackdrop-unit", "stackdrop-short"):
         import hashlib
         import importlib.util
         from .preload import prepare as prepare_preload, verify

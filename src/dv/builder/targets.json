@@ -18840,7 +18840,8 @@
         "src/sw/springtrail/progress.asm",
         "src/dv/springtrail/progress_reference.py",
         "src/dv/springtrail/progress_cases.py",
-        "src/dv/springtrail/test_progress_short.py"
+        "src/dv/springtrail/test_progress_short.py",
+        "src/dv/springtrail/blocks_reference.py"
       ],
       "waves": [
         "clk_sys",
@@ -19030,7 +19031,8 @@
         "src/sw/springtrail/progress.asm",
         "src/dv/springtrail/progress_reference.py",
         "src/dv/springtrail/progress_cases.py",
-        "src/dv/springtrail/test_progress_unit_a.py"
+        "src/dv/springtrail/test_progress_unit_a.py",
+        "src/dv/springtrail/blocks_reference.py"
       ],
       "waves": [
         "clk_sys",
@@ -19220,7 +19222,8 @@
         "src/sw/springtrail/progress.asm",
         "src/dv/springtrail/progress_reference.py",
         "src/dv/springtrail/progress_cases.py",
-        "src/dv/springtrail/test_progress_unit_b.py"
+        "src/dv/springtrail/test_progress_unit_b.py",
+        "src/dv/springtrail/blocks_reference.py"
       ],
       "waves": [
         "clk_sys",
@@ -19411,7 +19414,8 @@
         "src/sw/springtrail/progress.asm",
         "src/dv/springtrail/progress_reference.py",
         "src/dv/springtrail/progress_cases.py",
-        "src/dv/springtrail/test_progress_short.py"
+        "src/dv/springtrail/test_progress_short.py",
+        "src/dv/springtrail/blocks_reference.py"
       ],
       "waves": [
         "clk_sys",
