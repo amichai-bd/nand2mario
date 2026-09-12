@@ -5,8 +5,8 @@ reuse rights are granted for original project material. A future license or
 visibility change requires an explicit owner decision. Third-party material
 retains its own terms.
 
-The private repository still publishes its selected text sources through the
-[public wiki](wiki/SPEC.md). This standing publication authorization is unchanged;
+The repository publishes its selected text sources through the
+[wiki](wiki/SPEC.md). This standing publication authorization is unchanged;
 public reading does not grant a reuse license. Treat all committed files as
 potentially public. Keep private inputs and results outside tracked sources.
 
