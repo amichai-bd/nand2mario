@@ -9760,7 +9760,13 @@
         "src/dv/sameboy/retirement.py",
         "src/dv/sameboy/scenario.json",
         "src/dv/sameboy/sources.json",
-        "tools/sw/columns.py"
+        "tools/sw/columns.py",
+        "src/dv/sameboy/milestone.py",
+        "src/dv/sameboy/springtrail.c",
+        "src/dv/sameboy/springtrail.json",
+        "src/dv/sameboy/springtrail.py",
+        "tools/n2m/host/__init__.py",
+        "tools/n2m/host/client.py"
       ]
     }
   },
@@ -9865,7 +9871,13 @@
         "src/dv/sameboy/retirement.py",
         "src/dv/sameboy/scenario.json",
         "src/dv/sameboy/sources.json",
-        "tools/sw/columns.py"
+        "tools/sw/columns.py",
+        "src/dv/sameboy/milestone.py",
+        "src/dv/sameboy/springtrail.c",
+        "src/dv/sameboy/springtrail.json",
+        "src/dv/sameboy/springtrail.py",
+        "tools/n2m/host/__init__.py",
+        "tools/n2m/host/client.py"
       ]
     }
   },
