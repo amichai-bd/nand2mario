@@ -178,29 +178,53 @@ the serialized machine lock; the launcher does not program the board.
 
 ## Measured result on the current image
 
-Proven on the current image: the four `short` captures `title`, `spawn`,
-`first-camera` and `entering-column`. Unproven: `scroll-wrap`,
-`camera-clamp`, `won`, `won-restart`, `retry` and `retry-restart`, whose
-expected frames and, from update 228, whose route come from the block-aware
-models above and await a `full` run on the board. No DUT fixture publishes a
-block column ([coverage limit](BLOCKS.md#coverage-limit)), so the block-aware
-expected image is proven by the board alone.
-
-The runs below preceded the block-aware models: their expected frames came
-from `motion_frames.image` over the frozen flow of `interactions_reference`,
-and their script held A for twelve VBlanks at the second gap. The four
-captures they prove are unchanged by the model change: those frames show no
-block, and the script is identical through VBlank 227.
+All ten captures are proven on the current image by the runs below, against
+the block-aware models and the retimed script above. No DUT fixture
+publishes a block column ([coverage limit](BLOCKS.md#coverage-limit)), so
+the block-aware expected image rests on this board evidence alone.
 
 Image `35aae757bde0ec9a15d6d6c84f14b45b451c341d2d4775f43ed8a9a762625192`
 built from current sources at each launch, anchor 167840 derived by the
 launcher and recorded in `build.json`, wire build
 `87d5f0280a2afad8be6b85dc601141cc` on COM3, Python 3.14.5, pyserial 3.5,
-2026-09-12. Doctor: JTAG PASS (`10M50DA`, idcode `031050DD`), UART
-enumerated COM3. Both runs used
-`python src/dv/springtrail/frame_proofs.py <plan> --uart-port COM3 --expected-build-id 87d5f0280a2afad8be6b85dc601141cc --tag frames437`,
+2026-09-12. Doctor: JTAG PASS (`10M50DA`, idcode `031050DD`), Quartus PASS,
+UART enumerated COM3; Questa refused its nodelocked licence to a second
+seat, and no simulation is part of this proof. Both runs used
+`python src/dv/springtrail/frame_proofs.py <plan> --uart-port COM3 --expected-build-id 87d5f0280a2afad8be6b85dc601141cc --tag frames453`,
 serialized under the machine mutex, each after the endpoint's build identity
 and paused/neutral preflight and before any input.
+
+| Plan | Whole (s) | Worker (s) | Checkpoints | Captures | Checked pixels | Epoch | Final dot | Result |
+|---|---|---|---|---|---|---|---|---|
+| `short` | 22.3 (cap 300) | 22.0 | 101 | 4 | 92,160 | 8 | 7,264,560 | PASS |
+| `full` | 47.8 (cap 300) | 47.6 | 627 | 10 | 230,400 | 10 | 44,202,384 | PASS |
+
+Every capture carried the load's epoch, its planned sequence and a
+completion dot 251 to 254 dots into row 143 of its frame (`title` at
+303523, `scroll-wrap` at 14769667, `won` at 33519475, `retry` at 42718822,
+`retry-restart` at 44193523), and matched all 23040 pixels. Applied inputs,
+in VBlank order: 161 at 2, 33 at 3, 49 at 99/151/355 with 33 twelve VBlanks
+after each, 49 at 227 with 33 at 228, 128 at 473, 0 at 474, 33 at 494, 128
+at 604, 0 at 605; every reply dot equalled its checkpoint. Frame CRC32s:
+`title` 9b162de2, `spawn` 2a877964, `first-camera` 18129d7a,
+`entering-column` a3f88cd6, `scroll-wrap` 1ac1a983, `camera-clamp` 47fd650a,
+`won` fdaaedff, `retry` 60258ecc, both restarts e1736456. Every value but
+`scroll-wrap` equals the one the previous image gave: those frames show no
+block, and `scroll-wrap` now carries the item block at world column 38..39
+that its old value 278fed6e drew as blank terrain. Both runs ended PAUSED,
+UART source, input 0, effective 0, with the durable session certain
+(sequence 232014 after `full`). Retained per run under
+`workdir/builds/frames453/frames/`: `build.json`, `session.json`,
+`budget.json`, `journal.json`, `result.json`, every packed frame and its PNG.
+Captures verify pre-VGA source frames, not monitor output.
+
+### The run that found the block layer
+
+The session below preceded the block-aware models and used tag `frames437`:
+its expected frames came from `motion_frames.image` over the frozen flow of
+`interactions_reference`, and its script held A for twelve VBlanks at the
+second gap. It is kept because its failure is the oracle the host test holds
+the block-aware image to.
 
 | Plan | Whole (s) | Worker (s) | Checkpoints | Captures | Checked pixels | Epoch | Final dot | Result |
 |---|---|---|---|---|---|---|---|---|
