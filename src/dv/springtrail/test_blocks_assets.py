@@ -88,7 +88,8 @@ class BlockAssets(unittest.TestCase):
 
     def test_loaded_vram_pixels_equal_the_approved_atlas(self):
         loaded = tiles()
-        self.assertEqual(len(loaded), 140)
+        # The progression row's nine approved tiles follow at 140..148.
+        self.assertEqual(len(loaded), 149)
         for index, tile in enumerate(B.ATLAS_TILES):
             self.assertEqual(loaded[108 + index],
                              [list(TERRAIN[y][tile * 8:tile * 8 + 8]) for y in range(8)])

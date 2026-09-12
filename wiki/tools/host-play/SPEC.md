@@ -46,12 +46,15 @@ Addresses come from the linker's `symbols.json` inside the same immutable
 [packaged attempt](../sw/SPEC.md) as the ROM, so no game address is written in
 the tool. Binding fails, before any port is opened, when the image is not
 qualified, when a required symbol is missing, when the layout digest differs, or
-when a symbol falls outside WRAM. A new image is qualified by adding its pair,
-not by relaxing the check.
+when a symbol falls outside WRAM. Decoder version 2 qualifies the current
+three-stage progression image and its complete symbol layout. The former
+block-only image is rejected: its profile does not share the current model.
+A new image requires matching decode, model and renderer checks as well as its
+exact image/layout pair; adding a hash alone does not qualify it.
 
 The reader asks for the smallest ranges that cover the bound symbols, merging
 neighbours that are closer together than the cost of a second request. For the
-current image that is one 132-byte PEEK at the base of WRAM, against 8192 bytes
+current image that is one 151-byte PEEK at the base of WRAM, against 8192 bytes
 for the whole store and 5760 for a frame. Each request stays within the
 generated payload limit.
 
@@ -96,9 +99,10 @@ prediction.
 
 The field checks include the camera's relation to the player position. That is
 a cheap secondary check, not the protection against a partly written record:
-the camera is `clamp(x/16 - 72, 0, 608)`, so wherever the clamp is active — the
+the camera is `clamp(x/16 - 72, 0, limit)` with limit 608 on stage 0
+and 480 on stages 1/2, so wherever the clamp is active -- the
 first 72 pixels and the right end of the level, which includes the title and
-the completion states — the camera does not move with the player and a torn
+the completion states -- the camera does not move with the player and a torn
 record passes it unseen. **The paused acquisition boundary above is what
 prevents tears.** The check is kept because it costs nothing and catches the
 scrolling cases, and its blind case is pinned by a test so it is not mistaken

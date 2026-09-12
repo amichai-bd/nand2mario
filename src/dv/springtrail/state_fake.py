@@ -1,7 +1,7 @@
 """A byte-level fake endpoint that serves Springtrail state from the models.
 
 The fake owns an independent timeline and an independent WRAM encoding. Game
-state comes from `power_reference.update`, and the WRAM bytes are written
+state comes from `progress_reference.update`, and the WRAM bytes are written
 through the existing independent fixture encoder `blocks_cases.state_bytes`
 over `blocks_cases.ADDRESSES`. The reader under test finds the same bytes
 through the linker's symbol table, so the two agree only if both are right.
@@ -30,7 +30,8 @@ from n2m import generated_interfaces as abi  # noqa: E402
 from n2m.interface_codec import decode_packet, encode_packet, pack_pixels, pack_record, unpack_record  # noqa: E402
 import blocks_cases  # noqa: E402
 import blocks_frames  # noqa: E402
-from power_reference import PLAYING, World, update  # noqa: E402
+import progress_cases  # noqa: E402
+from progress_reference import PLAYING, World, update  # noqa: E402
 
 PERIOD = 70224
 LINE = 456
@@ -38,7 +39,7 @@ VBLANK = 144 * LINE
 CONSUME = 300
 # The frozen startup anchor of the current image. The reader never depends on
 # it: it locates the boundary from LY, so a moved anchor only costs an advance.
-LCD = 167840
+LCD = 177308
 UPDATE_DOTS = 20000  # how long game records stay torn after offset 0
 BUILD_ID = '0f1e2d3c4b5a69788796a5b4c3d2e1f0'
 WRAM_BYTES = abi.GB_WRAM_END - abi.GB_WRAM_START + 1
@@ -49,7 +50,7 @@ def reachable(script):
     """A start world the model itself produced, so every field is reachable.
 
     `script` is a sequence of `(mask, repeat)` pairs applied through
-    `power_reference.update` from the title state. Building fixtures this way
+    `progress_reference.update` from the title state. Building fixtures this way
     keeps cross-field invariants such as the camera true by construction; a
     hand-written record would not be a state the ROM can ever hold.
     """
@@ -74,6 +75,11 @@ def wram_image(world, buttons, new_level, frame_pending, published_camera, torn=
         for address, value in zip(blocks_cases.ADDRESSES, encoded):
             if address in addresses:
                 memory[address - abi.GB_WRAM_START] = value
+    progress_source = torn if torn is not None else world
+    for address, value in zip(progress_cases.ADDRESSES,
+                              progress_cases.state_bytes(progress_source, buttons, new_level)):
+        if address >= 0xc090:
+            memory[address - abi.GB_WRAM_START] = value
     # Camera at C01B is computed last, after the move; the tear splits there.
     player_record = set(range(0xC010, 0xC01B)) | set(range(0xC060, 0xC06A))
     if torn is None:

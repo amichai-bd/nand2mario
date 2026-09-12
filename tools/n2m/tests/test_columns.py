@@ -30,8 +30,10 @@ class ColumnTests(unittest.TestCase):
         world = columns.load_world((ROOT / columns.WORLD).read_text(encoding='utf-8'))
         self.assertEqual(columns.render(world), (ROOT / columns.COLUMNS).read_text(encoding='utf-8'))
         decoded = columns.validate(ROOT)
-        self.assertEqual(len(decoded), 96)
-        self.assertTrue(all(decoded[x][y] == world[y + 2][x] for x in range(96) for y in range(16)))
+        self.assertEqual(len(decoded), columns.WIDTH)
+        self.assertEqual(columns.WIDTH, sum(width for _, width in columns.STAGES))
+        self.assertTrue(all(decoded[x][y] == world[y + 2][x]
+                            for x in range(columns.WIDTH) for y in range(16)))
 
     def test_encoding_round_trips_and_bounds_runs(self):
         self.assertEqual(columns.encode([0] * 14 + [11] * 2), [14, 0, 2, 11, 0])
@@ -53,7 +55,7 @@ class ColumnTests(unittest.TestCase):
         rows[target] = ','.join(values) + '\n'
         diagnostic = self.failure(WORLD='DB '.join(rows))
         self.assertEqual(diagnostic['code'], 'COLUMN_STALE')
-        self.assertEqual(diagnostic['span'], {'file': 'springtrail/columns.asm', 'line': 3 + 96 + 2 * 10 + 2, 'column': 1})
+        self.assertEqual(diagnostic['span'], {'file': 'springtrail/columns.asm', 'line': 3 + columns.WIDTH + 2 * 10 + 2, 'column': 1})
         self.assertIn('run python tools/sw/columns.py', diagnostic['cause'])
 
     def test_corrupt_table_line_fails_stale(self):
@@ -61,8 +63,8 @@ class ColumnTests(unittest.TestCase):
         corrupted = text.replace('DisplayColumn50:\nDB 14,0,2,11,0', 'DisplayColumn50:\nDB 13,0,3,11,0')
         self.assertNotEqual(corrupted, text)
         diagnostic = self.failure(COLUMNS=corrupted)
-        self.assertEqual((diagnostic['code'], diagnostic['span']['line']), ('COLUMN_STALE', 3 + 96 + 2 * 50 + 2))
-        for broken in (text.replace('DW DisplayColumn95\n', ''), text + 'DB 0\n', text.rstrip('\n'), ''):
+        self.assertEqual((diagnostic['code'], diagnostic['span']['line']), ('COLUMN_STALE', 3 + columns.WIDTH + 2 * 50 + 2))
+        for broken in (text.replace('DW DisplayColumn%d\n' % (columns.WIDTH - 1), ''), text + 'DB 0\n', text.rstrip('\n'), ''):
             self.assertEqual(self.failure(COLUMNS=broken)['code'], 'COLUMN_STALE')
 
     def test_malformed_world_fails_world(self):

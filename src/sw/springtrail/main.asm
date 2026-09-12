@@ -55,10 +55,13 @@ LDH [$FF48],A
 CALL InitHUD
 CALL InitMotionArt
 CALL InitBlockArt
+CALL InitProgressArt
 CALL PrepareScene
 CALL PrepareHUD
+CALL PrepareProgress
 CALL PrepareMap
 CALL PublishHUD
+CALL PublishProgress
 CALL PublishScene
 XOR A,A
 LD [FramePending],A
@@ -116,6 +119,7 @@ PublishFrame:
 LD A,[Camera]
 LD [PublishedCamera],A
 CALL PublishHUD
+CALL PublishProgress
 ; No interrupt entry or stack access may overlap OAM bus ownership.
 DI
 CALL PublishScene
@@ -140,6 +144,7 @@ CALL UpdateGame
 PrepareFrame:
 CALL PrepareScene
 CALL PrepareHUD
+CALL PrepareProgress
 CALL PrepareMap
 JP WaitFrame
 
@@ -180,3 +185,4 @@ INCLUDE "hud.asm"
 INCLUDE "columns.asm"
 INCLUDE "power.asm"
 INCLUDE "blocks.asm"
+INCLUDE "progress.asm"

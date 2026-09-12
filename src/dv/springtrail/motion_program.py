@@ -4,7 +4,8 @@ import json
 import sys
 
 
-KINDS = {'step': 0, 'init': 1, 'game': 2, 'power': 3, 'star': 4, 'reset': 5}
+KINDS = {'step': 0, 'init': 1, 'game': 2, 'power': 3, 'star': 4, 'reset': 5,
+         'lives': 6}
 
 
 def build(root, destination, short=False, suite='motion', part=None):
@@ -26,7 +27,15 @@ def build(root, destination, short=False, suite='motion', part=None):
                     else module.parts()[part] if part else cases())
         lines = ['SECTION "code",ROM', 'Start:', 'DI', 'LD SP,$DFFE',
                  'XOR A,A', 'LDH [$FF40],A', 'LD [$FFFF],A',
-                 'LD [$C0F0],A', 'LD HL,Operands', 'NextCase:']
+                 'LD [$C0F0],A', 'LD HL,Operands', 'NextCase:',
+                 # Each case starts from the progression contract's reset values, so
+                 # the lives, the stage and the countdown hold them wherever a suite
+                 # does not seed them: lives 2, no request, subdivision 40, 400, grade
+                 # 0, stage 0. Seven stores cost about 100 dots; a full InitGame would
+                 # also clear the block layer and break the short 20000-dot bound.
+                 'LD A,2', 'LD [$C090],A', 'XOR A,A', 'LD [$C091],A', 'LD [$C093],A',
+                 'LD [$C095],A', 'LD [$C096],A', 'LD A,40', 'LD [$C092],A',
+                 'LD A,4', 'LD [$C094],A']
         for i, (address, count) in enumerate(RANGES):
             lines += [f'LD DE,${address:04X}', f'LD B,{count}', f'Seed{i}:',
                       'LD A,[HL+]', 'LD [DE],A', 'INC DE', 'DEC B', f'JR NZ,Seed{i}']
@@ -35,7 +44,9 @@ def build(root, destination, short=False, suite='motion', part=None):
                   'LD [$C0F0],A', 'LD [$C0FC],A', 'LD A,[$C0F3]',
                   'OR A,A', 'JR Z,StepCase', 'CP A,1', 'JR Z,InitCase',
                   'CP A,2', 'JR Z,GameCase', 'CP A,3', 'JR Z,PowerCase',
-                  'CP A,4', 'JR Z,StarCase', 'CALL InitGame', 'JR Report',
+                  'CP A,4', 'JR Z,StarCase', 'CP A,6', 'JR Z,LivesCase',
+                  'CALL InitGame', 'JR Report',
+                  'LivesCase:', 'CALL UpdateLives', 'JR Report',
                   'GameCase:', 'CALL UpdateGame', 'JR Report',
                   'PowerCase:', 'CALL PowerUp', 'JR Report',
                   'StarCase:', 'CALL GrantStar', 'JR Report',
@@ -51,7 +62,7 @@ def build(root, destination, short=False, suite='motion', part=None):
             lines.append('DB '+','.join(str(v) for v in values))
         for name in ('movement', 'render', 'world', 'collision', 'interactions',
                      'map_restore', 'scene', 'stream', 'hud', 'columns', 'power',
-                     'blocks'):
+                     'blocks', 'progress'):
             lines.append(f'INCLUDE "{name}.asm"')
         path = destination/'program.asm'
         path.write_text('\n'.join(lines)+'\n', encoding='utf-8')

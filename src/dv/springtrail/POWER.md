@@ -22,7 +22,9 @@ dead enemy, `InitGame` from a dirty state and pause holding every timer.
 
 The fixture's 2 KiB operand slot holds at most 41 snapshots, so the set runs
 as two halves of 23 (`python-pua`, `python-pub`) after the two-case short
-harness (`python-pus`: crouch, then stomp, under a 20000-dot progress bound). Each half keeps the motion fixture's caps: 8000 dots
+harness (`python-pus`: crouch, then stomp, under a 24000-dot progress bound;
+it was 20000 until the block layer and the progression stage tables grew the
+crouch update from 7168 to 8856 dots). Each half keeps the motion fixture's caps: 8000 dots
 per simple call, 20000 per `UpdateGame`, 1700 setup per case and the 500000-dot
 progress guard. Static ceilings for the new work, counting every branch body:
 `PowerTimers` 200, `PowerInput` 420, `StepShot` 2300 (two axis scans of at

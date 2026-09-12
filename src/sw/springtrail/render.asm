@@ -21,9 +21,15 @@ CP A,B
 JR C,EnteringColumn
 ADD A,20
 EnteringColumn:
-CP A,96
-JP NC,ScrollRegister
+LD B,A
+CALL StageColumnCount
+CP A,B
+JP Z,ScrollRegister
+JP C,ScrollRegister
+LD A,B
 LD [Column],A
+CALL StageBaseColumn
+ADD A,B
 LD L,A
 LD H,0
 LD DE,WorldMap
@@ -33,8 +39,8 @@ AND A,31
 LD E,A
 LD D,$98
 ; Fixed eighteen-row column: carry occurs only after rows7 and15.
-; BC is the constant ROM stride; no per-row counter or carry branch.
-LD BC,96
+; BC is the constant256-column ROM stride; no per-row counter or carry branch.
+LD BC,256
 LD A,[HL]
 LD [DE],A
 ADD HL,BC

@@ -21,14 +21,14 @@ from . import generated_interfaces as abi
 from .records import file_hash
 
 ROOT = Path(__file__).resolve().parents[2]
-DECODER_VERSION = 1
+DECODER_VERSION = 2
 # Exact qualified images: ROM sha256 -> digest of the required symbol layout.
 SUPPORTED = {
-    '35aae757bde0ec9a15d6d6c84f14b45b451c341d2d4775f43ed8a9a762625192':
-        'dd41a1abb9838a69d0915ab7f899cdea87ef84a5e37531bb9633215efdedf287',
+    '5d0c168c371f58f08584fefe633701684b47e9bb00500f7d5322c61ba8c410e0':
+        '4b6e6b2b4770081f79160332d0106ebc8b3003c5010d9bd46917c841ffb842bf',
 }
-MODES = ('TITLE', 'PLAYING', 'RETRY', 'PAUSED', 'WON')
-HUD_WORDS = ('TITLE', 'PLAY', 'RETRY', 'PAUSED', 'WON')
+MODES = ('TITLE', 'PLAYING', 'RETRY', 'PAUSED', 'WON', 'TIMEUP', 'OVER')
+HUD_WORDS = ('TITLE', 'PLAY', 'RETRY', 'PAUSED', 'WON', 'TIMEUP', 'OVER')
 UNIT = 16
 PLAYFIELD_X = 760 * UNIT
 EFFECT_TILES = (0, 124, 128, 132, 136)
@@ -50,6 +50,9 @@ FIELDS = (
     ('ShotTTL', 1, False), ('BlockState', 4, False), ('Coins', 1, False),
     ('EffectTile', 1, False), ('EffectX', 2, True), ('EffectY', 2, True),
     ('EffectTimer', 1, False), ('BlockDirty', 1, False),
+    ('Lives', 1, False), ('PendingLife', 1, False), ('TimerSub', 1, False),
+    ('TimerLow', 1, False), ('TimerHigh', 1, False), ('Expiring', 1, False),
+    ('StageIndex', 1, False),
 )
 REQUIRED = tuple(name for name, _size, _signed in FIELDS)
 WRAM = abi.GB_WRAM_START
@@ -169,8 +172,15 @@ def _check(condition, what):
 def decode(binding, chunks):
     """Structured observation, or StateFailure. No field is ever guessed."""
     v = raw_fields(binding, chunks)
-    _check(0 <= v['GameMode'] <= 4, 'GameMode')
-    _check(0 <= v['PlayerX'] <= PLAYFIELD_X, 'PlayerX')
+    _check(0 <= v['GameMode'] < len(MODES), 'GameMode')
+    _check(v['StageIndex'] < 3, 'StageIndex')
+    stage = v['StageIndex']
+    for name in ('Lives', 'TimerLow'):
+        _check(v[name] >> 4 <= 9 and v[name] & 15 <= 9, name)
+    _check(1 <= v['TimerSub'] <= 40, 'TimerSub')
+    _check(v['TimerHigh'] <= 9, 'TimerHigh')
+    _check(v['Expiring'] in (0, 1, 2, 3, 255), 'Expiring')
+    _check(0 <= v['PlayerX'] <= (760, 632, 632)[stage] * UNIT, 'PlayerX')
     _check(0 <= v['PlayerY'] <= 160 * UNIT, 'PlayerY')
     _check(-2 * UNIT <= v['VelocityX'] <= 2 * UNIT, 'VelocityX')
     _check(-4 * UNIT <= v['VelocityY'] <= 4 * UNIT, 'VelocityY')
@@ -181,8 +191,8 @@ def decode(binding, chunks):
     # 72 pixels and the right end) a torn record passes it unseen. The paused
     # acquisition boundary is what actually prevents tears; see
     # wiki/tools/host-play/SPEC.md#springtrail-state-reconstruction.
-    _check(v['Camera'] == max(0, min(608, v['PlayerX'] // UNIT - 72)), 'Camera')
-    _check(240 * UNIT <= v['EnemyX'] <= 296 * UNIT, 'EnemyX')
+    _check(v['Camera'] == max(0, min((608, 480, 480)[stage], v['PlayerX'] // UNIT - 72)), 'Camera')
+    _check((240, 240, 272)[stage] * UNIT <= v['EnemyX'] <= (296, 296, 328)[stage] * UNIT, 'EnemyX')
     _check(v['EnemyVX'] in (8, -8), 'EnemyVX')
     _check(v['Collected'] <= 15 and v['Score'] == bin(v['Collected']).count('1'), 'Score')
     # MoveCounter and AnimationCounter are free bytes; the contract bounds the rest.
@@ -216,6 +226,9 @@ def decode(binding, chunks):
                   'alive': bool(v['EnemyAlive'])},
         'items': {'collected': v['Collected'], 'score': v['Score']},
         'timer': v['GameTimer'], 'new_level': v['NewLevel'],
+        'progress': {'stage': stage, 'lives': v['Lives'], 'pending': v['PendingLife'],
+                     'timer_sub': v['TimerSub'], 'timer_low': v['TimerLow'],
+                     'timer_high': v['TimerHigh'], 'expiring': v['Expiring']},
         'power': {'state': v['PowerState'], 'phase': v['PowerPhase'], 'timer': v['PowerTimer'],
                   'invincible': v['Invincible'], 'throw': v['ThrowTimer'], 'crouch': bool(v['Crouch'])},
         'shot': {'x': v['ShotX'], 'y': v['ShotY'], 'vx': v['ShotVX'], 'vy': v['ShotVY'], 'ttl': v['ShotTTL']},
@@ -262,7 +275,7 @@ def _import(*names):
 
 def _models():
     """The motion and contact rules; no artwork and no renderer."""
-    return _import('motion_reference', 'power_reference')
+    return _import('motion_reference', 'progress_reference')
 
 
 def to_world(observation):
@@ -275,7 +288,8 @@ def to_world(observation):
         counter=p['counter'], direction=p['direction'], speed=p['speed'], phase=p['phase'],
         animation=p['animation'], pose=p['pose'], jump=p['jump'], index=p['jump_index'],
         saved=p['saved_index'], facing=32 if p['facing'] == 'left' else 0)
-    shot = power.Shot(o['shot']['x'], o['shot']['y'], o['shot']['vx'], o['shot']['vy'], o['shot']['ttl'])
+    shot_type, = _import('power_reference')
+    shot = shot_type.Shot(o['shot']['x'], o['shot']['y'], o['shot']['vx'], o['shot']['vy'], o['shot']['ttl'])
     effect = o['blocks']['effect']
     return power.World(
         player=player, mode=o['mode'], enemy_x=o['enemy']['x'], enemy_vx=o['enemy']['vx'],
@@ -286,7 +300,8 @@ def to_world(observation):
         alive=o['enemy']['alive'], crouch=o['power']['crouch'], shot=shot,
         blocks=tuple(o['blocks']['states']), coins=o['blocks']['coins'],
         effect_tile=effect['tile'], effect_x=effect['x'], effect_y=effect['y'],
-        effect_timer=effect['timer'], block_dirty=o['blocks']['dirty'])
+        effect_timer=effect['timer'], block_dirty=o['blocks']['dirty'],
+        **o['progress'])
 
 
 def render(observation):

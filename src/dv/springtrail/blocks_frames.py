@@ -45,7 +45,7 @@ def column(world, index):
 def background(world):
     """Block pixels under the object layer; every block sits over blank sky."""
     pixels = bytearray(23040)
-    for bx, _by, _kind, _content in B.BLOCKS:
+    for bx, _by, _kind, _content in (B.BLOCKS if world.stage == 0 else ()):
         for half in (0, 1):
             for row, tile in B.column_tiles(world.blocks, bx + half).items():
                 sx, sy = (bx + half) * 8 - world.player.camera, row * 8

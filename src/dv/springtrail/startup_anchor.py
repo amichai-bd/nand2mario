@@ -92,8 +92,9 @@ ILLEGAL = {0xd3, 0xdb, 0xdd, 0xe3, 0xe4, 0xeb, 0xec, 0xed, 0xf4, 0xfc, 0xfd}
 class Model:
     """SM83 instruction timing over a flat 64 KiB memory; ROM is read-only."""
 
-    def __init__(self, image):
+    def __init__(self, image, lcdc_on=LCDC_ON):
         assert len(image) == 32768, 'ANCHOR_IMAGE_SIZE'
+        self.lcdc_on = lcdc_on
         self.memory = bytearray(65536)
         self.memory[:32768] = image
         self.pc, self.sp = RESET_PC, 0xfffe
@@ -111,7 +112,7 @@ class Model:
         address &= 0xffff
         if address >= 0x8000:
             self.memory[address] = value & 255
-        if address == LCDC and value == LCDC_ON and self.lcd is None:
+        if address == LCDC and value == self.lcdc_on and self.lcd is None:
             self.lcd = 4 * (self.mcycles + cycle)
 
     def fetch(self):
@@ -438,7 +439,7 @@ class Model:
         return value - 256 if value & 128 else value
 
 
-def derive(image, symbols=None, limit=LIMIT):
+def derive(image, symbols=None, limit=LIMIT, lcdc_on=LCDC_ON):
     """Run the image to its LCDC 0x91 write; {lcd, mcycles, terms, instructions}.
 
     Terms attribute dots to the routine executing them: the nearest symbol at
@@ -448,7 +449,7 @@ def derive(image, symbols=None, limit=LIMIT):
     """
     symbols = symbols or {}
     addresses = sorted(symbols)
-    model = Model(image)
+    model = Model(image, lcdc_on)
     terms, order = {}, []
     instructions = 0
 

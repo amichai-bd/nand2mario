@@ -1,7 +1,7 @@
 """Independent per-update model of the approved original motion contract."""
 from dataclasses import dataclass, replace
 
-from movement_reference import solid, world_tile
+from movement_reference import solid, world_tile, STAGE_X_MAX, STAGE_CAMERA_MAX, STAGE_BASE
 
 UNIT = 16
 WIDTH = 8 * UNIT
@@ -9,9 +9,14 @@ HEIGHT = 16 * UNIT
 TILE = 8 * UNIT
 
 
-def _solid(extra, column, row, ascending=False):
-    """Terrain, then the optional block layer #303 supplies. Terrain always wins."""
-    return solid(column, row) or bool(extra and extra(column, row, ascending))
+def _solid(extra, column, row, ascending=False, stage=0):
+    """Terrain, then the optional block layer #303 supplies. Terrain always wins.
+
+    The block layer is keyed on the collision page column, as the assembly's
+    `CellSolid` is, so the stage-0 block table matches nothing on other stages.
+    """
+    return (solid(column, row, stage)
+            or bool(extra and extra(column + STAGE_BASE[stage], row, ascending)))
 
 
 @dataclass(frozen=True)
@@ -68,7 +73,7 @@ def _select(player, buttons):
     return p
 
 
-def _horizontal(player, buttons, extra=None):
+def _horizontal(player, buttons, extra=None, stage=0):
     p = replace(player, vx=0)
     if p.direction == 3:
         if p.counter:
@@ -97,18 +102,18 @@ def _horizontal(player, buttons, extra=None):
     phase = p.phase ^ 1
     distance = phase if p.speed == 0 else 1 if p.speed == 2 else 1 + phase
     dx = distance * UNIT * (1 if intent == 1 else -1)
-    x = max(0, min(760 * UNIT, p.x + dx))
+    x = max(0, min(STAGE_X_MAX[stage] * UNIT, p.x + dx))
     blocked = x != p.x + dx
     if dx:
         column = (x + WIDTH - 1) // TILE if dx > 0 else x // TILE
-        if any(_solid(extra, column, row) for row in range(p.y // TILE, (p.y + HEIGHT - 1) // TILE + 1)):
+        if any(_solid(extra, column, row, False, stage) for row in range(p.y // TILE, (p.y + HEIGHT - 1) // TILE + 1)):
             x = column * TILE - WIDTH if dx > 0 else (column + 1) * TILE
             blocked = True
     return replace(p, x=x, vx=0 if blocked else dx, phase=phase,
                    animation=(p.animation + (1 if intent == 1 else -1)) & 255)
 
 
-def _vertical(player, buttons, extra=None, report=None):
+def _vertical(player, buttons, extra=None, report=None, stage=0):
     p = player
     if p.jump == 1 and not buttons & 16 and p.index < 15:
         p = replace(p, saved=max(0, p.index - 1), index=15)
@@ -116,7 +121,7 @@ def _vertical(player, buttons, extra=None, report=None):
         p = replace(p, index=p.saved, saved=0)
     if p.jump == 0:
         support = p.y + HEIGHT
-        if support % TILE == 0 and any(_solid(extra, column, support // TILE)
+        if support % TILE == 0 and any(_solid(extra, column, support // TILE, False, stage)
                 for column in range(p.x // TILE, (p.x + WIDTH - 1) // TILE + 1)):
             return replace(p, vy=0, grounded=True)
         p = replace(p, jump=3, grounded=False, pose=4)
@@ -133,7 +138,7 @@ def _vertical(player, buttons, extra=None, report=None):
     if dy:
         row = (y + HEIGHT - 1) // TILE if dy > 0 else y // TILE
         columns = range(p.x // TILE, (p.x + WIDTH - 1) // TILE + 1)
-        hit = next((c for c in columns if _solid(extra, c, row, dy < 0)), None)
+        hit = next((c for c in columns if _solid(extra, c, row, dy < 0, stage)), None)
         if hit is not None:
             if dy > 0:
                 return replace(p, y=row * TILE - HEIGHT, vy=0, grounded=True,
@@ -146,17 +151,19 @@ def _vertical(player, buttons, extra=None, report=None):
     return replace(p, y=y, vy=dy, grounded=False)
 
 
-def step(player, buttons, blocked=None, report=None):
+def step(player, buttons, blocked=None, report=None, stage=0):
     """One PLAY update. Mode pause/restart is owned by the interaction caller.
 
     `blocked(column, row, ascending)` adds solid cells outside the terrain map;
     `report` collects the ascending scan's first solid cell as (column, row).
+    `stage` selects the terrain and bounds; the block layer sees page columns.
     """
     if not isinstance(buttons, int) or not 0 <= buttons <= 255:
         raise ValueError('buttons must be a byte')
     if player.fell:
         return replace(player, previous=buttons)
-    p = _vertical(_horizontal(_select(player, buttons), buttons, blocked),
-                  buttons, blocked, report)
-    return replace(p, previous=buttons, camera=max(0, min(608, p.x // UNIT - 72)),
+    p = _vertical(_horizontal(_select(player, buttons), buttons, blocked, stage),
+                  buttons, blocked, report, stage)
+    return replace(p, previous=buttons,
+                   camera=max(0, min(STAGE_CAMERA_MAX[stage], p.x // UNIT - 72)),
                    fell=p.y >= 144 * UNIT)

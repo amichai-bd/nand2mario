@@ -1,7 +1,7 @@
 """Current motion poses with approved pixels and unchanged HUD/world artwork."""
 from composition_reference import BANK, courier as original_courier, raster
 from composition_reference import scene as original_scene
-from hud_reference import CORE, MAPS, glyph, CHARS, image as hud_image
+from hud_reference import CORE, MAPS, glyph, CHARS, image as hud_image, EXTRA, art
 from scene_art import PAIRS
 
 import json
@@ -42,7 +42,7 @@ def scene(game):
 
 
 def tiles():
-    result = [[[0]*8 for _ in range(8)] for _ in range(140)]
+    result = [[[0]*8 for _ in range(8)] for _ in range(149)]
     for tile, rows in PAIRS.items():
         for half in range(2):
             result[tile+half] = [list(map(int, row)) for row in rows[half*8:half*8+8]]
@@ -56,6 +56,10 @@ def tiles():
         result[94+index] = [row[tile*8:(tile+1)*8] for row in CORE]
     for index, tile in enumerate(BLOCK_TILES):
         result[108+index] = [row[tile*8:(tile+1)*8] for row in TERRAIN]
+    # VRAM 140..148 hold the progression digits, letters and icons.
+    for index, name in enumerate(EXTRA):
+        pixels = art(name)
+        result[140+index] = [list(pixels[y*8:y*8+8]) for y in range(8)]
     return result
 
 

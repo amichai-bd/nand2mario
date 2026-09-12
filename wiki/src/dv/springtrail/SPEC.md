@@ -321,10 +321,24 @@ renderer targets are rerun because the shared ROM, startup anchor, VRAM tile
 count, published columns and operand ranges changed. No physical or milestone
 result follows.
 
+## Lives, timer and progression checks
+
+The [progression contract](../../sw/springtrail/PROGRESS.md) freezes the lives,
+the countdown, the stage table and what survives a death, a stage change and a
+reset. The [progression matrix](../../../../src/dv/springtrail/PROGRESS.md)
+owns its acceptance: independent literal expectations, two bounded halves of
+shared-CPU cases through `UpdateGame` and `UpdateLives`, one actual consumer
+fault on the retry update's pending life request store, and the approved
+row1 glyph and icon checks with their reproduced previews. The independent
+terrain rules now check all 4608 committed world cells across the three stages.
+The six motion and five power targets are rerun because the shared ROM, the
+startup anchor, the VRAM tile count and the operand ranges changed. No physical
+or milestone result follows.
+
 ## Background HUD and prepared columns
 
 The [HUD/column matrix](../../../../src/dv/springtrail/HUD_COLUMNS.md) owns current
-readiness and interrupt/publication bounds. Literal world rules check all1536
+readiness and interrupt/publication bounds. Literal world rules check all4608
 decoded cells; malformed encodings fail before assembly. Shared CPU fixtures
 check nineteen finite cases, including complete caches, map addresses, paused
 restoration, repeated restart, ring wrap, camera limits and160-byte scene/DMA.

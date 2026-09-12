@@ -18,8 +18,10 @@ except ImportError:  # invoked as a script, not as the sw package
 TREE = Path('src/sw/springtrail')
 WORLD = TREE / 'world.asm'
 COLUMNS = TREE / 'columns.asm'
-WIDTH, HEIGHT, ROWS, FIRST_ROW, TILES = 96, 18, 16, 2, 94
-HEADER = '; Original count/tile display columns; collision data stays in world.asm.'
+WIDTH, HEIGHT, ROWS, FIRST_ROW, TILES = 256, 18, 16, 2, 94
+# Stage base column and width; the three stages fill one 256-column page.
+STAGES = ((0, 96), (96, 80), (176, 80))
+HEADER = '; Original count/tile display columns for all three stages; collision data stays in world.asm.'
 
 
 def decode(data, tiles=TILES):
@@ -56,17 +58,17 @@ def encode(column):
 
 
 def load_world(text):
-    """The literal 96x18 tile rows of world.asm, or COLUMN_WORLD."""
+    """The literal 18x256 three-stage tile rows of world.asm, or COLUMN_WORLD."""
     rows = []
     for line in text.splitlines():
         body = line.split(';')[0].strip()
         if body.startswith('DB '):
             parts = body[3:].split(',')
             if not all(part.isdigit() for part in parts):
-                raise AssemblyError('COLUMN_WORLD', 'literal96x18 collision world required')
+                raise AssemblyError('COLUMN_WORLD', 'literal18x256 three-stage collision world required')
             rows.append([int(part) for part in parts])
     if len(rows) != HEIGHT or any(len(row) != WIDTH for row in rows) or any(not 0 <= n < TILES for row in rows for n in row):
-        raise AssemblyError('COLUMN_WORLD', 'literal96x18 collision world required')
+        raise AssemblyError('COLUMN_WORLD', 'literal18x256 three-stage collision world required')
     return rows
 
 

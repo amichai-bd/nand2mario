@@ -32,7 +32,7 @@ PERIOD=70224
 # derived from the instruction listing by startup_anchor.derive and frozen
 # here. python-mgs proves the RTL commits at exactly this dot;
 # test_startup_anchor proves the image the repository builds still derives it.
-LCD=167840
+LCD=177308
 
 
 class Check:
@@ -84,7 +84,7 @@ class Check:
         assert kind=='W','MOTION_TRACE_KIND'
         dot,address,data=value>>24,(value>>8)&65535,value&255
         self.memory[address]=data
-        if 0x8000<=address<0x88c0:
+        if 0x8000<=address<0x8950:
             assert self.lcd is None,'MOTION_LATE_TILES'
             self.tiles.append((address,data))
         if address==0xff40:
@@ -190,3 +190,30 @@ class Check:
             assert self.triggers[-1]+644<pause<self.lcd+2*PERIOD,'MOTION_FINAL_WINDOW'
         return dict(pixels=self.pixels,records=self.records,lcd=self.lcd,ready=self.ready,
                     dma_bytes=len(self.dma),input_dot=self.input_dot,pause=pause,irq=self.irq,split=self.split,tokens=self.tokens,hud=self.hud,samples=self.samples,bus_count=self.bus_count)
+
+
+def final_halt_ready(dot, trigger, window_end):
+    """Start the ordinary UART HALT early enough to pause after complete DMA.
+
+    The fixed no-payload request takes180..220dots including decode/pause.
+    One-us controller polling adds at most5dots. Fail closed if this actual
+    publication leaves insufficient space in the unchanged source frame window.
+    """
+    assert trigger + 470 + 5 + 220 < window_end, 'MOTION_HALT_ROOM'
+    if dot < trigger + 470:
+        return False
+    assert dot <= trigger + 470 + 5, 'MOTION_HALT_REQUEST_LATE'
+    return True
+
+
+def require_halt_timing(root):
+    """Fail closed if the fixed fixture UART/clock/timebase assumptions change."""
+    import re
+    required = {
+        'src/dv/v05/tb_python_v05.sv': ('always#20clk_sys=!clk_sys;', '.UART_BAUD(3125000)'),
+        'src/rtl/clocking/n2m_timebase.sv': ("phase+19'd65536", "sum>=19'd390625"),
+        'src/dv/python/integration/client_transport.py': ('index*3240000', 'bit*320000'),
+    }
+    for path, terms in required.items():
+        source = re.sub(r'\s+', '', (root/path).read_text())
+        assert all(term in source for term in terms), 'MOTION_HALT_TIMING_PROFILE'

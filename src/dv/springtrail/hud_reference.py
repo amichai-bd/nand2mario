@@ -6,21 +6,33 @@ from pathlib import Path
 from composition_reference import BANK, raster, scene
 from interactions_reference import Game
 from blocks_reference import column_tiles
-from movement_reference import world_tile
+from movement_reference import world_tile, STAGE_BASE
 from reference import ART, GLYPHS
 from scene_art import PAIRS
 
 SOURCE = Path(__file__).resolve().parents[2] / 'sw/springtrail/assets/core'
 CORE = json.loads((SOURCE / 'core-tiles.json').read_text())['pixels']
 MAPS = json.loads((SOURCE / 'core-maps.json').read_text())
-WORDS = ('TITLE', 'PLAY', 'RETRY', 'PAUSED', 'WON')
+WORDS = ('TITLE', 'PLAY', 'RETRY', 'PAUSED', 'WON', 'TIMEUP', 'OVER')
 CHARS = tuple(sorted(set('TITLEPLAYRETRYPAUSEDWONSCORE01234')))
 IDS = {char: 74 + index for index, char in enumerate(CHARS)}
+# The progression row adds nine approved core tiles after the block terrain
+# copies at 108..139: digits5..9, then M and V for the new mode words, then the
+# two icons, at VRAM 140..148.
+EXTRA = ('glyph-5', 'glyph-6', 'glyph-7', 'glyph-8', 'glyph-9',
+         'glyph-M', 'glyph-V', 'life', 'clock')
+IDS.update({name[-1]: 140 + index for index, name in enumerate(EXTRA[:7])})
+LIFE_TILE, CLOCK_TILE = 147, 148
+# Row1 column, then the world attribute and nibble each value cell shows.
+PROGRESS_ROW = ((1, 'icon', LIFE_TILE), (2, 'lives', 4), (3, 'lives', 0),
+                (12, 'icon', CLOCK_TILE), (13, 'timer_high', 0),
+                (14, 'timer_low', 4), (15, 'timer_low', 0), (18, 'stage', -1))
+PROGRESS_RESET = {'lives': 0x02, 'timer_high': 0x04, 'timer_low': 0x00, 'stage': 0}
 
 
-def glyph(char):
-    """Reconstruct approved glyph pixels; map IDs are local review-bank IDs."""
-    spec = MAPS['glyph-' + char]
+def art(name):
+    """Reconstruct one approved 8x8 core map; IDs are local review-bank IDs."""
+    spec = MAPS[name]
     assert (spec['width'], spec['height']) == (8, 8)
     out = bytearray(64)
     for piece in spec['pieces']:
@@ -32,18 +44,36 @@ def glyph(char):
     return bytes(out)
 
 
-def column(index, blocks=None):
+def glyph(char):
+    return art('glyph-' + char)
+
+
+def progress_cell(game, source, nibble):
+    """The tile shown in one row1 value cell, from the contract's reset values."""
+    if source == 'icon':
+        return nibble
+    value = getattr(game, source, PROGRESS_RESET[source])
+    digit = value + 1 if nibble < 0 else (value >> nibble) & 15
+    return IDS[str(digit)]
+
+
+def progress_tiles(game):
+    return bytes(progress_cell(game, source, nibble)
+                 for _, source, nibble in PROGRESS_ROW)
+
+
+def column(index, blocks=None, stage=0):
     """Published background tiles of one column.
 
     The default is the terrain-only table `columns.asm` encodes. Pass #303's
     block state to get what the decoder publishes once the block layer has
-    overridden rows 10 and 11.
+    overridden rows 10 and 11; the layer is keyed on the page column.
     """
     if type(index) is not int or not 0 <= index < 96:
         raise ValueError('display column outside 0..95')
-    tiles = [world_tile(index, row) for row in range(2, 18)]
+    tiles = [world_tile(index, row, stage) for row in range(2, 18)]
     if blocks is not None:
-        for row, tile in column_tiles(blocks, index).items():
+        for row, tile in column_tiles(blocks, index + STAGE_BASE[stage]).items():
             tiles[row-2] = tile
     return bytes(tiles)
 
@@ -60,7 +90,7 @@ def entering(oldcamera, newcamera):
 
 
 def hud_tiles(game):
-    if not 0 <= game.mode < 5 or not 0 <= game.score <= 4:
+    if not 0 <= game.mode < len(WORDS) or not 0 <= game.score <= 4:
         raise ValueError('HUD mode/score outside game rules')
     return bytes([IDS[c] if c != ' ' else 0 for c in WORDS[game.mode].ljust(6)]
                  + [IDS[str(game.score)]])
@@ -83,7 +113,7 @@ def image(game=Game(), facing=False, *, object_pixels=None):
     for y in range(16, 144):
         for x in range(160):
             wx = x + game.player.camera
-            if world_tile(wx//8, y//8):
+            if world_tile(wx//8, y//8, getattr(game, 'stage', 0)):
                 pixels[y*160+x] = int(ART['ground'][y%8][wx%8])
             if game.mode == 0 and y//8 in (5, 7) and 4 <= x//8 < 15:
                 letter = ('SPRINGTRAIL' if y//8 == 5 else 'PRESS START')[x//8-4]
@@ -99,6 +129,13 @@ def image(game=Game(), facing=False, *, object_pixels=None):
             for y in range(8):
                 left = y*160+(start+offset)*8
                 pixels[left:left+8] = rows[y*8:y*8+8]
+    # Row1 carries the life and clock icons with the lives, timer and stage.
+    for (start, source, nibble), tile in zip(PROGRESS_ROW, progress_tiles(game)):
+        name = EXTRA[tile-140] if tile >= 140 else 'glyph-' + CHARS[tile-74]
+        rows = art(name)
+        for y in range(8):
+            left = (y+8)*160+start*8
+            pixels[left:left+8] = rows[y*8:y*8+8]
     return bytes(pixels)
 
 

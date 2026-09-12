@@ -4,6 +4,13 @@ import json
 import sys
 
 
+def bounds(image):
+    """Independent source timing through LCD enable and the complete two-frame window."""
+    from startup_anchor import derive
+    lcd = derive(image, lcdc_on=0x99)['lcd']
+    return dict(lcd=lcd, lcd_bound=lcd+1, end_bound=lcd+2*70224)
+
+
 def build(root, destination, variant='motion'):
     prior = sys.path[:]
     try:
@@ -38,6 +45,9 @@ def build(root, destination, variant='motion'):
             lines.extend([f'LD A,${value & 255:02X}', f'LD [${address:04X}],A'])
         for address, value in zip(ADDRESSES, state_bytes(game)):
             write(address, value)
+        # Ordinary stage-0 reset operands, before the shared HUD preparation.
+        for address, value in zip(range(0xc090, 0xc097), (2, 0, 40, 0, 4, 0, 0)):
+            write(address, value)
         for address, value in ((0xc02e, 0), (0xc02f, 32), (0xc023, 11),
                                (0xc030, 1), (0xc040, 0), (0xc050, 0),
                                (0xc051, 95), (0xc054, 0), (0xc055, 0)):
@@ -47,7 +57,7 @@ def build(root, destination, variant='motion'):
         lines += ['LD A,[HL+]', 'LD [DE],A', 'INC DE']*16
         lines += ['DEC B', 'JR NZ,TileBlock', 'LD HL,$9800', 'LD B,64',
                   'XOR A,A', 'ClearHUD:', 'LD [HL+],A', 'DEC B',
-                  'JR NZ,ClearHUD', 'CALL InitHUD', 'CALL InitMotionArt', 'CALL InitBlockArt', 'LD A,$E4',
+                  'JR NZ,ClearHUD', 'CALL InitHUD', 'CALL InitMotionArt', 'CALL InitBlockArt', 'CALL InitProgressArt', 'LD A,$E4',
                   'LDH [$FF47],A', 'LDH [$FF48],A', 'RingColumn:',
                   'LD A,[$C054]', 'LD DE,$C200', 'CALL DecodeColumn',
                   'LD A,[$C054]', 'LD HL,$C200', 'CALL PublishColumn',
@@ -58,8 +68,11 @@ def build(root, destination, variant='motion'):
                   f"LD A,{secondary['facing']}", 'LD [CourierFacing],A',
                   'XOR A,A', 'LD [SceneBaseX+1],A', 'LD [SceneBaseY+1],A',
                   'LD [SceneHidden],A', f"LD A,{secondary['pose']}", 'LD [CourierPose],A',
-                  'CALL ComposeCourier', 'CALL PrepareHUD',
-                  'CALL PrepareMap', 'CALL PublishHUD', 'CALL PublishScene',
+                  'CALL ComposeCourier', 'CALL PrepareHUD', 'CALL PrepareProgress',
+                  'CALL PrepareMap', 'CALL PublishHUD',
+                  # This fixture selects the ring at LCD-on, so its startup publishes the
+                  # progression row to the ring copy directly, as the game's switch frame does.
+                  'LD HL,ProgressCache', 'LD DE,$9C22', 'CALL PublishProgressMap', 'CALL PublishScene',
                   'XOR A,A', 'LDH [$FF0F],A', 'LD A,15', 'LDH [$FF45],A',
                   'LD A,$40', 'LDH [$FF41],A', 'LD A,3', 'LD [$FFFF],A',
                   'LD A,$99', 'LDH [$FF40],A', 'EI', 'WaitFrame:', 'DI',
@@ -68,14 +81,14 @@ def build(root, destination, variant='motion'):
                   'LD [FramePending],A', 'LD A,[$C055]', 'OR A,A',
                   'JR NZ,Finished', 'INC A', 'LD [$C055],A', 'EI',
                   'CALL StreamMap', 'LD A,[Camera]', 'LD [PublishedCamera],A',
-                  'CALL PublishHUD', 'DI', 'CALL PublishScene', 'EI',
+                  'CALL PublishHUD', 'CALL PublishProgress', 'DI', 'CALL PublishScene', 'EI',
                   'JP WaitFrame', 'Finished:', 'XOR A,A', 'LD [$FFFF],A',
                   'LD A,$A5', 'LD [$C0FF],A', 'HALT', 'EXPORT Start',
                   'SECTION "assets",ROM', 'Tiles:', 'ASSET "Tiles"',
                   'ASSET "Courier"']
         for name in ('movement', 'render', 'world', 'collision', 'interactions',
                      'map_restore', 'scene', 'stream', 'hud', 'columns', 'power',
-                     'blocks'):
+                     'blocks', 'progress'):
             lines.append(f'INCLUDE "{name}.asm"')
         path = destination/'program.asm'
         path.write_text('\n'.join(lines)+'\n', encoding='utf-8')
@@ -105,10 +118,9 @@ def build(root, destination, variant='motion'):
                       operands=dict(state=list(state_bytes(game)), old_camera=95,
                                     camera=97, old_camera_tile=11, entering_column=32,
                                     secondary=secondary),
-                      lcd_bound=160000, end_bound=300000,
-                      budget=dict(tile_copy=29624, font_hud=24000, ring=60000,
-                                  preparation=35000, setup=10000,
-                                  lcd_off_total=158624, two_vblanks_and_tail=137000),
+                      **bounds(image),
+                      budget=dict(source_derived_lcd=bounds(image)['lcd'],
+                                  two_vblanks_and_tail=137000),
                       shared_sections={row['section']:hashlib.sha256(image[row['address']:row['address']+row['size']]).hexdigest()
                                        for row in linked['map']['sections']
                                        if row['section'] not in ('code', 'assets')})

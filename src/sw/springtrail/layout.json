@@ -16,8 +16,8 @@
     {
       "unit": "main.asm",
       "section": "world",
-      "region": "ROM0",
-      "address": 5120
+      "region": "ROM1",
+      "address": 16384
     },
     {
       "unit": "main.asm",
@@ -30,12 +30,6 @@
       "section": "render",
       "region": "ROM0",
       "address": 10240
-    },
-    {
-      "unit": "main.asm",
-      "section": "collision",
-      "region": "ROM1",
-      "address": 16384
     },
     {
       "unit": "main.asm",
@@ -88,8 +82,8 @@
     {
       "unit": "main.asm",
       "section": "columns",
-      "region": "ROM1",
-      "address": 29696
+      "region": "ROM0",
+      "address": 5888
     },
     {
       "unit": "main.asm",
@@ -122,6 +116,12 @@
       "section": "block_assets",
       "region": "ROM1",
       "address": 30464
+    },
+    {
+      "unit": "main.asm",
+      "section": "progress",
+      "region": "ROM0",
+      "address": 5120
     }
   ]
 }

@@ -97,3 +97,14 @@ DecodeIndex EQU $C08B
 DecodeBase EQU $C08C
 BlockSub EQU $C08E
 DirtyPublish EQU $C08F
+
+; Original progression state. Lives and StageIndex survive a death and a stage
+; change; only a reset clears them. ProgressCache is the prepared HUD row1.
+Lives EQU $C090
+PendingLife EQU $C091
+TimerSub EQU $C092
+TimerLow EQU $C093
+TimerHigh EQU $C094
+Expiring EQU $C095
+StageIndex EQU $C096
+ProgressCache EQU $C097

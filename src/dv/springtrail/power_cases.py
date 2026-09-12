@@ -11,7 +11,10 @@ __all__ = ['ADDRESSES', 'RANGES', 'state_bytes', 'cases', 'parts', 'SHORT', 'SHO
 # The short harness runs crouch then stomp: a masked-direction fault is consumed
 # by the first call and the stomp exercises the enemy contact path.
 SHORT = 2
-SHORT_BOUND = 20000
+# The two-case short run measured 8856 dots for the crouch update after the
+# block layer and the stage tables (7168 when this bound was 20000), and its
+# stomp update ended past 20000; 24000 keeps the same guard with that growth.
+SHORT_BOUND = 24000
 
 
 def state_bytes(world, buttons=0, new_level=0):

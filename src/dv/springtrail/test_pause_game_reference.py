@@ -31,7 +31,9 @@ class PauseScript(unittest.TestCase):
         check = Check()
         self.assertEqual(len(check.images), FRAMES)
         self.assertEqual([f'{zlib.crc32(i):08x}' for i in check.images],
-                         ['b15161f6', '9b162de2', '2a877964', '2a877964', 'a20ef3f5', 'e1736456'])
+                         # Row1's progression cells are new pixels in every world frame;
+                         # the title frame is unchanged because it publishes before them.
+                         ['b15161f6', '4a3bad02', 'fbaaf984', 'fbaaf984', '73237315', '305ee4b6'])
         # The neutral frame repeats the first world frame's pixels: STAND holds
         # until the fourth animation step. Its state bytes still differ.
         self.assertEqual(len(set(check.images)), FRAMES-1)
@@ -53,8 +55,13 @@ class PauseScript(unittest.TestCase):
         title = publication_writes(games, 0, pairs, reselect)
         tiles = hud_tiles(games[0])
         self.assertEqual(title[:3], [(0xff43, 0), (0xff42, 0), (0xff40, 0x91)])
+        # The progression row's six value cells follow the row0 cache, to the
+        # displayed map only: the static map through the title and restoration.
+        row = [(0x9822, 74), (0x9823, 76), (0x982d, 78), (0x982e, 74), (0x982f, 74), (0x9832, 75)]
         self.assertEqual(title[3:], [(0x9801+i, t) for i, t in enumerate(tiles[:6])] + [(0x9812, tiles[6])]
-                         + [(0x9c01+i, t) for i, t in enumerate(tiles[:6])] + [(0x9c12, tiles[6]), (0xff46, 0xc1)])
+                         + [(0x9c01+i, t) for i, t in enumerate(tiles[:6])] + [(0x9c12, tiles[6])]
+                         + row + [(0xff46, 0xc1)])
+        self.assertEqual(publication_writes(games, 2, pairs, reselect)[-7:-1], row)
         first = publication_writes(games, 1, pairs, reselect)
         self.assertEqual(first[3:25], [(a, 0) for a in TITLE_ROWS])
         self.assertEqual(first[25], (0xff40, 0x91))
@@ -63,7 +70,7 @@ class PauseScript(unittest.TestCase):
         self.assertEqual(restart[3], (0xff40, 0x91))
         self.assertEqual(restart[4:36], first[26:58])
         self.assertNotIn((0x98a4, 0), restart)
-        self.assertEqual(len(publication_writes(games, 5, pairs, reselect)), 3+32+14+1)
+        self.assertEqual(len(publication_writes(games, 5, pairs, reselect)), 3+32+14+6+1)
 
 
 class PauseGuards(unittest.TestCase):

@@ -187,5 +187,88 @@ class RenderTests(unittest.TestCase):
         self.assertEqual(len(set(seen.values())), len(seen))
 
 
+
+class ProgressionTests(unittest.TestCase):
+    def setUp(self):
+        self.image, self.binding = support.binding()
+
+    def decode(self, world, **kwargs):
+        return state.decode(self.binding, support.chunks(self.binding, world, **kwargs))
+
+    def test_current_image_cutover_rejects_old_profile(self):
+        _image, symbols = support.build()
+        self.assertEqual(state.DECODER_VERSION, 2)
+        with self.assertRaisesRegex(state.StateFailure, 'STATE_ROM_UNSUPPORTED'):
+            state.Binding('35aae757bde0ec9a15d6d6c84f14b45b451c341d2d4775f43ed8a9a762625192', symbols)
+        for name in ('Lives', 'StageIndex'):
+            moved = dict(symbols)
+            moved[name] += 1
+            with self.assertRaisesRegex(state.StateFailure, 'STATE_LAYOUT_MISMATCH'):
+                state.Binding(support.ROM_SHA256, moved)
+
+    def test_three_stages_and_lifecycle_round_trip(self):
+        from dataclasses import replace
+        from progress_reference import World, enter_stage, update, WON, RETRY, TIMEUP, OVER
+        from hud_reference import art
+        for stage in range(3):
+            start = enter_stage(World(stage=stage, lives=0x12), 0)
+            for mode in (1, 3, WON, RETRY, TIMEUP, OVER):
+                world = replace(start, mode=mode)
+                observed = self.decode(world)
+                self.assertEqual(state.to_world(observed), world)
+                pixels = state.render(observed)
+                # Literal reset row: lives12, countdown400/300/200, stage1/2/3.
+                for column, digit in ((2, 1), (3, 2), (13, 4-stage), (14, 0),
+                                      (15, 0), (18, stage+1)):
+                    tile = art('glyph-' + str(digit))
+                    actual = b''.join(pixels[(8+y)*160+column*8:(8+y)*160+column*8+8]
+                                      for y in range(8))
+                    self.assertEqual(actual, tile)
+                transitioned = update(world, 128)
+                self.assertEqual(state.to_world(self.decode(transitioned)), transitioned)
+            won = update(replace(start, mode=WON), 128)
+            self.assertEqual(won.stage, stage+1 if stage < 2 else 0)
+            dead = update(replace(start, mode=RETRY, lives=0), 128)
+            self.assertEqual(dead.mode, OVER)
+
+    def test_stage_objects_have_literal_positions_and_pixels(self):
+        from dataclasses import replace
+        from progress_reference import World, enter_stage
+        from power_frames import scene
+        for stage, item_x, item_y in ((0, 96, 88), (1, 80, 80), (2, 64, 88)):
+            world = enter_stage(World(stage=stage), 0)
+            data = scene(world)
+            # Four courier entries, two enemy entries, then the first item pair.
+            self.assertEqual(data[24:32], bytes((item_y+16, item_x+8, 18, 0,
+                                                item_y+24, item_x+8, 19, 0)))
+            pixels = state.render(self.decode(world))
+            self.assertEqual(pixels[(item_y+1)*160+item_x+3], 3)
+            hidden = replace(world, collected=1, score=1)
+            self.assertEqual(state.render(self.decode(hidden))[(item_y+1)*160+item_x+3], 0)
+            camera = (608, 480, 480)[stage]
+            end = replace(world, player=replace(world.player, x=(camera+72)*16, camera=camera))
+            # Each stage goal is screen128 at its camera clamp.
+            self.assertEqual(scene(end)[56:64], bytes((128, 136, 20, 0, 136, 136, 21, 0)))
+            self.assertEqual(state.render(self.decode(end))[112*160+130], 3)
+
+    def test_progression_and_stage_bounds_refuse_malformed_values(self):
+        from dataclasses import replace
+        from progress_reference import World, enter_stage
+        world = enter_stage(World(stage=2), 0)
+        for name, value in (('Lives', 0x1a), ('TimerLow', 0xa0), ('TimerHigh', 10),
+                            ('TimerSub', 0), ('TimerSub', 41), ('Expiring', 4),
+                            ('StageIndex', 3), ('GameMode', 7)):
+            with self.subTest(name=name, value=value):
+                with self.assertRaisesRegex(state.StateFailure, 'STATE_MALFORMED ' + name):
+                    self.decode(world, poke={name: value})
+        invalid = replace(world, player=replace(world.player, x=633*16, camera=480))
+        with self.assertRaisesRegex(state.StateFailure, 'STATE_MALFORMED PlayerX'):
+            self.decode(invalid)
+        for stage, limit in enumerate((760, 632, 632)):
+            current = enter_stage(World(stage=stage), 0)
+            current = replace(current, player=replace(current.player, x=limit*16,
+                                                      camera=(608, 480, 480)[stage]))
+            self.assertEqual(state.to_world(self.decode(current)), current)
+
 if __name__ == '__main__':
     unittest.main()

@@ -43,7 +43,7 @@ LINE = 456
 LINES = 154
 BOUNDARY_FIRST, BOUNDARY_LAST = 145, 152
 MAX_STEP_FRAMES = 4
-TITLE, PLAYING, RETRY, PAUSED, WON = range(5)
+TITLE, PLAYING, RETRY, PAUSED, WON, TIMEUP, OVER = range(7)
 # The complete eight-button mask the endpoint takes, active high.
 RIGHT, LEFT, UP, DOWN, A, B, SELECT, START = 1, 2, 4, 8, 16, 32, 64, 128
 # Declared finite budget of one demonstration. Frames are emulated frames.
@@ -203,7 +203,7 @@ class Strategy:
             world = self.power.update(world, mask)
             if world.mode == WON:
                 return self.WON_SCORE - step
-            if world.mode in (RETRY, PAUSED) or world.player.fell:
+            if world.mode in (RETRY, PAUSED, TIMEUP, OVER) or world.player.fell:
                 return self.DEAD
         x = world.player.x // UNIT
         if (world.alive and self.BAND[0] < x < self.BAND[1]
@@ -219,7 +219,7 @@ class Strategy:
         if mode == TITLE:
             # Start must arrive as an edge; hold it only until it is sampled.
             return (START, 1, 'start') if not sampled & START else (0, 1, 'start-sampled')
-        if mode in (RETRY, WON, PAUSED):
+        if mode in (RETRY, WON, PAUSED, TIMEUP, OVER):
             return (START, 1, 'restart') if not sampled & START else (0, 1, 'restart-sampled')
         # The sampled mask is already committed to the next update; plan from it.
         base = self.power.update(to_world(observation), sampled)
@@ -454,7 +454,12 @@ def _check_advance(before, after, frames, mask):
         raise PlayFailure('STATE_EPOCH_CHANGED')
     updates = frames + (settled + PERIOD - 1) // PERIOD
     delta = (observation2['timer'] - observation['timer']) & 0xFFFF
-    if delta > updates:
+    applied = observation['buttons']['sampled'] | mask
+    reset = (observation2['mode'] == PLAYING
+             and ((observation['mode'] in (RETRY, TIMEUP, WON, OVER) and applied & START)
+                  or (observation['mode'] == PAUSED and applied & 64)))
+    # Stage entry resets GameTimer. Other advances must remain monotonic.
+    if (observation2['timer'] > updates if reset else delta > updates):
         raise PlayFailure('STATE_TIMER_DRIFT')
     steady = observation['mode'] == PLAYING and observation2['mode'] == PLAYING
     if (steady and not settled

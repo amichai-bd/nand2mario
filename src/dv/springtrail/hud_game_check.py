@@ -21,7 +21,7 @@ async def run(dut, short=False, renderer=False, motion=False, power=False):
     elif motion and renderer:
         from motion_render_reference import Check
     elif motion:
-        from motion_game_reference import Check
+        from motion_game_reference import Check, LCD, PERIOD, final_halt_ready, require_halt_timing
     elif renderer:
         from hud_render_reference import Check
     else:
@@ -29,6 +29,12 @@ async def run(dut, short=False, renderer=False, motion=False, power=False):
     if not motion and not renderer:
         from hud_game_reference import require_baseline_rom
         require_baseline_rom(Path('program.gb').read_bytes())
+    if motion and not renderer and not short:
+        require_halt_timing(ROOT)
+    renderer_end = 320000
+    if renderer and (motion or power):
+        from startup_anchor import derive
+        renderer_end = derive(Path('program.gb').read_bytes(), lcdc_on=0x99)['lcd'] + 2*70224
     received=Queue(); entries=[]; check=Check(short); tasks=[]
     with Path('transactions.jsonl').open('w') as journal:
         def log(kind,**fields):
@@ -83,16 +89,21 @@ async def run(dut, short=False, renderer=False, motion=False, power=False):
                 sent=short or renderer;prior=0
                 while True:
                     # Only the final DMA-to-HALT boundary needs finer polling.
-                    await Timer(10 if not short and len(check.triggers)==3 else 50,unit='us')
+                    await Timer(1 if motion and not renderer and not short and len(check.triggers)==3 else 10 if not short and len(check.triggers)==3 else 50,unit='us')
                     await ReadOnly();healthy()
                     dot=known(dut.dot_count)
                     assert dot>prior and not any(known(s) for s in (dut.fault,dut.reset_sys,dut.core_reset,dut.paused)), 'SPRINGTRAIL_PROGRESS'
                     prior=dot;consume()
-                    assert dot<(320000 if renderer else 310000),'HUD_WATCHDOG'
+                    # The game run ends inside its third VBlank; the bound follows the
+                    # derived startup anchor rather than a literal that a longer startup outgrows.
+                    assert dot<(renderer_end if renderer else LCD+2*PERIOD+4096 if motion else 310000),'HUD_WATCHDOG'
                     if check.lcd is not None:
                         if short and check.pixels>=160:break
                         if renderer and check.halted:break
-                        if not renderer and not short and len(check.triggers)==3 and dot>check.triggers[-1]+644:break
+                        if not renderer and not short and len(check.triggers)==3:
+                            if motion:
+                                if final_halt_ready(dot, check.triggers[-1], check.lcd+2*PERIOD):break
+                            elif dot>check.triggers[-1]+644:break
                     if not sent and check.lcd is not None and dot>=check.lcd+60000:
                         assert dot<=check.lcd+62000,'HUD_INPUT_LATE'
                         refresh_clock(client);reply=await start();sent=True
@@ -120,6 +131,8 @@ async def run(dut, short=False, renderer=False, motion=False, power=False):
                     tile_bytes += rom[0x6100:0x6140]+rom[0x6150:0x61b0]+rom[0x62b0:0x62e0]+rom[0x6360:0x6370]
                     # Approved terrain copies at VRAM108..139.
                     tile_bytes += rom[0x77a0:0x7920]+rom[0x7960:0x79e0]
+                    # Progression copies at VRAM140..148: digits5..9, M, V, life, clock.
+                    tile_bytes += rom[0x6570:0x65c0]+rom[0x6440:0x6450]+rom[0x64d0:0x64e0]+rom[0x6340:0x6360]
                 summary=check.finish(pause,tile_bytes)
                 for frame,data in enumerate(check.frames):Path(f'frame-{frame}.shades').write_bytes(data)
                 Path('summary.json').write_text(json.dumps(summary,indent=2)+'\n')

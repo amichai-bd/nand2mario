@@ -22,8 +22,8 @@
     {
       "unit": "render-unit.asm",
       "section": "world",
-      "region": "ROM0",
-      "address": 5120
+      "region": "ROM1",
+      "address": 16384
     },
     {
       "unit": "render-unit.asm",
@@ -42,12 +42,6 @@
       "section": "scene",
       "region": "ROM0",
       "address": 13824
-    },
-    {
-      "unit": "render-unit.asm",
-      "section": "collision",
-      "region": "ROM1",
-      "address": 16384
     },
     {
       "unit": "render-unit.asm",

@@ -2,13 +2,22 @@
 from dataclasses import dataclass, replace
 
 import blocks_reference as blocks
-from movement_reference import solid
+from movement_reference import solid, STAGE_X_MAX, STAGE_BASE
 from motion_reference import Player, step, UNIT, HEIGHT, TILE
 
 TITLE, PLAYING, RETRY, PAUSED, WON = range(5)
 SMALL, LARGE, THROWER = range(3)
 NORMAL, GROW, HURT, SAFE = range(4)
 ITEMS = ((96, 88), (264, 72), (464, 88), (656, 80))
+# Per-stage world objects; stage0 keeps every original coordinate. The
+# progression contract owns these tables; power rules are unchanged.
+STAGE_ITEMS = (ITEMS,
+               ((80, 80), (256, 72), (432, 64), (576, 88)),
+               ((64, 88), (208, 80), (320, 72), (448, 64)))
+STAGE_GOAL_X = (736, 608, 608)
+STAGE_ENEMY_START = (256 * UNIT, 256 * UNIT, 288 * UNIT)
+STAGE_ENEMY_LO = (240 * UNIT, 240 * UNIT, 272 * UNIT)
+STAGE_ENEMY_HI = (296 * UNIT, 296 * UNIT, 328 * UNIT)
 ENEMY_Y = 120 * UNIT
 GROW_UPDATES, HURT_UPDATES, SAFE_UPDATES = 32, 32, 96
 STAR_UPDATES, THROW_UPDATES, SHOT_UPDATES = 248, 8, 64
@@ -49,11 +58,13 @@ class World:
     effect_y: int = 0
     effect_timer: int = 0
     block_dirty: int = 0
+    stage: int = 0
 
 
 def block_layer(world):
     """The solidity override #303 adds to terrain for one world state."""
     return lambda column, row, ascending: blocks.solid(world.blocks, column, row, ascending)
+
 
 
 def contact_top(world):
@@ -104,23 +115,24 @@ def _timers(world):
     return w
 
 
-def _blocked(extra, column, row):
-    return solid(column, row) or bool(extra and extra(column, row, False))
+def _blocked(extra, column, row, stage=0):
+    """Terrain, then the block layer keyed on the page column, as CellSolid is."""
+    return solid(column, row, stage) or bool(extra and extra(column + STAGE_BASE[stage], row, False))
 
 
-def _move_x(x, y, vx, extra=None):
+def _move_x(x, y, vx, extra=None, stage=0):
     """One shot axis; a solid tile at the leading edge cancels and reverses."""
     nx = x + vx
     column = (nx + 127) // TILE if vx > 0 else nx // TILE
-    if any(_blocked(extra, column, row) for row in range(y // TILE, (y + 127) // TILE + 1)):
+    if any(_blocked(extra, column, row, stage) for row in range(y // TILE, (y + 127) // TILE + 1)):
         return x, -vx
     return nx, vx
 
 
-def _move_y(x, y, vy, extra=None):
+def _move_y(x, y, vy, extra=None, stage=0):
     ny = y + vy
     row = (ny + 127) // TILE if vy > 0 else ny // TILE
-    if any(_blocked(extra, column, row) for column in range(x // TILE, (x + 127) // TILE + 1)):
+    if any(_blocked(extra, column, row, stage) for column in range(x // TILE, (x + 127) // TILE + 1)):
         return y, -vy
     return ny, vy
 
@@ -130,10 +142,10 @@ def _shot(world):
     if not s.ttl:
         return world
     extra = block_layer(world)
-    x, vx = _move_x(s.x, s.y, s.vx, extra)
-    y, vy = _move_y(x, s.y, s.vy, extra)
+    x, vx = _move_x(s.x, s.y, s.vx, extra, world.stage)
+    y, vy = _move_y(x, s.y, s.vy, extra, world.stage)
     ttl = s.ttl - 1
-    if x < 0 or x >= 760 * UNIT or y < 0 or y >= 144 * UNIT:
+    if x < 0 or x >= STAGE_X_MAX[world.stage] * UNIT or y < 0 or y >= 144 * UNIT:
         ttl = 0
     alive = world.alive
     if ttl and alive and 0 < x - world.enemy_x + 128 < 256 and 0 < y - ENEMY_Y + 128 < 256:
@@ -141,8 +153,9 @@ def _shot(world):
     return replace(world, shot=Shot(x, y, vx, vy, ttl) if ttl else Shot(), alive=alive)
 
 
-def world_update(world, buttons):
-    w = _timers(world)
+def world_update(world, buttons, timers=True):
+    """`timers` is False when the caller already advanced the power timers."""
+    w = _timers(world) if timers else world
     p = w.player
     crouch = w.power != SMALL and p.grounded and p.jump == 0 and bool(buttons & 8)
     w = replace(w, crouch=crouch)
@@ -154,16 +167,16 @@ def world_update(world, buttons):
         w = replace(w, shot=shot, throw=THROW_UPDATES)
     masked = buttons & ~3 if crouch else buttons
     report = []
-    p = step(p, masked, block_layer(w), report)
+    p = step(p, masked, block_layer(w), report, w.stage)
     w = _resolve_block(replace(w, player=p), report[0] if report else None)
     p = w.player
     x, vx = w.enemy_x, w.enemy_vx
     if w.alive:
         x = x + vx
-        if x >= 296 * UNIT:
-            x, vx = 296 * UNIT, -8
-        elif x <= 240 * UNIT:
-            x, vx = 240 * UNIT, 8
+        if x >= STAGE_ENEMY_HI[w.stage]:
+            x, vx = STAGE_ENEMY_HI[w.stage], -8
+        elif x <= STAGE_ENEMY_LO[w.stage]:
+            x, vx = STAGE_ENEMY_LO[w.stage], 8
     w = replace(w, player=p, enemy_x=x, enemy_vx=vx, timer=(w.timer + 1) & 65535,
                 previous=buttons)
     w = _shot(w)
@@ -182,10 +195,10 @@ def world_update(world, buttons):
         else:
             return replace(w, mode=RETRY)
     collected = w.collected
-    for index, (item_x, item_y) in enumerate(ITEMS):
+    for index, (item_x, item_y) in enumerate(STAGE_ITEMS[w.stage]):
         if overlap(w, item_x * UNIT, item_y * UNIT):
             collected |= 1 << index
-    mode = WON if overlap(w, 736 * UNIT, 112 * UNIT, 16) else PLAYING
+    mode = WON if overlap(w, STAGE_GOAL_X[w.stage] * UNIT, 112 * UNIT, 16) else PLAYING
     return replace(w, mode=mode, collected=collected, score=collected.bit_count())
 
 
