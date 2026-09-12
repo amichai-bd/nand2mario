@@ -39,6 +39,22 @@ pause, hold and END. Per-target total wall limit is 300 seconds. Full grouping
 remains subject to complete-short throughput; no current CPU acceptance is
 claimed by the literal host tests or by historical reports below.
 
+The targets are `python-interaction-short`, `python-interaction-a` through
+`python-interaction-d`, and `python-interaction-fault`. The fault arms after the
+ordinary first-call marker, requires the real Score output to be 2 and changes
+that byte to 0 on both the memory and passive ledger path. It must fail the
+unchanged full-state checker at the first report, with a mutation receipt.
+
+The finite source-model preflight checks every selected path against the
+independent state expectation before simulation. The short reaches HALT by
+18,892 dots; five-call groups reach it by 94,340 dots. A 24,000-dot per-call
+ceiling reserves more than the largest selected 14,420-dot path. Including
+6,000 dots per operand load/dispatch and 1,000 for completion gives 151,000
+dots, below the 160,000-dot full guard. Short/full cocotb watchdogs are 35/60 ms.
+These source counts qualify bounds; actual completion and wall feasibility
+still require the simulator. All five images must retain the game's 21 shared
+sections; a changed routine invalidates that qualification.
+
 ## Historical execution
 
 Historical execution targets named below are retired; these descriptions and
