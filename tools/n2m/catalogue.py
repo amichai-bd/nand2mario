@@ -365,6 +365,23 @@ def cocotb_python(root):
     return None
 
 
+def unit_error(output):
+    """Name the failing test rather than whatever the unit printed last.
+
+    The child's stdout and stderr share one pipe, and its block-buffered stdout
+    flushes at exit, after unittest's verdict. The last line is therefore as
+    often a passing diagnostic print as it is the failure, so prefer the first
+    failure header, then the verdict, and only then the last line."""
+    lines = [line.strip() for line in (output or "").splitlines() if line.strip()]
+    for line in lines:
+        if line.startswith(("FAIL: ", "ERROR: ")):
+            return line
+    for line in reversed(lines):
+        if line.startswith("FAILED"):
+            return line
+    return lines[-1] if lines else "no output"
+
+
 def run_unit(root, path, entry):
     """Run one unittest file and return its outcome and measured wall."""
     python = None
@@ -385,8 +402,7 @@ def run_unit(root, path, entry):
     outcome = {"command": command, "exit_code": result.returncode, "elapsed_seconds": elapsed,
                "status": "PASS" if result.returncode == 0 else "FAIL"}
     if result.returncode:
-        reported = (result.stdout or "").strip().splitlines()
-        outcome["error"] = reported[-1] if reported else "no output"
+        outcome["error"] = unit_error(result.stdout)
         outcome["output"] = result.stdout
     return outcome
 
