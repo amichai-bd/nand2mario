@@ -929,10 +929,18 @@ Each backend treats compilation and simulation as one stage: any source,
 runner module, dependency definition, target configuration, seed, or discovered
 tool identity change rebuilds both. Artifact hashes are also checked before reuse.
 `check` and `doctor` always rerun. The tagged `.lock` records its writer as
-`pid=<n>`. A command that finds the lock held checks that process: a dead
-writer's lock is reclaimed once, with a stderr notice naming the lock and the
-pid, and the command's report records `stale_lock_reclaimed`; the command then
-runs, and no cached result is ever served in place of that run. A lock whose
+`pid=<n>`, and the writer keeps the file handle open until it releases the
+lock, so on Windows no other process can rename or remove a held lock. A
+command that finds the lock held checks that process: a dead writer's lock is
+reclaimed once, with a stderr notice naming the lock and the pid, and the
+command's report (a tagged command, a regression or a selection) records
+`stale_lock_reclaimed`; the command then runs, and no cached result is ever
+served in place of that run. The reclaim is an atomic rename of the lock to a
+unique `.lock.stale-<id>` sibling, removed only while it still records the dead
+writer; a rename that fails, or a claimed file that records another writer, is
+another command's fresh lock and is left or put back, and the loser fails as
+`tag <tag> was taken by another writer while its stale lock <path> was
+reclaimed`. A lock whose
 writer is alive, or whose owner cannot be read, refuses the command by name:
 `tag <tag> is locked by live pid <n>; confirm its writer stopped before removing
 <path>`. There is no age-based lock stealing. Process ids can be reused by the

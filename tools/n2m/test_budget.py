@@ -72,17 +72,20 @@ def release_lock(lock, worker_pid, record):
     not ours. Any lock left is named, and one that should have gone marks
     the cleanup incomplete, so no report calls a locked tag clean.
     """
-    from n2m.records import lock_owner, pid_alive
+    from n2m.records import lock_owner, pid_alive, reclaim_stale_lock
     if not lock.is_file():
         return
     owner = lock_owner(lock)
     if owner is not None and not pid_alive(owner):
         try:
-            lock.unlink()
-            record["stale_lock_removed"] = True
-            return
+            if reclaim_stale_lock(lock, owner):
+                record["stale_lock_removed"] = True
+                return
         except OSError as error:
             record["cleanup_error"] = f"lock release failed: {error}"
+    if not lock.is_file():
+        # Another command reclaimed it first; the tag is free.
+        return
     record["lock_left"] = lock.as_posix()
     # Unreadable, still the worker's, or dead but not removable: not clean.
     if owner is None or owner == worker_pid or not pid_alive(owner):

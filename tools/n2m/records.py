@@ -123,18 +123,20 @@ def workspace(root, tag, notices=None):
         if owner is None or pid_alive(owner):
             raise ValueError(f"tag {tag} is locked" + (f" by live pid {owner}" if owner else "")
                              + f"; confirm its writer stopped before removing {lock}")
-        reclaim_stale_lock(lock, owner)
-        if notices is not None:
+        if reclaim_stale_lock(lock, owner) and notices is not None:
             notices.append(lock)
         try:
             fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
         except FileExistsError:
             raise ValueError(f"tag {tag} was taken by another writer while its stale lock {lock} was reclaimed")
     try:
-        with os.fdopen(fd, "w") as stream:
-            stream.write(f"pid={os.getpid()}\n")
+        # The handle stays open for the whole workspace: on Windows that denies
+        # every rename or unlink by another process, so a live lock cannot be
+        # reclaimed; only a dead writer's closed lock can.
+        os.write(fd, f"pid={os.getpid()}\n".encode())
         yield build
     finally:
+        os.close(fd)
         lock.unlink()
 
 
@@ -179,9 +181,26 @@ def stale_lock(lock):
 
 
 def reclaim_stale_lock(lock, owner):
-    """Remove a lock whose recorded writer is dead, saying so on stderr."""
+    """Remove a lock whose recorded writer is dead, saying so on stderr.
+
+    The rename is the atomic claim: two reclaimers of one stale lock cannot
+    both move it, and a lock a live holder keeps open cannot be moved at all
+    on Windows. The claimed file is removed only while it still records the
+    dead writer; anything else was another writer's fresh lock and goes back.
+    Returns True when this call removed the stale lock.
+    """
+    lock = Path(lock)
+    claimed = lock.with_name(f".lock.stale-{uuid.uuid4().hex}")
+    try:
+        os.replace(lock, claimed)
+    except (FileNotFoundError, PermissionError):
+        return False
+    if lock_owner(claimed) != owner:
+        os.replace(claimed, lock)
+        return False
+    claimed.unlink()
     print(f"reclaimed stale lock {lock}: its writer pid {owner} is not alive", file=sys.stderr)
-    Path(lock).unlink()
+    return True
 
 
 def git_state(root):

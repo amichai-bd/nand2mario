@@ -148,8 +148,11 @@ def run_subset(root, build, args, provenance):
 def regress(root, args, header, publish):
     """Run a declared subset. Members run as ordinary tagged sim tests, so the
     tag lock is held per child; a regress guard keeps one regression per tag."""
-    with workspace(root, args.tag) as build:
+    reclaimed = []
+    with workspace(root, args.tag, reclaimed) as build:
         report = {**header(build.name), "status": "RUNNING"}
+        if reclaimed:
+            report["stale_lock_reclaimed"] = reclaimed[0].relative_to(root).as_posix()
         atomic_json(build / "status.json", {"status": "RUNNING"})
         atomic_json(build / "manifest.json", report)
     guard = build / "sim/regress/.lock"

@@ -163,6 +163,41 @@ class WorkspaceLockTests(unittest.TestCase):
         self.assertIn(f"reclaimed stale lock {self.lock}: its writer pid {pid} is not alive", stderr.getvalue())
         self.assertFalse(self.lock.exists())
 
+    def test_a_reclaim_that_loses_the_race_never_removes_the_winners_lock(self):
+        # B reads the dead owner; before B reclaims, A reclaims the same lock
+        # and holds the tag. B must back off and A's live lock must survive.
+        import n2m.records as records
+        self.lock.write_text(f"pid={dead_pid()}\n")
+        holder = contextlib.ExitStack()
+        self.addCleanup(holder.close)
+        real = records.lock_owner
+        raced = []
+
+        def owner_then_lose(lock):
+            owner = real(lock)
+            if lock == self.lock and not raced:
+                raced.append(True)
+                holder.enter_context(workspace(self.root, "tag"))
+            return owner
+        with patch("n2m.records.lock_owner", side_effect=owner_then_lose), \
+                contextlib.redirect_stderr(io.StringIO()):
+            with self.assertRaisesRegex(ValueError, "tag tag was taken by another writer|tag tag is locked"):
+                with workspace(self.root, "tag"):
+                    pass
+        self.assertEqual(self.lock.read_text(), f"pid={os.getpid()}\n")
+        self.assertEqual(sorted(p.name for p in self.lock.parent.iterdir()), [".lock"])
+        holder.close()
+        self.assertFalse(self.lock.exists())
+
+    def test_a_held_lock_cannot_be_moved_or_removed_by_another_process(self):
+        if os.name != "nt":
+            self.skipTest("Windows sharing rules")
+        with workspace(self.root, "tag"):
+            for action in (lambda: os.replace(self.lock, self.lock.with_name("moved")), self.lock.unlink):
+                with self.assertRaises(PermissionError):
+                    action()
+        self.assertFalse(self.lock.exists())
+
     def test_live_writer_lock_is_refused_by_name(self):
         self.lock.write_text(f"pid={os.getpid()}\n")
         self.assertFalse(stale_lock(self.lock))

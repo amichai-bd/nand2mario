@@ -562,8 +562,11 @@ def command(root, args, header, publish):
     if problems:
         raise ValueError(problems[0])
     budget = budget_for(args)
-    with workspace(root, args.tag) as build:
+    reclaimed = []
+    with workspace(root, args.tag, reclaimed) as build:
         report = {**header(build.name), "status": "RUNNING"}
+        if reclaimed:
+            report["stale_lock_reclaimed"] = reclaimed[0].relative_to(Path(root)).as_posix()
         atomic_json(build / "status.json", {"status": "RUNNING"})
         atomic_json(build / "manifest.json", report)
     # The workspace is released before the children run: each simulation takes
