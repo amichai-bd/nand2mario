@@ -121,7 +121,11 @@ class PrPolicyTests(unittest.TestCase):
         # Issue #442: only the automated refresh may move wiki/statistics.html.
         for files in (self.SNAPSHOT,
                       ["src/rtl/cpu/sm83.sv", "wiki/statistics.html"],
-                      [{"filename": "wiki/statistics.html", "status": "removed"}]):
+                      [{"filename": "wiki/statistics.html", "status": "removed"}],
+                      [{"filename": "wiki/old-statistics.html", "status": "renamed",
+                        "previous_filename": "wiki/statistics.html"}],
+                      [{"filename": "wiki/statistics.html", "status": "renamed",
+                        "previous_filename": "wiki/stats.html"}]):
             with self.subTest(files=files):
                 self.assertEqual(1, self.run_policy("166", "165-policy", "Closes #165", files=files))
                 self.assertIn("::error::wiki/statistics.html is generated", self.output.getvalue())
@@ -133,6 +137,8 @@ class PrPolicyTests(unittest.TestCase):
         self.assertEqual(0, self.run_policy("166", "165-policy", "Closes #165",
                                             files=["wiki/project-statistics.md", "tools/wiki/refresh_statistics.py"]))
         self.assertEqual(0, self.run_policy("166", "165-policy", "Closes #165", files=[]))
+        self.assertEqual(0, self.run_policy("166", "165-policy", "Closes #165", files=[
+            {"filename": "wiki/stats.md", "status": "renamed", "previous_filename": "wiki/project-statistics.md"}]))
 
     def test_ordinary_pr_snapshot_is_found_past_the_first_files_page(self):
         many = [f"src/rtl/file{index}.sv" for index in range(100)]
