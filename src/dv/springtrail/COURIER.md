@@ -56,3 +56,23 @@ Remaining acceptance: encoded fixture/shared-section qualification, literal
 oracle guards, short/full/fault actual receipts, owning catalogue/docs and
 required checks, then independent current-head review. Host equality alone
 never establishes actual CPU execution.
+
+## Fixture and checker ceilings
+
+The operand ROM seeds C000..C0EF with a nonzero sentinel once, then poisons all
+160 shadow bytes. Each call seeds ten input bytes and copies explicit ObjectX/Y
+operands; no expected output is present in its ROM. The checker records all
+writes during the call, rejects writes outside the OAM page, named composer
+scratch and bounded stack, and preserves all other initialized state bytes.
+The inherited trace checker still enforces retirement order/epoch, terminal
+HALT and exact END count; the shared runner supplies the settled pause.
+
+The current source gives conservative call terms: at most six pieces, each
+with EmitPiece620 plus courier overhead296; setup220; projection500; zero-tail
+at most144 bytes times52; marker/dispatch200. Sum14124 is below16000 dots per
+marked call. The620 EmitPiece ceiling reserves the impending entity capacity
+check and must be confirmed against that merged source before execution.
+The two initial loops cost less than10000 dots together. Per-case input/setup
+is below600; terminal/control reserve1000. Eighteen calls therefore fit
+10000+18*(16000+600)+1000=309800 below330000 dots; one short fits27600 below40000.
+These are source ceilings, not elapsed-time forecasts or observed results.
