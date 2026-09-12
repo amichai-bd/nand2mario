@@ -33,8 +33,9 @@ second is the general atlas renderer; point it at any strict shade JSON. Use
 `--frame-width 8 --frame-height 8` for individual tiles (at most 64 frames per
 sheet). See the [tool contract](../../../wiki/tools/sw/SPEC.md#sprite-review-sheets)
 for limits, output paths and labels. Inspect PNGs at nearest-neighbor scale and
-send them for review; a delegated agent routes them through root. Use actual
-composed views as well as 8x8 pieces when tile reuse or seams matter.
+choose the artwork on your own judgment; do not route previews to root or the
+user for a decision. Use actual composed views as well as 8x8 pieces when tile
+reuse or seams matter.
 
 Shade data is 2bpp: each 8x8 tile is 16 bytes, low/high plane per row, leftmost
 pixel in bit 7. Shade 0 is OBJ-transparent but a visible BG/window palette index;
