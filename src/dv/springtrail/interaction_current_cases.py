@@ -11,6 +11,8 @@ SHORT = 1
 SHORT_BOUND = 30000
 FULL_BOUND = 160000
 ROUTINE_BOUND = 24000
+BUDGET = dict(cases_per_part=5, seed_and_dispatch=6000, routine_ceiling=24000,
+              terminal=1000, conservative_total=151000, guard=160000)
 
 
 def operands():
@@ -36,9 +38,9 @@ def operands():
     # Fell is authoritative even at these coordinates. These are precedence
     # operands, not a claim that falling and collection coincide on a live route.
     rows.append(('fell-before-item', replace(base,
-        player=Player(x=96*16, y=80*16, fell=True)), 0))
+        player=Player(x=96*16, y=80*16, fell=True, camera=24)), 0))
     rows.append(('fell-before-goal', replace(base,
-        player=Player(x=736*16, fell=True), collected=15, score=4), 0))
+        player=Player(x=736*16, fell=True, camera=608), collected=15, score=4), 0))
     rows.append(('select-ignored-playing', replace(base, timer=42), 64))
     # Relocated CURL records isolate dispatch priority, as in the existing
     # patrol/CURL overlap fixture; they do not change the stage's object layout.

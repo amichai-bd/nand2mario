@@ -18,7 +18,7 @@ is checker data only; the CPU fixture receives ordinary input operands.
 | Remaining pickup awards | New `item-1-award` through `item-3-award`, score 1→2→3→4 |
 | Each pickup is once-only | New `item-0-once` through `item-3-once`, each with its own collected bit already set |
 | Fall precedes item and goal | New `fell-before-item`, `fell-before-goal` |
-| Goal, frame counter wrap, retry/advance | New `goal-frame-counter-wrap`; progression WON stage-advance/final-reset and retry-spend cases |
+| Goal, frame counter wrap, retry/advance | New `goal-frame-counter-wrap`; progression WON stage-advance/final-reset, retry-spend, `retry-hold`, `retry-idle` and `clear-idle` cases |
 | Pause/resume and paused Select reset | Motion pause/resume chain and `select-restart`; entity `pause-freeze` |
 | Select ignored during play | New `select-ignored-playing` |
 | Current fatal/nonfatal contact priority | New CURL fatal/nonfatal pairs at item and goal; existing entity patrol-before-CURL pairs |
@@ -29,6 +29,8 @@ The CURL overlap inputs similarly relocate ordinary entity operands to isolate
 priority. They do not alter level placement. Existing progression cases retain
 stage-specific goals, boundaries and reset behavior; no all-stage cross product
 is implied by the historical four-pickup obligation.
+The retry/clear idle cases use a non-Start input. The current terminal dispatch
+tests the Start bit, so these also qualify the historical idle Select class.
 
 The planned execution is one complete short followed by four groups of five
 calls, plus an actual output mutation with the unchanged oracle. Every call
