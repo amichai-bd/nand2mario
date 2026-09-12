@@ -4,7 +4,7 @@ The frozen script is FRAME_PROOFS.md. The board stays paused between fixed
 checkpoints C(n) = LCD + n*PERIOD + 4096, reached with exact RUN_DOTS counts,
 so every input is applied at a known dot in the visible interval of frame n
 and sampled in VBlank n. Expected frames come only from the independent
-models; the loaded bytes must equal the hash of the build the launcher just
+models, including the block layer the image draws; the loaded bytes must equal the hash of the build the launcher just
 produced from current sources. `run` drives one Client; `main` is the
 committed launcher with its own whole-process supervisor, machine mutex and
 durable session, shared with `endurance.py`.
@@ -24,10 +24,16 @@ sys.path.insert(0, str(ROOT / 'tools'))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from n2m import generated_interfaces as abi  # noqa: E402
 from n2m.records import atomic_json, file_hash  # noqa: E402
-from endurance import (LCD, PERIOD, SPAWN, MACHINE_MUTEX, update, build_rom,  # noqa: E402
-                       supervise, decode)
-from interactions_reference import TITLE, PLAYING, RETRY, WON  # noqa: E402
-from motion_frames import image  # noqa: E402
+from endurance import LCD, PERIOD, MACHINE_MUTEX, build_rom, supervise, decode  # noqa: E402
+from blocks_frames import image  # noqa: E402
+from blocks_reference import INTACT  # noqa: E402
+from power_reference import World, TITLE, PLAYING, RETRY, WON, SMALL, update  # noqa: E402
+
+# The current image carries the block and power layers, so the game model is
+# power_reference over the motion player and the pixel model is blocks_frames,
+# which draws the block layer in the state the script leaves it.
+START = World()
+INTACT_BLOCKS = (INTACT, INTACT, INTACT, INTACT)
 
 PHASE = 4096
 PIXELS = 23040
@@ -37,10 +43,14 @@ PIXELS = 23040
 FIRST_VBLANK = 2
 SCRIPT = (
     # Success over the current motion model: Start+B+Right, then B+Right with
-    # four held A jumps: the first gap, the enemy patrol, the second and third
-    # gaps. WON after update 471 with score 0; no item lies on this route.
-    (161, 1), (33, 96), (49, 12), (33, 40), (49, 12), (33, 64), (49, 12),
-    (33, 116), (49, 12), (33, 106),
+    # held A jumps over the first gap and the enemy patrol, a one-VBlank A tap
+    # over the second gap, and a held A jump over the third gap. WON after
+    # update 471 with score 0; no item lies on this route and no block is
+    # touched: the brick at column 52 stands right after the second gap, so a
+    # held jump there lands against its side, while the tap lands at x 399
+    # and walks under it.
+    (161, 1), (33, 96), (49, 12), (33, 40), (49, 12), (33, 64), (49, 1),
+    (33, 127), (49, 12), (33, 106),
     # Start restart from WON, then neutral while the ring restores 16 pairs.
     (128, 1), (0, 20),
     # Death: B+Right from spawn runs into the first gap; RETRY after 130.
@@ -52,19 +62,21 @@ SCRIPT = (
 CAPTURES = (('title', 0), ('spawn', 3), ('first-camera', 36), ('entering-column', 99),
             ('scroll-wrap', 206), ('camera-clamp', 441), ('won', 473), ('won-restart', 493),
             ('retry', 604), ('retry-restart', 625))
-# Literal (mode, x, y, camera, score, timer, enemy_x, enemy_vx) per capture,
-# written from the rules before any DUT run; a model change must fail here.
+# Literal (mode, x, y, camera, score, timer, enemy_x, enemy_vx, blocks, power)
+# per capture, written from the rules before any DUT run; a model change must
+# fail here. The route touches no block, so every capture shows the four
+# blocks intact and the small player.
 EXPECTED = {
-    'title': (TITLE, 384, 1792, 0, 0, 0, 4096, 8),
-    'spawn': (PLAYING, 400, 1792, 0, 0, 1, 4104, 8),
-    'first-camera': (PLAYING, 1168, 1792, 1, 0, 34, 4368, 8),
-    'entering-column': (PLAYING, 2688, 1792, 96, 0, 97, 4600, -8),
-    'scroll-wrap': (PLAYING, 5248, 1792, 256, 0, 204, 3936, 8),
-    'camera-clamp': (PLAYING, 10896, 1792, 608, 0, 439, 4024, 8),
-    'won': (WON, 11664, 1792, 608, 0, 471, 4280, 8),
-    'won-restart': (PLAYING, 384, 1792, 0, 0, 19, 4248, 8),
-    'retry': (RETRY, 2992, 2304, 115, 0, 130, 4336, -8),
-    'retry-restart': (PLAYING, 384, 1792, 0, 0, 20, 4256, 8),
+    'title': (TITLE, 384, 1792, 0, 0, 0, 4096, 8, INTACT_BLOCKS, SMALL),
+    'spawn': (PLAYING, 400, 1792, 0, 0, 1, 4104, 8, INTACT_BLOCKS, SMALL),
+    'first-camera': (PLAYING, 1168, 1792, 1, 0, 34, 4368, 8, INTACT_BLOCKS, SMALL),
+    'entering-column': (PLAYING, 2688, 1792, 96, 0, 97, 4600, -8, INTACT_BLOCKS, SMALL),
+    'scroll-wrap': (PLAYING, 5248, 1792, 256, 0, 204, 3936, 8, INTACT_BLOCKS, SMALL),
+    'camera-clamp': (PLAYING, 10896, 1792, 608, 0, 439, 4024, 8, INTACT_BLOCKS, SMALL),
+    'won': (WON, 11664, 1792, 608, 0, 471, 4280, 8, INTACT_BLOCKS, SMALL),
+    'won-restart': (PLAYING, 384, 1792, 0, 0, 19, 4248, 8, INTACT_BLOCKS, SMALL),
+    'retry': (RETRY, 2992, 2304, 115, 0, 130, 4336, -8, INTACT_BLOCKS, SMALL),
+    'retry-restart': (PLAYING, 384, 1792, 0, 0, 20, 4256, 8, INTACT_BLOCKS, SMALL),
 }
 # The ring restores two columns per publication; a restart from a scrolled
 # camera needs 16 publications before the model's complete world is displayed.
@@ -89,7 +101,7 @@ def games():
     """games()[k] is the state after the first k sampled updates."""
     global _games
     if _games is None:
-        result = [SPAWN]
+        result = [START]
         for mask in samples():
             result.append(update(result[-1], mask))
         _games = tuple(result)
@@ -98,7 +110,8 @@ def games():
 
 def anchor(game):
     p = game.player
-    return (game.mode, p.x, p.y, p.camera, game.score, game.timer, game.enemy_x, game.enemy_vx)
+    return (game.mode, p.x, p.y, p.camera, game.score, game.timer, game.enemy_x, game.enemy_vx,
+            game.blocks, game.power)
 
 
 def plan_captures(plan):
