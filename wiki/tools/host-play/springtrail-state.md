@@ -137,3 +137,17 @@ campaign. Physical current-image proof remains tracked in [#485](https://github.
 The camera check the decoder applies is a secondary one. It is blind wherever
 the camera clamp is active, which includes the title and the completion states;
 the paused boundary is what keeps a record from being read half-written.
+
+### Delayed start and verified exit
+
+For a changed-start rehearsal, add `--start-delay-frames 37` to `play` or
+`compare`. The default is zero. The delay starts after RESET and the first
+coherent TITLE observation, with neutral input; each frame is retained as a
+`start-delay` action within the existing budgets. Observe rejects this option
+when nonzero.
+
+Observe first selects neutral UART input and pauses through ordinary controls.
+All three modes verify PAUSED and effective input zero on a certain exit.
+Cleanup rejection or mismatched readback makes the result FAIL; an earlier
+failure remains beside the cleanup finding. An uncertain session sends no
+further commands and cannot claim successful cleanup.

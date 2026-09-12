@@ -208,5 +208,70 @@ class EntrypointTests(unittest.TestCase):
         self.assertIsNotNone(binding.identity()['package'])
 
 
+
+class RehearsalEntrypointTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.image, cls.binding = support.binding()
+
+    def test_delay_cli_defaults_and_rejects_invalid_modes_before_supervision(self):
+        import io
+        from contextlib import redirect_stderr, redirect_stdout
+        from unittest.mock import patch
+        base = ['play', '--tag', 'delay', '--package', 'unused']
+        with patch.object(entrypoint, 'supervise', return_value=(0, '')) as supervisor, redirect_stdout(io.StringIO()):
+            self.assertEqual(entrypoint.main(base + ['--start-delay-frames', '37']), 0)
+            self.assertIn('--start-delay-frames', supervisor.call_args.args[0])
+        for options in (['--start-delay-frames', '-1'], ['--start-delay-frames', '1501']):
+            with patch.object(entrypoint, 'supervise') as supervisor, redirect_stderr(io.StringIO()):
+                with self.assertRaises(SystemExit):
+                    entrypoint.main(base + options)
+                supervisor.assert_not_called()
+        with patch.object(entrypoint, 'worker', return_value=0) as worker:
+            self.assertEqual(entrypoint.main(base + ['--worker']), 0)
+            self.assertEqual(worker.call_args.args[0].start_delay_frames, 0)
+        with patch.object(entrypoint, 'supervise') as supervisor, redirect_stderr(io.StringIO()):
+            with self.assertRaises(SystemExit):
+                entrypoint.main(['observe', *base[1:], '--start-delay-frames', '37'])
+            supervisor.assert_not_called()
+
+    def test_observe_establishes_and_verifies_paused_neutral_origin_and_exit(self):
+        endpoint = Endpoint(image=self.image)
+        client = Client(endpoint)
+        client.load(self.image)
+        endpoint.state = abi.STATE_PAUSED ^ 1
+        endpoint.mask = endpoint.game.mask = 3
+        with tempfile.TemporaryDirectory() as folder:
+            result = entrypoint.run(client, self.image, self.binding,
+                                    Path(folder), mode='observe', images=False)
+        self.assertEqual(result['status'], 'PASS', result.get('reason'))
+        self.assertLess(endpoint.requests.index('HALT'), endpoint.requests.index('PEEK'))
+        self.assertEqual(endpoint.mask, 0)
+        self.assertEqual(endpoint.state, abi.STATE_PAUSED)
+        self.assertTrue(result['cleanup']['verified'])
+        self.assertFalse(result['uncertain'])
+
+    def test_observe_cleanup_rejection_changes_success_to_fail(self):
+        from n2m.interface_codec import decode_packet, encode_packet
+        class RejectedExit(Endpoint):
+            def write(self, packet):
+                header, _ = decode_packet(packet)
+                if header['command'] == abi.COMMAND_HALT and 'HALT' in self.requests:
+                    self.requests.append('HALT')
+                    self.pending.extend(encode_packet(header['seq'], header['command'], b'',
+                        kind=abi.WIRE_RESPONSE, status=abi.STATUS_STEP_LIMIT))
+                    return len(packet)
+                return super().write(packet)
+        endpoint = RejectedExit(image=self.image)
+        client = Client(endpoint)
+        client.load(self.image)
+        with tempfile.TemporaryDirectory() as folder:
+            result = entrypoint.run(client, self.image, self.binding,
+                                    Path(folder), mode='observe', images=False)
+        self.assertEqual(result['status'], 'FAIL')
+        self.assertIn('rejected', result['release_error'])
+        self.assertFalse(result['cleanup']['verified'])
+        self.assertIn('observation', result)
+
 if __name__ == '__main__':
     unittest.main()

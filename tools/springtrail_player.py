@@ -94,60 +94,73 @@ def compare_frame(observation, packed, *, clock=time.perf_counter):
 
 
 def run(client, image, binding, out, *, mode, budget=None, images=True, snapshot=False,
-        image_stride=60, repeat=1, clock=time.perf_counter):
+        image_stride=60, repeat=1, start_delay_frames=0, clock=time.perf_counter):
     """One tagged operation against an already opened Client."""
     out.mkdir(parents=True, exist_ok=True)
     result = {'status': 'FAIL', 'mode': mode, 'binding': binding.identity(),
               'frame_path': {'bytes': abi.FRAME_BYTES, 'requests': FRAME_REQUESTS}}
     kept = []
     if mode == 'observe':
-        result['identity'] = client.identify()
-        samples = []
-        for index in range(repeat):
+        try:
+            result['identity'] = client.identify()
+            client.control('HALT')
+            client.select_input_source(abi.INPUT_SOURCE_UART)
+            if client.read_host(abi.HOST_REG_INPUT_SOURCE) != abi.INPUT_SOURCE_UART:
+                raise player.PlayFailure('STATE_SOURCE')
+            player.apply_mask(client, 0)
+            if client.read_host(abi.HOST_REG_STATE) != abi.STATE_PAUSED:
+                raise player.PlayFailure('STATE_START_NOT_PAUSED')
+            samples = []
+            for index in range(repeat):
+                if snapshot:
+                    # Each pair advances one frame of its own, so repeats land on
+                    # successive boundaries without any extra stepping here.
+                    pair, packed = player.aligned_pair(client, binding)
+                    observation, provenance = pair['observation'], pair['provenance']
+                    sample = {'snapshot': {'metadata': pair['metadata'],
+                                           'represents': 'this observation',
+                                           'taken_at_dot': pair['next_provenance']['dot'],
+                                           'alignment': 'observed at one boundary, '
+                                                        'frame taken at the next'},
+                              'snapshot_seconds': pair['snapshot_seconds']}
+                    (out / f'snapshot-{index:04d}.2bpp').write_bytes(packed)
+                    comparison, _expected, actual = compare_frame(observation, packed)
+                    sample['comparison'] = comparison
+                    if images:
+                        _png(actual, out / f'snapshot-{index:04d}.png')
+                else:
+                    observation, provenance = player.observe(client, binding)
+                    sample = {}
+                    if index + 1 < repeat:
+                        player._dots(client, player.PERIOD)
+                record, _pixels = retain(out, index, observation, provenance, images=images)
+                kept.append(record)
+                sample.update(observation=observation, provenance=provenance, image=record)
+                samples.append(sample)
+            first = samples[0]
+            result['observation'] = first['observation']
+            result['provenance'] = first['provenance']
+            result['image'] = first['image']
+            result['repeat'] = repeat
             if snapshot:
-                # Each pair advances one frame of its own, so repeats land on
-                # successive boundaries without any extra stepping here.
-                pair, packed = player.aligned_pair(client, binding)
-                observation, provenance = pair['observation'], pair['provenance']
-                sample = {'snapshot': {'metadata': pair['metadata'],
-                                       'represents': 'this observation',
-                                       'taken_at_dot': pair['next_provenance']['dot'],
-                                       'alignment': 'observed at one boundary, '
-                                                    'frame taken at the next'},
-                          'snapshot_seconds': pair['snapshot_seconds']}
-                (out / f'snapshot-{index:04d}.2bpp').write_bytes(packed)
-                comparison, _expected, actual = compare_frame(observation, packed)
-                sample['comparison'] = comparison
-                if images:
-                    _png(actual, out / f'snapshot-{index:04d}.png')
-            else:
-                observation, provenance = player.observe(client, binding)
-                sample = {}
-                if index + 1 < repeat:
-                    player._dots(client, player.PERIOD)
-            record, _pixels = retain(out, index, observation, provenance, images=images)
-            kept.append(record)
-            sample.update(observation=observation, provenance=provenance, image=record)
-            samples.append(sample)
-        first = samples[0]
-        result['observation'] = first['observation']
-        result['provenance'] = first['provenance']
-        result['image'] = first['image']
-        result['repeat'] = repeat
-        if snapshot:
-            result['snapshot'] = first['snapshot']
-            result['comparison'] = first['comparison']
-            result['comparisons'] = [dict(row['comparison'], sample=index)
-                                     for index, row in enumerate(samples)]
-            if any(not row['comparison']['match'] for row in samples):
-                result['reason'] = 'STATE_COMPARISON'
-                result['measurements'] = summarize(samples=samples, images=kept)
-                atomic_json(out / 'measurements.json', result['measurements'])
-                return result
-        result['measurements'] = summarize(samples=samples, images=kept)
-        atomic_json(out / 'measurements.json', result['measurements'])
-        result['status'] = 'PASS'
-        return result
+                result['snapshot'] = first['snapshot']
+                result['comparison'] = first['comparison']
+                result['comparisons'] = [dict(row['comparison'], sample=index)
+                                         for index, row in enumerate(samples)]
+                if any(not row['comparison']['match'] for row in samples):
+                    result['reason'] = 'STATE_COMPARISON'
+                    result['measurements'] = summarize(samples=samples, images=kept)
+                    atomic_json(out / 'measurements.json', result['measurements'])
+                    return result
+            result['measurements'] = summarize(samples=samples, images=kept)
+            atomic_json(out / 'measurements.json', result['measurements'])
+            result['status'] = 'PASS'
+            return result
+        except Exception as failure:
+            result['reason'] = str(failure)
+            return result
+        finally:
+            player.finish(client, result)
 
     comparisons = []
     checkpoints = player.Checkpoints()
@@ -183,7 +196,8 @@ def run(client, image, binding, out, *, mode, budget=None, images=True, snapshot
             **comparison})
 
     outcome = player.play(client, image, binding, budget=budget, retain=keep,
-                          capture=capture if mode == 'compare' else None)
+                          capture=capture if mode == 'compare' else None,
+                          start_delay_frames=start_delay_frames)
     result.update(outcome)
     result['observations_retained'] = len(kept)
     result['image_stride'] = image_stride
@@ -281,7 +295,7 @@ def worker(args):
                 result = run(client, image, binding, out, mode=args.mode,
                              budget={'wall_seconds': args.wall_seconds} if args.wall_seconds else None,
                              snapshot=args.snapshot, image_stride=args.image_stride,
-                             repeat=args.repeat)
+                             repeat=args.repeat, start_delay_frames=getattr(args, 'start_delay_frames', 0))
             finally:
                 result['device'] = selected['PNPDeviceID'][:8]
                 result['uncertain'] = client.uncertain
@@ -307,6 +321,8 @@ def main(argv=None):
                         help='observe: also take the aligned actual frame and compare it')
     parser.add_argument('--wall-seconds', type=int,
                         help='declared wall budget for the play loop')
+    parser.add_argument('--start-delay-frames', type=int, default=0,
+                        help='play/compare: neutral frames after RESET and coherent TITLE, within existing budgets')
     parser.add_argument('--image-stride', type=int, default=60,
                         help='write an image every N observations during play')
     parser.add_argument('--repeat', type=int, default=1,
@@ -321,6 +337,10 @@ def main(argv=None):
         parser.error('repeat must be between 1 and 200')
     if args.repeat != 1 and args.mode != 'observe':
         parser.error('--repeat applies to observe')
+    if not 0 <= args.start_delay_frames <= min(player.BUDGET['frames'], player.BUDGET['actions']):
+        parser.error('start delay is outside the existing frame/action budget')
+    if args.start_delay_frames and args.mode == 'observe':
+        parser.error('--start-delay-frames applies to play/compare')
     if args.worker:
         return worker(args)
     command = [sys.executable, str(Path(__file__).resolve()), *(argv or sys.argv[1:]), '--worker']
