@@ -222,10 +222,25 @@ and keyboard-scrollable chart regions.
 
 The manual `tools/wiki/showcase.py` generator writes the animated SVGs under
 [`wiki/showcase/`](../../showcase/README.md): the three the project overview
-embeds and the three terminal sessions the lesson decks embed as images. Each
-is self-contained: CSS keyframes gated behind
-`prefers-reduced-motion: no-preference`, no script, no external reference, and
+embeds, the three terminal sessions the lesson decks embed as images, and the
+board loops the showcase page itself embeds. Each is self-contained: CSS
+keyframes gated behind `prefers-reduced-motion: no-preference`, no script, and
 the authored markup is the finished still. The quality tests require the
 committed files to equal the generator's output and each embedding page to
 reference its file, so edit the generator and rerun it; the showcase page
 records where every shown line and pixel comes from.
+
+A board loop draws frames captured on hardware rather than rendered on the
+host. `tools/wiki/board_frames.py` ingests one capture session into a committed
+archive under `tools/wiki/board_frames/`, holding the session's provenance and,
+per frame, its sequence, completion dot, applied JOYP mask, the CRC32 of the
+packed bytes the board returned, and the frame encoded as a 2-bit indexed PNG.
+Ingest measures that encoding against the rect runs `showcase.paths()` draws and
+records both byte counts. No packed frame and no decoded PNG is committed: the
+archive is the only copy of the pixels, and the generator rebuilds the SVG from
+it. Such a loop is the one exception to `no external reference`: it embeds each
+frame as an inline `data:image/png;base64,` URI, which fetches nothing. The
+exception is bounded on both sides -- the quality tests allow `href=` only for a
+loop in `showcase.BOARD_LOOPS` and only when every `href=` in the file is such a
+URI, and `site.py` accepts that data URL only from a `wiki/showcase/*.svg`
+source, so a page that inlines an image still fails.

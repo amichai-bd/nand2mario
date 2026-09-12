@@ -86,6 +86,16 @@ def category(path: str) -> str:
     return "Home"
 
 
+# The only data URL the site accepts: one frame of a board-captured showcase
+# loop, embedded by tools/wiki/board_frames.py. A page must still fetch its
+# runtime assets from tracked files, so the allowance stops at the SVG loops.
+INLINE_IMAGE = "data:image/png;base64,"
+
+
+def inline_frame(url: str, source: str) -> bool:
+    return url.startswith(INLINE_IMAGE) and source.startswith("wiki/showcase/") and source.endswith(".svg")
+
+
 def route(path: str, fragment: str = "") -> str:
     return "?page=" + quote(path, safe="/") + ("#" + quote(fragment) if fragment else "")
 
@@ -95,6 +105,10 @@ def resolve(url: str, source: str, files: dict[str, str]) -> tuple[str, str] | N
     for prefix in (REPO + "/blob/main/", REPO + "/tree/main/"):
         if url.startswith(prefix):
             return resolve("/" + url[len(prefix):], source, files)
+    if inline_frame(url, source):
+        # An inline indexed-PNG frame in a board-captured showcase loop: it
+        # fetches nothing, so there is no link to resolve and nothing to rewrite.
+        return None
     if parts.scheme or parts.netloc:
         if parts.scheme and parts.scheme not in ("https", "http", "mailto"):
             raise ValueError(f"Unsupported URL in {source}: {url}")
@@ -128,6 +142,8 @@ class Document(HTMLParser):
             if key in ("href", "xlink:href", "src", "poster", "data") and value:
                 target = resolve(value, self.source, self.files)
                 navigation = tag == "a" and key == "href"
+                if target is None and inline_frame(value, self.source):
+                    continue
                 if target is None and not navigation:
                     raise ValueError(f"Runtime assets must be local in {self.source}: {value}")
                 if target:
