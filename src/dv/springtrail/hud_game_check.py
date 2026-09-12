@@ -21,7 +21,7 @@ async def run(dut, short=False, renderer=False, motion=False, power=False):
     elif motion and renderer:
         from motion_render_reference import Check
     elif motion:
-        from motion_game_reference import Check, LCD, PERIOD
+        from motion_game_reference import Check, LCD, PERIOD, final_halt_ready
     elif renderer:
         from hud_render_reference import Check
     else:
@@ -98,7 +98,10 @@ async def run(dut, short=False, renderer=False, motion=False, power=False):
                     if check.lcd is not None:
                         if short and check.pixels>=160:break
                         if renderer and check.halted:break
-                        if not renderer and not short and len(check.triggers)==3 and dot>check.triggers[-1]+644:break
+                        if not renderer and not short and len(check.triggers)==3:
+                            if motion:
+                                if final_halt_ready(dot, check.triggers[-1], check.lcd+2*PERIOD):break
+                            elif dot>check.triggers[-1]+644:break
                     if not sent and check.lcd is not None and dot>=check.lcd+60000:
                         assert dot<=check.lcd+62000,'HUD_INPUT_LATE'
                         refresh_clock(client);reply=await start();sent=True

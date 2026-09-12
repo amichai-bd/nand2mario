@@ -269,5 +269,21 @@ class StageShotBounds(unittest.TestCase):
                 self.assertEqual(row['after'][ttl_index], ttl)
 
 
+
+class FinalHaltSchedule(unittest.TestCase):
+    def test_bounded_request_preserves_dma_and_frame_window(self):
+        from motion_game_reference import final_halt_ready
+        trigger, end = 1000, 1800
+        self.assertFalse(final_halt_ready(trigger+479, trigger, end))
+        self.assertTrue(final_halt_ready(trigger+480, trigger, end))
+        self.assertTrue(final_halt_ready(trigger+522, trigger, end))
+        self.assertGreater(480+180, 644)
+        self.assertLess(trigger+522+240, end)
+        with self.assertRaisesRegex(AssertionError, 'MOTION_HALT_REQUEST_LATE'):
+            final_halt_ready(trigger+523, trigger, end)
+        with self.assertRaisesRegex(AssertionError, 'MOTION_HALT_ROOM'):
+            final_halt_ready(trigger+480, trigger, trigger+724)
+
+
 if __name__ == '__main__':
     unittest.main()

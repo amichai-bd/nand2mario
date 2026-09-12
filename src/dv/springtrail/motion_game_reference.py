@@ -190,3 +190,17 @@ class Check:
             assert self.triggers[-1]+644<pause<self.lcd+2*PERIOD,'MOTION_FINAL_WINDOW'
         return dict(pixels=self.pixels,records=self.records,lcd=self.lcd,ready=self.ready,
                     dma_bytes=len(self.dma),input_dot=self.input_dot,pause=pause,irq=self.irq,split=self.split,tokens=self.tokens,hud=self.hud,samples=self.samples,bus_count=self.bus_count)
+
+
+def final_halt_ready(dot, trigger, window_end):
+    """Start the ordinary UART HALT early enough to pause after complete DMA.
+
+    The fixed no-payload request takes180..240dots including decode/pause.
+    Ten-us controller polling adds at most42dots. Fail closed if this actual
+    publication leaves insufficient space in the unchanged source frame window.
+    """
+    assert trigger + 480 + 42 + 240 < window_end, 'MOTION_HALT_ROOM'
+    if dot < trigger + 480:
+        return False
+    assert dot <= trigger + 480 + 42, 'MOTION_HALT_REQUEST_LATE'
+    return True

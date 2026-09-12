@@ -124,3 +124,20 @@ failed HUD_WATCHDOG at360.859 seconds with45600 pixels; no output was used to
 choose the corrected anchor. Both fixture metadata and driver use the same
 source derivation. Host tests require the second VBlank plus1112-dot terminal
 tail to fit, and demonstrate why320000 cannot contain the required witness.
+
+
+### Final host pause scheduling
+
+The full motion game issues its ordinary UART HALT at finalDMAtrigger+480,
+with at most42dots of10us polling delay. The14-byte zero-payload request uses
+3240ns per byte in client_transport. Receiver stop sampling, <=38decoder
+clocks plus CHECK/HOLD2, exchange1, zero-length command dispatch3 and current-
+dot pause fit conservatively within180..240dots from request start (64system
+clocks reserved after delimiter;25MHz system/4.194304MHz dots). HALT does not
+wait for instruction retirement. This puts pause afterDMA+644. Before issuing,
+the helper requires trigger+762 strictly before the unchanged LCD+2periods
+window, and rejects late requests. A generic4480 publication ceiling alone is
+not enough; insufficient current-frame space fails closed. Existing fullDMA,
+46080pixels, settledhold and final-window assertions are unchanged. Retained
+g304e captured allpixels but requested only afterDMAend and failed the final
+window at377.672s; its observed pause is not used to choose the envelope.
