@@ -1,6 +1,6 @@
 """Fixed entity CPU operands and complete independent state snapshots."""
 from dataclasses import replace
-from entities_reference import World, Entity, initialize, update
+from entities_reference import World, Entity, initialize, update, spawn
 from motion_reference import Player
 from power_reference import PLAYING, PAUSED, RETRY, LARGE, HURT
 from progress_reference import enter_stage
@@ -10,10 +10,10 @@ ADDRESSES = OLD_ADDRESSES + list(range(0xc090,0xc097)) + list(range(0xc300,0xc33
 RANGES = OLD_RANGES + ((0xc090,7),(0xc300,56))
 SHORT = 1
 SHORT_BOUND = 30000
-FULL_BOUND = 310000
+FULL_BOUND = 160000
 ROUTINE_BOUND = 24000
-BUDGET = dict(cases_per_part=10, seed_and_dispatch=6000, routine_ceiling=24000,
-              terminal=1000, conservative_total=301000, guard=310000)
+BUDGET = dict(cases_per_part=5, seed_and_dispatch=6000, routine_ceiling=24000,
+              terminal=1000, conservative_total=151000, guard=160000)
 
 
 def state_bytes(w, buttons=0, new_level=0):
@@ -31,7 +31,8 @@ def cases():
     result=[]
     base=World(mode=PLAYING,alive=False)
     def add(name,w,buttons=0,kind='game',level=0):
-        after = initialize(enter_stage(World(),buttons)) if kind=='reset' else update(w,buttons)
+        after = (initialize(enter_stage(World(),buttons)) if kind=='reset'
+                 else spawn(w,buttons)[0] if kind=='spawn' else update(w,buttons))
         entered = kind=='reset' or (after.mode==PLAYING and w.mode in (2,3,4,5,6))
         out=buttons&~3 if after.crouch and kind=='game' else buttons
         result.append(dict(name=name,kind=kind,before=state_bytes(w,buttons,level),
@@ -67,9 +68,14 @@ def cases():
     add('full-reset',replace(contact,stage=2,lives=0x17),0,'reset')
     for stage in (1,2):
         add('stage'+str(stage),initialize(replace(base,stage=stage)))
+    add('invalid-slot',base,4,'spawn')
+    add('live-curl-no-overwrite',base,1,'spawn')
+    add('live-patrol-no-overwrite',replace(base,alive=True),0,'spawn')
+    add('spawn-curl',replace(base,curl=Entity(328*16,120*16,2)),1,'spawn')
+    add('spawn-falling',replace(base,falling=Entity(368*16,144*16,3)),3,'spawn')
     return result
 
 
 def parts():
     rows=cases()
-    return {name:rows[start:start+10] for name,start in (('a',0),('b',10),('c',20))}
+    return {chr(97+i):rows[start:start+5] for i,start in enumerate(range(0,len(rows),5))}

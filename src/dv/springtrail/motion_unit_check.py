@@ -79,7 +79,7 @@ class Check:
                     records=self.records, lines=self.lines, pause=pause)
 
 
-async def run(dut, short=False, suite=None, part=None):
+async def run(dut, short=False, suite=None, part=None, checker=None):
     import cocotb
     from cocotb.queue import Queue
     from cocotb.task import bridge
@@ -88,7 +88,7 @@ async def run(dut, short=False, suite=None, part=None):
     from client_transport import connect, frames, refresh_clock
     from test_integration import known
     from n2m.preload import adopt, verify
-    check = Check(short, suite, part); received = Queue(); tasks = []
+    check = checker if checker is not None else Check(short, suite, part); received = Queue(); tasks = []
     with Path('transactions.jsonl').open('w') as journal:
         def log(kind, **values):
             journal.write(json.dumps(dict(kind=kind, **values))+'\n'); journal.flush()

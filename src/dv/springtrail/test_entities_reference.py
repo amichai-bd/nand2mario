@@ -81,6 +81,13 @@ class Entities(unittest.TestCase):
         self.assertEqual((got.moving,got.falling,got.curl,got.stomp),
                          (paused.moving,paused.falling,paused.curl,16))
 
+    def test_blocked_fractional_carry(self):
+        from entities_reference import _carry
+        p=Player(x=72*16-1,y=96*16)
+        self.assertEqual(_carry(p,16,0,0,None),(p,False))
+        p=Player(x=760*16,y=112*16)
+        self.assertEqual(_carry(p,16,0,0,None),(p,False))
+
     def test_offscreen_timer_trajectories(self):
         w=self.game(curl=Entity(328*16,120*16,1,32),
                     falling=Entity(368*16,112*16,1,16))

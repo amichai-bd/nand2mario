@@ -44,6 +44,102 @@ DW 2816,2304,1792
 EntityFallingStarts:
 DW 5888,5120,5888
 
+; Explicit fixed-slot initialization. No live owner can be overwritten.
+; A=slot0..3; returns A=1 accepted, A=0 refused. Ordinary offscreen motion
+; never calls this path; stage entry initializes all owners together.
+SpawnEntity:
+CP A,4
+JP NC,SpawnRefused
+OR A,A
+JP Z,SpawnPatrol
+CP A,1
+JP Z,SpawnCurl
+CP A,2
+JP Z,SpawnMoving
+LD A,[FallingState]
+CP A,3
+JP NZ,SpawnRefused
+LD HL,FallingX
+CALL EntityClearRecord
+LD HL,EntityFallingStarts
+CALL StageWordHL
+LD A,E
+LD [FallingX],A
+LD A,D
+LD [FallingX+1],A
+LD A,7
+LD [FallingY+1],A
+JP SpawnAccepted
+SpawnMoving:
+LD A,[MovingState]
+CP A,3
+JP NZ,SpawnRefused
+LD HL,MovingX
+CALL EntityClearRecord
+LD HL,EntityMovingStarts
+CALL StageWordHL
+LD A,E
+LD [MovingX],A
+LD A,D
+LD [MovingX+1],A
+LD A,7
+LD [MovingY+1],A
+LD A,1
+LD [MovingState],A
+LD A,16
+LD [MovingVX],A
+JP SpawnAccepted
+SpawnCurl:
+LD A,[CurlState]
+CP A,2
+JP NZ,SpawnRefused
+LD HL,CurlX
+CALL EntityClearRecord
+LD HL,EntityCurlStarts
+CALL StageWordHL
+LD A,E
+LD [CurlX],A
+LD A,D
+LD [CurlX+1],A
+LD A,$80
+LD [CurlY],A
+LD A,7
+LD [CurlY+1],A
+JP SpawnAccepted
+SpawnPatrol:
+LD A,[EnemyAlive]
+OR A,A
+JP NZ,SpawnRefused
+LD A,[StompTimer]
+OR A,A
+JP NZ,SpawnRefused
+LD HL,StageEnemyStart
+CALL StageWordHL
+LD A,E
+LD [EnemyX],A
+LD A,D
+LD [EnemyX+1],A
+LD A,8
+LD [EnemyVX],A
+XOR A,A
+LD [PatrolFrame],A
+LD A,1
+LD [EnemyAlive],A
+SpawnAccepted:
+LD A,1
+RET
+SpawnRefused:
+XOR A,A
+RET
+EntityClearRecord:
+LD B,16
+XOR A,A
+EntityClearOne:
+LD [HL+],A
+DEC B
+JP NZ,EntityClearOne
+RET
+
 ; Counts are update counters, never display or wall-clock counters.
 EntityAnimation:
 LD A,[PatrolFrame]

@@ -5,7 +5,7 @@ import sys
 
 
 KINDS = {'step': 0, 'init': 1, 'game': 2, 'power': 3, 'star': 4, 'reset': 5,
-         'lives': 6}
+         'lives': 6, 'spawn': 7}
 
 
 def build(root, destination, short=False, suite='motion', part=None):
@@ -45,7 +45,9 @@ def build(root, destination, short=False, suite='motion', part=None):
                   'OR A,A', 'JR Z,StepCase', 'CP A,1', 'JR Z,InitCase',
                   'CP A,2', 'JR Z,GameCase', 'CP A,3', 'JR Z,PowerCase',
                   'CP A,4', 'JR Z,StarCase', 'CP A,6', 'JR Z,LivesCase',
+                  'CP A,7', 'JR Z,SpawnCase',
                   'CALL InitGame', 'JR Report',
+                  'SpawnCase:', 'LD A,[Buttons]', 'CALL SpawnEntity', 'JR Report',
                   'LivesCase:', 'CALL UpdateLives', 'JR Report',
                   'GameCase:', 'CALL UpdateGame', 'JR Report',
                   'PowerCase:', 'CALL PowerUp', 'JR Report',
