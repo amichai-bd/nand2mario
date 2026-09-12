@@ -3,12 +3,21 @@ from contextlib import contextmanager
 import hashlib
 import json
 import os
+import subprocess
 import time
 from pathlib import Path
 
 from .. import generated_interfaces as abi
 from ..doctor import uart
 from ..records import atomic_json
+
+
+def session_root(root):
+    """One durable store for a repository and all its linked worktrees."""
+    common = subprocess.check_output(
+        ['git', '-C', str(root), 'rev-parse', '--path-format=absolute', '--git-common-dir'],
+        text=True).strip()
+    return Path(common).parent / 'workdir/host-sessions'
 
 
 class SerialTransport:

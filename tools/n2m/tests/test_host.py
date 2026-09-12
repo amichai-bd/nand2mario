@@ -547,5 +547,94 @@ class HostTests(unittest.TestCase):
         self.assertEqual(persisted, [(0, True), (0, False), (1, True), (1, False), (2, True), (2, False)])
 
 
+
+class SharedSessionRootTests(unittest.TestCase):
+    def setUp(self):
+        import subprocess
+        (ROOT / 'workdir').mkdir(exist_ok=True)
+        self.temporary = tempfile.TemporaryDirectory(prefix='session-layout-', dir=ROOT / 'workdir')
+        self.addCleanup(self.temporary.cleanup)
+        base = Path(self.temporary.name)
+        self.primary, self.linked = base / 'primary repo', base / 'linked checkout'
+        self.primary.mkdir()
+        def git(*args):
+            subprocess.run(['git', '-C', str(self.primary), *args], check=True,
+                           stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        git('init')
+        git('-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid',
+            'commit', '--allow-empty', '-m', 'fixture')
+        git('worktree', 'add', '--detach', str(self.linked))
+        self.expected = self.primary / 'workdir/host-sessions'
+        self.args = SimpleNamespace(action='input', mask=0, tag='fixture', mode='observe',
+            uart_port='COM92', uart_vid=None, uart_pid=None, uart_identity=None,
+            endpoint_restarted=False, package='unused', wall_seconds=None,
+            snapshot=False, image_stride=1, repeat=1)
+
+    def invoke(self, kind, root, endpoint):
+        from contextlib import nullcontext
+        from n2m.host import command
+        import springtrail_player
+        opener = unittest.mock.Mock(return_value=endpoint)
+        self.opener = opener
+        def connection(folder, args, state_root):
+            self.assertEqual(state_root, self.expected)
+            return session(folder, args, state_root,
+                           discover=lambda f, a: select_uart([DEVICE], a), opener=opener)
+        if kind == 'command':
+            with patch.object(command, 'session', connection):
+                return command.run(root, root / 'workdir/builds/fixture', self.args, {})
+        def run(client, *args, **kwargs):
+            client.request('PING')
+            return {'status': 'PASS'}
+        with patch.object(springtrail_player, 'ROOT', root), \
+             patch.object(springtrail_player, 'session', connection), \
+             patch.object(springtrail_player.reader, 'bind_package', return_value=(b'', None)), \
+             patch.object(springtrail_player, 'run', run), \
+             patch('ci.storage.machine_lock', return_value=nullcontext()), redirect_stdout(io.StringIO()):
+            return springtrail_player.worker(self.args)
+
+    def test_primary_and_linked_entry_points_continue_one_sequence(self):
+        for kind, root in (('command', self.primary), ('player', self.linked),
+                           ('command', self.linked), ('player', self.primary)):
+            endpoint = Endpoint()
+            files = list(self.expected.glob('*.json'))
+            previous = json.loads(files[0].read_text())['next_sequence'] if files else 0
+            result = self.invoke(kind, root, endpoint)
+            self.assertEqual(result['status'] if kind == 'command' else result,
+                             'PASS' if kind == 'command' else 0)
+            self.assertEqual(endpoint.requests[0][2], previous)
+            current = json.loads(next(self.expected.glob('*.json')).read_text())
+            self.assertEqual(current, {'next_sequence': previous + len(endpoint.requests), 'pending': False})
+            self.assertTrue(endpoint.closed)
+
+    def test_existing_uncertainty_blocks_both_entry_points_before_open(self):
+        folder = self.primary / 'seed'
+        folder.mkdir()
+        with session(folder, self.args, self.expected,
+                     discover=lambda f, a: select_uart([DEVICE], a),
+                     opener=lambda p: Endpoint()) as (_wire, _seq, persist, _selected):
+            persist(73, True)
+        for kind, root in (('command', self.primary), ('player', self.linked)):
+            endpoint = Endpoint()
+            if kind == 'command':
+                result = self.invoke(kind, root, endpoint)
+                self.assertEqual(result['status'], 'FAIL')
+                self.assertIn('uncertain', result['error'])
+            else:
+                with self.assertRaisesRegex(RuntimeError, 'uncertain'):
+                    self.invoke(kind, root, endpoint)
+            self.opener.assert_not_called()
+            self.assertEqual(endpoint.requests, [])
+        self.assertEqual(json.loads(next(self.expected.glob('*.json')).read_text()),
+                         {'next_sequence': 73, 'pending': True})
+
+    def test_no_git_repository_fails_without_fallback_store(self):
+        import subprocess
+        from n2m.host.transport import session_root
+        import os
+        with patch.dict(os.environ, {'GIT_CEILING_DIRECTORIES': str(Path(self.temporary.name).parent)}), \
+             self.assertRaises(subprocess.CalledProcessError):
+            session_root(Path(self.temporary.name))
+
 if __name__ == '__main__':
     unittest.main()
