@@ -43,7 +43,7 @@ engine, an AI framework, a compiler or audio to deliver this game.
 
 The [shadow OAM publisher](../../../../src/dv/springtrail/OAM_DMA.md) transfers
 the complete C100-C19F image through standard FF46=C1 DMA from HRAM at FF80.
-Scene preparation writes sixteen 8x8 entries and clears all remaining bytes.
+Scene preparation emits the current 8x8 objects and clears all remaining bytes.
 The shared publisher supports all 40 entries without interpreting an active
 count; the [composition contract](COMPOSITION.md) owns geometry and limits. Initialize
 the HRAM routine before LCD enable, then publish in the existing VBlank slot
@@ -141,13 +141,14 @@ not the newly computed logical transition. Pause freezes game state while
 publication continues; inactive map restoration may continue while paused.
 
 Each VBlank samples JOYP once. Process restart/pause first. A playing update
-advances power timers, decides crouch and throw, selects run/jump state,
-advances animation, resolves horizontal motion/collision, then vertical profile
-platform support/carry, motion/collision, camera and platform landing, resolves
-one head-hit block, moves the patrol and advances CURL
-and shot, then resolves interactions. Scene preparation reads that resulting state without advancing
-animation. The [movement contract](MOVEMENT.md) and the
-[power contract](POWER.md) fix the exact precedence and original choices.
+advances power timers and decides crouch and throw. Entity preparation snapshots
+and advances platforms, then applies prior-rider support and carry. StepPlayer
+selects run/jump state, advances animation and resolves horizontal and vertical
+motion. Entity landing and camera calculation follow. The update resolves a
+head-hit block, advances the patrol, CURL and shot, then processes contacts in
+the [entity contract's order](ENTITIES.md). Scene preparation reads the resulting
+state without advancing animation. The [movement contract](MOVEMENT.md) and the
+[power contract](POWER.md) own their motion and power rules.
 Resolve each axis
 against all solid tiles touched by the half-open collision box, using floor of
 the fixed-point coordinate. Snap to the contacted tile edge and clear velocity

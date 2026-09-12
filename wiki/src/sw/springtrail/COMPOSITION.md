@@ -119,13 +119,13 @@ interval executes one ordinary update and prepares its complete 160-byte scene.
 The following VBlank publishes those bytes through DMA before the test pauses.
 It does not claim to capture pixels of that third frame.
 
-The public LCD-enable write supplies the phase origin, not an expected image or
-state. Startup must lie between 100,000 and 130,000 dots: the prior 81,352-dot
+For this historical composition fixture, the public LCD-enable write supplies
+the phase origin, not an expected image or state. Its startup had to lie between 100,000 and 130,000 dots: the prior 81,352-dot
 initialization gains 512 tile bytes at 52 dots each; replacing its at-least
 5,996-dot preparation with the conservative 25,000-dot scene bound gives an
-upper bound of 126,980 dots. The unchanged UpdateGame bound is below 20,000 dots;
-PrepareScene is below 25,000 and dispatch below 1,000. Thus preparation must
-finish within 46,000 visible dots, before the same next VBlank at 65,664.
+upper bound of 126,980 dots. The historical UpdateGame bound was below 20,000 dots;
+its PrepareScene was below 25,000 and dispatch below 1,000. Its preparation had
+to finish within 46,000 visible dots, before the same next VBlank at 65,664.
 
 A complete short harness stops after at least 160 blank pixels, with initial
 DMA, trace END, ordinary HALT and settled pause checked. The full target has a

@@ -1,38 +1,20 @@
 """Fixed title/Start composition; public LCD write supplies only phase origin."""
-from dataclasses import replace
-from motion_frames import scene, image
+from entities_frames import scene, image
 from hud_reference import hud_tiles, column
-from motion_reference import Player, step
-from interactions_reference import Game, update as flow_update
-from interaction_cases import ADDRESSES as OLD_ADDRESSES, state_bytes as old_bytes
-
-ADDRESSES = OLD_ADDRESSES + list(range(0xc060, 0xc06a))
-
-
-def state_bytes(game, buttons=0):
-    p = game.player
-    return old_bytes(game, buttons) + bytes((p.counter, p.direction, p.speed,
-        p.phase, p.animation, p.pose, p.jump, p.index, p.saved, p.facing))
-
-
-def update(game, buttons):
-    """Interaction flow over the current motion model; no observed inputs."""
-    return flow_update(game, buttons, step)
+from entities_reference import World as Game, update
+from entities_cases import ADDRESSES, state_bytes
 
 
 def initial_states():
-    title = Game(player=Player())
-    # One Start+Right update at the initial scene: no contact/pickup/goal.
-    moved = replace(title, mode=1, previous=129, player=step(title.player, 129),
-                    enemy_x=256*16+8, timer=1)
-    return [title, moved]
+    title = Game()
+    return [title, update(title, 129)]
 
 PERIOD=70224
 # Startup anchor of the current image: the dot of its first LCDC 0x91 write,
 # derived from the instruction listing by startup_anchor.derive and frozen
-# here. python-mgs proves the RTL commits at exactly this dot;
-# test_startup_anchor proves the image the repository builds still derives it.
-LCD=177308
+# here. test_startup_anchor proves the current image derives this dot.
+# Runtime fixtures qualify their separately derived startup paths.
+LCD=207020
 
 
 class Check:
@@ -84,7 +66,7 @@ class Check:
         assert kind=='W','MOTION_TRACE_KIND'
         dot,address,data=value>>24,(value>>8)&65535,value&255
         self.memory[address]=data
-        if 0x8000<=address<0x8950:
+        if 0x8000<=address<0x8ae0:
             assert self.lcd is None,'MOTION_LATE_TILES'
             self.tiles.append((address,data))
         if address==0xff40:
@@ -101,7 +83,7 @@ class Check:
             self.partial.append(data)
             if len(self.partial)==160:
                 assert bytes(self.partial)==scene(self.states[index]),'MOTION_SHADOW'
-                assert bytes(self.memory[a] for a in ADDRESSES)==state_bytes(self.states[index],0 if index==0 else 129),'MOTION_STATE'
+                assert bytes(self.memory[a] for a in ADDRESSES)==state_bytes(self.states[index],0 if index==0 else 129, int(index==1)),'MOTION_STATE'
                 if index==0:assert self.lcd is None,'MOTION_INITIAL_READY'
                 else:assert self.lcd+PERIOD<=dot<self.lcd+PERIOD+49280,'MOTION_VISIBLE_READY'
                 self.ready.append(dot);self.partial=[]

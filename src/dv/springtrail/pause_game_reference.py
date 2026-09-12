@@ -5,11 +5,12 @@ update is computed in visible frame n+1, published in VBlank n+1 and displayed
 in frame n+2. Frames 0..5 are checked pixel by pixel: blank, TITLE, the first
 world frame, a neutral frame, the PAUSED frame and the Select-restart frame.
 """
-from motion_frames import scene, image
-from motion_game_reference import ADDRESSES, PERIOD, state_bytes, update
+from entities_frames import scene, image
+from motion_game_reference import ADDRESSES, PERIOD, LCD, state_bytes, update
 from motion_reference import Player
 from hud_reference import hud_tiles, column, progress_tiles, PROGRESS_ROW
-from interactions_reference import Game, TITLE, PLAYING
+from entities_reference import World as Game
+from interactions_reference import TITLE, PLAYING
 
 # Sampled JOYP masks for VBlank 0..4; VBlank 5 samples the held final mask.
 SCRIPT = (129, 0, 128, 64, 64)
@@ -175,14 +176,14 @@ class Check:
         assert kind == 'W', 'PAUSE_TRACE_KIND'
         dot, address, data = value >> 24, (value >> 8) & 65535, value & 255
         self.memory[address] = data
-        if 0x8000 <= address < 0x8620:
+        if 0x8000 <= address < 0x8ae0:
             assert self.lcd is None, 'PAUSE_LATE_TILES'
             self.tiles.append((address, data))
         if address == 0xff40:
             if data == 0:
                 assert self.lcd is None, 'PAUSE_LCD_OFF'
             elif self.lcd is None:
-                assert data == 0x91 and 100000 < dot < 200000, 'PAUSE_STARTUP_BOUND'
+                assert data == 0x91 and dot == LCD, 'PAUSE_STARTUP_BOUND'
                 self.lcd = dot
             else:
                 assert data in (0x91, 0x93), 'PAUSE_OBJECT_MODE'
@@ -193,7 +194,7 @@ class Check:
             if len(self.partial) == 160:
                 assert bytes(self.partial) == scene(self.states[index]), 'PAUSE_SHADOW'
                 buttons = 0 if index == 0 else SCRIPT[index-1]
-                assert bytes(self.memory[a] for a in ADDRESSES) == state_bytes(self.states[index], buttons), 'PAUSE_STATE'
+                assert bytes(self.memory[a] for a in ADDRESSES) == state_bytes(self.states[index], buttons, int(index in (1, 4))), 'PAUSE_STATE'
                 if index == 0: assert self.lcd is None, 'PAUSE_INITIAL_READY'
                 else: assert self.lcd+index*PERIOD <= dot < self.lcd+index*PERIOD+PREPARE_CEILING, 'PAUSE_VISIBLE_READY'
                 self.ready.append(dot); self.partial = []

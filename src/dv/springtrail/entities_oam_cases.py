@@ -8,11 +8,9 @@ The C0FF terminal marker also rejects an immediate underflow write; C0FE and
 C1A0 are preserved canaries around the shadow/marker boundary.
 
 Per case285 seeded bytes at40 dots each plus dispatch fit13000. The42000
-routine ceiling covers35pieces at620 dots, six courier table steps at296,
-14entity table steps at300, ten pair steps at80, five effect/shot steps at100,
-12signed projections at500,20tail bytes at52 and300selection dots:36316.
+routine guard covers the bounded35-piece composer and its complete zero tail.
 Two cases plus terminal fit111000, below160000; short56000 fits70000.
-These are conservative source ceilings, not measured wall forecasts.
+These watchdogs do not establish the whole live-game visible preparation bound.
 """
 from dataclasses import replace
 from entities_reference import World, Entity

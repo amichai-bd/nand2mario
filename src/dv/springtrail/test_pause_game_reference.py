@@ -18,6 +18,49 @@ def applied(dot, buttons):
 class PauseScript(unittest.TestCase):
     """The frozen script and its independent consequences, before any DUT run."""
 
+    def test_source_main_matches_all_six_current_state_and_shadow_histories(self):
+        from startup_anchor import Model, build
+        from entities_cases import ADDRESSES
+        from entities_frames import scene
+        from entities_render_check import expected_tiles
+        from pause_game_reference import SCRIPT
+        rom, symbols = build()
+        labels = {name: address for address, name in symbols.items()}
+
+        class Inputs(Model):
+            buttons = 0
+
+            def read(self, address):
+                if address == 0xff00:
+                    select = self.memory[address] & 0x30
+                    low = 15
+                    if not select & 0x10:
+                        low &= ~self.buttons & 15
+                    if not select & 0x20:
+                        low &= ~(self.buttons >> 4) & 15
+                    return 0xc0 | select | low
+                return super().read(address)
+
+        model = Inputs(rom)
+        while model.lcd is None:
+            self.assertLess(model.mcycles, 100000)
+            model.mcycles += model.step()
+        for index, game in enumerate(states()):
+            if index:
+                # Ordinary JOYP operand; execute actual publication/update/main
+                # instructions. This source-model proof is not RTL execution.
+                model.buttons = SCRIPT[index-1]
+                model.pc = labels['ConsumeFrame']
+                start = model.mcycles
+                while model.pc != labels['WaitFrame']:
+                    self.assertLess(model.mcycles-start, 100000)
+                    model.mcycles += model.step()
+            wanted = state_bytes(game, 0 if index == 0 else SCRIPT[index-1],
+                                 int(index in (1, 4)))
+            self.assertEqual(bytes(model.memory[a] for a in ADDRESSES), wanted, index)
+            self.assertEqual(model.memory[0xc100:0xc1a0], scene(game), index)
+        self.assertEqual(model.memory[0x8000:0x8ae0], expected_tiles())
+
     def test_states_pause_then_restart(self):
         games = states()
         self.assertEqual([g.mode for g in games], [TITLE, PLAYING, PLAYING, PAUSED, PLAYING, PLAYING])

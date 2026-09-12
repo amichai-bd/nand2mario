@@ -137,6 +137,9 @@ async def run(dut, short=False, renderer=False, motion=False, power=False,
                     tile_bytes += rom[0x77a0:0x7920]+rom[0x7960:0x79e0]
                     # Progression copies at VRAM140..148: digits5..9, M, V, life, clock.
                     tile_bytes += rom[0x6570:0x65c0]+rom[0x6440:0x6450]+rom[0x64d0:0x64e0]+rom[0x6340:0x6360]
+                if motion and not renderer:
+                    from entities_render_check import expected_tiles as current_tiles
+                    tile_bytes=current_tiles()
                 summary=check.finish(pause,expected_tiles if expected_tiles is not None else tile_bytes)
                 for frame,data in enumerate(check.frames):Path(f'frame-{frame}.shades').write_bytes(data)
                 Path('summary.json').write_text(json.dumps(summary,indent=2)+'\n')

@@ -16,7 +16,8 @@ from pause_game_reference import Check, SCRIPT, FRAMES, PERIOD
 
 # The full script ends in VBlank 5; the short harness stops in frame 0.
 # The startup allowance matches the reference's widened PAUSE_STARTUP_BOUND.
-WATCHDOG=200000+FRAMES*PERIOD
+from motion_game_reference import LCD
+WATCHDOG=LCD+FRAMES*PERIOD+2048
 
 
 async def run(dut, short=False):
@@ -104,10 +105,8 @@ async def run(dut, short=False):
                 # Flush and validate the real END count only after the settled hold.
                 await Timer(1,unit='ns');dut.public_trace_close.value=1
                 await Timer(100,unit='ns');await ReadOnly();healthy();consume()
-                rom=Path('program.gb').read_bytes()
-                from hud_reference import CHARS,MAPS
-                tile_bytes=rom[0xc00:0x10a0]+b''.join(rom[0x6000+MAPS['glyph-'+c]['pieces'][0]['tile']*16:0x6010+MAPS['glyph-'+c]['pieces'][0]['tile']*16] for c in CHARS)
-                tile_bytes+=rom[0x6100:0x6140]
+                from entities_render_check import expected_tiles
+                tile_bytes=expected_tiles()
                 summary=check.finish(pause,tile_bytes)
                 for frame,data in enumerate(check.frames):Path(f'frame-{frame}.shades').write_bytes(data)
                 Path('summary.json').write_text(json.dumps(summary,indent=2)+'\n')

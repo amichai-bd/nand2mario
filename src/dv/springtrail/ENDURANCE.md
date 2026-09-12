@@ -6,7 +6,16 @@ child, under the [physical contract](../../../wiki/src/dv/springtrail/SPEC.md#ph
 Everything is observed over UART: no monitor, keyboard or physical button is
 claimed. Product ROM/RTL remain unchanged.
 
-## Current-image script
+## Gameplay qualification gap
+
+The source-built image/anchor checks remain active. The static gameplay frame
+oracle predates progression and does not qualify the current 90-cycle route:
+it omits retry life spending, OVER and neutral countdown changes.
+[The required correction](https://github.com/amichai-bd/nand2mario/issues/511)
+owns coherent scheduled expectations. Existing host doubles qualify transport,
+duration and cleanup control flow only; they are not current-game FPGA evidence.
+
+## Retained script
 
 Frozen before execution; `endurance.py` is the launcher and driver.
 

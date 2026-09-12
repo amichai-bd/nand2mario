@@ -89,3 +89,12 @@ heaviest restoration case; the68-dot margin is not available for new work.
 Physical qualification remains separate. The required broader composer, HUD
 and interaction matrices retain their named open coverage issues; these finite
 entity fixtures do not claim universal combinations or game compatibility.
+
+## Timing
+
+Publication retains the unchanged 4412-dot source bound and 4480-dot check.
+The complete visible update, scene, HUD, progression, map preparation and
+interrupt/dispatch overhead must fit the same 65664-dot visible interval.
+Per-fixture watchdogs are not a proof of that whole-path requirement.
+Current game and pause compatibility also require their complete short harnesses;
+full scripted source-model histories supplement the retained execution evidence.

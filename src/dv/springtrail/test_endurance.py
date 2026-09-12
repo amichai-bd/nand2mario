@@ -1,4 +1,8 @@
-"""Host runner sensitivity; synthetic results are not physical evidence."""
+"""Transport/legacy-flow unit fixtures; not current gameplay or physical evidence.
+
+Issue511 owns current progression scheduling. These doubles deliberately retain
+the original static frame model to test protocol, duration and cleanup failures.
+"""
 from dataclasses import replace
 from pathlib import Path
 import hashlib
