@@ -983,11 +983,12 @@ exhaustion propagates the final error. This bounds transient handle contention,
 not permanent permissions. How many of those retries a publication actually
 spends is not fixed: an antivirus scanner or indexer holding the destination
 adds denials of its own, so behaviour is pinned by the preserved record and the
-bound, never by an exact retry count. Cleanup attempts to remove only that operation's
-temporary file; a cleanup denial must not mask the publication error. A blocked
-cleanup can leave that temporary file for inspection. Failed replacement leaves
-the old complete record intact. Simulation still publishes RUNNING before any
-execution; publication failure aborts the request rather than reporting success.
+bound, never by an exact retry count. Cleanup attempts to remove only that
+operation's temporary file; a cleanup denial must not mask the publication
+error. A blocked cleanup can leave that temporary file for inspection. Failed
+replacement leaves the old complete record intact. Simulation still publishes
+RUNNING before any execution; publication failure aborts the request rather
+than reporting success.
 
 Each backend treats compilation and simulation as one stage: any source,
 runner module, dependency definition, target configuration, seed, or discovered
