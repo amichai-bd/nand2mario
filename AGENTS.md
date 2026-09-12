@@ -55,9 +55,9 @@ the user and returns the answer. Escalate promptly; never let a pending decision
 or a real failure stay below deck.
 
 Each root orchestration tree may have at most two open PRs, including its authors'
-drafts, and at most two active crewmates at any moment, including reviewers,
+drafts, and at most four active crewmates at any moment, including reviewers,
 scouts and nested agents. Reviewers are not extra capacity on top of authors:
-a reviewer occupies one of the two slots. So an author goes idle before its
+a reviewer occupies one of the four slots. So an author goes idle before its
 reviewer starts, and delivery is serialized and slower. That is intended.
 These are ceilings, not targets; lower runtime limits still apply. Keep each
 change's reviewer independent of its author; root coordinates delivery.
