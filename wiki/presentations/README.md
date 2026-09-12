@@ -1,6 +1,6 @@
 # Presentations
 
-Explore eight short lessons connecting development concepts to nand2mario. Each
+Explore nine short lessons connecting development concepts to nand2mario. Each
 deck has six slides, worked examples, editable diagrams, source links and
 expandable reasoning. Read them in order or choose the path that matches what you
 want to understand.
@@ -9,7 +9,7 @@ want to understand.
 
 | Goal | Recommended path |
 |---|---|
-| Understand the machine | CPU execution → Memory buses → Clocks and CDC → Graphics |
+| Understand the machine | Console and cartridge → CPU execution → Memory buses → Clocks and CDC → Graphics |
 | Understand how we prove it | UART debugging → Verification → Reproducible builds |
 | Understand the game/software boundary | Original software, then Graphics and Verification |
 
@@ -25,6 +25,7 @@ want to understand.
 | [06 · Verification](verification.html) | How do we know a checker works? | Independent oracles, fault injection and bounded evidence |
 | [07 · Reproducible builds](reproducible-builds.html) | What does a cached PASS mean? | Input identity, artifact integrity and publication |
 | [08 · Original software](springtrail-software.html) | Where does gameplay belong? | Springtrail ROM, movement, interactions and game flow |
+| [09 · Console and cartridge](console-cartridge.html) | What belongs in the console, and what can a cartridge add? | Bank selection, virtual cartridge and storage boundaries |
 
 Use Left/Right or the buttons to navigate; Home/End jump to the first/last slide.
 A direct `#slide-N` fragment opens that slide, which makes individual explanations
