@@ -18,10 +18,7 @@ python tools/wiki/showcase.py
 
 Every pixel of every other loop is drawn on the host. The board loop is the
 exception, and it is the only place the wiki shows a frame the FPGA produced.
-Springtrail has no board loop yet: its capture driver pauses the core at
-checkpoints derived from a frozen LCD commit dot that no longer matches the
-image the repository builds, so the run cannot reach its frames. Issue #440
-tracks the loop; issue #437 tracks re-deriving that anchor from source.
+Springtrail has no board loop yet; issue #440 tracks it.
 
 Each file is self-contained: CSS keyframes only, no script, no external
 resource, so GitHub and the wiki decks play them as ordinary images. The authored SVG is

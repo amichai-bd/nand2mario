@@ -26,10 +26,13 @@ from n2m.records import atomic_json, file_hash  # noqa: E402
 from interactions_reference import Game, PLAYING, PAUSED, RETRY, update as flow_update  # noqa: E402
 from motion_reference import Player, step  # noqa: E402
 from motion_frames import image  # noqa: E402
+from motion_game_reference import LCD  # noqa: E402
+from startup_anchor import derive, symbol_table  # noqa: E402
 
-# Source-derived startup anchor of the current image; motion_game_reference
-# checks this exact LCD commit dot in simulation. Not chosen from the DUT.
-LCD, PERIOD, DOT_HZ = 139388, 70224, 4194304
+# LCD is the source-derived startup anchor of the current image, frozen once
+# in motion_game_reference and proved there in simulation; `require_anchor`
+# refuses a built image that derives any other dot. Not chosen from the DUT.
+PERIOD, DOT_HZ = 70224, 4194304
 CYCLE_SECONDS = 20
 # Even cycles run (Right+B), odd cycles jump then walk (Right+A). Both routes
 # end in the first gap, converge for every JOYP first-sample variant and are
@@ -105,6 +108,13 @@ def check_pixels(packed, sample):
     mismatch = next((i for i in indices if pixels[i] != wanted[i]), None)
     assert mismatch is None, f'ENDURANCE_PIXELS sample={sample} pixel={mismatch}'
     return len(indices)
+
+
+def require_anchor(rom, symbols=None):
+    """The built image must derive the frozen anchor; a moved anchor stops here."""
+    result = derive(rom, symbols)
+    assert result['lcd'] == LCD, f'ENDURANCE_ANCHOR: image derives {result["lcd"]}, frozen {LCD}'
+    return result
 
 
 def require_current_rom(rom, expected_sha256):
@@ -296,6 +306,10 @@ def build_rom(tag):
     package = json.loads(raw.strip().splitlines()[-1])
     assert package['status'] == 'PASS', 'ENDURANCE_BUILD'
     rom = ROOT/package['rom']
+    # Refuse to reach a board with an image whose startup moved the anchor;
+    # build.json then records every term of the derivation.
+    symbols = symbol_table(json.loads(rom.with_name('symbols.json').read_text(encoding='utf-8')))
+    package['anchor'] = require_anchor(rom.read_bytes(), symbols)
     return rom, package['artifacts'][package['rom']], package
 
 

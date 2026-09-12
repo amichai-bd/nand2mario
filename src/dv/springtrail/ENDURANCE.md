@@ -21,12 +21,13 @@ and each explicit RESET adds one.
 Expected frames come from the independent models only: `motion_reference`
 for the player, the frozen flow in `interactions_reference` (parametrised by
 that player) for modes, enemy, items and goal, and `motion_frames.image` for
-pixels. LCD commit 139388 and period 70224 are the source-derived anchors
-`motion_game_reference` checks in simulation; no value is taken from the DUT.
+pixels. LCD commit 167840 and period 70224 are the source-derived anchors of
+the current image ([derivation](FRAME_PROOFS.md#startup-anchor)); `build_rom`
+refuses an image that derives any other dot. No value is taken from the DUT.
 
 Setup, paused: load with full 32768-byte upload and byte-exact readback,
-INPUT 0, dot 0, advance by RUN_DOTS to C2=283932 and check every pixel of
-`title` (source frame 1); Start 128 at C2, C3, release 0, C5=494604 and check
+INPUT 0, dot 0, advance by RUN_DOTS to C2=312384 and check every pixel of
+`title` (source frame 1); Start 128 at C2, C3, release 0, C5=523056 and check
 every pixel of `play` (spawn, frame 4). Then RUN; the monotonic origin is
 taken after the RUN reply.
 
@@ -77,7 +78,13 @@ four loads, 195 samples, 4,000,000-plus checked pixels). The short run
 exercises both routes, pause/resume, the final sample and all three
 lifecycles before the full run. No automatic extension or replay.
 
-### Measured result
+### Measured result on image 616de11b...
+
+This result belongs to image
+`616de11b49e0807539837358824a570776459b9bf13a4b9424dbf42adfe5c983`, whose
+anchor was 139388 (C2=283932, C5=494604). The block layer and the power
+states lengthened startup after it, so the image the repository builds today
+(anchor 167840) has no endurance run yet.
 
 Producing commit `e3bdf69` (the freeze; rebased with identical content as
 `f36c0b3`, then onto #385 as `bfa9654`: the only driver change is the call
@@ -104,8 +111,9 @@ origin `play` sample to `continuous-final` at frame 107585, dot
 32-bit boundary inside epoch 22 without a torn read. Every load uploaded and
 read back all 32768 bytes. Both runs ended PAUSED at dot 494604, UART, input
 0, effective 0, with the durable session certain (sequence 208401, then
-221401). The title frame completing at dot 275071 confirms the 139388 anchor
-on hardware. No reset, hang, lost input or pixel mismatch occurred.
+221401). The title frame completing at dot 275071 = 139388 + 70224 + 143*456
++ 251, the last pixel of row 143, corroborates that image's anchor on
+hardware. No reset, hang, lost input or pixel mismatch occurred.
 
 Sampling limits: two samples per cycle plus pauses; the RETRY samples exclude
 the enemy patrol footprint. Nothing here observes the monitor or physical
@@ -199,6 +207,8 @@ The retired-image schedule and its PR295 result apply to image
 `b551c56252761d953bcf3b64270d819e3342b710299c3bff6866d4dcae8ba667` only; #310,
 #314, #316, #318, #321 and #301 separate it from the current build and change
 every displayed frame. That result cannot be read as covering the current
-image. The current-image script above is the only endurance evidence for the
-image the repository builds; the deterministic per-image evidence for that
-build is the [re-qualification section](MILESTONE.md#current-rom-re-qualification).
+image. The current-image script above is the endurance script for the image
+the repository builds; its measured run belongs to image `616de11b...` and
+has not been repeated on the current image. The deterministic per-image
+evidence for the current build is the
+[re-qualification section](MILESTONE.md#current-rom-re-qualification).
