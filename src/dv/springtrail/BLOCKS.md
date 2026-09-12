@@ -95,11 +95,11 @@ inside the 300-second default, and the three declared walls are the existing
 ones those targets already carried. Licence refusals while another QuestaSim
 instance held the nodelocked seat were retried, never counted.
 
-`python-pr` is not in that set. Its declared inputs named a checker #385 had
-deleted, so at this head it failed validation before building anything;
+`python-pr` is not in that set. At this head its declared inputs named a
+deleted checker, so it failed validation before building anything, and
 `python-mr` exercised the same renderer path on the same changed ROM. The
-[power plan](POWER.md#current-renderer-proof) records its restoration and
-current measurement.
+[power plan](POWER.md#current-renderer-proof) states why `python-pr` stays and
+its [measured durations](POWER.md#measured-durations) hold its wall.
 
 ## Coverage limit
 
