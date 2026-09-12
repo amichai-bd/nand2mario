@@ -21449,11 +21449,7 @@
         "src/dv/springtrail/hud_render_reference.py": "hud_game_check imports it only when run() is called with renderer=True and no motion; this target calls run() with motion=True"
       }
     },
-    "preload": "entities-render305",
-    "wall_allowance": {
-      "seconds": 420,
-      "reason": "measured 288-second budget exhaustion at the 300 default under host load with the trace at dot 213088 of the renderer's 300000-dot bound, and 293 seconds on a quiet host, above the 288-second execution limit the default leaves after cleanup"
-    }
+    "preload": "entities-render305"
   },
   "python-entity-render-normal": {
     "sources": [
