@@ -55,6 +55,25 @@ instruction listing, not adopted from the DUT.
 | Assets | Approved core pixels reproduced by the ROM tables and copies; composed poses 12..17 equal the approved maps in both facings | `test_power_assets`, `test_motion_assets` |
 | Delivery | Owning SW/DV links, 32 KiB reproducible image, host checks, required CI and current-head review | No new art approval or milestone replay |
 
+## Current renderer proof
+
+`python-pr` is the current renderer proof for the power poses. It shares
+`python-mr`'s harness (`hud_game_check.run` with `renderer`, `motion` and
+`power` set), fixture builder (`motion_render_program.build` in its `power`
+variant) and 300000-dot bound, but its fixed operands are a large thrower in
+WALK2 with a live shot, a hidden dead enemy and a second composer stage writing
+large-hurt facing left at `0xc150`; `python-mr` seeds only the motion WALK2
+and skid poses. The two targets therefore prove different composed frames on
+the same renderer, and both stay.
+
+The target's `python.inputs` list the transitive local imports of
+`test_power_render` and of the fixture builder, including
+`blocks_reference.py`, which `power_reference`, `motion_frames` and
+`hud_reference` import since the block layer; `hud_render_reference.py` is
+named by `hud_game_check` only on the branch this target never takes and is
+not listed. A declared input that is not a file fails validation before any
+build, so the list must follow the modules.
+
 ## Measured durations
 
 Whole-run supervisor walls from each receipt's `wall-budget` record, all at

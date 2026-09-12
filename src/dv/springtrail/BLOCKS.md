@@ -95,11 +95,11 @@ inside the 300-second default, and the three declared walls are the existing
 ones those targets already carried. Licence refusals while another QuestaSim
 instance held the nodelocked seat were retried, never counted.
 
-`python-pr` is not in that set. Its declared inputs still name
-`src/dv/springtrail/composition_game_check.py`, which #385 deleted, so the
-target fails validation before it builds anything and already failed that way
-on `main`. `python-mr` exercises the same renderer path on the same changed
-ROM; restoring `python-pr` belongs to its own issue.
+`python-pr` is not in that set. Its declared inputs named a checker #385 had
+deleted, so at this head it failed validation before building anything;
+`python-mr` exercised the same renderer path on the same changed ROM. The
+[power plan](POWER.md#current-renderer-proof) records its restoration and
+current measurement.
 
 ## Coverage limit
 

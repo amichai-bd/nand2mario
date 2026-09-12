@@ -363,7 +363,7 @@ units:
   python-pgs: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
   python-pgu: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
   python-pgx: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
-  python-pr: {kind: sim, level: 2, labels: [broken, integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-pr: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
   python-pua: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
   python-pub: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
   python-pus: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
