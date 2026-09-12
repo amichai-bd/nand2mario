@@ -36,6 +36,13 @@ class OAMCheck(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError,'ENTITY_OAM_UNRELATED_WRITE'):
             check.write(3,0xc330,0)
 
+    def test_declared_entity_scratch_only(self):
+        check,row=self.begin()
+        for address in range(0xc338,0xc350):check.write(2,address,0x5a)
+        for address in (0xc337,0xc350):
+            with self.assertRaisesRegex(AssertionError,'ENTITY_OAM_UNRELATED_WRITE'):
+                check.write(3,address,0)
+
     def test_literal_maximum_and_clipping(self):
         from entities_oam_cases import cases,STATE_ADDRESSES
         rows=cases();offset=len(STATE_ADDRESSES)

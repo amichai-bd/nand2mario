@@ -18,7 +18,9 @@ class Check(StateCheck):
             elif 0xc100<=address<0xc1a0:
                 self.shadow_writes.append((address,data))
             else:
-                assert 0xc034<=address<0xc04c or 0xdfe0<=address<0xdffe, 'ENTITY_OAM_UNRELATED_WRITE'
+                # ENTITIES owns transient operands C338..C34F, separate from persistent state.
+                assert (0xc034<=address<0xc04c or 0xc338<=address<0xc350
+                        or 0xdfe0<=address<0xdffe), 'ENTITY_OAM_UNRELATED_WRITE'
         if address==0xc0fd:
             assert self.active is not None and data==len(self.reports)+1, 'ENTITY_OAM_REPORT'
             assert self.shadow_writes==self.selected[data-1]['writes'], 'ENTITY_OAM_ORDER'
