@@ -146,8 +146,7 @@ seeds, traces, waves, and reports under the build tag while work or review needs
 them; follow the cleanup policy after delivery.
 
 Merges to `main` automatically publish Pages with standing authorization.
-The repository is private; the site is public. Visibility or deployment policy
-changes require approval.
+Visibility or deployment policy changes require approval.
 
 Verify device, wiring, and voltage before hardware use. Programming and physical
 tests need explicit authorization and serialized access. Never commit commercial
