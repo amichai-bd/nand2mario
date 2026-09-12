@@ -1,9 +1,6 @@
-"""UART endurance transport with a legacy gameplay expectation model.
+"""UART endurance with current, input-scheduled independent frame expectations.
 
-The current build/anchor binding remains enforced, but this static gameplay
-oracle predates progression and is not current-image 90-cycle qualification.
-Issue511 owns lives/countdown scheduling. Host runner tests qualify protocol,
-duration and cleanup paths using synthetic legacy frames, not current FPGA play.
+Source/model qualification does not establish a new physical endurance result.
 """
 import argparse
 import hashlib
@@ -23,9 +20,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from n2m import generated_interfaces as abi  # noqa: E402
 from n2m.records import atomic_json, file_hash  # noqa: E402
 from n2m import process_tree  # noqa: E402
-from interactions_reference import Game, PLAYING, PAUSED, RETRY, update as flow_update  # noqa: E402
+from entities_reference import World as Game, update as flow_update
+from progress_reference import PLAYING, PAUSED, RETRY  # noqa: E402
 from motion_reference import Player, step  # noqa: E402
-from motion_frames import image  # noqa: E402
+from entities_frames import image  # noqa: E402
 from motion_game_reference import LCD  # noqa: E402
 from startup_anchor import derive, symbol_table  # noqa: E402
 
@@ -51,7 +49,7 @@ MACHINE_MUTEX = 1357311510
 
 def update(game, buttons):
     """Current-image game rule: frozen flow over the current motion player."""
-    return flow_update(game, buttons, step=step)
+    return flow_update(game, buttons)
 
 
 def first_samples(route):
@@ -73,41 +71,65 @@ def terminal(route, first=None, enemy=None):
     return game, count
 
 
-def exclusion(game):
-    """Pixels the patrolling enemy (world x240..303, y120..135) may touch."""
-    cam = game.player.camera
-    return frozenset(y*160+x for y in range(120, 136)
-                     for x in range(max(0, 240-cam), min(160, 304-cam)))
-
-
-_expected = {}
-
-
 def expected(sample):
-    """(image, checked indices) for a frozen sample identity."""
-    if sample not in _expected:
-        excluded = frozenset()
-        if sample == 'title':
-            game = SPAWN
-        elif sample == 'play':
-            game = replace(SPAWN, mode=PLAYING)
-        elif sample == 'paused':
-            game = replace(SPAWN, mode=PAUSED)
-        else:
-            game = terminal(int(sample.removeprefix('retry-')))[0]
-            excluded = exclusion(game)
-        indices = [i for i in range(23040) if i not in excluded]
-        _expected[sample] = (image(game), indices)
-    return _expected[sample]
+    """Representative current states for literal host checks, not run scheduling."""
+    if sample == 'title':
+        game = SPAWN
+    elif sample == 'play':
+        game = replace(SPAWN, mode=PLAYING)
+    elif sample == 'paused':
+        game = replace(SPAWN, mode=PAUSED)
+    else:
+        game = terminal(int(sample.removeprefix('retry-')))[0]
+    return image(game), range(23040)
 
 
-def check_pixels(packed, sample):
+def check_pixels(packed, sample, states=None):
     assert len(packed) == 5760, 'ENDURANCE_FRAME_SIZE'
     pixels = bytes((b >> shift) & 3 for b in packed for shift in (0, 2, 4, 6))
-    wanted, indices = expected(sample)
-    mismatch = next((i for i in indices if pixels[i] != wanted[i]), None)
-    assert mismatch is None, f'ENDURANCE_PIXELS sample={sample} pixel={mismatch}'
-    return len(indices)
+    frames = [expected(sample)[0]] if states is None else (image(state) for state in states)
+    assert any(pixels == frame for frame in frames), f'ENDURANCE_PIXELS sample={sample}'
+    return 23040
+
+
+class Schedule:
+    """Reachable whole states from applied INPUT dots and source-frame identity.
+
+    ReadButtons samples both JOYP rows during VBlank. An application inside
+    that interval admits the two old/new row combinations for that update;
+    inputs outside it are definite. No pixel result selects future candidates.
+    """
+    def __init__(self):
+        self.events = []
+        self.index = 0
+        self.mask = 0
+        self.updates = 0
+        self.states = {SPAWN}
+
+    def buttons(self, dot, mask):
+        assert not self.events or dot >= self.events[-1][0], 'ENDURANCE_INPUT_ORDER'
+        self.events.append((dot, mask))
+
+    def frame(self, sequence):
+        count = max(0, sequence - 1)
+        assert count >= self.updates, 'ENDURANCE_MODEL_FRAME_ORDER'
+        while self.updates < count:
+            start = LCD + self.updates * PERIOD + 65664
+            end = start + 4560
+            while self.index < len(self.events) and self.events[self.index][0] < start:
+                self.mask = self.events[self.index][1]
+                self.index += 1
+            masks = {self.mask}
+            while self.index < len(self.events) and self.events[self.index][0] < end:
+                new = self.events[self.index][1]
+                masks = {lo | hi for old in masks
+                         for lo in (old & 15, new & 15)
+                         for hi in (old & 240, new & 240)}
+                self.mask = new
+                self.index += 1
+            self.states = {update(state, mask) for state in self.states for mask in masks}
+            self.updates += 1
+        return self.states
 
 
 def require_anchor(rom, symbols=None):
@@ -136,6 +158,7 @@ def run(client, rom, root, *, epoch, cycles, rom_sha256, deadline=None,
     last = None
     mask = 0
     armed = False
+    schedule = Schedule()
     result = dict(status='FAIL', cycles=cycles, planned_seconds=cycles*CYCLE_SECONDS,
                   rom_sha256=rom_sha256, lcd=LCD, routes=ROUTES, pause_cycles=PAUSE_CYCLES,
                   samples=[], lifecycles=[])
@@ -173,6 +196,7 @@ def run(client, rom, root, *, epoch, cycles, rom_sha256, deadline=None,
         after = wide(abi.HOST_REG_DOT_LO, abi.HOST_REG_DOT_HI)
         assert before <= reply['dot'] <= after, 'ENDURANCE_INPUT_DOT'
         mask = value
+        schedule.buttons(reply['dot'], value)
         record('input', mask=mask, applied_dot=reply['dot'], before=before, after=after)
         return reply['dot']
 
@@ -190,11 +214,13 @@ def run(client, rom, root, *, epoch, cycles, rom_sha256, deadline=None,
         assert before['dot']-meta['dot'] < 2*PERIOD, 'ENDURANCE_STALE_SAMPLE'
         if last is not None:
             assert meta['seq'] > last['seq'] and meta['dot'] > last['dot'], 'ENDURANCE_FRAME_PROGRESS'
-        count = check_pixels(packed, sample)
+        predicted = schedule.frame(meta['seq'])
+        count = check_pixels(packed, sample, predicted)
         path = root/(name+'.2bpp')
         path.write_bytes(packed)
         row = dict(name=name, sample=sample, metadata=meta, checked_pixels=count,
-                   file=path.name, sha256=file_hash(path), before=before, frontier=frontier)
+                   file=path.name, sha256=file_hash(path), before=before, frontier=frontier,
+                   expected_states=len(predicted))
         result['samples'].append(row)
         record('sample', **row)
         last = meta
@@ -210,7 +236,7 @@ def run(client, rom, root, *, epoch, cycles, rom_sha256, deadline=None,
         assert current == target, 'ENDURANCE_START_DOT'
 
     def start(name, reset):
-        nonlocal epoch, last, mask, armed
+        nonlocal epoch, last, mask, armed, schedule
         within_cap(name)
         if reset:
             client.control('RESET')
@@ -219,6 +245,7 @@ def run(client, rom, root, *, epoch, cycles, rom_sha256, deadline=None,
         receipt = client.load(rom)  # every byte uploaded and read back
         epoch += 2
         last = None
+        schedule = Schedule()
         buttons(0)
         assert public(False)['dot'] == 0, 'ENDURANCE_LOAD_DOT'
         advance(LCD+2*PERIOD+4096)

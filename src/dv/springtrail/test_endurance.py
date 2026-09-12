@@ -1,8 +1,4 @@
-"""Transport/legacy-flow unit fixtures; not current gameplay or physical evidence.
-
-Issue511 owns current progression scheduling. These doubles deliberately retain
-the original static frame model to test protocol, duration and cleanup failures.
-"""
+"""Current-model protocol fixtures; synthetic results are not physical evidence."""
 from dataclasses import replace
 from pathlib import Path
 import hashlib
@@ -15,8 +11,8 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]/'tools'))
 from n2m import generated_interfaces as abi
 from interactions_reference import PLAYING, PAUSED, RETRY
-from motion_frames import image
-from endurance import (run, update, expected, check_pixels, terminal, exclusion, first_samples,
+from entities_frames import image
+from endurance import (run, update, expected, check_pixels, terminal, first_samples, Schedule,
                        supervise, LCD, PERIOD, DOT_HZ, ROUTES, ROUTE_PERIODS, SPAWN, PLANS, CYCLE_SECONDS)
 
 ZERO_ROM = bytes(32768)
@@ -143,18 +139,17 @@ class ModelTests(unittest.TestCase):
                 # The player's world box never reaches the patrol minimum.
                 self.assertLessEqual(reference.player.x+128, 240*16)
 
-    def test_exclusion_covers_exactly_the_enemy_for_every_phase(self):
+    def test_enemy_phase_is_compared_as_one_complete_frame(self):
         for route in ROUTES:
-            with self.subTest(route=route):
-                wanted, indices = expected(f'retry-{route}')
-                excluded = exclusion(terminal(route)[0])
-                self.assertEqual(len(indices), 23040-len(excluded))
-                touched = set()
-                for phase in PHASES:
-                    frame = image(terminal(route, enemy=phase)[0])
-                    self.assertEqual(check_pixels(packed(frame), f'retry-{route}'), len(indices))
-                    touched |= {i for i in excluded if frame[i] != wanted[i]}
-                self.assertTrue(touched, 'exclusion must be non-vacuous')
+            for phase in PHASES[::20]:
+                game = terminal(route, enemy=phase)[0]
+                self.assertEqual(check_pixels(packed(image(game)), str(route), [game]), 23040)
+        # A complete current frame rejects even a one-pixel mutation; no patrol mask.
+        game = terminal(33)[0]
+        data = bytearray(packed(image(game)))
+        data[120*40+35] ^= 1
+        with self.assertRaisesRegex(AssertionError, 'ENDURANCE_PIXELS'):
+            check_pixels(data, 'retry-33', [game])
 
     def test_spawn_samples_are_phase_independent_and_complete(self):
         for sample, mode in (('title', 0), ('play', PLAYING), ('paused', PAUSED)):
