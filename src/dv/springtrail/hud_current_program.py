@@ -66,6 +66,9 @@ def build(root,destination,short=False,part='a'):
         obj=assemble(path,destination,root/'src/sw/generated/interfaces.inc',assets)
         layout=json.loads((source/'layout.json').read_text())
         layout['sections']=[dict(row,unit='program.asm') for row in layout['sections']]
+        # Fixture-only code uses the free1KiB tail; game section addresses stay fixed.
+        for row in layout['sections']:
+            if row['section']=='code':row.update(address=0x7c00,region='ROM1')
         linked=link([('program.asm',obj)],layout,dict(unit='program.asm',symbol='Start'))
         image=package(linked,'HUD CURRENT',1);(destination/'program.gb').write_bytes(image)
         record=dict(sha256=hashlib.sha256(image).hexdigest(),names=[c['name'] for c in selected],
@@ -76,4 +79,3 @@ def build(root,destination,short=False,part='a'):
         (destination/'hud-current-listing.json').write_text(json.dumps(linked['listing'],indent=2)+'\n')
         return image
     finally:sys.path[:]=prior
-
