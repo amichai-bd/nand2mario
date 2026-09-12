@@ -982,6 +982,9 @@ both its own way:
   must close its handle before the unlink, so a reclaimer stalled for the
   writer's whole run can move the closed file in that instant; the writer then
   waits briefly (at most 630 ms) for its own pid to return before unlinking.
+  If the wait expires and the put-back lands later, `.lock` records the
+  exited writer's pid and the next writer reclaims it under the dead-pid
+  policy, with the notice; no second holder is possible either way.
 - POSIX: nothing denies a rename or unlink, so the writer also holds an
   advisory `flock` on the lock for the workspace's life, and nothing is ever
   renamed. A reclaimer opens the lock, must take the flock without waiting,

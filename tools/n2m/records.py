@@ -185,7 +185,9 @@ def release_held_lock(fd, lock):
             return  # another writer's fresh lock holds the tag now
         time.sleep(.01 * 2 ** attempt)
     # Still missing: a third writer took the tag and the moved file stays a
-    # sibling recording this pid, swept by a later writer once it is dead.
+    # sibling recording this pid, swept by a later writer once it is dead;
+    # or the put-back lands after this bound and leaves a lock recording
+    # this exited pid, which the next writer reclaims with the notice.
 
 
 def lock_owner(lock):
