@@ -103,8 +103,8 @@ The reachable visible preparation below takes at most65652 of65664 dots.
 These are source bounds, not inferred from the largest observed test case.
 Component costs include RET and exclude each outer CALL; Main includes all
 five outer CALLs. Other is HUD388 + Progress640 + STAT512 + Main256, or320
-for title/reset transitions. Keep the12-dot conservative margin when changing
-source paths, state reachability, stage geometry or approved piece positions.
+for title/reset transitions. Requalify this bound when changing source paths, state reachability, stage
+geometry or approved piece positions.
 
 | Reachable profile | Update | Scene | Map | Other | Total | Margin |
 |---|---:|---:|---:|---:|---:|---:|
@@ -147,7 +147,7 @@ For actual carriers, successful carry aligns feet with the current platform. Sub
 
 
 The source locators are `src/sw/springtrail/entities.asm` (carry/support/landing),
-`movement.asm` and `collision.asm` (StepPlayer and cell walks), `interactions.asm`
+`movement.asm` (StepPlayer and cell walks), `blocks.asm` (CellSolid), `interactions.asm`
 (contacts), `blocks.asm` (grant and dirty-column ownership), `progress.asm`
 (stage/reset), `scene.asm` and `courier.asm` (composition and tail), and
 `main.asm`, `hud.asm`, `map_restore.asm`, `stream.asm` (publication/preparation).
