@@ -115,6 +115,38 @@ class DecodeTests(unittest.TestCase):
         with self.assertRaisesRegex(state.StateFailure, 'STATE_MALFORMED Camera'):
             state.decode(self.binding, torn)
 
+    def test_the_camera_check_is_blind_wherever_the_clamp_is_active(self):
+        """Pin the limit, so it is never claimed to be the tear protection.
+
+        The camera is clamped, so near the start and at the far right it does
+        not move with the player and a partly written record passes unseen.
+        The paused acquisition boundary is what prevents tears; this check only
+        catches the cases where the camera happens to move.
+        """
+        worlds = support.clamped_states()
+        clamped = worlds['clamped']
+        after = support.model_update(clamped, 33)
+        self.assertNotEqual(clamped.player.x, after.player.x)
+        self.assertEqual(clamped.player.camera, after.player.camera, 'clamp must be active')
+        blind = state.decode(self.binding, support.chunks(self.binding, after, torn=clamped))
+        # Accepted: the record is torn and nothing in the field values says so.
+        self.assertEqual(blind['player']['x'], after.player.x)
+        self.assertEqual(blind['enemy']['x'], clamped.enemy_x)
+        self.assertNotEqual(blind['enemy']['x'], after.enemy_x)
+
+        moving = worlds['moving']
+        moved = support.model_update(moving, 33)
+        self.assertNotEqual(moving.player.camera, moved.player.camera)
+        with self.assertRaisesRegex(state.StateFailure, 'STATE_MALFORMED Camera'):
+            state.decode(self.binding, support.chunks(self.binding, moved, torn=moving))
+
+    def test_duplicate_ranges_are_refused_rather_than_resolved(self):
+        _name, world = support.states()[3]
+        complete = support.chunks(self.binding, world)
+        other = support.chunks(self.binding, support.states()[1][1])
+        with self.assertRaisesRegex(state.StateFailure, 'STATE_INCOMPLETE duplicate'):
+            state.decode(self.binding, complete + other[:1])
+
     def test_values_outside_the_game_contract_are_refused(self):
         _name, world = support.states()[3]
         faults = {'GameMode': 9, 'EnemyVX': 3, 'Grounded': 2, 'JumpState': 7,

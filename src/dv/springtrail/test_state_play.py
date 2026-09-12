@@ -75,6 +75,50 @@ class BoundaryTests(Harness):
         with self.assertRaisesRegex(play_module.PlayFailure, 'STATE_RUN_STOPPED'):
             play_module.observe(client, self.binding)
 
+    def test_a_settling_advance_is_accounted_for_instead_of_aborting(self):
+        """Reaching the window may cost dots; that is reported, not a drift."""
+        endpoint, client = self.loaded(defect='pending-once')
+        first, before = play_module.observe(client, self.binding)
+        self.assertEqual(before['advanced'] % play_module.LINE, 0)
+        play_module._dots(client, play_module.PERIOD)
+        second, after = play_module.observe(client, self.binding)
+        self.assertEqual(after['advanced'], play_module.LINE)
+        self.assertEqual(after['dot'] - before['dot'],
+                         play_module.PERIOD + after['advanced'])
+        self.assertNotEqual(after['ly'], before['ly'])
+        # The phase moved, but by a declared amount, so this is not a drift.
+        play_module._check_advance((first, before), (second, after), 1, 0)
+
+    def test_a_whole_run_survives_repeated_settling_advances(self):
+        _endpoint, client = self.endpoint(defect='pending-once')
+        result = play_module.play(client, self.image, self.binding,
+                                  budget=dict(BUDGET, frames=120, actions=120))
+        self.assertIn(result['reason'], ('STATE_BUDGET_FRAMES', 'STATE_BUDGET_ACTIONS'))
+        self.assertGreater(len(result['actions']), 100)
+
+    def test_an_aligned_pair_matches_the_state_to_its_own_frame(self):
+        endpoint, client = self.loaded()
+        client.write_host(abi.HOST_REG_INPUT, play_module.START)
+        for _ in range(3):
+            play_module._dots(client, play_module.PERIOD)
+        pair, packed = play_module.aligned_pair(client, self.binding)
+        self.assertEqual(pair['next_provenance']['dot'] - pair['provenance']['dot'],
+                         play_module.PERIOD)
+        self.assertEqual(packed, pack_pixels(state.render(pair['observation'])))
+
+    def test_checkpoints_are_claimed_once_and_cover_the_comparison_states(self):
+        seen = []
+        checkpoints = play_module.Checkpoints()
+        for _name, world in support.states():
+            observation = state.decode(self.binding, support.chunks(self.binding, world))
+            found = checkpoints.classify(observation)
+            if found:
+                seen.append(found)
+        self.assertEqual(len(seen), len(set(seen)), 'each checkpoint is claimed once')
+        self.assertTrue(set(seen) <= set(play_module.Checkpoints.NAMES))
+        self.assertIn('title', seen)
+        self.assertEqual(set(checkpoints.missing()) & set(seen), set())
+
     def test_the_snapshot_at_the_boundary_is_one_frame_behind_the_state(self):
         """The publication delay the provenance declares, proved on the wire."""
         endpoint, client = self.loaded()

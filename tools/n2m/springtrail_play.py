@@ -62,23 +62,35 @@ def _dots(client, count):
     return result['dot']
 
 
-def observe(client, binding, *, attempts=6, record=None):
+def observe(client, binding, *, attempts=8, record=None, clock=time.perf_counter):
     """One coherent observation at the VBlank boundary plus its provenance.
 
     The core must already be paused. At most `attempts` bounded advances are
-    made to reach the window; each is an exact RUN_DOTS count, so the
-    returned dot is the endpoint's own completion dot, never a host estimate.
+    made to reach the window; each is an exact RUN_DOTS count, so the returned
+    dot is the endpoint's own completion dot, never a host estimate. The
+    provenance reports how many dots the settling advances consumed, so the
+    caller can still account for emulated time exactly.
+
+    Acquisition, transport and decode are timed separately. The figures are
+    whatever the run measured; they are not a contract.
     """
     log = record or (lambda entry: None)
     dot = None
     requests = 0
     transferred = 0
+    advanced = 0
+    boundary_seconds = 0.0
+    read_seconds = 0.0
+    decode_seconds = 0.0
     for _ in range(attempts):
+        started = clock()
         lcd = client.read_lcd_status()
         requests += 1
         if not lcd['lcdc'] & 0x80:
             dot = _dots(client, PERIOD)
             requests += 1
+            advanced += PERIOD
+            boundary_seconds += clock() - started
             log({'event': 'boundary', 'reason': 'lcd-off', 'dots': PERIOD})
             continue
         ly = lcd['ly']
@@ -86,26 +98,43 @@ def observe(client, binding, *, attempts=6, record=None):
             count = ((BOUNDARY_FIRST - ly) % LINES) * LINE
             dot = _dots(client, count)
             requests += 1
+            advanced += count
+            boundary_seconds += clock() - started
             log({'event': 'boundary', 'reason': 'ly', 'ly': ly, 'dots': count})
             continue
+        boundary_seconds += clock() - started
+        started = clock()
         chunks = [(offset, client.peek_range('wram', offset, count)) for offset, count in binding.ranges]
+        read_seconds += clock() - started
         requests += len(chunks)
         transferred += sum(len(data) for _offset, data in chunks)
+        started = clock()
         observation = decode(binding, chunks)
+        decode_seconds += clock() - started
         if observation['frame_pending']:
+            started = clock()
             dot = _dots(client, LINE)
             requests += 1
+            advanced += LINE
+            boundary_seconds += clock() - started
             log({'event': 'boundary', 'reason': 'frame-pending', 'ly': ly, 'dots': LINE})
             continue
+        started = clock()
         if dot is None:
             dot = client.read_host(abi.HOST_REG_DOT_LO) | (client.read_host(abi.HOST_REG_DOT_HI) << 32)
             requests += 2
         epoch = client.read_host(abi.HOST_REG_SNAPSHOT_EPOCH)
         requests += 1
+        boundary_seconds += clock() - started
         provenance = {'dot': dot, 'epoch': epoch, 'ly': ly, 'stat_mode': lcd['mode'],
                       'boundary': 'vblank-complete', 'represents': 'logical',
                       'display_lag_frames': 1, 'requests': requests, 'bytes': transferred,
-                      'decoder': observation['decoder'], 'rom_sha256': observation['rom_sha256']}
+                      'advanced': advanced,
+                      'decoder': observation['decoder'], 'rom_sha256': observation['rom_sha256'],
+                      'timings': {'boundary_seconds': boundary_seconds,
+                                  'read_seconds': read_seconds,
+                                  'decode_seconds': decode_seconds,
+                                  'state_seconds': boundary_seconds + read_seconds + decode_seconds}}
         return observation, provenance
     raise PlayFailure('STATE_BOUNDARY_UNREACHED')
 
@@ -211,6 +240,69 @@ class Strategy:
         return mask, 1, 'lookahead:%s%d' % ('jump ' if jump else '', best_score)
 
 
+def aligned_pair(client, binding, *, record=None):
+    """One observation and the actual frame that was drawn from it.
+
+    The frame completed at a boundary is the one prepared from the previous
+    boundary's state, so this observes, advances exactly one frame, and takes
+    the snapshot there. The returned snapshot is the actual-pixel counterpart
+    of the returned observation, which is what an aligned comparison needs.
+    """
+    observation, provenance = observe(client, binding, record=record)
+    _dots(client, PERIOD)
+    after, after_provenance = observe(client, binding, record=record)
+    _check_advance((observation, provenance), (after, after_provenance), 1,
+                   observation['buttons']['sampled'])
+    metadata, packed = client.snapshot()
+    return {'observation': observation, 'provenance': provenance,
+            'next_provenance': after_provenance, 'metadata': metadata}, packed
+
+
+class Checkpoints:
+    """Name the first observation that is an example of each comparison state.
+
+    The five states the aligned comparison covers: the title and start, a jump,
+    the camera scrolling, a dynamic object or power change, and completion.
+    Each is claimed once, by the first observation that matches it.
+    """
+    NAMES = ('title', 'completion', 'dynamic', 'camera', 'movement')
+    DYNAMIC = ('blocks', 'power', 'items')
+
+    def __init__(self):
+        self.seen = []
+        self.previous = None
+
+    @staticmethod
+    def _changed(before, after):
+        if before['enemy']['alive'] != after['enemy']['alive']:
+            return True
+        return any(before[field] != after[field] for field in Checkpoints.DYNAMIC)
+
+    def classify(self, observation):
+        previous, self.previous = self.previous, observation
+        if observation['mode_name'] == 'TITLE':
+            name = 'title'
+        elif observation['mode_name'] == 'WON':
+            name = 'completion'
+        elif previous is None:
+            return None
+        elif self._changed(previous, observation):
+            name = 'dynamic'
+        elif observation['camera'] != previous['camera']:
+            name = 'camera'
+        elif observation['player']['jump']:
+            name = 'movement'
+        else:
+            return None
+        if name in self.seen:
+            return None
+        self.seen.append(name)
+        return name
+
+    def missing(self):
+        return [name for name in self.NAMES if name not in self.seen]
+
+
 def apply_mask(client, mask):
     if type(mask) is not int or not 0 <= mask <= 255:
         raise PlayFailure('STATE_MASK')
@@ -220,13 +312,18 @@ def apply_mask(client, mask):
 
 
 def play(client, image, binding, strategy=None, *, budget=None, record=None, retain=None,
-         require_title=True, clock=time.monotonic):
+         capture=None, require_title=True, clock=time.monotonic):
     """Run from RESET and the title to WON within the declared budget.
 
     Returns a result record; a failed attempt is reported, never retried
     beyond `budget['retries']`. On certain completion the input is released
     and the core left paused; after an uncertain completion no further traffic
     is sent.
+
+    `capture(client, previous, previous_provenance, current, current_provenance)`
+    runs at each boundary after the advance is checked. It is how a caller
+    takes the aligned actual frame: the snapshot available at this boundary is
+    the one drawn from `previous`.
     """
     limits = dict(BUDGET, **(budget or {}))
     strategy = strategy or Strategy()
@@ -262,7 +359,9 @@ def play(client, image, binding, strategy=None, *, budget=None, record=None, ret
                 raise PlayFailure('STATE_BUDGET_FRAMES')
             if clock() - started > limits['wall_seconds']:
                 raise PlayFailure('STATE_BUDGET_WALL')
+            loop_started = clock()
             mask, frames, reason = strategy.choose(observation)
+            decided = clock()
             if type(frames) is not int or not 1 <= frames <= MAX_STEP_FRAMES:
                 raise PlayFailure('STATE_STEP')
             if result['frames'] + frames > limits['frames']:
@@ -275,18 +374,32 @@ def play(client, image, binding, strategy=None, *, budget=None, record=None, ret
             result['observations'] += 1
             result['frames'] += frames
             _check_advance(before, (observation, provenance), frames, mask)
+            if capture is not None:
+                capture(client, before[0], before[1], observation, provenance)
             step = len(result['actions'])
             result['actions'].append({
                 'step': step, 'mask': mask, 'frames': frames, 'reason': reason,
                 'dot': provenance['dot'], 'timer': observation['timer'],
                 'mode': observation['mode_name'], 'x': observation['player']['pixel_x'],
-                'y': observation['player']['pixel_y'], 'enemy_x': observation['enemy']['pixel_x']})
+                'y': observation['player']['pixel_y'], 'enemy_x': observation['enemy']['pixel_x'],
+                'loop_seconds': round(clock() - loop_started, 6),
+                'decide_seconds': round(decided - loop_started, 6),
+                'state_seconds': round(provenance['timings']['state_seconds'], 6)})
             keep(step + 1, observation, provenance)
             if observation['player']['x'] > best_x:
                 best_x, progress_frame = observation['player']['x'], result['frames']
             elif result['frames'] - progress_frame > limits['no_progress_frames']:
                 raise PlayFailure('STATE_NO_PROGRESS')
             if observation['mode'] == WON:
+                if capture is not None:
+                    # The frame drawn from the winning state completes at the
+                    # next boundary, so reach it before the run ends.
+                    final = observation, provenance
+                    _dots(client, PERIOD)
+                    observation, provenance = observe(client, binding, record=log)
+                    result['frames'] += 1
+                    _check_advance(final, (observation, provenance), 1, mask)
+                    capture(client, final[0], final[1], observation, provenance)
                 result['status'] = 'PASS'
                 break
             if observation['mode'] == RETRY and not observation['buttons']['sampled'] & START:
@@ -322,15 +435,21 @@ def play(client, image, binding, strategy=None, *, budget=None, record=None, ret
 
 def _check_advance(before, after, frames, mask):
     (observation, provenance), (observation2, provenance2) = before, after
-    if provenance2['ly'] != provenance['ly']:
+    settled = provenance2.get('advanced', 0)
+    # Without a settling advance the phase must be identical. With one, the
+    # reader moved the core deliberately and reports exactly how far, so the
+    # dot check still holds the run to an exact emulated time.
+    if not settled and provenance2['ly'] != provenance['ly']:
         raise PlayFailure('STATE_PHASE_DRIFT')
-    if provenance2['dot'] - provenance['dot'] != frames * PERIOD:
+    if provenance2['dot'] - provenance['dot'] != frames * PERIOD + settled:
         raise PlayFailure('STATE_DOT_DRIFT')
     if provenance2['epoch'] != provenance['epoch']:
         raise PlayFailure('STATE_EPOCH_CHANGED')
+    updates = frames + (settled + PERIOD - 1) // PERIOD
     delta = (observation2['timer'] - observation['timer']) & 0xFFFF
-    if delta > frames:
+    if delta > updates:
         raise PlayFailure('STATE_TIMER_DRIFT')
     steady = observation['mode'] == PLAYING and observation2['mode'] == PLAYING
-    if steady and not (observation['buttons']['sampled'] | mask) & START and delta != frames:
+    if (steady and not settled
+            and not (observation['buttons']['sampled'] | mask) & START and delta != frames):
         raise PlayFailure('STATE_TIMER_DRIFT')

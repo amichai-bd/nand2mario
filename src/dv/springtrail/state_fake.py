@@ -111,6 +111,7 @@ class Game:
         self.updating_from = None     # set while an update is in progress
         self.updates = 0
         self.consumes = 0
+        self.pending_frame = None
 
     # ------------------------------------------------------------- timeline
     def _events(self, start, end):
@@ -178,6 +179,11 @@ class Game:
     def wram(self):
         pending = self.frame_pending
         if self.defect == 'stuck-pending':
+            pending = 1
+        elif self.defect == 'pending-once' and self.pending_frame != self.frame:
+            # Read once per frame before the consume: a settling advance, not a
+            # stuck flag. The reader must retry and account for the dots.
+            self.pending_frame = self.frame
             pending = 1
         return wram_image(self.world, self.sampled, self.new_level, pending,
                           self.published_camera, torn=self.updating_from)

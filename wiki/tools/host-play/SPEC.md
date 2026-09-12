@@ -88,13 +88,21 @@ against the snapshot taken at the next.
 
 ### Refusal rules
 
-The decoder returns a complete observation or an error. It checks each field
-against the game's own contract and the cross-field invariants the rules
-guarantee, including the camera's exact relation to the player position, which
-is what a partly written record breaks. A missing range, a short range, a range
-at an unexpected offset, a value outside the contract or an unqualified image
-are refused. No field is ever filled from an earlier action, a previous
-observation or a model prediction.
+The decoder returns a complete observation or an error. A missing range, a
+short range, a range at an unexpected offset, two replies for the same range,
+a value outside the game's contract or an unqualified image are refused. No
+field is ever filled from an earlier action, a previous observation or a model
+prediction.
+
+The field checks include the camera's relation to the player position. That is
+a cheap secondary check, not the protection against a partly written record:
+the camera is `clamp(x/16 - 72, 0, 608)`, so wherever the clamp is active — the
+first 72 pixels and the right end of the level, which includes the title and
+the completion states — the camera does not move with the player and a torn
+record passes it unseen. **The paused acquisition boundary above is what
+prevents tears.** The check is kept because it costs nothing and catches the
+scrolling cases, and its blind case is pinned by a test so it is not mistaken
+for a guarantee.
 
 ### Autonomous play
 
@@ -126,23 +134,45 @@ completion it releases the input and leaves the core paused; after an uncertain
 completion it sends nothing further, and says so rather than claiming cleanup
 succeeded.
 
+### Comparing against actual pixels, and measuring
+
+An observation and the frame drawn from it are one boundary apart, so a
+comparison has to fetch them that way round. `observe --snapshot` observes,
+advances exactly one frame and takes the snapshot there, so the frame it
+returns is the actual-pixel counterpart of the observation beside it.
+`compare` does the same at each of five checkpoints while the autonomous player
+runs: the title and start, a jump, the camera scrolling, a dynamic object or
+power change, and completion. Each checkpoint is claimed by the first
+observation that is an example of it. All 23040 shades are compared; a
+disagreement, or a checkpoint the run never reached, fails the comparison and
+is reported with the first differing pixel. No expected pixel is taken from the
+dump, and no framebuffer byte is used to build the state image.
+
+Both paths report what they cost: transferred bytes and request counts, the
+boundary acquisition, the UART read, the state decode, the image render, the
+total image availability and the complete action-loop time, summarised as a
+median and a range with the sample count. **Every figure is whatever that run
+measured on that endpoint; none is a contract, and figures measured against the
+host fixtures are not board latency.**
+
 ### Evidence
 
 A fake endpoint serves state from the reference models over the real wire
-codecs, so the reader, decoder, renderer and strategy run without a simulator or
-a board. Its fixtures are produced by the model itself, so every fixture state
-is one the ROM can hold. The
-[state checks](../../../src/dv/springtrail/test_state_reader.py) cover
-binding, decoding, refusal and reconstruction; the
+codecs, so the reader, decoder, renderer, strategy and comparison run without a
+simulator or a board. Its fixtures are produced by the model itself, so every
+fixture state is one the ROM can hold. The
+[state checks](../../../src/dv/springtrail/test_state_reader.py) cover binding,
+decoding, refusal, the camera check's blind case and reconstruction; the
 [play checks](../../../src/dv/springtrail/test_state_play.py) cover the
-boundary, the publication delay, a complete WON run, adaptation to a changed
-start time and to a changed enemy phase, and the input, no-progress, budget and
-uncertain-session rules; the
-[entrypoint checks](../../../src/dv/springtrail/test_state_player.py) cover
-the retained artifacts.
+boundary, settling advances, the publication delay, the aligned pair, the
+checkpoints, a complete WON run, adaptation to a changed start time and to a
+changed enemy phase, and the input, no-progress, budget and uncertain-session
+rules; the
+[entrypoint checks](../../../src/dv/springtrail/test_state_player.py) cover the
+retained artifacts, the reported measurements, a full five-checkpoint
+comparison and a deliberate disagreement.
 
-Board execution, the aligned comparison against real snapshots and every
-latency and data-volume measurement are not part of this evidence and remain
-open under [#472](https://github.com/amichai-bd/nand2mario/issues/472). No
-timing figure for this path has been measured; the payload-only arithmetic in
-the [host SPEC](../n2m/host/SPEC.md) is not a result for it.
+Board execution is not part of this evidence and remains open under
+[#472](https://github.com/amichai-bd/nand2mario/issues/472). No timing figure
+for this path has been measured on hardware; the payload-only arithmetic in the
+[host SPEC](../n2m/host/SPEC.md) is not a result for it.

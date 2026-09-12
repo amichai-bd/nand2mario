@@ -34,8 +34,11 @@ python tools/springtrail_player.py observe --tag <tag> \
 `observe` pauses at the coherent boundary, reads the bound ranges, writes
 `observation-0000.json` and a reconstructed `observation-0000.png` under
 `workdir/builds/<tag>/springtrail-player/observe/`, and leaves the core paused.
-Add `--snapshot` to download one actual frame beside it for comparison; the
-result labels it `previous-boundary`, because that is the state it shows.
+
+Add `--snapshot` to fetch the actual frame that matches the observation. It
+advances exactly one frame first, because that is where the frame drawn from
+the observed state completes, then compares all 23040 shades and reports the
+first difference if there is one.
 
 The JSON holds the structured state an agent reads:
 
@@ -90,11 +93,30 @@ A language model does not need a tool call per frame: the loop is ordinary
 Python, and the retained observations and action records are what an agent reads
 to supervise it or to take over.
 
+## Compare the two views
+
+```text
+python tools/springtrail_player.py compare --tag <tag> \
+    --package workdir/builds/<tag>/sw/build/springtrail/runs/<attempt>/result.json
+```
+
+`compare` plays the level and, at the title and start, a jump, the camera
+scrolling, a dynamic object or power change, and completion, captures the
+aligned actual frame and compares every shade against the reconstruction. It
+writes `comparisons.json`, both images per checkpoint, and `measurements.json`
+with the median and range of each measured figure and its sample count. A
+disagreement, or a checkpoint the run never reached, fails the run and names
+the first differing pixel.
+
 ## Limits
 
 Physical execution needs the repository's hardware authorization, the verified
-setup and serialized board access. Until that runs, no latency or data-volume
-figure for this path has been measured; the payload-only arithmetic in the host
-SPEC is arithmetic, not a result. The decoder is bound to the exact qualified
-image: a different build is refused rather than guessed at, and multi-level
-progression is out of scope.
+setup and serialized board access. Until that runs, no latency figure for this
+path has been measured on hardware: the numbers a run prints are what that run
+measured, and the payload-only arithmetic in the host SPEC is arithmetic, not a
+result. The decoder is bound to the exact qualified image: a different build is
+refused rather than guessed at, and multi-level progression is out of scope.
+
+The camera check the decoder applies is a secondary one. It is blind wherever
+the camera clamp is active, which includes the title and the completion states;
+the paused boundary is what keeps a record from being read half-written.

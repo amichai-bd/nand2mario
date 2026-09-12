@@ -139,7 +139,12 @@ def _u(data, signed):
 
 def raw_fields(binding, chunks):
     """{symbol: integer} from the exact ranges the binding asked for."""
-    got = {offset: bytes(data) for offset, data in chunks}
+    got = {}
+    for offset, data in chunks:
+        if offset in got:
+            # Two replies for one range cannot both be the observation.
+            raise StateFailure('STATE_INCOMPLETE duplicate range')
+        got[offset] = bytes(data)
     if sorted(got) != sorted(offset for offset, _count in binding.ranges):
         raise StateFailure('STATE_INCOMPLETE ranges')
     for offset, count in binding.ranges:
@@ -171,6 +176,11 @@ def decode(binding, chunks):
     _check(-4 * UNIT <= v['VelocityY'] <= 4 * UNIT, 'VelocityY')
     for flag in ('Grounded', 'Fell', 'NewLevel', 'FramePending', 'EnemyAlive', 'Crouch'):
         _check(v[flag] in (0, 1), flag)
+    # A cheap secondary check, not the protection against a partly written
+    # record: the camera is clamped, so wherever the clamp is active (the first
+    # 72 pixels and the right end) a torn record passes it unseen. The paused
+    # acquisition boundary is what actually prevents tears; see
+    # wiki/tools/host-play/SPEC.md#springtrail-state-reconstruction.
     _check(v['Camera'] == max(0, min(608, v['PlayerX'] // UNIT - 72)), 'Camera')
     _check(240 * UNIT <= v['EnemyX'] <= 296 * UNIT, 'EnemyX')
     _check(v['EnemyVX'] in (8, -8), 'EnemyVX')
@@ -219,24 +229,35 @@ def decode(binding, chunks):
     }
 
 
+_LOADED = {}
+
+
 def _import(*names):
-    """Import Springtrail models by their own top-level names.
+    """Import Springtrail models without leaving their generic names behind.
 
     The models import each other by bare name, so the directory has to be on
-    the path while they load. It is removed again afterwards: these names are
-    generic, and `src/dv/v05` owns a different `reference` module. Keep the
-    rendering import out of callers that only need game rules, so a decoder or
-    strategy never loads the artwork modules or their `reference` dependency.
+    the path while they load, and they land in `sys.modules` under names like
+    `reference`, which `src/dv/v05` also owns. Both the path entry and the
+    names the import added are restored afterwards, and the module objects are
+    cached here instead; they keep working because their own globals hold
+    direct references. This follows the same structural guard as
+    `tools/n2m/tests/stackdrop_support.py`.
     """
-    folder = str(ROOT / 'src/dv/springtrail')
-    added = folder not in sys.path
-    if added:
+    missing = [name for name in names if name not in _LOADED]
+    if missing:
+        folder = str(ROOT / 'src/dv/springtrail')
+        before = dict(sys.modules)
+        path = list(sys.path)
         sys.path.insert(0, folder)
-    try:
-        return tuple(__import__(name) for name in names)
-    finally:
-        if added and folder in sys.path:
-            sys.path.remove(folder)
+        try:
+            for name in missing:
+                _LOADED[name] = __import__(name)
+        finally:
+            for name in set(sys.modules) - set(before):
+                del sys.modules[name]
+            sys.modules.update(before)
+            sys.path[:] = path
+    return tuple(_LOADED[name] for name in names)
 
 
 def _models():
