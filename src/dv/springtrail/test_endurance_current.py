@@ -32,6 +32,9 @@ class Lifecycle(unittest.TestCase):
             world = update(world, buttons)
             self.assertEqual(tuple(cpu.memory[0xc097:0xc09d]), row_tiles(world))
             self.assertEqual(cpu.memory[0xc000], world.mode)
+            self.assertEqual(tuple(cpu.memory[0xc090:0xc097]),
+                             (world.lives, world.pending, world.timer_sub, world.timer_low,
+                              world.timer_high, world.expiring, world.stage))
             return tuple(cpu.memory[0xc097:0xc09d])
 
         world = World()
