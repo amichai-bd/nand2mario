@@ -38,6 +38,12 @@ class EntityRenderer(unittest.TestCase):
         self.assertEqual(list(changed.shadow[102:112:4]),[172,173,170])
         self.assertNotEqual(normal.images[1],changed.images[1])
 
+    def test_uploaded_unused_legacy_tile_is_not_raster_blank(self):
+        self.assertEqual(expected_tiles()[16:24],bytes([0x38,0x38,0x40,0x40,0x40,0x40,0x38,0x38]))
+        check=complete_short();check.tiles[16]=(0x8010,0)
+        with self.assertRaisesRegex(AssertionError,'ENTITY_TILES'):
+            check.finish(2000,expected_tiles())
+
     def test_shadow_tile_mutation_fails_unchanged_oracle(self):
         check=Check()
         for a,v in zip(ADDRESSES,state_bytes(SCENES['normal'])):write(check,1,a,v)

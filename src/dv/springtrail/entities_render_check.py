@@ -1,4 +1,6 @@
 """Independent fixed-scene pixels and complete public publication evidence."""
+import json
+from pathlib import Path
 from hud_game_reference import Check as BaseCheck, PERIOD
 from hud_reference import column, hud_tiles, progress_tiles, PROGRESS_ROW
 from entities_frames import scene, image, tiles
@@ -8,7 +10,12 @@ from entities_cases import ADDRESSES, state_bytes
 
 def expected_tiles():
     out=bytearray()
-    for tile in tiles():
+    bank=tiles()
+    # The raster bank omits unused legacy tiles; the upload still loads all42.
+    source=Path(__file__).resolve().parents[3]/"src/sw/springtrail/tiles.json"
+    pixels=json.loads(source.read_text())["pixels"]
+    bank[:42]=[[row[t*8:(t+1)*8] for row in pixels] for t in range(42)]
+    for tile in bank:
         for row in tile:
             out.extend((sum((v&1)<<(7-x) for x,v in enumerate(row)),
                         sum(((v>>1)&1)<<(7-x) for x,v in enumerate(row))))
