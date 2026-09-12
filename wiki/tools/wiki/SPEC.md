@@ -138,8 +138,7 @@ Dependency versions, hashes, and licenses are recorded in
 
 PRs run this read-only build and never deploy. Merges to `main` automatically
 publish the artifact with standing authorization. Pages uses separate build and
-deploy jobs, the `github-pages` environment, and serialized deployment. The source
-repository is private; its Pages site is public.
+deploy jobs, the `github-pages` environment, and serialized deployment.
 
 The build/deploy split follows process ideas from `frog-bui`; no code was copied.
 See [GitHub Pages custom workflows](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages).

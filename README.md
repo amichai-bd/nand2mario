@@ -225,5 +225,4 @@ Commercial ROMs, boot ROMs, saves, credentials, and copied commercial game
 assets must not be committed. External code, tests, models, and tools are pinned
 and tracked under the repository's provenance rules.
 
-The repository is public, and documentation is published from `main` through
-GitHub Pages.
+Documentation is published from `main` through GitHub Pages.

@@ -47,8 +47,7 @@ proof that publication succeeded. See
 
 ## Hosted and local checks
 
-The repository is private, so hosted runner minutes are billed. Only two
-workflows run automatically:
+Hosted runner minutes are billed. Only two workflows run automatically:
 
 - `PR policy` on every pull request event: metadata only, a few seconds, no
   build or test.
