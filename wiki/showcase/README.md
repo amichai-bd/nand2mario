@@ -188,7 +188,7 @@ one recorded [frame proof](../../src/dv/springtrail/FRAME_PROOFS.md) session,
 not a host rendering; `game-start.svg` above is the same game drawn by the
 reference model, and this loop is the board playing it.
 
-Captured in one session on PENDING-DATE, wall PENDING-WALL s, on wire build
+Captured in one session on 2026-09-12, wall 106.8 s, on wire build
 `87d5f0280a2afad8be6b85dc601141cc` (ABI 1) over COM3, driven by
 [src/dv/springtrail/frame_proofs.py](../../src/dv/springtrail/frame_proofs.py):
 
@@ -198,7 +198,9 @@ python src/dv/springtrail/frame_proofs.py full --showcase --uart-port <verified-
 
 The launcher built image `35aae757bde0ec9a…` from current sources, derived its
 startup anchor 167840 and refused any other bytes; the session began and ended
-paused, `INPUT` 0, UART source, sequence certain. `--showcase` changes nothing
+paused, `INPUT` 0, UART source, sequence certain, epoch 12, and ended at dot
+44202384 with 2266893 retirements after all 627 checkpoints. Every frame
+completed 251 to 274 dots into row 143 of its own frame. `--showcase` changes nothing
 about the proof: the same frozen script, the same 627 checkpoints reached with
 exact `RUN_DOTS`, the same inputs at the same dots and the same ten proof
 captures with the same CRC32s as an unsampled `full` run (the host test
@@ -214,12 +216,24 @@ WON, the Start restart, the run into the first gap and RETRY.
 
 | Sample | k | seq | dot | CRC32 | Content |
 |---|---|---|---|---|---|
-| PENDING-TABLE | | | | | |
+| `title` | 0 | 1 | 303523 | `9b162de2` | Title, no input; the `title` proof capture |
+| `spawn` | 3 | 4 | 514195 | `2a877964` | First world frame after Start+B+Right; the `spawn` capture |
+| `showcase-0012` .. `showcase-0092` | 12 .. 92 | 13 .. 93 | 1146211 .. 6764136 | `107f87a9`, `fa3d72dd`, `5bd39f8e`, `18129d7a`, `0acaae1d`, `46c05fcb`, `f0674bbf`, `2f3796bf`, `1f05135e`, `441d2942`, `89d69abe` | The run to the first gap, eleven frames eight VBlanks apart; the camera starts following at k 36, the `first-camera` capture |
+| `showcase-0100` .. `showcase-0144` | 100 .. 144 | 101 .. 145 | 7325924 .. 10415782 | `f05ac144`, `c3b61ec5`, `4c5b276d`, `fcbb5755`, `3c856c3c`, `7813ea2c`, `7fd5ab0e`, `41b1cc62`, `2b20096f`, `cb55710b`, `4f7d591c`, `319375ef` | The held-A jump over the first gap, twelve frames four VBlanks apart: launch at 100, apex y 1200 at 120 and 124, y 1728 again at 144 |
+| `showcase-0151` .. `showcase-0166` | 151, 156, 161, 166 | 152 .. 167 | 10907353 .. 11960711 | `239ba307`, `8b56942c`, `0b22e6bb`, `2ff4d5c2` | Landed at 151; the held-A jump over the patrol |
+| `scroll-wrap` | 206 | 207 | 14769667 | `1ac1a983` | Camera 256, the ring wrap; the item block in view; the `scroll-wrap` capture |
+| `showcase-0232` .. `showcase-0256` | 232, 240, 248, 256 | 233 .. 257 | 16595498 .. 18280870 | `da77c7e9`, `a6336df4`, `6d7cadb8`, `99d4aad2` | The one-VBlank A tap over the second gap, low under the brick, and the landing at x 399 |
+| `showcase-0359` .. `showcase-0397` | 359, 367, 377, 387, 397 | 360 .. 398 | 25513945 .. 28182458 | `dc79af23`, `cebe4cff`, `1704bc7d`, `b30b089c`, `c10978bf` | The held-A jump over the third gap; apex y 1200 at 377 |
+| `camera-clamp` .. `showcase-0465` | 441, 457, 465 | 442 .. 466 | 31272307 .. 32957683 | `47fd650a`, `33eb4882`, `19f2e574` | Camera clamped at 608 (the `camera-clamp` capture) and the run to the goal |
+| `won` | 473 | 474 | 33519475 | `fdaaedff` | WON at the goal, score 0; the `won` capture |
+| `won-restart` | 493 | 494 | 34923955 | `e1736456` | Start restart, 19 updates later, back at spawn; the `won-restart` capture |
+| `showcase-0594` .. `showcase-0601` | 594, 598, 601 | 595 .. 602 | 42016583 .. 42508170 | `d29a884e`, `b9d15a88`, `410ded79` | B+Right from spawn into the first gap: at the edge, then falling (y 1920, 2112) |
+| `retry` | 604 | 605 | 42718822 | `60258ecc` | RETRY after the fall, y 2304; the `retry` capture and the reduced-motion still |
 
 `k` is the game index: frame `k+1` displays the model state after `k` sampled
 updates, and the snapshot is taken at checkpoint `C(k+2)`. The mask column of
 the loop is the JOYP mask that produced the shown state. Applied inputs, at
-their VBlanks: PENDING-INPUTS; every reply dot equalled its checkpoint.
+their VBlanks: 0 before the load's first checkpoint, 161 at VBlank 2, 33 at 3, 49 at 99, 33 at 111, 49 at 151, 33 at 163, 49 at 227, 33 at 228, 49 at 355, 33 at 367, 128 at 473, 0 at 474, 33 at 494, 128 at 604 and 0 at 605, the frozen script's own masks; every reply dot equalled its checkpoint.
 
 ## Frame archives and encoding
 
@@ -249,8 +263,8 @@ against indexed PNG. On the 28 Libbet frames the rect runs cost
 3,623,166 bytes against 28,896
 for indexed PNG, 125
 times smaller, because a Libbet frame fills the screen and the rect form pays
-per horizontal run; on the 48 Springtrail frames, sparser but scrolling, PENDING-RUNS
-bytes against PENDING-PNG, PENDING-RATIO times smaller. The rect form exists because the
+per horizontal run; on the 48 Springtrail frames, sparser but scrolling, 352,302
+bytes against 25,584, 13 times smaller. The rect form exists because the
 project README sanitizes the loops it embeds; these two are wiki-only, so the
 smaller encoding wins. An inline `data:` URI fetches nothing, so the loops stay
 as self-contained as the rest.
