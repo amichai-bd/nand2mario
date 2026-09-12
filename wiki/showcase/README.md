@@ -20,8 +20,8 @@ Every pixel of every other loop is drawn on the host. The board loop is the
 exception, and it is the only place the wiki shows a frame the FPGA produced.
 Springtrail has no board loop yet: its capture driver pauses the core at
 checkpoints derived from a frozen LCD commit dot that no longer matches the
-image the repository builds, so the run cannot reach its frames. Issue #437
-tracks re-deriving that anchor from source.
+image the repository builds, so the run cannot reach its frames. Issue #440
+tracks the loop; issue #437 tracks re-deriving that anchor from source.
 
 Each file is self-contained: CSS keyframes only, no script, no external
 resource, so GitHub and the wiki decks play them as ordinary images. The authored SVG is
@@ -123,8 +123,8 @@ python src/dv/libbet/play.py showcase --uart-port <verified-port> \
 
 `load` verified all 32768 bytes of the pinned image
 `3607412031c8287c…`. The session began and ended paused, `INPUT` 0,
-`INPUT_SOURCE` 0, `INPUT_EFFECTIVE` 0, sequence certain; the final counters were
-dot 47883868 and 688776 retirements. `RESET`, `RUN`, an 8-second wall-paced wait
+`INPUT_SOURCE` 0, `INPUT_EFFECTIVE` 0, sequence certain; it ended at dot
+47883868 with 688776 retirements. `RESET`, `RUN`, an 8-second wall-paced wait
 and `HALT` reach the title; every later step is exact `RUN_DOTS` of 70224 dots a
 frame, so each sample's sequence and completion dot are reproducible. Each press
 is applied with `INPUT`, held three frames, sampled, then released; the 28
@@ -142,15 +142,41 @@ fade-in, and four eight-frame samples after each of the four directions.
 | `right-held` .. `right+32` | 586 .. 618 | 43140863 .. 45388031 | `215d6acf`, `5a6b2249` | Faces off the floor; the wrong move busts the combo to `0 Combo` |
 | `down-held` .. `down+32` | 621 .. 653 | 45598703 .. 47845871 | `7cb4a859`, `cab1534d` | No roll: the reverse of a one-shade roll is invalid; then the idle animation |
 
-Applied inputs, at their applied dots: Start 128 at 33631192, 0 at 33841864;
-Left 2 at 38055304, 0 at 38265976; Up 4 at 40513144, 0 at 40723816; Right 1 at
-42970984, 0 at 43181656; Down 8 at 45428824, 0 at 45639496. Every hold is
-exactly three 70224-dot frames.
+Applied inputs, at their applied dots: Start 128 at 33628396,
+0 at 33839068; Left 2 at 38052508, 0 at
+38263180; Up 4 at 40510348, 0 at
+40721020; Right 1 at 42968188, 0 at
+43178860; Down 8 at 45426028, 0 at
+45636700. Every hold is exactly three 70224-dot frames.
 
-Thirteen of these samples are also in the
+### Against the earlier record
+
+Sixteen of these 28 samples are also in the
 [recorded play session](../../src/dv/libbet/README.md), which ran on the earlier
-wire build `bb02588d127b72ce6458a07ff1145c57`. Every one matched: the same
-sequence, the same completion dot and the same CRC32, down to the final counters.
+wire build `bb02588d127b72ce6458a07ff1145c57`. All sixteen matched: the same
+sequence, the same completion dot, the same CRC32, with no exception.
+
+The two sessions did not start from the same dot. Only the intro is wall paced:
+`RUN`, an 8-second sleep, then `HALT`, which stops inside a frame rather than on
+its boundary, so the two runs halted 2796 dots apart. Every applied input dot
+here is exactly 2796 lower than the record's, and the final dot is 47883868
+against the record's 47886664, the same 2796. Retirements are equal at 688776.
+
+Frame identity survives that offset intact. A frame completes on the grid the
+reset established, not on the halt, so both runs report the same sequence and
+the same completion dot for every shared sample, and the same pixels. The
+constant offset is the better evidence: an exact-`RUN_DOTS` sequence entered at
+a different point in the same frame lands on the same frames, on the same dots,
+with the same content.
+
+Of the 12 samples with no counterpart in the record, 8 duplicate a frame the
+record already saw: `start+40` and `start+50` carry `edf319b6`, the record's
+`start+60`, and the remaining 6 repeat a settled `c4edbdc5`, `5a6b2249` or
+`7cb4a859`. So 24 of the 28 frames published here carry a CRC32 the earlier
+record also observed, and 4 are new pixels: `start+20` `30d9ac84`, `start+30`
+`efdf8655`, `up+16` `0bad497d` and `up+24` `7c414ab1`, all mid-transition frames
+the coarser record did not sample.
+
 The input behavior the loop shows is the behavior that record derives from the
 game's own source.
 
