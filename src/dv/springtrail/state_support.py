@@ -22,7 +22,7 @@ sys.path[:0] = [str(ROOT / 'tools'), str(Path(__file__).resolve().parent)]
 from n2m import generated_interfaces as abi  # noqa: E402
 from n2m import springtrail_state as state  # noqa: E402
 from state_fake import reachable, wram_image  # noqa: E402
-from power_reference import PLAYING, update as model_update  # noqa: E402
+from progress_reference import PLAYING, update as model_update  # noqa: E402
 
 ROM_SHA256 = next(iter(state.SUPPORTED))
 SOURCE = ROOT / 'src/sw/springtrail'

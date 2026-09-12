@@ -256,5 +256,33 @@ class FailureTests(Harness):
         self.assertEqual(endpoint.requests, [])
 
 
+
+class ProgressionBoundaryTests(Harness):
+    def test_staged_terminal_states_use_real_peeks_and_next_frame_publication(self):
+        from dataclasses import replace
+        from progress_reference import World, enter_stage, TIMEUP, OVER, WON, update
+        for stage in range(3):
+            for mode in (TIMEUP, OVER, WON):
+                start = replace(enter_stage(World(stage=stage), 0), mode=mode, timer=17)
+                endpoint, client = self.loaded(start=start)
+                before, provenance = play_module.observe(client, self.binding)
+                self.assertEqual(before['progress']['stage'], stage)
+                self.assertEqual(before['mode'], mode)
+                self.assertEqual(state.to_world(before), start)
+                self.assertTrue(endpoint.peeks)
+                client.write_host(abi.HOST_REG_INPUT, play_module.START)
+                # The first frame samples Start; the following update consumes it.
+                play_module._dots(client, play_module.PERIOD)
+                play_module._dots(client, play_module.PERIOD)
+                after, after_provenance = play_module.observe(client, self.binding)
+                play_module._check_advance((before, provenance), (after, after_provenance),
+                                           2, play_module.START)
+                expected = update(start, play_module.START)
+                self.assertEqual(state.to_world(after), expected)
+                client.write_host(abi.HOST_REG_INPUT, 0)
+                play_module._dots(client, play_module.PERIOD)
+                play_module.observe(client, self.binding)
+                self.assertEqual(endpoint.game.pixels(), state.render(after))
+
 if __name__ == '__main__':
     unittest.main()

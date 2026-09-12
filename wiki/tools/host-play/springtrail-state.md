@@ -5,7 +5,7 @@ Two ways to see what the board is doing, and what each one proves.
 | | Actual-pixel snapshot | State reconstruction |
 |---|---|---|
 | Command | `python tools/build.py host snapshot` | `python tools/springtrail_player.py observe` |
-| Reads | 5760 packed bytes of the completed source frame | selected WRAM ranges, 132 bytes for the current image |
+| Reads | 5760 packed bytes of the completed source frame | selected WRAM ranges, 151 bytes for the current image |
 | Proves | what the PPU actually drew | what the game's own records say |
 | Shows | the last completed display | the last completed update, drawn by the host renderer |
 | Works for | any loaded image | only a qualified Springtrail build |
@@ -49,7 +49,7 @@ the input released the title and completion states stay put while they do.
 The JSON holds the structured state an agent reads:
 
 ```text
-mode / mode_name         TITLE, PLAYING, RETRY, PAUSED or WON
+mode / mode_name         TITLE, PLAYING, RETRY, PAUSED, WON, TIMEUP or OVER
 player                   x, y, vx, vy in sixteenths and pixels, grounded, fell,
                          pose, facing, jump state and index, walk counter
 camera, published_camera scroll position and the value the STAT split writes
@@ -58,6 +58,8 @@ items                    collected bitmap and score
 power                    state, phase, timer, invincibility, throw, crouch
 shot                     x, y, vx, vy, ttl
 blocks                   per-block state, coins, release effect, dirty column
+progress                 stage, packed-BCD lives/countdown, pending request,
+                         subdivision and expiry state
 hud                      the word and score the HUD shows
 buttons                  sampled (in flight), applied, game_previous
 timer, frame_pending     update count and the VBlank flag
@@ -126,7 +128,11 @@ setup and serialized board access. Until that runs, no latency figure for this
 path has been measured on hardware: the numbers a run prints are what that run
 measured, and the payload-only arithmetic in the host SPEC is arithmetic, not a
 result. The decoder is bound to the exact qualified image: a different build is
-refused rather than guessed at, and multi-level progression is out of scope.
+refused rather than guessed at. The current profile decodes all three stages,
+including TIMEUP, OVER and stage-relative terrain and limits. Its second HUD
+row reconstructs the observed lives, countdown and stage. The play command
+still stops at a stage win; this is not qualification of an autonomous full
+campaign. Physical current-image proof remains tracked in [#485](https://github.com/amichai-bd/nand2mario/issues/485).
 
 The camera check the decoder applies is a secondary one. It is blind wherever
 the camera clamp is active, which includes the title and the completion states;

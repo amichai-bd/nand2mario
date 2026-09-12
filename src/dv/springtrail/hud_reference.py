@@ -113,7 +113,7 @@ def image(game=Game(), facing=False, *, object_pixels=None):
     for y in range(16, 144):
         for x in range(160):
             wx = x + game.player.camera
-            if world_tile(wx//8, y//8):
+            if world_tile(wx//8, y//8, getattr(game, 'stage', 0)):
                 pixels[y*160+x] = int(ART['ground'][y%8][wx%8])
             if game.mode == 0 and y//8 in (5, 7) and 4 <= x//8 < 15:
                 letter = ('SPRINGTRAIL' if y//8 == 5 else 'PRESS START')[x//8-4]
