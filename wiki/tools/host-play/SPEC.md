@@ -85,7 +85,14 @@ Three views exist at that boundary and are labelled, never interchanged:
 | last completed display | What `SNAPSHOT` returns at this boundary. | The frame drawn from the previous boundary's state, so one behind the observation. |
 
 Every observation carries the decoder version, ROM identity, completed dot,
-reset epoch, LY, the boundary it represents and the request and byte counts.
+fresh source-frame epoch, LY, the boundary it represents and the request and byte counts.
+At the paused boundary, SNAPSHOT refreshes metadata without READ_FRAME. Its
+5760-byte source frame must have completed no later than the paused dot and
+less than one frame earlier. A missing completed frame or changed epoch fails
+closed; the retained SNAPSHOT_EPOCH register is not a live reset counter.
+The 207 PEEK payload bytes and 24 SNAPSHOT metadata bytes are reported
+separately. Request counts include the metadata request; packet logs retain
+framing and command overhead for both state and pixel paths.
 Each reconstructed image is labelled reconstructed and carries that provenance.
 An aligned comparison therefore matches the image reconstructed at one boundary
 against the snapshot taken at the next.

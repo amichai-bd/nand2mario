@@ -123,10 +123,17 @@ def observe(client, binding, *, attempts=8, record=None, clock=time.perf_counter
         if dot is None:
             dot = client.read_host(abi.HOST_REG_DOT_LO) | (client.read_host(abi.HOST_REG_DOT_HI) << 32)
             requests += 2
-        epoch = client.read_host(abi.HOST_REG_SNAPSHOT_EPOCH)
+        # SNAPSHOT_EPOCH is a retained capture register, not a live reset counter.
+        # Refresh metadata from the completed source frame without reading pixels.
+        frame = client.request('SNAPSHOT')
+        if frame['size'] != abi.FRAME_BYTES or not 0 <= dot - frame['dot'] < PERIOD:
+            raise PlayFailure('STATE_EPOCH_FRAME')
+        epoch = frame['epoch']
         requests += 1
         boundary_seconds += clock() - started
         provenance = {'dot': dot, 'epoch': epoch, 'ly': ly, 'stat_mode': lcd['mode'],
+                      'epoch_source': 'fresh-source-frame', 'epoch_frame_dot': frame['dot'],
+                      'epoch_metadata_bytes': abi.SNAPSHOT_BYTES,
                       'boundary': 'vblank-complete', 'represents': 'logical',
                       'display_lag_frames': 1, 'requests': requests, 'bytes': transferred,
                       'advanced': advanced,
