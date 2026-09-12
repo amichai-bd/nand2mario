@@ -236,6 +236,25 @@ class BudgetTests(unittest.TestCase):
         self.assertIn('reap_error', record)
         self.assertEqual((self.root/record['output']).read_text(), 'partial')
 
+    def test_a_failed_survivor_query_still_records_and_releases(self):
+        lock = self.root / 'workdir/builds/query-failure/.lock'
+        lock.parent.mkdir(parents=True)
+        lock.write_text('pid=123\n')
+        process = Mock(pid=123, returncode=None)
+        process.communicate.side_effect = subprocess.TimeoutExpired('worker', 300)
+        launch, tree = mock_tree(process)
+        tree.terminate.side_effect = subprocess.TimeoutExpired('worker', 5)
+        tree.survivors.side_effect = OSError(6, 'handle gone')
+        with launch, patch('n2m.test_budget.release_lock') as release:
+            code, text = supervise(['worker'], self.root, 'query-failure')
+        self.assertEqual(code, 1)
+        self.assertFalse(json.loads(text)['cleanup_complete'])
+        release.assert_called_once()
+        record = json.loads(next((self.root/'workdir/builds/query-failure/wall-budget').glob('*.json')).read_text())
+        self.assertEqual(record['status'], 'TIMEOUT')
+        self.assertIn('handle gone', record['survivors_error'])
+        self.assertNotIn('survivors', record)
+
     def test_only_exact_authorized_names_receive_milestone_budget(self):
         self.assertEqual(MILESTONE_TARGETS, {'mooneye-reg-f', 'mooneye-corrupt', 'mooneye-missing'})
         with patch.dict('os.environ', {'N2M_TEST_WALL_SECONDS': '99999'}):

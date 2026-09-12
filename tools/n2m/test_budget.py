@@ -154,7 +154,11 @@ def supervise(command, root, tag, *, target=None, ceiling=None):
                 record["cleanup_complete"] = True
             except (OSError, RuntimeError, subprocess.TimeoutExpired) as cleanup_error:
                 record["cleanup_error"] = str(cleanup_error)
-                survivors = tree.survivors()
+                try:
+                    survivors = tree.survivors()
+                except OSError as query_error:
+                    survivors = None
+                    record["survivors_error"] = str(query_error)
                 if survivors:
                     record["survivors"] = survivors
                 if isinstance(cleanup_error, subprocess.TimeoutExpired) and cleanup_error.output:

@@ -400,7 +400,11 @@ def supervise(command, cap, out):
             except (OSError, RuntimeError, subprocess.TimeoutExpired) as error:
                 record['cleanup_complete'] = False
                 record['cleanup_error'] = str(error)
-                survivors = tree.survivors()
+                try:
+                    survivors = tree.survivors()
+                except OSError as query_error:
+                    survivors = None
+                    record['survivors_error'] = str(query_error)
                 if survivors:
                     record['survivors'] = survivors
                 process.kill()
