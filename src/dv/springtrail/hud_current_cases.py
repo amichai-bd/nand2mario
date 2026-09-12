@@ -19,8 +19,8 @@ def cases():
     rows += [dict(name=f'camera-{stage}-{old}-{new}',kind='enter',stage=stage,old=old,camera=new)
              for stage,old,new in ((0,80,88),(0,88,96),(0,96,88),(0,607,608),
                                    (0,608,607),(0,96,96),(2,479,480),(2,480,479))]
-    rows += [dict(name='final-pair30',kind='restore',restore=30),
-             dict(name='restart-twice',kind='restart',restore=14,old=144,level=1),
+    rows += [dict(name='final-pair30',kind='restore',restore=30,lcdc=0x51),
+             dict(name='restart-twice',kind='restart',restore=14,old=144,level=1,lcdc=0x59),
              dict(name='dirty-defers-entering',kind='dirty',old=88,camera=96,dirty=39)]
     rows += [dict(name=f'hud-mode{mode}',kind='hud',mode=mode,score=mode%5) for mode in range(7)]
     rows += [dict(name=f'progress-map{bit}',kind='progress',lcdc=0x11|bit,stage=2)
@@ -88,12 +88,12 @@ def expected(case):
         for _ in range(2 if kind=='restart' else 1):
             start=0 if kind=='restart' else case['restore'];ids=[start,start+1]
             if kind=='restart':
-                put(0xc02f,0);put(0xc023,0);put(0xff40,0x11)
+                put(0xc02f,0);put(0xc023,0);put(0xff40,operands(case)[0xff40]&~8)
             cache(ids)
             if start==30:hud(publish_values=False);progress(publish_values=False)
             publish(ids);put(0xc02f,start+2)
             if start==30:
-                put(0xff40,0x19);hud(prepare=False);progress(prepare=False,base=0x9c00)
+                put(0xff40,operands(case)[0xff40]|8);hud(prepare=False);progress(prepare=False,base=0x9c00)
     elif kind=='hud':hud()
     elif kind=='progress':progress()
     elif kind=='dirty':

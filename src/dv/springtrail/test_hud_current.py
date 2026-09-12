@@ -24,12 +24,12 @@ class Literals(unittest.TestCase):
         self.assertEqual(self.writes('camera-2-479-480'),[(0xc053,0),(0xc023,60)])
     def test_restore_switch_is_last_and_restart_repeats(self):
         rows=self.writes('final-pair30')
-        switch=rows.index((0xff40,0x19))
+        switch=rows.index((0xff40,0x59))
         self.assertEqual(rows[switch-1],(0xc02f,32))
         self.assertEqual([a for a,_ in rows[-6:]],[0x9c22,0x9c23,0x9c2d,0x9c2e,0x9c2f,0x9c32])
         self.assertEqual([a for a,_ in rows if 0x9840<=a<0x9a40 or 0x9c40<=a<0x9e40],
                          [0x9c40+col+32*y for col in (30,31) for y in range(16)])
-        restart=self.writes('restart-twice');self.assertEqual(restart[:len(restart)//2],restart[len(restart)//2:])
+        restart=self.writes('restart-twice');self.assertEqual([v for a,v in restart if a==0xff40],[0x51,0x51]);self.assertEqual(restart[:len(restart)//2],restart[len(restart)//2:])
     def test_hud_literals_and_dual_map(self):
         for mode,tiles in ((0,[90,83,90,84,82,0,74]),(5,[90,83,145,82,91,87,74]),(6,[86,146,82,88,0,0,75])):
             rows=self.writes(f'hud-mode{mode}')

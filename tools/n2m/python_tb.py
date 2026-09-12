@@ -16,6 +16,7 @@ from .records import file_hash
 IMPORT_SCOPE = ("src/dv/springtrail", "tools", "src/dv/python/integration")
 # The module the builder executes to produce each preload image; see prepare().
 FIXTURE_BUILDERS = {
+    **dict.fromkeys(('hud493-s', 'hud493-a', 'hud493-b', 'hud493-c', 'hud493-d', 'hud493-e'), "src/dv/springtrail/hud_current_program.py"),
     **dict.fromkeys(("courier492-s", "courier492-a", "courier492-b", "courier492-c", "courier492-d", "courier492-e", "courier492-f", "courier492-g"), "src/dv/springtrail/courier_program.py"),
     "integration": "src/dv/integration/image.py",
     **dict.fromkeys(("v05", "springtrail", "springtrail-unit", "flow", "flow-s", "render", "render-s",
@@ -58,7 +59,7 @@ def validate(root, target, name=None):
         raise ValueError("python testbench requires zero raw exit and no driver")
     if target.get("vendor_model") not in (None, "intel-memory", "intel-controls"):
         raise ValueError("Python testbench requires supported Intel memory or controls models")
-    if target.get("preload") not in (None, "courier492-s", "courier492-a", "courier492-b", "courier492-c", "courier492-d", "courier492-e", "courier492-f", "courier492-g", "integration", "v05", "palette-fc", "palette-00", "startup-read", "startup-write", "vram-read", "vram-write", "late-fe9c", "late-fe9d", "late-fe20", "timer234", "stop349", "dma239", "display308", "oam299", "oam299-s", "courier292", "courier292-s", "hud300", "hud300-s", "hud-render300", "entities-render305", "entities-render305-changed", "motion301", "motion301-s", "motion-render301", "power302", "power302-s", "power302-a", "power302-b", "progress304-s", "progress304-a", "progress304-b", "entities305-s", "entities305-a", "entities305-b", "entities305-c", "entities305-d", "entities305-e", "entities305-f", "entities305-g", "entities305-h", "entities305-i", "entities-oam305-s", "entities-oam305-a", "entities-oam305-b", "entities-oam305-c", "power-render302", "blocks303-s", "blocks303-a", "blocks303-b", "springtrail", "springtrail-unit", "flow", "flow-s", "render", "render-s", "stackdrop", "stackdrop-unit", "stackdrop-short", "mooneye-reg-f"):
+    if target.get("preload") not in (None, 'hud493-s', 'hud493-a', 'hud493-b', 'hud493-c', 'hud493-d', 'hud493-e', "courier492-s", "courier492-a", "courier492-b", "courier492-c", "courier492-d", "courier492-e", "courier492-f", "courier492-g", "integration", "v05", "palette-fc", "palette-00", "startup-read", "startup-write", "vram-read", "vram-write", "late-fe9c", "late-fe9d", "late-fe20", "timer234", "stop349", "dma239", "display308", "oam299", "oam299-s", "courier292", "courier292-s", "hud300", "hud300-s", "hud-render300", "entities-render305", "entities-render305-changed", "motion301", "motion301-s", "motion-render301", "power302", "power302-s", "power302-a", "power302-b", "progress304-s", "progress304-a", "progress304-b", "entities305-s", "entities305-a", "entities305-b", "entities305-c", "entities305-d", "entities305-e", "entities305-f", "entities305-g", "entities305-h", "entities305-i", "entities-oam305-s", "entities-oam305-a", "entities-oam305-b", "entities-oam305-c", "power-render302", "blocks303-s", "blocks303-a", "blocks303-b", "springtrail", "springtrail-unit", "flow", "flow-s", "render", "render-s", "stackdrop", "stackdrop-unit", "stackdrop-short", "mooneye-reg-f"):
         raise ValueError("unknown Python preload")
     if not isinstance(target.get("top"), str) or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", target["top"]):
         raise ValueError("python top must be an HDL identifier")
@@ -344,6 +345,12 @@ def prepare(target, attempt, root=None, fixture_tools=None):
                    else 'power' if name.startswith('power302') else 'motion')
             part=name[-1] if name.endswith(('-a','-b','-c','-d','-e','-f','-g','-h','-i')) else None
             image=module.build(root,attempt,name.endswith('-s'),suite,part)
+            expected_sha=hashlib.sha256(image).hexdigest()
+        elif target['preload'].startswith('hud493-'):
+            spec=importlib.util.spec_from_file_location('hud493_image',root/'src/dv/springtrail/hud_current_program.py')
+            module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+            name=target['preload']
+            image=module.build(root,attempt,name.endswith('-s'),'a' if name.endswith('-s') else name[-1])
             expected_sha=hashlib.sha256(image).hexdigest()
         elif target['preload'].startswith('courier492-'):
             spec=importlib.util.spec_from_file_location('courier492_image',root/'src/dv/springtrail/courier_program.py')
