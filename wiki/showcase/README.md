@@ -34,6 +34,55 @@ per-character column, with one blinking block cursor that follows the
 keystrokes and then waits on the prompt row while output prints, the way a
 real shell session reads.
 
+## Choose a source and regenerate
+
+| Content | Edit or retain | Generated representation |
+|---|---|---|
+| Actual board frame | Captured native 160×144 shades and provenance, ingested into the frame archive below | Lossless 2-bit indexed PNG inside the archive and derived SVG data URI |
+| Host game preview | Independent reference states and scene recipe in `showcase.py` | Pixel-run SVG paths; a reconstruction, not FPGA evidence |
+| Original artwork | Editable shade grids and placement maps under the [asset owner](../src/sw/springtrail/CORE_ART.md) | Generated review SVG; see [asset workflow](../../.agents/skills/game-assets/SKILL.md) |
+| Terminal session | Readable timestamp/kind/text transcript lists in `showcase.py` | SVG text, output highlights, cursor and CSS timing |
+
+Store capture pixels at their native resolution. Enlarge only for display with
+integer scaling and crisp/pixelated rendering; do not store a blurred or enlarged
+screenshot as the authoritative frame. PNG is lossless; its palette holds four
+shades. The [snapshot contract](../src/rtl/interfaces/MAS_interfaces.md) owns
+wire packing, frame identity and capture rules. These storage choices concern
+repository bytes and reviewability, not UART throughput.
+
+Edit text/art inputs or ingest a verified capture session, then run
+`python tools/wiki/showcase.py`. The [archive commands](#frame-archives-and-encoding)
+re-encode retained captures; generation never contacts hardware. Do not hand-edit
+the generated loops. Their checked-in copies serve the wiki and README, while
+the inputs and provenance explain where their content came from. Reproduction
+and display behavior are checked by `python tools/wiki/check.py --browser`.
+
+An SVG is an XML wrapper, not necessarily a readable picture diff. Text
+transcripts and shade maps are useful review sources; generated character timing,
+path coordinates and base64 PNG payloads are noisy derived data. The archive and
+SVG deliberately duplicate payloads so the published image is self-contained.
+Keep raw session artifacts under `workdir/` while their work/review needs them;
+do not commit a second decoded PNG or enlarge the archive just for display.
+
+CSS keyframes change visibility or cursor position at specified percentages of
+a loop. The complete final image is the unanimated markup. Animation rules apply
+only when reduced motion is not requested, so a reduced-motion reader sees the
+finished still. These files are animated SVGs, not GIFs.
+
+Keep the fixed-column character reveal for terminal loops. A complete text row
+behind a stepped clip can reduce markup, but natural font advances differ from
+the cursor's fixed 7.2-pixel columns: it can expose later characters early and
+change the final text layout. A smaller file with that mismatch is not an
+equivalent rendering. Any future alternative must preserve character positions
+and timing before its embedding behavior is considered.
+
+The current project README uses path-based game pixels and self-contained
+terminal text; the wiki-only board loops embed PNG data URIs. These are the
+qualified contexts, not a promise that any SVG feature survives GitHub image
+sanitization. Preserve the current representation for each embed. Any changed
+animation technique needs standalone, actual wiki/deck and applicable GitHub
+README checks; local rendering alone cannot establish GitHub support.
+
 ## Build and tests
 
 ![Build and tests](build-and-tests.svg)
@@ -253,8 +302,9 @@ python tools/wiki/board_frames.py springtrail-board <session folder> --note "...
 python tools/wiki/showcase.py
 ```
 
-No packed frame and no decoded PNG is committed; the archive is the only copy of
-the pixels, and `showcase.py` rebuilds the SVG from it byte for byte.
+No separate packed-frame or decoded-PNG file is committed. The archive is the
+authoritative generation input; the committed SVG contains a derived copy of
+each encoded frame payload. `showcase.py` rebuilds that SVG byte for byte.
 
 The payload is a 2-bit indexed PNG per frame, inline as a `data:` URI. Ingest
 measures both candidate encodings on the sequence it is given and records the
@@ -262,10 +312,12 @@ result in the archive's `encoding` block: the rect runs
 [`showcase.paths()`](../../tools/wiki/showcase.py) draws for `game-start.svg`
 against indexed PNG. On the 28 Libbet frames the rect runs cost
 3,623,166 bytes against 28,896
-for indexed PNG, 125
+for indexed-PNG data URIs, about 125
 times smaller, because a Libbet frame fills the screen and the rect form pays
 per horizontal run; on the 48 Springtrail frames, sparser but scrolling, 352,302
-bytes against 25,584, 13 times smaller. The rect form exists because the
+bytes against 25,584, about 14 times smaller. These are summed per-frame representation lengths for those exact sequences,
+not total SVG sizes or raw PNG file sizes: `bytes_indexed_png` includes the
+base64 data-URI prefix and encoding. The rect form exists because the
 project README sanitizes the loops it embeds; these two are wiki-only, so the
 smaller encoding wins. An inline `data:` URI fetches nothing, so the loops stay
 as self-contained as the rest.
