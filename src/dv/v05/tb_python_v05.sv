@@ -342,6 +342,21 @@ module tb_python_v05 #(
         end
     end
 
+    // Drop one accepted moving-platform step at the physical WRAM boundary.
+    initial begin
+        if ($test$plusargs("entity_move_fault")) begin
+            wait(bus_commit && write_enable && address == 16'hc0fc);
+            do @(negedge clk_sys);
+            while (!(dut.raw_write && dut.raw_store == n2m_memory_pkg::STORE_WRAM &&
+                     dut.raw_offset == 15'h0310 && dut.raw_wdata == 8'h10));
+            $display("ENTITY_MOVE_MUTATION expected=16 actual=0 dot=%0d", dot_count);
+            force dut.u_stores.ram_wdata = 8'd0;
+            @(posedge clk_sys);
+            @(negedge clk_sys);
+            release dut.u_stores.ram_wdata;
+        end
+    end
+
     // One real tile-byte corruption on the first LCD-on publication. The
     // initial LCD-off DMA is deliberately skipped; its bytes are overwritten.
     initial begin

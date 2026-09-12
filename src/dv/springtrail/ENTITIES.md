@@ -120,3 +120,32 @@ expected NewLevel1. The preserved resume contract keeps NewLevel0; the oracle
 is corrected without product changes. Real WON-to-stage1/2 operands replace
 model-initialized stage-update-only operands. Host tests bind both distinctions.
 Only the affected sixth batch is repeated; previous positive batches are reused.
+
+
+## Final finite queue and measured allowance
+
+The state matrix has41 cases in nine batches. The last case uses ordinary
+UpdateGame with a rider at x361/y112 and a falling platform at x368/y128.
+The platform advances to y130; terrain rejects the carry, leaving the player at
+x361/y112 and rider zero. This checks blocked carry without a product test hook.
+
+The complete renderer short reached settled pause186626 and finish in218.336
+seconds. Its original raw result is FAIL: the upload oracle incorrectly expected
+zero bytes in unused legacy tiles1..15. The fixture loaded the approved source
+correctly. The corrected upload oracle reads those original assets; the pixel
+oracle and fixture image remain unchanged. A retained-trace replay qualifies the
+correction separately and never changes that original result.
+
+The full normal/changed fixtures end by326492/326588 dots. Proportional measured
+forecast is382 seconds each, so only these two targets declare420-second total
+wall allowances under the current builder policy. Independent budget review is
+required before launch. All CPU, OAM and fault targets retain300 seconds.
+Nine CPU batches plus short, four OAM runs (short plus three two-case parts),
+renderer short plus two full scenes and one state fault give5640 seconds in
+maximum planned allowances;6000 seconds includes the retained setup/oracle
+failures. This feature aggregate is not a per-target allowance.
+
+The fault target reuses the accepted neutral-carry short and changes one actual
+C310 WRAM store from16 to0 after the first call marker. It must fail the unchanged
+complete state oracle because the platform step and resulting carry are lost.
+This is the required entity-state fault, separate from both full pixel positives.

@@ -84,6 +84,8 @@ def cases():
     add('patrol-before-curl-fatal',both)
     add('rider-released-at-absence',replace(base,player=Player(x=370*16,y=126*16),
                                            falling=Entity(368*16,142*16,2)))
+    add('blocked-carry',replace(base,player=Player(x=361*16,y=112*16,camera=289),
+                                falling=Entity(368*16,128*16,2),rider=2))
     return result
 
 

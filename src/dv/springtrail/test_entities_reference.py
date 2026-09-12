@@ -139,6 +139,13 @@ class Entities(unittest.TestCase):
         self.assertEqual(row['after'][ADDRESSES.index(0xc06f)],0)
         self.assertEqual(row['after'][ADDRESSES.index(0xc000)],RETRY)
 
+    def test_blocked_carry_detaches_without_displacement(self):
+        w=self.game(player=Player(x=361*16,y=112*16,camera=289),
+                    falling=Entity(368*16,128*16,2),rider=2)
+        got=update(w,0)
+        self.assertEqual((got.player.x,got.player.y,got.rider,got.falling.y),
+                         (5776,1792,0,2080))
+
     def test_slot_exhaustion_and_reset(self):
         w=self.game()
         self.assertEqual(spawn(w,4),(w,False))
