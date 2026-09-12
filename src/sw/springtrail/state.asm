@@ -108,3 +108,40 @@ TimerHigh EQU $C094
 Expiring EQU $C095
 StageIndex EQU $C096
 ProgressCache EQU $C097
+
+; Four fixed entity owners; progression cache ends at C09C.
+CurlX EQU $C300
+CurlY EQU $C302
+CurlState EQU $C304
+CurlTimer EQU $C305
+MovingX EQU $C310
+MovingY EQU $C312
+MovingState EQU $C314
+MovingVX EQU $C316
+FallingX EQU $C320
+FallingY EQU $C322
+FallingState EQU $C324
+FallingTimer EQU $C325
+PatrolFrame EQU $C330
+StompTimer EQU $C331
+EntityRider EQU $C332
+EntityDetached EQU $C338
+EntitySlot EQU $C339
+EntityOldX EQU $C33A
+EntityOldY EQU $C33C
+EntityOldMovingX EQU $C33E
+EntityOldMovingY EQU $C340
+EntityOldFallingX EQU $C342
+EntityOldFallingY EQU $C344
+EntityCandidateX EQU $C346
+EntityCandidateY EQU $C348
+EntityTemp EQU $C34A
+
+; Reserved bytes are zero and observable in the current host profile.
+CurlVX EQU $C306
+CurlReserved EQU $C307
+MovingTimer EQU $C315
+MovingReserved EQU $C317
+FallingVX EQU $C326
+FallingReserved EQU $C327
+EntityReserved EQU $C333

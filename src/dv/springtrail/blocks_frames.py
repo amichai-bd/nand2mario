@@ -42,7 +42,7 @@ def column(world, index):
     return hud_column(index, world.blocks)
 
 
-def background(world):
+def background(world, objects=None, tile_bank=None):
     """Block pixels under the object layer; every block sits over blank sky."""
     pixels = bytearray(23040)
     for bx, _by, _kind, _content in (B.BLOCKS if world.stage == 0 else ()):
@@ -54,7 +54,8 @@ def background(world):
                     for x in range(8):
                         if 0 <= sx + x < 160 and 16 <= sy + y < 144:
                             pixels[(sy + y) * 160 + sx + x] = TERRAIN[y][source * 8 + x]
-    for index, value in enumerate(raster(scene(world), tiles())):
+    for index, value in enumerate(raster(scene(world) if objects is None else objects,
+                                         tiles() if tile_bank is None else tile_bank)):
         if value:
             pixels[index] = value
     return bytes(pixels)

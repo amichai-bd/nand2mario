@@ -333,6 +333,8 @@ LD A,[PlayerY]
 CP A,$D0
 JR NC,SideHit
 StompEnemy:
+LD A,16
+LD [StompTimer],A
 XOR A,A
 LD [Grounded],A
 LD [SavedJumpIndex],A

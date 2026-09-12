@@ -88,7 +88,7 @@ def build(root, destination, variant='motion'):
                   'ASSET "Courier"']
         for name in ('movement', 'render', 'world', 'collision', 'interactions',
                      'map_restore', 'scene', 'stream', 'hud', 'columns', 'power',
-                     'blocks', 'progress'):
+                     'blocks', 'progress', 'entities'):
             lines.append(f'INCLUDE "{name}.asm"')
         path = destination/'program.asm'
         path.write_text('\n'.join(lines)+'\n', encoding='utf-8')
@@ -96,7 +96,8 @@ def build(root, destination, variant='motion'):
         for name, relative in (('Tiles', 'tiles.json'),
                                ('Courier', 'assets/courier/unique-tiles.json'),
                                ('Core', 'assets/core/core-tiles.json'),
-                               ('Terrain', 'assets/core/terrain-tiles.json')):
+                               ('Terrain', 'assets/core/terrain-tiles.json'),
+                                 ('Enemies', 'assets/core/enemies-tiles.json')):
             asset = source/relative
             assets[name] = encode_shades(load_shades(asset, str(asset)), str(asset))
         assert len(assets['Tiles'])+len(assets['Courier']) == 1184

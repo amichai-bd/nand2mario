@@ -56,6 +56,7 @@ CALL InitHUD
 CALL InitMotionArt
 CALL InitBlockArt
 CALL InitProgressArt
+CALL InitEntityArt
 CALL PrepareScene
 CALL PrepareHUD
 CALL PrepareProgress
@@ -186,3 +187,4 @@ INCLUDE "columns.asm"
 INCLUDE "power.asm"
 INCLUDE "blocks.asm"
 INCLUDE "progress.asm"
+INCLUDE "entities.asm"

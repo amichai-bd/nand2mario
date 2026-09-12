@@ -29,9 +29,10 @@ sys.path[:0] = [str(ROOT / 'tools'), str(Path(__file__).resolve().parent)]
 from n2m import generated_interfaces as abi  # noqa: E402
 from n2m.interface_codec import decode_packet, encode_packet, pack_pixels, pack_record, unpack_record  # noqa: E402
 import blocks_cases  # noqa: E402
-import blocks_frames  # noqa: E402
+import entities_frames as blocks_frames  # noqa: E402
 import progress_cases  # noqa: E402
-from progress_reference import PLAYING, World, update  # noqa: E402
+from progress_reference import PLAYING
+from entities_reference import World, update  # noqa: E402
 
 PERIOD = 70224
 LINE = 456
@@ -87,6 +88,15 @@ def wram_image(world, buttons, new_level, frame_pending, published_camera, torn=
     else:
         place(torn, set(blocks_cases.ADDRESSES) - player_record)
         place(world, player_record)
+    # Independent fixed-record encoding; symbol-derived reader must agree.
+    for address, entity in ((0xc300, progress_source.curl), (0xc310, progress_source.moving),
+                            (0xc320, progress_source.falling)):
+        record = (entity.x.to_bytes(2, 'little', signed=True)
+                  + entity.y.to_bytes(2, 'little', signed=True)
+                  + bytes((entity.state, entity.timer, entity.vx & 255)) + bytes(9))
+        memory[address - abi.GB_WRAM_START:address - abi.GB_WRAM_START + 16] = record
+    memory[0xc330 - abi.GB_WRAM_START:0xc333 - abi.GB_WRAM_START] = bytes((
+        progress_source.patrol_frame, progress_source.stomp, progress_source.rider))
     memory[FRAME_PENDING - abi.GB_WRAM_START] = frame_pending
     memory[PUBLISHED_CAMERA - abi.GB_WRAM_START] = published_camera & 0xFF
     return bytes(memory)

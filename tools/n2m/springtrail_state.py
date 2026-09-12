@@ -21,11 +21,11 @@ from . import generated_interfaces as abi
 from .records import file_hash
 
 ROOT = Path(__file__).resolve().parents[2]
-DECODER_VERSION = 2
+DECODER_VERSION = 3
 # Exact qualified images: ROM sha256 -> digest of the required symbol layout.
 SUPPORTED = {
-    '5d0c168c371f58f08584fefe633701684b47e9bb00500f7d5322c61ba8c410e0':
-        '4b6e6b2b4770081f79160332d0106ebc8b3003c5010d9bd46917c841ffb842bf',
+    'adc3d337d4abd6ad289b5713533c18381d338e06b00a31c265c208ea9628a790':
+        '92715bf10a6f9d2e9105dac655bf7cd690dd7062b884fe35f4d3ea2055fd80ae',
 }
 MODES = ('TITLE', 'PLAYING', 'RETRY', 'PAUSED', 'WON', 'TIMEUP', 'OVER')
 HUD_WORDS = ('TITLE', 'PLAY', 'RETRY', 'PAUSED', 'WON', 'TIMEUP', 'OVER')
@@ -53,6 +53,14 @@ FIELDS = (
     ('Lives', 1, False), ('PendingLife', 1, False), ('TimerSub', 1, False),
     ('TimerLow', 1, False), ('TimerHigh', 1, False), ('Expiring', 1, False),
     ('StageIndex', 1, False),
+    ('CurlX', 2, True), ('CurlY', 2, True), ('CurlState', 1, False),
+    ('CurlTimer', 1, False), ('CurlVX', 1, True), ('CurlReserved', 9, False),
+    ('MovingX', 2, True), ('MovingY', 2, True), ('MovingState', 1, False),
+    ('MovingTimer', 1, False), ('MovingVX', 1, True), ('MovingReserved', 9, False),
+    ('FallingX', 2, True), ('FallingY', 2, True), ('FallingState', 1, False),
+    ('FallingTimer', 1, False), ('FallingVX', 1, True), ('FallingReserved', 9, False),
+    ('PatrolFrame', 1, False), ('StompTimer', 1, False), ('EntityRider', 1, False),
+    ('EntityReserved', 5, False),
 )
 REQUIRED = tuple(name for name, _size, _signed in FIELDS)
 WRAM = abi.GB_WRAM_START
@@ -209,6 +217,19 @@ def decode(binding, chunks):
     _check(all(state <= 2 for state in v['BlockState']), 'BlockState')
     _check(v['EffectTile'] in EFFECT_TILES and v['EffectTimer'] <= 16, 'Effect')
     _check(v['BlockDirty'] <= 96, 'BlockDirty')
+    _check(v['CurlX'] == (328, 352, 328)[stage] * UNIT and v['CurlY'] == 120 * UNIT, 'CurlPosition')
+    _check(v['CurlState'] <= 2 and v['CurlTimer'] <= 32 and v['CurlVX'] == 0, 'CurlState')
+    _check((176, 144, 112)[stage] * UNIT <= v['MovingX'] <= (208, 176, 144)[stage] * UNIT
+           and v['MovingY'] == 112 * UNIT, 'MovingPosition')
+    _check(v['MovingState'] == 1 and v['MovingVX'] in (-16, 16) and v['MovingTimer'] == 0, 'MovingState')
+    _check(v['FallingX'] == (368, 320, 368)[stage] * UNIT
+           and 112 * UNIT <= v['FallingY'] <= 144 * UNIT, 'FallingPosition')
+    _check(v['FallingState'] <= 3 and v['FallingTimer'] <= 16 and v['FallingVX'] == 0, 'FallingState')
+    _check(v['PatrolFrame'] <= 15 and v['StompTimer'] <= 16 and v['EntityRider'] <= 2, 'EntityAnimation')
+    _check(all(v[name] == 0 for name in ('CurlReserved', 'MovingReserved', 'FallingReserved', 'EntityReserved')), 'EntityReserved')
+    entities = {key: {field: v[prefix + symbol] for field, symbol in
+                         (('x', 'X'), ('y', 'Y'), ('state', 'State'), ('timer', 'Timer'), ('vx', 'VX'))}
+                for key, prefix in (('curl', 'Curl'), ('moving', 'Moving'), ('falling', 'Falling'))}
     mode = v['GameMode']
     return {
         'decoder': DECODER_VERSION, 'rom_sha256': binding.rom_sha256,
@@ -225,6 +246,7 @@ def decode(binding, chunks):
         'enemy': {'x': v['EnemyX'], 'pixel_x': v['EnemyX'] // UNIT, 'vx': v['EnemyVX'],
                   'alive': bool(v['EnemyAlive'])},
         'items': {'collected': v['Collected'], 'score': v['Score']},
+        'entities': dict(entities, patrol_frame=v['PatrolFrame'], stomp=v['StompTimer'], rider=v['EntityRider']),
         'timer': v['GameTimer'], 'new_level': v['NewLevel'],
         'progress': {'stage': stage, 'lives': v['Lives'], 'pending': v['PendingLife'],
                      'timer_sub': v['TimerSub'], 'timer_low': v['TimerLow'],
@@ -275,7 +297,7 @@ def _import(*names):
 
 def _models():
     """The motion and contact rules; no artwork and no renderer."""
-    return _import('motion_reference', 'progress_reference')
+    return _import('motion_reference', 'entities_reference')
 
 
 def to_world(observation):
@@ -301,13 +323,15 @@ def to_world(observation):
         blocks=tuple(o['blocks']['states']), coins=o['blocks']['coins'],
         effect_tile=effect['tile'], effect_x=effect['x'], effect_y=effect['y'],
         effect_timer=effect['timer'], block_dirty=o['blocks']['dirty'],
-        **o['progress'])
+        **o['progress'],
+        **{name: power.Entity(**o['entities'][name]) for name in ('curl', 'moving', 'falling')},
+        **{name: o['entities'][name] for name in ('patrol_frame', 'stomp', 'rider')})
 
 
 def render(observation):
     """160 by 144 shades of the logical state, through the block-layer renderer."""
     world = to_world(observation)
-    frames, = _import('blocks_frames')
+    frames, = _import('entities_frames')
     return frames.image(world)
 
 

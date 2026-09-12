@@ -13,7 +13,7 @@ from n2m import generated_interfaces as abi  # noqa: E402
 from n2m import springtrail_state as state  # noqa: E402
 import state_support as support  # noqa: E402
 from state_fake import reachable  # noqa: E402
-import blocks_frames  # noqa: E402
+import entities_frames as blocks_frames  # noqa: E402
 
 
 class BindingTests(unittest.TestCase):
@@ -197,9 +197,9 @@ class ProgressionTests(unittest.TestCase):
 
     def test_current_image_cutover_rejects_old_profile(self):
         _image, symbols = support.build()
-        self.assertEqual(state.DECODER_VERSION, 2)
+        self.assertEqual(state.DECODER_VERSION, 3)
         with self.assertRaisesRegex(state.StateFailure, 'STATE_ROM_UNSUPPORTED'):
-            state.Binding('35aae757bde0ec9a15d6d6c84f14b45b451c341d2d4775f43ed8a9a762625192', symbols)
+            state.Binding('5d0c168c371f58f08584fefe633701684b47e9bb00500f7d5322c61ba8c410e0', symbols)
         for name in ('Lives', 'StageIndex'):
             moved = dict(symbols)
             moved[name] += 1
@@ -208,7 +208,10 @@ class ProgressionTests(unittest.TestCase):
 
     def test_three_stages_and_lifecycle_round_trip(self):
         from dataclasses import replace
-        from progress_reference import World, enter_stage, update, WON, RETRY, TIMEUP, OVER
+        from progress_reference import enter_stage as prior_enter_stage, WON, RETRY, TIMEUP, OVER
+        from entities_reference import World, initialize, update
+        def enter_stage(w, b):
+            return initialize(prior_enter_stage(w, b))
         from hud_reference import art
         for stage in range(3):
             start = enter_stage(World(stage=stage, lives=0x12), 0)
@@ -233,13 +236,16 @@ class ProgressionTests(unittest.TestCase):
 
     def test_stage_objects_have_literal_positions_and_pixels(self):
         from dataclasses import replace
-        from progress_reference import World, enter_stage
-        from power_frames import scene
+        from progress_reference import enter_stage as prior_enter_stage
+        from entities_reference import World, initialize
+        def enter_stage(w, b):
+            return initialize(prior_enter_stage(w, b))
+        from entities_frames import scene
         for stage, item_x, item_y in ((0, 96, 88), (1, 80, 80), (2, 64, 88)):
             world = enter_stage(World(stage=stage), 0)
             data = scene(world)
-            # Four courier entries, two enemy entries, then the first item pair.
-            self.assertEqual(data[24:32], bytes((item_y+16, item_x+8, 18, 0,
+            # Four courier entries, four enemy entries, then the first item pair.
+            self.assertEqual(data[32:40], bytes((item_y+16, item_x+8, 18, 0,
                                                 item_y+24, item_x+8, 19, 0)))
             pixels = state.render(self.decode(world))
             self.assertEqual(pixels[(item_y+1)*160+item_x+3], 3)
@@ -248,12 +254,15 @@ class ProgressionTests(unittest.TestCase):
             camera = (608, 480, 480)[stage]
             end = replace(world, player=replace(world.player, x=(camera+72)*16, camera=camera))
             # Each stage goal is screen128 at its camera clamp.
-            self.assertEqual(scene(end)[56:64], bytes((128, 136, 20, 0, 136, 136, 21, 0)))
+            self.assertEqual(scene(end)[64:72], bytes((128, 136, 20, 0, 136, 136, 21, 0)))
             self.assertEqual(state.render(self.decode(end))[112*160+130], 3)
 
     def test_progression_and_stage_bounds_refuse_malformed_values(self):
         from dataclasses import replace
-        from progress_reference import World, enter_stage
+        from progress_reference import enter_stage as prior_enter_stage
+        from entities_reference import World, initialize
+        def enter_stage(w, b):
+            return initialize(prior_enter_stage(w, b))
         world = enter_stage(World(stage=2), 0)
         for name, value in (('Lives', 0x1a), ('TimerLow', 0xa0), ('TimerHigh', 10),
                             ('TimerSub', 0), ('TimerSub', 41), ('Expiring', 4),
@@ -269,6 +278,32 @@ class ProgressionTests(unittest.TestCase):
             current = replace(current, player=replace(current.player, x=limit*16,
                                                       camera=(608, 480, 480)[stage]))
             self.assertEqual(state.to_world(self.decode(current)), current)
+
+class EntityTests(unittest.TestCase):
+    def test_current_records_round_trip_and_reserved_corruption(self):
+        from dataclasses import replace
+        from entities_reference import World, Entity
+        _image, binding = support.binding()
+        world = replace(World(), curl=Entity(328*16,120*16,1,17),
+                        falling=Entity(368*16,130*16,2), patrol_frame=9, stomp=8)
+        observed = state.decode(binding, support.chunks(binding, world))
+        self.assertEqual(state.to_world(observed), world)
+        for name, value, error in (('CurlState',3,'CurlState'),
+                                    ('CurlTimer',33,'CurlState'),
+                                    ('MovingVX',0,'MovingState'),
+                                    ('FallingTimer',17,'FallingState'),
+                                    ('EntityRider',3,'EntityAnimation'),
+                                    ('PatrolFrame',16,'EntityAnimation'),
+                                    ('CurlReserved',1,'EntityReserved'),
+                                    ('MovingReserved',1,'EntityReserved'),
+                                    ('FallingReserved',1,'EntityReserved'),
+                                    ('EntityReserved',1,'EntityReserved')):
+            with self.subTest(name=name), self.assertRaisesRegex(state.StateFailure, error):
+                state.decode(binding, support.chunks(binding, world, poke={name:value}))
+        symbols = dict(binding.symbols, CurlX=binding.symbols['CurlX']+1)
+        with self.assertRaisesRegex(state.StateFailure, 'STATE_LAYOUT_MISMATCH'):
+            state.Binding(support.ROM_SHA256, symbols)
+
 
 if __name__ == '__main__':
     unittest.main()

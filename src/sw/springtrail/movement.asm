@@ -530,9 +530,13 @@ MotionCheckSupport:
 LD A,[JumpState]
 OR A,A
 JR NZ,MotionVerticalStep
+CALL EntitySupport
+OR A,A
+JR NZ,MotionKeepSupport
 CALL MotionSupport
 OR A,A
 JR Z,MotionStartFall
+MotionKeepSupport:
 LD [Grounded],A
 XOR A,A
 LD [VelocityY],A

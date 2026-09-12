@@ -81,6 +81,32 @@ class Entities(unittest.TestCase):
         self.assertEqual((got.moving,got.falling,got.curl,got.stomp),
                          (paused.moving,paused.falling,paused.curl,16))
 
+    def test_offscreen_timer_trajectories(self):
+        w=self.game(curl=Entity(328*16,120*16,1,32),
+                    falling=Entity(368*16,112*16,1,16))
+        for _ in range(15):
+            w=update(w,0)
+        self.assertEqual((w.falling.state,w.falling.timer,w.falling.y),(1,1,112*16))
+        w=update(w,0)
+        self.assertEqual((w.falling.state,w.falling.y),(2,114*16))
+        for _ in range(16):
+            w=update(w,0)
+        self.assertEqual((w.curl.state,w.curl.timer,w.falling.state,w.falling.y),
+                         (0,32,3,144*16))
+        for _ in range(32):
+            w=update(w,0)
+        self.assertEqual((w.curl.state,w.curl.timer,w.falling.state),(0,0,3))
+
+    def test_simultaneous_patrol_precedes_curl(self):
+        # Ordinary contact boxes seeded together to exercise deterministic order.
+        w=self.game(alive=True,enemy_x=256*16,power=LARGE,
+                    player=Player(x=256*16,y=112*16),curl=Entity(256*16,120*16,1,20))
+        got=update(w,0)
+        self.assertEqual((got.mode,got.power,got.phase,got.phase_timer,got.alive,got.curl.state),
+                         (PLAYING,0,HURT,32,True,1))
+        fatal=update(replace(w,power=0),0)
+        self.assertEqual((fatal.mode,fatal.curl.state),(RETRY,1))
+
     def test_slot_exhaustion_and_reset(self):
         w=self.game()
         self.assertEqual(spawn(w,4),(w,False))

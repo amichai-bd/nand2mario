@@ -122,6 +122,24 @@
       "section": "progress",
       "region": "ROM0",
       "address": 5120
+    },
+    {
+      "unit": "main.asm",
+      "section": "entities",
+      "region": "ROM0",
+      "address": 1024
+    },
+    {
+      "unit": "main.asm",
+      "section": "entity_helpers",
+      "region": "ROM1",
+      "address": 23040
+    },
+    {
+      "unit": "main.asm",
+      "section": "entity_assets",
+      "region": "ROM1",
+      "address": 29184
     }
   ]
 }

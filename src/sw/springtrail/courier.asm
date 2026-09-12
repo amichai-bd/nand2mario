@@ -101,6 +101,12 @@ LD [SceneTile],A
 JP EmitPiece
 
 EmitPiece:
+LD A,D
+CP A,$C1
+RET NZ
+LD A,E
+CP A,$A0
+RET NC
 LD A,[SceneHidden]
 LD [PieceHidden],A
 LD A,[SceneBaseX]
