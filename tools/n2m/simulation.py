@@ -49,7 +49,7 @@ def load_target(root, name):
             path = (root / source).resolve()
             if not path.is_relative_to(root.resolve()) or not path.is_file():
                 raise ValueError(f"missing or out-of-tree driver input: {source}")
-    python_tb.validate(root, target)
+    python_tb.validate(root, target, name)
     return target, registry
 
 

@@ -7465,7 +7465,10 @@
         "tools/sw/targets.schema.json",
         "src/dv/python/integration/client_transport.py",
         "tools/sw/columns.py"
-      ]
+      ],
+      "excluded_imports": {
+        "tools/n2m/host/client.py": "client_transport.connect imports it; test_integration never calls connect"
+      }
     }
   },
   "python-integration-fault": {
@@ -7560,7 +7563,10 @@
         "tools/sw/targets.schema.json",
         "src/dv/python/integration/client_transport.py",
         "tools/sw/columns.py"
-      ]
+      ],
+      "excluded_imports": {
+        "tools/n2m/host/client.py": "client_transport.connect imports it; test_integration never calls connect"
+      }
     }
   },
   "python-integration-uart": {
@@ -8746,7 +8752,10 @@
         "wave_write",
         "wave_input",
         "wave_load"
-      ]
+      ],
+      "excluded_imports": {
+        "tools/sw/columns.py": "sw.rom_build imports it only for the springtrail software target; test_v05 builds v05"
+      }
     }
   },
   "python-v05-startup": {
@@ -8881,7 +8890,10 @@
         "wave_write",
         "wave_input",
         "wave_load"
-      ]
+      ],
+      "excluded_imports": {
+        "tools/sw/columns.py": "sw.rom_build imports it only for the springtrail software target; test_v05 builds v05"
+      }
     }
   },
   "python-v05-image-fault": {
@@ -9018,7 +9030,10 @@
         "wave_write",
         "wave_input",
         "wave_load"
-      ]
+      ],
+      "excluded_imports": {
+        "tools/sw/columns.py": "sw.rom_build imports it only for the springtrail software target; test_v05 builds v05"
+      }
     }
   },
   "python-v05-continuous": {
@@ -9539,7 +9554,10 @@
         "uart_tx",
         "reset_sys",
         "paused"
-      ]
+      ],
+      "excluded_imports": {
+        "tools/sw/package.py": "n2m.preload.prepare imports it; the builder calls prepare only for preload targets and this target has no preload"
+      }
     }
   },
   "python-v05-identity-fault": {
@@ -9643,7 +9661,10 @@
         "uart_tx",
         "reset_sys",
         "paused"
-      ]
+      ],
+      "excluded_imports": {
+        "tools/sw/package.py": "n2m.preload.prepare imports it; the builder calls prepare only for preload targets and this target has no preload"
+      }
     }
   },
   "python-palette194-fc": {
@@ -9974,7 +9995,10 @@
         "src/dv/python/integration/test_startup202.py",
         "src/dv/ppu/startup202.py",
         "tools/sw/columns.py"
-      ]
+      ],
+      "excluded_imports": {
+        "tools/n2m/host/client.py": "client_transport.connect imports it; test_startup202 never calls connect"
+      }
     }
   },
   "python-startup202-write": {
@@ -10069,7 +10093,10 @@
         "src/dv/python/integration/test_startup202.py",
         "src/dv/ppu/startup202.py",
         "tools/sw/columns.py"
-      ]
+      ],
+      "excluded_imports": {
+        "tools/n2m/host/client.py": "client_transport.connect imports it; test_startup202 never calls connect"
+      }
     }
   },
   "ppu-oam-read": {
@@ -10208,7 +10235,10 @@
         "src/dv/python/integration/test_startup204.py",
         "src/dv/ppu/startup204.py",
         "tools/sw/columns.py"
-      ]
+      ],
+      "excluded_imports": {
+        "tools/n2m/host/client.py": "client_transport.connect imports it; test_startup204 never calls connect"
+      }
     }
   },
   "python-vram-write": {
@@ -10303,7 +10333,10 @@
         "src/dv/python/integration/test_startup204.py",
         "src/dv/ppu/startup204.py",
         "tools/sw/columns.py"
-      ]
+      ],
+      "excluded_imports": {
+        "tools/n2m/host/client.py": "client_transport.connect imports it; test_startup204 never calls connect"
+      }
     }
   },
   "ppu-vram-read": {
@@ -10474,7 +10507,10 @@
         "src/dv/python/integration/test_late208.py",
         "src/dv/ppu/late208.py",
         "tools/sw/columns.py"
-      ]
+      ],
+      "excluded_imports": {
+        "tools/n2m/host/client.py": "client_transport.connect imports it; test_late208 never calls connect"
+      }
     }
   },
   "python-oam-late-fe9d": {
@@ -10569,7 +10605,10 @@
         "src/dv/python/integration/test_late208.py",
         "src/dv/ppu/late208.py",
         "tools/sw/columns.py"
-      ]
+      ],
+      "excluded_imports": {
+        "tools/n2m/host/client.py": "client_transport.connect imports it; test_late208 never calls connect"
+      }
     }
   },
   "python-oam-late-fe20": {
@@ -10664,7 +10703,10 @@
         "src/dv/python/integration/test_late208.py",
         "src/dv/ppu/late208.py",
         "tools/sw/columns.py"
-      ]
+      ],
+      "excluded_imports": {
+        "tools/n2m/host/client.py": "client_transport.connect imports it; test_late208 never calls connect"
+      }
     }
   },
   "dma-late": {
@@ -10796,7 +10838,10 @@
         "src/dv/python/dma/test_dma_late.py",
         "src/dv/ppu/late208.py",
         "tools/sw/columns.py"
-      ]
+      ],
+      "excluded_imports": {
+        "tools/n2m/host/client.py": "client_transport.connect imports it; test_dma_late never calls connect"
+      }
     }
   },
   "python-dma-late-fe9d": {
@@ -10876,7 +10921,10 @@
         "src/dv/python/dma/test_dma_late.py",
         "src/dv/ppu/late208.py",
         "tools/sw/columns.py"
-      ]
+      ],
+      "excluded_imports": {
+        "tools/n2m/host/client.py": "client_transport.connect imports it; test_dma_late never calls connect"
+      }
     }
   },
   "python-dma-late-fe20": {
@@ -10956,7 +11004,10 @@
         "src/dv/python/dma/test_dma_late.py",
         "src/dv/ppu/late208.py",
         "tools/sw/columns.py"
-      ]
+      ],
+      "excluded_imports": {
+        "tools/n2m/host/client.py": "client_transport.connect imports it; test_dma_late never calls connect"
+      }
     }
   },
   "python-v05-timer": {
@@ -13017,7 +13068,10 @@
         "pixel_sample",
         "uart_rx",
         "uart_tx"
-      ]
+      ],
+      "excluded_imports": {
+        "tools/sw/package.py": "n2m.preload.prepare imports it; the Mooneye fixture builder calls emit and verify and validates the image through n2m.mooneye"
+      }
     },
     "preload": "mooneye-reg-f"
   },
@@ -13125,7 +13179,10 @@
         "pixel_sample",
         "uart_rx",
         "uart_tx"
-      ]
+      ],
+      "excluded_imports": {
+        "tools/sw/package.py": "n2m.preload.prepare imports it; the Mooneye fixture builder calls emit and verify and validates the image through n2m.mooneye"
+      }
     },
     "preload": "mooneye-reg-f"
   },
@@ -13233,7 +13290,10 @@
         "pixel_sample",
         "uart_rx",
         "uart_tx"
-      ]
+      ],
+      "excluded_imports": {
+        "tools/sw/package.py": "n2m.preload.prepare imports it; the Mooneye fixture builder calls emit and verify and validates the image through n2m.mooneye"
+      }
     },
     "preload": "mooneye-reg-f"
   },
@@ -16483,7 +16543,8 @@
         "src/dv/springtrail/hud_reference.py",
         "src/dv/springtrail/test_hud_short.py",
         "src/sw/springtrail/assets/core/core-maps.json",
-        "src/sw/springtrail/assets/core/core-tiles.json"
+        "src/sw/springtrail/assets/core/core-tiles.json",
+        "src/dv/springtrail/blocks_reference.py"
       ],
       "waves": [
         "clk_sys",
@@ -16660,7 +16721,8 @@
         "src/dv/springtrail/hud_reference.py",
         "src/dv/springtrail/test_hud_unit.py",
         "src/sw/springtrail/assets/core/core-maps.json",
-        "src/sw/springtrail/assets/core/core-tiles.json"
+        "src/sw/springtrail/assets/core/core-tiles.json",
+        "src/dv/springtrail/blocks_reference.py"
       ],
       "waves": [
         "clk_sys",
@@ -16845,7 +16907,8 @@
         "src/sw/springtrail/assets/core/core-maps.json",
         "src/dv/springtrail/hud_render_program.py",
         "src/dv/springtrail/hud_render_reference.py",
-        "src/dv/springtrail/test_hud_render.py"
+        "src/dv/springtrail/test_hud_render.py",
+        "src/dv/springtrail/blocks_reference.py"
       ],
       "waves": [
         "wave_dot",
@@ -17023,7 +17086,8 @@
         "src/dv/springtrail/test_pause_game_short.py",
         "src/sw/springtrail/blocks.asm",
         "src/sw/springtrail/assets/core/terrain-tiles.json",
-        "src/sw/springtrail/power.asm"
+        "src/sw/springtrail/power.asm",
+        "src/dv/springtrail/blocks_reference.py"
       ],
       "waves": [
         "wave_dot",
@@ -17201,7 +17265,8 @@
         "src/dv/springtrail/test_pause_game_full.py",
         "src/sw/springtrail/blocks.asm",
         "src/sw/springtrail/assets/core/terrain-tiles.json",
-        "src/sw/springtrail/power.asm"
+        "src/sw/springtrail/power.asm",
+        "src/dv/springtrail/blocks_reference.py"
       ],
       "waves": [
         "wave_dot",
@@ -17384,7 +17449,8 @@
         "src/dv/springtrail/test_pause_game_full.py",
         "src/sw/springtrail/blocks.asm",
         "src/sw/springtrail/assets/core/terrain-tiles.json",
-        "src/sw/springtrail/power.asm"
+        "src/sw/springtrail/power.asm",
+        "src/dv/springtrail/blocks_reference.py"
       ],
       "waves": [
         "wave_dot",
@@ -17689,7 +17755,8 @@
         "src/dv/springtrail/test_motion_game_short.py",
         "src/sw/springtrail/power.asm",
         "src/sw/springtrail/blocks.asm",
-        "src/sw/springtrail/assets/core/terrain-tiles.json"
+        "src/sw/springtrail/assets/core/terrain-tiles.json",
+        "src/dv/springtrail/blocks_reference.py"
       ],
       "waves": [
         "wave_dot",
@@ -17700,7 +17767,12 @@
         "wave_write",
         "wave_input",
         "wave_load"
-      ]
+      ],
+      "excluded_imports": {
+        "src/dv/springtrail/hud_render_reference.py": "hud_game_check imports it only when run() is called with renderer=True and no motion; this target calls run() with motion=True",
+        "src/dv/springtrail/motion_render_reference.py": "hud_game_check imports it only when run() is called with renderer=True and motion=True; this target calls run() without renderer=True",
+        "src/dv/springtrail/power_render_reference.py": "hud_game_check imports it only when run() is called with power=True; this target calls run() without power=True"
+      }
     },
     "preload": "springtrail"
   },
@@ -17872,7 +17944,8 @@
         "src/dv/springtrail/test_motion_game_full.py",
         "src/sw/springtrail/power.asm",
         "src/sw/springtrail/blocks.asm",
-        "src/sw/springtrail/assets/core/terrain-tiles.json"
+        "src/sw/springtrail/assets/core/terrain-tiles.json",
+        "src/dv/springtrail/blocks_reference.py"
       ],
       "waves": [
         "wave_dot",
@@ -17883,7 +17956,12 @@
         "wave_write",
         "wave_input",
         "wave_load"
-      ]
+      ],
+      "excluded_imports": {
+        "src/dv/springtrail/hud_render_reference.py": "hud_game_check imports it only when run() is called with renderer=True and no motion; this target calls run() with motion=True",
+        "src/dv/springtrail/motion_render_reference.py": "hud_game_check imports it only when run() is called with renderer=True and motion=True; this target calls run() without renderer=True",
+        "src/dv/springtrail/power_render_reference.py": "hud_game_check imports it only when run() is called with power=True; this target calls run() without power=True"
+      }
     },
     "preload": "springtrail"
   },
@@ -18613,7 +18691,8 @@
         "src/dv/springtrail/game_reference.py",
         "src/sw/springtrail/power.asm",
         "src/sw/springtrail/blocks.asm",
-        "src/sw/springtrail/assets/core/terrain-tiles.json"
+        "src/sw/springtrail/assets/core/terrain-tiles.json",
+        "src/dv/springtrail/blocks_reference.py"
       ],
       "waves": [
         "wave_dot",
@@ -18624,7 +18703,12 @@
         "wave_write",
         "wave_input",
         "wave_load"
-      ]
+      ],
+      "excluded_imports": {
+        "src/dv/springtrail/hud_render_reference.py": "hud_game_check imports it only when run() is called with renderer=True and no motion; this target calls run() with motion=True",
+        "src/dv/springtrail/power_render_reference.py": "hud_game_check imports it only when run() is called with power=True, and motion_render_program imports it only for the power variant; this target calls run() without power=True and motion-render301 builds the motion variant",
+        "src/dv/springtrail/power_cases.py": "motion_render_program imports it only for the power variant; motion-render301 builds the motion variant"
+      }
     },
     "preload": "motion-render301"
   },
@@ -18790,7 +18874,8 @@
         "src/dv/springtrail/power_frames.py",
         "src/dv/springtrail/test_power_short.py",
         "src/sw/springtrail/blocks.asm",
-        "src/sw/springtrail/assets/core/terrain-tiles.json"
+        "src/sw/springtrail/assets/core/terrain-tiles.json",
+        "src/dv/springtrail/blocks_reference.py"
       ],
       "waves": [
         "clk_sys",
@@ -18977,7 +19062,8 @@
         "src/dv/springtrail/power_frames.py",
         "src/dv/springtrail/test_power_unit_a.py",
         "src/sw/springtrail/blocks.asm",
-        "src/sw/springtrail/assets/core/terrain-tiles.json"
+        "src/sw/springtrail/assets/core/terrain-tiles.json",
+        "src/dv/springtrail/blocks_reference.py"
       ],
       "waves": [
         "clk_sys",
@@ -19164,7 +19250,8 @@
         "src/dv/springtrail/power_frames.py",
         "src/dv/springtrail/test_power_unit_b.py",
         "src/sw/springtrail/blocks.asm",
-        "src/sw/springtrail/assets/core/terrain-tiles.json"
+        "src/sw/springtrail/assets/core/terrain-tiles.json",
+        "src/dv/springtrail/blocks_reference.py"
       ],
       "waves": [
         "clk_sys",
@@ -19352,7 +19439,8 @@
         "src/dv/springtrail/power_frames.py",
         "src/dv/springtrail/test_power_short.py",
         "src/sw/springtrail/blocks.asm",
-        "src/sw/springtrail/assets/core/terrain-tiles.json"
+        "src/sw/springtrail/assets/core/terrain-tiles.json",
+        "src/dv/springtrail/blocks_reference.py"
       ],
       "waves": [
         "clk_sys",
@@ -19562,7 +19650,10 @@
         "wave_write",
         "wave_input",
         "wave_load"
-      ]
+      ],
+      "excluded_imports": {
+        "src/dv/springtrail/hud_render_reference.py": "hud_game_check imports it only when run() is called with renderer=True and no motion; this target calls run() with motion=True"
+      }
     },
     "preload": "power-render302",
     "wall_allowance": {
