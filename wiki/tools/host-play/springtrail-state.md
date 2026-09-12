@@ -5,7 +5,7 @@ Two ways to see what the board is doing, and what each one proves.
 | | Actual-pixel snapshot | State reconstruction |
 |---|---|---|
 | Command | `python tools/build.py host snapshot` | `python tools/springtrail_player.py observe` |
-| Reads | 5760 packed bytes of the completed source frame | selected WRAM ranges, 151 bytes for the current image |
+| Reads | 5760 packed bytes of the completed source frame | selected WRAM ranges, 207 bytes in two requests for the current image |
 | Proves | what the PPU actually drew | what the game's own records say |
 | Shows | the last completed display | the last completed update, drawn by the host renderer |
 | Works for | any loaded image | only a qualified Springtrail build |
@@ -66,7 +66,10 @@ timer, frame_pending     update count and the VBlank flag
 ```
 
 Every record carries the decoder version, the ROM SHA-256, the completed dot,
-the reset epoch and the boundary it represents. The image record is labelled
+the fresh completed source-frame epoch and the boundary it represents.
+Acquisition reads 24 bytes of SNAPSHOT metadata in addition to the 207 selected
+WRAM bytes, without downloading pixels; request counts include that metadata
+request. The [contract](SPEC.md) defines its freshness check. The image record is labelled
 `RECONSTRUCTED`, so a picture pulled out of an artifact directory cannot be
 mistaken for a frame the hardware drew.
 

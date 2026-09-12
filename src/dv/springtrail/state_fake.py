@@ -223,6 +223,7 @@ class Endpoint:
         self.mask = 0
         self.source = abi.INPUT_SOURCE_UART
         self.epoch = 2
+        self.snapshot_epoch = 0
         self.snapshot = None
         self.pending = bytearray()
         self.requests = []
@@ -243,7 +244,7 @@ class Endpoint:
             abi.HOST_REG_INPUT_PHYSICAL: 0,
             abi.HOST_REG_INPUT_EFFECTIVE: self.mask if self.source == abi.INPUT_SOURCE_UART else 0,
             abi.HOST_REG_DOT_LO: game.dot & 0xFFFFFFFF, abi.HOST_REG_DOT_HI: game.dot >> 32,
-            abi.HOST_REG_SNAPSHOT_EPOCH: self.epoch,
+            abi.HOST_REG_SNAPSHOT_EPOCH: self.snapshot_epoch,
             abi.HOST_REG_SNAPSHOT_VALID: int(self.snapshot is not None),
             abi.HOST_REG_IO_LCDC: game.lcdc, abi.HOST_REG_IO_LY: game.ly,
             abi.HOST_REG_IO_STAT: 0x40 | (1 if game.ly >= 144 else 3),
@@ -302,7 +303,7 @@ class Endpoint:
             self.epoch += 1
             game.reset()
             game.mask = self.mask
-            self.snapshot = None
+            # Dedicated snapshot contents/metadata survive core reset.
             self.state = abi.STATE_PAUSED
         elif name == 'RUN_DOTS':
             count = unpack_record('word', payload)['value']
@@ -339,7 +340,8 @@ class Endpoint:
                 status = abi.STATUS_BAD_STATE
             else:
                 self.snapshot = pack_pixels(game.pixels())
-                response = pack_record('snapshot', {'epoch': self.epoch, 'seq': game.frame,
+                self.snapshot_epoch = self.epoch
+                response = pack_record('snapshot', {'epoch': self.snapshot_epoch, 'seq': game.frame,
                                                     'dot': game.frame_dot, 'size': abi.FRAME_BYTES})
         elif name == 'READ_FRAME':
             request = unpack_record('read_range', payload)

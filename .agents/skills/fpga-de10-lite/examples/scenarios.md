@@ -44,8 +44,10 @@ paused state, UART input writes, execution and snapshot checks. Compare pixels
 with independent program expectations. Record diagnostic transport settings
 separately; see the [UART timeout procedure](../../uart-host-tool/examples/scenarios.md#physical-timeout-diagnosis).
 
-Verified CLI help: `python tools/build.py fpga build --help` describes building,
-not programming; no FPGA programming subcommand exists. `host load --help`
+Verified CLI help: `python tools/build.py fpga build --help` describes building.
+`python tools/build.py fpga program --help` exposes the separate checked
+programming command with an explicit SOF, Quartus directory and optional JTAG
+cable. Its availability does not imply authorization or a completed operation. `host load --help`
 requires an immutable `sw/build/<target>/runs/<attempt>/result.json` through
 `--package`. `host status --help` exposes explicit UART port/VID/PID/identity
 selection. These help checks do not prove programming or UART transmission.

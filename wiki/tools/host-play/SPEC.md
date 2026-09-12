@@ -46,16 +46,17 @@ Addresses come from the linker's `symbols.json` inside the same immutable
 [packaged attempt](../sw/SPEC.md) as the ROM, so no game address is written in
 the tool. Binding fails, before any port is opened, when the image is not
 qualified, when a required symbol is missing, when the layout digest differs, or
-when a symbol falls outside WRAM. Decoder version 2 qualifies the current
-three-stage progression image and its complete symbol layout. The former
-block-only image is rejected: its profile does not share the current model.
+when a symbol falls outside WRAM. Decoder version 3 qualifies the current
+three-stage entity image and its complete symbol layout. Earlier image profiles
+are rejected when they do not share the current model.
 A new image requires matching decode, model and renderer checks as well as its
 exact image/layout pair; adding a hash alone does not qualify it.
 
 The reader asks for the smallest ranges that cover the bound symbols, merging
 neighbours that are closer together than the cost of a second request. For the
-current image that is one 151-byte PEEK at the base of WRAM, against 8192 bytes
-for the whole store and 5760 for a frame. Each request stays within the
+current image that is two PEEK requests:151 bytes at WRAM offset0 and56 bytes
+at offset768,207 bytes total, against8192 bytes for the whole store and5760
+for a frame. Each request stays within the
 generated payload limit.
 
 ### Coherent paused acquisition
@@ -84,7 +85,14 @@ Three views exist at that boundary and are labelled, never interchanged:
 | last completed display | What `SNAPSHOT` returns at this boundary. | The frame drawn from the previous boundary's state, so one behind the observation. |
 
 Every observation carries the decoder version, ROM identity, completed dot,
-reset epoch, LY, the boundary it represents and the request and byte counts.
+fresh source-frame epoch, LY, the boundary it represents and the request and byte counts.
+At the paused boundary, SNAPSHOT refreshes metadata without READ_FRAME. Its
+5760-byte source frame must have completed no later than the paused dot and
+less than one frame earlier. A missing completed frame or changed epoch fails
+closed; the retained SNAPSHOT_EPOCH register is not a live reset counter.
+The 207 PEEK payload bytes and 24 SNAPSHOT metadata bytes are reported
+separately. Request counts include the metadata request; packet logs retain
+framing and command overhead for both state and pixel paths.
 Each reconstructed image is labelled reconstructed and carries that provenance.
 An aligned comparison therefore matches the image reconstructed at one boundary
 against the snapshot taken at the next.
@@ -202,7 +210,9 @@ rules; the
 retained artifacts, the reported measurements, a full five-checkpoint
 comparison and a deliberate disagreement.
 
-Board execution is not part of this evidence and remains open under
-[#485](https://github.com/amichai-bd/nand2mario/issues/485). No timing figure
-for this path has been measured on hardware; the payload-only arithmetic in the
-[host SPEC](../n2m/host/SPEC.md) is not a result for it.
+Bounded physical state/pixel/play qualification uses the current immutable
+package and verified board setup. [Three actual source frames](../../showcase/README.md#current-springtrail-state-comparison)
+show selected aligned captures. Measured command timings belong to the physical
+validation receipt; payload-only arithmetic in the [host SPEC](../n2m/host/SPEC.md)
+is not a latency guarantee. This does not establish monitor output, physical
+controls or a complete campaign.

@@ -13,7 +13,7 @@ sys.path[:0] = [str(ROOT / 'tools'), str(Path(__file__).resolve().parent)]
 from n2m import generated_interfaces as abi  # noqa: E402
 from n2m import springtrail_play as play_module  # noqa: E402
 from n2m import springtrail_state as state  # noqa: E402
-from n2m.host.client import Client, UncertainCompletion  # noqa: E402
+from n2m.host.client import Client, RejectedCommand, UncertainCompletion  # noqa: E402
 from n2m.interface_codec import pack_pixels  # noqa: E402
 import state_support as support  # noqa: E402
 from state_fake import Endpoint  # noqa: E402
@@ -38,6 +38,62 @@ class Harness(unittest.TestCase):
 
 
 class BoundaryTests(Harness):
+    def test_epoch_refreshes_retained_capture_after_reset_without_pixel_read(self):
+        endpoint, client = self.loaded()
+        _, old = play_module.observe(client, self.binding)
+        retained = endpoint.snapshot
+        client.control('RESET')
+        self.assertEqual(client.read_host(abi.HOST_REG_SNAPSHOT_EPOCH), old['epoch'])
+        self.assertEqual(endpoint.snapshot, retained)
+        with self.assertRaises(RejectedCommand):
+            client.request('SNAPSHOT')  # No completed source frame since RESET.
+        self.assertEqual(endpoint.snapshot, retained)
+        _, fresh = play_module.observe(client, self.binding)
+        self.assertEqual(fresh['epoch'], old['epoch'] + 1)
+        self.assertEqual(fresh['epoch_source'], 'fresh-source-frame')
+        self.assertEqual(fresh['epoch_metadata_bytes'], abi.SNAPSHOT_BYTES)
+        self.assertNotIn('READ_FRAME', endpoint.requests)
+        play_module._dots(client, play_module.PERIOD)
+        _, after = play_module.observe(client, self.binding)
+        self.assertEqual(after['epoch'], fresh['epoch'])
+
+    def test_epoch_metadata_rejects_wrong_size_future_and_stale_frame(self):
+        for fault in ('size', 'future', 'stale'):
+            with self.subTest(fault=fault):
+                endpoint, client = self.loaded()
+                request = client.request
+                def corrupt(name, *args, **kwargs):
+                    result = request(name, *args, **kwargs)
+                    if name == 'SNAPSHOT':
+                        result = dict(result)
+                        if fault == 'size':
+                            result['size'] -= 1
+                        else:
+                            result['dot'] = endpoint.game.dot + (1 if fault == 'future' else -play_module.PERIOD)
+                    return result
+                client.request = corrupt
+                with self.assertRaisesRegex(play_module.PlayFailure, 'STATE_EPOCH_FRAME'):
+                    play_module.observe(client, self.binding)
+                self.assertNotIn('READ_FRAME', endpoint.requests)
+
+    def test_fresh_epoch_change_still_rejects_advance(self):
+        endpoint, client = self.loaded()
+        first = play_module.observe(client, self.binding)
+        play_module._dots(client, play_module.PERIOD)
+        endpoint.epoch += 1  # Model a changed source epoch with otherwise valid timing.
+        second = play_module.observe(client, self.binding)
+        with self.assertRaisesRegex(play_module.PlayFailure, 'STATE_EPOCH_CHANGED'):
+            play_module._check_advance(first, second, 1, 0)
+
+    def test_actual_reset_between_observations_is_not_an_advance(self):
+        endpoint, client = self.loaded()
+        first = play_module.observe(client, self.binding)
+        client.control('RESET')
+        second = play_module.observe(client, self.binding)
+        self.assertNotEqual(first[1]['epoch'], second[1]['epoch'])
+        with self.assertRaisesRegex(play_module.PlayFailure, 'STATE_DOT_DRIFT|STATE_EPOCH_CHANGED'):
+            play_module._check_advance(first, second, 1, 0)
+
     def test_observation_lands_on_a_complete_update(self):
         endpoint, client = self.loaded()
         observation, provenance = play_module.observe(client, self.binding)
@@ -177,7 +233,7 @@ class PlayTests(Harness):
                          {abi.HOST_REG_INPUT, abi.HOST_REG_INPUT_SOURCE})
         self.assertEqual(set(endpoint.requests) - {
             'PING', 'READ_HOST', 'WRITE_HOST', 'LOAD_BEGIN', 'LOAD_WRITE', 'LOAD_END',
-            'READ_ROM', 'RESET', 'RUN_DOTS', 'PEEK', 'HALT'}, set())
+            'READ_ROM', 'RESET', 'RUN_DOTS', 'PEEK', 'HALT', 'SNAPSHOT'}, set())
         allowed = {(offset, count) for offset, count in self.binding.ranges}
         self.assertEqual(set(endpoint.peeks) - allowed, set())
 

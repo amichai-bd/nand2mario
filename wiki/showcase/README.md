@@ -83,6 +83,26 @@ sanitization. Preserve the current representation for each embed. Any changed
 animation technique needs standalone, actual wiki/deck and applicable GitHub
 README checks; local rendering alone cannot establish GitHub support.
 
+## Current Springtrail state comparison
+
+![Three actual Springtrail source frames](springtrail-state-board.svg)
+
+These three native 160x144 frames were read from the DE10-Lite over UART on
+2026-09-13: title, a dynamic scene and first-stage WON. Each matched all23040
+shades reconstructed independently from the previous observed game state.
+They are source-frame captures, not monitor photographs or model previews.
+The button pills show sampled buttons from the prior observed state used for
+reconstruction, not capture-time effective input. Archive CRCs are computed
+from retained shade indices during conversion; packed-byte SHA-256 identities
+are retained separately.
+
+The [three-frame archive](../../tools/wiki/board_frames/springtrail-state-board.json)
+retains exact source commit, ROM/layout identity, capture epochs/dots, packed-byte
+hashes and indexed PNG payloads. `tools/wiki/showcase.py` regenerates this view.
+The source operation was `springtrail_player.py compare`, not the historical
+`frame_proofs.py` showcase. The [state contract](../tools/host-play/SPEC.md#springtrail-state-reconstruction)
+owns the one-frame alignment and freshness checks.
+
 ## Build and tests
 
 ![Build and tests](build-and-tests.svg)
