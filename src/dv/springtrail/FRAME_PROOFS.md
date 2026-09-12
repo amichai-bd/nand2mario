@@ -63,12 +63,12 @@ Image `35aae757bde0ec9a15d6d6c84f14b45b451c341d2d4775f43ed8a9a762625192`,
 | `ClearObjects` | 3872 | 160 OAM bytes |
 | `CopyTiles` | 61600 | 1184 tile bytes to VRAM |
 | `CopyMap` | 30108 | 576 title map bytes |
-| `InitHUD` | 17120 | HUD tiles and the column caches |
+| `InitHUD` | 17120 | the 20 font tiles and the second map's cleared HUD rows |
 | `InitMotionArt` | 9212 | the courier poses |
 | `InitBlockArt` | 20732 | four 128-byte block tile copies |
 | `PrepareScene` | 20304 | the first shadow scene, including the effect test |
 | `PrepareHUD` | 412 | the HUD cache |
-| `PrepareMap` | 84 | the map restore state |
+| `PrepareMap` | 84 | the prepared-column reset; returns at title |
 | `PublishHUD` | 664 | both map rows |
 | `PublishScene` | 904 | the first HRAM DMA and its wait loop |
 | **LCD** | **167840** | `LDH [$FF40],A` commits in its second M-cycle |
