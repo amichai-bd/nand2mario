@@ -14,12 +14,15 @@ WORDS = ["one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
 NUMBER_RE = r"(?P<n>[A-Za-z]+|\d+)"
 
 # Every sentence that states a cap. Each pattern must match its file exactly once.
-# Extend this table when a new location states a cap; the scan below catches a
-# location that was added without being listed here.
+# The fourth field names the noun the cap counts, as (singular, plural), so a cap
+# of one reads "one open PR" rather than "one open PRs"; None where the sentence
+# states no noun. Extend this table when a new location states a cap; the scan
+# below catches a location that was added without being listed here.
 LOCATIONS = [
-    ("AGENTS.md", "prs", rf"at most {NUMBER_RE} open PRs"),
-    ("AGENTS.md", "crewmates", rf"at most {NUMBER_RE} active crewmates"),
-    ("AGENTS.md", "prs", rf"has fewer than {NUMBER_RE} open\."),
+    ("AGENTS.md", "prs", rf"at most {NUMBER_RE} open (?P<w>PRs?)", ("PR", "PRs")),
+    ("AGENTS.md", "crewmates", rf"at most {NUMBER_RE} active (?P<w>crewmates?)",
+     ("crewmate", "crewmates")),
+    ("AGENTS.md", "prs", rf"has fewer than {NUMBER_RE} open\.", None),
 ]
 
 # Where any cap statement may legitimately appear. The scan reads every file here.
@@ -72,7 +75,7 @@ def plan(root: Path, caps: dict[str, int]) -> tuple[dict[str, int], dict[str, st
     """The old caps and the rewritten text of every listed file; writes nothing."""
     texts: dict[str, str] = {}
     old: dict[str, int] = {}
-    for relative, kind, pattern in LOCATIONS:
+    for relative, kind, pattern, forms in LOCATIONS:
         text = texts.setdefault(relative, read(root / relative))
         matches = list(re.finditer(pattern, text))
         if len(matches) != 1:
@@ -87,6 +90,12 @@ def plan(root: Path, caps: dict[str, int]) -> tuple[dict[str, int], dict[str, st
         replacement = word(caps[kind])
         if token[0].isupper():
             replacement = replacement.capitalize()
+        if forms is not None:
+            # The noun sits after the number, so rewrite it first and the number's
+            # span still holds.
+            noun = forms[0] if caps[kind] == 1 else forms[1]
+            start, end = match.span("w")
+            text = text[:start] + noun + text[end:]
         start, end = match.span("n")
         texts[relative] = text[:start] + replacement + text[end:]
     return old, texts
@@ -194,11 +203,15 @@ def main(argv: list[str] | None = None) -> int:
         old, texts = plan(args.root, caps)
         # Scan the planned text first: a stale statement elsewhere leaves the tree untouched.
         report(*verify(args.root, caps, texts))
-        if old == caps:
+        # Compare text, not only caps: a cap that already reads right may still
+        # need its noun agreed with the number.
+        changed = {relative: text for relative, text in texts.items()
+                   if text != read(args.root / relative)}
+        if not changed:
             print("caps already read crewmates "
                   f"{caps['crewmates']}, open PRs {caps['prs']}; nothing written")
             return 0
-        for relative, text in texts.items():
+        for relative, text in changed.items():
             write(args.root / relative, text)
         log(args.root, old, caps, args.by, args.date)
         print(f"rewrote {len(LOCATIONS)} locations: crewmates {old['crewmates']} -> "

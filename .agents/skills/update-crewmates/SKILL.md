@@ -25,7 +25,8 @@ python .agents/skills/update-crewmates/scripts/update_caps.py <crewmates> <open-
 The script:
 
 1. Rewrites each location below, keeping the number as a word where the prose
-   uses words. Each pattern must match exactly once, or it stops before writing.
+   uses words and agreeing the counted noun with it. Each pattern must match
+   exactly once, or it stops before writing.
 2. Appends one line to [HISTORY.md](HISTORY.md): date, old to new, who asked.
    The current caps are the last line of that log and the sentences themselves.
 3. Scans `AGENTS.md`, `CLAUDE.md`, `README.md`, `.agents`, `wiki/agents`,
@@ -42,9 +43,13 @@ only the numbers changed.
 
 | File | Statement | Cap |
 | --- | --- | --- |
-| `AGENTS.md#work` | `at most <n> open PRs` | open PRs |
-| `AGENTS.md#work` | `at most <n> active crewmates` | crewmates |
+| `AGENTS.md#work` | `at most <n> open PR(s)` | open PRs |
+| `AGENTS.md#work` | `at most <n> active crewmate(s)` | crewmates |
 | `AGENTS.md#work` | `has fewer than <n> open.` | open PRs |
+
+The script agrees the counted noun with the number, so a cap of one takes the
+singular noun. A listed sentence that counts something needs both its forms in
+`LOCATIONS`. State no cap number in this file: the scan reads it too.
 
 Every other sentence about slots, including
 `.agents/skills/agent-flow/references/recovery.md`, is written to hold for any
