@@ -104,3 +104,12 @@ watchdog/renderer paths still need execution. The retained pause positive
 803 seconds and negative 522 seconds used their declared 900-second allowances.
 Current source changes require qualification against producing fingerprints;
 these measurements are not relabelled as current-head execution.
+
+
+The current `python-mgu` total allowance is 600 seconds. Retained `g304d` at
+`9b5462d` exhausted the prior 420-second allowance (408 execution, cleanup
+completed), with 37920 pixels and last pixel dot289746. Linear projection to
+the unchanged complete bound321852 is 453.21 seconds; this is an estimate,
+not a PASS. The 600 total leaves setup/check/cleanup headroom. The complete
+witness and all pixel/state checks remain unchanged. Renderer allowances stay
+420 seconds. Possible host overlap is not established as the timeout cause.

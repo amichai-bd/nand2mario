@@ -15816,10 +15816,10 @@
     ],
     "expected_exit": "zero",
     "signature": "PASS HUD game complete",
-    "timeout_seconds": 420,
+    "timeout_seconds": 600,
     "wall_allowance": {
-      "seconds": 420,
-      "reason": "measured 289-second whole-run wall at the 300 default; the full game needs about 244 simulator seconds for roughly 256500 dots at 250223 ns per simulator second, leaving no room for preload, compile check and cleanup"
+      "seconds": 600,
+      "reason": "At 9b5462d, g304d measured 408 seconds before exhausting the execution portion of its 420 total allowance after 37920 pixels at dot289746. The unchanged complete bound321852 projects 453.21 whole execution seconds linearly; 600 total retains setup/check/cleanup headroom without shortening the witness."
     },
     "vendor_model": "intel-memory",
     "intel_mixed_mode_instances": [
