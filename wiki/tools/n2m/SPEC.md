@@ -113,7 +113,10 @@ A `sim` unit runs as the ordinary `sim test` worker under the run's tag, with
 the same `--seed`, `--rebuild`, `--questa-bin` and `--intel-sim-lib`, under the
 same [per-target wall budget](#test-wall-budget). A `unit` runs as
 `unittest discover` over exactly that one file, with the file's own directory as
-the top level and `tools/` on `PYTHONPATH`.
+the top level and `tools/` on `PYTHONPATH`. Its stdout and stderr share one
+pipe; the whole output is kept, and the one-line `error` is the first
+`FAIL:`/`ERROR:` header, else the `FAILED` verdict, else the last line. A unit's
+own trailing print is never reported as its failure.
 
 Questa is one node-locked seat. A simulation whose license checkout is refused
 is reported by name as `SKIPPED` with reason `questa-contention`, and the run
@@ -977,11 +980,15 @@ replaces the destination without unlinking the old record. Windows access,
 sharing, and lock denials (errors 5, 32, 33) receive at most five retries with
 10, 20, 40, 80, and 160 ms delays (310 ms total). Other errors fail immediately;
 exhaustion propagates the final error. This bounds transient handle contention,
-not permanent permissions. Cleanup attempts to remove only that operation's
-temporary file; a cleanup denial must not mask the publication error. A blocked
-cleanup can leave that temporary file for inspection. Failed replacement leaves
-the old complete record intact. Simulation still publishes RUNNING before any
-execution; publication failure aborts the request rather than reporting success.
+not permanent permissions. How many of those retries a publication actually
+spends is not fixed: an antivirus scanner or indexer holding the destination
+adds denials of its own, so behaviour is pinned by the preserved record and the
+bound, never by an exact retry count. Cleanup attempts to remove only that
+operation's temporary file; a cleanup denial must not mask the publication
+error. A blocked cleanup can leave that temporary file for inspection. Failed
+replacement leaves the old complete record intact. Simulation still publishes
+RUNNING before any execution; publication failure aborts the request rather
+than reporting success.
 
 Each backend treats compilation and simulation as one stage: any source,
 runner module, dependency definition, target configuration, seed, or discovered

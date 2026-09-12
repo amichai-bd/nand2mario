@@ -355,6 +355,17 @@ class UnitExecution(unittest.TestCase):
         self.assertEqual(outcome["status"], "FAIL")
         self.assertIn("deliberate", outcome["output"])
 
+    def test_a_failing_unit_names_the_failing_test_not_its_last_print(self):
+        """A unit that prints on stdout must not have that print reported as its failure."""
+        self.write("import unittest\n\nclass T(unittest.TestCase):\n"
+                   "    def test_bad(self):\n"
+                   "        print('a passing diagnostic')\n"
+                   "        self.fail('deliberate')\n")
+        outcome = module.run_unit(self.root, "suite/test_one.py", {"labels": []})
+        self.assertEqual(outcome["status"], "FAIL")
+        self.assertTrue(outcome["error"].startswith("FAIL: test_bad"), outcome["error"])
+        self.assertIn("a passing diagnostic", outcome["output"])
+
     def test_the_builder_packages_are_importable_from_any_unit(self):
         self.write("import unittest\nfrom n2m import catalogue\n\n"
                    "class T(unittest.TestCase):\n"
@@ -366,6 +377,26 @@ class UnitExecution(unittest.TestCase):
         self.write("import unittest\n")
         outcome = module.run_unit(self.root, "suite/test_one.py", {"labels": ["needs-cocotb"]})
         self.assertEqual((outcome["status"], outcome["reason"]), ("SKIPPED", "cocotb-environment"))
+
+
+class UnitErrorTests(unittest.TestCase):
+    """The reported line names the failure, whatever the unit printed last."""
+
+    def test_a_failure_header_wins_over_a_trailing_print(self):
+        self.assertEqual(module.unit_error("FAIL: test_a (m.T.test_a)\nFAILED (failures=1)\nnoise\n"),
+                         "FAIL: test_a (m.T.test_a)")
+
+    def test_an_error_header_is_reported(self):
+        self.assertEqual(module.unit_error("ERROR: test_b (m.T.test_b)\nnoise\n"),
+                         "ERROR: test_b (m.T.test_b)")
+
+    def test_the_verdict_is_reported_when_no_header_is_present(self):
+        self.assertEqual(module.unit_error("boom\nFAILED (errors=1)\ntrailing print\n"),
+                         "FAILED (errors=1)")
+
+    def test_the_last_line_remains_the_fallback(self):
+        self.assertEqual(module.unit_error("only this\n"), "only this")
+        self.assertEqual(module.unit_error(""), "no output")
 
 
 if __name__ == "__main__":

@@ -60,7 +60,12 @@ class AtomicRecordsTests(unittest.TestCase):
                     real_replace(source, destination)
                 with patch("n2m.records.os.replace", side_effect=replace), patch("time.sleep") as sleep:
                     atomic_text(self.path, "new")
-                self.assertEqual(sleep.call_count, 2)
+                # Two injected denials cost two sleeps. The delegated real
+                # replace can be denied too, by a scanner holding the
+                # destination, and the helper then retries again: pin one
+                # sleep per denied attempt, never a fixed count.
+                self.assertGreaterEqual(len(calls), 3)
+                self.assertEqual(sleep.call_count, len(calls) - 1)
                 self.assertEqual(len(set(calls)), 1)
                 self.assert_preserved("new")
 
@@ -113,7 +118,11 @@ class AtomicRecordsTests(unittest.TestCase):
         self.assertNotEqual(handle, ctypes.c_void_p(-1).value)
         closed = False
         def release(_):
+            # A scanner holding the destination can deny the replace again
+            # after our own handle is gone, so this may run more than once.
             nonlocal closed
+            if closed:
+                return
             self.assertEqual(self.path.read_text(), "old")
             self.assertTrue(kernel.CloseHandle(handle))
             closed = True
@@ -127,7 +136,10 @@ class AtomicRecordsTests(unittest.TestCase):
             probe.unlink()
             with patch("time.sleep", side_effect=release) as sleep:
                 publish()
-            self.assertEqual(sleep.call_count, 1)
+            # The held handle must cost at least one denied attempt: a replace
+            # that succeeds straight away means the handle did not block it.
+            self.assertGreaterEqual(sleep.call_count, 1)
+            self.assertTrue(closed)
             self.assert_preserved("new")
         finally:
             if not closed:
