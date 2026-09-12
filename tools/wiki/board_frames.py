@@ -131,7 +131,8 @@ def springtrail_session(folder):
     session = json.loads((folder / 'session.json').read_text(encoding='utf-8'))
     result = json.loads((folder / 'run' / 'result.json').read_text(encoding='utf-8'))
     build = json.loads((folder / 'build.json').read_text(encoding='utf-8'))
-    assert session['status'] == result['status'] == 'PASS' and result['showcase'],         'SESSION_NOT_A_PASSING_SHOWCASE'
+    assert session['status'] == result['status'] == 'PASS' and result['showcase'], \
+        'SESSION_NOT_A_PASSING_SHOWCASE'
     assert result['rom_sha256'] == build['sha256'], 'SESSION_IMAGE'
     provenance = dict(
         program='Springtrail', driver='src/dv/springtrail/frame_proofs.py',

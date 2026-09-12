@@ -167,7 +167,11 @@ and the launcher kills the worker tree at `cap-12` s. Failure keeps the dot,
 journal and packed frames; cleanup sends HALT and INPUT 0 only when the
 Client is certain. Forecast before execution: about one UART round trip per
 checkpoint plus ten frame readbacks, well under 300 s for `full`; the `short`
-run measures the rate before the `full` run.
+run measures the rate before the `full` run. Each extra `--showcase` snapshot
+costs about 1.5 s (a 5760-byte readback and the 23040-pixel comparison), so
+`full --showcase` with its 40 extra snapshots forecasts about 110 s; the
+first such run was forecast at 80 s from an assumed 0.8 s per snapshot and
+measured 106.8 s.
 
 Run, with the reviewed wire build ID and the board's UART port:
 
@@ -212,6 +216,13 @@ and paused/neutral preflight and before any input.
 |---|---|---|---|---|---|---|---|---|
 | `short` | 22.3 (cap 300) | 22.0 | 101 | 4 | 92,160 | 8 | 7,264,560 | PASS |
 | `full` | 47.8 (cap 300) | 47.6 | 627 | 10 | 230,400 | 10 | 44,202,384 | PASS |
+| `full --showcase` (tag `sc440`) | 108.7 (cap 300) | 106.8 | 627 | 10 (+40 samples) | 230,400 (+921,600) | 12 | 44,202,384 | PASS |
+
+The `full --showcase` row is the same day's session that built
+`wiki/showcase/springtrail-board.svg`: the same ten captures with the same
+sequences, completion dots and CRC32s as the `full` row, plus 48 samples (40
+extra snapshots, 8 re-listed captures) each matching all 23040 pixels; its
+59 s over the plain run is the 40 snapshots at about 1.5 s each.
 
 Every capture carried the load's epoch, its planned sequence and a
 completion dot 251 to 254 dots into row 143 of its frame (`title` at

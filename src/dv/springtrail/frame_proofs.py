@@ -82,7 +82,7 @@ EXPECTED = {
 # is built from. Checkpoint n snapshots source frame n-1, which displays
 # games()[n-2], so these cover the title (k 0), the spawn after Start+B+Right
 # (k 3), the run to the first gap (k 12..92), the held-A jump over it (k
-# 100..144: launch at 100, apex 1200 at 121..124, landing at 145), the jump
+# 100..144: launch at 100, apex 1200 at 120..124, landing at 145), the jump
 # over the patrol (k 156..166), the ring wrap (k 206), the one-VBlank tap over
 # the second gap (k 232..248) and its landing (k 256), the held jump over the third gap (k 359..397),
 # the camera clamp and the run to the goal (k 441..465), WON (k 473), the Start

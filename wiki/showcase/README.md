@@ -193,7 +193,8 @@ Captured in one session on 2026-09-12, wall 106.8 s, on wire build
 [src/dv/springtrail/frame_proofs.py](../../src/dv/springtrail/frame_proofs.py):
 
 ```text
-python src/dv/springtrail/frame_proofs.py full --showcase --uart-port <verified-port>     --expected-build-id <reviewed-wire-id> --tag sc440
+python src/dv/springtrail/frame_proofs.py full --showcase --uart-port <verified-port> \
+    --expected-build-id <reviewed-wire-id> --tag sc440
 ```
 
 The launcher built image `35aae757bde0ec9a…` from current sources, derived its
