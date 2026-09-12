@@ -43,9 +43,12 @@ actions before each store. Its normal x0 action is70905.
 `python-palette194-fc` and `python-palette194-00` build the original image and
 separately execute pinned Core during preparation, then compare its records and
 two complete visible frames in continuous Python/Questa execution. Each public
-test command retains the existing600-second total wall bound. The pinned Core
+test command retains the default300-second total wall bound. The pinned Core
 checkout must be present at `workdir/research/sameboy/source`; all selected files
-are hash-checked before compilation. No UART loading or physical proof is claimed.
+are hash-checked before compilation. Both target declarations include the
+current native-adapter source inventory and imported host client modules, so
+these inputs participate in validation and cache identity. No physical UART
+loading or board proof is claimed.
 
 The first FC attempt with the old adapter failed at retirement9446/dot66252:
 its future snapshot reported IF1 while the DUT reported IF0. The corrected

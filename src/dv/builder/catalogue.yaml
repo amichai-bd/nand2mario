@@ -358,8 +358,8 @@ units:
   python-os: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
   python-ou: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
   python-ox: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
-  python-palette194-00: {kind: sim, level: 2, labels: [broken, integration, memory, python-tb], duration_seconds: null}
-  python-palette194-fc: {kind: sim, level: 2, labels: [broken, integration, memory, python-tb], duration_seconds: null}
+  python-palette194-00: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: null}
+  python-palette194-fc: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: null}
   python-pgs: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
   python-pgu: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
   python-pgx: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
