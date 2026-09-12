@@ -143,7 +143,7 @@ the existing asset/copy mechanism. Existing149tiles remain unchanged. Enemy art
 uses palette0/shade0 transparency. Whole facing reflection moves pieces and
 flips pixels; platforms are unreflected. Missing art approval is not a gate.
 
-Reserve entity code0400..09FF and entity render/contact helpers5900..5FFF; fixed
+Reserve entity code0400..09FF and entity render/contact helpers5A00..5FFF; fixed
 linker section overlap checks are mandatory. The fresh baseline uses20197bytes,
 leaving12571 total bytes but fragmented holes. If actual allocation exhausts the
 image, keep three stages and shorten stage geometry/reuse tiles before cutting

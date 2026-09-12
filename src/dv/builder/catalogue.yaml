@@ -445,6 +445,8 @@ units:
   src/dv/springtrail/test_power_render_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.17}
   src/dv/springtrail/test_power_unit_check.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.13}
   src/dv/springtrail/test_progress_assets.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: null}
+  src/dv/springtrail/test_entities_art.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: null}
+  src/dv/springtrail/test_entities_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: null}
   src/dv/springtrail/test_progress_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: null}
   src/dv/springtrail/test_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.19}
   src/dv/springtrail/test_renderer_oracle.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.09}

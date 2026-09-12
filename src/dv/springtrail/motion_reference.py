@@ -113,13 +113,15 @@ def _horizontal(player, buttons, extra=None, stage=0):
                    animation=(p.animation + (1 if intent == 1 else -1)) & 255)
 
 
-def _vertical(player, buttons, extra=None, report=None, stage=0):
+def _vertical(player, buttons, extra=None, report=None, stage=0, support=None):
     p = player
     if p.jump == 1 and not buttons & 16 and p.index < 15:
         p = replace(p, saved=max(0, p.index - 1), index=15)
     if p.jump in (1, 2) and p.saved and p.index < 15:
         p = replace(p, index=p.saved, saved=0)
     if p.jump == 0:
+        if support is not None and support(p):
+            return replace(p, vy=0, grounded=True)
         support = p.y + HEIGHT
         if support % TILE == 0 and any(_solid(extra, column, support // TILE, False, stage)
                 for column in range(p.x // TILE, (p.x + WIDTH - 1) // TILE + 1)):
@@ -151,7 +153,7 @@ def _vertical(player, buttons, extra=None, report=None, stage=0):
     return replace(p, y=y, vy=dy, grounded=False)
 
 
-def step(player, buttons, blocked=None, report=None, stage=0):
+def step(player, buttons, blocked=None, report=None, stage=0, support=None):
     """One PLAY update. Mode pause/restart is owned by the interaction caller.
 
     `blocked(column, row, ascending)` adds solid cells outside the terrain map;
@@ -163,7 +165,7 @@ def step(player, buttons, blocked=None, report=None, stage=0):
     if player.fell:
         return replace(player, previous=buttons)
     p = _vertical(_horizontal(_select(player, buttons), buttons, blocked, stage),
-                  buttons, blocked, report, stage)
+                  buttons, blocked, report, stage, support)
     return replace(p, previous=buttons,
                    camera=max(0, min(STAGE_CAMERA_MAX[stage], p.x // UNIT - 72)),
                    fell=p.y >= 144 * UNIT)
