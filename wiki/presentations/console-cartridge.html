@@ -8,8 +8,13 @@
 <link rel="stylesheet" href="assets/concepts.css">
 <script src="../../tools/wiki/assets/presentation.js" defer>
 </script>
+<style>
+.cartridge table { width: 100%; min-width: 650px; border-collapse: collapse; font-size: 1rem; }
+.cartridge th, .cartridge td { padding: .65rem .8rem; text-align: left; vertical-align: top; border-bottom: 1px solid var(--border); }
+.cartridge th { color: var(--accent); }
+</style>
 </head>
-<body class="concept-series memory">
+<body class="concept-series memory cartridge">
 <main class="deck" aria-label="Console and cartridge">
 <a class="series-home" href="README.md">← Presentation library</a>
 <section data-slide aria-labelledby="slide-1">
@@ -236,7 +241,7 @@
 <text x="400.0" y="58">External SDRAM</text>
 <text x="400.0" y="88">64 MB board device</text>
 <text x="400.0" y="118">16-bit data interface</text>
-<text x="400.0" y="148">Controller + refresh needed</text>
+<text x="400.0" y="148">Controller + refresh</text>
 <rect x="540.0" y="20" width="240.0" height="195" rx="12"/>
 <text x="660.0" y="58">A supported cartridge</text>
 <text x="660.0" y="88">Mapper + loader rules</text>
