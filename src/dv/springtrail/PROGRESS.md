@@ -11,7 +11,7 @@ them; only the case module and one new call kind differ.
 
 ## Case set and execution bounds
 
-Forty directed cases cover the subdivision-only update, one full time unit, the
+Forty-six directed cases cover the subdivision-only update, one full time unit, the
 grade thresholds at 100 and 50, zero and its consumption on the following
 update, the floor at 000, the frozen timer in paused, retry and title, the life
 request encoding with no request, an award, a BCD carry, saturation at 99, a
@@ -21,7 +21,9 @@ spend, the game-over reset and its idle variant, the two stage advances, the
 final clear, the paused Select reset, the title start, each stage's goal, a
 player short of a goal, a stage item, a stage right bound, both stage 2 patrol
 bounds, a stage 2 gap fall, the unchanged stage 0 contact and `InitGame` from a
-dirty world.
+dirty world. Six further actual `UpdateGame` calls check projectile inside/edge
+removal for all three stages (629 to 631 / 630 to 632 on shorter stages,
+757 to 759 / 758 to 760 on stage 0), with no terrain or enemy contact.
 
 The generated driver now stores the seven progression reset bytes before
 seeding each case, so the lives, the stage and the countdown hold the
@@ -29,7 +31,7 @@ contract's reset values wherever a suite does not seed them, at about 100
 dots per case; a full `InitGame` would also clear the block layer and break the
 short harness's 20000-dot bound. A new `lives` kind calls the
 shared `UpdateLives` directly, because nothing in this release awards a life
-through gameplay. The set runs as two halves of 20 (`python-gpa`,
+through gameplay. The set runs as groups of 20 and 26 (`python-gpa`,
 `python-gpb`) after the two-case short harness (`python-gps`: the retry spend,
 then one timer unit, under a 20000-dot progress bound). Each half keeps the
 motion fixture's caps: 8000 dots per simple call, 20000 per `UpdateGame`, 1700

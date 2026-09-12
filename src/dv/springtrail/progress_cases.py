@@ -8,6 +8,7 @@ from dataclasses import replace
 from motion_reference import Player
 from motion_cases import ADDRESSES as MOTION_ADDRESSES, RANGES as MOTION_RANGES
 from power_cases import state_bytes as power_bytes
+from power_reference import Shot
 from progress_reference import (World, update, update_lives, enter_stage,
                                 PLAYING, PAUSED, RETRY, WON, TIMEUP, OVER,
                                 STAGE_TIMER_HIGH)
@@ -113,11 +114,19 @@ def cases():
                     pending=0xFF, timer_sub=3, timer_low=0x21, timer_high=0x01,
                     expiring=1, collected=15, score=4, mode=RETRY)
     add('reset', dirty, 128, 'reset')
+    # Execute the stage-relative projectile edge through the real UpdateGame.
+    # Ordinary seeds avoid terrain/enemy contact; every state byte stays checked.
+    for stage, edge in ((0, 760), (1, 632), (2, 632)):
+        for suffix, start in (('inside', edge - 3), ('edge', edge - 2)):
+            add(f'stage{stage}-shot-{suffix}',
+                playing(stage=stage, alive=False,
+                        shot=Shot(start * 16, 32 * 16, 32, 32, 10)))
     return result
 
 
 def parts():
     """Two bounded halves; each keeps the default wall budget."""
     all_cases = cases()
-    half = len(all_cases) // 2
+    # Keep the accepted first half unchanged; the six edge witnesses join b.
+    half = 20
     return {'a': all_cases[:half], 'b': all_cases[half:]}

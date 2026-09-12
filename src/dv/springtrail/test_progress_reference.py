@@ -257,5 +257,17 @@ class StageShotBounds(unittest.TestCase):
                                     shot=Shot(start*16, 32*16, 32, 32, 10))
                     self.assertEqual(_shot(world).shot.ttl, ttl)
 
+    def test_cpu_operand_cases_include_every_inside_and_edge_snapshot(self):
+        rows = {row['name']: row for row in progress_cases.parts()['b']}
+        ttl_index = progress_cases.ADDRESSES.index(0xc077)
+        for stage in range(3):
+            for suffix, ttl in (('inside', 9), ('edge', 0)):
+                row = rows[f'stage{stage}-shot-{suffix}']
+                self.assertEqual(row['kind'], 'game')
+                self.assertEqual(len(row['before']), 55)
+                self.assertEqual(len(row['after']), 55)
+                self.assertEqual(row['after'][ttl_index], ttl)
+
+
 if __name__ == '__main__':
     unittest.main()
