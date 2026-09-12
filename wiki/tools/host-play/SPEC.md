@@ -210,7 +210,9 @@ rules; the
 retained artifacts, the reported measurements, a full five-checkpoint
 comparison and a deliberate disagreement.
 
-Board execution is not part of this evidence and remains open under
-[#485](https://github.com/amichai-bd/nand2mario/issues/485). No timing figure
-for this path has been measured on hardware; the payload-only arithmetic in the
-[host SPEC](../n2m/host/SPEC.md) is not a result for it.
+Bounded physical state/pixel/play qualification uses the current immutable
+package and verified board setup. [Three actual source frames](../../showcase/README.md#current-springtrail-state-comparison)
+show selected aligned captures. Measured command timings belong to the physical
+validation receipt; payload-only arithmetic in the [host SPEC](../n2m/host/SPEC.md)
+is not a latency guarantee. This does not establish monitor output, physical
+controls or a complete campaign.

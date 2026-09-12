@@ -1,0 +1,59 @@
+{
+ "encoding": {
+  "bytes_indexed_png": 2130,
+  "bytes_path_runs": 35329,
+  "chosen": "indexed-png-data-uri",
+  "frames": 3,
+  "measured_on": "this captured sequence"
+ },
+ "frames": [
+  {
+   "crc32": "4a3bad02",
+   "dot": 337651,
+   "label": "title",
+   "mask": 0,
+   "packed_sha256": "2fceba2fa96842903b90bd2bf906235549bf25a556cc3765110b2243a651d605",
+   "pause_dot": 338352,
+   "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKAAAACQAgMAAADy24gTAAAADFBMVEX////Q0NBoaGgYGBhxYKq9AAABxElEQVR42u1XS07DMBAdyVsX34OVpagLPlJOUXXTLWzhAJyAY3QZisQR5hJVN70ALYts2FUKHrvOp0mcgUYCIb+RUsd5eX5jOyMXgA+FFNL81nsFmgBle49PhA1pog66l2iC2k2iahDtq6hsrwwpAnYoKnKDTY+KXJJm5XF8qJzZe70y/lq904VE71u4rqIwWbXsbuY2Z3SJuXe3EgW0iaokimoQ2SZu4JQ4eTydQ8J6DqVHv9ad0zldnDVpERER/xIKU4pca9PKU6Sr7iJq0AYCbu3VtYeIECS6oQUkOskFkIkeohGBhLRy0kqgV5GIGj1RYy8xRXLpsnYeTe6x9P0BuN2ojkcDatF951JrWm27vtVGO4doh0Y/tNmReYrdirQHwUuSYgI9RLMHG0Tdp2h3oBmebAQ8RkRERHwf7HJywf1DdvU2tuIvlbxZiQFiVmKA+FxiLMXs0scAcZn5GFIsmWN5jPjxqYd79tytmF9S9sIkFgXz61xvmYqzDZc4Z2b9+cRU3B14xMn9Ky/ryR2TKN4fmMns90zixw0z68WU6fGQIr8WhlGrCmHUamEYfMWqFoajVgvDAUzeku8xzuMo8/gFdikxaLpM4TsAAAAASUVORK5CYII=",
+   "seq": 1
+  },
+  {
+   "crc32": "a6b6818b",
+   "dot": 12767305,
+   "label": "dynamic",
+   "mask": 0,
+   "packed_sha256": "41a9990006a48d3a02b4a467a2397180b6ec8a3861ce82a2a012b48ffdbb3295",
+   "pause_dot": 12768000,
+   "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKAAAACQAgMAAADy24gTAAAADFBMVEX////Q0NBoaGgYGBhxYKq9AAACB0lEQVR42u2WO04DMRCGLVlICG3iK1BT0WwRFMEVaJZIJD0FIPYAXIMUpEFUyIkEDVQo8SWWFUnaELFVGhqEZLwPbxI/pEHhVfi30kw+j8fjtWcQgosgD2HksWUrZmKI/4iw49zkMS/9KaCHcquXuSo9EoaVdXAGkgzCi3NVELG5xxIkTAdJGmXqU4REGPoZkRnQutMjjGhWv5XmEDM03wznIodauHEDFXsu8+iPDckRoDgXRhY9+i05cwmMxSrFeRVgJZQzFxU1SHHSZR6xMZ1+a6WkOTk5OTk5/T/tQWtW0oNxmHaBIOfA7iUaAz0GMRRsAHf9dg5MYwLcjP9yDwPJZADczOsZDKzeAk+mEsbQhoe7G/RrWguk9tPcc84td3eDSl2lpykmhGZw/UYqAxPaDUEeL4IDG3hNi5GBl5TawC1ajBzsW0HJ0c0MjCksxk6QhKCPHQzal1bBPhSk3w3aj1AB7R+FcsXtn5mT099KtBAc1EVUs2fzDgBmD4gE6wS4tOfZXT4/nHaOyj7BFG1RRHf5YPAobe9PerSknd9EgtlM3kk8jPTGrBac6AEfRseaccKb+iomcEpH+hsyjPSGYto2gYkBHIxMSf0wLN009FuGR6nG9V2j+nZd3yE1vGgz02HzVaq0XUq9skup0nZ9zeO8StuHUqXtQ6nS9vG1GF0eV87jJxRkGvJoS6c0AAAAAElFTkSuQmCC",
+   "seq": 178
+  },
+  {
+   "crc32": "00aca668",
+   "dot": 37275475,
+   "label": "completion",
+   "mask": 0,
+   "packed_sha256": "e82304704ba5b311227cc46adacd19f86d8432a8b6029265bb31aed436dc53af",
+   "pause_dot": 37276176,
+   "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKAAAACQAgMAAADy24gTAAAADFBMVEX////Q0NBoaGgYGBhxYKq9AAABS0lEQVR42u2XQUoDMRSGA9mmvnu4n4WzsKcoA9JeoCsP4Ak8gAfoMhT0AFICbguuZDbiGXoAISadTDo1Q+YHIyK8L3TR5OPPyyskVAgcZaT7fJ+Vxg1BgtwK9aIylIjKD7ei/JdulUZFeRTpmCZFRhTmlKhyNZKvUnQRIzFloAM4W2/JUDJbLX0Pu+rCqa11R0nKbRt37jAfYqp3f+5UdL9LmJf9JqH/52LrE8/E2S2NNPytoZgYVuVoO6vlj5rGMAzDMAzDML+JRMUL9M/D1VPpRPk3rVlEJkQdmRDvI6US9WU/JsSN7sdUYjRL1cgw/+AitAq8tvTrJyTWereFxLm1WOJstcdqrFZ3oLgARWrAra8fUXHdYuLHDSo+YG0U9e4ZFF9AsZXg1lbM0/clz+CmzTN4X/Lgiaf3JT8G70t+CNDb4DVyH4v08Qs15e0e4y8HDAAAAABJRU5ErkJggg==",
+   "seq": 527
+  }
+ ],
+ "name": "springtrail-state-board",
+ "provenance": {
+  "checked": "Each retained actual frame matched all23040 shades reconstructed independently from the previous observed state.",
+  "command": "compare --tag compare485c --wall-seconds 240 --cap 300",
+  "crc32_scope": "unpacked shade indices",
+  "decoder": 3,
+  "driver": "tools/springtrail_player.py",
+  "epoch": 45,
+  "image_sha256": "303e2325a2ba7533430b04bfc703626cbdc09fce2c9f10714fbc83382c9bf79a",
+  "layout_sha256": "92715bf10a6f9d2e9105dac655bf7cd690dd7062b884fe35f4d3ea2055fd80ae",
+  "mask_scope": "effective input is neutral during aligned snapshot",
+  "note": "Three actual UART frames from compare485c on2026-09-13; no model-rendered pixels in this archive.",
+  "program": "Springtrail",
+  "source_commit": "1ab289c2bd689476fcdd19aaeb3e147233a9d1c2",
+  "wall_seconds": 152.087,
+  "wire_abi": 1,
+  "wire_build_id": "87d5f0280a2afad8be6b85dc601141cc"
+ }
+}
