@@ -18,7 +18,7 @@ from .fpga import build_fpga
 from .fpga_program import program as program_fpga
 from .rgbds import oracle
 from .regress import clean, regress
-from . import catalogue
+from . import catalogue, interface_codec
 from sw.build import assemble_target
 from sw.rom_build import build_target
 from sw.link_conformance import proof as link_proof
@@ -127,7 +127,7 @@ def parser():
     asset_check.add_argument("--tag")
     asset_check.add_argument("--json", action="store_true")
     host = commands.add_parser('host', help='explicit UART load/control; follows verified hardware workflow').add_subparsers(dest='action', required=True)
-    for action in ('status', 'io', 'load', 'reset', 'run', 'halt', 'step', 'run-dots', 'input', 'write', 'snapshot', 'crc-proof', 'keyboard'):
+    for action in ('status', 'io', 'load', 'reset', 'run', 'halt', 'step', 'run-dots', 'input', 'write', 'snapshot', 'peek', 'crc-proof', 'keyboard'):
         description = None
         if action == 'keyboard':
             description = ('Focused Windows classic console only (conhost.exe cmd.exe); Windows Terminal/WSL are unsupported. '
@@ -151,6 +151,9 @@ def parser():
             leaf.add_argument('--dots', type=int, required=True)
         if action == 'input':
             leaf.add_argument('--mask', type=lambda value: int(value, 0), required=True)
+        if action == 'peek':
+            leaf.add_argument('--store', required=True, choices=sorted(interface_codec.PEEK_STORES),
+                              help='one non-ROM store to read; the core must be paused')
         if action == 'io':
             leaf.add_argument('--samples', type=int, default=200,
                               help='live LCD samples to take; reads never pause the endpoint')

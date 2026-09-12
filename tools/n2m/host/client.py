@@ -4,7 +4,7 @@ import time
 import zlib
 
 from .. import generated_interfaces as abi
-from ..interface_codec import checked_range, decode_packet, encode_packet, pack_record, unpack_record, uint
+from ..interface_codec import checked_range, decode_packet, encode_packet, pack_record, peek_store, unpack_record, uint
 
 
 class UncertainCompletion(RuntimeError):
@@ -180,6 +180,21 @@ class Client:
             checked_range(offset, count, size)
             result.extend(self.request(command, pack_record('read_range', {'offset': offset, 'count': count}), count=count))
         return bytes(result)
+
+    def peek(self, store):
+        """Read one whole non-ROM store from a paused core, in wire chunks.
+
+        Read-only by construction: the endpoint serves peek from port B, which
+        has no write. A held snapshot is neither consumed nor disturbed.
+        """
+        selector, size = peek_store(store)
+        result = bytearray()
+        for offset in range(0, size, abi.WIRE_MAX_PAYLOAD):
+            count = min(abi.WIRE_MAX_PAYLOAD, size - offset)
+            checked_range(offset, count, size)
+            result.extend(self.request('PEEK', pack_record(
+                'peek_range', {'store': selector, 'offset': offset, 'count': count}), count=count))
+        return {'store': store, 'bytes': size}, bytes(result)
 
     def control(self, action, value=None):
         if action in ('STEP', 'RUN_DOTS'):

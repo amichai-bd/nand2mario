@@ -23,6 +23,14 @@ module n2m_memory_stores (
     input var logic [7:0] host_wdata,
     output logic [7:0] host_rdata,
     output logic host_valid,
+    input var logic core_paused,
+    input var logic oam_sequence_active,
+    output logic peek_ready,
+    input var logic peek_read,
+    input var logic [7:0] peek_select,
+    input var logic [12:0] peek_offset,
+    output logic [7:0] peek_rdata,
+    output logic peek_valid,
     input var logic ppu_vram_read,
     input var logic [12:0] ppu_vram_address,
     output logic [7:0] ppu_vram_rdata,
@@ -68,9 +76,16 @@ module n2m_memory_stores (
     logic [1:0] oam_write;
     logic [7:0] rom_a_data;
     logic rom_a_valid;
-    logic [7:0] unused_b_wram, unused_b_hram;
-    logic unused_b_wram_valid, unused_b_hram_valid;
     logic wave_gateway_write;
+    // Host peek: port B, read-only, and only while the core is paused. Every
+    // port B consumer runs on gb_tick, so a paused core displaces nothing.
+    logic peek_range, peek_enable, peek_active, peek_odd;
+    logic peek_wram, peek_hram, peek_vram, peek_oam, peek_wave;
+    n2m_memory_pkg::memory_store_t peek_target, peek_owner;
+    logic [5:0][7:0] data_b;
+    logic [5:0] valid_b;
+    logic [7:0] vram_b_rdata, wave_b_rdata;
+    logic vram_b_valid, wave_b_valid;
 
     assign reset = reset_sys || core_reset;
     assign init_done = !reset && !clearing;
@@ -107,6 +122,24 @@ module n2m_memory_stores (
     assign access_read_enable = access_read && init_done && access_range;
     assign access_write_enable = access_write && init_done && access_range;
     assign host_range = host_offset < 32'(n2m_interfaces_pkg::PROFILE_ROM_BYTES);
+    assign peek_target = n2m_memory_pkg::peek_store(peek_select);
+    assign peek_range = n2m_memory_pkg::peek_known(peek_select) &&
+        32'(peek_offset) < n2m_memory_pkg::peek_bytes(peek_select);
+    // An OAM port A sequence starts only on a gb_tick but then advances on
+    // clk_sys, so it can still be in flight when a pause lands. Hold every peek
+    // until its owner reports idle rather than merely detecting the straddle.
+    assign peek_ready = init_done && core_paused && !oam_sequence_active;
+    assign peek_enable = peek_read && peek_ready && peek_range;
+    assign peek_wram = peek_enable && peek_target == WRAM_STORE;
+    assign peek_hram = peek_enable && peek_target == HRAM_STORE;
+    assign peek_vram = peek_enable && peek_target == VRAM_STORE;
+    assign peek_oam = peek_enable && peek_target == OAM_STORE;
+    assign peek_wave = peek_enable && peek_target == WAVE_STORE;
+    `DFF_ARST_VAL(peek_active, peek_enable, clk_sys, reset, 1'b0)
+    `DFF_RST_EN(peek_owner, peek_target, clk_sys, peek_enable, reset, WRAM_STORE)
+    `DFF_RST_EN(peek_odd, peek_offset[0], clk_sys, peek_enable, reset, 1'b0)
+    assign peek_rdata = peek_active ? data_b[peek_owner] : 8'd0;
+    assign peek_valid = init_done && peek_active && valid_b[peek_owner];
     `DFF_EN(response_store, access_store, clk_sys, access_read_enable)
     `DFF_EN(response_odd, access_address[0], clk_sys, access_read_enable)
     `DFF_ARST_VAL(response_valid, access_read_enable, clk_sys, reset, 1'b0)
@@ -140,43 +173,64 @@ module n2m_memory_stores (
         .clk_a(clk_sys), .clk_b(clk_sys), .reset_a(reset), .reset_b(reset), .a_byte_enable(1'b1), .a_read(access_read_enable && access_store == WRAM_STORE),
         .a_write(clearing || (access_write_enable && access_store == WRAM_STORE)),
         .a_address(ram_address[12:0]), .a_wdata(ram_wdata), .a_rdata(data_a[WRAM_STORE]), .a_valid(valid_a[WRAM_STORE]),
-        .b_read(1'b0), .b_address(13'd0), .b_rdata(unused_b_wram), .b_valid(unused_b_wram_valid)
+        .b_read(peek_wram), .b_address(peek_wram ? peek_offset : 13'd0),
+        .b_rdata(data_b[WRAM_STORE]), .b_valid(valid_b[WRAM_STORE])
     );
     n2m_intel_ram #(.DEPTH(HRAM_BYTES), .ADDRESS_BITS(7)) hram (
         .clk_a(clk_sys), .clk_b(clk_sys), .reset_a(reset), .reset_b(reset), .a_byte_enable(1'b1), .a_read(access_read_enable && access_store == HRAM_STORE),
         .a_write((clearing && int'(clear_address) < HRAM_BYTES) || (access_write_enable && access_store == HRAM_STORE)),
         .a_address(ram_address[6:0]), .a_wdata(ram_wdata), .a_rdata(data_a[HRAM_STORE]), .a_valid(valid_a[HRAM_STORE]),
-        .b_read(1'b0), .b_address(7'd0), .b_rdata(unused_b_hram), .b_valid(unused_b_hram_valid)
+        .b_read(peek_hram), .b_address(peek_hram ? peek_offset[6:0] : 7'd0),
+        .b_rdata(data_b[HRAM_STORE]), .b_valid(valid_b[HRAM_STORE])
     );
     n2m_intel_ram #(.DEPTH(VRAM_BYTES), .ADDRESS_BITS(13)) vram (
         .clk_a(clk_sys), .clk_b(clk_sys), .reset_a(reset), .reset_b(reset), .a_byte_enable(1'b1), .a_read(access_read_enable && access_store == VRAM_STORE),
         .a_write(clearing || (access_write_enable && access_store == VRAM_STORE)),
         .a_address(ram_address[12:0]), .a_wdata(ram_wdata), .a_rdata(data_a[VRAM_STORE]), .a_valid(valid_a[VRAM_STORE]),
-        .b_read(ppu_vram_read && init_done), .b_address(ppu_vram_address),
-        .b_rdata(ppu_vram_rdata), .b_valid(ppu_vram_valid)
+        .b_read(peek_vram || (ppu_vram_read && init_done)),
+        .b_address(peek_vram ? peek_offset : ppu_vram_address),
+        .b_rdata(vram_b_rdata), .b_valid(vram_b_valid)
     );
+    assign data_b[VRAM_STORE] = vram_b_rdata;
+    assign valid_b[VRAM_STORE] = vram_b_valid;
+    assign ppu_vram_rdata = vram_b_rdata;
+    // A peek response never presents itself to the PPU as its own service.
+    assign ppu_vram_valid = vram_b_valid && !(peek_active && peek_owner == VRAM_STORE);
     n2m_intel_ram #(.DEPTH(OAM_BYTES/2), .ADDRESS_BITS(7)) oam_low (
         .clk_a(clk_sys), .clk_b(clk_sys), .reset_a(reset), .reset_b(reset), .a_byte_enable(1'b1), .a_read(pair_read || (access_read_enable && access_store == OAM_STORE)),
         .a_write(oam_write[0]),
         .a_address(oam_address), .a_wdata(oam_wdata[7:0]), .a_rdata(oam_a_even), .a_valid(oam_a_valid),
-        .b_read(ppu_oam_read && init_done), .b_address(ppu_oam_pair), .b_rdata(oam_even), .b_valid(oam_even_valid)
+        .b_read(peek_oam || (ppu_oam_read && init_done)),
+        .b_address(peek_oam ? peek_offset[7:1] : ppu_oam_pair), .b_rdata(oam_even), .b_valid(oam_even_valid)
     );
     n2m_intel_ram #(.DEPTH(OAM_BYTES/2), .ADDRESS_BITS(7)) oam_high (
         .clk_a(clk_sys), .clk_b(clk_sys), .reset_a(reset), .reset_b(reset), .a_byte_enable(1'b1), .a_read(pair_read || (access_read_enable && access_store == OAM_STORE)),
         .a_write(oam_write[1]),
         .a_address(oam_address), .a_wdata(oam_wdata[15:8]), .a_rdata(oam_a_odd), .a_valid(valid_a[OAM_STORE]),
-        .b_read(ppu_oam_read && init_done), .b_address(ppu_oam_pair), .b_rdata(oam_odd), .b_valid(oam_odd_valid)
+        .b_read(peek_oam || (ppu_oam_read && init_done)),
+        .b_address(peek_oam ? peek_offset[7:1] : ppu_oam_pair), .b_rdata(oam_odd), .b_valid(oam_odd_valid)
     );
     assign data_a[OAM_STORE] = response_odd ? oam_a_odd : oam_a_even;
     assign ppu_oam_rdata = {oam_odd, oam_even};
-    assign ppu_oam_valid = oam_even_valid && oam_odd_valid;
+    assign ppu_oam_valid = oam_even_valid && oam_odd_valid && !(peek_active && peek_owner == OAM_STORE);
+    assign data_b[OAM_STORE] = peek_odd ? oam_odd : oam_even;
+    assign valid_b[OAM_STORE] = oam_even_valid && oam_odd_valid;
     n2m_intel_ram #(.DEPTH(WAVE_BYTES), .ADDRESS_BITS(4)) wave_ram (
         .clk_a(clk_sys), .clk_b(clk_sys), .reset_a(reset), .reset_b(reset), .a_byte_enable(1'b1), .a_read(access_read_enable && access_store == WAVE_STORE),
         .a_write((clearing && int'(clear_address) < WAVE_BYTES) || (access_write_enable && access_store == WAVE_STORE) || wave_gateway_write),
         .a_address(wave_gateway_write ? wave_address : ram_address[3:0]),
         .a_wdata(wave_gateway_write ? wave_wdata : ram_wdata), .a_rdata(data_a[WAVE_STORE]), .a_valid(valid_a[WAVE_STORE]),
-        .b_read(wave_read && init_done), .b_address(wave_address), .b_rdata(wave_rdata), .b_valid(wave_valid)
+        .b_read(peek_wave || (wave_read && init_done)),
+        .b_address(peek_wave ? peek_offset[3:0] : wave_address),
+        .b_rdata(wave_b_rdata), .b_valid(wave_b_valid)
     );
+    assign data_b[WAVE_STORE] = wave_b_rdata;
+    assign valid_b[WAVE_STORE] = wave_b_valid;
+    assign wave_rdata = wave_b_rdata;
+    assign wave_valid = wave_b_valid && !(peek_active && peek_owner == WAVE_STORE);
+    // ROM is not a peek target; its host load and readback keep port A.
+    assign data_b[ROM_STORE] = 8'd0;
+    assign valid_b[ROM_STORE] = 1'b0;
     `N2M_ASSERT(MEMORY_ACCESS_RANGE, clk_sys, reset,
         !(access_read || access_write) || access_range)
     `N2M_ASSERT(MEMORY_OAM_SINGLE_OWNER, clk_sys, reset,
@@ -186,6 +240,25 @@ module n2m_memory_stores (
         !(oam_request.read && |oam_request.write_enable)))
     `N2M_ASSERT(MEMORY_HOST_RANGE, clk_sys, reset,
         !(host_read || host_write) || host_range)
+    // The host peek port cannot be active while the core runs.
+    `N2M_ASSERT(MEMORY_PEEK_PAUSED, clk_sys, reset,
+        !peek_read || (core_paused && init_done))
+    `N2M_ASSERT(MEMORY_PEEK_RANGE, clk_sys, reset,
+        !peek_read || peek_range)
+    // Pause idles every port B consumer, so a peek displaces no owner request.
+    `N2M_ASSERT(MEMORY_PEEK_EXCLUSIVE, clk_sys, reset,
+        !peek_enable || !(ppu_vram_read || ppu_oam_read || wave_read || wave_write ||
+        access_read || access_write || pair_active))
+    `N2M_ASSERT(MEMORY_PEEK_SERVICE, clk_sys, reset,
+        peek_active |-> valid_b[peek_owner])
+    `N2M_ASSERT(MEMORY_PEEK_NOT_ROM, clk_sys, reset,
+        !peek_enable || peek_target != n2m_memory_pkg::STORE_ROM)
+    // The hold, not just the detection: no peek is ever accepted while the OAM
+    // port A owner still has a sequence in flight.
+    `N2M_ASSERT(MEMORY_PEEK_OAM_IDLE, clk_sys, reset,
+        !peek_enable || !oam_sequence_active)
+    `N2M_ASSERT(MEMORY_PEEK_READY_PAUSED, clk_sys, reset,
+        !peek_ready || core_paused)
     `N2M_ASSERT(MEMORY_NO_ACCESS_DURING_CLEAR, clk_sys, reset,
         !clearing || !(access_read || access_write || ppu_vram_read || ppu_oam_read || wave_read || wave_write))
     `N2M_ASSERT(MEMORY_WAVE_SINGLE_WRITER, clk_sys, reset,

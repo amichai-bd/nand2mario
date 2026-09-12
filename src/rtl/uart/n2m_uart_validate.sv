@@ -19,9 +19,12 @@ module n2m_uart_validate (
     n2m_interfaces_pkg::write_host_t write_fields;
     n2m_interfaces_pkg::load_begin_t begin_fields;
     n2m_interfaces_pkg::read_range_t range_fields;
+    n2m_interfaces_pkg::peek_range_t peek_fields;
+    logic [32:0] peek_end;
     assign write_fields = arguments[n2m_interfaces_pkg::WRITE_HOST_BYTES*8-1:0];
     assign begin_fields = arguments;
     assign range_fields = arguments[n2m_interfaces_pkg::READ_RANGE_BYTES*8-1:0];
+    assign peek_fields = arguments[n2m_interfaces_pkg::PEEK_RANGE_BYTES*8-1:0];
     always_comb begin
         command_known = 1;
         length_valid = header.length == 0;
@@ -30,6 +33,7 @@ module n2m_uart_validate (
         no_frame = 0;
         response_length = 0;
         range_end = {1'b0, range_fields.offset} + {17'b0, range_fields.count};
+        peek_end = {1'b0, peek_fields.offset} + {17'b0, peek_fields.count};
         case (header.command)
             n2m_interfaces_pkg::COMMAND_PING: response_length = 16'(n2m_interfaces_pkg::WORD_BYTES);
             n2m_interfaces_pkg::COMMAND_READ_HOST: begin
@@ -88,6 +92,17 @@ module n2m_uart_validate (
                 length_valid = header.length == n2m_interfaces_pkg::INPUT_BYTES;
                 state_valid = endpoint_state != n2m_interfaces_pkg::STATE_LOADING;
                 response_length = 16'(n2m_interfaces_pkg::DOT_BYTES);
+            end
+            // Host peek is read-only and served only while the core is paused.
+            // Unknown stores and out-of-range requests are rejected here,
+            // before any product command reaches a store.
+            n2m_interfaces_pkg::COMMAND_PEEK: begin
+                length_valid = header.length == n2m_interfaces_pkg::PEEK_RANGE_BYTES;
+                value_valid = n2m_memory_pkg::peek_known(peek_fields.store) &&
+                    peek_fields.count != 0 && peek_fields.count <= n2m_interfaces_pkg::WIRE_MAX_PAYLOAD &&
+                    peek_end <= {1'b0, n2m_memory_pkg::peek_bytes(peek_fields.store)};
+                state_valid = endpoint_state == n2m_interfaces_pkg::STATE_PAUSED;
+                response_length = peek_fields.count;
             end
             n2m_interfaces_pkg::COMMAND_SNAPSHOT: begin
                 state_valid = endpoint_state != n2m_interfaces_pkg::STATE_LOADING;

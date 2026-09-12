@@ -47,6 +47,9 @@ def run(root, build, args, provenance):
         if args.action == 'write':
             from ..interface_codec import host_write
             host_write(args.address, args.value)
+        if args.action == 'peek':
+            from ..interface_codec import peek_store
+            peek_store(args.store)
         # One repository-shared directory, including all linked author worktrees.
         common = subprocess.check_output(['git', '-C', str(root), 'rev-parse', '--path-format=absolute', '--git-common-dir'], text=True).strip()
         from pathlib import Path
@@ -85,6 +88,12 @@ def run(root, build, args, provenance):
                 report['result'] = crc_proof(client)
             elif args.action == 'load':
                 report['result'] = client.load(image)
+            elif args.action == 'peek':
+                # Bytes are a private artifact, like snapshot shades: the
+                # journal keeps the store, size and hash, never the contents.
+                metadata, contents = client.peek(args.store)
+                (folder / f'{args.store}.bin').write_bytes(contents)
+                report['result'] = {'peek': metadata, 'contents': summary(contents)}
             elif args.action == 'snapshot':
                 metadata, pixels = client.snapshot()
                 (folder / 'frame.2bpp').write_bytes(pixels)

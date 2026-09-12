@@ -41,6 +41,7 @@ module n2m_dma_service (
     input var logic access_valid,
     output n2m_memory_pkg::memory_oam_request_t oam_request,
     input var n2m_memory_pkg::memory_oam_response_t oam_response,
+    output logic oam_sequence_active,
     output logic fault
 );
     // Preserve the enum binding in Quartus 25.1 instance expressions.
@@ -166,6 +167,10 @@ module n2m_dma_service (
         if (slot_q != 0) slot_next=slot_q==6'd22 ? 6'd0 : slot_q+6'd1;
         if (accept && !service_fault) slot_next=6'd1;
     end
+    // A job starts only on a gb_tick-qualified T4, but slots 1..22 then advance
+    // on clk_sys. The sequence can therefore still be in flight when a host
+    // pause lands, so the OAM port A owner publishes that window.
+    assign oam_sequence_active = slot_q != 6'd0;
     `DFF_ARST_VAL(slot_q, slot_next, clk_sys, reset, 6'd0)
     `DFF_RST_EN(job_row_q, late_commit ? late_address_q[7:3] : scan_row, clk_sys, accept, reset, 5'd0)
     `DFF_RST_EN(job_prefetch_q, scan_active && scan_row<19, clk_sys, accept, reset, 1'b0)

@@ -62,7 +62,13 @@ module n2m_uart #(
     output logic frame_read,
     output logic [12:0] frame_address,
     input var logic [7:0] frame_data,
-    input var logic frame_valid
+    input var logic frame_valid,
+    input var logic peek_ready,
+    output logic peek_read,
+    output logic [7:0] peek_select,
+    output logic [12:0] peek_offset,
+    input var logic [7:0] peek_rdata,
+    input var logic peek_valid
 );
     n2m_input_pkg::input_write_t accepted_input;
     logic [7:0] input_source, physical_observe;
@@ -164,7 +170,9 @@ module n2m_uart #(
         .rom_write_data(rom_write_data), .rom_read_data(rom_read_data), .rom_read_valid(rom_read_valid),
         .snapshot_request(snapshot_request), .snapshot_ready(snapshot_ready), .snapshot_done(snapshot_done),
         .snapshot_ok(snapshot_ok), .snapshot_valid(snapshot_valid), .snapshot_metadata(snapshot_metadata),
-        .frame_read(frame_read), .frame_address(frame_address), .frame_data(frame_data), .frame_valid(frame_valid)
+        .frame_read(frame_read), .frame_address(frame_address), .frame_data(frame_data), .frame_valid(frame_valid),
+        .peek_ready(peek_ready), .peek_read(peek_read), .peek_select(peek_select), .peek_offset(peek_offset),
+        .peek_rdata(peek_rdata), .peek_valid(peek_valid)
     );
 endmodule
 `default_nettype wire

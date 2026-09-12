@@ -159,6 +159,15 @@ head pinned, and closes its PR on any failure. Its acceptance is the
 and the [script tests](https://github.com/amichai-bd/nand2mario/blob/main/tools/wiki/test_refresh_statistics.py).
 No other automated class exists, and this one authorizes no other file.
 
+The rule runs the other way too: a PR outside this class must not change
+`wiki/statistics.html`. The snapshot is generated output owned by the refresh,
+and no hand-made PR has a reason to edit it. The common way it enters an
+ordinary diff is by accident: a branch cut before a refresh lands, then merged
+with `main` instead of rebased, carries the older snapshot back as an apparent
+edit that would revert the newer one. `PR policy` reads the full changed-file
+set of every non-refresh PR and fails when that file is present; the fix is to
+rebase onto `main` so the stale copy drops out of the diff.
+
 ## External CI fallback
 
 The [mandatory rule](https://github.com/amichai-bd/nand2mario/blob/main/AGENTS.md#verification-and-safety)

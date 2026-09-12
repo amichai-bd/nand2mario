@@ -47,7 +47,9 @@ module tb_audio_service;
         .ppu_oam_read(1'b0), .ppu_oam_pair(7'd0), .ppu_oam_rdata(unused_oam),
         .ppu_oam_valid(unused_oam_valid),
         .wave_read, .wave_write, .wave_address, .wave_wdata, .wave_rdata, .wave_valid
-    );
+    ,
+        .core_paused(1'b0), .oam_sequence_active(1'b0), .peek_ready(), .peek_read(1'b0), .peek_select(8'd0), .peek_offset(13'd0),
+        .peek_rdata(), .peek_valid());
     n2m_serial u_serial (
         .clk_sys, .reset_sys, .core_reset, .gb_tick,
         .io_commit(owner_commit && destination == n2m_memory_pkg::MEMORY_SERIAL),

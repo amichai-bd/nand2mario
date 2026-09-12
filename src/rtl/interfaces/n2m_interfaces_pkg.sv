@@ -1,5 +1,5 @@
 // Generated from cfg/interfaces.json by tools/n2m/interfaces.py; DO NOT EDIT.
-// Source SHA-256: 80618216aec777c06eace757549d9bab43315603dc0655f78ee9b833f72a429a
+// Source SHA-256: 4da94a1c51ff2fbc7a0dd4c7888f3a7f91a2a39f4fdad69c9ddcfe363454d2da
 `timescale 1ns/1ps
 package n2m_interfaces_pkg;
   localparam logic [7:0] GB_ADDRESS_BITS = 8'h10;
@@ -215,6 +215,12 @@ package n2m_interfaces_pkg;
   localparam logic [7:0] COMMAND_READ_FRAME = 8'hD;
   localparam logic [7:0] COMMAND_WRITE_HOST = 8'hE;
   localparam logic [7:0] COMMAND_RUN_DOTS = 8'hF;
+  localparam logic [7:0] COMMAND_PEEK = 8'h10;
+  localparam logic [7:0] PEEK_WRAM = 8'h1;
+  localparam logic [7:0] PEEK_HRAM = 8'h2;
+  localparam logic [7:0] PEEK_VRAM = 8'h3;
+  localparam logic [7:0] PEEK_OAM = 8'h4;
+  localparam logic [7:0] PEEK_WAVE = 8'h5;
   localparam logic [7:0] INPUT_SOURCE_UART = 8'h0;
   localparam logic [7:0] INPUT_SOURCE_PHYSICAL = 8'h1;
   localparam logic [31:0] HOST_WRITE_MASK_INPUT = 32'hFF;
@@ -265,6 +271,15 @@ package n2m_interfaces_pkg;
     logic [15:0] count;
     logic [31:0] offset;
   } read_range_t;
+  localparam integer PEEK_RANGE_BYTES = 7;
+  localparam integer PEEK_RANGE_STORE_OFFSET = 0;
+  localparam integer PEEK_RANGE_OFFSET_OFFSET = 1;
+  localparam integer PEEK_RANGE_COUNT_OFFSET = 5;
+  typedef struct packed {
+    logic [15:0] count;
+    logic [31:0] offset;
+    logic [7:0] store;
+  } peek_range_t;
   localparam integer INPUT_BYTES = 1;
   localparam integer INPUT_BUTTONS_OFFSET = 0;
   typedef struct packed {

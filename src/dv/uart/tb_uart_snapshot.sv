@@ -50,7 +50,8 @@ module tb_uart_snapshot;
         .io_lcdc(8'd0), .io_stat(8'd0), .io_ly(8'd0), .io_lyc(8'd0), .io_scy(8'd0),
         .io_scx(8'd0), .io_wy(8'd0), .io_wx(8'd0), .io_bgp(8'd0), .io_obp0(8'd0),
         .io_obp1(8'd0), .io_div(8'd0), .io_tima(8'd0), .io_tma(8'd0), .io_tac(8'd0),
-        .io_if(8'd0), .io_ie(8'd0)
+        .io_if(8'd0), .io_ie(8'd0),
+        .peek_ready(1'b0), .peek_read(), .peek_select(), .peek_offset(), .peek_rdata(8'd0), .peek_valid(1'b0)
     );
 
     logic observe_valid, observe_complete, observe_abort;

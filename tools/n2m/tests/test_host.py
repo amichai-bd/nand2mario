@@ -17,6 +17,7 @@ from n2m.doctor import select_uart
 from n2m.host.client import IO_REGISTERS, Client, RejectedCommand, UncertainCompletion
 from n2m.host.package import read_package
 from n2m.host.transport import SerialTransport, open_serial, session
+from n2m import interface_codec
 from n2m.interface_codec import decode_packet, encode_packet, pack_record, unpack_record
 from n2m.records import atomic_json, file_hash
 from sw.package import package
@@ -43,6 +44,8 @@ class Endpoint:
         self.line = 0
         self.expected_crc = None
         self.frame = bytes((index * 37 + 11) % 256 for index in range(abi.FRAME_BYTES))
+        self.stores = {selector: bytes((index * 13 + selector * 7) % 256 for index in range(size))
+                       for selector, size in interface_codec.PEEK_STORES.values()}
         self.snapshot_calls = 0
         self.closed = False
         self.timeout = 2
@@ -124,6 +127,15 @@ class Endpoint:
         elif name == 'INPUT':
             self.buttons = unpack_record('input', payload)['buttons']
             response = pack_record('dot', {'dot': self.dot})
+        elif name == 'PEEK':
+            request = unpack_record('peek_range', payload)
+            selector, offset, count = request['store'], request['offset'], request['count']
+            if self.state != abi.STATE_PAUSED:
+                status = abi.STATUS_BAD_STATE
+            elif selector not in self.stores or offset + count > len(self.stores[selector]):
+                status = abi.STATUS_BAD_VALUE
+            else:
+                response = bytes(self.stores[selector][offset:offset + count])
         elif name == 'SNAPSHOT':
             self.snapshot_calls += 1
             response = pack_record('snapshot', {'epoch': 3, 'seq': 0x100000002, 'dot': 0x100000003,
@@ -238,6 +250,44 @@ class HostTests(unittest.TestCase):
         client.control('RESET')
         self.assertEqual((endpoint.dot, endpoint.state), (0, abi.STATE_PAUSED))
         self.assertNotIn(image[:20].hex(), json.dumps(records))
+
+    def test_peek_reads_every_store_in_chunks_and_leaves_a_snapshot_held(self):
+        endpoint = Endpoint()
+        client = Client(endpoint)
+        for store, (selector, size) in sorted(interface_codec.PEEK_STORES.items()):
+            metadata, contents = client.peek(store)
+            self.assertEqual(metadata, {'store': store, 'bytes': size})
+            self.assertEqual(contents, endpoint.stores[selector])
+            requests = [unpack_record('peek_range', payload)
+                        for name, payload, seq in endpoint.requests if name == 'PEEK']
+            chunks = [r for r in requests if r['store'] == selector]
+            # Exactly the chunked shape LOAD_READ and READ_FRAME already use.
+            self.assertEqual(sum(r['count'] for r in chunks), size)
+            self.assertEqual([r['offset'] for r in chunks],
+                             list(range(0, size, abi.WIRE_MAX_PAYLOAD)))
+            self.assertTrue(all(1 <= r['count'] <= abi.WIRE_MAX_PAYLOAD for r in chunks))
+        # Peek and snapshot readback are independent: a peek between the
+        # capture and its chunks neither consumes nor disturbs the snapshot.
+        metadata, pixels = client.snapshot()
+        self.assertEqual(pixels, endpoint.frame)
+        client.peek('wram')
+        again, pixels_again = client.snapshot()
+        self.assertEqual((again, pixels_again), (metadata, pixels))
+
+    def test_peek_rejects_unknown_stores_and_an_unpaused_core(self):
+        endpoint = Endpoint()
+        client = Client(endpoint)
+        # An unknown store never reaches the wire at all.
+        for name in ('rom', 'io', '', 'WRAM'):
+            with self.assertRaises(ValueError):
+                client.peek(name)
+        self.assertEqual([r for r in endpoint.requests if r[0] == 'PEEK'], [])
+        client.control('RUN')
+        with self.assertRaises(RejectedCommand) as rejected:
+            client.peek('wram')
+        self.assertEqual(rejected.exception.status, abi.STATUS_BAD_STATE)
+        client.control('HALT')
+        self.assertEqual(client.peek('hram')[1], endpoint.stores[abi.PEEK_HRAM])
 
     def test_all_input_masks_and_immutable_frame(self):
         endpoint = Endpoint()
