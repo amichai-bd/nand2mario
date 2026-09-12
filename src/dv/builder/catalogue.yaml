@@ -53,6 +53,7 @@ labels:
 units:
   .agents/skills/issue-author/scripts/test_create_issue.py: {kind: unit, level: 0, labels: [agents], duration_seconds: 0.14}
   .agents/skills/rtl-coder/scripts/test_check_sv_style.py: {kind: unit, level: 0, labels: [agents], duration_seconds: 0.08}
+  .agents/skills/update-crewmates/scripts/test_update_caps.py: {kind: unit, level: 0, labels: [agents], duration_seconds: null}
   adc-backend: {kind: sim, level: 2, labels: [input], duration_seconds: 1.89}
   adc-backend-corrupt: {kind: sim, level: 2, labels: [fault, input], duration_seconds: null}
   adc-pairs: {kind: sim, level: 2, labels: [input], duration_seconds: null}

@@ -32,6 +32,10 @@ jobs:
         uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5.0.0
       - name: Test issue helper
         run: python -m unittest discover -s .agents/skills/issue-author/scripts -p test_create_issue.py -v
+      - name: Check work caps
+        run: |
+          python -m unittest discover -s .agents/skills/update-crewmates/scripts -p test_update_caps.py -v
+          python .agents/skills/update-crewmates/scripts/update_caps.py --check
       - name: Build and check wiki
         run: python tools/wiki/check.py --browser --install-browser
       - name: Preserve browser failure evidence
