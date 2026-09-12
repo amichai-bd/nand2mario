@@ -175,7 +175,7 @@ def decode(binding, chunks):
     _check(240 * UNIT <= v['EnemyX'] <= 296 * UNIT, 'EnemyX')
     _check(v['EnemyVX'] in (8, -8), 'EnemyVX')
     _check(v['Collected'] <= 15 and v['Score'] == bin(v['Collected']).count('1'), 'Score')
-    _check(v['MoveCounter'] <= 48, 'MoveCounter')
+    # MoveCounter and AnimationCounter are free bytes; the contract bounds the rest.
     _check(v['MoveDirection'] <= 3, 'MoveDirection')
     _check(v['MoveSpeed'] in (0, 2, 4), 'MoveSpeed')
     _check(v['MovePhase'] <= 1, 'MovePhase')
@@ -219,19 +219,34 @@ def decode(binding, chunks):
     }
 
 
-def _models():
+def _import(*names):
+    """Import Springtrail models by their own top-level names.
+
+    The models import each other by bare name, so the directory has to be on
+    the path while they load. It is removed again afterwards: these names are
+    generic, and `src/dv/v05` owns a different `reference` module. Keep the
+    rendering import out of callers that only need game rules, so a decoder or
+    strategy never loads the artwork modules or their `reference` dependency.
+    """
     folder = str(ROOT / 'src/dv/springtrail')
-    if folder not in sys.path:
-        sys.path.append(folder)
-    import blocks_frames
-    import motion_reference
-    import power_reference
-    return motion_reference, power_reference, blocks_frames
+    added = folder not in sys.path
+    if added:
+        sys.path.insert(0, folder)
+    try:
+        return tuple(__import__(name) for name in names)
+    finally:
+        if added and folder in sys.path:
+            sys.path.remove(folder)
+
+
+def _models():
+    """The motion and contact rules; no artwork and no renderer."""
+    return _import('motion_reference', 'power_reference')
 
 
 def to_world(observation):
     """The reference World for one observation; rendering and planning only."""
-    motion, power, _frames = _models()
+    motion, power = _models()
     p, o = observation['player'], observation
     player = motion.Player(
         x=p['x'], y=p['y'], vx=p['vx'], vy=p['vy'], grounded=p['grounded'],
@@ -255,8 +270,9 @@ def to_world(observation):
 
 def render(observation):
     """160 by 144 shades of the logical state, through the block-layer renderer."""
-    _motion, _power, frames = _models()
-    return frames.image(to_world(observation))
+    world = to_world(observation)
+    frames, = _import('blocks_frames')
+    return frames.image(world)
 
 
 def reconstruction(observation, provenance):

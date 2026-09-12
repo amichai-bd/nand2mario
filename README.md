@@ -126,7 +126,8 @@ depending on a prebuilt commercial image. The checked-in toolchain provides:
 - asset conversion from original shade data to Game Boy 2bpp bytes;
 - deterministic build manifests, hashes, logs, and immutable run evidence;
 - conformance checks against a pinned independent RGBDS oracle; and
-- host tools for loading, controlling, observing, and validating the system.
+- host tools for loading, controlling, observing, and validating the system,
+  including [observing and playing Springtrail from game state](wiki/tools/host-play/springtrail-state.md).
 
 The common entry point is:
 

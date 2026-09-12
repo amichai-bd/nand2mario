@@ -14,6 +14,15 @@ uses these public controls and rendered snapshots for software decisions.
 It must preserve the same package, identity, uncertainty and safe-stop rules;
 it adds no gameplay memory access or alternate protocol.
 
+The [Springtrail state reconstruction](../../host-play/SPEC.md#springtrail-state-reconstruction)
+uses the same Client, package validator and durable session to read selected
+memory ranges from a paused core and rebuild the scene from the game's own
+records. It must bind an exact qualified image and its linked symbol layout,
+acquire only at a documented coherent boundary, label what an image represents,
+and refuse an unsupported image or an incomplete observation rather than
+substitute a predicted one. It adds no register, no protocol and no game-memory
+write, and it does not replace actual-pixel snapshot acceptance.
+
 The tool consumes the [generated interface contract](../../../src/rtl/interfaces/MAS_interfaces.md)
 and successful [packaged software attempts](../../sw/SPEC.md). It must reject
 wrong profiles, sizes, stale interfaces, damaged artifacts and mismatched full

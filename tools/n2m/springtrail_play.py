@@ -35,7 +35,8 @@ world knowledge; no observation is ever filled from a prediction.
 import time
 
 from . import generated_interfaces as abi
-from .springtrail_state import (PLAYFIELD_X, UNIT, WRAM, StateFailure, decode, to_world, _models)
+from .host.client import UncertainCompletion
+from .springtrail_state import StateFailure, UNIT, decode, to_world, _models
 
 PERIOD = 70224
 LINE = 456
@@ -43,7 +44,8 @@ LINES = 154
 BOUNDARY_FIRST, BOUNDARY_LAST = 145, 152
 MAX_STEP_FRAMES = 4
 TITLE, PLAYING, RETRY, PAUSED, WON = range(5)
-RIGHT, LEFT, A, B, SELECT, START = 1, 2, 16, 32, 64, 128
+# The complete eight-button mask the endpoint takes, active high.
+RIGHT, LEFT, UP, DOWN, A, B, SELECT, START = 1, 2, 4, 8, 16, 32, 64, 128
 # Declared finite budget of one demonstration. Frames are emulated frames.
 BUDGET = {'frames': 1500, 'actions': 1500, 'wall_seconds': 240, 'retries': 0,
           'no_progress_frames': 480}
@@ -108,81 +110,105 @@ def observe(client, binding, *, attempts=6, record=None):
     raise PlayFailure('STATE_BOUNDARY_UNREACHED')
 
 
-def _pit_ahead(solid, pixel_x):
-    """World x of the first ground gap at or after the player's leading column."""
-    for column in range(pixel_x // 8, 96):
-        if not solid(column, 16):
-            return column * 8
-    return None
-
-
 class Strategy:
-    """Observe, then choose one complete mask and a bounded advance.
+    """Observe, then choose one complete eight-button mask for the next update.
 
-    Rules use the observed player, enemy and mode plus read-only terrain and
-    the reference motion model for one hop check. The strategy never writes
-    game memory and never substitutes a prediction for an observation.
+    Each decision starts from the fresh observation. The mask already sampled
+    by the ROM is applied first, because it is committed to the next update;
+    the mask chosen here is applied to the update after that. From that
+    committed state the strategy rolls out each candidate direction under a
+    continuation policy and keeps the direction that survives and travels
+    furthest, then sends that direction's continuation mask.
+
+    The continuation policy owns jump timing and releases. It presses A when
+    the model says one more walking update would step off the ground, holds A
+    while the jump is still rising, and releases it otherwise, so a later
+    press registers as a fresh edge.
+
+    The reference model is used to look ahead, never to supply state. Every
+    rollout is seeded from observed bytes; a missing observation is an error.
     """
-    WAIT_X = 228          # stand here: the patrol never comes left of 240
-    PATROL_LEFT = 240
-    JUMP_LEAD = 6         # pixels before a gap; two in-flight updates walk 2 of them
-    NEAR = 16
+    # Candidate actions in preference order, each a direction and whether to
+    # press A on the first update. Running right is the ordinary locomotion for
+    # this level, so it is rolled out first and accepted as soon as it is safe
+    # and gains ground; the rest are rolled out only when it is not, which is
+    # what keeps an ordinary decision to a single rollout. The deliberate jumps
+    # are how the player gets over the enemy, which no ground rule would do.
+    ACTIONS = ((RIGHT | B, False), (RIGHT, False), (RIGHT | B, True),
+               (RIGHT, True), (0, False), (LEFT, False))
+    HORIZON = 100
+    PROGRESS = 8
+    DEAD = -10 ** 9
+    WON_SCORE = 10 ** 9
+    # Read-only world knowledge: the enemy patrols 240..296, so its box can
+    # reach any player box overlapping this band.
+    BAND = (240 - 8, 296 + 8)
 
-    def __init__(self):
-        self.motion, self.power, _frames = _models()
-        from movement_reference import solid
-        self.solid = solid
-        self.committed = None
+    def __init__(self, horizon=None):
+        self.motion, self.power = _models()
+        self.horizon = horizon or self.HORIZON
 
-    def hop_clears(self, observation):
-        """Simulate the hop from the observed state; true when it lands past the enemy.
+    def continuation(self, world, direction):
+        """The complete mask this policy holds at `world` for one direction."""
+        player = world.player
+        if player.jump == 1:
+            return direction | A           # still rising: hold for the long jump
+        if not player.grounded:
+            return direction & ~A          # descending: release so A can press again
+        walked = self.power.update(world, direction & ~A)
+        if not walked.player.grounded and walked.player.jump == 3:
+            return direction | A           # one more walking update steps off the edge
+        return direction & ~A
 
-        The in-flight sample is applied first, then the same masks the rules
-        will send: Right+A until the jump registers and through its ascent,
-        Right alone afterwards. Read-only planning; nothing observed is replaced.
+    def _rollout(self, base, direction, jump=False):
+        """Follow one candidate under the continuation policy and score the end.
+
+        `jump` presses A on the first update only; the continuation then holds
+        it through the ascent and releases it, so the jump is a single edge.
         """
-        update = self.power.update
-        world = update(to_world(observation), observation['buttons']['sampled'])
-        for n in range(90):
-            p = world.player
-            world = update(world, RIGHT | (A if p.grounded or p.jump == 1 else 0))
-            if world.mode != PLAYING:
-                return False
-            if n > 2 and world.player.grounded and world.player.jump == 0:
-                return world.player.x > world.enemy_x + 8 * UNIT
-        return False
+        world = base
+        for step in range(self.horizon):
+            mask = self.continuation(world, direction)
+            if step == 0 and jump and world.player.grounded:
+                mask = direction | A
+            world = self.power.update(world, mask)
+            if world.mode == WON:
+                return self.WON_SCORE - step
+            if world.mode in (RETRY, PAUSED) or world.player.fell:
+                return self.DEAD
+        x = world.player.x // UNIT
+        if (world.alive and self.BAND[0] < x < self.BAND[1]
+                and x - base.player.x // UNIT < 4):
+            # Standing still inside the patrol band is never safe: the enemy
+            # arrives eventually, which can be beyond this horizon.
+            return self.DEAD // 2 + x
+        return x
 
     def choose(self, observation):
         mode = observation['mode']
         sampled = observation['buttons']['sampled']
         if mode == TITLE:
-            return (START | RIGHT, 1, 'start') if not sampled & START else (RIGHT, 1, 'start-in-flight')
+            # Start must arrive as an edge; hold it only until it is sampled.
+            return (START, 1, 'start') if not sampled & START else (0, 1, 'start-sampled')
         if mode in (RETRY, WON, PAUSED):
-            return (START, 1, 'restart') if not sampled & START else (0, 1, 'restart-in-flight')
-        p, enemy = observation['player'], observation['enemy']
-        x = p['pixel_x']
-        if not p['grounded']:
-            self.committed = None
-            return (RIGHT | (A if p['jump'] == 1 else 0), 1, 'airborne-hold' if p['jump'] == 1 else 'airborne-release')
-        if self.committed:
-            # A chosen jump stays pressed until it is observed airborne; releasing
-            # before the sampled edge applies would shorten it.
-            return (RIGHT | A, 1, self.committed)
-        pit = _pit_ahead(self.solid, x)
-        enemy_ahead = enemy['alive'] and x < self.PATROL_LEFT
-        distances = [pit - x if pit is not None else PLAYFIELD_X]
-        if enemy_ahead:
-            distances.append(self.WAIT_X - x)
-        nearest = min(distances)
-        if pit is not None and pit - x <= self.JUMP_LEAD and (not enemy_ahead or pit < self.WAIT_X):
-            self.committed = 'jump-gap'
-            return (RIGHT | A, 1, 'jump-gap')
-        if enemy_ahead and x >= self.WAIT_X:
-            if self.hop_clears(observation):
-                self.committed = 'hop-enemy'
-                return (RIGHT | A, 1, 'hop-enemy')
-            return (0, 1, 'wait-enemy')
-        return (RIGHT, MAX_STEP_FRAMES if nearest > self.NEAR else 1, 'walk')
+            return (START, 1, 'restart') if not sampled & START else (0, 1, 'restart-sampled')
+        # The sampled mask is already committed to the next update; plan from it.
+        base = self.power.update(to_world(observation), sampled)
+        reach = base.player.x // UNIT + self.PROGRESS
+        best, best_score = None, None
+        for action in self.ACTIONS:
+            score = self._rollout(base, *action)
+            if best is None or score > best_score:
+                best, best_score = action, score
+            if score >= reach:
+                break
+        if best_score <= self.DEAD // 2:
+            raise PlayFailure('STATE_NO_SAFE_ACTION')
+        direction, jump = best
+        mask = self.continuation(base, direction)
+        if jump and base.player.grounded:
+            mask = direction | A
+        return mask, 1, 'lookahead:%s%d' % ('jump ' if jump else '', best_score)
 
 
 def apply_mask(client, mask):
@@ -194,7 +220,7 @@ def apply_mask(client, mask):
 
 
 def play(client, image, binding, strategy=None, *, budget=None, record=None, retain=None,
-         clock=time.monotonic):
+         require_title=True, clock=time.monotonic):
     """Run from RESET and the title to WON within the declared budget.
 
     Returns a result record; a failed attempt is reported, never retried
@@ -214,6 +240,7 @@ def play(client, image, binding, strategy=None, *, budget=None, record=None, ret
     client.select_input_source(abi.INPUT_SOURCE_UART)
     if client.read_host(abi.HOST_REG_INPUT_SOURCE) != abi.INPUT_SOURCE_UART:
         raise PlayFailure('STATE_SOURCE')
+    observation = provenance = None
     try:
         apply_mask(client, 0)
         client.control('RESET')
@@ -222,7 +249,9 @@ def play(client, image, binding, strategy=None, *, budget=None, record=None, ret
         observation, provenance = observe(client, binding, record=log)
         result['observations'] += 1
         keep(0, observation, provenance)
-        if observation['mode'] != TITLE:
+        if require_title and observation['mode'] != TITLE:
+            # The demonstration runs the normal start path. A fixture that
+            # begins mid-level says so explicitly rather than being tolerated.
             raise PlayFailure('STATE_START_NOT_TITLE')
         result['reset_epoch'] = provenance['epoch']
         best_x, progress_frame = observation['player']['x'], 0
@@ -265,14 +294,28 @@ def play(client, image, binding, strategy=None, *, budget=None, record=None, ret
                     raise PlayFailure('STATE_RETRY')
                 result['attempts'] += 1
                 best_x, progress_frame = 0, result['frames']
-    except PlayFailure as failure:
+    except (PlayFailure, StateFailure) as failure:
+        result['reason'] = str(failure)
+    except UncertainCompletion as failure:
+        # The endpoint may have acted. Record it and send nothing further.
         result['reason'] = str(failure)
     finally:
-        result['final'] = {'mode': observation['mode_name'], 'timer': observation['timer'],
-                           'x': observation['player']['pixel_x'], 'dot': provenance['dot']} if 'observation' in locals() else None
+        result['uncertain'] = client.uncertain
+        result['sequence'] = client.sequence
+        result['final'] = None if observation is None else {
+            'mode': observation['mode_name'], 'timer': observation['timer'],
+            'x': observation['player']['pixel_x'], 'dot': provenance['dot']}
+        result['released'] = False
         if not client.uncertain:
-            apply_mask(client, 0)
-            result['released'] = True
+            try:
+                apply_mask(client, 0)
+                result['released'] = True
+            except (PlayFailure, UncertainCompletion) as failure:
+                # Releasing is best effort during cleanup; it must not hide why
+                # the run stopped, and it must not be retried.
+                result.setdefault('reason', str(failure))
+                result['release_error'] = str(failure)
+                result['uncertain'] = client.uncertain
         result['wall_seconds'] = round(clock() - started, 3)
     return result
 
