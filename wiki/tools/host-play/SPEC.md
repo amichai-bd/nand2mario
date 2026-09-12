@@ -46,16 +46,17 @@ Addresses come from the linker's `symbols.json` inside the same immutable
 [packaged attempt](../sw/SPEC.md) as the ROM, so no game address is written in
 the tool. Binding fails, before any port is opened, when the image is not
 qualified, when a required symbol is missing, when the layout digest differs, or
-when a symbol falls outside WRAM. Decoder version 2 qualifies the current
-three-stage progression image and its complete symbol layout. The former
-block-only image is rejected: its profile does not share the current model.
+when a symbol falls outside WRAM. Decoder version 3 qualifies the current
+three-stage entity image and its complete symbol layout. Earlier image profiles
+are rejected when they do not share the current model.
 A new image requires matching decode, model and renderer checks as well as its
 exact image/layout pair; adding a hash alone does not qualify it.
 
 The reader asks for the smallest ranges that cover the bound symbols, merging
 neighbours that are closer together than the cost of a second request. For the
-current image that is one 151-byte PEEK at the base of WRAM, against 8192 bytes
-for the whole store and 5760 for a frame. Each request stays within the
+current image that is two PEEK requests:151 bytes at WRAM offset0 and56 bytes
+at offset768,207 bytes total, against8192 bytes for the whole store and5760
+for a frame. Each request stays within the
 generated payload limit.
 
 ### Coherent paused acquisition
