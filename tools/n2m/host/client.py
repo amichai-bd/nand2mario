@@ -181,19 +181,26 @@ class Client:
             result.extend(self.request(command, pack_record('read_range', {'offset': offset, 'count': count}), count=count))
         return bytes(result)
 
-    def peek(self, store):
-        """Read one whole non-ROM store from a paused core, in wire chunks.
+    def peek_range(self, store, offset, count):
+        """Read one bounded range of a non-ROM store from a paused core.
 
         Read-only by construction: the endpoint serves peek from port B, which
-        has no write. A held snapshot is neither consumed nor disturbed.
+        has no write. A held snapshot is neither consumed nor disturbed. One
+        request covers at most WIRE_MAX_PAYLOAD bytes; the range is checked
+        against the store before anything is sent.
         """
         selector, size = peek_store(store)
+        checked_range(offset, count, size)
+        return self.request('PEEK', pack_record(
+            'peek_range', {'store': selector, 'offset': offset, 'count': count}), count=count)
+
+    def peek(self, store):
+        """Read one whole non-ROM store from a paused core, in wire chunks."""
+        _selector, size = peek_store(store)
         result = bytearray()
         for offset in range(0, size, abi.WIRE_MAX_PAYLOAD):
             count = min(abi.WIRE_MAX_PAYLOAD, size - offset)
-            checked_range(offset, count, size)
-            result.extend(self.request('PEEK', pack_record(
-                'peek_range', {'store': selector, 'offset': offset, 'count': count}), count=count))
+            result.extend(self.peek_range(store, offset, count))
         return {'store': store, 'bytes': size}, bytes(result)
 
     def control(self, action, value=None):
