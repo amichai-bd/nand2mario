@@ -69,7 +69,7 @@ HALT and exact END count; the shared runner supplies the settled pause.
 
 The current source gives conservative call terms: at most six pieces, each
 with EmitPiece620 plus courier overhead296; setup220; projection500; zero-tail
-at most144 bytes times52; marker/dispatch200. Sum14124 is below16000 dots per
+at most144 bytes times52; marker/dispatch200. Sum13904 is below16000 dots per
 marked call. The620 EmitPiece ceiling reserves the impending entity capacity
 check and must be confirmed against that merged source before execution.
 The two initial loops cost less than10000 dots together. Per-case input/setup
