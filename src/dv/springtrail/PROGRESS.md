@@ -42,11 +42,11 @@ durations in each receipt's `summary.json` are the evidence.
 
 The startup anchor is derived from the built image by
 `startup_anchor.derive`, the independent SM83 timing model under the CPU
-contract, and frozen as `motion_game_reference.LCD`: 177492 dots for this
+contract, and frozen as `motion_game_reference.LCD`: 177308 dots for this
 image. The progression terms of that derivation are `InitProgressArt` 6880,
-`PrepareProgress` 664 and `PublishProgress` 432, with `InitGame` and
+`PrepareProgress` 664 and `PublishProgress` 248, with `InitGame` and
 `PrepareScene` grown by the stage tables. The author's earlier hand count of
-the same listing gave 6880, 664 and 440: the 8-dot `PublishProgress` error is
+the earlier two-map listing gave 6880, 664 and 440 (its actual publication cost was 432): the 8-dot `PublishProgress` error is
 why the parked image's `python-mgs` failed at a hand-frozen 156160 against
 the actual 156152, and the model now reproduces that image's 156152 exactly.
 `test_startup_anchor` pins the two hand terms the model agrees with;
@@ -73,24 +73,32 @@ VBlank must measure against.
 | Stage data | The independent terrain rules equal all 4608 committed world cells, the three stages fill one 256-column page, and every stage goal stands on solid ground | `test_progress_reference`, `tools/n2m/tests/test_columns` |
 | Shared CPU | Actual `UpdateGame` and `UpdateLives` bytes; every expected state byte after each scripted call, completion and settled halt | `python-gps` short, then `python-gpa` and `python-gpb` |
 | Fault | The retry update's actual pending life request store forced from 255 to 1 after the call marker; the same call's `UpdateLives` takes the award path and the unchanged checker rejects exactly one byte, the life count, as 3 instead of 1. Each case re-seeds its operands, so only a store consumed inside its own call is a valid witness | `python-gpx`, after the positive short |
-| Rendered states | HUD row 1 icons and values, all 117 tiles and the unchanged playfield on the changed ROM | `python-pr`, `python-mr` |
+| Rendered states | HUD row 1 icons and values, all 149 tiles and the unchanged playfield on the changed ROM | `python-pr`, `python-mr` |
 | Affected regression | Motion short/full CPU, fault, game short/full and renderer on the changed ROM and the derived anchor; power short, both halves, fault and renderer; the block short, halves and fault; the pause game short, full and fault; the composition and DMA fixtures whose input lists gained `progress.asm` | `python-mus`, `python-mut`, `python-mux`, `python-mgs`, `python-mgu`, `python-mr`, `python-pus`, `python-pua`, `python-pub`, `python-pux`, `python-pr`, `python-bks`, `python-bka`, `python-bkb`, `python-bkx`, `python-pgs`, `python-pgu`, `python-pgx`, `python-courier-short`, `python-courier-unit`, `python-os`, `python-ou`, `python-ox` |
 | Assets | Approved core pixels reproduced by the ROM tables and copies at VRAM 140..148, the new mode words using loaded glyphs only, row 1 pixels equal to the approved maps, every other row 1 cell blank, and the committed previews reproduced from the same sources | `test_progress_assets` |
 | Delivery | Owning SW/DV links, 32 KiB reproducible image, builder checks, wiki check, required CI and current-head review | No new art approval or milestone replay |
 
 ## Measured durations
 
-Whole-run supervisor walls at this head on Questa Altera Starter FPGA Edition
+Retained whole-run walls at producing commit `02b42134`, not new runs of the
+current candidate, on Questa Altera Starter FPGA Edition
 2025.2 with Python 3.12.14 and cocotb 2.0.1 from
 `workdir/builds/python-dv-env/.venv`:
 
 | Target | Wall (s) | Limit (s) | Result |
 | --- | --- | --- | --- |
-| `python-gps` | pending | 300 | pending |
-| `python-gpx` | pending | 300 | pending |
-| `python-gpa` | pending | 300 | pending |
-| `python-gpb` | pending | 300 | pending |
-| `python-mgs` | pending | 300 | pending |
+| `python-gps` | 38 | 300 | PASS |
+| `python-gpx` | 28 | 300 | intended request-mutation rejection |
+| `python-gpa` | 116 | 300 | PASS |
+| `python-gpb` | 156 | 300 | PASS |
+| `python-mgs` | 213 | 300 | PASS |
 
 Licence refusals while the other nodelocked QuestaSim session held the seat
 were retried, never counted and never killed.
+
+The parked `mgu` 369-second watchdog failure and `mr` 332-second pixel
+failure used declared 420-second allowances; neither is a PASS. Their repaired
+watchdog/renderer paths still need execution. The retained pause positive
+803 seconds and negative 522 seconds used their declared 900-second allowances.
+Current source changes require qualification against producing fingerprints;
+these measurements are not relabelled as current-head execution.

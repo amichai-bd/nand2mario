@@ -38,6 +38,9 @@ def build(root, destination, variant='motion'):
             lines.extend([f'LD A,${value & 255:02X}', f'LD [${address:04X}],A'])
         for address, value in zip(ADDRESSES, state_bytes(game)):
             write(address, value)
+        # Ordinary stage-0 reset operands, before the shared HUD preparation.
+        for address, value in zip(range(0xc090, 0xc097), (2, 0, 40, 0, 4, 0, 0)):
+            write(address, value)
         for address, value in ((0xc02e, 0), (0xc02f, 32), (0xc023, 11),
                                (0xc030, 1), (0xc040, 0), (0xc050, 0),
                                (0xc051, 95), (0xc054, 0), (0xc055, 0)):

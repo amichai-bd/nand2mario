@@ -107,5 +107,20 @@ class ProgressPreviews(unittest.TestCase):
                          svg(preview.tile_sheet(), 4))
 
 
+
+class RenderProgressOperands(unittest.TestCase):
+    def test_both_linked_fixtures_seed_reset_state_before_preparing_hud(self):
+        import tempfile
+        from motion_render_program import build
+        for variant in ('motion', 'power'):
+            with self.subTest(variant=variant), tempfile.TemporaryDirectory() as tmp:
+                destination = Path(tmp)
+                self.assertEqual(len(build(ROOT, destination, variant)), 32768)
+                text = (destination / 'program.asm').read_text()
+                prepare = text.index('CALL PrepareProgress')
+                for offset, value in enumerate((2, 0, 40, 0, 4, 0, 0)):
+                    store = f'LD A,${value:02X}\nLD [${0xc090+offset:04X}],A'
+                    self.assertIn(store, text[:prepare])
+
 if __name__ == '__main__':
     unittest.main()

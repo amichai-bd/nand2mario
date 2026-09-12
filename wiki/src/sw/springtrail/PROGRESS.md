@@ -56,6 +56,11 @@ source; `columns.asm` is generated from it.
 | 1 | 2 | 96 | 80 | 480 | 632 | 608 | 300 |
 | 2 | 3 | 176 | 80 | 480 | 632 | 608 | 200 |
 
+A projectile is removed at the stage-relative right edge: x >= 760 pixels
+on stage 0 and x >= 632 on stages 1 and 2. Collision lookup alone adds the
+stage base; projectile coordinates do not. The left and vertical limits stay
+unchanged.
+
 Stage 0 keeps every byte, object and bound of the existing world, so all
 qualified stage-0 evidence stays valid. The [block layer](BLOCKS.md) keys its
 table on the collision page column, and every block sits at page columns 38
@@ -101,19 +106,19 @@ crosses a page. Every stage starts the player at x 0, y 112.
 Modes 0 title, 1 play, 2 retry, 3 paused and 4 won keep their numbers. Mode 4
 now means the stage was cleared; modes 5 TIMEUP and 6 OVER are new.
 
-| Mode | Entered by | A press |
+| Mode | Entered by | Start press |
 | --- | --- | --- |
 | 0 TITLE | reset | enter stage 0 |
 | 1 PLAY | stage entry | pause to 3 |
 | 2 RETRY | fall death or a hit while small | spend a life and re-enter the current stage, or mode 6 when none remains |
-| 3 PAUSED | A while playing | resume to 1; Select resets |
+| 3 PAUSED | Start while playing | resume to 1; Select resets |
 | 4 WON | reaching the stage goal | advance to the next stage, or reset after stage 2 |
 | 5 TIMEUP | the consumed zero timer | identical to mode 2 |
 | 6 OVER | a life removal at 0 lives | reset |
 
 - A reset sets lives 2 and stage 0 and then enters stage 0, so it resumes in
   mode 1 PLAY exactly as the existing paused Select restart does. It is reached
-  from Select while paused, from A in mode 6, and after clearing stage 2.
+  from Select while paused, from Start in mode 6, and after clearing stage 2.
 - Entering a stage resets the player, the enemy, the collected mask, the score,
   every power byte, the timer and `NewLevel`. It never touches `Lives` or
   `StageIndex`.
@@ -132,8 +137,8 @@ now means the stage was cleared; modes 5 TIMEUP and 6 OVER are new.
 - Fall death precedes the enemy contact, the items and the goal, so a death and
   a finish in the same update are a death. A consumed time-up precedes all of
   them, so an expired timer beats a goal reached on the same update.
-- Every transition mode consumes the A edge and stores the sampled buttons into
-  `Previous` and `GamePrevious` before returning, so one held A cannot cross
+- Every transition mode consumes the Start edge and stores the sampled buttons into
+  `Previous` and `GamePrevious` before returning, so one held Start cannot cross
   two transitions and cannot become a queued jump on the next stage.
 - `Collected` is cleared on stage entry and the goal sets the mode, so no
   reward and no stage advance can be taken twice.
@@ -216,10 +221,10 @@ Literal anchors fixed independently of DUT output:
   leaves `Expiring` `$FF` and mode 5.
 - A PLAY update with `TimerSub` 2 only decrements the subdivision to 1 and
   changes nothing else.
-- Mode 2 with `Lives` `$02` and A pressed leaves `Lives` `$01`, mode 1, the same
+- Mode 2 with `Lives` `$02` and Start pressed leaves `Lives` `$01`, mode 1, the same
   stage index, `Collected` 0 and the stage's timer start. With `Lives` `$00` the
   same press leaves `Lives` `$00` and mode 6.
-- Mode 4 with `StageIndex` 0 and A pressed leaves `StageIndex` 1, mode 1, the
+- Mode 4 with `StageIndex` 0 and Start pressed leaves `StageIndex` 1, mode 1, the
   stage 1 timer start 300 and `Lives` unchanged. With `StageIndex` 2 the same
   press leaves mode 1, `StageIndex` 0, timer 400 and `Lives` `$02`.
 - `Lives` `$99` with `PendingLife` 1 stays `$99`; `PendingLife` becomes 0.

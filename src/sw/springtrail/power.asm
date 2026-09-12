@@ -177,11 +177,14 @@ ShotBounds:
 LD A,[ShotX+1]
 BIT 7,A
 JR NZ,ShotRemove
-CP A,$2F
+; Projectiles use the current stage-relative world edge, as the player does.
+CALL StageXLimit
+LD A,[ShotX+1]
+CP A,H
 JR C,ShotBoundsY
 JR NZ,ShotRemove
 LD A,[ShotX]
-CP A,$80
+CP A,L
 JR NC,ShotRemove
 ShotBoundsY:
 LD A,[ShotY+1]

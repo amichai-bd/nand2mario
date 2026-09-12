@@ -246,5 +246,16 @@ class CaseSetTests(unittest.TestCase):
         self.assertEqual([case['name'] for case in short], ['retry-spend', 'timer-unit'])
 
 
+
+class StageShotBounds(unittest.TestCase):
+    def test_stage_edges_remove_at_boundary_but_keep_inside(self):
+        from power_reference import _shot, Shot
+        for stage, edge in ((0, 760), (1, 632), (2, 632)):
+            for start, ttl in ((edge - 3, 9), (edge - 2, 0)):
+                with self.subTest(stage=stage, start=start):
+                    world = g.World(stage=stage, alive=False,
+                                    shot=Shot(start*16, 32*16, 32, 32, 10))
+                    self.assertEqual(_shot(world).shot.ttl, ttl)
+
 if __name__ == '__main__':
     unittest.main()
