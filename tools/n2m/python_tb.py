@@ -343,9 +343,14 @@ def prepare(target, attempt, root=None, fixture_tools=None):
             image=module.build(root,attempt,'power' if target['preload']=='power-render302' else 'motion')
             expected_sha=hashlib.sha256(image).hexdigest()
         elif target['preload'] in ('entities-render305', 'entities-render305-changed'):
-            spec=importlib.util.spec_from_file_location('entities305_image',root/'src/dv/springtrail/entities_render_program.py')
-            module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
-            image=module.build(root,attempt,'changed' if target['preload'].endswith('-changed') else 'normal')
+            prior_path = sys.path[:]
+            try:
+                sys.path[:0] = [str(root/'tools'), str(root/'src/dv/springtrail')]
+                spec=importlib.util.spec_from_file_location('entities305_image',root/'src/dv/springtrail/entities_render_program.py')
+                module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+                image=module.build(root,attempt,'changed' if target['preload'].endswith('-changed') else 'normal')
+            finally:
+                sys.path[:] = prior_path
             expected_sha=hashlib.sha256(image).hexdigest()
         elif target['preload'] == 'hud-render300':
             spec=importlib.util.spec_from_file_location('hud_render300_image',root/'src/dv/springtrail/hud_render_program.py')
