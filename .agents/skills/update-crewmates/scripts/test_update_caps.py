@@ -25,7 +25,7 @@ AGENTS = (
 RECOVERY = (
     "Check the work caps before\n"
     "spawning. The reviewer takes a crewmate slot, so when the slots are full, pause\n"
-    "the author before requesting review.\n"
+    "or finish the author before requesting review.\n"
 )
 
 
@@ -54,6 +54,11 @@ class UpdateCapsTest(unittest.TestCase):
     def run_script(self, *args: str) -> int:
         return update_caps.main([*args, "--root", str(self.root), "--date", "2026-01-02", "--by", "test"])
 
+    def assert_untouched(self) -> None:
+        self.assertEqual(AGENTS, self.read("AGENTS.md"))
+        self.assertEqual(RECOVERY, self.read(".agents/skills/agent-flow/references/recovery.md"))
+        self.assertFalse((self.root / update_caps.HISTORY).exists())
+
     def test_rewrites_only_the_numbers_and_keeps_line_endings(self) -> None:
         self.assertEqual(0, self.run_script("4", "2"))
         expected = AGENTS.replace("two active crewmates", "four active crewmates")
@@ -73,20 +78,43 @@ class UpdateCapsTest(unittest.TestCase):
         self.assertEqual("- 2026-01-02: crewmates 2 -> 3, open PRs 2 -> 1 (asked by test)", history[-2])
         self.assertEqual("- 2026-01-02: crewmates 3 -> 5, open PRs 1 -> 6 (asked by test)", history[-1])
 
-    def test_stale_statement_outside_the_list_fails_naming_file_and_line(self) -> None:
-        self.write("wiki/agents/notes.md", "Intro.\nRoot may run 2 crewmates at once.\n")
+    def test_noop_rerun_writes_nothing(self) -> None:
+        self.assertEqual(0, self.run_script("2", "2"))
+        self.assert_untouched()
+        self.assertEqual(0, self.run_script("4", "2"))
+        history = self.read(update_caps.HISTORY)
+        self.assertEqual(0, self.run_script("4", "2"))
+        self.assertEqual(history, self.read(update_caps.HISTORY))
+
+    def test_stale_statement_outside_the_list_fails_before_writing(self) -> None:
+        self.write("wiki/agents/notes.md", "Intro.\nRoot may run 3 crewmates at once.\n")
         self.assertEqual(1, self.run_script("4", "2"))
-        self.assertIn("at most four active crewmates", self.read("AGENTS.md"))
+        self.assert_untouched()
         self.assertEqual(1, self.run_script("4", "2", "--check"))
-        found, stale = update_caps.verify(self.root, {"crewmates": 4, "prs": 2})
+        found, stale = update_caps.verify(self.root, {"crewmates": 2, "prs": 2})
         self.assertEqual(3, len(found))
         self.assertEqual(1, len(stale))
-        self.assertTrue(stale[0].startswith("wiki/agents/notes.md:2: crewmates=2"))
+        self.assertTrue(stale[0].startswith("wiki/agents/notes.md:2: crewmates=3"))
+
+    def test_scans_readme_claude_and_sentence_initial_words(self) -> None:
+        self.write("README.md", "Root runs at most five active crewmates.\n")
+        self.assertEqual(1, self.run_script("4", "2"))
+        self.assert_untouched()
+        self.write("README.md", "Plain overview.\n")
+        self.write("CLAUDE.md", "Four active crewmates may run.\n")
+        self.assertEqual(1, self.run_script("2", "2", "--check"))
+        self.assertEqual(0, self.run_script("4", "2"))
+        self.write(".claude/note.md", "Three open PRs per tree.\n")
+        self.assertEqual(1, self.run_script("4", "2", "--check"))
+
+    def test_capitalised_location_keeps_its_case(self) -> None:
+        self.write("AGENTS.md", AGENTS.replace("at most two active", "at most Two active"))
+        self.assertEqual(0, self.run_script("4", "2"))
+        self.assertIn("at most Four active crewmates", self.read("AGENTS.md"))
 
     def test_check_reports_disagreement_without_writing(self) -> None:
         self.assertEqual(1, self.run_script("4", "2", "--check"))
-        self.assertEqual(AGENTS, self.read("AGENTS.md"))
-        self.assertFalse((self.root / update_caps.HISTORY).exists())
+        self.assert_untouched()
         self.assertEqual(0, self.run_script("2", "2", "--check"))
 
     def test_check_without_numbers_uses_the_last_history_entry(self) -> None:
@@ -101,12 +129,12 @@ class UpdateCapsTest(unittest.TestCase):
         self.write("AGENTS.md", AGENTS + "Again: at most two open PRs.\n")
         self.assertEqual(1, self.run_script("4", "2"))
         self.assertEqual(AGENTS + "Again: at most two open PRs.\n", self.read("AGENTS.md"))
-        self.assertEqual(RECOVERY, self.read(".agents/skills/agent-flow/references/recovery.md"))
+        self.assertFalse((self.root / update_caps.HISTORY).exists())
 
     def test_rejects_numbers_without_a_word(self) -> None:
         self.assertEqual(1, self.run_script("13", "2"))
         self.assertEqual(1, self.run_script("0", "2"))
-        self.assertEqual(AGENTS, self.read("AGENTS.md"))
+        self.assert_untouched()
 
 
 if __name__ == "__main__":

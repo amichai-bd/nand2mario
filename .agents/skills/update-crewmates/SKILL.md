@@ -28,9 +28,12 @@ The script:
    uses words. Each pattern must match exactly once, or it stops before writing.
 2. Appends one line to [HISTORY.md](HISTORY.md): date, old to new, who asked.
    The current caps are the last line of that log and the sentences themselves.
-3. Scans `AGENTS.md`, `.agents`, `wiki/agents`, `worktrees/README.md` and
-   `.claude` for any cap phrase whose number differs from the requested caps and
-   fails, naming the file and line. Run with `--check` to scan without writing.
+3. Scans `AGENTS.md`, `CLAUDE.md`, `README.md`, `.agents`, `wiki/agents`,
+   `worktrees/README.md` and `.claude` for any cap phrase whose number differs
+   from the requested caps and fails, naming the file and line, before anything
+   is written. Run with `--check` to scan without writing; with no numbers it
+   checks against the last `HISTORY.md` entry, which `pages.yml` does on every
+   push to `main`.
 
 Paste the scan output into the PR, with a word-diff of `AGENTS.md` proving that
 only the numbers changed.
@@ -53,10 +56,11 @@ because it matches phrases rather than the table.
 
 ## When the numbers differ
 
-The surrounding text must still read correctly for the pair chosen. With more
-crewmates than open PRs, each PR's author and an independent reviewer can be
-active together; with equal numbers, an author pauses before its reviewer
-starts. Reviewer independence, runtime limits and every other sentence of
+The surrounding text must still read correctly for the pair chosen. Slots above
+the open-PR count let some authors keep running while their reviewer works;
+once every slot is in use, an author pauses before its reviewer starts. When
+the slots exceed the open PRs by one, for example, one reviewer at a time runs
+beside the authors. Reviewer independence, runtime limits and every other sentence of
 `AGENTS.md#work` stay as they are; this skill changes numbers only. Raise any
 sentence that no longer makes sense for the new pair to root rather than
 rewording it here.

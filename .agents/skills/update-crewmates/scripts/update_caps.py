@@ -11,7 +11,7 @@ from pathlib import Path
 
 WORDS = ["one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
          "ten", "eleven", "twelve"]
-NUMBER_RE = r"(?P<n>[a-z]+|\d+)"
+NUMBER_RE = r"(?P<n>[A-Za-z]+|\d+)"
 
 # Every sentence that states a cap. Each pattern must match its file exactly once.
 # Extend this table when a new location states a cap; the scan below catches a
@@ -23,7 +23,8 @@ LOCATIONS = [
 ]
 
 # Where any cap statement may legitimately appear. The scan reads every file here.
-SEARCH_PATHS = ["AGENTS.md", ".agents", "wiki/agents", "worktrees/README.md", ".claude"]
+SEARCH_PATHS = ["AGENTS.md", "CLAUDE.md", "README.md", ".agents", "wiki/agents",
+                "worktrees/README.md", ".claude"]
 # Phrases that state a cap. Any number word or digit in the slot is checked
 # against the expected value for that kind.
 SCAN = [
@@ -52,8 +53,8 @@ def number(token: str) -> int | None:
     """The integer a token names, or None when it is not a number."""
     if token.isdigit():
         return int(token)
-    if token in WORDS:
-        return WORDS.index(token) + 1
+    if token.lower() in WORDS:
+        return WORDS.index(token.lower()) + 1
     return None
 
 
@@ -67,32 +68,35 @@ def write(path: Path, text: str) -> None:
         stream.write(text)
 
 
-def rewrite(root: Path, caps: dict[str, int]) -> dict[str, int]:
-    """Replace the number in every listed location; return the old caps."""
-    texts = {}
+def plan(root: Path, caps: dict[str, int]) -> tuple[dict[str, int], dict[str, str]]:
+    """The old caps and the rewritten text of every listed file; writes nothing."""
+    texts: dict[str, str] = {}
     old: dict[str, int] = {}
     for relative, kind, pattern in LOCATIONS:
-        path = root / relative
-        text = texts.setdefault(relative, read(path))
+        text = texts.setdefault(relative, read(root / relative))
         matches = list(re.finditer(pattern, text))
         if len(matches) != 1:
             raise CapError(f"{relative}: expected one match for {pattern!r}, found {len(matches)}")
         match = matches[0]
-        current = number(match.group("n"))
+        token = match.group("n")
+        current = number(token)
         if current is None:
             raise CapError(f"{relative}: {match.group(0)!r} does not carry a number")
         if old.setdefault(kind, current) != current:
             raise CapError(f"{relative}: {kind} reads {current}, another location reads {old[kind]}")
+        replacement = word(caps[kind])
+        if token[0].isupper():
+            replacement = replacement.capitalize()
         start, end = match.span("n")
-        texts[relative] = text[:start] + word(caps[kind]) + text[end:]
-    for relative, text in texts.items():
-        write(root / relative, text)
-    return old
+        texts[relative] = text[:start] + replacement + text[end:]
+    return old, texts
 
 
 def scan_files(root: Path):
     for relative in SEARCH_PATHS:
         base = root / relative
+        if not base.exists():
+            continue
         candidates = [base] if base.is_file() else sorted(p for p in base.rglob("*") if p.is_file())
         for path in candidates:
             posix = path.relative_to(root).as_posix()
@@ -102,11 +106,18 @@ def scan_files(root: Path):
                 yield posix, path
 
 
-def verify(root: Path, caps: dict[str, int]) -> tuple[list[str], list[str]]:
-    """Every cap statement under the search paths; (consistent, stale)."""
+def verify(root: Path, caps: dict[str, int],
+           pending: dict[str, str] | None = None) -> tuple[list[str], list[str]]:
+    """Every cap statement under the search paths; (consistent, stale).
+
+    `pending` maps a relative path to text that replaces the file's content for
+    the scan, so a rewrite can be checked before it is written.
+    """
     found, stale = [], []
+    pending = pending or {}
     for posix, path in scan_files(root):
-        for line_number, line in enumerate(read(path).splitlines(), 1):
+        text = pending[posix] if posix in pending else read(path)
+        for line_number, line in enumerate(text.splitlines(), 1):
             for kind, pattern in SCAN:
                 for match in re.finditer(pattern, line):
                     value = number(match.group("n"))
@@ -152,6 +163,16 @@ def log(root: Path, old: dict[str, int], caps: dict[str, int], by: str, date: st
     write(path, text + line)
 
 
+def report(found: list[str], stale: list[str]) -> None:
+    for entry in found:
+        print(f"ok    {entry}")
+    for entry in stale:
+        print(f"STALE {entry}")
+    if stale:
+        raise CapError(f"{len(stale)} cap statement(s) disagree with the requested caps")
+    print(f"verified {len(found)} cap statements under {', '.join(SEARCH_PATHS)}")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("crewmates", type=int, nargs="?",
@@ -167,19 +188,21 @@ def main(argv: list[str] | None = None) -> int:
     try:
         caps = requested(args)
         word(caps["crewmates"]), word(caps["prs"])
-        if not args.check:
-            old = rewrite(args.root, caps)
-            log(args.root, old, caps, args.by, args.date)
-            print(f"rewrote {len(LOCATIONS)} locations: crewmates {old['crewmates']} -> "
-                  f"{caps['crewmates']}, open PRs {old['prs']} -> {caps['prs']}")
-        found, stale = verify(args.root, caps)
-        for entry in found:
-            print(f"ok    {entry}")
-        for entry in stale:
-            print(f"STALE {entry}")
-        if stale:
-            raise CapError(f"{len(stale)} cap statement(s) disagree with the requested caps")
-        print(f"verified {len(found)} cap statements under {', '.join(SEARCH_PATHS)}")
+        if args.check:
+            report(*verify(args.root, caps))
+            return 0
+        old, texts = plan(args.root, caps)
+        # Scan the planned text first: a stale statement elsewhere leaves the tree untouched.
+        report(*verify(args.root, caps, texts))
+        if old == caps:
+            print("caps already read crewmates "
+                  f"{caps['crewmates']}, open PRs {caps['prs']}; nothing written")
+            return 0
+        for relative, text in texts.items():
+            write(args.root / relative, text)
+        log(args.root, old, caps, args.by, args.date)
+        print(f"rewrote {len(LOCATIONS)} locations: crewmates {old['crewmates']} -> "
+              f"{caps['crewmates']}, open PRs {old['prs']} -> {caps['prs']}")
     except (CapError, OSError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 1

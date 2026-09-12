@@ -28,10 +28,6 @@ jobs:
         run: |
           python -m unittest discover -s .agents/skills/rtl-coder/scripts -p test_check_sv_style.py -v
           python .agents/skills/rtl-coder/scripts/check_sv_style.py
-      - name: Check work caps
-        run: |
-          python -m unittest discover -s .agents/skills/update-crewmates/scripts -p test_update_caps.py -v
-          python .agents/skills/update-crewmates/scripts/update_caps.py --check
       - name: Build and check wiki
         run: python tools/wiki/check.py --browser --install-browser
       - name: Preserve browser failure evidence
