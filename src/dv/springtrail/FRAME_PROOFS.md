@@ -1,11 +1,21 @@
-# Scrolling, win and death/retry frames on the current image
+# Retained scrolling, win and death/retry frame fixture
 
-Bounded physical proof under the
+## Current gameplay qualification gap
+
+The retained protocol/checkpoint fixture still uses the pre-progression power
+and block model. Its synthetic tests do not qualify current lives/countdown
+frames or a current continuous route. [#511](https://github.com/amichai-bd/nand2mario/issues/511)
+owns current model and frame expectations together with the endurance script.
+The launcher still requires the actual source-built image, and checkpoint times
+follow its independently derived LCD anchor. No physical result is implied.
+
+
+The intended bounded physical proof follows the
 [image binding](../../../wiki/src/dv/springtrail/SPEC.md#image-binding) and
 the [milestone reuse policy](../../../wiki/src/dv/integration/SPEC.md#milestone-acceptance).
 `frame_proofs.py` is the launcher and driver; `test_frame_proofs.py` holds
-the host checks. Everything is observed over UART on the reviewed board
-build; no monitor or physical control is claimed, and no simulation target
+the host checks. The fixture observes UART on a reviewed board build;
+no monitor or physical control is claimed, and no simulation target
 reaches these frames inside the wall ceiling.
 
 ## Why hardware
@@ -27,7 +37,7 @@ constant is stored; the run's `build.json` and `result.json` record the
 image checked. The expected wire build is given on the command line and
 checked against the endpoint's build identity before traffic.
 
-Expected frames come from the independent models only: `motion_reference`
+Retained expected frames come from these independent models: `motion_reference`
 for the player, `power_reference` over that player for modes, enemy, items,
 goal and the block and power layers the image carries, and
 `blocks_frames.image`, which draws the block layer in the state the script
