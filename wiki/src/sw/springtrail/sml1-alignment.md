@@ -53,7 +53,8 @@ in these three stages. An intermediate stage is not completion of that release.
 3. Deliver the remaining progression and entity scopes #304-#305.
    Agree shared state ownership before dependent code, rather than creating
    circular implementation waits. Additional families, bosses, bonus and vehicle
-   stages remain the separate [#306 inventory](https://github.com/amichai-bd/nand2mario/issues/306).
+   stages remain in the separate [later stage inventory](sml1-later-stages.md),
+   which is not part of this release.
 
 The [approved art](CHARACTER_ART.md) fixes original small 16x16 and large 16x24
 canvases. These are not measured SML1 dimensions. [Composition](COMPOSITION.md) defines logical anchors,
@@ -98,7 +99,7 @@ content required by that issue. This adds no feature families or asset framework
 | [Blocks](BLOCKS.md) | Approved core terrain block and item tiles at VRAM 108..139; no new art |
 | #304 | Progression displays and original fixture maps |
 | #305 | Selected enemy, hazard and moving/falling-platform art |
-| #306 | Later-content inventory only; no core-release asset implementation |
+| [Later stage inventory](sml1-later-stages.md) | Later-content inventory only; no core-release asset implementation |
 
 Each owning specification records a compact list with visible state/use,
 existing source to reuse or missing asset to create, exact tile/pose/map source

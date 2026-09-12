@@ -95,8 +95,8 @@ Screen pixel maps are compositions for tilemap integration, not large objects.
 The scene combines exact approved sources at illustrative coordinates. It
 establishes visual compatibility, not a playable level, OAM capacity proof or
 VRAM allocation. Its placement recipe lives in the reproduction helper.
-[#306](https://github.com/amichai-bd/nand2mario/issues/306) retains later boss,
-vehicle and bonus inventories; those assets are not covered by this pack.
+The [later stage inventory](sml1-later-stages.md) records boss, vehicle and
+bonus asset needs; those assets are not covered by this pack.
 Gameplay contracts may identify additional frames requiring their own review.
 
 ## Reproduce and edit
