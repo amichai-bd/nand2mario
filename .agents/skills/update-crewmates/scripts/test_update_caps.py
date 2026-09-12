@@ -131,6 +131,27 @@ class UpdateCapsTest(unittest.TestCase):
         self.assertEqual(AGENTS + "Again: at most two open PRs.\n", self.read("AGENTS.md"))
         self.assertFalse((self.root / update_caps.HISTORY).exists())
 
+    def test_one_reads_singular_and_more_than_one_reads_plural(self) -> None:
+        self.assertEqual(0, self.run_script("1", "1"))
+        text = self.read("AGENTS.md")
+        self.assertIn("at most one open PR, including", text)
+        self.assertIn("at most one active crewmate at any moment", text)
+        self.assertIn("fewer than one open.", text)
+        self.assertEqual(0, self.run_script("2", "3"))
+        text = self.read("AGENTS.md")
+        self.assertIn("at most three open PRs, including", text)
+        self.assertIn("at most two active crewmates at any moment", text)
+        self.assertIn("fewer than three open.", text)
+
+    def test_agrees_a_noun_left_plural_at_one(self) -> None:
+        self.write("AGENTS.md", AGENTS.replace("two open PRs", "one open PRs")
+                   .replace("two active crewmates", "one active crewmates")
+                   .replace("fewer than two open", "fewer than one open"))
+        self.assertEqual(0, self.run_script("1", "1"))
+        text = self.read("AGENTS.md")
+        self.assertIn("at most one open PR, including", text)
+        self.assertIn("at most one active crewmate at any moment", text)
+
     def test_rejects_numbers_without_a_word(self) -> None:
         self.assertEqual(1, self.run_script("13", "2"))
         self.assertEqual(1, self.run_script("0", "2"))

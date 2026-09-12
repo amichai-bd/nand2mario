@@ -54,8 +54,8 @@ point. A delegated agent that must ask raises the question to root; root asks
 the user and returns the answer. Escalate promptly; never let a pending decision
 or a real failure stay below deck.
 
-Each root orchestration tree may have at most one open PRs, including its authors'
-drafts, and at most one active crewmates at any moment, including reviewers,
+Each root orchestration tree may have at most one open PR, including its authors'
+drafts, and at most one active crewmate at any moment, including reviewers,
 scouts and nested agents. Reviewers are not extra capacity on top of authors:
 a reviewer occupies one of the crewmate slots. When every slot is in use, an
 author goes idle before its reviewer starts, and delivery serializes; that is
