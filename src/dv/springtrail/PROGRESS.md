@@ -60,8 +60,10 @@ columns and the row 0 cache before the DMA; with the row 1 cells published to
 both maps the pause fixture's second frame triggered its DMA at VBlank+3952,
 past the 3916-dot trigger bound. The cells therefore go to the one map the
 display shows after that VBlank, which halves their cost to 248 dots of
-startup and about 216 dots per frame; the measured trigger after the change
-is recorded with the walls below.
+startup and about 216 dots per frame. `python-pgu` now triggers that frame's
+DMA at VBlank+3768, so it completes at 4412 against the 4480 bound: 68 dots
+of margin on the heaviest frame, which the next feature that publishes in
+VBlank must measure against.
 
 ## Acceptance matrix
 

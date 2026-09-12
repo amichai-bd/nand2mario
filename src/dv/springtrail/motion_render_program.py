@@ -47,7 +47,7 @@ def build(root, destination, variant='motion'):
         lines += ['LD A,[HL+]', 'LD [DE],A', 'INC DE']*16
         lines += ['DEC B', 'JR NZ,TileBlock', 'LD HL,$9800', 'LD B,64',
                   'XOR A,A', 'ClearHUD:', 'LD [HL+],A', 'DEC B',
-                  'JR NZ,ClearHUD', 'CALL InitHUD', 'CALL InitMotionArt', 'CALL InitBlockArt', 'LD A,$E4',
+                  'JR NZ,ClearHUD', 'CALL InitHUD', 'CALL InitMotionArt', 'CALL InitBlockArt', 'CALL InitProgressArt', 'LD A,$E4',
                   'LDH [$FF47],A', 'LDH [$FF48],A', 'RingColumn:',
                   'LD A,[$C054]', 'LD DE,$C200', 'CALL DecodeColumn',
                   'LD A,[$C054]', 'LD HL,$C200', 'CALL PublishColumn',
@@ -58,8 +58,11 @@ def build(root, destination, variant='motion'):
                   f"LD A,{secondary['facing']}", 'LD [CourierFacing],A',
                   'XOR A,A', 'LD [SceneBaseX+1],A', 'LD [SceneBaseY+1],A',
                   'LD [SceneHidden],A', f"LD A,{secondary['pose']}", 'LD [CourierPose],A',
-                  'CALL ComposeCourier', 'CALL PrepareHUD',
-                  'CALL PrepareMap', 'CALL PublishHUD', 'CALL PublishScene',
+                  'CALL ComposeCourier', 'CALL PrepareHUD', 'CALL PrepareProgress',
+                  'CALL PrepareMap', 'CALL PublishHUD',
+                  # This fixture selects the ring at LCD-on, so its startup publishes the
+                  # progression row to the ring copy directly, as the game's switch frame does.
+                  'LD HL,ProgressCache', 'LD DE,$9C22', 'CALL PublishProgressMap', 'CALL PublishScene',
                   'XOR A,A', 'LDH [$FF0F],A', 'LD A,15', 'LDH [$FF45],A',
                   'LD A,$40', 'LDH [$FF41],A', 'LD A,3', 'LD [$FFFF],A',
                   'LD A,$99', 'LDH [$FF40],A', 'EI', 'WaitFrame:', 'DI',
@@ -68,7 +71,7 @@ def build(root, destination, variant='motion'):
                   'LD [FramePending],A', 'LD A,[$C055]', 'OR A,A',
                   'JR NZ,Finished', 'INC A', 'LD [$C055],A', 'EI',
                   'CALL StreamMap', 'LD A,[Camera]', 'LD [PublishedCamera],A',
-                  'CALL PublishHUD', 'DI', 'CALL PublishScene', 'EI',
+                  'CALL PublishHUD', 'CALL PublishProgress', 'DI', 'CALL PublishScene', 'EI',
                   'JP WaitFrame', 'Finished:', 'XOR A,A', 'LD [$FFFF],A',
                   'LD A,$A5', 'LD [$C0FF],A', 'HALT', 'EXPORT Start',
                   'SECTION "assets",ROM', 'Tiles:', 'ASSET "Tiles"',

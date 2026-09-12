@@ -21,7 +21,7 @@ async def run(dut, short=False, renderer=False, motion=False, power=False):
     elif motion and renderer:
         from motion_render_reference import Check
     elif motion:
-        from motion_game_reference import Check
+        from motion_game_reference import Check, LCD, PERIOD
     elif renderer:
         from hud_render_reference import Check
     else:
@@ -88,7 +88,9 @@ async def run(dut, short=False, renderer=False, motion=False, power=False):
                     dot=known(dut.dot_count)
                     assert dot>prior and not any(known(s) for s in (dut.fault,dut.reset_sys,dut.core_reset,dut.paused)), 'SPRINGTRAIL_PROGRESS'
                     prior=dot;consume()
-                    assert dot<(320000 if renderer else 310000),'HUD_WATCHDOG'
+                    # The game run ends inside its third VBlank; the bound follows the
+                    # derived startup anchor rather than a literal that a longer startup outgrows.
+                    assert dot<(320000 if renderer else LCD+2*PERIOD+4096 if motion else 310000),'HUD_WATCHDOG'
                     if check.lcd is not None:
                         if short and check.pixels>=160:break
                         if renderer and check.halted:break
