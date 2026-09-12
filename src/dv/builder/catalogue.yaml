@@ -582,6 +582,4 @@ units:
   vga-lcd-reset: {kind: sim, level: 1, labels: [vga], duration_seconds: 14.88}
   vga-read-latency: {kind: sim, level: 2, labels: [fault, vga], duration_seconds: null}
 not_runnable:
-  src/dv/springtrail/test_foundation.py: "A cocotb entry point no registry target names, so nothing can run it; recorded, not repaired."
-  src/dv/springtrail/test_movement_game.py: "A cocotb entry point no registry target names, so nothing can run it; recorded, not repaired."
   tools/n2m/test_budget.py: "The builder wall-budget supervisor module, not a test; its cases are tools/n2m/tests/test_test_budget.py."
