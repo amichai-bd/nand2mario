@@ -3,7 +3,6 @@ from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
-import signal
 import subprocess
 import sys
 import time
@@ -104,7 +103,7 @@ def supervise(command, root, tag, *, target=None, ceiling=None):
     started = time.monotonic()
     wall_started = datetime.now(timezone.utc).timestamp()
     deadline = started + limit
-    # Reserve the existing 5s tree kill, 5s pipe drain and 2s fallback reap.
+    # Reserve the 5s tree termination, 5s pipe drain and 2s fallback reap.
     execution_deadline = deadline - 12
     def remaining(wait_limit, end=deadline):
         seconds = end - time.monotonic()
@@ -112,6 +111,7 @@ def supervise(command, root, tag, *, target=None, ceiling=None):
             raise subprocess.TimeoutExpired(command, limit)
         return min(wait_limit, seconds)
 
+    from n2m import process_tree
     from n2m.records import atomic_json, valid_tag
     if not valid_tag(tag):
         raise ValueError("invalid test budget tag")
@@ -128,47 +128,46 @@ def supervise(command, root, tag, *, target=None, ceiling=None):
         record["wall_ceiling_seconds"] = ceiling
     path = build / "wall-budget" / (uuid.uuid4().hex + ".json")
     atomic_json(path, record)
-    options = {"creationflags": subprocess.CREATE_NO_WINDOW} if os.name == "nt" else {"start_new_session": True}
+    options = {"creationflags": subprocess.CREATE_NO_WINDOW} if os.name == "nt" else {}
     environment = dict(os.environ)
-    # Cross-OS children need their own deadline; Windows taskkill cannot reap WSL.
+    # Cross-OS children need their own deadline; a Windows job cannot reap WSL.
     environment['N2M_TEST_EXECUTION_DEADLINE'] = str(wall_started + execution_limit)
-    process = subprocess.Popen(command, cwd=root, stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE, env=environment, **options)
     timed_out = False
     errors = b""
-    try:
-        output, errors = process.communicate(timeout=remaining(execution_limit, execution_deadline))
-    except subprocess.TimeoutExpired as error:
-        timed_out = True
-        # Same process-tree termination used by the Quartus executor. Reap before
-        # returning so a timed-out compiler, simulator or peer cannot keep running.
-        output = error.output or b""
-        errors = error.stderr or b""
-        record["cleanup_complete"] = False
+    # The worker is an owned process tree, as in the Quartus executor: a job
+    # object (or POSIX session group) that expiry terminates whole, including
+    # a descendant spawned while cleanup starts; see process_tree.
+    with process_tree.Tree(command, cwd=root, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                           env=environment, **options) as tree:
+        process = tree.process
         try:
-            if os.name == "nt":
-                cleanup = subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"],
-                                         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=remaining(5))
-                record["cleanup_exit_code"] = cleanup.returncode
-                if cleanup.returncode:
-                    raise RuntimeError(f"process-tree cleanup failed: {cleanup.returncode}")
-            else:
-                os.killpg(process.pid, signal.SIGKILL)
-            output, errors = process.communicate(timeout=remaining(5))
-            record["cleanup_complete"] = True
-        except (OSError, RuntimeError, subprocess.TimeoutExpired) as cleanup_error:
-            record["cleanup_error"] = str(cleanup_error)
-            if isinstance(cleanup_error, subprocess.TimeoutExpired) and cleanup_error.output:
-                output = cleanup_error.output
-            if isinstance(cleanup_error, subprocess.TimeoutExpired) and cleanup_error.stderr:
-                errors = cleanup_error.stderr
-            # Reap the immediate worker if possible, but never wait indefinitely
-            # for an inherited pipe held by a surviving descendant.
+            output, errors = process.communicate(timeout=remaining(execution_limit, execution_deadline))
+        except subprocess.TimeoutExpired as error:
+            timed_out = True
+            output = error.output or b""
+            errors = error.stderr or b""
+            record["cleanup_complete"] = False
             try:
-                process.kill()
-                process.wait(timeout=remaining(2))
-            except (OSError, subprocess.TimeoutExpired) as reap_error:
-                record["reap_error"] = str(reap_error)
+                # Returns only once the job reports no live member, or raises.
+                tree.terminate(timeout=remaining(5))
+                output, errors = process.communicate(timeout=remaining(5))
+                record["cleanup_complete"] = True
+            except (OSError, RuntimeError, subprocess.TimeoutExpired) as cleanup_error:
+                record["cleanup_error"] = str(cleanup_error)
+                survivors = tree.survivors()
+                if survivors:
+                    record["survivors"] = survivors
+                if isinstance(cleanup_error, subprocess.TimeoutExpired) and cleanup_error.output:
+                    output = cleanup_error.output
+                if isinstance(cleanup_error, subprocess.TimeoutExpired) and cleanup_error.stderr:
+                    errors = cleanup_error.stderr
+                # Reap the immediate worker if possible, but never wait indefinitely
+                # for an inherited pipe held by a surviving descendant.
+                try:
+                    process.kill()
+                    process.wait(timeout=remaining(2))
+                except (OSError, subprocess.TimeoutExpired) as reap_error:
+                    record["reap_error"] = str(reap_error)
     if timed_out:
         release_lock(build / ".lock", process.pid, record)
     text = output.decode("utf-8", errors="replace")

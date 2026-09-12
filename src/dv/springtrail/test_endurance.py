@@ -3,6 +3,7 @@ from dataclasses import replace
 from pathlib import Path
 import hashlib
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -211,11 +212,47 @@ class RunnerTests(unittest.TestCase):
             self.assertEqual(supervise(sleeper, 13, out), 1)  # kill at cap-12 = 1 s
             budget = json.loads((out/'budget.json').read_text())
             self.assertEqual(budget['status'], 'TIMEOUT')
+            self.assertTrue(budget['cleanup_complete'])
             self.assertLess(budget['elapsed_seconds'], 12)
             self.assertIn('raw_exit_code', budget)
             quick = [sys.executable, '-c', 'pass']
             self.assertEqual(supervise(quick, 13, out), 0)
             self.assertEqual(json.loads((out/'budget.json').read_text())['status'], 'FINISHED')
+
+    @unittest.skipUnless(os.name == 'nt', 'Windows owned-tree cleanup')
+    def test_supervisor_reaps_a_descendant_racing_the_cleanup(self):
+        # The worker spawns a grandchild every 5 ms, so some land while cleanup
+        # starts. taskkill /T walked a snapshot and left five alive per run with
+        # cleanup_exit_code 0; the job reaps them all before cleanup_complete.
+        with tempfile.TemporaryDirectory() as directory:
+            out = Path(directory); pids = out/'pids.txt'
+            spawner = ("import subprocess,sys,time\nf=open(%r,'a')\nwhile True:\n"
+                       "    f.write(str(subprocess.Popen([sys.executable,'-c','import time; time.sleep(30)']).pid)+chr(10))\n"
+                       "    f.flush(); time.sleep(0.005)") % str(pids)
+            self.assertEqual(supervise([sys.executable, '-u', '-c', spawner], 13, out), 1)
+            budget = json.loads((out/'budget.json').read_text())
+            self.assertEqual(budget['status'], 'TIMEOUT')
+            spawned = [int(line) for line in pids.read_text().split()]
+            self.assertGreater(len(spawned), 10, 'the worker must have been mid-spawn at expiry')
+            import ctypes
+            kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+            kernel.OpenProcess.argtypes = [ctypes.c_ulong, ctypes.c_int, ctypes.c_ulong]
+            kernel.OpenProcess.restype = ctypes.c_void_p
+            kernel.WaitForSingleObject.argtypes = [ctypes.c_void_p, ctypes.c_ulong]
+            kernel.CloseHandle.argtypes = [ctypes.c_void_p]
+            alive = []
+            for pid in spawned:
+                handle = kernel.OpenProcess(0x100000, False, pid)
+                if not handle:
+                    continue  # gone or reused; nothing of ours to wait on
+                try:
+                    # Bounded wait proves the pid exited; 258 would be a live one.
+                    if kernel.WaitForSingleObject(handle, 5000) != 0:
+                        alive.append(pid)
+                finally:
+                    kernel.CloseHandle(handle)
+            self.assertEqual(alive, [], f'{len(alive)} of {len(spawned)} descendants survived cleanup')
+            self.assertTrue(budget['cleanup_complete'], budget.get('cleanup_error'))
 
     def test_wrong_rom_before_any_side_effect(self):
         with tempfile.TemporaryDirectory() as directory:
