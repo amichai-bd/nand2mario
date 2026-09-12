@@ -751,7 +751,7 @@ def board_loop(name, heading, strip, footer, scenes):
            *layers,
            '</g>',
            f'<rect x="{sx - .5}" y="{sy - .5}" width="{160 * scale + 1}" height="{144 * scale + 1}" fill="none" stroke="{BORDER}"/>',
-           f'<text class="h" x="{px}" y="{py + 12}">JOYP buttons (UART INPUT mask)</text>',
+           f'<text class="h" x="{px}" y="{py + 12}">{esc(archive["provenance"].get("input_label", "JOYP buttons (UART INPUT mask)"))}</text>',
            *pills, *identity, *legend,
            f'<text class="h" x="{PAD}" y="{height - 12}">{esc(footer)}</text>',
            '</svg>']
@@ -791,7 +791,7 @@ def documents():
             'springtrail-state-board',
             'Current Springtrail captured on the DE10-Lite: title, dynamic scene and first-stage WON',
             'Actual UART source frames | independent state reconstruction matched every shade',
-            'Actual compare captures; button pills are not input telemetry. Provenance in the frame archive.',
+            'Actual compare captures; buttons show prior observed sampled state. Archive retains provenance.',
             [(0, 1, 'Title | actual source frame'), (1, 1, 'Dynamic scene | actual source frame'),
              (2, 1, 'First-stage WON | actual source frame')]),
         'verification': terminal('A checker that can fail · from retained Questa receipts, not a fresh capture',

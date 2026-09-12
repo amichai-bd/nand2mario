@@ -91,7 +91,10 @@ These three native 160x144 frames were read from the DE10-Lite over UART on
 2026-09-13: title, a dynamic scene and first-stage WON. Each matched all23040
 shades reconstructed independently from the previous observed game state.
 They are source-frame captures, not monitor photographs or model previews.
-The inactive button pills are decoration, not captured input telemetry.
+The button pills show sampled buttons from the prior observed state used for
+reconstruction, not capture-time effective input. Archive CRCs are computed
+from retained shade indices during conversion; packed-byte SHA-256 identities
+are retained separately.
 
 The [three-frame archive](../../tools/wiki/board_frames/springtrail-state-board.json)
 retains exact source commit, ROM/layout identity, capture epochs/dots, packed-byte
