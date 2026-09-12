@@ -71,6 +71,8 @@ Freeze exact per-group dot/case limits after source assembly and use the short
 measurement before any full run; do not launch a predictably over-budget run.
 No FPGA or hardware execution is needed.
 
+## Instruction bounds
+
 The current [entity timing proof](ENTITIES.md) owns the reachable visible bound
 and retained4412/4480 publication bound. Shared PublishScene remains880 dots
 excluding its caller's CALL and transfers160 bytes. This CPU operand proof
