@@ -6,6 +6,7 @@ from entities_reference import World, Entity, update
 from motion_reference import Player
 from power_reference import PLAYING, LARGE
 
+TITLE = 'INTERACT UNIT'
 SHORT = 1
 SHORT_BOUND = 30000
 FULL_BOUND = 160000
