@@ -75,7 +75,7 @@ def build(root, destination, variant='motion'):
                   'ASSET "Courier"']
         for name in ('movement', 'render', 'world', 'collision', 'interactions',
                      'map_restore', 'scene', 'stream', 'hud', 'columns', 'power',
-                     'blocks'):
+                     'blocks', 'progress'):
             lines.append(f'INCLUDE "{name}.asm"')
         path = destination/'program.asm'
         path.write_text('\n'.join(lines)+'\n', encoding='utf-8')

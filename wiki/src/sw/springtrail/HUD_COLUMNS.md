@@ -39,8 +39,9 @@ columns12..16 and score0..4 occupies column18. Map row1 is the progression row
 the [progression contract](PROGRESS.md) owns: the life icon at column1 with the
 two lives digits, the clock icon at column12 with the three countdown digits,
 and the stage number at column18. All other HUD pixels are blank.
-Both9800 and9C00 receive the same prepared six mode tiles and score tile, the
-same six row1 value cells, and the same two static icons.
+Both9800 and9C00 receive the same prepared six mode tiles and score tile and
+the same two static icons; the six row1 value cells go to the map the display
+shows after that VBlank, as the [progression contract](PROGRESS.md) states.
 
 ## Reference previews
 

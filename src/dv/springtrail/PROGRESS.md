@@ -52,6 +52,17 @@ the actual 156152, and the model now reproduces that image's 156152 exactly.
 `test_startup_anchor` pins the two hand terms the model agrees with;
 `python-mgs` proves the RTL commits at the derived dot.
 
+## VBlank publication budget
+
+Every composed checker requires each VBlank's display writes and the OAM DMA
+to end by VBlank+4480 dots. A map-restoration frame already publishes two
+columns and the row 0 cache before the DMA; with the row 1 cells published to
+both maps the pause fixture's second frame triggered its DMA at VBlank+3952,
+past the 3916-dot trigger bound. The cells therefore go to the one map the
+display shows after that VBlank, which halves their cost to 248 dots of
+startup and about 216 dots per frame; the measured trigger after the change
+is recorded with the walls below.
+
 ## Acceptance matrix
 
 | Group | Required result | Execution |

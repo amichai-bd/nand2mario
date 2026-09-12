@@ -55,8 +55,13 @@ class PauseScript(unittest.TestCase):
         title = publication_writes(games, 0, pairs, reselect)
         tiles = hud_tiles(games[0])
         self.assertEqual(title[:3], [(0xff43, 0), (0xff42, 0), (0xff40, 0x91)])
+        # The progression row's six value cells follow the row0 cache, to the
+        # displayed map only: the static map through the title and restoration.
+        row = [(0x9822, 74), (0x9823, 76), (0x982d, 78), (0x982e, 74), (0x982f, 74), (0x9832, 75)]
         self.assertEqual(title[3:], [(0x9801+i, t) for i, t in enumerate(tiles[:6])] + [(0x9812, tiles[6])]
-                         + [(0x9c01+i, t) for i, t in enumerate(tiles[:6])] + [(0x9c12, tiles[6]), (0xff46, 0xc1)])
+                         + [(0x9c01+i, t) for i, t in enumerate(tiles[:6])] + [(0x9c12, tiles[6])]
+                         + row + [(0xff46, 0xc1)])
+        self.assertEqual(publication_writes(games, 2, pairs, reselect)[-7:-1], row)
         first = publication_writes(games, 1, pairs, reselect)
         self.assertEqual(first[3:25], [(a, 0) for a in TITLE_ROWS])
         self.assertEqual(first[25], (0xff40, 0x91))
@@ -65,7 +70,7 @@ class PauseScript(unittest.TestCase):
         self.assertEqual(restart[3], (0xff40, 0x91))
         self.assertEqual(restart[4:36], first[26:58])
         self.assertNotIn((0x98a4, 0), restart)
-        self.assertEqual(len(publication_writes(games, 5, pairs, reselect)), 3+32+14+1)
+        self.assertEqual(len(publication_writes(games, 5, pairs, reselect)), 3+32+14+6+1)
 
 
 class PauseGuards(unittest.TestCase):

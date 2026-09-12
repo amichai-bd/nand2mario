@@ -142,7 +142,7 @@ now means the stage was cleared; modes 5 TIMEUP and 6 OVER are new.
 
 The stationary HUD keeps row 0 exactly as the [HUD contract](HUD_COLUMNS.md)
 froze it: the mode word in columns 1 to 6, `SCORE` in columns 12 to 16 and the
-score glyph in column 18. Row 1 is the progression row, published to both maps.
+score glyph in column 18. Row 1 is the progression row.
 
 | Row 1 column | Content |
 | --- | --- |
@@ -152,9 +152,13 @@ score glyph in column 18. Row 1 is the progression row, published to both maps.
 | 13, 14, 15 | timer, BCD hundreds, tens, ones |
 | 18 | stage number, 1 to 3 |
 
-All other row 1 cells are blank. The icons are static and published once with
-the score label; the six value cells are prepared during visible time and
-published in VBlank with the row 0 cache.
+All other row 1 cells are blank. The icons are static and published once to
+both maps with the score label; the six value cells are prepared during
+visible time and published in VBlank, after the row 0 cache, to the one map
+the display shows after that VBlank: the static map while the title or a
+restoration is displayed, the ring once it is selected. One map keeps a
+restoration frame's publication inside the 4480-dot window; the map that
+returns to the display is republished in the same VBlank that selects it.
 
 Nine approved core tiles join the loaded set at VRAM 140 to 148, after the
 [block layer's](BLOCKS.md) terrain copies at 108 to 139:

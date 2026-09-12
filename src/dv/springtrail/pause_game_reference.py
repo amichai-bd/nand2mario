@@ -8,7 +8,7 @@ world frame, a neutral frame, the PAUSED frame and the Select-restart frame.
 from motion_frames import scene, image
 from motion_game_reference import ADDRESSES, PERIOD, state_bytes, update
 from motion_reference import Player
-from hud_reference import hud_tiles, column
+from hud_reference import hud_tiles, column, progress_tiles, PROGRESS_ROW
 from interactions_reference import Game, TITLE, PLAYING
 
 # Sampled JOYP masks for VBlank 0..4; VBlank 5 samples the held final mask.
@@ -73,6 +73,13 @@ def hud_writes(game):
     return result
 
 
+def progress_writes(game, static):
+    """The six row1 value cells, to the map the display shows after this VBlank."""
+    base = 0x9820 if static else 0x9c20
+    return [(base+col, tile) for (col, source, _), tile in zip(PROGRESS_ROW, progress_tiles(game))
+            if source != 'icon']
+
+
 def column_writes(pair):
     if pair is None:
         return []
@@ -88,6 +95,11 @@ def publication_writes(games, index, pairs, reselect):
         writes.append((0xff40, 0x91))
     writes += column_writes(pairs[index])
     writes += hud_writes(games[index])
+    # The static map stays selected through the title and until the pair that
+    # completes the ring; the progression row goes to the selected map only.
+    pair = pairs[index]
+    static = games[index].mode == TITLE or (pair is not None and pair[0]+2 < 32)
+    writes += progress_writes(games[index], static)
     writes.append((0xff46, 0xc1))
     return writes
 

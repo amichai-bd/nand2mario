@@ -288,12 +288,17 @@ CALL GlyphDigit
 LD [HL],A
 RET
 
+; Publish the six value cells to the map the display shows after this
+; VBlank: 9800 while the title or a restoration is displayed, 9C00 once the
+; ring is selected. One map keeps the restoration frame's publication inside
+; the 4480-dot window; the static map is republished whenever it returns.
 PublishProgress:
 LD HL,ProgressCache
 LD DE,$9822
-CALL PublishProgressMap
-LD HL,ProgressCache
-LD DE,$9C22
+LDH A,[$FF40]
+BIT 3,A
+JR Z,PublishProgressMap
+LD D,$9C
 PublishProgressMap:
 LD A,[HL+]
 LD [DE],A
