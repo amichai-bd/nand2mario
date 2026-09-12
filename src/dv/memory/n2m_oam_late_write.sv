@@ -2,7 +2,9 @@
 `default_nettype none
 `include "src/rtl/common/macros.svh"
 
-// Direct-path late-write owner. Operands share the authoritative OAM A port.
+// Verification-only direct-path late-write owner for the integration-smoke
+// fixture; the composed v05 system uses the DMA service instead. Operands
+// share the authoritative OAM A port.
 module n2m_oam_late_write (
     input var logic clk_sys,
     input var logic reset_sys,

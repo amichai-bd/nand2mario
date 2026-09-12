@@ -83,10 +83,10 @@ then advances on `clk_sys`, so it can still be draining when a host pause lands.
 Detecting the straddle is not enough, so the memory owner withholds readiness
 until that owner reports itself idle and the caller holds its request. The
 [DMA owner](../dma/MAS_dma.md) publishes this window for the composed system,
-and the direct-path late-write owner publishes the same window where it is
-instantiated. Readiness therefore requires completed initialization, a paused
-core and an idle OAM port A owner; the UART waits rather than issuing a read
-that would be refused.
+and the verification-only direct-path owner publishes the same window in the
+integration-smoke fixture. Readiness therefore requires completed
+initialization, a paused core and an idle OAM port A owner; the UART waits
+rather than issuing a read that would be refused.
 
 Named invariants detect a caller that violates the contract: peek activity
 implies a paused core and completed initialization, implies an in-range known
@@ -109,11 +109,16 @@ The [DMA owner](../dma/MAS_dma.md) arbitrates pair operations and PPU collisions
 
 ### Direct-path late OAM writes
 
-The v05 and integration-smoke paths share `n2m_oam_late_write` over the same
-pair-A port; the [late-write fixture](../../../../src/dv/memory/tb_oam_late_write.sv) checks this schedule.
-The [combined DMA schedule](../dma/MAS_dma.md#qualified-late-writes) consumes
-the same class using its existing service slots. Both owners use the shared
-combinational transform; the direct schedule below remains unchanged.
+In the composed v05 system the [DMA service](../dma/MAS_dma.md#qualified-late-writes)
+owns this class through its existing service slots; no separate late-write
+module is instantiated in `n2m_v05_system`. The direct-path owner
+[`n2m_oam_late_write`](../../../../src/dv/memory/n2m_oam_late_write.sv) is
+verification-only: the integration-smoke fixture, which has no DMA owner,
+instantiates it over the same pair-A port, and the
+[late-write fixture](../../../../src/dv/memory/tb_oam_late_write.sv) checks
+its schedule. Both owners use the shared combinational transform
+`oam_late_result` in `n2m_memory_pkg`; the direct schedule below is the
+reference form of the class.
 
 At the legal final scan T4, the selected digital extension transforms the
 addressed eight-byte row. Other words copy the last OAM row. Each byte of the
