@@ -233,7 +233,7 @@ class PlayTests(Harness):
                          {abi.HOST_REG_INPUT, abi.HOST_REG_INPUT_SOURCE})
         self.assertEqual(set(endpoint.requests) - {
             'PING', 'READ_HOST', 'WRITE_HOST', 'LOAD_BEGIN', 'LOAD_WRITE', 'LOAD_END',
-            'READ_ROM', 'RESET', 'RUN_DOTS', 'PEEK', 'HALT'}, set())
+            'READ_ROM', 'RESET', 'RUN_DOTS', 'PEEK', 'HALT', 'SNAPSHOT'}, set())
         allowed = {(offset, count) for offset, count in self.binding.ranges}
         self.assertEqual(set(endpoint.peeks) - allowed, set())
 
