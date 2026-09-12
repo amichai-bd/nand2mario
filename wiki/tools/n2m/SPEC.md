@@ -711,8 +711,13 @@ report the same version. Record their versions, executable hashes and paths;
 never alter global PATH or provision commercial tools. The checked native
 flow uses Quartus Prime Lite 25.1std; a different installation must satisfy
 the same reports and diagnostics. `--timeout` bounds each tool to 1–3600 seconds
-(default 600; discovery at most 60). Timeout kills the invoked process tree and
-retains partial output. Missing tools, nonzero exits, and incomplete reports fail.
+(default 600; discovery at most 60). Each tool runs as an owned process tree
+([process_tree.py](../../../tools/n2m/process_tree.py)): a Windows job object joined
+before the tool's first instruction, or a POSIX session group. Timeout terminates
+the whole tree at once, including a descendant spawned while cleanup starts, and
+cleanup is complete only when the job reports no active process. Closing the job
+also ends the tree, so a killed builder leaves no tool behind. Partial output is
+retained. Missing tools, nonzero exits, and incomplete reports fail.
 Tool stdout and stderr share the attempt's binary log file directly; output is
 retained while the process runs. After termination, decode UTF-8 with replacement
 for the returned text and existing strict diagnostic checks, without rewriting

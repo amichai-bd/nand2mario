@@ -10,7 +10,7 @@ import uuid
 
 from .hdl import dependencies
 from .records import atomic_json, cache_matches, digest, file_hash, read_json
-from . import fpga_pll, fpga_constraints, fpga_vga, fpga_intel_memory, fpga_memory_stores, fpga_adc, fpga_controls, fpga_v05
+from . import fpga_pll, fpga_constraints, fpga_vga, fpga_intel_memory, fpga_memory_stores, fpga_adc, fpga_controls, fpga_v05, process_tree
 
 DEVICE = "10M50DAF484C7G"
 REGISTRY = "src/fpga/de10_lite/targets.json"
@@ -207,33 +207,24 @@ def diagnostics(output, explained=()):
 
 def execute(argv, folder, log, timeout, record, build):
     command = {"argv": [str(a) for a in argv], "cwd": str(folder), "environment": dict(ALLOCATOR_OVERRIDE)}
-    options = {"env": quartus_environment()}
-    if os.name != "nt":
-        options["start_new_session"] = True
     record["commands"].append(command)
     with (build / "commands.log").open("a", encoding="utf-8") as stream:
         stream.write(json.dumps(command) + '\n')
-    # Windows timeout cleanup uses taskkill /T, not console control events.
     timed_out = False
     # Give native tools a regular output handle and retain bytes while they run.
     # The matched PLL probe found intermittent crashes with pipe-backed output;
     # this avoids that observed launch condition without claiming its root cause.
-    with log.open("wb") as stream:
-        process = subprocess.Popen(argv, cwd=folder, stdout=stream, stderr=subprocess.STDOUT, **options)
+    # The tool is an owned process tree, so a timeout reaps every descendant,
+    # including one spawned while cleanup starts; see process_tree.
+    with log.open("wb") as stream, process_tree.Tree(argv, cwd=folder, env=quartus_environment(), stdout=stream,
+                                                            stderr=subprocess.STDOUT) as tree:
+        process = tree.process
         try:
             process.wait(timeout=timeout)
         except subprocess.TimeoutExpired:
             timed_out = True
             try:
-                if os.name == "nt":
-                    cleanup = subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"],
-                                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=5)
-                    command['cleanup_exit_code'] = cleanup.returncode
-                    if cleanup.returncode:
-                        raise RuntimeError('Quartus process-tree cleanup failed')
-                else:
-                    import signal
-                    os.killpg(process.pid, signal.SIGKILL)
+                tree.terminate(timeout=5)
                 process.wait(timeout=5)
                 command['cleanup_complete'] = True
             except (OSError, RuntimeError, subprocess.TimeoutExpired) as error:
