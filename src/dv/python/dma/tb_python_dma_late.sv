@@ -68,6 +68,7 @@ module tb_python_dma_late;
     assign vram_cpu_allow = bus_plan.write_enable ? ppu_vram_write_allow : ppu_vram_read_allow;
     assign oam_cpu_allow = bus_plan.write_enable ? ppu_oam_write_allow : ppu_oam_read_allow;
     logic oam_cpu_late_write, oam_late_future;
+    logic oam_sequence_active;
     n2m_dma dut (.*);
     // Stop at the accepting carry, before registered stopped becomes visible.
     n2m_cpu_stop_policy clock_stop_policy (.selected_active(1'b0),
@@ -114,7 +115,7 @@ module tb_python_dma_late;
         .ppu_oam_read(raw_oam_read), .ppu_oam_pair(raw_oam_pair), .ppu_oam_rdata(raw_oam_data),
         .ppu_oam_valid(raw_oam_valid), .wave_read(1'b0), .wave_write(1'b0), .wave_wdata(8'd0), .wave_address(4'd0),
         .wave_rdata(unused_wave), .wave_valid(unused_wave_valid),
-        .core_paused(1'b0), .peek_read(1'b0), .peek_select(8'd0), .peek_offset(13'd0),
+        .core_paused(1'b0), .oam_sequence_active(oam_sequence_active), .peek_ready(), .peek_read(1'b0), .peek_select(8'd0), .peek_offset(13'd0),
         .peek_rdata(), .peek_valid());
     defparam stores.rom.SIM_INIT_FILE = "preload-rom.mif";
     assign store_request = inspection_enable ? inspection_request : oam_request;

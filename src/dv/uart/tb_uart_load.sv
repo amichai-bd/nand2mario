@@ -25,7 +25,7 @@ module tb_uart_load;
         .ppu_oam_read(1'b0), .ppu_oam_pair(7'd0), .ppu_oam_rdata(unused_oam), .ppu_oam_valid(unused_oam_valid),
         .wave_read(1'b0), .wave_write(1'b0), .wave_wdata(8'd0), .wave_address(4'd0), .wave_rdata(unused_wave), .wave_valid(unused_wave_valid)
     ,
-        .core_paused(1'b0), .peek_read(1'b0), .peek_select(8'd0), .peek_offset(13'd0),
+        .core_paused(1'b0), .oam_sequence_active(1'b0), .peek_ready(), .peek_read(1'b0), .peek_select(8'd0), .peek_offset(13'd0),
         .peek_rdata(), .peek_valid());
     always #5 clk_sys = !clk_sys;
     function automatic logic [7:0] image_byte(input integer address);

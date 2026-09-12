@@ -22,7 +22,7 @@ module tb_uart_peek;
     n2m_memory_pkg::memory_store_t access_store;
     logic [14:0] access_address;
     logic [7:0] access_wdata, access_rdata;
-    logic peek_read, peek_valid;
+    logic peek_read, peek_valid, peek_ready, oam_sequence_active;
     logic [7:0] peek_select, peek_rdata;
     logic [12:0] peek_offset;
     logic [7:0] unused_vram, unused_wave;
@@ -38,7 +38,7 @@ module tb_uart_peek;
     logic [7:0] encoded_reply [0:270];
     logic [7:0] raw_reply [0:267];
     integer encoded_size, reply_size, expected_size, command_count, trace;
-    integer peeked, rejected;
+    integer peeked, rejected, held_cycles;
     logic [31:0] token, expected_token;
     logic [7:0] expected_command, expected_status;
     bit waiting_reply, peek_fault, skip_payload;
@@ -64,7 +64,7 @@ module tb_uart_peek;
         .io_scx(8'd0), .io_wy(8'd0), .io_wx(8'd0), .io_bgp(8'd0), .io_obp0(8'd0),
         .io_obp1(8'd0), .io_div(8'd0), .io_tima(8'd0), .io_tma(8'd0), .io_tac(8'd0),
         .io_if(8'd0), .io_ie(8'd0),
-        .peek_read(peek_read),.peek_select(peek_select),.peek_offset(peek_offset),
+        .peek_ready(peek_ready),.peek_read(peek_read),.peek_select(peek_select),.peek_offset(peek_offset),
         .peek_rdata(peek_rdata),.peek_valid(peek_valid)
     );
     n2m_timebase u_timebase (.clk_sys(clk_sys),.reset_sys(reset_sys),.core_reset(core_reset),
@@ -80,12 +80,16 @@ module tb_uart_peek;
         .ppu_oam_read(1'b0),.ppu_oam_pair(7'd0),.ppu_oam_rdata(unused_oam),.ppu_oam_valid(unused_oam_valid),
         .wave_read(1'b0),.wave_write(1'b0),.wave_wdata(8'd0),.wave_address(4'd0),
         .wave_rdata(unused_wave),.wave_valid(unused_wave_valid),
-        .core_paused(paused),.peek_read(peek_read),.peek_select(peek_select),.peek_offset(peek_offset),
+        .core_paused(paused),.oam_sequence_active(oam_sequence_active),.peek_ready(peek_ready),.peek_read(peek_read),.peek_select(peek_select),.peek_offset(peek_offset),
         .peek_rdata(peek_rdata),.peek_valid(peek_valid)
     );
     assign core_initialized = memory_initialized;
     assign snapshot_ready = snapshot_delay == 0;
     always #5 clk_sys = !clk_sys;
+
+    always @(posedge clk_sys)
+        if (!reset_sys && oam_sequence_active && peek_read)
+            $fatal(1,"UART_PEEK_NOT_HELD");
 
     // Separate snapshot-owner model; peek must not disturb its held bytes.
     always @(posedge clk_sys) begin
@@ -257,7 +261,7 @@ module tb_uart_peek;
         peeked=0;rejected=0;
         snapshot_delay=0;snapshot_done=0;snapshot_ok=0;snapshot_valid=0;snapshot_metadata='0;
         frame_valid=0;frame_data=0;
-        peek_fault=$test$plusargs("peek_fault");skip_payload=0;
+        peek_fault=$test$plusargs("peek_fault");skip_payload=0;oam_sequence_active=0;
         trace=$fopen("commands.csv","w");if(!trace)$fatal(1,"UART_PEEK_TRACE");
         $fdisplay(trace,"seq,command,status,payload");
         $dumpfile("waves.vcd");
@@ -315,8 +319,28 @@ module tb_uart_peek;
         if(endpoint_state!=0) $fatal(1,"UART_PEEK_NOT_PAUSED");
         peek_request(3,32'd8191,1);expected_payload[0]=store_byte(3,8191);exchange(16,7,0,1);
         peeked=peeked+1;
+        // An OAM port A sequence that began before the pause is still draining.
+        // The request must be held, not raced: the always-on monitor below
+        // proves no peek edge occurs while that owner reports itself active.
+        held_cycles=0;
+        oam_sequence_active=1;
+        fork
+            begin
+                peek_request(4,32'd0,1);expected_payload[0]=store_byte(4,0);
+                exchange(16,7,0,1);
+            end
+            begin
+                // Long enough for the whole request to arrive and the reply
+                // path to reach its fetch state while still held.
+                repeat(3000) @(negedge clk_sys);
+                held_cycles=1;
+                oam_sequence_active=0;
+            end
+        join
+        if(!held_cycles) $fatal(1,"UART_PEEK_HOLD_NEVER_RELEASED");
+        peeked=peeked+1;
         $fclose(trace);
-        $display("PASS UART peek wire stores=5 bytes=%0d rejected=%0d commands=%0d",peeked,rejected,command_count);
+        $display("PASS UART peek wire stores=5 bytes=%0d rejected=%0d held commands=%0d",peeked,rejected,command_count);
         $finish;
     end
     initial begin #150000000;$fatal(1,"UART_PEEK_WATCHDOG");end

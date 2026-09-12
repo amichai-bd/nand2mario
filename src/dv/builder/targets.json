@@ -3078,7 +3078,7 @@
     "top": "tb_uart_peek",
     "args": [],
     "expected_exit": "zero",
-    "signature": "PASS UART peek wire stores=5 bytes=16688 rejected=19 commands=",
+    "signature": "PASS UART peek wire stores=5 bytes=16689 rejected=19 held commands=",
     "vendor_model": "intel-memory",
     "timeout_seconds": 300
   },

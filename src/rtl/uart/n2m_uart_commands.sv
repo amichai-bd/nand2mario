@@ -74,6 +74,7 @@ module n2m_uart_commands (
     output logic [12:0] frame_address,
     input var logic [7:0] frame_data,
     input var logic frame_valid,
+    input var logic peek_ready,
     output logic peek_read,
     output logic [7:0] peek_select,
     output logic [12:0] peek_offset,
@@ -146,7 +147,7 @@ module n2m_uart_commands (
     assign snapshot_request = state == SNAPSHOT_START && !reset_sys;
     assign frame_read = state == FRAME_FETCH && payload_ready && !reset_sys;
     assign frame_address = range_fields.offset[12:0] + 13'(index);
-    assign peek_read = state == PEEK_FETCH && payload_ready && !reset_sys;
+    assign peek_read = state == PEEK_FETCH && payload_ready && peek_ready && !reset_sys;
     assign peek_select = peek_fields.store;
     assign peek_offset = peek_fields.offset[12:0] + 13'(index);
     always_comb begin
@@ -306,7 +307,9 @@ module n2m_uart_commands (
                 index_next = index + 1'b1;
                 state_next = 16'(index) + 1'b1 == reply_length ? REPLY_WAIT : FRAME_FETCH;
             end
-            PEEK_FETCH: if (payload_ready) state_next = PEEK_USE;
+            // The memory owner holds a peek while an OAM port A sequence that
+            // began before the pause is still draining.
+            PEEK_FETCH: if (payload_ready && peek_ready) state_next = PEEK_USE;
             PEEK_USE: if (peek_valid && payload_ready) begin
                 index_next = index + 1'b1;
                 state_next = 16'(index) + 1'b1 == reply_length ? REPLY_WAIT : PEEK_FETCH;

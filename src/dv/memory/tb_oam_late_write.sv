@@ -19,7 +19,7 @@ module tb_oam_late_write;
     n2m_oam_late_write dut (
         .clk_sys, .reset_sys, .core_reset, .prepare, .commit, .late_window,
         .address, .data, .ppu_read, .ppu_pair, .response, .request,
-        .raw_oam_busy(busy), .late_commit, .ppu_read_allowed, .fault
+        .raw_oam_busy(busy), .late_commit, .ppu_read_allowed, .sequence_active(), .fault
     );
     assign access_read = raw_read && !busy;
     assign access_write = raw_write && !busy;
@@ -35,7 +35,7 @@ module tb_oam_late_write;
         .ppu_oam_rdata(ppu_data), .ppu_oam_valid(ppu_valid),
         .wave_read(1'b0), .wave_write(1'b0), .wave_wdata(8'd0), .wave_address(4'd0), .wave_rdata(), .wave_valid()
     ,
-        .core_paused(1'b0), .peek_read(1'b0), .peek_select(8'd0), .peek_offset(13'd0),
+        .core_paused(1'b0), .oam_sequence_active(1'b0), .peek_ready(), .peek_read(1'b0), .peek_select(8'd0), .peek_offset(13'd0),
         .peek_rdata(), .peek_valid());
     task automatic edge_cycle;
         #20; clk_sys = 1;

@@ -15,7 +15,7 @@ module tb_memory_stores;
     logic [6:0] ppu_oam_pair;
     logic [15:0] ppu_oam_rdata;
     logic [3:0] wave_address;
-    logic core_paused, peek_read, peek_valid;
+    logic core_paused, peek_read, peek_valid, peek_ready, oam_sequence_active;
     logic [7:0] peek_select, peek_rdata;
     logic [12:0] peek_offset;
     integer index, store_number, size, inspected, peeked;
@@ -104,7 +104,17 @@ module tb_memory_stores;
         peek_read = 0;
         edge_cycle();
         if (peek_valid) $fatal(1, "MEMORY_PEEK_STALE_VALID");
+        // A draining OAM port A sequence withholds readiness from every store,
+        // so the caller holds its request instead of racing that owner.
+        oam_sequence_active = 1;
+        edge_cycle();
+        if (peek_ready) $fatal(1, "MEMORY_PEEK_READY_WHILE_OAM_ACTIVE");
+        oam_sequence_active = 0;
+        edge_cycle();
+        if (!peek_ready) $fatal(1, "MEMORY_PEEK_READY_NOT_RESTORED");
         core_paused = 0;
+        edge_cycle();
+        if (peek_ready) $fatal(1, "MEMORY_PEEK_READY_WHILE_RUNNING");
     endtask
     task automatic inspect_ram(input bit patterned);
         for (store_number = 1; store_number <= 5; store_number = store_number + 1) begin
@@ -145,7 +155,7 @@ module tb_memory_stores;
         ppu_vram_read = 0; ppu_vram_address = 0;
         ppu_oam_read = 0; ppu_oam_pair = 0;
         wave_read = 0; wave_write = 0; wave_address = 0; wave_wdata = 0;
-        core_paused = 0; peek_read = 0; peek_select = 0; peek_offset = 0;
+        core_paused = 0; oam_sequence_active = 0; peek_read = 0; peek_select = 0; peek_offset = 0;
         inspected = 0; peeked = 0;
         early = $test$plusargs("early");
         peek_running = $test$plusargs("peek_running");

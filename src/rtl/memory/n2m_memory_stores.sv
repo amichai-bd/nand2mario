@@ -24,6 +24,8 @@ module n2m_memory_stores (
     output logic [7:0] host_rdata,
     output logic host_valid,
     input var logic core_paused,
+    input var logic oam_sequence_active,
+    output logic peek_ready,
     input var logic peek_read,
     input var logic [7:0] peek_select,
     input var logic [12:0] peek_offset,
@@ -123,7 +125,11 @@ module n2m_memory_stores (
     assign peek_target = n2m_memory_pkg::peek_store(peek_select);
     assign peek_range = n2m_memory_pkg::peek_known(peek_select) &&
         32'(peek_offset) < n2m_memory_pkg::peek_bytes(peek_select);
-    assign peek_enable = peek_read && init_done && core_paused && peek_range;
+    // An OAM port A sequence starts only on a gb_tick but then advances on
+    // clk_sys, so it can still be in flight when a pause lands. Hold every peek
+    // until its owner reports idle rather than merely detecting the straddle.
+    assign peek_ready = init_done && core_paused && !oam_sequence_active;
+    assign peek_enable = peek_read && peek_ready && peek_range;
     assign peek_wram = peek_enable && peek_target == WRAM_STORE;
     assign peek_hram = peek_enable && peek_target == HRAM_STORE;
     assign peek_vram = peek_enable && peek_target == VRAM_STORE;
@@ -247,6 +253,12 @@ module n2m_memory_stores (
         peek_active |-> valid_b[peek_owner])
     `N2M_ASSERT(MEMORY_PEEK_NOT_ROM, clk_sys, reset,
         !peek_enable || peek_target != n2m_memory_pkg::STORE_ROM)
+    // The hold, not just the detection: no peek is ever accepted while the OAM
+    // port A owner still has a sequence in flight.
+    `N2M_ASSERT(MEMORY_PEEK_OAM_IDLE, clk_sys, reset,
+        !peek_enable || !oam_sequence_active)
+    `N2M_ASSERT(MEMORY_PEEK_READY_PAUSED, clk_sys, reset,
+        !peek_ready || core_paused)
     `N2M_ASSERT(MEMORY_NO_ACCESS_DURING_CLEAR, clk_sys, reset,
         !clearing || !(access_read || access_write || ppu_vram_read || ppu_oam_read || wave_read || wave_write))
     `N2M_ASSERT(MEMORY_WAVE_SINGLE_WRITER, clk_sys, reset,

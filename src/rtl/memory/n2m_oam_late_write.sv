@@ -17,6 +17,7 @@ module n2m_oam_late_write (
     input var n2m_memory_pkg::memory_oam_response_t response,
     output n2m_memory_pkg::memory_oam_request_t request,
     output logic raw_oam_busy, late_commit, ppu_read_allowed,
+    output logic sequence_active,
     output logic fault
 );
     // 1..5 issue operands, 6 captures the final operand, 7 waits for T4.
@@ -94,6 +95,10 @@ module n2m_oam_late_write (
     assign fault_now = (late_attempt && !late_commit)
         || (phase >= 2 && phase <= 6 && identity && !response.valid)
         || (phase >= 8 && commit);
+    // Phases 1..10 advance on clk_sys, not gb_tick, so a sequence that began
+    // before a host pause can still be draining after it. Publish that window
+    // so the memory owner can hold host OAM reads instead of racing them.
+    assign sequence_active = phase != 4'd0;
     `DFF_ARST_VAL(phase, phase_next, clk_sys, reset, 4'd0)
     `DFF_EN(saved_address, address, clk_sys, start)
     `DFF_EN(saved_data, data, clk_sys, start)
