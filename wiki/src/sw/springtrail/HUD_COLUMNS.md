@@ -80,7 +80,7 @@ Exactly16 rows must precede the terminator. Blank runs use tile0. There are
 at most16 pairs and33 bytes per column, and256 explicitly indexed columns, three stages in one page.
 The build rejects truncation, missing/early terminators, trailing bytes, invalid
 counts, overflow, unallocated tile IDs, invalid column counts and indices.
-Independent literal terrain rules must equal all4608 decoded cells.
+Independent literal terrain rules must equal all4096 decoded display cells.
 
 Decode into a16-byte WRAM cache during scene preparation. VBlank publishes
 that completed cache; it does not decompress content. The destination is
@@ -89,8 +89,8 @@ needed per ordinary update because horizontal speed is at most2 pixels.
 Moving right publishes floor(Camera/8)+20; moving left publishes floor(Camera/8).
 No-change tile position publishes none. At the valid final camera608 clamp,
 the computed right-margin column96 is offscreen: publish none, never decode96.
-Reject malformed encoded indices outside0..95;
-the camera remains within its unchanged0..608 range. SCX uses Camera modulo256.
+Reject indices outside the selected stage:0..95 for stage0 and0..79 for
+stages1/2. Camera limits are608 and480 respectively. SCX uses Camera modulo256.
 
 Preserve restart restoration: static9800 contains the initial world and HUD,
 9C00 is the scrolling map with the same HUD. A published restart selects9800
@@ -126,7 +126,8 @@ the line15 request projection and readable HBlank behavior. Its HALT-entry bound
 is not automatically the game bound: include completion of the interrupted
 instruction and the actual handler in the new static count and trace check.
 Check line15 completes before scroll/object-enable writes, and both commits
-precede line16 mode2. All publication must finish within4560 VBlank dots;
+precede line16 mode2. All publication must finish within the4480-dot ceiling in the
+[current timing proof](../../../../src/dv/springtrail/ENTITIES.md), inside4560 VBlank dots;
 preparation must finish before the next VBlank. Freeze assembled instruction
 counts before simulation. Keep LCDC unsigned tiles, selected map,8x8 objects
 and no window; alter individual bits rather than copying a reference byte.

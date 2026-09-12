@@ -357,6 +357,22 @@ module tb_python_v05 #(
         end
     end
 
+    // Corrupt the first accepted prepared column byte, after its cache completed.
+    initial begin
+        if ($test$plusargs("hud_column_fault")) begin
+            wait(bus_commit && write_enable && address == 16'hc0fc);
+            do @(negedge clk_sys);
+            while (!(dut.request_valid && write_enable && address == 16'h9c40));
+            if (write_data !== 8'd0) $fatal(1, "HUD493_FAULT_SOURCE");
+            $display("HUD493_COLUMN_MUTATION expected=0 actual=1 dot=%0d", dot_count);
+            force dut.write_data = 8'd1;
+            wait(bus_commit);
+            @(posedge clk_sys);
+            @(negedge clk_sys);
+            release dut.write_data;
+        end
+    end
+
     // Mutate the actual CPU output feeding memory and the passive write ledger.
     // The LCD-off courier fixture arms this once at its ordinary call marker.
     initial begin

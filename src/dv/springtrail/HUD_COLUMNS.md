@@ -1,86 +1,81 @@
-# HUD/column acceptance
+# Current HUD and column CPU proof
 
-The [owning contract](../../../wiki/src/sw/springtrail/HUD_COLUMNS.md) defines
-the coordinate, encoding and interrupt changes. This matrix separates host,
-shared-routine, actual-game and fixed-renderer coverage.
+The [software contract](../../../wiki/src/sw/springtrail/HUD_COLUMNS.md) owns
+publication. Row0 PublishHUD writes seven prepared values to both maps.
+Row1 PublishProgress writes six prepared values to the map selected by LCDC
+bit3. These are distinct rules. No product behavior changes in this proof.
+
+## Finite operand matrix
+
+Thirty ordinary operand cases use actual shared calls, independent column and
+HUD literals, ordered accepted CPU writes and complete preserved current state.
+Stage0 has96 columns and camera0..608; stages1/2 have80 columns and camera0..480.
+
+| Group | Named operands | Required witness |
+|---|---|---|
+| Decode (6) | stage0 first0, last95, blank22, platform31; stage1/2 last79 | All16 ordered cache stores; stage-base selection, exact terminal cell and adjacent canaries |
+| Block overlays (2) | stage0 used item column38; broken brick column52 | Current decoder's row10/11 override after terrain stores, without executing or replacing block-interaction proof |
+| Camera (8) | 80 to88;88 to96;96 to88;607 to608;608 to607;96 unchanged; stage2 479 to480 and480 to479 | Entering31/ring31,32/ring0, left11, valid right-clamp no decode, left75, no-change; current shorter-stage clamp and left margin |
+| Restoration (3) | PAUSED pair0; final pair30; two restarts after partial14 | Game state remains paused; PrepareMap/HUD/Progress precede RestoreMapPair; all32 column writes precede LCDC switch, then PublishHUD and selected9C00 PublishProgress. Each restart calls BeginMapRestore then PrepareMap then RestoreMapPair, discarding prior counter/history |
+| Dirty publication (1) | dirty pair38 with a simultaneous camera boundary | Both caches publish first, dirty flag clears, OldCameraTile remains for the deferred entering column; next ordinary prepare publishes that column |
+| HUD (7) | TITLE, PLAY, RETRY, PAUSED, WON, TIMEUP, OVER; scores spanning0..4 | Seven cache writes, then exactly seven row0 stores in9800 and seven in9C00; blank padding is explicit |
+| Progress selection (2) | LCDC bit3 clear/set, lives09/time387/stage2 | Six cache values at row1 columns2,3,13,14,15,18 go only to the selected map; static icon cells and the other map remain unchanged |
+| Combined publication (1) | current entity scene, camera88 to96, current HUD/progress | Actual PrepareScene/PrepareMap/PrepareHUD/PrepareProgress then publication; full160 ordered shadow bytes,160 actual DMA bytes, full OAM readback, caches and preserved123-byte world state |
+
+The short case is PAUSED pair0: it exercises preparation, publication, state
+preservation and complete transport/terminal handling. It is not an empty
+startup sample. Full groups retain every named case; grouping follows measured
+short throughput and source-derived setup/call/report counts before launch.
+
+Literal anchors independent of assembly: stage0 columns0/95 are fourteen zero
+bytes then11,11; column22 is sixteen zero bytes; column31 has tile11 at cache
+indices8,14,15. TITLE score0 is90,83,90,84,82,0,74; TIMEUP score0 is
+90,83,145,82,91,87,74; OVER score0 is86,146,82,88,0,0,74. Other modes and
+all column records are checked against the existing independent original
+terrain/glyph rules before source assembly. No expected output is injected
+into the fixture ROM or learned from DUT writes.
+
+## Observation and preservation
+
+Reuse the current bounded UART runner and existing assembler/linker/column
+validator. The fixture seeds ordinary operands through CPU stores before each
+marker, calls unchanged game routines and reports after return. The checker
+compares all accepted cache/VRAM/metadata writes in order, rejecting extra,
+missing and transiently wrong stores. It verifies complete current world
+fields, PublishedCamera and adjacent cache/shadow canaries; only declared
+routine scratch and requested publisher metadata may change. Restore LCDC
+checks retain non-map bits. No frame IRQ or whole visible-time deadline is
+claimed by a fixture holding LCD off.
+
+One actual accepted-write fault corrupts the first published column byte after
+its source cache has passed. The unchanged checker must fail at that ordered
+VRAM write. Keep the mutation marker, downstream failure and raw test status.
+Positive and negative cases both use the existing completion protocol: bounded
+terminal marker, real settled HALT/hold and END; missing report/END, late writes
+and timeout are host negative tests.
+
+## Evidence boundaries and budgets
+
+Current entity and compatibility cases already prove world evolution and
+supported routine behavior; they do not replace the publication matrix above.
+The current renderer's95-to97 pixel proof is retained as separate evidence.
+Historical hud_program/hud_unit_check guards and retired execution definitions
+remain unchanged. No historical binary identity is relabelled current.
+
+Qualify each new ROM's shared section bytes against a fresh current game build,
+validate target input closure and run focused host literal/checker negatives
+before the complete short. Forecast: short40s, five full groups around120s
+each, fault40s, approximately680s aggregate; these are planning estimates,
+not measured limits. Every new target retains a300-second whole-operation cap.
+Freeze exact per-group dot/case limits after source assembly and use the short
+measurement before any full run; do not launch a predictably over-budget run.
+No FPGA or hardware execution is needed.
 
 ## Instruction bounds
 
-Counts include each named routine's RET, excluding its external CALL unless
-stated. Fixed PublishColumn costs548 dots: setup28, fifteen32-dot row advances,
-last16-dot data write, two4-dot high-byte carries, RET16. PublishColumns with
-two caches costs1228; RestoreMapPair costs1320, or1368 on its final switch.
-PublishHUD costs640 for both maps. ClearTitle is664, BeginMapRestore84,
-ReadButtons208 including CALL, and unchanged PublishScene880 excluding CALL.
-
-The longest title transition, from the VBlank request through publication,
-costs at most4388 dots. Its additive terms are: entry/vector/ISR188 (including
-24-dot interrupted instruction allowance), token dispatch72, JOYP208,
-mode/new-level branches28+28, reset flag20, title branch28, ClearTitle688,
-remember clear24, BeginMapRestore108, restoration dispatch32, pair1344,
-jump12, published-camera32, HUD664, DI4, DMA904, EI4. The final restoration
-switch adds48 but has no688-dot title erase, so is shorter. Use a4480-dot
-runtime publication ceiling, within the4560-dot VBlank. No other enabled
-interrupt can arise there; DMA masks IME without clearing IF.
-
-For line15 beginning B, the qualified request is B-2. Include24 dots for an
-interrupted instruction,20 entry,16 vector and16 AF save. The handler reaches
-its polling loop before HBlank. Mode reads are32 dots apart. After the final
-mode-read T4, the published-camera load and SCX commit take44 dots; LCDC read,
-OR and object-enable commit add32. Latest enable is B+256+32+76 = B+364.
-Check both split writes in B+280..B+384, after every line15 pixel and before
-line16. Objects are disabled above the split, so line15 has no object stalls.
-Return follows by28 dots. Do not substitute the diagnostic's HALT-only bound.
-
-Visible preparation retains the prior25000-dot scene ceiling (four fewer
-pieces), adds at most3000 for two worst-case16-run columns and512 for HUD,
-and retains the20000-dot interaction ceiling. Including512 for interrupted
-STAT service and256 dispatch gives49280, below65664 visible dots. Check actual
-full OAM/cache/HUD readiness before the next VBlank; no timing value selects
-an expected image or state.
-
-## Finite groups
-
-- Host encoding: all96 columns/1536 cells versus literal terrain; blanks,
-  repeats, terminator, truncation, overflow, trailing bytes, invalid count/tile
-  and index. Build rejects malformed fixture data before assembling it.
-- Shared CPU routines: first/last column, all-blank gap, platform column,
-  two-cache restoration, final switch and repeated restart; right88-to96
-  ring31-to0, left96-to88, right607-to608 no-op, left608-to607, no-change.
-  Compare complete caches, destination addresses/data, HUD in both maps,
-  published camera and160-byte shadow/OAM, with bounded terminal/settled pause.
-- Short actual-game complete harness: initial blank pixels through a fixed
-  small prefix, input neutral, real final HALT, no-progress hold and trace END.
-  Measure its whole cost before full acceptance, using existing Intel preload.
-- Actual-game bounded composition: ordinary Start+Right in the first blank,
-  prior TITLE frame, one UpdateGame, complete next-scene/cache/HUD preparation,
-  following DMA and final settled HALT. Check all retained pixels, applied input,
-  VBlank tokens/STAT order, no extra game update on STAT wake, exact split writes,
-  no interrupt or stack access during DMA, and the4480 publication ceiling.
-- Shared-renderer composed fixture: independently seeded95-to97 camera ring
-  transition, one full normal frame including ground/entering column, fixed HUD
-  and an object crossing y15/16 (player world x120/y12). Entering column32 is
-  visible at screen x159. Use the actual linked publisher/column/HUD/ISR
-  routines; fixture state setup is explicit, not a claim of natural reachability.
-  A real accepted column-data or LYC mutation must fail the unchanged pixel/
-  boundary checker. Select its earliest downstream witness and preserve failure.
-- Packaging/preview: exact20 approved glyphs, unchanged terrain/courier and
- 32 KiB layout, source-derived title/PLAY/HUD assembled SVG. No new art.
-- Consumer reconciliation: prior composition game and courier full-scene
-  expectations become historical or are updated explicitly; direct pose-only
-  checks and movement/interaction rules remain qualified where unchanged.
-  Existing pre-composition flow/endurance and old renderer guards stay pinned.
-  Do not reinterpret historical acquisition/endurance ROMs or rerun their
-  physical milestones.
-- Required checks, final owning game/DV/composition links and independent
-  current-head review, then normal merge. Physical release gates remain open.
-
-Target120 seconds each and300 seconds aggregate; hard300 each. Measured first
-four complete supervisors total454.797 seconds; the fault adds130.078 and the
-renderer208.219, giving793.094 seconds for the six completed simulations.
-The separate renderer setup failure is retained and excluded from that sum.
-This exceeds the initial625-second forecast and ordinary aggregate target;
-every completed simulation remains below its300-second hard limit. Freeze exact
-fixture dots and supervisor commands before launch; use the measured short to
-reduce redundant coverage or stop an infeasible run without weakening criteria.
-No new framework, unchanged milestone replay or hardware execution is included.
+The current [entity timing proof](ENTITIES.md) owns the reachable visible bound
+and retained4412/4480 publication bound. Shared PublishScene remains880 dots
+excluding its caller's CALL and transfers160 bytes. This CPU operand proof
+must not revive historical25000-dot scene or dual-map progression assumptions.
+Required host/wiki/catalogue checks and independent current-head review close
+the proof; there is no new framework or gameplay feature.
