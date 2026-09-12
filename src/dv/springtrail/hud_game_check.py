@@ -31,8 +31,8 @@ async def run(dut, short=False, renderer=False, motion=False, power=False):
         require_baseline_rom(Path('program.gb').read_bytes())
     renderer_end = 320000
     if renderer and (motion or power):
-        from motion_render_program import bounds
-        renderer_end = bounds(Path('program.gb').read_bytes())['end_bound']
+        from startup_anchor import derive
+        renderer_end = derive(Path('program.gb').read_bytes(), lcdc_on=0x99)['lcd'] + 2*70224
     received=Queue(); entries=[]; check=Check(short); tasks=[]
     with Path('transactions.jsonl').open('w') as journal:
         def log(kind,**fields):

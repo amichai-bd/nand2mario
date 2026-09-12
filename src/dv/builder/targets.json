@@ -15721,7 +15721,8 @@
         "src/sw/springtrail/blocks.asm",
         "src/sw/springtrail/assets/core/terrain-tiles.json",
         "src/dv/springtrail/blocks_reference.py",
-        "src/sw/springtrail/progress.asm"
+        "src/sw/springtrail/progress.asm",
+        "src/dv/springtrail/startup_anchor.py"
       ],
       "waves": [
         "wave_dot",
@@ -15910,7 +15911,8 @@
         "src/sw/springtrail/blocks.asm",
         "src/sw/springtrail/assets/core/terrain-tiles.json",
         "src/dv/springtrail/blocks_reference.py",
-        "src/sw/springtrail/progress.asm"
+        "src/sw/springtrail/progress.asm",
+        "src/dv/springtrail/startup_anchor.py"
       ],
       "waves": [
         "wave_dot",
@@ -16657,7 +16659,8 @@
         "src/sw/springtrail/blocks.asm",
         "src/sw/springtrail/assets/core/terrain-tiles.json",
         "src/dv/springtrail/blocks_reference.py",
-        "src/sw/springtrail/progress.asm"
+        "src/sw/springtrail/progress.asm",
+        "src/dv/springtrail/startup_anchor.py"
       ],
       "waves": [
         "wave_dot",
@@ -17599,7 +17602,8 @@
         "src/sw/springtrail/blocks.asm",
         "src/sw/springtrail/assets/core/terrain-tiles.json",
         "src/dv/springtrail/blocks_reference.py",
-        "src/sw/springtrail/progress.asm"
+        "src/sw/springtrail/progress.asm",
+        "src/dv/springtrail/startup_anchor.py"
       ],
       "waves": [
         "wave_dot",
