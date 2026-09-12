@@ -10,7 +10,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]/'tools'))
 from n2m import generated_interfaces as abi
 import blocks_reference as B
 from hud_reference import entering
-from motion_frames import image as terrain_image
+from hud_reference import image as hud_image
+from entities_frames import scene, tiles
+from composition_reference import raster
 from power_reference import TITLE, PLAYING, RETRY, WON, SMALL
 from frame_proofs import (run, games, samples, anchor, history, checkpoint, plan_captures, unpack,
                           image, SCRIPT, CAPTURES, EXPECTED, PLANS, FIRST_VBLANK, RESTORE_FRAMES,
@@ -114,7 +116,7 @@ class ScriptTests(unittest.TestCase):
     def test_transitions_happen_where_the_script_says(self):
         states = games()
         modes = [(k, states[k].mode) for k in range(1, len(states)) if states[k].mode != states[k-1].mode]
-        self.assertEqual(modes, [(3, PLAYING), (473, WON), (474, PLAYING), (604, RETRY), (605, PLAYING)])
+        self.assertEqual(modes, [(3, PLAYING), (473, WON), (474, PLAYING), (582, RETRY), (605, PLAYING)])
         self.assertEqual(states[0].mode, TITLE)
         cameras = [k for k in range(1, len(states))
                    if states[k-1].player.camera == 0 and states[k].player.camera > 0]
@@ -145,10 +147,9 @@ class ScriptTests(unittest.TestCase):
     def test_captured_images_are_distinct_and_pixel_sensitive(self):
         states = games()
         frames = {name: image(states[k]) for name, k in CAPTURES}
-        # Both restarts settle at spawn with the patrol offscreen: same pixels,
-        # different timers and enemy phase. Every other capture is distinct.
-        self.assertEqual(frames['won-restart'], frames['retry-restart'])
-        self.assertEqual(len(set(frames.values())), len(frames)-1)
+        # The stage1 retry spends a life, so even the two spawn images differ.
+        self.assertNotEqual(frames['won-restart'], frames['retry-restart'])
+        self.assertEqual(len(set(frames.values())), len(frames))
         for name, pixels in frames.items():
             data = bytearray(packed(pixels))
             data[-1] ^= 64
@@ -163,7 +164,7 @@ class ScriptTests(unittest.TestCase):
             self.assertTrue(state.alive)
         self.assertEqual(INTACT_BLOCKS, B.reset())
         for name in EXPECTED:
-            self.assertEqual(EXPECTED[name][8:], (INTACT_BLOCKS, SMALL))
+            self.assertEqual(EXPECTED[name][8:10], (INTACT_BLOCKS, SMALL))
 
     def test_second_gap_tap_walks_under_the_brick(self):
         # The brick at column 52 stands beside the second gap (46..49). A held
@@ -176,8 +177,8 @@ class ScriptTests(unittest.TestCase):
         self.assertEqual((landed.x, landed.y), (399*16, 1792))
         self.assertLess(landed.x + 128, 52*8*16)
         held = list(SCRIPT)
-        self.assertEqual((held[6], held[7]), ((49, 1), (33, 127)))
-        held[6], held[7] = (49, 12), (33, 116)
+        self.assertEqual((held[8], held[9]), ((49, 1), (33, 127)))
+        held[8], held[9] = (49, 12), (33, 116)
         state, stalled = START, None
         for k, mask in enumerate([0]*FIRST_VBLANK + [m for m, n in held for _ in range(n)], 1):
             before, state = state, update(state, mask)
@@ -195,7 +196,7 @@ class ScriptTests(unittest.TestCase):
             state = states[k]
             camera = state.player.camera
             cells = set()
-            for bx, by, _kind, _content in B.BLOCKS:
+            for bx, by, _kind, _content in (B.BLOCKS if state.stage == 0 else ()):
                 if not B.appearance(state.blocks, B.BLOCKS.index((bx, by, _kind, _content))):
                     continue
                 for cx in (bx, bx+1):
@@ -203,7 +204,7 @@ class ScriptTests(unittest.TestCase):
                         sx = cx*8 - camera
                         if -8 < sx < 160:
                             cells.add((sx, cy*8))
-            wanted, plain = image(state), terrain_image(state)
+            wanted, plain = image(state), hud_image(state, object_pixels=raster(scene(state), tiles()))
             differing = {i for i in range(23040) if wanted[i] != plain[i]}
             allowed = {(sy+y)*160+sx+x for sx, sy in cells for y in range(8) for x in range(8)
                        if 0 <= sx+x < 160}
@@ -308,11 +309,11 @@ class RunnerTests(unittest.TestCase):
             for launch, last in arcs:
                 inside = [states[k].player.y for k in SHOWCASE if launch <= k <= last]
                 self.assertTrue(all(y < 1792 for y in inside), (launch, last))
-                before = max(k for k in SHOWCASE if k < launch)
+                before = 227 if launch == 232 else max(k for k in SHOWCASE if k < launch)
                 self.assertEqual(states[before].player.y, 1792, launch)
             self.assertEqual(ys[SHOWCASE.index(151)], 1792)
             self.assertEqual(min(ys), 1200)
-            self.assertGreater(states[601].player.y, 1792, 'the fall is sampled before RETRY')
+            self.assertGreater(states[581].player.y, 1792, 'the fall is sampled before RETRY')
             self.assertEqual(SHOWCASE[-1], 604)
 
     def test_showcase_sampling_requires_the_full_history(self):

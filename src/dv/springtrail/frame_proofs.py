@@ -1,17 +1,7 @@
-"""Retained scrolling, win and death/retry protocol fixture.
+"""Current source/model scrolling and stage-aware lifecycle frame proof.
 
-The legacy power/block model omits progression lives/countdown and stage entry.
-Issue511 owns current gameplay expectations; synthetic passes are not current
-route or physical-frame qualification. Source image binding remains mandatory.
-
-The frozen script is FRAME_PROOFS.md. The board stays paused between fixed
-checkpoints C(n) = LCD + n*PERIOD + 4096, reached with exact RUN_DOTS counts,
-so every input is applied at a known dot in the visible interval of frame n
-and sampled in VBlank n. Expected frames come only from the independent
-models, including the block layer the image draws; the loaded bytes must equal the hash of the build the launcher just
-produced from current sources. `run` drives one Client; `main` is the
-committed launcher with its own whole-process supervisor, machine mutex and
-durable session, shared with `endurance.py`.
+The board driver retains exact paused checkpoints and strict complete-frame
+comparisons. Host/source tests do not establish new physical evidence.
 """
 import argparse
 import hashlib
@@ -29,13 +19,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from n2m import generated_interfaces as abi  # noqa: E402
 from n2m.records import atomic_json, file_hash  # noqa: E402
 from endurance import LCD, PERIOD, MACHINE_MUTEX, build_rom, supervise, decode  # noqa: E402
-from blocks_frames import image  # noqa: E402
+from entities_frames import image  # noqa: E402
 from blocks_reference import INTACT  # noqa: E402
-from power_reference import World, TITLE, PLAYING, RETRY, WON, SMALL, update  # noqa: E402
+from power_reference import TITLE, PLAYING, RETRY, WON, SMALL
+from entities_reference import World, update
+from progress_reference import timer_value  # noqa: E402
 
-# The retained fixture carries the block and power layers, so its game model is
-# power_reference over the motion player and the pixel model is blocks_frames,
-# which draws the block layer in the state the script leaves it.
+# Current original entity/progression model and approved pixel sources.
 START = World()
 INTACT_BLOCKS = (INTACT, INTACT, INTACT, INTACT)
 
@@ -53,11 +43,12 @@ SCRIPT = (
     # touched: the brick at column 52 stands right after the second gap, so a
     # held jump there lands against its side, while the tap lands at x 399
     # and walks under it.
-    (161, 1), (33, 96), (49, 12), (33, 40), (49, 12), (33, 64), (49, 1),
+    (161, 1), (33, 96), (49, 12), (33, 40), (49, 12), (33, 33), (49, 1), (33, 30), (49, 1),
     (33, 127), (49, 12), (33, 106),
-    # Start restart from WON, then neutral while the ring restores 16 pairs.
+    # Sample197 taps jump over CURL without touching the block layer.
+    # Start from WON enters stage1, then16 ring-restoration publications.
     (128, 1), (0, 20),
-    # Death: B+Right from spawn runs into the first gap; RETRY after 130.
+    # Stage1 B+Right falls in its first gap; RETRY at game index582.
     (33, 110),
     # Start restart from RETRY, then the same neutral settle.
     (128, 1), (0, 20),
@@ -66,21 +57,22 @@ SCRIPT = (
 CAPTURES = (('title', 0), ('spawn', 3), ('first-camera', 36), ('entering-column', 99),
             ('scroll-wrap', 206), ('camera-clamp', 441), ('won', 473), ('won-restart', 493),
             ('retry', 604), ('retry-restart', 625))
-# Literal (mode, x, y, camera, score, timer, enemy_x, enemy_vx, blocks, power)
+# Literal (mode,x,y,camera,score,timer,enemy_x,enemy_vx,blocks,power,
+# stage,lives,countdown,timer_sub)
 # per capture, written from the rules before any DUT run; a model change must
 # fail here. The route touches no block, so every capture shows the four
 # blocks intact and the small player.
 EXPECTED = {
-    'title': (TITLE, 384, 1792, 0, 0, 0, 4096, 8, INTACT_BLOCKS, SMALL),
-    'spawn': (PLAYING, 400, 1792, 0, 0, 1, 4104, 8, INTACT_BLOCKS, SMALL),
-    'first-camera': (PLAYING, 1168, 1792, 1, 0, 34, 4368, 8, INTACT_BLOCKS, SMALL),
-    'entering-column': (PLAYING, 2688, 1792, 96, 0, 97, 4600, -8, INTACT_BLOCKS, SMALL),
-    'scroll-wrap': (PLAYING, 5248, 1792, 256, 0, 204, 3936, 8, INTACT_BLOCKS, SMALL),
-    'camera-clamp': (PLAYING, 10896, 1792, 608, 0, 439, 4024, 8, INTACT_BLOCKS, SMALL),
-    'won': (WON, 11664, 1792, 608, 0, 471, 4280, 8, INTACT_BLOCKS, SMALL),
-    'won-restart': (PLAYING, 384, 1792, 0, 0, 19, 4248, 8, INTACT_BLOCKS, SMALL),
-    'retry': (RETRY, 2992, 2304, 115, 0, 130, 4336, -8, INTACT_BLOCKS, SMALL),
-    'retry-restart': (PLAYING, 384, 1792, 0, 0, 20, 4256, 8, INTACT_BLOCKS, SMALL),
+    'title': (0, 384, 1792, 0, 0, 0, 4096, 8, (0, 0, 0, 0), 0, 0, 2, 400, 40),
+    'spawn': (1, 400, 1792, 0, 0, 1, 4104, 8, (0, 0, 0, 0), 0, 0, 2, 400, 39),
+    'first-camera': (1, 1168, 1792, 1, 0, 34, 4368, 8, (0, 0, 0, 0), 0, 0, 2, 400, 6),
+    'entering-column': (1, 2688, 1792, 96, 0, 97, 4600, -8, (0, 0, 0, 0), 0, 0, 2, 398, 23),
+    'scroll-wrap': (1, 5248, 1616, 256, 0, 204, 3936, 8, (0, 0, 0, 0), 0, 0, 2, 395, 36),
+    'camera-clamp': (1, 10896, 1792, 608, 0, 439, 4024, 8, (0, 0, 0, 0), 0, 0, 2, 390, 1),
+    'won': (4, 11664, 1792, 608, 0, 471, 4280, 8, (0, 0, 0, 0), 0, 0, 2, 389, 9),
+    'won-restart': (1, 384, 1792, 0, 0, 19, 4248, 8, (0, 0, 0, 0), 0, 1, 2, 300, 21),
+    'retry': (2, 2464, 2304, 82, 0, 108, 4512, -8, (0, 0, 0, 0), 0, 1, 2, 298, 12),
+    'retry-restart': (1, 384, 1792, 0, 0, 20, 4256, 8, (0, 0, 0, 0), 0, 1, 1, 300, 20),
 }
 # Showcase sampling: the frozen checkpoint list wiki/showcase/springtrail-board.svg
 # is built from. Checkpoint n snapshots source frame n-1, which displays
@@ -90,12 +82,12 @@ EXPECTED = {
 # over the patrol (k 156..166), the ring wrap (k 206), the one-VBlank tap over
 # the second gap (k 232..248) and its landing (k 256), the held jump over the third gap (k 359..397),
 # the camera clamp and the run to the goal (k 441..465), WON (k 473), the Start
-# restart (k 493), the run into the first gap (k 594..601) and RETRY (k 604).
+# restart (k 493), the run into the first gap (k 574..581) and RETRY (k 604).
 # Sampling adds one snapshot per listed checkpoint to the `full` history; it
 # changes no input, no checkpoint and none of the ten proof captures, and the
 # eight listed checkpoints that are proof captures reuse the frame already read.
 SHOWCASE = ((0, 3) + tuple(range(12, 99, 8)) + tuple(range(100, 147, 4)) + (151, 156, 161, 166, 206)
-            + (232, 240, 248, 256, 359, 367, 377, 387, 397, 441, 457, 465, 473, 493, 594, 598, 601, 604))
+            + (232, 240, 248, 256, 359, 367, 377, 387, 397, 441, 457, 465, 473, 493, 574, 578, 581, 604))
 SHOWCASE_CHECKPOINTS = frozenset(k + 2 for k in SHOWCASE)
 # The ring restores two columns per publication; a restart from a scrolled
 # camera needs 16 publications before the model's complete world is displayed.
@@ -130,7 +122,7 @@ def games():
 def anchor(game):
     p = game.player
     return (game.mode, p.x, p.y, p.camera, game.score, game.timer, game.enemy_x, game.enemy_vx,
-            game.blocks, game.power)
+            game.blocks, game.power, game.stage, game.lives, timer_value(game), game.timer_sub)
 
 
 def plan_captures(plan):

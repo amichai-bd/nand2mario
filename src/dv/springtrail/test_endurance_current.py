@@ -51,3 +51,26 @@ class Lifecycle(unittest.TestCase):
         step(0)
         self.assertEqual(step(128), (74, 76, 78, 74, 74, 75))
         self.assertEqual((world.mode, world.lives, world.stage), (1, 2, 0))
+
+
+    def test_current_frame_route_matches_625_source_calls(self):
+        from entities_cases import ADDRESSES, state_bytes
+        from frame_proofs import samples, games
+        rom, symbols = build()
+        labels = {name: address for address, name in symbols.items()}
+        cpu = Model(rom)
+        while cpu.lcd is None:
+            cpu.mcycles += cpu.step()
+        for k, buttons in enumerate(samples(), 1):
+            cpu.memory[0xc019] = buttons
+            cpu.sp = 0xdffc
+            cpu.memory[0xdffc:0xdffe] = bytes([0xff, 0x7f])
+            cpu.pc = labels['UpdateGame']
+            start = cpu.mcycles
+            while cpu.pc != 0x7fff:
+                self.assertLess(cpu.mcycles - start, 20000)
+                cpu.mcycles += cpu.step()
+            # This calls UpdateGame directly, so main's publication never clears
+            # NewLevel after the actual stage entry at474; compare that ownership.
+            expected = state_bytes(games()[k], buttons, int(k >= 474))
+            self.assertEqual(bytes(cpu.memory[a] for a in ADDRESSES), expected, k)
