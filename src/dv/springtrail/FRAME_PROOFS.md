@@ -8,6 +8,8 @@ the fixture, not a new board result. Physical use follows the
 contracts, with explicit authorization and serialized access. No VGA or physical
 control proof is implied.
 
+<a id="startup-anchor"></a>
+
 ## Image, timing and independent expectations
 
 The launcher builds Springtrail from current sources, verifies the complete

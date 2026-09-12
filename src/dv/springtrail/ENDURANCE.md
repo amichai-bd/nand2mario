@@ -7,6 +7,8 @@ host tests or source execution. Board use follows the
 and requires explicit authorization, verified device/wiring/voltage, and
 serialized access. It does not qualify VGA or physical controls.
 
+<a id="retained-script"></a>
+
 ## Image and expectation binding
 
 [endurance.py](endurance.py) builds Springtrail from current sources and binds
@@ -37,7 +39,8 @@ all 23,040 pixels. There is no patrol exclusion or per-pixel union of candidates
 Pixels do not select future model state. Lives, countdown, OVER and reset are
 part of that prediction: first retry spends one life and restores 400; 40 neutral
 updates decrement the countdown to 399; the next retry leaves zero lives; the
-third death reaches OVER, and a released/new Start restores two lives and 400.
+Start from RETRY with zero lives reaches OVER, and a released/new Start restores
+two lives and 400.
 Entity phases and stage state remain part of the full expected frame.
 
 ## Fixed continuous schedule
@@ -49,7 +52,8 @@ The short plan is two fixed 20-second cycles; the full plan is 90 fixed cycles
    The settled route sample follows application by at least 280 frame periods.
    Its mode and HUD follow the complete lifecycle prediction, including OVER.
 2. Release input for 0.1 seconds, hold Start (128) for 0.15 seconds, and check
-   the resumed/reset play frame at least three frame periods after application.
+   the predicted mode/frame at least three frame periods after application,
+   including OVER when Start was accepted from RETRY with zero lives.
    Release Start before continuing.
 3. Cycles 0, 30 and 60 also sample ordinary in-game pause and resume.
 4. Remain RUNNING to the fixed cycle boundary. A cycle exceeding 20 seconds or
