@@ -363,6 +363,13 @@ commands, and input/tool hashes remain beneath the tag. Unexpected warnings,
 errors, timeouts, or missing signatures fail; expected nonzero targets require
 their full diagnostic and reject additional errors.
 
+### Feedback selection gap
+
+Required validation still follows the [PR check policy](../../agents/pull-requests.md#hosted-and-local-checks).
+Conservative affected-test selection and shared fixture preflight are planned in
+[the verification feedback redesign](https://github.com/amichai-bd/nand2mario/issues/507).
+Until implemented and reviewed, that plan does not replace required checks.
+
 ### Test wall budget
 
 Ordinary simulations have a maximum 300-second total wall budget. Target at most 120

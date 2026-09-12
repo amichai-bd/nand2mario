@@ -35,6 +35,21 @@ faults for affected behavior and stop at the shortest meaningful witness; reuse
 valid unchanged negative evidence. Keep historical Tcl investigation off unrelated
 delivery paths unless a concrete requirement depends on it.
 
+## Before licensed execution
+
+Use existing builders and validators to preflight the affected fixture: import
+its checker through the real runner path, assemble the selected short image,
+check target input closure and shared-section identity, and reconcile uploaded
+source banks and writable scratch ranges with their owners. Keep these checks
+bounded and reuse valid results; do not build a bespoke audit framework.
+
+Share packing, initialization and scene interfaces where appropriate, while
+keeping expected behavior independent of DUT outputs and product algorithms.
+Check existing fixture consumers when state or composition changes. A passing
+new test does not establish that older current targets remain compatible.
+Catch setup and oracle mismatches with literal host cases before spending a
+licensed run; then exercise the complete short lifecycle below.
+
 ## Small first experiment
 
 Choose the smallest contract with observable success and failure. State what

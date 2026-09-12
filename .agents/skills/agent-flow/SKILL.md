@@ -20,9 +20,12 @@ Follow [AGENTS](../../../AGENTS.md#work):
    Root selects and dispatches, arranges the independent reviewer, verifies
    merge, `main` checks, deployment and cleanup, and escalates decisions to the
    user. The author and reviewer perform every delivery step between.
-2. Author reads the issue and linked spec, aligning changes and validation with
-   its success criteria. Keep one acceptance checklist mapping each criterion to
-   evidence or a concrete gap. Defer optional improvements to follow-up issues;
+2. Author reads the issue and linked spec. Before implementation, trace changed
+   interfaces, state/layout and assets to their consumers and fixture inputs.
+   Map affected consumers, checks and evidence reuse in the acceptance checklist.
+   Choose a useful vertical slice with its tests and compatibility; do not split
+   an existing issue's acceptance without authorization. Map each criterion to
+   evidence or a concrete gap in that same checklist. Defer optional improvements to follow-up issues;
    do not expand the active change or weaken acceptance to make it smaller.
    For an authorized split, update issue boundaries and name the open milestone
    issue before applying the scoped criteria; follow the [PR policy](../../../wiki/agents/pull-requests.md#scoped-implementation-and-milestones).
@@ -36,8 +39,11 @@ Follow [AGENTS](../../../AGENTS.md#work):
    validators; avoid repeated artifact audits and unchanged diagnostics. Measure
    execution, queue and review time where practical; do not optimize an unmeasured
    bottleneck or start optional work while a useful change waits for review.
-   Run authorized routine tools under existing locks without per-batch root
-   permission; retain explicit hardware and safety approval boundaries.
+   Run declared tests under existing locks without per-batch root handoffs.
+   Send coherent source checkpoints directly to the assigned reviewer; the reviewer
+   follows the PR while implementation and checks proceed, confirming substantive
+   fixes and the final head. A new finding blocks its dependent run, not unrelated
+   accepted work. Retain hardware and safety approval boundaries.
 3. Use [pr-author](../pr-author/SKILL.md) to open and maintain the draft PR.
    Resolve CI failures and obtain [independent review](references/review.md).
    The reviewer posts its own report as a PR comment. When `main` moves, the
@@ -53,6 +59,25 @@ Follow [AGENTS](../../../AGENTS.md#work):
    [merge method](../../../worktrees/README.md#merge).
    Merge promptly without waiting for unrelated work. Report the outcome to root.
 5. Root performs [verification and cleanup](../../../worktrees/README.md#clean-up-after-merge).
+
+## Feedback and scheduling
+
+Aim for meaningful feedback within two minutes and a small ordinary PR cycle of
+10-20 minutes where feasible. These are measured goals, not acceptance waivers
+or promises. Use existing receipts and timestamps to distinguish preparation,
+execution, queue, review and rework time; avoid a new tracking framework.
+
+Only conflicting inputs or scarce resources require serialization. Isolated host
+checks, source review and fixture preparation may overlap a licensed run when
+memory and CPU headroom permit. Reserve quiet runs for performance comparisons
+or demonstrated contention; a point measurement does not establish universal
+capacity. Never change a running test's inputs. Honor the current work caps.
+
+Use the existing target-specific wall-allowance procedure when measured correct
+work needs longer, with independent review before launch. Do not spend hours
+optimizing a correct harness solely to meet the default cap. Required checks
+still follow their current owner; planned affected selection is not permission
+to skip them.
 
 For interruptions, follow [recovery](references/recovery.md). Review handoffs
 use [the report template](templates/review.md); see

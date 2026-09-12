@@ -89,6 +89,15 @@ After verified delivery, retain a concise validation summary in the PR and remov
 completed worktrees, artifacts, and merged branches. Do not archive build output
 or copy it into the primary checkout. Preserve unfinished work and dependencies.
 
+Before implementation, identify affected consumers and verification inputs, including
+existing fixtures and host readers. Keep the findings in one finite acceptance
+checklist with the issue criteria, required checks and evidence still needed.
+Prefer small independently useful vertical slices that include tests and consumer
+compatibility. Apply authorized issue-boundary changes before using a smaller
+scope; do not silently split existing acceptance. Known regressions remain
+blockers: refusing a previously supported input or retiring its test is not a
+compatibility fix unless that behavior change is explicitly authorized.
+
 Read the issue and linked specification; stay within its success criteria.
 Proceed when requirements and conventions support a choice within existing
 authorization. Ask before resolving ambiguity that would change observable
@@ -128,6 +137,13 @@ execution tests. Reuse valid evidence for unchanged relevant inputs. Before an
 expensive acceptance run, exercise its complete harness at a short duration,
 including final pause, completion and watchdog handling. Do not hide warnings,
 bypass checks or claim incomplete acceptance complete.
+
+Seek the earliest cheap, meaningful feedback, then complete scoped acceptance
+and required checks. Authors own execution within declared tests and resource
+locks; root need not approve each routine batch. Keep live inputs immutable.
+Serialize scarce resources such as the licensed simulator and board, not all
+isolated preparation; use actual headroom and contention to choose overlap.
+Follow the scheduling and feedback methods in [agent-flow](.agents/skills/agent-flow/SKILL.md).
 
 Run the smallest useful test and required lower-level checks. Target at most
 120 seconds per simulation and 300 seconds for ordinary pre-merge aggregate
