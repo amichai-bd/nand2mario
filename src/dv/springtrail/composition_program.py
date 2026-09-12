@@ -11,7 +11,7 @@ BASELINE_SCENE_SHA256='03fb246b196980ecb2cf4e271e8ab63cb4eda6b8be30d22011560e4c6
 def require_baseline_scene(root):
     source=(root/'src/sw/springtrail/scene.asm').read_bytes().replace(b'\r\n',b'\n')
     if hashlib.sha256(source).hexdigest()!=BASELINE_SCENE_SHA256:
-        raise ValueError('HISTORICAL_COMPOSITION_SOURCE: full-scene fixture requires #318 scene; use python-hut')
+        raise ValueError('HISTORICAL_COMPOSITION_SOURCE: full-scene fixture requires #318 scene; current composer matrix is tracked in issue492')
 
 
 def build(root,destination,short=False):

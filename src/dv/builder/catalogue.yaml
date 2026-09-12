@@ -10,7 +10,6 @@ labels:
   agents: "Agent skill helper scripts under .agents/skills."
   audio: "APU and audio service behavior."
   baseline: "The test-only baseline fixture and harness."
-  broken: "Rejected by the registry validator today; recorded, not repaired."
   builder: "The tagged build machinery of tools/n2m and tools/build.py."
   builder-fault: "Migrated regressions.json subset: deliberate aggregate failure witness."
   ci: "Trusted CI admission, recovery and status."
@@ -318,25 +317,17 @@ units:
   python-controls-startup: {kind: sim, level: 2, labels: [input, integration, python-tb, v05], duration_seconds: null}
   python-controls-system: {kind: sim, level: 2, labels: [input, integration, python-tb, v05], duration_seconds: null}
   python-controls-system-corrupt: {kind: sim, level: 2, labels: [input, integration, python-tb, v05], duration_seconds: null}
-  python-courier-short: {kind: sim, level: 2, labels: [broken, integration, python-tb, springtrail, system, v05], duration_seconds: null}
-  python-courier-unit: {kind: sim, level: 2, labels: [broken, integration, python-tb, springtrail, system, v05], duration_seconds: null}
   python-display: {kind: sim, level: 2, labels: [display308, integration, python-tb, system, v05], duration_seconds: null}
   python-display-boundary: {kind: sim, level: 2, labels: [display308, integration, python-tb, system, v05], duration_seconds: null}
   python-display-short: {kind: sim, level: 2, labels: [display308, integration, python-tb, system, v05], duration_seconds: null}
   python-dma-late-fe20: {kind: sim, level: 2, labels: [dma, integration, python-tb], duration_seconds: null}
   python-dma-late-fe9c: {kind: sim, level: 2, labels: [dma, integration, python-tb], duration_seconds: null}
   python-dma-late-fe9d: {kind: sim, level: 2, labels: [dma, integration, python-tb], duration_seconds: null}
-  python-fs: {kind: sim, level: 2, labels: [broken, integration, python-tb, springtrail, system, v05], duration_seconds: null}
-  python-fu: {kind: sim, level: 2, labels: [broken, integration, python-tb, springtrail, system, v05], duration_seconds: null}
-  python-fx: {kind: sim, level: 2, labels: [broken, integration, python-tb, springtrail, system, v05], duration_seconds: null}
   python-host-play: {kind: sim, level: 2, labels: [host-play, integration, memory, python-tb], duration_seconds: null}
   python-host-play-frame: {kind: sim, level: 2, labels: [host-play, integration, memory, python-tb], duration_seconds: null}
   python-host-play-input: {kind: sim, level: 2, labels: [host-play, integration, memory, python-tb], duration_seconds: null}
   python-host-play-missing: {kind: sim, level: 2, labels: [host-play, integration, memory, python-tb], duration_seconds: null}
   python-host-play-release: {kind: sim, level: 2, labels: [host-play, integration, memory, python-tb], duration_seconds: null}
-  python-hr: {kind: sim, level: 2, labels: [broken, integration, python-tb, springtrail, system, v05], duration_seconds: null}
-  python-hus: {kind: sim, level: 2, labels: [broken, integration, python-tb, springtrail, system, v05], duration_seconds: null}
-  python-hut: {kind: sim, level: 2, labels: [broken, integration, python-tb, springtrail, system, v05], duration_seconds: null}
   python-integration: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: null}
   python-integration-client-preloaded: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: null}
   python-integration-fault: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: null}
@@ -368,10 +359,6 @@ units:
   python-pub: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
   python-pus: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
   python-pux: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
-  python-rs: {kind: sim, level: 2, labels: [broken, integration, python-tb, springtrail, system, v05], duration_seconds: null}
-  python-ru: {kind: sim, level: 2, labels: [broken, integration, python-tb, springtrail, system, v05], duration_seconds: null}
-  python-rx: {kind: sim, level: 2, labels: [broken, integration, python-tb, springtrail, system, v05], duration_seconds: null}
-  python-st-unit: {kind: sim, level: 2, labels: [broken, integration, python-tb, springtrail, system, v05], duration_seconds: null}
   python-stackdrop-game: {kind: sim, level: 2, labels: [integration, python-tb, stackdrop, system, v05], duration_seconds: null}
   python-stackdrop-short: {kind: sim, level: 2, labels: [integration, python-tb, stackdrop, system, v05], duration_seconds: null}
   python-stackdrop-unit: {kind: sim, level: 2, labels: [integration, python-tb, stackdrop, system, v05], duration_seconds: null}

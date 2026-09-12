@@ -336,6 +336,22 @@ retired image exists in the repository, and none is added: a retained historical
 proof would need a checked-in binary or a build from an old commit, which the
 source policy does not provide.
 
+### Historical fixture registrations
+
+The following execution registrations and entry modules are retired. Their
+source guards and useful host expectations remain; missing current coverage
+is required work in the linked issues, not a claim of equivalent replacement.
+
+| Retired family | Current proof and unfinished coverage |
+|---|---|
+| `python-st-unit` | Current motion CPU targets own the changed movement contract. |
+| `python-fs`, `python-fu`, `python-fx` | Current motion/power/block cases cover selected interactions; [interaction precedence matrix](https://github.com/amichai-bd/nand2mario/issues/494) retains missing current obligations. |
+| `python-rs`, `python-ru`, `python-rx` | Current motion/power renderers cover selected scenes, not the obsolete nine-object representation. Broader composer and publisher obligations remain below. |
+| `python-courier-short`, `python-courier-unit` | [Current composer operand matrix](https://github.com/amichai-bd/nand2mario/issues/492) retains pose/facing/clipping/tail CPU coverage. |
+| `python-hus`, `python-hut`, `python-hr` | Current renderers cover selected scrolling scenes; [current HUD/column publisher matrix](https://github.com/amichai-bd/nand2mario/issues/493) retains wrap/reverse/restoration/mode coverage. |
+
+Retirement does not complete those current matrices or CPU/PPU/release gates.
+
 ### Declared script
 
 Declared before execution under the

@@ -1,5 +1,10 @@
 # Movement and animation acceptance
 
+Historical execution targets named below are retired; these descriptions and
+independent expectations remain historical evidence. See the
+[family dispositions and required current coverage](MILESTONE.md#historical-fixture-registrations).
+
+
 The [owning motion contract](../../../wiki/src/sw/springtrail/MOVEMENT.md)
 separates source-confirmed local rules from approved original choices. The pure
 `motion_reference.py` and its literal host cases were frozen before product

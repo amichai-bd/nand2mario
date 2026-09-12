@@ -136,11 +136,11 @@ It skips the initial LCD-off DMA, which would be overwritten before TITLE is
 visible. The unchanged full-frame oracle must reject the resulting image.
 
 The older nine-object frame and renderer helpers are historical-only. Their
-ROM/source guards reject that composition. Its checks are
-`python-courier-unit` and the current-image game targets in the
-[verification matrix](../../dv/springtrail/SPEC.md#image-binding); the older
-composition game checker keeps its image guard and has no target, and
-historical endurance cannot silently validate a new ROM.
+ROM/source guards reject that composition. Current selected scenes are checked by the motion/power renderers in the
+[verification matrix](../../dv/springtrail/SPEC.md#image-binding). The
+[complete current composer operand matrix](https://github.com/amichai-bd/nand2mario/issues/492)
+remains required coverage. Historical composition checks retain their guards
+but have no execution target; historical endurance cannot validate a new ROM.
 
 ## Current reference previews
 
