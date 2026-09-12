@@ -29,6 +29,10 @@ async def run(dut, short=False, renderer=False, motion=False, power=False):
     if not motion and not renderer:
         from hud_game_reference import require_baseline_rom
         require_baseline_rom(Path('program.gb').read_bytes())
+    renderer_end = 320000
+    if renderer and (motion or power):
+        from motion_render_program import bounds
+        renderer_end = bounds(Path('program.gb').read_bytes())['end_bound']
     received=Queue(); entries=[]; check=Check(short); tasks=[]
     with Path('transactions.jsonl').open('w') as journal:
         def log(kind,**fields):
@@ -90,7 +94,7 @@ async def run(dut, short=False, renderer=False, motion=False, power=False):
                     prior=dot;consume()
                     # The game run ends inside its third VBlank; the bound follows the
                     # derived startup anchor rather than a literal that a longer startup outgrows.
-                    assert dot<(320000 if renderer else LCD+2*PERIOD+4096 if motion else 310000),'HUD_WATCHDOG'
+                    assert dot<(renderer_end if renderer else LCD+2*PERIOD+4096 if motion else 310000),'HUD_WATCHDOG'
                     if check.lcd is not None:
                         if short and check.pixels>=160:break
                         if renderer and check.halted:break

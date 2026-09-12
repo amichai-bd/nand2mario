@@ -4,6 +4,13 @@ import json
 import sys
 
 
+def bounds(image):
+    """Independent source timing through LCD enable and the complete two-frame window."""
+    from startup_anchor import derive
+    lcd = derive(image, lcdc_on=0x99)['lcd']
+    return dict(lcd=lcd, lcd_bound=lcd+1, end_bound=lcd+2*70224)
+
+
 def build(root, destination, variant='motion'):
     prior = sys.path[:]
     try:
@@ -111,10 +118,10 @@ def build(root, destination, variant='motion'):
                       operands=dict(state=list(state_bytes(game)), old_camera=95,
                                     camera=97, old_camera_tile=11, entering_column=32,
                                     secondary=secondary),
-                      lcd_bound=160000, end_bound=300000,
+                      **bounds(image),
                       budget=dict(tile_copy=29624, font_hud=24000, ring=60000,
                                   preparation=35000, setup=10000,
-                                  lcd_off_total=158624, two_vblanks_and_tail=137000),
+                                  lcd_off_total=bounds(image)["lcd"], two_vblanks_and_tail=137000),
                       shared_sections={row['section']:hashlib.sha256(image[row['address']:row['address']+row['size']]).hexdigest()
                                        for row in linked['map']['sections']
                                        if row['section'] not in ('code', 'assets')})

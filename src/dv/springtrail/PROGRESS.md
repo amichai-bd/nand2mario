@@ -113,3 +113,14 @@ the unchanged complete bound321852 is 453.21 seconds; this is an estimate,
 not a PASS. The 600 total leaves setup/check/cleanup headroom. The complete
 witness and all pixel/state checks remain unchanged. Renderer allowances stay
 420 seconds. Possible host overlap is not established as the timeout cause.
+
+
+The renderer derives its LCDC 0x99 startup from the built fixture using the
+existing independent SM83 timing model, then bounds execution by that anchor
+plus two 70224-dot periods. Its existing final-window and all46080-pixel checks
+remain unchanged. At producing9b5462d the motion fixture derives LCD185636;
+its second VBlank starts321524, after the old320000 watchdog. Retainedr304d
+failed HUD_WATCHDOG at360.859 seconds with45600 pixels; no output was used to
+choose the corrected anchor. Both fixture metadata and driver use the same
+source derivation. Host tests require the second VBlank plus1112-dot terminal
+tail to fit, and demonstrate why320000 cannot contain the required witness.

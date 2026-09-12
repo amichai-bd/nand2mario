@@ -111,11 +111,19 @@ class ProgressPreviews(unittest.TestCase):
 class RenderProgressOperands(unittest.TestCase):
     def test_both_linked_fixtures_seed_reset_state_before_preparing_hud(self):
         import tempfile
-        from motion_render_program import build
+        from motion_render_program import build, bounds
         for variant in ('motion', 'power'):
             with self.subTest(variant=variant), tempfile.TemporaryDirectory() as tmp:
                 destination = Path(tmp)
-                self.assertEqual(len(build(ROOT, destination, variant)), 32768)
+                image_bytes = build(ROOT, destination, variant)
+                self.assertEqual(len(image_bytes), 32768)
+                timing = bounds(image_bytes)
+                # Second VBlank plus the declared 1112-dot terminal tail must fit.
+                final_tail = timing['lcd'] + 70224 + 65664 + 1112
+                self.assertLess(final_tail, timing['end_bound'])
+                self.assertGreater(timing['lcd'] + 70224 + 65664, 320000)
+                metadata = json.loads((destination / (variant+'-render.json')).read_text())
+                self.assertEqual(metadata['end_bound'], timing['end_bound'])
                 text = (destination / 'program.asm').read_text()
                 prepare = text.index('CALL PrepareProgress')
                 for offset, value in enumerate((2, 0, 40, 0, 4, 0, 0)):
