@@ -69,6 +69,13 @@ a loop. The complete final image is the unanimated markup. Animation rules apply
 only when reduced motion is not requested, so a reduced-motion reader sees the
 finished still. These files are animated SVGs, not GIFs.
 
+Keep the fixed-column character reveal for terminal loops. A complete text row
+behind a stepped clip can reduce markup, but natural font advances differ from
+the cursor's fixed 7.2-pixel columns: it can expose later characters early and
+change the final text layout. A smaller file with that mismatch is not an
+equivalent rendering. Any future alternative must preserve character positions
+and timing before its embedding behavior is considered.
+
 The current project README uses path-based game pixels and self-contained
 terminal text; the wiki-only board loops embed PNG data URIs. These are the
 qualified contexts, not a promise that any SVG feature survives GitHub image
