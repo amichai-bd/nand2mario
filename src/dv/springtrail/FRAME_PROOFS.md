@@ -30,14 +30,70 @@ checked against the endpoint's build identity before traffic.
 Expected frames come from the independent models only: `motion_reference`
 for the player, the frozen flow in `interactions_reference` over that player
 for modes, enemy, items and goal, and `motion_frames.image`, which composes
-the current poses onto `hud_reference.image`, for pixels. LCD commit 139388
-and period 70224 are the source-derived anchors `motion_game_reference`
-checks in simulation; the title frame completing at dot 275071 confirmed the
-anchor on hardware in the endurance proof. No value is taken from the DUT.
+the current poses onto `hud_reference.image`, for pixels. LCD commit 167840
+and period 70224 are the source-derived anchors of the current image
+([startup anchor](#startup-anchor)); `motion_game_reference` proves the RTL
+commits at that dot in `python-mgs`, `test_startup_anchor` fails at level 0
+when the built image derives any other dot, and the launcher's `build_rom`
+refuses such an image before any traffic. No value is taken from the DUT.
+
+## Startup anchor
+
+The anchor is the dot of the image's first LCDC 0x91 write. `startup_anchor.py`
+derives it from the built image with an independent SM83 timing model under
+the [CPU contract](../../../wiki/src/rtl/cpu/MAS_cpu.md#time-bus-and-retirement):
+one initial opcode fetch, each instruction's manual M-cycle count with the
+final fetch overlapping the next instruction, conditional costs by outcome,
+and a write committing at T4 of its M-cycle, so the dot is four times the
+M-cycles completed through the write. IME stays clear until after the
+write, so the path is straight-line code with data-dependent loops. Dots
+are attributed to the nearest preceding label at call depth zero and to the
+callee inside a `CALL`, so a loop's setup loads belong to the label before
+it. The
+model reads nothing from a run; `python-mgs` is where the RTL is held to it.
+
+Image `35aae757bde0ec9a15d6d6c84f14b45b451c341d2d4775f43ed8a9a762625192`,
+41960 M-cycles over 21373 instructions, by routine in execution order
+(`python src/dv/springtrail/startup_anchor.py` prints this table):
+
+| Term | Dots | Covers |
+|---|---|---|
+| reset fetch | 4 | the initial opcode fetch at 0100 |
+| header | 20 | `NOP` and `JP Start`, written by the packager |
+| `Start` | 220 | the inline register and WRAM stores and the tile copy's setup loads |
+| `InitSceneDMA` | 428 | the HRAM DMA routine copy |
+| `InitGame` | 2156 | game, power and block state, including the 38-byte reset loop |
+| `ClearObjects` | 3872 | 160 OAM bytes |
+| `CopyTiles` | 61600 | 1184 tile bytes to VRAM and the map copy's setup loads |
+| `CopyMap` | 30108 | 576 title map bytes, the palettes and the closing register stores through the LCDC write |
+| `InitHUD` | 17120 | the 20 font tiles and the second map's cleared HUD rows |
+| `InitMotionArt` | 9212 | the courier poses |
+| `InitBlockArt` | 20732 | four 128-byte block tile copies |
+| `PrepareScene` | 20304 | the first shadow scene, including the effect test |
+| `PrepareHUD` | 412 | the HUD cache |
+| `PrepareMap` | 84 | the prepared-column reset; returns at title |
+| `PublishHUD` | 664 | both map rows |
+| `PublishScene` | 904 | the first HRAM DMA and its wait loop |
+| **LCD** | **167840** | `LDH [$FF40],A` commits in its second M-cycle |
+
+The same model reproduces the previous anchors from their images: 146500
+before the block layer and 156152 for the parked progression branch, each
+matching the retirement trace of its `python-mgs` run instruction for
+instruction; the block layer's +20732, +576 and +32 terms are the ones its
+review counted by hand. Two hand counts of the table above are frozen in
+`test_startup_anchor` beside the model's.
+
+A board never reads the anchor directly. A snapshot's completion dot is
+`LCD + seq*PERIOD + 143*456 + x` for the last pixel's offset x inside row
+143, which the row check bounds to 0..455; it is not `LCD + seq*PERIOD +
+143*456`. The 2026-09-12 board session that found the drift read frame
+completions 233299 and 303523 on this image: both are 167840 plus 143*456
+plus 251, the same offset the previous image's title frame showed at 275071
+(139388 + 70224 + 65208 + 251), so the board corroborates the derivation.
 
 ## Frozen script
 
-The board is paused at every checkpoint `C(n) = 139388 + n*70224 + 4096`,
+The board is paused at every checkpoint `C(n) = 167840 + n*70224 + 4096`,
 reached with exact `RUN_DOTS` counts of at most one period; `RUN`, `HALT`
 and `STEP` are not used. A mask applied at C(n) is sampled in VBlank n,
 computed in visible frame n+1, published in VBlank n+1 and displayed in
@@ -104,12 +160,55 @@ python src/dv/springtrail/frame_proofs.py full --uart-port COM3 --expected-build
 Hardware programming and capture need the user's explicit authorization and
 the serialized machine lock; the launcher does not program the board.
 
-## Measured result
+## Measured result on the current image
+
+Image `35aae757bde0ec9a15d6d6c84f14b45b451c341d2d4775f43ed8a9a762625192`
+built from current sources at each launch, anchor 167840 derived by the
+launcher and recorded in `build.json`, wire build
+`87d5f0280a2afad8be6b85dc601141cc` on COM3, Python 3.14.5, pyserial 3.5,
+2026-09-12. Doctor: JTAG PASS (`10M50DA`, idcode `031050DD`), UART
+enumerated COM3. Both runs used
+`python src/dv/springtrail/frame_proofs.py <plan> --uart-port COM3 --expected-build-id 87d5f0280a2afad8be6b85dc601141cc --tag frames437`,
+serialized under the machine mutex, each after the endpoint's build identity
+and paused/neutral preflight and before any input.
+
+| Plan | Whole (s) | Worker (s) | Checkpoints | Captures | Checked pixels | Epoch | Final dot | Result |
+|---|---|---|---|---|---|---|---|---|
+| `short` | 24.0 (cap 300) | 23.7 | 101 | 4 | 92,160 | 4 | 7,264,560 | PASS |
+| `full` | 27.3 (cap 300) | 27.1 | 208 reached | 4 of 10 | 92,160 | 4 | — | FAIL `FRAME_PIXELS scroll-wrap pixel=12848` |
+
+`short` passed every check: `title` completing at 303523, `spawn` at 514195,
+`first-camera` at 2831588 and `entering-column` at 7255699, each the load's
+epoch, its planned sequence and 251 or 252 dots into row 143 of its frame,
+matching all 23040 pixels with CRC32s `9b162de2`, `2a877964`, `18129d7a`,
+`a3f88cd6`, the same values the previous image gave. Applied inputs 161 at
+VBlank 2, 33 at 3, 49 at 99, 0 at 101; every reply dot equalled its
+checkpoint. The board ended PAUSED, UART source, input 0, effective 0,
+certain session.
+
+`full` matched the same four captures, then failed at `scroll-wrap` (source
+frame 207, camera 256): the 256 mismatching pixels are exactly the 16x16 cell
+x 48..63, y 80..95, world column 38..39 rows 10..11, the first intact item
+block. The board draws the block art the image has carried since the block
+layer; `motion_frames.image` draws blank terrain there, and the frozen flow
+behind `games()` carries no block or power state. The captured state matched
+`EXPECTED['scroll-wrap']`, so the anchor and the route hold and the pixel
+model is behind the image. The run kept its dot, journal and packed frames;
+cleanup sent HALT and INPUT 0 and the board ended PAUSED at input 0. The
+remaining six captures are unproven on the current image until the frame
+models include the block layer.
+
+## Measured result on image 616de11b...
+
+This evidence belongs to image
+`616de11b49e0807539837358824a570776459b9bf13a4b9424dbf42adfe5c983`, whose
+anchor was 139388 (`C(n) = 139388 + n*70224 + 4096`, title at C2=283932).
+The block layer and the power states lengthened startup after it, so it is
+not evidence for the image the repository builds today.
 
 Producing commit `55827b65` (the declaration), Python 3.14.5, pyserial 3.5,
-wire build `bb02588d127b72ce6458a07ff1145c57` on COM3, image
-`616de11b49e0807539837358824a570776459b9bf13a4b9424dbf42adfe5c983` built from
-current sources at each launch. The board was not reprogrammed. Doctor: JTAG
+wire build `bb02588d127b72ce6458a07ff1145c57` on COM3, that image built from
+the sources of the time at each launch. The board was not reprogrammed. Doctor: JTAG
 and Quartus PASS, UART enumerated COM3; Questa refused a second nodelocked
 licence, and no simulation is part of this proof. Both runs used
 `python src/dv/springtrail/frame_proofs.py <plan> --uart-port COM3 --expected-build-id bb02588d127b72ce6458a07ff1145c57 --tag frames384`,

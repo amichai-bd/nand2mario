@@ -10,7 +10,9 @@ The actual CPU fixture also executes the existing UpdateGame mode dispatcher.
 
 ## Current instruction and execution bounds
 
-Current startup LCD commit is139388 dots, derived from accepted HUD startup
+The current anchor is derived by `startup_anchor.py` and recorded in
+[FRAME_PROOFS.md](FRAME_PROOFS.md#startup-anchor). This issue's startup LCD
+commit was139388 dots, derived from accepted HUD startup
 136560 plus280 for initializing ten motion bytes,2628 for CALL plus the64-byte
 approved skid copy, minus96 for the shorter title pose selector, plus16 for the
 new small-skid size branch. This is an instruction-derived anchor, not a value

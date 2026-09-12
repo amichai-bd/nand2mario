@@ -156,8 +156,9 @@ class ScriptTests(unittest.TestCase):
     def test_plans_and_checkpoints(self):
         self.assertEqual([name for name, _ in plan_captures('short')][-1], PLANS['short'])
         self.assertEqual(len(plan_captures('full')), len(CAPTURES))
-        self.assertEqual(checkpoint(2), 283932)
-        self.assertEqual(checkpoint(5), 494604)
+        # The title (C2) and spawn (C5) checkpoints of the current image.
+        self.assertEqual(checkpoint(2), 312384)
+        self.assertEqual(checkpoint(5), 523056)
         with self.assertRaisesRegex(AssertionError, 'FRAME_PLAN'):
             plan_captures('long')
 

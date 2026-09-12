@@ -76,10 +76,9 @@ def run(client, rom, rom_sha256, folder, log, expected_build, crc_proof_run):
         assert meta['epoch'] == epoch, 'BRINGUP_EPOCH'
         assert meta['size'] == 5760, 'BRINGUP_FRAME_SIZE'
         # The exact-scanline freshness window endurance.py also checks is not
-        # reproduced here: it depends on a hand-maintained per-source-revision
-        # LCD commit constant this run does not attempt to recalibrate. The
-        # full pixel-for-pixel match below is the actual proof; a stale
-        # constant or wrong captured frame would fail it, not pass silently.
+        # reproduced here. LCD is the source-derived anchor `build_rom` already
+        # required this image to derive; the full pixel-for-pixel match below
+        # is the actual proof, and a wrong captured frame fails it.
         checked_pixels = check_pixels(packed, 'title')
         pixels = bytes((b >> shift) & 3 for b in packed for shift in (0, 2, 4, 6))
         crc32 = f'{zlib.crc32(pixels):08x}'

@@ -28,6 +28,11 @@ def initial_states():
     return [title, moved]
 
 PERIOD=70224
+# Startup anchor of the current image: the dot of its first LCDC 0x91 write,
+# derived from the instruction listing by startup_anchor.derive and frozen
+# here. python-mgs proves the RTL commits at exactly this dot;
+# test_startup_anchor proves the image the repository builds still derives it.
+LCD=167840
 
 
 class Check:
@@ -86,7 +91,7 @@ class Check:
             if data==0:
                 assert self.lcd is None,'MOTION_LCD_OFF'
             elif self.lcd is None:
-                assert data==0x91 and dot==167840,'MOTION_STARTUP_BOUND'
+                assert data==0x91 and dot==LCD,'MOTION_STARTUP_BOUND'
                 self.lcd=dot
             else:
                 assert data in (0x91,0x93),'MOTION_OBJECT_MODE'
