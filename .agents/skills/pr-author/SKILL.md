@@ -11,11 +11,16 @@ Follow `agent-flow` and `wiki/agents/pull-requests.md`.
    [verification tier](../../../wiki/src/dv/integration/SPEC.md#verification-tiers)
    and map scoped criteria to evidence. Name unfinished milestone issues using
    the [scope policy](../../../wiki/agents/pull-requests.md#scoped-implementation-and-milestones).
-   Keep the finite merge checklist current; optional improvements are follow-ups.
+   Keep one finite merge checklist covering affected consumers, their compatibility,
+   selected checks and unchanged-input evidence. Carry it forward rather than
+   creating a second review checklist. Optional improvements are follow-ups.
 2. Fill [the PR body](templates/pull-request.md) at
    `workdir/.tmp/pr/<pr-title-slug>.md`. Keep it while work or review needs it; remove it through
    [post-merge cleanup](../../../worktrees/README.md#clean-up-after-merge).
-3. Open early with `gh pr create --draft --base main --title '<title>' --body-file <path>`.
+3. Open a coherent draft early with `gh pr create --draft --base main --title '<title>' --body-file <path>`.
+   Send the head and remaining checks to the assigned reviewer so source review
+   overlaps validation. Resolve findings directly; do not route every test batch
+   through root. Final readiness still binds the actual current head.
 4. Update evidence with `gh pr edit <number> --body-file <path>`.
 5. Run the [local pre-merge checks](../../../wiki/agents/pull-requests.md#hosted-and-local-checks),
    then babysit the hosted policy check and independent review. When hosted
