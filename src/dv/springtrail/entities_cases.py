@@ -80,7 +80,7 @@ def cases():
                                    shot=Shot(327*16,120*16,16,0,20)))
     both=replace(base,alive=True,enemy_x=256*16,player=Player(x=256*16,y=112*16),
                  curl=Entity(256*16,120*16,1,20))
-    add('patrol-before-curl-large',replace(both,power=LARGE))
+    add('patrol-stomp-before-curl',replace(both,player=Player(x=256*16,y=101*16,jump=3,grounded=False)))
     add('patrol-before-curl-fatal',both)
     add('rider-released-at-absence',replace(base,player=Player(x=370*16,y=126*16),
                                            falling=Entity(368*16,142*16,2)))

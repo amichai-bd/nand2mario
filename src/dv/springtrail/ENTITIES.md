@@ -94,7 +94,7 @@ uses the same complete state encoder/checker. The coarse ceiling per call is
 6000dots for123-byte seeding and dispatch plus24000 for the routine; five calls
 and terminal give151000dots, guarded at160000. This is a conservative test
 ceiling, not a claim about visible preparation. Based on short throughput, allow
-180–270seconds per five-call batch including setup; the hard cap remains300.
+180-270seconds per five-call batch including setup; the hard cap remains300.
 Measure each batch and stop on failure. No larger304 allowance applies.
 
 | Criterion | Named CPU cases / retained independent witness | Remaining gap |
@@ -102,7 +102,7 @@ Measure each batch and stop on failure. No larger304 allowance applies.
 | Carry/support/jump/half-open landing | neutral-carry, jump-off, landing, right-edge-no-land | blocked fractional carry needs isolated actual-routine case |
 | Moving endpoints | moving-right, moving-return, moving-left | none in state matrix |
 | Falling lifecycle | fall-arm, fall-delay, fall-start, fall-absent, fall-stays-absent; full offscreen trajectory host test | rider-released-at-absence supplied; execution pending |
-| CURL trigger/cooldown/contact | curl-outside, curl-range, curl-active-end, curl-cooldown-end, curl-small/large/protected/star | curl-stomp-immune, curl-shot-immune, patrol-before-curl-large/fatal supplied; execution pending |
+| CURL trigger/cooldown/contact | curl-outside, curl-range, curl-active-end, curl-cooldown-end, curl-small/large/protected/star | curl-stomp-immune, curl-shot-immune, patrol-stomp-before-curl / patrol-before-curl-fatal supplied; execution pending |
 | Patrol animation/stomp | patrol-stomp, stomp-second-pose, stomp-hidden, patrol-endpoint | full OAM pose checks below |
 | Pause/reset/stages | pause-freeze, resume, select-reset, full-reset, enter-stage1/enter-stage2 via actual WON transition | execution pending |
 | Fixed slot protection | invalid-slot, live-curl-no-overwrite, live-patrol-no-overwrite, spawn-curl, spawn-falling | OAM40 and adjacent-canary emission proof |

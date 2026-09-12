@@ -127,6 +127,18 @@ class Entities(unittest.TestCase):
             self.assertEqual(row['after'][ADDRESSES.index(0xc096)],stage)
             self.assertEqual(row['after'][level],1)
 
+    def test_stomp_then_curl_is_an_order_witness(self):
+        w=self.game(alive=True,enemy_x=256*16,
+                    player=Player(x=256*16,y=101*16,jump=3,grounded=False),
+                    curl=Entity(256*16,120*16,1,20))
+        got=update(w,0)
+        self.assertEqual((got.alive,got.stomp,got.mode),(False,16,RETRY))
+        # Reversed fatal CURL dispatch would return before killing the patrol.
+        from entities_cases import cases, ADDRESSES
+        row=next(r for r in cases() if r['name']=='patrol-stomp-before-curl')
+        self.assertEqual(row['after'][ADDRESSES.index(0xc06f)],0)
+        self.assertEqual(row['after'][ADDRESSES.index(0xc000)],RETRY)
+
     def test_slot_exhaustion_and_reset(self):
         w=self.game()
         self.assertEqual(spawn(w,4),(w,False))
