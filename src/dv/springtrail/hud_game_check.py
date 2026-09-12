@@ -21,7 +21,7 @@ async def run(dut, short=False, renderer=False, motion=False, power=False):
     elif motion and renderer:
         from motion_render_reference import Check
     elif motion:
-        from motion_game_reference import Check, LCD, PERIOD, final_halt_ready
+        from motion_game_reference import Check, LCD, PERIOD, final_halt_ready, require_halt_timing
     elif renderer:
         from hud_render_reference import Check
     else:
@@ -29,6 +29,8 @@ async def run(dut, short=False, renderer=False, motion=False, power=False):
     if not motion and not renderer:
         from hud_game_reference import require_baseline_rom
         require_baseline_rom(Path('program.gb').read_bytes())
+    if motion and not renderer and not short:
+        require_halt_timing(ROOT)
     renderer_end = 320000
     if renderer and (motion or power):
         from startup_anchor import derive
@@ -87,7 +89,7 @@ async def run(dut, short=False, renderer=False, motion=False, power=False):
                 sent=short or renderer;prior=0
                 while True:
                     # Only the final DMA-to-HALT boundary needs finer polling.
-                    await Timer(10 if not short and len(check.triggers)==3 else 50,unit='us')
+                    await Timer(1 if motion and not renderer and not short and len(check.triggers)==3 else 10 if not short and len(check.triggers)==3 else 50,unit='us')
                     await ReadOnly();healthy()
                     dot=known(dut.dot_count)
                     assert dot>prior and not any(known(s) for s in (dut.fault,dut.reset_sys,dut.core_reset,dut.paused)), 'SPRINGTRAIL_PROGRESS'

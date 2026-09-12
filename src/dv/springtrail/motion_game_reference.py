@@ -195,12 +195,25 @@ class Check:
 def final_halt_ready(dot, trigger, window_end):
     """Start the ordinary UART HALT early enough to pause after complete DMA.
 
-    The fixed no-payload request takes180..240dots including decode/pause.
-    Ten-us controller polling adds at most42dots. Fail closed if this actual
+    The fixed no-payload request takes180..220dots including decode/pause.
+    One-us controller polling adds at most5dots. Fail closed if this actual
     publication leaves insufficient space in the unchanged source frame window.
     """
-    assert trigger + 480 + 42 + 240 < window_end, 'MOTION_HALT_ROOM'
-    if dot < trigger + 480:
+    assert trigger + 470 + 5 + 220 < window_end, 'MOTION_HALT_ROOM'
+    if dot < trigger + 470:
         return False
-    assert dot <= trigger + 480 + 42, 'MOTION_HALT_REQUEST_LATE'
+    assert dot <= trigger + 470 + 5, 'MOTION_HALT_REQUEST_LATE'
     return True
+
+
+def require_halt_timing(root):
+    """Fail closed if the fixed fixture UART/clock/timebase assumptions change."""
+    import re
+    required = {
+        'src/dv/v05/tb_python_v05.sv': ('always#20clk_sys=!clk_sys;', '.UART_BAUD(3125000)'),
+        'src/rtl/clocking/n2m_timebase.sv': ("phase+19'd65536", "sum>=19'd390625"),
+        'src/dv/python/integration/client_transport.py': ('index*3240000', 'bit*320000'),
+    }
+    for path, terms in required.items():
+        source = re.sub(r'\s+', '', (root/path).read_text())
+        assert all(term in source for term in terms), 'MOTION_HALT_TIMING_PROFILE'
