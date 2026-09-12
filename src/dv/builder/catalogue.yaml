@@ -373,6 +373,12 @@ units:
   python-integration-uart-data-fault: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: null}
   python-integration-uart-irq-fault: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: null}
   python-integration-uart-pixel-fault: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: null}
+  python-interaction-a: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-interaction-b: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-interaction-c: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-interaction-d: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-interaction-fault: {kind: sim, level: 2, labels: [fault, integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-interaction-short: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
   python-joypad: {kind: sim, level: 2, labels: [joypad, python-tb], duration_seconds: null}
   python-joypad-fault: {kind: sim, level: 2, labels: [joypad, python-tb], duration_seconds: null}
   python-mgs: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
@@ -470,6 +476,8 @@ units:
   src/dv/springtrail/test_hud_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.40}
   src/dv/springtrail/test_hud_render_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.22}
   src/dv/springtrail/test_hud_unit_check.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.11}
+  src/dv/springtrail/test_interaction_current_cases.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: null}
+  src/dv/springtrail/test_interaction_current_check.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: null}
   src/dv/springtrail/test_interaction_routes.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.09}
   src/dv/springtrail/test_interactions_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.09}
   src/dv/springtrail/test_legacy_renderer.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.15}

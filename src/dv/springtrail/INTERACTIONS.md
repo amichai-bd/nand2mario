@@ -1,5 +1,62 @@
 # Interaction proof
 
+## Current operand matrix
+
+The current matrix uses the shared `UpdateGame` routine and the independent
+entity/progression model. Its 20 inputs preserve all 123 game, motion, power,
+block, progression and entity bytes, including reserved bytes. Expected output
+is checker data only; the CPU fixture receives ordinary input operands.
+
+| Obligation | Existing current case or new operand |
+|---|---|
+| Start with direction | Motion `title-direction` |
+| Patrol right arrival and departure | Entity `patrol-endpoint`; new `patrol-right-depart` |
+| Patrol left arrival and departure | New `patrol-left-arrive`, `patrol-left-depart` |
+| Contact and retry restart | Power `walk-hit-small`; motion `retry-restart`; progression life-spend cases |
+| Half-open enemy contact edge | New `patrol-edge-touch`, `patrol-edge-overlap`, separated by one Q4 unit |
+| First pickup award | Power `item-large-box`; its small-box counterpart checks the contact-height boundary |
+| Remaining pickup awards | New `item-1-award` through `item-3-award`, score 1→2→3→4 |
+| Each pickup is once-only | New `item-0-once` through `item-3-once`, each with its own collected bit already set |
+| Fall precedes item and goal | New `fell-before-item`, `fell-before-goal` |
+| Goal, frame counter wrap, retry/advance | New `goal-frame-counter-wrap`; progression WON stage-advance/final-reset, retry-spend, `retry-hold`, `retry-idle` and `clear-idle` cases |
+| Pause/resume and paused Select reset | Motion pause/resume chain and `select-restart`; entity `pause-freeze` |
+| Select ignored during play | New `select-ignored-playing` |
+| Current fatal/nonfatal contact priority | New CURL fatal/nonfatal pairs at item and goal; existing entity patrol-before-CURL pairs |
+
+The Fell inputs deliberately exercise the authoritative flag at collection
+coordinates. They prove guard order, not simultaneous events on a natural route.
+The CURL overlap inputs similarly relocate ordinary entity operands to isolate
+priority. They do not alter level placement. Existing progression cases retain
+stage-specific goals, boundaries and reset behavior; no all-stage cross product
+is implied by the historical four-pickup obligation.
+The retry/clear idle cases use a non-Start input. The current terminal dispatch
+tests the Start bit, so these also qualify the historical idle Select class.
+
+The planned execution is one complete short followed by four groups of five
+calls, plus an actual output mutation with the unchanged oracle. Every call
+observes the full state. Completion must include CPU terminal marker, settled
+pause, hold and END. Per-target total wall limit is 300 seconds. Full grouping
+remains subject to complete-short throughput; no current CPU acceptance is
+claimed by the literal host tests or by historical reports below.
+
+The targets are `python-interaction-short`, `python-interaction-a` through
+`python-interaction-d`, and `python-interaction-fault`. The fault arms after the
+ordinary first-call marker, requires the real Score output to be 2 and changes
+that byte to 0 on both the memory and passive ledger path. It must fail the
+unchanged full-state checker at the first report, with a mutation receipt.
+
+The finite source-model preflight checks every selected path against the
+independent state expectation before simulation. The short reaches HALT by
+18,892 dots; five-call groups reach it by 94,340 dots. A 24,000-dot per-call
+ceiling reserves more than the largest selected 14,420-dot path. Including
+6,000 dots per operand load/dispatch and 1,000 for completion gives 151,000
+dots, below the 160,000-dot full guard. Short/full cocotb watchdogs are 35/60 ms.
+These source counts qualify bounds; actual completion and wall feasibility
+still require the simulator. All five images must retain the game's 21 shared
+sections; a changed routine invalidates that qualification.
+
+## Historical execution
+
 Historical execution targets named below are retired; these descriptions and
 independent expectations remain historical evidence. See the
 [family dispositions and required current coverage](MILESTONE.md#historical-fixture-registrations).

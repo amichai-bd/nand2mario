@@ -373,6 +373,23 @@ module tb_python_v05 #(
         end
     end
 
+    // Corrupt one actual Score output after ordinary interaction operands.
+    // Both WRAM and the passive bus ledger consume the same changed CPU byte.
+    initial begin
+        if ($test$plusargs("interaction_output_fault")) begin
+            wait(bus_commit && write_enable && address == 16'hc0fc);
+            do @(negedge clk_sys);
+            while (!(dut.request_valid && write_enable && address == 16'hc029));
+            if (write_data !== 8'd2) $fatal(1, "INTERACTION494_FAULT_SOURCE");
+            $display("INTERACTION494_OUTPUT_MUTATION score2->0 dot=%0d", dot_count);
+            force dut.write_data = 8'd0;
+            wait(bus_commit);
+            @(posedge clk_sys);
+            @(negedge clk_sys);
+            release dut.write_data;
+        end
+    end
+
     // Mutate the actual CPU output feeding memory and the passive write ledger.
     // The LCD-off courier fixture arms this once at its ordinary call marker.
     initial begin
