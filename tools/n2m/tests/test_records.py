@@ -3,18 +3,24 @@ import contextlib
 import ctypes
 import errno
 import io
+import json
 import os
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from n2m.records import atomic_bytes, atomic_text, pid_alive, stale_lock, workspace
+from n2m.records import atomic_bytes, atomic_text, pid_alive, reclaim_stale_lock, stale_lock, workspace
 
 ROOT = Path(__file__).resolve().parents[3]
+RACER = Path(__file__).with_name("lock_racer.py")
+LOCKED = r"tag tag is locked by live pid (\d+); confirm its writer stopped"
+TAKEN = "tag tag was taken by another writer while its stale lock .* was reclaimed"
+UNREAD = "tag tag is locked; confirm its writer stopped before removing"
 
 
 def denial(code):
@@ -188,6 +194,120 @@ class WorkspaceLockTests(unittest.TestCase):
         self.assertEqual(sorted(p.name for p in self.lock.parent.iterdir()), [".lock"])
         holder.close()
         self.assertFalse(self.lock.exists())
+
+    def racer(self, *options):
+        process = subprocess.Popen([sys.executable, str(RACER), str(self.root), "tag", *options],
+                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        self.addCleanup(process.kill)
+        return process
+
+    def outcome(self, process):
+        out, err = process.communicate(timeout=60)
+        self.assertEqual(process.returncode, 0, err)
+        return json.loads(out)
+
+    def wait_for(self, marker):
+        deadline = time.monotonic() + 30
+        while not marker.exists():
+            self.assertLess(time.monotonic(), deadline, f"no {marker.name}")
+            time.sleep(.005)
+
+    def test_three_processes_on_one_dead_writer_tag_leave_exactly_one_holder(self):
+        # Real processes. A and B both read the dead writer; A reclaims and
+        # holds the tag. B then reclaims from its stale read while C, already
+        # started, enters: B must not move A's live lock and C must not slip
+        # in behind it. Each must fail with the documented refusal.
+        self.lock.write_text(f"pid={dead_pid()}\n")
+        gate_a, gate_b, gate_c, done = (self.root / name for name in ("gate-a", "gate-b", "gate-c", "done"))
+        a = self.racer("--after-read", str(gate_a), "--hold", str(done))
+        b = self.racer("--after-read", str(gate_b))
+        c = self.racer("--before-enter", str(gate_c))
+        for marker in ("gate-a.read1", "gate-b.read1", "gate-c.ready"):
+            self.wait_for(self.root / marker)
+        for gate in ("gate-a.go1", "gate-a.go2"):  # A's own reclaim may read the moved file
+            gate_a.with_name(gate).touch()
+        self.wait_for(done.with_name("done.held"))
+        self.assertEqual(self.lock.read_text(), f"pid={a.pid}\n")
+        gate_b.with_name("gate-b.go1").touch()
+        # A claim that moved A's live lock would now read the moved file and
+        # stall there; a refused claim reads nothing more. Let C enter and
+        # finish either way, then release B from a second read if it made one.
+        deadline = time.monotonic() + .25
+        while not gate_b.with_name("gate-b.read2").exists() and time.monotonic() < deadline:
+            time.sleep(.005)
+        gate_c.touch()
+        refused = [self.outcome(c)]
+        gate_b.with_name("gate-b.go2").touch()
+        refused.insert(0, self.outcome(b))
+        self.assertFalse(any(r["held"] for r in refused), refused)
+        self.assertRegex(refused[0]["error"], TAKEN)
+        self.assertRegex(refused[1]["error"], LOCKED)
+        self.assertEqual(self.lock.read_text(), f"pid={a.pid}\n")
+        self.assertEqual(sorted(p.name for p in self.lock.parent.iterdir()), [".lock"])
+        done.touch()
+        self.assertTrue(self.outcome(a)["held"])
+        self.assertEqual(list(self.lock.parent.iterdir()), [])
+
+    def test_unscheduled_processes_racing_one_dead_writer_tag_yield_one_holder(self):
+        # Five real processes race the reclaim with no schedule. Whoever wins
+        # holds until every loser has reported; then exactly one may have held.
+        # A loser that read the winner's fresh lock before its pid was written
+        # sees an unreadable lock; all three refusals are documented.
+        self.lock.write_text(f"pid={dead_pid()}\n")
+        done = self.root / "done"
+        racers = [self.racer("--hold", str(done)) for _ in range(5)]
+        deadline = time.monotonic() + 30
+        while sum(p.poll() is None for p in racers) > 1 and time.monotonic() < deadline:
+            time.sleep(.005)
+        if sum(p.poll() is None for p in racers) == 1:
+            self.assertEqual(sorted(p.name for p in self.lock.parent.iterdir()), [".lock"])
+        done.touch()
+        results = [self.outcome(p) for p in racers]
+        winners = [r for r in results if r["held"]]
+        self.assertEqual(len(winners), 1, results)
+        for loser in (r for r in results if not r["held"]):
+            self.assertRegex(loser["error"], f"{TAKEN}|{LOCKED}|{UNREAD}")
+        self.assertEqual(list(self.lock.parent.iterdir()), [])
+
+    def test_a_held_lock_refuses_a_stale_reclaim_on_posix(self):
+        if os.name == "nt":
+            self.skipTest("POSIX flock")
+        with workspace(self.root, "tag"), contextlib.redirect_stderr(io.StringIO()) as stderr:
+            self.assertFalse(reclaim_stale_lock(self.lock, os.getpid()))
+            self.assertEqual(self.lock.read_text(), f"pid={os.getpid()}\n")
+        self.assertEqual(stderr.getvalue(), "")
+        self.assertFalse(self.lock.exists())
+
+    def test_a_failed_put_back_never_raises_and_drops_a_dead_writers_sibling(self):
+        # Portable injection of the Windows put-back denial: a third writer
+        # holds a fresh lock when the moved file (another dead writer's) goes
+        # back. The loser reports the refusal; the sibling is not orphaned.
+        from n2m.records import _reclaim_nt
+        other = dead_pid()
+        self.lock.write_text(f"pid={other}\n")
+        real = os.replace
+        calls = []
+
+        def deny_put_back(source, destination):
+            calls.append(Path(source).name)
+            if Path(destination) == self.lock:
+                raise denial(5)  # the held fresh lock denies it every time
+            real(source, destination)
+        with patch("n2m.records.os.replace", side_effect=deny_put_back), patch("time.sleep") as sleep:
+            self.assertFalse(_reclaim_nt(self.lock, dead_pid()))
+        self.assertEqual(calls[0], ".lock")
+        self.assertEqual(len(calls), 7)  # one claim, six put-back attempts
+        self.assertEqual(sleep.call_count, 5)
+        self.assertEqual(list(self.lock.parent.iterdir()), [])
+
+    def test_a_sibling_recording_a_live_pid_is_kept_until_it_dies(self):
+        sibling = self.lock.with_name(".lock.stale-abc")
+        sibling.write_text(f"pid={os.getpid()}\n")
+        with workspace(self.root, "tag"):
+            self.assertTrue(sibling.exists())
+        sibling.write_text(f"pid={dead_pid()}\n")
+        with workspace(self.root, "tag"):
+            self.assertFalse(sibling.exists())
 
     def test_a_held_lock_cannot_be_moved_or_removed_by_another_process(self):
         if os.name != "nt":
