@@ -15,11 +15,11 @@ design.
 
 Priorities:
 
-- **P0** — close before functional Game Boy RTL starts, subject to the explicit
+- **P0** â€” close before functional Game Boy RTL starts, subject to the explicit
   scoped evidence replacements in the current phase.
-- **P1** — close before the affected subsystem or shared integration starts.
-- **P2** — planned later; does not block early implementation.
-- **Deferred** — intentionally waiting for user authorization or a later phase.
+- **P1** â€” close before the affected subsystem or shared integration starts.
+- **P2** â€” planned later; does not block early implementation.
+- **Deferred** â€” intentionally waiting for user authorization or a later phase.
 
 State `Out of scope` means the owner set the gap aside; its close conditions
 stay recorded so the decision can be reversed. The
@@ -29,24 +29,24 @@ stay recorded so the decision can be reversed. The
 
 | ID | Priority | State | Issue | Gap | Closed when |
 |---|---|---|---|---|---|
-| GAP-001 | P0 | Closed | — | Scope and success contract | DMG target, releases, and non-goals are approved |
-| GAP-002 | P0 | Closed | — | License, ROM policy, and provenance | Approved private source policy, provenance rules, and practical content safeguards are committed |
-| GAP-003 | P0 | Closed | — | Build command | A minimal `n2m` command runs from a fresh shell |
-| GAP-004 | P0 | Closed | — | Real environment doctor | Checked smoke and read-only identity checks work; runtime checks are described in GAP-008 |
-| GAP-005 | P0 | Closed | — | Board wiring and safe bring-up | Frame content and UART ping pass over UART with documented wiring; the monitor picture stays with GAP-006 |
+| GAP-001 | P0 | Closed | â€” | Scope and success contract | DMG target, releases, and non-goals are approved |
+| GAP-002 | P0 | Closed | â€” | License, ROM policy, and provenance | Approved private source policy, provenance rules, and practical content safeguards are committed |
+| GAP-003 | P0 | Closed | â€” | Build command | A minimal `n2m` command runs from a fresh shell |
+| GAP-004 | P0 | Closed | â€” | Real environment doctor | Checked smoke and read-only identity checks work; runtime checks are described in GAP-008 |
+| GAP-005 | P0 | Closed | â€” | Board wiring and safe bring-up | Frame content and UART ping pass over UART with documented wiring; the monitor picture stays with GAP-006 |
 | GAP-006 | P0 | Physical gap | [#417](https://github.com/amichai-bd/nand2mario/issues/417) | Clock, reset, and CDC plan | Implemented timing still needs connected-board display acceptance |
-| GAP-007 | P0 | Closed | — | Executable interface contracts | Address maps, host registers, and trace formats have one source |
-| GAP-008 | P0 | Closed | — | Verification baseline | A known-good DUT and deliberately failing DUT prove the harness |
-| GAP-009 | P0 | Closed | — | Initial agent skills | Core skills exist and have concise trigger tests and examples |
-| GAP-010 | P0 | Out of scope | — | Trusted product CI | Licensed execution route and protected physical runner are not activated; set aside while no runner can be hosted |
-| GAP-011 | P1 | Closed | — | Original game image and build facts | Original 32 KiB mapperless image, header, provenance and reproducible build are verified |
-| GAP-012 | P1 | Later | — | VGA frame crossing | Buffering and monitor timing pass simulation and hardware tests |
-| GAP-013 | P1 | Later | — | External dependencies | Tests and tools are pinned, licensed, and reproducible |
-| GAP-014 | P2 | Later | — | Physical audio path | Output method and acceptance test are selected |
-| GAP-015 | P2 | Later | — | Native compiler scope | Language, ABI, outputs, and compatibility goal are approved |
-| GAP-016 | Deferred | Later | — | Audio synthesis RTL | Channels, frame sequencer, mixer and PCM output exist and pass independent tests |
+| GAP-007 | P0 | Closed | â€” | Executable interface contracts | Address maps, host registers, and trace formats have one source |
+| GAP-008 | P0 | Closed | â€” | Verification baseline | A known-good DUT and deliberately failing DUT prove the harness |
+| GAP-009 | P0 | Closed | â€” | Initial agent skills | Core skills exist and have concise trigger tests and examples |
+| GAP-010 | P0 | Out of scope | â€” | Trusted product CI | Licensed execution route and protected physical runner are not activated; set aside while no runner can be hosted |
+| GAP-011 | P1 | Closed | â€” | Original game image and build facts | Original 32 KiB mapperless image, header, provenance and reproducible build are verified |
+| GAP-012 | P1 | Later | â€” | VGA frame crossing | Buffering and monitor timing pass simulation and hardware tests |
+| GAP-013 | P1 | Later | â€” | External dependencies | Tests and tools are pinned, licensed, and reproducible |
+| GAP-014 | P2 | Later | â€” | Physical audio path | Output method and acceptance test are selected |
+| GAP-015 | P2 | Later | â€” | Native compiler scope | Language, ABI, outputs, and compatibility goal are approved |
+| GAP-016 | Deferred | Later | â€” | Audio synthesis RTL | Channels, frame sequencer, mixer and PCM output exist and pass independent tests |
 
-## GAP-001 — Scope and success contract
+## GAP-001 â€” Scope and success contract
 
 **Current state**
 
@@ -70,7 +70,7 @@ before the core can run a test ROM.
   as included or deferred.
 - The original platformer has observable boot, video, input, and stability checks.
 
-## GAP-002 — License, ROM policy, and provenance
+## GAP-002 â€” License, ROM policy, and provenance
 
 **Current state**
 
@@ -101,7 +101,7 @@ can evade automated checks. Independent provenance and diff review remain needed
 Treat reference HDL as behavioral research until file-level reuse permission is
 confirmed. Dependency fetching requirements remain in GAP-013.
 
-## GAP-003 — Build command
+## GAP-003 â€” Build command
 
 **Current state**
 
@@ -126,7 +126,7 @@ Agents may invent different commands, directories, or tool invocations.
 - Results record tool versions, Git commit, inputs, seed, and artifacts.
 - A clean checkout can bootstrap Python dependencies from a pinned definition.
 
-## GAP-004 — Real environment doctor
+## GAP-004 â€” Real environment doctor
 
 **Current state**
 
@@ -152,7 +152,7 @@ Checking only executable names can report success while every simulation fails.
 - The command performs no programming or UART transmission unless requested.
 - One automated test proves the doctor reports a broken elaboration as failure.
 
-## GAP-005 — Board wiring and safe bring-up
+## GAP-005 â€” Board wiring and safe bring-up
 
 **Current state**
 
@@ -176,7 +176,7 @@ That acceptance stays with [GAP-006](#gap-006-clock-reset-and-cdc-plan).
 Incorrect direction or voltage can block communication or damage equipment.
 The wrong device or bitstream could be programmed.
 
-**Closed when — met**
+**Closed when â€” met**
 
 - The DE10-Lite manual and physical wires agree with committed pin constraints.
 - The 3.3 V signalling boundary and common ground are documented and the link
@@ -188,7 +188,7 @@ The wrong device or bitstream could be programmed.
 - Programming and hardware tests use an exclusive lock.
 - The resulting FPGA build ID can be read through UART.
 
-## GAP-006 — Clock, reset, and CDC plan
+## GAP-006 â€” Clock, reset, and CDC plan
 
 **Current state**
 
@@ -219,7 +219,7 @@ cause intermittent failures missed by simulation.
 - TimeQuest reports no unexplained unconstrained paths.
 - Simulation checks tick counts, line length, frame length, and buffer swaps.
 
-## GAP-007 — Executable interface contracts
+## GAP-007 â€” Executable interface contracts
 
 **Current state**
 
@@ -245,7 +245,7 @@ check consumption and full behavioral verification, not only codec agreement.
 - CI regenerates the contracts and fails on a diff.
 - Game Boy addresses and host-only addresses are visibly separate.
 
-## GAP-008 — Verification baseline
+## GAP-008 â€” Verification baseline
 
 **Current state**
 
@@ -289,7 +289,7 @@ flags, timing, memory traffic, or interrupts.
 - A trace-comparison format is agreed with an independent emulator.
 - Regression levels and time budgets are documented.
 
-## GAP-009 — Initial agent skills
+## GAP-009 â€” Initial agent skills
 
 **Current state**
 
@@ -315,7 +315,7 @@ or PR evidence drift.
 - Trigger examples are tested against likely user requests.
 - Skills do not claim planned build commands have passed.
 
-## GAP-010 — GitHub remote, issues, CI, and Pages
+## GAP-010 â€” GitHub remote, issues, CI, and Pages
 
 **Current state**
 
@@ -350,7 +350,7 @@ job could run untrusted code on this PC or allow concurrent access to the FPGA.
 - The physical runner uses concurrency control and a protected environment.
 - One sample issue completes branch, PR, checks, merge, and Pages deployment.
 
-## GAP-011 — Original game image and build facts
+## GAP-011 â€” Original game image and build facts
 
 **Current state**
 
@@ -361,9 +361,9 @@ commercial file, title or mapper to obtain. The
 header/profile. Its [composed-system tests](src/dv/springtrail/SPEC.md) check
 title, input and world frames with deliberate output faults. Movement and
 interactions are implemented; expanded features are explicitly planned in the
-game specification. The retained [UART endurance fixture](../src/dv/springtrail/ENDURANCE.md#retained-script)
-needs current lives/countdown expectations under [#511](https://github.com/amichai-bd/nand2mario/issues/511)
-before qualifying current continuous gameplay;
+game specification. The current [UART endurance fixture](../src/dv/springtrail/ENDURANCE.md#retained-script)
+uses source-qualified lives/countdown and complete-frame expectations. A new
+current-image continuous physical run remains separate from those host checks;
 physical-presence verification remains open in the charter's
 [remote acceptance](src/project-charter.md#remote-acceptance) split.
 
@@ -382,7 +382,7 @@ or compatibility defect. Original content must not inherit copied game assets.
 - The original image loads and reaches the independently checked foundation
   checkpoint; later game verification and physical acceptance remain separate.
 
-## GAP-012 — VGA frame crossing
+## GAP-012 â€” VGA frame crossing
 
 **Current state**
 
@@ -415,7 +415,7 @@ frames, or rejects timing.
 - Frame CRCs match before and after the VGA adapter.
 - Quartus confirms intended block-RAM inference and acceptable resources.
 
-## GAP-013 — External dependencies
+## GAP-013 â€” External dependencies
 
 **Current state**
 
@@ -439,7 +439,7 @@ results may differ.
 - Test selection and expected pass signatures are versioned.
 - CI uses the same manifest as local builds.
 
-## GAP-014 — Physical audio path
+## GAP-014 â€” Physical audio path
 
 **Current state**
 
@@ -461,7 +461,7 @@ APU RTL may be confused with successful audible board output.
 
 This does not block silent video and input bring-up.
 
-## GAP-015 — Native compiler scope
+## GAP-015 â€” Native compiler scope
 
 **Current state**
 
@@ -488,7 +488,7 @@ RGBDS support for open test ROMs.
 Use the existing native toolchain and pinned RGBDS oracle. Treat any C-like
 compiler, language runtime or broader development environment as later work.
 
-## GAP-016 — Audio synthesis RTL
+## GAP-016 â€” Audio synthesis RTL
 
 **Current state**
 
