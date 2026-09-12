@@ -177,7 +177,7 @@ class PlayTests(Harness):
                          {abi.HOST_REG_INPUT, abi.HOST_REG_INPUT_SOURCE})
         self.assertEqual(set(endpoint.requests) - {
             'PING', 'READ_HOST', 'WRITE_HOST', 'LOAD_BEGIN', 'LOAD_WRITE', 'LOAD_END',
-            'READ_ROM', 'RESET', 'RUN_DOTS', 'PEEK'}, set())
+            'READ_ROM', 'RESET', 'RUN_DOTS', 'PEEK', 'HALT'}, set())
         allowed = {(offset, count) for offset, count in self.binding.ranges}
         self.assertEqual(set(endpoint.peeks) - allowed, set())
 
@@ -283,6 +283,73 @@ class ProgressionBoundaryTests(Harness):
                 play_module._dots(client, play_module.PERIOD)
                 play_module.observe(client, self.binding)
                 self.assertEqual(endpoint.game.pixels(), state.render(after))
+
+
+class RehearsalSafetyTests(Harness):
+    def test_declared_37_frame_delay_is_neutral_traced_and_still_wins(self):
+        endpoint, client = self.endpoint()
+        result = play_module.play(client, self.image, self.binding, budget=BUDGET,
+                                  start_delay_frames=37)
+        self.assertEqual(result['status'], 'PASS', result.get('reason'))
+        delay = result['actions'][:37]
+        self.assertEqual(len(delay), 37)
+        self.assertTrue(all((a['mask'], a['frames'], a['reason'], a['mode']) ==
+                            (0, 1, 'start-delay', 'TITLE') for a in delay))
+        self.assertEqual(delay[-1]['dot'] - delay[0]['dot'], 36 * play_module.PERIOD)
+        self.assertTrue(result['actions'][37]['mask'] & play_module.START)
+        self.assertLess(endpoint.requests.index('WRITE_HOST'), endpoint.requests.index('RESET'))
+        self.assertEqual({a for a, _ in endpoint.writes},
+                         {abi.HOST_REG_INPUT, abi.HOST_REG_INPUT_SOURCE})
+        self.assertTrue(result['cleanup']['verified'])
+        self.assertEqual(result['cleanup']['state'], abi.STATE_PAUSED)
+
+    def test_invalid_delay_refuses_before_traffic_and_budget_includes_delay(self):
+        for delay in (-1, True, 3):
+            endpoint, client = self.endpoint()
+            with self.assertRaisesRegex(play_module.PlayFailure, 'STATE_START_DELAY'):
+                play_module.play(client, self.image, self.binding,
+                                 budget=dict(BUDGET, frames=2, actions=2), start_delay_frames=delay)
+            self.assertEqual(endpoint.requests, [])
+        endpoint, client = self.endpoint()
+        result = play_module.play(client, self.image, self.binding,
+                                  budget=dict(BUDGET, frames=2, actions=2), start_delay_frames=2)
+        self.assertEqual(result['status'], 'FAIL')
+        self.assertEqual(result['reason'], 'STATE_BUDGET_ACTIONS')
+        self.assertEqual(result['frames'], 2)
+        self.assertEqual([a['reason'] for a in result['actions']], ['start-delay'] * 2)
+        self.assertTrue(result['cleanup']['verified'])
+
+    def test_failed_exit_never_keeps_pass_or_sends_after_uncertainty(self):
+        from n2m.interface_codec import decode_packet, encode_packet
+        for fault in ('reject', 'effective', 'state', 'timeout'):
+            class ExitEndpoint(Endpoint):
+                def write(self, packet):
+                    header, _ = decode_packet(packet)
+                    if fault == 'reject' and header['command'] == abi.COMMAND_HALT:
+                        self.requests.append('HALT')
+                        self.pending.extend(encode_packet(header['seq'], header['command'], b'',
+                            kind=abi.WIRE_RESPONSE, status=abi.STATUS_STEP_LIMIT))
+                        return len(packet)
+                    return super().write(packet)
+                def _read_host(self, address):
+                    if fault == 'effective' and address == abi.HOST_REG_INPUT_EFFECTIVE:
+                        return 1
+                    if fault == 'state' and address == abi.HOST_REG_STATE:
+                        return abi.STATE_PAUSED ^ 1
+                    return super()._read_host(address)
+            endpoint = ExitEndpoint(defect='timeout' if fault == 'timeout' else None)
+            client = Client(endpoint, clock=iter(range(100)).__next__) if fault == 'timeout' else Client(endpoint)
+            result = {'status': 'PASS', 'reason': 'original finding'}
+            play_module.finish(client, result)
+            self.assertEqual(result['status'], 'FAIL')
+            self.assertEqual(result['reason'], 'original finding')
+            self.assertFalse(result['cleanup']['verified'])
+            self.assertFalse(result['released'])
+            if fault == 'timeout':
+                self.assertTrue(client.uncertain)
+                before = list(endpoint.requests)
+                play_module.finish(client, result)
+                self.assertEqual(endpoint.requests, before)
 
 if __name__ == '__main__':
     unittest.main()

@@ -134,9 +134,17 @@ The loop declares its action, emulated-frame and wall budgets and its retry
 policy before it runs, and reports a failed attempt rather than retrying past
 them. It stops on bounded lack of progress. It writes no game memory: the only
 host writes are the input mask and the input-source selector. On ordinary
-completion it releases the input and leaves the core paused; after an uncertain
-completion it sends nothing further, and says so rather than claiming cleanup
-succeeded.
+completion it sends HALT, releases the input and verifies PAUSED and effective
+input zero. A rejected command, mismatched readback or uncertain reply makes
+the result FAIL, retaining any original failure beside the cleanup finding.
+After uncertainty it sends nothing further. Observe establishes the same
+paused, neutral UART origin before acquiring its first coherent observation.
+
+`play` and `compare` accept `--start-delay-frames N` (default zero). After RESET
+and the first coherent TITLE observation, N neutral one-frame actions precede
+the strategy. They appear as `start-delay` actions and consume the existing
+action, frame, wall and no-progress budgets. The delay does not write game
+memory or alter the strategy; observe rejects a nonzero delay.
 
 ### Comparing against actual pixels, and measuring
 

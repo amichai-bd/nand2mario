@@ -317,8 +317,33 @@ def apply_mask(client, mask):
         raise PlayFailure('STATE_INPUT')
 
 
+def finish(client, result):
+    """A PASS requires observed paused/neutral state and a certain session."""
+    result['released'] = False
+    if client.uncertain:
+        result['status'] = 'FAIL'
+        result.setdefault('reason', 'STATE_EXIT_UNCERTAIN')
+        result['cleanup'] = {'verified': False, 'reason': 'uncertain; no further traffic'}
+    else:
+        try:
+            client.control('HALT')
+            apply_mask(client, 0)
+            state = client.read_host(abi.HOST_REG_STATE)
+            if state != abi.STATE_PAUSED:
+                raise PlayFailure('STATE_EXIT_NOT_PAUSED')
+            result['released'] = True
+            result['cleanup'] = {'verified': True, 'state': state, 'input_effective': 0}
+        except Exception as failure:
+            result['status'] = 'FAIL'
+            result.setdefault('reason', str(failure))
+            result['release_error'] = str(failure)
+            result['cleanup'] = {'verified': False, 'reason': str(failure)}
+    result['uncertain'] = client.uncertain
+    result['sequence'] = client.sequence
+
+
 def play(client, image, binding, strategy=None, *, budget=None, record=None, retain=None,
-         capture=None, require_title=True, clock=time.monotonic):
+         capture=None, require_title=True, start_delay_frames=0, clock=time.monotonic):
     """Run from RESET and the title to WON within the declared budget.
 
     Returns a result record; a failed attempt is reported, never retried
@@ -332,19 +357,22 @@ def play(client, image, binding, strategy=None, *, budget=None, record=None, ret
     the one drawn from `previous`.
     """
     limits = dict(BUDGET, **(budget or {}))
+    if (type(start_delay_frames) is not int or start_delay_frames < 0
+            or start_delay_frames > min(limits['frames'], limits['actions'])):
+        raise PlayFailure('STATE_START_DELAY')
     strategy = strategy or Strategy()
     log = record or (lambda entry: None)
     keep = retain or (lambda step, observation, provenance: None)
     started = clock()
     result = {'status': 'FAIL', 'budget': limits, 'actions': [], 'frames': 0, 'attempts': 1,
               'observations': 0}
-    result['identity'] = client.identify()
-    result['load'] = client.load(image)
-    client.select_input_source(abi.INPUT_SOURCE_UART)
-    if client.read_host(abi.HOST_REG_INPUT_SOURCE) != abi.INPUT_SOURCE_UART:
-        raise PlayFailure('STATE_SOURCE')
     observation = provenance = None
     try:
+        result['identity'] = client.identify()
+        result['load'] = client.load(image)
+        client.select_input_source(abi.INPUT_SOURCE_UART)
+        if client.read_host(abi.HOST_REG_INPUT_SOURCE) != abi.INPUT_SOURCE_UART:
+            raise PlayFailure('STATE_SOURCE')
         apply_mask(client, 0)
         client.control('RESET')
         if client.read_host(abi.HOST_REG_STATE) != abi.STATE_PAUSED:
@@ -356,7 +384,11 @@ def play(client, image, binding, strategy=None, *, budget=None, record=None, ret
             # The demonstration runs the normal start path. A fixture that
             # begins mid-level says so explicitly rather than being tolerated.
             raise PlayFailure('STATE_START_NOT_TITLE')
+        if start_delay_frames and observation['mode'] != TITLE:
+            raise PlayFailure('STATE_START_NOT_TITLE')
         result['reset_epoch'] = provenance['epoch']
+        result['start_delay_frames'] = start_delay_frames
+        delay_remaining = start_delay_frames
         best_x, progress_frame = observation['player']['x'], 0
         while True:
             if len(result['actions']) >= limits['actions']:
@@ -366,7 +398,11 @@ def play(client, image, binding, strategy=None, *, budget=None, record=None, ret
             if clock() - started > limits['wall_seconds']:
                 raise PlayFailure('STATE_BUDGET_WALL')
             loop_started = clock()
-            mask, frames, reason = strategy.choose(observation)
+            if delay_remaining:
+                mask, frames, reason = 0, 1, 'start-delay'
+                delay_remaining -= 1
+            else:
+                mask, frames, reason = strategy.choose(observation)
             decided = clock()
             if type(frames) is not int or not 1 <= frames <= MAX_STEP_FRAMES:
                 raise PlayFailure('STATE_STEP')
@@ -401,6 +437,8 @@ def play(client, image, binding, strategy=None, *, budget=None, record=None, ret
                 if capture is not None:
                     # The frame drawn from the winning state completes at the
                     # next boundary, so reach it before the run ends.
+                    if result['frames'] >= limits['frames']:
+                        raise PlayFailure('STATE_BUDGET_FRAMES')
                     final = observation, provenance
                     _dots(client, PERIOD)
                     observation, provenance = observe(client, binding, record=log)
@@ -414,10 +452,7 @@ def play(client, image, binding, strategy=None, *, budget=None, record=None, ret
                     raise PlayFailure('STATE_RETRY')
                 result['attempts'] += 1
                 best_x, progress_frame = 0, result['frames']
-    except (PlayFailure, StateFailure) as failure:
-        result['reason'] = str(failure)
-    except UncertainCompletion as failure:
-        # The endpoint may have acted. Record it and send nothing further.
+    except Exception as failure:
         result['reason'] = str(failure)
     finally:
         result['uncertain'] = client.uncertain
@@ -425,18 +460,12 @@ def play(client, image, binding, strategy=None, *, budget=None, record=None, ret
         result['final'] = None if observation is None else {
             'mode': observation['mode_name'], 'timer': observation['timer'],
             'x': observation['player']['pixel_x'], 'dot': provenance['dot']}
-        result['released'] = False
-        if not client.uncertain:
-            try:
-                apply_mask(client, 0)
-                result['released'] = True
-            except (PlayFailure, UncertainCompletion) as failure:
-                # Releasing is best effort during cleanup; it must not hide why
-                # the run stopped, and it must not be retried.
-                result.setdefault('reason', str(failure))
-                result['release_error'] = str(failure)
-                result['uncertain'] = client.uncertain
-        result['wall_seconds'] = round(clock() - started, 3)
+        finish(client, result)
+        elapsed = clock() - started
+        if elapsed > limits['wall_seconds']:
+            result['status'] = 'FAIL'
+            result.setdefault('reason', 'STATE_BUDGET_WALL')
+        result['wall_seconds'] = round(elapsed, 3)
     return result
 
 
