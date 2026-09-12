@@ -333,6 +333,10 @@ module tb_uart_peek;
                 // Long enough for the whole request to arrive and the reply
                 // path to reach its fetch state while still held.
                 repeat(3000) @(negedge clk_sys);
+                // The reply path must be parked at its fetch state, not merely
+                // slow: the hold, not the wire, is what delayed service.
+                if(dut.u_commands.state!==dut.u_commands.PEEK_FETCH)
+                    $fatal(1,"UART_PEEK_HOLD_NOT_AT_FETCH");
                 held_cycles=1;
                 oam_sequence_active=0;
             end
