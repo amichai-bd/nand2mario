@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import sys
 import time
 import uuid
 
@@ -91,7 +92,7 @@ def valid_tag(tag):
 
 
 @contextmanager
-def workspace(root, tag):
+def workspace(root, tag, notices=None):
     builds = root / "workdir/builds"
     builds.mkdir(parents=True, exist_ok=True)
     if tag is None:
@@ -115,13 +116,72 @@ def workspace(root, tag):
     try:
         fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
     except FileExistsError:
-        raise ValueError(f"tag {tag} is locked; confirm its writer stopped before removing {lock}")
+        # A lock whose recorded writer is dead is the leftover of a killed or
+        # crashed process, never a live builder: reclaim it once, out loud.
+        # A live or unreadable owner keeps the tag; nothing steals by age.
+        owner = lock_owner(lock)
+        if owner is None or pid_alive(owner):
+            raise ValueError(f"tag {tag} is locked" + (f" by live pid {owner}" if owner else "")
+                             + f"; confirm its writer stopped before removing {lock}")
+        reclaim_stale_lock(lock, owner)
+        if notices is not None:
+            notices.append(lock)
+        try:
+            fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        except FileExistsError:
+            raise ValueError(f"tag {tag} was taken by another writer while its stale lock {lock} was reclaimed")
     try:
         with os.fdopen(fd, "w") as stream:
             stream.write(f"pid={os.getpid()}\n")
         yield build
     finally:
         lock.unlink()
+
+
+def lock_owner(lock):
+    """Return the pid a tag lock records, or None when it cannot be read."""
+    try:
+        match = re.fullmatch(r"pid=(\d+)\s*", Path(lock).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return int(match.group(1)) if match else None
+
+
+def pid_alive(pid):
+    """True while the process exists; an access denial counts as alive."""
+    if os.name == "nt":
+        import ctypes
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        # PROCESS_QUERY_LIMITED_INFORMATION opens another user's process too.
+        handle = kernel32.OpenProcess(0x1000, False, int(pid))
+        if not handle:
+            return ctypes.get_last_error() == 5  # ERROR_ACCESS_DENIED: it exists
+        try:
+            code = ctypes.c_ulong()
+            if not kernel32.GetExitCodeProcess(handle, ctypes.byref(code)):
+                return True
+            return code.value == 259  # STILL_ACTIVE
+        finally:
+            kernel32.CloseHandle(handle)
+    try:
+        os.kill(int(pid), 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def stale_lock(lock):
+    """True when the lock records a writer pid that is no longer alive."""
+    owner = lock_owner(lock)
+    return owner is not None and not pid_alive(owner)
+
+
+def reclaim_stale_lock(lock, owner):
+    """Remove a lock whose recorded writer is dead, saying so on stderr."""
+    print(f"reclaimed stale lock {lock}: its writer pid {owner} is not alive", file=sys.stderr)
+    Path(lock).unlink()
 
 
 def git_state(root):

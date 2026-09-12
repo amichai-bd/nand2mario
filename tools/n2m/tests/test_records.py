@@ -1,15 +1,18 @@
 """Atomic publication failures; native handles supplement portable injection."""
+import contextlib
 import ctypes
 import errno
+import io
 import os
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
 import unittest
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from n2m.records import atomic_bytes, atomic_text
+from n2m.records import atomic_bytes, atomic_text, pid_alive, stale_lock, workspace
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -123,3 +126,57 @@ class AtomicRecordsTests(unittest.TestCase):
         finally:
             if not closed:
                 kernel.CloseHandle(handle)
+
+
+def dead_pid():
+    """A pid the OS has already retired."""
+    process = subprocess.Popen([sys.executable, "-c", "pass"])
+    process.wait()
+    return process.pid if not pid_alive(process.pid) else dead_pid()
+
+
+class WorkspaceLockTests(unittest.TestCase):
+    """A tag lock holds only while its recorded writer is alive."""
+    def setUp(self):
+        base = ROOT / "workdir/builds/record-unit-tests"
+        base.mkdir(parents=True, exist_ok=True)
+        temp = tempfile.TemporaryDirectory(prefix="lock ", dir=base)
+        self.addCleanup(temp.cleanup)
+        self.root = Path(temp.name)
+        self.lock = self.root / "workdir/builds/tag/.lock"
+        self.lock.parent.mkdir(parents=True)
+
+    def test_pid_liveness_tracks_the_process(self):
+        self.assertTrue(pid_alive(os.getpid()))
+        self.assertFalse(pid_alive(dead_pid()))
+
+    def test_dead_writer_lock_is_reclaimed_with_a_notice_and_a_fresh_lock(self):
+        pid = dead_pid()
+        self.lock.write_text(f"pid={pid}\n")
+        self.assertTrue(stale_lock(self.lock))
+        notices = []
+        with contextlib.redirect_stderr(io.StringIO()) as stderr:
+            with workspace(self.root, "tag", notices) as build:
+                self.assertEqual(build, self.lock.parent)
+                self.assertEqual(self.lock.read_text(), f"pid={os.getpid()}\n")
+        self.assertEqual(notices, [self.lock])
+        self.assertIn(f"reclaimed stale lock {self.lock}: its writer pid {pid} is not alive", stderr.getvalue())
+        self.assertFalse(self.lock.exists())
+
+    def test_live_writer_lock_is_refused_by_name(self):
+        self.lock.write_text(f"pid={os.getpid()}\n")
+        self.assertFalse(stale_lock(self.lock))
+        with self.assertRaisesRegex(ValueError, f"tag tag is locked by live pid {os.getpid()}; confirm its writer stopped"):
+            with workspace(self.root, "tag"):
+                pass
+        self.assertEqual(self.lock.read_text(), f"pid={os.getpid()}\n")
+
+    def test_unreadable_lock_is_refused_not_stolen(self):
+        for content in ("", "owner=nobody\n", "pid=x\n"):
+            with self.subTest(content=content):
+                self.lock.write_text(content)
+                self.assertFalse(stale_lock(self.lock))
+                with self.assertRaisesRegex(ValueError, "tag tag is locked; confirm its writer stopped before removing"):
+                    with workspace(self.root, "tag"):
+                        pass
+                self.assertEqual(self.lock.read_text(), content)

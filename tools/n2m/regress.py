@@ -10,7 +10,7 @@ import sys
 import time
 
 from . import catalogue
-from .records import atomic_json, atomic_text, file_hash, valid_tag, workspace
+from .records import atomic_json, atomic_text, file_hash, stale_lock, valid_tag, workspace
 from .simulation import load_target
 from .test_budget import supervise, target_selection
 
@@ -95,15 +95,12 @@ def run_target(root, tag, target, args, remaining):
     outcome["status"] = "PASS" if code == 0 and child.get("status") == "PASS" else "FAIL"
     if outcome["status"] == "FAIL" and "error" not in outcome:
         outcome["error"] = f"child exit {code} with status {child.get('status')}"
-    # Only the supervisor's own wall-budget result carries cleanup_complete.
-    # A killed child never ran its finally, so the tag lock it held is a
-    # leftover of a dead process tree: remove it so later members and the
-    # aggregate publish can take the tag. An incomplete cleanup leaves it.
-    if child.get("cleanup_complete") is True:
-        lock = root / "workdir/builds" / tag / ".lock"
-        if lock.is_file():
-            lock.unlink()
-            outcome["stale_lock_removed"] = True
+    # A killed child never ran its finally; the supervisor frees the tag lock
+    # it held once the tree is dead, so later members and the aggregate
+    # publish can take the tag. Carry its lock report on the member.
+    for key in ("stale_lock_removed", "lock_left"):
+        if key in child:
+            outcome[key] = child[key]
     result = root / "workdir/builds" / tag / "sim/test" / target / "result.json"
     if result.is_file():
         outcome["result"] = result.relative_to(root).as_posix()
@@ -203,7 +200,10 @@ def clean(root, tag):
         raise ValueError(f"no build tag {tag}")
     if build.resolve().parent != builds.resolve():
         raise ValueError("tag path escapes workdir/builds")
-    if (build / ".lock").exists() or (build / "sim/regress/.lock").exists():
+    # A dead writer's lock is stale and does not hold the tag; a live or
+    # unreadable one still does.
+    if (build / "sim/regress/.lock").exists() or ((build / ".lock").exists() and
+            not stale_lock(build / ".lock")):
         raise ValueError(f"tag {tag} is locked; confirm its writer stopped before cleaning")
     files, size = own_files(build)
     # rmtree removes links and junctions themselves, never their targets.

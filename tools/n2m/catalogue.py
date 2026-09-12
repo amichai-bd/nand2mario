@@ -443,11 +443,9 @@ def run_simulation(root, tag, target, args, remaining):
     else:
         outcome["status"] = "FAIL"
         outcome.setdefault("error", f"child exit {code} with status {child.get('status')}")
-    if child.get("cleanup_complete") is True:
-        lock = Path(root) / "workdir/builds" / tag / ".lock"
-        if lock.is_file():
-            lock.unlink()
-            outcome["stale_lock_removed"] = True
+    for key in ("stale_lock_removed", "lock_left"):
+        if key in child:
+            outcome[key] = child[key]
     return outcome
 
 
