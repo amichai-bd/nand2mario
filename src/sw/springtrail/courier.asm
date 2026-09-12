@@ -101,8 +101,13 @@ LD [SceneTile],A
 JP EmitPiece
 
 EmitPiece:
-LD A,[SceneHidden]
-LD [PieceHidden],A
+; Capacity refusal precedes every write. Hidden pieces still publish X/tile/flags.
+LD A,D
+CP A,$C1
+RET NZ
+LD A,E
+CP A,$A0
+RET NC
 LD A,[SceneBaseX]
 LD L,A
 LD A,[SceneBaseX+1]
@@ -111,26 +116,27 @@ LD A,[PieceX]
 LD C,A
 LD B,0
 ADD HL,BC
+LD A,L
+ADD A,8
+LD [SceneX],A
+; Y is unobservable when either the owner or horizontal clipping hides a piece.
+LD A,[SceneHidden]
+OR A,A
+JR NZ,PieceYZero
 LD A,H
 OR A,A
 JR Z,PieceXPositive
 CP A,$FF
-JR NZ,PieceXHidden
+JR NZ,PieceYZero
 LD A,L
 CP A,249
-JR C,PieceXHidden
+JR C,PieceYZero
 JR PieceXReady
 PieceXPositive:
 LD A,L
 CP A,160
-JR C,PieceXReady
-PieceXHidden:
-LD A,1
-LD [PieceHidden],A
+JR NC,PieceYZero
 PieceXReady:
-LD A,L
-ADD A,8
-LD [SceneX],A
 LD A,[SceneBaseY]
 LD L,A
 LD A,[SceneBaseY+1]
@@ -143,27 +149,21 @@ LD A,H
 OR A,A
 JR Z,PieceYPositive
 CP A,$FF
-JR NZ,PieceYHidden
+JR NZ,PieceYZero
 LD A,L
 CP A,249
-JR C,PieceYHidden
+JR C,PieceYZero
 JR PieceYReady
 PieceYPositive:
 LD A,L
 CP A,144
-JR C,PieceYReady
-PieceYHidden:
-LD A,1
-LD [PieceHidden],A
+JR NC,PieceYZero
 PieceYReady:
 LD A,L
 ADD A,16
-LD [SceneY],A
-LD A,[PieceHidden]
-OR A,A
-LD A,0
-JR NZ,PieceStore
-LD A,[SceneY]
+JR PieceStore
+PieceYZero:
+XOR A,A
 PieceStore:
 LD [DE],A
 INC DE

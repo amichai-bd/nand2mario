@@ -3,11 +3,14 @@ import unittest
 import power_cases
 from power_cases import ADDRESSES, cases, parts
 from motion_unit_check import Check
+from current_unit_cases import adapt
+import power_cases as original_suite
+CURRENT=adapt(original_suite)
 
 
 def begin():
     check = Check(True, power_cases)
-    for address, value in zip(ADDRESSES, cases()[0]['before']):
+    for address, value in zip(CURRENT.ADDRESSES, CURRENT.cases()[0]['before']):
         check.write(1, address, value)
     check.write(2, 0xc0fc, 1)
     return check
@@ -29,19 +32,19 @@ class PowerUnitCheckTests(unittest.TestCase):
 
     def test_crouch_fault_and_two_case_short(self):
         check = begin()
-        for address, value in zip(ADDRESSES, cases()[0]['after']):
+        for address, value in zip(CURRENT.ADDRESSES, CURRENT.cases()[0]['after']):
             check.write(3, address, value)
         check.write(3, 0xc019, 9)
         with self.assertRaisesRegex(AssertionError, 'MOTION_STATE crouch'):
             check.write(4, 0xc0fd, 1)
         check = begin()
         for index in range(2):
-            case = cases()[index]
+            case = CURRENT.cases()[index]
             if index:
-                for address, value in zip(ADDRESSES, case['before']):
+                for address, value in zip(CURRENT.ADDRESSES, case['before']):
                     check.write(10, address, value)
                 check.write(11, 0xc0fc, 2)
-            for address, value in zip(ADDRESSES, case['after']):
+            for address, value in zip(CURRENT.ADDRESSES, case['after']):
                 check.write(12, address, value)
             check.write(13, 0xc0fd, index+1)
         check.write(14, 0xc0ff, 0xa5)
@@ -51,7 +54,7 @@ class PowerUnitCheckTests(unittest.TestCase):
         check = Check(False, power_cases, 'b')
         self.assertEqual(check.selected[0]['name'], 'crouch-airborne')
         with self.assertRaisesRegex(AssertionError, 'MOTION_OPERANDS'):
-            for address, value in zip(ADDRESSES, cases()[0]['before']):
+            for address, value in zip(CURRENT.ADDRESSES, CURRENT.cases()[0]['before']):
                 check.write(1, address, value)
             check.write(2, 0xc0fc, 1)
 

@@ -36,6 +36,7 @@ LD [EnemyAlive],A
 LD [GameMode],A
 LD [NewLevel],A
 CALL ResetStageTimer
+CALL InitEntities
 POP AF
 LD [Buttons],A
 LD [Previous],A
@@ -125,11 +126,14 @@ OR A,A
 JP NZ,RememberIdle
 CALL TickTimer
 CALL PowerInput
+CALL EntityBefore
 CALL StepPlayer
+CALL EntityLanding
 CALL ResolveBlockHit
 LD A,[EnemyAlive]
 OR A,A
 CALL NZ,StepEnemy
+CALL StepCurl
 CALL StepShot
 LD HL,GameTimer
 INC [HL]
@@ -166,6 +170,9 @@ LD [GameMode],A
 RET
 
 CollectItems:
+CALL CurlContact
+OR A,A
+JR NZ,EnterRetry
 LD HL,StageItems
 CALL StageWordHL
 LD B,4

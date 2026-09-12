@@ -5,7 +5,7 @@ import sys
 
 
 KINDS = {'step': 0, 'init': 1, 'game': 2, 'power': 3, 'star': 4, 'reset': 5,
-         'lives': 6}
+         'lives': 6, 'spawn': 7, 'scene': 8, 'limit': 9}
 
 
 def build(root, destination, short=False, suite='motion', part=None):
@@ -18,6 +18,8 @@ def build(root, destination, short=False, suite='motion', part=None):
         from sw.assets import load_shades, encode_shades
         import importlib
         module = importlib.import_module(suite + '_cases')
+        from current_unit_cases import adapt
+        module = adapt(module)
         cases, RANGES = module.cases, module.RANGES
         destination.mkdir(parents=True, exist_ok=True)
         source = root/'src/sw/springtrail'
@@ -36,7 +38,13 @@ def build(root, destination, short=False, suite='motion', part=None):
                  'LD A,2', 'LD [$C090],A', 'XOR A,A', 'LD [$C091],A', 'LD [$C093],A',
                  'LD [$C095],A', 'LD [$C096],A', 'LD A,40', 'LD [$C092],A',
                  'LD A,4', 'LD [$C094],A']
-        for i, (address, count) in enumerate(RANGES):
+        if hasattr(module,'EXTRA_RANGES'):
+            lines += ['PUSH HL','LD HL,ExtraOperands']
+            for i,(address,count) in enumerate(module.EXTRA_RANGES):
+                lines += [f'LD DE,${address:04X}',f'LD B,{count}',f'Extra{i}:',
+                          'LD A,[HL+]','LD [DE],A','INC DE','DEC B',f'JR NZ,Extra{i}']
+            lines += ['POP HL']
+        for i, (address, count) in enumerate(getattr(module,'SEED_RANGES',RANGES)):
             lines += [f'LD DE,${address:04X}', f'LD B,{count}', f'Seed{i}:',
                       'LD A,[HL+]', 'LD [DE],A', 'INC DE', 'DEC B', f'JR NZ,Seed{i}']
         lines += ['LD A,[HL+]', 'LD [$C0F3],A', 'LD A,L', 'LD [$C0F1],A',
@@ -45,7 +53,12 @@ def build(root, destination, short=False, suite='motion', part=None):
                   'OR A,A', 'JR Z,StepCase', 'CP A,1', 'JR Z,InitCase',
                   'CP A,2', 'JR Z,GameCase', 'CP A,3', 'JR Z,PowerCase',
                   'CP A,4', 'JR Z,StarCase', 'CP A,6', 'JR Z,LivesCase',
+                  'CP A,7', 'JR Z,SpawnCase',
+                  'CP A,8', 'JR Z,SceneCase', 'CP A,9', 'JR Z,LimitCase',
                   'CALL InitGame', 'JR Report',
+                  'SceneCase:', 'CALL PrepareScene', 'JR Report',
+                  'LimitCase:', 'LD DE,$C1A0', 'CALL EmitPiece', 'JR Report',
+                  'SpawnCase:', 'LD A,[Buttons]', 'CALL SpawnEntity', 'JR Report',
                   'LivesCase:', 'CALL UpdateLives', 'JR Report',
                   'GameCase:', 'CALL UpdateGame', 'JR Report',
                   'PowerCase:', 'CALL PowerUp', 'JR Report',
@@ -58,30 +71,34 @@ def build(root, destination, short=False, suite='motion', part=None):
                   'LD [$C0FF],A', 'HALT', 'EXPORT Start',
                   'SECTION "assets",ROM', 'Operands:']
         for case in selected:
-            values = case['before'] + bytes([KINDS[case['kind']]])
+            indexes=[module.ADDRESSES.index(a) for a in getattr(module,'SEED_ADDRESSES',module.ADDRESSES)]
+            values = bytes(case['before'][i] for i in indexes) + bytes([KINDS[case['kind']]])
             lines.append('DB '+','.join(str(v) for v in values))
+        if hasattr(module,'EXTRA_VALUES'):
+            lines += ['ExtraOperands:','DB '+','.join(str(v) for v in module.EXTRA_VALUES)]
         for name in ('movement', 'render', 'world', 'collision', 'interactions',
                      'map_restore', 'scene', 'stream', 'hud', 'columns', 'power',
-                     'blocks', 'progress'):
+                     'blocks', 'progress', 'entities'):
             lines.append(f'INCLUDE "{name}.asm"')
         path = destination/'program.asm'
         path.write_text('\n'.join(lines)+'\n', encoding='utf-8')
         core = source/'assets/core/core-tiles.json'
         terrain = source/'assets/core/terrain-tiles.json'
         assets = {'Core':encode_shades(load_shades(core, str(core)), str(core)),
-                  'Terrain':encode_shades(load_shades(terrain, str(terrain)), str(terrain))}
+                  'Terrain':encode_shades(load_shades(terrain, str(terrain)), str(terrain)),
+                  'Enemies':encode_shades(load_shades(source/'assets/core/enemies-tiles.json', 'Enemies'), 'Enemies')}
         obj = assemble(path, destination, root/'src/sw/generated/interfaces.inc', assets)
         layout = json.loads((source/'layout.json').read_text())
         layout['sections'] = [dict(row, unit='program.asm') for row in layout['sections']]
         linked = link([('program.asm', obj)], layout, dict(unit='program.asm', symbol='Start'))
-        image = package(linked, suite.upper() + ' UNIT', 1)
+        image = package(linked, getattr(module, 'TITLE', suite.upper() + ' UNIT'), 1)
         (destination/'program.gb').write_bytes(image)
         record = dict(sha256=hashlib.sha256(image).hexdigest(), cases=len(selected),
                       names=[c['name'] for c in selected],
-                      end_bound=getattr(module, 'SHORT_BOUND', 10000) if short else 500000,
-                      budget=dict(setup_per_case=1700, simple_calls=33,
+                      end_bound=getattr(module, 'SHORT_BOUND', 10000) if short else getattr(module, 'FULL_BOUND', 500000),
+                      budget=getattr(module, "BUDGET", dict(setup_per_case=1700, simple_calls=33,
                                   simple_ceiling=8000, game_calls=7, game_ceiling=20000,
-                                  tail=1000, conservative_total=473000),
+                                  tail=1000, conservative_total=473000)),
                       shared_sections={r['section']:hashlib.sha256(image[r['address']:r['address']+r['size']]).hexdigest()
                                        for r in linked['map']['sections'] if r['section'] not in ('code', 'assets')})
         (destination/(suite + '-unit.json')).write_text(json.dumps(record, indent=2)+'\n')

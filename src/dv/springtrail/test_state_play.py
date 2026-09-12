@@ -195,6 +195,21 @@ class PlayTests(Harness):
         self.assertGreater(differing, 20)
         self.assertNotEqual(len(first), len(second))
 
+    def test_stationary_jump_escapes_changed_entity_phase(self):
+        # Same source-model reachable history that exhausted all old candidates.
+        world = dict(support.enemy_phases())[36]
+        strategy = play_module.Strategy()
+        observed = state.decode(self.binding, support.chunks(self.binding, world))
+        base = strategy.power.update(state.to_world(observed), 0)
+        self.assertEqual((base.player.x // 16, base.enemy_x, base.moving.x),
+                         (235, 3944, 3024))
+        self.assertTrue(all(strategy._rollout(base, *action) == strategy.DEAD
+                            for action in strategy.ACTIONS[:-1]))
+        self.assertEqual(strategy._rollout(base, 0, True), 259)
+        mask, frames, reason = strategy.choose(observed)
+        self.assertEqual((mask, frames), (16, 1))
+        self.assertIn('lookahead', reason)
+
     def test_the_same_position_with_a_different_enemy_phase_chooses_differently(self):
         """Changed observed state: the decision, not a fixed timeline, moves."""
         strategy = play_module.Strategy()
@@ -260,7 +275,10 @@ class FailureTests(Harness):
 class ProgressionBoundaryTests(Harness):
     def test_staged_terminal_states_use_real_peeks_and_next_frame_publication(self):
         from dataclasses import replace
-        from progress_reference import World, enter_stage, TIMEUP, OVER, WON, update
+        from progress_reference import enter_stage as prior_enter_stage, TIMEUP, OVER, WON
+        from entities_reference import World, initialize, update
+        def enter_stage(w, b):
+            return initialize(prior_enter_stage(w, b))
         for stage in range(3):
             for mode in (TIMEUP, OVER, WON):
                 start = replace(enter_stage(World(stage=stage), 0), mode=mode, timer=17)

@@ -1,19 +1,29 @@
 """Fixed renderer operands; no gameplay or expected-image selection from DUT state."""
 from motion_game_reference import Check as GameCheck, PERIOD
-from motion_frames import scene, courier, tiles
+from entities_frames import scene, tiles
+from power_frames import courier
+from entities_render_check import expected_tiles
 from composition_reference import raster
 from hud_reference import image, hud_tiles, column
-from interactions_reference import Game
+from entities_reference import World
 from motion_reference import Player
 
+GAME=World(mode=1,player=Player(x=120*16,y=12*16,camera=97,pose=2))
+# 4 courier +4 patrol +10 items/goal +4 CURL +3 moving +3 falling.
+BASE_SLOTS=28
+SECONDARY=0xc100+4*BASE_SLOTS
+
 class Check(GameCheck):
-    def __init__(self, short=False):
+    def __init__(self, short=False, source_lcd=None):
         super().__init__(short)
-        self.game=Game(mode=1,player=Player(x=120*16,y=12*16,camera=97,pose=2))
+        self.source_lcd=source_lcd
+        self.game=GAME
         self.base=scene(self.game)
         self.extra=courier(12,True,60,32)
-        self.secondary_base=0xc140
-        self.shadow=self.base[:64]+self.extra+bytes(80)
+        self.secondary_base=SECONDARY
+        offset=4*BASE_SLOTS
+        assert offset+len(self.extra)<=160 and self.base[offset:]==bytes(160-offset)
+        self.shadow=self.base[:offset]+self.extra+bytes(160-offset-len(self.extra))
         self.images=[bytes(23040),image(self.game,object_pixels=raster(self.shadow,tiles()))]
         self.secondary=[];self.secondary_ready=None
         self.initial_columns=[];self.terminal=None;self.published=[];self.halted=False
@@ -33,13 +43,14 @@ class Check(GameCheck):
         self.lines+=1
         value=int(raw,16);dot,address,data=value>>24,(value>>8)&65535,value&255
         self.memory[address]=data
-        if 0x8000<=address<0x8950:
+        if 0x8000<=address<0x8ae0:
             assert self.lcd is None,'HUD_LATE_TILES'
             self.tiles.append((address,data))
         if address==0xff40:
             if data==0:assert self.lcd is None,'HUD_LCD_OFF'
             elif self.lcd is None:
-                assert data==0x99 and 0<dot<200000,'HUD_STARTUP_BOUND'
+                assert data==0x99 and 0<dot<250000,'HUD_STARTUP_BOUND'
+                if self.source_lcd is not None:assert dot==self.source_lcd,'MOTION_SOURCE_LCD'
                 self.lcd=dot
             else:assert data in (0x99,0x9b),'HUD_OBJECT_MODE'
         if 0xc100<=address<0xc1a0:
@@ -100,6 +111,7 @@ class Check(GameCheck):
     def finish(self,pause,tile_bytes):
         assert self.ended and not self.partial and not self.hud_partial,'HUD_INCOMPLETE'
         assert len(self.secondary)==len(self.extra) and self.ready[0]<self.secondary_ready<self.triggers[0],'MOTION_SECONDARY_COMPLETE'
+        assert tile_bytes==expected_tiles(),'MOTION_TILE_EXPECTATION'
         assert self.tiles==list(enumerate(tile_bytes,0x8000)),'HUD_TILES'
         assert len(self.ready)==len(self.hud)==1 and self.bus_count>0 and self.records>100,'HUD_MISSING_PROGRESS'
         assert self.initial_columns==[(0x9c40+x+y*32,v) for x in range(32) for y,v in enumerate(column(x))],'HUD_INITIAL_RING'

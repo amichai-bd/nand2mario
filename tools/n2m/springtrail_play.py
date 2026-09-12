@@ -164,7 +164,7 @@ class Strategy:
     # what keeps an ordinary decision to a single rollout. The deliberate jumps
     # are how the player gets over the enemy, which no ground rule would do.
     ACTIONS = ((RIGHT | B, False), (RIGHT, False), (RIGHT | B, True),
-               (RIGHT, True), (0, False), (LEFT, False))
+               (RIGHT, True), (0, False), (LEFT, False), (0, True))
     HORIZON = 100
     PROGRESS = 8
     DEAD = -10 ** 9

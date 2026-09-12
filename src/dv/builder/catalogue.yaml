@@ -323,6 +323,24 @@ units:
   python-dma-late-fe20: {kind: sim, level: 2, labels: [dma, integration, python-tb], duration_seconds: null}
   python-dma-late-fe9c: {kind: sim, level: 2, labels: [dma, integration, python-tb], duration_seconds: null}
   python-dma-late-fe9d: {kind: sim, level: 2, labels: [dma, integration, python-tb], duration_seconds: null}
+  python-entities-a: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-entities-b: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-entities-c: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-entities-d: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-entities-e: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-entities-f: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-entities-fault: {kind: sim, level: 2, labels: [fault, integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-entities-g: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-entities-h: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-entities-i: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-entities-oam-a: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-entities-oam-b: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-entities-oam-c: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-entities-oam-short: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-entities-short: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-entity-render-changed: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-entity-render-normal: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-entity-render-short: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
   python-gpa: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
   python-gpb: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
   python-gps: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
@@ -415,8 +433,14 @@ units:
   src/dv/springtrail/test_board_bringup.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.14}
   src/dv/springtrail/test_composition.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.47}
   src/dv/springtrail/test_composition_game_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.25}
+  src/dv/springtrail/test_current_unit_cases.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: null}
   src/dv/springtrail/test_dma_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.08}
   src/dv/springtrail/test_endurance.py: {kind: unit, level: 1, labels: [springtrail], duration_seconds: 27.34}
+  src/dv/springtrail/test_entities_art.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: null}
+  src/dv/springtrail/test_entities_oam_check.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: null}
+  src/dv/springtrail/test_entities_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: null}
+  src/dv/springtrail/test_entities_render_check.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: null}
+  src/dv/springtrail/test_entities_render_program.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: null}
   src/dv/springtrail/test_flow_physical.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.87}
   src/dv/springtrail/test_frame_proofs.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 5.85}
   src/dv/springtrail/test_game_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.20}

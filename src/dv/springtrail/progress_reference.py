@@ -113,7 +113,7 @@ def _waiting(world, buttons):
     return replace(world, previous=buttons)
 
 
-def update(world, buttons):
+def update(world, buttons, world_step=world_update):
     """Flow decisions precede world updates; one held A never crosses two."""
     if not isinstance(buttons, int) or not 0 <= buttons <= 255:
         raise ValueError('buttons must be a byte')
@@ -149,7 +149,7 @@ def update(world, buttons):
     if expired:
         return replace(world, previous=buttons,
                        player=replace(world.player, previous=buttons))
-    return world_update(tick_timer(world), buttons, timers=False)
+    return world_step(tick_timer(world), buttons, timers=False)
 
 
 # Approved glyph identifiers; digits 0..4 are the loaded font and 5..9 follow

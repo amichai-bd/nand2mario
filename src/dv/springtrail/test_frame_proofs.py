@@ -222,9 +222,12 @@ class ScriptTests(unittest.TestCase):
         self.assertEqual([name for name, _ in plan_captures('short')][-1], PLANS['short'])
         self.assertEqual(len(plan_captures('full')), len(CAPTURES))
         # The title (C2) and spawn (C5) checkpoints of the current image.
-        # LCD + n*PERIOD + 4096 for the derived anchor 177308 of the current image.
-        self.assertEqual(checkpoint(2), 321852)
-        self.assertEqual(checkpoint(5), 532524)
+        # Bind to the independently assembled current startup, not an old ROM's dot.
+        from startup_anchor import build, derive
+        image, symbols = build()
+        source_lcd = derive(image, symbols)['lcd']
+        self.assertEqual(checkpoint(2), source_lcd + 2 * 70224 + 4096)
+        self.assertEqual(checkpoint(5), source_lcd + 5 * 70224 + 4096)
         with self.assertRaisesRegex(AssertionError, 'FRAME_PLAN'):
             plan_captures('long')
 

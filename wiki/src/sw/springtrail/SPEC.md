@@ -43,7 +43,7 @@ engine, an AI framework, a compiler or audio to deliver this game.
 
 The [shadow OAM publisher](../../../../src/dv/springtrail/OAM_DMA.md) transfers
 the complete C100-C19F image through standard FF46=C1 DMA from HRAM at FF80.
-Scene preparation writes sixteen 8x8 entries and clears all remaining bytes.
+Scene preparation emits the current 8x8 objects and clears all remaining bytes.
 The shared publisher supports all 40 entries without interpreting an active
 count; the [composition contract](COMPOSITION.md) owns geometry and limits. Initialize
 the HRAM routine before LCD enable, then publish in the existing VBlank slot
@@ -83,14 +83,17 @@ unchanged 96-column world at base column 0, and stages 1 and 2 are 80 columns
 wide at base columns 96 and 176. The stage index selects the collision base,
 the camera and player x limits, the goal, the enemy bounds and the items. An 8-by-16 player has an axis-aligned collision box.
 The camera follows horizontal player position, clamped to the level edges;
-camera movement cannot change world-space collisions. Platforms are solid from
-all sides; there are no slopes, moving platforms or one-way surfaces. Vertical motion,
+camera movement cannot change world-space collisions. Terrain platforms are solid
+from all sides. The [entity contract](ENTITIES.md) adds one-way moving and falling
+platform tops, with explicit carry, jump-off and blocked-carry rules; there are no slopes. Vertical motion,
 jump, landing and wall/ceiling collision must be deterministic. Falling below
 the level enters retry. The walking enemy reverses at its specified patrol
 endpoints while alive. The [contact and power contract](POWER.md) classifies
 enemy contact as invincible, stomp or hit: a stomp or a live shot kills the
 enemy until restart; a hit shrinks a large player into a protection window and
-sends a small player to retry.
+sends a small player to retry. The triggered CURL hazard follows patrol contact
+and cannot be stomped or removed by a shot. Its star-contact, activation and
+cooldown rules are owned by [Entities](ENTITIES.md).
 
 The [interactive block contract](BLOCKS.md) adds four 16-by-16 blocks over the
 unchanged terrain: an ascending head hit uses one block per update, an item or
@@ -138,12 +141,14 @@ not the newly computed logical transition. Pause freezes game state while
 publication continues; inactive map restoration may continue while paused.
 
 Each VBlank samples JOYP once. Process restart/pause first. A playing update
-advances power timers, decides crouch and throw, selects run/jump state,
-advances animation, resolves horizontal motion/collision, then vertical profile
-motion/collision, updates camera, resolves one head-hit block, moves the enemy
-and shot, then resolves interactions. Scene preparation reads that resulting state without advancing
-animation. The [movement contract](MOVEMENT.md) and the
-[power contract](POWER.md) fix the exact precedence and original choices.
+advances power timers and decides crouch and throw. Entity preparation snapshots
+and advances platforms, then applies prior-rider support and carry. StepPlayer
+selects run/jump state, advances animation and resolves horizontal and vertical
+motion. Entity landing and camera calculation follow. The update resolves a
+head-hit block, advances the patrol, CURL and shot, then processes contacts in
+the [entity contract's order](ENTITIES.md). Scene preparation reads the resulting
+state without advancing animation. The [movement contract](MOVEMENT.md) and the
+[power contract](POWER.md) own their motion and power rules.
 Resolve each axis
 against all solid tiles touched by the half-open collision box, using floor of
 the fixed-point coordinate. Snap to the contacted tile edge and clear velocity

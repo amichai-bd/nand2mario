@@ -34,7 +34,7 @@ Confidence applies to the reference observation, not to future implementation.
 | Player contact and power | `power.asm`, `interactions.asm`: invincible/stomp/hit classes, small/large/thrower states, GROW/HURT/SAFE windows, crouch and one bouncing shot | `Call_84E`, `InjureMario`, `Call_1F03`: source-confirmed test order, box adjust and star value; durations and dispatcher binding unavailable | [Power contract](POWER.md): approved original choices, literal cases and explicit reference limits; pickups that call `PowerUp`/`GrantStar` remain with #303 |
 | Blocks and rewards | `blocks.asm`: item, brick and hidden blocks over immutable terrain, head hits, conditional breakage, releases into `PowerUp`/`GrantStar`, a coin counter and persistent consumed state | `LoadNextColumn`, `CheckBlockForItem`: source-confirmed categories, position-keyed contents and the used tile; breakage comparison, hidden geometry and the bonus threshold live in the missing dispatcher | [Block contract](BLOCKS.md): approved original choices, literal cases and explicit reference limits; no coin threshold reward is adopted |
 | Progression | `progress.asm`, `interactions.asm`: packed-BCD lives, a forty-update countdown with graded expiry, three stages in one collision page, retry/time-up/clear/over transitions | `UpdateLives`, `DisplayTimer`, `Call_3D1A`, `GameState_39`/`_3B`/`_3C`: source-confirmed encoding, starting values, grading and paths; per-stage layouts and transition frame counts unavailable | [Progression contract](PROGRESS.md): what survives a death, a stage change and a reset, with its stage table and literal cases |
-| Entities | `StepEnemy` patrol; stationary terrain platforms | `enemies.asm` platform/stomped/falling entries: classes identified, dynamics unmeasured | [#305](https://github.com/amichai-bd/nand2mario/issues/305): bounded patrol, hazard, moving and falling platform classes; define spawn/despawn, contacts and exhausted capacity |
+| Entities | Stompable patrol, triggered CURL, horizontal moving and contact-triggered falling platforms | `enemies.asm` platform/stomped/falling entries: classes identified, dynamics unmeasured | [Entity contract](ENTITIES.md): original bounded dynamics, support/carry, fixed slots and exhausted capacity |
 | Storage | Mapperless 32768-byte `dmg-direct-v1` image | `bank0.asm` header declares four banks/MBC1; source-confirmed | Preserve baseline; [#307](https://github.com/amichai-bd/nand2mario/issues/307) separately owns 64 KiB MBC1/no-RAM profile and loader/fit qualification; no automatic renderer dependency |
 
 ## Release order and shared contracts
@@ -50,9 +50,8 @@ in these three stages. An intermediate stage is not completion of that release.
 2. Reuse the [movement/animation contract](MOVEMENT.md) against those explicit
    display coordinates. Its best-effort original choices do not establish full
    reference equivalence. Size/contact rules are [POWER.md](POWER.md).
-3. Deliver the remaining progression and entity scopes #304-#305.
-   Agree shared state ownership before dependent code, rather than creating
-   circular implementation waits. Additional families, bosses, bonus and vehicle
+3. Use the [progression](PROGRESS.md) and [entity](ENTITIES.md) contracts
+   together with their current state ownership and finite acceptance matrices. Additional families, bosses, bonus and vehicle
    stages remain in the separate [later stage inventory](sml1-later-stages.md),
    which is not part of this release.
 
@@ -98,7 +97,7 @@ content required by that issue. This adds no feature families or asset framework
 | [Power](POWER.md) | Approved core hurt, crouch, throw, large skid and shot tiles at VRAM 98..107; no new art |
 | [Blocks](BLOCKS.md) | Approved core terrain block and item tiles at VRAM 108..139; no new art |
 | [Progression](PROGRESS.md) | Approved digits5..9, M, V, life and clock at VRAM140..148; the three stages' original map rows |
-| #305 | Selected enemy, hazard and moving/falling-platform art |
+| [Entities](ENTITIES.md) | Selected approved patrol, CURL and platform maps, runtime tiles149..173 |
 | [Later stage inventory](sml1-later-stages.md) | Later-content inventory only; no core-release asset implementation |
 
 Each owning specification records a compact list with visible state/use,
@@ -133,7 +132,7 @@ Child completion alone does not establish composed FPGA behavior.
 |---|---|
 | Composition, publication, HUD/scroll | Qualified combined hardware diagnostic, publisher, [composition](COMPOSITION.md) and [HUD/column](HUD_COLUMNS.md) proofs, including split pixels and column boundaries |
 | Motion and poses | [Movement matrix](../../../../src/dv/springtrail/MOVEMENT.md): independent per-update state/pose cases, including direction changes, jump and collision transitions |
-| Interactions and world state | [Power matrix](../../../../src/dv/springtrail/POWER.md) plus #303/#305 block/entity cases, persistence and player/platform interactions |
+| Interactions and world state | [Power matrix](../../../../src/dv/springtrail/POWER.md) plus [block](BLOCKS.md) and [entity](ENTITIES.md) cases, persistence and player/platform interactions |
 | Progression | #304 life/timer/death/retry/level-transition cases and their shared HUD/state ownership |
 | Final build and FPGA composition | Reproducible clean ROM builds with exact hashes, full UART upload/readback, and independently expected source-frame/gameplay checkpoints exercising the changed capabilities above on a qualified FPGA build |
 

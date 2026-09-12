@@ -23,7 +23,8 @@ class MotionAssets(unittest.TestCase):
                   for name, path in (('Tiles', 'tiles.json'),
                     ('Courier', 'assets/courier/unique-tiles.json'),
                     ('Core', 'assets/core/core-tiles.json'),
-                    ('Terrain', 'assets/core/terrain-tiles.json'))}
+                    ('Terrain', 'assets/core/terrain-tiles.json'),
+                                 ('Enemies', 'assets/core/enemies-tiles.json'))}
         obj = assemble(source/'main.asm', source,
                        ROOT/'src/sw/generated/interfaces.inc', assets)
         linked = link([('main.asm', obj)], json.loads((source/'layout.json').read_text()),

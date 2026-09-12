@@ -124,11 +124,17 @@ class RenderProgressOperands(unittest.TestCase):
                 self.assertGreater(timing['lcd'] + 70224 + 65664, 320000)
                 metadata = json.loads((destination / (variant+'-render.json')).read_text())
                 self.assertEqual(metadata['end_bound'], timing['end_bound'])
-                text = (destination / 'program.asm').read_text()
-                prepare = text.index('CALL PrepareProgress')
-                for offset, value in enumerate((2, 0, 40, 0, 4, 0, 0)):
-                    store = f'LD A,${value:02X}\nLD [${0xc090+offset:04X}],A'
-                    self.assertIn(store, text[:prepare])
+                # Execute the ordinary CPU seed table before the shared HUD call;
+                # no assumption about inline stores versus loop encoding.
+                from startup_anchor import Model, build as game_build
+                _, symbols = game_build()
+                prepare = next(address for address, name in symbols.items()
+                               if name == 'PrepareProgress')
+                model = Model(image_bytes, lcdc_on=0x99)
+                while model.pc != prepare:
+                    self.assertLess(model.mcycles, 100000)
+                    model.mcycles += model.step()
+                self.assertEqual(model.memory[0xc090:0xc097], bytes((2, 0, 40, 0, 4, 0, 0)))
 
 if __name__ == '__main__':
     unittest.main()

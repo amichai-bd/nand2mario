@@ -83,6 +83,10 @@
         "Terrain": {
           "source": "assets/core/terrain-tiles.json",
           "author": "Original approved core terrain, block and item pixels; CORE_ART.md, only selected tiles loaded into VRAM"
+        },
+        "Enemies": {
+          "source": "assets/core/enemies-tiles.json",
+          "author": "Original approved entity tiles by the nand2mario project; ENTITIES.md selects runtime tiles149..173"
         }
       },
       "layout": "layout.json",

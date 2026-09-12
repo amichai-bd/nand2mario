@@ -6,9 +6,6 @@ object count. Physics and one-update/one-prepared-frame cadence are unchanged.
 ## Contract
 
 SceneBuffer is C100-C19F: one aligned 160-byte image, 40 four-byte objects.
-PrepareScene emits a64-byte small scene and clears its96-byte tail every time.
-The supported large composition uses72 bytes and clears88; runtime size changes
-remain separate from this publisher.
 The [composition contract](../../../wiki/src/sw/springtrail/COMPOSITION.md)
 owns the active count and clears the remaining entries;
 the publisher always transfers all 160 bytes without interpreting that count.
@@ -27,10 +24,10 @@ the publisher in the reachable whole-VBlank bound before execution.
 The publisher body is 880 dots (including its RET), versus the old 904; the
 caller CALL costs 24 in both cases. The 40-iteration HRAM NOP/DEC/JR wait costs
 796 dots plus LD B's 8, exceeding the qualified final-byte boundary. The
-current combined publication path is owned by the
-[HUD timing matrix](HUD_COLUMNS.md#instruction-bounds): its4388-dot static
-bound and4480-dot runtime ceiling remain below4560. Complete visible preparation
-is bounded by49280 dots, below65664. Initialization of the unchanged HRAM routine
+current combined publication and visible-preparation bounds belong to the
+[entity timing contract](ENTITIES.md#timing). The unchanged publication path
+retains its 4412-dot bound within the 4480-dot check and 4560-dot VBlank.
+Initialization of the unchanged HRAM routine
 adds428 dots for CALL/setup/nine copies/RET and4 to restore A=0.
 
 The historical nine-object fixture used a 36-byte scene, a 20000-dot ready

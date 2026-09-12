@@ -22,20 +22,7 @@ LD A,[SceneBaseX+1]
 SBC A,0
 LD [SceneBaseX+1],A
 CALL ComposeCourier
-LD A,[EnemyX]
-LD [ObjectX],A
-LD A,[EnemyX+1]
-LD [ObjectX+1],A
-LD A,$80
-LD [ObjectY],A
-LD A,$07
-LD [ObjectY+1],A
-LD A,[EnemyAlive]
-XOR A,1
-LD [SceneHidden],A
-LD A,16
-LD [SceneTile],A
-CALL AppendScene
+CALL ComposePatrol
 LD A,0
 CALL StageItemBox
 LD A,[Collected]
@@ -114,6 +101,10 @@ CALL ScenePosition
 CALL ComposeEffect
 ; Remaining OAM bytes are inactive; mode/score now belong to the BG HUD.
 SceneTail:
+CALL ComposeOtherEntities
+LD A,E
+CP A,$A0
+RET Z
 XOR A,A
 ClearSceneByte:
 LD [DE],A

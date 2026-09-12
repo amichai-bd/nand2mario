@@ -1,4 +1,8 @@
-"""Scrolling, win and death/retry frames on the image the repository builds today.
+"""Retained scrolling, win and death/retry protocol fixture.
+
+The legacy power/block model omits progression lives/countdown and stage entry.
+Issue511 owns current gameplay expectations; synthetic passes are not current
+route or physical-frame qualification. Source image binding remains mandatory.
 
 The frozen script is FRAME_PROOFS.md. The board stays paused between fixed
 checkpoints C(n) = LCD + n*PERIOD + 4096, reached with exact RUN_DOTS counts,
@@ -29,7 +33,7 @@ from blocks_frames import image  # noqa: E402
 from blocks_reference import INTACT  # noqa: E402
 from power_reference import World, TITLE, PLAYING, RETRY, WON, SMALL, update  # noqa: E402
 
-# The current image carries the block and power layers, so the game model is
+# The retained fixture carries the block and power layers, so its game model is
 # power_reference over the motion player and the pixel model is blocks_frames,
 # which draws the block layer in the state the script leaves it.
 START = World()

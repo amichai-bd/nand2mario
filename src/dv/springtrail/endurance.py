@@ -1,10 +1,9 @@
-"""Continuous UART play and lifecycle on the image the repository builds today.
+"""UART endurance transport with a legacy gameplay expectation model.
 
-The frozen script is ENDURANCE.md#current-image-script. Expected frames come
-from the independent motion/HUD models; the loaded bytes must equal the hash
-of the build the launcher just produced from current sources, never a frozen
-constant. `run` drives one Client; `main` is the committed launcher with its
-own whole-process supervisor, machine mutex and durable session.
+The current build/anchor binding remains enforced, but this static gameplay
+oracle predates progression and is not current-image 90-cycle qualification.
+Issue511 owns lives/countdown scheduling. Host runner tests qualify protocol,
+duration and cleanup paths using synthetic legacy frames, not current FPGA play.
 """
 import argparse
 import hashlib
@@ -31,7 +30,7 @@ from motion_game_reference import LCD  # noqa: E402
 from startup_anchor import derive, symbol_table  # noqa: E402
 
 # LCD is the source-derived startup anchor of the current image, frozen once
-# in motion_game_reference and proved there in simulation; `require_anchor`
+# in motion_game_reference and checked against the source listing; `require_anchor`
 # refuses a built image that derives any other dot. Not chosen from the DUT.
 PERIOD, DOT_HZ = 70224, 4194304
 CYCLE_SECONDS = 20

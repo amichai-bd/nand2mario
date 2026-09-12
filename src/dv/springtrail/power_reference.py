@@ -153,7 +153,7 @@ def _shot(world):
     return replace(world, shot=Shot(x, y, vx, vy, ttl) if ttl else Shot(), alive=alive)
 
 
-def world_update(world, buttons, timers=True):
+def world_update(world, buttons, timers=True, step_player=step, contacts=None):
     """`timers` is False when the caller already advanced the power timers."""
     w = _timers(world) if timers else world
     p = w.player
@@ -167,7 +167,7 @@ def world_update(world, buttons, timers=True):
         w = replace(w, shot=shot, throw=THROW_UPDATES)
     masked = buttons & ~3 if crouch else buttons
     report = []
-    p = step(p, masked, block_layer(w), report, w.stage)
+    p = step_player(p, masked, block_layer(w), report, w.stage)
     w = _resolve_block(replace(w, player=p), report[0] if report else None)
     p = w.player
     x, vx = w.enemy_x, w.enemy_vx
@@ -180,6 +180,19 @@ def world_update(world, buttons, timers=True):
     w = replace(w, player=p, enemy_x=x, enemy_vx=vx, timer=(w.timer + 1) & 65535,
                 previous=buttons)
     w = _shot(w)
+    w = (contacts or enemy_contact)(w)
+    if w.mode == RETRY:
+        return w
+    collected = w.collected
+    for index, (item_x, item_y) in enumerate(STAGE_ITEMS[w.stage]):
+        if overlap(w, item_x * UNIT, item_y * UNIT):
+            collected |= 1 << index
+    mode = WON if overlap(w, STAGE_GOAL_X[w.stage] * UNIT, 112 * UNIT, 16) else PLAYING
+    return replace(w, mode=mode, collected=collected, score=collected.bit_count())
+
+
+def enemy_contact(w):
+    p = w.player
     if p.fell:
         return replace(w, mode=RETRY)
     if w.alive and overlap(w, w.enemy_x, ENEMY_Y):
@@ -194,12 +207,7 @@ def world_update(world, buttons, timers=True):
             w = replace(w, power=SMALL, phase=HURT, phase_timer=HURT_UPDATES, throw=0)
         else:
             return replace(w, mode=RETRY)
-    collected = w.collected
-    for index, (item_x, item_y) in enumerate(STAGE_ITEMS[w.stage]):
-        if overlap(w, item_x * UNIT, item_y * UNIT):
-            collected |= 1 << index
-    mode = WON if overlap(w, STAGE_GOAL_X[w.stage] * UNIT, 112 * UNIT, 16) else PLAYING
-    return replace(w, mode=mode, collected=collected, score=collected.bit_count())
+    return w
 
 
 def _resolve_block(world, hit):

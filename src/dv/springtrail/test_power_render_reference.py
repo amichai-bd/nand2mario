@@ -20,9 +20,9 @@ class PowerRenderGuards(unittest.TestCase):
         for i, value in enumerate(check.extra):
             check.line(write(300+i, SECONDARY+i, value))
         check.line(write(400, 0xff46, 0xc1))
-        self.assertEqual(check.shadow[80:104], check.extra)
-        self.assertEqual(check.shadow[104:], bytes(56))
-        self.assertEqual(check.base[72:76], bytes((56, 51, 107, 0)))
+        self.assertEqual(check.shadow[124:148], check.extra)
+        self.assertEqual(check.shadow[148:], bytes(12))
+        self.assertEqual(check.base[80:84], bytes((56, 51, 107, 0)))
 
     def test_wrong_secondary_address_rejected(self):
         with self.assertRaisesRegex(AssertionError, 'MOTION_SECONDARY_ORDER'):

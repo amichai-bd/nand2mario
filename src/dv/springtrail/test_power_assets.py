@@ -29,7 +29,8 @@ def build():
               for name, path in (('Tiles', 'tiles.json'),
                                  ('Courier', 'assets/courier/unique-tiles.json'),
                                  ('Core', 'assets/core/core-tiles.json'),
-                                 ('Terrain', 'assets/core/terrain-tiles.json'))}
+                                 ('Terrain', 'assets/core/terrain-tiles.json'),
+                                 ('Enemies', 'assets/core/enemies-tiles.json'))}
     obj = assemble(SOURCE/'main.asm', SOURCE, ROOT/'src/sw/generated/interfaces.inc', assets)
     return link([('main.asm', obj)], json.loads((SOURCE/'layout.json').read_text()),
                 dict(unit='main.asm', symbol='Start'))

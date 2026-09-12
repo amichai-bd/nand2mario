@@ -133,8 +133,8 @@ names its image:
 |---|---|---|---|
 | [Motion composition](../../../../src/dv/springtrail/MOVEMENT.md) | `python-mgs`, `python-mgu` | the built image, no hash guard | Boot, the title frame, the first Start+Right input, its publication and the settled pause, with independent motion state |
 | [Pause and restart](../../../../src/dv/springtrail/MILESTONE.md#current-image-pause-and-restart-proof) | `python-pgs`, `python-pgu`, `python-pgx` | the built image, no hash guard | The first world frame, a neutral frame, the PAUSED frame, the Select-restart frame, their publications and the restart's map restoration |
-| [Continuous UART endurance](../../../../src/dv/springtrail/ENDURANCE.md#current-image-script) | `endurance.py` | the built image; the launcher builds it from current sources and the driver refuses bytes whose hash differs from that build's own manifest | Sampled 30-minute UART play with title, spawn, RETRY and PAUSED frames from the current motion player, the frozen interaction flow over that player and `motion_frames`, then three reset/load-readback/start cycles; UART-observable only |
-| [Scrolling, win and death/retry frames](../../../../src/dv/springtrail/FRAME_PROOFS.md) | `frame_proofs.py` | the built image; the launcher builds it from current sources and the driver refuses bytes whose hash differs from that build's own manifest | Paused every-pixel captures on one continuous history: title, spawn, the first camera-moving frame, entering column 32, the ring wrap at camera 256, the camera 608 clamp, WON and its Start restart, RETRY after the first-gap fall and its Start restart; UART-observable only |
+| [Continuous UART endurance](../../../../src/dv/springtrail/ENDURANCE.md#retained-script) | `endurance.py` | the built image; the launcher builds it from current sources and the driver refuses bytes whose hash differs from that build's own manifest | Retained sampled UART protocol and lifecycle fixture; current lives/countdown gameplay expectations require [#511](https://github.com/amichai-bd/nand2mario/issues/511). This is not current 90-cycle gameplay qualification |
+| [Scrolling, win and death/retry frames](../../../../src/dv/springtrail/FRAME_PROOFS.md) | `frame_proofs.py` | the built image; the launcher builds it from current sources and the driver refuses bytes whose hash differs from that build's own manifest | Retained paused frame/checkpoint protocol fixture; current progression route/pixel expectations require [#511](https://github.com/amichai-bd/nand2mario/issues/511), as with endurance |
 | Every-frame acquisition | `paused_capture.py`, `milestone.py` | retired `b551c562...8ba667` | The complete v0.9 baseline; no current-image claim |
 | Historical flow, courier composition and HUD game references | none | retired `97f5d9da...a593b513`, `ec8dfb32...0d9e785f` and `adbef6b0...e109f369` | Host-guarded expectations only; their hash guards refuse every other image |
 
@@ -247,10 +247,10 @@ verify child processes, sessions and locks are released.
 Reuse qualified complete-baseline deterministic gameplay/reference and fault evidence when
 relevant identities and behavior remain unchanged; select affected checks for
 changes. The retired-image endurance child proof supplies no evidence for the
-current build; the current-image endurance record in
-[ENDURANCE.md](../../../../src/dv/springtrail/ENDURANCE.md#current-image-script)
-is the UART-observable proof for the image the repository builds, and it
-claims nothing about the monitor or physical controls.
+current build. The retained [endurance fixture](../../../../src/dv/springtrail/ENDURANCE.md#retained-script)
+needs current progression expectations under [#511](https://github.com/amichai-bd/nand2mario/issues/511)
+before it can qualify current continuous gameplay. UART evidence makes no claim
+about the monitor or physical controls.
 Use the required lifecycle upload/readback to provide applicable
 transport evidence rather than adding a duplicate unchanged transport suite.
 This removes no required full load/readback or reset/load/start cycle. Freeze

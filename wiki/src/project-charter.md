@@ -164,9 +164,10 @@ prove and which need physical presence.
 | Three reset/load/start cycles | Yes with the UART core reset | KEY0 board reset |
 | Wiring, voltage and timing proof at the board | — | [Board bring-up](board-bring-up.md): wiring and pins documented, timing by static analysis, supply not measured |
 
-A `v1.0` claim built on the UART column alone must say so. The UART column
-is proven on the current image by the
-[endurance record](../../src/dv/springtrail/ENDURANCE.md#current-image-script).
+A `v1.0` claim built on the UART column alone must say so. The retained
+[endurance fixture](../../src/dv/springtrail/ENDURANCE.md#retained-script) needs
+current lives/countdown expectations under [#511](https://github.com/amichai-bd/nand2mario/issues/511)
+before qualifying the current continuous-gameplay portion of the UART column.
 Two entries in the physical column stay open: observing the monitor, under
 [#417](https://github.com/amichai-bd/nand2mario/issues/417), and the KEY0 board
 reset, which needs hands at the board and has no issue while the board is

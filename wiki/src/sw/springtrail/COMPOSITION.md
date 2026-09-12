@@ -41,14 +41,16 @@ reversal hold preserves facing. Neutral initialization/restart faces right.
 Whole-pose reflection maps x to8-x and XORs the tile X-flip bit. Approved Y-flip
 flags are preserved.
 
-Global LCDC object-size bit is0. Each enemy, pickup and goal uses a vertical pair
-of adjacent tiles with unchanged pixels and anchors. Keep player, enemy, four
-pickups and goal OAM priority order; one live shot follows the goal. Score and
-mode use the background [HUD](HUD_COLUMNS.md), with no OAM entries. Player
-pieces are row-major. At most16 small/18 large entries plus one shot are
-emitted; the remaining bytes of the 160-byte shadow are zero. At most2 courier
-pieces and one from each of7 other objects intersect a scanline: maximum9,
-below the hardware10-object limit.
+Global LCDC object-size bit is0. The [entity contract](ENTITIES.md) owns the
+four-piece patrol and CURL art and three-piece platform art, loaded as25 tiles
+149..173. Pickups and the goal retain vertical pairs. OAM priority is courier,
+patrol, four pickups, goal, shot, block release effect, CURL, moving platform,
+then falling platform. Player pieces are row-major. A complete scene uses at
+most33 small or35 large entries, including a live shot and four-piece effect.
+The rest of the160-byte shadow is zero. The defensive entry40 guard rejects
+additional writes. Earlier entries win the hardware ten-object scanline limit;
+this can hide later pieces without changing their game state.
+Score and mode use the background [HUD](HUD_COLUMNS.md), with no OAM entries.
 The HUD disables objects on rows0..15; lower pixels of crossing pieces remain.
 Use the [HRAM DMA publisher](../../../../src/sw/springtrail/oam_dma.asm)
 unchanged, once per prepared publication.
@@ -117,13 +119,13 @@ interval executes one ordinary update and prepares its complete 160-byte scene.
 The following VBlank publishes those bytes through DMA before the test pauses.
 It does not claim to capture pixels of that third frame.
 
-The public LCD-enable write supplies the phase origin, not an expected image or
-state. Startup must lie between 100,000 and 130,000 dots: the prior 81,352-dot
+For this historical composition fixture, the public LCD-enable write supplies
+the phase origin, not an expected image or state. Its startup had to lie between 100,000 and 130,000 dots: the prior 81,352-dot
 initialization gains 512 tile bytes at 52 dots each; replacing its at-least
 5,996-dot preparation with the conservative 25,000-dot scene bound gives an
-upper bound of 126,980 dots. The unchanged UpdateGame bound is below 20,000 dots;
-PrepareScene is below 25,000 and dispatch below 1,000. Thus preparation must
-finish within 46,000 visible dots, before the same next VBlank at 65,664.
+upper bound of 126,980 dots. The historical UpdateGame bound was below 20,000 dots;
+its PrepareScene was below 25,000 and dispatch below 1,000. Its preparation had
+to finish within 46,000 visible dots, before the same next VBlank at 65,664.
 
 A complete short harness stops after at least 160 blank pixels, with initial
 DMA, trace END, ordinary HALT and settled pause checked. The full target has a

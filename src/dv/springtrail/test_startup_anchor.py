@@ -13,7 +13,7 @@ from startup_anchor import Model, build, derive
 # main.asm's startup order: the header stub, Start's inline stores and loops,
 # then each CALL through PublishScene; the LCDC write follows.
 STARTUP = ('reset fetch', 'header', 'Start', 'InitSceneDMA', 'InitGame', 'ClearObjects',
-           'CopyTiles', 'CopyMap', 'InitHUD', 'InitMotionArt', 'InitBlockArt', 'InitProgressArt',
+           'CopyTiles', 'CopyMap', 'InitHUD', 'InitMotionArt', 'InitBlockArt', 'InitProgressArt', 'InitEntityArt',
            'PrepareScene', 'PrepareHUD', 'PrepareProgress', 'PrepareMap', 'PublishHUD',
            'PublishProgress', 'PublishScene')
 # Independent hand counts of two terms, from the listing:
