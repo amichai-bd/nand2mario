@@ -65,7 +65,7 @@ def build(root, destination, short=False, part='a'):
         (destination/'program.gb').write_bytes(image)
         record = dict(sha256=hashlib.sha256(image).hexdigest(), cases=len(selected),
                       names=[row['name'] for row in selected],
-                      end_bound=40000 if short else 330000,
+                      end_bound=40000 if short else 150000,
                       shared_sections={r['section']:hashlib.sha256(image[r['address']:r['address']+r['size']]).hexdigest()
                                        for r in linked['map']['sections'] if r['section'] not in ('code','assets')})
         (destination/'courier-unit.json').write_text(json.dumps(record, indent=2)+'\n')

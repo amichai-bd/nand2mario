@@ -12,7 +12,7 @@ class Check(TraceCheck):
     def __init__(self, short=False, part='a'):
         self.selected = cases()[:1] if short else parts()[part]
         self.short_bound = 40000
-        self.full_bound = 330000
+        self.full_bound = 150000
         self.memory = {}; self.active = None; self.reports = []; self.durations = []
         self.lines = 0; self.records = 0; self.last_dot = -1
         self.terminal = False; self.halted = False; self.ended = False

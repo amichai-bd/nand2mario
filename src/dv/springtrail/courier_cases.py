@@ -23,7 +23,7 @@ def cases():
 
 def parts():
     rows = cases()
-    return {'a': rows[:18], 'b': rows[18:36], 'c': rows[36:]}
+    return {chr(ord('a')+i): rows[i*8:(i+1)*8] for i in range(7)}
 
 
 def expected(case):

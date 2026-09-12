@@ -33,24 +33,25 @@ preserved game/motion/power/progression state.
 
 ## Execution and binding
 
-Use three bounded full groups: poses0..8 (18), poses9..17 (18), and all14
-edge/projection/hidden cases. A one-case short uses the same completion,
+Use seven consecutive full groups of 8/8/8/8/8/8/2 rows, preserving the
+complete ordered matrix without omissions or duplication. A one-case short uses the same completion,
 ordinary HALT, stable hold, epoch/retirement and END checks before full runs.
 The negative changes an actual first courier tile store with the unchanged
 oracle, and must fail at that byte; setup errors are not sensitivity evidence.
 
 Source and linked non-fixture section hashes must agree with the current game.
-The historical composition builder guard remains unchanged. The entity work
-may add a capacity guard to the shared composer; final qualification and
-execution bind the merged version rather than claiming earlier inputs current.
+The historical composition builder guard remains unchanged. The entity capacity guard is included in current source qualification;
+pre-entity receipts are not current execution evidence.
 No assets, mechanics or hardware behavior change here.
 
-Initial plan: short plus three full groups plus one fault, each total wall
-limit300s, aggregate ceiling1500s. Target120s per run. Exact static dot ceilings
-and measured short throughput must be recorded before full execution; this is
-not an allowance increase or a claim that the initial forecast has passed.
-The entity acceptance queue has priority. New targets use the existing Intel
-preload, continuous UART driver, transitive-input validator and catalogue.
+The initial five-run plan used 18/18/14 full groups. Its complete short passed
+in 45.047 seconds (44.781 supervisor seconds), at 22,671 paused dots. This
+measurement does not support 18-case execution inside 300 seconds. The revised
+batch has short, seven full groups and one fault: 2,700 seconds aggregate
+ceiling, including the completed short, with each run still capped at 300.
+Target 120 seconds per run. No per-target allowance is increased. The conservative
+8-case source forecast below is about 256 seconds using the entire short wall
+per dot; it is a forecast, not acceptance. Shared serialized access remains.
 
 Remaining acceptance: encoded fixture/shared-section qualification, literal
 oracle guards, short/full/fault actual receipts, owning catalogue/docs and
@@ -70,11 +71,12 @@ HALT and exact END count; the shared runner supplies the settled pause.
 The current source gives conservative call terms: at most six pieces, each
 with EmitPiece620 plus courier overhead296; setup220; projection500; zero-tail
 at most144 bytes times52; marker/dispatch200. Sum13904 is below16000 dots per
-marked call. The620 EmitPiece ceiling reserves the impending entity capacity
-check and must be confirmed against that merged source before execution.
-The two initial loops cost less than10000 dots together. Per-case input/setup
-is below600; terminal/control reserve1000. Eighteen calls therefore fit
-10000+18*(16000+600)+1000=309800 below330000 dots; one short fits27600 below40000.
+marked call. The 620-dot reservation exceeds the current maximum of 528, including capacity
+checking. The three initialization loops and their setup fit 12,000 dots.
+Per-case input/setup is below 600; terminal/control reserve is 1,000. Eight
+calls fit 12000+8*(16000+600)+1000=145800 below150000 dots; the tighter
+13904-dot call bound gives129032 dots, about256 seconds at measured short
+throughput. One short fits29600 below40000.
 These are source ceilings, not elapsed-time forecasts or observed results.
 
 ## Current integration
@@ -84,12 +86,12 @@ sections against the current game and initializes the 56 persistent entity bytes
 at C300..C337 as additional unrelated-state operands. The checker rejects writes
 to those bytes during composition. EmitPiece's current maximum of 528 dots fits
 the conservative 620-dot reservation above. The extra initialization costs 1368
-dots and remains inside the 10,000-dot setup reservation.
+dots and remains inside the 12,000-dot setup reservation.
 
 `python-courier-short`, `python-courier-a`, `python-courier-b`, and
-`python-courier-c` use the shared continuous unit runner, including ordinary HALT,
+`python-courier-c` through `python-courier-g` use the shared continuous unit runner, including ordinary HALT,
 settled hold, exact END accounting, and bounded completion. Their cocotb watchdogs
-are 40 ms for short and 100 ms for full, outside the 40,000/330,000-dot guards.
+are 40 ms for short and 60 ms for full, outside the 40,000/150,000-dot guards.
 `python-courier-fault` uses the same short image and checker. Its one-shot hook
 changes the actual first C102 CPU output from tile 42 to zero after the call
 marker; the real memory write and passive write ledger consume that output.

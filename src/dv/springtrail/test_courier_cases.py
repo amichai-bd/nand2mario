@@ -7,7 +7,8 @@ class CourierCases(unittest.TestCase):
     def test_matrix_and_complete_tail(self):
         rows = cases()
         self.assertEqual(len(rows), 50)
-        self.assertEqual([len(x) for x in parts().values()], [18, 18, 14])
+        self.assertEqual([len(x) for x in parts().values()], [8, 8, 8, 8, 8, 8, 2])
+        self.assertEqual([r for group in parts().values() for r in group], rows)
         self.assertEqual({(r['pose'], r['left']) for r in rows[:36]},
                          {(p, f) for p in range(18) for f in (False, True)})
         for row in rows:
