@@ -106,22 +106,29 @@ class Tree:
         self.job = None
         if os.name == "nt":
             self.job = _checked(kernel.CreateJobObjectW(None, None), "CreateJobObject")
-            limits = EXTENDED_LIMIT()
-            limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
-            _checked(kernel.SetInformationJobObject(self.job, JOB_OBJECT_EXTENDED_LIMIT, ctypes.byref(limits),
-                                                    ctypes.sizeof(limits)), "SetInformationJobObject")
-            flags = options.pop("creationflags", 0) | CREATE_SUSPENDED
-            self.process = subprocess.Popen(argv, creationflags=flags, **options)
             try:
-                _checked(kernel.AssignProcessToJobObject(self.job, int(self.process._handle)),
-                         "AssignProcessToJobObject")
-                _resume(self.process.pid)
-            except OSError:
-                self.process.kill()
-                self.process.wait(timeout=5)
+                self._launch(argv, options)
+            except BaseException:
+                self.close()
                 raise
         else:
             self.process = subprocess.Popen(argv, start_new_session=True, **options)
+
+    def _launch(self, argv, options):
+        limits = EXTENDED_LIMIT()
+        limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+        _checked(kernel.SetInformationJobObject(self.job, JOB_OBJECT_EXTENDED_LIMIT, ctypes.byref(limits),
+                                                ctypes.sizeof(limits)), "SetInformationJobObject")
+        flags = options.pop("creationflags", 0) | CREATE_SUSPENDED
+        self.process = subprocess.Popen(argv, creationflags=flags, **options)
+        try:
+            _checked(kernel.AssignProcessToJobObject(self.job, int(self.process._handle)),
+                     "AssignProcessToJobObject")
+            _resume(self.process.pid)
+        except OSError:
+            self.process.kill()
+            self.process.wait(timeout=5)
+            raise
 
     def active(self):
         """Processes still alive in the job; None where jobs do not exist."""

@@ -292,43 +292,45 @@ class FpgaTests(unittest.TestCase):
 
     @unittest.skipUnless(os.name == 'nt', 'Windows owned-tree cleanup')
     def test_timeout_reaps_descendant(self):
-        # A descendant spawned promptly and one spawned while cleanup starts
-        # (the parent reaches Popen around the 1s timeout) must both be reaped.
-        # taskkill /T missed the second because it walks a process snapshot.
-        for spawn_delay in (0, 1.0):
-            with self.subTest(spawn_delay=spawn_delay):
-                self.assert_descendant_reaped(spawn_delay)
+        # One prompt descendant, then a parent that keeps spawning every 5 ms
+        # so some spawns land while cleanup starts. taskkill /T walks a process
+        # snapshot and left 19-23 of those alive per run; the job reaps them all.
+        spawn = "subprocess.Popen([sys.executable,'-c','import time; time.sleep(30)'])"
+        for name, code in (("prompt", f"import subprocess,sys,time; p={spawn}; print(p.pid,flush=True); time.sleep(30)"),
+                           ("continuous", "import subprocess,sys,time\nwhile True:\n"
+                                          f"    print({spawn}.pid,flush=True); time.sleep(0.005)")):
+            with self.subTest(name):
+                self.assert_descendants_reaped(code)
 
-    def assert_descendant_reaped(self, spawn_delay):
+    def assert_descendants_reaped(self, code):
         import ctypes
         record = {'commands': [], 'classified_diagnostics': []}
         log = self.build / 'descendant.log'
-        code = (f"import subprocess,sys,time; time.sleep({spawn_delay}); "
-                "p=subprocess.Popen([sys.executable,'-c','import time; time.sleep(30)']); "
-                "print(p.pid,flush=True); time.sleep(30)")
         with self.assertRaisesRegex(RuntimeError, 'timeout'):
             fpga.execute([sys.executable, '-u', '-c', code], self.build, log, 1, record, self.build)
         self.assertTrue(record['commands'][-1]['cleanup_complete'])
-        printed = log.read_text().strip()
-        if not printed:
-            self.assertTrue(spawn_delay, 'the prompt parent must report its child')
-            return  # the parent died before it could spawn; nothing to reap
-        pid = int(printed)
+        pids = [int(line) for line in log.read_text().split()]
+        self.assertTrue(pids, 'the parent must report at least one child')
         kernel = ctypes.WinDLL('kernel32', use_last_error=True)
         kernel.OpenProcess.argtypes = [ctypes.c_ulong, ctypes.c_int, ctypes.c_ulong]
         kernel.OpenProcess.restype = ctypes.c_void_p
         kernel.WaitForSingleObject.argtypes = [ctypes.c_void_p, ctypes.c_ulong]
         kernel.CloseHandle.argtypes = [ctypes.c_void_p]
-        handle = kernel.OpenProcess(0x100000, False, pid)
-        if handle:
+        alive = []
+        for pid in pids:
+            handle = kernel.OpenProcess(0x100000, False, pid)
+            if not handle:
+                continue  # the pid is gone or reused; nothing of ours to wait on
             try:
                 # Cleanup already waited for the job to report no active process;
                 # a bounded wait tolerates the kernel finishing the exited object
                 # under host load while still proving the pid is dead, not merely
                 # that a timer expired (258 would be WAIT_TIMEOUT, a live pid).
-                self.assertEqual(kernel.WaitForSingleObject(handle, 5000), 0)
+                if kernel.WaitForSingleObject(handle, 5000) != 0:
+                    alive.append(pid)
             finally:
                 kernel.CloseHandle(handle)
+        self.assertEqual(alive, [], f'{len(alive)} of {len(pids)} descendants survived cleanup')
 
     @unittest.skipUnless(os.name == 'nt', 'Windows cleanup failure branch')
     def test_cleanup_failure_is_bounded_and_not_success(self):
