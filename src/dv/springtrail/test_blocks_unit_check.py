@@ -4,11 +4,14 @@ import unittest
 import blocks_cases
 from blocks_cases import ADDRESSES, cases, parts
 from motion_unit_check import Check
+from current_unit_cases import adapt
+import blocks_cases as original_suite
+CURRENT=adapt(original_suite)
 
 
 def begin():
     check = Check(True, blocks_cases)
-    for address, value in zip(ADDRESSES, cases()[0]['before']):
+    for address, value in zip(CURRENT.ADDRESSES, CURRENT.cases()[0]['before']):
         check.write(1, address, value)
     check.write(2, 0xc0fc, 1)
     return check
@@ -36,9 +39,9 @@ class BlocksUnitCheckTests(unittest.TestCase):
 
     def test_a_missed_block_state_is_rejected(self):
         check = begin()
-        corrupt = bytearray(cases()[0]['after'])
+        corrupt = bytearray(CURRENT.cases()[0]['after'])
         corrupt[48] = 0
-        for address, value in zip(ADDRESSES, bytes(corrupt)):
+        for address, value in zip(CURRENT.ADDRESSES, bytes(corrupt)):
             check.write(3, address, value)
         with self.assertRaisesRegex(AssertionError, 'MOTION_STATE item-hit'):
             check.write(4, 0xc0fd, 1)
@@ -46,12 +49,12 @@ class BlocksUnitCheckTests(unittest.TestCase):
     def test_two_case_short_completes_and_closes(self):
         check = begin()
         for index in range(2):
-            case = cases()[index]
+            case = CURRENT.cases()[index]
             if index:
-                for address, value in zip(ADDRESSES, case['before']):
+                for address, value in zip(CURRENT.ADDRESSES, case['before']):
                     check.write(10, address, value)
                 check.write(11, 0xc0fc, 2)
-            for address, value in zip(ADDRESSES, case['after']):
+            for address, value in zip(CURRENT.ADDRESSES, case['after']):
                 check.write(12, address, value)
             check.write(13, 0xc0fd, index + 1)
         check.write(14, 0xc0ff, 0xa5)
@@ -61,7 +64,7 @@ class BlocksUnitCheckTests(unittest.TestCase):
         check = Check(False, blocks_cases, 'b')
         self.assertEqual(check.selected[0]['name'], 'coin-hit')
         with self.assertRaisesRegex(AssertionError, 'MOTION_OPERANDS'):
-            for address, value in zip(ADDRESSES, cases()[0]['before']):
+            for address, value in zip(CURRENT.ADDRESSES, CURRENT.cases()[0]['before']):
                 check.write(1, address, value)
             check.write(2, 0xc0fc, 1)
 

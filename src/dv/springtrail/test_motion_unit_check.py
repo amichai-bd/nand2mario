@@ -4,6 +4,9 @@ import sys
 import unittest
 from motion_cases import ADDRESSES, RANGES, cases
 from motion_unit_check import Check
+from current_unit_cases import adapt
+import motion_cases as original_suite
+CURRENT=adapt(original_suite)
 
 # Read the shared record layout from its generator, not from the cocotb
 # simulator fixture that re-exports it, so this host fixture imports without
@@ -22,7 +25,7 @@ def retirement(**values):
 
 def begin():
     check = Check(True)
-    for address, value in zip(ADDRESSES, cases()[0]['before']):
+    for address, value in zip(CURRENT.ADDRESSES, CURRENT.cases()[0]['before']):
         check.write(1, address, value)
     check.write(2, 0xc0fc, 1)
     return check
@@ -30,7 +33,7 @@ def begin():
 
 def complete():
     check = begin()
-    for address, value in zip(ADDRESSES, cases()[0]['after']):
+    for address, value in zip(CURRENT.ADDRESSES, CURRENT.cases()[0]['after']):
         check.write(3, address, value)
     check.write(4, 0xc0fd, 1)
     check.write(5, 0xc0ff, 0xa5)
@@ -66,7 +69,7 @@ class MotionUnitCheckTests(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, 'MOTION_STATE'):
             begin().write(3, 0xc0fd, 1)
         check = begin()
-        for address, value in zip(ADDRESSES, cases()[0]['after']):
+        for address, value in zip(CURRENT.ADDRESSES, CURRENT.cases()[0]['after']):
             check.write(3, address, value)
         check.write(3, 0xc069, 32)
         with self.assertRaisesRegex(AssertionError, 'MOTION_STATE'):
@@ -90,10 +93,10 @@ class MotionUnitCheckTests(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, 'INCOMPLETE'):
             check.finish(20)
         check = begin()
-        for address, value in zip(ADDRESSES, cases()[0]['after']):
+        for address, value in zip(CURRENT.ADDRESSES, CURRENT.cases()[0]['after']):
             check.write(3, address, value)
         with self.assertRaisesRegex(AssertionError, 'ROUTINE_BOUND'):
-            check.write(8003, 0xc0fd, 1)
+            check.write(check.routine_bound+3, 0xc0fd, 1)
 
 
 if __name__ == '__main__':

@@ -18,6 +18,8 @@ def build(root, destination, short=False, suite='motion', part=None):
         from sw.assets import load_shades, encode_shades
         import importlib
         module = importlib.import_module(suite + '_cases')
+        from current_unit_cases import adapt
+        module = adapt(module)
         cases, RANGES = module.cases, module.RANGES
         destination.mkdir(parents=True, exist_ok=True)
         source = root/'src/sw/springtrail'
@@ -36,7 +38,13 @@ def build(root, destination, short=False, suite='motion', part=None):
                  'LD A,2', 'LD [$C090],A', 'XOR A,A', 'LD [$C091],A', 'LD [$C093],A',
                  'LD [$C095],A', 'LD [$C096],A', 'LD A,40', 'LD [$C092],A',
                  'LD A,4', 'LD [$C094],A']
-        for i, (address, count) in enumerate(RANGES):
+        if hasattr(module,'EXTRA_RANGES'):
+            lines += ['PUSH HL','LD HL,ExtraOperands']
+            for i,(address,count) in enumerate(module.EXTRA_RANGES):
+                lines += [f'LD DE,${address:04X}',f'LD B,{count}',f'Extra{i}:',
+                          'LD A,[HL+]','LD [DE],A','INC DE','DEC B',f'JR NZ,Extra{i}']
+            lines += ['POP HL']
+        for i, (address, count) in enumerate(getattr(module,'SEED_RANGES',RANGES)):
             lines += [f'LD DE,${address:04X}', f'LD B,{count}', f'Seed{i}:',
                       'LD A,[HL+]', 'LD [DE],A', 'INC DE', 'DEC B', f'JR NZ,Seed{i}']
         lines += ['LD A,[HL+]', 'LD [$C0F3],A', 'LD A,L', 'LD [$C0F1],A',
@@ -63,8 +71,11 @@ def build(root, destination, short=False, suite='motion', part=None):
                   'LD [$C0FF],A', 'HALT', 'EXPORT Start',
                   'SECTION "assets",ROM', 'Operands:']
         for case in selected:
-            values = case['before'] + bytes([KINDS[case['kind']]])
+            indexes=[module.ADDRESSES.index(a) for a in getattr(module,'SEED_ADDRESSES',module.ADDRESSES)]
+            values = bytes(case['before'][i] for i in indexes) + bytes([KINDS[case['kind']]])
             lines.append('DB '+','.join(str(v) for v in values))
+        if hasattr(module,'EXTRA_VALUES'):
+            lines += ['ExtraOperands:','DB '+','.join(str(v) for v in module.EXTRA_VALUES)]
         for name in ('movement', 'render', 'world', 'collision', 'interactions',
                      'map_restore', 'scene', 'stream', 'hud', 'columns', 'power',
                      'blocks', 'progress', 'entities'):

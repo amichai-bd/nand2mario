@@ -11,7 +11,8 @@ from n2m.interface_codec import decode_record
 
 class Check:
     def __init__(self, short=False, suite=None, part=None):
-        suite = suite or motion_cases
+        from current_unit_cases import adapt
+        suite = adapt(suite or motion_cases)
         self.addresses = suite.ADDRESSES
         self.selected = (suite.cases()[:getattr(suite, 'SHORT', 1)] if short
                          else suite.parts()[part] if part else suite.cases())
