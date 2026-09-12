@@ -54,19 +54,25 @@ Use the canonical Python/cocotb and Intel-model preload through `tools/build.py`
 - `sim test python-entities-fault`: an intended raw failing state proof.
 - Current compatibility: `python-mus`, `python-pus`, `python-bks`, `python-gps`,
   `python-mr` and `python-pr`; retain qualified unchanged full-branch evidence.
+- Current game/pause compatibility: `python-mgs` and `python-pgs`, with complete
+  source-model script histories and qualified retained full-run paths.
 
 Every command uses its own build tag. CPU/OAM/entity-fault targets retain300
 seconds total wall. State batches guard160,000 dots; OAM short/full guard70,000/
 160,000. Both complete entity renderers declare420 seconds from the measured
-short and full source windows326492/326588. The two retained pose renderers
-explicitly declare480 seconds for their expanded357132/361188-dot windows:
-current throughput forecasts about417 seconds, leaving insufficient margin at
-420. These are independently reviewed target allowances, not inherited defaults.
+short and complete source windows recorded by each generated fixture. The two
+retained pose renderers explicitly declare480 seconds: their expanded source
+windows projected about417 seconds at the measured throughput, leaving
+insufficient margin at420. The hidden-piece optimization reduces those source
+windows without changing the complete pixel/publication checks. These are independently reviewed target allowances, not inherited defaults.
 
 The finite queue includes ten state runs (short plus nine batches), four OAM,
 three entity renderer, one state fault, four retained CPU shorts and two retained
-pose renderers. Maximum planned allowances total7800 seconds;9000 seconds
-includes retained setup/oracle failures. This aggregate does not extend a target.
+pose renderers. The source-equivalent hidden-piece change additionally selects
+three fresh OAM groups and two current game/pause shorts. The measured completed
+runs plus these five bounded checks remain within the declared9000-second
+aggregate, including retained setup/oracle failures. This aggregate does not
+extend a target; original failures retain their own receipts.
 Short harnesses include final pause, settled hold, terminal marker and exact END.
 Every failure remains a failure in its original receipt; corrected-checker replay
 is separately identified and cannot relabel a raw result.
@@ -92,9 +98,59 @@ entity fixtures do not claim universal combinations or game compatibility.
 
 ## Timing
 
-Publication retains the unchanged 4412-dot source bound and 4480-dot check.
-The complete visible update, scene, HUD, progression, map preparation and
-interrupt/dispatch overhead must fit the same 65664-dot visible interval.
-Per-fixture watchdogs are not a proof of that whole-path requirement.
-Current game and pause compatibility also require their complete short harnesses;
-full scripted source-model histories supplement the retained execution evidence.
+The unchanged VBlank publication path takes at most4412 dots within4480.
+The reachable visible preparation below takes at most65652 of65664 dots.
+These are source bounds, not inferred from the largest observed test case.
+Component costs include RET and exclude each outer CALL; Main includes all
+five outer CALLs. Other is HUD388 + Progress640 + STAT512 + Main256, or320
+for title/reset transitions. Keep the12-dot conservative margin when changing
+source paths, state reachability, stage geometry or approved piece positions.
+
+| Reachable profile | Update | Scene | Map | Other | Total | Margin |
+|---|---:|---:|---:|---:|---:|---:|
+| stage0 air ascent without ceiling | 24292 | 34368 | 2412 | 1796 | 62868 | 2796 |
+| stage0 air descent | 25260 | 34368 | 2412 | 1796 | 63836 | 1828 |
+| stage0 interactive underside hit | 24096 | 34368 | 4108 | 1796 | 64368 | 1296 |
+| stage0 noninteractive terrain ceiling | 26744 | 34368 | 2412 | 1796 | 65320 | 344 |
+| stage0 terrain supported | 27036 | 34368 | 2412 | 1796 | 65612 | 52 |
+| stage0 groundloss topRow8 | 25932 | 34368 | 2412 | 1796 | 64508 | 1156 |
+| stage0 groundloss topRow9 | 26208 | 32688 | 2412 | 1796 | 63104 | 2560 |
+| stage0 groundloss topRow10 | 24596 | 34368 | 2412 | 1796 | 63172 | 2492 |
+| stage0 groundloss topRow14 | 26916 | 34368 | 2412 | 1796 | 65492 | 172 |
+| stage0 moving supported | 26536 | 33528 | 2412 | 1796 | 64272 | 1392 |
+| stage0 falling supported | 26536 | 33864 | 2412 | 1796 | 64608 | 1056 |
+| stage0 moving supportloss | 27376 | 33528 | 2412 | 1796 | 65112 | 552 |
+| stage0 falling successfulcarry supportloss | 26928 | 33864 | 2412 | 1796 | 65000 | 664 |
+| stage0 falling failedcarry | 27580 | 33864 | 2412 | 1796 | 65652 | 12 |
+| later-stage ordinary noncarrier | 29956 | 31060 | 2412 | 1796 | 65224 | 440 |
+| later-stage ordinary carrier upper | 27952 | 31060 | 2412 | 1796 | 63220 | 2444 |
+| early stage restoration/title transition | 29956 | 29380 | 4108 | 1860 | 65304 | 360 |
+| idle/reset/next-stage modes | 5400 | 34536 | 4108 | 1860 | 45904 | 19760 |
+
+### Scope and source invariants
+
+The current reset-reachable layout has one once-only mushroom block. The ordinary thrower acquisition gap is owned by [#515](https://github.com/amichai-bd/nand2mario/issues/515); any change to that layout must requalify this bound. ResolveMushroom marks it used before the sole PowerUp call. EnterStage clears power and block state together. Thus live power is at most1 and ShotTTL remains0. Later stages have no matching interactive block columns and remain small with no effect or invincibility. Seeded thrower/shot fixtures remain supported and required; this live-frame proof does not replace their routine budgets.
+After ordinary publication, BlockDirty is clear. A fresh interactive head hit may request two columns and uses Map4108; ordinary profiles use the one-column Map2412. Restoration is a separate profile. At most17 ordinary updates complete32 columns, so resetX24 plus2px per update stays<=58 and Camera0; no block or entity platform is reachable during that interval.
+New scene source CFG caps before X savings are36048 for stage0 (34pieces/noShot) and32572 later (28pieces/small/noShot/noEffect). Current approved offsets and all legal integer cameras give at least10/10/9 fixed X-hidden pieces by stage. Each such piece reduces528 to360, saving168. Carrier-specific hidden counts are15/13,15/11,17/9 for moving/falling. Ground-loss row9 atX630..682 has20 hidden pieces. At Camera0 the stages have22/20/19 hidden pieces.
+Five outer CALLs are120 dots. Active main overhead256 also includes visibility polling, mode dispatch, JP WaitFrame and DI/token/EI/HALT. ReadButtons occurs before publication and outside this visible interval. Title transition uses320. The existing single STAT IRQ allowance512 is separate. HUD388 and Progress640 include their RETs.
+
+### Population and tail monotonicity
+
+Every admitted EmitPiece takes at least308dots including RET but excluding the caller: nonreturning capacity checks40, X calculation104, the shortest SceneHidden branch32, XOR4, four ordered stores/loads/DE advances plus RET128. Omitting one piece therefore removes at least308dots (plus any caller/setup cost) and adds at most four ClearSceneByte iterations,4*52=208dots. The maximum34/28-piece populations safely bound smaller courier/effect populations with longer zero tails. Capacity refusal is inapplicable below40. Hidden deductions apply only to the24 always-emitted fixed slots, not optional courier extras, effects or shots.
+
+### StepPlayer and contact partitions
+
+Terrain-supported player Y is tile-aligned, so XCells has at most2 iterations. Current support rows10/11/12/13/16 correspond to player rows8/9/10/11/14. Row8 X cells are cheap76; row9 has one cheap76 and one at most776; row10 support row12 uses MotionSupport1084; row14 cells and support are cheap. EntitySupport is an X-miss at row8/9/10 source regions (1644 instead of1980). Resulting conservative Step maxima are8492/9192/8524/8176/7492; global9192.
+Ground-loss rows8/9/10 use Step11440/12140/10104 after the same EntitySupport restriction, with Before3484. Row8 and row10 player bottom remains below104 after the downward4px step, so patrol/CURL overlap exits by the first Y comparison (Overlap628, CurlContact860) and cannot run enemy contact. Row9 is horizontally far from patrol/CURL. Goals are X-misses in all three regions. No platform can accept a landing in these regions, giving Landing1776. Four pickups can have at most one full horizontal overlap. Row14 retains generic noncarrier Step9072 and Landing3052.
+A fresh interactive underside hit has pre-move Y96..99, so X cells are cheap. The bounded source paths give Step8064. It cannot be the first fresh jump from nearby ground, so Before1800. Its block X regions cannot touch either platform, so Landing1776. Resolve retains the full1524 and Map4108. A noninteractive ceiling retains generic air Step9436 and full1524 Resolve as an overestimate, but cannot create BlockDirty; Map remains2412.
+For actual carriers, successful carry aligns feet with the current platform. Subsequent support loss means X leaves that platform; a failed carry marks that slot detached. The other platform is far, and vertical motion does not change X. Therefore neither can accept EntityLanding:1776. Moving carry preserves tile-aligned Y, giving Before7720 and lossStep9072. Successful falling carry uses candidate-Y alignment: aligned sum16792 or unaligned17196. Failed falling carry is separate: Before8776 plusStep9072, because the rejected candidate Y need not share old-player alignment.
+
+
+The source locators are `src/sw/springtrail/entities.asm` (carry/support/landing),
+`player.asm` and `collision.asm` (StepPlayer and cell walks), `interactions.asm`
+(contacts), `blocks.asm` (grant and dirty-column ownership), `progress.asm`
+(stage/reset), `scene.asm` and `courier.asm` (composition and tail), and
+`main.asm`, `hud.asm`, `map_restore.asm`, `stream.asm` (publication/preparation).
+The bounds include bounded cell loops, fixed populations, finite camera ranges
+and the stated reachable-state partitions; arbitrary seeded unit operands use
+separate fixture watchdogs and do not redefine the live-layout bound.
