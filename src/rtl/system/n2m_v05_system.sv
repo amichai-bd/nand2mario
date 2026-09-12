@@ -55,6 +55,9 @@ module n2m_v05_system #(
     logic [14:0] rom_address;
     logic [7:0] rom_write_data, rom_read_data;
     logic snapshot_request, frame_read;
+    logic peek_read, peek_valid, peek_ready, oam_sequence_active;
+    logic [7:0] peek_select, peek_rdata;
+    logic [12:0] peek_offset;
     logic snapshot_ready, snapshot_done, snapshot_ok, snapshot_valid, frame_valid;
     n2m_interfaces_pkg::snapshot_t snapshot_metadata;
     logic [7:0] frame_data, joyp_rdata;
@@ -127,7 +130,8 @@ module n2m_v05_system #(
         .rom_write_data, .rom_read_data, .rom_read_valid,
         .snapshot_request, .snapshot_ready, .snapshot_done,
         .snapshot_ok, .snapshot_valid, .snapshot_metadata,
-        .frame_read, .frame_address, .frame_data, .frame_valid
+        .frame_read, .frame_address, .frame_data, .frame_valid,
+        .peek_ready, .peek_read, .peek_select, .peek_offset, .peek_rdata, .peek_valid
     );
     n2m_timebase u_timebase (.clk_sys, .reset_sys, .core_reset, .pause_request,
         .gb_tick(emulated_tick), .paused);
@@ -162,7 +166,7 @@ module n2m_v05_system #(
         .bus_commit(bus_commit && !cpu_fault), .address_effect,
         .address_effect_resolved(address_effect_resolved && !cpu_fault),
         .address_effect_sample(address_effect_sample && !cpu_fault),
-        .read_data, .response_valid, .fault(memory_fault),
+        .read_data, .response_valid, .oam_sequence_active, .fault(memory_fault),
         .peripheral_prepare(owner_prepare), .peripheral_commit(owner_commit),
         .peripheral_destination(destination), .peripheral_address(owner_address),
         .peripheral_write(owner_write), .peripheral_wdata(owner_wdata),
@@ -210,6 +214,8 @@ module n2m_v05_system #(
         .access_rdata(storage_rdata), .access_valid(storage_valid),
         .host_read(rom_read), .host_write(rom_write), .host_offset({17'd0,rom_address}),
         .host_wdata(rom_write_data), .host_rdata(rom_read_data), .host_valid(rom_read_valid),
+        .core_paused(paused), .oam_sequence_active, .peek_ready,
+        .peek_read, .peek_select, .peek_offset, .peek_rdata, .peek_valid,
         .ppu_vram_read(raw_vram_read), .ppu_vram_address(raw_vram_address),
         .ppu_vram_rdata(raw_vram_data), .ppu_vram_valid(raw_vram_valid),
         .ppu_oam_read(raw_oam_read), .ppu_oam_pair(raw_oam_pair),

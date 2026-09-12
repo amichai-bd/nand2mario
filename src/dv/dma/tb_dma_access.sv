@@ -49,6 +49,7 @@ module tb_dma_access;
     logic oam_cpu_late_write, oam_late_future;
     assign oam_cpu_late_write=1'b0;
     assign oam_late_future=1'b0;
+    logic oam_sequence_active;
     n2m_dma dut (.*);
     n2m_memory_stores stores (.oam_request, .oam_response, .clk_sys(clk_sys), .reset_sys(reset_sys), .core_reset(core_reset),
         .init_done(memory_init_done), .access_read(setup ? setup_read : access_read),
@@ -60,7 +61,9 @@ module tb_dma_access;
         .ppu_vram_address(raw_vram_address), .ppu_vram_rdata(raw_vram_data), .ppu_vram_valid(raw_vram_valid),
         .ppu_oam_read(raw_oam_read), .ppu_oam_pair(raw_oam_pair), .ppu_oam_rdata(raw_oam_data),
         .ppu_oam_valid(raw_oam_valid), .wave_read(1'b0), .wave_write(1'b0), .wave_wdata(8'd0), .wave_address(4'd0),
-        .wave_rdata(unused_wave), .wave_valid(unused_wave_valid));
+        .wave_rdata(unused_wave), .wave_valid(unused_wave_valid),
+        .core_paused(1'b0), .oam_sequence_active(oam_sequence_active), .peek_ready(), .peek_read(1'b0), .peek_select(8'd0), .peek_offset(13'd0),
+        .peek_rdata(), .peek_valid());
     always #5 clk_sys=~clk_sys;
     function automatic logic [7:0] source_byte(input integer offset);
         source_byte=8'(offset+129);

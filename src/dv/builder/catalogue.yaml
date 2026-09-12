@@ -237,6 +237,7 @@ units:
   memory-cpu-sticky: {kind: sim, level: 2, labels: [memory], duration_seconds: null}
   memory-decode: {kind: sim, level: 2, labels: [memory], duration_seconds: null}
   memory-decode-alias: {kind: sim, level: 2, labels: [fault, memory], duration_seconds: null}
+  memory-peek-running: {kind: sim, level: 2, labels: [fault, memory], duration_seconds: null}
   memory-service: {kind: sim, level: 2, labels: [memory], duration_seconds: null}
   memory-service-corrupt: {kind: sim, level: 2, labels: [fault, memory], duration_seconds: null}
   memory-stores: {kind: sim, level: 2, labels: [memory], duration_seconds: null}
@@ -558,6 +559,8 @@ units:
   uart-packet-tx: {kind: sim, level: 2, labels: [uart], duration_seconds: null}
   uart-packet-tx-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: null}
   uart-packet-tx-missing: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: null}
+  uart-peek: {kind: sim, level: 2, labels: [host, memory, uart], duration_seconds: null}
+  uart-peek-fault: {kind: sim, level: 2, labels: [fault, host, memory, uart], duration_seconds: null}
   uart-response: {kind: sim, level: 2, labels: [uart], duration_seconds: null}
   uart-response-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: null}
   uart-run-dots: {kind: sim, level: 2, labels: [uart], duration_seconds: null}

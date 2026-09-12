@@ -253,6 +253,28 @@ uses the published host bank through its one-edge byte port. The separate snapsh
 owner retains published bytes and metadata across core reset and failed capture;
 this UART composition does not implement the observer or snapshot storage.
 
+PEEK carries the generated peek-range record: a store selector, a thirty-two-bit
+byte offset and a byte count. Validation runs before any store is addressed and
+rejects, in the ordinary order, a length other than the record size, an unknown
+selector, a zero count, a count above the maximum payload, an offset and count
+reaching past the selected store, and any endpoint state other than PAUSED.
+LOADING is therefore refused like any other non-paused state, and no request is
+answered from ROM: ROM keeps READ_ROM. Accepted requests stream the count
+through the same chunked reply path READ_ROM and READ_FRAME use, one byte per
+service edge against the [memory owner's](../memory/MAS_memory.md) read-only
+port B. Named assertions check that a peek is served only while paused and
+outside a load, and that it never shares a service edge with ROM or frame
+traffic.
+
+Peek and snapshot readback are independent. A PEEK neither captures,
+invalidates nor advances a held snapshot, and a held snapshot never blocks a
+PEEK, so the two may be interleaved freely. This is structural rather than a
+convention: they read disjoint storage, peek reaching the five DMG stores and
+READ_FRAME the snapshot owner's own published bank, and this owner serves
+exactly one command at a time. It is deliberately the opposite of SNAPSHOT's own
+rule, which forbids a fresh capture during readback because a capture would
+overwrite the bank being read.
+
 ## Simulation preload
 
 The explicit [preload mode](../../dv/preload/SPEC.md) initializes the same Intel

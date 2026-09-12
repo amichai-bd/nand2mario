@@ -41,7 +41,25 @@ is not device authentication or proof of correct wiring.
 | `host keyboard --expected-build-id <32hex>` | Focused Windows classic-console key down/up to complete INPUT masks; see keyboard behavior below. |
 | `host write --address <integer> --value <integer>` | Write the generated INPUT mask or INPUT_SOURCE selector; reject read-only/unknown addresses and reserved value bits before opening the port. |
 | `host snapshot` | One SNAPSHOT followed by all READ_FRAME chunks; retain metadata and packed shades. No new snapshot during readback. |
+| `host peek --store <wram\|hram\|vram\|oam\|wave>` | Read one whole non-ROM store from a paused board in PEEK chunks; retain its size and hash. Read-only; the core must be paused. Independent of snapshot readback. |
 | `host crc-proof --expected-build-id <32hex>` | Fixed bad-CRC PING diagnostic on an already certain, reviewed endpoint. Requires the physical verification workflow below. |
+
+`host peek` reads DMG memory off a paused board so a hardware-only defect can
+be inspected without building a simulation. One rule covers all five stores:
+**host reads use port B, are read-only, and are rejected unless the core is
+paused.** The [memory MAS](../../../src/rtl/memory/MAS_memory.md) owns why that
+is safe and why read-only is structural; the
+[UART MAS](../../../src/rtl/uart/MAS_uart.md) owns the opcode and payload.
+An unknown store name fails before the serial port opens. A peek that arrives
+while an OAM port A sequence is still draining past the pause is held for those
+few cycles rather than refused, so the host sees only its ordinary reply. ROM is not a peek
+target and is unchanged: `host load` still reads it back through READ_ROM.
+
+Peek and snapshot readback are independent. A peek neither consumes nor
+disturbs a held snapshot, and a held snapshot does not block a peek, so the two
+may be interleaved; this is the deliberate opposite of `host snapshot`'s own
+"no new snapshot during readback" rule, because peek and READ_FRAME address
+disjoint storage while a second capture would overwrite the bank being read.
 
 `Client.write_host(address, value)` uses the same whitelist.
 `Client.select_input_source(source)` selects UART or PHYSICAL through that write.
@@ -244,9 +262,10 @@ separate.
 
 Every invocation is fresh, never cached. Unique attempt artifacts live under
 `workdir/builds/<tag>/host/<action>/<attempt>/`: discovery, device identity,
-transaction journal, result and optional `frame.2bpp`. Journals contain command,
-sequence, byte length/hash, response status and decoded non-ROM metadata, never
-raw ROM request/readback bytes. Snapshot shades remain ignored private artifacts.
+transaction journal, result and optional `frame.2bpp` or `<store>.bin`. Journals
+contain command, sequence, byte length/hash, response status and decoded non-ROM
+metadata, never raw ROM request/readback bytes. Snapshot shades and peeked store
+bytes remain ignored private artifacts.
 The builder retains commit/dirty fingerprint, requested command and artifact
 hashes; failures retain their reason and transaction prefix. Build and device
 paths/identities remain local and must not be pasted into public documentation.

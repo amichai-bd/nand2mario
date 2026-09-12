@@ -2,7 +2,7 @@
 
 Generated from cfg/interfaces.json by tools/n2m/interfaces.py; DO NOT EDIT.
 
-Source SHA-256: `80618216aec777c06eace757549d9bab43315603dc0655f78ee9b833f72a429a`.
+Source SHA-256: `4da94a1c51ff2fbc7a0dd4c7888f3a7f91a2a39f4fdad69c9ddcfe363454d2da`.
 
 See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior, reset, framing and tests.
 
@@ -288,6 +288,17 @@ See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior,
 | `COMMAND_READ_FRAME` | 8 | `0xD` | Read dedicated snapshot, unchanged until next successful SNAPSHOT or global reset. |
 | `COMMAND_WRITE_HOST` | 8 | `0xE` | Write a whitelisted host control register. |
 | `COMMAND_RUN_DOTS` | 8 | `0xF` | Run a bounded number of real dots and pause |
+| `COMMAND_PEEK` | 8 | `0x10` | Read exact bytes from one paused non-ROM store; read-only, rejected unless paused. |
+
+## Peek
+
+| Constant | Bits | Value | Meaning |
+|---|---|---|---|
+| `PEEK_WRAM` | 8 | `0x1` | Work RAM peek selector |
+| `PEEK_HRAM` | 8 | `0x2` | High RAM peek selector |
+| `PEEK_VRAM` | 8 | `0x3` | Video RAM peek selector |
+| `PEEK_OAM` | 8 | `0x4` | Object attribute memory peek selector; both halves in byte order |
+| `PEEK_WAVE` | 8 | `0x5` | Wave pattern RAM peek selector |
 
 ## Input Source
 
@@ -358,6 +369,16 @@ See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior,
 |---|---|---|---|
 | `offset` | 0 | 32 | Byte offset |
 | `count` | 4 | 16 | 1 through maximum payload bytes |
+
+## Peek Range record
+
+7 bytes, in listed order; each field is unsigned little-endian.
+
+| Field | Byte offset | Bits | Meaning |
+|---|---|---|---|
+| `store` | 0 | 8 | Peek store selector |
+| `offset` | 1 | 32 | Byte offset inside the selected store |
+| `count` | 5 | 16 | 1 through maximum payload bytes |
 
 ## Input record
 
@@ -457,6 +478,7 @@ See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior,
 | `READ_FRAME` | `read_range` | `bytes` | snapshot valid |
 | `WRITE_HOST` | `write_host` | `dot` | Not LOADING. |
 | `RUN_DOTS` | `word` | `run_dots` | paused valid image |
+| `PEEK` | `peek_range` | `bytes` | paused |
 
 ## Provenance
 

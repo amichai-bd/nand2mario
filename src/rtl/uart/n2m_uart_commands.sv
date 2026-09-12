@@ -73,13 +73,19 @@ module n2m_uart_commands (
     output logic frame_read,
     output logic [12:0] frame_address,
     input var logic [7:0] frame_data,
-    input var logic frame_valid
+    input var logic frame_valid,
+    input var logic peek_ready,
+    output logic peek_read,
+    output logic [7:0] peek_select,
+    output logic [12:0] peek_offset,
+    input var logic [7:0] peek_rdata,
+    input var logic peek_valid
 );
     typedef enum logic [4:0] {
         IDLE, ARG_FETCH, ARG_USE, VALIDATE, CORE_START, CORE_WAIT,
         LOAD_START, LOAD_WAIT, WRITE_FETCH, WRITE_USE,
         SNAPSHOT_START, SNAPSHOT_WAIT, REPLY_START, REPLY_SMALL,
-        REPLY_ROM, FRAME_FETCH, FRAME_USE, REPLY_WAIT
+        REPLY_ROM, FRAME_FETCH, FRAME_USE, PEEK_FETCH, PEEK_USE, REPLY_WAIT
     } state_t;
     state_t state, state_next;
     logic [n2m_interfaces_pkg::LOAD_BEGIN_BYTES*8-1:0] arguments, arguments_next;
@@ -108,12 +114,14 @@ module n2m_uart_commands (
     n2m_interfaces_pkg::write_host_t write_fields;
     n2m_interfaces_pkg::load_begin_t begin_fields;
     n2m_interfaces_pkg::read_range_t range_fields;
+    n2m_interfaces_pkg::peek_range_t peek_fields;
     assign write_fields = arguments[n2m_interfaces_pkg::WRITE_HOST_BYTES*8-1:0];
     assign core_input.valid = 1'b1;
     assign core_input.source_write = request_header.command == n2m_interfaces_pkg::COMMAND_WRITE_HOST && write_fields.address == n2m_interfaces_pkg::HOST_REG_INPUT_SOURCE;
     assign core_input.value = request_header.command == n2m_interfaces_pkg::COMMAND_WRITE_HOST ? write_fields.value[7:0] : arguments[7:0];
     assign begin_fields = arguments;
     assign range_fields = arguments[n2m_interfaces_pkg::READ_RANGE_BYTES*8-1:0];
+    assign peek_fields = arguments[n2m_interfaces_pkg::PEEK_RANGE_BYTES*8-1:0];
     assign endpoint_state = loading ? n2m_interfaces_pkg::STATE_LOADING : (paused ? n2m_interfaces_pkg::STATE_PAUSED : n2m_interfaces_pkg::STATE_RUNNING);
     assign packet_read = (state == ARG_FETCH || state == WRITE_FETCH) && !reset_sys;
     assign packet_address = state == ARG_FETCH ? n2m_uart_pkg::UART_ADDRESS_BITS'(n2m_interfaces_pkg::PACKET_HEADER_BYTES + arg_index)
@@ -139,6 +147,9 @@ module n2m_uart_commands (
     assign snapshot_request = state == SNAPSHOT_START && !reset_sys;
     assign frame_read = state == FRAME_FETCH && payload_ready && !reset_sys;
     assign frame_address = range_fields.offset[12:0] + 13'(index);
+    assign peek_read = state == PEEK_FETCH && payload_ready && peek_ready && !reset_sys;
+    assign peek_select = peek_fields.store;
+    assign peek_offset = peek_fields.offset[12:0] + 13'(index);
     always_comb begin
         payload_valid = 0;
         payload_data = 0;
@@ -149,6 +160,7 @@ module n2m_uart_commands (
             end
             REPLY_ROM: begin payload_valid = load_output_valid; payload_data = load_output_data; end
             FRAME_USE: begin payload_valid = frame_valid; payload_data = frame_data; end
+            PEEK_USE: begin payload_valid = peek_valid; payload_data = peek_rdata; end
             default: begin end
         endcase
     end
@@ -238,7 +250,7 @@ module n2m_uart_commands (
                     end
                     n2m_interfaces_pkg::COMMAND_LOAD_WRITE, n2m_interfaces_pkg::COMMAND_LOAD_END, n2m_interfaces_pkg::COMMAND_READ_ROM: state_next = LOAD_START;
                     n2m_interfaces_pkg::COMMAND_SNAPSHOT: state_next = SNAPSHOT_START;
-                    n2m_interfaces_pkg::COMMAND_READ_FRAME: state_next = REPLY_START;
+                    n2m_interfaces_pkg::COMMAND_READ_FRAME, n2m_interfaces_pkg::COMMAND_PEEK: state_next = REPLY_START;
                     default: state_next = REPLY_START;
                 endcase
             end
@@ -283,6 +295,7 @@ module n2m_uart_commands (
                 if (reply_length == 0) state_next = REPLY_WAIT;
                 else if (request_header.command == n2m_interfaces_pkg::COMMAND_READ_ROM) state_next = REPLY_ROM;
                 else if (request_header.command == n2m_interfaces_pkg::COMMAND_READ_FRAME) state_next = FRAME_FETCH;
+                else if (request_header.command == n2m_interfaces_pkg::COMMAND_PEEK) state_next = PEEK_FETCH;
                 else state_next = REPLY_SMALL;
             end
             REPLY_SMALL: if (payload_ready) begin
@@ -293,6 +306,13 @@ module n2m_uart_commands (
             FRAME_USE: if (frame_valid && payload_ready) begin
                 index_next = index + 1'b1;
                 state_next = 16'(index) + 1'b1 == reply_length ? REPLY_WAIT : FRAME_FETCH;
+            end
+            // The memory owner holds a peek while an OAM port A sequence that
+            // began before the pause is still draining.
+            PEEK_FETCH: if (payload_ready && peek_ready) state_next = PEEK_USE;
+            PEEK_USE: if (peek_valid && payload_ready) begin
+                index_next = index + 1'b1;
+                state_next = 16'(index) + 1'b1 == reply_length ? REPLY_WAIT : PEEK_FETCH;
             end
             REPLY_ROM, REPLY_WAIT: if (reply_done) state_next = IDLE;
             default: state_next = IDLE;
@@ -313,6 +333,13 @@ module n2m_uart_commands (
     `N2M_ASSERT(UART_COMMAND_PACKET_SERVICE, clk_sys, reset_sys,
         state == ARG_USE || state == WRITE_USE |-> packet_data_valid)
     `N2M_ASSERT(UART_COMMAND_FRAME_SERVICE, clk_sys, reset_sys, state == FRAME_USE |-> frame_valid)
+    `N2M_ASSERT(UART_COMMAND_PEEK_SERVICE, clk_sys, reset_sys, state == PEEK_USE |-> peek_valid)
+    // Host peek is served only while the core is paused and no load is open.
+    `N2M_ASSERT(UART_COMMAND_PEEK_PAUSED, clk_sys, reset_sys, peek_read |-> paused && !loading)
+    // Peek and snapshot readback are independent: disjoint storage, and this
+    // owner never services one while the other is in flight.
+    `N2M_ASSERT(UART_COMMAND_PEEK_EXCLUSIVE, clk_sys, reset_sys,
+        !peek_read || !(frame_read || rom_read || rom_write || snapshot_request))
     `N2M_ASSERT(UART_COMMAND_WRITE_READY, clk_sys, reset_sys, state == WRITE_USE |-> load_input_ready)
     `N2M_ASSERT(UART_COMMAND_LOAD_PAUSED, clk_sys, reset_sys, rom_write |-> loading && paused)
     `N2M_ASSERT(UART_COMMAND_PACKET_RANGE, clk_sys, reset_sys,

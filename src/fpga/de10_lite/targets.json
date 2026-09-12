@@ -1259,6 +1259,7 @@
       "top": "controls_proof",
       "sources": [
         "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+        "src/rtl/memory/n2m_memory_pkg.sv",
         "src/rtl/input/n2m_input_pkg.sv",
         "src/rtl/input/n2m_controls_pkg.sv",
         "src/rtl/joypad/n2m_joypad_pkg.sv",

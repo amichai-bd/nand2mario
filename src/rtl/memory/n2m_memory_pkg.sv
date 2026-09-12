@@ -40,6 +40,41 @@ package n2m_memory_pkg;
         STORE_WAVE = 3'd5
     } memory_store_t;
 
+    // Host peek selectors are wire ABI values owned by the interface package,
+    // deliberately separate from the internal store enum above. ROM is never a
+    // peek target: its host load and readback keep port A.
+    function automatic logic peek_known(input logic [7:0] selector);
+        peek_known = selector == n2m_interfaces_pkg::PEEK_WRAM ||
+            selector == n2m_interfaces_pkg::PEEK_HRAM ||
+            selector == n2m_interfaces_pkg::PEEK_VRAM ||
+            selector == n2m_interfaces_pkg::PEEK_OAM ||
+            selector == n2m_interfaces_pkg::PEEK_WAVE;
+    endfunction
+    function automatic memory_store_t peek_store(input logic [7:0] selector);
+        case (selector)
+            n2m_interfaces_pkg::PEEK_WRAM: peek_store = STORE_WRAM;
+            n2m_interfaces_pkg::PEEK_HRAM: peek_store = STORE_HRAM;
+            n2m_interfaces_pkg::PEEK_VRAM: peek_store = STORE_VRAM;
+            n2m_interfaces_pkg::PEEK_OAM: peek_store = STORE_OAM;
+            default: peek_store = STORE_WAVE;
+        endcase
+    endfunction
+    function automatic logic [31:0] peek_bytes(input logic [7:0] selector);
+        case (selector)
+            n2m_interfaces_pkg::PEEK_WRAM: peek_bytes =
+                32'(n2m_interfaces_pkg::GB_WRAM_END) - 32'(n2m_interfaces_pkg::GB_WRAM_START) + 32'd1;
+            n2m_interfaces_pkg::PEEK_HRAM: peek_bytes =
+                32'(n2m_interfaces_pkg::GB_HRAM_END) - 32'(n2m_interfaces_pkg::GB_HRAM_START) + 32'd1;
+            n2m_interfaces_pkg::PEEK_VRAM: peek_bytes =
+                32'(n2m_interfaces_pkg::GB_VRAM_END) - 32'(n2m_interfaces_pkg::GB_VRAM_START) + 32'd1;
+            n2m_interfaces_pkg::PEEK_OAM: peek_bytes =
+                32'(n2m_interfaces_pkg::GB_OAM_END) - 32'(n2m_interfaces_pkg::GB_OAM_START) + 32'd1;
+            n2m_interfaces_pkg::PEEK_WAVE: peek_bytes =
+                32'(n2m_interfaces_pkg::GB_VIEW_WAVE_END) - 32'(n2m_interfaces_pkg::GB_VIEW_WAVE_START) + 32'd1;
+            default: peek_bytes = 32'd0;
+        endcase
+    endfunction
+
     // Destinations select behavior owners; they never imply a read value.
     typedef enum logic [3:0] {
         MEMORY_DIRECT = 4'd0,

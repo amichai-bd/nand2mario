@@ -226,7 +226,10 @@ CPU, PPU and Intel stores where those consumers are needed. Synthetic boundary
 fixtures isolate exact restart, feedback, reset and service-fault cases. They
 do not substitute for the real consumer checks or implement neighboring I/O
 owners. Accepted service may finish while ticks pause; reset cancels unfinished
-work. LCD request cancellation and fresh scan-row replacement are distinct
+work. Because that finishing service still drives the OAM pair port, the owner
+publishes `oam_sequence_active` while a service job is in flight, and the
+[memory owner](../memory/MAS_memory.md#host-peek-on-port-b) withholds host peek
+readiness until it clears. LCD request cancellation and fresh scan-row replacement are distinct
 checks.
 
 The pure truth table covers all transformation classes and rows. Composed
