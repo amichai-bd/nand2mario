@@ -16,6 +16,8 @@ class Check:
         self.selected = (suite.cases()[:getattr(suite, 'SHORT', 1)] if short
                          else suite.parts()[part] if part else suite.cases())
         self.short_bound = getattr(suite, 'SHORT_BOUND', 10000)
+        self.full_bound = getattr(suite, 'FULL_BOUND', 500000)
+        self.routine_bound = getattr(suite, 'ROUTINE_BOUND', None)
         self.memory = {}; self.active = None; self.reports = []; self.durations = []
         self.lines = 0; self.records = 0; self.last_dot = -1
         self.terminal = False; self.halted = False; self.ended = False
@@ -40,7 +42,7 @@ class Check:
             actual = self.snapshot()
             assert actual == case['after'], f'MOTION_STATE {case["name"]} actual={actual.hex()} expected={case["after"].hex()}'
             duration = dot-self.active
-            assert 0 < duration <= (20000 if case['kind'] == 'game' else 8000), 'MOTION_ROUTINE_BOUND'
+            assert 0 < duration <= (self.routine_bound or (20000 if case['kind'] == 'game' else 8000)), 'MOTION_ROUTINE_BOUND'
             self.durations.append(duration)
             self.reports.append(dict(name=case['name'], dot=dot, state=actual.hex()))
             self.active = None
@@ -118,7 +120,7 @@ async def run(dut, short=False, suite=None, part=None):
                 while not check.halted:
                     await Timer(10, unit='us'); await ReadOnly(); healthy(); consume()
                     dot = known(dut.dot_count)
-                    assert prior < dot < (check.short_bound if short else 500000) and not any(known(s) for s in (dut.fault, dut.paused, dut.reset_sys, dut.core_reset)), 'MOTION_PROGRESS'
+                    assert prior < dot < (check.short_bound if short else check.full_bound) and not any(known(s) for s in (dut.fault, dut.paused, dut.reset_sys, dut.core_reset)), 'MOTION_PROGRESS'
                     prior = dot
                 refresh_clock(client); await control('HALT')
                 await Timer(1, unit='ns'); await ReadOnly(); healthy()

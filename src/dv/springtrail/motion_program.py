@@ -79,10 +79,10 @@ def build(root, destination, short=False, suite='motion', part=None):
         (destination/'program.gb').write_bytes(image)
         record = dict(sha256=hashlib.sha256(image).hexdigest(), cases=len(selected),
                       names=[c['name'] for c in selected],
-                      end_bound=getattr(module, 'SHORT_BOUND', 10000) if short else 500000,
-                      budget=dict(setup_per_case=1700, simple_calls=33,
+                      end_bound=getattr(module, 'SHORT_BOUND', 10000) if short else getattr(module, 'FULL_BOUND', 500000),
+                      budget=getattr(module, "BUDGET", dict(setup_per_case=1700, simple_calls=33,
                                   simple_ceiling=8000, game_calls=7, game_ceiling=20000,
-                                  tail=1000, conservative_total=473000),
+                                  tail=1000, conservative_total=473000)),
                       shared_sections={r['section']:hashlib.sha256(image[r['address']:r['address']+r['size']]).hexdigest()
                                        for r in linked['map']['sections'] if r['section'] not in ('code', 'assets')})
         (destination/(suite + '-unit.json')).write_text(json.dumps(record, indent=2)+'\n')
