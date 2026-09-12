@@ -147,7 +147,7 @@ For actual carriers, successful carry aligns feet with the current platform. Sub
 
 
 The source locators are `src/sw/springtrail/entities.asm` (carry/support/landing),
-`player.asm` and `collision.asm` (StepPlayer and cell walks), `interactions.asm`
+`movement.asm` and `collision.asm` (StepPlayer and cell walks), `interactions.asm`
 (contacts), `blocks.asm` (grant and dirty-column ownership), `progress.asm`
 (stage/reset), `scene.asm` and `courier.asm` (composition and tail), and
 `main.asm`, `hud.asm`, `map_restore.asm`, `stream.asm` (publication/preparation).
