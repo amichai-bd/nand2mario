@@ -13,7 +13,7 @@ def build(root,destination,short=False,part='a'):
         from sw.package import package
         from sw.assets import load_shades,encode_shades
         from sw.columns import validate
-        from hud_current_cases import cases,parts,operands,ADDRESSES,RANGES
+        from hud_current_cases import cases,parts,operands,ADDRESSES,RANGES,CANARIES
         validate(root)
         selected=cases()[:1] if short else parts()[part]
         destination.mkdir(parents=True,exist_ok=True);source=root/'src/sw/springtrail'
@@ -23,6 +23,7 @@ def build(root,destination,short=False,part='a'):
                'LD HL,$C200','LD B,40','LD A,$A5','PoisonCache:',
                'LD [HL+],A','DEC B','JR NZ,PoisonCache']
         def write(a,v):lines.extend([f'LD A,${v:02X}',f'LD [${a:04X}],A'])
+        for address in CANARIES:write(address,0xa5)
         for index,case in enumerate(selected):
             lines.extend([f'LD HL,Inputs{index}','CALL SeedWorld'])
             for a,v in operands(case).items():

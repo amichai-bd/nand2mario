@@ -7,6 +7,8 @@ from hud_reference import column, hud_tiles, progress_tiles
 from blocks_reference import column_tiles
 from movement_reference import STAGE_COLUMNS
 
+CANARIES=(0xc09d,0xc1a0,0xc1ff,0xc227,0xc3ff,0xc4a0)
+
 
 def cases():
     rows=[dict(name='paused-pair0',kind='restore',restore=0,mode=3)]
