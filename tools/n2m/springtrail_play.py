@@ -240,22 +240,28 @@ class Strategy:
         return mask, 1, 'lookahead:%s%d' % ('jump ' if jump else '', best_score)
 
 
-def aligned_pair(client, binding, *, record=None):
+def aligned_pair(client, binding, *, record=None, clock=time.perf_counter):
     """One observation and the actual frame that was drawn from it.
 
     The frame completed at a boundary is the one prepared from the previous
     boundary's state, so this observes, advances exactly one frame, and takes
     the snapshot there. The returned snapshot is the actual-pixel counterpart
     of the returned observation, which is what an aligned comparison needs.
+
+    The snapshot fetch is timed here rather than at each call site, so the
+    actual-pixel path reports its cost wherever it is used.
     """
     observation, provenance = observe(client, binding, record=record)
     _dots(client, PERIOD)
     after, after_provenance = observe(client, binding, record=record)
     _check_advance((observation, provenance), (after, after_provenance), 1,
                    observation['buttons']['sampled'])
+    started = clock()
     metadata, packed = client.snapshot()
+    snapshot_seconds = clock() - started
     return {'observation': observation, 'provenance': provenance,
-            'next_provenance': after_provenance, 'metadata': metadata}, packed
+            'next_provenance': after_provenance, 'metadata': metadata,
+            'snapshot_seconds': snapshot_seconds}, packed
 
 
 class Checkpoints:
@@ -384,7 +390,8 @@ def play(client, image, binding, strategy=None, *, budget=None, record=None, ret
                 'y': observation['player']['pixel_y'], 'enemy_x': observation['enemy']['pixel_x'],
                 'loop_seconds': round(clock() - loop_started, 6),
                 'decide_seconds': round(decided - loop_started, 6),
-                'state_seconds': round(provenance['timings']['state_seconds'], 6)})
+                **{name: round(value, 6)
+                   for name, value in provenance['timings'].items()}})
             keep(step + 1, observation, provenance)
             if observation['player']['x'] > best_x:
                 best_x, progress_frame = observation['player']['x'], result['frames']

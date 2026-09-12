@@ -40,6 +40,12 @@ advances exactly one frame first, because that is where the frame drawn from
 the observed state completes, then compares all 23040 shades and reports the
 first difference if there is one.
 
+Add `--repeat N` to take N successive observations in one run. Each lands on
+the next boundary, and the run writes one `measurements.json` summarising all N,
+so building a sample population does not mean collecting result files by hand.
+Both flags advance the core, which is how the boundary is reached at all; with
+the input released the title and completion states stay put while they do.
+
 The JSON holds the structured state an agent reads:
 
 ```text
@@ -103,10 +109,15 @@ python tools/springtrail_player.py compare --tag <tag> \
 `compare` plays the level and, at the title and start, a jump, the camera
 scrolling, a dynamic object or power change, and completion, captures the
 aligned actual frame and compares every shade against the reconstruction. It
-writes `comparisons.json`, both images per checkpoint, and `measurements.json`
-with the median and range of each measured figure and its sample count. A
-disagreement, or a checkpoint the run never reached, fails the run and names
+writes `comparisons.json`, both images per checkpoint, and `measurements.json`.
+A disagreement, or a checkpoint the run never reached, fails the run and names
 the first differing pixel.
+
+The measured figures are listed in the
+[SPEC](SPEC.md#comparing-against-actual-pixels-and-measuring). `compare` gives
+a large sample of the state path and the action loop and one sample per
+checkpoint of the actual-pixel path; `observe --repeat N --snapshot` is the way
+to build a comparable sample of the actual-pixel path on its own.
 
 ## Limits
 

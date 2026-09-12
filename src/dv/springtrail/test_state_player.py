@@ -50,7 +50,7 @@ class EntrypointTests(unittest.TestCase):
             record = json.loads((out / 'observation-0000.json').read_text())
             self.assertTrue(record['image']['reconstructed'])
             self.assertEqual(record['image']['represents'], 'logical')
-            for name in ('observation-0000.png', 'snapshot.2bpp', 'snapshot.png'):
+            for name in ('observation-0000.png', 'snapshot-0000.2bpp', 'snapshot-0000.png'):
                 self.assertTrue((out / name).is_file(), name)
 
     def test_observe_reports_every_timing_figure_it_measured(self):
@@ -58,18 +58,69 @@ class EntrypointTests(unittest.TestCase):
         client = Client(endpoint)
         client.load(self.image)
         with tempfile.TemporaryDirectory() as folder:
-            result = entrypoint.run(client, self.image, self.binding,
-                                    Path(folder) / 'observe', mode='observe')
+            out = Path(folder) / 'observe'
+            result = entrypoint.run(client, self.image, self.binding, out, mode='observe')
             timings = result['image']['timings']
             for name in ('boundary_seconds', 'read_seconds', 'decode_seconds',
                          'state_seconds', 'render_seconds', 'image_seconds'):
                 self.assertIn(name, timings)
                 self.assertGreaterEqual(timings[name], 0.0)
             self.assertGreaterEqual(timings['image_seconds'], timings['render_seconds'])
+            self.assertGreaterEqual(timings['state_seconds'], timings['boundary_seconds'])
+            # observe summarises like every other mode, so repeats need no
+            # aggregation by hand.
+            measurements = json.loads((out / 'measurements.json').read_text())
+            self.assertEqual(measurements, result['measurements'])
+            for name in ('boundary_seconds', 'read_seconds', 'decode_seconds',
+                         'state_seconds', 'render_seconds', 'image_seconds'):
+                self.assertEqual(measurements[name]['samples'], 1, name)
             # Both paths report what they cost in bytes and requests.
             self.assertEqual(result['frame_path']['bytes'], abi.FRAME_BYTES)
             self.assertEqual(result['binding']['bytes'], self.binding.bytes)
             self.assertLess(result['binding']['requests'], result['frame_path']['requests'])
+
+    def test_observe_repeats_give_one_summary_with_the_snapshot_fetch_timed(self):
+        """The sample-count step of the board plan, proved end to end here."""
+        endpoint = Endpoint(image=self.image)
+        client = Client(endpoint)
+        client.load(self.image)
+        repeat = 6
+        with tempfile.TemporaryDirectory() as folder:
+            out = Path(folder) / 'observe'
+            result = entrypoint.run(client, self.image, self.binding, out, mode='observe',
+                                    snapshot=True, repeat=repeat, images=False)
+            self.assertEqual(result['status'], 'PASS')
+            self.assertEqual(result['repeat'], repeat)
+            self.assertEqual(len(result['comparisons']), repeat)
+            self.assertTrue(all(row['match'] for row in result['comparisons']))
+            measurements = json.loads((out / 'measurements.json').read_text())
+            for name in ('boundary_seconds', 'read_seconds', 'decode_seconds',
+                         'state_seconds', 'render_seconds', 'image_seconds',
+                         'snapshot_seconds', 'compare_seconds'):
+                self.assertIn(name, measurements, name)
+                self.assertEqual(measurements[name]['samples'], repeat, name)
+                self.assertLessEqual(measurements[name]['min'], measurements[name]['median'])
+                self.assertLessEqual(measurements[name]['median'], measurements[name]['max'])
+            # The actual-pixel fetch is timed, not left at zero.
+            self.assertGreater(measurements['snapshot_seconds']['median'], 0.0)
+            # Each repeat is its own boundary, one frame further on.
+            self.assertEqual(len(sorted(out.glob('observation-*.json'))), repeat)
+            self.assertEqual(len(sorted(out.glob('snapshot-*.2bpp'))), repeat)
+
+    def test_boundary_acquisition_is_summarised_as_itself(self):
+        """`boundary_seconds` is the acquisition, not the whole state read."""
+        actions = [{'boundary_seconds': 1.0, 'read_seconds': 2.0, 'decode_seconds': 4.0,
+                    'state_seconds': 7.0, 'loop_seconds': 9.0, 'decide_seconds': 0.5}]
+        images = [{'timings': {'render_seconds': 3.0, 'image_seconds': 10.0}}]
+        measurements = entrypoint.summarize(actions=actions, images=images)
+        self.assertEqual(measurements['boundary_seconds']['median'], 1.0)
+        self.assertEqual(measurements['read_seconds']['median'], 2.0)
+        self.assertEqual(measurements['decode_seconds']['median'], 4.0)
+        self.assertEqual(measurements['state_seconds']['median'], 7.0)
+        self.assertEqual(measurements['render_seconds']['median'], 3.0)
+        self.assertEqual(measurements['image_seconds']['median'], 10.0)
+        self.assertEqual(measurements['loop_seconds']['median'], 9.0)
+        self.assertNotIn('snapshot_seconds', measurements)
 
     def test_play_retains_every_observation_and_images_at_its_stride(self):
         endpoint = Endpoint(image=self.image)
@@ -116,13 +167,18 @@ class EntrypointTests(unittest.TestCase):
                     self.assertLess(row['state_path']['requests'],
                                     row['frame_path']['requests'])
             measurements = json.loads((out / 'measurements.json').read_text())
-            for name in ('boundary_seconds', 'loop_seconds', 'snapshot_seconds',
-                         'render_seconds', 'compare_seconds', 'state_read_seconds',
-                         'state_decode_seconds'):
+            # Every figure the SPEC lists, each named for what it measures.
+            for name in ('boundary_seconds', 'read_seconds', 'decode_seconds',
+                         'state_seconds', 'render_seconds', 'image_seconds',
+                         'loop_seconds', 'snapshot_seconds', 'compare_seconds'):
                 self.assertIn(name, measurements, name)
                 self.assertGreaterEqual(measurements[name]['samples'], 1)
                 self.assertLessEqual(measurements[name]['min'], measurements[name]['median'])
                 self.assertLessEqual(measurements[name]['median'], measurements[name]['max'])
+            self.assertEqual(measurements['snapshot_seconds']['samples'],
+                             len(result['comparisons']))
+            self.assertEqual(measurements['image_seconds']['samples'],
+                             result['observations_retained'])
             self.assertIn('not a contract', measurements['note'])
 
     def test_a_disagreement_at_a_checkpoint_fails_the_comparison(self):

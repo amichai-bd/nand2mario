@@ -148,12 +148,28 @@ disagreement, or a checkpoint the run never reached, fails the comparison and
 is reported with the first differing pixel. No expected pixel is taken from the
 dump, and no framebuffer byte is used to build the state image.
 
-Both paths report what they cost: transferred bytes and request counts, the
-boundary acquisition, the UART read, the state decode, the image render, the
-total image availability and the complete action-loop time, summarised as a
-median and a range with the sample count. **Every figure is whatever that run
-measured on that endpoint; none is a contract, and figures measured against the
-host fixtures are not board latency.**
+Both paths report what they cost. Every mode writes a `measurements.json` with
+a median, a range and a sample count per figure, each named for exactly what it
+measures:
+
+| Figure | What it covers |
+|---|---|
+| `boundary_seconds` | reaching the coherent boundary, alone |
+| `read_seconds` | the selected PEEK reads |
+| `decode_seconds` | turning those bytes into structured state |
+| `state_seconds` | boundary, read and decode together |
+| `render_seconds` | reconstructing the image from that state |
+| `image_seconds` | total image availability: state plus render |
+| `snapshot_seconds` | fetching one actual frame, metadata and all chunks |
+| `compare_seconds` | comparing 23040 shades |
+| `loop_seconds` | one complete observe, decide, advance, observe action |
+
+Transferred bytes and request counts are reported per path beside them, from
+the binding and the generated frame ABI. `observe --repeat N` takes N
+successive observations and summarises them in one run, so a sample population
+needs no aggregation by hand. **Every figure is whatever that run measured on
+that endpoint; none is a contract, and figures measured against the host
+fixtures are not board latency.**
 
 ### Evidence
 
