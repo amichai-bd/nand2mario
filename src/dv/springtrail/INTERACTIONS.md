@@ -1,5 +1,44 @@
 # Interaction proof
 
+## Current operand matrix
+
+The current matrix uses the shared `UpdateGame` routine and the independent
+entity/progression model. Its 20 inputs preserve all 123 game, motion, power,
+block, progression and entity bytes, including reserved bytes. Expected output
+is checker data only; the CPU fixture receives ordinary input operands.
+
+| Obligation | Existing current case or new operand |
+|---|---|
+| Start with direction | Motion `title-direction` |
+| Patrol right arrival and departure | Entity `patrol-endpoint`; new `patrol-right-depart` |
+| Patrol left arrival and departure | New `patrol-left-arrive`, `patrol-left-depart` |
+| Contact and retry restart | Power `walk-hit-small`; motion `retry-restart`; progression life-spend cases |
+| Half-open enemy contact edge | New `patrol-edge-touch`, `patrol-edge-overlap`, separated by one Q4 unit |
+| First pickup award | Power `item-large-box`; its small-box counterpart checks the contact-height boundary |
+| Remaining pickup awards | New `item-1-award` through `item-3-award`, score 1→2→3→4 |
+| Each pickup is once-only | New `item-0-once` through `item-3-once`, each with its own collected bit already set |
+| Fall precedes item and goal | New `fell-before-item`, `fell-before-goal` |
+| Goal, frame counter wrap, retry/advance | New `goal-frame-counter-wrap`; progression WON stage-advance/final-reset and retry-spend cases |
+| Pause/resume and paused Select reset | Motion pause/resume chain and `select-restart`; entity `pause-freeze` |
+| Select ignored during play | New `select-ignored-playing` |
+| Current fatal/nonfatal contact priority | New CURL fatal/nonfatal pairs at item and goal; existing entity patrol-before-CURL pairs |
+
+The Fell inputs deliberately exercise the authoritative flag at collection
+coordinates. They prove guard order, not simultaneous events on a natural route.
+The CURL overlap inputs similarly relocate ordinary entity operands to isolate
+priority. They do not alter level placement. Existing progression cases retain
+stage-specific goals, boundaries and reset behavior; no all-stage cross product
+is implied by the historical four-pickup obligation.
+
+The planned execution is one complete short followed by four groups of five
+calls, plus an actual output mutation with the unchanged oracle. Every call
+observes the full state. Completion must include CPU terminal marker, settled
+pause, hold and END. Per-target total wall limit is 300 seconds. Full grouping
+remains subject to complete-short throughput; no current CPU acceptance is
+claimed by the literal host tests or by historical reports below.
+
+## Historical execution
+
 Historical execution targets named below are retired; these descriptions and
 independent expectations remain historical evidence. See the
 [family dispositions and required current coverage](MILESTONE.md#historical-fixture-registrations).
