@@ -327,9 +327,10 @@ python tools/build.py sim test tile-pixel-corrupt --sim questa --tag questa-corr
 
 `--questa-bin` selects the directory containing `vlib`, `vmap`, `vlog`, and
 `vsim`; omit it to resolve those executables on PATH. Missing or invalid explicit
-selections fail without fallback. No command changes
-environment variables or license settings. Versions and executable hashes are
-recorded; `vlib` has no version query, so its path and hash identify it.
+selections fail without fallback. No command changes the caller's
+environment variables or license settings; the FPGA build's process-only
+[allocator override](#quartus-allocator-override) is the one recorded exception.
+Versions and executable hashes are recorded; `vlib` has no version query, so its path and hash identify it.
 
 The target registry owns seed, expected exit and signature rules. Each Questa attempt creates an isolated library under
 `compile/questa/<target>/<attempt>/` and local mappings in its compile and run
@@ -536,7 +537,10 @@ The default profile checks Questa; the environment profile adds the remaining to
   allocator notice classified for the [build flow](#diagnostic-classification);
   the check reuses that single definition, retains the line in the log and in the
   result's `explained_diagnostics`, and continues. Any other text, including
-  different `TBBmalloc` wording, still fails.
+  different `TBBmalloc` wording, still fails. The check launches `quartus_sh`
+  with the build flow's [allocator override](#quartus-allocator-override) and
+  reports the same `environment` and `notice`, so the doctor and `fpga build`
+  see the same Quartus behavior.
 - JTAG: invoke only `jtagconfig` enumeration. Exactly one USB-Blaster chain must
   report `10M50DA`; `--jtag-cable <index>` selects among multiple chains. This is
   reported identity, not wiring, voltage, or programming proof.
@@ -742,6 +746,30 @@ clock/input/output setup and hold counts, no ignored SDC assignments, and no
 structural timing problems. Missing/malformed evidence fails rather than passing
 on the tool exit alone. Keep resource totals and all corner slack values.
 
+### Quartus allocator override
+
+Quartus Prime Lite 25.1 on Windows can exit 3 before doing any work, most
+often at PLL generation, when its bundled TBB allocator fails to replace the
+`ucrtbase.dll` allocation hooks. The signature is the exact classified notice
+`TBBmalloc: skip allocation functions replacement in ucrtbase.dll: unknown
+prologue for function _msize` in the failed step's log, followed by a nonzero
+exit. It is a host condition of the installed toolchain, not an RTL, target or
+constraint defect.
+
+Intel documents [`TBB_MALLOC_DISABLE_REPLACEMENT=1`](https://www.intel.com/content/www/us/en/docs/onetbb/developer-guide-api-reference/2021-11/windows-os-c-c-dynamic-memory-interface.html)
+to keep the standard CRT allocator. `fpga build` sets that variable in the
+environment of every Quartus process it launches, including PLL and ADC
+generation, and the [doctor](#environment-doctor) Quartus check launches with
+the same environment. The setting is process-only: the operator's shell, the
+host and any other tool are unchanged, and no manual environment variable is
+required. The build is explicit about it rather than silently succeeding: the
+result and each attempt record carry `environment` with the applied variable,
+every recorded command carries the same `environment`, and `notices` holds one
+line naming the override. Text output prints that line after the status. If the
+notice still appears in a log, [classification](#diagnostic-classification)
+retains it unchanged; any other allocator wording still fails. Programming and
+JTAG enumeration do not apply the override.
+
 ### Diagnostic classification
 
 Keep every diagnostic in the logs and result. Unknown warnings, critical
@@ -752,7 +780,7 @@ bounded build flow; different text under the same number fails:
 |---|---|
 | 292013, LogicLock requires a subscription | Lite does not provide this optional placement feature. The generated QSF has no LogicLock assignments; this does not excuse missing required IP/tool licenses. |
 | 169177, MAX 10 3.3/3.0/2.5-V interface advisory pointing to AN 447 | The fitter reminds the user of electrical requirements. A generated image does not verify wiring, voltage, or physical acceptance; those remain required before use. |
-| Exact `TBBmalloc` `_msize` replacement notice | The installed allocator cannot replace that CRT allocation hook. It is not a failed compilation or timing check; retain the notice and require all execution/report evidence. |
+| Exact `TBBmalloc` `_msize` replacement notice | The installed allocator cannot replace that CRT allocation hook. It is not a failed compilation or timing check; retain the notice and require all execution/report evidence. The [allocator override](#quartus-allocator-override) keeps this condition from aborting a launch. |
 | `check_timing` virtual_clock = 1, exactly “No virtual clock was found.” | The fixture's I/O delays reference its physical clock. No virtual reference clock is required. Every other structural check still must be zero. |
 
 The installed Quartus messages and `report_ucp`, `check_timing`, `report_sdc`

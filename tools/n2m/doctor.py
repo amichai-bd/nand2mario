@@ -7,18 +7,19 @@ import shutil
 import subprocess
 import uuid
 
-from .fpga import ALLOCATOR_NOTICE
+from .fpga import ALLOCATOR_NOTICE, ALLOCATOR_OVERRIDE, ALLOCATOR_OVERRIDE_NOTICE, quartus_environment
 from .records import file_hash
 from .questa import write_macro, diagnostic
 
 
-def execute(argv, cwd, log, timeout=60):
+def execute(argv, cwd, log, timeout=60, env=None):
     with (cwd / "commands.log").open("a", encoding="utf-8") as stream:
         stream.write(json.dumps(argv) + "\n")
     try:
+        # env=None inherits the caller's environment unchanged; only Quartus checks pass an override.
         result = subprocess.run(argv, cwd=cwd, text=True, encoding="utf-8",
                                 errors="replace", stdout=subprocess.PIPE,
-                                stderr=subprocess.STDOUT, timeout=timeout)
+                                stderr=subprocess.STDOUT, timeout=timeout, env=env)
         output = result.stdout
     except (OSError, subprocess.TimeoutExpired) as error:
         output = getattr(error, "stdout", "") or ""
@@ -70,7 +71,8 @@ def questa(root, folder, directory):
 
 def quartus(folder, directory):
     tool = executable(directory, "quartus_sh")
-    output = execute([tool, "--version"], folder, "version.log")
+    # Same process-only override as the build flow, so both see the same Quartus behavior.
+    output = execute([tool, "--version"], folder, "version.log", env=quartus_environment())
     if "Quartus" not in output or "Version " not in output:
         raise RuntimeError("unrecognized Quartus version output")
     # The fitter owns this pinned text; only that exact notice is explained here.
@@ -83,6 +85,7 @@ def quartus(folder, directory):
     return {"path": tool, "version": output.strip(),
             "license": "Lite requires no license file" if lite else "not verified; synthesis was not run",
             "explained_diagnostics": [{"code": "TBBmalloc", "text": line} for line in explained],
+            "environment": dict(ALLOCATOR_OVERRIDE), "notice": ALLOCATOR_OVERRIDE_NOTICE,
             "synthesis": "not tested", "status": "PASS" if lite else "WARNING"}
 
 
