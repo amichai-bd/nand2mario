@@ -14,7 +14,7 @@ Expected values are calculated before execution from this contract, not reports.
 | Rule | Literal independent witness |
 |---|---|
 | Patrol endpoint | Existing stage0 right edge296, x295.5/vx+0.5 ->296/vx-0.5; the next update295.5 |
-| Patrol stomp | Overlapping player top104, enemy top120 -> alive0, jump1/index13, countdown16; after8 subsequent updates countdown8/STOMP2; after16 hidden |
+| Patrol stomp | Overlapping player top105, enemy top120 -> alive0, jump1/index13, countdown16; after8 subsequent updates countdown8/STOMP2; after16 hidden |
 | CURL range | x328, player-left295 -> dormant; player-left296 -> active32; active1 -> cooldown32/dormant; cooldown1 -> cooldown0 without retrigger |
 | CURL contacts | Active overlap + small -> RETRY; protected hurt -> unchanged life/power; invincible -> absent; stomp/shot alone do not remove CURL |
 | Moving boundary | x207/vx+1 ->208/vx-1; next207; x176/vx-1 ->176/vx+1 |
