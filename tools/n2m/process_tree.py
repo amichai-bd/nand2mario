@@ -21,6 +21,8 @@ TH32CS_SNAPTHREAD = 0x4
 JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE = 0x2000
 JOB_OBJECT_EXTENDED_LIMIT = 9
 JOB_OBJECT_BASIC_ACCOUNTING = 1
+JOB_OBJECT_BASIC_PROCESS_ID_LIST = 3
+ERROR_MORE_DATA = 234
 
 if os.name == "nt":
     from ctypes import wintypes
@@ -47,6 +49,12 @@ if os.name == "nt":
                     ("ThisPeriodTotalUserTime", ctypes.c_longlong), ("ThisPeriodTotalKernelTime", ctypes.c_longlong),
                     ("TotalPageFaultCount", wintypes.DWORD), ("TotalProcesses", wintypes.DWORD),
                     ("ActiveProcesses", wintypes.DWORD), ("TotalTerminatedProcesses", wintypes.DWORD)]
+
+    def process_id_list(capacity):
+        class PROCESS_ID_LIST(ctypes.Structure):
+            _fields_ = [("NumberOfAssignedProcesses", wintypes.DWORD), ("NumberOfProcessIdsInList", wintypes.DWORD),
+                        ("ProcessIdList", ctypes.c_size_t * capacity)]
+        return PROCESS_ID_LIST()
 
     class THREADENTRY32(ctypes.Structure):
         _fields_ = [("dwSize", wintypes.DWORD), ("cntUsage", wintypes.DWORD), ("th32ThreadID", wintypes.DWORD),
@@ -138,6 +146,20 @@ class Tree:
         _checked(kernel.QueryInformationJobObject(self.job, JOB_OBJECT_BASIC_ACCOUNTING, ctypes.byref(accounting),
                                                   ctypes.sizeof(accounting), None), "QueryInformationJobObject")
         return accounting.ActiveProcesses
+
+    def survivors(self):
+        """Pids of members still in the job, for naming what cleanup left; None without jobs."""
+        if self.job is None:
+            return None
+        capacity = 64
+        while True:
+            members = process_id_list(capacity)
+            if kernel.QueryInformationJobObject(self.job, JOB_OBJECT_BASIC_PROCESS_ID_LIST, ctypes.byref(members),
+                                                ctypes.sizeof(members), None):
+                return [int(pid) for pid in members.ProcessIdList[:members.NumberOfProcessIdsInList]]
+            if ctypes.get_last_error() != ERROR_MORE_DATA:
+                raise OSError(ctypes.get_last_error(), "QueryInformationJobObject failed")
+            capacity *= 4
 
     def terminate(self, timeout):
         """Kill the whole tree and return once no member is alive, or raise."""

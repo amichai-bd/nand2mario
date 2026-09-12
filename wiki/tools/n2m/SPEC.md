@@ -357,15 +357,20 @@ the complete worker process tree: discovery, preparation, compilation, simulatio
 and checking share the same budget. The absolute deadline starts before record
 preparation and process launch. Reserve 12 seconds for cleanup, leaving at most 288
 seconds for ordinary worker execution or 1488 seconds for those three named cases.
-Expiry terminates the worker and its
-children, returns failure and retains a `wall-budget` record with the raw killed
+The worker runs as an owned process tree
+([process_tree.py](../../../tools/n2m/process_tree.py)): a Windows job object
+joined before the worker's first instruction, or a POSIX session group. Expiry
+terminates the whole tree at once, including a descendant spawned while cleanup
+starts, returns failure and retains a `wall-budget` record with the raw killed
 process exit and partial output. Existing attempt artifacts remain partial;
 TIMEOUT is never a checked DUT result. Tree termination and pipe draining each
 have a five-second cleanup bound, followed by at most two seconds to reap the
 immediate worker. Each blocking cleanup timeout is clamped to the remaining
-absolute selected budget. A failed
-cleanup records `cleanup_complete: false`; inspect and stop remaining children
-before releasing shared tool ownership. Never treat that failure as a clean exit.
+absolute selected budget. `cleanup_complete: true` requires the job to report no
+active process and the pipes to drain within those bounds; otherwise the record
+carries `cleanup_complete: false` with the surviving pids as `survivors`. Inspect
+and stop them before releasing shared tool ownership. Never treat that failure
+as a clean exit.
 
 The killed worker never ran the `finally` that releases its tag `.lock`. After
 tree termination the supervisor reads the lock's recorded `pid`: a dead writer's

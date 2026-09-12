@@ -23,6 +23,7 @@ sys.path.insert(0, str(ROOT / 'tools'))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from n2m import generated_interfaces as abi  # noqa: E402
 from n2m.records import atomic_json, file_hash  # noqa: E402
+from n2m import process_tree  # noqa: E402
 from interactions_reference import Game, PLAYING, PAUSED, RETRY, update as flow_update  # noqa: E402
 from motion_reference import Player, step  # noqa: E402
 from motion_frames import image  # noqa: E402
@@ -381,20 +382,33 @@ def supervise(command, cap, out):
     record = dict(started=datetime.now(timezone.utc).isoformat(), cap_seconds=cap,
                   command=command, status='RUNNING')
     atomic_json(out/'budget.json', record)
-    options = {'creationflags': subprocess.CREATE_NO_WINDOW} if os.name == 'nt' else {'start_new_session': True}
-    process = subprocess.Popen(command, cwd=ROOT, **options)
-    try:
-        process.wait(timeout=cap-12)
-        record['status'] = 'FINISHED'
-    except subprocess.TimeoutExpired:
-        record['status'] = 'TIMEOUT'
-        if os.name == 'nt':
-            cleanup = subprocess.run(['taskkill', '/PID', str(process.pid), '/T', '/F'],
-                                     stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=5)
-            record['cleanup_exit_code'] = cleanup.returncode
-        else:
-            process.kill()
-        process.wait(timeout=5)
+    options = {'creationflags': subprocess.CREATE_NO_WINDOW} if os.name == 'nt' else {}
+    # An owned process tree (job object or POSIX session group): the kill
+    # reaps every descendant at once, including one spawned while cleanup
+    # starts, and cleanup is complete only when the job reports none alive.
+    with process_tree.Tree(command, cwd=ROOT, **options) as tree:
+        process = tree.process
+        try:
+            process.wait(timeout=cap-12)
+            record['status'] = 'FINISHED'
+        except subprocess.TimeoutExpired:
+            record['status'] = 'TIMEOUT'
+            try:
+                tree.terminate(timeout=5)
+                process.wait(timeout=5)
+                record['cleanup_complete'] = True
+            except (OSError, RuntimeError, subprocess.TimeoutExpired) as error:
+                record['cleanup_complete'] = False
+                record['cleanup_error'] = str(error)
+                try:
+                    survivors = tree.survivors()
+                except OSError as query_error:
+                    survivors = None
+                    record['survivors_error'] = str(query_error)
+                if survivors:
+                    record['survivors'] = survivors
+                process.kill()
+                process.wait(timeout=2)
     record.update(raw_exit_code=process.returncode, elapsed_seconds=round(time.monotonic()-started, 3),
                   finished=datetime.now(timezone.utc).isoformat())
     atomic_json(out/'budget.json', record)
