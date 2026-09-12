@@ -8,12 +8,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]/'tools'))
 from n2m import generated_interfaces as abi
-from interactions_reference import TITLE, PLAYING, RETRY, WON
+import blocks_reference as B
 from hud_reference import entering
-from motion_frames import image
+from motion_frames import image as terrain_image
+from power_reference import TITLE, PLAYING, RETRY, WON, SMALL
 from frame_proofs import (run, games, samples, anchor, history, checkpoint, plan_captures, unpack,
-                          SCRIPT, CAPTURES, EXPECTED, PLANS, FIRST_VBLANK, RESTORE_FRAMES,
-                          LCD, PERIOD, SPAWN, update)
+                          image, SCRIPT, CAPTURES, EXPECTED, PLANS, FIRST_VBLANK, RESTORE_FRAMES,
+                          LCD, PERIOD, START, INTACT_BLOCKS, update)
 
 ZERO_ROM = bytes(32768)
 ZERO_SHA = hashlib.sha256(ZERO_ROM).hexdigest()
@@ -75,7 +76,7 @@ class Fake:
 
     def game(self, frame):
         """State displayed by source frame `frame`: the masks each VBlank sampled."""
-        state, mask, index = SPAWN, 0, 0
+        state, mask, index = START, 0, 0
         for vblank in range(frame-1):
             sample = LCD+vblank*PERIOD+VISIBLE
             while index < len(self.events) and self.events[index][0] < sample:
@@ -152,6 +153,70 @@ class ScriptTests(unittest.TestCase):
             data = bytearray(packed(pixels))
             data[-1] ^= 64
             self.assertNotEqual(unpack(bytes(data)), pixels, name)
+
+    def test_route_touches_no_block(self):
+        # Every capture literal carries the block layer's state; the route
+        # leaves it at reset, so a bump or a pickup on the script fails here.
+        for state in games():
+            self.assertEqual((state.blocks, state.power, state.coins, state.effect_tile),
+                             (INTACT_BLOCKS, SMALL, 0, 0))
+            self.assertTrue(state.alive)
+        self.assertEqual(INTACT_BLOCKS, B.reset())
+        for name in EXPECTED:
+            self.assertEqual(EXPECTED[name][8:], (INTACT_BLOCKS, SMALL))
+
+    def test_second_gap_tap_walks_under_the_brick(self):
+        # The brick at column 52 stands beside the second gap (46..49). A held
+        # jump there lands against its side and the route never reaches the
+        # goal; the one-VBlank tap lands at x 399 and walks under it.
+        states = games()
+        air = [k for k in range(226, 280) if states[k].player.y != 1792]
+        self.assertEqual((air[0], air[-1]), (228, 252))
+        landed = states[air[-1]+1].player
+        self.assertEqual((landed.x, landed.y), (399*16, 1792))
+        self.assertLess(landed.x + 128, 52*8*16)
+        held = list(SCRIPT)
+        self.assertEqual((held[6], held[7]), ((49, 1), (33, 127)))
+        held[6], held[7] = (49, 12), (33, 116)
+        state, stalled = START, None
+        for k, mask in enumerate([0]*FIRST_VBLANK + [m for m, n in held for _ in range(n)], 1):
+            before, state = state, update(state, mask)
+            if state.mode == PLAYING and state.player.y != 1792 and state.player.x == before.player.x:
+                stalled = (k, state.player.x//16, state.player.y//16)
+                break
+        self.assertEqual(stalled, (260, 408, 81))
+
+    def test_block_layer_is_the_only_difference_from_the_terrain_model(self):
+        # The block-aware image differs from the terrain-only image in the
+        # 8x8 cells of the blocks in view and nowhere else. On the board the
+        # first such capture, scroll-wrap, showed exactly this 16x16 cell.
+        states = games()
+        for name, k in CAPTURES:
+            state = states[k]
+            camera = state.player.camera
+            cells = set()
+            for bx, by, _kind, _content in B.BLOCKS:
+                if not B.appearance(state.blocks, B.BLOCKS.index((bx, by, _kind, _content))):
+                    continue
+                for cx in (bx, bx+1):
+                    for cy in (by, by+1):
+                        sx = cx*8 - camera
+                        if -8 < sx < 160:
+                            cells.add((sx, cy*8))
+            wanted, plain = image(state), terrain_image(state)
+            differing = {i for i in range(23040) if wanted[i] != plain[i]}
+            allowed = {(sy+y)*160+sx+x for sx, sy in cells for y in range(8) for x in range(8)
+                       if 0 <= sx+x < 160}
+            self.assertLessEqual(differing, allowed, name)
+            for sx, sy in cells:
+                cell = {(sy+y)*160+sx+x for y in range(8) for x in range(8) if 0 <= sx+x < 160}
+                self.assertTrue(differing & cell, f'{name}: block cell at {sx},{sy} unchanged')
+            if name == 'scroll-wrap':
+                self.assertEqual(len(differing), 256)
+                self.assertEqual(differing, {y*160+x for y in range(80, 96) for x in range(48, 64)})
+                self.assertIn(12848, differing)
+            else:
+                self.assertEqual(differing, set(), name)
 
     def test_plans_and_checkpoints(self):
         self.assertEqual([name for name, _ in plan_captures('short')][-1], PLANS['short'])

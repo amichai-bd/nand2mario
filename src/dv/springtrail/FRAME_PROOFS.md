@@ -28,9 +28,15 @@ image checked. The expected wire build is given on the command line and
 checked against the endpoint's build identity before traffic.
 
 Expected frames come from the independent models only: `motion_reference`
-for the player, the frozen flow in `interactions_reference` over that player
-for modes, enemy, items and goal, and `motion_frames.image`, which composes
-the current poses onto `hud_reference.image`, for pixels. LCD commit 167840
+for the player, `power_reference` over that player for modes, enemy, items,
+goal and the block and power layers the image carries, and
+`blocks_frames.image`, which draws the block layer in the state the script
+leaves it under the current poses on `hud_reference.image`, for pixels. The
+route touches no block, so every expected frame shows the four blocks intact;
+`test_frame_proofs` proves the block-aware image differs from the terrain-only
+`motion_frames.image` in the block cells in view and nowhere else, and that
+`scroll-wrap` is the only capture with a block in view: the 256 pixels of
+the item block at world column 38..39, rows 10..11. LCD commit 167840
 and period 70224 are the source-derived anchors of the current image
 ([startup anchor](#startup-anchor)); `motion_game_reference` proves the RTL
 commits at that dot in `python-mgs`, `test_startup_anchor` fails at level 0
@@ -104,7 +110,7 @@ Sampled masks per VBlank, from VBlank 2 (VBlank 0 and 1 sample 0):
 
 | Masks (mask, VBlanks) | Purpose |
 |---|---|
-| (161,1) (33,96) (49,12) (33,40) (49,12) (33,64) (49,12) (33,116) (49,12) (33,106) | Success: Start+B+Right, then B+Right with held A over the first gap, the enemy patrol, the second and third gaps; WON after update 471, score 0 |
+| (161,1) (33,96) (49,12) (33,40) (49,12) (33,64) (49,1) (33,127) (49,12) (33,106) | Success: Start+B+Right, then B+Right with held A over the first gap and the enemy patrol, a one-VBlank A tap over the second gap, and held A over the third gap; WON after update 471, score 0 |
 | (128,1) (0,20) | Start restart from WON, then neutral while the ring restores its 16 column pairs |
 | (33,110) | Death: B+Right from spawn into the first gap; RETRY after 130 updates |
 | (128,1) (0,20) | Start restart from RETRY, then the same neutral settle; the final mask is 0 |
@@ -113,10 +119,20 @@ The success and death/retry routes in `interaction_routes.py` were frozen for
 the fixed-physics player: over the current motion model the success route
 meets the enemy at update 153, so this proof freezes its own routes over
 `motion_reference`. Both are ordinary inputs through the UART INPUT path.
+The second-gap jump is a one-VBlank tap because the brick at world column
+52..53 stands two columns after that gap (columns 46..49) in rows 10..11: a
+held jump's arc cannot pass above it and lands against its side at update
+260, x 408, and the route then never reaches the goal. The tap is airborne
+over updates 228..252, lands at x 399 and walks under the brick; the run
+after it is eleven VBlanks longer so the third-gap jump, every later input
+and every capture index stay where they were. `test_frame_proofs` holds
+both facts.
 
 Captures, with the game index k (frame k+1, snapshot at C(k+2)) and the
 literal expected state `(mode, x, y, camera, score, timer, enemy_x, enemy_vx)`
-in sixteenths of a pixel; the host test fails when the model disagrees:
+in sixteenths of a pixel; each literal also carries the block states
+`(INTACT, INTACT, INTACT, INTACT)` and power `SMALL`, and the host test fails
+when the model disagrees:
 
 | Capture | k | Expected state | Covers |
 |---|---|---|---|
@@ -162,6 +178,20 @@ the serialized machine lock; the launcher does not program the board.
 
 ## Measured result on the current image
 
+Proven on the current image: the four `short` captures `title`, `spawn`,
+`first-camera` and `entering-column`. Unproven: `scroll-wrap`,
+`camera-clamp`, `won`, `won-restart`, `retry` and `retry-restart`, whose
+expected frames and, from update 228, whose route come from the block-aware
+models above and await a `full` run on the board. No DUT fixture publishes a
+block column ([coverage limit](BLOCKS.md#coverage-limit)), so the block-aware
+expected image is proven by the board alone.
+
+The runs below preceded the block-aware models: their expected frames came
+from `motion_frames.image` over the frozen flow of `interactions_reference`,
+and their script held A for twelve VBlanks at the second gap. The four
+captures they prove are unchanged by the model change: those frames show no
+block, and the script is identical through VBlank 227.
+
 Image `35aae757bde0ec9a15d6d6c84f14b45b451c341d2d4775f43ed8a9a762625192`
 built from current sources at each launch, anchor 167840 derived by the
 launcher and recorded in `build.json`, wire build
@@ -192,11 +222,14 @@ x 48..63, y 80..95, world column 38..39 rows 10..11, the first intact item
 block. The board draws the block art the image has carried since the block
 layer; `motion_frames.image` draws blank terrain there, and the frozen flow
 behind `games()` carries no block or power state. The captured state matched
-`EXPECTED['scroll-wrap']`, so the anchor and the route hold and the pixel
-model is behind the image. The run kept its dot, journal and packed frames;
-cleanup sent HALT and INPUT 0 and the board ended PAUSED at input 0. The
-remaining six captures are unproven on the current image until the frame
-models include the block layer.
+`EXPECTED['scroll-wrap']`, so the anchor and the route held through that
+capture and the pixel model was behind the image. The run kept its dot,
+journal and packed frames; cleanup sent HALT and INPUT 0 and the board ended
+PAUSED at input 0. Those 256 pixels are the oracle
+`test_block_layer_is_the_only_difference_from_the_terrain_model` holds the
+block-aware image to. The board did not reach the second-gap jump, so the
+held jump's stall against the brick, which the block-aware model predicts at
+update 260, was not observed; the retimed script above is the model's route.
 
 ## Measured result on image 616de11b...
 
