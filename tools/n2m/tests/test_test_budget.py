@@ -369,12 +369,16 @@ class BudgetTests(unittest.TestCase):
         self.assertEqual(wall_limit('ordinary', root), 300)
 
     def test_shipped_targets_declare_only_measured_allowances(self):
-        # Only the measured motion, power and pause fixtures declare one; every
+        # Only the measured motion, power, pause and entity fixtures declare one; every
         # other target keeps the 300 default or its named Mooneye authorization.
         root = Path(__file__).resolve().parents[3]
         targets = json.loads((root / 'src/dv/builder/targets.json').read_text(encoding='utf-8'))
         declared = {name: row['wall_allowance'] for name, row in targets.items() if 'wall_allowance' in row}
-        self.assertEqual(sorted(declared), ['python-mgu', 'python-mr', 'python-pgu', 'python-pgx', 'python-pr'])
+        self.assertEqual(sorted(declared), ['python-entity-render-changed', 'python-entity-render-normal', 'python-mgu', 'python-mr', 'python-pgu', 'python-pgx', 'python-pr'])
+        for name in ('python-entity-render-changed', 'python-entity-render-normal'):
+            self.assertEqual(declared[name]['seconds'], 420)
+        for name in ('python-mr', 'python-pr'):
+            self.assertEqual(declared[name]['seconds'], 480)
         for name, allowance in declared.items():
             self.assertEqual(set(allowance), {'seconds', 'reason'})
             self.assertTrue(300 < allowance['seconds'] <= 900)
