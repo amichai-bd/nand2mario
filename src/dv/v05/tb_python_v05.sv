@@ -357,6 +357,23 @@ module tb_python_v05 #(
         end
     end
 
+    // Mutate the actual CPU output feeding memory and the passive write ledger.
+    // The LCD-off courier fixture arms this once at its ordinary call marker.
+    initial begin
+        if ($test$plusargs("courier_output_fault")) begin
+            wait(bus_commit && write_enable && address == 16'hc0fc);
+            do @(negedge clk_sys);
+            while (!(dut.request_valid && write_enable && address == 16'hc102));
+            if (write_data !== 8'd42) $fatal(1, "COURIER492_FAULT_SOURCE");
+            $display("COURIER492_OUTPUT_MUTATION tile42->0 dot=%0d", dot_count);
+            force dut.write_data = 8'd0;
+            wait(bus_commit);
+            @(posedge clk_sys);
+            @(negedge clk_sys);
+            release dut.write_data;
+        end
+    end
+
     // One real tile-byte corruption on the first LCD-on publication. The
     // initial LCD-off DMA is deliberately skipped; its bytes are overwritten.
     initial begin
