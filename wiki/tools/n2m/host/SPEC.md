@@ -45,7 +45,9 @@ is not device authentication or proof of correct wiring.
 | `host crc-proof --expected-build-id <32hex>` | Fixed bad-CRC PING diagnostic on an already certain, reviewed endpoint. Requires the physical verification workflow below. |
 
 `host peek` reads DMG memory off a paused board so a hardware-only defect can
-be inspected without building a simulation. One rule covers all five stores:
+be inspected without building a simulation. For the original game,
+[observing and playing Springtrail from game state](../../host-play/springtrail-state.md)
+is the practical how-to built on it. One rule covers all five stores:
 **host reads use port B, are read-only, and are rejected unless the core is
 paused.** The [memory MAS](../../../src/rtl/memory/MAS_memory.md) owns why that
 is safe and why read-only is structural; the
@@ -54,6 +56,13 @@ An unknown store name fails before the serial port opens. A peek that arrives
 while an OAM port A sequence is still draining past the pause is held for those
 few cycles rather than refused, so the host sees only its ordinary reply. ROM is not a peek
 target and is unchanged: `host load` still reads it back through READ_ROM.
+
+`Client.peek(store)` reads a whole store in wire chunks;
+`Client.peek_range(store, offset, count)` reads one bounded range, checked
+against that store before anything is sent. Both use the same command and the
+same paused, read-only rule; the range form is what the
+[Springtrail state reconstruction](../../host-play/SPEC.md#springtrail-state-reconstruction)
+uses to read a few dozen bytes instead of the whole store.
 
 Peek and snapshot readback are independent. A peek neither consumes nor
 disturbs a held snapshot, and a held snapshot does not block a peek, so the two
