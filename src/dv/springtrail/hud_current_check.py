@@ -80,9 +80,11 @@ class Check(TraceCheck):
 
 async def run(dut,short=False,part='a'):
     import cocotb
-    from cocotb.triggers import ValueChange,ReadOnly
+    from cocotb.triggers import ValueChange,ReadOnly,Timer
     check=Check(short,part)
     async def dma():
+        # Let time-zero event initialization settle before monitoring transfers.
+        await Timer(1,unit="ns")
         while True:
             await ValueChange(dut.dma_event);await ReadOnly()
             raw=int(dut.dma_sample.value)
