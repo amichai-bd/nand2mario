@@ -460,6 +460,7 @@ units:
   src/dv/springtrail/test_current_unit_cases.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: null}
   src/dv/springtrail/test_dma_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.08}
   src/dv/springtrail/test_endurance.py: {kind: unit, level: 1, labels: [springtrail], duration_seconds: 27.34}
+  src/dv/springtrail/test_endurance_current.py: {kind: unit, level: 1, labels: [springtrail], duration_seconds: null}
   src/dv/springtrail/test_entities_art.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: null}
   src/dv/springtrail/test_entities_oam_check.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: null}
   src/dv/springtrail/test_entities_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: null}

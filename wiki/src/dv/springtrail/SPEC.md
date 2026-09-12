@@ -133,8 +133,8 @@ names its image:
 |---|---|---|---|
 | [Motion composition](../../../../src/dv/springtrail/MOVEMENT.md) | `python-mgs`, `python-mgu` | the built image, no hash guard | Boot, the title frame, the first Start+Right input, its publication and the settled pause, with independent motion state |
 | [Pause and restart](../../../../src/dv/springtrail/MILESTONE.md#current-image-pause-and-restart-proof) | `python-pgs`, `python-pgu`, `python-pgx` | the built image, no hash guard | The first world frame, a neutral frame, the PAUSED frame, the Select-restart frame, their publications and the restart's map restoration |
-| [Continuous UART endurance](../../../../src/dv/springtrail/ENDURANCE.md#retained-script) | `endurance.py` | the built image; the launcher builds it from current sources and the driver refuses bytes whose hash differs from that build's own manifest | Retained sampled UART protocol and lifecycle fixture; current lives/countdown gameplay expectations require [#511](https://github.com/amichai-bd/nand2mario/issues/511). This is not current 90-cycle gameplay qualification |
-| [Scrolling, win and death/retry frames](../../../../src/dv/springtrail/FRAME_PROOFS.md) | `frame_proofs.py` | the built image; the launcher builds it from current sources and the driver refuses bytes whose hash differs from that build's own manifest | Retained paused frame/checkpoint protocol fixture; current progression route/pixel expectations require [#511](https://github.com/amichai-bd/nand2mario/issues/511), as with endurance |
+| [Continuous UART endurance](../../../../src/dv/springtrail/ENDURANCE.md#retained-script) | `endurance.py` | the built image; the launcher builds it from current sources and the driver refuses bytes whose hash differs from that build's own manifest | Current source-qualified lifecycle/countdown and complete-frame expectations; host checks do not establish a new physical 90-cycle result |
+| [Scrolling, win and death/retry frames](../../../../src/dv/springtrail/FRAME_PROOFS.md) | `frame_proofs.py` | the built image; the launcher builds it from current sources and the driver refuses bytes whose hash differs from that build's own manifest | Current source-qualified stage-aware route and complete-frame expectations; historical physical captures retain their original image binding |
 | Every-frame acquisition | `paused_capture.py`, `milestone.py` | retired `b551c562...8ba667` | The complete v0.9 baseline; no current-image claim |
 | Historical flow, courier composition and HUD game references | none | retired `97f5d9da...a593b513`, `ec8dfb32...0d9e785f` and `adbef6b0...e109f369` | Host-guarded expectations only; their hash guards refuse every other image |
 
@@ -247,9 +247,9 @@ verify child processes, sessions and locks are released.
 Reuse qualified complete-baseline deterministic gameplay/reference and fault evidence when
 relevant identities and behavior remain unchanged; select affected checks for
 changes. The retired-image endurance child proof supplies no evidence for the
-current build. The retained [endurance fixture](../../../../src/dv/springtrail/ENDURANCE.md#retained-script)
-needs current progression expectations under [#511](https://github.com/amichai-bd/nand2mario/issues/511)
-before it can qualify current continuous gameplay. UART evidence makes no claim
+current build. The current [endurance fixture](../../../../src/dv/springtrail/ENDURANCE.md#retained-script)
+uses source-qualified progression expectations. Its host checks do not qualify
+a new current-image continuous physical run. UART evidence makes no claim
 about the monitor or physical controls.
 Use the required lifecycle upload/readback to provide applicable
 transport evidence rather than adding a duplicate unchanged transport suite.

@@ -361,9 +361,9 @@ commercial file, title or mapper to obtain. The
 header/profile. Its [composed-system tests](src/dv/springtrail/SPEC.md) check
 title, input and world frames with deliberate output faults. Movement and
 interactions are implemented; expanded features are explicitly planned in the
-game specification. The retained [UART endurance fixture](../src/dv/springtrail/ENDURANCE.md#retained-script)
-needs current lives/countdown expectations under [#511](https://github.com/amichai-bd/nand2mario/issues/511)
-before qualifying current continuous gameplay;
+game specification. The current [UART endurance fixture](../src/dv/springtrail/ENDURANCE.md#retained-script)
+uses source-qualified lives/countdown and complete-frame expectations. A new
+current-image continuous physical run remains separate from those host checks;
 physical-presence verification remains open in the charter's
 [remote acceptance](src/project-charter.md#remote-acceptance) split.
 
