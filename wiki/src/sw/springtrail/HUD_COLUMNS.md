@@ -126,7 +126,8 @@ the line15 request projection and readable HBlank behavior. Its HALT-entry bound
 is not automatically the game bound: include completion of the interrupted
 instruction and the actual handler in the new static count and trace check.
 Check line15 completes before scroll/object-enable writes, and both commits
-precede line16 mode2. All publication must finish within4560 VBlank dots;
+precede line16 mode2. All publication must finish within the4480-dot ceiling in the
+[current timing proof](../../../../src/dv/springtrail/ENTITIES.md), inside4560 VBlank dots;
 preparation must finish before the next VBlank. Freeze assembled instruction
 counts before simulation. Keep LCDC unsigned tiles, selected map,8x8 objects
 and no window; alter individual bits rather than copying a reference byte.
