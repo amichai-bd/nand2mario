@@ -17,14 +17,14 @@ AGENTS = (
     "Each root orchestration tree may have at most two open PRs, including its authors'\r\n"
     "drafts, and at most two active crewmates at any moment, including reviewers,\r\n"
     "scouts and nested agents. Reviewers are not extra capacity on top of authors:\r\n"
-    "a reviewer occupies one of the two slots. So an author goes idle before its\r\n"
-    "reviewer starts. These are ceilings, not targets.\r\n"
+    "a reviewer occupies one of the crewmate slots. When every slot is in use, an\r\n"
+    "author goes idle before its reviewer starts. These are ceilings, not targets.\r\n"
     "Open a PR only when that tree has fewer than two open. Separately\r\n"
     "user-authorized work outside that tree does not consume its slots.\r\n"
 )
 RECOVERY = (
     "Check the work caps before\n"
-    "spawning. The reviewer takes one of the two crewmate slots, so pause or finish\n"
+    "spawning. The reviewer takes a crewmate slot, so when the slots are full, pause\n"
     "the author before requesting review.\n"
 )
 
@@ -56,11 +56,9 @@ class UpdateCapsTest(unittest.TestCase):
 
     def test_rewrites_only_the_numbers_and_keeps_line_endings(self) -> None:
         self.assertEqual(0, self.run_script("4", "2"))
-        expected = AGENTS.replace("two active crewmates", "four active crewmates").replace(
-            "one of the two slots", "one of the four slots")
+        expected = AGENTS.replace("two active crewmates", "four active crewmates")
         self.assertEqual(expected, self.read("AGENTS.md"))
-        self.assertEqual(RECOVERY.replace("two crewmate", "four crewmate"),
-                         self.read(".agents/skills/agent-flow/references/recovery.md"))
+        self.assertEqual(RECOVERY, self.read(".agents/skills/agent-flow/references/recovery.md"))
         self.assertIn("- 2026-01-02: crewmates 2 -> 4, open PRs 2 -> 2 (asked by test)\n",
                       self.read(update_caps.HISTORY))
 
@@ -81,7 +79,7 @@ class UpdateCapsTest(unittest.TestCase):
         self.assertIn("at most four active crewmates", self.read("AGENTS.md"))
         self.assertEqual(1, self.run_script("4", "2", "--check"))
         found, stale = update_caps.verify(self.root, {"crewmates": 4, "prs": 2})
-        self.assertEqual(5, len(found))
+        self.assertEqual(3, len(found))
         self.assertEqual(1, len(stale))
         self.assertTrue(stale[0].startswith("wiki/agents/notes.md:2: crewmates=2"))
 

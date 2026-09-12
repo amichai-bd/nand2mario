@@ -54,17 +54,18 @@ point. A delegated agent that must ask raises the question to root; root asks
 the user and returns the answer. Escalate promptly; never let a pending decision
 or a real failure stay below deck.
 
-Each root orchestration tree may have at most two open PRs, including its authors'
+Each root orchestration tree may have at most three open PRs, including its authors'
 drafts, and at most four active crewmates at any moment, including reviewers,
 scouts and nested agents. Reviewers are not extra capacity on top of authors:
-a reviewer occupies one of the four slots. So an author goes idle before its
-reviewer starts, and delivery is serialized and slower. That is intended.
+a reviewer occupies one of the crewmate slots. When every slot is in use, an
+author goes idle before its reviewer starts, and delivery serializes; that is
+intended.
 These are ceilings, not targets; lower runtime limits still apply. Keep each
 change's reviewer independent of its author; root coordinates delivery.
 Prioritize existing ready PRs, finishing, reviewing, and merging over
 starting more work.
 If already over either cap, preserve existing work and reduce concurrency before
-adding more. Open a PR only when that tree has fewer than two open. Separately
+adding more. Open a PR only when that tree has fewer than three open. Separately
 user-authorized work outside that tree does not consume its slots. Do not hide work
 in branches, split orchestration trees, or close unfinished PRs to evade the cap.
 

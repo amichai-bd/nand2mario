@@ -19,10 +19,7 @@ NUMBER_RE = r"(?P<n>[a-z]+|\d+)"
 LOCATIONS = [
     ("AGENTS.md", "prs", rf"at most {NUMBER_RE} open PRs"),
     ("AGENTS.md", "crewmates", rf"at most {NUMBER_RE} active crewmates"),
-    ("AGENTS.md", "crewmates", rf"a reviewer occupies one of the {NUMBER_RE} slots"),
     ("AGENTS.md", "prs", rf"has fewer than {NUMBER_RE} open\."),
-    (".agents/skills/agent-flow/references/recovery.md", "crewmates",
-     rf"one of the {NUMBER_RE} crewmate slots"),
 ]
 
 # Where any cap statement may legitimately appear. The scan reads every file here.
@@ -34,7 +31,6 @@ SCAN = [
     ("prs", rf"fewer than {NUMBER_RE} open\b"),
     ("crewmates", rf"\b{NUMBER_RE} active (?:crewmates?|subagents?)\b"),
     ("crewmates", rf"\b{NUMBER_RE} crewmates?\b"),
-    ("crewmates", rf"one of the {NUMBER_RE} slots\b"),
 ]
 HISTORY = ".agents/skills/update-crewmates/HISTORY.md"
 # The log keeps old numbers on purpose; the scan skips it and the script sources.

@@ -41,13 +41,15 @@ only the numbers changed.
 | --- | --- | --- |
 | `AGENTS.md#work` | `at most <n> open PRs` | open PRs |
 | `AGENTS.md#work` | `at most <n> active crewmates` | crewmates |
-| `AGENTS.md#work` | `a reviewer occupies one of the <n> slots` | crewmates |
 | `AGENTS.md#work` | `has fewer than <n> open.` | open PRs |
-| `.agents/skills/agent-flow/references/recovery.md` | `one of the <n> crewmate slots` | crewmates |
 
-When a new sentence states a cap, add it to `LOCATIONS` in the script and to
-this table in the same change. The scan catches a sentence that was added
-without being listed, because it matches phrases rather than the table.
+Every other sentence about slots, including
+`.agents/skills/agent-flow/references/recovery.md`, is written to hold for any
+pair of numbers and states none. Keep it that way: prefer "a crewmate slot" or
+"when every slot is in use" over restating a number. When a new sentence must
+state a cap, add it to `LOCATIONS` in the script and to this table in the same
+change. The scan catches a sentence that was added without being listed,
+because it matches phrases rather than the table.
 
 ## When the numbers differ
 
