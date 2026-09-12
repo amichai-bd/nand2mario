@@ -3,10 +3,12 @@
 
 Writes the README loops wiki/showcase/build-and-tests.svg, board-session.svg
 and game-start.svg, and the lesson-deck terminal sessions
-reproducible-builds.svg, uart-debugging.svg and verification.svg.
+reproducible-builds.svg, uart-debugging.svg and verification.svg, and the
+board loops libbet-board.svg and springtrail-board.svg the showcase page embeds.
 Every terminal line is captured or recorded text (see wiki/showcase/README.md);
-every game pixel comes from the independent Springtrail frame references under
-src/dv/springtrail. The SVGs are self-contained: CSS keyframes only, no script,
+every game-start.svg pixel comes from the independent Springtrail frame
+references under src/dv/springtrail, and every board-loop pixel is a frame the
+DE10-Lite returned over UART. The SVGs are self-contained: CSS keyframes only, no script,
 no external resource. The authored state is the finished still, so a reduced
 motion reader sees the complete final picture.
 """
@@ -37,7 +39,7 @@ EMBEDS = {'build-and-tests': 'README.md', 'board-session': 'README.md', 'game-st
           'reproducible-builds': 'wiki/presentations/reproducible-builds.html',
           'uart-debugging': 'wiki/presentations/uart-debugging.html',
           'verification': 'wiki/presentations/verification.html',
-          'libbet-board': 'wiki/showcase/README.md'}
+          'libbet-board': 'wiki/showcase/README.md', 'springtrail-board': 'wiki/showcase/README.md'}
 
 # --- Loop 1: build and tests. Captured at 5ce0aa0 on 2026-09-11; long JSON lines
 # are shortened with an ellipsis, every kept field is verbatim; wrap() breaks
@@ -599,7 +601,7 @@ def game():
     return '\n'.join(svg) + '\n'
 
 
-# --- Loop 7: frames captured on the DE10-Lite.
+# --- Loops 7 and 8: frames captured on the DE10-Lite.
 #
 # Unlike game-start.svg, no pixel here is rendered on the host: each frame is
 # the packed 160x144 snapshot the board returned over UART during one recorded
@@ -621,10 +623,28 @@ LIBBET_SCENES = (
 )
 
 
+# Springtrail on the board: the SHOWCASE samples of one frame_proofs.py full
+# --showcase session, in capture order. Frame i is games()[SHOWCASE[i]]; the
+# scene starts below name the frames the legend describes (index: k).
+SPRINGTRAIL_SCENES = (
+    (0, 2.2, 'Title, no input'),                                       # 0: k 0
+    (1, 1.2, 'Start+B+Right (161): spawn at x 24, B+Right (33) held'),  # 1: k 3
+    (2, 0.35, 'Runs right; the camera follows past x 72'),             # 2..12: k 12..92
+    (13, 0.3, 'A held (49): the jump over the first gap'),             # 13..24: k 100..144
+    (25, 0.5, 'Lands, then A held (49) over the patrol'),              # 25..28: k 151..166
+    (29, 1.0, 'Camera 256: the 32-column ring wraps'),                 # 29: k 206
+    (30, 0.5, 'A for one VBlank: a low hop over the second gap'),      # 30..32: k 232..248
+    (33, 0.9, 'Lands at x 399 and walks under the brick'),             # 33: k 256
+    (34, 0.5, 'A held (49): the jump over the third gap'),             # 34..38: k 359..397
+    (39, 0.7, 'Camera clamps at 608; the goal is in view'),            # 39..41: k 441..465
+    (42, 2.2, 'WON at the goal, score 0'),                             # 42: k 473
+    (43, 1.2, 'Start (128): restart at spawn'),                        # 43: k 493
+    (44, 0.6, 'B+Right (33) runs into the first gap'),                 # 44..46: k 594..601
+    (47, 2.6, 'RETRY after the fall'),                                 # 47: k 604
+)
+
 # The loops whose every pixel came off the DE10-Lite rather than a host model.
-# Springtrail has no board loop yet: its capture driver's frozen LCD anchor no
-# longer matches the image the repository builds, tracked by issue #437.
-BOARD_LOOPS = ('libbet-board',)
+BOARD_LOOPS = ('libbet-board', 'springtrail-board')
 
 
 def scene_plan(scenes, count):
@@ -759,6 +779,13 @@ def documents():
             'Libbet and the Magic Floor v0.08 \u00b7 Damian Yerrick, Zlib licence \u00b7 frames captured on the DE10-Lite over UART',
             'Frames captured on the board running the pinned third-party image; wiki/showcase/README.md records the session.',
             LIBBET_SCENES),
+        'springtrail-board': board_loop(
+            'springtrail-board',
+            'Springtrail captured on the DE10-Lite: the title, Start, the run and jumps to the goal, WON, '
+            'a restart and the fall that ends in RETRY, every frame read back from the board over UART',
+            'Springtrail · the image the repository builds · frames captured on the DE10-Lite over UART',
+            'Frames captured on the board during a frame_proofs.py showcase session; wiki/showcase/README.md records it.',
+            SPRINGTRAIL_SCENES),
         'verification': terminal('A checker that can fail · from retained Questa receipts, not a fresh capture',
                                  'Retained receipts, not a fresh run: python-joypad at f6fff8f, builder-smoke-fail at c89b47d; JSON shortened.',
                                  TESTS, TESTS_LOOP),

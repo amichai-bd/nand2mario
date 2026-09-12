@@ -14,7 +14,7 @@ from motion_frames import image as terrain_image
 from power_reference import TITLE, PLAYING, RETRY, WON, SMALL
 from frame_proofs import (run, games, samples, anchor, history, checkpoint, plan_captures, unpack,
                           image, SCRIPT, CAPTURES, EXPECTED, PLANS, FIRST_VBLANK, RESTORE_FRAMES,
-                          LCD, PERIOD, START, INTACT_BLOCKS, update)
+                          SHOWCASE, SHOWCASE_CHECKPOINTS, LCD, PERIOD, START, INTACT_BLOCKS, update)
 
 ZERO_ROM = bytes(32768)
 ZERO_SHA = hashlib.sha256(ZERO_ROM).hexdigest()
@@ -248,6 +248,73 @@ class RunnerTests(unittest.TestCase):
                     self.assertEqual([m for _, m in client.events],
                                      [0]+[mask for i, mask in enumerate(samples()) if i >= FIRST_VBLANK and mask != samples()[i-1]]+[0])
                     self.assertEqual([(dot-LCD-4096) % PERIOD for dot, _ in client.events[1:]], [0]*(len(client.events)-1))
+
+    def test_showcase_sampling_adds_frames_without_changing_the_proof(self):
+        with tempfile.TemporaryDirectory() as directory:
+            plain, sampled = Fake(), Fake()
+            root = Path(directory)
+            base = short(plain, root/'plain', 'full')
+            result = short(sampled, root/'sampled', 'full', showcase=True)
+            self.assertEqual(result['status'], 'PASS')
+            # The frozen history is untouched: same inputs, checkpoints and captures.
+            self.assertEqual(sampled.events, plain.events)
+            self.assertEqual(result['final_dot'], base['final_dot'])
+            self.assertEqual(result['checkpoints'], base['checkpoints'])
+            self.assertEqual([c['name'] for c in result['captures']],
+                             [c['name'] for c in base['captures']])
+            self.assertEqual([c['crc32'] for c in result['captures']],
+                             [c['crc32'] for c in base['captures']])
+            self.assertEqual(base['samples'], [])
+            self.assertFalse(base['showcase'])
+            # Every listed checkpoint is sampled once, in order, and checked whole.
+            self.assertEqual([s['game'] for s in result['samples']], list(SHOWCASE))
+            self.assertEqual(list(SHOWCASE), sorted(set(SHOWCASE)))
+            self.assertEqual(sorted(SHOWCASE_CHECKPOINTS), [k+2 for k in SHOWCASE])
+            states = games()
+            for entry in result['samples']:
+                self.assertEqual(entry['checked_pixels'], 23040)
+                self.assertEqual(entry['frame'], entry['game']+1)
+                self.assertEqual(entry['metadata']['seq'], entry['frame'])
+                self.assertEqual(entry['pause_dot'], checkpoint(entry['game']+2))
+                self.assertEqual(entry['name'], f'showcase-{entry["game"]:04d}')
+                self.assertEqual(tuple(entry['anchor']), anchor(states[entry['game']]))
+                self.assertEqual(entry['mask'], samples()[entry['game']-1] if entry['game'] else 0)
+                self.assertTrue((root/'sampled'/entry['file']).is_file())
+                self.assertEqual(unpack((root/'sampled'/entry['file']).read_bytes()), image(states[entry['game']]))
+            # The eight checkpoints that are also captures reuse the read frame.
+            shared = sorted(set(SHOWCASE) & {k for _, k in CAPTURES})
+            self.assertEqual(shared, [0, 3, 36, 206, 441, 473, 493, 604])
+            files = {c['game']: c['file'] for c in result['captures']}
+            for entry in result['samples']:
+                if entry['game'] in shared:
+                    self.assertEqual(entry['file'], files[entry['game']])
+                else:
+                    self.assertTrue(entry['file'].startswith('showcase-'))
+            self.assertEqual(sampled.calls.count('snapshot'),
+                             plain.calls.count('snapshot')+len(SHOWCASE)-len(shared))
+            # The samples read as a playthrough: the title, the spawn, four
+            # jumps that leave and return to the ground, WON, the restart and
+            # the fall into the first gap ending in RETRY.
+            modes = [states[k].mode for k in SHOWCASE]
+            self.assertEqual((modes[0], modes[1]), (TITLE, PLAYING))
+            self.assertEqual([m for i, m in enumerate(modes) if i == 0 or m != modes[i-1]],
+                             [TITLE, PLAYING, WON, PLAYING, RETRY])
+            ys = [states[k].player.y for k in SHOWCASE]
+            arcs = [(a, b) for a, b in ((100, 144), (156, 166), (232, 248), (359, 397))]
+            for launch, last in arcs:
+                inside = [states[k].player.y for k in SHOWCASE if launch <= k <= last]
+                self.assertTrue(all(y < 1792 for y in inside), (launch, last))
+                before = max(k for k in SHOWCASE if k < launch)
+                self.assertEqual(states[before].player.y, 1792, launch)
+            self.assertEqual(ys[SHOWCASE.index(151)], 1792)
+            self.assertEqual(min(ys), 1200)
+            self.assertGreater(states[601].player.y, 1792, 'the fall is sampled before RETRY')
+            self.assertEqual(SHOWCASE[-1], 604)
+
+    def test_showcase_sampling_requires_the_full_history(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaisesRegex(AssertionError, 'FRAME_SHOWCASE_PLAN'):
+                short(Fake(), Path(directory)/'run', 'short', showcase=True)
 
     def test_failures_never_pass_and_clean_up(self):
         for fault in ('pixel', 'epoch', 'stale', 'dot', 'input', 'count', 'uncertain'):

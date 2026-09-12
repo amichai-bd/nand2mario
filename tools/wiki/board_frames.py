@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Board-captured frame archives for the wiki showcase loops.
 
-`ingest` reads one retained capture session -- today `play.py showcase`, which
-drives the pinned Libbet image -- and writes the committed archive
+`ingest` reads one retained capture session -- `play.py showcase`, which drives
+the pinned Libbet image, or `frame_proofs.py full --showcase`, which drives the
+Springtrail image the repository builds -- and writes the committed archive
 `tools/wiki/board_frames/<name>.json`. The archive holds the session's
 provenance and, per sampled frame, its identity (sequence, completion dot,
 applied JOYP mask, CRC32 of the packed board bytes) and the indexed-PNG payload
@@ -117,7 +118,49 @@ def libbet_session(folder):
     return provenance, frames
 
 
-READERS = {'libbet-board': libbet_session}
+def springtrail_session(folder):
+    """Sampled frames from one `frame_proofs.py full --showcase` session.
+
+    The session folder is the launcher's `workdir/builds/<tag>/frames/full-<stamp>/`:
+    `build.json` from the launcher, `session.json` from the worker and
+    `run/result.json` with the packed frames from the driver. Every sample was
+    compared against all 23040 pixels of the block-aware model before the
+    driver retained it; the CRC32 here is the driver's, over the unpacked
+    shade indices, the value FRAME_PROOFS.md records per capture.
+    """
+    session = json.loads((folder / 'session.json').read_text(encoding='utf-8'))
+    result = json.loads((folder / 'run' / 'result.json').read_text(encoding='utf-8'))
+    build = json.loads((folder / 'build.json').read_text(encoding='utf-8'))
+    assert session['status'] == result['status'] == 'PASS' and result['showcase'], \
+        'SESSION_NOT_A_PASSING_SHOWCASE'
+    assert result['rom_sha256'] == build['sha256'], 'SESSION_IMAGE'
+    provenance = dict(
+        program='Springtrail', driver='src/dv/springtrail/frame_proofs.py',
+        command='python src/dv/springtrail/frame_proofs.py full --showcase',
+        checked='every sampled frame compared against all 23040 pixels of '
+                'src/dv/springtrail/blocks_frames.image before it was retained',
+        wire_build_id=session['endpoint']['build_id'], wire_abi=session['endpoint'].get('abi'),
+        image_sha256=build['sha256'], anchor=build['package'].get('anchor'),
+        epoch=result['epoch'], plan=result['plan'], checkpoints=result['checkpoints'],
+        final_dot=result['final_dot'], wall_seconds=session['wall_seconds'],
+        lcd=result['lcd'], period=result['period'],
+        sampled_checkpoints=[k + 2 for k in result['showcase_checkpoints']],
+        proof_captures=[dict(name=c['name'], game=c['game'], seq=c['metadata']['seq'],
+                             dot=c['metadata']['dot'], crc32=c['crc32']) for c in result['captures']],
+        inputs=[dict(mask=row['mask'], dot=row['dot'], vblank=row['vblank']) for row in result['inputs']])
+    frames = []
+    for entry in result['samples']:
+        pixels = unpack((folder / 'run' / entry['file']).read_bytes())
+        assert f'{zlib.crc32(pixels) & 0xffffffff:08x}' == entry['crc32'], 'SESSION_FRAME_CRC'
+        assert entry['checked_pixels'] == PIXELS, 'SESSION_FRAME_UNCHECKED'
+        frames.append(dict(label=entry['name'], game=entry['game'], seq=entry['metadata']['seq'],
+                           dot=entry['metadata']['dot'], pause_dot=entry['pause_dot'],
+                           mask=entry['mask'], crc32=entry['crc32'],
+                           state=list(entry['anchor'][:8]), pixels=pixels))
+    return provenance, frames
+
+
+READERS = {'libbet-board': libbet_session, 'springtrail-board': springtrail_session}
 
 
 def ingest(name, folder, note):
