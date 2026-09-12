@@ -76,7 +76,7 @@ VBlank must measure against.
 | Shared CPU | Actual `UpdateGame` and `UpdateLives` bytes; every expected state byte after each scripted call, completion and settled halt | `python-gps` short, then `python-gpa` and `python-gpb` |
 | Fault | The retry update's actual pending life request store forced from 255 to 1 after the call marker; the same call's `UpdateLives` takes the award path and the unchanged checker rejects exactly one byte, the life count, as 3 instead of 1. Each case re-seeds its operands, so only a store consumed inside its own call is a valid witness | `python-gpx`, after the positive short |
 | Rendered states | HUD row 1 icons and values, all 149 tiles and the unchanged playfield on the changed ROM | `python-pr`, `python-mr` |
-| Affected regression | Motion short/full CPU, fault, game short/full and renderer on the changed ROM and the derived anchor; power short, both halves, fault and renderer; the block short, halves and fault; the pause game short, full and fault; the composition and DMA fixtures whose input lists gained `progress.asm` | `python-mus`, `python-mut`, `python-mux`, `python-mgs`, `python-mgu`, `python-mr`, `python-pus`, `python-pua`, `python-pub`, `python-pux`, `python-pr`, `python-bks`, `python-bka`, `python-bkb`, `python-bkx`, `python-pgs`, `python-pgu`, `python-pgx`, `python-courier-short`, `python-courier-unit`, `python-os`, `python-ou`, `python-ox` |
+| Affected regression | Motion short/full CPU, fault, game short/full and renderer on the changed ROM and the derived anchor; power short, both halves, fault and renderer; the block short, halves and fault; the pause game short, full and fault; the DMA fixtures whose input lists gained `progress.asm`; historical composition coverage remains in #492 | `python-mus`, `python-mut`, `python-mux`, `python-mgs`, `python-mgu`, `python-mr`, `python-pus`, `python-pua`, `python-pub`, `python-pux`, `python-pr`, `python-bks`, `python-bka`, `python-bkb`, `python-bkx`, `python-pgs`, `python-pgu`, `python-pgx`, `python-os`, `python-ou`, `python-ox` |
 | Assets | Approved core pixels reproduced by the ROM tables and copies at VRAM 140..148, the new mode words using loaded glyphs only, row 1 pixels equal to the approved maps, every other row 1 cell blank, and the committed previews reproduced from the same sources | `test_progress_assets` |
 | Delivery | Owning SW/DV links, 32 KiB reproducible image, builder checks, wiki check, required CI and current-head review | No new art approval or milestone replay |
 
@@ -136,8 +136,9 @@ dot pause fit conservatively within180..220dots from request start (64system
 clocks reserved after delimiter;25MHz system/4.194304MHz dots). HALT does not
 wait for instruction retirement. This puts pause afterDMA+644. Before issuing,
 the helper requires trigger+695 strictly before the unchanged LCD+2periods
-window, and rejects late requests. A generic4480 publication ceiling alone is
-not enough; insufficient current-frame space fails closed. Existing fullDMA,
+window, and rejects late requests. The generic4480 publication ceiling leaves at least724dots from the latest
+allowed trigger to frame end; the695-dot upper bound fits. The helper still
+rejects insufficient current-frame space. Existing fullDMA,
 46080pixels, settledhold and final-window assertions are unchanged. Retained
 g304e captured allpixels but requested only afterDMAend and failed the final
 window at377.672s; its observed pause is not used to choose the envelope.

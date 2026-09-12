@@ -119,9 +119,8 @@ def build(root, destination, variant='motion'):
                                     camera=97, old_camera_tile=11, entering_column=32,
                                     secondary=secondary),
                       **bounds(image),
-                      budget=dict(tile_copy=29624, font_hud=24000, ring=60000,
-                                  preparation=35000, setup=10000,
-                                  lcd_off_total=bounds(image)["lcd"], two_vblanks_and_tail=137000),
+                      budget=dict(source_derived_lcd=bounds(image)['lcd'],
+                                  two_vblanks_and_tail=137000),
                       shared_sections={row['section']:hashlib.sha256(image[row['address']:row['address']+row['size']]).hexdigest()
                                        for row in linked['map']['sections']
                                        if row['section'] not in ('code', 'assets')})
