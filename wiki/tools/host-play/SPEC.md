@@ -163,6 +163,8 @@ measures:
 | `snapshot_seconds` | fetching one actual frame, metadata and all chunks |
 | `compare_seconds` | comparing 23040 shades |
 | `loop_seconds` | one complete observe, decide, advance, observe action |
+| `decide_seconds` | choosing the mask inside that action |
+| `compare_render_seconds` | the separate render a pixel comparison does, kept out of `render_seconds` so each population is one thing |
 
 Transferred bytes and request counts are reported per path beside them, from
 the binding and the generated frame ABI. `observe --repeat N` takes N
@@ -189,6 +191,6 @@ retained artifacts, the reported measurements, a full five-checkpoint
 comparison and a deliberate disagreement.
 
 Board execution is not part of this evidence and remains open under
-[#472](https://github.com/amichai-bd/nand2mario/issues/472). No timing figure
+[#485](https://github.com/amichai-bd/nand2mario/issues/485). No timing figure
 for this path has been measured on hardware; the payload-only arithmetic in the
 [host SPEC](../n2m/host/SPEC.md) is not a result for it.
