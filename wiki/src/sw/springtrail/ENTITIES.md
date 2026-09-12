@@ -124,7 +124,9 @@ C100 shadow and C200/C220 caches are unchanged. No entity writes OAM directly.
 
 Use the existing enemies-tiles.json/enemies-maps.json approved source. Local tile
 indices0..10 and19..32 pack in that order into25tiles, runtime IDs149..173,
-400encoded bytes at ROM7200..738F. Existing149tiles remain unchanged. Enemy art
+400encoded bytes in VRAM. The unchanged full41-tile source atlas occupies
+656 ROM bytes at7200..748F; startup copies only the selected25tiles, using
+the existing asset/copy mechanism. Existing149tiles remain unchanged. Enemy art
 uses palette0/shade0 transparency. Whole facing reflection moves pieces and
 flips pixels; platforms are unreflected. Missing art approval is not a gate.
 
