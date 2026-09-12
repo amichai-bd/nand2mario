@@ -55,7 +55,11 @@ The short plan is two fixed 20-second cycles; the full plan is 90 fixed cycles
    the predicted mode/frame at least three frame periods after application,
    including OVER when Start was accepted from RETRY with zero lives.
    Release Start before continuing.
-3. Cycles 0, 30 and 60 also sample ordinary in-game pause and resume.
+3. Cycles 0, 30 and 60 apply the same extra pair of released Start presses.
+   The retained sample names `pause` and `resume` are labels, not mode claims.
+   Cycles 0 and 60 produce PAUSED then PLAYING, with one life. Cycle 30 follows
+   OVER: its first extra Start resets to PLAYING with two lives, and its next
+   Start enters PAUSED. The model follows these actual lifecycle effects.
 4. Remain RUNNING to the fixed cycle boundary. A cycle exceeding 20 seconds or
    a next-cycle start more than one second late fails.
 
