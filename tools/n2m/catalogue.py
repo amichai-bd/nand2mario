@@ -443,11 +443,9 @@ def run_simulation(root, tag, target, args, remaining):
     else:
         outcome["status"] = "FAIL"
         outcome.setdefault("error", f"child exit {code} with status {child.get('status')}")
-    if child.get("cleanup_complete") is True:
-        lock = Path(root) / "workdir/builds" / tag / ".lock"
-        if lock.is_file():
-            lock.unlink()
-            outcome["stale_lock_removed"] = True
+    for key in ("stale_lock_removed", "lock_left"):
+        if key in child:
+            outcome[key] = child[key]
     return outcome
 
 
@@ -564,8 +562,11 @@ def command(root, args, header, publish):
     if problems:
         raise ValueError(problems[0])
     budget = budget_for(args)
-    with workspace(root, args.tag) as build:
+    reclaimed = []
+    with workspace(root, args.tag, reclaimed) as build:
         report = {**header(build.name), "status": "RUNNING"}
+        if reclaimed:
+            report["stale_lock_reclaimed"] = reclaimed[0].relative_to(Path(root)).as_posix()
         atomic_json(build / "status.json", {"status": "RUNNING"})
         atomic_json(build / "manifest.json", report)
     # The workspace is released before the children run: each simulation takes

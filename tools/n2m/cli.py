@@ -165,8 +165,11 @@ def parser():
 
 def tagged(root, args, header, publish):
     """Run one command inside its exclusive tagged workspace."""
-    with workspace(root, args.tag) as build:
+    reclaimed = []
+    with workspace(root, args.tag, reclaimed) as build:
         report = header(build.name)
+        if reclaimed:
+            report["stale_lock_reclaimed"] = reclaimed[0].relative_to(root).as_posix()
         atomic_json(build / "status.json", {"status": "RUNNING"})
         try:
             if args.command == "check":

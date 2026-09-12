@@ -366,6 +366,16 @@ absolute selected budget. A failed
 cleanup records `cleanup_complete: false`; inspect and stop remaining children
 before releasing shared tool ownership. Never treat that failure as a clean exit.
 
+The killed worker never ran the `finally` that releases its tag `.lock`. After
+tree termination the supervisor reads the lock's recorded `pid`: a dead writer's
+lock is removed and the record and result carry `stale_lock_removed: true`. Any
+lock left is named as `lock_left`; when it is unreadable, still the worker's, or
+a dead writer's that could not be removed, the result also reports
+`cleanup_complete: false`. A lock a live foreign writer holds is left with
+cleanup reported honestly. A budget-exhausted tag therefore never turns a later
+command into a silent cache hit: its `sim/test/<target>/result.json` was
+published `RUNNING` before execution and is never reused.
+
 A target may set integer `timeout_seconds` from 1 through its selected total budget
 for its Questa runtime command: 300 normally, its declared allowance when it has one,
 and 1500 only for the three names above.
@@ -447,13 +457,12 @@ declared allowance, capped by the aggregate seconds remaining, and its one
 seconds left is `SKIPPED` without launching. A member is `PASS` only when its
 child exits 0 with a `PASS` result; anything else, including a child wall-budget
 expiry, is `FAIL` with the child's error. A child killed at its wall budget
-never releases the tag `.lock` it holds. When the supervisor reports its
-process-tree cleanup complete, the writer is dead and the regression removes
-that lock, recording `stale_lock_removed` on the member, so later members and
-the aggregate publish take the tag normally. When cleanup did not complete the
-lock stays: the aggregate is still reported with the lock error appended, the
-tag stays `RUNNING`, and `clean` refuses it until its writer is confirmed
-stopped. A `CACHED` member is a valid reuse of
+never releases the tag `.lock` it holds; the supervisor removes that dead
+writer's lock and the member carries its `stale_lock_removed`, so later members
+and the aggregate publish take the tag normally. A lock the supervisor left is
+carried as the member's `lock_left`: the aggregate is still reported with the
+lock error appended, the tag stays `RUNNING`, and `clean` refuses it while its
+writer is alive. A `CACHED` member is a valid reuse of
 unchanged inputs; use `--rebuild` for fresh evidence. Later members still run
 after a failure, so the aggregate reports every outcome.
 
@@ -919,9 +928,24 @@ execution; publication failure aborts the request rather than reporting success.
 Each backend treats compilation and simulation as one stage: any source,
 runner module, dependency definition, target configuration, seed, or discovered
 tool identity change rebuilds both. Artifact hashes are also checked before reuse.
-`check` and `doctor` always rerun. A lock left by an interrupted process requires
-confirming that writer stopped before manually removing the tagged `.lock` file.
-There is no age-based lock stealing.
+`check` and `doctor` always rerun. The tagged `.lock` records its writer as
+`pid=<n>`, and the writer keeps the file handle open until it releases the
+lock, so on Windows no other process can rename or remove a held lock. A
+command that finds the lock held checks that process: a dead writer's lock is
+reclaimed once, with a stderr notice naming the lock and the pid, and the
+command's report (a tagged command, a regression or a selection) records
+`stale_lock_reclaimed`; the command then runs, and no cached result is ever
+served in place of that run. The reclaim is an atomic rename of the lock to a
+unique `.lock.stale-<id>` sibling, removed only while it still records the dead
+writer; a rename that fails, or a claimed file that records another writer, is
+another command's fresh lock and is left or put back, and the loser fails as
+`tag <tag> was taken by another writer while its stale lock <path> was
+reclaimed`. A lock whose
+writer is alive, or whose owner cannot be read, refuses the command by name:
+`tag <tag> is locked by live pid <n>; confirm its writer stopped before removing
+<path>`. There is no age-based lock stealing. Process ids can be reused by the
+operating system, so a reclaim decision is about the recorded pid, not about
+which program holds it.
 
 Named tags support fast iteration. Timestamp tags preserve isolated run history.
 Different tags may share downloaded tools and immutable cache content, but not
@@ -1035,8 +1059,9 @@ command never removes `workdir/` itself, another tag, checked-in tools or
 source files. The tag must satisfy the [tag rule](#build-tags), so a path,
 `..` or an absolute name fails validation. The command then resolves
 the directory and refuses a link, a directory whose resolved parent is not
-`workdir/builds/`, a missing tag (`no build tag <tag>`), and a tag holding a
-`.lock` or `sim/regress/.lock` from an unfinished writer. Links inside the tag
+`workdir/builds/`, a missing tag (`no build tag <tag>`), a tag holding a
+`sim/regress/.lock`, and a tag whose `.lock` records a live or unreadable
+writer; a dead writer's `.lock` does not hold the tag. Links inside the tag
 are removed as links; their targets are untouched and never counted, so the
 file count and byte total are the tag's own files. When `workdir/latest.txt`
 names the removed tag it is deleted and the result records `latest_cleared`.

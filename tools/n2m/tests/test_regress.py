@@ -238,10 +238,10 @@ class RegressTests(unittest.TestCase):
         self.assertFalse(build.exists())
 
     def test_incomplete_child_cleanup_keeps_the_lock_and_still_reports_the_aggregate(self):
-        """Without proof the writer is dead the lock stays; the aggregate is
+        """While the lock's writer is alive the lock stays; the aggregate is
         reported with the lock error and the tag is left RUNNING."""
         def fake(command, root, tag, *, target=None, ceiling=None):
-            (root / "workdir/builds" / tag / ".lock").write_text("pid=1")
+            (root / "workdir/builds" / tag / ".lock").write_text(f"pid={os.getpid()}\n")
             return 1, json.dumps({"status": "FAIL", "error": "test wall budget exhausted (13 seconds total, 12 reserved for cleanup)",
                                   "cleanup_complete": False, "cleanup_error": "process-tree cleanup failed: 128"}) + "\n"
         with patch("n2m.regress.supervise", side_effect=fake), patch("n2m.cli.git_state", return_value={"commit": "test"}), \
@@ -250,13 +250,19 @@ class RegressTests(unittest.TestCase):
         report = json.loads(output.getvalue())
         self.assertEqual(code, 1)
         self.assertEqual(report["failed"], ["builder-smoke", "tile-pixel"])
-        self.assertIn("regression good failed: builder-smoke FAIL, tile-pixel FAIL; tag agg is locked", report["error"])
+        self.assertIn(f"regression good failed: builder-smoke FAIL, tile-pixel FAIL; tag agg is locked by live pid {os.getpid()}", report["error"])
         self.assertNotIn("stale_lock_removed", report["targets"]["builder-smoke"])
         build = self.root / "workdir/builds/agg"
         self.assertTrue((build / ".lock").exists())
         self.assertEqual(read_json(build / "manifest.json")["status"], "RUNNING")
         with self.assertRaisesRegex(ValueError, "locked"):
             module.clean(self.root, "agg")
+        # Once the writer is gone the lock is stale: clean no longer refuses.
+        dead = subprocess.Popen([sys.executable, "-c", "pass"])
+        dead.wait()
+        (build / ".lock").write_text(f"pid={dead.pid}\n")
+        self.assertEqual(module.clean(self.root, "agg")["removed"], "workdir/builds/agg")
+        self.assertFalse(build.exists())
 
     def test_regress_guard_refuses_a_second_runner_on_the_tag(self):
         guard = self.root / "workdir/builds/agg/sim/regress/.lock"
@@ -317,7 +323,7 @@ class RegressTests(unittest.TestCase):
         outside.write_text("keep")
         builds = self.root / "workdir/builds"
         (builds / "locked").mkdir()
-        (builds / "locked/.lock").write_text("pid=1")
+        (builds / "locked/.lock").write_text(f"pid={os.getpid()}\n")
         link = builds / "linked"
         linked = True
         try:

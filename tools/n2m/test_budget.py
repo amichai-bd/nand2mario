@@ -64,6 +64,34 @@ def wall_limit(target, root=None):
     return wall_selection(target, root)[0]
 
 
+def release_lock(lock, worker_pid, record):
+    """Free the tag lock a killed worker never released.
+
+    The worker's finally never ran, so its lock outlives it. A lock whose
+    recorded writer is dead is removed; one a live foreign writer holds is
+    not ours. Any lock left is named, and one that should have gone marks
+    the cleanup incomplete, so no report calls a locked tag clean.
+    """
+    from n2m.records import lock_owner, pid_alive, reclaim_stale_lock
+    if not lock.is_file():
+        return
+    owner = lock_owner(lock)
+    if owner is not None and not pid_alive(owner):
+        try:
+            if reclaim_stale_lock(lock, owner):
+                record["stale_lock_removed"] = True
+                return
+        except OSError as error:
+            record["cleanup_error"] = f"lock release failed: {error}"
+    if not lock.is_file():
+        # Another command reclaimed it first; the tag is free.
+        return
+    record["lock_left"] = lock.as_posix()
+    # Unreadable, still the worker's, or dead but not removable: not clean.
+    if owner is None or owner == worker_pid or not pid_alive(owner):
+        record["cleanup_complete"] = False
+
+
 def supervise(command, root, tag, *, target=None, ceiling=None):
     limit, allowance_reason = wall_selection(target, root)
     # A regression caps a child at its remaining aggregate seconds. The cap
@@ -141,6 +169,8 @@ def supervise(command, root, tag, *, target=None, ceiling=None):
                 process.wait(timeout=remaining(2))
             except (OSError, subprocess.TimeoutExpired) as reap_error:
                 record["reap_error"] = str(reap_error)
+    if timed_out:
+        release_lock(build / ".lock", process.pid, record)
     text = output.decode("utf-8", errors="replace")
     error_text = (errors or b"").decode("utf-8", errors="replace")
     record.update(status="TIMEOUT" if timed_out else "FINISHED", raw_exit_code=process.returncode,
@@ -158,7 +188,8 @@ def supervise(command, root, tag, *, target=None, ceiling=None):
                               "tag": tag, "wall_budget": path.relative_to(root).as_posix(),
                               "raw_exit_code": process.returncode,
                               "cleanup_complete": record["cleanup_complete"],
-                              "cleanup_error": record.get("cleanup_error")}) + "\n"
+                              "cleanup_error": record.get("cleanup_error"),
+                              **{key: record[key] for key in ("stale_lock_removed", "lock_left") if key in record}}) + "\n"
     # Keep --json stdout parseable even when discovery/git emits stderr.
     print(error_text, end="", file=sys.stderr)
     return process.returncode, text

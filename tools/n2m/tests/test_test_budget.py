@@ -2,6 +2,7 @@
 import json
 import io
 from datetime import datetime, timezone
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -49,6 +50,65 @@ class BudgetTests(unittest.TestCase):
         self.assertEqual(record['status'], 'TIMEOUT')
         self.assertNotEqual(record['raw_exit_code'], 0)
         self.assertIn('partial', (self.root/record['output']).read_text())
+
+    def test_expiry_releases_the_killed_workers_tag_lock(self):
+        # The worker takes the tag lock exactly as the sim-test worker does,
+        # then outlives the smallest ceiling: one second of execution.
+        tools = str(Path(__file__).resolve().parents[2])
+        worker = (f"import sys, time; sys.path.insert(0, {tools!r}); from pathlib import Path\n"
+                  f"from n2m.records import workspace\n"
+                  f"with workspace(Path({str(self.root)!r}), 'held'): print('holding', flush=True); time.sleep(30)\n")
+        code, text = supervise([sys.executable, '-c', worker], self.root, 'held', ceiling=13)
+        self.assertEqual(code, 1)
+        result = json.loads(text)
+        self.assertEqual(result['status'], 'FAIL')
+        self.assertTrue(result['cleanup_complete'])
+        self.assertTrue(result['stale_lock_removed'])
+        self.assertNotIn('lock_left', result)
+        self.assertFalse((self.root / 'workdir/builds/held/.lock').exists())
+        record = json.loads(next((self.root / 'workdir/builds/held/wall-budget').glob('*.json')).read_text())
+        self.assertEqual(record['status'], 'TIMEOUT')
+        self.assertTrue(record['stale_lock_removed'])
+        # The tag is free again: a later workspace takes it without a notice.
+        from n2m.records import workspace
+        notices = []
+        with workspace(self.root, 'held', notices):
+            pass
+        self.assertEqual(notices, [])
+
+    def test_a_live_foreign_lock_is_left_and_named(self):
+        lock = self.root / 'workdir/builds/foreign/.lock'
+        lock.parent.mkdir(parents=True)
+        lock.write_text(f'pid={os.getpid()}\n')
+        process = Mock(pid=123, returncode=9)
+        process.communicate.side_effect = [subprocess.TimeoutExpired('worker', 300), (b'partial', None)]
+        with patch('n2m.test_budget.subprocess.Popen', return_value=process), \
+             patch('n2m.test_budget.subprocess.run') as cleanup, \
+             patch('n2m.test_budget.os.killpg', create=True):
+            cleanup.return_value.returncode = 0
+            code, text = supervise(['worker'], self.root, 'foreign')
+        result = json.loads(text)
+        self.assertEqual(code, 1)
+        self.assertTrue(result['cleanup_complete'])
+        self.assertEqual(result['lock_left'], lock.as_posix())
+        self.assertNotIn('stale_lock_removed', result)
+        self.assertEqual(lock.read_text(), f'pid={os.getpid()}\n')
+
+    def test_an_unreadable_lock_marks_the_cleanup_incomplete(self):
+        lock = self.root / 'workdir/builds/unread/.lock'
+        lock.parent.mkdir(parents=True)
+        lock.write_text('')
+        process = Mock(pid=123, returncode=9)
+        process.communicate.side_effect = [subprocess.TimeoutExpired('worker', 300), (b'partial', None)]
+        with patch('n2m.test_budget.subprocess.Popen', return_value=process), \
+             patch('n2m.test_budget.subprocess.run') as cleanup, \
+             patch('n2m.test_budget.os.killpg', create=True):
+            cleanup.return_value.returncode = 0
+            code, text = supervise(['worker'], self.root, 'unread')
+        result = json.loads(text)
+        self.assertFalse(result['cleanup_complete'])
+        self.assertEqual(result['lock_left'], lock.as_posix())
+        self.assertTrue(lock.exists())
 
     def test_expiry_uses_process_tree_cleanup(self):
         process = Mock(pid=123, returncode=9)
