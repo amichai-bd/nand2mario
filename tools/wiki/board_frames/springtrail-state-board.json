@@ -48,7 +48,7 @@
   "epoch": 45,
   "image_sha256": "303e2325a2ba7533430b04bfc703626cbdc09fce2c9f10714fbc83382c9bf79a",
   "layout_sha256": "92715bf10a6f9d2e9105dac655bf7cd690dd7062b884fe35f4d3ea2055fd80ae",
-  "mask_scope": "effective input is neutral during aligned snapshot",
+  "mask_scope": "placeholder for existing display; input telemetry not retained in this archive",
   "note": "Three actual UART frames from compare485c on2026-09-13; no model-rendered pixels in this archive.",
   "program": "Springtrail",
   "source_commit": "1ab289c2bd689476fcdd19aaeb3e147233a9d1c2",

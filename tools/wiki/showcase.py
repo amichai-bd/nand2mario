@@ -791,7 +791,7 @@ def documents():
             'springtrail-state-board',
             'Current Springtrail captured on the DE10-Lite: title, dynamic scene and first-stage WON',
             'Actual UART source frames | independent state reconstruction matched every shade',
-            'Three aligned captures from springtrail_player.py compare; provenance in the frame archive.',
+            'Actual compare captures; button pills are not input telemetry. Provenance in the frame archive.',
             [(0, 1, 'Title | actual source frame'), (1, 1, 'Dynamic scene | actual source frame'),
              (2, 1, 'First-stage WON | actual source frame')]),
         'verification': terminal('A checker that can fail · from retained Questa receipts, not a fresh capture',

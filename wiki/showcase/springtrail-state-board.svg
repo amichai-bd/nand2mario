@@ -26,5 +26,5 @@
 <text class="l0" x="16" y="500" opacity="0">Title | actual source frame</text>
 <text class="l1" x="16" y="500" opacity="0">Dynamic scene | actual source frame</text>
 <text class="l2" x="16" y="500" opacity="1">First-stage WON | actual source frame</text>
-<text class="h" x="16" y="526">Three aligned captures from springtrail_player.py compare; provenance in the frame archive.</text>
+<text class="h" x="16" y="526">Actual compare captures; button pills are not input telemetry. Provenance in the frame archive.</text>
 </svg>
