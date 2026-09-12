@@ -275,7 +275,8 @@ class FpgaTests(unittest.TestCase):
         def fake(root, build, args, provenance=None):
             return {"status": "PASS", "notices": [fpga.ALLOCATOR_OVERRIDE_NOTICE]}
 
-        with patch("n2m.cli.build_fpga", side_effect=fake), patch("n2m.cli.git_state", return_value={}),                 contextlib.redirect_stdout(io.StringIO()) as output:
+        with patch("n2m.cli.build_fpga", side_effect=fake), patch("n2m.cli.git_state", return_value={}), \
+                contextlib.redirect_stdout(io.StringIO()) as output:
             code = main(["fpga", "build", "smoke", "--quartus-bin", "tools", "--tag", "notice"], self.root)
         self.assertEqual(code, 0)
         self.assertIn(fpga.ALLOCATOR_OVERRIDE_NOTICE, output.getvalue().splitlines())

@@ -25,7 +25,8 @@ ALLOCATOR_NOTICE = "TBBmalloc: skip allocation functions replacement in ucrtbase
 # documents this variable to keep the standard CRT allocator. It is set only in
 # the environment of each launched Quartus process; the host is not changed.
 ALLOCATOR_OVERRIDE = {"TBB_MALLOC_DISABLE_REPLACEMENT": "1"}
-ALLOCATOR_OVERRIDE_NOTICE = ("notice: TBB_MALLOC_DISABLE_REPLACEMENT=1 is set for every launched Quartus process "
+# Written at record creation, so it states the launch policy, not that a launch happened.
+ALLOCATOR_OVERRIDE_NOTICE = ("notice: Quartus processes launch with TBB_MALLOC_DISABLE_REPLACEMENT=1 "
                              "(host allocator condition; see wiki/tools/n2m/SPEC.md#quartus-allocator-override)")
 # These exact diagnostics do not establish physical readiness. No warning is hidden.
 CLASSIFIED = {
