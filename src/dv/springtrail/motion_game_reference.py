@@ -84,7 +84,7 @@ class Check:
         assert kind=='W','MOTION_TRACE_KIND'
         dot,address,data=value>>24,(value>>8)&65535,value&255
         self.memory[address]=data
-        if 0x8000<=address<0x88c0:
+        if 0x8000<=address<0x8950:
             assert self.lcd is None,'MOTION_LATE_TILES'
             self.tiles.append((address,data))
         if address==0xff40:
