@@ -92,12 +92,17 @@ def check_pixels(packed, sample, states=None):
     return 23040
 
 
-class Schedule:
-    """Reachable whole states from applied INPUT dots and source-frame identity.
+# Accepted JOYP read dots relative to the VBlank request, including the
+# source IRQ/token path and CPU final-fetch overlap. The source test derives
+# these from the current image; both reads share the same entry timing.
+DIRECTION_READ, ACTION_READ = 316, 388
 
-    ReadButtons samples both JOYP rows during VBlank. An application inside
-    that interval admits the two old/new row combinations for that update;
-    inputs outside it are definite. No pixel result selects future candidates.
+
+class Schedule:
+    """Complete current states from chronological INPUT events and source frames.
+
+    INPUT's reply dot counts completed T-cycles: an application recorded at
+    a read's dot occurs after that read. Never select future state from pixels.
     """
     def __init__(self):
         self.events = []
@@ -110,24 +115,20 @@ class Schedule:
         assert not self.events or dot >= self.events[-1][0], 'ENDURANCE_INPUT_ORDER'
         self.events.append((dot, mask))
 
+    def _mask_at(self, dot):
+        while self.index < len(self.events) and self.events[self.index][0] < dot:
+            self.mask = self.events[self.index][1]
+            self.index += 1
+        return self.mask
+
     def frame(self, sequence):
         count = max(0, sequence - 1)
         assert count >= self.updates, 'ENDURANCE_MODEL_FRAME_ORDER'
         while self.updates < count:
-            start = LCD + self.updates * PERIOD + 65664
-            end = start + 4560
-            while self.index < len(self.events) and self.events[self.index][0] < start:
-                self.mask = self.events[self.index][1]
-                self.index += 1
-            masks = {self.mask}
-            while self.index < len(self.events) and self.events[self.index][0] < end:
-                new = self.events[self.index][1]
-                masks = {lo | hi for old in masks
-                         for lo in (old & 15, new & 15)
-                         for hi in (old & 240, new & 240)}
-                self.mask = new
-                self.index += 1
-            self.states = {update(state, mask) for state in self.states for mask in masks}
+            vblank = LCD + self.updates * PERIOD + 65664
+            directions = self._mask_at(vblank + DIRECTION_READ) & 15
+            actions = self._mask_at(vblank + ACTION_READ) & 240
+            self.states = {update(state, directions | actions) for state in self.states}
             self.updates += 1
         return self.states
 

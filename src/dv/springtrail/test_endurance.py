@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]/'tools'))
 from n2m import generated_interfaces as abi
 from interactions_reference import PLAYING, PAUSED, RETRY
 from entities_frames import image
-from endurance import (run, update, expected, check_pixels, terminal, first_samples, Schedule,
+from endurance import (run, update, expected, check_pixels, terminal, first_samples, Schedule, DIRECTION_READ, ACTION_READ,
                        supervise, LCD, PERIOD, DOT_HZ, ROUTES, ROUTE_PERIODS, SPAWN, PLANS, CYCLE_SECONDS)
 
 ZERO_ROM = bytes(32768)
@@ -34,8 +34,8 @@ class Fake:
     def __init__(self, fault=None):
         self.wall = 0.; self.dot = 0; self.epoch = 6; self.mask = 0; self.running = False
         self.sequence = 177017; self.uncertain = False; self.fault = fault
-        self.game = SPAWN; self.next_vb = 0; self.frames = {}; self.calls = []
-        self.run_origin = 0; self.terminal_clock = 0
+        self.game = SPAWN; self.next_vb = 0; self.frames = {}; self.events = []; self.calls = []
+        self.run_origin = 0; self.terminal_clock = 0; self.sampled = []
 
     def clock(self):
         if self.terminal_clock:
@@ -52,8 +52,12 @@ class Fake:
     def advance(self, target):
         if self.running and self.fault == 'dot-duration':
             target = min(target, self.run_origin+(SHORT*CYCLE_SECONDS-1)*DOT_HZ)
-        while LCD+self.next_vb*PERIOD+65664 <= target:
-            self.game = update(self.game, self.mask)
+        while LCD+self.next_vb*PERIOD+65664+ACTION_READ <= target:
+            vblank = LCD+self.next_vb*PERIOD+65664
+            def observed(dot):
+                return next((value for applied,value in reversed(self.events) if applied < dot), 0)
+            buttons = (observed(vblank+DIRECTION_READ)&15) | (observed(vblank+ACTION_READ)&240)
+            self.game = update(self.game, buttons)
             self.frames[self.next_vb+2] = self.game
             self.next_vb += 1
         self.dot = target
@@ -66,7 +70,7 @@ class Fake:
         if self.fault == 'lifecycle' and self.calls.count('load') == 4:
             raise RuntimeError('incomplete final load')
         self.dot = 0; self.epoch += 2; self.running = False; self.mask = 0
-        self.game = SPAWN; self.next_vb = 0; self.frames = {}
+        self.game = SPAWN; self.next_vb = 0; self.frames = {}; self.events = []
         return {'verified_bytes': len(rom)}
 
     def read_host(self, addr):
@@ -88,6 +92,7 @@ class Fake:
         if name == 'RESET': self.epoch += 1; self.dot = 0
         if name == 'INPUT':
             self.mask = value
+            self.events.append((self.dot, value))
             if self.fault == 'input': return {'dot': self.dot+999999}
         return {'dot': self.dot}
 
@@ -100,6 +105,7 @@ class Fake:
         if self.fault == 'stopped' and self.running: self.running = False
         seq = (self.dot-LCD-65664)//PERIOD
         game = self.frames.get(seq, SPAWN)
+        self.sampled.append(game)
         data = packed(image(game))
         meta = dict(epoch=self.epoch, seq=seq, dot=LCD+seq*PERIOD+65663, size=5760)
         if self.fault == 'epoch': meta['epoch'] += 1
@@ -266,3 +272,4 @@ class RunnerTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
