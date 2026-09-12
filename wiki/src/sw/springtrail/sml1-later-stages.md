@@ -22,6 +22,10 @@ art, or a scheduled issue. The owner selects what to schedule.
   `uncertain` means the pinned files locate the mechanic but its body is an
   `INCBIN`, lives in an unpinned bank, or carries an annotation that needs
   independent confirmation.
+- The current basis is `main`: the [game specification](SPEC.md), the
+  [movement](MOVEMENT.md), [power](POWER.md) and [block](BLOCKS.md)
+  contracts and `src/sw/springtrail`. Work in flight is named only as a
+  dependency, never as something the image has.
 - NES Mario and SML2 mechanics are not substitutes. Audio is excluded.
 
 ## Reference boundary
@@ -45,24 +49,41 @@ VBlank wait. The current image's `GameMode` byte and its per-mode dispatch in
 
 ## Storage budget
 
-The measured current image, built from `main` with
+The current image, built from `main` with
 `python tools/build.py sw build springtrail --tag inv306 --json`, uses 20042
-of 32768 bytes; 12726 remain. The parked progression work
-([#304](https://github.com/amichai-bd/nand2mario/issues/304)) reports a net
-+152 bytes on its own base, which predates the block layer, so roughly 12.5 KiB
-remains once it merges. The entity families of
-[#305](https://github.com/amichai-bd/nand2mario/issues/305) are unpriced;
-this page assumes 1.5 to 3 KiB for three or four families with art.
+of 32768 bytes; 12726 bytes, 12.4 KiB, remain. Two open issues will spend
+some of it before anything here is scheduled:
 
-Estimates below are calibrated on measured section sizes, not guessed from
-the reference: `power` 801 bytes for contact classes, three power states,
-protection windows, crouch and one shot; `blocks` 568 bytes plus 1184 bytes
-of block art for four blocks with head hits, breakage and effects; `movement`
-1265 bytes; the parked `progress` 580 bytes for lives, a timer and a
-three-stage table; `world` 1728 bytes and `columns` 728 bytes for 96 columns,
-about 25 bytes per column of collision and display data; and 16 bytes per
-8x8 tile of art. An estimate is a range; the low end reuses existing routines,
-the high end adds its own.
+- The progression work of
+  [#304](https://github.com/amichai-bd/nand2mario/issues/304), in flight and
+  not on `main`, reports a net +152 bytes for lives, a timer, three stages
+  and the game-over and time-up modes; it also reorganizes the world and
+  collision sections. After it, about 12.3 KiB remains.
+- The entity families of
+  [#305](https://github.com/amichai-bd/nand2mario/issues/305) are unpriced;
+  this page assumes 1.5 to 3 KiB for three or four families with art.
+
+Estimates below are calibrated on measured `main` section sizes, not guessed
+from the reference: `power` 801 bytes for contact classes, three power
+states, protection windows, crouch and one shot; `blocks` 568 bytes plus
+1184 bytes of block art for four blocks with head hits, breakage and effects;
+`movement` 1265 bytes; `interactions` 573 bytes for mode dispatch, items and
+the goal; `world` 1728 bytes and `columns` 728 bytes for 96 columns, about
+25 bytes per column of world and display data; and 16 bytes per 8x8 tile of
+art.
+
+Collision is priced separately because it is paid per page, not per column:
+`collision` is 4608 bytes, 18 rows by 256 columns, page-aligned so that
+`CollisionPointer` in `movement.asm` forms the high address byte from the
+row. The current 96 columns leave 160 unused columns in that page. A new
+stage that fits in the unused columns costs only its world and display data;
+a stage that needs a second page costs a further 4608 bytes plus a page
+select in the collision base. The in-flight progression work assigns all
+256 columns to its three stages, so after it a fourth stage needs either a
+second page or a smaller existing stage. Both prices appear below.
+
+An estimate is a range; the low end reuses existing routines, the high end
+adds its own.
 
 ## Inventory
 
@@ -72,9 +93,9 @@ Reference behavior, all in bank 0 unless noted:
 
 | Behavior | Evidence |
 | --- | --- |
-| A boss is an ordinary enemy slot whose second `Data_3375` byte is at or above `$C0`; spawning it also requests boss music. Health is the low six bits of slot byte `$0C`. | `SpawnEnemies` at `$249B`, `Jmp_250B`, `ldh [$FFCC]` "health above C0 means boss"; `Call_2A68` `and $3F`. |
+| A boss is an ordinary enemy slot whose third `Data_3375` byte is at or above `$C0`; spawning it also requests boss music. The spawn skips the first byte, stores the second as mortality and dimensions, and the third as health. Health is the low six bits of slot byte `$0C`. | `SpawnEnemies` at `$249B`, `Jmp_250B`, `ldh [$FFCA]`, `ldh [$FFCC]` "health above C0 means boss"; `Call_2A68` `and $3F`. |
 | A player shot decrements health once per hit; the hit sound differs for `HIYOIHOI` and `KING_TOTOMESU`. At zero the enemy is replaced by the fourth byte of its `Data_3186` entry and reinitialized. | `Call_2A68` at `$2A68`, ids `$32` and `$08` in `enemies.asm`. |
-| In the autoscroll state the same test uses `Call_2AAD` with the fifth byte instead, and `DRAGONZAMASU`, `BIOKINTON` and `TATANGA` get the boss sound; Tatanga at zero health also sets `$D007`. | `$2AAD`; the caller `Call_200A` at `.jmp_2064` selects the routine by `hGameState == 0x0D`. |
+| In the autoscroll state the same test uses `Call_2AAD` with the fifth byte instead; `DRAGONZAMASU` and `BIOKINTON` get the boss sound and `TATANGA` gets the explosion sound. Tatanga at zero health also sets `$D007`. | `$2AAD`, `.bossHitSFX` and `.explosionSFX`; the caller `Call_200A` at `.jmp_2064` selects the routine by `hGameState == 0x0D`. |
 | The stage ends when the player stands on tile `$E1`, the boss switch, which jumps to the win routine. The win routine preserves a vehicle animation nibble and enters state `0x07`. | `Call_17BC` at `$17BC` compares the `LookupTile` result; `Jmp_175B` at `$175B`; `Jmp_1B45` at `$1B45`. |
 | On a boss level (level nibble equals 3) the end-of-level state calls `ExplodeAllEnemies` and the score countdown state keeps calling `Call_2491` each frame. After the last level (`$43`) the countdown is skipped. | `GameState_07` at `$0C40`, `GameState_05` at `$0C73`. |
 | After the countdown a boss level enters the gate sequence: six frames of explosions, then a gate four segments tall whose bottom sits nine tiles under its top is opened one segment per eight frames by writing a blank tile during HBlank, then the player is walked right with a simulated Right press until screen x reaches `$C0`. | `GameState_1C` to `GameState_20` at `$0E15` to `$0EA9`. |
@@ -82,12 +103,12 @@ Reference behavior, all in bank 0 unless noted:
 
 Classification: `missing`; movement patterns and health values `uncertain`.
 
-Current basis: one enemy with an alive flag, an 8x8 box, the three contact
-classes and a shot that kills on contact ([POWER.md](POWER.md)); a goal box
-that ends the stage; the block layer's tile-keyed table and one 16x16
-effect object ([BLOCKS.md](BLOCKS.md)); a per-stage bound table in the parked
-progression contract. There is no health counter, no multi-hit entity, no
-switch tile, no gate, no scripted movement and no explosion effect.
+Current basis on `main`: one enemy with an alive flag, an 8x8 box, the
+three contact classes and a shot that kills on contact
+([POWER.md](POWER.md)); a goal box that ends the stage; the block layer's
+position-keyed table and one 16x16 effect object ([BLOCKS.md](BLOCKS.md)).
+There is no health counter, no multi-hit entity, no switch tile, no gate, no
+scripted movement, no explosion effect and no stage after the goal.
 
 Needs: a health byte and hit cooldown on the boss slot so one shot or stomp
 counts once; two or three original movement patterns as counter-driven
@@ -95,8 +116,8 @@ routines, since the reference's scripts are not established; one boss
 projectile using the shot mover with its own velocity; a switch tile that
 `CellSolid` treats as ground and the goal test treats as the exit; an
 end-of-stage sequence with the explosion effect and a gate drawn through the
-existing column publisher; and a boss arena, either the tail of an existing
-stage or about 24 dedicated columns.
+existing column publisher; and a boss arena, either the tail of the existing
+stage or about 24 dedicated columns in the unused part of the collision page.
 
 Estimate: 700 to 1000 bytes of code, 512 bytes for a two-frame 32x32 boss,
 about 130 bytes for projectile, switch and gate tiles, and 0 to 600 bytes of
@@ -104,8 +125,9 @@ arena columns: 1.3 to 2.2 KiB for one boss. Each further boss adds 0.9 to
 1.3 KiB. One boss fits. Four bosses fit only if nothing else below is taken.
 
 Dependencies: [#305](https://github.com/amichai-bd/nand2mario/issues/305)
-for a second entity slot and its spawn ownership; the parked progression
-contract for the stage exit it replaces on a boss stage.
+for a second entity slot and its spawn ownership;
+[#304](https://github.com/amichai-bd/nand2mario/issues/304) for a stage
+sequence, so that a boss stage has something to advance to.
 
 Representative original scenario: enter the arena, take one hit while large
 and shrink, land three shots on a patrolling boss with a 2-update cooldown,
@@ -123,45 +145,47 @@ Reference behavior:
 | Behavior | Evidence |
 | --- | --- |
 | On a non-boss level the end-of-level state reads the player's screen y. Below `$60` or at or above `$A0` it switches to bank 2 and enters the bonus game; otherwise it increments the level. | `GameState_06` at `$0CCB`. |
+| The level increment adds one to a BCD world-and-level byte and, when the level nibble reaches 4, adds `$10 - 3` to move to the next world after three levels. | `GameState_08.incrementLevel`, `cp $04`. |
 | The score countdown converts each remaining timer unit into 10 points and a sound on every second unit; it runs `UpdateTimerAndFloaties` in bank 2 for the decrement. | `GameState_05` at `$0C73`, `AddScore` with `$0010`. |
 | Entering the bonus game: music, LCD off, all 40 objects cleared, the whole map cleared to space, lives printed as two BCD digits at `$988A`, LCD on. | `GameState_12` at `$3D97`. |
 | The room is drawn by loops, not a stored map: a bordered frame, the text `bonus game`, a head icon and marker, four floors of tile `$2D` eighteen wide, and one prize per floor chosen by a `rDIV`-seeded rotation through `0, 1, 2, $E5, 3, 1, 2, $E5`. `$E5` is annotated as a flower; the meaning of 0 to 3 is not stated. | `GameState_13` at `$3DD7`, `.prizePermutations`. |
 | The ladder is four segments from `wLadderTiles` at `wLadderLocation`, redrawn under counters `$DA28` and `$DA29`. | `GameState_16` at `$3EA7`. |
-| Walking, climbing, and the prize award are states `0x14`, `0x15`, `0x17` to `0x1A` in bank 2. Bank 0 initializes `wPrizeAwarded`, `wBonusGameEndTimer` `$40`, `wBonusGameGrowAnimationFlag` and `wBonusGameAnimationTimer` `$40`. | `$3D1A` initialization; bank 2 is not pinned. |
+| Walking, climbing, and the prize award are states `0x14`, `0x15`, `0x17` to `0x1A` in bank 2. Bank 0 initializes `wPrizeAwarded`, `wBonusGameEndTimer` `$40`, `wBonusGameGrowAnimationFlag` and `wBonusGameAnimationTimer` `$40`. | `Call_3D1A` initialization; bank 2 is not pinned. |
 | Leaving: LCD off, HUD, coins and lives redrawn, LCD on, then the level increment state. | `GameState_1B` at `$0DF9`. |
 
 Classification: entry, drawing and exit `missing`; play and award
 `uncertain`.
 
-Current basis: the parked progression contract owns the stage exit, the
-lives byte, `PendingLife` and `UpdateLives`, and reserves the add path for a
-later reward; `PowerUp` and `GrantStar` are exported; the HUD publisher
-already redraws whole rows with the LCD on; the approved font covers the
-room's text; `screen-clear` and `screen-level-entry` are approved
-compositions. There is no full-screen room mode, no ladder or climb state
-and no prize table.
+Current basis on `main`: `PowerUp` and `GrantStar` are the only exported
+reward entry points; the HUD publisher already redraws whole rows with the
+LCD on; the approved font covers the room's text; `screen-clear` and
+`screen-level-entry` are approved compositions. There are no lives, no
+stage sequence, no full-screen room mode, no ladder or climb state and no
+prize table.
 
 Needs: a room mode that suspends the column streamer and draws a fixed
 20x18 map by loops as the reference does, or from a 360-byte table; a
 reduced player controller with walk, one ladder climb state and no jump;
 four floor rows and a moving ladder; a prize row seeded from an existing
 counter, since `rDIV` is not deterministic under the test harness; awards
-bound to `PendingLife` and `PowerUp`; and a return that re-enters the next
-stage through `EnterStage`. The exit-height test needs a second exit height
-in a stage; the current stages have one ground-level goal.
+bound to a life request and to `PowerUp`; and a return that enters the next
+stage. The exit-height test needs a second exit height in a stage; the
+current stage has one ground-level goal.
 
 Estimate: 600 to 900 bytes of code, about 400 bytes for 25 room and prize
 tiles, 0 to 360 bytes of map: 1.0 to 1.6 KiB. Fits.
 
-Dependencies: the parked progression contract merged; a deterministic seed
-decision; a score display wider than one glyph if the countdown is adopted,
-which changes the [HUD contract](HUD_COLUMNS.md).
+Dependencies: [#304](https://github.com/amichai-bd/nand2mario/issues/304)
+for lives, a life request and stage entry, which the bonus game rewards and
+returns to; a deterministic seed decision; a score display wider than one
+glyph if the countdown is adopted, which changes the
+[HUD contract](HUD_COLUMNS.md).
 
 Representative original scenario: clear stage 1 through a raised exit, enter
 the room, climb to floor 3 while the ladder moves, collect a life, return to
 stage 2 with lives incremented and the timer reset. Test shape as above; the
 room draw needs one rendered fixture. Forecast 500 to 800 seconds across four
-targets plus the progression regression.
+targets plus the affected regression.
 
 ### Vehicle stages
 
@@ -169,23 +193,24 @@ Reference behavior:
 
 | Behavior | Evidence |
 | --- | --- |
-| Level start compares `hLevelIndex` with 5 and `$0B`, the third stages of worlds 2 and 4 under the confirmed three-levels-per-world advance, and sets the low animation nibble to `$0A` (submarine) or `$0C` (aeroplane) and the game state to `0x0D`. | `GameState_02` at `$06DC`, the level-start path before `.autoscroll`. |
+| Level start compares `hLevelIndex` with 5 and `$0B`, the third stages of worlds 2 and 4 under the three-levels-per-world increment above, and sets the low animation nibble to `$0A` (submarine) or `$0C` (aeroplane) and the game state to `0x0D`. | `GameState_02` at `$06DC`, the level-start path before `.autoscroll`. |
 | Animation indices at or above `$0A` skip the walking animation and the walk-right helper, and survive the win routine's mask. | `Call_16F5` at `$16F5`, `GameState_20.walkRight`, `Jmp_1B45.jmp_1B52`. |
 | The autoscroll state body is `INCBIN` `$2376` to `$2401`, 139 bytes, annotated "too many calls to far banks". Scroll rate, vehicle control, bullet spawn and vehicle collision are therefore not established. | `GameState_0D`. |
-| Player projectile hits use the autoscroll variant with health, boss sounds and the fifth replacement byte. | `Call_2AAD`. |
+| Player projectile hits use the autoscroll variant with health, the boss or explosion sound and the fifth replacement byte. | `Call_2AAD`. |
 | Entity identities that the names suggest belong to these stages, with no level assignment in the pinned files: `GUNION`, `GUNION_FIREBALL`, `TORION`, `HONEN`, `YURARIN`, `YURARIN_BOO`, `TAMAO`, `DRAGONZAMASU` for water; `ROKETON`, `CHIKAKO`, `GIRA`, `DIAGONAL_GIRA`, `PIPE_CANNON`, `CANNONBALL`, the three `SMALL_CANNONBALL` parts, `BIOKINTON`, `TATANGA` for air. | `enemies.asm`; assignment is level data outside the pinned files. |
 | The final boss sequence: shake by 4 pixels of `wScrollY` every four frames, an explosion every 32 frames, and blocks removed by a rotating bitmask; then the plane moves forward. | `GameState_27` at `$1099`, `GameState_28`. |
 
 Classification: `missing`; every control quantity `uncertain`.
 
-Current basis: the column streamer follows a camera that the game sets, so a
-camera that advances on its own is a small change in the camera update, not
-in `stream.asm`; the shot mover already handles a straight projectile with a
-time-to-live; the world, collision and per-stage bound tables give a stage
-its own columns and limits; the enemy step and the three contact classes
-exist for one slot. There is no vertical free movement, no forced scroll,
-no vehicle art, no multi-slot entities with health, no kill-by-crush at the
-left screen edge and no water or sky backdrop.
+Current basis on `main`: the column streamer follows a camera that the game
+sets, so a camera that advances on its own is a small change in the camera
+update, not in `stream.asm`; the shot mover already handles a straight
+projectile with a time-to-live; the world and collision tables cover one
+96-column stage with 160 unused collision columns; the enemy step and the
+three contact classes exist for one slot. There is no vertical free
+movement, no forced scroll, no vehicle art, no multi-slot entities with
+health, no kill-by-crush at the left screen edge, no water or sky backdrop
+and no second stage to place the vehicle stage after.
 
 Needs: a vehicle motion mode that replaces the movement contract for the
 stage, with four-direction motion clamped to the visible screen and no
@@ -193,38 +218,44 @@ gravity; a forward bullet with a fixed velocity and cooldown; forced scroll
 at a fixed fraction of a pixel per update with the player pushed by the left
 edge; two or three entity families with health, spawned from a column-keyed
 table as the camera reaches them; a boss in the same stage; a stage of about
-80 columns on a second world page, which requires the collision base to
-select a page rather than a column offset; and backdrop tiles for water or
-sky.
+80 columns; and backdrop tiles for water or sky. Whether those 80 columns
+fit in the existing collision page depends on what is there when the stage
+is scheduled: today 160 columns are unused; after the in-flight progression
+work none are, so the stage needs a second page or a shorter existing stage.
 
 Estimate: 900 to 1400 bytes of code, 128 bytes for a two-frame 16x16
 vehicle, 16 bytes for the bullet, about 260 bytes for two enemy families,
-about 130 bytes of backdrop, about 2.0 KiB of stage columns and a 100-byte
-spawn table: 3.5 to 4.1 KiB for the first vehicle stage. The second vehicle
-stage reuses the mode and costs 2.2 to 2.6 KiB more, chiefly columns and
-art. One fits. Both fit only if the boss and bonus categories stay minimal.
+about 130 bytes of backdrop, about 2.0 KiB of world and display columns and
+a 100-byte spawn table: 3.5 to 4.1 KiB for the first vehicle stage in the
+existing collision page, or 8.0 to 8.6 KiB with a second page. The second
+vehicle stage reuses the mode and costs 2.2 to 2.6 KiB more in the same
+page, chiefly columns and art. One fits in the existing page. With a second
+page, one vehicle stage alone consumes most of what remains and excludes
+every other category in this inventory.
 
 Dependencies: [#305](https://github.com/amichai-bd/nand2mario/issues/305)
-for multi-slot entities and spawning; the parked progression contract for a
-fourth stage entry; the boss row for the stage's end; a decision on whether
-the vehicle stage keeps the movement contract's 1/16-pixel units.
+for multi-slot entities and spawning;
+[#304](https://github.com/amichai-bd/nand2mario/issues/304) for a stage
+sequence and the collision page decision; the boss row for the stage's end;
+a decision on whether the vehicle stage keeps the movement contract's
+1/16-pixel units.
 
 Representative original scenario: enter the stage, hold Up to rise to the
 ceiling clamp, fire at a two-hit enemy twice, take a hit and lose the stage,
 retry, survive to the boss column. Test shape as above plus one sampled
 endurance run of one stage length. Forecast 700 to 1000 seconds across five
-targets plus the movement, power and progression regression; the endurance
-run is bounded to one stage and stays inside 300 seconds.
+targets plus the movement and power regression; the endurance run is bounded
+to one stage and stays inside 300 seconds.
 
 ### Exceptional transitions
 
-| Transition | Reference | Current basis and need | Classification and fit |
+| Transition | Reference | Current basis on `main` and need | Classification and fit |
 | --- | --- | --- | --- |
-| Pipes and underground rooms | Down on tile `$70` at `Jmp_1765`; states `0x09` to `0x0C` at `$161B` to `$16DA`; a sideways pipe exits only while the underground flag `$FFF9` is set; an underground room is 20 tiles wide and does not scroll (`Call_807`). | The streamer publishes fixed maps; `EnterStage` selects a stage. Needs a room stage with scroll disabled, a pipe tile, two transition animations of about 16 updates and a return column. 300 to 500 bytes of code, about 370 bytes of room columns. | `missing`; fits. |
-| End-of-stage score countdown | `GameState_05`: 10 points per remaining timer unit, one unit per frame, sound on alternate units. | The score is one glyph. Needs a multi-digit score and a wait mode; about 150 bytes plus the HUD change. | `missing`; fits, but changes the HUD contract. |
-| Boss gate and walk-off | `GameState_1C` to `GameState_21`. | Inventoried under bosses. | `missing`; fits. |
-| Time up and game over | `GameState_39` to `GameState_3C`. | Owned by the parked progression contract as modes 5 and 6. | `partial` until that work merges. |
-| Rescue, impostor, ending and credits | `GameState_21` to `GameState_38`, `$0ECD` to `$14DC`: scripted dialogue, a morphing impostor, the final boss death, a plane leaving and credits. | Narrative content, not a mechanic. The approved `screen-clear` composition is the original equivalent. Not inventoried for implementation; an ending screen costs about 400 bytes as a map. | Not planned. |
+| Pipes and underground rooms | Down on tile `$70` at `Jmp_1765`; states `0x09` to `0x0C` at `$161B` to `$16DA`; a sideways pipe exits only while the underground flag `$FFF9` is set; an underground room is 20 tiles wide and does not scroll (`Call_807`). | The streamer publishes fixed maps; there is one stage and no stage entry routine. Needs a room stage with scroll disabled, a pipe tile, two transition animations of about 16 updates and a return column. 300 to 500 bytes of code, about 370 bytes of room columns in the unused collision columns. | `missing`; fits. |
+| End-of-stage score countdown | `GameState_05`: 10 points per remaining timer unit, one unit per frame, sound on alternate units. | The score is one glyph and there is no timer. Needs a timer, a multi-digit score and a wait mode; about 150 bytes plus the HUD change. | `missing`; fits, but changes the HUD contract. |
+| Boss gate and walk-off | `GameState_1C` to `GameState_20`. | Inventoried under bosses. | `missing`; fits. |
+| Time up and game over | `GameState_39` to `GameState_3C`. | Absent on `main`; the in-flight progression work owns them as modes 5 and 6. | `missing`; priced in #304's +152. |
+| Rescue, impostor, ending and credits | `GameState_21` to `GameState_38`, `$0ECD` to `$14DC`: scripted dialogue, a morphing impostor, the final boss death, a plane leaving and credits. | Narrative content, not a mechanic. The approved `screen-clear` composition is the original equivalent. An ending screen costs about 400 bytes as a map. | `missing`; not proposed for implementation. |
 
 ## Assets
 
@@ -240,26 +271,36 @@ table names reuse and gaps; it approves nothing and creates nothing.
 | Ending | `screen-clear` | Nothing required | None |
 
 Bank IDs in the approved sheets are review indices, not VRAM allocation.
-The current allocation uses tiles 0 to 139 of the 256 object tiles, and the
-parked progression work adds nine glyphs, so about 100 tile slots remain
-resident. Boss and vehicle art can load per stage with the LCD off, as the
-current startup copies do, rather than staying resident.
+The current allocation uses tiles 0 to 139 of the 256 object tiles, so 116
+tile slots remain resident on `main`. Boss and vehicle art can load per
+stage with the LCD off, as the current startup copies do, rather than
+staying resident.
 
 ## Fit against the 32 KiB image
 
-| Selection | Estimated cost | Remaining of about 12.5 KiB after the parked progression work and 1.5 to 3 KiB of entities | Verdict |
-| --- | --- | --- | --- |
-| One boss | 1.3 to 2.2 KiB | 7.3 to 9.7 KiB | Fits |
-| Bonus game | 1.0 to 1.6 KiB | 7.9 to 10.0 KiB | Fits |
-| One vehicle stage with its boss | 4.4 to 5.4 KiB | 4.1 to 6.6 KiB | Fits |
-| Pipes and one room | 0.7 to 0.9 KiB | 8.6 to 10.3 KiB | Fits |
-| One of each above together | 7.4 to 10.1 KiB | 0.0 to 3.6 KiB | Fits at the low end only; the high end exhausts the image |
-| SML1 shape: twelve stages, four bosses, two vehicle stages, the bonus game, pipes | About 30 KiB of stage data, art and code beyond the current image | Negative | Does not fit mapperless. [#307](https://github.com/amichai-bd/nand2mario/issues/307) is the only path, and it stays deferred until a demonstrated need. |
+Available space today is 12726 bytes, 12.4 KiB. The remaining column
+subtracts the assumed 1.5 to 3 KiB for the entity families of #305, giving
+9.4 to 10.9 KiB to spend, and pairs the best case (low cost, high space)
+with the worst case (high cost, low space).
 
-Estimates carry about 30 percent uncertainty either way; the high ends are
-the honest planning figures. Stage data dominates: at about 25 bytes per
-column, nine more stages of 80 columns cost about 18 KiB before any code
-or art, which is why the full shape cannot fit regardless of code size.
+| Selection | Estimated cost | Remaining of 9.4 to 10.9 KiB | Verdict |
+| --- | --- | --- | --- |
+| One boss | 1.3 to 2.2 KiB | 7.2 to 9.6 KiB | Fits |
+| Bonus game | 1.0 to 1.6 KiB | 7.8 to 9.9 KiB | Fits |
+| One vehicle stage with its boss, existing collision page | 4.4 to 5.4 KiB | 4.0 to 6.5 KiB | Fits |
+| One vehicle stage with its boss, second collision page | 8.9 to 9.9 KiB | -0.5 to 2.0 KiB | Fits only at the low end |
+| Pipes and one room | 0.7 to 0.9 KiB | 8.5 to 10.2 KiB | Fits |
+| One of each above, existing collision page | 7.4 to 10.1 KiB | -0.7 to 3.5 KiB | The high end does not fit |
+| SML1 shape: twelve stages, four bosses, two vehicle stages, the bonus game, pipes | About 30 KiB of stage data, collision pages, art and code beyond the current image | Negative | Does not fit mapperless. [#307](https://github.com/amichai-bd/nand2mario/issues/307) is the only path, and it stays deferred until a demonstrated need. |
+
+The in-flight progression work lowers every remaining figure by 152 bytes
+and, by filling the collision page, moves any later stage to the second-page
+price. Estimates carry about 30 percent uncertainty either way; the high
+ends are the honest planning figures. Stage data dominates: at about 25
+bytes per column plus 4608 bytes per 256-column collision page, nine more
+stages of 80 columns cost about 18 KiB of world and display data and three
+more pages before any code or art, which is why the full shape cannot fit
+regardless of code size.
 
 ## Roadmap distinction and unresolved measurements
 
@@ -272,7 +313,7 @@ any, to schedule after core completion; each scheduled category becomes its
 own issue with a frozen reference, literal cases and a runtime forecast, as
 [POWER.md](POWER.md) and [BLOCKS.md](BLOCKS.md) were.
 
-Unresolved reference measurements that no current or parked contract owns:
+Unresolved reference measurements that no current contract owns:
 
 - Boss health values and the replacement entries (`Data_3186`, `Data_3375`).
 - Boss and enemy movement scripts (`Data_3564`) and projectile cadence.
