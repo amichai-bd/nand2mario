@@ -17,7 +17,10 @@ Fifty cases use explicit ordinary operands, never expected OAM in the ROM.
 | Projection |4|Actual ScenePosition before composition: signed Q4 X4095/camera256 -> -1; X-1/camera0 -> -1; X4112/camera256 ->1; X0/camera256 ->-256. Y-1,-1,511,512 respectively floors to-1,-1,31,32. These are explicit art-origin operands; no implicit collision-box centering.|
 | Explicit hiding |2|Poses0/right and17/left at(24,32), SceneHidden1; all piece Y bytes zero while X/tile/flags retain their specified values.|
 
-Each case calls the actual shared ComposeCourier and SceneTail. Projection
+Each case calls the actual shared ComposeCourier, then the shared
+ClearSceneByte entry with A=0 and DE immediately after the courier pieces.
+This is the existing zero-tail loop, not SceneTail (which may compose other
+entities). Its input pointer remains within C100..C19F. Projection
 cases additionally call shared ScenePosition. The oracle derives poses0..11
 from editable courier maps and poses12..17 from approved core maps through the
 existing independent power_frames courier function. It compares every ordered
