@@ -2,7 +2,6 @@
 from datetime import datetime, timezone
 from contextlib import ExitStack
 import json
-import subprocess
 import uuid
 
 from .. import generated_interfaces as abi
@@ -10,7 +9,7 @@ from ..records import atomic_json, file_hash
 from .client import Client, summary
 from .external import read_external
 from .package import read_package
-from .transport import open_serial, session
+from .transport import open_serial, session, session_root
 
 
 def run(root, build, args, provenance):
@@ -50,10 +49,7 @@ def run(root, build, args, provenance):
         if args.action == 'peek':
             from ..interface_codec import peek_store
             peek_store(args.store)
-        # One repository-shared directory, including all linked author worktrees.
-        common = subprocess.check_output(['git', '-C', str(root), 'rev-parse', '--path-format=absolute', '--git-common-dir'], text=True).strip()
-        from pathlib import Path
-        state_root = Path(common).parent / 'workdir/host-sessions'
+        state_root = session_root(root)
         with ExitStack() as stack:
             if args.action == 'keyboard':
                 from .console import Console

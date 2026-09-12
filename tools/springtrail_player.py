@@ -32,7 +32,7 @@ from n2m import generated_interfaces as abi  # noqa: E402
 from n2m import springtrail_play as player  # noqa: E402
 from n2m import springtrail_state as reader  # noqa: E402
 from n2m.host.client import Client  # noqa: E402
-from n2m.host.transport import session  # noqa: E402
+from n2m.host.transport import session, session_root  # noqa: E402
 from n2m.records import atomic_json, file_hash  # noqa: E402
 from n2m.test_budget import supervise  # noqa: E402
 
@@ -269,7 +269,7 @@ def worker(args):
                                 uart_pid=args.uart_pid, uart_identity=args.uart_identity,
                                 endpoint_restarted=args.endpoint_restarted)
     from ci.storage import machine_lock
-    state_root = ROOT.parent / 'workdir/host-sessions'
+    state_root = session_root(ROOT)
     result = {'status': 'FAIL', 'mode': args.mode, 'tag': args.tag}
     with machine_lock(MACHINE_MUTEX), (out / 'packets.jsonl').open('w', encoding='utf-8') as packets:
         def record(entry):

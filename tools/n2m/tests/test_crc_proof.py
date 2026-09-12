@@ -155,7 +155,7 @@ class CrcProofTests(unittest.TestCase):
             def session(*args):
                 yield object(), 1, lambda *args: None, {}
             with patch('n2m.host.command.session', session), \
-                    patch('n2m.host.command.subprocess.check_output', return_value=str(root / '.git')), \
+                    patch('n2m.host.command.session_root', return_value=root / 'workdir/host-sessions'), \
                     patch('n2m.host.command.Client') as client, \
                     patch('n2m.host.crc_proof.run') as proof:
                 client.return_value.identify.return_value = {'abi': 1, 'build_id': '2' * 32}
