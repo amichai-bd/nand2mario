@@ -444,6 +444,8 @@ units:
   src/dv/springtrail/test_power_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.11}
   src/dv/springtrail/test_power_render_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.17}
   src/dv/springtrail/test_power_unit_check.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.13}
+  src/dv/springtrail/test_progress_assets.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: null}
+  src/dv/springtrail/test_progress_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: null}
   src/dv/springtrail/test_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.19}
   src/dv/springtrail/test_renderer_oracle.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.09}
   src/dv/springtrail/test_scene_art.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.09}
@@ -456,8 +458,6 @@ units:
   src/dv/stackdrop/test_game_check.py: {kind: unit, level: 0, labels: [stackdrop], duration_seconds: 0.20}
   src/dv/stackdrop/test_reference.py: {kind: unit, level: 0, labels: [stackdrop], duration_seconds: 0.07}
   src/dv/stackdrop/test_screen.py: {kind: unit, level: 0, labels: [stackdrop], duration_seconds: 0.25}
-  src/dv/springtrail/test_progress_assets.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: null}
-  src/dv/springtrail/test_progress_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: null}
   src/dv/stackdrop/test_tail.py: {kind: unit, level: 2, labels: [needs-cocotb, stackdrop], duration_seconds: 0.10}
   tile-pixel: {kind: sim, level: 0, labels: [display, pre-merge], duration_seconds: 7.45}
   tile-pixel-corrupt: {kind: sim, level: 2, labels: [display, fault], duration_seconds: null}
