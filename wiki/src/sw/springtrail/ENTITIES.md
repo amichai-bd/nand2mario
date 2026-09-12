@@ -41,7 +41,9 @@ There is no viewport-derived spawn, random delay or hidden update cadence.
 Update order: progression/timers and existing power input, platform motion and
 possible rider carry, ordinary player motion/terrain collision and camera,
 block resolution, patrol and CURL updates, shot update, fall death, enemy/hazard
-contacts, items, goal. Platform landing is resolved immediately after ordinary
+contacts in patrol-then-CURL order, items, goal. A fatal patrol contact ends
+contact processing; otherwise its resulting hurt/protection state is visible to
+CURL in that same update. Platform landing is resolved immediately after ordinary
 player motion and before the fall test; camera is updated after any carry/snap.
 A game-state transition still consumes the existing update exactly as PROGRESS
 specifies. Rendering only reads the prepared resulting state.
@@ -76,6 +78,8 @@ inclusive32-pixel horizontal interval; clamp at either endpoint and reverse for
 the next update. It ignores static terrain as an entity; placement must keep its
 path clear. A rider is a player whose prior bottom equals the prior platform top,
 whose prior horizontal half-open box overlaps, and whose jump state is supported.
+Capture prior player x/y, grounded/jump state and both old platform positions
+before moving either platform. This snapshot alone establishes the prior rider.
 Carry by the platform's actual delta before ordinary player movement unless a
 new jump edge was accepted. Clamp/collide carry against existing terrain; a
 blocked carry detaches, never crushes or teleports through a wall.
@@ -86,6 +90,16 @@ Snap player top to platform top minus16pixels, set grounded, zero vertical
 velocity/jump state. The first qualifying platform in slot order owns contact.
 Underside and side contacts do nothing; jumping off does not inherit momentum.
 Walking beyond the half-open top detaches and resumes ordinary falling.
+
+The motion routine must recognize exact platform support in its jump/support
+path: a prior supported rider may accept an A edge just like a terrain rider.
+After horizontal movement, supported jump-state0 with a matching platform top
+and current half-open overlap remains grounded with zero vertical velocity;
+terrain-only support rejection must not spuriously select the falling pose.
+This is a narrow one-way support predicate, not a tile-map change: ascending
+motion, side scans and block head-hit reporting never see platform solidity.
+Landing uses the pre-update player/platform snapshot and the resulting positions,
+not an observed sprite, previous OAM byte or already overwritten coordinate.
 
 ### Falling platform
 
@@ -104,13 +118,12 @@ Each stage retains its current patrol placement. New triples are
 | Stage | CURL | Moving interval | Falling |
 |---|---|---|---|
 | 0 | (328,120) | (176,208,112) | (368,112) |
-| 1 | (328,120) | (176,208,112) | (368,112) |
-| 2 | (328,120) | (176,208,112) | (368,112) |
+| 1 | (352,120) | (144,176,112) | (320,112) |
+| 2 | (328,120) | (112,144,112) | (368,112) |
 
-These are ordinary stage contents, not test-only entities. Before implementation
-freeze, check each path against that stage's literal terrain and adjust only a
-conflicting placement with an explicit contract delta; never change terrain to
-make a guessed placement pass. All positions fit even the632-pixel stages.
+These are ordinary stage contents, not test-only entities. The entire swept platform and16-pixel rider envelope is clear against
+each stage's literal terrain; checking only the platform body is insufficient.
+No stage geometry is changed by these placements. All positions fit even the632-pixel stages.
 
 ## Storage and artwork
 
