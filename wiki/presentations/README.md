@@ -40,6 +40,8 @@ Expanded alignment work and physical release acceptance remain separate from tha
 implemented baseline; follow the linked canonical contracts for the current
 qualification boundary.
 
+For image sources, regeneration and embedding limits, use the
+[showcase storage guide](../showcase/README.md#choose-a-source-and-regenerate).
 For authoring, use the [presentation skill](../../.agents/skills/html-presentation/SKILL.md).
 The [scaffold tour](scaffold-tour.html) introduces the wiki's source navigation.
 

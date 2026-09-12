@@ -235,11 +235,17 @@ archive under `tools/wiki/board_frames/`, holding the session's provenance and,
 per frame, its sequence, completion dot, applied JOYP mask, the CRC32 its
 capture driver recorded, and the frame encoded as a 2-bit indexed PNG.
 Ingest measures that encoding against the rect runs `showcase.paths()` draws and
-records both byte counts. No packed frame and no decoded PNG is committed: the
-archive is the only copy of the pixels, and the generator rebuilds the SVG from
-it. Such a loop is the one exception to `no external reference`: it embeds each
+records both representation lengths (the PNG measure includes its base64 data
+URI). No separate packed-frame or decoded-PNG file is committed. The archive is
+the authoritative generation input; the generated SVG embeds derived copies of
+its encoded frame payloads. Such a loop is the one exception to `no external reference`: it embeds each
 frame as an inline `data:image/png;base64,` URI, which fetches nothing. The
 exception is bounded on both sides -- the quality tests allow `href=` only for a
 loop in `showcase.BOARD_LOOPS` and only when every `href=` in the file is such a
 URI, and `site.py` accepts that data URL only from a `wiki/showcase/*.svg`
 source, so a page that inlines an image still fails.
+
+
+The [contributor image-storage guide](../../showcase/README.md#choose-a-source-and-regenerate)
+identifies editable inputs, native-resolution capture storage, derived copies,
+regeneration commands and the qualified README versus wiki embedding boundary.
