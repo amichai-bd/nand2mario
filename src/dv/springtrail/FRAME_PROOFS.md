@@ -120,13 +120,16 @@ the fixed-physics player: over the current motion model the success route
 meets the enemy at update 153, so this proof freezes its own routes over
 `motion_reference`. Both are ordinary inputs through the UART INPUT path.
 The second-gap jump is a one-VBlank tap because the brick at world column
-52..53 stands two columns after that gap (columns 46..49) in rows 10..11: a
-held jump's arc cannot pass above it and lands against its side at update
-260, x 408, and the route then never reaches the goal. The tap is airborne
-over updates 228..252, lands at x 399 and walks under the brick; the run
-after it is eleven VBlanks longer so the third-gap jump, every later input
-and every capture index stay where they were. `test_frame_proofs` holds
-both facts.
+52..53 stands two columns after that gap (columns 46..49) in rows 10..11: no
+jump's arc can pass above it, and from the frozen takeoff at VBlank 227 a
+held jump lands against its side at update 260, x 408, and the route then
+never reaches the goal. The tap is airborne over updates 228..252, lands at
+x 399 and walks under the brick; the run after it is eleven VBlanks longer
+so the third-gap jump, every later input and every capture index stay where
+they were. A held jump started earlier, at VBlank 206..218, also lands
+before the brick and meets every literal; the tap is the passing variant
+with the longest unchanged input prefix. `test_frame_proofs` holds the
+stall and the tap's landing.
 
 Captures, with the game index k (frame k+1, snapshot at C(k+2)) and the
 literal expected state `(mode, x, y, camera, score, timer, enemy_x, enemy_vx)`
