@@ -57,7 +57,7 @@ or a real failure stay below deck.
 Each root orchestration tree may have at most three open PRs, including its authors'
 drafts, and at most four active crewmates at any moment, including reviewers,
 scouts and nested agents. Reviewers are not extra capacity on top of authors:
-a reviewer occupies one of the crewmate slots. When every slot is in use, an
+a reviewer takes a crewmate slot. When no slot is free, an
 author goes idle before its reviewer starts, and delivery serializes; that is
 intended.
 These are ceilings, not targets; lower runtime limits still apply. Keep each
