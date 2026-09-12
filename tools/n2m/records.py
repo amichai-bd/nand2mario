@@ -114,7 +114,7 @@ def workspace(root, tag, notices=None):
         raise ValueError("tag path escapes workdir/builds")
     lock = build / ".lock"
     try:
-        fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        fd = take_lock(lock)
     except FileExistsError:
         # A lock whose recorded writer is dead is the leftover of a killed or
         # crashed process, never a live builder: reclaim it once, out loud.
@@ -126,25 +126,82 @@ def workspace(root, tag, notices=None):
         if reclaim_stale_lock(lock, owner) and notices is not None:
             notices.append(lock)
         try:
-            fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            fd = take_lock(lock)
         except FileExistsError:
             raise ValueError(f"tag {tag} was taken by another writer while its stale lock {lock} was reclaimed")
     try:
-        # The handle stays open for the whole workspace: on Windows that denies
-        # every rename or unlink by another process, so a live lock cannot be
-        # reclaimed; only a dead writer's closed lock can.
         os.write(fd, f"pid={os.getpid()}\n".encode())
+        discard_dead_siblings(lock)
         yield build
     finally:
-        os.close(fd)
-        lock.unlink()
+        release_held_lock(fd, lock)
+
+
+def take_lock(lock):
+    """Create the lock exclusively and keep it held for the workspace's life.
+
+    The handle stays open until release. On Windows that alone denies every
+    rename or unlink by another process, so a live lock cannot be moved. On
+    POSIX a rename or unlink is never denied, so the holder also takes an
+    advisory flock on the file; a reclaimer must win that flock on the very
+    inode it read before it may remove the lock. A reclaimer that opened this
+    fresh file first holds the flock only for its check, so waiting is bounded.
+    Raises FileExistsError when the tag is already locked.
+    """
+    fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    if os.name != "nt":
+        import fcntl
+        fcntl.flock(fd, fcntl.LOCK_EX)
+    return fd
+
+
+def release_held_lock(fd, lock):
+    """Release a held lock so no closed file recording a live pid is left.
+
+    POSIX unlinks first and closes last: the flock covers the unlink, and a
+    reclaimer that still holds the old inode open fails its identity check.
+    Windows denies the unlink of an open file, so the handle closes first; if
+    a stalled reclaimer moves the closed file in that instant, it puts the
+    file back within its refusal, so the unlink waits briefly for our own pid
+    to return rather than leaving a stale lock behind.
+    """
+    if os.name != "nt":
+        try:
+            os.unlink(lock)
+        finally:
+            os.close(fd)
+        return
+    os.close(fd)
+    for attempt in range(6):
+        owner = lock_owner(lock)
+        if owner == os.getpid():
+            try:
+                # A loser reading the lock denies the unlink for an instant.
+                retry_denials(lambda: os.unlink(lock))
+                return
+            except FileNotFoundError:
+                pass  # moved between the read and the unlink; wait for it
+        elif owner is not None or lock.exists():
+            return  # another writer's fresh lock holds the tag now
+        time.sleep(.01 * 2 ** attempt)
+    # Still missing: a third writer took the tag and the moved file stays a
+    # sibling recording this pid, swept by a later writer once it is dead;
+    # or the put-back lands after this bound and leaves a lock recording
+    # this exited pid, which the next writer reclaims with the notice.
 
 
 def lock_owner(lock):
     """Return the pid a tag lock records, or None when it cannot be read."""
     try:
-        match = re.fullmatch(r"pid=(\d+)\s*", Path(lock).read_text(encoding="utf-8"))
-    except (OSError, ValueError):
+        return recorded_pid(Path(lock).read_bytes())
+    except OSError:
+        return None
+
+
+def recorded_pid(data):
+    try:
+        match = re.fullmatch(r"pid=(\d+)\s*", data.decode("utf-8"))
+    except ValueError:
         return None
     return int(match.group(1)) if match else None
 
@@ -183,24 +240,84 @@ def stale_lock(lock):
 def reclaim_stale_lock(lock, owner):
     """Remove a lock whose recorded writer is dead, saying so on stderr.
 
-    The rename is the atomic claim: two reclaimers of one stale lock cannot
-    both move it, and a lock a live holder keeps open cannot be moved at all
-    on Windows. The claimed file is removed only while it still records the
-    dead writer; anything else was another writer's fresh lock and goes back.
-    Returns True when this call removed the stale lock.
+    Exactly one reclaimer can remove a given stale lock, and a lock a live
+    holder keeps cannot be removed at all. Windows proves both by an atomic
+    rename: a held file cannot be moved, and the moved file is removed only
+    while it still records the dead writer, else it is put back. POSIX proves
+    both by the holder's flock: the reclaimer opens the lock, must win the
+    flock without waiting, must find the same inode still at the lock path,
+    and must re-read the dead writer from that inode before unlinking it.
+    Nothing is ever renamed on POSIX, so a fresh lock is never displaced.
+    Any loss returns False and never raises; the caller then retries the
+    exclusive create and fails as taken by another writer.
     """
     lock = Path(lock)
+    removed = _reclaim_nt(lock, owner) if os.name == "nt" else _reclaim_posix(lock, owner)
+    if removed:
+        print(f"reclaimed stale lock {lock}: its writer pid {owner} is not alive", file=sys.stderr)
+    return removed
+
+
+def _reclaim_posix(lock, owner):
+    import fcntl
+    try:
+        fd = os.open(lock, os.O_RDONLY)
+    except OSError:
+        return False
+    try:
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            return False  # a live writer or a reclaimer mid-check holds it
+        try:
+            held, named = os.fstat(fd), os.stat(lock)
+        except OSError:
+            return False  # unlinked or replaced since it was read
+        if (held.st_dev, held.st_ino) != (named.st_dev, named.st_ino):
+            return False  # the path now carries another writer's fresh lock
+        if recorded_pid(os.pread(fd, 4096, 0)) != owner:
+            return False
+        try:
+            os.unlink(lock)
+        except OSError:
+            return False
+        return True
+    finally:
+        os.close(fd)
+
+
+def _reclaim_nt(lock, owner):
     claimed = lock.with_name(f".lock.stale-{uuid.uuid4().hex}")
     try:
-        os.replace(lock, claimed)
-    except (FileNotFoundError, PermissionError):
+        # A held lock denies the rename for good; a concurrent reader of a
+        # dead writer's lock denies it for an instant, so wait that out.
+        retry_denials(lambda: os.replace(lock, claimed))
+    except OSError:
         return False
-    if lock_owner(claimed) != owner:
-        os.replace(claimed, lock)
-        return False
-    claimed.unlink()
-    print(f"reclaimed stale lock {lock}: its writer pid {owner} is not alive", file=sys.stderr)
-    return True
+    if lock_owner(claimed) == owner:
+        try:
+            retry_denials(lambda: claimed.unlink(missing_ok=True))
+        except OSError:
+            pass  # still open elsewhere; a later writer sweeps it
+        return True
+    # Another writer's closed file was moved: put it back. The put-back fails
+    # when the writer released it meanwhile (nothing left to keep) or a third
+    # writer already holds a fresh lock; then only a dead writer's file goes.
+    try:
+        retry_denials(lambda: os.replace(claimed, lock))
+    except OSError:
+        discard_dead_siblings(lock)
+    return False
+
+
+def discard_dead_siblings(lock):
+    """Remove `.lock.stale-<id>` files a failed put-back left, once dead."""
+    for sibling in Path(lock).parent.glob(".lock.stale-*"):
+        try:
+            if stale_lock(sibling):
+                sibling.unlink(missing_ok=True)
+        except OSError:
+            pass  # still open elsewhere; the next writer sweeps again
 
 
 def git_state(root):

@@ -30,8 +30,10 @@ jobs:
           cache-dependency-path: tools/wiki/requirements*.txt
       - name: Configure Pages
         uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5.0.0
-      - name: Test issue helper
-        run: python -m unittest discover -s .agents/skills/issue-author/scripts -p test_create_issue.py -v
+      - name: Test issue helper and workspace lock
+        run: |
+          python -m unittest discover -s .agents/skills/issue-author/scripts -p test_create_issue.py -v
+          python -m unittest tools.n2m.tests.test_records -v
       - name: Check work caps
         run: |
           python -m unittest discover -s .agents/skills/update-crewmates/scripts -p test_update_caps.py -v

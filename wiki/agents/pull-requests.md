@@ -51,7 +51,8 @@ Hosted runner minutes are billed. Only two workflows run automatically:
 
 - `PR policy` on every pull request event: metadata only, a few seconds, no
   build or test.
-- `Pages` on every push to `main`: the issue-helper tests, then
+- `Pages` on every push to `main`: the issue-helper tests, the workspace-lock
+  tests on POSIX (`tools.n2m.tests.test_records`), then
   `python tools/wiki/check.py --browser --install-browser` before publication.
   It is the last hosted gate on the wiki.
 

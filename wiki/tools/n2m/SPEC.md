@@ -962,16 +962,39 @@ Each backend treats compilation and simulation as one stage: any source,
 runner module, dependency definition, target configuration, seed, or discovered
 tool identity change rebuilds both. Artifact hashes are also checked before reuse.
 `check` and `doctor` always rerun. The tagged `.lock` records its writer as
-`pid=<n>`, and the writer keeps the file handle open until it releases the
-lock, so on Windows no other process can rename or remove a held lock. A
+`pid=<n>`, and the writer keeps the file open until it releases the lock. A
 command that finds the lock held checks that process: a dead writer's lock is
 reclaimed once, with a stderr notice naming the lock and the pid, and the
 command's report (a tagged command, a regression or a selection) records
 `stale_lock_reclaimed`; the command then runs, and no cached result is ever
-served in place of that run. The reclaim is an atomic rename of the lock to a
-unique `.lock.stale-<id>` sibling, removed only while it still records the dead
-writer; a rename that fails, or a claimed file that records another writer, is
-another command's fresh lock and is left or put back, and the loser fails as
+served in place of that run. Exactly one command can reclaim a given stale
+lock, and a lock a live writer holds is never reclaimed; each platform proves
+both its own way:
+
+- Windows: the open handle denies every rename or unlink by another process.
+  The reclaim is an atomic rename of the lock to a unique `.lock.stale-<id>`
+  sibling, removed only while it still records the dead writer. A rename that
+  fails is a held lock. A moved file that records another writer is that
+  writer's closed lock and is put back. A put-back that fails, because the
+  writer released it meanwhile or a third command already holds a fresh lock,
+  never raises; the sibling is removed once the pid it records is dead, and
+  every later writer of the tag removes such siblings on entry. The writer
+  must close its handle before the unlink, so a reclaimer stalled for the
+  writer's whole run can move the closed file in that instant; the writer then
+  waits briefly (at most 630 ms) for its own pid to return before unlinking.
+  If the wait expires and the put-back lands later, `.lock` records the
+  exited writer's pid and the next writer reclaims it under the dead-pid
+  policy, with the notice; no second holder is possible either way.
+- POSIX: nothing denies a rename or unlink, so the writer also holds an
+  advisory `flock` on the lock for the workspace's life, and nothing is ever
+  renamed. A reclaimer opens the lock, must take the flock without waiting,
+  must find the same inode still at the lock path, and must re-read the dead
+  writer's pid from that inode; only then does it unlink, still under the
+  flock. A live writer's flock, a fresh lock at the path, or a changed pid each
+  refuse the reclaim, and a fresh lock is never displaced. The writer unlinks
+  before it closes, so no closed file recording a live pid ever exists.
+
+On both platforms the loser fails as
 `tag <tag> was taken by another writer while its stale lock <path> was
 reclaimed`. A lock whose
 writer is alive, or whose owner cannot be read, refuses the command by name:
