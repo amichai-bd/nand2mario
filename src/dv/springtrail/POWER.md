@@ -55,6 +55,25 @@ instruction listing, not adopted from the DUT.
 | Assets | Approved core pixels reproduced by the ROM tables and copies; composed poses 12..17 equal the approved maps in both facings | `test_power_assets`, `test_motion_assets` |
 | Delivery | Owning SW/DV links, 32 KiB reproducible image, host checks, required CI and current-head review | No new art approval or milestone replay |
 
+## Current renderer proof
+
+`python-pr` is the current renderer proof for the power poses. It shares
+`python-mr`'s harness (`hud_game_check.run` with `renderer`, `motion` and
+`power` set), fixture builder (`motion_render_program.build` in its `power`
+variant) and 300000-dot bound, but its fixed operands are a large thrower in
+WALK2 with a live shot, a hidden dead enemy and a second composer stage writing
+large-hurt facing left at `0xc150`; `python-mr` seeds only the motion WALK2
+and skid poses. The two targets therefore prove different composed frames on
+the same renderer, and both stay.
+
+The target's `python.inputs` list the transitive local imports of
+`test_power_render` and of the fixture builder, including
+`blocks_reference.py`, which `power_reference`, `motion_frames` and
+`hud_reference` import since the block layer; `hud_render_reference.py` is
+named by `hud_game_check` only on the branch this target never takes and is
+not listed. A declared input that is not a file fails validation before any
+build, so the list must follow the modules.
+
 ## Measured durations
 
 Whole-run supervisor walls from each receipt's `wall-budget` record, all at
@@ -67,13 +86,22 @@ cocotb 2.0.1 from `workdir/builds/python-dv-env/.venv`:
 | `python-pux` | 37.3 | 300 | intended fault: `POWER_CROUCH_MUTATION expected=8 actual=9 dot=2847`, `MOTION_STATE crouch` rejected, receipt retained |
 | `python-pua` | 235.7 | 300 | PASS, 23 cases, longest call 8348 dots |
 | `python-pub` | 263.1 | 300 | PASS, 23 cases, longest call 8980 dots |
-| `python-pr` | 293.3 | 420 declared | PASS, thrower/shot/hurt fixture, all 108 tiles |
+| `python-pr` | 293.3, re-measured 358.3 | 420 declared | PASS, thrower/shot/hurt fixture, all 108 tiles |
 | `python-mus` | 43.5 | 300 | PASS |
 | `python-mux` | 45.0 | 300 | intended fault, `MOTION_STATE first-right` X 0180 versus 0190 |
 | `python-mut` | 207.5 | 300 | PASS |
 | `python-mgs` | 244.3 | 300 | PASS, LCD enable at dot 146500 |
 | `python-mgu` | 311.9 | 420 declared | PASS |
 | `python-mr` | 378.3 | 420 declared | PASS |
+
+`python-pr` was re-measured on a quiet seat at the head that restored its
+declared inputs: PASS in 358.3 whole-run seconds of the 420 allowance,
+started 2026-09-12T11:18:52Z, 350.7 simulator seconds for 80.23 ms, all 46080
+pixels of both frames and the signature `PASS HUD game complete`, on image
+`9478d87a...f9464`. Two contended attempts at the same head exhausted the
+allowance at 408 execution seconds, with the trace at dots 286814 and 253592 of
+the 300000-dot bound; host load, not the target, separates them. The allowance
+stands and the 62 seconds of quiet-host headroom are the margin.
 
 The declared aggregate is 2115 seconds across the eleven targets, each inside
 its own selected wall. `python-pr` declares 420 seconds: under host contention
