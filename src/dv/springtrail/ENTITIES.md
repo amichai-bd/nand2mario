@@ -89,7 +89,7 @@ zeros. It finished in44.108seconds at paused dot21832 (routine16092dots,
 harness evidence only. Its producing commit is13abae2; later fixed-slot helper
 addition changes link addresses, not that executed routine path.
 
-`entities_cases` now divides35 named cases into seven five-call batches. Each
+`entities_cases` now divides40 named cases into eight five-call batches. Each
 uses the same complete state encoder/checker. The coarse ceiling per call is
 6000dots for123-byte seeding and dispatch plus24000 for the routine; five calls
 and terminal give151000dots, guarded at160000. This is a conservative test
@@ -101,15 +101,22 @@ Measure each batch and stop on failure. No larger304 allowance applies.
 |---|---|---|
 | Carry/support/jump/half-open landing | neutral-carry, jump-off, landing, right-edge-no-land | blocked fractional carry needs isolated actual-routine case |
 | Moving endpoints | moving-right, moving-return, moving-left | none in state matrix |
-| Falling lifecycle | fall-arm, fall-delay, fall-start, fall-absent, fall-stays-absent; full offscreen trajectory host test | rider release at absence needs CPU operand |
-| CURL trigger/cooldown/contact | curl-outside, curl-range, curl-active-end, curl-cooldown-end, curl-small/large/protected/star | CPU shot/stomp immunity and simultaneous contact operand |
+| Falling lifecycle | fall-arm, fall-delay, fall-start, fall-absent, fall-stays-absent; full offscreen trajectory host test | rider-released-at-absence supplied; execution pending |
+| CURL trigger/cooldown/contact | curl-outside, curl-range, curl-active-end, curl-cooldown-end, curl-small/large/protected/star | curl-stomp-immune, curl-shot-immune, patrol-before-curl-large/fatal supplied; execution pending |
 | Patrol animation/stomp | patrol-stomp, stomp-second-pose, stomp-hidden, patrol-endpoint | full OAM pose checks below |
-| Pause/reset/stages | pause-freeze, resume, select-reset, full-reset, stage1/stage2 | none in state matrix |
+| Pause/reset/stages | pause-freeze, resume, select-reset, full-reset, enter-stage1/enter-stage2 via actual WON transition | execution pending |
 | Fixed slot protection | invalid-slot, live-curl-no-overwrite, live-patrol-no-overwrite, spawn-curl, spawn-falling | OAM40 and adjacent-canary emission proof |
 | Current host observation | source-built decoder3 records,17 reader tests; same-position phase regression and default-win tests | complete affected host results pending |
 | Full scene/publication | independent entities_frames uses174 selected tiles and all160 OAM bytes | actual ordered OAM, two fixed pixel scenes, DMA, fault and timing proofs remain |
 
-Seven CPU batches plus the retained short provisionally allow2400seconds at the
+Eight CPU batches plus the retained short provisionally allow2700seconds at the
 hard per-run cap. Additional OAM/renderer/fault runs will have exact finite
 commands and an updated aggregate before launch; the earlier six-run1800second
 ceiling was a planning estimate, not authorization for longer individual runs.
+
+The first five batches passed25 state cases in533.914743seconds. The initial
+sixth batch failed at ordinary resume (25.404seconds): its oracle incorrectly
+expected NewLevel1. The preserved resume contract keeps NewLevel0; the oracle
+is corrected without product changes. Real WON-to-stage1/2 operands replace
+model-initialized stage-update-only operands. Host tests bind both distinctions.
+Only the affected sixth batch is repeated; previous positive batches are reused.

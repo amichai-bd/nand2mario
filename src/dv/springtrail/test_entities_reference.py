@@ -114,6 +114,19 @@ class Entities(unittest.TestCase):
         fatal=update(replace(w,power=0),0)
         self.assertEqual((fatal.mode,fatal.curl.state),(RETRY,1))
 
+    def test_cpu_case_resume_and_real_stage_entry(self):
+        from entities_cases import cases, ADDRESSES
+        rows={row['name']:row for row in cases()}
+        level=ADDRESSES.index(0xc02e)
+        self.assertEqual(rows['resume']['before'][level],0)
+        self.assertEqual(rows['resume']['after'][level],0)
+        for stage in (1,2):
+            row=rows['enter-stage'+str(stage)]
+            self.assertEqual(row['kind'],'game')
+            self.assertEqual(row['before'][ADDRESSES.index(0xc000)],4)
+            self.assertEqual(row['after'][ADDRESSES.index(0xc096)],stage)
+            self.assertEqual(row['after'][level],1)
+
     def test_slot_exhaustion_and_reset(self):
         w=self.game()
         self.assertEqual(spawn(w,4),(w,False))

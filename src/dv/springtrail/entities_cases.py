@@ -33,7 +33,8 @@ def cases():
     def add(name,w,buttons=0,kind='game',level=0):
         after = (initialize(enter_stage(World(),buttons)) if kind=='reset'
                  else spawn(w,buttons)[0] if kind=='spawn' else update(w,buttons))
-        entered = kind=='reset' or (after.mode==PLAYING and w.mode in (2,3,4,5,6))
+        entered = kind=='reset' or (after.mode==PLAYING and
+                  (w.mode in (2,4,5,6) or (w.mode==PAUSED and buttons&64 and not w.previous&64)))
         out=buttons&~3 if after.crouch and kind=='game' else buttons
         result.append(dict(name=name,kind=kind,before=state_bytes(w,buttons,level),
                            after=state_bytes(after,out,1 if entered else level)))
@@ -66,13 +67,23 @@ def cases():
     add('resume',replace(base,mode=PAUSED),128)
     add('select-reset',replace(contact,mode=PAUSED,stage=2),64)
     add('full-reset',replace(contact,stage=2,lives=0x17),0,'reset')
-    for stage in (1,2):
-        add('stage'+str(stage),initialize(replace(base,stage=stage)))
+    for stage in (0,1):
+        add('enter-stage'+str(stage+1),initialize(replace(base,stage=stage,mode=4)),128)
     add('invalid-slot',base,4,'spawn')
     add('live-curl-no-overwrite',base,1,'spawn')
     add('live-patrol-no-overwrite',replace(base,alive=True),0,'spawn')
     add('spawn-curl',replace(base,curl=Entity(328*16,120*16,2)),1,'spawn')
     add('spawn-falling',replace(base,falling=Entity(368*16,144*16,3)),3,'spawn')
+    add('curl-stomp-immune',replace(contact,player=Player(x=328*16,y=101*16,jump=3,grounded=False)))
+    from power_reference import Shot
+    add('curl-shot-immune',replace(contact,phase=HURT,phase_timer=20,
+                                   shot=Shot(327*16,120*16,16,0,20)))
+    both=replace(base,alive=True,enemy_x=256*16,player=Player(x=256*16,y=112*16),
+                 curl=Entity(256*16,120*16,1,20))
+    add('patrol-before-curl-large',replace(both,power=LARGE))
+    add('patrol-before-curl-fatal',both)
+    add('rider-released-at-absence',replace(base,player=Player(x=370*16,y=126*16),
+                                           falling=Entity(368*16,142*16,2)))
     return result
 
 

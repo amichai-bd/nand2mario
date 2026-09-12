@@ -15,7 +15,8 @@ from n2m.preload import verify, adopt
 from hud_game_reference import Check
 
 
-async def run(dut, short=False, renderer=False, motion=False, power=False):
+async def run(dut, short=False, renderer=False, motion=False, power=False,
+              checker=None, expected_tiles=None, renderer_bound=None):
     if power:
         from power_render_reference import Check
     elif motion and renderer:
@@ -35,7 +36,10 @@ async def run(dut, short=False, renderer=False, motion=False, power=False):
     if renderer and (motion or power):
         from startup_anchor import derive
         renderer_end = derive(Path('program.gb').read_bytes(), lcdc_on=0x99)['lcd'] + 2*70224
-    received=Queue(); entries=[]; check=Check(short); tasks=[]
+    if renderer_bound is not None:
+        assert renderer and renderer_bound > 0
+        renderer_end = renderer_bound
+    received=Queue(); entries=[]; check=checker if checker is not None else Check(short); tasks=[]
     with Path('transactions.jsonl').open('w') as journal:
         def log(kind,**fields):
             journal.write(json.dumps(dict(kind=kind,**fields))+'\n');journal.flush()
@@ -133,7 +137,7 @@ async def run(dut, short=False, renderer=False, motion=False, power=False):
                     tile_bytes += rom[0x77a0:0x7920]+rom[0x7960:0x79e0]
                     # Progression copies at VRAM140..148: digits5..9, M, V, life, clock.
                     tile_bytes += rom[0x6570:0x65c0]+rom[0x6440:0x6450]+rom[0x64d0:0x64e0]+rom[0x6340:0x6360]
-                summary=check.finish(pause,tile_bytes)
+                summary=check.finish(pause,expected_tiles if expected_tiles is not None else tile_bytes)
                 for frame,data in enumerate(check.frames):Path(f'frame-{frame}.shades').write_bytes(data)
                 Path('summary.json').write_text(json.dumps(summary,indent=2)+'\n')
                 log('complete',**summary)
