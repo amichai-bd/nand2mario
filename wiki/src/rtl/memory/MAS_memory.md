@@ -77,10 +77,21 @@ change CPU-visible STAT timing. Requiring pause removes that hazard instead of
 documenting it. A displaced VRAM fetch would corrupt only displayed pixels, but
 the same single rule covers it.
 
+Pause alone is not quite sufficient for OAM. The owner that drives the OAM
+pair port starts a sequence only on a `gb_tick`-qualified T4, but that sequence
+then advances on `clk_sys`, so it can still be draining when a host pause lands.
+Detecting the straddle is not enough, so the memory owner withholds readiness
+until that owner reports itself idle and the caller holds its request. The
+[DMA owner](../dma/MAS_dma.md) publishes this window for the composed system,
+and the direct-path late-write owner publishes the same window where it is
+instantiated. Readiness therefore requires completed initialization, a paused
+core and an idle OAM port A owner; the UART waits rather than issuing a read
+that would be refused.
+
 Named invariants detect a caller that violates the contract: peek activity
 implies a paused core and completed initialization, implies an in-range known
-store, implies the target is not ROM, and implies no owner request is in flight
-on the same edge.
+store, implies the target is not ROM, implies no OAM port A sequence is in
+flight, and implies no owner request is in flight on the same edge.
 
 RAM ports are unavailable while clearing; the upstream router must suppress
 their requests, with a named invariant detecting a violation. Host ROM requests

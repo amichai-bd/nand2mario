@@ -50,7 +50,9 @@ be inspected without building a simulation. One rule covers all five stores:
 paused.** The [memory MAS](../../../src/rtl/memory/MAS_memory.md) owns why that
 is safe and why read-only is structural; the
 [UART MAS](../../../src/rtl/uart/MAS_uart.md) owns the opcode and payload.
-An unknown store name fails before the serial port opens. ROM is not a peek
+An unknown store name fails before the serial port opens. A peek that arrives
+while an OAM port A sequence is still draining past the pause is held for those
+few cycles rather than refused, so the host sees only its ordinary reply. ROM is not a peek
 target and is unchanged: `host load` still reads it back through READ_ROM.
 
 Peek and snapshot readback are independent. A peek neither consumes nor
