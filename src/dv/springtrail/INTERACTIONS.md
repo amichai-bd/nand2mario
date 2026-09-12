@@ -1,5 +1,10 @@
 # Interaction proof
 
+Historical execution targets named below are retired; these descriptions and
+independent expectations remain historical evidence. See the
+[family dispositions and required current coverage](MILESTONE.md#historical-fixture-registrations).
+
+
 The [game rules](../../../wiki/src/sw/springtrail/SPEC.md) and
 [verification matrix](../../../wiki/src/dv/springtrail/SPEC.md) own #262.
 No v0.9 or physical release acceptance is implied by these focused checks.
@@ -134,7 +139,7 @@ WRAM edge. The public preparation intent remains128, but the publisher reads
 zero and must fail unchanged `RENDER_PUBLISH index=0`. Require mutation,
 raw simulator zero, failing XML and outer failure. It is not a changed oracle.
 
-Before measurement, forecast short50–70 seconds, full120–180 and fault30–50,
+Before measurement, forecast short50â€“70 seconds, full120â€“180 and fault30â€“50,
 each under the unchanged300-second hard total limit. Added to the accepted
 routine set142.479 seconds, the declared selected aggregate may exceed the
 300-second target. Measure the complete short harness before the full run.
