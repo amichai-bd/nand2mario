@@ -99,10 +99,10 @@ prediction.
 
 The field checks include the camera's relation to the player position. That is
 a cheap secondary check, not the protection against a partly written record:
-the camera is `clamp(x/16 - 72, 0, limit)` with limit608 on stage0
-and480 on stages1/2, so wherever the clamp is active â€” the
+the camera is `clamp(x/16 - 72, 0, limit)` with limit 608 on stage 0
+and 480 on stages 1/2, so wherever the clamp is active -- the
 first 72 pixels and the right end of the level, which includes the title and
-the completion states â€” the camera does not move with the player and a torn
+the completion states -- the camera does not move with the player and a torn
 record passes it unseen. **The paused acquisition boundary above is what
 prevents tears.** The check is kept because it costs nothing and catches the
 scrolling cases, and its blind case is pinned by a test so it is not mistaken
