@@ -367,18 +367,18 @@ units:
   python-hud-current-fault: {kind: sim, level: 2, labels: [fault, integration, python-tb, springtrail, system, v05], duration_seconds: null}
   python-hud-current-short: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
   python-integration: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: null}
-  python-interaction-a: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
-  python-interaction-b: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
-  python-interaction-c: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
-  python-interaction-d: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
-  python-interaction-fault: {kind: sim, level: 2, labels: [fault, integration, python-tb, springtrail, system, v05], duration_seconds: null}
-  python-interaction-short: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
   python-integration-client-preloaded: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: null}
   python-integration-fault: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: null}
   python-integration-uart: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: null}
   python-integration-uart-data-fault: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: null}
   python-integration-uart-irq-fault: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: null}
   python-integration-uart-pixel-fault: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: null}
+  python-interaction-a: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-interaction-b: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-interaction-c: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-interaction-d: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-interaction-fault: {kind: sim, level: 2, labels: [fault, integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-interaction-short: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
   python-joypad: {kind: sim, level: 2, labels: [joypad, python-tb], duration_seconds: null}
   python-joypad-fault: {kind: sim, level: 2, labels: [joypad, python-tb], duration_seconds: null}
   python-mgs: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
