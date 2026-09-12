@@ -98,6 +98,8 @@ class ImportCheckTests(unittest.TestCase):
                 python_tb.check_imports(self.root, target, "python-unit")
             target["python"]["inputs"] += ["tools/sw/package.py", "tools/sw/linker.py"]
             python_tb.check_imports(self.root, target, "python-unit")
+        with self.assertRaisesRegex(ValueError, "python-unit: preload zz-new has no registered fixture builder"):
+            python_tb.check_imports(self.root, {**target, "preload": "zz-new"}, "python-unit")
 
     def test_registered_builders_exist_and_the_tree_resolves(self):
         for preload, builder in python_tb.FIXTURE_BUILDERS.items():

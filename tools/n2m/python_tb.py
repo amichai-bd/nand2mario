@@ -233,7 +233,9 @@ def check_imports(root, target, name):
         if path in config["inputs"]:
             raise ValueError(f"{name}: excluded import is also a declared input: {path}")
     starts = [next(root / p for p in config["inputs"] if Path(p).name == config["module"] + ".py")]
-    if target.get("preload") in FIXTURE_BUILDERS:
+    if target.get("preload") is not None:
+        if target["preload"] not in FIXTURE_BUILDERS:
+            raise ValueError(f"{name}: preload {target['preload']} has no registered fixture builder to check")
         starts.append(root / FIXTURE_BUILDERS[target["preload"]])
     reached, loaded = set(), set()
     for start in starts:
