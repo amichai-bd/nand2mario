@@ -157,14 +157,51 @@ python src/dv/springtrail/frame_proofs.py full --uart-port COM3 --expected-build
 Hardware programming and capture need the user's explicit authorization and
 the serialized machine lock; the launcher does not program the board.
 
+## Measured result on the current image
+
+Image `35aae757bde0ec9a15d6d6c84f14b45b451c341d2d4775f43ed8a9a762625192`
+built from current sources at each launch, anchor 167840 derived by the
+launcher and recorded in `build.json`, wire build
+`87d5f0280a2afad8be6b85dc601141cc` on COM3, Python 3.14.5, pyserial 3.5,
+2026-09-12. Doctor: JTAG PASS (`10M50DA`, idcode `031050DD`), UART
+enumerated COM3. Both runs used
+`python src/dv/springtrail/frame_proofs.py <plan> --uart-port COM3 --expected-build-id 87d5f0280a2afad8be6b85dc601141cc --tag frames437`,
+serialized under the machine mutex, each after the endpoint's build identity
+and paused/neutral preflight and before any input.
+
+| Plan | Whole (s) | Worker (s) | Checkpoints | Captures | Checked pixels | Epoch | Final dot | Result |
+|---|---|---|---|---|---|---|---|---|
+| `short` | 24.0 (cap 300) | 23.7 | 101 | 4 | 92,160 | 4 | 7,264,560 | PASS |
+| `full` | 27.3 (cap 300) | 27.1 | 208 reached | 4 of 10 | 92,160 | 4 | — | FAIL `FRAME_PIXELS scroll-wrap pixel=12848` |
+
+`short` passed every check: `title` completing at 303523, `spawn` at 514195,
+`first-camera` at 2831588 and `entering-column` at 7255699, each the load's
+epoch, its planned sequence and 251 or 252 dots into row 143 of its frame,
+matching all 23040 pixels with CRC32s `9b162de2`, `2a877964`, `18129d7a`,
+`a3f88cd6`, the same values the previous image gave. Applied inputs 161 at
+VBlank 2, 33 at 3, 49 at 99, 0 at 101; every reply dot equalled its
+checkpoint. The board ended PAUSED, UART source, input 0, effective 0,
+certain session.
+
+`full` matched the same four captures, then failed at `scroll-wrap` (source
+frame 207, camera 256): the 256 mismatching pixels are exactly the 16x16 cell
+x 48..63, y 80..95, world column 38..39 rows 10..11, the first intact item
+block. The board draws the block art the image has carried since the block
+layer; `motion_frames.image` draws blank terrain there, and the frozen flow
+behind `games()` carries no block or power state. The captured state matched
+`EXPECTED['scroll-wrap']`, so the anchor and the route hold and the pixel
+model is behind the image. The run kept its dot, journal and packed frames;
+cleanup sent HALT and INPUT 0 and the board ended PAUSED at input 0. The
+remaining six captures are unproven on the current image until the frame
+models include the block layer.
+
 ## Measured result on image 616de11b...
 
 This evidence belongs to image
 `616de11b49e0807539837358824a570776459b9bf13a4b9424dbf42adfe5c983`, whose
 anchor was 139388 (`C(n) = 139388 + n*70224 + 4096`, title at C2=283932).
 The block layer and the power states lengthened startup after it, so it is
-not evidence for the image the repository builds today; the current image's
-`short` and `full` runs are pending a board session.
+not evidence for the image the repository builds today.
 
 Producing commit `55827b65` (the declaration), Python 3.14.5, pyserial 3.5,
 wire build `bb02588d127b72ce6458a07ff1145c57` on COM3, that image built from
