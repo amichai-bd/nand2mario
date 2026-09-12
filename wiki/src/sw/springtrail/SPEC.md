@@ -83,14 +83,17 @@ unchanged 96-column world at base column 0, and stages 1 and 2 are 80 columns
 wide at base columns 96 and 176. The stage index selects the collision base,
 the camera and player x limits, the goal, the enemy bounds and the items. An 8-by-16 player has an axis-aligned collision box.
 The camera follows horizontal player position, clamped to the level edges;
-camera movement cannot change world-space collisions. Platforms are solid from
-all sides; there are no slopes, moving platforms or one-way surfaces. Vertical motion,
+camera movement cannot change world-space collisions. Terrain platforms are solid
+from all sides. The [entity contract](ENTITIES.md) adds one-way moving and falling
+platform tops, with explicit carry, jump-off and blocked-carry rules; there are no slopes. Vertical motion,
 jump, landing and wall/ceiling collision must be deterministic. Falling below
 the level enters retry. The walking enemy reverses at its specified patrol
 endpoints while alive. The [contact and power contract](POWER.md) classifies
 enemy contact as invincible, stomp or hit: a stomp or a live shot kills the
 enemy until restart; a hit shrinks a large player into a protection window and
-sends a small player to retry.
+sends a small player to retry. The triggered CURL hazard follows patrol contact
+and cannot be stomped or removed by a shot. Its star-contact, activation and
+cooldown rules are owned by [Entities](ENTITIES.md).
 
 The [interactive block contract](BLOCKS.md) adds four 16-by-16 blocks over the
 unchanged terrain: an ascending head hit uses one block per update, an item or
@@ -140,7 +143,8 @@ publication continues; inactive map restoration may continue while paused.
 Each VBlank samples JOYP once. Process restart/pause first. A playing update
 advances power timers, decides crouch and throw, selects run/jump state,
 advances animation, resolves horizontal motion/collision, then vertical profile
-motion/collision, updates camera, resolves one head-hit block, moves the enemy
+platform support/carry, motion/collision, camera and platform landing, resolves
+one head-hit block, moves the patrol and advances CURL
 and shot, then resolves interactions. Scene preparation reads that resulting state without advancing
 animation. The [movement contract](MOVEMENT.md) and the
 [power contract](POWER.md) fix the exact precedence and original choices.

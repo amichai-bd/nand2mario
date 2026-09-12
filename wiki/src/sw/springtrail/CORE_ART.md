@@ -58,8 +58,9 @@ not authorize additional mechanics.
 ![Enemies and platforms](core-art/enemies-platforms-review.svg)
 
 The historical DRAFT caption is preserved to match the exact approved image;
-this page records its approval. [#305](https://github.com/amichai-bd/nand2mario/issues/305)
-owns state selection, spawning, collision behavior and integration. Tile gutters
+this page records its approval. The [entity contract](ENTITIES.md) selects25
+tiles from atlas indices0..10 and19..32 as runtime tiles149..173 for patrol,
+CURL and moving/falling platforms. It owns state selection, spawning and contacts. Tile gutters
 and labels are review overlays, not game pixels.
 
 ### Effects, icons and text

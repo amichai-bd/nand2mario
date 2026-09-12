@@ -16609,10 +16609,10 @@
     ],
     "expected_exit": "zero",
     "signature": "PASS HUD game complete",
-    "timeout_seconds": 420,
+    "timeout_seconds": 480,
     "wall_allowance": {
-      "seconds": 420,
-      "reason": "Current entity renderer measured365.803 seconds through322522 dots; current pose fixtures complete by357132/361188 dots, forecasting405-410 seconds including setup. Existing420-second allowance is retained with complete two-frame and appended-pose proof; no removed pixel or publication checks."
+      "seconds": 480,
+      "reason": "Current changed entity renderer measured372.9525 seconds through322731 dots; current complete pose fixtures reach357132/361188 dots, forecasting417.4 seconds at the upper bound. The former420 leaves less than3 seconds variance/cleanup margin. Independently reviewed480 preserves both full frames,174tile upload and appended pose/publication checks."
     },
     "vendor_model": "intel-memory",
     "intel_mixed_mode_instances": [
@@ -17607,7 +17607,7 @@
     ],
     "expected_exit": "zero",
     "signature": "PASS HUD game complete",
-    "timeout_seconds": 420,
+    "timeout_seconds": 480,
     "vendor_model": "intel-memory",
     "intel_mixed_mode_instances": [
       "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
@@ -17732,8 +17732,8 @@
     },
     "preload": "power-render302",
     "wall_allowance": {
-      "seconds": 420,
-      "reason": "Current entity renderer measured365.803 seconds through322522 dots; current pose fixtures complete by357132/361188 dots, forecasting405-410 seconds including setup. Existing420-second allowance is retained with complete two-frame and appended-pose proof; no removed pixel or publication checks."
+      "seconds": 480,
+      "reason": "Current changed entity renderer measured372.9525 seconds through322731 dots; current complete pose fixtures reach357132/361188 dots, forecasting417.4 seconds at the upper bound. The former420 leaves less than3 seconds variance/cleanup margin. Independently reviewed480 preserves both full frames,174tile upload and appended pose/publication checks."
     }
   },
   "python-bks": {

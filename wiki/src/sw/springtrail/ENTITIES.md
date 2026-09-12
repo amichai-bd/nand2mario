@@ -171,3 +171,21 @@ the source-built image and independent models. Unsupported ROM/schema profiles
 remain rejected. Physical proof is separate; no FPGA/monitor claim follows from
 these software fixtures. Missing unrelated current composer/HUD/interaction
 matrices remain in their existing named coverage issues.
+
+
+## Reference previews
+
+These are independent expected images reconstructed from the approved source
+maps, not simulation captures or FPGA photographs. The two fixed operands use
+all four classes, with the second selecting stomp, active CURL, a moving endpoint
+and a cracked falling platform. The [finite plan](../../../../src/dv/springtrail/ENTITIES.md)
+separately records actual CPU, pixel and publication evidence.
+
+![Normal entity reference](entity-previews/normal.svg)
+
+![Changed entity reference](entity-previews/changed.svg)
+
+Reproduce with `python src/dv/springtrail/entities_preview.py --tag entities-preview`.
+The [editable atlas](../../../../src/sw/springtrail/assets/core/enemies-tiles.json)
+and [named maps](../../../../src/sw/springtrail/assets/core/enemies-maps.json)
+remain authoritative.
