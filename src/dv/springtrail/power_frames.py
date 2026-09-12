@@ -2,7 +2,7 @@
 from composition_reference import courier as approved_courier, raster
 from hud_reference import MAPS, image as hud_image
 from motion_frames import tiles
-from power_reference import selected_pose, hidden as player_hidden, ITEMS, ENEMY_Y
+from power_reference import selected_pose, hidden as player_hidden, STAGE_ITEMS, STAGE_GOAL_X, ENEMY_Y
 
 # Pose index to approved core map; six-piece maps share the small pose's feet.
 CORE_POSES = {12: 'small-skid', 13: 'large-skid', 14: 'small-hurt', 15: 'large-hurt',
@@ -58,8 +58,8 @@ def scene(world, extra=b''):
     data = bytearray(courier(selected_pose(world), bool(p.facing),
                              p.x//16-p.camera-4, p.y//16, player_hidden(world)))
     objects = [(world.enemy_x//16, ENEMY_Y//16, 16, not world.alive)]
-    objects += [(x, y, 18, bool(world.collected & (1 << i))) for i, (x, y) in enumerate(ITEMS)]
-    objects += [(736, 112, 20, False)]
+    objects += [(x, y, 18, bool(world.collected & (1 << i))) for i, (x, y) in enumerate(STAGE_ITEMS[world.stage])]
+    objects += [(STAGE_GOAL_X[world.stage], 112, 20, False)]
     for x, y, tile, hide in objects:
         for half in (0, 1):
             data += entry(x-p.camera, y+8*half, tile+half, hide)

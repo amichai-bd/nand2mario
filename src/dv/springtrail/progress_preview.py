@@ -7,7 +7,8 @@ import sys
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT))
 from tools.sw.preview import PALETTE, png, svg, render
-from hud_reference import EXTRA, art, image
+from hud_reference import EXTRA, art
+from blocks_frames import image
 from motion_reference import Player
 from progress_reference import World, PLAYING, TIMEUP, OVER, WON
 

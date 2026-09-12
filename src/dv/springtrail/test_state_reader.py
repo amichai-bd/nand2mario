@@ -231,6 +231,26 @@ class ProgressionTests(unittest.TestCase):
             dead = update(replace(start, mode=RETRY, lives=0), 128)
             self.assertEqual(dead.mode, OVER)
 
+    def test_stage_objects_have_literal_positions_and_pixels(self):
+        from dataclasses import replace
+        from progress_reference import World, enter_stage
+        from power_frames import scene
+        for stage, item_x, item_y in ((0, 96, 88), (1, 80, 80), (2, 64, 88)):
+            world = enter_stage(World(stage=stage), 0)
+            data = scene(world)
+            # Four courier entries, two enemy entries, then the first item pair.
+            self.assertEqual(data[24:32], bytes((item_y+16, item_x+8, 18, 0,
+                                                item_y+24, item_x+8, 19, 0)))
+            pixels = state.render(self.decode(world))
+            self.assertEqual(pixels[(item_y+1)*160+item_x+3], 3)
+            hidden = replace(world, collected=1, score=1)
+            self.assertEqual(state.render(self.decode(hidden))[(item_y+1)*160+item_x+3], 0)
+            camera = (608, 480, 480)[stage]
+            end = replace(world, player=replace(world.player, x=(camera+72)*16, camera=camera))
+            # Each stage goal is screen128 at its camera clamp.
+            self.assertEqual(scene(end)[56:64], bytes((128, 136, 20, 0, 136, 136, 21, 0)))
+            self.assertEqual(state.render(self.decode(end))[112*160+130], 3)
+
     def test_progression_and_stage_bounds_refuse_malformed_values(self):
         from dataclasses import replace
         from progress_reference import World, enter_stage
