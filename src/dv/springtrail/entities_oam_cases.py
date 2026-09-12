@@ -23,6 +23,7 @@ from power_reference import Shot
 
 ADDRESSES = STATE_ADDRESSES + list(range(0xc100,0xc1a0)) + [0xc0fe,0xc1a0]
 RANGES = STATE_RANGES + ((0xc100,160),(0xc0fe,1),(0xc1a0,1))
+TITLE='ENTITY OAM UNIT'
 SHORT=1
 SHORT_BOUND=70000
 FULL_BOUND=160000

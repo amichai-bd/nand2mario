@@ -5,7 +5,7 @@ import sys
 
 
 KINDS = {'step': 0, 'init': 1, 'game': 2, 'power': 3, 'star': 4, 'reset': 5,
-         'lives': 6, 'spawn': 7}
+         'lives': 6, 'spawn': 7, 'scene': 8, 'limit': 9}
 
 
 def build(root, destination, short=False, suite='motion', part=None):
@@ -46,7 +46,10 @@ def build(root, destination, short=False, suite='motion', part=None):
                   'CP A,2', 'JR Z,GameCase', 'CP A,3', 'JR Z,PowerCase',
                   'CP A,4', 'JR Z,StarCase', 'CP A,6', 'JR Z,LivesCase',
                   'CP A,7', 'JR Z,SpawnCase',
+                  'CP A,8', 'JR Z,SceneCase', 'CP A,9', 'JR Z,LimitCase',
                   'CALL InitGame', 'JR Report',
+                  'SceneCase:', 'CALL PrepareScene', 'JR Report',
+                  'LimitCase:', 'LD DE,$C1A0', 'CALL EmitPiece', 'JR Report',
                   'SpawnCase:', 'LD A,[Buttons]', 'CALL SpawnEntity', 'JR Report',
                   'LivesCase:', 'CALL UpdateLives', 'JR Report',
                   'GameCase:', 'CALL UpdateGame', 'JR Report',
@@ -77,7 +80,7 @@ def build(root, destination, short=False, suite='motion', part=None):
         layout = json.loads((source/'layout.json').read_text())
         layout['sections'] = [dict(row, unit='program.asm') for row in layout['sections']]
         linked = link([('program.asm', obj)], layout, dict(unit='program.asm', symbol='Start'))
-        image = package(linked, suite.upper() + ' UNIT', 1)
+        image = package(linked, getattr(module, 'TITLE', suite.upper() + ' UNIT'), 1)
         (destination/'program.gb').write_bytes(image)
         record = dict(sha256=hashlib.sha256(image).hexdigest(), cases=len(selected),
                       names=[c['name'] for c in selected],
