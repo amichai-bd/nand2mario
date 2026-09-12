@@ -78,6 +78,21 @@ EXPECTED = {
     'retry': (RETRY, 2992, 2304, 115, 0, 130, 4336, -8, INTACT_BLOCKS, SMALL),
     'retry-restart': (PLAYING, 384, 1792, 0, 0, 20, 4256, 8, INTACT_BLOCKS, SMALL),
 }
+# Showcase sampling: the frozen checkpoint list wiki/showcase/springtrail-board.svg
+# is built from. Checkpoint n snapshots source frame n-1, which displays
+# games()[n-2], so these cover the title (k 0), the spawn after Start+B+Right
+# (k 3), the run to the first gap (k 12..92), the held-A jump over it (k
+# 100..144: launch at 100, apex 1200 at 121..124, landing at 145), the jump
+# over the patrol (k 156..166), the ring wrap (k 206), the one-VBlank tap over
+# the second gap (k 232..248) and its landing (k 256), the held jump over the third gap (k 359..397),
+# the camera clamp and the run to the goal (k 441..465), WON (k 473), the Start
+# restart (k 493), the run into the first gap (k 594..601) and RETRY (k 604).
+# Sampling adds one snapshot per listed checkpoint to the `full` history; it
+# changes no input, no checkpoint and none of the ten proof captures, and the
+# eight listed checkpoints that are proof captures reuse the frame already read.
+SHOWCASE = ((0, 3) + tuple(range(12, 99, 8)) + tuple(range(100, 147, 4)) + (151, 156, 161, 166, 206)
+            + (232, 240, 248, 256, 359, 367, 377, 387, 397, 441, 457, 465, 473, 493, 594, 598, 601, 604))
+SHOWCASE_CHECKPOINTS = frozenset(k + 2 for k in SHOWCASE)
 # The ring restores two columns per publication; a restart from a scrolled
 # camera needs 16 publications before the model's complete world is displayed.
 RESTORE_FRAMES = 16
@@ -144,9 +159,11 @@ def unpack(packed):
     return bytes((b >> shift) & 3 for b in packed for shift in (0, 2, 4, 6))
 
 
-def run(client, rom, root, *, epoch, plan, rom_sha256, deadline=None, clock=time.monotonic):
+def run(client, rom, root, *, epoch, plan, rom_sha256, deadline=None, showcase=False,
+        clock=time.monotonic):
     """One paused history from a full load through the plan's last capture."""
     require_current_rom(rom, rom_sha256)
+    assert not showcase or plan == 'full', 'FRAME_SHOWCASE_PLAN'
     captures = plan_captures(plan)
     states = games()
     for name, k in captures:
@@ -159,7 +176,8 @@ def run(client, rom, root, *, epoch, plan, rom_sha256, deadline=None, clock=time
     mask = 0
     armed = False
     result = dict(status='FAIL', plan=plan, rom_sha256=rom_sha256, lcd=LCD, period=PERIOD,
-                  script=SCRIPT, captures=[], inputs=[])
+                  script=SCRIPT, captures=[], samples=[], inputs=[],
+                  showcase=bool(showcase), showcase_checkpoints=SHOWCASE if showcase else ())
 
     def record(kind, **fields):
         row = dict(kind=kind, wall=clock(), **fields)
@@ -203,7 +221,8 @@ def run(client, rom, root, *, epoch, plan, rom_sha256, deadline=None, clock=time
             current += amount
         return current
 
-    def capture(name, k, dot):
+    def snap(name, k, dot):
+        """One paused snapshot at checkpoint k+2, checked against the models."""
         frame = k+1
         before = public()
         assert before['dot'] == dot, 'FRAME_CAPTURE_DOT'
@@ -219,12 +238,30 @@ def run(client, rom, root, *, epoch, plan, rom_sha256, deadline=None, clock=time
         path.write_bytes(packed)
         assert mismatch is None, f'FRAME_PIXELS {name} pixel={mismatch}'
         assert public() == before, 'FRAME_CAPTURE_HOLD'
-        entry = dict(name=name, game=k, frame=frame, pause_dot=dot, metadata=meta,
-                     state=EXPECTED[name], history=history(k), checked_pixels=PIXELS,
+        entry = dict(game=k, frame=frame, pause_dot=dot, metadata=meta,
+                     mask=masks[k-1] if k else 0, checked_pixels=PIXELS,
                      crc32=f'{zlib.crc32(pixels):08x}', file=path.name, sha256=file_hash(path),
                      retired=before['retired'])
+        return entry
+
+    def capture(name, k, dot):
+        entry = dict(name=name, state=EXPECTED[name], history=history(k), **snap(name, k, dot))
         result['captures'].append(entry)
         record('capture', **entry)
+        return entry
+
+    def sample(k, dot, reuse=None):
+        """A showcase sample; reuse re-lists a capture instead of reading again."""
+        if reuse is None:
+            entry = snap(f'showcase-{k:04d}', k, dot)
+        else:
+            entry = {key: reuse[key] for key in
+                     ('game', 'frame', 'pause_dot', 'metadata', 'mask', 'checked_pixels',
+                      'crc32', 'file', 'sha256', 'retired')}
+        entry = dict(name=f'showcase-{k:04d}', anchor=anchor(states[k]), **entry)
+        result['samples'].append(entry)
+        record('sample', **entry)
+        return entry
 
     try:
         within_cap('load')
@@ -240,7 +277,12 @@ def run(client, rom, root, *, epoch, plan, rom_sha256, deadline=None, clock=time
             within_cap(f'C({n})')
             dot = advance(dot, checkpoint(n))
             if n in due:
-                capture(due[n], n-2, dot)
+                entry = capture(due[n], n-2, dot)
+                if showcase and n in SHOWCASE_CHECKPOINTS:
+                    # Already read at this checkpoint; list the same frame.
+                    sample(n-2, dot, reuse=entry)
+            elif showcase and n in SHOWCASE_CHECKPOINTS:
+                sample(n-2, dot)
             if FIRST_VBLANK <= n < len(masks) and masks[n] != mask:
                 buttons(masks[n], dot)
         if mask:
@@ -312,7 +354,8 @@ def worker(args):
             session_record['prior_epoch'] = meta['epoch']
             deadline = started+args.deadline if args.deadline else None
             result = run(client, rom, out/'run', epoch=meta['epoch'], plan=args.plan,
-                         rom_sha256=args.rom_sha256, deadline=deadline)
+                         rom_sha256=args.rom_sha256, deadline=deadline,
+                         showcase=args.showcase)
             session_record['status'] = result['status']
     except Exception as error:
         session_record['error'] = repr(error)
@@ -333,6 +376,8 @@ def main():
     parser.add_argument('--expected-build-id', required=True, help='reviewed wire build ID, 32 hex digits')
     parser.add_argument('--tag', default='frames384')
     parser.add_argument('--cap', type=int, help='whole-process seconds; default 300')
+    parser.add_argument('--showcase', action='store_true',
+                        help='also retain the frozen SHOWCASE frame samples (plan full only)')
     parser.add_argument('--worker', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('--rom', help=argparse.SUPPRESS)
     parser.add_argument('--rom-sha256', help=argparse.SUPPRESS)
@@ -341,6 +386,7 @@ def main():
     args = parser.parse_args()
     if args.worker:
         return worker(args)
+    assert not args.showcase or args.plan == 'full', 'FRAME_SHOWCASE_PLAN'
     cap = args.cap or CAPS[args.plan]
     out = ROOT/'workdir/builds'/args.tag/'frames'/f'{args.plan}-{datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")}'
     out.mkdir(parents=True)
@@ -353,7 +399,7 @@ def main():
     command = [sys.executable, str(Path(__file__).resolve()), args.plan, '--worker',
                '--uart-port', args.uart_port, '--expected-build-id', args.expected_build_id,
                '--tag', args.tag, '--rom', str(rom), '--rom-sha256', digest, '--out', str(out),
-               '--deadline', str(cap-24)]
+               '--deadline', str(cap-24)] + (['--showcase'] if args.showcase else [])
     code = supervise(command, cap, out)
     decode(out)
     print('DONE', 'PASS' if code == 0 else 'FAIL', out.as_posix(), flush=True)

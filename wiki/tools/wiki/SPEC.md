@@ -232,8 +232,8 @@ records where every shown line and pixel comes from.
 A board loop draws frames captured on hardware rather than rendered on the
 host. `tools/wiki/board_frames.py` ingests one capture session into a committed
 archive under `tools/wiki/board_frames/`, holding the session's provenance and,
-per frame, its sequence, completion dot, applied JOYP mask, the CRC32 of the
-packed bytes the board returned, and the frame encoded as a 2-bit indexed PNG.
+per frame, its sequence, completion dot, applied JOYP mask, the CRC32 its
+capture driver recorded, and the frame encoded as a 2-bit indexed PNG.
 Ingest measures that encoding against the rect runs `showcase.paths()` draws and
 records both byte counts. No packed frame and no decoded PNG is committed: the
 archive is the only copy of the pixels, and the generator rebuilds the SVG from

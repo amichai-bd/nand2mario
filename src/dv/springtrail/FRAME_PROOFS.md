@@ -179,6 +179,17 @@ python src/dv/springtrail/frame_proofs.py full --uart-port COM3 --expected-build
 Hardware programming and capture need the user's explicit authorization and
 the serialized machine lock; the launcher does not program the board.
 
+`full --showcase` adds one paused `SNAPSHOT` at each checkpoint in the frozen
+`SHOWCASE` list, the frames `wiki/showcase/springtrail-board.svg` is built
+from. Sampling changes no input, no checkpoint and no capture: the host test
+holds the sampled and unsampled `full` runs to the same inputs, checkpoints,
+final dot and capture CRC32s. Each sample is checked against all 23040 pixels
+of the same expected image before it is retained, and a listed checkpoint
+that is also a capture re-lists the frame already read rather than reading
+again. Samples are recorded under `samples` in `result.json` with their
+game index, model state, mask, CRC32 and packed file; they are wiki
+material, not proof evidence.
+
 ## Measured result on the current image
 
 All ten captures are proven on the current image by the runs below, against

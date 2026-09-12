@@ -124,7 +124,8 @@ def check_views(browser, base):
         # each frame is an inline indexed-PNG data URI, motion plays on screen,
         # and the reduced-motion still is the last captured frame alone.
         from wiki import board_frames
-        for name, caption in (('libbet-board', 'Idle on the top-right cell, combo back to 0'),):
+        for name, caption in (('libbet-board', 'Idle on the top-right cell, combo back to 0'),
+                              ('springtrail-board', 'RETRY after the fall')):
             archive = board_frames.load(name)
             last = len(archive['frames']) - 1
             page = new_page()
