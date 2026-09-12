@@ -15,7 +15,7 @@ from n2m.preload import verify, adopt
 from pause_game_reference import Check, SCRIPT, FRAMES, PERIOD
 
 # The full script ends in VBlank 5; the short harness stops in frame 0.
-# The startup allowance matches the reference's widened PAUSE_STARTUP_BOUND.
+# The exact source startup anchor and the full script bound the watchdog.
 from motion_game_reference import LCD
 WATCHDOG=LCD+FRAMES*PERIOD+2048
 

@@ -14,7 +14,7 @@ PERIOD=70224
 # derived from the instruction listing by startup_anchor.derive and frozen
 # here. test_startup_anchor proves the current image derives this dot.
 # Runtime fixtures qualify their separately derived startup paths.
-LCD=207020
+LCD=201968
 
 
 class Check:
