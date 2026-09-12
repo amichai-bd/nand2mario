@@ -78,13 +78,59 @@ four loads, 195 samples, 4,000,000-plus checked pixels). The short run
 exercises both routes, pause/resume, the final sample and all three
 lifecycles before the full run. No automatic extension or replay.
 
-### Measured result on image 616de11b...
+### Measured result on the current image (35aae757...)
+
+Image `35aae757bde0ec9a15d6d6c84f14b45b451c341d2d4775f43ed8a9a762625192`
+built from current sources at each launch, anchor 167840 (C2=312384,
+C5=523056) derived by the launcher and recorded in `build.json`, wire build
+`87d5f0280a2afad8be6b85dc601141cc` on COM3, Python 3.14.5, pyserial 3.5,
+2026-09-12, producing commit `a8137875`. The board was not reprogrammed.
+Before any board traffic the frozen routes were replayed through the
+block-aware model (`power_reference.update`, `blocks_frames.image`): every
+JOYP first-sample variant and every enemy phase reach the same terminal as
+the frozen model, no route touches a block (the nearest, world column 38,
+lies past both gap falls), and the five sample images are pixel-identical.
+Doctor: JTAG PASS (`10M50DA`, idcode `031050DD`), Quartus PASS, UART
+enumerated COM3; Questa refused its nodelocked licence to a second seat,
+and no simulation is part of this proof. `host status` read build
+`87d5f028...`, ABI 1, PAUSED, valid image, UART, input 0 before traffic.
+Both runs used
+`python src/dv/springtrail/endurance.py <plan> --uart-port COM3 --expected-build-id 87d5f0280a2afad8be6b85dc601141cc --tag en452`,
+serialized under the machine mutex.
+
+| Plan | Whole (s) | Continuous (s) | Dots | Samples | Checked pixels | Loads | Epochs | Result |
+|---|---|---|---|---|---|---|---|---|
+| `short` | 102.7 (cap 300) | 42.409 | 177,267,435 | 15 | 344,544 | 4 | 14..23 | PASS |
+| `full` | 1862.5 (cap 1980) | 1802.419 | 7,559,289,113 | 195 | 4,445,280 | 4 | 25..34 | PASS |
+
+The full run sampled 90 RETRY frames (45 per route), 98 `play`, 3 `paused`
+and 4 `title` frames, applied 386 inputs, and kept the core RUNNING from the
+origin `play` sample to `continuous-final` at frame 107586, dot
+7,555,352,563, 343,571,860 retired instructions; the dot counter crossed its
+32-bit boundary inside epoch 25 (first seen at sample `051-retry`) without
+a torn read. Every load uploaded and read back all 32768 bytes. Both runs
+ended PAUSED at dot 523056, UART, input 0, effective 0, with the durable
+session certain (sequence 237515, then 250515). The title frame completing
+at dot 303523 = 167840 + 70224 + 143*456 + 251, the last pixel of row 143,
+corroborates the derived anchor on hardware. No reset, hang, lost input or
+pixel mismatch occurred.
+
+[PR475](https://github.com/amichai-bd/nand2mario/pull/475) records both runs:
+the exact commands, the per-run build, budget, session, result and journal
+records, every retained packed frame and the transaction journals, with the
+independent review that recomputed each number from them.
+
+Sampling limits: two samples per cycle plus pauses; the RETRY samples exclude
+the enemy patrol footprint. Nothing here observes the monitor or physical
+controls.
+
+### Earlier result on image 616de11b...
 
 This result belongs to image
 `616de11b49e0807539837358824a570776459b9bf13a4b9424dbf42adfe5c983`, whose
 anchor was 139388 (C2=283932, C5=494604). The block layer and the power
-states lengthened startup after it, so the image the repository builds today
-(anchor 167840) has no endurance run yet.
+states lengthened startup after it; the current-image result above
+supersedes it and this record is kept as history.
 
 Producing commit `e3bdf69` (the freeze; rebased with identical content as
 `f36c0b3`, then onto #385 as `bfa9654`: the only driver change is the call
@@ -208,7 +254,7 @@ The retired-image schedule and its PR295 result apply to image
 #314, #316, #318, #321 and #301 separate it from the current build and change
 every displayed frame. That result cannot be read as covering the current
 image. The current-image script above is the endurance script for the image
-the repository builds; its measured run belongs to image `616de11b...` and
-has not been repeated on the current image. The deterministic per-image
-evidence for the current build is the
+the repository builds; its measured result belongs to that image
+(`35aae757...`, anchor 167840), and the earlier `616de11b...` record is
+history. The deterministic per-image evidence for the current build is the
 [re-qualification section](MILESTONE.md#current-rom-re-qualification).
