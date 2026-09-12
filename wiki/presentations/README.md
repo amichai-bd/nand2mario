@@ -25,7 +25,6 @@ want to understand.
 | [06 · Verification](verification.html) | How do we know a checker works? | Independent oracles, fault injection and bounded evidence |
 | [07 · Reproducible builds](reproducible-builds.html) | What does a cached PASS mean? | Input identity, artifact integrity and publication |
 | [08 · Original software](springtrail-software.html) | Where does gameplay belong? | Springtrail ROM, movement, interactions and game flow |
-
 | [09 · Console and cartridge](console-cartridge.html) | What belongs in the console, and what can a cartridge add? | Bank selection, virtual cartridge and storage boundaries |
 
 Use Left/Right or the buttons to navigate; Home/End jump to the first/last slide.
