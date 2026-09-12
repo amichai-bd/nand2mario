@@ -1,4 +1,5 @@
 """Optional cocotb integration; shared simulation owns execution and records."""
+import ast
 import importlib.metadata
 import math
 import os
@@ -11,7 +12,31 @@ import xml.etree.ElementTree as ET
 from .records import file_hash
 
 
-def validate(root, target):
+# Directories whose modules a Python target must declare when it loads them.
+IMPORT_SCOPE = ("src/dv/springtrail", "tools", "src/dv/python/integration")
+# The module the builder executes to produce each preload image; see prepare().
+FIXTURE_BUILDERS = {
+    "integration": "src/dv/integration/image.py",
+    **dict.fromkeys(("v05", "springtrail", "springtrail-unit", "flow", "flow-s", "render", "render-s",
+                     "stackdrop", "stackdrop-unit", "stackdrop-short"), "tools/sw/rom_build.py"),
+    **dict.fromkeys(("motion301", "motion301-s", "power302", "power302-s", "power302-a", "power302-b",
+                     "blocks303-s", "blocks303-a", "blocks303-b"), "src/dv/springtrail/motion_program.py"),
+    **dict.fromkeys(("motion-render301", "power-render302"), "src/dv/springtrail/motion_render_program.py"),
+    "hud-render300": "src/dv/springtrail/hud_render_program.py",
+    **dict.fromkeys(("hud300", "hud300-s"), "src/dv/springtrail/hud_program.py"),
+    **dict.fromkeys(("courier292", "courier292-s"), "src/dv/springtrail/composition_program.py"),
+    **dict.fromkeys(("oam299", "oam299-s"), "src/dv/springtrail/dma_program.py"),
+    "display308": "src/dv/display308/program.py", "dma239": "src/dv/dma/program239.py",
+    "timer234": "src/dv/timer/program234.py", "stop349": "src/dv/joypad/program349.py",
+    **dict.fromkeys(("startup-read", "startup-write"), "src/dv/ppu/startup202.py"),
+    **dict.fromkeys(("late-fe9c", "late-fe9d", "late-fe20"), "src/dv/ppu/late208.py"),
+    **dict.fromkeys(("vram-read", "vram-write"), "src/dv/ppu/startup204.py"),
+    **dict.fromkeys(("palette-fc", "palette-00"), "src/dv/ppu/palette194.py"),
+    "mooneye-reg-f": "tools/n2m/mooneye.py",
+}
+
+
+def validate(root, target, name=None):
     kind = target.get("testbench", "systemverilog")
     if kind not in ("systemverilog", "python"):
         raise ValueError("testbench must be systemverilog or python")
@@ -20,7 +45,7 @@ def validate(root, target):
             raise ValueError("python configuration requires testbench=python")
         return
     config = target.get("python")
-    if not isinstance(config, dict) or not {"module", "test", "inputs"} <= set(config) or set(config) - {"module", "test", "inputs", "waves"}:
+    if not isinstance(config, dict) or not {"module", "test", "inputs"} <= set(config) or set(config) - {"module", "test", "inputs", "waves", "excluded_imports"}:
         raise ValueError("python testbench requires module, test and inputs")
     if "waves" in config:
         waves = config["waves"]
@@ -111,6 +136,117 @@ def validate(root, target):
                     'src/rtl/ppu/GPL-3.0.txt'}
         if target.get('vendor_model') != 'intel-memory' or not required <= set(config['inputs']):
             raise ValueError('Mooneye preload requires Intel memory and pinned source notices')
+    check_imports(root, target, name or config["module"])
+
+
+def _search_dirs(root, tree):
+    """Directories a module's own sys.path edits put in front of the search."""
+    dirs = []
+    for statement in ast.walk(tree):
+        if not isinstance(statement, ast.stmt) or not any(
+                isinstance(node, ast.Attribute) and node.attr == "path"
+                and isinstance(node.value, ast.Name) and node.value.id == "sys"
+                for node in ast.walk(statement)):
+            continue
+        for node in ast.walk(statement):
+            if isinstance(node, ast.Constant) and isinstance(node.value, str) and (root / node.value).is_dir():
+                dirs.append((root / node.value).resolve())
+    return dirs
+
+
+def _resolve(node, importer, dirs):
+    """Files one import statement loads, as groups that stand or fall together."""
+    if isinstance(node, ast.Import):
+        requests = [(alias.name.split("."), [], dirs) for alias in node.names]
+    else:
+        parts = node.module.split(".") if node.module else []
+        names = [alias.name for alias in node.names]
+        if node.level:
+            base = importer.parent
+            for _ in range(node.level - 1):
+                base = base.parent
+            requests = [(parts, names, [base])]
+        else:
+            requests = [(parts, names, dirs)]
+    groups = []
+    for parts, names, bases in requests:
+        for base in bases:
+            files = []
+            module = base.joinpath(*parts) if parts else base
+            for candidate in ((module.with_suffix(".py"), module / "__init__.py") if parts else ()):
+                if candidate.is_file():
+                    files.append(candidate)
+                    break
+            if names and module.is_dir():
+                for member in names:
+                    for candidate in (module / (member + ".py"), module / member / "__init__.py"):
+                        if candidate.is_file():
+                            files.append(candidate)
+                            break
+            if files:
+                files += [p for i in range(1, len(parts)) if (p := base.joinpath(*parts[:i]) / "__init__.py").is_file()]
+                groups.append([p.resolve() for p in files])
+                break
+    return groups
+
+
+def loaded_modules(root, start, excluded=()):
+    """Repository-relative modules a start module loads transitively within IMPORT_SCOPE.
+
+    Every import statement counts, including ones inside functions and branches;
+    an excluded path prunes the statements that would load it.
+    """
+    root = root.resolve()
+    scope = tuple(s + "/" for s in IMPORT_SCOPE)
+    seen, shared, todo = {}, [], [start.resolve()]
+    while todo:
+        module = todo.pop()
+        if module in seen:
+            continue
+        seen[module] = True
+        tree = ast.parse(module.read_text(encoding="utf-8"), filename=str(module))
+        local = _search_dirs(root, tree)
+        shared += [d for d in local if d not in shared]
+        dirs = local + [d for d in shared if d not in local] + [module.parent]
+        dirs += [d for d in (*(root / s for s in IMPORT_SCOPE), root) if d not in dirs]
+        for node in ast.walk(tree):
+            if not isinstance(node, (ast.Import, ast.ImportFrom)):
+                continue
+            for group in _resolve(node, module, dirs):
+                paths = [p.relative_to(root).as_posix() for p in group if p.is_relative_to(root)]
+                if any(p in excluded for p in paths):
+                    continue
+                todo += [p for p in group if p.is_relative_to(root) and p.relative_to(root).as_posix().startswith(scope)]
+    return {p.relative_to(root).as_posix() for p in seen if p != start.resolve()}
+
+
+def check_imports(root, target, name):
+    """Every module a target loads inside IMPORT_SCOPE is a declared input or an explained exclusion."""
+    config = target["python"]
+    excluded = config.get("excluded_imports", {})
+    if not isinstance(excluded, dict) or any(not isinstance(k, str) or not isinstance(v, str) or not v.strip()
+                                             for k, v in excluded.items()):
+        raise ValueError(f"{name}: excluded_imports must map each path to the reason it is never loaded")
+    for path in excluded:
+        if not path.startswith(tuple(s + "/" for s in IMPORT_SCOPE)) or not (root / path).is_file():
+            raise ValueError(f"{name}: excluded import is not an in-scope module: {path}")
+        if path in config["inputs"]:
+            raise ValueError(f"{name}: excluded import is also a declared input: {path}")
+    starts = [next(root / p for p in config["inputs"] if Path(p).name == config["module"] + ".py")]
+    if target.get("preload") in FIXTURE_BUILDERS:
+        starts.append(root / FIXTURE_BUILDERS[target["preload"]])
+    reached, loaded = set(), set()
+    for start in starts:
+        reached |= loaded_modules(root, start)
+        loaded |= loaded_modules(root, start, excluded)
+    # tools/n2m/*.py and tools/build.py enter every fingerprint through simulation.simulate.
+    implicit = {p.relative_to(root).as_posix() for p in (root / "tools/n2m").glob("*.py")} | {"tools/build.py"}
+    undeclared = sorted(loaded - set(config["inputs"]) - implicit)
+    if undeclared:
+        raise ValueError(f"{name}: undeclared transitive Python inputs: {', '.join(undeclared)}")
+    unreached = sorted(set(excluded) - reached)
+    if unreached:
+        raise ValueError(f"{name}: excluded imports are never reached: {', '.join(unreached)}")
 
 
 def discover():

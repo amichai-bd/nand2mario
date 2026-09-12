@@ -218,6 +218,20 @@ remain distinct; a Python failure can accompany raw exit zero and still makes
 the builder exit 1. Negative Python targets remain FAIL and are never reused.
 Required evidence paths and hashes are checked before cache reuse.
 
+A simulation is reused only when every declared input is unchanged, so every
+module the test module or the preload's fixture builder imports, transitively,
+under `src/dv/springtrail`, `tools/` or `src/dv/python/integration` must appear
+in `python.inputs`; `tools/n2m/*.py` and `tools/build.py` enter every
+fingerprint and need no declaration. `python_tb.validate` walks the import
+statements with `ast`, including those inside functions and branches, and
+rejects the target naming it and each undeclared module. For an import on a
+branch the target never takes, `python.excluded_imports` maps the module to the
+reason it is never loaded; the exclusion prunes that module and whatever only it
+would load. Validation rejects an exclusion without a reason, outside the three
+directories, also declared as an input, or never reached from the target.
+[`test_import_check.py`](../../../tools/n2m/tests/test_import_check.py) covers
+detection and the exclusion mechanism.
+
 Classic waveform access uses `-no_autoacc` and `-voptargs=+acc=rnbp+/<top>`.
 WLF and VCD log top-level signals, including explicit observation latches,
 without recursively dumping memory arrays.
