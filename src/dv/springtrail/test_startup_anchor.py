@@ -16,8 +16,10 @@ STARTUP = ('reset fetch', 'header', 'Start', 'InitSceneDMA', 'InitGame', 'ClearO
            'CopyTiles', 'CopyMap', 'InitHUD', 'InitMotionArt', 'InitBlockArt', 'PrepareScene',
            'PrepareHUD', 'PrepareMap', 'PublishHUD', 'PublishScene')
 # Independent hand counts of two terms, from the listing:
-# CopyTiles: LD DE/LD HL/LD BC 9, then 1184 x (LD A,[DE] 2, INC DE 2, LD [HL+],A 2,
-#   DEC BC 2, LD A,B 1, OR A,C 1, JR NZ 3) minus the final untaken JR: 15400 M-cycles.
+# CopyTiles (attributed by nearest preceding label, so its own three setup
+#   loads belong to Start and CopyMap's belong to it): 1184 x (LD A,[DE] 2,
+#   INC DE 2, LD [HL+],A 2, DEC BC 2, LD A,B 1, OR A,C 1, JR NZ 3) minus the
+#   final untaken JR, plus LD DE/LD HL/LD BC 9: 15400 M-cycles.
 # InitBlockArt: the count PR #418's reviewer made, 5183 M-cycles.
 HAND = {'CopyTiles': 4 * 15400, 'InitBlockArt': 4 * 5183}
 

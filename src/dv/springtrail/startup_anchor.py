@@ -7,8 +7,8 @@ The rules are the instruction manual's M-cycle table as MAS_cpu freezes it:
 startup is one initial opcode fetch, each instruction then costs its listed
 M-cycles with the final fetch overlapping the next instruction, and a write
 commits at T4 of its M-cycle, so its dot is four times the M-cycles completed
-through that cycle. Interrupts stay disabled until the write (DI, IE 0), so
-the path is straight-line code with data-dependent loops only.
+through that cycle. IME stays clear (DI) until after the write, so the path
+is straight-line code with data-dependent loops only.
 
 The model is the derivation, not the DUT: it knows no RTL and reads nothing
 from a run. `motion_game_reference.LCD` freezes the result the current image

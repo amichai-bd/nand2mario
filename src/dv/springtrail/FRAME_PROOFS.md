@@ -45,8 +45,11 @@ the [CPU contract](../../../wiki/src/rtl/cpu/MAS_cpu.md#time-bus-and-retirement)
 one initial opcode fetch, each instruction's manual M-cycle count with the
 final fetch overlapping the next instruction, conditional costs by outcome,
 and a write committing at T4 of its M-cycle, so the dot is four times the
-M-cycles completed through the write. No interrupt is enabled before the
-write, so the path is straight-line code with data-dependent loops. The
+M-cycles completed through the write. IME stays clear until after the
+write, so the path is straight-line code with data-dependent loops. Dots
+are attributed to the nearest preceding label at call depth zero and to the
+callee inside a `CALL`, so a loop's setup loads belong to the label before
+it. The
 model reads nothing from a run; `python-mgs` is where the RTL is held to it.
 
 Image `35aae757bde0ec9a15d6d6c84f14b45b451c341d2d4775f43ed8a9a762625192`,
@@ -57,12 +60,12 @@ Image `35aae757bde0ec9a15d6d6c84f14b45b451c341d2d4775f43ed8a9a762625192`,
 |---|---|---|
 | reset fetch | 4 | the initial opcode fetch at 0100 |
 | header | 20 | `NOP` and `JP Start`, written by the packager |
-| `Start` | 220 | the inline register, WRAM and palette stores |
+| `Start` | 220 | the inline register and WRAM stores and the tile copy's setup loads |
 | `InitSceneDMA` | 428 | the HRAM DMA routine copy |
 | `InitGame` | 2156 | game, power and block state, including the 38-byte reset loop |
 | `ClearObjects` | 3872 | 160 OAM bytes |
-| `CopyTiles` | 61600 | 1184 tile bytes to VRAM |
-| `CopyMap` | 30108 | 576 title map bytes |
+| `CopyTiles` | 61600 | 1184 tile bytes to VRAM and the map copy's setup loads |
+| `CopyMap` | 30108 | 576 title map bytes, the palettes and the closing register stores through the LCDC write |
 | `InitHUD` | 17120 | the 20 font tiles and the second map's cleared HUD rows |
 | `InitMotionArt` | 9212 | the courier poses |
 | `InitBlockArt` | 20732 | four 128-byte block tile copies |
