@@ -2,6 +2,7 @@
 import json
 import contextlib
 import io
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -12,7 +13,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from n2m.doctor import doctor, execute, parse_jtag, questa, quartus, select_uart, uart, warning
-from n2m.fpga import ALLOCATOR_NOTICE
+from n2m.fpga import ALLOCATOR_NOTICE, ALLOCATOR_OVERRIDE_NOTICE, quartus_environment
 from n2m.cli import main, parser
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -179,6 +180,22 @@ class DoctorTests(unittest.TestCase):
                 patch("n2m.doctor.execute", return_value="TBBmalloc: unknown prologue\nQuartus Prime Shell\nVersion 25.1 Lite Edition"):
             with self.assertRaisesRegex(RuntimeError, "diagnostic"):
                 quartus(self.folder, None)
+
+    def test_quartus_check_launches_with_the_build_flow_allocator_override(self):
+        banner = "Quartus Prime Shell\nVersion 25.1 Lite Edition"
+        with patch("n2m.doctor.executable", return_value="quartus_sh"), \
+                patch("n2m.doctor.execute", return_value=banner) as run:
+            report = quartus(self.folder, None)
+        self.assertEqual(run.call_args.kwargs["env"]["TBB_MALLOC_DISABLE_REPLACEMENT"], "1")
+        self.assertEqual(report["environment"], {"TBB_MALLOC_DISABLE_REPLACEMENT": "1"})
+        self.assertEqual(report["notice"], ALLOCATOR_OVERRIDE_NOTICE)
+
+    def test_execute_passes_only_an_explicit_environment(self):
+        code = "import os; print(os.environ.get('TBB_MALLOC_DISABLE_REPLACEMENT'))"
+        plain = execute([sys.executable, "-c", code], self.folder, "plain.log")
+        self.assertEqual(plain.strip(), str(os.environ.get("TBB_MALLOC_DISABLE_REPLACEMENT")))
+        forced = execute([sys.executable, "-c", code], self.folder, "forced.log", env=quartus_environment())
+        self.assertEqual(forced.strip(), "1")
 
     def test_quartus_explains_only_the_pinned_allocator_notice(self):
         banner = "Quartus Prime Shell\nVersion 25.1 Lite Edition"

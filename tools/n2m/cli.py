@@ -277,6 +277,8 @@ def main(argv=None, root=None):
         print(f"{report.get('cache', report['status'])}: {args.command} tag={report.get('tag', '-')}")
         if "error" in report:
             print(report["error"])
+        for line in report.get("notices", []):
+            print(line)
         if args.command == "tests" and "units" in report and isinstance(report["units"], dict):
             for name, outcome in report["units"].items():
                 if outcome["status"] != "PASS":
@@ -301,5 +303,7 @@ def main(argv=None, root=None):
             print(report["scope"])
             for name, check in report["checks"].items():
                 print(f"{name}: {check['status']} {check.get('error', check.get('detail', ''))}")
+                if "notice" in check:
+                    print(check["notice"])
             print(f"Readiness: {report['readiness']}; untested: {', '.join(report['untested'])}")
     return {"PASS": 0, "FAIL": 1, "WARNING": 2}[report["status"]]

@@ -20,6 +20,13 @@ REQUIRED_REPORTS = ("design.map.rpt", "design.fit.rpt", "design.fit.summary", "d
 SDC_COMMANDS = set("create_clock create_generated_clock derive_clock_uncertainty derive_pll_clocks set_input_delay set_output_delay set_false_path set_multicycle_path set_max_delay set_min_delay set_clock_uncertainty set_clock_groups set_clock_latency set_clock_transition".split())
 TIMING_CHECKS = set("no_clock multiple_clock pos_neg_clock_domain generated_clock virtual_clock no_input_delay no_output_delay partial_input_delay partial_output_delay io_min_max_delay_consistency reference_pin generated_io_delay latency_override partial_multicycle multicycle_consistency loops latches pll_cross_check uncertainty partial_min_max_delay clock_assignments_on_output_ports input_delay_assigned_to_clock".split())
 ALLOCATOR_NOTICE = "TBBmalloc: skip allocation functions replacement in ucrtbase.dll: unknown prologue for function _msize"
+# Quartus 25.1 on Windows can exit 3 before doing any work when its bundled TBB
+# allocator fails to replace the ucrtbase.dll hooks behind that notice. Intel
+# documents this variable to keep the standard CRT allocator. It is set only in
+# the environment of each launched Quartus process; the host is not changed.
+ALLOCATOR_OVERRIDE = {"TBB_MALLOC_DISABLE_REPLACEMENT": "1"}
+ALLOCATOR_OVERRIDE_NOTICE = ("notice: TBB_MALLOC_DISABLE_REPLACEMENT=1 is set for every launched Quartus process "
+                             "(host allocator condition; see wiki/tools/n2m/SPEC.md#quartus-allocator-override)")
 # These exact diagnostics do not establish physical readiness. No warning is hidden.
 CLASSIFIED = {
     "10905": r"Generated the EDA functional simulation netlist because it is the only supported netlist type for this device\.",
@@ -35,6 +42,13 @@ check_timing -file output/check_timing.rpt
 report_sdc -ignored -file output/ignored.rpt
 project_close
 """
+
+
+def quartus_environment(base=None):
+    """Process-only environment for a Quartus launch: the caller's plus the allocator override."""
+    environment = dict(os.environ if base is None else base)
+    environment.update(ALLOCATOR_OVERRIDE)
+    return environment
 
 
 def tcl_word(value):
@@ -191,8 +205,10 @@ def diagnostics(output, explained=()):
 
 
 def execute(argv, folder, log, timeout, record, build):
-    command = {"argv": [str(a) for a in argv], "cwd": str(folder)}
-    options = {} if os.name == "nt" else {"start_new_session": True}
+    command = {"argv": [str(a) for a in argv], "cwd": str(folder), "environment": dict(ALLOCATOR_OVERRIDE)}
+    options = {"env": quartus_environment()}
+    if os.name != "nt":
+        options["start_new_session"] = True
     record["commands"].append(command)
     with (build / "commands.log").open("a", encoding="utf-8") as stream:
         stream.write(json.dumps(command) + '\n')
@@ -398,6 +414,7 @@ def build_fpga(root, build, args, provenance=None):
     folder.mkdir(parents=True)
     record = {"status": "RUNNING", "cache": "BUILT", "target": args.target, "device": DEVICE,
               "commands": [], "artifacts": {}, "classified_diagnostics": [], "provenance": provenance or {},
+              "environment": dict(ALLOCATOR_OVERRIDE), "notices": [ALLOCATOR_OVERRIDE_NOTICE],
               "started": datetime.now(timezone.utc).isoformat()}
     # Even invalid definitions or missing tools invalidate an earlier successful request.
     atomic_json(current, record)

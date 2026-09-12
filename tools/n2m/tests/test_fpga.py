@@ -1,4 +1,6 @@
 """Independent report fixtures and stage failure/cache checks; no Quartus needed."""
+import contextlib
+import io
 import json
 import os
 import subprocess
@@ -11,6 +13,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from n2m import fpga
+from n2m.cli import main
 
 
 def reports(folder):
@@ -245,6 +248,37 @@ class FpgaTests(unittest.TestCase):
                          self.build, log, 5, record, self.build)
         self.assertEqual(record['commands'][-1]['exit_code'], 7)
         self.assertIn('failed', log.read_text())
+
+    def test_execute_sets_the_allocator_override_for_the_child_only(self):
+        record = {'commands': [], 'classified_diagnostics': []}
+        log = self.build / 'environment.log'
+        before = os.environ.get('TBB_MALLOC_DISABLE_REPLACEMENT')
+        code = "import os; print('child=' + repr(os.environ.get('TBB_MALLOC_DISABLE_REPLACEMENT')))"
+        with patch.dict(os.environ, {'N2M_PARENT_MARKER': 'kept'}):
+            text = fpga.execute([sys.executable, '-c', code], self.build, log, 5, record, self.build)
+            self.assertIn("child='1'", text, 'the launched process must see the documented override')
+        self.assertEqual(os.environ.get('TBB_MALLOC_DISABLE_REPLACEMENT'), before, 'the host environment is unchanged')
+        self.assertEqual(record['commands'][-1]['environment'], {'TBB_MALLOC_DISABLE_REPLACEMENT': '1'})
+        self.assertEqual(fpga.quartus_environment({'PATH': 'kept'}),
+                         {'PATH': 'kept', 'TBB_MALLOC_DISABLE_REPLACEMENT': '1'})
+
+    def test_build_reports_the_allocator_override_in_its_record(self):
+        result = self.run_build()
+        self.assertEqual(result['status'], 'PASS')
+        self.assertEqual(result['environment'], {'TBB_MALLOC_DISABLE_REPLACEMENT': '1'})
+        self.assertEqual(result['notices'], [fpga.ALLOCATOR_OVERRIDE_NOTICE])
+        self.assertIn('TBB_MALLOC_DISABLE_REPLACEMENT=1', fpga.ALLOCATOR_OVERRIDE_NOTICE)
+        attempt = json.loads((self.root / result['attempt_result']).read_text())
+        self.assertEqual(attempt['notices'], result['notices'])
+
+    def test_cli_text_output_prints_the_override_notice(self):
+        def fake(root, build, args, provenance=None):
+            return {"status": "PASS", "notices": [fpga.ALLOCATOR_OVERRIDE_NOTICE]}
+
+        with patch("n2m.cli.build_fpga", side_effect=fake), patch("n2m.cli.git_state", return_value={}),                 contextlib.redirect_stdout(io.StringIO()) as output:
+            code = main(["fpga", "build", "smoke", "--quartus-bin", "tools", "--tag", "notice"], self.root)
+        self.assertEqual(code, 0)
+        self.assertIn(fpga.ALLOCATOR_OVERRIDE_NOTICE, output.getvalue().splitlines())
 
     def test_execute_keeps_unexplained_warning_failure(self):
         record = {'commands': [], 'classified_diagnostics': []}
