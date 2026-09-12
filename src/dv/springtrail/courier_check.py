@@ -1,10 +1,11 @@
 """Ordered current courier output; shared trace/completion checks remain unchanged."""
-from motion_unit_check import Check as TraceCheck
+from motion_unit_check import Check as TraceCheck, run as run_trace
 from courier_cases import cases, parts, expected
 
 # Shared composer/position scratch only. Camera and all gameplay state are read-only.
 SCRATCH = {0xc03c, 0xc03d, *range(0xc042, 0xc04c)}
-PRESERVED = tuple(a for a in range(0xc000, 0xc0f0) if a not in SCRATCH)
+INITIALIZED = (*range(0xc000, 0xc0f0), *range(0xc300, 0xc338))
+PRESERVED = tuple(a for a in INITIALIZED if a not in SCRATCH)
 
 
 class Check(TraceCheck):
@@ -25,7 +26,7 @@ class Check(TraceCheck):
             assert not data and self.active is None and not self.reports, 'COURIER_LCD'
         if address == 0xc0fc:
             assert self.active is None and data == len(self.reports)+1 and data <= len(self.selected), 'COURIER_BEGIN'
-            assert all(a in self.memory for a in range(0xc000,0xc0f0)), 'COURIER_UNINITIALIZED'
+            assert all(a in self.memory for a in INITIALIZED), 'COURIER_UNINITIALIZED'
             case = self.selected[data-1]
             fields = {0xc041:case['pose'], 0xc040:32*case['left'],
                       0xc03b:int(case['hidden']), 0xc0f3:int(case['project'])}
@@ -56,3 +57,7 @@ class Check(TraceCheck):
             else:
                 assert address in SCRATCH or 0xdff0 <= address < 0xdffe, 'COURIER_UNRELATED_WRITE'
         self.memory[address] = data
+
+
+async def run(dut, short=False, part="a"):
+    await run_trace(dut, short=short, checker=Check(short, part))

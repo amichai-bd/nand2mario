@@ -1,12 +1,12 @@
 """Checker rejection seams; actual CPU evidence is a separate required run."""
 import unittest
-from courier_check import Check
+from courier_check import Check, INITIALIZED
 from courier_cases import operands, expected
 
 
 def begin():
     check = Check(short=True)
-    for address in range(0xc000,0xc0f0):
+    for address in INITIALIZED:
         check.write(0,address,0x5a)
     case = check.selected[0]
     fields = (0xc041,0xc040,0xc03b,0xc0f3,0xc042,0xc043,0xc044,0xc045,0xc01b,0xc01c)
@@ -39,9 +39,10 @@ class CourierCheck(unittest.TestCase):
                 check.write(1000,0xc0fd,1)
 
     def test_unrelated_write_and_incomplete_end_fail(self):
-        check=begin()
-        with self.assertRaisesRegex(AssertionError,'COURIER_UNRELATED_WRITE'):
-            check.write(200,0xc064,0)
+        for address in (0xc064, 0xc300, 0xc337):
+            check=begin()
+            with self.assertRaisesRegex(AssertionError,'COURIER_UNRELATED_WRITE'):
+                check.write(200,address,0)
         with self.assertRaisesRegex(AssertionError,'MOTION_END'):
             begin().line('END 0')
         with self.assertRaisesRegex(AssertionError,'MOTION_INCOMPLETE'):

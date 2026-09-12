@@ -22,6 +22,8 @@ def build(root, destination, short=False, part='a'):
                  'XOR A,A', 'LDH [$FF40],A', 'LD [$FFFF],A',
                  'LD HL,$C000', 'LD B,240', 'LD A,$5A', 'SeedState:',
                  'LD [HL+],A', 'DEC B', 'JR NZ,SeedState',
+                 'LD HL,$C300', 'LD B,56', 'LD A,$5A', 'SeedEntities:',
+                 'LD [HL+],A', 'DEC B', 'JR NZ,SeedEntities',
                  'LD HL,$C100', 'LD B,160', 'LD A,$A5', 'Poison:',
                  'LD [HL+],A', 'DEC B', 'JR NZ,Poison',
                  'XOR A,A', 'LD [$C0F0],A', 'LD HL,Operands', 'NextCase:']
@@ -46,12 +48,13 @@ def build(root, destination, short=False, part='a'):
             lines.append('DB '+','.join(str(v) for v in operands(case)))
         for name in ('movement', 'render', 'world', 'collision', 'interactions',
                      'map_restore', 'scene', 'stream', 'hud', 'columns', 'power',
-                     'blocks', 'progress'):
+                     'blocks', 'progress', 'entities'):
             lines.append(f'INCLUDE "{name}.asm"')
         path = destination/'program.asm'
         path.write_text('\n'.join(lines)+'\n', encoding='utf-8')
         assets = {}
-        for name, file in (('Core','core-tiles.json'),('Terrain','terrain-tiles.json')):
+        for name, file in (('Core','core-tiles.json'),('Terrain','terrain-tiles.json'),
+                           ('Enemies','enemies-tiles.json')):
             asset = source/'assets/core'/file
             assets[name] = encode_shades(load_shades(asset, str(asset)), str(asset))
         obj = assemble(path, destination, root/'src/sw/generated/interfaces.inc', assets)

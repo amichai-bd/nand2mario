@@ -76,3 +76,21 @@ The two initial loops cost less than10000 dots together. Per-case input/setup
 is below600; terminal/control reserve1000. Eighteen calls therefore fit
 10000+18*(16000+600)+1000=309800 below330000 dots; one short fits27600 below40000.
 These are source ceilings, not elapsed-time forecasts or observed results.
+
+## Current integration
+
+The merged entity profile retains all 50 rows. Each fixture links all 21 shared
+sections against the current game and initializes the 56 persistent entity bytes
+at C300..C337 as additional unrelated-state operands. The checker rejects writes
+to those bytes during composition. EmitPiece's current maximum of 528 dots fits
+the conservative 620-dot reservation above. The extra initialization costs 1368
+dots and remains inside the 10,000-dot setup reservation.
+
+`python-courier-short`, `python-courier-a`, `python-courier-b`, and
+`python-courier-c` use the shared continuous unit runner, including ordinary HALT,
+settled hold, exact END accounting, and bounded completion. Their cocotb watchdogs
+are 40 ms for short and 100 ms for full, outside the 40,000/330,000-dot guards.
+`python-courier-fault` uses the same short image and checker. Its one-shot hook
+changes the actual first C102 CPU output from tile 42 to zero after the call
+marker; the real memory write and passive write ledger consume that output.
+The required failure is COURIER_OAM, with the mutation receipt retained.
