@@ -13,15 +13,20 @@ from startup_anchor import Model, build, derive
 # main.asm's startup order: the header stub, Start's inline stores and loops,
 # then each CALL through PublishScene; the LCDC write follows.
 STARTUP = ('reset fetch', 'header', 'Start', 'InitSceneDMA', 'InitGame', 'ClearObjects',
-           'CopyTiles', 'CopyMap', 'InitHUD', 'InitMotionArt', 'InitBlockArt', 'PrepareScene',
-           'PrepareHUD', 'PrepareMap', 'PublishHUD', 'PublishScene')
+           'CopyTiles', 'CopyMap', 'InitHUD', 'InitMotionArt', 'InitBlockArt', 'InitProgressArt',
+           'PrepareScene', 'PrepareHUD', 'PrepareProgress', 'PrepareMap', 'PublishHUD',
+           'PublishProgress', 'PublishScene')
 # Independent hand counts of two terms, from the listing:
 # CopyTiles (attributed by nearest preceding label, so its own three setup
 #   loads belong to Start and CopyMap's belong to it): 1184 x (LD A,[DE] 2,
 #   INC DE 2, LD [HL+],A 2, DEC BC 2, LD A,B 1, OR A,C 1, JR NZ 3) minus the
 #   final untaken JR, plus LD DE/LD HL/LD BC 9: 15400 M-cycles.
 # InitBlockArt: the count PR #418's reviewer made, 5183 M-cycles.
-HAND = {'CopyTiles': 4 * 15400, 'InitBlockArt': 4 * 5183}
+# InitProgressArt and PrepareProgress: the #304 author's independent hand counts
+# from the listing, 6880 and 664 dots; that count's PublishProgress term was 440
+# and the model corrected it to 432, so it is not pinned here.
+HAND = {'CopyTiles': 4 * 15400, 'InitBlockArt': 4 * 5183, 'InitProgressArt': 6880,
+        'PrepareProgress': 664}
 
 
 def rom(*pieces):

@@ -38,14 +38,17 @@ work, counting every branch body: `TickTimer` 330, `CheckTimeUp` 90,
 therefore stays below the 20000-dot `UpdateGame` cap; the measured per-case
 durations in each receipt's `summary.json` are the evidence.
 
-Startup LCD commit moves from 146500 to 156160 dots: 9660 added dots counted
-from the instruction listing, not adopted from the DUT. `InitGame` adds 396
-(the lives, stage and pending stores, the stage enemy word through
-`StageWordHL`, and `ResetStageTimer`); `InitProgressArt` adds 6880 (nine
-sixteen-byte copies with their loop overhead plus the two static icon pairs);
-`PrepareScene` adds 1280 (four `StageItemBox` calls and one `StageGoalBox`
-replacing inline coordinate stores); `PrepareProgress` adds 664 and
-`PublishProgress` adds 440. `python-mgs` confirms the derived anchor.
+The startup anchor is derived from the built image by
+`startup_anchor.derive`, the independent SM83 timing model under the CPU
+contract, and frozen as `motion_game_reference.LCD`: 177492 dots for this
+image. The progression terms of that derivation are `InitProgressArt` 6880,
+`PrepareProgress` 664 and `PublishProgress` 432, with `InitGame` and
+`PrepareScene` grown by the stage tables. The author's earlier hand count of
+the same listing gave 6880, 664 and 440: the 8-dot `PublishProgress` error is
+why the parked image's `python-mgs` failed at a hand-frozen 156160 against
+the actual 156152, and the model now reproduces that image's 156152 exactly.
+`test_startup_anchor` pins the two hand terms the model agrees with;
+`python-mgs` proves the RTL commits at the derived dot.
 
 ## Acceptance matrix
 
@@ -57,7 +60,7 @@ replacing inline coordinate stores); `PrepareProgress` adds 664 and
 | Fault | The retry update's actual pending life request store forced from 255 to 1 after the call marker; the same call's `UpdateLives` takes the award path and the unchanged checker rejects exactly one byte, the life count, as 3 instead of 1. Each case re-seeds its operands, so only a store consumed inside its own call is a valid witness | `python-gpx`, after the positive short |
 | Rendered states | HUD row 1 icons and values, all 117 tiles and the unchanged playfield on the changed ROM | `python-pr`, `python-mr` |
 | Affected regression | Motion short/full CPU, fault, game short/full and renderer on the changed ROM and the new anchor; power short, both halves, fault and renderer | `python-mus`, `python-mut`, `python-mux`, `python-mgs`, `python-mgu`, `python-mr`, `python-pus`, `python-pua`, `python-pub`, `python-pux`, `python-pr` |
-| Assets | Approved core pixels reproduced by the ROM tables and copies at VRAM 108..116, the new mode words using loaded glyphs only, row 1 pixels equal to the approved maps, every other row 1 cell blank, and the committed previews reproduced from the same sources | `test_progress_assets` |
+| Assets | Approved core pixels reproduced by the ROM tables and copies at VRAM 140..148, the new mode words using loaded glyphs only, row 1 pixels equal to the approved maps, every other row 1 cell blank, and the committed previews reproduced from the same sources | `test_progress_assets` |
 | Delivery | Owning SW/DV links, 32 KiB reproducible image, builder checks, wiki check, required CI and current-head review | No new art approval or milestone replay |
 
 ## Measured durations
@@ -68,16 +71,11 @@ Whole-run supervisor walls at this head on Questa Altera Starter FPGA Edition
 
 | Target | Wall (s) | Limit (s) | Result |
 | --- | --- | --- | --- |
-| `python-gps` | 48 | 300 | PASS, the retry spend then one timer unit |
-| `python-gpx` | 37 | 300 | intended fault: `PROGRESS_REQUEST_MUTATION expected=255 actual=1 dot=4839`, `MOTION_STATE retry-spend` rejected on the life count alone, receipt retained |
-| `python-gpa` | 149 | 300 | PASS, 20 cases |
-| `python-gpb` | 187 | 300 | PASS, 20 cases |
-| `python-mgs` | 216 | 300 | FAIL, `MOTION_STARTUP_BOUND`: the derivation below is not yet correct |
-
-The startup derivation is open. The hand count above predicts 156160 and the
-actual first `LCDC` commit is 156152, so exactly one term is 8 dots too high.
-Find and correct that term in the instruction listing; do not adopt 156152 as
-the expectation. Every other affected target is unrun.
+| `python-gps` | pending | 300 | pending |
+| `python-gpx` | pending | 300 | pending |
+| `python-gpa` | pending | 300 | pending |
+| `python-gpb` | pending | 300 | pending |
+| `python-mgs` | pending | 300 | pending |
 
 Licence refusals while the other nodelocked QuestaSim session held the seat
 were retried, never counted and never killed.

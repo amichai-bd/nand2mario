@@ -29,8 +29,8 @@ and [core-tiles.json](../../../../src/sw/springtrail/assets/core/core-tiles.json
 Existing terrain remains [tiles.json](../../../../src/sw/springtrail/tiles.json).
 Keep shade0..3 and E4 palettes. The20 glyphs in order
 `01234ACDEILNOPRSTUWY` use tile IDs74..93, VRAM84A0..85DF. The progression row
-adds nine approved core tiles at IDs108..116, after the motion and power
-copies: digits5..9, then M and V for its two new mode words, then the life and
+adds nine approved core tiles at IDs140..148, after the block terrain copies
+at108..139: digits5..9, then M and V for its two new mode words, then the life and
 clock icons.
 Their approved source atlas is linked at ROM6000; only those glyphs are loaded
 after the existing74 tiles. The mapperless32 KiB layout retains overlap checks.

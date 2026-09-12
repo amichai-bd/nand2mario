@@ -12,7 +12,8 @@ from test_power_assets import build
 ROOT = Path(__file__).resolve().parents[3]
 SOURCE = ROOT / 'src/sw/springtrail'
 ATLAS = json.loads((SOURCE / 'assets/core/core-tiles.json').read_text())['pixels']
-# Approved atlas tiles behind VRAM 108..116, in startup-copy order.
+# Approved atlas tiles behind VRAM 140..148, in startup-copy order; the block
+# terrain copies merged first and hold 108..139.
 PROGRESS_TILES = (87, 88, 89, 90, 91, 68, 77, 52, 53)
 
 
@@ -38,11 +39,11 @@ class ProgressAssets(unittest.TestCase):
     def test_vram_identifiers_follow_the_power_tiles(self):
         self.assertEqual(len(PROGRESS_TILES), len(EXTRA))
         self.assertEqual([IDS[str(d)] for d in range(10)],
-                         [74, 75, 76, 77, 78, 108, 109, 110, 111, 112])
+                         [74, 75, 76, 77, 78, 140, 141, 142, 143, 144])
         self.assertEqual([digit_glyph(d) for d in range(10)],
-                         [74, 75, 76, 77, 78, 108, 109, 110, 111, 112])
-        self.assertEqual((IDS['M'], IDS['V'], LIFE_TILE, CLOCK_TILE), (113, 114, 115, 116))
-        self.assertEqual(len(tiles()), 117)
+                         [74, 75, 76, 77, 78, 140, 141, 142, 143, 144])
+        self.assertEqual((IDS['M'], IDS['V'], LIFE_TILE, CLOCK_TILE), (145, 146, 147, 148))
+        self.assertEqual(len(tiles()), 149)
 
     def test_new_mode_words_use_loaded_glyphs_only(self):
         loaded = set(CHARS) | {'5', '6', '7', '8', '9', 'M', 'V'}
@@ -76,7 +77,7 @@ class ProgressAssets(unittest.TestCase):
         shown = progress_tiles(World(lives=0x57, timer_high=0x02,
                                      timer_low=0x68, stage=2))
         for (start, _, _), tile in zip(PROGRESS_ROW, shown):
-            name = EXTRA[tile - 108] if tile >= 108 else 'glyph-' + CHARS[tile - 74]
+            name = EXTRA[tile - 140] if tile >= 140 else 'glyph-' + CHARS[tile - 74]
             actual = bytes(pixels[(y + 8) * 160 + start * 8 + x]
                            for y in range(8) for x in range(8))
             self.assertEqual(actual, art(name), name)

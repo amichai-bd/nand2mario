@@ -57,7 +57,10 @@ source; `columns.asm` is generated from it.
 | 2 | 3 | 176 | 80 | 480 | 632 | 608 | 200 |
 
 Stage 0 keeps every byte, object and bound of the existing world, so all
-qualified stage-0 evidence stays valid. A collision or display column index is
+qualified stage-0 evidence stays valid. The [block layer](BLOCKS.md) keys its
+table on the collision page column, and every block sits at page columns 38
+to 89, so blocks exist on stage 0 only; the other two stages carry terrain,
+items, the enemy and the goal. A collision or display column index is
 the stage base plus a local column, so the largest index is 255 and no scan
 crosses a page. Every stage starts the player at x 0, y 112.
 
@@ -153,9 +156,10 @@ All other row 1 cells are blank. The icons are static and published once with
 the score label; the six value cells are prepared during visible time and
 published in VBlank with the row 0 cache.
 
-Nine approved core tiles join the twenty already loaded, at VRAM 108 to 116:
+Nine approved core tiles join the loaded set at VRAM 140 to 148, after the
+[block layer's](BLOCKS.md) terrain copies at 108 to 139:
 digits 5 to 9 from `glyph-5` to `glyph-9`, then `glyph-M`, `glyph-V`, `life`
-and `clock`. A digit d uses tile 74+d below 5 and 103+d at 5 or above. No pixel
+and `clock`. A digit d uses tile 74+d below 5 and 135+d at 5 or above. No pixel
 is new or changed; every source is an approved
 [core map](../../../../src/sw/springtrail/assets/core/core-maps.json).
 
@@ -177,7 +181,7 @@ mode words, reproduced from the approved sources by
 
 ![Stage clear](progress/stage-clear.svg)
 
-![Progression tiles, IDs108 through116](progress/tiles.svg)
+![Progression tiles, IDs140 through148](progress/tiles.svg)
 
 ## State and integration boundary
 

@@ -34,7 +34,7 @@ def tile_sheet():
                 pixels=[[art(name)[y * 8 + x] for name in EXTRA for x in range(8)]
                         for y in range(8)])
     return render(data, width=8, height=8, scale=4,
-                  labels=[str(108 + index) for index in range(len(EXTRA))])
+                  labels=[str(140 + index) for index in range(len(EXTRA))])
 
 
 def main():
