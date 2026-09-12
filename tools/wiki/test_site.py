@@ -113,6 +113,12 @@ class PublicationTests(unittest.TestCase):
         for text in ('<script src="https://cdn.example/a.js"></script>', '<img src="data:image/png;base64,abcd">'):
             with self.assertRaises(ValueError):
                 site.validate({"wiki/a.html": text})
+        # A board-captured showcase loop may inline its frames, and only there.
+        frame = '<svg><image href="data:image/png;base64,abcd"/></svg>'
+        site.validate({"wiki/showcase/libbet-board.svg": frame})
+        for source in ("wiki/showcase/a.html", "wiki/other/a.svg"):
+            with self.assertRaisesRegex(ValueError, "Unsupported URL"):
+                site.validate({source: frame})
         with self.assertRaisesRegex(ValueError, "Broken link"):
             site.validate({"tools/a.css": '@import "missing.css";'})
 

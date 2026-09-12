@@ -120,6 +120,42 @@ def check_views(browser, base):
         expect(figure).to_contain_text('PAUSED')
         page.screenshot(path=str(OUTPUT / 'quality-showcase-game.png'))
         page.close()
+        # The board loop is a flipbook of frames the DE10-Lite returned:
+        # each frame is an inline indexed-PNG data URI, motion plays on screen,
+        # and the reduced-motion still is the last captured frame alone.
+        from wiki import board_frames
+        for name, caption in (('libbet-board', 'Idle on the top-right cell, combo back to 0'),):
+            archive = board_frames.load(name)
+            last = len(archive['frames']) - 1
+            page = new_page()
+            page.goto(base + f'/files/wiki/showcase/{name}.svg')
+            figure = page.locator('svg').first
+            first_frame, final = page.locator('.f0'), page.locator(f'.f{last}')
+            assert first_frame.evaluate('e => getComputedStyle(e).animationName') == 'f0'
+            # Every captured frame is present and really decodes as an image.
+            expect(page.locator('image')).to_have_count(len(archive['frames']))
+            assert page.evaluate("""() => [...document.querySelectorAll('image')].every(
+                e => e.getAttribute('href').startsWith('data:image/png;base64,'))"""), f'{name} frame is not inline PNG'
+            assert page.evaluate("""async () => {
+                const sources = [...document.querySelectorAll('image')].map(e => e.getAttribute('href'));
+                const sizes = await Promise.all(sources.map(src => new Promise(resolve => {
+                    const probe = new Image();
+                    probe.onload = () => resolve(probe.naturalWidth + 'x' + probe.naturalHeight);
+                    probe.onerror = () => resolve('error');
+                    probe.src = src;
+                })));
+                return sizes.every(size => size === '160x144');
+            }"""), f'{name} did not decode every frame at 160x144'
+            page.emulate_media(reduced_motion='reduce')
+            for part in (first_frame, final, page.locator('.l0')):
+                assert part.evaluate('e => getComputedStyle(e).animationName') == 'none'
+            assert final.evaluate('e => getComputedStyle(e).opacity') == '1', f'{name} still is missing its last frame'
+            assert first_frame.evaluate('e => getComputedStyle(e).opacity') == '0', f'{name} still stacks earlier frames'
+            expect(figure).to_contain_text(caption)
+            expect(figure).to_contain_text('captured on the DE10-Lite over UART')
+            page.screenshot(path=str(OUTPUT / f'quality-showcase-{name}.png'))
+            page.close()
+
         # The terminal loops (README and lesson decks) share one block cursor
         # (.cur) that walks the keystrokes; in the still it must be the only
         # caret, resting on the empty prompt row below the last line (no
@@ -194,7 +230,7 @@ def check_views(browser, base):
             page.close()
         assert not errors, '\n'.join(errors)
         return {'status': 'passed', 'browser': browser.version, 'viewports': [1440, 390],
-                'checks': ['slide fragments', 'malformed fragments', 'keyboard', 'print visibility and contrast', 'animated diagram motion, completeness and print contrast', 'README showcase motion and reduced-motion still', 'lesson terminal sessions and deck embeds', 'chart scrolling']}
+                'checks': ['slide fragments', 'malformed fragments', 'keyboard', 'print visibility and contrast', 'animated diagram motion, completeness and print contrast', 'README showcase motion and reduced-motion still', 'board-captured loops decode and hold their final frame', 'lesson terminal sessions and deck embeds', 'chart scrolling']}
     except BaseException:
         if page is not None and not page.is_closed():
             page.screenshot(path=str(OUTPUT / 'failure.png'), full_page=True)

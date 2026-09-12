@@ -2,8 +2,9 @@
 
 One durable host session with the same device lock, sequence journal and
 machine mutex as `python tools/build.py host`. Plans:
-  play  - title, Start, four directional presses, halt.
-  demo  - title, Select, free-running attract mode snapshots up to 30 s.
+  play     - title, Start, four directional presses, halt.
+  demo     - title, Select, free-running attract mode snapshots up to 30 s.
+  showcase - the play sequence sampled evenly for wiki/showcase/libbet-board.svg.
 Frames, diffs and `result.json` go under `workdir/libbet-play/<plan>-<stamp>/`;
 the transaction journal and device selection go under the build tag.
 """
@@ -29,6 +30,13 @@ import frame_png  # noqa: E402
 FRAME = 70224
 DIRECTIONS = (('left', abi.BUTTON_LEFT), ('up', abi.BUTTON_UP),
               ('right', abi.BUTTON_RIGHT), ('down', abi.BUTTON_DOWN))
+# Frozen showcase sampling, in frames. The recorded play session
+# (src/dv/libbet/README.md) fixes what each sample shows: the fade-in reaches
+# the 2x2 tutorial floor by start+60, Left only faces, Up is the valid roll to
+# `1 Combo 25% 1/04`, Right is the wrong move that busts the combo back to
+# `0 Combo`, and Down is invalid as the reverse of a one-shade roll.
+FADE_SAMPLES, FADE_STEP = 6, 10
+MOVE_SAMPLES, MOVE_STEP = 4, 8
 
 
 class Driver:
@@ -130,6 +138,30 @@ def plan_play(d, args):
     d.log(event='final', counters=d.counters(), regs=d.regs())
 
 
+def sample_run(d, count, step, label):
+    """`count` snapshots, `step` exact frames apart, with no input change."""
+    for index in range(count):
+        d.frames_run(step, f'{label}+{(index + 1) * step}')
+        d.snapshot(f'{label}+{(index + 1) * step}')
+
+
+def plan_showcase(d, args):
+    """The play sequence, sampled evenly, retained for the wiki loop."""
+    to_title(d, args)
+    d.input(abi.BUTTON_START, 'start-press')
+    d.frames_run(args.hold, 'start-held')
+    d.input(0, 'start-release')
+    d.snapshot('after-start-release')
+    sample_run(d, FADE_SAMPLES, FADE_STEP, 'start')
+    for name, mask in DIRECTIONS:
+        d.input(mask, f'{name}-press')
+        d.frames_run(args.hold, f'{name}-held')
+        d.snapshot(f'{name}-held')
+        d.input(0, f'{name}-release')
+        sample_run(d, MOVE_SAMPLES, MOVE_STEP, name)
+    d.log(event='final', counters=d.counters(), regs=d.regs())
+
+
 def plan_demo(d, args):
     to_title(d, args)
     d.input(abi.BUTTON_SELECT, 'select-press')
@@ -147,7 +179,7 @@ def plan_demo(d, args):
 
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument('plan', choices=('play', 'demo'))
+    p.add_argument('plan', choices=('play', 'demo', 'showcase'))
     p.add_argument('--uart-port', required=True)
     p.add_argument('--expected-build-id', required=True, help='reviewed wire build ID, 32 hex digits')
     p.add_argument('--tag', default='libbet-play')
@@ -189,7 +221,7 @@ def main():
             if before != expected:
                 raise ValueError('preflight requires a paused valid image with neutral UART input')
             try:
-                (plan_play if args.plan == 'play' else plan_demo)(d, args)
+                {'play': plan_play, 'demo': plan_demo, 'showcase': plan_showcase}[args.plan](d, args)
                 result['status'] = 'PASS'
             finally:
                 # Leave the board paused with input released; never send after

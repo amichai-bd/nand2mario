@@ -20,6 +20,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / 'wiki/showcase'
 sys.path.insert(0, str(ROOT / 'src/dv/springtrail'))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 MONO = 'ui-monospace,Consolas,"Liberation Mono",Menlo,monospace'
 PANEL, BORDER, TEXT, MUTED, ACCENT, WARM = '#171c24', '#303a48', '#e4eaf2', '#a9b6c7', '#93e7bd', '#f5cc83'
@@ -35,7 +36,8 @@ CHAR_W, TYPE_RATE, MIN_TYPE = 7.2, 0.028, 0.35
 EMBEDS = {'build-and-tests': 'README.md', 'board-session': 'README.md', 'game-start': 'README.md',
           'reproducible-builds': 'wiki/presentations/reproducible-builds.html',
           'uart-debugging': 'wiki/presentations/uart-debugging.html',
-          'verification': 'wiki/presentations/verification.html'}
+          'verification': 'wiki/presentations/verification.html',
+          'libbet-board': 'wiki/showcase/README.md'}
 
 # --- Loop 1: build and tests. Captured at 5ce0aa0 on 2026-09-11; long JSON lines
 # are shortened with an ellipsis, every kept field is verbatim; wrap() breaks
@@ -597,6 +599,144 @@ def game():
     return '\n'.join(svg) + '\n'
 
 
+# --- Loop 7: frames captured on the DE10-Lite.
+#
+# Unlike game-start.svg, no pixel here is rendered on the host: each frame is
+# the packed 160x144 snapshot the board returned over UART during one recorded
+# session, encoded once into the committed archive under tools/wiki/board_frames/
+# and embedded as an indexed-PNG data URI. board_frames.py records the byte
+# counts that chose that encoding over the rect runs paths() draws.
+#
+# Scenes are (first frame index, hold seconds, legend line); every frame from
+# one scene's index up to the next holds for that scene's duration.
+LIBBET_SCENES = (
+    (0, 2.2, 'Title: Start plays, Select demos'),
+    (1, 1.2, 'Start (128): the floor loads with the LCD off'),
+    (2, 0.6, 'Fade-in to the 2x2 tutorial floor'),
+    (8, 1.0, 'Left (2): faces left, no valid neighbour'),
+    (13, 1.0, 'Up (4): a valid roll, HUD reads 1 Combo 25% 1/04'),
+    (18, 1.0, 'Right (1): off the floor, the wrong move busts the combo'),
+    (23, 1.0, 'Down (8): the reverse of a one-shade roll is invalid'),
+    (27, 2.4, 'Idle on the top-right cell, combo back to 0'),
+)
+
+
+# The loops whose every pixel came off the DE10-Lite rather than a host model.
+# Springtrail has no board loop yet: its capture driver's frozen LCD anchor no
+# longer matches the image the repository builds, tracked by issue #437.
+BOARD_LOOPS = ('libbet-board',)
+
+
+def scene_plan(scenes, count):
+    """Per-frame (hold, legend) from the scene table, and the loop length."""
+    holds, legends = [None] * count, [None] * count
+    bounds = [start for start, _, _ in scenes] + [count]
+    for index, (start, hold, legend) in enumerate(scenes):
+        for frame in range(start, bounds[index + 1]):
+            holds[frame], legends[frame] = hold, legend
+    assert all(hold is not None for hold in holds), 'the scene table must cover every frame'
+    starts, elapsed = [], 0.0
+    for hold in holds:
+        starts.append(elapsed)
+        elapsed += hold
+    return holds, legends, starts, elapsed
+
+
+def joypad_panel(px, py, windows, loop, rules, motion):
+    """The eight JOYP pills, lit over the windows their button is held."""
+    pills = []
+    for index, label in enumerate(BUTTONS):
+        column, row = divmod(index, 4)
+        x, y = px + column * 120, py + 30 + row * 34
+        cls = f' class="k{index}"' if windows[label] else ''
+        pills.append(f'<g{cls}><rect x="{x}" y="{y}" width="108" height="26" rx="13" fill="{PANEL}" stroke="{BORDER}"/>'
+                     f'<text x="{x + 54}" y="{y + 17}" text-anchor="middle">{label}</text></g>')
+        if windows[label]:
+            rules.append(segments_css(f'kr{index}', 'fill', ACCENT, PANEL, windows[label], loop))
+            rules.append(segments_css(f'kt{index}', 'fill', PANEL, TEXT, windows[label], loop))
+            motion.append(f'.k{index} rect{{animation:kr{index} {loop}s step-end infinite}}'
+                          f'.k{index} text{{animation:kt{index} {loop}s step-end infinite}}')
+    return pills
+
+
+def merge(spans):
+    """Adjacent frame windows joined, so one legend line animates once per scene."""
+    merged = [list(spans[0])]
+    for begin, end in spans[1:]:
+        if begin <= merged[-1][1] + 1e-9:
+            merged[-1][1] = end
+        else:
+            merged.append([begin, end])
+    return [tuple(span) for span in merged]
+
+
+def board_loop(name, heading, strip, footer, scenes):
+    """One flipbook of frames the DE10-Lite returned, from the committed archive."""
+    from board_frames import load
+    archive = load(name)
+    frames = archive['frames']
+    assert archive['encoding']['chosen'] == 'indexed-png-data-uri', name
+    holds, legends, starts, loop = scene_plan(scenes, len(frames))
+    last = len(frames) - 1
+
+    scale, sx, sy = 3, PAD, BAR + PAD
+    px, py = sx + 160 * scale + 40, sy + 8
+    windows = {button: [] for button in BUTTONS}
+    for index, frame in enumerate(frames):
+        for label, bit in zip(BUTTONS, BUTTON_BITS):
+            if frame['mask'] & bit:
+                windows[label].append((starts[index], starts[index] + holds[index]))
+    windows = {label: merge(spans) if spans else [] for label, spans in windows.items()}
+
+    rules = [f'text{{font:13px {MONO};fill:{TEXT}}}.h{{font-size:11px;fill:{MUTED}}}',
+             f'g[class^="k"] rect{{fill:{PANEL}}}',
+             'image{image-rendering:pixelated}']
+    motion = []
+    pills = joypad_panel(px, py, windows, loop, rules, motion)
+
+    my = py + 30 + 4 * 34 + 14
+    identity, layers = [], []
+    for index, frame in enumerate(frames):
+        start, end = starts[index], starts[index] + holds[index]
+        opacity = '1' if index == last else '0'
+        for prefix in ('f', 'i'):
+            rules.append(frame_window(f'{prefix}{index}', start, end, loop))
+            motion.append(f'.{prefix}{index}{{animation:{prefix}{index} {loop}s step-end infinite}}')
+        layers.append(f'<image class="f{index}" opacity="{opacity}" width="160" height="144" '
+                      f'href="{frame["png"]}"/>')
+        identity.append(f'<text class="i{index}" x="{px}" y="{my}" opacity="{opacity}" xml:space="preserve">'
+                        f'<tspan fill="{MUTED}">seq </tspan>{frame["seq"]}'
+                        f'<tspan fill="{MUTED}">  mask </tspan>{frame["mask"]}</text>')
+
+    ly, legend = sy + 144 * scale + 22, []
+    for index, (_, _, text) in enumerate(scenes):
+        covered = [i for i in range(len(frames)) if legends[i] == text]
+        windows_for = merge([(starts[i], starts[i] + holds[i]) for i in covered])
+        rules.append(segments_css(f'l{index}', 'opacity', 1, 0, windows_for, loop))
+        motion.append(f'.l{index}{{animation:l{index} {loop}s step-end infinite}}')
+        opacity = '1' if last in covered else '0'
+        legend.append(f'<text class="l{index}" x="{PAD}" y="{ly}" opacity="{opacity}">{esc(text)}</text>')
+
+    height = ly + PAD + 22
+    style = ''.join(rules) + '@media (prefers-reduced-motion:no-preference){' + ''.join(motion) + '}'
+    svg = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{WIDTH}" height="{height}" viewBox="0 0 {WIDTH} {height}" role="img" aria-label="{esc(heading)}">',
+           f'<title>{esc(heading)}</title><style>{style}</style>',
+           f'<rect x=".5" y=".5" width="{WIDTH - 1}" height="{height - 1}" rx="10" fill="{PANEL}" stroke="{BORDER}"/>',
+           f'<path d="M0 {BAR}.5H{WIDTH}" stroke="{BORDER}"/>',
+           '<circle cx="18" cy="15" r="5" fill="#ff5f57"/><circle cx="36" cy="15" r="5" fill="#febc2e"/><circle cx="54" cy="15" r="5" fill="#28c840"/>',
+           f'<text class="h" x="{WIDTH / 2}" y="19" text-anchor="middle">{esc(strip)}</text>',
+           f'<g transform="translate({sx} {sy}) scale({scale})">',
+           '<rect width="160" height="144" fill="#ffffff"/>',
+           *layers,
+           '</g>',
+           f'<rect x="{sx - .5}" y="{sy - .5}" width="{160 * scale + 1}" height="{144 * scale + 1}" fill="none" stroke="{BORDER}"/>',
+           f'<text class="h" x="{px}" y="{py + 12}">JOYP buttons (UART INPUT mask)</text>',
+           *pills, *identity, *legend,
+           f'<text class="h" x="{PAD}" y="{height - 12}">{esc(footer)}</text>',
+           '</svg>']
+    return '\n'.join(svg) + '\n'
+
+
 def documents():
     return {
         'build-and-tests': terminal('Build and tests · nand2mario at 5ce0aa0 · 2026-09-11',
@@ -612,6 +752,13 @@ def documents():
         'uart-debugging': terminal('Board session over UART · the recorded Libbet play, not a live capture',
                                    'Shapes follow wiki/tools/n2m/host/SPEC.md; dots, seq and IDs from src/dv/libbet/README.md; hashes elided.',
                                    SESSION, SESSION_LOOP),
+        'libbet-board': board_loop(
+            'libbet-board',
+            'Libbet and the Magic Floor captured on the DE10-Lite: the title, a valid roll and the wrong '
+            'move that busts the combo, every frame read back from the board over UART',
+            'Libbet and the Magic Floor v0.08 \u00b7 Damian Yerrick, Zlib licence \u00b7 frames captured on the DE10-Lite over UART',
+            'Frames captured on the board running the pinned third-party image; wiki/showcase/README.md records the session.',
+            LIBBET_SCENES),
         'verification': terminal('A checker that can fail · from retained Questa receipts, not a fresh capture',
                                  'Retained receipts, not a fresh run: python-joypad at f6fff8f, builder-smoke-fail at c89b47d; JSON shortened.',
                                  TESTS, TESTS_LOOP),
