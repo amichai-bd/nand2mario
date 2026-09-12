@@ -156,13 +156,13 @@ prove and which need physical presence.
 
 | `v1.0` check | Proven over UART | Needs physical presence |
 |---|---|---|
-| Full load and readback | Yes: byte-exact readback of the loaded image | â€” |
-| Scripted checkpoints and pre-VGA frame hashes | Yes: snapshots and frame hashes read over UART match simulation | â€” |
-| Keyboard works | Yes: UART keyboard input drives the shared input owner and JOYP | â€” |
+| Full load and readback | Yes: byte-exact readback of the loaded image | — |
+| Scripted checkpoints and pre-VGA frame hashes | Yes: snapshots and frame hashes read over UART match simulation | — |
+| Keyboard works | Yes: UART keyboard input drives the shared input owner and JOYP | — |
 | VGA works | Frame hashes prove the source frames; the VGA owner is simulation- and fit-verified | Observing the monitor: timing tolerance, tearing, colors |
-| 30-minute continuous run, no unexpected reset or lost input | Yes: UART-driven input, periodic snapshots, build ID and core-reset epoch | â€” |
+| 30-minute continuous run, no unexpected reset or lost input | Yes: UART-driven input, periodic snapshots, build ID and core-reset epoch | — |
 | Three reset/load/start cycles | Yes with the UART core reset | KEY0 board reset |
-| Wiring, voltage and timing proof at the board | â€” | [Board bring-up](board-bring-up.md): wiring and pins documented, timing by static analysis, supply not measured |
+| Wiring, voltage and timing proof at the board | — | [Board bring-up](board-bring-up.md): wiring and pins documented, timing by static analysis, supply not measured |
 
 A `v1.0` claim built on the UART column alone must say so. The current
 [endurance fixture](../../src/dv/springtrail/ENDURANCE.md#retained-script) has
