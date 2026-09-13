@@ -99,6 +99,8 @@ def build(root, destination, short=False, suite='motion', part=None):
                       budget=getattr(module, "BUDGET", dict(setup_per_case=1700, simple_calls=33,
                                   simple_ceiling=8000, game_calls=7, game_ceiling=20000,
                                   tail=1000, conservative_total=473000)),
+                      sections=[dict(name=r['section'],address=r['address'],size=r['size'])
+                                for r in linked['map']['sections'] if r['section'] not in ('code','assets')],
                       shared_sections={r['section']:hashlib.sha256(image[r['address']:r['address']+r['size']]).hexdigest()
                                        for r in linked['map']['sections'] if r['section'] not in ('code', 'assets')})
         (destination/(suite + '-unit.json')).write_text(json.dumps(record, indent=2)+'\n')

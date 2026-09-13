@@ -3,6 +3,10 @@ import entities_oam_cases as cases
 from motion_unit_check import Check as StateCheck, run as run_state
 
 
+# Half-open composer scratch ranges; persistent state is checked separately.
+SCRATCH_RANGES = ((0xc034, 0xc04c), (0xc338, 0xc350))
+
+
 class Check(StateCheck):
     def __init__(self, short=False, part=None):
         super().__init__(short, cases, part)
@@ -19,7 +23,7 @@ class Check(StateCheck):
                 self.shadow_writes.append((address,data))
             else:
                 # ENTITIES owns transient operands C338..C34F, separate from persistent state.
-                assert (0xc034<=address<0xc04c or 0xc338<=address<0xc350
+                assert (any(start<=address<end for start,end in SCRATCH_RANGES)
                         or 0xdfe0<=address<0xdffe), 'ENTITY_OAM_UNRELATED_WRITE'
         if address==0xc0fd:
             assert self.active is not None and data==len(self.reports)+1, 'ENTITY_OAM_REPORT'
