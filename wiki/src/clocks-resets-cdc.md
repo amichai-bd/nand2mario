@@ -47,7 +47,8 @@ silently substitute 25 MHz. No clock switching or dynamic PLL reconfiguration.
 The +/-100 ppm reference bound is a project acceptance requirement, not a
 claimed oscillator specification or measurement. It puts `gb_tick` within
 +/-419.4304 Hz and `clk_pix` within +/-2,520 Hz. Simulation uses nominal clocks;
-board clock verification and monitor acceptance remain separate evidence.
+board clock verification remains separate evidence, and the recorded monitor
+observation is not a frequency measurement.
 
 ## Exact emulated time
 
@@ -85,8 +86,10 @@ UART, CDC handshakes, and VGA continue. Resume starts from retained phase with
 
 Use the board manual's 640 by 480 count geometry, with a selected 25.2 MHz
 pixel clock: 800 pixels per line, 525 lines per frame, exactly 60 nominal frames
-per second. This deliberate rate selection is separate from DMG timing and
-must pass the actual monitor test before board acceptance.
+per second. This deliberate rate selection is separate from DMG timing. A
+connected monitor displayed the picture correctly at this rate; see the
+[display observation](board-bring-up.md#display-observation). Tolerance across
+displays stays with [GAP-012](../preflight-gaps.md#gap-012-vga-frame-crossing).
 
 | Axis | Active | Front porch | Active-low sync | Back porch | Total |
 |---|---|---|---|---|---|
@@ -141,7 +144,8 @@ reset source establishes these values without a running pixel clock.
 The board wrapper maps the active-low manual
 reset input. [Board bring-up](board-bring-up.md) shows the design releasing
 from reset and answering over UART, so the released level is not inverted;
-pressing KEY0 is unverified and still needs physical presence under the
+pressing KEY0 is unverified and still needs physical presence under
+[#512](https://github.com/amichai-bd/nand2mario/issues/512), inside the
 charter's [remote acceptance](project-charter.md#remote-acceptance) split.
 Assert reset without
 waiting for a clock. After release, synchronize the raw input through two flops
@@ -251,12 +255,11 @@ maximum 10 ns and skew between those outputs at most 2 ns; UART TX maximum
 20 ns. These are internal design budgets, not measured cable/monitor guarantees.
 Constrain them with explicit datapath max/min (minimum 0 ns) and skew checks,
 or equivalent reviewed virtual-clock I/O constraints.
-[Board bring-up](board-bring-up.md) records the pin and I/O standard. A
-measured board electrical proof and any additional external budget stay open:
-[#417](https://github.com/amichai-bd/nand2mario/issues/417) owns the check on a
-connected display, and
-[GAP-012](../preflight-gaps.md#gap-012-vga-frame-crossing) owns monitor timing
-tolerance. Unused board ports
+[Board bring-up](board-bring-up.md) records the pin and I/O standard, and the
+observed picture on a connected monitor. That observation is not a measurement:
+a measured board electrical proof and any additional external budget stay open,
+and [GAP-012](../preflight-gaps.md#gap-012-vga-frame-crossing) owns monitor
+timing tolerance. Unused board ports
 are absent from the top. SDRAM constraints cannot be inferred from this plan.
 
 ## Required verification
@@ -290,8 +293,7 @@ negative results. Questa and physical execution follow the
 [current authorization](../agents/bootstrap-plan.md#verification-and-hardware-authorization).
 The [clocking](rtl/clocking/MAS_clocking.md) and [VGA/frame bridge](rtl/vga/MAS_vga.md)
 contracts own generated design, simulation and timing requirements. These checks
-do not establish the remaining physical acceptance in GAP-012 and
-[#417](https://github.com/amichai-bd/nand2mario/issues/417).
+do not establish the remaining physical acceptance in GAP-012.
 
 ## Primary references
 

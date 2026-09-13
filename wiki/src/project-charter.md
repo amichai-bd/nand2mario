@@ -146,8 +146,9 @@ policy. The v1.0 full load/readback, actual VGA/keyboard operation, continuous
 
 ### Remote acceptance
 
-The owner works the board remotely; it is connected and answers over UART, but
-no one is at it. The [gap register](../preflight-gaps.md#remote-working-scope)
+The owner works the board remotely; it is connected and answers over UART, and
+normally no one is at it. On 2026-09-13 the owner was at the board and confirmed
+the VGA picture on a connected monitor. The [gap register](../preflight-gaps.md#remote-working-scope)
 records the 2026-09-11 decisions: physical controls and trusted CI are out of
 scope, with [#156](https://github.com/amichai-bd/nand2mario/issues/156) and
 [#32](https://github.com/amichai-bd/nand2mario/issues/32) closed. The `v1.0`
@@ -159,7 +160,7 @@ prove and which need physical presence.
 | Full load and readback | Yes: byte-exact readback of the loaded image | — |
 | Scripted checkpoints and pre-VGA frame hashes | Yes: snapshots and frame hashes read over UART match simulation | — |
 | Keyboard works | Yes: UART keyboard input drives the shared input owner and JOYP | — |
-| VGA works | Frame hashes prove the source frames; the VGA owner is simulation- and fit-verified | Observing the monitor: timing tolerance, tearing, colors |
+| VGA works | Frame hashes prove the source frames; the VGA owner is simulation- and fit-verified | Observed: the owner confirmed the picture on a connected monitor ([board bring-up](board-bring-up.md#display-observation)); timing tolerance and colour characterisation across displays are not measured |
 | 30-minute continuous run, no unexpected reset or lost input | Yes: UART-driven input, periodic snapshots, build ID and core-reset epoch | — |
 | Three reset/load/start cycles | Yes with the UART core reset | KEY0 board reset |
 | Wiring, voltage and timing proof at the board | — | [Board bring-up](board-bring-up.md): wiring and pins documented, timing by static analysis, supply not measured |
@@ -168,11 +169,12 @@ A `v1.0` claim built on the UART column alone must say so. The current
 [endurance fixture](../../src/dv/springtrail/ENDURANCE.md#retained-script) has
 source-qualified lives/countdown and complete-frame expectations. These host
 checks do not qualify a new current-image continuous physical run.
-Two entries in the physical column stay open: observing the monitor, under
-[#417](https://github.com/amichai-bd/nand2mario/issues/417), and the KEY0 board
-reset, which needs hands at the board and has no issue while the board is
-worked remotely. They gate physical claims only, not UART-observable,
-simulation or host work.
+One entry in the physical column stays open: the KEY0 board reset, under
+[#512](https://github.com/amichai-bd/nand2mario/issues/512), which needs hands
+at the board. Observing the monitor is done, recorded in
+[board bring-up](board-bring-up.md#display-observation) as a single direct
+observation rather than a measurement. The open entry gates physical claims
+only, not UART-observable, simulation or host work.
 
 ## Dependencies and authority
 

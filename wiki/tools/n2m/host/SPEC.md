@@ -215,7 +215,8 @@ is not its displayed terminal, so it cannot satisfy this foreground check.
 Native injected-event tests prove the event path; actual manual keyboard/VGA
 release acceptance stays in the charter's
 [remote acceptance](../../../src/project-charter.md#remote-acceptance) split,
-whose monitor entry is [#417](https://github.com/amichai-bd/nand2mario/issues/417).
+whose monitor entry is the recorded
+[display observation](../../../src/board-bring-up.md#display-observation).
 
 Discovery reuses the doctor without running its licensed probes. The optional
 [pinned serial backend](../../../../tools/n2m/host/THIRD_PARTY.md) opens only the

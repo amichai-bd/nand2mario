@@ -167,8 +167,9 @@ banks, fit resources, exact bundle endpoints and delay bounds, synchronizer
 stages, output bounds and both reference-frequency timing analyses. This design
 description is not that evidence. Pin, wiring and voltage proof are recorded in
 [board bring-up](../../board-bring-up.md), which also read a scanned frame back
-over UART; physical monitor proof remains open under
-[#417](https://github.com/amichai-bd/nand2mario/issues/417).
+over UART and records the owner's
+[display observation](../../board-bring-up.md#display-observation) on a
+connected monitor.
 
 The [FPGA proof](../../../../src/fpga/de10_lite/vga_proof.sv) feeds original shades
 from the emulated tick and exposes domain-local status through virtual ports.
