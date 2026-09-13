@@ -160,7 +160,7 @@ prove and which need physical presence.
 | Full load and readback | Yes: byte-exact readback of the loaded image | — |
 | Scripted checkpoints and pre-VGA frame hashes | Yes: snapshots and frame hashes read over UART match simulation | — |
 | Keyboard works | Yes: UART keyboard input drives the shared input owner and JOYP | — |
-| VGA works | Frame hashes prove the source frames; the VGA owner is simulation- and fit-verified | Observed: the owner confirmed the picture on a connected monitor ([board bring-up](board-bring-up.md#display-observation)); timing tolerance and colour characterisation across displays are not measured |
+| VGA works | Frame hashes prove the source frames; the VGA owner is simulation- and fit-verified | Observed: the owner confirmed the picture on a connected monitor ([board bring-up](board-bring-up.md#display-observation)); timing tolerance, tearing and colour characterisation across displays are not measured |
 | 30-minute continuous run, no unexpected reset or lost input | Yes: UART-driven input, periodic snapshots, build ID and core-reset epoch | — |
 | Three reset/load/start cycles | Yes with the UART core reset | KEY0 board reset |
 | Wiring, voltage and timing proof at the board | — | [Board bring-up](board-bring-up.md): wiring and pins documented, timing by static analysis, supply not measured |
