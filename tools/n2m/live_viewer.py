@@ -15,9 +15,10 @@ from .springtrail_play import finish
 
 PAGE = b'''<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>FPGA live view</title><style>body{margin:20px;background:#17191c;color:#eee;font:16px system-ui;text-align:center}img{image-rendering:pixelated;display:block;margin:20px auto;background:#333}p{font-variant-numeric:tabular-nums}small{color:#aeb6c0}</style>
-<h1>FPGA live view</h1><p id="state">Connecting</p><img id="frame" alt="Actual FPGA pixels"><small id="detail"></small>
+<h1>FPGA live view</h1><p id="state">Connecting</p><img id="frame" alt="Actual FPGA pixels"><small id="detail"></small><p id="buttons"></p><p id="input-status"></p>
 <script>
 let last=0,sequence=0;const state=document.querySelector('#state'),frame=document.querySelector('#frame'),detail=document.querySelector('#detail');
+for(const button of ['Up','Left','Right','Down','A','B','Start','Select']){const b=document.createElement('button');b.textContent=button;b.style.cssText='font:20px system-ui;padding:12px;margin:4px';b.onclick=async()=>{const label=document.querySelector('#input-status');try{const r=await fetch('/input',{method:'POST',headers:{'Content-Type':'application/json','X-Viewer-Input':'tap'},body:JSON.stringify({button})});if(!r.ok)throw Error('Queue full, busy, stopped or refused');const result=await r.json();label.textContent='Queued '+button+' #'+result.id}catch(e){label.textContent=e.message}};document.querySelector('#buttons').appendChild(b)}
 function scale(){let n=Math.max(1,Math.floor((innerWidth-40)/160));frame.style.width=(160*n)+'px';frame.style.height=(144*n)+'px'}scale();addEventListener('resize',scale);
 async function poll(){try{const r=await fetch('/status.json',{cache:'no-store'});if(!r.ok)throw Error();const s=await r.json();if(s.sequence&&s.sequence!==sequence){const image=await fetch('/frame.png?v='+s.sequence,{cache:'no-store'});if(!image.ok)throw Error();const url=URL.createObjectURL(await image.blob());const prior=frame.src;frame.src=url;sequence=s.sequence;if(prior.startsWith('blob:'))URL.revokeObjectURL(prior)}last=Date.now();state.textContent=s.state+(s.reason?' - '+s.reason:'');detail.textContent=s.sequence?'Capture '+s.sequence+' | '+s.captured_at+' | age '+s.age_seconds.toFixed(1)+' s | '+s.latency_seconds.toFixed(3)+' s capture | '+s.core_state+' | source '+s.source.seq:'Waiting for actual pixels'}catch(e){state.textContent='OFFLINE / STALE'}setTimeout(poll,1000)}poll();setInterval(()=>{if(Date.now()-last>5000)state.textContent='OFFLINE / STALE'},1000);
 </script>'''
@@ -67,7 +68,11 @@ class Latest:
             return status, self.png
 
 
-def server(latest, username, password, port=0):
+def server(latest, username, password, port=0, *, input_origin=None, submit=None):
+    if input_origin is not None:
+        origin = urlsplit(input_origin)
+        if origin.scheme != 'https' or not origin.hostname or origin.username or origin.password or origin.path or origin.query or origin.fragment:
+            raise ValueError('input origin must be an exact HTTPS origin')
     expected = b'Basic ' + base64.b64encode((username+':'+password).encode('utf-8'))
     class Handler(BaseHTTPRequestHandler):
         def setup(self):
@@ -112,7 +117,38 @@ def server(latest, username, password, port=0):
                 return self.respond(200,png,'image/png') if png else self.respond(503)
             return self.respond(404)
 
-        do_POST = do_GET
+        def do_POST(self):
+            lengths = self.headers.get_all('Content-Length',[])
+            size = int(lengths[0]) if len(lengths)==1 and lengths[0].isdigit() else 0
+            payload = self.rfile.read(min(size,65)) if size else b''
+            supplied = self.headers.get('Authorization','').encode('utf-8')
+            if not hmac.compare_digest(supplied,expected):
+                return self.respond(401)
+            if self.path != '/input' or submit is None:
+                return self.respond(405)
+            if self.headers.get('Origin') != input_origin or not input_origin or self.headers.get('X-Viewer-Input') != 'tap':
+                return self.respond(403)
+            if self.headers.get('Content-Type') != 'application/json' or self.headers.get('Transfer-Encoding'):
+                return self.respond(415)
+            lengths = self.headers.get_all('Content-Length',[])
+            if len(lengths) != 1 or not lengths[0].isdigit():
+                return self.respond(411)
+            size = int(lengths[0])
+            if not 1 <= size <= 64:
+                return self.respond(413)
+            try:
+                record = json.loads(payload)
+                masks = {'Right':1,'Left':2,'Up':4,'Down':8,'A':16,'B':32,'Select':64,'Start':128}
+                if not isinstance(record,dict) or set(record) != {'button'} or record['button'] not in masks:
+                    raise ValueError('invalid button')
+            except (ValueError,TypeError):
+                return self.respond(400)
+            try:
+                index = submit(masks[record['button']],134)
+            except (ValueError,FileExistsError):
+                return self.respond(409,b'Queue full, busy or stopped')
+            return self.respond(202,json.dumps({'status':'QUEUED','id':index}).encode(),'application/json')
+
         do_PUT = do_GET
         do_DELETE = do_GET
         do_HEAD = do_GET
@@ -168,7 +204,19 @@ def capture_loop(client, latest, out, png_writer, *, expected_build, stop,
         failures = 0
         while not stop.is_set() and clock()-started < seconds:
             tick = clock()
-            captured = False
+            if buttons is not None:
+                batch = buttons.batch()
+                if batch:
+                    latest.mark('PROCESSING INPUTS')
+                for path in batch:
+                    if stop.is_set():
+                        break
+                    receipt = buttons.one(client,stop,clock=clock,wait=wait,path=path)
+                    result.setdefault('inputs',[]).append(receipt)
+                    result['inputs'] = result['inputs'][-32:]
+                if stop.is_set():
+                    break
+            tick = clock()
             try:
                 meta,packed = client.snapshot()
                 if meta['size'] != abi.FRAME_BYTES or len(packed) != abi.FRAME_BYTES:
@@ -189,17 +237,11 @@ def capture_loop(client, latest, out, png_writer, *, expected_build, stop,
                     (out/f"capture-{result['capture_count']}.png").write_bytes(png)
                     (out/f"capture-{result['capture_count']}.2bpp").write_bytes(packed)
                 failures = 0
-                captured = True
             except RejectedCommand:
                 failures += 1
                 latest.mark('ERROR','capture rejected')
                 if failures >= 2:
                     raise
-            if captured and buttons is not None:
-                receipt = buttons.one(client,stop,clock=clock,wait=wait)
-                if receipt is not None:
-                    result.setdefault('inputs',[]).append(receipt)
-                    result['inputs'] = result['inputs'][-32:]
             if client.uncertain:
                 raise RuntimeError('uncertain session')
             wait(max(0,interval-(clock()-tick)))

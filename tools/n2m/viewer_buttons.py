@@ -34,6 +34,9 @@ def enqueue(out, mask, milliseconds):
     # never an accepted request behind a newer request.
     fd = os.open(lock,os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600)
     try:
+        # Recheck while serialized with close: publication is the admission point.
+        if (inbox/'CLOSED').exists() or (out/'STOP').exists() or (out/'result.json').exists():
+            raise ValueError('viewer runtime is not accepting requests')
         if len(list(inbox.glob('*.json'))) >= CAPACITY:
             raise ValueError('button queue is full')
         sequence_file = inbox/'sequence'
@@ -53,12 +56,43 @@ class Buttons:
         self.inbox = self.out/'inbox'
         self.inbox.mkdir(exist_ok=True)
 
-    def one(self, client, stop, *, clock=time.monotonic, wait=None):
+    def close(self):
+        """Close admission and cancel pending requests without touching UART."""
+        # The marker also makes a crashed producer fail closed. A producer already
+        # inside the lock may publish; cancellation waits for that publication.
+        (self.inbox/'CLOSED').touch()
+        lock = self.inbox/'producer.lock'
+        deadline = time.monotonic()+2
+        while True:
+            try:
+                fd = os.open(lock,os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600)
+                break
+            except FileExistsError:
+                if time.monotonic() >= deadline:
+                    raise RuntimeError('button producer lock remains; inspect pending requests manually')
+                time.sleep(.01)
+        try:
+            cancelled = [{'id':int(path.stem),'status':'CANCELLED','released':True}
+                         for path in sorted(self.inbox.glob('*.json'))]
+            atomic_json(self.out/'input-cancelled.json',cancelled)
+            for path in self.inbox.glob('*.json'):
+                path.unlink()
+            return cancelled
+        finally:
+            os.close(fd)
+            lock.unlink()
+
+    def batch(self):
+        """Freeze current published IDs; later arrivals wait for the next cycle."""
+        return sorted(self.inbox.glob('*.json'))[:CAPACITY]
+
+    def one(self, client, stop, *, clock=time.monotonic, wait=None, path=None):
         """Claim once, complete/release before returning to capture."""
-        pending = sorted(self.inbox.glob('*.json'))
-        if not pending:
-            return None
-        path = pending[0]
+        if path is None:
+            pending = self.batch()
+            if not pending:
+                return None
+            path = pending[0]
         claimed = path.with_suffix('.claimed')
         path.rename(claimed)
         receipt = {'id':path.stem,'status':'REJECTED'}

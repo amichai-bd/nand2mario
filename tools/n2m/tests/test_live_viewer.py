@@ -14,7 +14,7 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[2]))
 from n2m import generated_interfaces as abi
 from n2m.host.client import RejectedCommand
 from n2m.live_viewer import Latest, capture_loop, server, PAGE
-from fpga_viewer import png_writer
+from fpga_viewer import png_writer, Stop
 from n2m.viewer_buttons import Buttons, enqueue
 
 BUILD = 'ab'*16
@@ -149,6 +149,41 @@ class ViewerTests(unittest.TestCase):
         finally:
             http.shutdown();http.server_close();thread.join()
 
+    def test_phone_input_auth_origin_body_and_queue(self):
+        with tempfile.TemporaryDirectory() as folder:
+            out=Path(folder);(out/'service.json').write_text('{}')
+            origin='https://example.test'
+            http=server(Latest(),'testuser','x'*40,input_origin=origin,
+                        submit=lambda mask,ms:enqueue(out,mask,ms))
+            thread=threading.Thread(target=http.serve_forever);thread.start()
+            headers={'Authorization':'Basic '+base64.b64encode(b'testuser:'+b'x'*40).decode(),
+                     'Origin':origin,'Content-Type':'application/json','X-Viewer-Input':'tap'}
+            def request(body=b'{"button":"Right"}',override=None,method='POST'):
+                h=dict(headers);h.update(override or {})
+                h={k:v for k,v in h.items() if v is not None}
+                client=HTTPConnection('127.0.0.1',http.server_port,timeout=2)
+                client.request(method,'/input',body=body,headers=h)
+                r=client.getresponse();data=r.read();code=r.status;client.close();return code,data
+            try:
+                self.assertEqual(request(override={'Authorization':None})[0],401)
+                for h in ({'Origin':None},{'Origin':'https://evil.test'},{'X-Viewer-Input':None}):
+                    self.assertEqual(request(override=h)[0],403)
+                self.assertEqual(request(override={'Content-Type':'text/plain'})[0],415)
+                self.assertEqual(request(b'x'*65)[0],413)
+                for body in (b'{}',b'bad',b'{"button":"RESET"}',b'{"button":"Right","mask":255}'):
+                    self.assertEqual(request(body)[0],400)
+                self.assertEqual(request(method='GET')[0],404)
+                self.assertFalse((out/'inbox').exists())
+                for index in range(1,17):
+                    code,data=request();self.assertEqual(code,202)
+                    self.assertEqual(json.loads(data)['id'],index)
+                self.assertEqual(request()[0],409)
+                records=[json.loads(p.read_text()) for p in (out/'inbox').glob('*.json')]
+                self.assertTrue(all(r['mask']==abi.BUTTON_RIGHT and r['milliseconds']==134 for r in records))
+                self.assertIn(b"['Up','Left','Right','Down','A','B','Start','Select']",PAGE)
+            finally:
+                http.shutdown();http.server_close();thread.join()
+
 class ButtonQueueTests(unittest.TestCase):
     def runtime(self, folder):
         out=Path(folder);(out/'service.json').write_text('{}')
@@ -173,7 +208,7 @@ class ButtonQueueTests(unittest.TestCase):
             self.assertTrue(receipt['released'])
             self.assertEqual(client.mask,0)
 
-    def test_drain_one_after_complete_frame_and_release_before_next(self):
+    def test_frozen_batch_before_capture_and_release_each(self):
         with tempfile.TemporaryDirectory() as folder:
             out=self.runtime(folder);enqueue(out,1,134);enqueue(out,2,1000)
             clock=Clock();clock.value=0;client=Fake(clock)
@@ -183,8 +218,9 @@ class ButtonQueueTests(unittest.TestCase):
             self.assertEqual([x['id'] for x in r['inputs']],[1,2])
             relevant=[x for x in client.events if x in ('snapshot','READ_FRAME_COMPLETE') or isinstance(x,tuple) and x[0]=='write']
             self.assertEqual(relevant,[
-                'snapshot','READ_FRAME_COMPLETE',('write',abi.HOST_REG_INPUT,1),('write',abi.HOST_REG_INPUT,0),
-                'snapshot','READ_FRAME_COMPLETE',('write',abi.HOST_REG_INPUT,2),('write',abi.HOST_REG_INPUT,0),
+                ('write',abi.HOST_REG_INPUT,1),('write',abi.HOST_REG_INPUT,0),
+                ('write',abi.HOST_REG_INPUT,2),('write',abi.HOST_REG_INPUT,0),
+                'snapshot','READ_FRAME_COMPLETE','snapshot','READ_FRAME_COMPLETE',
                 ('write',abi.HOST_REG_INPUT,0)])
 
     def test_invalid_record_no_input_and_stop_releases(self):
@@ -198,8 +234,52 @@ class ButtonQueueTests(unittest.TestCase):
             stop=threading.Event()
             receipt=Buttons(out).one(client,stop,clock=clock,wait=lambda _:stop.set())
             self.assertEqual(receipt['status'],'CANCELLED');self.assertTrue(receipt['released']);self.assertEqual(client.mask,0)
-            (out/'STOP').touch()
+            (out/'STOP').write_text('stop')
             with self.assertRaises(ValueError):enqueue(out,1,134)
+
+    def test_arrival_during_batch_waits_until_next_capture(self):
+        with tempfile.TemporaryDirectory() as folder:
+            out=self.runtime(folder);enqueue(out,1,134)
+            clock=Clock();clock.value=0;client=Fake(clock);published=False
+            def wait(seconds):
+                nonlocal published
+                if not published:
+                    enqueue(out,2,134);published=True
+                clock.wait(seconds)
+            capture_loop(client,Latest(clock=clock),out,png_writer,expected_build=BUILD,
+                         stop=clock,seconds=4,interval=2,clock=clock,wait=wait,buttons=Buttons(out))
+            events=client.events
+            self.assertLess(events.index(('write',abi.HOST_REG_INPUT,1)),events.index('snapshot'))
+            self.assertGreater(events.index(('write',abi.HOST_REG_INPUT,2)),events.index('READ_FRAME_COMPLETE'))
+
+    def test_shutdown_closes_admission_and_cancels_pending(self):
+        from unittest.mock import patch
+        import n2m.viewer_buttons as module
+        with tempfile.TemporaryDirectory() as folder:
+            out=self.runtime(folder);enqueue(out,1,134);enqueue(out,2,134)
+            cancelled=Buttons(out).close()
+            self.assertEqual([r['id'] for r in cancelled],[1,2])
+            self.assertTrue(all(r['status']=='CANCELLED' for r in cancelled))
+            self.assertFalse(list((out/'inbox').glob('*.json')))
+            with self.assertRaises(ValueError):enqueue(out,1,134)
+        with tempfile.TemporaryDirectory() as folder:
+            out=self.runtime(folder);real_open=module.os.open
+            def stop_before_lock(*args,**kwargs):
+                (out/'STOP').write_text('stop')
+                return real_open(*args,**kwargs)
+            with patch.object(module.os,'open',stop_before_lock):
+                with self.assertRaises(ValueError):enqueue(out,1,134)
+            self.assertFalse(list((out/'inbox').glob('*.json')))
+
+    def test_stop_file_interrupts_wait(self):
+        import time
+        with tempfile.TemporaryDirectory() as folder:
+            stop=Stop(Path(folder)/'STOP')
+            timer=threading.Timer(.03,stop.path.touch);timer.start()
+            started=time.monotonic()
+            self.assertTrue(stop.wait(1))
+            self.assertLess(time.monotonic()-started,.3)
+            timer.join()
 
     def test_uncertain_press_stops_capture_without_further_traffic(self):
         class Broken(Fake):
@@ -215,7 +295,8 @@ class ButtonQueueTests(unittest.TestCase):
                            stop=clock,seconds=4,clock=clock,wait=clock.wait,buttons=Buttons(out))
             self.assertEqual(r['status'],'FAIL');self.assertFalse(r['cleanup']['verified'])
             self.assertEqual(client.events[-1],('write',abi.HOST_REG_INPUT,1))
-            self.assertEqual(client.count,1)
+            self.assertEqual(client.count,0)
             self.assertFalse(list((out/'inbox').glob('*.json')))
 
 if __name__=='__main__':unittest.main()
+

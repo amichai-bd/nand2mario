@@ -9,6 +9,7 @@ import secrets
 import signal
 import sys
 import threading
+import time
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -41,7 +42,13 @@ class Stop:
         return self.event.is_set() or self.path.exists()
 
     def wait(self, seconds):
-        return self.event.wait(seconds)
+        deadline = time.monotonic()+seconds
+        while not self.is_set():
+            remaining = deadline-time.monotonic()
+            if remaining <= 0:
+                return False
+            self.event.wait(min(.02,remaining))
+        return True
 
 
 def worker(args):
@@ -57,13 +64,15 @@ def worker(args):
     stop = Stop(out/'STOP')
     signal.signal(signal.SIGINT,lambda *_:stop.event.set())
     signal.signal(signal.SIGTERM,lambda *_:stop.event.set())
-    http = server(latest,credentials['username'],credentials['password'],args.port)
+    http = server(latest,credentials['username'],credentials['password'],args.port,
+                  input_origin=args.input_origin,submit=lambda mask,ms:enqueue(out,mask,ms))
     thread = threading.Thread(target=http.serve_forever,daemon=True)
     thread.start()
     atomic_json(out/'service.json',{'port':http.server_port,'bind':'127.0.0.1','stop_file':str(stop.path),'seconds':args.seconds})
     selection = SimpleNamespace(uart_port=args.uart_port,uart_vid=args.uart_vid,
                                 uart_pid=args.uart_pid,uart_identity=args.uart_identity,endpoint_restarted=False)
     result = {'status':'FAIL','reason':'preflight not completed'}
+    buttons = Buttons(out)
     try:
         with machine_lock(1357311510), (out/'packets.jsonl').open('w',encoding='utf-8') as packets:
             def record(row):
@@ -71,8 +80,12 @@ def worker(args):
             with session(out,selection,session_root(ROOT)) as (wire,sequence,persist,_selected):
                 client = Client(wire,sequence=sequence,persist=persist,record=record)
                 result = capture_loop(client,latest,out,png_writer,expected_build=args.expected_build_id,
-                                      stop=stop,seconds=args.seconds,interval=args.interval,buttons=Buttons(out))
+                                      stop=stop,seconds=args.seconds,interval=args.interval,buttons=buttons)
     finally:
+        try:
+            result['cancelled_inputs'] = buttons.close()
+        except Exception as error:
+            result.update(status='FAIL',queue_close_error=str(error))
         atomic_json(out/'result.json',result)
         http.shutdown();http.server_close();thread.join(timeout=2)
     print(json.dumps({'status':result['status'],'captures':result.get('capture_count',0),
@@ -90,6 +103,7 @@ def main(argv=None):
     parser.add_argument('--expected-build-id')
     for name in ('uart-port','uart-vid','uart-pid','uart-identity'):
         parser.add_argument('--'+name)
+    parser.add_argument('--input-origin',help='exact HTTPS browser origin allowed to submit fixed taps')
     parser.add_argument('--port',type=int,default=8765)
     parser.add_argument('--seconds',type=int,default=30)
     parser.add_argument('--interval',type=float,default=2)
