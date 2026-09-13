@@ -3,47 +3,69 @@
 SECTION "blocks",ROM
 ; column, row, kind (0 item, 1 brick, 2 hidden), content (0 none, 1 coin,
 ; 2 mushroom, 3 star). Every block covers two columns and rows 10 and 11.
+BlockRow EQU 10
+MushroomColumn EQU 38
+BrickColumn EQU 52
+CoinColumn EQU 64
+StarColumn EQU 88
 BlockTable:
-DB 38,10,0,2
-DB 52,10,1,0
-DB 64,10,0,1
-DB 88,10,2,3
+DB MushroomColumn,BlockRow,0,2
+DB BrickColumn,BlockRow,1,0
+DB CoinColumn,BlockRow,0,1
+DB StarColumn,BlockRow,2,3
 
 ; B = column, C = row. A = the covering block index with HL at its entry,
 ; or $FF when the cell is outside the table.
 FindBlockCell:
-LD HL,BlockTable
-LD D,0
-FindBlockNext:
-LD A,[HL]
-LD E,A
-LD A,B
-SUB A,E
-CP A,2
-JR NC,FindBlockStep
-INC HL
-LD A,[HL]
-LD E,A
-DEC HL
+; Fixed even columns and common row permit direct pair lookup. Preserve the
+; old index/table pointer, miss end pointer, DE and flags for every byte input.
 LD A,C
-SUB A,E
+SUB A,BlockRow
 CP A,2
-JR C,FindBlockFound
-FindBlockStep:
-LD A,L
-ADD A,4
-LD L,A
-LD A,H
-ADC A,0
-LD H,A
-INC D
-LD A,D
-CP A,4
-JR C,FindBlockNext
-LD A,$FF
-RET
+JR NC,FindBlockMissing
+LD A,B
+AND A,$FE
+CP A,MushroomColumn
+JR Z,FindBlockFound0
+CP A,BrickColumn
+JR Z,FindBlockFound1
+CP A,CoinColumn
+JR Z,FindBlockFound2
+CP A,StarColumn
+JR NZ,FindBlockMissing
+LD D,3
+LD HL,BlockTable+12
+JR FindBlockFound
+FindBlockFound0:
+LD D,0
+LD HL,BlockTable
+JR FindBlockFound
+FindBlockFound1:
+LD D,1
+LD HL,BlockTable+4
+JR FindBlockFound
+FindBlockFound2:
+LD D,2
+LD HL,BlockTable+8
 FindBlockFound:
+LD E,BlockRow
+XOR A,A
+CP A,2
 LD A,D
+RET
+FindBlockMissing:
+LD HL,BlockTable+16
+LD D,4
+LD E,StarColumn
+LD A,B
+AND A,$FE
+CP A,StarColumn
+JR NZ,FindBlockMissingFlags
+LD E,BlockRow
+FindBlockMissingFlags:
+LD A,4
+CP A,4
+LD A,$FF
 RET
 
 ; HL points at a collision cell. A=1 when the cell blocks movement.
@@ -181,9 +203,14 @@ LD A,128
 CALL BlockEffect
 LD A,[Coins]
 INC A
-RET Z
+JR Z,CoinPower
 LD [Coins],A
-RET
+CoinPower:
+; The once-only coin release also upgrades an already-large player.
+LD A,[PowerState]
+CP A,1
+RET NZ
+JP PowerUp
 ResolveBrick:
 ; A brick breaks only while the player is large or thrower.
 LD A,[PowerState]
