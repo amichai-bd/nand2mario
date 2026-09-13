@@ -509,6 +509,7 @@ units:
   src/dv/springtrail/test_state_player.py: {kind: unit, level: 1, labels: [host, host-play, springtrail], duration_seconds: 21.29}
   src/dv/springtrail/test_state_reader.py: {kind: unit, level: 0, labels: [host, host-play, springtrail], duration_seconds: 0.89}
   src/dv/springtrail/test_state_seed.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: null}
+  src/dv/springtrail/test_thrower_acquisition.py: {kind: unit, level: 1, labels: [springtrail], duration_seconds: null}
   src/dv/springtrail/test_unit_markers.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.07}
   src/dv/stackdrop/test_game_check.py: {kind: unit, level: 0, labels: [stackdrop], duration_seconds: 0.20}
   src/dv/stackdrop/test_reference.py: {kind: unit, level: 0, labels: [stackdrop], duration_seconds: 0.07}
