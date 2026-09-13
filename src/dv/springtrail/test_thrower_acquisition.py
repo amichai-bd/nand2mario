@@ -18,6 +18,22 @@ def call(cpu, entry):
 
 
 class Acquisition(unittest.TestCase):
+    def test_seeded_case_literals_retain_rewards_damage_and_resets(self):
+        import acquisition_cases as suite
+        rows = {r['name']:dict(zip(ADDRESSES,r['after'])) for r in suite.cases()}
+        self.assertEqual(len(rows),12)
+        self.assertEqual([len(v) for v in suite.parts().values()],[4,4,4])
+        for name,power,coins in (('coin-then-fresh-B',2,1),
+                                ('small-coin-only',0,1),
+                                ('saturated-coin-upgrade',2,255),
+                                ('thrower-coin-unchanged',2,1),
+                                ('spent-while-small-no-retroactive',1,0)):
+            self.assertEqual((rows[name][0xc06a],rows[name][0xc07c]),(power,coins),name)
+        damaged = rows['acquired-power-damage']
+        self.assertEqual(tuple(damaged[a] for a in (0xc06a,0xc06b,0xc06c)),(0,2,32))
+        for name in ('retry-clears-acquisition','stage-entry-clears-acquisition','full-reset-clears-acquisition'):
+            self.assertEqual(tuple(rows[name][a] for a in (0xc06a,0xc078,0xc079,0xc07a,0xc07b)),(0,0,0,0,0))
+
     def test_current_decoder_preserves_acquired_shot_and_complete_frame(self):
         import state_support as support
         from n2m import springtrail_state as state
