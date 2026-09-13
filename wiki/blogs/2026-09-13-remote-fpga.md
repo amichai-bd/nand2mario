@@ -368,9 +368,10 @@ individual 8×8 pieces.
 
 ![Game artwork from editable tiles to a running ROM](assets/asset-build.svg)
 
-*Asset build path: shade grids and placement maps feed compositions and previews;
-encoded two-bitplane tiles are linked with game software into a ROM. The preview
-checks artwork, while execution and captured pixels check its integration.*
+*Two asset paths share the tile atlases. Placement maps compose review previews;
+they are not ROM-encoding inputs. The ROM build encodes tile atlases and links
+them with game software, whose code owns runtime placement. Previews check art;
+execution and captured pixels check its integration.*
 
 This compact game representation serves a different purpose from the extra
 frame storage used by VGA and remote capture. Reading the actual rendered pixels
