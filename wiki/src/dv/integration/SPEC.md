@@ -193,3 +193,14 @@ create a scheduler. Before an expensive run, exercise the complete harness at
 a short duration, including final pause, completion and watchdog handling. A
 startup-only slice does not test that complete path. Short success never counts
 as full milestone acceptance; leave unmet requirements in named open issues.
+
+
+## Routine sustained hardware selection
+
+Use the [endurance plans](../../../../src/dv/springtrail/ENDURANCE.md) for explicitly selected sustained board work:
+complete short preflight, then routine600-second qualification. The full1,800-second
+plan remains an explicit milestone choice; a routine result does not satisfy the
+v1.0 thirty-minute criterion or cover natural low32-dot wrap at1,024 seconds.
+This is physical selection, not a simulation allowance or an automatic unrelated-PR
+gate. The owning plan specifies actual PNG PR attachments and unchanged safety,
+full load/readback, lifecycle and final neutral-state obligations.

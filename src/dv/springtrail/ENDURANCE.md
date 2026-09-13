@@ -45,8 +45,11 @@ Entity phases and stage state remain part of the full expected frame.
 
 ## Fixed continuous schedule
 
-The short plan is two fixed 20-second cycles; the full plan is 90 fixed cycles
-(1,800 seconds). The schedule is unchanged:
+Select the plan explicitly: `short` is two fixed20-second cycles and exercises
+complete harness cleanup; `routine` is30 cycles/600 continuous seconds for ordinary
+sustained hardware qualification; `full` retains90 cycles/1,800 seconds for explicitly
+selected endurance milestones. These are not automatic gates for unrelated PRs.
+The same alternating actions and lifecycle checks apply:
 
 1. Even cycles hold Right+B (33); odd cycles hold Right+A (17), for 5.5 seconds.
    The settled route sample follows application by at least 280 frame periods.
@@ -55,7 +58,9 @@ The short plan is two fixed 20-second cycles; the full plan is 90 fixed cycles
    the predicted mode/frame at least three frame periods after application,
    including OVER when Start was accepted from RETRY with zero lives.
    Release Start before continuing.
-3. Cycles 0, 30 and 60 apply the same extra pair of released Start presses.
+3. The full plan uses cycles0/30/60; short retains its cycle0 pair. Routine uses
+   cycles0/12/24, each proven to produce PAUSED then PLAYING with one life. These
+   probes apply the same extra pair of released Start presses.
    The retained sample names `pause` and `resume` are labels, not mode claims.
    Cycles 0 and 60 produce PAUSED then PLAYING, with one life. Cycle 30 follows
    OVER: its first extra Start resets to PLAYING with two lives, and its next
@@ -82,8 +87,10 @@ input/effective input zero, with a certain session and released ownership.
 
 ## Budgets and failure handling
 
-Whole-process caps remain 300 seconds short and 1,980 seconds full, including
-setup, checks and cleanup. The worker refuses new cycle/lifecycle work at cap
+Whole-process caps are300 seconds short,780 routine and1,980 full, including
+build, setup, checks, three selected-image exports and cleanup inside the supervised
+worker. The continuous interval is measured separately. Qualify the routine forecast
+from the complete short before physical execution. The worker refuses new cycle/lifecycle work at cap
 minus 24 seconds; the supervisor terminates its own worker tree by cap minus
 12 seconds and retains the budget result. There is no automatic extension or
 unchanged retry. A complete short, including final sample and all three reset
@@ -100,6 +107,31 @@ epoch, stale frame, input, missing progress, duration, lifecycle and cleanup
 failures. Synthetic endpoint failures are host checks, not physical fault proof.
 Exact commands, versions, source/image identities, raw results and final state
 are required for a new board qualification.
+
+
+## Selected PR image attachments
+
+[endurance_images.py](endurance_images.py) selects exactly three already checked
+UART snapshots: origin-title,000-retry and000-pause. It verifies the original
+packed-byte hash and encodes native160×144 lossless2-bit indexed PNGs using the
+existing approved four-shade encoder. No state reconstruction or model image may
+supply these bytes. Captions identify the sample, ROM hash, source frame/dot/epoch
+and PNG hash; they contain no local adapter or machine identity.
+
+Use supported GitHub CLI `--attach` to publish them in the run's PR. Pin a CLI
+version whose real help exposes that flag. Upload success is only
+UPLOADED_UNVERIFIED: read back all three durable GitHub asset URLs and download
+through supported authenticated access, then compare each PNG hash before PASS.
+Publication has a separate120-second command bound and measured result after the
+physical endpoint is safely released. Failure is retained and never represented
+as a successful attachment. Do not commit PNG bytes or substitute expiring
+artifact/local links; PR attachments must survive worktree cleanup. Keep only
+selected durable images and concise provenance, not a full snapshot archive.
+
+A600-second run from reset does not reach the low32-bit dot wrap at1,024 seconds.
+Retain focused counter/coherency proofs or explicitly selected longer coverage;
+do not seed counters or claim the ten-minute result satisfies the30-minute
+milestone. Actual-board snapshots do not prove the physical VGA monitor.
 
 ## Historical physical evidence
 

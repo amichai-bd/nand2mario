@@ -38,3 +38,13 @@ merge, not other authorized work. Apply explicitly authorized scope changes to
 the issue and PR before judging acceptance. Pause only actions outside existing
 authorization. Preserve the tested/reviewed commit, exact commands, tool versions,
 results, measured runtime and material limitations in the PR before cleanup.
+
+
+For reported sustained Springtrail board runs, follow the
+[owning endurance plan](../../../src/dv/springtrail/ENDURANCE.md): complete short
+before routine600 seconds; choose full1,800 only for an explicit milestone.
+Record continuous and whole-process time separately. Publish exactly three native
+actual-snapshot PNGs using supported PR attachments, verify durable URLs and
+content hashes, and record publication failure honestly. No PNG bytes are committed;
+no model image, enlarged pixels, expired artifact or local path substitutes for
+actual-run evidence. Keep captions free of private endpoint facts.

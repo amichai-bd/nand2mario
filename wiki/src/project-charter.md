@@ -193,3 +193,14 @@ Shared Questa baseline evidence is recorded in
 
 [uart]: https://github.com/amichai-bd/frog-bui/blob/311e64d6e7e54db682e515f51aef92c083a32d5a/src/rtl/uart_ctrl/README.md
 [keyboard]: https://github.com/amichai-bd/frog-bui/blob/311e64d6e7e54db682e515f51aef92c083a32d5a/src/sw/include/frog/keyboard_input.h
+
+
+## Routine sustained hardware selection
+
+Use the [endurance plans](../../src/dv/springtrail/ENDURANCE.md) for explicitly selected sustained board work:
+complete short preflight, then routine600-second qualification. The full1,800-second
+plan remains an explicit milestone choice; a routine result does not satisfy the
+v1.0 thirty-minute criterion or cover natural low32-dot wrap at1,024 seconds.
+This is physical selection, not a simulation allowance or an automatic unrelated-PR
+gate. The owning plan specifies actual PNG PR attachments and unchanged safety,
+full load/readback, lifecycle and final neutral-state obligations.
