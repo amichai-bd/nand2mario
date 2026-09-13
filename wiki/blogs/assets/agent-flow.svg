@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="1110" viewBox="0 0 920 1110" role="img" aria-labelledby="t d">
+<title id="t">Agent development flow</title><desc id="d">Human alignment with /brainstorming and /grill-me; agent-driven issue, isolated branch and worktree, code and specs, tests, commit push and PR, independent AI review and CI, merge, delivery checks. Failed tests and review or CI findings return to code and specs.</desc>
+<defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8Z" fill="#b1dc76"/></marker></defs>
+<rect width="920" height="1110" fill="#101810"/><rect x="12" y="175" width="896" height="915" rx="2" fill="#122012" stroke="#b1dc76" stroke-width="2" stroke-dasharray="8 4"/><rect x="26" y="163" width="423" height="24" fill="#101810"/><text x="34" y="181" font-family="Consolas, Liberation Mono, monospace" font-size="14" fill="#b1dc76">[ AI EXECUTION | FIRSTMATE ORCHESTRATES CREWMATES ]</text>
+<g font-family="Consolas, Liberation Mono, monospace" fill="#d5e8ae">
+<text x="24" y="32" font-size="22">[ FIRSTMATE ]  HUMAN ALIGNMENT → AGENT DELIVERY</text>
+<path d="M24 47 H896" stroke="#799b5e"/>
+<rect x="235" y="70" width="450" height="82" fill="#172617" stroke="#799b5e"/>
+<text x="252" y="94" font-size="18">01  ALIGN [ HUMAN-DRIVEN ]</text>
+<text x="252" y="117" font-size="15">/brainstorming + /grill-me</text>
+<text x="252" y="138" font-size="14">Goal, scope and acceptance</text>
+<path d="M460 152 V202" stroke="#b1dc76" fill="none" stroke-width="2" marker-end="url(#a)"/>
+<rect x="235" y="205" width="450" height="82" fill="#172617" stroke="#799b5e"/>
+<text x="252" y="229" font-size="18">02  ISSUE</text>
+<text x="252" y="252" font-size="15">Record the agreed result</text>
+<text x="252" y="273" font-size="14">Assign ownership</text>
+<path transform="translate(0 25)" d="M460 262 V287" stroke="#b1dc76" fill="none" stroke-width="2" marker-end="url(#a)"/>
+<rect x="235" y="315" width="450" height="82" fill="#172617" stroke="#799b5e"/>
+<text x="252" y="339" font-size="18">03  ISOLATE</text>
+<text x="252" y="362" font-size="15">Branch + Git worktree</text>
+<text x="252" y="383" font-size="14">Separate working area</text>
+<path transform="translate(0 25)" d="M460 372 V397" stroke="#b1dc76" fill="none" stroke-width="2" marker-end="url(#a)"/>
+<rect x="235" y="425" width="450" height="82" fill="#172617" stroke="#799b5e"/>
+<text x="252" y="449" font-size="18">04  CODE + SPECS</text>
+<text x="252" y="472" font-size="15">Implement and update contracts</text>
+<text x="252" y="493" font-size="14">Keep consumers aligned</text>
+<path transform="translate(0 25)" d="M460 482 V507" stroke="#b1dc76" fill="none" stroke-width="2" marker-end="url(#a)"/>
+<rect x="235" y="535" width="450" height="82" fill="#172617" stroke="#799b5e"/>
+<text x="252" y="559" font-size="18">05  TEST</text>
+<text x="252" y="582" font-size="15">Run affected + required checks</text>
+<text x="252" y="603" font-size="14">Failures return to code + specs</text>
+<path transform="translate(0 25)" d="M460 592 V617" stroke="#b1dc76" fill="none" stroke-width="2" marker-end="url(#a)"/>
+<rect x="235" y="645" width="450" height="82" fill="#172617" stroke="#799b5e"/>
+<text x="252" y="669" font-size="18">06  COMMIT / PUSH / PR</text>
+<text x="252" y="692" font-size="15">Save candidate; open draft PR</text>
+<text x="252" y="713" font-size="14">Attach scoped evidence</text>
+<path transform="translate(0 25)" d="M460 702 V727" stroke="#b1dc76" fill="none" stroke-width="2" marker-end="url(#a)"/>
+<rect x="235" y="755" width="450" height="82" fill="#172617" stroke="#799b5e"/>
+<text x="252" y="779" font-size="18">07  AI REVIEW + CI</text>
+<text x="252" y="802" font-size="15">Independent current-head review</text>
+<text x="252" y="823" font-size="14">Findings return to code + specs</text>
+<path transform="translate(0 25)" d="M460 812 V837" stroke="#b1dc76" fill="none" stroke-width="2" marker-end="url(#a)"/>
+<rect x="235" y="865" width="450" height="82" fill="#172617" stroke="#799b5e"/>
+<text x="252" y="889" font-size="18">08  MERGE</text>
+<text x="252" y="912" font-size="15">Passing checks + resolved findings</text>
+<text x="252" y="933" font-size="14">Deliver the reviewed candidate</text>
+<path transform="translate(0 25)" d="M460 922 V947" stroke="#b1dc76" fill="none" stroke-width="2" marker-end="url(#a)"/>
+<rect x="235" y="975" width="450" height="82" fill="#172617" stroke="#799b5e"/>
+<text x="252" y="999" font-size="18">09  VERIFY DELIVERY</text>
+<text x="252" y="1022" font-size="15">Main / deployment checks</text>
+<text x="252" y="1043" font-size="14">Cleanup completed work</text>
+<path transform="translate(0 25)" d="M235 551 H175 V441 H232" fill="none" stroke="#b1dc76" stroke-width="2" marker-end="url(#a)"/>
+<text x="24" y="522" font-size="15">[ FAIL ]</text><text x="24" y="543" font-size="14">Test result</text>
+<path transform="translate(0 25)" d="M685 771 H745 V441 H688" fill="none" stroke="#b1dc76" stroke-width="2" marker-end="url(#a)"/>
+<text x="757" y="612" font-size="15">[ REWORK ]</text><text x="757" y="635" font-size="13">AI findings /</text><text x="757" y="656" font-size="13">CI failures</text>
+</g></svg>
