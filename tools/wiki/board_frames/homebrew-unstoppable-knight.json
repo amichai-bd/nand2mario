@@ -1,0 +1,83 @@
+{
+ "encoding": {
+  "bytes_indexed_png": 3190,
+  "bytes_path_runs": 133722,
+  "chosen": "indexed-png-data-uri",
+  "frames": 3,
+  "measured_on": "this captured sequence"
+ },
+ "frames": [
+  {
+   "changed": null,
+   "crc32": "1d80a9c8",
+   "dot": 33568467,
+   "index": 0,
+   "label": "title",
+   "mask": 0,
+   "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKAAAACQAgMAAADy24gTAAAADFBMVEX////Q0NBoaGgYGBhxYKq9AAAB1ElEQVR42u3YsU7DMBAG4EqImUeCR2DgsFQJ3c7OGPkpeAQG8j5WJuSnOGWyjv/stB3qJB0QbdI6qtQ4X89O4trJbejEsrnBv4UuJPGsERtrp+KTVyanqQKT92CKT69JFTsjUH1DThqOrrfw+ILaWtM9gnQGdxGt6WoflbhA9FF1POIe2vHctIU+gopuWdP5HAx6rUJSsWNO2LpWIFfh+e+111LkiqBTjIKNlQddOuRhUL0Y1XBlEOV5FZDzuAW6KghRJsWFQ5XX9nOA23bzmJYLy0r63pbyRfR0p6uH3q7J937uuad8pWS58GjuWT+0ZT+P8Fy2balZJqRyjoeBO/m/Xhk8zLj57i8XDmvh8Cw3v2iuBEIMlwije+YZ9/LhGV/OOPaSUnnpnIFdOh3qKTA5QHtz5TANxfVJI4LOwdgB5rzBLJTSx1m4uzwz8BrTOGw3xXeJ1Iv6Xsfhm0QSS1Ow65oPmYwoCOqUHYJOQJKYKLyRm4tocIg4CW+ZuP/M7SFZhtReYhs52DDXo4akAjUn9jCDJnuMcchwoaYCg7pIDTckjfiA/d5qRiIildgMEYn7H/ygBmOBDCjom3dBEo037dWa3vUxjEMuMDiceqzBC76Fv7uhfrkZzSGdAAAAAElFTkSuQmCC",
+   "seq": 477
+  },
+  {
+   "changed": 19459,
+   "crc32": "7de454a8",
+   "dot": 42436429,
+   "index": 1,
+   "label": "play-1",
+   "mask": 0,
+   "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKAAAACQAgMAAADy24gTAAAADFBMVEX////Q0NBoaGgYGBhxYKq9AAADQklEQVR42u2YQWsTQRTHp2wvgU02X2LPLtgQhC2rd292TLXFeqmHeEhuhYq00C+gB5FS9FYkk2puiljNfgCPxkDx0EOrkFJdDx6aNhnzZnayWdx9u0IFQzOPxwy8/87svPz2zRDS7T7/AX5rnkQ0c1nFSf+4wcHp3Shhhqo4WavXTsHjhCpO1jorPXAavTRVcVLaqz0DHxE6Z8PepCpOSq9fHIOPLP1JE53eumFlqIqTpUb/PXgg1OhVF/oinfuSoSpO7jD2EvzefCCcE8ICpYvmpoqT1fLeFniQR23plxBmKa2ayypOHrA3R+AjS5daQqjd3nYzVMXJQ/aqDh4Is08/22JwuDDIo4qTpTLbAg/SUyjXSv67eiZVcbLKWB08ELbotZL/jtdNquKkc5/VwYOl23TO9nfdzlAVJ0eNzgp4IJx9clNsps2YnaEqTvjbXg88yGOuXLOgtzt1Ym6qOPmTR61Bq6JfaLk4j15LCncKbgKPBVf1CTwawwdwHkPgYjzKlpefAsJj+JtBeAwtjfEY/q4RHsNLIzyO7AXnMZwehMewEOEx/I4Ij2EhwmM4jwiPY1Ef/5JHgvI4/c941LyUPGb1JB79l5zZIOl4VMJ4HiXYpNjkLs5jUe6i+I57KI9aT840+52foTwavTUxE//Z5CiPTr2zK4TrHzjKY59tN4SQnzRRHrvsUUUKDyooj11/xj7fv4Ty2GVMCE+anKM8KuFBRQpjeVTCfeOUozz2fSHnXznKo8OYzCN/3AQmY3k0Okz8Mg5f3wUmY3nUuPytDc49QC2eR/8qAw+AMFV9lMIU9VEunaI+ys2kqI8iPRehPuZT18fzPa9VTUw8r1VNTDyvZzbyEcIIHlVNTDyvo4URPEYJI3mM3kwEj6PpmZqc1+N/fyST++MF4nF6HHicPi8etbQ8Zt2UPBaqKXnMuSl5DAkxHnNuSh7DQoTH0c38n/VxalIfJ/UxukXc0wwPzPHgSi/HhgdXa0uXI1u0gdAili4MxrY0uKzrlhx9a4OJGaXUGTxtfZQGQs2Vo8MSmPiHE4SOBzNe1qVJoRwNhf7CFghtXZpcWo6uLIINNzOYM2YzuSoYIYnp0VwwMhbtNwY6O8Ugq7pLAAAAAElFTkSuQmCC",
+   "seq": 601
+  },
+  {
+   "changed": 1344,
+   "crc32": "0e6311fc",
+   "dot": 46649869,
+   "index": 2,
+   "label": "play-2",
+   "mask": 1,
+   "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKAAAACQAgMAAADy24gTAAAADFBMVEX////Q0NBoaGgYGBhxYKq9AAADHElEQVR42u2YT2sTQRTAX5lcCpsmXyJnF9ogwkr07s2MqbZYL+0hHppboSIt5AvoQaQUvRXJpJqbIlQ7H6BHY6B46KFVSCnuxUP/JOO8nZ00285uBwrVlOzwmCXvl32dx4/ZSeHo6O1vjIeTIK9Cvb2Bs1j+KnDOzeo8dA8aAoM+wUSXrTUCUBxu4jxKdR6W6rVjDAUesRfzCtydV6DOw1J7oYNBJxWontgVOzeC0lTnobRde4OhQRaAh5tCQOFEgjoPpY/vDjB0aQXuzkvwG5GldR5mGt0vGFFwJ3MsCL3DR6nOw2PG3mPMTapVs3DVPyVY5LkVnYfF8vYqRthHxlQfxctNMvOH52Z1Hp6xT/sYqnSmzfzgC2J5g5SasrTOw3P2oY6hQCIED74ghJ9+/d0bpToPM2W2iqHagy3RX8iXa6Uc1XlYZKyOEYIIhXOT3pWgzkP7KatjqNJ4pbmaW7QoS+s87DfaCxinYL6i5tuvHsjF6DyIz50Oxlyv9Fj4xLFyzc2t6DxEfewHSYNWYn3sB8FvVmJ9jICQ57E+9i9Gtj3ex7NXnI/Zs2Csj+fBGB/PlTb5SHwDaPIx7ZhKG3ycqGYNoMHHiaqpPQYfzaDBRxNo9NG8GIOP/e0Z6fUxwcdoHxN8jJZO8DEKJvgYbc8lfYR/5KO5jzH7o5WPZjBuf7Tx0Qwm7I8X+mgGE/bHaB+HPsb4mBoEH1NDH4f7Y+QNc132x/CweaGPTvO+a+XjTVr8YeVjntJpKx/TlFasfCSP1ridj3tTdj7K3wi+lY/yb7xn5aNcdcvKxxZjntX72mvX7XwkU01u5SNZz3NLH/vBRB9PwSvbH1ODsD+m/pf9MXuNzo/ZQT8/jgzf18PfM1fhY2oQzo+py/povgz/V8n4OAo+norwjvCMhNKO6+C9fNcGlwRdcJ1g4L3neg535ccTVcfFe4BfLRzBExVakM9xt9wt4DIkSHCW4F4JR3DCQrDg4xPHnXEHuIwAxPs+MCzsIug5nkx6jirtBeCtaRy9xchnhovJnJwuJiM/G6vgALiwPYTjgIG4/gIsPSNftf2SPgAAAABJRU5ErkJggg==",
+   "seq": 661
+  }
+ ],
+ "name": "homebrew-unstoppable-knight",
+ "provenance": {
+  "author": "Rafagars (Rafael Garcia)",
+  "checked": "the pinned SHA-256 and a complete 32768-byte readback before the run; no reference renderer exists for third-party code, so no pixel is checked",
+  "command": "python src/dv/homebrew/play.py play unstoppable-knight --load",
+  "driver": "src/dv/homebrew/play.py",
+  "image_sha256": "191c7fad34e643ab5f1083cd8f1a0582a4cef2bfee068bf36e18805f8bc40aaf",
+  "inputs": [
+   {
+    "dot": 33629529,
+    "label": "press-128",
+    "mask": 128
+   },
+   {
+    "dot": 34050873,
+    "label": "release-128",
+    "mask": 0
+   },
+   {
+    "dot": 42477753,
+    "label": "hold-1",
+    "mask": 1
+   },
+   {
+    "dot": 46691193,
+    "label": "input-0",
+    "mask": 0
+   }
+  ],
+  "intro_seconds": 8.0,
+  "licence": "MIT",
+  "note": "Unstoppable Knight booted from the pinned image and played on the DE10-Lite on 2026-09-13.",
+  "pin": "unstoppable-knight",
+  "program": "Unstoppable Knight 2.2.2",
+  "redistribution": "The artifact is the author's own release asset.",
+  "script": "snap:title;press:128:6;run:120;snap:play-1;hold:1:60;snap:play-2;input:0",
+  "source": "https://github.com/Rafagars/Unstoppable-Knight-GB",
+  "url": "https://github.com/Rafagars/Unstoppable-Knight-GB/releases/download/2.2.2/knight.gb",
+  "wall_seconds": 30.73,
+  "wire_abi": 1,
+  "wire_build_id": "87d5f0280a2afad8be6b85dc601141cc"
+ }
+}

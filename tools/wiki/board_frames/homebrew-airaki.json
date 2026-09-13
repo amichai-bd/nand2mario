@@ -1,0 +1,108 @@
+{
+ "encoding": {
+  "bytes_indexed_png": 6706,
+  "bytes_path_runs": 135900,
+  "chosen": "indexed-png-data-uri",
+  "frames": 3,
+  "measured_on": "this captured sequence"
+ },
+ "frames": [
+  {
+   "changed": null,
+   "crc32": "b935db35",
+   "dot": 33614360,
+   "index": 0,
+   "label": "intro",
+   "mask": 0,
+   "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKAAAACQAgMAAADy24gTAAAADFBMVEX////Q0NBoaGgYGBhxYKq9AAAC/0lEQVR42u3WsW7bMBAAUBocskTQDyT/4CGClwZWkbXdfOAiQr8gICWyWNCvCchcNEMOmoL8ghbCiwX2SMaOXIh0ihZdKg4JGD3xdLojFcbmMY95zGMef2+kp9M+CG/a8Yx/CcJvT+PZxdcgfF6OZ8ldyC2eb8bT67s8APnmajzNPrdBeHkC8z+GF5tkPFX5UwAmm4vxFPMqCPkpXP4zeL3ho1e8wPwmALPNYvRCOORXQchO4eUMZzjDGf7ncBmHy18/zCH46finKg5Xh+WSyoNpeMmy1v5vQMtlVRqBaZtVLGlZ0tMdq0hoXlHEtGK6Z9h2MVgkBUtL1jVG/yhiyXTfGzN0TCiQOgqxRpDIpAKBcVgCSGUhqCoGM+Wgol+lMX0Iro1BgtJBUFCFYAYWvMM2BJMDfHFQBJ+Re/jgodyGk9Ho4asCgyJWaygHkDu2U6KuIQIT0DuQr0yhbARWYZiVQqOgrFE1WMegLrUi+EAp6/sIXGUNJf7CBCDUjzGYaJCArBbClI+xrNPOCKiZBsHMfQyu9hywZEBwiMLMQiAI7RBvs33ioMAtL2N7pmOaWpfZjjDRytBl5aCk6E2wzVJNl9FBYduj6afh2jqK7JKxjSZoM0zAtYE3YKGNDWY/Bc0APrKDLnYE2sgOgn2OejsFtbt0gO6OchLu8BCRoV8QYHpFd6m2daYf6G6ZzPrWBaRsayZBwNbOqymY2RW0oDdEjSvhkdvWmIIJBeW2J9DDHukhpiCtUKw9BFTQ8wGK6RIiGHpQJej1aAXNILpQrUswGlRJUNqUYR/qHldDqV3jgksleJr5ktjKDOfg4EtYUipl+NijdLhv3IrxIXbsGXvsesh4bLuyETz3Yfew+CgU56FLBj8CbQn9pyMKOTUOe/sYRWHyu7A4BzMH5UegclCcg3gKU71h5h0ayNN+EmZqs8DjklxAfl2cwrcXiXbnHgtvd5T/6NodZqE4QkFH0vYAb6ExeIQ4hvqwd9xYuy0wBXlJpW/eW4n6X+j2CH8CSDVRNfOsUtkAAAAASUVORK5CYII=",
+   "seq": 434
+  },
+  {
+   "changed": 8163,
+   "crc32": "a8d1e713",
+   "dot": 46664971,
+   "index": 1,
+   "label": "title",
+   "mask": 0,
+   "png": "data:image/png;base64,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",
+   "seq": 618
+  },
+  {
+   "changed": 12672,
+   "crc32": "4d186b45",
+   "dot": 85843549,
+   "index": 2,
+   "label": "play",
+   "mask": 0,
+   "png": "data:image/png;base64,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",
+   "seq": 1164
+  }
+ ],
+ "name": "homebrew-airaki",
+ "provenance": {
+  "author": "furrtek",
+  "checked": "the pinned SHA-256 and a complete 32768-byte readback before the run; no reference renderer exists for third-party code, so no pixel is checked",
+  "command": "python src/dv/homebrew/play.py play airaki --load",
+  "driver": "src/dv/homebrew/play.py",
+  "image_sha256": "fd8fe6e023d9969935e05e7469c0f687f34a430d1a71fdeb5bb30183ce1ea2dd",
+  "inputs": [
+   {
+    "dot": 33628766,
+    "label": "press-128",
+    "mask": 128
+   },
+   {
+    "dot": 34050110,
+    "label": "release-128",
+    "mask": 0
+   },
+   {
+    "dot": 46690430,
+    "label": "press-128",
+    "mask": 128
+   },
+   {
+    "dot": 47111774,
+    "label": "release-128",
+    "mask": 0
+   },
+   {
+    "dot": 57645374,
+    "label": "press-16",
+    "mask": 16
+   },
+   {
+    "dot": 58066718,
+    "label": "release-16",
+    "mask": 0
+   },
+   {
+    "dot": 64386878,
+    "label": "press-16",
+    "mask": 16
+   },
+   {
+    "dot": 64808222,
+    "label": "release-16",
+    "mask": 0
+   },
+   {
+    "dot": 85875422,
+    "label": "input-0",
+    "mask": 0
+   }
+  ],
+  "intro_seconds": 8.0,
+  "licence": "GPL-3.0-or-later",
+  "note": "Airaki, CGB flag 0x80, booted from the pinned redistribution and played on the DE10-Lite on 2026-09-13.",
+  "pin": "airaki",
+  "program": "Airaki",
+  "redistribution": "Third-party redistribution, not an author release: the pinned bytes are the gbdev/database @ 434b8d35af69d6bf8184fe1bc9a4c41294c8ad42 blob entries/airaki/airaki.gb. The licence text is pinned separately in the author repository.",
+  "script": "snap:intro;press:128:6;run:180;snap:title;press:128:6;run:150;press:16:6;run:90;press:16:6;run:300;snap:play;input:0",
+  "source": "https://github.com/furrtek/Airaki",
+  "url": "https://raw.githubusercontent.com/gbdev/database/434b8d35af69d6bf8184fe1bc9a4c41294c8ad42/entries/airaki/airaki.gb",
+  "wall_seconds": 49.205,
+  "wire_abi": 1,
+  "wire_build_id": "87d5f0280a2afad8be6b85dc601141cc"
+ }
+}

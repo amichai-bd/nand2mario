@@ -172,7 +172,9 @@ def homebrew_session(folder):
     assert len(result['frames']) == 3, 'SESSION_NOT_THREE_FRAMES'
     pin = json.loads((ROOT / 'tools/n2m/dependencies.json').read_text(encoding='utf-8'))
     pin = pin['external_roms']['images'][result['game']]
-    assert result['load']['sha256'] == pin['sha256'], 'SESSION_IMAGE'
+    load = result['load']
+    assert load['external']['sha256'] == pin['sha256'], 'SESSION_IMAGE'
+    assert load['result']['verified_bytes'] == pin['size'], 'SESSION_READBACK'
     provenance = dict(
         program=pin['name'], author=pin['author'], licence=pin['license'], source=pin['source'],
         pin=result['game'], url=pin['url'], image_sha256=pin['sha256'],

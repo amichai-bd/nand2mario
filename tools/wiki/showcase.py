@@ -42,7 +42,7 @@ EMBEDS = {'build-and-tests': 'README.md', 'board-session': 'README.md', 'game-st
           'springtrail-state-board': 'wiki/showcase/README.md',
           'libbet-board': 'wiki/showcase/README.md', 'springtrail-board': 'wiki/showcase/README.md',
           **{f'homebrew-{name}': 'wiki/showcase/homebrew-library.md' for name in
-             ('wyrmhole', 'airaki', 'gb-wordyl', 'max-pirate', 'rex-run',
+             ('airaki', 'gb-wordyl', 'max-pirate',
               'alien-invasion', 'square-fall', 'unstoppable-knight')}}
 
 # --- Loop 1: build and tests. Captured at 5ce0aa0 on 2026-09-11; long JSON lines
@@ -650,11 +650,13 @@ SPRINGTRAIL_SCENES = (
 # The loops whose every pixel came off the DE10-Lite rather than a host model.
 BOARD_LOOPS = ('libbet-board', 'springtrail-board', 'springtrail-state-board')
 
-# The pinned homebrew images, shown as three still frames each rather than a
-# flipbook: an opening screen and two frames of play. The heading beside each
-# panel is its author and licence, which the wiki page repeats in text.
+# The pinned homebrew images that produced frames, shown as three still frames
+# each rather than a flipbook: an opening screen and two frames of play. The
+# heading beside each panel is its author and licence, which the wiki page
+# repeats in text. Wyrmhole and Rex Run have no panel: neither ever enabled the
+# LCD, so the board completed no frame to capture. The wiki page says so.
 HOMEBREW_PANELS = tuple(f'homebrew-{name}' for name in
-                        ('wyrmhole', 'airaki', 'gb-wordyl', 'max-pirate', 'rex-run',
+                        ('airaki', 'gb-wordyl', 'max-pirate',
                          'alien-invasion', 'square-fall', 'unstoppable-knight'))
 # Every surface whose pixels came off the board, flipbooks and stills alike.
 BOARD_FRAME_SURFACES = BOARD_LOOPS + HOMEBREW_PANELS

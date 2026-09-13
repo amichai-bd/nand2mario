@@ -49,7 +49,23 @@ FRAME = 70224
 # Exactly three `snap` steps are required: the opening screen and two frames of
 # play. Masks are active high: Right 1, Left 2, Up 4, Down 8, A 16, B 32,
 # Select 64, Start 128 (wiki/src/rtl/joypad/MAS_joypad.md).
-SCRIPTS = {}
+#
+# These are the scripts the published captures were taken with, at
+# `--intro-seconds 8`. Wyrmhole and Rex Run have none: neither ever enables the
+# LCD, so no frame completes and there is nothing to script towards. See
+# README.md.
+SCRIPTS = {
+    'airaki': ('snap:intro;press:128:6;run:180;snap:title;press:128:6;run:150;'
+               'press:16:6;run:90;press:16:6;run:300;snap:play;input:0'),
+    'gb-wordyl': ('snap:title;press:128:6;run:120;snap:instructions;press:16:4;run:30;'
+                  'press:16:4;run:14;press:16:4;run:14;press:16:4;run:14;press:16:4;run:14;'
+                  'press:16:4;run:40;snap:play;input:0'),
+    'max-pirate': 'snap:title;press:128:6;run:120;snap:play-1;hold:1:60;snap:play-2;input:0',
+    'alien-invasion': 'snap:title;press:128:6;run:120;snap:play-1;hold:1:60;snap:play-2;input:0',
+    'square-fall': ('snap:title;press:128:6;run:120;snap:play-1;press:16:4;run:60;'
+                    'press:1:4;run:60;press:16:4;run:150;snap:play-2;input:0'),
+    'unstoppable-knight': 'snap:title;press:128:6;run:120;snap:play-1;hold:1:60;snap:play-2;input:0',
+}
 
 
 def parse_script(text):
@@ -115,8 +131,21 @@ class Driver:
         self.log(event='run-frames', label=label, frames=count, dots=count * FRAME, first=first, last=last)
         return last
 
+    def io(self):
+        return self.client.read_io_registers()
+
     def snapshot(self, label, scale=2):
-        metadata, packed = self.client.snapshot()
+        # A game that never enables the LCD completes no frame, and the endpoint
+        # answers NO_FRAME. That is an observation about the image, not a
+        # transport failure, so record it with the LCD registers and go on.
+        try:
+            metadata, packed = self.client.snapshot()
+        except Exception as error:
+            entry = {'index': len(self.frames), 'label': label, 'no_frame': repr(error),
+                     'io': self.io(), 'counters': self.counters()}
+            self.frames.append(entry)
+            self.log(event='no-frame', **entry)
+            return entry
         pixels = frame_png.unpack(packed)
         name = f'{len(self.frames):02d}-{label}'
         (self.out / (name + '.2bpp')).write_bytes(packed)
@@ -141,7 +170,7 @@ def to_first_screen(d, args):
     d.log(event='reset', result=d.client.control('RESET'))
     d.client.control('RUN')
     time.sleep(args.intro_seconds)
-    d.log(event='halt', result=d.client.control('HALT'), counters=d.counters())
+    d.log(event='halt', result=d.client.control('HALT'), counters=d.counters(), io=d.io())
 
 
 def plan_play(d, args, steps):
