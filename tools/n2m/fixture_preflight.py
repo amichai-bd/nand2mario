@@ -1,4 +1,5 @@
 """Host fixture preparation and bounded source probes, never RTL acceptance."""
+from contextlib import contextmanager
 import hashlib
 import importlib
 import json
@@ -10,6 +11,29 @@ import time
 
 from .records import atomic_json, file_hash
 
+
+
+@contextmanager
+def fixture_imports(root):
+    """Own only bare names supplied by this fixture directory, then restore them.
+
+    v05 and Springtrail both have a reference.py. A prior in-process import
+    must neither supply the other fixture's model nor be replaced permanently.
+    """
+    directory = root/'src/dv/springtrail'
+    names = {p.stem for p in directory.glob('*.py')}
+    prior_path = sys.path[:]
+    prior_modules = {name: sys.modules[name] for name in names if name in sys.modules}
+    for name in names:
+        sys.modules.pop(name, None)
+    try:
+        sys.path[:0] = [str(root/'tools'), str(directory)]
+        yield
+    finally:
+        for name in names:
+            sys.modules.pop(name, None)
+        sys.modules.update(prior_modules)
+        sys.path[:] = prior_path
 
 def run(root, build, name):
     """Use the real target and preparation entry points without tool discovery."""
@@ -80,9 +104,7 @@ def verify_prepared(root, target, attempt):
     if renderer or oam:
         # Isolate imports to this checkout. Production callers are one-shot workers;
         # restoring sys.path also keeps in-process host callers well behaved.
-        prior = sys.path[:]
-        try:
-            sys.path[:0] = [str(root/'tools'), str(root/'src/dv/springtrail')]
+        with fixture_imports(root):
             anchor = importlib.import_module('startup_anchor')
             image = (attempt/'program.gb').read_bytes()
             metadata = 'entities-render.json' if renderer else 'entities_oam-unit.json'
@@ -104,8 +126,6 @@ def verify_prepared(root, target, attempt):
                 short = name.endswith('-s')
                 check = checker.Check(short, None if short else name[-1])
                 result['scratch'] = scratch_writes(anchor.Model, image, check)
-        finally:
-            sys.path[:] = prior
     atomic_json(attempt/'fixture-preflight.json', result)
     return result
 

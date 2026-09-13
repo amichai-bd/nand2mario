@@ -19,6 +19,9 @@ from n2m.simulation import load_target
 class FixturePreflightTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        cls.imports = preflight.fixture_imports(ROOT)
+        cls.imports.__enter__()
+        cls.addClassCleanup(cls.imports.__exit__, None, None, None)
         parent = ROOT/'workdir'
         parent.mkdir(exist_ok=True)
         cls.temp = tempfile.TemporaryDirectory(prefix='preflight with spaces ', dir=parent)
@@ -112,6 +115,25 @@ class FixturePreflightTests(unittest.TestCase):
             wrapper.write_text(body+'\n')
             with self.subTest(reason=reason), self.assertRaisesRegex(ValueError,reason):
                 preflight.import_target(ROOT,target,folder)
+
+    def test_prepare_restores_prior_v05_reference_and_unrelated_modules(self):
+        import importlib.util
+        prior_path = sys.path[:]
+        sentinel = object()
+        spec = importlib.util.spec_from_file_location('reference', ROOT/'src/dv/v05/reference.py')
+        old = importlib.util.module_from_spec(spec); spec.loader.exec_module(old)
+        folder = self.folder/'after-v05'; folder.mkdir(exist_ok=True)
+        with patch.dict(sys.modules, {'reference': old, 'unrelated_fixture_sentinel': sentinel}):
+            python_tb.prepare(self.oam_target, folder, ROOT)
+            self.assertIs(sys.modules['reference'], old)
+            self.assertIs(sys.modules['unrelated_fixture_sentinel'], sentinel)
+            self.assertEqual(sys.path, prior_path)
+            with self.assertRaisesRegex(ValueError, 'prepare dispatch'):
+                with preflight.fixture_imports(ROOT):
+                    preflight.verify_prepared(ROOT, self.oam_target, self.folder/'no-image')
+            self.assertIs(sys.modules['reference'], old)
+            self.assertIs(sys.modules['unrelated_fixture_sentinel'], sentinel)
+            self.assertEqual(sys.path, prior_path)
 
     def test_public_preflight_has_fixed_whole_wall_cap(self):
         from n2m.test_budget import main as supervised

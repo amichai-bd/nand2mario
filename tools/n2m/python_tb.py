@@ -329,6 +329,15 @@ def environment(root, target, attempt, seed, runtime):
 
 
 def prepare(target, attempt, root=None, fixture_tools=None):
+    builder = FIXTURE_BUILDERS.get(target.get('preload'), '')
+    if builder.startswith('src/dv/springtrail/'):
+        from .fixture_preflight import fixture_imports
+        with fixture_imports(root):
+            return _prepare(target, attempt, root, fixture_tools)
+    return _prepare(target, attempt, root, fixture_tools)
+
+
+def _prepare(target, attempt, root=None, fixture_tools=None):
     if target.get('preload') == 'mooneye-reg-f':
         from .mooneye import prepare as prepare_mooneye
         prepare_mooneye(root, attempt, fixture_tools)
