@@ -9,6 +9,13 @@ It captures only its foreground classic console, releases on ordinary exit or
 focus loss when completion is certain, and never retries an uncertain request.
 It does not start/load the game or replace physical display/control acceptance.
 
+The [on-screen pad](GAMEPAD.md) puts that same mapping behind a local window with
+clickable, labelled Game Boy controls, for an operator sitting at the board with a
+monitor. It sends buttons only: no frame readback, no server and no mode of its
+own. It must take the existing locks and preconditions, keep the core running,
+release the held union when the window loses focus, and release and verify
+input 0 on exit.
+
 The [Stackdrop player comparison](../../../src/sw/stackdrop/SPEC.md#pixel-player-comparison)
 uses these public controls and rendered snapshots for software decisions.
 It must preserve the same package, identity, uncertainty and safe-stop rules;

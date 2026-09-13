@@ -72,6 +72,10 @@ the normal capture interval is about 2 seconds. These are observed timings, not 
 frame-rate guarantee. A static game image can still be fresh when its source
 sequence and completion dot advance.
 
+To play the board locally with held buttons instead of taps, and a monitor
+instead of captured frames, use the [on-screen pad](GAMEPAD.md); it takes the
+same locks, so only one of the two can run at a time.
+
 Eight tap buttons provide Left, Right, Up, Down, A, B, Start and Select. Each tap
 queues a fixed 134 ms press, with no automatic repeat or held-button mode. The
 page reports its accepted ID or a queue-full, busy, stopped or rejected response.
