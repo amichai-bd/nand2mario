@@ -7,6 +7,10 @@ The pad sends buttons and nothing else: it reads no frames, serves no HTTP and
 never loads, resets or programs the board. The
 [host contract](SPEC.md) owns UART, session and input semantics.
 
+The [launcher](LAUNCHER.md) is the way in for playing: it lists every loadable
+game, loads the one you pick and hands over to this same pad inside one session.
+Use the pad on its own when the image you want is already on the board.
+
 This is the third way to control the board, and the only one that shows the
 controls. [`host keyboard`](SPEC.md#focused-keyboard) needs a Windows classic
 console and shows nothing; the [live viewer](LIVE_VIEWER.md) shows pixels over a
@@ -158,4 +162,6 @@ window cannot be asserted in CI; the layout, highlighting, mouse and key
 handling and the exit path were exercised by hand against the real window with a
 fake endpoint. Everything the window does other than drawing itself — input
 edges, focus loss, the poll, the lease and the failure that ends a session —
-lives in `Driver`, which is what those tests drive.
+lives in `Driver`, which is what those tests drive, and its widgets live in
+`PadPanel`, so the [launcher](LAUNCHER.md) shows the same pad in its own window
+without reimplementing any of it.

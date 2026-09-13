@@ -194,18 +194,19 @@ class Controller:
         return result
 
 
-def pad_loop(client, *, expected_build, window=None, record=None, seconds=None):
-    """Own the pad session: preflight, run the window, then always release.
+def own_session(client, preflight_action, run_window, record=None):
+    """Preflight, run one window, then always release. Shared by pad and launcher.
 
-    `window(controller, seconds)` blocks until the player closes it. Tests pass
-    a scripted window; the tkinter one is the default.
+    `preflight_action()` returns the endpoint identity and must send no control
+    traffic when it refuses. `run_window(controller)` blocks until the player
+    closes the window. The release below runs whatever ended it.
     """
     result = {'status': 'FAIL', 'reason': 'preflight not completed', 'changes': 0}
     controller = None
     try:
-        result['identity'] = preflight(client, expected_build)
+        result['identity'] = preflight_action()
         controller = Controller(client, record)
-        (window or tk_window)(controller, seconds)
+        run_window(controller)
         result['status'] = 'PASS'
         result.pop('reason', None)
     except BaseException as error:
@@ -224,6 +225,16 @@ def pad_loop(client, *, expected_build, window=None, record=None, seconds=None):
                 result['status'] = 'FAIL'
                 result.setdefault('reason', 'release not verified')
     return result
+
+
+def pad_loop(client, *, expected_build, window=None, record=None, seconds=None):
+    """Own the pad session: preflight, run the window, then always release.
+
+    `window(controller, seconds)` blocks until the player closes it. Tests pass
+    a scripted window; the tkinter one is the default.
+    """
+    return own_session(client, lambda: preflight(client, expected_build),
+                       lambda controller: (window or tk_window)(controller, seconds), record)
 
 
 POLL_SECONDS = 0.4
@@ -318,6 +329,117 @@ class Driver:
 IDLE, HELD, FACE, KEY, PANEL, TEXT = '#2b3038', '#77baff', '#f2f5f8', '#aeb6c0', '#17191c', '#e8ecf1'
 
 
+class PadPanel:
+    """The pad's controls inside any container; every behavior stays in `Driver`.
+
+    The launcher reuses this frame so a chosen game hands over to the same pad
+    inside the same window and the same UART session.
+    """
+
+    def __init__(self, parent, driver, *, on_exit, back=None):
+        import tkinter as tk
+        self.driver, self.controller, self.on_exit = driver, driver.controller, on_exit
+        self.widgets = {}
+        self.polling = False
+        self.frame = frame = tk.Frame(parent, bg=PANEL)
+        tk.Label(frame, text='Watch the board’s VGA screen — this window only sends buttons',
+                 bg=PANEL, fg=KEY, font=('Segoe UI', 10)).grid(row=0, column=0, columnspan=2, pady=(10, 4))
+        pad = tk.Frame(frame, bg=PANEL)
+        pad.grid(row=1, column=0, padx=16, pady=6)
+        self.control(tk, pad, 0x26, row=0, column=1)
+        self.control(tk, pad, 0x25, row=1, column=0)
+        self.control(tk, pad, 0x27, row=1, column=2)
+        self.control(tk, pad, 0x28, row=2, column=1)
+        tk.Label(pad, text='', bg=PANEL, width=7, height=2).grid(row=1, column=1)
+        face = tk.Frame(frame, bg=PANEL)
+        face.grid(row=1, column=1, padx=16, pady=6)
+        self.control(tk, face, 0x58, row=1, column=0)
+        self.control(tk, face, 0x5a, row=0, column=1)
+        centre = tk.Frame(frame, bg=PANEL)
+        centre.grid(row=2, column=0, columnspan=2, pady=(0, 6))
+        self.control(tk, centre, 0xa1, row=0, column=0)
+        self.control(tk, centre, 0x0d, row=0, column=1)
+        self.held = tk.Label(frame, text=driver.held_text(), bg=PANEL, fg=TEXT, font=('Consolas', 11))
+        self.held.grid(row=3, column=0, columnspan=2)
+        self.core = tk.Label(frame, text='Core: checking', bg=PANEL, fg=TEXT, font=('Consolas', 11))
+        self.core.grid(row=4, column=0, columnspan=2)
+        self.note = tk.Label(frame, text=HINT, bg=PANEL, fg=KEY, font=('Segoe UI', 9), wraplength=420)
+        self.note.grid(row=5, column=0, columnspan=2, padx=12, pady=(4, 10))
+        if back is not None:
+            tk.Button(frame, text='◀  Back to the menu', command=back, bg=IDLE, fg=FACE,
+                      activebackground=HELD, relief='raised', borderwidth=2,
+                      font=('Segoe UI', 10, 'bold')).grid(row=6, column=0, columnspan=2, pady=(0, 10))
+        self.paint()
+
+    def control(self, tk, parent, code, **grid):
+        name, key = FACE_BY_CODE[code]
+        widget = tk.Label(parent, text=f'{name}\n[ {key} ]', bg=IDLE, fg=FACE, width=7, height=2,
+                          font=('Segoe UI', 11, 'bold'), relief='raised', borderwidth=2)
+        widget.bind('<ButtonPress-1>', lambda _event, c=code: self.button(c, True))
+        widget.bind('<ButtonRelease-1>', lambda _event, c=code: self.button(c, False))
+        widget.grid(padx=3, pady=3, **grid)
+        self.widgets[code] = widget
+        return widget
+
+    def message(self, text, colour=KEY):
+        self.note.configure(text=text, fg=colour)
+
+    def stop(self, reason, colour=KEY, delay=1200):
+        self.polling = False
+        self.message(reason, colour)
+        self.on_exit(delay)
+
+    def paint(self):
+        for code, widget in self.widgets.items():
+            widget.configure(bg=HELD if code in self.controller.held else IDLE,
+                             fg=PANEL if code in self.controller.held else FACE)
+        self.held.configure(text=self.driver.held_text())
+        if self.driver.failure is not None:
+            self.stop(self.driver.failure_text(), '#ff9393')
+
+    def button(self, code, down):
+        self.driver.button(code, down)
+        self.paint()
+
+    def start(self):
+        """Begin polling the board; the panel schedules itself from here on."""
+        self.polling = True
+        self.frame.after(10, self.poll)
+
+    def poll(self):
+        if not self.polling:
+            return
+        reading = self.driver.poll()
+        if reading is None:
+            return self.stop(self.driver.failure_text(), '#ff9393')
+        self.core.configure(text=reading['text'])
+        self.watch(reading)
+        if self.driver.expired():
+            return self.stop('Lease expired; releasing input and closing.', KEY, 200)
+        self.frame.after(int(POLL_SECONDS * 1000), self.poll)
+
+    def watch(self, reading):
+        """Hook for an owner that wants each poll; the pad itself wants none."""
+
+    def key_event(self, event, down):
+        """Route one key event; 'exit' means the player asked to leave."""
+        if self.driver.key(event.keysym, event.keycode, event.state, down) == 'exit':
+            return 'exit'
+        self.paint()
+        return None
+
+    def focus_out(self, _event=None):
+        if self.driver.focus_lost():
+            self.message('Focus left the window; every held button was released.')
+        self.paint()
+
+
+HINT = ('Each control names its button and, in brackets, the key that presses it. '
+        'Mouse and keyboard do the same thing; hold means hold. '
+        'Leaving the window releases every held button. '
+        'Esc or closing the window releases input and exits.')
+
+
 def tk_window(controller, seconds=None, *, clock=time.monotonic):
     """Draw the pad and bind it to a Driver; all behavior lives in the Driver."""
     import tkinter as tk
@@ -327,92 +449,19 @@ def tk_window(controller, seconds=None, *, clock=time.monotonic):
     root.title('Game Boy pad')
     root.configure(bg=PANEL)
     root.resizable(False, False)
-    widgets = {}
-
-    def stop(reason, colour=KEY, delay=1200):
-        message.configure(text=reason, fg=colour)
-        root.after(delay, root.destroy)
-
-    def paint():
-        for code, widget in widgets.items():
-            widget.configure(bg=HELD if code in controller.held else IDLE,
-                             fg=PANEL if code in controller.held else FACE)
-        held.configure(text=driver.held_text())
-        if driver.failure is not None:
-            stop(driver.failure_text(), '#ff9393')
-
-    def button(code, down):
-        driver.button(code, down)
-        paint()
-
-    def control(parent, code, **grid):
-        name, key = FACE_BY_CODE[code]
-        widget = tk.Label(parent, text=f'{name}\n[ {key} ]', bg=IDLE, fg=FACE, width=7, height=2,
-                          font=('Segoe UI', 11, 'bold'), relief='raised', borderwidth=2)
-        widget.bind('<ButtonPress-1>', lambda _event, c=code: button(c, True))
-        widget.bind('<ButtonRelease-1>', lambda _event, c=code: button(c, False))
-        widget.grid(padx=3, pady=3, **grid)
-        widgets[code] = widget
-        return widget
-
-    tk.Label(root, text='Watch the board’s VGA screen — this window only sends buttons',
-             bg=PANEL, fg=KEY, font=('Segoe UI', 10)).grid(row=0, column=0, columnspan=2, pady=(10, 4))
-
-    pad = tk.Frame(root, bg=PANEL)
-    pad.grid(row=1, column=0, padx=16, pady=6)
-    control(pad, 0x26, row=0, column=1)
-    control(pad, 0x25, row=1, column=0)
-    control(pad, 0x27, row=1, column=2)
-    control(pad, 0x28, row=2, column=1)
-    tk.Label(pad, text='', bg=PANEL, width=7, height=2).grid(row=1, column=1)
-
-    face = tk.Frame(root, bg=PANEL)
-    face.grid(row=1, column=1, padx=16, pady=6)
-    control(face, 0x58, row=1, column=0)
-    control(face, 0x5a, row=0, column=1)
-
-    centre = tk.Frame(root, bg=PANEL)
-    centre.grid(row=2, column=0, columnspan=2, pady=(0, 6))
-    control(centre, 0xa1, row=0, column=0)
-    control(centre, 0x0d, row=0, column=1)
-
-    held = tk.Label(root, text=driver.held_text(), bg=PANEL, fg=TEXT, font=('Consolas', 11))
-    held.grid(row=3, column=0, columnspan=2)
-    core = tk.Label(root, text='Core: checking', bg=PANEL, fg=TEXT, font=('Consolas', 11))
-    core.grid(row=4, column=0, columnspan=2)
-    message = tk.Label(root, text='Each control names its button and, in brackets, the key that presses it. '
-                                  'Mouse and keyboard do the same thing; hold means hold. '
-                                  'Leaving the window releases every held button. '
-                                  'Esc or closing the window releases input and exits.',
-                       bg=PANEL, fg=KEY, font=('Segoe UI', 9), wraplength=420)
-    message.grid(row=5, column=0, columnspan=2, padx=12, pady=(4, 10))
-
-    def poll():
-        reading = driver.poll()
-        if reading is None:
-            return stop(driver.failure_text(), '#ff9393')
-        core.configure(text=reading['text'])
-        if driver.expired():
-            return stop('Lease expired; releasing input and closing.', KEY, 200)
-        root.after(int(POLL_SECONDS * 1000), poll)
+    panel = PadPanel(root, driver, on_exit=lambda delay: root.after(delay, root.destroy))
+    panel.frame.pack()
 
     def key_event(event, down):
-        if driver.key(event.keysym, event.keycode, event.state, down) == 'exit':
+        if panel.key_event(event, down) == 'exit':
             root.destroy()
-            return
-        paint()
-
-    def focus_out(_event):
-        if driver.focus_lost():
-            message.configure(text='Focus left the window; every held button was released.', fg=KEY)
-        paint()
 
     root.bind('<KeyPress>', lambda event: key_event(event, True))
     root.bind('<KeyRelease>', lambda event: key_event(event, False))
     # Key-up goes to whichever window takes the focus, so release here instead.
-    root.bind('<FocusOut>', focus_out)
+    root.bind('<FocusOut>', panel.focus_out)
     root.protocol('WM_DELETE_WINDOW', root.destroy)
-    root.after(10, poll)
+    panel.start()
     root.focus_force()
     try:
         root.mainloop()

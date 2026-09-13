@@ -16,6 +16,14 @@ own. It must take the existing locks and preconditions, keep the core running,
 release the held union when the window loses focus, and release and verify
 input 0 on exit.
 
+The [launcher](LAUNCHER.md) is the host entry point for playing on this board:
+one window that lists every loadable game, loads the chosen one, resets, runs it
+and hands over to that same pad. It must hold one session with the existing
+locks and preconditions across the menu, every load and the play, build or reuse
+a current attempt for a game built from source, load a pinned image only through
+its verified digest, mark the images known not to boot, and turn every failure a
+player can meet into a message they can act on.
+
 The [Stackdrop player comparison](../../../src/sw/stackdrop/SPEC.md#pixel-player-comparison)
 uses these public controls and rendered snapshots for software decisions.
 It must preserve the same package, identity, uncertainty and safe-stop rules;
