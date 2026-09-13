@@ -4,10 +4,8 @@ from entities_reference import World, Entity, initialize, update, spawn
 from motion_reference import Player
 from power_reference import PLAYING, PAUSED, RETRY, LARGE, HURT
 from progress_reference import enter_stage
-from blocks_cases import ADDRESSES as OLD_ADDRESSES, RANGES as OLD_RANGES, state_bytes as old_bytes
+from state_seed import ADDRESSES, RANGES, state_bytes
 
-ADDRESSES = OLD_ADDRESSES + list(range(0xc090,0xc097)) + list(range(0xc300,0xc338))
-RANGES = OLD_RANGES + ((0xc090,7),(0xc300,56))
 SHORT = 1
 SHORT_BOUND = 30000
 FULL_BOUND = 160000
@@ -15,16 +13,6 @@ ROUTINE_BOUND = 24000
 BUDGET = dict(cases_per_part=5, seed_and_dispatch=6000, routine_ceiling=24000,
               terminal=1000, conservative_total=151000, guard=160000)
 
-
-def state_bytes(w, buttons=0, new_level=0):
-    data = bytearray(old_bytes(w,buttons,new_level))
-    data += bytes((w.lives,w.pending,w.timer_sub,w.timer_low,w.timer_high,w.expiring,w.stage))
-    for e in (w.curl,w.moving,w.falling):
-        data += e.x.to_bytes(2,'little',signed=True) + e.y.to_bytes(2,'little',signed=True)
-        data += bytes((e.state,e.timer,e.vx&255)) + bytes(9)
-    data += bytes((w.patrol_frame,w.stomp,w.rider)) + bytes(5)
-    assert len(data)==len(ADDRESSES)
-    return bytes(data)
 
 
 def cases():

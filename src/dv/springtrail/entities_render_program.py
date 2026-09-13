@@ -26,7 +26,7 @@ def build(root, destination, variant='normal'):
         from sw.package import package
         from sw.assets import load_shades, encode_shades
         from sw.columns import validate
-        from entities_cases import RANGES, state_bytes
+        from state_seed import state_bytes, seed_copy
         from hud_reference import CHARS, MAPS
         from startup_anchor import derive
         validate(root)
@@ -40,10 +40,7 @@ def build(root, destination, variant='normal'):
                'LDH [$FF43],A','LDH [$FF42],A','CALL InitSceneDMA']
         def write(address,value):
             lines.extend([f'LD A,${value&255:02X}',f'LD [${address:04X}],A'])
-        lines += ['LD HL,SeedValues']
-        for index,(address,count) in enumerate(RANGES):
-            lines += [f'LD DE,${address:04X}',f'LD B,{count}',f'Seed{index}:',
-                      'LD A,[HL+]','LD [DE],A','INC DE','DEC B',f'JR NZ,Seed{index}']
+        lines += seed_copy()
         for address,value in ((0xc02e,0),(0xc02f,32),(0xc023,12),(0xc030,1),
                               (0xc050,0),(0xc051,96),(0xc054,12),(0xc055,0)):
             write(address,value)
