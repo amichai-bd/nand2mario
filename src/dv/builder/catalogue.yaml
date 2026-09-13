@@ -310,6 +310,11 @@ units:
   ppu-window-wy-late: {kind: sim, level: 2, labels: [ppu], duration_seconds: null}
   preload-crc-fault: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: null}
   preload-lifecycle: {kind: sim, level: 1, labels: [uart], duration_seconds: 18.87}
+  python-acquisition-a: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-acquisition-b: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-acquisition-c: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-acquisition-fault: {kind: sim, level: 2, labels: [fault, integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-acquisition-short: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
   python-bka: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
   python-bkb: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
   python-bks: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
@@ -449,6 +454,7 @@ units:
   src/dv/display308/test_scene.py: {kind: unit, level: 0, labels: [display308], duration_seconds: 0.08}
   src/dv/python/v05/test_known.py: {kind: unit, level: 2, labels: [needs-cocotb, python-tb, v05], duration_seconds: 0.08}
   src/dv/python/vga/test_reference.py: {kind: unit, level: 0, labels: [python-tb, vga], duration_seconds: 0.12}
+  src/dv/springtrail/test_acquisition_host.py: {kind: unit, level: 1, labels: [host, host-play, springtrail], duration_seconds: null}
   src/dv/springtrail/test_blocks_assets.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.39}
   src/dv/springtrail/test_blocks_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.12}
   src/dv/springtrail/test_blocks_unit_check.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.16}
@@ -509,6 +515,7 @@ units:
   src/dv/springtrail/test_state_player.py: {kind: unit, level: 1, labels: [host, host-play, springtrail], duration_seconds: 21.29}
   src/dv/springtrail/test_state_reader.py: {kind: unit, level: 0, labels: [host, host-play, springtrail], duration_seconds: 0.89}
   src/dv/springtrail/test_state_seed.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: null}
+  src/dv/springtrail/test_thrower_acquisition.py: {kind: unit, level: 1, labels: [springtrail], duration_seconds: null}
   src/dv/springtrail/test_unit_markers.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.07}
   src/dv/stackdrop/test_game_check.py: {kind: unit, level: 0, labels: [stackdrop], duration_seconds: 0.20}
   src/dv/stackdrop/test_reference.py: {kind: unit, level: 0, labels: [stackdrop], duration_seconds: 0.07}

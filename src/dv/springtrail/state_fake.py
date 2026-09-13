@@ -22,6 +22,7 @@ No serial port, no simulator and no board is involved.
 """
 import sys
 import zlib
+from dataclasses import replace
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -33,6 +34,7 @@ import entities_frames as blocks_frames  # noqa: E402
 import progress_cases  # noqa: E402
 from progress_reference import PLAYING
 from entities_reference import World, update  # noqa: E402
+from motion_game_reference import LCD  # noqa: E402
 
 PERIOD = 70224
 LINE = 456
@@ -40,8 +42,7 @@ VBLANK = 144 * LINE
 CONSUME = 300
 # The frozen startup anchor of the current image. The reader never depends on
 # it: it locates the boundary from LY, so a moved anchor only costs an advance.
-LCD = 177308
-UPDATE_DOTS = 20000  # how long game records stay torn after offset 0
+UPDATE_DOTS = 20000  # synthetic torn-record interval, not a source timing bound
 BUILD_ID = '0f1e2d3c4b5a69788796a5b4c3d2e1f0'
 WRAM_BYTES = abi.GB_WRAM_END - abi.GB_WRAM_START + 1
 FRAME_PENDING, PUBLISHED_CAMERA = 0xC050, 0xC051
@@ -169,6 +170,9 @@ class Game:
             self.previous, self.world = self.world, after
             self.updates += 1
         elif name == 'settled':
+            # Coherent observations follow PrepareMap, which consumes a fresh
+            # block request. Current route blocks are beyond reset restoration.
+            self.world = replace(self.world, block_dirty=0)
             self.updating_from = None
         elif name == 'vblank':
             self.displayed = self.published
