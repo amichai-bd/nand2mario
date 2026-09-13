@@ -1341,3 +1341,21 @@ this standalone command. A successful preflight is not a reusable simulation
 PASS and does not replace required suites. Unknown or changed inputs must still
 meet their existing acceptance. The finite host mutation checks are in
 [the preflight tests](../../../tools/n2m/tests/test_fixture_preflight.py).
+
+### Advisory affected-test report
+
+`python tools/build.py tests affected --base REF --json` explains impact against
+an explicit Git commit using the current catalogue and simulation input lists.
+It does not run tests, accept prior evidence, change `tests run`, or replace the
+required PR checks. Each entry explains selection or an input-equal review
+candidate. A candidate still needs a valid prior result, matching tool/runtime
+identity and independent scoped review.
+
+Standalone host dependency closure is unknown, so host units remain selected.
+New, deleted, renamed, unmapped, tool, configuration or catalogue changes force
+conservative fallback. Invalid input closure, dynamic data/import behavior,
+preloads/drivers, non-Python and unresolved import qualification select the
+corresponding simulation too. Static candidates carry exact repository input
+hashes against the base; byte differences, including checkout line endings,
+prevent equality. The report is advisory preparation cost, not proof of faster
+delivery or permission to omit pixel, state, mutation or completion gates.
