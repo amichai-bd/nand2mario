@@ -3,17 +3,9 @@ import unittest
 
 import blocks_reference as blocks
 from entities_reference import World, update
-from frame_proofs import SCRIPT
+from thrower_route import masks as acquisition_masks
 from startup_anchor import Model, build
 from state_seed import ADDRESSES, state_bytes
-
-ROUTE = tuple((m,c) for m,c in SCRIPT)  # Only the already-qualified prefix is used.
-
-def acquisition_masks():
-    prefix = [m for m,c in ROUTE for _ in range(c)][:190]
-    suffix = ((16,12),(0,40),(49,12),(33,13),(49,1),(33,108),(16,12),(0,20),(32,1))
-    return prefix + [m for m,c in suffix for _ in range(c)]
-
 
 def call(cpu, entry):
     cpu.pc, cpu.sp = entry, 0xdffc
