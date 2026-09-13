@@ -56,3 +56,17 @@ A live viewer is an operational dependency. Preserve its worktree and private
 runtime while running, or move it to a documented retained runtime before cleanup.
 Do not delete or terminate it as ordinary merged-PR cleanup. The tunnel and viewer
 are temporary and end together on the declared local shutdown.
+
+The implementation caps concurrent HTTP handlers at8 with5-second socket timeouts,
+keeps only32 recent capture records plus a total count, and never queues overlapping
+UART captures. An image request carrying `v=<capture sequence>` returns409 if that
+generation is no longer current; the page retries status instead of pairing a new
+image with old metadata. Display capture age and capture-time RUNNING state; verified
+terminal status reports PAUSED, while uncertain cleanup reports UNKNOWN.
+
+Run a30-second capture proof first (`--seconds30`, whole supervisor60 seconds).
+The initial operational viewing session uses3600 seconds, with30 seconds reserved
+by the outer supervisor for setup/cleanup. This is a60-minute viewing lease, not a
+new endurance milestone. Local `STOP` in the tagged live-viewer directory stops the
+loop, releases the board and closes the server. Its private credential file and
+tunnel binary remain outside committed source.

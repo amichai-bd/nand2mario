@@ -1,0 +1,117 @@
+"""Temporarily view the already-loaded FPGA image; no load, reset or gameplay.
+
+Use a private credential JSON and explicit reviewed build/device selectors.
+Only the local operator can stop the worker; HTTP exposes image/status reads.
+"""
+import argparse
+import json
+import secrets
+import signal
+import sys
+import threading
+from pathlib import Path
+from types import SimpleNamespace
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0,str(ROOT/'tools'))
+from ci.storage import machine_lock
+from n2m.host.client import Client
+from n2m.host.transport import session, session_root
+from n2m.live_viewer import Latest, capture_loop, server
+from n2m.records import atomic_json
+from n2m.test_budget import supervise
+
+
+def png_writer(packed, path):
+    sys.path.insert(0,str(ROOT/'src/dv/libbet'))
+    try:
+        import frame_png
+    finally:
+        sys.path.pop(0)
+    frame_png.write_frame(frame_png.unpack(packed),path)
+
+
+class Stop:
+    def __init__(self, path):
+        self.path = path
+        self.event = threading.Event()
+
+    def is_set(self):
+        return self.event.is_set() or self.path.exists()
+
+    def wait(self, seconds):
+        return self.event.wait(seconds)
+
+
+def worker(args):
+    out = ROOT/'workdir/builds'/args.tag/'live-viewer'
+    out.mkdir(parents=True,exist_ok=False)
+    credential_path = Path(args.credentials).resolve()
+    if not credential_path.is_file():
+        raise ValueError('private credentials file must be initialized before launch')
+    credentials = json.loads(credential_path.read_text(encoding='utf-8'))
+    if not credentials.get('username') or len(credentials.get('password','')) < 32:
+        raise ValueError('high entropy credentials required')
+    latest = Latest()
+    stop = Stop(out/'STOP')
+    signal.signal(signal.SIGINT,lambda *_:stop.event.set())
+    signal.signal(signal.SIGTERM,lambda *_:stop.event.set())
+    http = server(latest,credentials['username'],credentials['password'],args.port)
+    thread = threading.Thread(target=http.serve_forever,daemon=True)
+    thread.start()
+    atomic_json(out/'service.json',{'port':http.server_port,'bind':'127.0.0.1','stop_file':str(stop.path),'seconds':args.seconds})
+    selection = SimpleNamespace(uart_port=args.uart_port,uart_vid=args.uart_vid,
+                                uart_pid=args.uart_pid,uart_identity=args.uart_identity,endpoint_restarted=False)
+    result = {'status':'FAIL','reason':'preflight not completed'}
+    try:
+        with machine_lock(1357311510), (out/'packets.jsonl').open('w',encoding='utf-8') as packets:
+            def record(row):
+                packets.write(json.dumps(row)+'\n');packets.flush()
+            with session(out,selection,session_root(ROOT)) as (wire,sequence,persist,_selected):
+                client = Client(wire,sequence=sequence,persist=persist,record=record)
+                result = capture_loop(client,latest,out,png_writer,expected_build=args.expected_build_id,
+                                      stop=stop,seconds=args.seconds,interval=args.interval)
+    finally:
+        atomic_json(out/'result.json',result)
+        http.shutdown();http.server_close();thread.join(timeout=2)
+    print(json.dumps({'status':result['status'],'captures':result.get('capture_count',0),
+                      'seconds':result.get('seconds'),'cleanup':result.get('cleanup')}))
+    return 0 if result['status']=='PASS' and result.get('released') else 1
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--tag',required=True)
+    parser.add_argument('--credentials',required=True,help='private local JSON; contents are never printed')
+    parser.add_argument('--init-credentials',action='store_true')
+    parser.add_argument('--expected-build-id')
+    for name in ('uart-port','uart-vid','uart-pid','uart-identity'):
+        parser.add_argument('--'+name)
+    parser.add_argument('--port',type=int,default=8765)
+    parser.add_argument('--seconds',type=int,default=30)
+    parser.add_argument('--interval',type=float,default=2)
+    parser.add_argument('--worker',action='store_true',help=argparse.SUPPRESS)
+    args = parser.parse_args(argv)
+    if not args.tag.isalnum():
+        parser.error('tag must be alphanumeric')
+    if args.init_credentials:
+        path = Path(args.credentials)
+        path.parent.mkdir(parents=True,exist_ok=True)
+        with path.open('x',encoding='utf-8') as stream:
+            json.dump({'username':secrets.token_urlsafe(12),'password':secrets.token_urlsafe(32)},stream)
+        print('Private credentials initialized; contents not displayed.')
+        return 0
+    if not args.expected_build_id or len(args.expected_build_id)!=32 or any(c not in '0123456789abcdef' for c in args.expected_build_id):
+        parser.error('explicit reviewed 32-digit lowercase build ID required')
+    if not 1 <= args.seconds <= 3600 or not 1 <= args.interval <= 10 or not 1024 <= args.port <= 65535:
+        parser.error('seconds1..3600, interval1..10 and unprivileged port required')
+    if args.worker:
+        return worker(args)
+    command = [sys.executable,str(Path(__file__).resolve()),*(argv or sys.argv[1:]),'--worker']
+    code,output = supervise(command,ROOT,args.tag,ceiling=args.seconds+30)
+    print(output,end='')
+    return code
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())
