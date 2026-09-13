@@ -26,6 +26,19 @@ def call(cpu, entry):
 
 
 class Acquisition(unittest.TestCase):
+    def test_current_decoder_preserves_acquired_shot_and_complete_frame(self):
+        import state_support as support
+        from n2m import springtrail_state as state
+        from entities_frames import image
+        w = World()
+        for buttons in acquisition_masks():
+            w = update(w,buttons)
+        _,binding = support.binding()
+        observed = state.decode(binding,support.chunks(binding,w,buttons=32))
+        self.assertEqual(state.to_world(observed),w)
+        self.assertEqual(state.render(observed),image(w))
+        self.assertEqual(len(state.render(observed)),23040)
+
     def test_ordinary_route_matches_all_source_state_and_fires(self):
         rom,symbols = build()
         labels = {n:a for a,n in symbols.items()}
