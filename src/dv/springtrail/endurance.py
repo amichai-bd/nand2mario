@@ -360,11 +360,16 @@ def worker(args):
         with transactions.open('a', encoding='utf-8') as stream:
             stream.write(json.dumps({'time': datetime.now(timezone.utc).isoformat(), **entry}, sort_keys=True)+'\n')
 
-    rom = Path(args.rom).read_bytes()
     session_record = dict(status='FAIL', plan=args.plan, args=vars(args), host_folder=folder.as_posix())
     started = time.monotonic()
     client = None
     try:
+        rom_path, digest, package = build_rom(args.tag)
+        rom = rom_path.read_bytes()
+        assert hashlib.sha256(rom).hexdigest() == digest, 'ENDURANCE_BUILD_HASH'
+        atomic_json(out/'build.json', dict(package=package, sha256=digest))
+        deadline = started+args.deadline if args.deadline else None
+        assert deadline is None or time.monotonic() < deadline, 'ENDURANCE_WALL_CAP build'
         with machine_lock(MACHINE_MUTEX), session(folder, ns, state_root) as (transport, sequence, persist, _):
             client = Client(transport, sequence=sequence, record=record, persist=persist)
             session_record['endpoint'] = client.identify()
@@ -380,10 +385,12 @@ def worker(args):
             # first load advances from; nothing about its image is assumed.
             meta, _ = client.snapshot()
             session_record['prior_epoch'] = meta['epoch']
-            deadline = started+args.deadline if args.deadline else None
             result = run(client, rom, out/'run', epoch=meta['epoch'], cycles=PLANS[args.plan],
-                         rom_sha256=args.rom_sha256, deadline=deadline)
-            session_record['status'] = result['status']
+                         rom_sha256=digest, deadline=deadline)
+        assert deadline is None or time.monotonic() < deadline, 'ENDURANCE_WALL_CAP export'
+        from endurance_images import export
+        export(out)
+        session_record['status'] = result['status']
     except Exception as error:
         session_record['error'] = repr(error)
         print('ERROR', repr(error), flush=True)
@@ -449,7 +456,7 @@ def main():
     parser.add_argument('--uart-port', required=True)
     parser.add_argument('--expected-build-id', required=True, help='reviewed wire build ID, 32 hex digits')
     parser.add_argument('--tag', default='endurance264')
-    parser.add_argument('--cap', type=int, help='whole-process seconds; default 300 short, 1980 full')
+    parser.add_argument('--cap', type=int, help='whole-process seconds; default 300 short, 780 routine, 1980 full milestone')
     parser.add_argument('--worker', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('--rom', help=argparse.SUPPRESS)
     parser.add_argument('--rom-sha256', help=argparse.SUPPRESS)
@@ -461,18 +468,13 @@ def main():
     cap = args.cap or CAPS[args.plan]
     out = ROOT/'workdir/endurance264'/f'{args.plan}-{datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")}'
     out.mkdir(parents=True)
-    rom, digest, package = build_rom(args.tag)
-    assert hashlib.sha256(rom.read_bytes()).hexdigest() == digest, 'ENDURANCE_BUILD_HASH'
-    atomic_json(out/'build.json', dict(package=package, rom=rom.as_posix(), sha256=digest))
-    print('ROM', rom.as_posix(), digest, flush=True)
     # The worker fails itself 24 s before the cap so cleanup HALT/INPUT0 runs
     # before the 12 s tree kill; the cap is the whole-process limit.
     command = [sys.executable, str(Path(__file__).resolve()), args.plan, '--worker',
                '--uart-port', args.uart_port, '--expected-build-id', args.expected_build_id,
-               '--tag', args.tag, '--rom', str(rom), '--rom-sha256', digest, '--out', str(out),
+               '--tag', args.tag, '--out', str(out),
                '--deadline', str(cap-24)]
     code = supervise(command, cap, out)
-    decode(out)
     print('DONE', 'PASS' if code == 0 else 'FAIL', out.as_posix(), flush=True)
     return code
 
