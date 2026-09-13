@@ -555,6 +555,9 @@ def budget_for(args):
 def command(root, args, header, publish):
     """Dispatch one `tests` action."""
     root = Path(root)
+    if args.action == "affected":
+        from .affected import report as impact_report
+        return {**header(args.tag or "-"), **impact_report(root, args.base)}
     if args.action in ("list", "validate"):
         report = header(args.tag or "-")
         model, path = load(root)
