@@ -357,29 +357,31 @@ class ButtonQueueTests(unittest.TestCase):
     def test_operational_supervisor_selects_lease_and_shares_unique_tag(self):
         from unittest.mock import MagicMock,patch
         import fpga_viewer as viewer
-        sys.path.insert(0,str(viewer.ROOT/'src/dv/springtrail'))
-        import endurance
-        self.assertEqual(Path(endurance.__file__).resolve(),viewer.ROOT/'src/dv/springtrail/endurance.py')
-        with tempfile.TemporaryDirectory() as folder:
-            root=Path(folder);tags=[]
-            for seconds,cap in [(3600,3630),(30,60)]:
-                tree=MagicMock();tree.__enter__.return_value=tree
-                tree.process.returncode=0
-                with patch.object(viewer,'ROOT',root),patch('n2m.process_tree.Tree',return_value=tree) as launch:
-                    self.assertEqual(viewer.main(['--credentials','private.json','--expected-build-id',BUILD,'--seconds',str(seconds)]),0)
-                command=launch.call_args.args[0]
-                tag=command[command.index('--tag')+1];tags.append(tag)
-                self.assertIn('--worker',command)
-                record=json.loads((root/'workdir/builds'/tag/'viewer-budget/budget.json').read_text())
-                self.assertEqual(record['cap_seconds'],cap)
-                self.assertEqual(record['command'],command)
-                tree.process.wait.assert_called_once_with(timeout=cap-12)
-            self.assertNotEqual(*tags)
-            from n2m.test_budget import WALL_DEFAULT
-            self.assertEqual(WALL_DEFAULT,300)
-            (root/'workdir/builds/used/live-viewer').mkdir(parents=True)
-            with patch.object(viewer,'ROOT',root),self.assertRaises(SystemExit):
-                viewer.main(['--tag','used','--credentials','private.json','--expected-build-id',BUILD])
+        from n2m.fixture_preflight import fixture_imports
+        with fixture_imports(viewer.ROOT):
+            sys.path.insert(0,str(viewer.ROOT/'src/dv/springtrail'))
+            import endurance
+            self.assertEqual(Path(endurance.__file__).resolve(),viewer.ROOT/'src/dv/springtrail/endurance.py')
+            with tempfile.TemporaryDirectory() as folder:
+                root=Path(folder);tags=[]
+                for seconds,cap in [(3600,3630),(30,60)]:
+                    tree=MagicMock();tree.__enter__.return_value=tree
+                    tree.process.returncode=0
+                    with patch.object(viewer,'ROOT',root),patch('n2m.process_tree.Tree',return_value=tree) as launch:
+                        self.assertEqual(viewer.main(['--credentials','private.json','--expected-build-id',BUILD,'--seconds',str(seconds)]),0)
+                    command=launch.call_args.args[0]
+                    tag=command[command.index('--tag')+1];tags.append(tag)
+                    self.assertIn('--worker',command)
+                    record=json.loads((root/'workdir/builds'/tag/'viewer-budget/budget.json').read_text())
+                    self.assertEqual(record['cap_seconds'],cap)
+                    self.assertEqual(record['command'],command)
+                    tree.process.wait.assert_called_once_with(timeout=cap-12)
+                self.assertNotEqual(*tags)
+                from n2m.test_budget import WALL_DEFAULT
+                self.assertEqual(WALL_DEFAULT,300)
+                (root/'workdir/builds/used/live-viewer').mkdir(parents=True)
+                with patch.object(viewer,'ROOT',root),self.assertRaises(SystemExit):
+                    viewer.main(['--tag','used','--credentials','private.json','--expected-build-id',BUILD])
 
     def test_lease_deadline_interrupts_batch_wait(self):
         from unittest.mock import patch
