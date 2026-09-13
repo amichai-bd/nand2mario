@@ -108,7 +108,13 @@ gravity alone at native rate. **Stepped** executes exact whole frames with
 `RUN_DOTS 70224`, so each press lands on its own released-to-pressed edge and
 one-row-per-second gravity never runs ahead of a capture.
 
-### Recorded session
+### Recorded scripted session
+
+This session ran against the **pre-restyle** Stackdrop image, built before the
+artwork was redrawn. Its frame CRC32 values therefore belong to that earlier
+tile atlas and are not reproducible from the current source. The decode contract
+is unchanged across the restyle, so `board_play.py` needs no change to drive the
+current image; that has not been rerun on hardware.
 
 Wire build `87d5f0280a2afad8be6b85dc601141cc`, ABI 1. The image is the
 `stackdrop` target built from commit `896e4e49`, fingerprint
@@ -151,3 +157,33 @@ rows shifted down, and the visible score changed from `0000` to `0100`. Frames
 more source frames in four wall seconds with no input, and the spawned piece
 descended four rows, which is the frozen one-row-per-second gravity observed at
 native rate.
+
+### Played from the phone viewer
+
+The board owner played Stackdrop from the authenticated phone page over the
+Cloudflare tunnel, using the eight tap buttons and both viewer modes. Two images
+were played, and they are separate claims:
+
+- the **pre-restyle** image this scripted session loaded, ROM SHA-256
+  `af11fbfae2ddf1607ca3c70f32d47eadb62fd5a1c5b5c3f3ead8ea6f2afa0c74`;
+- the **current** image, ROM SHA-256
+  `f2a9b159743a202541dd17dedaa99ffcc7ebf6d9d7012b28f4701a0ac9aed927`, rebuilt
+  from the restyled source and loaded with all 32768 bytes verified on readback.
+
+Nothing about one image's play is evidence about the other. Both sessions show
+the same thing and nothing more: the image loads, boots, renders and answers
+input from the viewer on real hardware, and the viewer works on an image other
+than Springtrail. The [viewer contract](../../../wiki/tools/n2m/host/LIVE_VIEWER.md)
+owns the tap, mode, history and release semantics; the viewer never loads, resets
+or programs the board.
+
+One viewer run record is retained for the run that served the current image:
+`status` PASS, `released` true, `uncertain` false, 216 captures over 436.3 s in
+free-run mode, stopped cleanly through its STOP file. It is the operator run that
+put the restyled image in front of the owner, not a record of the owner's own
+tapping.
+
+The loaded image remains ordinary session state, and none is resident now: the
+board was globally reset by KEY0 after these sessions, which clears the loaded
+image, frame ownership and transport state. Reload any image with
+`host load --package` before the next session.
