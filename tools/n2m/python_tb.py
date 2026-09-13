@@ -329,6 +329,15 @@ def environment(root, target, attempt, seed, runtime):
 
 
 def prepare(target, attempt, root=None, fixture_tools=None):
+    builder = FIXTURE_BUILDERS.get(target.get('preload'), '')
+    if builder.startswith('src/dv/springtrail/'):
+        from .fixture_preflight import fixture_imports
+        with fixture_imports(root):
+            return _prepare(target, attempt, root, fixture_tools)
+    return _prepare(target, attempt, root, fixture_tools)
+
+
+def _prepare(target, attempt, root=None, fixture_tools=None):
     if target.get('preload') == 'mooneye-reg-f':
         from .mooneye import prepare as prepare_mooneye
         prepare_mooneye(root, attempt, fixture_tools)
@@ -468,6 +477,9 @@ def prepare(target, attempt, root=None, fixture_tools=None):
             expected_sha = hashlib.sha256(image).hexdigest()
         prepare_preload(image, expected_sha, attempt)
         verify(attempt)
+    if target.get("preload"):
+        from .fixture_preflight import verify_prepared
+        verify_prepared(root, target, attempt)
     wave_paths = " ".join(f"/{target['top']}/{name}" for name in target.get("python", {}).get("waves", [])) or "/*"
     (attempt / "run.do").write_text(
         f"onerror {{quit -code 1}}\nlog {wave_paths}\nvcd file waves/simulation.vcd\n"

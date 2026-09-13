@@ -1304,3 +1304,40 @@ rechecks the image and every declared initialization-file hash immediately
 before launching Questa; missing or changed artifacts fail the attempt and
 reap the peer. Generated files remain under the immutable attempt directory.
 This target is separate from real-UART loading and does not replace its checks.
+
+
+## Python fixture preflight
+
+`python tools/build.py sim preflight TARGET --tag TAG --json` validates one
+Python target and its catalogue entry, declared source/import closure and actual
+selected wrapper/test import in a fresh process (30-second bound), then
+executes the same fixture preparation and preload verification as simulation.
+It does not discover Questa or acquire a simulator/board resource. The tag is
+exclusive; generated files and measured host time remain under `workdir/builds`.
+The existing whole-process supervisor enforces300 seconds, including its normal
+cleanup reserve; target-specific simulation allowances do not extend preflight.
+Use the pinned Python3.12.14/cocotb2.0.1 environment for cocotb targets; missing
+modules or symbols fail before preparation. No dependency installation is implicit.
+This is host preparation, not compilation, RTL execution or behavior acceptance.
+
+A declared preload that produces no manifest fails with its preload name and
+prepare-dispatch diagnostic. Normal Python preparation applies the same manifest
+and setup checks before compile/run commands. Generated preload files remain
+hash-checked; the two source probes compare complete shared sections with a fresh
+source build.
+
+The initial explicit source probes cover `entities-render305` variants (all174
+uploaded tiles, including unused source tiles) and `entities-oam305` groups
+(selected ordinary source writes against existing scratch/state/preservation
+checks). They reuse the independent SM83 source model with finite instruction
+bounds, not simulator traces. Neither changes the runtime oracle. The renderer
+stops at LCD enable; OAM stops at its source terminal/HALT. Runtime retirement,
+DMA/pixels, held pause, END and fault acceptance remain mandatory.
+
+Results name each applied check; bank/scratch probes outside these two families
+are **not applicable**, not a claim of equivalent coverage. External Mooneye
+preparation still uses its pinned-tool workflow and is explicitly refused by
+this standalone command. A successful preflight is not a reusable simulation
+PASS and does not replace required suites. Unknown or changed inputs must still
+meet their existing acceptance. The finite host mutation checks are in
+[the preflight tests](../../../tools/n2m/tests/test_fixture_preflight.py).

@@ -42,6 +42,10 @@ def parser():
     test.add_argument("--rebuild", action="store_true")
     test.add_argument("--questa-bin", help="Questa tool directory; otherwise discover on PATH")
     test.add_argument("--intel-sim-lib", help="supported Quartus eda/sim_lib directory for Intel memory targets")
+    preflight = sim.add_parser("preflight", help="prepare and check Python fixtures without discovering or launching Questa")
+    preflight.add_argument("target")
+    preflight.add_argument("--tag")
+    preflight.add_argument("--json", action="store_true")
     leaves.append(test)
     for leaf in leaves:
         leaf.add_argument("--tag")
@@ -213,6 +217,9 @@ def tagged(root, args, header, publish):
                               else link_proof(root, build, args, provenance) if args.action == "link-conformance"
                               else build_target(root, build, args, provenance) if args.action == "build"
                               else assemble_target(root, build, args, provenance))
+            elif args.command == "sim" and args.action == "preflight":
+                from .fixture_preflight import run
+                report.update(run(root, build, args.target))
             else:
                 simulator = Simulator(args.sim, questa_bin=args.questa_bin)
                 if not 0 <= args.seed <= 2147483647:
