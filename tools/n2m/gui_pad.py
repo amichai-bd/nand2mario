@@ -19,9 +19,13 @@ from .host.keyboard import KEYS
 KEYSYMS = {'Right': 0x27, 'Left': 0x25, 'Up': 0x26, 'Down': 0x28,
            'z': 0x5a, 'Z': 0x5a, 'x': 0x58, 'X': 0x58,
            'Shift_R': 0xa1, 'Return': 0x0d, 'KP_Enter': 0x0d}
-# Control and Alt modifiers in a Tk key event state.
-MODIFIERS = 0x4 | 0x8 | 0x20000
+# Control (0x4) and Alt (0x20000) in a Tk key event state, and nothing else.
+# Mod1 (0x8) is not Alt here: Windows latches NumLock into Mod1, so filtering it
+# would drop every key-down while NumLock is on.
+MODIFIERS = 0x4 | 0x20000
 ESCAPE = 0x1b
+# Both shift keys arrive on this one keycode; only the right one is Select.
+VK_SHIFT, SELECT = 0x10, 0xa1
 # Display order and the key each control names on its face.
 FACES = (('Right', 0x27, '→'), ('Left', 0x25, '←'),
          ('Up', 0x26, '↑'), ('Down', 0x28, '↓'),
@@ -44,8 +48,17 @@ def edge(keysym, keycode, state, down):
     Ctrl/Alt-modified downs are ignored and releases still clear a held key,
     matching `host keyboard`. Auto-repeat needs no filter here: a repeated down
     leaves the held union unchanged and writes nothing.
+
+    Any release on the shift keycode clears Select, whichever keysym Tk attaches.
+    Windows reports the press as `Shift_R` and its release as `Shift_L` on the
+    same keycode, so resolving a release by keysym alone leaves Select held until
+    focus loss or exit. Only the press still requires `Shift_R`, so left Shift
+    never presses Select; a release with nothing held changes no union and writes
+    nothing, which is why clearing on either keysym is safe and pressing is not.
     """
     code = virtual_key(keysym, keycode)
+    if code is None and not down and keycode == VK_SHIFT:
+        code = SELECT
     if code is None or (down and state & MODIFIERS):
         return None
     return code, down

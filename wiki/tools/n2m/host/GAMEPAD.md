@@ -53,11 +53,25 @@ the two commands cannot drift apart. Tk reports the same Windows virtual-key
 codes it is keyed by; only the shift keys need a keysym, because both arrive as
 `VK_SHIFT` and only the right one is Select.
 
+Windows does not report that pair symmetrically: a right-Shift press arrives as
+`Shift_R` and its release as `Shift_L`, on the same `VK_SHIFT` keycode. So **any
+release on the shift keycode clears Select**, whichever keysym it carries, while
+only `Shift_R` presses it. Left Shift therefore still never presses Select, and a
+release with nothing held changes no union and writes nothing. Clearing a button
+on an ambiguous release is safe; creating one is not.
+
 A key down adds its button and a key up removes it. Chords and opposite
 directions are preserved. Auto-repeat changes nothing, because a repeated down
-leaves the union unchanged and writes nothing. Ctrl- or Alt-modified downs are
-ignored; their releases still clear a held key. Escape or closing the window
+leaves the union unchanged and writes nothing. Escape or closing the window
 exits.
+
+**Only Control and Alt suppress a press.** A key-down is ignored when the Tk
+event state carries Control (`0x4`) or Alt (`0x20000`), matching `host keyboard`;
+its release still clears a held key. No other state bit suppresses anything, and
+in particular Shift, CapsLock, the extended-key flag and `Mod1` (`0x8`) do not.
+`Mod1` matters: Windows latches **NumLock** into it, so while NumLock is on every
+key event in the window carries `0x8`. Filtering it would drop every press and
+pass every release, leaving the on-screen buttons working and the keyboard dead.
 
 **Losing window focus releases every held button**, in one write, and the window
 stays open and playable. Alt+Tab or a click on another window delivers the key-up
@@ -134,8 +148,9 @@ released mask.
 ## Verification
 
 [`tools/n2m/tests/test_gui_pad.py`](../../../../tools/n2m/tests/test_gui_pad.py)
-covers the mapping, the single write per changed union, repeats, chords, mouse
-and keyboard equivalence, focus-loss release and the stale key-up after it, the
+covers the mapping, which state bits suppress a press and which must not, the
+asymmetric right-Shift press and release pair, the single write per changed
+union, repeats, chords, mouse and keyboard equivalence, focus-loss release and the stale key-up after it, the
 lease, the board poll and its failure, the request order through preflight and
 release, the uncertain and failed-release paths, and the refusal messages for a
 held board and for viewer-only options. It runs against a fake endpoint with no board and no window. A

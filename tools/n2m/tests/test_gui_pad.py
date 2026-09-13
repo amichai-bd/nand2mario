@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import shutil
 import sys
+import tkinter
 import unittest
 import uuid
 from contextlib import contextmanager
@@ -18,6 +19,19 @@ import fpga_viewer
 ROOT = Path(__file__).resolve().parents[3]
 BUILD = 'ab' * 16
 RIGHT, LEFT, UP, DOWN, A, B, SELECT, START = 0x27, 0x25, 0x26, 0x28, 0x5a, 0x58, 0xa1, 0x0d
+
+# Tk key event state bits on Windows, written as Tk names them rather than as the
+# pad's filter constant spells them. `ModifierTests` asks tkinter itself to decode
+# each one, so these are Tk's bits and not values copied out of `MODIFIERS`.
+# Windows has no Mod1 key: it latches NumLock into that bit, so a latched NumLock
+# rides on every key event in the window. Captured from a real Tk window on
+# Windows 11 with NumLock on, pressing an ordinary letter key, not the keypad:
+#   DOWN keysym=x keycode=88 state=0x00008 [Mod1(0x8)]
+#   UP   keysym=x keycode=88 state=0x00008 [Mod1(0x8)]
+SHIFT, LOCK, CONTROL, MOD1_NUMLOCK = 0x1, 0x2, 0x4, 0x8
+ALT = 0x20000  # Windows Tk reports Alt above the Mod bits; tkinter has no name for it.
+EXTENDED = 0x40000  # Windows' extended-key flag; the capture shows arrows carrying it.
+VK_SHIFT = 0x10  # Both shift keys arrive on this keycode; it is not one of the eight in KEYS.
 
 
 class Fake:
@@ -92,6 +106,89 @@ class MappingTests(unittest.TestCase):
 
     def test_names_follow_the_generated_bits(self):
         self.assertEqual(names(abi.BUTTON_LEFT | abi.BUTTON_A), ['Left', 'A'])
+
+
+class ModifierTests(unittest.TestCase):
+    """Which Tk state bits suppress a key-down, and which must not."""
+
+    def decode(self, state):
+        """tkinter's own rendering of a state word, used here as the naming authority."""
+        event = tkinter.Event()
+        event.state, event.char, event.delta, event.type = state, '', 0, '2'
+        return repr(event)
+
+    def test_tkinter_names_the_bits_this_file_asserts_on(self):
+        # No display is opened; Event is a plain record and repr decodes the word.
+        self.assertIn('state=Shift', self.decode(SHIFT))
+        self.assertIn('state=Lock', self.decode(LOCK))
+        self.assertIn('state=Control', self.decode(CONTROL))
+        self.assertIn('state=Mod1', self.decode(MOD1_NUMLOCK))
+        self.assertIn('state=Control|Mod1', self.decode(CONTROL | MOD1_NUMLOCK))
+
+    def test_the_captured_numlock_down_reaches_the_board(self):
+        # The exact event captured above: state 0x00008 and no other bit.
+        self.assertEqual(edge('x', 0x58, 0x00008, True), (B, True))
+
+    def test_only_control_and_alt_suppress_a_down(self):
+        for state in (0, SHIFT, LOCK, MOD1_NUMLOCK, SHIFT | MOD1_NUMLOCK, LOCK | MOD1_NUMLOCK,
+                      SHIFT | LOCK | MOD1_NUMLOCK, EXTENDED | MOD1_NUMLOCK):
+            self.assertEqual(edge('z', A, state, True), (A, True), self.decode(state))
+        for state in (CONTROL, ALT, CONTROL | ALT, CONTROL | MOD1_NUMLOCK, ALT | MOD1_NUMLOCK,
+                      CONTROL | SHIFT):
+            self.assertIsNone(edge('z', A, state, True), self.decode(state))
+
+    def test_a_modified_release_still_clears_a_held_key(self):
+        for state in (CONTROL, ALT, CONTROL | MOD1_NUMLOCK, MOD1_NUMLOCK):
+            self.assertEqual(edge('z', A, state, False), (A, False), self.decode(state))
+
+
+class ShiftKeyTests(unittest.TestCase):
+    """A right-Shift press and its release must resolve to the same button.
+
+    Captured from a real Tk window on Windows 11: Windows attaches a different
+    keysym to the press and the release of the same physical key.
+      DOWN keysym=Shift_R keycode=16 state=0x00008
+      UP   keysym=Shift_L keycode=16 state=0x00009
+    Keycode 16 is VK_SHIFT, which is not one of the eight codes in `KEYS`, so the
+    keycode fallback cannot resolve the release either.
+    """
+
+    def press_and_release(self):
+        client = Fake()
+        driver = Driver(Controller(client))
+        driver.key('Shift_R', VK_SHIFT, 0x00008, True)
+        driver.key('Shift_L', VK_SHIFT, 0x00009, False)
+        return client, driver
+
+    def test_the_real_event_pair_presses_and_releases_select(self):
+        client, driver = self.press_and_release()
+        self.assertEqual(client.masks, [abi.BUTTON_SELECT, 0])
+        self.assertEqual(client.effective, 0)
+        self.assertEqual(driver.controller.held_names(), [])
+        self.assertEqual(driver.controller.changes, 2)
+
+    def test_exit_needs_no_rescue_because_the_release_already_landed(self):
+        # Before the fix the union survived until focus loss or exit cleaned it up.
+        client, driver = self.press_and_release()
+        self.assertFalse(driver.focus_lost())
+
+    def test_left_shift_still_never_presses_select(self):
+        client = Fake()
+        driver = Driver(Controller(client))
+        driver.key('Shift_L', VK_SHIFT, 0, True)
+        driver.key('Shift_L', VK_SHIFT, 0, False)
+        self.assertEqual(client.masks, [])
+        self.assertEqual(driver.controller.held_names(), [])
+
+    def test_a_letter_whose_case_changes_between_press_and_release_still_clears(self):
+        # `z`/`Z` and `x`/`X` are the other keys whose keysym can differ across the
+        # pair; both cases are mapped, so the release resolves without the fallback.
+        client = Fake()
+        driver = Driver(Controller(client))
+        driver.key('z', A, 0, True)
+        driver.key('Z', A, SHIFT, False)
+        self.assertEqual(client.masks, [abi.BUTTON_A, 0])
+        self.assertEqual(driver.controller.held_names(), [])
 
 
 class ControllerTests(unittest.TestCase):
