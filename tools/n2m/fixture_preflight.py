@@ -2,6 +2,8 @@
 import hashlib
 import importlib
 import json
+import os
+import subprocess
 from pathlib import Path
 import sys
 import time
@@ -24,6 +26,7 @@ def run(root, build, name):
         raise ValueError(f'{name}: pinned external fixture tool preparation requires the existing Mooneye workflow')
     attempt = build/'preflight'/name
     attempt.mkdir(parents=True, exist_ok=False)
+    imports = import_target(root, target, attempt)
     before = {p: file_hash(root/p) for p in target['sources'] + target['python']['inputs']}
     try:
         python_tb.prepare(target, attempt, root)
@@ -38,10 +41,31 @@ def run(root, build, name):
     except (ValueError, AssertionError, FileNotFoundError) as error:
         raise ValueError(f'{name}: fixture preflight: {error}') from error
     return dict(status='PASS', scope='host preparation only; no simulator or hardware',
-                elapsed_seconds=time.monotonic()-started, inputs=before, checks=checks,
+                elapsed_seconds=time.monotonic()-started, imports=imports, inputs=before, checks=checks,
                 artifacts={p.relative_to(root).as_posix(): file_hash(p)
                            for p in attempt.rglob('*') if p.is_file()})
 
+
+
+def import_target(root, target, attempt):
+    """Import the actual selected wrapper in a fresh process, without running it."""
+    config = target['python']
+    entry = next(root/p for p in config['inputs'] if Path(p).name == config['module']+'.py')
+    env = {k:v for k,v in os.environ.items()
+           if not k.startswith(('PYTHON', 'COCOTB_', 'GPI_', 'PYGPI_')) and k != 'LIBPYTHON_LOC'}
+    command = [sys.executable, '-I', '-B', '-c',
+               'import importlib,sys; sys.path.insert(0,sys.argv[1]); '
+               'm=importlib.import_module(sys.argv[2]); '
+               'assert hasattr(m,sys.argv[3]), "missing selected test: "+sys.argv[3]',
+               str(entry.parent), config['module'], config['test']]
+    completed = subprocess.run(command, cwd=root, env=env, capture_output=True,
+                               text=True, encoding='utf-8', timeout=30)
+    (attempt/'import.log').write_text(completed.stdout+completed.stderr, encoding='utf-8')
+    if completed.returncode:
+        reason = (completed.stderr or completed.stdout).strip().splitlines()[-1]
+        raise ValueError(f"{config['module']}: actual target import failed: {reason}; "
+                         'use the pinned Python TB environment; see import.log')
+    return dict(module=config['module'], interpreter=sys.executable, status='PASS')
 
 def verify_prepared(root, target, attempt):
     """Also used by normal preparation before any compile/run command."""

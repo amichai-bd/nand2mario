@@ -1309,10 +1309,15 @@ This target is separate from real-UART loading and does not replace its checks.
 ## Python fixture preflight
 
 `python tools/build.py sim preflight TARGET --tag TAG --json` validates one
-Python target and its catalogue entry, declared source/import closure, then
+Python target and its catalogue entry, declared source/import closure and actual
+selected wrapper/test import in a fresh process (30-second bound), then
 executes the same fixture preparation and preload verification as simulation.
 It does not discover Questa or acquire a simulator/board resource. The tag is
 exclusive; generated files and measured host time remain under `workdir/builds`.
+The existing whole-process supervisor enforces300 seconds, including its normal
+cleanup reserve; target-specific simulation allowances do not extend preflight.
+Use the pinned Python3.12.14/cocotb2.0.1 environment for cocotb targets; missing
+modules or symbols fail before preparation. No dependency installation is implicit.
 This is host preparation, not compilation, RTL execution or behavior acceptance.
 
 A declared preload that produces no manifest fails with its preload name and

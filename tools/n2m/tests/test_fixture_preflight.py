@@ -98,10 +98,34 @@ class FixturePreflightTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'complete shared-section'):
             preflight.shared_sections((self.oam/'program.gb').read_bytes(), source.read_bytes(), fixture, source_map)
 
+    def test_actual_wrapper_import_rejects_missing_module_symbol_and_test(self):
+        folder = self.folder/'wrapper'; folder.mkdir(exist_ok=True)
+        wrapper = folder/'fixture_wrapper.py'
+        dependency = folder/'fixture_dependency.py'; dependency.write_text('value = 1\n')
+        target = {'python': {'module':'fixture_wrapper', 'test':'test_case',
+                            'inputs':[wrapper.relative_to(ROOT).as_posix()]}}
+        wrapper.write_text('from fixture_dependency import value\ndef test_case(): pass\n')
+        self.assertEqual(preflight.import_target(ROOT,target,folder)['status'],'PASS')
+        for body,reason in [('from fixture_dependency import absent','cannot import name'),
+                            ('import nonexistent_fixture_module','No module named'),
+                            ('value = 1','missing selected test')]:
+            wrapper.write_text(body+'\n')
+            with self.subTest(reason=reason), self.assertRaisesRegex(ValueError,reason):
+                preflight.import_target(ROOT,target,folder)
+
+    def test_public_preflight_has_fixed_whole_wall_cap(self):
+        from n2m.test_budget import main as supervised
+        from contextlib import redirect_stdout
+        import io
+        with patch('sys.argv',['tools/build.py','sim','preflight','python-entity-render-normal','--tag','budget']), \
+             patch('n2m.test_budget.supervise',return_value=(0,'{}')) as run, redirect_stdout(io.StringIO()):
+            self.assertEqual(supervised(),0)
+        self.assertEqual(run.call_args.kwargs,{'ceiling':300})
+
     def test_cli_never_discovers_questa(self):
         from contextlib import redirect_stdout
         import io
-        with patch('n2m.cli.Simulator') as simulator, redirect_stdout(io.StringIO()) as output:
+        with patch('n2m.fixture_preflight.import_target', return_value={'status':'tested separately'}), patch('n2m.cli.Simulator') as simulator, redirect_stdout(io.StringIO()) as output:
             code = main(['sim','preflight','python-joypad','--tag','preflight-cli-'+self.folder.name.split()[-1],'--json'], root=ROOT)
         self.assertEqual(code, 0, output.getvalue())
         simulator.assert_not_called()

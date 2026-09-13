@@ -201,7 +201,7 @@ def supervise(command, root, tag, *, target=None, ceiling=None):
 def main():
     from n2m.cli import main as worker, parser
     argv = sys.argv[1:]
-    if argv[:2] != ["sim", "test"]:
+    if argv[:2] not in (["sim", "test"], ["sim", "preflight"]):
         return worker(argv)
     args = parser().parse_args(argv)
     tag = args.tag
@@ -211,7 +211,8 @@ def main():
     root = Path(__file__).resolve().parents[2]
     command = [sys.executable, str(Path(__file__).resolve()), *argv]
     try:
-        code, output = supervise(command, root, tag, target=args.target)
+        options = {"ceiling": 300} if args.action == "preflight" else {"target": args.target}
+        code, output = supervise(command, root, tag, **options)
     except (OSError, ValueError) as error:
         code, output = 1, json.dumps({"status": "FAIL", "error": str(error)}) + "\n"
     print(output, end="")
