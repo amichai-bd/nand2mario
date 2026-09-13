@@ -191,7 +191,7 @@ For example, the later Springtrail proof compared five complete 160×144 frames:
 23,040 shade values per checkpoint, rather than a few reassuring pixels. A
 separate set of twenty samples measured the state and pixel paths. The corrected
 warm medians were about 0.122 seconds for state acquisition, 0.138 seconds for
-host image construction, and 1.051 seconds for the actual snapshot path. These
+state acquisition plus host image construction, and 1.051 seconds for the actual snapshot path. These
 are different operations, not three estimates of the same frame rate.
 [PR517](https://github.com/amichai-bd/nand2mario/pull/517) records the boundaries.
 
