@@ -1,6 +1,10 @@
-# Building a Game Boy on an FPGA, from a phone
+# Building a Game Boy on an FPGA with AI agents—from my phone
 
-*13 September 2026 · A project retrospective, not a release certificate*
+*Project retrospective · Evidence through 13 September 2026*
+
+I'm Amichai, a chip design engineer at NVIDIA, previously at Intel. This is a
+personal project: building the hardware was familiar territory; directing its
+development and testing entirely from a phone was the experiment.
 
 I was away on reserve duty, without physical access to my PC or FPGA. Before
 leaving, I had installed the ChatGPT app and connected the board and its UART
@@ -8,52 +12,60 @@ adapter. That small piece of preparation turned into a surprisingly large
 experiment: could I direct agents from my phone, have them build and verify a
 Game Boy-style computer at home, and eventually play its game from the same phone?
 
-<a href="../tools/n2m/host/LIVE_VIEWER.md"><img src="../tools/n2m/host/assets/live-viewer-phone.jpg" width="300" alt="Owner-provided phone screenshot showing actual FPGA pixels, Game Boy buttons and retired input commands"></a>
+<a href="../tools/n2m/host/LIVE_VIEWER.md"><img src="../tools/n2m/host/assets/live-viewer-phone.jpg" width="300" alt="Phone screenshot showing FPGA pixels, game controls and command history"></a>
 
-This is my phone looking at the FPGA's actual framebuffer through UART. It is
-not a camera pointed at a monitor. The controls below it send bounded button
-presses to the same host process that reads the pixels.
+*My phone viewing actual FPGA pixels read through UART, with queued button
+controls and execution history below. This is a browser screenshot, not a camera
+view of the physical monitor.*
 
 ## TL;DR
 
-I set out to build something I could recognize and play: a Game Boy-compatible
-system on a DE10-Lite FPGA. The name nand2mario preserves the original ambition,
-but the project became a hardware platform with original games rather than a
-way to distribute Mario. That choice avoided bringing commercial ROMs and copied
-assets into the project. Gameplay lives in ordinary SM83 software; it is not
-hardwired into the FPGA.
+I am a chip design engineer at NVIDIA, previously at Intel. While away on reserve
+duty, I directed AI agents from my Android phone to build a Game Boy-compatible
+system on a DE10-Lite FPGA at home. Before leaving, I had set up the ChatGPT app
+and connected the FPGA and UART adapter. After that, the work was remote.
 
-The unusual constraint was that all work after I left was remote, directed from
-my phone while I was away on reserve duty. I used remote app sessions and SSH into the home Windows
-machine. Agents worked across RTL, Python tooling, assembly, graphics,
-specifications and tests. I called the orchestrator Firstmate. It assigned an
-issue, gave an author a separate worktree and short branch, arranged an
-independent AI review, and merged after the required evidence passed. I did not
-approve every PR individually. I still chose goals and authorized changes in
-scope or physical access.
+I supplied prompts, engineering direction and feedback. The agents wrote the
+original project code and handled issues, branches, verification, reviews and
+merges. That includes hardware RTL, design verification, an assembler and linker,
+original games, host tools and the website documenting the work. The project also
+uses existing tools and third-party software; agent authorship does not mean we
+invented Questa, Quartus or every dependency.
 
-The repository's dated history runs from early scaffolding on 4 September to the
-phone viewer on 13 September. In between came a custom assembler and linker,
-a CPU and graphics pipeline, Intel memory-model simulation, UART controls,
-original games, and bounded physical tests. The useful breakthroughs were often
-about verification: replacing impractically long simulation plans with short
-complete harness checks plus bounded board runs, separating intended state from
-actual pixels, and making failures stop cleanly.
+The result is a system that executes SM83 game software on FPGA hardware, renders
+Game Boy graphics and exposes VGA and UART interfaces. We built Springtrail, an
+original platformer, and Stackdrop, a falling-block game. A bounded run of the
+external game Libbet provided another compatibility exercise. UART can load a
+supported game without reprogramming a compatible FPGA bitstream, read memory
+and registers, capture rendered pixels and apply button inputs.
 
-It was not a smooth autonomous success story. A stale snapshot epoch created a
-false reset alarm. Old game expectations stopped matching lives and countdown
-behavior. The first hour-long viewer command was actually subject to a
-five-minute supervisor limit. Restarting then encountered a stale session lock.
-Those failures mattered because I could not walk over to the machine and inspect
-it. Every remote claim needed an observable state and a recoverable path.
+The AI workflow was as deliberate as the hardware. A Firstmate orchestrator
+coordinated specialist crewmates across RTL, DV, software and FPGA work. Specs
+lived beside code. AGENTS.md and focused skills turned engineering corrections
+into instructions future sessions could use. Separate worktrees, independent
+AI reviews, finite acceptance criteria and limits on active work kept delivery
+manageable. The single Questa seat and the board required serialized access.
 
-The final viewer captures a frame in roughly 1.1 seconds and normally refreshes
-about every two seconds: around 0.5 frames per second, not video-rate streaming.
-It is enough to see the game and try tap controls, with obvious latency. This is
-scoped evidence of real software running on real hardware, not universal Game
-Boy compatibility or proof of a physical monitor. My strongest lesson was that
-remote hardware work needed trustworthy evidence and recoverable tooling more
-than it needed a larger number of agents.
+Some of the most consequential decisions came from steering that workflow:
+insisting on readable package-qualified RTL and register macros, using Intel's
+actual M9K simulation model, moving to a 25 MHz implementation clock while
+preserving Game Boy time, and adopting continuous Python verification. We also
+had to correct tests, deployment mismatches and process-lifetime bugs. End-to-end
+AI delivery still needed clear engineering judgment and evidence at each boundary.
+
+The most satisfying demonstration was closing the loop back to the phone. The
+host reads actual FPGA pixels over UART and serves them through an authenticated
+web page. I can queue button taps and see when they execute. The feed normally
+updates about every two seconds; it is a remote gameplay proof of concept, not
+video-rate streaming. It made the outcome tangible: I could interact with the
+machine the agents had been building, without returning to the desk.
+
+![Recorded FPGA frames: title, dynamic scene and first-stage WON](../showcase/springtrail-state-board.svg)
+
+*Actual UART-read FPGA frames from a recorded session, displayed as an animation
+of selected checkpoints. This is not a continuous live video. The
+[capture provenance](../showcase/README.md#current-springtrail-state-comparison)
+describes the independent full-frame comparisons.*
 
 ## The phone was the control room
 
@@ -64,26 +76,26 @@ and, later, the Android Claude app connected to Claude Code remote sessions. The
 the working directory, issue history and build records gave the work somewhere
 to persist outside a chat window.
 
-My recollection is that I started with the $200 ChatGPT plan and mostly used a
-model labeled Astra for the first three or four days. I used weekly-limit resets
-roughly daily for a while, then exhausted them. I bought the $200 Claude
-plan, mostly used the label Fable 5.1, and installed it remotely. Those are my
-recollections of the subscriptions and labels I saw, not a dated billing audit
-or a mapping to current public model names. The repository can date a merge;
-it cannot tell me exactly which credit reset paid for the conversation that
-produced it.
+I started with the $200 ChatGPT plan, mainly using the model labeled Astra for
+the first three or four days. I used weekly-limit resets roughly daily, then
+exhausted them. To keep going, I also bought the $200 Claude plan, installed
+Claude Code remotely through the WSL-to-PowerShell access path, and mainly used
+Fable 5.1. That is my account of the labels and subscriptions I used. The exact
+usage totals and switch dates still need filling in; the repository records
+merges, not which token budget funded them.
 
-That distinction is worth keeping. It is tempting to turn the story into a
-comparison of two models or a claim that a fixed amount of money bought a
-complete computer. I do not have a controlled experiment for either conclusion.
-What I do have is a record of decisions, code, checks and corrections across
-changing tools. Keeping that record in the repository made switching tools much
-less disruptive than it would have been if the plan lived only in one session.
+> **FIXME (owner input):** Add the dates, or approximate days, when ChatGPT
+> credits ran out, resets were used, and Claude was installed. The merge dates
+> below are known; they do not establish the dates of these personal events.
 
-## Firstmate needed rules, not just workers
+> **FIXME (owner input):** Add token or usage totals by provider/model if available,
+> with the covered period and what each number measures. Two subscription prices
+> alone do not establish total spend or token consumption. Leave unavailable
+> figures explicitly unknown; private account exports need not be published.
 
-I called the orchestrator Firstmate because I wanted something closer to a
-working engineering lead than a collection of independent chats. Its job was to
+## Organizing the agents: the engineering control loop
+
+The Firstmate orchestrator served as the engineering lead for the agent team. Its job was to
 choose the next bounded issue, keep ownership clear and finish work already
 close to delivery. An author worked in a separate Git worktree. Another agent
 reviewed the current commit. A draft PR carried the finite acceptance checklist.
@@ -110,6 +122,124 @@ interfaces and FPGA tools. That made it possible to ask one concrete question:
 what exact inputs produced this result? It also exposed integration mistakes
 that a narrow unit test missed, such as an import working in a clean process
 but failing after another suite had cached a module with the same name.
+
+The workflow itself became a maintained part of the project. AGENTS.md held the
+mandatory rules; focused skills explained repeatable methods for RTL, DV, FPGA
+work, issue authoring and review. Issue templates made the desired result and
+acceptance criteria explicit. Those files gave a new session a way to recover the
+working agreement when the previous conversation or its token budget ended.
+
+Concurrency needed limits. We capped active crewmates and open PRs so that
+review and merging could catch up with authors. The configured caps changed
+through the project; they were not a target to keep every worker busy. Questa
+also had one licensed simulation seat. More authors could prepare tests in
+separate worktrees, but they could not all run licensed simulations at once.
+That made resource ownership part of scheduling, alongside code ownership.
+
+### Borrow the ideas, adapt the engineering
+
+I developed much of the workflow by telling the agents how I wanted the project
+to run. Along the way, I found established skills with similar ideas and used
+them as references. The issue-based task breakdown and delegation resemble
+patterns in Matt Pocock's skills, although I would not claim that every part of
+our flow was derived from them. These references deserve credit:
+
+| Reference | Author / source | What I took into this project |
+|---|---|---|
+| Firstmate | Kun Chen — [@kunchenguid](https://x.com/kunchenguid), [Firstmate repository](https://github.com/kunchenguid/firstmate) | One orchestrator as my point of contact, coordinating crewmates and isolated work. |
+| `/grill-me` and related workflow ideas | Matt Pocock — [@mattpocockuk](https://x.com/mattpocockuk), [skills repository](https://github.com/mattpocock/skills) | Challenge ambiguity before implementation; a reference for related task-breakdown and delegation ideas. |
+| Superpowers and brainstorming | Jesse Vincent — [author](https://fsck.com/), [Superpowers repository](https://github.com/obra/superpowers) | Deliberate design alignment, composable skills and a structured development process. |
+
+I did not study every upstream skill in depth or adopt a framework unchanged.
+Even creating our own skills was largely prompt-driven. I gave the agents my
+take on the ideas and the behavior I wanted, then had them adapt the instructions
+for chip design. A hardware change has clock,
+reset, memory-latency and synthesis consequences. A simulation can pass while
+the programmed FPGA still contains an older design. One licensed simulator and
+one physical board also make unconstrained parallel execution impractical.
+
+Our adaptations made those concerns explicit: package-qualified RTL and register
+macros; vendor memory models; independent checks of retirements, transactions
+and pixels; source and tool identities attached to results; early fit/timing
+checks; and serialized hardware access with recoverable process lifetimes.
+Those are the project's choices, not claims about what the upstream authors
+prescribed. The [local grill-me skill](../../.agents/skills/grill-me/SKILL.md)
+records its pinned upstream revision and license; the broader influences above
+credit the ideas without implying that we installed every upstream feature.
+
+### The instructions evolved through feedback too
+
+I did not carefully read and approve every line of the skills or AGENTS.md.
+When an agent behaved differently from what I wanted, I described the problem
+and asked it to update the persistent instructions. That might mean finishing
+open PRs before starting more work, keeping the root as my single point of
+contact, changing concurrency limits, or following a particular RTL convention.
+The agents wrote those changes as well as the product code.
+
+The history shows the rules evolving during the project: making the root the
+[single point of contact](https://github.com/amichai-bd/nand2mario/commit/a200c89c),
+giving authors ownership of
+[delivery mechanics](https://github.com/amichai-bd/nand2mario/commit/4b6b1e18), and
+[shortening feedback loops](https://github.com/amichai-bd/nand2mario/commit/31e002e0).
+Those commits establish that the instructions changed; my description of how
+I prompted those changes is my firsthand account.
+
+This was an evolving control loop: observe agent behavior, clarify the intent,
+update the instructions, and see how the next work proceeds. It also has a
+limitation: an instruction written by an agent can misunderstand the correction
+or interact badly with another rule. Having a skill file was never enough on
+its own to establish that the behavior was right.
+
+### Techniques that made the agents useful together
+
+| Technique | How it worked here | Why it mattered |
+|---|---|---|
+| Spec-driven implementation | Contracts and acceptance criteria accompanied the source. | A reviewer could compare behavior with a written requirement. |
+| Specialist ownership | Authors handled bounded RTL, DV, software or tooling tasks in isolated worktrees. | Different disciplines could progress without sharing an unstable checkout. |
+| Persistent skills | Corrections to RTL style, FPGA operation and verification became reusable instructions. | A session restart did not have to erase what we had learned. |
+| Independent AI review | A different agent reviewed the current commit; fixes required confirmation. | An author's summary was not the sole basis for merging. |
+| Work-in-progress limits | Caps constrained active crewmates and open PRs; ready work took priority. | More generated code did not automatically mean more completed work. |
+| Evidence-driven verification | Tests used independent expectations, fault witnesses and source/tool identities. | Passing results had to mean something about the candidate being delivered. |
+| Repository handoffs | Issues, specifications and concise handoffs carried state across sessions and models. | Switching tools or exhausting a budget did not require restarting the project. |
+
+![State machine for AI implementation, verification and delivery](assets/agent-flow.svg)
+
+*The human-in-the-loop step is alignment: `/brainstorming`, `/grill-me` and
+relevant skills help define the goal, scope and acceptance. Agents then own the
+issue, isolated branch/worktree, code and specs, tests, commit/push/PR, independent
+AI review and CI, merge and delivery checks. Failed tests and review/CI findings
+return to code and specs without routine human approval. A decision that changes
+the agreed scope or requires new authority returns to alignment.*
+
+A useful example was RTL style. A generated sequential block could behave
+correctly while still being unlike the code I wanted to maintain. I asked for
+explicit package ownership and the register-macro convention. Recording that in
+the RTL skill made it a recurring review expectation. The same pattern applied
+to real vendor memory models and to FPGA operating procedures: feedback became
+part of the working system, not just a correction in one conversation.
+
+### The directory tree was part of the interface
+
+A small map helped an agent find both a component and the evidence expected of it:
+
+```text
+src/
+  rtl/       Synthesizable hardware and shared interfaces
+  dv/        Hardware verification, models and checkers
+  sw/        Original games and their editable assets
+  fpga/      Board integration
+tools/      Host clients, builds, software tools and wiki publishing
+wiki/       Owning contracts, architecture, presentations and articles
+.agents/    Reusable agent skills
+worktrees/  Isolated issue checkouts; generated output in each workdir/
+```
+
+The source owners and their contracts are linked through the
+[ownership map](../ownership.md). A CPU change has software and verification
+consumers; a host protocol change has RTL consumers. Keeping those relationships
+visible mattered more than making every discipline use the same language.
+Build logs belonged to the working attempt, while concise verification evidence
+belonged in the PR. A clean main checkout was the integration point.
 
 ## What the agents were actually building
 
@@ -150,6 +280,108 @@ of full game completion or sound synthesis.
 [The initial failure](https://github.com/amichai-bd/nand2mario/pull/382) is part of
 the result, not an embarrassing record to remove.
 
+### The useful capabilities were a stack
+
+| Capability | What it made possible |
+|---|---|
+| UART loading and complete readback | Transfer a built ROM, verify its bytes, then start it on the board. |
+| UART execution and input controls | Pause, advance execution and apply Game Boy button behavior from the host. |
+| Memory and live-register inspection | Inspect software state and hardware-facing registers without a camera. |
+| Full pixel capture | Read the rendered frame, independently of what the game says its state should be. |
+| Shared build entry points | Build software, run verification and postprocessing, and drive FPGA compilation and board operations. |
+| Original game and art tools | Turn assembly, shade grids and placement maps into ROMs and reviewable assets. |
+| Phone viewer and command history | Observe actual FPGA pixels remotely and see which button requests were queued or executed. |
+
+Changing games did not inherently mean recompiling and reprogramming the FPGA.
+With a compatible hardware image already installed, the host could load another
+supported ROM through UART. The
+[loader](../tools/n2m/host/SPEC.md) performs begin/write/end, full byte-for-byte
+readback and valid/paused checks; running is a separate action. That separation
+made trying software iterations practical. It is a controlled cartridge-image
+replacement, not overwriting instructions while the CPU executes them.
+
+### RTL: make register intent visible
+
+I cared about the code the agents produced, not only whether a test passed. The
+style used explicit module boundaries and package-qualified declarations. For
+example, the [CPU](../../src/rtl/cpu/n2m_cpu.sv) declares:
+
+```systemverilog
+n2m_cpu_pkg::cpu_execute_request_t execute_request;
+n2m_cpu_pkg::cpu_execute_result_t execute_result;
+```
+
+The type's owner is visible where it is used, without a wildcard package import
+bringing an implicit collection of names into scope. Our register convention
+also puts clock, reset and enable behavior into named macros. This actual line
+from the [tile decoder](../../src/rtl/display/dmg_tile_pixel.sv) captures the idea:
+
+```systemverilog
+`DFF_RST_EN(valid_s1, valid_s0, clk, enable, reset, 1'b0)
+```
+
+It is a rising-edge register with reset taking priority over enable. The macro
+[definitions](../../src/rtl/common/macros.svh) contain the nonblocking assignments;
+product call sites express the register intent instead of repeating the process
+boilerplate. Separate forms cover other reset and enable contracts. Assertion
+macros provide a similarly consistent way to name simulation checks and fail
+when their contracts are violated. This convention was an intentional constraint
+on generated code, recorded in the [RTL style](../src/rtl-reference-style.md).
+
+### Memory: simulate the primitive we build
+
+Memory was another place where convenient simulation could have hidden the wrong
+hardware contract. The shared
+[Intel RAM wrapper](../../src/rtl/common/n2m_intel_ram.sv) instantiates
+`altsyncram` with MAX 10 and M9K selected. That instance is compiled for both
+Questa, using Intel's installed vendor model, and FPGA synthesis.
+
+Its settings matter: an extra output register would change the consumer's
+latency; read/write collisions need an explicit contract; reset does not mean
+clearing the entire physical RAM. The wrapper gates requests and validity and
+checks illegal overlaps. Simulation preload supplies an initialization file to
+the model through a simulation-only parameter path. It does not replace the
+memory with a zero-latency Python or SystemVerilog array. Fit and timing checks
+still answer the separate question of whether the composed hardware meets its
+physical constraints.
+
+### Graphics: build a character from 8×8 tiles
+
+The graphics assets follow the native representation: an 8×8 tile has two bits
+per pixel, encoded as two bitplanes, for 16 bytes. Larger characters are composed
+from pieces; maps reference shared tiles, with placement and flip information.
+That makes reuse explicit rather than storing a full bitmap for every pose or
+scene. It also keeps the software close to the graphics hardware it targets.
+
+Our editable art is integer shade JSON plus placement maps. The
+[core art pipeline](../src/sw/springtrail/CORE_ART.md) reconstructs the compositions,
+and the [software tools](../tools/sw/SPEC.md) encode assets and render preview
+sheets. Those sheets let an agent inspect an animation pose, a reused tile or a
+mirroring error before integrating it. A shared tile change can affect several
+poses, so reviewing the composed character matters as much as reviewing its
+individual 8×8 pieces.
+
+![Original character poses and their shared tile maps](../src/sw/springtrail/character-art/small-tile-maps.svg)
+
+*An asset-review diagram, not an FPGA screenshot: composed poses expose how the
+8×8 pieces are reused. Editable shade grids and placement maps remain the source.*
+
+![Game artwork from editable tiles to a running ROM](assets/asset-build.svg)
+
+*Asset build path: shade grids and placement maps feed compositions and previews;
+encoded two-bitplane tiles are linked with game software into a ROM. The preview
+checks artwork, while execution and captured pixels check its integration.*
+
+This compact game representation serves a different purpose from the extra
+frame storage used by VGA and remote capture. Reading the actual rendered pixels
+provides evidence that parsing the game's intended state alone cannot provide.
+
+![A shared software and verification build session](../showcase/build-and-tests.svg)
+
+*Animated presentation of recorded command output, not a live terminal. The
+[session notes](../showcase/README.md#build-and-tests) identify the source and
+which output fields were shortened.*
+
 ## A dated trail of turning points
 
 The dates below use repository merge timestamps in UTC. They do not assign exact
@@ -179,6 +411,25 @@ slow control calls never established a Tcl root cause; it would be misleading
 to turn that history into a measured claim that Python fixed a vendor bug. The
 useful result was a bounded, complete harness with observable failures.
 [PR177](https://github.com/amichai-bd/nand2mario/pull/177) records that path.
+
+Python DV was a meaningful pivot because it connected verification to tools we
+could reuse outside the simulator. The continuous path drove the simulated UART
+with the product client; Python could organize stimulus, independent expectations
+and result processing. Questa still simulated the RTL and vendor memories. We
+changed the way tests drove and observed the design, not the design into a
+software emulator. Preloaded execution made functional iteration cheaper, while
+real upload/readback tests retained responsibility for loading behavior.
+
+The host environment was Windows, with WSL and PowerShell also involved in
+remote access and installation. Python environments, tool discovery and the
+Questa/Quartus installations were therefore part of reproducibility. The builder
+had to identify the tools and inputs actually used, retain a useful failure, and
+manage child-process lifetimes. A command that worked in one interactive shell
+was not enough for unattended operation from a phone.
+
+> **FIXME (owner input):** Confirm which Windows tools were installed before
+> departure and which were installed remotely. Add any specific art-creation
+> tool you want credited beyond the repository's shade-grid and preview tools.
 
 The eventual approach was complementary. First exercise the complete simulation
 harness at a short duration, including completion, pause, watchdog and cleanup.
@@ -283,10 +534,15 @@ lease needs the budget the parent really selected. A failed process needs an
 explanation that survives it. Those details sound mundane until the hardware is
 somewhere you cannot reach.
 
-The exciting part was not watching agents produce a large diff. It was seeing
-actual pixels from a machine at home, pressing a button from my phone, and
-having enough evidence to understand what happened. That was the point where
-the project stopped being a collection of promises and became a tool I could use.
+For me, this was a demonstration of how far AI agents can carry an engineering
+project when they can use the whole development stack. They did not stop at
+writing modules: they built tools, checked behavior, reviewed changes, deployed
+to hardware and exposed the result for remote interaction. My contribution was
+direction and engineering judgment throughout that process.
+
+The payoff was wonderfully concrete: a game running on the FPGA at home, its
+pixels arriving on my phone, and my button presses travelling back to it. The
+same phone that I had used to direct the work became the way I could play it.
 
 ---
 
@@ -294,5 +550,4 @@ the project stopped being a collection of promises and became a tool I could use
 repository evidence. Personal subscription, model-label and rough day-count
 recollections are attributed above; technical measurements link to their
 producing records. The article records the project on 13 September 2026 and does
-not replace current specifications. No Hacker News submission or comment is part
-of this work.*
+not replace current specifications.*

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="860" height="410" viewBox="0 0 860 410" role="img" aria-labelledby="t d"><title id="t">Game asset build path</title><desc id="d">Editable shade tiles and placement maps become composed art and previews, encoded tiles, then linked game ROM and FPGA output.</desc><rect width="860" height="410" rx="2" fill="#101810"/><g font-family="Consolas, Liberation Mono, monospace" fill="#d5e8ae"><text x="28" y="40" font-size="22">&gt; ASSET BUILD / tiles to game</text>
+<rect x="35" y="65" width="790" height="60" rx="2" fill="#172617" stroke="#799b5e"/>
+<text x="55" y="89" font-size="16">1  EDIT</text><text x="55" y="112" font-size="16">8×8 shade tiles + placement maps</text>
+<path d="M430 127 v14 m-5 -5 l5 5 l5 -5" stroke="#b1dc76" fill="none" stroke-width="2"/>
+<rect x="35" y="145" width="790" height="60" rx="2" fill="#172617" stroke="#799b5e"/>
+<text x="55" y="169" font-size="16">2  COMPOSE / PREVIEW</text><text x="55" y="192" font-size="16">Assemble poses; inspect reuse and flips</text>
+<path d="M430 207 v14 m-5 -5 l5 5 l5 -5" stroke="#b1dc76" fill="none" stroke-width="2"/>
+<rect x="35" y="225" width="790" height="60" rx="2" fill="#172617" stroke="#799b5e"/>
+<text x="55" y="249" font-size="16">3  ENCODE</text><text x="55" y="272" font-size="16">Two bitplanes: 16 bytes per 8×8 tile</text>
+<path d="M430 287 v14 m-5 -5 l5 5 l5 -5" stroke="#b1dc76" fill="none" stroke-width="2"/>
+<rect x="35" y="305" width="790" height="60" rx="2" fill="#172617" stroke="#799b5e"/>
+<text x="55" y="329" font-size="16">4  LINK / EXECUTE</text><text x="55" y="352" font-size="16">Assets + SM83 software → ROM → FPGA</text>
+</g></svg>
