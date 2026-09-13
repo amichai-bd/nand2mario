@@ -23,8 +23,8 @@ class Impact(unittest.TestCase):
             self.write(p,'# fixture\n')
         self.write('src/dv/springtrail/model.py','VALUE=1\n')
         self.write('src/dv/springtrail/other.py','VALUE=2\n')
-        self.write('src/dv/springtrail/test_a.py','from model import VALUE\ndef contract():pass\n')
-        self.write('src/dv/springtrail/test_b.py','from other import VALUE\ndef contract():pass\n')
+        self.write('src/dv/springtrail/test_a.py','import cocotb\nfrom model import VALUE\n@cocotb.test()\nasync def contract(dut):assert VALUE==1\n')
+        self.write('src/dv/springtrail/test_b.py','import cocotb\nfrom other import VALUE\n@cocotb.test()\nasync def contract(dut):assert VALUE==2\n')
         self.write('tools/test_host.py','import unittest\n')
         self.write('src/rtl/tb.sv','module tb; endmodule\n')
         self.targets={}
@@ -84,13 +84,30 @@ class Impact(unittest.TestCase):
         self.write('src/dv/springtrail/test_a.py','from importlib import import_module as load\nload("model")\ndef contract():pass\n')
         self.commit();self.base=self.git('rev-parse','HEAD').strip()
         row=self.result()['units']['a']
-        self.assertEqual(row['decision'],'selected');self.assertIn('dynamic',row['reasons'][0])
+        self.assertEqual(row['decision'],'selected');self.assertIn('unqualified',row['reasons'][0])
 
     def test_unresolved_import_cannot_be_an_equal_input_candidate(self):
         self.write('src/dv/springtrail/test_a.py','import missing_dependency\ndef contract():pass\n')
         self.commit();self.base=self.git('rev-parse','HEAD').strip()
         row=self.result()['units']['a']
         self.assertEqual(row['decision'],'selected');self.assertIn('unresolved',row['reasons'][0])
+
+    def test_dynamic_loaders_and_io_cannot_hide_behind_another_targets_declaration(self):
+        loaders=(
+            'import importlib.util\ns=importlib.util.spec_from_file_location("other", "src/dv/springtrail/other.py")\nm=importlib.util.module_from_spec(s)\ns.loader.exec_module(m)\n',
+            'from importlib.util import spec_from_file_location as spec, module_from_spec as module\ns=spec("other", "src/dv/springtrail/other.py")\ns.loader.exec_module(module(s))\n',
+            'import io\nDATA=io.FileIO("src/dv/springtrail/other.py").read()\n',
+            'from io import FileIO as read_file\nDATA=read_file("src/dv/springtrail/other.py").read()\n')
+        for source in loaders:
+            with self.subTest(source=source):
+                self.write('src/dv/springtrail/test_a.py',source+'def contract():pass\n')
+                self.commit();self.base=self.git('rev-parse','HEAD').strip()
+                self.write('src/dv/springtrail/other.py','VALUE=99\n')
+                report=self.result()
+                self.assertEqual(report['units']['a']['decision'],'selected')
+                self.assertIn('unqualified',report['units']['a']['reasons'][0])
+                self.assertEqual(report['units']['b']['decision'],'selected')
+                self.write('src/dv/springtrail/other.py','VALUE=2\n')
 
     def test_changed_implicit_tool_configuration_and_test(self):
         for path in ('tools/n2m/runtime.py','tools/n2m/dependencies.json','src/dv/builder/targets.json',
@@ -100,6 +117,26 @@ class Impact(unittest.TestCase):
                 report=self.result();self.assertEqual(report['units']['a']['decision'],'selected')
                 if path.startswith('tools/') or path.endswith('targets.json'):self.assertEqual(report['review_candidates'],0)
                 self.write(path,original)
+
+    def test_implicit_and_nested_execution_shapes_are_not_static_candidates(self):
+        for source in ('def contract(value=load()):pass\n',
+                       'def contract(value: load()):pass\n',
+                       'VALUE=lambda: 1\ndef contract():pass\n',
+                       'VALUES=[x for x in values]\ndef contract():pass\n',
+                       '@marker\ndef contract():pass\n',
+                       'class Dynamic:pass\ndef contract():pass\n',
+                       'with context:pass\ndef contract():pass\n'):
+            with self.subTest(source=source):
+                self.write('src/dv/springtrail/test_a.py',source)
+                self.commit();self.base=self.git('rev-parse','HEAD').strip()
+                self.assertEqual(self.result()['units']['a']['decision'],'selected')
+
+    def test_declared_imported_model_must_also_have_supported_shape(self):
+        self.write('src/dv/springtrail/model.py','VALUE=load()\n')
+        self.commit();self.base=self.git('rev-parse','HEAD').strip()
+        row=self.result()['units']['a']
+        self.assertEqual(row['decision'],'selected')
+        self.assertIn('model.py',row['reasons'][0])
 
     def test_missing_catalogue_test_is_a_validation_failure(self):
         self.write('tools/test_missing.py','import unittest\n')

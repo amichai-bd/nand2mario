@@ -3,7 +3,6 @@ import ast
 import hashlib
 import json
 import subprocess
-import sys
 import time
 from pathlib import Path
 
@@ -14,7 +13,7 @@ from .simulation import load_target
 
 
 def git(root, *args):
-    return subprocess.check_output(['git', '-C', str(root), *args], stderr=subprocess.PIPE)
+    return subprocess.check_output(['git', '-C', str(root), *args], stderr=subprocess.PIPE, timeout=30)
 
 
 def changes(root, base):
@@ -45,36 +44,40 @@ def target_inputs(root, target):
 
 
 def uncertainty(root, target):
-    # Only static Python targets are candidates in this first advisory slice.
-    # Preloads and drivers perform dynamic preparation beyond this static proof.
+    """A positive call-free subset, not a general Python dependency analyzer."""
     if target.get('testbench')!='python' or target.get('preload') or target.get('driver'):
         return 'preload, driver or non-Python dependency qualification remains manual'
-    risky={'__import__','import_module','eval','exec','compile','open','read_text','read_bytes',
-           'glob','rglob','iterdir','listdir','walk','run','Popen','system','getattr','globals','locals'}
     modules={Path(p).stem for p in target['python']['inputs'] if p.endswith('.py')}
-    modules.update(Path(p).parent.name for p in target['python']['inputs'] if p.endswith('/__init__.py'))
-    external=set(sys.stdlib_module_names)|{'cocotb'}
     for path in target['python']['inputs']:
         if not path.endswith('.py'):continue
         tree=ast.parse((root/path).read_text(encoding='utf-8'),filename=path)
-        aliases=set(risky)
+        decorators=set()
         for node in ast.walk(tree):
+            if isinstance(node,(ast.FunctionDef,ast.AsyncFunctionDef)):
+                for decorator in node.decorator_list:
+                    if (isinstance(decorator,ast.Call) and not decorator.args and not decorator.keywords
+                            and isinstance(decorator.func,ast.Attribute) and decorator.func.attr=='test'
+                            and isinstance(decorator.func.value,ast.Name) and decorator.func.value.id=='cocotb'):
+                        decorators.update((decorator,decorator.func))
+                    else:return f'unqualified decorator dependency: {path}'
             if isinstance(node,ast.ImportFrom):
-                aliases.update(a.asname or a.name for a in node.names if a.name in risky)
-                imports=[node.module.split('.')[0]] if node.module else []
-                if node.level:return f'relative import qualification remains manual: {path}'
-            elif isinstance(node,ast.Import):imports=[a.name.split('.')[0] for a in node.names]
+                if node.level or not node.module or any(a.name=='*' for a in node.names):
+                    return f'unqualified relative or wildcard import: {path}'
+                imports={node.module.split('.')[0]}
+            elif isinstance(node,ast.Import):imports={a.name.split('.')[0] for a in node.names}
             else:continue
-            if set(imports)-modules-external:
-                return f'unresolved or external import requires qualification: {path}'
+            if imports-modules-{'cocotb'}:
+                return f'unqualified external or unresolved import: {path}'
         for node in ast.walk(tree):
-            if (isinstance(node,ast.Name) and node.id in aliases or
-                    isinstance(node,ast.Attribute) and node.attr in risky):
-                return f'dynamic import/data/execution dependency requires review: {path}'
-            if isinstance(node,ast.Call):
-                name=node.func.id if isinstance(node.func,ast.Name) else node.func.attr if isinstance(node.func,ast.Attribute) else None
-                if name in aliases or name is None:
-                    return f'dynamic import/data/execution dependency requires review: {path}'
+            if (isinstance(node,ast.Name) and node.id=='cocotb' and isinstance(node.ctx,ast.Store)
+                    or isinstance(node,ast.arg) and node.arg=='cocotb'):
+                return f'unqualified entry-decorator shadowing: {path}'
+            if isinstance(node,(ast.Call,ast.Attribute)) and node not in decorators:
+                return f'unqualified call or attribute dependency: {path}'
+            if isinstance(node,(ast.ClassDef,ast.With,ast.AsyncWith,ast.Lambda,ast.ListComp,
+                                ast.SetComp,ast.DictComp,ast.GeneratorExp,ast.For,ast.AsyncFor,
+                                ast.Await,ast.YieldFrom)):
+                return f'unqualified implicit callable dependency: {path}'
     return None
 
 
@@ -108,10 +111,11 @@ def report(root, base):
         elif paths&inputs[name]:row['reasons']=['changed inputs: '+', '.join(sorted(paths&inputs[name]))]
         else:
             try:
-                target,_=load_target(root,name)
+                target=definitions[name]
                 unknown=uncertainty(root,target)
                 if unknown:row['reasons']=[unknown]
                 else:
+                    load_target(root,name)
                     hashes={p:file_hash(root/p) for p in sorted(inputs[name])}
                     equal=all(hashlib.sha256(git(root,'show',commit+':'+p)).hexdigest()==h for p,h in hashes.items())
                     if equal:

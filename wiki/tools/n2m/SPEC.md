@@ -1355,7 +1355,12 @@ Standalone host dependency closure is unknown, so host units remain selected.
 New, deleted, renamed, unmapped, tool, configuration or catalogue changes force
 conservative fallback. Invalid input closure, dynamic data/import behavior,
 preloads/drivers, non-Python and unresolved import qualification select the
-corresponding simulation too. Static candidates carry exact repository input
-hashes against the base; byte differences, including checkout line endings,
+corresponding simulation too. Candidates are restricted to declared modules with plain imports and call-free
+function/data bodies. Only the literal no-argument `@cocotb.test()` entry
+decorator is qualified; other calls, attributes, decorators, classes, context
+managers, comprehensions and implicit callable constructs remain selected. This
+is a small positive subset, not general Python dependency analysis. Every
+declared imported Python module must also qualify. Candidates carry exact
+repository input hashes against the base; byte differences, including checkout line endings,
 prevent equality. The report is advisory preparation cost, not proof of faster
 delivery or permission to omit pixel, state, mutation or completion gates.
