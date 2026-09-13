@@ -177,11 +177,16 @@ than Springtrail. The [viewer contract](../../../wiki/tools/n2m/host/LIVE_VIEWER
 owns the tap, mode, history and release semantics; the viewer never loads, resets
 or programs the board.
 
-One viewer run record is retained for the run that served the current image:
-`status` PASS, `released` true, `uncertain` false, 216 captures over 436.3 s in
-free-run mode, stopped cleanly through its STOP file. It is the operator run that
-put the restyled image in front of the owner, not a record of the owner's own
-tapping.
+**What is retained, and what is not.** The row clear with its retained frames
+came from the scripted host session above, which is not the viewer path. The
+owner's viewer play has no retained frames: it rests on the owner's own report of
+what he did and saw, not on a stored artifact. One viewer run record is retained,
+for the run that served the current image to him: `status` PASS, `released` true,
+`uncertain` false, 216 captures over 436.3 s in free-run mode, stopped cleanly
+through its STOP file. That record is the operator run that put the restyled
+image on the page, and it is not a record of the owner's own tapping. So the
+viewer path is attested rather than captured, and no frame here should be read as
+a capture of the owner's play.
 
 The loaded image remains ordinary session state, and none is resident now: the
 board was globally reset by KEY0 after these sessions, which clears the loaded
