@@ -66,6 +66,8 @@ def parser():
     tests = commands.add_parser("tests", help="one catalogue of every runnable test; select by level and label").add_subparsers(dest="action", required=True)
     validate = tests.add_parser("validate", help="prove the catalogue still covers every test in the tree")
     listing = tests.add_parser("list", help="name the tests one selection would run")
+    affected = tests.add_parser("affected", help="explain conservative impact; never replace required checks")
+    affected.add_argument("--base", required=True)
     runner = tests.add_parser("run", help="run one selection and write each measured wall back")
     for leaf in (listing, runner):
         leaf.add_argument("--level", type=int, choices=catalogue.LEVELS,
@@ -79,7 +81,7 @@ def parser():
                         help="declare a budget above the ordinary 300-second pre-merge aggregate")
     runner.add_argument("--questa-bin")
     runner.add_argument("--intel-sim-lib")
-    for leaf in (validate, listing, runner):
+    for leaf in (validate, listing, runner, affected):
         leaf.add_argument("--tag")
         leaf.add_argument("--json", action="store_true")
     remove = commands.add_parser("clean", help="remove generated output under exactly one build tag")
