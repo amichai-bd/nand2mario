@@ -18,7 +18,8 @@ rules between pages. Keep shared and generated contracts at their mapped owner.
    only beside an explicit implementation or verification gap, with a verified
    open issue and a close condition. Remove it when the gap closes. External
    issue/PR citations may support technical facts. The repository statistics
-   page alone may retain delivery history and issue/PR measurements.
+   page may retain delivery measurements; dated editorial history belongs in
+   `wiki/blogs/` under blog-writer, not in specifications.
 5. Check links and source/test alignment using the
    [review guide](../agent-flow/references/review.md).
 

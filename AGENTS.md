@@ -30,7 +30,9 @@ only beside an explicit implementation or verification gap tracked by an open
 issue. Remove closed-issue references, PR history, and delivery narratives from
 specifications; link source, tests, and contracts instead. External issue/PR
 citations may support technical facts. The repository statistics page is the
-explicit exception for delivery history and issue/PR measurements.
+explicit exception for delivery history and issue/PR measurements. Dated editorial
+retrospectives in `wiki/blogs/` may also cite completed issues and PRs as historical
+evidence; they do not define current behavior or replace owning specifications.
 
 ## Style
 
