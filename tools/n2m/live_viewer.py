@@ -142,7 +142,7 @@ def server(latest, username, password, port=0):
 
 
 def capture_loop(client, latest, out, png_writer, *, expected_build, stop,
-                 seconds=30, interval=2, clock=time.monotonic, wait=None):
+                 seconds=30, interval=2, clock=time.monotonic, wait=None, buttons=None):
     """No load/reset/step/gameplay; one capture/readback at a time."""
     wait = wait or stop.wait
     result = {'status':'FAIL','captures':[],'capture_count':0}
@@ -168,6 +168,7 @@ def capture_loop(client, latest, out, png_writer, *, expected_build, stop,
         failures = 0
         while not stop.is_set() and clock()-started < seconds:
             tick = clock()
+            captured = False
             try:
                 meta,packed = client.snapshot()
                 if meta['size'] != abi.FRAME_BYTES or len(packed) != abi.FRAME_BYTES:
@@ -188,11 +189,17 @@ def capture_loop(client, latest, out, png_writer, *, expected_build, stop,
                     (out/f"capture-{result['capture_count']}.png").write_bytes(png)
                     (out/f"capture-{result['capture_count']}.2bpp").write_bytes(packed)
                 failures = 0
+                captured = True
             except RejectedCommand:
                 failures += 1
                 latest.mark('ERROR','capture rejected')
                 if failures >= 2:
                     raise
+            if captured and buttons is not None:
+                receipt = buttons.one(client,stop,clock=clock,wait=wait)
+                if receipt is not None:
+                    result.setdefault('inputs',[]).append(receipt)
+                    result['inputs'] = result['inputs'][-32:]
             if client.uncertain:
                 raise RuntimeError('uncertain session')
             wait(max(0,interval-(clock()-tick)))

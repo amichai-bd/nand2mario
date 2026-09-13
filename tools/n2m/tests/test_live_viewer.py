@@ -15,6 +15,7 @@ from n2m import generated_interfaces as abi
 from n2m.host.client import RejectedCommand
 from n2m.live_viewer import Latest, capture_loop, server, PAGE
 from fpga_viewer import png_writer
+from n2m.viewer_buttons import Buttons, enqueue
 
 BUILD = 'ab'*16
 
@@ -32,15 +33,17 @@ class Fake:
         self.state = abi.STATE_PAUSED
         self.events = []
         self.count = 0
+        self.mask = 0
     def identify(self):
         self.events.append('identify')
         return {'abi':1,'build_id':BUILD if self.fault!='identity' else '00'*16}
     def read_host(self, address):
         self.events.append(('read',address))
         return {abi.HOST_REG_IMAGE_VALID:1,abi.HOST_REG_INPUT_SOURCE:abi.INPUT_SOURCE_UART,
-                abi.HOST_REG_INPUT_EFFECTIVE:0,abi.HOST_REG_STATE:self.state}[address]
+                abi.HOST_REG_INPUT_EFFECTIVE:self.mask,abi.HOST_REG_STATE:self.state}[address]
     def write_host(self, address, value):
         self.events.append(('write',address,value))
+        if address==abi.HOST_REG_INPUT:self.mask=value
     def control(self, action):
         self.events.append(action)
         assert action in ('RUN','HALT')
@@ -55,6 +58,7 @@ class Fake:
             raise RuntimeError('fake uncertainty')
         if self.fault=='rejected': raise RejectedCommand('SNAPSHOT',1)
         seq = 1 if self.fault=='duplicate' else self.count
+        self.events.append('READ_FRAME_COMPLETE')
         return {'size':5760,'epoch':3,'seq':seq,'dot':seq*70224},bytes([0xe4])*5760
 
 
@@ -144,5 +148,74 @@ class ViewerTests(unittest.TestCase):
             self.assertEqual(request('/frame.png',auth)[2]['Cache-Control'],'no-store, max-age=0')
         finally:
             http.shutdown();http.server_close();thread.join()
+
+class ButtonQueueTests(unittest.TestCase):
+    def runtime(self, folder):
+        out=Path(folder);(out/'service.json').write_text('{}')
+        return out
+
+    def test_fifo_capacity_invalid_and_claimed_never_replayed(self):
+        with tempfile.TemporaryDirectory() as folder:
+            out=self.runtime(folder)
+            for value in (0,256,True):
+                with self.assertRaises(ValueError):enqueue(out,value,134)
+            for duration in (0,1001,True):
+                with self.assertRaises(ValueError):enqueue(out,1,duration)
+            ids=[enqueue(out,1,134) for _ in range(16)]
+            self.assertEqual(ids,list(range(1,17)))
+            with self.assertRaises(ValueError):enqueue(out,1,134)
+            first=out/'inbox'/f'{1:020d}.json'
+            first.rename(first.with_suffix('.claimed'))
+            clock=Clock();clock.value=0;client=Fake(clock)
+            receipt=Buttons(out).one(client,clock,clock=clock,wait=clock.wait)
+            self.assertEqual(receipt['id'],2)
+            self.assertTrue(first.with_suffix('.claimed').exists())
+            self.assertTrue(receipt['released'])
+            self.assertEqual(client.mask,0)
+
+    def test_drain_one_after_complete_frame_and_release_before_next(self):
+        with tempfile.TemporaryDirectory() as folder:
+            out=self.runtime(folder);enqueue(out,1,134);enqueue(out,2,1000)
+            clock=Clock();clock.value=0;client=Fake(clock)
+            r=capture_loop(client,Latest(clock=clock),out,png_writer,expected_build=BUILD,
+                           stop=clock,seconds=4,interval=2,clock=clock,wait=clock.wait,buttons=Buttons(out))
+            self.assertEqual(r['status'],'PASS')
+            self.assertEqual([x['id'] for x in r['inputs']],[1,2])
+            relevant=[x for x in client.events if x in ('snapshot','READ_FRAME_COMPLETE') or isinstance(x,tuple) and x[0]=='write']
+            self.assertEqual(relevant,[
+                'snapshot','READ_FRAME_COMPLETE',('write',abi.HOST_REG_INPUT,1),('write',abi.HOST_REG_INPUT,0),
+                'snapshot','READ_FRAME_COMPLETE',('write',abi.HOST_REG_INPUT,2),('write',abi.HOST_REG_INPUT,0),
+                ('write',abi.HOST_REG_INPUT,0)])
+
+    def test_invalid_record_no_input_and_stop_releases(self):
+        with tempfile.TemporaryDirectory() as folder:
+            out=self.runtime(folder);enqueue(out,1,134)
+            path=next((out/'inbox').glob('*.json'));path.write_text('{"opcode":"RESET"}')
+            clock=Clock();clock.value=0;client=Fake(clock)
+            receipt=Buttons(out).one(client,clock,clock=clock,wait=clock.wait)
+            self.assertEqual(receipt['status'],'REJECTED');self.assertEqual(client.events,[])
+            enqueue(out,1,134)
+            stop=threading.Event()
+            receipt=Buttons(out).one(client,stop,clock=clock,wait=lambda _:stop.set())
+            self.assertEqual(receipt['status'],'CANCELLED');self.assertTrue(receipt['released']);self.assertEqual(client.mask,0)
+            (out/'STOP').touch()
+            with self.assertRaises(ValueError):enqueue(out,1,134)
+
+    def test_uncertain_press_stops_capture_without_further_traffic(self):
+        class Broken(Fake):
+            def write_host(self,address,value):
+                super().write_host(address,value)
+                if value:
+                    self.uncertain=True
+                    raise RuntimeError('uncertain input')
+        with tempfile.TemporaryDirectory() as folder:
+            out=self.runtime(folder);enqueue(out,1,134)
+            clock=Clock();clock.value=0;client=Broken(clock)
+            r=capture_loop(client,Latest(clock=clock),out,png_writer,expected_build=BUILD,
+                           stop=clock,seconds=4,clock=clock,wait=clock.wait,buttons=Buttons(out))
+            self.assertEqual(r['status'],'FAIL');self.assertFalse(r['cleanup']['verified'])
+            self.assertEqual(client.events[-1],('write',abi.HOST_REG_INPUT,1))
+            self.assertEqual(client.count,1)
+            self.assertFalse(list((out/'inbox').glob('*.json')))
 
 if __name__=='__main__':unittest.main()

@@ -19,6 +19,7 @@ from n2m.host.client import Client
 from n2m.host.transport import session, session_root
 from n2m.live_viewer import Latest, capture_loop, server
 from n2m.records import atomic_json
+from n2m.viewer_buttons import Buttons, enqueue
 from n2m.test_budget import supervise
 
 
@@ -70,7 +71,7 @@ def worker(args):
             with session(out,selection,session_root(ROOT)) as (wire,sequence,persist,_selected):
                 client = Client(wire,sequence=sequence,persist=persist,record=record)
                 result = capture_loop(client,latest,out,png_writer,expected_build=args.expected_build_id,
-                                      stop=stop,seconds=args.seconds,interval=args.interval)
+                                      stop=stop,seconds=args.seconds,interval=args.interval,buttons=Buttons(out))
     finally:
         atomic_json(out/'result.json',result)
         http.shutdown();http.server_close();thread.join(timeout=2)
@@ -82,8 +83,10 @@ def worker(args):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--tag',required=True)
-    parser.add_argument('--credentials',required=True,help='private local JSON; contents are never printed')
+    parser.add_argument('--credentials',help='private local JSON; contents are never printed')
     parser.add_argument('--init-credentials',action='store_true')
+    parser.add_argument('--queue-mask',type=lambda value:int(value,0),help='publish a local bounded button press; never opens UART')
+    parser.add_argument('--press-ms',type=int,default=134)
     parser.add_argument('--expected-build-id')
     for name in ('uart-port','uart-vid','uart-pid','uart-identity'):
         parser.add_argument('--'+name)
@@ -94,6 +97,12 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if not args.tag.isalnum():
         parser.error('tag must be alphanumeric')
+    if args.queue_mask is not None:
+        index = enqueue(ROOT/'workdir/builds'/args.tag/'live-viewer',args.queue_mask,args.press_ms)
+        print(json.dumps({'status':'QUEUED','id':index}))
+        return 0
+    if not args.credentials:
+        parser.error('private credentials path required for initialization or serving')
     if args.init_credentials:
         path = Path(args.credentials)
         path.parent.mkdir(parents=True,exist_ok=True)
