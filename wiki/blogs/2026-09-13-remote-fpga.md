@@ -289,7 +289,7 @@ the result, not an embarrassing record to remove.
 | Memory and live-register inspection | Inspect software state and hardware-facing registers without a camera. |
 | Full pixel capture | Read the rendered frame, independently of what the game says its state should be. |
 | Shared build entry points | Build software, run verification and postprocessing, and drive FPGA compilation and board operations. |
-| Original game and art tools | Turn assembly, shade grids and placement maps into ROMs and reviewable assets. |
+| Original game and art tools | Build ROMs from assembly and encoded tile atlases; compose review art with placement maps. |
 | Phone viewer and command history | Observe actual FPGA pixels remotely and see which button requests were queued or executed. |
 
 Changing games did not inherently mean recompiling and reprogramming the FPGA.
