@@ -527,6 +527,7 @@ units:
   tools/ci/tests/test_pr_policy.py: {kind: unit, level: 0, labels: [ci], duration_seconds: 0.22}
   tools/ci/tests/test_profiles.py: {kind: unit, level: 1, labels: [ci], duration_seconds: 13.46}
   tools/ci/tests/test_trust.py: {kind: unit, level: 1, labels: [ci], duration_seconds: 2.92}
+  tools/n2m/tests/test_affected.py: {kind: unit, level: 0, labels: [builder], duration_seconds: null}
   tools/n2m/tests/test_assembler.py: {kind: unit, level: 0, labels: [builder, sw], duration_seconds: 0.61}
   tools/n2m/tests/test_assets.py: {kind: unit, level: 1, labels: [builder, sw], duration_seconds: 2.11}
   tools/n2m/tests/test_baseline.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 0.16}
