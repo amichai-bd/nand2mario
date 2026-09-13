@@ -41,8 +41,9 @@ ROUTE_HOLD = 5.5
 # after the applied dot guarantees the settled RETRY frame.
 ROUTE_PERIODS = 280
 PAUSE_CYCLES = (0, 30, 60)
-PLANS = {'short': 2, 'full': 90}
-CAPS = {'short': 300, 'full': 1980}
+PLANS = {'short': 2, 'routine': 30, 'full': 90}
+PAUSES = {2: PAUSE_CYCLES, 30: (0, 12, 24), 90: PAUSE_CYCLES}
+CAPS = {'short': 300, 'routine': 780, 'full': 1980}
 SPAWN = Game(player=Player())
 MACHINE_MUTEX = 1357311510
 
@@ -161,7 +162,7 @@ def run(client, rom, root, *, epoch, cycles, rom_sha256, deadline=None,
     armed = False
     schedule = Schedule()
     result = dict(status='FAIL', cycles=cycles, planned_seconds=cycles*CYCLE_SECONDS,
-                  rom_sha256=rom_sha256, lcd=LCD, routes=ROUTES, pause_cycles=PAUSE_CYCLES,
+                  rom_sha256=rom_sha256, lcd=LCD, routes=ROUTES, pause_cycles=PAUSES[cycles],
                   samples=[], lifecycles=[])
 
     def record(kind, **fields):
@@ -284,7 +285,7 @@ def run(client, rom, root, *, epoch, cycles, rom_sha256, deadline=None,
             assert current['dot'] > previous['dot'] and current['retired'] > previous['retired'], 'ENDURANCE_PROGRESS'
             buttons(0)
             press_start(f'{index:03d}-restart', 'play')
-            if index in PAUSE_CYCLES:
+            if index in PAUSES[cycles]:
                 press_start(f'{index:03d}-pause', 'paused')
                 press_start(f'{index:03d}-resume', 'play')
             assert clock() < deadline_cycle, 'ENDURANCE_CYCLE_BUDGET'

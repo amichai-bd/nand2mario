@@ -165,3 +165,29 @@ class ScheduledFrames(unittest.TestCase):
         self.assertEqual(client.mask, 0)
 
 
+
+
+class RoutinePlan(unittest.TestCase):
+    def test_thirty_cycles_include_three_actual_pause_resume_pairs(self):
+        import hashlib, tempfile
+        from pathlib import Path
+        from endurance import run, PLANS, CAPS
+        from test_endurance import Fake
+        self.assertEqual(PLANS, {'short': 2, 'routine': 30, 'full': 90})
+        self.assertEqual(CAPS, {'short': 300, 'routine': 780, 'full': 1980})
+        client = Fake()
+        with tempfile.TemporaryDirectory() as directory:
+            result = run(client, bytes(32768), Path(directory)/'run', epoch=6,
+                         cycles=PLANS['routine'], rom_sha256=hashlib.sha256(bytes(32768)).hexdigest(),
+                         clock=client.clock, sleep=client.tick)
+        self.assertEqual(result['status'], 'PASS')
+        self.assertEqual(result['planned_seconds'], 600)
+        self.assertGreaterEqual(result['continuous_seconds'], 600)
+        self.assertEqual(len(result['samples']), 75)
+        self.assertEqual(len(result['lifecycles']), 3)
+        pairs = [(s['name'], w.mode, w.lives) for s,w in zip(result['samples'],client.sampled)
+                 if s['name'].endswith(('-pause','-resume'))]
+        self.assertEqual(pairs, [(f'{i:03d}-{name}', mode, 1) for i in (0,12,24)
+                                for name,mode in (('pause',3),('resume',1))])
+        self.assertFalse(client.running)
+        self.assertEqual(client.mask, 0)
