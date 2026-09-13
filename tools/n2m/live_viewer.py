@@ -12,16 +12,24 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from . import generated_interfaces as abi
 from .host.client import RejectedCommand
 from .springtrail_play import finish
+from .viewer_buttons import DEFAULT_MODE, MODES
+
+FRAME_DOTS = 70224  # One whole DMG frame; the step unit in stepped mode.
+MAX_STEP_FRAMES = 60
 
 PAGE = b'''<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>FPGA live view</title><style>body{margin:20px;background:#17191c;color:#eee;font:16px system-ui;text-align:center}img{image-rendering:pixelated;display:block;margin:20px auto;background:#333}p{font-variant-numeric:tabular-nums}small{color:#aeb6c0}#commands{text-align:left;font:14px system-ui;padding-left:20px}#commands li{padding:6px}.QUEUED{color:#77baff}.EXECUTING{color:#ffd166}.RETIRED{color:#84df9b}.FAILED,.UNCERTAIN{color:#ff9393}.CANCELLED{color:#aaa}</style>
-<h1>FPGA live view</h1><p id="state">Connecting</p><img id="frame" alt="Actual FPGA pixels"><small id="detail"></small><p id="buttons"></p><p id="input-status"></p><h2>Commands (newest first)</h2><ol id="commands"></ol>
+<h1>FPGA live view</h1><p id="state">Connecting</p><img id="frame" alt="Actual FPGA pixels"><small id="detail"></small><p id="buttons"></p><p id="modes"></p><p id="mode-status"></p><p id="input-status"></p><h2>Commands (newest first)</h2><ol id="commands"></ol>
 <script>
 let last=0,sequence=0;const state=document.querySelector('#state'),frame=document.querySelector('#frame'),detail=document.querySelector('#detail');
-for(const button of ['Up','Left','Right','Down','A','B','Start','Select']){const b=document.createElement('button');b.textContent=button;b.style.cssText='font:20px system-ui;padding:12px;margin:4px';b.onclick=async()=>{const label=document.querySelector('#input-status');try{const r=await fetch('/input',{method:'POST',headers:{'Content-Type':'application/json','X-Viewer-Input':'tap'},body:JSON.stringify({button})});if(!r.ok)throw Error('Queue full, busy, stopped or refused');const result=await r.json();label.textContent='Queued '+button+' #'+result.id}catch(e){label.textContent=e.message}};document.querySelector('#buttons').appendChild(b)}
+async function send(payload,name){const label=document.querySelector('#input-status');try{const r=await fetch('/input',{method:'POST',headers:{'Content-Type':'application/json','X-Viewer-Input':'tap'},body:JSON.stringify(payload)});if(!r.ok)throw Error('Queue full, busy, stopped or refused');const result=await r.json();label.textContent='Queued '+name+' #'+result.id}catch(e){label.textContent=e.message}}
+function control(target,text,payload){const b=document.createElement('button');b.textContent=text;b.style.cssText='font:20px system-ui;padding:12px;margin:4px';b.onclick=()=>send(payload,text);document.querySelector(target).appendChild(b)}
+for(const button of ['Up','Left','Right','Down','A','B','Start','Select'])control('#buttons',button,{button});
+for(const mode of ['free-run','stepped'])control('#modes','Mode: '+mode,{mode});
+function modeStatus(s){const step=s.step?' | advanced '+s.step.executed_dots+' of '+s.step.requested_dots+' dots to dot '+s.step.completed_dot+(s.step.short_by_dots?' | SHORT by '+s.step.short_by_dots+' dots (reason '+s.step.reason+')':''):'';document.querySelector('#mode-status').textContent='Mode '+(s.mode||'unknown')+(s.mode==='stepped'?' | step '+s.step_frames+' frame(s) of 70224 dots'+step+' | not a real-time proof':'')}
 function scale(){let n=Math.max(1,Math.floor((innerWidth-40)/160));frame.style.width=(160*n)+'px';frame.style.height=(144*n)+'px'}scale();addEventListener('resize',scale);
-function commands(s){const list=document.querySelector('#commands');list.replaceChildren();if(s.commands_error){list.textContent=s.commands_error;return}for(const r of s.commands||[]){const li=document.createElement('li');li.className=r.state;const names=['Right','Left','Up','Down','A','B','Select','Start'].filter((n,i)=>r.mask&(1<<i)).join('+');li.textContent='#'+r.id+' '+(names||'mask '+r.mask)+' '+r.milliseconds+' ms | '+r.state+' | queued '+(r.queued_at||'-')+' | started '+(r.started_at||'-')+' | completed '+(r.completed_at||'-');list.appendChild(li)}}
-async function poll(){try{const r=await fetch('/status.json',{cache:'no-store'});if(!r.ok)throw Error();const s=await r.json();commands(s);if(s.sequence&&s.sequence!==sequence){const image=await fetch('/frame.png?v='+s.sequence,{cache:'no-store'});if(!image.ok)throw Error();const url=URL.createObjectURL(await image.blob());const prior=frame.src;frame.src=url;sequence=s.sequence;if(prior.startsWith('blob:'))URL.revokeObjectURL(prior)}last=Date.now();state.textContent=s.state+(s.reason?' - '+s.reason:'');detail.textContent=s.sequence?'Capture '+s.sequence+' | '+s.captured_at+' | age '+s.age_seconds.toFixed(1)+' s | '+s.latency_seconds.toFixed(3)+' s capture | '+s.core_state+' | source '+s.source.seq:'Waiting for actual pixels'}catch(e){state.textContent='OFFLINE / STALE'}setTimeout(poll,1000)}poll();setInterval(()=>{if(Date.now()-last>5000)state.textContent='OFFLINE / STALE'},1000);
+function commands(s){const list=document.querySelector('#commands');list.replaceChildren();if(s.commands_error){list.textContent=s.commands_error;return}for(const r of s.commands||[]){const li=document.createElement('li');li.className=r.state;const names=['Right','Left','Up','Down','A','B','Select','Start'].filter((n,i)=>r.mask&(1<<i)).join('+');const what=r.mode?'mode '+r.mode:(names||'mask '+r.mask)+' '+r.milliseconds+' ms';li.textContent='#'+r.id+' '+what+' | '+r.state+' | queued '+(r.queued_at||'-')+' | started '+(r.started_at||'-')+' | completed '+(r.completed_at||'-');list.appendChild(li)}}
+async function poll(){try{const r=await fetch('/status.json',{cache:'no-store'});if(!r.ok)throw Error();const s=await r.json();commands(s);modeStatus(s);if(s.sequence&&s.sequence!==sequence){const image=await fetch('/frame.png?v='+s.sequence,{cache:'no-store'});if(!image.ok)throw Error();const url=URL.createObjectURL(await image.blob());const prior=frame.src;frame.src=url;sequence=s.sequence;if(prior.startsWith('blob:'))URL.revokeObjectURL(prior)}last=Date.now();state.textContent=s.state+(s.reason?' - '+s.reason:'');detail.textContent=s.sequence?'Capture '+s.sequence+' | '+s.captured_at+' | age '+s.age_seconds.toFixed(1)+' s | '+s.latency_seconds.toFixed(3)+' s capture | '+s.core_state+' | source '+s.source.seq:'Waiting for actual pixels'}catch(e){state.textContent='OFFLINE / STALE'}setTimeout(poll,1000)}poll();setInterval(()=>{if(Date.now()-last>5000)state.textContent='OFFLINE / STALE'},1000);
 </script>'''
 
 
@@ -36,8 +44,14 @@ class Latest:
         self.png = None
         self.when = None
         self.data = {'state':'STARTING','sequence':0}
+        self.notes = {'mode':DEFAULT_MODE}
 
-    def publish(self, png, metadata, latency):
+    def describe(self, **fields):
+        """Sticky status fields, such as the active mode, kept across captures."""
+        with self.lock:
+            self.notes.update(fields)
+
+    def publish(self, png, metadata, latency, extra=None):
         with self.lock:
             prior = self.data.get('source')
             if prior is not None:
@@ -50,6 +64,7 @@ class Latest:
                          'captured_at':datetime.now(timezone.utc).isoformat(),
                          'source':dict(metadata),'latency_seconds':latency,'core_state':'RUNNING',
                          'sha256':hashlib.sha256(png).hexdigest()}
+            self.data.update(extra or {})
 
     def mark(self, state, reason=None, core_state=None):
         with self.lock:
@@ -61,7 +76,7 @@ class Latest:
 
     def read(self):
         with self.lock:
-            status = dict(self.data)
+            status = dict(self.data,**self.notes)
             age = None if self.when is None else max(0,self.clock()-self.when)
             status['age_seconds'] = age
             if status['state'] == 'LIVE' and age > self.stale_after:
@@ -69,7 +84,8 @@ class Latest:
             return status, self.png
 
 
-def server(latest, username, password, port=0, *, input_origin=None, submit=None, command_history=None):
+def server(latest, username, password, port=0, *, input_origin=None, submit=None,
+           submit_mode=None, command_history=None):
     if input_origin is not None:
         origin = urlsplit(input_origin)
         if origin.scheme != 'https' or not origin.hostname or origin.username or origin.password or origin.path or origin.query or origin.fragment:
@@ -145,12 +161,21 @@ def server(latest, username, password, port=0, *, input_origin=None, submit=None
             try:
                 record = json.loads(payload)
                 masks = {'Right':1,'Left':2,'Up':4,'Down':8,'A':16,'B':32,'Select':64,'Start':128}
-                if not isinstance(record,dict) or set(record) != {'button'} or record['button'] not in masks:
+                if not isinstance(record,dict):
+                    raise ValueError('invalid request')
+                # Mode selection shares this route, and so its authentication.
+                if set(record) == {'mode'} and submit_mode is not None:
+                    if record['mode'] not in MODES:
+                        raise ValueError('invalid mode')
+                    action = lambda:submit_mode(record['mode'])
+                elif set(record) == {'button'} and record['button'] in masks:
+                    action = lambda:submit(masks[record['button']],134)
+                else:
                     raise ValueError('invalid button')
             except (ValueError,TypeError):
                 return self.respond(400)
             try:
-                index = submit(masks[record['button']],134)
+                index = action()
             except (ValueError,FileExistsError):
                 return self.respond(409,b'Queue full, busy or stopped')
             return self.respond(202,json.dumps({'status':'QUEUED','id':index}).encode(),'application/json')
@@ -183,9 +208,39 @@ def server(latest, username, password, port=0, *, input_origin=None, submit=None
     return LimitedServer(('127.0.0.1',port),Handler)
 
 
+def state_for(mode):
+    return abi.STATE_PAUSED if mode=='stepped' else abi.STATE_RUNNING
+
+
+def advance(client, dots):
+    """Execute exactly `dots` emulated dots through bounded RUN_DOTS calls.
+
+    A STOPPED reply ends the step early; the shortfall is returned so the
+    viewer can report it rather than pretend the step completed.
+    """
+    executed, completed, reason = 0, None, abi.WIRE_RUN_DOTS_COUNT
+    while executed < dots:
+        reply = client.run_dots(min(abi.WIRE_RUN_DOTS_MAX,dots-executed))
+        executed += reply['executed']
+        completed = reply['dot']
+        if reply['reason'] != abi.WIRE_RUN_DOTS_COUNT:
+            reason = reply['reason']
+            break
+    return {'requested_dots':dots,'executed_dots':executed,'completed_dot':completed,
+            'reason':reason,'short_by_dots':dots-executed}
+
+
 def capture_loop(client, latest, out, png_writer, *, expected_build, stop,
-                 seconds=30, interval=2, clock=time.monotonic, wait=None, buttons=None):
-    """No load/reset/step/gameplay; one capture/readback at a time."""
+                 seconds=30, interval=2, clock=time.monotonic, wait=None, buttons=None,
+                 step_frames=1):
+    """No load/reset/gameplay; one capture/readback at a time.
+
+    Free-run is the default and lets the board run between captures. Stepped
+    mode pauses the core and advances exactly `step_frames` whole frames per
+    capture, so it is not evidence of sustained native-rate behavior.
+    """
+    if type(step_frames) is not int or not 1 <= step_frames <= MAX_STEP_FRAMES:
+        raise ValueError('step must be 1..%d whole frames' % MAX_STEP_FRAMES)
     wait = wait or stop.wait
     result = {'status':'FAIL','captures':[],'capture_count':0}
     started = clock()
@@ -208,6 +263,9 @@ def capture_loop(client, latest, out, png_writer, *, expected_build, stop,
         if client.read_host(abi.HOST_REG_STATE) != abi.STATE_RUNNING:
             raise ValueError('core did not resume')
         failures = 0
+        active = DEFAULT_MODE
+        latest.describe(mode=active,step_frames=step_frames)
+        result['mode'] = active
         while not stop.is_set() and clock()-started < seconds:
             tick = clock()
             if buttons is not None:
@@ -222,17 +280,36 @@ def capture_loop(client, latest, out, png_writer, *, expected_build, stop,
                     result['inputs'] = result['inputs'][-32:]
                 if stop.is_set():
                     break
-            tick = clock()
+            step = None
             try:
+                requested = buttons.mode if buttons is not None else DEFAULT_MODE
+                if requested != active:
+                    # RUN_DOTS needs a paused core; free-run resumes it. The
+                    # frozen batch above already released and verified input 0.
+                    client.control('HALT' if requested=='stepped' else 'RUN')
+                    active = requested
+                    if client.read_host(abi.HOST_REG_STATE) != state_for(active):
+                        raise ValueError('core did not enter '+active+' mode')
+                    result['mode'] = active
+                    latest.describe(mode=active)
+                expected_state = state_for(active)
+                if active == 'stepped':
+                    step = dict(advance(client,step_frames*FRAME_DOTS),frames=step_frames)
+                    result['step'] = step
+                tick = clock()
                 meta,packed = client.snapshot()
                 if meta['size'] != abi.FRAME_BYTES or len(packed) != abi.FRAME_BYTES:
                     raise ValueError('frame size mismatch')
-                if client.read_host(abi.HOST_REG_STATE) != abi.STATE_RUNNING:
+                if client.read_host(abi.HOST_REG_STATE) != expected_state:
                     raise ValueError('core stopped during capture')
                 png_writer(packed,out/'latest.png')
                 png = (out/'latest.png').read_bytes()
                 latency = clock()-tick
-                latest.publish(png,meta,latency)
+                extra = {'core_state':'PAUSED' if active=='stepped' else 'RUNNING'}
+                latest.publish(png,meta,latency,extra=dict(extra,step=step) if step else extra)
+                if step and step['short_by_dots']:
+                    # Surfaced with the image it belongs to; never quietly dropped.
+                    latest.mark('LIVE','step executed %d of %d dots' % (step['executed_dots'],step['requested_dots']))
                 row = dict(latest.read()[0],packed_sha256=hashlib.sha256(packed).hexdigest())
                 result['capture_count'] += 1
                 result['captures'].append(row)

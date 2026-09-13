@@ -11,6 +11,8 @@ from .springtrail_play import apply_mask
 
 CAPACITY = 16
 ACTIVE = {'QUEUED','EXECUTING'}
+MODES = ('free-run','stepped')
+DEFAULT_MODE = MODES[0]
 
 
 def timestamp():
@@ -59,10 +61,14 @@ def merge_history(out, changes):
 
 
 def validate(record):
-    if set(record) != {'id','mask','milliseconds'}:
+    if set(record) not in ({'id','mask','milliseconds'},{'id','mode'}):
         raise ValueError('button record fields')
     if type(record['id']) is not int or record['id'] < 1:
         raise ValueError('button record sequence')
+    if 'mode' in record:
+        if record['mode'] not in MODES:
+            raise ValueError('viewer mode outside the published set')
+        return record
     if type(record['mask']) is not int or not 1 <= record['mask'] <= 255:
         raise ValueError('button mask outside1..255')
     if type(record['milliseconds']) is not int or not 1 <= record['milliseconds'] <= 1000:
@@ -71,8 +77,18 @@ def validate(record):
 
 
 def enqueue(out, mask, milliseconds):
+    """Publish one bounded press into the shared FIFO."""
+    return submit(out,{'mask':mask,'milliseconds':milliseconds})
+
+
+def enqueue_mode(out, mode):
+    """Publish one mode change; it is ordered and retained like a press."""
+    return submit(out,{'mode':mode})
+
+
+def submit(out, fields):
     out = Path(out)
-    validate({'id':1,'mask':mask,'milliseconds':milliseconds})
+    validate(dict(fields,id=1))
     if not (out/'service.json').is_file() or (out/'STOP').exists() or (out/'result.json').exists():
         raise ValueError('viewer runtime is not accepting requests')
     inbox = out/'inbox'
@@ -85,7 +101,7 @@ def enqueue(out, mask, milliseconds):
         sequence_file = inbox/'sequence'
         index = int(sequence_file.read_text())+1 if sequence_file.exists() else 1
         atomic_json(sequence_file,index)
-        record = validate({'id':index,'mask':mask,'milliseconds':milliseconds})
+        record = validate(dict(fields,id=index))
         path = inbox/f'{index:020d}.json'
         atomic_json(path,record)
         try:
@@ -101,6 +117,7 @@ class Buttons:
         self.out = Path(out)
         self.inbox = self.out/'inbox'
         self.inbox.mkdir(exist_ok=True)
+        self.mode = DEFAULT_MODE
 
     def update(self, index, state, **fields):
         with producer(self.inbox,wait=True):
@@ -152,6 +169,12 @@ class Buttons:
                 receipt['status'] = 'CANCELLED'
                 return receipt
             self.update(record['id'],'EXECUTING',started_at=timestamp())
+            if 'mode' in record:
+                # Mode selection sends no UART traffic, so it can never leave a
+                # key pressed; the batch already released every earlier press.
+                self.mode = record['mode']
+                receipt['status'] = 'APPLIED'
+                return receipt
             pressed = True
             apply_mask(client,record['mask'])
             started = clock()
