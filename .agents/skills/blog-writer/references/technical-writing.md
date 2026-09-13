@@ -11,7 +11,7 @@ predicts votes, traffic or acceptance.
 - [Show HN rules](https://news.ycombinator.com/showhn.html): an ordinary blog
   post is a regular submission. Hardware can require a video or detailed article
   to make the work accessible, but an article is not automatically a Show HN.
-- [Paul Graham, Write Like You Talk](https://www.paulgraham.com/writing44.html):
+- [Paul Graham, Writing, Briefly](https://www.paulgraham.com/writing44.html):
   conversational revision helps expose unnecessarily formal wording. Read a
   difficult paragraph aloud and rewrite it without losing the mechanism.
 - [Julia Evans, Some blogging myths](https://jvns.ca/blog/2023/06/05/some-blogging-myths/):

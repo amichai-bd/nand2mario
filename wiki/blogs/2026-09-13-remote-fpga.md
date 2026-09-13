@@ -23,8 +23,8 @@ way to distribute Mario. That choice avoided bringing commercial ROMs and copied
 assets into the project. Gameplay lives in ordinary SM83 software; it is not
 hardwired into the FPGA.
 
-The unusual constraint was that I did most of the directing from my phone while
-away on reserve duty. I used remote app sessions and SSH into the home Windows
+The unusual constraint was that all work after I left was remote, directed from
+my phone while I was away on reserve duty. I used remote app sessions and SSH into the home Windows
 machine. Agents worked across RTL, Python tooling, assembly, graphics,
 specifications and tests. I called the orchestrator Firstmate. It assigned an
 issue, gave an author a separate worktree and short branch, arranged an
@@ -60,13 +60,13 @@ than it needed a larger number of agents.
 The practical access chain mattered as much as the model. I used Termius and
 Tailscale for SSH access to the home machine, going through Windows WSL into
 PowerShell when necessary. I also used the Android ChatGPT remote experience
-and, later, remote access through the Claude Code app. The tools changed, but
+and, later, the Android Claude app connected to Claude Code remote sessions. The tools changed, but
 the working directory, issue history and build records gave the work somewhere
 to persist outside a chat window.
 
 My recollection is that I started with the $200 ChatGPT plan and mostly used a
-model labeled Astra for the first three or four days. Weekly-limit resets were
-available roughly daily for a while, then I ran out. I bought the $200 Claude
+model labeled Astra for the first three or four days. I used weekly-limit resets
+roughly daily for a while, then exhausted them. I bought the $200 Claude
 plan, mostly used the label Fable 5.1, and installed it remotely. Those are my
 recollections of the subscriptions and labels I saw, not a dated billing audit
 or a mapping to current public model names. The repository can date a merge;
@@ -115,7 +115,9 @@ but failing after another suite had cached a module with the same name.
 
 The hardware is a DMG-oriented system: SM83 CPU, memory map, graphics, timers,
 interrupts, DMA and joypad behavior. The DE10-Lite implementation uses a 25 MHz
-system architecture, with the Game Boy timing relationships handled inside it.
+system architecture. The change from a 50 MHz internal system clock to 25 MHz
+was a timing-closure choice; it preserved the emulated 4.194304 MHz Game Boy tick.
+The game was not being sped up to run at 25 MHz.
 The display side includes VGA, while UART provides loading, execution controls,
 input and snapshots. The
 [architecture lessons](../presentations/README.md) and
