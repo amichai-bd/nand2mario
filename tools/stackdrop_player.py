@@ -18,7 +18,7 @@ from n2m.records import atomic_json, file_hash
 from n2m.stackdrop_session import play
 from n2m.test_budget import supervise
 
-ROM = 'af11fbfae2ddf1607ca3c70f32d47eadb62fd5a1c5b5c3f3ead8ea6f2afa0c74'
+ROM = 'f2a9b159743a202541dd17dedaa99ffcc7ebf6d9d7012b28f4701a0ac9aed927'
 
 
 def finish(client, result, path, *, armed=True):

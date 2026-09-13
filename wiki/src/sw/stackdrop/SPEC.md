@@ -56,19 +56,37 @@ host HALT is separate and freezes emulated time through the existing interface.
 
 ## Visible encoding
 
-Use original background tiles with identity palette E4. The well begins at
-pixel (48,24); each cell is one 8-by-8 tile. Empty cells have shade0 interiors,
-locked cells shade2 interiors, and active cells shade3 interiors. Borders and
-original tile details must not obscure the center 4-by-4 classification region.
+Use original background tiles with identity palette E4. The 49-tile atlas in
+[assets/tiles.json](../../../../src/sw/stackdrop/assets/tiles.json) is the
+editable source; `ASSET "Tiles"` emits it at `Tiles`, and initialization copies
+all784 bytes to $8000 before enabling the LCD. Every frame rule, corner, label,
+marquee letter and panel box belongs to the one 1024-byte background map copied
+at the same time, so decoration costs no per-frame work and the prepared image
+stays118 bytes.
+
+The well begins at pixel (48,24); each cell is one 8-by-8 tile. Empty cells have
+shade0 interiors, locked cells shade2 interiors, and active cells shade3
+interiors. Locked cells add a shade3 outline and active cells a shade1 top-left
+bevel; both lie in the outer ring, so the center 4-by-4 classification region
+stays one shade. Borders and original tile details must not obscure that region.
 The well's fixed rectangle is the public visual coordinate system.
 
-A next-piece preview occupies a 4-by-4 tile box at (120,32), using the same
-spawn geometry. Four original decimal digit tiles at (64,128) display the score
-with leading zeroes. A fixed status tile at (32,16) visibly distinguishes title,
-playing and game over. An original decimal tile at (32,24) shows rotation0..3, including visually equivalent I/O orientations. Document the literal tile atlas beside its source.
-Decode board, active cells, next piece, digits and status from these rendered
-pixels, rejecting unknown or mixed encodings. No gameplay WRAM reads, sprite
-MMIO shortcut or RTL debug port is part of the host interface.
+A heavy double-ruled frame encloses the well from tile (5,2) to (14,15): each
+edge tile carries one thin outer line and one two-pixel inner bar, with four
+corner tiles mitring them. The original marquee STACKDROP fills tile rows0..1
+above the well, one 7-by-11 letterform per column across two stacked tiles.
+
+Separately framed stats boxes run down tiles15..19, each open against the well
+frame and titled in uppercase 5-by-7 letters: NEXT, SCORE and STATE. A
+next-piece preview occupies a 4-by-4 tile box at (120,32), using the same spawn
+geometry. Four original decimal digit tiles at (120,88) display the score with
+leading zeroes. A fixed status tile at (120,120) visibly distinguishes title (T),
+playing (P) and game over (O). An original decimal tile at (128,120) shows
+rotation0..3, including visually equivalent I/O orientations. Document the
+literal tile atlas beside its source. Decode board, active cells, next piece,
+digits and status from these rendered pixels, rejecting unknown or mixed
+encodings. No gameplay WRAM reads, sprite MMIO shortcut or RTL debug port is
+part of the host interface.
 
 At each VBlank, sample both JOYP rows, copy the previously prepared image to VRAM, then calculate the sampled action and prepare the next image in ordinary WRAM during visible time. The resulting state becomes visible at the following VBlank: this one-frame pipeline delay is intentional. Initialization prepares the title before enabling LCD. Each update must finish before the next VBlank, including the worst lock, multiple-clear and score case; the prepared map copy must fit within4560 dots. Actual CPU timing checks cover both bounds. All map changes complete in VBlank before the next visible image. The game
 uses ordinary CPU code, VRAM and JOYP; it does not disable LCD around updates
@@ -88,7 +106,9 @@ The game draws only background tiles; it has no object tiles or window.
 ![Stackdrop tile bank](previews/tile-bank.svg)
 
 The bank sheet shows shade 0 as the review checkerboard; on screen it is
-BGP colour 0. Tiles 7 to 9 are unused padding before the digits.
+BGP colour 0. Tiles 1, 7, 8, 9 and 20 to 23 rule the frames, 24 to 30 spell the
+panel labels, and 31 to 48 carry the marquee halves; tiles 4, 5 and 6 are the
+status letters and double as label letters.
 
 ![Seven pieces in four rotations](previews/pieces.svg)
 
@@ -96,10 +116,13 @@ BGP colour 0. Tiles 7 to 9 are unused padding before the digits.
 
 ![Play screen after a scripted input sequence](previews/play.svg)
 
+![Game over after the stack reaches the spawn row](previews/over.svg)
+
 The title is the first image the ROM displays. The play screen shows the
 state the [independent rules model](../../../../src/dv/stackdrop/reference.py)
 reaches after the input script recorded in the generator: six locked pieces,
-a falling Z, the I preview and no cleared rows. Regenerate with a fresh tag
+a falling Z, the I preview and no cleared rows. The game-over screen continues
+that script with four more hard drops until a spawn fails. Regenerate with a fresh tag
 from the worktree root:
 
 ```text
@@ -107,7 +130,7 @@ python -m tools.sw.program_art --tag program-review
 ```
 
 The command writes `workdir/builds/program-review/program-art/stackdrop/`; the
-four SVG files are copied here unchanged. Unchanged inputs reproduce identical
+five SVG files are copied here unchanged. Unchanged inputs reproduce identical
 bytes; the [focused test](../../../../tools/n2m/tests/test_program_art.py) checks
 the committed views and compares the composed frames with the frame oracle.
 The [tool contract](../../../tools/sw/SPEC.md#program-previews) owns the generator.
@@ -146,7 +169,7 @@ height differences. A hole is an empty cell below an occupied cell in its column
 Prefer higher score, then fewer actions, then lexicographic action order
 Left, Right, Rotate, Drop. There is no lookahead or parameter tuning between runs.
 
-Both runs load the same original ROM af11fbfae2ddf1607ca3c70f32d47eadb62fd5a1c5b5c3f3ead8ea6f2afa0c74,
+Both runs load the same original ROM f2a9b159743a202541dd17dedaa99ffcc7ebf6d9d7012b28f4701a0ac9aed927,
 start a fresh game, and stop after eight issued B-edge actions or game over.
 This is not eight total piece locks: gravity may lock a piece during an action.
 Each has the

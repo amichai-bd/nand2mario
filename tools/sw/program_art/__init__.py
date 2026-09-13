@@ -14,11 +14,16 @@ from tools.sw.preview import render, png, svg, PALETTE
 from tools.sw.assembler import assemble
 from tools.sw.linker import link
 from tools.sw.package import package
-from tools.sw.assets import validate_shades, encode_shades
+from tools.sw.assets import load_shades, validate_shades, encode_shades
 
 SCREEN_SCALE = 4
-STACKDROP_TILE_NAMES = ['EMPTY', 'BORDER', 'LOCKED', 'ACTIVE', 'TITLE', 'PLAYING', 'GAME OVER',
-                        'UNUSED', 'UNUSED', 'UNUSED'] + [f'DIGIT {d}' for d in range(10)]
+STACKDROP_WORD = 'STACKDROP'
+STACKDROP_TILE_NAMES = (['EMPTY', 'RULE T', 'LOCKED', 'ACTIVE', 'STATUS T', 'STATUS P', 'STATUS O',
+                         'RULE B', 'RULE L', 'RULE R'] + [f'DIGIT {d}' for d in range(10)]
+                        + ['CORNER TL', 'CORNER TR', 'CORNER BL', 'CORNER BR']
+                        + [f'LABEL {c}' for c in 'NEXSCRA']
+                        + [f'{c} {half}' for c in STACKDROP_WORD for half in ('TOP', 'FOOT')])
+STACKDROP_TILES = len(STACKDROP_TILE_NAMES)
 PIECE_NAMES = 'IOTLJSZ'
 # Button bits follow JOYP packing in both programs: Right, Left, Up, Down, A, B, Select, Start.
 START, A, B, DOWN, RIGHT, LEFT = 128, 16, 32, 8, 1, 2
@@ -32,6 +37,8 @@ PLAY_SCRIPT = ([START, 0]
                + [A, 0, A, 0, A, 0, B, 0]                 # J: rotate three times, hard drop
                + [RIGHT, 0, RIGHT, 0, A, 0, B, 0]         # S: right twice, rotate, hard drop
                + [DOWN, 0, DOWN, 0, DOWN, 0])             # Z: soft drop three rows, still falling
+# Four more hard drops from the play state stack the spawn column and top out.
+OVER_SCRIPT = [B, 0] * 4
 V05_INPUT_DOT = 50000  # Inside the first CPU HALT, as in the bounded acceptance window.
 
 
@@ -48,7 +55,9 @@ def build(root, name):
     registry = json.loads((root / 'src/sw/targets.json').read_text(encoding='utf-8'))
     target = registry['targets'][name]
     tree = root / 'src/sw' / target['directory']
-    objects = [assemble(tree / source, tree, root / 'src/sw/generated/interfaces.inc', {})
+    assets = {name: encode_shades(load_shades(tree / declaration['source'], declaration['source']))
+              for name, declaration in target['assets'].items()}
+    objects = [assemble(tree / source, tree, root / 'src/sw/generated/interfaces.inc', assets)
                for source in target['sources']]
     layout = json.loads((tree / target['layout']).read_text(encoding='utf-8'))
     linked = link(list(zip(target['sources'], objects)), layout, target['entry'], target['profile'])
@@ -160,14 +169,14 @@ def stackdrop_map(rom, symbols, image):
     for i in range(16):
         vram_map[0x8F + (i // 4) * 32 + i % 4] = image[96 + i]
     for i in range(4):
-        vram_map[0x208 + i] = image[112 + i]
-    vram_map[0x44], vram_map[0x64] = image[116], image[117]
+        vram_map[0x16F + i] = image[112 + i]
+    vram_map[0x1EF], vram_map[0x1F0] = image[116], image[117]
     return vram_map
 
 
 def stackdrop(root, out):
     rom, symbols, lines = build(root, 'stackdrop')
-    bank = decode_tiles(rom[symbols['Tiles']:symbols['Tiles'] + 320])
+    bank = decode_tiles(rom[symbols['Tiles']:symbols['Tiles'] + 16 * STACKDROP_TILES])
     shapes = rom[symbols['Shapes']:symbols['Shapes'] + 112]
     registers = {port: port_write(lines, port) for port in (0x40, 0x42, 0x43, 0x47)}
     reference = load_module('n2m_stackdrop_reference', root / 'src/dv/stackdrop/reference.py')
@@ -177,6 +186,11 @@ def stackdrop(root, out):
         play.update(buttons)
     if play.status != 1:
         raise ValueError('play script must end during play')
+    over = reference.Game(**dict(vars(play), board=list(play.board)))
+    for buttons in OVER_SCRIPT:
+        over.update(buttons)
+    if over.status != 2:
+        raise ValueError('game-over script must end after spawn failure')
     pieces = []
     for rotation in range(4):
         for piece in range(7):
@@ -185,10 +199,10 @@ def stackdrop(root, out):
                 cells[cell >> 4][cell & 15] = 3
             pieces.append(card(compose(bank, cells, 4, 4, registers[0x47]),
                                f'{PIECE_NAMES[piece]} R{rotation}', False))
-    views = {'tile-bank': (bank_sheet(bank, STACKDROP_TILE_NAMES, 5), 8),
+    views = {'tile-bank': (bank_sheet(bank, STACKDROP_TILE_NAMES, 7), 8),
              'pieces': (grid(pieces, 7), 4)}
     frames = {}
-    for name, game in (('title', title), ('play', play)):
+    for name, game in (('title', title), ('play', play), ('over', over)):
         image = stackdrop_prepare(shapes, game)
         frames[name] = screen(bank, stackdrop_map(rom, symbols, image), registers[0x40],
                               registers[0x43], registers[0x42], registers[0x47])

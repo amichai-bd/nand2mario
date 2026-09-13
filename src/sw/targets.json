@@ -120,7 +120,12 @@
       "sources": [
         "main.asm"
       ],
-      "assets": {},
+      "assets": {
+        "Tiles": {
+          "source": "assets/tiles.json",
+          "author": "Original Stackdrop frame, block, digit, label and marquee pixels by the nand2mario project; no external source"
+        }
+      },
       "layout": "layout.json",
       "entry": {
         "unit": "main.asm",
@@ -136,7 +141,12 @@
       "sources": [
         "unit.asm"
       ],
-      "assets": {},
+      "assets": {
+        "Tiles": {
+          "source": "assets/tiles.json",
+          "author": "Original Stackdrop frame, block, digit, label and marquee pixels by the nand2mario project; no external source"
+        }
+      },
       "layout": "unit-layout.json",
       "entry": {
         "unit": "unit.asm",
@@ -152,7 +162,12 @@
       "sources": [
         "unit.asm"
       ],
-      "assets": {},
+      "assets": {
+        "Tiles": {
+          "source": "assets/tiles.json",
+          "author": "Original Stackdrop frame, block, digit, label and marquee pixels by the nand2mario project; no external source"
+        }
+      },
       "layout": "unit-layout.json",
       "entry": {
         "unit": "unit.asm",

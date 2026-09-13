@@ -3,15 +3,15 @@ from reference import Game
 from screen import image
 from cases import buffer
 
-LCD = 116872
-INPUT_WINDOW = (146872, 148872)
+LCD = 141000  # 784 atlas bytes at 52 dots each, plus the fixed prefix.
+INPUT_WINDOW = (LCD+30000, LCD+32000)
 END = LCD+2*70224+65480
 TITLE = Game()
 PLAY = Game(status=1)
 FRAMES = (bytes(23040), image(TITLE), image(PLAY))
 ADDRESSES = [0x9866+y*32+x for y in range(12) for x in range(8)]
 ADDRESSES += [0x988f+y*32+x for y in range(4) for x in range(4)]
-ADDRESSES += list(range(0x9a08, 0x9a0c))+[0x9844, 0x9864]
+ADDRESSES += list(range(0x996f, 0x9973))+[0x99ef, 0x99f0]
 
 
 class Check:
