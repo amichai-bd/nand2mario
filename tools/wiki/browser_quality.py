@@ -157,6 +157,31 @@ def check_views(browser, base):
             page.screenshot(path=str(OUTPUT / f'quality-showcase-{name}.png'))
             page.close()
 
+        # A homebrew panel is a still, not a flipbook: all three captured frames
+        # decode and stay visible together, and nothing animates even when
+        # motion is allowed.
+        from wiki.showcase import HOMEBREW_PANELS
+        for name in HOMEBREW_PANELS:
+            archive = board_frames.load(name)
+            page = new_page()
+            page.goto(base + f'/files/wiki/showcase/{name}.svg')
+            expect(page.locator('image')).to_have_count(len(archive['frames']))
+            assert page.evaluate("""async () => {
+                const sources = [...document.querySelectorAll('image')].map(e => e.getAttribute('href'));
+                const sizes = await Promise.all(sources.map(src => new Promise(resolve => {
+                    const probe = new Image();
+                    probe.onload = () => resolve(probe.naturalWidth + 'x' + probe.naturalHeight);
+                    probe.onerror = () => resolve('error');
+                    probe.src = src;
+                })));
+                return sizes.every(size => size === '160x144');
+            }"""), f'{name} did not decode every frame at 160x144'
+            assert page.evaluate("""() => [...document.querySelectorAll('image')].every(
+                e => getComputedStyle(e).opacity === '1'
+                     && getComputedStyle(e).animationName === 'none')"""), f'{name} hides or animates a frame'
+            expect(page.locator('svg').first).to_contain_text('not emulator screenshots')
+            page.close()
+
         # The terminal loops (README and lesson decks) share one block cursor
         # (.cur) that walks the keystrokes; in the still it must be the only
         # caret, resting on the empty prompt row below the last line (no
@@ -231,7 +256,7 @@ def check_views(browser, base):
             page.close()
         assert not errors, '\n'.join(errors)
         return {'status': 'passed', 'browser': browser.version, 'viewports': [1440, 390],
-                'checks': ['slide fragments', 'malformed fragments', 'keyboard', 'print visibility and contrast', 'animated diagram motion, completeness and print contrast', 'README showcase motion and reduced-motion still', 'board-captured loops decode and hold their final frame', 'lesson terminal sessions and deck embeds', 'chart scrolling']}
+                'checks': ['slide fragments', 'malformed fragments', 'keyboard', 'print visibility and contrast', 'animated diagram motion, completeness and print contrast', 'README showcase motion and reduced-motion still', 'board-captured loops decode and hold their final frame', 'homebrew panels decode and stay still', 'lesson terminal sessions and deck embeds', 'chart scrolling']}
     except BaseException:
         if page is not None and not page.is_closed():
             page.screenshot(path=str(OUTPUT / 'failure.png'), full_page=True)

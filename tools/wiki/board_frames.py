@@ -160,7 +160,54 @@ def springtrail_session(folder):
     return provenance, frames
 
 
+def homebrew_session(folder):
+    """Three retained frames from one `src/dv/homebrew/play.py play` session.
+
+    The driver has no reference model for third-party code, so nothing here is
+    checked against an expected image: the archive records the frames the board
+    returned, the pin they came from and the inputs that reached them.
+    """
+    result = json.loads((folder / 'result.json').read_text(encoding='utf-8'))
+    assert result['status'] == 'PASS' and result['plan'] == 'play', 'SESSION_NOT_A_PASSING_PLAY'
+    assert len(result['frames']) == 3, 'SESSION_NOT_THREE_FRAMES'
+    pin = json.loads((ROOT / 'tools/n2m/dependencies.json').read_text(encoding='utf-8'))
+    pin = pin['external_roms']['images'][result['game']]
+    load = result['load']
+    assert load['external']['sha256'] == pin['sha256'], 'SESSION_IMAGE'
+    assert load['result']['verified_bytes'] == pin['size'], 'SESSION_READBACK'
+    provenance = dict(
+        program=pin['name'], author=pin['author'], licence=pin['license'], source=pin['source'],
+        pin=result['game'], url=pin['url'], image_sha256=pin['sha256'],
+        redistribution=pin.get('redistribution', "The artifact is the author's own release asset."),
+        driver='src/dv/homebrew/play.py',
+        command=f"python src/dv/homebrew/play.py play {result['game']} --load",
+        script=result['script'],
+        checked='the pinned SHA-256 and a complete 32768-byte readback before the run; '
+                'no reference renderer exists for third-party code, so no pixel is checked',
+        wire_build_id=result['endpoint']['build_id'], wire_abi=result['endpoint'].get('abi'),
+        wall_seconds=result['wall_seconds'], intro_seconds=result['args']['intro_seconds'],
+        inputs=[dict(label=row['label'], mask=row['mask'], dot=row['applied']['dot'])
+                for row in result['inputs']])
+    frames = []
+    for entry in result['frames']:
+        packed = folder / (Path(entry['png']).stem + '.2bpp')
+        data = packed.read_bytes()
+        assert f'{zlib.crc32(data) & 0xffffffff:08x}' == entry['crc32'], 'SESSION_FRAME_CRC'
+        frames.append(dict(label=entry['label'], index=entry['index'], seq=entry['metadata']['seq'],
+                           dot=entry['metadata']['dot'], mask=entry['mask'], crc32=entry['crc32'],
+                           changed=entry.get('pixels_changed_from_previous'),
+                           pixels=unpack(data)))
+    return provenance, frames
+
+
+# The pinned homebrew images this repository shows running on the board. Each
+# name is an `external_roms.images` key of tools/n2m/dependencies.json and the
+# archive/loop name is `homebrew-<key>`.
+HOMEBREW = ('wyrmhole', 'airaki', 'gb-wordyl', 'max-pirate', 'rex-run',
+            'alien-invasion', 'square-fall', 'unstoppable-knight')
+
 READERS = {'libbet-board': libbet_session, 'springtrail-board': springtrail_session}
+READERS.update({f'homebrew-{name}': homebrew_session for name in HOMEBREW})
 
 
 def ingest(name, folder, note):

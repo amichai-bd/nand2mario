@@ -1,0 +1,83 @@
+{
+ "encoding": {
+  "bytes_indexed_png": 3010,
+  "bytes_path_runs": 91447,
+  "chosen": "indexed-png-data-uri",
+  "frames": 3,
+  "measured_on": "this captured sequence"
+ },
+ "frames": [
+  {
+   "changed": null,
+   "crc32": "982d979c",
+   "dot": 33604911,
+   "index": 0,
+   "label": "title",
+   "mask": 0,
+   "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKAAAACQAgMAAADy24gTAAAADFBMVEX////Q0NBoaGgYGBhxYKq9AAACvElEQVR42u3YwWrjMBAA0MG6LMEwv7DHbk76AIH7B13YOIf9gmW/Iue95549BFJ/hcHXQn9lIFeBdkayGylObBW6sLCeFjdVXkcayZ2aAiyxxBJ/Pdoc5ABUDqwUAOYkJEVQZS0vEypgaLMgkjKAFggnS1JtSaUBbVBX07UH2BKYuT0qtSYFGRUZ3RIyNHNQMyyzYAWt4UN8jcZuHpUoo7oEVu7W/gjEF4UJHEsErdrqfH5RKbw+LT4SjQ5VR/G9xtDRFaTLGqJ7dAzjG+7ip6HR4jwQ2N6972UVyl0gulg6qQ+dVf4Fv/LlqgBdCmXIQ84g5UbQXdU3QPKwDVCyRxXJ+3aAdoBs8Goznet40EPsYVgqjGA7QOXha4BW4DmqewSfJJmHnE/dhGFqFYr30Cbb87bGULUKX8jXSen2uMs++gnuQhtDN0A1htGGeyh7PQWlmB7uuGvISJsWA5ft6eEBncCk34YTC9AJ5GqK33W9wRnIBbXFsa5rTG/yCEL4hAdY7Rk+XRcTw07g+rCq6+3x2zTkU1s1Xzjh8wYnIQmUJf6sIf2lSfuLpAjw+55vtOneGuB2P9cGV00jRdf7xxm47mH9mJlxFhYfDuEdGY8e7uaLCXB+5nz4LG4D82tsBH6d/RPeH82PHCiLbCBvkdtTDuSUB8gphuP0cfBToPPQr/K0zoVFkwV/HWCVAx+KA2TF52IHmZENl1jin4+K+MMiDU+x6L+TsesnUQkwb4/2Rh65OUZPpDJYUZzxDpSpDcQp+cHcVjTOCH5qufQz3Jua30qLuQOXWGKJ/zKQMqEuMXQxko7jeyJJB5JrZWVEh37Udb43GkV9lzTyZvih0H/6xsX/cvCNrIygtCa5BlgNEMlPwJA7opWpBcpVeiRLO0ztU0q3Hhq0zwhDxn5qXfq2boFuQ56vfMf2/AEszbtThrcmQQAAAABJRU5ErkJggg==",
+   "seq": 413
+  },
+  {
+   "changed": 9290,
+   "crc32": "0d4e58ee",
+   "dot": 42453141,
+   "index": 1,
+   "label": "play-1",
+   "mask": 0,
+   "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKAAAACQAgMAAADy24gTAAAADFBMVEX////Q0NBoaGgYGBhxYKq9AAACfElEQVR42u2XQWvUQBTHX8jm2I4gPYp3T3spgrquH8FDloBYPIlQeuhlKWhF/BJe9VIKaYXeBCsYUOhlD4INRaHuqYVmZcmhYS9bxplkppPMZLoPsSiY92dmXx7/nfxmOtNkYRxWYhdEGPURrcRIGo168hlaSu6WNBp1vDHulSJQRr2eRKUvwlVl1Ot4Y3V2yqjX6bfHpXhCpdGox+P3pdgNpNGoJ9WCurVeH1cL6k+o1/GTiaAUrpqMpf4Ho91u/5zluc1MMBgMZhuZCVzXnW1kJvyIDeP/ycgPR11uMLJj4tblBqN1RJ1xb6n/tS43GA+W+gd1ucFoNeqMVqPOeOGIZUbrZHRG6/LojNYF1xkvHLHM+CMM39XlBuOQ0kldbjBaR/xtxmY/Nvux2Y/Nfmz2Y/Pe8y8xkhTJuPgQx0iGkxTFOPfibBXFSChNcYzJFo7RTTYjFOP8980dFKN7+BrJ+PFZhGM0l6ee0X36FreO7ABGOMZ4gmOELm1+z1weYwsZ+F/sV5ACuIfUjZc4QfgGJwiR8TeNG8s4wStkwIMNnGA5xOkSZk2RATSgQ/pJNPYikffD/JqKT9YHzNgLepQULeiRjPdBXivyou49Ahov+At90XyS97n6Is97btz3wPNFA8KvCvkiz+vc+AXAgaKxf2S+PCKOyIu6UxhVXPPrc68L9H7Z6FnyVhdSuJPaz+j5E/k67MNoWz2gSSoln8jklAsCZjxe6axLY2cqVVwfrnXyYMYYjlZIJo03p1LnxjMuZszgZFuNuDiVEg+IoPucizFmcGuHDS3i7gcpgbIubk3YrecjdWt9MnOrJONi77unrDm+fXkcnwvIL3ndek7BAbxhAAAAAElFTkSuQmCC",
+   "seq": 539
+  },
+  {
+   "changed": 272,
+   "crc32": "f4cb6138",
+   "dot": 46666581,
+   "index": 2,
+   "label": "play-2",
+   "mask": 1,
+   "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKAAAACQAgMAAADy24gTAAAADFBMVEX////Q0NBoaGgYGBhxYKq9AAACcklEQVR42u2YQYvTQBTHX0hztCPIHsW7p16WhdVaP4KHlIB02dMilD14KV4qi1/Cs5eCZPfgTbAeCgpeehDcsCyoPe2CrZQeNgiSZZxJZjrJTKZ9yIqgeX9m+vLy7+Q36SRNC/OwEEMQYdRntBAzaTTq0/dQU3IPpdGo441ROxeBMur16Sj3RrihjHodbyzOThn1Oj3dy8UjKo1GPZq/ycUwkEajPi0W1KH1+rxYUB+hXsdPZgS5cNVkLPUrjEaj8X2d5w4zwXg8Xm9kJnBdd72RmfAjVoz/JyO/OMpyg5FdJm5ZbjBaR9QZP+z0PpXlBuPJTu+kLDcYrUad0WrUGVeOmGe0TkZntJ4endF6wnXGlSPmGb+G4euy3GCcUPqjLDcYrSP+NmO1Hqv1WK3Haj1W67F67vkXGOkCx+gefMYxciOKkUR9HCOhCY6xPkAy1veQjNvdDo5xPnyJYyQ/hzjGrd1DHOPWQYJj3LzsIBlpUl0zV8hYQwb+F/t1pADuI3X7GU4QvsAJQmT8TeOgixM8RwY8HOAE3RCnPzBrigygAZ3Qd6KxB4m0n6TbVLyyPmDGdtCmJGtBm8S8D9Jalmd1bxdotOFv9ETzSdqn6ok87bnx2APPFw0I38rkizytc+NHAAeyBtDy5SXiiDyrO5lRxU2/PPdaQB/kjZ4lr7VgAXcXK+6ict8tOIbZ0XKT7ZAS9+UOueCCgBnP95t9aWwmUtn2lyfNNJgxgrN9Ei+/AhKppfGSixlj+HakRtxMpMQfoEHrKRdjjGH7FRtaxL23UgKlLw5N2KHrI3VofTLXHpOYiz3vXrDm+PbT4/hcQH4BAQ1y5BxAOcQAAAAASUVORK5CYII=",
+   "seq": 599
+  }
+ ],
+ "name": "homebrew-max-pirate",
+ "provenance": {
+  "author": "Marcel Wehrstedt",
+  "checked": "the pinned SHA-256 and a complete 32768-byte readback before the run; no reference renderer exists for third-party code, so no pixel is checked",
+  "command": "python src/dv/homebrew/play.py play max-pirate --load",
+  "driver": "src/dv/homebrew/play.py",
+  "image_sha256": "ade748a976cc87d382cf538daf441a3545c324c81d5fcda1f89ec0511b227d7a",
+  "inputs": [
+   {
+    "dot": 33622480,
+    "label": "press-128",
+    "mask": 128
+   },
+   {
+    "dot": 34043824,
+    "label": "release-128",
+    "mask": 0
+   },
+   {
+    "dot": 42470704,
+    "label": "hold-1",
+    "mask": 1
+   },
+   {
+    "dot": 46684144,
+    "label": "input-0",
+    "mask": 0
+   }
+  ],
+  "intro_seconds": 8.0,
+  "licence": "MIT",
+  "note": "Max Pirate booted from the pinned image and played on the DE10-Lite on 2026-09-13.",
+  "pin": "max-pirate",
+  "program": "Max Pirate v1.0",
+  "redistribution": "The artifact is the author's own release asset.",
+  "script": "snap:title;press:128:6;run:120;snap:play-1;hold:1:60;snap:play-2;input:0",
+  "source": "https://github.com/MWehrstedt/MaxPirate",
+  "url": "https://github.com/MWehrstedt/MaxPirate/releases/download/v1.0/maxpirate.gb",
+  "wall_seconds": 31.223,
+  "wire_abi": 1,
+  "wire_build_id": "87d5f0280a2afad8be6b85dc601141cc"
+ }
+}

@@ -21,6 +21,10 @@ Every pixel of every other loop is drawn on the host. The two board loops are
 the exception, and they are the only place the wiki shows a frame the FPGA
 produced.
 
+[Other people's games on this Game Boy](homebrew-library.md) is the third board
+surface: eight pinned homebrew games, three still frames each, captured the
+same way and published as compatibility evidence rather than as loops.
+
 Each file is self-contained: CSS keyframes only, no script, no external
 resource, so GitHub and the wiki decks play them as ordinary images. The authored SVG is
 the finished still. Under a reduced-motion preference nothing animates and the

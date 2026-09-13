@@ -1,0 +1,83 @@
+{
+ "encoding": {
+  "bytes_indexed_png": 2798,
+  "bytes_path_runs": 46201,
+  "chosen": "indexed-png-data-uri",
+  "frames": 3,
+  "measured_on": "this captured sequence"
+ },
+ "frames": [
+  {
+   "changed": null,
+   "crc32": "a21bbf1d",
+   "dot": 33587607,
+   "index": 0,
+   "label": "title",
+   "mask": 0,
+   "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKAAAACQAgMAAADy24gTAAAADFBMVEX////Q0NBoaGgYGBhxYKq9AAAD1klEQVR42u2XP2zTWBzHfz2rHao2no4OsDJQpFOWnkQUMHMnFPVnIwPKdqIBoegQIyrrDScVVJeFoapkiTyjtiNUSFjKfFtzN9xKBfVyXrqUtI/fe7bjpHkh79oIdFx/TuL35+Pv7/f++gXgzEZtJucxj8UtSVH6tCBAHBMIpkzx+PSgGUsw5qbJ/wVojgBMYqQfChPkQ6cFhWvqxKwxMBpQdKJWP2qBYoTlQKep/zL4bczibUtcnDc5T28i1bdwtMEylMtWm77NZkhJMJqhIVJ946gNWs12BjbFjTfblkgpQUMFmicFKaCysE6MlDUEGJ8UlI0JM9fkudMYOCGY9qMVyurhHT4ctOQAK8aa868EGuIzGvDMzux7sh8Y2RPlXh7T1TZpE5PZS0h2VwUWp+gCcUlBT4D2kwGgFWeKl3CJ80OlpHBNalN0ka1iq9ZwcFWlCMViUeqK3Aprub7DzqnBqbwxKyAWO5wb2jsrIFx3QIuHtDfTkyqQXHfAnbE6wPT1GfnKjjk5tuLksYsJeFMBFsGQTTFkzSQ+cv07uJaCLaxb7Wl0EsVuENgm5wcMcsX351NFIIResnEKTk67fj0TFIpRkCoKLVIspiD87vq/dtrWGnu4PPHHdZVroP2Rd22i/zD2SdU9YNirz7wwd32Lsd3EdR9oP+0BlyfUYMFm695WliuxYHkiYq8U4M+2ve69yHJzievbCs9/CtfPw/yktTyh3P2vLgpwsZzlr+xwPnNf4XkPBYiXcxBAD2whOjpgSSi+0gBNAareZJEEbwSdgh0jnFEthZKPq89wPne2U6grwUIDf/kNZ7fy+VOoO0qQoesvsBy0jpZUcwcMRntKhYV5yYe/1es18hHng66C3fNq8FoDcfatBmgwXOj2DFEwYK+IvEpP1SBFKHmVniGbu3BasOBVtnr+JcSa4ED7jkCLH3mVd8pd6Vh3sw2vsq3cQ04K4gOv8ga1QH9+1CCbHSlYhJ8Ye528koeAlxn7qAFOwWQUrKXnhi+Z4blR4NvhcNC3o8Bzh4OwZ29vePc0pk8JNw80ekdMx1rD1pmQxh7ivVBnhl/z7LdaS8GIAi1BWg1t+D/YmDiDDjjYdhlKs8UZGAdTk8zrAil9Q4nNUqUvuWorBREX+rBxrFElvX+qVP24A9psrS+2mgwMHToOVKMMdClxrKV3JEi+9ynDszBqPUf7cczcCcklUv2LR1LRTgpT9z8KzjlIyjx0ZJz7neZvUhwv0/CqLYezDBRhSN0kxM2DtFNlwWHVPQY6+0mI747S4gSsHvaAj+m71BJgkEbUwM/41+ohfBJL/QAAAABJRU5ErkJggg==",
+   "seq": 475
+  },
+  {
+   "changed": 4874,
+   "crc32": "7a5f389e",
+   "dot": 42435831,
+   "index": 1,
+   "label": "play-1",
+   "mask": 0,
+   "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKAAAACQAgMAAADy24gTAAAADFBMVEX////Q0NBoaGgYGBhxYKq9AAABnUlEQVR42u2YvU7DMBDHTVEkhAKd2Bk7RmKtFB4hA5dIXboz8QJVq75D9y4V4A7wBIgHYC1IPEJZsmSpoOZs5wOTkDgVEgP3P1XnOL/eh3WVrDLWTt1Ymh/779m6MAP0mOcqk+u+ad8iatTH73tPppm5XQn6sYx45ppmptaJPQn2XdMqmsGYTc2Q6nUwPa31uZxRUOvbgx02qfWFHhp8rl6Dbw+20T57rPTlnyKLK30Z7MWVvgy+xZV+99TWzdA80jzSPNI80jzSbYL0L+Xagh5FJJFIJFIr9f8MFC/C7nbLObe6Ah7PILy3AY8A4MoKXMDADrwWr5YgswO7ggmrf9wchwXBr4I7CY8UOJ83UCcAGuR8dv4j1eELKEBcX1Rih/jyVmFRcqlBVAnbg4EMg9QKYFiA/KZUmwJnAAnCmwwMcTExO40UiLlH+DBep2WozXmRFtJ0MuQQcydioyOqvSy9o4rZ6j18vZJ1jvL2l7KOtLwoAbHOQXwGFVeVuNymh6qOeBw9cxOED13inUi3NRiJ8Cs4lJ9EgWlFHD4B4HFX60kGa5sAAAAASUVORK5CYII=",
+   "seq": 601
+  },
+  {
+   "changed": 1112,
+   "crc32": "2136d521",
+   "dot": 46649277,
+   "index": 2,
+   "label": "play-2",
+   "mask": 1,
+   "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKAAAACQAgMAAADy24gTAAAADFBMVEX////Q0NBoaGgYGBhxYKq9AAABmElEQVR42u2YMUvDQBSA04ogGuiiu/gLAoJTIf4IXw9E6Kz/obSjm1M3hy4FfRV1drE/wLXOzp2CEIeiOe/dpQlnYnoRxeV9j/Ku5Mt7746b4nn1aEUUYRS+L9d5WGLgBb4OWrft+FLRqKF6P3iyw+7tkxhGVHHft8NubRoHJLZ9O0o2o2qu2gyzgvO96pwhZtW5vri7UZ0ztl6qc0ZzUJ3ri7UI/PJcIGqV5wKvF+W5QPJYnn/e2nkzfB/5PvJ95PvI95FhGIZhGIb5I1r/JoaxnDqJc8R7F29tDHDjJALAiZN4Cp1LN1G+OYrTAzdRTumLnAPbXuPwd0U31CEC4miFtQNgRMTh992bOIZcVOujUm1TPbzWmojPjKgoaA04pjLKmgF0cxGvCrNpcQgQK3mxFDtqMbB3KpR4S7176k9/no6h3x7lbcG0e6CSXdU7lgtTETVp+3U9TIJUkR7PaM5etv0JzZGOJ2KQqhlV1HUE6Lp6xEmSHqo+4r54xqyiFuHDjHgn0RyqEYWk7WUVu/SLtZiYKRE+Adb1XPBWAAorAAAAAElFTkSuQmCC",
+   "seq": 661
+  }
+ ],
+ "name": "homebrew-alien-invasion",
+ "provenance": {
+  "author": "NiliusJulius",
+  "checked": "the pinned SHA-256 and a complete 32768-byte readback before the run; no reference renderer exists for third-party code, so no pixel is checked",
+  "command": "python src/dv/homebrew/play.py play alien-invasion --load",
+  "driver": "src/dv/homebrew/play.py",
+  "image_sha256": "78cbb13080f587c108d8a18661db7d7b4a5c14c730f5bb86794a41132035fbf0",
+  "inputs": [
+   {
+    "dot": 33625641,
+    "label": "press-128",
+    "mask": 128
+   },
+   {
+    "dot": 34046985,
+    "label": "release-128",
+    "mask": 0
+   },
+   {
+    "dot": 42473865,
+    "label": "hold-1",
+    "mask": 1
+   },
+   {
+    "dot": 46687305,
+    "label": "input-0",
+    "mask": 0
+   }
+  ],
+  "intro_seconds": 8.0,
+  "licence": "GPL-3.0-only",
+  "note": "Alien Invasion booted from the pinned image and played on the DE10-Lite on 2026-09-13.",
+  "pin": "alien-invasion",
+  "program": "Alien Invasion v1.0.0",
+  "redistribution": "The artifact is the author's own release asset.",
+  "script": "snap:title;press:128:6;run:120;snap:play-1;hold:1:60;snap:play-2;input:0",
+  "source": "https://github.com/NiliusJulius/Alien-Invasion",
+  "url": "https://github.com/NiliusJulius/Alien-Invasion/releases/download/v1.0.0/Alien-Invasion.gb",
+  "wall_seconds": 31.135,
+  "wire_abi": 1,
+  "wire_build_id": "87d5f0280a2afad8be6b85dc601141cc"
+ }
+}

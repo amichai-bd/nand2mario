@@ -1,0 +1,138 @@
+{
+ "encoding": {
+  "bytes_indexed_png": 2766,
+  "bytes_path_runs": 53668,
+  "chosen": "indexed-png-data-uri",
+  "frames": 3,
+  "measured_on": "this captured sequence"
+ },
+ "frames": [
+  {
+   "changed": null,
+   "crc32": "ce4a8900",
+   "dot": 33560807,
+   "index": 0,
+   "label": "title",
+   "mask": 0,
+   "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKAAAACQAgMAAADy24gTAAAADFBMVEX////Q0NBoaGgYGBhxYKq9AAACRElEQVR42uWYXW7DIAzHkXKAHKavlbhvdwmkvE7iHnsZUt46a8zmY6HBBJqgtduoLLXqT3+wMcaJsI1DWNE0pIA2wVHMbeD0n0DoDhrJgpCpieGY4k84cxPHxQUlxJBaEdTWzomZFfjtGYEmtRXopyBdraTRgNA4Ga1Gkzi0UpTa6Fl6UGeKyRql9eDpdAhchj4PCGgP4nrLoJydE/o8VxQlOkFwFVQnDwblMrgd8B0gJoJIrQgC/plav3PN5CQPxnxEUzVw7bkHYXWq3Taa0QU+/FNQ1LSFs0uQ7akJkuBSbhukqZvAqAi2J0hWBWN4tkDYCnjzzjBJsc5JHmRyclc++qR4u1xemsB3az8qoK9qCF43wOVOWUA4pHizxm6gPQ5CdxDjkZ7rMogRvlMxHZgUl6Y1fraCTfWxcl+zdXE+fitQLF8B/MGnAuDuwkLz4cC8NnK3ayhOAS6DdP3eBdIa71UEFpzGzBkepDbBBDi0CqGHqQc8bGQdZBW5+xpa72vYXR+pLkZLczMDqS5GC44pyksOvEZLI5A1cRkob7qpDUXapSaQ2sO+IPW6mmk++oKUISy49JAepI0qBRyqiqVOiupitDQ3M5DqYrQ0N3/ZIykwz4S9iv0DQegOLs9zFXB5Qsxm2KnY35nn3kLo+rLg4aAa8TPg1Trinrtv9JsBJxqWPvjdgqSfIAsglsOgWAAhTD3ZKAlSDWr0IKwU7SQnbBb0RC2DU5T81Dj54szGGv/ce7P8kP2692ZPAPL3DTx+jV9IQd51GXKSfgAAAABJRU5ErkJggg==",
+   "seq": 476
+  },
+  {
+   "changed": 19293,
+   "crc32": "e35d78bf",
+   "dot": 42409041,
+   "index": 1,
+   "label": "instructions",
+   "mask": 0,
+   "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKAAAACQAgMAAADy24gTAAAADFBMVEX////Q0NBoaGgYGBhxYKq9AAACiElEQVR42u2Y7aqDMAyGC/4d9FYK/g301ntJuYDATt/E1lrrPjjbGMMOPdM9JsbmTepx7iVjejno0wPX4+gq/7P4iWCGV8XrVfptCAbnLv02jCz/4PttA5qD6RCcnrbY3OOLwIfH9aGRHp0l7h7q4aBfAwNFIefZM77lxBTPeaLIc8wfIlpBcvohEpycEn7LZ/MI0oAz5esUjBK5gLOB2W4F4djAmVaL+Ww2ECgfFZAqGBqQ4DQFaUCEgABKMFMqwcDmlHDu96bwp0Dkok0YpjHu6nuUQAtI7RgYoxWMtOAOGdlZ5FjAKLMgraJYjvcWZ6kWNeWra2o+OApSMhwpLxqOIJgtWIM5k+JbQWSja+oj9qFPOIBLUaJSH7VojcFIrqmP2Mc+gw2ckTE5b6w+Yp/zcwQGMddWH7GvJXkQjGblGsxSkt//wM0lniZKPwp1p+9qMUMXbtUypSHotb+oRYa2D0FY1HUN3bEIkIJb290RiKkLFwvGus6RxVNcXwhG1v7CmEZbHtjxTgqlyger3qrooa51taQaLKBnGukaJyH6AuZbIN0fuE7VddLKk2gUDC02PJfmObjH9zzwrZ4hA7uRHbjVMzarmSOLjZ51XcpDcKtn7bBkfztwq+fbrhs9l2BGrk9xfWW/hrg825tMWWiNFpp5LD0bvfsZ8KikSAHxrnEDfMI1stBrJ7S8pE8+8L2u8U2rptzTta6HEOYdXSPAAbjXtSO8v0XuwL2u9dUxV8m9607XR65PcX3pOtwqdhQr8apxLq/7XdPM31nfANd1uSuiq2AktZHQPuu/H9iyM1Kj61k0C1NJsmpRbI1eLQYFiXcg2Rp9BclaUBQDazCyCeZMik+Cf4ea+yLbV2Q0AAAAAElFTkSuQmCC",
+   "seq": 602
+  },
+  {
+   "changed": 4703,
+   "crc32": "3ac129fb",
+   "dot": 52942635,
+   "index": 2,
+   "label": "play",
+   "mask": 0,
+   "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKAAAACQAgMAAADy24gTAAAADFBMVEX////Q0NBoaGgYGBhxYKq9AAACJklEQVR42u2YS2rjQBCGS6kJBCKoLCZ7k2VWDVkNNMhHyMa3mEPMMkcJzCUaZuvD6AACpasfVrldGneIErDjRj+ypU/V9WpJNsAiAxcHyVVcz9/G4WMWvyIY9apuHAepx4eH1wOwWQMYgFZqBXBzEFlzF0CS8uDtHsi5an4gGOpJChKIwuJm03iLpiWplVKBNW/GIUlBOXUE7w7AlZJGDz4ft+iH95Gn/kdSmsX7zTUHY0lKswjNTw/SlqQ0i9A8c8K9b0IrzSKsKyoDU1OMUo8vL3/1LvInS31sDZf9yFLBsh9ZcyCVUhfDPIjvtngBlwTLfuzm2uxM+jF23DepNS4O7p6xx9Z1UcoKi8f6EWv7EU+rH9lhDcTz6kdcHFTe93RQKWO1Rb0fsfb+iKd1f8TzesTh4mDskAowlqqiw6stYu3zGs/neY3/uT9e3h+/5/vjWDngJMbvX3VcE35mVowrgD91f1NQ78BYX0K/irs+7q2Noj6Kj6NtI+i3cBLdBMrPYP0yf7LxqnySeg3cpukgTeEmIO/j1MaBTaB1OmhDMNspmHwyT59l35Oe6oT7EspssQM5ZugnD8PIX8wwZXMH9gXIVnZph2iZwc4JMBy0EQxpz0UsQZugcmo7N3WXDlKySLkuwycuBzZuROxd2htbkh5sk4fGinBK7zC1VwZDjbQwOD5y+xafhtjQ+z5ykkwE21RhMyg+hmDaGAy7MB/MZXzVeAMuFzpqoFma0wAAAABJRU5ErkJggg==",
+   "seq": 752
+  }
+ ],
+ "name": "homebrew-gb-wordyl",
+ "provenance": {
+  "author": "bbbbbr",
+  "checked": "the pinned SHA-256 and a complete 32768-byte readback before the run; no reference renderer exists for third-party code, so no pixel is checked",
+  "command": "python src/dv/homebrew/play.py play gb-wordyl --load",
+  "driver": "src/dv/homebrew/play.py",
+  "image_sha256": "acc12e3e920e0c432606846da60a5ca9bba21f8012304e8de4a26f88273d14de",
+  "inputs": [
+   {
+    "dot": 33629861,
+    "label": "press-128",
+    "mask": 128
+   },
+   {
+    "dot": 34051205,
+    "label": "release-128",
+    "mask": 0
+   },
+   {
+    "dot": 42478085,
+    "label": "press-16",
+    "mask": 16
+   },
+   {
+    "dot": 42758981,
+    "label": "release-16",
+    "mask": 0
+   },
+   {
+    "dot": 44865701,
+    "label": "press-16",
+    "mask": 16
+   },
+   {
+    "dot": 45146597,
+    "label": "release-16",
+    "mask": 0
+   },
+   {
+    "dot": 46129733,
+    "label": "press-16",
+    "mask": 16
+   },
+   {
+    "dot": 46410629,
+    "label": "release-16",
+    "mask": 0
+   },
+   {
+    "dot": 47393765,
+    "label": "press-16",
+    "mask": 16
+   },
+   {
+    "dot": 47674661,
+    "label": "release-16",
+    "mask": 0
+   },
+   {
+    "dot": 48657797,
+    "label": "press-16",
+    "mask": 16
+   },
+   {
+    "dot": 48938693,
+    "label": "release-16",
+    "mask": 0
+   },
+   {
+    "dot": 49921829,
+    "label": "press-16",
+    "mask": 16
+   },
+   {
+    "dot": 50202725,
+    "label": "release-16",
+    "mask": 0
+   },
+   {
+    "dot": 53011685,
+    "label": "input-0",
+    "mask": 0
+   }
+  ],
+  "intro_seconds": 8.0,
+  "licence": "GPL-3.0-only",
+  "note": "GB Wordyl, CGB flag 0x80, booted from the pinned redistribution and played on the DE10-Lite on 2026-09-13.",
+  "pin": "gb-wordyl",
+  "program": "GB Wordyl 0.85 (English)",
+  "redistribution": "Third-party redistribution, not an author release: the pinned bytes are the gbdev/database @ 434b8d35af69d6bf8184fe1bc9a4c41294c8ad42 blob entries/gb-wordyl/GBWORDYL_0.85_en.gb. The licence text is pinned separately in the author repository.",
+  "script": "snap:title;press:128:6;run:120;snap:instructions;press:16:4;run:30;press:16:4;run:14;press:16:4;run:14;press:16:4;run:14;press:16:4;run:14;press:16:4;run:40;snap:play;input:0",
+  "source": "https://github.com/bbbbbr/gb-wordle",
+  "url": "https://raw.githubusercontent.com/gbdev/database/434b8d35af69d6bf8184fe1bc9a4c41294c8ad42/entries/gb-wordyl/GBWORDYL_0.85_en.gb",
+  "wall_seconds": 34.173,
+  "wire_abi": 1,
+  "wire_build_id": "87d5f0280a2afad8be6b85dc601141cc"
+ }
+}

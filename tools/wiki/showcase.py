@@ -40,7 +40,10 @@ EMBEDS = {'build-and-tests': 'README.md', 'board-session': 'README.md', 'game-st
           'uart-debugging': 'wiki/presentations/uart-debugging.html',
           'verification': 'wiki/presentations/verification.html',
           'springtrail-state-board': 'wiki/showcase/README.md',
-          'libbet-board': 'wiki/showcase/README.md', 'springtrail-board': 'wiki/showcase/README.md'}
+          'libbet-board': 'wiki/showcase/README.md', 'springtrail-board': 'wiki/showcase/README.md',
+          **{f'homebrew-{name}': 'wiki/showcase/homebrew-library.md' for name in
+             ('airaki', 'gb-wordyl', 'max-pirate',
+              'alien-invasion', 'square-fall', 'unstoppable-knight')}}
 
 # --- Loop 1: build and tests. Captured at 5ce0aa0 on 2026-09-11; long JSON lines
 # are shortened with an ellipsis, every kept field is verbatim; wrap() breaks
@@ -647,6 +650,70 @@ SPRINGTRAIL_SCENES = (
 # The loops whose every pixel came off the DE10-Lite rather than a host model.
 BOARD_LOOPS = ('libbet-board', 'springtrail-board', 'springtrail-state-board')
 
+# The pinned homebrew images that produced frames, shown as three still frames
+# each rather than a flipbook: an opening screen and two frames of play. The
+# heading beside each panel is its author and licence, which the wiki page
+# repeats in text. Wyrmhole and Rex Run have no panel: neither ever enabled the
+# LCD, so the board completed no frame to capture. The wiki page says so.
+HOMEBREW_PANELS = tuple(f'homebrew-{name}' for name in
+                        ('airaki', 'gb-wordyl', 'max-pirate',
+                         'alien-invasion', 'square-fall', 'unstoppable-knight'))
+# Every surface whose pixels came off the board, flipbooks and stills alike.
+BOARD_FRAME_SURFACES = BOARD_LOOPS + HOMEBREW_PANELS
+PANEL_SCALE, PANEL_GAP = 2, 16
+PANEL_WIDTH = PAD * 2 + 3 * 160 * PANEL_SCALE + 2 * PANEL_GAP
+
+
+def homebrew_panel(name):
+    """Three stills from one pinned homebrew image, side by side.
+
+    Not a loop: the issue this delivers asks for stills, so no frame is hidden
+    and nothing animates. The empty reduced-motion gate keeps the shape every
+    showcase file has, with no rule inside it to apply.
+    """
+    from board_frames import load
+    archive = load(name)
+    frames = archive['frames']
+    provenance = archive['provenance']
+    assert archive['encoding']['chosen'] == 'indexed-png-data-uri', name
+    assert len(frames) == 3, name
+
+    top = BAR + PAD
+    height = top + 144 * PANEL_SCALE + 8 + 2 * LINE + PAD + 22
+    strip = f"{provenance['program']} · {provenance['author']}, {provenance['licence']} licence"
+    rules = [f'text{{font:13px {MONO};fill:{TEXT}}}.h{{font-size:11px;fill:{MUTED}}}',
+             'image{image-rendering:pixelated}']
+    body = []
+    for index, frame in enumerate(frames):
+        x = PAD + index * (160 * PANEL_SCALE + PANEL_GAP)
+        body.append(f'<g transform="translate({x} {top}) scale({PANEL_SCALE})">'
+                    f'<rect width="160" height="144" fill="#ffffff"/>'
+                    f'<image class="f{index}" opacity="1" width="160" height="144" '
+                    f'href="{frame["png"]}"/></g>')
+        body.append(f'<rect x="{x - .5}" y="{top - .5}" width="{160 * PANEL_SCALE + 1}" '
+                    f'height="{144 * PANEL_SCALE + 1}" fill="none" stroke="{BORDER}"/>')
+        cy = top + 144 * PANEL_SCALE + 8 + LINE
+        body.append(f'<text x="{x}" y="{cy}">{esc(frame["label"].replace("-", " "))}</text>')
+        body.append(f'<text class="h" x="{x}" y="{cy + LINE}" xml:space="preserve">'
+                    f'seq {frame["seq"]}  dot {frame["dot"]}  mask {frame["mask"]}</text>')
+
+    footer = ('Framebuffer captures read over UART from the DE10-Lite, not emulator screenshots and not a '
+              'monitor photograph; boot-and-play evidence, not a correctness proof.')
+    style = ''.join(rules) + '@media (prefers-reduced-motion:no-preference){}'
+    return '\n'.join([
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{PANEL_WIDTH}" height="{height}" '
+        f'viewBox="0 0 {PANEL_WIDTH} {height}" role="img" aria-label="{esc(strip)}">',
+        f'<title>{esc(strip)}</title><style>{style}</style>',
+        f'<rect x=".5" y=".5" width="{PANEL_WIDTH - 1}" height="{height - 1}" rx="10" '
+        f'fill="{PANEL}" stroke="{BORDER}"/>',
+        f'<path d="M0 {BAR}.5H{PANEL_WIDTH}" stroke="{BORDER}"/>',
+        '<circle cx="18" cy="15" r="5" fill="#ff5f57"/><circle cx="36" cy="15" r="5" fill="#febc2e"/>'
+        '<circle cx="54" cy="15" r="5" fill="#28c840"/>',
+        f'<text class="h" x="{PANEL_WIDTH / 2}" y="19" text-anchor="middle">{esc(strip)}</text>',
+        *body,
+        f'<text class="h" x="{PAD}" y="{height - 12}">{esc(footer)}</text>',
+        '</svg>']) + '\n'
+
 
 def scene_plan(scenes, count):
     """Per-frame (hold, legend) from the scene table, and the loop length."""
@@ -794,6 +861,7 @@ def documents():
             'Actual compare captures; buttons show prior observed sampled state. Archive retains provenance.',
             [(0, 1, 'Title | actual source frame'), (1, 1, 'Dynamic scene | actual source frame'),
              (2, 1, 'First-stage WON | actual source frame')]),
+        **{name: homebrew_panel(name) for name in HOMEBREW_PANELS},
         'verification': terminal('A checker that can fail · from retained Questa receipts, not a fresh capture',
                                  'Retained receipts, not a fresh run: python-joypad at f6fff8f, builder-smoke-fail at c89b47d; JSON shortened.',
                                  TESTS, TESTS_LOOP),
