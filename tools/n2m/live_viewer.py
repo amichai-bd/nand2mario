@@ -14,13 +14,14 @@ from .host.client import RejectedCommand
 from .springtrail_play import finish
 
 PAGE = b'''<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>FPGA live view</title><style>body{margin:20px;background:#17191c;color:#eee;font:16px system-ui;text-align:center}img{image-rendering:pixelated;display:block;margin:20px auto;background:#333}p{font-variant-numeric:tabular-nums}small{color:#aeb6c0}</style>
-<h1>FPGA live view</h1><p id="state">Connecting</p><img id="frame" alt="Actual FPGA pixels"><small id="detail"></small><p id="buttons"></p><p id="input-status"></p>
+<title>FPGA live view</title><style>body{margin:20px;background:#17191c;color:#eee;font:16px system-ui;text-align:center}img{image-rendering:pixelated;display:block;margin:20px auto;background:#333}p{font-variant-numeric:tabular-nums}small{color:#aeb6c0}#commands{text-align:left;font:14px system-ui;padding-left:20px}#commands li{padding:6px}.QUEUED{color:#77baff}.EXECUTING{color:#ffd166}.RETIRED{color:#84df9b}.FAILED,.UNCERTAIN{color:#ff9393}.CANCELLED{color:#aaa}</style>
+<h1>FPGA live view</h1><p id="state">Connecting</p><img id="frame" alt="Actual FPGA pixels"><small id="detail"></small><p id="buttons"></p><p id="input-status"></p><h2>Commands (newest first)</h2><ol id="commands"></ol>
 <script>
 let last=0,sequence=0;const state=document.querySelector('#state'),frame=document.querySelector('#frame'),detail=document.querySelector('#detail');
 for(const button of ['Up','Left','Right','Down','A','B','Start','Select']){const b=document.createElement('button');b.textContent=button;b.style.cssText='font:20px system-ui;padding:12px;margin:4px';b.onclick=async()=>{const label=document.querySelector('#input-status');try{const r=await fetch('/input',{method:'POST',headers:{'Content-Type':'application/json','X-Viewer-Input':'tap'},body:JSON.stringify({button})});if(!r.ok)throw Error('Queue full, busy, stopped or refused');const result=await r.json();label.textContent='Queued '+button+' #'+result.id}catch(e){label.textContent=e.message}};document.querySelector('#buttons').appendChild(b)}
 function scale(){let n=Math.max(1,Math.floor((innerWidth-40)/160));frame.style.width=(160*n)+'px';frame.style.height=(144*n)+'px'}scale();addEventListener('resize',scale);
-async function poll(){try{const r=await fetch('/status.json',{cache:'no-store'});if(!r.ok)throw Error();const s=await r.json();if(s.sequence&&s.sequence!==sequence){const image=await fetch('/frame.png?v='+s.sequence,{cache:'no-store'});if(!image.ok)throw Error();const url=URL.createObjectURL(await image.blob());const prior=frame.src;frame.src=url;sequence=s.sequence;if(prior.startsWith('blob:'))URL.revokeObjectURL(prior)}last=Date.now();state.textContent=s.state+(s.reason?' - '+s.reason:'');detail.textContent=s.sequence?'Capture '+s.sequence+' | '+s.captured_at+' | age '+s.age_seconds.toFixed(1)+' s | '+s.latency_seconds.toFixed(3)+' s capture | '+s.core_state+' | source '+s.source.seq:'Waiting for actual pixels'}catch(e){state.textContent='OFFLINE / STALE'}setTimeout(poll,1000)}poll();setInterval(()=>{if(Date.now()-last>5000)state.textContent='OFFLINE / STALE'},1000);
+function commands(s){const list=document.querySelector('#commands');list.replaceChildren();if(s.commands_error){list.textContent=s.commands_error;return}for(const r of s.commands||[]){const li=document.createElement('li');li.className=r.state;const names=['Right','Left','Up','Down','A','B','Select','Start'].filter((n,i)=>r.mask&(1<<i)).join('+');li.textContent='#'+r.id+' '+(names||'mask '+r.mask)+' '+r.milliseconds+' ms | '+r.state+' | queued '+(r.queued_at||'-')+' | started '+(r.started_at||'-')+' | completed '+(r.completed_at||'-');list.appendChild(li)}}
+async function poll(){try{const r=await fetch('/status.json',{cache:'no-store'});if(!r.ok)throw Error();const s=await r.json();commands(s);if(s.sequence&&s.sequence!==sequence){const image=await fetch('/frame.png?v='+s.sequence,{cache:'no-store'});if(!image.ok)throw Error();const url=URL.createObjectURL(await image.blob());const prior=frame.src;frame.src=url;sequence=s.sequence;if(prior.startsWith('blob:'))URL.revokeObjectURL(prior)}last=Date.now();state.textContent=s.state+(s.reason?' - '+s.reason:'');detail.textContent=s.sequence?'Capture '+s.sequence+' | '+s.captured_at+' | age '+s.age_seconds.toFixed(1)+' s | '+s.latency_seconds.toFixed(3)+' s capture | '+s.core_state+' | source '+s.source.seq:'Waiting for actual pixels'}catch(e){state.textContent='OFFLINE / STALE'}setTimeout(poll,1000)}poll();setInterval(()=>{if(Date.now()-last>5000)state.textContent='OFFLINE / STALE'},1000);
 </script>'''
 
 
@@ -68,7 +69,7 @@ class Latest:
             return status, self.png
 
 
-def server(latest, username, password, port=0, *, input_origin=None, submit=None):
+def server(latest, username, password, port=0, *, input_origin=None, submit=None, command_history=None):
     if input_origin is not None:
         origin = urlsplit(input_origin)
         if origin.scheme != 'https' or not origin.hostname or origin.username or origin.password or origin.path or origin.query or origin.fragment:
@@ -109,6 +110,11 @@ def server(latest, username, password, port=0, *, input_origin=None, submit=None
             if path == '/':
                 return self.respond(200,PAGE,'text/html; charset=utf-8')
             if path == '/status.json':
+                if command_history is not None:
+                    try:
+                        status['commands'] = command_history()
+                    except (OSError,ValueError):
+                        status['commands_error'] = 'Command history unavailable'
                 return self.respond(200,json.dumps(status).encode(),'application/json')
             if path == '/frame.png':
                 query = parse_qs(parsed.query)

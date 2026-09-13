@@ -20,7 +20,7 @@ from n2m.host.client import Client
 from n2m.host.transport import session, session_root
 from n2m.live_viewer import Latest, capture_loop, server
 from n2m.records import atomic_json
-from n2m.viewer_buttons import Buttons, enqueue
+from n2m.viewer_buttons import Buttons, enqueue, history
 from n2m.test_budget import supervise
 
 
@@ -65,7 +65,8 @@ def worker(args):
     signal.signal(signal.SIGINT,lambda *_:stop.event.set())
     signal.signal(signal.SIGTERM,lambda *_:stop.event.set())
     http = server(latest,credentials['username'],credentials['password'],args.port,
-                  input_origin=args.input_origin,submit=lambda mask,ms:enqueue(out,mask,ms))
+                  input_origin=args.input_origin,submit=lambda mask,ms:enqueue(out,mask,ms),
+                  command_history=lambda:history(out))
     thread = threading.Thread(target=http.serve_forever,daemon=True)
     thread.start()
     atomic_json(out/'service.json',{'port':http.server_port,'bind':'127.0.0.1','stop_file':str(stop.path),'seconds':args.seconds})

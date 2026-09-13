@@ -127,3 +127,17 @@ uses the same lock to record pending requests as CANCELLED without UART traffic.
 A crashed producer lock fails closed with a manual-inspection error; it is never
 automatically reclaimed. STOP-file waits are checked at most20ms apart, excluding
 ongoing bounded UART commands.
+
+## Command history
+
+Authenticated status includes newest-first command records: assigned ID, button
+or mask, requested milliseconds, queued timestamp, and observed execution and
+completion timestamps. QUEUED is blue, EXECUTING amber, RETIRED green, FAILED or
+UNCERTAIN red, and CANCELLED gray. Text labels accompany every color. RETIRED
+requires the press and verified release0; acceptance alone is never success.
+
+Retain the latest50 terminal records plus all queued/executing records. The same
+producer lock serializes admission and history transitions; atomic publication
+prevents partial status reads or an old QUEUED update replacing execution. Status
+polling never accesses UART. Persistence failure stops the worker safely and
+cannot skip release of an already-pressed key or report a false green result.

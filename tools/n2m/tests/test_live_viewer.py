@@ -15,7 +15,7 @@ from n2m import generated_interfaces as abi
 from n2m.host.client import RejectedCommand
 from n2m.live_viewer import Latest, capture_loop, server, PAGE
 from fpga_viewer import png_writer, Stop
-from n2m.viewer_buttons import Buttons, enqueue
+from n2m.viewer_buttons import Buttons, enqueue, history
 
 BUILD = 'ab'*16
 
@@ -154,15 +154,15 @@ class ViewerTests(unittest.TestCase):
             out=Path(folder);(out/'service.json').write_text('{}')
             origin='https://example.test'
             http=server(Latest(),'testuser','x'*40,input_origin=origin,
-                        submit=lambda mask,ms:enqueue(out,mask,ms))
+                        submit=lambda mask,ms:enqueue(out,mask,ms),command_history=lambda:history(out))
             thread=threading.Thread(target=http.serve_forever);thread.start()
             headers={'Authorization':'Basic '+base64.b64encode(b'testuser:'+b'x'*40).decode(),
                      'Origin':origin,'Content-Type':'application/json','X-Viewer-Input':'tap'}
-            def request(body=b'{"button":"Right"}',override=None,method='POST'):
+            def request(body=b'{"button":"Right"}',override=None,method='POST',path='/input'):
                 h=dict(headers);h.update(override or {})
                 h={k:v for k,v in h.items() if v is not None}
                 client=HTTPConnection('127.0.0.1',http.server_port,timeout=2)
-                client.request(method,'/input',body=body,headers=h)
+                client.request(method,path,body=body,headers=h)
                 r=client.getresponse();data=r.read();code=r.status;client.close();return code,data
             try:
                 self.assertEqual(request(override={'Authorization':None})[0],401)
@@ -178,6 +178,10 @@ class ViewerTests(unittest.TestCase):
                     code,data=request();self.assertEqual(code,202)
                     self.assertEqual(json.loads(data)['id'],index)
                 self.assertEqual(request()[0],409)
+                self.assertEqual(request(b'',override={'Authorization':None},method='GET',path='/status.json')[0],401)
+                commands=json.loads(request(b'',method='GET',path='/status.json')[1])['commands']
+                self.assertEqual([r['id'] for r in commands],list(range(16,0,-1)))
+                self.assertTrue(all(r['state']=='QUEUED' for r in commands))
                 records=[json.loads(p.read_text()) for p in (out/'inbox').glob('*.json')]
                 self.assertTrue(all(r['mask']==abi.BUTTON_RIGHT and r['milliseconds']==134 for r in records))
                 self.assertIn(b"['Up','Left','Right','Down','A','B','Start','Select']",PAGE)
@@ -252,6 +256,71 @@ class ButtonQueueTests(unittest.TestCase):
             self.assertLess(events.index(('write',abi.HOST_REG_INPUT,1)),events.index('snapshot'))
             self.assertGreater(events.index(('write',abi.HOST_REG_INPUT,2)),events.index('READ_FRAME_COMPLETE'))
 
+    def test_history_transitions_retention_and_newest_first(self):
+        with tempfile.TemporaryDirectory() as folder:
+            out=self.runtime(folder);buttons=Buttons(out);clock=Clock();clock.value=0;client=Fake(clock)
+            for index in range(1,61):
+                self.assertEqual(enqueue(out,1,1),index)
+                self.assertEqual(history(out)[0]['state'],'QUEUED')
+                def wait(seconds):
+                    self.assertEqual(history(out)[0]['state'],'EXECUTING')
+                    self.assertEqual(client.mask,1)
+                    clock.wait(seconds)
+                buttons.one(client,clock,clock=clock,wait=wait)
+                row=history(out)[0]
+                self.assertEqual(row['state'],'RETIRED')
+                self.assertTrue(row['released']);self.assertEqual(client.mask,0)
+                self.assertLessEqual(row['queued_at'],row['started_at'])
+                self.assertLessEqual(row['started_at'],row['completed_at'])
+            pending=[enqueue(out,2,134) for _ in range(16)]
+            rows=history(out)
+            self.assertEqual(len(rows),66)
+            self.assertEqual([r['id'] for r in rows],list(range(76,10,-1)))
+            self.assertEqual({r['id'] for r in rows if r['state']=='QUEUED'},set(pending))
+            buttons.close()
+            self.assertTrue(all(r['state'] not in ('QUEUED','EXECUTING') for r in history(out)))
+            self.assertEqual(history(out)[0]['state'],'CANCELLED')
+
+    def test_history_admission_failure_rolls_back_and_late_queue_cannot_regress(self):
+        from unittest.mock import patch
+        import n2m.viewer_buttons as module
+        with tempfile.TemporaryDirectory() as folder:
+            out=self.runtime(folder)
+            with patch.object(module,'merge_history',side_effect=OSError('history unavailable')):
+                with self.assertRaises(OSError):enqueue(out,1,134)
+            self.assertFalse(list((out/'inbox').glob('*.json')))
+            self.assertFalse(history(out))
+            index=enqueue(out,1,134);buttons=Buttons(out)
+            buttons.update(index,'EXECUTING',started_at='observed')
+            buttons.update(index,'QUEUED',queued_at='late')
+            self.assertEqual(history(out)[0]['state'],'EXECUTING')
+
+    def test_release_and_history_failures_never_retire(self):
+        from unittest.mock import patch
+        import n2m.viewer_buttons as module
+        class ReleaseFails(Fake):
+            def write_host(self,address,value):
+                if value==0:raise RuntimeError('release rejected')
+                super().write_host(address,value)
+        with tempfile.TemporaryDirectory() as folder:
+            out=self.runtime(folder);enqueue(out,1,134);clock=Clock();clock.value=0
+            with self.assertRaises(RuntimeError):Buttons(out).one(ReleaseFails(clock),clock,clock=clock,wait=clock.wait)
+            self.assertEqual(history(out)[0]['state'],'FAILED')
+            self.assertFalse(history(out)[0]['released'])
+        with tempfile.TemporaryDirectory() as folder:
+            out=self.runtime(folder);enqueue(out,1,134);clock=Clock();clock.value=0;client=Fake(clock)
+            real_merge=module.merge_history
+            def fail_terminal(out,changes):
+                if any(r['state']=='RETIRED' for r in changes):raise OSError('terminal history unavailable')
+                return real_merge(out,changes)
+            latest=Latest(clock=clock)
+            with patch.object(module,'merge_history',fail_terminal):
+                r=capture_loop(client,latest,out,png_writer,expected_build=BUILD,
+                               stop=clock,seconds=4,clock=clock,wait=clock.wait,buttons=Buttons(out))
+            self.assertEqual(r['status'],'FAIL');self.assertTrue(r['cleanup']['verified'])
+            self.assertEqual(client.mask,0);self.assertEqual(latest.read()[0]['state'],'ERROR')
+            self.assertNotEqual(history(out)[0]['state'],'RETIRED')
+
     def test_batch_enumeration_holds_producer_lock(self):
         from unittest.mock import patch
         with tempfile.TemporaryDirectory() as folder:
@@ -310,6 +379,7 @@ class ButtonQueueTests(unittest.TestCase):
             self.assertEqual(r['status'],'FAIL');self.assertFalse(r['cleanup']['verified'])
             self.assertEqual(client.events[-1],('write',abi.HOST_REG_INPUT,1))
             self.assertEqual(client.count,0)
+            self.assertEqual(history(out)[0]['state'],'UNCERTAIN')
             self.assertFalse(list((out/'inbox').glob('*.json')))
 
 if __name__=='__main__':unittest.main()

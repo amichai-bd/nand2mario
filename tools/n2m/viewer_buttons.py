@@ -1,13 +1,61 @@
-"""Private bounded button FIFO; never a public HTTP or arbitrary UART API."""
+"""Bounded button FIFO and truthful operator history; no arbitrary UART API."""
+from contextlib import contextmanager
+from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
 import time
 
-from .records import atomic_json
+from .records import atomic_json, published_bytes
 from .springtrail_play import apply_mask
 
 CAPACITY = 16
+ACTIVE = {'QUEUED','EXECUTING'}
+
+
+def timestamp():
+    return datetime.now(timezone.utc).isoformat()
+
+
+@contextmanager
+def producer(inbox, wait=False):
+    lock = inbox/'producer.lock'
+    deadline = time.monotonic()+2
+    while True:
+        try:
+            fd = os.open(lock,os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600)
+            break
+        except FileExistsError:
+            if not wait:
+                raise
+            if time.monotonic() >= deadline:
+                raise RuntimeError('button producer lock remains; inspect manually')
+            time.sleep(.01)
+    try:
+        yield
+    finally:
+        os.close(fd)
+        lock.unlink()
+
+
+def history(out):
+    path = Path(out)/'input-history.json'
+    return json.loads(published_bytes(path)) if path.exists() else []
+
+
+def merge_history(out, changes):
+    """Caller holds producer lock; never regress execution to admission."""
+    rows = {row['id']:row for row in history(out)}
+    for change in changes:
+        row = rows.get(change['id'],{})
+        if row.get('state') not in (None,'QUEUED') and change['state']=='QUEUED':
+            continue
+        row.update(change)
+        rows[change['id']] = row
+    ordered = sorted(rows.values(),key=lambda row:row['id'],reverse=True)
+    terminal = [row for row in ordered if row['state'] not in ACTIVE][:50]
+    active = [row for row in ordered if row['state'] in ACTIVE]
+    atomic_json(Path(out)/'input-history.json',sorted(active+terminal,key=lambda row:row['id'],reverse=True))
 
 
 def validate(record):
@@ -29,12 +77,7 @@ def enqueue(out, mask, milliseconds):
         raise ValueError('viewer runtime is not accepting requests')
     inbox = out/'inbox'
     inbox.mkdir(exist_ok=True)
-    lock = inbox/'producer.lock'
-    # Only successful publication is accepted. A crashed reservation leaves a gap,
-    # never an accepted request behind a newer request.
-    fd = os.open(lock,os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600)
-    try:
-        # Recheck while serialized with close: publication is the admission point.
+    with producer(inbox):
         if (inbox/'CLOSED').exists() or (out/'STOP').exists() or (out/'result.json').exists():
             raise ValueError('viewer runtime is not accepting requests')
         if len(list(inbox.glob('*.json'))) >= CAPACITY:
@@ -43,11 +86,14 @@ def enqueue(out, mask, milliseconds):
         index = int(sequence_file.read_text())+1 if sequence_file.exists() else 1
         atomic_json(sequence_file,index)
         record = validate({'id':index,'mask':mask,'milliseconds':milliseconds})
-        atomic_json(inbox/f'{index:020d}.json',record)
+        path = inbox/f'{index:020d}.json'
+        atomic_json(path,record)
+        try:
+            merge_history(out,[dict(record,state='QUEUED',queued_at=timestamp())])
+        except Exception:
+            path.unlink()  # Not accepted; batch cannot claim while this lock is held.
+            raise
         return index
-    finally:
-        os.close(fd)
-        lock.unlink()
 
 
 class Buttons:
@@ -56,49 +102,26 @@ class Buttons:
         self.inbox = self.out/'inbox'
         self.inbox.mkdir(exist_ok=True)
 
+    def update(self, index, state, **fields):
+        with producer(self.inbox,wait=True):
+            merge_history(self.out,[dict(fields,id=int(index),state=state)])
+
     def close(self):
         """Close admission and cancel pending requests without touching UART."""
-        # The marker also makes a crashed producer fail closed. A producer already
-        # inside the lock may publish; cancellation waits for that publication.
         (self.inbox/'CLOSED').touch()
-        lock = self.inbox/'producer.lock'
-        deadline = time.monotonic()+2
-        while True:
-            try:
-                fd = os.open(lock,os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600)
-                break
-            except FileExistsError:
-                if time.monotonic() >= deadline:
-                    raise RuntimeError('button producer lock remains; inspect pending requests manually')
-                time.sleep(.01)
-        try:
-            cancelled = [{'id':int(path.stem),'status':'CANCELLED','released':True}
-                         for path in sorted(self.inbox.glob('*.json'))]
+        with producer(self.inbox,wait=True):
+            pending = sorted(self.inbox.glob('*.json'))
+            cancelled = [{'id':int(path.stem),'status':'CANCELLED','released':True} for path in pending]
+            merge_history(self.out,[dict(id=row['id'],state='CANCELLED',completed_at=timestamp()) for row in cancelled])
             atomic_json(self.out/'input-cancelled.json',cancelled)
-            for path in self.inbox.glob('*.json'):
+            for path in pending:
                 path.unlink()
             return cancelled
-        finally:
-            os.close(fd)
-            lock.unlink()
 
     def batch(self):
         """Freeze current published IDs; later arrivals wait for the next cycle."""
-        lock = self.inbox/'producer.lock'
-        deadline = time.monotonic()+2
-        while True:
-            try:
-                fd = os.open(lock,os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600)
-                break
-            except FileExistsError:
-                if time.monotonic() >= deadline:
-                    raise RuntimeError('button producer lock remains; inspect manually')
-                time.sleep(.01)
-        try:
+        with producer(self.inbox,wait=True):
             return sorted(self.inbox.glob('*.json'))[:CAPACITY]
-        finally:
-            os.close(fd)
-            lock.unlink()
 
     def one(self, client, stop, *, clock=time.monotonic, wait=None, path=None):
         """Claim once, complete/release before returning to capture."""
@@ -121,12 +144,14 @@ class Buttons:
         except (ValueError,TypeError,KeyError,json.JSONDecodeError) as error:
             receipt['reason'] = type(error).__name__
             atomic_json(self.out/'input-latest.json',receipt)
+            self.update(path.stem,'FAILED',completed_at=timestamp(),reason=receipt['reason'])
             claimed.unlink()
             return receipt
         try:
             if stop.is_set():
                 receipt['status'] = 'CANCELLED'
                 return receipt
+            self.update(record['id'],'EXECUTING',started_at=timestamp())
             pressed = True
             apply_mask(client,record['mask'])
             started = clock()
@@ -139,6 +164,7 @@ class Buttons:
             receipt['reason'] = type(error).__name__
             raise
         finally:
+            # Safety precedes persistence: history failure can never skip release.
             try:
                 if pressed and not client.uncertain:
                     apply_mask(client,0)
@@ -149,5 +175,7 @@ class Buttons:
                 receipt.update(status='FAILED',released=False,reason=type(error).__name__)
                 raise
             finally:
+                state = 'UNCERTAIN' if client.uncertain else ('RETIRED' if receipt['status']=='APPLIED' and receipt.get('released') else receipt['status'])
                 atomic_json(self.out/'input-latest.json',receipt)
                 claimed.unlink()
+                self.update(record['id'],state,completed_at=timestamp(),released=receipt.get('released',False))
