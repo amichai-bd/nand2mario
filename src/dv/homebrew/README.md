@@ -145,14 +145,21 @@ Each ROM says why. Both poll for the LCD before they enable it:
   immediately precede it, masking every interrupt, so nothing can break the
   loop.
 
-The retirement rate identifies the loop each CPU is in. Wyrmhole's three
-instructions cost 12 + 8 + 12 = 32 dots, 10.6667 each; Rex Run's four cost
-12 + 8 + 8 + 12 = 40 dots, exactly 10.0 each. Every 60-frame sampling interval
-is 4213440 dots, and the board reported the same retirement delta across all of
-them: 395010 for Wyrmhole and 421344 for Rex Run, giving 10.6667 and 10.0000
-dots per instruction. Each is the whole number of loop iterations that fit the
-interval times that loop's instruction count — 131670 x 3 and 105336 x 4 — so
-the observed rate matches each game's own hang loop and not the other's.
+The retirement counters show that nothing but those loops ran. Wyrmhole's three
+instructions cost 12 + 8 + 12 = 32 dots; Rex Run's four cost
+12 + 8 + 8 + 12 = 40. Each sampling interval is 60 frames, 4213440 dots, and
+each loop divides it with remainder zero: 4213440 / 32 = 131670 whole Wyrmhole
+iterations, 4213440 / 40 = 105336 whole Rex Run iterations. Times the
+instructions per iteration, that predicts 395010 and 421344 retirements, and
+the board reported exactly those, on every interval — three for Wyrmhole, two
+for Rex Run, with no variation.
+
+A zero remainder leaves no room for a partial iteration or for any other
+instruction in those 4.2 million dots, so this is stronger than a rate
+consistent with the loop: across the whole observation each CPU executed that
+loop and nothing else. The figures are also mutually exclusive. Wyrmhole in Rex
+Run's loop would have retired 421344 per interval, and Rex Run in Wyrmhole's
+395010; each read its own.
 
 A real DMG boot ROM hands control to the cartridge with `LCDC` = `0x91`, the
 LCD already running, so both loops exit immediately there. `dmg-direct-v1` has

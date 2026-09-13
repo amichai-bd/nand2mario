@@ -205,18 +205,25 @@ Each game's own code says why. Both wait for the LCD **before** they enable it:
 - Rex Run, at ROM `0x117A`: `LDH A,[rSTAT]` / `AND 3` / `CP 1` / `JR NZ,-8`,
   then `LDH A,[rLCDC]` / `AND 0x7F` / `LDH [rLCDC],A` at `0x1186`. It waits for
   `STAT` to report mode 1, VBlank, before clearing the LCD-enable bit. With the
-  LCD off the mode field reads 0 forever. The four instructions immediately
-  before it are `LDH A,[rIE]` / `AND 0` / `LDH [rIE],A`, so interrupts are
-  masked and nothing can break the loop.
+  LCD off the mode field reads 0 forever. The three instructions immediately
+  before it, at `0x1174`–`0x1179`, are `LDH A,[rIE]` / `AND 0` / `LDH [rIE],A`,
+  so interrupts are masked and nothing can break the loop.
 
-The retirement counters say the CPU is in precisely those loops. Wyrmhole's
-three instructions cost 12 + 8 + 12 = 32 dots, so 10.6667 dots each; Rex Run's
-four cost 12 + 8 + 8 + 12 = 40 dots, so exactly 10.0 each. Over each 60-frame
-sampling interval of 4,213,440 dots the board reported 395,010 retirements for
-Wyrmhole and 421,344 for Rex Run — 10.6667 and 10.0000 dots per instruction,
-matching each game's own loop, and each exactly the whole number of iterations
-that fit the interval times its instruction count. Every interval gave the same
-figure.
+The retirement counters show that nothing but those loops ran. Wyrmhole's three
+instructions cost 12 + 8 + 12 = 32 dots; Rex Run's four cost
+12 + 8 + 8 + 12 = 40. Each sampling interval is 60 frames, 4,213,440 dots, and
+each loop divides it with **remainder zero**: 4,213,440 ÷ 32 = 131,670 whole
+Wyrmhole iterations, and ÷ 40 = 105,336 whole Rex Run iterations. Multiply by
+the instructions per iteration and the predictions are 395,010 and 421,344. The
+board reported exactly those numbers, on every interval — three for Wyrmhole,
+two for Rex Run, with no variation.
+
+A zero remainder leaves no room for a partial iteration or for any other
+instruction anywhere in those 4.2 million dots. So this is not merely a rate
+consistent with the loop: across the whole observation each CPU executed that
+loop and nothing else. The two are also mutually exclusive. Had Wyrmhole been
+in Rex Run's loop its counter would have read 421,344, and Rex Run in
+Wyrmhole's would have read 395,010; each read its own figure.
 
 Both are waiting for a condition a real DMG would already have satisfied. The
 Nintendo boot ROM hands control to the cartridge with the LCD **running** —
