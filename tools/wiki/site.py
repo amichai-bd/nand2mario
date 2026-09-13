@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import html
+import hashlib
 from html.parser import HTMLParser
 import json
 from pathlib import Path
@@ -17,6 +18,21 @@ import markdown
 ROOT = Path(__file__).resolve().parents[2]
 REPO = "https://github.com/amichai-bd/nand2mario"
 PROHIBITED = set(".png .jpg .jpeg .gif .webp .ico .bmp .tif .tiff .avif .pdf .ppt .pptx .doc .docx .xls .xlsx .zip .gz .7z .woff .woff2 .ttf .mp3 .mp4 .wav .exe .dll .gb .gbc .bin".split())
+# Owner-authorized phone screenshot; exact bytes, not a general binary allowance.
+OWNER_IMAGES = {
+    "wiki/tools/n2m/host/assets/live-viewer-phone.jpg":
+        "ed484bf67e453e7798722e9e7d1a9f0d9207daaf75bfbfe924b2533eb773d93f",
+}
+
+
+def approved_image(path, data):
+    if path not in OWNER_IMAGES:
+        return False
+    if hashlib.sha256(data).hexdigest() != OWNER_IMAGES[path]:
+        raise ValueError(f"Owner image content changed: {path}")
+    return True
+
+
 PRIVATE_SUFFIXES = set(".rom .sav .srm .hex .mem .mif .gba .nds .state .rtc .pem .key".split())
 PRIVATE_NAMES = {".env", ".n2m.local.toml", "credentials.json", "secrets.json"}
 SIGNATURES = (b"%PDF-", b"\x89PNG", b"GIF87a", b"GIF89a", b"PK\x03\x04", b"\xff\xd8\xff", b"RIFF", b"\xd0\xcf\x11\xe0")
@@ -34,7 +50,7 @@ def content_page(path: str) -> bool:
 
 
 def public_asset(path: str) -> bool:
-    return path in RUNTIME or (path.startswith("wiki/")
+    return path in OWNER_IMAGES or path in RUNTIME or (path.startswith("wiki/")
                               and Path(path).suffix.lower() in WIKI_ASSET_SUFFIXES)
 
 
@@ -66,7 +82,8 @@ def tracked_text(root: Path) -> dict[str, str]:
         source = root / path
         if source.is_symlink() or not source.resolve().is_relative_to(root.resolve()):
             raise ValueError(f"Source must stay inside checkout: {path}")
-        result[path] = checked_text(path, source.read_bytes())
+        data = source.read_bytes()
+        result[path] = "" if approved_image(path,data) else checked_text(path,data)
     return result
 
 
@@ -283,7 +300,11 @@ def build(root: Path = ROOT, output: Path | None = None):
                               "text": text, "html": "".join(documents[path].output) if kind == "md" else ""}
         destination = output / "files" / path
         destination.parent.mkdir(parents=True, exist_ok=True)
-        if suffix in {".html", ".svg"} and content_page(path):
+        if path in OWNER_IMAGES:
+            data = (root/path).read_bytes()
+            approved_image(path,data)
+            destination.write_bytes(data)
+        elif suffix in {".html", ".svg"} and content_page(path):
             content = "".join(documents[path].output)
             if "tools/wiki/assets/embed.js" not in files:
                 raise ValueError("Missing tracked embed runtime")

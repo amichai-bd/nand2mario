@@ -126,7 +126,11 @@ The wiki check scans all tracked files, including unpublished ones, locally
 before merge and in the Pages build.
 It also enforces the protected extensions and private path rules in the
 [source and provenance policy](../provenance.md#enforced-checks-and-limits).
-It rejects binary extensions (including PNG, JPEG, PDF, PPT/PPTX),
+The sole owner-authorized binary exception is the unchanged
+[phone viewer screenshot](../n2m/host/assets/live-viewer-phone.jpg), pinned by exact
+path and SHA-256 in `tools/wiki/site.py` and copied byte for byte. It is not a
+general image-upload allowance. Apart from that asset, the scan rejects binary
+extensions (including PNG, JPEG, PDF, PPT/PPTX),
 known binary signatures, invalid UTF-8, and binary control bytes. Textual Markdown,
 HTML, SVG, code, and configuration are allowed. No binary fonts or external CDN
 runtime are required. Keep generated images, PDFs, ROMs, and other binary artifacts
