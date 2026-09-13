@@ -82,7 +82,7 @@ class DocumentationQualityTests(unittest.TestCase):
             # URI, measured in tools/wiki/board_frames.py as two orders of
             # magnitude smaller than the rect runs paths() draws. That is still
             # self-contained: no href may name anything but inline PNG data.
-            if name in showcase.BOARD_LOOPS:
+            if name in showcase.BOARD_FRAME_SURFACES:
                 self.assertEqual(markup.count('href="'), markup.count('href="data:image/png;base64,'), name)
             else:
                 forbidden.append('href=')
@@ -93,9 +93,9 @@ class DocumentationQualityTests(unittest.TestCase):
             self.assertNotIn('animation:', gate[0], 'Animation outside the gate would ignore reduced motion')
 
     def test_board_loops_declare_their_capture_sessions(self):
-        """Each board loop names where its frames came from, and holds only frames."""
+        """Each board surface names where its frames came from, and holds only frames."""
         from tools.wiki import board_frames, showcase
-        for name in showcase.BOARD_LOOPS:
+        for name in showcase.BOARD_FRAME_SURFACES:
             archive = board_frames.load(name)
             provenance, encoding = archive['provenance'], archive['encoding']
             for field in ('note', 'program', 'driver', 'command', 'checked', 'wire_build_id'):
@@ -109,11 +109,14 @@ class DocumentationQualityTests(unittest.TestCase):
                 self.assertIn(frame['mask'], range(256), name)
             seqs = [frame['seq'] for frame in archive['frames']]
             self.assertEqual(seqs, sorted(seqs), f'{name}: frames must be in capture order')
-            # Every frame the archive holds is drawn, and the last one is the
-            # authored still a reduced-motion reader sees.
+            # Every frame the archive holds is drawn. In a flipbook the last one
+            # is the authored still a reduced-motion reader sees; a homebrew
+            # panel is already a still, so every frame stays visible.
             markup = (ROOT / f'wiki/showcase/{name}.svg').read_text(encoding='utf-8')
+            visible = len(seqs) - 1 if name in showcase.BOARD_LOOPS else None
             for index, frame in enumerate(archive['frames']):
-                self.assertIn(f'class="f{index}" opacity="{1 if index == len(seqs) - 1 else 0}"', markup)
+                shown = 1 if visible is None or index == visible else 0
+                self.assertIn(f'class="f{index}" opacity="{shown}"', markup)
                 self.assertIn(frame['png'], markup, f'{name}: frame {index} is not drawn')
 
     def test_statistics_renderer_marks_snapshot_and_links_back_to_docs(self):

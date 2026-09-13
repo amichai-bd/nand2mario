@@ -16,7 +16,7 @@
     "local_changes": "none",
     "storage": "Fetched at run time into ignored workdir/private/external-roms/<name>/; no image bytes are committed",
     "redistribution": "No image or notice is copied into this repository; each entry keeps its upstream terms",
-    "fields": "Each images entry records url (https), sha256, size (exactly the direct-profile image size), license, and optional notices as name -> {url, sha256, size}; descriptive keys (name, author, source, release, commit, cartridge) identify the reviewed release",
+    "fields": "Each images entry records url (https), sha256, size (exactly the direct-profile image size), license, and optional notices as name -> {url, sha256, size}; descriptive keys (name, author, source, release, commit, cartridge, redistribution) identify the reviewed release and say when the artifact is a third-party redistribution rather than the author's own release",
     "images": {
       "libbet": {
         "name": "Libbet and the Magic Floor v0.08",
@@ -34,6 +34,162 @@
             "url": "https://raw.githubusercontent.com/pinobatch/libbet/46a765a2c01701bffb8c0b7dd6e4be3a6b193090/LICENSE",
             "sha256": "7bd353e765c8d32a7a048929d008e9bb17fa28d7ee4b619f80b67538e9bb82ff",
             "size": 897
+          }
+        }
+      },
+      "wyrmhole": {
+        "name": "Wyrmhole 1.1",
+        "author": "Quinn Painter",
+        "source": "https://github.com/QuinnPainter/Wyrmhole",
+        "release": "1.1",
+        "commit": "193b225883cbaafbbdd706dd3b92163b247b4fa6",
+        "url": "https://github.com/QuinnPainter/Wyrmhole/releases/download/1.1/Wyrmhole.gb",
+        "sha256": "a5e07f89119ee9c93aa50ec1ff828b2441781fa9b1a137f03af7b6c53ce03252",
+        "size": 32768,
+        "license": "MIT",
+        "cartridge": "ROM ONLY; the downloaded bytes read 0x0147 = 0x00, 0x0148 = 0x00 (32 KiB) and 0x0149 = 0x00 (no cartridge RAM), with a valid header checksum and Nintendo logo; DMG-only CGB flag 0x00",
+        "notices": {
+          "LICENSE": {
+            "url": "https://raw.githubusercontent.com/QuinnPainter/Wyrmhole/193b225883cbaafbbdd706dd3b92163b247b4fa6/LICENSE",
+            "sha256": "514b772becae24293bbfa475d99abc42bbd5618aa7d67c85fb295a85110f8728",
+            "size": 1070
+          }
+        }
+      },
+      "airaki": {
+        "name": "Airaki",
+        "author": "furrtek",
+        "source": "https://github.com/furrtek/Airaki",
+        "release": "none; the author publishes no release asset",
+        "commit": "434b8d35af69d6bf8184fe1bc9a4c41294c8ad42",
+        "url": "https://raw.githubusercontent.com/gbdev/database/434b8d35af69d6bf8184fe1bc9a4c41294c8ad42/entries/airaki/airaki.gb",
+        "sha256": "fd8fe6e023d9969935e05e7469c0f687f34a430d1a71fdeb5bb30183ce1ea2dd",
+        "size": 32768,
+        "license": "GPL-3.0-or-later",
+        "cartridge": "ROM ONLY; the downloaded bytes read 0x0147 = 0x00, 0x0148 = 0x00 (32 KiB) and 0x0149 = 0x00 (no cartridge RAM), with a valid header checksum and Nintendo logo; CGB flag 0x80 (CGB-enhanced, DMG-compatible)",
+        "redistribution": "Third-party redistribution, not an author release: the pinned bytes are the gbdev/database @ 434b8d35af69d6bf8184fe1bc9a4c41294c8ad42 blob entries/airaki/airaki.gb. The licence text is pinned separately in the author repository.",
+        "notices": {
+          "LICENSE.txt": {
+            "url": "https://raw.githubusercontent.com/furrtek/Airaki/a0ac51f2ab30ce8d200cf5a32834db0644156025/LICENSE.txt",
+            "sha256": "37d2e5a629d31b79b3c0876a146c7d4c1f8d2cf70276dd4fac2d8d6abd3f0b32",
+            "size": 35795
+          }
+        }
+      },
+      "gb-wordyl": {
+        "name": "GB Wordyl 0.85 (English)",
+        "author": "bbbbbr",
+        "source": "https://github.com/bbbbbr/gb-wordle",
+        "release": "none; the author publishes no release asset",
+        "commit": "434b8d35af69d6bf8184fe1bc9a4c41294c8ad42",
+        "url": "https://raw.githubusercontent.com/gbdev/database/434b8d35af69d6bf8184fe1bc9a4c41294c8ad42/entries/gb-wordyl/GBWORDYL_0.85_en.gb",
+        "sha256": "acc12e3e920e0c432606846da60a5ca9bba21f8012304e8de4a26f88273d14de",
+        "size": 32768,
+        "license": "GPL-3.0-only",
+        "cartridge": "ROM ONLY; the downloaded bytes read 0x0147 = 0x00, 0x0148 = 0x00 (32 KiB) and 0x0149 = 0x00 (no cartridge RAM), with a valid header checksum and Nintendo logo; CGB flag 0x80 (CGB-enhanced, DMG-compatible)",
+        "redistribution": "Third-party redistribution, not an author release: the pinned bytes are the gbdev/database @ 434b8d35af69d6bf8184fe1bc9a4c41294c8ad42 blob entries/gb-wordyl/GBWORDYL_0.85_en.gb. The licence text is pinned separately in the author repository.",
+        "notices": {
+          "LICENSE.txt": {
+            "url": "https://raw.githubusercontent.com/bbbbbr/gb-wordle/e0f7440e39d562bc6d89dc3f900851cd36d99212/LICENSE.txt",
+            "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+            "size": 35149
+          }
+        }
+      },
+      "max-pirate": {
+        "name": "Max Pirate v1.0",
+        "author": "Marcel Wehrstedt",
+        "source": "https://github.com/MWehrstedt/MaxPirate",
+        "release": "v1.0",
+        "commit": "2978cf7ce688e407e0e08490911b3055327178b8",
+        "url": "https://github.com/MWehrstedt/MaxPirate/releases/download/v1.0/maxpirate.gb",
+        "sha256": "ade748a976cc87d382cf538daf441a3545c324c81d5fcda1f89ec0511b227d7a",
+        "size": 32768,
+        "license": "MIT",
+        "cartridge": "ROM ONLY; the downloaded bytes read 0x0147 = 0x00, 0x0148 = 0x00 (32 KiB) and 0x0149 = 0x00 (no cartridge RAM), with a valid header checksum and Nintendo logo; DMG-only CGB flag 0x00",
+        "notices": {
+          "LICENSE": {
+            "url": "https://raw.githubusercontent.com/MWehrstedt/MaxPirate/2978cf7ce688e407e0e08490911b3055327178b8/LICENSE",
+            "sha256": "b99a54ec42dd687dfbabf2b948fb93a98dab952dbfb12a3ed3afbdc5af28930e",
+            "size": 1073
+          }
+        }
+      },
+      "rex-run": {
+        "name": "Rex Run v1.0",
+        "author": "elseyf",
+        "source": "https://github.com/elseyf/rex-run-gb",
+        "release": "v1.0",
+        "commit": "e1bd98dd6d68ba301ae761a5d7dc7e5f1458bc63",
+        "url": "https://github.com/elseyf/rex-run-gb/releases/download/v1.0/rex-run.gb",
+        "sha256": "9e074f66648f709528e4fc908dd979d098d74ab54cb24d09a75fa69d674eccaf",
+        "size": 32768,
+        "license": "GPL-3.0-only",
+        "cartridge": "ROM ONLY; the downloaded bytes read 0x0147 = 0x00, 0x0148 = 0x00 (32 KiB) and 0x0149 = 0x00 (no cartridge RAM), with a valid header checksum and Nintendo logo; DMG-only CGB flag 0x00",
+        "redistribution": "Author release asset. The repository carried no LICENSE file at the release commit, so the pinned licence text is the later commit af6baddb7e103529e15f8dc1e5dd19b03acc6913 that added it.",
+        "notices": {
+          "LICENSE": {
+            "url": "https://raw.githubusercontent.com/elseyf/rex-run-gb/af6baddb7e103529e15f8dc1e5dd19b03acc6913/LICENSE",
+            "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+            "size": 35149
+          }
+        }
+      },
+      "alien-invasion": {
+        "name": "Alien Invasion v1.0.0",
+        "author": "NiliusJulius",
+        "source": "https://github.com/NiliusJulius/Alien-Invasion",
+        "release": "v1.0.0",
+        "commit": "81ce62fee8f2839e54b691cbf5d12c53125b59a1",
+        "url": "https://github.com/NiliusJulius/Alien-Invasion/releases/download/v1.0.0/Alien-Invasion.gb",
+        "sha256": "78cbb13080f587c108d8a18661db7d7b4a5c14c730f5bb86794a41132035fbf0",
+        "size": 32768,
+        "license": "GPL-3.0-only",
+        "cartridge": "ROM ONLY; the downloaded bytes read 0x0147 = 0x00, 0x0148 = 0x00 (32 KiB) and 0x0149 = 0x00 (no cartridge RAM), with a valid header checksum and Nintendo logo; DMG-only CGB flag 0x00",
+        "notices": {
+          "LICENSE": {
+            "url": "https://raw.githubusercontent.com/NiliusJulius/Alien-Invasion/81ce62fee8f2839e54b691cbf5d12c53125b59a1/LICENSE",
+            "sha256": "fc02d5eb5780b64491a6aa810970e9585c14cf843a3744a1bbb173f23512726b",
+            "size": 35147
+          }
+        }
+      },
+      "square-fall": {
+        "name": "Square Fall v0.3",
+        "author": "bjorn_nah (Bjorn)",
+        "source": "https://github.com/bjorn-nah/square_fall",
+        "release": "v0.3",
+        "commit": "3da333bf3a7f41925b252a526ac903f7b99a5b99",
+        "url": "https://github.com/bjorn-nah/square_fall/releases/download/v0.3/square_fall_v03.gb",
+        "sha256": "ef69e75e1b9bb5fa021214dae68488c17fdccd817496f7a3d93e6054b8793d9b",
+        "size": 32768,
+        "license": "MIT",
+        "cartridge": "ROM ONLY; the downloaded bytes read 0x0147 = 0x00, 0x0148 = 0x00 (32 KiB) and 0x0149 = 0x00 (no cartridge RAM), with a valid header checksum and Nintendo logo; DMG-only CGB flag 0x00",
+        "redistribution": "Author release asset. The repository carried no LICENSE file at the release commit, so the pinned licence text is the later commit 2859cb7aeb9310cd3fd91b6048800efe4ef33446 that added it.",
+        "notices": {
+          "LICENSE": {
+            "url": "https://raw.githubusercontent.com/bjorn-nah/square_fall/2859cb7aeb9310cd3fd91b6048800efe4ef33446/LICENSE",
+            "sha256": "0b266ffae3fe5e5a9f49cdaed6cb848182d9146fb56f0f926025c37753bb49e5",
+            "size": 1062
+          }
+        }
+      },
+      "unstoppable-knight": {
+        "name": "Unstoppable Knight 2.2.2",
+        "author": "Rafagars (Rafael Garcia)",
+        "source": "https://github.com/Rafagars/Unstoppable-Knight-GB",
+        "release": "2.2.2",
+        "commit": "47e1059ccce0d803317745461f66b16a754afd29",
+        "url": "https://github.com/Rafagars/Unstoppable-Knight-GB/releases/download/2.2.2/knight.gb",
+        "sha256": "191c7fad34e643ab5f1083cd8f1a0582a4cef2bfee068bf36e18805f8bc40aaf",
+        "size": 32768,
+        "license": "MIT",
+        "cartridge": "ROM ONLY; the downloaded bytes read 0x0147 = 0x00, 0x0148 = 0x00 (32 KiB) and 0x0149 = 0x00 (no cartridge RAM), with a valid header checksum and Nintendo logo; CGB flag 0x80 (CGB-enhanced, DMG-compatible)",
+        "notices": {
+          "LICENSE": {
+            "url": "https://raw.githubusercontent.com/Rafagars/Unstoppable-Knight-GB/47e1059ccce0d803317745461f66b16a754afd29/LICENSE",
+            "sha256": "73b86b8993214ea3499082d7a810ef18640eb9f19808ea751b9c91c835df66c0",
+            "size": 1070
           }
         }
       }
