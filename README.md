@@ -38,6 +38,16 @@ the game's own reference frames:
 
 ![Springtrail playthrough](wiki/showcase/game-start.svg)
 
+## Play from a phone
+
+The live viewer streams actual FPGA pixels over UART to a password-protected
+phone page through a temporary HTTPS tunnel. Tap Game Boy buttons and see queued,
+executing and completed commands below the image. It uses the game already loaded
+on the board and keeps one UART owner for both input and capture.
+
+See [live viewer setup and use](wiki/tools/n2m/host/LIVE_VIEWER.md) for the bounded
+session, controls, freshness indicators and safe shutdown.
+
 ## Current system
 
 The hardware targets the original monochrome DMG family and is organized as a

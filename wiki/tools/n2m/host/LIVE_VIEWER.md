@@ -1,151 +1,160 @@
 # Live FPGA viewer
 
-The viewer serves actual160x144 pixels of the software image already loaded on
-the board. It never loads, resets or programs that image. A static image can be
-fresh: capture and source-frame sequence, not visual change, establish freshness.
-The [host command contract](SPEC.md) owns UART/session/snapshot semantics.
+View and control the image already loaded on the FPGA from a phone browser.
+The host reads actual 160×144 packed pixels over UART and publishes native PNGs;
+it does not render a host-side game or reload, reset or program the board.
+This is framebuffer evidence, not a camera view or physical-monitor proof.
+The [host contract](SPEC.md) owns UART, session and snapshot semantics.
 
-## Access
+## Setup
 
-The local server binds only127.0.0.1. Its only routes are GET `/`, `/status.json`
-and `/frame.png`, plus POST `/input`, all requiring HTTP Basic authentication.
-The POST accepts only a named Game Boy button and queues a fixed134ms tap. It
-requires JSON (at most64 bytes), `X-Viewer-Input: tap`, and exact Origin equality
-with the explicit `--input-origin https://<public-host>` setting. Forwarded Host
-is never an authority. No CORS permission is returned. There are no arbitrary
-UART, configuration, upload or file routes. Responses disable
-caching, framing and cross-origin access. Credentials are randomly generated,
-high entropy and retained only in an operator-private file; never put them in
-URLs, logs, source or PR text. The approved temporary Cloudflare Quick Tunnel
-provides HTTPS. Pin its official portable release/checksum in local workdir;
-no account, router/firewall change or global installation is required.
+Verify the [board setup](../../../src/board-bring-up.md), selected healthy UART
+endpoint, wiring and voltage, reviewed ABI/build identity, and canonical session
+certainty before use. The existing image must be valid, with UART input authority
+and effective input 0. The worker accepts PAUSED or RUNNING; it resumes a paused
+image with neutral input. It never generates game commands automatically.
 
-## Capture and lifecycle
-
-One worker owns the canonical durable UART session and machine lock1357311510.
-Fresh doctor, selected healthy device, wiring/voltage provenance and reviewed
-ABI/build identity must precede traffic. Require a valid existing image, UART
-input authority and effective input0. If paused, the authorized worker resumes
-it with input0. The viewer itself never supplies Start or gameplay input. Explicit local operator
-and authenticated phone requests use the same bounded queue below. Every capture is one
-SNAPSHOT followed by all5760 READ_FRAME bytes, without another capture in between.
-The core stays RUNNING throughout captures. Native PNG bytes come only from
-those actual packed shades using the existing decoder, not a host model.
-
-A completed capture atomically replaces an in-memory image/status pair. Show
-sequence, source completion dot, receive timestamp and measured latency. LIVE
-requires a recent successful capture and increasing source sequence/dot within
-the same reset epoch; duplicate/stopped source marks STALE, errors mark ERROR.
-The page must age to STALE even if polling or the capture process stops.
-Failed captures never refresh the last-success timestamp. No application retry
-follows protocol uncertainty. One certain rejected capture may be retried on the
-next scheduled interval; a second consecutive failure ends the worker.
-
-The local operator chooses a finite session duration and can stop it by a local
-stop file or console interrupt. Neither mechanism is remotely exposed. A normal
-exit halts the core, releases input0 and verifies PAUSED/effective0/certain. If
-uncertain, send no further traffic and report cleanup unverified. Keep the server
-available briefly to show terminal status; process shutdown closes it. Do not
-silently restart or reset an uncertain session.
-
-## Operation and evidence
-
-Before exposing a retained session, a bounded two-capture check verifies actual
-metadata progression, native pixels and latency from the existing image. External
-CLI checks must demonstrate unauthenticated rejection and authenticated PNG
-hash/status freshness. Existing image identity is observed, not inferred from the
-latest software source. No new gameplay, counter, physical monitor or long-run
-milestone evidence is claimed.
-
-A live viewer is an operational dependency. Preserve its worktree and private
-runtime while running, or move it to a documented retained runtime before cleanup.
-Do not delete or terminate it as ordinary merged-PR cleanup. The viewer is temporary and ends on its declared local shutdown. A manually
-started user-owned tunnel is not changed or stopped by this worker.
-
-The implementation caps concurrent HTTP handlers at8 with5-second socket timeouts,
-keeps only32 recent capture records plus a total count, and never queues overlapping
-UART captures. An image request carrying `v=<capture sequence>` returns409 if that
-generation is no longer current; the page retries status instead of pairing a new
-image with old metadata. Display capture age and capture-time RUNNING state; verified
-terminal status reports PAUSED, while uncertain cleanup reports UNKNOWN.
-
-Run a30-second capture proof first (`--seconds30`, whole supervisor60 seconds).
-The initial operational viewing session uses3600 seconds and the existing
-endurance process-tree supervisor selects an actual3630-second whole cap. Its
-worker wait is3618 seconds, reserving12 seconds for forced tree cleanup. The
-worker observes its own lease deadline during button waits and between requests,
-so normal release/HALT can precede that forced deadline. The simulation supervisor
-and its300-second default are unchanged. This is a60-minute viewing lease, not a
-new endurance milestone. Local `STOP` in the tagged live-viewer directory stops the
-loop, releases the board and closes the server. Its private credential file and
-tunnel binary remain outside committed source.
-
-
-## Buffered buttons
-
-The owner authorized local and authenticated phone requests through one queue.
-Phone controls are eight tap buttons: Left, Right, Up, Down, A, B, Start and Select.
-They have no automatic repeat or hold. The page reports accepted IDs or refusal.
-The local CLI publishes only an active-high generated eight-button mask1..255 and
-a duration1..1000milliseconds. It never accepts UART opcodes, memory writes, load,
-reset, configuration or arbitrary file paths. No button request is generated
-automatically. The bounded physical demonstration is Right1 for134milliseconds;
-no Start, Select, reset or image load is used for that demonstration.
-
-One shared producer lock reserves increasing integer sequence numbers and atomically
-publishes complete requests in that order. At most16 pending requests are accepted;
-submission fails when full or the runtime is stopped. The single UART worker claims
-a frozen batch of up to16 currently published requests before each capture,
-including the first. It executes that entire batch in FIFO order, then performs
-SNAPSHOT and all READ_FRAME chunks. Arrivals during the batch or capture wait for
-the next batch. Claimed requests are never replayed after a crash. Invalid records
-are rejected without UART traffic. No unbounded drain can starve capture.
-
-For one valid request the worker writes the mask, waits its bounded monotonic host
-time (interruptible by local stop), then writes and verifies input0 before another
-snapshot starts. The duration is approximate host time after the input acknowledgment,
-not an exact emulated frame count. Scheduling and UART acknowledgment add latency;
-a full16-entry local batch can extend refresh by about16 seconds. During input
-processing, show PROCESSING INPUTS and the real age of the prior capture; it is
-not a fresh capture. No key is intentionally held
-through the roughly1.1second pixel readback. Normal failures and stop release input;
-uncertain completion sends no further traffic and reports unverified release.
-
-The queue is under the tagged private runtime. Stop and verify PAUSED/input0/certain
-before changing the running worker's source; restart at a new tag after source review.
-Preserve the user-owned tunnel across this transition.
-
-Local submission example (no UART connection is opened by this command):
+Keep device selectors, build identity and credentials in private local files or
+shell variables. Do not publish them in source, URLs, shared logs or PR text. Initialize
+high-entropy credentials once:
 
 ```powershell
-python tools/fpga_viewer.py --tag <running-tag> --queue-mask 1 --press-ms 134
+python tools/fpga_viewer.py --init-credentials --credentials workdir/private/viewer.json
 ```
 
-The CLI reports QUEUED plus its sequence, not executed success. The worker retains
-`input-latest.json` with applied/cancelled/rejected status and verified release.
-Each claimed file is removed after its outcome; a crash-left `.claimed` file is
-never replayed. Capture/result metadata retains at most32 recent input receipts.
+Run from the repository or retained runtime checkout. Replace the example
+variables with verified local values. Keep the process alive while using the page:
 
-Admission is rechecked under the producer lock. Shutdown closes admission and
-uses the same lock to record pending requests as CANCELLED without UART traffic.
-A crashed producer lock fails closed with a manual-inspection error; it is never
-automatically reclaimed. STOP-file waits are checked at most20ms apart, excluding
-ongoing bounded UART commands.
+```powershell
+$ViewerPort = '<selected UART port>'
+$ViewerVid = '<selected USB VID>'
+$ViewerPid = '<selected USB PID>'
+$ViewerIdentity = '<exact selected device identity>'
+$ViewerBuild = '<reviewed 32-digit lowercase wire build ID>'
+$ViewerOrigin = 'https://<current tunnel hostname>'
+python tools/fpga_viewer.py --credentials workdir/private/viewer.json `
+  --expected-build-id $ViewerBuild --uart-port $ViewerPort `
+  --uart-vid $ViewerVid --uart-pid $ViewerPid --uart-identity $ViewerIdentity `
+  --seconds 3600 --port 8765 --input-origin $ViewerOrigin
+```
 
-## Command history
+Omitting `--tag` creates one unique tag in the parent and passes it unchanged to
+the worker. The startup line reports it. An existing explicit runtime tag is
+refused; rerun without `--tag` rather than deleting prior artifacts.
 
-Authenticated status includes newest-first command records: assigned ID, button
-or mask, requested milliseconds, queued timestamp, and observed execution and
-completion timestamps. QUEUED is blue, EXECUTING amber, RETIRED green, FAILED or
-UNCERTAIN red, and CANCELLED gray. Text labels accompany every color. RETIRED
-requires the press and verified release0; acceptance alone is never success.
+The server binds only `127.0.0.1`. A separately managed, pinned official
+[Cloudflare Quick Tunnel](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/do-more-with-tunnels/trycloudflare/)
+can expose that loopback port through temporary HTTPS without router changes or
+a global installation. Verify the portable release and its published checksum.
+A representative command, using the already-qualified local executable, is:
 
-Retain the latest50 terminal records plus all queued/executing records. The same
-producer lock serializes admission and history transitions; atomic publication
-prevents partial status reads or an old QUEUED update replacing execution. Status
-polling never accesses UART. Persistence failure stops the worker safely and
-cannot skip release of an already-pressed key or report a false green result.
+```powershell
+& $QualifiedCloudflared tunnel --config= --no-autoupdate `
+  --metrics 127.0.0.1:20241 --url http://127.0.0.1:8765
+```
 
-Serving without `--tag` creates a unique tag once in the parent and passes it
-explicitly to the worker. The startup line reports that tag. An existing explicit
-runtime tag is refused with guidance to omit it; artifacts are never overwritten.
+Use the resulting HTTPS origin in `--input-origin`; do not infer it from forwarded
+Host headers. The tunnel hostname can change on restart. The viewer does not start,
+change or stop a user-owned tunnel. Give the URL and private credentials only to
+intended users. Every image, status and input request requires authentication.
+
+## Phone controls and command history
+
+The page shows actual pixels at a sharp integer scale, capture age, source frame,
+core state and measured capture latency. Measured captures take about 1.1 seconds;
+the normal capture interval is about 2 seconds. These are observed timings, not a
+frame-rate guarantee. A static game image can still be fresh when its source
+sequence and completion dot advance.
+
+Eight tap buttons provide Left, Right, Up, Down, A, B, Start and Select. Each tap
+queues a fixed 134 ms press, with no automatic repeat or held-button mode. The
+page reports its accepted ID or a queue-full, busy, stopped or rejected response.
+It does not expose arbitrary UART operations, image loading, reset, configuration,
+file access or uploads.
+
+Before each capture, including the first, the single UART owner freezes the
+currently published FIFO batch under the producer lock. It executes that whole
+batch in order, releasing and verifying input 0 after each press, then performs
+one complete SNAPSHOT and all 5760 READ_FRAME bytes. No input command interleaves
+with a frame readback. Arrivals during a batch or capture wait for the next batch.
+At most 16 requests can be pending; a finite batch prevents capture starvation.
+
+A local operator can also submit a mask from the generated eight-button contract
+with a duration from 1 to 1000 ms, without opening a second UART connection:
+
+```powershell
+$ViewerTag = '<reported-running-tag>'
+python tools/fpga_viewer.py --tag $ViewerTag --queue-mask 1 --press-ms 134
+```
+
+Durations are approximate monotonic host time after the input acknowledgement,
+not exact emulated frame counts. A full local batch can add about 16 seconds plus
+UART acknowledgements before the next capture. During that time the page shows
+PROCESSING INPUTS and the real age of the previous image, not false freshness.
+
+History is newest first. Each record includes its assigned ID, button or mask,
+requested milliseconds, queued timestamp and observed start/completion timestamps.
+Labels accompany all colors:
+
+| State | Color | Meaning |
+| --- | --- | --- |
+| QUEUED | Blue | Accepted for a later batch. |
+| EXECUTING | Amber | The worker has begun the request. |
+| RETIRED | Green | Press completed and release 0 was verified. |
+| FAILED / UNCERTAIN | Red | Completion or release was not established. |
+| CANCELLED | Gray | Stopped before normal completion. |
+
+Retain the latest 50 terminal records plus every queued/executing record. Atomic
+history updates share the producer lock with admission, so an old queued update
+cannot overwrite execution. History polling never accesses UART. Persistence
+failure cannot skip release of an already-pressed key or report false retirement.
+
+## Access and freshness boundaries
+
+Authenticated GET routes are `/`, `/status.json` and `/frame.png`. The sole write
+route is POST `/input`: a named button in at most 64 bytes of JSON, exact equality
+with the configured HTTPS Origin, and `X-Viewer-Input: tap` are required in addition
+to Basic authentication. No permissive CORS response is provided; GET never
+mutates input. Responses disable caching, framing and external asset access.
+
+HTTP handling is capped at 8 concurrent handlers with 5-second socket timeouts.
+The worker retains 32 recent capture/input receipts plus a total capture count.
+The complete image/status pair is published atomically. An image request with
+`v=<capture sequence>` receives 409 if that generation is no longer current; the
+page retries rather than pairing different captures' pixels and metadata.
+
+LIVE requires a recent successful capture with increasing source sequence/dot
+inside the same reset epoch. Duplicate source marks STALE; capture errors mark
+ERROR. Failed capture never refreshes the last-success timestamp. The page also
+ages to OFFLINE / STALE if polling stops. One certain rejected capture may retry
+on the next interval; a second consecutive rejection stops the worker. Protocol
+uncertainty permits no further UART traffic or automatic retry/reset.
+
+## Lease, shutdown and retained runtime
+
+The 60-minute operational lease uses the existing endurance process-tree
+supervisor: 3600 seconds selects an actual 3630-second whole cap, with forced tree
+cleanup reserved in the last 12 seconds. This does not alter simulation budgets.
+A 30-second proof selects a 60-second cap. The worker observes lease expiry during
+button waits and between requests so ordinary cleanup can precede forced expiry.
+These are operational limits, not a new endurance milestone.
+
+Create `STOP` in `workdir/builds/<reported-tag>/live-viewer/`, or send the local
+console interrupt, to stop normally. STOP-file waits are checked every 20 ms,
+excluding ongoing bounded UART commands. Admission closes under the producer
+lock; pending requests receive cancellation records without UART traffic. Claimed
+requests are never replayed after a crash. Normal shutdown halts the core,
+releases input 0 and verifies PAUSED/effective 0/certain. Uncertainty instead stops
+traffic and reports cleanup unverified. Forced process termination is not proof
+of a safe board state.
+
+A dead process can leave a session lock. Verify the recorded owner is dead and
+session certainty under exclusive access before using existing lock-recovery
+procedures. Never reclaim a live owner's lock by age or clear an uncertain
+session merely to reconnect. A crashed producer lock similarly fails closed and
+requires inspection.
+
+Preserve the active checkout, private credentials and runtime artifacts while a
+viewer runs; ordinary PR cleanup must not kill it. Stop and verify a safe board
+state before changing imported runtime source. A manually started tunnel remains
+its user's responsibility after viewer shutdown.
