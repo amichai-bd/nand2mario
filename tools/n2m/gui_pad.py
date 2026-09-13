@@ -141,6 +141,23 @@ class Controller:
         self.record(dict(event='pad-mask', mask=self.mask, dot=self.dot))
         return True
 
+    def release_all(self):
+        """Drop every held button in one write; nothing held sends nothing.
+
+        Focus loss uses this: the key-up for a held direction is delivered to
+        whatever window took the focus, so without it the board would keep the
+        button and the player, who is watching the monitor, would see their
+        character walk on by itself.
+        """
+        if not self.held:
+            return False
+        self.held.clear()
+        applied = self.client.control('INPUT', 0)
+        self.dot = applied['dot']
+        self.changes += 1
+        self.record(dict(event='pad-release-all', mask=0, dot=self.dot))
+        return True
+
     def close(self):
         """Release input, verify 0 and report whether the session stayed certain."""
         result = {'changes': self.changes, 'released': False}
@@ -196,43 +213,131 @@ def pad_loop(client, *, expected_build, window=None, record=None, seconds=None):
     return result
 
 
+POLL_SECONDS = 0.4
+
+
+class Driver:
+    """Everything the pad window does apart from drawing itself.
+
+    The window owns widgets and scheduling; this owns the input edges, the
+    board poll, the lease and the failure that ends a session. Keeping them
+    apart is what lets the pad's behavior be tested without a display.
+    """
+
+    def __init__(self, controller, seconds=None, *, clock=time.monotonic):
+        self.controller = controller
+        self.clock = clock
+        self.deadline = None if seconds is None else clock() + seconds
+        self.failure = None
+
+    @property
+    def remaining(self):
+        return None if self.deadline is None else max(0, int(self.deadline - self.clock()))
+
+    def expired(self):
+        return self.deadline is not None and self.clock() >= self.deadline
+
+    def guard(self, action, what):
+        """Run one UART action; the first failure ends the session, truthfully."""
+        if self.failure is not None:
+            return None
+        try:
+            return action()
+        except Exception as error:
+            self.failure = (what, error)
+            return None
+
+    def key(self, keysym, keycode, state, down):
+        """Route one key event: 'exit' for Escape, otherwise apply any edge."""
+        if down and keycode == ESCAPE:
+            return 'exit'
+        found = edge(keysym, keycode, state, down)
+        if found is None:
+            return None
+        return 'applied' if self.button(*found) else None
+
+    def button(self, code, down):
+        """One control edge, from a click or a key; they are the same path."""
+        return bool(self.guard(lambda: self.controller.apply(code, down), 'UART write'))
+
+    def focus_lost(self):
+        """Release everything when the window stops receiving key events.
+
+        The key-up for a held button goes to whichever window took the focus,
+        so a held union would otherwise stay on the board with nothing on
+        screen to explain it. The session stays open and playable.
+        """
+        return bool(self.guard(self.controller.release_all, 'UART write'))
+
+    def poll(self):
+        """Ask the board what it is doing. Answers only; never a host guess."""
+        readings = self.guard(lambda: (self.controller.client.read_host(abi.HOST_REG_STATE),
+                                       self.controller.client.read_host(abi.HOST_REG_INPUT_EFFECTIVE)),
+                              'UART read')
+        if readings is None:
+            return None
+        state, effective = readings
+        return {'state': state, 'effective': effective, 'text': self.core_text(state, effective)}
+
+    def core_text(self, state, effective):
+        label = {abi.STATE_RUNNING: 'RUNNING', abi.STATE_PAUSED: 'PAUSED'}.get(state, 'UNKNOWN')
+        text = 'Core: ' + label
+        if effective != self.controller.mask:
+            text += '  |  board reports ' + (' + '.join(names(effective)) or 'none')
+        if self.remaining is not None:
+            text += f'  |  lease {self.remaining}s'
+        return text
+
+    def held_text(self):
+        held = self.controller.held_names()
+        return ('Held: ' + (' + '.join(held) if held else 'none') +
+                f'  (mask {self.controller.mask:#04x}, {self.controller.changes} writes,'
+                f' dot {self.controller.dot})')
+
+    def failure_text(self):
+        return None if self.failure is None else '%s failed: %s' % self.failure
+
+    def raise_failure(self):
+        if self.failure is not None:
+            raise self.failure[1]
+
+
 IDLE, HELD, FACE, KEY, PANEL, TEXT = '#2b3038', '#77baff', '#f2f5f8', '#aeb6c0', '#17191c', '#e8ecf1'
 
 
 def tk_window(controller, seconds=None, *, clock=time.monotonic):
-    """The local pad window. Mouse and keyboard drive the same controller."""
+    """Draw the pad and bind it to a Driver; all behavior lives in the Driver."""
     import tkinter as tk
 
+    driver = Driver(controller, seconds, clock=clock)
     root = tk.Tk()
     root.title('Game Boy pad')
     root.configure(bg=PANEL)
     root.resizable(False, False)
     widgets = {}
-    failure = {}
-    deadline = None if seconds is None else clock() + seconds
 
-    def status(text, colour=KEY):
-        message.configure(text=text, fg=colour)
+    def stop(reason, colour=KEY, delay=1200):
+        message.configure(text=reason, fg=colour)
+        root.after(delay, root.destroy)
 
-    def drive(code, down):
-        try:
-            controller.apply(code, down)
-        except Exception as error:  # A failed write ends the session; never play on blind.
-            failure['error'] = error
-            status('UART write failed: ' + str(error), '#ff9393')
-            root.after(1200, root.destroy)
-            return
-        for key, widget in widgets.items():
-            widget.configure(bg=HELD if key in controller.held else IDLE,
-                             fg=PANEL if key in controller.held else FACE)
-        refresh()
+    def paint():
+        for code, widget in widgets.items():
+            widget.configure(bg=HELD if code in controller.held else IDLE,
+                             fg=PANEL if code in controller.held else FACE)
+        held.configure(text=driver.held_text())
+        if driver.failure is not None:
+            stop(driver.failure_text(), '#ff9393')
+
+    def button(code, down):
+        driver.button(code, down)
+        paint()
 
     def control(parent, code, **grid):
         name, key = FACE_BY_CODE[code]
         widget = tk.Label(parent, text=f'{name}\n[ {key} ]', bg=IDLE, fg=FACE, width=7, height=2,
                           font=('Segoe UI', 11, 'bold'), relief='raised', borderwidth=2)
-        widget.bind('<ButtonPress-1>', lambda _event, c=code: drive(c, True))
-        widget.bind('<ButtonRelease-1>', lambda _event, c=code: drive(c, False))
+        widget.bind('<ButtonPress-1>', lambda _event, c=code: button(c, True))
+        widget.bind('<ButtonRelease-1>', lambda _event, c=code: button(c, False))
         widget.grid(padx=3, pady=3, **grid)
         widgets[code] = widget
         return widget
@@ -258,55 +363,42 @@ def tk_window(controller, seconds=None, *, clock=time.monotonic):
     control(centre, 0xa1, row=0, column=0)
     control(centre, 0x0d, row=0, column=1)
 
-    held = tk.Label(root, text='Held: none', bg=PANEL, fg=TEXT, font=('Consolas', 11))
+    held = tk.Label(root, text=driver.held_text(), bg=PANEL, fg=TEXT, font=('Consolas', 11))
     held.grid(row=3, column=0, columnspan=2)
     core = tk.Label(root, text='Core: checking', bg=PANEL, fg=TEXT, font=('Consolas', 11))
     core.grid(row=4, column=0, columnspan=2)
     message = tk.Label(root, text='Each control names its button and, in brackets, the key that presses it. '
                                   'Mouse and keyboard do the same thing; hold means hold. '
+                                  'Leaving the window releases every held button. '
                                   'Esc or closing the window releases input and exits.',
                        bg=PANEL, fg=KEY, font=('Segoe UI', 9), wraplength=420)
     message.grid(row=5, column=0, columnspan=2, padx=12, pady=(4, 10))
 
-    def refresh():
-        names_held = controller.held_names()
-        held.configure(text='Held: ' + (' + '.join(names_held) if names_held else 'none') +
-                       f'  (mask {controller.mask:#04x}, {controller.changes} writes, dot {controller.dot})')
-
     def poll():
-        """Ask the board what it is actually doing; never show a guess."""
-        if failure:
-            return
-        try:
-            state = controller.client.read_host(abi.HOST_REG_STATE)
-            effective = controller.client.read_host(abi.HOST_REG_INPUT_EFFECTIVE)
-        except Exception as error:
-            failure['error'] = error
-            status('UART read failed: ' + str(error), '#ff9393')
-            root.after(1200, root.destroy)
-            return
-        label = 'RUNNING' if state == abi.STATE_RUNNING else ('PAUSED' if state == abi.STATE_PAUSED else 'UNKNOWN')
-        remaining = '' if deadline is None else f'  |  lease {max(0, int(deadline - clock()))}s'
-        agrees = '' if effective == controller.mask else f'  |  board reports {" + ".join(names(effective)) or "none"}'
-        core.configure(text=f'Core: {label}' + agrees + remaining)
-        if deadline is not None and clock() >= deadline:
-            status('Lease expired; releasing input and closing.')
-            root.after(200, root.destroy)
-            return
-        root.after(400, poll)
+        reading = driver.poll()
+        if reading is None:
+            return stop(driver.failure_text(), '#ff9393')
+        core.configure(text=reading['text'])
+        if driver.expired():
+            return stop('Lease expired; releasing input and closing.', KEY, 200)
+        root.after(int(POLL_SECONDS * 1000), poll)
 
     def key_event(event, down):
-        if down and event.keycode == ESCAPE:
+        if driver.key(event.keysym, event.keycode, event.state, down) == 'exit':
             root.destroy()
             return
-        found = edge(event.keysym, event.keycode, event.state, down)
-        if found is not None:
-            drive(*found)
+        paint()
+
+    def focus_out(_event):
+        if driver.focus_lost():
+            message.configure(text='Focus left the window; every held button was released.', fg=KEY)
+        paint()
 
     root.bind('<KeyPress>', lambda event: key_event(event, True))
     root.bind('<KeyRelease>', lambda event: key_event(event, False))
+    # Key-up goes to whichever window takes the focus, so release here instead.
+    root.bind('<FocusOut>', focus_out)
     root.protocol('WM_DELETE_WINDOW', root.destroy)
-    refresh()
     root.after(10, poll)
     root.focus_force()
     try:
@@ -316,5 +408,4 @@ def tk_window(controller, seconds=None, *, clock=time.monotonic):
             root.destroy()
         except Exception:
             pass
-    if failure:
-        raise failure['error']
+    driver.raise_failure()

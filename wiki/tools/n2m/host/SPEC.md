@@ -191,10 +191,6 @@ Pre-capture queued events are discarded, and a mapped key observed held in that
 queue is ignored until its release. Foreground ownership is checked again at
 serial open. This observes console events, not unreported physical key state.
 
-The [on-screen pad](GAMEPAD.md) imports this same mapping and applies the same
-key-down/key-up rules from a local `tkinter` window, for an operator watching the
-board's VGA output. It reads no frames and needs no classic console.
-
 Require a certain durable session, expected build/ABI, valid image, UART source
 and initial host/effective0. No implicit source selection, RUN/HALT, load or reset
 occurs. Existing machine/device locks serialize the whole session. `--json` and
@@ -221,6 +217,14 @@ release acceptance stays in the charter's
 [remote acceptance](../../../src/project-charter.md#remote-acceptance) split,
 whose monitor entry is the recorded
 [display observation](../../../src/board-bring-up.md#display-observation).
+
+The [on-screen pad](GAMEPAD.md) imports this same mapping and applies the same
+key-down/key-up rules from a local `tkinter` window, for an operator watching the
+board's VGA output. It reads no frames and needs no classic console. The rules
+above are `host keyboard`'s: the pad releases the held union on focus loss and
+stays open instead of exiting, and it resumes a paused core once at startup with
+neutral input, which `host keyboard` never does. It sends no other RUN/HALT, load
+or reset, and its own page owns the rest of its behavior.
 
 Discovery reuses the doctor without running its licensed probes. The optional
 [pinned serial backend](../../../../tools/n2m/host/THIRD_PARTY.md) opens only the

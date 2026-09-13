@@ -109,6 +109,7 @@ def gamepad(args):
     """Own one UART session for the on-screen pad; read no frames, serve no HTTP."""
     out = ROOT/'workdir/builds'/args.tag/'gui-pad'
     out.mkdir(parents=True,exist_ok=False)
+    print(f'Pad tag {args.tag}; lease {args.seconds}s; results under {out}',flush=True)
     selection = SimpleNamespace(uart_port=args.uart_port,uart_vid=args.uart_vid,
                                 uart_pid=args.uart_pid,uart_identity=args.uart_identity,endpoint_restarted=False)
     result = {'status':'FAIL','reason':'session not opened','changes':0,'released':False}
@@ -146,16 +147,25 @@ def main(argv=None):
     for name in ('uart-port','uart-vid','uart-pid','uart-identity'):
         parser.add_argument('--'+name)
     parser.add_argument('--input-origin',help='exact HTTPS browser origin allowed to submit fixed taps')
-    parser.add_argument('--port',type=int,default=8765)
+    parser.add_argument('--port',type=int,help='viewer HTTP port; default8765')
     parser.add_argument('--gui',action='store_true',help='open a local tkinter Game Boy pad; sends buttons only, reads no frames')
     parser.add_argument('--seconds',type=int,help='session lease; default30 for the viewer and900 for --gui')
-    parser.add_argument('--interval',type=float,default=2)
-    parser.add_argument('--step-frames',type=int,default=1,help='whole 70224-dot frames advanced per capture in stepped mode')
+    parser.add_argument('--interval',type=float,help='viewer capture interval; default2')
+    parser.add_argument('--step-frames',type=int,help='whole 70224-dot frames advanced per capture in stepped mode; default1')
     parser.add_argument('--worker',action='store_true',help=argparse.SUPPRESS)
     arguments = list(sys.argv[1:] if argv is None else argv)
     args = parser.parse_args(arguments)
+    viewer_only = {'--interval':args.interval,'--step-frames':args.step_frames,
+                   '--credentials':args.credentials,'--init-credentials':args.init_credentials or None,
+                   '--input-origin':args.input_origin,'--port':args.port,'--queue-mask':args.queue_mask}
     if args.seconds is None:
         args.seconds = 900 if args.gui else 30
+    if args.interval is None:
+        args.interval = 2
+    if args.step_frames is None:
+        args.step_frames = 1
+    if args.port is None:
+        args.port = 8765
     if args.tag is None:
         if args.queue_mask is not None:
             parser.error('running viewer tag required for queue submission')
@@ -163,13 +173,15 @@ def main(argv=None):
         arguments += ['--tag',args.tag]
     if not args.tag.isalnum():
         parser.error('tag must be alphanumeric')
-    if args.queue_mask is not None:
+    if args.queue_mask is not None and not args.gui:
         index = enqueue(ROOT/'workdir/builds'/args.tag/'live-viewer',args.queue_mask,args.press_ms)
         print(json.dumps({'status':'QUEUED','id':index}))
         return 0
     if args.gui:
-        if args.credentials or args.init_credentials or args.input_origin or args.port != 8765:
-            parser.error('--gui reads no frames and serves no HTTP; credentials, origin and port do not apply')
+        refused = sorted(name for name,value in viewer_only.items() if value is not None)
+        if refused:
+            parser.error('--gui reads no frames, serves no HTTP and queues nothing; it refuses '
+                         +', '.join(refused))
         require_build_id(parser,args)
         if not 1 <= args.seconds <= 3600:
             parser.error('seconds1..3600 required')

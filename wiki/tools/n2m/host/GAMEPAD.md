@@ -27,9 +27,16 @@ python tools/fpga_viewer.py --gui --expected-build-id $PadBuild --uart-port $Pad
 
 `--uart-vid`, `--uart-pid` and `--uart-identity` narrow the selection the same
 way they do for every host command; exactly one healthy device must match.
-Omitting `--tag` creates one unique tag and reports it. `--seconds` sets the
-session lease, 900 seconds by default and at most 3600. Viewer-only options are
-refused: the pad has no credentials, no HTTP port and no browser origin.
+Omitting `--tag` creates one unique tag; the startup line reports the tag, the
+lease and the directory holding the run's `result.json` and packet journal.
+`--seconds` sets the session lease, 900 seconds by default and at most 3600; the
+window shows the remaining time and closes through the ordinary release path when
+it expires. The pad enforces that lease itself rather than under the viewer's
+process supervisor, because killing the process tree would bypass the release.
+
+Viewer-only options are refused by name rather than ignored: `--credentials`,
+`--init-credentials`, `--input-origin`, `--port`, `--interval`, `--step-frames`
+and `--queue-mask` all belong to the frame viewer and have no meaning here.
 
 ## Controls
 
@@ -51,6 +58,17 @@ directions are preserved. Auto-repeat changes nothing, because a repeated down
 leaves the union unchanged and writes nothing. Ctrl- or Alt-modified downs are
 ignored; their releases still clear a held key. Escape or closing the window
 exits.
+
+**Losing window focus releases every held button**, in one write, and the window
+stays open and playable. Alt+Tab or a click on another window delivers the key-up
+to that window instead, so without this the board would keep the button; the
+player is watching the monitor, not the pad, and would see their character walk
+on by itself with nothing on screen to explain it. `host keyboard` treats focus
+loss as an exit condition because a console command has nowhere else to go; the
+pad is the player's control surface, so it releases and waits rather than closing
+mid-game. The window says so when it happens. A key-up that arrives later,
+because focus returned before the key was let go, changes an already-empty union
+and writes nothing.
 
 Clicking a control presses it and releasing the mouse releases it, through the
 same call a key uses, so a held click is a held key and the board cannot tell
@@ -80,7 +98,10 @@ frames instead of a monitor.
 The window shows the held buttons by name, the current mask, how many writes
 the session has sent and the dot the endpoint acknowledged for the last one.
 Below that it polls the board itself, about every 400 ms, for the core state
-(RUNNING or PAUSED) and the effective input. Those two lines are board answers,
+(RUNNING or PAUSED) and the effective input. This poll is two word reads, and is
+the only traffic the pad generates that `host keyboard` does not: it is what makes
+the displayed state a board answer rather than a host assumption, and it stops at
+the first failure. Those two lines are board answers,
 not host guesses: when the effective input disagrees with the held union the
 window says what the board reports. The remaining lease is shown while it runs.
 A failed UART read or write stops the session, states the failure and closes
@@ -114,9 +135,12 @@ released mask.
 
 [`tools/n2m/tests/test_gui_pad.py`](../../../../tools/n2m/tests/test_gui_pad.py)
 covers the mapping, the single write per changed union, repeats, chords, mouse
-and keyboard equivalence, the request order through preflight and release, the
-uncertain and failed-release paths, and the refusal message when the board is
-already held. It runs against a fake endpoint with no board and no window. A
+and keyboard equivalence, focus-loss release and the stale key-up after it, the
+lease, the board poll and its failure, the request order through preflight and
+release, the uncertain and failed-release paths, and the refusal messages for a
+held board and for viewer-only options. It runs against a fake endpoint with no board and no window. A
 window cannot be asserted in CI; the layout, highlighting, mouse and key
 handling and the exit path were exercised by hand against the real window with a
-fake endpoint.
+fake endpoint. Everything the window does other than drawing itself — input
+edges, focus loss, the poll, the lease and the failure that ends a session —
+lives in `Driver`, which is what those tests drive.

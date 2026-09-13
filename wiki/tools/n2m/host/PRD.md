@@ -13,7 +13,8 @@ The [on-screen pad](GAMEPAD.md) puts that same mapping behind a local window wit
 clickable, labelled Game Boy controls, for an operator sitting at the board with a
 monitor. It sends buttons only: no frame readback, no server and no mode of its
 own. It must take the existing locks and preconditions, keep the core running,
-and release and verify input 0 on exit.
+release the held union when the window loses focus, and release and verify
+input 0 on exit.
 
 The [Stackdrop player comparison](../../../src/sw/stackdrop/SPEC.md#pixel-player-comparison)
 uses these public controls and rendered snapshots for software decisions.

@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from n2m import generated_interfaces as abi
-from n2m.gui_pad import Controller, edge, explain_conflict, names, pad_loop, virtual_key
+from n2m.gui_pad import Controller, Driver, edge, explain_conflict, names, pad_loop, virtual_key
 from n2m.host.keyboard import KEYS
 import fpga_viewer
 
@@ -223,6 +223,103 @@ class SessionTests(unittest.TestCase):
             self.assertEqual(client.masks, [])
 
 
+class Clock:
+    def __init__(self):
+        self.value = 0.0
+
+    def __call__(self):
+        return self.value
+
+
+class FocusTests(unittest.TestCase):
+    def test_focus_loss_releases_the_held_union_in_one_write(self):
+        client = Fake()
+        driver = Driver(Controller(client))
+        driver.button(RIGHT, True)
+        driver.button(A, True)
+        self.assertTrue(driver.focus_lost())
+        self.assertEqual(client.masks, [abi.BUTTON_RIGHT, abi.BUTTON_RIGHT | abi.BUTTON_A, 0])
+        self.assertEqual(client.effective, 0)
+        self.assertEqual(driver.controller.held_names(), [])
+
+    def test_focus_loss_with_nothing_held_sends_nothing(self):
+        client = Fake()
+        driver = Driver(Controller(client))
+        self.assertFalse(driver.focus_lost())
+        self.assertEqual(client.masks, [])
+
+    def test_the_session_stays_playable_after_focus_returns(self):
+        client = Fake()
+        driver = Driver(Controller(client))
+        driver.button(LEFT, True)
+        driver.focus_lost()
+        driver.button(LEFT, True)
+        driver.button(LEFT, False)
+        self.assertEqual(client.masks, [abi.BUTTON_LEFT, 0, abi.BUTTON_LEFT, 0])
+        self.assertIsNone(driver.failure)
+
+    def test_a_stale_key_up_after_focus_loss_writes_nothing(self):
+        # The key-up may still arrive if focus returns before the key is let go.
+        client = Fake()
+        driver = Driver(Controller(client))
+        driver.button(UP, True)
+        driver.focus_lost()
+        driver.key('Up', UP, 0, False)
+        self.assertEqual(client.masks, [abi.BUTTON_UP, 0])
+
+
+class DriverTests(unittest.TestCase):
+    def test_escape_exits_and_other_keys_apply(self):
+        driver = Driver(Controller(Fake()))
+        self.assertEqual(driver.key('Escape', 0x1b, 0, True), 'exit')
+        self.assertEqual(driver.key('z', A, 0, True), 'applied')
+        self.assertIsNone(driver.key('q', 0x51, 0, True))
+        self.assertIsNone(driver.key('z', A, 0, True))  # Repeat writes nothing.
+
+    def test_lease_counts_down_and_expires(self):
+        clock = Clock()
+        driver = Driver(Controller(Fake()), 30, clock=clock)
+        self.assertEqual(driver.remaining, 30)
+        self.assertFalse(driver.expired())
+        clock.value = 29.5
+        self.assertEqual(driver.remaining, 0)
+        self.assertFalse(driver.expired())
+        clock.value = 30
+        self.assertTrue(driver.expired())
+        self.assertIsNone(Driver(Controller(Fake())).remaining)
+
+    def test_a_failed_write_stops_the_session_and_is_named(self):
+        client = Fake(fail_on=abi.BUTTON_A)
+        driver = Driver(Controller(client))
+        self.assertFalse(driver.button(A, True))
+        self.assertEqual(driver.failure[0], 'UART write')
+        self.assertIn('UART write failed', driver.failure_text())
+        self.assertFalse(driver.button(RIGHT, True))  # No traffic after the failure.
+        self.assertEqual(client.masks, [])
+        with self.assertRaises(RuntimeError):
+            driver.raise_failure()
+
+    def test_poll_reports_board_answers_and_disagreement(self):
+        client = Fake()
+        driver = Driver(Controller(client), 900, clock=Clock())
+        driver.button(RIGHT, True)
+        reading = driver.poll()
+        self.assertEqual((reading['state'], reading['effective']), (abi.STATE_RUNNING, abi.BUTTON_RIGHT))
+        self.assertEqual(reading['text'], 'Core: RUNNING  |  lease 900s')
+        client.effective = 0  # The board no longer agrees with the held union.
+        self.assertIn('board reports none', driver.poll()['text'])
+        self.assertIn('Held: Right', driver.held_text())
+
+    def test_a_failed_poll_stops_the_session(self):
+        class Silent(Fake):
+            def read_host(self, address):
+                raise RuntimeError('port closed')
+        driver = Driver(Controller(Silent()))
+        self.assertIsNone(driver.poll())
+        self.assertEqual(driver.failure[0], 'UART read')
+        self.assertIn('port closed', driver.failure_text())
+
+
 class ConflictTests(unittest.TestCase):
     def test_busy_board_names_the_actual_cause(self):
         self.assertIn('Another trusted controller already holds this machine',
@@ -248,10 +345,14 @@ class CommandLineTests(unittest.TestCase):
         return name
 
     def test_gui_refuses_viewer_only_options(self):
+        for extra in (['--credentials', 'x'], ['--init-credentials'], ['--input-origin', 'https://x'],
+                      ['--port', '9000'], ['--interval', '3'], ['--step-frames', '4'],
+                      ['--tag', 'padrefusal', '--queue-mask', '1']):
+            with self.assertRaises(SystemExit, msg=extra):
+                fpga_viewer.main(['--gui', '--expected-build-id', BUILD, *extra])
+            self.assertIn('it refuses', self.streams['stderr'].getvalue())
         with self.assertRaises(SystemExit):
-            fpga_viewer.main(['--gui', '--expected-build-id', BUILD, '--credentials', 'x'])
-        with self.assertRaises(SystemExit):
-            fpga_viewer.main(['--gui'])
+            fpga_viewer.main(['--gui'])  # The reviewed build ID is still required.
 
     def test_viewer_without_the_flag_still_requires_credentials(self):
         with self.assertRaises(SystemExit):
@@ -269,6 +370,7 @@ class CommandLineTests(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn('Another trusted controller already holds this machine',
                       self.streams['stderr'].getvalue())
+        self.assertIn('Pad tag ' + tag, self.streams['stdout'].getvalue())
         result = json.loads((ROOT / 'workdir/builds' / tag / 'gui-pad/result.json').read_text())
         self.assertIn('Another trusted controller', result['conflict'])
         self.assertFalse(result['released'])
