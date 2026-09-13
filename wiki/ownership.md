@@ -63,7 +63,9 @@ table belongs to its schema and generator; do not hand-copy constants into a
 PRD, SPEC, or MAS. Describe current source; mark each planned implementation or
 verification gap explicitly and link only its open issue. Remove completed issue
 and PR history from contracts. External technical citations and the statistics
-page's delivery measurements are the stated exceptions in [AGENTS](../AGENTS.md).
+page's delivery measurements are exceptions in [AGENTS](../AGENTS.md).
+Dated [project stories](blogs/index.md) are a separate editorial owner: completed
+issue/PR citations support historical claims there, not normative requirements.
 
 The wiki may contain Markdown, HTML, and SVG documentation. Source and tests
 stay in their implementation directories and are external references under the

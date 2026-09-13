@@ -14,6 +14,7 @@ system; this guide points to the contracts that own the details.
 | Explore the game and artwork | [Springtrail](src/sw/springtrail/SPEC.md) | [8x8 tile composition](src/sw/springtrail/CHARACTER_ART.md) and [core asset gallery](src/sw/springtrail/CORE_ART.md) |
 | Build or test something | [Build entry point](tools/n2m/SPEC.md#available-commands) | [Software toolchain](tools/sw/SPEC.md) and [verification tiers](src/dv/integration/SPEC.md#verification-tiers) |
 | Find the owning specification | [Ownership map](ownership.md) | Tool PRDs/SPECs, RTL microarchitecture and verification contracts |
+| Read the engineering story | [Project stories](blogs/index.md) | Dated retrospectives, failures and lessons, separate from current contracts |
 | Interpret repository activity | [Statistics report](statistics.html) | [How to read and refresh the snapshot](project-statistics.md) |
 | Contribute with an agent | [Agent rules](../AGENTS.md) | [Agent flow](../.agents/skills/agent-flow/SKILL.md) and [worktree lifecycle](../worktrees/README.md) |
 
