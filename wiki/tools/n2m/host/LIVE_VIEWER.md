@@ -70,8 +70,12 @@ image with old metadata. Display capture age and capture-time RUNNING state; ver
 terminal status reports PAUSED, while uncertain cleanup reports UNKNOWN.
 
 Run a30-second capture proof first (`--seconds30`, whole supervisor60 seconds).
-The initial operational viewing session uses3600 seconds, with30 seconds reserved
-by the outer supervisor for setup/cleanup. This is a60-minute viewing lease, not a
+The initial operational viewing session uses3600 seconds and the existing
+endurance process-tree supervisor selects an actual3630-second whole cap. Its
+worker wait is3618 seconds, reserving12 seconds for forced tree cleanup. The
+worker observes its own lease deadline during button waits and between requests,
+so normal release/HALT can precede that forced deadline. The simulation supervisor
+and its300-second default are unchanged. This is a60-minute viewing lease, not a
 new endurance milestone. Local `STOP` in the tagged live-viewer directory stops the
 loop, releases the board and closes the server. Its private credential file and
 tunnel binary remain outside committed source.
@@ -141,3 +145,7 @@ producer lock serializes admission and history transitions; atomic publication
 prevents partial status reads or an old QUEUED update replacing execution. Status
 polling never accesses UART. Persistence failure stops the worker safely and
 cannot skip release of an already-pressed key or report a false green result.
+
+Serving without `--tag` creates a unique tag once in the parent and passes it
+explicitly to the worker. The startup line reports that tag. An existing explicit
+runtime tag is refused with guidance to omit it; artifacts are never overwritten.

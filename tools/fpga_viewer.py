@@ -10,6 +10,7 @@ import signal
 import sys
 import threading
 import time
+import uuid
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -21,7 +22,6 @@ from n2m.host.transport import session, session_root
 from n2m.live_viewer import Latest, capture_loop, server
 from n2m.records import atomic_json
 from n2m.viewer_buttons import Buttons, enqueue, history
-from n2m.test_budget import supervise
 
 
 def png_writer(packed, path):
@@ -34,12 +34,13 @@ def png_writer(packed, path):
 
 
 class Stop:
-    def __init__(self, path):
+    def __init__(self, path, seconds=None):
+        self.deadline = None if seconds is None else time.monotonic()+seconds
         self.path = path
         self.event = threading.Event()
 
     def is_set(self):
-        return self.event.is_set() or self.path.exists()
+        return self.event.is_set() or self.path.exists() or (self.deadline is not None and time.monotonic() >= self.deadline)
 
     def wait(self, seconds):
         deadline = time.monotonic()+seconds
@@ -61,7 +62,7 @@ def worker(args):
     if not credentials.get('username') or len(credentials.get('password','')) < 32:
         raise ValueError('high entropy credentials required')
     latest = Latest()
-    stop = Stop(out/'STOP')
+    stop = Stop(out/'STOP',args.seconds)
     signal.signal(signal.SIGINT,lambda *_:stop.event.set())
     signal.signal(signal.SIGTERM,lambda *_:stop.event.set())
     http = server(latest,credentials['username'],credentials['password'],args.port,
@@ -96,7 +97,7 @@ def worker(args):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--tag',required=True)
+    parser.add_argument('--tag',help='unique runtime tag; automatically generated when serving')
     parser.add_argument('--credentials',help='private local JSON; contents are never printed')
     parser.add_argument('--init-credentials',action='store_true')
     parser.add_argument('--queue-mask',type=lambda value:int(value,0),help='publish a local bounded button press; never opens UART')
@@ -109,7 +110,13 @@ def main(argv=None):
     parser.add_argument('--seconds',type=int,default=30)
     parser.add_argument('--interval',type=float,default=2)
     parser.add_argument('--worker',action='store_true',help=argparse.SUPPRESS)
-    args = parser.parse_args(argv)
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    args = parser.parse_args(arguments)
+    if args.tag is None:
+        if args.queue_mask is not None:
+            parser.error('running viewer tag required for queue submission')
+        args.tag = 'viewer'+uuid.uuid4().hex
+        arguments += ['--tag',args.tag]
     if not args.tag.isalnum():
         parser.error('tag must be alphanumeric')
     if args.queue_mask is not None:
@@ -131,10 +138,14 @@ def main(argv=None):
         parser.error('seconds1..3600, interval1..10 and unprivileged port required')
     if args.worker:
         return worker(args)
-    command = [sys.executable,str(Path(__file__).resolve()),*(argv or sys.argv[1:]),'--worker']
-    code,output = supervise(command,ROOT,args.tag,ceiling=args.seconds+30)
-    print(output,end='')
-    return code
+    if (ROOT/'workdir/builds'/args.tag/'live-viewer').exists():
+        parser.error('runtime tag already exists; omit --tag for a fresh session')
+    command = [sys.executable,str(Path(__file__).resolve()),*arguments,'--worker']
+    # Operational lease, not the simulation supervisor's shrink-only ceiling.
+    sys.path.insert(0,str(ROOT/'src/dv/springtrail'))
+    from endurance import supervise
+    print(f'Viewer tag {args.tag}; lease {args.seconds}s; whole cap {args.seconds+30}s',flush=True)
+    return supervise(command,args.seconds+30,ROOT/'workdir/builds'/args.tag/'viewer-budget')
 
 
 if __name__ == '__main__':
