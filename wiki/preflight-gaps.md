@@ -33,8 +33,8 @@ stay recorded so the decision can be reversed. The
 | GAP-002 | P0 | Closed | — | License, ROM policy, and provenance | Approved private source policy, provenance rules, and practical content safeguards are committed |
 | GAP-003 | P0 | Closed | — | Build command | A minimal `n2m` command runs from a fresh shell |
 | GAP-004 | P0 | Closed | — | Real environment doctor | Checked smoke and read-only identity checks work; runtime checks are described in GAP-008 |
-| GAP-005 | P0 | Closed | — | Board wiring and safe bring-up | Frame content and UART ping pass over UART with documented wiring; the monitor picture stays with GAP-006 |
-| GAP-006 | P0 | Physical gap | [#417](https://github.com/amichai-bd/nand2mario/issues/417) | Clock, reset, and CDC plan | Implemented timing still needs connected-board display acceptance |
+| GAP-005 | P0 | Closed | — | Board wiring and safe bring-up | Frame content and UART ping pass over UART with documented wiring; the monitor picture closed later under GAP-006 |
+| GAP-006 | P0 | Closed | — | Clock, reset, and CDC plan | Clocks, reset and CDC are specified, generated and checked, and the owner confirmed the picture on a connected monitor |
 | GAP-007 | P0 | Closed | — | Executable interface contracts | Address maps, host registers, and trace formats have one source |
 | GAP-008 | P0 | Closed | — | Verification baseline | A known-good DUT and deliberately failing DUT prove the harness |
 | GAP-009 | P0 | Closed | — | Initial agent skills | Core skills exist and have concise trigger tests and examples |
@@ -168,8 +168,9 @@ and display pins; UART assignments are:
 
 Monitor qualification is not part of this gap's evidence. The frame the board
 scans out was checked by reading it back over UART and comparing every pixel
-against the independent reference; nobody observed the picture on a monitor.
-That acceptance stays with [GAP-006](#gap-006-clock-reset-and-cdc-plan).
+against the independent reference; no monitor was connected during that run.
+The owner's later monitor observation closed that acceptance under
+[GAP-006](#gap-006-clock-reset-and-cdc-plan).
 
 **Risk**
 
@@ -199,17 +200,19 @@ and [VGA frame bridge](src/rtl/vga/MAS_vga.md) have dedicated
 checks. The [system composition](src/rtl/system/MAS_system.md) uses the specified
 25 MHz system clock and separate VGA clock.
 [GAP-005](#gap-005-board-wiring-and-safe-bring-up) closed the connected board's
-wiring, programming and UART-readable frame content. Acceptance of the picture
-on an actual monitor remains unproven; a person must look at a connected
-display under [#417](https://github.com/amichai-bd/nand2mario/issues/417).
-Tolerance across displays stays with [GAP-012](#gap-012-vga-frame-crossing).
+wiring, programming and UART-readable frame content. The picture itself is now
+accepted: the owner connected a monitor at the board and confirmed the image,
+recorded in [board bring-up](src/board-bring-up.md#display-observation). That is
+one direct visual observation for one bitstream, image and monitor, not a
+timing or signal-quality measurement. Tolerance across displays stays with
+[GAP-012](#gap-012-vga-frame-crossing).
 
 **Risk**
 
 Fabric-generated clocks, unconstrained crossings, or mismatched frame rates can
 cause intermittent failures missed by simulation.
 
-**Close when**
+**Closed when — met**
 
 - Required Game Boy and VGA rates and allowed error are written down.
 - A PLL or clock-enable design is generated and reviewed.
@@ -218,6 +221,8 @@ cause intermittent failures missed by simulation.
 - Framebuffer and control crossings use named CDC structures.
 - TimeQuest reports no unexplained unconstrained paths.
 - Simulation checks tick counts, line length, frame length, and buffer swaps.
+- A connected monitor shows the scanned-out picture correctly, observed at the
+  board by the owner.
 
 ## GAP-007 — Executable interface contracts
 
@@ -392,13 +397,12 @@ The [VGA tests](../src/dv/vga/README.md) check ownership, raster geometry,
 bank reuse, active-swap failures and source-to-VGA RGB replicas with canonical
 source/output CRCs. FPGA checks cover three-bank RAM inference and constrained
 timing. Source/snapshot comparison is separate from VGA-output checking.
-These component checks leave physical display acceptance open. Connected
-pin, wiring and voltage verification closed under
+Connected pin, wiring and voltage verification closed under
 [GAP-005](#gap-005-board-wiring-and-safe-bring-up), which also read the scanned
 frame back over UART. The first confirmation that one monitor shows the picture
-correctly is [#417](https://github.com/amichai-bd/nand2mario/issues/417) under
-[GAP-006](#gap-006-clock-reset-and-cdc-plan); tolerance across displays and
-scaled-image operation stay open here.
+correctly closed [GAP-006](#gap-006-clock-reset-and-cdc-plan) and is recorded in
+[board bring-up](src/board-bring-up.md#display-observation). Tolerance across
+displays, the test card and scaled-image operation stay open here.
 Simulation and fit evidence do not replace physical acceptance.
 
 **Risk**
@@ -540,11 +544,14 @@ hosted. On 2026-09-11 the owner settled three consequences:
 Board I/O itself is proven: [board bring-up](src/board-bring-up.md) records the
 wiring, checked programming and the UART-readable heartbeat, frame content,
 ping, build ID and CRC rejection.
-[#417](https://github.com/amichai-bd/nand2mario/issues/417) stays open as
-scoped for the monitor picture, and the KEY0 board reset still needs hands at
-the board. Those gate physical display and physical release claims only; they
-do not block UART-observable, simulation or host work. Reopen the closed issues
-if the board becomes physically reachable or a runner can be hosted.
+The monitor picture is confirmed: on 2026-09-13 the owner was at the board and
+observed it, recorded in
+[board bring-up](src/board-bring-up.md#display-observation). The KEY0 board
+reset still needs hands at the board, under
+[#512](https://github.com/amichai-bd/nand2mario/issues/512). That gates physical
+release claims only; it does not block UART-observable, simulation or host work.
+Reopen the closed issues if the board becomes routinely physically reachable or
+a runner can be hosted.
 
 ## Required closing order
 

@@ -225,10 +225,8 @@ only with exact relevant-input and behavior qualification; v0.5 is not v0.9.
 ## Physical acceptance
 
 V1.0 requires the applicable board and display evidence —
-[board bring-up](../../board-bring-up.md) for wiring, checked programming and
-UART-readable frame content, and
-[#417](https://github.com/amichai-bd/nand2mario/issues/417) for the monitor
-picture — plus reviewed current FPGA fit/timing/build identity and verified
+[board bring-up](../../board-bring-up.md) for wiring, checked programming,
+UART-readable frame content and the observed monitor picture — plus reviewed current FPGA fit/timing/build identity and verified
 device, wiring, ground, voltage and exclusive access. Standing authorization does not replace
 those checks. Preserve the existing UART and physical source-selection contract.
 
@@ -261,8 +259,7 @@ does not prove actual VGA or keyboard operation; missing physical-presence
 evidence remains a physical release blocker. The [charter](../../project-charter.md#remote-acceptance)
 separates the checks proven over UART from those needing physical presence.
 
-These requirements do not close GAP-012 or
-[#417](https://github.com/amichai-bd/nand2mario/issues/417) by simulation. Silent output is
+These requirements do not close GAP-012 by simulation. Silent output is
 intentional. Trusted CI/hardware-job activation is out of scope;
 [GAP-010](../../../preflight-gaps.md#gap-010-github-remote-issues-ci-and-pages)
 keeps the record, and its absence does not block ordinary reviewed local

@@ -9,11 +9,12 @@ documented wiring, signalling boundary, ground, pins and reset polarity, then
 checked programming, heartbeat, frame content, ping, build ID and CRC
 rejection. Nothing here is a meter or oscilloscope reading.
 
-No agent has a monitor attached to this board. Every result below is a
-UART-readable proxy or a static Quartus report. Visual confirmation of the VGA
-picture on an actual monitor is not claimed here; it remains the board owner's
-open item under [GAP-006](../preflight-gaps.md#gap-006-clock-reset-and-cdc-plan),
-tracked by [#417](https://github.com/amichai-bd/nand2mario/issues/417).
+No agent has a monitor attached to this board, so every result in the run
+record below is a UART-readable proxy or a static Quartus report. The board
+owner separately connected a monitor and looked at the picture; that
+observation and its limits are in [Display observation](#display-observation),
+and it closes the display acceptance
+[GAP-006](../preflight-gaps.md#gap-006-clock-reset-and-cdc-plan) held open.
 
 ## Wiring, voltage, ground, and reset polarity
 
@@ -176,11 +177,35 @@ rejection silent then recovered with unchanged public state and counters. Total
 wall time was 15.3 s, inside the 120 s budget. See the PR for the retained
 run evidence.
 
+## Display observation
+
+On 2026-09-13 the board owner connected a monitor to the DE10-Lite VGA output,
+looked at it, and reported the picture as correct: "I see the Stackdrop
+picture! score state etc.. all looks good."
+
+Conditions at the time of the observation:
+
+- Wire build `87d5f0280a2afad8be6b85dc601141cc`, ABI 1: the already-programmed
+  build reused for that session, not the build in the run record above.
+- Loaded image: restyled Stackdrop, SHA-256
+  `f2a9b159743a202541dd17dedaa99ffcc7ebf6d9d7012b28f4701a0ac9aed927`, 32768
+  bytes, profile `dmg-direct-v1`, built from `main` at `1b18cfc2`. Loaded with
+  `host load --package`, all 32768 bytes verified on readback, then
+  `host reset`.
+- The score and STATE readouts were legible, and the picture matched what the
+  same image renders in the independently generated previews.
+
+This is one direct visual observation by the owner at the board, not an
+instrumented measurement: the monitor model, cable and reported mode were not
+recorded, and no timing or signal quality was measured. It answers the question
+the gap register held open, and nothing wider — a monitor locks to this signal
+and shows the correct image for this bitstream and this loaded image. It makes
+no claim about other monitors, cables, modes or scaled operation, and does not
+replace the pixel-exact UART readback above. The image on screen was the loaded
+Stackdrop frame; the VGA test card was not displayed. Tolerance across displays
+stays with [GAP-012](../preflight-gaps.md#gap-012-vga-frame-crossing).
+
 ## Open items
 
-Visual confirmation that the VGA test card displays correctly on an actual
-monitor is deferred to the board owner and tracked by
-[#417](https://github.com/amichai-bd/nand2mario/issues/417). No agent operating
-this board has a monitor attached, so this page and its retained evidence prove
-the generator, UART proxies, and timing closure only; they do not claim the
-picture was seen.
+Pressing KEY0 and recording the board reset still needs hands at the board,
+tracked by [#512](https://github.com/amichai-bd/nand2mario/issues/512).
