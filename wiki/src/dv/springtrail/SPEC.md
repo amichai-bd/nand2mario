@@ -351,3 +351,14 @@ it checks fixed HUD, entering-column and partial-object pixels using shared
 game routines. Seeded renderer operands do not establish gameplay reachability.
 The downstream fault must fail unchanged expectations. No new physical output,
 full-game route or milestone result follows from these bounded proofs.
+
+
+## Routine sustained hardware selection
+
+Use the [endurance plans](../../../../src/dv/springtrail/ENDURANCE.md) for explicitly selected sustained board work:
+complete short preflight, then routine600-second qualification. The full1,800-second
+plan remains an explicit milestone choice; a routine result does not satisfy the
+v1.0 thirty-minute criterion or cover natural low32-dot wrap at1,024 seconds.
+This is physical selection, not a simulation allowance or an automatic unrelated-PR
+gate. The owning plan specifies actual PNG PR attachments and unchanged safety,
+full load/readback, lifecycle and final neutral-state obligations.

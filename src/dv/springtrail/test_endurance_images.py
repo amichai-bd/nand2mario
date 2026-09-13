@@ -78,3 +78,38 @@ class Images(unittest.TestCase):
             with self.assertRaisesRegex(AssertionError,'ENDURANCE_ATTACHMENT_URL'):
                 verify_publication(out,[urls[0]+'?expires=1',*urls[1:]],data)
             self.assertEqual(verify_publication(out,urls,data)['status'],'PASS')
+
+
+class WholeBudget(unittest.TestCase):
+    def test_parent_supervises_build_and_export_in_worker(self):
+        from unittest.mock import patch
+        import endurance
+        with tempfile.TemporaryDirectory() as directory:
+            with patch.object(endurance,'ROOT',Path(directory)), patch.object(endurance.sys,'argv',
+                    ['endurance.py','routine','--uart-port','unit','--expected-build-id','0'*32]), \
+                 patch.object(endurance,'build_rom',side_effect=AssertionError('build escaped worker')), \
+                 patch.object(endurance,'decode',side_effect=AssertionError('export escaped worker')), \
+                 patch.object(endurance,'supervise',return_value=0) as supervisor:
+                self.assertEqual(endurance.main(),0)
+            command,cap,out=supervisor.call_args.args
+            self.assertEqual(cap,780)
+            self.assertIn('--worker',command)
+            self.assertEqual(command[command.index('--deadline')+1],'756')
+            self.assertNotIn('--rom',command)
+
+    def test_exhausted_build_budget_never_opens_hardware(self):
+        from unittest.mock import patch
+        import endurance
+        import ci.storage
+        with tempfile.TemporaryDirectory() as directory:
+            out=Path(directory);rom=out/'game.gb';rom.write_bytes(bytes(32768))
+            args=SimpleNamespace(out=str(out),tag='unit-budget479-'+out.name,plan='routine',
+                                 uart_port='unit',deadline=756)
+            with patch.object(endurance,'build_rom',return_value=(rom,hashlib.sha256(rom.read_bytes()).hexdigest(),'unit')), \
+                 patch.object(endurance.time,'monotonic',side_effect=[0,800,801]), \
+                 patch.object(ci.storage,'machine_lock') as lock:
+                self.assertEqual(endurance.worker(args),1)
+                lock.assert_not_called()
+            record=json.loads((out/'session.json').read_text())
+            self.assertEqual(record['status'],'FAIL')
+            self.assertIn('ENDURANCE_WALL_CAP build',record['error'])

@@ -29,3 +29,13 @@ Update [verified procedures and pitfalls](examples/scenarios.md#verified-procedu
 from actual tool/CLI/debug results. Record exact commands and tool versions;
 distinguish tested procedures from assumptions and link technical board contracts
 instead of duplicating them. Correct this skill when verified evidence disagrees.
+
+
+For reported sustained Springtrail board runs, follow the
+[owning endurance plan](../../../src/dv/springtrail/ENDURANCE.md): complete short
+before routine600 seconds; choose full1,800 only for an explicit milestone.
+Record continuous and whole-process time separately. Publish exactly three native
+actual-snapshot PNGs using supported PR attachments, verify durable URLs and
+content hashes, and record publication failure honestly. No PNG bytes are committed;
+no model image, enlarged pixels, expired artifact or local path substitutes for
+actual-run evidence. Keep captions free of private endpoint facts.
