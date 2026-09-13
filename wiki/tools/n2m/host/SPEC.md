@@ -191,6 +191,10 @@ Pre-capture queued events are discarded, and a mapped key observed held in that
 queue is ignored until its release. Foreground ownership is checked again at
 serial open. This observes console events, not unreported physical key state.
 
+The [on-screen pad](GAMEPAD.md) imports this same mapping and applies the same
+key-down/key-up rules from a local `tkinter` window, for an operator watching the
+board's VGA output. It reads no frames and needs no classic console.
+
 Require a certain durable session, expected build/ABI, valid image, UART source
 and initial host/effective0. No implicit source selection, RUN/HALT, load or reset
 occurs. Existing machine/device locks serialize the whole session. `--json` and

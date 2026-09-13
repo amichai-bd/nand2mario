@@ -1,7 +1,10 @@
-"""Temporarily view the already-loaded FPGA image; no load, reset or gameplay.
+"""Temporarily view or play the already-loaded FPGA image; no load, reset or gameplay.
 
 Use a private credential JSON and explicit reviewed build/device selectors.
 Only the local operator can stop the worker; HTTP exposes image/status reads.
+`--gui` instead opens a local on-screen Game Boy pad: it sends buttons only,
+reads no frames and serves no HTTP, because the player watches the board's VGA
+output directly.
 """
 import argparse
 import json
@@ -19,6 +22,7 @@ sys.path.insert(0,str(ROOT/'tools'))
 from ci.storage import machine_lock
 from n2m.host.client import Client
 from n2m.host.transport import session, session_root
+from n2m.gui_pad import explain_conflict, pad_loop
 from n2m.live_viewer import MAX_STEP_FRAMES, Latest, capture_loop, server
 from n2m.records import atomic_json
 from n2m.viewer_buttons import Buttons, enqueue, enqueue_mode, history
@@ -96,6 +100,41 @@ def worker(args):
     return 0 if result['status']=='PASS' and result.get('released') else 1
 
 
+def require_build_id(parser, args):
+    if not args.expected_build_id or len(args.expected_build_id)!=32 or any(c not in '0123456789abcdef' for c in args.expected_build_id):
+        parser.error('explicit reviewed 32-digit lowercase build ID required')
+
+
+def gamepad(args):
+    """Own one UART session for the on-screen pad; read no frames, serve no HTTP."""
+    out = ROOT/'workdir/builds'/args.tag/'gui-pad'
+    out.mkdir(parents=True,exist_ok=False)
+    selection = SimpleNamespace(uart_port=args.uart_port,uart_vid=args.uart_vid,
+                                uart_pid=args.uart_pid,uart_identity=args.uart_identity,endpoint_restarted=False)
+    result = {'status':'FAIL','reason':'session not opened','changes':0,'released':False}
+    try:
+        with machine_lock(1357311510), (out/'packets.jsonl').open('w',encoding='utf-8') as packets:
+            def record(row):
+                packets.write(json.dumps(row)+'\n');packets.flush()
+            with session(out,selection,session_root(ROOT)) as (wire,sequence,persist,_selected):
+                client = Client(wire,sequence=sequence,persist=persist,record=record)
+                result = pad_loop(client,expected_build=args.expected_build_id,record=record,seconds=args.seconds)
+    except Exception as error:
+        # The owner needs the actual cause, above all when someone else holds the board.
+        result.update(status='FAIL',reason=type(error).__name__,error=str(error))
+        explanation = explain_conflict(error)
+        if explanation:
+            result['conflict'] = explanation
+            print(explanation,file=sys.stderr)
+        else:
+            print(f'{type(error).__name__}: {error}',file=sys.stderr)
+    finally:
+        atomic_json(out/'result.json',result)
+    print(json.dumps({'status':result['status'],'changes':result.get('changes',0),
+                      'released':result.get('released',False),'cleanup':result.get('cleanup')}))
+    return 0 if result['status']=='PASS' and result.get('released') else 1
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--tag',help='unique runtime tag; automatically generated when serving')
@@ -108,12 +147,15 @@ def main(argv=None):
         parser.add_argument('--'+name)
     parser.add_argument('--input-origin',help='exact HTTPS browser origin allowed to submit fixed taps')
     parser.add_argument('--port',type=int,default=8765)
-    parser.add_argument('--seconds',type=int,default=30)
+    parser.add_argument('--gui',action='store_true',help='open a local tkinter Game Boy pad; sends buttons only, reads no frames')
+    parser.add_argument('--seconds',type=int,help='session lease; default30 for the viewer and900 for --gui')
     parser.add_argument('--interval',type=float,default=2)
     parser.add_argument('--step-frames',type=int,default=1,help='whole 70224-dot frames advanced per capture in stepped mode')
     parser.add_argument('--worker',action='store_true',help=argparse.SUPPRESS)
     arguments = list(sys.argv[1:] if argv is None else argv)
     args = parser.parse_args(arguments)
+    if args.seconds is None:
+        args.seconds = 900 if args.gui else 30
     if args.tag is None:
         if args.queue_mask is not None:
             parser.error('running viewer tag required for queue submission')
@@ -125,6 +167,15 @@ def main(argv=None):
         index = enqueue(ROOT/'workdir/builds'/args.tag/'live-viewer',args.queue_mask,args.press_ms)
         print(json.dumps({'status':'QUEUED','id':index}))
         return 0
+    if args.gui:
+        if args.credentials or args.init_credentials or args.input_origin or args.port != 8765:
+            parser.error('--gui reads no frames and serves no HTTP; credentials, origin and port do not apply')
+        require_build_id(parser,args)
+        if not 1 <= args.seconds <= 3600:
+            parser.error('seconds1..3600 required')
+        if (ROOT/'workdir/builds'/args.tag/'gui-pad').exists():
+            parser.error('runtime tag already exists; omit --tag for a fresh session')
+        return gamepad(args)
     if not args.credentials:
         parser.error('private credentials path required for initialization or serving')
     if args.init_credentials:
@@ -134,8 +185,7 @@ def main(argv=None):
             json.dump({'username':secrets.token_urlsafe(12),'password':secrets.token_urlsafe(32)},stream)
         print('Private credentials initialized; contents not displayed.')
         return 0
-    if not args.expected_build_id or len(args.expected_build_id)!=32 or any(c not in '0123456789abcdef' for c in args.expected_build_id):
-        parser.error('explicit reviewed 32-digit lowercase build ID required')
+    require_build_id(parser,args)
     if not 1 <= args.seconds <= 3600 or not 1 <= args.interval <= 10 or not 1024 <= args.port <= 65535:
         parser.error('seconds1..3600, interval1..10 and unprivileged port required')
     if not 1 <= args.step_frames <= MAX_STEP_FRAMES:
