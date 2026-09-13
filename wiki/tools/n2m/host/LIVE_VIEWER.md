@@ -81,8 +81,11 @@ file access or uploads.
 Before each capture, including the first, the single UART owner freezes the
 currently published FIFO batch under the producer lock. It executes that whole
 batch in order, releasing and verifying input 0 after each press, then performs
-one complete SNAPSHOT and all 5760 READ_FRAME bytes. No input command interleaves
-with a frame readback. Arrivals during a batch or capture wait for the next batch.
+one complete SNAPSHOT and all 5760 READ_FRAME bytes. In stepped mode each press
+holds its mask across its own step before that release, and a batch with no press
+takes one step of its own; the step is emulated time, not a frame readback, so
+nothing interleaves with one. Arrivals during a batch or capture wait for the
+next batch.
 At most 16 requests can be pending; a finite batch prevents capture starvation.
 
 A local operator can also submit a mask from the generated eight-button contract
@@ -93,13 +96,15 @@ $ViewerTag = '<reported-running-tag>'
 python tools/fpga_viewer.py --tag $ViewerTag --queue-mask 1 --press-ms 134
 ```
 
-Durations are approximate monotonic host time after the input acknowledgement,
-not exact emulated frame counts. A full local batch can add about 16 seconds plus
+In free-run, durations are approximate monotonic host time after the input
+acknowledgement, not exact emulated frame counts. Stepped mode ignores the
+requested milliseconds: see below. A full local batch can add about 16 seconds plus
 UART acknowledgements before the next capture. During that time the page shows
 PROCESSING INPUTS and the real age of the previous image, not false freshness.
 
-History is newest first. Each record includes its assigned ID, button or mask,
-requested milliseconds, queued timestamp and observed start/completion timestamps.
+History is newest first. Each record includes its assigned ID, the button or mask
+and requested milliseconds of a press or the selected mode, its queued timestamp
+and its observed start/completion timestamps.
 Labels accompany all colors:
 
 | State | Color | Meaning |
@@ -115,13 +120,62 @@ history updates share the producer lock with admission, so an old queued update
 cannot overwrite execution. History polling never accesses UART. Persistence
 failure cannot skip release of an already-pressed key or report false retirement.
 
+## Free-run and stepped modes
+
+Two buttons select the mode; the page reports the active one, and in stepped mode
+the step size and the emulated time advanced for the image being shown.
+
+**Free-run** is the default and the unchanged behavior: the board runs
+continuously between captures, so the page is the real-time evidence that the
+image advances on hardware at native speed.
+
+**Stepped** pauses the core and advances the declared step through `host run-dots`
+during each capture cycle. The step is whole frames of 70224 dots,
+`--step-frames` at launch, default one frame and at most 60. A game with real
+gravity then moves only when the operator acts, instead of running ahead of a
+capture loop that observes it about every 2 seconds.
+
+**A stepped press lasts exactly one step, not its requested milliseconds.** The
+paused core executes no dots, so wall time with a mask applied would advance
+nothing and the game would never see the press. Each press instead holds its mask
+across its own step, and is released and verified afterwards exactly as in
+free-run. A batch of three presses therefore advances three steps, one per press,
+each observed by the core; a cycle with no press advances one step of its own.
+The requested 134 ms, and any local `--press-ms`, are ignored while stepped.
+
+**A stepped session is not a real-time proof.** Emulated time advances only when
+the viewer chooses to advance it, so a stepped capture shows correct pixels for
+the dots that were executed and says nothing about sustained native-rate
+behavior. Use free-run for that claim.
+
+Each stepped capture records how many steps it took and their total requested
+dots, executed count, final completed dot and completion reason. `host run-dots`
+may report STOPPED with fewer dots than requested; the viewer ends that step,
+publishes the shortfall with the image it belongs to, and shows it on the page.
+A short step is never silently topped up or hidden.
+
+Mode selection is viewer policy over existing host commands. It adds no RTL, no
+wire protocol change, no new UART opcode and no change to any game; entering
+stepped mode sends HALT and leaving it sends RUN, both already used by the
+viewer, and the core state is verified after each transition.
+
+A mode change travels through the same FIFO as a press, so it is ordered with
+the presses around it and cannot skip the release and verification of an
+in-flight batch. Applying it sends no UART traffic of its own, so it cannot
+leave a key pressed, and the session keeps its certainty and effective input 0.
+A mode change occupies one of the 16 queue slots and is retained in history like
+a press.
+
 ## Access and freshness boundaries
 
 Authenticated GET routes are `/`, `/status.json` and `/frame.png`. The sole write
-route is POST `/input`: a named button in at most 64 bytes of JSON, exact equality
-with the configured HTTPS Origin, and `X-Viewer-Input: tap` are required in addition
-to Basic authentication. No permissive CORS response is provided; GET never
-mutates input. Responses disable caching, framing and external asset access.
+route is POST `/input`: one named button or one mode name in at most 64 bytes of
+JSON, exact equality with the configured HTTPS Origin, and `X-Viewer-Input: tap`
+are required in addition to Basic authentication. Mode selection carries exactly
+that authentication; an unknown mode, a body naming both a button and a mode, and
+a mode without the Origin or header are all refused without queuing anything.
+No permissive CORS response is provided; GET never mutates input. Responses
+disable caching, framing and external asset access.
 
 HTTP handling is capped at 8 concurrent handlers with 5-second socket timeouts.
 The worker retains 32 recent capture/input receipts plus a total capture count.

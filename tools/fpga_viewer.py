@@ -19,9 +19,9 @@ sys.path.insert(0,str(ROOT/'tools'))
 from ci.storage import machine_lock
 from n2m.host.client import Client
 from n2m.host.transport import session, session_root
-from n2m.live_viewer import Latest, capture_loop, server
+from n2m.live_viewer import MAX_STEP_FRAMES, Latest, capture_loop, server
 from n2m.records import atomic_json
-from n2m.viewer_buttons import Buttons, enqueue, history
+from n2m.viewer_buttons import Buttons, enqueue, enqueue_mode, history
 
 
 def png_writer(packed, path):
@@ -67,7 +67,7 @@ def worker(args):
     signal.signal(signal.SIGTERM,lambda *_:stop.event.set())
     http = server(latest,credentials['username'],credentials['password'],args.port,
                   input_origin=args.input_origin,submit=lambda mask,ms:enqueue(out,mask,ms),
-                  command_history=lambda:history(out))
+                  submit_mode=lambda mode:enqueue_mode(out,mode),command_history=lambda:history(out))
     thread = threading.Thread(target=http.serve_forever,daemon=True)
     thread.start()
     atomic_json(out/'service.json',{'port':http.server_port,'bind':'127.0.0.1','stop_file':str(stop.path),'seconds':args.seconds})
@@ -82,7 +82,8 @@ def worker(args):
             with session(out,selection,session_root(ROOT)) as (wire,sequence,persist,_selected):
                 client = Client(wire,sequence=sequence,persist=persist,record=record)
                 result = capture_loop(client,latest,out,png_writer,expected_build=args.expected_build_id,
-                                      stop=stop,seconds=args.seconds,interval=args.interval,buttons=buttons)
+                                      stop=stop,seconds=args.seconds,interval=args.interval,buttons=buttons,
+                                      step_frames=args.step_frames)
     finally:
         try:
             result['cancelled_inputs'] = buttons.close()
@@ -109,6 +110,7 @@ def main(argv=None):
     parser.add_argument('--port',type=int,default=8765)
     parser.add_argument('--seconds',type=int,default=30)
     parser.add_argument('--interval',type=float,default=2)
+    parser.add_argument('--step-frames',type=int,default=1,help='whole 70224-dot frames advanced per capture in stepped mode')
     parser.add_argument('--worker',action='store_true',help=argparse.SUPPRESS)
     arguments = list(sys.argv[1:] if argv is None else argv)
     args = parser.parse_args(arguments)
@@ -136,6 +138,8 @@ def main(argv=None):
         parser.error('explicit reviewed 32-digit lowercase build ID required')
     if not 1 <= args.seconds <= 3600 or not 1 <= args.interval <= 10 or not 1024 <= args.port <= 65535:
         parser.error('seconds1..3600, interval1..10 and unprivileged port required')
+    if not 1 <= args.step_frames <= MAX_STEP_FRAMES:
+        parser.error(f'step frames1..{MAX_STEP_FRAMES} required')
     if args.worker:
         return worker(args)
     if (ROOT/'workdir/builds'/args.tag/'live-viewer').exists():

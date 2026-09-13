@@ -13,9 +13,9 @@ import zlib
 sys.path.insert(0,str(Path(__file__).resolve().parents[2]))
 from n2m import generated_interfaces as abi
 from n2m.host.client import RejectedCommand
-from n2m.live_viewer import Latest, capture_loop, server, PAGE
+from n2m.live_viewer import FRAME_DOTS, MAX_STEP_FRAMES, Latest, advance, capture_loop, server, PAGE
 from fpga_viewer import png_writer, Stop
-from n2m.viewer_buttons import Buttons, enqueue, history
+from n2m.viewer_buttons import Buttons, enqueue, enqueue_mode, history
 
 BUILD = 'ab'*16
 
@@ -34,6 +34,8 @@ class Fake:
         self.events = []
         self.count = 0
         self.mask = 0
+        self.dot = 0
+        self.stepped_masks = []
     def identify(self):
         self.events.append('identify')
         return {'abi':1,'build_id':BUILD if self.fault!='identity' else '00'*16}
@@ -48,9 +50,18 @@ class Fake:
         self.events.append(action)
         assert action in ('RUN','HALT')
         self.state = abi.STATE_RUNNING if action=='RUN' else abi.STATE_PAUSED
+    def run_dots(self, count):
+        self.events.append(('run_dots',count))
+        assert self.state==abi.STATE_PAUSED
+        self.stepped_masks.append(self.mask)  # What the core observes while dots run.
+        executed = count//2 if self.fault=='short' else count
+        self.dot += executed
+        return {'dot':self.dot,'executed':executed,
+                'reason':abi.WIRE_RUN_DOTS_COUNT if executed==count else abi.WIRE_RUN_DOTS_STOPPED}
+
     def snapshot(self):
         self.events.append('snapshot')
-        assert self.state==abi.STATE_RUNNING
+        assert self.state in (abi.STATE_RUNNING,abi.STATE_PAUSED)
         self.count += 1
         self.clock.value += .25
         if self.fault=='uncertain':
@@ -420,5 +431,237 @@ class ButtonQueueTests(unittest.TestCase):
             self.assertEqual(client.count,0)
             self.assertEqual(history(out)[0]['state'],'UNCERTAIN')
             self.assertFalse(list((out/'inbox').glob('*.json')))
+
+class SteppedModeTests(unittest.TestCase):
+    """Mode is viewer policy over existing host commands; no new UART opcode."""
+
+    def runtime(self, folder):
+        out=Path(folder);(out/'service.json').write_text('{}')
+        return out
+
+    def loop(self, out, *, fault=None, step_frames=1, seconds=4):
+        clock=Clock();clock.value=0;client=Fake(clock,fault);latest=Latest(clock=clock)
+        result=capture_loop(client,latest,out,png_writer,expected_build=BUILD,stop=clock,
+                            clock=clock,wait=clock.wait,seconds=seconds,interval=2,
+                            buttons=Buttons(out),step_frames=step_frames)
+        return result,client,latest
+
+    def test_free_run_default_sends_no_run_dots(self):
+        with tempfile.TemporaryDirectory() as folder:
+            out=self.runtime(folder);enqueue(out,1,134)
+            result,client,latest=self.loop(out)
+            self.assertEqual(result['status'],'PASS')
+            self.assertEqual(result['mode'],'free-run')
+            self.assertNotIn('step',result)
+            self.assertFalse([x for x in client.events if x[0]=='run_dots'])
+            self.assertEqual(client.events.count('HALT'),1)  # shutdown only
+            self.assertEqual(latest.read()[0]['step_frames'],1)
+
+    def test_stepped_order_is_batch_presses_then_step_then_one_snapshot(self):
+        with tempfile.TemporaryDirectory() as folder:
+            out=self.runtime(folder);enqueue(out,1,134);enqueue_mode(out,'stepped')
+            result,client,latest=self.loop(out)
+            self.assertEqual(result['status'],'PASS')
+            relevant=[x for x in client.events
+                      if x in ('snapshot','READ_FRAME_COMPLETE','HALT','RUN')
+                      or isinstance(x,tuple) and x[0] in ('write','run_dots')]
+            self.assertEqual(relevant,[
+                'RUN',
+                ('write',abi.HOST_REG_INPUT,1),('write',abi.HOST_REG_INPUT,0),
+                'HALT',('run_dots',FRAME_DOTS),'snapshot','READ_FRAME_COMPLETE',
+                ('run_dots',FRAME_DOTS),'snapshot','READ_FRAME_COMPLETE',
+                'HALT',('write',abi.HOST_REG_INPUT,0)])
+            self.assertEqual(result['mode'],'stepped')
+            self.assertEqual(result['cleanup'],{'verified':True,'state':abi.STATE_PAUSED,'input_effective':0})
+
+    def test_step_reports_whole_frames_executed_and_completed_dot(self):
+        with tempfile.TemporaryDirectory() as folder:
+            out=self.runtime(folder);enqueue_mode(out,'stepped')
+            result,client,latest=self.loop(out,step_frames=3)
+            self.assertEqual([x for x in client.events if x[0]=='run_dots'],
+                             [('run_dots',FRAME_DOTS)]*6)
+            step=result['step']
+            self.assertEqual(step['frames'],3)
+            self.assertEqual(step['requested_dots'],3*FRAME_DOTS)
+            self.assertEqual(step['executed_dots'],3*FRAME_DOTS)
+            self.assertEqual(step['short_by_dots'],0)
+            self.assertEqual(step['completed_dot'],6*FRAME_DOTS)
+            status=latest.read()[0]
+            self.assertEqual((status['mode'],status['step_frames']),('stepped',3))
+            self.assertEqual(result['captures'][-1]['step'],step)
+            self.assertEqual(result['captures'][-1]['core_state'],'PAUSED')
+
+    def test_short_step_is_reported_not_hidden(self):
+        with tempfile.TemporaryDirectory() as folder:
+            out=self.runtime(folder);enqueue_mode(out,'stepped')
+            result,client,latest=self.loop(out,fault='short',step_frames=2)
+            step=result['step']
+            self.assertEqual(step['requested_dots'],2*FRAME_DOTS)
+            self.assertEqual(step['executed_dots'],FRAME_DOTS//2)
+            self.assertEqual(step['short_by_dots'],2*FRAME_DOTS-FRAME_DOTS//2)
+            self.assertEqual(step['reason'],abi.WIRE_RUN_DOTS_STOPPED)
+            status=latest.read()[0]
+            self.assertEqual(status['reason'],'step executed %d of %d dots'%(FRAME_DOTS//2,2*FRAME_DOTS))
+            self.assertIn(b'SHORT by ',PAGE)
+            # A shortfall ends that step instead of asking for the missing dots.
+            self.assertEqual(len([x for x in client.events if x[0]=='run_dots']),2)
+
+    def test_switching_back_to_free_run_resumes_and_stops_stepping(self):
+        with tempfile.TemporaryDirectory() as folder:
+            out=self.runtime(folder);enqueue_mode(out,'stepped')
+            clock=Clock();clock.value=0;client=Fake(clock);buttons=Buttons(out);switched=False
+            def wait(seconds):
+                nonlocal switched
+                if not switched and buttons.mode=='stepped':
+                    enqueue_mode(out,'free-run');switched=True
+                clock.wait(seconds)
+            result=capture_loop(client,Latest(clock=clock),out,png_writer,expected_build=BUILD,
+                                stop=clock,seconds=6,interval=2,clock=clock,wait=wait,buttons=buttons)
+            self.assertEqual(result['mode'],'free-run')
+            self.assertEqual(client.events.count('RUN'),2)
+            resumed=len(client.events)-1-client.events[::-1].index('RUN')
+            self.assertTrue(all(i<resumed for i,x in enumerate(client.events) if x[0]=='run_dots'))
+            self.assertEqual(client.state,abi.STATE_PAUSED)
+            self.assertEqual(client.mask,0)
+
+    def test_mode_change_records_history_without_uart_or_held_key(self):
+        with tempfile.TemporaryDirectory() as folder:
+            out=self.runtime(folder);enqueue(out,1,134);index=enqueue_mode(out,'stepped')
+            result,client,latest=self.loop(out)
+            rows={row['id']:row for row in history(out)}
+            self.assertEqual(rows[index]['mode'],'stepped')
+            self.assertEqual(rows[index]['state'],'RETIRED')
+            self.assertTrue(rows[index]['released'])
+            self.assertLessEqual(rows[index]['queued_at'],rows[index]['started_at'])
+            self.assertEqual(rows[1]['state'],'RETIRED')
+            self.assertTrue(rows[1]['released'])
+            self.assertEqual(client.mask,0)
+            self.assertFalse(client.uncertain)
+            self.assertEqual([r['id'] for r in result['inputs']],[1,2])
+
+    def test_mode_change_cannot_skip_an_in_flight_release(self):
+        class ReleaseFails(Fake):
+            def write_host(self,address,value):
+                if value==0:raise RuntimeError('release rejected')
+                super().write_host(address,value)
+        with tempfile.TemporaryDirectory() as folder:
+            out=self.runtime(folder);enqueue(out,1,134);enqueue_mode(out,'stepped')
+            clock=Clock();clock.value=0;buttons=Buttons(out)
+            capture_loop(ReleaseFails(clock),Latest(clock=clock),out,png_writer,
+                         expected_build=BUILD,stop=clock,seconds=4,interval=2,
+                         clock=clock,wait=clock.wait,buttons=buttons)
+            rows={row['id']:row for row in history(out)}
+            self.assertEqual(rows[1]['state'],'FAILED')
+            self.assertEqual(rows[2]['state'],'QUEUED')
+            self.assertEqual(buttons.mode,'free-run')
+
+    def test_invalid_modes_and_step_sizes_are_refused(self):
+        with tempfile.TemporaryDirectory() as folder:
+            out=self.runtime(folder)
+            for mode in ('turbo','','stepped ',1,None,True):
+                with self.assertRaises(ValueError):enqueue_mode(out,mode)
+            self.assertFalse(list((out/'inbox').glob('*.json')))
+            clock=Clock();clock.value=0
+            for frames in (0,-1,MAX_STEP_FRAMES+1,True,1.0):
+                with self.assertRaises(ValueError):
+                    capture_loop(Fake(clock),Latest(clock=clock),out,png_writer,
+                                 expected_build=BUILD,stop=clock,clock=clock,
+                                 wait=clock.wait,step_frames=frames)
+
+    def test_mode_route_needs_the_same_authentication_as_input(self):
+        with tempfile.TemporaryDirectory() as folder:
+            out=self.runtime(folder)
+            origin='https://example.test'
+            http=server(Latest(),'testuser','x'*40,input_origin=origin,
+                        submit=lambda mask,ms:enqueue(out,mask,ms),
+                        submit_mode=lambda mode:enqueue_mode(out,mode),
+                        command_history=lambda:history(out))
+            thread=threading.Thread(target=http.serve_forever);thread.start()
+            headers={'Authorization':'Basic '+base64.b64encode(b'testuser:'+b'x'*40).decode(),
+                     'Origin':origin,'Content-Type':'application/json','X-Viewer-Input':'tap'}
+            def request(body=b'{"mode":"stepped"}',override=None):
+                h=dict(headers);h.update(override or {})
+                h={k:v for k,v in h.items() if v is not None}
+                client=HTTPConnection('127.0.0.1',http.server_port,timeout=2)
+                client.request('POST','/input',body=body,headers=h)
+                r=client.getresponse();data=r.read();code=r.status;client.close();return code,data
+            try:
+                self.assertEqual(request(override={'Authorization':None})[0],401)
+                for h in ({'Origin':None},{'Origin':'https://evil.test'},{'X-Viewer-Input':None}):
+                    self.assertEqual(request(override=h)[0],403)
+                self.assertEqual(request(override={'Content-Type':'text/plain'})[0],415)
+                for body in (b'{"mode":"turbo"}',b'{"mode":"stepped","button":"A"}',
+                             b'{"mode":1}',b'{"mode":null}'):
+                    self.assertEqual(request(body)[0],400)
+                self.assertFalse(list((out/'inbox').glob('*.json')))
+                code,data=request()
+                self.assertEqual((code,json.loads(data)['id']),(202,1))
+                self.assertEqual(history(out)[0]['mode'],'stepped')
+                self.assertIn(b"for(const mode of ['free-run','stepped'])",PAGE)
+                self.assertIn(b'not a real-time proof',PAGE)
+            finally:
+                http.shutdown();http.server_close();thread.join()
+
+    def test_press_while_already_stepped_is_held_across_its_step(self):
+        with tempfile.TemporaryDirectory() as folder:
+            out=self.runtime(folder);enqueue_mode(out,'stepped')
+            clock=Clock();clock.value=0;client=Fake(clock);buttons=Buttons(out);queued=False
+            def wait(seconds):
+                nonlocal queued
+                if not queued and buttons.mode=='stepped':
+                    enqueue(out,abi.BUTTON_RIGHT,134);queued=True
+                clock.wait(seconds)
+            result=capture_loop(client,Latest(clock=clock),out,png_writer,expected_build=BUILD,
+                                stop=clock,seconds=6,interval=2,clock=clock,wait=wait,buttons=buttons)
+            self.assertEqual(result['status'],'PASS')
+            # The core must see the press while dots run, not only in a register write.
+            self.assertEqual(client.stepped_masks,[0,abi.BUTTON_RIGHT,0])
+            relevant=[x for x in client.events
+                      if x in ('snapshot','READ_FRAME_COMPLETE','HALT','RUN')
+                      or isinstance(x,tuple) and x[0] in ('write','run_dots')]
+            self.assertEqual(relevant,[
+                'RUN','HALT',('run_dots',FRAME_DOTS),'snapshot','READ_FRAME_COMPLETE',
+                ('write',abi.HOST_REG_INPUT,abi.BUTTON_RIGHT),('run_dots',FRAME_DOTS),
+                ('write',abi.HOST_REG_INPUT,0),'snapshot','READ_FRAME_COMPLETE',
+                ('run_dots',FRAME_DOTS),'snapshot','READ_FRAME_COMPLETE',
+                'HALT',('write',abi.HOST_REG_INPUT,0)])
+            receipt=result['inputs'][-1]
+            self.assertEqual(receipt['step']['executed_dots'],FRAME_DOTS)
+            self.assertTrue(receipt['released'])
+            self.assertEqual(history(out)[0]['state'],'RETIRED')
+            self.assertEqual(client.mask,0)
+            self.assertFalse(client.uncertain)
+            self.assertEqual(result['captures'][-2]['step']['steps'],1)
+
+    def test_every_press_in_a_stepped_batch_gets_its_own_step(self):
+        with tempfile.TemporaryDirectory() as folder:
+            out=self.runtime(folder);enqueue_mode(out,'stepped')
+            clock=Clock();clock.value=0;client=Fake(clock);buttons=Buttons(out);queued=False
+            def wait(seconds):
+                nonlocal queued
+                if not queued and buttons.mode=='stepped':
+                    enqueue(out,abi.BUTTON_RIGHT,134);enqueue(out,abi.BUTTON_LEFT,134);queued=True
+                clock.wait(seconds)
+            result=capture_loop(client,Latest(clock=clock),out,png_writer,expected_build=BUILD,
+                                stop=clock,seconds=6,interval=2,clock=clock,wait=wait,buttons=buttons)
+            self.assertEqual(client.stepped_masks,[0,abi.BUTTON_RIGHT,abi.BUTTON_LEFT,0])
+            capture=result['captures'][-2]['step']
+            self.assertEqual((capture['steps'],capture['frames']),(2,2))
+            self.assertEqual(capture['executed_dots'],2*FRAME_DOTS)
+            self.assertEqual(capture['short_by_dots'],0)
+
+    def test_advance_splits_the_step_into_bounded_calls(self):
+        class Bounded:
+            def __init__(self):self.calls=[];self.dot=0
+            def run_dots(self,count):
+                self.calls.append(count);self.dot+=count
+                return {'dot':self.dot,'executed':count,'reason':abi.WIRE_RUN_DOTS_COUNT}
+        endpoint=Bounded()
+        report=advance(endpoint,3*FRAME_DOTS)
+        self.assertTrue(all(count<=abi.WIRE_RUN_DOTS_MAX for count in endpoint.calls))
+        self.assertEqual(sum(endpoint.calls),3*FRAME_DOTS)
+        self.assertEqual(report['executed_dots'],3*FRAME_DOTS)
+        self.assertEqual(report['short_by_dots'],0)
+
 
 if __name__=='__main__':unittest.main()
