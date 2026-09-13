@@ -6,6 +6,12 @@ it does not render a host-side game or reload, reset or program the board.
 This is framebuffer evidence, not a camera view or physical-monitor proof.
 The [host contract](SPEC.md) owns UART, session and snapshot semantics.
 
+<img src="assets/live-viewer-phone.jpg" width="300" alt="Owner-provided phone screenshot showing live FPGA pixels, tap controls and retired command history">
+
+Owner-provided phone capture of the actual FPGA viewer. The supplied JPEG is
+unchanged; it illustrates the phone interface, not a physical monitor or an
+independent native-pixel comparison.
+
 ## Setup
 
 Verify the [board setup](../../../src/board-bring-up.md), selected healthy UART
