@@ -99,7 +99,10 @@ entity fixtures do not claim universal combinations or game compatibility.
 ## Timing
 
 The unchanged VBlank publication path takes at most4412 dots within4480.
-The reachable visible preparation below takes at most65652 of65664 dots.
+The prior no-shot image's reachable visible preparation below takes at most65652
+of65664 dots. The #515 acquisition candidate invalidates its no-shot premise;
+this table does not qualify that candidate. A new combined visible bound remains
+a merge gate, with the same65664 deadline.
 These are source bounds, not inferred from the largest observed test case.
 Component costs include RET and exclude each outer CALL; Main includes all
 five outer CALLs. Other is HUD388 + Progress640 + STAT512 + Main256, or320
@@ -129,7 +132,14 @@ geometry or approved piece positions.
 
 ### Scope and source invariants
 
-The current reset-reachable layout has one once-only mushroom block. The ordinary thrower acquisition gap is owned by [#515](https://github.com/amichai-bd/nand2mario/issues/515); any change to that layout must requalify this bound. ResolveMushroom marks it used before the sole PowerUp call. EnterStage clears power and block state together. Thus live power is at most1 and ShotTTL remains0. Later stages have no matching interactive block columns and remain small with no effect or invincibility. Seeded thrower/shot fixtures remain supported and required; this live-frame proof does not replace their routine budgets.
+The prior reset-reachable layout had one once-only mushroom grant and no coin
+promotion. ResolveMushroom marked it used before the sole PowerUp call, and
+EnterStage cleared power and block state together. That image therefore had
+live power at most1 and ShotTTL0. The [#515](https://github.com/amichai-bd/nand2mario/issues/515)
+coin promotion removes this stage0 premise. Later stages still have no matching
+interactive block columns and reset small with no effect or invincibility.
+Seeded thrower/shot fixtures remain supported and required; a live-frame proof
+does not replace their routine budgets.
 After ordinary publication, BlockDirty is clear. A fresh interactive head hit may request two columns and uses Map4108; ordinary profiles use the one-column Map2412. Restoration is a separate profile. At most17 ordinary updates complete32 columns, so resetX24 plus2px per update stays<=58 and Camera0; no block or entity platform is reachable during that interval.
 New scene source CFG caps before X savings are36048 for stage0 (34pieces/noShot) and32572 later (28pieces/small/noShot/noEffect). Current approved offsets and all legal integer cameras give at least10/10/9 fixed X-hidden pieces by stage. Each such piece reduces528 to360, saving168. Carrier-specific hidden counts are15/13,15/11,17/9 for moving/falling. Ground-loss row9 atX630..682 has20 hidden pieces. At Camera0 the stages have22/20/19 hidden pieces.
 Five outer CALLs are120 dots. Active main overhead256 also includes visibility polling, mode dispatch, JP WaitFrame and DI/token/EI/HALT. ReadButtons occurs before publication and outside this visible interval. Title transition uses320. The existing single STAT IRQ allowance512 is separate. HUD388 and Progress640 include their RETs.

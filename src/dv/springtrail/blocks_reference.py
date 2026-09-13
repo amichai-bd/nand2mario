@@ -103,6 +103,8 @@ def resolve(states, coins, power, hit):
     grant = None
     if content == COIN:
         coins = min(COIN_LIMIT, coins + 1)
+        if power == 1:
+            grant = 'power'
     elif content == MUSHROOM:
         grant = 'power'
     elif content == STAR:
