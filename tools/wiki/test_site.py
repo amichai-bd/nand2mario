@@ -48,6 +48,37 @@ class PublicationTests(unittest.TestCase):
         self.assertEqual(site.checked_text("art.svg", '<svg>שלום</svg>'.encode()), '<svg>שלום</svg>')
         self.assertEqual(site.checked_text("source.py", b'SIGNATURE = b"%PDF-"\n'), 'SIGNATURE = b"%PDF-"\n')
 
+    def test_owner_phone_image_exact_copy_and_narrow_exception(self):
+        path = "wiki/tools/n2m/host/assets/live-viewer-phone.jpg"
+        image = (site.ROOT/path).read_bytes()
+        self.assertTrue(site.approved_image(path,image))
+        with self.assertRaisesRegex(ValueError,"content changed"):
+            site.approved_image(path,image[:-1]+bytes([image[-1]^1]))
+        self.assertFalse(site.approved_image("wiki/other.jpg",image))
+        with self.assertRaisesRegex(ValueError,"binary content"):
+            site.checked_text("wiki/other.jpg",image)
+        parent = site.ROOT/"workdir/wiki/tests";parent.mkdir(parents=True,exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=parent) as directory:
+            root = Path(directory)
+            files = {"README.md": f'<img src="{path}" width="300">',
+                     "wiki/guide.md": '<img src="tools/n2m/host/assets/live-viewer-phone.jpg" width="300">',
+                     "tools/wiki/assets/shell.html": "<!doctype html><title>Test</title>"}
+            for name,text in files.items():
+                target=root/name;target.parent.mkdir(parents=True,exist_ok=True)
+                target.write_text(text,encoding="utf-8")
+            target=root/path;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(image)
+            with patch.object(site.subprocess,"check_output",return_value="\0".join([*files,path]).encode()):
+                site.build(root)
+                output=root/"workdir/wiki/site"
+                self.assertEqual((output/"files"/path).read_bytes(),image)
+                manifest=json.loads((output/"manifest.json").read_text())
+                for name in ("README.md","wiki/guide.md"):
+                    self.assertIn('files/'+path,manifest[name]['html'])
+                self.assertNotIn(path,manifest)
+                target.write_bytes(image+b'changed')
+                with self.assertRaisesRegex(ValueError,"content changed"):
+                    site.tracked_text(root)
+
     def test_markdown_links_anchors_and_examples(self):
         files = {"README.md": '[Spec][s]\n\n[s]: wiki/a.md#target\n\n`[example](missing.md)`',
                  "wiki/a.md": "# Target\n\n[Home](../README.md)"}

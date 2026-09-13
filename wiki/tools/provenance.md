@@ -66,7 +66,8 @@ formats, memory images, and common credential files. The local pre-merge wiki
 check and the Pages build scan every tracked file before publication. They reject those
 private paths and protected extensions even after `git add -f`, plus binary
 signatures, invalid UTF-8, and binary control bytes. The existing text-only rule
-also excludes binary screenshots and generated images.
+also excludes binary screenshots and generated images except the explicit
+owner-authorized asset in the [wiki publication policy](wiki/SPEC.md#text-only-policy-and-deployment).
 
 Run `python tools/wiki/check.py` after staging intended source changes; untracked
 files are not the publication input. Negative tests cover forced tracked private
