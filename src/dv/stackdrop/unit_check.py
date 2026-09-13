@@ -122,7 +122,7 @@ async def run(dut, count):
                             if want['render']:
                                 addresses = [0x9866+y*32+x for y in range(12) for x in range(8)]
                                 addresses += [0x988f+y*32+x for y in range(4) for x in range(4)]
-                                addresses += list(range(0x9a08, 0x9a0c))+[0x9844, 0x9864]
+                                addresses += list(range(0x996f, 0x9973))+[0x99ef, 0x99f0]
                                 assert vram == list(zip(addresses, want['image'])), 'STACKDROP_VRAM'
                                 assert render_dots == 4496, 'STACKDROP_MISSING_RENDER'
                             else:

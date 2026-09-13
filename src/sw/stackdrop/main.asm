@@ -22,7 +22,7 @@ JR ClearMemory
 MemoryReady:
 LD DE,Tiles
 LD HL,$8000
-LD BC,320
+LD BC,784
 CopyTiles:
 LD A,[DE]
 INC DE

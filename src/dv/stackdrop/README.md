@@ -49,14 +49,14 @@ No product RTL behavior or positive stimulus changes for the fault.
 
 ## Whole-game timing
 
-The instruction-derived LCD enable commit is116872 dots. The prefix is128 dots
-through setting the768-byte clear count,36852 for that clear,36 setup+16636
-for320 tile bytes,36 setup+53244 for1024 map bytes,5564 for the initial title
+The instruction-derived LCD enable commit is141000 dots. The prefix is128 dots
+through setting the768-byte clear count,36852 for that clear,36 setup+40764
+for784 tile bytes,36 setup+53244 for1024 map bytes,5564 for the initial title
 Prepare call,4312 for Render, then64 for palette/IE/LCDC setup. The checker
 rejects a different LCD commit immediately; the observed value never selects
 its oracle.
 
-Drive one real UART Start128 at146872..148872, safely before the first VBlank.
+Drive one real UART Start128 at171000..173000, safely before the first VBlank.
 Check all69120 pixels of startup white, title and the first playing image.
 The first VBlank copies the prepared title and computes NewGame; the second
 copies that prepared playing image. For each complete copy check all118 ordered

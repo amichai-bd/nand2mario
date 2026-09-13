@@ -531,8 +531,9 @@ Stackdrop's tile, map and shape tables at their linked symbols plus the BGP, SCX
 and SCY values from its listing; the v0.5 tiles, map and registers from the
 program writes of the literal instruction recipe in `src/dv/v05/reference.py`,
 after checking that recipe against the built ROM bytes. Stackdrop frames mirror
-`Prepare` and `Render` for the fresh-game title and one scripted play state from
-the independent rules model. Each program gets a tile-bank sheet, composed
+`Prepare` and `Render` for the fresh-game title and, from the independent rules
+model, one scripted play state and the game over it reaches four hard drops
+later. It resolves each target's registered shade assets before assembly. Each program gets a tile-bank sheet, composed
 160x144 screens through the BGP register, PNG and SVG at fixed scales, the
 tile bank as strict shade JSON and 2bpp, each frame as shade JSON, and a
 `result.json` with commit and input/output hashes. The renderer supports a

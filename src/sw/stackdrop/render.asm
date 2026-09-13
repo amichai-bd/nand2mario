@@ -159,10 +159,10 @@ INC D
 PreviewCarry:
 DEC B
 JR NZ,RenderPreview
-LD DE,$9A08
+LD DE,$996F
 CALL CopyFour
 LD A,[HL+]
-LD [$9844],A
+LD [$99EF],A
 LD A,[HL]
-LD [$9864],A
+LD [$99F0],A
 RET
