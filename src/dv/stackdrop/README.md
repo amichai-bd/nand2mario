@@ -188,7 +188,9 @@ image on the page, and it is not a record of the owner's own tapping. So the
 viewer path is attested rather than captured, and no frame here should be read as
 a capture of the owner's play.
 
-The loaded image remains ordinary session state, and none is resident now: the
-board was globally reset by KEY0 after these sessions, which clears the loaded
-image, frame ownership and transport state. Reload any image with
-`host load --package` before the next session.
+The loaded image remains ordinary session state, and this record makes no claim
+about what the board holds at any later moment. These sessions ended with no
+image resident: KEY0 globally reset the board once they were over, clearing the
+loaded image, frame ownership and transport state. That is their closing state,
+not the board's standing contents; later sessions load their own images. Any
+image reloads with `host load --package`, and no result carries across a load.
