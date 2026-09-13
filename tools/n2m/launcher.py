@@ -99,6 +99,9 @@ def explain(game, error):
     if 'urlopen' in text or 'URLError' in type(error).__name__ or 'getaddrinfo' in text:
         return (f'{name} is not cached locally and could not be fetched from its pinned URL. '
                 'Connect to the network once, or copy the cached image in place, then retry.')
+    if 'neutral effective input required' in text:
+        return (f'The board still has a button held, so {name} was not loaded. Release every key, '
+                'let go of the mouse, and pick it again.')
     if 'uncertain completion' in text:
         return (f'The link stopped answering while {name} was loading, so this session cannot send '
                 'anything more. Close the window and recover the session before playing.')
@@ -183,6 +186,9 @@ class Launcher:
     def start(self, game):
         """Load one game, reset, run, and leave the board ready for the pad."""
         try:
+            # Check the preconditions before loading, not after: a refused
+            # precondition must not first destroy the game already running.
+            entry_preflight(self.client, self.expected_build)
             image, provenance = self.image(game)
             self.progress(f'Sending {len(image)} bytes and verifying the readback…')
             loaded = self.client.load(image)
@@ -199,6 +205,25 @@ class Launcher:
         self.record({'event': 'launcher-start', 'game': game['key'], 'kind': game['kind'],
                      'bytes': loaded['verified_bytes']})
         return {'game': game['key'], 'provenance': provenance, 'load': loaded, 'identity': identity}
+
+
+def leave_pad(driver, to_menu, to_failure):
+    """Back: release every held button, then return to the menu.
+
+    The release has to happen here, on the way out. Back takes the pad out of
+    the window and with it the two paths that would otherwise clear a held
+    button: the key-up is dropped once the panel is gone, and the focus-loss
+    release is switched off with it. Without this write the mask stays applied
+    on the board, the player's character keeps walking, and nothing left on
+    screen can clear it.
+
+    One write, through the driver's guard, so a failed release ends the session
+    truthfully instead of returning to a menu that lies about the board.
+    """
+    driver.focus_lost()
+    if driver.failure is not None:
+        return to_failure(driver.failure_text())
+    return to_menu()
 
 
 class BootWatch:
@@ -336,10 +361,15 @@ def tk_launcher(launcher, controller, seconds=None, *, clock=time.monotonic):
             launcher.progress = lambda text: None
         show_pad(game)
 
+    def failed_release(text):
+        if screen['panel'] is not None:
+            screen['panel'].stop(text, '#ff9393')
+
     def show_pad(game):
         clear()
         screen['game'] = game
-        panel = PadPanel(root, driver, on_exit=quit_after, back=show_menu)
+        panel = PadPanel(root, driver, on_exit=quit_after,
+                         back=lambda: leave_pad(driver, show_menu, failed_release))
         panel.frame.pack()
         screen.update(panel=panel, frame=panel.frame, watch=BootWatch(game, clock=clock))
         panel.start()

@@ -88,9 +88,22 @@ build goes, the loaded bytes come from an immutable attempt that
 `host load --package` validates in full, including the artifact hashes, the
 profile, the interface inputs and the header.
 
-Then the pad appears. **Back** returns to the menu, releasing every held button
-first; the game keeps running on the board. Choosing another game loads it in
-place of the one running.
+Then the pad appears. **Back** releases every held button in one write and then
+returns to the menu; the game keeps running on the board. The release has to
+happen there, on the way out: leaving the pad takes away both paths that would
+otherwise clear a held button, because the key-up is dropped once the pad is
+gone and the focus-loss release goes with it. Without that write the mask would
+stay applied with nothing left on screen able to clear it. A release that fails
+ends the session and says so, rather than returning to a menu that misdescribes
+the board.
+
+Choosing another game loads it in place of the one running. The preconditions
+are checked **before** anything is sent, so a refused precondition never first
+destroys the game already playing.
+
+The window does not respond while a build or a load is in flight: both run on
+the Tk thread, which is what keeps one thread on the UART client. The progress
+line names the step it is on, and a load takes a few seconds.
 
 ## One session throughout
 
@@ -124,6 +137,7 @@ Each of these produces a sentence a player can act on, not a traceback:
 | The board read different bytes back | It was not started; check the wiring and the selected port |
 | A source-built game did not build | Nothing was loaded; the exact `sw build` command to run to see why |
 | The link stopped answering mid-load | This session cannot send anything more; recover it before playing |
+| A button is still held when a game is picked | Nothing was loaded; release every key and the mouse, then pick it again |
 | The game runs but never enables the LCD | The core is running and the monitor is blank, with the documented reason and link for the two known cases |
 
 The last one is a board answer, not a guess: after a game starts, the launcher
@@ -139,11 +153,16 @@ blank games marked, explained, linked and sorted last — the exact request orde
 through load, reset, run and the pad's preflight, the progress reported while a
 load is in flight, the build that is asked for without `--rebuild` and the
 immutable attempt it resolves to, replacing one loaded image with another, every
-failure message above, the blank-screen watch, and the exit path including the
-uncertain session and a wire failure inside the window. It runs against a fake
+failure message above, the blank-screen watch, what Back does — one release write
+for a held button, nothing when none is held, and a reported failure instead of a
+return when that write fails — and the exit path including the uncertain session
+and a wire failure inside the window. It runs against a fake
 endpoint with no board and no window.
 
-A window cannot be asserted headlessly. Everything the launcher does other than
-drawing itself lives in `Launcher`, `BootWatch` and `explain`, which is what
-those tests drive; the pad's own behavior stays in `Driver` and its widgets in
+A window cannot be asserted headlessly, so behavior does not live in the widget
+layer. Every stuck-button defect this tool has had reached the board through a
+widget callback no test could see, which is why what Back does lives in
+`leave_pad`, called by a one-line binding rather than written inside it.
+Everything the launcher does other than drawing itself lives in `Launcher`,
+`BootWatch`, `leave_pad` and `explain`, which is what those tests drive; the pad's own behavior stays in `Driver` and its widgets in
 `PadPanel`, which the launcher reuses rather than reimplements.

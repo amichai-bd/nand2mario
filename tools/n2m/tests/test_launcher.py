@@ -136,7 +136,8 @@ class SequenceTests(unittest.TestCase):
         started, reader = self.external(client)
         self.assertEqual(reader.call_args.args[1], 'libbet')
         self.assertEqual([event for event in client.events if not isinstance(event, tuple) or event[0] != 'read'],
-                         [('load', abi.PROFILE_ROM_BYTES), ('RESET', None), ('RUN', None), 'identify'])
+                         ['identify', ('load', abi.PROFILE_ROM_BYTES), ('RESET', None),
+                          ('RUN', None), 'identify'])
         self.assertEqual(started['provenance'], {'external': {'pin': 'libbet'}})
         self.assertEqual(client.state, abi.STATE_RUNNING)
 
@@ -210,8 +211,9 @@ class FailureTests(unittest.TestCase):
         self.assertIn('does not match its pinned digest', message)
         self.assertIn('workdir/private/external-roms', message)
         self.assertNotIn('Traceback', message)
-        # Nothing was sent: a refused image never reaches the board.
-        self.assertEqual(client.events, [])
+        # A refused image never reaches the board; only the preconditions were read.
+        self.assertEqual([event for event in client.events
+                          if not isinstance(event, tuple) or event[0] != 'read'], ['identify'])
 
     def test_a_failed_load_names_the_link_and_leaves_nothing_loaded(self):
         client = Fake(load_error=ValueError('full ROM readback mismatch at offset 7'))
@@ -229,7 +231,8 @@ class FailureTests(unittest.TestCase):
         with self.assertRaises(gl.LauncherError) as raised:
             instance.start(self.game('stackdrop'))
         self.assertIn('sw build stackdrop', str(raised.exception))
-        self.assertEqual(client.events, [])
+        self.assertEqual([event for event in client.events
+                          if not isinstance(event, tuple) or event[0] != 'read'], ['identify'])
 
     def test_a_held_board_reuses_the_pads_own_explanation(self):
         error = RuntimeError('trusted controller already running')
@@ -239,6 +242,22 @@ class FailureTests(unittest.TestCase):
     def test_an_uncertain_link_says_the_session_cannot_continue(self):
         message = self.start(Fake(), UncertainCompletion('LOAD_END: uncertain completion (timeout)'))
         self.assertIn('cannot send', message)
+
+    def test_an_unfetchable_image_says_how_to_get_it_cached(self):
+        message = self.start(Fake(), OSError('<urlopen error [Errno 11001] getaddrinfo failed>'))
+        self.assertIn('could not be fetched', message)
+        self.assertIn('network', message)
+
+    def test_a_held_button_refuses_the_load_before_it_replaces_the_running_game(self):
+        """The precondition is checked before the load, so nothing is destroyed."""
+        client = Fake(effective=abi.BUTTON_LEFT)
+        instance = launcher(client)
+        with patch.object(gl, 'read_external', return_value=(IMAGE, {'pin': 'libbet'})) as reader:
+            with self.assertRaises(gl.LauncherError) as raised:
+                instance.start(self.game())
+        self.assertIn('still has a button held', str(raised.exception))
+        reader.assert_not_called()
+        self.assertNotIn(('load', abi.PROFILE_ROM_BYTES), client.events)
 
     def test_an_unknown_failure_still_reads_as_a_sentence(self):
         message = self.start(Fake(), ValueError('something else'))
@@ -274,6 +293,47 @@ class BootWatchTests(unittest.TestCase):
         text = watch.update(0x00)
         self.assertIn('LCD is still off', text)
         self.assertNotIn(gl.LIBRARY, text)
+
+
+class BackTests(unittest.TestCase):
+    """Back releases before it leaves; the menu screen cannot clear a held mask."""
+
+    def driver(self, client):
+        from n2m.gui_pad import Controller, Driver
+        return Driver(Controller(client))
+
+    def test_back_releases_a_held_button_once_and_then_shows_the_menu(self):
+        client = Fake()
+        driver = self.driver(client)
+        driver.button(0x25, True)
+        self.assertEqual(driver.controller.held, [0x25])
+        seen = []
+        self.assertEqual(gl.leave_pad(driver, lambda: seen.append('menu') or 'menu',
+                                      lambda text: seen.append(text)), 'menu')
+        self.assertEqual(seen, ['menu'])
+        self.assertEqual(driver.controller.held, [])
+        self.assertEqual(client.effective, 0)
+        self.assertEqual([event for event in client.events if event[0] == 'INPUT'],
+                         [('INPUT', abi.BUTTON_LEFT), ('INPUT', 0)])
+        self.assertFalse(client.uncertain)
+        self.assertIsNone(driver.failure)
+
+    def test_back_with_nothing_held_writes_nothing(self):
+        client = Fake()
+        driver = self.driver(client)
+        self.assertEqual(gl.leave_pad(driver, lambda: 'menu', lambda text: text), 'menu')
+        self.assertEqual(client.events, [])
+
+    def test_a_failed_release_reports_it_instead_of_returning_to_the_menu(self):
+        client = Fake(fail_on=0)
+        driver = self.driver(client)
+        driver.button(0x25, True)
+        said = []
+        gl.leave_pad(driver, lambda: said.append('menu'), lambda text: said.append(text))
+        self.assertEqual(len(said), 1)
+        self.assertNotEqual(said[0], 'menu')
+        self.assertIn('UART write failed', said[0])
+        self.assertIsNotNone(driver.failure)
 
 
 class SessionTests(unittest.TestCase):
