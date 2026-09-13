@@ -310,6 +310,11 @@ units:
   ppu-window-wy-late: {kind: sim, level: 2, labels: [ppu], duration_seconds: null}
   preload-crc-fault: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: null}
   preload-lifecycle: {kind: sim, level: 1, labels: [uart], duration_seconds: 18.87}
+  python-acquisition-a: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-acquisition-b: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-acquisition-c: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-acquisition-fault: {kind: sim, level: 2, labels: [fault, integration, python-tb, springtrail, system, v05], duration_seconds: null}
+  python-acquisition-short: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
   python-bka: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
   python-bkb: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
   python-bks: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
