@@ -235,6 +235,109 @@ def check_views(browser, base):
             expect(page.locator('[data-progress]')).to_have_text(expected)
             page.close()
 
+        # A figure - an image alone in its paragraph - fits the text column, as GitHub
+        # fits a content image to its width. An explicit width attribute keeps the author's
+        # size, and nothing overflows at the narrow breakpoint.
+        for width in (1440, 390):
+            for document in ('README.md', 'wiki/showcase/homebrew-library.md',
+                             'wiki/src/sw/springtrail/CHARACTER_ART.md',
+                             'wiki/src/sw/springtrail/PROGRESS.md'):
+                page = new_page()
+                page.set_viewport_size({'width': width, 'height': 1000})
+                page.goto(base + '/?page=' + document)
+                expect(page.locator('#path')).to_have_text(document)
+                expect(page.locator('#document img').first).to_be_visible()
+                sizes = page.evaluate("""() => {
+                    const doc = document.querySelector('#document');
+                    const style = getComputedStyle(doc);
+                    const column = doc.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+                    const figure = 'p > img:only-child, p > a:only-child > img:only-child';
+                    const sized = '[width], [height]';
+                    return [...doc.querySelectorAll('img')].map(image => ({
+                        source: image.getAttribute('src'),
+                        declared: image.getAttribute('width'),
+                        drawn: image.getBoundingClientRect().width,
+                        // Both halves of the CSS: the figure shape, and the explicit size that exempts it.
+                        figure: image.matches(figure) && !image.matches(sized),
+                        column,
+                    }));
+                }""")
+                assert sizes, f'{document} published no image at {width}'
+                for image in sizes:
+                    if image['figure']:
+                        assert abs(image['drawn'] - image['column']) < 1, (
+                            f"{image['source']} drew {image['drawn']} in a {image['column']} column at {width}")
+                    elif image['declared']:
+                        assert image['drawn'] == float(image['declared']), (
+                            f"{image['source']} ignored its width={image['declared']} at {width}")
+                assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), (
+                    f'{document} overflows at {width}')
+                if document == 'README.md':
+                    # The phone screenshot is the explicitly sized image the rule must not stretch.
+                    expect(page.locator('#document img[width="300"]')).to_have_count(1)
+                    page.screenshot(path=str(OUTPUT / f'quality-figures-{width}.png'), full_page=True)
+                page.close()
+
+        # Which paragraph shapes the rule selects, measured rather than assumed. `:only-child`
+        # counts elements, not text, so an image whose only siblings are words is still a
+        # figure; a sibling element keeps it inline. No published page relies on either.
+        page = new_page()
+        page.set_viewport_size({'width': 1440, 'height': 1000})
+        page.goto(base + '/?page=wiki/src/sw/springtrail/PROGRESS.md')
+        expect(page.locator('#document img').first).to_be_visible()
+        shapes = page.evaluate("""async source => {
+            const doc = document.querySelector('#document');
+            const style = getComputedStyle(doc);
+            const column = doc.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+            const cases = {
+                alone: `<p><img src="${source}"></p>`,
+                linked: `<p><a href="#t"><img src="${source}"></a></p>`,
+                'sibling text': `<p>See this <img src="${source}"></p>`,
+                'sibling element': `<p><strong>Note</strong> <img src="${source}"></p>`,
+                'declared width': `<p><img src="${source}" width="300"></p>`,
+                'declared height': `<p><img src="${source}" height="100"></p>`,
+                'list item': `<ul><li><img src="${source}"></li></ul>`,
+                'table cell': `<table><tr><td><img src="${source}"></td></tr></table>`,
+                quoted: `<blockquote><p><img src="${source}"></p></blockquote>`,
+            };
+            const host = document.createElement('div');
+            doc.append(host);
+            const measured = {};
+            for (const [name, markup] of Object.entries(cases)) {
+                host.innerHTML = markup;
+                const image = host.querySelector('img');
+                await image.decode();
+                const box = image.getBoundingClientRect();
+                measured[name] = {width: box.width, display: getComputedStyle(image).display,
+                                  parent: image.closest('p, li, td').getBoundingClientRect().width};
+            }
+            host.remove();
+            return {column, measured};
+        }""", '/files/wiki/src/sw/springtrail/progress/tiles.svg')
+        column, measured = shapes['column'], shapes['measured']
+        intrinsic = 476  # tiles.svg is authored narrower than the column, so a fill is unmistakable.
+        for name in ('alone', 'linked', 'sibling text'):
+            assert abs(measured[name]['width'] - column) < 1, f'{name} did not fill the column: {measured[name]}'
+            assert measured[name]['display'] == 'block', f'{name} is not a block figure: {measured[name]}'
+        for name in ('sibling element', 'list item', 'table cell'):
+            assert measured[name]['width'] == intrinsic, f'{name} was stretched: {measured[name]}'
+            assert measured[name]['display'] == 'inline', f'{name} became a block: {measured[name]}'
+        assert measured['declared width']['width'] == 300, measured['declared width']
+        # A declared height exempts the image too; its width then follows the aspect ratio.
+        assert measured['declared height']['display'] == 'inline', measured['declared height']
+        assert abs(measured['declared height']['width'] - column) > 1, measured['declared height']
+        # A quoted figure fills the quote's own content box, which is narrower than the column.
+        assert abs(measured['quoted']['width'] - measured['quoted']['parent']) < 1, measured['quoted']
+        assert measured['quoted']['width'] < column, measured['quoted']
+        page.close()
+
+        # Decks keep their own stylesheet: the shell figure rule must not reach them.
+        page = new_page()
+        page.goto(base + '/files/wiki/presentations/verification.html')
+        assert page.evaluate("""() => [...document.styleSheets].every(
+            sheet => !(sheet.href || '').endsWith('shell.css'))"""), 'A deck loaded the shell stylesheet'
+        page.close()
+
         for width in (1440, 390):
             page = new_page()
             page.set_viewport_size({'width': width, 'height': 844})
@@ -256,7 +359,7 @@ def check_views(browser, base):
             page.close()
         assert not errors, '\n'.join(errors)
         return {'status': 'passed', 'browser': browser.version, 'viewports': [1440, 390],
-                'checks': ['slide fragments', 'malformed fragments', 'keyboard', 'print visibility and contrast', 'animated diagram motion, completeness and print contrast', 'README showcase motion and reduced-motion still', 'board-captured loops decode and hold their final frame', 'homebrew panels decode and stay still', 'lesson terminal sessions and deck embeds', 'chart scrolling']}
+                'checks': ['slide fragments', 'malformed fragments', 'keyboard', 'print visibility and contrast', 'animated diagram motion, completeness and print contrast', 'README showcase motion and reduced-motion still', 'board-captured loops decode and hold their final frame', 'homebrew panels decode and stay still', 'lesson terminal sessions and deck embeds', 'figures fit the text column', 'figure paragraph shapes', 'chart scrolling']}
     except BaseException:
         if page is not None and not page.is_closed():
             page.screenshot(path=str(OUTPUT / 'failure.png'), full_page=True)

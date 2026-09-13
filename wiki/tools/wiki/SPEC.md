@@ -116,7 +116,24 @@ same wrapper; failure returns `n2m:fullscreen-result` with `ok: false`.
 
 Shared visual attributes live in `tools/wiki/assets/tokens.css`: `--bg`,
 `--panel`, `--surface`, `--text`, `--muted`, `--accent`, `--border`, `--font`,
-`--mono`, and `--radius`. Use the [presentation contract](../../presentations/README.md)
+`--mono`, and `--radius`.
+
+An image that is the only element in its paragraph is a figure and fills the
+document column, which is how GitHub fits a content image to its width. Showcases
+and board captures are authored at different intrinsic widths, so without the rule
+they share no right edge. A linked figure, `[![alt](image)](target)`, fills the
+same way; a quoted figure fills the blockquote's own content box.
+
+The selector is `:only-child`, which counts elements and not text. An image that
+shares its paragraph with another element, such as a bold run or a second image,
+stays inline at its intrinsic size, but an image whose only siblings are words
+still fills, so keep a caption in its own paragraph. An image in a list item or
+table cell keeps its intrinsic size. An explicit `width` or `height` attribute
+always wins, which is what keeps the phone screenshot at 300 pixels, and
+`max-width: 100%` remains the overflow guard at every width. Decks under
+`wiki/presentations/` load `presentation.css` instead and are unaffected.
+`tools/wiki/browser_quality.py` measures every paragraph shape above, and checks
+figure, explicit and overflow widths on published pages at both breakpoints. Use the [presentation contract](../../presentations/README.md)
 and [authoring skill](../../../.agents/skills/html-presentation/SKILL.md) for decks
 under `wiki/presentations/`. Source files remain the authority for all content.
 

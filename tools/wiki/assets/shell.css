@@ -49,6 +49,13 @@ th, td { border-bottom: 1px solid var(--border); padding: 10px 12px; text-align:
 th { color: var(--accent); background: var(--panel); }
 blockquote { border-left: 2px solid var(--accent); margin-left: 0; padding-left: 20px; }
 img, svg { max-width: 100%; }
+/* A figure is the only element in its paragraph: fit it to the text column, as GitHub does,
+   so showcases and captures share one right edge. :only-child counts elements, not text, so
+   an image beside another element stays inline while one beside bare words still fills; put
+   a caption in its own paragraph. An explicit width or height keeps the author's size, an
+   image in a list or table cell keeps its own, and max-width above stays the overflow guard. */
+#document p > img:only-child:not([width]):not([height]),
+#document p > a:only-child > img:only-child:not([width]):not([height]) { display: block; width: 100%; }
 footer { padding: 16px 24px; border-top: 1px solid var(--border); color: var(--muted); font-size: 10px; }
 #document.embedded { max-width: none; padding: 20px; }
 iframe { width: 100%; min-height: 70vh; border: 1px solid var(--border); border-radius: var(--radius); background: var(--panel); }
