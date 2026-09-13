@@ -62,6 +62,12 @@ its own section and in the manifest.
 | [Wyrmhole](#wyrmhole-and-rex-run-never-turn-the-lcd-on) | Quinn Painter | MIT | No frame: hangs before enabling the LCD |
 | [Rex Run](#wyrmhole-and-rex-run-never-turn-the-lcd-on) | elseyf | GPL-3.0-only | No frame: hangs before enabling the LCD |
 
+The two SPDX suffixes come from what each project declares, not from a
+judgement made here. Airaki is `GPL-3.0-or-later` because its upstream
+catalogue entry declares exactly that. The other three declare GPL version 3
+with no "or any later version" statement, so they are recorded as
+`GPL-3.0-only`, the narrower reading.
+
 All three images that declare CGB flag `0x80` — Airaki, GB Wordyl and
 Unstoppable Knight — boot and render on this DMG. Airaki is also catalogued
 upstream as a GBC title; it plays here in the four DMG shades.
@@ -81,9 +87,9 @@ repository.
 
 ![Airaki captured on the DE10-Lite](homebrew-airaki.svg)
 
-The intro, the title after Start, and the match board after two A presses
-choose one player: swords, shields and potions to match, with both fighters'
-health bars and the round timer.
+The intro, the title after the first Start, and the match board a second Start
+and two A presses later: swords, shields and potions to match, with both
+fighters' health bars and the round timer.
 
 ## GB Wordyl
 
@@ -101,7 +107,9 @@ bbbbbr's repository.
 ![GB Wordyl captured on the DE10-Lite](homebrew-gb-wordyl.svg)
 
 The title, the welcome and controls screen, and the guess grid with the
-on-screen keyboard after five A presses enter letters from the cursor.
+on-screen keyboard. Six A presses follow: the first leaves the controls screen
+and the rest type from the cursor's starting key, four letters of which had
+been entered when the captured frame completed.
 
 ## Max Pirate
 
@@ -166,8 +174,11 @@ Wyrmhole (Quinn Painter, **MIT**,
 [pinned artifact](https://github.com/QuinnPainter/Wyrmhole/releases/download/1.1/Wyrmhole.gb))
 and Rex Run (elseyf, **GPL-3.0-only**,
 [source](https://github.com/elseyf/rex-run-gb),
-[pinned artifact](https://github.com/elseyf/rex-run-gb/releases/download/v1.0/rex-run.gb))
-both load and both execute, and neither ever produces a frame. There is no
+[pinned artifact](https://github.com/elseyf/rex-run-gb/releases/download/v1.0/rex-run.gb),
+a Game Boy port of the Chrome offline dinosaur game) both load and both
+execute, and neither ever produces a frame. Rex Run's repository carried no
+`LICENSE` file at the release commit, so its pinned licence text is the later
+commit that added it, exactly as Square Fall's is; the manifest records which. There is no
 screenshot to publish, because the board completed no frame to capture:
 `SNAPSHOT` answers `NO_FRAME`.
 
@@ -179,22 +190,33 @@ running:
 | Wyrmhole | 75,615,408 dots | 7,089,821 | `0x00` | `0x00` | `0x00` | `0x00` |
 | Rex Run | 42,058,030 dots | 4,212,561 | `0x00` | `0x00` | `0x00` | `0x00` |
 
-The CPU is running the whole time — retirements climb steadily, about one
-instruction every 10.7 dots, the rate of a tight polling loop — but `LCDC`
-never leaves `0x00`, so the PPU never starts, no frame ever completes, and the
-VGA output stays blank.
+The CPU is running the whole time — retirements climb steadily, at the rate of
+a tight polling loop — but `LCDC` never leaves `0x00`, so the PPU never starts,
+no frame ever completes, and the VGA output stays blank.
 
 Each game's own code says why. Both wait for the LCD **before** they enable it:
 
-- Wyrmhole, at ROM `0x6370`, immediately before its only write to `LCDC`:
-  `LDH A,[rLY]` / `CP 144` / `JR C,-6`, then `XOR A` / `LDH [rLCDC],A`. It
-  waits for VBlank by polling `LY` until it reaches 144, so that it can safely
-  switch the LCD off. With the LCD already off, `LY` is parked at 0 and the
-  loop never exits. This is the ROM's only `LY` read.
-- Rex Run, at ROM `0x1186`: `LDH A,[rSTAT]` / `AND 3` / `CP 1` / `JR NZ,-8`,
-  then `LDH A,[rLCDC]` / `AND 0x7F` / `LDH [rLCDC],A`. It waits for `STAT` to
-  report mode 1, VBlank, before clearing the LCD-enable bit. With the LCD off
-  the mode field reads 0 forever.
+- Wyrmhole, at ROM `0x6370`, immediately before the `LCDC` write at `0x6377`
+  that is first on its init path: `LDH A,[rLY]` / `CP 144` / `JR C,-6`, then
+  `XOR A` / `LDH [rLCDC],A`. It waits for VBlank by polling `LY` until it
+  reaches 144, so that it can safely switch the LCD off. With the LCD already
+  off, `LY` is parked at 0 and the loop never exits. This is the ROM's only
+  `LY` read; it writes `LCDC` in four other places, all past this point.
+- Rex Run, at ROM `0x117A`: `LDH A,[rSTAT]` / `AND 3` / `CP 1` / `JR NZ,-8`,
+  then `LDH A,[rLCDC]` / `AND 0x7F` / `LDH [rLCDC],A` at `0x1186`. It waits for
+  `STAT` to report mode 1, VBlank, before clearing the LCD-enable bit. With the
+  LCD off the mode field reads 0 forever. The four instructions immediately
+  before it are `LDH A,[rIE]` / `AND 0` / `LDH [rIE],A`, so interrupts are
+  masked and nothing can break the loop.
+
+The retirement counters say the CPU is in precisely those loops. Wyrmhole's
+three instructions cost 12 + 8 + 12 = 32 dots, so 10.6667 dots each; Rex Run's
+four cost 12 + 8 + 8 + 12 = 40 dots, so exactly 10.0 each. Over each 60-frame
+sampling interval of 4,213,440 dots the board reported 395,010 retirements for
+Wyrmhole and 421,344 for Rex Run — 10.6667 and 10.0000 dots per instruction,
+matching each game's own loop, and each exactly the whole number of iterations
+that fit the interval times its instruction count. Every interval gave the same
+figure.
 
 Both are waiting for a condition a real DMG would already have satisfied. The
 Nintendo boot ROM hands control to the cartridge with the LCD **running** —

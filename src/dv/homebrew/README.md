@@ -35,9 +35,12 @@ the retained licence text. `airaki` and `gb-wordyl` are pinned to a
 `gbdev/database` blob: a third-party redistribution, not an author release,
 because neither author publishes a release asset. `rex-run` and `square-fall`
 pin their licence text at a later commit than the release, because neither
-repository carried a `LICENSE` file when the release was cut. No image bytes
-are committed; each is fetched at run time and refused unless its size and
-SHA-256 match.
+repository carried a `LICENSE` file when the release was cut. The two SPDX
+suffixes follow each project's own declaration: `airaki` is `-or-later`
+because its upstream catalogue entry declares that, and the other three GPL
+entries declare version 3 with no "or any later version" statement, so they
+take the narrower `-only`. No image bytes are committed; each is fetched at run
+time and refused unless its size and SHA-256 match.
 
 ## Driver
 
@@ -125,20 +128,31 @@ enables the LCD. `SNAPSHOT` answers `NO_FRAME` because no frame has completed.
 | `wyrmhole` | 75615408 dots | 7089821 | `0x00` | `0x00` | `0x00` | `0x00` |
 | `rex-run` | 42058030 dots | 4212561 | `0x00` | `0x00` | `0x00` | `0x00` |
 
-Retirements climb at about one instruction per 10.7 dots throughout, the rate of
-a tight polling loop, so neither has stopped or halted.
+Retirements climb steadily throughout, so neither has stopped or halted.
 
 Each ROM says why. Both poll for the LCD before they enable it:
 
-- Wyrmhole at `0x6370`, immediately before its only `LCDC` write:
-  `F0 44` `LDH A,[rLY]`, `FE 90` `CP 144`, `38 FA` `JR C,-6`, then `AF`
-  `XOR A`, `E0 40` `LDH [rLCDC],A`. It waits for `LY` to reach 144 so it can
-  switch the LCD off safely. With the LCD off, `LY` stays 0. This is the only
-  `LY` read in the image.
-- Rex Run at `0x1186`: `F0 41` `LDH A,[rSTAT]`, `E6 03` `AND 3`, `FE 01`
-  `CP 1`, `20 F8` `JR NZ,-8`, then `F0 40` / `E6 7F` / `E0 40`, clearing the
-  LCD-enable bit. It waits for mode 1, VBlank, which the mode field never
-  reports while the LCD is off.
+- Wyrmhole at `0x6370`, immediately before the `LCDC` write at `0x6377` that is
+  first on its init path: `F0 44` `LDH A,[rLY]`, `FE 90` `CP 144`, `38 FA`
+  `JR C,-6`, then `AF` `XOR A`, `E0 40` `LDH [rLCDC],A`. It waits for `LY` to
+  reach 144 so it can switch the LCD off safely. With the LCD off, `LY` stays
+  0. This is the only `LY` read in the image; the image writes `LCDC` in four
+  other places (`0x51F6`, `0x5593`, `0x58F6`, `0x59AF`), all past this point.
+- Rex Run at `0x117A`: `F0 41` `LDH A,[rSTAT]`, `E6 03` `AND 3`, `FE 01`
+  `CP 1`, `20 F8` `JR NZ,-8`, then `F0 40` / `E6 7F` / `E0 40` at `0x1186`,
+  clearing the LCD-enable bit. It waits for mode 1, VBlank, which the mode
+  field never reports while the LCD is off. `F0 FF` / `E6 00` / `E0 FF`
+  immediately precede it, masking every interrupt, so nothing can break the
+  loop.
+
+The retirement rate identifies the loop each CPU is in. Wyrmhole's three
+instructions cost 12 + 8 + 12 = 32 dots, 10.6667 each; Rex Run's four cost
+12 + 8 + 8 + 12 = 40 dots, exactly 10.0 each. Every 60-frame sampling interval
+is 4213440 dots, and the board reported the same retirement delta across all of
+them: 395010 for Wyrmhole and 421344 for Rex Run, giving 10.6667 and 10.0000
+dots per instruction. Each is the whole number of loop iterations that fit the
+interval times that loop's instruction count — 131670 x 3 and 105336 x 4 — so
+the observed rate matches each game's own hang loop and not the other's.
 
 A real DMG boot ROM hands control to the cartridge with `LCDC` = `0x91`, the
 LCD already running, so both loops exit immediately there. `dmg-direct-v1` has
