@@ -140,8 +140,13 @@ class Buttons:
         with producer(self.inbox,wait=True):
             return sorted(self.inbox.glob('*.json'))[:CAPACITY]
 
-    def one(self, client, stop, *, clock=time.monotonic, wait=None, path=None):
-        """Claim once, complete/release before returning to capture."""
+    def one(self, client, stop, *, clock=time.monotonic, wait=None, path=None, hold=None):
+        """Claim once, complete/release before returning to capture.
+
+        `hold` replaces the wall-clock press duration when the caller advances
+        emulated time instead; it runs with the mask applied and returns its
+        report, or None to keep the wall-clock hold.
+        """
         if path is None:
             pending = self.batch()
             if not pending:
@@ -178,7 +183,13 @@ class Buttons:
             pressed = True
             apply_mask(client,record['mask'])
             started = clock()
-            (wait or stop.wait)(record['milliseconds']/1000)
+            # Stepped mode holds the mask across the step, so the core actually
+            # observes the press; wall time alone would execute no dots.
+            report = None if hold is None else hold()
+            if report is None:
+                (wait or stop.wait)(record['milliseconds']/1000)
+            else:
+                receipt['step'] = report
             receipt['held_seconds'] = clock()-started
             receipt['status'] = 'CANCELLED' if stop.is_set() else 'APPLIED'
             return receipt

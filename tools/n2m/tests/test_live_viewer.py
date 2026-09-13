@@ -35,6 +35,7 @@ class Fake:
         self.count = 0
         self.mask = 0
         self.dot = 0
+        self.stepped_masks = []
     def identify(self):
         self.events.append('identify')
         return {'abi':1,'build_id':BUILD if self.fault!='identity' else '00'*16}
@@ -52,6 +53,7 @@ class Fake:
     def run_dots(self, count):
         self.events.append(('run_dots',count))
         assert self.state==abi.STATE_PAUSED
+        self.stepped_masks.append(self.mask)  # What the core observes while dots run.
         executed = count//2 if self.fault=='short' else count
         self.dot += executed
         return {'dot':self.dot,'executed':executed,
@@ -599,6 +601,54 @@ class SteppedModeTests(unittest.TestCase):
                 self.assertIn(b'not a real-time proof',PAGE)
             finally:
                 http.shutdown();http.server_close();thread.join()
+
+    def test_press_while_already_stepped_is_held_across_its_step(self):
+        with tempfile.TemporaryDirectory() as folder:
+            out=self.runtime(folder);enqueue_mode(out,'stepped')
+            clock=Clock();clock.value=0;client=Fake(clock);buttons=Buttons(out);queued=False
+            def wait(seconds):
+                nonlocal queued
+                if not queued and buttons.mode=='stepped':
+                    enqueue(out,abi.BUTTON_RIGHT,134);queued=True
+                clock.wait(seconds)
+            result=capture_loop(client,Latest(clock=clock),out,png_writer,expected_build=BUILD,
+                                stop=clock,seconds=6,interval=2,clock=clock,wait=wait,buttons=buttons)
+            self.assertEqual(result['status'],'PASS')
+            # The core must see the press while dots run, not only in a register write.
+            self.assertEqual(client.stepped_masks,[0,abi.BUTTON_RIGHT,0])
+            relevant=[x for x in client.events
+                      if x in ('snapshot','READ_FRAME_COMPLETE','HALT','RUN')
+                      or isinstance(x,tuple) and x[0] in ('write','run_dots')]
+            self.assertEqual(relevant,[
+                'RUN','HALT',('run_dots',FRAME_DOTS),'snapshot','READ_FRAME_COMPLETE',
+                ('write',abi.HOST_REG_INPUT,abi.BUTTON_RIGHT),('run_dots',FRAME_DOTS),
+                ('write',abi.HOST_REG_INPUT,0),'snapshot','READ_FRAME_COMPLETE',
+                ('run_dots',FRAME_DOTS),'snapshot','READ_FRAME_COMPLETE',
+                'HALT',('write',abi.HOST_REG_INPUT,0)])
+            receipt=result['inputs'][-1]
+            self.assertEqual(receipt['step']['executed_dots'],FRAME_DOTS)
+            self.assertTrue(receipt['released'])
+            self.assertEqual(history(out)[0]['state'],'RETIRED')
+            self.assertEqual(client.mask,0)
+            self.assertFalse(client.uncertain)
+            self.assertEqual(result['captures'][-2]['step']['steps'],1)
+
+    def test_every_press_in_a_stepped_batch_gets_its_own_step(self):
+        with tempfile.TemporaryDirectory() as folder:
+            out=self.runtime(folder);enqueue_mode(out,'stepped')
+            clock=Clock();clock.value=0;client=Fake(clock);buttons=Buttons(out);queued=False
+            def wait(seconds):
+                nonlocal queued
+                if not queued and buttons.mode=='stepped':
+                    enqueue(out,abi.BUTTON_RIGHT,134);enqueue(out,abi.BUTTON_LEFT,134);queued=True
+                clock.wait(seconds)
+            result=capture_loop(client,Latest(clock=clock),out,png_writer,expected_build=BUILD,
+                                stop=clock,seconds=6,interval=2,clock=clock,wait=wait,buttons=buttons)
+            self.assertEqual(client.stepped_masks,[0,abi.BUTTON_RIGHT,abi.BUTTON_LEFT,0])
+            capture=result['captures'][-2]['step']
+            self.assertEqual((capture['steps'],capture['frames']),(2,2))
+            self.assertEqual(capture['executed_dots'],2*FRAME_DOTS)
+            self.assertEqual(capture['short_by_dots'],0)
 
     def test_advance_splits_the_step_into_bounded_calls(self):
         class Bounded:

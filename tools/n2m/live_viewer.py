@@ -26,7 +26,7 @@ async function send(payload,name){const label=document.querySelector('#input-sta
 function control(target,text,payload){const b=document.createElement('button');b.textContent=text;b.style.cssText='font:20px system-ui;padding:12px;margin:4px';b.onclick=()=>send(payload,text);document.querySelector(target).appendChild(b)}
 for(const button of ['Up','Left','Right','Down','A','B','Start','Select'])control('#buttons',button,{button});
 for(const mode of ['free-run','stepped'])control('#modes','Mode: '+mode,{mode});
-function modeStatus(s){const step=s.step?' | advanced '+s.step.executed_dots+' of '+s.step.requested_dots+' dots to dot '+s.step.completed_dot+(s.step.short_by_dots?' | SHORT by '+s.step.short_by_dots+' dots (reason '+s.step.reason+')':''):'';document.querySelector('#mode-status').textContent='Mode '+(s.mode||'unknown')+(s.mode==='stepped'?' | step '+s.step_frames+' frame(s) of 70224 dots'+step+' | not a real-time proof':'')}
+function modeStatus(s){const step=s.step?' | advanced '+s.step.steps+' step(s), '+s.step.executed_dots+' of '+s.step.requested_dots+' dots to dot '+s.step.completed_dot+(s.step.short_by_dots?' | SHORT by '+s.step.short_by_dots+' dots (reason '+s.step.reason+')':''):'';document.querySelector('#mode-status').textContent='Mode '+(s.mode||'unknown')+(s.mode==='stepped'?' | step '+s.step_frames+' frame(s) of 70224 dots'+step+' | not a real-time proof':'')}
 function scale(){let n=Math.max(1,Math.floor((innerWidth-40)/160));frame.style.width=(160*n)+'px';frame.style.height=(144*n)+'px'}scale();addEventListener('resize',scale);
 function commands(s){const list=document.querySelector('#commands');list.replaceChildren();if(s.commands_error){list.textContent=s.commands_error;return}for(const r of s.commands||[]){const li=document.createElement('li');li.className=r.state;const names=['Right','Left','Up','Down','A','B','Select','Start'].filter((n,i)=>r.mask&(1<<i)).join('+');const what=r.mode?'mode '+r.mode:(names||'mask '+r.mask)+' '+r.milliseconds+' ms';li.textContent='#'+r.id+' '+what+' | '+r.state+' | queued '+(r.queued_at||'-')+' | started '+(r.started_at||'-')+' | completed '+(r.completed_at||'-');list.appendChild(li)}}
 async function poll(){try{const r=await fetch('/status.json',{cache:'no-store'});if(!r.ok)throw Error();const s=await r.json();commands(s);modeStatus(s);if(s.sequence&&s.sequence!==sequence){const image=await fetch('/frame.png?v='+s.sequence,{cache:'no-store'});if(!image.ok)throw Error();const url=URL.createObjectURL(await image.blob());const prior=frame.src;frame.src=url;sequence=s.sequence;if(prior.startsWith('blob:'))URL.revokeObjectURL(prior)}last=Date.now();state.textContent=s.state+(s.reason?' - '+s.reason:'');detail.textContent=s.sequence?'Capture '+s.sequence+' | '+s.captured_at+' | age '+s.age_seconds.toFixed(1)+' s | '+s.latency_seconds.toFixed(3)+' s capture | '+s.core_state+' | source '+s.source.seq:'Waiting for actual pixels'}catch(e){state.textContent='OFFLINE / STALE'}setTimeout(poll,1000)}poll();setInterval(()=>{if(Date.now()-last>5000)state.textContent='OFFLINE / STALE'},1000);
@@ -230,6 +230,17 @@ def advance(client, dots):
             'reason':reason,'short_by_dots':dots-executed}
 
 
+def combine(reports, step_frames):
+    """One per-capture account of every step this cycle advanced."""
+    short = next((report['reason'] for report in reports
+                  if report['reason'] != abi.WIRE_RUN_DOTS_COUNT),abi.WIRE_RUN_DOTS_COUNT)
+    return {'steps':len(reports),'frames':step_frames*len(reports),
+            'requested_dots':sum(report['requested_dots'] for report in reports),
+            'executed_dots':sum(report['executed_dots'] for report in reports),
+            'completed_dot':reports[-1]['completed_dot'],'reason':short,
+            'short_by_dots':sum(report['short_by_dots'] for report in reports)}
+
+
 def capture_loop(client, latest, out, png_writer, *, expected_build, stop,
                  seconds=30, interval=2, clock=time.monotonic, wait=None, buttons=None,
                  step_frames=1):
@@ -266,8 +277,34 @@ def capture_loop(client, latest, out, png_writer, *, expected_build, stop,
         active = DEFAULT_MODE
         latest.describe(mode=active,step_frames=step_frames)
         result['mode'] = active
+        steps = []
+
+        def sync_mode():
+            """Enter the selected mode; RUN_DOTS needs a paused core."""
+            nonlocal active
+            requested = buttons.mode if buttons is not None else DEFAULT_MODE
+            if requested == active:
+                return
+            client.control('HALT' if requested=='stepped' else 'RUN')
+            active = requested
+            if client.read_host(abi.HOST_REG_STATE) != state_for(active):
+                raise ValueError('core did not enter '+active+' mode')
+            result['mode'] = active
+            latest.describe(mode=active)
+
+        def hold():
+            """Advance the step with the press still applied, or keep wall time."""
+            if active != 'stepped':
+                return None
+            steps.append(advance(client,step_frames*FRAME_DOTS))
+            return steps[-1]
+
         while not stop.is_set() and clock()-started < seconds:
             tick = clock()
+            steps.clear()
+            # A mode selected in an earlier cycle applies before this batch, so a
+            # press in stepped mode is held across its own step.
+            sync_mode()
             if buttons is not None:
                 batch = buttons.batch()
                 if batch:
@@ -275,26 +312,20 @@ def capture_loop(client, latest, out, png_writer, *, expected_build, stop,
                 for path in batch:
                     if stop.is_set():
                         break
-                    receipt = buttons.one(client,stop,clock=clock,wait=wait,path=path)
+                    receipt = buttons.one(client,stop,clock=clock,wait=wait,path=path,hold=hold)
                     result.setdefault('inputs',[]).append(receipt)
                     result['inputs'] = result['inputs'][-32:]
                 if stop.is_set():
                     break
             step = None
             try:
-                requested = buttons.mode if buttons is not None else DEFAULT_MODE
-                if requested != active:
-                    # RUN_DOTS needs a paused core; free-run resumes it. The
-                    # frozen batch above already released and verified input 0.
-                    client.control('HALT' if requested=='stepped' else 'RUN')
-                    active = requested
-                    if client.read_host(abi.HOST_REG_STATE) != state_for(active):
-                        raise ValueError('core did not enter '+active+' mode')
-                    result['mode'] = active
-                    latest.describe(mode=active)
+                # A mode change inside this batch takes effect after its presses.
+                sync_mode()
                 expected_state = state_for(active)
-                if active == 'stepped':
-                    step = dict(advance(client,step_frames*FRAME_DOTS),frames=step_frames)
+                if active == 'stepped' and not steps:
+                    steps.append(advance(client,step_frames*FRAME_DOTS))
+                if steps:
+                    step = combine(steps,step_frames)
                     result['step'] = step
                 tick = clock()
                 meta,packed = client.snapshot()
