@@ -111,11 +111,10 @@ def report(root, base):
         elif paths&inputs[name]:row['reasons']=['changed inputs: '+', '.join(sorted(paths&inputs[name]))]
         else:
             try:
-                target=definitions[name]
+                target,_=load_target(root,name)
                 unknown=uncertainty(root,target)
                 if unknown:row['reasons']=[unknown]
                 else:
-                    load_target(root,name)
                     hashes={p:file_hash(root/p) for p in sorted(inputs[name])}
                     equal=all(hashlib.sha256(git(root,'show',commit+':'+p)).hexdigest()==h for p,h in hashes.items())
                     if equal:
