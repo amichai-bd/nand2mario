@@ -96,6 +96,10 @@ def compare_frame(observation, packed, *, clock=time.perf_counter):
 def run(client, image, binding, out, *, mode, budget=None, images=True, snapshot=False,
         image_stride=60, repeat=1, start_delay_frames=0, clock=time.perf_counter):
     """One tagged operation against an already opened Client."""
+    if mode in ('thrower-short','thrower'):
+        from n2m import springtrail_acquisition
+        return springtrail_acquisition.run(client,image,binding,out,plan=mode,
+                                          write_png=_png,budget=budget,clock=clock)
     out.mkdir(parents=True, exist_ok=True)
     result = {'status': 'FAIL', 'mode': mode, 'binding': binding.identity(),
               'frame_path': {'bytes': abi.FRAME_BYTES, 'requests': FRAME_REQUESTS}}
@@ -310,7 +314,7 @@ def worker(args):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('mode', choices=('observe', 'play', 'compare'))
+    parser.add_argument('mode', choices=('observe', 'play', 'compare', 'thrower-short', 'thrower'))
     parser.add_argument('--tag', required=True)
     parser.add_argument('--package', required=True,
                         help='immutable sw/build/springtrail/runs/<attempt>/result.json')
@@ -337,6 +341,9 @@ def main(argv=None):
         parser.error('repeat must be between 1 and 200')
     if args.repeat != 1 and args.mode != 'observe':
         parser.error('--repeat applies to observe')
+    if args.mode in ('thrower-short','thrower'):
+        if args.start_delay_frames or args.snapshot:
+            parser.error('acquisition uses its fixed reset history and aligned captures')
     if not 0 <= args.start_delay_frames <= min(player.BUDGET['frames'], player.BUDGET['actions']):
         parser.error('start delay is outside the existing frame/action budget')
     if args.start_delay_frames and args.mode == 'observe':
