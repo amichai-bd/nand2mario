@@ -84,7 +84,21 @@ class Buttons:
 
     def batch(self):
         """Freeze current published IDs; later arrivals wait for the next cycle."""
-        return sorted(self.inbox.glob('*.json'))[:CAPACITY]
+        lock = self.inbox/'producer.lock'
+        deadline = time.monotonic()+2
+        while True:
+            try:
+                fd = os.open(lock,os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600)
+                break
+            except FileExistsError:
+                if time.monotonic() >= deadline:
+                    raise RuntimeError('button producer lock remains; inspect manually')
+                time.sleep(.01)
+        try:
+            return sorted(self.inbox.glob('*.json'))[:CAPACITY]
+        finally:
+            os.close(fd)
+            lock.unlink()
 
     def one(self, client, stop, *, clock=time.monotonic, wait=None, path=None):
         """Claim once, complete/release before returning to capture."""

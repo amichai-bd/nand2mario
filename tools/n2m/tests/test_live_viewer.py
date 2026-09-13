@@ -252,6 +252,20 @@ class ButtonQueueTests(unittest.TestCase):
             self.assertLess(events.index(('write',abi.HOST_REG_INPUT,1)),events.index('snapshot'))
             self.assertGreater(events.index(('write',abi.HOST_REG_INPUT,2)),events.index('READ_FRAME_COMPLETE'))
 
+    def test_batch_enumeration_holds_producer_lock(self):
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as folder:
+            out=self.runtime(folder);enqueue(out,1,134)
+            original=Path.glob
+            def checked(path,pattern):
+                if path==out/'inbox':
+                    self.assertTrue((path/'producer.lock').exists())
+                    with self.assertRaises(FileExistsError):enqueue(out,2,134)
+                return original(path,pattern)
+            with patch.object(Path,'glob',checked):
+                self.assertEqual(len(Buttons(out).batch()),1)
+            self.assertEqual(enqueue(out,2,134),2)
+
     def test_shutdown_closes_admission_and_cancels_pending(self):
         from unittest.mock import patch
         import n2m.viewer_buttons as module
@@ -299,4 +313,3 @@ class ButtonQueueTests(unittest.TestCase):
             self.assertFalse(list((out/'inbox').glob('*.json')))
 
 if __name__=='__main__':unittest.main()
-
