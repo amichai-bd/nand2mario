@@ -116,7 +116,18 @@ same wrapper; failure returns `n2m:fullscreen-result` with `ok: false`.
 
 Shared visual attributes live in `tools/wiki/assets/tokens.css`: `--bg`,
 `--panel`, `--surface`, `--text`, `--muted`, `--accent`, `--border`, `--font`,
-`--mono`, and `--radius`. Use the [presentation contract](../../presentations/README.md)
+`--mono`, and `--radius`.
+
+An image alone in its paragraph is a figure and fills the document column, which
+is how GitHub fits a content image to its width. Showcases and board captures are
+authored at different intrinsic widths, so without the rule they share no right
+edge. The fill is scoped to that shape: an image inside a sentence, list item or
+table cell keeps its intrinsic size, and an explicit `width` or `height`
+attribute always wins, which is what keeps the phone screenshot at 300 pixels.
+`max-width: 100%` remains the overflow guard at every width. Decks under
+`wiki/presentations/` load `presentation.css` instead and are unaffected.
+`tools/wiki/browser_quality.py` checks figure, explicit and overflow widths at
+both breakpoints. Use the [presentation contract](../../presentations/README.md)
 and [authoring skill](../../../.agents/skills/html-presentation/SKILL.md) for decks
 under `wiki/presentations/`. Source files remain the authority for all content.
 

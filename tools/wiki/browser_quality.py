@@ -235,6 +235,53 @@ def check_views(browser, base):
             expect(page.locator('[data-progress]')).to_have_text(expected)
             page.close()
 
+        # A figure - an image alone in its paragraph - fits the text column, as GitHub
+        # fits a content image to its width. An explicit width attribute keeps the author's
+        # size, and nothing overflows at the narrow breakpoint.
+        for width in (1440, 390):
+            for document in ('README.md', 'wiki/showcase/homebrew-library.md',
+                             'wiki/src/sw/springtrail/CHARACTER_ART.md',
+                             'wiki/src/sw/springtrail/PROGRESS.md'):
+                page = new_page()
+                page.set_viewport_size({'width': width, 'height': 1000})
+                page.goto(base + '/?page=' + document)
+                expect(page.locator('#path')).to_have_text(document)
+                expect(page.locator('#document img').first).to_be_visible()
+                sizes = page.evaluate("""() => {
+                    const doc = document.querySelector('#document');
+                    const style = getComputedStyle(doc);
+                    const column = doc.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+                    return [...doc.querySelectorAll('img')].map(image => ({
+                        source: image.getAttribute('src'),
+                        declared: image.getAttribute('width'),
+                        drawn: image.getBoundingClientRect().width,
+                        figure: image.matches('p > img:only-child, p > a:only-child > img:only-child'),
+                        column,
+                    }));
+                }""")
+                assert sizes, f'{document} published no image at {width}'
+                for image in sizes:
+                    if image['figure'] and not image['declared']:
+                        assert abs(image['drawn'] - image['column']) < 1, (
+                            f"{image['source']} drew {image['drawn']} in a {image['column']} column at {width}")
+                    elif image['declared']:
+                        assert image['drawn'] == float(image['declared']), (
+                            f"{image['source']} ignored its width={image['declared']} at {width}")
+                assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), (
+                    f'{document} overflows at {width}')
+                if document == 'README.md':
+                    # The phone screenshot is the explicitly sized image the rule must not stretch.
+                    expect(page.locator('#document img[width="300"]')).to_have_count(1)
+                    page.screenshot(path=str(OUTPUT / f'quality-figures-{width}.png'), full_page=True)
+                page.close()
+
+        # Decks keep their own stylesheet: the shell figure rule must not reach them.
+        page = new_page()
+        page.goto(base + '/files/wiki/presentations/verification.html')
+        assert page.evaluate("""() => [...document.styleSheets].every(
+            sheet => !(sheet.href || '').endsWith('shell.css'))"""), 'A deck loaded the shell stylesheet'
+        page.close()
+
         for width in (1440, 390):
             page = new_page()
             page.set_viewport_size({'width': width, 'height': 844})
@@ -256,7 +303,7 @@ def check_views(browser, base):
             page.close()
         assert not errors, '\n'.join(errors)
         return {'status': 'passed', 'browser': browser.version, 'viewports': [1440, 390],
-                'checks': ['slide fragments', 'malformed fragments', 'keyboard', 'print visibility and contrast', 'animated diagram motion, completeness and print contrast', 'README showcase motion and reduced-motion still', 'board-captured loops decode and hold their final frame', 'homebrew panels decode and stay still', 'lesson terminal sessions and deck embeds', 'chart scrolling']}
+                'checks': ['slide fragments', 'malformed fragments', 'keyboard', 'print visibility and contrast', 'animated diagram motion, completeness and print contrast', 'README showcase motion and reduced-motion still', 'board-captured loops decode and hold their final frame', 'homebrew panels decode and stay still', 'lesson terminal sessions and deck embeds', 'figures fit the text column', 'chart scrolling']}
     except BaseException:
         if page is not None and not page.is_closed():
             page.screenshot(path=str(OUTPUT / 'failure.png'), full_page=True)
