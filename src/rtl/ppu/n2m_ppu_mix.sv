@@ -20,8 +20,8 @@ module n2m_ppu_mix (
 );
     logic [1:0] effective_background;
     logic [7:0] selected_object_palette;
-    // Lint waiver: tb_ppu_mix forces shade for fault injection, which
-    // Verilator reports as a second driver of this always_comb output.
+    // Lint waiver: tb_ppu_mix forces shade for fault injection; the force is
+    // reported as a second driver of this always_comb output.
     /* verilator lint_off MULTIDRIVEN */
     always_comb begin
         effective_background = background_enable ? background_color : 2'd0;
