@@ -25,13 +25,11 @@ board down a serial cable.
 monitor, and not evidence that a monitor shows anything: these are framebuffer
 bytes the board sent back, read on a phone a long way from it.*
 
-The shape of it, before anything else. First commit 4 September 2026; 307
-commits and 303 merged pull requests by the 14th, across eleven active dates;
-334,989 lines of text in 1,140 tracked files, of which 92,985 are implementation,
-tests and fixtures; nine games captured running on one FPGA. My own ten days away
-sit inside that eleven-date span, which is why the two counts differ. All of it
-comes from the repository's own [frozen snapshot](../project-statistics.md), and
-that page is explicit that such numbers measure size and activity, not
+The shape of it, before anything else. First commit 4 September 2026; eleven
+active dates through the 14th. My own ten days away sit inside that eleven-date
+span, which is why the two counts differ. The repository's
+[frozen snapshot](../project-statistics.md) is the source for those dates, and
+that page is explicit that its other totals measure size and activity, not
 correctness.
 
 This is a retrospective on the whole project: what the hardware is, what the
@@ -39,7 +37,10 @@ software is, how the work was directed and delivered, how any of it was checked,
 and which few things a person still had to do. One argument runs through all of
 it, because it turned out to be the expensive part. Getting the work produced was
 the easy half. Establishing that the work was actually right consumed the
-judgement.
+judgement. Two of the games here were written by strangers, run on this hardware,
+and never draw a single pixel — and the most useful thing in this project was
+being able to prove, from counted instructions alone, that this was not a
+defect. No test we could have written would have found it.
 
 ## What got built
 
@@ -92,20 +93,6 @@ Nine games now have a tile in the landing-page gallery: Springtrail and
 Stackdrop, which this repository builds, and seven third-party images that run on
 the board. What "run" means there, and what it does not, is the subject of
 [verification](#verification) below.
-
-The layout follows the same split:
-
-```text
-src/
-  rtl/       Synthesizable hardware and shared interfaces
-  dv/        Verification, models, checkers and third-party adapters
-  sw/        Original games and their editable assets
-  fpga/      Board integration
-tools/      Host clients, builds, software tools and wiki publishing
-wiki/       Owning contracts, architecture, presentations and articles
-.agents/    Reusable agent skills
-worktrees/  Isolated issue checkouts; generated output in each workdir/
-```
 
 ## Working remotely
 
@@ -256,6 +243,15 @@ I wrote it:
 >   proven to complete before any host OAM read can be accepted, or host OAM
 >   reads are additionally held off until that machine is idle, and an assertion
 >   covers whichever rule is chosen.
+
+The author of [PR #436](https://github.com/amichai-bd/nand2mario/pull/436) opened
+the pull request with this:
+
+> **Reviewer, read this first.** One success criterion names
+> `src/rtl/memory/n2m_oam_late_write.sv`. That module is **never instantiated in
+> the product hierarchy**, and the hazard the criterion describes is real but
+> lives in a different module. Satisfying the criterion therefore required a
+> small change to the DMA owner, which is outside this issue's stated scope.
 
 Read it on its own and it is a good criterion. It names the file, states the
 mechanism, gives two acceptable resolutions and demands an assertion either way.
@@ -532,13 +528,10 @@ licence and my own reading capacity. Generating the work was not scarce.
 
 ## Hardware design
 
-The product is `src/rtl/`: SystemVerilog modules that get synthesized. The Python
-under `src/dv/` looks similar in places and is the opposite kind of thing — it
-exists to *check* the RTL, never to be it. Every design practice below follows
-from that split. You write a register macro because a register becomes a flip
-flop; you wrap the vendor memory primitive because the primitive is what the
-fitter will actually place; you make the timebase an enable because generating a
-4.194304 MHz clock in fabric is how you lose timing closure and a day.
+An extra output register on the vendor RAM would silently change every consumer's
+latency, and a zero-latency array in simulation would have hidden it. The product
+is `src/rtl/`: SystemVerilog that gets synthesized, and every practice below
+follows from wrapping the primitive the fitter will actually place.
 
 ### The CPU
 
@@ -1106,6 +1099,11 @@ true.
 
 ## DevOps
 
+A rule that can only be obeyed by lying gets lied to. The catalogue, the tags and
+the hosted-versus-local split below are the same idea applied three times: make
+the expensive path explicit, or people will report a cheaper path that did not
+happen.
+
 ### One builder, one tag, one immutable receipt
 
 Everything executable goes through `python tools/build.py`. Software builds,
@@ -1247,6 +1245,51 @@ request touching that file fails. Exactly one kind of change here needs no
 judgement, and the way to allow it safely was to define it so tightly that
 nothing else can wear its clothes.
 
+## What this does not do
+
+[The system](#the-project) has edges, and they are scattered through this article
+as they come up — the right place for each and the wrong place to see the whole.
+Collected:
+
+**It is silent.** The [charter](../src/project-charter.md) excludes audio.
+`FF10`-`FF3F` is served so a program's writes do not fault, and nothing is
+powered and nothing is synthesized. Full APU completion and physical audio are
+deferred, and these releases prove silent video and input, not full DMG
+compatibility.
+
+**It loads one cartridge shape.** 32 KiB, `dmg-direct-v1`, cartridge type `0x00`,
+no mapper and no cartridge RAM. An image with any MBC cannot load at all — not
+"runs badly", cannot load — though what actually refuses it is the size check,
+which rejects anything that is not the direct-profile image size before the
+serial port opens. Additional mappers, CGB, SGB and link support are all
+deferred.
+
+**It does not claim to be a Game Boy.** The charter targets the DMG family
+without claiming exact silicon identity or universal compatibility, and requires
+undocumented or revision-dependent behaviour to be resolved explicitly before the
+affected RTL rather than assumed.
+
+**Two pinned games never draw a frame.** Wyrmhole and Rex Run, for the entry-state
+reason above. That is a real limit of this machine even though it is not a defect
+in it.
+
+**Two Stackdrop simulation targets have no headroom.** `python-stackdrop-unit`
+and `python-stackdrop-game` measure 278 s and 274 s against a 288 s execution
+limit, and the game target has already failed once with `test wall budget
+exhausted` while a build and a wiki check ran alongside it.
+[Issue #555](https://github.com/amichai-bd/nand2mario/issues/555) is open for it.
+A level-0 result that depends on what else is running is not the kind of green I
+want to argue from.
+
+**One observation is not in the wiki yet.** I pressed KEY0 and reported what
+happened;
+[issue #512](https://github.com/amichai-bd/nand2mario/issues/512) is open and the
+bring-up page still records the asserted direction as unverified.
+
+Written out together this reads as a description of a working machine with known
+edges. Left scattered, the same facts read as caveats leaking out of a claim that
+was too big. The facts did not change.
+
 ## What only a person could do
 
 Almost everything in this project was done by agents, and I have tried to be
@@ -1329,51 +1372,6 @@ specific measurements". Knowing which measurements those are, in advance, is
 worth more than a general commitment to supervision, because a general commitment
 gets spent on the ninety-nine occasions where it adds nothing and is exhausted by
 the hundredth.
-
-## What this does not do
-
-[The system](#the-project) has edges, and they are scattered through this article
-as they come up — the right place for each and the wrong place to see the whole.
-Collected:
-
-**It is silent.** The [charter](../src/project-charter.md) excludes audio.
-`FF10`-`FF3F` is served so a program's writes do not fault, and nothing is
-powered and nothing is synthesized. Full APU completion and physical audio are
-deferred, and these releases prove silent video and input, not full DMG
-compatibility.
-
-**It loads one cartridge shape.** 32 KiB, `dmg-direct-v1`, cartridge type `0x00`,
-no mapper and no cartridge RAM. An image with any MBC cannot load at all — not
-"runs badly", cannot load — though what actually refuses it is the size check,
-which rejects anything that is not the direct-profile image size before the
-serial port opens. Additional mappers, CGB, SGB and link support are all
-deferred.
-
-**It does not claim to be a Game Boy.** The charter targets the DMG family
-without claiming exact silicon identity or universal compatibility, and requires
-undocumented or revision-dependent behaviour to be resolved explicitly before the
-affected RTL rather than assumed.
-
-**Two pinned games never draw a frame.** Wyrmhole and Rex Run, for the entry-state
-reason above. That is a real limit of this machine even though it is not a defect
-in it.
-
-**Two Stackdrop simulation targets have no headroom.** `python-stackdrop-unit`
-and `python-stackdrop-game` measure 278 s and 274 s against a 288 s execution
-limit, and the game target has already failed once with `test wall budget
-exhausted` while a build and a wiki check ran alongside it.
-[Issue #555](https://github.com/amichai-bd/nand2mario/issues/555) is open for it.
-A level-0 result that depends on what else is running is not the kind of green I
-want to argue from.
-
-**One observation is not in the wiki yet.** I pressed KEY0 and reported what
-happened;
-[issue #512](https://github.com/amichai-bd/nand2mario/issues/512) is open and the
-bring-up page still records the asserted direction as unverified.
-
-Written out together this reads as a description of a working machine with known
-edges. Left scattered, the same facts read as caveats leaking out of a claim that
-was too big. The facts did not change.
 
 ## What I'd carry into the next one
 
