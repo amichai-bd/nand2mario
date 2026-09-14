@@ -24,6 +24,15 @@ board down a serial cable.
 *My phone, showing pixels the board returned over UART. Not a photograph of a
 monitor.*
 
+The shape of it, before anything else. First commit 4 September 2026; 307
+commits and 303 merged pull requests by the 14th, across eleven active dates;
+334,989 lines of text in 1,140 tracked files, of which 92,985 are implementation,
+tests and fixtures; nine games captured running on one FPGA. My own ten days away
+sit inside that eleven-date span, which is why the two counts differ. All of it
+comes from the repository's own [frozen snapshot](../project-statistics.md), and
+that page is explicit that such numbers measure size and activity, not
+correctness.
+
 This is a retrospective on the whole project: what the hardware is, what the
 software is, how the work was directed and delivered, how any of it was checked,
 and which few things a person still had to do. One argument runs through all of
@@ -71,17 +80,12 @@ The FPGA runs at 25 MHz and derives the emulated 4,194,304 ticks per second from
 it as an enable, so the games run at Game Boy speed rather than at whatever clock
 the board happens to have.
 
-The size of the thing, from the [frozen statistics
-snapshot](../project-statistics.md) taken at source `07bc859` on 14 September:
-1,140 tracked files and 334,989 lines of text, of which 92,985 are implementation,
-tests and fixtures. The synthesizable hardware is 73 SystemVerilog files and
-8,146 lines. Verification code and program fixtures are 420 files and 43,608
-lines — five times the RTL, which is the ratio I would expect and the only ratio
-in this list I would defend as meaningful. Host tooling is 103 implementation
-files and 82 test files. All of it landed in 307 commits and 303 merged pull
-requests across eleven active days, from 273 issues of which 264 are closed. That
-page says in its own words what those numbers are worth: they measure the shape
-and activity of a repository, not its correctness, completeness or quality.
+Inside the snapshot's totals, the split is the interesting part. The
+synthesizable hardware is 73 SystemVerilog files and 8,146 lines. Verification
+code and program fixtures are 420 files and 43,608 lines — five times the RTL,
+which is the ratio I would expect and the only ratio here I would defend as
+meaningful. Host tooling is 103 implementation files and 82 test files. The work
+came from 273 issues, 264 of them closed.
 
 Nine games now have a tile in the landing-page gallery: Springtrail and
 Stackdrop, which this repository builds, and seven third-party images that run on
@@ -135,12 +139,11 @@ and a recorded session measured in wall-clock seconds is not.
 
 ### The phone
 
-The [live viewer](../tools/n2m/host/LIVE_VIEWER.md) is a small authenticated
-server on the host beside the board. It reads actual packed pixels over UART,
-publishes them as native PNGs, and accepts taps from a phone browser over a
-tunnel. It renders no game of its own and never loads, resets or programs the
-board. The screenshot at the top of this article is that page. It is framebuffer
-evidence, not a camera view and not proof that a physical monitor shows anything.
+The [live viewer](../tools/n2m/host/LIVE_VIEWER.md) — the page in the screenshot
+above — is a small authenticated server on the host beside the board. It reads
+actual packed pixels over UART, publishes them as native PNGs, and accepts taps
+from a phone browser over a tunnel. It renders no game of its own and never
+loads, resets or programs the board.
 
 It is also slow, and it had to be. Every frame is a round trip through a serial
 port, so the viewer's honest description of itself is that it shows the image
@@ -178,8 +181,10 @@ agent working one bounded task in its own Git worktree, defined in
 it merges. Crewmates report to the orchestrator, never to me, and the orchestrator
 reports outcomes and open decisions. I borrowed that single-contact shape from
 Kun Chen's [Firstmate](https://github.com/kunchenguid/firstmate);
-<a id="firstmate"></a>**firstmate** is my word for the pattern, not repository
-vocabulary, and nothing in the repository uses it.
+<a id="firstmate"></a>**firstmate** is my word for the pattern and not repository
+vocabulary. It appears nowhere in `AGENTS.md`, the skills or the source; the one
+place it is written down is the diagram in this article, which is a blog asset
+and carries my framing rather than the repository's.
 
 AGENTS.md caps how many pull requests one orchestration tree may have open and
 how many crewmates may be active at once. The caps exist because the failure mode
@@ -233,21 +238,27 @@ optimize.
 
 ### I wrote the bug three times
 
-<a id="my-mistakes"></a>Three of the most expensive mistakes in this project were
-mine, not the agents'. Each was a sentence I wrote that read perfectly, that an
+<a id="my-mistakes"></a>Under [spec-driven, issue-driven](#spec-driven)
+development the artefact an agent implements is a document, and three of the most
+expensive mistakes in this project were mine, not the agents'. Each was a sentence I wrote that read perfectly, that an
 agent implemented faithfully, and that was wrong in a way no amount of care in
 the implementation could have recovered. A plausible specification propagates
 perfectly. That is the whole problem in one line.
 
 **My acceptance criterion named a module that isn't in the product.** Issue #426
-asked for host memory reads from a paused board. One of its success criteria said
-the OAM late-write path must be shown not to straddle a pause, and it named the
-module: `n2m_oam_late_write.sv` advances its phase machine on `clk_sys` with no
-`gb_tick` gate, so either a write in flight when `paused` asserts must be proven
-to complete before a host OAM read is accepted, or reads must be held off until
-that machine is idle, with an assertion covering whichever rule was chosen.
+asked for host memory reads from a paused board. Here is the criterion, exactly as
+I wrote it:
 
-That is a precise, checkable, satisfiable criterion about a module that is never
+> - [ ] The OAM late-write path is shown not to straddle a pause:
+>   `n2m_oam_late_write.sv` advances its phase machine on `clk_sys` with no
+>   `gb_tick` gate, so either a late write in flight when `paused` asserts is
+>   proven to complete before any host OAM read can be accepted, or host OAM
+>   reads are additionally held off until that machine is idle, and an assertion
+>   covers whichever rule is chosen.
+
+Read it on its own and it is a good criterion. It names the file, states the
+mechanism, gives two acceptable resolutions and demands an assertion either way.
+It is also a precise, checkable, satisfiable criterion about a module that is never
 instantiated in the product hierarchy. It appeared in a board source list, but
 nothing in `src/rtl` or `src/fpga` instantiates it; its only two instantiation
 sites are a testbench and a verification system. An agent could have satisfied
@@ -313,11 +324,61 @@ have been made when the decision was taken. The review also flagged residual
 stale sentences in the revised text, which is its own small lesson about how hard
 it is to edit a document back into agreement with reality once it has drifted.
 
+### And where the agents were wrong
+
+Three specification failures of mine make a tidy story and a misleading one. The
+agents produced plenty of their own, and they had a recognisable shape: not
+broken code, but a claim that was narrower than it read.
+
+**A checker that accepted states the machine cannot reach.** In [PR
+#522](https://github.com/amichai-bd/nand2mario/pull/522) an agent-written
+scheduling oracle for Springtrail accepted any button event inside the whole
+4,560-dot VBlank as affecting that frame's update. The reviewer showed it could
+not: an event at VBlank+4,559 arrives after both joypad row reads, so the oracle
+was admitting combinations no run could produce. The tests were green because the
+oracle was too permissive to fail. The fix derived the two read dots from the
+source and looked inputs up chronologically.
+
+**A test that proved timing rather than the thing it was written for.** [PR
+#455](https://github.com/amichai-bd/nand2mario/pull/455) replaced `taskkill /T`
+with a Windows job object so a timed-out Quartus run could not leave orphaned
+grandchildren. The fix was right and the reviewer reproduced the defect
+independently. The regression test was not: at its chosen 1.0-second spawn delay
+the grandchild was never spawned at all, so five runs out of five took the
+`return  # the parent died before it could spawn` branch. The reviewer measured
+that the test would not have failed on the old code either. A passing test that
+observes nothing is worse than no test, because it is counted.
+
+**A limitation that was real, documented, and understated.** [PR
+#471](https://github.com/amichai-bd/nand2mario/pull/471) added a check that every
+Python module a test target loads is declared as an input. The specification said
+it walks the import statements with `ast`. True — and the reviewer planted
+`importlib.import_module("zz_planted")` in a live fixture module and watched the
+check accept the target, while a plain `import zz_planted` was rejected by name.
+A dynamic import already in the tree loaded fixtures for eleven targets. The
+sentence was not false; it just did not say what it excluded, which for a
+checking tool is most of what a reader needs.
+
+**Confident annotation beside correct arithmetic.** In [PR
+#450](https://github.com/amichai-bd/nand2mario/pull/450) every number in a
+startup-timing derivation was right and independently recomputed. Two comments
+around them were not: nine M-cycles attributed to the wrong routine, and a
+parenthesis reading "(DI, IE 0)" where `IE` is 3 at the moment the write commits.
+Nobody's result changed. But the comments are what the next reader trusts, and
+they were written with exactly the same confidence as the figures that held.
+
+The common thread is not carelessness. It is that an agent will state a
+conclusion at the confidence of its strongest evidence rather than its weakest,
+and will not spontaneously volunteer the boundary of what it checked. That is a
+failure mode a reader can learn to probe for, which is what a reviewer is doing
+when it plants a module or measures the timing of a timing test.
+
 ### Where the authority actually sits
 
-Three failures, one cause. In every case the code was right against the document
-and the document was wrong, and no amount of care downstream could have recovered
-it.
+Three of my failures, one cause: the code was right against the document and the
+document was wrong. Four of theirs, one cause: the claim was stated at the
+confidence of its best evidence. Both are invisible to a test, and both are
+visible to a reader whose job is to disbelieve.
 
 This is the part of agent-driven development I was least prepared for. I came in
 assuming my job was to check the output. It is not, or not mainly. My job is the
@@ -328,18 +389,16 @@ exactly what the author agent eventually did, but only because the workflow gave
 it standing to say so and a reviewer to say it to.
 
 So the practical conclusion is not "write better specs", which is advice nobody
-can act on. It is that the specification needs the same adversarial reading as
-the code, from someone whose job is to disbelieve it. All three of these were
-caught downstream of me, by an author who read past the wording or a reviewer who
-checked an issue's edit history against a pull request's claims. That is the
-control that matters, and it is cheap. It is much cheaper than the board being
-wrong.
+can act on. It is that specifications and claims both need adversarial reading,
+and the reading is cheap. It is much cheaper than the board being wrong.
 
 ## The delivery loop
 
 ![The delivery loop: alignment, issue, isolated worktree, code and specs, tests, pull request, independent review, merge](assets/agent-flow.svg)
 
-*Alignment is the human-in-the-loop step: the goal, the scope and what will count
+*The title band is the diagram's own label for the arrangement, and
+[firstmate](#firstmate) is my word in it, not the repository's. Alignment is the
+human-in-the-loop step: the goal, the scope and what will count
 as done. After that the agents own the issue, the worktree, the code and specs,
 the tests, the pull request, the independent review and the merge. Failed tests
 and review findings go back to code without asking me. Only a change to the
@@ -388,6 +447,25 @@ because the reviewer has no investment in the author's framing, not because it i
 smarter. Independence of the reader is the same purchase as independence of the
 oracle, made on the other side of the loop.
 
+What that looks like in practice, from the first blocking finding on [PR
+#558](https://github.com/amichai-bd/nand2mario/pull/558), the on-screen pad:
+
+> **B1 — Held buttons stick when the window loses focus.** `tools/n2m/gui_pad.py:306-311`
+> binds `<KeyPress>` and `<KeyRelease>` and nothing else. On Windows, the
+> KeyRelease after an Alt+Tab or a click on another window is delivered to the
+> new foreground window, so the held union keeps the button and the board keeps
+> receiving it until the player comes back and cycles that key. The player is
+> watching the VGA monitor, not this window, so the first symptom is the
+> character walking away on its own.
+
+Nothing there is a test result. It is a claim about how an operating system
+delivers an event, joined to a claim about where the player is looking, ending in
+the observable symptom. No suite in this repository could have produced it,
+because the input it depends on never arrives in a test. The finding continues by
+pointing out that `host keyboard` already treats focus loss as terminating and
+documents it, so the pad was not merely wrong but inconsistent with its sibling —
+which is the sort of thing only a reader holding both files at once will see.
+
 ### When the reviewer was wrong
 
 The best example I have of review working is one where the reviewer was mistaken.
@@ -426,6 +504,27 @@ Three words. They are the difference between a record that can be checked later
 and a record that is a memory of mine wearing the clothes of evidence. I am the
 owner of the project; my say-so is worth something. It is not worth a frame hash,
 and the record should not let a future reader confuse the two.
+
+### What it cost
+
+The honest answer is that I do not know, and the repository does not record it.
+No token spend, no money and no hours are measured anywhere in this project, so
+there is no number here to give. I would rather say that plainly than offer an
+estimate, because an estimate is the one thing in this article that could not be
+checked.
+
+What is recorded is the elapsed shape. Eleven active dates from 4 September to
+14 September. 303 merged pull requests with a median of 12 minutes 28 seconds
+from opening to merge. A concurrency ceiling on open pull requests and active
+crewmates, set in `AGENTS.md` low enough that I could still read what came back.
+And two hard serializations that no amount of parallelism could buy past: one
+DE10-Lite, and one node-locked Questa seat. Both show up in the record as work
+waiting — reviewers reporting a licence refusal because another crewmate held the
+simulator, and board sessions queued behind each other.
+
+Those constraints are the real economics of this arrangement, and they are not
+the ones people expect. The scarce resources were a physical board, a simulator
+licence and my own reading capacity. Generating the work was not scarce.
 
 ## Hardware design
 
@@ -547,16 +646,27 @@ n2m_cpu_pkg::cpu_execute_result_t execute_result;
 ```
 
 Registers go through named macros carrying the clock, reset and enable contract.
-This line from the [tile decoder](../../src/rtl/display/dmg_tile_pixel.sv) is a
-rising-edge register with reset taking priority over enable:
+One definition from [`macros.svh`](../../src/rtl/common/macros.svh), and the three
+call sites it serves in the [tile decoder](../../src/rtl/display/dmg_tile_pixel.sv):
+
+```systemverilog
+`define DFF_RST_EN(Q, D, CLK, EN, RST, RESET_VAL) \
+    always_ff @(posedge CLK) \
+        if (RST) Q <= (RESET_VAL); else if (EN) Q <= (D);
+```
 
 ```systemverilog
 `DFF_RST_EN(valid_s1, valid_s0, clk, enable, reset, 1'b0)
+`DFF_RST_EN(color_index_s1, valid_s0 ? color_index_s0 : 2'b00, clk, enable, reset, 2'b00)
+`DFF_RST_EN(shade_s1, valid_s0 ? shade_s0 : 2'b00, clk, enable, reset, 2'b00)
 ```
 
-The [macro definitions](../../src/rtl/common/macros.svh) hold the nonblocking
-assignments; call sites express intent instead of repeating process boilerplate,
-and separate forms cover the other reset and enable contracts. The convention is
+Three lines, and each says what it is: a rising-edge register, reset taking
+priority over enable, with the reset value written out. The macro holds the
+nonblocking assignment once; the call sites express intent instead of repeating
+process boilerplate, and separate forms cover the other reset and enable
+contracts. The same file defines the assertion macros to expand to nothing under
+`SYNTHESIS`, so a property is a simulation check and never accidental logic. The convention is
 recorded in the [RTL style reference](../src/rtl-reference-style.md), which makes
 it a recurring review expectation rather than a preference I have to restate to
 each new crewmate.
@@ -957,17 +1067,15 @@ for claims that can.
 ### Saying what the evidence does not show
 
 The homebrew page could have said that other people's games run correctly on this
-hardware. Instead its second paragraph says the opposite of what a marketing
-instinct wants: this is boot-and-play evidence, not a correctness proof; no
-[reference model](#reference-model) exists for any of these games, so no pixel
-there was compared against an expectation; the record says what the board
-displayed, not that it displayed the right thing.
+hardware. Its second paragraph says the opposite: this is boot-and-play evidence,
+not a correctness proof; no [reference model](#reference-model) exists for any of
+these games, so no pixel there was compared against an expectation; the record
+says what the board displayed, not that it displayed the right thing.
 
-Every one of those sentences reduces the apparent achievement, and none of them
-reduces the actual achievement by anything at all. What they buy is that the
-remaining claims can be relied on. A page that has already told you what it
-cannot prove is a page you can read quickly, because you no longer have to
-discount it.
+Every one of those sentences reduces the apparent achievement and none of them
+reduces the actual one. What they buy is that the remaining claims can be relied
+on. A page that has already told you what it cannot prove is a page you can read
+quickly, because you no longer have to discount it.
 
 ### Understating your own rigour is the same error as overstating it
 
@@ -1065,23 +1173,21 @@ Hosted runner minutes are billed, so almost nothing runs hosted. Exactly two
 workflows run automatically: `PR policy` on every pull request, which reads
 metadata for a few seconds and builds nothing, and `Pages` on every push to
 `main`, which runs the issue-helper tests, the workspace-lock tests and the wiki
-check before publishing. Three further workflows exist and run only on explicit
-dispatch, for a second opinion on a clean runner when an author or reviewer asks
-for one.
+check before publishing. The rest of `.github/workflows/` never fires by itself:
+three run only on explicit dispatch, for a second opinion on a clean runner when
+an author or reviewer asks for one, and a fourth is guarded `if: ${{ false }}`
+and has never run at all.
 
 Everything else runs locally before merge, in the author's own worktree, on the
-reviewed head, with the commands and results recorded in the pull request. The
-required set is scoped by what changed: wiki and skill checks always, the builder
-sequence for anything touching tools or software, a tile-pixel suite for the
-display path, and the simulation evidence the scoped
-[verification tier](#verification-tier) selects. A failure in any of them blocks
-the merge exactly as a red hosted check would.
+reviewed head, with commands and results recorded in the pull request; the
+required set is scoped by what changed, down to the simulation evidence the
+[verification tier](#verification-tier) selects. A local failure blocks the merge
+exactly as a red hosted check would.
 
-This is an unusual arrangement and I would not recommend it unconditionally. It
-works here because the evidence requirements are written down, because every run
-leaves an immutable receipt under a tag, and because a reviewer reads the
-recorded commands against the claimed criteria. Remove any one of those three and
-"we ran it locally" becomes worthless.
+I would not recommend this unconditionally. It works here only because the
+evidence requirements are written down, every run leaves an immutable receipt
+under a tag, and a reviewer reads the recorded commands against the claimed
+criteria. Remove any one of those three and "we ran it locally" is worthless.
 
 ### The wiki is the product, too
 
@@ -1125,25 +1231,15 @@ cell while the grid had a spare one, a band beneath the tiles once they filled
 it. The alternative was a picture that told a small lie whenever it travelled,
 which is most of the time.
 
-### The statistics page, and why it is frozen
+### One exemption, defined tightly enough to be safe
 
-[Repository statistics](../project-statistics.md) is a committed, self-contained
-snapshot rather than a live dashboard. The source commit and collection timestamp
-identify exactly what was measured, and opening the page later does not refresh
-it. A scheduled script on my PC regenerates it without an agent, opens a pull
-request under one narrowly defined automated class, waits for the policy check
-and merges with the head pinned.
-
-That class is the single exemption from independent review in the whole
-repository, and it is mechanically bounded: the branch name, title, body, base
-and changed-file set must all match an exact form, and the file list is read from
-the API rather than from the description. The rule runs the other way too — a
-pull request outside that class that touches the statistics file fails, which
-catches the common accident of a stale snapshot riding back in on a branch that
-was merged instead of rebased.
-
-I am spending a paragraph on a statistics page because the exemption is the
-interesting part. There is exactly one kind of change here that needs no
+[Repository statistics](../project-statistics.md) is a committed snapshot, not a
+live dashboard; a scheduled script regenerates it without an agent and merges it
+without a review. That is the only exemption from independent review in the
+repository, and it survives because it is mechanically bounded: branch name,
+title, body, base and changed-file set must all match an exact form, with the
+file list read from the API rather than the description, and any other pull
+request touching that file fails. Exactly one kind of change here needs no
 judgement, and the way to allow it safely was to define it so tightly that
 nothing else can wear its clothes.
 
@@ -1230,6 +1326,49 @@ worth more than a general commitment to supervision, because a general commitmen
 gets spent on the ninety-nine occasions where it adds nothing and is exhausted by
 the hundredth.
 
+## What this does not do
+
+[The system](#the-project) has edges, and they are scattered through this article
+as they come up — the right place for each and the wrong place to see the whole.
+Collected:
+
+**It is silent.** The [charter](../src/project-charter.md) excludes audio.
+`FF10`-`FF3F` is served so a program's writes do not fault, and nothing is
+powered and nothing is synthesized. Full APU completion and physical audio are
+deferred, and these releases prove silent video and input, not full DMG
+compatibility.
+
+**It loads one cartridge shape.** 32 KiB, `dmg-direct-v1`, cartridge type `0x00`,
+no mapper and no cartridge RAM. An image with any MBC cannot load at all — not
+"runs badly", cannot load. Additional mappers, CGB, SGB and link support are all
+deferred.
+
+**It does not claim to be a Game Boy.** The charter targets the DMG family
+without claiming exact silicon identity or universal compatibility, and requires
+undocumented or revision-dependent behaviour to be resolved explicitly before the
+affected RTL rather than assumed.
+
+**Two pinned games never draw a frame.** Wyrmhole and Rex Run, for the entry-state
+reason above. That is a real limit of this machine even though it is not a defect
+in it.
+
+**Two Stackdrop simulation targets have no headroom.** `python-stackdrop-unit`
+and `python-stackdrop-game` measure 278 s and 274 s against a 288 s execution
+limit, and the game target has already failed once with `test wall budget
+exhausted` while a build and a wiki check ran alongside it.
+[Issue #555](https://github.com/amichai-bd/nand2mario/issues/555) is open for it.
+A level-0 result that depends on what else is running is not the kind of green I
+want to argue from.
+
+**One observation is not in the wiki yet.** I pressed KEY0 and reported what
+happened;
+[issue #512](https://github.com/amichai-bd/nand2mario/issues/512) is open and the
+bring-up page still records the asserted direction as unverified.
+
+Written out together this reads as a description of a working machine with known
+edges. Left scattered, the same facts read as caveats leaking out of a claim that
+was too big. The facts did not change.
+
 ## What I'd carry into the next one
 
 ### Buy the axis of independence you're missing
@@ -1267,7 +1406,8 @@ thing you will do again, plus a record you now have to discount.
 ### Three human moments beat three hundred supervised ones
 
 The most surprising number in this project is three. Three occasions where a
-person was genuinely required, across ten days and 303 merged changes. I spent
+person was genuinely required — across the ten days I was away, and across the
+303 merged changes the snapshot counts over its slightly longer window. I spent
 far more attention than that, and most of it bought nothing, because I was
 reviewing code — which [reviewers](#crewmate) do better than I do at that volume
 — instead of doing the two things only I could do: getting the specification
