@@ -205,7 +205,8 @@ refuses each with a clear message, and a target that still needs them stays
 `questa` until its area migration. `preload` runs on the Verilator stage; see
 [preload fixtures](#preload-fixtures-under-verilator). The migrated targets
 are `builder-smoke`, `builder-smoke-fail`, `python-joypad`,
-`python-joypad-fault` and `preload-fixture`.
+`python-joypad-fault`, `preload-fixture` and the 58 SystemVerilog targets
+labelled `cpu` in the [test catalogue](#test-catalogue).
 
 ### Registered target execution
 

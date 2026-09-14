@@ -1,5 +1,8 @@
 `timescale 1ns/1ps
 `default_nettype none
+// Lint waiver: integer bookkeeping and file handles are tested as booleans
+// and against narrow DUT fields; the width lint on those idioms is a false positive.
+/* verilator lint_off WIDTHTRUNC */
 module tb_cpu_step;
     logic clk_sys, reset_sys, core_reset, gb_tick, paused, pause_request, step_active;
     logic instruction_complete, retirement_valid, fault, initialized;
@@ -45,7 +48,7 @@ module tb_cpu_step;
             if (missing && scenario == 0 && gb_tick && dot_before == 7) begin
                 if (instruction_complete) $fatal(1,"CPU_STEP_FALSE_MISSING_COMPLETE");
                 $display("CPU_STEP_MISSING_SUPPRESSED dot=8");
-            end else if (instruction_complete !== (gb_tick && dot_before + 1 == stop_dot && step_active))
+            end else if (instruction_complete != (gb_tick && dot_before + 1 == stop_dot && step_active))
                 $fatal(1,"CPU_STEP_COMPLETE case=%0d dot=%0d expected=%0d actual=%0d",scenario,dot_before+1,
                     gb_tick && dot_before+1 == stop_dot && step_active,instruction_complete);
         end

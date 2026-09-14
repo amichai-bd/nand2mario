@@ -20,13 +20,15 @@ models agreed bounded service, with side effects only at committed accesses.
 | Interrupts | Every priority, simultaneous/late requests, IE changes during stack writes, cancellation, EI/EI, EI/DI, RETI, EI/HALT | Live request sampling, acknowledgement, pushed PC, vector, IME/delay and separate entry event |
 | Low power | HALT pending/not pending with both IME states; wake timing; STOP selected-held/pending branches and resolved model boundary | CPU sleep versus peripheral time, padding fetch, divider reset, no idle retirement |
 | Reset/pause | Reset at every transaction phase and state family; pause before/after commits; reset while paused | No stale event or duplicated/lost access; generated profile and epoch; dot/sequence progression |
-| Proof failures | Deliberate state, bus-timing and retirement corruptions | Three exact named diagnostics with nonzero raw Questa exit; positive wrapper success does not conceal raw failure |
+| Proof failures | Deliberate state, bus-timing and retirement corruptions | Three exact named diagnostics with nonzero raw simulator exit; positive wrapper success does not conceal raw failure |
 
 Retain seed, source hashes, command lines, raw tool exits, transaction CSV,
 retirement records, expected/actual mismatch detail, coverage and waves beneath
 the shared builder tag. Bound each case and the complete suite by independent
-watchdogs that fail nonzero. Final acceptance requires actual Questa execution;
-host-only checks and prior software encoding proofs cannot substitute.
+watchdogs that fail nonzero. Final acceptance requires actual simulation under Verilator through the
+builder; host-only checks and prior software encoding proofs cannot substitute.
+All 58 CPU targets are registered `simulator: "verilator"` and run with
+randomized initial values; the testbenches compare two-state values only.
 
 No full external adapter, integrated PPU/loader, commercial ROM or physical
 compatibility result is claimed. Those remain separate issue acceptance.
@@ -47,8 +49,8 @@ compatibility result is claimed. Those remain separate issue acceptance.
   negative changes the prepared address immediately after T1 and must fail
   before that altered request could commit.
 
-These targets have actual Questa positive/negative evidence retained under the
-author build tags. The cycle-count table does not prove every base instruction's
+These targets have actual positive/negative simulation evidence retained under
+the author build tags. The cycle-count table does not prove every base instruction's
 state or access address; the integrated public-bus/state oracle remains required.
 The component state ports are datapath interfaces, not arbitrary register writes
 on the public CPU module.
@@ -99,7 +101,7 @@ Initial arbitrary register/RAM state is loaded only by the simulation wrapper.
 It constructs a literal fetch-state setup and forces whole packed variables,
 then releases before the first T-cycle. No expected value comes from DUT state
 or its profile helper. The internal control type is shared for that setup, not
-exposed as a product port. Whole-variable setup avoids Questa's warning about
+exposed as a product port. Whole-variable setup avoids a simulator warning about
 forcing a variable member from a nonconstant expression.
 
 The state negative forces actual architectural A after the first opcode fetch;

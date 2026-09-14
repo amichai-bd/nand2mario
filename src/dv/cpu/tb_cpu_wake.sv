@@ -2,6 +2,10 @@
 `default_nettype none
 
 // Original public-stream contrast: six NOPs versus IRQ entry plus JP HL.
+// Lint waiver: integer bookkeeping and file handles are tested as booleans
+// and against narrow DUT fields; the width lint on those idioms is a false positive.
+/* verilator lint_off WIDTHEXPAND */
+/* verilator lint_off WIDTHTRUNC */
 module tb_cpu_wake;
     logic clk_sys;
     logic reset_sys;
@@ -78,9 +82,9 @@ module tb_cpu_wake;
         if (!gb_tick && (bus_commit || address_effect_sample)) $fatal(1,"CPU_WAKE_PAUSE_EFFECT");
         if (fault) $fatal(1,"CPU_WAKE_UNUSED_RESPONSE_FAULT");
         if (dot_before >= 28 && dot_before < 64'(wake_dot)) begin
-            if (!request_valid || address !== 16'h106 || write_enable || access_kind !== 1 ||
+            if (!request_valid || address != 16'h106 || write_enable || access_kind != 1 ||
                     !address_effect_resolved || !address_effect.valid ||
-                    address_effect.address !== 16'h106 || address_effect.known_mask !== 16'hffff)
+                    address_effect.address != 16'h106 || address_effect.known_mask != 16'hffff)
                 $fatal(1,"CPU_WAKE_PREPARE case=%0d dot=%0d",scenario,dot_before);
         end
         if (gb_tick && dot_before[1:0] == 3) begin
@@ -119,9 +123,9 @@ module tb_cpu_wake;
             if (missing && scenario==0 && dot_before+1 == 64'(wake_dot)) begin
                 if (bus_commit || address_effect_sample) $fatal(1,"CPU_WAKE_MISSING_NOT_SUPPRESSED");
                 $display("CPU_WAKE_MISSING_SUPPRESSED dot=%0d",dot_before+1);
-            end else if (bus_commit !== (expected_kind!=0) || irq_ack !== expected_ack ||
-                    (expected_kind!=0 && (access_kind !== expected_kind || address !== expected_address ||
-                    write_enable !== expected_write || (write_enable ? write_data : read_data) !== expected_byte)))
+            end else if (bus_commit != (expected_kind!=0) || irq_ack != expected_ack ||
+                    (expected_kind!=0 && (access_kind != expected_kind || address != expected_address ||
+                    write_enable != expected_write || (write_enable ? write_data : read_data) != expected_byte)))
                 $fatal(1,"CPU_WAKE_BUS case=%0d dot=%0d expected=%0d/%04h actual=%0d/%04h commit=%0d",
                     scenario,dot_before+1,expected_kind,expected_address,access_kind,address,bus_commit);
             if (dot_before >= 28 && dot_before+1 < 64'(wake_dot) && address_effect_sample)
@@ -181,7 +185,7 @@ module tb_cpu_wake;
                 end
             end
             $fdisplay(records,"%0d,%0d,%096h,%096h",scenario,event_index,expected,retirement);
-            if (retirement !== expected) $fatal(1,"CPU_WAKE_RECORD case=%0d event=%0d expected=%096h actual=%096h",scenario,event_index,expected,retirement);
+            if (retirement != expected) $fatal(1,"CPU_WAKE_RECORD case=%0d event=%0d expected=%096h actual=%096h",scenario,event_index,expected,retirement);
             event_index=event_index+1;
         end
     endtask

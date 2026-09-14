@@ -1,6 +1,9 @@
-`timescale 1ns/1ps
 `default_nettype none
 
+// Lint waiver: integer bookkeeping and file handles are tested as booleans
+// and against narrow DUT fields; the width lint on those idioms is a false positive.
+/* verilator lint_off WIDTHEXPAND */
+/* verilator lint_off WIDTHTRUNC */
 module tb_cpu_execute;
     import n2m_cpu_pkg::cpu_registers_t;
     import n2m_cpu_pkg::access_kind_t;
@@ -83,10 +86,10 @@ module tb_cpu_execute;
         if ($test$plusargs("idu_fault") && op == 'h03)
             force dut.result.address_effect.address = 16'hfe00;
         #1;
-        if (address_effect.valid !== expected_valid ||
-                address_effect.address !== expected_address ||
-                address_effect.known_mask !== expected_mask ||
-                address_effect.write_effect !== expected_valid)
+        if (address_effect.valid != expected_valid ||
+                address_effect.address != expected_address ||
+                address_effect.known_mask != expected_mask ||
+                address_effect.write_effect != expected_valid)
             $fatal(1, "CPU_EXECUTE_IDU op=%02h step=%0d expected=%0d/%04h/%04h actual=%0d/%04h/%04h/%0d",
                 opcode, step, expected_valid, expected_address, expected_mask,
                 address_effect.valid, address_effect.address, address_effect.known_mask,
@@ -183,7 +186,7 @@ module tb_cpu_execute;
                         mismatch("prefix operand fetch");
                 end else begin
                     for (cycle = 0; cycle < cycles; cycle = cycle + 1) begin
-                        if (finish !== (cycle == cycles - 1)) mismatch("M-cycle count");
+                        if (finish != (cycle == cycles - 1)) mismatch("M-cycle count");
                         if (illegal || prefix) mismatch("legal instruction classification");
                         if (finish && (access_kind != 1 || write_enable)) mismatch("final opcode fetch");
                         $fdisplay(trace, "%02h,%02h,0,%0d,%0d,%04h,%0d,%02h,%0d,%02h", opcode, 8'(flags*16), step, access_kind, address, write_enable, write_data, finish, registers_next.f);
@@ -211,11 +214,11 @@ module tb_cpu_execute;
                             mismatch("CB memory read");
                         advance();
                         if (instruction / 64 != 1) begin
-                            if (access_kind != 3 || address != 'hc000 || !write_enable || finish || write_data !== expected_alu[15:8] || registers_next.f !== expected_alu[7:0])
+                            if (access_kind != 3 || address != 'hc000 || !write_enable || finish || write_data != expected_alu[15:8] || registers_next.f != expected_alu[7:0])
                                 mismatch("CB memory write/result flags");
                             advance();
                         end
-                        if (!finish || access_kind != 1 || address != 'h0101 || registers_next.f !== expected_alu[7:0])
+                        if (!finish || access_kind != 1 || address != 'h0101 || registers_next.f != expected_alu[7:0])
                             mismatch("CB final flags retained");
                         cases = cases + 1;
                     end

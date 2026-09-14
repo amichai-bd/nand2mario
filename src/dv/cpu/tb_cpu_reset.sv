@@ -1,6 +1,10 @@
 `timescale 1ns/1ps
 `default_nettype none
 
+// Lint waiver: integer bookkeeping and file handles are tested as booleans
+// and against narrow DUT fields; the width lint on those idioms is a false positive.
+/* verilator lint_off WIDTHEXPAND */
+/* verilator lint_off WIDTHTRUNC */
 module tb_cpu_reset;
     logic clk_sys;
     logic reset_sys;
@@ -77,13 +81,13 @@ module tb_cpu_reset;
         if (bus_commit && (!gb_tick || dot_before[1:0]!=3))
             $fatal(1,"CPU_RESET_EARLY_COMMIT case=%0d dot=%0d",scenario,dot_before+1);
         if (gb_tick && (dot_before==19 || dot_before==31)) begin
-            if (!bus_commit || !write_enable || address!==16'hc000 ||
-                write_data!==(dot_before==31 ? 8'h01 : 8'h00))
+            if (!bus_commit || !write_enable || address!=16'hc000 ||
+                write_data!=(dot_before==31 ? 8'h01 : 8'h00))
                 $fatal(1,"CPU_RESET_WRITE case=%0d dot=%0d",scenario,dot_before+1);
         end
         if (bus_commit && write_enable) begin
             $fdisplay(trace,"write,%0d,%0d,%0d,%04h,%02h",scenario,epoch,dot_before+1,address,write_data);
-            if (address!==16'hc000 || write_data!==(write_count==2 ? 8'h01 : 8'h00))
+            if (address!=16'hc000 || write_data!=(write_count==2 ? 8'h01 : 8'h00))
                 $fatal(1,"CPU_RESET_WRITE_ORDER case=%0d count=%0d",scenario,write_count);
         end
     endtask
@@ -105,7 +109,7 @@ module tb_cpu_reset;
             expected[304 +: 16]=16'hfffe;
             if (event_index==4) expected[336 +: 8]=1;
             $fdisplay(trace,"event,%0d,%0d,%096h,%096h",scenario,event_index,expected,retirement);
-            if (retirement!==expected)
+            if (retirement!=expected)
                 $fatal(1,"CPU_RESET_EVENT case=%0d event=%0d expected=%096h actual=%096h",
                     scenario,event_index,expected,retirement);
             event_index=event_index+1;
@@ -153,14 +157,14 @@ module tb_cpu_reset;
                 edge_cycle(cycle%3==0);
                 cycle=cycle+1;
             end
-            if (write_count!=1 || memory[16'hc000]!==0) $fatal(1,"CPU_RESET_PARTIAL");
+            if (write_count!=1 || memory[16'hc000]!=0) $fatal(1,"CPU_RESET_PARTIAL");
             if (phase_case!=4) begin
                 held_request=request_valid; held_write=write_enable;
                 held_address=address; held_data=write_data; held_dot=dot_before;
                 for (pause_cycle=0; pause_cycle<20; pause_cycle=pause_cycle+1) begin
                     edge_cycle(0);
-                    if (bus_commit || dot_before!==held_dot || request_valid!==held_request ||
-                        write_enable!==held_write || address!==held_address || write_data!==held_data)
+                    if (bus_commit || dot_before!=held_dot || request_valid!=held_request ||
+                        write_enable!=held_write || address!=held_address || write_data!=held_data)
                         $fatal(1,"CPU_RESET_PAUSE case=%0d",scenario);
                 end
             end
@@ -185,7 +189,7 @@ module tb_cpu_reset;
                 edge_cycle(cycle%3==0);
             end
             if (write_count!=3 || event_index!=5 || !halted || fault ||
-                memory[16'hc000]!==1) $fatal(1,"CPU_RESET_FINAL case=%0d",scenario);
+                memory[16'hc000]!=1) $fatal(1,"CPU_RESET_FINAL case=%0d",scenario);
         end
         $fclose(trace);
         $display("PASS CPU reset cases=10 phases=4 pending=2 pause=20 fresh_events=50");

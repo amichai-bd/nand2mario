@@ -199,7 +199,7 @@
       "src/dv/cpu/tb_cpu_alu.sv"
     ],
     "top": "tb_cpu_alu",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS CPU ALU cases=1232896 operations=32 seed=none"
@@ -212,7 +212,7 @@
       "src/dv/cpu/tb_cpu_alu.sv"
     ],
     "top": "tb_cpu_alu",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+corrupt"
     ],
@@ -226,7 +226,7 @@
       "src/dv/cpu/tb_cpu_bus.sv"
     ],
     "top": "tb_cpu_bus",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS CPU bus commits=13 pause_phases=4 reset_phases=4 inactive_cycles=4"
@@ -238,7 +238,7 @@
       "src/dv/cpu/tb_cpu_bus.sv"
     ],
     "top": "tb_cpu_bus",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+change_after_t1"
     ],
@@ -252,7 +252,7 @@
       "src/dv/cpu/tb_cpu_bus.sv"
     ],
     "top": "tb_cpu_bus",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+late_active"
     ],
@@ -266,7 +266,7 @@
       "src/dv/cpu/tb_cpu_bus.sv"
     ],
     "top": "tb_cpu_bus",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+missing_response"
     ],
@@ -282,7 +282,7 @@
       "src/dv/cpu/tb_cpu_execute.sv"
     ],
     "top": "tb_cpu_execute",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS CPU execute cases=135168 base=256 flagsets=16 cb_memory=32 seed=none"
@@ -296,7 +296,7 @@
       "src/dv/cpu/tb_cpu_execute.sv"
     ],
     "top": "tb_cpu_execute",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+idu_fault"
     ],
@@ -317,7 +317,7 @@
       "src/dv/cpu/tb_cpu_halt_lock.sv"
     ],
     "top": "tb_cpu_halt_lock",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+halt_fault"
     ],
@@ -338,7 +338,7 @@
       "src/dv/cpu/tb_cpu_halt_lock.sv"
     ],
     "top": "tb_cpu_halt_lock",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS CPU HALT bug cases=2 illegal_locks=11 reset_recovery=11"
@@ -357,7 +357,7 @@
       "src/dv/cpu/tb_cpu_idu_arithmetic.sv"
     ],
     "top": "tb_cpu_idu_arithmetic",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS CPU IDU arithmetic cycles=17 events=6 resolved_no_effect=4"
@@ -376,7 +376,7 @@
       "src/dv/cpu/tb_cpu_idu_arithmetic.sv"
     ],
     "top": "tb_cpu_idu_arithmetic",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+corrupt"
     ],
@@ -397,7 +397,7 @@
       "src/dv/cpu/tb_cpu_if_observation.sv"
     ],
     "top": "tb_cpu_if_observation",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS CPU IF observation cases=3 records=13 T3_A_B_separate=1"
@@ -416,7 +416,7 @@
       "src/dv/cpu/tb_cpu_if_observation.sv"
     ],
     "top": "tb_cpu_if_observation",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+corrupt"
     ],
@@ -437,7 +437,7 @@
       "src/dv/cpu/tb_cpu_irq.sv"
     ],
     "top": "tb_cpu_irq",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS CPU IRQ cases=20 T3 stack HALT wake CB EI DI RETI pause"
@@ -456,7 +456,7 @@
       "src/dv/cpu/tb_cpu_irq.sv"
     ],
     "top": "tb_cpu_irq",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+di_fault"
     ],
@@ -477,7 +477,7 @@
       "src/dv/cpu/tb_cpu_irq_idu.sv"
     ],
     "top": "tb_cpu_irq_idu",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS CPU IRQ IDU cycles=14 events=6 FE_effects=1 FE_accesses=0"
@@ -496,7 +496,7 @@
       "src/dv/cpu/tb_cpu_irq_idu.sv"
     ],
     "top": "tb_cpu_irq_idu",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+corrupt"
     ],
@@ -517,7 +517,7 @@
       "src/dv/cpu/tb_cpu_irq_reset.sv"
     ],
     "top": "tb_cpu_irq_reset",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS CPU IRQ reset cases=42 phases=4 entry_cycles=5 captured_cancel=2"
@@ -536,7 +536,7 @@
       "src/dv/cpu/tb_cpu_irq_reset.sv"
     ],
     "top": "tb_cpu_irq_reset",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+corrupt"
     ],
@@ -557,7 +557,7 @@
       "src/dv/cpu/tb_cpu_irq.sv"
     ],
     "top": "tb_cpu_irq",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+corrupt"
     ],
@@ -578,7 +578,7 @@
       "src/dv/cpu/tb_cpu_halt_lock.sv"
     ],
     "top": "tb_cpu_halt_lock",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+lock_fault"
     ],
@@ -599,7 +599,7 @@
       "src/dv/cpu/tb_cpu_program.sv"
     ],
     "top": "tb_cpu_program",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS CPU program events=18 Mcycles=50 dots=220 HALT=1"
@@ -618,7 +618,7 @@
       "src/dv/cpu/tb_cpu_program.sv"
     ],
     "top": "tb_cpu_program",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+effect_fault"
     ],
@@ -639,7 +639,7 @@
       "src/dv/cpu/tb_cpu_program.sv"
     ],
     "top": "tb_cpu_program",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+effect_missing"
     ],
@@ -660,7 +660,7 @@
       "src/dv/cpu/tb_cpu_program.sv"
     ],
     "top": "tb_cpu_program",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+effect_page"
     ],
@@ -681,7 +681,7 @@
       "src/dv/cpu/tb_cpu_program.sv"
     ],
     "top": "tb_cpu_program",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+effect_page",
       "+effect_fault"
@@ -703,7 +703,7 @@
       "src/dv/cpu/tb_cpu_program.sv"
     ],
     "top": "tb_cpu_program",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+retirement_fault"
     ],
@@ -724,7 +724,7 @@
       "src/dv/cpu/tb_cpu_program.sv"
     ],
     "top": "tb_cpu_program",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+state_fault"
     ],
@@ -745,7 +745,7 @@
       "src/dv/cpu/tb_cpu_program.sv"
     ],
     "top": "tb_cpu_program",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+timing_fault"
     ],
@@ -766,7 +766,7 @@
       "src/dv/cpu/tb_cpu_reset.sv"
     ],
     "top": "tb_cpu_reset",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS CPU reset cases=10 phases=4 pending=2 pause=20 fresh_events=50"
@@ -785,7 +785,7 @@
       "src/dv/cpu/tb_cpu_reset.sv"
     ],
     "top": "tb_cpu_reset",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+corrupt"
     ],
@@ -800,7 +800,7 @@
       "src/dv/cpu/tb_cpu_retire.sv"
     ],
     "top": "tb_cpu_retire",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS CPU retirement events=6 lengths=1,2,3 irq_zero=1 reset_cancel=1"
@@ -813,7 +813,7 @@
       "src/dv/cpu/tb_cpu_retire.sv"
     ],
     "top": "tb_cpu_retire",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+corrupt"
     ],
@@ -835,7 +835,7 @@
       "src/dv/cpu/tb_cpu_step.sv"
     ],
     "top": "tb_cpu_step",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS CPU STEP timebase steps=7 records=8 interrupts=1 ticks=64"
@@ -855,7 +855,7 @@
       "src/dv/cpu/tb_cpu_step.sv"
     ],
     "top": "tb_cpu_step",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+missing"
     ],
@@ -877,7 +877,7 @@
       "src/dv/cpu/tb_cpu_step.sv"
     ],
     "top": "tb_cpu_step",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+suppress"
     ],
@@ -898,7 +898,7 @@
       "src/dv/cpu/tb_cpu_stop.sv"
     ],
     "top": "tb_cpu_stop",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS CPU STOP entry cases=8 rows=4 IME_states=2"
@@ -917,7 +917,7 @@
       "src/dv/cpu/tb_cpu_stop.sv"
     ],
     "top": "tb_cpu_stop",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+corrupt_divider"
     ],
@@ -938,7 +938,7 @@
       "src/dv/cpu/tb_cpu_stop_idu.sv"
     ],
     "top": "tb_cpu_stop_idu",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS CPU STOP entry IDU cases=8 pages=2 rows=4"
@@ -957,7 +957,7 @@
       "src/dv/cpu/tb_cpu_stop_idu.sv"
     ],
     "top": "tb_cpu_stop_idu",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+corrupt"
     ],
@@ -978,7 +978,7 @@
       "src/dv/cpu/tb_cpu_stop_irq.sv"
     ],
     "top": "tb_cpu_stop_irq",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS CPU STOP interrupt restart cases=14 records=64 normal=6 reset=8"
@@ -997,7 +997,7 @@
       "src/dv/cpu/tb_cpu_stop_irq.sv"
     ],
     "top": "tb_cpu_stop_irq",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+effect_fault"
     ],
@@ -1018,7 +1018,7 @@
       "src/dv/cpu/tb_cpu_stop_irq.sv"
     ],
     "top": "tb_cpu_stop_irq",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+stack_fault"
     ],
@@ -1039,7 +1039,7 @@
       "src/dv/cpu/tb_cpu_stop.sv"
     ],
     "top": "tb_cpu_stop",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+corrupt_action"
     ],
@@ -1060,7 +1060,7 @@
       "src/dv/cpu/tb_cpu_stop_wake.sv"
     ],
     "top": "tb_cpu_stop_wake",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS CPU normal STOP wake cases=20 normal=4 reset=16"
@@ -1079,7 +1079,7 @@
       "src/dv/cpu/tb_cpu_stop_wake.sv"
     ],
     "top": "tb_cpu_stop_wake",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+corrupt"
     ],
@@ -1100,7 +1100,7 @@
       "src/dv/cpu/tb_cpu_vectors.sv"
     ],
     "top": "tb_cpu_vectors",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS CPU vectors cases=7968 forms=498 flags=16 excluded_STOP_HALT=32",
@@ -1120,7 +1120,7 @@
       "src/dv/cpu/tb_cpu_vectors.sv"
     ],
     "top": "tb_cpu_vectors",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+missing"
     ],
@@ -1142,7 +1142,7 @@
       "src/dv/cpu/tb_cpu_vectors.sv"
     ],
     "top": "tb_cpu_vectors",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+corrupt"
     ],
@@ -1164,7 +1164,7 @@
       "src/dv/cpu/tb_cpu_wake.sv"
     ],
     "top": "tb_cpu_wake",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS CPU HALT wake cases=7 arrival_edges=3 IME_states=2 fresh_opcode=1"
@@ -1183,7 +1183,7 @@
       "src/dv/cpu/tb_cpu_wake.sv"
     ],
     "top": "tb_cpu_wake",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+missing"
     ],
@@ -1204,7 +1204,7 @@
       "src/dv/cpu/tb_cpu_wake_reset.sv"
     ],
     "top": "tb_cpu_wake_reset",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS CPU HALT reset cases=16 phases=4 resets=2 IME_states=2"
@@ -1223,7 +1223,7 @@
       "src/dv/cpu/tb_cpu_wake_reset.sv"
     ],
     "top": "tb_cpu_wake_reset",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+corrupt"
     ],
@@ -1244,7 +1244,7 @@
       "src/dv/cpu/tb_cpu_wake.sv"
     ],
     "top": "tb_cpu_wake",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+stale"
     ],
@@ -1265,7 +1265,7 @@
       "src/dv/cpu/tb_cpu_wrap.sv"
     ],
     "top": "tb_cpu_wrap",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS CPU wrap cases=2 cycles=40 records=12 writes=4"
@@ -1284,7 +1284,7 @@
       "src/dv/cpu/tb_cpu_wrap.sv"
     ],
     "top": "tb_cpu_wrap",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+corrupt"
     ],
@@ -3877,7 +3877,7 @@
       "src/dv/cpu/tb_cpu_vectors.sv"
     ],
     "top": "tb_cpu_vectors",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+expected-state-fault"
     ],

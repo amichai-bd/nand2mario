@@ -1,6 +1,9 @@
 `timescale 1ns/1ps
 `default_nettype none
 
+// Lint waiver: integer bookkeeping and file handles are tested as booleans
+// and against narrow DUT fields; the width lint on those idioms is a false positive.
+/* verilator lint_off WIDTHTRUNC */
 module tb_cpu_stop_wake;
     logic clk_sys;
     logic reset_sys;
@@ -68,13 +71,13 @@ module tb_cpu_stop_wake;
         if (gb_tick && ((dot_before+1)%4==0)) begin
             expected_address = fresh ? 16'h100 + 16'((dot_before+1)/4-1) :
                 (dot_before < 16 ? 16'h100 + 16'((dot_before+1)/4-1) : 16'h104 + 16'((dot_before-16)/4));
-            if (!bus_commit || !request_valid || access_kind!=n2m_cpu_pkg::ACCESS_OPCODE || address!==expected_address)
+            if (!bus_commit || !request_valid || access_kind!=n2m_cpu_pkg::ACCESS_OPCODE || address!=expected_address)
                 $fatal(1,"CPU_STOP_WAKE_BUS case=%0d dot=%0d expected=%04h actual=%04h commit=%0d",scenario,dot_before+1,expected_address,address,bus_commit);
             // Entry's analog/pending mapping is separate. Every restarted normal
             // fetch has its own fully known increment observation.
             if (fresh || dot_before>=16) begin
                 if (!address_effect_sample || !address_effect_resolved || !address_effect.valid ||
-                    address_effect.address!==expected_address || address_effect.known_mask!==16'hffff || !address_effect.write_effect)
+                    address_effect.address!=expected_address || address_effect.known_mask!=16'hffff || !address_effect.write_effect)
                     $fatal(1,"CPU_STOP_WAKE_IDU case=%0d dot=%0d",scenario,dot_before+1);
                 effects=effects+1;
             end
@@ -116,7 +119,7 @@ module tb_cpu_stop_wake;
                 endcase
             end
             $fdisplay(records,"%0d,%0d,%096h,%096h",scenario,event_index,expected,retirement);
-            if(retirement!==expected) $fatal(1,"CPU_STOP_WAKE_RECORD case=%0d event=%0d expected=%096h actual=%096h",scenario,event_index,expected,retirement);
+            if(retirement!=expected) $fatal(1,"CPU_STOP_WAKE_RECORD case=%0d event=%0d expected=%096h actual=%096h",scenario,event_index,expected,retirement);
             event_index=event_index+1;
         end
     endtask

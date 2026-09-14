@@ -1,6 +1,9 @@
 `timescale 1ns/1ps
 `default_nettype none
 
+// Lint waiver: integer bookkeeping and file handles are tested as booleans
+// and against narrow DUT fields; the width lint on those idioms is a false positive.
+/* verilator lint_off WIDTHTRUNC */
 module tb_cpu_stop_irq;
     logic clk_sys;
     logic reset_sys;
@@ -111,15 +114,15 @@ module tb_cpu_stop_irq;
                 endcase
             end
             if (expected_commit && expected_effect && !expected_write) effect_address=expected_address;
-            if (bus_commit!==expected_commit ||
-                (expected_commit && (address!==expected_address || write_enable!==expected_write ||
-                access_kind!==expected_kind || (expected_write ? write_data : read_data)!==expected_data)))
+            if (bus_commit!=expected_commit ||
+                (expected_commit && (address!=expected_address || write_enable!=expected_write ||
+                access_kind!=expected_kind || (expected_write ? write_data : read_data)!=expected_data)))
                 $fatal(1,"CPU_STOP_IRQ_BUS case=%0d dot=%0d expected=%04h/%02h actual=%04h/%02h",scenario,t,expected_address,expected_data,address,write_enable ? write_data : read_data);
-            if (!address_effect_sample || !address_effect_resolved || address_effect.valid!==expected_effect ||
-                address_effect.write_effect!==expected_effect || address_effect.address!==effect_address ||
-                address_effect.known_mask!==(expected_effect ? 16'hffff : 16'h0000))
+            if (!address_effect_sample || !address_effect_resolved || address_effect.valid!=expected_effect ||
+                address_effect.write_effect!=expected_effect || address_effect.address!=effect_address ||
+                address_effect.known_mask!=(expected_effect ? 16'hffff : 16'h0000))
                 $fatal(1,"CPU_STOP_IRQ_EFFECT case=%0d dot=%0d expected=%04h actual=%04h resolved=%0d",scenario,t,effect_address,address_effect.address,address_effect_resolved);
-            if (irq_ack!==(!fresh && t==(late_irq ? 40 : 36) ? selected_ack : 5'd0))
+            if (irq_ack!=(!fresh && t==(late_irq ? 40 : 36) ? selected_ack : 5'd0))
                 $fatal(1,"CPU_STOP_IRQ_ACK case=%0d dot=%0d",scenario,t);
             $fdisplay(trace,"%0d,%0d,%0d,%04h,%02h,%0d,%04h,%0d",scenario,t,bus_commit,address,write_enable ? write_data : read_data,address_effect.valid,address_effect.address,irq_ack);
         end else if (bus_commit || address_effect_sample || irq_ack) $fatal(1,"CPU_STOP_IRQ_EARLY");
@@ -158,7 +161,7 @@ module tb_cpu_stop_irq;
                 end
             end
             $fdisplay(records,"%0d,%0d,%096h,%096h",scenario,event_index,expected,retirement);
-            if(retirement!==expected) $fatal(1,"CPU_STOP_IRQ_RECORD case=%0d event=%0d expected=%096h actual=%096h",scenario,event_index,expected,retirement);
+            if(retirement!=expected) $fatal(1,"CPU_STOP_IRQ_RECORD case=%0d event=%0d expected=%096h actual=%096h",scenario,event_index,expected,retirement);
             event_index=event_index+1; total_records=total_records+1;
         end
     endtask

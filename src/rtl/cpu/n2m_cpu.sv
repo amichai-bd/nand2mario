@@ -45,7 +45,12 @@ module n2m_cpu (
 );
     n2m_cpu_pkg::cpu_execute_request_t execute_request;
     n2m_cpu_pkg::cpu_execute_result_t execute_result;
+    // Lint waiver: a testbench memory that answers read_data combinationally
+    // closes a false loop from bus_plan.address back through execute_result;
+    // the control block is not split by Verilator and the runtime converges.
+    /* verilator lint_off UNOPTFLAT */
     n2m_cpu_pkg::cpu_bus_plan_t bus_plan;
+    /* verilator lint_on UNOPTFLAT */
     n2m_cpu_pkg::cpu_retire_capture_t retire_capture;
     n2m_cpu_pkg::cpu_stop_action_t stop_action;
     logic stop_padding;

@@ -2,7 +2,7 @@
 
 Implementation: [CPU owner](../../../../src/rtl/cpu/n2m_cpu.sv).
 The byte ALU, instruction cycle planner, digital bus and retirement recorder
-have component Questa evidence. The integrated controller has checked programs,
+have component simulation evidence. The integrated controller has checked programs,
 selected instruction vectors and directed control-state fixtures; the public
 wrapper is implemented. The approved digital
 STOP restart rule below is part of the implementation. This owner covers the complete legal
@@ -140,8 +140,8 @@ The directed datapath fixture uses a separate integer reference and its own
 operation mapping. It enumerates every byte pair and carry state for the eight
 binary operations, every input byte and flags nibble for unary operations, and
 every bit index for BIT/RES/SET: 1,220,608 legal-operation cases. A further
-12,288 cases check the three unused operation values. All 1,232,896 cases and the actual DUT-output fault injection have run in
-Questa. This proves the byte datapath boundary, not instruction sequencing or
+12,288 cases check the three unused operation values. All 1,232,896 cases and the actual DUT-output fault injection have run under
+Verilator. This proves the byte datapath boundary, not instruction sequencing or
 full CPU coverage. A sampled trace and early
 waves are retained; any later mismatch includes its complete expected/actual
 inputs even after routine waveform recording ends.
@@ -379,7 +379,7 @@ It does not reduce the complete legal instruction set or its verification criter
 ## Verification
 
 The [CPU test plan](../../../../src/dv/cpu/README.md) owns case structure and
-coverage. Actual Questa evidence must cover every legal base and CB encoding,
+coverage. Actual simulation evidence must cover every legal base and CB encoding,
 flag and arithmetic boundaries, exact access and idle cycles, control-flow paths,
 reset interruption, pause/resume, IRQ/HALT/STOP and all retirement fields.
 Expected state, bus schedules and coverage identifiers are independent of DUT
