@@ -2,7 +2,7 @@
 """Generate the showcase SVGs: real terminal transcripts and exact game frames.
 
 Writes the README loops wiki/showcase/build-and-tests.svg, board-session.svg
-and game-start.svg, and the lesson-deck terminal sessions
+and game-start.svg and the games gallery, the lesson-deck terminal sessions
 reproducible-builds.svg, uart-debugging.svg and verification.svg, and the
 board loops libbet-board.svg and springtrail-board.svg the showcase page embeds.
 Every terminal line is captured or recorded text (see wiki/showcase/README.md);
@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from collections import Counter
 from pathlib import Path
+import json
 import re
 import sys
 
@@ -40,6 +41,7 @@ EMBEDS = {'build-and-tests': 'README.md', 'board-session': 'README.md', 'game-st
           'uart-debugging': 'wiki/presentations/uart-debugging.html',
           'verification': 'wiki/presentations/verification.html',
           'springtrail-state-board': 'wiki/showcase/README.md',
+          'games-gallery': 'README.md',
           'libbet-board': 'wiki/showcase/README.md', 'springtrail-board': 'wiki/showcase/README.md',
           **{f'homebrew-{name}': 'wiki/showcase/homebrew-library.md' for name in
              ('airaki', 'gb-wordyl', 'max-pirate',
@@ -658,8 +660,54 @@ BOARD_LOOPS = ('libbet-board', 'springtrail-board', 'springtrail-state-board')
 HOMEBREW_PANELS = tuple(f'homebrew-{name}' for name in
                         ('airaki', 'gb-wordyl', 'max-pirate',
                          'alien-invasion', 'square-fall', 'unstoppable-knight'))
-# Every surface whose pixels came off the board, flipbooks and stills alike.
-BOARD_FRAME_SURFACES = BOARD_LOOPS + HOMEBREW_PANELS
+# --- The landing page gallery: every game this hardware has run, moving.
+#
+# One file, one animated tile per game, three frames each taken from that
+# game's committed archive. Three frames are what the homebrew sessions
+# captured, so every tile gets the same three and the gallery needs no new
+# capture session. The tiles are drawn as one image rather than eight, because
+# the README embeds a figure at the full text column width: eight separate
+# loops would be eight column-wide blocks to scroll past, and the goal is to
+# see the games inside one screen.
+GALLERY = 'games-gallery'
+# (archive, dependency-manifest pin or None for our own game, frame indices).
+# Springtrail is first because it is the game this repository builds; the rest
+# are other people's, in the order the library page lists them.
+GALLERY_GAMES = (
+    ('springtrail-board', None, (0, 20, 42)),
+    ('libbet-board', 'libbet', (0, 7, 16)),
+    ('homebrew-airaki', 'airaki', (0, 1, 2)),
+    ('homebrew-gb-wordyl', 'gb-wordyl', (0, 1, 2)),
+    ('homebrew-max-pirate', 'max-pirate', (0, 1, 2)),
+    ('homebrew-alien-invasion', 'alien-invasion', (0, 1, 2)),
+    ('homebrew-square-fall', 'square-fall', (0, 1, 2)),
+    ('homebrew-unstoppable-knight', 'unstoppable-knight', (0, 1, 2)),
+)
+GALLERY_HOLD = 1.2
+# The ninth cell. The gallery must not read as the whole pinned library, so the
+# two images that never draw are named where the tiles are, not only elsewhere.
+GALLERY_NOTE = (
+    'Not every pinned image draws',
+    '',
+    'Wyrmhole and Rex Run are pinned and',
+    'verified the same way. Both load and',
+    'execute; neither ever enables the LCD,',
+    'so the board completes no frame to',
+    'capture. Seven of the nine pinned',
+    'images play.',
+    '',
+    'The homebrew library page gives each',
+    'game its author, licence, pinned',
+    'artifact and the session its frames',
+    'were captured in.',
+)
+
+
+# Every surface with one committed archive of its own behind it.
+BOARD_ARCHIVE_SURFACES = BOARD_LOOPS + HOMEBREW_PANELS
+# Every surface whose pixels came off the board: those, and the gallery that
+# redraws three frames from each of them.
+BOARD_FRAME_SURFACES = BOARD_ARCHIVE_SURFACES + (GALLERY,)
 PANEL_SCALE, PANEL_GAP = 2, 16
 PANEL_WIDTH = PAD * 2 + 3 * 160 * PANEL_SCALE + 2 * PANEL_GAP
 
@@ -712,6 +760,88 @@ def homebrew_panel(name):
         f'<text class="h" x="{PANEL_WIDTH / 2}" y="19" text-anchor="middle">{esc(strip)}</text>',
         *body,
         f'<text class="h" x="{PAD}" y="{height - 12}">{esc(footer)}</text>',
+        '</svg>']) + '\n'
+
+
+def pinned_images():
+    """The external ROM pins, the one place an author and a licence are written."""
+    manifest = json.loads((ROOT / 'tools/n2m/dependencies.json').read_text(encoding='utf-8'))
+    return manifest['external_roms']['images']
+
+
+def games_gallery():
+    """Eight games running on the DE10-Lite, each tile its own short flipbook."""
+    from board_frames import load
+    pins = pinned_images()
+    loop = GALLERY_HOLD * len(GALLERY_GAMES[0][2])
+    tile_w, tile_h = 160 * PANEL_SCALE, 144 * PANEL_SCALE
+    cell_h = tile_h + 8 + 2 * LINE + 10
+    top = BAR + PAD
+    height = top + 3 * cell_h + 2 * PANEL_GAP + PAD + 22 + LINE
+
+    # A tile is read at whatever width the text column gives the figure, so the
+    # captions are set larger than a terminal loop's rows.
+    rules = [f'text{{font:15px {MONO};fill:{TEXT}}}.h{{font-size:12px;fill:{MUTED}}}',
+             f'.own{{fill:{ACCENT}}}', 'image{image-rendering:pixelated}']
+    motion = []
+    for index in range(len(GALLERY_GAMES[0][2])):
+        rules.append(frame_window(f'g{index}', index * GALLERY_HOLD, (index + 1) * GALLERY_HOLD, loop))
+
+    body = []
+    for position, (archive_name, pin, chosen) in enumerate(GALLERY_GAMES):
+        archive = load(archive_name)
+        assert archive['encoding']['chosen'] == 'indexed-png-data-uri', archive_name
+        column, row = position % 3, position // 3
+        x = PAD + column * (tile_w + PANEL_GAP)
+        y = top + row * (cell_h + PANEL_GAP)
+        # Tiles flip one after another rather than together, so the gallery
+        # reads as eight machines running, not one strobe.
+        delay = -position * loop / len(GALLERY_GAMES)
+        layers = []
+        for index, source in enumerate(chosen):
+            frame = archive['frames'][source]
+            last = index == len(chosen) - 1
+            layers.append(f'<image class="t{position}f{index}" opacity="{1 if last else 0}" '
+                          f'width="160" height="144" href="{frame["png"]}"/>')
+            motion.append(f'.t{position}f{index}{{animation:g{index} {loop}s step-end '
+                          f'{delay:.3f}s infinite}}')
+        if pin:
+            name = pins[pin]['name']
+            credit, credit_class = f"{pins[pin]['author']} · {pins[pin]['license']}", 'h'
+        else:
+            name, credit, credit_class = archive['provenance']['program'], 'built in this repository', 'h own'
+        body.append(f'<g transform="translate({x} {y}) scale({PANEL_SCALE})">'
+                    f'<rect width="160" height="144" fill="#ffffff"/>{"".join(layers)}</g>')
+        body.append(f'<rect x="{x - .5}" y="{y - .5}" width="{tile_w + 1}" height="{tile_h + 1}" '
+                    f'fill="none" stroke="{BORDER}"/>')
+        body.append(f'<text x="{x}" y="{y + tile_h + 8 + LINE}">{esc(name)}</text>')
+        body.append(f'<text class="{credit_class}" x="{x}" y="{y + tile_h + 8 + 2 * LINE}">{esc(credit)}</text>')
+
+    nx = PAD + 2 * (tile_w + PANEL_GAP)
+    ny = top + 2 * (cell_h + PANEL_GAP)
+    for index, line in enumerate(GALLERY_NOTE):
+        cls = '' if index == 0 else ' class="h"'
+        body.append(f'<text{cls} x="{nx}" y="{ny + 14 + index * LINE}">{esc(line)}</text>')
+
+    strip = 'Eight games on the DE10-Lite · every frame read back from the board over UART'
+    # Two rows: the footer is one line per claim, and each fits the panel width.
+    footer = ('Framebuffer captures the board returned over UART, not emulator screenshots and not '
+              'photographs of a monitor.',
+              'Boot-and-play evidence, not a correctness proof: no reference model exists for third-party code.')
+    style = ''.join(rules) + '@media (prefers-reduced-motion:no-preference){' + ''.join(motion) + '}'
+    return '\n'.join([
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{PANEL_WIDTH}" height="{height}" '
+        f'viewBox="0 0 {PANEL_WIDTH} {height}" role="img" aria-label="{esc(strip)}">',
+        f'<title>{esc(strip)}</title><style>{style}</style>',
+        f'<rect x=".5" y=".5" width="{PANEL_WIDTH - 1}" height="{height - 1}" rx="10" '
+        f'fill="{PANEL}" stroke="{BORDER}"/>',
+        f'<path d="M0 {BAR}.5H{PANEL_WIDTH}" stroke="{BORDER}"/>',
+        '<circle cx="18" cy="15" r="5" fill="#ff5f57"/><circle cx="36" cy="15" r="5" fill="#febc2e"/>'
+        '<circle cx="54" cy="15" r="5" fill="#28c840"/>',
+        f'<text class="h" x="{PANEL_WIDTH / 2}" y="19" text-anchor="middle">{esc(strip)}</text>',
+        *body,
+        *[f'<text class="h" x="{PAD}" y="{height - 12 - (len(footer) - 1 - index) * LINE}">'
+          f'{esc(line)}</text>' for index, line in enumerate(footer)],
         '</svg>']) + '\n'
 
 
@@ -862,6 +992,7 @@ def documents():
             [(0, 1, 'Title | actual source frame'), (1, 1, 'Dynamic scene | actual source frame'),
              (2, 1, 'First-stage WON | actual source frame')]),
         **{name: homebrew_panel(name) for name in HOMEBREW_PANELS},
+        GALLERY: games_gallery(),
         'verification': terminal('A checker that can fail · from retained Questa receipts, not a fresh capture',
                                  'Retained receipts, not a fresh run: python-joypad at f6fff8f, builder-smoke-fail at c89b47d; JSON shortened.',
                                  TESTS, TESTS_LOOP),

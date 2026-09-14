@@ -95,7 +95,7 @@ class DocumentationQualityTests(unittest.TestCase):
     def test_board_loops_declare_their_capture_sessions(self):
         """Each board surface names where its frames came from, and holds only frames."""
         from tools.wiki import board_frames, showcase
-        for name in showcase.BOARD_FRAME_SURFACES:
+        for name in showcase.BOARD_ARCHIVE_SURFACES:
             archive = board_frames.load(name)
             provenance, encoding = archive['provenance'], archive['encoding']
             for field in ('note', 'program', 'driver', 'command', 'checked', 'wire_build_id'):
@@ -118,6 +118,35 @@ class DocumentationQualityTests(unittest.TestCase):
                 shown = 1 if visible is None or index == visible else 0
                 self.assertIn(f'class="f{index}" opacity="{shown}"', markup)
                 self.assertIn(frame['png'], markup, f'{name}: frame {index} is not drawn')
+
+    def test_games_gallery_draws_archived_frames_and_reads_its_credits(self):
+        """The landing page gallery adds no pixels and retypes no metadata."""
+        from tools.wiki import board_frames, showcase
+        markup = (ROOT / 'wiki/showcase/games-gallery.svg').read_text(encoding='utf-8')
+        pins = showcase.pinned_images()
+        readme = (ROOT / 'README.md').read_text(encoding='utf-8')
+        drawn = 0
+        for position, (archive_name, pin, chosen) in enumerate(showcase.GALLERY_GAMES):
+            self.assertIn(archive_name, showcase.BOARD_ARCHIVE_SURFACES, archive_name)
+            frames = board_frames.load(archive_name)['frames']
+            for index, source in enumerate(chosen):
+                # Every pixel comes from a committed archive, none from here.
+                self.assertIn(frames[source]['png'], markup, f'{archive_name} frame {source}')
+                shown = 1 if index == len(chosen) - 1 else 0
+                self.assertIn(f'class="t{position}f{index}" opacity="{shown}"', markup)
+                drawn += 1
+            if pin:
+                # Author and licence are read from the manifest, and stay out of
+                # the README, which links the library page instead.
+                for field in ('name', 'author', 'license'):
+                    self.assertIn(pins[pin][field], markup, f'{pin}: {field}')
+                    self.assertNotIn(pins[pin][field], readme, f'{pin}: {field} retyped into the README')
+        self.assertEqual(markup.count('<image '), drawn)
+        # The two pinned images that never draw are named where the tiles are.
+        for game in ('Wyrmhole', 'Rex Run'):
+            self.assertIn(game, markup)
+        self.assertIn('not emulator screenshots', markup)
+        self.assertIn('homebrew-library.md#wyrmhole-and-rex-run-never-turn-the-lcd-on', readme)
 
     def test_statistics_renderer_marks_snapshot_and_links_back_to_docs(self):
         html = render(minimal_source())
