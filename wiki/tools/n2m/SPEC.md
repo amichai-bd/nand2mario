@@ -617,11 +617,15 @@ The default profile checks Verilator; the environment profile adds the remaining
   PASS cannot depend on a license. `--verilator-bin <directory>` selects the
   directory holding `verilator`; otherwise it is resolved on PATH. The compile
   step has a 300-second bound; the runs keep the 60-second default.
-- Verilator (Windows): no simulator runs. The `verilator` check reports
-  `WARNING` with the detail
-  `simulation checks run on WSL (Linux): python3 tools/build.py doctor`, and
-  `untested` gains `Verilator smoke`. A Windows doctor therefore ends `WARNING`
-  at best; it is the FPGA-side identity preflight, not simulation readiness.
+- Verilator (Windows): no simulator runs. The `verilator` check reports the
+  informational status `NOT_APPLICABLE` with the detail
+  `not applicable; simulation runs on WSL Linux: python3 tools/build.py doctor`,
+  and `untested` gains `Verilator smoke`. That status never lowers the doctor
+  result: a healthy Windows environment profile (Quartus, JTAG and UART identity
+  all `PASS`) ends `PASS`/exit 0 with `readiness` `complete` and updates
+  `workdir/latest.txt`. The Windows simulation profile has no applicable check;
+  it ends `PASS`/exit 0 with `readiness` `partial`, because it establishes
+  nothing. Windows is the FPGA-side identity preflight, not simulation readiness.
 - Quartus: report version and edition. Lite needs no license file; other editions
   report unverified licensing. Unexpected diagnostics fail. Version discovery
   does not prove synthesis. The version output may carry exactly the pinned
@@ -649,7 +653,8 @@ changes JTAG configuration, or proves physical operation. Those follow the
 [current authorization](../../agents/bootstrap-plan.md#verification-and-hardware-authorization)
 and hardware workflow. No extra Python packages are required.
 
-`PASS`/exit 0 means all checks in the selected profile passed. `WARNING`/exit 2
+`PASS`/exit 0 means all applicable checks in the selected profile passed;
+`NOT_APPLICABLE` entries are informational and excluded. `WARNING`/exit 2
 means requested evidence is incomplete. `FAIL`/exit 1 means a check failed and
 takes precedence over warnings. JSON includes `profile`, `simulator`
 (`verilator`), `checks`, `tools`, `inputs`, `readiness`, and `untested`;

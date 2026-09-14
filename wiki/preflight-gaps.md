@@ -271,9 +271,9 @@ logs, seed, expected/actual CSV and waves. The regression runner checks raw fail
 exits, complete traces and artifact integrity. Verilator on WSL is the sole
 simulator under the builder's [simulator policy](tools/n2m/SPEC.md#simulator-policy);
 the baseline examples are unmigrated targets that still run on the Questa path
-and report `SKIPPED` with reason `questa-retired` where it is unavailable, until
-the builder Verilator path lands under
-[#597](https://github.com/amichai-bd/nand2mario/issues/597).
+today. Once the builder Verilator path lands under
+[#597](https://github.com/amichai-bd/nand2mario/issues/597), they will report
+`SKIPPED` with reason `questa-retired` until their own migration.
 The [baseline specification](src/dv/baseline/SPEC.md) links independent adapters,
 their licenses, immutable pins, comparison formats and bounded regression levels.
 Baseline fixture coverage is not CPU, full-system or physical acceptance.

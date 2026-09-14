@@ -15,7 +15,9 @@ SMOKE_SIGNATURE = "PASS builder-smoke seed=1 checks=22"
 SMOKE_FAULT = "count cycle=3 expected=7 actual=3 seed=1"
 # Verilator consults no license. The check removes these so a PASS cannot depend on them.
 LICENSE_VARIABLES = ("SALT_LICENSE_FILE", "LM_LICENSE_FILE", "MGLS_LICENSE_FILE")
-WSL_NOTICE = "simulation checks run on WSL (Linux): python3 tools/build.py doctor"
+WSL_NOTICE = "not applicable; simulation runs on WSL Linux: python3 tools/build.py doctor"
+# Informational only: this status never lowers the doctor result or readiness.
+NOT_APPLICABLE = "NOT_APPLICABLE"
 
 
 def execute(argv, cwd, log, timeout=60, env=None, expect_failure=False):
@@ -100,7 +102,7 @@ def host_is_windows():
 
 def wsl_only(folder):
     (folder / "notice.log").write_text(WSL_NOTICE + "\n", encoding="utf-8")
-    return {"status": "WARNING", "detail": WSL_NOTICE}
+    return {"status": NOT_APPLICABLE, "detail": WSL_NOTICE}
 
 
 def quartus(folder, directory):
@@ -208,13 +210,13 @@ def doctor(root, build, args, provenance):
         check("uart", lambda folder: uart(folder, args))
         untested = ["Quartus synthesis", "physical wiring/voltage", "UART communication", "FPGA programming"] \
             + (["Verilator smoke"] if windows else [])
-    status = "FAIL" if any(c["status"] == "FAIL" for c in checks.values()) else "PASS"
-    if status == "PASS" and any(c["status"] == "WARNING" for c in checks.values()):
-        status = "WARNING"
+    applicable = [c["status"] for c in checks.values() if c["status"] != NOT_APPLICABLE]
+    status = "FAIL" if "FAIL" in applicable else "WARNING" if "WARNING" in applicable else "PASS"
     return {"status": status, "checks": checks,
             "profile": args.profile, "simulator": "verilator",
             "inputs": {p.relative_to(root).as_posix(): file_hash(p) for p in
                        [root / SMOKE, *(root / "tools/n2m").glob("*.py")]},
             "tools": checks["verilator"].get("tools", {}), "untested": untested,
-            "readiness": "complete" if all(c["status"] == "PASS" for c in checks.values()) else "partial",
+            # Windows' simulation profile checks nothing applicable, so it establishes no readiness.
+            "readiness": "complete" if applicable and all(s == "PASS" for s in applicable) else "partial",
             "scope": f"{args.profile} checks only; warnings do not establish readiness"}

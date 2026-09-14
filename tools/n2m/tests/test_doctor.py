@@ -12,7 +12,7 @@ import unittest
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from n2m.doctor import (LICENSE_VARIABLES, SMOKE, SMOKE_FAULT, SMOKE_SIGNATURE, WSL_NOTICE, doctor, execute,
+from n2m.doctor import (LICENSE_VARIABLES, NOT_APPLICABLE, SMOKE, SMOKE_FAULT, SMOKE_SIGNATURE, WSL_NOTICE, doctor, execute,
                         parse_jtag, quartus, select_uart, uart, verilator, warning)
 from n2m.fpga import ALLOCATOR_NOTICE, ALLOCATOR_OVERRIDE_NOTICE, quartus_environment
 from n2m.cli import main, parser
@@ -188,7 +188,7 @@ class DoctorTests(unittest.TestCase):
     def test_default_profile_runs_only_verilator_and_broken_elaboration_fails(self):
         args = parser().parse_args(["doctor"])
         self.assertEqual((args.profile, args.sim, args.verilator_bin), ("simulation", "verilator", None))
-        with self.assertRaises(SystemExit):
+        with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
             parser().parse_args(["doctor", "--questa-bin", "retired"])
         with patch("n2m.doctor.host_is_windows", return_value=False), \
              patch("n2m.doctor.verilator", return_value={"tools": {"verilator": "fixture"}}) as run, \
@@ -215,9 +215,11 @@ class DoctorTests(unittest.TestCase):
         with patch("n2m.doctor.host_is_windows", return_value=True), patch("n2m.doctor.subprocess.run") as run:
             report = doctor(ROOT, self.folder, args, {})
         run.assert_not_called()
-        self.assertEqual(report["status"], "WARNING")
-        self.assertEqual(report["checks"]["verilator"]["status"], "WARNING")
+        # Informational: the notice neither warns nor establishes readiness.
+        self.assertEqual((report["status"], report["readiness"]), ("PASS", "partial"))
+        self.assertEqual(report["checks"]["verilator"]["status"], NOT_APPLICABLE)
         self.assertEqual(report["checks"]["verilator"]["detail"], WSL_NOTICE)
+        self.assertIn("not applicable", WSL_NOTICE)
         self.assertIn("Verilator smoke", report["untested"])
         self.assertEqual(report["tools"], {})
         args = parser().parse_args(["doctor", "--profile", "environment"])
@@ -231,9 +233,21 @@ class DoctorTests(unittest.TestCase):
         quartus_probe.assert_called_once()
         uart_probe.assert_called_once()
         self.assertEqual({name: c["status"] for name, c in report["checks"].items()},
-                         {"verilator": "WARNING", "quartus": "PASS", "jtag": "PASS", "uart": "PASS"})
-        self.assertEqual(report["status"], "WARNING")
+                         {"verilator": NOT_APPLICABLE, "quartus": "PASS", "jtag": "PASS", "uart": "PASS"})
+        # A healthy Windows FPGA-side environment exits 0 and counts as complete readiness.
+        self.assertEqual((report["status"], report["readiness"]), ("PASS", "complete"))
         self.assertEqual(report["untested"][-1], "Verilator smoke")
+        with patch("n2m.doctor.host_is_windows", return_value=True), patch("n2m.doctor.quartus", return_value={}), \
+                patch("n2m.doctor.executable", return_value="jtagconfig"), \
+                patch("n2m.doctor.execute", return_value="1) USB-Blaster\n  031050DD 10M50DA\n"), \
+                patch("n2m.doctor.uart", return_value={"status": "WARNING"}):
+            self.assertEqual(doctor(ROOT, self.folder, args, {})["status"], "WARNING")
+        with patch("n2m.doctor.host_is_windows", return_value=True), \
+                patch("n2m.doctor.quartus", side_effect=RuntimeError("missing quartus_sh")), \
+                patch("n2m.doctor.executable", return_value="jtagconfig"), \
+                patch("n2m.doctor.execute", return_value="1) USB-Blaster\n  031050DD 10M50DA\n"), \
+                patch("n2m.doctor.uart", return_value={}):
+            self.assertEqual(doctor(ROOT, self.folder, args, {})["status"], "FAIL")
 
     def test_quartus_license_scope_and_diagnostics(self):
         for edition, status in (("Lite Edition", "PASS"), ("Standard Edition", "WARNING")):
