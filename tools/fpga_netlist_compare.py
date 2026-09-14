@@ -74,24 +74,35 @@ def netlist_digest(path):
 
 
 def attempt_directory(root, tag, target):
+    """The attempt folder and the record status; a deliberate FAIL is still compared."""
     record_path = root / "workdir/builds" / tag / "fpga" / target / "result.json"
     if not record_path.is_file():
-        return None, "no result.json"
+        return None, None, "no result.json"
     record = json.loads(record_path.read_text(encoding="utf-8"))
-    if record.get("status") != "PASS":
-        return None, f"status {record.get('status')}: {record.get('error', '')}".strip()
-    folder = root / record["evidence_directory"]
-    return folder, None
+    if record.get("status") not in ("PASS", "FAIL"):
+        return None, None, f"status {record.get('status')}"
+    if record["status"] == "PASS":
+        return root / record["evidence_directory"], record, None
+    return (root / record["attempt_result"]).parent, record, None
 
 
-def identity(folder):
+def identity(folder, record):
+    """Every comparable fact of one build; absent reports compare as None.
+
+    The *-invalid targets fail by design, so a FAIL record contributes its
+    error text and whatever reports Quartus wrote before stopping.
+    """
     output = folder / "output"
-    result = {"fit_summary": summary_rows((output / "design.fit.summary").read_text(encoding="utf-8"))}
+    result = {"status": record["status"],
+              "error": re.sub(r"attempts[\\/][0-9a-f]+", "attempts/<id>", record.get("error", "")) or None}
+    summary = output / "design.fit.summary"
+    result["fit_summary"] = summary_rows(summary.read_text(encoding="utf-8")) if summary.is_file() else None
     reports = {}
     for key, (report, title) in SECTIONS.items():
         if report not in reports:
-            reports[report] = (output / report).read_text(encoding="utf-8", errors="replace")
-        result[key] = table_rows(reports[report], title)
+            path = output / report
+            reports[report] = path.read_text(encoding="utf-8", errors="replace") if path.is_file() else None
+        result[key] = table_rows(reports[report], title) if reports[report] is not None else None
     netlist = folder / NETLIST
     result["netlist_sha256"] = netlist_digest(netlist) if netlist.is_file() else None
     return result
@@ -100,7 +111,7 @@ def identity(folder):
 def first_difference(baseline, head):
     for key in baseline:
         if baseline[key] != head[key]:
-            if isinstance(baseline[key], list):
+            if isinstance(baseline[key], list) and isinstance(head[key], list):
                 for index, (left, right) in enumerate(zip(baseline[key], head[key])):
                     if left != right:
                         return key, f"row {index}: {left!r} != {right!r}"
@@ -117,17 +128,19 @@ def compare(baseline_root, baseline_tag, head_root, head_tag):
         entry = {"status": "PASS"}
         sides = {}
         for side, root, tag in (("baseline", baseline_root, baseline_tag), ("head", head_root, head_tag)):
-            folder, problem = attempt_directory(root, tag, target)
+            folder, record, problem = attempt_directory(root, tag, target)
             if problem:
                 entry.update(status="MISSING", reason=f"{side}: {problem}")
                 break
-            sides[side] = identity(folder)
-            entry[side] = {"evidence_directory": str(folder.relative_to(root)),
+            sides[side] = identity(folder, record)
+            entry[side] = {"attempt": str(folder.relative_to(root)), "build_status": record["status"],
                            "netlist_sha256": sides[side]["netlist_sha256"]}
         if entry["status"] == "PASS":
             key, detail = first_difference(sides["baseline"], sides["head"])
             if key:
                 entry.update(status="FAIL", field=key, detail=detail)
+            elif sides["head"]["status"] == "FAIL":
+                entry["note"] = "both builds fail identically (deliberate invalid target)"
         if entry["status"] != "PASS":
             report["status"] = "FAIL"
         report["targets"][target] = entry
