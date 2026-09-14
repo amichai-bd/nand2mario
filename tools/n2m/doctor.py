@@ -22,7 +22,8 @@ def execute(argv, cwd, log, timeout=60, env=None, expect_failure=False):
     with (cwd / "commands.log").open("a", encoding="utf-8") as stream:
         stream.write(json.dumps(argv) + "\n")
     try:
-        # env=None inherits the caller's environment unchanged; only Quartus checks pass an override.
+        # env=None inherits the caller's environment unchanged. Quartus passes its allocator
+        # override; Verilator passes the environment with license variables removed.
         result = subprocess.run(argv, cwd=cwd, text=True, encoding="utf-8",
                                 errors="replace", stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT, timeout=timeout, env=env)
