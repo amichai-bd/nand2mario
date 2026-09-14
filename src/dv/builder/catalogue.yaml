@@ -438,11 +438,11 @@ units:
   serial-boundary-fault: {kind: sim, level: 2, labels: [fault, serial], duration_seconds: 2.01}
   serial-register-fault: {kind: sim, level: 2, labels: [fault, serial], duration_seconds: 0.50}
   serial-registers: {kind: sim, level: 1, labels: [serial], duration_seconds: 0.53}
-  sim-adc-double: {kind: sim, level: 0, labels: [input], duration_seconds: null}
+  sim-adc-double: {kind: sim, level: 0, labels: [input], duration_seconds: 0.51}
   sim-adc-double-channel: {kind: sim, level: 2, labels: [fault, input], duration_seconds: null}
   sim-adc-double-corrupt: {kind: sim, level: 2, labels: [fault, input], duration_seconds: null}
   sim-adc-double-missing: {kind: sim, level: 2, labels: [fault, input], duration_seconds: null}
-  sim-ram-double: {kind: sim, level: 0, labels: [common], duration_seconds: null}
+  sim-ram-double: {kind: sim, level: 0, labels: [common], duration_seconds: 1.31}
   sim-ram-double-bad-preload: {kind: sim, level: 2, labels: [common, fault], duration_seconds: null}
   sim-ram-double-collision: {kind: sim, level: 2, labels: [common, fault], duration_seconds: null}
   sim-ram-double-corrupt: {kind: sim, level: 2, labels: [common, fault], duration_seconds: null}
