@@ -35,19 +35,25 @@ never turn the LCD on, so seven of the nine pinned games play.
 each game's author, licence and pinned artifact, records the session every frame
 came from, and [explains the two that never draw](wiki/showcase/homebrew-library.md#wyrmhole-and-rex-run-never-turn-the-lcd-on).
 
-Running other people's games is a correctness argument. Our reference models in
-`src/dv/` and the RTL were written here from the same reading of the same
-documents, so a misunderstanding shared by both passes every test, and
-Springtrail and Stackdrop cannot catch a mistake they were written on top of. A
-game written for real Game Boy hardware by someone who never saw this project
-shares none of that bias: it drives the CPU, PPU, timers, interrupts, joypad and
-memory in combinations nobody here chose. That independence is what our own
-tests structurally cannot have. Wyrmhole and Rex Run make the point by failing —
-both poll for VBlank before enabling the LCD, which never returns on a machine
-with no boot ROM, so they found a real documented difference between
-`dmg-direct-v1` and a Game Boy. The limits are plain: a game that boots and
-plays localizes no fault, bounds no timing, and replaces none of the directed
-tests, CPU vectors or reference models.
+Running other people's games is a correctness argument. Our RTL, our own
+reference models and our own games share one reading of the same documents, so a
+misunderstanding common to them passes every test; Springtrail and Stackdrop
+cannot catch a mistake they were written on top of. The repository already holds
+that at arm's length twice, narrowly: the
+[SameBoy adapter](wiki/src/dv/baseline/SPEC.md#independent-emulator-and-retirement-traces)
+compares retirement records and pixels against a pinned third-party emulator
+core, and the [Mooneye targets](src/dv/mooneye/README.md) run a third-party
+hardware acceptance suite. Eight full games widen it. They were written for real
+Game Boy hardware by people who never saw this project, and they drive the CPU,
+PPU, timers, interrupts, joypad and memory in combinations nobody here chose.
+Wyrmhole and Rex Run make the point by failing: both poll for VBlank before
+touching `LCDC`, which never returns on a machine with no boot ROM, so they
+found a real documented difference between `dmg-direct-v1` and a Game Boy. The
+limits are plain. No reference model exists for these games, so no pixel was
+compared against an expectation; the record says what the board displayed, not
+that it displayed the right thing. A game that boots and plays localizes no
+fault, bounds no timing, and replaces none of the directed tests, CPU vectors or
+reference models.
 
 ## In action
 

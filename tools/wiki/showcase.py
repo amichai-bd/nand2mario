@@ -832,10 +832,11 @@ def games_gallery():
              'every frame read back from the board over UART')
     # Three rows: the footer is one line per claim, and each fits the panel
     # width. The image travels out of the page, so why the games are here rides
-    # with it; the rows are bottom-anchored and the note cell ends at y=1104,
-    # above the first row's baseline, so the extra line moves no geometry.
+    # with it; the rows are bottom-anchored, so the extra line moves no
+    # geometry. The lowest thing above them is the bottom row's credit baseline
+    # at y=1094, one LINE clear of the new first row at y=1112.
     footer = ('Written for real Game Boy hardware by people who never saw this project: evidence our own '
-              'tests cannot give.',
+              'games cannot give.',
               'Framebuffer captures the board returned over UART, not emulator screenshots and not '
               'photographs of a monitor.',
               'Boot-and-play evidence, not a correctness proof: no reference model exists for third-party code.')

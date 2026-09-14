@@ -17,11 +17,13 @@ counts as proof, and none of it is claimed here.
 
 **What the evidence is for.** These games were written for real Game Boy
 hardware by people who never saw this project, so they cannot share a
-misunderstanding with our own RTL, reference models and games — independence our
-own tests structurally cannot have. The check is coarse: it localizes no fault
-and bounds no timing, and the two that never draw are a finding of that kind, a
-real documented difference between this machine and a Game Boy rather than a
-shortfall.
+misunderstanding with our own RTL, reference models and games. That independence
+is not new here — the
+[SameBoy adapter](../src/dv/baseline/SPEC.md#independent-emulator-and-retirement-traces)
+and the [Mooneye targets](../../src/dv/mooneye/README.md) already supply it
+narrowly — but eight full games widen it, and the two that never draw are a
+finding of exactly that kind: a real documented difference between this machine
+and a Game Boy rather than a shortfall.
 
 **Why it matters.** The hardware supports the 32 KiB direct profile, cartridge
 type `0x00` with no mapper and no cartridge RAM

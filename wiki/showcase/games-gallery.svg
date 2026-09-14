@@ -53,7 +53,7 @@
 <text class="h" x="688" y="1028">game its author, licence, pinned</text>
 <text class="h" x="688" y="1046">artifact and the session its frames</text>
 <text class="h" x="688" y="1064">were captured in.</text>
-<text class="h" x="16" y="1112">Written for real Game Boy hardware by people who never saw this project: evidence our own tests cannot give.</text>
+<text class="h" x="16" y="1112">Written for real Game Boy hardware by people who never saw this project: evidence our own games cannot give.</text>
 <text class="h" x="16" y="1130">Framebuffer captures the board returned over UART, not emulator screenshots and not photographs of a monitor.</text>
 <text class="h" x="16" y="1148">Boot-and-play evidence, not a correctness proof: no reference model exists for third-party code.</text>
 </svg>
