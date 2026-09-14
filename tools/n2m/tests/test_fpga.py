@@ -240,6 +240,7 @@ class FpgaTests(unittest.TestCase):
                          ["12125"] * len(lines))
 
         mutations = (
+            "",
             output.replace("db/n2m_system_pll_altpll.v", "other/n2m_system_pll_altpll.v", 1),
             output.replace("db/n2m_system_pll_altpll.v", "db/other_altpll.v", 1),
             output.replace("1 design units", "2 design units", 1),
@@ -251,6 +252,12 @@ class FpgaTests(unittest.TestCase):
             with self.subTest(changed=changed[:100]), self.assertRaisesRegex(
                     ValueError, "path, count, or text differs"):
                 fpga.generated_design_diagnostics(changed, self.build)
+
+        linked = self.build / "linked-attempt"
+        linked.mkdir()
+        (linked / "db").symlink_to(database, target_is_directory=True)
+        with self.assertRaisesRegex(ValueError, "owned attempt directory"):
+            fpga.generated_design_diagnostics(output, linked)
 
         (database / fpga.GENERATED_DESIGN_FILES[0]).unlink()
         with self.assertRaisesRegex(ValueError, "owned database output"):

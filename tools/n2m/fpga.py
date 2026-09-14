@@ -220,14 +220,16 @@ def generated_design_diagnostics(output, folder):
     suffix = (", which is not specified as a design file for the current project, "
               "but contains definitions for 1 design units and 1 entities in project")
     lines = [line.strip() for line in output.splitlines() if line.strip().startswith("Warning (12125):")]
-    if not lines:
-        return []
     expected = [prefix + name + suffix for name in GENERATED_DESIGN_FILES]
     if Counter(lines) != Counter(expected):
         raise ValueError("generated design diagnostic path, count, or text differs")
-    database = (folder / "db").resolve()
+    database_path = folder / "db"
+    database = database_path.resolve()
+    if (not database_path.is_dir() or database_path.is_symlink()
+            or not database.is_relative_to(folder.resolve())):
+        raise ValueError("generated design diagnostic database is not an owned attempt directory")
     for name in GENERATED_DESIGN_FILES:
-        path = folder / "db" / name
+        path = database_path / name
         if (not path.is_file() or path.is_symlink()
                 or not path.resolve().is_relative_to(database)):
             raise ValueError("generated design diagnostic file is not an owned database output")
