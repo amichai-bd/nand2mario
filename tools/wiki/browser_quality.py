@@ -125,7 +125,9 @@ def check_views(browser, base):
         # and the reduced-motion still is the last captured frame alone.
         from wiki import board_frames
         for name, caption in (('libbet-board', 'Idle on the top-right cell, combo back to 0'),
-                              ('springtrail-board', 'RETRY after the fall')):
+                              ('springtrail-board', 'RETRY after the fall'),
+                              ('stackdrop-board',
+                               'The hard drop completes the bottom row: it clears, score 0100')):
             archive = board_frames.load(name)
             last = len(archive['frames']) - 1
             page = new_page()

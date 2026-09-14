@@ -1,0 +1,260 @@
+{
+ "encoding": {
+  "bytes_indexed_png": 2074,
+  "bytes_path_runs": 47252,
+  "chosen": "indexed-png-data-uri",
+  "frames": 3,
+  "measured_on": "this captured sequence"
+ },
+ "frames": [
+  {
+   "changed": null,
+   "crc32": "cd1b42b6",
+   "dot": 8422667,
+   "index": 0,
+   "label": "title",
+   "mask": 0,
+   "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKAAAACQAgMAAADy24gTAAAADFBMVEX////Q0NBoaGgYGBhxYKq9AAABZUlEQVR42u2YzQrCMAyAA7sKPXn2FQq7FvoSPnAeKeC1UJvWMXTdEnW6KU0YQ/eRn9ZmiQAfFE8xGPRELmKk9IlmwAQExojFsc6BYJAfX7BgEghRAj0VMHAQtACCMxhDscjuZ5MZwBwjW4QFkB8POc+CVMBRFSAtgiXrsjP5Dr8h1nriSwSdtQnu7r80cSLE4AEfwIOb2uutT5gCtFSxWHPNoCrGkrXCdXUpvgOO0Sot3tl+C1S73jBGgOP5eFaBp3AKfwO2ddzrOjawgfsBf6GGP+16vberSf1a6qTRS665o8gCMggq0CCDyTVKyWTnPYgWbyGiCHrkrB/6vdb37ODMGCwqgoPIIBUVwf6mIjjqWjGqs2718ev1kSdaT4r62OWZS1EflaBJo56ndMn1UWlRDfJAymCrj3s7M/xrnIC10Z43UAuSynUHvVWCzr4eY006qGS9/C/NWmB1C98CN4yxyWZyBdolW2kIKi4pAAAAAElFTkSuQmCC",
+   "seq": 117
+  },
+  {
+   "changed": 216,
+   "crc32": "f5af7d1b",
+   "dot": 13900139,
+   "index": 13,
+   "label": "l-right-3",
+   "mask": 0,
+   "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKAAAACQAgMAAADy24gTAAAADFBMVEX////Q0NBoaGgYGBhxYKq9AAABv0lEQVR42u2YTYrDMAyFDd0WvOq6VzBkVwK+RI/ZQ+hIgtkaMn5RQ2liR5r8TKdDLZLS5sPvyTaqHed2bJG75Ckytx11nL9xBcxAAsZoLaIGOk94/EWCaaDrNDCygAkmeAZ0racuSY+QryYzgL1H9OhmQDwecq6CLOAjDCDPgpK1zEz/6d6jhRAZlwq2IWT48Pyj7yaNAR5pBB7baX9NiBkzgIELPZakAZo8StYG6eJQLARPVyN4TgAfbhWwaGIVaJY2gM+CM9JmUMYRd1MyuP8DcI9xPF0xjgjF4znBI+Ltwe3H8QN+wL8HmkvzS2r4Qunt/q993q/lnTRFTRo7ir45HXQm0BPALE1aMr1449Qe7xZJBSMh69F+73cG3Ay+w3rc3qMnCRUcmg6yhAo291DBR2zl0Zz1+rmOyTiFl9tCsCq9GKxKj5PZoz7iRBt5VCliQsCAWEDZO/RnrlHtudwQSEmS+gHo81Evcr5IAV0w9lgBp8ngQApw9/oo0oOBGVCSGVKaWRRTsLLMVoAV6Wky29fHeD//P4Hlo723gocV0uUdgNVjCSy+nckv3UygsuAWgMUpXAW+0OOnvax9A/mCun67fo5pAAAAAElFTkSuQmCC",
+   "seq": 195
+  },
+  {
+   "changed": 758,
+   "crc32": "342815c6",
+   "dot": 14321483,
+   "index": 14,
+   "label": "l-drop",
+   "mask": 0,
+   "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKAAAACQAgMAAADy24gTAAAADFBMVEX////Q0NBoaGgYGBhxYKq9AAAByUlEQVR42u2YS46DMAyGI7GtlFXXc4VI7CqkXKLH7CFyJEuzjcTkx2WYkgS7gr5G2Co08Cm2k2AcjHmgeOqjDZ6o60NPqUUVMAERGEE6aA00NuD2d2BMAk0vgZ4YjHCCFkDT2dBH7hHmq8GM4OAjejQLIG6PMVdBYnBSBUiLIEfNMzOczWeIc57wE8HOuQQ3txdtnwkBPIQZeOjy/lrnE6YAHRV6LJkGqPKRo1aYLg7FneDxrAS/4l9w8lYAi32vAtWmF8Dy8BRMq8HjGTrd5lYxGOgEcutDwe3H8RYcx1QER3//Bbj9OO7gDr4TqE7NT83hK01v9762qV5LlXTwkmlUFIMYGTQq0AaAyXSQghmMt0bs8epiEEEfEPWs3nvOgKvBT1iP2/toU32LuRFB5+ww3TJIjUkFMYlgmwrhNh1FsEsgjgofG52PNrDu+fH98iN2tJ6yTOF/NwA+ctprhj1XlntOl7GFf3eAeBR8WrxZfpyDxil7rILzYLAhBfjw/OgjFGb5XAVPFygC4XN1UeRgZZmtACum82C2f2bw5srA8tae38AakJSmW6cC3RWRTZuCj8WvM6YQ9fJXmq3A4hSuAl/o4y4vkx8un6JGh7vJ9QAAAABJRU5ErkJggg==",
+   "seq": 201
+  }
+ ],
+ "name": "stackdrop-board",
+ "provenance": {
+  "author": "built in this repository",
+  "build_commit": "8387c6226a609e400c3f210e1e588ebd96f4262b",
+  "checked": "the built SHA-256 and a complete 32768-byte readback before the run, and every retained frame decoded by src/dv/stackdrop/screen.py; boot-and-play evidence, not a correctness proof",
+  "command": "python src/dv/stackdrop/board_play.py --package workdir/builds/<tag>/sw/build/stackdrop/runs/<attempt>/result.json",
+  "decoded": [
+   {
+    "label": "title",
+    "rows": [
+     "00000000",
+     "00000000",
+     "00000000",
+     "00000000",
+     "00000000",
+     "00000000",
+     "00000000",
+     "00000000",
+     "00000000",
+     "00000000",
+     "00000000",
+     "00000000"
+    ],
+    "score": 0,
+    "status": 0
+   },
+   {
+    "label": "l-right-3",
+    "rows": [
+     "00000000",
+     "00000000",
+     "00000000",
+     "00000000",
+     "00000000",
+     "00000000",
+     "00000000",
+     "00000000",
+     "00000000",
+     "01000000",
+     "11101100",
+     "11111100"
+    ],
+    "score": 0,
+    "status": 1
+   },
+   {
+    "label": "l-drop",
+    "rows": [
+     "00000000",
+     "00000000",
+     "00000000",
+     "00000000",
+     "00000000",
+     "00000000",
+     "00000000",
+     "00000000",
+     "00000000",
+     "00000000",
+     "01000010",
+     "11101110"
+    ],
+    "score": 100,
+    "status": 1
+   }
+  ],
+  "driver": "src/dv/stackdrop/board_play.py",
+  "hold_frames": 3,
+  "image_sha256": "f2a9b159743a202541dd17dedaa99ffcc7ebf6d9d7012b28f4701a0ac9aed927",
+  "input_label": "JOYP buttons (UART INPUT mask): every frame is captured after release",
+  "inputs": [
+   {
+    "dot": 8461643,
+    "label": "start-press",
+    "mask": 128
+   },
+   {
+    "dot": 8672315,
+    "label": "start-release",
+    "mask": 0
+   },
+   {
+    "dot": 8882987,
+    "label": "i-left-1-press",
+    "mask": 2
+   },
+   {
+    "dot": 9093659,
+    "label": "i-left-1-release",
+    "mask": 0
+   },
+   {
+    "dot": 9304331,
+    "label": "i-left-2-press",
+    "mask": 2
+   },
+   {
+    "dot": 9515003,
+    "label": "i-left-2-release",
+    "mask": 0
+   },
+   {
+    "dot": 9725675,
+    "label": "i-drop-press",
+    "mask": 32
+   },
+   {
+    "dot": 9936347,
+    "label": "i-drop-release",
+    "mask": 0
+   },
+   {
+    "dot": 10147019,
+    "label": "o-right-press",
+    "mask": 1
+   },
+   {
+    "dot": 10357691,
+    "label": "o-right-release",
+    "mask": 0
+   },
+   {
+    "dot": 10568363,
+    "label": "o-drop-press",
+    "mask": 32
+   },
+   {
+    "dot": 10779035,
+    "label": "o-drop-release",
+    "mask": 0
+   },
+   {
+    "dot": 10989707,
+    "label": "t-left-1-press",
+    "mask": 2
+   },
+   {
+    "dot": 11200379,
+    "label": "t-left-1-release",
+    "mask": 0
+   },
+   {
+    "dot": 11411051,
+    "label": "t-left-2-press",
+    "mask": 2
+   },
+   {
+    "dot": 11621723,
+    "label": "t-left-2-release",
+    "mask": 0
+   },
+   {
+    "dot": 11832395,
+    "label": "t-drop-press",
+    "mask": 32
+   },
+   {
+    "dot": 12043067,
+    "label": "t-drop-release",
+    "mask": 0
+   },
+   {
+    "dot": 12253739,
+    "label": "l-rotate-press",
+    "mask": 16
+   },
+   {
+    "dot": 12464411,
+    "label": "l-rotate-release",
+    "mask": 0
+   },
+   {
+    "dot": 12675083,
+    "label": "l-right-1-press",
+    "mask": 1
+   },
+   {
+    "dot": 12885755,
+    "label": "l-right-1-release",
+    "mask": 0
+   },
+   {
+    "dot": 13096427,
+    "label": "l-right-2-press",
+    "mask": 1
+   },
+   {
+    "dot": 13307099,
+    "label": "l-right-2-release",
+    "mask": 0
+   },
+   {
+    "dot": 13517771,
+    "label": "l-right-3-press",
+    "mask": 1
+   },
+   {
+    "dot": 13728443,
+    "label": "l-right-3-release",
+    "mask": 0
+   },
+   {
+    "dot": 13939115,
+    "label": "l-drop-press",
+    "mask": 32
+   },
+   {
+    "dot": 14149787,
+    "label": "l-drop-release",
+    "mask": 0
+   }
+  ],
+  "intro_seconds": 2.0,
+  "note": "Stackdrop, the image this repository builds, played on the DE10-Lite on 2026-09-14: the title, the well filling, and the hard drop that clears the bottom row.",
+  "program": "Stackdrop",
+  "script": "I left 2, hard drop; O right 1, hard drop; T left 2, hard drop; L rotate, right 3, hard drop, completing the bottom row",
+  "wall_seconds": 40.051,
+  "wire_abi": 1,
+  "wire_build_id": "87d5f0280a2afad8be6b85dc601141cc"
+ }
+}

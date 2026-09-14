@@ -20,6 +20,10 @@ I, O, T, L, J, S, Z cycle and clears it:
   T  left 2, hard drop  -> parks above the finished columns
   L  rotate, right 3, hard drop -> columns 6,7, completing the row
 
+With `--package`, the session first runs `host load --package`, which verifies
+the built image's SHA-256 and reads all 32768 bytes back, so the archive can
+cite the image it played rather than assume it.
+
 Frames, decoded states and `result.json` go under `workdir/stackdrop-play/`;
 the transaction journal and device selection go under the build tag. No frame
 bytes or decoded images are committed.
@@ -152,6 +156,10 @@ def play(d, args):
     title = to_title(d, args)
     if title.get('decoded', {}).get('status') != 0:
         raise ValueError('the free-run capture is not the Stackdrop title screen')
+    if args.title_only:
+        # Boot to the title and stop, leaving the board paused on it.
+        d.log(event='final', score=title['decoded']['score'], counters=d.counters(), regs=d.regs())
+        return
     for label, mask, repeats, _note in SCRIPT:
         for index in range(repeats):
             suffix = '' if repeats == 1 else f'-{index + 1}'
@@ -167,10 +175,30 @@ def play(d, args):
           counters=d.counters(), regs=d.regs())
 
 
+def load_package(args):
+    """`host load --package <result.json>`: the built digest and a full readback.
+
+    The driver cannot read the cartridge back itself, so the load the archive
+    cites is this verified one, not an unchecked claim about what was resident.
+    """
+    command = [sys.executable, str(ROOT / 'tools/build.py'), 'host', 'load',
+               '--package', args.package, '--uart-port', args.uart_port,
+               '--tag', args.tag, '--json']
+    print('LOAD', ' '.join(command), flush=True)
+    done = subprocess.run(command, cwd=ROOT, text=True, capture_output=True)
+    print(done.stdout.strip(), flush=True)
+    if done.returncode:
+        print(done.stderr.strip(), flush=True)
+        raise ValueError(f'host load --package failed: {done.returncode}')
+    return json.loads(done.stdout.strip().splitlines()[-1])
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument('--uart-port', required=True)
+    p.add_argument('--package', help='immutable sw/build/stackdrop/runs/<attempt>/result.json '
+                                     'to load and verify before the session')
     p.add_argument('--uart-vid')
     p.add_argument('--uart-pid')
     p.add_argument('--uart-identity')
@@ -181,6 +209,8 @@ def main():
     p.add_argument('--intro-seconds', type=float, default=2.0)
     p.add_argument('--gravity-seconds', type=float, default=4.0,
                    help='free-run seconds after the clear, with no input')
+    p.add_argument('--title-only', action='store_true',
+                   help='boot to the title, capture it and stop, leaving the board paused there')
     args = p.parse_args()
     stamp = datetime.now(timezone.utc).strftime('%H%M%S')
     out = ROOT / 'workdir/stackdrop-play' / f'play-{stamp}'
@@ -207,6 +237,8 @@ def main():
     client = None
     started = time.monotonic()
     try:
+        if args.package:
+            result['load'] = load_package(args)
         with machine_lock(1357311510), session(folder, ns, state_root) as (transport, sequence, persist, _):
             client = Client(transport, sequence=sequence, record=record, persist=persist)
             d = Driver(client, out, journal)

@@ -96,6 +96,11 @@ python tools/build.py host load --package workdir/builds/<tag>/sw/build/stackdro
 python src/dv/stackdrop/board_play.py --uart-port <verified-port> --uart-vid <vid> --uart-pid <pid> --uart-identity <verified-identity> --expected-build-id <reviewed-wire-id> --tag <tag>
 ```
 
+`--package <result.json>` runs the `host load` above inside the session, so the
+image the run reports is one it verified rather than one it assumed.
+`--title-only` boots to the title, captures it and stops, which is how the board
+is left showing Stackdrop between sessions.
+
 The loaded image is ordinary session state. Loading Stackdrop replaces whatever
 was resident; Springtrail reloads the same way, and no Springtrail result may be
 claimed from a session where Stackdrop was loaded.
@@ -108,13 +113,49 @@ gravity alone at native rate. **Stepped** executes exact whole frames with
 `RUN_DOTS 70224`, so each press lands on its own released-to-pressed edge and
 one-row-per-second gravity never runs ahead of a capture.
 
-### Recorded scripted session
+### Recorded scripted session, current image
 
-This session ran against the **pre-restyle** Stackdrop image, built before the
-artwork was redrawn. Its frame CRC32 values therefore belong to that earlier
-tile atlas and are not reproducible from the current source. The decode contract
-is unchanged across the restyle, so `board_play.py` needs no change to drive the
-current image; that has not been rerun on hardware.
+The same script against the **current** restyled image, ROM SHA-256
+`f2a9b159743a202541dd17dedaa99ffcc7ebf6d9d7012b28f4701a0ac9aed927`, built from
+commit `8387c622`, fingerprint
+`e6e16e924d953f6e2c3a1858638657af2e3789b312489177b3e2bd5545101b54`. This is the
+first hardware run of `screen.decode` as the restyle rewrote it: it accepted
+every one of the sixteen frames and rejected no tile. `board_play.py --package` loaded the image and read back all 32768 bytes
+before playing. The session began and ended PAUSED with `INPUT` 0,
+`INPUT_SOURCE` 0, `INPUT_EFFECTIVE` 0 and session certain; `RESET` opened
+snapshot epoch 18, and whole-process wall time was 40.1 s including the load.
+A second run of the same script returned frame-for-frame identical CRC32 values.
+
+Frames 0, 13 and 14 are the three the
+[board frame archive](../../../tools/wiki/board_frames/stackdrop-board.json)
+keeps for the wiki showcase.
+
+| # | Frame | Mode | seq | dot | CRC32 | Status | Score | Changed |
+|---|---|---|---|---|---|---|---|---|
+| 0 | title | free-run | 117 | 8422667 | `cd1b42b6` | title | 0 | |
+| 1 | start | stepped | 123 | 8844011 | `6a18d35c` | playing | 0 | 160 |
+| 2 | i-left-1 | stepped | 129 | 9265355 | `4d0700e8` | playing | 0 | 72 |
+| 3 | i-left-2 | stepped | 135 | 9686699 | `d274cf25` | playing | 0 | 72 |
+| 4 | i-drop | stepped | 141 | 10108043 | `1f972549` | playing | 0 | 432 |
+| 5 | o-right | stepped | 147 | 10529387 | `af7ed3ae` | playing | 0 | 144 |
+| 6 | o-drop | stepped | 153 | 10950731 | `3a36d287` | playing | 0 | 432 |
+| 7 | t-left-1 | stepped | 159 | 11372075 | `28f64cd9` | playing | 0 | 144 |
+| 8 | t-left-2 | stepped | 165 | 11793419 | `1b799080` | playing | 0 | 144 |
+| 9 | t-drop | stepped | 171 | 12214763 | `6a87e9d9` | playing | 0 | 432 |
+| 10 | l-rotate | stepped | 177 | 12636107 | `193dc492` | playing | 0 | 235 |
+| 11 | l-right-1 | stepped | 183 | 13057451 | `fac50706` | playing | 0 | 216 |
+| 12 | l-right-2 | stepped | 189 | 13478795 | `56813fc6` | playing | 0 | 216 |
+| 13 | l-right-3 | stepped | 195 | 13900139 | `f5af7d1b` | playing | 0 | 216 |
+| 14 | l-drop | stepped | 201 | 14321483 | `342815c6` | playing | 100 | 758 |
+| 15 | gravity-free-run | free-run | 441 | 31175243 | `1abc4f76` | playing | 100 | 288 |
+
+### Recorded scripted session, pre-restyle image
+
+This earlier session ran against the **pre-restyle** Stackdrop image, built
+before the artwork was redrawn. Its frame CRC32 values belong to that earlier
+tile atlas and are not reproducible from the current source. Nothing in it is
+evidence about the current image, and nothing in the current session is evidence
+about it.
 
 Wire build `87d5f0280a2afad8be6b85dc601141cc`, ABI 1. The image is the
 `stackdrop` target built from commit `896e4e49`, fingerprint
@@ -164,7 +205,7 @@ The board owner played Stackdrop from the authenticated phone page over the
 Cloudflare tunnel, using the eight tap buttons and both viewer modes. Two images
 were played, and they are separate claims:
 
-- the **pre-restyle** image this scripted session loaded, ROM SHA-256
+- the **pre-restyle** image the earlier scripted session loaded, ROM SHA-256
   `af11fbfae2ddf1607ca3c70f32d47eadb62fd5a1c5b5c3f3ead8ea6f2afa0c74`;
 - the **current** image, ROM SHA-256
   `f2a9b159743a202541dd17dedaa99ffcc7ebf6d9d7012b28f4701a0ac9aed927`, rebuilt

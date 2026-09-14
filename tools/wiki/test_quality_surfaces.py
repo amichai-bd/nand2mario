@@ -1,6 +1,7 @@
 """Focused regressions for presentation and statistics documentation UX."""
 
 from pathlib import Path
+import re
 import unittest
 
 from tools.wiki import repository_stats as stats
@@ -149,9 +150,16 @@ class DocumentationQualityTests(unittest.TestCase):
                 self.assertNotIn(pins[pin][field], readme, f'{pin}: {field} retyped into the README')
         for game in ('Wyrmhole', 'Rex Run'):
             self.assertIn(game, markup)
-        # Eight tiles are not the whole set, and the gallery says so itself.
+        # Nine tiles are still not the whole set, and the gallery says so itself.
         self.assertIn('Stackdrop', markup)
         self.assertNotIn('Eight Game Boy games run on this hardware', readme)
+        # Nine tiles fill the grid and push the note into a band of its own, so
+        # nothing may overlap the footer rows anchored to the bottom.
+        height = int(re.search(r'height="(\d+)" viewBox', markup).group(1))
+        baselines = sorted(int(y) for y in re.findall(r'<text[^>]*y="(\d+)"', markup))
+        footer_top = height - 12 - 2 * showcase.LINE
+        self.assertLess(max(y for y in baselines if y < footer_top) + showcase.LINE, footer_top)
+        self.assertLess(max(baselines), height)
         self.assertIn('not emulator screenshots', markup)
         self.assertIn('homebrew-library.md#wyrmhole-and-rex-run-never-turn-the-lcd-on', readme)
 
