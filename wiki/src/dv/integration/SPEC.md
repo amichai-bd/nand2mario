@@ -114,12 +114,31 @@ Prefer the [authorized bounded FPGA/UART game checks](../../../agents/bootstrap-
 after their build and setup gates pass. Required affected simulation and named
 milestones use explicitly declared complementary simulation/physical matrices.
 
+Simulation evidence runs under Verilator on WSL, the sole simulator in the
+builder's [simulator policy](../../../tools/n2m/SPEC.md#simulator-policy); no
+tier depends on a license. Intel primitives are represented by the
+repository's behavioral doubles under the `VERILATOR` macro per the
+[memory contract](../../rtl/common/MAS_memory_primitives.md); the "Intel model
+identity" required above becomes the double's source hash once a target
+migrates. Migration is per area: once the builder Verilator path lands under
+[#597](https://github.com/amichai-bd/nand2mario/issues/597), an unmigrated
+target will report `SKIPPED` with reason `questa-retired`, count as neither
+pass nor defect, and be listed by name in the aggregate. A skipped required
+target does not satisfy a tier; its evidence waits for the migration issue that
+owns it. Four-state assertions are
+removed during migration as an authorized behavior change; runs use randomized
+initial values so an uninitialized read fails by mismatch. The Verilator
+execution path for `sim test`, `regress` and `tests run` is the open gap in
+#597; the doubles in
+[#598](https://github.com/amichai-bd/nand2mario/issues/598).
+
 Select gates by affected behavior and the scoped issue. Use existing preload,
-continuous Python, Intel models, builders, validators and targets; no additional
-regression framework is required. Required CI remains in force. Evidence reuse
-requires unchanged relevant source, configuration, tool and model identities;
-record why retained coverage still applies. Independent expectations come from
-the contract and original program, never DUT internal results.
+continuous Python, primitive doubles, builders, validators and targets; no
+additional regression framework is required. Required CI remains in force.
+Evidence reuse requires unchanged relevant source, configuration, tool and
+model identities; record why retained coverage still applies. Independent
+expectations come from the contract and original program, never DUT internal
+results.
 
 ### Fast development and ordinary PR acceptance
 

@@ -188,9 +188,12 @@ Agents own focused issue boundaries, module organization, test seeds/artifacts,
 and detailed ABI, reset/load, protocol, clock/CDC, and input contracts within
 approved behavior. Escalate changes to scope, acceptance, or safety boundaries.
 The [current authorization](../agents/bootstrap-plan.md#verification-and-hardware-authorization)
-owns permission and prerequisites for Questa and physical execution, including
-the board approval required above. Simulation cannot satisfy physical acceptance.
-Shared Questa baseline evidence is recorded in
+owns permission and prerequisites for simulation and physical execution, including
+the board approval required above. Simulation runs under Verilator on WSL, the
+sole simulator in the builder's [simulator policy](../tools/n2m/SPEC.md#simulator-policy),
+and never depends on a license; Quartus builds and programming run from Windows.
+Simulation cannot satisfy physical acceptance.
+Shared baseline evidence is recorded in
 [GAP-008](../preflight-gaps.md#gap-008-verification-baseline).
 
 [uart]: https://github.com/amichai-bd/frog-bui/blob/311e64d6e7e54db682e515f51aef92c083a32d5a/src/rtl/uart_ctrl/README.md

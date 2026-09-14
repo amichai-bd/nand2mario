@@ -27,22 +27,36 @@ and [interface tests](../../../tools/n2m/tests/test_interfaces.py) implement and
 details; generator checks do not establish CPU or UART behavior.
 
 The [verification baseline runner](SPEC.md#verification-baseline-runner) must
-accept the known-good fixture and detect its known defect through Questa, retaining reproducible failure evidence under the
+accept the known-good fixture and detect its known defect through the
+simulator, retaining reproducible failure evidence under the
 [baseline contract](../../src/dv/baseline/SPEC.md), without claiming CPU
 or hardware coverage from this fixture.
 
-Questa is the sole simulator. The shared builder also supports independent Python
+Verilator on WSL is the sole simulator; the licensed Questa seat has left the
+flow and no command may depend on a license. The
+[simulator policy](SPEC.md#simulator-policy) owns the rules: one build tool
+with per-OS command ownership (simulation and `doctor` on WSL, FPGA build and
+programming on Windows), behavioral doubles for Intel primitives keyed on the
+predefined `VERILATOR` macro, per-area migration in which an unmigrated target
+reports `SKIPPED` with reason `questa-retired`, and the authorized removal of
+four-state assertions in favor of randomized initial values. The
+[doctor](SPEC.md#environment-doctor) already proves a checked Verilator smoke
+without a license; the `sim test`, `regress` and `tests run` Verilator path is
+the open gap in [#597](https://github.com/amichai-bd/nand2mario/issues/597).
+The shared builder also supports independent Python
 testbenches alongside SV through the [Python adapter](../../../tools/n2m/python_tb.py), using the same
 tagged evidence and cache rules. Python failures must fail the command even
 when the simulator returns zero. The [testbench contract](SPEC.md#testbench-types)
 defines explicit selection and the first joypad proof; it does not replace
 existing acceptance or authorize a wider verification migration.
-Product memory simulation must use the installed Intel model for the same
-explicit wrapper used by MAX 10 synthesis. The [model adapter](../../../tools/n2m/intel_memory.py)
-requires checked model selection, retained source hashes and binding, and
-failure on a missing, modified or shadow model. A host double cannot establish
-primitive behavior. The [shared memory MAS](../../src/rtl/common/MAS_memory_primitives.md)
-owns port timing and consumer migration boundaries.
+Product memory simulation under Verilator uses the repository's behavioral
+double of the Intel primitive for the same explicit wrapper used by MAX 10
+synthesis; Quartus always sees the vendor instance. The
+[shared memory MAS](../../src/rtl/common/MAS_memory_primitives.md) owns the
+double's contract, port timing and consumer migration boundaries. While
+unmigrated targets still run on Questa, the [model adapter](../../../tools/n2m/intel_memory.py)
+keeps requiring checked model selection, retained source hashes and binding, and
+failure on a missing, modified or shadow model.
 Pre-merge host checks verify host contracts only; the [CI boundary](SPEC.md#ci-execution-boundary)
-requires actual local evidence while the trusted licensed route stays out of
+requires actual local evidence while the trusted remote route stays out of
 scope under [GAP-010](../../preflight-gaps.md#gap-010-github-remote-issues-ci-and-pages).

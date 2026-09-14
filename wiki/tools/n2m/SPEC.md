@@ -1,6 +1,6 @@
 # Build system
 
-Status: `doctor`, `check`, Questa `sim test`, MAX 10 `fpga build`, [software build/conformance](../sw/SPEC.md), [host load/control](host/SPEC.md), the [test catalogue](#test-catalogue), [declared regression subsets](#regression-subsets) and [tagged cleanup](#cleanup) are implemented.
+Status: Verilator `doctor` on WSL, `check`, Questa `sim test`, MAX 10 `fpga build`, [software build/conformance](../sw/SPEC.md), [host load/control](host/SPEC.md), the [test catalogue](#test-catalogue), [declared regression subsets](#regression-subsets) and [tagged cleanup](#cleanup) are implemented.
 
 ## Purpose
 
@@ -37,18 +37,49 @@ must exit 1 and retain its mismatch log and waveform. The `builder-fault` subset
 must exit 1 naming `builder-smoke-fail`. Other successful commands
 exit 0; errors exit nonzero. `--json` emits one result object on stdout.
 
-`doctor` defaults to `--profile simulation`: it compiles, elaborates and runs
-a checked Questa smoke. Quartus and devices remain explicitly untested in this
-profile. See [environment doctor](#environment-doctor).
+`doctor` defaults to `--profile simulation`: on WSL it compiles, elaborates and
+runs a checked Verilator smoke without consulting any license. Quartus and
+devices remain explicitly untested in this profile. See
+[environment doctor](#environment-doctor).
 `sim test` proves compile, elaboration, run, and the target's expected signature.
-`check` runs host contracts with controlled Questa doubles; these are not RTL
-or license evidence. It also proves the [test catalogue](#test-catalogue) still
+`check` runs host contracts with controlled simulator doubles; these are not RTL
+evidence. It also proves the [test catalogue](#test-catalogue) still
 covers every test in the tree, and fails naming the first uncovered file.
 
-Questa is the sole supported simulator and the default. `--sim questa` remains
-an optional explicit spelling. Retired selections (`auto`, `icarus`,
-`wsl-icarus`) and Icarus/WSL executable options fail argument parsing. Missing
-tools fail with diagnostics; there is no fallback simulator.
+## Simulator policy
+
+Verilator is the sole supported simulator. The licensed Questa seat has left
+the flow; no command may require a license variable, and a license failure is
+never a `SKIPPED` reason for new work. The
+[pinned toolchain](../../../tools/n2m/dependencies.json) is Verilator v5.052,
+built from source on WSL, and cocotb 2.1.0; [installation](#installation)
+names the steps. Retired selections (`auto`, `icarus`, `wsl-icarus`) and
+Icarus/WSL executable options fail argument parsing. Missing tools fail with
+diagnostics; there is no fallback simulator.
+
+One build tool serves two operating systems. On WSL (Linux) it owns `sim`,
+`regress`, `tests run` and `doctor`; on Windows PowerShell it owns `fpga build`
+and `fpga program`. Caches and fingerprints stay per OS under `workdir/`.
+The [doctor](#environment-doctor) implements this split now: Windows only
+states where simulation runs and performs the Quartus, JTAG and UART identity
+checks. Where RTL instantiates an Intel primitive, the predefined `VERILATOR`
+macro selects a behavioral double and Quartus always sees the vendor instance;
+the [memory MAS](../../src/rtl/common/MAS_memory_primitives.md) owns that rule.
+Four-state assertions are removed during migration as an authorized behavior
+change: Verilator runs with `--x-initial unique` and
+`+verilator+rand+reset+2`, so an uninitialized read fails by value mismatch
+rather than by an `X` check.
+
+Migration is incremental per area. The catalogue will record each target's
+simulator, and an unmigrated target reports `SKIPPED` with reason
+`questa-retired`; it never passes silently. Until that lands, `sim test`,
+`regress` and `tests run` still drive Questa as written below, and only
+`doctor` implements the OS split: on Windows it states where simulation runs
+instead of running it. The builder Verilator path, catalogue simulator field
+and the refusal of the other side's commands are tracked in
+[#597](https://github.com/amichai-bd/nand2mario/issues/597),
+the Intel primitive doubles in [#598](https://github.com/amichai-bd/nand2mario/issues/598),
+and the whole migration in [#595](https://github.com/amichai-bd/nand2mario/issues/595).
 
 ## Test catalogue
 
@@ -118,8 +149,10 @@ pipe; the whole output is kept, and the one-line `error` is the first
 `FAIL:`/`ERROR:` header, else the `FAILED` verdict, else the last line. A unit's
 own trailing print is never reported as its failure.
 
-Questa is one node-locked seat. A simulation whose license checkout is refused
-is reported by name as `SKIPPED` with reason `questa-contention`, and the run
+A simulation whose Questa license checkout is refused is still reported by
+name as `SKIPPED` with reason `questa-contention` while unmigrated targets run
+there; the [simulator policy](#simulator-policy) replaces that reason with
+`questa-retired` as the catalogue gains its simulator field. The run
 exits non-zero only when something actually failed. A unit labelled
 `needs-cocotb` is skipped with reason `cocotb-environment` when the pinned
 `src/dv/python` interpreter is absent. Contention is not a defect, and is never
@@ -132,6 +165,10 @@ regression subset does. The result is published as
 `tests/.lock` holds the tag for the whole selection.
 
 ## Questa simulation
+
+This section describes the unmigrated `sim test` path. It remains the executing
+contract for every registered target until the
+[simulator policy](#simulator-policy) migration reaches that target.
 
 ### Testbench types
 
@@ -542,8 +579,13 @@ target metadata and so invalidates that target's cache fingerprint.
 
 ## Environment doctor
 
+```bash
+python3 tools/build.py doctor --json
+python3 tools/build.py doctor --verilator-bin <directory> --json
+```
+
 ```powershell
-python tools/build.py doctor --profile environment --questa-bin <directory> --quartus-bin <directory> --uart-port COM5 --json
+python tools/build.py doctor --profile environment --quartus-bin <directory> --uart-port COM5 --json
 ```
 
 Executable discovery uses PATH or explicit directories, never changes global
@@ -551,21 +593,39 @@ PATH, and never falls back from an explicit selection. Tool versions are recorde
 commercial installations are user-provided, not bootstrapped or assumed pinned.
 The [tool provenance](../../../tools/sim/THIRD_PARTY.md) owns installation boundaries.
 
-Each invocation gets fresh logs and Questa libraries under
-`workdir/builds/<tag>/doctor/<attempt>/`. Source/runner hashes, commands, versions,
-artifact hashes, and per-check outcomes remain in ignored build evidence.
-Readiness is never cached. Every profile runs the Questa smoke and checks
-22 reset, count, and wrap observations.
+Each invocation gets fresh logs and a fresh Verilator `obj_dir` under
+`workdir/builds/<tag>/doctor/<attempt>/verilator/`. Source/runner hashes, commands,
+versions, artifact hashes, and per-check outcomes remain in ignored build evidence.
+Readiness is never cached. On WSL every profile runs the Verilator smoke and
+checks 22 reset, count, and wrap observations.
 
-The default profile checks Questa; the environment profile adds the remaining tools:
+The default profile checks Verilator; the environment profile adds the remaining tools:
 
-- Questa: compile and run that same source, requiring its checked completion
-  signature. A compile-only success does not prove elaboration or a runtime
-  license. Timeouts, warnings, error diagnostics, and missing signatures fail.
-  A retained `run.do` macro handles breaks and errors. With `-onfinish stop`,
-  only a normal `$finish` stop exits zero; fatal or other breaks, macro errors,
-  and return without `$finish` exit nonzero. The checked signature is still
-  required after a zero exit.
+- Verilator (WSL only): `verilator --version` must report a `Verilator <release>`
+  banner, recorded as `version` and `release`. The check builds
+  [`builder_smoke.sv`](../../../src/dv/builder/builder_smoke.sv) with
+  `--binary --timing --trace-vcd --x-initial unique` into `obj_dir/smoke`,
+  then runs it with `+seed=1 +verilator+rand+reset+2` and requires the exact
+  `PASS builder-smoke seed=1 checks=22` signature. It then runs the same binary
+  with `+inject_failure` and requires a nonzero exit carrying the exact
+  `count cycle=3 expected=7 actual=3 seed=1` diagnostic, recorded under `fault`.
+  Any `%Warning`, `%Error` or `%Fatal` line in the build or the positive run
+  fails; Verilator lint warnings are never demoted with `-Wno-fatal`. Timeouts,
+  a missing signature and a fault that does not fail all report FAIL. The
+  check removes `SALT_LICENSE_FILE`, `LM_LICENSE_FILE` and `MGLS_LICENSE_FILE`
+  from the child environment and records `license` as none consulted, so a
+  PASS cannot depend on a license. `--verilator-bin <directory>` selects the
+  directory holding `verilator`; otherwise it is resolved on PATH. The compile
+  step has a 300-second bound; the runs keep the 60-second default.
+- Verilator (Windows): no simulator runs. The `verilator` check reports the
+  informational status `NOT_APPLICABLE` with the detail
+  `not applicable; simulation runs on WSL Linux: python3 tools/build.py doctor`,
+  and `untested` gains `Verilator smoke`. That status never lowers the doctor
+  result: a healthy Windows environment profile (Quartus, JTAG and UART identity
+  all `PASS`) ends `PASS`/exit 0 with `readiness` `complete` and updates
+  `workdir/latest.txt`. The Windows simulation profile has no applicable check;
+  it ends `PASS`/exit 0 with `readiness` `partial`, because it establishes
+  nothing. Windows is the FPGA-side identity preflight, not simulation readiness.
 - Quartus: report version and edition. Lite needs no license file; other editions
   report unverified licensing. Unexpected diagnostics fail. Version discovery
   does not prove synthesis. The version output may carry exactly the pinned
@@ -593,29 +653,47 @@ changes JTAG configuration, or proves physical operation. Those follow the
 [current authorization](../../agents/bootstrap-plan.md#verification-and-hardware-authorization)
 and hardware workflow. No extra Python packages are required.
 
-`PASS`/exit 0 means all checks in the selected profile passed. `WARNING`/exit 2
+`PASS`/exit 0 means all applicable checks in the selected profile passed;
+`NOT_APPLICABLE` entries are informational and excluded. `WARNING`/exit 2
 means requested evidence is incomplete. `FAIL`/exit 1 means a check failed and
-takes precedence over warnings. JSON includes `profile`, `checks`, `readiness`,
-and `untested`; simulation success is not full environment readiness. Only PASS
-updates `workdir/latest.txt`. This extends the previous binary exit contract.
+takes precedence over warnings. JSON includes `profile`, `simulator`
+(`verilator`), `checks`, `tools`, `inputs`, `readiness`, and `untested`;
+simulation success is not full environment readiness. Only PASS updates
+`workdir/latest.txt`. The record keeps the earlier shape with these changes: the
+simulation check is keyed `verilator` instead of `questa`, its result adds
+`release` and `fault`, `tools` holds only `verilator`, and `--questa-bin` is no
+longer a doctor option. [`test_doctor.py`](../../../tools/n2m/tests/test_doctor.py)
+proves the broken-elaboration, runtime, signature, undetected-fault, missing-tool
+and Windows cases with controlled doubles; only the WSL run is simulator evidence.
 
 Quartus license scope follows the [Intel 24.3 overview](https://www.intel.com/content/www/us/en/docs/programmable/683472/24-3/design-suite-overview.html).
 Installed `jtagconfig --help` defines the read-only enumeration invocation.
 The [gap register](../../preflight-gaps.md#gap-008-verification-baseline) records
-the doctor's scoped licensed runtime evidence and the [shared baseline](../../src/dv/baseline/SPEC.md). A failed
+the doctor's scoped runtime evidence and the [shared baseline](../../src/dv/baseline/SPEC.md). A failed
 environment check still reports FAIL; a passing smoke is not full readiness.
 
 ## Installation
 
 The [dependency definition](../../../tools/n2m/dependencies.json) pins Python
-3.14.5. Host tests use the standard library. Physical UART commands have an
-explicit optional [pinned serial dependency](../../../tools/n2m/host/THIRD_PARTY.md).
-Install Questa separately under
-its license and expose `vlib`, `vmap`, `vlog`, and `vsim` on PATH, or pass
-`--questa-bin <directory>`. Paths with spaces are supported. There is no simulator
-bootstrap, automatic download, WSL fallback or license configuration command.
-Recorded executable versions/hashes identify the installed tool; they do not
-claim a pinned proprietary distribution.
+3.14.5 for the Windows host, Verilator v5.052 by tag and commit, and cocotb
+2.1.0 through the [Python lock](../../../src/dv/python/requirements.txt). Host
+tests use the standard library. Physical UART commands have an explicit optional
+[pinned serial dependency](../../../tools/n2m/host/THIRD_PARTY.md).
+
+A fresh WSL Ubuntu 24.04 machine needs the repository and three steps, each
+recorded under `verilator.install` and `cocotb.install` in the dependency
+definition: one `apt-get install` line for the build prerequisites; a source
+build of the pinned tag into a prefix outside the repository
+(`autoconf && ./configure --prefix=<prefix> && make -j$(nproc) && make install`),
+because the distribution package (5.020) is below cocotb's 5.036 minimum; and
+`pip install -r src/dv/python/requirements.txt` into a venv under
+`workdir/builds/python-dv-env/.venv`. Expose `<prefix>/bin` on PATH or pass
+`--verilator-bin <prefix>/bin`. Paths with spaces are supported. There is no
+simulator bootstrap, automatic download or license configuration command; no
+command reads a license variable. Unmigrated Questa targets still expect
+`vlib`, `vmap`, `vlog` and `vsim` on PATH or `--questa-bin <directory>` until
+their migration under the [simulator policy](#simulator-policy). Recorded
+executable versions/hashes identify the installed tool.
 
 ## CI execution boundary
 
@@ -626,9 +704,9 @@ validate standalone host contracts. Both run locally before merge and by
 neither executes a simulator or reports licensed RTL acceptance, and their
 summaries state this limitation. `PR policy` is the only required hosted check.
 
-Actual local Questa positive and deliberately failing runs are mandatory author
-and independent-review evidence. No trusted remote Questa runner is currently
-configured. The protected trusted-revision route and required product checks
+Actual local simulator positive and deliberately failing runs are mandatory author
+and independent-review evidence; they run under Verilator on WSL as targets
+migrate. No trusted remote simulation runner is currently configured. The protected trusted-revision route and required product checks
 are out of scope while no runner can be hosted;
 [GAP-010](../../preflight-gaps.md#gap-010-github-remote-issues-ci-and-pages)
 keeps the record. That route, if resumed, requires independent review of concrete workflow/launcher/configuration before
@@ -1316,7 +1394,7 @@ It does not discover Questa or acquire a simulator/board resource. The tag is
 exclusive; generated files and measured host time remain under `workdir/builds`.
 The existing whole-process supervisor enforces300 seconds, including its normal
 cleanup reserve; target-specific simulation allowances do not extend preflight.
-Use the pinned Python3.12.14/cocotb2.0.1 environment for cocotb targets; missing
+Use the pinned cocotb 2.1.0 environment for cocotb targets; missing
 modules or symbols fail before preparation. No dependency installation is implicit.
 This is host preparation, not compilation, RTL execution or behavior acceptance.
 

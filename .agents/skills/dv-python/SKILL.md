@@ -104,4 +104,4 @@ runtime serialization and hardware boundaries. A POC is not an automatic
 migration, replacement of existing acceptance tests, or RTL bug diagnosis.
 
 Consult documentation matching the pinned cocotb version for timing and
-simulator options: https://docs.cocotb.org/en/v2.0.1/ .
+simulator options: https://docs.cocotb.org/en/v2.1.0/ .

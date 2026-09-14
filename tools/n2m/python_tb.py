@@ -294,7 +294,7 @@ def discover():
         from cocotb_tools.config import lib_name_path
         from find_libpython import find_libpython
         packages = {}
-        for name, version in (("cocotb", "2.0.1"), ("find-libpython", "0.4.1")):
+        for name, version in (("cocotb", "2.1.0"), ("find-libpython", "0.4.1")):
             dist = importlib.metadata.distribution(name)
             if dist.version != version:
                 raise ValueError(f"Python TB requires {name}=={version}")

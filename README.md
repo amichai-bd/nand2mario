@@ -106,7 +106,9 @@ memory, graphics, timer, interrupt, DMA, and JOYP interfaces. UART and physical
 controls converge through the same Game Boy input boundary, so software does not
 need private host-control MMIO.
 
-The supported simulation environment is Questa. The repository also contains
+The supported simulator is Verilator on WSL under the builder's
+[simulator policy](wiki/tools/n2m/SPEC.md#simulator-policy); Quartus builds and
+programming run from Windows. The repository also contains
 Quartus/MAX 10 FPGA build support, host-side loading and control tools, Python
 verification, cocotb integration, vendor-model simulation, deterministic build
 records, and checked output evidence.

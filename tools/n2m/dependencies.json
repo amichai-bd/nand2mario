@@ -257,5 +257,37 @@
       "ip/altera/altera_modular_adc/control/fiftyfivenm_adcblock_top_wrapper.v": "763f8c0fd1c25affc2614dd8d162dea9218b7acc0db2d0ee45921e9cfeb30247",
       "ip/altera/altera_modular_adc/control/fiftyfivenm_adcblock_primitive_wrapper.v": "1c5741b5c96601a792e3645568ddae273951d70b8eb1bc3022183d86ae841536"
     }
+  },
+  "verilator": {
+    "version": "5.052",
+    "url": "https://github.com/verilator/verilator.git",
+    "tag": "v5.052",
+    "commit": "ea338be98e1e838d3518809ce8899f85a009963c",
+    "license": "LGPL-3.0-only OR Artistic-2.0; see upstream LICENSE, LICENSES/ and the SPDX header in every source file",
+    "purpose": "Sole RTL simulator, built from source on WSL Ubuntu 24.04; the distribution package (5.020) is below cocotb's 5.036 minimum",
+    "local_changes": "none",
+    "storage": "User prefix outside the repository, for example /home/<user>/tools/verilator-v5.052; nothing is vendored or redistributed",
+    "install": {
+      "apt": "sudo apt-get install -y git help2man perl python3 make autoconf g++ flex bison ccache libfl2 libfl-dev libgoogle-perftools-dev numactl perl-doc zlib1g zlib1g-dev",
+      "clone": "git clone --branch v5.052 https://github.com/verilator/verilator.git && git -C verilator rev-parse HEAD",
+      "build": "cd verilator && unset VERILATOR_ROOT && autoconf && ./configure --prefix=<prefix> && make -j$(nproc) && make install",
+      "verify": "<prefix>/bin/verilator --version prints 'Verilator 5.052 2026-09-05 rev v5.052'; then python3 tools/build.py doctor --verilator-bin <prefix>/bin --json"
+    },
+    "runtime": "g++ 13, GNU make and perl from the same apt line; Verilator consults no license file or environment variable"
+  },
+  "cocotb": {
+    "version": "2.1.0",
+    "url": "https://pypi.org/project/cocotb/2.1.0/",
+    "source": "https://github.com/cocotb/cocotb/tree/v2.1.0",
+    "sdist_sha256": "db9761f947dedf0f264dc1e7ef632e0f0b1d0eab26a4e6bbd4ca97ee46cb6da4",
+    "license": "BSD-3-Clause; upstream LICENSE ships in the installed distribution",
+    "purpose": "Python testbench runtime for the simulator; requires Verilator 5.036 or newer",
+    "local_changes": "none",
+    "lock": "src/dv/python/requirements.txt",
+    "storage": "Ignored isolated environment under workdir/builds/python-dv-env/.venv; no package source is committed",
+    "install": {
+      "venv": "python3 -m venv workdir/builds/python-dv-env/.venv",
+      "pip": "workdir/builds/python-dv-env/.venv/bin/python -m pip install -r src/dv/python/requirements.txt"
+    }
   }
 }
