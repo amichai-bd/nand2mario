@@ -22,7 +22,8 @@ board down a serial cable.
 <a href="../tools/n2m/host/LIVE_VIEWER.md"><img src="../tools/n2m/host/assets/live-viewer-phone.jpg" width="300" alt="Phone browser showing pixels read back from the FPGA, a row of Game Boy tap buttons, and a queued/executing/retired command list beneath them"></a>
 
 *My phone, showing pixels the board returned over UART. Not a photograph of a
-monitor.*
+monitor, and not evidence that a monitor shows anything: these are framebuffer
+bytes the board sent back, read on a phone a long way from it.*
 
 The shape of it, before anything else. First commit 4 September 2026; 307
 commits and 303 merged pull requests by the 14th, across eleven active dates;
@@ -517,10 +518,13 @@ What is recorded is the elapsed shape. Eleven active dates from 4 September to
 14 September. 303 merged pull requests with a median of 12 minutes 28 seconds
 from opening to merge. A concurrency ceiling on open pull requests and active
 crewmates, set in `AGENTS.md` low enough that I could still read what came back.
-And two hard serializations that no amount of parallelism could buy past: one
-DE10-Lite, and one node-locked Questa seat. Both show up in the record as work
-waiting — reviewers reporting a licence refusal because another crewmate held the
-simulator, and board sessions queued behind each other.
+And two hard serializations that no amount of parallelism could buy past. The
+Questa licence is one node-locked seat, and the record shows work waiting on it:
+a reviewer on [PR #455](https://github.com/amichai-bd/nand2mario/pull/455) logged
+six consecutive licence refusals, exit 12, because another crewmate's simulation
+held the seat throughout. The board is the other, serialized by rule under
+`AGENTS.md` rather than by anything I can point to as a queue — there is one
+DE10-Lite, and physical access needs explicit authorization each time.
 
 Those constraints are the real economics of this arrangement, and they are not
 the ones people expect. The scarce resources were a physical board, a simulator
@@ -1340,7 +1344,9 @@ compatibility.
 
 **It loads one cartridge shape.** 32 KiB, `dmg-direct-v1`, cartridge type `0x00`,
 no mapper and no cartridge RAM. An image with any MBC cannot load at all — not
-"runs badly", cannot load. Additional mappers, CGB, SGB and link support are all
+"runs badly", cannot load — though what actually refuses it is the size check,
+which rejects anything that is not the direct-profile image size before the
+serial port opens. Additional mappers, CGB, SGB and link support are all
 deferred.
 
 **It does not claim to be a Game Boy.** The charter targets the DMG family
