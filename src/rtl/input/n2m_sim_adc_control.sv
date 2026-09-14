@@ -62,7 +62,8 @@ module n2m_sim_adc_control #(
     assign accept = cmd_valid && cmd_ready;
     assign adc_edge = clk_in_pll_c0 && !c0_sample;
     assign done = busy && clk_in_pll_locked && adc_edge && adc_count == 32'(CONVERSION_ADC_CYCLES - 1);
-    assign busy_next = accept || (busy && clk_in_pll_locked && !done);
+    // The port stays busy through the response cycle, so ready follows rsp_valid.
+    assign busy_next = accept || (busy && clk_in_pll_locked && !rsp_valid);
     assign adc_count_next = accept ? 32'd0 : (busy && adc_edge ? adc_count + 32'd1 : adc_count);
     assign rsp_sop = rsp_valid;
     assign rsp_eop = rsp_valid;
