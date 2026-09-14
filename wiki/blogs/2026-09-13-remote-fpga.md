@@ -82,7 +82,7 @@ The FPGA runs at 25 MHz and derives the emulated 4,194,304 ticks per second from
 it as an enable, so the games run at Game Boy speed rather than at whatever clock
 the board happens to have.
 
-Inside the snapshot's totals, the split is the interesting part. The
+The split is the interesting part. The
 synthesizable hardware is 73 SystemVerilog files and 8,146 lines. Verification
 code and program fixtures are 420 files and 43,608 lines — five times the RTL,
 which is the ratio I would expect and the only ratio here I would defend as
@@ -244,15 +244,6 @@ I wrote it:
 >   reads are additionally held off until that machine is idle, and an assertion
 >   covers whichever rule is chosen.
 
-The author of [PR #436](https://github.com/amichai-bd/nand2mario/pull/436) opened
-the pull request with this:
-
-> **Reviewer, read this first.** One success criterion names
-> `src/rtl/memory/n2m_oam_late_write.sv`. That module is **never instantiated in
-> the product hierarchy**, and the hazard the criterion describes is real but
-> lives in a different module. Satisfying the criterion therefore required a
-> small change to the DMA owner, which is outside this issue's stated scope.
-
 Read it on its own and it is a good criterion. It names the file, states the
 mechanism, gives two acceptable resolutions and demands an assertion either way.
 It is also a precise, checkable, satisfiable criterion about a module that is never
@@ -262,11 +253,18 @@ sites are a testbench and a verification system. An agent could have satisfied
 the letter of that criterion completely, closed the issue, and left the board
 exposed.
 
+The author of [PR #436](https://github.com/amichai-bd/nand2mario/pull/436) opened
+the pull request with this:
+
+> **Reviewer, read this first.** One success criterion names
+> `src/rtl/memory/n2m_oam_late_write.sv`. That module is **never instantiated in
+> the product hierarchy**, and the hazard the criterion describes is real but
+> lives in a different module. Satisfying the criterion therefore required a
+> small change to the DMA owner, which is outside this issue's stated scope.
+
 The real owner of the hazard is `n2m_dma_service`, whose slot counter advances
 every `clk_sys` edge ungated by `gb_tick`, so a started job can straddle a pause
-for up to 22 cycles. The author of [PR
-#436](https://github.com/amichai-bd/nand2mario/pull/436) found this, led the pull
-request with it, and fixed the actual hazard instead — threading an
+for up to 22 cycles. The same pull request fixed that hazard — threading an
 `oam_sequence_active` signal through to a peek-ready gate, with assertions on
 both rules. The pull request says plainly that this reaches outside the issue's
 stated scope. A follow-up later moved the misleading module out of the product
@@ -529,9 +527,16 @@ licence and my own reading capacity. Generating the work was not scarce.
 ## Hardware design
 
 An extra output register on the vendor RAM would silently change every consumer's
-latency, and a zero-latency array in simulation would have hidden it. The product
-is `src/rtl/`: SystemVerilog that gets synthesized, and every practice below
-follows from wrapping the primitive the fitter will actually place.
+latency, and a zero-latency array in simulation would have hidden it. That is why
+the wrapper below simulates the same primitive the fitter places.
+
+The product is `src/rtl/`: SystemVerilog modules that get synthesized. The Python
+under `src/dv/` looks similar in places and is the opposite kind of thing — it
+exists to *check* the RTL, never to be it. Every design practice below follows
+from that split. You write a register macro because a register becomes a flip
+flop; you wrap the vendor memory primitive because the primitive is what the
+fitter will actually place; you make the timebase an enable because generating a
+4.194304 MHz clock in fabric is how you lose timing closure and a day.
 
 ### The CPU
 
@@ -1099,10 +1104,9 @@ true.
 
 ## DevOps
 
-A rule that can only be obeyed by lying gets lied to. The catalogue, the tags and
-the hosted-versus-local split below are the same idea applied three times: make
-the expensive path explicit, or people will report a cheaper path that did not
-happen.
+A rule that can only be obeyed by lying gets lied to. The catalogue and the
+hosted-versus-local split below make the expensive path explicit, or people will
+report a cheaper path that did not happen.
 
 ### One builder, one tag, one immutable receipt
 
@@ -1166,8 +1170,7 @@ and two crewmates cannot have it.
 An `ordinary` subset cannot declare more than 300 seconds. Anything larger is a
 broader aggregate that `regress` refuses unless the caller passes `--broader`,
 and it records that the flag was used. Making the expensive path explicit rather
-than forbidden is what keeps the budget honest; a rule that can only be obeyed by
-lying gets lied to.
+than forbidden is what keeps the budget honest.
 
 ### Hosted versus local
 
