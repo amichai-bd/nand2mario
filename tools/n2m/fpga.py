@@ -1,4 +1,5 @@
 """Explicit MAX 10 builds with retained fit/timing evidence and checked reuse."""
+from collections import Counter
 from datetime import datetime, timezone
 import json
 import math
@@ -34,6 +35,14 @@ CLASSIFIED = {
     "292013": r"Feature LogicLock is only available with a valid subscription license\. You can purchase a software subscription to gain full access to this feature\.",
     "169177": r"\d+ pins must meet Intel FPGA requirements for 3\.3-, 3\.0-, and 2\.5-V interfaces\. For more information, refer to AN 447: Interfacing MAX 10 Devices with 3\.3/3\.0/2\.5-V LVTTL/LVCMOS I/O Systems\.",
 }
+GENERATED_DESIGN_FILES = (
+    "n2m_system_pll_altpll.v", "n2m_pixel_pll_altpll.v",
+    "altsyncram_dam2.tdf", "altsyncram_ram2.tdf", "altsyncram_jll2.tdf",
+    "decode_c7a.tdf", "mux_l1b.tdf", "altsyncram_9km2.tdf", "mux_s1b.tdf",
+    "altsyncram_pgm2.tdf", "altsyncram_bam2.tdf", "altsyncram_77m2.tdf",
+    "altsyncram_v6m2.tdf", "altsyncram_cbm2.tdf", "decode_b7a.tdf",
+    "mux_m1b.tdf", "altsyncram_lgm2.tdf",
+)
 AUDIT = """project_open design
 create_timing_netlist
 read_sdc
@@ -205,6 +214,32 @@ def diagnostics(output, explained=()):
     return classified
 
 
+def generated_design_diagnostics(output, folder):
+    """Classify the complete Quartus 25.1 v05 generated-file inventory."""
+    prefix = "Warning (12125): Using design file db/"
+    suffix = (", which is not specified as a design file for the current project, "
+              "but contains definitions for 1 design units and 1 entities in project")
+    lines = [line.strip() for line in output.splitlines() if line.strip().startswith("Warning (12125):")]
+    if not lines:
+        return []
+    expected = [prefix + name + suffix for name in GENERATED_DESIGN_FILES]
+    if Counter(lines) != Counter(expected):
+        raise ValueError("generated design diagnostic path, count, or text differs")
+    database_path = folder / "db"
+    database = database_path.resolve()
+    if (not database_path.is_dir() or database_path.is_symlink()
+            or not database.is_relative_to(folder.resolve())):
+        raise ValueError("generated design diagnostic database is not an owned attempt directory")
+    for name in GENERATED_DESIGN_FILES:
+        path = database_path / name
+        if (not path.is_file() or path.is_symlink()
+                or not path.resolve().is_relative_to(database)):
+            raise ValueError("generated design diagnostic file is not an owned database output")
+    return [{"code": "12125", "text": line,
+             "reason": "Quartus selected this retained generated v05 design unit from the owned attempt database."}
+            for line in lines]
+
+
 def execute(argv, folder, log, timeout, record, build):
     command = {"argv": [str(a) for a in argv], "cwd": str(folder), "environment": dict(ALLOCATOR_OVERRIDE)}
     record["commands"].append(command)
@@ -245,6 +280,8 @@ def execute(argv, folder, log, timeout, record, build):
         explained = fpga_adc.explained_diagnostics(text, folder, record["tools"]["adc"], record["definition"]["top"])
     if log.name == "compile.log" and "pll" in record.get("definition", {}):
         explained = [*explained, *fpga_pll.explained_diagnostics(text, folder, record["definition"]["pll"])]
+    if log.name == "compile.log" and record.get("target") == "v05-board":
+        explained = [*explained, *generated_design_diagnostics(text, folder)]
     record["classified_diagnostics"].extend(diagnostics(text, explained))
     return text
 

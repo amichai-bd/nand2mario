@@ -817,6 +817,7 @@ bounded build flow; different text under the same number fails:
 
 | Diagnostic | Meaning and limit |
 |---|---|
+| 12125, exact `v05-board` generated PLL, RAM, decode, and mux inventory under the attempt `db/` directory | Quartus 25.1 may select 17 retained generated design units although the generated QSF does not list those database files. No 12125 warning is required. Once one appears, classification requires all 17 exact basenames and messages, one-design-unit/entity counts, and regular files in the owned attempt database. A partial, duplicate, relocated, renamed, or additional 12125 warning fails. |
 | 292013, LogicLock requires a subscription | Lite does not provide this optional placement feature. The generated QSF has no LogicLock assignments; this does not excuse missing required IP/tool licenses. |
 | 169177, MAX 10 3.3/3.0/2.5-V interface advisory pointing to AN 447 | The fitter reminds the user of electrical requirements. A generated image does not verify wiring, voltage, or physical acceptance; those remain required before use. |
 | Exact `TBBmalloc` `_msize` replacement notice | The installed allocator cannot replace that CRT allocation hook. It is not a failed compilation or timing check; retain the notice and require all execution/report evidence. The [allocator override](#quartus-allocator-override) keeps this condition from aborting a launch. |
