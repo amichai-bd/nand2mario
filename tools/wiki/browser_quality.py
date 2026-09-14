@@ -165,6 +165,7 @@ def check_views(browser, base):
                 // A standalone SVG document does not expose its viewBox here,
                 // so fall back to the panel width the generator wrote.
                 const width = svg.viewBox.baseVal.width || parseFloat(svg.getAttribute('width'));
+                if (!(width > 0)) { throw new Error('no panel width to measure against'); }
                 return [...document.querySelectorAll('text')].map(e => {
                     const box = e.getBBox();
                     return [e.textContent.trim(), Math.round(box.x + box.width)];
@@ -427,7 +428,12 @@ def check_views(browser, base):
                 print(f'failure screenshot unavailable: {shot!r}', flush=True)
         raise
     finally:
-        context.tracing.stop(path=str(OUTPUT / 'quality-trace.zip'))
+        try:
+            context.tracing.stop(path=str(OUTPUT / 'quality-trace.zip'))
+        except Exception as trace:
+            # Same shape as the screenshot above: an exception raised while
+            # unwinding replaces the one being unwound.
+            print(f'trace unavailable: {trace!r}', flush=True)
         context.close()
 
 
