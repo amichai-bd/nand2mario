@@ -5,6 +5,8 @@ For every target built under both trees, the resource summary, the map and fit
 resource-utilization-by-entity hierarchy rows, the map resource usage summary
 and the post-fit simulation netlist (when a target retains one) must be
 identical. Timestamps and the attempt path are the only permitted differences.
+A PASS build with a missing report or missing netlist fails the comparison;
+each passing target records the fields that were actually compared.
 
 Usage, from PowerShell in a Windows checkout, after building every target of
 src/fpga/de10_lite/targets.json on the baseline and on the head with the same
@@ -86,26 +88,51 @@ def attempt_directory(root, tag, target):
     return (root / record["attempt_result"]).parent, record, None
 
 
-def identity(folder, record):
-    """Every comparable fact of one build; absent reports compare as None.
+REQUIRED_REPORTS = ("design.fit.summary", "design.map.rpt", "design.fit.rpt")
+NETLIST_SOURCES = ("src/rtl/common/n2m_intel_ram.sv", "src/rtl/input/n2m_adc_backend.sv")
 
+
+def needs_netlist(definition):
+    """The same rule as tools/n2m/fpga.py: PLL, Intel RAM or ADC targets retain design.vo."""
+    return "pll" in definition or any(source in definition.get("sources", []) for source in NETLIST_SOURCES)
+
+
+def identity(folder, record, definition):
+    """Every comparable fact of one build, plus the list of fields actually compared.
+
+    A PASS record must have every required report, and design.vo when the
+    target retains one; a missing file is a ValueError, never a silent None.
     The *-invalid targets fail by design, so a FAIL record contributes its
     error text and whatever reports Quartus wrote before stopping.
     """
     output = folder / "output"
+    passing = record["status"] == "PASS"
     result = {"status": record["status"],
               "error": re.sub(r"attempts[\\/][0-9a-f]+", "attempts/<id>", record.get("error", "")) or None}
+    compared = ["status", "error"]
+    if passing:
+        for name in REQUIRED_REPORTS:
+            if not (output / name).is_file():
+                raise ValueError(f"missing report {name}")
     summary = output / "design.fit.summary"
     result["fit_summary"] = summary_rows(summary.read_text(encoding="utf-8")) if summary.is_file() else None
+    if result["fit_summary"] is not None:
+        compared.append("fit_summary")
     reports = {}
     for key, (report, title) in SECTIONS.items():
         if report not in reports:
             path = output / report
             reports[report] = path.read_text(encoding="utf-8", errors="replace") if path.is_file() else None
         result[key] = table_rows(reports[report], title) if reports[report] is not None else None
+        if result[key] is not None:
+            compared.append(key)
     netlist = folder / NETLIST
+    if passing and needs_netlist(definition) and not netlist.is_file():
+        raise ValueError(f"missing post-fit netlist {NETLIST}")
     result["netlist_sha256"] = netlist_digest(netlist) if netlist.is_file() else None
-    return result
+    if result["netlist_sha256"] is not None:
+        compared.append("netlist_sha256")
+    return result, compared
 
 
 def first_difference(baseline, head):
@@ -121,26 +148,33 @@ def first_difference(baseline, head):
 
 
 def compare(baseline_root, baseline_tag, head_root, head_tag):
-    targets = sorted(json.loads((head_root / REGISTRY).read_text(encoding="utf-8"))["targets"])
+    definitions = json.loads((head_root / REGISTRY).read_text(encoding="utf-8"))["targets"]
     report = {"baseline": {"root": str(baseline_root), "tag": baseline_tag},
               "head": {"root": str(head_root), "tag": head_tag}, "targets": {}, "status": "PASS"}
-    for target in targets:
+    for target in sorted(definitions):
         entry = {"status": "PASS"}
-        sides = {}
+        sides, compared = {}, {}
         for side, root, tag in (("baseline", baseline_root, baseline_tag), ("head", head_root, head_tag)):
             folder, record, problem = attempt_directory(root, tag, target)
             if problem:
                 entry.update(status="MISSING", reason=f"{side}: {problem}")
                 break
-            sides[side] = identity(folder, record)
+            try:
+                sides[side], compared[side] = identity(folder, record, definitions[target])
+            except ValueError as error:
+                entry.update(status="FAIL", reason=f"{side}: {error}")
+                break
             entry[side] = {"attempt": str(folder.relative_to(root)), "build_status": record["status"],
                            "netlist_sha256": sides[side]["netlist_sha256"]}
         if entry["status"] == "PASS":
+            entry["compared_fields"] = compared["head"]
             key, detail = first_difference(sides["baseline"], sides["head"])
             if key:
                 entry.update(status="FAIL", field=key, detail=detail)
             elif sides["head"]["status"] == "FAIL":
                 entry["note"] = "both builds fail identically (deliberate invalid target)"
+            elif len(compared["head"]) < 2 + len(SECTIONS) + 1:
+                entry.update(status="FAIL", reason="incomplete comparison: " + ", ".join(compared["head"]))
         if entry["status"] != "PASS":
             report["status"] = "FAIL"
         report["targets"][target] = entry
@@ -159,6 +193,8 @@ def main(argv=None):
         args.json.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     for target, entry in report["targets"].items():
         detail = entry.get("reason") or (f"{entry.get('field')}: {entry.get('detail')}" if entry["status"] == "FAIL" else "")
+        if entry["status"] == "PASS":
+            detail = f"compared={len(entry['compared_fields'])} fields" + (" (netlist)" if "netlist_sha256" in entry["compared_fields"] else "")
         print(f"{entry['status']:8} {target} {detail}".rstrip())
     print(f"{report['status']}: netlist identity over {len(report['targets'])} targets")
     return 0 if report["status"] == "PASS" else 1

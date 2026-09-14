@@ -604,6 +604,7 @@ units:
   tools/n2m/tests/test_vector_source.py: {kind: unit, level: 0, labels: [builder, cpu], duration_seconds: 0.08}
   tools/n2m/tests/test_verilator.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 1.44}
   tools/sim/test_tile_pixel.py: {kind: unit, level: 0, labels: [builder, display], duration_seconds: 0.17}
+  tools/test_fpga_netlist_compare.py: {kind: unit, level: 0, labels: [fpga], duration_seconds: null}
   tools/wiki/test_check.py: {kind: unit, level: 0, labels: [wiki], duration_seconds: 0.07}
   tools/wiki/test_quality_surfaces.py: {kind: unit, level: 0, labels: [wiki], duration_seconds: 0.30}
   tools/wiki/test_refresh_statistics.py: {kind: unit, level: 0, labels: [wiki], duration_seconds: 0.10}

@@ -58,11 +58,12 @@ or load writes and prevent reads until their data is initialized. Default and
 synthesized memory has `power_up_uninitialized=TRUE` and `init_file=UNUSED`;
 the double fills every word from `$urandom` at time zero. The explicit
 [simulation preload](../../dv/preload/SPEC.md) may select an initialization
-file through `SIM_INIT_FILE`; synthesis ignores it. The double reads a `.mif`
+file through `SIM_INIT_FILE`; synthesis ignores it. The double supports `.mif`
 (the `DEPTH`/`WIDTH`/radix header and `address : value;` or
 `[first..last] : value;` rows written by `tools/n2m/preload.py`) through its own
-parser and any other name through `$readmemh`, 1 ps after time zero so a
-testbench may write the file at time zero. A missing file, a header that
+parser; any other name is read as plain `$readmemh` text, one hex word per
+line, which is not the Intel HEX record format of a Quartus `.hex` file. Files
+are read 1 ps after time zero so a testbench may write them at time zero. A missing file, a header that
 disagrees with the instance shape or a malformed row is a named fatal failure.
 Product owners still initialize through real writes; reset does not reload any
 array.
