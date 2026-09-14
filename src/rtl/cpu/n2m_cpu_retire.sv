@@ -22,6 +22,10 @@ module n2m_cpu_retire (
     logic [63:0] sequence_number;
     logic [63:0] sequence_next;
 
+    // Lint waiver: CPU testbenches force retirement_b_next, retirement and
+    // retirement_valid for fault injection; Verilator reports the force as
+    // a second driver. The product logic has one driver each.
+    /* verilator lint_off MULTIDRIVEN */
     always_comb begin
         capture_t4_next = capture_t4;
         retirement_b_next = retirement;
@@ -82,6 +86,7 @@ module n2m_cpu_retire (
     `DFF_ARST_VAL(pending_t4, pending_t4_next, clk_sys, reset_sys, 1'b0)
     `DFF_ARST_VAL(retirement_valid, retirement_valid_next, clk_sys, reset_sys, 1'b0)
     `DFF_ARST_VAL(sequence_number, sequence_next, clk_sys, reset_sys, 64'b0)
+    /* verilator lint_on MULTIDRIVEN */
 
     `N2M_ASSERT(CPU_RETIRE_SPACING, clk_sys, reset_sys || core_reset,
         !(capture.valid && pending_t4))

@@ -1,6 +1,10 @@
 `timescale 1ns/1ps
 `default_nettype none
 
+// Lint waiver: integer bookkeeping and file handles are tested as booleans
+// and against narrow DUT fields; the width lint on those idioms is a false positive.
+/* verilator lint_off WIDTHEXPAND */
+/* verilator lint_off WIDTHTRUNC */
 module tb_cpu_vectors;
     logic clk_sys;
     logic reset_sys;
@@ -119,7 +123,7 @@ module tb_cpu_vectors;
         actual_record=retirement;
         context_report();
         for (offset=0; offset<48; offset=offset+1) begin
-            if (actual_record[8*offset +: 8] !== expected_record[8*offset +: 8]) begin
+            if (actual_record[8*offset +: 8] != expected_record[8*offset +: 8]) begin
                 $display("CPU_VECTOR_FIRST_DIFFERENCE field=%s byte=%0d expected=%02h actual=%02h",
                     record_field(offset),offset,expected_record[8*offset +: 8],actual_record[8*offset +: 8]);
                 break;
@@ -147,14 +151,14 @@ module tb_cpu_vectors;
             expected_byte = expected_cycle[23:16];
             $fdisplay(bus_trace,"%0d,%0d,%07h,%0d,%04h,%0d,%02h",number,dot_before+1,
                 expected_cycle,bus_commit,address,write_enable,write_enable ? write_data : read_data);
-            if (bus_commit !== expected_commit || (expected_commit &&
-                (write_enable !== expected_write ||
-                 (expected_cycle[26] && address !== expected_address) ||
-                 (expected_cycle[27] && (write_enable ? write_data : read_data) !== expected_byte)))) begin
+            if (bus_commit != expected_commit || (expected_commit &&
+                (write_enable != expected_write ||
+                 (expected_cycle[26] && address != expected_address) ||
+                 (expected_cycle[27] && (write_enable ? write_data : read_data) != expected_byte)))) begin
                 $display("CPU_VECTOR_FIRST_BUS_DIFFERENCE field=%s M=%0d",
-                    bus_commit !== expected_commit ? "commit" :
-                    write_enable !== expected_write ? "write_enable" :
-                    expected_cycle[26] && address !== expected_address ? "address" : "data",mcycle);
+                    bus_commit != expected_commit ? "commit" :
+                    write_enable != expected_write ? "write_enable" :
+                    expected_cycle[26] && address != expected_address ? "address" : "data",mcycle);
                 $fatal(1,"CPU_VECTOR_BUS case=%0d opcode=%03h M=%0d expected=%07h actual=%0d/%04h/%0d/%02h",
                     number,opcode_number,mcycle,expected_cycle,bus_commit,address,write_enable,
                     write_enable ? write_data : read_data);
@@ -181,7 +185,7 @@ module tb_cpu_vectors;
             if (expected_fault && number==0) expected_record[240]=~expected_record[240];
             $fdisplay(trace,"%0d,%03h,%0d,%096h,%096h",number,opcode_number,
                 vector_case[215 +: 10],expected_record,retirement);
-            if (retirement !== expected_record) begin
+            if (retirement != expected_record) begin
                 first_state_difference();
                 $fatal(1,"CPU_VECTOR_STATE case=%0d opcode=%03h expected=%096h actual=%096h",
                     number,opcode_number,expected_record,retirement);
@@ -189,7 +193,7 @@ module tb_cpu_vectors;
             for (item=0; item<final_ram_count; item=item+1) begin
                 expected_address=vector_case[417+24*item +: 16];
                 expected_byte=vector_case[433+24*item +: 8];
-                if (memory[expected_address] !== expected_byte)
+                if (memory[expected_address] != expected_byte)
                     $fatal(1,"CPU_VECTOR_RAM case=%0d address=%04h expected=%02h actual=%02h",
                         number,expected_address,expected_byte,memory[expected_address]);
             end

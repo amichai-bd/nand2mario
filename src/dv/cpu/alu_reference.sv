@@ -2,6 +2,10 @@
 
 // Independent integer reference from the CPU owner instruction rules.
 // It does not import product enum values, decode, or ALU implementation.
+// Lint waiver: flag integers take one-bit comparison results by design; the
+// width lint on those assignments is a false positive.
+/* verilator lint_off WIDTHEXPAND */
+/* verilator lint_off WIDTHTRUNC */
 package cpu_alu_reference;
     function automatic logic [15:0] calculate(
         input integer op, a, b, f, bit_number

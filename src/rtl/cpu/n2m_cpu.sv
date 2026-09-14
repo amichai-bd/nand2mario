@@ -45,7 +45,12 @@ module n2m_cpu (
 );
     n2m_cpu_pkg::cpu_execute_request_t execute_request;
     n2m_cpu_pkg::cpu_execute_result_t execute_result;
+    // Lint waiver: Verilator sees a false combinational loop through the
+    // control block that writes both execute_request and bus_plan; the
+    // fields do not depend on each other and the runtime converges.
+    /* verilator lint_off UNOPTFLAT */
     n2m_cpu_pkg::cpu_bus_plan_t bus_plan;
+    /* verilator lint_on UNOPTFLAT */
     n2m_cpu_pkg::cpu_retire_capture_t retire_capture;
     n2m_cpu_pkg::cpu_stop_action_t stop_action;
     logic stop_padding;

@@ -1,6 +1,9 @@
 `timescale 1ns/1ps
 `default_nettype none
 
+// Lint waiver: integer bookkeeping and file handles are tested as booleans
+// and against narrow DUT fields; the width lint on those idioms is a false positive.
+/* verilator lint_off WIDTHTRUNC */
 module tb_cpu_halt_lock;
     logic clk_sys;
     logic reset_sys;
@@ -77,10 +80,10 @@ module tb_cpu_halt_lock;
             $fatal(1,"CPU_POWER_EARLY_COMMIT");
         if (gb_tick && dot_before[1:0]==3) begin
             if (bus_index<bus_count) begin
-                if (bus_commit!==(kinds[bus_index]!=0) || (kinds[bus_index]!=0 &&
-                    (access_kind!==kinds[bus_index] || address!==addresses[bus_index] ||
-                    write_enable!==writes[bus_index] ||
-                    (write_enable ? write_data : read_data)!==bytes_expected[bus_index])))
+                if (bus_commit!=(kinds[bus_index]!=0) || (kinds[bus_index]!=0 &&
+                    (access_kind!=kinds[bus_index] || address!=addresses[bus_index] ||
+                    write_enable!=writes[bus_index] ||
+                    (write_enable ? write_data : read_data)!=bytes_expected[bus_index])))
                     $fatal(1,"CPU_POWER_BUS case=%0d dot=%0d address=%04h data=%02h",
                         scenario,dot_before+1,address,write_enable ? write_data : read_data);
                 bus_index=bus_index+1;
@@ -110,7 +113,7 @@ module tb_cpu_halt_lock;
             if (scenario==0 && event_index==1) expected[240 +: 8]=8'h3e;
             if (recovery) begin expected[208 +: 24]=0; expected[352 +: 8]=0; end
             $fdisplay(trace,"event,%0d,%0d,%0d,%096h,%096h",scenario,recovery,event_index,expected,retirement);
-            if (retirement!==expected)
+            if (retirement!=expected)
                 $fatal(1,"CPU_POWER_EVENT case=%0d event=%0d expected=%096h actual=%096h",
                     scenario,event_index,expected,retirement);
             event_index=event_index+1;
@@ -176,7 +179,7 @@ module tb_cpu_halt_lock;
             if (scenario<2) begin
                 if (event_index!=2 || locked || write_count!=(scenario==1 ? 2 : 0))
                     $fatal(1,"CPU_POWER_BUG_FINAL case=%0d",scenario);
-                if (scenario==1 && (memory[16'hfffc]!==1 || memory[16'hfffd]!==1))
+                if (scenario==1 && (memory[16'hfffc]!=1 || memory[16'hfffd]!=1))
                     $fatal(1,"CPU_POWER_RST_RETURN");
             end else begin
                 if (!locked || event_index!=0 || write_count!=0) $fatal(1,"CPU_POWER_LOCK_FINAL");

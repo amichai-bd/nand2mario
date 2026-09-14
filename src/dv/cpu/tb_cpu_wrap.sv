@@ -2,6 +2,9 @@
 `default_nettype none
 
 // Original flat-memory CPU boundary examples, not an IF/IE register model.
+// Lint waiver: integer bookkeeping and file handles are tested as booleans
+// and against narrow DUT fields; the width lint on those idioms is a false positive.
+/* verilator lint_off WIDTHTRUNC */
 module tb_cpu_wrap;
     logic clk_sys;
     logic reset_sys;
@@ -77,9 +80,9 @@ module tb_cpu_wrap;
         if (!gb_tick && bus_commit) $fatal(1,"CPU_WRAP_PAUSE");
         if (gb_tick && dot_before[1:0]==3) begin
             cycle=int'(dot_before)/4;
-            if (cycle>=cycles_expected || bus_commit!==(kinds[cycle]!=0) ||
-                    (kinds[cycle]!=0 && (access_kind!==kinds[cycle] || address!==addresses[cycle] ||
-                    write_enable!==writes_expected[cycle] || (write_enable ? write_data : read_data)!==bytes_expected[cycle])))
+            if (cycle>=cycles_expected || bus_commit!=(kinds[cycle]!=0) ||
+                    (kinds[cycle]!=0 && (access_kind!=kinds[cycle] || address!=addresses[cycle] ||
+                    write_enable!=writes_expected[cycle] || (write_enable ? write_data : read_data)!=bytes_expected[cycle])))
                 $fatal(1,"CPU_WRAP_BUS case=%0d cycle=%0d expected=%04h actual=%04h",scenario,cycle,addresses[cycle],address);
             $fdisplay(trace,"%0d,%0d,%0d,%04h,%0d,%02h,%0d",scenario,dot_before+1,access_kind,address,
                 write_enable,write_enable ? write_data : read_data,bus_commit);
@@ -101,7 +104,7 @@ module tb_cpu_wrap;
             if (scenario==0 && event_index>=7) begin expected[288 +: 8]='h56; expected[296 +: 8]=1; end
             if (event_index==events_expected-1) expected[336 +: 8]=1;
             $fdisplay(records,"%0d,%0d,%096h,%096h",scenario,event_index,expected,retirement);
-            if (retirement!==expected) $fatal(1,"CPU_WRAP_RECORD case=%0d event=%0d expected=%096h actual=%096h",scenario,event_index,expected,retirement);
+            if (retirement!=expected) $fatal(1,"CPU_WRAP_RECORD case=%0d event=%0d expected=%096h actual=%096h",scenario,event_index,expected,retirement);
             event_index=event_index+1;
         end
     endtask

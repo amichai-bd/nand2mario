@@ -1,6 +1,9 @@
 `timescale 1ns/1ps
 `default_nettype none
 
+// Lint waiver: integer bookkeeping and file handles are tested as booleans
+// and against narrow DUT fields; the width lint on those idioms is a false positive.
+/* verilator lint_off WIDTHTRUNC */
 module tb_cpu_retire;
     logic clk_sys;
     logic reset_sys;
@@ -152,7 +155,7 @@ module tb_cpu_retire;
             if (corrupt && event_number == 1) force dut.retirement.opcode = 24'h000001;
             #1;
             $fdisplay(trace, "%0d,%096h,%096h", event_number, expected, retirement);
-            if (!retirement_valid || retirement !== expected)
+            if (!retirement_valid || retirement != expected)
                 $fatal(1, "CPU_RETIRE_MISMATCH case=%0d expected=%096h actual=%096h", event_number, expected, retirement);
             sequence_expected = sequence_expected + 1;
             checks = checks + 1;
@@ -179,7 +182,7 @@ module tb_cpu_retire;
         edge_cycle();
         event_valid = 0;
         edge_cycle();
-        if (!retirement_valid || retirement !== expected) $fatal(1, "CPU_RETIRE_EPOCH_RESET");
+        if (!retirement_valid || retirement != expected) $fatal(1, "CPU_RETIRE_EPOCH_RESET");
         checks = checks + 1;
         $fclose(trace);
         $display("PASS CPU retirement events=6 lengths=1,2,3 irq_zero=1 reset_cancel=1");
