@@ -837,7 +837,7 @@ def games_gallery():
             body.append(f'<text class="h" x="{PAD + column * column_w}" '
                         f'y="{note_y + index * LINE}">{esc(line)}</text>')
 
-    strip = ('The nine games that run on the DE10-Lite · '
+    strip = ('Games running on the DE10-Lite · '
              'every frame read back from the board over UART')
     # Three rows: the footer is one line per claim, and each fits the panel
     # width. The image travels out of the page, so why the games are here rides
@@ -1017,8 +1017,8 @@ def documents():
             'flight, and the hard drop that clears the bottom row, every frame read back from the '
             'board over UART',
             'Stackdrop · the other image the repository builds · frames captured on the DE10-Lite over UART',
-            'Frames from one src/dv/stackdrop/board_play.py session; boot-and-play evidence, not a '
-            'correctness proof, which src/dv/stackdrop/ owns in simulation.',
+            'Frames from one board_play.py session; boot-and-play evidence. '
+            'src/dv/stackdrop/ owns the proof.',
             STACKDROP_SCENES),
         **{name: homebrew_panel(name) for name in HOMEBREW_PANELS},
         GALLERY: games_gallery(),

@@ -11,7 +11,7 @@
 <image class="f2" opacity="1" width="160" height="144" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKAAAACQAgMAAADy24gTAAAADFBMVEX////Q0NBoaGgYGBhxYKq9AAAByUlEQVR42u2YS46DMAyGI7GtlFXXc4VI7CqkXKLH7CFyJEuzjcTkx2WYkgS7gr5G2Co08Cm2k2AcjHmgeOqjDZ6o60NPqUUVMAERGEE6aA00NuD2d2BMAk0vgZ4YjHCCFkDT2dBH7hHmq8GM4OAjejQLIG6PMVdBYnBSBUiLIEfNMzOczWeIc57wE8HOuQQ3txdtnwkBPIQZeOjy/lrnE6YAHRV6LJkGqPKRo1aYLg7FneDxrAS/4l9w8lYAi32vAtWmF8Dy8BRMq8HjGTrd5lYxGOgEcutDwe3H8RYcx1QER3//Bbj9OO7gDr4TqE7NT83hK01v9762qV5LlXTwkmlUFIMYGTQq0AaAyXSQghmMt0bs8epiEEEfEPWs3nvOgKvBT1iP2/toU32LuRFB5+ww3TJIjUkFMYlgmwrhNh1FsEsgjgofG52PNrDu+fH98iN2tJ6yTOF/NwA+ctprhj1XlntOl7GFf3eAeBR8WrxZfpyDxil7rILzYLAhBfjw/OgjFGb5XAVPFygC4XN1UeRgZZmtACum82C2f2bw5srA8tae38AakJSmW6cC3RWRTZuCj8WvM6YQ9fJXmq3A4hSuAl/o4y4vkx8un6JGh7vJ9QAAAABJRU5ErkJggg=="/>
 </g>
 <rect x="15.5" y="45.5" width="481" height="433" fill="none" stroke="#303a48"/>
-<text class="h" x="536" y="66">JOYP buttons (UART INPUT mask): every frame is captured after release</text>
+<text class="h" x="536" y="66">JOYP buttons (UART INPUT mask)</text>
 <g><rect x="536" y="84" width="108" height="26" rx="13" fill="#171c24" stroke="#303a48"/><text x="590" y="101" text-anchor="middle">Right</text></g>
 <g><rect x="536" y="118" width="108" height="26" rx="13" fill="#171c24" stroke="#303a48"/><text x="590" y="135" text-anchor="middle">Left</text></g>
 <g><rect x="536" y="152" width="108" height="26" rx="13" fill="#171c24" stroke="#303a48"/><text x="590" y="169" text-anchor="middle">Up</text></g>
@@ -26,5 +26,5 @@
 <text class="l0" x="16" y="500" opacity="0">Title, no input: Start drops the first piece</text>
 <text class="l1" x="16" y="500" opacity="0">The well filling; the L is still in flight, score 0000</text>
 <text class="l2" x="16" y="500" opacity="1">The hard drop completes the bottom row: it clears, score 0100</text>
-<text class="h" x="16" y="526">Frames from one src/dv/stackdrop/board_play.py session; boot-and-play evidence, not a correctness proof, which src/dv/stackdrop/ owns in simulation.</text>
+<text class="h" x="16" y="526">Frames from one board_play.py session; boot-and-play evidence. src/dv/stackdrop/ owns the proof.</text>
 </svg>

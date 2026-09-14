@@ -106,7 +106,6 @@
   "driver": "src/dv/stackdrop/board_play.py",
   "hold_frames": 3,
   "image_sha256": "f2a9b159743a202541dd17dedaa99ffcc7ebf6d9d7012b28f4701a0ac9aed927",
-  "input_label": "JOYP buttons (UART INPUT mask): every frame is captured after release",
   "inputs": [
    {
     "dot": 8461643,

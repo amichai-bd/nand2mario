@@ -230,7 +230,6 @@ def stackdrop_session(folder):
         command='python src/dv/stackdrop/board_play.py --package '
                 'workdir/builds/<tag>/sw/build/stackdrop/runs/<attempt>/result.json',
         image_sha256=image, build_commit=load['package']['build_commit'],
-        input_label='JOYP buttons (UART INPUT mask): every frame is captured after release',
         checked='the built SHA-256 and a complete 32768-byte readback before the run, and every '
                 'retained frame decoded by src/dv/stackdrop/screen.py; boot-and-play evidence, '
                 'not a correctness proof',

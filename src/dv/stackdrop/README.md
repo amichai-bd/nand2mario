@@ -120,8 +120,9 @@ The same script against the **current** restyled image, ROM SHA-256
 commit `8387c622`, fingerprint
 `e6e16e924d953f6e2c3a1858638657af2e3789b312489177b3e2bd5545101b54`. This is the
 first hardware run of `screen.decode` as the restyle rewrote it: it accepted
-every one of the sixteen frames and rejected no tile. `board_play.py --package` loaded the image and read back all 32768 bytes
-before playing. The session began and ended PAUSED with `INPUT` 0,
+every one of the sixteen frames and rejected no tile. `board_play.py --package`
+loaded the image and read back all 32768 bytes before playing. The session began
+and ended PAUSED with `INPUT` 0,
 `INPUT_SOURCE` 0, `INPUT_EFFECTIVE` 0 and session certain; `RESET` opened
 snapshot epoch 18, and whole-process wall time was 40.1 s including the load.
 A second run of the same script returned frame-for-frame identical CRC32 values.

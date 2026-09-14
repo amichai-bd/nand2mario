@@ -125,7 +125,7 @@ text. No required statement is lost with them: the project overview says in
 ordinary prose what the pictures are and how many of the pinned images play,
 and per-game attribution belongs to the library page at any width.
 
-Weight: 39152 bytes for nine games and 27 frames, encoded as indexed-PNG data
+Weight: 39122 bytes for nine games and 27 frames, encoded as indexed-PNG data
 URIs under the same [bounded exception](#frame-archives-and-encoding) the board
 loops use. The three loops the landing page already carried are 74397, 134668
 and 140291 bytes, so the gallery adds about a tenth of what the page held and
