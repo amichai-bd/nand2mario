@@ -251,6 +251,42 @@ class HostTests(unittest.TestCase):
         self.assertEqual((endpoint.dot, endpoint.state), (0, abi.STATE_PAUSED))
         self.assertNotIn(image[:20].hex(), json.dumps(records))
 
+    def test_load_progress_counts_only_completed_upload_and_readback_bytes(self):
+        endpoint = Endpoint()
+        events = []
+        image = self.image()
+        Client(endpoint).load(image, progress=events.append)
+        upload = [event for event in events if event['stage'] == 'upload']
+        readback = [event for event in events if event['stage'] == 'readback']
+        self.assertEqual(upload[0], {'stage': 'upload', 'completed': 0, 'total': len(image)})
+        self.assertEqual(upload[-1], {'stage': 'upload', 'completed': len(image), 'total': len(image)})
+        self.assertEqual(readback[0], {'stage': 'readback', 'completed': 0, 'total': len(image)})
+        self.assertEqual(readback[-1], {'stage': 'readback', 'completed': len(image), 'total': len(image)})
+        self.assertEqual([event['completed'] for event in upload],
+                         [0] + [min(offset + abi.WIRE_MAX_PAYLOAD - abi.OFFSET_BYTES, len(image))
+                                for offset in range(0, len(image),
+                                                    abi.WIRE_MAX_PAYLOAD - abi.OFFSET_BYTES)])
+        self.assertEqual([event['completed'] for event in readback],
+                         [0] + list(range(abi.WIRE_MAX_PAYLOAD, len(image) + 1,
+                                          abi.WIRE_MAX_PAYLOAD)))
+
+    def test_read_progress_reports_the_final_partial_chunk_and_is_optional(self):
+        endpoint = Endpoint()
+        client = Client(endpoint)
+        events = []
+        self.assertEqual(client.read_storage('READ_FRAME', 300, progress=events.append,
+                                             stage='preview'), endpoint.frame[:300])
+        self.assertEqual(events, [
+            {'stage': 'preview', 'completed': 0, 'total': 300},
+            {'stage': 'preview', 'completed': 256, 'total': 300},
+            {'stage': 'preview', 'completed': 300, 'total': 300},
+        ])
+        before = len(endpoint.requests)
+        self.assertEqual(client.read_storage('READ_FRAME', 300), endpoint.frame[:300])
+        self.assertEqual(len(endpoint.requests) - before, 2)
+        with self.assertRaisesRegex(ValueError, 'both callback and stage'):
+            client.read_storage('READ_FRAME', 1, progress=events.append)
+
     def test_peek_reads_every_store_in_chunks_and_leaves_a_snapshot_held(self):
         endpoint = Endpoint()
         client = Client(endpoint)
