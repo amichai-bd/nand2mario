@@ -17,6 +17,24 @@ commercial ROM, copied game assets, or a custom game-specific hardware path.
 - [Agent rules](AGENTS.md)
 - [Build system](wiki/tools/n2m/SPEC.md)
 
+## Games on the board
+
+The gallery below shows eight Game Boy games running on this hardware:
+Springtrail, one of the two games this repository builds, and seven freely
+licensed games written by other people and pinned by digest. Each tile loops
+framebuffers the DE10-Lite returned over UART during a recorded session — not
+emulator screenshots, and not photographs of a monitor.
+
+![Eight games running on the DE10-Lite, each tile a short loop of frames captured off the board](wiki/showcase/games-gallery.svg)
+
+Eight tiles are not everything that runs. [Stackdrop](wiki/src/sw/stackdrop/SPEC.md),
+the other game built here, plays on the board; no capture archive exists to draw
+it from. Two more pinned images, Wyrmhole and Rex Run, load and execute but
+never turn the LCD on, so seven of the nine pinned games play.
+[Other people's games on this Game Boy](wiki/showcase/homebrew-library.md) names
+each game's author, licence and pinned artifact, records the session every frame
+came from, and [explains the two that never draw](wiki/showcase/homebrew-library.md#wyrmhole-and-rex-run-never-turn-the-lcd-on).
+
 ## In action
 
 Three short loops show what using the repository looks like. Each is a

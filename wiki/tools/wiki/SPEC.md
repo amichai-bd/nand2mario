@@ -241,7 +241,7 @@ and keyboard-scrollable chart regions.
 ## README showcases
 
 The manual `tools/wiki/showcase.py` generator writes the animated SVGs under
-[`wiki/showcase/`](../../showcase/README.md): the three the project overview
+[`wiki/showcase/`](../../showcase/README.md): the four the project overview
 embeds, the three terminal sessions the lesson decks embed as images, and the
 board loops the showcase page itself embeds. Each is self-contained: CSS
 keyframes gated behind `prefers-reduced-motion: no-preference`, no script, and
@@ -259,12 +259,16 @@ Ingest measures that encoding against the rect runs `showcase.paths()` draws and
 records both representation lengths (the PNG measure includes its base64 data
 URI). No separate packed-frame or decoded-PNG file is committed. The archive is
 the authoritative generation input; the generated SVG embeds derived copies of
-its encoded frame payloads. Such a loop is the one exception to `no external reference`: it embeds each
-frame as an inline `data:image/png;base64,` URI, which fetches nothing. The
-exception is bounded on both sides -- the quality tests allow `href=` only for a
-loop in `showcase.BOARD_LOOPS` and only when every `href=` in the file is such a
-URI, and `site.py` accepts that data URL only from a `wiki/showcase/*.svg`
-source, so a page that inlines an image still fails.
+its encoded frame payloads. Such a loop, and the landing-page games gallery that
+redraws three frames from each archive, are the exception to
+`no external reference`: they embed each frame as an inline
+`data:image/png;base64,` URI, which fetches nothing. The exception is bounded on
+both sides -- the quality tests allow `href=` only for a surface in
+`showcase.BOARD_FRAME_SURFACES` and only when every `href=` in the file is such
+a URI, and `site.py` accepts that data URL only from a `wiki/showcase/*.svg`
+source, so a page that inlines an image still fails. A surface named in
+`showcase.BOARD_ARCHIVE_SURFACES` owns one archive; the gallery draws from
+theirs and adds none.
 
 
 The [contributor image-storage guide](../../showcase/README.md#choose-a-source-and-regenerate)

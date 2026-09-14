@@ -182,6 +182,46 @@ def check_views(browser, base):
             expect(page.locator('svg').first).to_contain_text('not emulator screenshots')
             page.close()
 
+        # The landing page gallery: one tile per game, each flipping its three
+        # archived frames on its own phase, and a reduced-motion still that is
+        # one frame per game with nothing stacked behind it.
+        page = new_page()
+        page.goto(base + '/files/wiki/showcase/games-gallery.svg')
+        gallery = page.locator('svg').first
+        expected = sum(len(chosen) for _, _, chosen in showcase.GALLERY_GAMES)
+        expect(page.locator('image')).to_have_count(expected)
+        assert page.evaluate("""async () => {
+            const sources = [...document.querySelectorAll('image')].map(e => e.getAttribute('href'));
+            const sizes = await Promise.all(sources.map(src => new Promise(resolve => {
+                const probe = new Image();
+                probe.onload = () => resolve(probe.naturalWidth + 'x' + probe.naturalHeight);
+                probe.onerror = () => resolve('error');
+                probe.src = src;
+            })));
+            return sizes.every(size => size === '160x144');
+        }"""), 'the gallery did not decode every frame at 160x144'
+        phases = page.evaluate("""() => [...document.querySelectorAll('image')].map(
+            e => getComputedStyle(e).animationDelay)""")
+        assert len(set(phases)) == len(showcase.GALLERY_GAMES), 'gallery tiles share a phase'
+        page.emulate_media(reduced_motion='reduce')
+        assert page.evaluate("""() => [...document.querySelectorAll('image')].every(
+            e => getComputedStyle(e).animationName === 'none')"""), 'the gallery animates under reduced motion'
+        assert page.evaluate("""() => [...document.querySelectorAll('image')].filter(
+            e => getComputedStyle(e).opacity === '1').length""") == len(showcase.GALLERY_GAMES), (
+            'the gallery still is not one frame a game')
+        expect(gallery).to_contain_text('not emulator screenshots')
+        expect(gallery).to_contain_text('Wyrmhole and Rex Run are pinned and')
+        # Captions are laid out at a fixed monospace advance; measure that none
+        # of them runs past the panel rather than trusting the estimate.
+        assert page.evaluate("""() => {
+            const svg = document.querySelector('svg');
+            const edge = svg.getBoundingClientRect().right - 8;
+            return [...svg.querySelectorAll('text')].every(
+                t => t.getBoundingClientRect().right <= edge);
+        }"""), 'a gallery caption runs past the panel'
+        page.screenshot(path=str(OUTPUT / 'quality-showcase-games-gallery.png'))
+        page.close()
+
         # The terminal loops (README and lesson decks) share one block cursor
         # (.cur) that walks the keystrokes; in the still it must be the only
         # caret, resting on the empty prompt row below the last line (no
@@ -359,7 +399,7 @@ def check_views(browser, base):
             page.close()
         assert not errors, '\n'.join(errors)
         return {'status': 'passed', 'browser': browser.version, 'viewports': [1440, 390],
-                'checks': ['slide fragments', 'malformed fragments', 'keyboard', 'print visibility and contrast', 'animated diagram motion, completeness and print contrast', 'README showcase motion and reduced-motion still', 'board-captured loops decode and hold their final frame', 'homebrew panels decode and stay still', 'lesson terminal sessions and deck embeds', 'figures fit the text column', 'figure paragraph shapes', 'chart scrolling']}
+                'checks': ['slide fragments', 'malformed fragments', 'keyboard', 'print visibility and contrast', 'animated diagram motion, completeness and print contrast', 'README showcase motion and reduced-motion still', 'board-captured loops decode and hold their final frame', 'homebrew panels decode and stay still', 'games gallery phases, decodes and holds one frame a game', 'lesson terminal sessions and deck embeds', 'figures fit the text column', 'figure paragraph shapes', 'chart scrolling']}
     except BaseException:
         if page is not None and not page.is_closed():
             page.screenshot(path=str(OUTPUT / 'failure.png'), full_page=True)

@@ -1,7 +1,7 @@
 # Showcases
 
-Eight animated SVGs show what using the repository looks like. Three are the
-README showcases the [project overview](../../README.md) embeds: a build and
+Nine animated SVGs show what using the repository looks like. Four are embedded
+by the [project overview](../../README.md): the games gallery below, a build and
 test run, a board session over UART, and a Springtrail playthrough. Three are
 terminal sessions the lesson decks
 [Reproducible builds](../presentations/reproducible-builds.html),
@@ -23,7 +23,9 @@ produced.
 
 [Other people's games on this Game Boy](homebrew-library.md) is the third board
 surface: eight pinned homebrew games, three still frames each, captured the
-same way and published as compatibility evidence rather than as loops.
+same way and published as compatibility evidence rather than as loops. The
+[games gallery](#games-gallery) is the fourth, and redraws three frames from
+each of those archives as one animated tile per game.
 
 Each file is self-contained: CSS keyframes only, no script, no external
 resource, so GitHub and the wiki decks play them as ordinary images. The authored SVG is
@@ -80,12 +82,65 @@ change the final text layout. A smaller file with that mismatch is not an
 equivalent rendering. Any future alternative must preserve character positions
 and timing before its embedding behavior is considered.
 
-The current project README uses path-based game pixels and self-contained
-terminal text; the wiki-only board loops embed PNG data URIs. These are the
-qualified contexts, not a promise that any SVG feature survives GitHub image
-sanitization. Preserve the current representation for each embed. Any changed
-animation technique needs standalone, actual wiki/deck and applicable GitHub
-README checks; local rendering alone cannot establish GitHub support.
+The project README uses path-based game pixels and self-contained terminal text,
+and the games gallery it embeds carries PNG data URIs, as the wiki-only board
+loops do. These are the qualified contexts, not a promise that any SVG feature
+survives GitHub image sanitization; the [gallery](#games-gallery) records what
+its own encoding has been shown to survive. Preserve the current representation
+for each embed. Any changed animation technique needs standalone, actual
+wiki/deck and applicable GitHub README checks; local rendering alone cannot
+establish GitHub support.
+
+## Games gallery
+
+![Eight games running on the DE10-Lite](games-gallery.svg)
+
+The landing page gallery: one tile per game, each a three-frame flipbook of
+captures the DE10-Lite returned over UART. It reads eight committed archives and
+adds none of its own, so it needs no capture session: Springtrail's three frames
+come from `springtrail-board.json`, Libbet's from `libbet-board.json`, and each
+pinned homebrew game's are the three its own archive holds.
+[`tools/wiki/showcase.py`](../../tools/wiki/showcase.py) picks the frame indices
+and regenerates the file.
+
+Every name, author and licence on a third-party tile is read from the
+[dependency manifest](../../tools/n2m/dependencies.json) at generation time, the
+one place those are written; nothing is retyped into the README or into this
+page. Springtrail's tile says the repository builds it instead.
+
+Three frames a game is what the homebrew sessions captured, so the gallery is
+short by construction rather than by preference. Tiles are drawn into one file
+rather than eight because the site fits a figure to the text column: eight
+separate loops would be eight column-wide blocks to scroll past.
+
+At 1024x1160 the gallery fills the text column at either breakpoint, and at the
+narrow one the whole grid lands inside a phone screen. The tiles stay
+recognisable there; the captions do not. A 350px column scales the file to
+about a third, which draws a game name near 5 CSS pixels against 16px body
+text. No required statement is lost with them: the project overview says in
+ordinary prose what the pictures are and how many of the pinned images play,
+and per-game attribution belongs to the library page at any width.
+
+Weight: 36802 bytes for eight games and 24 frames, encoded as indexed-PNG data
+URIs under the same [bounded exception](#frame-archives-and-encoding) the board
+loops use. The three loops the landing page already carried are 74397, 134668
+and 140291 bytes, so the gallery adds about a tenth of what the page held and
+less than any one loop on it.
+
+This is the first landing-page embed to carry inline frames rather than drawn
+paths. GitHub serves a repository SVG with `default-src 'none'; style-src
+'unsafe-inline'; sandbox`, which reads as a policy that would block an inline
+frame. Chromium 151 does not apply it to an SVG referenced by `<img>`: the same
+file served with and without that header renders pixel for pixel the same, so
+the header alone does not blank the tiles. That is local evidence, not the
+GitHub README itself, which only a published view can settle. The site is
+unaffected either way; [`tools/wiki/site.py`](../../tools/wiki/site.py) accepts
+this data URL because the source is a showcase SVG.
+
+The alternative is the rect runs the other README loops draw with.
+`board_frames.py` measured those at 46201 to 135900 bytes for three frames of
+one game, so a gallery in that form would cost more than the rest of the landing
+page put together.
 
 ## Current Springtrail state comparison
 
@@ -341,9 +396,11 @@ times smaller, because a Libbet frame fills the screen and the rect form pays
 per horizontal run; on the 48 Springtrail frames, sparser but scrolling, 352,302
 bytes against 25,584, about 14 times smaller. These are summed per-frame representation lengths for those exact sequences,
 not total SVG sizes or raw PNG file sizes: `bytes_indexed_png` includes the
-base64 data-URI prefix and encoding. The rect form exists because the
-project README sanitizes the loops it embeds; these two are wiki-only, so the
-smaller encoding wins. An inline `data:` URI fetches nothing, so the loops stay
+base64 data-URI prefix and encoding. The rect form is what the other README
+loops draw with; these two carry whole screens, so the smaller encoding wins.
+What the project README does and does not render is recorded with the
+[gallery](#games-gallery), the one landing-page embed that carries inline
+frames. An inline `data:` URI fetches nothing, so the loops stay
 as self-contained as the rest.
 
 ## Reproducible builds
