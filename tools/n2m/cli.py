@@ -10,7 +10,7 @@ import sys
 import uuid
 
 from .records import atomic_json, atomic_text, file_hash, git_state, workspace
-from .simulation import simulate
+from .simulation import load_target, retired, simulate, skipped_record
 from .simulator import Simulator, ToolError
 from .doctor import doctor
 from .host.command import run as host_command
@@ -40,9 +40,9 @@ def parser():
     test.add_argument("target")
     test.add_argument("--seed", type=int, default=1)
     test.add_argument("--rebuild", action="store_true")
-    test.add_argument("--questa-bin", help="Questa tool directory; otherwise discover on PATH")
-    test.add_argument("--intel-sim-lib", help="supported Quartus eda/sim_lib directory for Intel memory targets")
-    preflight = sim.add_parser("preflight", help="prepare and check Python fixtures without discovering or launching Questa")
+    test.add_argument("--verilator-bin", help="directory containing verilator; otherwise discover on PATH")
+    test.add_argument("--sim", choices=("verilator",), default="verilator")
+    preflight = sim.add_parser("preflight", help="prepare and check Python fixtures without discovering or launching a simulator")
     preflight.add_argument("target")
     preflight.add_argument("--tag")
     preflight.add_argument("--json", action="store_true")
@@ -50,17 +50,14 @@ def parser():
     for leaf in leaves:
         leaf.add_argument("--tag")
         leaf.add_argument("--json", action="store_true", help="emit one JSON result")
-        if leaf is not leaves[1]:
-            leaf.add_argument("--sim", choices=("questa",), default="questa")
     subset = commands.add_parser("regress", help="run one declared target subset and report one aggregate result")
     subset.add_argument("subset", help="name in src/dv/builder/regressions.json")
     subset.add_argument("--seed", type=int, default=1)
     subset.add_argument("--rebuild", action="store_true")
     subset.add_argument("--broader", action="store_true",
                         help="declare a subset whose budget exceeds the ordinary 300-second pre-merge aggregate")
-    subset.add_argument("--questa-bin")
-    subset.add_argument("--intel-sim-lib")
-    subset.add_argument("--sim", choices=("questa",), default="questa")
+    subset.add_argument("--verilator-bin")
+    subset.add_argument("--sim", choices=("verilator",), default="verilator")
     subset.add_argument("--tag")
     subset.add_argument("--json", action="store_true")
     tests = commands.add_parser("tests", help="one catalogue of every runnable test; select by level and label").add_subparsers(dest="action", required=True)
@@ -79,8 +76,7 @@ def parser():
     runner.add_argument("--budget", type=int, help="aggregate wall budget in seconds")
     runner.add_argument("--broader", action="store_true",
                         help="declare a budget above the ordinary 300-second pre-merge aggregate")
-    runner.add_argument("--questa-bin")
-    runner.add_argument("--intel-sim-lib")
+    runner.add_argument("--verilator-bin")
     for leaf in (validate, listing, runner, affected):
         leaf.add_argument("--tag")
         leaf.add_argument("--json", action="store_true")
@@ -223,11 +219,15 @@ def tagged(root, args, header, publish):
                 from .fixture_preflight import run
                 report.update(run(root, build, args.target))
             else:
-                simulator = Simulator(args.sim, questa_bin=args.questa_bin)
                 if not 0 <= args.seed <= 2147483647:
                     raise ValueError("seed must be between 0 and 2147483647")
-                provenance = {k: report[k] for k in ("commit", "dirty_tree_fingerprint", "host", "python") if k in report}
-                report.update(simulate(root, build, args, simulator, provenance))
+                provenance = {k: report[k] for k in ("commit", "dirty_tree_fingerprint", "host", "python", "os") if k in report}
+                if retired(load_target(root, args.target)[0]):
+                    # Nothing to discover: a retired target is reported, not run.
+                    report.update(skipped_record(root, build, args, provenance))
+                else:
+                    simulator = Simulator(args.sim, verilator_bin=args.verilator_bin)
+                    report.update(simulate(root, build, args, simulator, provenance))
         except Exception as error:
             report.update(status="FAIL", error=str(error))
             if isinstance(error, AssemblyError):
@@ -251,6 +251,23 @@ def tagged(root, args, header, publish):
     return report
 
 
+# One build tool, two operating systems: simulation belongs to WSL Linux and
+# the Quartus flow to Windows PowerShell. Each side refuses the other's commands.
+SIMULATION_HOST = "simulation runs on WSL Linux"
+FPGA_HOST = "FPGA build and programming run on Windows PowerShell"
+
+
+def foreign_host(args):
+    """The refusal message when this OS does not own the requested command."""
+    system = platform.system()
+    simulation = args.command in ("sim", "regress") or (args.command == "tests" and args.action == "run")
+    if simulation and system == "Windows":
+        return SIMULATION_HOST
+    if args.command == "fpga" and system != "Windows":
+        return FPGA_HOST
+    return None
+
+
 def main(argv=None, root=None):
     args = parser().parse_args(argv)
     root = Path(root or Path(__file__).resolve().parents[2]).resolve()
@@ -258,7 +275,7 @@ def main(argv=None, root=None):
 
     def header(tag):
         return {"tag": tag, "created": datetime.now(timezone.utc).isoformat(),
-                "host": platform.platform(), "python": platform.python_version(),
+                "host": platform.platform(), "os": platform.system(), "python": platform.python_version(),
                 "requested": vars(args), **git_state(root)}
 
     def publish(build, result):
@@ -268,7 +285,11 @@ def main(argv=None, root=None):
             atomic_text(root / "workdir/latest.txt", build.name + "\n")
 
     try:
-        if args.command == "regress":
+        refusal = foreign_host(args)
+        if refusal:
+            report = {"tag": args.tag or "-", "os": platform.system(), "status": "FAIL", "error": refusal,
+                      "requested": vars(args)}
+        elif args.command == "regress":
             report = regress(root, args, header, publish)
         elif args.command == "tests":
             report = catalogue.command(root, args, header, publish)
@@ -304,9 +325,12 @@ def main(argv=None, root=None):
             for problem in report["problems"]:
                 print(problem)
             print(f"{report['units']} units, {len(report['not_runnable'])} not runnable")
+        if args.command == "sim" and report.get("status") == "SKIPPED":
+            print(f"{args.target}: SKIPPED {report['reason']}")
         if args.command == "regress" and "targets" in report:
             for name, outcome in report["targets"].items():
-                print(f"{name}: {outcome['status']} {outcome.get('cache', '')} {outcome.get('error', '')}".rstrip())
+                print(f"{name}: {outcome['status']} {outcome.get('cache', '')} "
+                      f"{outcome.get('reason', outcome.get('error', ''))}".rstrip())
             print(f"Elapsed: {report.get('elapsed_seconds', 0):.1f}s of {report.get('budget_seconds')}s budget")
         if args.command == "doctor" and "checks" in report:
             print(report["scope"])
@@ -315,4 +339,5 @@ def main(argv=None, root=None):
                 if "notice" in check:
                     print(check["notice"])
             print(f"Readiness: {report['readiness']}; untested: {', '.join(report['untested'])}")
-    return {"PASS": 0, "FAIL": 1, "WARNING": 2}[report["status"]]
+    # SKIPPED shares WARNING's exit: the requested evidence is incomplete, not wrong.
+    return {"PASS": 0, "FAIL": 1, "WARNING": 2, "SKIPPED": 2}[report["status"]]

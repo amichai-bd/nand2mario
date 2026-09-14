@@ -291,21 +291,26 @@ def discover():
     if sys.version_info[:3] != (3, 12, 14):
         raise ValueError("Python TB requires Python 3.12.14; use the isolated src/dv/python environment")
     try:
-        from cocotb_tools.config import lib_name_path
+        from cocotb_tools.config import lib_name_path, pygpi_entry_point, share_dir
         from find_libpython import find_libpython
         packages = {}
-        for name, version in (("cocotb", "2.0.1"), ("find-libpython", "0.4.1")):
+        for name, version in (("cocotb", "2.1.0"), ("find-libpython", "0.4.1")):
             dist = importlib.metadata.distribution(name)
             if dist.version != version:
                 raise ValueError(f"Python TB requires {name}=={version}")
             files = [Path(dist.locate_file(p)).resolve() for p in dist.files
                      if not str(p).endswith((".pyc", ".pyo"))]
             packages[name] = {"version": version, "files": {str(p): file_hash(p) for p in files if p.is_file()}}
-        library = Path(lib_name_path("vpi", "questa")).resolve()
+        library = Path(lib_name_path("vpi", "verilator")).resolve()
         libpython = Path(find_libpython()).resolve()
+        # cocotb's Verilator entry: the C++ main it ships and the GPI entry it loads.
+        support = (Path(share_dir) / "lib/verilator/verilator.cpp").resolve()
         return {"executable": sys.executable, "version": sys.version,
                 "executable_sha256": file_hash(Path(sys.executable)),
                 "library": str(library), "library_sha256": file_hash(library),
+                "library_dir": str(library.parent),
+                "support": str(support), "support_sha256": file_hash(support),
+                "entry_point": pygpi_entry_point(),
                 "libpython": str(libpython), "libpython_sha256": file_hash(libpython),
                 "packages": packages}
     except (ImportError, importlib.metadata.PackageNotFoundError, TypeError, OSError) as error:
@@ -322,6 +327,8 @@ def environment(root, target, attempt, seed, runtime):
     runtime_paths = [p for p in sys.path if p and any(Path(p).resolve().is_relative_to(base) for base in prefixes)]
     env.update(PYTHONPATH=os.pathsep.join([str(module.parent), *runtime_paths]),
                PYGPI_PYTHON_BIN=runtime["executable"], LIBPYTHON_LOC=runtime["libpython"],
+               # Verilator's VPI library loads libpython, then cocotb's entry.
+               GPI_USERS=runtime["libpython"] + ";" + runtime["entry_point"],
                COCOTB_TOPLEVEL=target["top"], COCOTB_TEST_MODULES=config["module"],
                COCOTB_RESULTS_FILE=str(attempt / "results.xml"), COCOTB_RANDOM_SEED=str(seed),
                PYTHONDONTWRITEBYTECODE="1", PYTHONNOUSERSITE="1", PYTHONOPTIMIZE="0")
@@ -480,51 +487,46 @@ def _prepare(target, attempt, root=None, fixture_tools=None):
     if target.get("preload"):
         from .fixture_preflight import verify_prepared
         verify_prepared(root, target, attempt)
-    wave_paths = " ".join(f"/{target['top']}/{name}" for name in target.get("python", {}).get("waves", [])) or "/*"
-    (attempt / "run.do").write_text(
-        f"onerror {{quit -code 1}}\nlog {wave_paths}\nvcd file waves/simulation.vcd\n"
-        f"vcd add {wave_paths}\nrun -all\nquit -code 0\n", encoding="utf-8")
-
-
-def classify(output):
-    """Explain only Questa's exact classic-access optimization warning."""
-    pattern = r"^# \*\* Warning: \(vopt-10908\) Some optimizations are turned off because the \+acc switch is in effect\.$"
-    explained = [line for line in output.splitlines() if re.fullmatch(pattern, line)]
-    if len(explained) != 1:
-        return output, []
-    if len(explained) == 1:
-        for line in output.splitlines():
-            if line in ("# ** Note: (vsim-12126) Error and warning message counts have been restored: Errors=0, Warnings=1.",
-                        "# Errors: 0, Warnings: 1"):
-                explained.append(line)
-    return "\n".join(line for line in output.splitlines() if line not in explained), explained
 
 
 def results(path, config):
-    """Require the single named completed test; never infer PASS from vsim exit."""
+    """Require the single named completed test; never infer PASS from the raw exit.
+
+    cocotb 2.1 writes one testsuite per module with counted attributes, one
+    testcase per test carrying a properties block, and a failure, error or
+    skipped child when the test did not pass.
+    """
     try:
         root = ET.parse(path).getroot()
         suites = list(root)
         tests = list(root.iter("testcase"))
         if root.tag != "testsuites" or len(suites) != 1 or suites[0].tag != "testsuite" or len(tests) != 1:
             raise ValueError("expected exactly one completed Python test")
-        if set(root.attrib) - {"name"} or set(suites[0].attrib) - {"name", "package"}:
+        suite = suites[0]
+        if set(root.attrib) - {"name"} or set(suite.attrib) - {"name", "package", "errors", "failures", "skipped", "tests", "time", "timestamp", "hostname"}:
             raise ValueError("unexpected Python result suite attributes")
+        if suite.get("tests") != "1":
+            raise ValueError("expected exactly one counted Python test")
         test = tests[0]
-        if test not in list(suites[0]) or test.get("name") != config["test"] or test.get("classname") != config["module"]:
+        if test not in list(suite) or test.get("name") != config["test"] or test.get("classname") != config["module"]:
             raise ValueError("unexpected Python test identity")
-        if set(test.attrib) - {"name", "classname", "file", "lineno", "time", "sim_time_ns", "ratio_time"}:
+        if set(test.attrib) - {"name", "classname", "file", "lineno", "time"}:
             raise ValueError("unexpected Python testcase attributes")
-        if any(child.tag not in ("property", "testcase") for child in suites[0]):
+        if any(child.tag not in ("property", "testcase") for child in suite):
             raise ValueError("unexpected Python result element")
-        for key in ("time", "sim_time_ns"):
-            number = float(test.attrib[key])
+        verdicts = [child for child in test if child.tag in ("failure", "error", "skipped")]
+        others = [child for child in test if child.tag not in ("failure", "error", "skipped", "properties", "system-out", "system-err")]
+        if others:
+            raise ValueError("unexpected Python testcase element")
+        properties = {prop.get("name"): prop.get("value") for block in test.iter("properties") for prop in block}
+        sim_time = float(properties["sim_time_duration"])
+        for number in (float(test.attrib["time"]), sim_time):
             if not math.isfinite(number) or number <= 0:
                 raise ValueError("incomplete Python test timing")
-        if list(test):
+        if verdicts or any(suite.get(key, "0") != "0" for key in ("errors", "failures", "skipped")):
             return {"status": "FAIL", "test": config["test"],
-                    "diagnostics": [dict(child.attrib, kind=child.tag) for child in test]}
-        return {"status": "PASS", "test": config["test"], "sim_time_ns": float(test.attrib["sim_time_ns"])}
+                    "diagnostics": [dict(child.attrib, kind=child.tag) for child in verdicts]}
+        return {"status": "PASS", "test": config["test"], "sim_time_ns": sim_time}
     except (OSError, ET.ParseError, ValueError, KeyError) as error:
         return {"status": "FAIL", "error": f"invalid Python results: {error}"}
 
@@ -535,5 +537,5 @@ def evidence(root, record, config):
     if not isinstance(name, str) or name not in record["artifacts"]:
         return False
     folder = (root / name).parent
-    required = [folder / p for p in ("results.xml", "transactions.jsonl", "waves/simulation.vcd", "waves/simulation.wlf", "sim.log", "run.do")]
+    required = [folder / p for p in ("results.xml", "transactions.jsonl", "waves/simulation.fst", "sim.log")]
     return all(p.relative_to(root).as_posix() in record["artifacts"] and p.is_file() and p.stat().st_size > 0 for p in required) and results(root / name, config)["status"] == "PASS"

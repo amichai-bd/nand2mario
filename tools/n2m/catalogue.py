@@ -21,7 +21,7 @@ import sys
 import time
 
 from .records import atomic_json, atomic_text, file_hash, workspace
-from .simulation import load_target
+from .simulation import RETIRED_REASON, load_target, retired, simulator_problem
 from .test_budget import supervise
 
 CATALOGUE = "src/dv/builder/catalogue.yaml"
@@ -36,10 +36,6 @@ TARGET = re.compile(r"[a-z0-9][a-z0-9_-]*")
 UNIT_FILE = re.compile(r"[A-Za-z0-9_./-]+\.py")
 # Directories that hold generated output or another checkout, never our tree.
 SKIP_DIRECTORIES = frozenset({".git", "workdir", "worktrees", "__pycache__", "node_modules", ".venv"})
-# Questa is one node-locked seat. A refused checkout is contention, not a defect.
-CONTENTION = ("License checkout has been disallowed", "Licensing error",
-              "Unable to checkout a license", "queued for a license")
-CONTENTION_EXIT = 12
 # The pinned cocotb interpreter of src/dv/python/README.md; units labelled
 # `needs-cocotb` import cocotb and cannot run on the builder interpreter.
 COCOTB_PYTHON = ("workdir/builds/python-dv-env/.venv/Scripts/python.exe",
@@ -296,6 +292,10 @@ def coverage(root, model):
         problems.append(f"registry target {name} is missing from {CATALOGUE}")
     for name in sorted(simulations - set(targets)):
         problems.append(f"catalogue target {name} is not a registered simulation target")
+    for name in sorted(targets):
+        problem = simulator_problem(name, targets[name])
+        if problem:
+            problems.append(f"registry {problem}")
     owned = target_inputs(targets)
     for path in discovered_tests(root):
         if path in files or path in model["not_runnable"] or path in owned:
@@ -407,35 +407,14 @@ def run_unit(root, path, entry):
     return outcome
 
 
-def contended(code, text):
-    """True when Questa refused the node-locked seat rather than failing a test."""
-    return code == CONTENTION_EXIT or any(marker in text for marker in CONTENTION)
-
-
-def referenced_log(root, error):
-    """Read the simulator log a failing child pointed at, if it named one.
-
-    A refused license checkout reaches the runner only as the child's short
-    `unexpected exit 12; see <path>` line, so the refusal itself is in the log.
-    """
-    match = re.search(r"see (\S+\.log)", str(error or ""))
-    if not match:
-        return ""
-    path = (Path(root) / match.group(1).replace("\\", "/")).resolve()
-    if not path.is_relative_to(Path(root).resolve() / "workdir") or not path.is_file():
-        return ""
-    return path.read_text(encoding="utf-8", errors="replace")
-
-
 def run_simulation(root, tag, target, args, remaining):
     """Run one registry target as the ordinary sim-test worker."""
     command = [sys.executable, str(Path(root) / "tools/n2m/test_budget.py"), "sim", "test", target,
                "--tag", tag, "--seed", str(args.seed), "--json"]
     if args.rebuild:
         command.append("--rebuild")
-    for option in ("questa_bin", "intel_sim_lib"):
-        if getattr(args, option, None):
-            command += ["--" + option.replace("_", "-"), getattr(args, option)]
+    if getattr(args, "verilator_bin", None):
+        command += ["--verilator-bin", args.verilator_bin]
     started = time.monotonic()
     code, text = supervise(command, Path(root), tag, target=target, ceiling=math.floor(remaining))
     elapsed = time.monotonic() - started
@@ -452,10 +431,6 @@ def run_simulation(root, tag, target, args, remaining):
             outcome[key] = child[key]
     if code == 0 and child.get("status") == "PASS":
         outcome["status"] = "PASS"
-    elif contended(code, " ".join([text, str(child.get("error", "")),
-                                   referenced_log(root, child.get("error"))])):
-        # The seat is held elsewhere. Report it by name; never call it a defect.
-        outcome.update(status="SKIPPED", reason="questa-contention")
     else:
         outcome["status"] = "FAIL"
         outcome.setdefault("error", f"child exit {code} with status {child.get('status')}")
@@ -492,10 +467,12 @@ def run_selection(root, model, path, tag, args, budget, provenance):
     chosen, selector = select(model, args.level, args.label)
     simulations = [name for name in chosen if model["units"][name]["kind"] == "sim"]
     # Fail before any simulator time is spent when a selected target cannot run.
-    unrunnable = {}
+    # A retired target is named as SKIPPED; it is neither a pass nor a defect.
+    unrunnable, skipped = {}, set()
     for target in simulations:
         try:
-            load_target(Path(root), target)
+            if retired(load_target(Path(root), target)[0]):
+                skipped.add(target)
         except Exception as error:
             unrunnable[target] = str(error)
     record = {"selector": selector, "level": args.level, "labels": list(args.label),
@@ -512,6 +489,8 @@ def run_selection(root, model, path, tag, args, budget, provenance):
             outcome = {"status": "FAIL", "error": "aggregate budget exhausted before start"}
         elif name in unrunnable:
             outcome = {"status": "FAIL", "error": unrunnable[name]}
+        elif name in skipped:
+            outcome = {"status": "SKIPPED", "reason": RETIRED_REASON}
         elif entry["kind"] == "sim":
             outcome = run_simulation(root, tag, name, args, remaining)
         else:

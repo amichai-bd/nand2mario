@@ -2,16 +2,33 @@
 from datetime import datetime, timezone
 import json
 from pathlib import Path
+import platform
 import re
-import sys
+import time
 import uuid
 
 from .hdl import dependencies
 from .simulator import ToolError
-from .questa import commands as questa_commands, diagnostic
+from .verilator import commands as verilator_commands, diagnostic, WAVES
 from .records import atomic_json, atomic_text, cache_matches, digest, file_hash, read_json
-from . import intel_memory, intel_adc, python_tb
-from .simulation_peer import Peer
+from . import python_tb
+
+# Every registry target names the simulator it runs on. A questa target is
+# retired: it is reported SKIPPED by name and never launched.
+SIMULATORS = ("verilator", "questa")
+RETIRED = "questa"
+RETIRED_REASON = "questa-retired"
+
+
+def simulator_problem(name, target):
+    """The validation message for a target's simulator field, or None."""
+    if not isinstance(target, dict) or target.get("simulator") not in SIMULATORS:
+        return f"target {name} must declare simulator as one of {', '.join(SIMULATORS)}"
+    return None
+
+
+def retired(target):
+    return target["simulator"] == RETIRED
 
 
 def load_target(root, name):
@@ -20,6 +37,9 @@ def load_target(root, name):
     if name not in targets or not re.fullmatch(r"[a-z0-9][a-z0-9_-]*", name):
         raise ValueError(f"unknown simulation target: {name}")
     target = targets[name]
+    problem = simulator_problem(name, target)
+    if problem:
+        raise ValueError(problem)
     if not isinstance(target.get("signature"), str) or not target["signature"].strip():
         raise ValueError("target signature must be a nonempty string")
     if target["expected_exit"] not in ("zero", "nonzero"):
@@ -49,39 +69,42 @@ def load_target(root, name):
             path = (root / source).resolve()
             if not path.is_relative_to(root.resolve()) or not path.is_file():
                 raise ValueError(f"missing or out-of-tree driver input: {source}")
+    if not retired(target):
+        # The Intel models and the Tcl peer driver were Questa bindings; a
+        # target that still needs them stays questa until its area migrates.
+        if target.get("vendor_model") is not None:
+            raise ValueError(f"target {name}: vendor_model is not supported under verilator")
+        if "driver" in target:
+            raise ValueError(f"target {name}: a Tcl driver is not supported under verilator")
     python_tb.validate(root, target, name)
     return target, registry
 
 
+def skipped_record(root, build, args, provenance=None):
+    """Publish and return the SKIPPED record of a retired target; nothing runs."""
+    record = {"status": "SKIPPED", "reason": RETIRED_REASON, "target": args.target,
+              "simulator": RETIRED, "os": platform.system(), "seed": args.seed,
+              "provenance": provenance or {}, "finished": datetime.now(timezone.utc).isoformat()}
+    atomic_json(build / "sim/test" / args.target / "result.json", record)
+    return record
+
+
 def simulate(root, build, args, simulator, provenance=None):
     target, registry = load_target(root, args.target)
+    if retired(target):
+        return skipped_record(root, build, args, provenance)
     python_runtime = python_tb.discover() if target.get("testbench") == "python" else None
     hdl_inputs = dependencies(root, target["sources"])
-    vendor_model = intel_memory.resolve(root, simulator, target, getattr(args, "intel_sim_lib", None))
-    if vendor_model is not None:
-        if vendor_model["selection"] in ("intel-adc", "intel-controls"):
-            intel_adc.reject_shadow_models(root, hdl_inputs)
-            intel_memory.reject_shadow_models(root, hdl_inputs)
-        else:
-            intel_memory.reject_shadow_models(root, hdl_inputs)
     inputs = hdl_inputs + [registry.relative_to(root).as_posix(), "tools/build.py"]
     inputs += [str(p.relative_to(root)).replace("\\", "/") for p in (root / "tools/n2m").glob("*.py")]
     inputs += ["tools/n2m/dependencies.json"]
-    if "driver" in target:
-        inputs += [target["driver"]["script"], target["driver"]["peer"], *target["driver"]["inputs"]]
     if python_runtime:
         inputs += target["python"]["inputs"] + ["src/dv/python/requirements.txt", "src/dv/python/THIRD_PARTY.md"]
     hashes = {p: file_hash(root / p) for p in inputs}
-    options = {"seed": args.seed, "target": args.target, "definition": target, "vendor_model": vendor_model}
+    options = {"seed": args.seed, "target": args.target, "definition": target,
+               "simulator": "verilator", "os": platform.system()}
     if python_runtime:
         options["python_runtime"] = python_runtime
-    fixture_tools = None
-    if target.get('preload') == 'mooneye-reg-f':
-        from .mooneye import tool_identity
-        fixture_tools = tool_identity(root, Path(simulator.tools['vlog']).resolve().parents[2])
-        options['fixture_tools'] = fixture_tools
-    if "driver" in target:
-        options["peer_python"] = {"path": sys.executable, "sha256": file_hash(Path(sys.executable)), "version": sys.version}
     fingerprint = digest({"inputs": hashes, "tools": simulator.info, "options": options})
     stage = build / "sim/test" / args.target
     current = stage / "result.json"
@@ -90,12 +113,15 @@ def simulate(root, build, args, simulator, provenance=None):
         return {**old, "cache": "CACHED"}
     attempt_id = uuid.uuid4().hex
     attempt = stage / "attempts" / attempt_id
-    backend = "questa"
-    compile_dir = build / "compile" / backend / args.target / attempt_id
+    compile_dir = build / "compile/verilator" / args.target / attempt_id
     for path in (attempt / "waves", attempt / "coverage", compile_dir):
         path.mkdir(parents=True, exist_ok=True)
+    from .test_budget import target_selection
     record = {"status": "RUNNING", "cache": "BUILT", "fingerprint": fingerprint,
               "inputs": hashes, "tools": simulator.info, "seed": args.seed,
+              "simulator": "verilator", "os": platform.system(),
+              "waves": {"format": "fst", "path": (attempt / WAVES).relative_to(root).as_posix()},
+              "timing": {"build_seconds": 0.0, "run_seconds": 0.0},
               "options": options, "commands": [], "artifacts": {},
               "started": datetime.now(timezone.utc).isoformat(),
               "provenance": provenance or {}}
@@ -104,70 +130,45 @@ def simulate(root, build, args, simulator, provenance=None):
     atomic_json(current, record)
     log = compile_dir / "prepare.log"
     try:
-        commands = questa_commands(simulator, root, target, args.seed, compile_dir, attempt, vendor_model=vendor_model, python_runtime=python_runtime, fixture_tools=fixture_tools)
+        commands = verilator_commands(simulator, root, target, args.seed, compile_dir, attempt, python_runtime=python_runtime)
         for argv, cwd, log, expected in commands:
             command = simulator.command(argv)
             record["commands"].append({"argv": command, "cwd": str(cwd)})
             with (build / "commands.log").open("a", encoding="utf-8") as stream:
                 stream.write(json.dumps(record["commands"][-1]) + "\n")
-            call_options = {"timeout": target["timeout_seconds"]} if log.name == "sim.log" and "timeout_seconds" in target else {}
+            running = log.name == "sim.log"
+            # The C++ build of a large design is bounded by the target's own
+            # selected wall; the run keeps the registry's runtime bound.
+            if running:
+                call_options = {"timeout": target["timeout_seconds"]} if "timeout_seconds" in target else {}
+            else:
+                call_options = {"timeout": target_selection(args.target, target)[0]}
             record["commands"][-1]["timeout_seconds"] = call_options.get("timeout", 60)
-            if log.name == "sim.log" and python_runtime:
+            if running and python_runtime:
                 call_options["env"] = python_tb.environment(root, target, attempt, args.seed, python_runtime)
                 record["python_results_file"] = (attempt / "results.xml").relative_to(root).as_posix()
-            peer = None
-            result = None
+            started = time.monotonic()
             try:
-                if log.name == "sim.log" and target.get("preload") == "mooneye-reg-f":
-                    from .preload import verify
-                    verify(attempt)
-                if log.name == "sim.log" and "driver" in target:
-                    peer = Peer(root, attempt, target["driver"]["peer"])
-                    port = peer.start()
-                    if target["driver"].get("preload", False):
-                        from .preload import verify
-                        verify(attempt)
-                    def tcl_path(path):
-                        return "{" + path.as_posix().replace("{", "\\{").replace("}", "\\}") + "}"
-                    macro = (attempt / "run.do").read_text(encoding="utf-8")
-                    macro = macro.replace("run -all", f"set smoke_root {tcl_path(root)}\nset smoke_peer_port {port}\nsource {tcl_path(root / target['driver']['script'])}")
-                    (attempt / "run.do").write_text(macro, encoding="utf-8")
                 result = simulator.run(argv, cwd=cwd, **call_options)
-                log.write_text(result.stdout, encoding="utf-8")
-                record["commands"][-1]["exit_code"] = result.returncode
-                if log.name == "sim.log" and python_runtime:
-                    record["python_results"] = python_tb.results(attempt / "results.xml", target["python"])
             finally:
-                if peer is not None:
-                    peer.close(result is not None and result.returncode == 0)
+                elapsed = time.monotonic() - started
+                record["commands"][-1]["elapsed_seconds"] = elapsed
+                record["timing"]["run_seconds" if running else "build_seconds"] += elapsed
+            log.write_text(result.stdout, encoding="utf-8")
+            record["commands"][-1]["exit_code"] = result.returncode
+            if running and python_runtime:
+                record["python_results"] = python_tb.results(attempt / "results.xml", target["python"])
             if (result.returncode == 0) != (expected == "zero"):
                 raise RuntimeError(f"unexpected exit {result.returncode}; see {log.relative_to(root)}")
-            if log.name == "adc-pll-generate.log":
-                record["generated_adc_pll"] = intel_adc.verify_generated(cwd)
-            checked_output = result.stdout
-            if log.name == "intel-adc-control-compile.log":
-                checked_output, record["explained_compile_diagnostics"] = intel_adc.classify_compile_diagnostics(result.stdout, vendor_model, log.name)
-            if log.name == "sim.log":
-                if vendor_model and vendor_model["selection"] in ("intel-adc", "intel-controls"):
-                    memory_explained = []
-                    if vendor_model["selection"] == "intel-controls":
-                        checked_output, memory_explained = intel_memory.classify_diagnostics(checked_output, vendor_model["memory_diagnostics"])
-                    checked_output, adc_explained = intel_adc.classify_sim_diagnostics(checked_output, vendor_model,
-                        python_access=bool(python_runtime) and vendor_model["selection"] == "intel-controls")
-                    record["explained_diagnostics"] = memory_explained + adc_explained
-                else:
-                    checked_output, record["explained_diagnostics"] = intel_memory.classify_diagnostics(result.stdout, vendor_model)
-            if python_runtime:
-                checked_output, explained = python_tb.classify(checked_output)
-                if explained:
-                    record.setdefault("explained_python_diagnostics", []).extend(explained)
-            if log.name == "sim.log" and python_runtime and record["python_results"]["status"] != "PASS":
+            if running and python_runtime and record["python_results"]["status"] != "PASS":
                 raise RuntimeError(f"Python test failed: {record['python_results']}")
-            problem = diagnostic(checked_output, target["signature"] if expected == "nonzero" else None)
+            problem = diagnostic(result.stdout, target["signature"] if expected == "nonzero" else None)
             if problem:
                 raise RuntimeError(f"{problem}; see {log.relative_to(root)}")
         if target["signature"] not in result.stdout:
             raise RuntimeError(f"missing expected signature: {target['signature']}")
+        if not (attempt / WAVES).is_file():
+            raise RuntimeError(f"missing retained waves: {WAVES}")
         record["status"] = "PASS"
     except Exception as error:
         if isinstance(error, ToolError):

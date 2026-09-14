@@ -11,7 +11,7 @@ import time
 
 from . import catalogue
 from .records import atomic_json, atomic_text, file_hash, stale_lock, valid_tag, workspace
-from .simulation import load_target
+from .simulation import RETIRED_REASON, load_target, retired
 from .test_budget import supervise, target_selection
 
 # Verification tiers of wiki/src/dv/integration/SPEC.md#verification-tiers.
@@ -69,9 +69,8 @@ def child_command(root, tag, target, args):
                "--tag", tag, "--seed", str(args.seed), "--json"]
     if args.rebuild:
         command.append("--rebuild")
-    for option in ("questa_bin", "intel_sim_lib"):
-        if getattr(args, option, None):
-            command += ["--" + option.replace("_", "-"), getattr(args, option)]
+    if getattr(args, "verilator_bin", None):
+        command += ["--verilator-bin", args.verilator_bin]
     return command
 
 
@@ -116,17 +115,21 @@ def run_subset(root, build, args, provenance):
     if budget > ORDINARY_BUDGET and not args.broader:
         raise ValueError(f"subset {args.subset} declares {budget} seconds, above the ordinary "
                          f"{ORDINARY_BUDGET}-second pre-merge aggregate; pass --broader to run it as a declared broader aggregate")
-    # Fail before any simulator time is spent when one member cannot run.
-    for member in subset["targets"]:
-        load_target(root, member)
+    # Fail before any simulator time is spent when one member cannot run. A
+    # retired member is named SKIPPED and never launched; it is not a defect.
+    skipped = {member for member in subset["targets"] if retired(load_target(root, member)[0])}
     record = {"subset": args.subset, "tier": subset["tier"], "purpose": subset["purpose"],
               "budget_seconds": budget, "broader": bool(args.broader),
               "subsets": {"path": registry.relative_to(root).as_posix(), "sha256": file_hash(registry)},
-              "seed": args.seed, "targets": {}, "failed": [], "provenance": provenance or {},
+              "seed": args.seed, "targets": {}, "failed": [], "skipped": [], "provenance": provenance or {},
               "started": datetime.now(timezone.utc).isoformat()}
     started = time.monotonic()
     for member in subset["targets"]:
         remaining = budget - (time.monotonic() - started)
+        if member in skipped:
+            record["targets"][member] = {"status": "SKIPPED", "reason": RETIRED_REASON}
+            record["skipped"].append(member)
+            continue
         if remaining < MINIMUM_CHILD_SECONDS:
             record["targets"][member] = {"status": "SKIPPED", "error": "aggregate budget exhausted before start"}
         else:
