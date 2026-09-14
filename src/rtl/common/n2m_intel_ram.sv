@@ -3,7 +3,8 @@
 `include "src/rtl/common/macros.svh"
 
 // Contract: wiki/src/rtl/common/MAS_memory_primitives.md.
-// The identical Intel instance is compiled in Questa and MAX 10 synthesis.
+// MAX 10 synthesis sees the vendor altsyncram instance. Verilator predefines
+// VERILATOR and selects the repository double with the same shape and rules.
 module n2m_intel_ram #(
     parameter integer DEPTH = 1024,
     parameter integer DATA_BITS = 8,
@@ -66,6 +67,17 @@ module n2m_intel_ram #(
 
     // Input/address registers give one request edge of latency. An additional
     // output register would add a cycle and violate the consumer boundary.
+`ifdef VERILATOR
+    n2m_sim_dual_port_ram #(
+        .DEPTH(DEPTH), .DATA_BITS(DATA_BITS), .ADDRESS_BITS(ADDRESS_BITS),
+        .LANES(PRIMITIVE_LANES), .DUAL_CLOCK(DUAL_CLOCK), .INIT_FILE(INIT_FILE)
+    ) ram (
+        .clock0(clk_a), .clock1(DUAL_CLOCK ? clk_b : 1'b1),
+        .address_a(a_address), .data_a(a_wdata), .wren_a(primitive_write), .rden_a(read_a),
+        .byteena_a(primitive_byte_enable), .q_a(ram_data_a),
+        .address_b(b_address), .rden_b(read_b), .q_b(ram_data_b)
+    );
+`else
     altsyncram #(
         .intended_device_family("MAX 10"), .ram_block_type("M9K"),
         .operation_mode("BIDIR_DUAL_PORT"), .lpm_type("altsyncram"),
@@ -96,6 +108,7 @@ module n2m_intel_ram #(
         .address_b(b_address), .data_b({DATA_BITS{1'b0}}), .wren_b(1'b0), .rden_b(read_b),
         .byteena_b({PRIMITIVE_LANES{1'b1}}), .addressstall_b(1'b0), .q_b(ram_data_b), .eccstatus(unused_ecc)
     );
+`endif
 
     `N2M_ASSERT_NO_RST(INTEL_RAM_CONFIGURATION, clk_a,
         DEPTH > 1 && DEPTH <= (2 ** ADDRESS_BITS) && BYTE_LANES > 0 &&
