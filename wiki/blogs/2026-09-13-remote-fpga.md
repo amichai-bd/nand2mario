@@ -72,8 +72,10 @@ article is about those three.
 <a id="the-project"></a>nand2mario is an original-DMG-compatible Game Boy
 implemented in SystemVerilog for the DE10-Lite, with VGA video, UART loading and
 control, an original SM83 software toolchain and original games. It targets the
-monochrome DMG family: the 32 KiB mapperless profile, cartridge type `0x00`, no
-mapper, no cartridge RAM, no audio. Gameplay stays in software; the FPGA
+monochrome DMG family under the [project charter](../src/project-charter.md): a
+32 KiB mapperless profile with no cartridge RAM, and silent output — the audio
+registers are served so the CPU never faults, but they are never powered and
+nothing is synthesized. Gameplay stays in software; the FPGA
 implements the platform, not the game. The [appendix](#appendix) describes what
 got built and links the owning specifications; the [README](../../README.md) is
 the entry point for the repository itself.
@@ -406,26 +408,21 @@ purchase as independence of the oracle, made on the other side of the loop.
 The best example I have of review working is one where the reviewer was
 mistaken.
 
-In the games-gallery review, the author's pull request stated that the note
-cell's bottom edge sat at `y=1104`. The reviewer checked and found nothing at
-1104: the bottom tile rectangles ended at `y=1050.5` and the last note baseline
-was at `y=1064`, giving 48px of clearance to the new footer row at `y=1112`. It
-filed the correction as minor — the figure was wrong, but the margin was
-*larger* than claimed, so the conclusion held.
+Adding a row of footer text to the games gallery came down to how much vertical
+clearance was left below the tiles. The author's pull request gave a number. The
+reviewer checked it, found it wrong, and filed a correction as minor, because
+the margin turned out *larger* than claimed and so the decision held either way.
+The author then checked the reviewer and found that both had measured the wrong
+element: the binding one was the bottom row's tile credits, and the real
+clearance was 18px — exactly one line of leading, and less than half of what
+either party had stated.
 
-The author checked the reviewer. The binding element was neither of those: it
-was the bottom row's tile credits, `bjorn_nah (Bjorn) · MIT` and `Rafagars
-(Rafael Garcia) · MIT`, both at `y=1094`. The real clearance was 1112 − 1094 =
-**18px** — exactly one line of leading, the same 18px the footer rows already
-use between themselves. The reviewer's reply began "You are right about the
-clearance; I was wrong."
-
-The layout decision stood, but it stood on a margin less than half what either
-party had first stated, and that fact is now a comment in the generator beside
-the coordinate it constrains. Neither the author nor the reviewer had the right
-number alone. The exchange produced it. That is what an adversarial reader is
-for, and it is why "the reviewer approved it" is a weaker statement than "the
-reviewer and the author disagreed about something specific and resolved it."
+The decision still stood. But it stood on a much tighter margin than anyone had
+believed, and that number is now a comment in the generator beside the
+coordinate it constrains. Neither the author nor the reviewer had it alone; the
+exchange produced it. That is why "the reviewer approved it" is a weaker
+statement than "the reviewer and the author disagreed about something specific
+and resolved it."
 
 ## I wrote the bug three times
 
@@ -587,8 +584,8 @@ monitor, fed by this board's actual analogue output, displays a picture.
 that question, and no agent could answer it. It closed when I connected a
 monitor and looked. That single observation also closed GAP-006 — the clock,
 reset and CDC gap in the preflight register, open since the register was created
-on 4 September and the last P0 blocker in it to close, roughly nine days longer
-than any other.
+on 4 September, roughly nine days in all, and the last P0 blocker in it to
+close.
 
 The record is careful about what this bought: one direct visual observation, for
 one bitstream, one image and one monitor. Not a timing measurement, not a signal
@@ -711,40 +708,15 @@ have to audit before trusting is paid on every future reading, by everyone.
 
 ## What I'd carry into the next one
 
-### Buy the axis of independence you're missing, not more of the one you have
-
-Look at your test suite and ask, of each test, which of the two axes it buys.
-Most efforts have a lot of one and almost none of the other, and the instinct
-when confidence is low is to add more of whichever one you already have — more
-[directed tests](#directed-tests), more assertions, a deeper [reference
-model](#reference-model).
-
-If your oracle is captive, a stronger oracle is the buy. If your stimulus is
-captive, a stronger oracle changes nothing, and no quantity of it will ever
-produce the finding that two strangers' games both wait for a VBlank you never
-generate. Nine pinned third-party images bought that. Nine hundred more of our
-own tests would not have.
-
-### Make the untestable surface small enough to name
-
-There is always a region that testing structurally cannot reach: the widget
-layer, the analogue output, the operating system's event stream, the physical
-button. Pretending otherwise produces three stuck buttons.
-
-The useful move is not to try to test it. It is to push everything that *can* be
-tested out of that region, until what remains is small enough to state in one
-sentence on the tool's own page and short enough that a reviewer can read all of
-it. "Behaviour does not live in the widget layer" is a sentence a future author
-can be held to. "Be careful with Tk" is not.
-
 ### Write the failure into the record, not around it
 
 The two games that never draw a frame are the most valuable result on the
 homebrew page, and they are the one section with no picture in it. The reviewer
-who measured 48px was wrong, and saying so is why the generator now carries the
-right number beside the coordinate it constrains. My three specification
-mistakes are in this article because a record containing only successes is not a
-record without failures; it is a record whose failures are unaccounted for.
+who measured the gallery's clearance was wrong, and writing that down rather
+than quietly correcting it is why the generator now carries the right number
+beside the coordinate it constrains. My three specification mistakes are in this
+article because a record containing only successes is not a record without
+failures; it is a record whose failures are unaccounted for.
 
 This is not a moral point. It is that the alternative costs more. An incident
 written down honestly is a control for next time. An incident rounded off is a
