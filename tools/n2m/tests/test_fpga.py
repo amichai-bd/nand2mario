@@ -224,6 +224,45 @@ class FpgaTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 fpga.diagnostics(text)
 
+    def test_v05_generated_design_diagnostics_are_exact_and_retained(self):
+        database = self.build / "db"
+        database.mkdir()
+        suffix = (", which is not specified as a design file for the current project, "
+                  "but contains definitions for 1 design units and 1 entities in project")
+        lines = []
+        for name in fpga.GENERATED_DESIGN_FILES:
+            (database / name).write_text("generated\n")
+            lines.append(f"Warning (12125): Using design file db/{name}{suffix}")
+        output = "\n".join(reversed(lines))
+        explained = fpga.generated_design_diagnostics(output, self.build)
+        self.assertEqual([item["text"] for item in explained], list(reversed(lines)))
+        self.assertEqual([item["code"] for item in fpga.diagnostics(output, explained)],
+                         ["12125"] * len(lines))
+
+        mutations = (
+            output.replace("db/n2m_system_pll_altpll.v", "other/n2m_system_pll_altpll.v", 1),
+            output.replace("db/n2m_system_pll_altpll.v", "db/other_altpll.v", 1),
+            output.replace("1 design units", "2 design units", 1),
+            output.replace("1 entities", "2 entities", 1),
+            output + "\n" + lines[0],
+            "\n".join(output.splitlines()[1:]),
+        )
+        for changed in mutations:
+            with self.subTest(changed=changed[:100]), self.assertRaisesRegex(
+                    ValueError, "path, count, or text differs"):
+                fpga.generated_design_diagnostics(changed, self.build)
+
+        (database / fpga.GENERATED_DESIGN_FILES[0]).unlink()
+        with self.assertRaisesRegex(ValueError, "owned database output"):
+            fpga.generated_design_diagnostics(output, self.build)
+
+    def test_12125_remains_unclassified_outside_v05_compile(self):
+        warning = ("Warning (12125): Using design file db/n2m_system_pll_altpll.v, which is not "
+                   "specified as a design file for the current project, but contains definitions "
+                   "for 1 design units and 1 entities in project")
+        with self.assertRaisesRegex(ValueError, "unexplained Quartus diagnostic"):
+            fpga.diagnostics(warning)
+
     def test_timeout_retains_partial_output(self):
         record = {"commands": [], "classified_diagnostics": []}
         log = self.build / "timeout.log"
