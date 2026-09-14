@@ -419,9 +419,9 @@ reached. The author's original number was below it and the reviewer's was above
 it.
 
 The decision still stood. But the margin it stood on was not the one either
-party had measured, and that number is now a comment in the generator beside the
-coordinate it constrains. Neither the author nor the reviewer had it alone; the
-exchange produced it. That is why "the reviewer approved it" is a weaker
+party had measured, and the number went into the generator as a comment beside
+the coordinate it constrained. Neither the author nor the reviewer had it alone;
+the exchange produced it. That is why "the reviewer approved it" is a weaker
 statement than "the reviewer and the author disagreed about something specific
 and resolved it."
 
@@ -726,10 +726,10 @@ program finds by accident.
 The two games that never draw a frame are the most valuable result on the
 homebrew page, and they are the one section with no picture in it. The reviewer
 who measured the gallery's clearance was wrong, and writing that down rather
-than quietly correcting it is why the generator now carries the right number
-beside the coordinate it constrains. My three specification mistakes are in this
-article because a record containing only successes is not a record without
-failures; it is a record whose failures are unaccounted for.
+than quietly correcting it is why the right number reached the generator at all,
+as a comment beside the coordinate it constrained. My three specification
+mistakes are in this article because a record containing only successes is not a
+record without failures; it is a record whose failures are unaccounted for.
 
 This is not a moral point. It is that the alternative costs more. An incident
 written down honestly is a control for next time. An incident rounded off is a
