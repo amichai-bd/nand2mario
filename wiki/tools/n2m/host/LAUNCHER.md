@@ -38,6 +38,16 @@ Two sections, both read from the manifests that already hold these facts, so
 nothing about a game is retyped in the launcher's source and the window cannot
 drift from the pins.
 
+Each card also shows one native 160×144 indexed PNG from the existing
+[board-frame archives](../../../../tools/wiki/board_frames.py) for that game,
+displayed at half size with nearest-neighbour sampling. The archive
+frame is fixed explicitly, so adding another capture cannot silently change the
+catalogue. Missing, malformed, corrupt or non-native PNG data for a game that
+has a captured frame refuses the catalogue. Wyrmhole and Rex Run alone show the
+intentional **NO FRAME** placeholder: they never enable the LCD, so there is no
+board frame to show. The launcher neither captures a frame nor stores another
+copy of the decoded PNG.
+
 **Built from source in this repository** lists the targets in
 [`src/sw/targets.json`](../../../../src/sw/targets.json) the launcher offers:
 Stackdrop and Springtrail. Each card shows the cartridge title from the target
@@ -102,8 +112,14 @@ are checked **before** anything is sent, so a refused precondition never first
 destroys the game already playing.
 
 The window does not respond while a build or a load is in flight: both run on
-the Tk thread, which is what keeps one thread on the UART client. The progress
-line names the step it is on, and a load takes a few seconds.
+the Tk thread, which keeps one thread on the UART client. A progress bar and
+line name the current build, fetch, package read, upload, readback verification,
+reset or start stage. Build, fetch, package read, reset and start are
+indeterminate; the bar does not invent a percentage for them. Upload advances
+only after each `LOAD_WRITE` acknowledgement. Verification advances only after
+each `READ_ROM` reply, from zero through all32768 bytes. The bar says the game
+is ready only after full comparison, RESET, RUN and the pad preflight have all
+succeeded. A failure never advances to ready.
 
 ## One session throughout
 
@@ -149,9 +165,11 @@ grace period, the window says so and stays playable.
 [`tools/n2m/tests/test_launcher.py`](../../../../tools/n2m/tests/test_launcher.py)
 covers the catalogue against the manifests themselves — every game listed once,
 ours first, each third-party author and licence equal to its pin, the two known
-blank games marked, explained, linked and sorted last — the exact request order
-through load, reset, run and the pad's preflight, the progress reported while a
-load is in flight, the build that is asked for without `--rebuild` and the
+blank games marked, explained, linked and sorted last — every archive-to-game
+mapping, native PNG validation, intentional placeholder, and missing or malformed
+archive refusal — the exact request order through load, reset, run and the pad's
+preflight, ordered stages and bounded completed-byte progress while a load is in
+flight, the build that is asked for without `--rebuild` and the
 immutable attempt it resolves to, replacing one loaded image with another, every
 failure message above, the blank-screen watch, what Back does — one release write
 for a held button, nothing when none is held, and a reported failure instead of a

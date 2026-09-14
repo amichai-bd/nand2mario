@@ -6,6 +6,7 @@ and every UART step is answered by `Fake`.
 import json
 from pathlib import Path
 import sys
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -46,10 +47,15 @@ class Fake:
         self.events.append('lcd')
         return {'ly': 0, 'stat': 0, 'lcdc': self.lcdc, 'mode': 0}
 
-    def load(self, image):
+    def load(self, image, *, progress=None):
         self.events.append(('load', len(image)))
         if self.load_error is not None:
             raise self.load_error
+        if progress is not None:
+            progress({'stage': 'upload', 'completed': 0, 'total': len(image)})
+            progress({'stage': 'upload', 'completed': len(image), 'total': len(image)})
+            progress({'stage': 'readback', 'completed': 0, 'total': len(image)})
+            progress({'stage': 'readback', 'completed': len(image), 'total': len(image)})
         self.valid, self.state = 1, abi.STATE_PAUSED
         return {'verified_bytes': len(image), 'image': {'bytes': len(image)}}
 
@@ -121,6 +127,40 @@ class CatalogueTests(unittest.TestCase):
         self.assertEqual([game['key'] for game in self.games if game['boots'] and game['kind'] == 'external'],
                          [key for key in self.pins if key not in gl.BLANK])
 
+    def test_every_drawing_game_maps_to_one_committed_native_png(self):
+        expected = set(gl.SOURCE_TARGETS) | set(self.pins) - set(gl.BLANK)
+        self.assertEqual(set(gl.PREVIEW_ARCHIVES), expected)
+        for game in self.games:
+            preview = game['preview']
+            if game['key'] in gl.BLANK:
+                self.assertIsNone(preview, game['key'])
+                continue
+            archive, frame = gl.PREVIEW_ARCHIVES[game['key']]
+            self.assertEqual((preview['archive'], preview['frame']), (archive, frame))
+            self.assertEqual((preview['width'], preview['height']), (160, 144))
+            self.assertTrue(preview['png'].startswith('data:image/png;base64,'), game['key'])
+
+    def test_only_known_non_drawing_games_get_the_intentional_placeholder(self):
+        self.assertEqual([game['key'] for game in self.games if game['preview'] is None],
+                         ['wyrmhole', 'rex-run'])
+
+    def test_missing_or_malformed_expected_preview_is_refused(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            archive = root / gl.PREVIEW_DIR / 'libbet-board.json'
+            with self.assertRaisesRegex(gl.LauncherError, 'missing or malformed'):
+                gl.game_preview(root, 'libbet')
+            archive.parent.mkdir(parents=True)
+            for payload in (
+                    [],
+                    {'name': 'libbet-board', 'encoding': {'chosen': 'indexed-png-data-uri'},
+                     'frames': [{'png': 'data:image/png;base64,not base64!'}] * 8},
+                    {'name': 'libbet-board', 'encoding': {'chosen': 'indexed-png-data-uri'},
+                     'frames': [{'png': 'data:image/png;base64,AA=='}] * 8}):
+                archive.write_text(json.dumps(payload), encoding='utf-8')
+                with self.assertRaisesRegex(gl.LauncherError, 'preview archive'):
+                    gl.game_preview(root, 'libbet')
+
 
 class SequenceTests(unittest.TestCase):
     """Selecting a game loads it, resets, runs, and reaches the pad's preconditions."""
@@ -153,9 +193,32 @@ class SequenceTests(unittest.TestCase):
     def test_progress_is_reported_while_the_load_is_in_flight(self):
         client, said = Fake(), []
         self.external(client, progress=said.append)
-        self.assertTrue(any('Fetching' in line for line in said), said)
-        self.assertTrue(any(str(abi.PROFILE_ROM_BYTES) in line for line in said), said)
-        self.assertTrue(any('Resetting' in line for line in said), said)
+        self.assertEqual([event['stage'] for event in said],
+                         ['fetch', 'upload', 'upload', 'readback', 'readback',
+                          'reset', 'start', 'complete'])
+        counted = [event for event in said if event['completed'] is not None]
+        self.assertEqual([(event['stage'], event['completed'], event['total']) for event in counted],
+                         [('upload', 0, abi.PROFILE_ROM_BYTES),
+                          ('upload', abi.PROFILE_ROM_BYTES, abi.PROFILE_ROM_BYTES),
+                          ('readback', 0, abi.PROFILE_ROM_BYTES),
+                          ('readback', abi.PROFILE_ROM_BYTES, abi.PROFILE_ROM_BYTES),
+                          ('complete', 1, 1)])
+        self.assertTrue(all(0 <= event['completed'] <= event['total'] for event in counted))
+
+    def test_progress_does_not_claim_completion_after_a_load_failure(self):
+        said = []
+        with self.assertRaises(gl.LauncherError):
+            self.external(Fake(load_error=ValueError('full ROM readback mismatch at offset 7')),
+                          progress=said.append)
+        self.assertNotIn('complete', [event['stage'] for event in said])
+
+    def test_source_progress_orders_build_and_package_before_transfer(self):
+        said = []
+        with patch.object(gl, 'read_package', return_value=(IMAGE, {'rom_sha256': 'x'})):
+            launcher(Fake(), progress=said.append).start(gl.games(ROOT)[0])
+        self.assertEqual([event['stage'] for event in said],
+                         ['build', 'prepare', 'upload', 'upload', 'readback', 'readback',
+                          'reset', 'start', 'complete'])
 
     def test_a_source_built_game_reuses_its_current_attempt(self):
         client, calls = Fake(), []

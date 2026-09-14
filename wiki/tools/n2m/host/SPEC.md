@@ -90,6 +90,14 @@ check its hash, exact size and strict owned header/checksums using the packager
 validator, then keep immutable bytes for transmission and full comparison.
 No expected byte values are logged on mismatch. Each write leaves space for its
 generated offset record; every byte is read back after LOAD_END before success.
+`Client.load(image, progress=callback)` optionally reports structured `upload`
+and `readback` events with `completed` and `total` byte counts. Upload advances
+only after an acknowledged `LOAD_WRITE`; readback advances only after returned
+`READ_ROM` bytes. Both begin at zero and end at the exact image size. The
+callback adds no packet, retry, pacing or alternate result. Omitting it preserves
+the existing call and wire behavior. `Client.read_storage` exposes the same
+optional completed-byte callback for named internal readers; existing snapshot
+and peek callers omit it.
 
 `--external <name>` selects an `external_roms.images` entry of the
 [dependency manifest](../../../../tools/n2m/dependencies.json) instead. The pin
