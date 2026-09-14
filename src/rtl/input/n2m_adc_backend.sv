@@ -1,7 +1,8 @@
 `timescale 1ns/1ps
 `include "src/rtl/common/macros.svh"
 // Installed Intel control core owns the hard ADC crossing; all public transfers
-// occur in clk_sys. Contract: wiki/src/fpga-controls.md.
+// occur in clk_sys. Contract: wiki/src/fpga-controls.md. Verilator predefines
+// VERILATOR and selects the repository PLL and control doubles instead.
 module n2m_adc_backend (
     input logic clk_sys,
     input logic clk_adc_reference,
@@ -20,6 +21,37 @@ module n2m_adc_backend (
     logic response_eop;
     logic sync_valid;
 
+`ifdef VERILATOR
+    n2m_sim_adc_pll u_pll (
+        .areset(pll_areset),
+        .inclk0(clk_adc_reference),
+        .c0(clk_adc),
+        .locked(pll_locked)
+    );
+
+    n2m_sim_adc_control #(
+        .REFERENCE_VOLTAGE_SIM(49648),
+        .FILE_PREFIX("adc_ch"),
+        .FILE_SUFFIX(".txt")
+    ) u_control (
+        .clk(clk_sys),
+        .rst_n(!reset_sys),
+        .clk_in_pll_c0(clk_adc),
+        .clk_in_pll_locked(pll_locked),
+        .cmd_valid(command_valid),
+        .cmd_channel(command_channel),
+        .cmd_sop(1'b1),
+        .cmd_eop(1'b1),
+        .sync_ready(1'b1),
+        .cmd_ready(command_ready),
+        .rsp_valid(response_valid),
+        .rsp_channel(response_channel),
+        .rsp_data(response_data),
+        .rsp_sop(response_sop),
+        .rsp_eop(response_eop),
+        .sync_valid(sync_valid)
+    );
+`else
     n2m_adc_pll u_pll (
         .areset(pll_areset),
         .inclk0(clk_adc_reference),
@@ -77,6 +109,7 @@ module n2m_adc_backend (
         .rsp_eop(response_eop),
         .sync_valid(sync_valid)
     );
+`endif
 
     `N2M_ASSERT(adc_command_channel, clk_sys, reset_sys,
         !command_valid || command_channel == 5'd1 || command_channel == 5'd2)
