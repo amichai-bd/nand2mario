@@ -117,7 +117,7 @@ class HostPlayTests(unittest.TestCase):
             registry.parent.mkdir(parents=True)
             (root/'driver.do').write_text('# fixture')
             (root/'peer.py').write_text('# fixture')
-            target={'signature':'PASS','sources':[],'expected_exit':'zero'}
+            target={'signature':'PASS','sources':[],'expected_exit':'zero','simulator':'questa'}
             for driver,budget,valid in ((False,300,True),(False,301,False),(True,300,True),(True,301,False),(True,1500,False),(True,True,False)):
                 row=dict(target,timeout_seconds=budget)
                 if driver:row['driver']={'script':'driver.do','peer':'peer.py','inputs':[]}

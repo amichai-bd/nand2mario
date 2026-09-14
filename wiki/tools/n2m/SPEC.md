@@ -1,6 +1,6 @@
 # Build system
 
-Status: Verilator `doctor` on WSL, `check`, Questa `sim test`, MAX 10 `fpga build`, [software build/conformance](../sw/SPEC.md), [host load/control](host/SPEC.md), the [test catalogue](#test-catalogue), [declared regression subsets](#regression-subsets) and [tagged cleanup](#cleanup) are implemented.
+Status: Verilator `doctor`, `sim test`, `tests run` and `regress` on WSL, `check`, MAX 10 `fpga build`, [software build/conformance](../sw/SPEC.md), [host load/control](host/SPEC.md), the [test catalogue](#test-catalogue), [declared regression subsets](#regression-subsets) and [tagged cleanup](#cleanup) are implemented.
 
 ## Purpose
 
@@ -17,20 +17,25 @@ under `tools/n2m/`.
 
 ## Available commands
 
-```powershell
-python tools/build.py doctor --json
-python tools/build.py check --tag builder-check --json
-python tools/build.py sim test builder-smoke --tag smoke --seed 1 --json
-python tools/build.py sim test builder-smoke --tag smoke --json
-python tools/build.py sim test builder-smoke-fail --tag deliberate-failure --json
-python tools/build.py tests validate --json
-python tools/build.py tests list --level 0 --json
-python tools/build.py tests run --level 0 --tag level0 --json
-python tools/build.py tests run --label springtrail --tag springtrail --budget 600 --broader --json
-python tools/build.py regress pre-merge --tag pre-merge --json
-python tools/build.py regress builder-fault --tag deliberate-aggregate --json
-python tools/build.py clean --tag deliberate-aggregate --json
+Simulation commands run on WSL Linux:
+
+```bash
+python3 tools/build.py doctor --json
+python3 tools/build.py check --tag builder-check --json
+python3 tools/build.py sim test builder-smoke --tag smoke --seed 1 --json
+python3 tools/build.py sim test builder-smoke --tag smoke --json
+python3 tools/build.py sim test builder-smoke-fail --tag deliberate-failure --json
+python3 tools/build.py sim test builder-smoke --verilator-bin <prefix>/bin --tag smoke --json
+python3 tools/build.py tests validate --json
+python3 tools/build.py tests list --level 0 --json
+python3 tools/build.py tests run --level 0 --tag level0 --json
+python3 tools/build.py tests run --label springtrail --tag springtrail --budget 600 --broader --json
+python3 tools/build.py regress pre-merge --tag pre-merge --json
+python3 tools/build.py regress builder-fault --tag deliberate-aggregate --json
+python3 tools/build.py clean --tag deliberate-aggregate --json
 ```
+
+FPGA commands run on Windows PowerShell; see [FPGA build](#fpga-build).
 
 The second identical simulation reports `CACHED`. The deliberate-failure target
 must exit 1 and retain its mismatch log and waveform. The `builder-fault` subset
@@ -41,45 +46,58 @@ exit 0; errors exit nonzero. `--json` emits one result object on stdout.
 runs a checked Verilator smoke without consulting any license. Quartus and
 devices remain explicitly untested in this profile. See
 [environment doctor](#environment-doctor).
-`sim test` proves compile, elaboration, run, and the target's expected signature.
+`sim test` proves compile, elaboration, run, and the target's expected signature
+under [Verilator](#verilator-simulation); a target still registered for the
+retired Questa path is reported `SKIPPED` with reason `questa-retired` and
+exit 2, neither a pass nor a defect.
 `check` runs host contracts with controlled simulator doubles; these are not RTL
 evidence. It also proves the [test catalogue](#test-catalogue) still
 covers every test in the tree, and fails naming the first uncovered file.
 
 ## Simulator policy
 
-Verilator is the sole supported simulator. The licensed Questa seat has left
-the flow; no command may require a license variable, and a license failure is
-never a `SKIPPED` reason for new work. The
+Verilator is the sole supported simulator and the default. The licensed Questa
+seat has left the flow; no command may require a license variable, and a
+license failure is never a `SKIPPED` reason for new work. The
 [pinned toolchain](../../../tools/n2m/dependencies.json) is Verilator v5.052,
 built from source on WSL, and cocotb 2.1.0; [installation](#installation)
-names the steps. Retired selections (`auto`, `icarus`, `wsl-icarus`) and
-Icarus/WSL executable options fail argument parsing. Missing tools fail with
-diagnostics; there is no fallback simulator.
+names the steps. `--sim verilator` remains an optional explicit spelling for
+`doctor`, `sim test`, `regress` and `tests run`. Retired selections (`questa`,
+`auto`, `icarus`, `wsl-icarus`), the retired `--questa-bin` and
+`--intel-sim-lib` options and the Icarus/WSL executable options fail argument
+parsing. Missing tools fail with diagnostics; there is no fallback simulator.
 
 One build tool serves two operating systems. On WSL (Linux) it owns `sim`,
 `regress`, `tests run` and `doctor`; on Windows PowerShell it owns `fpga build`
 and `fpga program`. Caches and fingerprints stay per OS under `workdir/`.
-The [doctor](#environment-doctor) implements this split now: Windows only
-states where simulation runs and performs the Quartus, JTAG and UART identity
-checks. Where RTL instantiates an Intel primitive, the predefined `VERILATOR`
-macro selects a behavioral double and Quartus always sees the vendor instance;
-the [memory MAS](../../src/rtl/common/MAS_memory_primitives.md) owns that rule.
+[Command ownership](#command-ownership-by-operating-system) names the refusals;
+the [doctor](#environment-doctor) on Windows only states where simulation runs
+and performs the Quartus, JTAG and UART identity checks. Where RTL instantiates
+an Intel primitive, the predefined `VERILATOR` macro selects a behavioral double
+and Quartus always sees the vendor instance; the
+[memory MAS](../../src/rtl/common/MAS_memory_primitives.md) owns that rule.
 Four-state assertions are removed during migration as an authorized behavior
 change: Verilator runs with `--x-initial unique` and
 `+verilator+rand+reset+2`, so an uninitialized read fails by value mismatch
 rather than by an `X` check.
 
-Migration is incremental per area. The catalogue will record each target's
-simulator, and an unmigrated target reports `SKIPPED` with reason
-`questa-retired`; it never passes silently. Until that lands, `sim test`,
-`regress` and `tests run` still drive Questa as written below, and only
-`doctor` implements the OS split: on Windows it states where simulation runs
-instead of running it. The builder Verilator path, catalogue simulator field
-and the refusal of the other side's commands are tracked in
-[#597](https://github.com/amichai-bd/nand2mario/issues/597),
-the Intel primitive doubles in [#598](https://github.com/amichai-bd/nand2mario/issues/598),
+Migration is incremental per area. Every registry target records its
+[simulator](#simulator-field); an unmigrated `questa` target reports `SKIPPED`
+with reason `questa-retired` and never passes silently. The Intel primitive
+doubles are tracked in [#598](https://github.com/amichai-bd/nand2mario/issues/598)
 and the whole migration in [#595](https://github.com/amichai-bd/nand2mario/issues/595).
+
+### Command ownership by operating system
+
+One build tool serves two hosts. On WSL Linux it owns `sim`, `tests run` and
+`regress`; on Windows PowerShell it owns `fpga build` and `fpga program`. Each
+side refuses the other's commands before any workspace is taken: on Windows a
+simulation command exits 1 with `simulation runs on WSL Linux`; on Linux an
+`fpga` command exits 1 with `FPGA build and programming run on Windows
+PowerShell`. Every command header and simulation record carries `os`
+(`platform.system()`), and caches, fingerprints and compiled objects live under
+the running host's own `workdir/`. [`test_verilator.py`](../../../tools/n2m/tests/test_verilator.py)
+covers both refusals and both permitted sides with a mocked platform.
 
 ## Test catalogue
 
@@ -141,7 +159,7 @@ Two failure modes are deliberately loud:
 ### Execution and contention
 
 A `sim` unit runs as the ordinary `sim test` worker under the run's tag, with
-the same `--seed`, `--rebuild`, `--questa-bin` and `--intel-sim-lib`, under the
+the same `--seed`, `--rebuild` and `--verilator-bin`, under the
 same [per-target wall budget](#test-wall-budget). A `unit` runs as
 `unittest discover` over exactly that one file, with the file's own directory as
 the top level and `tools/` on `PYTHONPATH`. Its stdout and stderr share one
@@ -149,14 +167,12 @@ pipe; the whole output is kept, and the one-line `error` is the first
 `FAIL:`/`ERROR:` header, else the `FAILED` verdict, else the last line. A unit's
 own trailing print is never reported as its failure.
 
-A simulation whose Questa license checkout is refused is still reported by
-name as `SKIPPED` with reason `questa-contention` while unmigrated targets run
-there; the [simulator policy](#simulator-policy) replaces that reason with
-`questa-retired` as the catalogue gains its simulator field. The run
-exits non-zero only when something actually failed. A unit labelled
+A `sim` unit whose registry row still names `simulator: "questa"` is reported
+by name as `SKIPPED` with reason `questa-retired` before any child is launched,
+and the run exits non-zero only when something actually failed. A unit labelled
 `needs-cocotb` is skipped with reason `cocotb-environment` when the pinned
-`src/dv/python` interpreter is absent. Contention is not a defect, and is never
-silently swallowed.
+`src/dv/python` interpreter is absent. A skip is not a defect, and is never
+silently swallowed: the summary lists every skipped unit in `skipped`.
 
 The default aggregate budget is the ordinary 300-second pre-merge aggregate.
 `--budget` declares another; above 300 seconds it also needs `--broader`, as a
@@ -164,11 +180,132 @@ regression subset does. The result is published as
 `workdir/builds/<tag>/tests/summary.json` and as the tag's `manifest.json`;
 `tests/.lock` holds the tag for the whole selection.
 
+## Verilator simulation
+
+Verilator v5.052 on WSL is the executing simulator for every registry target
+with `simulator: "verilator"`. [`verilator.py`](../../../tools/n2m/verilator.py)
+builds the commands and checks transcripts; [`simulator.py`](../../../tools/n2m/simulator.py)
+discovers the tool; [`simulation.py`](../../../tools/n2m/simulation.py) runs the
+stage and publishes the record.
+
+### Simulator field
+
+Every target in [`targets.json`](../../../src/dv/builder/targets.json) declares
+`simulator` as `verilator` or `questa`. A missing or unknown value fails the
+target validator, `tests validate` and `check` with
+`registry target <name> must declare simulator as one of verilator, questa`.
+A `questa` target is retired: `sim test`, `tests run` and `regress` report it
+by name as `SKIPPED` with reason `questa-retired`, publish a `SKIPPED`
+`sim/test/<target>/result.json` naming `simulator`, `os` and `seed`, and never
+discover a simulator or launch a child. It counts as neither a pass nor a
+defect; `sim test` exits 2 and the aggregate commands list it in `skipped`.
+The Intel vendor models, the Tcl peer driver and the `preload` fixture
+pipeline (image preparation, `preload.verify`, the Mooneye tool fingerprint)
+were Questa bindings, so a `verilator` target may not declare `vendor_model`,
+`driver` or `preload`; the validator refuses each with a clear message. A
+target that still needs them stays `questa` until its area migration restores
+those checks on the Verilator stage. The migrated targets
+are `builder-smoke`, `builder-smoke-fail`, `python-joypad` and
+`python-joypad-fault`.
+
+### Registered target execution
+
+```bash
+python3 tools/build.py sim test builder-smoke --tag smoke --json
+python3 tools/build.py sim test builder-smoke --verilator-bin <prefix>/bin --tag smoke --json
+```
+
+`--verilator-bin` selects the directory containing `verilator`; omit it to
+resolve it on PATH. Discovery runs `verilator --version`, requires a
+`Verilator <release>` banner with no diagnostic, and records the executable
+path, hash, banner and release. The C++ compiler Verilator drives (`CXX`, else
+`g++`) is discovered and recorded the same way, because it shapes the binary
+the run executes. Missing or invalid explicit selections fail without fallback,
+and no command changes the caller's environment or reads a license variable.
+
+Each attempt has two commands. The build verilates and compiles under
+`compile/verilator/<target>/<attempt>/obj_dir/` with `--cc --exe --build`,
+`--trace-fst`, `--x-assign unique --x-initial unique --x-initial-edge`,
+`+incdir+<root>`, `--top-module <top>` and `-j 0`, within the target's selected
+[wall budget](#test-wall-budget). Verilator's lint warnings stay fatal; nothing
+passes `-Wno-fatal`. A SystemVerilog testbench builds with `--timing` and a
+harness `sim_main.cpp` written beside `obj_dir`: it is Verilator's own `--main`
+loop plus an FST trace of the whole top opened at `waves/simulation.fst`, and
+it exits nonzero when the runtime counted an error. A testbench's own
+`$dumpfile` still writes where it says, in FST form under `--trace-fst`. The
+run executes `obj_dir/sim` from the attempt with `+seed=<seed>`,
+`+verilator+seed+<seed>`, `+verilator+rand+reset+2` and the registry `args`,
+under the registry `timeout_seconds` (default 60).
+
+`--x-initial-edge` keeps the event-driven semantics the testbenches were
+written against: an asynchronous reset asserted at time zero is a posedge from
+the randomized initial value, so the design resets before its first clock, as it
+did under Questa. Without it, randomized reset state is held until the first
+clock edge and the unchanged joypad test fails by value mismatch.
+
+Any `%Warning` line in the build or run, and any `WARNING`, `ERROR` or
+`CRITICAL` word from cocotb's log, fails the attempt as `unexplained simulator
+warning`; any `%Error`, `%Fatal`, `ERROR` or `CRITICAL` line fails it as
+`unexpected simulator diagnostic` unless the target expects a nonzero exit and
+the line carries its declared signature. A `$fatal` reports its signature on
+the `%Fatal` line, then `%Error: <file>:<line>: Verilog $stop` and
+`Aborting...`; those two are the fatal's own stop and are accepted with it.
+The raw exit must match `expected_exit`, the signature must appear, and the
+retained wave must exist; otherwise the attempt is `FAIL`.
+
+### Python testbenches under Verilator
+
+`testbench: "python"` targets keep the [testbench contract](#testbench-types):
+the same `python` object, import closure, pinned interpreter and one named
+completed test. The build adds `--vpi --public-flat-rw --timescale 1ns/1ps`,
+links `-lcocotbvpi_verilator` from the installed cocotb 2.1.0 library
+directory, and compiles cocotb's own `share/lib/verilator/verilator.cpp` as the
+main; `--timing` is not passed. The run adds `--trace --trace-file
+waves/simulation.fst` and the same seed plusargs. The environment sets
+`GPI_USERS` to the embedded `libpython` and cocotb's GPI entry point beside
+`PYGPI_PYTHON_BIN`, `LIBPYTHON_LOC`, `COCOTB_TOPLEVEL`, `COCOTB_TEST_MODULES`,
+`COCOTB_RESULTS_FILE` and `COCOTB_RANDOM_SEED`; caller `COCOTB_*`, `GPI_*`,
+`PYGPI_*` and `PYTHON*` settings are replaced. The discovered runtime records
+the Verilator VPI library, `verilator.cpp`, entry point, `libpython`,
+interpreter and installed package contents, so all of them enter the
+fingerprint.
+
+`results.xml` follows cocotb 2.1: one `testsuite` per module with counted
+`tests`, `failures`, `errors` and `skipped`, one `testcase` per test carrying a
+`properties` block with `sim_time_duration`, and a `failure`, `error` or
+`skipped` child when the test did not pass. PASS requires raw exit zero, the
+transcript signature, exactly one counted test whose identity matches the
+declared `module` and `test`, positive wall and simulation time, no verdict
+child and zero failure counts, plus nonempty `results.xml`,
+`transactions.jsonl`, `waves/simulation.fst` and `sim.log`. A Python failure
+with raw exit zero still fails the builder and is never reused. The optional
+`python.waves` list is validated as before but does not narrow the trace:
+Verilator's FST holds the whole top.
+
+### Record
+
+Beyond the shared fields, a Verilator record carries `simulator`
+(`verilator`), `os`, `seed`, `waves` (`format: fst` and the retained path),
+`timing` with `build_seconds` and `run_seconds` measured separately so the
+compile cost against the wall budget is visible, and `elapsed_seconds`,
+`exit_code` and `timeout_seconds` on each command. Measured on WSL: the
+`builder-smoke` build takes about 4 s cold and under 0.3 s with `ccache`, the
+run milliseconds; `python-joypad` builds in 0.3 s and runs in 0.4 s.
+[`test_verilator.py`](../../../tools/n2m/tests/test_verilator.py) covers
+discovery, command shape, transcript classification, the record fields, retired
+targets and host ownership with doubles; the runs above are the simulator
+evidence.
+
 ## Questa simulation
 
-This section describes the unmigrated `sim test` path. It remains the executing
-contract for every registered target until the
-[simulator policy](#simulator-policy) migration reaches that target.
+This section describes the retired path. Every target it still applies to is
+registered `simulator: "questa"` and is reported `SKIPPED questa-retired` by
+the commands above; its command construction, macro, Intel model bindings and
+Tcl peer driver stay in [`questa.py`](../../../tools/n2m/questa.py),
+[`intel_memory.py`](../../../tools/n2m/intel_memory.py),
+[`intel_adc.py`](../../../tools/n2m/intel_adc.py) and
+[`simulation_peer.py`](../../../tools/n2m/simulation_peer.py) for the area
+migrations under [#595](https://github.com/amichai-bd/nand2mario/issues/595).
 
 ### Testbench types
 
@@ -290,7 +427,8 @@ the simulator's time and does not introduce a second RTL execution engine.
 
 `vendor_model: "intel-adc"` resolves the pinned installed control core, canonical
 synchronizer, public and encrypted MAX10 atoms, and PLL models. It uses the same
-installation discovery and explicit `--intel-sim-lib` selection as memory.
+installation discovery and explicit `--intel-sim-lib` selection as memory did
+while that option was accepted.
 Every source hash and PLL generation dependency enters the fingerprint before
 reuse. Each attempt records the actual PLL generator command, verifies its
 parameters against the FPGA configuration, and retains the generated hash.
@@ -311,8 +449,10 @@ warnings suppressed. Host dependency tests are not hardware behavior evidence.
 
 A target declaring `vendor_model: "intel-memory"` requires the installed source
 set pinned in [dependencies.json](../../../tools/n2m/dependencies.json).
-The builder finds `quartus/eda/sim_lib` beside the selected Questa distribution,
-or accepts `--intel-sim-lib <directory>` explicitly. Each required source must
+The retired adapter found `quartus/eda/sim_lib` beside the selected Questa
+distribution, or took `--intel-sim-lib <directory>` explicitly; the builder no
+longer accepts that option (it fails argument parsing) and no migrated target
+declares `vendor_model`. Each required source must
 exist and match the supported hash before cache reuse or compilation. A missing,
 modified or wrong model fails; there is no portable fallback. Repository HDL
 that defines a shadow `altsyncram` or `altsyncram_body` is rejected.
@@ -450,10 +590,12 @@ command into a silent cache hit: its `sim/test/<target>/result.json` was
 published `RUNNING` before execution and is never reused.
 
 A target may set integer `timeout_seconds` from 1 through its selected total budget
-for its Questa runtime command: 300 normally, its declared allowance when it has one,
+for its simulator run command: 300 normally, its declared allowance when it has one,
 and 1500 only for the three names above.
 The supervisor and target validator use the same exact-name selection. The
-default and individual preparation/compile commands remain
+Verilator build command is bounded by the same selected total budget, so a
+large design's C++ compile cannot outlive the wall it shares with the run; the
+record's `timing` splits the two. Other preparation commands remain
 60 seconds, subject to the overall ceiling. The value enters the fingerprint and
 each command records its effective bound. The outer execution deadline takes
 precedence over a longer nested timeout. The palette-case native reference
@@ -521,9 +663,12 @@ flag. Every declared subset is validated whenever the file is read, so one bad
 declaration fails every `regress` invocation. Every member of the selected
 subset also passes the target validator before the first child runs.
 
+A member registered `simulator: "questa"` is reported `SKIPPED` with reason
+`questa-retired` before any child is launched, listed in the aggregate's
+`skipped`, and counts as neither a pass nor a failure; `pre-merge` therefore
+reports `tile-pixel: SKIPPED questa-retired` until that target migrates.
 Members run in order, each as the `sim test` worker under the same tag with the
-regression's `--seed` (default 1), `--rebuild`, `--questa-bin` and
-`--intel-sim-lib`. The regression supervises each child exactly as a standalone
+regression's `--seed` (default 1), `--rebuild` and `--verilator-bin`. The regression supervises each child exactly as a standalone
 `sim test` is supervised: the child keeps its own selected wall budget and
 declared allowance, capped by the aggregate seconds remaining, and its one
 `wall-budget` record notes the cap as `wall_ceiling_seconds`. A member reached with fewer than 13
@@ -544,8 +689,8 @@ Otherwise it is `FAIL` and the error names each non-passing member and its
 status, for example `regression builder-fault failed: builder-smoke-fail FAIL`.
 The result records the subset, tier, purpose, budget, `broader`, seed, the
 subset file hash, `targets` keyed by name with status, cache, exit code,
-elapsed seconds, error and the child `result.json` path, the `failed` list,
-elapsed seconds and provenance. It is published as
+elapsed seconds, error or skip reason and the child `result.json` path, the
+`failed` and `skipped` lists, elapsed seconds and provenance. It is published as
 `workdir/builds/<tag>/sim/regress/summary.json` and as the tag's `manifest.json`.
 A passing child moves `workdir/latest.txt` as any `sim test` does; unless the
 aggregate is `PASS`, the regression restores its previous content (or absence)
@@ -682,7 +827,9 @@ tests use the standard library. Physical UART commands have an explicit optional
 
 A fresh WSL Ubuntu 24.04 machine needs the repository and three steps, each
 recorded under `verilator.install` and `cocotb.install` in the dependency
-definition: one `apt-get install` line for the build prerequisites; a source
+definition: one `apt-get install` line for the build prerequisites, including
+`liblz4-dev` because Verilator 5.052 compiles its FST writer against the system
+`lz4.h` and links `-llz4` for every `--trace-fst` build; a source
 build of the pinned tag into a prefix outside the repository
 (`autoconf && ./configure --prefix=<prefix> && make -j$(nproc) && make install`),
 because the distribution package (5.020) is below cocotb's 5.036 minimum; and
@@ -1192,14 +1339,15 @@ workdir/builds/<tag>/sim/regress/summary.json
 
 The implemented simulation stage publishes `result.json` atomically. It records
 status, fingerprint, provenance, commands, and hashes of immutable artifacts under
-`attempts/<id>/` and `compile/<backend>/<test-name>/<id>/`, with `questa` as the backend directory. A new attempt never
+`attempts/<id>/` and `compile/<backend>/<test-name>/<id>/`, with `verilator` as the backend directory. A new attempt never
 modifies an old attempt. `sim.log` beside `result.json` is a convenience copy;
 the record's hashed paths are authoritative. Each attempt contains `sim.log`,
 `result.json`, `waves/`, and `coverage/` (empty until coverage is implemented).
 
 Before execution, the published record becomes `RUNNING`, preventing reuse after
 interruption. Completion publishes `PASS` or `FAIL`; a failed forced rebuild
-invalidates the earlier success for that stage and preserves both attempts.
+invalidates the earlier success for that stage and preserves both attempts. A
+retired target publishes `SKIPPED` with reason `questa-retired` and no attempt.
 Discovery or preparation failure also invalidates that target's prior success.
 `manifest.json` and `status.json` describe the latest command on the tag. The
 latest pointer changes only after command success; it records the last successful
@@ -1390,7 +1538,7 @@ This target is separate from real-UART loading and does not replace its checks.
 Python target and its catalogue entry, declared source/import closure and actual
 selected wrapper/test import in a fresh process (30-second bound), then
 executes the same fixture preparation and preload verification as simulation.
-It does not discover Questa or acquire a simulator/board resource. The tag is
+It does not discover a simulator or acquire a simulator/board resource. The tag is
 exclusive; generated files and measured host time remain under `workdir/builds`.
 The existing whole-process supervisor enforces300 seconds, including its normal
 cleanup reserve; target-specific simulation allowances do not extend preflight.

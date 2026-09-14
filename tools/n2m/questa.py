@@ -32,6 +32,10 @@ def commands(simulator, root, target, seed, compiler, attempt, *, prepare=True, 
         if python_runtime:
             from .python_tb import prepare as prepare_python
             prepare_python(target, attempt, root, fixture_tools)
+            wave_paths = " ".join(f"/{target['top']}/{name}" for name in target.get("python", {}).get("waves", [])) or "/*"
+            (attempt / "run.do").write_text(
+                f"onerror {{quit -code 1}}\nlog {wave_paths}\nvcd file waves/simulation.vcd\n"
+                f"vcd add {wave_paths}\nrun -all\nquit -code 0\n", encoding="utf-8")
         else:
             write_macro(attempt)
     vendor_compile, vendor_map, vendor_binding = intel_commands(simulator, compiler, attempt, vendor_model)

@@ -11,9 +11,9 @@ test plan. The [verification gap](../../preflight-gaps.md#gap-008-verification-b
 owns outstanding broader evidence; this unit does not establish a full PPU or
 shared verification baseline.
 
-Verilator on WSL is the only supported simulator under the builder's
-[simulator policy](../n2m/SPEC.md#simulator-policy); no license is consulted.
-Both the normal and corrupt cases need actual simulator execution; the local
-host tests prove only the host contract. Until the tile targets migrate, the
-[SPEC](SPEC.md#simulator) names the unmigrated path they still use.
+Verilator on WSL is the only supported simulator; no license is consulted. Both
+the normal and corrupt cases need actual simulator execution once the tile
+targets migrate; until then the builder reports them `SKIPPED questa-retired`,
+as the [SPEC](SPEC.md#simulator) states. The local host tests prove only the
+host contract.
 The [CI boundary](../n2m/SPEC.md#ci-execution-boundary) owns the outstanding trusted route.

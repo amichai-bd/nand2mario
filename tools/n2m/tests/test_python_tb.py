@@ -11,12 +11,13 @@ from unittest.mock import patch
 import test_builder
 from n2m import python_tb
 from n2m.simulation import load_target
-from n2m.questa import commands, diagnostic
+from n2m.questa import commands
 from n2m.records import atomic_json, read_json
 
 
-XML = '<testsuites name="results"><testsuite name="all" package="all"><testcase name="joypad_contract" classname="test_joypad" time="0.2" sim_time_ns="100" /></testsuite></testsuites>'
-WARNING = '# ** Warning: (vopt-10908) Some optimizations are turned off because the +acc switch is in effect.'
+XML = ('<testsuites name="cocotb tests"><testsuite name="test_joypad" errors="0" failures="0" skipped="0" tests="1" time="0.2" timestamp="t" hostname="h">'
+       '<testcase classname="test_joypad" name="joypad_contract" time="0.2"><properties><property name="random_seed" value="1" />'
+       '<property name="sim_time_duration" value="100" /></properties></testcase></testsuite></testsuites>')
 
 
 class PythonTests(unittest.TestCase):
@@ -27,7 +28,9 @@ class PythonTests(unittest.TestCase):
         for owner in ("src/dv/python", "src/rtl/joypad", "src/rtl/interfaces", "src/rtl/common"):
             shutil.copytree(test_builder.ROOT / owner, self.root / owner, ignore=shutil.ignore_patterns("__pycache__"))
         self.args.target = "python-joypad"
-        self.runtime = {"executable": sys.executable, "libpython": "libpython.dll", "library": "cocotbvpi.dll", "version": "pinned"}
+        self.runtime = {"executable": sys.executable, "libpython": "libpython.so", "library": "/venv/libs/libcocotbvpi_verilator.so",
+                        "library_dir": "/venv/libs", "support": "/venv/share/lib/verilator/verilator.cpp",
+                        "entry_point": "/venv/simulator.so,initialize", "version": "pinned"}
         self.discovery = patch("n2m.python_tb.discover", return_value=self.runtime)
         self.discovery.start()
         self.addCleanup(self.discovery.stop)
@@ -38,12 +41,11 @@ class PythonTests(unittest.TestCase):
 
         def run(argv, cwd=None, timeout=60, env=None):
             result = original(argv, cwd)
-            if argv[0] == "vsim":
+            if argv[0] != self.sim.compiler:
                 self.env = env
                 if self.xml is not None:
                     (cwd / "results.xml").write_text(self.xml)
-                for path in ("transactions.jsonl", "waves/simulation.wlf", "waves/simulation.vcd"):
-                    (cwd / path).write_text("retained evidence")
+                (cwd / "transactions.jsonl").write_text("retained evidence")
                 return SimpleNamespace(returncode=self.raw_exit, stdout="PASS python-joypad")
             return result
         self.sim.run = run
@@ -66,10 +68,11 @@ class PythonTests(unittest.TestCase):
         self.assertEqual(result["status"], "PASS", result)
         self.assertEqual(result["commands"][-1]["exit_code"], 0)
         self.assertEqual(result["python_results"]["status"], "PASS")
-        self.assertIn("-pli", self.sim.calls[-1])
-        self.assertIn("-no_autoacc", self.sim.calls[-1])
+        self.assertIn("--vpi", self.sim.calls[-2])
+        self.assertEqual(self.sim.calls[-2][-1], self.runtime["support"])
+        self.assertIn("--trace-file", self.sim.calls[-1])
         self.assertEqual(self.run_stage()["cache"], "CACHED")
-        for suffix in ("results.xml", "transactions.jsonl", "simulation.vcd", "simulation.wlf"):
+        for suffix in ("results.xml", "transactions.jsonl", "simulation.fst"):
             artifact = next(p for p in result["artifacts"] if p.endswith(suffix))
             (self.root / artifact).write_text("damaged")
             result = self.run_stage()
@@ -83,13 +86,18 @@ class PythonTests(unittest.TestCase):
         self.assertEqual(self.run_stage()["cache"], "BUILT")
 
     def test_failed_missing_malformed_incomplete_and_extra_tests(self):
-        mutations = [None, "", "<broken", XML.replace('time="0.2"', 'time="nan"'),
-                     XML.replace('sim_time_ns="100"', ''), XML.replace('joypad_contract', 'other'),
-                     XML.replace('/></testsuite>', '><failure error_msg="JOYP_MISMATCH" /></testcase></testsuite>'),
-                     XML.replace('/></testsuite>', '><error /></testcase></testsuite>'),
-                     XML.replace('/></testsuite>', '><skipped /></testcase></testsuite>'),
+        mutations = [None, "", "<broken", XML.replace('time="0.2"><properties>', 'time="nan"><properties>'),
+                     XML.replace('<property name="sim_time_duration" value="100" />', ''),
+                     XML.replace('<property name="sim_time_duration" value="100" />', '<property name="sim_time_duration" value="0" />'),
+                     XML.replace('joypad_contract', 'other'),
+                     XML.replace('</properties>', '</properties><failure message="JOYP_MISMATCH" type="AssertionError" />'),
+                     XML.replace('</properties>', '</properties><error />'),
+                     XML.replace('</properties>', '</properties><skipped />'),
+                     XML.replace('</properties>', '</properties><unexpected />'),
                      XML.replace('</testsuite>', '<testcase /></testsuite>'),
-                     XML.replace('package="all"', 'package="all" errors="1"')]
+                     XML.replace('tests="1"', 'tests="2"'),
+                     XML.replace('failures="0"', 'failures="1"'),
+                     XML.replace('hostname="h"', 'hostname="h" extra="1"')]
         for xml in mutations:
             self.xml = xml
             result = self.run_stage()
@@ -125,7 +133,9 @@ class PythonTests(unittest.TestCase):
         self.assertNotIn("foreign", self.env["PYTHONPATH"])
         self.assertEqual(self.env["COCOTB_RANDOM_SEED"], "1")
         self.assertEqual(self.env["MGLS_LICENSE_FILE"], "license")
-        self.assertEqual(self.env["LIBPYTHON_LOC"], "libpython.dll")
+        self.assertEqual(self.env["LIBPYTHON_LOC"], "libpython.so")
+        self.assertEqual(self.env["GPI_USERS"], "libpython.so;/venv/simulator.so,initialize")
+        self.assertEqual(self.env["COCOTB_TOPLEVEL"], "n2m_joypad")
         self.assertEqual(self.env["PYTHONOPTIMIZE"], "0")
 
     def test_invalid_configuration_has_no_silent_fallback(self):
@@ -148,7 +158,8 @@ class PythonTests(unittest.TestCase):
         vendor = {"selection": "intel-memory", "library": "n2m_altera_mf", "sources": [{"path": "installed model.v"}],
                   "compile_options": ["-work", "n2m_altera_mf"],
                   "binding_options": ["-L", "n2m_altera_mf"]}
-        argv = commands(self.sim, self.root, target, 1, self.build, self.build,
+        questa = SimpleNamespace(tools={name: name for name in ("vlib", "vmap", "vlog", "vsim")}, path=str)
+        argv = commands(questa, self.root, target, 1, self.build, self.build,
                         prepare=False, vendor_model=vendor, python_runtime=self.runtime)
         runtime = argv[-1][0]
         self.assertIn("-pli", runtime)
@@ -159,12 +170,9 @@ class PythonTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 python_tb.validate(self.root, {**target, **invalid})
 
-    def test_wave_scope_excludes_recursive_memory_arrays(self):
+    def test_prepare_writes_no_simulator_macro(self):
         python_tb.prepare({}, self.build)
-        macro = (self.build / "run.do").read_text()
-        self.assertIn("log /*", macro)
-        self.assertIn("vcd add /*", macro)
-        self.assertNotIn("-r", macro)
+        self.assertEqual(list(self.build.glob("*.do")), [])
 
     def test_discovery_unavailable_is_explicit(self):
         self.discovery.stop()
@@ -174,14 +182,6 @@ class PythonTests(unittest.TestCase):
         with patch.object(sys, "version_info", (3, 12, 14)), patch.dict(sys.modules, {"cocotb_tools.config": None}):
             with self.assertRaisesRegex(ValueError, "dependencies unavailable"):
                 python_tb.discover()
-
-    def test_warning_classification_is_narrow(self):
-        output = WARNING + '\n# ** Note: (vsim-12126) Error and warning message counts have been restored: Errors=0, Warnings=1.\n# Errors: 0, Warnings: 1'
-        checked, explained = python_tb.classify(output)
-        self.assertEqual(len(explained), 3)
-        self.assertIsNone(diagnostic(checked))
-        for bad in (output + '\n# ** Warning: another issue', output.replace('Warnings: 1', 'Warnings: 2'), WARNING + '\n' + WARNING, output.replace('switch is', 'switch was')):
-            self.assertIsNotNone(diagnostic(python_tb.classify(bad)[0]))
 
 
 if __name__ == "__main__":

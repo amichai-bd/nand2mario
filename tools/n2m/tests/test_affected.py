@@ -29,7 +29,7 @@ class Impact(unittest.TestCase):
         self.write('src/rtl/tb.sv','module tb; endmodule\n')
         self.targets={}
         for name,model in (('a','model'),('b','other')):
-            self.targets[name]=dict(signature='PASS',expected_exit='zero',top='tb',testbench='python',
+            self.targets[name]=dict(signature='PASS',expected_exit='zero',top='tb',testbench='python',simulator='verilator',
                 sources=['src/rtl/tb.sv'],python=dict(module='test_'+name,test='contract',
                 inputs=['src/dv/springtrail/test_'+name+'.py','src/dv/springtrail/'+model+'.py']))
         self.registry()

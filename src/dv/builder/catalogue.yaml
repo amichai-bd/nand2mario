@@ -571,7 +571,6 @@ units:
   tools/n2m/tests/test_program_art.py: {kind: unit, level: 0, labels: [builder, sw], duration_seconds: 0.62}
   tools/n2m/tests/test_python_tb.py: {kind: unit, level: 1, labels: [builder, python-tb], duration_seconds: 2.88}
   tools/n2m/tests/test_python_waves.py: {kind: unit, level: 0, labels: [builder, python-tb], duration_seconds: 0.44}
-  tools/n2m/tests/test_questa.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 1.54}
   tools/n2m/tests/test_records.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 1.64}
   tools/n2m/tests/test_regress.py: {kind: unit, level: 1, labels: [builder], duration_seconds: 3.41}
   tools/n2m/tests/test_rgbds.py: {kind: unit, level: 0, labels: [builder, sw], duration_seconds: 0.51}
@@ -595,6 +594,7 @@ units:
   tools/n2m/tests/test_v05_preload.py: {kind: unit, level: 0, labels: [builder, v05], duration_seconds: 0.54}
   tools/n2m/tests/test_v05_reference.py: {kind: unit, level: 0, labels: [builder, v05], duration_seconds: 0.27}
   tools/n2m/tests/test_vector_source.py: {kind: unit, level: 0, labels: [builder, cpu], duration_seconds: 0.17}
+  tools/n2m/tests/test_verilator.py: {kind: unit, level: 0, labels: [builder], duration_seconds: null}
   tools/sim/test_tile_pixel.py: {kind: unit, level: 0, labels: [builder, display], duration_seconds: 0.37}
   tools/wiki/test_check.py: {kind: unit, level: 0, labels: [wiki], duration_seconds: 0.15}
   tools/wiki/test_quality_surfaces.py: {kind: unit, level: 0, labels: [wiki], duration_seconds: 0.37}

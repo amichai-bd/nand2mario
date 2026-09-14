@@ -4,6 +4,7 @@
       "src/dv/common/tb_assert_synthesis.sv"
     ],
     "top": "tb_assert_synthesis",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS assertion synthesis exclusion"
@@ -13,6 +14,7 @@
       "src/dv/common/tb_async_assert_macros.sv"
     ],
     "top": "tb_async_assert_macros",
+    "simulator": "questa",
     "args": [
       "+fail_direct"
     ],
@@ -24,6 +26,7 @@
       "src/dv/common/tb_async_assert_macros.sv"
     ],
     "top": "tb_async_assert_macros",
+    "simulator": "questa",
     "args": [
       "+fail_hold"
     ],
@@ -35,6 +38,7 @@
       "src/dv/common/tb_async_assert_macros.sv"
     ],
     "top": "tb_async_assert_macros",
+    "simulator": "questa",
     "args": [
       "+fail_known"
     ],
@@ -46,6 +50,7 @@
       "src/dv/common/tb_async_assert_macros.sv"
     ],
     "top": "tb_async_assert_macros",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS async and assertion macros edges=10 reset-pulses=2"
@@ -55,6 +60,7 @@
       "src/dv/common/tb_async_assert_macros.sv"
     ],
     "top": "tb_async_assert_macros",
+    "simulator": "questa",
     "args": [
       "+fail_never"
     ],
@@ -66,6 +72,7 @@
       "src/dv/common/tb_async_assert_macros.sv"
     ],
     "top": "tb_async_assert_macros",
+    "simulator": "questa",
     "args": [
       "+fail_no_reset"
     ],
@@ -84,6 +91,7 @@
       "src/dv/baseline/tb_baseline.sv"
     ],
     "top": "tb_baseline",
+    "simulator": "questa",
     "args": [
       "+broken"
     ],
@@ -102,6 +110,7 @@
       "src/dv/baseline/tb_baseline.sv"
     ],
     "top": "tb_baseline",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS baseline transactions=75 bins=ff"
@@ -111,6 +120,7 @@
       "src/dv/builder/builder_smoke.sv"
     ],
     "top": "builder_smoke",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS builder-smoke"
@@ -120,6 +130,7 @@
       "src/dv/builder/builder_smoke.sv"
     ],
     "top": "builder_smoke",
+    "simulator": "verilator",
     "args": [
       "+inject_failure"
     ],
@@ -133,6 +144,7 @@
       "src/dv/clocking/tb_clocking.sv"
     ],
     "top": "tb_clocking",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS clocking startup qualification lockloss pause core-reset periods jitter stopped-pixel"
@@ -144,6 +156,7 @@
       "src/dv/clocking/tb_clocking.sv"
     ],
     "top": "tb_clocking",
+    "simulator": "questa",
     "args": [
       "+bad_numerator"
     ],
@@ -157,6 +170,7 @@
       "src/dv/clocking/tb_clocking.sv"
     ],
     "top": "tb_clocking",
+    "simulator": "questa",
     "args": [
       "+drop_tick"
     ],
@@ -170,6 +184,7 @@
       "src/dv/clocking/tb_clocking.sv"
     ],
     "top": "tb_clocking",
+    "simulator": "questa",
     "args": [
       "+early_reset"
     ],
@@ -184,6 +199,7 @@
       "src/dv/cpu/tb_cpu_alu.sv"
     ],
     "top": "tb_cpu_alu",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS CPU ALU cases=1232896 operations=32 seed=none"
@@ -196,6 +212,7 @@
       "src/dv/cpu/tb_cpu_alu.sv"
     ],
     "top": "tb_cpu_alu",
+    "simulator": "questa",
     "args": [
       "+corrupt"
     ],
@@ -209,6 +226,7 @@
       "src/dv/cpu/tb_cpu_bus.sv"
     ],
     "top": "tb_cpu_bus",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS CPU bus commits=13 pause_phases=4 reset_phases=4 inactive_cycles=4"
@@ -220,6 +238,7 @@
       "src/dv/cpu/tb_cpu_bus.sv"
     ],
     "top": "tb_cpu_bus",
+    "simulator": "questa",
     "args": [
       "+change_after_t1"
     ],
@@ -233,6 +252,7 @@
       "src/dv/cpu/tb_cpu_bus.sv"
     ],
     "top": "tb_cpu_bus",
+    "simulator": "questa",
     "args": [
       "+late_active"
     ],
@@ -246,6 +266,7 @@
       "src/dv/cpu/tb_cpu_bus.sv"
     ],
     "top": "tb_cpu_bus",
+    "simulator": "questa",
     "args": [
       "+missing_response"
     ],
@@ -261,6 +282,7 @@
       "src/dv/cpu/tb_cpu_execute.sv"
     ],
     "top": "tb_cpu_execute",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS CPU execute cases=135168 base=256 flagsets=16 cb_memory=32 seed=none"
@@ -274,6 +296,7 @@
       "src/dv/cpu/tb_cpu_execute.sv"
     ],
     "top": "tb_cpu_execute",
+    "simulator": "questa",
     "args": [
       "+idu_fault"
     ],
@@ -294,6 +317,7 @@
       "src/dv/cpu/tb_cpu_halt_lock.sv"
     ],
     "top": "tb_cpu_halt_lock",
+    "simulator": "questa",
     "args": [
       "+halt_fault"
     ],
@@ -314,6 +338,7 @@
       "src/dv/cpu/tb_cpu_halt_lock.sv"
     ],
     "top": "tb_cpu_halt_lock",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS CPU HALT bug cases=2 illegal_locks=11 reset_recovery=11"
@@ -332,6 +357,7 @@
       "src/dv/cpu/tb_cpu_idu_arithmetic.sv"
     ],
     "top": "tb_cpu_idu_arithmetic",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS CPU IDU arithmetic cycles=17 events=6 resolved_no_effect=4"
@@ -350,6 +376,7 @@
       "src/dv/cpu/tb_cpu_idu_arithmetic.sv"
     ],
     "top": "tb_cpu_idu_arithmetic",
+    "simulator": "questa",
     "args": [
       "+corrupt"
     ],
@@ -370,6 +397,7 @@
       "src/dv/cpu/tb_cpu_if_observation.sv"
     ],
     "top": "tb_cpu_if_observation",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS CPU IF observation cases=3 records=13 T3_A_B_separate=1"
@@ -388,6 +416,7 @@
       "src/dv/cpu/tb_cpu_if_observation.sv"
     ],
     "top": "tb_cpu_if_observation",
+    "simulator": "questa",
     "args": [
       "+corrupt"
     ],
@@ -408,6 +437,7 @@
       "src/dv/cpu/tb_cpu_irq.sv"
     ],
     "top": "tb_cpu_irq",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS CPU IRQ cases=20 T3 stack HALT wake CB EI DI RETI pause"
@@ -426,6 +456,7 @@
       "src/dv/cpu/tb_cpu_irq.sv"
     ],
     "top": "tb_cpu_irq",
+    "simulator": "questa",
     "args": [
       "+di_fault"
     ],
@@ -446,6 +477,7 @@
       "src/dv/cpu/tb_cpu_irq_idu.sv"
     ],
     "top": "tb_cpu_irq_idu",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS CPU IRQ IDU cycles=14 events=6 FE_effects=1 FE_accesses=0"
@@ -464,6 +496,7 @@
       "src/dv/cpu/tb_cpu_irq_idu.sv"
     ],
     "top": "tb_cpu_irq_idu",
+    "simulator": "questa",
     "args": [
       "+corrupt"
     ],
@@ -484,6 +517,7 @@
       "src/dv/cpu/tb_cpu_irq_reset.sv"
     ],
     "top": "tb_cpu_irq_reset",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS CPU IRQ reset cases=42 phases=4 entry_cycles=5 captured_cancel=2"
@@ -502,6 +536,7 @@
       "src/dv/cpu/tb_cpu_irq_reset.sv"
     ],
     "top": "tb_cpu_irq_reset",
+    "simulator": "questa",
     "args": [
       "+corrupt"
     ],
@@ -522,6 +557,7 @@
       "src/dv/cpu/tb_cpu_irq.sv"
     ],
     "top": "tb_cpu_irq",
+    "simulator": "questa",
     "args": [
       "+corrupt"
     ],
@@ -542,6 +578,7 @@
       "src/dv/cpu/tb_cpu_halt_lock.sv"
     ],
     "top": "tb_cpu_halt_lock",
+    "simulator": "questa",
     "args": [
       "+lock_fault"
     ],
@@ -562,6 +599,7 @@
       "src/dv/cpu/tb_cpu_program.sv"
     ],
     "top": "tb_cpu_program",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS CPU program events=18 Mcycles=50 dots=220 HALT=1"
@@ -580,6 +618,7 @@
       "src/dv/cpu/tb_cpu_program.sv"
     ],
     "top": "tb_cpu_program",
+    "simulator": "questa",
     "args": [
       "+effect_fault"
     ],
@@ -600,6 +639,7 @@
       "src/dv/cpu/tb_cpu_program.sv"
     ],
     "top": "tb_cpu_program",
+    "simulator": "questa",
     "args": [
       "+effect_missing"
     ],
@@ -620,6 +660,7 @@
       "src/dv/cpu/tb_cpu_program.sv"
     ],
     "top": "tb_cpu_program",
+    "simulator": "questa",
     "args": [
       "+effect_page"
     ],
@@ -640,6 +681,7 @@
       "src/dv/cpu/tb_cpu_program.sv"
     ],
     "top": "tb_cpu_program",
+    "simulator": "questa",
     "args": [
       "+effect_page",
       "+effect_fault"
@@ -661,6 +703,7 @@
       "src/dv/cpu/tb_cpu_program.sv"
     ],
     "top": "tb_cpu_program",
+    "simulator": "questa",
     "args": [
       "+retirement_fault"
     ],
@@ -681,6 +724,7 @@
       "src/dv/cpu/tb_cpu_program.sv"
     ],
     "top": "tb_cpu_program",
+    "simulator": "questa",
     "args": [
       "+state_fault"
     ],
@@ -701,6 +745,7 @@
       "src/dv/cpu/tb_cpu_program.sv"
     ],
     "top": "tb_cpu_program",
+    "simulator": "questa",
     "args": [
       "+timing_fault"
     ],
@@ -721,6 +766,7 @@
       "src/dv/cpu/tb_cpu_reset.sv"
     ],
     "top": "tb_cpu_reset",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS CPU reset cases=10 phases=4 pending=2 pause=20 fresh_events=50"
@@ -739,6 +785,7 @@
       "src/dv/cpu/tb_cpu_reset.sv"
     ],
     "top": "tb_cpu_reset",
+    "simulator": "questa",
     "args": [
       "+corrupt"
     ],
@@ -753,6 +800,7 @@
       "src/dv/cpu/tb_cpu_retire.sv"
     ],
     "top": "tb_cpu_retire",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS CPU retirement events=6 lengths=1,2,3 irq_zero=1 reset_cancel=1"
@@ -765,6 +813,7 @@
       "src/dv/cpu/tb_cpu_retire.sv"
     ],
     "top": "tb_cpu_retire",
+    "simulator": "questa",
     "args": [
       "+corrupt"
     ],
@@ -786,6 +835,7 @@
       "src/dv/cpu/tb_cpu_step.sv"
     ],
     "top": "tb_cpu_step",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS CPU STEP timebase steps=7 records=8 interrupts=1 ticks=64"
@@ -805,6 +855,7 @@
       "src/dv/cpu/tb_cpu_step.sv"
     ],
     "top": "tb_cpu_step",
+    "simulator": "questa",
     "args": [
       "+missing"
     ],
@@ -826,6 +877,7 @@
       "src/dv/cpu/tb_cpu_step.sv"
     ],
     "top": "tb_cpu_step",
+    "simulator": "questa",
     "args": [
       "+suppress"
     ],
@@ -846,6 +898,7 @@
       "src/dv/cpu/tb_cpu_stop.sv"
     ],
     "top": "tb_cpu_stop",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS CPU STOP entry cases=8 rows=4 IME_states=2"
@@ -864,6 +917,7 @@
       "src/dv/cpu/tb_cpu_stop.sv"
     ],
     "top": "tb_cpu_stop",
+    "simulator": "questa",
     "args": [
       "+corrupt_divider"
     ],
@@ -884,6 +938,7 @@
       "src/dv/cpu/tb_cpu_stop_idu.sv"
     ],
     "top": "tb_cpu_stop_idu",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS CPU STOP entry IDU cases=8 pages=2 rows=4"
@@ -902,6 +957,7 @@
       "src/dv/cpu/tb_cpu_stop_idu.sv"
     ],
     "top": "tb_cpu_stop_idu",
+    "simulator": "questa",
     "args": [
       "+corrupt"
     ],
@@ -922,6 +978,7 @@
       "src/dv/cpu/tb_cpu_stop_irq.sv"
     ],
     "top": "tb_cpu_stop_irq",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS CPU STOP interrupt restart cases=14 records=64 normal=6 reset=8"
@@ -940,6 +997,7 @@
       "src/dv/cpu/tb_cpu_stop_irq.sv"
     ],
     "top": "tb_cpu_stop_irq",
+    "simulator": "questa",
     "args": [
       "+effect_fault"
     ],
@@ -960,6 +1018,7 @@
       "src/dv/cpu/tb_cpu_stop_irq.sv"
     ],
     "top": "tb_cpu_stop_irq",
+    "simulator": "questa",
     "args": [
       "+stack_fault"
     ],
@@ -980,6 +1039,7 @@
       "src/dv/cpu/tb_cpu_stop.sv"
     ],
     "top": "tb_cpu_stop",
+    "simulator": "questa",
     "args": [
       "+corrupt_action"
     ],
@@ -1000,6 +1060,7 @@
       "src/dv/cpu/tb_cpu_stop_wake.sv"
     ],
     "top": "tb_cpu_stop_wake",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS CPU normal STOP wake cases=20 normal=4 reset=16"
@@ -1018,6 +1079,7 @@
       "src/dv/cpu/tb_cpu_stop_wake.sv"
     ],
     "top": "tb_cpu_stop_wake",
+    "simulator": "questa",
     "args": [
       "+corrupt"
     ],
@@ -1038,6 +1100,7 @@
       "src/dv/cpu/tb_cpu_vectors.sv"
     ],
     "top": "tb_cpu_vectors",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS CPU vectors cases=7968 forms=498 flags=16 excluded_STOP_HALT=32",
@@ -1057,6 +1120,7 @@
       "src/dv/cpu/tb_cpu_vectors.sv"
     ],
     "top": "tb_cpu_vectors",
+    "simulator": "questa",
     "args": [
       "+missing"
     ],
@@ -1078,6 +1142,7 @@
       "src/dv/cpu/tb_cpu_vectors.sv"
     ],
     "top": "tb_cpu_vectors",
+    "simulator": "questa",
     "args": [
       "+corrupt"
     ],
@@ -1099,6 +1164,7 @@
       "src/dv/cpu/tb_cpu_wake.sv"
     ],
     "top": "tb_cpu_wake",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS CPU HALT wake cases=7 arrival_edges=3 IME_states=2 fresh_opcode=1"
@@ -1117,6 +1183,7 @@
       "src/dv/cpu/tb_cpu_wake.sv"
     ],
     "top": "tb_cpu_wake",
+    "simulator": "questa",
     "args": [
       "+missing"
     ],
@@ -1137,6 +1204,7 @@
       "src/dv/cpu/tb_cpu_wake_reset.sv"
     ],
     "top": "tb_cpu_wake_reset",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS CPU HALT reset cases=16 phases=4 resets=2 IME_states=2"
@@ -1155,6 +1223,7 @@
       "src/dv/cpu/tb_cpu_wake_reset.sv"
     ],
     "top": "tb_cpu_wake_reset",
+    "simulator": "questa",
     "args": [
       "+corrupt"
     ],
@@ -1175,6 +1244,7 @@
       "src/dv/cpu/tb_cpu_wake.sv"
     ],
     "top": "tb_cpu_wake",
+    "simulator": "questa",
     "args": [
       "+stale"
     ],
@@ -1195,6 +1265,7 @@
       "src/dv/cpu/tb_cpu_wrap.sv"
     ],
     "top": "tb_cpu_wrap",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS CPU wrap cases=2 cycles=40 records=12 writes=4"
@@ -1213,6 +1284,7 @@
       "src/dv/cpu/tb_cpu_wrap.sv"
     ],
     "top": "tb_cpu_wrap",
+    "simulator": "questa",
     "args": [
       "+corrupt"
     ],
@@ -1229,6 +1301,7 @@
       "tb_intel_ram.frame_case.dut.ram.m_default.altsyncram_inst"
     ],
     "top": "tb_intel_ram",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS Intel memory configurations=4 initialized_words=23344 latency=1",
@@ -1244,6 +1317,7 @@
       "tb_intel_ram.frame_case.dut.ram.m_default.altsyncram_inst"
     ],
     "top": "tb_intel_ram",
+    "simulator": "questa",
     "args": [
       "+collision"
     ],
@@ -1260,6 +1334,7 @@
       "tb_intel_ram.frame_case.dut.ram.m_default.altsyncram_inst"
     ],
     "top": "tb_intel_ram",
+    "simulator": "questa",
     "args": [
       "+corrupt"
     ],
@@ -1276,6 +1351,7 @@
       "tb_intel_ram.frame_case.dut.ram.m_default.altsyncram_inst"
     ],
     "top": "tb_intel_ram",
+    "simulator": "questa",
     "args": [
       "+late"
     ],
@@ -1288,6 +1364,7 @@
       "src/dv/interfaces/tb_interfaces.sv"
     ],
     "top": "tb_interfaces",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS interface vectors widths spaces"
@@ -1298,6 +1375,7 @@
       "src/dv/interfaces/tb_interfaces.sv"
     ],
     "top": "tb_interfaces",
+    "simulator": "questa",
     "args": [
       "+corrupt"
     ],
@@ -1312,6 +1390,7 @@
       "src/dv/interrupts/tb_interrupt_ack_fault.sv"
     ],
     "top": "tb_interrupt_ack_fault",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "nonzero",
     "signature": "N2M_ASSERT INTERRUPT_ACK_ONEHOT"
@@ -1324,6 +1403,7 @@
       "src/dv/interrupts/tb_interrupt_phases.sv"
     ],
     "top": "tb_interrupt_phases",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS interrupt phase and CPU snapshot scripts cases=23 checks=140"
@@ -1336,6 +1416,7 @@
       "src/dv/interrupts/tb_interrupt_phases.sv"
     ],
     "top": "tb_interrupt_phases",
+    "simulator": "questa",
     "args": [
       "+observation_fault"
     ],
@@ -1350,6 +1431,7 @@
       "src/dv/interrupts/tb_interrupts.sv"
     ],
     "top": "tb_interrupts",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS interrupt register truth table masks held sources reset observations checks=2569"
@@ -1362,6 +1444,7 @@
       "src/dv/interrupts/tb_interrupts.sv"
     ],
     "top": "tb_interrupts",
+    "simulator": "questa",
     "args": [
       "+duplicate"
     ],
@@ -1376,6 +1459,7 @@
       "src/dv/interrupts/tb_interrupts.sv"
     ],
     "top": "tb_interrupts",
+    "simulator": "questa",
     "args": [
       "+lost"
     ],
@@ -1390,6 +1474,7 @@
       "src/dv/interrupts/tb_interrupts.sv"
     ],
     "top": "tb_interrupts",
+    "simulator": "questa",
     "args": [
       "+priority"
     ],
@@ -1408,6 +1493,7 @@
       "src/dv/memory/tb_memory_cpu_port.sv"
     ],
     "top": "tb_memory_cpu_port",
+    "simulator": "questa",
     "args": [
       "+duplicate_fault"
     ],
@@ -1426,6 +1512,7 @@
       "src/dv/memory/tb_memory_cpu_port.sv"
     ],
     "top": "tb_memory_cpu_port",
+    "simulator": "questa",
     "args": [
       "+missing_fault"
     ],
@@ -1444,6 +1531,7 @@
       "src/dv/memory/tb_memory_cpu_port.sv"
     ],
     "top": "tb_memory_cpu_port",
+    "simulator": "questa",
     "args": [
       "+write_fault"
     ],
@@ -1462,6 +1550,7 @@
       "src/dv/memory/tb_memory_cpu_port.sv"
     ],
     "top": "tb_memory_cpu_port",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS memory CPU port writes=7 owner_commits=1 fixed_io=71 absent_cart=8192 reset_phases=16 echo ROM stale pause"
@@ -1475,6 +1564,7 @@
       "src/dv/memory/tb_memory_cpu_synthesis.sv"
     ],
     "top": "tb_memory_cpu_port",
+    "simulator": "questa",
     "args": [
       "+write_fault"
     ],
@@ -1489,6 +1579,7 @@
       "src/dv/memory/tb_memory_decode.sv"
     ],
     "top": "tb_memory_decode",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS memory decode addresses=65536 echo=7680"
@@ -1501,6 +1592,7 @@
       "src/dv/memory/tb_memory_decode.sv"
     ],
     "top": "tb_memory_decode",
+    "simulator": "questa",
     "args": [
       "+alias_fault"
     ],
@@ -1519,6 +1611,7 @@
       "src/dv/memory/tb_memory_service.sv"
     ],
     "top": "tb_memory_service",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS memory concurrent CPU PPU writes=352 preA_pairs=1040 blocked unusable"
@@ -1535,6 +1628,7 @@
       "src/dv/memory/tb_memory_service.sv"
     ],
     "top": "tb_memory_service",
+    "simulator": "questa",
     "args": [
       "+corrupt_response"
     ],
@@ -1551,6 +1645,7 @@
       "src/dv/memory/tb_memory_stores.sv"
     ],
     "top": "tb_memory_stores",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS memory stores RAM_inspected=83435 peeked=16687 ROM_bytes=32768 clear_edges=8192"
@@ -1565,6 +1660,7 @@
       "src/dv/memory/tb_memory_stores.sv"
     ],
     "top": "tb_memory_stores",
+    "simulator": "questa",
     "args": [
       "+early"
     ],
@@ -1581,6 +1677,7 @@
       "src/dv/memory/tb_memory_stores.sv"
     ],
     "top": "tb_memory_stores",
+    "simulator": "questa",
     "args": [
       "+peek_running"
     ],
@@ -1603,6 +1700,7 @@
       "src/dv/ppu/tb_ppu_access.sv"
     ],
     "top": "tb_ppu_access",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS PPU legal CPU mode/access observations cases=6",
@@ -1624,6 +1722,7 @@
       "src/dv/ppu/tb_ppu_access.sv"
     ],
     "top": "tb_ppu_access",
+    "simulator": "questa",
     "args": [
       "+access_corrupt"
     ],
@@ -1639,7 +1738,8 @@
       "src/dv/ppu/tb_ppu_fetch.sv"
     ],
     "expected_exit": "zero",
-    "top": "tb_ppu_fetch"
+    "top": "tb_ppu_fetch",
+    "simulator": "questa"
   },
   "ppu-fetch-missing": {
     "signature": "N2M_ASSERT fetch_response_missing",
@@ -1651,7 +1751,8 @@
       "src/dv/ppu/tb_ppu_fetch.sv"
     ],
     "expected_exit": "nonzero",
-    "top": "tb_ppu_fetch"
+    "top": "tb_ppu_fetch",
+    "simulator": "questa"
   },
   "ppu-fine-scroll": {
     "sources": [
@@ -1669,6 +1770,7 @@
       "src/dv/ppu/tb_ppu_fine_scroll.sv"
     ],
     "top": "tb_ppu_fine_scroll",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS PPU fine scroll legal before/after cases=2 visible_pixels=320",
@@ -1690,6 +1792,7 @@
       "src/dv/ppu/tb_ppu_fine_scroll.sv"
     ],
     "top": "tb_ppu_fine_scroll",
+    "simulator": "questa",
     "args": [
       "+fine_corrupt"
     ],
@@ -1717,6 +1820,7 @@
       "src/dv/ppu/tb_ppu_lcd_video.sv"
     ],
     "top": "tb_ppu_lcd_video",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS PPU LCD composed first last cancellation aborts=2 frames=3 VGA pixels=207360 resets=2",
@@ -1748,6 +1852,7 @@
       "src/dv/ppu/tb_ppu_lcd_video.sv"
     ],
     "top": "tb_ppu_lcd_video",
+    "simulator": "questa",
     "args": [
       "+lcd_observer_corrupt"
     ],
@@ -1777,6 +1882,7 @@
       "src/dv/ppu/tb_ppu_live_scroll.sv"
     ],
     "top": "tb_ppu_live_scroll",
+    "simulator": "questa",
     "args": [
       "+lcdc_fetch"
     ],
@@ -1800,6 +1906,7 @@
       "src/dv/ppu/tb_ppu_live_scroll.sv"
     ],
     "top": "tb_ppu_live_scroll",
+    "simulator": "questa",
     "args": [
       "+lcdc_fetch",
       "+lcdc_fetch_corrupt"
@@ -1824,6 +1931,7 @@
       "src/dv/ppu/tb_ppu_live_scroll.sv"
     ],
     "top": "tb_ppu_live_scroll",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS PPU live SCY planes and coarse SCX fetch cases=2 visible_pixels=320",
@@ -1845,6 +1953,7 @@
       "src/dv/ppu/tb_ppu_live_scroll.sv"
     ],
     "top": "tb_ppu_live_scroll",
+    "simulator": "questa",
     "args": [
       "+live_scroll_corrupt"
     ],
@@ -1868,6 +1977,7 @@
       "src/dv/ppu/tb_ppu_ly153.sv"
     ],
     "top": "tb_ppu_ly153",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS PPU LY153 public reads cases=54 legal LYC invalid valid held-mode edge-count pause reset",
@@ -1889,6 +1999,7 @@
       "src/dv/ppu/tb_ppu_ly153.sv"
     ],
     "top": "tb_ppu_ly153",
+    "simulator": "questa",
     "args": [
       "+ly_corrupt"
     ],
@@ -1912,6 +2023,7 @@
       "src/dv/ppu/tb_ppu_ly153.sv"
     ],
     "top": "tb_ppu_ly153",
+    "simulator": "questa",
     "args": [
       "+extra_irq"
     ],
@@ -1935,6 +2047,7 @@
       "src/dv/ppu/tb_ppu_ly153.sv"
     ],
     "top": "tb_ppu_ly153",
+    "simulator": "questa",
     "args": [
       "+irq_corrupt"
     ],
@@ -1948,6 +2061,7 @@
       "src/dv/ppu/tb_ppu_mix.sv"
     ],
     "top": "tb_ppu_mix",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS PPU mixer literal_cases=10"
@@ -1958,6 +2072,7 @@
       "src/dv/ppu/tb_ppu_mix.sv"
     ],
     "top": "tb_ppu_mix",
+    "simulator": "questa",
     "args": [
       "+corrupt"
     ],
@@ -1980,6 +2095,7 @@
       "src/dv/ppu/tb_ppu_render.sv"
     ],
     "top": "tb_ppu_render",
+    "simulator": "questa",
     "args": [
       "+object_zero"
     ],
@@ -2003,6 +2119,7 @@
       "src/dv/ppu/tb_ppu_render.sv"
     ],
     "top": "tb_ppu_render",
+    "simulator": "questa",
     "args": [
       "+object_zero",
       "+object_zero_corrupt"
@@ -2019,7 +2136,8 @@
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS PPU objects first_ten_dma_priority",
-    "top": "tb_ppu_objects"
+    "top": "tb_ppu_objects",
+    "simulator": "questa"
   },
   "ppu-objects-missing": {
     "sources": [
@@ -2031,7 +2149,8 @@
     ],
     "expected_exit": "nonzero",
     "signature": "N2M_ASSERT oam_response_missing",
-    "top": "tb_ppu_objects"
+    "top": "tb_ppu_objects",
+    "simulator": "questa"
   },
   "ppu-palette": {
     "sources": [
@@ -2049,6 +2168,7 @@
       "src/dv/ppu/tb_ppu_render.sv"
     ],
     "top": "tb_ppu_render",
+    "simulator": "questa",
     "args": [
       "+palette"
     ],
@@ -2072,6 +2192,7 @@
       "src/dv/ppu/tb_ppu_render.sv"
     ],
     "top": "tb_ppu_render",
+    "simulator": "questa",
     "args": [
       "+palette",
       "+palette_corrupt"
@@ -2096,6 +2217,7 @@
       "src/dv/ppu/tb_ppu_render.sv"
     ],
     "top": "tb_ppu_render",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS PPU renderer original_scene frames=2 pixels=46080",
@@ -2117,6 +2239,7 @@
       "src/dv/ppu/tb_ppu_render.sv"
     ],
     "top": "tb_ppu_render",
+    "simulator": "questa",
     "args": [
       "+corrupt"
     ],
@@ -2140,6 +2263,7 @@
       "src/dv/ppu/tb_ppu_render.sv"
     ],
     "top": "tb_ppu_render",
+    "simulator": "questa",
     "args": [
       "+temporal"
     ],
@@ -2163,6 +2287,7 @@
       "src/dv/ppu/tb_ppu_render.sv"
     ],
     "top": "tb_ppu_render",
+    "simulator": "questa",
     "args": [
       "+temporal",
       "+timing_corrupt"
@@ -2187,6 +2312,7 @@
       "src/dv/ppu/tb_ppu_scroll_window.sv"
     ],
     "top": "tb_ppu_scroll_window",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS PPU scroll/window static pixels=46080 fine=8 wx=8",
@@ -2208,6 +2334,7 @@
       "src/dv/ppu/tb_ppu_scroll_window.sv"
     ],
     "top": "tb_ppu_scroll_window",
+    "simulator": "questa",
     "args": [
       "+scroll_corrupt"
     ],
@@ -2219,6 +2346,7 @@
     "expected_exit": "zero",
     "args": [],
     "top": "tb_ppu_shift",
+    "simulator": "questa",
     "signature": "PASS PPU shift literal_cases=18",
     "sources": [
       "src/rtl/ppu/n2m_ppu_shift.sv",
@@ -2231,6 +2359,7 @@
       "+unknown"
     ],
     "top": "tb_ppu_shift",
+    "simulator": "questa",
     "signature": "N2M_ASSERT shift_state_known",
     "sources": [
       "src/rtl/ppu/n2m_ppu_shift.sv",
@@ -2253,6 +2382,7 @@
       "src/dv/ppu/tb_ppu_stat.sv"
     ],
     "top": "tb_ppu_stat",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS PPU STAT ordinary cases=10 edges=3"
@@ -2273,6 +2403,7 @@
       "src/dv/ppu/tb_ppu_stat.sv"
     ],
     "top": "tb_ppu_stat",
+    "simulator": "questa",
     "args": [
       "+irq_corrupt"
     ],
@@ -2297,6 +2428,7 @@
       "src/dv/ppu/tb_ppu_stat_oam.sv"
     ],
     "top": "tb_ppu_stat_oam",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS PPU STAT OAM compatibility qualifier public overlap IF priority cases=6 checks=42",
@@ -2320,6 +2452,7 @@
       "src/dv/ppu/tb_ppu_stat_oam.sv"
     ],
     "top": "tb_ppu_stat_oam",
+    "simulator": "questa",
     "args": [
       "+qualifier_fault"
     ],
@@ -2343,6 +2476,7 @@
       "src/dv/ppu/tb_ppu_stat_off.sv"
     ],
     "top": "tb_ppu_stat_off",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS PPU STAT LCD off cases=14 edges=2"
@@ -2363,6 +2497,7 @@
       "src/dv/ppu/tb_ppu_stat_off.sv"
     ],
     "top": "tb_ppu_stat_off",
+    "simulator": "questa",
     "args": [
       "+off_corrupt"
     ],
@@ -2387,6 +2522,7 @@
       "src/dv/ppu/tb_ppu_vblank.sv"
     ],
     "top": "tb_ppu_vblank",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS PPU line144 STAT VBlank IF priority cases=4 checks=32",
@@ -2410,6 +2546,7 @@
       "src/dv/ppu/tb_ppu_vblank.sv"
     ],
     "top": "tb_ppu_vblank",
+    "simulator": "questa",
     "args": [
       "+vblank_fault"
     ],
@@ -2438,6 +2575,7 @@
       "src/dv/ppu/tb_ppu_video.sv"
     ],
     "top": "tb_ppu_video",
+    "simulator": "questa",
     "args": [
       "+temporal",
       "+video"
@@ -2473,6 +2611,7 @@
       "src/dv/ppu/tb_ppu_video.sv"
     ],
     "top": "tb_ppu_video",
+    "simulator": "questa",
     "args": [
       "+temporal",
       "+video",
@@ -2504,6 +2643,7 @@
       "src/dv/ppu/tb_ppu_scroll_window.sv"
     ],
     "top": "tb_ppu_scroll_window",
+    "simulator": "questa",
     "args": [
       "+disabled_wx"
     ],
@@ -2527,6 +2667,7 @@
       "src/dv/ppu/tb_ppu_scroll_window.sv"
     ],
     "top": "tb_ppu_scroll_window",
+    "simulator": "questa",
     "args": [
       "+disabled_wx",
       "+disabled_wx_corrupt"
@@ -2551,6 +2692,7 @@
       "src/dv/ppu/tb_ppu_scroll_window.sv"
     ],
     "top": "tb_ppu_scroll_window",
+    "simulator": "questa",
     "args": [
       "+repeated_window"
     ],
@@ -2574,6 +2716,7 @@
       "src/dv/ppu/tb_ppu_scroll_window.sv"
     ],
     "top": "tb_ppu_scroll_window",
+    "simulator": "questa",
     "args": [
       "+repeated_window",
       "+repeated_window_corrupt"
@@ -2598,6 +2741,7 @@
       "src/dv/ppu/tb_ppu_scroll_window.sv"
     ],
     "top": "tb_ppu_scroll_window",
+    "simulator": "questa",
     "args": [
       "+wx0"
     ],
@@ -2621,6 +2765,7 @@
       "src/dv/ppu/tb_ppu_scroll_window.sv"
     ],
     "top": "tb_ppu_scroll_window",
+    "simulator": "questa",
     "args": [
       "+wx166"
     ],
@@ -2644,6 +2789,7 @@
       "src/dv/ppu/tb_ppu_scroll_window.sv"
     ],
     "top": "tb_ppu_scroll_window",
+    "simulator": "questa",
     "args": [
       "+wy"
     ],
@@ -2667,6 +2813,7 @@
       "src/dv/ppu/tb_ppu_scroll_window.sv"
     ],
     "top": "tb_ppu_scroll_window",
+    "simulator": "questa",
     "args": [
       "+wy",
       "+wy_late"
@@ -2680,6 +2827,7 @@
       "src/dv/common/tb_register_macros.sv"
     ],
     "top": "tb_register_macros",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS register macros cycles=64 combinations=15"
@@ -2689,6 +2837,7 @@
       "src/dv/common/tb_register_macros.sv"
     ],
     "top": "tb_register_macros",
+    "simulator": "questa",
     "args": [
       "+corrupt"
     ],
@@ -2697,6 +2846,7 @@
   },
   "snapshot": {
     "top": "tb_snapshot",
+    "simulator": "questa",
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/snapshot/n2m_snapshot_pkg.sv",
@@ -2712,6 +2862,7 @@
   },
   "snapshot-latency": {
     "top": "tb_snapshot_lifecycle",
+    "simulator": "questa",
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/snapshot/n2m_snapshot_pkg.sv",
@@ -2729,6 +2880,7 @@
   },
   "snapshot-lifecycle": {
     "top": "tb_snapshot_lifecycle",
+    "simulator": "questa",
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/snapshot/n2m_snapshot_pkg.sv",
@@ -2744,6 +2896,7 @@
   },
   "snapshot-overwrite": {
     "top": "tb_snapshot_lifecycle",
+    "simulator": "questa",
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/snapshot/n2m_snapshot_pkg.sv",
@@ -2761,6 +2914,7 @@
   },
   "snapshot-ownership": {
     "top": "tb_snapshot_lifecycle",
+    "simulator": "questa",
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/snapshot/n2m_snapshot_pkg.sv",
@@ -2796,6 +2950,7 @@
       "tb_snapshot_vga.video.dut.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
     ],
     "top": "tb_snapshot_vga",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS snapshot VGA pre_reset_frames=18 immutable",
@@ -2807,6 +2962,7 @@
       "src/dv/display/tb_dmg_tile_pixel.sv"
     ],
     "top": "tb_dmg_tile_pixel",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS pixel_cases=524288 palette_cases=8192 cycles=532521 seed=none"
@@ -2817,6 +2973,7 @@
       "src/dv/display/tb_dmg_tile_pixel.sv"
     ],
     "top": "tb_dmg_tile_pixel",
+    "simulator": "questa",
     "args": [
       "+corrupt"
     ],
@@ -2833,6 +2990,7 @@
       "src/dv/timer/tb_timer_edges.sv"
     ],
     "top": "tb_timer_edges",
+    "simulator": "questa",
     "args": [
       "+bad_commit"
     ],
@@ -2850,6 +3008,7 @@
       "src/dv/timer/tb_timer_reload.sv"
     ],
     "top": "tb_timer_reload",
+    "simulator": "questa",
     "args": [
       "+counter_fault"
     ],
@@ -2866,6 +3025,7 @@
       "src/dv/timer/tb_timer_edges.sv"
     ],
     "top": "tb_timer_edges",
+    "simulator": "questa",
     "args": [
       "+edge_fault"
     ],
@@ -2883,6 +3043,7 @@
       "src/dv/timer/tb_timer_edges.sv"
     ],
     "top": "tb_timer_edges",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS timer frequencies edges wrap pause STOP resets cases=67",
@@ -2898,6 +3059,7 @@
       "src/dv/timer/tb_timer_reload.sv"
     ],
     "top": "tb_timer_reload",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS timer reload schedules cases=8 checks=1152"
@@ -2912,6 +3074,7 @@
       "src/dv/timer/tb_timer_reload.sv"
     ],
     "top": "tb_timer_reload",
+    "simulator": "questa",
     "args": [
       "+request_fault"
     ],
@@ -2954,6 +3117,7 @@
       "src/dv/uart/tb_uart_endpoint.sv"
     ],
     "top": "tb_uart_endpoint",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS UART endpoint full_wire ROM32768 reset_ack replay STEP IRQ input snapshot host_space",
@@ -2996,6 +3160,7 @@
       "src/dv/uart/tb_uart_endpoint.sv"
     ],
     "top": "tb_uart_endpoint",
+    "simulator": "questa",
     "args": [
       "+duplicate_fault"
     ],
@@ -3040,6 +3205,7 @@
       "src/dv/uart/tb_uart_endpoint.sv"
     ],
     "top": "tb_uart_endpoint",
+    "simulator": "questa",
     "args": [
       "+readback_fault"
     ],
@@ -3076,6 +3242,7 @@
       "src/dv/uart/tb_uart_peek.sv"
     ],
     "top": "tb_uart_peek",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS UART peek wire stores=5 bytes=16689 rejected=19 held commands=",
@@ -3110,6 +3277,7 @@
       "src/dv/uart/tb_uart_peek.sv"
     ],
     "top": "tb_uart_peek",
+    "simulator": "questa",
     "args": [
       "+peek_fault"
     ],
@@ -3129,6 +3297,7 @@
       "src/dv/uart/tb_uart_exchange.sv"
     ],
     "top": "tb_uart_exchange",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS UART exchange replies=14 effects=7 dispatch=9"
@@ -3144,6 +3313,7 @@
       "src/dv/uart/tb_uart_exchange.sv"
     ],
     "top": "tb_uart_exchange",
+    "simulator": "questa",
     "args": [
       "+corrupt"
     ],
@@ -3161,6 +3331,7 @@
       "src/dv/uart/tb_uart_exchange.sv"
     ],
     "top": "tb_uart_exchange",
+    "simulator": "questa",
     "args": [
       "+duplicate"
     ],
@@ -3179,6 +3350,7 @@
       "src/dv/uart/tb_uart_load.sv"
     ],
     "top": "tb_uart_load",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS UART load full_ROM CRC32 presence repair overlap readback reset",
@@ -3197,6 +3369,7 @@
       "src/dv/uart/tb_uart_load.sv"
     ],
     "top": "tb_uart_load",
+    "simulator": "questa",
     "args": [
       "+crc_fault"
     ],
@@ -3217,6 +3390,7 @@
       "src/dv/uart/tb_uart_load.sv"
     ],
     "top": "tb_uart_load",
+    "simulator": "questa",
     "args": [
       "+presence_fault"
     ],
@@ -3236,6 +3410,7 @@
       "src/dv/uart/tb_uart_packet_rx.sv"
     ],
     "top": "tb_uart_packet_rx",
+    "simulator": "questa",
     "args": [
       "+corrupt"
     ],
@@ -3253,6 +3428,7 @@
       "src/dv/uart/tb_uart_packet_rx.sv"
     ],
     "top": "tb_uart_packet_rx",
+    "simulator": "questa",
     "args": [
       "+bad_read"
     ],
@@ -3270,6 +3446,7 @@
       "src/dv/uart/tb_uart_packet_rx.sv"
     ],
     "top": "tb_uart_packet_rx",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS UART packet RX requests=7"
@@ -3283,6 +3460,7 @@
       "src/dv/uart/tb_uart_packet_tx.sv"
     ],
     "top": "tb_uart_packet_tx",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS UART packet TX replies=11 resets=3 COBS zero 254 max serial_stop",
@@ -3297,6 +3475,7 @@
       "src/dv/uart/tb_uart_packet_tx.sv"
     ],
     "top": "tb_uart_packet_tx",
+    "simulator": "questa",
     "args": [
       "+corrupt"
     ],
@@ -3313,6 +3492,7 @@
       "src/dv/uart/tb_uart_packet_tx.sv"
     ],
     "top": "tb_uart_packet_tx",
+    "simulator": "questa",
     "args": [
       "+missing"
     ],
@@ -3330,6 +3510,7 @@
       "src/dv/uart/tb_uart_response.sv"
     ],
     "top": "tb_uart_response",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS UART response packets=6 bytes=328 resets=3 Intel_staging CRC16",
@@ -3346,6 +3527,7 @@
       "src/dv/uart/tb_uart_response.sv"
     ],
     "top": "tb_uart_response",
+    "simulator": "questa",
     "args": [
       "+corrupt"
     ],
@@ -3367,6 +3549,7 @@
       "src/dv/uart/tb_uart_serial.sv"
     ],
     "top": "tb_uart_serial",
+    "simulator": "questa",
     "args": [],
     "signature": "PASS UART serial bytes=446 errors=2 packets=10 reset_bits=10",
     "expected_exit": "zero",
@@ -3385,6 +3568,7 @@
       "src/dv/uart/tb_uart_serial.sv"
     ],
     "top": "tb_uart_serial",
+    "simulator": "questa",
     "args": [
       "+corrupt"
     ],
@@ -3408,6 +3592,7 @@
       "tb_vga.dut.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
     ],
     "top": "tb_vga",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS vga every-pixel observer ownership fast slow pause core-reset lockloss stopped-pixel",
@@ -3429,6 +3614,7 @@
       "tb_vga.dut.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
     ],
     "top": "tb_vga",
+    "simulator": "questa",
     "args": [
       "+active_swap"
     ],
@@ -3452,6 +3638,7 @@
       "tb_vga.dut.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
     ],
     "top": "tb_vga",
+    "simulator": "questa",
     "args": [
       "+bank_reuse"
     ],
@@ -3469,6 +3656,7 @@
       "src/dv/vga/tb_vga.sv"
     ],
     "top": "tb_vga",
+    "simulator": "questa",
     "args": [
       "+lcd"
     ],
@@ -3492,6 +3680,7 @@
       "src/dv/vga/tb_vga.sv"
     ],
     "top": "tb_vga",
+    "simulator": "questa",
     "args": [
       "+lcd",
       "+blank_corrupt"
@@ -3516,6 +3705,7 @@
       "src/dv/vga/tb_vga.sv"
     ],
     "top": "tb_vga",
+    "simulator": "questa",
     "args": [
       "+lcd_reset"
     ],
@@ -3545,6 +3735,7 @@
       "tb_vga.dut.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
     ],
     "top": "tb_vga",
+    "simulator": "questa",
     "args": [
       "+read_latency"
     ],
@@ -3580,6 +3771,7 @@
       "src/dv/uart/tb_uart_snapshot.sv"
     ],
     "top": "tb_uart_snapshot",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS UART snapshot actual_Intel wire bytes=23040 commands=",
@@ -3614,6 +3806,7 @@
       "src/dv/uart/tb_uart_snapshot.sv"
     ],
     "top": "tb_uart_snapshot",
+    "simulator": "questa",
     "args": [
       "+corrupt_frame"
     ],
@@ -3640,6 +3833,7 @@
       "src/dv/uart/tb_uart_stopped_step.sv"
     ],
     "top": "tb_uart_stopped_step",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS UART stopped STEP immediate cases=4 zero_dots input_preserved queued_wake=1"
@@ -3662,6 +3856,7 @@
       "src/dv/uart/tb_uart_stopped_step.sv"
     ],
     "top": "tb_uart_stopped_step",
+    "simulator": "questa",
     "args": [
       "+release_pause"
     ],
@@ -3682,6 +3877,7 @@
       "src/dv/cpu/tb_cpu_vectors.sv"
     ],
     "top": "tb_cpu_vectors",
+    "simulator": "questa",
     "args": [
       "+expected-state-fault"
     ],
@@ -3696,6 +3892,7 @@
       "src/dv/joypad/tb_joypad_matrix.sv"
     ],
     "top": "tb_joypad_matrix",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS JOYP matrix cases=1024"
@@ -3707,6 +3904,7 @@
       "src/dv/joypad/tb_joypad_matrix.sv"
     ],
     "top": "tb_joypad_matrix",
+    "simulator": "questa",
     "args": [
       "+corrupt"
     ],
@@ -3722,6 +3920,7 @@
       "src/dv/joypad/tb_joypad_registers.sv"
     ],
     "top": "tb_joypad_registers",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS JOYP registers writes=256 inputs=256 resets=2"
@@ -3735,6 +3934,7 @@
       "src/dv/joypad/tb_joypad_registers.sv"
     ],
     "top": "tb_joypad_registers",
+    "simulator": "questa",
     "args": [
       "+corrupt"
     ],
@@ -3750,6 +3950,7 @@
       "src/dv/joypad/tb_joypad_registers.sv"
     ],
     "top": "tb_joypad_registers",
+    "simulator": "questa",
     "args": [
       "+boundary_fault"
     ],
@@ -3767,6 +3968,7 @@
       "src/dv/joypad/tb_joypad_events.sv"
     ],
     "top": "tb_joypad_events",
+    "simulator": "questa",
     "signature": "PASS JOYP events",
     "expected_exit": "zero",
     "args": []
@@ -3782,6 +3984,7 @@
       "src/dv/joypad/tb_joypad_events.sv"
     ],
     "top": "tb_joypad_events",
+    "simulator": "questa",
     "signature": "JOYP_EVENT case=",
     "args": [
       "+lost"
@@ -3799,6 +4002,7 @@
       "src/dv/joypad/tb_joypad_events.sv"
     ],
     "top": "tb_joypad_events",
+    "simulator": "questa",
     "signature": "JOYP_EVENT case=",
     "args": [
       "+duplicate"
@@ -3856,6 +4060,7 @@
       "src/dv/integration/tb_integration.sv"
     ],
     "top": "tb_integration",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS integration records=69 frames=2 pixels=46080 ram=3 stack=4 video=16",
@@ -3986,6 +4191,7 @@
       "src/dv/integration/tb_integration.sv"
     ],
     "top": "tb_integration",
+    "simulator": "questa",
     "args": [
       "+data_fault"
     ],
@@ -4118,6 +4324,7 @@
       "src/dv/integration/tb_integration.sv"
     ],
     "top": "tb_integration",
+    "simulator": "questa",
     "args": [
       "+irq_fault"
     ],
@@ -4250,6 +4457,7 @@
       "src/dv/integration/tb_integration.sv"
     ],
     "top": "tb_integration",
+    "simulator": "questa",
     "args": [
       "+pixel_fault"
     ],
@@ -4344,6 +4552,7 @@
       "src/dv/input/tb_input_matrix.sv"
     ],
     "top": "tb_input_matrix",
+    "simulator": "questa",
     "signature": "PASS INPUT_MATRIX cases=2048",
     "args": [],
     "expected_exit": "zero"
@@ -4361,6 +4570,7 @@
       "src/dv/input/tb_input_matrix.sv"
     ],
     "top": "tb_input_matrix",
+    "simulator": "questa",
     "signature": "INPUT_MATRIX_STATE case=1",
     "args": [
       "+data_fault"
@@ -4380,6 +4590,7 @@
       "src/dv/input/tb_input_matrix.sv"
     ],
     "top": "tb_input_matrix",
+    "simulator": "questa",
     "signature": "INPUT_MATRIX_STATE case=1",
     "args": [
       "+source_fault"
@@ -4399,6 +4610,7 @@
       "src/dv/input/tb_input_matrix.sv"
     ],
     "top": "tb_input_matrix",
+    "simulator": "questa",
     "signature": "INPUT_MATRIX_EVENT case=1",
     "args": [
       "+event_fault"
@@ -4418,6 +4630,7 @@
       "src/dv/input/tb_input_matrix.sv"
     ],
     "top": "tb_input_matrix",
+    "simulator": "questa",
     "signature": "N2M_ASSERT INPUT_PHYSICAL_BOUNDARY",
     "args": [
       "+boundary_fault"
@@ -4460,6 +4673,7 @@
       "src/dv/uart/tb_uart_endpoint.sv"
     ],
     "top": "tb_uart_endpoint",
+    "simulator": "questa",
     "args": [
       "+input_mmio"
     ],
@@ -4481,6 +4695,7 @@
       "src/dv/input/tb_input_ordering.sv"
     ],
     "top": "tb_input_ordering",
+    "simulator": "questa",
     "signature": "PASS INPUT_ORDERING simultaneous_switch reset_cancel physical_retention checks=15",
     "args": [],
     "expected_exit": "zero"
@@ -4508,6 +4723,7 @@
       "src/dv/input/tb_input_power.sv"
     ],
     "top": "tb_input_power",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS INPUT_POWER cases=4 actual_HALT_STOP effective_records"
@@ -4552,6 +4768,7 @@
     ],
     "timeout_seconds": 60,
     "top": "tb_dma_composition",
+    "simulator": "questa",
     "vendor_model": "intel-memory"
   },
   "dma-composition-byte": {
@@ -4596,6 +4813,7 @@
     ],
     "timeout_seconds": 60,
     "top": "tb_dma_composition",
+    "simulator": "questa",
     "vendor_model": "intel-memory"
   },
   "dma-composition-fault-hardware": {
@@ -4615,6 +4833,7 @@
     ],
     "timeout_seconds": 60,
     "top": "tb_dma_composition",
+    "simulator": "questa",
     "vendor_model": "intel-memory"
   },
   "dma-composition-halt": {
@@ -4659,6 +4878,7 @@
     ],
     "timeout_seconds": 60,
     "top": "tb_dma_composition",
+    "simulator": "questa",
     "vendor_model": "intel-memory"
   },
   "dma-composition-unresolved": {
@@ -4703,6 +4923,7 @@
     ],
     "timeout_seconds": 60,
     "top": "tb_dma_composition",
+    "simulator": "questa",
     "vendor_model": "intel-memory"
   },
   "dma-engine": {
@@ -4716,7 +4937,8 @@
       "src/dv/dma/tb_dma_engine.sv"
     ],
     "timeout_seconds": 60,
-    "top": "tb_dma_engine"
+    "top": "tb_dma_engine",
+    "simulator": "questa"
   },
   "dma-engine-byte": {
     "args": [
@@ -4731,7 +4953,8 @@
       "src/dv/dma/tb_dma_engine.sv"
     ],
     "timeout_seconds": 60,
-    "top": "tb_dma_engine"
+    "top": "tb_dma_engine",
+    "simulator": "questa"
   },
   "dma-engine-service": {
     "args": [
@@ -4746,7 +4969,8 @@
       "src/dv/dma/tb_dma_engine.sv"
     ],
     "timeout_seconds": 60,
-    "top": "tb_dma_engine"
+    "top": "tb_dma_engine",
+    "simulator": "questa"
   },
   "dma-engine-time": {
     "args": [
@@ -4761,7 +4985,8 @@
       "src/dv/dma/tb_dma_engine.sv"
     ],
     "timeout_seconds": 60,
-    "top": "tb_dma_engine"
+    "top": "tb_dma_engine",
+    "simulator": "questa"
   },
   "oam-corrupt": {
     "args": [],
@@ -4773,7 +4998,8 @@
       "src/dv/dma/tb_oam_corrupt.sv"
     ],
     "timeout_seconds": 30,
-    "top": "tb_oam_corrupt"
+    "top": "tb_oam_corrupt",
+    "simulator": "questa"
   },
   "oam-corrupt-mask": {
     "args": [
@@ -4787,7 +5013,8 @@
       "src/dv/dma/tb_oam_corrupt.sv"
     ],
     "timeout_seconds": 30,
-    "top": "tb_oam_corrupt"
+    "top": "tb_oam_corrupt",
+    "simulator": "questa"
   },
   "oam-corrupt-output": {
     "args": [
@@ -4801,7 +5028,8 @@
       "src/dv/dma/tb_oam_corrupt.sv"
     ],
     "timeout_seconds": 30,
-    "top": "tb_oam_corrupt"
+    "top": "tb_oam_corrupt",
+    "simulator": "questa"
   },
   "dma-terminal": {
     "sources": [
@@ -4823,6 +5051,7 @@
       "src/dv/dma/tb_dma_terminal.sv"
     ],
     "top": "tb_dma_terminal",
+    "simulator": "questa",
     "timeout_seconds": 60,
     "expected_exit": "zero",
     "signature": "PASS DMA terminal actual object pair before and after commit",
@@ -4849,6 +5078,7 @@
       "src/dv/dma/tb_dma_terminal.sv"
     ],
     "top": "tb_dma_terminal",
+    "simulator": "questa",
     "timeout_seconds": 60,
     "expected_exit": "nonzero",
     "signature": "DMA_TERMINAL_PAIR expected=a52a actual=002a",
@@ -4899,6 +5129,7 @@
     ],
     "timeout_seconds": 60,
     "top": "tb_dma_composition",
+    "simulator": "questa",
     "vendor_model": "intel-memory"
   },
   "dma-composition-read-increment": {
@@ -4943,6 +5174,7 @@
     ],
     "timeout_seconds": 60,
     "top": "tb_dma_composition",
+    "simulator": "questa",
     "vendor_model": "intel-memory"
   },
   "dma-composition-read-row-fault": {
@@ -4988,6 +5220,7 @@
     ],
     "timeout_seconds": 60,
     "top": "tb_dma_composition",
+    "simulator": "questa",
     "vendor_model": "intel-memory"
   },
   "dma-composition-stop": {
@@ -5032,6 +5265,7 @@
     ],
     "timeout_seconds": 60,
     "top": "tb_dma_composition",
+    "simulator": "questa",
     "vendor_model": "intel-memory"
   },
   "dma-composition-pause-0": {
@@ -5076,6 +5310,7 @@
     ],
     "timeout_seconds": 60,
     "top": "tb_dma_composition",
+    "simulator": "questa",
     "vendor_model": "intel-memory"
   },
   "dma-composition-pause-1": {
@@ -5120,6 +5355,7 @@
     ],
     "timeout_seconds": 60,
     "top": "tb_dma_composition",
+    "simulator": "questa",
     "vendor_model": "intel-memory"
   },
   "dma-composition-pause-2": {
@@ -5164,6 +5400,7 @@
     ],
     "timeout_seconds": 60,
     "top": "tb_dma_composition",
+    "simulator": "questa",
     "vendor_model": "intel-memory"
   },
   "dma-composition-pause-3": {
@@ -5208,6 +5445,7 @@
     ],
     "timeout_seconds": 60,
     "top": "tb_dma_composition",
+    "simulator": "questa",
     "vendor_model": "intel-memory"
   },
   "dma-composition-pause-fault": {
@@ -5253,6 +5491,7 @@
     ],
     "timeout_seconds": 60,
     "top": "tb_dma_composition",
+    "simulator": "questa",
     "vendor_model": "intel-memory"
   },
   "dma-access": {
@@ -5274,6 +5513,7 @@
       "src/dv/dma/tb_dma_access.sv"
     ],
     "top": "tb_dma_access",
+    "simulator": "questa",
     "timeout_seconds": 60,
     "expected_exit": "zero",
     "signature": "PASS DMA access seven source cases bytes=1120 reads=44",
@@ -5299,6 +5539,7 @@
       "src/dv/dma/tb_dma_access.sv"
     ],
     "top": "tb_dma_access",
+    "simulator": "questa",
     "timeout_seconds": 60,
     "expected_exit": "nonzero",
     "signature": "DMA_ACCESS_READ case=0 address=c123 expected=81 actual=ff",
@@ -5326,6 +5567,7 @@
       "src/dv/dma/tb_dma_restart.sv"
     ],
     "top": "tb_dma_restart",
+    "simulator": "questa",
     "timeout_seconds": 60,
     "expected_exit": "zero",
     "signature": "PASS DMA restart four literal timelines writes=985 readback=640",
@@ -5351,6 +5593,7 @@
       "src/dv/dma/tb_dma_restart.sv"
     ],
     "top": "tb_dma_restart",
+    "simulator": "questa",
     "timeout_seconds": 60,
     "expected_exit": "nonzero",
     "signature": "DMA_RESTART_WRITE_TIME expected_delta=13 actual_delta=12",
@@ -5378,6 +5621,7 @@
       "src/dv/dma/tb_dma_reset.sv"
     ],
     "top": "tb_dma_reset",
+    "simulator": "questa",
     "timeout_seconds": 60,
     "expected_exit": "zero",
     "signature": "PASS DMA reset cases=32 prefix_writes=60 readback=5120 ff46=32",
@@ -5403,6 +5647,7 @@
       "src/dv/dma/tb_dma_reset.sv"
     ],
     "top": "tb_dma_reset",
+    "simulator": "questa",
     "timeout_seconds": 60,
     "expected_exit": "nonzero",
     "signature": "DMA_RESET_CANCEL case=0 active=0 source=0 write=1",
@@ -5430,6 +5675,7 @@
       "src/dv/dma/tb_dma_overlay.sv"
     ],
     "top": "tb_dma_overlay",
+    "simulator": "questa",
     "timeout_seconds": 60,
     "expected_exit": "zero",
     "signature": "PASS DMA overlay feedback cases=2 writes=96 readback=100",
@@ -5455,6 +5701,7 @@
       "src/dv/dma/tb_dma_overlay.sv"
     ],
     "top": "tb_dma_overlay",
+    "simulator": "questa",
     "timeout_seconds": 60,
     "expected_exit": "nonzero",
     "signature": "DMA_OVERLAY_WRITE case=1 address=40 expected=03 actual=f3",
@@ -5505,6 +5752,7 @@
     ],
     "timeout_seconds": 60,
     "top": "tb_dma_composition",
+    "simulator": "questa",
     "vendor_model": "intel-memory"
   },
   "dma-family-sp": {
@@ -5549,6 +5797,7 @@
     ],
     "timeout_seconds": 60,
     "top": "tb_dma_composition",
+    "simulator": "questa",
     "vendor_model": "intel-memory"
   },
   "dma-family-store": {
@@ -5593,6 +5842,7 @@
     ],
     "timeout_seconds": 60,
     "top": "tb_dma_composition",
+    "simulator": "questa",
     "vendor_model": "intel-memory"
   },
   "dma-family-pop": {
@@ -5637,6 +5887,7 @@
     ],
     "timeout_seconds": 60,
     "top": "tb_dma_composition",
+    "simulator": "questa",
     "vendor_model": "intel-memory"
   },
   "dma-family-pop-fault": {
@@ -5682,6 +5933,7 @@
     ],
     "timeout_seconds": 60,
     "top": "tb_dma_composition",
+    "simulator": "questa",
     "vendor_model": "intel-memory"
   },
   "oam-qualify": {
@@ -5690,6 +5942,7 @@
     "signature": "PASS OAM qualifier cases=6811 full/high-mask addresses scan exclusions",
     "timeout_seconds": 30,
     "top": "tb_oam_qualify",
+    "simulator": "questa",
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/cpu/n2m_cpu_pkg.sv",
@@ -5706,6 +5959,7 @@
     "signature": "OAM_QUALIFIER_ORACLE case=0 expected=0 actual=2",
     "timeout_seconds": 30,
     "top": "tb_oam_qualify",
+    "simulator": "questa",
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/cpu/n2m_cpu_pkg.sv",
@@ -5722,6 +5976,7 @@
     "signature": "OAM_OBSERVATION_RESOLVED",
     "timeout_seconds": 30,
     "top": "tb_oam_qualify",
+    "simulator": "questa",
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/cpu/n2m_cpu_pkg.sv",
@@ -5751,6 +6006,7 @@
       "src/dv/dma/tb_dma_io.sv"
     ],
     "top": "tb_dma_io",
+    "simulator": "questa",
     "timeout_seconds": 60,
     "expected_exit": "zero",
     "signature": "PASS DMA IO bytes=160 owner_commits=18 reads=9 preT3=1 readback=160",
@@ -5778,6 +6034,7 @@
       "src/dv/dma/tb_dma_io.sv"
     ],
     "top": "tb_dma_io",
+    "simulator": "questa",
     "timeout_seconds": 60,
     "expected_exit": "nonzero",
     "signature": "DMA_IO_IRQ_PRE_T3 expected_ie=1f actual_ie=1f expected_if=04 actual_if=00",
@@ -5828,6 +6085,7 @@
     ],
     "timeout_seconds": 60,
     "top": "tb_dma_composition",
+    "simulator": "questa",
     "vendor_model": "intel-memory"
   },
   "dma-lcd-cancel-fault": {
@@ -5873,6 +6131,7 @@
     ],
     "timeout_seconds": 60,
     "top": "tb_dma_composition",
+    "simulator": "questa",
     "vendor_model": "intel-memory"
   },
   "dma-tags": {
@@ -5894,6 +6153,7 @@
       "src/dv/dma/tb_dma_tags.sv"
     ],
     "top": "tb_dma_tags",
+    "simulator": "questa",
     "timeout_seconds": 60,
     "expected_exit": "zero",
     "signature": "PASS DMA scan tags row4 off row12 row13 writes=8 readback=8",
@@ -5919,6 +6179,7 @@
       "src/dv/dma/tb_dma_tags.sv"
     ],
     "top": "tb_dma_tags",
+    "simulator": "questa",
     "timeout_seconds": 60,
     "expected_exit": "nonzero",
     "signature": "DMA_TAG_FRESH_ROW address=108 expected=84 actual=00",
@@ -5946,6 +6207,7 @@
       "src/dv/dma/tb_dma_tags.sv"
     ],
     "top": "tb_dma_tags",
+    "simulator": "questa",
     "timeout_seconds": 60,
     "expected_exit": "nonzero",
     "signature": "DMA_RAW_SERVICE",
@@ -5973,6 +6235,7 @@
       "src/dv/dma/tb_dma_tags.sv"
     ],
     "top": "tb_dma_tags",
+    "simulator": "questa",
     "timeout_seconds": 60,
     "expected_exit": "nonzero",
     "signature": "DMA_OPERAND_SERVICE",
@@ -6000,6 +6263,7 @@
       "src/dv/dma/tb_dma_tags.sv"
     ],
     "top": "tb_dma_tags",
+    "simulator": "questa",
     "timeout_seconds": 60,
     "expected_exit": "nonzero",
     "signature": "DMA_PAIR_SERVICE",
@@ -6020,7 +6284,8 @@
       "src/rtl/input/n2m_physical_controls.sv",
       "src/dv/input/tb_adc_pairs.sv"
     ],
-    "top": "tb_adc_pairs"
+    "top": "tb_adc_pairs",
+    "simulator": "questa"
   },
   "adc-pairs-corrupt": {
     "args": [
@@ -6036,7 +6301,8 @@
       "src/rtl/input/n2m_physical_controls.sv",
       "src/dv/input/tb_adc_pairs.sv"
     ],
-    "top": "tb_adc_pairs"
+    "top": "tb_adc_pairs",
+    "simulator": "questa"
   },
   "adc-pairs-channel": {
     "args": [
@@ -6052,7 +6318,8 @@
       "src/rtl/input/n2m_physical_controls.sv",
       "src/dv/input/tb_adc_pairs.sv"
     ],
-    "top": "tb_adc_pairs"
+    "top": "tb_adc_pairs",
+    "simulator": "questa"
   },
   "controls-mask": {
     "sources": [
@@ -6064,6 +6331,7 @@
       "src/dv/input/tb_controls_mask.sv"
     ],
     "top": "tb_controls_mask",
+    "simulator": "questa",
     "args": [],
     "signature": "PASS controls mask checks=24",
     "expected_exit": "zero"
@@ -6078,6 +6346,7 @@
       "src/dv/input/tb_controls_mask.sv"
     ],
     "top": "tb_controls_mask",
+    "simulator": "questa",
     "args": [
       "+CORRUPT_MASK"
     ],
@@ -6096,6 +6365,7 @@
       "src/dv/input/tb_adc_backend.sv"
     ],
     "top": "tb_adc_backend",
+    "simulator": "questa",
     "args": [],
     "signature": "PASS actual ADC model replies=8 commands=9 lock-cancel",
     "expected_exit": "zero",
@@ -6113,6 +6383,7 @@
       "src/dv/input/tb_adc_backend.sv"
     ],
     "top": "tb_adc_backend",
+    "simulator": "questa",
     "args": [
       "+CORRUPT_ADC"
     ],
@@ -6132,6 +6403,7 @@
       "src/dv/input/tb_controls_lifecycle.sv"
     ],
     "top": "tb_controls_lifecycle",
+    "simulator": "questa",
     "args": [],
     "signature": "PASS controls lifecycle checks=94 reset-cases=10",
     "expected_exit": "zero"
@@ -6148,6 +6420,7 @@
       "src/dv/input/tb_controls_lifecycle.sv"
     ],
     "top": "tb_controls_lifecycle",
+    "simulator": "questa",
     "args": [
       "+CORRUPT_RECOVERY"
     ],
@@ -6166,6 +6439,7 @@
       "src/dv/input/tb_controls_lifecycle.sv"
     ],
     "top": "tb_controls_lifecycle",
+    "simulator": "questa",
     "args": [
       "+UNSOLICITED"
     ],
@@ -6179,6 +6453,7 @@
       "src/dv/input/tb_controls_sticky.sv"
     ],
     "top": "tb_controls_lifecycle",
+    "simulator": "questa",
     "args": [
       "+STICKY"
     ],
@@ -6195,6 +6470,7 @@
       "src/dv/uart/tb_uart_validation.sv"
     ],
     "top": "tb_uart_validation",
+    "simulator": "questa",
     "args": [],
     "signature": "PASS UART validation checks=200",
     "expected_exit": "zero"
@@ -6209,6 +6485,7 @@
       "src/dv/uart/tb_uart_validation.sv"
     ],
     "top": "tb_uart_validation",
+    "simulator": "questa",
     "args": [
       "+CORRUPT_HOST"
     ],
@@ -6274,6 +6551,7 @@
       "src/dv/host_play/tb_host_play.sv"
     ],
     "top": "tb_integration",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS host play five immutable images four transitions",
@@ -6416,6 +6694,7 @@
       "src/dv/host_play/tb_host_play.sv"
     ],
     "top": "tb_integration",
+    "simulator": "questa",
     "args": [
       "+frame_fault"
     ],
@@ -6560,6 +6839,7 @@
       "src/dv/host_play/tb_host_play.sv"
     ],
     "top": "tb_integration",
+    "simulator": "questa",
     "args": [
       "+missing_frame"
     ],
@@ -6704,6 +6984,7 @@
       "src/dv/host_play/tb_host_play.sv"
     ],
     "top": "tb_integration",
+    "simulator": "questa",
     "args": [
       "+input_fault"
     ],
@@ -6848,6 +7129,7 @@
       "src/dv/host_play/tb_host_play.sv"
     ],
     "top": "tb_integration",
+    "simulator": "questa",
     "args": [
       "+release_fault"
     ],
@@ -6971,6 +7253,7 @@
       "src/dv/input/tb_controls_wire.sv"
     ],
     "top": "tb_controls_wire",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS CONTROLS_WIRE commands=22 replies=22 pixels=96 paused=1",
@@ -7020,6 +7303,7 @@
       "src/dv/input/tb_controls_wire.sv"
     ],
     "top": "tb_controls_wire",
+    "simulator": "questa",
     "args": [
       "+corrupt_mask"
     ],
@@ -7043,6 +7327,7 @@
       "src/dv/memory/tb_memory_stores.sv"
     ],
     "top": "tb_memory_stores",
+    "simulator": "questa",
     "args": [
       "+range_probe"
     ],
@@ -7059,6 +7344,7 @@
       "src/dv/memory/tb_memory_stores.sv"
     ],
     "top": "tb_memory_stores",
+    "simulator": "questa",
     "args": [
       "+range_probe",
       "+range_fault"
@@ -7072,6 +7358,7 @@
       "src/dv/clocking/tb_timebase25.sv"
     ],
     "top": "tb_timebase25",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS TIMEBASE25 exact-rate shortest-dot=5 shortest-machine=23 pause reset"
@@ -7082,6 +7369,7 @@
       "src/dv/clocking/tb_timebase25.sv"
     ],
     "top": "tb_timebase25",
+    "simulator": "questa",
     "args": [
       "+bad_numerator"
     ],
@@ -7139,6 +7427,7 @@
       "src/dv/integration/tb_integration.sv"
     ],
     "top": "tb_integration",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1"
     ],
@@ -7232,6 +7521,7 @@
       "src/dv/preload/tb_preload_load.sv"
     ],
     "top": "tb_preload_load",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS preload lifecycle bytes=32768 clear=32768 scans=4",
@@ -7286,6 +7576,7 @@
       "src/dv/preload/tb_preload_load.sv"
     ],
     "top": "tb_preload_load",
+    "simulator": "questa",
     "args": [
       "+crc_fault"
     ],
@@ -7341,6 +7632,7 @@
       "src/rtl/joypad/n2m_joypad.sv"
     ],
     "top": "n2m_joypad",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS python-joypad",
@@ -7363,6 +7655,7 @@
       "src/dv/python/joypad/joypad_fault.sv"
     ],
     "top": "joypad_fault",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS python-joypad",
@@ -7426,6 +7719,7 @@
       "src/dv/python/integration/tb_python_integration.sv"
     ],
     "top": "tb_python_integration",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS python-integration records=69 pixels=46080 bus=145",
@@ -7522,6 +7816,7 @@
       "src/dv/python/integration/tb_python_integration.sv"
     ],
     "top": "tb_python_integration",
+    "simulator": "questa",
     "args": [
       "+pixel_fault"
     ],
@@ -7620,6 +7915,7 @@
       "src/dv/python/integration/tb_python_integration.sv"
     ],
     "top": "tb_python_integration",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=0"
     ],
@@ -7720,6 +8016,7 @@
       "src/dv/python/integration/tb_python_integration.sv"
     ],
     "top": "tb_python_integration",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=0",
       "+data_fault"
@@ -7820,6 +8117,7 @@
       "src/dv/python/integration/tb_python_integration.sv"
     ],
     "top": "tb_python_integration",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=0",
       "+irq_fault"
@@ -7920,6 +8218,7 @@
       "src/dv/python/integration/tb_python_integration.sv"
     ],
     "top": "tb_python_integration",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=0",
       "+pixel_fault"
@@ -8020,6 +8319,7 @@
       "src/dv/python/integration/tb_python_integration.sv"
     ],
     "top": "tb_python_integration",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1"
     ],
@@ -8129,6 +8429,7 @@
       "src/dv/python/host_play/tb_python_host_play.sv"
     ],
     "top": "tb_python_host_play",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS python-host-play five immutable images four transitions",
@@ -8237,6 +8538,7 @@
       "src/dv/python/host_play/tb_python_host_play.sv"
     ],
     "top": "tb_python_host_play",
+    "simulator": "questa",
     "args": [
       "+frame_fault"
     ],
@@ -8347,6 +8649,7 @@
       "src/dv/python/host_play/tb_python_host_play.sv"
     ],
     "top": "tb_python_host_play",
+    "simulator": "questa",
     "args": [
       "+missing_frame"
     ],
@@ -8457,6 +8760,7 @@
       "src/dv/python/host_play/tb_python_host_play.sv"
     ],
     "top": "tb_python_host_play",
+    "simulator": "questa",
     "args": [
       "+input_fault"
     ],
@@ -8567,6 +8871,7 @@
       "src/dv/python/host_play/tb_python_host_play.sv"
     ],
     "top": "tb_python_host_play",
+    "simulator": "questa",
     "args": [
       "+release_fault"
     ],
@@ -8687,6 +8992,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "+pixel_fault"
     ],
@@ -8826,6 +9132,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS V05 startup",
@@ -8963,6 +9270,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "+image_fault"
     ],
@@ -9102,6 +9410,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS V05 continuous",
@@ -9237,6 +9546,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1"
     ],
@@ -9376,6 +9686,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+progress_fault"
@@ -9516,6 +9827,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gBUILD_ID=128'h1032547698badcfeefcdab8967452301"
     ],
@@ -9622,6 +9934,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gBUILD_ID=128'h1032547698badcfeefcdab8967452300"
     ],
@@ -9710,6 +10023,7 @@
       "src/dv/python/integration/tb_python_integration.sv"
     ],
     "top": "tb_python_integration",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS palette194 records=10114 pixels=46080 write=70908",
@@ -9821,6 +10135,7 @@
       "src/dv/python/integration/tb_python_integration.sv"
     ],
     "top": "tb_python_integration",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS palette194 records=10114 pixels=46080 write=70908",
@@ -9888,6 +10203,7 @@
       "src/dv/ppu/tb_ppu_palette_conflict.sv"
     ],
     "top": "tb_ppu_palette_conflict",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS PPU palette conflict palettes=3",
@@ -9900,6 +10216,7 @@
       "src/dv/ppu/tb_ppu_palette_conflict.sv"
     ],
     "top": "tb_ppu_palette_conflict",
+    "simulator": "questa",
     "args": [
       "+corrupt"
     ],
@@ -9958,6 +10275,7 @@
       "src/dv/python/integration/tb_python_integration.sv"
     ],
     "top": "tb_python_integration",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS startup202 complete CPU OAM access at enable+452",
@@ -10056,6 +10374,7 @@
       "src/dv/python/integration/tb_python_integration.sv"
     ],
     "top": "tb_python_integration",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS startup202 complete CPU OAM access at enable+452",
@@ -10119,6 +10438,7 @@
       "src/dv/ppu/tb_ppu_oam_read.sv"
     ],
     "top": "tb_ppu_oam_read",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS PPU early OAM read window cases=16",
@@ -10140,6 +10460,7 @@
       "src/dv/ppu/tb_ppu_oam_read.sv"
     ],
     "top": "tb_ppu_oam_read",
+    "simulator": "questa",
     "args": [
       "+read_corrupt"
     ],
@@ -10198,6 +10519,7 @@
       "src/dv/python/integration/tb_python_integration.sv"
     ],
     "top": "tb_python_integration",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS startup204 complete CPU VRAM access at enable+532",
@@ -10296,6 +10618,7 @@
       "src/dv/python/integration/tb_python_integration.sv"
     ],
     "top": "tb_python_integration",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS startup204 complete CPU VRAM access at enable+532",
@@ -10359,6 +10682,7 @@
       "src/dv/ppu/tb_ppu_vram_read.sv"
     ],
     "top": "tb_ppu_vram_read",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS PPU early VRAM read window cases=14",
@@ -10380,6 +10704,7 @@
       "src/dv/ppu/tb_ppu_vram_read.sv"
     ],
     "top": "tb_ppu_vram_read",
+    "simulator": "questa",
     "args": [
       "+read_corrupt"
     ],
@@ -10398,6 +10723,7 @@
       "src/dv/memory/tb_oam_late_write.sv"
     ],
     "top": "tb_oam_late_write",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS OAM late owner checks=12"
@@ -10413,6 +10739,7 @@
       "src/dv/memory/tb_oam_late_write.sv"
     ],
     "top": "tb_oam_late_write",
+    "simulator": "questa",
     "args": [
       "+collision"
     ],
@@ -10470,6 +10797,7 @@
       "src/dv/python/integration/tb_python_integration.sv"
     ],
     "top": "tb_python_integration",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS late208 complete CPU OAM write and full160 inspection",
@@ -10568,6 +10896,7 @@
       "src/dv/python/integration/tb_python_integration.sv"
     ],
     "top": "tb_python_integration",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS late208 complete CPU OAM write and full160 inspection",
@@ -10666,6 +10995,7 @@
       "src/dv/python/integration/tb_python_integration.sv"
     ],
     "top": "tb_python_integration",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS late208 complete CPU OAM write and full160 inspection",
@@ -10732,6 +11062,7 @@
       "src/dv/dma/tb_dma_late.sv"
     ],
     "top": "tb_dma_late",
+    "simulator": "questa",
     "timeout_seconds": 60,
     "expected_exit": "zero",
     "signature": "PASS DMA late owner checks=23",
@@ -10757,6 +11088,7 @@
       "src/dv/dma/tb_dma_late.sv"
     ],
     "top": "tb_dma_late",
+    "simulator": "questa",
     "timeout_seconds": 60,
     "expected_exit": "nonzero",
     "signature": "DMA_LATE_READY",
@@ -10801,6 +11133,7 @@
       "src/dv/python/dma/tb_python_dma_late.sv"
     ],
     "top": "tb_python_dma_late",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS DMA late original CPU 624 records and full160 inspection",
@@ -10884,6 +11217,7 @@
       "src/dv/python/dma/tb_python_dma_late.sv"
     ],
     "top": "tb_python_dma_late",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS DMA late original CPU 624 records and full160 inspection",
@@ -10967,6 +11301,7 @@
       "src/dv/python/dma/tb_python_dma_late.sv"
     ],
     "top": "tb_python_dma_late",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS DMA late original CPU 624 records and full160 inspection",
@@ -11083,6 +11418,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1"
     ],
@@ -11219,6 +11555,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+timer_read_fault"
@@ -11356,6 +11693,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1"
     ],
@@ -11489,6 +11827,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+joypad_wake_fault"
@@ -11623,6 +11962,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1"
     ],
@@ -11763,6 +12103,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+dma_byte_fault"
@@ -11904,6 +12245,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1"
     ],
@@ -12043,6 +12385,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+pixel_fault"
@@ -12183,6 +12526,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+progress_fault"
@@ -12323,6 +12667,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1"
     ],
@@ -12462,6 +12807,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+physical_mask_fault"
@@ -12610,6 +12956,7 @@
       "src/dv/python/controls/tb_python_controls.sv"
     ],
     "top": "tb_python_controls",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "CONTROLS_SYSTEM_PASS",
@@ -12751,6 +13098,7 @@
       "src/dv/python/controls/tb_python_controls.sv"
     ],
     "top": "tb_python_controls",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "CONTROLS_SYSTEM_MASK",
@@ -12892,6 +13240,7 @@
       "src/dv/python/controls/tb_python_controls.sv"
     ],
     "top": "tb_python_controls",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "CONTROLS_STARTUP_DIAGNOSTIC",
@@ -13007,6 +13356,7 @@
       "src/dv/mooneye/tb_python_mooneye.sv"
     ],
     "top": "tb_python_mooneye",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS mooneye-reg-f bank=1 pc=4a81 registers=3,5,8,13,21,34",
@@ -13116,6 +13466,7 @@
       "src/dv/mooneye/tb_python_mooneye.sv"
     ],
     "top": "tb_python_mooneye",
+    "simulator": "questa",
     "args": [
       "+completion_fault"
     ],
@@ -13227,6 +13578,7 @@
       "src/dv/mooneye/tb_python_mooneye.sv"
     ],
     "top": "tb_python_mooneye",
+    "simulator": "questa",
     "args": [
       "+missing_completion"
     ],
@@ -13302,6 +13654,7 @@
       "tb_python_vga.dut.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
     ],
     "top": "tb_python_vga",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS python-vga-crc",
@@ -13342,6 +13695,7 @@
       "tb_python_vga.dut.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
     ],
     "top": "tb_python_vga",
+    "simulator": "questa",
     "args": [
       "+rgb_corrupt"
     ],
@@ -13438,6 +13792,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+stackdrop_trace"
@@ -13582,6 +13937,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+stackdrop_trace"
@@ -13726,6 +14082,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+stackdrop_trace",
@@ -13871,6 +14228,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+stackdrop_trace"
@@ -13956,6 +14314,7 @@
       "src/dv/uart/tb_uart_run_dots.sv"
     ],
     "top": "tb_uart_run_dots",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS UART RUN_DOTS cases=9 exact_ticks phase STOP settlement reset STEP"
@@ -13969,6 +14328,7 @@
       "src/dv/uart/tb_uart_run_dots.sv"
     ],
     "top": "tb_uart_run_dots",
+    "simulator": "questa",
     "args": [
       "+CORRUPT_RESULT"
     ],
@@ -14011,6 +14371,7 @@
       "src/dv/uart/tb_uart_endpoint.sv"
     ],
     "top": "tb_uart_endpoint",
+    "simulator": "questa",
     "args": [
       "+RUN_DOTS_WIRE"
     ],
@@ -14088,6 +14449,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1"
     ],
@@ -14232,6 +14594,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1"
     ],
@@ -14376,6 +14739,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+display_boundary_fault"
@@ -14521,6 +14885,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1"
     ],
@@ -14666,6 +15031,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1"
     ],
@@ -14811,6 +15177,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+oam_last_fault"
@@ -14957,6 +15324,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -15160,6 +15528,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -15367,6 +15736,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace",
@@ -15513,6 +15883,7 @@
       "src/dv/serial/tb_serial_registers.sv"
     ],
     "top": "tb_serial_registers",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS serial registers sb_writes=256 sc_writes=256 checks=1034 resets=2",
@@ -15525,6 +15896,7 @@
       "src/dv/serial/tb_serial_registers.sv"
     ],
     "top": "tb_serial_registers",
+    "simulator": "questa",
     "args": [
       "+corrupt"
     ],
@@ -15539,6 +15911,7 @@
       "src/dv/serial/tb_serial_registers.sv"
     ],
     "top": "tb_serial_registers",
+    "simulator": "questa",
     "args": [
       "+boundary_fault"
     ],
@@ -15560,6 +15933,7 @@
       "src/dv/audio/tb_audio_service.sv"
     ],
     "top": "tb_audio_service",
+    "simulator": "questa",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS audio service register_reads=69 register_writes=46 wave_reads=48 wave_writes=32 serial_cases=7",
@@ -15579,6 +15953,7 @@
       "src/dv/audio/tb_audio_service.sv"
     ],
     "top": "tb_audio_service",
+    "simulator": "questa",
     "args": [
       "+mask_corrupt"
     ],
@@ -15600,6 +15975,7 @@
       "src/dv/audio/tb_audio_service.sv"
     ],
     "top": "tb_audio_service",
+    "simulator": "questa",
     "args": [
       "+wave_corrupt"
     ],
@@ -15621,6 +15997,7 @@
       "src/dv/audio/tb_audio_service.sv"
     ],
     "top": "tb_audio_service",
+    "simulator": "questa",
     "args": [
       "+drop_service"
     ],
@@ -15697,6 +16074,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -15901,6 +16279,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -16109,6 +16488,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -16307,6 +16687,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -16505,6 +16886,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace",
@@ -16704,6 +17086,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -16914,6 +17297,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -17112,6 +17496,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -17310,6 +17695,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -17508,6 +17894,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace",
@@ -17707,6 +18094,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -17912,6 +18300,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -18110,6 +18499,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -18308,6 +18698,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -18506,6 +18897,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace",
@@ -18648,6 +19040,7 @@
       "src/dv/uart/tb_io_peek.sv"
     ],
     "top": "tb_io_peek",
+    "simulator": "questa",
     "args": [],
     "signature": "PASS io peek isolation checks=630598 peeks=20019",
     "expected_exit": "zero"
@@ -18664,6 +19057,7 @@
       "src/dv/uart/tb_io_peek.sv"
     ],
     "top": "tb_io_peek",
+    "simulator": "questa",
     "args": [
       "+PEEK_DISTURB"
     ],
@@ -18739,6 +19133,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+io_peek_samples=120"
@@ -18870,6 +19265,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+io_peek_samples=120",
@@ -19003,6 +19399,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -19202,6 +19599,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -19401,6 +19799,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -19600,6 +19999,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace",
@@ -19800,6 +20200,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -19998,6 +20399,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -20197,6 +20599,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -20396,6 +20799,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -20595,6 +20999,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -20794,6 +21199,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -20993,6 +21399,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -21192,6 +21599,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -21391,6 +21799,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -21589,6 +21998,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -21789,6 +22199,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -21993,6 +22404,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -22198,6 +22610,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -22420,6 +22833,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -22642,6 +23056,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -22864,6 +23279,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -23086,6 +23502,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -23286,6 +23703,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace",
@@ -23485,6 +23903,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -23690,6 +24109,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -23895,6 +24315,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -24100,6 +24521,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -24305,6 +24727,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace",
@@ -24511,6 +24934,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -24716,6 +25140,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -24921,6 +25346,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -25126,6 +25552,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -25331,6 +25758,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -25541,6 +25969,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -25751,6 +26180,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -25961,6 +26391,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -26171,6 +26602,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -26381,6 +26813,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -26591,6 +27024,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace",
@@ -26802,6 +27236,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -27001,6 +27436,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -27200,6 +27636,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -27399,6 +27836,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -27598,6 +28036,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace"
@@ -27797,6 +28236,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
+    "simulator": "questa",
     "args": [
       "-gPRELOADED=1",
       "+springtrail_trace",

@@ -14,9 +14,10 @@ behavior, uninitialized power-up filled from the run's randomized initial
 values, and `SIM_INIT_FILE` preload. The double uses an `n2m_sim_` name, never
 `altsyncram`, and has its own unit test. That double and its test are the open
 gap in [#598](https://github.com/amichai-bd/nand2mario/issues/598); until it
-lands, unmigrated targets still compile the installed Intel model on Questa
-under the rules below, and any repository HDL defining `altsyncram` remains a
-shadow model. Four-state (`X`) assertions in memory consumers are removed
+lands, targets that need the installed Intel model stay registered `questa`,
+are reported `SKIPPED questa-retired` by the builder, and keep the rules below
+for their eventual migration; any repository HDL defining `altsyncram` remains
+a shadow model. Four-state (`X`) assertions in memory consumers are removed
 during migration as an authorized behavior change: an uninitialized read fails
 by value mismatch against the randomized fill, not by an `X` check. Register
 files, peripheral state and small control registers may remain flops;

@@ -33,6 +33,12 @@ class RegressTests(unittest.TestCase):
             shutil.copytree(ROOT / owner, self.root / owner, ignore=shutil.ignore_patterns("__pycache__", "tests"))
         shutil.copy(ROOT / "tools/build.py", self.root / "tools/build.py")
         (self.root / "workdir/builds").mkdir(parents=True)
+        # The fixture runs its members; only the retired-member case keeps a questa target.
+        registry = self.root / "src/dv/builder/targets.json"
+        targets = read_json(registry)
+        for name in ("tile-pixel", "tile-pixel-corrupt"):
+            targets[name]["simulator"] = "verilator"
+        atomic_json(registry, targets)
         self.subsets = self.root / "src/dv/builder/regressions.json"
         self.declare({"good": ["builder-smoke", "tile-pixel"], "mixed": ["builder-smoke", "builder-smoke-fail", "tile-pixel"]})
         self.children = []
@@ -179,12 +185,12 @@ class RegressTests(unittest.TestCase):
 
     def test_child_options_and_real_supervisor_cap(self):
         code, report = self.run_cli("regress", "good", "--tag", "agg", "--json", "--seed", "7", "--rebuild",
-                                    "--questa-bin", "C:/q/bin", "--intel-sim-lib", "C:/sim lib")
+                                    "--verilator-bin", "/opt/verilator/bin")
         self.assertEqual(code, 0)
         command = self.children[0]["command"]
         self.assertEqual(command[command.index("--seed") + 1], "7")
         self.assertIn("--rebuild", command)
-        self.assertEqual(command[command.index("--intel-sim-lib") + 1], "C:/sim lib")
+        self.assertEqual(command[command.index("--verilator-bin") + 1], "/opt/verilator/bin")
         (self.root / "workdir/builds/cap").mkdir()
         supervise([sys.executable, "-c", "print('ok')"], self.root, "cap", target="builder-smoke", ceiling=40)
         record = json.loads(next((self.root / "workdir/builds/cap/wall-budget").glob("*.json")).read_text())
@@ -349,6 +355,23 @@ class RegressTests(unittest.TestCase):
         self.assertTrue((builds / "locked/.lock").exists())
         self.assertTrue(self.root.is_dir())
         self.assertTrue((self.root / "workdir").is_dir())
+
+    def test_a_retired_member_is_skipped_by_name_and_never_launched(self):
+        registry = self.root / "src/dv/builder/targets.json"
+        targets = read_json(registry)
+        targets["tile-pixel"]["simulator"] = "questa"
+        atomic_json(registry, targets)
+        code, report = self.run_cli("regress", "good", "--tag", "agg", "--json")
+        self.assertEqual(code, 0)
+        self.assertEqual(report["status"], "PASS")
+        self.assertEqual([child["target"] for child in self.children], ["builder-smoke"])
+        self.assertEqual(report["targets"]["tile-pixel"], {"status": "SKIPPED", "reason": "questa-retired"})
+        self.assertEqual((report["skipped"], report["failed"]), (["tile-pixel"], []))
+        summary = read_json(self.root / "workdir/builds/agg/sim/regress/summary.json")
+        self.assertEqual(summary["skipped"], ["tile-pixel"])
+        code, text = self.run_cli("regress", "good", "--tag", "agg2")
+        self.assertEqual(code, 0)
+        self.assertIn("tile-pixel: SKIPPED questa-retired", text)
 
     def test_declared_subsets_in_repository_are_valid(self):
         subsets, _ = module.load_subsets(ROOT)

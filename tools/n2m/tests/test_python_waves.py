@@ -1,4 +1,4 @@
-"""Explicit public waveform selection preserves both retained formats."""
+"""Explicit public waveform selection is validated; Verilator retains the whole top."""
 import json
 import unittest
 
@@ -18,11 +18,8 @@ class WaveTests(unittest.TestCase):
         registry.write_text(json.dumps(targets))
         result = self.run_stage()
         self.assertEqual(result['status'], 'PASS')
-        script = next(self.root.glob('workdir/**/run.do')).read_text()
-        paths = f"/{target['top']}/wave_clock /{target['top']}/wave_state"
-        self.assertIn('log ' + paths + '\n', script)
-        self.assertIn('vcd add ' + paths + '\n', script)
-        self.assertNotIn('/*', script)
+        self.assertEqual(result['waves']['format'], 'fst')
+        self.assertEqual(list(self.root.glob('workdir/**/run.do')), [])
         for bad in ([], ['same', 'same'], ['dut.private'], ['a/b'], ['a;quit'], [True]):
             target['python']['waves'] = bad
             with self.assertRaisesRegex(ValueError, 'waves'):

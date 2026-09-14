@@ -268,12 +268,13 @@
     "local_changes": "none",
     "storage": "User prefix outside the repository, for example /home/<user>/tools/verilator-v5.052; nothing is vendored or redistributed",
     "install": {
-      "apt": "sudo apt-get install -y git help2man perl python3 make autoconf g++ flex bison ccache libfl2 libfl-dev libgoogle-perftools-dev numactl perl-doc zlib1g zlib1g-dev",
+      "apt": "sudo apt-get install -y git help2man perl python3 make autoconf g++ flex bison ccache libfl2 libfl-dev libgoogle-perftools-dev numactl perl-doc zlib1g zlib1g-dev liblz4-dev",
+      "apt_note": "liblz4-dev: Verilator 5.052 compiles its FST writer against the system lz4.h and links -llz4 for every --trace-fst build; zlib1g-dev serves the same writer",
       "clone": "git clone --branch v5.052 https://github.com/verilator/verilator.git && git -C verilator rev-parse HEAD",
       "build": "cd verilator && unset VERILATOR_ROOT && autoconf && ./configure --prefix=<prefix> && make -j$(nproc) && make install",
       "verify": "<prefix>/bin/verilator --version prints 'Verilator 5.052 2026-09-05 rev v5.052'; then python3 tools/build.py doctor --verilator-bin <prefix>/bin --json"
     },
-    "runtime": "g++ 13, GNU make and perl from the same apt line; Verilator consults no license file or environment variable"
+    "runtime": "g++ 13, GNU make, perl and the lz4/zlib development headers from the same apt line; Verilator consults no license file or environment variable"
   },
   "cocotb": {
     "version": "2.1.0",
