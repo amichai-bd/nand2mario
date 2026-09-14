@@ -85,64 +85,64 @@ units:
   controls-unsolicited: {kind: sim, level: 2, labels: [fault, input], duration_seconds: null}
   controls-wire: {kind: sim, level: 2, labels: [input], duration_seconds: null}
   controls-wire-corrupt: {kind: sim, level: 2, labels: [fault, input], duration_seconds: null}
-  cpu-alu: {kind: sim, level: 1, labels: [cpu], duration_seconds: 8.96}
-  cpu-alu-corrupt: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
-  cpu-bus: {kind: sim, level: 2, labels: [cpu], duration_seconds: null}
-  cpu-bus-changing-request: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
-  cpu-bus-late-active: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
-  cpu-bus-missing-response: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
-  cpu-execute: {kind: sim, level: 2, labels: [cpu], duration_seconds: null}
-  cpu-execute-idu-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
-  cpu-halt-bug-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
-  cpu-halt-lock: {kind: sim, level: 2, labels: [cpu], duration_seconds: null}
-  cpu-idu-arithmetic: {kind: sim, level: 2, labels: [cpu], duration_seconds: null}
-  cpu-idu-arithmetic-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
-  cpu-if-observation: {kind: sim, level: 2, labels: [cpu], duration_seconds: null}
-  cpu-if-observation-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
-  cpu-irq: {kind: sim, level: 2, labels: [cpu], duration_seconds: null}
-  cpu-irq-di-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
-  cpu-irq-idu: {kind: sim, level: 2, labels: [cpu], duration_seconds: null}
-  cpu-irq-idu-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
-  cpu-irq-reset: {kind: sim, level: 2, labels: [cpu], duration_seconds: null}
-  cpu-irq-reset-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
-  cpu-irq-snapshot-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
-  cpu-lock-event-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
-  cpu-program: {kind: sim, level: 2, labels: [cpu], duration_seconds: null}
-  cpu-program-idu-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
-  cpu-program-idu-missing: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
-  cpu-program-idu-page: {kind: sim, level: 2, labels: [cpu], duration_seconds: null}
-  cpu-program-idu-page-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
-  cpu-program-retirement-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
-  cpu-program-state-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
-  cpu-program-timing-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
-  cpu-reset: {kind: sim, level: 2, labels: [cpu], duration_seconds: null}
-  cpu-reset-lost-write: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
-  cpu-retire: {kind: sim, level: 2, labels: [cpu], duration_seconds: null}
-  cpu-retire-corrupt: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
-  cpu-step: {kind: sim, level: 2, labels: [cpu], duration_seconds: null}
-  cpu-step-missing: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
-  cpu-step-suppress: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
-  cpu-stop: {kind: sim, level: 2, labels: [cpu], duration_seconds: null}
-  cpu-stop-divider-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
-  cpu-stop-idu: {kind: sim, level: 2, labels: [cpu], duration_seconds: null}
-  cpu-stop-idu-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
-  cpu-stop-irq: {kind: sim, level: 2, labels: [cpu], duration_seconds: null}
-  cpu-stop-irq-effect: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
-  cpu-stop-irq-stack: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
-  cpu-stop-mode-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
-  cpu-stop-wake: {kind: sim, level: 2, labels: [cpu], duration_seconds: null}
-  cpu-stop-wake-stale: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
-  cpu-vectors: {kind: sim, level: 2, labels: [cpu], duration_seconds: null}
-  cpu-vectors-expected-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
-  cpu-vectors-missing: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
-  cpu-vectors-state-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
-  cpu-wake: {kind: sim, level: 2, labels: [cpu], duration_seconds: null}
-  cpu-wake-missing: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
-  cpu-wake-reset: {kind: sim, level: 2, labels: [cpu], duration_seconds: null}
-  cpu-wake-reset-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
-  cpu-wake-stale: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
-  cpu-wrap: {kind: sim, level: 2, labels: [cpu], duration_seconds: null}
-  cpu-wrap-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: null}
+  cpu-alu: {kind: sim, level: 1, labels: [cpu], duration_seconds: 1.32}
+  cpu-alu-corrupt: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: 0.47}
+  cpu-bus: {kind: sim, level: 2, labels: [cpu], duration_seconds: 0.50}
+  cpu-bus-changing-request: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: 0.57}
+  cpu-bus-late-active: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: 0.52}
+  cpu-bus-missing-response: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: 0.55}
+  cpu-execute: {kind: sim, level: 2, labels: [cpu], duration_seconds: 1.98}
+  cpu-execute-idu-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: 1.95}
+  cpu-halt-bug-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: 1.71}
+  cpu-halt-lock: {kind: sim, level: 2, labels: [cpu], duration_seconds: 1.28}
+  cpu-idu-arithmetic: {kind: sim, level: 2, labels: [cpu], duration_seconds: 3.60}
+  cpu-idu-arithmetic-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: 1.29}
+  cpu-if-observation: {kind: sim, level: 2, labels: [cpu], duration_seconds: 3.14}
+  cpu-if-observation-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: 1.40}
+  cpu-irq: {kind: sim, level: 2, labels: [cpu], duration_seconds: 1.44}
+  cpu-irq-di-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: 1.52}
+  cpu-irq-idu: {kind: sim, level: 2, labels: [cpu], duration_seconds: 3.40}
+  cpu-irq-idu-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: 1.48}
+  cpu-irq-reset: {kind: sim, level: 2, labels: [cpu], duration_seconds: 3.59}
+  cpu-irq-reset-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: 1.46}
+  cpu-irq-snapshot-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: 1.33}
+  cpu-lock-event-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: 1.49}
+  cpu-program: {kind: sim, level: 2, labels: [cpu], duration_seconds: 1.92}
+  cpu-program-idu-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: 1.47}
+  cpu-program-idu-missing: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: 1.55}
+  cpu-program-idu-page: {kind: sim, level: 2, labels: [cpu], duration_seconds: 1.67}
+  cpu-program-idu-page-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: 1.39}
+  cpu-program-retirement-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: 1.35}
+  cpu-program-state-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: 1.34}
+  cpu-program-timing-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: 1.40}
+  cpu-reset: {kind: sim, level: 2, labels: [cpu], duration_seconds: 4.00}
+  cpu-reset-lost-write: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: 1.58}
+  cpu-retire: {kind: sim, level: 2, labels: [cpu], duration_seconds: 0.67}
+  cpu-retire-corrupt: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: 0.69}
+  cpu-step: {kind: sim, level: 2, labels: [cpu], duration_seconds: 3.55}
+  cpu-step-missing: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: 1.39}
+  cpu-step-suppress: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: 1.42}
+  cpu-stop: {kind: sim, level: 2, labels: [cpu], duration_seconds: 3.24}
+  cpu-stop-divider-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: 1.48}
+  cpu-stop-idu: {kind: sim, level: 2, labels: [cpu], duration_seconds: 3.18}
+  cpu-stop-idu-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: 1.44}
+  cpu-stop-irq: {kind: sim, level: 2, labels: [cpu], duration_seconds: 3.14}
+  cpu-stop-irq-effect: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: 1.49}
+  cpu-stop-irq-stack: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: 1.63}
+  cpu-stop-mode-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: 1.38}
+  cpu-stop-wake: {kind: sim, level: 2, labels: [cpu], duration_seconds: 1.80}
+  cpu-stop-wake-stale: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: 1.59}
+  cpu-vectors: {kind: sim, level: 2, labels: [cpu], duration_seconds: 6.26}
+  cpu-vectors-expected-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: 3.35}
+  cpu-vectors-missing: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: 2.93}
+  cpu-vectors-state-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: 2.94}
+  cpu-wake: {kind: sim, level: 2, labels: [cpu], duration_seconds: 3.16}
+  cpu-wake-missing: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: 1.53}
+  cpu-wake-reset: {kind: sim, level: 2, labels: [cpu], duration_seconds: 3.55}
+  cpu-wake-reset-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: 1.65}
+  cpu-wake-stale: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: 1.74}
+  cpu-wrap: {kind: sim, level: 2, labels: [cpu], duration_seconds: 1.95}
+  cpu-wrap-fault: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: 1.39}
   dma-access: {kind: sim, level: 2, labels: [dma], duration_seconds: null}
   dma-access-corrupt: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: null}
   dma-composition: {kind: sim, level: 2, labels: [dma], duration_seconds: null}
@@ -594,7 +594,7 @@ units:
   tools/n2m/tests/test_v05_online.py: {kind: unit, level: 0, labels: [builder, v05], duration_seconds: 0.14}
   tools/n2m/tests/test_v05_preload.py: {kind: unit, level: 0, labels: [builder, v05], duration_seconds: 0.54}
   tools/n2m/tests/test_v05_reference.py: {kind: unit, level: 0, labels: [builder, v05], duration_seconds: 0.27}
-  tools/n2m/tests/test_vector_source.py: {kind: unit, level: 0, labels: [builder, cpu], duration_seconds: 0.17}
+  tools/n2m/tests/test_vector_source.py: {kind: unit, level: 0, labels: [builder, cpu], duration_seconds: 0.11}
   tools/n2m/tests/test_verilator.py: {kind: unit, level: 0, labels: [builder], duration_seconds: null}
   tools/sim/test_tile_pixel.py: {kind: unit, level: 0, labels: [builder, display], duration_seconds: 0.37}
   tools/wiki/test_check.py: {kind: unit, level: 0, labels: [wiki], duration_seconds: 0.15}
