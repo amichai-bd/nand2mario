@@ -33,6 +33,7 @@ def parser():
     leaves = [commands.add_parser("doctor", help="run checked Questa smoke; no hardware access"),
               commands.add_parser("check", help="run builder tests")]
     leaves[0].add_argument("--profile", choices=("simulation", "environment"), default="simulation")
+    leaves[0].add_argument("--sim", choices=("questa",), default="questa")
     for option in ("questa-bin", "quartus-bin", "jtag-cable", "uart-port", "uart-vid", "uart-pid", "uart-identity"):
         leaves[0].add_argument("--" + option)
     sim = commands.add_parser("sim").add_subparsers(dest="action", required=True)
@@ -329,8 +330,8 @@ def main(argv=None, root=None):
             print(f"{args.target}: SKIPPED {report['reason']}")
         if args.command == "regress" and "targets" in report:
             for name, outcome in report["targets"].items():
-                print(f"{name}: {outcome['status']} {outcome.get('cache', '')} "
-                      f"{outcome.get('reason', outcome.get('error', ''))}".rstrip())
+                detail = [outcome.get("cache"), outcome.get("reason", outcome.get("error"))]
+                print(" ".join([f"{name}: {outcome['status']}", *[part for part in detail if part]]))
             print(f"Elapsed: {report.get('elapsed_seconds', 0):.1f}s of {report.get('budget_seconds')}s budget")
         if args.command == "doctor" and "checks" in report:
             print(report["scope"])

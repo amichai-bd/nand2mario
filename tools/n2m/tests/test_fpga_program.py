@@ -81,7 +81,8 @@ class FpgaProgramTests(unittest.TestCase):
             (folder / "program.log").write_text("retained\n")
             return {"cable": cable or "1", "sof": str(sof), "scope": "double"}
 
-        with patch("n2m.cli.program_fpga", side_effect=fake) as called:
+        with patch("n2m.cli.program_fpga", side_effect=fake) as called, \
+                patch("n2m.cli.platform.system", return_value="Windows"):
             code = main(["fpga", "program", "--sof", str(self.sof), "--quartus-bin", "tools",
                          "--tag", "program-cli", "--json"], self.folder)
         self.assertEqual(code, 0)
@@ -93,7 +94,8 @@ class FpgaProgramTests(unittest.TestCase):
         self.assertTrue(any(name.endswith("program.log") for name in report["artifacts"]))
 
     def test_cli_program_action_reports_a_refusal(self):
-        with patch("n2m.cli.program_fpga", side_effect=RuntimeError("expected one selected USB-Blaster chain")):
+        with patch("n2m.cli.program_fpga", side_effect=RuntimeError("expected one selected USB-Blaster chain")), \
+                patch("n2m.cli.platform.system", return_value="Windows"):
             code = main(["fpga", "program", "--sof", str(self.sof), "--quartus-bin", "tools",
                          "--tag", "program-cli-fail", "--json"], self.folder)
         self.assertEqual(code, 1)

@@ -43,48 +43,47 @@ class IntelMemoryTests(unittest.TestCase):
             return SimpleNamespace(returncode=0, stdout="PASS builder-smoke\nErrors: 0, Warnings: 0")
         self.sim.run = run
 
-    def test_explicit_source_binding_and_unchanged_cache(self):
+    def questa(self):
+        return SimpleNamespace(tools={name: name for name in ("vlib", "vmap", "vlog", "vsim")}, path=str)
+
+    def test_explicit_source_binding_and_commands(self):
         self.prepare_model()
-        first = self.run_stage()
-        self.assertEqual(first["status"], "PASS")
-        descriptor = first["options"]["vendor_model"]
+        target = read_json(self.root / "src/dv/builder/targets.json")["builder-smoke"]
+        descriptor = intel_memory.resolve(self.root, self.questa(), target, str(self.models))
         self.assertEqual(descriptor["sources"][0]["sha256"], file_hash(self.source))
         self.assertEqual(descriptor["binding_options"], ["-L", "n2m_altera_mf"])
-        compiler = next(call for call in self.sim.calls if call[0] == "vlog" and "n2m_altera_mf" in call)
+        compile_commands, map_commands, binding = intel_memory.commands(self.questa(), self.build, self.build, descriptor)
+        compiler = next(argv for argv, *_ in compile_commands if argv[0] == "vlog")
         self.assertEqual(compiler[-1], str(self.source))
-        runtime = next(call for call in self.sim.calls if call[0] == "vsim")
-        self.assertEqual(runtime[runtime.index("-L") + 1], "n2m_altera_mf")
-        count = len(self.sim.calls)
-        self.assertEqual(self.run_stage()["cache"], "CACHED")
-        self.assertEqual(len(self.sim.calls), count)
+        self.assertEqual(binding, ["-L", "n2m_altera_mf"])
+        self.assertEqual(len(map_commands), 1)
 
-    def test_changed_source_cannot_reuse_prior_success(self):
+    def test_changed_or_missing_source_is_refused(self):
         self.prepare_model()
-        first = self.run_stage()
-        count = len(self.sim.calls)
+        target = read_json(self.root / "src/dv/builder/targets.json")["builder-smoke"]
         self.source.write_text("// Different host-test dependency bytes\n")
         with self.assertRaisesRegex(ValueError, "unsupported Intel memory model hash"):
-            self.run_stage()
-        self.assertEqual(len(self.sim.calls), count)
-        # A reviewed dependency pin change must also invalidate the prior build.
-        self.pins["intel_memory"]["sources"]["altera_mf.v"] = file_hash(self.source)
-        self.pin_path.write_text(json.dumps(self.pins))
-        second = self.run_stage()
-        self.assertEqual(second["status"], "PASS")
-        self.assertEqual(second["cache"], "BUILT")
-        self.assertNotEqual(first["fingerprint"], second["fingerprint"])
-
-    def test_missing_model_cannot_reuse_prior_success(self):
-        self.prepare_model()
-        self.run_stage()
+            intel_memory.resolve(self.root, self.questa(), target, str(self.models))
         self.source.unlink()
-        count = len(self.sim.calls)
         with self.assertRaisesRegex(ValueError, "missing Intel memory model source"):
-            self.run_stage()
-        self.assertEqual(len(self.sim.calls), count)
-        self.args.intel_sim_lib = str(self.models / "absent")
+            intel_memory.resolve(self.root, self.questa(), target, str(self.models))
         with self.assertRaisesRegex(ValueError, "missing Intel simulation library"):
-            self.run_stage()
+            intel_memory.resolve(self.root, self.questa(), target, str(self.models / "absent"))
+
+    def test_a_vendor_model_target_runs_only_as_questa(self):
+        """The installed model is a Questa binding: a verilator target that still
+        names it fails validation, and a questa target with it is retired."""
+        from n2m.simulation import load_target
+        self.prepare_model()
+        with self.assertRaisesRegex(ValueError, "vendor_model is not supported under verilator"):
+            load_target(self.root, "builder-smoke")
+        registry = self.root / "src/dv/builder/targets.json"
+        targets = read_json(registry)
+        targets["builder-smoke"]["simulator"] = "questa"
+        registry.write_text(json.dumps(targets))
+        result = self.run_stage()
+        self.assertEqual((result["status"], result["reason"]), ("SKIPPED", "questa-retired"))
+        self.assertEqual(self.sim.calls, [])
 
     def test_selected_tool_installation_discovery(self):
         self.prepare_model()

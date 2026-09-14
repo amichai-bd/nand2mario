@@ -77,13 +77,15 @@ class PeerTests(unittest.TestCase):
     def test_declared_driver_inputs_cannot_escape_root(self):
         registry = self.root / 'src/dv/builder/targets.json'
         registry.parent.mkdir(parents=True)
-        target = {'signature': 'PASS', 'sources': [], 'expected_exit': 'zero',
+        target = {'signature': 'PASS', 'sources': [], 'expected_exit': 'zero', 'simulator': 'questa',
                   'driver': {'script': '../outside.do', 'peer': 'child.py', 'inputs': []}}
         registry.write_text(json.dumps({'smoke': target}))
         with self.assertRaisesRegex(ValueError, 'out-of-tree driver'):
             load_target(self.root, 'smoke')
 
-    def test_builder_timeout_reaps_peer_and_retains_original_error(self):
+    def test_driver_targets_stay_questa_and_are_skipped_without_a_peer(self):
+        """A Tcl-driven target has no Verilator path yet: it validates only as a
+        questa target and the stage reports it SKIPPED without starting the peer."""
         self.script(self.ready() + 'time.sleep(60)\n')
         (self.root / 'driver.do').write_text('# driver\n')
         for name in ['tools/build.py', 'tools/n2m/dependencies.json']:
@@ -92,28 +94,18 @@ class PeerTests(unittest.TestCase):
             path.write_text('{}')
         registry = self.root / 'src/dv/builder/targets.json'
         registry.parent.mkdir(parents=True)
-        registry.write_text(json.dumps({'smoke': {'signature': 'PASS', 'sources': [],
-            'args': [], 'expected_exit': 'zero', 'driver': {
-                'script': 'driver.do', 'peer': 'child.py', 'inputs': []}}}))
-        class Runtime:
-            info = {}
-            def command(self, argv): return argv
-            def run(self, argv, **kwargs): raise ToolError('retained outer timeout', 'partial runtime')
-        def commands(simulator, root, target, seed, compiler, attempt, **kwargs):
-            (attempt / 'run.do').write_text('run -all\n')
-            return [(['fake-runtime'], attempt, attempt / 'sim.log', 'zero')]
+        row = {'signature': 'PASS', 'sources': [], 'args': [], 'expected_exit': 'zero', 'simulator': 'verilator',
+               'driver': {'script': 'driver.do', 'peer': 'child.py', 'inputs': []}}
+        registry.write_text(json.dumps({'smoke': row}))
+        with self.assertRaisesRegex(ValueError, 'Tcl driver'):
+            load_target(self.root, 'smoke')
+        row['simulator'] = 'questa'
+        registry.write_text(json.dumps({'smoke': row}))
         args = SimpleNamespace(target='smoke', seed=1, rebuild=False)
-        with patch('n2m.simulation.intel_memory.resolve', return_value=None), patch('n2m.simulation.questa_commands', commands):
-            result = simulate(self.root, self.attempt, args, Runtime())
-        self.assertEqual(result['status'], 'FAIL')
-        self.assertIn('retained outer timeout', result['error'])
-        # The reaped peer may not have published before the process was torn
-        # down: no file is acceptable. A file that exists must be a complete,
-        # parseable record; a partial or empty one is the atomicity defect.
-        records = list(self.attempt.rglob('peer-result.json'))
-        self.assertLessEqual(len(records), 1)
-        if records:
-            self.assertIsNotNone(json.loads(records[0].read_text())['exit_code'])
+        with patch('n2m.simulation_peer.Peer.start', side_effect=AssertionError('peer started')):
+            result = simulate(self.root, self.attempt, args, SimpleNamespace(info={}))
+        self.assertEqual((result['status'], result['reason']), ('SKIPPED', 'questa-retired'))
+        self.assertEqual(list(self.attempt.rglob('peer-result.json')), [])
 
 
 class DriverDeadlineTests(unittest.TestCase):

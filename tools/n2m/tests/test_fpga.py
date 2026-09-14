@@ -322,6 +322,7 @@ class FpgaTests(unittest.TestCase):
             return {"status": "PASS", "notices": [fpga.ALLOCATOR_OVERRIDE_NOTICE]}
 
         with patch("n2m.cli.build_fpga", side_effect=fake), patch("n2m.cli.git_state", return_value={}), \
+                patch("n2m.cli.platform.system", return_value="Windows"), \
                 contextlib.redirect_stdout(io.StringIO()) as output:
             code = main(["fpga", "build", "smoke", "--quartus-bin", "tools", "--tag", "notice"], self.root)
         self.assertEqual(code, 0)

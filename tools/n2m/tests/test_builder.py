@@ -22,13 +22,14 @@ ROOT = Path(__file__).resolve().parents[3]
 
 
 class FakeSimulator:
-    backend = "questa"
-    compiler = "vlog"
-    runtime = "vsim"
+    """A Verilator double: one build call creates obj_dir/sim, one run call
+    writes the harness wave and answers with a transcript."""
+    backend = "verilator"
+    compiler = "verilator"
 
     def __init__(self):
-        self.info = {"backend": "questa", "version": "2025.2", "path": "/tools/vsim"}
-        self.tools = {name: name for name in ("vlib", "vmap", "vlog", "vsim")}
+        self.info = {"backend": "verilator", "tools": {"verilator": {"path": "/tools/verilator", "version": "Verilator 5.052"}}}
+        self.tools = {"verilator": "verilator", "cxx": "g++"}
         self.calls = []
         self.fail = False
         self.warning = False
@@ -41,22 +42,26 @@ class FakeSimulator:
     def command(self, argv):
         return argv
 
-    def run(self, argv, cwd=None):
+    def run(self, argv, cwd=None, timeout=60, env=None):
         self.calls.append(argv)
-        if argv[0] == "vlib":
-            (cwd / "work").mkdir()
-        if argv[0] == "vmap" and "-c" in argv:
-            (cwd / "modelsim.ini").write_text("local mappings")
         if argv[0] == self.compiler:
-            (cwd / "work/design.bin").write_text("compiled")
-            return SimpleNamespace(returncode=0, stdout="warning: test\n" if self.warning else "")
-        if argv[0] != self.runtime:
-            return SimpleNamespace(returncode=0, stdout="")
+            (cwd / "obj_dir").mkdir(exist_ok=True)
+            (cwd / "obj_dir/sim").write_text("compiled")
+            return SimpleNamespace(returncode=0, stdout="%Warning-WIDTH: test\n" if self.warning else "")
         if self.timeout:
             raise ToolError("runtime timed out", "last emitted diagnostic")
-        (cwd / "waves/smoke.vcd").write_text("wave")
+        (cwd / "waves/simulation.fst").write_text("wave")
         return SimpleNamespace(returncode=1 if self.fail else 0,
                                stdout="PASS builder-smoke" if self.signature and not self.fail else "FAIL expected=7 actual=3")
+
+
+def migrate(root, *names):
+    """Mark registry targets as Verilator in a test copy of the registry."""
+    registry = Path(root) / "src/dv/builder/targets.json"
+    targets = read_json(registry)
+    for name in names:
+        targets[name]["simulator"] = "verilator"
+    atomic_json(registry, targets)
 
 
 class BuilderTests(unittest.TestCase):
@@ -109,7 +114,7 @@ class BuilderTests(unittest.TestCase):
         targets = read_json(registry)
         original_run = self.sim.run
         seen = []
-        def run(argv, cwd=None, timeout=60):
+        def run(argv, cwd=None, timeout=60, env=None):
             seen.append((argv[0], timeout))
             return original_run(argv, cwd=cwd)
         self.sim.run = run
@@ -117,9 +122,12 @@ class BuilderTests(unittest.TestCase):
         atomic_json(registry, targets)
         result = self.run_stage()
         self.assertEqual(result["status"], "PASS")
-        self.assertEqual(seen[-1], ("vsim", 180))
-        self.assertTrue(all(bound == 60 for _, bound in seen[:-1]))
+        self.assertEqual(seen[-1][1], 180)
+        self.assertTrue(seen[-1][0].endswith("sim"))
+        # The C++ build gets the target's whole selected wall, not the 60-second default.
+        self.assertEqual([bound for _, bound in seen[:-1]], [300])
         self.assertEqual(result["commands"][-1]["timeout_seconds"], 180)
+        self.assertEqual(result["commands"][0]["timeout_seconds"], 300)
         targets["builder-smoke"]["timeout_seconds"] = 181
         atomic_json(registry, targets)
         self.assertEqual(self.run_stage()["cache"], "BUILT")
@@ -142,7 +150,7 @@ class BuilderTests(unittest.TestCase):
         result = self.run_stage()
         self.assertEqual(result["cache"], "BUILT")
         self.assertIn("src/two.svh", result["inputs"])
-        self.assertIn("+incdir+" + str(self.root), next(argv for argv in self.sim.calls if argv[0] == "vlog"))
+        self.assertIn("+incdir+" + str(self.root), next(argv for argv in self.sim.calls if argv[0] == "verilator"))
         second.unlink()
         with self.assertRaisesRegex(ValueError, "missing"):
             self.run_stage()
@@ -150,10 +158,10 @@ class BuilderTests(unittest.TestCase):
     def test_cache_reuse_and_rebuild(self):
         self.assertEqual(self.run_stage()["status"], "PASS")
         self.assertEqual(self.run_stage()["cache"], "CACHED")
-        self.assertEqual(len(self.sim.calls), 7)
+        self.assertEqual(len(self.sim.calls), 2)
         self.args.rebuild = True
         self.assertEqual(self.run_stage()["cache"], "BUILT")
-        self.assertEqual(len(self.sim.calls), 14)
+        self.assertEqual(len(self.sim.calls), 4)
 
     def test_stale_sources_runner_config_seed_tools(self):
         self.run_stage()
@@ -163,18 +171,18 @@ class BuilderTests(unittest.TestCase):
             self.assertEqual(self.run_stage()["cache"], "BUILT", file)
         self.args.seed = 22
         self.assertEqual(self.run_stage()["cache"], "BUILT")
-        self.sim.info["version"] = "13.0"
+        self.sim.info["tools"]["verilator"]["version"] = "Verilator 13.0"
         self.assertEqual(self.run_stage()["cache"], "BUILT")
-        self.sim.info["path"] = "/other/vsim"
+        self.sim.info["tools"]["verilator"]["path"] = "/other/verilator"
         self.assertEqual(self.run_stage()["cache"], "BUILT")
 
     def test_missing_and_tampered_artifacts(self):
         first = self.run_stage()
-        artifact = next(p for p in first["artifacts"] if p.endswith("design.bin"))
+        artifact = next(p for p in first["artifacts"] if p.endswith("obj_dir/sim"))
         (self.root / artifact).unlink()
         self.assertEqual(self.run_stage()["cache"], "BUILT")
         current = self.run_stage()
-        artifact = next(p for p in current["artifacts"] if p.endswith("smoke.vcd"))
+        artifact = next(p for p in current["artifacts"] if p.endswith("simulation.fst"))
         (self.root / artifact).write_text("tampered")
         self.assertEqual(self.run_stage()["cache"], "BUILT")
 
@@ -218,9 +226,9 @@ class BuilderTests(unittest.TestCase):
                             for p in result["artifacts"] if p.endswith("sim.log")))
         tool = object.__new__(Simulator)
         with patch("n2m.simulator.subprocess.run", side_effect=subprocess.TimeoutExpired(
-                ["vsim"], 60, output=b"last emitted diagnostic")):
+                ["sim"], 60, output=b"last emitted diagnostic")):
             with self.assertRaises(ToolError) as caught:
-                tool.run(["vsim"])
+                tool.run(["sim"])
         self.assertEqual(caught.exception.output, "last emitted diagnostic")
 
     def test_expected_nonzero_is_explicit(self):
@@ -234,15 +242,16 @@ class BuilderTests(unittest.TestCase):
     def test_tile_corruption_cannot_disguise_normal_failure(self):
         for owner in ("src/rtl/display", "src/dv/display", "src/rtl/common"):
             shutil.copytree(ROOT / owner, self.root / owner)
+        migrate(self.root, "tile-pixel", "tile-pixel-corrupt")
         targets = json.loads((self.root / "src/dv/builder/targets.json").read_text())
         corrupt = targets["tile-pixel-corrupt"]["signature"]
         normal = targets["tile-pixel"]["signature"]
         original_run = self.sim.run
 
         def result_for(code, output):
-            def run(argv, cwd=None):
+            def run(argv, cwd=None, timeout=60, env=None):
                 result = original_run(argv, cwd)
-                if argv[0] == self.sim.runtime:
+                if argv[0] != self.sim.compiler:
                     result.returncode, result.stdout = code, output
                 return result
             return run
@@ -298,7 +307,7 @@ class BuilderTests(unittest.TestCase):
 
     def test_missing_executable(self):
         with self.assertRaises(ToolError):
-            Simulator(questa_bin=str(self.root / "missing-questa"))
+            Simulator(verilator_bin=str(self.root / "missing-verilator"))
 
     def test_discovery_failure_invalidates_previous_success(self):
         with patch("n2m.cli.Simulator", return_value=self.sim), \
@@ -311,7 +320,7 @@ class BuilderTests(unittest.TestCase):
             current = self.root / "workdir/builds/discovery/sim/test/builder-smoke/result.json"
             self.assertEqual(read_json(current)["status"], "FAIL")
             self.assertEqual(main(command, self.root), 0)
-            self.assertEqual(len(self.sim.calls), 14)
+            self.assertEqual(len(self.sim.calls), 4)
 
     def test_cli_pass_cache_fail_latest(self):
         with patch("n2m.cli.Simulator", return_value=self.sim), \
