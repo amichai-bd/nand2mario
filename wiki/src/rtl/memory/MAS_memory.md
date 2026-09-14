@@ -313,14 +313,14 @@ I/O table and follows the separate approved digital rule above.
 ## Shared primitive and verification
 
 All backing stores use the [shared Intel memory wrapper](../common/MAS_memory_primitives.md).
-The identical explicit instances and parameters are used by the installed
-Intel model in Questa and by MAX 10 synthesis. This owner does not duplicate
+The same explicit instances and parameters drive the repository double in
+simulation and the vendor primitive in MAX 10 synthesis. This owner does not duplicate
 the shared reset/read-hold, byte-enable or collision rules. Resolved A reads
 and writes may coincide with full-lane new-data service. A write may not target
 the address of an active B read; arbitration must schedule it separately.
 Clearing uses ordinary public A writes and never accesses a vendor-private array.
 
-Independent Questa checks cover all region endpoints, complete reset sweeps,
+Independent simulation checks cover all region endpoints, complete reset sweeps,
 ROM loading/readback/retention across core and global reset, interrupted-clear
 restart, bidirectional echo, per-phase pause/reset, prepared versus committed
 I/O, and simultaneous permitted CPU/PPU service. The raw-store fixture observes

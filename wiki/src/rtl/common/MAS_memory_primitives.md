@@ -2,26 +2,33 @@
 
 All product RAM and ROM backing stores must use the explicit Intel `altsyncram`
 boundary in [`n2m_intel_ram`](../../../../src/rtl/common/n2m_intel_ram.sv).
-Quartus always sees the vendor `altsyncram` instance and its parameters. Under
-the builder's [simulator policy](../../../tools/n2m/SPEC.md#simulator-policy),
-Verilator on WSL is the sole simulator and cannot compile the vendor model, so
-the wrapper selects, under the predefined `VERILATOR` macro, a repository-owned
-behavioral double that implements every rule on this page: one request edge of
-latency with unregistered output, per-lane byte enables for the supported
-shapes, `NEW_DATA_NO_NBE_READ` same-port behavior with the partial-lane
-assertion, `OLD_DATA` single-clock and unspecified dual-clock mixed-port
-behavior, uninitialized power-up filled from the run's randomized initial
-values, and `SIM_INIT_FILE` preload. The double uses an `n2m_sim_` name, never
-`altsyncram`, and has its own unit test. That double and its test are the open
-gap in [#598](https://github.com/amichai-bd/nand2mario/issues/598); until it
-lands, targets that need the installed Intel model stay registered `questa`,
-are reported `SKIPPED questa-retired` by the builder, and keep the rules below
-for their eventual migration; any repository HDL defining `altsyncram` remains
-a shadow model. Four-state (`X`) assertions in memory consumers are removed
-during migration as an authorized behavior change: an uninitialized read fails
-by value mismatch against the randomized fill, not by an `X` check. Register
-files, peripheral state and small control registers may remain flops;
-independent reference models may use arrays.
+The wrapper has two backing models behind one instance name and one set of
+public ports:
+
+- Synthesis model: Quartus always sees the vendor `altsyncram` instance and its
+  parameters, in the wrapper's `else` branch.
+- Simulation model: under the predefined `VERILATOR` macro the wrapper selects
+  the repository double
+  [`n2m_sim_dual_port_ram`](../../../../src/rtl/common/n2m_sim_dual_port_ram.sv),
+  a separate source listed by each Verilator target. The double implements
+  every rule on this page: one request edge of latency with unregistered
+  output, per-lane enables for the supported shapes, `NEW_DATA_NO_NBE_READ`
+  same-port behavior, `OLD_DATA` single-clock and unspecified dual-clock
+  mixed-port behavior, seeded random power-up contents and `SIM_INIT_FILE`
+  preload. It uses an `n2m_sim_` name; no repository HDL defines `altsyncram`.
+
+[`tb_sim_ram_double`](../../../../src/dv/common/tb_sim_ram_double.sv) is the
+double's unit test under the [common test plan](../../../../src/dv/common/README.md#intel-memory-doubles);
+[`tb_intel_ram`](../../../../src/dv/common/tb_intel_ram.sv) is the wrapper
+fixture. Verilator has no `X`: data the vendor leaves undefined comes from the
+run's seeded random stream, so an uninitialized or forbidden read fails by value
+mismatch, not by an `X` check. Four-state assertions in memory consumers are
+removed during migration as an authorized behavior change. Register files,
+peripheral state and small control registers may remain flops; independent
+reference models may use arrays. Targets still registered `questa` are reported
+`SKIPPED questa-retired` by the builder's
+[simulator policy](../../../tools/n2m/SPEC.md#simulator-policy) until their area
+migrates; every migrated target lists the double as a source.
 
 ## Supported ports and timing
 
@@ -48,11 +55,17 @@ The wrapper's valid bits are ordinary shared-macro registers.
 port's accesses; reset does not clear the array or data output. Each domain's
 owner must release reset synchronously. Owners initialize through real clear
 or load writes and prevent reads until their data is initialized. Default and
-synthesized memory has `power_up_uninitialized=TRUE` and `init_file=UNUSED`.
-The explicit [simulation preload](../../dv/preload/SPEC.md) may select a supported
-Intel initialization file through `SIM_INIT_FILE`; synthesis ignores it.
-There is no portable replacement array, private vendor-array loading or
-fabricated product power-up fill. Reset still does not reload any array.
+synthesized memory has `power_up_uninitialized=TRUE` and `init_file=UNUSED`;
+the double fills every word from `$urandom` at time zero. The explicit
+[simulation preload](../../dv/preload/SPEC.md) may select an initialization
+file through `SIM_INIT_FILE`; synthesis ignores it. The double reads a `.mif`
+(the `DEPTH`/`WIDTH`/radix header and `address : value;` or
+`[first..last] : value;` rows written by `tools/n2m/preload.py`) through its own
+parser and any other name through `$readmemh`, 1 ps after time zero so a
+testbench may write the file at time zero. A missing file, a header that
+disagrees with the instance shape or a malformed row is a named fatal failure.
+Product owners still initialize through real writes; reset does not reload any
+array.
 
 ## Writes and collisions
 
@@ -64,14 +77,16 @@ byte-enable port is tied high because Intel byte sizes are eight or nine bits.
 The primitive lane count is the width rounded up in units of eight bits, with
 all B lanes tied enabled on its read-only port. A same-port simultaneous
 read/write is supported only with all lanes enabled and returns the new word
-at that edge. The primitive selects `NEW_DATA_NO_NBE_READ`; partial writes
+at that edge. The primitive selects `NEW_DATA_NO_NBE_READ`; the double returns
+the enabled lanes as new data and unspecified masked lanes. Partial writes
 must disable A reading and can be observed with a subsequent enabled read.
 An assertion rejects partial-lane simultaneous read/write.
 
 Cross-port read/write collisions are forbidden in both clock modes. The
 primitive selects mixed-port `OLD_DATA` for one clock and `DONT_CARE` for
-different clocks, with identical parameters in simulation and synthesis.
-This parameter does not authorize a collision
+different clocks. The double returns the old word for a single-clock same-edge
+collision and unspecified data when a dual-clock B read samples the address A
+is writing. This parameter does not authorize a collision
 or promise a deterministic value for unrelated clocks. The wrapper checks at
 both port clocks that an active A write
 request and B read request do not target the same address. This deliberately
@@ -79,15 +94,8 @@ strong request-window rule is only a local diagnostic: owners must also enforce
 bank/address ownership across unrelated clocks, including physical timing
 windows. Simultaneous reads are allowed. There is no B write port.
 
-The pinned Intel model maps MAX 10 through its Cyclone III/II family flags
-(`altera_mf.v` lines 48040, 48042 and 48048), then coerces mixed-port behavior
-to `OLD_DATA` at line 48360 and reports that coercion at line 48421. This
-differs only for the prohibited collision. Hardware requires `DONT_CARE` for
-different clocks; Quartus critical warning 15003 remains a failure.
-The builder records the model's exact time-zero coercion diagnostic against
-the target's expected instance inventory and reviewed source hash. Missing,
-duplicate, wrong-instance or other diagnostics fail. Raw transcripts retain
-the warning; reports must state its count instead of claiming zero warnings.
+Hardware requires `DONT_CARE` for different clocks; Quartus critical warning
+15003 remains a failure.
 
 The MAX 10 guide documents [read-enable holding](https://docs.altera.com/r/docs/683431/current/max-10-embedded-memory-user-guide/read-enable?contentId=LsRwx_P_1NO6gEMewkvOBQ),
 [same-port new data](https://docs.altera.com/r/docs/683431/current/max-10-embedded-memory-user-guide/same-port-read-during-write-mode?contentId=mPC_Y0bBM58cJ0SN~2R3EA),
@@ -97,11 +105,14 @@ alone does not establish collision safety or the fitted device configuration.
 
 ## Build and ownership
 
-The [builder contract](../../../tools/n2m/SPEC.md) owns installed-model discovery,
-hashes, compile options and explicit library binding. The authoritative version
-and model source hash are in [the dependency record](../../../../tools/n2m/dependencies.json).
-Vendor source remains in the licensed tool installation; compiled libraries and
-evidence stay under the build tag. This foundation changes no Game Boy bus,
+The [builder contract](../../../tools/n2m/SPEC.md) owns simulation compile
+options and the FPGA build. Vendor source stays in the Quartus installation;
+the FPGA build records the installed `altsyncram` definition, declaration and
+model hashes against [the dependency record](../../../../tools/n2m/dependencies.json),
+and evidence stays under the build tag. Selecting the double must not change
+any FPGA target's resource summary or primitive hierarchy rows; that identity
+is proved by rebuilding every target before and after a wrapper change with
+`tools/fpga_netlist_compare.py`. This foundation changes no Game Boy bus,
 clock, host command or framebuffer ownership contract.
 
 | Consumer | Required shape | Implementation owner |

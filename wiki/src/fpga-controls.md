@@ -39,7 +39,28 @@ control core's command and response interfaces run at25 MHz `clk_sys`; its
 hard-block crossing uses the vendor handshake and corresponding scoped SDC.
 The generated PLL, vendor HDL, atom models, and constraints remain build
 artifacts with recorded source hashes. There is no alternative behavioral ADC
-implementation in the product.
+implementation in the product image: Quartus always sees the vendor control
+core and the generated `n2m_adc_pll` in the backend's `else` branch.
+
+Simulation uses repository doubles instead. Under the predefined `VERILATOR`
+macro, [`n2m_adc_backend`](../../src/rtl/input/n2m_adc_backend.sv) selects
+[`n2m_sim_adc_pll`](../../src/rtl/input/n2m_sim_adc_pll.sv) and
+[`n2m_sim_adc_control`](../../src/rtl/input/n2m_sim_adc_control.sv), separate
+sources listed by each Verilator target. The PLL double produces `clk_adc` at
+the configured ratio (default 1:1 from the 100 ns reference), holds it low
+during `areset`, drops `locked` at once when `areset` rises and raises it 64
+reference edges after `areset` falls; a reference clock that differs from the
+configured period by more than 1 % is a named fatal failure. The control double
+reads the two-column channel files `adc_ch0.txt` to `adc_ch16.txt` from the run
+directory 1 ps after time zero, accepts one command while locked and idle,
+holds `command_ready` low through the response cycle, and answers 80
+`clk_adc` rising edges later with the accepted channel and the next row's
+voltage as `trunc((Vin / Vref) * 4096)` clamped to twelve bits, where Vref is
+the encoded reference `49648 / 65536 * 3.3` V. Rows repeat cyclically per
+channel. Reset or lock loss abandons the outstanding conversion without a
+response. A missing or empty channel file is a named fatal failure.
+[`tb_sim_adc_double`](../../src/dv/input/tb_sim_adc_double.sv) is the doubles'
+unit test under the [input test plan](../../src/dv/input/README.md#adc-doubles).
 
 The two-channel proof explains only the pinned Intel control core's unused
 dual-ADC next-state variable and twelve outputs of its unused channel17
@@ -141,12 +162,12 @@ defines the control-only configuration; its
 permits10 MHz at125 ksample/s. Installed25.1std source parameters and physical
 fit must corroborate the selected implementation.
 
-ADC verification uses the vendor's user-stimulus simulation mode with original
-builder-generated two-column voltage files and recorded hashes. Channel1 has
-0.625V and channel2 has1.25V; inactive channels have0V. Each file has one row,
-which the documented model repeats. The independent expected codes are1024
-and2048. Simulation mode and filenames do not change the hardware clock,
-reference selection or channel mask.
+ADC verification uses original builder-generated two-column voltage files with
+recorded hashes, in the vendor's user-stimulus file format, replayed by the
+control double. Channel1 has 0.625V and channel2 has1.25V; inactive channels
+have0V. Each file has one row, which the double repeats. The independent
+expected codes are1024 and2048. Simulation files and parameters do not change
+the hardware clock, reference selection or channel mask.
 
 The installed generator encodes the reference as `(Vref / 3.3) * 65536`;
 the integer49648 represents the selected2.5V reference. Its voltage conversion

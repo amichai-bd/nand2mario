@@ -56,3 +56,33 @@ all existing named chain setup/hold and asynchronous-clear endpoint checks.
 
 These checks add no CPU coverage. Existing clocking positive and three deliberate
 negative targets retain their independent oracle and exact signatures.
+
+## Intel memory doubles
+
+Contract: [Intel memory primitives](../../../wiki/src/rtl/common/MAS_memory_primitives.md).
+`tb_sim_ram_double` proves the `n2m_sim_dual_port_ram` double that
+`n2m_intel_ram` selects under `VERILATOR`. Seven wrapper shapes go through the
+public wrapper ports only: 8/1, 16/1, 32/4, dual-clock 2/1, and three preloaded
+shapes (8/1 from a `.mif` with single and range rows, 1/1 from a `.mif` with
+`BIN` data and a comment line, 16/1 from a `$readmemh` file). Two direct cases
+instantiate the double for rules the wrapper forbids or masks. Fixture files
+are written by the top at time zero from shared image functions.
+
+| Requirement | Independent check |
+|---|---|
+| Reset masking | `a_valid`/`b_valid` low within 1 ns of reset; a masked write never lands; held data unchanged |
+| Power-up contents | Every unpreloaded word is read before any write; more than one distinct value across the array |
+| Preload | Every word of each preloaded shape equals the image the top wrote; a row with a non-hex digit is fatal |
+| One edge of latency | Output unchanged in the 5 ns before an edge; new word and valid 1 ns after the request edge |
+| Read hold | Disabled reads keep their data and drop valid while other words are written |
+| Byte lanes | 32/4: single lanes then `0101`/`1010` pairs produce `D0C1D2C3`; single-lane shapes: enable 0 leaves the word |
+| Same-port read/write | Full lanes return the new word at that edge; partial lanes trip `INTEL_RAM_SAME_PORT_LANES` |
+| Mixed-port, single clock | Direct case: a same-edge B read returns the old word, the next read the new word; through the wrapper the collision trips `INTEL_RAM_MIXED_PORT_A` |
+| Mixed-port, dual clock | Direct case: a B read of the word A is writing is unspecified; the next clean read and a different-address read are exact |
+| Checker proof | `+corrupt` forces `a_rdata` and requires the exact `SIM_RAM_DATA_A` diagnostic |
+
+Targets: `sim-ram-double` (pass), `sim-ram-double-corrupt`,
+`sim-ram-double-collision`, `sim-ram-double-partial-lanes` and
+`sim-ram-double-bad-preload`, all `simulator: verilator`. The unspecified
+values are drawn from the run's seeded random stream, so a seed reproduces them.
+

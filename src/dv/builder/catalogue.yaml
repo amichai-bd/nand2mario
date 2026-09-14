@@ -438,6 +438,15 @@ units:
   serial-boundary-fault: {kind: sim, level: 2, labels: [fault, serial], duration_seconds: 2.01}
   serial-register-fault: {kind: sim, level: 2, labels: [fault, serial], duration_seconds: 0.50}
   serial-registers: {kind: sim, level: 1, labels: [serial], duration_seconds: 0.53}
+  sim-adc-double: {kind: sim, level: 0, labels: [input], duration_seconds: null}
+  sim-adc-double-channel: {kind: sim, level: 2, labels: [fault, input], duration_seconds: null}
+  sim-adc-double-corrupt: {kind: sim, level: 2, labels: [fault, input], duration_seconds: null}
+  sim-adc-double-missing: {kind: sim, level: 2, labels: [fault, input], duration_seconds: null}
+  sim-ram-double: {kind: sim, level: 0, labels: [common], duration_seconds: null}
+  sim-ram-double-bad-preload: {kind: sim, level: 2, labels: [common, fault], duration_seconds: null}
+  sim-ram-double-collision: {kind: sim, level: 2, labels: [common, fault], duration_seconds: null}
+  sim-ram-double-corrupt: {kind: sim, level: 2, labels: [common, fault], duration_seconds: null}
+  sim-ram-double-partial-lanes: {kind: sim, level: 2, labels: [common, fault], duration_seconds: null}
   snapshot: {kind: sim, level: 1, labels: [snapshot], duration_seconds: 7.08}
   snapshot-latency: {kind: sim, level: 2, labels: [fault, snapshot], duration_seconds: null}
   snapshot-lifecycle: {kind: sim, level: 2, labels: [snapshot], duration_seconds: null}

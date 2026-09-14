@@ -28381,5 +28381,131 @@
       "tools/sw/targets.py",
       "tools/sw/targets.schema.json"
     ]
+  },
+  "sim-ram-double": {
+    "sources": [
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/dv/common/tb_sim_ram_double.sv"
+    ],
+    "top": "tb_sim_ram_double",
+    "simulator": "verilator",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS Intel RAM double cases=9 checks=5242"
+  },
+  "sim-ram-double-corrupt": {
+    "sources": [
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/dv/common/tb_sim_ram_double.sv"
+    ],
+    "top": "tb_sim_ram_double",
+    "simulator": "verilator",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "SIM_RAM_DATA_A case=0 check=329 expected=38 actual=ff"
+  },
+  "sim-ram-double-collision": {
+    "sources": [
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/dv/common/tb_sim_ram_double.sv"
+    ],
+    "top": "tb_sim_ram_double",
+    "simulator": "verilator",
+    "args": [
+      "+collision"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT INTEL_RAM_MIXED_PORT_A instance=tb_sim_ram_double.byte_case.dut"
+  },
+  "sim-ram-double-partial-lanes": {
+    "sources": [
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/dv/common/tb_sim_ram_double.sv"
+    ],
+    "top": "tb_sim_ram_double",
+    "simulator": "verilator",
+    "args": [
+      "+partial_lanes"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT INTEL_RAM_SAME_PORT_LANES instance=tb_sim_ram_double.lanes_case.dut"
+  },
+  "sim-ram-double-bad-preload": {
+    "sources": [
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
+      "src/rtl/common/n2m_intel_ram.sv",
+      "src/dv/common/tb_sim_ram_double.sv"
+    ],
+    "top": "tb_sim_ram_double",
+    "simulator": "verilator",
+    "args": [
+      "+bad_preload"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_SIM_RAM_MIF_DIGIT file=sim-ram-preload-bytes.mif token=0G"
+  },
+  "sim-adc-double": {
+    "sources": [
+      "src/rtl/input/n2m_sim_adc_pll.sv",
+      "src/rtl/input/n2m_sim_adc_control.sv",
+      "src/rtl/input/n2m_adc_backend.sv",
+      "src/dv/input/tb_sim_adc_double.sv"
+    ],
+    "top": "tb_sim_adc_double",
+    "simulator": "verilator",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS ADC doubles replies=10 codes=1024,2048,3276,4095,0 pll_ratio=1/1 lock_cycles=64 latency_cycles=200"
+  },
+  "sim-adc-double-corrupt": {
+    "sources": [
+      "src/rtl/input/n2m_sim_adc_pll.sv",
+      "src/rtl/input/n2m_sim_adc_control.sv",
+      "src/rtl/input/n2m_adc_backend.sv",
+      "src/dv/input/tb_sim_adc_double.sv"
+    ],
+    "top": "tb_sim_adc_double",
+    "simulator": "verilator",
+    "args": [
+      "+corrupt"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "ADC_DOUBLE_DATA expected=1,1024 actual=1,0"
+  },
+  "sim-adc-double-channel": {
+    "sources": [
+      "src/rtl/input/n2m_sim_adc_pll.sv",
+      "src/rtl/input/n2m_sim_adc_control.sv",
+      "src/rtl/input/n2m_adc_backend.sv",
+      "src/dv/input/tb_sim_adc_double.sv"
+    ],
+    "top": "tb_sim_adc_double",
+    "simulator": "verilator",
+    "args": [
+      "+bad_channel"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT adc_command_channel instance=tb_sim_adc_double.u_adc"
+  },
+  "sim-adc-double-missing": {
+    "sources": [
+      "src/rtl/input/n2m_sim_adc_pll.sv",
+      "src/rtl/input/n2m_sim_adc_control.sv",
+      "src/rtl/input/n2m_adc_backend.sv",
+      "src/dv/input/tb_sim_adc_double.sv"
+    ],
+    "top": "tb_sim_adc_double",
+    "simulator": "verilator",
+    "args": [
+      "+missing_stimulus"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_SIM_ADC_STIMULUS_EMPTY file=adc_ch5.txt"
   }
 }
