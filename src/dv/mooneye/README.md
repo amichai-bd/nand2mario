@@ -38,13 +38,13 @@ Use the [shared Python builder](../python/README.md) with targets
 `mooneye-reg-f`, `mooneye-corrupt` and `mooneye-missing`. Each builds the locked
 tool and unmodified case before simulation. The declared Python inputs include
 the pins and notices; compiler files and CMake modules enter the stage identity.
-Set `$env:N2M_MOONEYE_BUILD_HOST='wsl'` in PowerShell to build with the locked
-Ubuntu host toolchain. The default remains the pinned Windows toolchain; unknown
-hosts fail. WSL builds in the same ignored attempt directory through its mounted
-Windows path. No ROM import or tool-build cache bypass is used. The host identity
+On Linux the locked Ubuntu host toolchain (`N2M_MOONEYE_BUILD_HOST=wsl`) is the
+default and runs natively in the attempt directory; the `windows` backend needs
+the retired Questa installation's MinGW tools and fails without it; unknown
+hosts fail. No ROM import or tool-build cache bypass is used. The host identity
 hash covers executables, compiler headers, GCC support files, system libraries
-and CMake modules, and is rechecked before and after building. A changed host
-requires a reviewed pin update. Questa and Intel memory simulation stay on Windows.
+and CMake modules, is rechecked before and after building, and enters the
+simulation fingerprint. A changed host requires a reviewed pin update.
 
 WLA 10.6 sorts equal-priority, equal-size sections without returning equality in
 `wlalink/write.c:_sections_sort`. Linux and Windows therefore place eight helper

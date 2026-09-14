@@ -203,13 +203,12 @@ class RecordTests(unittest.TestCase):
         self.args.rebuild = False
         self.assertEqual(self.run_stage()["cache"], "CACHED")
 
-    def test_vendor_model_driver_and_preload_targets_stay_questa(self):
+    def test_vendor_model_and_driver_targets_stay_questa(self):
         registry = self.root / "src/dv/builder/targets.json"
         targets = read_json(registry)
         pristine = dict(targets["builder-smoke"])
         for change, message in (({"vendor_model": "intel-memory"}, "vendor_model"),
-                                ({"driver": {"script": "tools/build.py", "peer": "tools/build.py", "inputs": []}}, "Tcl driver"),
-                                ({"preload": "integration"}, "preload is not supported under verilator")):
+                                ({"driver": {"script": "tools/build.py", "peer": "tools/build.py", "inputs": []}}, "Tcl driver")):
             targets["builder-smoke"] = {**pristine, **change}
             registry.write_text(json.dumps(targets))
             with self.assertRaisesRegex(ValueError, message):
@@ -217,6 +216,147 @@ class RecordTests(unittest.TestCase):
             targets["builder-smoke"]["simulator"] = "questa"
             registry.write_text(json.dumps(targets))
             self.assertEqual(load_target(self.root, "builder-smoke")[0]["simulator"], "questa")
+
+
+class PreloadTests(unittest.TestCase):
+    """The fixture pipeline on the Verilator stage: validation, preparation,
+    verification before launch, the record and fingerprint invalidation."""
+    setUp = test_builder.BuilderTests.setUp
+    run_stage = test_builder.BuilderTests.run_stage
+
+    def fixture_tree(self):
+        for owner in ("src/dv/preload", "src/dv/integration", "tools/sw"):
+            shutil.copytree(test_builder.ROOT / owner, self.root / owner, ignore=shutil.ignore_patterns("__pycache__"))
+        (self.root / "src/sw/generated").mkdir(parents=True)
+        shutil.copy(test_builder.ROOT / "src/sw/generated/interfaces.inc", self.root / "src/sw/generated/interfaces.inc")
+        self.args.target = "preload-fixture"
+        signature = read_json(self.root / "src/dv/builder/targets.json")["preload-fixture"]["signature"]
+        original = self.sim.run
+        def run(argv, cwd=None, timeout=60, env=None):
+            result = original(argv, cwd)
+            if argv[0] != self.sim.compiler:
+                result.stdout = signature
+                # The run reads the prepared files from its own directory.
+                self.assertTrue((cwd / "preload-crc.hex").is_file() and (cwd / "preload-rom.mif").is_file())
+            return result
+        self.sim.run = run
+
+    def test_validator_accepts_preload_under_verilator_and_rejects_unregistered_or_undeclared(self):
+        self.fixture_tree()
+        registry = self.root / "src/dv/builder/targets.json"
+        targets = read_json(registry)
+        target = targets["preload-fixture"]
+        self.assertEqual(load_target(self.root, "preload-fixture")[0]["preload"], "integration")
+        for change, message in (({"preload": "unreviewed"}, "no registered fixture builder"),
+                                ({"preload_inputs": []}, "preload_inputs must list"),
+                                ({"preload_inputs": [p for p in target["preload_inputs"] if p != "src/dv/integration/program.asm"]},
+                                 "omit fixture inputs: src/dv/integration/program.asm"),
+                                ({"preload_inputs": target["preload_inputs"] + ["src/dv/absent.py"]}, "missing or out-of-tree preload input")):
+            targets["preload-fixture"] = {**target, **change}
+            registry.write_text(json.dumps(targets))
+            with self.subTest(change=change), self.assertRaisesRegex(ValueError, message):
+                load_target(self.root, "preload-fixture")
+        # The builder's own import closure must be declared even when no fixed input names it.
+        targets["preload-fixture"] = {**target, "preload_inputs": [p for p in target["preload_inputs"] if p != "tools/sw/linker.py"]}
+        registry.write_text(json.dumps(targets))
+        with patch("n2m.python_tb.fixture_inputs", return_value=set()):
+            with self.assertRaisesRegex(ValueError, "undeclared transitive fixture inputs: tools/sw/linker.py"):
+                load_target(self.root, "preload-fixture")
+        pristine = dict(read_json(test_builder.ROOT / "src/dv/builder/targets.json")["builder-smoke"])
+        targets["builder-smoke"] = {**pristine, "preload_inputs": ["tools/build.py"]}
+        registry.write_text(json.dumps(targets))
+        with self.assertRaisesRegex(ValueError, "preload_inputs requires a preload"):
+            load_target(self.root, "builder-smoke")
+
+    def test_stage_prepares_verifies_before_launch_and_records_the_fixture(self):
+        self.fixture_tree()
+        record = self.run_stage()
+        self.assertEqual((record["status"], record["cache"]), ("PASS", "BUILT"))
+        preload = record["preload"]
+        self.assertEqual((preload["mode"], preload["title"], preload["image_bytes"]), ("preloaded-execution", "N2M SMOKE", 32768))
+        self.assertEqual(set(preload["files"]), {"preload-rom.mif", "preload-presence.mif", "preload-crc.hex"})
+        attempt = self.root / Path(record["waves"]["path"]).parent.parent
+        self.assertEqual(preload, read_json(attempt / "preload.json"))
+        for name in ("program.gb", "preload.json", "preload-rom.mif", "preload-crc.hex", "fixture-preflight.json"):
+            self.assertIn((attempt / name).relative_to(self.root).as_posix(), record["artifacts"])
+        self.assertIn("src/dv/integration/program.asm", record["inputs"])
+        self.assertIn("tools/sw/linker.py", record["inputs"])
+        # A prepared file changed between preparation and the launch check fails
+        # the attempt before the run starts; preparation's own checks passed.
+        from n2m import preload
+        real_verify, built = preload.verify, []
+        original = self.sim.run
+        def run(argv, cwd=None, timeout=60, env=None):
+            built.append(argv[0] == self.sim.compiler)
+            return original(argv, cwd)
+        def verify(attempt):
+            if built:
+                raise ValueError("preload file changed after preparation: preload-crc.hex")
+            return real_verify(attempt)
+        self.sim.run = run
+        with patch("n2m.preload.verify", side_effect=verify):
+            self.args.rebuild = True
+            failed = self.run_stage()
+        self.assertEqual(failed["status"], "FAIL")
+        self.assertIn("preload file changed", failed["error"])
+        self.assertEqual(built, [True], "the run never launched")
+        self.assertNotIn("preload", failed)
+
+    def test_changed_fixture_input_invalidates_cache_reuse(self):
+        self.fixture_tree()
+        first = self.run_stage()
+        self.assertEqual((first["status"], first["cache"]), ("PASS", "BUILT"))
+        self.assertEqual(self.run_stage()["cache"], "CACHED")
+        source = self.root / "src/dv/integration/program.asm"
+        source.write_text(source.read_text(encoding="utf-8") + "; fixture comment\n", encoding="utf-8")
+        second = self.run_stage()
+        self.assertEqual((second["status"], second["cache"]), ("PASS", "BUILT"))
+        self.assertNotEqual(first["fingerprint"], second["fingerprint"])
+        self.assertEqual(self.run_stage()["cache"], "CACHED")
+
+    def test_mooneye_tool_identity_enters_the_fingerprint(self):
+        import hashlib
+        from sw.package import package
+        from n2m import preload
+        for owner in ("src/dv/preload", "src/dv/mooneye", "tools/sw"):
+            shutil.copytree(test_builder.ROOT / owner, self.root / owner, ignore=shutil.ignore_patterns("__pycache__"))
+        (self.root / "src/rtl/ppu").mkdir(parents=True)
+        shutil.copy(test_builder.ROOT / "src/rtl/ppu/GPL-3.0.txt", self.root / "src/rtl/ppu/GPL-3.0.txt")
+        registry = self.root / "src/dv/builder/targets.json"
+        targets = read_json(registry)
+        targets["mooneye-fixture"] = {**targets["preload-fixture"], "preload": "mooneye-reg-f",
+                                      "preload_inputs": ["src/dv/mooneye/pins.json", "src/dv/mooneye/THIRD_PARTY.md",
+                                                         "src/rtl/ppu/GPL-3.0.txt", "tools/sw/expressions.py",
+                                                         "tools/sw/linker.py", "tools/sw/objects.py", "tools/sw/package.py"]}
+        registry.write_text(json.dumps(targets))
+        self.args.target = "mooneye-fixture"
+        signature = targets["mooneye-fixture"]["signature"]
+        original = self.sim.run
+        def run(argv, cwd=None, timeout=60, env=None):
+            result = original(argv, cwd)
+            if argv[0] != self.sim.compiler:
+                result.stdout = signature
+            return result
+        self.sim.run = run
+        image = package({"image": bytes([255]) * 32768, "entry": 0x200}, "ORIGINAL", 1)
+        def prepare(target, attempt, root=None, fixture_tools=None):
+            self.assertEqual(target["preload"], "mooneye-reg-f")
+            self.assertIn(fixture_tools["tools"]["gcc"], ("/usr/bin/gcc", "/opt/gcc"))
+            (attempt / "program.gb").write_bytes(image)
+            preload.prepare(image, hashlib.sha256(image).hexdigest(), attempt)
+        identities = [{"backend": "wsl", "tools": {"gcc": "/usr/bin/gcc"}, "files": {}},
+                      {"backend": "wsl", "tools": {"gcc": "/opt/gcc"}, "files": {"changed": "1"}}]
+        with patch("n2m.python_tb.prepare", side_effect=prepare), \
+                patch("n2m.mooneye.tool_identity", return_value=identities[0]) as identity:
+            first = self.run_stage()
+            self.assertEqual((first["status"], first["cache"]), ("PASS", "BUILT"))
+            self.assertEqual(first["options"]["fixture_tools"], identities[0])
+            self.assertEqual(self.run_stage()["cache"], "CACHED")
+            identity.return_value = identities[1]
+            second = self.run_stage()
+        self.assertEqual((second["status"], second["cache"]), ("PASS", "BUILT"))
+        self.assertNotEqual(first["fingerprint"], second["fingerprint"])
+        self.assertEqual(second["options"]["fixture_tools"], identities[1])
 
 
 class RetiredTests(unittest.TestCase):

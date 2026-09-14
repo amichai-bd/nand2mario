@@ -199,14 +199,13 @@ by name as `SKIPPED` with reason `questa-retired`, publish a `SKIPPED`
 `sim/test/<target>/result.json` naming `simulator`, `os` and `seed`, and never
 discover a simulator or launch a child. It counts as neither a pass nor a
 defect; `sim test` exits 2 and the aggregate commands list it in `skipped`.
-The Intel vendor models, the Tcl peer driver and the `preload` fixture
-pipeline (image preparation, `preload.verify`, the Mooneye tool fingerprint)
-were Questa bindings, so a `verilator` target may not declare `vendor_model`,
-`driver` or `preload`; the validator refuses each with a clear message. A
-target that still needs them stays `questa` until its area migration restores
-those checks on the Verilator stage. The migrated targets
-are `builder-smoke`, `builder-smoke-fail`, `python-joypad` and
-`python-joypad-fault`.
+The Intel vendor models and the Tcl peer driver were Questa bindings, so a
+`verilator` target may not declare `vendor_model` or `driver`; the validator
+refuses each with a clear message, and a target that still needs them stays
+`questa` until its area migration. `preload` runs on the Verilator stage; see
+[preload fixtures](#preload-fixtures-under-verilator). The migrated targets
+are `builder-smoke`, `builder-smoke-fail`, `python-joypad`,
+`python-joypad-fault` and `preload-fixture`.
 
 ### Registered target execution
 
@@ -282,13 +281,65 @@ with raw exit zero still fails the builder and is never reused. The optional
 `python.waves` list is validated as before but does not narrow the trace:
 Verilator's FST holds the whole top.
 
+### Preload fixtures under Verilator
+
+A target that declares `preload` names one of the registered fixture builders
+in [`python_tb.FIXTURE_BUILDERS`](../../../tools/n2m/python_tb.py); the
+validator, `tests validate` and `check` reject any other value with
+`preload <name> has no registered fixture builder to check`. The
+[testbench types](#testbench-types) section names each preload's image and
+inputs. A Python target carries the fixture's inputs in `python.inputs` as
+before. A SystemVerilog target declares them in `preload_inputs`: a nonempty
+list of in-tree files that must include every file the builder reads for that
+preload and every module the builder imports under `tools/`, the same closure
+`python_tb.validate` demands of Python targets (`tools/n2m/*.py` and
+`tools/build.py` are implicit). `preload_inputs` on a Python target, or
+without `preload`, is rejected.
+
+Every fixture input is hashed into the fingerprint, so a changed program
+source, layout, packager or builder module rebuilds rather than reuses. For
+`preload: "mooneye-reg-f"` the locked host toolchain identity from
+[`mooneye.tool_identity`](../../../tools/n2m/mooneye.py) enters the fingerprint
+as `options.fixture_tools`. On Linux the default build host is the locked
+Ubuntu toolchain (`N2M_MOONEYE_BUILD_HOST=wsl`), which
+[`mooneye_wsl.py`](../../../tools/n2m/mooneye_wsl.py) runs natively with the
+same identity hash, pinned image hash and `timeout` process bound it used
+through `wsl.exe`; the `windows` backend fails because it needs the retired
+Questa installation's MinGW tools.
+
+Before the build command, `python_tb.prepare` builds the image in the attempt
+directory and emits `preload-rom.mif`, `preload-presence.mif`,
+`preload-crc.hex` and `preload.json` beside it, then checks them
+(`fixture-preflight.json`). Immediately before the run command,
+[`preload.verify`](../../../tools/n2m/preload.py) rechecks the image hash and
+every emitted file hash; a mismatch fails the attempt without launching. The
+verified manifest is retained in the record as `preload` (`image_sha256`,
+`image_crc32`, `files` hashes and `fixture` when one is named). The run
+executes from the attempt directory, so `$readmemh("preload-crc.hex")` under
+`SIM_PRELOAD` and `SIM_INIT_FILE("preload-rom.mif")` resolve to the prepared
+files, as they did under Questa.
+
+`preload-fixture` ([`tb_preload_fixture.sv`](../../../src/dv/preload/tb_preload_fixture.sv))
+proves the pipeline without product RTL: it reads the ROM MIF, presence MIF and
+CRC hex from its run directory, rebuilds the 32768 bytes, requires the CRC-32
+of the rebuilt image to equal the hex the loader reads, and checks the
+integration image's entry stub and title. Measured on WSL: build 4.5 s, run
+under 0.1 s, `CACHED` on rerun. Preload targets whose fixtures also need the
+Intel doubles or the peer driver (the memory, v0.5 and Python areas) flip to
+`verilator` in their area migrations.
+[`test_verilator.py`](../../../tools/n2m/tests/test_verilator.py)
+`PreloadTests` cover validation, preparation, the pre-launch recheck, the
+record, and fingerprint invalidation by a changed fixture input or Mooneye tool
+identity, with doubles.
+
 ### Record
 
 Beyond the shared fields, a Verilator record carries `simulator`
 (`verilator`), `os`, `seed`, `waves` (`format: fst` and the retained path),
 `timing` with `build_seconds` and `run_seconds` measured separately so the
-compile cost against the wall budget is visible, and `elapsed_seconds`,
-`exit_code` and `timeout_seconds` on each command. Measured on WSL: the
+compile cost against the wall budget is visible, `elapsed_seconds`,
+`exit_code` and `timeout_seconds` on each command, and `preload` when the
+target declares a fixture. Measured on WSL: the
 `builder-smoke` build takes about 4 s cold and under 0.3 s with `ccache`, the
 run milliseconds; `python-joypad` builds in 0.3 s and runs in 0.4 s.
 [`test_verilator.py`](../../../tools/n2m/tests/test_verilator.py) covers

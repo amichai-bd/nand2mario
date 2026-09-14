@@ -76,10 +76,6 @@ def load_target(root, name):
             raise ValueError(f"target {name}: vendor_model is not supported under verilator")
         if "driver" in target:
             raise ValueError(f"target {name}: a Tcl driver is not supported under verilator")
-        # The preload pipeline (image build, preload.verify, Mooneye tool
-        # fingerprint) is not yet wired into the Verilator stage.
-        if target.get("preload") is not None:
-            raise ValueError(f"target {name}: preload is not supported under verilator until its area migrates")
     python_tb.validate(root, target, name)
     return target, registry
 
@@ -104,11 +100,22 @@ def simulate(root, build, args, simulator, provenance=None):
     inputs += ["tools/n2m/dependencies.json"]
     if python_runtime:
         inputs += target["python"]["inputs"] + ["src/dv/python/requirements.txt", "src/dv/python/THIRD_PARTY.md"]
+    elif target.get("preload") is not None:
+        # A Python target's inputs already carry its fixture; a SystemVerilog
+        # target declares them, so a changed fixture input rebuilds either.
+        inputs += target["preload_inputs"]
     hashes = {p: file_hash(root / p) for p in inputs}
     options = {"seed": args.seed, "target": args.target, "definition": target,
                "simulator": "verilator", "os": platform.system()}
     if python_runtime:
         options["python_runtime"] = python_runtime
+    fixture_tools = None
+    if target.get("preload") == "mooneye-reg-f":
+        # The locked fixture is built by the host compiler and CMake; their
+        # identity shapes the image, so it enters the fingerprint.
+        from .mooneye import tool_identity
+        fixture_tools = tool_identity(root)
+        options["fixture_tools"] = fixture_tools
     fingerprint = digest({"inputs": hashes, "tools": simulator.info, "options": options})
     stage = build / "sim/test" / args.target
     current = stage / "result.json"
@@ -134,7 +141,8 @@ def simulate(root, build, args, simulator, provenance=None):
     atomic_json(current, record)
     log = compile_dir / "prepare.log"
     try:
-        commands = verilator_commands(simulator, root, target, args.seed, compile_dir, attempt, python_runtime=python_runtime)
+        commands = verilator_commands(simulator, root, target, args.seed, compile_dir, attempt,
+                                      python_runtime=python_runtime, fixture_tools=fixture_tools)
         for argv, cwd, log, expected in commands:
             command = simulator.command(argv)
             record["commands"].append({"argv": command, "cwd": str(cwd)})
@@ -151,6 +159,11 @@ def simulate(root, build, args, simulator, provenance=None):
             if running and python_runtime:
                 call_options["env"] = python_tb.environment(root, target, attempt, args.seed, python_runtime)
                 record["python_results_file"] = (attempt / "results.xml").relative_to(root).as_posix()
+            if running and target.get("preload") is not None:
+                # Recheck the prepared image and files immediately before
+                # launch; the run reads them from the attempt directory.
+                from .preload import verify
+                record["preload"] = verify(attempt)
             started = time.monotonic()
             try:
                 result = simulator.run(argv, cwd=cwd, **call_options)

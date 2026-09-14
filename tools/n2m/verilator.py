@@ -71,17 +71,19 @@ int main(int argc, char** argv, char**) {{
 """
 
 
-def commands(simulator, root, target, seed, compiler, attempt, *, python_runtime=None):
+def commands(simulator, root, target, seed, compiler, attempt, *, python_runtime=None, fixture_tools=None):
     """Return [(argv, cwd, log, expected_exit)]: one build, one run.
 
     The build verilates and compiles under compiler/obj_dir; the run executes
-    from the attempt so waves and Python traces land beside the record.
+    from the attempt so waves, Python traces and the prepared preload files
+    ($readmemh and SIM_INIT_FILE paths are relative to it) land beside the record.
     """
     tool = simulator.tools["verilator"]
     sources = [simulator.path(root / source) for source in target["sources"]]
+    if python_runtime or target.get("preload") is not None:
+        from .python_tb import prepare as prepare_fixture
+        prepare_fixture(target, attempt, root, fixture_tools)
     if python_runtime:
-        from .python_tb import prepare as prepare_python
-        prepare_python(target, attempt, root)
         library = python_runtime["library_dir"]
         build = [tool, "--cc", "--exe", "--build", "--vpi", "--public-flat-rw",
                  "--timescale", "1ns/1ps", *COMMON_OPTIONS,
