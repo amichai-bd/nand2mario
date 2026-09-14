@@ -11,7 +11,7 @@ module tb_ppu_shift;
     task automatic edge_check(input logic [1:0] bg, input logic [1:0] obj);
         #5; clk_sys = 1;
         #1; cases = cases + 1;
-        if ({background_color, object_color} !== {bg, obj})
+        if ({background_color, object_color} != {bg, obj})
             $fatal(1, "PPU_SHIFT_MISMATCH case=%0d expected=%0h actual=%0h",
                 cases, {bg, obj}, {background_color, object_color});
         #4; clk_sys = 0;

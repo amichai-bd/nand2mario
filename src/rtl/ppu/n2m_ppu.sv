@@ -208,11 +208,18 @@ module n2m_ppu (
     `DFF_RST(pending_abort, abort_capture, clk_sys, reset_sys)
     `DFF_RST(pending_blank, gb_tick && lcd_disable, clk_sys, reset_sys)
     `DFF_RST_EN(captured_start, pixel_x == 0 && ly == 0, clk_sys, pixel_capture, reset, 1'b0)
+    // Lint waiver: tb_ppu_render, tb_ppu_scroll_window, tb_ppu_fine_scroll and
+    // tb_ppu_live_scroll force source_shade, and tb_ppu_render forces source_dot,
+    // for fault injection; Verilator reports the force as a second driver.
+    /* verilator lint_off MULTIDRIVEN */
     `DFF_RST_EN(source_shade, first_frame_blank ? 2'd0 : shade, clk_sys, pixel_capture, reset, 2'd0)
+    /* verilator lint_on MULTIDRIVEN */
     `DFF_RST_EN(source_x, pixel_x, clk_sys, event_capture, reset, 8'd0)
     `DFF_RST_EN(source_y, ly, clk_sys, event_capture, reset, 8'd0)
     `DFF_RST_EN(source_epoch, epoch, clk_sys, event_capture, reset, 32'd0)
+    /* verilator lint_off MULTIDRIVEN */
     `DFF_RST_EN(source_dot, dot_before + 64'd1, clk_sys, event_capture, reset, 64'd0)
+    /* verilator lint_on MULTIDRIVEN */
     `DFF_RST_EN(source_display_eligible, !first_frame_blank, clk_sys, pixel_capture, reset, 1'b0)
     `DFF_RST_EN(first_frame_blank, lcd_enable, clk_sys,
         gb_tick && (lcd_enable || complete_capture), reset, 1'b1)

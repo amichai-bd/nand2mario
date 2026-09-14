@@ -3,6 +3,10 @@
 `include "src/rtl/common/macros.svh"
 // Original scene and coordinate oracle. No expected value uses DUT fetch,
 // position, mode, line counters or window state.
+// Lint waiver: the file handle is tested as a boolean and integer pixel counts feed
+// 64-bit dot arithmetic; the width lint on those idioms is a false positive.
+/* verilator lint_off WIDTHEXPAND */
+/* verilator lint_off WIDTHTRUNC */
 module tb_ppu_scroll_window;
     logic clk_sys, reset_sys, core_reset, gb_tick, pause_request, paused;
     logic [31:0] epoch;
@@ -158,23 +162,23 @@ module tb_ppu_scroll_window;
         if (io_commit && io_address == 16'hff40 && io_wdata[7] && !ref_lcd_on) enable_dot = dot_before;
         if (!reset_sys && source_valid) begin
             if (gb_tick || source_abort || fault) $fatal(1, "PPU_SCROLL_FORWARD");
-            if (source_x !== 8'(pixel_count % 160) || source_y !== 8'(pixel_count / 160)
-                || source_start !== (pixel_count == 0))
+            if (source_x != 8'(pixel_count % 160) || source_y != 8'(pixel_count / 160)
+                || source_start != (pixel_count == 0))
                 $fatal(1, "PPU_SCROLL_ORDER frame=%0d index=%0d", frame_count, pixel_count);
-            if (source_dot !== dot_before || source_dot <= previous_dot || source_epoch !== 32'd5)
+            if (source_dot != dot_before || source_dot <= previous_dot || source_epoch != 32'd5)
                 $fatal(1, "PPU_SCROLL_DOT");
             expected = frame_count == 0 ? 2'd0 : scene(pixel_count % 160, pixel_count / 160);
-            if (repeated_window && source_shade !== expected)
+            if (repeated_window && source_shade != expected)
                 $fatal(1, "PPU_REPEAT_PIXEL frame=%0d index=%0d expected=%0d actual=%0d",
                     frame_count, pixel_count, expected, source_shade);
             if (repeated_window && frame_count == 1 && pixel_count / 160 == 32
-                && source_dot !== enable_dot + 64'(84909 + pixel_count % 160
+                && source_dot != enable_dot + 64'(84909 + pixel_count % 160
                     + (pixel_count % 160 >= 40 ? 6 : 0) + (pixel_count % 160 >= 120 ? 6 : 0)))
                 $fatal(1, "PPU_REPEAT_LINE32_DOT index=%0d actual=%0d", pixel_count, source_dot);
             if (repeated_window && frame_count == 1 && pixel_count / 160 == 33
-                && source_dot !== enable_dot + 64'(85365 + pixel_count % 160 + (pixel_count % 160 >= 120 ? 6 : 0)))
+                && source_dot != enable_dot + 64'(85365 + pixel_count % 160 + (pixel_count % 160 >= 120 ? 6 : 0)))
                 $fatal(1, "PPU_REPEAT_LINE33_DOT index=%0d actual=%0d", pixel_count, source_dot);
-            if (source_shade !== expected)
+            if (source_shade != expected)
                 $fatal(1, "PPU_SCROLL_PIXEL frame=%0d index=%0d scx=%0d wx=%0d wrow=%0d expected=%0d actual=%0d",
                     frame_count, pixel_count, line_scx(pixel_count / 160), line_wx(pixel_count / 160),
                     window_row_before(pixel_count / 160), expected, source_shade);
@@ -184,7 +188,7 @@ module tb_ppu_scroll_window;
                 fine7_distinct = fine7_distinct + 1;
             if (disabled_wx_case && frame_count == 1 && pixel_count / 160 >= 33
                 && pixel_count % 160 == 40) disabled_pixels = disabled_pixels + 1;
-            if (source_display_eligible !== (frame_count != 0)) $fatal(1, "PPU_SCROLL_ELIGIBILITY");
+            if (source_display_eligible != (frame_count != 0)) $fatal(1, "PPU_SCROLL_ELIGIBILITY");
             $fdisplay(trace_file, "%0d,%0d,%0d,%0d,%0d", frame_count, pixel_count, source_dot, expected, source_shade);
             previous_dot = source_dot;
             if (pixel_count == 23039) begin

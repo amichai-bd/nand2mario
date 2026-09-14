@@ -45,7 +45,7 @@ A frame checksum supplements every-pixel comparisons and cannot replace them.
 
 ## Failure and evidence
 
-Shared-builder Questa targets must include positive rendering/timing/integration
+Shared-builder simulation targets must include positive rendering/timing/integration
 and deliberate pixel, timing and interrupt faults. Each negative must produce
 its own named diagnostic and nonzero raw exit, not merely a generic timeout.
 Unknown outputs and missing memory responses fail. Named local assertions

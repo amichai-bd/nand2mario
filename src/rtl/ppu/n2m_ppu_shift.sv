@@ -79,7 +79,11 @@ module n2m_ppu_shift (
     end
     `DFF_RST_EN(bg_low, bg_low_next, clk_sys, gb_tick, reset, 8'd0)
     `DFF_RST_EN(bg_high, bg_high_next, clk_sys, gb_tick, reset, 8'd0)
+    // Lint waiver: tb_ppu_shift forces obj_low for its unknown-state fault,
+    // which Verilator reports as a second driver.
+    /* verilator lint_off MULTIDRIVEN */
     `DFF_RST_EN(obj_low, obj_low_next, clk_sys, gb_tick, reset, 8'd0)
+    /* verilator lint_on MULTIDRIVEN */
     `DFF_RST_EN(obj_high, obj_high_next, clk_sys, gb_tick, reset, 8'd0)
     `DFF_RST_EN(obj_palette, obj_palette_next, clk_sys, gb_tick, reset, 8'd0)
     `DFF_RST_EN(obj_behind, obj_behind_next, clk_sys, gb_tick, reset, 8'd0)

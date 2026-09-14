@@ -1,5 +1,7 @@
 `timescale 1ns/1ps
 `default_nettype none
+// Lint waiver: the integer source case is tested as a boolean; the width lint on that idiom is a false positive.
+/* verilator lint_off WIDTHTRUNC */
 module tb_input_power;
     logic clk_sys, reset_sys, gb_tick, paused, pause_request, core_reset;
     logic start, core_initialized, instruction_complete, retirement_valid, cpu_stopped, cpu_halted;
@@ -72,7 +74,7 @@ module tb_input_power;
         #1;
         if(!reset_sys && fault)$fatal(1,"INPUT_POWER_CPU_FAULT");
         if(retirement_valid && retirement.pc_before==(stop_case ? 16'h0106 : 16'h0105)) begin
-            if(retirement.buttons!==8'h01 || retirement.opcode!==24'd0 || retirement.iflags!==8'h10)
+            if(retirement.buttons!=8'h01 || retirement.opcode!=24'd0 || retirement.iflags!=8'h10)
                 $fatal(1,"INPUT_POWER_RECORD buttons=%02h opcode=%06h IF=%02h",retirement.buttons,retirement.opcode,retirement.iflags);
             observed_successor=1;
         end

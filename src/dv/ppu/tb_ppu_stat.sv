@@ -55,7 +55,7 @@ module tb_ppu_stat;
         @(negedge clk_sys);
     endtask
     task automatic check_line(input logic value, input integer edges);
-        if (stat_condition !== value || rises != edges)
+        if (stat_condition != value || rises != edges)
             $fatal(1, "PPU_STAT_LINE case=%0d expected=%0d edges=%0d actual=%0d edges_actual=%0d",
                 cases, value, edges, stat_condition, rises);
         cases = cases + 1;

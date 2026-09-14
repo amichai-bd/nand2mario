@@ -1700,7 +1700,7 @@
       "src/dv/ppu/tb_ppu_access.sv"
     ],
     "top": "tb_ppu_access",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS PPU legal CPU mode/access observations cases=6",
@@ -1722,7 +1722,7 @@
       "src/dv/ppu/tb_ppu_access.sv"
     ],
     "top": "tb_ppu_access",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+access_corrupt"
     ],
@@ -1739,7 +1739,7 @@
     ],
     "expected_exit": "zero",
     "top": "tb_ppu_fetch",
-    "simulator": "questa"
+    "simulator": "verilator"
   },
   "ppu-fetch-missing": {
     "signature": "N2M_ASSERT fetch_response_missing",
@@ -1752,7 +1752,7 @@
     ],
     "expected_exit": "nonzero",
     "top": "tb_ppu_fetch",
-    "simulator": "questa"
+    "simulator": "verilator"
   },
   "ppu-fine-scroll": {
     "sources": [
@@ -1770,7 +1770,7 @@
       "src/dv/ppu/tb_ppu_fine_scroll.sv"
     ],
     "top": "tb_ppu_fine_scroll",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS PPU fine scroll legal before/after cases=2 visible_pixels=320",
@@ -1792,7 +1792,7 @@
       "src/dv/ppu/tb_ppu_fine_scroll.sv"
     ],
     "top": "tb_ppu_fine_scroll",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+fine_corrupt"
     ],
@@ -1882,7 +1882,7 @@
       "src/dv/ppu/tb_ppu_live_scroll.sv"
     ],
     "top": "tb_ppu_live_scroll",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+lcdc_fetch"
     ],
@@ -1906,7 +1906,7 @@
       "src/dv/ppu/tb_ppu_live_scroll.sv"
     ],
     "top": "tb_ppu_live_scroll",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+lcdc_fetch",
       "+lcdc_fetch_corrupt"
@@ -1931,7 +1931,7 @@
       "src/dv/ppu/tb_ppu_live_scroll.sv"
     ],
     "top": "tb_ppu_live_scroll",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS PPU live SCY planes and coarse SCX fetch cases=2 visible_pixels=320",
@@ -1953,7 +1953,7 @@
       "src/dv/ppu/tb_ppu_live_scroll.sv"
     ],
     "top": "tb_ppu_live_scroll",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+live_scroll_corrupt"
     ],
@@ -1977,7 +1977,7 @@
       "src/dv/ppu/tb_ppu_ly153.sv"
     ],
     "top": "tb_ppu_ly153",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS PPU LY153 public reads cases=54 legal LYC invalid valid held-mode edge-count pause reset",
@@ -1999,7 +1999,7 @@
       "src/dv/ppu/tb_ppu_ly153.sv"
     ],
     "top": "tb_ppu_ly153",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+ly_corrupt"
     ],
@@ -2023,7 +2023,7 @@
       "src/dv/ppu/tb_ppu_ly153.sv"
     ],
     "top": "tb_ppu_ly153",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+extra_irq"
     ],
@@ -2047,7 +2047,7 @@
       "src/dv/ppu/tb_ppu_ly153.sv"
     ],
     "top": "tb_ppu_ly153",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+irq_corrupt"
     ],
@@ -2061,7 +2061,7 @@
       "src/dv/ppu/tb_ppu_mix.sv"
     ],
     "top": "tb_ppu_mix",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS PPU mixer literal_cases=10"
@@ -2072,7 +2072,7 @@
       "src/dv/ppu/tb_ppu_mix.sv"
     ],
     "top": "tb_ppu_mix",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+corrupt"
     ],
@@ -2095,7 +2095,7 @@
       "src/dv/ppu/tb_ppu_render.sv"
     ],
     "top": "tb_ppu_render",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+object_zero"
     ],
@@ -2119,7 +2119,7 @@
       "src/dv/ppu/tb_ppu_render.sv"
     ],
     "top": "tb_ppu_render",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+object_zero",
       "+object_zero_corrupt"
@@ -2137,7 +2137,7 @@
     "expected_exit": "zero",
     "signature": "PASS PPU objects first_ten_dma_priority",
     "top": "tb_ppu_objects",
-    "simulator": "questa"
+    "simulator": "verilator"
   },
   "ppu-objects-missing": {
     "sources": [
@@ -2150,7 +2150,7 @@
     "expected_exit": "nonzero",
     "signature": "N2M_ASSERT oam_response_missing",
     "top": "tb_ppu_objects",
-    "simulator": "questa"
+    "simulator": "verilator"
   },
   "ppu-palette": {
     "sources": [
@@ -2168,7 +2168,7 @@
       "src/dv/ppu/tb_ppu_render.sv"
     ],
     "top": "tb_ppu_render",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+palette"
     ],
@@ -2192,7 +2192,7 @@
       "src/dv/ppu/tb_ppu_render.sv"
     ],
     "top": "tb_ppu_render",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+palette",
       "+palette_corrupt"
@@ -2217,7 +2217,7 @@
       "src/dv/ppu/tb_ppu_render.sv"
     ],
     "top": "tb_ppu_render",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS PPU renderer original_scene frames=2 pixels=46080",
@@ -2239,7 +2239,7 @@
       "src/dv/ppu/tb_ppu_render.sv"
     ],
     "top": "tb_ppu_render",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+corrupt"
     ],
@@ -2263,7 +2263,7 @@
       "src/dv/ppu/tb_ppu_render.sv"
     ],
     "top": "tb_ppu_render",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+temporal"
     ],
@@ -2287,7 +2287,7 @@
       "src/dv/ppu/tb_ppu_render.sv"
     ],
     "top": "tb_ppu_render",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+temporal",
       "+timing_corrupt"
@@ -2312,7 +2312,7 @@
       "src/dv/ppu/tb_ppu_scroll_window.sv"
     ],
     "top": "tb_ppu_scroll_window",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS PPU scroll/window static pixels=46080 fine=8 wx=8",
@@ -2334,7 +2334,7 @@
       "src/dv/ppu/tb_ppu_scroll_window.sv"
     ],
     "top": "tb_ppu_scroll_window",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+scroll_corrupt"
     ],
@@ -2346,7 +2346,7 @@
     "expected_exit": "zero",
     "args": [],
     "top": "tb_ppu_shift",
-    "simulator": "questa",
+    "simulator": "verilator",
     "signature": "PASS PPU shift literal_cases=18",
     "sources": [
       "src/rtl/ppu/n2m_ppu_shift.sv",
@@ -2382,7 +2382,7 @@
       "src/dv/ppu/tb_ppu_stat.sv"
     ],
     "top": "tb_ppu_stat",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS PPU STAT ordinary cases=10 edges=3"
@@ -2403,7 +2403,7 @@
       "src/dv/ppu/tb_ppu_stat.sv"
     ],
     "top": "tb_ppu_stat",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+irq_corrupt"
     ],
@@ -2428,7 +2428,7 @@
       "src/dv/ppu/tb_ppu_stat_oam.sv"
     ],
     "top": "tb_ppu_stat_oam",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS PPU STAT OAM compatibility qualifier public overlap IF priority cases=6 checks=42",
@@ -2452,7 +2452,7 @@
       "src/dv/ppu/tb_ppu_stat_oam.sv"
     ],
     "top": "tb_ppu_stat_oam",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+qualifier_fault"
     ],
@@ -2476,7 +2476,7 @@
       "src/dv/ppu/tb_ppu_stat_off.sv"
     ],
     "top": "tb_ppu_stat_off",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS PPU STAT LCD off cases=14 edges=2"
@@ -2497,7 +2497,7 @@
       "src/dv/ppu/tb_ppu_stat_off.sv"
     ],
     "top": "tb_ppu_stat_off",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+off_corrupt"
     ],
@@ -2522,7 +2522,7 @@
       "src/dv/ppu/tb_ppu_vblank.sv"
     ],
     "top": "tb_ppu_vblank",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS PPU line144 STAT VBlank IF priority cases=4 checks=32",
@@ -2546,7 +2546,7 @@
       "src/dv/ppu/tb_ppu_vblank.sv"
     ],
     "top": "tb_ppu_vblank",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+vblank_fault"
     ],
@@ -2643,7 +2643,7 @@
       "src/dv/ppu/tb_ppu_scroll_window.sv"
     ],
     "top": "tb_ppu_scroll_window",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+disabled_wx"
     ],
@@ -2667,7 +2667,7 @@
       "src/dv/ppu/tb_ppu_scroll_window.sv"
     ],
     "top": "tb_ppu_scroll_window",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+disabled_wx",
       "+disabled_wx_corrupt"
@@ -2692,7 +2692,7 @@
       "src/dv/ppu/tb_ppu_scroll_window.sv"
     ],
     "top": "tb_ppu_scroll_window",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+repeated_window"
     ],
@@ -2716,7 +2716,7 @@
       "src/dv/ppu/tb_ppu_scroll_window.sv"
     ],
     "top": "tb_ppu_scroll_window",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+repeated_window",
       "+repeated_window_corrupt"
@@ -2741,7 +2741,7 @@
       "src/dv/ppu/tb_ppu_scroll_window.sv"
     ],
     "top": "tb_ppu_scroll_window",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+wx0"
     ],
@@ -2765,7 +2765,7 @@
       "src/dv/ppu/tb_ppu_scroll_window.sv"
     ],
     "top": "tb_ppu_scroll_window",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+wx166"
     ],
@@ -2789,7 +2789,7 @@
       "src/dv/ppu/tb_ppu_scroll_window.sv"
     ],
     "top": "tb_ppu_scroll_window",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+wy"
     ],
@@ -2813,7 +2813,7 @@
       "src/dv/ppu/tb_ppu_scroll_window.sv"
     ],
     "top": "tb_ppu_scroll_window",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+wy",
       "+wy_late"
@@ -4552,7 +4552,7 @@
       "src/dv/input/tb_input_matrix.sv"
     ],
     "top": "tb_input_matrix",
-    "simulator": "questa",
+    "simulator": "verilator",
     "signature": "PASS INPUT_MATRIX cases=2048",
     "args": [],
     "expected_exit": "zero"
@@ -4570,7 +4570,7 @@
       "src/dv/input/tb_input_matrix.sv"
     ],
     "top": "tb_input_matrix",
-    "simulator": "questa",
+    "simulator": "verilator",
     "signature": "INPUT_MATRIX_STATE case=1",
     "args": [
       "+data_fault"
@@ -4590,7 +4590,7 @@
       "src/dv/input/tb_input_matrix.sv"
     ],
     "top": "tb_input_matrix",
-    "simulator": "questa",
+    "simulator": "verilator",
     "signature": "INPUT_MATRIX_STATE case=1",
     "args": [
       "+source_fault"
@@ -4610,7 +4610,7 @@
       "src/dv/input/tb_input_matrix.sv"
     ],
     "top": "tb_input_matrix",
-    "simulator": "questa",
+    "simulator": "verilator",
     "signature": "INPUT_MATRIX_EVENT case=1",
     "args": [
       "+event_fault"
@@ -4630,7 +4630,7 @@
       "src/dv/input/tb_input_matrix.sv"
     ],
     "top": "tb_input_matrix",
-    "simulator": "questa",
+    "simulator": "verilator",
     "signature": "N2M_ASSERT INPUT_PHYSICAL_BOUNDARY",
     "args": [
       "+boundary_fault"
@@ -4695,7 +4695,7 @@
       "src/dv/input/tb_input_ordering.sv"
     ],
     "top": "tb_input_ordering",
-    "simulator": "questa",
+    "simulator": "verilator",
     "signature": "PASS INPUT_ORDERING simultaneous_switch reset_cancel physical_retention checks=15",
     "args": [],
     "expected_exit": "zero"
@@ -4723,7 +4723,7 @@
       "src/dv/input/tb_input_power.sv"
     ],
     "top": "tb_input_power",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS INPUT_POWER cases=4 actual_HALT_STOP effective_records"
@@ -6285,7 +6285,7 @@
       "src/dv/input/tb_adc_pairs.sv"
     ],
     "top": "tb_adc_pairs",
-    "simulator": "questa"
+    "simulator": "verilator"
   },
   "adc-pairs-corrupt": {
     "args": [
@@ -6302,7 +6302,7 @@
       "src/dv/input/tb_adc_pairs.sv"
     ],
     "top": "tb_adc_pairs",
-    "simulator": "questa"
+    "simulator": "verilator"
   },
   "adc-pairs-channel": {
     "args": [
@@ -6319,7 +6319,7 @@
       "src/dv/input/tb_adc_pairs.sv"
     ],
     "top": "tb_adc_pairs",
-    "simulator": "questa"
+    "simulator": "verilator"
   },
   "controls-mask": {
     "sources": [
@@ -6331,7 +6331,7 @@
       "src/dv/input/tb_controls_mask.sv"
     ],
     "top": "tb_controls_mask",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "signature": "PASS controls mask checks=24",
     "expected_exit": "zero"
@@ -6346,7 +6346,7 @@
       "src/dv/input/tb_controls_mask.sv"
     ],
     "top": "tb_controls_mask",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+CORRUPT_MASK"
     ],
@@ -6403,7 +6403,7 @@
       "src/dv/input/tb_controls_lifecycle.sv"
     ],
     "top": "tb_controls_lifecycle",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "signature": "PASS controls lifecycle checks=94 reset-cases=10",
     "expected_exit": "zero"
@@ -6420,7 +6420,7 @@
       "src/dv/input/tb_controls_lifecycle.sv"
     ],
     "top": "tb_controls_lifecycle",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+CORRUPT_RECOVERY"
     ],
@@ -6439,7 +6439,7 @@
       "src/dv/input/tb_controls_lifecycle.sv"
     ],
     "top": "tb_controls_lifecycle",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+UNSOLICITED"
     ],
@@ -6453,7 +6453,7 @@
       "src/dv/input/tb_controls_sticky.sv"
     ],
     "top": "tb_controls_lifecycle",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+STICKY"
     ],
@@ -10203,7 +10203,7 @@
       "src/dv/ppu/tb_ppu_palette_conflict.sv"
     ],
     "top": "tb_ppu_palette_conflict",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS PPU palette conflict palettes=3",
@@ -10216,7 +10216,7 @@
       "src/dv/ppu/tb_ppu_palette_conflict.sv"
     ],
     "top": "tb_ppu_palette_conflict",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+corrupt"
     ],
@@ -10438,7 +10438,7 @@
       "src/dv/ppu/tb_ppu_oam_read.sv"
     ],
     "top": "tb_ppu_oam_read",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS PPU early OAM read window cases=16",
@@ -10460,7 +10460,7 @@
       "src/dv/ppu/tb_ppu_oam_read.sv"
     ],
     "top": "tb_ppu_oam_read",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+read_corrupt"
     ],
@@ -10682,7 +10682,7 @@
       "src/dv/ppu/tb_ppu_vram_read.sv"
     ],
     "top": "tb_ppu_vram_read",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS PPU early VRAM read window cases=14",
@@ -10704,7 +10704,7 @@
       "src/dv/ppu/tb_ppu_vram_read.sv"
     ],
     "top": "tb_ppu_vram_read",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+read_corrupt"
     ],
