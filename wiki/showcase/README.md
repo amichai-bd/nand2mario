@@ -111,11 +111,17 @@ page. Springtrail's tile says the repository builds it instead.
 Three frames a game is what the homebrew sessions captured, so the gallery is
 short by construction rather than by preference. Tiles are drawn into one file
 rather than eight because the site fits a figure to the text column: eight
-separate loops would be eight column-wide blocks to scroll past. At 1024x1160
-the gallery fits a text column at either breakpoint and fits a phone screen
-whole.
+separate loops would be eight column-wide blocks to scroll past.
 
-Weight: 36496 bytes for eight games and 24 frames, encoded as indexed-PNG data
+At 1024x1160 the gallery fills the text column at either breakpoint, and at the
+narrow one the whole grid lands inside a phone screen. The tiles stay
+recognisable there; the captions do not. A 350px column scales the file to
+about a third, which draws a game name near 5 CSS pixels against 16px body
+text. No required statement is lost with them: the project overview says in
+ordinary prose what the pictures are and how many of the pinned images play,
+and per-game attribution belongs to the library page at any width.
+
+Weight: 36802 bytes for eight games and 24 frames, encoded as indexed-PNG data
 URIs under the same [bounded exception](#frame-archives-and-encoding) the board
 loops use. The three loops the landing page already carried are 74397, 134668
 and 140291 bytes, so the gallery adds about a tenth of what the page held and
@@ -390,9 +396,11 @@ times smaller, because a Libbet frame fills the screen and the rect form pays
 per horizontal run; on the 48 Springtrail frames, sparser but scrolling, 352,302
 bytes against 25,584, about 14 times smaller. These are summed per-frame representation lengths for those exact sequences,
 not total SVG sizes or raw PNG file sizes: `bytes_indexed_png` includes the
-base64 data-URI prefix and encoding. The rect form exists because the
-project README sanitizes the loops it embeds; these two are wiki-only, so the
-smaller encoding wins. An inline `data:` URI fetches nothing, so the loops stay
+base64 data-URI prefix and encoding. The rect form is what the other README
+loops draw with; these two carry whole screens, so the smaller encoding wins.
+What the project README does and does not render is recorded with the
+[gallery](#games-gallery), the one landing-page embed that carries inline
+frames. An inline `data:` URI fetches nothing, so the loops stay
 as self-contained as the rest.
 
 ## Reproducible builds

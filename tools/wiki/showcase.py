@@ -684,10 +684,11 @@ GALLERY_GAMES = (
     ('homebrew-unstoppable-knight', 'unstoppable-knight', (0, 1, 2)),
 )
 GALLERY_HOLD = 1.2
-# The ninth cell. The gallery must not read as the whole pinned library, so the
-# two images that never draw are named where the tiles are, not only elsewhere.
+# The ninth cell. Eight tiles are not everything that runs, and the gallery
+# travels as one image, so what it leaves out is named inside it: the two pinned
+# images that never draw, and Stackdrop, which plays but has no capture archive.
 GALLERY_NOTE = (
-    'Not every pinned image draws',
+    'Not the complete set',
     '',
     'Wyrmhole and Rex Run are pinned and',
     'verified the same way. Both load and',
@@ -695,6 +696,10 @@ GALLERY_NOTE = (
     'so the board completes no frame to',
     'capture. Seven of the nine pinned',
     'images play.',
+    '',
+    'Stackdrop, the other game built here,',
+    'plays on the board too. No capture',
+    'archive exists to draw it from.',
     '',
     'The homebrew library page gives each',
     'game its author, licence, pinned',
@@ -823,7 +828,8 @@ def games_gallery():
         cls = '' if index == 0 else ' class="h"'
         body.append(f'<text{cls} x="{nx}" y="{ny + 14 + index * LINE}">{esc(line)}</text>')
 
-    strip = 'Eight games on the DE10-Lite · every frame read back from the board over UART'
+    strip = ('Eight of the games that run on the DE10-Lite · '
+             'every frame read back from the board over UART')
     # Two rows: the footer is one line per claim, and each fits the panel width.
     footer = ('Framebuffer captures the board returned over UART, not emulator screenshots and not '
               'photographs of a monitor.',

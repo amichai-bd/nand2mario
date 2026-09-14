@@ -142,9 +142,16 @@ class DocumentationQualityTests(unittest.TestCase):
                     self.assertIn(pins[pin][field], markup, f'{pin}: {field}')
                     self.assertNotIn(pins[pin][field], readme, f'{pin}: {field} retyped into the README')
         self.assertEqual(markup.count('<image '), drawn)
-        # The two pinned images that never draw are named where the tiles are.
+        # The two pinned images that never draw are named where the tiles are,
+        # and their metadata stays out of the README with every other pin's.
+        for pin in ('wyrmhole', 'rex-run'):
+            for field in ('author', 'license'):
+                self.assertNotIn(pins[pin][field], readme, f'{pin}: {field} retyped into the README')
         for game in ('Wyrmhole', 'Rex Run'):
             self.assertIn(game, markup)
+        # Eight tiles are not the whole set, and the gallery says so itself.
+        self.assertIn('Stackdrop', markup)
+        self.assertNotIn('Eight Game Boy games run on this hardware', readme)
         self.assertIn('not emulator screenshots', markup)
         self.assertIn('homebrew-library.md#wyrmhole-and-rex-run-never-turn-the-lcd-on', readme)
 
