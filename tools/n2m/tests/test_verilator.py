@@ -203,12 +203,13 @@ class RecordTests(unittest.TestCase):
         self.args.rebuild = False
         self.assertEqual(self.run_stage()["cache"], "CACHED")
 
-    def test_vendor_model_and_driver_targets_stay_questa(self):
+    def test_vendor_model_driver_and_preload_targets_stay_questa(self):
         registry = self.root / "src/dv/builder/targets.json"
         targets = read_json(registry)
         pristine = dict(targets["builder-smoke"])
         for change, message in (({"vendor_model": "intel-memory"}, "vendor_model"),
-                                ({"driver": {"script": "tools/build.py", "peer": "tools/build.py", "inputs": []}}, "Tcl driver")):
+                                ({"driver": {"script": "tools/build.py", "peer": "tools/build.py", "inputs": []}}, "Tcl driver"),
+                                ({"preload": "integration"}, "preload is not supported under verilator")):
             targets["builder-smoke"] = {**pristine, **change}
             registry.write_text(json.dumps(targets))
             with self.assertRaisesRegex(ValueError, message):

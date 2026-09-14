@@ -76,6 +76,10 @@ def load_target(root, name):
             raise ValueError(f"target {name}: vendor_model is not supported under verilator")
         if "driver" in target:
             raise ValueError(f"target {name}: a Tcl driver is not supported under verilator")
+        # The preload pipeline (image build, preload.verify, Mooneye tool
+        # fingerprint) is not yet wired into the Verilator stage.
+        if target.get("preload") is not None:
+            raise ValueError(f"target {name}: preload is not supported under verilator until its area migrates")
     python_tb.validate(root, target, name)
     return target, registry
 

@@ -199,9 +199,12 @@ by name as `SKIPPED` with reason `questa-retired`, publish a `SKIPPED`
 `sim/test/<target>/result.json` naming `simulator`, `os` and `seed`, and never
 discover a simulator or launch a child. It counts as neither a pass nor a
 defect; `sim test` exits 2 and the aggregate commands list it in `skipped`.
-The Intel vendor models and the Tcl peer driver were Questa bindings, so a
-`verilator` target may not declare `vendor_model` or `driver`; a target that
-still needs them stays `questa` until its area migrates. The migrated targets
+The Intel vendor models, the Tcl peer driver and the `preload` fixture
+pipeline (image preparation, `preload.verify`, the Mooneye tool fingerprint)
+were Questa bindings, so a `verilator` target may not declare `vendor_model`,
+`driver` or `preload`; the validator refuses each with a clear message. A
+target that still needs them stays `questa` until its area migration restores
+those checks on the Verilator stage. The migrated targets
 are `builder-smoke`, `builder-smoke-fail`, `python-joypad` and
 `python-joypad-fault`.
 
@@ -424,7 +427,8 @@ the simulator's time and does not introduce a second RTL execution engine.
 
 `vendor_model: "intel-adc"` resolves the pinned installed control core, canonical
 synchronizer, public and encrypted MAX10 atoms, and PLL models. It uses the same
-installation discovery and explicit `--intel-sim-lib` selection as memory.
+installation discovery and explicit `--intel-sim-lib` selection as memory did
+while that option was accepted.
 Every source hash and PLL generation dependency enters the fingerprint before
 reuse. Each attempt records the actual PLL generator command, verifies its
 parameters against the FPGA configuration, and retains the generated hash.
@@ -445,8 +449,10 @@ warnings suppressed. Host dependency tests are not hardware behavior evidence.
 
 A target declaring `vendor_model: "intel-memory"` requires the installed source
 set pinned in [dependencies.json](../../../tools/n2m/dependencies.json).
-The builder finds `quartus/eda/sim_lib` beside the selected Questa distribution,
-or accepts `--intel-sim-lib <directory>` explicitly. Each required source must
+The retired adapter found `quartus/eda/sim_lib` beside the selected Questa
+distribution, or took `--intel-sim-lib <directory>` explicitly; the builder no
+longer accepts that option (it fails argument parsing) and no migrated target
+declares `vendor_model`. Each required source must
 exist and match the supported hash before cache reuse or compilation. A missing,
 modified or wrong model fails; there is no portable fallback. Repository HDL
 that defines a shadow `altsyncram` or `altsyncram_body` is rejected.

@@ -127,9 +127,9 @@ is listed by name in the aggregate under the builder's
 target does not satisfy a tier; its evidence waits for the migration issue that
 owns it. Four-state assertions are
 removed during migration as an authorized behavior change; runs use randomized
-initial values so an uninitialized read fails by mismatch. The Verilator
-execution path for `sim test`, `regress` and `tests run` is the open gap in
-#597; the doubles in
+initial values so an uninitialized read fails by mismatch. The
+[Verilator execution path](../../../tools/n2m/SPEC.md#verilator-simulation)
+owns `sim test`, `regress` and `tests run`; the doubles are the open gap in
 [#598](https://github.com/amichai-bd/nand2mario/issues/598).
 
 Select gates by affected behavior and the scoped issue. Use existing preload,
