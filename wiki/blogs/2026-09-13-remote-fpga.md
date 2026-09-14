@@ -350,8 +350,10 @@ agreed scope comes back up.*
 The mechanics are deliberately rigid, because rigid mechanics are what let a
 dozen changes be in flight without anyone tracking them in their head.
 
-A change starts as an assigned issue. Its branch is `<number>-<slug>` and its
-worktree is `worktrees/<number>-<slug>/`, one per change, never shared. All
+A change starts as an assigned issue — that is what
+[issue-driven](#issue-driven) means in practice. Its branch is
+`<number>-<slug>` and its worktree is `worktrees/<number>-<slug>/`, one per
+change, never shared. All
 editing, building, validating and committing happen there, and generated output
 stays in that worktree's `workdir/`. The primary checkout stays clean on `main`.
 Every pull request opens as a draft and carries `Closes #<number>` on its own
@@ -1254,9 +1256,9 @@ The two games that never draw a frame are the most valuable result on the
 homebrew page, and they are the one section with no picture in it. The reviewer
 who measured the gallery's clearance was wrong, and writing that down rather than
 quietly correcting it is why the right number reached the generator at all. My
-three specification mistakes are in this article because a record containing only
-successes is not a record without failures; it is a record whose failures are
-unaccounted for.
+[three specification mistakes](#my-mistakes) are in this article because a
+record containing only successes is not a record without failures; it is a
+record whose failures are unaccounted for.
 
 This is not a moral point. It is that the alternative costs more. An incident
 written down honestly is a control for next time. An incident rounded off is a
