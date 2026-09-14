@@ -29,7 +29,9 @@ Review compatibility for the intended use before an import. A tool's license
 does not automatically establish rights to its input or output.
 
 The index covers external build/test tools, including the pinned Verilator
-simulator and cocotb runtime recorded by tag, commit, package hash and license
+simulator (its `install.apt` line names `liblz4-dev`, the system lz4 header the
+Verilator 5.052 FST writer links against) and cocotb runtime recorded by tag,
+commit, package hash and license
 in the [dependency definition](../../tools/n2m/dependencies.json), and the
 selected licensed [PPU logic adaptation](../../src/rtl/ppu/upstream.json). No test ROM, game asset
 or emulator code is imported. New imports must add a record before use. Reproducible fetching of future verification suites belongs to

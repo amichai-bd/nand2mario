@@ -821,7 +821,9 @@ tests use the standard library. Physical UART commands have an explicit optional
 
 A fresh WSL Ubuntu 24.04 machine needs the repository and three steps, each
 recorded under `verilator.install` and `cocotb.install` in the dependency
-definition: one `apt-get install` line for the build prerequisites; a source
+definition: one `apt-get install` line for the build prerequisites, including
+`liblz4-dev` because Verilator 5.052 compiles its FST writer against the system
+`lz4.h` and links `-llz4` for every `--trace-fst` build; a source
 build of the pinned tag into a prefix outside the repository
 (`autoconf && ./configure --prefix=<prefix> && make -j$(nproc) && make install`),
 because the distribution package (5.020) is below cocotb's 5.036 minimum; and
