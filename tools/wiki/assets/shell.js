@@ -1,7 +1,8 @@
 /* Navigation uses the source path itself. The manifest contains only tracked text. */
 "use strict";
 const $ = (id) => document.getElementById(id);
-const categories = ["Home", "Src", "Agents/Skills", "Tools", "Cfg", "Presentations", "Stats"];
+/* Kept equal to site.py TABS by tools/wiki/test_site.py. */
+const categories = ["Home", "Src", "Agents/Skills", "Tools", "Cfg", "Presentations", "Blog", "Stats"];
 let files = {}, current = "README.md", activeCategory = "Home", activeFrame = null;
 
 function link(path, fragment = "") {
@@ -11,17 +12,31 @@ function navigate(path, fragment = "") {
   history.pushState(null, "", link(path, fragment));
   display();
 }
+function listing(name) {
+  return Object.entries(files).filter(([, file]) => file.nav && file.category === name);
+}
+function roots(name) {
+  // Taken from the whole tab, not the filtered view, so typing in the filter
+  // never moves the root the reader is oriented by.
+  return [...new Set(listing(name).map(([, file]) => file.root))].sort();
+}
 function tree() {
   const filter = $("filter").value.toLowerCase();
+  const shared = roots(activeCategory);
   const nodes = {};
-  Object.entries(files).forEach(([path, file]) => {
-    if (!file.nav || file.category !== activeCategory || !path.toLowerCase().includes(filter)) return;
+  listing(activeCategory).forEach(([path, file]) => {
+    if (!path.toLowerCase().includes(filter)) return;
     let node = nodes;
-    const relative = path.replace(/^(?:\.agents\/skills|src|tools|cfg)\//, "");
-    const parts = relative.split("/");
+    // One root is named once above the tree and stripped from every entry. Two
+    // or more stay as labelled groups, because the root is the difference
+    // between an implementation file and its specification.
+    if (shared.length > 1) node = node[file.root.replace(/\/$/, "")] ||= {};
+    const parts = path.slice(file.root.length).split("/");
     parts.slice(0, -1).forEach((part) => { node = node[part] ||= {}; });
     node[parts.at(-1)] = path;
   });
+  $("tree-root").textContent = shared.length === 1 ? shared[0] : "";
+  $("tree-root").hidden = !$("tree-root").textContent;
   const fill = (nodes, parent) => {
     Object.entries(nodes).sort(([a], [b]) => a.localeCompare(b)).forEach(([name, value]) => {
       if (typeof value === "string") {
@@ -175,7 +190,10 @@ categories.forEach((name) => {
   button.textContent = name;
   button.addEventListener("click", () => {
     $("filter").value = "";
-    const entry = Object.entries(files).find(([path, file]) => file.nav && file.category === name && (name !== "Home" || path === "README.md"));
+    // Open the tab's own landing page when it has one; otherwise its first document.
+    const documents = listing(name);
+    const entry = documents.find(([path, file]) => ["index.md", "README.md"].includes(path.slice(file.root.length)))
+      || documents[0];
     if (entry) navigate(entry[0]);
     else {
       showEmpty(name);
