@@ -2,6 +2,9 @@
 `default_nettype none
 // Serial owner contract: SB is plain storage, SC keeps two DMG control bits
 // and reads its unused bits as one. No transfer or interrupt behavior exists.
+// Lint waiver: the integer file handle is tested as a boolean; the width
+// lint on that idiom is a false positive.
+/* verilator lint_off WIDTHTRUNC */
 module tb_serial_registers;
     logic clk_sys, reset_sys, core_reset, gb_tick;
     logic io_commit, io_write, io_selected;
@@ -18,7 +21,7 @@ module tb_serial_registers;
     task automatic check_read(input logic [15:0] target, input logic [7:0] expected);
         io_address = target;
         #1;
-        if (io_selected !== 1'b1 || io_rdata !== expected)
+        if (io_selected != 1'b1 || io_rdata != expected)
             $fatal(1, "SERIAL_REG_READ case=%0d address=%04h expected=%02h actual=%02h",
                 case_number, target, expected, io_rdata);
         $fdisplay(trace, "%0d,%04h,%02h,%02h", case_number, target, expected, io_rdata);

@@ -4,7 +4,7 @@
       "src/dv/common/tb_assert_synthesis.sv"
     ],
     "top": "tb_assert_synthesis",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS assertion synthesis exclusion"
@@ -184,7 +184,7 @@
       "src/dv/clocking/tb_clocking.sv"
     ],
     "top": "tb_clocking",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+early_reset"
     ],
@@ -1364,7 +1364,7 @@
       "src/dv/interfaces/tb_interfaces.sv"
     ],
     "top": "tb_interfaces",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS interface vectors widths spaces"
@@ -1375,7 +1375,7 @@
       "src/dv/interfaces/tb_interfaces.sv"
     ],
     "top": "tb_interfaces",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+corrupt"
     ],
@@ -1390,7 +1390,7 @@
       "src/dv/interrupts/tb_interrupt_ack_fault.sv"
     ],
     "top": "tb_interrupt_ack_fault",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "nonzero",
     "signature": "N2M_ASSERT INTERRUPT_ACK_ONEHOT"
@@ -1403,7 +1403,7 @@
       "src/dv/interrupts/tb_interrupt_phases.sv"
     ],
     "top": "tb_interrupt_phases",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS interrupt phase and CPU snapshot scripts cases=23 checks=140"
@@ -1416,7 +1416,7 @@
       "src/dv/interrupts/tb_interrupt_phases.sv"
     ],
     "top": "tb_interrupt_phases",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+observation_fault"
     ],
@@ -1431,7 +1431,7 @@
       "src/dv/interrupts/tb_interrupts.sv"
     ],
     "top": "tb_interrupts",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS interrupt register truth table masks held sources reset observations checks=2569"
@@ -1444,7 +1444,7 @@
       "src/dv/interrupts/tb_interrupts.sv"
     ],
     "top": "tb_interrupts",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+duplicate"
     ],
@@ -1459,7 +1459,7 @@
       "src/dv/interrupts/tb_interrupts.sv"
     ],
     "top": "tb_interrupts",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+lost"
     ],
@@ -1474,7 +1474,7 @@
       "src/dv/interrupts/tb_interrupts.sv"
     ],
     "top": "tb_interrupts",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+priority"
     ],
@@ -2827,7 +2827,7 @@
       "src/dv/common/tb_register_macros.sv"
     ],
     "top": "tb_register_macros",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS register macros cycles=64 combinations=15"
@@ -2837,7 +2837,7 @@
       "src/dv/common/tb_register_macros.sv"
     ],
     "top": "tb_register_macros",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+corrupt"
     ],
@@ -2962,7 +2962,7 @@
       "src/dv/display/tb_dmg_tile_pixel.sv"
     ],
     "top": "tb_dmg_tile_pixel",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS pixel_cases=524288 palette_cases=8192 cycles=532521 seed=none"
@@ -2973,7 +2973,7 @@
       "src/dv/display/tb_dmg_tile_pixel.sv"
     ],
     "top": "tb_dmg_tile_pixel",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+corrupt"
     ],
@@ -2990,7 +2990,7 @@
       "src/dv/timer/tb_timer_edges.sv"
     ],
     "top": "tb_timer_edges",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+bad_commit"
     ],
@@ -3008,7 +3008,7 @@
       "src/dv/timer/tb_timer_reload.sv"
     ],
     "top": "tb_timer_reload",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+counter_fault"
     ],
@@ -3025,7 +3025,7 @@
       "src/dv/timer/tb_timer_edges.sv"
     ],
     "top": "tb_timer_edges",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+edge_fault"
     ],
@@ -3043,7 +3043,7 @@
       "src/dv/timer/tb_timer_edges.sv"
     ],
     "top": "tb_timer_edges",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS timer frequencies edges wrap pause STOP resets cases=67",
@@ -3059,7 +3059,7 @@
       "src/dv/timer/tb_timer_reload.sv"
     ],
     "top": "tb_timer_reload",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS timer reload schedules cases=8 checks=1152"
@@ -3074,7 +3074,7 @@
       "src/dv/timer/tb_timer_reload.sv"
     ],
     "top": "tb_timer_reload",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+request_fault"
     ],
@@ -3892,7 +3892,7 @@
       "src/dv/joypad/tb_joypad_matrix.sv"
     ],
     "top": "tb_joypad_matrix",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS JOYP matrix cases=1024"
@@ -3904,7 +3904,7 @@
       "src/dv/joypad/tb_joypad_matrix.sv"
     ],
     "top": "tb_joypad_matrix",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+corrupt"
     ],
@@ -3920,7 +3920,7 @@
       "src/dv/joypad/tb_joypad_registers.sv"
     ],
     "top": "tb_joypad_registers",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS JOYP registers writes=256 inputs=256 resets=2"
@@ -3934,7 +3934,7 @@
       "src/dv/joypad/tb_joypad_registers.sv"
     ],
     "top": "tb_joypad_registers",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+corrupt"
     ],
@@ -3950,7 +3950,7 @@
       "src/dv/joypad/tb_joypad_registers.sv"
     ],
     "top": "tb_joypad_registers",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+boundary_fault"
     ],
@@ -3968,7 +3968,7 @@
       "src/dv/joypad/tb_joypad_events.sv"
     ],
     "top": "tb_joypad_events",
-    "simulator": "questa",
+    "simulator": "verilator",
     "signature": "PASS JOYP events",
     "expected_exit": "zero",
     "args": []
@@ -3984,7 +3984,7 @@
       "src/dv/joypad/tb_joypad_events.sv"
     ],
     "top": "tb_joypad_events",
-    "simulator": "questa",
+    "simulator": "verilator",
     "signature": "JOYP_EVENT case=",
     "args": [
       "+lost"
@@ -4002,7 +4002,7 @@
       "src/dv/joypad/tb_joypad_events.sv"
     ],
     "top": "tb_joypad_events",
-    "simulator": "questa",
+    "simulator": "verilator",
     "signature": "JOYP_EVENT case=",
     "args": [
       "+duplicate"
@@ -7358,7 +7358,7 @@
       "src/dv/clocking/tb_timebase25.sv"
     ],
     "top": "tb_timebase25",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS TIMEBASE25 exact-rate shortest-dot=5 shortest-machine=23 pause reset"
@@ -7369,7 +7369,7 @@
       "src/dv/clocking/tb_timebase25.sv"
     ],
     "top": "tb_timebase25",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+bad_numerator"
     ],
@@ -15883,7 +15883,7 @@
       "src/dv/serial/tb_serial_registers.sv"
     ],
     "top": "tb_serial_registers",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS serial registers sb_writes=256 sc_writes=256 checks=1034 resets=2",
@@ -15896,7 +15896,7 @@
       "src/dv/serial/tb_serial_registers.sv"
     ],
     "top": "tb_serial_registers",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+corrupt"
     ],
@@ -15911,7 +15911,7 @@
       "src/dv/serial/tb_serial_registers.sv"
     ],
     "top": "tb_serial_registers",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+boundary_fault"
     ],

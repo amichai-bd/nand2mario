@@ -84,7 +84,11 @@ module n2m_timer (
         end
     end
     `DFF_ARST_VAL(state_q,state_next,clk_sys,reset,reset_state())
+    // Lint waiver: tb_timer_reload forces request_q for fault injection,
+    // which Verilator reports as a second driver.
+    /* verilator lint_off MULTIDRIVEN */
     `DFF_ARST_VAL(request_q,request_next,clk_sys,reset,'0)
+    /* verilator lint_on MULTIDRIVEN */
     assign interrupt_request = reset ? n2m_timer_pkg::timer_request_t'('0) : request_q;
     // Host observations. Pure reads of the same committed state the CPU port
     // reports; no write, commit or divider reset is derived from them.

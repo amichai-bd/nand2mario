@@ -18,7 +18,7 @@ module tb_interfaces;
     expected = 80'h01000007123456780001;
     if ($test$plusargs("corrupt")) expected[16] = ~expected[16];
     #1;
-    if (header !== expected)
+    if (header != expected)
       $fatal(1, "INTERFACE_MISMATCH expected=%h actual=%h", expected, header);
     if ($bits(header) != 80 || n2m_interfaces_pkg::PACKET_HEADER_BYTES != 10 ||
         n2m_interfaces_pkg::PACKET_HEADER_SEQ_OFFSET != 2 || n2m_interfaces_pkg::PACKET_HEADER_LENGTH_OFFSET != 8)
@@ -36,8 +36,8 @@ module tb_interfaces;
     retired.opcode = 24'habcdef;
     retired.opcode_length = 3;
     #1;
-    if (retired[47:0] !== 48'h123456780001 ||
-        retired[239:176] !== 64'h03abcdef00001234)
+    if (retired[47:0] != 48'h123456780001 ||
+        retired[239:176] != 64'h03abcdef00001234)
       $fatal(1, "INTERFACE_RETIREMENT_MISMATCH");
     $display("PASS interface vectors widths spaces");
     $finish;

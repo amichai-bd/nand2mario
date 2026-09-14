@@ -1,5 +1,8 @@
 `timescale 1ns/1ps
 `default_nettype none
+// Lint waiver: the integer file handle is tested as a boolean; the width
+// lint on that idiom is a false positive.
+/* verilator lint_off WIDTHTRUNC */
 module tb_timer_edges;
     logic clk_sys,reset_sys,core_reset,gb_tick,divider_reset_request;
     logic io_commit,io_write,io_selected;
@@ -39,19 +42,19 @@ module tb_timer_edges;
     task automatic read_check(input logic [15:0] address,input logic [7:0] expected);
         io_address=address;#1;
         $fdisplay(trace,"%0d,%0d,%04h,%02h,%02h,%0d,%02h",scenario,tick_count,address,expected,io_rdata,interrupt_request.request,if_observe);
-        if(!io_selected||io_rdata!==expected)
+        if(!io_selected||io_rdata!=expected)
             $fatal(1,"TIMER_EDGE_READ case=%0d tick=%0d address=%04h expected=%02h actual=%02h",scenario,tick_count,address,expected,io_rdata);
         checks=checks+1;
     endtask
     task automatic request_check(input bit expected);
         #1;
-        if(interrupt_request.request!==expected)$fatal(1,"TIMER_EDGE_REQUEST case=%0d tick=%0d expected=%0d actual=%0d",scenario,tick_count,expected,interrupt_request.request);
+        if(interrupt_request.request!=expected)$fatal(1,"TIMER_EDGE_REQUEST case=%0d tick=%0d expected=%0d actual=%0d",scenario,tick_count,expected,interrupt_request.request);
     endtask
     task automatic reset_case(input bit global_reset);
         gb_tick=0;io_commit=0;io_write=0;divider_reset_request=0;if_commit=0;
         if(global_reset)reset_sys=1;else core_reset=1;
         read_check(16'hFF04,0);read_check(16'hFF05,0);read_check(16'hFF06,0);read_check(16'hFF07,8'hF8);
-        request_check(0);if(if_observe!==0)$fatal(1,"TIMER_RESET_IF");
+        request_check(0);if(if_observe!=0)$fatal(1,"TIMER_RESET_IF");
         system_edge();reset_sys=0;core_reset=0;system_edge();tick_count=0;
     endtask
     task automatic write_register(input logic [15:0] address,input logic [7:0] data);
@@ -149,11 +152,11 @@ module tb_timer_edges;
         repeat(100)begin system_edge();read_check(16'hFF05,0);request_check(0);end
         for(index=1;index<=4;index=index+1)begin
             tick_a();read_check(16'hFF05,index==4?8'h23:8'h00);request_check(index==4);
-            if(index==4&&if_observe!==4)$fatal(1,"TIMER_STOP_PRE_B_IF");
+            if(index==4&&if_observe!=4)$fatal(1,"TIMER_STOP_PRE_B_IF");
             tick_b();
         end
         repeat(100)begin system_edge();read_check(16'hFF05,8'h23);request_check(0);end
-        if(if_stored!==4)$fatal(1,"TIMER_STOP_STORED_IF");
+        if(if_stored!=4)$fatal(1,"TIMER_STOP_STORED_IF");
         for(index=5;index<=16;index=index+1)begin tick();read_check(16'hFF05,index==16?8'h24:8'h23);end
         scenario=scenario+1;
         // DIV and TAC updates at reload cannot cancel the pending request.
@@ -161,7 +164,7 @@ module tb_timer_edges;
             overflow_setup(0,8'h23);repeat(3)tick();
             io_commit=1;io_write=1;io_address=index==0?16'hFF04:16'hFF07;io_wdata=0;
             tick_a();read_check(16'hFF05,8'h23);request_check(1);tick_b();
-            if(if_stored!==4)$fatal(1,"TIMER_RELOAD_WRITE_IF");scenario=scenario+1;
+            if(if_stored!=4)$fatal(1,"TIMER_RELOAD_WRITE_IF");scenario=scenario+1;
         end
         // TMA FF repeats overflow at the selected period, not the reload delay.
         // Clear real IF between requests and check no duplicate pulse.
@@ -171,7 +174,7 @@ module tb_timer_edges;
             tick_a();request_check(index==4||index==20);
             read_check(16'hFF05,(index<4||(index>=16&&index<20))?8'h00:8'hFF);
             tick_b();
-            if(if_stored!==((index>=4&&index<8)||index==20?5'h04:5'h00))$fatal(1,"TIMER_REPEAT_IF tick=%0d",index);
+            if(if_stored!=((index>=4&&index<8)||index==20?5'h04:5'h00))$fatal(1,"TIMER_REPEAT_IF tick=%0d",index);
         end
         scenario=scenario+1;
         // Reset at each pending-delay boundary, including before B of the
@@ -183,7 +186,7 @@ module tb_timer_edges;
                 reset_case(reset_kind!=0);
                 repeat(20)system_edge();
                 repeat(16)tick();read_check(16'hFF05,0);request_check(0);
-                if(if_stored!==0)$fatal(1,"TIMER_RESET_STALE_IF");scenario=scenario+1;
+                if(if_stored!=0)$fatal(1,"TIMER_RESET_STALE_IF");scenario=scenario+1;
             end
         reset_case(0);io_address=16'hFF03;#1;if(io_selected)$fatal(1,"TIMER_ALIAS_LOW");
         io_address=16'hFF08;#1;if(io_selected)$fatal(1,"TIMER_ALIAS_HIGH");
