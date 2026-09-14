@@ -238,9 +238,9 @@ class FpgaTests(unittest.TestCase):
         self.assertEqual([item["text"] for item in explained], list(reversed(lines)))
         self.assertEqual([item["code"] for item in fpga.diagnostics(output, explained)],
                          ["12125"] * len(lines))
+        self.assertEqual(fpga.generated_design_diagnostics("", self.build), [])
 
         mutations = (
-            "",
             output.replace("db/n2m_system_pll_altpll.v", "other/n2m_system_pll_altpll.v", 1),
             output.replace("db/n2m_system_pll_altpll.v", "db/other_altpll.v", 1),
             output.replace("1 design units", "2 design units", 1),

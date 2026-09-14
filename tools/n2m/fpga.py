@@ -220,6 +220,8 @@ def generated_design_diagnostics(output, folder):
     suffix = (", which is not specified as a design file for the current project, "
               "but contains definitions for 1 design units and 1 entities in project")
     lines = [line.strip() for line in output.splitlines() if line.strip().startswith("Warning (12125):")]
+    if not lines:
+        return []
     expected = [prefix + name + suffix for name in GENERATED_DESIGN_FILES]
     if Counter(lines) != Counter(expected):
         raise ValueError("generated design diagnostic path, count, or text differs")
