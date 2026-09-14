@@ -40,9 +40,9 @@ programming on Windows), behavioral doubles for Intel primitives keyed on the
 predefined `VERILATOR` macro, per-area migration in which an unmigrated target
 reports `SKIPPED` with reason `questa-retired`, and the authorized removal of
 four-state assertions in favor of randomized initial values. The
-[doctor](SPEC.md#environment-doctor) already proves a checked Verilator smoke
-without a license; the `sim test`, `regress` and `tests run` Verilator path is
-the open gap in [#597](https://github.com/amichai-bd/nand2mario/issues/597).
+[doctor](SPEC.md#environment-doctor) proves a checked Verilator smoke without a
+license, and [Verilator simulation](SPEC.md#verilator-simulation) owns the
+`sim test`, `regress` and `tests run` path.
 The shared builder also supports independent Python
 testbenches alongside SV through the [Python adapter](../../../tools/n2m/python_tb.py), using the same
 tagged evidence and cache rules. Python failures must fail the command even

@@ -120,10 +120,10 @@ tier depends on a license. Intel primitives are represented by the
 repository's behavioral doubles under the `VERILATOR` macro per the
 [memory contract](../../rtl/common/MAS_memory_primitives.md); the "Intel model
 identity" required above becomes the double's source hash once a target
-migrates. Migration is per area: once the builder Verilator path lands under
-[#597](https://github.com/amichai-bd/nand2mario/issues/597), an unmigrated
-target will report `SKIPPED` with reason `questa-retired`, count as neither
-pass nor defect, and be listed by name in the aggregate. A skipped required
+migrates. Migration is per area: an unmigrated `questa` target reports
+`SKIPPED` with reason `questa-retired`, counts as neither pass nor defect, and
+is listed by name in the aggregate under the builder's
+[simulator field](../../../tools/n2m/SPEC.md#simulator-field). A skipped required
 target does not satisfy a tier; its evidence waits for the migration issue that
 owns it. Four-state assertions are
 removed during migration as an authorized behavior change; runs use randomized
