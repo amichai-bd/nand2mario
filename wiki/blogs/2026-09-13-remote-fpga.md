@@ -414,11 +414,12 @@ reviewer checked it, found it wrong, and filed a correction as minor, because
 the margin turned out *larger* than claimed and so the decision held either way.
 The author then checked the reviewer and found that both had measured the wrong
 element: the binding one was the bottom row's tile credits, and the real
-clearance was 18px — exactly one line of leading, and less than half of what
-either party had stated.
+clearance was 18px — exactly one line of leading, and a figure neither party had
+reached. The author's original number was below it and the reviewer's was above
+it.
 
-The decision still stood. But it stood on a much tighter margin than anyone had
-believed, and that number is now a comment in the generator beside the
+The decision still stood. But the margin it stood on was not the one either
+party had measured, and that number is now a comment in the generator beside the
 coordinate it constrains. Neither the author nor the reviewer had it alone; the
 exchange produced it. That is why "the reviewer approved it" is a weaker
 statement than "the reviewer and the author disagreed about something specific
@@ -707,6 +708,15 @@ writing "attested, not captured" is three words once. The cost of a record you
 have to audit before trusting is paid on every future reading, by everyone.
 
 ## What I'd carry into the next one
+
+### Buy the axis of independence you're missing
+
+Go through the tests you have and ask, of each one, which half is the
+independent half: [the oracle or the stimulus](#oracle-and-stimulus). Most
+suites turn out to be deep on one axis and close to empty on the other, and the
+instinct when confidence is low is to buy more of the axis you already own. If
+your stimulus is captive, a better oracle will never find what a stranger's
+program finds by accident.
 
 ### Write the failure into the record, not around it
 
