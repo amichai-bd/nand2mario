@@ -378,6 +378,11 @@ class RetiredTests(unittest.TestCase):
                 load_target(self.root, "builder-smoke")
 
     def test_questa_target_is_skipped_by_name_without_discovery(self):
+        # The test copy marks tile-pixel retired whatever the registry says now.
+        registry = self.root / "src/dv/builder/targets.json"
+        targets = read_json(registry)
+        targets["tile-pixel"]["simulator"] = "questa"
+        registry.write_text(json.dumps(targets))
         self.args.target = "tile-pixel"
         with self.assertRaisesRegex(ValueError, "missing or out-of-tree source"):
             self.run_stage()

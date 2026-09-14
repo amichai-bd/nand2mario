@@ -246,7 +246,15 @@ class Retired(unittest.TestCase):
         shutil.copy(path, copy)
         loaded["units"] = {name: entry for name, entry in loaded["units"].items()
                            if name in ("builder-smoke", "tile-pixel")}
-        with patch("n2m.catalogue.supervise", side_effect=child), patch("n2m.catalogue.run_unit"):
+        # The registry row is read as retired whatever the tree's migration state.
+        real_load = module.load_target
+        def load(root, name):
+            target, *rest = real_load(root, name)
+            if name == "tile-pixel":
+                target = dict(target, simulator="questa")
+            return (target, *rest)
+        with patch("n2m.catalogue.supervise", side_effect=child), patch("n2m.catalogue.run_unit"), \
+                patch("n2m.catalogue.load_target", side_effect=load):
             record = module.run_selection(ROOT, loaded, copy, "tag", args, 300, {})
         self.assertEqual(launched, ["builder-smoke"])
         self.assertEqual(record["units"]["tile-pixel"], {"status": "SKIPPED", "reason": "questa-retired"})

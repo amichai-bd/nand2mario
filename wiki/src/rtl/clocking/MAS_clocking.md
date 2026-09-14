@@ -20,7 +20,8 @@ chains consume readiness. All clocking state and proof counters use the shared
 [asynchronous register macros](../../rtl-reference-style.md#product-register-convention).
 The reset controller uses the initialized asynchronous forms: separate constant
 `initial` assignments retain configuration values, and edge-triggered `always`
-avoids the Questa `always_ff` multiple-process restriction. Declarations retain
+avoids the `always_ff` single-process rule (IEEE 1800 9.2.2.4) that
+simulators enforce. Declarations retain
 register names and synchronizer attributes. Next-state logic preserves reset priority, terminal counter holding,
 current-edge carry, pause completion and the resume edge. Counter release and
 consumer recovery/removal remain timed after their respective synchronizers.

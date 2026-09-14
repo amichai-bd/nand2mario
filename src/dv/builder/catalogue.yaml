@@ -58,7 +58,7 @@ units:
   adc-pairs: {kind: sim, level: 2, labels: [input], duration_seconds: null}
   adc-pairs-channel: {kind: sim, level: 2, labels: [fault, input], duration_seconds: null}
   adc-pairs-corrupt: {kind: sim, level: 2, labels: [fault, input], duration_seconds: null}
-  assert-synthesis: {kind: sim, level: 1, labels: [common], duration_seconds: 4.35}
+  assert-synthesis: {kind: sim, level: 1, labels: [common], duration_seconds: 0.44}
   async-assert-direct: {kind: sim, level: 2, labels: [common, fault], duration_seconds: null}
   async-assert-hold: {kind: sim, level: 2, labels: [common, fault], duration_seconds: null}
   async-assert-known: {kind: sim, level: 2, labels: [common, fault], duration_seconds: null}
@@ -76,7 +76,7 @@ units:
   clocking: {kind: sim, level: 1, labels: [clocking], duration_seconds: 25.42}
   clocking-bad-numerator: {kind: sim, level: 2, labels: [clocking, fault], duration_seconds: null}
   clocking-drop-tick: {kind: sim, level: 2, labels: [clocking, fault], duration_seconds: null}
-  clocking-early-reset: {kind: sim, level: 2, labels: [clocking, fault], duration_seconds: null}
+  clocking-early-reset: {kind: sim, level: 2, labels: [clocking, fault], duration_seconds: 0.53}
   controls-lifecycle: {kind: sim, level: 2, labels: [input], duration_seconds: null}
   controls-lifecycle-corrupt: {kind: sim, level: 2, labels: [fault, input], duration_seconds: null}
   controls-mask: {kind: sim, level: 2, labels: [input], duration_seconds: null}
@@ -208,25 +208,25 @@ units:
   intel-memory-collision: {kind: sim, level: 2, labels: [common, fault], duration_seconds: null}
   intel-memory-data: {kind: sim, level: 2, labels: [common, fault], duration_seconds: null}
   intel-memory-latency: {kind: sim, level: 2, labels: [common, fault], duration_seconds: null}
-  interfaces: {kind: sim, level: 1, labels: [interfaces], duration_seconds: 4.33}
-  interfaces-corrupt: {kind: sim, level: 2, labels: [fault, interfaces], duration_seconds: null}
-  interrupt-ack-fault: {kind: sim, level: 2, labels: [fault, interrupts], duration_seconds: null}
-  interrupt-phases: {kind: sim, level: 1, labels: [interrupts], duration_seconds: 4.36}
-  interrupt-phases-fault: {kind: sim, level: 2, labels: [fault, interrupts], duration_seconds: null}
-  interrupts: {kind: sim, level: 2, labels: [interrupts], duration_seconds: null}
-  interrupts-duplicate: {kind: sim, level: 2, labels: [fault, interrupts], duration_seconds: null}
-  interrupts-lost: {kind: sim, level: 2, labels: [fault, interrupts], duration_seconds: null}
-  interrupts-priority: {kind: sim, level: 2, labels: [fault, interrupts], duration_seconds: null}
+  interfaces: {kind: sim, level: 1, labels: [interfaces], duration_seconds: 0.44}
+  interfaces-corrupt: {kind: sim, level: 2, labels: [fault, interfaces], duration_seconds: 0.44}
+  interrupt-ack-fault: {kind: sim, level: 2, labels: [fault, interrupts], duration_seconds: 0.47}
+  interrupt-phases: {kind: sim, level: 1, labels: [interrupts], duration_seconds: 0.46}
+  interrupt-phases-fault: {kind: sim, level: 2, labels: [fault, interrupts], duration_seconds: 0.47}
+  interrupts: {kind: sim, level: 2, labels: [interrupts], duration_seconds: 0.48}
+  interrupts-duplicate: {kind: sim, level: 2, labels: [fault, interrupts], duration_seconds: 0.46}
+  interrupts-lost: {kind: sim, level: 2, labels: [fault, interrupts], duration_seconds: 0.46}
+  interrupts-priority: {kind: sim, level: 2, labels: [fault, interrupts], duration_seconds: 0.47}
   io-peek: {kind: sim, level: 0, labels: [interrupts, ppu, timer, uart], duration_seconds: 7.70}
   io-peek-disturb: {kind: sim, level: 0, labels: [fault, interrupts, ppu, timer, uart], duration_seconds: 5.85}
-  joypad-boundary-fault: {kind: sim, level: 2, labels: [fault, joypad], duration_seconds: null}
-  joypad-events: {kind: sim, level: 1, labels: [joypad], duration_seconds: 4.54}
-  joypad-events-duplicate: {kind: sim, level: 2, labels: [fault, joypad], duration_seconds: null}
-  joypad-events-lost: {kind: sim, level: 2, labels: [fault, joypad], duration_seconds: null}
-  joypad-matrix: {kind: sim, level: 2, labels: [joypad], duration_seconds: null}
-  joypad-matrix-fault: {kind: sim, level: 2, labels: [fault, joypad], duration_seconds: null}
-  joypad-register-fault: {kind: sim, level: 2, labels: [fault, joypad], duration_seconds: null}
-  joypad-registers: {kind: sim, level: 2, labels: [joypad], duration_seconds: null}
+  joypad-boundary-fault: {kind: sim, level: 2, labels: [fault, joypad], duration_seconds: 0.47}
+  joypad-events: {kind: sim, level: 1, labels: [joypad], duration_seconds: 0.48}
+  joypad-events-duplicate: {kind: sim, level: 2, labels: [fault, joypad], duration_seconds: 0.48}
+  joypad-events-lost: {kind: sim, level: 2, labels: [fault, joypad], duration_seconds: 0.47}
+  joypad-matrix: {kind: sim, level: 2, labels: [joypad], duration_seconds: 0.45}
+  joypad-matrix-fault: {kind: sim, level: 2, labels: [fault, joypad], duration_seconds: 0.45}
+  joypad-register-fault: {kind: sim, level: 2, labels: [fault, joypad], duration_seconds: 0.47}
+  joypad-registers: {kind: sim, level: 2, labels: [joypad], duration_seconds: 0.47}
   memory-bank-enables: {kind: sim, level: 1, labels: [memory], duration_seconds: 10.62}
   memory-bank-enables-fault: {kind: sim, level: 2, labels: [fault, memory], duration_seconds: null}
   memory-cpu-duplicate: {kind: sim, level: 2, labels: [fault, memory], duration_seconds: null}
@@ -380,8 +380,8 @@ units:
   python-interaction-d: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
   python-interaction-fault: {kind: sim, level: 2, labels: [fault, integration, python-tb, springtrail, system, v05], duration_seconds: null}
   python-interaction-short: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
-  python-joypad: {kind: sim, level: 2, labels: [joypad, python-tb], duration_seconds: null}
-  python-joypad-fault: {kind: sim, level: 2, labels: [joypad, python-tb], duration_seconds: null}
+  python-joypad: {kind: sim, level: 2, labels: [joypad, python-tb], duration_seconds: 0.24}
+  python-joypad-fault: {kind: sim, level: 2, labels: [joypad, python-tb], duration_seconds: 0.25}
   python-mgs: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
   python-mgu: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
   python-mr: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
@@ -435,11 +435,11 @@ units:
   python-vga-crc-corrupt: {kind: sim, level: 2, labels: [python-tb, vga], duration_seconds: null}
   python-vram-read: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: null}
   python-vram-write: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: null}
-  register-macros: {kind: sim, level: 2, labels: [common], duration_seconds: null}
-  register-macros-corrupt: {kind: sim, level: 2, labels: [common, fault], duration_seconds: null}
-  serial-boundary-fault: {kind: sim, level: 2, labels: [fault, serial], duration_seconds: null}
-  serial-register-fault: {kind: sim, level: 2, labels: [fault, serial], duration_seconds: null}
-  serial-registers: {kind: sim, level: 1, labels: [serial], duration_seconds: 4.30}
+  register-macros: {kind: sim, level: 2, labels: [common], duration_seconds: 0.43}
+  register-macros-corrupt: {kind: sim, level: 2, labels: [common, fault], duration_seconds: 0.43}
+  serial-boundary-fault: {kind: sim, level: 2, labels: [fault, serial], duration_seconds: 0.44}
+  serial-register-fault: {kind: sim, level: 2, labels: [fault, serial], duration_seconds: 0.45}
+  serial-registers: {kind: sim, level: 1, labels: [serial], duration_seconds: 0.45}
   snapshot: {kind: sim, level: 1, labels: [snapshot], duration_seconds: 7.08}
   snapshot-latency: {kind: sim, level: 2, labels: [fault, snapshot], duration_seconds: null}
   snapshot-lifecycle: {kind: sim, level: 2, labels: [snapshot], duration_seconds: null}
@@ -515,16 +515,16 @@ units:
   src/dv/stackdrop/test_reference.py: {kind: unit, level: 0, labels: [stackdrop], duration_seconds: 0.08}
   src/dv/stackdrop/test_screen.py: {kind: unit, level: 0, labels: [stackdrop], duration_seconds: 0.27}
   src/dv/stackdrop/test_tail.py: {kind: unit, level: 2, labels: [needs-cocotb, stackdrop], duration_seconds: 0.10}
-  tile-pixel: {kind: sim, level: 0, labels: [display, pre-merge], duration_seconds: 7.87}
-  tile-pixel-corrupt: {kind: sim, level: 2, labels: [display, fault], duration_seconds: null}
-  timebase25: {kind: sim, level: 2, labels: [clocking], duration_seconds: null}
-  timebase25-bad-numerator: {kind: sim, level: 2, labels: [clocking, fault], duration_seconds: null}
-  timer-commit-fault: {kind: sim, level: 2, labels: [fault, timer], duration_seconds: null}
-  timer-counter-fault: {kind: sim, level: 2, labels: [fault, timer], duration_seconds: null}
-  timer-edge-fault: {kind: sim, level: 2, labels: [fault, timer], duration_seconds: null}
-  timer-edges: {kind: sim, level: 2, labels: [timer], duration_seconds: null}
-  timer-reload: {kind: sim, level: 1, labels: [timer], duration_seconds: 4.34}
-  timer-request-fault: {kind: sim, level: 2, labels: [fault, timer], duration_seconds: null}
+  tile-pixel: {kind: sim, level: 0, labels: [display, pre-merge], duration_seconds: 1.16}
+  tile-pixel-corrupt: {kind: sim, level: 2, labels: [display, fault], duration_seconds: 0.43}
+  timebase25: {kind: sim, level: 2, labels: [clocking], duration_seconds: 1.49}
+  timebase25-bad-numerator: {kind: sim, level: 2, labels: [clocking, fault], duration_seconds: 0.46}
+  timer-commit-fault: {kind: sim, level: 2, labels: [fault, timer], duration_seconds: 0.96}
+  timer-counter-fault: {kind: sim, level: 2, labels: [fault, timer], duration_seconds: 0.45}
+  timer-edge-fault: {kind: sim, level: 2, labels: [fault, timer], duration_seconds: 1.19}
+  timer-edges: {kind: sim, level: 2, labels: [timer], duration_seconds: 1.25}
+  timer-reload: {kind: sim, level: 1, labels: [timer], duration_seconds: 0.44}
+  timer-request-fault: {kind: sim, level: 2, labels: [fault, timer], duration_seconds: 0.46}
   tools/ci/tests/test_pr_policy.py: {kind: unit, level: 0, labels: [ci], duration_seconds: 0.23}
   tools/ci/tests/test_profiles.py: {kind: unit, level: 1, labels: [ci], duration_seconds: 13.46}
   tools/ci/tests/test_trust.py: {kind: unit, level: 1, labels: [ci], duration_seconds: 2.92}
@@ -558,7 +558,7 @@ units:
   tools/n2m/tests/test_import_check.py: {kind: unit, level: 0, labels: [builder, python-tb], duration_seconds: 0.55}
   tools/n2m/tests/test_intel_adc.py: {kind: unit, level: 0, labels: [builder, memory], duration_seconds: 0.40}
   tools/n2m/tests/test_intel_memory.py: {kind: unit, level: 0, labels: [builder, memory], duration_seconds: 0.83}
-  tools/n2m/tests/test_interfaces.py: {kind: unit, level: 0, labels: [builder, interfaces], duration_seconds: 0.18}
+  tools/n2m/tests/test_interfaces.py: {kind: unit, level: 0, labels: [builder, interfaces], duration_seconds: 0.09}
   tools/n2m/tests/test_keyboard.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 0.53}
   tools/n2m/tests/test_late208.py: {kind: unit, level: 0, labels: [builder, ppu], duration_seconds: 0.24}
   tools/n2m/tests/test_launcher.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 0.18}
@@ -596,7 +596,7 @@ units:
   tools/n2m/tests/test_v05_reference.py: {kind: unit, level: 0, labels: [builder, v05], duration_seconds: 0.27}
   tools/n2m/tests/test_vector_source.py: {kind: unit, level: 0, labels: [builder, cpu], duration_seconds: 0.17}
   tools/n2m/tests/test_verilator.py: {kind: unit, level: 0, labels: [builder], duration_seconds: null}
-  tools/sim/test_tile_pixel.py: {kind: unit, level: 0, labels: [builder, display], duration_seconds: 0.37}
+  tools/sim/test_tile_pixel.py: {kind: unit, level: 0, labels: [builder, display], duration_seconds: 0.13}
   tools/wiki/test_check.py: {kind: unit, level: 0, labels: [wiki], duration_seconds: 0.15}
   tools/wiki/test_quality_surfaces.py: {kind: unit, level: 0, labels: [wiki], duration_seconds: 0.37}
   tools/wiki/test_refresh_statistics.py: {kind: unit, level: 0, labels: [wiki], duration_seconds: 0.19}

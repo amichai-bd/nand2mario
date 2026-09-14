@@ -60,8 +60,8 @@ See the [bounded phase](../../../agents/bootstrap-plan.md#current-phase).
 
 [RTL](../../../../src/rtl/display/dmg_tile_pixel.sv) implements the named rules.
 The [test plan](../../../../src/dv/display/README.md) maps each to independent
-checks. The builder's [targets](../../../../src/dv/builder/targets.json) run Questa;
-the [standalone runner](../../../../tools/sim/tile_pixel.py) retains Questa support.
+checks. The builder's [targets](../../../../src/dv/builder/targets.json) run under
+Verilator; the [standalone runner](../../../../tools/sim/tile_pixel.py) is separate.
 See [unit simulation](../../../tools/sim/SPEC.md).
 
 [tiles]: https://github.com/gbdev/pandocs/blob/fe246067b695b5404a4a6a47efb4fd6d921ececb/src/Tile_Data.md

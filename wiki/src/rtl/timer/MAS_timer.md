@@ -93,7 +93,7 @@ HALT time, reviewed STOP reset/gating and no duplicate request after resume.
 Compose the actual interrupt owner for the post-A/B request path.
 
 Actual counter/edge and reload/request faults must produce intended nonzero
-Questa failures. Include a named local assertion failure. Retain exact sources,
+simulator failures. Include a named local assertion failure. Retain exact sources,
 commands, tool identities, register/event CSV and public waves. External suite
 execution, whole CPU execution and physical accuracy are not claimed here.
 

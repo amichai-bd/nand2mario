@@ -22,7 +22,7 @@ The seed is retained for reproduction; stimulus is deterministic. The corrupt
 target uses seed 1, matching its exact registered diagnostic.
 
 Run both `register-macros` and `register-macros-corrupt` through
-`python tools/build.py sim test <target> --sim questa --tag <tag>`. The builder retains commands, raw exit codes,
+`python3 tools/build.py sim test <target> --tag <tag>`. The builder retains commands, raw exit codes,
 seed, logs and waves. Tile positive/corrupt targets separately prove integration
 against their unchanged exhaustive oracle. FPGA and simulation host tests cover
 transitive include cache invalidation, missing/dynamic dependencies and constraints;
@@ -46,7 +46,7 @@ Run `async-assert-macros` for the passing case. The five targets
 `async-assert-hold`, `async-assert-direct`, `async-assert-no_reset`,
 `async-assert-never`, and `async-assert-known` each corrupt only their named
 invariant on the final edge. Require the registered `N2M_ASSERT <name>_check`
-instance diagnostic and a nonzero raw Questa exit. An assertion watchdog is
+instance diagnostic and a nonzero raw simulator exit. An assertion watchdog is
 fatal. `assert-synthesis` invokes all helpers with undefined arguments under
 `SYNTHESIS`; compilation and its pass signature prove complete removal.
 Actual clocking Quartus builds additionally prove synthesis exclusion and retain
