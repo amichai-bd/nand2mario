@@ -10,7 +10,7 @@ The project is intentionally self-contained: gameplay, programs, characters,
 art, maps, and tooling are original. It does not require a commercial cartridge,
 commercial ROM, copied game assets, or a custom game-specific hardware path.
 
-- [Project stories: building remotely from a phone](wiki/blogs/index.md)
+- [Project stories: how we knew the hardware was right](wiki/blogs/index.md)
 - [Project documentation](https://amichai-bd.github.io/nand2mario/)
 - [Project charter](wiki/src/project-charter.md)
 - [Springtrail specification](wiki/src/sw/springtrail/SPEC.md)
