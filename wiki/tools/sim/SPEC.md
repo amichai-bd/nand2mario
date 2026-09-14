@@ -19,10 +19,20 @@ is detected. It cannot replace the mandatory normal target.
 Repeat either command to reuse a matching successful result (`CACHED`); use
 `--rebuild` to rerun. Changed inputs or damaged artifacts invalidate reuse.
 The builder records tools, input hashes, commands, exit codes, results, and
-waves beneath `workdir/builds/<tag>/`. It uses Questa by default. Its seed is recorded for cache
+waves beneath `workdir/builds/<tag>/`. Its seed is recorded for cache
 identity; this test is deterministic and reports `seed=none`.
 
-## Questa checks
+## Simulator
+
+The builder runs [Verilator on WSL](../n2m/SPEC.md#verilator-simulation). Both
+tile targets are still registered `simulator: "questa"`, so today the builder
+reports each as `SKIPPED` with reason `questa-retired` (exit 2) and
+`regress pre-merge` lists `tile-pixel: SKIPPED questa-retired`; that is the
+honest current state, not tile-pixel evidence. Their migration belongs to the
+display area under [#595](https://github.com/amichai-bd/nand2mario/issues/595).
+The Questa sections below describe the retired path they last ran on.
+
+## Questa checks (retired path)
 
 Use the shared builder with the same normal and corruption targets:
 
@@ -57,8 +67,9 @@ other breaks, macro errors, or return without `$finish` exit nonzero. The normal
 case requires the full exhaustive completion signature. Corruption requires
 the full intended mismatch diagnostic and a nonzero exit; additional errors
 or warnings fail the runner even when an expected signature appears.
-Questa is the default and only supported backend. Retired simulator selections
-fail argument parsing; there is no fallback.
+The standalone runner still accepts only `--sim questa`; its Verilator backend
+belongs to the tile migration. Retired simulator selections fail argument
+parsing; there is no fallback.
 
 Both paths reject tool, compile, elaboration, warning, timeout, exit, or expected
 output failures. Host command-construction tests do not prove Questa execution. The

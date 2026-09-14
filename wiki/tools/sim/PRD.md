@@ -11,6 +11,9 @@ test plan. The [verification gap](../../preflight-gaps.md#gap-008-verification-b
 owns outstanding broader evidence; this unit does not establish a full PPU or
 shared verification baseline.
 
-Questa is the only supported simulator. Both the normal and corrupt cases need
-actual licensed execution; the local host tests prove only the host contract.
+Verilator on WSL is the only supported simulator; no license is consulted. Both
+the normal and corrupt cases need actual simulator execution once the tile
+targets migrate; until then the builder reports them `SKIPPED questa-retired`,
+as the [SPEC](SPEC.md#simulator) states. The local host tests prove only the
+host contract.
 The [CI boundary](../n2m/SPEC.md#ci-execution-boundary) owns the outstanding trusted route.
