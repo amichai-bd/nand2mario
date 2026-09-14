@@ -830,8 +830,13 @@ def games_gallery():
 
     strip = ('Eight of the games that run on the DE10-Lite · '
              'every frame read back from the board over UART')
-    # Two rows: the footer is one line per claim, and each fits the panel width.
-    footer = ('Framebuffer captures the board returned over UART, not emulator screenshots and not '
+    # Three rows: the footer is one line per claim, and each fits the panel
+    # width. The image travels out of the page, so why the games are here rides
+    # with it; the rows are bottom-anchored and the note cell ends at y=1104,
+    # above the first row's baseline, so the extra line moves no geometry.
+    footer = ('Written for real Game Boy hardware by people who never saw this project: evidence our own '
+              'tests cannot give.',
+              'Framebuffer captures the board returned over UART, not emulator screenshots and not '
               'photographs of a monitor.',
               'Boot-and-play evidence, not a correctness proof: no reference model exists for third-party code.')
     style = ''.join(rules) + '@media (prefers-reduced-motion:no-preference){' + ''.join(motion) + '}'
