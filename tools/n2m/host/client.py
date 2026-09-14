@@ -152,17 +152,28 @@ class Client:
             raise ValueError('endpoint build identity is zero; physical host commands require an identified build')
         return {'abi': version, 'build_id': b''.join(word.to_bytes(4, 'little') for word in words).hex()}
 
-    def load(self, image):
+    def load(self, image, *, progress=None):
+        """Load and verify one image, optionally reporting completed bytes.
+
+        The callback receives dictionaries with ``stage``, ``completed`` and
+        ``total``.  Upload bytes count only after LOAD_WRITE is acknowledged;
+        readback bytes count only after READ_ROM returns them.  Omitting the
+        callback preserves the original request sequence and result.
+        """
         image = bytes(image)
         if len(image) != abi.PROFILE_ROM_BYTES:
             raise ValueError('wrong direct-profile image size')
+        notify = progress or (lambda _event: None)
         self.request('LOAD_BEGIN', pack_record('load_begin', {
             'profile': abi.PROFILE_DIRECT_ID, 'size': len(image), 'crc32': zlib.crc32(image)}))
         chunk = abi.WIRE_MAX_PAYLOAD - abi.OFFSET_BYTES
+        notify({'stage': 'upload', 'completed': 0, 'total': len(image)})
         for offset in range(0, len(image), chunk):
-            self.request('LOAD_WRITE', pack_record('offset', {'offset': offset}) + image[offset:offset + chunk])
+            data = image[offset:offset + chunk]
+            self.request('LOAD_WRITE', pack_record('offset', {'offset': offset}) + data)
+            notify({'stage': 'upload', 'completed': offset + len(data), 'total': len(image)})
         self.request('LOAD_END')
-        readback = self.read_storage('READ_ROM', len(image))
+        readback = self.read_storage('READ_ROM', len(image), progress=notify, stage='readback')
         if readback != image:
             # Never include private byte values in a failure record.
             mismatch = next(i for i, (actual, expected) in enumerate(zip(readback, image)) if actual != expected)
@@ -173,12 +184,20 @@ class Client:
             raise ValueError('verified load did not leave a valid paused image')
         return {'verified_bytes': len(image), 'image': summary(image)}
 
-    def read_storage(self, command, size):
+    def read_storage(self, command, size, *, progress=None, stage=None):
+        """Read a whole store, optionally reporting bytes returned by the wire."""
+        if (progress is None) != (stage is None):
+            raise ValueError('read progress requires both callback and stage')
+        notify = progress or (lambda _event: None)
         result = bytearray()
+        if progress is not None:
+            notify({'stage': stage, 'completed': 0, 'total': size})
         for offset in range(0, size, abi.WIRE_MAX_PAYLOAD):
             count = min(abi.WIRE_MAX_PAYLOAD, size - offset)
             checked_range(offset, count, size)
             result.extend(self.request(command, pack_record('read_range', {'offset': offset, 'count': count}), count=count))
+            if progress is not None:
+                notify({'stage': stage, 'completed': len(result), 'total': size})
         return bytes(result)
 
     def peek_range(self, store, offset, count):

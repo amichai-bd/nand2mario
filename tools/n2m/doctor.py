@@ -9,14 +9,23 @@ import uuid
 
 from .fpga import ALLOCATOR_NOTICE, ALLOCATOR_OVERRIDE, ALLOCATOR_OVERRIDE_NOTICE, quartus_environment
 from .records import file_hash
-from .questa import write_macro, diagnostic
+
+SMOKE = "src/dv/builder/builder_smoke.sv"
+SMOKE_SIGNATURE = "PASS builder-smoke seed=1 checks=22"
+SMOKE_FAULT = "count cycle=3 expected=7 actual=3 seed=1"
+# Verilator consults no license. The check removes these so a PASS cannot depend on them.
+LICENSE_VARIABLES = ("SALT_LICENSE_FILE", "LM_LICENSE_FILE", "MGLS_LICENSE_FILE")
+WSL_NOTICE = "not applicable; simulation runs on WSL Linux: python3 tools/build.py doctor"
+# Informational only: this status never lowers the doctor result or readiness.
+NOT_APPLICABLE = "NOT_APPLICABLE"
 
 
-def execute(argv, cwd, log, timeout=60, env=None):
+def execute(argv, cwd, log, timeout=60, env=None, expect_failure=False):
     with (cwd / "commands.log").open("a", encoding="utf-8") as stream:
         stream.write(json.dumps(argv) + "\n")
     try:
-        # env=None inherits the caller's environment unchanged; only Quartus checks pass an override.
+        # env=None inherits the caller's environment unchanged. Quartus passes its allocator
+        # override; Verilator passes the environment with license variables removed.
         result = subprocess.run(argv, cwd=cwd, text=True, encoding="utf-8",
                                 errors="replace", stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT, timeout=timeout, env=env)
@@ -28,6 +37,10 @@ def execute(argv, cwd, log, timeout=60, env=None):
         (cwd / log).write_text(output + "\n" + str(error), encoding="utf-8")
         raise RuntimeError(f"command unavailable or timed out; see {log}") from error
     (cwd / log).write_text(output, encoding="utf-8")
+    if expect_failure:
+        if not result.returncode:
+            raise RuntimeError(f"expected a nonzero exit; see {log}")
+        return output
     if result.returncode:
         raise RuntimeError(f"exit {result.returncode}; see {log}")
     return output
@@ -42,31 +55,54 @@ def executable(directory, name):
 
 
 def warning(output):
-    # Questa's zero-warning summary is not a diagnostic.
+    # A zero-warning summary line is not a diagnostic.
     return bool(re.search(r"(?im)^.*\bwarning(?:s)?\b(?!\s*:\s*0\b).*$", output))
 
 
-def questa(root, folder, directory):
-    names = {name: executable(directory, name) for name in ("vlib", "vlog", "vsim")}
-    version = execute([names["vsim"], "-version"], folder, "version.log")
-    if "Questa" not in version or diagnostic(version):
-        raise RuntimeError("unrecognized Questa version or diagnostic; see version.log")
-    library = execute([names["vlib"], "work"], folder, "library.log")
-    if diagnostic(library):
-        raise RuntimeError("simulator diagnostic; see library.log")
-    compiled = execute([names["vlog"], "-sv", "-work", "work",
-                        str(root / "src/dv/builder/builder_smoke.sv")], folder, "compile.log")
-    if diagnostic(compiled):
+def verilator_diagnostic(output):
+    # Verilator prefixes lint and runtime diagnostics with %Warning, %Error or %Fatal.
+    return bool(re.search(r"%(?:Warning|Error|Fatal)\b", output))
+
+
+def unlicensed_environment():
+    return {k: v for k, v in os.environ.items() if k not in LICENSE_VARIABLES}
+
+
+def verilator(root, folder, directory):
+    tool = executable(directory, "verilator")
+    env = unlicensed_environment()
+    version = execute([tool, "--version"], folder, "version.log", env=env)
+    match = re.match(r"Verilator (\d+\.\d+)", version.strip())
+    if not match or verilator_diagnostic(version):
+        raise RuntimeError("unrecognized Verilator version or diagnostic; see version.log")
+    # --binary compiles and elaborates the smoke into obj_dir/smoke; lint warnings fail the build.
+    compiled = execute([tool, "--binary", "--timing", "--trace-vcd", "--x-initial", "unique",
+                        "-j", "0", "--Mdir", "obj_dir", "-o", "smoke", str(root / SMOKE)],
+                       folder, "compile.log", timeout=300, env=env)
+    if verilator_diagnostic(compiled):
         raise RuntimeError("simulator diagnostic; see compile.log")
     (folder / "waves").mkdir(exist_ok=True)
-    write_macro(folder)
-    output = execute([names["vsim"], "-c", "-onfinish", "stop", "-wlf", "waves/smoke.wlf",
-                      "work.builder_smoke", "+seed=1", "-do", "do run.do"],
-                     folder, "sim.log")
-    if diagnostic(output) or "PASS builder-smoke seed=1 checks=22" not in output:
+    binary = str(folder / "obj_dir" / "smoke")
+    output = execute([binary, "+seed=1", "+verilator+rand+reset+2"], folder, "sim.log", env=env)
+    if SMOKE_SIGNATURE not in output or verilator_diagnostic(output):
         raise RuntimeError("simulation diagnostic or missing checked result; see sim.log")
-    return {"version": version.strip(), "tools": names,
-            "license": "runtime checkout succeeded for this smoke invocation"}
+    # The same binary must also be able to fail: the injected mismatch exits nonzero.
+    fault = execute([binary, "+seed=1", "+verilator+rand+reset+2", "+inject_failure"],
+                    folder, "fault.log", env=env, expect_failure=True)
+    if SMOKE_FAULT not in fault or SMOKE_SIGNATURE in fault:
+        raise RuntimeError("injected fault was not reported; see fault.log")
+    return {"version": version.strip(), "release": match[1], "tools": {"verilator": tool},
+            "license": "none consulted; " + ", ".join(LICENSE_VARIABLES) + " removed from the check environment",
+            "fault": {"expected": SMOKE_FAULT, "detected": True}}
+
+
+def host_is_windows():
+    return os.name == "nt"
+
+
+def wsl_only(folder):
+    (folder / "notice.log").write_text(WSL_NOTICE + "\n", encoding="utf-8")
+    return {"status": NOT_APPLICABLE, "detail": WSL_NOTICE}
 
 
 def quartus(folder, directory):
@@ -163,21 +199,24 @@ def doctor(root, build, args, provenance):
         checks[name]["artifacts"] = {p.relative_to(root).as_posix(): file_hash(p)
                                      for p in folder.rglob("*") if p.is_file()}
 
-    check("questa", lambda folder: questa(root, folder, args.questa_bin))
-    untested = ["Quartus", "JTAG", "UART"]
+    # WSL owns simulation; Windows owns the FPGA tools. Windows only states where the smoke runs.
+    windows = host_is_windows()
+    check("verilator", wsl_only if windows else lambda folder: verilator(root, folder, args.verilator_bin))
+    untested = ["Quartus", "JTAG", "UART"] + (["Verilator smoke"] if windows else [])
     if args.profile == "environment":
         check("quartus", lambda folder: quartus(folder, args.quartus_bin))
         check("jtag", lambda folder: parse_jtag(execute(
             [executable(args.quartus_bin, "jtagconfig")], folder, "chain.log"), args.jtag_cable))
         check("uart", lambda folder: uart(folder, args))
-        untested = ["Quartus synthesis", "physical wiring/voltage", "UART communication", "FPGA programming"]
-    status = "FAIL" if any(c["status"] == "FAIL" for c in checks.values()) else "PASS"
-    if status == "PASS" and any(c["status"] == "WARNING" for c in checks.values()):
-        status = "WARNING"
+        untested = ["Quartus synthesis", "physical wiring/voltage", "UART communication", "FPGA programming"] \
+            + (["Verilator smoke"] if windows else [])
+    applicable = [c["status"] for c in checks.values() if c["status"] != NOT_APPLICABLE]
+    status = "FAIL" if "FAIL" in applicable else "WARNING" if "WARNING" in applicable else "PASS"
     return {"status": status, "checks": checks,
-            "profile": args.profile,
+            "profile": args.profile, "simulator": "verilator",
             "inputs": {p.relative_to(root).as_posix(): file_hash(p) for p in
-                       [root / "src/dv/builder/builder_smoke.sv", *(root / "tools/n2m").glob("*.py")]},
-            "tools": checks["questa"].get("tools", {}), "untested": untested,
-            "readiness": "complete" if all(c["status"] == "PASS" for c in checks.values()) else "partial",
+                       [root / SMOKE, *(root / "tools/n2m").glob("*.py")]},
+            "tools": checks["verilator"].get("tools", {}), "untested": untested,
+            # Windows' simulation profile checks nothing applicable, so it establishes no readiness.
+            "readiness": "complete" if applicable and all(s == "PASS" for s in applicable) else "partial",
             "scope": f"{args.profile} checks only; warnings do not establish readiness"}

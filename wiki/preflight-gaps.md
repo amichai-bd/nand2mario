@@ -106,9 +106,15 @@ confirmed. Dependency fetching requirements remain in GAP-013.
 **Current state**
 
 The [build command](tools/n2m/SPEC.md) implements tagged doctor, builder
-checks and self-checking simulation through Questa. The
+checks and self-checking simulation. Under its
+[simulator policy](tools/n2m/SPEC.md#simulator-policy) Verilator on WSL is the
+sole simulator; `doctor` runs there without a license, while `sim test`,
+`regress` and `tests run` still drive the unmigrated Questa path until the
+builder Verilator path lands. The
 [builder implementation](../tools/n2m/cli.py) dispatches scoped doctor, software,
-simulation, regression and FPGA stages with tagged evidence.
+simulation, regression and FPGA stages with tagged evidence. Command ownership
+is per OS: WSL owns simulation and `doctor`; Windows PowerShell owns `fpga build`
+and `fpga program`.
 
 **Risk**
 
@@ -131,10 +137,12 @@ Agents may invent different commands, directories, or tool invocations.
 **Current state**
 
 The [environment doctor](tools/n2m/SPEC.md#environment-doctor) implements
-checked Questa smoke runs, Quartus edition reporting, and read-only
-JTAG/UART enumeration. It reports selected UART health/identity, expected JTAG
+checked Verilator smoke runs on WSL with no license consulted, Quartus edition
+reporting, and read-only JTAG/UART enumeration. On Windows it states that
+simulation checks run on WSL and performs only the Quartus, JTAG and UART
+identity checks. It reports selected UART health/identity, expected JTAG
 identity and Quartus version independently. Each run must establish current
-environment readiness; executable discovery alone is not licensed runtime proof.
+environment readiness; executable discovery alone is not runtime proof.
 
 **Risk**
 
@@ -142,10 +150,12 @@ Checking only executable names can report success while every simulation fails.
 
 **Close when**
 
-- Quartus and Questa are found without editing global `PATH`.
-- License success, failure, or unverified scope is reported truthfully.
+- Quartus and Verilator are found without editing global `PATH`.
+- Quartus license success, failure, or unverified scope is reported truthfully;
+  the simulator check records that no license was consulted.
 - A repository-owned SV design compiles, elaborates, runs, and checks a value in
-  Questa; scoped licensed execution is recorded in GAP-008.
+  Verilator, and its injected fault is detected; scoped execution is recorded in
+  GAP-008.
 - USB-Blaster reports the expected MAX 10 device.
 - UART is found by VID, PID, or serial identity with an explicit override.
 - WSL tools and optional dependencies are reported as pass, warning, or fail.
@@ -256,25 +266,33 @@ check consumption and full behavioral verification, not only codec agreement.
 
 The [shared baseline](src/dv/baseline/SPEC.md) supplies separate stimulus,
 observation, integer reference, scoreboard, assertions and fixture coverage.
-Its known-good and deliberately broken examples run through Questa with checked
+Its known-good and deliberately broken examples run with checked
 logs, seed, expected/actual CSV and waves. The regression runner checks raw failure
-exits, complete traces and artifact integrity. Questa is the sole simulator.
+exits, complete traces and artifact integrity. Verilator on WSL is the sole
+simulator under the builder's [simulator policy](tools/n2m/SPEC.md#simulator-policy);
+the baseline examples are unmigrated targets that still run on the Questa path
+today. Once the builder Verilator path lands under
+[#597](https://github.com/amichai-bd/nand2mario/issues/597), they will report
+`SKIPPED` with reason `questa-retired` until their own migration.
 The [baseline specification](src/dv/baseline/SPEC.md) links independent adapters,
 their licenses, immutable pins, comparison formats and bounded regression levels.
 Baseline fixture coverage is not CPU, full-system or physical acceptance.
 
-**Questa evidence**
+**Simulator evidence**
 
 The [current authorization](agents/bootstrap-plan.md#verification-and-hardware-authorization)
-supersedes the earlier general Questa deferral. Required Questa simulation must compile, elaborate, run, and check expected results. Positive
+supersedes the earlier general simulation deferral. Required simulation must compile, elaborate, run, and check expected results. Positive
 and deliberately failing checks, independent review, and passing CI remain
 required for affected delivery; compilation alone is not a simulation pass.
+No evidence may depend on a license variable; a license failure is not a
+`SKIPPED` reason for new work.
 
 The [tile runner](tools/sim/SPEC.md) checks normal and deliberately corrupt runs;
-the [doctor](tools/n2m/SPEC.md#environment-doctor) checks smoke observations.
-Isolated libraries and validated cache reuse belong to the shared backend.
+the [doctor](tools/n2m/SPEC.md#environment-doctor) checks smoke observations
+and the smoke's injected fault under Verilator with no license consulted.
+Isolated build directories and validated cache reuse belong to the shared backend.
 The deliberately failing smoke remains FAIL; only exact expected tile corruption
-is accepted. Each affected change must execute its own required Questa coverage.
+is accepted. Each affected change must execute its own required simulator coverage.
 Failed doctor checks
 remain FAIL. Closing this baseline gap does not waive later subsystem,
 independent adapter or physical verification.
@@ -287,7 +305,7 @@ flags, timing, memory traffic, or interrupts.
 **Close when**
 
 - A small UVM-lite structure is committed.
-- A known-good example passes in Questa.
+- A known-good example passes in the supported simulator.
 - A deliberately broken example fails for the expected reason.
 - Failure artifacts include logs, seed, waveform, and expected versus actual.
 - SingleStepTests and Mooneye adapters are designed and license-reviewed.
@@ -330,7 +348,7 @@ The [wiki contract](tools/wiki/SPEC.md) defines custom HTML navigation and
 presentations rendered from original sources.
 Builder and Tile runner checks run locally before merge and by dispatch; they
 check host contracts only.
-Actual local Questa evidence remains mandatory; automated licensed simulation
+Actual local simulator evidence remains mandatory; automated simulation
 is unavailable until the [trusted route](tools/n2m/SPEC.md#ci-execution-boundary)
 is configured. The owner set the required product checks and the protected
 physical runner out of scope on 2026-09-11 because no runner that executes our
@@ -351,7 +369,7 @@ job could run untrusted code on this PC or allow concurrent access to the FPGA.
 - `main` requires focused host/product checks with honest licensed execution evidence.
 - Wiki build and link checks run locally before merge and in the Pages build.
 - Pages deploys only from merged `main`.
-- Questa, Quartus, and board jobs run only for trusted code.
+- Simulator, Quartus, and board jobs run only for trusted code.
 - The physical runner uses concurrency control and a protected environment.
 - One sample issue completes branch, PR, checks, merge, and Pages deployment.
 
@@ -517,7 +535,7 @@ on channel status may hang. The gateway is a fault guard, not audio.
 - Four channels, the frame sequencer, length, envelope and sweep timers, DACs
   and the mixer are implemented in their own owner under the memory decoder.
 - `NR52` power-on and channel status follow the pinned reference.
-- A simulation PCM format exists and the channel tests pass in Questa.
+- A simulation PCM format exists and the channel tests pass in the supported simulator.
 - The charter states which release, if any, requires audio.
 
 This is deferred by the charter; it does not block video and input work.

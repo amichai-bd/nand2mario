@@ -296,7 +296,7 @@ class BuilderTests(unittest.TestCase):
     def test_cli_failure_json_and_latest(self):
         latest = self.root / "workdir/latest.txt"
         latest.write_text("previous\n")
-        with patch("n2m.doctor.questa", side_effect=ToolError("missing compiler")), \
+        with patch("n2m.doctor.verilator", side_effect=ToolError("missing compiler")), \
                 patch("n2m.cli.git_state", return_value={"commit": "test"}), \
                 contextlib.redirect_stdout(io.StringIO()) as output:
             status = main(["doctor", "--tag", "missing", "--json"], self.root)

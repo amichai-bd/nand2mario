@@ -12,7 +12,8 @@ import unittest
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from n2m.doctor import doctor, execute, parse_jtag, questa, quartus, select_uart, uart, warning
+from n2m.doctor import (LICENSE_VARIABLES, NOT_APPLICABLE, SMOKE, SMOKE_FAULT, SMOKE_SIGNATURE, WSL_NOTICE, doctor, execute,
+                        parse_jtag, quartus, select_uart, uart, verilator, warning)
 from n2m.fpga import ALLOCATOR_NOTICE, ALLOCATOR_OVERRIDE_NOTICE, quartus_environment
 from n2m.cli import main, parser
 
@@ -27,43 +28,73 @@ class DoctorTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.folder = Path(self.temp.name)
 
-    def test_questa_elaboration_runtime_and_signature_failure(self):
-        for output, code in (("elaboration failed", 1), ("runtime failed", 1), ("", 0),
-                             ("PASS builder-smoke seed=1 checks=22", 1),
-                             ("** Error: mismatch\nPASS builder-smoke seed=1 checks=22", 0),
-                             ("Errors: 1, Warnings: 0\nPASS builder-smoke seed=1 checks=22", 0),
-                             ("Warning: unsafe\nPASS builder-smoke seed=1 checks=22", 0)):
-            calls = []
-            def run(argv, **kwargs):
-                calls.append(argv)
-                is_sim = "-c" in argv
-                return SimpleNamespace(returncode=code if is_sim else 0,
-                                       stdout=output if is_sim else ("Questa 2025.2" if "-version" in argv else "Errors: 0, Warnings: 0"))
-            with patch("n2m.doctor.executable", side_effect=lambda d, n: str(self.folder / n)), \
-                    patch("n2m.doctor.subprocess.run", side_effect=run):
-                with self.assertRaises(RuntimeError):
-                    questa(ROOT, self.folder, str(self.folder))
-            self.assertEqual(len(calls), 4)
-            self.assertEqual(calls[2][-1], str(ROOT / "src/dv/builder/builder_smoke.sv"))
-            self.assertTrue((self.folder / "sim.log").exists())
-
-    def test_questa_checked_smoke_uses_macro_handlers(self):
+    @staticmethod
+    def runner(calls, compile_output="", compile_code=0, run_output="", run_code=0,
+               fault_output="", fault_code=1):
         def run(argv, **kwargs):
-            output = "Questa 2025.2" if "-version" in argv else "Errors: 0, Warnings: 0"
-            if "-c" in argv:
-                self.assertEqual(argv[-2:], ["-do", "do run.do"])
-                self.assertEqual(argv[argv.index("-onfinish") + 1], "stop")
-                macro = (kwargs["cwd"] / "run.do").read_text()
-                self.assertEqual(macro.splitlines(), [
-                    "onbreak {if {[lindex [runStatus -full] 2] eq {$finish}} "
-                    "{quit -code 0} else {quit -code 1}}",
-                    "onerror {quit -code 1}", "run -all", "quit -code 1"])
-                output = "PASS builder-smoke seed=1 checks=22"
-            return SimpleNamespace(returncode=0, stdout=output)
-        with patch("n2m.doctor.executable", side_effect=lambda d, n: str(self.folder / n)), \
-                patch("n2m.doctor.subprocess.run", side_effect=run):
-            result = questa(ROOT, self.folder, str(self.folder))
-        self.assertIn("runtime checkout succeeded", result["license"])
+            calls.append((argv, kwargs))
+            if "--version" in argv:
+                return SimpleNamespace(returncode=0, stdout="Verilator 5.052 2026-09-05 rev v5.052\n")
+            if "--binary" in argv:
+                return SimpleNamespace(returncode=compile_code, stdout=compile_output)
+            if "+inject_failure" in argv:
+                return SimpleNamespace(returncode=fault_code, stdout=fault_output)
+            return SimpleNamespace(returncode=run_code, stdout=run_output)
+        return run
+
+    def test_verilator_elaboration_runtime_and_signature_failure(self):
+        good = SMOKE_SIGNATURE + "\n- builder_smoke.sv:37: Verilog $finish\n"
+        fault = ("[40000] %Fatal: builder_smoke.sv:31: Assertion failed in builder_smoke: " + SMOKE_FAULT
+                 + "\n%Error: builder_smoke.sv:31: Verilog $stop\nAborting...\n")
+        cases = (dict(compile_output="%Error: builder_smoke.sv:3: syntax error", compile_code=1),
+                 dict(compile_output="%Warning-WIDTHEXPAND: builder_smoke.sv:27: Operator ASSIGN"),
+                 dict(run_output="runtime failed", run_code=1),
+                 dict(run_output=""),
+                 dict(run_output=good, run_code=1),
+                 dict(run_output="%Error: builder_smoke.sv:25: mismatch\n" + good),
+                 dict(run_output="[40000] %Fatal: builder_smoke.sv:31: watchdog\n" + good),
+                 dict(run_output=good, fault_output=fault, fault_code=0),
+                 dict(run_output=good, fault_output="Aborting...", fault_code=1),
+                 dict(run_output=good, fault_output=good, fault_code=1))
+        for case in cases:
+            calls = []
+            with patch("n2m.doctor.executable", side_effect=lambda d, n: str(self.folder / n)), \
+                    patch("n2m.doctor.subprocess.run", side_effect=self.runner(calls, **case)):
+                with self.assertRaises(RuntimeError):
+                    verilator(ROOT, self.folder, str(self.folder))
+            self.assertLessEqual(len(calls), 4)
+            self.assertEqual(calls[1][0][-1], str(ROOT / SMOKE))
+            self.assertTrue((self.folder / ("compile.log" if len(calls) == 2 else "sim.log")).exists())
+            self.assertEqual(len(calls) == 4, "fault_output" in case)
+
+    def test_verilator_checked_smoke_reads_no_license(self):
+        calls = []
+        good = SMOKE_SIGNATURE + "\n- builder_smoke.sv:37: Verilog $finish\n"
+        fault = ("[40000] %Fatal: builder_smoke.sv:31: Assertion failed in builder_smoke: " + SMOKE_FAULT
+                 + "\n%Error: builder_smoke.sv:31: Verilog $stop\nAborting...\n")
+        licensed = {name: "27000@example" for name in LICENSE_VARIABLES}
+        with patch.dict("n2m.doctor.os.environ", {**licensed, "N2M_KEEP": "1"}), \
+                patch("n2m.doctor.executable", side_effect=lambda d, n: str(self.folder / n)), \
+                patch("n2m.doctor.subprocess.run",
+                      side_effect=self.runner(calls, run_output=good, fault_output=fault)):
+            result = verilator(ROOT, self.folder, str(self.folder))
+        self.assertEqual(result["release"], "5.052")
+        self.assertEqual(result["tools"], {"verilator": str(self.folder / "verilator")})
+        self.assertTrue(result["fault"]["detected"])
+        self.assertIn("none consulted", result["license"])
+        self.assertEqual(len(calls), 4)
+        for argv, kwargs in calls:
+            self.assertEqual(kwargs["cwd"], self.folder)
+            for name in LICENSE_VARIABLES:
+                self.assertNotIn(name, kwargs["env"])
+            self.assertEqual(kwargs["env"]["N2M_KEEP"], "1")
+        compile_argv = calls[1][0]
+        for flag in ("--binary", "--timing", "--trace-vcd", "--x-initial", "unique", "--Mdir", "obj_dir"):
+            self.assertIn(flag, compile_argv)
+        self.assertNotIn("-Wno-fatal", compile_argv)
+        self.assertEqual(calls[2][0], [str(self.folder / "obj_dir/smoke"), "+seed=1", "+verilator+rand+reset+2"])
+        self.assertEqual(calls[3][0][-1], "+inject_failure")
+        self.assertTrue((self.folder / "fault.log").exists())
 
     def test_missing_tool_timeout_and_partial_logs(self):
         for error in (FileNotFoundError("absent"), subprocess.TimeoutExpired("vsim", 60, output=b"partial runtime")):
@@ -148,28 +179,75 @@ class DoctorTests(unittest.TestCase):
         with patch("n2m.doctor.quartus", return_value={}), patch("n2m.doctor.executable", return_value="jtagconfig"), \
                 patch("n2m.doctor.execute", return_value="1) USB-Blaster\n  031050DD 10M50DA\n"), \
                 patch("n2m.doctor.uart", return_value={"status": "WARNING"}), \
-                patch("n2m.doctor.questa", return_value={}):
+                patch("n2m.doctor.verilator", return_value={}):
             self.assertEqual(doctor(ROOT, self.folder, args, {})["status"], "WARNING")
-            with patch("n2m.doctor.questa", side_effect=RuntimeError("bad elaboration")):
+            with patch("n2m.doctor.verilator", side_effect=RuntimeError("bad elaboration")):
                 self.assertEqual(doctor(ROOT, self.folder, args, {})["status"], "FAIL")
             self.assertEqual(len(list((self.folder / "doctor").iterdir())), 2)
 
-    def test_default_profile_runs_only_questa_and_missing_license_fails(self):
+    def test_default_profile_runs_only_verilator_and_broken_elaboration_fails(self):
         args = parser().parse_args(["doctor"])
-        self.assertEqual((args.profile, args.sim), ("simulation", "questa"))
-        with patch("n2m.doctor.questa", return_value={"tools": {"vsim": "fixture"}}) as run, \
+        self.assertEqual((args.profile, args.sim, args.verilator_bin), ("simulation", "verilator", None))
+        with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
+            parser().parse_args(["doctor", "--questa-bin", "retired"])
+        with patch("n2m.doctor.host_is_windows", return_value=False), \
+             patch("n2m.doctor.verilator", return_value={"tools": {"verilator": "fixture"}}) as run, \
              patch("n2m.doctor.quartus") as quartus_probe, patch("n2m.doctor.uart") as uart_probe:
             report = doctor(ROOT, self.folder, args, {})
             self.assertEqual(report["status"], "PASS")
-            self.assertEqual(set(report["checks"]), {"questa"})
+            self.assertEqual(set(report["checks"]), {"verilator"})
+            self.assertEqual(report["simulator"], "verilator")
+            self.assertEqual(report["tools"], {"verilator": "fixture"})
             self.assertEqual(report["untested"], ["Quartus", "JTAG", "UART"])
+            self.assertIn(SMOKE, report["inputs"])
             run.assert_called_once()
             quartus_probe.assert_not_called()
             uart_probe.assert_not_called()
-        with patch("n2m.doctor.questa", side_effect=RuntimeError("runtime license unavailable")):
+        with patch("n2m.doctor.host_is_windows", return_value=False), \
+                patch("n2m.doctor.verilator", side_effect=RuntimeError("exit 1; see compile.log")):
             report = doctor(ROOT, self.folder, args, {})
             self.assertEqual(report["status"], "FAIL")
-            self.assertIn("license", report["checks"]["questa"]["error"])
+            self.assertEqual(report["readiness"], "partial")
+            self.assertIn("compile.log", report["checks"]["verilator"]["error"])
+
+    def test_windows_states_simulation_runs_on_wsl(self):
+        args = parser().parse_args(["doctor"])
+        with patch("n2m.doctor.host_is_windows", return_value=True), patch("n2m.doctor.subprocess.run") as run:
+            report = doctor(ROOT, self.folder, args, {})
+        run.assert_not_called()
+        # Informational: the notice neither warns nor establishes readiness.
+        self.assertEqual((report["status"], report["readiness"]), ("PASS", "partial"))
+        self.assertEqual(report["checks"]["verilator"]["status"], NOT_APPLICABLE)
+        self.assertEqual(report["checks"]["verilator"]["detail"], WSL_NOTICE)
+        self.assertIn("not applicable", WSL_NOTICE)
+        self.assertIn("Verilator smoke", report["untested"])
+        self.assertEqual(report["tools"], {})
+        args = parser().parse_args(["doctor", "--profile", "environment"])
+        with patch("n2m.doctor.host_is_windows", return_value=True), patch("n2m.doctor.quartus", return_value={}) as quartus_probe, \
+                patch("n2m.doctor.executable", return_value="jtagconfig"), \
+                patch("n2m.doctor.execute", return_value="1) USB-Blaster\n  031050DD 10M50DA\n"), \
+                patch("n2m.doctor.uart", return_value={"selected": "COM5"}) as uart_probe, \
+                patch("n2m.doctor.verilator") as smoke:
+            report = doctor(ROOT, self.folder, args, {})
+        smoke.assert_not_called()
+        quartus_probe.assert_called_once()
+        uart_probe.assert_called_once()
+        self.assertEqual({name: c["status"] for name, c in report["checks"].items()},
+                         {"verilator": NOT_APPLICABLE, "quartus": "PASS", "jtag": "PASS", "uart": "PASS"})
+        # A healthy Windows FPGA-side environment exits 0 and counts as complete readiness.
+        self.assertEqual((report["status"], report["readiness"]), ("PASS", "complete"))
+        self.assertEqual(report["untested"][-1], "Verilator smoke")
+        with patch("n2m.doctor.host_is_windows", return_value=True), patch("n2m.doctor.quartus", return_value={}), \
+                patch("n2m.doctor.executable", return_value="jtagconfig"), \
+                patch("n2m.doctor.execute", return_value="1) USB-Blaster\n  031050DD 10M50DA\n"), \
+                patch("n2m.doctor.uart", return_value={"status": "WARNING"}):
+            self.assertEqual(doctor(ROOT, self.folder, args, {})["status"], "WARNING")
+        with patch("n2m.doctor.host_is_windows", return_value=True), \
+                patch("n2m.doctor.quartus", side_effect=RuntimeError("missing quartus_sh")), \
+                patch("n2m.doctor.executable", return_value="jtagconfig"), \
+                patch("n2m.doctor.execute", return_value="1) USB-Blaster\n  031050DD 10M50DA\n"), \
+                patch("n2m.doctor.uart", return_value={}):
+            self.assertEqual(doctor(ROOT, self.folder, args, {})["status"], "FAIL")
 
     def test_quartus_license_scope_and_diagnostics(self):
         for edition, status in (("Lite Edition", "PASS"), ("Standard Edition", "WARNING")):

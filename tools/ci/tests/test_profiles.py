@@ -108,27 +108,19 @@ class ProfileTests(unittest.TestCase):
             rows.append(f'1,{i},0,0,0,0,{128 if broken and i == 6 else 0}')
         self.write(self.attempt / 'transactions.csv', '\n'.join(rows) + '\n')
         if not broken: self.write(self.attempt / 'coverage/bins.txt', 'bins=ff\n')
-        # Capture the actual producer's initial record before any tool planning
-        # or execution. Remaining logs/artifacts below are synthetic host data.
-        produced = []
-        class RecordCaptured(Exception):
-            pass
-        def capture(path, record):
-            produced.append(deepcopy(record))
-            raise RecordCaptured()
-        with patch.object(simulation, 'atomic_json', side_effect=capture), \
-                patch.object(simulation, 'questa_commands') as command_plan:
-            with self.assertRaises(RecordCaptured):
-                simulation.simulate(self.root, self.root / 'workdir/builds/producer',
-                                    SimpleNamespace(target=target, seed=1, rebuild=True),
-                                    SimpleNamespace(info=info), git_state(self.root))
-            command_plan.assert_not_called()
-        self.assertEqual(len(produced), 1)
-        self.assertEqual(produced[0]['options'], {'target': target, 'seed': 1,
-                                                'definition': definition, 'vendor_model': None})
+        # The producer no longer drives Questa: a questa target is retired and
+        # reported SKIPPED before any command plan, so the record shape this
+        # profile checks is the retained Questa shape, built here directly.
+        with patch.object(simulation, 'atomic_json') as published:
+            skipped = simulation.simulate(self.root, self.root / 'workdir/builds/producer',
+                                          SimpleNamespace(target=target, seed=1, rebuild=True),
+                                          SimpleNamespace(info=info), git_state(self.root))
+        self.assertEqual((skipped['status'], skipped['reason']), ('SKIPPED', 'questa-retired'))
+        published.assert_called_once()
+        options = {'target': target, 'seed': 1, 'definition': definition, 'vendor_model': None}
         self.record = {'status': 'PASS', 'cache': 'BUILT', 'provenance': git_state(self.root),
                        'inputs': profiles.expected_inputs(self.root, 'questa-baseline', target),
-                       'tools': info, 'options': produced[0]['options'],
+                       'tools': info, 'options': options,
                        'seed': 1, 'commands': commands, 'artifacts': {}}
         self.republish()
 

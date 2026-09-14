@@ -72,13 +72,13 @@ belongs to the tile migration. Retired simulator selections fail argument
 parsing; there is no fallback.
 
 Both paths reject tool, compile, elaboration, warning, timeout, exit, or expected
-output failures. Host command-construction tests do not prove Questa execution. The
+output failures. Host command-construction tests do not prove simulator execution. The
 [baseline contract](../../src/dv/baseline/SPEC.md) owns broader verification.
 
 The [workflow](../../../.github/workflows/tile-pixel.yml) runs standalone host
 contracts by dispatch; authors run the same command
 [locally before merge](../../agents/pull-requests.md#hosted-and-local-checks).
-Its check is named `Tile runner checks`; it does not claim licensed RTL execution. Actual local positive/corrupt Questa
+Its check is named `Tile runner checks`; it does not claim RTL execution. Actual local positive/corrupt simulator
 evidence remains required. The [trusted CI boundary](../n2m/SPEC.md#ci-execution-boundary)
 records the [out-of-scope trusted route](../../preflight-gaps.md#gap-010-github-remote-issues-ci-and-pages). See
 [tool provenance](../../../tools/sim/THIRD_PARTY.md).

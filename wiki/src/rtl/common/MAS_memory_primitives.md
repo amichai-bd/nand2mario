@@ -2,10 +2,25 @@
 
 All product RAM and ROM backing stores must use the explicit Intel `altsyncram`
 boundary in [`n2m_intel_ram`](../../../../src/rtl/common/n2m_intel_ram.sv).
-Questa compiles the installed Intel model for the same instance and parameters
-used by MAX 10 synthesis. A behavioral replacement, stub or black box cannot
-provide product-memory acceptance. Register files, peripheral state and small
-control registers may remain flops; independent reference models may use arrays.
+Quartus always sees the vendor `altsyncram` instance and its parameters. Under
+the builder's [simulator policy](../../../tools/n2m/SPEC.md#simulator-policy),
+Verilator on WSL is the sole simulator and cannot compile the vendor model, so
+the wrapper selects, under the predefined `VERILATOR` macro, a repository-owned
+behavioral double that implements every rule on this page: one request edge of
+latency with unregistered output, per-lane byte enables for the supported
+shapes, `NEW_DATA_NO_NBE_READ` same-port behavior with the partial-lane
+assertion, `OLD_DATA` single-clock and unspecified dual-clock mixed-port
+behavior, uninitialized power-up filled from the run's randomized initial
+values, and `SIM_INIT_FILE` preload. The double uses an `n2m_sim_` name, never
+`altsyncram`, and has its own unit test. That double and its test are the open
+gap in [#598](https://github.com/amichai-bd/nand2mario/issues/598); until it
+lands, unmigrated targets still compile the installed Intel model on Questa
+under the rules below, and any repository HDL defining `altsyncram` remains a
+shadow model. Four-state (`X`) assertions in memory consumers are removed
+during migration as an authorized behavior change: an uninitialized read fails
+by value mismatch against the randomized fill, not by an `X` check. Register
+files, peripheral state and small control registers may remain flops;
+independent reference models may use arrays.
 
 ## Supported ports and timing
 

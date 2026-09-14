@@ -3,7 +3,8 @@
 | Tool | Source and license | Use |
 |---|---|---|
 | Python | [Pinned version and PSF license](../n2m/dependencies.json) | Host commands and tests; no additional packages |
-| Questa | User-installed proprietary Siemens tool; executable versions and hashes recorded per run | Sole supported simulator; licensed runtime required |
+| Verilator | [Pinned tag, commit and LGPL-3.0-only OR Artistic-2.0 license](../n2m/dependencies.json); built from source into a user prefix on WSL | Sole supported simulator; no license consulted |
+| Questa | User-installed proprietary Siemens tool; executable versions and hashes recorded per run | Unmigrated simulation targets only, until their migration under the [simulator policy](../../wiki/tools/n2m/SPEC.md#simulator-policy) |
 | Quartus | User-installed proprietary Intel/Altera tool; version and hashes recorded per build | FPGA synthesis, fit and timing checks |
 
 No proprietary installer or license file is redistributed. Tools are selected

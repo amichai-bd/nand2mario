@@ -27,7 +27,7 @@ board acceptance, not independent simulation or host work.
 
 ### Verification and hardware authorization
 
-The user authorizes required Questa verification, FPGA programming, UART
+The user authorizes required simulation verification, FPGA programming, UART
 transmission, and physical tests within the approved project. This supplies
 the separate hardware authorization; do not request it again within this scope.
 
