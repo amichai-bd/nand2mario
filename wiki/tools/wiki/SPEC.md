@@ -29,7 +29,9 @@ prevent launch. No failure silently falls back or skips the suite.
 
 Checks use real page interactions for categories, filtering, the README/AGENTS
 toggle, source overlays, slides, fullscreen when supported, HTML links, and
-recovery from a missing page. Unexpected console errors and page exceptions fail.
+recovery from a missing page. They visit every tab, assert the root line and the
+top sidebar entries each tab starts at, and capture the Blog tab at desktop and
+narrow widths. Unexpected console errors and page exceptions fail.
 The browser's optional favicon request is handled locally. Waits observe page
 state without fixed sleeps.
 
@@ -66,11 +68,25 @@ are documentation assets. Runtime files are copied outside the content manifest;
 they never become navigation, search, or source-viewer entries. Resource links
 and CSS imports to excluded files fail the build.
 
-Top tabs are Home, Src, Agents/Skills, Tools, Cfg, and Presentations. Each tab has
-a directory-based sidebar and file filter. Each tab lists its published documentation; an empty category says so.
+Top tabs are Home, Src, Agents/Skills, Tools, Cfg, Presentations, Blog, and
+Stats, in that order: the contracts first, then the material derived from them.
+Each tab has a directory-based sidebar and file filter. Each tab lists its
+published documentation; an empty category says so. A tab opens its own
+`index.md` or `README.md` when it has one, and otherwise its first document, so
 Home defaults to README; its toggle selects AGENTS. URLs identify the original
 file with `?page=wiki/tools/wiki/SPEC.md`; fragments select headings or `#L12` source
-lines. Former MkDocs document paths redirect to the matching source.
+lines. Former MkDocs document paths redirect to the matching source. Adding a tab
+changes no published URL.
+
+`site.py` matches each published path to the longest source root in `ROOTS` and
+records that root beside its tab in the manifest. The sidebar strips the root
+rather than repeating it: a tab with one root, such as `wiki/src/` under Src,
+names it once above the tree and starts the tree at that tab's own directories.
+A tab with several roots, such as `.agents/skills/` and `wiki/agents/` under
+Agents/Skills, groups its entries under the root each came from, so a published
+`src/` page could never be mistaken for its `wiki/src/` specification. Roots come
+from the whole tab, so filtering never moves them, and the toolbar always shows
+the open document's full repository path.
 
 Keep facts in their original files. The site uses only generated output, never
 committed document mirrors. Every documentation page exposes its own escaped source viewer with the

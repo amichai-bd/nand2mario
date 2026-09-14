@@ -87,20 +87,35 @@ def tracked_text(root: Path) -> dict[str, str]:
     return result
 
 
-def category(path: str) -> str:
+# Top tabs in the order the shell draws them. Contracts first, then the
+# material derived from them: decks, the dated blog, and the statistics report.
+TABS = ("Home", "Src", "Agents/Skills", "Tools", "Cfg", "Presentations", "Blog", "Stats")
+
+# The source root a tab collects, and the tab it feeds. A path takes its longest
+# matching root, so a tab that collects two roots keeps them apart: only the
+# root is stripped from the sidebar, never the difference between src/ and
+# wiki/src/ - one is the implementation, the other is its specification.
+ROOTS = {
+    ".agents/skills/": "Agents/Skills", ".agents/": "Agents/Skills", "wiki/agents/": "Agents/Skills",
+    "src/": "Src", "wiki/src/": "Src",
+    "tools/": "Tools", "wiki/tools/": "Tools",
+    "cfg/": "Cfg", "wiki/cfg/": "Cfg",
+    "wiki/presentations/": "Presentations",
+    "wiki/blogs/": "Blog",
+    "": "Home",
+}
+
+
+def section(path: str) -> tuple[str, str]:
+    """The tab a path is listed under, and the source root to strip from it."""
     if path == "wiki/statistics.html":
-        return "Stats"
-    if path.startswith((".agents/", "wiki/agents/")):
-        return "Agents/Skills"
-    if path.startswith(("src/", "wiki/src/")):
-        return "Src"
-    if path.startswith(("tools/", "wiki/tools/")):
-        return "Tools"
-    if path.startswith(("cfg/", "wiki/cfg/")):
-        return "Cfg"
-    if path.startswith("wiki/presentations/"):
-        return "Presentations"
-    return "Home"
+        return "Stats", "wiki/"
+    root = max((prefix for prefix in ROOTS if path.startswith(prefix)), key=len)
+    return ROOTS[root], root
+
+
+def category(path: str) -> str:
+    return section(path)[0]
 
 
 # The only data URL the site accepts: one frame of a board-captured showcase
@@ -296,7 +311,8 @@ def build(root: Path = ROOT, output: Path | None = None):
         suffix = Path(path).suffix.lower()
         kind = "html" if suffix in {".svg", ".html"} else "md"
         if content_page(path):
-            manifest[path] = {"category": category(path), "nav": True, "kind": kind,
+            tab, prefix = section(path)
+            manifest[path] = {"category": tab, "root": prefix, "nav": True, "kind": kind,
                               "text": text, "html": "".join(documents[path].output) if kind == "md" else ""}
         destination = output / "files" / path
         destination.parent.mkdir(parents=True, exist_ok=True)

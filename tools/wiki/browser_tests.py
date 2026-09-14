@@ -72,10 +72,58 @@ def interactions(browser, base):
         expect(stats_frame.get_by_role('heading', name='Repository statistics', exact=True)).to_be_visible()
         page.screenshot(path=str(OUTPUT / 'statistics-mobile.png'), full_page=False)
         page.set_viewport_size({'width': 1440, 'height': 1000})
-        for category in ('Src', 'Agents/Skills', 'Tools', 'Presentations', 'Home'):
+        # Every tab: the active button, the single source root it names once,
+        # and a sidebar that starts at that tab's own directories instead of at
+        # the prefix all of its pages share.
+        tops = "() => [...document.querySelectorAll('#tree > a, #tree > details > summary')].map(e => e.textContent)"
+        for category, root in (('Src', 'wiki/src/'), ('Tools', 'wiki/tools/'), ('Cfg', 'wiki/cfg/'),
+                               ('Presentations', 'wiki/presentations/'), ('Blog', 'wiki/blogs/'),
+                               ('Stats', 'wiki/'), ('Agents/Skills', None), ('Home', None)):
             page.locator('#tabs').get_by_role('button', name=category, exact=True).click()
             expect(page.locator('#tabs [aria-current="page"]')).to_have_text(category)
             expect(page.locator('#tree a').first).to_be_visible()
+            # The top of the tree must be exactly what the tab holds once its
+            # root is removed, read from the manifest rather than assumed.
+            expected = page.evaluate(r"""async (name) => {
+                const manifest = await (await fetch('manifest.json')).json();
+                const entries = Object.entries(manifest).filter(([, file]) => file.nav && file.category === name);
+                const roots = [...new Set(entries.map(([, file]) => file.root))];
+                // One root is stripped; several stay as the labelled groups.
+                return [...new Set(roots.length > 1 ? roots.map((root) => root.replace(/\/$/, ''))
+                    : entries.map(([path, file]) => path.slice(file.root.length).split('/')[0]))].sort();
+            }""", category)
+            assert sorted(page.evaluate(tops)) == expected, (category, page.evaluate(tops), expected)
+            if root:
+                expect(page.locator('#tree-root')).to_have_text(root)
+            else:
+                expect(page.locator('#tree-root')).to_be_hidden()
+        # Two roots in one tab stay apart and labelled: a specification page is
+        # never shown as if it were the implementation it describes.
+        page.locator('#tabs').get_by_role('button', name='Agents/Skills', exact=True).click()
+        assert page.evaluate(tops) == ['.agents/skills', 'wiki/agents'], page.evaluate(tops)
+        page.screenshot(path=str(OUTPUT / 'sidebar-two-roots.png'), full_page=False)
+        page.locator('#tabs').get_by_role('button', name='Src', exact=True).click()
+        assert 'rtl' in page.evaluate(tops) and 'project-charter.md' in page.evaluate(tops), page.evaluate(tops)
+        page.screenshot(path=str(OUTPUT / 'sidebar-one-root.png'), full_page=False)
+        # The blog is its own tab, opens its index, and left Home.
+        page.locator('#tabs').get_by_role('button', name='Blog', exact=True).click()
+        expect(page.locator('#path')).to_have_text('wiki/blogs/index.md')
+        expect(page.locator('#document')).to_contain_text('Project stories')
+        expect(page.locator('#tree').get_by_role('link', name='2026-09-13-remote-fpga.md', exact=True)).to_be_visible()
+        page.screenshot(path=str(OUTPUT / 'blog-tab-desktop.png'), full_page=False)
+        page.set_viewport_size({'width': 390, 'height': 844})
+        expect(page.locator('#tree-root')).to_have_text('wiki/blogs/')
+        page.screenshot(path=str(OUTPUT / 'blog-tab-mobile.png'), full_page=False)
+        # The strip is narrower than its tabs at this width, so it must scroll
+        # rather than clip: the last tab is still reachable.
+        assert page.locator('#tabs').evaluate('e => e.scrollWidth > e.clientWidth'), 'Tab strip does not scroll at 390'
+        page.locator('#tabs').get_by_role('button', name='Stats', exact=True).click()
+        expect(page.locator('#path')).to_have_text('wiki/statistics.html')
+        page.locator('#tabs').get_by_role('button', name='Blog', exact=True).click()
+        expect(page.locator('#path')).to_have_text('wiki/blogs/index.md')
+        page.set_viewport_size({'width': 1440, 'height': 1000})
+        page.locator('#tabs').get_by_role('button', name='Home', exact=True).click()
+        assert not [name for name in page.evaluate(tops) if 'blog' in name.lower()], 'A blog entry remains under Home'
         page.locator('#tabs').get_by_role('button', name='Cfg', exact=True).click()
         expect(page.locator('#path')).to_have_text('wiki/cfg/interfaces.md')
         expect(page.locator('#document')).to_contain_text('DO NOT EDIT')

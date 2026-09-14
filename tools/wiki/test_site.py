@@ -3,6 +3,7 @@
 import importlib.util
 import json
 from pathlib import Path
+import re
 import subprocess
 import tempfile
 import unittest
@@ -11,6 +12,59 @@ from unittest.mock import patch
 spec = importlib.util.spec_from_file_location("wiki_site", Path(__file__).with_name("site.py"))
 site = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(site)
+
+
+class NavigationTests(unittest.TestCase):
+    def test_every_path_takes_its_longest_source_root(self):
+        cases = {
+            "README.md": ("Home", ""), "AGENTS.md": ("Home", ""),
+            "wiki/index.md": ("Home", ""), "wiki/showcase/README.md": ("Home", ""),
+            "wiki/statistics.html": ("Stats", "wiki/"),
+            "wiki/blogs/index.md": ("Blog", "wiki/blogs/"),
+            "wiki/src/project-charter.md": ("Src", "wiki/src/"),
+            "src/rtl/cpu.sv": ("Src", "src/"),
+            "wiki/tools/wiki/SPEC.md": ("Tools", "wiki/tools/"),
+            "tools/wiki/site.py": ("Tools", "tools/"),
+            "wiki/cfg/interfaces.md": ("Cfg", "wiki/cfg/"),
+            "cfg/interfaces.toml": ("Cfg", "cfg/"),
+            "wiki/presentations/README.md": ("Presentations", "wiki/presentations/"),
+            "wiki/agents/issues.md": ("Agents/Skills", "wiki/agents/"),
+            ".agents/skills/agent-flow/SKILL.md": ("Agents/Skills", ".agents/skills/"),
+        }
+        for path, expected in cases.items():
+            with self.subTest(path=path):
+                self.assertEqual(site.section(path), expected)
+                self.assertEqual(site.category(path), expected[0])
+                self.assertTrue(path.startswith(expected[1]))
+        self.assertEqual(set(site.ROOTS.values()) | {"Stats"}, set(site.TABS))
+
+    def test_manifest_carries_the_root_the_sidebar_strips(self):
+        parent = site.ROOT / "workdir/wiki/tests"
+        parent.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=parent) as directory:
+            root = Path(directory)
+            files = {"README.md": "# Human", "wiki/blogs/index.md": "# Blog",
+                     "wiki/src/rtl/MAS_cpu.md": "# CPU",
+                     "tools/wiki/assets/shell.html": "<!doctype html><title>Test</title>",
+                     "tools/wiki/assets/embed.js": "// bridge"}
+            for path, content in files.items():
+                target = root / path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(content, encoding="utf-8")
+            with patch.object(site.subprocess, "check_output", return_value="\0".join(files).encode()):
+                site.build(root)
+            manifest = json.loads((root / "workdir/wiki/site/manifest.json").read_text())
+        self.assertEqual(manifest["wiki/blogs/index.md"]["category"], "Blog")
+        self.assertEqual(manifest["wiki/blogs/index.md"]["root"], "wiki/blogs/")
+        self.assertEqual(manifest["wiki/src/rtl/MAS_cpu.md"]["root"], "wiki/src/")
+        self.assertEqual(manifest["README.md"]["root"], "")
+
+    def test_shell_tab_list_matches_the_build(self):
+        """The shell draws the tabs; only this check keeps the two lists equal."""
+        shell = (site.ROOT / "tools/wiki/assets/shell.js").read_text(encoding="utf-8")
+        declared = re.search(r"^const categories = (\[[^\]]*\]);$", shell, re.M)
+        self.assertIsNotNone(declared, "shell.js no longer declares a categories array")
+        self.assertEqual(json.loads(declared[1]), list(site.TABS))
 
 
 class PublicationTests(unittest.TestCase):

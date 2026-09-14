@@ -18,6 +18,7 @@ aside { background: var(--panel); border-right: 1px solid var(--border); padding
 .explorer-label { color: var(--muted); font: 10px var(--mono); letter-spacing: 2px; margin: 0 8px 15px; }
 .filter-label { position: absolute; width: 1px; height: 1px; overflow: hidden; }
 #filter { width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 7px 9px; font-size: 12px; margin-bottom: 20px; }
+#tree-root { color: var(--muted); font: 11px var(--mono); margin: 0 8px 9px; overflow-wrap: anywhere; }
 #tree details { font-size: 12px; }
 #tree details > div { border-left: 1px solid var(--border); padding-left: 9px; margin-left: 9px; }
 #tree summary { cursor: pointer; color: var(--muted); padding: 5px 3px; overflow-wrap: anywhere; }
