@@ -24,10 +24,14 @@ def checked(path, expected):
     return path
 
 
-def tool_identity(root, installation):
-    """The selected installed compiler/build tools enter the simulation identity."""
+def tool_identity(root, installation=None):
+    """The selected installed compiler/build tools enter the simulation identity.
+
+    On Linux the locked Ubuntu host toolchain is the default and runs natively;
+    the Windows backend needs the retired Questa installation's MinGW tools.
+    """
     lock = pins(root)
-    backend = os.environ.get('N2M_MOONEYE_BUILD_HOST', 'windows')
+    backend = os.environ.get('N2M_MOONEYE_BUILD_HOST', 'wsl' if os.name == 'posix' else 'windows')
     if backend == 'wsl':
         from .mooneye_wsl import identity, identity_hash
         result = identity()
@@ -36,6 +40,8 @@ def tool_identity(root, installation):
         return result
     if backend != 'windows':
         raise ValueError('MOONEYE_BUILD_HOST')
+    if installation is None:
+        raise ValueError('MOONEYE_BUILD_HOST windows requires the retired Questa installation')
     tools = {name: str(checked(installation / spec['path'], spec['sha256']))
              for name, spec in lock['host_tools'].items()}
     # Include compiler headers/libraries and CMake modules, not only launchers.

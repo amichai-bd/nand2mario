@@ -17,7 +17,14 @@ def timeout_seconds(limit):
     return str(int(seconds))
 
 
+def native():
+    """True inside WSL itself, where the locked tools run without wsl.exe."""
+    return os.name == 'posix'
+
+
 def linux_path(path):
+    if native():
+        return str(path)
     return subprocess.check_output(['wsl.exe', '--exec', 'wslpath', '-a', '-u', str(path)],
                                    text=True, timeout=10).strip()
 
@@ -47,6 +54,8 @@ def snapshot():
 
 
 def identity():
+    if native():
+        return snapshot()
     helper = linux_path(Path(__file__).resolve())
     return json.loads(subprocess.check_output(['wsl.exe', '--exec', 'timeout', '--kill-after=2', timeout_seconds(60),
                                                'python3', helper], text=True, timeout=65))
@@ -58,7 +67,10 @@ def identity_hash(record):
 
 def command(argv, cwd):
     converted = [linux_path(value) if isinstance(value, Path) else str(value) for value in argv]
-    return ['wsl.exe', '--cd', linux_path(cwd), '--exec', 'timeout', '--kill-after=2', timeout_seconds(110), *converted]
+    bound = ['timeout', '--kill-after=2', timeout_seconds(110), *converted]
+    if native():
+        return bound
+    return ['wsl.exe', '--cd', linux_path(cwd), '--exec', *bound]
 
 
 if __name__ == '__main__':

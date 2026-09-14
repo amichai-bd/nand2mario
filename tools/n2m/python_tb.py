@@ -40,6 +40,10 @@ FIXTURE_BUILDERS = {
     "mooneye-reg-f": "tools/n2m/mooneye.py",
 }
 
+# Preloads whose builder produces an original image for preload.prepare; the
+# Mooneye fixture has its own locked validator in mooneye.py.
+IMAGE_PRELOADS = tuple(name for name in FIXTURE_BUILDERS if name != "mooneye-reg-f")
+
 
 def validate(root, target, name=None):
     kind = target.get("testbench", "systemverilog")
@@ -48,7 +52,13 @@ def validate(root, target, name=None):
     if kind == "systemverilog":
         if "python" in target:
             raise ValueError("python configuration requires testbench=python")
+        if target.get("preload") is not None:
+            validate_fixture(root, target, name or target.get("top"))
+        elif "preload_inputs" in target:
+            raise ValueError("preload_inputs requires a preload")
         return
+    if "preload_inputs" in target:
+        raise ValueError("python inputs carry fixture inputs; preload_inputs is for systemverilog targets")
     config = target.get("python")
     if not isinstance(config, dict) or not {"module", "test", "inputs"} <= set(config) or set(config) - {"module", "test", "inputs", "waves", "excluded_imports"}:
         raise ValueError("python testbench requires module, test and inputs")
@@ -60,7 +70,7 @@ def validate(root, target, name=None):
         raise ValueError("python testbench requires zero raw exit and no driver")
     if target.get("vendor_model") not in (None, "intel-memory", "intel-controls"):
         raise ValueError("Python testbench requires supported Intel memory or controls models")
-    if target.get("preload") not in (None, 'hud493-s', 'hud493-a', 'hud493-b', 'hud493-c', 'hud493-d', 'hud493-e', "interaction494-s", "interaction494-a", "interaction494-b", "interaction494-c", "interaction494-d", "courier492-s", "courier492-a", "courier492-b", "courier492-c", "courier492-d", "courier492-e", "courier492-f", "courier492-g", "integration", "v05", "palette-fc", "palette-00", "startup-read", "startup-write", "vram-read", "vram-write", "late-fe9c", "late-fe9d", "late-fe20", "timer234", "stop349", "dma239", "display308", "oam299", "oam299-s", "courier292", "courier292-s", "hud300", "hud300-s", "hud-render300", "entities-render305", "entities-render305-changed", "motion301", "motion301-s", "motion-render301", "power302", "power302-s", "power302-a", "power302-b", "progress304-s", "progress304-a", "progress304-b", "entities305-s", "entities305-a", "entities305-b", "entities305-c", "entities305-d", "entities305-e", "entities305-f", "entities305-g", "entities305-h", "entities305-i", "entities-oam305-s", "entities-oam305-a", "entities-oam305-b", "entities-oam305-c", "power-render302", "blocks303-s", "blocks303-a", "blocks303-b", "springtrail", "springtrail-unit", "flow", "flow-s", "render", "render-s", "stackdrop", "stackdrop-unit", "stackdrop-short", "mooneye-reg-f"):
+    if target.get("preload") not in (None, *FIXTURE_BUILDERS):
         raise ValueError("unknown Python preload")
     if not isinstance(target.get("top"), str) or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", target["top"]):
         raise ValueError("python top must be an HDL identifier")
@@ -77,101 +87,128 @@ def validate(root, target, name=None):
     matches = [p for p in config["inputs"] if Path(p).name == config["module"] + ".py"]
     if len(matches) != 1:
         raise ValueError("python inputs must contain exactly one named test module")
-    if target.get("preload") in ("hud493-s", "hud493-a", "hud493-b", "hud493-c", "hud493-d", "hud493-e", "interaction494-s", "interaction494-a", "interaction494-b", "interaction494-c", "interaction494-d", "courier492-s", "courier492-a", "courier492-b", "courier492-c", "courier492-d", "courier492-e", "courier492-f", "courier492-g", "integration", "v05", "palette-fc", "palette-00", "startup-read", "startup-write", "vram-read", "vram-write", "late-fe9c", "late-fe9d", "late-fe20", "timer234", "stop349", "dma239", "display308", "oam299", "oam299-s", "courier292", "courier292-s", "hud300", "hud300-s", "hud-render300", "entities-render305", "entities-render305-changed", "motion301", "motion301-s", "motion-render301", "power302", "power302-s", "power302-a", "power302-b", "power-render302", "blocks303-s", "blocks303-a", "blocks303-b", "progress304-s", "progress304-a", "progress304-b", "entities305-s", "entities305-a", "entities305-b", "entities305-c", "entities305-d", "entities305-e", "entities305-f", "entities305-g", "entities305-h", "entities305-i", "entities-oam305-s", "entities-oam305-a", "entities-oam305-b", "entities-oam305-c", "springtrail", "springtrail-unit", "flow", "flow-s", "render", "render-s", "stackdrop", "stackdrop-unit", "stackdrop-short"):
-        required = {"src/dv/integration/image.py", "src/dv/integration/program.asm",
-                    "src/dv/integration/program.json", "src/dv/integration/retirement.json",
-                    "src/sw/generated/interfaces.inc"}
-        if target['preload'] in ('interaction494-s', 'interaction494-a', 'interaction494-b', 'interaction494-c', 'interaction494-d', 'motion301', 'motion301-s', 'power302', 'power302-s', 'power302-a', 'power302-b', 'blocks303-s', 'blocks303-a', 'blocks303-b',
-                                  'progress304-s', 'progress304-a', 'progress304-b', 'entities305-s', 'entities305-a', 'entities305-b', 'entities305-c', 'entities305-d', 'entities305-e', 'entities305-f', 'entities305-g', 'entities305-h', 'entities305-i', 'entities-oam305-s', 'entities-oam305-a', 'entities-oam305-b', 'entities-oam305-c'):
-            required = {'src/dv/springtrail/motion_program.py', 'src/dv/springtrail/motion_cases.py',
-                        'src/dv/springtrail/motion_reference.py', 'src/sw/generated/interfaces.inc',
-                        'src/sw/springtrail/layout.json', 'src/sw/springtrail/assets/core/core-tiles.json',
-                        'src/sw/springtrail/assets/core/terrain-tiles.json'}
-            required.update(p.relative_to(root).as_posix() for p in (root/'src/sw/springtrail').glob('*.asm'))
-            if target['preload'].startswith(('power302', 'blocks303', 'progress304')):
-                required.update({'src/dv/springtrail/power_cases.py', 'src/dv/springtrail/power_reference.py'})
-            if target['preload'].startswith('blocks303'):
-                required.update({'src/dv/springtrail/blocks_cases.py', 'src/dv/springtrail/blocks_reference.py'})
-            if target['preload'].startswith('interaction494'):
-                required.update({'src/dv/springtrail/interaction_current_cases.py', 'src/dv/springtrail/entities_cases.py',
-                                 'src/dv/springtrail/entities_reference.py', 'src/sw/springtrail/assets/core/enemies-tiles.json'})
-            if target['preload'].startswith('entities305'):
-                required.update({'src/dv/springtrail/entities_cases.py', 'src/dv/springtrail/entities_reference.py',
-                                 'src/sw/springtrail/assets/core/enemies-tiles.json'})
-            if target['preload'].startswith('progress304'):
-                required.update({'src/dv/springtrail/progress_cases.py',
-                                 'src/dv/springtrail/progress_reference.py'})
-        if target['preload'].startswith('hud493-'):
-            required = {'src/dv/springtrail/hud_current_program.py', 'src/dv/springtrail/hud_current_cases.py',
-                        'src/sw/generated/interfaces.inc', 'src/sw/springtrail/layout.json'}
-            required.update(p.relative_to(root).as_posix() for p in (root/'src/sw/springtrail').glob('*.asm'))
-            required.update({'src/sw/springtrail/assets/core/core-tiles.json',
-                             'src/sw/springtrail/assets/core/terrain-tiles.json',
-                             'src/sw/springtrail/assets/core/enemies-tiles.json'})
-        if target['preload'].startswith('courier492-'):
-            required = {'src/dv/springtrail/courier_program.py', 'src/dv/springtrail/courier_cases.py',
-                        'src/sw/generated/interfaces.inc', 'src/sw/springtrail/layout.json'}
-            required.update(p.relative_to(root).as_posix() for p in (root/'src/sw/springtrail').glob('*.asm'))
-            required.update({'src/sw/springtrail/assets/core/core-tiles.json',
-                             'src/sw/springtrail/assets/core/terrain-tiles.json',
-                             'src/sw/springtrail/assets/core/enemies-tiles.json'})
-        if target['preload'] in ('entities-render305', 'entities-render305-changed'):
-            required = {'src/dv/springtrail/entities_render_program.py', 'src/sw/generated/interfaces.inc', 'src/sw/springtrail/layout.json'}
-            required.update(p.relative_to(root).as_posix() for p in (root/'src/sw/springtrail').glob('*.asm'))
-            required.update({'src/sw/springtrail/tiles.json', 'src/sw/springtrail/assets/courier/unique-tiles.json',
-                             'src/sw/springtrail/assets/core/core-tiles.json', 'src/sw/springtrail/assets/core/terrain-tiles.json',
-                             'src/sw/springtrail/assets/core/enemies-tiles.json'})
-        if target['preload'] in ('hud-render300', 'motion-render301', 'power-render302'):
-            required = {'src/dv/springtrail/hud_render_program.py','src/sw/generated/interfaces.inc','src/sw/springtrail/layout.json','src/sw/springtrail/assets/core/core-tiles.json'}
-            required.update(p.relative_to(root).as_posix() for p in (root/'src/sw/springtrail').glob('*.asm'))
-        if target['preload'] in ('motion-render301', 'power-render302'):
-            required.discard('src/dv/springtrail/hud_render_program.py')
-            required.add('src/dv/springtrail/motion_render_program.py')
-        if target['preload'] in ('hud300','hud300-s'):
-            required = {'src/dv/springtrail/hud_program.py','src/dv/springtrail/hud_unit_cases.py',
-                        'src/sw/generated/interfaces.inc','src/sw/springtrail/layout.json',
-                        'src/sw/springtrail/assets/core/core-tiles.json'}
-            required.update(p.relative_to(root).as_posix() for p in (root/'src/sw/springtrail').glob('*.asm'))
-        if target['preload'] in ('courier292','courier292-s'):
-            required = {'src/dv/springtrail/composition_program.py', 'src/dv/springtrail/composition_cases.py',
-                        'src/sw/generated/interfaces.inc'}
-            required.update(p.relative_to(root).as_posix() for p in (root/'src/sw/springtrail').glob('*.asm'))
-            required.add('src/sw/springtrail/layout.json')
-        if target["preload"] in ("oam299", "oam299-s"):
-            required = {"src/dv/springtrail/dma_program.py", "src/sw/springtrail/oam_dma.asm", "src/sw/generated/interfaces.inc"}
-        if target["preload"] == "display308":
-            required = {"src/dv/display308/program.py", "src/sw/generated/interfaces.inc"}
-        if target["preload"] == "dma239":
-            required = {"src/dv/dma/program239.py", "src/sw/generated/interfaces.inc"}
-        if target["preload"] == "timer234":
-            required = {"src/dv/timer/program234.py", "src/sw/generated/interfaces.inc"}
-        if target["preload"] == "stop349":
-            required = {"src/dv/joypad/program349.py", "src/sw/generated/interfaces.inc"}
-        if target["preload"] == "v05":
-            required = {"src/sw/v05/main.asm", "src/sw/v05/layout.json", "src/sw/generated/interfaces.inc"}
-        if target["preload"] in ("springtrail", "springtrail-unit", "flow", "flow-s", "render", "render-s", "stackdrop", "stackdrop-unit", "stackdrop-short"):
-            required = {"src/sw/targets.json", "src/sw/generated/interfaces.inc", "cfg/interfaces.json"}
-            required.update(p.relative_to(root).as_posix() for p in (root / "src/sw" / ("stackdrop" if target["preload"].startswith("stackdrop") else "springtrail")).iterdir()
-                            if p.suffix in (".asm", ".json"))
-        if target['preload'].startswith('startup-'):
-            required = {'src/dv/ppu/startup202.py', 'src/sw/generated/interfaces.inc'}
-        if target['preload'].startswith('late-'):
-            required = {'src/dv/ppu/late208.py', 'src/sw/generated/interfaces.inc'}
-        if target['preload'].startswith('vram-'):
-            required = {'src/dv/ppu/startup204.py', 'src/sw/generated/interfaces.inc'}
-        if target['preload'].startswith('palette-'):
-            required.update({'src/dv/ppu/palette194.py','src/dv/ppu/palette194.json'})
-            required.update(p.relative_to(root).as_posix() for p in (root/'src/dv/sameboy').iterdir() if p.suffix in ('.py','.c','.json','.patch'))
-        required.update(p.relative_to(root).as_posix() for p in (root / "tools/sw").glob("*")
-                        if p.suffix in (".py", ".json"))
+    if target.get("preload") in IMAGE_PRELOADS:
+        required = fixture_inputs(root, target["preload"])
         if target.get("vendor_model") not in ("intel-memory", "intel-controls") or not required <= set(config["inputs"]):
             raise ValueError("preload requires Intel memory and all software image inputs")
     if target.get('preload') == 'mooneye-reg-f':
-        required = {'src/dv/mooneye/pins.json', 'src/dv/mooneye/THIRD_PARTY.md',
-                    'src/rtl/ppu/GPL-3.0.txt'}
-        if target.get('vendor_model') != 'intel-memory' or not required <= set(config['inputs']):
+        if target.get('vendor_model') != 'intel-memory' or not fixture_inputs(root, 'mooneye-reg-f') <= set(config['inputs']):
             raise ValueError('Mooneye preload requires Intel memory and pinned source notices')
     check_imports(root, target, name or config["module"])
+
+
+def fixture_inputs(root, preload):
+    """The repository files a preload's image builder reads; every one enters the fingerprint."""
+    if preload == 'mooneye-reg-f':
+        return {'src/dv/mooneye/pins.json', 'src/dv/mooneye/THIRD_PARTY.md', 'src/rtl/ppu/GPL-3.0.txt'}
+    required = {"src/dv/integration/image.py", "src/dv/integration/program.asm",
+                "src/dv/integration/program.json", "src/dv/integration/retirement.json",
+                "src/sw/generated/interfaces.inc"}
+    if preload in ('interaction494-s', 'interaction494-a', 'interaction494-b', 'interaction494-c', 'interaction494-d', 'motion301', 'motion301-s', 'power302', 'power302-s', 'power302-a', 'power302-b', 'blocks303-s', 'blocks303-a', 'blocks303-b',
+                              'progress304-s', 'progress304-a', 'progress304-b', 'entities305-s', 'entities305-a', 'entities305-b', 'entities305-c', 'entities305-d', 'entities305-e', 'entities305-f', 'entities305-g', 'entities305-h', 'entities305-i', 'entities-oam305-s', 'entities-oam305-a', 'entities-oam305-b', 'entities-oam305-c'):
+        required = {'src/dv/springtrail/motion_program.py', 'src/dv/springtrail/motion_cases.py',
+                    'src/dv/springtrail/motion_reference.py', 'src/sw/generated/interfaces.inc',
+                    'src/sw/springtrail/layout.json', 'src/sw/springtrail/assets/core/core-tiles.json',
+                    'src/sw/springtrail/assets/core/terrain-tiles.json'}
+        required.update(p.relative_to(root).as_posix() for p in (root/'src/sw/springtrail').glob('*.asm'))
+        if preload.startswith(('power302', 'blocks303', 'progress304')):
+            required.update({'src/dv/springtrail/power_cases.py', 'src/dv/springtrail/power_reference.py'})
+        if preload.startswith('blocks303'):
+            required.update({'src/dv/springtrail/blocks_cases.py', 'src/dv/springtrail/blocks_reference.py'})
+        if preload.startswith('interaction494'):
+            required.update({'src/dv/springtrail/interaction_current_cases.py', 'src/dv/springtrail/entities_cases.py',
+                             'src/dv/springtrail/entities_reference.py', 'src/sw/springtrail/assets/core/enemies-tiles.json'})
+        if preload.startswith('entities305'):
+            required.update({'src/dv/springtrail/entities_cases.py', 'src/dv/springtrail/entities_reference.py',
+                             'src/sw/springtrail/assets/core/enemies-tiles.json'})
+        if preload.startswith('progress304'):
+            required.update({'src/dv/springtrail/progress_cases.py',
+                             'src/dv/springtrail/progress_reference.py'})
+    if preload.startswith('hud493-'):
+        required = {'src/dv/springtrail/hud_current_program.py', 'src/dv/springtrail/hud_current_cases.py',
+                    'src/sw/generated/interfaces.inc', 'src/sw/springtrail/layout.json'}
+        required.update(p.relative_to(root).as_posix() for p in (root/'src/sw/springtrail').glob('*.asm'))
+        required.update({'src/sw/springtrail/assets/core/core-tiles.json',
+                         'src/sw/springtrail/assets/core/terrain-tiles.json',
+                         'src/sw/springtrail/assets/core/enemies-tiles.json'})
+    if preload.startswith('courier492-'):
+        required = {'src/dv/springtrail/courier_program.py', 'src/dv/springtrail/courier_cases.py',
+                    'src/sw/generated/interfaces.inc', 'src/sw/springtrail/layout.json'}
+        required.update(p.relative_to(root).as_posix() for p in (root/'src/sw/springtrail').glob('*.asm'))
+        required.update({'src/sw/springtrail/assets/core/core-tiles.json',
+                         'src/sw/springtrail/assets/core/terrain-tiles.json',
+                         'src/sw/springtrail/assets/core/enemies-tiles.json'})
+    if preload in ('entities-render305', 'entities-render305-changed'):
+        required = {'src/dv/springtrail/entities_render_program.py', 'src/sw/generated/interfaces.inc', 'src/sw/springtrail/layout.json'}
+        required.update(p.relative_to(root).as_posix() for p in (root/'src/sw/springtrail').glob('*.asm'))
+        required.update({'src/sw/springtrail/tiles.json', 'src/sw/springtrail/assets/courier/unique-tiles.json',
+                         'src/sw/springtrail/assets/core/core-tiles.json', 'src/sw/springtrail/assets/core/terrain-tiles.json',
+                         'src/sw/springtrail/assets/core/enemies-tiles.json'})
+    if preload in ('hud-render300', 'motion-render301', 'power-render302'):
+        required = {'src/dv/springtrail/hud_render_program.py','src/sw/generated/interfaces.inc','src/sw/springtrail/layout.json','src/sw/springtrail/assets/core/core-tiles.json'}
+        required.update(p.relative_to(root).as_posix() for p in (root/'src/sw/springtrail').glob('*.asm'))
+    if preload in ('motion-render301', 'power-render302'):
+        required.discard('src/dv/springtrail/hud_render_program.py')
+        required.add('src/dv/springtrail/motion_render_program.py')
+    if preload in ('hud300','hud300-s'):
+        required = {'src/dv/springtrail/hud_program.py','src/dv/springtrail/hud_unit_cases.py',
+                    'src/sw/generated/interfaces.inc','src/sw/springtrail/layout.json',
+                    'src/sw/springtrail/assets/core/core-tiles.json'}
+        required.update(p.relative_to(root).as_posix() for p in (root/'src/sw/springtrail').glob('*.asm'))
+    if preload in ('courier292','courier292-s'):
+        required = {'src/dv/springtrail/composition_program.py', 'src/dv/springtrail/composition_cases.py',
+                    'src/sw/generated/interfaces.inc'}
+        required.update(p.relative_to(root).as_posix() for p in (root/'src/sw/springtrail').glob('*.asm'))
+        required.add('src/sw/springtrail/layout.json')
+    if preload in ("oam299", "oam299-s"):
+        required = {"src/dv/springtrail/dma_program.py", "src/sw/springtrail/oam_dma.asm", "src/sw/generated/interfaces.inc"}
+    if preload == "display308":
+        required = {"src/dv/display308/program.py", "src/sw/generated/interfaces.inc"}
+    if preload == "dma239":
+        required = {"src/dv/dma/program239.py", "src/sw/generated/interfaces.inc"}
+    if preload == "timer234":
+        required = {"src/dv/timer/program234.py", "src/sw/generated/interfaces.inc"}
+    if preload == "stop349":
+        required = {"src/dv/joypad/program349.py", "src/sw/generated/interfaces.inc"}
+    if preload == "v05":
+        required = {"src/sw/v05/main.asm", "src/sw/v05/layout.json", "src/sw/generated/interfaces.inc"}
+    if preload in ("springtrail", "springtrail-unit", "flow", "flow-s", "render", "render-s", "stackdrop", "stackdrop-unit", "stackdrop-short"):
+        required = {"src/sw/targets.json", "src/sw/generated/interfaces.inc", "cfg/interfaces.json"}
+        required.update(p.relative_to(root).as_posix() for p in (root / "src/sw" / ("stackdrop" if preload.startswith("stackdrop") else "springtrail")).iterdir()
+                        if p.suffix in (".asm", ".json"))
+    if preload.startswith('startup-'):
+        required = {'src/dv/ppu/startup202.py', 'src/sw/generated/interfaces.inc'}
+    if preload.startswith('late-'):
+        required = {'src/dv/ppu/late208.py', 'src/sw/generated/interfaces.inc'}
+    if preload.startswith('vram-'):
+        required = {'src/dv/ppu/startup204.py', 'src/sw/generated/interfaces.inc'}
+    if preload.startswith('palette-'):
+        required.update({'src/dv/ppu/palette194.py','src/dv/ppu/palette194.json'})
+        required.update(p.relative_to(root).as_posix() for p in (root/'src/dv/sameboy').iterdir() if p.suffix in ('.py','.c','.json','.patch'))
+    required.update(p.relative_to(root).as_posix() for p in (root / "tools/sw").glob("*")
+                    if p.suffix in (".py", ".json"))
+    return required
+
+
+def validate_fixture(root, target, name):
+    """A SystemVerilog target's preload names a registered builder and declares every fixture input."""
+    preload = target["preload"]
+    if preload not in FIXTURE_BUILDERS:
+        raise ValueError(f"{name}: preload {preload} has no registered fixture builder to check")
+    inputs = target.get("preload_inputs")
+    if not isinstance(inputs, list) or not inputs or any(not isinstance(source, str) for source in inputs):
+        raise ValueError(f"{name}: preload_inputs must list the fixture's input files")
+    for source in inputs:
+        path = (root / source).resolve()
+        if not path.is_relative_to(root.resolve()) or not path.is_file():
+            raise ValueError(f"{name}: missing or out-of-tree preload input: {source}")
+    missing = sorted(fixture_inputs(root, preload) - set(inputs))
+    if missing:
+        raise ValueError(f"{name}: preload_inputs omit fixture inputs: {', '.join(missing)}")
+    implicit = {p.relative_to(root).as_posix() for p in (root / "tools/n2m").glob("*.py")} | {"tools/build.py"}
+    undeclared = sorted(loaded_modules(root, root / FIXTURE_BUILDERS[preload]) - set(inputs) - implicit)
+    if undeclared:
+        raise ValueError(f"{name}: undeclared transitive fixture inputs: {', '.join(undeclared)}")
 
 
 def _search_dirs(root, tree):
@@ -348,7 +385,7 @@ def _prepare(target, attempt, root=None, fixture_tools=None):
     if target.get('preload') == 'mooneye-reg-f':
         from .mooneye import prepare as prepare_mooneye
         prepare_mooneye(root, attempt, fixture_tools)
-    if target.get("preload") in ("hud493-s", "hud493-a", "hud493-b", "hud493-c", "hud493-d", "hud493-e", "interaction494-s", "interaction494-a", "interaction494-b", "interaction494-c", "interaction494-d", "courier492-s", "courier492-a", "courier492-b", "courier492-c", "courier492-d", "courier492-e", "courier492-f", "courier492-g", "integration", "v05", "palette-fc", "palette-00", "startup-read", "startup-write", "vram-read", "vram-write", "late-fe9c", "late-fe9d", "late-fe20", "timer234", "stop349", "dma239", "display308", "oam299", "oam299-s", "courier292", "courier292-s", "hud300", "hud300-s", "hud-render300", "entities-render305", "entities-render305-changed", "motion301", "motion301-s", "motion-render301", "power302", "power302-s", "power302-a", "power302-b", "progress304-s", "progress304-a", "progress304-b", "entities305-s", "entities305-a", "entities305-b", "entities305-c", "entities305-d", "entities305-e", "entities305-f", "entities305-g", "entities305-h", "entities305-i", "entities-oam305-s", "entities-oam305-a", "entities-oam305-b", "entities-oam305-c", "power-render302", "blocks303-s", "blocks303-a", "blocks303-b", "progress304-s", "progress304-a", "progress304-b", "entities305-s", "entities305-a", "entities305-b", "entities305-c", "entities305-d", "entities305-e", "entities305-f", "entities305-g", "entities305-h", "entities305-i", "entities-oam305-s", "entities-oam305-a", "entities-oam305-b", "entities-oam305-c", "springtrail", "springtrail-unit", "flow", "flow-s", "render", "render-s", "stackdrop", "stackdrop-unit", "stackdrop-short"):
+    if target.get("preload") in IMAGE_PRELOADS:
         import hashlib
         import importlib.util
         from .preload import prepare as prepare_preload, verify

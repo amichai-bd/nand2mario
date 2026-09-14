@@ -65,7 +65,13 @@ prepared image/configuration. Other memory instances retain `UNUSED`, and all
 synthesized instances ignore simulation initialization.
 
 The focused `preload-lifecycle` and `preload-crc-fault` targets check the load
-boundary with the same installed Intel model. The offline comparison command is:
+boundary with the same installed Intel model. `preload-fixture` checks the
+prepared files alone under Verilator: it rebuilds the image from the emitted
+ROM MIF, requires its CRC-32 to equal `preload-crc.hex` and checks the presence
+row, entry stub and title; the
+[builder specification](../../../tools/n2m/SPEC.md#preload-fixtures-under-verilator)
+owns preparation, the pre-launch recheck and the fingerprint. The offline
+comparison command is:
 
 ```text
 python src/dv/preload/compare.py --root <workspace> --normal <real-result.json> --preloaded <preload-result.json>

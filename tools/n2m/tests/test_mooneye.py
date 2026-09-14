@@ -61,6 +61,7 @@ class MooneyeTests(unittest.TestCase):
     def test_wsl_deadline_and_space_arguments(self):
         with patch.dict('os.environ', {'N2M_TEST_EXECUTION_DEADLINE': '1020'}), \
              patch.object(mooneye_wsl.time, 'time', return_value=1000), \
+             patch.object(mooneye_wsl, 'native', return_value=False), \
              patch.object(mooneye_wsl, 'linux_path', side_effect=lambda p: '/mnt/c/'+p.name):
             argv = mooneye_wsl.command(['/usr/bin/cmake', Path('with spaces')], Path('build dir'))
             self.assertEqual(argv, ['wsl.exe', '--cd', '/mnt/c/build dir', '--exec', 'timeout',
@@ -69,6 +70,26 @@ class MooneyeTests(unittest.TestCase):
              patch.object(mooneye_wsl.time, 'time', return_value=1000):
             with self.assertRaisesRegex(ValueError, 'BUILD_DEADLINE'):
                 mooneye_wsl.timeout_seconds(110)
+
+    def test_native_linux_host_runs_the_locked_tools_without_wsl_exe(self):
+        identity = {'backend': 'wsl', 'tools': {}, 'files': {}}
+        lock = {'wsl_host': {'sha256': mooneye_wsl.identity_hash(identity)}}
+        with patch.object(mooneye_wsl, 'native', return_value=True), \
+             patch.object(mooneye_wsl, 'snapshot', return_value=identity) as snapshot, \
+             patch.object(mooneye_wsl.subprocess, 'check_output', side_effect=AssertionError('wsl.exe')):
+            self.assertEqual(mooneye_wsl.identity(), identity)
+            snapshot.assert_called_once()
+            self.assertEqual(mooneye_wsl.linux_path(Path('/tmp/with space')), '/tmp/with space')
+            argv = mooneye_wsl.command(['/usr/bin/cmake', Path('with spaces')], Path('build dir'))
+            self.assertEqual(argv, ['timeout', '--kill-after=2', '110', '/usr/bin/cmake', 'with spaces'])
+            # On Linux the locked Ubuntu host is the default backend and no installation is needed.
+            with patch.dict('os.environ', {}, clear=False), patch.object(mooneye.os, 'name', 'posix'), \
+                 patch.object(mooneye, 'pins', return_value=lock):
+                mooneye.os.environ.pop('N2M_MOONEYE_BUILD_HOST', None)
+                self.assertEqual(mooneye.tool_identity(ROOT), identity)
+        with patch.dict('os.environ', {'N2M_MOONEYE_BUILD_HOST': 'windows'}):
+            with self.assertRaisesRegex(ValueError, 'retired Questa installation'):
+                mooneye.tool_identity(ROOT)
 
     def test_missing_and_unknown_build_host(self):
         with patch.dict('os.environ', {'N2M_MOONEYE_BUILD_HOST': 'other'}):
