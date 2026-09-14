@@ -236,8 +236,11 @@ class PreloadTests(unittest.TestCase):
             result = original(argv, cwd)
             if argv[0] != self.sim.compiler:
                 result.stdout = signature
-                # The run reads the prepared files from its own directory.
-                self.assertTrue((cwd / "preload-crc.hex").is_file() and (cwd / "preload-rom.mif").is_file())
+                # The run's working directory is the attempt that holds the
+                # prepared files, so SIM_INIT_FILE and $readmemh paths resolve.
+                self.assertTrue((cwd / "preload.json").is_file(), cwd)
+                for name in ("preload-rom.mif", "preload-presence.mif", "preload-crc.hex"):
+                    self.assertTrue((cwd / name).is_file(), name)
             return result
         self.sim.run = run
 
