@@ -199,11 +199,11 @@ against an expectation. All you learn is what the board displayed, not that it
 displayed the right thing. That is a real and severe limit, and it is the price
 of the axis.
 
-![Eight games running on the DE10-Lite, each tile a looping set of framebuffers the board returned over UART](../showcase/games-gallery.svg)
+![The games running on the DE10-Lite, each tile a looping set of framebuffers the board returned over UART](../showcase/games-gallery.svg)
 
-*Springtrail and seven third-party images, every frame read back from the board.
-The ninth cell is not a game: it says what the picture leaves out, which is the
-only reason the picture can be published on its own.*
+*Every game the board has been captured running, each frame read back from it.
+The panel is not a game: it says what the picture leaves out, which is the only
+reason the picture can be published on its own.*
 
 The right way to describe this is "widen", not "deepen" and certainly not
 "first". The repository already held the design at arm's length twice, narrowly.
@@ -419,9 +419,9 @@ reached. The author's original number was below it and the reviewer's was above
 it.
 
 The decision still stood. But the margin it stood on was not the one either
-party had measured, and that number is now a comment in the generator beside the
-coordinate it constrains. Neither the author nor the reviewer had it alone; the
-exchange produced it. That is why "the reviewer approved it" is a weaker
+party had measured, and the number went into the generator as a comment beside
+the coordinate it constrained. Neither the author nor the reviewer had it alone;
+the exchange produced it. That is why "the reviewer approved it" is a weaker
 statement than "the reviewer and the author disagreed about something specific
 and resolved it."
 
@@ -633,18 +633,21 @@ The games gallery is an animated SVG. It is exactly the kind of thing that ends
 up in a post, a chat, a slide, with the caption stripped off. So it has to be
 true standing alone, and everything it implies has to be true too.
 
-Its title strip reads "Eight of the games that run on the DE10-Lite", not "the
-eight games". That is a deliberately weaker sentence: eight tiles are not a
-total, and saying "eight games run here" would have been false, because
-Stackdrop also runs and has no capture archive to draw a tile from. The ninth
-cell is not a game at all. It is a panel headed "Not the complete set" that
-names Stackdrop, names Wyrmhole and Rex Run as pinned images that load and
-execute but never enable the LCD, and states that seven of the nine pinned
-images play.
+Its title strip therefore names no total. It says which machine the games run
+on and where the frames came from, and stops there. A tile count is not a count
+of what runs, and the artwork cannot know, once it has travelled, how much has
+been captured since it was drawn: any number in that strip is a claim that goes
+stale without anyone touching it.
 
-Building the disclaimer into the artwork rather than the caption cost one cell
-in a three-by-three grid. The alternative was a picture that told a small lie
-whenever it travelled, which is most of the time.
+What it leaves out is named inside it, in a panel headed "Not the complete set"
+that identifies Wyrmhole and Rex Run as pinned images which load and execute but
+never enable the LCD, so the board completes no frame to capture, and states
+that seven of the nine pinned images play.
+
+Building the disclaimer into the artwork rather than the caption costs layout —
+a cell while the grid had a spare one, a band beneath the tiles once they filled
+it. The alternative was a picture that told a small lie whenever it travelled,
+which is most of the time.
 
 ### Understating your own rigour is the same error as overstating it
 
@@ -723,10 +726,10 @@ program finds by accident.
 The two games that never draw a frame are the most valuable result on the
 homebrew page, and they are the one section with no picture in it. The reviewer
 who measured the gallery's clearance was wrong, and writing that down rather
-than quietly correcting it is why the generator now carries the right number
-beside the coordinate it constrains. My three specification mistakes are in this
-article because a record containing only successes is not a record without
-failures; it is a record whose failures are unaccounted for.
+than quietly correcting it is why the right number reached the generator at all,
+as a comment beside the coordinate it constrained. My three specification
+mistakes are in this article because a record containing only successes is not a
+record without failures; it is a record whose failures are unaccounted for.
 
 This is not a moral point. It is that the alternative costs more. An incident
 written down honestly is a control for next time. An incident rounded off is a

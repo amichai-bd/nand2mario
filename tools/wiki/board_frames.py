@@ -2,8 +2,9 @@
 """Board-captured frame archives for the wiki showcase loops.
 
 `ingest` reads one retained capture session -- `play.py showcase`, which drives
-the pinned Libbet image, or `frame_proofs.py full --showcase`, which drives the
-Springtrail image the repository builds -- and writes the committed archive
+the pinned Libbet image, `frame_proofs.py full --showcase`, which drives the
+Springtrail image the repository builds, or `board_play.py --package`, which
+drives the Stackdrop image it builds -- and writes the committed archive
 `tools/wiki/board_frames/<name>.json`. The archive holds the session's
 provenance and, per sampled frame, its identity (sequence, completion dot,
 applied JOYP mask, CRC32 of the packed board bytes) and the indexed-PNG payload
@@ -200,13 +201,74 @@ def homebrew_session(folder):
     return provenance, frames
 
 
+# The three frames the Stackdrop archive keeps out of one recorded session: the
+# title, the well filling with the L still in flight, and the frame after the
+# hard drop that clears the bottom row and takes the score to 0100.
+STACKDROP_SHOWCASE = ('title', 'l-right-3', 'l-drop')
+
+
+def stackdrop_session(folder):
+    """Three retained frames from one `src/dv/stackdrop/board_play.py` session.
+
+    Boot-and-play evidence: the driver observes only decoded pixels and checks
+    no rule. Stackdrop's rules are proved against the independent reference
+    model in `src/dv/stackdrop/`, and nothing here re-checks them. What the
+    session verifies before playing is the image: `host load --package` matched
+    the built SHA-256 and read all 32768 bytes back.
+    """
+    result = json.loads((folder / 'result.json').read_text(encoding='utf-8'))
+    assert result['status'] == 'PASS' and not result['uncertain'], 'SESSION_NOT_A_PASSING_PLAY'
+    load = result['load']
+    assert load['status'] == 'PASS' and load['result']['verified_bytes'] == 32768, 'SESSION_READBACK'
+    image = load['result']['image']['sha256']
+    assert load['package']['rom_sha256'] == image, 'SESSION_IMAGE'
+    by_label = {entry['label']: entry for entry in result['frames']}
+    applied = [(row['applied']['dot'], row['mask']) for row in result['inputs']]
+    provenance = dict(
+        program='Stackdrop', author='built in this repository',
+        driver='src/dv/stackdrop/board_play.py',
+        command='python src/dv/stackdrop/board_play.py --package '
+                'workdir/builds/<tag>/sw/build/stackdrop/runs/<attempt>/result.json',
+        image_sha256=image, build_commit=load['package']['build_commit'],
+        checked='the built SHA-256 and a complete 32768-byte readback before the run, and every '
+                'retained frame decoded by src/dv/stackdrop/screen.py; boot-and-play evidence, '
+                'not a correctness proof',
+        wire_build_id=result['endpoint']['build_id'], wire_abi=result['endpoint'].get('abi'),
+        wall_seconds=result['wall_seconds'], intro_seconds=result['args']['intro_seconds'],
+        hold_frames=result['args']['hold'],
+        script='I left 2, hard drop; O right 1, hard drop; T left 2, hard drop; '
+               'L rotate, right 3, hard drop, completing the bottom row',
+        decoded=[dict(label=label, score=by_label[label]['decoded']['score'],
+                      status=by_label[label]['decoded']['status'],
+                      rows=by_label[label]['decoded']['rows']) for label in STACKDROP_SHOWCASE],
+        inputs=[dict(label=row['label'], mask=row['mask'], dot=row['applied']['dot'])
+                for row in result['inputs']])
+    mask, frames = 0, []
+    for label in STACKDROP_SHOWCASE:
+        entry = by_label[label]
+        data = (folder / (Path(entry['png']).stem + '.2bpp')).read_bytes()
+        assert f'{zlib.crc32(data) & 0xffffffff:08x}' == entry['crc32'], 'SESSION_FRAME_CRC'
+        assert 'decode_error' not in entry, 'SESSION_FRAME_DECODE'
+        # The mask in force when the frame completed: the last INPUT applied at
+        # or before its completion dot, in the order the session applied them.
+        for dot, value in applied:
+            if dot <= entry['metadata']['dot']:
+                mask = value
+        frames.append(dict(label=label, index=entry['index'], seq=entry['metadata']['seq'],
+                           dot=entry['metadata']['dot'], mask=mask, crc32=entry['crc32'],
+                           changed=entry.get('pixels_changed_from_previous'),
+                           pixels=unpack(data)))
+    return provenance, frames
+
+
 # The pinned homebrew images this repository shows running on the board. Each
 # name is an `external_roms.images` key of tools/n2m/dependencies.json and the
 # archive/loop name is `homebrew-<key>`.
 HOMEBREW = ('wyrmhole', 'airaki', 'gb-wordyl', 'max-pirate', 'rex-run',
             'alien-invasion', 'square-fall', 'unstoppable-knight')
 
-READERS = {'libbet-board': libbet_session, 'springtrail-board': springtrail_session}
+READERS = {'libbet-board': libbet_session, 'springtrail-board': springtrail_session,
+           'stackdrop-board': stackdrop_session}
 READERS.update({f'homebrew-{name}': homebrew_session for name in HOMEBREW})
 
 

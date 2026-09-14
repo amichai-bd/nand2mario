@@ -41,6 +41,7 @@ EMBEDS = {'build-and-tests': 'README.md', 'board-session': 'README.md', 'game-st
           'uart-debugging': 'wiki/presentations/uart-debugging.html',
           'verification': 'wiki/presentations/verification.html',
           'springtrail-state-board': 'wiki/showcase/README.md',
+          'stackdrop-board': 'wiki/showcase/README.md',
           'games-gallery': 'README.md',
           'libbet-board': 'wiki/showcase/README.md', 'springtrail-board': 'wiki/showcase/README.md',
           **{f'homebrew-{name}': 'wiki/showcase/homebrew-library.md' for name in
@@ -649,8 +650,17 @@ SPRINGTRAIL_SCENES = (
     (47, 2.6, 'RETRY after the fall'),                                 # 47: k 604
 )
 
+# Stackdrop on the board: three frames of one board_play.py session. The well
+# fills from the frozen I, O, T, L order, and the L completes the bottom row.
+STACKDROP_SCENES = (
+    (0, 2.2, 'Title, no input: Start drops the first piece'),
+    (1, 1.8, 'The well filling; the L is still in flight, score 0000'),
+    (2, 2.4, 'The hard drop completes the bottom row: it clears, score 0100'),
+)
+
 # The loops whose every pixel came off the DE10-Lite rather than a host model.
-BOARD_LOOPS = ('libbet-board', 'springtrail-board', 'springtrail-state-board')
+BOARD_LOOPS = ('libbet-board', 'springtrail-board', 'springtrail-state-board',
+               'stackdrop-board')
 
 # The pinned homebrew images that produced frames, shown as three still frames
 # each rather than a flipbook: an opening screen and two frames of play. The
@@ -665,16 +675,17 @@ HOMEBREW_PANELS = tuple(f'homebrew-{name}' for name in
 # One file, one animated tile per game, three frames each taken from that
 # game's committed archive. Three frames are what the homebrew sessions
 # captured, so every tile gets the same three and the gallery needs no new
-# capture session. The tiles are drawn as one image rather than eight, because
-# the README embeds a figure at the full text column width: eight separate
-# loops would be eight column-wide blocks to scroll past, and the goal is to
+# capture session. The tiles are drawn as one image rather than nine, because
+# the README embeds a figure at the full text column width: nine separate
+# loops would be nine column-wide blocks to scroll past, and the goal is to
 # see the games inside one screen.
 GALLERY = 'games-gallery'
 # (archive, dependency-manifest pin or None for our own game, frame indices).
-# Springtrail is first because it is the game this repository builds; the rest
-# are other people's, in the order the library page lists them.
+# The two games this repository builds come first; the rest are other people's,
+# in the order the library page lists them.
 GALLERY_GAMES = (
     ('springtrail-board', None, (0, 20, 42)),
+    ('stackdrop-board', None, (0, 1, 2)),
     ('libbet-board', 'libbet', (0, 7, 16)),
     ('homebrew-airaki', 'airaki', (0, 1, 2)),
     ('homebrew-gb-wordyl', 'gb-wordyl', (0, 1, 2)),
@@ -684,27 +695,17 @@ GALLERY_GAMES = (
     ('homebrew-unstoppable-knight', 'unstoppable-knight', (0, 1, 2)),
 )
 GALLERY_HOLD = 1.2
-# The ninth cell. Eight tiles are not everything that runs, and the gallery
-# travels as one image, so what it leaves out is named inside it: the two pinned
-# images that never draw, and Stackdrop, which plays but has no capture archive.
-GALLERY_NOTE = (
-    'Not the complete set',
-    '',
-    'Wyrmhole and Rex Run are pinned and',
-    'verified the same way. Both load and',
-    'execute; neither ever enables the LCD,',
-    'so the board completes no frame to',
-    'capture. Seven of the nine pinned',
-    'images play.',
-    '',
-    'Stackdrop, the other game built here,',
-    'plays on the board too. No capture',
-    'archive exists to draw it from.',
-    '',
-    'The homebrew library page gives each',
-    'game its author, licence, pinned',
-    'artifact and the session its frames',
-    'were captured in.',
+# Nine tiles fill the grid, so the note that used to sit in the ninth cell moves
+# to a band under it, two columns wide. Nine tiles are still not everything that
+# runs, and the gallery travels as one image, so what it leaves out is named
+# inside it: the two pinned images that load and execute but never draw.
+GALLERY_NOTE_HEADING = 'Not the complete set'
+GALLERY_NOTE_COLUMNS = (
+    ('Wyrmhole and Rex Run are pinned and verified the same way. Both load',
+     'and execute; neither ever enables the LCD, so the board completes no',
+     'frame to capture. Seven of the nine pinned images play.'),
+    ('The homebrew library page gives each game its author, licence, pinned',
+     'artifact and the session its frames were captured in.'),
 )
 
 
@@ -775,14 +776,21 @@ def pinned_images():
 
 
 def games_gallery():
-    """Eight games running on the DE10-Lite, each tile its own short flipbook."""
+    """Nine games running on the DE10-Lite, each tile its own short flipbook."""
     from board_frames import load
     pins = pinned_images()
     loop = GALLERY_HOLD * len(GALLERY_GAMES[0][2])
     tile_w, tile_h = 160 * PANEL_SCALE, 144 * PANEL_SCALE
     cell_h = tile_h + 8 + 2 * LINE + 10
     top = BAR + PAD
-    height = top + 3 * cell_h + 2 * PANEL_GAP + PAD + 22 + LINE
+    # Nine tiles fill the 3x3 grid, so the note that used to occupy the ninth
+    # cell becomes a two-column band below it. Its height is the tallest column,
+    # and the footer stays bottom-anchored under that.
+    grid_bottom = top + 3 * cell_h + 2 * PANEL_GAP
+    heading_y = grid_bottom + PANEL_GAP + 14
+    note_y = heading_y + LINE + 4
+    note_bottom = note_y + (max(len(column) for column in GALLERY_NOTE_COLUMNS) - 1) * LINE
+    height = note_bottom + PAD + 22 + 2 * LINE
 
     # A tile is read at whatever width the text column gives the figure, so the
     # captions are set larger than a terminal loop's rows.
@@ -822,19 +830,19 @@ def games_gallery():
         body.append(f'<text x="{x}" y="{y + tile_h + 8 + LINE}">{esc(name)}</text>')
         body.append(f'<text class="{credit_class}" x="{x}" y="{y + tile_h + 8 + 2 * LINE}">{esc(credit)}</text>')
 
-    nx = PAD + 2 * (tile_w + PANEL_GAP)
-    ny = top + 2 * (cell_h + PANEL_GAP)
-    for index, line in enumerate(GALLERY_NOTE):
-        cls = '' if index == 0 else ' class="h"'
-        body.append(f'<text{cls} x="{nx}" y="{ny + 14 + index * LINE}">{esc(line)}</text>')
+    body.append(f'<text x="{PAD}" y="{heading_y}">{esc(GALLERY_NOTE_HEADING)}</text>')
+    column_w = (PANEL_WIDTH - 2 * PAD) // len(GALLERY_NOTE_COLUMNS)
+    for column, lines in enumerate(GALLERY_NOTE_COLUMNS):
+        for index, line in enumerate(lines):
+            body.append(f'<text class="h" x="{PAD + column * column_w}" '
+                        f'y="{note_y + index * LINE}">{esc(line)}</text>')
 
-    strip = ('Eight of the games that run on the DE10-Lite · '
+    strip = ('Games running on the DE10-Lite · '
              'every frame read back from the board over UART')
     # Three rows: the footer is one line per claim, and each fits the panel
     # width. The image travels out of the page, so why the games are here rides
-    # with it; the rows are bottom-anchored, so the extra line moves no
-    # geometry. The lowest thing above them is the bottom row's credit baseline
-    # at y=1094, one LINE clear of the new first row at y=1112.
+    # with it; the rows are bottom-anchored under the note band, whose last
+    # baseline sits 26px clear of the first footer row.
     footer = ('Written for real Game Boy hardware by people who never saw this project: evidence our own '
               'games cannot give.',
               'Framebuffer captures the board returned over UART, not emulator screenshots and not '
@@ -1003,6 +1011,15 @@ def documents():
             'Actual compare captures; buttons show prior observed sampled state. Archive retains provenance.',
             [(0, 1, 'Title | actual source frame'), (1, 1, 'Dynamic scene | actual source frame'),
              (2, 1, 'First-stage WON | actual source frame')]),
+        'stackdrop-board': board_loop(
+            'stackdrop-board',
+            'Stackdrop captured on the DE10-Lite: the title, the well filling with the L still in '
+            'flight, and the hard drop that clears the bottom row, every frame read back from the '
+            'board over UART',
+            'Stackdrop · the other image the repository builds · frames captured on the DE10-Lite over UART',
+            'Frames from one board_play.py session; boot-and-play evidence. '
+            'src/dv/stackdrop/ owns the proof.',
+            STACKDROP_SCENES),
         **{name: homebrew_panel(name) for name in HOMEBREW_PANELS},
         GALLERY: games_gallery(),
         'verification': terminal('A checker that can fail · from retained Questa receipts, not a fresh capture',

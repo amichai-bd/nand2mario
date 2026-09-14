@@ -125,7 +125,9 @@ def check_views(browser, base):
         # and the reduced-motion still is the last captured frame alone.
         from wiki import board_frames
         for name, caption in (('libbet-board', 'Idle on the top-right cell, combo back to 0'),
-                              ('springtrail-board', 'RETRY after the fall')):
+                              ('springtrail-board', 'RETRY after the fall'),
+                              ('stackdrop-board',
+                               'The hard drop completes the bottom row: it clears, score 0100')):
             archive = board_frames.load(name)
             last = len(archive['frames']) - 1
             page = new_page()
@@ -154,6 +156,22 @@ def check_views(browser, base):
             assert first_frame.evaluate('e => getComputedStyle(e).opacity') == '0', f'{name} still stacks earlier frames'
             expect(figure).to_contain_text(caption)
             expect(figure).to_contain_text('captured on the DE10-Lite over UART')
+            # A loop carries its evidence boundary in text, so a string that
+            # outgrows the panel is clipped by the viewBox and the sentence is
+            # lost. The figure fitting the text column does not catch that:
+            # measure every run's own box against the panel it is drawn in.
+            overflow = page.evaluate("""() => {
+                const svg = document.querySelector('svg');
+                // A standalone SVG document does not expose its viewBox here,
+                // so fall back to the panel width the generator wrote.
+                const width = svg.viewBox.baseVal.width || parseFloat(svg.getAttribute('width'));
+                if (!(width > 0)) { throw new Error('no panel width to measure against'); }
+                return [...document.querySelectorAll('text')].map(e => {
+                    const box = e.getBBox();
+                    return [e.textContent.trim(), Math.round(box.x + box.width)];
+                }).filter(([, right]) => right > width);
+            }""")
+            assert not overflow, f'{name} draws text outside its panel: {overflow}'
             page.screenshot(path=str(OUTPUT / f'quality-showcase-{name}.png'))
             page.close()
 
@@ -402,10 +420,20 @@ def check_views(browser, base):
                 'checks': ['slide fragments', 'malformed fragments', 'keyboard', 'print visibility and contrast', 'animated diagram motion, completeness and print contrast', 'README showcase motion and reduced-motion still', 'board-captured loops decode and hold their final frame', 'homebrew panels decode and stay still', 'games gallery phases, decodes and holds one frame a game', 'lesson terminal sessions and deck embeds', 'figures fit the text column', 'figure paragraph shapes', 'chart scrolling']}
     except BaseException:
         if page is not None and not page.is_closed():
-            page.screenshot(path=str(OUTPUT / 'failure.png'), full_page=True)
+            try:
+                page.screenshot(path=str(OUTPUT / 'failure.png'), full_page=True)
+            except Exception as shot:
+                # A failing diagnostic must never replace the failure it is
+                # diagnosing: report it and re-raise the original.
+                print(f'failure screenshot unavailable: {shot!r}', flush=True)
         raise
     finally:
-        context.tracing.stop(path=str(OUTPUT / 'quality-trace.zip'))
+        try:
+            context.tracing.stop(path=str(OUTPUT / 'quality-trace.zip'))
+        except Exception as trace:
+            # Same shape as the screenshot above: an exception raised while
+            # unwinding replaces the one being unwound.
+            print(f'trace unavailable: {trace!r}', flush=True)
         context.close()
 
 
