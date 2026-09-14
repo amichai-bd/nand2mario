@@ -19,10 +19,21 @@ is detected. It cannot replace the mandatory normal target.
 Repeat either command to reuse a matching successful result (`CACHED`); use
 `--rebuild` to rerun. Changed inputs or damaged artifacts invalidate reuse.
 The builder records tools, input hashes, commands, exit codes, results, and
-waves beneath `workdir/builds/<tag>/`. It uses Questa by default. Its seed is recorded for cache
+waves beneath `workdir/builds/<tag>/`. Its seed is recorded for cache
 identity; this test is deterministic and reports `seed=none`.
 
-## Questa checks
+## Simulator
+
+The builder's [simulator policy](../n2m/SPEC.md#simulator-policy) applies:
+Verilator on WSL is the sole supported simulator, and simulation commands run
+there. Both tile targets are not yet migrated; until the builder Verilator path
+and catalogue simulator field land under
+[#597](https://github.com/amichai-bd/nand2mario/issues/597), they still run
+through the Questa path below and will report `SKIPPED` with reason
+`questa-retired` where that path is unavailable. The Questa sections below
+describe that unmigrated path, not the target state.
+
+## Questa checks (unmigrated path)
 
 Use the shared builder with the same normal and corruption targets:
 
@@ -57,17 +68,18 @@ other breaks, macro errors, or return without `$finish` exit nonzero. The normal
 case requires the full exhaustive completion signature. Corruption requires
 the full intended mismatch diagnostic and a nonzero exit; additional errors
 or warnings fail the runner even when an expected signature appears.
-Questa is the default and only supported backend. Retired simulator selections
-fail argument parsing; there is no fallback.
+The standalone runner still accepts only `--sim questa`; its Verilator backend
+belongs to the same migration. Retired simulator selections fail argument
+parsing; there is no fallback.
 
 Both paths reject tool, compile, elaboration, warning, timeout, exit, or expected
-output failures. Host command-construction tests do not prove Questa execution. The
+output failures. Host command-construction tests do not prove simulator execution. The
 [baseline contract](../../src/dv/baseline/SPEC.md) owns broader verification.
 
 The [workflow](../../../.github/workflows/tile-pixel.yml) runs standalone host
 contracts by dispatch; authors run the same command
 [locally before merge](../../agents/pull-requests.md#hosted-and-local-checks).
-Its check is named `Tile runner checks`; it does not claim licensed RTL execution. Actual local positive/corrupt Questa
+Its check is named `Tile runner checks`; it does not claim RTL execution. Actual local positive/corrupt simulator
 evidence remains required. The [trusted CI boundary](../n2m/SPEC.md#ci-execution-boundary)
 records the [out-of-scope trusted route](../../preflight-gaps.md#gap-010-github-remote-issues-ci-and-pages). See
 [tool provenance](../../../tools/sim/THIRD_PARTY.md).

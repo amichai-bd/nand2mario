@@ -30,10 +30,12 @@ from sw.expressions import AssemblyError
 def parser():
     result = argparse.ArgumentParser(description="Tagged repository builds (doctor, check, sim test, regress, clean, fpga build).")
     commands = result.add_subparsers(dest="command", required=True)
-    leaves = [commands.add_parser("doctor", help="run checked Questa smoke; no hardware access"),
+    leaves = [commands.add_parser("doctor", help="run checked Verilator smoke on WSL; no hardware access"),
               commands.add_parser("check", help="run builder tests")]
     leaves[0].add_argument("--profile", choices=("simulation", "environment"), default="simulation")
-    for option in ("questa-bin", "quartus-bin", "jtag-cable", "uart-port", "uart-vid", "uart-pid", "uart-identity"):
+    leaves[0].add_argument("--verilator-bin", help="directory containing verilator; otherwise discover on PATH")
+    leaves[0].add_argument("--sim", choices=("verilator",), default="verilator")
+    for option in ("quartus-bin", "jtag-cable", "uart-port", "uart-vid", "uart-pid", "uart-identity"):
         leaves[0].add_argument("--" + option)
     sim = commands.add_parser("sim").add_subparsers(dest="action", required=True)
     test = sim.add_parser("test", help="compile, elaborate, run, and check a named target")
@@ -50,7 +52,7 @@ def parser():
     for leaf in leaves:
         leaf.add_argument("--tag")
         leaf.add_argument("--json", action="store_true", help="emit one JSON result")
-        if leaf is not leaves[1]:
+        if leaf is leaves[2]:
             leaf.add_argument("--sim", choices=("questa",), default="questa")
     subset = commands.add_parser("regress", help="run one declared target subset and report one aggregate result")
     subset.add_argument("subset", help="name in src/dv/builder/regressions.json")
