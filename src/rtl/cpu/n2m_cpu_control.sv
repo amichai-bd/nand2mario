@@ -14,7 +14,8 @@ module n2m_cpu_control (
     input var logic [7:0] ie,
     input var logic [4:0] iflags,
     // Lint waiver: a testbench memory that answers combinationally closes a
-    // false loop from read_data through the bus plan under Verilator.
+    // false loop from read_data through the bus plan under Verilator. The
+    // full build reports it here even when --lint-only is clean (tb_cpu_irq).
     /* verilator lint_off UNOPTFLAT */
     input var logic [7:0] read_data,
     /* verilator lint_on UNOPTFLAT */

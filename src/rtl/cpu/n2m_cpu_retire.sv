@@ -22,21 +22,23 @@ module n2m_cpu_retire (
     logic [63:0] sequence_number;
     logic [63:0] sequence_next;
 
-    // Lint waiver: CPU testbenches force retirement_b_next, retirement and
-    // retirement_valid for fault injection; Verilator reports the force as
-    // a second driver. The product logic has one driver each.
-    /* verilator lint_off MULTIDRIVEN */
     always_comb begin
         capture_t4_next = capture_t4;
+        // Lint waiver: tb_cpu_if_observation forces retirement_b_next for fault
+        // injection; Verilator reports the force as a second driver.
+        /* verilator lint_off MULTIDRIVEN */
         retirement_b_next = retirement;
+        /* verilator lint_on MULTIDRIVEN */
         pending_t4_next = capture.valid;
         retirement_valid_next = pending_t4;
         sequence_next = sequence_number;
         if (pending_t4) begin
+            /* verilator lint_off MULTIDRIVEN */
             retirement_b_next = capture_t4;
             retirement_b_next.ie = ie;
             retirement_b_next.iflags = {3'b0, iflags};
             retirement_b_next.buttons = buttons;
+            /* verilator lint_on MULTIDRIVEN */
         end
         if (capture.valid) begin
             capture_t4_next = '0;
@@ -82,11 +84,16 @@ module n2m_cpu_retire (
     end
 
     `DFF_ARST_VAL(capture_t4, capture_t4_next, clk_sys, reset_sys, '0)
+    // Lint waiver: CPU testbenches force retirement and retirement_valid for
+    // fault injection; Verilator reports the force as a second driver.
+    /* verilator lint_off MULTIDRIVEN */
     `DFF_ARST_VAL(retirement, retirement_b_next, clk_sys, reset_sys, '0)
-    `DFF_ARST_VAL(pending_t4, pending_t4_next, clk_sys, reset_sys, 1'b0)
-    `DFF_ARST_VAL(retirement_valid, retirement_valid_next, clk_sys, reset_sys, 1'b0)
-    `DFF_ARST_VAL(sequence_number, sequence_next, clk_sys, reset_sys, 64'b0)
     /* verilator lint_on MULTIDRIVEN */
+    `DFF_ARST_VAL(pending_t4, pending_t4_next, clk_sys, reset_sys, 1'b0)
+    /* verilator lint_off MULTIDRIVEN */
+    `DFF_ARST_VAL(retirement_valid, retirement_valid_next, clk_sys, reset_sys, 1'b0)
+    /* verilator lint_on MULTIDRIVEN */
+    `DFF_ARST_VAL(sequence_number, sequence_next, clk_sys, reset_sys, 64'b0)
 
     `N2M_ASSERT(CPU_RETIRE_SPACING, clk_sys, reset_sys || core_reset,
         !(capture.valid && pending_t4))
