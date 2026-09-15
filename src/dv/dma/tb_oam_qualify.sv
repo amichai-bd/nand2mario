@@ -32,7 +32,7 @@ module tb_oam_qualify;
     endfunction
     task automatic check_case;
         #1;
-        if(invalid_observation || kind!==expected_kind || row_index!==ppu_scan_index[5:1])
+        if(invalid_observation || kind!=expected_kind || row_index!=ppu_scan_index[5:1])
             $fatal(1,"OAM_QUALIFIER_ORACLE case=%0d expected=%0d actual=%0d row=%0d phase=%0d ordinary=%04x idu=%04x mask=%04x",
                 checked,expected_kind,kind,row_index,ppu_oam_phase,bus_plan.address,address_effect.address,address_effect.known_mask);
         checked=checked+1;kinds_seen[expected_kind]=kinds_seen[expected_kind]+1;

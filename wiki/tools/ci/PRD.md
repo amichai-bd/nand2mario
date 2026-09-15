@@ -1,7 +1,7 @@
 # Trusted product CI requirements
 
 Provide explicitly invoked validation of a reviewed main revision using fixed
-Questa and Quartus profiles, without registering a self-hosted runner or accepting
+Verilator and Quartus profiles, without registering a self-hosted runner or accepting
 remote commands. The [design](SPEC.md) owns admission, evidence, locking and
 status interpretation; [the builder](../n2m/SPEC.md) owns tool execution records.
 
@@ -16,7 +16,7 @@ The hosted result is authenticated controller attestation. It does not independe
 prove unseen local logs or artifacts. Independent review must audit retained
 command, input, tool and artifact evidence bound by the canonical envelope digest.
 
-Actual configured licensed execution and activation are out of scope;
+Actual configured execution and activation are out of scope;
 [GAP-010](../../preflight-gaps.md#gap-010-github-remote-issues-ci-and-pages)
 keeps the record. The inactive
 implementation does not change repository protection, environments, credentials or

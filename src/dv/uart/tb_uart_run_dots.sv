@@ -23,8 +23,8 @@ module tb_uart_run_dots;
     always @(posedge clk_sys) begin
         if (reset_sys || core_reset) begin ticks = 0; phase = 0; end
         else if (!paused) begin
-            if (emulated_tick !== (phase+65536 >= 390625)) $fatal(1,"RUN_DOTS_PHASE");
-            if (gb_tick !== (emulated_tick && !cpu_stopped)) $fatal(1,"RUN_DOTS_STOP_GATE");
+            if (emulated_tick != (phase+65536 >= 390625)) $fatal(1,"RUN_DOTS_PHASE");
+            if (gb_tick != (emulated_tick && !cpu_stopped)) $fatal(1,"RUN_DOTS_STOP_GATE");
             phase = phase+65536;
             if (phase >= 390625) begin
                 phase = phase-390625;
@@ -41,18 +41,18 @@ module tb_uart_run_dots;
             if (stop_after >= 0 && ticks-before_ticks >= stop_after) cpu_stopped=1;
             @(negedge clk_sys); cycles=cycles+1;
         end
-        if (!done || status !== 8'(expected_status) || !paused) $fatal(1,"RUN_DOTS_COMPLETION");
-        if (ticks-before_ticks != expected_ticks || completed_dot !== 64'(ticks)) $fatal(1,"RUN_DOTS_COUNT");
+        if (!done || status != 8'(expected_status) || !paused) $fatal(1,"RUN_DOTS_COMPLETION");
+        if (ticks-before_ticks != expected_ticks || completed_dot != 64'(ticks)) $fatal(1,"RUN_DOTS_COUNT");
         if (op == 15) begin
             if (corrupt) force u_control.run_dots_result.executed=0;
             #1;
-            if (run_dots_result.executed !== 32'(expected_ticks) ||
-                run_dots_result.reason !== 8'(expected_reason) || run_dots_result.dot !== 64'(ticks))
+            if (run_dots_result.executed != 32'(expected_ticks) ||
+                run_dots_result.reason != 8'(expected_reason) || run_dots_result.dot != 64'(ticks))
                 $fatal(1,"RUN_DOTS_RESULT");
         end
         before_ticks=ticks;
         repeat(12) @(negedge clk_sys);
-        if (ticks != before_ticks || dot_count !== 64'(ticks)) $fatal(1,"RUN_DOTS_SETTLED");
+        if (ticks != before_ticks || dot_count != 64'(ticks)) $fatal(1,"RUN_DOTS_SETTLED");
         checks=checks+1;
     endtask
     initial begin

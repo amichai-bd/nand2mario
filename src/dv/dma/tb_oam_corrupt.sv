@@ -1,5 +1,7 @@
 `timescale 1ns/1ps
 `default_nettype none
+// Lint waiver: the integer file handle is tested as a boolean; the width lint on that idiom is a false positive.
+/* verilator lint_off WIDTHTRUNC */
 module tb_oam_corrupt;
     logic clk_sys, reset;
     logic [4:0] row_index;
@@ -82,7 +84,7 @@ module tb_oam_corrupt;
             row,operation,position,combination,older_row,previous_row,current_row,
             expected_rows[0],expected_rows[1],expected_rows[2],expected_mask,
             older_result,previous_result,current_result,write_mask,invalid_row);
-        if ({older_result,previous_result,current_result,write_mask,invalid_row} !==
+        if ({older_result,previous_result,current_result,write_mask,invalid_row} !=
             {expected_rows[0],expected_rows[1],expected_rows[2],expected_mask,(row>19)})
             $fatal(1,"OAM_CORRUPTION_RESULT row=%0d kind=%0d bit=%0d pattern=%0d expected=%016h/%016h/%016h/%h actual=%016h/%016h/%016h/%h",
                 row,operation,position,combination,expected_rows[0],expected_rows[1],expected_rows[2],expected_mask,

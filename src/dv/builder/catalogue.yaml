@@ -68,8 +68,8 @@ units:
   audio-service: {kind: sim, level: 1, labels: [audio], duration_seconds: 5.61}
   audio-service-fault: {kind: sim, level: 2, labels: [audio, fault], duration_seconds: null}
   audio-wave-fault: {kind: sim, level: 2, labels: [audio, fault], duration_seconds: null}
-  baseline-broken: {kind: sim, level: 2, labels: [baseline, fault], duration_seconds: null}
-  baseline-good: {kind: sim, level: 1, labels: [baseline], duration_seconds: 4.23}
+  baseline-broken: {kind: sim, level: 2, labels: [baseline, fault], duration_seconds: 0.41}
+  baseline-good: {kind: sim, level: 1, labels: [baseline], duration_seconds: 0.41}
   builder-smoke: {kind: sim, level: 0, labels: [builder, builder-fault, pre-merge], duration_seconds: 1.63}
   builder-smoke-fail: {kind: sim, level: 2, labels: [builder, builder-fault], duration_seconds: null}
   clocking: {kind: sim, level: 1, labels: [clocking], duration_seconds: 6.58}
@@ -158,10 +158,10 @@ units:
   dma-composition-read-row-fault: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: null}
   dma-composition-stop: {kind: sim, level: 2, labels: [dma], duration_seconds: null}
   dma-composition-unresolved: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: null}
-  dma-engine: {kind: sim, level: 2, labels: [dma], duration_seconds: null}
-  dma-engine-byte: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: null}
-  dma-engine-service: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: null}
-  dma-engine-time: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: null}
+  dma-engine: {kind: sim, level: 2, labels: [dma], duration_seconds: 0.93}
+  dma-engine-byte: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: 0.39}
+  dma-engine-service: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: 0.40}
+  dma-engine-time: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: 0.43}
   dma-family-pair: {kind: sim, level: 2, labels: [dma], duration_seconds: null}
   dma-family-pop: {kind: sim, level: 2, labels: [dma], duration_seconds: null}
   dma-family-pop-fault: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: null}
@@ -216,8 +216,8 @@ units:
   interrupts-duplicate: {kind: sim, level: 2, labels: [fault, interrupts], duration_seconds: 0.50}
   interrupts-lost: {kind: sim, level: 2, labels: [fault, interrupts], duration_seconds: 0.49}
   interrupts-priority: {kind: sim, level: 2, labels: [fault, interrupts], duration_seconds: 0.48}
-  io-peek: {kind: sim, level: 0, labels: [interrupts, ppu, timer, uart], duration_seconds: 7.70}
-  io-peek-disturb: {kind: sim, level: 0, labels: [fault, interrupts, ppu, timer, uart], duration_seconds: 5.85}
+  io-peek: {kind: sim, level: 0, labels: [interrupts, ppu, timer, uart], duration_seconds: 0.52}
+  io-peek-disturb: {kind: sim, level: 0, labels: [fault, interrupts, ppu, timer, uart], duration_seconds: 0.45}
   joypad-boundary-fault: {kind: sim, level: 2, labels: [fault, joypad], duration_seconds: 2.20}
   joypad-events: {kind: sim, level: 1, labels: [joypad], duration_seconds: 3.55}
   joypad-events-duplicate: {kind: sim, level: 2, labels: [fault, joypad], duration_seconds: 0.49}
@@ -243,14 +243,14 @@ units:
   mooneye-corrupt: {kind: sim, level: 2, labels: [integration, memory, milestone, mooneye, python-tb], duration_seconds: null}
   mooneye-missing: {kind: sim, level: 2, labels: [integration, memory, milestone, mooneye, python-tb], duration_seconds: null}
   mooneye-reg-f: {kind: sim, level: 2, labels: [integration, memory, milestone, mooneye, python-tb], duration_seconds: null}
-  oam-corrupt: {kind: sim, level: 1, labels: [dma], duration_seconds: 5.03}
-  oam-corrupt-mask: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: null}
-  oam-corrupt-output: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: null}
+  oam-corrupt: {kind: sim, level: 1, labels: [dma], duration_seconds: 0.47}
+  oam-corrupt-mask: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: 0.47}
+  oam-corrupt-output: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: 0.38}
   oam-late-write: {kind: sim, level: 2, labels: [memory], duration_seconds: null}
   oam-late-write-collision: {kind: sim, level: 2, labels: [fault, memory], duration_seconds: null}
-  oam-qualify: {kind: sim, level: 2, labels: [dma], duration_seconds: null}
-  oam-qualify-corrupt: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: null}
-  oam-qualify-mask: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: null}
+  oam-qualify: {kind: sim, level: 2, labels: [dma], duration_seconds: 0.43}
+  oam-qualify-corrupt: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: 0.41}
+  oam-qualify-mask: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: 0.39}
   ppu-access: {kind: sim, level: 1, labels: [ppu], duration_seconds: 3.04}
   ppu-access-corrupt: {kind: sim, level: 2, labels: [fault, ppu], duration_seconds: 0.49}
   ppu-fetch: {kind: sim, level: 2, labels: [ppu], duration_seconds: 1.72}
@@ -613,24 +613,24 @@ units:
   uart-packet-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: null}
   uart-packet-range: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: null}
   uart-packet-rx: {kind: sim, level: 2, labels: [uart], duration_seconds: null}
-  uart-packet-tx: {kind: sim, level: 2, labels: [uart], duration_seconds: null}
-  uart-packet-tx-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: null}
-  uart-packet-tx-missing: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: null}
+  uart-packet-tx: {kind: sim, level: 2, labels: [uart], duration_seconds: 0.61}
+  uart-packet-tx-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 0.42}
+  uart-packet-tx-missing: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 0.42}
   uart-peek: {kind: sim, level: 2, labels: [host, memory, uart], duration_seconds: null}
   uart-peek-fault: {kind: sim, level: 2, labels: [fault, host, memory, uart], duration_seconds: null}
   uart-response: {kind: sim, level: 2, labels: [uart], duration_seconds: null}
   uart-response-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: null}
-  uart-run-dots: {kind: sim, level: 2, labels: [uart], duration_seconds: null}
-  uart-run-dots-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: null}
+  uart-run-dots: {kind: sim, level: 2, labels: [uart], duration_seconds: 1.00}
+  uart-run-dots-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 0.43}
   uart-run-dots-wire: {kind: sim, level: 2, labels: [uart], duration_seconds: null}
   uart-serial: {kind: sim, level: 2, labels: [uart], duration_seconds: null}
   uart-serial-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: null}
   uart-snapshot: {kind: sim, level: 2, labels: [uart], duration_seconds: null}
   uart-snapshot-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: null}
-  uart-stopped-step: {kind: sim, level: 2, labels: [uart], duration_seconds: null}
-  uart-stopped-step-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: null}
-  uart-validation: {kind: sim, level: 2, labels: [uart], duration_seconds: null}
-  uart-validation-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: null}
+  uart-stopped-step: {kind: sim, level: 2, labels: [uart], duration_seconds: 1.14}
+  uart-stopped-step-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 1.16}
+  uart-validation: {kind: sim, level: 2, labels: [uart], duration_seconds: 0.43}
+  uart-validation-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 0.42}
   vga: {kind: sim, level: 2, labels: [vga], duration_seconds: 288.16}
   vga-active-swap: {kind: sim, level: 2, labels: [fault, vga], duration_seconds: null}
   vga-bank-reuse: {kind: sim, level: 2, labels: [fault, vga], duration_seconds: null}

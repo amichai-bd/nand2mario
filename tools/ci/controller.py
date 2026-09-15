@@ -116,15 +116,15 @@ def main(argv=None):
     parser.add_argument('--run-id', type=int, required=True)
     parser.add_argument('--attempt', type=int, required=True)
     parser.add_argument('--profile', choices=tuple(PROFILES), required=True)
-    parser.add_argument('--questa-bin')
+    parser.add_argument('--verilator-bin')
     parser.add_argument('--quartus-bin')
     args = parser.parse_args(argv)
     try:
         cfg = config(json.loads((ROOT / 'cfg/trusted-ci.json').read_text(encoding='utf-8')))
         require(cfg['enabled'], 'trusted CI bootstrap is inactive; activation belongs to #32')
         req = request({'sha': args.sha, 'run_id': args.run_id, 'attempt': args.attempt, 'profile': args.profile})
-        tools = {'questa': args.questa_bin, 'quartus': args.quartus_bin}
-        needed = 'questa' if req['profile'] == 'questa-baseline' else 'quartus'
+        tools = {'verilator': args.verilator_bin, 'quartus': args.quartus_bin}
+        needed = 'verilator' if req['profile'] == 'verilator-baseline' else 'quartus'
         require(tools[needed] and Path(tools[needed]).is_absolute(), 'explicit local tool directory required')
         token = os.environ.pop('GH_TOKEN', None)
         result = execute(ROOT, cfg, req, GitHub(token), tools)

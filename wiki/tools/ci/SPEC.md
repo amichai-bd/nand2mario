@@ -7,7 +7,7 @@ these gates. Activation is out of scope while no runner can be hosted;
 [GAP-010](../../preflight-gaps.md#gap-010-github-remote-issues-ci-and-pages)
 keeps the record. Activation, if resumed, requires real
 repository/workflow/account/environment identity verification and exact-source
-licensed positive/negative samples. Existing Pages and required checks stay intact.
+positive/negative samples. Existing Pages and required checks stay intact.
 
 ## Admission
 
@@ -60,7 +60,7 @@ No background loop launches work; each local invocation is explicit.
 
 ## Profiles and records
 
-Only fixed Questa baseline good/broken and Quartus clocking/invalid profiles exist.
+Only fixed Verilator baseline good/broken and Quartus clocking/invalid profiles exist.
 Use fresh UUID-derived tags and the shared builder with rebuild requested. Record
 every command, raw exit, source/tool hashes and complete artifact inventory. Invalid Quartus runs still require generated HDL, project/checked constraint
 files, generation/compile/failure logs and every tool version record. The missing
@@ -79,7 +79,7 @@ Validate child records against complete fixed argv, working directories, selecte
 executable paths/content hashes/version probes, source SHA, recomputed builder
 fingerprint, complete required files and actual file hashes. The validator uses
 shared read-only command plans without rewriting retained artifacts. Cache-only samples cannot count as fresh
-licensed execution. Freeze a canonical JSON envelope with admission tuple, fresh
+execution. Freeze a canonical JSON envelope with admission tuple, fresh
 invocation ID, controller/config/profile/input/tool hashes, each command and raw
 exit, outcome and all immutable artifact hashes. Hash this complete envelope before
 posting the final status. Store the returned status ID separately to avoid circular
@@ -107,10 +107,10 @@ Host tests exercise wrong admission identities, remote command/path fields,
 replay/cancellation, concurrent lock attempts, interrupted journals, changed inputs,
 missing/truncated artifact records, negative signatures, and stale/ambiguous statuses.
 The shipped CLI fails before API calls or tool execution while disabled. No real
-licensed invocation or status post is required or permitted by this bootstrap.
+tool invocation or status post is required or permitted by this bootstrap.
 
 The open activation work separately reviews existing environment policy, permissions and
-actual dispatch/controller samples. A main-only licensed attestation is a postmerge
+actual dispatch/controller samples. A main-only attestation is a postmerge
 signal; making it a required incoming-PR context would create a merge deadlock.
 Do not substitute an ancestor's status or dummy success for premerge proof.
 
@@ -127,11 +127,11 @@ python -m unittest discover -s tools/ci/tests -v
 ```
 
 The configured entry points currently return FAIL with an inactive-bootstrap
-explanation before API or licensed calls. After separately reviewed trusted-route activation,
+explanation before API or tool calls. After separately reviewed trusted-route activation,
 the local command form is:
 
 ```text
-python -m tools.ci.controller --sha <authorized-main-sha> --run-id <run-id> --attempt <attempt> --profile questa-baseline --questa-bin <absolute-local-tool-directory>
+python -m tools.ci.controller --sha <authorized-main-sha> --run-id <run-id> --attempt <attempt> --profile verilator-baseline --verilator-bin <absolute-local-tool-directory>
 python -m tools.ci.controller --sha <authorized-main-sha> --run-id <run-id> --attempt <attempt> --profile quartus-clocking --quartus-bin <absolute-local-tool-directory>
 ```
 

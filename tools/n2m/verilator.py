@@ -95,7 +95,12 @@ def commands(simulator, root, target, seed, compiler, attempt, *, python_runtime
                  *sources, python_runtime["support"]]
         run = [str(compiler / "obj_dir/sim"), "--trace", "--trace-file", WAVES]
     else:
-        (compiler / HARNESS).write_text(main_source(target["top"]), encoding="utf-8")
+        harness = compiler / HARNESS
+        source = main_source(target["top"])
+        # A validator replays this plan against a retained attempt; an
+        # identical harness is left untouched so retained artifacts stay read-only.
+        if not harness.is_file() or harness.read_text(encoding="utf-8") != source:
+            harness.write_text(source, encoding="utf-8")
         build = [tool, "--cc", "--exe", "--build", "--timing", *COMMON_OPTIONS,
                  "--top-module", target["top"], "+incdir+" + simulator.path(root),
                  *sources, HARNESS]

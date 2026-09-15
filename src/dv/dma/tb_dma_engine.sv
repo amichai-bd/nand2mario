@@ -23,7 +23,7 @@ module tb_dma_engine;
         reset_sys=global_reset; core_reset=!global_reset;
         gb_tick=0; ff46_write=0;
         #1;
-        if (active || source_request || write_valid || fault || ff46_rdata!==8'h00)
+        if (active || source_request || write_valid || fault || ff46_rdata!=8'h00)
             $fatal(1,"DMA_RESET_CANCEL");
         @(negedge clk_sys); reset_sys=0; core_reset=0;
     endtask
@@ -46,14 +46,14 @@ module tb_dma_engine;
             if (corrupt_data && writes==7 && expected_write) force dut.write_data=8'h00;
             if (corrupt_time && writes==7 && phase==2) force dut.write_valid=1'b1;
             #1;
-            if (write_valid!==expected_write)
+            if (write_valid!=expected_write)
                 $fatal(1,"DMA_ENGINE_TIME phase=%0d expected=%0b actual=%0b",phase,expected_write,write_valid);
-            if (active!==expected_active || source_request!==expected_active)
+            if (active!=expected_active || source_request!=expected_active)
                 $fatal(1,"DMA_ENGINE_ACTIVE phase=%0d expected=%0b actual=%0b",phase,expected_active,active);
-            if (expected_active && source_address!==expected_address)
+            if (expected_active && source_address!=expected_address)
                 $fatal(1,"DMA_ENGINE_ADDRESS expected=%04x actual=%04x",expected_address,source_address);
             if (expected_write) begin
-                if (write_offset!==destination || write_data!==expected_data)
+                if (write_offset!=destination || write_data!=expected_data)
                     $fatal(1,"DMA_ENGINE_BYTE expected_offset=%0d actual=%0d expected=%02x actual=%02x",destination,write_offset,expected_data,write_data);
                 writes=writes+1;
             end
@@ -79,7 +79,7 @@ module tb_dma_engine;
         reset_engine(1);
         for (page=0;page<256;page=page+1) begin
             machine_cycle(1,8'(page),0,0,0,0); // M0
-            if (ff46_rdata!==8'(page)) $fatal(1,"DMA_FF46_READBACK");
+            if (ff46_rdata!=8'(page)) $fatal(1,"DMA_FF46_READBACK");
             machine_cycle(0,0,0,0,0,0); // M1
             if (missing) begin
                 source_valid=0;

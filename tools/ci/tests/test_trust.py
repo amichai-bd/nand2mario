@@ -22,7 +22,7 @@ def fixture():
     cfg = {'schema': 1, 'enabled': True, 'repository': 'owner/project', 'repository_id': 11,
            'controller_id': 22, 'workflow_id': 33, 'workflow_path': '.github/workflows/trusted-product.yml',
            'workflow_blob': '2' * 40, 'environment': 'trusted-product'}
-    req = {'sha': SHA, 'run_id': 44, 'attempt': 2, 'profile': 'questa-baseline'}
+    req = {'sha': SHA, 'run_id': 44, 'attempt': 2, 'profile': 'verilator-baseline'}
     run = {'id': 44, 'run_attempt': 2, 'head_sha': SHA, 'head_branch': 'main', 'workflow_id': 33,
            'event': 'workflow_dispatch', 'status': 'in_progress', 'conclusion': None,
            'repository': {'id': 11}, 'head_repository': {'id': 11},
@@ -30,7 +30,7 @@ def fixture():
     snap = {'repository': {'id': 11, 'full_name': 'owner/project'}, 'account': {'id': 22},
             'workflow': {'id': 33, 'path': cfg['workflow_path'], 'state': 'active'},
             'workflow_blob': '2' * 40, 'run': run, 'attempt': deepcopy(run),
-            'jobs': [{'id': 55, 'name': 'Trusted product attestation (questa-baseline)',
+            'jobs': [{'id': 55, 'name': 'Trusted product attestation (verilator-baseline)',
                       'run_id': 44, 'run_attempt': 2, 'head_sha': SHA, 'status': 'in_progress',
                       'conclusion': None, 'started_at': START}],
             'branch': {'name': 'main', 'protected': True, 'commit': {'sha': SHA}},
@@ -88,7 +88,7 @@ class AdmissionTests(unittest.TestCase):
         cfg, req, snap, _ = fixture()
         for key in ('command', 'path', 'checkout', 'tool'):
             with self.assertRaises(ValueError): model.request({**req, key: 'attacker'})
-        for profile in ('hardware', '../questa-baseline', 'echo owned'):
+        for profile in ('hardware', '../verilator-baseline', 'echo owned'):
             with self.assertRaises(ValueError): model.request({**req, 'profile': profile})
         cfg['enabled'] = False
         with self.assertRaises(ValueError): model.admit(cfg, req, snap, initial=True)
@@ -176,7 +176,7 @@ class StorageTests(unittest.TestCase):
         self.assertEqual(child.returncode, 0, child.stderr)
 
     def test_shipped_entry_points_fail_before_api_or_licensed_calls(self):
-        args = ['--sha', SHA, '--run-id', '1', '--attempt', '1', '--profile', 'questa-baseline']
+        args = ['--sha', SHA, '--run-id', '1', '--attempt', '1', '--profile', 'verilator-baseline']
         with patch('tools.ci.controller.GitHub', side_effect=AssertionError('API called')):
             self.assertEqual(controller.main(args), 1)
         with patch('tools.ci.waiter.GitHub', side_effect=AssertionError('API called')):

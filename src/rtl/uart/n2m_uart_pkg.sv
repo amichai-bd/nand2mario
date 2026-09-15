@@ -1,6 +1,10 @@
 `timescale 1ns/1ps
 package n2m_uart_pkg;
+    // Lint waiver: the 16-bit payload bound is zero-extended into the
+    // integer sum; the value is unchanged.
+    /* verilator lint_off WIDTHEXPAND */
     localparam integer UART_RAW_MAX = n2m_interfaces_pkg::PACKET_HEADER_BYTES + n2m_interfaces_pkg::WIRE_MAX_PAYLOAD + 2;
+    /* verilator lint_on WIDTHEXPAND */
     localparam integer UART_ENCODED_MAX = UART_RAW_MAX + UART_RAW_MAX / 254 + 1;
     localparam integer UART_ADDRESS_BITS = $clog2(UART_ENCODED_MAX);
     typedef enum logic [1:0] {

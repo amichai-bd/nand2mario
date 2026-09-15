@@ -104,8 +104,12 @@ module n2m_uart_packet_tx (
     `DFF_ARST_VAL(index, index_next, clk_sys, reset_sys, '0)
     `DFF_ARST_VAL(held_data, held_data_next, clk_sys, reset_sys, '0)
     `DFF_ARST_VAL(more, more_next, clk_sys, reset_sys, 1'b0)
+    // Lint waiver: the 9-bit byte count is zero-extended against integer
+    // bounds; the intended unsigned comparison is unchanged.
+    /* verilator lint_off WIDTHEXPAND */
     `N2M_ASSERT(UART_TX_REQUEST_SIZE, clk_sys, reset_sys,
         transmit_valid |-> transmit_bytes >= n2m_interfaces_pkg::PACKET_HEADER_BYTES + 2 && transmit_bytes <= n2m_uart_pkg::UART_RAW_MAX)
+    /* verilator lint_on WIDTHEXPAND */
     `N2M_ASSERT(UART_TX_REQUEST_ACTIVE, clk_sys, reset_sys, state != IDLE |-> transmit_valid)
     `N2M_ASSERT(UART_TX_READ_RANGE, clk_sys, reset_sys,
         transmit_read |-> transmit_address < transmit_bytes)

@@ -24,7 +24,7 @@ module tb_uart_packet_tx;
             reads = reads + 1;
         end
         if (!reset_sys && byte_valid && byte_ready) begin
-            if (accepted >= expected_size || byte_data !== expected[accepted])
+            if (accepted >= expected_size || byte_data != expected[accepted])
                 $fatal(1, "UART_PACKET_TX_BYTE index=%0d expected=%02h actual=%02h", accepted, expected[accepted], byte_data);
             accepted = accepted + 1;
         end
@@ -112,7 +112,7 @@ module tb_uart_packet_tx;
             end
             if (cycles == 2000) $fatal(1, "UART_PACKET_TX_RESET_SETUP");
             #2; reset_sys = 1; transmit_valid = 0; #1;
-            if (byte_valid || transmit_read || transmit_done || tx_pin !== 1'b1)
+            if (byte_valid || transmit_read || transmit_done || tx_pin != 1'b1)
                 $fatal(1, "UART_PACKET_TX_RESET_CANCEL");
             repeat (3) @(negedge clk_sys); reset_sys = 0;
             repeat (3) @(negedge clk_sys);

@@ -28,6 +28,9 @@ module n2m_oam_qualify (
         address_effect.write_effect && address_effect.address[15:8] == 8'hfe;
     assign read_effect = ordinary_oam && !bus_plan.write_enable;
     assign write_effect = (ordinary_oam && bus_plan.write_enable) || idu_oam;
+    // tb_oam_qualify forces kind for fault injection; Verilator reports the
+    // force as a second driver.
+    /* verilator lint_off MULTIDRIVEN */
     always_comb begin
         kind = n2m_oam_pkg::OAM_NONE;
         if (!reset && !invalid_observation && scan && effect_sample) begin
@@ -36,6 +39,7 @@ module n2m_oam_qualify (
             else if (write_effect) kind = n2m_oam_pkg::OAM_WRITE;
         end
     end
+    /* verilator lint_on MULTIDRIVEN */
     `N2M_ASSERT(OAM_OBSERVATION_RESOLVED, clk_sys, reset, !invalid_observation)
     `N2M_ASSERT(OAM_COMMIT_SAMPLE, clk_sys, reset, !bus_commit || effect_sample)
     `N2M_ASSERT(OAM_SAMPLE_KNOWN, clk_sys, reset,

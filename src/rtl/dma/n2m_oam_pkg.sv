@@ -1,3 +1,4 @@
+`timescale 1ns/1ps
 `default_nettype none
 package n2m_oam_pkg;
     typedef enum logic [1:0] {
