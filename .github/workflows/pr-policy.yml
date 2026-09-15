@@ -26,6 +26,7 @@ jobs:
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_BODY: ${{ github.event.pull_request.body }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           GH_REPOSITORY: ${{ github.repository }}
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -116,6 +117,79 @@ jobs:
                   "to drop the stale snapshot."
               )
               sys.exit(1)
+
+          # RTL and FPGA changes carry the Questa compile gate's evidence for the
+          # PR head (wiki/tools/n2m/SPEC.md#questa-compile-gate). The gate runs
+          # locally on Windows; this check only refuses to merge without its
+          # record, so the body must be updated after every push.
+          rtl_changed = sorted(
+              name for entry in files
+              for name in (entry["filename"], entry.get("previous_filename"))
+              if name and name.startswith(("src/rtl/", "src/fpga/")))
+          if rtl_changed:
+              head = os.environ.get("PR_HEAD_SHA", "").lower()
+              text = body.replace("\r\n", "\n")
+              gate_help = ("see wiki/agents/pull-requests.md#hosted-and-local-checks and "
+                           "wiki/tools/n2m/SPEC.md#questa-compile-gate")
+              # Any fence info string is accepted; the first line identifies the block.
+              pairs = [
+                  re.findall(r"(?m)^([a-z_]+):[ \t]*(.*?)[ \t]*$", found)
+                  for found in re.findall(r"```[^\n]*\n(Questa compile gate\n.*?)```", text, re.S)
+              ]
+              duplicates = sorted({key for found in pairs for key, _ in found
+                                   if [k for k, _ in found].count(key) > 1})
+              if duplicates:
+                  print(
+                      "::error::Questa compile gate evidence block repeats "
+                      f"{', '.join(duplicates)}; keep one line per field; {gate_help}."
+                  )
+                  sys.exit(1)
+              blocks = [dict(found) for found in pairs]
+              if not blocks:
+                  print(
+                      "::error::Changed files under src/rtl or src/fpga "
+                      f"({', '.join(rtl_changed)}) need a 'Questa compile gate' evidence "
+                      f"block in the PR body; {gate_help}."
+                  )
+                  sys.exit(1)
+              heads = [block.get("head", "").lower() for block in blocks]
+              current = [
+                  block for block, block_head in zip(blocks, heads)
+                  if re.fullmatch(r"[0-9a-f]{7,40}", block_head) and head.startswith(block_head)
+              ]
+              if not current:
+                  print(
+                      "::error::Questa compile gate evidence names head "
+                      f"{', '.join(heads) or 'nothing'} but the PR head is {head[:7]}; "
+                      "rerun 'python tools/build.py lint questa --tag <tag> --json' on "
+                      f"the current head and update the block; {gate_help}."
+                  )
+                  sys.exit(1)
+              gate = current[-1]
+              missing = [key for key in ("vlog", "vopt", "sources", "tops", "elapsed_seconds",
+                                         "attempt_result", "status") if not gate.get(key)]
+              if missing:
+                  print(
+                      "::error::Questa compile gate evidence block lacks "
+                      f"{', '.join(missing)}; {gate_help}."
+                  )
+                  sys.exit(1)
+              if gate["status"] != "PASS":
+                  print(
+                      f"::error::Questa compile gate at {head[:7]} reports status "
+                      f"{gate['status']}; the RTL or FPGA change may not merge until the "
+                      f"gate is PASS on the PR head; {gate_help}."
+                  )
+                  sys.exit(1)
+              if not all(re.fullmatch(r"[1-9][0-9]*", gate[key]) for key in ("sources", "tops")) \
+                      or not re.fullmatch(r"[0-9]+(?:\.[0-9]+)?", gate["elapsed_seconds"]):
+                  print(
+                      "::error::Questa compile gate evidence needs integer sources and tops "
+                      f"counts and a numeric elapsed_seconds; {gate_help}."
+                  )
+                  sys.exit(1)
+              print(f"Questa compile gate PASS recorded for head {head[:7]}: "
+                    f"{gate['sources']} sources, {gate['tops']} tops, {gate['elapsed_seconds']} s.")
 
           match = re.fullmatch(
               r"([1-9][0-9]*)-[a-z0-9]+(?:-[a-z0-9]+)*",
