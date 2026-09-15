@@ -3,6 +3,7 @@ from copy import deepcopy
 import json
 import os
 from pathlib import Path
+import platform
 import subprocess
 import tempfile
 from types import SimpleNamespace
@@ -10,7 +11,8 @@ from unittest.mock import patch
 from tools.n2m.hdl import dependencies
 import unittest
 from tools.ci import profiles, storage
-from tools.n2m import questa, fpga, fpga_pll, simulation
+from tools.n2m import fpga, fpga_pll, simulation, verilator
+from tools.n2m.test_budget import target_selection
 from tools.n2m.records import atomic_json, digest, git_state
 
 REPO = Path(__file__).resolve().parents[3]
@@ -51,7 +53,7 @@ class ProfileTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory(dir=base)
         self.base = Path(self.temp.name); self.root = self.base / 'repo'; self.root.mkdir()
         self.bin = self.base / 'installed/bin'; self.bin.mkdir(parents=True)
-        self.tools = {'questa': str(self.bin), 'quartus': str(self.bin)}
+        self.tools = {'verilator': str(self.bin), 'quartus': str(self.bin)}
     def tearDown(self): self.temp.cleanup()
 
     def write(self, path, text='host fixture\n'):
@@ -82,44 +84,40 @@ class ProfileTests(unittest.TestCase):
         self.build = self.root / 'workdir/builds' / self.tag
         self.stage = self.build / 'sim/test' / target
         self.attempt = self.stage / 'attempts/one'
-        self.compiler = self.build / 'compile/questa' / target / 'one'
+        self.compiler = self.build / 'compile/verilator' / target / 'one'
         self.attempt.mkdir(parents=True); self.compiler.mkdir(parents=True)
-        info = {'backend': 'questa', 'tools': {}, 'discovery': []}
-        for name in ('vlib', 'vmap', 'vlog', 'vsim'):
-            detail = self.binary(name)
-            if name != 'vlib':
-                detail['version'] = f'Questa synthetic {name}'
-                info['discovery'].append({'argv': [detail['path'], '-version'], 'exit_code': 0,
-                                          'output': detail['version'] + '\n'})
-            info['tools'][name] = detail
+        # The synthetic record has the shape the Verilator stage publishes:
+        # verilator under the selected directory, the C++ compiler wherever
+        # PATH found it, one version probe each, then one build and one run.
+        verilator_tool = self.binary('verilator')
+        verilator_tool['version'] = 'Verilator 5.052 synthetic'; verilator_tool['release'] = '5.052'
+        cxx = self.binary('g++'); cxx['version'] = 'g++ synthetic 13.3.0'
+        info = {'backend': 'verilator', 'tools': {'verilator': verilator_tool, 'cxx': cxx},
+                'discovery': [{'argv': [verilator_tool['path'], '--version'], 'exit_code': 0,
+                               'output': verilator_tool['version'] + '\n'},
+                              {'argv': [cxx['path'], '--version'], 'exit_code': 0,
+                               'output': cxx['version'] + '\nCopyright synthetic\n'}]}
         adapter = SimpleNamespace(tools={n: i['path'] for n, i in info['tools'].items()},
                                   path=lambda p: str(Path(p).resolve()))
         commands = []
-        for argv, cwd, log, expected in questa.commands(adapter, self.root, definition, 1, self.compiler, self.attempt):
-            self.write(log, definition['signature'] + '\nErrors: ' + ('1' if broken else '0') + ', Warnings: 0\n'
-                       if log.name == 'sim.log' else 'host fixture\n')
-            commands.append({'argv': argv, 'cwd': str(cwd), 'timeout_seconds': 60,
+        timeouts = (target_selection(target, definition)[0], definition.get('timeout_seconds', 60))
+        for (argv, cwd, log, expected), timeout in zip(
+                verilator.commands(adapter, self.root, definition, 1, self.compiler, self.attempt), timeouts):
+            self.write(log, definition['signature'] + '\n' if log.name == 'sim.log' else 'host fixture\n')
+            commands.append({'argv': argv, 'cwd': str(cwd), 'timeout_seconds': timeout,
                              'exit_code': 1 if expected == 'nonzero' else 0})
-        self.write(self.compiler / 'modelsim.ini')
-        self.write(self.attempt / 'waves/simulation.wlf')
+        self.write(self.compiler / 'obj_dir/sim')
+        self.write(self.attempt / verilator.WAVES)
         self.write(self.attempt / 'baseline.vcd')
         rows = ['seed,cycle,reset,enable,operand,expected,actual']
         for i in range(1, (6 if broken else 75) + 1):
             rows.append(f'1,{i},0,0,0,0,{128 if broken and i == 6 else 0}')
         self.write(self.attempt / 'transactions.csv', '\n'.join(rows) + '\n')
         if not broken: self.write(self.attempt / 'coverage/bins.txt', 'bins=ff\n')
-        # The producer no longer drives Questa: a questa target is retired and
-        # reported SKIPPED before any command plan, so the record shape this
-        # profile checks is the retained Questa shape, built here directly.
-        with patch.object(simulation, 'atomic_json') as published:
-            skipped = simulation.simulate(self.root, self.root / 'workdir/builds/producer',
-                                          SimpleNamespace(target=target, seed=1, rebuild=True),
-                                          SimpleNamespace(info=info), git_state(self.root))
-        self.assertEqual((skipped['status'], skipped['reason']), ('SKIPPED', 'questa-retired'))
-        published.assert_called_once()
-        options = {'target': target, 'seed': 1, 'definition': definition, 'vendor_model': None}
+        options = {'target': target, 'seed': 1, 'definition': definition,
+                   'simulator': 'verilator', 'os': platform.system()}
         self.record = {'status': 'PASS', 'cache': 'BUILT', 'provenance': git_state(self.root),
-                       'inputs': profiles.expected_inputs(self.root, 'questa-baseline', target),
+                       'inputs': profiles.expected_inputs(self.root, 'verilator-baseline', target),
                        'tools': info, 'options': options,
                        'seed': 1, 'commands': commands, 'artifacts': {}}
         self.republish()
@@ -133,7 +131,7 @@ class ProfileTests(unittest.TestCase):
             atomic_json(p, self.record)
 
     def check(self):
-        return profiles.check_record(self.root, self.req, 'questa-baseline', self.target,
+        return profiles.check_record(self.root, self.req, 'verilator-baseline', self.target,
                                      self.tag, 0, self.record, self.tools)
 
     def test_complete_synthetic_positive_and_negative(self):
@@ -145,9 +143,11 @@ class ProfileTests(unittest.TestCase):
 
     def test_truncated_inventories_and_changed_raw_evidence(self):
         self.simulation_record()
-        files = ['run.do', 'waves/simulation.wlf', 'transactions.csv', 'baseline.vcd', 'coverage/bins.txt']
-        for name in files:
-            path = self.attempt / name; data = path.read_bytes()
+        files = [(self.attempt, verilator.WAVES), (self.attempt, 'transactions.csv'), (self.attempt, 'baseline.vcd'),
+                 (self.attempt, 'coverage/bins.txt'), (self.compiler, 'build.log'), (self.compiler, verilator.HARNESS),
+                 (self.compiler, 'obj_dir/sim')]
+        for directory, name in files:
+            path = directory / name; data = path.read_bytes()
             with self.subTest(name=name):
                 path.unlink(); self.republish()
                 with self.assertRaises((ValueError, KeyError)): self.check()
@@ -155,24 +155,28 @@ class ProfileTests(unittest.TestCase):
         self.write(self.attempt / 'transactions.csv', 'truncated\n'); self.republish()
         with self.assertRaises(ValueError): self.check()
 
-    def test_baseline_options_reject_missing_model_nonnull_and_extras(self):
+    def test_baseline_options_reject_missing_or_foreign_simulator_and_extras(self):
         self.simulation_record(); original = deepcopy(self.record)
-        mutations = [lambda o: o.pop('vendor_model'),
-                     lambda o: o.__setitem__('vendor_model', {}),
-                     lambda o: o.__setitem__('vendor_model', {'selection': 'intel-memory'}),
+        mutations = [lambda o: o.pop('simulator'),
+                     lambda o: o.__setitem__('simulator', 'questa'),
+                     lambda o: o.pop('os'),
+                     lambda o: o.__setitem__('vendor_model', None),
                      lambda o: o.__setitem__('unreviewed', None)]
         for mutate in mutations:
             self.record = deepcopy(original)
             mutate(self.record['options']); self.republish()
-            with self.assertRaisesRegex(ValueError, 'Questa target outcome'):
+            with self.assertRaisesRegex(ValueError, 'Verilator target outcome'):
                 self.check()
 
     def test_tool_argv_fingerprint_and_source_mutations(self):
         self.simulation_record(); original = deepcopy(self.record)
-        mutations = [lambda r: r['tools']['tools']['vsim'].__setitem__('sha256', '0' * 64),
+        mutations = [lambda r: r['tools']['tools']['verilator'].__setitem__('sha256', '0' * 64),
+                     lambda r: r['tools']['tools']['cxx'].__setitem__('sha256', '0' * 64),
                      lambda r: r['tools'].__setitem__('discovery', []),
                      lambda r: r['commands'][-1]['argv'].append('+unreviewed'),
-                     lambda r: r['commands'][3]['argv'].__setitem__(1, '-not-sv'),
+                     lambda r: r['commands'][0]['argv'].__setitem__(1, '--not-cc'),
+                     lambda r: r['commands'][0]['argv'].append('-Wno-fatal'),
+                     lambda r: r['commands'][0].__setitem__('timeout_seconds', 60),
                      lambda r: r['commands'][-1].__setitem__('cwd', str(self.root)),
                      lambda r: r['commands'][-1].__setitem__('exit_code', 1),
                      lambda r: r['inputs'].clear()]
@@ -344,7 +348,7 @@ class ProfileTests(unittest.TestCase):
         self.simulation_record()
         subprocess.run(['git', '-C', str(self.root), 'update-index', '--assume-unchanged', 'src/dv/fixture.sv'], check=True)
         self.write(self.root / 'src/dv/fixture.sv', 'module changed; endmodule\n')
-        self.record['inputs'] = profiles.expected_inputs(self.root, 'questa-baseline', self.target)
+        self.record['inputs'] = profiles.expected_inputs(self.root, 'verilator-baseline', self.target)
         self.record['provenance'] = git_state(self.root)
         self.republish()
         with self.assertRaisesRegex(ValueError, 'hidden index flags'): self.check()

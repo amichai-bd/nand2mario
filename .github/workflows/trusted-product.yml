@@ -7,7 +7,7 @@ on:
         description: Fixed explicitly invoked local validation profile
         required: true
         type: choice
-        options: [questa-baseline, quartus-clocking]
+        options: [verilator-baseline, quartus-clocking]
 
 permissions:
   contents: read

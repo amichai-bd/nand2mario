@@ -1,4 +1,4 @@
-"""Run the Questa fixture regression and validate retained transactions."""
+"""Run the baseline fixture regression under Verilator and validate retained transactions."""
 import argparse
 import csv
 import json
@@ -65,7 +65,7 @@ def evidence(root, tag, seed, broken):
         if not path.resolve().is_relative_to(folder.resolve()) or file_hash(path) != digest:
             raise ValueError("out-of-build or changed simulation artifact")
         found[path.name] = path
-    for name in ("transactions.csv", "baseline.vcd", "sim.log"):
+    for name in ("transactions.csv", "baseline.vcd", "simulation.fst", "sim.log"):
         if name not in found or not found[name].stat().st_size:
             raise ValueError("missing nonempty artifact: " + name)
     runtime_exit = manifest["commands"][-1]["exit_code"]
@@ -79,15 +79,15 @@ def evidence(root, tag, seed, broken):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--level", choices=("smoke", "regression"), default="smoke")
-    parser.add_argument("--sim", choices=("questa",), default="questa")
-    parser.add_argument("--questa-bin")
+    parser.add_argument("--sim", choices=("verilator",), default="verilator")
+    parser.add_argument("--verilator-bin", help="directory containing verilator; otherwise discover on PATH")
     parser.add_argument("--tag", required=True)
     args = parser.parse_args()
     if not valid_tag(args.tag) or len(args.tag) > 24:
         parser.error("regression tag must be a valid build tag of at most 24 characters")
     plan = load_plan(MANIFEST)
     level = plan["levels"][args.level]
-    backends = ["questa"]
+    backends = ["verilator"]
     report = {"status": "RUNNING", "level": args.level, "simulators": backends,
               "manifest_sha256": file_hash(MANIFEST), "runs": []}
     start = time.monotonic()
@@ -103,9 +103,10 @@ def main():
                         tag = f"{args.tag}-{backend[0]}-{index}-{target.removeprefix('baseline-')}"
                         command = [sys.executable, str(ROOT / "tools/build.py"), "sim", "test", target,
                                    "--sim", backend, "--seed", str(seed), "--tag", tag, "--rebuild"]
-                        if backend == "questa" and args.questa_bin:
-                            command += ["--questa-bin", args.questa_bin]
-                        # Builder bounds every subprocess to 60 seconds and owns its cleanup.
+                        if args.verilator_bin:
+                            command += ["--verilator-bin", args.verilator_bin]
+                        # The builder bounds the build by the wall budget and the run by
+                        # the registry timeout, and owns its cleanup.
                         result = subprocess.run(command, cwd=ROOT, text=True, encoding="utf-8", capture_output=True)
                         log = build / (tag + ".log")
                         log.write_text(result.stdout + result.stderr, encoding="utf-8")

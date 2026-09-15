@@ -136,6 +136,23 @@ class CommandTests(unittest.TestCase):
         self.assertTrue(run[0].endswith("obj_dir/sim"))
         self.assertEqual(run[1:], ["+seed=7", "+verilator+seed+7", "+verilator+rand+reset+2", "+inject_failure"])
 
+    def test_identical_retained_harness_is_left_untouched_and_a_stale_one_rewritten(self):
+        target, _ = load_target(self.root, "builder-smoke")
+        attempt = self.build / "attempt"
+        compiler = self.build / "compile"
+        for folder in (attempt / "waves", compiler):
+            folder.mkdir(parents=True)
+        harness = compiler / verilator.HARNESS
+        verilator.commands(self.sim, self.root, target, 1, compiler, attempt)
+        before = harness.stat().st_mtime_ns
+        # A validator replays the plan against a retained attempt; the same
+        # content must not rewrite the artifact.
+        verilator.commands(self.sim, self.root, target, 1, compiler, attempt)
+        self.assertEqual(harness.stat().st_mtime_ns, before)
+        harness.write_text("// stale\n", encoding="utf-8")
+        verilator.commands(self.sim, self.root, target, 1, compiler, attempt)
+        self.assertEqual(harness.read_text(encoding="utf-8"), verilator.main_source("builder_smoke"))
+
     def test_python_target_builds_the_vpi_flow_and_traces_to_the_retained_wave(self):
         for owner in ("src/dv/python", "src/rtl/joypad", "src/rtl/interfaces", "src/rtl/common"):
             shutil.copytree(test_builder.ROOT / owner, self.root / owner, ignore=shutil.ignore_patterns("__pycache__"))

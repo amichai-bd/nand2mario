@@ -72,7 +72,7 @@ class BaselineTests(unittest.TestCase):
         folder.mkdir(parents=True)
         self.trace = folder / "transactions.csv"
         self.write_trace(self.rows())
-        for name, text in (("baseline.vcd", "wave"), ("sim.log", "pass"), ("bins.txt", "bins=ff")):
+        for name, text in (("baseline.vcd", "wave"), ("simulation.fst", "wave"), ("sim.log", "pass"), ("bins.txt", "bins=ff")):
             (folder / name).write_text(text)
         manifest = {"status": "PASS", "seed": 31, "commands": [{"exit_code": 0}],
                     "artifacts": {p.relative_to(self.root).as_posix(): file_hash(p) for p in folder.iterdir()}}
@@ -88,6 +88,11 @@ class BaselineTests(unittest.TestCase):
         path.write_text(json.dumps(manifest))
         with self.assertRaisesRegex(ValueError, "missing nonempty artifact"):
             baseline.evidence(self.root, "case", 31, False)
+        manifest["artifacts"]["workdir/builds/case/baseline.vcd"] = file_hash(folder / "baseline.vcd")
+        del manifest["artifacts"]["workdir/builds/case/simulation.fst"]
+        path.write_text(json.dumps(manifest))
+        with self.assertRaisesRegex(ValueError, "missing nonempty artifact: simulation.fst"):
+            baseline.evidence(self.root, "case", 31, False)
 
     def test_budget_overrun_retains_finished_child_and_fails_suite(self):
         plan = self.root / "plan.json"
@@ -101,7 +106,7 @@ class BaselineTests(unittest.TestCase):
             clock[0] = 2.0
             return SimpleNamespace(returncode=0, stdout="finished", stderr="")
         with patch.object(baseline, "ROOT", self.root), patch.object(baseline, "MANIFEST", plan), \
-             patch.object(sys, "argv", ["baseline", "--sim", "questa", "--tag", "budget"]), \
+             patch.object(sys, "argv", ["baseline", "--sim", "verilator", "--tag", "budget"]), \
              patch.object(baseline.time, "monotonic", side_effect=lambda: clock[0]), \
              patch.object(baseline.subprocess, "run", side_effect=child) as run, \
              patch.object(baseline, "evidence", return_value=self.rows()):

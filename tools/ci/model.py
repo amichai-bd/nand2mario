@@ -5,7 +5,7 @@ import json
 import re
 
 PROFILES = {
-    'questa-baseline': ('baseline-good', 'baseline-broken'),
+    'verilator-baseline': ('baseline-good', 'baseline-broken'),
     'quartus-clocking': ('clocking-nominal', 'clocking-invalid'),
 }
 CONFIG_KEYS = {'schema', 'enabled', 'repository', 'repository_id', 'controller_id',

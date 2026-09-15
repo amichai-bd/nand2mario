@@ -2,31 +2,35 @@
 import json
 import hashlib
 import os
+import platform
 import re
 from types import SimpleNamespace
 from pathlib import Path
-from tools.n2m import baseline, fpga, fpga_pll, simulation, questa
+from tools.n2m import baseline, fpga, fpga_pll, simulation, verilator
 from tools.n2m.hdl import dependencies
 from tools.n2m.records import git_state, digest as builder_digest
-from tools.n2m.questa import diagnostic
+from tools.n2m.test_budget import target_selection
+from tools.n2m.verilator import diagnostic
 from .model import PROFILES, require
 from .diagnostics import invalid_compile
 from .source import verify_sources
 from .storage import beneath, file_hash, inventory
 
+BASELINE = 'verilator-baseline'
+
 
 def child_command(root, profile, target, tag, tools, python):
     require(profile in PROFILES and target in PROFILES[profile], 'fixed child profile')
     base = [python, str(root / 'tools/build.py')]
-    if profile == 'questa-baseline':
-        return base + ['sim', 'test', target, '--sim', 'questa', '--seed', '1',
-                       '--questa-bin', tools['questa'], '--tag', tag, '--rebuild', '--json']
+    if profile == BASELINE:
+        return base + ['sim', 'test', target, '--sim', 'verilator', '--seed', '1',
+                       '--verilator-bin', tools['verilator'], '--tag', tag, '--rebuild', '--json']
     return base + ['fpga', 'build', target, '--quartus-bin', tools['quartus'],
                    '--timeout', '600', '--tag', tag, '--rebuild', '--json']
 
 
 def expected_inputs(root, profile, target):
-    if profile == 'questa-baseline':
+    if profile == BASELINE:
         definition, registry = simulation.load_target(root, target)
         paths = dependencies(root, definition['sources']) + [registry.relative_to(root).as_posix(),
                                                                'tools/n2m/dependencies.json']
@@ -49,7 +53,7 @@ def check_artifacts(root, build, record):
 def check_record(root, req, profile, target, tag, raw_exit, printed, selected_tools):
     source_inventory = verify_sources(root, req['sha'])
     build = root / 'workdir/builds' / tag
-    stage = build / ('sim/test' if profile == 'questa-baseline' else 'fpga') / target
+    stage = build / ('sim/test' if profile == BASELINE else 'fpga') / target
     record = json.loads((stage / 'result.json').read_text(encoding='utf-8'))
     require(all(printed.get(k) == v for k, v in record.items()), 'printed/stage record mismatch')
     clean = builder_digest({'diff': hashlib.sha256(b'').hexdigest(), 'untracked': {}})
@@ -69,32 +73,32 @@ def check_record(root, req, profile, target, tag, raw_exit, printed, selected_to
         if path.is_file() and path.name != 'result.json':
             require(path.relative_to(root).as_posix() in record['artifacts'], 'truncated attempt inventory')
     validate_commands(root, profile, record, attempt, build, target, selected_tools)
-    if profile == 'questa-baseline':
+    if profile == BASELINE:
         definition, _ = simulation.load_target(root, target)
         require(raw_exit == 0 and record['status'] == 'PASS' and record['seed'] == 1
                 and record['options'] == {'seed': 1, 'target': target, 'definition': definition,
-                                          'vendor_model': None},
-                'Questa target outcome')
+                                          'simulator': 'verilator', 'os': platform.system()},
+                'Verilator target outcome')
         commands = record['commands']
-        names = [Path(c['argv'][0]).stem.lower() for c in commands]
-        require(names == ['vmap', 'vlib', 'vmap', 'vlog', 'vmap', 'vmap', 'vsim'],
-                'complete Questa compile/elaborate/run commands')
-        require(all(c['exit_code'] == 0 for c in commands[:-1]) and
-                (commands[-1]['exit_code'] != 0) == (target == 'baseline-broken'), 'raw Questa exits')
-        compiler = build / 'compile/questa' / target / attempt.name
-        for directory, names in ((compiler, ('ini.log', 'library.log', 'map.log', 'compile.log', 'modelsim.ini')),
-                                 (attempt, ('ini.log', 'map.log', 'run.do', 'sim.log', 'waves/simulation.wlf',
-                                            'transactions.csv', 'baseline.vcd'))):
+        names = [Path(c['argv'][0]).name.lower() for c in commands]
+        require(names == ['verilator', 'sim'], 'complete Verilator build/run commands')
+        require(commands[0]['exit_code'] == 0 and
+                (commands[-1]['exit_code'] != 0) == (target == 'baseline-broken'), 'raw Verilator exits')
+        compiler = build / 'compile/verilator' / target / attempt.name
+        for directory, names in ((compiler, ('build.log', verilator.HARNESS, 'obj_dir/sim')),
+                                 (attempt, ('sim.log', verilator.WAVES, 'transactions.csv', 'baseline.vcd'))):
             for name in names:
                 require((directory / name).relative_to(root).as_posix() in record['artifacts'],
-                        'required Questa evidence missing')
+                        'required Verilator evidence missing')
+        require((compiler / verilator.HARNESS).read_text(encoding='utf-8') == verilator.main_source(definition['top']),
+                'retained harness main')
         for path in compiler.rglob('*'):
             if path.is_file():
                 require(path.relative_to(root).as_posix() in record['artifacts'], 'truncated compile inventory')
         transcript = (attempt / 'sim.log').read_text(encoding='utf-8')
         expected = definition['signature'] if target == 'baseline-broken' else None
         require(definition['signature'] in transcript and diagnostic(transcript, expected) is None,
-                'exact Questa expected diagnostic')
+                'exact Verilator expected diagnostic')
         baseline.evidence(root, tag, 1, target == 'baseline-broken')
     else:
         require(record['target'] == target and record['definition'] == fpga.target_definition(root, target),
@@ -148,29 +152,42 @@ def executable(info, directory, name):
 
 
 def validate_commands(root, profile, record, attempt, build, target, selected_tools):
-    if profile == 'questa-baseline':
-        info = record['tools']; directory = selected_tools['questa']
-        require(set(info) == {'backend', 'tools', 'discovery'} and info['backend'] == 'questa' and
-                set(info['tools']) == {'vlib', 'vmap', 'vlog', 'vsim'}, 'complete Questa identity')
-        paths = {name: executable(detail, directory, name) for name, detail in info['tools'].items()}
-        require(len(info['discovery']) == 3, 'complete Questa version probes')
-        for name, probe in zip(('vmap', 'vlog', 'vsim'), info['discovery']):
-            require(probe['argv'] == [paths[name], '-version'] and probe['exit_code'] == 0 and
-                    'Questa' in probe['output'] and diagnostic(probe['output']) is None and
-                    info['tools'][name]['version'] == probe['output'].strip(), 'Questa version identity')
+    if profile == BASELINE:
+        info = record['tools']; directory = selected_tools['verilator']
+        require(set(info) == {'backend', 'tools', 'discovery'} and info['backend'] == 'verilator' and
+                set(info['tools']) == {'verilator', 'cxx'}, 'complete Verilator identity')
+        paths = {'verilator': executable(info['tools']['verilator'], directory, 'verilator')}
+        # The C++ compiler is discovered on PATH, not under the selected directory;
+        # its recorded path and content hash must still match an existing file.
+        compiler_path = Path(info['tools']['cxx']['path'])
+        require(compiler_path.is_absolute() and compiler_path.is_file() and
+                info['tools']['cxx']['sha256'] == file_hash(compiler_path), 'selected executable identity: cxx')
+        paths['cxx'] = str(compiler_path)
+        require(len(info['discovery']) == 2, 'complete Verilator version probes')
+        for name, probe in zip(('verilator', 'cxx'), info['discovery']):
+            require(probe['argv'] == [paths[name], '--version'] and probe['exit_code'] == 0 and
+                    diagnostic(probe['output']) is None, 'Verilator version identity')
+        verilator_probe, compiler_probe = info['discovery']
+        release = re.match(r'Verilator (\d+\.\d+)\b', verilator_probe['output'].strip())
+        require(release is not None and info['tools']['verilator']['version'] == verilator_probe['output'].strip()
+                and info['tools']['verilator']['release'] == release[1], 'Verilator version identity')
+        require(info['tools']['cxx']['version'] == compiler_probe['output'].strip().splitlines()[0],
+                'C++ compiler version identity')
         definition, _ = simulation.load_target(root, target)
-        compiler = build / 'compile/questa' / target / attempt.name
+        compiler = build / 'compile/verilator' / target / attempt.name
         adapter = SimpleNamespace(tools=paths, path=lambda p: str(Path(p).resolve()))
-        expected = questa.commands(adapter, root, definition, 1, compiler, attempt, prepare=False)
-        require(len(expected) == len(record['commands']), 'complete Questa argv chain')
-        for actual, (argv, cwd, log, exit_class) in zip(record['commands'], expected):
-            require(actual['argv'] == argv and actual['cwd'] == str(cwd) and actual['timeout_seconds'] == 60,
-                    'exact Questa command arguments/working directory/timeout')
+        expected = verilator.commands(adapter, root, definition, 1, compiler, attempt)
+        require(len(expected) == len(record['commands']), 'complete Verilator argv chain')
+        timeouts = (target_selection(target, definition)[0], definition.get('timeout_seconds', 60))
+        for actual, (argv, cwd, log, exit_class), timeout in zip(record['commands'], expected, timeouts):
+            require(actual['argv'] == argv and actual['cwd'] == str(cwd) and actual['timeout_seconds'] == timeout,
+                    'exact Verilator command arguments/working directory/timeout')
+            require(log.is_file(), 'missing Verilator command log')
             require(diagnostic(log.read_text(encoding='utf-8'),
                     definition['signature'] if exit_class == 'nonzero' else None) is None,
-                    'unexplained diagnostic in Questa command log')
+                    'unexplained diagnostic in Verilator command log')
         require(record['fingerprint'] == builder_digest({'inputs': record['inputs'], 'tools': info,
-                                                         'options': record['options']}), 'Questa fingerprint')
+                                                         'options': record['options']}), 'Verilator fingerprint')
     else:
         info = record['tools']; directory = selected_tools['quartus']
         require(set(info) == {*fpga.TOOLS, 'altpll'}, 'complete Quartus identity')
