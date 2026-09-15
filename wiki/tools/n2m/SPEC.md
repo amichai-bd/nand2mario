@@ -416,7 +416,16 @@ the tree. A `questa` target keeps its retired Tcl script and is `SKIPPED`.
 The run is the [Python flow](#python-testbenches-under-verilator) with
 `--timing` kept, because the testbench owns the clock, the checks, the
 signature and `$finish`; cocotb's main advances to the testbench's next time
-slot between the peer's own timers. The stage discovers the pinned runtime,
+slot between the peer's own timers. Instead of `--public-flat-rw`, the build
+takes a generated configuration `compile/verilator/<target>/<attempt>/access.vlt`
+that makes exactly the `access` list public on the top module
+(`public_flat_rw -module "<top>" -var "<name>"`); the peer touches nothing
+else, and the whole-design switch cost Verilator most of its optimizations
+(`integration-smoke` ran 168 s with it and 68 s without), and compiles with
+`-CFLAGS -O2` instead of Verilator's default `-Os`, because the composed
+product systems otherwise exhaust their wall budget (`host-play` ran 200 s
+with `-O2` and did not finish in 288 s without). The build also passes the
+target's `defines` as `+define+`. The stage discovers the pinned runtime,
 so `sim test` for a driver target runs on the pinned interpreter like a
 Python target. Before the run command the builder starts the Python peer
 ([`simulation_peer.py`](../../../tools/n2m/simulation_peer.py)), waits for

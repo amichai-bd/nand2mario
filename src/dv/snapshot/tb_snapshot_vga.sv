@@ -95,6 +95,8 @@ module tb_snapshot_vga;
         expected_epoch=0; expected_sequence=0; latest_epoch=0; latest_sequence=0;
         expected_dot=0; latest_dot=0; requested_dot=0; requested_epoch=0; requested_sequence=0;
         read_offset=0; read_spacing=0;
+        // Name the dump file before $dumpvars; Questa defaulted it, Verilator warns.
+        $dumpfile("waves/snapshot-vga.vcd");
         $dumpvars(0,snapshot_request,snapshot_ready,snapshot_done,snapshot_ok,snapshot_valid,
             snapshot_metadata,frame_read,frame_address,frame_data,frame_valid);
         wait(source_frames==1); acquire(); wait(acquisitions==1);

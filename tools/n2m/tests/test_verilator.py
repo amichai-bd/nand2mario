@@ -254,6 +254,15 @@ class CommandTests(unittest.TestCase):
         self.assertEqual(build[-1], runtime["support"])
         self.assertEqual(run[1:4], ["--trace", "--trace-file", verilator.WAVES])
         self.assertEqual(run[-1], "+smoke_root=" + str(self.root))
+        # Only the declared access list is public; the whole-design switch
+        # would cost the optimizations the product targets need for their budget.
+        self.assertNotIn("--public-flat-rw", build)
+        config = self.build / verilator.ACCESS_CONFIG
+        self.assertIn(str(config), build)
+        text = config.read_text()
+        self.assertTrue(text.startswith("`verilator_config\n"))
+        for name in target["driver"]["access"]:
+            self.assertIn(f'public_flat_rw -module "tb_verilator_peer" -var "{name}"', text)
 
 
 class RecordTests(unittest.TestCase):
