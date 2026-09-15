@@ -323,7 +323,10 @@ inside the wall budget. `--timing` stays because the wrappers own their clocks,
 settled-sample delays and fault arming. The build links
 `-lcocotbvpi_verilator` from the installed cocotb 2.1.0 library
 directory and compiles cocotb's own `share/lib/verilator/verilator.cpp` as the
-main. The run adds `--trace --trace-file
+main. A registry `args` entry of the form `-g<NAME>=<VALUE>` is a top-level
+parameter override: the build passes it as `-G<NAME>=<VALUE>` at verilate time
+and the run never sees it (`python-v05-identity` and its fault set `BUILD_ID`
+this way); every other entry stays a run plusarg. The run adds `--trace --trace-file
 waves/simulation.fst` and the same seed plusargs. The environment sets
 `GPI_USERS` to the embedded `libpython` and cocotb's GPI entry point beside
 `PYGPI_PYTHON_BIN`, `LIBPYTHON_LOC`, `COCOTB_TOPLEVEL`, `COCOTB_TEST_MODULES`,

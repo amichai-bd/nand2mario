@@ -38,14 +38,16 @@ and `python-host-play-release`. They force actual snapshot data, completion,
 JOYP buttons or release commit. The original checker must fail with
 PLAY_OBJECT_COUNT, PLAY_MISSING_FRAME, or the exact wrong image respectively;
 each is registered `expected_exit: "nonzero"` with that line as its signature.
-Python test failure and builder exit1 are required; raw simulator exit0 alone is
-not success. Expected images are never changed to accommodate a fault.
+The builder exits 0 and reports PASS for exactly that registered failure; a
+passing checker, a different failure or missing results fails the target, and
+`python_results` keeps `FAIL` for the test itself. Expected images are never
+changed to accommodate a fault.
 
-The one-second simulation and1500-second builder bounds preserve the existing
-host-play budgets. The wait callback checks its300-second wall budget whenever
-simulation scheduling resumes. A returned serial reply must meet the120-second
-wall progress bound. An unresponsive simulator is ultimately bounded by the
-builder; these cooperative checks do not interrupt a blocked native simulator.
+The one-second simulation bound and the default 300 s builder budget apply. The
+wait callback checks the same 300 s wall budget whenever simulation scheduling
+resumes. A returned serial reply must meet the 120 s wall progress bound. An
+unresponsive simulator is ultimately bounded by the builder; these cooperative
+checks do not interrupt a blocked native simulator.
 
 Artifacts include actual Client requests/replies, applied serial bits, each full
 packed/grayscale image, independently recognized object and frame metadata,

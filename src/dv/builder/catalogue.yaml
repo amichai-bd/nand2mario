@@ -309,130 +309,130 @@ units:
   preload-crc-fault: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 0.64}
   preload-fixture: {kind: sim, level: 1, labels: [preload], duration_seconds: 1.40}
   preload-lifecycle: {kind: sim, level: 1, labels: [uart], duration_seconds: 1.14}
-  python-bka: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 22.09}
-  python-bkb: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 20.41}
-  python-bks: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 9.43}
-  python-bkx: {kind: sim, level: 2, labels: [fault, integration, python-tb, springtrail, system, v05], duration_seconds: 8.14}
-  python-controls-startup: {kind: sim, level: 2, labels: [input, integration, python-tb, v05], duration_seconds: 7.20}
-  python-controls-system: {kind: sim, level: 2, labels: [input, integration, python-tb, v05], duration_seconds: 17.18}
-  python-controls-system-corrupt: {kind: sim, level: 2, labels: [fault, input, integration, python-tb, v05], duration_seconds: 16.64}
-  python-courier-a: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 17.00}
-  python-courier-b: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 16.74}
-  python-courier-c: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 15.83}
-  python-courier-d: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 16.50}
-  python-courier-e: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 16.69}
-  python-courier-f: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 15.47}
-  python-courier-fault: {kind: sim, level: 2, labels: [fault, integration, python-tb, springtrail, system, v05], duration_seconds: 8.86}
-  python-courier-g: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 10.14}
-  python-courier-short: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 9.68}
-  python-display: {kind: sim, level: 2, labels: [display308, integration, python-tb, system, v05], duration_seconds: 22.66}
-  python-display-boundary: {kind: sim, level: 2, labels: [display308, fault, integration, python-tb, system, v05], duration_seconds: 8.96}
-  python-display-short: {kind: sim, level: 2, labels: [display308, integration, python-tb, system, v05], duration_seconds: 8.20}
-  python-dma-late-fe20: {kind: sim, level: 2, labels: [dma, integration, python-tb], duration_seconds: 3.85}
-  python-dma-late-fe9c: {kind: sim, level: 2, labels: [dma, integration, python-tb], duration_seconds: 4.16}
-  python-dma-late-fe9d: {kind: sim, level: 2, labels: [dma, integration, python-tb], duration_seconds: 4.03}
-  python-entities-a: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 16.00}
-  python-entities-b: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 18.57}
-  python-entities-c: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 16.72}
-  python-entities-d: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 18.22}
-  python-entities-e: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 17.10}
-  python-entities-f: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 13.28}
-  python-entities-fault: {kind: sim, level: 2, labels: [fault, integration, python-tb, springtrail, system, v05], duration_seconds: 10.72}
-  python-entities-g: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 10.49}
-  python-entities-h: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 16.47}
-  python-entities-i: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 9.94}
-  python-entities-oam-a: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 16.47}
-  python-entities-oam-b: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 16.65}
-  python-entities-oam-c: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 14.57}
-  python-entities-oam-short: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 12.57}
-  python-entities-short: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 9.68}
-  python-entity-render-changed: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 47.24}
-  python-entity-render-normal: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 50.83}
-  python-entity-render-short: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 34.34}
-  python-gpa: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 26.29}
-  python-gpb: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 42.55}
-  python-gps: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 11.00}
-  python-gpx: {kind: sim, level: 2, labels: [fault, integration, python-tb, springtrail, system, v05], duration_seconds: 8.90}
-  python-host-play: {kind: sim, level: 2, labels: [host-play, integration, memory, python-tb], duration_seconds: 162.59}
-  python-host-play-frame: {kind: sim, level: 2, labels: [fault, host-play, integration, memory, python-tb], duration_seconds: 104.42}
-  python-host-play-input: {kind: sim, level: 2, labels: [fault, host-play, integration, memory, python-tb], duration_seconds: 113.33}
-  python-host-play-missing: {kind: sim, level: 2, labels: [fault, host-play, integration, memory, python-tb], duration_seconds: 95.59}
-  python-host-play-release: {kind: sim, level: 2, labels: [fault, host-play, integration, memory, python-tb], duration_seconds: 143.11}
-  python-hud-current-a: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 12.70}
-  python-hud-current-b: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 12.42}
-  python-hud-current-c: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 12.35}
-  python-hud-current-d: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 13.51}
-  python-hud-current-e: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 16.23}
-  python-hud-current-fault: {kind: sim, level: 2, labels: [fault, integration, python-tb, springtrail, system, v05], duration_seconds: 9.02}
-  python-hud-current-short: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 9.05}
-  python-integration: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: 45.94}
-  python-integration-client-preloaded: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: 15.27}
-  python-integration-fault: {kind: sim, level: 2, labels: [fault, integration, memory, python-tb], duration_seconds: 40.39}
-  python-integration-uart: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: 87.90}
-  python-integration-uart-data-fault: {kind: sim, level: 2, labels: [fault, integration, memory, python-tb], duration_seconds: 78.26}
-  python-integration-uart-irq-fault: {kind: sim, level: 2, labels: [fault, integration, memory, python-tb], duration_seconds: 81.32}
-  python-integration-uart-pixel-fault: {kind: sim, level: 2, labels: [fault, integration, memory, python-tb], duration_seconds: 81.12}
-  python-interaction-a: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 15.02}
-  python-interaction-b: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 15.77}
-  python-interaction-c: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 14.60}
-  python-interaction-d: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 15.06}
-  python-interaction-fault: {kind: sim, level: 2, labels: [fault, integration, python-tb, springtrail, system, v05], duration_seconds: 8.78}
-  python-interaction-short: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 8.76}
-  python-joypad: {kind: sim, level: 2, labels: [joypad, python-tb], duration_seconds: 1.16}
-  python-joypad-fault: {kind: sim, level: 2, labels: [fault, joypad, python-tb], duration_seconds: 0.90}
-  python-mgs: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 33.31}
-  python-mgu: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 48.71}
-  python-mr: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 48.67}
-  python-mus: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 7.77}
-  python-mut: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 39.48}
-  python-mux: {kind: sim, level: 2, labels: [fault, integration, python-tb, springtrail, system, v05], duration_seconds: 7.59}
-  python-oam-late-fe20: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: 21.53}
-  python-oam-late-fe9c: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: 21.07}
-  python-oam-late-fe9d: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: 21.44}
-  python-os: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 7.79}
-  python-ou: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 8.73}
-  python-ox: {kind: sim, level: 2, labels: [fault, integration, python-tb, springtrail, system, v05], duration_seconds: 7.29}
-  python-palette194-00: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: 54.81}
-  python-palette194-fc: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: 50.66}
-  python-pgs: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 30.28}
-  python-pgu: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 78.59}
-  python-pgx: {kind: sim, level: 2, labels: [fault, integration, python-tb, springtrail, system, v05], duration_seconds: 53.68}
-  python-pr: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 49.51}
-  python-pua: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 39.08}
-  python-pub: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 48.23}
-  python-pus: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 13.28}
-  python-pux: {kind: sim, level: 2, labels: [fault, integration, python-tb, springtrail, system, v05], duration_seconds: 10.09}
-  python-stackdrop-game: {kind: sim, level: 2, labels: [integration, python-tb, stackdrop, system, v05], duration_seconds: 43.05}
-  python-stackdrop-short: {kind: sim, level: 2, labels: [integration, python-tb, stackdrop, system, v05], duration_seconds: 8.85}
-  python-stackdrop-unit: {kind: sim, level: 2, labels: [integration, python-tb, stackdrop, system, v05], duration_seconds: 39.57}
-  python-stackdrop-unit-x: {kind: sim, level: 2, labels: [fault, integration, python-tb, stackdrop, system, v05], duration_seconds: 7.37}
-  python-startup202-read: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: 5.33}
-  python-startup202-write: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: 5.16}
-  python-stop349: {kind: sim, level: 2, labels: [integration, joypad, python-tb, system, v05], duration_seconds: 8.37}
-  python-stop349-fault: {kind: sim, level: 2, labels: [fault, integration, joypad, python-tb, system, v05], duration_seconds: 7.06}
-  python-v05-bounded: {kind: sim, level: 2, labels: [integration, python-tb, system, v05], duration_seconds: 24.69}
-  python-v05-bounded-pixel: {kind: sim, level: 2, labels: [fault, integration, python-tb, system, v05], duration_seconds: 21.35}
-  python-v05-bounded-progress: {kind: sim, level: 2, labels: [fault, integration, python-tb, system, v05], duration_seconds: 6.68}
+  python-bka: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 25.60}
+  python-bkb: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 19.74}
+  python-bks: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 9.27}
+  python-bkx: {kind: sim, level: 2, labels: [fault, integration, python-tb, springtrail, system, v05], duration_seconds: 7.99}
+  python-controls-startup: {kind: sim, level: 2, labels: [input, integration, python-tb, v05], duration_seconds: 10.03}
+  python-controls-system: {kind: sim, level: 2, labels: [input, integration, python-tb, v05], duration_seconds: 16.08}
+  python-controls-system-corrupt: {kind: sim, level: 2, labels: [fault, input, integration, python-tb, v05], duration_seconds: 15.24}
+  python-courier-a: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 15.02}
+  python-courier-b: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 16.36}
+  python-courier-c: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 17.43}
+  python-courier-d: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 16.87}
+  python-courier-e: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 19.06}
+  python-courier-f: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 18.23}
+  python-courier-fault: {kind: sim, level: 2, labels: [fault, integration, python-tb, springtrail, system, v05], duration_seconds: 10.05}
+  python-courier-g: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 11.08}
+  python-courier-short: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 9.82}
+  python-display: {kind: sim, level: 2, labels: [display308, integration, python-tb, system, v05], duration_seconds: 21.08}
+  python-display-boundary: {kind: sim, level: 2, labels: [display308, fault, integration, python-tb, system, v05], duration_seconds: 9.14}
+  python-display-short: {kind: sim, level: 2, labels: [display308, integration, python-tb, system, v05], duration_seconds: 7.72}
+  python-dma-late-fe20: {kind: sim, level: 2, labels: [dma, integration, python-tb], duration_seconds: 3.71}
+  python-dma-late-fe9c: {kind: sim, level: 2, labels: [dma, integration, python-tb], duration_seconds: 3.67}
+  python-dma-late-fe9d: {kind: sim, level: 2, labels: [dma, integration, python-tb], duration_seconds: 3.64}
+  python-entities-a: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 14.42}
+  python-entities-b: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 14.76}
+  python-entities-c: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 14.88}
+  python-entities-d: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 15.34}
+  python-entities-e: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 13.74}
+  python-entities-f: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 12.14}
+  python-entities-fault: {kind: sim, level: 2, labels: [fault, integration, python-tb, springtrail, system, v05], duration_seconds: 9.44}
+  python-entities-g: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 12.15}
+  python-entities-h: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 17.92}
+  python-entities-i: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 10.67}
+  python-entities-oam-a: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 17.26}
+  python-entities-oam-b: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 17.78}
+  python-entities-oam-c: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 12.97}
+  python-entities-oam-short: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 12.72}
+  python-entities-short: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 9.28}
+  python-entity-render-changed: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 49.82}
+  python-entity-render-normal: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 50.43}
+  python-entity-render-short: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 31.68}
+  python-gpa: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 25.66}
+  python-gpb: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 46.60}
+  python-gps: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 11.46}
+  python-gpx: {kind: sim, level: 2, labels: [fault, integration, python-tb, springtrail, system, v05], duration_seconds: 8.75}
+  python-host-play: {kind: sim, level: 2, labels: [host-play, integration, memory, python-tb], duration_seconds: 171.42}
+  python-host-play-frame: {kind: sim, level: 2, labels: [fault, host-play, integration, memory, python-tb], duration_seconds: 106.75}
+  python-host-play-input: {kind: sim, level: 2, labels: [fault, host-play, integration, memory, python-tb], duration_seconds: 115.53}
+  python-host-play-missing: {kind: sim, level: 2, labels: [fault, host-play, integration, memory, python-tb], duration_seconds: 95.11}
+  python-host-play-release: {kind: sim, level: 2, labels: [fault, host-play, integration, memory, python-tb], duration_seconds: 126.99}
+  python-hud-current-a: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 12.79}
+  python-hud-current-b: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 12.56}
+  python-hud-current-c: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 12.75}
+  python-hud-current-d: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 13.28}
+  python-hud-current-e: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 17.00}
+  python-hud-current-fault: {kind: sim, level: 2, labels: [fault, integration, python-tb, springtrail, system, v05], duration_seconds: 8.56}
+  python-hud-current-short: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 8.42}
+  python-integration: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: 47.45}
+  python-integration-client-preloaded: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: 14.77}
+  python-integration-fault: {kind: sim, level: 2, labels: [fault, integration, memory, python-tb], duration_seconds: 37.49}
+  python-integration-uart: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: 85.68}
+  python-integration-uart-data-fault: {kind: sim, level: 2, labels: [fault, integration, memory, python-tb], duration_seconds: 71.54}
+  python-integration-uart-irq-fault: {kind: sim, level: 2, labels: [fault, integration, memory, python-tb], duration_seconds: 72.25}
+  python-integration-uart-pixel-fault: {kind: sim, level: 2, labels: [fault, integration, memory, python-tb], duration_seconds: 79.93}
+  python-interaction-a: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 17.17}
+  python-interaction-b: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 16.00}
+  python-interaction-c: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 14.58}
+  python-interaction-d: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 15.67}
+  python-interaction-fault: {kind: sim, level: 2, labels: [fault, integration, python-tb, springtrail, system, v05], duration_seconds: 9.01}
+  python-interaction-short: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 9.29}
+  python-joypad: {kind: sim, level: 2, labels: [joypad, python-tb], duration_seconds: 1.21}
+  python-joypad-fault: {kind: sim, level: 2, labels: [fault, joypad, python-tb], duration_seconds: 0.94}
+  python-mgs: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 32.08}
+  python-mgu: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 43.50}
+  python-mr: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 44.23}
+  python-mus: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 7.22}
+  python-mut: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 40.13}
+  python-mux: {kind: sim, level: 2, labels: [fault, integration, python-tb, springtrail, system, v05], duration_seconds: 7.35}
+  python-oam-late-fe20: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: 19.91}
+  python-oam-late-fe9c: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: 19.07}
+  python-oam-late-fe9d: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: 19.41}
+  python-os: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 7.25}
+  python-ou: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 8.28}
+  python-ox: {kind: sim, level: 2, labels: [fault, integration, python-tb, springtrail, system, v05], duration_seconds: 6.82}
+  python-palette194-00: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: 48.44}
+  python-palette194-fc: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: 46.58}
+  python-pgs: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 28.27}
+  python-pgu: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 74.69}
+  python-pgx: {kind: sim, level: 2, labels: [fault, integration, python-tb, springtrail, system, v05], duration_seconds: 51.56}
+  python-pr: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 42.78}
+  python-pua: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 34.03}
+  python-pub: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 37.48}
+  python-pus: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 9.76}
+  python-pux: {kind: sim, level: 2, labels: [fault, integration, python-tb, springtrail, system, v05], duration_seconds: 8.31}
+  python-stackdrop-game: {kind: sim, level: 2, labels: [integration, python-tb, stackdrop, system, v05], duration_seconds: 35.16}
+  python-stackdrop-short: {kind: sim, level: 2, labels: [integration, python-tb, stackdrop, system, v05], duration_seconds: 7.33}
+  python-stackdrop-unit: {kind: sim, level: 2, labels: [integration, python-tb, stackdrop, system, v05], duration_seconds: 35.30}
+  python-stackdrop-unit-x: {kind: sim, level: 2, labels: [fault, integration, python-tb, stackdrop, system, v05], duration_seconds: 6.56}
+  python-startup202-read: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: 4.84}
+  python-startup202-write: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: 4.73}
+  python-stop349: {kind: sim, level: 2, labels: [integration, joypad, python-tb, system, v05], duration_seconds: 6.27}
+  python-stop349-fault: {kind: sim, level: 2, labels: [fault, integration, joypad, python-tb, system, v05], duration_seconds: 6.32}
+  python-v05-bounded: {kind: sim, level: 2, labels: [integration, python-tb, system, v05], duration_seconds: 22.65}
+  python-v05-bounded-pixel: {kind: sim, level: 2, labels: [fault, integration, python-tb, system, v05], duration_seconds: 19.07}
+  python-v05-bounded-progress: {kind: sim, level: 2, labels: [fault, integration, python-tb, system, v05], duration_seconds: 5.67}
   python-v05-continuous: {kind: sim, level: 2, labels: [integration, python-tb, system, v05], duration_seconds: null}
-  python-v05-dma: {kind: sim, level: 2, labels: [dma, integration, python-tb, system, v05], duration_seconds: 8.26}
-  python-v05-dma-byte: {kind: sim, level: 2, labels: [dma, fault, integration, python-tb, system, v05], duration_seconds: 6.87}
-  python-v05-identity: {kind: sim, level: 2, labels: [integration, python-tb, system, v05], duration_seconds: 3.59}
-  python-v05-identity-fault: {kind: sim, level: 2, labels: [fault, integration, python-tb, system, v05], duration_seconds: 3.43}
-  python-v05-image-fault: {kind: sim, level: 2, labels: [fault, integration, python-tb, system, v05], duration_seconds: 72.93}
-  python-v05-iopeek: {kind: sim, level: 2, labels: [integration, python-tb, system, v05], duration_seconds: 14.93}
-  python-v05-iopeek-fault: {kind: sim, level: 2, labels: [fault, integration, python-tb, system, v05], duration_seconds: 15.13}
-  python-v05-physical: {kind: sim, level: 2, labels: [integration, python-tb, system, v05], duration_seconds: 23.91}
-  python-v05-physical-mask: {kind: sim, level: 2, labels: [fault, integration, python-tb, system, v05], duration_seconds: 12.70}
-  python-v05-pixel-fault: {kind: sim, level: 2, labels: [fault, integration, python-tb, system, v05], duration_seconds: 143.61}
-  python-v05-progress-fault: {kind: sim, level: 2, labels: [fault, integration, python-tb, system, v05], duration_seconds: 6.73}
-  python-v05-short: {kind: sim, level: 2, labels: [integration, python-tb, system, v05], duration_seconds: 61.87}
-  python-v05-startup: {kind: sim, level: 2, labels: [integration, python-tb, system, v05], duration_seconds: 167.71}
-  python-v05-timer: {kind: sim, level: 2, labels: [composed-smoke, integration, python-tb, system, v05], duration_seconds: 6.94}
-  python-v05-timer-fault: {kind: sim, level: 2, labels: [fault, integration, python-tb, system, v05], duration_seconds: 6.27}
-  python-vga-crc: {kind: sim, level: 2, labels: [python-tb, vga], duration_seconds: 10.49}
-  python-vga-crc-corrupt: {kind: sim, level: 2, labels: [fault, python-tb, vga], duration_seconds: 4.67}
-  python-vram-read: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: 5.17}
-  python-vram-write: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: 5.42}
+  python-v05-dma: {kind: sim, level: 2, labels: [dma, integration, python-tb, system, v05], duration_seconds: 6.71}
+  python-v05-dma-byte: {kind: sim, level: 2, labels: [dma, fault, integration, python-tb, system, v05], duration_seconds: 6.02}
+  python-v05-identity: {kind: sim, level: 2, labels: [integration, python-tb, system, v05], duration_seconds: 6.03}
+  python-v05-identity-fault: {kind: sim, level: 2, labels: [fault, integration, python-tb, system, v05], duration_seconds: 6.15}
+  python-v05-image-fault: {kind: sim, level: 2, labels: [fault, integration, python-tb, system, v05], duration_seconds: 68.30}
+  python-v05-iopeek: {kind: sim, level: 2, labels: [integration, python-tb, system, v05], duration_seconds: 13.80}
+  python-v05-iopeek-fault: {kind: sim, level: 2, labels: [fault, integration, python-tb, system, v05], duration_seconds: 14.70}
+  python-v05-physical: {kind: sim, level: 2, labels: [integration, python-tb, system, v05], duration_seconds: 22.16}
+  python-v05-physical-mask: {kind: sim, level: 2, labels: [fault, integration, python-tb, system, v05], duration_seconds: 11.77}
+  python-v05-pixel-fault: {kind: sim, level: 2, labels: [fault, integration, python-tb, system, v05], duration_seconds: 140.62}
+  python-v05-progress-fault: {kind: sim, level: 2, labels: [fault, integration, python-tb, system, v05], duration_seconds: 6.87}
+  python-v05-short: {kind: sim, level: 2, labels: [integration, python-tb, system, v05], duration_seconds: 57.21}
+  python-v05-startup: {kind: sim, level: 2, labels: [integration, python-tb, system, v05], duration_seconds: 142.74}
+  python-v05-timer: {kind: sim, level: 2, labels: [composed-smoke, integration, python-tb, system, v05], duration_seconds: 6.10}
+  python-v05-timer-fault: {kind: sim, level: 2, labels: [fault, integration, python-tb, system, v05], duration_seconds: 6.07}
+  python-vga-crc: {kind: sim, level: 2, labels: [python-tb, vga], duration_seconds: 9.60}
+  python-vga-crc-corrupt: {kind: sim, level: 2, labels: [fault, python-tb, vga], duration_seconds: 4.30}
+  python-vram-read: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: 4.64}
+  python-vram-write: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: 4.78}
   register-macros: {kind: sim, level: 2, labels: [common], duration_seconds: 1.46}
   register-macros-corrupt: {kind: sim, level: 2, labels: [common, fault], duration_seconds: 0.45}
   serial-boundary-fault: {kind: sim, level: 2, labels: [fault, serial], duration_seconds: 2.01}
@@ -455,8 +455,8 @@ units:
   snapshot-vga: {kind: sim, level: 2, labels: [snapshot, vga], duration_seconds: 62.77}
   src/dv/display308/test_program.py: {kind: unit, level: 0, labels: [display308], duration_seconds: 0.14}
   src/dv/display308/test_scene.py: {kind: unit, level: 0, labels: [display308], duration_seconds: 0.06}
-  src/dv/python/v05/test_known.py: {kind: unit, level: 2, labels: [needs-cocotb, python-tb, v05], duration_seconds: 1.62}
-  src/dv/python/vga/test_reference.py: {kind: unit, level: 0, labels: [python-tb, vga], duration_seconds: 0.11}
+  src/dv/python/v05/test_known.py: {kind: unit, level: 2, labels: [needs-cocotb, python-tb, v05], duration_seconds: 1.18}
+  src/dv/python/vga/test_reference.py: {kind: unit, level: 0, labels: [python-tb, vga], duration_seconds: 0.10}
   src/dv/springtrail/test_blocks_assets.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.44}
   src/dv/springtrail/test_blocks_reference.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.08}
   src/dv/springtrail/test_blocks_unit_check.py: {kind: unit, level: 0, labels: [springtrail], duration_seconds: 0.13}
@@ -546,7 +546,7 @@ units:
   tools/n2m/tests/test_crc_proof.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 0.15}
   tools/n2m/tests/test_doctor.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 0.26}
   tools/n2m/tests/test_external_rom.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 0.56}
-  tools/n2m/tests/test_fixture_preflight.py: {kind: unit, level: 1, labels: [builder, python-tb], duration_seconds: 7.30}
+  tools/n2m/tests/test_fixture_preflight.py: {kind: unit, level: 1, labels: [builder, python-tb], duration_seconds: 6.15}
   tools/n2m/tests/test_fpga.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.92}
   tools/n2m/tests/test_fpga_adc.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.12}
   tools/n2m/tests/test_fpga_clocking.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.14}
@@ -562,7 +562,7 @@ units:
   tools/n2m/tests/test_hdl.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 0.07}
   tools/n2m/tests/test_host.py: {kind: unit, level: 1, labels: [builder, host], duration_seconds: 1.28}
   tools/n2m/tests/test_host_play.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 0.15}
-  tools/n2m/tests/test_import_check.py: {kind: unit, level: 0, labels: [builder, python-tb], duration_seconds: 0.33}
+  tools/n2m/tests/test_import_check.py: {kind: unit, level: 0, labels: [builder, python-tb], duration_seconds: 0.27}
   tools/n2m/tests/test_intel_adc.py: {kind: unit, level: 0, labels: [builder, memory], duration_seconds: 0.19}
   tools/n2m/tests/test_intel_memory.py: {kind: unit, level: 0, labels: [builder, memory], duration_seconds: 0.28}
   tools/n2m/tests/test_interfaces.py: {kind: unit, level: 0, labels: [builder, interfaces], duration_seconds: 0.10}
@@ -578,8 +578,8 @@ units:
   tools/n2m/tests/test_preload_compare.py: {kind: unit, level: 0, labels: [builder, preload], duration_seconds: 0.07}
   tools/n2m/tests/test_preload_continuous.py: {kind: unit, level: 0, labels: [builder, preload], duration_seconds: 0.16}
   tools/n2m/tests/test_program_art.py: {kind: unit, level: 0, labels: [builder, sw], duration_seconds: 0.54}
-  tools/n2m/tests/test_python_tb.py: {kind: unit, level: 1, labels: [builder, python-tb], duration_seconds: 2.70}
-  tools/n2m/tests/test_python_waves.py: {kind: unit, level: 0, labels: [builder, python-tb], duration_seconds: 0.30}
+  tools/n2m/tests/test_python_tb.py: {kind: unit, level: 1, labels: [builder, python-tb], duration_seconds: 1.85}
+  tools/n2m/tests/test_python_waves.py: {kind: unit, level: 0, labels: [builder, python-tb], duration_seconds: 0.19}
   tools/n2m/tests/test_records.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 0.54}
   tools/n2m/tests/test_regress.py: {kind: unit, level: 1, labels: [builder], duration_seconds: 2.35}
   tools/n2m/tests/test_rgbds.py: {kind: unit, level: 0, labels: [builder, sw], duration_seconds: 0.14}
@@ -588,8 +588,8 @@ units:
   tools/n2m/tests/test_sameboy_pixels.py: {kind: unit, level: 0, labels: [builder, sameboy], duration_seconds: 0.06}
   tools/n2m/tests/test_sameboy_probe.py: {kind: unit, level: 0, labels: [builder, sameboy], duration_seconds: 0.10}
   tools/n2m/tests/test_sameboy_retirement.py: {kind: unit, level: 0, labels: [builder, sameboy], duration_seconds: 0.06}
-  tools/n2m/tests/test_sim_client_clock.py: {kind: unit, level: 0, labels: [builder, python-tb], duration_seconds: 0.17}
-  tools/n2m/tests/test_simulation_peer.py: {kind: unit, level: 1, labels: [builder, python-tb], duration_seconds: 6.41}
+  tools/n2m/tests/test_sim_client_clock.py: {kind: unit, level: 0, labels: [builder, python-tb], duration_seconds: 0.15}
+  tools/n2m/tests/test_simulation_peer.py: {kind: unit, level: 1, labels: [builder, python-tb], duration_seconds: 6.15}
   tools/n2m/tests/test_springtrail_native.py: {kind: unit, level: 0, labels: [builder, springtrail], duration_seconds: 0.16}
   tools/n2m/tests/test_sprite_preview.py: {kind: unit, level: 0, labels: [builder, sw], duration_seconds: 0.12}
   tools/n2m/tests/test_stackdrop_finish.py: {kind: unit, level: 0, labels: [builder, stackdrop], duration_seconds: 0.11}
@@ -642,9 +642,9 @@ units:
   uart-stopped-step-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 1.23}
   uart-validation: {kind: sim, level: 2, labels: [uart], duration_seconds: 1.93}
   uart-validation-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 0.48}
-  verilator-peer: {kind: sim, level: 1, labels: [builder, integration, python-tb], duration_seconds: 4.28}
-  verilator-peer-fatal: {kind: sim, level: 2, labels: [builder, fault, integration, python-tb], duration_seconds: 1.72}
-  verilator-peer-fault: {kind: sim, level: 2, labels: [fault, integration, python-tb], duration_seconds: 1.32}
+  verilator-peer: {kind: sim, level: 1, labels: [builder, integration, python-tb], duration_seconds: 1.01}
+  verilator-peer-fatal: {kind: sim, level: 2, labels: [builder, fault, integration, python-tb], duration_seconds: 0.90}
+  verilator-peer-fault: {kind: sim, level: 2, labels: [fault, integration, python-tb], duration_seconds: 0.81}
   vga: {kind: sim, level: 2, labels: [vga], duration_seconds: 46.60}
   vga-active-swap: {kind: sim, level: 2, labels: [fault, vga], duration_seconds: 6.89}
   vga-bank-reuse: {kind: sim, level: 2, labels: [fault, vga], duration_seconds: 6.43}
