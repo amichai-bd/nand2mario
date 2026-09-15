@@ -7618,8 +7618,8 @@
     "top": "joypad_fault",
     "simulator": "verilator",
     "args": [],
-    "expected_exit": "zero",
-    "signature": "PASS python-joypad",
+    "expected_exit": "nonzero",
+    "signature": "JOYP_MISMATCH cycle=3 phase=post signal=io_rdata expected=238 actual=239",
     "timeout_seconds": 60,
     "python": {
       "module": "test_joypad",

@@ -66,8 +66,8 @@ def validate(root, target, name=None):
         waves = config["waves"]
         if not isinstance(waves, list) or not waves or any(not isinstance(name, str) or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name) for name in waves) or len(set(waves)) != len(waves):
             raise ValueError("Python waves require unique public top-level signal names")
-    if "driver" in target or target["expected_exit"] != "zero":
-        raise ValueError("python testbench requires zero raw exit and no driver")
+    if "driver" in target:
+        raise ValueError("python testbench accepts no driver")
     if target.get("vendor_model") not in (None, "intel-memory", "intel-controls"):
         raise ValueError("Python testbench requires supported Intel memory or controls models")
     if target.get("preload") not in (None, *FIXTURE_BUILDERS):
@@ -589,11 +589,35 @@ def results(path, config):
         return {"status": "FAIL", "error": f"invalid Python results: {error}"}
 
 
-def evidence(root, record, config, *, driver=False):
+def accepted(outcome, target):
+    """The completed named test carries the verdict the target declares.
+
+    `expected_exit: "zero"` needs the test to pass. `expected_exit: "nonzero"`
+    is the Python form of a deliberate failure: the test must fail and one of
+    its failure or error messages must carry the declared signature. Invalid
+    or missing results never satisfy either expectation.
+    """
+    if target["expected_exit"] == "zero":
+        return outcome["status"] == "PASS"
+    return outcome["status"] == "FAIL" and any(
+        item.get("kind") in ("failure", "error") and target["signature"] in (item.get("message") or "")
+        for item in outcome.get("diagnostics", ()))
+
+
+def explained_warnings(target):
+    """cocotb reports the declared failure as one WARNING line; nothing else is explained."""
+    if target["expected_exit"] != "nonzero" or "python" not in target:
+        return ()
+    return (f"{target['python']['module']}.{target['python']['test']} failed",)
+
+
+def evidence(root, record, target, *, driver=False):
     """Require the inventory as well as hashes before accepting/reusing success.
 
     A driver target's transactions are the Python peer's own record; its
-    inventory is the peer transcript and exit record beside the cocotb results.
+    inventory is the peer transcript and exit record beside the cocotb results,
+    and its peer must have passed. A Python testbench must carry the verdict
+    its expected_exit declares.
     """
     name = record.get("python_results_file")
     if not isinstance(name, str) or name not in record["artifacts"]:
@@ -602,4 +626,8 @@ def evidence(root, record, config, *, driver=False):
     inventory = ("results.xml", "peer.log", "peer-result.json", "waves/simulation.fst", "sim.log") if driver \
         else ("results.xml", "transactions.jsonl", "waves/simulation.fst", "sim.log")
     required = [folder / p for p in inventory]
-    return all(p.relative_to(root).as_posix() in record["artifacts"] and p.is_file() and p.stat().st_size > 0 for p in required) and results(root / name, config)["status"] == "PASS"
+    if not all(p.relative_to(root).as_posix() in record["artifacts"] and p.is_file() and p.stat().st_size > 0 for p in required):
+        return False
+    if driver:
+        return results(root / name, peer_config(target))["status"] == "PASS"
+    return accepted(results(root / name, target["python"]), target)
