@@ -59,6 +59,60 @@ workspace creation, tool discovery or child launch; there is no fallback.
 evidence. It also proves the [test catalogue](#test-catalogue) still
 covers every test in the tree, and fails naming the first uncovered file.
 
+## Progressive build menu
+
+Either spelling opens the same keyboard menu:
+
+```text
+python tools/build.py -tui
+python tools/build.py --tui
+```
+
+The menu requires an interactive input and output terminal. Redirected or
+non-interactive use exits promptly and points to `--help`; automation continues
+to use the ordinary CLI and `--json`. Each screen asks one question. Up and Down
+move, Enter selects, and typing filters a list. Backspace edits the filter.
+Escape returns to the preceding decision; Escape from the first intent screen
+cancels the menu. Long lists show at most ten choices around the current row.
+
+The first decision reaches every top-level builder family: `doctor`, `check`,
+`sim`, `regress`, `tests`, `clean`, `fpga`, `sw`, and `host`. It also reaches the
+separate [game launcher](host/LAUNCHER.md). Later decisions come from the current
+argparse command tree and owning registries. Simulation targets are read from
+`src/dv/builder/targets.json` and filtered by the selected backend. Python
+preflight lists the registry's Python testbenches. FPGA and software targets,
+regression subsets, test levels and labels, external images, build tags, and
+peek stores come from their existing registries. Programming lists only
+successful, unmodified, in-place `.sof` attempts accepted by the programmer's
+record check. Launcher identities come only from those checked `v05-board`
+attempts. Package loading lists only immutable attempts accepted by the package
+reader.
+
+The menu offers current healthy Windows UART ports from the doctor's read-only
+PnP query, followed by recent retained selections and manual entry. This query
+does not import the serial backend, open a port, drive DTR/RTS or send a byte.
+The selected host command still repeats fresh PnP identity and health checks
+before serial open. Recent simulator, Intel-model and Quartus directories come
+from retained manifests; manual entry remains available. Applicable optional
+flags live under **Advanced options** with the ordinary CLI defaults. `--json`
+is intentionally absent.
+
+The final screen names the native host and whether the selection builds, runs a
+simulation, deletes a build, programs the FPGA, transmits over UART, or launches
+a GUI. It displays a copyable relative command quoted for POSIX or PowerShell.
+This display is not the execution mechanism. **Run now** starts
+`[sys.executable, <absolute tools/build.py>, ...]` or the existing
+`gb_launcher.py` as an argument vector with `shell=False`. Builder selections
+therefore re-enter the public dispatcher; `sim test` and `sim preflight` remain
+under `test_budget.py` supervision, and every command keeps its locks, records,
+progress and exit status. The launcher remains its own one-window process.
+
+No subprocess starts until **Run now** is selected. A foreign-host review shows
+the native command but offers no run choice; it never crosses WSL and Windows.
+Programming, UART transmission, cleanup and GUI launch cannot occur while
+browsing, moving back or cancelling. The terminal restores its prior input mode
+before a confirmed child starts or the menu exits.
+
 ## Human terminal progress
 
 Without `--json`, a single simulation or FPGA command reports live, flushed

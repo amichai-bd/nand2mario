@@ -2,6 +2,10 @@
 
 The build system gives agents and people one predictable command to create
 tagged workspaces, reuse valid results, and record evidence.
+Its keyboard menu guides a person through one choice at a time, then shows the
+native host, effect and exact command before anything runs. The menu must reach
+every builder family without copying target catalogues, keep safe defaults easy,
+and require an explicit final confirmation.
 For a person, a long command reports each active stage, its duration, the
 checked outcome, useful artifact paths, and the next explicit command. Machine
 callers keep one JSON result on stdout. Progress must not hide host boundaries,

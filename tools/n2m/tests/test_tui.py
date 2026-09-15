@@ -2,6 +2,7 @@
 import hashlib
 import io
 import json
+import os
 from pathlib import Path
 import sys
 import tempfile
@@ -9,7 +10,7 @@ import unittest
 from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from n2m import tui
+from n2m import interface_codec, tui
 
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -160,8 +161,101 @@ class TuiTests(unittest.TestCase):
             selected = tui._wire_id(tui.Menu(terminal), root)
             self.assertEqual(selected, "01" * 16)
 
+    def test_current_uart_candidates_reuse_read_only_discovery(self):
+        with tempfile.TemporaryDirectory(prefix="tui uart ") as temporary:
+            root = Path(temporary)
+            calls = []
+            def discover(folder, args):
+                calls.append((folder, args))
+                return {"ports": [
+                    {"DeviceID": "COM7", "Status": "OK", "ConfigManagerErrorCode": 0},
+                    {"DeviceID": "COM8", "Status": "Error", "ConfigManagerErrorCode": 10}]}
+            with patch("n2m.host.transport.open_serial") as opened:
+                self.assertEqual(tui.uart_candidates(root, system="Windows", discover=discover), ["COM7"])
+                opened.assert_not_called()
+            self.assertEqual(len(calls), 1)
+            self.assertFalse(calls[0][0].exists(), "temporary discovery logs were not removed")
+
+    @unittest.skipIf(os.name == "nt", "POSIX PTY contract")
+    def test_real_posix_pty_enters_raw_mode_and_restores_it(self):
+        import termios
+        master, slave = os.openpty()
+        reader = os.fdopen(os.dup(slave), "r", encoding="utf-8")
+        writer = os.fdopen(os.dup(slave), "w", encoding="utf-8")
+        self.addCleanup(reader.close)
+        self.addCleanup(writer.close)
+        self.addCleanup(lambda: os.close(master))
+        self.addCleanup(lambda: os.close(slave))
+        before = termios.tcgetattr(slave)
+        terminal = tui.Terminal(stdin=reader, stdout=writer, system="Linux")
+        self.assertTrue(terminal.interactive())
+        with terminal:
+            during = termios.tcgetattr(slave)
+            self.assertFalse(during[3] & termios.ICANON)
+            self.assertFalse(during[3] & termios.ECHO)
+        self.assertEqual(termios.tcgetattr(slave), before)
+        self.assertIn(b"\x1b[?25l", os.read(master, 128))
+
+    def test_every_current_subaction_has_an_argparse_valid_plan(self):
+        samples = {
+            ("doctor",): ["doctor", "--sim", "verilator"],
+            ("check",): ["check"],
+            ("regress",): ["regress", "pre-merge", "--sim", "verilator"],
+            ("clean",): ["clean", "--tag", "old-build"],
+            ("sim", "test"): ["sim", "test", "builder-smoke", "--sim", "verilator"],
+            ("sim", "preflight"): ["sim", "preflight", "python-joypad"],
+            ("fpga", "build"): ["fpga", "build", "v05-board", "--quartus-bin", "tools"],
+            ("fpga", "program"): ["fpga", "program", "--sof", "checked.sof", "--quartus-bin", "tools"],
+            ("tests", "validate"): ["tests", "validate"],
+            ("tests", "list"): ["tests", "list", "--level", "0"],
+            ("tests", "affected"): ["tests", "affected", "--base", "origin/main"],
+            ("tests", "run"): ["tests", "run", "--label", "agents", "--sim", "verilator"],
+            ("sw", "oracle"): ["sw", "oracle"],
+            ("sw", "assemble"): ["sw", "assemble", "assembler-basic"],
+            ("sw", "build"): ["sw", "build", "springtrail"],
+            ("sw", "conformance"): ["sw", "conformance"],
+            ("sw", "link-conformance"): ["sw", "link-conformance"],
+            ("sw", "asset-conformance"): ["sw", "asset-conformance"],
+        }
+        host_base = ["host"]
+        for action in tui.command_actions(("host",)):
+            argv = [*host_base, action, "--uart-port", "COM7"]
+            if action == "load":
+                argv += ["--external", "libbet"]
+            elif action in ("step", "run-dots"):
+                argv += ["--dots", "1"]
+            elif action == "input":
+                argv += ["--mask", "0"]
+            elif action == "write":
+                argv += ["--address", "0", "--value", "0"]
+            elif action == "peek":
+                argv += ["--store", sorted(interface_codec.PEEK_STORES)[0]]
+            elif action in ("crc-proof", "keyboard"):
+                argv += ["--expected-build-id", "00" * 16]
+            samples[("host", action)] = argv
+        expected = {(family, action) for family in ("sim", "fpga", "tests", "sw", "host")
+                    for action in tui.command_actions((family,))}
+        expected |= {("doctor",), ("check",), ("regress",), ("clean",)}
+        self.assertEqual(set(samples), expected)
+        from n2m.cli import parser
+        for path, argv in samples.items():
+            with self.subTest(path=path):
+                parsed = parser().parse_args(argv)
+                self.assertEqual((parsed.command,) + ((parsed.action,) if hasattr(parsed, "action") else ()), path)
+                plan = tui.Plan(argv, path, "Current host", "test")
+                tui.validate_plan(plan)
+        launcher = tui.Plan(["--expected-build-id", "00" * 16, "--uart-port", "COM7"],
+                            ("launcher",), "Windows PowerShell", "GUI")
+        tui.validate_plan(launcher)
+
+    def test_each_leaf_plan_is_complete_before_review(self):
+        incomplete = tui.Plan(["fpga", "build", "v05-board"], ("fpga", "build"),
+                              "Windows PowerShell", "build")
+        with self.assertRaisesRegex(ValueError, "quartus-bin"):
+            tui.validate_plan(incomplete)
+
     def test_foreign_host_review_has_no_run_choice(self):
-        plan = tui.Plan(["fpga", "build", "v05-board"], ("fpga", "build"),
+        plan = tui.Plan(["fpga", "build", "v05-board", "--quartus-bin", "tools"], ("fpga", "build"),
                         "Windows PowerShell", "compile")
         terminal = ScriptedTerminal(["DOWN", "ENTER"])
         self.assertEqual(tui.choose_execution(tui.Menu(terminal), plan, ROOT, "Linux"), "cancel")
@@ -183,6 +277,21 @@ class TuiTests(unittest.TestCase):
         self.assertEqual(command[:2], [sys.executable, str(ROOT / "tools/build.py")])
         self.assertEqual(command[2:7], ["sim", "test", "builder-smoke", "--sim", "verilator"])
         self.assertEqual(runner.call_args.kwargs, {"cwd": ROOT, "shell": False})
+
+    def test_escape_from_advanced_reopens_the_last_required_decision(self):
+        keys = ["DOWN", "DOWN", "DOWN", "ENTER", "ENTER", "ENTER",
+                *list("builder-smoke"), "ENTER",
+                "ESC",                  # Advanced -> selected target
+                "ESC",                  # Target -> backend
+                "DOWN", "ENTER",       # Questa
+                *list("builder-smoke"), "ENTER",
+                "ENTER",                # Advanced Done
+                "DOWN", "DOWN", "ENTER"]  # Cancel at review
+        terminal = ScriptedTerminal(keys)
+        runner = Mock()
+        self.assertEqual(tui.run(ROOT, terminal=terminal, runner=runner, system="Windows"), 0)
+        runner.assert_not_called()
+        self.assertGreaterEqual(sum(frame[0] == "Select simulator" for frame in terminal.frames), 2)
 
     def test_launcher_delegates_to_existing_gui_only_after_confirmation(self):
         plan = tui.Plan(["--expected-build-id", "00" * 16, "--uart-port", "COM 7"],

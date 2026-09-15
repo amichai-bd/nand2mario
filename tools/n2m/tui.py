@@ -6,9 +6,12 @@ ownership, budgets, locks and retained records stay with their existing owners.
 """
 from dataclasses import dataclass, field
 import argparse
+import contextlib
+import io
 import json
 from pathlib import Path
 import platform
+import re
 import shlex
 import subprocess
 import sys
@@ -18,7 +21,8 @@ from .progress import powershell_command
 from .tui_choices import (build_tags, checked_packages, checked_sofs, command_actions,
                           external_images, fpga_targets, parser_at,
                           regression_subsets, retained_values, simulation_targets,
-                          software_targets, top_families, compatible_selection)
+                          software_targets, top_families, compatible_selection,
+                          uart_candidates)
 from .tui_terminal import (BACK, VIEW_ROWS, Choice, Menu, Terminal, decode_posix,
                            decode_windows)
 
@@ -33,6 +37,7 @@ class Plan:
     host: str
     effect: str
     set_options: dict = field(default_factory=dict)
+    editor: object = None
 
 
 
@@ -70,7 +75,7 @@ def _backend(menu, title="Select simulator"):
 
 
 def _uart(menu, root):
-    return _manual_value(menu, "Select UART port", retained_values(root, "uart_port"))
+    return _manual_value(menu, "Select UART port", uart_candidates(root))
 
 
 def _wire_id(menu, root):
@@ -85,9 +90,9 @@ def _quartus(menu, root):
     return _manual_value(menu, "Select Quartus bin directory", retained_values(root, "quartus_bin"))
 
 
-def _collect(menu, steps):
+def _collect(menu, steps, answers=None, start=0):
     """Run dynamic decision pages with exact Escape-to-previous behavior."""
-    answers, index = {}, 0
+    answers, index = dict(answers or {}), start
     while index < len(steps):
         key, action = steps[index]
         value = action(answers)
@@ -103,47 +108,65 @@ def _collect(menu, steps):
     return answers
 
 
+def _editable(menu, steps, factory):
+    answers = _collect(menu, steps)
+    if answers is BACK:
+        return BACK
+
+    def make(values):
+        plan = factory(values)
+        def edit(active_menu):
+            updated = _collect(active_menu, steps, values, len(steps) - 1)
+            return BACK if updated is BACK else make(updated)
+        plan.editor = edit
+        return plan
+    return make(answers)
+
+
 def _sim_plan(menu, root):
     actions = command_actions(("sim",))
     action = menu.choose("Simulation action", _named(actions))
     if action is BACK:
         return BACK
     if action == "test":
-        answers = _collect(menu, [
+        steps = [
             ("sim", lambda _: _backend(menu)),
-            ("target", lambda a: menu.choose("Select simulation test", _named(simulation_targets(root, a["sim"]))))])
-        if answers is BACK:
+            ("target", lambda a: menu.choose("Select simulation test", _named(simulation_targets(root, a["sim"]))))]
+        plan = _editable(menu, steps, lambda answers: Plan(
+            ["sim", "test", answers["target"], "--sim", answers["sim"]],
+            ("sim", "test"), _sim_host(answers["sim"]), "Build, run and check a simulation"))
+        if plan is BACK:
             return _sim_plan(menu, root)
-        argv = ["sim", "test", answers["target"], "--sim", answers["sim"]]
-        return Plan(argv, ("sim", "test"), _sim_host(answers["sim"]), "Build, run and check a simulation")
+        return plan
     targets = simulation_targets(root, None, preflight=True)
-    target = menu.choose("Select fixture preflight", _named(targets))
-    if target is BACK:
+    plan = _editable(menu, [("target", lambda _: menu.choose("Select fixture preflight", _named(targets)))],
+                     lambda answers: Plan(["sim", "preflight", answers["target"]],
+                                          ("sim", "preflight"), "Current host",
+                                          "Build and check a fixture; no simulator"))
+    if plan is BACK:
         return _sim_plan(menu, root)
-    return Plan(["sim", "preflight", target], ("sim", "preflight"), "Current host", "Build and check a fixture; no simulator")
+    return plan
 
 
 def _doctor_plan(menu, root):
-    answers = _collect(menu, [
+    steps = [
         ("sim", lambda _: _backend(menu)),
         ("profile", lambda _: menu.choose("Select readiness scope", [
             Choice("simulation", "Simulation", "Run the selected simulator smoke only"),
-            Choice("environment", "Full environment", "Also inspect Quartus, JTAG and UART without programming or transmission")]))])
-    if answers is BACK:
-        return BACK
-    return Plan(["doctor", "--profile", answers["profile"], "--sim", answers["sim"]],
+            Choice("environment", "Full environment", "Also inspect Quartus, JTAG and UART without programming or transmission")]))]
+    return _editable(menu, steps, lambda answers: Plan(
+                ["doctor", "--profile", answers["profile"], "--sim", answers["sim"]],
                 ("doctor",), _sim_host(answers["sim"]),
-                "Run simulator smoke" + (" and read-only device discovery" if answers["profile"] == "environment" else ""))
+                "Run simulator smoke" + (" and read-only device discovery" if answers["profile"] == "environment" else "")))
 
 
 def _regress_plan(menu, root):
-    answers = _collect(menu, [
+    steps = [
         ("sim", lambda _: _backend(menu)),
-        ("subset", lambda a: menu.choose("Select compatible regression", regression_subsets(root, a["sim"])))])
-    if answers is BACK:
-        return BACK
-    return Plan(["regress", answers["subset"], "--sim", answers["sim"]], ("regress",),
-                _sim_host(answers["sim"]), "Run a bounded simulation regression")
+        ("subset", lambda a: menu.choose("Select compatible regression", regression_subsets(root, a["sim"])))]
+    return _editable(menu, steps, lambda answers: Plan(
+        ["regress", answers["subset"], "--sim", answers["sim"]], ("regress",),
+        _sim_host(answers["sim"]), "Run a bounded simulation regression"))
 
 
 def _catalogue_selector(menu, root, backend=None, labels=()):
@@ -194,22 +217,29 @@ def _tests_plan(menu, root):
     if action == "validate":
         return Plan(["tests", action], ("tests", action), "Current host", "Validate the test catalogue")
     if action == "affected":
-        base = menu.text("Git base reference", default="origin/main")
-        if base is BACK:
+        plan = _editable(menu, [("base", lambda _: menu.text("Git base reference", default="origin/main"))],
+                         lambda answers: Plan(["tests", action, "--base", answers["base"]],
+                                              ("tests", action), "Current host",
+                                              "Inspect repository impact; no tests"))
+        if plan is BACK:
             return _tests_plan(menu, root)
-        return Plan(["tests", action, "--base", base], ("tests", action), "Current host", "Inspect repository impact; no tests")
+        return plan
     if action == "list":
-        selector = _test_selection(menu, root)
-        if selector is BACK:
+        plan = _editable(menu, [("selector", lambda _: _test_selection(menu, root))], lambda answers: Plan(
+            ["tests", action, *answers["selector"]], ("tests", action), "Current host",
+            "List matching tests; no tests run"))
+        if plan is BACK:
             return _tests_plan(menu, root)
-        return Plan(["tests", action, *selector], ("tests", action), "Current host", "List matching tests; no tests run")
-    answers = _collect(menu, [
+        return plan
+    steps = [
         ("sim", lambda _: _backend(menu)),
-        ("selector", lambda a: _test_selection(menu, root, a["sim"]))])
-    if answers is BACK:
+        ("selector", lambda a: _test_selection(menu, root, a["sim"]))]
+    plan = _editable(menu, steps, lambda answers: Plan(
+        ["tests", action, *answers["selector"], "--sim", answers["sim"]],
+        ("tests", action), _sim_host(answers["sim"]), "Run the selected unit and simulation tests"))
+    if plan is BACK:
         return _tests_plan(menu, root)
-    return Plan(["tests", action, *answers["selector"], "--sim", answers["sim"]],
-                ("tests", action), _sim_host(answers["sim"]), "Run the selected unit and simulation tests")
+    return plan
 
 
 def _fpga_plan(menu, root):
@@ -217,23 +247,27 @@ def _fpga_plan(menu, root):
     if action is BACK:
         return BACK
     if action == "build":
-        answers = _collect(menu, [
+        steps = [
             ("target", lambda _: menu.choose("Select FPGA target", _named(fpga_targets(root)))),
-            ("quartus", lambda _: _quartus(menu, root))])
-        if answers is BACK:
+            ("quartus", lambda _: _quartus(menu, root))]
+        plan = _editable(menu, steps, lambda answers: Plan(
+            ["fpga", "build", answers["target"], "--quartus-bin", answers["quartus"]],
+            ("fpga", "build"), "Windows PowerShell", "Compile and check an FPGA image; no programming"))
+        if plan is BACK:
             return _fpga_plan(menu, root)
-        return Plan(["fpga", "build", answers["target"], "--quartus-bin", answers["quartus"]],
-                    ("fpga", "build"), "Windows PowerShell", "Compile and check an FPGA image; no programming")
+        return plan
     sofs = [Choice(path, f"{target or 'unknown target'} — {path}",
                    f"on-wire ID {build_id}" if build_id else "checked attempt")
             for path, target, build_id in checked_sofs(root)]
-    answers = _collect(menu, [
+    steps = [
         ("sof", lambda _: menu.choose("Select checked FPGA image", sofs)),
-        ("quartus", lambda _: _quartus(menu, root))])
-    if answers is BACK:
+        ("quartus", lambda _: _quartus(menu, root))]
+    plan = _editable(menu, steps, lambda answers: Plan(
+        ["fpga", "program", "--sof", answers["sof"], "--quartus-bin", answers["quartus"]],
+        ("fpga", "program"), "Windows PowerShell", "PROGRAM the attached FPGA over JTAG"))
+    if plan is BACK:
         return _fpga_plan(menu, root)
-    return Plan(["fpga", "program", "--sof", answers["sof"], "--quartus-bin", answers["quartus"]],
-                ("fpga", "program"), "Windows PowerShell", "PROGRAM the attached FPGA over JTAG")
+    return plan
 
 
 def _sw_plan(menu, root):
@@ -241,18 +275,20 @@ def _sw_plan(menu, root):
     if action is BACK:
         return BACK
     argv = ["sw", action]
-    if action in ("assemble", "build"):
-        target = menu.choose("Select software target", _named(software_targets(root, action)))
-        if target is BACK:
-            return _sw_plan(menu, root)
-        argv.append(target)
     effects = {"oracle": "Run the pinned RGBDS comparison", "assemble": "Assemble original software",
                "build": "Build and package original software", "conformance": "Run assembler conformance",
                "link-conformance": "Run linker/package conformance", "asset-conformance": "Run asset conformance"}
+    if action in ("assemble", "build"):
+        plan = _editable(menu, [("target", lambda _: menu.choose(
+            "Select software target", _named(software_targets(root, action))))], lambda answers: Plan(
+                [*argv, answers["target"]], ("sw", action), "Current host", effects[action]))
+        if plan is BACK:
+            return _sw_plan(menu, root)
+        return plan
     return Plan(argv, ("sw", action), "Current host", effects[action])
 
 
-def _host_required(menu, root, action):
+def _host_steps(menu, root, action):
     steps = [("uart", lambda _: _uart(menu, root))]
     if action == "load":
         steps.append(("source", lambda _: menu.choose("Select image source", [
@@ -271,46 +307,45 @@ def _host_required(menu, root, action):
                   ("value", lambda _: menu.text("Value"))]
     if action in ("crc-proof", "keyboard"):
         steps.append(("build", lambda _: _wire_id(menu, root)))
-    return _collect(menu, steps)
+    return steps
 
 
 def _host_plan(menu, root):
     action = menu.choose("UART action", _named(command_actions(("host",))))
     if action is BACK:
         return BACK
-    answers = _host_required(menu, root, action)
-    if answers is BACK:
-        return _host_plan(menu, root)
-    argv = ["host", action, "--uart-port", answers["uart"]]
-    if action == "load":
-        argv += ["--" + answers["source"], answers["image"]]
-    if action in ("step", "run-dots"):
-        argv += ["--dots", answers["dots"]]
-    if action == "input":
-        argv += ["--mask", answers["mask"]]
-    if action == "peek":
-        argv += ["--store", answers["store"]]
-    if action == "write":
-        argv += ["--address", answers["address"], "--value", answers["value"]]
-    if action in ("crc-proof", "keyboard"):
-        argv += ["--expected-build-id", answers["build"]]
-    return Plan(argv, ("host", action), "Windows PowerShell", "Open UART and TRANSMIT the selected host operation")
+    def factory(answers):
+        argv = ["host", action, "--uart-port", answers["uart"]]
+        if action == "load":
+            argv += ["--" + answers["source"], answers["image"]]
+        if action in ("step", "run-dots"):
+            argv += ["--dots", answers["dots"]]
+        if action == "input":
+            argv += ["--mask", answers["mask"]]
+        if action == "peek":
+            argv += ["--store", answers["store"]]
+        if action == "write":
+            argv += ["--address", answers["address"], "--value", answers["value"]]
+        if action in ("crc-proof", "keyboard"):
+            argv += ["--expected-build-id", answers["build"]]
+        return Plan(argv, ("host", action), "Windows PowerShell",
+                    "Open UART and TRANSMIT the selected host operation")
+    plan = _editable(menu, _host_steps(menu, root, action), factory)
+    return _host_plan(menu, root) if plan is BACK else plan
 
 
 def _clean_plan(menu, root):
-    tag = menu.choose("Select one build tag to delete", _named(build_tags(root)))
-    if tag is BACK:
-        return BACK
-    return Plan(["clean", "--tag", tag], ("clean",), "Current host", f"DELETE workdir/builds/{tag}")
+    return _editable(menu, [("tag", lambda _: menu.choose(
+        "Select one build tag to delete", _named(build_tags(root))))], lambda answers: Plan(
+            ["clean", "--tag", answers["tag"]], ("clean",), "Current host",
+            f"DELETE workdir/builds/{answers['tag']}"))
 
 
 def _launcher_plan(menu, root):
-    answers = _collect(menu, [("build", lambda _: _wire_id(menu, root)),
-                              ("uart", lambda _: _uart(menu, root))])
-    if answers is BACK:
-        return BACK
-    return Plan(["--expected-build-id", answers["build"], "--uart-port", answers["uart"]],
-                ("launcher",), "Windows PowerShell", "Open UART and LAUNCH the game catalogue GUI")
+    return _editable(menu, [("build", lambda _: _wire_id(menu, root)),
+                            ("uart", lambda _: _uart(menu, root))], lambda answers: Plan(
+        ["--expected-build-id", answers["build"], "--uart-port", answers["uart"]],
+        ("launcher",), "Windows PowerShell", "Open UART and LAUNCH the game catalogue GUI"))
 
 
 def _sim_host(backend):
@@ -364,7 +399,7 @@ def _option_label(action, current):
     return f"{flag}: {value}"
 
 
-def advanced(menu, plan):
+def advanced(menu, plan, root):
     """Edit only optional leaf flags.  JSON stays on the ordinary CLI."""
     if plan.parser_path == ("launcher",):
         definitions = [
@@ -404,6 +439,8 @@ def advanced(menu, plan):
                               default=",".join(str(item) for item in current), required=False)
             if value is not BACK:
                 value = [item.strip() for item in value.split(",") if item.strip()]
+        elif action.dest in ("verilator_bin", "questa_bin", "intel_sim_lib", "quartus_bin"):
+            value = _manual_value(menu, f"Set {action.option_strings[-1]}", retained_values(root, action.dest))
         elif action.choices:
             values = [Choice(None, "Use default")]
             values += [Choice(value, str(value)) for value in action.choices]
@@ -448,6 +485,27 @@ def command_text(plan, root, system=None):
     return powershell_command(shown) if plan.host == "Windows PowerShell" or system == "Windows" else shlex.join(shown)
 
 
+def validate_plan(plan):
+    """Prove the selected builder vector satisfies its existing argparse leaf."""
+    argv = final_argv(plan)
+    if plan.parser_path == ("launcher",):
+        expected = next((argv[index + 1] for index, value in enumerate(argv[:-1])
+                         if value == "--expected-build-id"), "")
+        port = next((argv[index + 1] for index, value in enumerate(argv[:-1])
+                     if value == "--uart-port"), "")
+        if not re.fullmatch(r"[0-9a-f]{32}", expected) or not port:
+            raise ValueError("launcher requires a reviewed 32-digit build ID and UART port")
+        return
+    from .cli import parser
+    errors = io.StringIO()
+    try:
+        with contextlib.redirect_stderr(errors):
+            parser().parse_args(argv)
+    except SystemExit as error:
+        detail = errors.getvalue().strip().splitlines()
+        raise ValueError(detail[-1] if detail else f"invalid command (argparse exit {error.code})") from None
+
+
 def compatible_host(plan, system=None):
     system = system or platform.system()
     if plan.host == "Windows PowerShell":
@@ -458,6 +516,7 @@ def compatible_host(plan, system=None):
 
 
 def choose_execution(menu, plan, root, system=None):
+    validate_plan(plan)
     command = command_text(plan, root, system)
     while True:
         lines = ["Review", "", f"Native host: {plan.host}", f"Effect: {plan.effect}", "", command, ""]
@@ -490,9 +549,18 @@ def select_command(menu, root, system=None):
         if plan is BACK:
             continue
         while True:
-            configured = advanced(menu, plan)
+            configured = advanced(menu, plan, root)
             if configured is BACK:
-                break
+                if plan.editor is None:
+                    break
+                edited = plan.editor(menu)
+                if edited is BACK:
+                    plan = make_plan(menu, root, intent)
+                    if plan is BACK:
+                        break
+                else:
+                    plan = edited
+                continue
             decision = choose_execution(menu, plan, root, system)
             if decision == "back":
                 continue
