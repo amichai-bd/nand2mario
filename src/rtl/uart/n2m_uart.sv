@@ -90,6 +90,7 @@ module n2m_uart #(
     output logic engine_reset_accept,
     output logic engine_reset_done,
     output logic host_session,
+    output logic host_loading,
     output logic host_port_busy,
     output logic library_return
 );
@@ -205,7 +206,8 @@ module n2m_uart #(
         .library_status(library_status), .library_key1(library_key1),
         .engine_pause(engine_pause), .engine_reset_request(engine_reset_request),
         .engine_reset_accept(engine_reset_accept), .engine_reset_done(engine_reset_done),
-        .host_session(host_session), .host_port_busy(host_port_busy), .library_return(library_return)
+        .host_session(host_session), .host_loading(host_loading), .host_port_busy(host_port_busy),
+        .library_return(library_return)
     );
 endmodule
 `default_nettype wire

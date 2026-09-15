@@ -12,7 +12,7 @@ class ControlsSystemTests(unittest.TestCase):
 
     def test_exact_physical_union_and_no_virtual_controls(self):
         fpga_v05.validate_board(self.target)
-        self.assertEqual(len(self.target['pins']),33)
+        self.assertEqual(len(self.target['pins']),73)
         for mutate in ('pin','virtual','top'):
             bad=copy.deepcopy(self.target)
             if mutate=='pin':bad['pins']['buttons_n[0]']='PIN_AB5'
@@ -22,13 +22,14 @@ class ControlsSystemTests(unittest.TestCase):
 
     def test_exact_external_and_bridge_exceptions(self):
         text=fpga.checked_constraints(self.target)
-        self.assertEqual(text.count('set_false_path -from $controls_'),5)
+        self.assertEqual(text.count('set_false_path -from $controls_'),6)
         self.assertEqual(text.count('set_false_path -from $launch_'),6)
         self.assertIn('u_controls|u_system|u_uart|u_serial_rx|rx_meta',text)
+        self.assertIn('u_controls|u_system|u_loader|u_key1|key_meta',text)
         self.assertIn('u_controls|u_physical|u_buttons|button_meta',text)
         self.assertNotIn('set_clock_groups',text)
         audit=fpga_v05.audit(fpga.tcl_word,board=True,controls=True)
-        for name in ('button0','button1','button2','button3','uart'):
+        for name in ('button0','button1','button2','button3','uart','key1'):
             self.assertIn('controls_launch_'+name,audit)
 
     def test_build_identity_and_output_drive(self):
@@ -39,7 +40,7 @@ class ControlsSystemTests(unittest.TestCase):
                 with self.assertRaises(ValueError):fpga.prepare(self.root,folder,self.target,build_id=bad)
             fpga.prepare(self.root,folder,self.target,build_id='12'*16)
             qsf=(folder/'design.qsf').read_text()
-            self.assertEqual(qsf.count('CURRENT_STRENGTH_NEW "8MA"'),25)
+            self.assertEqual(qsf.count('CURRENT_STRENGTH_NEW "8MA"'),64)
             self.assertIn('N2M_V05_BUILD_ID',qsf)
             self.assertIn('n2m_adc_pll.v',qsf)
             self.assertIn('n2m_system_pll.v',qsf)

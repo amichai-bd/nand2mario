@@ -43,8 +43,8 @@ Register constants identify addresses only. They do not define read masks,
 write effects, bus blocking, timer edges or undocumented behavior. The direct
 profile has no mapper or cartridge RAM. Other profiles require new reviewed
 contracts before loading; the [loader profile](../cartridge/MAS_loader_profile.md)
-is the one such contract, with its own `LOADER_ID` to be added to the
-generated profile table by its implementing slice. The original [Springtrail platformer](../../sw/springtrail/SPEC.md) uses this same
+is the one such contract, identified by `PROFILE_LOADER_ID` in the generated
+profile table beside its `LIBRARY_*` host registers and `library` constants. The original [Springtrail platformer](../../sw/springtrail/SPEC.md) uses this same
 profile; loading and execution preserve the exact built image bytes.
 
 ## Direct entry and reset

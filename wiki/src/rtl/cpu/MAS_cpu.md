@@ -39,7 +39,7 @@ enable, never a generated CPU clock.
 |---|---|---|
 | `clk_sys`, `reset_sys`, `core_reset` | Input | Reset has priority over emulated activity. Core reset aborts the current instruction and bus attempt and applies the generated profile. Global reset additionally clears any observation history. |
 | `gb_tick` | Input | One enabled system edge advances one emulated T-cycle. No missing response may stretch or drop this edge. |
-| `profile_id` | Input, generated profile-ID width | Core reset accepts only the generated direct-profile ID and applies every generated CPU register/control field. An unknown ID is a named contract failure; it cannot select a test state. |
+| `profile_id` | Input, generated profile-ID width | Core reset accepts the generated direct-profile ID and the [loader profile](../cartridge/MAS_loader_profile.md#core-reset-sequencing-and-image-validity) ID; both apply every generated CPU register/control field of the direct entry state. An unknown ID is a named contract failure; it cannot select a test state. |
 | `epoch` | Input, 32 bits | Current initialization epoch, supplied by the system owner. The CPU does not invent a second epoch counter. |
 | `dot_before` | Input, 64 bits | System count of completed emulated T-cycles before the current edge. An event on `gb_tick` records this count plus one. The system count includes HALT, freezes with host pause, and follows the agreed STOP oscillator gating; it is not a CPU-running counter. |
 | `ie`, `iflags` | Input, 8 and 5 bits | Live interrupt enable and request state, including changes caused by CPU writes and peripherals. These are not frozen at interrupt-entry start. |

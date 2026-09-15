@@ -33,7 +33,7 @@ library of our own games in SDRAM.
 | `DRAM_CLK` | The pin clock the device samples on. Its relationship to `clk_sys` is fixed [below](#clock-relationship-and-constraints). |
 | Line | 16 consecutive bytes at a 16-byte-aligned device byte address; one 8-beat burst of 16-bit words. |
 | Device byte address | 26 bits, `0x0000000` to `0x3FFFFFF`. Bit 0 selects the byte inside a 16-bit word and is always zero on the line interface. |
-| Requester | The one client of the controller's line interface, the [storage arbiter](../cartridge/MAS_loader_profile.md#storage-arbiter) in the loader owner. |
+| Requester | The one client of the controller's line interface, the [storage arbiter](../cartridge/MAS_loader_profile.md#storage-arbiter) ([`n2m_storage_arbiter`](../../../../src/rtl/cartridge/n2m_storage_arbiter.sv)) in the loader owner. |
 
 ## Contract
 

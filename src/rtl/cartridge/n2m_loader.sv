@@ -17,7 +17,10 @@ module n2m_loader #(
     // Endpoint state.
     input var logic [7:0] profile,
     input var logic image_valid,
+    // host_session: the endpoint's claim (an open session or a LOAD_BEGIN
+    // waiting for a fill); host_loading: the open session itself.
     input var logic host_session,
+    input var logic host_loading,
     input var logic host_port_busy,
     input var logic host_return,
     input var logic paused,
@@ -129,7 +132,7 @@ module n2m_loader #(
         end
         if (engine_start) job_valid_next = 1'b0;
         // A swap and a host load session both overwrite the upper half.
-        if (host_session || (engine_start && job_swap)) window_ready_next = 1'b0;
+        if (host_loading || (engine_start && job_swap)) window_ready_next = 1'b0;
         if (select_commit) last_index_next = commit_data;
         if (bank_commit && !copy_busy) begin
             if (!sdram_ready) result_next = n2m_interfaces_pkg::LIBRARY_RESULT_NOT_READY;
@@ -212,12 +215,12 @@ module n2m_loader #(
         .rom_write(engine_rom_write), .rom_address(engine_rom_address), .rom_wdata(engine_rom_wdata),
         .pause_hold(engine_pause), .reset_request(engine_reset_request),
         .reset_accept(engine_reset_accept), .reset_done(engine_reset_done), .paused(paused),
-        .release_fault_hold(host_session), .image_valid(image_valid),
+        .release_fault_hold(host_loading), .image_valid(image_valid),
         .image_invalidate(image_invalidate), .image_publish(image_publish), .image_profile(image_profile)
     );
     n2m_rom_port_arbiter u_rom_port (
         .clk_sys(clk_sys), .reset_sys(reset_sys),
-        .uart_owns(host_session), .uart_write(uart_rom_write), .uart_read(uart_rom_read),
+        .uart_owns(host_loading), .uart_write(uart_rom_write), .uart_read(uart_rom_read),
         .uart_address(uart_rom_address), .uart_wdata(uart_rom_wdata),
         .engine_owns(engine_busy), .engine_write(engine_rom_write),
         .engine_address(engine_rom_address), .engine_wdata(engine_rom_wdata),
@@ -244,7 +247,8 @@ module n2m_loader #(
         copy_busy && swap_busy |-> busy_edges < 17'(n2m_interfaces_pkg::LIBRARY_SWAP_BOUND_EDGES))
     `N2M_ASSERT(LOADER_FILL_BOUND, clk_sys, reset_sys,
         copy_busy && !swap_busy |-> busy_edges < 17'(n2m_interfaces_pkg::LIBRARY_FILL_BOUND_EDGES))
-    `N2M_ASSERT(LOADER_ENGINE_NOT_IN_SESSION, clk_sys, reset_sys, !(engine_busy && host_session))
+    `N2M_ASSERT(LOADER_ENGINE_NOT_IN_SESSION, clk_sys, reset_sys, !(engine_busy && host_loading))
+    `N2M_ASSERT(LOADER_ENGINE_START_FREE, clk_sys, reset_sys, engine_start |-> !host_session && !host_port_busy)
     `N2M_ASSERT(LOADER_KEY1_PENDING_BUSY, clk_sys, reset_sys, key1_pending |-> copy_busy)
 endmodule
 `default_nettype wire
