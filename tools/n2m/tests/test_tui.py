@@ -1,5 +1,7 @@
 """Scripted build-menu checks; no simulator, FPGA, UART or GUI is opened."""
+import contextlib
 import hashlib
+import inspect
 import io
 import json
 import os
@@ -10,7 +12,7 @@ import unittest
 from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from n2m import interface_codec, tui
+from n2m import interface_codec, tui, tui_terminal
 
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -112,6 +114,9 @@ class TuiTests(unittest.TestCase):
             (failed.parent / "result.json").write_text(json.dumps({
                 "status": "FAIL", "target": "v05-board", "build_id": "11" * 16,
                 "artifacts": {failed_relative: hashlib.sha256(b"failed").hexdigest()}}))
+            linked = root / "workdir/builds/linked/fpga/v05-board/attempts/no/output"
+            linked.mkdir(parents=True)
+            (linked / "design.sof").symlink_to(sof)
             self.assertEqual(tui.checked_sofs(root),
                              [(relative, "v05-board", "ffeeddccbbaa99887766554433221100")])
 
@@ -119,11 +124,14 @@ class TuiTests(unittest.TestCase):
         plan = tui.Plan(["fpga", "build", "v05-board", "--quartus-bin",
                          r"C:\Program Files\Intel FPGA\bin64"],
                         ("fpga", "build"), "Windows PowerShell", "build")
-        text = tui.command_text(plan, ROOT, "Windows")
+        text = tui.command_text(plan, ROOT, "Windows", executable=r"C:\Program Files\Python\python.exe")
         self.assertIn("'C:\\Program Files\\Intel FPGA\\bin64'", text)
-        self.assertTrue(text.startswith("python tools/build.py fpga build"))
+        self.assertTrue(text.startswith("'C:\\Program Files\\Python\\python.exe' tools/build.py fpga build"))
         local = tui.Plan(["sw", "build", "path with spaces"], ("sw", "build"), "Current host", "build")
-        self.assertIn("'path with spaces'", tui.command_text(local, ROOT, "Windows"))
+        self.assertIn("'path with spaces'", tui.command_text(
+            local, ROOT, "Windows", executable=r"C:\Python Folder\python.exe"))
+        posix = tui.command_text(local, ROOT, "Linux", executable="/opt/Python Three/python3")
+        self.assertEqual(posix, "'/opt/Python Three/python3' tools/build.py sw build 'path with spaces'")
 
     def test_text_default_is_a_placeholder_not_an_edit_prefix(self):
         terminal = ScriptedTerminal(["x", "ENTER"])
@@ -158,8 +166,23 @@ class TuiTests(unittest.TestCase):
                     "build_id": ("01" if target == "v05-board" else "02") * 16,
                     "artifacts": {relative: hashlib.sha256(byte).hexdigest()}}))
             terminal = ScriptedTerminal(["ENTER"])
-            selected = tui._wire_id(tui.Menu(terminal), root)
+            selected = tui._launcher_build_id(tui.Menu(terminal), root)
             self.assertEqual(selected, "01" * 16)
+            frame = "\n".join(terminal.frames[-1])
+            self.assertIn("v05-board — workdir/builds/v05-board/fpga/v05-board/attempts/abc/output/design.sof", frame)
+            self.assertIn("on-wire ID " + "01" * 16, frame)
+            self.assertNotIn("Type another", frame)
+
+    def test_launcher_has_no_manual_or_non_playable_identity_fallback(self):
+        with tempfile.TemporaryDirectory(prefix="tui no playable ") as temporary:
+            terminal = ScriptedTerminal(["ESC"])
+            self.assertIs(tui._launcher_build_id(tui.Menu(terminal), Path(temporary)), tui.BACK)
+            self.assertNotIn("Type another", "\n".join(terminal.frames[-1]))
+
+    def test_reviewed_host_identity_keeps_explicit_manual_path(self):
+        value = "12" * 16
+        terminal = ScriptedTerminal(["ENTER", *value, "ENTER"])
+        self.assertEqual(tui._reviewed_build_id(tui.Menu(terminal), Path("missing-root")), value)
 
     def test_current_uart_candidates_reuse_read_only_discovery(self):
         with tempfile.TemporaryDirectory(prefix="tui uart ") as temporary:
@@ -193,6 +216,7 @@ class TuiTests(unittest.TestCase):
             during = termios.tcgetattr(slave)
             self.assertFalse(during[3] & termios.ICANON)
             self.assertFalse(during[3] & termios.ECHO)
+            self.assertEqual(during[1] & termios.OPOST, before[1] & termios.OPOST)
         self.assertEqual(termios.tcgetattr(slave), before)
         self.assertIn(b"\x1b[?25l", os.read(master, 128))
 
@@ -247,6 +271,160 @@ class TuiTests(unittest.TestCase):
         launcher = tui.Plan(["--expected-build-id", "00" * 16, "--uart-port", "COM7"],
                             ("launcher",), "Windows PowerShell", "GUI")
         tui.validate_plan(launcher)
+
+    def test_launcher_uses_its_parser_and_contract_before_review(self):
+        from gb_launcher import parse_args
+        valid = ["--expected-build-id", "00" * 16, "--uart-port", "COM7"]
+        parsed = parse_args(valid, root=ROOT)
+        self.assertEqual(parsed.expected_build_id, "00" * 16)
+        self.assertEqual(parsed.uart_port, "COM7")
+        self.assertEqual(parsed.seconds, 900)
+        for option, fragment in ((["--seconds", "0"], "seconds 1..3600"),
+                                 (["--seconds", "not-a-number"], "invalid int value"),
+                                 (["--tag", "not-valid"], "tag must be alphanumeric")):
+            with self.subTest(option=option), self.assertRaisesRegex(ValueError, fragment):
+                tui.validate_plan(tui.Plan([*valid, *option], ("launcher",),
+                                           "Windows PowerShell", "GUI"), ROOT)
+            with self.subTest(direct_option=option), self.assertRaises(SystemExit), \
+                    contextlib.redirect_stderr(io.StringIO()):
+                parse_args([*valid, *option], root=ROOT)
+        actions = {action.dest for action in tui._option_actions(tui.Plan(
+            valid, ("launcher",), "Windows PowerShell", "GUI"))}
+        self.assertEqual(actions, {"uart_vid", "uart_pid", "uart_identity", "tag", "seconds"})
+
+    def test_advanced_options_follow_backend_profile_and_mutex_contracts(self):
+        def options(argv, path):
+            return {action.dest for action in tui._option_actions(
+                tui.Plan(argv, path, "Current host", "test"))}
+        verilator = options(["sim", "test", "builder-smoke", "--sim", "verilator"], ("sim", "test"))
+        self.assertIn("verilator_bin", verilator)
+        self.assertNotIn("questa_bin", verilator)
+        self.assertNotIn("intel_sim_lib", verilator)
+        questa = options(["sim", "test", "builder-smoke", "--sim", "questa"], ("sim", "test"))
+        self.assertNotIn("verilator_bin", questa)
+        self.assertIn("questa_bin", questa)
+        self.assertIn("intel_sim_lib", questa)
+
+        simulation = options(["doctor", "--profile", "simulation", "--sim", "verilator"], ("doctor",))
+        self.assertNotIn("quartus_bin", simulation)
+        self.assertNotIn("jtag_cable", simulation)
+        self.assertNotIn("uart_port", simulation)
+        environment = options(["doctor", "--profile", "environment", "--sim", "questa"], ("doctor",))
+        self.assertIn("quartus_bin", environment)
+        self.assertIn("jtag_cable", environment)
+        self.assertIn("uart_port", environment)
+
+        load = tui.Plan(["host", "load", "--uart-port", "COM7", "--package", "checked.json"],
+                        ("host", "load"), "Windows PowerShell", "load")
+        self.assertNotIn("external", options(load.argv, load.parser_path))
+        load.set_options["tag"] = "load1"
+        self.assertNotIn("--external", tui.final_argv(load))
+
+    def test_keyboard_review_and_advanced_match_classic_console_contract(self):
+        plan = tui.Plan(["host", "keyboard", "--uart-port", "COM 7",
+                         "--expected-build-id", "00" * 16],
+                        ("host", "keyboard"), "Windows classic conhost.exe cmd.exe", "keys")
+        options = {action.dest for action in tui._option_actions(plan)}
+        self.assertNotIn("endpoint_restarted", options)
+        self.assertNotIn("json", options)
+        command = tui.command_text(plan, ROOT, "Windows", executable=r"C:\Python Folder\python.exe")
+        self.assertTrue(command.startswith('"C:\\Python Folder\\python.exe" tools/build.py host keyboard'))
+        self.assertIn('"COM 7"', command)
+        self.assertTrue(tui.compatible_host(plan, "Windows"))
+        self.assertFalse(tui.compatible_host(plan, "Linux"))
+        terminal = ScriptedTerminal(["DOWN", "ENTER"])
+        self.assertEqual(tui.choose_execution(tui.Menu(terminal), plan, ROOT, "Linux"), "cancel")
+        self.assertIn("Native host: Windows classic conhost.exe cmd.exe", "\n".join(terminal.frames[-1]))
+
+    def test_sparse_and_backend_specific_level_label_pairs_remain_selectable(self):
+        model = {"labels": {"audio": "audio checks", "builder": "builder checks"},
+                 "units": {
+                     "audio-q": {"kind": "sim", "level": 2, "labels": ["audio"]},
+                     "builder-q": {"kind": "sim", "level": 0, "labels": ["builder"]},
+                     "builder-v": {"kind": "sim", "level": 1, "labels": ["builder"]}}}
+        with tempfile.TemporaryDirectory(prefix="tui catalogue ") as temporary:
+            root = Path(temporary)
+            targets = root / "src/dv/builder/targets.json"
+            targets.parent.mkdir(parents=True)
+            targets.write_text(json.dumps({
+                "audio-q": {"simulators": ["questa"]},
+                "builder-q": {"simulators": ["questa"]},
+                "builder-v": {"simulators": ["verilator"]}}))
+            with patch("n2m.tui.catalogue.load", return_value=(model, {})):
+                audio = ScriptedTerminal(["ENTER"])
+                self.assertEqual(tui._catalogue_selector(tui.Menu(audio), root, "questa", ("audio",)), 2)
+                self.assertNotIn("Level 0", "\n".join(audio.frames[-1]))
+                builder = ScriptedTerminal([*list("builder"), "ENTER"])
+                self.assertEqual(tui._catalogue_label(tui.Menu(builder), root, "questa", paired=True), "builder")
+                level = ScriptedTerminal(["ENTER"])
+                self.assertEqual(tui._catalogue_selector(tui.Menu(level), root, "questa", ("builder",)), 0)
+                self.assertNotIn("Level 1", "\n".join(level.frames[-1]))
+
+    def test_nested_escape_returns_one_page_and_retries_do_not_recurse(self):
+        manual = ScriptedTerminal(["ENTER", "ESC", "ESC"])
+        self.assertIs(tui._manual_value(tui.Menu(manual), "Tool", ()), tui.BACK)
+        self.assertEqual(sum(frame[0] == "Tool" for frame in manual.frames), 3)
+
+        selector = ScriptedTerminal(["ENTER", "ESC", "ESC"])
+        self.assertIs(tui._test_selection(tui.Menu(selector), ROOT, "verilator"), tui.BACK)
+        self.assertEqual(sum(frame[0] == "Select tests by" for frame in selector.frames), 2)
+
+        for function in (tui._sim_plan, tui._tests_plan, tui._fpga_plan,
+                         tui._sw_plan, tui._host_plan, tui._test_selection):
+            with self.subTest(function=function.__name__):
+                body = "\n".join(inspect.getsource(function).splitlines()[1:])
+                self.assertNotIn(function.__name__ + "(", body)
+        repeated = ScriptedTerminal(["ENTER", "ESC"] * 100 + ["ESC"])
+        self.assertIs(tui._sim_plan(tui.Menu(repeated), ROOT), tui.BACK)
+
+    def test_windows_console_mode_precedes_ansi_and_restores_on_every_exit(self):
+        events = []
+        class Mode:
+            def __enter__(self):
+                events.append("mode-enter")
+            def __exit__(self, *error):
+                events.append(("mode-exit", error[0]))
+        class Output(io.StringIO):
+            def write(self, value):
+                events.append(("write", value))
+                return super().write(value)
+
+        output = Output()
+        with tui.Terminal(stdout=output, system="Windows", windows_console=Mode()):
+            events.append("body")
+        self.assertEqual(events[0], "mode-enter")
+        self.assertEqual(events[1], ("write", "\x1b[?25l"))
+        self.assertEqual(events[-2], ("write", "\x1b[?25h\x1b[0m\n"))
+        self.assertEqual(events[-1], ("mode-exit", None))
+
+        events.clear()
+        with self.assertRaisesRegex(RuntimeError, "body failure"):
+            with tui.Terminal(stdout=Output(), system="Windows", windows_console=Mode()):
+                raise RuntimeError("body failure")
+        self.assertEqual(events[-1], ("mode-exit", RuntimeError))
+
+        class Unavailable:
+            def __enter__(self):
+                raise OSError("no console")
+        output = io.StringIO()
+        with self.assertRaisesRegex(OSError, "no console"):
+            tui.Terminal(stdout=output, system="Windows", windows_console=Unavailable()).__enter__()
+        self.assertEqual(output.getvalue(), "")
+
+    def test_windows_console_mode_sets_required_bits_then_restores(self):
+        calls = []
+        class Kernel:
+            def GetStdHandle(self, _):
+                return 7
+            def GetConsoleMode(self, handle, pointer):
+                pointer._obj.value = 0x2
+                return 1
+            def SetConsoleMode(self, handle, mode):
+                calls.append((handle, mode))
+                return 1
+        with tui_terminal.WindowsConsoleMode(Kernel()):
+            pass
+        self.assertEqual(calls, [(7, 0x7), (7, 0x2)])
 
     def test_each_leaf_plan_is_complete_before_review(self):
         incomplete = tui.Plan(["fpga", "build", "v05-board"], ("fpga", "build"),

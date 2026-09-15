@@ -89,29 +89,37 @@ attempts. Package loading lists only immutable attempts accepted by the package
 reader.
 
 The menu offers current healthy Windows UART ports from the doctor's read-only
-PnP query, followed by recent retained selections and manual entry. This query
+PowerShell CIM PnP query, followed by recent retained selections and manual
+entry. Opening a UART selection screen may start that discovery subprocess. It
 does not import the serial backend, open a port, drive DTR/RTS or send a byte.
 The selected host command still repeats fresh PnP identity and health checks
 before serial open. Recent simulator, Intel-model and Quartus directories come
 from retained manifests; manual entry remains available. Applicable optional
-flags live under **Advanced options** with the ordinary CLI defaults. `--json`
-is intentionally absent.
+flags live under **Advanced options** with the ordinary CLI defaults. Options
+that do not apply to the selected simulator, doctor profile, or mutually
+exclusive input stay hidden. `host keyboard` also hides
+`--endpoint-restarted`. `--json` is intentionally absent.
 
 The final screen names the native host and whether the selection builds, runs a
 simulation, deletes a build, programs the FPGA, transmits over UART, or launches
-a GUI. It displays a copyable relative command quoted for POSIX or PowerShell.
-This display is not the execution mechanism. **Run now** starts
+a GUI. It displays the actual Python interpreter and a copyable relative script
+path, quoted for POSIX, PowerShell, or classic `conhost.exe cmd.exe` as required.
+`host keyboard` names that classic console explicitly; Windows Terminal,
+PowerShell and WSL are not valid keyboard hosts. This display is not the
+execution mechanism. **Run now** starts
 `[sys.executable, <absolute tools/build.py>, ...]` or the existing
 `gb_launcher.py` as an argument vector with `shell=False`. Builder selections
 therefore re-enter the public dispatcher; `sim test` and `sim preflight` remain
 under `test_budget.py` supervision, and every command keeps its locks, records,
 progress and exit status. The launcher remains its own one-window process.
 
-No subprocess starts until **Run now** is selected. A foreign-host review shows
-the native command but offers no run choice; it never crosses WSL and Windows.
-Programming, UART transmission, cleanup and GUI launch cannot occur while
-browsing, moving back or cancelling. The terminal restores its prior input mode
-before a confirmed child starts or the menu exits.
+No selected operation or child command starts until **Run now** is selected.
+The read-only Windows UART discovery subprocess above is the sole browse-time
+exception. A foreign-host review shows the native command but offers no run
+choice; it never crosses WSL and Windows. Programming, UART transmission,
+cleanup and GUI launch cannot occur while browsing, moving back or cancelling.
+The terminal restores its prior input and output modes before a confirmed child
+starts or the menu exits.
 
 ## Human terminal progress
 

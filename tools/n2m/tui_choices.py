@@ -7,7 +7,7 @@ from types import SimpleNamespace
 import tempfile
 
 from . import catalogue
-from .fpga_program import attempt_record, wire_build_id
+from .fpga_program import checked_attempt
 from .host.package import read_package
 from .records import read_json, valid_tag
 from .regress import load_subsets
@@ -78,16 +78,15 @@ def checked_sofs(root):
     if not builds.is_dir():
         return found
     candidates = sorted(builds.glob("*/fpga/*/attempts/*/output/design.sof"),
-                        key=lambda path: path.stat().st_mtime, reverse=True)
+                        key=lambda path: path.lstat().st_mtime, reverse=True)
     for sof in candidates[:50]:
         try:
-            record = attempt_record(root, sof)
+            record, on_wire, target = checked_attempt(root, sof)
             if record.get("status") != "PASS":
                 continue
-            on_wire = wire_build_id(record)
         except (OSError, ValueError, json.JSONDecodeError):
             continue
-        found.append((sof.relative_to(root).as_posix(), record.get("target"), on_wire))
+        found.append((sof.relative_to(root).as_posix(), target, on_wire))
     return sorted(found, reverse=True)
 
 

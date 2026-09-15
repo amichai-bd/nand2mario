@@ -17,6 +17,44 @@ class Choice:
     detail: str = ""
 
 
+class WindowsConsoleMode:
+    """Enable ANSI output on one Windows console and restore its prior mode."""
+
+    STD_OUTPUT_HANDLE = -11
+    ENABLE_PROCESSED_OUTPUT = 0x0001
+    ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004
+
+    def __init__(self, kernel=None):
+        self.kernel = kernel
+        self.handle = None
+        self.original = None
+
+    def __enter__(self):
+        import ctypes
+        from ctypes import wintypes
+        kernel = self.kernel or ctypes.WinDLL("kernel32", use_last_error=True)
+        if self.kernel is None:
+            kernel.GetStdHandle.argtypes = [wintypes.DWORD]
+            kernel.GetStdHandle.restype = wintypes.HANDLE
+            kernel.GetConsoleMode.argtypes = [wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD)]
+            kernel.GetConsoleMode.restype = wintypes.BOOL
+            kernel.SetConsoleMode.argtypes = [wintypes.HANDLE, wintypes.DWORD]
+            kernel.SetConsoleMode.restype = wintypes.BOOL
+        handle = kernel.GetStdHandle(wintypes.DWORD(self.STD_OUTPUT_HANDLE))
+        mode = wintypes.DWORD()
+        if not handle or not kernel.GetConsoleMode(handle, ctypes.byref(mode)):
+            raise OSError("stdout is not a Windows console with readable output mode")
+        enabled = mode.value | self.ENABLE_PROCESSED_OUTPUT | self.ENABLE_VIRTUAL_TERMINAL_PROCESSING
+        if not kernel.SetConsoleMode(handle, enabled):
+            raise OSError("could not enable Windows virtual-terminal output")
+        self.kernel, self.handle, self.original = kernel, handle, mode.value
+        return self
+
+    def __exit__(self, *error):
+        if self.handle is not None and not self.kernel.SetConsoleMode(self.handle, self.original):
+            raise OSError("could not restore Windows console output mode")
+
+
 def decode_posix(first, read_more):
     """Decode one POSIX raw-terminal key; ``read_more`` must not block."""
     if first in ("\r", "\n"):
@@ -47,31 +85,44 @@ def decode_windows(first, read_more):
 class Terminal:
     """Small cross-platform raw terminal. Tests provide a scripted double."""
 
-    def __init__(self, stdin=None, stdout=None, system=None):
+    def __init__(self, stdin=None, stdout=None, system=None, windows_console=None):
         self.stdin = stdin or sys.stdin
         self.stdout = stdout or sys.stdout
         self.system = system or platform.system()
         self._saved = None
+        self._windows_console = windows_console
 
     def interactive(self):
         return self.stdin.isatty() and self.stdout.isatty()
 
     def __enter__(self):
-        if self.system != "Windows":
+        if self.system == "Windows":
+            self._windows_console = self._windows_console or WindowsConsoleMode()
+            self._windows_console.__enter__()
+        else:
             import termios
             import tty
             self._saved = termios.tcgetattr(self.stdin.fileno())
-            tty.setraw(self.stdin.fileno())
-        self.stdout.write("\x1b[?25l")
-        self.stdout.flush()
+            tty.setcbreak(self.stdin.fileno())
+        try:
+            self.stdout.write("\x1b[?25l")
+            self.stdout.flush()
+        except Exception:
+            if self._windows_console is not None:
+                self._windows_console.__exit__(*sys.exc_info())
+            raise
         return self
 
-    def __exit__(self, *_):
+    def __exit__(self, *error):
         if self._saved is not None:
             import termios
             termios.tcsetattr(self.stdin.fileno(), termios.TCSADRAIN, self._saved)
-        self.stdout.write("\x1b[?25h\x1b[0m\n")
-        self.stdout.flush()
+        try:
+            self.stdout.write("\x1b[?25h\x1b[0m\n")
+            self.stdout.flush()
+        finally:
+            if self._windows_console is not None:
+                self._windows_console.__exit__(*error)
 
     def draw(self, lines):
         self.stdout.write("\x1b[2J\x1b[H" + "\n".join(lines) + "\n")
