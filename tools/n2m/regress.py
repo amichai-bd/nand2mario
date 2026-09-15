@@ -11,7 +11,7 @@ import time
 
 from . import catalogue
 from .records import atomic_json, atomic_text, file_hash, stale_lock, valid_tag, workspace
-from .simulation import load_target
+from .simulation import UNSUPPORTED_REASON, unsupported_backend
 from .test_budget import supervise, target_selection
 
 # Verification tiers of wiki/src/dv/integration/SPEC.md#verification-tiers.
@@ -119,10 +119,15 @@ def run_subset(root, build, args, provenance):
     if budget > ORDINARY_BUDGET and not args.broader:
         raise ValueError(f"subset {args.subset} declares {budget} seconds, above the ordinary "
                          f"{ORDINARY_BUDGET}-second pre-merge aggregate; pass --broader to run it as a declared broader aggregate")
-    # Fail the whole selection before any simulator time when one member does
-    # not declare the requested backend.
+    # Validate every member before any simulator time. A registry problem
+    # fails the regression; a valid member that lacks the requested backend is
+    # SKIPPED by name and never launched, neither a pass nor a defect, with no
+    # fallback to the other simulator.
+    unsupported = {}
     for member in subset["targets"]:
-        load_target(root, member, args.sim)
+        message = unsupported_backend(root, member, args.sim)
+        if message:
+            unsupported[member] = message
     record = {"subset": args.subset, "tier": subset["tier"], "purpose": subset["purpose"],
               "budget_seconds": budget, "broader": bool(args.broader),
               "subsets": {"path": registry.relative_to(root).as_posix(), "sha256": file_hash(registry)},
@@ -131,6 +136,11 @@ def run_subset(root, build, args, provenance):
     started = time.monotonic()
     for member in subset["targets"]:
         remaining = budget - (time.monotonic() - started)
+        if member in unsupported:
+            record["targets"][member] = {"status": "SKIPPED", "reason": UNSUPPORTED_REASON,
+                                         "error": unsupported[member]}
+            record["skipped"].append(member)
+            continue
         if remaining < MINIMUM_CHILD_SECONDS:
             record["targets"][member] = {"status": "SKIPPED", "error": "aggregate budget exhausted before start"}
         else:
