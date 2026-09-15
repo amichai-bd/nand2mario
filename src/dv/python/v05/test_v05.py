@@ -93,28 +93,16 @@ async def run(dut, *, complete, short=False, bounded=False, continuity=False, pr
                 trace.flush()
                 dut._log.info("V05_HEARTBEAT")
 
-        async def until_dot(target, *, check=None):
-            # Dots never advance faster than 65536 per 15.625 ms, so one computed
-            # wait (in 1 ms chunks) reaches 32 dots short of the target at the
-            # earliest; the last stretch keeps the 1 us poll. This replaces a
-            # 1 us poll over the whole run, which cost as much Python time as the
-            # pixel monitor itself.
-            while (remaining := target - known(dut.dot_count)) > 0:
-                if remaining > 64:
-                    await Timer(min((remaining - 32) * 390625 * 40 // 65536, 1_000_000), unit='ns')
-                else:
-                    await Timer(1, unit='us')
-                if check:
-                    check()
-
         async def waveform_windows():
             await FallingEdge(dut.paused)
             for first, last in wave_windows(complete, short=short, bounded=bounded, continuity=continuity):
-                await until_dot(first)
+                while known(dut.dot_count) < first:
+                    await Timer(1, unit='us')
                 await Timer(1, unit='ns')
                 dut.wave_enable.value = 1
                 observation('wave_open', first=first, last=last, dot=known(dut.dot_count))
-                await until_dot(last + 1)
+                while known(dut.dot_count) <= last:
+                    await Timer(1, unit='us')
                 dut.wave_enable.value = 0
                 observation('wave_close', dot=known(dut.dot_count))
 
@@ -314,7 +302,9 @@ async def run(dut, *, complete, short=False, bounded=False, continuity=False, pr
         if complete:
             for index, mask in enumerate(monitor.input_masks, 1):
                 low, high = input_window(index, short=short, bounded=bounded, continuity=continuity)
-                await until_dot(low, check=check_tasks)
+                while known(dut.dot_count) < low:
+                    await Timer(1, unit='us')
+                    check_tasks()
                 if bounded:
                     assert monitor.reference.halted, 'V05_INPUT_BEFORE_FIRST_HALT'
                 if physical:
@@ -334,7 +324,9 @@ async def run(dut, *, complete, short=False, bounded=False, continuity=False, pr
                     observation('input_reply', transition=index, reply=reply)
                     assert len(journal) == index, 'V05_INPUT_REPLY_WITHOUT_APPLY'
                     assert reply['dot'] == journal[-1]['dot'], 'V05_INPUT_REPLY_DOT'
-        await until_dot(bound, check=check_tasks)
+        while known(dut.dot_count) < bound:
+            await Timer(1, unit='us')
+            check_tasks()
         await control('HALT')
         await Timer(1, unit='ns')
         await ReadOnly()
