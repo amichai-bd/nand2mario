@@ -8,14 +8,16 @@ from .. import generated_interfaces as abi
 from ..records import atomic_json, file_hash
 from .client import Client, summary
 from .external import read_external
+from . import library
 from .package import read_package
 from .transport import open_serial, session, session_root
 
 
 def run(root, build, args, provenance):
-    folder = build / 'host' / args.action / uuid.uuid4().hex
+    action = args.action if args.action != 'library' else f'library-{args.verb}'
+    folder = build / 'host' / action / uuid.uuid4().hex
     folder.mkdir(parents=True)
-    report = {'status': 'FAIL', 'action': args.action, 'wire_abi': abi.WIRE_ABI,
+    report = {'status': 'FAIL', 'action': action, 'wire_abi': abi.WIRE_ABI,
               'profile': abi.PROFILE_NAME, **provenance}
     journal = folder / 'transactions.jsonl'
     client = None
@@ -30,6 +32,16 @@ def run(root, build, args, provenance):
         if args.action == 'keyboard' and args.json:
             raise ValueError('keyboard is an interactive console command; use its tagged result.json for records')
         image = None
+        library_images = None
+        if action == 'library-load':
+            # Our own immutable builds only, every one validated before the port opens.
+            if len(args.package) > library.GAME_SLOTS:
+                raise ValueError(f'library load takes at most {library.GAME_SLOTS} slot images')
+            library_images = [read_package(root, manifest) for manifest in args.package]
+            menu_image = read_package(root, args.menu) if args.menu else None
+            report['packages'] = {library.slot_name(index): metadata for index, (_image, metadata) in enumerate(library_images)}
+            if menu_image is not None:
+                report['packages'][library.slot_name(library.MENU_INDEX)] = menu_image[1]
         if args.action == 'load':
             if args.package:
                 image, report['package'] = read_package(root, args.package)
@@ -132,6 +144,26 @@ def run(root, build, args, provenance):
                 report['result'] = client.sdram_test(sdram_start, sdram_length, seed=args.seed, progress=progress)
                 if report['result']['mismatch_count']:
                     raise ValueError(f"SDRAM test found {report['result']['mismatch_count']} mismatching lines")
+            elif action == 'library-load':
+                def progress(event):
+                    if not args.json and (event['completed'] == 0 or event['completed'] == event['total']):
+                        print(f"library {event['stage']} {event['name']}: {event['completed']}/{event['total']} lines", flush=True)
+                report['result'] = library.load_library(
+                    client, [(image, metadata['profile']) for image, metadata in library_images],
+                    None if menu_image is None else (menu_image[0], menu_image[1]['profile']), progress=progress)
+                if not args.json:
+                    print(library.format_table(report['result']['slots'], verified=True), flush=True)
+                if report['result']['mismatch_count']:
+                    raise ValueError('library readback mismatch: ' + ', '.join(report['result']['mismatches']))
+            elif action == 'library-status':
+                raw, rows = library.read_catalogue(client)
+                (folder / 'catalogue.bin').write_bytes(raw)
+                report['result'] = {'catalogue': rows, 'catalogue_sha256': summary(raw)['sha256']}
+                if hasattr(abi, 'HOST_REG_LIBRARY_STATUS'):
+                    report['result']['library_status'] = library.decode_library_status(
+                        client.read_host(abi.HOST_REG_LIBRARY_STATUS))
+                if not args.json:
+                    print(library.format_table(rows), flush=True)
             elif args.action == 'status':
                 # Do not read mutable split counters while the endpoint is running.
                 report['result'] = {name: client.read_host(getattr(abi, 'HOST_REG_' + name))

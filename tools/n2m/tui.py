@@ -380,6 +380,11 @@ def _host_steps(menu, root, action):
                   ("length", lambda _: menu.text("Bytes to test, a line multiple", default="0x8000"))]
     if action in ("crc-proof", "keyboard"):
         steps.append(("build", lambda _: _reviewed_build_id(menu, root)))
+    if action == "library":
+        steps.append(("verb", lambda _: menu.choose("Library action", [
+            Choice("load", "Load one checked package into slot 0 and verify"), Choice("status", "Read the catalogue")])))
+        steps.append(("image", lambda a: "" if a["verb"] == "status" else menu.choose(
+            "Select checked package for slot 0", _named(checked_packages(root)))))
     return steps
 
 
@@ -390,6 +395,9 @@ def _host_plan(menu, root):
             return BACK
         def factory(answers):
             argv = ["host", action, "--uart-port", answers["uart"]]
+            if action == "library":
+                argv = ["host", action, answers["verb"], *([answers["image"]] if answers["image"] else []),
+                        "--uart-port", answers["uart"]]
             if action == "load":
                 argv += ["--" + answers["source"], answers["image"]]
             if action in ("step", "run-dots"):

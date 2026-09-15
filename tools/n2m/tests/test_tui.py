@@ -397,6 +397,8 @@ class TuiTests(unittest.TestCase):
         host_base = ["host"]
         for action in tui.command_actions(("host",)):
             argv = [*host_base, action, "--uart-port", "COM7"]
+            if action == "library":
+                argv = [*host_base, action, "status", "--uart-port", "COM7"]
             if action == "load":
                 argv += ["--external", "libbet"]
             elif action in ("step", "run-dots"):

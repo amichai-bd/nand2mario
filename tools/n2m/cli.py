@@ -158,12 +158,7 @@ def parser():
                            'Escape/Ctrl+C or focus loss releases when certain and exits. No load/run/reset; requires UART/neutral input. '
                            '--json and --endpoint-restarted are not accepted.')
         leaf = host.add_parser(action, description=description)
-        for option in ('uart-port', 'uart-vid', 'uart-pid', 'uart-identity'):
-            leaf.add_argument('--' + option)
-        leaf.add_argument('--endpoint-restarted', action='store_true',
-                          help='declare a separately completed endpoint global reset after uncertain completion; sends no reset')
-        leaf.add_argument('--tag')
-        leaf.add_argument('--json', action='store_true')
+        host_session_options(leaf)
         if action in ('crc-proof', 'keyboard'):
             leaf.add_argument('--expected-build-id', required=True, help='reviewed 32-hex wire build identity')
         if action == 'load':
@@ -198,7 +193,24 @@ def parser():
             leaf.add_argument('--boundary', action='store_true',
                               help="the storage contract's boundary lines (slot, catalogue, row and bank edges) instead of a range")
             leaf.add_argument('--seed', type=int, default=1, help='pattern seed')
+    library = host.add_parser('library', help='the sixteen-slot SDRAM game library and its catalogue').add_subparsers(dest='verb', required=True)
+    library_load = library.add_parser('load', description='Write our own built images to SDRAM slots 0..N-1, the menu image at index 16 and the '
+                                      'catalogue, then read everything back and verify each slot by CRC32.')
+    library_load.add_argument('package', nargs='+',
+                              help='immutable sw/build/<target>/runs/<attempt>/result.json per slot, slot 0 first, at most 16')
+    library_load.add_argument('--menu', help='immutable sw/build result.json for the menu image at index 16')
+    host_session_options(library_load)
+    host_session_options(library.add_parser('status', description='Read the catalogue as stored and print the library table.'))
     return result
+
+
+def host_session_options(leaf):
+    for option in ('uart-port', 'uart-vid', 'uart-pid', 'uart-identity'):
+        leaf.add_argument('--' + option)
+    leaf.add_argument('--endpoint-restarted', action='store_true',
+                      help='declare a separately completed endpoint global reset after uncertain completion; sends no reset')
+    leaf.add_argument('--tag')
+    leaf.add_argument('--json', action='store_true')
 
 
 def tagged(root, args, header, publish, progress=None):
