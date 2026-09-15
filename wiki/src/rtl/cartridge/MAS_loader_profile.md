@@ -302,7 +302,6 @@ In priority order:
    [boot copier](../storage/MAS_flash_library.md#boot-copier) reloads them
    from flash when the flash library is present, otherwise the host reload
    is the fallback.
-   SDRAM contents are lost; the host reloads the library.
 2. Select and bank commits on the same edge are impossible (one CPU commit per
    edge). A select commit while a fill is in progress is ignored; the fill
    completes normally.
