@@ -260,8 +260,10 @@ programming and the endpoint identity passed and the one-slot memory test
 returned every line shifted by one 16-bit word with the last word repeated.
 The cause was the read-beat alignment above, shared by the controller and the
 model, not the clock phase: writes were correct and static timing holds. The
-inverted relationship therefore stands; the corrected capture is what the
-retest proves.
+inverted relationship therefore stands. The retest of the same day with the
+corrected capture (build identity `c25fb0bd7cd93846446b46ec3ce40398`) passed:
+one 32 KiB slot (2048 lines) and the fourteen boundary lines above read back
+with zero mismatches over UART.
 
 Fallback if the fit or the board memory test fails with the inverted clock:
 add a third output to the system PLL at 25 MHz with a requested phase shift
