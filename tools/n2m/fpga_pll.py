@@ -37,17 +37,31 @@ def verify_lock_event(folder, checks, top="clocking_proof", *, parallel=False):
     return checker((folder / "simulation/questa/design.vo").read_text(encoding="utf-8"), checks, top)
 
 
+MERGE_PAIR = ("n2m_clocking:u_clocking|n2m_pixel_pll:u_pll|altpll:altpll_component|n2m_pixel_pll_altpll:auto_generated|pll1",
+              "n2m_clocking:u_clocking|n2m_system_pll:u_system_pll|altpll:altpll_component|n2m_system_pll_altpll:auto_generated|pll1")
+MERGE_FILES = ("n2m_pixel_pll_altpll.v", "n2m_system_pll_altpll.v")
+
+
 def explained_diagnostics(text, folder, definition):
+    """Explain the one 176127 merge refusal for the verified system/pixel pair.
+
+    Quartus names the two PLLs in either order and cites whichever generated
+    file it visited second; the pair and the file set are matched as sets.
+    """
     if definition.get("system_divide") != 2:
         return []
     verify(folder, definition)
-    prefix = ('Warning (176127): The parameters of the PLL '
-              'n2m_clocking:u_clocking|n2m_pixel_pll:u_pll|altpll:altpll_component|n2m_pixel_pll_altpll:auto_generated|pll1 '
-              'and the PLL n2m_clocking:u_clocking|n2m_system_pll:u_system_pll|altpll:altpll_component|n2m_system_pll_altpll:auto_generated|pll1 '
-              'do not have the same values - hence these PLLs cannot be merged File: ')
-    lines = [line for line in text.splitlines() if line.startswith(prefix)]
-    if len(lines) > 1 or any(not re.fullmatch(re.escape(prefix + (folder / "db/n2m_pixel_pll_altpll.v").resolve().as_posix()) + r" Line: \d+", line) for line in lines):
+    pattern = re.compile(r"Warning \(176127\): The parameters of the PLL (\S+) and the PLL (\S+) "
+                         r"do not have the same values - hence these PLLs cannot be merged File: (.+) Line: \d+")
+    lines = [line for line in text.splitlines() if line.startswith("Warning (176127):")]
+    if len(lines) > 1:
         raise ValueError("parallel PLL diagnostic identity/count differs")
+    database = (folder / "db").resolve()
+    for line in lines:
+        match = pattern.fullmatch(line)
+        if (not match or sorted(match.group(1, 2)) != sorted(MERGE_PAIR)
+                or match[3] not in {(database / name).as_posix() for name in MERGE_FILES}):
+            raise ValueError("parallel PLL diagnostic identity/count differs")
     return [{"code": "176127", "text": line,
              "reason": "Separate verified 25 MHz and 25.2 MHz PLLs must retain different ratios."} for line in lines]
 
