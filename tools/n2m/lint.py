@@ -22,7 +22,7 @@ RTL = "src/rtl"
 # repository RTL to their ports through these empty stand-ins; it never claims
 # vendor behavior. The file declares exactly the units listed here.
 STAND_INS = "src/dv/builder/questa_lint_vendor.sv"
-STAND_IN_UNITS = ("n2m_system_pll", "n2m_pixel_pll", "n2m_adc_pll", "altera_modular_adc_control")
+STAND_IN_UNITS = ("n2m_system_pll", "n2m_pixel_pll", "n2m_adc_pll", "altera_modular_adc_control", "altsyncram")
 # --inject-fault adds this module: Verilator accepts it and Questa rejects it.
 FAULT = "src/dv/builder/questa_lint_fault.sv"
 FAULT_TOP = "questa_lint_fault"
