@@ -60,7 +60,7 @@ def migrate(root, *names):
     registry = Path(root) / "src/dv/builder/targets.json"
     targets = read_json(registry)
     for name in names:
-        targets[name]["simulator"] = "verilator"
+        targets[name]["simulators"] = ["verilator"]
     atomic_json(registry, targets)
 
 
@@ -84,7 +84,7 @@ class BuilderTests(unittest.TestCase):
 
     def test_publication_denial_does_not_execute_or_cache_unpublished_success(self):
         self.run_stage()
-        current = self.build / "sim/test/builder-smoke/result.json"
+        current = self.build / "sim/test/builder-smoke/verilator/result.json"
         old = current.read_bytes()
         self.args.rebuild = True
         self.sim.calls.clear()
@@ -196,7 +196,7 @@ class BuilderTests(unittest.TestCase):
         self.sim.fail = False
         self.args.rebuild = False
         self.assertEqual(self.run_stage()["cache"], "BUILT")
-        current = self.build / "sim/test/builder-smoke/result.json"
+        current = self.build / "sim/test/builder-smoke/verilator/result.json"
         record = read_json(current)
         record["status"] = "RUNNING"
         atomic_json(current, record)
@@ -284,7 +284,7 @@ class BuilderTests(unittest.TestCase):
 
     def test_corrupt_cache_and_escaping_artifact(self):
         self.run_stage()
-        current = self.build / "sim/test/builder-smoke/result.json"
+        current = self.build / "sim/test/builder-smoke/verilator/result.json"
         for invalid in ("[]", "null", "truncated"):
             current.write_text(invalid)
             self.assertEqual(self.run_stage()["cache"], "BUILT")
@@ -307,7 +307,7 @@ class BuilderTests(unittest.TestCase):
 
     def test_missing_executable(self):
         with self.assertRaises(ToolError):
-            Simulator(verilator_bin=str(self.root / "missing-verilator"))
+            Simulator("verilator", verilator_bin=str(self.root / "missing-verilator"))
 
     def test_discovery_failure_invalidates_previous_success(self):
         with patch("n2m.cli.Simulator", return_value=self.sim), \
@@ -317,8 +317,13 @@ class BuilderTests(unittest.TestCase):
             self.assertEqual(main(command, self.root), 0)
             with patch("n2m.cli.Simulator", side_effect=ToolError("missing runtime")):
                 self.assertEqual(main(command + ["--rebuild"], self.root), 1)
-            current = self.root / "workdir/builds/discovery/sim/test/builder-smoke/result.json"
+            current = self.root / "workdir/builds/discovery/sim/test/builder-smoke/verilator/result.json"
             self.assertEqual(read_json(current)["status"], "FAIL")
+            backend_log = current.with_name("sim.log")
+            mirror_log = current.parent.parent / "sim.log"
+            self.assertEqual(backend_log.read_text(), mirror_log.read_text())
+            self.assertIn("missing runtime", backend_log.read_text())
+            self.assertNotIn("PASS builder-smoke", backend_log.read_text())
             self.assertEqual(main(command, self.root), 0)
             self.assertEqual(len(self.sim.calls), 4)
 

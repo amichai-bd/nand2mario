@@ -27,10 +27,10 @@ removed during migration as an authorized behavior change. Register files,
 peripheral state and small control registers may remain flops; independent
 reference models may use arrays. Every SystemVerilog target that reaches the
 wrapper lists the double as a source and keeps `vendor_model: "intel-memory"`
-as its recorded synthesis binding; Python targets still registered `questa`
-are reported `SKIPPED questa-retired` by the builder's
-[simulator policy](../../../tools/n2m/SPEC.md#simulator-field) until their
-migration.
+as its recorded synthesis binding. Targets that include `questa` in their
+capability list use the checked installed Intel model and exact diagnostic
+inventory under the builder's
+[simulator policy](../../../tools/n2m/SPEC.md#simulator-field).
 
 ## Supported ports and timing
 
@@ -98,11 +98,13 @@ bank/address ownership across unrelated clocks, including physical timing
 windows. Simultaneous reads are allowed. There is no B write port.
 
 Hardware requires `DONT_CARE` for different clocks; Quartus critical warning
-15003 remains a failure. The Questa model's time-zero coercion diagnostic for
-that parameter, and the `intel_mixed_mode_instances` inventory that classified
-it, are retired with that model: the double emits no diagnostic, and the
-collision rule is checked by the wrapper's `INTEL_RAM_MIXED_PORT_A/B`
-assertions, which `intel-memory-collision` witnesses.
+15003 remains a failure. Questa uses the checked installed model and classifies
+its reviewed time-zero coercion diagnostic through the target's
+`intel_mixed_mode_instances` inventory. A target may declare that inventory
+only when its capability list includes Questa. Verilator ignores the inventory
+and its double emits no coercion diagnostic. Both backends check the collision
+rule through the wrapper's `INTEL_RAM_MIXED_PORT_A/B` assertions, which
+`intel-memory-collision` witnesses.
 
 The MAX 10 guide documents [read-enable holding](https://docs.altera.com/r/docs/683431/current/max-10-embedded-memory-user-guide/read-enable?contentId=LsRwx_P_1NO6gEMewkvOBQ),
 [same-port new data](https://docs.altera.com/r/docs/683431/current/max-10-embedded-memory-user-guide/same-port-read-during-write-mode?contentId=mPC_Y0bBM58cJ0SN~2R3EA),

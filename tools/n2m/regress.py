@@ -11,7 +11,7 @@ import time
 
 from . import catalogue
 from .records import atomic_json, atomic_text, file_hash, stale_lock, valid_tag, workspace
-from .simulation import RETIRED_REASON, load_target, retired
+from .simulation import load_target
 from .test_budget import supervise, target_selection
 
 # Verification tiers of wiki/src/dv/integration/SPEC.md#verification-tiers.
@@ -66,11 +66,15 @@ def child_command(root, tag, target, args):
     # The worker entry, as test_budget.main launches it: the regression's own
     # supervise call is the one wall budget, not a second nested supervisor.
     command = [sys.executable, str(root / "tools/n2m/test_budget.py"), "sim", "test", target,
-               "--tag", tag, "--seed", str(args.seed), "--json"]
+               "--tag", tag, "--seed", str(args.seed), "--sim", args.sim, "--json"]
     if args.rebuild:
         command.append("--rebuild")
     if getattr(args, "verilator_bin", None):
         command += ["--verilator-bin", args.verilator_bin]
+    if getattr(args, "questa_bin", None):
+        command += ["--questa-bin", args.questa_bin]
+    if getattr(args, "intel_sim_lib", None):
+        command += ["--intel-sim-lib", args.intel_sim_lib]
     return command
 
 
@@ -100,7 +104,7 @@ def run_target(root, tag, target, args, remaining):
     for key in ("stale_lock_removed", "lock_left"):
         if key in child:
             outcome[key] = child[key]
-    result = root / "workdir/builds" / tag / "sim/test" / target / "result.json"
+    result = root / "workdir/builds" / tag / "sim/test" / target / args.sim / "result.json"
     if result.is_file():
         outcome["result"] = result.relative_to(root).as_posix()
     return outcome
@@ -115,21 +119,18 @@ def run_subset(root, build, args, provenance):
     if budget > ORDINARY_BUDGET and not args.broader:
         raise ValueError(f"subset {args.subset} declares {budget} seconds, above the ordinary "
                          f"{ORDINARY_BUDGET}-second pre-merge aggregate; pass --broader to run it as a declared broader aggregate")
-    # Fail before any simulator time is spent when one member cannot run. A
-    # retired member is named SKIPPED and never launched; it is not a defect.
-    skipped = {member for member in subset["targets"] if retired(load_target(root, member)[0])}
+    # Fail the whole selection before any simulator time when one member does
+    # not declare the requested backend.
+    for member in subset["targets"]:
+        load_target(root, member, args.sim)
     record = {"subset": args.subset, "tier": subset["tier"], "purpose": subset["purpose"],
               "budget_seconds": budget, "broader": bool(args.broader),
               "subsets": {"path": registry.relative_to(root).as_posix(), "sha256": file_hash(registry)},
-              "seed": args.seed, "targets": {}, "failed": [], "skipped": [], "provenance": provenance or {},
+              "seed": args.seed, "simulator": args.sim, "targets": {}, "failed": [], "skipped": [], "provenance": provenance or {},
               "started": datetime.now(timezone.utc).isoformat()}
     started = time.monotonic()
     for member in subset["targets"]:
         remaining = budget - (time.monotonic() - started)
-        if member in skipped:
-            record["targets"][member] = {"status": "SKIPPED", "reason": RETIRED_REASON}
-            record["skipped"].append(member)
-            continue
         if remaining < MINIMUM_CHILD_SECONDS:
             record["targets"][member] = {"status": "SKIPPED", "error": "aggregate budget exhausted before start"}
         else:

@@ -92,7 +92,6 @@ the product fixture (0.625 V), channel 2 carries four rows (1.25, 2.0, 3.3,
 
 Targets: `sim-adc-double` (pass), `sim-adc-double-corrupt`,
 `sim-adc-double-channel` and `sim-adc-double-missing`, all
-`simulator: verilator`. `tb_adc_backend` composes the same backend with the
+`simulators: ["verilator"]`. `tb_adc_backend` composes the same backend with the
 real reset controller and producer; its `adc-backend` targets still declare the
 vendor model and follow the builder's simulator policy.
-

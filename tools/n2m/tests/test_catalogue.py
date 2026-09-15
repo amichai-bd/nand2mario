@@ -71,7 +71,7 @@ class Validation(unittest.TestCase):
         self.root = Path(self.temp.name)
         (self.root / "src/dv/builder").mkdir(parents=True)
         (self.root / "src/dv/builder/targets.json").write_text(
-            json.dumps({"cpu-alu": {"sources": ["src/rtl/cpu/n2m_cpu.sv"], "simulator": "verilator"}}), encoding="utf-8")
+            json.dumps({"cpu-alu": {"sources": ["src/rtl/cpu/n2m_cpu.sv"], "simulators": ["verilator"]}}), encoding="utf-8")
         self.write(model())
 
     def write(self, value):
@@ -120,7 +120,7 @@ class Validation(unittest.TestCase):
     def test_registry_and_catalogue_must_name_the_same_targets(self):
         loaded, _ = module.load(self.root)
         registry = self.root / "src/dv/builder/targets.json"
-        registry.write_text(json.dumps({"cpu-alu": {"simulator": "questa"}, "ppu-access": {"simulator": "verilator"}}), encoding="utf-8")
+        registry.write_text(json.dumps({"cpu-alu": {"simulators": ["questa"]}, "ppu-access": {"simulators": ["verilator"]}}), encoding="utf-8")
         self.assertEqual(module.coverage(self.root, loaded),
                          [f"registry target ppu-access is missing from {module.CATALOGUE}"])
         registry.write_text(json.dumps({}), encoding="utf-8")
@@ -129,7 +129,7 @@ class Validation(unittest.TestCase):
 
     def test_a_test_owned_by_a_registry_target_needs_no_entry_of_its_own(self):
         registry = self.root / "src/dv/builder/targets.json"
-        registry.write_text(json.dumps({"cpu-alu": {"sources": [], "simulator": "verilator", "python": {
+        registry.write_text(json.dumps({"cpu-alu": {"sources": [], "simulators": ["verilator"], "python": {
             "inputs": ["src/dv/builder/test_driven.py"]}}}), encoding="utf-8")
         (self.root / "src/dv/builder/test_driven.py").write_text("import cocotb\n", encoding="utf-8")
         loaded, _ = module.load(self.root)
@@ -235,7 +235,7 @@ class WriteBack(unittest.TestCase):
         self.assertEqual(module.record_durations(self.path, {}), 0)
 
 
-class Retired(unittest.TestCase):
+class SimulatorCapabilities(unittest.TestCase):
     def test_a_target_without_a_valid_simulator_fails_validation(self):
         base = ROOT / "workdir/builds/catalogue-unit-tests"
         base.mkdir(parents=True, exist_ok=True)
@@ -245,43 +245,31 @@ class Retired(unittest.TestCase):
         (root / "src/dv/builder").mkdir(parents=True)
         (root / module.CATALOGUE).write_text(module.format_document(model()), encoding="utf-8", newline="\n")
         loaded, _ = module.load(root)
-        for row in ({}, {"simulator": "icarus"}, {"simulator": None}):
+        for row in ({}, {"simulators": []}, {"simulators": ["icarus"]},
+                    {"simulators": ["verilator", "verilator"]}, {"simulators": None}):
             (root / "src/dv/builder/targets.json").write_text(json.dumps({"cpu-alu": row}), encoding="utf-8")
             self.assertEqual(module.coverage(root, loaded),
-                             ["registry target cpu-alu must declare simulator as one of verilator, questa"])
+                             ["registry target cpu-alu must declare simulators as a nonempty unique list drawn from verilator, questa"])
 
-    def test_a_questa_target_is_skipped_by_name_and_never_launched(self):
-        args = type("Args", (), {"seed": 1, "rebuild": False, "verilator_bin": None, "level": 2,
-                                 "label": [], "broader": False})()
+    def test_an_unsupported_backend_fails_the_selection_before_launch(self):
+        args = type("Args", (), {"seed": 1, "rebuild": False, "verilator_bin": None,
+                                 "questa_bin": None, "intel_sim_lib": None, "sim": "questa",
+                                 "level": 2, "label": [], "broader": False})()
         loaded, path = module.load(ROOT)
-        launched = []
-        def child(command, root, tag, *, target=None, ceiling=None):
-            launched.append(target)
-            return 0, json.dumps({"status": "PASS", "cache": "CACHED"}) + "\n"
         base = ROOT / "workdir/builds/catalogue-unit-tests"
         base.mkdir(parents=True, exist_ok=True)
         temp = tempfile.TemporaryDirectory(dir=base)
         self.addCleanup(temp.cleanup)
         copy = Path(temp.name) / "catalogue.yaml"
         shutil.copy(path, copy)
-        loaded["units"] = {name: entry for name, entry in loaded["units"].items()
-                           if name in ("builder-smoke", "tile-pixel")}
-        # The registry row is read as retired whatever the tree's migration state.
-        real_load = module.load_target
-        def load(root, name):
-            target, *rest = real_load(root, name)
-            if name == "tile-pixel":
-                target = dict(target, simulator="questa")
-            return (target, *rest)
-        with patch("n2m.catalogue.supervise", side_effect=child), patch("n2m.catalogue.run_unit"), \
-                patch("n2m.catalogue.load_target", side_effect=load):
-            record = module.run_selection(ROOT, loaded, copy, "tag", args, 300, {})
-        self.assertEqual(launched, ["builder-smoke"])
-        self.assertEqual(record["units"]["tile-pixel"], {"status": "SKIPPED", "reason": "questa-retired"})
-        self.assertEqual((record["status"], record["skipped"], record["failed"]), ("PASS", ["tile-pixel"], []))
+        loaded["units"] = {"tile-pixel": loaded["units"]["tile-pixel"]}
+        with patch("n2m.catalogue.supervise", side_effect=AssertionError("launched")), \
+                self.assertRaisesRegex(ValueError, "tile-pixel does not support simulator questa"):
+            module.run_selection(ROOT, loaded, copy, "tag", args, 300, {})
 
     def test_a_cached_simulation_reports_its_cache_hit(self):
-        args = type("Args", (), {"seed": 1, "rebuild": False, "verilator_bin": "/tools/bin"})()
+        args = type("Args", (), {"seed": 1, "rebuild": False, "verilator_bin": "/tools/bin",
+                                 "questa_bin": None, "intel_sim_lib": None, "sim": "verilator"})()
         with patch("n2m.catalogue.supervise",
                    return_value=(0, json.dumps({"status": "PASS", "cache": "CACHED"}) + "\n")) as run:
             outcome = module.run_simulation(ROOT, "tag", "builder-smoke", args, 100)
@@ -291,7 +279,8 @@ class Retired(unittest.TestCase):
         self.assertNotIn("--questa-bin", command)
 
     def test_a_real_simulation_failure_is_still_a_failure(self):
-        args = type("Args", (), {"seed": 1, "rebuild": False, "verilator_bin": None})()
+        args = type("Args", (), {"seed": 1, "rebuild": False, "verilator_bin": None,
+                                 "questa_bin": None, "intel_sim_lib": None, "sim": "verilator"})()
         with patch("n2m.catalogue.supervise",
                    return_value=(1, json.dumps({"status": "FAIL", "error": "signature absent"}) + "\n")):
             outcome = module.run_simulation(ROOT, "tag", "builder-smoke", args, 100)

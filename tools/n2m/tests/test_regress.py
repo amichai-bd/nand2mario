@@ -33,11 +33,12 @@ class RegressTests(unittest.TestCase):
             shutil.copytree(ROOT / owner, self.root / owner, ignore=shutil.ignore_patterns("__pycache__", "tests"))
         shutil.copy(ROOT / "tools/build.py", self.root / "tools/build.py")
         (self.root / "workdir/builds").mkdir(parents=True)
-        # The fixture runs its members; only the retired-member case keeps a questa target.
+        # The fixture runs every member through Verilator unless a capability
+        # test changes one row explicitly.
         registry = self.root / "src/dv/builder/targets.json"
         targets = read_json(registry)
         for name in ("tile-pixel", "tile-pixel-corrupt"):
-            targets[name]["simulator"] = "verilator"
+            targets[name]["simulators"] = ["verilator"]
         atomic_json(registry, targets)
         self.subsets = self.root / "src/dv/builder/regressions.json"
         self.declare({"good": ["builder-smoke", "tile-pixel"], "mixed": ["builder-smoke", "builder-smoke-fail", "tile-pixel"]})
@@ -72,7 +73,7 @@ class RegressTests(unittest.TestCase):
         record = {"status": status, "cache": "BUILT", "tag": tag}
         if status == "FAIL":
             record["error"] = "unexpected exit 1; see sim.log"
-        atomic_json(root / "workdir/builds" / tag / "sim/test" / target / "result.json", record)
+        atomic_json(root / "workdir/builds" / tag / "sim/test" / target / "verilator/result.json", record)
         if status == "PASS":
             # The worker's publish moves latest.txt on its own PASS.
             (root / "workdir/latest.txt").write_text(tag + "\n")
@@ -92,7 +93,7 @@ class RegressTests(unittest.TestCase):
         self.assertEqual([child["target"] for child in self.children], ["builder-smoke", "tile-pixel"])
         self.assertEqual({name: outcome["status"] for name, outcome in report["targets"].items()},
                          {"builder-smoke": "PASS", "tile-pixel": "PASS"})
-        self.assertEqual(report["targets"]["tile-pixel"]["result"], "workdir/builds/agg/sim/test/tile-pixel/result.json")
+        self.assertEqual(report["targets"]["tile-pixel"]["result"], "workdir/builds/agg/sim/test/tile-pixel/verilator/result.json")
         self.assertEqual(report["failed"], [])
         self.assertLessEqual(report["elapsed_seconds"], 300)
         summary = read_json(self.root / "workdir/builds/agg/sim/regress/summary.json")
@@ -206,7 +207,7 @@ class RegressTests(unittest.TestCase):
                     "from n2m.records import atomic_json, workspace\n")
         scripts = {"builder-smoke": preamble + "import time\nwith workspace(Path('.'), 'agg'): time.sleep(60)\n",
                    "tile-pixel": preamble + ("with workspace(Path('.'), 'agg') as build:\n"
-                                             "    atomic_json(build / 'sim/test/tile-pixel/result.json', {'status': 'PASS', 'cache': 'BUILT'})\n"
+                                             "    atomic_json(build / 'sim/test/tile-pixel/verilator/result.json', {'status': 'PASS', 'cache': 'BUILT'})\n"
                                              "print(json.dumps({'status': 'PASS', 'cache': 'BUILT'}))\n")}
 
         def child(root, tag, target, args):
@@ -356,22 +357,16 @@ class RegressTests(unittest.TestCase):
         self.assertTrue(self.root.is_dir())
         self.assertTrue((self.root / "workdir").is_dir())
 
-    def test_a_retired_member_is_skipped_by_name_and_never_launched(self):
+    def test_an_unsupported_member_fails_before_any_child_launches(self):
         registry = self.root / "src/dv/builder/targets.json"
         targets = read_json(registry)
-        targets["tile-pixel"]["simulator"] = "questa"
+        targets["tile-pixel"]["simulators"] = ["questa"]
         atomic_json(registry, targets)
         code, report = self.run_cli("regress", "good", "--tag", "agg", "--json")
-        self.assertEqual(code, 0)
-        self.assertEqual(report["status"], "PASS")
-        self.assertEqual([child["target"] for child in self.children], ["builder-smoke"])
-        self.assertEqual(report["targets"]["tile-pixel"], {"status": "SKIPPED", "reason": "questa-retired"})
-        self.assertEqual((report["skipped"], report["failed"]), (["tile-pixel"], []))
-        summary = read_json(self.root / "workdir/builds/agg/sim/regress/summary.json")
-        self.assertEqual(summary["skipped"], ["tile-pixel"])
-        code, text = self.run_cli("regress", "good", "--tag", "agg2")
-        self.assertEqual(code, 0)
-        self.assertIn("tile-pixel: SKIPPED questa-retired", text)
+        self.assertEqual(code, 1)
+        self.assertEqual(report["status"], "FAIL")
+        self.assertIn("tile-pixel does not support simulator verilator", report["error"])
+        self.assertEqual(self.children, [])
 
     def test_declared_subsets_in_repository_are_valid(self):
         subsets, _ = module.load_subsets(ROOT)

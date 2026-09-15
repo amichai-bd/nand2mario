@@ -11,7 +11,8 @@ test plan. The [verification gap](../../preflight-gaps.md#gap-008-verification-b
 owns outstanding broader evidence; this unit does not establish a full PPU or
 shared verification baseline.
 
-Verilator on WSL is the only supported simulator; no license is consulted. Both
+This focused tile flow is explicitly Verilator-only on WSL; it does not inherit
+the shared builder's backend selection, and no license is consulted. Both
 the normal and corrupt cases need actual simulator execution through the
 registered targets or the standalone runner, as the [SPEC](SPEC.md#simulator)
 states. The local host tests prove only the host contract.

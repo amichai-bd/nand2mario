@@ -580,6 +580,7 @@ units:
   tools/n2m/tests/test_program_art.py: {kind: unit, level: 0, labels: [builder, sw], duration_seconds: 0.54}
   tools/n2m/tests/test_python_tb.py: {kind: unit, level: 1, labels: [builder, python-tb], duration_seconds: 1.67}
   tools/n2m/tests/test_python_waves.py: {kind: unit, level: 0, labels: [builder, python-tb], duration_seconds: 0.21}
+  tools/n2m/tests/test_questa.py: {kind: unit, level: 0, labels: [builder], duration_seconds: null}
   tools/n2m/tests/test_records.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 0.54}
   tools/n2m/tests/test_regress.py: {kind: unit, level: 1, labels: [builder], duration_seconds: 2.35}
   tools/n2m/tests/test_rgbds.py: {kind: unit, level: 0, labels: [builder, sw], duration_seconds: 0.14}

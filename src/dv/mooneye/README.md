@@ -40,7 +40,7 @@ tool and unmodified case before simulation. The declared Python inputs include
 the pins and notices; compiler files and CMake modules enter the stage identity.
 On Linux the locked Ubuntu host toolchain (`N2M_MOONEYE_BUILD_HOST=wsl`) is the
 default and runs natively in the attempt directory; the `windows` backend needs
-the retired Questa installation's MinGW tools and fails without it; unknown
+the selected Questa installation's MinGW tools and fails without it; unknown
 hosts fail. No ROM import or tool-build cache bypass is used. The host identity
 hash covers executables, compiler headers, GCC support files, system libraries
 and CMake modules, is rechecked before and after building, and enters the
