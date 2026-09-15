@@ -213,6 +213,18 @@ class FpgaTests(unittest.TestCase):
         (self.root / truncated['attempt_result']).write_text(json.dumps(truncated))
         self.assertEqual(self.run_build()['cache'], 'BUILT')
 
+    def test_indexed_names_inside_getters_are_literal_not_nested(self):
+        for text in ('create_generated_clock -name sdram_clk -source [get_pins {u_clocking|u_system_pll|altpll_component|auto_generated|pll1|clk[0]}] -invert [get_ports {DRAM_CLK}]',
+                     'set_input_delay -clock sdram_clk -max 7.0 [get_ports {DRAM_DQ[*]}]',
+                     'set_output_delay -clock sdram_clk -min -1.8 [get_ports {DRAM_ADDR[*] DRAM_BA[1] DRAM_WE_N}]'):
+            with self.subTest(text=text):
+                fpga.self_contained_sdc(text)
+        for text in ('create_clock -period 20 [get_ports [get_ports clk]]', 'create_clock -period 20 [get_ports {clk[a]}]',
+                     'create_clock -period 20 [get_ports {clk[0:1]}]'):
+            with self.subTest(text=text):
+                with self.assertRaisesRegex(ValueError, 'unsupported'):
+                    fpga.self_contained_sdc(text)
+
     def test_nested_namespaced_and_indirect_sdc_loads_are_rejected(self):
         for text in ('if {1} { source extra.sdc }', '::source extra.sdc',
                      'set command source\n$command extra.sdc', 'create_clock -period [exec helper] clk'):

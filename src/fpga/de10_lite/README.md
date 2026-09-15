@@ -42,3 +42,17 @@ producing build ID, checks the UART synchronizer and leaves unused package pins
 as inputs without pull-ups. A passing board fit is still not physical acceptance:
 verify wiring, voltage, device and reviewed evidence before programming, then
 record actual bring-up in wiki/src/board-bring-up.md and game acceptance under #88.
+
+`sdram-proof` is the SDRAM bring-up board image: the ported
+[SDRAM controller](../../rtl/storage/n2m_sdram_ctrl.sv) on the DE10-Lite DRAM
+pins (Terasic pin data, 3.3-V LVTTL), the same parallel system and pixel PLLs
+and reset bootstrap as `v05-board`, and the UART endpoint with only the
+`SDRAM_WRITE`/`SDRAM_READ` line commands live, so `host sdram-test` can check
+the device without the loader or core. `DRAM_CLK` is the inverted 25 MHz
+system clock at the pin; `sdram.sdc` declares it as a generated clock and
+carries the I/O delays of the [storage contract](../../../wiki/src/rtl/storage/MAS_sdram.md#clock-relationship-and-constraints).
+The builder supplies and verifies the `N2M_SDRAM_BUILD_ID` identity, checks
+the UART synchronizer chain and leaves unused package pins as inputs. LEDR9
+shows clocking ready, LEDR8 SDRAM initialized, LEDR7 controller idle and LEDR6
+toggles on every accepted line. Programming and the board memory test are
+authorized per session.

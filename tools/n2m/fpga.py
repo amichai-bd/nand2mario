@@ -77,7 +77,8 @@ def self_contained_sdc(text):
             continue
         if line.split()[0] not in SDC_COMMANDS or any(c in line for c in '$;\\'):
             raise ValueError("unsupported external/dynamic SDC syntax")
-        scalar = re.sub(r'\[(?:get_ports|get_clocks|get_pins|get_cells|get_registers|get_nets|all_inputs|all_outputs|all_registers)\b[^\[\]$;\\]*\]', '', line)
+        # A literal index such as pll1|clk[0] or DRAM_DQ[*] inside a getter is a name, not a nested expression.
+        scalar = re.sub(r'\[(?:get_ports|get_clocks|get_pins|get_cells|get_registers|get_nets|all_inputs|all_outputs|all_registers)\b(?:[^\[\]$;\\]|\[(?:\d+|\*)\])*\]', '', line)
         if '[' in scalar or ']' in scalar:
             raise ValueError("unsupported dynamic or nested SDC expression")
 
@@ -98,7 +99,7 @@ def target_definition(root, name):
         fpga_v05.validate_board(target)
     if "pll" in target:
         fpga_pll.validate(target["pll"])
-        if target["top"] not in ("clocking_proof", "vga_proof", "ppu_proof", "intel_memory_proof", "controls_proof", "v05_proof", "v05_controls_proof") or "timing" not in target:
+        if target["top"] not in ("clocking_proof", "vga_proof", "ppu_proof", "intel_memory_proof", "controls_proof", "v05_proof", "v05_controls_proof", "sdram_proof") or "timing" not in target:
             raise ValueError("PLL evidence currently requires the bounded clocking proof target")
     if "timing" in target:
         fpga_constraints.validate(target["timing"])
@@ -132,7 +133,18 @@ def target_definition(root, name):
 
 def identity_target(target):
     """Return whether the live target carries a configurable build identity."""
-    return target.get("top") == "controls_proof" or fpga_v05.board_target(target)
+    return target.get("top") in ("controls_proof", "sdram_proof") or fpga_v05.board_target(target)
+
+
+# The SDRAM bring-up image: physical UART/reset/LED pins plus the DRAM pins,
+# one build identity macro and the same checked UART synchronizer chain as the
+# other board images.
+SDRAM_TOP = "sdram_proof"
+SDRAM_CHAINS = (("uart", "uart_rx", "u_uart|u_serial_rx|rx_meta", "u_uart|u_serial_rx|rx_sync"),)
+
+
+def sdram_target(target):
+    return target.get("top") == SDRAM_TOP
 
 
 def prepare(root, folder, target, build_id=None):
@@ -154,6 +166,11 @@ def prepare(root, folder, target, build_id=None):
             raise ValueError("physical v05 build requires a nonzero fingerprint identity")
         lines.append("set_global_assignment -name VERILOG_MACRO " + tcl_word("N2M_V05_BUILD_ID=128'h" + build_id))
         lines.append('set_global_assignment -name RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED"')
+    if sdram_target(target):
+        if not isinstance(build_id, str) or not re.fullmatch(r"[0-9a-f]{32}", build_id) or int(build_id, 16) == 0:
+            raise ValueError("physical SDRAM build requires a nonzero fingerprint identity")
+        lines.append("set_global_assignment -name VERILOG_MACRO " + tcl_word("N2M_SDRAM_BUILD_ID=128'h" + build_id))
+        lines.append('set_global_assignment -name RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED"')
     for field, assignment in (("sources", "SYSTEMVERILOG_FILE"), ("constraints", "SDC_FILE")):
         for name in target[field]:
             lines.append(f'set_global_assignment -name {assignment} {tcl_word((root / name).resolve())}')
@@ -171,9 +188,9 @@ def prepare(root, folder, target, build_id=None):
                       f'set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to {tcl_word(port)}'])
         if target.get("top") in ("vga_proof", "ppu_proof", "controls_proof", "v05_proof", "v05_controls_proof") and port in fpga_vga.PORTS:
             lines.append(f'set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to {tcl_word(port)}')
-        if (target["top"] == "controls_proof" or fpga_v05.board_target(target)) and (port == "uart_tx" or re.fullmatch(r"leds\[[0-9]\]", port)):
+        if (target["top"] == "controls_proof" or fpga_v05.board_target(target) or sdram_target(target)) and (port == "uart_tx" or re.fullmatch(r"leds\[[0-9]\]", port)):
             lines.append(f'set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to {tcl_word(port)}')
-    if target["top"] == "controls_proof" or fpga_v05.board_target(target):
+    if target["top"] == "controls_proof" or fpga_v05.board_target(target) or sdram_target(target):
         lines.append('set_instance_assignment -name IO_STANDARD "3.3 V SCHMITT TRIGGER" -to board_reset_n')
     for port in target["virtual_pins"]:
         lines.append(f'set_instance_assignment -name VIRTUAL_PIN ON -to {tcl_word(port)}')
@@ -190,6 +207,8 @@ def prepare(root, folder, target, build_id=None):
         audit = audit.replace("project_close", fpga_controls.audit(tcl_word) + "project_close")
     if target.get("top") in ("v05_proof", "v05_controls_proof"):
         audit = audit.replace("project_close", fpga_v05.audit(tcl_word, board=fpga_v05.board_target(target), controls=fpga_v05.control_target(target)) + "project_close")
+    if sdram_target(target):
+        audit = audit.replace("project_close", fpga_controls.audit(tcl_word, chains=SDRAM_CHAINS) + "project_close")
     (folder / "audit.tcl").write_text(audit, encoding="utf-8")
 
 
@@ -201,6 +220,8 @@ def checked_constraints(target):
         text += fpga_vga.constraints(tcl_word, lcd=target["top"] == "ppu_proof")
     if target["top"] == "controls_proof":
         text += fpga_controls.constraints(tcl_word)
+    if sdram_target(target):
+        text += fpga_controls.constraints(tcl_word, chains=SDRAM_CHAINS)
     return text
 
 
@@ -423,6 +444,10 @@ def timing_evidence(folder, target, *, build_id=None):
         evidence["board_uart"] = fpga_controls.verify(folder, system_clock=fpga_pll.SYSTEM_CLOCK,
             system_net=fpga_pll.SYSTEM_NET, chains=fpga_v05.chains(target), top=target["top"])
         evidence["board_build_id"] = fpga_controls.verify_identity(folder, build_id, macro="N2M_V05_BUILD_ID", instances=3 if fpga_v05.control_target(target) else 2)
+    if sdram_target(target):
+        evidence["board_uart"] = fpga_controls.verify(folder, system_clock=fpga_pll.SYSTEM_CLOCK,
+            system_net=fpga_pll.SYSTEM_NET, chains=SDRAM_CHAINS, top=SDRAM_TOP)
+        evidence["board_build_id"] = fpga_controls.verify_identity(folder, build_id, macro="N2M_SDRAM_BUILD_ID", instances=1)
     return evidence
 
 
@@ -459,9 +484,11 @@ def complete_cache(record, fingerprint, root, build, target, build_id=None):
             required += [folder / "output" / name for name in fpga_vga.required_reports(lcd=True)]
         if fpga_v05.board_target(target):
             required += [folder / "output" / name for name in fpga_controls.required_reports(chains=fpga_v05.chains(target))]
+        if sdram_target(target):
+            required += [folder / "output" / name for name in fpga_controls.required_reports(chains=SDRAM_CHAINS)]
         if any(p.relative_to(root).as_posix() not in record["artifacts"] for p in required):
             return False
-        if (target.get("top") == "controls_proof" or fpga_v05.board_target(target)) and record.get("build_id") != build_id:
+        if identity_target(target) and record.get("build_id") != build_id:
             return False
         return timing_evidence(folder, target, build_id=record.get("build_id")) == record["evidence"]
     except (KeyError, TypeError, ValueError, OSError):
