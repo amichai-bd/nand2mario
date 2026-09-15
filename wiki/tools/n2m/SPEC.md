@@ -175,7 +175,9 @@ validate` and `check` fail on either. It records `async-assert-known` and
 `ppu-shift-unknown`, whose expected fatal was a four-state `N2M_ASSERT_KNOWN`
 on an X input; a two-state simulator cannot witness X, so the
 [macro](../../src/rtl-reference-style.md#named-assertion-convention) is a no-op
-under `VERILATOR`.
+under `VERILATOR`. It also records `python-v05-continuous`, whose 600-frame
+schedule (about 10 s simulated) exceeds the 900-second wall ceiling at the
+measured Verilator rate; `python-v05-continuity` is its bounded replacement.
 
 The file is a strict YAML subset so the builder keeps its stdlib-only
 dependencies: block mappings, flow mappings, flow sequences, plain and quoted
@@ -283,15 +285,16 @@ targets and the two `tb_preload_load` targets), the two `tb_memory_decode`
 targets `memory-decode` and `memory-decode-alias`, the three `tb_clocking` targets `clocking`, `clocking-bad-numerator` and
 `clocking-drop-tick`, and the five `tb_async_assert_macros` targets
 `async-assert-macros`, `async-assert-direct`, `async-assert-hold`,
-`async-assert-never` and `async-assert-no_reset`, and the 123 Python cocotb
+`async-assert-never` and `async-assert-no_reset`, and the 124 Python cocotb
 targets of the [Python area](../../../src/dv/python/README.md), which declare
-`["verilator"]` only. Four Python rows keep `["questa"]`: the three
-`tb_python_mooneye` targets under the owner's pending pin decision, and
-`python-v05-continuous`, whose 600-frame schedule cannot finish inside any
-declared wall allowance
-([#634](https://github.com/amichai-bd/nand2mario/issues/634)). `ppu-shift-unknown` and
-`async-assert-known` are [retired](#test-catalogue): their expected fatal was
-a four-state `N2M_ASSERT_KNOWN` that a two-state simulator never raises.
+`["verilator"]` only. Three Python rows keep `["questa"]`: the
+`tb_python_mooneye` targets under the owner's pending pin decision.
+`ppu-shift-unknown` and `async-assert-known` are [retired](#test-catalogue):
+their expected fatal was a four-state `N2M_ASSERT_KNOWN` that a two-state
+simulator never raises. `python-v05-continuous` is retired because its
+600-frame schedule cannot finish inside any declared wall allowance; the
+[continuity schedule](../../../src/dv/python/v05/README.md#continuity-schedule)
+replaces it.
 
 ### Registered target execution
 

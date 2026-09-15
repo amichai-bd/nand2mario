@@ -71,6 +71,27 @@ class OnlineTests(unittest.TestCase):
         self.assertEqual((Online().end, Online().frame_count), (42312067,602))
         self.assertEqual(len(Online().input_masks),18)
 
+    def test_continuity_literal_schedule_keeps_every_legacy_transition(self):
+        # 18 transitions at one-frame spacing; transition j first changes frame j+3.
+        self.assertEqual(input_window(1, continuity=True), (267891,269891))
+        self.assertEqual(input_window(18, continuity=True), (1461699,1463699))
+        with self.assertRaises(ValueError):
+            input_window(19, continuity=True)
+        with self.assertRaises(ValueError):
+            input_window(1, short=True, continuity=True)
+        with self.assertRaises(ValueError):
+            Online(bounded=True, continuity=True)
+        m = Online(continuity=True)
+        self.assertEqual((m.end, m.frame_count, m.input_masks), (1652371, 23, Online().input_masks))
+        for j, mask in enumerate(m.input_masks, 1):
+            for bit in range(8):
+                self.assertEqual(pixel_shade(j+3, 8*bit, 64, continuity=True), (mask >> bit) & 1)
+        self.assertEqual([pixel_shade(f,0,64,continuity=True) for f in (20,21,22)], [1,0,0])
+        events = [(input_window(j, continuity=True)[0], mask) for j, mask in enumerate(m.input_masks, 1)]
+        rows = list(Reference(events).records(m.end))
+        self.assertEqual(len(rows), 6357 + 21 * 76)
+        self.assertEqual((rows[-1]['dot'], rows[-1]['halted'], rows[-1]['buttons']), (1582860, 1, 0))
+
     def test_short_finish_missing_and_extra_observations(self):
         m = Online(short=True)
         with self.assertRaisesRegex(ValueError, 'V05_PAUSE_WINDOW'):
