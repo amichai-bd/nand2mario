@@ -37,13 +37,13 @@ module tb_ppu_objects;
         input logic [6:0] pair_value, input logic [15:0] data_value, input logic [10:0] row_value);
         fetch_mode = 1;
         #1;
-        if (!object_found || selected_index !== index_value || oam_phase !== 2 || oam_pair_address !== pair_value)
+        if (!object_found || selected_index != index_value || oam_phase != 2 || oam_pair_address != pair_value)
             $fatal(1, "PPU_OBJECT_SELECTION index=%0d actual=%0d", index_value, selected_index);
         fetch_phase1 = 1;
         oam_data = data_value;
         tick();
         fetch_phase1 = 0;
-        if (tile_row_address !== row_value || object_attributes !== data_value[15:8])
+        if (tile_row_address != row_value || object_attributes != data_value[15:8])
             $fatal(1, "PPU_OBJECT_ROW_OR_ATTRIBUTE");
         fetch_done = 1;
         tick();
@@ -69,7 +69,7 @@ module tb_ppu_objects;
         begin_scan();
         for (entry = 0; entry < 40; entry = entry + 1) begin
             tick();
-            if (oam_pair_address !== 7'(2 * entry) || oam_phase !== 1)
+            if (oam_pair_address != 7'(2 * entry) || oam_phase != 1)
                 $fatal(1, "PPU_OBJECT_SCAN_ADDRESS entry=%0d", entry);
             if (entry < 2) oam_data = 16'h0810;
             else if (entry < 10) oam_data = 16'h0010; // hidden X still consumes a slot
@@ -110,7 +110,7 @@ module tb_ppu_objects;
         gb_tick = 0;
         reset = 1;
         tick();
-        if (fault || scan_index !== 0 || object_found) $fatal(1, "PPU_OBJECT_PAUSED_RESET");
+        if (fault || scan_index != 0 || object_found) $fatal(1, "PPU_OBJECT_PAUSED_RESET");
         $display("PASS PPU objects first_ten_dma_priority");
         $finish;
     end

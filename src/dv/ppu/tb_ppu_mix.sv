@@ -1,6 +1,8 @@
 `timescale 1ns/1ps
 `default_nettype none
 // Original literal cases; expected shades are independent of the DUT decoder.
+// Lint waiver: the integer file handle is tested as a boolean; the width lint on that idiom is a false positive.
+/* verilator lint_off WIDTHTRUNC */
 module tb_ppu_mix;
     logic background_enable, object_enable;
     logic [1:0] background_color, object_color;
@@ -16,7 +18,7 @@ module tb_ppu_mix;
         #1;
         case_id = case_id + 1;
         $fdisplay(trace_file, "%0d,%0d,%0d", case_id, expected, shade);
-        if (shade !== expected)
+        if (shade != expected)
             $fatal(1, "PPU_MIX_MISMATCH case=%0d expected=%0d actual=%0d", case_id, expected, shade);
     endtask
 

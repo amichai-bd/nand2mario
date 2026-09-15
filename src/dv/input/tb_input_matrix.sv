@@ -1,5 +1,7 @@
 `timescale 1ns/1ps
 `default_nettype none
+// Lint waiver: the integer source index is tested as a boolean; the width lint on that idiom is a false positive.
+/* verilator lint_off WIDTHTRUNC */
 module tb_input_matrix;
     logic clk_sys, reset_sys, core_reset, gb_tick, physical_commit;
     logic [7:0] physical_buttons, host_buttons, physical_observe, source_observe, effective_buttons;
@@ -60,14 +62,14 @@ module tb_input_matrix;
         current_lines=lines(expected_effective,expected_select);
         fall=!(reset_sys || core_reset) && |(previous_lines & ~current_lines);
         clk_sys=0; #5; clk_sys=1; #2;
-        if ({host_buttons,physical_observe,source_observe,effective_buttons} !==
+        if ({host_buttons,physical_observe,source_observe,effective_buttons} !=
             {expected_host,expected_physical,7'd0,expected_source,expected_effective})
             $fatal(1,"INPUT_MATRIX_STATE case=%0d check=%0d",cases,checks);
-        if (io_rdata !== {2'b11,expected_select,current_lines} || buttons_observe !== expected_effective)
+        if (io_rdata != {2'b11,expected_select,current_lines} || buttons_observe != expected_effective)
             $fatal(1,"INPUT_MATRIX_JOYP case=%0d check=%0d",cases,checks);
-        if (request_event !== fall || selected_active !== (current_lines != 15))
+        if (request_event != fall || selected_active != (current_lines != 15))
             $fatal(1,"INPUT_MATRIX_EVENT case=%0d check=%0d",cases,checks);
-        if (if_stored !== expected_if) $fatal(1,"INPUT_MATRIX_IF case=%0d check=%0d",cases,checks);
+        if (if_stored != expected_if) $fatal(1,"INPUT_MATRIX_IF case=%0d check=%0d",cases,checks);
         $fdisplay(trace,"%0d,%0d,%02h,%02h,%0d,%02h,%02h,%0d,%02h",cases,checks,
             host_buttons,physical_observe,source_observe,effective_buttons,io_rdata,request_event,if_stored);
         previous_lines=current_lines; previous_event=fall; checks=checks+1;

@@ -53,7 +53,7 @@ module tb_ppu_vram_read;
         pending_write = 0;
     endtask
     task automatic check_permissions(input logic read_allowed, input logic write_allowed);
-        if (vram_cpu_read_allow !== read_allowed || vram_cpu_allow !== write_allowed)
+        if (vram_cpu_read_allow != read_allowed || vram_cpu_allow != write_allowed)
             $fatal(1, "PPU_VRAM_READ_WINDOW expected=%0d/%0d actual=%0d/%0d",
                 read_allowed, write_allowed, vram_cpu_read_allow, vram_cpu_allow);
         cases = cases + 1;
@@ -64,7 +64,7 @@ module tb_ppu_vram_read;
         do @(posedge clk_sys); while (!(gb_tick && dot_before == enable_dot + 64'(elapsed)));
         if (cpu_phase != 3) $fatal(1, "PPU_VRAM_READ_PHASE");
         check_permissions(read_allowed, write_allowed);
-        if (oam_cpu_late_write !== (elapsed == 532 || elapsed == 988))
+        if (oam_cpu_late_write != (elapsed == 532 || elapsed == 988))
             $fatal(1, "PPU_OAM_LATE_WINDOW elapsed=%0d", elapsed);
         @(negedge clk_sys);
     endtask
@@ -76,7 +76,7 @@ module tb_ppu_vram_read;
         repeat (20) begin
             @(negedge clk_sys);
             if (gb_tick || dot_before != enable_dot + 64'(elapsed)
-                || vram_cpu_read_allow !== 1'b0 || vram_cpu_allow !== 1'b1)
+                || vram_cpu_read_allow != 1'b0 || vram_cpu_allow != 1'b1)
                 $fatal(1, "PPU_VRAM_READ_PAUSE");
         end
         check_permissions(0, 1);

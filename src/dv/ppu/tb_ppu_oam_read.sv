@@ -53,7 +53,7 @@ module tb_ppu_oam_read;
         pending_write = 0;
     endtask
     task automatic check_permissions(input logic read_allowed, input logic write_allowed);
-        if (oam_cpu_read_allow !== read_allowed || oam_cpu_allow !== write_allowed)
+        if (oam_cpu_read_allow != read_allowed || oam_cpu_allow != write_allowed)
             $fatal(1, "PPU_OAM_READ_WINDOW expected=%0d/%0d actual=%0d/%0d",
                 read_allowed, write_allowed, oam_cpu_read_allow, oam_cpu_allow);
         cases = cases + 1;
@@ -74,7 +74,7 @@ module tb_ppu_oam_read;
         repeat (20) begin
             @(negedge clk_sys);
             if (gb_tick || dot_before != enable_dot + 64'(elapsed)
-                || oam_cpu_read_allow !== 1'b0 || oam_cpu_allow !== 1'b1)
+                || oam_cpu_read_allow != 1'b0 || oam_cpu_allow != 1'b1)
                 $fatal(1, "PPU_OAM_READ_PAUSE");
         end
         check_permissions(0, 1);

@@ -205,8 +205,12 @@ refuses each with a clear message, and a target that still needs them stays
 `questa` until its area migration. `preload` runs on the Verilator stage; see
 [preload fixtures](#preload-fixtures-under-verilator). The migrated targets
 are `builder-smoke`, `builder-smoke-fail`, `python-joypad`,
-`python-joypad-fault`, `preload-fixture` and the 58 SystemVerilog targets
-labelled `cpu` in the [test catalogue](#test-catalogue).
+`python-joypad-fault`, `preload-fixture`, the 58 SystemVerilog targets
+labelled `cpu` and the 67 SystemVerilog targets labelled `ppu` or `input`
+that declare no `vendor_model` in the [test catalogue](#test-catalogue);
+`ppu-shift-unknown` stays `questa` because its expected fatal is a
+four-state `N2M_ASSERT_KNOWN` that Verilator's two-state `$isunknown` never
+raises.
 
 ### Registered target execution
 

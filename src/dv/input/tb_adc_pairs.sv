@@ -34,10 +34,10 @@ module tb_adc_pairs;
         if (!reset) begin
             cycles = cycles + 1;
             if (command_valid && command_ready) commands = commands + 1;
-            if (pair_valid !== expect_pair)
+            if (pair_valid != expect_pair)
                 $fatal(1, "ADC_PAIR_PUBLICATION cycle=%0d expected=%0b actual=%0b", cycles, expect_pair, pair_valid);
             if (pair_valid) begin
-                if (pair_x !== expected_x || pair_y !== expected_y)
+                if (pair_x != expected_x || pair_y != expected_y)
                     $fatal(1, "ADC_PAIR_DATA cycle=%0d expected=%0d,%0d actual=%0d,%0d", cycles, expected_x, expected_y, pair_x, pair_y);
                 pairs = pairs + 1;
             end
@@ -49,13 +49,13 @@ module tb_adc_pairs;
     task automatic restart;
         reset = 1'b1; command_ready = 1'b0; response_valid = 1'b0; expect_pair = 1'b0;
         step(); reset = 1'b0; step();
-        if (fresh !== 1'b0 || fault !== 1'b0) $fatal(1, "ADC_PAIR_RESET");
+        if (fresh != 1'b0 || fault != 1'b0) $fatal(1, "ADC_PAIR_RESET");
     endtask
     task automatic accept(input logic [4:0] channel);
         integer waited;
         waited = 0;
         while (!command_valid && waited < 8) begin step(); waited = waited + 1; end
-        if (!command_valid || command_channel !== channel)
+        if (!command_valid || command_channel != channel)
             $fatal(1, "ADC_PAIR_COMMAND expected=%0d actual=%0d valid=%0b", channel, command_channel, command_valid);
         command_ready = 1'b1; step(); command_ready = 1'b0;
     endtask

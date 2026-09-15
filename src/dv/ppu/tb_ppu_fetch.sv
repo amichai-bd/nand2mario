@@ -16,7 +16,7 @@ module tb_ppu_fetch;
     task automatic step(input logic [2:0] bg, input logic [2:0] obj);
         #5; clk_sys = 1;
         #1; cases = cases + 1;
-        if ({background_phase, object_phase} !== {bg, obj})
+        if ({background_phase, object_phase} != {bg, obj})
             $fatal(1, "PPU_FETCH_PHASE case=%0d expected=%0h actual=%0h",
                 cases, {bg, obj}, {background_phase, object_phase});
         #4; clk_sys = 0;
@@ -42,11 +42,11 @@ module tb_ppu_fetch;
         gb_tick = 1;
         vram_data = 8'h11;
         step(1, 0);
-        if (tile_index !== 0) $fatal(1, "PPU_FETCH_EARLY_CAPTURE");
+        if (tile_index != 0) $fatal(1, "PPU_FETCH_EARLY_CAPTURE");
         if ($test$plusargs("missing")) vram_valid = 0;
         vram_data = 8'h22;
         step(2, 0);
-        if (tile_index !== 8'h22) $fatal(1, "PPU_FETCH_MAP_CAPTURE");
+        if (tile_index != 8'h22) $fatal(1, "PPU_FETCH_MAP_CAPTURE");
         vram_data = 8'h33;
         step(3, 0);
         vram_data = 8'h80;
@@ -55,7 +55,7 @@ module tb_ppu_fetch;
         step(5, 0);
         vram_data = 8'h40;
         #1;
-        if (!background_load || {background_low, background_high} !== 16'h8040)
+        if (!background_load || {background_low, background_high} != 16'h8040)
             $fatal(1, "PPU_FETCH_PHASE5_BYPASS");
         step(0, 0);
         if (!background_first_done || background_load) $fatal(1, "PPU_FETCH_FIRST_DONE");
@@ -74,7 +74,7 @@ module tb_ppu_fetch;
         step(7, 5);
         vram_data = 8'h02;
         #1;
-        if (!object_load || {object_low, object_high} !== 16'h8040)
+        if (!object_load || {object_low, object_high} != 16'h8040)
             $fatal(1, "PPU_FETCH_OBJECT_FLIP");
         step(7, 0);
         window_start = 1;
@@ -84,7 +84,7 @@ module tb_ppu_fetch;
         step(0, 1);
         reset = 1;
         step(0, 0);
-        if (fault || window_first || background_first_done || tile_index !== 0)
+        if (fault || window_first || background_first_done || tile_index != 0)
             $fatal(1, "PPU_FETCH_PAUSED_RESET");
         $display("PASS PPU fetch literal_schedule cases=%0d", cases);
         $finish;
