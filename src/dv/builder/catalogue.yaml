@@ -218,14 +218,14 @@ units:
   interrupts-priority: {kind: sim, level: 2, labels: [fault, interrupts], duration_seconds: 0.48}
   io-peek: {kind: sim, level: 0, labels: [interrupts, ppu, timer, uart], duration_seconds: 0.52}
   io-peek-disturb: {kind: sim, level: 0, labels: [fault, interrupts, ppu, timer, uart], duration_seconds: 0.45}
-  joypad-boundary-fault: {kind: sim, level: 2, labels: [fault, joypad], duration_seconds: 2.20}
-  joypad-events: {kind: sim, level: 1, labels: [joypad], duration_seconds: 3.55}
-  joypad-events-duplicate: {kind: sim, level: 2, labels: [fault, joypad], duration_seconds: 0.49}
-  joypad-events-lost: {kind: sim, level: 2, labels: [fault, joypad], duration_seconds: 0.51}
-  joypad-matrix: {kind: sim, level: 2, labels: [joypad], duration_seconds: 1.74}
-  joypad-matrix-fault: {kind: sim, level: 2, labels: [fault, joypad], duration_seconds: 0.47}
-  joypad-register-fault: {kind: sim, level: 2, labels: [fault, joypad], duration_seconds: 0.47}
-  joypad-registers: {kind: sim, level: 2, labels: [joypad], duration_seconds: 0.49}
+  joypad-boundary-fault: {kind: sim, level: 2, labels: [fault, joypad], duration_seconds: 2.14}
+  joypad-events: {kind: sim, level: 1, labels: [joypad], duration_seconds: 3.60}
+  joypad-events-duplicate: {kind: sim, level: 2, labels: [fault, joypad], duration_seconds: 0.52}
+  joypad-events-lost: {kind: sim, level: 2, labels: [fault, joypad], duration_seconds: 0.53}
+  joypad-matrix: {kind: sim, level: 2, labels: [joypad], duration_seconds: 1.97}
+  joypad-matrix-fault: {kind: sim, level: 2, labels: [fault, joypad], duration_seconds: 0.52}
+  joypad-register-fault: {kind: sim, level: 2, labels: [fault, joypad], duration_seconds: 0.55}
+  joypad-registers: {kind: sim, level: 2, labels: [joypad], duration_seconds: 0.51}
   memory-bank-enables: {kind: sim, level: 1, labels: [memory], duration_seconds: 10.62}
   memory-bank-enables-fault: {kind: sim, level: 2, labels: [fault, memory], duration_seconds: null}
   memory-cpu-duplicate: {kind: sim, level: 2, labels: [fault, memory], duration_seconds: null}
@@ -378,8 +378,8 @@ units:
   python-interaction-d: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
   python-interaction-fault: {kind: sim, level: 2, labels: [fault, integration, python-tb, springtrail, system, v05], duration_seconds: null}
   python-interaction-short: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
-  python-joypad: {kind: sim, level: 2, labels: [joypad, python-tb], duration_seconds: 0.26}
-  python-joypad-fault: {kind: sim, level: 2, labels: [joypad, python-tb], duration_seconds: 0.25}
+  python-joypad: {kind: sim, level: 2, labels: [joypad, python-tb], duration_seconds: 1.06}
+  python-joypad-fault: {kind: sim, level: 2, labels: [fault, joypad, python-tb], duration_seconds: 0.82}
   python-mgs: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
   python-mgu: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}
   python-mr: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: null}

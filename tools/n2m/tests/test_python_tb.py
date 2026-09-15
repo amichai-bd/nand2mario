@@ -37,6 +37,7 @@ class PythonTests(unittest.TestCase):
         original = self.sim.run
         self.xml = XML
         self.raw_exit = 0
+        self.stdout = "PASS python-joypad"
         self.env = None
 
         def run(argv, cwd=None, timeout=60, env=None):
@@ -46,7 +47,7 @@ class PythonTests(unittest.TestCase):
                 if self.xml is not None:
                     (cwd / "results.xml").write_text(self.xml)
                 (cwd / "transactions.jsonl").write_text("retained evidence")
-                return SimpleNamespace(returncode=self.raw_exit, stdout="PASS python-joypad")
+                return SimpleNamespace(returncode=self.raw_exit, stdout=self.stdout)
             return result
         self.sim.run = run
 
@@ -113,6 +114,47 @@ class PythonTests(unittest.TestCase):
         self.assertEqual(result["python_results"]["status"], "PASS")
         self.assertEqual(result["commands"][-1]["exit_code"], 1)
 
+    def test_expected_failure_needs_named_test_failure_with_signature(self):
+        """A Python fault target passes by failing in the declared way, and only that way."""
+        registry = self.root / "src/dv/builder/targets.json"
+        targets = read_json(registry)
+        targets["python-joypad"].update(expected_exit="nonzero", signature="JOYP_MISMATCH cycle=3")
+        atomic_json(registry, targets)
+        failed = XML.replace('failures="0"', 'failures="1"').replace(
+            '</properties>', '</properties><failure message="JOYP_MISMATCH cycle=3 phase=post" type="AssertionError">trace</failure>')
+        self.xml = failed
+        # cocotb reports the failure as one WARNING line and ends through $finish.
+        self.stdout = ("47.00ns WARNING  cocotb.regression  test_joypad.joypad_contract failed\n"
+                       "AssertionError: JOYP_MISMATCH cycle=3 phase=post\n- :0: Verilog $finish")
+        result = self.run_stage()
+        self.assertEqual(result["status"], "PASS", result)
+        self.assertEqual(result["commands"][-1]["exit_code"], 0)
+        self.assertEqual(result["python_results"]["status"], "FAIL")
+        self.assertEqual(self.run_stage()["cache"], "CACHED")
+        rejected = [
+            (XML, self.stdout, "verdict does not match"),
+            (failed.replace("JOYP_MISMATCH cycle=3 phase=post", "JOYP_UNKNOWN cycle=3"), self.stdout, "verdict does not match"),
+            (failed.replace('message="JOYP_MISMATCH cycle=3 phase=post"', ''), self.stdout, "verdict does not match"),
+            (XML.replace('failures="0"', 'failures="1"'), self.stdout, "verdict does not match"),
+            ("<broken", self.stdout, "verdict does not match"),
+            (failed, self.stdout + "\nWARNING  cocotb.regression  other failed", "unexplained simulator warning"),
+            (failed, self.stdout.replace("test_joypad.joypad_contract failed", "test_joypad.other failed"),
+             "unexplained simulator warning"),
+            (failed, "47.00ns WARNING  cocotb.regression  test_joypad.joypad_contract failed\n- :0: Verilog $finish",
+             "missing expected signature")]
+        good = self.stdout
+        self.args.rebuild = True
+        for xml, stdout, error in rejected:
+            self.xml, self.stdout = xml, stdout
+            result = self.run_stage()
+            self.assertEqual(result["status"], "FAIL", (xml, stdout))
+            self.assertIn(error, result["error"])
+        self.xml, self.stdout = failed, good
+        self.raw_exit = 1
+        result = self.run_stage()
+        self.assertEqual(result["status"], "FAIL")
+        self.assertIn("unexpected exit 1", result["error"])
+
     def test_missing_inventory_not_reusable(self):
         self.run_stage()
         current = self.build / "sim/test/python-joypad/result.json"
@@ -143,7 +185,7 @@ class PythonTests(unittest.TestCase):
         targets = read_json(registry)
         original = targets["python-joypad"]
         for changes in ({"testbench": "unknown"}, {"testbench": "systemverilog"},
-                        {"python": {}}, {"expected_exit": "nonzero"}, {"top": "bad top"},
+                        {"python": {}}, {"driver": {}}, {"top": "bad top"},
                         {"python": {"module": "test_joypad", "test": "joypad_contract", "inputs": ["../missing"]}}):
             targets["python-joypad"] = {**original, **changes}
             atomic_json(registry, targets)

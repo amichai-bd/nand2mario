@@ -98,6 +98,16 @@ class DiagnosticTests(unittest.TestCase):
             with self.subTest(output=output):
                 self.assertIsNotNone(verilator.diagnostic("ok\n" + output))
 
+    def test_explained_warning_lines_are_accepted_one_at_a_time(self):
+        failed = "    47.00ns WARNING  cocotb.regression                  test_joypad.joypad_contract failed"
+        explained = ("test_joypad.joypad_contract failed",)
+        self.assertIsNone(verilator.diagnostic(failed + "\n- :0: Verilog $finish", explained=explained))
+        self.assertEqual(verilator.diagnostic(failed + "\n- :0: Verilog $finish"), "unexplained simulator warning")
+        self.assertEqual(verilator.diagnostic(failed + "\nWARNING  cocotb.regression  other failed", explained=explained),
+                         "unexplained simulator warning")
+        self.assertEqual(verilator.diagnostic(failed + "\n%Warning-WIDTH: x.sv:3: late", explained=explained),
+                         "unexplained simulator warning")
+
     def test_expected_failure_allows_only_its_own_fatal_and_stop(self):
         fatal = f"[40000] %Fatal: builder_smoke.sv:31: Assertion failed in builder_smoke: {SIGNATURE}\n"
         stop = "%Error: /repo/src/dv/builder/builder_smoke.sv:31: Verilog $stop\nAborting...\n"
