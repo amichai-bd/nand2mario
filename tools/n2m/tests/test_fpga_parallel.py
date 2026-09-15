@@ -76,3 +76,51 @@ class ParallelClockTests(unittest.TestCase):
                 fpga_lock.verify_parallel(mutated,checks,"clocking_proof")
         with self.assertRaises(ValueError):
             fpga_lock.verify_parallel(text,checks+checks,"clocking_proof")
+
+
+class MergeDiagnosticTests(unittest.TestCase):
+    """Quartus 25.1 names the PLL pair in either order; the classification matches the set."""
+    def setUp(self):
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+        parent = Path(__file__).resolve().parents[3] / "workdir" / "fpga-unit-tests"
+        parent.mkdir(parents=True, exist_ok=True)
+        self.temporary = tempfile.TemporaryDirectory(dir=parent)
+        self.addCleanup(self.temporary.cleanup)
+        self.folder = Path(self.temporary.name)
+        verified = patch.object(fpga_pll, "verify")
+        verified.start()
+        self.addCleanup(verified.stop)
+        self.definition = {"module": "n2m_pixel_pll", "input_ps": 20000, "multiply": 63, "divide": 125, "system_divide": 2}
+
+    def line(self, first, second, name, suffix=" Line: 93"):
+        path = (self.folder / "db" / name).resolve().as_posix()
+        return (f"Warning (176127): The parameters of the PLL {first} and the PLL {second} do not have the same values"
+                f" - hence these PLLs cannot be merged File: {path}{suffix}")
+
+    def test_either_order_and_either_generated_file_are_one_explained_line(self):
+        pixel, system = fpga_pll.MERGE_PAIR
+        for first, second, name in ((pixel, system, "n2m_pixel_pll_altpll.v"), (system, pixel, "n2m_system_pll_altpll.v"),
+                                    (system, pixel, "n2m_pixel_pll_altpll.v")):
+            text = "Info (1): before\n" + self.line(first, second, name) + "\nInfo (2): after\n"
+            explained = fpga_pll.explained_diagnostics(text, self.folder, self.definition)
+            self.assertEqual([item["code"] for item in explained], ["176127"])
+            self.assertEqual(explained[0]["text"], self.line(first, second, name))
+        self.assertEqual(fpga_pll.explained_diagnostics("Info (1): quiet\n", self.folder, self.definition), [])
+        self.assertEqual(fpga_pll.explained_diagnostics(self.line(system, pixel, "n2m_system_pll_altpll.v"), self.folder,
+                                                        dict(self.definition, system_divide=None)), [])
+
+    def test_other_pairs_files_counts_and_text_stay_unexplained(self):
+        pixel, system = fpga_pll.MERGE_PAIR
+        good = self.line(system, pixel, "n2m_system_pll_altpll.v")
+        for bad in (good + "\n" + good,
+                    self.line(system, system, "n2m_system_pll_altpll.v"),
+                    self.line(system, pixel.replace("u_pll", "u_other"), "n2m_system_pll_altpll.v"),
+                    self.line(system, pixel, "n2m_adc_pll_altpll.v"),
+                    self.line(system, pixel, "../n2m_system_pll_altpll.v"),
+                    good.replace("cannot be merged", "were merged"),
+                    good.replace(" Line: 93", ""),
+                    good + " trailing"):
+            with self.assertRaises(ValueError):
+                fpga_pll.explained_diagnostics(bad, self.folder, self.definition)

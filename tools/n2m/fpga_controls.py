@@ -74,6 +74,58 @@ def verify_uart_memory(text, fit, *, system_net=r"\clk_sys~inputclkctrl_outclk",
     return {'stores': len(shapes), 'atoms': len(expected), 'bits': sum(d*w for d,w,_ in shapes.values())}
 
 
+MAX_UNARY_LUTS = 2
+
+
+def unary_lut(cells, params, cell, output):
+    """Return (input net, inverted) for one LUT that computes a unary function of one net."""
+    import re
+    ports = cells[cell][1]
+    mode = params.get(cell, {})
+    if (set(mode) != {'lut_mask', 'sum_lutc_input'}
+            or mode['sum_lutc_input'] != '"datac"'
+            or not re.fullmatch(r"16'h[0-9a-fA-F]{4}", mode['lut_mask'])
+            or ports.get('cin') != 'gnd' or ports.get('cout') != '' or ports.get('combout') != output):
+        raise ValueError('control unary LUT mode differs')
+    inputs = [ports.get(p) for p in ('dataa', 'datab', 'datac', 'datad')]
+    nets = set(inputs) - {'gnd', 'vcc'}
+    if len(nets) != 1:
+        raise ValueError('control LUT has unrelated inputs')
+    source = nets.pop()
+    mask = int(mode['lut_mask'][4:], 16)
+    outputs = []
+    for bit in (0, 1):
+        values = {source: bit, 'gnd': 0, 'vcc': 1}
+        index = sum(values[value] << i for i, value in enumerate(inputs))
+        outputs.append((mask >> index) & 1)
+    if outputs not in ([0, 1], [1, 0]):
+        raise ValueError('control unary LUT polarity differs')
+    return source, outputs == [1, 0]
+
+
+def unary_chain(cells, params, source, target):
+    """Walk from a register input back to its source through at most MAX_UNARY_LUTS unary LUTs.
+
+    The fitter may place a feeder LUT after a unary inverter, so a legal packing
+    is one or two LUTs; each is checked for one live input and a unary mask.
+    Returns [(cell, inverted, input net)] ordered from the source to the register.
+    """
+    chain = []
+    net = target
+    while net != source:
+        if len(chain) == MAX_UNARY_LUTS:
+            raise ValueError('control path does not have a bounded unary LUT chain')
+        drivers = [n for n, (kind, p) in cells.items()
+                   if kind == 'fiftyfivenm_lcell_comb' and p.get('combout') == net]
+        if len(drivers) != 1:
+            raise ValueError('control path does not have one unary LUT')
+        cell = drivers[0]
+        cell_input, inverted = unary_lut(cells, params, cell, net)
+        chain.append((cell, inverted, cell_input))
+        net = cell_input
+    return list(reversed(chain))
+
+
 def constraints(quote, *, chains=CHAINS):
     lines = []
     for name, port, first, second in chains:
@@ -144,37 +196,25 @@ def verify(folder, *, system_clock="clk_sys", system_net=r"\clk_sys~inputclkctrl
         return port
 
     def path(source, register, inverted):
-        """Accept one direct edge or one fully checked unary LUT, without fanout."""
+        """Accept one direct edge or a chain of at most two fully checked unary LUTs, without fanout."""
         port = selected(register)
         target = cells[register][1][port]
         if target == source:
             if inverted or sinks(source) != {(register, port)}:
                 raise ValueError('control direct path polarity or fanout differs')
             return []
-        drivers = [(n, p) for n, (kind, p) in cells.items()
-                   if kind == 'fiftyfivenm_lcell_comb' and p.get('combout') == target]
-        if len(drivers) != 1:
-            raise ValueError('control path does not have one unary LUT')
-        cell, ports = drivers[0]
-        mode = params.get(cell, {})
-        if (set(mode) != {'lut_mask', 'sum_lutc_input'}
-                or mode['sum_lutc_input'] != '"datac"'
-                or not re.fullmatch(r"16'h[0-9a-fA-F]{4}", mode['lut_mask'])
-                or ports.get('cin') != 'gnd' or ports.get('cout') != ''):
-            raise ValueError('control unary LUT mode differs')
-        inputs = [ports.get(p) for p in ('dataa', 'datab', 'datac', 'datad')]
-        if source not in inputs or not set(inputs) <= {source, 'gnd', 'vcc'}:
-            raise ValueError('control LUT has unrelated inputs')
-        mask = int(mode['lut_mask'][4:], 16)
-        for bit in (0, 1):
-            values = {source: bit, 'gnd': 0, 'vcc': 1}
-            index = sum(values[value] << i for i, value in enumerate(inputs))
-            if ((mask >> index) & 1) != (bit ^ inverted):
-                raise ValueError('control unary LUT polarity differs')
-        expected = {(cell, p) for p, value in ports.items() if value == source}
-        if sinks(source) != expected or sinks(target) != {(register, port)}:
+        chain = unary_chain(cells, params, source, target)
+        if sum(cell_inverted for _, cell_inverted, _ in chain) % 2 != int(inverted):
+            raise ValueError('control unary LUT polarity differs')
+        consumers = [(register, port)]
+        for cell, _, cell_input in reversed(chain):
+            output = cells[cell][1]['combout']
+            if sinks(output) != set(consumers):
+                raise ValueError('control unary path has bypass fanout')
+            consumers = [(cell, p) for p, value in cells[cell][1].items() if value == cell_input]
+        if sinks(source) != set(consumers):
             raise ValueError('control unary path has bypass fanout')
-        return [cell]
+        return [cell for cell, _, _ in chain]
 
     for name, external, first, second in chains:
         if any(c not in cells or cells[c][0] != 'dffeas' for c in (first, second)):
