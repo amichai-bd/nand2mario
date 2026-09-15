@@ -16,6 +16,7 @@ from .doctor import doctor
 from .host.command import run as host_command
 from .fpga import build_fpga
 from .fpga_program import program as program_fpga
+from .progress import Progress, powershell_command
 from .rgbds import oracle
 from .regress import clean, regress
 from . import catalogue, interface_codec
@@ -176,9 +177,11 @@ def parser():
     return result
 
 
-def tagged(root, args, header, publish):
+def tagged(root, args, header, publish, progress=None):
     """Run one command inside its exclusive tagged workspace."""
+    progress = progress or Progress(False)
     reclaimed = []
+    operation_folder = None
     with workspace(root, args.tag, reclaimed) as build:
         report = header(build.name)
         if reclaimed:
@@ -207,12 +210,15 @@ def tagged(root, args, header, publish):
             elif args.command == "fpga":
                 provenance = {k: report[k] for k in ("commit", "dirty_tree_fingerprint", "host", "python") if k in report}
                 if args.action == "build":
-                    report.update(build_fpga(root, build, args, provenance))
+                    progress.line(f"FPGA build: target {args.target}")
+                    report.update(build_fpga(root, build, args, provenance, progress=progress))
                 else:
                     folder = build / "fpga-program" / uuid.uuid4().hex[:12]
                     folder.mkdir(parents=True)
+                    operation_folder = folder
+                    progress.line(f"FPGA program: {args.sof}")
                     result = program_fpga(root, folder, Path(args.sof), quartus_bin=args.quartus_bin,
-                                          cable=args.jtag_cable, timeout=args.timeout)
+                                          cable=args.jtag_cable, timeout=args.timeout, progress=progress)
                     report.update(status="PASS", provenance=provenance, **result,
                                  artifacts={p.relative_to(root).as_posix(): file_hash(p) for p in folder.rglob("*") if p.is_file()})
             elif args.command == 'host':
@@ -236,9 +242,11 @@ def tagged(root, args, header, publish):
                 # Capability validation precedes discovery, so an unsupported
                 # pair never probes or falls back to another simulator.
                 load_target(root, args.target, args.sim)
-                simulator = Simulator(args.sim, verilator_bin=args.verilator_bin,
-                                      questa_bin=args.questa_bin)
-                report.update(simulate(root, build, args, simulator, provenance))
+                progress.line(f"Simulation: target {args.target}; backend {args.sim}")
+                with progress.stage(f"Discover {args.sim.capitalize()} tools"):
+                    simulator = Simulator(args.sim, verilator_bin=args.verilator_bin,
+                                          questa_bin=args.questa_bin)
+                report.update(simulate(root, build, args, simulator, provenance, progress=progress))
         except Exception as error:
             report.update(status="FAIL", error=str(error))
             if isinstance(error, AssemblyError):
@@ -257,6 +265,10 @@ def tagged(root, args, header, publish):
                 failure_artifacts[log.relative_to(root).as_posix()] = file_hash(log)
                 report["artifacts"] = failure_artifacts
                 atomic_json(folder / "result.json", report)
+            if operation_folder is not None:
+                failure_artifacts.update({p.relative_to(root).as_posix(): file_hash(p)
+                                          for p in operation_folder.rglob("*") if p.is_file()})
+                report["artifacts"] = failure_artifacts
             if args.command == "sim" and args.action == "test" and re.fullmatch(r"[a-z0-9][a-z0-9_-]*", args.target):
                 stage, mirror, authoritative = stage_paths(root, build, args.target, args.sim)
                 failure = {"status": "FAIL", "error": str(error), "artifacts": failure_artifacts,
@@ -267,6 +279,81 @@ def tagged(root, args, header, publish):
                 publish_mirror(root, mirror, failure, stage / "sim.log")
         publish(build, report)
     return report
+
+
+def _artifacts(report, *, suffix=None, contains=None):
+    paths = report.get("artifacts", {})
+    if isinstance(paths, dict):
+        paths = paths.keys()
+    elif not isinstance(paths, list):
+        paths = []
+    return sorted(path for path in paths
+                  if (suffix is None or path.endswith(suffix))
+                  and (contains is None or contains in path))
+
+
+def _diagnostic(report):
+    for suffix in ("failure.log", "program.log", "sim.log", "compile.log", "chain.log"):
+        paths = _artifacts(report, suffix=suffix)
+        if paths:
+            return paths[-1]
+    return None
+
+
+def _human_result(args, report, progress):
+    """Render the compact handoff after live stages have finished."""
+    status = report.get("status", "FAIL")
+    cache = report.get("cache")
+    progress.line(f"Result: {status}" + (f" ({cache})" if cache else ""))
+    if "error" in report:
+        progress.line(f"Error: {report['error']}")
+    diagnostic = _diagnostic(report)
+    if status != "PASS" and diagnostic:
+        progress.line(f"Diagnostic: {diagnostic}")
+
+    if args.command == "sim" and args.action == "test":
+        for path in _artifacts(report, suffix=".log", contains="/compile/"):
+            progress.line(f"Compile log: {path}")
+        sim_logs = _artifacts(report, suffix="sim.log", contains="/attempts/")
+        if sim_logs:
+            progress.line(f"Simulation log: {sim_logs[-1]}")
+        if report.get("authoritative_result"):
+            progress.line(f"Result record: {report['authoritative_result']}")
+        waves = report.get("waves")
+        if isinstance(waves, dict) and waves.get("path"):
+            progress.line(f"Waveform ({waves.get('format', 'unknown').upper()}): {waves['path']}")
+        if status == "PASS":
+            progress.line("Next (Windows PowerShell): " + powershell_command([
+                "python", "tools/build.py", "fpga", "build", "v05-board",
+                "--quartus-bin", "<Quartus-bin>", "--tag", "<FPGA-tag>"]))
+        return
+
+    if args.command == "fpga" and args.action == "build":
+        if report.get("attempt_result"):
+            progress.line(f"Result record: {report['attempt_result']}")
+        bitstreams = _artifacts(report, suffix="/output/design.sof")
+        if bitstreams:
+            progress.line(f"Checked bitstream: {bitstreams[-1]}")
+        if status == "PASS" and bitstreams and not report.get("build_id_override"):
+            progress.line("Next (Windows PowerShell): " + powershell_command([
+                "python", "tools/build.py", "fpga", "program", "--sof", bitstreams[-1],
+                "--quartus-bin", args.quartus_bin]))
+        return
+
+    if args.command == "fpga" and args.action == "program":
+        if report.get("cable") and report.get("devices"):
+            progress.line(f"JTAG: cable {report['cable']}; device {', '.join(report['devices'])}")
+        if report.get("program_log"):
+            progress.line(f"Program log: {report['program_log']}")
+        if report.get("wire_build_id"):
+            progress.line(f"On-wire build ID: {report['wire_build_id']}")
+            if status == "PASS":
+                progress.line("Next (Windows PowerShell): " + powershell_command([
+                    "python", "tools/gb_launcher.py", "--expected-build-id",
+                    report["wire_build_id"], "--uart-port", "<UART-port>"]))
+        return
+
+    progress.line(f"{report.get('cache', status)}: {args.command} tag={report.get('tag', '-')}")
 
 
 # One build tool, two native simulator hosts and one FPGA host. No command
@@ -312,6 +399,7 @@ def main(argv=None, root=None):
     args = parser().parse_args(argv)
     root = Path(root or Path(__file__).resolve().parents[2]).resolve()
     report = {"status": "FAIL"}
+    progress = Progress(not args.json)
 
     def header(tag):
         return {"tag": tag, "created": datetime.now(timezone.utc).isoformat(),
@@ -342,17 +430,22 @@ def main(argv=None, root=None):
             # The single-target capability contract is checked before the tag
             # workspace is created. The stage repeats this check defensively.
             load_target(root, args.target, args.sim)
-            report = tagged(root, args, header, publish)
+            report = tagged(root, args, header, publish, progress)
         else:
-            report = tagged(root, args, header, publish)
+            report = tagged(root, args, header, publish, progress)
     except Exception as error:
         report.update(status="FAIL", error=str(error))
     if args.json:
         print(json.dumps(report, sort_keys=True))
     else:
-        print(f"{report.get('cache', report['status'])}: {args.command} tag={report.get('tag', '-')}")
-        if "error" in report:
-            print(report["error"])
+        guided = (args.command == "fpga"
+                  or (args.command == "sim" and args.action == "test"))
+        if guided:
+            _human_result(args, report, progress)
+        else:
+            print(f"{report.get('cache', report['status'])}: {args.command} tag={report.get('tag', '-')}")
+            if "error" in report:
+                print(report["error"])
         for line in report.get("notices", []):
             print(line)
         if args.command == "tests" and "units" in report and isinstance(report["units"], dict):

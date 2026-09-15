@@ -13,6 +13,7 @@ from .simulator import ToolError
 from .verilator import commands as verilator_commands, diagnostic as verilator_diagnostic, WAVES as VERILATOR_WAVES
 from .questa import commands as questa_commands, diagnostic as questa_diagnostic
 from .records import atomic_json, atomic_text, cache_matches, digest, file_hash, read_json
+from .progress import Progress, display_path
 from . import intel_adc, intel_memory, python_tb
 from .simulation_peer import Peer
 
@@ -113,7 +114,8 @@ def publish_mirror(root, mirror, record, log=None):
     atomic_json(mirror / "result.json", mirrored)
 
 
-def simulate(root, build, args, simulator, provenance=None):
+def simulate(root, build, args, simulator, provenance=None, progress=None):
+    progress = progress or Progress(False)
     backend = simulator.backend
     target, registry = load_target(root, args.target, backend)
     driver = target.get("driver")
@@ -167,6 +169,9 @@ def simulate(root, build, args, simulator, provenance=None):
     if not args.rebuild and cache_matches(old, fingerprint, root, build) and (not python_runtime or (driver and target["expected_exit"] != "zero") or python_tb.evidence(root, old, target, driver=bool(driver))):
         cached = {**old, "cache": "CACHED", "authoritative_result": authoritative}
         publish_mirror(root, mirror, cached, stage / "sim.log")
+        progress.cached("Compile and elaborate")
+        progress.cached("Run simulation")
+        progress.cached("Check simulation result")
         return cached
     attempt_id = uuid.uuid4().hex
     attempt = stage / "attempts" / attempt_id
@@ -189,6 +194,7 @@ def simulate(root, build, args, simulator, provenance=None):
     # RUNNING and a lock, never a reusable success for its unfinished request.
     atomic_json(current, record)
     log = compile_dir / "prepare.log"
+    active_stage = None
     try:
         commands = (verilator_commands(simulator, root, target, args.seed, compile_dir, attempt,
                                        python_runtime=python_runtime, fixture_tools=fixture_tools)
@@ -197,11 +203,16 @@ def simulate(root, build, args, simulator, provenance=None):
                                     vendor_model=vendor_model, python_runtime=python_runtime,
                                     fixture_tools=fixture_tools))
         for argv, cwd, log, expected in commands:
+            running = log.name == "sim.log"
+            label = "Run simulation" if running else "Compile and elaborate"
+            if not running and log.name not in ("build.log", "compile.log"):
+                label += ": " + log.stem.replace("-", " ")
+            detail = f"log: {display_path(root, log)}"
+            active_stage = (label, progress.begin(label, detail), detail)
             command = simulator.command(argv)
             record["commands"].append({"argv": command, "cwd": str(cwd)})
             with (build / "commands.log").open("a", encoding="utf-8") as stream:
                 stream.write(json.dumps(record["commands"][-1]) + "\n")
-            running = log.name == "sim.log"
             # Verilator's C++ build and Questa's vendor compilation share the
             # target wall; the run keeps the registry's runtime bound.
             if running:
@@ -300,13 +311,21 @@ def simulate(root, build, args, simulator, provenance=None):
                     explained=explained, peer=peer_config["module"] if driver else None)
             if problem:
                 raise RuntimeError(f"{problem}; see {log.relative_to(root)}")
+            progress.finish(active_stage[0], active_stage[1], detail=active_stage[2])
+            active_stage = None
+        active_stage = ("Check simulation result",
+                        progress.begin("Check simulation result"), None)
         if target["signature"] not in result.stdout:
             raise RuntimeError(f"missing expected signature: {target['signature']}")
         waves = VERILATOR_WAVES if backend == "verilator" else "waves/simulation.wlf"
         if not (attempt / waves).is_file():
             raise RuntimeError(f"missing retained waves: {waves}")
+        progress.finish(active_stage[0], active_stage[1], status="PASS", detail=active_stage[2])
+        active_stage = None
         record["status"] = "PASS"
     except Exception as error:
+        if active_stage is not None:
+            progress.finish(active_stage[0], active_stage[1], status="FAIL", detail=active_stage[2])
         if isinstance(error, ToolError):
             log.write_text(error.output + "\n" + str(error) + "\n", encoding="utf-8")
         record["status"] = "FAIL"

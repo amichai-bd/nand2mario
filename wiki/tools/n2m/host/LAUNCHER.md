@@ -25,6 +25,12 @@ $Build = '<reviewed 32-digit lowercase wire build ID>'
 python tools/gb_launcher.py --expected-build-id $Build --uart-port $Port
 ```
 
+A successful `python tools/build.py fpga program ...` text run prints this
+launcher command with the checked attempt's byte-reversed on-wire build ID
+filled in and `<UART-port>` left explicit. Copy it, replace that placeholder
+with the verified Windows port, and run it from Windows PowerShell. The
+programmer does not open UART or launch this window itself.
+
 `--uart-vid`, `--uart-pid` and `--uart-identity` narrow the selection the same
 way they do for every host command; exactly one healthy device must match.
 Omitting `--tag` creates one unique tag; the startup line reports the tag, the

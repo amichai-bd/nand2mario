@@ -1,4 +1,6 @@
 """Programming refuses ambiguous identity and unsafe .sof paths; no hardware needed."""
+import contextlib
+import io
 import json
 from pathlib import Path
 import tempfile
@@ -10,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from n2m.cli import main
 from n2m.fpga_program import attempt_record, program
 from n2m.records import file_hash
+from n2m.progress import Progress
 
 ROOT = Path(__file__).resolve().parents[3]
 VALID_CHAIN = "1) USB-Blaster [USB-0]\n  031050DD 10M50DA(.|ES)/10M50DC\n"
@@ -77,6 +80,28 @@ class FpgaProgramTests(unittest.TestCase):
         self.assertEqual(calls[1][:5], ["quartus_pgm", "-c", "1", "-m", "jtag"])
         self.assertEqual(calls[1][-1], f"p;{self.sof.resolve()}")
 
+    def test_program_progress_and_launcher_handoff_use_checked_wire_id(self):
+        record = json.loads((self.folder / "result.json").read_text())
+        record["build_id"] = "00112233445566778899aabbccddeeff"
+        (self.folder / "result.json").write_text(json.dumps(record))
+        output = io.StringIO()
+
+        def run(argv, cwd, log, timeout=60):
+            return VALID_CHAIN if "jtagconfig" in argv[0] else SUCCESS
+
+        with patch("n2m.fpga_program.executable", side_effect=lambda d, n: n), \
+                patch("n2m.fpga_program.execute", side_effect=run):
+            result = program(ROOT, self.folder, self.sof, quartus_bin="tools",
+                             progress=Progress(stream=output))
+        self.assertEqual(result["wire_build_id"], "ffeeddccbbaa99887766554433221100")
+        text = output.getvalue()
+        ordered = ["[....] Check FPGA build record", "[done] Check FPGA build record",
+                   "[....] Discover JTAG chain", "[done] Discover JTAG chain",
+                   "JTAG: cable 1; device", "[....] Program FPGA", "[done] Program FPGA",
+                   "[....] Check programmer result", "[PASS] Check programmer result"]
+        positions = [text.index(fragment) for fragment in ordered]
+        self.assertEqual(positions, sorted(positions), text)
+
     def test_quartus_pgm_failure_output_is_refused(self):
         def run(argv, cwd, log, timeout=60):
             return VALID_CHAIN if "jtagconfig" in argv[0] else "Info: Quartus Prime Programmer failed. 1 error\n"
@@ -87,7 +112,7 @@ class FpgaProgramTests(unittest.TestCase):
                 program(ROOT, self.folder, self.sof, quartus_bin="tools")
 
     def test_cli_program_action_reports_its_retained_log(self):
-        def fake(root, folder, sof, *, quartus_bin, cable, timeout):
+        def fake(root, folder, sof, *, quartus_bin, cable, timeout, progress=None):
             (folder / "program.log").write_text("retained\n")
             return {"cable": cable or "1", "sof": str(sof), "scope": "double"}
 
@@ -112,6 +137,24 @@ class FpgaProgramTests(unittest.TestCase):
         report = json.loads((self.folder / "workdir/builds/program-cli-fail/manifest.json").read_text())
         self.assertEqual(report["status"], "FAIL")
         self.assertIn("USB-Blaster", report["error"])
+
+    def test_cli_text_offers_the_existing_launcher_with_a_uart_placeholder(self):
+        def fake(root, folder, sof, *, quartus_bin, cable, timeout, progress=None):
+            (folder / "program.log").write_text("retained\n")
+            return {"cable": "1", "devices": ["10M50DA(.|ES)/10M50DC"],
+                    "sof": str(sof), "program_log": (folder / "program.log").relative_to(root).as_posix(),
+                    "wire_build_id": "ffeeddccbbaa99887766554433221100", "scope": "double"}
+
+        with patch("n2m.cli.program_fpga", side_effect=fake), \
+                patch("n2m.cli.platform.system", return_value="Windows"), \
+                contextlib.redirect_stdout(io.StringIO()) as output:
+            code = main(["fpga", "program", "--sof", str(self.sof),
+                         "--quartus-bin", "tools with spaces", "--tag", "program-human"], self.folder)
+        self.assertEqual(code, 0)
+        text = output.getvalue()
+        self.assertIn("On-wire build ID: ffeeddccbbaa99887766554433221100", text)
+        self.assertIn("python tools/gb_launcher.py --expected-build-id ffeeddccbbaa99887766554433221100 ", text)
+        self.assertIn("--uart-port '<UART-port>'", text)
 
 
 

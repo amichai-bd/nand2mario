@@ -15,6 +15,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from n2m.cli import main
 from n2m.records import atomic_json, read_json, valid_tag, workspace
+from n2m.progress import powershell_command
 from n2m.simulation import simulate
 from n2m.simulator import Simulator, ToolError
 
@@ -340,6 +341,53 @@ class BuilderTests(unittest.TestCase):
             self.assertEqual(main(command + ["--rebuild"], self.root), 1)
             self.assertEqual(latest.read_text(), "other-success\n")
             self.assertEqual(read_json(self.root / "workdir/builds/cli/manifest.json")["status"], "FAIL")
+
+    def test_cli_text_guides_build_cache_and_failure(self):
+        with patch("n2m.cli.Simulator", return_value=self.sim), \
+                patch("n2m.cli.git_state", return_value={}), \
+                contextlib.redirect_stdout(io.StringIO()) as output:
+            command = ["sim", "test", "builder-smoke", "--tag", "human"]
+            self.assertEqual(main(command, self.root), 0)
+        text = output.getvalue()
+        ordered = ["Simulation: target builder-smoke; backend verilator",
+                   "[....] Discover Verilator tools", "[done] Discover Verilator tools",
+                   "[....] Compile and elaborate", "[done] Compile and elaborate",
+                   "[....] Run simulation", "[done] Run simulation",
+                   "[....] Check simulation result", "[PASS] Check simulation result",
+                   "Result: PASS (BUILT)", "Compile log:", "Simulation log:",
+                   "Result record:", "Waveform (FST):", "Next (Windows PowerShell):"]
+        positions = [text.index(fragment) for fragment in ordered]
+        self.assertEqual(positions, sorted(positions), text)
+        self.assertIn("--quartus-bin '<Quartus-bin>'", text)
+
+        with patch("n2m.cli.Simulator", return_value=self.sim), \
+                patch("n2m.cli.git_state", return_value={}), \
+                contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(main(command, self.root), 0)
+        self.assertIn("[CACHED] Compile and elaborate — reused checked result", output.getvalue())
+
+        self.sim.fail = True
+        with patch("n2m.cli.Simulator", return_value=self.sim), \
+                patch("n2m.cli.git_state", return_value={}), \
+                contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(main(command + ["--rebuild"], self.root), 1)
+        text = output.getvalue()
+        self.assertIn("[FAIL] Run simulation", text)
+        self.assertIn("Result: FAIL (BUILT)", text)
+        self.assertIn("Diagnostic: ", text)
+        self.assertNotIn("Next (Windows PowerShell):", text)
+
+    def test_cli_json_has_no_human_progress_and_powershell_quotes_paths(self):
+        with patch("n2m.cli.Simulator", return_value=self.sim), \
+                patch("n2m.cli.git_state", return_value={}), \
+                contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(main(["sim", "test", "builder-smoke", "--tag", "machine", "--json"],
+                                  self.root), 0)
+        payload = output.getvalue()
+        self.assertEqual(json.loads(payload)["status"], "PASS")
+        self.assertNotIn("[....]", payload)
+        self.assertEqual(powershell_command(["python", "--sof", "a path/with an 'apostrophe/design.sof"]),
+                         "python --sof 'a path/with an ''apostrophe/design.sof'")
 
 
 if __name__ == "__main__":

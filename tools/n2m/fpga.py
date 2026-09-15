@@ -11,6 +11,7 @@ import uuid
 
 from .hdl import dependencies
 from .records import atomic_json, cache_matches, digest, file_hash, read_json
+from .progress import Progress, display_path
 from . import fpga_pll, fpga_constraints, fpga_vga, fpga_intel_memory, fpga_memory_stores, fpga_adc, fpga_controls, fpga_v05, process_tree
 
 DEVICE = "10M50DAF484C7G"
@@ -462,7 +463,8 @@ def complete_cache(record, fingerprint, root, build, target, build_id=None):
         return False
 
 
-def build_fpga(root, build, args, provenance=None):
+def build_fpga(root, build, args, provenance=None, progress=None):
+    progress = progress or Progress(False)
     if not re.fullmatch(r"[a-z0-9][a-z0-9_-]*", args.target):
         raise ValueError("invalid FPGA target name")
     stage = build / "fpga" / args.target
@@ -485,7 +487,8 @@ def build_fpga(root, build, args, provenance=None):
         inputs = [REGISTRY, "tools/build.py", *dependencies(root, target["sources"], synthesis=True), *target["constraints"]]
         inputs += [p.relative_to(root).as_posix() for p in (root / "tools/n2m").glob("*.py")]
         record["inputs"] = {p: file_hash(root / p) for p in inputs}
-        record["tools"] = tools(args.quartus_bin, folder, record, build, min(args.timeout, 60))
+        with progress.stage("Discover Quartus tools", f"logs: {display_path(root, folder)}"):
+            record["tools"] = tools(args.quartus_bin, folder, record, build, min(args.timeout, 60))
         if "pll" in target:
             record["tools"]["altpll"] = fpga_pll.identity(args.quartus_bin)
         if "src/rtl/common/n2m_intel_ram.sv" in target["sources"]:
@@ -510,20 +513,34 @@ def build_fpga(root, build, args, provenance=None):
         record["fingerprint"] = digest(fingerprint_inputs)
         if identity_target:
             record["build_id"] = override if override is not None else record["fingerprint"][:32]
-        if not args.rebuild and complete_cache(old, record["fingerprint"], root, build, target, build_id=record.get("build_id")):
+        cache_ok = False
+        if not args.rebuild:
+            with progress.stage("Check FPGA cache"):
+                cache_ok = complete_cache(old, record["fingerprint"], root, build, target,
+                                          build_id=record.get("build_id"))
+        if cache_ok:
             record.update(status="PASS", cache="CACHED", reused_result=old["attempt_result"], evidence=old["evidence"], evidence_directory=old["evidence_directory"])
             record["artifacts"].update(old["artifacts"])
+            progress.cached("Compile, fit, assemble, and time")
+            progress.cached("Audit timing and constraints")
+            progress.cached("Check FPGA result")
         else:
             if "adc" in record["tools"]:
-                fpga_adc.generate(folder, record["tools"]["adc"], generator_execute, args.timeout, record, build)
+                with progress.stage("Generate ADC support", f"log: {display_path(root, folder / 'generate-adc-pll.log')}"):
+                    fpga_adc.generate(folder, record["tools"]["adc"], generator_execute, args.timeout, record, build)
             if "pll" in target:
-                fpga_pll.generate(folder, record["tools"]["altpll"], target["pll"], generator_execute, args.timeout, record, build)
+                with progress.stage("Generate clock PLLs", f"logs: {display_path(root, folder)}"):
+                    fpga_pll.generate(folder, record["tools"]["altpll"], target["pll"], generator_execute, args.timeout, record, build)
             prepare(root, folder, target, build_id=record.get("build_id"))
-            execute([record["tools"]["quartus_sh"]["path"], "--flow", "compile", "design"], folder, folder / "compile.log", args.timeout, record, build)
-            execute([record["tools"]["quartus_sta"]["path"], "-t", "audit.tcl"], folder, folder / "audit.log", args.timeout, record, build)
+            with progress.stage("Compile, fit, assemble, and time", f"log: {display_path(root, folder / 'compile.log')}"):
+                execute([record["tools"]["quartus_sh"]["path"], "--flow", "compile", "design"], folder, folder / "compile.log", args.timeout, record, build)
+            with progress.stage("Audit timing and constraints", f"log: {display_path(root, folder / 'audit.log')}"):
+                execute([record["tools"]["quartus_sta"]["path"], "-t", "audit.tcl"], folder, folder / "audit.log", args.timeout, record, build)
             if "pll" in target or "adc" in record["tools"] or "src/rtl/common/n2m_intel_ram.sv" in target["sources"]:
-                execute([record["tools"]["quartus_eda"]["path"], "--simulation", "--tool=modelsim", "--format=verilog", "design"], folder, folder / "netlist.log", args.timeout, record, build)
-            record["evidence"] = timing_evidence(folder, target, build_id=record.get("build_id"))
+                with progress.stage("Generate checked functional netlist", f"log: {display_path(root, folder / 'netlist.log')}"):
+                    execute([record["tools"]["quartus_eda"]["path"], "--simulation", "--tool=modelsim", "--format=verilog", "design"], folder, folder / "netlist.log", args.timeout, record, build)
+            with progress.stage("Check FPGA result", success="PASS"):
+                record["evidence"] = timing_evidence(folder, target, build_id=record.get("build_id"))
             record["evidence_directory"] = folder.relative_to(root).as_posix()
             record["status"] = "PASS"
     except Exception as error:
