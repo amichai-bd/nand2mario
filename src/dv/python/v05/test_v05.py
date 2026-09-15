@@ -8,7 +8,7 @@ from types import SimpleNamespace
 import cocotb
 from cocotb.queue import Queue
 from cocotb.task import bridge
-from cocotb.triggers import FallingEdge, First, ReadOnly, Timer, ValueChange
+from cocotb.triggers import FallingEdge, First, NullTrigger, ReadOnly, Timer, ValueChange
 from cocotb.utils import get_sim_time
 
 ROOT = Path(__file__).resolve().parents[4]
@@ -345,6 +345,15 @@ async def run(dut, *, complete, short=False, bounded=False, preloaded=False, phy
         Path('summary.json').write_text(json.dumps(dict(summary=summary, identity=identity, loaded=loaded, journal=journal, requests=entries), indent=2))
         for task in tasks:
             task.cancel()
+        # cocotb 2.1: a task cancelled inside First() first cancels its child
+        # waiters and only then finishes, so the cancellations must settle
+        # before the test returns; otherwise the regression's end-of-test
+        # cancel finds it still running and fails the test.
+        for _ in range(64):
+            if all(task.done() for task in tasks):
+                break
+            await NullTrigger()
+        assert all(task.done() for task in tasks), 'V05_TASK_CANCEL'
         print('PASS V05 ' + ('continuous' if complete else 'startup') + ' ' + json.dumps(summary))
 
 

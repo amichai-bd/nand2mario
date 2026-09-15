@@ -283,7 +283,13 @@ targets and the two `tb_preload_load` targets), the two `tb_memory_decode`
 targets `memory-decode` and `memory-decode-alias`, the three `tb_clocking` targets `clocking`, `clocking-bad-numerator` and
 `clocking-drop-tick`, and the five `tb_async_assert_macros` targets
 `async-assert-macros`, `async-assert-direct`, `async-assert-hold`,
-`async-assert-never` and `async-assert-no_reset`. `ppu-shift-unknown` and
+`async-assert-never` and `async-assert-no_reset`, and the 123 Python cocotb
+targets of the [Python area](../../../src/dv/python/README.md), which declare
+`["verilator"]` only. Four Python rows keep `["questa"]`: the three
+`tb_python_mooneye` targets under the owner's pending pin decision, and
+`python-v05-continuous`, whose 600-frame schedule cannot finish inside any
+declared wall allowance
+([#634](https://github.com/amichai-bd/nand2mario/issues/634)). `ppu-shift-unknown` and
 `async-assert-known` are [retired](#test-catalogue): their expected fatal was
 a four-state `N2M_ASSERT_KNOWN` that a two-state simulator never raises.
 
@@ -351,10 +357,19 @@ retained wave must exist; otherwise the attempt is `FAIL`.
 
 `testbench: "python"` targets keep the [testbench contract](#testbench-types):
 the same `python` object, import closure, pinned interpreter and one named
-completed test. The build adds `--vpi --public-flat-rw --timescale 1ns/1ps`,
-links `-lcocotbvpi_verilator` from the installed cocotb 2.1.0 library
-directory, and compiles cocotb's own `share/lib/verilator/verilator.cpp` as the
-main; `--timing` is not passed. The run adds `--trace --trace-file
+completed test. The build adds `--vpi --timing --timescale 1ns/1ps`, a
+generated `compile/verilator/<target>/<attempt>/access.vlt` that makes every
+object of the top module public (`public_flat_rw -module "<top>" -var "*"`)
+and nothing below it, and `-CFLAGS -O2`; `--public-flat-rw` would expose the
+whole design and cost Verilator the optimizations the composed systems need
+inside the wall budget. `--timing` stays because the wrappers own their clocks,
+settled-sample delays and fault arming. The build links
+`-lcocotbvpi_verilator` from the installed cocotb 2.1.0 library
+directory and compiles cocotb's own `share/lib/verilator/verilator.cpp` as the
+main. A registry `args` entry of the form `-g<NAME>=<VALUE>` is a top-level
+parameter override: the build passes it as `-G<NAME>=<VALUE>` at verilate time
+and the run never sees it (`python-v05-identity` and its fault set `BUILD_ID`
+this way); every other entry stays a run plusarg. The run adds `--trace --trace-file
 waves/simulation.fst` and the same seed plusargs. The environment sets
 `GPI_USERS` to the embedded `libpython` and cocotb's GPI entry point beside
 `PYGPI_PYTHON_BIN`, `LIBPYTHON_LOC`, `COCOTB_TOPLEVEL`, `COCOTB_TEST_MODULES`,
@@ -437,7 +452,10 @@ under 0.1 s, `CACHED` on rerun. `preload-lifecycle` and `preload-crc-fault`
 ([`tb_preload_load.sv`](../../../src/dv/preload/tb_preload_load.sv)) run the
 loader against the initialized RAM double with the same `preload: "integration"`
 declaration and rebuild their expected bytes from the prepared ROM MIF. The
-Python-area preload targets flip in their own migration.
+Python targets that declare `preload` run through the same stage: the wrapper
+selects the prepared image under `+define+PRELOADED` from the target's
+`defines`, and the Python test adopts the verified manifest instead of loading
+the image over UART.
 [`test_verilator.py`](../../../tools/n2m/tests/test_verilator.py)
 `PreloadTests` cover validation, preparation, the pre-launch recheck, the
 record, and fingerprint invalidation by a changed fixture input or Mooneye tool
@@ -724,7 +742,7 @@ warnings suppressed. Host dependency tests are not hardware behavior evidence.
 
 ### Intel ADC binding under Verilator
 
-A `verilator` target with `vendor_model: "intel-adc"` lists the PLL and control
+A `verilator` target with `vendor_model: "intel-adc"` or `"intel-controls"` lists the PLL and control
 doubles among its sources. Before the build the stage writes the original
 voltage fixture `adc_ch0.txt` to `adc_ch16.txt` into the attempt from
 [`intel_adc.stimulus_manifest`](../../../tools/n2m/intel_adc.py): channel 1

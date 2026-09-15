@@ -162,6 +162,21 @@ class CommandTests(unittest.TestCase):
         self.assertTrue(run[0].endswith("obj_dir/sim"))
         self.assertEqual(run[1:], ["+seed=7", "+verilator+seed+7", "+verilator+rand+reset+2", "+inject_failure"])
 
+    def test_parameter_overrides_are_verilated_in_and_kept_off_the_run(self):
+        # Questa applied -g parameter overrides at vsim time; Verilator takes
+        # them at verilate time as -G and the run never sees them.
+        target, _ = load_target(self.root, "builder-smoke")
+        target = {**target, "args": ["-gPRELOADED=1", "-gBUILD_ID=128'h10", "+inject_failure", "+io_peek_samples=120"]}
+        attempt = self.build / "attempt"
+        (attempt / "waves").mkdir(parents=True)
+        (build, *_), (run, *_) = verilator.commands(self.sim, self.root, target, 7, self.build, attempt)
+        top = build.index("--top-module")
+        self.assertEqual(build[top + 2:top + 4], ["-GPRELOADED=1", "-GBUILD_ID=128'h10"])
+        self.assertEqual(build[-1], verilator.HARNESS)
+        self.assertEqual(run[1:], ["+seed=7", "+verilator+seed+7", "+verilator+rand+reset+2", "+inject_failure", "+io_peek_samples=120"])
+        self.assertFalse(verilator.is_parameter_arg("-g"))
+        self.assertFalse(verilator.is_parameter_arg("+define+PRELOADED"))
+
     def test_defines_become_build_options_and_are_validated(self):
         registry = self.root / "src/dv/builder/targets.json"
         targets = read_json(registry)
@@ -202,6 +217,22 @@ class CommandTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "ADC stimulus path already exists"):
             verilator.commands(self.sim, self.root, target, 1, compiler, attempt)
 
+    def test_controls_binding_writes_the_same_channel_fixture(self):
+        # The composed controls binding carries the ADC, so its double needs
+        # the same channel files as a plain intel-adc target.
+        target, _ = load_target(self.root, "builder-smoke")
+        target = {**target, "vendor_model": "intel-controls"}
+        attempt = self.build / "attempt"
+        compiler = self.build / "compile"
+        for folder in (attempt / "waves", compiler):
+            folder.mkdir(parents=True)
+        verilator.commands(self.sim, self.root, target, 1, compiler, attempt)
+        self.assertEqual(len(list(attempt.glob("adc_ch*.txt"))), 17)
+        target = {**target, "vendor_model": "intel-memory"}
+        (attempt / "adc_ch0.txt").unlink()
+        verilator.commands(self.sim, self.root, target, 1, compiler, attempt)
+        self.assertFalse((attempt / "adc_ch0.txt").exists())
+
     def test_identical_retained_harness_is_left_untouched_and_a_stale_one_rewritten(self):
         target, _ = load_target(self.root, "builder-smoke")
         attempt = self.build / "attempt"
@@ -230,8 +261,14 @@ class CommandTests(unittest.TestCase):
             (build, *_), (run, *_) = verilator.commands(self.sim, self.root, target, 3, self.build, attempt, python_runtime=runtime)
         prepare.assert_called_once()
         self.assertIn("--vpi", build)
-        self.assertIn("--public-flat-rw", build)
-        self.assertNotIn("--timing", build)
+        # The wrappers own their clocks and settled-sample delays, so --timing
+        # stays; only the top module is public, and the C++ is built -O2.
+        self.assertIn("--timing", build)
+        self.assertNotIn("--public-flat-rw", build)
+        config = self.build / verilator.ACCESS_CONFIG
+        self.assertIn(str(config), build)
+        self.assertEqual(config.read_text().splitlines()[-1], 'public_flat_rw -module "n2m_joypad" -var "*"')
+        self.assertEqual(build[build.index("-CFLAGS") + 1], "-O2")
         self.assertEqual(build[build.index("-LDFLAGS") + 1],
                          "-Wl,-rpath,/venv/cocotb/libs -L/venv/cocotb/libs -lcocotbvpi_verilator")
         self.assertEqual(build[-1], runtime["support"])

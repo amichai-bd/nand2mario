@@ -18,11 +18,12 @@ def compare(root, normal_path, preload_path):
     left, right = normal['definition'], preloaded['definition']
     if (left['driver']['peer'] != real_peer or left['driver'].get('preload', False) or
             right['driver']['peer'] != preload_peer or right['driver'].get('preload') is not True or
-            left['args'] != [] or right['args'] != ['-gPRELOADED=1'] or
+            left['args'] != [] or right['args'] != [] or
+            left.get('defines') is not None or right.get('defines') != ['PRELOADED'] or
             left['top'] != 'tb_integration' or left['expected_exit'] != 'zero'):
         raise ValueError('comparison runtime modes or args differ')
     canonical = copy.deepcopy(right)
-    canonical['args'] = []
+    canonical.pop('defines')
     canonical['driver']['peer'] = real_peer
     canonical['driver'].pop('preload')
     if real_peer not in canonical['driver']['inputs']:

@@ -1,8 +1,9 @@
 `timescale 1ns/1ps
 `default_nettype none
 // Passive owner-boundary samples. Python owns stimulus and all expectations.
+// Lint waiver: the integer trace handle is tested as a boolean.
+/* verilator lint_off WIDTHTRUNC */
 module tb_python_v05 #(
-    parameter bit PRELOADED = 0,
     parameter logic [127:0] BUILD_ID = 128'h88000000000000000000000000000001
 );
     logic clk_sys, clk_pix, reset_sys, reset_pix, uart_rx, uart_tx;
@@ -64,9 +65,13 @@ module tb_python_v05 #(
         dut.rom_address, dut.rom_write_data, dut.rom_read_valid, dut.rom_read_data} : 34'd0;
 
     n2m_v05_system #(.UART_BAUD(3125000), .BUILD_ID(BUILD_ID)) dut (.*);
-    defparam dut.u_stores.rom.SIM_INIT_FILE = PRELOADED ? "preload-rom.mif" : "UNUSED";
-    defparam dut.u_uart.u_commands.u_load.u_presence.u_presence.SIM_INIT_FILE = PRELOADED ? "preload-presence.mif" : "UNUSED";
-    defparam dut.u_uart.u_commands.u_load.SIM_PRELOAD = PRELOADED;
+    // +define+PRELOADED selects the prepared image. Verilator resolves a
+    // defparam value in the target instance, so a wrapper parameter cannot.
+`ifdef PRELOADED
+    defparam dut.u_stores.rom.SIM_INIT_FILE = "preload-rom.mif";
+    defparam dut.u_uart.u_commands.u_load.u_presence.u_presence.SIM_INIT_FILE = "preload-presence.mif";
+    defparam dut.u_uart.u_commands.u_load.SIM_PRELOAD = 1;
+`endif
     always #20 clk_sys = !clk_sys;
     always #19.841 clk_pix = !clk_pix;
 
@@ -271,7 +276,7 @@ module tb_python_v05 #(
             wait(bus_commit && write_enable && address == 16'hc0ee);
             do @(negedge clk_sys);
             while (!(dut.raw_write && dut.raw_store == n2m_memory_pkg::STORE_WRAM && dut.raw_offset == 15'h0100));
-            if (dut.raw_wdata !== 8'd0) $fatal(1, "STACKDROP_FAULT_SOURCE");
+            if (dut.raw_wdata != 8'd0) $fatal(1, "STACKDROP_FAULT_SOURCE");
             $display("STACKDROP_CELL_MUTATION expected=0 actual=1 dot=%0d", dot_count);
             force dut.raw_wdata = 8'd1;
             @(posedge clk_sys);
@@ -334,7 +339,7 @@ module tb_python_v05 #(
         if ($test$plusargs("display_boundary_fault")) begin
             do @(negedge clk_sys);
             while (!(bus_commit && write_enable && address == 16'hff45));
-            if (dut.owner_wdata !== 8'd15) $fatal(1, "DISPLAY308_FAULT_SOURCE");
+            if (dut.owner_wdata != 8'd15) $fatal(1, "DISPLAY308_FAULT_SOURCE");
             force dut.owner_wdata = 8'd16;
             @(posedge clk_sys);
             @(negedge clk_sys);
@@ -363,7 +368,7 @@ module tb_python_v05 #(
             wait(bus_commit && write_enable && address == 16'hc0fc);
             do @(negedge clk_sys);
             while (!(dut.request_valid && write_enable && address == 16'h9c40));
-            if (write_data !== 8'd0) $fatal(1, "HUD493_FAULT_SOURCE");
+            if (write_data != 8'd0) $fatal(1, "HUD493_FAULT_SOURCE");
             $display("HUD493_COLUMN_MUTATION expected=0 actual=1 dot=%0d", dot_count);
             force dut.write_data = 8'd1;
             wait(bus_commit);
@@ -380,7 +385,7 @@ module tb_python_v05 #(
             wait(bus_commit && write_enable && address == 16'hc0fc);
             do @(negedge clk_sys);
             while (!(dut.request_valid && write_enable && address == 16'hc029));
-            if (write_data !== 8'd2) $fatal(1, "INTERACTION494_FAULT_SOURCE");
+            if (write_data != 8'd2) $fatal(1, "INTERACTION494_FAULT_SOURCE");
             $display("INTERACTION494_OUTPUT_MUTATION score2->0 dot=%0d", dot_count);
             force dut.write_data = 8'd0;
             wait(bus_commit);
@@ -397,7 +402,7 @@ module tb_python_v05 #(
             wait(bus_commit && write_enable && address == 16'hc0fc);
             do @(negedge clk_sys);
             while (!(dut.request_valid && write_enable && address == 16'hc102));
-            if (write_data !== 8'd42) $fatal(1, "COURIER492_FAULT_SOURCE");
+            if (write_data != 8'd42) $fatal(1, "COURIER492_FAULT_SOURCE");
             $display("COURIER492_OUTPUT_MUTATION tile42->0 dot=%0d", dot_count);
             force dut.write_data = 8'd0;
             wait(bus_commit);
@@ -414,7 +419,7 @@ module tb_python_v05 #(
             do @(negedge clk_sys);
             while (!(dut.u_ppu.lcdc[7] && dut.oam_request.write_enable == 2'b01
                      && dut.oam_request.pair == 1));
-            if (dut.oam_request.data[7:0] !== 8'd42) $fatal(1, "COURIER292_FAULT_SOURCE");
+            if (dut.oam_request.data[7:0] != 8'd42) $fatal(1, "COURIER292_FAULT_SOURCE");
             $display("COURIER292_FAULT tile 42 -> 0 at dot %0d", dot_count);
             force dut.oam_request.data = 16'd0;
             @(posedge clk_sys);
@@ -428,7 +433,7 @@ module tb_python_v05 #(
         if ($test$plusargs("oam_last_fault")) begin
             do @(negedge clk_sys);
             while (!(dut.oam_request.write_enable == 2'b10 && dut.oam_request.pair == 79));
-            if (dut.oam_request.data[15:8] !== 8'h70) $fatal(1, "OAM299_FAULT_SOURCE");
+            if (dut.oam_request.data[15:8] != 8'h70) $fatal(1, "OAM299_FAULT_SOURCE");
             $display("OAM299_FAULT last byte 70 -> 00 at dot %0d", dot_count);
             force dut.oam_request.data = 16'd0;
             @(posedge clk_sys);
@@ -442,7 +447,7 @@ module tb_python_v05 #(
         if ($test$plusargs("dma_byte_fault")) begin
             do @(negedge clk_sys);
             while (!(dut.oam_request.write_enable == 2'b01 && dut.oam_request.pair == 0));
-            if (dut.oam_request.data[7:0] !== 8'ha5) $fatal(1, "DMA239_FAULT_SOURCE");
+            if (dut.oam_request.data[7:0] != 8'ha5) $fatal(1, "DMA239_FAULT_SOURCE");
             force dut.oam_request.data = 16'd0;
             @(posedge clk_sys);
             @(negedge clk_sys);
@@ -455,7 +460,7 @@ module tb_python_v05 #(
         if ($test$plusargs("image_fault")) begin
             do @(negedge clk_sys);
             while (!(!reset_sys && dut.rom_write && dut.rom_address == 15'h0200));
-            if (dut.rom_write_data !== 8'hf3) $fatal(1, "V05_IMAGE_FAULT_SOURCE");
+            if (dut.rom_write_data != 8'hf3) $fatal(1, "V05_IMAGE_FAULT_SOURCE");
             wave_enable = 1;
             $display("V05_IMAGE_MUTATION address=0200 expected=f3 actual=00");
             force dut.rom_write_data = 8'h00;

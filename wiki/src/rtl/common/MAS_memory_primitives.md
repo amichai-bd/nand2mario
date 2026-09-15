@@ -25,11 +25,11 @@ run's seeded random stream, so an uninitialized or forbidden read fails by value
 mismatch, not by an `X` check. Four-state assertions in memory consumers are
 removed during migration as an authorized behavior change. Register files,
 peripheral state and small control registers may remain flops; independent
-reference models may use arrays. Every SystemVerilog target that reaches the
-wrapper lists the double as a source and keeps `vendor_model: "intel-memory"`
-as its recorded synthesis binding. Targets that include `questa` in their
-capability list use the checked installed Intel model and exact diagnostic
-inventory under the builder's
+reference models may use arrays. Every SystemVerilog and Python target that
+reaches the wrapper lists the double as a source and keeps its recorded
+synthesis binding (`vendor_model: "intel-memory"` or `"intel-controls"`).
+Targets that include `questa` in their capability list use the checked
+installed Intel model and exact diagnostic inventory under the builder's
 [simulator policy](../../../tools/n2m/SPEC.md#simulator-field).
 
 ## Supported ports and timing

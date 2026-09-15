@@ -1,6 +1,8 @@
 `timescale 1ns/1ps
 `default_nettype none
 // Public frame-bridge boundary; real Intel memories are selected by the target.
+// Lint waiver: the integer raster file handle is tested as a boolean.
+/* verilator lint_off WIDTHTRUNC */
 module tb_python_vga;
     logic clk_sys, clk_pix, reset_sys, reset_pix, core_reset;
     logic source_valid, source_start, source_abort, blank_assert;
