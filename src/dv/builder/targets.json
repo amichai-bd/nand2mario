@@ -3274,7 +3274,8 @@
       "src/rtl/vga/n2m_frame_bridge.sv",
       "src/dv/vga/tb_vga.sv",
       "src/rtl/snapshot/n2m_frame_snapshot.sv",
-      "src/dv/snapshot/tb_snapshot_vga.sv"
+      "src/dv/snapshot/tb_snapshot_vga.sv",
+      "src/dv/vga/vga_lint.vlt"
     ],
     "vendor_model": "intel-memory",
     "top": "tb_snapshot_vga",
@@ -3993,7 +3994,8 @@
       "src/rtl/vga/n2m_frame_ram.sv",
       "src/rtl/vga/n2m_vga_scan.sv",
       "src/rtl/vga/n2m_frame_bridge.sv",
-      "src/dv/vga/tb_vga.sv"
+      "src/dv/vga/tb_vga.sv",
+      "src/dv/vga/vga_lint.vlt"
     ],
     "vendor_model": "intel-memory",
     "top": "tb_vga",
@@ -4013,7 +4015,8 @@
       "src/rtl/vga/n2m_frame_ram.sv",
       "src/rtl/vga/n2m_vga_scan.sv",
       "src/rtl/vga/n2m_frame_bridge.sv",
-      "src/dv/vga/tb_vga.sv"
+      "src/dv/vga/tb_vga.sv",
+      "src/dv/vga/vga_lint.vlt"
     ],
     "vendor_model": "intel-memory",
     "top": "tb_vga",
@@ -4035,7 +4038,8 @@
       "src/rtl/vga/n2m_frame_ram.sv",
       "src/rtl/vga/n2m_vga_scan.sv",
       "src/rtl/vga/n2m_frame_bridge.sv",
-      "src/dv/vga/tb_vga.sv"
+      "src/dv/vga/tb_vga.sv",
+      "src/dv/vga/vga_lint.vlt"
     ],
     "vendor_model": "intel-memory",
     "top": "tb_vga",
@@ -4057,7 +4061,8 @@
       "src/rtl/vga/n2m_frame_ram.sv",
       "src/rtl/vga/n2m_vga_scan.sv",
       "src/rtl/vga/n2m_frame_bridge.sv",
-      "src/dv/vga/tb_vga.sv"
+      "src/dv/vga/tb_vga.sv",
+      "src/dv/vga/vga_lint.vlt"
     ],
     "top": "tb_vga",
     "simulators": [
@@ -4079,7 +4084,8 @@
       "src/rtl/vga/n2m_frame_ram.sv",
       "src/rtl/vga/n2m_vga_scan.sv",
       "src/rtl/vga/n2m_frame_bridge.sv",
-      "src/dv/vga/tb_vga.sv"
+      "src/dv/vga/tb_vga.sv",
+      "src/dv/vga/vga_lint.vlt"
     ],
     "top": "tb_vga",
     "simulators": [
@@ -4102,7 +4108,8 @@
       "src/rtl/vga/n2m_frame_ram.sv",
       "src/rtl/vga/n2m_vga_scan.sv",
       "src/rtl/vga/n2m_frame_bridge.sv",
-      "src/dv/vga/tb_vga.sv"
+      "src/dv/vga/tb_vga.sv",
+      "src/dv/vga/vga_lint.vlt"
     ],
     "top": "tb_vga",
     "simulators": [
@@ -4124,7 +4131,8 @@
       "src/rtl/vga/n2m_frame_ram.sv",
       "src/rtl/vga/n2m_vga_scan.sv",
       "src/rtl/vga/n2m_frame_bridge.sv",
-      "src/dv/vga/tb_vga.sv"
+      "src/dv/vga/tb_vga.sv",
+      "src/dv/vga/vga_lint.vlt"
     ],
     "vendor_model": "intel-memory",
     "top": "tb_vga",

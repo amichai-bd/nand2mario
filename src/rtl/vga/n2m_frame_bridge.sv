@@ -99,11 +99,7 @@ module n2m_frame_bridge (
     end
     `DFF_RST(blank_requested, blank_next, clk_sys, reset_sys)
     `DFF_RST(pending_release, release_next, clk_sys, reset_sys)
-    // Lint waiver: tb_vga forces writer_bank for its bank-reuse fault,
-    // which Verilator reports as a second driver.
-    /* verilator lint_off MULTIDRIVEN */
     `DFF_RST_VAL(writer_bank, writer_next, clk_sys, reset_sys, 2'd0)
-    /* verilator lint_on MULTIDRIVEN */
     `DFF_RST_VAL(system_display_bank, system_display_next, clk_sys, reset_sys, 2'd1)
     `DFF_RST_VAL(free_bank, free_next, clk_sys, reset_sys, 2'd2)
     `DFF_RST_VAL(offer_bank, offer_next, clk_sys, reset_sys, 2'd0)
@@ -134,11 +130,7 @@ module n2m_frame_bridge (
     `DFF_RST_EN(captured_sequence, offer_sequence, clk_pix, capture_now, reset_pix, 64'd0)
     `DFF_RST_EN(captured_epoch, offer_epoch, clk_pix, capture_now, reset_pix, 32'd0)
     `DFF_RST_EN(captured_phase, req_pix[1], clk_pix, capture_now, reset_pix, 1'b0)
-    // Lint waiver: tb_vga forces display_bank for its active-swap fault,
-    // which Verilator reports as a second driver.
-    /* verilator lint_off MULTIDRIVEN */
     `DFF_RST_EN(display_bank, captured_bank, clk_pix, swap, reset_pix, 2'd1)
-    /* verilator lint_on MULTIDRIVEN */
     `DFF_RST_EN(display_sequence, captured_sequence, clk_pix, swap, reset_pix, 64'd0)
     `DFF_RST_EN(display_epoch, captured_epoch, clk_pix, swap, reset_pix, 32'd0)
     `DFF_RST_EN(display_valid, 1'b1, clk_pix, swap, reset_pix, 1'b0)
