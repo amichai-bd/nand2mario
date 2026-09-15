@@ -26,6 +26,7 @@ state; the device model keeps its own storage and timing history.
 | Refresh | Age measured from the observed AUTO REFRESH commands never exceeds 178 and reaches 178 three times through requests accepted at age 159; `request_ready` is low for exactly the five clocks around each refresh from `IDLE` |
 | Throughput | With `request_valid` held high, at least 2048 lines are accepted in 38,100 clocks |
 | Host line commands | Over the real UART endpoint: a write before initialization is `BAD_VALUE`; boundary lines and a fifteen-line run are written one line per `SDRAM_WRITE` and read back by `SDRAM_READ` with the bytes compared; misaligned, out-of-device, zero or sixteen-line and wrong-length requests are refused before the controller sees them |
+| Library load | The host tool's own `library.load_library`/`read_catalogue` over the peer bridge: slots 0, 1 and the menu at index 16 hold the `sw build` images byte for byte and by CRC32, the catalogue at `0x88000` holds their entries, and the status readback equals the catalogue written; the model must have seen writes and reads |
 | Faults | A misaligned address fails `SDRAM_LINE_ALIGNED`; a request before `initialized` fails `SDRAM_REQUEST_BEFORE_INIT`; a controller built with `REFRESH_INTERVAL=178` reaches age 196 and the model fails `SDRAM_MODEL_REFRESH_DEADLINE` |
 
 The device model measures refresh gaps in device edges between AUTO REFRESH
@@ -47,9 +48,16 @@ continuous check fires on the first edge past that limit.
 | `sdram-fault-read-late` | `line` with `-gMODEL_READ_LAUNCH_EDGES=2` (the port's original shared assumption) | nonzero exit, `SDRAM_TB_READBACK shift=-1` |
 | `uart-sdram` | [`tb_uart_sdram`](tb_uart_sdram.sv): `SDRAM_WRITE`/`SDRAM_READ` packets over the UART wire into the controller and model | `PASS UART SDRAM wire writes=20 lines_read=23 rejected=11` |
 | `uart-sdram-fault` | same with `+payload_fault` | nonzero exit, `UART_SDRAM_PAYLOAD cmd=18 index=0` |
+| `library-peer` | [`tb_library_peer`](tb_library_peer.sv) with [`library_driver.py`](library_driver.py) and [`library_peer.py`](library_peer.py): `host library load`/`status` through the live Client (pinned cocotb interpreter) | `PASS library-peer transactions=6635 device_writes=6208 device_reads=6272` and the peer's `PASS library peer live Client images=3 slots=2 verified=3 status_rows=17` |
 
 Run one with `python3 tools/build.py sim test <target> --tag <tag>` on WSL, or
 all of them with `python3 tools/build.py tests run --label storage --tag <tag>`.
+`library-peer` carries the `python-tb` label: run it, and therefore the whole
+`storage` label, on the pinned
+[cocotb interpreter](../python/README.md) (`workdir/builds/python-dv-env/.venv/bin/python`).
+It takes about 135 s wall, most of it the 6,208 one-line `SDRAM_WRITE`
+transactions through the bridge, so it stays out of the `uart` and `host`
+labels, whose 300 s aggregates could not absorb it.
 Verilator needs the `lz4.h` header and library the
 [installation notes](../../../wiki/tools/n2m/SPEC.md#installation) name.
 Each fixture finishes in a few seconds; the builder retains the command, raw
