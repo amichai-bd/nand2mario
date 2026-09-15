@@ -24,8 +24,8 @@ a 32 KiB image between [SDRAM](../storage/MAS_sdram.md) and the ROM store; the
 core reset sequence around a swap; image validity; KEY1 return; and the rules
 between this hardware and the [UART endpoint](../uart/MAS_uart.md). It is not
 an MBC and does not run any cartridge not built here. The menu program itself
-is software with its own specification; this page fixes only what hardware
-gives it.
+is software with its [own specification](../../sw/menu/SPEC.md); this page
+fixes only what hardware gives it.
 
 ## Terms
 

@@ -91,7 +91,10 @@
             "maximum": 255
           },
           "profile": {
-            "const": "dmg-direct-v1"
+            "enum": [
+              "dmg-direct-v1",
+              "dmg-loader-v1"
+            ]
           },
           "interface_schema_version": {
             "const": 1

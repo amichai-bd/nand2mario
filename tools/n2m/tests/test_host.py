@@ -87,7 +87,7 @@ class Endpoint:
             response = pack_record('word', {'value': values[address]})
         elif name == 'LOAD_BEGIN':
             request = unpack_record('load_begin', payload)
-            if request['profile'] != abi.PROFILE_DIRECT_ID or request['size'] != len(self.rom):
+            if request['profile'] not in (abi.PROFILE_DIRECT_ID, abi.PROFILE_LOADER_ID) or request['size'] != len(self.rom):
                 status = abi.STATUS_BAD_VALUE
             else:
                 self.profile = request['profile']
@@ -527,6 +527,29 @@ class HostTests(unittest.TestCase):
         self.assertEqual(raised.exception.status, abi.STATUS_STEP_LIMIT)
         self.assertFalse(client.uncertain)
         self.assertEqual(endpoint.dot, 1)
+
+    def test_loader_profile_package_loads_with_loader_id(self):
+        path, record = self.manifest()
+        atomic_json(path, {**record, 'profile': 'dmg-loader-v1'})
+        image, metadata = read_package(ROOT, path)
+        self.assertEqual((metadata['profile'], metadata['profile_id']), ('dmg-loader-v1', abi.PROFILE_LOADER_ID))
+        endpoint = Endpoint()
+        client = Client(endpoint)
+        client.load(image, profile=metadata['profile_id'])
+        begin = next(payload for name, payload, _seq in endpoint.requests if name == 'LOAD_BEGIN')
+        self.assertEqual(unpack_record('load_begin', begin)['profile'], abi.PROFILE_LOADER_ID)
+        self.assertEqual(endpoint.profile, abi.PROFILE_LOADER_ID)
+        with self.assertRaises(ValueError):
+            client.load(image, profile=3)
+        endpoint = Endpoint()
+        def fake_session(folder, args, state_root):
+            return session(folder, args, self.folder / 'state',
+                           discover=lambda folder, args: select_uart([DEVICE], args), opener=lambda port: endpoint)
+        with patch('n2m.host.command.session', fake_session), redirect_stdout(io.StringIO()) as stdout:
+            self.assertEqual(main(['host', 'load', '--package', str(path), '--uart-port', 'COM92', '--json'], ROOT), 0)
+        report = json.loads(stdout.getvalue())
+        self.assertEqual(report['package']['profile_id'], abi.PROFILE_LOADER_ID)
+        self.assertEqual(endpoint.profile, abi.PROFILE_LOADER_ID)
 
     def test_immutable_package_and_rejections_before_open(self):
         path, record = self.manifest()

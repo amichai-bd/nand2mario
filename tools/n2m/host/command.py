@@ -111,7 +111,8 @@ def run(root, build, args, provenance):
                 from .crc_proof import run as crc_proof
                 report['result'] = crc_proof(client)
             elif args.action == 'load':
-                report['result'] = client.load(image)
+                # A package names the profile its image runs in; an external image is direct.
+                report['result'] = client.load(image, profile=report['package']['profile_id'] if args.package else abi.PROFILE_DIRECT_ID)
             elif args.action == 'peek':
                 # Bytes are a private artifact, like snapshot shades: the
                 # journal keeps the store, size and hash, never the contents.

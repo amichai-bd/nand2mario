@@ -138,8 +138,17 @@ evidence, not CPU or original-program acceptance.
 The target adds `layout`, `entry`, `title`, `version`, `profile`, and
 `interface_schema_version` as a complete group to the assembler target fields.
 `entry` is an object with the source `unit` and `symbol`, allowing a local symbol
-without making it an implicit global. Interface schema 1 and profile
-`dmg-direct-v1` must match generated exports. The builder compares the generated
+without making it an implicit global. Interface schema 1 and a profile from the
+[package profile table](../../../tools/sw/linker.py) must match generated
+exports: `dmg-direct-v1` runs in `PROFILE_DIRECT_ID` and `dmg-loader-v1`, the
+[menu's](../../src/sw/menu/SPEC.md) profile, in `PROFILE_LOADER_ID`. Both
+share the image format below; the loader profile additionally refuses `ROM1`
+layout sections with `LAYOUT_REGION`, because the
+[loader hardware](../../src/rtl/cartridge/MAS_loader_profile.md#address-map-in-the-loader-profile)
+maps its banked window over the upper half. The build result records the
+profile name and its generated `profile_id`, which the
+[host package reader](../n2m/host/SPEC.md#commands) uses for `LOAD_BEGIN` and
+the library catalogue. The builder compares the generated
 Python/prelude content with the current interface source before linking; stale
 exports fail rather than silently building against another hardware contract.
 
@@ -193,7 +202,7 @@ Run `python tools/build.py sw build <target> --tag <tag> --json` using the
 [builder's](../n2m/SPEC.md) workspace, locking, failure, and cache rules.
 Version-two target definitions beside original sources under `src/sw/` name an ordered
 assembly-input list, declared assets, link layout, entry symbol, title, version
-byte, and profile `dmg-direct-v1`. Implementation must commit a versioned target
+byte, and profile `dmg-direct-v1` or `dmg-loader-v1`. Implementation must commit a versioned target
 schema before execution. Paths are target-relative; reject absolute paths,
 parent traversal, symlink escapes, duplicate resolved sources and output overlap.
 

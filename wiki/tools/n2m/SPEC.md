@@ -792,6 +792,14 @@ The pins, separate license notices and compiler/CMake inputs enter the record.
 This named validator does not change original-software validation or the product
 loader. Generated files are rechecked before simulator launch.
 
+`preload: "menu"` builds the [game menu](../../src/sw/menu/SPEC.md) image
+through `sw build menu` and writes, beside the usual Intel files, the
+fixture SDRAM library `menu-library.hex` and the scripted reference frames
+`menu-frames.hex` that [`tb_menu_system`](../../../src/dv/menu/tb_menu_system.sv)
+reads with `$readmemh`; its inputs are the menu sources and assets, the
+[fixture builder and reference](../../../src/dv/menu/README.md) and the
+software tools.
+
 `preload: "startup-read"` and `"startup-write"` package the original
 [startup OAM boundary witnesses](../../../src/dv/ppu/startup202.md), validating
 literal instructions and declared image hashes through the same Intel preload

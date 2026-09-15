@@ -38,6 +38,7 @@ FIXTURE_BUILDERS = {
     **dict.fromkeys(("vram-read", "vram-write"), "src/dv/ppu/startup204.py"),
     **dict.fromkeys(("palette-fc", "palette-00"), "src/dv/ppu/palette194.py"),
     "mooneye-reg-f": "tools/n2m/mooneye.py",
+    "menu": "src/dv/menu/fixture.py",
 }
 
 # Preloads whose builder produces an original image for preload.prepare; the
@@ -175,6 +176,11 @@ def fixture_inputs(root, preload):
     if preload in ("springtrail", "springtrail-unit", "flow", "flow-s", "render", "render-s", "stackdrop", "stackdrop-unit", "stackdrop-short"):
         required = {"src/sw/targets.json", "src/sw/generated/interfaces.inc", "cfg/interfaces.json"}
         required.update(p.relative_to(root).as_posix() for p in (root / "src/sw" / ("stackdrop" if preload.startswith("stackdrop") else "springtrail")).iterdir()
+                        if p.suffix in (".asm", ".json"))
+    if preload == "menu":
+        required = {"src/dv/menu/fixture.py", "src/dv/menu/reference.py", "src/sw/targets.json",
+                    "src/sw/generated/interfaces.inc", "cfg/interfaces.json"}
+        required.update(p.relative_to(root).as_posix() for p in (root / "src/sw/menu").rglob("*")
                         if p.suffix in (".asm", ".json"))
     if preload.startswith('startup-'):
         required = {'src/dv/ppu/startup202.py', 'src/sw/generated/interfaces.inc'}
@@ -496,6 +502,12 @@ def _prepare(target, attempt, root=None, fixture_tools=None):
             module=importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
             image=module.build(root,attempt,target['preload']=='oam299-s')
+            expected_sha=hashlib.sha256(image).hexdigest()
+        elif target['preload'] == 'menu':
+            spec=importlib.util.spec_from_file_location('menu_fixture',root/'src/dv/menu/fixture.py')
+            module=importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            image=module.build(root,attempt)
             expected_sha=hashlib.sha256(image).hexdigest()
         elif target['preload'] == 'display308':
             spec=importlib.util.spec_from_file_location('display308_image',root/'src/dv/display308/program.py')

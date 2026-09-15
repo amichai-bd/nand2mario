@@ -153,10 +153,11 @@ class Client:
             raise ValueError('endpoint build identity is zero; physical host commands require an identified build')
         return {'abi': version, 'build_id': b''.join(word.to_bytes(4, 'little') for word in words).hex()}
 
-    def load(self, image, *, progress=None):
+    def load(self, image, *, profile=abi.PROFILE_DIRECT_ID, progress=None):
         """Load and verify one image, optionally reporting completed bytes.
 
-        The callback receives dictionaries with ``stage``, ``completed`` and
+        ``profile`` is the generated ID the image runs in: the direct profile
+        for games, ``PROFILE_LOADER_ID`` for the menu image. The callback receives dictionaries with ``stage``, ``completed`` and
         ``total``.  Upload bytes count only after LOAD_WRITE is acknowledged;
         readback bytes count only after READ_ROM returns them.  Omitting the
         callback preserves the original request sequence and result.
@@ -164,9 +165,11 @@ class Client:
         image = bytes(image)
         if len(image) != abi.PROFILE_ROM_BYTES:
             raise ValueError('wrong direct-profile image size')
+        if profile not in (abi.PROFILE_DIRECT_ID, abi.PROFILE_LOADER_ID):
+            raise ValueError('load profile must be a generated runtime profile ID')
         notify = progress or (lambda _event: None)
         self.request('LOAD_BEGIN', pack_record('load_begin', {
-            'profile': abi.PROFILE_DIRECT_ID, 'size': len(image), 'crc32': zlib.crc32(image)}))
+            'profile': profile, 'size': len(image), 'crc32': zlib.crc32(image)}))
         chunk = abi.WIRE_MAX_PAYLOAD - abi.OFFSET_BYTES
         notify({'stage': 'upload', 'completed': 0, 'total': len(image)})
         for offset in range(0, len(image), chunk):
@@ -179,7 +182,7 @@ class Client:
             # Never include private byte values in a failure record.
             mismatch = next(i for i, (actual, expected) in enumerate(zip(readback, image)) if actual != expected)
             raise ValueError(f'full ROM readback mismatch at offset {mismatch}')
-        if self.read_host(abi.HOST_REG_PROFILE) != abi.PROFILE_DIRECT_ID:
+        if self.read_host(abi.HOST_REG_PROFILE) != profile:
             raise ValueError('loaded endpoint profile mismatch')
         if self.read_host(abi.HOST_REG_IMAGE_VALID) != 1 or self.read_host(abi.HOST_REG_STATE) != abi.STATE_PAUSED:
             raise ValueError('verified load did not leave a valid paused image')
