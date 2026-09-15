@@ -7789,8 +7789,8 @@
     "defines": [
       "PRELOADED"
     ],
-    "expected_exit": "zero",
-    "signature": "PASS python-integration records=69 pixels=46080 bus=145",
+    "expected_exit": "nonzero",
+    "signature": "INTEGRATION_PIXEL frame=1 index=0 expected=0 actual=1",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
     "testbench": "python",
@@ -7989,8 +7989,8 @@
     "args": [
       "+data_fault"
     ],
-    "expected_exit": "zero",
-    "signature": "PASS python-integration records=69 pixels=46080 bus=145",
+    "expected_exit": "nonzero",
+    "signature": "INTEGRATION_RECORD seq=10",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
     "testbench": "python",
@@ -8090,8 +8090,8 @@
     "args": [
       "+irq_fault"
     ],
-    "expected_exit": "zero",
-    "signature": "PASS python-integration records=69 pixels=46080 bus=145",
+    "expected_exit": "nonzero",
+    "signature": "INTEGRATION_RECORD seq=18",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
     "testbench": "python",
@@ -8191,8 +8191,8 @@
     "args": [
       "+pixel_fault"
     ],
-    "expected_exit": "zero",
-    "signature": "PASS python-integration records=69 pixels=46080 bus=145",
+    "expected_exit": "nonzero",
+    "signature": "INTEGRATION_PIXEL frame=1 index=0 expected=0 actual=1",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
     "testbench": "python",
@@ -8509,8 +8509,8 @@
     "args": [
       "+frame_fault"
     ],
-    "expected_exit": "zero",
-    "signature": "PASS python-host-play five immutable images four transitions",
+    "expected_exit": "nonzero",
+    "signature": "PLAY_OBJECT_COUNT",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
     "testbench": "python",
@@ -8616,8 +8616,8 @@
     "args": [
       "+missing_frame"
     ],
-    "expected_exit": "zero",
-    "signature": "PASS python-host-play five immutable images four transitions",
+    "expected_exit": "nonzero",
+    "signature": "PLAY_MISSING_FRAME",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
     "testbench": "python",
@@ -8723,8 +8723,8 @@
     "args": [
       "+input_fault"
     ],
-    "expected_exit": "zero",
-    "signature": "PASS python-host-play five immutable images four transitions",
+    "expected_exit": "nonzero",
+    "signature": "PLAY_IMAGE expected=(72, 64, 3) actual=(64, 64, 3)",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
     "testbench": "python",
@@ -8830,8 +8830,8 @@
     "args": [
       "+release_fault"
     ],
-    "expected_exit": "zero",
-    "signature": "PASS python-host-play five immutable images four transitions",
+    "expected_exit": "nonzero",
+    "signature": "PLAY_IMAGE expected=(72, 64, 1) actual=(72, 64, 3)",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
     "testbench": "python",
@@ -8947,8 +8947,8 @@
     "args": [
       "+pixel_fault"
     ],
-    "expected_exit": "zero",
-    "signature": "PASS V05 startup",
+    "expected_exit": "nonzero",
+    "signature": "V05_PIXEL frame=1 index=0 expected=1 actual=0",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
     "testbench": "python",
@@ -9217,8 +9217,8 @@
     "args": [
       "+image_fault"
     ],
-    "expected_exit": "zero",
-    "signature": "PASS V05 startup",
+    "expected_exit": "nonzero",
+    "signature": "LOAD_END rejected with status 6",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
     "testbench": "python",
@@ -9629,8 +9629,8 @@
     "defines": [
       "PRELOADED"
     ],
-    "expected_exit": "zero",
-    "signature": "PASS V05 continuous",
+    "expected_exit": "nonzero",
+    "signature": "V05_TICK_PROGRESS expected=41 actual=0",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
     "testbench": "python",
@@ -9868,8 +9868,8 @@
     "args": [
       "-gBUILD_ID=128'h1032547698badcfeefcdab8967452300"
     ],
-    "expected_exit": "zero",
-    "signature": "PASS V05 board identity",
+    "expected_exit": "nonzero",
+    "signature": "V05_BOARD_IDENTITY",
     "timeout_seconds": 120,
     "vendor_model": "intel-memory",
     "testbench": "python",
@@ -11528,8 +11528,8 @@
     "defines": [
       "PRELOADED"
     ],
-    "expected_exit": "zero",
-    "signature": "PASS TIMER234 actual-v05 records=110 marker=7b",
+    "expected_exit": "nonzero",
+    "signature": "TIMER234_RECORD index=70",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
     "testbench": "python",
@@ -11795,8 +11795,8 @@
     "defines": [
       "PRELOADED"
     ],
-    "expected_exit": "zero",
-    "signature": "PASS STOP349 composed stop wake records=11 marker=5a",
+    "expected_exit": "nonzero",
+    "signature": "STOP349_WAKE_MISSING",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
     "testbench": "python",
@@ -12066,8 +12066,8 @@
     "defines": [
       "PRELOADED"
     ],
-    "expected_exit": "zero",
-    "signature": "PASS DMA239 actual-v05 records=638 bytes=160",
+    "expected_exit": "nonzero",
+    "signature": "DMA239_STORE index=0",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
     "testbench": "python",
@@ -12343,8 +12343,8 @@
     "defines": [
       "PRELOADED"
     ],
-    "expected_exit": "zero",
-    "signature": "PASS V05 continuous",
+    "expected_exit": "nonzero",
+    "signature": "V05_PIXEL frame=1 index=0 expected=1 actual=0",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
     "testbench": "python",
@@ -12482,8 +12482,8 @@
     "defines": [
       "PRELOADED"
     ],
-    "expected_exit": "zero",
-    "signature": "PASS V05 continuous",
+    "expected_exit": "nonzero",
+    "signature": "V05_TICK_PROGRESS expected=41 actual=0",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
     "testbench": "python",
@@ -12758,8 +12758,8 @@
     "defines": [
       "PRELOADED"
     ],
-    "expected_exit": "zero",
-    "signature": "V05_INPUT_WINDOW",
+    "expected_exit": "nonzero",
+    "signature": "V05_INPUT_WINDOW transition=1 dot=50001 buttons=1",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
     "testbench": "python",
@@ -13042,8 +13042,8 @@
     "top": "tb_python_controls",
     "simulator": "verilator",
     "args": [],
-    "expected_exit": "zero",
-    "signature": "CONTROLS_SYSTEM_MASK",
+    "expected_exit": "nonzero",
+    "signature": "CONTROLS_SYSTEM_MASK expected=[8, 8, 1, 0, 0],308 actual=[0, 0, 1, 0, 0],300",
     "timeout_seconds": 300,
     "vendor_model": "intel-controls",
     "testbench": "python",
@@ -13626,8 +13626,8 @@
     "args": [
       "+rgb_corrupt"
     ],
-    "expected_exit": "zero",
-    "signature": "PASS python-vga-crc",
+    "expected_exit": "nonzero",
+    "signature": "VGA_CRC_RGB raster=1 x=80 y=24 expected=3fff actual=0003",
     "timeout_seconds": 300,
     "testbench": "python",
     "python": {
@@ -14014,8 +14014,8 @@
     "defines": [
       "PRELOADED"
     ],
-    "expected_exit": "zero",
-    "signature": "PASS STACKDROP unit cases=73",
+    "expected_exit": "nonzero",
+    "signature": "STACKDROP_IMAGE index=2",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
     "testbench": "python",
@@ -14661,8 +14661,8 @@
     "defines": [
       "PRELOADED"
     ],
-    "expected_exit": "zero",
-    "signature": "PASS DISPLAY308 complete",
+    "expected_exit": "nonzero",
+    "signature": "DISPLAY308_IRQ_BOUNDARY missing=18478 actual=[]",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
     "testbench": "python",
@@ -15091,8 +15091,8 @@
     "defines": [
       "PRELOADED"
     ],
-    "expected_exit": "zero",
-    "signature": "PASS OAM_DMA",
+    "expected_exit": "nonzero",
+    "signature": "OAM_READBACK image=0 index=159",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
     "testbench": "python",
@@ -15645,8 +15645,8 @@
     "defines": [
       "PRELOADED"
     ],
-    "expected_exit": "zero",
-    "signature": "PASS PAUSE game complete",
+    "expected_exit": "nonzero",
+    "signature": "PAUSE_HUD_CACHE",
     "timeout_seconds": 880,
     "vendor_model": "intel-memory",
     "testbench": "python",
@@ -16789,8 +16789,8 @@
     "defines": [
       "PRELOADED"
     ],
-    "expected_exit": "zero",
-    "signature": "PASS MOTION unit complete",
+    "expected_exit": "nonzero",
+    "signature": "MOTION_STATE first-right actual=0180010007100000000101010000000000100800000000010100010200000000000000000000000100000000000000000000000000000000000000000200280004000080148007020000000000000000000000000b0007030000000000000000000000001700070300000000000000000000000000000000000000",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
     "testbench": "python",
@@ -17787,8 +17787,8 @@
     "defines": [
       "PRELOADED"
     ],
-    "expected_exit": "zero",
-    "signature": "PASS MOTION unit complete",
+    "expected_exit": "nonzero",
+    "signature": "MOTION_STATE crouch actual=0190010007100000000108090000000908100800010000060102010202000000000001000000000101000000000000000000000000000000000000000200270004000080148007020000000000000000000000000b0007030000000000000000000000001700070300000000000000000000000100000000000000",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
     "testbench": "python",
@@ -18780,8 +18780,8 @@
     "defines": [
       "PRELOADED"
     ],
-    "expected_exit": "zero",
-    "signature": "PASS MOTION unit complete",
+    "expected_exit": "nonzero",
+    "signature": "MOTION_STATE item-hit actual=010013000600000000001010e800001040100800080000280000000104020000000000000000000100000000000000000000000000000000000000000200270004000080148007020000000000000000000000000b0007030000000000000000000000001700070300000000000000000000000100000000000000",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
     "testbench": "python",
@@ -19144,8 +19144,8 @@
     "defines": [
       "PRELOADED"
     ],
-    "expected_exit": "zero",
-    "signature": "PASS io peek live samples=120",
+    "expected_exit": "nonzero",
+    "signature": "IO_PEEK_LY_PROGRESS lines=1",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
     "testbench": "python",
@@ -19870,8 +19870,8 @@
     "defines": [
       "PRELOADED"
     ],
-    "expected_exit": "zero",
-    "signature": "PASS MOTION unit complete",
+    "expected_exit": "nonzero",
+    "signature": "MOTION_STATE retry-spend actual=0180010007000000000180800000008000100800000000000000000100000000000100000000000100000000000000000000000000000000000000000300280004000080148007000000000000000000000000000b0007010010000000000000000000001700070000000000000000000000000000000000000000",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
     "testbench": "python",
@@ -23538,8 +23538,8 @@
     "defines": [
       "PRELOADED"
     ],
-    "expected_exit": "zero",
-    "signature": "PASS MOTION unit complete",
+    "expected_exit": "nonzero",
+    "signature": "MOTION_STATE neutral-carry actual=01800b0006000000000100007000000000100800010000000000000100000000000000000000000000000000000000000000000000000000000000000200270004000080148007000000000000000000000000100b0007010010000000000000000000001700070000000000000000000000000100010000000000",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
     "testbench": "python",
@@ -24552,8 +24552,8 @@
     "defines": [
       "PRELOADED"
     ],
-    "expected_exit": "zero",
-    "signature": "PASS MOTION unit complete",
+    "expected_exit": "nonzero",
+    "signature": "COURIER_OAM pose-0-right actual=[(0, 48), (1, 32), (2, 0), (3, 0), (4, 48), (5, 40), (6, 43), (7, 0), (8, 56), (9, 32), (10, 44), (11, 0), (12, 56), (13, 40), (14, 45), (15, 0), (16, 0), (17, 0), (18, 0), (19, 0), (20, 0), (21, 0), (22, 0), (23, 0), (24, 0), (25, 0), (26, 0), (27, 0), (28, 0), (29, 0), (30, 0), (31, 0), (32, 0), (33, 0), (34, 0), (35, 0), (36, 0), (37, 0), (38, 0), (39, 0), (40, 0), (41, 0), (42, 0), (43, 0), (44, 0), (45, 0), (46, 0), (47, 0), (48, 0), (49, 0), (50, 0), (51, 0), (52, 0), (53, 0), (54, 0), (55, 0), (56, 0), (57, 0), (58, 0), (59, 0), (60, 0), (61, 0), (62, 0), (63, 0), (64, 0), (65, 0), (66, 0), (67, 0), (68, 0), (69, 0), (70, 0), (71, 0), (72, 0), (73, 0), (74, 0), (75, 0), (76, 0), (77, 0), (78, 0), (79, 0), (80, 0), (81, 0), (82, 0), (83, 0), (84, 0), (85, 0), (86, 0), (87, 0), (88, 0), (89, 0), (90, 0), (91, 0), (92, 0), (93, 0), (94, 0), (95, 0), (96, 0), (97, 0), (98, 0), (99, 0), (100, 0), (101, 0), (102, 0), (103, 0), (104, 0), (105, 0), (106, 0), (107, 0), (108, 0), (109, 0), (110, 0), (111, 0), (112, 0), (113, 0), (114, 0), (115, 0), (116, 0), (117, 0), (118, 0), (119, 0), (120, 0), (121, 0), (122, 0), (123, 0), (124, 0), (125, 0), (126, 0), (127, 0), (128, 0), (129, 0), (130, 0), (131, 0), (132, 0), (133, 0), (134, 0), (135, 0), (136, 0), (137, 0), (138, 0), (139, 0), (140, 0), (141, 0), (142, 0), (143, 0), (144, 0), (145, 0), (146, 0), (147, 0), (148, 0), (149, 0), (150, 0), (151, 0), (152, 0), (153, 0), (154, 0), (155, 0), (156, 0), (157, 0), (158, 0), (159, 0)]",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
     "testbench": "python",
@@ -26827,8 +26827,8 @@
     "defines": [
       "PRELOADED"
     ],
-    "expected_exit": "zero",
-    "signature": "PASS MOTION unit complete",
+    "expected_exit": "nonzero",
+    "signature": "HUD_CURRENT_WRITE case=paused-pair0 index=35 actual=(40000, 1) expected=[(40000, 0)]",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
     "testbench": "python",
@@ -28027,8 +28027,8 @@
     "defines": [
       "PRELOADED"
     ],
-    "expected_exit": "zero",
-    "signature": "PASS MOTION unit complete",
+    "expected_exit": "nonzero",
+    "signature": "MOTION_STATE item-1-award actual=018010000400000000010000c000000000100800010003000000000100000000000000000000000000000000000000000000000000000000000000000200270004000080148007000000000000000000000000100b0007010010000000000000000000001700070000000000000000000000000100000000000000",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
     "testbench": "python",

@@ -35,7 +35,8 @@ def identity(normal, preloaded):
         raise ValueError('comparison requires real-UART then preloaded modes')
     a, b = left['definition'], right['definition']
     if (a.get('preload') is not None or b.get('preload') != 'integration' or
-            a['args'] != ['-gPRELOADED=0'] or b['args'] != ['-gPRELOADED=1'] or
+            a['args'] != [] or b['args'] != [] or
+            a.get('defines') is not None or b.get('defines') != ['PRELOADED'] or
             a['top'] != 'tb_python_integration' or a['expected_exit'] != 'zero' or
             a['python']['module'] != 'test_real_uart' or
             a['python']['test'] != 'real_uart_contract' or
@@ -44,7 +45,7 @@ def identity(normal, preloaded):
         raise ValueError('comparison mode definition differs')
     canonical = copy.deepcopy(b)
     canonical.pop('preload')
-    canonical['args'] = ['-gPRELOADED=0']
+    canonical.pop('defines')
     canonical['python']['module'] = 'test_real_uart'
     canonical['python']['test'] = 'real_uart_contract'
     inputs = canonical['python']['inputs']
