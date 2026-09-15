@@ -641,5 +641,5 @@ units:
 not_runnable:
   tools/n2m/test_budget.py: "The builder wall-budget supervisor module, not a test; its cases are tools/n2m/tests/test_test_budget.py."
 retired:
-  async-assert-known: "Witnessed N2M_ASSERT_KNOWN firing on an X input; a two-state simulator cannot witness X, so the macro is a no-op under VERILATOR (#620)."
-  ppu-shift-unknown: "Witnessed shift_state_known firing on a forced X obj_low; a two-state simulator cannot witness X, so the macro is a no-op under VERILATOR (#620)."
+  async-assert-known: "Witnessed N2M_ASSERT_KNOWN firing on an X input; a two-state simulator cannot witness X, so N2M_ASSERT_KNOWN is a no-op under VERILATOR."
+  ppu-shift-unknown: "Witnessed shift_state_known firing on a forced X obj_low; a two-state simulator cannot witness X, so N2M_ASSERT_KNOWN is a no-op under VERILATOR."

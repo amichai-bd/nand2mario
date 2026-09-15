@@ -215,7 +215,7 @@ refuses each with a clear message, and a target that still needs them stays
 [preload fixtures](#preload-fixtures-under-verilator). The migrated targets
 are `builder-smoke`, `builder-smoke-fail`, `python-joypad`,
 `python-joypad-fault`, `preload-fixture`, the 58 SystemVerilog targets
-labelled `cpu`, the 66 SystemVerilog targets labelled `ppu` or `input`
+labelled `cpu`, the 67 SystemVerilog targets labelled `ppu` or `input`
 that declare no `vendor_model` in the [test catalogue](#test-catalogue), the
 three `tb_clocking` targets `clocking`, `clocking-bad-numerator` and
 `clocking-drop-tick`, and the five `tb_async_assert_macros` targets
