@@ -357,16 +357,44 @@ class RegressTests(unittest.TestCase):
         self.assertTrue(self.root.is_dir())
         self.assertTrue((self.root / "workdir").is_dir())
 
-    def test_an_unsupported_member_fails_before_any_child_launches(self):
+    def test_an_unsupported_member_is_skipped_by_name_and_never_launched(self):
+        """The synthetic registry makes tile-pixel Questa-only. The Verilator
+        regression skips it by name as unsupported-backend, runs the supported
+        member, and counts the skip as neither pass nor defect; a single-target
+        `sim test` of the same pair still fails before launch."""
         registry = self.root / "src/dv/builder/targets.json"
         targets = read_json(registry)
         targets["tile-pixel"]["simulators"] = ["questa"]
         atomic_json(registry, targets)
         code, report = self.run_cli("regress", "good", "--tag", "agg", "--json")
+        self.assertEqual(code, 0)
+        self.assertEqual((report["status"], report["failed"], report["skipped"]), ("PASS", [], ["tile-pixel"]))
+        self.assertEqual([child["target"] for child in self.children], ["builder-smoke"])
+        self.assertEqual(report["targets"]["tile-pixel"],
+                         {"status": "SKIPPED", "reason": "unsupported-backend",
+                          "error": "target tile-pixel does not support simulator verilator; supported: questa"})
+        summary = read_json(self.root / "workdir/builds/agg/sim/regress/summary.json")
+        self.assertEqual((summary["status"], summary["skipped"]), ("PASS", ["tile-pixel"]))
+        code, text = self.run_cli("regress", "good", "--tag", "agg2")
+        self.assertEqual(code, 0)
+        self.assertIn("tile-pixel: SKIPPED unsupported-backend", text)
+        # The single-target path keeps the hard pre-launch failure: no
+        # workspace, no discovery, no fallback.
+        with patch("n2m.cli.Simulator", side_effect=AssertionError("discovered")), \
+                patch("n2m.cli.git_state", return_value={"commit": "test"}), \
+                contextlib.redirect_stdout(io.StringIO()) as output:
+            code = main(["sim", "test", "tile-pixel", "--sim", "verilator", "--tag", "single", "--json"], self.root)
         self.assertEqual(code, 1)
-        self.assertEqual(report["status"], "FAIL")
-        self.assertIn("tile-pixel does not support simulator verilator", report["error"])
-        self.assertEqual(self.children, [])
+        self.assertIn("tile-pixel does not support simulator verilator", json.loads(output.getvalue())["error"])
+        self.assertFalse((self.root / "workdir/builds/single").exists())
+        # A malformed registry row is still a configuration failure, not a skip.
+        targets["tile-pixel"]["simulators"] = ["icarus"]
+        atomic_json(registry, targets)
+        launched = len(self.children)
+        code, report = self.run_cli("regress", "good", "--tag", "agg3", "--json")
+        self.assertEqual((code, report["status"]), (1, "FAIL"))
+        self.assertIn("tile-pixel must declare simulators", report["error"])
+        self.assertEqual(len(self.children), launched)
 
     def test_declared_subsets_in_repository_are_valid(self):
         subsets, _ = module.load_subsets(ROOT)

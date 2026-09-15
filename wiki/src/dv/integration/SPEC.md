@@ -124,8 +124,11 @@ builder's [simulator policy](../../../tools/n2m/SPEC.md#simulator-policy):
 Verilator on WSL or Questa on Windows. A required matrix names its backend and
 may not substitute the other one. Intel primitives use repository behavioral
 doubles under `VERILATOR` and checked installed models under Questa per the
-[memory contract](../../rtl/common/MAS_memory_primitives.md). Selecting an
-unsupported target/backend pair fails before discovery or launch. License
+[memory contract](../../rtl/common/MAS_memory_primitives.md). A single-target
+`sim test` of an unsupported target/backend pair fails before discovery or
+launch; `tests run` and `regress` report such a target as
+`SKIPPED unsupported-backend` by name, neither pass nor defect, with no
+fallback. License
 failure is FAIL and cannot satisfy a tier. Verilator runs use randomized initial
 values so an uninitialized read fails by mismatch.
 
