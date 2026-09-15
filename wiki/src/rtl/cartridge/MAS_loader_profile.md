@@ -190,6 +190,51 @@ Phase 2 (optional, later): flash-resident images with a configuration-time
 copier. It is not part of this contract; it must not change the CPU-visible
 rules above.
 
+#### Flash capacity (measured)
+
+Facts for the phase 2 decision in
+[#669](https://github.com/amichai-bd/nand2mario/issues/669); they change no
+rule above. The 10M50 internal flash has five sectors. Sizes come from the
+Intel MAX 10 User Flash Memory User Guide UG-M10UFM (2020.06.30) Table 1
+(pages per sector, 64 Kb pages); the 32-bit word addresses are the On-Chip
+Flash IP's own map in Quartus 25.1std
+`ip/altera/altera_onchip_flash/altera_onchip_flash/altera_onchip_flash_hw_proc.tcl`
+(`device_sector_size`, `device_sector_address_offset`, 10M50 rows).
+
+| Sector | Pages | Size | IP word address |
+|---|---|---|---|
+| UFM1 | 4 | 32 KiB | `0x00800`-`0x027FF` |
+| UFM0 | 4 | 32 KiB | `0x02800`-`0x047FF` |
+| CFM2 | 48 | 384 KiB | `0x04800`-`0x1C7FF` |
+| CFM1 | 36 | 288 KiB | `0x1C800`-`0x2E7FF` |
+| CFM0 | 84 | 672 KiB | `0x2E800`-`0x587FF` |
+
+Which sectors the user may hold depends on the internal configuration mode
+(UG-M10UFM Table 2; MAX 10 FPGA Configuration User Guide UG-M10CONFIG
+2020.11.05 Table 3 and Figure 2; there is no dual uncompressed mode). The
+user space is one contiguous word range from `0x00800` upward. A library
+image is 32 KiB and the [catalogue](../storage/MAS_sdram.md#address-space-layout)
+1 KiB; 17 images plus the catalogue need 545 KiB.
+
+| Mode (`INTERNAL_FLASH_UPDATE_MODE`) | Image sectors | User space | 32 KiB images beside the catalogue |
+|---|---|---|---|
+| Single uncompressed image (`Single Image`, the Quartus default the [FPGA build](../../../tools/n2m/SPEC.md#fpga-build) leaves in place) | CFM0+CFM1 | UFM1+UFM0+CFM2 = 448 KiB | 13 |
+| Single compressed image (`Single Comp Image`) | CFM0 | UFM1+UFM0+CFM2+CFM1 = 736 KiB | 22 (17 leave 191 KiB spare) |
+| Dual compressed images (`Dual Images`) | CFM0; CFM1+CFM2 | UFM1+UFM0 = 64 KiB | 1 |
+| Either single mode with memory initialization | CFM0+CFM1+CFM2 | 64 KiB | 1 |
+
+Measured on `v05-board` at `5da9148` with Quartus Prime 25.1std.0 Build 1129
+Lite: 10,222 of 49,760 logic elements, 761,704 memory bits, 0 of 1 UFM
+blocks; `design.pof` is 1,450,252 bytes in every mode because it spans the
+whole flash. In the default mode its first 455.9 KiB are erased (`0xFF`), the
+unused UFM1+UFM0+CFM2 range, and 870.0 KiB are programmed. Recompiled with
+`INTERNAL_FLASH_UPDATE_MODE "Single Comp Image"` and no other change, the
+same sources fit and assemble without error in 154 s; the `.pof` then has
+743.9 KiB erased from its start and 339.1 KiB programmed, so the compressed
+image fits CFM0 with about half of that sector spare. The flow does not emit
+a `.rbf` for this device (`quartus_cpf`: no passive serial scheme), so these
+erased-byte counts are the size evidence.
+
 ### Core reset sequencing and image validity
 
 The engine does not drive `pause_request` or `core_reset` itself. It issues
