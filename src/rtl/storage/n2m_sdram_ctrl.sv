@@ -139,10 +139,11 @@ module n2m_sdram_ctrl #(
             SDRAM_READ: begin
                 DRAM_ADDR[9:0] = sdram_column(state.address);
                 if (state.count == '0) command = SDRAM_READ_CMD;
-                // Beat k is on the bus CL2 device edges after READ and is
-                // captured at the clk_sys edge ending clock 6+k.
-                if (int'(state.count) >= SDRAM_CAS_LATENCY)
-                    state_next.read_data[(int'(state.count) - SDRAM_CAS_LATENCY) * 16 +: 16] = DRAM_DQ;
+                // The device drives beat k after device edge READ+CL-1+k and
+                // holds it through edge READ+CL+k (datasheet CAS latency), so
+                // beat k is captured at the clk_sys edge ending clock 5+k.
+                if (int'(state.count) >= SDRAM_CAS_LATENCY - 1 && int'(state.count) < SDRAM_CAS_LATENCY - 1 + SDRAM_BURST_BEATS)
+                    state_next.read_data[(int'(state.count) - (SDRAM_CAS_LATENCY - 1)) * 16 +: 16] = DRAM_DQ;
                 if (int'(state.count) == SDRAM_CAS_LATENCY + SDRAM_BURST_BEATS - 1) begin
                     state_next.phase = SDRAM_PRECHARGE;
                     state_next.count = '0;

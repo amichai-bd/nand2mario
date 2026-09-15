@@ -8,7 +8,11 @@
 // value the device sees during clock c. Every expectation is computed from
 // the contract and the fixture's own request record, never from DUT state.
 module tb_sdram_ctrl #(
-    parameter int REFRESH_INTERVAL = 160
+    parameter int REFRESH_INTERVAL = 160,
+    // Device edges after READ at which the model drives beat 0; 1 is the
+    // datasheet. 2 is the assumption the port arrived with, 0 a device one
+    // edge ahead of the controller: both reproduce a one-word readback shift.
+    parameter int MODEL_READ_LAUNCH_EDGES = 1
 );
     import n2m_sdram_pkg::*;
 
@@ -52,7 +56,7 @@ module tb_sdram_ctrl #(
         .DRAM_DQMH(dram_dqmh), .DRAM_RAS_N(dram_ras_n), .DRAM_WE_N(dram_we_n)
     );
 
-    n2m_sim_sdram u_device (
+    n2m_sim_sdram #(.READ_LAUNCH_EDGES(MODEL_READ_LAUNCH_EDGES)) u_device (
         .dram_clk(dram_clk), .dram_addr(dram_addr), .dram_ba(dram_ba),
         .dram_ras_n(dram_ras_n), .dram_cas_n(dram_cas_n), .dram_we_n(dram_we_n),
         .dram_cke(dram_cke), .dram_cs_n(dram_cs_n), .dram_dqml(dram_dqml), .dram_dqmh(dram_dqmh),
@@ -103,6 +107,15 @@ module tb_sdram_ctrl #(
 
     function automatic int unsigned line_key(input logic [25:0] address);
         return {10'd0, address[25:4]};
+    endfunction
+
+    // Name a one-word misalignment: +1 when the captured words are the next
+    // words of the line (the device ran a beat ahead of the capture), -1 when
+    // they are the previous ones (the capture ran a beat ahead of the device).
+    function automatic string readback_shift(input logic [127:0] expected, input logic [127:0] actual);
+        if (actual[111:0] == expected[127:16]) return "+1";
+        if (actual[127:16] == expected[111:0]) return "-1";
+        return "none";
     endfunction
 
     function automatic logic [127:0] pattern(input logic [25:0] address, input int salt);
@@ -200,7 +213,8 @@ module tb_sdram_ctrl #(
                 if (!response_pending || clock_index != accept_clock + RESPONSE_CLOCKS)
                     $fatal(1, "SDRAM_TB_RESPONSE_LATENCY clock=%0d accepted=%0d pending=%b", clock_index, accept_clock, response_pending);
                 if (response_data !== memory[line_key(accepted_address)])
-                    $fatal(1, "SDRAM_TB_READBACK clock=%0d address=%h expected=%h actual=%h", clock_index,
+                    $fatal(1, "SDRAM_TB_READBACK shift=%s clock=%0d address=%h expected=%h actual=%h",
+                        readback_shift(memory[line_key(accepted_address)], response_data), clock_index,
                         accepted_address, memory[line_key(accepted_address)], response_data);
                 completed_reads = completed_reads + 1;
                 response_pending = 1'b0;

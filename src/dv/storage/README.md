@@ -19,6 +19,7 @@ state; the device model keeps its own storage and timing history.
 | No early access | Any ACTIVATE, READ or WRITE before the first `idle` is fatal; `DRAM_DQM*` equal `!initialized` on every clock |
 | Address mapping | ACTIVATE carries bank `a[25:24]` and row `a[23:11]` at clock 1; READ/WRITE carries column `a[10:1]` with A10 low at clock 4 |
 | Byte order | Every write beat on `DRAM_DQ` equals line bytes `2k, 2k+1` of the accepted request; reads return the line the fixture recorded at the last write of that address |
+| Read beat alignment | Beat `k` is captured at the edge ending clock `5+k`, one edge after the device starts driving it (datasheet CAS latency, edge READ+CL-1+k); the model's launch edge is a parameter so the two reproduction targets show the one-word shift either way |
 | Latency bounds | `response_valid` exactly 17 clocks after acceptance, `idle` low at clocks 1-17 and high at 18, acceptance within 5 clocks of a request raised in `IDLE`; `response_data` unchanged from `response_valid` until the next accepted read |
 | Boundary lines | First and last line of slots 0, 15 and 16, first and last catalogue line, first and last line of a row, one line in each bank including the last line of the device, each written then read, then all read again in reverse |
 | Ordering | Write then read of one line back to back returns the written line; a request raised right after a write acceptance waits for it |
@@ -42,6 +43,8 @@ continuous check fires on the first edge past that limit.
 | `sdram-fault-misaligned` | `fault-misaligned` | nonzero exit, `N2M_ASSERT SDRAM_LINE_ALIGNED` |
 | `sdram-fault-before-init` | `fault-before-init` | nonzero exit, `N2M_ASSERT SDRAM_REQUEST_BEFORE_INIT` |
 | `sdram-fault-deadline` | `refresh` with `-gREFRESH_INTERVAL=178` | nonzero exit, `SDRAM_MODEL_REFRESH_DEADLINE` |
+| `sdram-fault-read-early` | `line` with `-gMODEL_READ_LAUNCH_EDGES=0` (device a beat ahead, the board's shape) | nonzero exit, `SDRAM_TB_READBACK shift=+1` |
+| `sdram-fault-read-late` | `line` with `-gMODEL_READ_LAUNCH_EDGES=2` (the port's original shared assumption) | nonzero exit, `SDRAM_TB_READBACK shift=-1` |
 | `uart-sdram` | [`tb_uart_sdram`](tb_uart_sdram.sv): `SDRAM_WRITE`/`SDRAM_READ` packets over the UART wire into the controller and model | `PASS UART SDRAM wire writes=20 lines_read=23 rejected=11` |
 | `uart-sdram-fault` | same with `+payload_fault` | nonzero exit, `UART_SDRAM_PAYLOAD cmd=18 index=0` |
 

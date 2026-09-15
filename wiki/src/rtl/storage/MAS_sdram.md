@@ -161,17 +161,23 @@ state machine:
 | 1 | ACTIVATE (bank, row) | ACTIVATE |
 | 2-3 | wait tRCD | wait tRCD |
 | 4 | READ (column) | WRITE (column), beat 0 driven |
-| 5-11 | beats captured from clock 6 | beats 1-7 driven at clocks 5-11 |
-| 12-13 | beats 6-7 captured | wait tWR |
+| 5-12 | beat `k` captured at the edge ending clock `5+k` | beats 1-7 driven at clocks 5-11, wait tWR at 12 |
+| 13 | bus released by the device | wait tWR |
 | 14 | PRECHARGE all | PRECHARGE all |
 | 15-16 | wait tRP | wait tRP |
 | 17 | `response_valid` | complete, no pulse |
 | 18 | `IDLE`, `request_ready` if no refresh due | same |
 
-Read beat `k` is valid on `DRAM_DQ` from tAC after the second `DRAM_CLK` edge
-following the READ edge, and is captured at the `clk_sys` edge ending clock
-`6+k`; see the [clock relationship](#clock-relationship-and-constraints) for
-the margins. Bounds a testbench checks:
+Read beat `k` is driven by the device as a result of `DRAM_CLK` edge
+READ + CL - 1 + `k` (the first edge after the READ edge for beat 0), valid tAC
+after that edge and held tOH past edge READ + CL + `k`; the controller captures
+it at the `clk_sys` edge ending clock `5+k`, 20 ns after the launching edge.
+This is the datasheet's CAS-latency definition ("the DQs will start driving as
+a result of the clock edge one cycle earlier, n + m - 1"), not "after edge
+n + m": the ported controller and its model both assumed the latter and the
+board returned every line shifted by one word (see [references](#references)).
+See the [clock relationship](#clock-relationship-and-constraints) for the
+margins. Bounds a testbench checks:
 
 - Read: `response_valid` exactly 17 clocks after acceptance.
 - Read or write occupancy: `request_ready` returns exactly 18 clocks after
@@ -248,6 +254,14 @@ rather than a timed output (its `check_timing` entry is the one the builder
 accepts for this image). The fitter reports one jitter warning because the
 routed inverted clock does not use a dedicated PLL output pin; the builder
 classifies exactly that line for this target.
+
+Board observation (session of 2026-09-15, `sdram-proof` at the fit above):
+programming and the endpoint identity passed and the one-slot memory test
+returned every line shifted by one 16-bit word with the last word repeated.
+The cause was the read-beat alignment above, shared by the controller and the
+model, not the clock phase: writes were correct and static timing holds. The
+inverted relationship therefore stands; the corrected capture is what the
+retest proves.
 
 Fallback if the fit or the board memory test fails with the inverted clock:
 add a third output to the system PLL at 25 MHz with a requested phase shift
@@ -338,7 +352,9 @@ model:
   REFRESH or tMRD after LOAD MODE; more than 195 `DRAM_CLK` edges between
   refreshes once initialized; a write beat with `DRAM_DQ` unknown or a
   `DRAM_DQM*` high; the controller driving `DRAM_DQ` while the model drives it;
-- drives read beats CL2 edges after READ for exactly 8 beats and releases
+- drives beat `k` tAC after device edge READ + CL - 1 + `k` for exactly 8
+  beats (a `READ_LAUNCH_EDGES` parameter, default CL - 1, lets a fixture move
+  that edge to reproduce a misaligned controller) and releases
   `DRAM_DQ` afterwards;
 - counts refreshes, reads and writes for the fixture.
 
@@ -352,6 +368,7 @@ under the `storage` label ([test plan](../../../../src/dv/storage/README.md)):
 | `sdram-line` | Write then read a boundary set of lines (first and last line of slots 0, 15 and 16, both catalogue lines, the first and last line of a row, one line in each bank); exact 17/18/22-clock bounds; byte order; `response_data` stable until the next read |
 | `sdram-refresh` | 40,000 clocks of back-to-back requests; age never exceeds 178; every refresh costs exactly 5 clocks; the throughput bound above holds |
 | `sdram-fault` | Deliberate misaligned request, request before `initialized`, and a mutated refresh deadline of 196 each fail with the named diagnostic; three registry targets (`sdram-fault-misaligned`, `sdram-fault-before-init`, `sdram-fault-deadline`) because each fault ends its run, the last through the controller's `REFRESH_INTERVAL` parameter set to 178 |
+| `sdram-fault-read-early`, `sdram-fault-read-late` | The `line` fixture against a model launching read data one edge early (`MODEL_READ_LAUNCH_EDGES=0`, the board's relative misalignment) or one edge late (`=2`, the assumption the port arrived with); each fails `SDRAM_TB_READBACK` naming the one-word shift (`+1`, `-1`) |
 | `uart-sdram` | The host line commands over the real UART wire into the controller and model: `BAD_VALUE` before `initialized`, boundary lines and a fifteen-line run written and read back byte for byte, misaligned, out-of-device, zero or sixteen-line and wrong-length refusals; `uart-sdram-fault` corrupts one expected byte |
 
 Assertions the controller carries (names are the contract; a testbench may
@@ -388,9 +405,15 @@ does not replace the simulation bounds.
   characteristics) and the command truth table, distributed as
   `Datasheet/SDRAM/IS42S16320D.pdf` in the Terasic DE10-Lite System CD v2.2.0;
   see the [provenance index](../../../tools/provenance.md#external-inputs).
-- ISSI combined `IS42/45S86400D/16320D/32160D` datasheet Rev. B, 2015-05-12,
-  page 19, the revision the bring-up slice confirmed the four I/O numbers
-  against: for the -7 grade it lists tAC 5.4 ns at CL2, tOH 2.7 ns, tDS/tCMS
+- ISSI combined `IS42/45S86400D/16320D/32160D` datasheet Rev. B, 2015-05-12:
+  page 28 defines the CAS latency ("the DQs will start driving as a result of
+  the clock edge one cycle earlier (n + m - 1) ... valid by clock edge
+  n + m"). The ported controller and the device model agreed on the other
+  reading until the board returned shifted lines; a model that shares the
+  controller's assumption is not evidence for it, which is why the model's
+  launch edge is now written from this sentence and the reproduction fixtures
+  exist. Page 19 is the revision the bring-up slice confirmed the four I/O
+  numbers against: for the -7 grade it lists tAC 5.4 ns at CL2, tOH 2.7 ns, tDS/tCMS
   1.5 ns and tDH/tCMH 0.8 ns, so the constraints above (derived from the
   2011 revision and equal to this revision's -5 column) stay on the
   conservative side; tRCD/tRP 15 ns, tRC 60 ns, tRAS 37 ns, tDPL 14 ns and

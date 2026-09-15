@@ -29751,5 +29751,41 @@
     "signature": "UART_SDRAM_PAYLOAD cmd=18 index=0",
     "vendor_model": "intel-memory",
     "timeout_seconds": 300
+  },
+  "sdram-fault-read-early": {
+    "sources": [
+      "src/rtl/storage/n2m_sdram_pkg.sv",
+      "src/rtl/storage/n2m_sdram_ctrl.sv",
+      "src/rtl/storage/n2m_sim_sdram.sv",
+      "src/dv/storage/tb_sdram_ctrl.sv"
+    ],
+    "top": "tb_sdram_ctrl",
+    "simulators": [
+      "verilator"
+    ],
+    "args": [
+      "+fixture=line",
+      "-gMODEL_READ_LAUNCH_EDGES=0"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "SDRAM_TB_READBACK shift=+1"
+  },
+  "sdram-fault-read-late": {
+    "sources": [
+      "src/rtl/storage/n2m_sdram_pkg.sv",
+      "src/rtl/storage/n2m_sdram_ctrl.sv",
+      "src/rtl/storage/n2m_sim_sdram.sv",
+      "src/dv/storage/tb_sdram_ctrl.sv"
+    ],
+    "top": "tb_sdram_ctrl",
+    "simulators": [
+      "verilator"
+    ],
+    "args": [
+      "+fixture=line",
+      "-gMODEL_READ_LAUNCH_EDGES=2"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "SDRAM_TB_READBACK shift=-1"
   }
 }

@@ -15,7 +15,11 @@ module n2m_sim_sdram #(
     // A never-written word reads as seeded random data unless a fixture opts
     // in to one defined fill value.
     parameter bit DEFINED_FILL = 1'b0,
-    parameter logic [15:0] FILL_VALUE = 16'hcafe
+    parameter logic [15:0] FILL_VALUE = 16'hcafe,
+    // Device edges after READ at which DQ starts driving beat 0: CL-1 per the
+    // datasheet ("the DQs start driving as a result of edge n+m-1"). Fixtures
+    // move it to reproduce a misaligned controller.
+    parameter int READ_LAUNCH_EDGES = 1
 ) (
     input var logic dram_clk,
     input var logic [12:0] dram_addr,
@@ -246,7 +250,7 @@ module n2m_sim_sdram #(
                         write_count = write_count + 1;
                     end else begin
                         burst_index = 0;
-                        read_due = edge_index + CAS_LATENCY;
+                        read_due = edge_index + READ_LAUNCH_EDGES;
                         read_remaining = BURST_BEATS;
                         read_count = read_count + 1;
                     end
@@ -254,7 +258,8 @@ module n2m_sim_sdram #(
                 default: $fatal(1, "SDRAM_MODEL_COMMAND edge=%0d command=%b", edge_index, command);
             endcase
             // Read data leaves the device tAC after the edge that launches it
-            // and the bus is released the same way after the last beat.
+            // (edge READ+CL-1 for beat 0, valid by edge READ+CL) and the bus is
+            // released the same way after the last beat.
             drive_now = 1'b0;
             data_now = device_data;
             if (read_remaining != 0 && edge_index >= read_due) begin
