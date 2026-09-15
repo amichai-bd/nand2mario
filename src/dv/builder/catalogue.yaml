@@ -216,8 +216,8 @@ units:
   interrupts-duplicate: {kind: sim, level: 2, labels: [fault, interrupts], duration_seconds: 0.50}
   interrupts-lost: {kind: sim, level: 2, labels: [fault, interrupts], duration_seconds: 0.49}
   interrupts-priority: {kind: sim, level: 2, labels: [fault, interrupts], duration_seconds: 0.48}
-  io-peek: {kind: sim, level: 0, labels: [interrupts, ppu, timer, uart], duration_seconds: 0.50}
-  io-peek-disturb: {kind: sim, level: 0, labels: [fault, interrupts, ppu, timer, uart], duration_seconds: 0.47}
+  io-peek: {kind: sim, level: 0, labels: [interrupts, ppu, timer, uart], duration_seconds: 0.52}
+  io-peek-disturb: {kind: sim, level: 0, labels: [fault, interrupts, ppu, timer, uart], duration_seconds: 0.45}
   joypad-boundary-fault: {kind: sim, level: 2, labels: [fault, joypad], duration_seconds: 2.20}
   joypad-events: {kind: sim, level: 1, labels: [joypad], duration_seconds: 3.55}
   joypad-events-duplicate: {kind: sim, level: 2, labels: [fault, joypad], duration_seconds: 0.49}
@@ -613,23 +613,23 @@ units:
   uart-packet-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: null}
   uart-packet-range: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: null}
   uart-packet-rx: {kind: sim, level: 2, labels: [uart], duration_seconds: null}
-  uart-packet-tx: {kind: sim, level: 2, labels: [uart], duration_seconds: 0.57}
-  uart-packet-tx-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 0.41}
-  uart-packet-tx-missing: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 0.41}
+  uart-packet-tx: {kind: sim, level: 2, labels: [uart], duration_seconds: 0.61}
+  uart-packet-tx-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 0.42}
+  uart-packet-tx-missing: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 0.42}
   uart-peek: {kind: sim, level: 2, labels: [host, memory, uart], duration_seconds: null}
   uart-peek-fault: {kind: sim, level: 2, labels: [fault, host, memory, uart], duration_seconds: null}
   uart-response: {kind: sim, level: 2, labels: [uart], duration_seconds: null}
   uart-response-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: null}
-  uart-run-dots: {kind: sim, level: 2, labels: [uart], duration_seconds: 0.92}
-  uart-run-dots-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 0.39}
+  uart-run-dots: {kind: sim, level: 2, labels: [uart], duration_seconds: 1.00}
+  uart-run-dots-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 0.43}
   uart-run-dots-wire: {kind: sim, level: 2, labels: [uart], duration_seconds: null}
   uart-serial: {kind: sim, level: 2, labels: [uart], duration_seconds: null}
   uart-serial-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: null}
   uart-snapshot: {kind: sim, level: 2, labels: [uart], duration_seconds: null}
   uart-snapshot-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: null}
-  uart-stopped-step: {kind: sim, level: 2, labels: [uart], duration_seconds: 1.13}
-  uart-stopped-step-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 1.13}
-  uart-validation: {kind: sim, level: 2, labels: [uart], duration_seconds: 0.42}
+  uart-stopped-step: {kind: sim, level: 2, labels: [uart], duration_seconds: 1.14}
+  uart-stopped-step-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 1.16}
+  uart-validation: {kind: sim, level: 2, labels: [uart], duration_seconds: 0.43}
   uart-validation-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 0.42}
   vga: {kind: sim, level: 2, labels: [vga], duration_seconds: 288.16}
   vga-active-swap: {kind: sim, level: 2, labels: [fault, vga], duration_seconds: null}

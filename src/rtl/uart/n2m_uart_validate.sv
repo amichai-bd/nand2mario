@@ -34,14 +34,15 @@ module n2m_uart_validate (
         response_length = 0;
         range_end = {1'b0, range_fields.offset} + {17'b0, range_fields.count};
         peek_end = {1'b0, peek_fields.offset} + {17'b0, peek_fields.count};
-        // Lint waiver: 16-bit lengths and 33-bit range ends are compared
-        // against 32-bit integer constants; the intended unsigned
-        // comparison is unchanged.
-        /* verilator lint_off WIDTHEXPAND */
         case (header.command)
             n2m_interfaces_pkg::COMMAND_PING: response_length = 16'(n2m_interfaces_pkg::WORD_BYTES);
             n2m_interfaces_pkg::COMMAND_READ_HOST: begin
+                // Lint waivers below: 16-bit lengths and 33-bit range ends are
+                // compared against 32-bit integer constants; the intended
+                // unsigned comparison is unchanged.
+                /* verilator lint_off WIDTHEXPAND */
                 length_valid = header.length == n2m_interfaces_pkg::READ_HOST_BYTES;
+                /* verilator lint_on WIDTHEXPAND */
                 value_valid = host_address_valid;
                 response_length = 16'(n2m_interfaces_pkg::WORD_BYTES);
             end
@@ -52,39 +53,55 @@ module n2m_uart_validate (
                 response_length = 16'(n2m_interfaces_pkg::DOT_BYTES);
             end
             n2m_interfaces_pkg::COMMAND_STEP: begin
+                /* verilator lint_off WIDTHEXPAND */
                 length_valid = header.length == n2m_interfaces_pkg::WORD_BYTES;
+                /* verilator lint_on WIDTHEXPAND */
                 value_valid = arguments[31:0] != 0 && arguments[31:0] <= n2m_interfaces_pkg::WIRE_STEP_MAX_DOTS;
                 state_valid = endpoint_state == n2m_interfaces_pkg::STATE_PAUSED && image_valid;
                 response_length = 16'(n2m_interfaces_pkg::DOT_BYTES);
             end
             n2m_interfaces_pkg::COMMAND_RUN_DOTS: begin
+                /* verilator lint_off WIDTHEXPAND */
                 length_valid = header.length == n2m_interfaces_pkg::WORD_BYTES;
+                /* verilator lint_on WIDTHEXPAND */
                 value_valid = arguments[31:0] != 0 && arguments[31:0] <= n2m_interfaces_pkg::WIRE_RUN_DOTS_MAX;
                 state_valid = endpoint_state == n2m_interfaces_pkg::STATE_PAUSED && image_valid;
                 response_length = 16'(n2m_interfaces_pkg::RUN_DOTS_BYTES);
             end
             n2m_interfaces_pkg::COMMAND_LOAD_BEGIN: begin
+                /* verilator lint_off WIDTHEXPAND */
                 length_valid = header.length == n2m_interfaces_pkg::LOAD_BEGIN_BYTES;
+                /* verilator lint_on WIDTHEXPAND */
                 value_valid = begin_fields.profile == n2m_interfaces_pkg::PROFILE_DIRECT_ID && begin_fields.size == n2m_interfaces_pkg::PROFILE_ROM_BYTES;
             end
             n2m_interfaces_pkg::COMMAND_LOAD_WRITE: begin
+                /* verilator lint_off WIDTHEXPAND */
                 length_valid = header.length > n2m_interfaces_pkg::OFFSET_BYTES;
+                /* verilator lint_on WIDTHEXPAND */
                 range_end = {1'b0, arguments[31:0]} + (33'(header.length) - 33'(n2m_interfaces_pkg::OFFSET_BYTES));
+                /* verilator lint_off WIDTHEXPAND */
                 value_valid = range_end <= n2m_interfaces_pkg::PROFILE_ROM_BYTES;
+                /* verilator lint_on WIDTHEXPAND */
                 state_valid = endpoint_state == n2m_interfaces_pkg::STATE_LOADING;
             end
             n2m_interfaces_pkg::COMMAND_LOAD_END: state_valid = endpoint_state == n2m_interfaces_pkg::STATE_LOADING;
             n2m_interfaces_pkg::COMMAND_READ_ROM, n2m_interfaces_pkg::COMMAND_READ_FRAME: begin
+                /* verilator lint_off WIDTHEXPAND */
                 length_valid = header.length == n2m_interfaces_pkg::READ_RANGE_BYTES;
+                /* verilator lint_on WIDTHEXPAND */
+                /* verilator lint_off WIDTHEXPAND */
                 value_valid = range_fields.count != 0 && range_fields.count <= n2m_interfaces_pkg::WIRE_MAX_PAYLOAD &&
                     range_end <= (header.command == n2m_interfaces_pkg::COMMAND_READ_ROM ? n2m_interfaces_pkg::PROFILE_ROM_BYTES : 32'(n2m_interfaces_pkg::FRAME_BYTES));
+                /* verilator lint_on WIDTHEXPAND */
                 response_length = range_fields.count;
                 if (header.command == n2m_interfaces_pkg::COMMAND_READ_ROM)
                     state_valid = endpoint_state == n2m_interfaces_pkg::STATE_PAUSED || endpoint_state == n2m_interfaces_pkg::STATE_LOADING;
                 else no_frame = !snapshot_valid;
             end
             n2m_interfaces_pkg::COMMAND_WRITE_HOST: begin
+                /* verilator lint_off WIDTHEXPAND */
                 length_valid = header.length == n2m_interfaces_pkg::WRITE_HOST_BYTES;
+                /* verilator lint_on WIDTHEXPAND */
                 value_valid = (write_fields.address == n2m_interfaces_pkg::HOST_REG_INPUT &&
                     (write_fields.value & ~n2m_interfaces_pkg::HOST_WRITE_MASK_INPUT) == 0) ||
                     (write_fields.address == n2m_interfaces_pkg::HOST_REG_INPUT_SOURCE &&
@@ -93,7 +110,9 @@ module n2m_uart_validate (
                 response_length = 16'(n2m_interfaces_pkg::DOT_BYTES);
             end
             n2m_interfaces_pkg::COMMAND_INPUT: begin
+                /* verilator lint_off WIDTHEXPAND */
                 length_valid = header.length == n2m_interfaces_pkg::INPUT_BYTES;
+                /* verilator lint_on WIDTHEXPAND */
                 state_valid = endpoint_state != n2m_interfaces_pkg::STATE_LOADING;
                 response_length = 16'(n2m_interfaces_pkg::DOT_BYTES);
             end
@@ -101,7 +120,9 @@ module n2m_uart_validate (
             // Unknown stores and out-of-range requests are rejected here,
             // before any product command reaches a store.
             n2m_interfaces_pkg::COMMAND_PEEK: begin
+                /* verilator lint_off WIDTHEXPAND */
                 length_valid = header.length == n2m_interfaces_pkg::PEEK_RANGE_BYTES;
+                /* verilator lint_on WIDTHEXPAND */
                 value_valid = n2m_memory_pkg::peek_known(peek_fields.store) &&
                     peek_fields.count != 0 && peek_fields.count <= n2m_interfaces_pkg::WIRE_MAX_PAYLOAD &&
                     peek_end <= {1'b0, n2m_memory_pkg::peek_bytes(peek_fields.store)};
@@ -114,7 +135,6 @@ module n2m_uart_validate (
             end
             default: command_known = 0;
         endcase
-        /* verilator lint_on WIDTHEXPAND */
         status = n2m_interfaces_pkg::STATUS_OK;
         if (forced_status != n2m_interfaces_pkg::STATUS_OK) status = forced_status;
         else if (header.version != n2m_interfaces_pkg::WIRE_VERSION) status = n2m_interfaces_pkg::STATUS_BAD_VERSION;
