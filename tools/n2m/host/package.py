@@ -7,6 +7,7 @@ import re
 from .. import generated_interfaces as abi
 from ..records import file_hash
 from sw.package import validate_image
+from sw.linker import PROFILE_IDS
 
 
 def read_package(root, manifest):
@@ -25,8 +26,8 @@ def read_package(root, manifest):
     record = json.loads(manifest_bytes)
     if record.get('status') != 'PASS' or record.get('attempt') != path.parent.name:
         raise ValueError('package attempt is not successful or has wrong identity')
-    if record.get('profile') != abi.PROFILE_NAME:
-        raise ValueError('package profile differs from generated direct profile')
+    if record.get('profile') not in PROFILE_IDS:
+        raise ValueError('package profile is not a packaged runtime profile')
     for name in ('cfg/interfaces.json', 'tools/n2m/generated_interfaces.py'):
         if record.get('inputs', {}).get(name) != file_hash(root / name):
             raise ValueError('package interface inputs are stale')
@@ -51,5 +52,6 @@ def read_package(root, manifest):
     title = image[0x134:0x144].rstrip(b'\0').decode('ascii')
     validate_image(image, record['entry'], title, image[0x14c], record['profile'])
     return image, {'manifest_sha256': hashlib.sha256(manifest_bytes).hexdigest(), 'rom_sha256': artifacts[rom_name],
-                   'profile': record['profile'], 'build_commit': record.get('commit'),
+                   'profile': record['profile'], 'profile_id': PROFILE_IDS[record['profile']],
+                   'build_commit': record.get('commit'),
                    'build_fingerprint': record.get('fingerprint')}

@@ -10,6 +10,7 @@ host verifies the same quantity after writing.
 import zlib
 
 from .. import generated_interfaces as abi
+from sw.linker import PROFILE_IDS as PACKAGE_PROFILE_IDS
 from ..interface_codec import SDRAM_LINE, pack_record, unpack_record
 
 # Every number below comes from cfg/interfaces.json through the generated
@@ -32,12 +33,12 @@ TITLE_BYTES = ENTRY_FIELDS['title_low'] + ENTRY_FIELDS['title_high']
 # the entries cannot survive a load.
 CATALOGUE_BYTES = 1024
 
-# Package profile name to the generated profile ID the image runs in. The
-# packager admits only the direct profile today; the loader-profile menu image
-# (#668) names LOADER_PROFILE_NAME so its menu entry carries LOADER_ID. The
-# contract accepts either ID at MENU_INDEX.
+# Package profile name to the generated profile ID the image runs in: the
+# packager's own table, so the catalogue never carries a name it did not
+# build. The menu image names LOADER_PROFILE_NAME and its entry carries
+# LOADER_ID; the contract accepts either ID at MENU_INDEX.
 LOADER_PROFILE_NAME = 'dmg-loader-v1'
-PROFILE_IDS = {abi.PROFILE_NAME: abi.PROFILE_DIRECT_ID, LOADER_PROFILE_NAME: abi.PROFILE_LOADER_ID}
+PROFILE_IDS = dict(PACKAGE_PROFILE_IDS)
 
 # LIBRARY_STATUS word fields and names; layout per the loader profile's host
 # interaction rule: $A000 in bits 7:0, $A002 in 15:8, $A003 in 23:16, bank in 29:24.

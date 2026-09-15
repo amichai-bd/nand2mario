@@ -1,8 +1,8 @@
 """Shared strict target shape/metadata boundary for assembly and packaging."""
 from pathlib import PurePosixPath
 import re
-from n2m.generated_interfaces import PROFILE_NAME
 from .expressions import AssemblyError
+from .linker import PROFILE_IDS
 
 BASE = {'directory', 'sources', 'assets'}
 PACKAGE = {'layout', 'entry', 'title', 'version', 'profile', 'interface_schema_version'}
@@ -44,7 +44,7 @@ def validate_target(target, require_package=False, stage='assemble'):
             reject('invalid direct-profile title','METADATA')
         if type(target['version']) is not int or not 0<=target['version']<=255:
             reject('version must be an explicit byte','METADATA')
-        if target['profile']!=PROFILE_NAME or target['profile']!='dmg-direct-v1':
+        if target['profile'] not in PROFILE_IDS:
             reject('unsupported target profile','PROFILE_MISMATCH')
         if type(target['interface_schema_version']) is not int or target['interface_schema_version']!=1:
             reject('unsupported interface schema identity')

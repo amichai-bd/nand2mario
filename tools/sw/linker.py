@@ -5,6 +5,10 @@ from n2m import generated_interfaces as hw
 from .expressions import AssemblyError, evaluate
 from .objects import validate
 
+# Package profile name to the generated runtime profile ID the image runs in.
+# Both share the direct image format; the loader profile additionally keeps
+# ROM1 free because the hardware maps the banked window there.
+PROFILE_IDS = {hw.PROFILE_NAME: hw.PROFILE_DIRECT_ID, 'dmg-loader-v1': hw.PROFILE_LOADER_ID}
 ROM_REGIONS = ('ROM0', 'ROM1')
 RAM_REGIONS = ('VRAM', 'WRAM', 'OAM', 'HRAM')
 REGIONS = {name: (getattr(hw, 'GB_' + name + '_START'), getattr(hw, 'GB_' + name + '_END') + 1)
@@ -19,8 +23,8 @@ def fail(code, cause, span=None, **context):
 
 
 def mapping_profile(profile):
-    if profile != 'dmg-direct-v1':
-        fail('PROFILE_MISMATCH', 'only dmg-direct-v1 is supported')
+    if profile not in PROFILE_IDS:
+        fail('PROFILE_MISMATCH', 'only dmg-direct-v1 and dmg-loader-v1 are supported')
     if not (hw.GB_ROM0_START == 0 and hw.GB_ROM0_END + 1 == hw.GB_ROM1_START == hw.PROFILE_BANK_BYTES
             and hw.GB_ROM1_END + 1 == hw.PROFILE_ROM_BYTES == 2 * hw.PROFILE_BANK_BYTES
             and hw.PROFILE_HEADER_START == 0x100 and hw.PROFILE_HEADER_END == 0x14f):
@@ -32,7 +36,7 @@ def reserved():
         (address, address + hw.PROFILE_VECTOR_SLOT_BYTES, name) for name, address in VECTORS.items()]
 
 
-def validate_layout(layout, objects):
+def validate_layout(layout, objects, profile='dmg-direct-v1'):
     if type(layout) is not dict or set(layout) != {'schema_version', 'sections'}:
         fail('SCHEMA_MISMATCH', 'layout requires schema_version and sections')
     if type(layout['schema_version']) is not int or layout['schema_version'] != 1 or type(layout['sections']) is not list:
@@ -53,6 +57,8 @@ def validate_layout(layout, objects):
         region, address, alignment = row['region'], row['address'], row['alignment']
         if region not in (ROM_REGIONS if section['kind'] == 'ROM' else RAM_REGIONS):
             fail('LAYOUT_REGION', 'absent or incompatible allocation region', section=key[1], unit=key[0])
+        if profile == 'dmg-loader-v1' and region == 'ROM1':
+            fail('LAYOUT_REGION', 'the loader profile maps its banked window over ROM1', section=key[1], unit=key[0])
         if type(alignment) is not int or not 1 <= alignment <= 65536 or alignment & (alignment - 1):
             fail('ALIGNMENT', 'alignment must be a power of two in 1..65536', section=key[1])
         if address is not None and (type(address) is not int or not 0 <= address <= 65535 or address % alignment):
@@ -88,7 +94,7 @@ def link(objects, layout, entry, profile='dmg-direct-v1'):
         except AssemblyError as error:
             error.diagnostic.update(stage='link', unit=unit)
             raise
-    rows = validate_layout(layout, objects)
+    rows = validate_layout(layout, objects, profile)
     units = dict(objects)
     exports = {}
     for unit, obj in objects:

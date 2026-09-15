@@ -9,7 +9,7 @@ from n2m import generated_interfaces as hw
 from n2m.records import atomic_json, cache_matches, digest, file_hash, read_json
 from .build import assemble_target
 from .expressions import AssemblyError
-from .linker import fail, link
+from .linker import PROFILE_IDS, fail, link
 from .package import package
 from .targets import validate_target
 
@@ -66,8 +66,8 @@ def build_target(root, build, args, provenance):
         for name in ['src/sw/generated/interfaces.inc', 'tools/n2m/generated_interfaces.py']:
             if (root / name).read_text(encoding='utf-8') != generated[Path(name)]:
                 fail('SCHEMA_MISMATCH', 'generated interface export is stale: ' + name)
-        if hw.PROFILE_NAME != target['profile']:
-            fail('PROFILE_MISMATCH', 'target differs from generated runtime profile')
+        if target['profile'] not in PROFILE_IDS:
+            fail('PROFILE_MISMATCH', 'target differs from generated runtime profiles')
         tree = confined(root / 'src/sw', target['directory'])
         layout_path = confined(tree, target['layout'])
         layout = json.loads(layout_path.read_text(encoding='utf-8'))
@@ -99,7 +99,8 @@ def build_target(root, build, args, provenance):
         outputs.update({f'{index}.object.json': json_bytes(obj) for index, obj in enumerate(objects)})
         outputs.update({name: (root / relative).read_bytes() for name, relative in assembly.get('asset_outputs', {}).items()})
         fingerprint = digest({'inputs': inputs, 'target': target})
-        report.update(inputs=inputs, fingerprint=fingerprint, profile=target['profile'], entry=linked['entry'])
+        report.update(inputs=inputs, fingerprint=fingerprint, profile=target['profile'],
+                      profile_id=PROFILE_IDS[target['profile']], entry=linked['entry'])
         previous = read_json(stage / 'result.json')
         prior_name = previous.get('attempt')
         complete = type(prior_name) is str and re.fullmatch('[0-9a-f]{12}', prior_name)

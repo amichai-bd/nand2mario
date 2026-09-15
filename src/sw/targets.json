@@ -241,6 +241,27 @@
       "version": 1,
       "profile": "dmg-direct-v1",
       "interface_schema_version": 1
+    },
+    "menu": {
+      "directory": "menu",
+      "sources": [
+        "main.asm"
+      ],
+      "assets": {
+        "Font": {
+          "source": "assets/font-tiles.json",
+          "author": "Original approved core font glyphs A-Z, 0-9 and dash (CORE_ART.md tiles 56..92) plus an original blank and cursor arrow by the nand2mario project; no external source"
+        }
+      },
+      "layout": "layout.json",
+      "entry": {
+        "unit": "main.asm",
+        "symbol": "Start"
+      },
+      "title": "GAME MENU",
+      "version": 1,
+      "profile": "dmg-loader-v1",
+      "interface_schema_version": 1
     }
   }
 }

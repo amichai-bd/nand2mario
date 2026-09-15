@@ -7,6 +7,7 @@ names follow the implementation owner, not a second software hierarchy.
 |---|---|---|---|
 | `src/sw/springtrail` | [Charter](src/project-charter.md) | [Springtrail SPEC](src/sw/springtrail/SPEC.md) | Original ROM/asset builds and independent gameplay checkpoints |
 | `src/dv/springtrail` | [Release requirements](src/project-charter.md) | [Game verification SPEC](src/dv/springtrail/SPEC.md) | Frozen independent reference, bounded execution matrix and separate physical endurance |
+| `src/sw/menu` and `src/dv/menu` | [Charter game library](src/project-charter.md#game-library) | [Game menu SPEC](src/sw/menu/SPEC.md) | [Menu test plan](../src/dv/menu/README.md): independent frame reference, fixture library and Verilator targets |
 | `src/sw/v05` and `src/dv/v05` | [Release requirements](src/project-charter.md) | [v0.5 acceptance](src/dv/v05/SPEC.md) | Literal instruction and pixel oracles, continuous run and real loader |
 | `src/rtl/system` | [Charter](src/project-charter.md) | [MAS_system](src/rtl/system/MAS_system.md) | Original v0.5 program and composed instruction/pixel acceptance |
 | [tools/n2m/host_play.py](../tools/n2m/host_play.py) | [Host requirements](tools/n2m/host/PRD.md) | [Host play SPEC](tools/host-play/SPEC.md) | Original ROM, immutable images and real UART input loop |

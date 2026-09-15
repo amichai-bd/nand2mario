@@ -24,8 +24,8 @@ a 32 KiB image between [SDRAM](../storage/MAS_sdram.md) and the ROM store; the
 core reset sequence around a swap; image validity; KEY1 return; and the rules
 between this hardware and the [UART endpoint](../uart/MAS_uart.md). It is not
 an MBC and does not run any cartridge not built here. The menu program itself
-is software with its own specification; this page fixes only what hardware
-gives it.
+is software with its [own specification](../../sw/menu/SPEC.md); this page
+fixes only what hardware gives it.
 
 ## Terms
 
@@ -208,8 +208,8 @@ and compared by CRC32 with its catalogue entry, the catalogue compared byte for
 byte; a mismatch is reported by slot and fails the command. `host library
 status` reads the catalogue as stored and `LIBRARY_STATUS`. The menu entry's
 `profile` is the generated ID of the profile the packaged menu image runs in:
-`LOADER_ID` for the loader-profile menu image
-([#668](https://github.com/amichai-bd/nand2mario/issues/668)), `DIRECT_ID` for
+`LOADER_ID` for the [loader-profile menu image](../../sw/menu/SPEC.md),
+`DIRECT_ID` for
 a direct-profile image at index 16; the select rule above accepts either. The
 host tool takes every slot, catalogue and profile number from the generated
 [interface table](../interfaces/MAS_interfaces.md).
