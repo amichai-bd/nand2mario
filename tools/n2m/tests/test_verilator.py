@@ -164,20 +164,41 @@ class CommandTests(unittest.TestCase):
         self.assertTrue(run[0].endswith("obj_dir/sim"))
         self.assertEqual(run[1:], ["+seed=7", "+verilator+seed+7", "+verilator+rand+reset+2", "+inject_failure"])
 
-    def test_elaboration_args_are_verilated_in_and_kept_off_the_run(self):
-        # Questa applied -g parameter overrides and +define+ macros at vsim
-        # time; Verilator needs both at verilate time and the run never sees them.
+    def test_parameter_overrides_are_verilated_in_and_kept_off_the_run(self):
+        # Questa applied -g parameter overrides at vsim time; Verilator takes
+        # them at verilate time as -G and the run never sees them.
         target, _ = load_target(self.root, "builder-smoke")
-        target = {**target, "args": ["-gPRELOADED=1", "+define+PRELOADED", "-gBUILD_ID=128'h10", "+inject_failure", "+io_peek_samples=120"]}
+        target = {**target, "args": ["-gPRELOADED=1", "-gBUILD_ID=128'h10", "+inject_failure", "+io_peek_samples=120"]}
         attempt = self.build / "attempt"
         (attempt / "waves").mkdir(parents=True)
         (build, *_), (run, *_) = verilator.commands(self.sim, self.root, target, 7, self.build, attempt)
         top = build.index("--top-module")
-        self.assertEqual(build[top + 2:top + 5], ["-GPRELOADED=1", "+define+PRELOADED", "-GBUILD_ID=128'h10"])
+        self.assertEqual(build[top + 2:top + 4], ["-GPRELOADED=1", "-GBUILD_ID=128'h10"])
         self.assertEqual(build[-1], verilator.HARNESS)
         self.assertEqual(run[1:], ["+seed=7", "+verilator+seed+7", "+verilator+rand+reset+2", "+inject_failure", "+io_peek_samples=120"])
-        self.assertFalse(verilator.is_elaboration_arg("-g"))
-        self.assertFalse(verilator.is_elaboration_arg("+defined"))
+        self.assertFalse(verilator.is_parameter_arg("-g"))
+        self.assertFalse(verilator.is_parameter_arg("+define+PRELOADED"))
+
+    def test_defines_become_build_options_and_are_validated(self):
+        registry = self.root / "src/dv/builder/targets.json"
+        targets = read_json(registry)
+        pristine = dict(targets["builder-smoke"])
+        targets["builder-smoke"] = {**pristine, "defines": ["PRELOADED", "DEPTH=8"]}
+        registry.write_text(json.dumps(targets))
+        target, _ = load_target(self.root, "builder-smoke")
+        attempt = self.build / "attempt"
+        compiler = self.build / "compile"
+        for folder in (attempt / "waves", compiler):
+            folder.mkdir(parents=True)
+        (build, *_), (run, *_) = verilator.commands(self.sim, self.root, target, 1, compiler, attempt)
+        self.assertIn("+define+PRELOADED", build)
+        self.assertIn("+define+DEPTH=8", build)
+        self.assertNotIn("+define+PRELOADED", run)
+        for bad in (["-gPRELOADED=1"], "PRELOADED", ["A B"]):
+            targets["builder-smoke"] = {**pristine, "defines": bad}
+            registry.write_text(json.dumps(targets))
+            with self.assertRaisesRegex(ValueError, "defines must list"):
+                load_target(self.root, "builder-smoke")
 
     def test_identical_retained_harness_is_left_untouched_and_a_stale_one_rewritten(self):
         target, _ = load_target(self.root, "builder-smoke")
@@ -281,14 +302,20 @@ class RecordTests(unittest.TestCase):
         self.args.rebuild = False
         self.assertEqual(self.run_stage()["cache"], "CACHED")
 
-    def test_vendor_model_stays_questa_and_a_driver_needs_the_peer_module(self):
+    def test_vendor_model_is_recorded_and_a_driver_needs_the_peer_module(self):
         registry = self.root / "src/dv/builder/targets.json"
         targets = read_json(registry)
         pristine = dict(targets["builder-smoke"])
         (self.root / "driver.do").write_text("run -all\n")
         (self.root / "driver.py").write_text("import cocotb\n")
         access = ["tx_go", "finish_request"]
-        for change, message in (({"vendor_model": "intel-memory"}, "vendor_model"),
+        # The synthesis binding is accepted as a record; the Questa-only
+        # mixed-mode inventory and unknown bindings are refused.
+        targets["builder-smoke"] = {**pristine, "vendor_model": "intel-memory"}
+        registry.write_text(json.dumps(targets))
+        self.assertEqual(load_target(self.root, "builder-smoke")[0]["vendor_model"], "intel-memory")
+        for change, message in (({"vendor_model": "altera-mf"}, "vendor_model must be one of"),
+                                ({"vendor_model": "intel-memory", "intel_mixed_mode_instances": ["tb.dut.ram"]}, "intel_mixed_mode_instances"),
                                 ({"driver": {"script": "driver.do", "peer": "tools/build.py", "inputs": [], "access": access}}, "Verilator peer module"),
                                 ({"driver": {"script": "driver.py", "peer": "tools/build.py", "inputs": []}}, "nonempty access list"),
                                 ({"driver": {"script": "missing.py", "peer": "tools/build.py", "inputs": [], "access": access}}, "missing or out-of-tree driver input")):

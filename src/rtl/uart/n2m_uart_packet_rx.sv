@@ -62,13 +62,11 @@ module n2m_uart_packet_rx #(
     assign request_bytes = decoded_count;
     assign more_encoded = encoded_index + 1'b1 < encoded_count;
     assign encoded_read = state == FETCH;
-    assign encoded_write = state == RECEIVE && rx_valid && !rx_error && rx_data != 0 &&
-                           // Lint waiver: narrow counters and fields are zero-extended against integer
-                           // package constants; the intended unsigned comparison is unchanged.
-                           /* verilator lint_off WIDTHEXPAND */
-                           !discard_input && encoded_count < n2m_uart_pkg::UART_ENCODED_MAX;
-                           /* verilator lint_on WIDTHEXPAND */
+    // Lint waiver: the narrow unsigned operand is zero-extended against an integer
+    // constant; the intended unsigned comparison is unchanged.
     /* verilator lint_off WIDTHEXPAND */
+    assign encoded_write = state == RECEIVE && rx_valid && !rx_error && rx_data != 0 &&
+                           !discard_input && encoded_count < n2m_uart_pkg::UART_ENCODED_MAX;
     assign decoded_write = emit_byte && decoded_count < n2m_uart_pkg::UART_RAW_MAX;
     /* verilator lint_on WIDTHEXPAND */
     assign decoded_read = request_valid && packet_read;
@@ -179,8 +177,8 @@ module n2m_uart_packet_rx #(
             CHECK: begin
                 /* verilator lint_off WIDTHEXPAND */
                 if (decoded_count >= n2m_interfaces_pkg::PACKET_HEADER_BYTES + 2 && crc == tail &&
-                /* verilator lint_on WIDTHEXPAND */
                     header.kind == n2m_interfaces_pkg::WIRE_REQUEST && header.status == n2m_interfaces_pkg::STATUS_OK)
+                /* verilator lint_on WIDTHEXPAND */
                     state_next = HOLD;
                 else begin
                     state_next = RECEIVE;

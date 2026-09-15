@@ -33,8 +33,8 @@ module n2m_uart_response (
     assign response_write = state == HEADER || (state == PAYLOAD && payload_valid)
         || state == CRC_LOW || state == CRC_HIGH;
     assign response_address = index;
-    // Lint waiver: narrow counters and fields are zero-extended against integer
-    // package constants; the intended unsigned comparison is unchanged.
+    // Lint waiver: the narrow unsigned operand is zero-extended against an integer
+    // constant; the intended unsigned comparison is unchanged.
     /* verilator lint_off WIDTHEXPAND */
     assign response_bytes = n2m_uart_pkg::UART_ADDRESS_BITS'(n2m_interfaces_pkg::PACKET_HEADER_BYTES + header.length + 2);
     /* verilator lint_on WIDTHEXPAND */

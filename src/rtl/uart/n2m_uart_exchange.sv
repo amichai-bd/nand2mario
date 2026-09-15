@@ -215,26 +215,26 @@ module n2m_uart_exchange (
 
     `N2M_ASSERT(UART_EXCHANGE_REQUEST_HELD, clk_sys, reset_sys,
         state != IDLE |-> request_valid)
+    // Lint waiver: the narrow unsigned operand is zero-extended against an integer
+    // constant; the intended unsigned comparison is unchanged.
+    /* verilator lint_off WIDTHEXPAND */
     `N2M_ASSERT(UART_EXCHANGE_REQUEST_SIZE, clk_sys, reset_sys,
-        // Lint waiver: narrow counters and fields are zero-extended against integer
-        // package constants; the intended unsigned comparison is unchanged.
-        /* verilator lint_off WIDTHEXPAND */
         request_valid |-> request_bytes >= n2m_interfaces_pkg::PACKET_HEADER_BYTES + 2 && request_bytes <= n2m_uart_pkg::UART_RAW_MAX)
-        /* verilator lint_on WIDTHEXPAND */
+    /* verilator lint_on WIDTHEXPAND */
     `N2M_ASSERT(UART_EXCHANGE_PACKET_SERVICE, clk_sys, reset_sys,
         state == COMPARE_USE || state == COPY_REQUEST_USE |-> packet_data_valid)
     `N2M_ASSERT(UART_EXCHANGE_COMPARE_SERVICE, clk_sys, reset_sys,
         state == COMPARE_USE |-> read_valid[0])
     `N2M_ASSERT(UART_EXCHANGE_RESPONSE_SERVICE, clk_sys, reset_sys,
         state == COPY_RESPONSE_USE |-> read_valid[2])
+    /* verilator lint_off WIDTHEXPAND */
     `N2M_ASSERT(UART_EXCHANGE_RESPONSE_WRITE, clk_sys, reset_sys,
-        /* verilator lint_off WIDTHEXPAND */
         response_write |-> command_valid && response_address < n2m_uart_pkg::UART_RAW_MAX)
-        /* verilator lint_on WIDTHEXPAND */
+    /* verilator lint_on WIDTHEXPAND */
+    /* verilator lint_off WIDTHEXPAND */
     `N2M_ASSERT(UART_EXCHANGE_COMMAND_DONE, clk_sys, reset_sys,
-        /* verilator lint_off WIDTHEXPAND */
         command_done |-> command_valid && response_bytes >= n2m_interfaces_pkg::PACKET_HEADER_BYTES + 2 && response_bytes <= n2m_uart_pkg::UART_RAW_MAX)
-        /* verilator lint_on WIDTHEXPAND */
+    /* verilator lint_on WIDTHEXPAND */
     `N2M_ASSERT(UART_EXCHANGE_TRANSMIT_READ, clk_sys, reset_sys,
         transmit_read |-> transmit_valid && transmit_address < transmit_bytes)
     `N2M_ASSERT(UART_EXCHANGE_TRANSMIT_DONE, clk_sys, reset_sys,

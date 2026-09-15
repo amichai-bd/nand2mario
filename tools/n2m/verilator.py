@@ -86,14 +86,14 @@ int main(int argc, char** argv, char**) {{
 """
 
 
-def is_elaboration_arg(arg):
-    """True for a registry arg the verilate step consumes: -g<NAME>=<VALUE> or +define+<NAME>."""
-    return bool(re.fullmatch(r"-g[A-Za-z_][A-Za-z0-9_]*=.+", arg) or re.fullmatch(r"\+define\+[A-Za-z_][A-Za-z0-9_]*(=.+)?", arg))
+def is_parameter_arg(arg):
+    """True for a registry -g<NAME>=<VALUE> top-level parameter override."""
+    return bool(re.fullmatch(r"-g[A-Za-z_][A-Za-z0-9_]*=.+", arg))
 
 
-def elaboration_args(args):
-    """The verilate-time options for a target's elaboration args, in registry order."""
-    return ["-G" + arg[2:] if arg.startswith("-g") else arg for arg in args if is_elaboration_arg(arg)]
+def parameter_args(args):
+    """The registry parameter overrides as Verilator -G<NAME>=<VALUE> build options, in order."""
+    return ["-G" + arg[2:] for arg in args if is_parameter_arg(arg)]
 
 
 def commands(simulator, root, target, seed, compiler, attempt, *, python_runtime=None, fixture_tools=None):
@@ -111,13 +111,14 @@ def commands(simulator, root, target, seed, compiler, attempt, *, python_runtime
         prepare_fixture(target, attempt, root, fixture_tools)
     if python_runtime:
         # cocotb's own main drives the design and advances to the testbench's
-        # next time slot, so --timing stays: the Python wrappers and every
+        # next time slot; --timing stays because the Python wrappers and every
         # driver testbench own their clocks, settled-sample delays and faults.
         library = python_runtime["library_dir"]
         build = [tool, "--cc", "--exe", "--build", "--vpi", "--public-flat-rw", "--timing",
                  "--timescale", "1ns/1ps", *COMMON_OPTIONS,
+                 *[f"+define+{define}" for define in target.get("defines", [])],
                  "-LDFLAGS", f"-Wl,-rpath,{library} -L{library} -lcocotbvpi_verilator",
-                 "--top-module", target["top"], *elaboration_args(target["args"]),
+                 "--top-module", target["top"], *parameter_args(target["args"]),
                  "+incdir+" + simulator.path(root), *sources, python_runtime["support"]]
         run = [str(compiler / "obj_dir/sim"), "--trace", "--trace-file", WAVES]
     else:
@@ -128,14 +129,14 @@ def commands(simulator, root, target, seed, compiler, attempt, *, python_runtime
         if not harness.is_file() or harness.read_text(encoding="utf-8") != source:
             harness.write_text(source, encoding="utf-8")
         build = [tool, "--cc", "--exe", "--build", "--timing", *COMMON_OPTIONS,
-                 "--top-module", target["top"], *elaboration_args(target["args"]),
+                 *[f"+define+{define}" for define in target.get("defines", [])],
+                 "--top-module", target["top"], *parameter_args(target["args"]),
                  "+incdir+" + simulator.path(root), *sources, HARNESS]
         run = [str(compiler / "obj_dir/sim")]
-    # Registry args are the run's plusargs, except the two elaboration-time
-    # forms verilated in above: -g<NAME>=<VALUE> overrides a top-level
-    # parameter (Verilator -G) and +define+<NAME>[=<VALUE>] defines a macro.
+    # Registry args are the run's plusargs, except -g<NAME>=<VALUE>, which
+    # Questa applied at vsim time and Verilator takes at verilate time as -G.
     run += [f"+seed={seed}", f"+verilator+seed+{seed}", "+verilator+rand+reset+2",
-            *(arg for arg in target["args"] if not is_elaboration_arg(arg))]
+            *(arg for arg in target["args"] if not is_parameter_arg(arg))]
     if driver:
         run.append("+smoke_root=" + simulator.path(root))
     return [(build, compiler, compiler / "build.log", "zero"),

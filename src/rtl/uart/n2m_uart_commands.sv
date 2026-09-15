@@ -219,8 +219,8 @@ module n2m_uart_commands (
             IDLE: if (command_valid) begin
                 arguments_next = 0;
                 arg_index_next = 0;
-                // Lint waiver: narrow counters and fields are zero-extended against integer
-                // package constants; the intended unsigned comparison is unchanged.
+                // Lint waiver: the narrow unsigned operand is zero-extended against an integer
+    // constant; the intended unsigned comparison is unchanged.
                 /* verilator lint_off WIDTHEXPAND */
                 arg_limit_next = request_header.length < n2m_interfaces_pkg::LOAD_BEGIN_BYTES ? 4'(request_header.length) : 4'(n2m_interfaces_pkg::LOAD_BEGIN_BYTES);
                 /* verilator lint_on WIDTHEXPAND */

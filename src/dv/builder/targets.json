@@ -7696,8 +7696,9 @@
     ],
     "top": "tb_python_integration",
     "simulator": "verilator",
-    "args": [
-      "+define+PRELOADED"
+    "args": [],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS python-integration records=69 pixels=46080 bus=145",
@@ -7797,8 +7798,10 @@
     "top": "tb_python_integration",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+pixel_fault"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS python-integration records=69 pixels=46080 bus=145",
@@ -8300,8 +8303,9 @@
     ],
     "top": "tb_python_integration",
     "simulator": "verilator",
-    "args": [
-      "+define+PRELOADED"
+    "args": [],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS python-integration records=69 pixels=46080 bus=145",
@@ -9492,8 +9496,9 @@
     ],
     "top": "tb_python_v05",
     "simulator": "verilator",
-    "args": [
-      "+define+PRELOADED"
+    "args": [],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS V05 continuous",
@@ -9629,8 +9634,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+progress_fault"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS V05 continuous",
@@ -9953,8 +9960,9 @@
     ],
     "top": "tb_python_integration",
     "simulator": "verilator",
-    "args": [
-      "+define+PRELOADED"
+    "args": [],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS palette194 records=10114 pixels=46080 write=70908",
@@ -10068,8 +10076,9 @@
     ],
     "top": "tb_python_integration",
     "simulator": "verilator",
-    "args": [
-      "+define+PRELOADED"
+    "args": [],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS palette194 records=10114 pixels=46080 write=70908",
@@ -10211,8 +10220,9 @@
     ],
     "top": "tb_python_integration",
     "simulator": "verilator",
-    "args": [
-      "+define+PRELOADED"
+    "args": [],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS startup202 complete CPU OAM access at enable+452",
@@ -10313,8 +10323,9 @@
     ],
     "top": "tb_python_integration",
     "simulator": "verilator",
-    "args": [
-      "+define+PRELOADED"
+    "args": [],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS startup202 complete CPU OAM access at enable+452",
@@ -10461,8 +10472,9 @@
     ],
     "top": "tb_python_integration",
     "simulator": "verilator",
-    "args": [
-      "+define+PRELOADED"
+    "args": [],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS startup204 complete CPU VRAM access at enable+532",
@@ -10563,8 +10575,9 @@
     ],
     "top": "tb_python_integration",
     "simulator": "verilator",
-    "args": [
-      "+define+PRELOADED"
+    "args": [],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS startup204 complete CPU VRAM access at enable+532",
@@ -10745,8 +10758,9 @@
     ],
     "top": "tb_python_integration",
     "simulator": "verilator",
-    "args": [
-      "+define+PRELOADED"
+    "args": [],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS late208 complete CPU OAM write and full160 inspection",
@@ -10847,8 +10861,9 @@
     ],
     "top": "tb_python_integration",
     "simulator": "verilator",
-    "args": [
-      "+define+PRELOADED"
+    "args": [],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS late208 complete CPU OAM write and full160 inspection",
@@ -10949,8 +10964,9 @@
     ],
     "top": "tb_python_integration",
     "simulator": "verilator",
-    "args": [
-      "+define+PRELOADED"
+    "args": [],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS late208 complete CPU OAM write and full160 inspection",
@@ -11378,8 +11394,9 @@
     ],
     "top": "tb_python_v05",
     "simulator": "verilator",
-    "args": [
-      "+define+PRELOADED"
+    "args": [],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS TIMER234 actual-v05 records=110 marker=7b",
@@ -11512,8 +11529,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+timer_read_fault"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS TIMER234 actual-v05 records=110 marker=7b",
@@ -11645,8 +11664,9 @@
     ],
     "top": "tb_python_v05",
     "simulator": "verilator",
-    "args": [
-      "+define+PRELOADED"
+    "args": [],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS STOP349 composed stop wake records=11 marker=5a",
@@ -11776,8 +11796,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+joypad_wake_fault"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS STOP349 composed stop wake records=11 marker=5a",
@@ -11906,8 +11928,9 @@
     ],
     "top": "tb_python_v05",
     "simulator": "verilator",
-    "args": [
-      "+define+PRELOADED"
+    "args": [],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS DMA239 actual-v05 records=638 bytes=160",
@@ -12044,8 +12067,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+dma_byte_fault"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS DMA239 actual-v05 records=638 bytes=160",
@@ -12181,8 +12206,9 @@
     ],
     "top": "tb_python_v05",
     "simulator": "verilator",
-    "args": [
-      "+define+PRELOADED"
+    "args": [],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS V05 continuous",
@@ -12318,8 +12344,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+pixel_fault"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS V05 continuous",
@@ -12455,8 +12483,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+progress_fault"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS V05 continuous",
@@ -12591,8 +12621,9 @@
     ],
     "top": "tb_python_v05",
     "simulator": "verilator",
-    "args": [
-      "+define+PRELOADED"
+    "args": [],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS V05 continuous",
@@ -12728,8 +12759,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+physical_mask_fault"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "V05_INPUT_WINDOW",
@@ -13695,8 +13728,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+stackdrop_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS STACKDROP unit cases=3",
@@ -13836,8 +13871,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+stackdrop_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS STACKDROP unit cases=73",
@@ -13977,9 +14014,11 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+stackdrop_trace",
       "+stackdrop_cell_fault"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS STACKDROP unit cases=73",
@@ -14119,8 +14158,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+stackdrop_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS STACKDROP game title start frame timing",
@@ -14335,8 +14376,9 @@
     ],
     "top": "tb_python_v05",
     "simulator": "verilator",
-    "args": [
-      "+define+PRELOADED"
+    "args": [],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS DISPLAY308 complete",
@@ -14476,8 +14518,9 @@
     ],
     "top": "tb_python_v05",
     "simulator": "verilator",
-    "args": [
-      "+define+PRELOADED"
+    "args": [],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS DISPLAY308 complete",
@@ -14618,8 +14661,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+display_boundary_fault"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS DISPLAY308 complete",
@@ -14759,8 +14804,9 @@
     ],
     "top": "tb_python_v05",
     "simulator": "verilator",
-    "args": [
-      "+define+PRELOADED"
+    "args": [],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS OAM_DMA",
@@ -14901,8 +14947,9 @@
     ],
     "top": "tb_python_v05",
     "simulator": "verilator",
-    "args": [
-      "+define+PRELOADED"
+    "args": [],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS OAM_DMA",
@@ -15044,8 +15091,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+oam_last_fault"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS OAM_DMA",
@@ -15187,8 +15236,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS PAUSE game complete",
@@ -15387,8 +15438,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS PAUSE game complete",
@@ -15591,9 +15644,11 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace",
       "+pause_mode_fault"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS PAUSE game complete",
@@ -15925,8 +15980,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS HUD game complete",
@@ -16126,8 +16183,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS HUD game complete",
@@ -16331,8 +16390,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -16526,8 +16587,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -16721,9 +16784,11 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace",
       "+motion_vx_fault"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -16917,8 +16982,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS HUD game complete",
@@ -17124,8 +17191,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -17319,8 +17388,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -17514,8 +17585,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -17709,9 +17782,11 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace",
       "+power_crouch_fault"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -17905,8 +17980,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS HUD game complete",
@@ -18107,8 +18184,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -18302,8 +18381,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -18497,8 +18578,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -18692,9 +18775,11 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace",
       "+blocks_hit_fault"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -18924,8 +19009,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+io_peek_samples=120"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS io peek live samples=120",
@@ -19052,9 +19139,11 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+io_peek_samples=120",
       "+io_peek_ly_fault"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS io peek live samples=120",
@@ -19182,8 +19271,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -19378,8 +19469,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -19574,8 +19667,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -19770,9 +19865,11 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace",
       "+progress_request_fault"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -19967,8 +20064,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -20162,8 +20261,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -20358,8 +20459,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -20554,8 +20657,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -20750,8 +20855,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -20946,8 +21053,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -21142,8 +21251,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -21338,8 +21449,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -21534,8 +21647,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -21729,8 +21844,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS HUD game complete",
@@ -21926,8 +22043,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS HUD game complete",
@@ -22127,8 +22246,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS HUD game complete",
@@ -22329,8 +22450,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -22548,8 +22671,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -22767,8 +22892,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -22986,8 +23113,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -23205,8 +23334,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -23402,9 +23533,11 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace",
       "+entity_move_fault"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -23598,8 +23731,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -23800,8 +23935,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -24002,8 +24139,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -24204,8 +24343,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -24406,9 +24547,11 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace",
       "+courier_output_fault"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -24609,8 +24752,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -24811,8 +24956,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -25013,8 +25160,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -25215,8 +25364,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -25417,8 +25568,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -25624,8 +25777,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -25831,8 +25986,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -26038,8 +26195,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -26245,8 +26404,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -26452,8 +26613,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -26659,9 +26822,11 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace",
       "+hud_column_fault"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -26867,8 +27032,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -27063,8 +27230,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -27259,8 +27428,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -27455,8 +27626,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -27651,8 +27824,10 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
@@ -27847,9 +28022,11 @@
     "top": "tb_python_v05",
     "simulator": "verilator",
     "args": [
-      "+define+PRELOADED",
       "+springtrail_trace",
       "+interaction_output_fault"
+    ],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",

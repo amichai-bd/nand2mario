@@ -46,8 +46,8 @@ module n2m_uart_rx #(
             phase_next = PHASE_BITS'(CLOCK_HZ / 2);
             bit_index_next = '0;
             if (!rx_sync) state_next = START;
-        // Lint waiver: narrow counters and fields are zero-extended against integer
-        // package constants; the intended unsigned comparison is unchanged.
+        // Lint waiver: the phase accumulator is zero-extended against the
+    // integer clock rate; the intended unsigned comparison is unchanged.
         /* verilator lint_off WIDTHEXPAND */
         end else if (sum >= CLOCK_HZ) begin
         /* verilator lint_on WIDTHEXPAND */
