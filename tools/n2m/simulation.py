@@ -75,8 +75,10 @@ def load_target(root, name):
         # The Intel models were a Questa binding; a target that still needs
         # one stays questa until its area migrates. A verilator driver's
         # script is the cocotb peer module; the retired Tcl script is refused.
-        if target.get("vendor_model") is not None:
-            raise ValueError(f"target {name}: vendor_model is not supported under verilator")
+        if target.get("vendor_model") not in (None, "intel-memory", "intel-adc", "intel-controls"):
+            raise ValueError(f"target {name}: vendor_model must be one of intel-memory, intel-adc, intel-controls")
+        if "intel_mixed_mode_instances" in target:
+            raise ValueError(f"target {name}: intel_mixed_mode_instances is a Questa diagnostic inventory; the double has no coercion diagnostic")
         if "driver" in target:
             if not target["driver"]["script"].endswith(".py"):
                 raise ValueError(f"target {name}: driver script must be the Verilator peer module (.py)")

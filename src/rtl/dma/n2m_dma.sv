@@ -78,9 +78,15 @@ module n2m_dma (
     logic [15:0] owner_address;
     logic [7:0] direct_wdata, owner_wdata, owner_rdata;
     logic owner_valid, owner_available, local_owner, local_memory, local_allowed;
+    // Lint waiver: the conflict and read-data paths close through the memory
+    // owners at the system level; Verilator settles them by iteration.
+    /* verilator lint_off UNOPTFLAT */
     logic [7:0] port_rdata, cache_data;
+    /* verilator lint_on UNOPTFLAT */
     logic port_valid, cache_valid, service_read, service_write;
+    /* verilator lint_off UNOPTFLAT */
     logic main_conflict, vram_conflict, conflict, ram_feedback, redirect_write;
+    /* verilator lint_on UNOPTFLAT */
     n2m_memory_pkg::memory_store_t service_cpu_store;
     logic [14:0] service_cpu_offset;
     logic [7:0] dispatch_rdata;

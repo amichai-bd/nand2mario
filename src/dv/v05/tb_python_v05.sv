@@ -1,8 +1,9 @@
 `timescale 1ns/1ps
 `default_nettype none
 // Passive owner-boundary samples. Python owns stimulus and all expectations.
+// Lint waiver: the integer trace handle is tested as a boolean.
+/* verilator lint_off WIDTHTRUNC */
 module tb_python_v05 #(
-    parameter bit PRELOADED = 0,
     parameter logic [127:0] BUILD_ID = 128'h88000000000000000000000000000001
 );
     logic clk_sys, clk_pix, reset_sys, reset_pix, uart_rx, uart_tx;
@@ -64,9 +65,13 @@ module tb_python_v05 #(
         dut.rom_address, dut.rom_write_data, dut.rom_read_valid, dut.rom_read_data} : 34'd0;
 
     n2m_v05_system #(.UART_BAUD(3125000), .BUILD_ID(BUILD_ID)) dut (.*);
-    defparam dut.u_stores.rom.SIM_INIT_FILE = PRELOADED ? "preload-rom.mif" : "UNUSED";
-    defparam dut.u_uart.u_commands.u_load.u_presence.u_presence.SIM_INIT_FILE = PRELOADED ? "preload-presence.mif" : "UNUSED";
-    defparam dut.u_uart.u_commands.u_load.SIM_PRELOAD = PRELOADED;
+    // +define+PRELOADED selects the prepared image. Verilator resolves a
+    // defparam value in the target instance, so a wrapper parameter cannot.
+`ifdef PRELOADED
+    defparam dut.u_stores.rom.SIM_INIT_FILE = "preload-rom.mif";
+    defparam dut.u_uart.u_commands.u_load.u_presence.u_presence.SIM_INIT_FILE = "preload-presence.mif";
+    defparam dut.u_uart.u_commands.u_load.SIM_PRELOAD = 1;
+`endif
     always #20 clk_sys = !clk_sys;
     always #19.841 clk_pix = !clk_pix;
 

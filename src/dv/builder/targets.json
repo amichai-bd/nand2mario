@@ -7655,6 +7655,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -7694,8 +7695,10 @@
       "src/dv/python/integration/tb_python_integration.sv"
     ],
     "top": "tb_python_integration",
-    "simulator": "questa",
-    "args": [],
+    "simulator": "verilator",
+    "args": [
+      "+define+PRELOADED"
+    ],
     "expected_exit": "zero",
     "signature": "PASS python-integration records=69 pixels=46080 bus=145",
     "timeout_seconds": 300,
@@ -7752,6 +7755,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -7791,8 +7795,9 @@
       "src/dv/python/integration/tb_python_integration.sv"
     ],
     "top": "tb_python_integration",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
+      "+define+PRELOADED",
       "+pixel_fault"
     ],
     "expected_exit": "zero",
@@ -7851,6 +7856,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -7890,10 +7896,8 @@
       "src/dv/python/integration/tb_python_integration.sv"
     ],
     "top": "tb_python_integration",
-    "simulator": "questa",
-    "args": [
-      "-gPRELOADED=0"
-    ],
+    "simulator": "verilator",
+    "args": [],
     "expected_exit": "zero",
     "signature": "PASS python-integration records=69 pixels=46080 bus=145",
     "timeout_seconds": 300,
@@ -7952,6 +7956,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -7991,9 +7996,8 @@
       "src/dv/python/integration/tb_python_integration.sv"
     ],
     "top": "tb_python_integration",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=0",
       "+data_fault"
     ],
     "expected_exit": "zero",
@@ -8053,6 +8057,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -8092,9 +8097,8 @@
       "src/dv/python/integration/tb_python_integration.sv"
     ],
     "top": "tb_python_integration",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=0",
       "+irq_fault"
     ],
     "expected_exit": "zero",
@@ -8154,6 +8158,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -8193,9 +8198,8 @@
       "src/dv/python/integration/tb_python_integration.sv"
     ],
     "top": "tb_python_integration",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=0",
       "+pixel_fault"
     ],
     "expected_exit": "zero",
@@ -8255,6 +8259,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -8294,9 +8299,9 @@
       "src/dv/python/integration/tb_python_integration.sv"
     ],
     "top": "tb_python_integration",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1"
+      "+define+PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS python-integration records=69 pixels=46080 bus=145",
@@ -8357,6 +8362,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -8404,17 +8410,12 @@
       "src/dv/python/host_play/tb_python_host_play.sv"
     ],
     "top": "tb_python_host_play",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS python-host-play five immutable images four transitions",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_host_play.dut.g_play.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_host_play.dut.g_play.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_host_play.dut.g_play.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_host_play",
@@ -8466,6 +8467,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -8513,7 +8515,7 @@
       "src/dv/python/host_play/tb_python_host_play.sv"
     ],
     "top": "tb_python_host_play",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+frame_fault"
     ],
@@ -8521,11 +8523,6 @@
     "signature": "PASS python-host-play five immutable images four transitions",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_host_play.dut.g_play.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_host_play.dut.g_play.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_host_play.dut.g_play.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_host_play",
@@ -8577,6 +8574,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -8624,7 +8622,7 @@
       "src/dv/python/host_play/tb_python_host_play.sv"
     ],
     "top": "tb_python_host_play",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+missing_frame"
     ],
@@ -8632,11 +8630,6 @@
     "signature": "PASS python-host-play five immutable images four transitions",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_host_play.dut.g_play.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_host_play.dut.g_play.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_host_play.dut.g_play.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_host_play",
@@ -8688,6 +8681,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -8735,7 +8729,7 @@
       "src/dv/python/host_play/tb_python_host_play.sv"
     ],
     "top": "tb_python_host_play",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+input_fault"
     ],
@@ -8743,11 +8737,6 @@
     "signature": "PASS python-host-play five immutable images four transitions",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_host_play.dut.g_play.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_host_play.dut.g_play.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_host_play.dut.g_play.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_host_play",
@@ -8799,6 +8788,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -8846,7 +8836,7 @@
       "src/dv/python/host_play/tb_python_host_play.sv"
     ],
     "top": "tb_python_host_play",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+release_fault"
     ],
@@ -8854,11 +8844,6 @@
     "signature": "PASS python-host-play five immutable images four transitions",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_host_play.dut.g_play.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_host_play.dut.g_play.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_host_play.dut.g_play.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_host_play",
@@ -8910,6 +8895,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -8967,7 +8953,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+pixel_fault"
     ],
@@ -8975,11 +8961,6 @@
     "signature": "PASS V05 startup",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_v05",
@@ -9050,6 +9031,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -9107,17 +9089,12 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS V05 startup",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_v05",
@@ -9188,6 +9165,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -9245,7 +9223,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+image_fault"
     ],
@@ -9253,11 +9231,6 @@
     "signature": "PASS V05 startup",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_v05",
@@ -9328,6 +9301,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -9385,17 +9359,12 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS V05 continuous",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_continuous",
@@ -9464,6 +9433,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -9521,19 +9491,14 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1"
+      "+define+PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS V05 continuous",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_short",
@@ -9604,6 +9569,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -9661,20 +9627,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+progress_fault"
     ],
     "expected_exit": "zero",
     "signature": "PASS V05 continuous",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_short",
@@ -9745,6 +9706,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -9802,7 +9764,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "-gBUILD_ID=128'h1032547698badcfeefcdab8967452301"
     ],
@@ -9810,11 +9772,6 @@
     "signature": "PASS V05 board identity",
     "timeout_seconds": 120,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_identity",
@@ -9852,6 +9809,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -9909,7 +9867,7 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "-gBUILD_ID=128'h1032547698badcfeefcdab8967452300"
     ],
@@ -9917,11 +9875,6 @@
     "signature": "PASS V05 board identity",
     "timeout_seconds": 120,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_identity",
@@ -9959,6 +9912,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -9998,8 +9952,10 @@
       "src/dv/python/integration/tb_python_integration.sv"
     ],
     "top": "tb_python_integration",
-    "simulator": "questa",
-    "args": [],
+    "simulator": "verilator",
+    "args": [
+      "+define+PRELOADED"
+    ],
     "expected_exit": "zero",
     "signature": "PASS palette194 records=10114 pixels=46080 write=70908",
     "timeout_seconds": 300,
@@ -10071,6 +10027,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -10110,8 +10067,10 @@
       "src/dv/python/integration/tb_python_integration.sv"
     ],
     "top": "tb_python_integration",
-    "simulator": "questa",
-    "args": [],
+    "simulator": "verilator",
+    "args": [
+      "+define+PRELOADED"
+    ],
     "expected_exit": "zero",
     "signature": "PASS palette194 records=10114 pixels=46080 write=70908",
     "timeout_seconds": 300,
@@ -10211,6 +10170,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -10250,8 +10210,10 @@
       "src/dv/python/integration/tb_python_integration.sv"
     ],
     "top": "tb_python_integration",
-    "simulator": "questa",
-    "args": [],
+    "simulator": "verilator",
+    "args": [
+      "+define+PRELOADED"
+    ],
     "expected_exit": "zero",
     "signature": "PASS startup202 complete CPU OAM access at enable+452",
     "timeout_seconds": 300,
@@ -10310,6 +10272,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -10349,8 +10312,10 @@
       "src/dv/python/integration/tb_python_integration.sv"
     ],
     "top": "tb_python_integration",
-    "simulator": "questa",
-    "args": [],
+    "simulator": "verilator",
+    "args": [
+      "+define+PRELOADED"
+    ],
     "expected_exit": "zero",
     "signature": "PASS startup202 complete CPU OAM access at enable+452",
     "timeout_seconds": 300,
@@ -10455,6 +10420,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -10494,8 +10460,10 @@
       "src/dv/python/integration/tb_python_integration.sv"
     ],
     "top": "tb_python_integration",
-    "simulator": "questa",
-    "args": [],
+    "simulator": "verilator",
+    "args": [
+      "+define+PRELOADED"
+    ],
     "expected_exit": "zero",
     "signature": "PASS startup204 complete CPU VRAM access at enable+532",
     "timeout_seconds": 300,
@@ -10554,6 +10522,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -10593,8 +10562,10 @@
       "src/dv/python/integration/tb_python_integration.sv"
     ],
     "top": "tb_python_integration",
-    "simulator": "questa",
-    "args": [],
+    "simulator": "verilator",
+    "args": [
+      "+define+PRELOADED"
+    ],
     "expected_exit": "zero",
     "signature": "PASS startup204 complete CPU VRAM access at enable+532",
     "timeout_seconds": 300,
@@ -10733,6 +10704,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -10772,8 +10744,10 @@
       "src/dv/python/integration/tb_python_integration.sv"
     ],
     "top": "tb_python_integration",
-    "simulator": "questa",
-    "args": [],
+    "simulator": "verilator",
+    "args": [
+      "+define+PRELOADED"
+    ],
     "expected_exit": "zero",
     "signature": "PASS late208 complete CPU OAM write and full160 inspection",
     "timeout_seconds": 300,
@@ -10832,6 +10806,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -10871,8 +10846,10 @@
       "src/dv/python/integration/tb_python_integration.sv"
     ],
     "top": "tb_python_integration",
-    "simulator": "questa",
-    "args": [],
+    "simulator": "verilator",
+    "args": [
+      "+define+PRELOADED"
+    ],
     "expected_exit": "zero",
     "signature": "PASS late208 complete CPU OAM write and full160 inspection",
     "timeout_seconds": 300,
@@ -10931,6 +10908,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -10970,8 +10948,10 @@
       "src/dv/python/integration/tb_python_integration.sv"
     ],
     "top": "tb_python_integration",
-    "simulator": "questa",
-    "args": [],
+    "simulator": "verilator",
+    "args": [
+      "+define+PRELOADED"
+    ],
     "expected_exit": "zero",
     "signature": "PASS late208 complete CPU OAM write and full160 inspection",
     "timeout_seconds": 300,
@@ -11084,6 +11064,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -11108,7 +11089,7 @@
       "src/dv/python/dma/tb_python_dma_late.sv"
     ],
     "top": "tb_python_dma_late",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS DMA late original CPU 624 records and full160 inspection",
@@ -11168,6 +11149,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -11192,7 +11174,7 @@
       "src/dv/python/dma/tb_python_dma_late.sv"
     ],
     "top": "tb_python_dma_late",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS DMA late original CPU 624 records and full160 inspection",
@@ -11252,6 +11234,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -11276,7 +11259,7 @@
       "src/dv/python/dma/tb_python_dma_late.sv"
     ],
     "top": "tb_python_dma_late",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS DMA late original CPU 624 records and full160 inspection",
@@ -11336,6 +11319,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -11393,19 +11377,14 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1"
+      "+define+PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS TIMER234 actual-v05 records=110 marker=7b",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_timer234",
@@ -11473,6 +11452,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -11530,20 +11510,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+timer_read_fault"
     ],
     "expected_exit": "zero",
     "signature": "PASS TIMER234 actual-v05 records=110 marker=7b",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_timer234",
@@ -11611,6 +11586,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -11668,19 +11644,14 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1"
+      "+define+PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS STOP349 composed stop wake records=11 marker=5a",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_stop349",
@@ -11745,6 +11716,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -11802,20 +11774,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+joypad_wake_fault"
     ],
     "expected_exit": "zero",
     "signature": "PASS STOP349 composed stop wake records=11 marker=5a",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_stop349",
@@ -11880,6 +11847,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -11937,19 +11905,14 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1"
+      "+define+PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS DMA239 actual-v05 records=638 bytes=160",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_dma239",
@@ -12021,6 +11984,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -12078,20 +12042,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+dma_byte_fault"
     ],
     "expected_exit": "zero",
     "signature": "PASS DMA239 actual-v05 records=638 bytes=160",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_dma239",
@@ -12163,6 +12122,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -12220,19 +12180,14 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1"
+      "+define+PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS V05 continuous",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_bounded",
@@ -12303,6 +12258,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -12360,20 +12316,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+pixel_fault"
     ],
     "expected_exit": "zero",
     "signature": "PASS V05 continuous",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_bounded",
@@ -12444,6 +12395,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -12501,20 +12453,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+progress_fault"
     ],
     "expected_exit": "zero",
     "signature": "PASS V05 continuous",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_bounded",
@@ -12585,6 +12532,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -12642,19 +12590,14 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1"
+      "+define+PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS V05 continuous",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_physical",
@@ -12725,6 +12668,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -12782,20 +12726,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+physical_mask_fault"
     ],
     "expected_exit": "zero",
     "signature": "V05_INPUT_WINDOW",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_physical",
@@ -12866,6 +12805,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -12922,6 +12862,8 @@
       "src/rtl/system/n2m_v05_system.sv",
       "src/rtl/clocking/n2m_reset_control.sv",
       "src/rtl/input/n2m_controls_pkg.sv",
+      "src/rtl/input/n2m_sim_adc_control.sv",
+      "src/rtl/input/n2m_sim_adc_pll.sv",
       "src/rtl/input/n2m_adc_backend.sv",
       "src/rtl/input/n2m_button_filter.sv",
       "src/rtl/input/n2m_adc_pairs.sv",
@@ -12931,17 +12873,12 @@
       "src/dv/python/controls/tb_python_controls.sv"
     ],
     "top": "tb_python_controls",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "CONTROLS_SYSTEM_PASS",
     "timeout_seconds": 300,
     "vendor_model": "intel-controls",
-    "intel_mixed_mode_instances": [
-      "tb_python_controls.dut.u_system.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_controls.dut.u_system.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_controls.dut.u_system.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_controls",
@@ -13008,6 +12945,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -13064,6 +13002,8 @@
       "src/rtl/system/n2m_v05_system.sv",
       "src/rtl/clocking/n2m_reset_control.sv",
       "src/rtl/input/n2m_controls_pkg.sv",
+      "src/rtl/input/n2m_sim_adc_control.sv",
+      "src/rtl/input/n2m_sim_adc_pll.sv",
       "src/rtl/input/n2m_adc_backend.sv",
       "src/rtl/input/n2m_button_filter.sv",
       "src/rtl/input/n2m_adc_pairs.sv",
@@ -13073,17 +13013,12 @@
       "src/dv/python/controls/tb_python_controls.sv"
     ],
     "top": "tb_python_controls",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "CONTROLS_SYSTEM_MASK",
     "timeout_seconds": 300,
     "vendor_model": "intel-controls",
-    "intel_mixed_mode_instances": [
-      "tb_python_controls.dut.u_system.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_controls.dut.u_system.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_controls.dut.u_system.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_controls_corrupt",
@@ -13150,6 +13085,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -13206,6 +13142,8 @@
       "src/rtl/system/n2m_v05_system.sv",
       "src/rtl/clocking/n2m_reset_control.sv",
       "src/rtl/input/n2m_controls_pkg.sv",
+      "src/rtl/input/n2m_sim_adc_control.sv",
+      "src/rtl/input/n2m_sim_adc_pll.sv",
       "src/rtl/input/n2m_adc_backend.sv",
       "src/rtl/input/n2m_button_filter.sv",
       "src/rtl/input/n2m_adc_pairs.sv",
@@ -13215,17 +13153,12 @@
       "src/dv/python/controls/tb_python_controls.sv"
     ],
     "top": "tb_python_controls",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "CONTROLS_STARTUP_DIAGNOSTIC",
     "timeout_seconds": 90,
     "vendor_model": "intel-controls",
-    "intel_mixed_mode_instances": [
-      "tb_python_controls.dut.u_system.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_controls.dut.u_system.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_controls.dut.u_system.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_controls_startup",
@@ -13616,6 +13549,7 @@
   },
   "python-vga-crc": {
     "sources": [
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/vga/n2m_frame_ram.sv",
       "src/rtl/vga/n2m_vga_scan.sv",
@@ -13623,13 +13557,8 @@
       "src/dv/python/vga/tb_python_vga.sv"
     ],
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_vga.dut.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_vga.dut.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_vga.dut.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "top": "tb_python_vga",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS python-vga-crc",
@@ -13657,6 +13586,7 @@
   },
   "python-vga-crc-corrupt": {
     "sources": [
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/vga/n2m_frame_ram.sv",
       "src/rtl/vga/n2m_vga_scan.sv",
@@ -13664,13 +13594,8 @@
       "src/dv/python/vga/tb_python_vga.sv"
     ],
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_vga.dut.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_vga.dut.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_vga.dut.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "top": "tb_python_vga",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+rgb_corrupt"
     ],
@@ -13710,6 +13635,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -13767,20 +13693,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+stackdrop_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS STACKDROP unit cases=3",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_short",
@@ -13855,6 +13776,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -13912,20 +13834,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+stackdrop_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS STACKDROP unit cases=73",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_unit",
@@ -14000,6 +13917,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -14057,9 +13975,9 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+stackdrop_trace",
       "+stackdrop_cell_fault"
     ],
@@ -14067,11 +13985,6 @@
     "signature": "PASS STACKDROP unit cases=73",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_unit",
@@ -14146,6 +14059,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -14203,20 +14117,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+stackdrop_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS STACKDROP game title start frame timing",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_game",
@@ -14367,6 +14276,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -14424,19 +14334,14 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1"
+      "+define+PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS DISPLAY308 complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_short",
@@ -14512,6 +14417,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -14569,19 +14475,14 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1"
+      "+define+PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS DISPLAY308 complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_display",
@@ -14657,6 +14558,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -14714,20 +14616,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+display_boundary_fault"
     ],
     "expected_exit": "zero",
     "signature": "PASS DISPLAY308 complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_display",
@@ -14803,6 +14700,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -14860,19 +14758,14 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1"
+      "+define+PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS OAM_DMA",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_dma_short",
@@ -14949,6 +14842,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -15006,19 +14900,14 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1"
+      "+define+PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS OAM_DMA",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_dma_publisher",
@@ -15095,6 +14984,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -15152,20 +15042,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+oam_last_fault"
     ],
     "expected_exit": "zero",
     "signature": "PASS OAM_DMA",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_dma_publisher",
@@ -15242,6 +15127,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -15299,20 +15185,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS PAUSE game complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_pause_game_short",
@@ -15446,6 +15327,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -15503,20 +15385,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS PAUSE game complete",
     "timeout_seconds": 880,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_pause_game_full",
@@ -15654,6 +15531,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -15711,9 +15589,9 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace",
       "+pause_mode_fault"
     ],
@@ -15721,11 +15599,6 @@
     "signature": "PASS PAUSE game complete",
     "timeout_seconds": 880,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_pause_game_full",
@@ -15992,6 +15865,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -16049,20 +15923,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS HUD game complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_motion_game_short",
@@ -16197,6 +16066,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -16254,9 +16124,9 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
@@ -16267,11 +16137,6 @@
       "reason": "At 9b5462d, g304d measured 408 seconds before exhausting the execution portion of its 420 total allowance after 37920 pixels at dot289746. The unchanged complete bound321852 projects 453.21 whole execution seconds linearly; 600 total retains setup/check/cleanup headroom without shortening the witness."
     },
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_motion_game_full",
@@ -16406,6 +16271,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -16463,20 +16329,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_motion_short",
@@ -16605,6 +16466,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -16662,20 +16524,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_motion_unit",
@@ -16804,6 +16661,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -16861,9 +16719,9 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace",
       "+motion_vx_fault"
     ],
@@ -16871,11 +16729,6 @@
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_motion_short",
@@ -17004,6 +16857,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -17061,9 +16915,9 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
@@ -17074,11 +16928,6 @@
       "reason": "Current changed entity renderer measured372.9525 seconds through322731 dots; current complete pose fixtures reach357132/361188 dots, forecasting417.4 seconds at the upper bound. The former420 leaves less than3 seconds variance/cleanup margin. Independently reviewed480 preserves both full frames,174tile upload and appended pose/publication checks."
     },
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_motion_render",
@@ -17215,6 +17064,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -17272,20 +17122,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_power_short",
@@ -17414,6 +17259,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -17471,20 +17317,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_power_unit_a",
@@ -17613,6 +17454,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -17670,20 +17512,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_power_unit_b",
@@ -17812,6 +17649,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -17869,9 +17707,9 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace",
       "+power_crouch_fault"
     ],
@@ -17879,11 +17717,6 @@
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_power_short",
@@ -18012,6 +17845,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -18069,20 +17903,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS HUD game complete",
     "timeout_seconds": 480,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_power_render",
@@ -18218,6 +18047,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -18275,20 +18105,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_blocks_short",
@@ -18417,6 +18242,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -18474,20 +18300,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_blocks_unit_a",
@@ -18616,6 +18437,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -18673,20 +18495,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_blocks_unit_b",
@@ -18815,6 +18632,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -18872,9 +18690,9 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace",
       "+blocks_hit_fault"
     ],
@@ -18882,11 +18700,6 @@
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_blocks_short",
@@ -19051,6 +18864,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -19108,20 +18922,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+io_peek_samples=120"
     ],
     "expected_exit": "zero",
     "signature": "PASS io peek live samples=120",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_io_peek",
@@ -19183,6 +18992,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -19240,9 +19050,9 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+io_peek_samples=120",
       "+io_peek_ly_fault"
     ],
@@ -19250,11 +19060,6 @@
     "signature": "PASS io peek live samples=120",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_io_peek",
@@ -19316,6 +19121,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -19374,20 +19180,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_progress_short",
@@ -19516,6 +19317,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -19574,20 +19376,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_progress_unit_a",
@@ -19716,6 +19513,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -19774,20 +19572,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_progress_unit_b",
@@ -19916,6 +19709,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -19974,9 +19768,9 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace",
       "+progress_request_fault"
     ],
@@ -19984,11 +19778,6 @@
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_progress_short",
@@ -20117,6 +19906,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -20175,20 +19965,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_entities_short",
@@ -20316,6 +20101,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -20374,20 +20160,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_entities_unit_a",
@@ -20516,6 +20297,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -20574,20 +20356,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_entities_unit_b",
@@ -20716,6 +20493,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -20774,20 +20552,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_entities_unit_c",
@@ -20916,6 +20689,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -20974,20 +20748,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_entities_unit_d",
@@ -21116,6 +20885,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -21174,20 +20944,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_entities_unit_e",
@@ -21316,6 +21081,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -21374,20 +21140,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_entities_unit_f",
@@ -21516,6 +21277,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -21574,20 +21336,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_entities_unit_g",
@@ -21716,6 +21473,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -21774,20 +21532,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_entities_unit_h",
@@ -21916,6 +21669,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -21973,20 +21727,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS HUD game complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_entities_render_short",
@@ -22117,6 +21866,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -22174,20 +21924,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS HUD game complete",
     "timeout_seconds": 420,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_entities_render_normal",
@@ -22322,6 +22067,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -22379,20 +22125,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS HUD game complete",
     "timeout_seconds": 420,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_entities_render_changed",
@@ -22527,6 +22268,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -22585,20 +22327,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_entities_oam_short",
@@ -22750,6 +22487,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -22808,20 +22546,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_entities_oam_a",
@@ -22973,6 +22706,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -23031,20 +22765,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_entities_oam_b",
@@ -23196,6 +22925,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -23254,20 +22984,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_entities_oam_c",
@@ -23419,6 +23144,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -23477,20 +23203,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_entities_batch_i",
@@ -23620,6 +23341,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -23678,9 +23400,9 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace",
       "+entity_move_fault"
     ],
@@ -23688,11 +23410,6 @@
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_entities_short",
@@ -23820,6 +23537,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -23878,20 +23596,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_courier_short",
@@ -24026,6 +23739,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -24084,20 +23798,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_courier_a",
@@ -24232,6 +23941,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -24290,20 +24000,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_courier_b",
@@ -24438,6 +24143,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -24496,20 +24202,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_courier_c",
@@ -24644,6 +24345,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -24702,9 +24404,9 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace",
       "+courier_output_fault"
     ],
@@ -24712,11 +24414,6 @@
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_courier_short",
@@ -24851,6 +24548,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -24909,20 +24607,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_courier_d",
@@ -25057,6 +24750,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -25115,20 +24809,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_courier_e",
@@ -25263,6 +24952,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -25321,20 +25011,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_courier_f",
@@ -25469,6 +25154,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -25527,20 +25213,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_courier_g",
@@ -25675,6 +25356,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -25733,20 +25415,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_hud_current_short",
@@ -25886,6 +25563,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -25944,20 +25622,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_hud_current_a",
@@ -26097,6 +25770,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -26155,20 +25829,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_hud_current_b",
@@ -26308,6 +25977,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -26366,20 +26036,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_hud_current_c",
@@ -26519,6 +26184,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -26577,20 +26243,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_hud_current_d",
@@ -26730,6 +26391,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -26788,20 +26450,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_hud_current_e",
@@ -26941,6 +26598,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -26999,9 +26657,9 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace",
       "+hud_column_fault"
     ],
@@ -27009,11 +26667,6 @@
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_hud_current_short",
@@ -27153,6 +26806,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -27211,20 +26865,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_interaction_current_short",
@@ -27353,6 +27002,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -27411,20 +27061,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_interaction_current_a",
@@ -27553,6 +27198,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -27611,20 +27257,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_interaction_current_b",
@@ -27753,6 +27394,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -27811,20 +27453,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_interaction_current_c",
@@ -27953,6 +27590,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -28011,20 +27649,15 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace"
     ],
     "expected_exit": "zero",
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_interaction_current_d",
@@ -28153,6 +27786,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -28211,9 +27845,9 @@
       "src/dv/v05/tb_python_v05.sv"
     ],
     "top": "tb_python_v05",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
-      "-gPRELOADED=1",
+      "+define+PRELOADED",
       "+springtrail_trace",
       "+interaction_output_fault"
     ],
@@ -28221,11 +27855,6 @@
     "signature": "PASS MOTION unit complete",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_python_v05.dut.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_python_v05.dut.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "testbench": "python",
     "python": {
       "module": "test_interaction_current_short",

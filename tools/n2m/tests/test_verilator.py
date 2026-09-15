@@ -154,6 +154,21 @@ class CommandTests(unittest.TestCase):
         self.assertTrue(run[0].endswith("obj_dir/sim"))
         self.assertEqual(run[1:], ["+seed=7", "+verilator+seed+7", "+verilator+rand+reset+2", "+inject_failure"])
 
+    def test_elaboration_args_are_verilated_in_and_kept_off_the_run(self):
+        # Questa applied -g parameter overrides and +define+ macros at vsim
+        # time; Verilator needs both at verilate time and the run never sees them.
+        target, _ = load_target(self.root, "builder-smoke")
+        target = {**target, "args": ["-gPRELOADED=1", "+define+PRELOADED", "-gBUILD_ID=128'h10", "+inject_failure", "+io_peek_samples=120"]}
+        attempt = self.build / "attempt"
+        (attempt / "waves").mkdir(parents=True)
+        (build, *_), (run, *_) = verilator.commands(self.sim, self.root, target, 7, self.build, attempt)
+        top = build.index("--top-module")
+        self.assertEqual(build[top + 2:top + 5], ["-GPRELOADED=1", "+define+PRELOADED", "-GBUILD_ID=128'h10"])
+        self.assertEqual(build[-1], verilator.HARNESS)
+        self.assertEqual(run[1:], ["+seed=7", "+verilator+seed+7", "+verilator+rand+reset+2", "+inject_failure", "+io_peek_samples=120"])
+        self.assertFalse(verilator.is_elaboration_arg("-g"))
+        self.assertFalse(verilator.is_elaboration_arg("+defined"))
+
     def test_identical_retained_harness_is_left_untouched_and_a_stale_one_rewritten(self):
         target, _ = load_target(self.root, "builder-smoke")
         attempt = self.build / "attempt"
@@ -183,7 +198,7 @@ class CommandTests(unittest.TestCase):
         prepare.assert_called_once()
         self.assertIn("--vpi", build)
         self.assertIn("--public-flat-rw", build)
-        self.assertNotIn("--timing", build)
+        self.assertIn("--timing", build)
         self.assertEqual(build[build.index("-LDFLAGS") + 1],
                          "-Wl,-rpath,/venv/cocotb/libs -L/venv/cocotb/libs -lcocotbvpi_verilator")
         self.assertEqual(build[-1], runtime["support"])
