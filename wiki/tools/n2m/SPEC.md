@@ -1741,8 +1741,9 @@ about one launch in three, and `qmegawiz` then exits 3 with an empty log. The
 builder relaunches the same generator command, up to six launches in total,
 only for that signature: exit 3, no timeout, empty log. Standalone probes saw
 8 of 20 and 3 of 15 launches fail with up to three consecutive failures; a
-private `TEMP`, a pause between launches and dropping `-silent` did not change
-the rate, so the bound covers a run of five. Every launch stays in `commands`
+private `TEMP` and a pause between launches did not change the rate, and
+dropping `-silent` opens the wizard GUI so its effect could not be measured.
+The bound covers a run of five. Every launch stays in `commands`
 with its exit code and `retried: true`, and `generator_retries` lists each
 retried attempt. A reported failure, a different exit code, a timeout or a
 sixth silent exit fails the request. A later explicit build
@@ -1784,8 +1785,8 @@ supports functional, not timing, simulation netlists; TimeQuest supplies timing.
 The exact diagnostic 176127 is explained only for the verified system/pixel
 pair and one of its two generated `db/` files: their distinct required ratios
 prevent PLL merging. Quartus names the two PLLs in either order and cites
-whichever generated file it visits second (25.1std names the system PLL first
-and `n2m_system_pll_altpll.v`); the classifier compares the pair and the file
+whichever generated file it visits second; the order varies between targets
+and builds within one release. The classifier compares the pair and the file
 as sets, accepts at most one such line, and rejects any other pair, path or
 text. Bandwidth, routing and other timing diagnostics remain failures.
 

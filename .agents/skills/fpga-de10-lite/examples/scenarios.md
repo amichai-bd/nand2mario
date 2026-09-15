@@ -72,7 +72,8 @@ exits 3 with an empty `generate-*pll.log` and the Windows Application log
 (`Get-WinEvent -LogName Application`, event 1000) shows `mega_altpllq.exe`
 faulting in `mega_mwizcq.dll` (0xc0000005). Verified rate on the build host:
 8 of 20 and 3 of 15 standalone launches, with up to three in a row; a private
-`TEMP`, a pause between launches and dropping `-silent` did not change it.
+`TEMP` and a pause between launches did not change it, and dropping `-silent`
+opens the wizard GUI, so that variant could not be measured.
 `fpga build` retries only that exact signature up to six launches and records
 each exit code in `commands` and `generator_retries` (see the
 [generated clocking inputs](../../../../wiki/tools/n2m/SPEC.md#generated-clocking-inputs)).

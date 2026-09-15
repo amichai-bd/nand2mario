@@ -292,8 +292,9 @@ def execute(argv, folder, log, timeout, record, build):
 # access violation in mega_mwizcq.dll on about one launch in three under
 # Quartus Prime Lite 25.1std on Windows; the launcher then exits 3 with an
 # empty log. Standalone probes saw 8 of 20 and 3 of 15 launches fail, with up
-# to three consecutive failures; a private TEMP, a pause between launches and
-# dropping -silent changed nothing. Only that exact silent signature is
+# to three consecutive failures; a private TEMP and a pause between launches
+# changed nothing, and dropping -silent opens the wizard GUI, so it could not
+# be measured. Only that exact silent signature is
 # retried, up to six launches in total; every attempt keeps its exit code in
 # the record and command log.
 GENERATOR_ATTEMPTS = 6
