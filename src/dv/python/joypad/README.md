@@ -14,7 +14,7 @@ It does not import or translate SV drivers, stimulus, monitors or scoreboards.
 | Event transport | Release, repress, hold, selected held button, shared line, adjacent events and pulse clear |
 | Reset | Both resets assert between edges; immediate profile observation and pending-event cancellation |
 | Additional combinations | 128 locally seeded random commit/data combinations |
-| Checker sensitivity | Separate DUT wrapper forces read line zero high; unchanged checker fails at cycle 3 |
+| Checker sensitivity | `python-joypad-fault` wraps the DUT with read line zero forced high; the unchanged checker must fail at cycle 3 with the registered `JOYP_MISMATCH` signature |
 
 Inputs are driven with the clock low. The checker samples applied public inputs
 and settled outputs before the rising edge, then samples outputs in ReadOnly
@@ -22,7 +22,7 @@ after the edge. Expected state advances from the pre-edge observed inputs.
 Unknown values fail explicitly. Every observation is flushed into a JSONL trace
 before output comparison, with literal expected and actual values.
 
-The test has a 100 us simulation timeout; the builder bounds Questa execution
+The test has a 100 us simulation timeout; the builder bounds the Verilator run
 to 60 seconds. The [usage guide](../README.md) defines commands and artifacts.
 The builder requires one completed named Python test and complete wave/trace
 evidence for PASS. A missing or failed XML result cannot inherit raw exit zero.

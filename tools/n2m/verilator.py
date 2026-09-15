@@ -30,18 +30,20 @@ PEER_STOP = (r"(?m)^\s*[\d.]+ns WARNING\s+cocotb\.regression\s+{module}\.peer fa
              r"but the simulation ended prematurely\..*$\n?")
 
 
-def diagnostic(output, expected_failure=None, *, peer=None):
+def diagnostic(output, expected_failure=None, explained=(), *, peer=None):
     """Return the first problem in a Verilator build or run transcript, else None.
 
-    Any warning is a problem. Every error line must carry the expected failure
-    text when one is declared; without one, any error line is a problem. For a
-    driver target whose expected fatal appears, the cocotb peer's report of
-    the ended simulation is part of that fatal.
+    Any warning is a problem unless its line carries one of the explained
+    texts. Every error line must carry the expected failure text when one is
+    declared; without one, any error line is a problem. For a driver target
+    whose expected fatal appears, the cocotb peer's report of the ended
+    simulation is part of that fatal.
     """
     if peer and expected_failure and any(expected_failure in line for line in ERROR.findall(output)):
         output = re.sub(PEER_STOP.format(module=re.escape(peer)), "", output, count=1)
-    if WARNING.search(output):
-        return "unexplained simulator warning"
+    for line in output.splitlines():
+        if WARNING.search(line) and not any(text in line for text in explained):
+            return "unexplained simulator warning"
     for line in ERROR.findall(output):
         if expected_failure and (expected_failure in line or FATAL_STOP.match(line.strip())):
             continue
