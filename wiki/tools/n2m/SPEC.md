@@ -309,10 +309,16 @@ retained wave must exist; otherwise the attempt is `FAIL`.
 
 `testbench: "python"` targets keep the [testbench contract](#testbench-types):
 the same `python` object, import closure, pinned interpreter and one named
-completed test. The build adds `--vpi --public-flat-rw --timescale 1ns/1ps`,
-links `-lcocotbvpi_verilator` from the installed cocotb 2.1.0 library
-directory, and compiles cocotb's own `share/lib/verilator/verilator.cpp` as the
-main; `--timing` is not passed. The run adds `--trace --trace-file
+completed test. The build adds `--vpi --timing --timescale 1ns/1ps`, a
+generated `compile/verilator/<target>/<attempt>/access.vlt` that makes every
+object of the top module public (`public_flat_rw -module "<top>" -var "*"`)
+and nothing below it, and `-CFLAGS -O2`; `--public-flat-rw` would expose the
+whole design and cost Verilator the optimizations the composed systems need
+inside the wall budget. `--timing` stays because the wrappers own their clocks,
+settled-sample delays and fault arming. The build links
+`-lcocotbvpi_verilator` from the installed cocotb 2.1.0 library
+directory and compiles cocotb's own `share/lib/verilator/verilator.cpp` as the
+main. The run adds `--trace --trace-file
 waves/simulation.fst` and the same seed plusargs. The environment sets
 `GPI_USERS` to the embedded `libpython` and cocotb's GPI entry point beside
 `PYGPI_PYTHON_BIN`, `LIBPYTHON_LOC`, `COCOTB_TOPLEVEL`, `COCOTB_TEST_MODULES`,

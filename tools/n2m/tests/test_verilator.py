@@ -247,8 +247,14 @@ class CommandTests(unittest.TestCase):
             (build, *_), (run, *_) = verilator.commands(self.sim, self.root, target, 3, self.build, attempt, python_runtime=runtime)
         prepare.assert_called_once()
         self.assertIn("--vpi", build)
-        self.assertIn("--public-flat-rw", build)
+        # The wrappers own their clocks and settled-sample delays, so --timing
+        # stays; only the top module is public, and the C++ is built -O2.
         self.assertIn("--timing", build)
+        self.assertNotIn("--public-flat-rw", build)
+        config = self.build / verilator.ACCESS_CONFIG
+        self.assertIn(str(config), build)
+        self.assertEqual(config.read_text().splitlines()[-1], 'public_flat_rw -module "n2m_joypad" -var "*"')
+        self.assertEqual(build[build.index("-CFLAGS") + 1], "-O2")
         self.assertEqual(build[build.index("-LDFLAGS") + 1],
                          "-Wl,-rpath,/venv/cocotb/libs -L/venv/cocotb/libs -lcocotbvpi_verilator")
         self.assertEqual(build[-1], runtime["support"])
