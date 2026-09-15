@@ -55,6 +55,10 @@ module n2m_cpu_control (
     logic hold_address_effect;
 `endif
 
+    // Both console profiles apply the generated direct entry state.
+    function automatic logic profile_known(input logic [7:0] id);
+        return id == n2m_interfaces_pkg::PROFILE_DIRECT_ID || id == n2m_interfaces_pkg::PROFILE_LOADER_ID;
+    endfunction
     function automatic n2m_cpu_pkg::cpu_registers_t profile_registers;
         n2m_cpu_pkg::cpu_registers_t r;
         r.a = n2m_interfaces_pkg::PROFILE_A;
@@ -340,8 +344,10 @@ module n2m_cpu_control (
         end
         if (core_reset) begin
             control_next = profile_control();
-            control_next.initialized = profile_id == n2m_interfaces_pkg::PROFILE_DIRECT_ID;
-            control_next.profile_fault = profile_id != n2m_interfaces_pkg::PROFILE_DIRECT_ID;
+            // The loader profile enters the same generated direct state
+            // (wiki/src/rtl/cartridge/MAS_loader_profile.md#core-reset-sequencing-and-image-validity).
+            control_next.initialized = profile_known(profile_id);
+            control_next.profile_fault = !profile_known(profile_id);
             registers_next = profile_registers();
             retire_capture.valid = 0;
             irq_ack = 0;
@@ -365,7 +371,7 @@ module n2m_cpu_control (
     `N2M_ASSERT_KNOWN(CPU_STOP_SELECTED_KNOWN, clk_sys, reset_sys || core_reset,
         joyp_selected_active)
     `N2M_ASSERT(CPU_PROFILE_ID, clk_sys, reset_sys,
-        core_reset |-> profile_id == n2m_interfaces_pkg::PROFILE_DIRECT_ID)
+        core_reset |-> profile_known(profile_id))
     `N2M_ASSERT(CPU_IRQ_ACK_ONEHOT, clk_sys, reset_sys || core_reset, $onehot0(irq_ack))
     `N2M_ASSERT_STABLE_WHEN(CPU_IDU_PLAN_STABLE, clk_sys, reset_sys || core_reset,
         hold_address_effect, {address_effect_resolved, address_effect})

@@ -35,6 +35,15 @@ reset consumers remain timed. A diagnostic fit is not full acceptance until all 
 clock, reset and CDC evidence is checked against the
 [system boundary](../../../wiki/src/rtl/system/MAS_system.md).
 
+`v05`, `v05-board` and `v05-controls-board` also place the
+[loader profile](../../../wiki/src/rtl/cartridge/MAS_loader_profile.md): the
+[SDRAM controller](../../rtl/storage/n2m_sdram_ctrl.sv) on the DE10-Lite DRAM
+pins with the `sdram_clk` generated clock and I/O delays of `sdram-proof`
+appended to `v05.sdc` and `controls.sdc`, and KEY1/A7 as the return-to-menu
+button with its checked two-flop synchronizer. The builder applies the
+`sdram-proof` DRAM drive strength, pin clock exception and routed-clock
+diagnostic to every image pinned to `DRAM_CLK`.
+
 `v05-board` uses that composition with physical UART RX D0/AB5, TX D1/AB6,
 and KEY0/B8 reset. It retains the VGA pins and clocks above; remaining virtual
 outputs are diagnostic observations. The builder supplies and verifies the

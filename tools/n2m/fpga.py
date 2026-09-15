@@ -144,7 +144,8 @@ SDRAM_CHAINS = (("uart", "uart_rx", "u_uart|u_serial_rx|rx_meta", "u_uart|u_seri
 
 
 def sdram_target(target):
-    return target.get("top") == SDRAM_TOP
+    """An image that drives the DE10-Lite SDRAM: the bring-up top or any top pinned to DRAM_CLK."""
+    return target.get("top") == SDRAM_TOP or "DRAM_CLK" in target.get("pins", {})
 
 
 def prepare(root, folder, target, build_id=None):
@@ -166,7 +167,7 @@ def prepare(root, folder, target, build_id=None):
             raise ValueError("physical v05 build requires a nonzero fingerprint identity")
         lines.append("set_global_assignment -name VERILOG_MACRO " + tcl_word("N2M_V05_BUILD_ID=128'h" + build_id))
         lines.append('set_global_assignment -name RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED"')
-    if sdram_target(target):
+    if target["top"] == SDRAM_TOP:
         if not isinstance(build_id, str) or not re.fullmatch(r"[0-9a-f]{32}", build_id) or int(build_id, 16) == 0:
             raise ValueError("physical SDRAM build requires a nonzero fingerprint identity")
         lines.append("set_global_assignment -name VERILOG_MACRO " + tcl_word("N2M_SDRAM_BUILD_ID=128'h" + build_id))
@@ -188,13 +189,16 @@ def prepare(root, folder, target, build_id=None):
                       f'set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to {tcl_word(port)}'])
         if target.get("top") in ("vga_proof", "ppu_proof", "controls_proof", "v05_proof", "v05_controls_proof") and port in fpga_vga.PORTS:
             lines.append(f'set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to {tcl_word(port)}')
-        if (target["top"] == "controls_proof" or fpga_v05.board_target(target) or sdram_target(target)) and (port == "uart_tx" or re.fullmatch(r"leds\[[0-9]\]", port)):
+        if (target["top"] == "controls_proof" or fpga_v05.board_target(target) or target["top"] == SDRAM_TOP) and (port == "uart_tx" or re.fullmatch(r"leds\[[0-9]\]", port)):
             lines.append(f'set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to {tcl_word(port)}')
         # SDRAM command, address, clock and data pins: 3.3-V LVTTL at 8 mA.
         if sdram_target(target) and port.startswith("DRAM_"):
             lines.append(f'set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to {tcl_word(port)}')
-    if target["top"] == "controls_proof" or fpga_v05.board_target(target) or sdram_target(target):
+    if target["top"] == "controls_proof" or fpga_v05.board_target(target) or target["top"] == SDRAM_TOP:
         lines.append('set_instance_assignment -name IO_STANDARD "3.3 V SCHMITT TRIGGER" -to board_reset_n')
+    # KEY1 is the loader profile's return button, the same pin data as KEY0.
+    if "key1_n" in target["pins"]:
+        lines.append('set_instance_assignment -name IO_STANDARD "3.3 V SCHMITT TRIGGER" -to key1_n')
     for port in target["virtual_pins"]:
         lines.append(f'set_instance_assignment -name VIRTUAL_PIN ON -to {tcl_word(port)}')
     (folder / "design.qsf").write_text('\n'.join(lines) + '\n', encoding="utf-8")
@@ -210,7 +214,7 @@ def prepare(root, folder, target, build_id=None):
         audit = audit.replace("project_close", fpga_controls.audit(tcl_word) + "project_close")
     if target.get("top") in ("v05_proof", "v05_controls_proof"):
         audit = audit.replace("project_close", fpga_v05.audit(tcl_word, board=fpga_v05.board_target(target), controls=fpga_v05.control_target(target)) + "project_close")
-    if sdram_target(target):
+    if target["top"] == SDRAM_TOP:
         audit = audit.replace("project_close", fpga_controls.audit(tcl_word, chains=SDRAM_CHAINS) + "project_close")
     (folder / "audit.tcl").write_text(audit, encoding="utf-8")
 
@@ -223,7 +227,7 @@ def checked_constraints(target):
         text += fpga_vga.constraints(tcl_word, lcd=target["top"] == "ppu_proof")
     if target["top"] == "controls_proof":
         text += fpga_controls.constraints(tcl_word)
-    if sdram_target(target):
+    if target["top"] == SDRAM_TOP:
         text += fpga_controls.constraints(tcl_word, chains=SDRAM_CHAINS)
     return text
 

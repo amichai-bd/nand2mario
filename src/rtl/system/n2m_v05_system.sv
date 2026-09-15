@@ -79,7 +79,7 @@ module n2m_v05_system #(
     logic [n2m_interfaces_pkg::SDRAM_ADDRESS_BITS-1:0] host_sdram_address;
     logic [n2m_interfaces_pkg::SDRAM_LINE_BYTES*8-1:0] host_sdram_data;
     logic engine_pause, engine_reset_request, engine_reset_accept, engine_reset_done;
-    logic engine_invalidate, engine_publish, host_session, host_port_busy, library_return;
+    logic engine_invalidate, engine_publish, host_session, host_loading, host_port_busy, library_return;
     logic [7:0] engine_profile;
     logic [31:0] library_status, library_key1;
     logic snapshot_request, frame_read;
@@ -167,13 +167,13 @@ module n2m_v05_system #(
         .sdram_response_data,
         .loader_copy_busy, .loader_swap_busy, .engine_invalidate, .engine_publish, .engine_profile,
         .library_status, .library_key1, .engine_pause, .engine_reset_request,
-        .engine_reset_accept, .engine_reset_done, .host_session, .host_port_busy, .library_return
+        .engine_reset_accept, .engine_reset_done, .host_session, .host_loading, .host_port_busy, .library_return
     );
     // The loader owns the ROM host port, the storage arbiter and the CPU view
     // of the bank/select/status bytes; its commits are the CPU ROM writes the
     // memory owner resolves and the stores otherwise ignore.
     n2m_loader #(.KEY1_DEBOUNCE_EDGES(KEY1_DEBOUNCE_EDGES), .KEY1_HOLD_EDGES(KEY1_HOLD_EDGES)) u_loader (
-        .clk_sys, .reset_sys, .profile, .image_valid, .host_session, .host_port_busy,
+        .clk_sys, .reset_sys, .profile, .image_valid, .host_session, .host_loading, .host_port_busy,
         .host_return(library_return), .paused, .sdram_initialized,
         .rom_commit(raw_write && raw_store == ROM_STORE), .commit_offset(raw_offset), .commit_data(raw_wdata),
         .cpu_address(address), .read_override(loader_read_override), .read_data(loader_read_data),

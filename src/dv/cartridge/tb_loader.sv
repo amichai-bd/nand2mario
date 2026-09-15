@@ -87,7 +87,7 @@ module tb_loader #(
 
     n2m_loader #(.KEY1_DEBOUNCE_EDGES(KEY1_DEBOUNCE_EDGES), .KEY1_HOLD_EDGES(KEY1_HOLD_EDGES)) dut (
         .clk_sys(clk_sys), .reset_sys(reset_sys), .profile(profile), .image_valid(image_valid),
-        .host_session(host_session), .host_port_busy(host_port_busy), .host_return(host_return),
+        .host_session(host_session), .host_loading(host_session), .host_port_busy(host_port_busy), .host_return(host_return),
         .paused(paused), .sdram_initialized(sdram_initialized),
         .rom_commit(storage_write && storage_store == n2m_memory_pkg::STORE_ROM),
         .commit_offset(storage_offset), .commit_data(storage_wdata),

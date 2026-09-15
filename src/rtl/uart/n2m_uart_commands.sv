@@ -102,6 +102,7 @@ module n2m_uart_commands (
     output logic engine_reset_accept,
     output logic engine_reset_done,
     output logic host_session,
+    output logic host_loading,
     output logic host_port_busy,
     output logic library_return
 );
@@ -172,6 +173,7 @@ module n2m_uart_commands (
     assign load_begin_hold = state == VALIDATE && request_header.command == n2m_interfaces_pkg::COMMAND_LOAD_BEGIN &&
         validation_status == n2m_interfaces_pkg::STATUS_OK;
     assign host_session = loading || load_begin_hold;
+    assign host_loading = loading;
     assign host_port_busy = load_start || load_busy;
     assign library_control_write = request_header.command == n2m_interfaces_pkg::COMMAND_WRITE_HOST &&
         write_fields.address == n2m_interfaces_pkg::HOST_REG_LIBRARY_CONTROL;
@@ -331,7 +333,6 @@ module n2m_uart_commands (
                     // opens, so the fill never writes into a host load.
                     n2m_interfaces_pkg::COMMAND_LOAD_BEGIN: if (!loader_copy_busy) begin
                         loading_next = 1;
-                        image_valid_next = 0;
                         profile_next = begin_fields.profile;
                         state_next = CORE_START;
                     end
@@ -348,7 +349,12 @@ module n2m_uart_commands (
             SDRAM_WAIT: if (sdram_done) state_next = REPLY_START;
             CORE_START: if (!core_busy) state_next = CORE_WAIT;
             CORE_WAIT: if (core_done) begin
-                if (request_header.command == n2m_interfaces_pkg::COMMAND_LOAD_BEGIN) state_next = LOAD_START;
+                // The old image stays valid until the core is paused and reset,
+                // so a running CPU never loses a read response to the session.
+                if (request_header.command == n2m_interfaces_pkg::COMMAND_LOAD_BEGIN) begin
+                    image_valid_next = 0;
+                    state_next = LOAD_START;
+                end
                 else begin
                     if (request_header.command == n2m_interfaces_pkg::COMMAND_LOAD_END) begin loading_next = 0; image_valid_next = 1; end
                     reply_status_next = core_status;

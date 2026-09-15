@@ -55,11 +55,11 @@ units:
   .agents/skills/issue-author/scripts/test_create_issue.py: {kind: unit, level: 0, labels: [agents], duration_seconds: 0.07}
   .agents/skills/rtl-coder/scripts/test_check_sv_style.py: {kind: unit, level: 0, labels: [agents], duration_seconds: 0.04}
   .agents/skills/update-crewmates/scripts/test_update_caps.py: {kind: unit, level: 0, labels: [agents], duration_seconds: 0.09}
-  adc-backend: {kind: sim, level: 2, labels: [input], duration_seconds: 4.02}
-  adc-backend-corrupt: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 1.42}
-  adc-pairs: {kind: sim, level: 2, labels: [input], duration_seconds: 2.85}
-  adc-pairs-channel: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 0.60}
-  adc-pairs-corrupt: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 0.60}
+  adc-backend: {kind: sim, level: 2, labels: [input], duration_seconds: 3.83}
+  adc-backend-corrupt: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 1.39}
+  adc-pairs: {kind: sim, level: 2, labels: [input], duration_seconds: 2.59}
+  adc-pairs-channel: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 0.58}
+  adc-pairs-corrupt: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 0.57}
   assert-synthesis: {kind: sim, level: 1, labels: [common], duration_seconds: 1.38}
   async-assert-direct: {kind: sim, level: 2, labels: [common, fault], duration_seconds: 1.68}
   async-assert-hold: {kind: sim, level: 2, labels: [common, fault], duration_seconds: 0.44}
@@ -78,14 +78,14 @@ units:
   clocking-bad-numerator: {kind: sim, level: 2, labels: [clocking, fault], duration_seconds: 1.37}
   clocking-drop-tick: {kind: sim, level: 2, labels: [clocking, fault], duration_seconds: 1.38}
   clocking-early-reset: {kind: sim, level: 2, labels: [clocking, fault], duration_seconds: 0.50}
-  controls-lifecycle: {kind: sim, level: 2, labels: [input], duration_seconds: 6.15}
-  controls-lifecycle-corrupt: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 1.36}
-  controls-mask: {kind: sim, level: 2, labels: [input], duration_seconds: 2.83}
-  controls-mask-corrupt: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 0.68}
-  controls-sticky: {kind: sim, level: 2, labels: [input], duration_seconds: 6.19}
-  controls-unsolicited: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 1.40}
-  controls-wire: {kind: sim, level: 2, labels: [input], duration_seconds: 14.81}
-  controls-wire-corrupt: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 2.13}
+  controls-lifecycle: {kind: sim, level: 2, labels: [input], duration_seconds: 8.39}
+  controls-lifecycle-corrupt: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 1.41}
+  controls-mask: {kind: sim, level: 2, labels: [input], duration_seconds: 2.73}
+  controls-mask-corrupt: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 0.63}
+  controls-sticky: {kind: sim, level: 2, labels: [input], duration_seconds: 8.54}
+  controls-unsolicited: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 1.30}
+  controls-wire: {kind: sim, level: 2, labels: [input], duration_seconds: 11.69}
+  controls-wire-corrupt: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 2.12}
   cpu-alu: {kind: sim, level: 1, labels: [cpu], duration_seconds: 1.53}
   cpu-alu-corrupt: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: 0.49}
   cpu-bus: {kind: sim, level: 2, labels: [cpu], duration_seconds: 0.60}
@@ -193,13 +193,13 @@ units:
   host-play-input: {kind: sim, level: 2, labels: [fault, host-play, integration, memory], duration_seconds: 143.99}
   host-play-missing: {kind: sim, level: 2, labels: [fault, host-play, integration, memory], duration_seconds: 119.49}
   host-play-release: {kind: sim, level: 2, labels: [fault, host-play, integration, memory], duration_seconds: 165.69}
-  input-matrix: {kind: sim, level: 1, labels: [input], duration_seconds: 3.07}
-  input-matrix-boundary: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 0.66}
-  input-matrix-data: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 0.67}
-  input-matrix-event: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 0.65}
-  input-matrix-source: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 0.66}
-  input-ordering: {kind: sim, level: 2, labels: [input], duration_seconds: 3.36}
-  input-power: {kind: sim, level: 2, labels: [input], duration_seconds: 4.02}
+  input-matrix: {kind: sim, level: 1, labels: [input], duration_seconds: 2.45}
+  input-matrix-boundary: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 0.65}
+  input-matrix-data: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 0.55}
+  input-matrix-event: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 0.59}
+  input-matrix-source: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 0.58}
+  input-ordering: {kind: sim, level: 2, labels: [input], duration_seconds: 2.71}
+  input-power: {kind: sim, level: 2, labels: [input], duration_seconds: 5.41}
   integration-preloaded: {kind: sim, level: 2, labels: [integration, memory], duration_seconds: 10.52}
   integration-smoke: {kind: sim, level: 2, labels: [builder, integration, memory], duration_seconds: 61.91}
   integration-smoke-data: {kind: sim, level: 2, labels: [builder, fault, integration, memory], duration_seconds: 54.29}
@@ -229,8 +229,10 @@ units:
   joypad-register-fault: {kind: sim, level: 2, labels: [fault, joypad], duration_seconds: 0.42}
   joypad-registers: {kind: sim, level: 2, labels: [joypad], duration_seconds: 0.43}
   library-peer: {kind: sim, level: 1, labels: [python-tb, storage], duration_seconds: 134.04}
+  loader-host: {kind: sim, level: 1, labels: [cartridge, system], duration_seconds: null}
   loader-key1: {kind: sim, level: 1, labels: [cartridge], duration_seconds: null}
   loader-key1-queue: {kind: sim, level: 1, labels: [cartridge], duration_seconds: null}
+  loader-menu: {kind: sim, level: 1, labels: [cartridge, system], duration_seconds: null}
   loader-map: {kind: sim, level: 1, labels: [cartridge], duration_seconds: null}
   loader-swap: {kind: sim, level: 1, labels: [cartridge], duration_seconds: null}
   loader-swap-fault: {kind: sim, level: 1, labels: [cartridge], duration_seconds: null}
@@ -322,9 +324,9 @@ units:
   python-bkb: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 31.61}
   python-bks: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 15.43}
   python-bkx: {kind: sim, level: 2, labels: [fault, integration, python-tb, springtrail, system, v05], duration_seconds: 12.85}
-  python-controls-startup: {kind: sim, level: 2, labels: [input, integration, python-tb, v05], duration_seconds: 0.94}
-  python-controls-system: {kind: sim, level: 2, labels: [input, integration, python-tb, v05], duration_seconds: 0.84}
-  python-controls-system-corrupt: {kind: sim, level: 2, labels: [fault, input, integration, python-tb, v05], duration_seconds: 0.83}
+  python-controls-startup: {kind: sim, level: 2, labels: [input, integration, python-tb, v05], duration_seconds: 19.36}
+  python-controls-system: {kind: sim, level: 2, labels: [input, integration, python-tb, v05], duration_seconds: 16.36}
+  python-controls-system-corrupt: {kind: sim, level: 2, labels: [fault, input, integration, python-tb, v05], duration_seconds: 16.41}
   python-courier-a: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 22.03}
   python-courier-b: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 22.63}
   python-courier-c: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 22.49}
@@ -444,21 +446,21 @@ units:
   python-vram-write: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: 4.78}
   register-macros: {kind: sim, level: 2, labels: [common], duration_seconds: 1.46}
   register-macros-corrupt: {kind: sim, level: 2, labels: [common, fault], duration_seconds: 0.45}
-  sdram-fault-before-init: {kind: sim, level: 1, labels: [fault, storage], duration_seconds: 2.92}
-  sdram-fault-deadline: {kind: sim, level: 1, labels: [fault, storage], duration_seconds: 3.03}
-  sdram-fault-misaligned: {kind: sim, level: 1, labels: [fault, storage], duration_seconds: 0.53}
-  sdram-fault-read-early: {kind: sim, level: 1, labels: [fault, storage], duration_seconds: 3.03}
-  sdram-fault-read-late: {kind: sim, level: 1, labels: [fault, storage], duration_seconds: 2.76}
-  sdram-init: {kind: sim, level: 1, labels: [storage], duration_seconds: 0.53}
-  sdram-line: {kind: sim, level: 1, labels: [storage], duration_seconds: 0.55}
-  sdram-refresh: {kind: sim, level: 1, labels: [storage], duration_seconds: 0.64}
+  sdram-fault-before-init: {kind: sim, level: 1, labels: [fault, storage], duration_seconds: 3.23}
+  sdram-fault-deadline: {kind: sim, level: 1, labels: [fault, storage], duration_seconds: 3.29}
+  sdram-fault-misaligned: {kind: sim, level: 1, labels: [fault, storage], duration_seconds: 0.66}
+  sdram-fault-read-early: {kind: sim, level: 1, labels: [fault, storage], duration_seconds: 3.11}
+  sdram-fault-read-late: {kind: sim, level: 1, labels: [fault, storage], duration_seconds: 3.12}
+  sdram-init: {kind: sim, level: 1, labels: [storage], duration_seconds: 0.62}
+  sdram-line: {kind: sim, level: 1, labels: [storage], duration_seconds: 0.62}
+  sdram-refresh: {kind: sim, level: 1, labels: [storage], duration_seconds: 0.77}
   serial-boundary-fault: {kind: sim, level: 2, labels: [fault, serial], duration_seconds: 0.74}
   serial-register-fault: {kind: sim, level: 2, labels: [fault, serial], duration_seconds: 0.72}
   serial-registers: {kind: sim, level: 1, labels: [serial], duration_seconds: 0.73}
-  sim-adc-double: {kind: sim, level: 0, labels: [input], duration_seconds: 3.10}
-  sim-adc-double-channel: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 0.63}
-  sim-adc-double-corrupt: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 0.53}
-  sim-adc-double-missing: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 0.57}
+  sim-adc-double: {kind: sim, level: 0, labels: [input], duration_seconds: 2.32}
+  sim-adc-double-channel: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 0.52}
+  sim-adc-double-corrupt: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 0.54}
+  sim-adc-double-missing: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 0.53}
   sim-ram-double: {kind: sim, level: 0, labels: [common], duration_seconds: 1.27}
   sim-ram-double-bad-preload: {kind: sim, level: 2, labels: [common, fault], duration_seconds: 1.09}
   sim-ram-double-collision: {kind: sim, level: 2, labels: [common, fault], duration_seconds: 1.05}
@@ -655,8 +657,8 @@ units:
   uart-run-dots: {kind: sim, level: 2, labels: [uart], duration_seconds: 1.57}
   uart-run-dots-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 1.05}
   uart-run-dots-wire: {kind: sim, level: 2, labels: [uart], duration_seconds: 42.21}
-  uart-sdram: {kind: sim, level: 1, labels: [host, storage, uart], duration_seconds: 2.62}
-  uart-sdram-fault: {kind: sim, level: 1, labels: [fault, host, storage, uart], duration_seconds: 2.30}
+  uart-sdram: {kind: sim, level: 1, labels: [host, storage, uart], duration_seconds: 2.89}
+  uart-sdram-fault: {kind: sim, level: 1, labels: [fault, host, storage, uart], duration_seconds: 1.98}
   uart-serial: {kind: sim, level: 2, labels: [uart], duration_seconds: 2.71}
   uart-serial-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 0.70}
   uart-snapshot: {kind: sim, level: 2, labels: [uart], duration_seconds: 10.41}

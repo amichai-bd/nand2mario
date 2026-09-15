@@ -94,7 +94,7 @@ module n2m_smoke_system #(parameter bit HOST_PLAY = 0) (
         // No loader profile in this composition.
         .loader_copy_busy(1'b0), .loader_swap_busy(1'b0), .engine_invalidate(1'b0), .engine_publish(1'b0),
         .engine_profile(8'd0), .library_status(32'd0), .library_key1(32'd0), .engine_pause(1'b0),
-        .engine_reset_request(1'b0), .engine_reset_accept(), .engine_reset_done(), .host_session(),
+        .engine_reset_request(1'b0), .engine_reset_accept(), .engine_reset_done(), .host_session(), .host_loading(),
         .host_port_busy(), .library_return()
     );
     n2m_timebase u_timebase (.clk_sys, .reset_sys, .core_reset, .pause_request, .gb_tick, .paused);
