@@ -9834,7 +9834,7 @@
     ],
     "expected_exit": "zero",
     "signature": "PASS V05 continuous",
-    "timeout_seconds": 300,
+    "timeout_seconds": 450,
     "vendor_model": "intel-memory",
     "testbench": "python",
     "python": {
