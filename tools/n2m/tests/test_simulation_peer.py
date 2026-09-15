@@ -80,15 +80,13 @@ class PeerTests(unittest.TestCase):
     def test_declared_driver_inputs_cannot_escape_root(self):
         registry = self.root / 'src/dv/builder/targets.json'
         registry.parent.mkdir(parents=True)
-        target = {'signature': 'PASS', 'sources': [], 'expected_exit': 'zero', 'simulator': 'questa',
+        target = {'signature': 'PASS', 'sources': [], 'expected_exit': 'zero', 'simulators': ['verilator'],
                   'driver': {'script': '../outside.do', 'peer': 'child.py', 'inputs': []}}
         registry.write_text(json.dumps({'smoke': target}))
         with self.assertRaisesRegex(ValueError, 'out-of-tree driver'):
             load_target(self.root, 'smoke')
 
-    def test_tcl_driver_targets_stay_questa_and_are_skipped_without_a_peer(self):
-        """A Tcl-driven target validates only as a questa target and the stage
-        reports it SKIPPED without starting the peer."""
+    def test_tcl_driver_has_no_silent_backend_fallback(self):
         self.script(self.ready() + 'time.sleep(60)\n')
         (self.root / 'driver.do').write_text('# driver\n')
         for name in ['tools/build.py', 'tools/n2m/dependencies.json']:
@@ -97,17 +95,15 @@ class PeerTests(unittest.TestCase):
             path.write_text('{}')
         registry = self.root / 'src/dv/builder/targets.json'
         registry.parent.mkdir(parents=True)
-        row = {'signature': 'PASS', 'sources': [], 'args': [], 'expected_exit': 'zero', 'simulator': 'verilator',
+        row = {'signature': 'PASS', 'sources': [], 'args': [], 'expected_exit': 'zero', 'simulators': ['verilator'],
                'driver': {'script': 'driver.do', 'peer': 'child.py', 'inputs': []}}
         registry.write_text(json.dumps({'smoke': row}))
-        with self.assertRaisesRegex(ValueError, 'Verilator peer module'):
+        with self.assertRaisesRegex(ValueError, 'Python peer driver supports only Verilator'):
             load_target(self.root, 'smoke')
-        row['simulator'] = 'questa'
+        row['simulators'] = ['questa']
         registry.write_text(json.dumps({'smoke': row}))
-        args = SimpleNamespace(target='smoke', seed=1, rebuild=False)
-        with patch('n2m.simulation_peer.Peer.start', side_effect=AssertionError('peer started')):
-            result = simulate(self.root, self.attempt, args, SimpleNamespace(info={}))
-        self.assertEqual((result['status'], result['reason']), ('SKIPPED', 'questa-retired'))
+        with self.assertRaisesRegex(ValueError, 'Python peer driver supports only Verilator'):
+            load_target(self.root, 'smoke')
         self.assertEqual(list(self.attempt.rglob('peer-result.json')), [])
 
 
@@ -140,7 +136,7 @@ class VerilatorDriverStageTests(unittest.TestCase):
             targets[name]['driver']['peer'] = 'child.py'
         registry.write_text(json.dumps(targets))
         self.args.target = 'verilator-peer'
-        self.runtime = {'executable': sys.executable, 'libpython': 'libpython.so', 'library': '/venv/libs/libcocotbvpi_verilator.so',
+        self.runtime = {'backend': 'verilator', 'executable': sys.executable, 'libpython': 'libpython.so', 'library': '/venv/libs/libcocotbvpi_verilator.so',
                         'library_dir': '/venv/libs', 'support': '/venv/share/lib/verilator/verilator.cpp',
                         'entry_point': '/venv/simulator.so,initialize', 'version': 'pinned'}
         patcher = patch('n2m.python_tb.discover', return_value=self.runtime)

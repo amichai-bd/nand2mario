@@ -177,10 +177,10 @@ Recommended independent evidence:
 - Quartus fit, resource, RAM inference, and timing reports.
 
 Use a UVM-lite structure first: interfaces, transactions, drivers, monitors,
-scoreboards, assertions, coverage, and reference models. Verilator on WSL is
-the sole supported simulator under the
-[builder simulator policy](tools/n2m/SPEC.md#simulator-policy); covergroups
-are unsupported there.
+scoreboards, assertions, coverage, and reference models. The builder supports
+Verilator on WSL and Questa on Windows under the
+[simulator policy](tools/n2m/SPEC.md#simulator-policy); covergroups remain
+unsupported on the Verilator path.
 
 A model generated from the same opcode table as the RTL is not an independent
 oracle. At least one test path must use an independent implementation or published

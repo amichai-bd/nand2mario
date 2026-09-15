@@ -28,7 +28,7 @@ class PythonTests(unittest.TestCase):
         for owner in ("src/dv/python", "src/rtl/joypad", "src/rtl/interfaces", "src/rtl/common"):
             shutil.copytree(test_builder.ROOT / owner, self.root / owner, ignore=shutil.ignore_patterns("__pycache__"))
         self.args.target = "python-joypad"
-        self.runtime = {"executable": sys.executable, "libpython": "libpython.so", "library": "/venv/libs/libcocotbvpi_verilator.so",
+        self.runtime = {"backend": "verilator", "executable": sys.executable, "libpython": "libpython.so", "library": "/venv/libs/libcocotbvpi_verilator.so",
                         "library_dir": "/venv/libs", "support": "/venv/share/lib/verilator/verilator.cpp",
                         "entry_point": "/venv/simulator.so,initialize", "version": "pinned"}
         self.discovery = patch("n2m.python_tb.discover", return_value=self.runtime)
@@ -160,7 +160,7 @@ class PythonTests(unittest.TestCase):
 
     def test_missing_inventory_not_reusable(self):
         self.run_stage()
-        current = self.build / "sim/test/python-joypad/result.json"
+        current = self.build / "sim/test/python-joypad/verilator/result.json"
         record = read_json(current)
         del record["artifacts"][record["python_results_file"]]
         atomic_json(current, record)

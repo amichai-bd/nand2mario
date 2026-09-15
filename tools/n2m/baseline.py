@@ -56,7 +56,8 @@ def trace_rows(path, seed, broken):
 
 def evidence(root, tag, seed, broken):
     folder = root / "workdir/builds" / tag
-    manifest = json.loads((folder / "manifest.json").read_text(encoding="utf-8"))
+    manifest = json.loads((folder / "sim/test" / ("baseline-broken" if broken else "baseline-good")
+                           / "verilator/result.json").read_text(encoding="utf-8"))
     if manifest["status"] != "PASS" or manifest["seed"] != seed:
         raise ValueError("simulation did not meet its registered expectation")
     found = {}

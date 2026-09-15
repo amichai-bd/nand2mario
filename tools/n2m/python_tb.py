@@ -323,8 +323,10 @@ def check_imports(root, target, name):
         raise ValueError(f"{name}: excluded imports are never reached: {', '.join(unreached)}")
 
 
-def discover():
+def discover(backend="verilator"):
     """No installs at run time. Hash installed package contents, not just versions."""
+    if backend not in ("verilator", "questa"):
+        raise ValueError("Python TB simulator must be verilator or questa")
     if sys.version_info[:3] != (3, 12, 14):
         raise ValueError("Python TB requires Python 3.12.14; use the isolated src/dv/python environment")
     try:
@@ -338,18 +340,19 @@ def discover():
             files = [Path(dist.locate_file(p)).resolve() for p in dist.files
                      if not str(p).endswith((".pyc", ".pyo"))]
             packages[name] = {"version": version, "files": {str(p): file_hash(p) for p in files if p.is_file()}}
-        library = Path(lib_name_path("vpi", "verilator")).resolve()
+        library = Path(lib_name_path("vpi", backend)).resolve()
         libpython = Path(find_libpython()).resolve()
-        # cocotb's Verilator entry: the C++ main it ships and the GPI entry it loads.
-        support = (Path(share_dir) / "lib/verilator/verilator.cpp").resolve()
-        return {"executable": sys.executable, "version": sys.version,
-                "executable_sha256": file_hash(Path(sys.executable)),
-                "library": str(library), "library_sha256": file_hash(library),
-                "library_dir": str(library.parent),
-                "support": str(support), "support_sha256": file_hash(support),
-                "entry_point": pygpi_entry_point(),
-                "libpython": str(libpython), "libpython_sha256": file_hash(libpython),
-                "packages": packages}
+        result = {"backend": backend, "executable": sys.executable, "version": sys.version,
+                  "executable_sha256": file_hash(Path(sys.executable)),
+                  "library": str(library), "library_sha256": file_hash(library),
+                  "libpython": str(libpython), "libpython_sha256": file_hash(libpython),
+                  "packages": packages}
+        if backend == "verilator":
+            # cocotb's Verilator entry supplies the C++ main and GPI entry.
+            support = (Path(share_dir) / "lib/verilator/verilator.cpp").resolve()
+            result.update(library_dir=str(library.parent), support=str(support),
+                          support_sha256=file_hash(support), entry_point=pygpi_entry_point())
+        return result
     except (ImportError, importlib.metadata.PackageNotFoundError, TypeError, OSError) as error:
         raise ValueError("Python TB dependencies unavailable; install src/dv/python/requirements.txt in the pinned environment") from error
 
@@ -385,12 +388,25 @@ def environment(root, target, attempt, seed, runtime):
     runtime_paths = [p for p in sys.path if p and any(Path(p).resolve().is_relative_to(base) for base in prefixes)]
     env.update(PYTHONPATH=os.pathsep.join([str(module.parent), *runtime_paths]),
                PYGPI_PYTHON_BIN=runtime["executable"], LIBPYTHON_LOC=runtime["libpython"],
-               # Verilator's VPI library loads libpython, then cocotb's entry.
-               GPI_USERS=runtime["libpython"] + ";" + runtime["entry_point"],
                COCOTB_TOPLEVEL=target["top"], COCOTB_TEST_MODULES=config["module"],
                COCOTB_RESULTS_FILE=str(attempt / "results.xml"), COCOTB_RANDOM_SEED=str(seed),
                PYTHONDONTWRITEBYTECODE="1", PYTHONNOUSERSITE="1", PYTHONOPTIMIZE="0")
+    if runtime["backend"] == "verilator":
+        # Verilator's VPI library loads libpython, then cocotb's entry.
+        env["GPI_USERS"] = runtime["libpython"] + ";" + runtime["entry_point"]
     return env
+
+
+def classify_questa(output):
+    """Explain only Questa's exact classic-access optimization diagnostic."""
+    warning = "# ** Warning: (vopt-10908) Some optimizations are turned off because the +acc switch is in effect."
+    restored = "# ** Note: (vsim-12126) Error and warning message counts have been restored: Errors=0, Warnings=1."
+    summary = "# Errors: 0, Warnings: 1"
+    lines = output.splitlines()
+    if lines.count(warning) != 1 or lines.count(restored) != 1 or lines.count(summary) != 1:
+        return output, []
+    explained = [warning, restored, summary]
+    return "\n".join(line for line in lines if line not in explained), explained
 
 
 def prepare(target, attempt, root=None, fixture_tools=None):
@@ -628,8 +644,11 @@ def evidence(root, record, target, *, driver=False):
     if not isinstance(name, str) or name not in record["artifacts"]:
         return False
     folder = (root / name).parent
-    inventory = ("results.xml", "peer.log", "peer-result.json", "waves/simulation.fst", "sim.log") if driver \
-        else ("results.xml", "transactions.jsonl", "waves/simulation.fst", "sim.log")
+    wave = "waves/simulation.wlf" if record.get("simulator") == "questa" else "waves/simulation.fst"
+    inventory = ("results.xml", "peer.log", "peer-result.json", wave, "sim.log") if driver \
+        else ("results.xml", "transactions.jsonl", wave, "sim.log")
+    if record.get("simulator") == "questa":
+        inventory += ("waves/simulation.vcd",)
     required = [folder / p for p in inventory]
     if not all(p.relative_to(root).as_posix() in record["artifacts"] and p.is_file() and p.stat().st_size > 0 for p in required):
         return False

@@ -10,7 +10,7 @@ import sys
 import uuid
 
 from .records import atomic_json, atomic_text, file_hash, git_state, workspace
-from .simulation import load_target, retired, simulate, skipped_record
+from .simulation import SIMULATORS, load_target, publish_mirror, simulate, stage_paths
 from .simulator import Simulator, ToolError
 from .doctor import doctor
 from .host.command import run as host_command
@@ -30,11 +30,12 @@ from sw.expressions import AssemblyError
 def parser():
     result = argparse.ArgumentParser(description="Tagged repository builds (doctor, check, sim test, regress, clean, fpga build).")
     commands = result.add_subparsers(dest="command", required=True)
-    leaves = [commands.add_parser("doctor", help="run checked Verilator smoke on WSL; no hardware access"),
+    leaves = [commands.add_parser("doctor", help="run the checked host-native simulator smoke; no hardware access"),
               commands.add_parser("check", help="run builder tests")]
     leaves[0].add_argument("--profile", choices=("simulation", "environment"), default="simulation")
     leaves[0].add_argument("--verilator-bin", help="directory containing verilator; otherwise discover on PATH")
-    leaves[0].add_argument("--sim", choices=("verilator",), default="verilator")
+    leaves[0].add_argument("--questa-bin", help="directory containing native Questa tools; otherwise discover on PATH")
+    leaves[0].add_argument("--sim", choices=SIMULATORS)
     for option in ("quartus-bin", "jtag-cable", "uart-port", "uart-vid", "uart-pid", "uart-identity"):
         leaves[0].add_argument("--" + option)
     sim = commands.add_parser("sim").add_subparsers(dest="action", required=True)
@@ -43,7 +44,9 @@ def parser():
     test.add_argument("--seed", type=int, default=1)
     test.add_argument("--rebuild", action="store_true")
     test.add_argument("--verilator-bin", help="directory containing verilator; otherwise discover on PATH")
-    test.add_argument("--sim", choices=("verilator",), default="verilator")
+    test.add_argument("--questa-bin", help="directory containing native Questa tools; otherwise discover on PATH")
+    test.add_argument("--intel-sim-lib", help="supported Quartus eda/sim_lib directory for Questa Intel-model targets")
+    test.add_argument("--sim", choices=SIMULATORS)
     preflight = sim.add_parser("preflight", help="prepare and check Python fixtures without discovering or launching a simulator")
     preflight.add_argument("target")
     preflight.add_argument("--tag")
@@ -59,7 +62,9 @@ def parser():
     subset.add_argument("--broader", action="store_true",
                         help="declare a subset whose budget exceeds the ordinary 300-second pre-merge aggregate")
     subset.add_argument("--verilator-bin")
-    subset.add_argument("--sim", choices=("verilator",), default="verilator")
+    subset.add_argument("--questa-bin")
+    subset.add_argument("--intel-sim-lib")
+    subset.add_argument("--sim", choices=SIMULATORS)
     subset.add_argument("--tag")
     subset.add_argument("--json", action="store_true")
     tests = commands.add_parser("tests", help="one catalogue of every runnable test; select by level and label").add_subparsers(dest="action", required=True)
@@ -79,6 +84,9 @@ def parser():
     runner.add_argument("--broader", action="store_true",
                         help="declare a budget above the ordinary 300-second pre-merge aggregate")
     runner.add_argument("--verilator-bin")
+    runner.add_argument("--questa-bin")
+    runner.add_argument("--intel-sim-lib")
+    runner.add_argument("--sim", choices=SIMULATORS)
     for leaf in (validate, listing, runner, affected):
         leaf.add_argument("--tag")
         leaf.add_argument("--json", action="store_true")
@@ -225,12 +233,12 @@ def tagged(root, args, header, publish):
                 if not 0 <= args.seed <= 2147483647:
                     raise ValueError("seed must be between 0 and 2147483647")
                 provenance = {k: report[k] for k in ("commit", "dirty_tree_fingerprint", "host", "python", "os") if k in report}
-                if retired(load_target(root, args.target)[0]):
-                    # Nothing to discover: a retired target is reported, not run.
-                    report.update(skipped_record(root, build, args, provenance))
-                else:
-                    simulator = Simulator(args.sim, verilator_bin=args.verilator_bin)
-                    report.update(simulate(root, build, args, simulator, provenance))
+                # Capability validation precedes discovery, so an unsupported
+                # pair never probes or falls back to another simulator.
+                load_target(root, args.target, args.sim)
+                simulator = Simulator(args.sim, verilator_bin=args.verilator_bin,
+                                      questa_bin=args.questa_bin)
+                report.update(simulate(root, build, args, simulator, provenance))
         except Exception as error:
             report.update(status="FAIL", error=str(error))
             if isinstance(error, AssemblyError):
@@ -247,25 +255,51 @@ def tagged(root, args, header, publish):
                 failure_artifacts[log.relative_to(root).as_posix()] = file_hash(log)
                 report["artifacts"] = failure_artifacts
                 atomic_json(folder / "result.json", report)
-            if args.command == "sim" and re.fullmatch(r"[a-z0-9][a-z0-9_-]*", args.target):
-                atomic_json(build / "sim/test" / args.target / "result.json",
-                            {"status": "FAIL", "error": str(error), "artifacts": failure_artifacts})
+            if args.command == "sim" and args.action == "test" and re.fullmatch(r"[a-z0-9][a-z0-9_-]*", args.target):
+                stage, mirror, authoritative = stage_paths(root, build, args.target, args.sim)
+                failure = {"status": "FAIL", "error": str(error), "artifacts": failure_artifacts,
+                           "simulator": args.sim, "os": platform.system(),
+                           "authoritative_result": authoritative}
+                atomic_json(stage / "result.json", failure)
+                publish_mirror(root, mirror, failure)
         publish(build, report)
     return report
 
 
-# One build tool, two operating systems: simulation belongs to WSL Linux and
-# the Quartus flow to Windows PowerShell. Each side refuses the other's commands.
-SIMULATION_HOST = "simulation runs on WSL Linux"
+# One build tool, two native simulator hosts and one FPGA host. No command
+# launches the other operating system or translates one backend into another.
+VERILATOR_HOST = "Verilator simulation runs on WSL Linux"
+QUESTA_HOST = "Questa simulation runs on Windows PowerShell"
 FPGA_HOST = "FPGA build and programming run on Windows PowerShell"
+
+
+def simulator_command(args):
+    return (args.command == "doctor" or args.command == "regress"
+            or (args.command == "sim" and args.action == "test")
+            or (args.command == "tests" and args.action == "run"))
+
+
+def resolve_simulator(args, system=None):
+    """Resolve omission to the native backend and reject ignored tool options."""
+    if not simulator_command(args):
+        return
+    if args.sim is None:
+        args.sim = "questa" if (system or platform.system()) == "Windows" else "verilator"
+    if args.sim == "verilator" and getattr(args, "questa_bin", None) is not None:
+        raise ValueError("--questa-bin applies only to --sim questa")
+    if args.sim == "verilator" and getattr(args, "intel_sim_lib", None) is not None:
+        raise ValueError("--intel-sim-lib applies only to --sim questa")
+    if args.sim == "questa" and getattr(args, "verilator_bin", None) is not None:
+        raise ValueError("--verilator-bin applies only to --sim verilator")
 
 
 def foreign_host(args):
     """The refusal message when this OS does not own the requested command."""
     system = platform.system()
-    simulation = args.command in ("sim", "regress") or (args.command == "tests" and args.action == "run")
-    if simulation and system == "Windows":
-        return SIMULATION_HOST
+    if simulator_command(args) and args.sim == "verilator" and system == "Windows":
+        return VERILATOR_HOST
+    if simulator_command(args) and args.sim == "questa" and system != "Windows":
+        return QUESTA_HOST
     if args.command == "fpga" and system != "Windows":
         return FPGA_HOST
     return None
@@ -288,6 +322,7 @@ def main(argv=None, root=None):
             atomic_text(root / "workdir/latest.txt", build.name + "\n")
 
     try:
+        resolve_simulator(args)
         refusal = foreign_host(args)
         if refusal:
             report = {"tag": args.tag or "-", "os": platform.system(), "status": "FAIL", "error": refusal,

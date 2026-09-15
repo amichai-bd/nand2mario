@@ -63,11 +63,13 @@ python3 tools/n2m/baseline.py --level smoke --tag baseline-smoke
 python3 tools/n2m/baseline.py --level regression --tag baseline-regression
 ```
 
-Verilator is the default and sole backend; `--sim verilator` is optional. The
-optional `--verilator-bin` names its tool directory. Retired `questa`,
-`portable` and `both` selections fail argument parsing. Missing tools and
-runtime failures fail the run; no license is consulted. No command modifies
-global paths or device state.
+This fixed baseline aggregate remains Verilator-only; `--sim verilator` is
+optional. The optional `--verilator-bin` names its tool directory. Questa is a
+supported builder backend but these baseline targets do not declare that
+capability, so this aggregate does not offer it. `portable`, `both` and other
+unsupported selections fail argument parsing. Missing tools and runtime
+failures fail the run; no license is consulted. No command modifies global
+paths or device state.
 
 The manifest owns the seed lists and aggregate wall budgets. `smoke` uses one
 seed and both good/broken targets for changed-unit PR checks. `regression` uses

@@ -119,23 +119,15 @@ Prefer the [authorized bounded FPGA/UART game checks](../../../agents/bootstrap-
 after their build and setup gates pass. Required affected simulation and named
 milestones use explicitly declared complementary simulation/physical matrices.
 
-Simulation evidence runs under Verilator on WSL, the sole simulator in the
-builder's [simulator policy](../../../tools/n2m/SPEC.md#simulator-policy); no
-tier depends on a license. Intel primitives are represented by the
-repository's behavioral doubles under the `VERILATOR` macro per the
-[memory contract](../../rtl/common/MAS_memory_primitives.md); the "Intel model
-identity" required above becomes the double's source hash once a target
-migrates. Migration is per area: an unmigrated `questa` target reports
-`SKIPPED` with reason `questa-retired`, counts as neither pass nor defect, and
-is listed by name in the aggregate under the builder's
-[simulator field](../../../tools/n2m/SPEC.md#simulator-field). A skipped required
-target does not satisfy a tier; its evidence waits for the migration issue that
-owns it. Four-state assertions are
-removed during migration as an authorized behavior change; runs use randomized
-initial values so an uninitialized read fails by mismatch. The
-[Verilator execution path](../../../tools/n2m/SPEC.md#verilator-simulation)
-owns `sim test`, `regress` and `tests run`; the doubles are the open gap in
-[#598](https://github.com/amichai-bd/nand2mario/issues/598).
+Simulation evidence runs on the backend declared by the target under the
+builder's [simulator policy](../../../tools/n2m/SPEC.md#simulator-policy):
+Verilator on WSL or Questa on Windows. A required matrix names its backend and
+may not substitute the other one. Intel primitives use repository behavioral
+doubles under `VERILATOR` and checked installed models under Questa per the
+[memory contract](../../rtl/common/MAS_memory_primitives.md). Selecting an
+unsupported target/backend pair fails before discovery or launch. License
+failure is FAIL and cannot satisfy a tier. Verilator runs use randomized initial
+values so an uninitialized read fails by mismatch.
 
 Select gates by affected behavior and the scoped issue. Use existing preload,
 continuous Python, primitive doubles, builders, validators and targets; no
