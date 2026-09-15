@@ -58,6 +58,17 @@ def synthesis_text(text):
     return "\n".join(result)
 
 
+HDL_SOURCE = re.compile(r"src/[A-Za-z0-9_./-]+\.(?:sv|svh)")
+# A Verilator configuration file carries lint waivers for the target that
+# lists it. It is an input like HDL, so it enters the fingerprint, but it
+# holds no `include and is never a synthesis source.
+VERILATOR_CONFIG = re.compile(r"src/[A-Za-z0-9_./-]+\.vlt")
+
+
+def is_verilator_config(name):
+    return VERILATOR_CONFIG.fullmatch(name) is not None
+
+
 def dependencies(root, sources, *, synthesis=False):
     root = root.resolve()
     found = []
@@ -65,11 +76,14 @@ def dependencies(root, sources, *, synthesis=False):
 
     def visit(name):
         path = root / name
-        if (not re.fullmatch(r"src/[A-Za-z0-9_./-]+\.(?:sv|svh)", name)
+        config = is_verilator_config(name)
+        if (not (config or HDL_SOURCE.fullmatch(name))
                 or any(part in ("", ".", "..") for part in name.split("/"))
                 or path.is_symlink() or not path.is_file()
                 or not path.resolve().is_relative_to(root)):
             raise ValueError(f"missing or unsupported HDL dependency: {name}")
+        if config and synthesis:
+            raise ValueError(f"Verilator configuration is not an FPGA source: {name}")
         if name in active:
             raise ValueError(f"cyclic HDL include: {name}")
         if name in found:
@@ -77,6 +91,8 @@ def dependencies(root, sources, *, synthesis=False):
         if len(found) >= 256:
             raise ValueError("HDL dependency limit exceeded")
         found.append(name)
+        if config:
+            return
         active.add(name)
         # Preserve quoted strings while removing comments; commented includes
         # are not dependencies, but all conditional branches are conservatively read.
