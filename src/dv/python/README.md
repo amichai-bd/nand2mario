@@ -4,12 +4,18 @@ Python targets run through the same [Verilator builder](../../../wiki/tools/n2m/
 as SystemVerilog targets, on WSL Linux.
 The first target is the [independent joypad test](joypad/README.md).
 The [integration diagnostic](integration/README.md) independently reproduces
-the retained preloaded UART execution sequence with the real composed subsystem;
-it and the other Python preloaded targets are still registered
-`simulator: "questa"` and report `SKIPPED questa-retired` until the Python
-migration ([#612](https://github.com/amichai-bd/nand2mario/issues/612)); the
-SystemVerilog `integration-smoke` and `integration-preloaded` targets already
-run under the Verilator peer.
+the retained preloaded UART execution sequence with the real composed subsystem.
+Every Python target runs under Verilator 5.052 with cocotb 2.1.0 except the
+three Mooneye targets, which keep `simulator: "questa"` under the owner's
+bounded pin decision, and `python-v05-continuous`, whose 600-frame schedule
+(about 10 s of simulated time) cannot finish inside any declared wall allowance
+and is held under [#634](https://github.com/amichai-bd/nand2mario/issues/634).
+Composed wrappers build with only their top module public and `-O2`; the
+builder generates that access configuration, and the wrappers keep their own
+clocks under `--timing`. A background monitor cancelled at the end of a test
+must be allowed to finish before the test returns: cocotb 2.1 cancels a task
+waiting in `First()` through its child waiters, and the regression's own
+end-of-test cancel fails a task it still finds running.
 The [Python DV skill](../../../.agents/skills/dv-python/SKILL.md) owns the method.
 
 Create an isolated environment using a Python 3.12.14 executable:
