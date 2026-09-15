@@ -48,7 +48,10 @@ doubles for Intel primitives keyed on `VERILATOR`; Questa uses checked installed
 Intel models. The [doctor](SPEC.md#environment-doctor) proves a positive and
 injected-failure smoke on either host. Verilator consults no license. A Questa
 PASS records a successful runtime checkout; license failure is FAIL, never
-SKIPPED.
+SKIPPED. The Windows [Questa compile gate](SPEC.md#questa-compile-gate) must
+compile and elaborate every product source and FPGA top without a simulation
+run or runtime license, fail by name on a deliberate fault, and stand as the
+required local check for RTL and FPGA changes.
 The shared builder also supports independent Python
 testbenches alongside SV through the [Python adapter](../../../tools/n2m/python_tb.py), using the same
 tagged evidence and cache rules. Python failures must fail the command even

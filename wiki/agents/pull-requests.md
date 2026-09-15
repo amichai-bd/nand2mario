@@ -103,6 +103,19 @@ wiki run. Then, by changed scope:
   any change to `tools/n2m/dependencies.json` or `tools/n2m/rgbds.py`.
 - Any change under `tools/sim/` or `src/rtl/display/` runs
   `python -m unittest discover -s tools/sim -p test_tile_pixel.py -v`.
+- Any change under `src/rtl/` or `src/fpga/` runs the
+  [Questa compile gate](../tools/n2m/SPEC.md#questa-compile-gate) on Windows
+  PowerShell from a Windows checkout of the reviewed head:
+
+  ```text
+  python tools/build.py lint questa --tag <tag> --json
+  ```
+
+  It must report `PASS`. The PR body records the head it ran on, the tool
+  banners from `tools`, the source and top counts, `elapsed_seconds` and the
+  retained `attempt_result` path. A FAIL names the offending file or unit and
+  blocks the merge; explaining a new warning class means changing the RTL or
+  the documented policy, never suppressing the diagnostic.
 - The scoped [verification tier](../src/dv/integration/SPEC.md#verification-tiers)
   supplies simulation, FPGA and hardware evidence; no hosted job ever ran those.
   Run a [declared subset](../tools/n2m/SPEC.md#regression-subsets) rather than

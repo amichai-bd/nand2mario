@@ -108,7 +108,9 @@ need private host-control MMIO.
 
 The builder supports Verilator on WSL and native Questa on Windows under its
 [simulator policy](wiki/tools/n2m/SPEC.md#simulator-policy); omission selects
-the host-native backend. Quartus builds and programming run from Windows. The repository also contains
+the host-native backend. Quartus builds and programming run from Windows, as does
+the [Questa compile gate](wiki/tools/n2m/SPEC.md#questa-compile-gate) required for
+RTL and FPGA changes. The repository also contains
 Quartus/MAX 10 FPGA build support, host-side loading and control tools, Python
 verification, cocotb integration, vendor-model simulation, deterministic build
 records, and checked output evidence.
