@@ -1177,8 +1177,9 @@ inputs, deterministic artifacts and independent conformance requirements.
 
 Simulation and FPGA builds share the [dependency resolver](../../../tools/n2m/hdl.py).
 Sources are repository `src/` files. An include must name a literal, canonical
-repository path such as `src/rtl/common/macros.svh`. Only `.sv` source files, `.svh` headers and
-ASCII path letters, digits, underscore, hyphen, slash and period are accepted.
+repository path such as `src/rtl/common/macros.svh`. Only `.sv` source files, `.svh` headers,
+simulation [lint waiver files](#lint-waiver-files) (`.vlt`, hashed but never included
+or synthesized) and ASCII path letters, digits, underscore, hyphen, slash and period are accepted.
 Relative traversal, missing files, escapes, symlink files, cycles, dynamic names,
 extra include tokens and ambiguous source-directory shadow files fail before
 cache lookup or compilation. Closure is limited to 256 source/header files.
