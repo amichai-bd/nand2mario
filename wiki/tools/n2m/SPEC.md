@@ -241,7 +241,12 @@ targets and the two `tb_preload_load` targets), the two `tb_memory_decode`
 targets `memory-decode` and `memory-decode-alias`, the three `tb_clocking` targets `clocking`, `clocking-bad-numerator` and
 `clocking-drop-tick`, and the five `tb_async_assert_macros` targets
 `async-assert-macros`, `async-assert-direct`, `async-assert-hold`,
-`async-assert-never` and `async-assert-no_reset`. `ppu-shift-unknown` and
+`async-assert-never` and `async-assert-no_reset`, and the 123 Python cocotb
+targets of the [Python area](../../../src/dv/python/README.md). Four Python
+rows stay `questa`: the three `tb_python_mooneye` targets under the owner's
+pending pin decision, and `python-v05-continuous`, whose 600-frame schedule
+cannot finish inside any declared wall allowance
+([#634](https://github.com/amichai-bd/nand2mario/issues/634)). `ppu-shift-unknown` and
 `async-assert-known` are [retired](#test-catalogue): their expected fatal was
 a four-state `N2M_ASSERT_KNOWN` that a two-state simulator never raises.
 
@@ -401,7 +406,10 @@ under 0.1 s, `CACHED` on rerun. `preload-lifecycle` and `preload-crc-fault`
 ([`tb_preload_load.sv`](../../../src/dv/preload/tb_preload_load.sv)) run the
 loader against the initialized RAM double with the same `preload: "integration"`
 declaration and rebuild their expected bytes from the prepared ROM MIF. The
-Python-area preload targets flip in their own migration.
+Python targets that declare `preload` run through the same stage: the wrapper
+selects the prepared image under `+define+PRELOADED` from the target's
+`defines`, and the Python test adopts the verified manifest instead of loading
+the image over UART.
 [`test_verilator.py`](../../../tools/n2m/tests/test_verilator.py)
 `PreloadTests` cover validation, preparation, the pre-launch recheck, the
 record, and fingerprint invalidation by a changed fixture input or Mooneye tool
@@ -724,7 +732,7 @@ cannot reuse an older PASS. Vendor source is never copied into tracked files.
 `intel_mixed_mode_instances` named the exact vendor instances expected to emit
 the reviewed model's mixed-port coercion warning. This inventory was part of
 the Questa descriptor and fingerprint; no `verilator` target declares it (the
-Python `questa` targets keep theirs until their migration), and the validator
+four held Python `questa` rows keep theirs), and the validator
 refuses it under `verilator` because the double emits no coercion diagnostic. The forbidden collision it classified is checked under both
 simulators by the wrapper's `INTEL_RAM_MIXED_PORT_A/B` assertions, which
 `intel-memory-collision` witnesses. Only the pinned source's exact two-line time-zero
