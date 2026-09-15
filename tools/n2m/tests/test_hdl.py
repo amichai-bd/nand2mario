@@ -25,6 +25,25 @@ class HdlTests(unittest.TestCase):
                 with self.subTest(invalid=invalid), self.assertRaises(ValueError):
                     dependencies(root, ["src/wrapper.sv"])
 
+    def test_verilator_configuration_is_an_input_but_never_scanned_or_synthesized(self):
+        parent = Path(__file__).resolve().parents[3] / "workdir/builds/hdl-tests"
+        parent.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=parent) as folder:
+            root = Path(folder)
+            (root / "src").mkdir()
+            top = root / "src/top.sv"
+            top.write_text('module top; endmodule\n')
+            # A waiver file is hashed like HDL, but its text is never read for includes.
+            (root / "src/waivers.vlt").write_text('`verilator_config\n`include "src/missing.svh"\n')
+            self.assertEqual(dependencies(root, ["src/top.sv", "src/waivers.vlt"]), ["src/top.sv", "src/waivers.vlt"])
+            with self.assertRaisesRegex(ValueError, "not an FPGA source"):
+                dependencies(root, ["src/top.sv", "src/waivers.vlt"], synthesis=True)
+            with self.assertRaisesRegex(ValueError, "missing or unsupported HDL dependency"):
+                dependencies(root, ["src/absent.vlt"])
+            top.write_text('`include "src/waivers.vlt"\n')
+            with self.assertRaisesRegex(ValueError, "unsupported HDL include"):
+                dependencies(root, ["src/top.sv"])
+
     def test_literal_closure_comments_conditions_and_rejections(self):
         parent = Path(__file__).resolve().parents[3] / "workdir/builds/hdl-tests"
         parent.mkdir(parents=True, exist_ok=True)

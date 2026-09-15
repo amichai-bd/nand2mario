@@ -164,6 +164,38 @@ class CommandTests(unittest.TestCase):
         self.assertTrue(run[0].endswith("obj_dir/sim"))
         self.assertEqual(run[1:], ["+seed=7", "+verilator+seed+7", "+verilator+rand+reset+2", "+inject_failure"])
 
+    def test_configuration_sources_precede_hdl_and_the_generated_access_list(self):
+        registry = self.root / "src/dv/builder/targets.json"
+        targets = read_json(registry)
+        waivers = "src/dv/builder/waivers.vlt"
+        (self.root / waivers).write_text("`verilator_config\n")
+        targets["builder-smoke"]["sources"].append(waivers)
+        registry.write_text(json.dumps(targets))
+        target, _ = load_target(self.root, "builder-smoke")
+        attempt = self.build / "attempt"
+        compiler = self.build / "compile"
+        for folder in (attempt / "waves", compiler):
+            folder.mkdir(parents=True)
+        (build, *_), (run, *_) = verilator.commands(self.sim, self.root, target, 1, compiler, attempt)
+        config = str(self.root / waivers)
+        # The waiver file is passed once, ahead of the HDL and before the harness.
+        self.assertEqual(build.count(config), 1)
+        self.assertLess(build.index(config), build.index(str(self.root / "src/dv/builder/builder_smoke.sv")))
+        self.assertEqual(build[-1], verilator.HARNESS)
+        self.assertNotIn(config, run)
+        # Under the peer flow it also precedes the generated access list, so both apply.
+        shutil.copytree(test_builder.ROOT / "src/dv/integration", self.root / "src/dv/integration",
+                        ignore=shutil.ignore_patterns("__pycache__"))
+        targets = read_json(registry)
+        targets["verilator-peer"]["sources"].append(waivers)
+        registry.write_text(json.dumps(targets))
+        target, _ = load_target(self.root, "verilator-peer")
+        runtime = {"library_dir": "/venv/cocotb/libs", "support": "/venv/cocotb/share/lib/verilator/verilator.cpp"}
+        (build, *_), _ = verilator.commands(self.sim, self.root, target, 1, self.build, attempt, python_runtime=runtime)
+        access = str(self.build / verilator.ACCESS_CONFIG)
+        self.assertLess(build.index(config), build.index(access))
+        self.assertLess(build.index(access), build.index(str(self.root / "src/dv/integration/tb_verilator_peer.sv")))
+
     def test_defines_become_build_options_and_are_validated(self):
         registry = self.root / "src/dv/builder/targets.json"
         targets = read_json(registry)
@@ -268,6 +300,23 @@ class CommandTests(unittest.TestCase):
 class RecordTests(unittest.TestCase):
     setUp = test_builder.BuilderTests.setUp
     run_stage = test_builder.BuilderTests.run_stage
+
+    def test_changed_configuration_source_changes_the_fingerprint(self):
+        registry = self.root / "src/dv/builder/targets.json"
+        targets = read_json(registry)
+        waivers = self.root / "src/dv/builder/waivers.vlt"
+        waivers.write_text("`verilator_config\n")
+        targets["builder-smoke"]["sources"].append("src/dv/builder/waivers.vlt")
+        registry.write_text(json.dumps(targets))
+        first = self.run_stage()
+        self.assertEqual((first["status"], first["cache"]), ("PASS", "BUILT"))
+        self.assertIn("src/dv/builder/waivers.vlt", first["inputs"])
+        self.assertEqual(self.run_stage()["cache"], "CACHED")
+        waivers.write_text('`verilator_config\nlint_off -rule WIDTHEXPAND -file "*/builder_smoke.sv"\n')
+        second = self.run_stage()
+        self.assertEqual((second["status"], second["cache"]), ("PASS", "BUILT"))
+        self.assertNotEqual(first["fingerprint"], second["fingerprint"])
+        self.assertEqual(self.run_stage()["cache"], "CACHED")
 
     def test_record_names_simulator_os_seed_waves_and_split_timing(self):
         with patch("n2m.simulation.platform.system", return_value="Linux"):
