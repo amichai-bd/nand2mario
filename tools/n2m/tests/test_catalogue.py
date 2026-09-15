@@ -251,10 +251,13 @@ class SimulatorCapabilities(unittest.TestCase):
             self.assertEqual(module.coverage(root, loaded),
                              ["registry target cpu-alu must declare simulators as a nonempty unique list drawn from verilator, questa"])
 
-    def test_an_unsupported_backend_fails_the_selection_before_launch(self):
+    def test_an_unsupported_backend_is_skipped_by_name_and_never_launched(self):
+        """An area run names the unsupported pair as SKIPPED unsupported-backend;
+        the supported rows still run and the selection is neither failed nor
+        silently passed for the skipped one."""
         args = type("Args", (), {"seed": 1, "rebuild": False, "verilator_bin": None,
                                  "questa_bin": None, "intel_sim_lib": None, "sim": "questa",
-                                 "level": 2, "label": [], "broader": False})()
+                                 "level": 0, "label": [], "broader": False})()
         loaded, path = module.load(ROOT)
         base = ROOT / "workdir/builds/catalogue-unit-tests"
         base.mkdir(parents=True, exist_ok=True)
@@ -262,10 +265,24 @@ class SimulatorCapabilities(unittest.TestCase):
         self.addCleanup(temp.cleanup)
         copy = Path(temp.name) / "catalogue.yaml"
         shutil.copy(path, copy)
-        loaded["units"] = {"tile-pixel": loaded["units"]["tile-pixel"]}
-        with patch("n2m.catalogue.supervise", side_effect=AssertionError("launched")), \
-                self.assertRaisesRegex(ValueError, "tile-pixel does not support simulator questa"):
-            module.run_selection(ROOT, loaded, copy, "tag", args, 300, {})
+        # builder-smoke declares both backends; the tile-pixel Python driver is Verilator-only.
+        loaded["units"] = {name: loaded["units"][name] for name in ("builder-smoke", "tile-pixel")}
+        launched = []
+
+        def fake_supervise(command, root, tag, *, target=None, ceiling=None):
+            launched.append(target)
+            return 0, json.dumps({"status": "PASS", "cache": "BUILT"}) + "\n"
+
+        with patch("n2m.catalogue.supervise", side_effect=fake_supervise):
+            record = module.run_selection(ROOT, loaded, copy, "tag", args, 300, {})
+        self.assertEqual(launched, ["builder-smoke"])
+        self.assertEqual((record["status"], record["failed"], record["skipped"]), ("PASS", [], ["tile-pixel"]))
+        self.assertEqual(record["units"]["builder-smoke"]["status"], "PASS")
+        self.assertEqual(record["units"]["tile-pixel"],
+                         {"status": "SKIPPED", "reason": "unsupported-backend",
+                          "error": "target tile-pixel does not support simulator questa; supported: verilator"})
+        # A skip never ran, so it writes no duration back to the catalogue.
+        self.assertEqual(record["durations_written"], 1)
 
     def test_a_cached_simulation_reports_its_cache_hit(self):
         args = type("Args", (), {"seed": 1, "rebuild": False, "verilator_bin": "/tools/bin",

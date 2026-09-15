@@ -21,7 +21,7 @@ import sys
 import time
 
 from .records import atomic_json, atomic_text, file_hash, workspace
-from .simulation import load_target, simulator_problem
+from .simulation import UNSUPPORTED_REASON, simulator_problem, unsupported_backend
 from .test_budget import supervise
 
 CATALOGUE = "src/dv/builder/catalogue.yaml"
@@ -487,16 +487,15 @@ def run_selection(root, model, path, tag, args, budget, provenance):
     """Run the selection under one aggregate budget and write the walls back."""
     chosen, selector = select(model, args.level, args.label)
     simulations = [name for name in chosen if model["units"][name]["kind"] == "sim"]
-    # Fail before any simulator time is spent when a selected target cannot run.
-    unrunnable = {}
+    # Validate every selected target before any simulator time is spent. A
+    # registry problem still fails the selection; a valid row that lacks the
+    # requested backend is SKIPPED by name and never launched. It is neither a
+    # pass nor a defect, and there is no fallback to the other simulator.
+    unsupported = {}
     for target in simulations:
-        try:
-            load_target(Path(root), target, args.sim)
-        except Exception as error:
-            unrunnable[target] = str(error)
-    if unrunnable:
-        named = "; ".join(f"{name}: {error}" for name, error in sorted(unrunnable.items()))
-        raise ValueError(f"selection does not support simulator {args.sim}: {named}")
+        message = unsupported_backend(Path(root), target, args.sim)
+        if message:
+            unsupported[target] = message
     record = {"selector": selector, "level": args.level, "labels": list(args.label),
               "selected": len(chosen), "budget_seconds": budget, "broader": bool(args.broader),
               "catalogue": {"path": CATALOGUE, "sha256": file_hash(path)},
@@ -507,7 +506,9 @@ def run_selection(root, model, path, tag, args, budget, provenance):
     for name in chosen:
         entry = model["units"][name]
         remaining = budget - (time.monotonic() - started)
-        if remaining < MINIMUM_CHILD_SECONDS:
+        if name in unsupported:
+            outcome = {"status": "SKIPPED", "reason": UNSUPPORTED_REASON, "error": unsupported[name]}
+        elif remaining < MINIMUM_CHILD_SECONDS:
             outcome = {"status": "FAIL", "error": "aggregate budget exhausted before start"}
         elif entry["kind"] == "sim":
             outcome = run_simulation(root, tag, name, args, remaining)
