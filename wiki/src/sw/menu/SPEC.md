@@ -39,6 +39,8 @@ Every frame, at the start of VBlank (`LY == 144`) and finishing inside it:
 4. Delayed catalogue path: when bank 34 has not been committed and
    `sdram_ready` is now set, commit it; when it has been committed and
    `window_ready` is set, draw one remaining title row per frame.
+5. Redraw the cursor cell and the status row only when they changed, so the
+   ordinary frame writes at most two map cells plus one row.
 
 The catalogue is read once, at boot or through the delayed path; the drawn
 map is the menu's copy of the titles. Nothing after a selection depends on
@@ -46,8 +48,6 @@ map is the menu's copy of the titles. Nothing after a selection depends on
 ([#685](https://github.com/amichai-bd/nand2mario/issues/685), a deviation
 from the [bank register rule](../../rtl/cartridge/MAS_loader_profile.md#bank-register))
 does not affect the menu.
-5. Redraw the cursor cell and the status row only when they changed, so the
-   ordinary frame writes at most two map cells plus one row.
 
 The menu lists game slots 0..15 only. It reads all 17 catalogue entries
 through the window but never lists entry 16, which is itself. A slot is drawn
@@ -162,7 +162,7 @@ compares every captured display-eligible frame; the
 
 | Target | Proves |
 |---|---|
-| `menu-frame` | The boot frame equals the reference for the fixture library; Down, Down, Up move the cursor with a pixel-exact frame after each press; Up at slot 0 and a held button change nothing |
+| `menu-frame` | The boot frame equals the reference for the fixture library; Down, Down, Up move the cursor with a pixel-exact frame after each press; Up at slot 0 and a repeated Up at slot 0 change nothing (each step is one sampled press; a hold across frames is not simulated) |
 | `menu-select` | Down then A commits 1 to the select register; the game boots in `DIRECT_ID` with epoch + 1 and `LIBRARY_STATUS` result `OK` index 1 |
 | `menu-refused` | A on the empty slot 3 is refused: `LIBRARY_STATUS` reports `INVALID_SLOT` index 3 (its `window_ready` bit is not asserted, [#685](https://github.com/amichai-bd/nand2mario/issues/685)) and the frame shows `SLOT 03 INVALID`; Up keeps the message; A on slot 2 starts that game |
 | `menu-frame-fault` | The frame comparison rejects a forced wrong source shade with the exact `MENU_PIXEL` diagnostic |
