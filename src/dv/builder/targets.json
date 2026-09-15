@@ -1596,7 +1596,8 @@
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/interrupts/n2m_interrupts_pkg.sv",
       "src/rtl/interrupts/n2m_interrupts.sv",
-      "src/dv/interrupts/tb_interrupts.sv"
+      "src/dv/interrupts/tb_interrupts.sv",
+      "src/dv/interrupts/interrupts_lint.vlt"
     ],
     "top": "tb_interrupts",
     "simulators": [
@@ -1611,7 +1612,8 @@
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/interrupts/n2m_interrupts_pkg.sv",
       "src/rtl/interrupts/n2m_interrupts.sv",
-      "src/dv/interrupts/tb_interrupts.sv"
+      "src/dv/interrupts/tb_interrupts.sv",
+      "src/dv/interrupts/interrupts_lint.vlt"
     ],
     "top": "tb_interrupts",
     "simulators": [
@@ -1628,7 +1630,8 @@
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/interrupts/n2m_interrupts_pkg.sv",
       "src/rtl/interrupts/n2m_interrupts.sv",
-      "src/dv/interrupts/tb_interrupts.sv"
+      "src/dv/interrupts/tb_interrupts.sv",
+      "src/dv/interrupts/interrupts_lint.vlt"
     ],
     "top": "tb_interrupts",
     "simulators": [
@@ -1645,7 +1648,8 @@
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/interrupts/n2m_interrupts_pkg.sv",
       "src/rtl/interrupts/n2m_interrupts.sv",
-      "src/dv/interrupts/tb_interrupts.sv"
+      "src/dv/interrupts/tb_interrupts.sv",
+      "src/dv/interrupts/interrupts_lint.vlt"
     ],
     "top": "tb_interrupts",
     "simulators": [

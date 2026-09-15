@@ -1,0 +1,13 @@
+`verilator_config
+// Lint waivers for warnings the interrupt testbenches induce in src/rtl.
+// Each waiver names the rule, the RTL file and signal, and the testbench
+// construct that causes the report. RTL lint comments stay reserved for
+// warnings the RTL itself owns. A comment here must not open with the word
+// "verilator": the lexer would read it as a lint meta-comment.
+
+// MULTIDRIVEN: tb_interrupts forces operation_b, source_history and flags_q
+// for fault injection; each force counts as a second driver of the register.
+// The product logic has one driver each.
+lint_off -rule MULTIDRIVEN -file "*/src/rtl/interrupts/n2m_interrupts.sv" -match "*'operation_b'"
+lint_off -rule MULTIDRIVEN -file "*/src/rtl/interrupts/n2m_interrupts.sv" -match "*'source_history'"
+lint_off -rule MULTIDRIVEN -file "*/src/rtl/interrupts/n2m_interrupts.sv" -match "*'flags_q'"
