@@ -494,7 +494,9 @@ def timing_evidence(folder, target, *, build_id=None):
         evidence["board_uart"] = fpga_controls.verify(folder, system_clock=fpga_pll.SYSTEM_CLOCK,
             system_net=fpga_pll.SYSTEM_NET, chains=fpga_v05.chains(target), top=target["top"])
         evidence["board_build_id"] = fpga_controls.verify_identity(folder, build_id, macro="N2M_V05_BUILD_ID", instances=3 if fpga_v05.control_target(target) else 2)
-    if sdram_target(target):
+    # The composed board images check their own chains above; only the
+    # bring-up top uses the SDRAM image's chain set and identity.
+    if target["top"] == SDRAM_TOP:
         evidence["board_uart"] = fpga_controls.verify(folder, system_clock=fpga_pll.SYSTEM_CLOCK,
             system_net=fpga_pll.SYSTEM_NET, chains=SDRAM_CHAINS, top=SDRAM_TOP)
         evidence["board_build_id"] = fpga_controls.verify_identity(folder, build_id, macro="N2M_SDRAM_BUILD_ID", instances=1)

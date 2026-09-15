@@ -46,6 +46,7 @@ module tb_loader_system #(
     // Wire driver state (3.125 MBaud: eight system clocks per bit).
     logic [7:0] request_payload [0:255];
     logic [7:0] expected_payload [0:255];
+    logic [7:0] expected_mask [0:255];
     logic [7:0] raw_request [0:267];
     logic [7:0] encoded_request [0:270];
     logic [7:0] encoded_reply [0:270];
@@ -179,7 +180,7 @@ module tb_loader_system #(
             $fatal(1,"LOADER_SYS_HEADER seq=%0d cmd=%0d status=%0d/%0d size=%0d",expected_token,raw_reply[6],raw_reply[7],expected_status,{raw_reply[9],raw_reply[8]});
         if (!ignore_payload)
             for(payload_index=0;payload_index<expected_size;payload_index=payload_index+1)
-                if(raw_reply[10+payload_index]!=expected_payload[payload_index])
+                if((raw_reply[10+payload_index] & expected_mask[payload_index])!=(expected_payload[payload_index] & expected_mask[payload_index]))
                     $fatal(1,"LOADER_SYS_PAYLOAD cmd=%0d index=%0d expected=%02h actual=%02h",
                         expected_command,payload_index,expected_payload[payload_index],raw_reply[10+payload_index]);
         waiting_reply=0;reply_size=0;
@@ -234,6 +235,7 @@ module tb_loader_system #(
         if(waiting_reply) $fatal(1,"LOADER_SYS_TIMEOUT token=%0d command=%0d",token,cmd);
         repeat(4) @(negedge clk_sys);token=token+1;command_count=command_count+1;
         ignore_payload=0;
+        for (cycles=0;cycles<256;cycles=cycles+1) expected_mask[cycles]=8'hFF;
         $display("LOADER_SYS command=%0d status=%0d time_ns=%0t", cmd, result_status, $time);
     endtask
     task automatic word_request(input logic [31:0] value);
@@ -244,6 +246,15 @@ module tb_loader_system #(
         integer item;
         word_request(register);
         for(item=0;item<4;item=item+1) expected_payload[item]=8'(expected>>(item*8));
+        exchange(COMMAND_READ_HOST,4,STATUS_OK,4);
+        checks = checks + 1;
+    endtask
+    // A masked LIBRARY_STATUS read: the running menu refills its window, so
+    // copy_busy and window_ready are not stable between two host commands.
+    task automatic read_status(input logic [31:0] expected, input logic [31:0] mask, input string what);
+        integer item;
+        word_request(HOST_REG_LIBRARY_STATUS);
+        for(item=0;item<4;item=item+1) begin expected_payload[item]=8'(expected>>(item*8)); expected_mask[item]=8'(mask>>(item*8)); end
         exchange(COMMAND_READ_HOST,4,STATUS_OK,4);
         checks = checks + 1;
     endtask
@@ -417,7 +428,7 @@ module tb_loader_system #(
         if (epoch != epoch_before + 1) $fatal(1, "LOADER_SYS_KEY1_EPOCH");
         read_host(HOST_REG_PROFILE, PROFILE_LOADER_ID, "recovered menu");
         read_host(HOST_REG_STATE, STATE_RUN, "recovered running");
-        read_host(HOST_REG_LIBRARY_STATUS, {2'b0, 6'd33, 8'd9, LIBRARY_RESULT_OK, 8'h20}, "recovered status");
+        read_status({2'b0, 6'd33, 8'd9, LIBRARY_RESULT_OK, 8'h20}, 32'h3FFFFF3F, "recovered status");
         read_host(HOST_REG_LIBRARY_KEY1, 0, "key1 released");
         returns = returns + 1;
     endtask
@@ -439,7 +450,7 @@ module tb_loader_system #(
             press_buttons(8'(slots[s] << 4));
             wait_profile(PROFILE_DIRECT_ID, 600000, "game");
             if (epoch != epoch_before + 1) $fatal(1, "LOADER_SYS_GAME_EPOCH slot=%0d", slots[s]);
-            read_host(HOST_REG_LIBRARY_STATUS, {2'b0, 6'd33, 8'(slots[s]), LIBRARY_RESULT_OK, 8'h20}, "game status");
+            read_status({2'b0, 6'd33, 8'(slots[s]), LIBRARY_RESULT_OK, 8'h20}, 32'h3FFFFF3F, "game status");
             read_host(HOST_REG_STATE, STATE_RUN, "game running");
             // The game executes: the emulated dot count advances.
             dots_before = dot_count;
@@ -463,6 +474,8 @@ module tb_loader_system #(
         physical_commit = 0; physical_buttons = 0;
         reply_size = 0; expected_size = 0; command_count = 0; token = 1; waiting_reply = 0; ignore_payload = 0;
         checks = 0; swaps = 0; returns = 0;
+        for (command_count=0;command_count<256;command_count=command_count+1) expected_mask[command_count]=8'hFF;
+        command_count = 0;
         if (!$value$plusargs("fixture=%s", fixture)) fixture = "host";
         build_library();
         $dumpfile("waves.vcd");

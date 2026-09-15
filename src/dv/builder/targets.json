@@ -30566,7 +30566,7 @@
       "+fixture=host"
     ],
     "expected_exit": "zero",
-    "signature": "PASS loader-system-host",
+    "signature": "PASS loader-system-host checks=37 swaps=0 returns=2 commands=168",
     "vendor_model": "intel-memory",
     "timeout_seconds": 300
   },
@@ -30656,7 +30656,7 @@
       "+fixture=menu"
     ],
     "expected_exit": "zero",
-    "signature": "PASS loader-system-menu",
+    "signature": "PASS loader-system-menu checks=19 swaps=4 returns=4 commands=18",
     "vendor_model": "intel-memory",
     "timeout_seconds": 300
   }
