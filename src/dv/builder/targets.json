@@ -1991,7 +1991,8 @@
       "src/rtl/ppu/n2m_ppu_position.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
       "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_fine_scroll.sv"
+      "src/dv/ppu/tb_ppu_fine_scroll.sv",
+      "src/dv/ppu/ppu_lint.vlt"
     ],
     "top": "tb_ppu_fine_scroll",
     "simulators": [
@@ -2015,7 +2016,8 @@
       "src/rtl/ppu/n2m_ppu_position.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
       "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_fine_scroll.sv"
+      "src/dv/ppu/tb_ppu_fine_scroll.sv",
+      "src/dv/ppu/ppu_lint.vlt"
     ],
     "top": "tb_ppu_fine_scroll",
     "simulators": [
@@ -2103,7 +2105,8 @@
       "src/rtl/ppu/n2m_ppu_position.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
       "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_live_scroll.sv"
+      "src/dv/ppu/tb_ppu_live_scroll.sv",
+      "src/dv/ppu/ppu_lint.vlt"
     ],
     "top": "tb_ppu_live_scroll",
     "simulators": [
@@ -2129,7 +2132,8 @@
       "src/rtl/ppu/n2m_ppu_position.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
       "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_live_scroll.sv"
+      "src/dv/ppu/tb_ppu_live_scroll.sv",
+      "src/dv/ppu/ppu_lint.vlt"
     ],
     "top": "tb_ppu_live_scroll",
     "simulators": [
@@ -2156,7 +2160,8 @@
       "src/rtl/ppu/n2m_ppu_position.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
       "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_live_scroll.sv"
+      "src/dv/ppu/tb_ppu_live_scroll.sv",
+      "src/dv/ppu/ppu_lint.vlt"
     ],
     "top": "tb_ppu_live_scroll",
     "simulators": [
@@ -2180,7 +2185,8 @@
       "src/rtl/ppu/n2m_ppu_position.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
       "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_live_scroll.sv"
+      "src/dv/ppu/tb_ppu_live_scroll.sv",
+      "src/dv/ppu/ppu_lint.vlt"
     ],
     "top": "tb_ppu_live_scroll",
     "simulators": [
@@ -2298,7 +2304,8 @@
   "ppu-mix": {
     "sources": [
       "src/rtl/ppu/n2m_ppu_mix.sv",
-      "src/dv/ppu/tb_ppu_mix.sv"
+      "src/dv/ppu/tb_ppu_mix.sv",
+      "src/dv/ppu/ppu_lint.vlt"
     ],
     "top": "tb_ppu_mix",
     "simulators": [
@@ -2311,7 +2318,8 @@
   "ppu-mix-corrupt": {
     "sources": [
       "src/rtl/ppu/n2m_ppu_mix.sv",
-      "src/dv/ppu/tb_ppu_mix.sv"
+      "src/dv/ppu/tb_ppu_mix.sv",
+      "src/dv/ppu/ppu_lint.vlt"
     ],
     "top": "tb_ppu_mix",
     "simulators": [
@@ -2336,7 +2344,8 @@
       "src/rtl/ppu/n2m_ppu_position.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
       "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_render.sv"
+      "src/dv/ppu/tb_ppu_render.sv",
+      "src/dv/ppu/ppu_lint.vlt"
     ],
     "top": "tb_ppu_render",
     "simulators": [
@@ -2362,7 +2371,8 @@
       "src/rtl/ppu/n2m_ppu_position.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
       "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_render.sv"
+      "src/dv/ppu/tb_ppu_render.sv",
+      "src/dv/ppu/ppu_lint.vlt"
     ],
     "top": "tb_ppu_render",
     "simulators": [
@@ -2417,7 +2427,8 @@
       "src/rtl/ppu/n2m_ppu_position.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
       "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_render.sv"
+      "src/dv/ppu/tb_ppu_render.sv",
+      "src/dv/ppu/ppu_lint.vlt"
     ],
     "top": "tb_ppu_render",
     "simulators": [
@@ -2443,7 +2454,8 @@
       "src/rtl/ppu/n2m_ppu_position.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
       "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_render.sv"
+      "src/dv/ppu/tb_ppu_render.sv",
+      "src/dv/ppu/ppu_lint.vlt"
     ],
     "top": "tb_ppu_render",
     "simulators": [
@@ -2470,7 +2482,8 @@
       "src/rtl/ppu/n2m_ppu_position.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
       "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_render.sv"
+      "src/dv/ppu/tb_ppu_render.sv",
+      "src/dv/ppu/ppu_lint.vlt"
     ],
     "top": "tb_ppu_render",
     "simulators": [
@@ -2494,7 +2507,8 @@
       "src/rtl/ppu/n2m_ppu_position.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
       "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_render.sv"
+      "src/dv/ppu/tb_ppu_render.sv",
+      "src/dv/ppu/ppu_lint.vlt"
     ],
     "top": "tb_ppu_render",
     "simulators": [
@@ -2520,7 +2534,8 @@
       "src/rtl/ppu/n2m_ppu_position.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
       "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_render.sv"
+      "src/dv/ppu/tb_ppu_render.sv",
+      "src/dv/ppu/ppu_lint.vlt"
     ],
     "top": "tb_ppu_render",
     "simulators": [
@@ -2546,7 +2561,8 @@
       "src/rtl/ppu/n2m_ppu_position.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
       "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_render.sv"
+      "src/dv/ppu/tb_ppu_render.sv",
+      "src/dv/ppu/ppu_lint.vlt"
     ],
     "top": "tb_ppu_render",
     "simulators": [
@@ -2573,7 +2589,8 @@
       "src/rtl/ppu/n2m_ppu_position.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
       "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_scroll_window.sv"
+      "src/dv/ppu/tb_ppu_scroll_window.sv",
+      "src/dv/ppu/ppu_lint.vlt"
     ],
     "top": "tb_ppu_scroll_window",
     "simulators": [
@@ -2597,7 +2614,8 @@
       "src/rtl/ppu/n2m_ppu_position.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
       "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_scroll_window.sv"
+      "src/dv/ppu/tb_ppu_scroll_window.sv",
+      "src/dv/ppu/ppu_lint.vlt"
     ],
     "top": "tb_ppu_scroll_window",
     "simulators": [
@@ -2846,7 +2864,8 @@
       "src/rtl/vga/n2m_frame_ram.sv",
       "src/rtl/vga/n2m_vga_scan.sv",
       "src/rtl/vga/n2m_frame_bridge.sv",
-      "src/dv/ppu/tb_ppu_video.sv"
+      "src/dv/ppu/tb_ppu_video.sv",
+      "src/dv/ppu/ppu_lint.vlt"
     ],
     "top": "tb_ppu_video",
     "simulators": [
@@ -2880,7 +2899,8 @@
       "src/rtl/vga/n2m_frame_ram.sv",
       "src/rtl/vga/n2m_vga_scan.sv",
       "src/rtl/vga/n2m_frame_bridge.sv",
-      "src/dv/ppu/tb_ppu_video.sv"
+      "src/dv/ppu/tb_ppu_video.sv",
+      "src/dv/ppu/ppu_lint.vlt"
     ],
     "top": "tb_ppu_video",
     "simulators": [
@@ -2909,7 +2929,8 @@
       "src/rtl/ppu/n2m_ppu_position.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
       "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_scroll_window.sv"
+      "src/dv/ppu/tb_ppu_scroll_window.sv",
+      "src/dv/ppu/ppu_lint.vlt"
     ],
     "top": "tb_ppu_scroll_window",
     "simulators": [
@@ -2935,7 +2956,8 @@
       "src/rtl/ppu/n2m_ppu_position.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
       "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_scroll_window.sv"
+      "src/dv/ppu/tb_ppu_scroll_window.sv",
+      "src/dv/ppu/ppu_lint.vlt"
     ],
     "top": "tb_ppu_scroll_window",
     "simulators": [
@@ -2962,7 +2984,8 @@
       "src/rtl/ppu/n2m_ppu_position.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
       "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_scroll_window.sv"
+      "src/dv/ppu/tb_ppu_scroll_window.sv",
+      "src/dv/ppu/ppu_lint.vlt"
     ],
     "top": "tb_ppu_scroll_window",
     "simulators": [
@@ -2988,7 +3011,8 @@
       "src/rtl/ppu/n2m_ppu_position.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
       "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_scroll_window.sv"
+      "src/dv/ppu/tb_ppu_scroll_window.sv",
+      "src/dv/ppu/ppu_lint.vlt"
     ],
     "top": "tb_ppu_scroll_window",
     "simulators": [
@@ -3015,7 +3039,8 @@
       "src/rtl/ppu/n2m_ppu_position.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
       "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_scroll_window.sv"
+      "src/dv/ppu/tb_ppu_scroll_window.sv",
+      "src/dv/ppu/ppu_lint.vlt"
     ],
     "top": "tb_ppu_scroll_window",
     "simulators": [
@@ -3041,7 +3066,8 @@
       "src/rtl/ppu/n2m_ppu_position.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
       "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_scroll_window.sv"
+      "src/dv/ppu/tb_ppu_scroll_window.sv",
+      "src/dv/ppu/ppu_lint.vlt"
     ],
     "top": "tb_ppu_scroll_window",
     "simulators": [
@@ -3067,7 +3093,8 @@
       "src/rtl/ppu/n2m_ppu_position.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
       "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_scroll_window.sv"
+      "src/dv/ppu/tb_ppu_scroll_window.sv",
+      "src/dv/ppu/ppu_lint.vlt"
     ],
     "top": "tb_ppu_scroll_window",
     "simulators": [
@@ -3093,7 +3120,8 @@
       "src/rtl/ppu/n2m_ppu_position.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
       "src/rtl/ppu/n2m_ppu.sv",
-      "src/dv/ppu/tb_ppu_scroll_window.sv"
+      "src/dv/ppu/tb_ppu_scroll_window.sv",
+      "src/dv/ppu/ppu_lint.vlt"
     ],
     "top": "tb_ppu_scroll_window",
     "simulators": [
