@@ -11,7 +11,11 @@ module n2m_memory_decode (
     output n2m_memory_pkg::memory_destination_t destination,
     /* verilator lint_on UNOPTFLAT */
     output n2m_memory_pkg::memory_store_t store,
+    // Lint waiver: tb_memory_decode forces offset for its alias fault; the
+    // force is reported as a second driver.
+    /* verilator lint_off MULTIDRIVEN */
     output logic [14:0] offset
+    /* verilator lint_on MULTIDRIVEN */
 );
 
     always_comb begin

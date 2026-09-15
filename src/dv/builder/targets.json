@@ -1564,7 +1564,7 @@
       "src/dv/memory/tb_memory_decode.sv"
     ],
     "top": "tb_memory_decode",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS memory decode addresses=65536 echo=7680"
@@ -1577,7 +1577,7 @@
       "src/dv/memory/tb_memory_decode.sv"
     ],
     "top": "tb_memory_decode",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+alias_fault"
     ],

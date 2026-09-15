@@ -237,7 +237,8 @@ the 23 SystemVerilog targets without a `vendor_model` labelled `dma`, `uart`
 or `baseline`, the 117 SystemVerilog targets that declare a `vendor_model`
 (the `memory`, `dma`, `uart`, `vga`, `snapshot`, `audio`, `ppu`, `input`,
 `common`, `integration` and `host-play` areas, including the ten `driver`
-targets and the two `tb_preload_load` targets), the three `tb_clocking` targets `clocking`, `clocking-bad-numerator` and
+targets and the two `tb_preload_load` targets), the two `tb_memory_decode`
+targets `memory-decode` and `memory-decode-alias`, the three `tb_clocking` targets `clocking`, `clocking-bad-numerator` and
 `clocking-drop-tick`, and the five `tb_async_assert_macros` targets
 `async-assert-macros`, `async-assert-direct`, `async-assert-hold`,
 `async-assert-never` and `async-assert-no_reset`. `ppu-shift-unknown` and
