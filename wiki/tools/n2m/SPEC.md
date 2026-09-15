@@ -2071,7 +2071,9 @@ an explicit Git commit using the current catalogue and simulation input lists.
 It does not run tests, accept prior evidence, change `tests run`, or replace the
 required PR checks. Each entry explains selection or an input-equal review
 candidate. A candidate still needs a valid prior result, matching tool/runtime
-identity and independent scoped review.
+identity and independent scoped review. Without `--json` the same record prints
+as text: the base and head commits, each fallback reason, one `name: decision
+reasons` line per unit, then the selected and review-candidate counts.
 
 Standalone host dependency closure is unknown, so host units remain selected.
 New, deleted, renamed, unmapped, tool, configuration or catalogue changes force
