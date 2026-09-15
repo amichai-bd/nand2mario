@@ -1105,10 +1105,7 @@ FlexNet feature file in `SALT_LICENSE_FILE` or `MGLS_LICENSE_FILE` is not a
 substitute. Obtain the server setting from the license administrator, keep its
 value out of repository files and logs, and validate checkout with the installed
 `lmutil lmdiag` before running `doctor --sim questa`. Recorded executable
-versions and hashes identify the installed tool. On the current development
-machine, native vmap/vlib/vlog and the shared-smoke compile complete with zero
-errors and warnings, but vsim exits 4 at SALT checkout with `Invalid license
-environment`; this is a blocked runtime, not simulator PASS evidence.
+versions and hashes identify the installed tool.
 
 ## CI execution boundary
 
@@ -1147,7 +1144,8 @@ in the failing command's log. Unclassified simulator warnings fail the stage.
 
 Add simulation targets to this manifest when their contracts and tests are ready.
 The [tile pixel checks](../sim/SPEC.md) use this interface for normal and
-expected-corruption runs through Questa.
+expected-corruption runs through Verilator. The standalone tile runner remains
+Verilator-only and does not inherit shared builder selection.
 Software commands use modules under `tools/sw/` and the output boundaries below.
 The [software contract](../sw/SPEC.md) defines implemented `sw build`
 inputs, deterministic artifacts and independent conformance requirements.
