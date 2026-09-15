@@ -130,6 +130,11 @@ def target_definition(root, name):
     return target
 
 
+def identity_target(target):
+    """Return whether the live target carries a configurable build identity."""
+    return target.get("top") == "controls_proof" or fpga_v05.board_target(target)
+
+
 def prepare(root, folder, target, build_id=None):
     # Configurations are data; quote every value rather than evaluating user Tcl.
     lines = ['set_global_assignment -name FAMILY "MAX 10"',
@@ -498,12 +503,12 @@ def build_fpga(root, build, args, provenance=None, progress=None):
         record["definition"] = target
         fingerprint_inputs = {"inputs": record["inputs"], "tools": record["tools"], "definition": target, "timeout": args.timeout}
         override = getattr(args, "build_id", None)
-        identity_target = target["top"] == "controls_proof" or fpga_v05.board_target(target)
+        has_identity = identity_target(target)
         if override is not None:
             # Comparison-only: two builds of different sources can share one
             # identity constant so their netlists are comparable. The result
             # is never a board image; programming refuses it.
-            if not identity_target:
+            if not has_identity:
                 raise ValueError("--build-id applies only to targets with an identity macro")
             if not isinstance(override, str) or not re.fullmatch(r"[0-9a-f]{32}", override) or int(override, 16) == 0:
                 raise ValueError("--build-id must be 32 lowercase hex digits and nonzero")
@@ -511,7 +516,7 @@ def build_fpga(root, build, args, provenance=None, progress=None):
             record["build_id_override"] = True
             record["notices"].append(BUILD_ID_OVERRIDE_NOTICE)
         record["fingerprint"] = digest(fingerprint_inputs)
-        if identity_target:
+        if has_identity:
             record["build_id"] = override if override is not None else record["fingerprint"][:32]
         cache_ok = False
         if not args.rebuild:

@@ -149,7 +149,8 @@ async def reg_f(dut):
             watchdog = cocotb.start_soon(guard())
             tasks.append(watchdog)
             # End on the sampled upstream breakpoint, before its serial routine.
-            await First(complete.wait(), *tasks)
+            # cocotb 2.1 deprecates Task arguments to First; wait on completion triggers.
+            await First(complete.wait(), *(task.complete for task in tasks))
             for task in tasks:
                 if task.done():
                     task.result()
