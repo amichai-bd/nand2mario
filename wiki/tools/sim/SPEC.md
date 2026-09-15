@@ -25,12 +25,11 @@ identity; this test is deterministic and reports `seed=none`.
 ## Simulator
 
 The builder runs [Verilator on WSL](../n2m/SPEC.md#verilator-simulation). Both
-tile targets are still registered `simulator: "questa"`, so today the builder
-reports each as `SKIPPED` with reason `questa-retired` (exit 2) and
-`regress pre-merge` lists `tile-pixel: SKIPPED questa-retired`; that is the
-honest current state, not tile-pixel evidence. Their migration belongs to the
-display area under [#595](https://github.com/amichai-bd/nand2mario/issues/595).
-The Questa sections below describe the retired path they last ran on.
+tile targets are registered `simulator: "verilator"`: `tile-pixel` passes with
+its exhaustive signature and `tile-pixel-corrupt` fails with its exact mismatch
+diagnostic. The testbench drives two-state fill values where its Questa
+stimulus drove X and Z; the checks are unchanged. The Questa sections below
+describe the retired path they last ran on.
 
 ## Questa checks (retired path)
 
@@ -67,8 +66,8 @@ other breaks, macro errors, or return without `$finish` exit nonzero. The normal
 case requires the full exhaustive completion signature. Corruption requires
 the full intended mismatch diagnostic and a nonzero exit; additional errors
 or warnings fail the runner even when an expected signature appears.
-The standalone runner still accepts only `--sim questa`; its Verilator backend
-belongs to the tile migration. Retired simulator selections fail argument
+The standalone runner still accepts only `--sim questa`; the registered
+targets are the Verilator path. Retired simulator selections fail argument
 parsing; there is no fallback.
 
 Both paths reject tool, compile, elaboration, warning, timeout, exit, or expected

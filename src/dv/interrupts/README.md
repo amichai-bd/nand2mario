@@ -1,7 +1,7 @@
 # Interrupt owner checks
 
 Contract: [MAS_interrupts](../../../wiki/src/rtl/interrupts/MAS_interrupts.md).
-Use the shared builder and Questa; source levels are original scripted stimuli,
+Use the shared builder under Verilator; source levels are original scripted stimuli,
 not synthetic implementations of the timer, PPU, JOYP or serial owner.
 
 `interrupts` checks all 32 source masks, 256 IE bytes, IF upper read bits, 120

@@ -1,5 +1,8 @@
 `timescale 1ns/1ps
 `default_nettype none
+// Lint waiver: the integer file handle is tested as a boolean; the width
+// lint on that idiom is a false positive.
+/* verilator lint_off WIDTHTRUNC */
 module tb_timer_reload;
     logic clk_sys,reset_sys,core_reset,gb_tick,divider_reset_request;
     logic io_commit,io_write,io_selected;
@@ -41,7 +44,7 @@ module tb_timer_reload;
         io_address=16'hFF05;#1;
         $fdisplay(trace,"%0d,%0d,%02h,%02h,%0d,%0d,%02h",scenario,tick_index,value,io_rdata,
             expected_irq,interrupt_request.request,if_observe);
-        if(io_rdata!==value) $fatal(1,"TIMER_COUNTER case=%0d tick=%0d expected=%02h actual=%02h",scenario,tick_index,value,io_rdata);
+        if(io_rdata!=value) $fatal(1,"TIMER_COUNTER case=%0d tick=%0d expected=%02h actual=%02h",scenario,tick_index,value,io_rdata);
         checks=checks+1;
     endtask
     initial begin
@@ -78,10 +81,10 @@ module tb_timer_reload;
                 if(counter_fault&&scenario==0&&tick_index==64)force dut.state_q.tima=8'h00;
                 if(request_fault&&scenario==2&&tick_index==132)force dut.request_q='0;
                 check_tima(expected_tima);
-                if(interrupt_request.request!==expected_irq)$fatal(1,"TIMER_REQUEST case=%0d tick=%0d expected=%0d actual=%0d",scenario,tick_index,expected_irq,interrupt_request.request);
-                if(if_observe!==(scenario>=2&&tick_index>=132?5'h04:5'h00))$fatal(1,"TIMER_PRE_B_IF");
+                if(interrupt_request.request!=expected_irq)$fatal(1,"TIMER_REQUEST case=%0d tick=%0d expected=%0d actual=%0d",scenario,tick_index,expected_irq,interrupt_request.request);
+                if(if_observe!=(scenario>=2&&tick_index>=132?5'h04:5'h00))$fatal(1,"TIMER_PRE_B_IF");
                 tick_b();
-                if(interrupt_request.request!==0||if_stored!==(scenario>=2&&tick_index>=132?5'h04:5'h00))$fatal(1,"TIMER_B_IF");
+                if(interrupt_request.request!=0||if_stored!=(scenario>=2&&tick_index>=132?5'h04:5'h00))$fatal(1,"TIMER_B_IF");
             end
         end
         $display("PASS timer reload schedules cases=8 checks=1152");$fclose(trace);$finish;

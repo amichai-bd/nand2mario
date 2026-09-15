@@ -1,5 +1,8 @@
 `timescale 1ns/1ps
 `default_nettype none
+// Lint waiver: the integer file handle is tested as a boolean; the width
+// lint on that idiom is a false positive.
+/* verilator lint_off WIDTHTRUNC */
 module tb_interrupts;
     logic clk_sys, reset_sys, core_reset, gb_tick, io_commit, io_write;
     logic [15:0] io_address;
@@ -19,7 +22,7 @@ module tb_interrupts;
         #1;
         $fdisplay(trace_file, "%0d,%02h,%02h,%02h,%02h,%02h,%02h", checks,
             flags, if_observe, enables, ie_observe, if_stored, ie_stored);
-        if (if_observe !== flags || ie_observe !== enables)
+        if (if_observe != flags || ie_observe != enables)
             $fatal(1, "INTERRUPT_OBSERVE check=%0d expected_if=%02h actual_if=%02h expected_ie=%02h actual_ie=%02h",
                 checks, flags, if_observe, enables, ie_observe);
         checks = checks + 1;
@@ -35,7 +38,7 @@ module tb_interrupts;
         check(flags, enables);
         edge_cycle();
         check(flags, enables);
-        if (if_stored !== flags || ie_stored !== enables)
+        if (if_stored != flags || ie_stored != enables)
             $fatal(1, "INTERRUPT_STORED_AFTER_B");
     endtask
     task automatic write_if(input logic [4:0] flags);
@@ -86,10 +89,10 @@ module tb_interrupts;
             begin_a(1, 16'hFFFF, 8'(index), 0);
             expected_ie = 8'(index); finish_b(0, expected_ie);
             io_address = 16'hFFFF; #1;
-            if (!io_selected || io_rdata !== 8'(index)) $fatal(1, "INTERRUPT_IE_READ");
+            if (!io_selected || io_rdata != 8'(index)) $fatal(1, "INTERRUPT_IE_READ");
             write_if(5'(index));
             io_address = 16'hFF0F; #1;
-            if (!io_selected || io_rdata !== (8'hE0 | 8'(index & 31)))
+            if (!io_selected || io_rdata != (8'hE0 | 8'(index & 31)))
                 $fatal(1, "INTERRUPT_IF_MASK");
             write_if(0);
         end

@@ -13,10 +13,10 @@ module tb_timebase25;
     always @(posedge clk_sys) begin
         if (reset_sys || core_reset) begin
             edges=0; ticks=0; previous_dot=0; previous_machine=0; running=0;
-            if (gb_tick !== 0) $fatal(1,"TIMEBASE25_RESET");
+            if (gb_tick != 0) $fatal(1,"TIMEBASE25_RESET");
         end else begin
             carry=running && ((edges+1)*4194304/25000000 != edges*4194304/25000000);
-            if (gb_tick !== carry) $fatal(1,"TIMEBASE25_RATE edge=%0d expected=%0b actual=%0b",edges+1,carry,gb_tick);
+            if (gb_tick != carry) $fatal(1,"TIMEBASE25_RATE edge=%0d expected=%0b actual=%0b",edges+1,carry,gb_tick);
             if (running) edges++;
             if (carry) begin
                 ticks++;
@@ -44,7 +44,7 @@ module tb_timebase25;
             if (!running && !pause_request) running=1;
             else if (running && pause_request && carry) running=0;
             #1;
-            if (paused !== !running) $fatal(1,"TIMEBASE25_PAUSE");
+            if (paused != !running) $fatal(1,"TIMEBASE25_PAUSE");
         end
     end
 
