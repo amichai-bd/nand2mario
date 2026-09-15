@@ -64,11 +64,11 @@ module tb_memory_service;
         // This is the pre-A observation: data must still belong to the prior
         // request even though the next request's address has already changed.
         if (observe_ppu) begin
-            if (ppu_vram_valid !== previous_vram || ppu_oam_valid !== previous_oam)
+            if (ppu_vram_valid != previous_vram || ppu_oam_valid != previous_oam)
                 $fatal(1, "MEMORY_SERVICE_PPU_VALID");
-            if (previous_vram && ppu_vram_rdata !== expected_vram)
+            if (previous_vram && ppu_vram_rdata != expected_vram)
                 $fatal(1, "MEMORY_SERVICE_VRAM_PRE_A expected=%02h actual=%02h", expected_vram, ppu_vram_rdata);
-            if (previous_oam && ppu_oam_rdata !== expected_oam)
+            if (previous_oam && ppu_oam_rdata != expected_oam)
                 $fatal(1, "MEMORY_SERVICE_OAM_PRE_A expected=%04h actual=%04h", expected_oam, ppu_oam_rdata);
             if (previous_vram && previous_oam) ppu_checks = ppu_checks + 1;
         end
@@ -92,7 +92,7 @@ module tb_memory_service;
     task automatic read_byte(input logic [15:0] target, input logic [7:0] value);
         address = target; write_enable = 0; request_valid = 1;
         edge_cycle();
-        if (!response_valid || read_data !== value)
+        if (!response_valid || read_data != value)
             $fatal(1, "MEMORY_SERVICE_CPU_READ address=%04h expected=%02h actual=%02h", target, value, read_data);
         bus_commit = 1; edge_cycle(); bus_commit = 0;
     endtask

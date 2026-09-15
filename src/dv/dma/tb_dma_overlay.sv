@@ -1,5 +1,9 @@
 `timescale 1ns/1ps
 `default_nettype none
+// Lint waiver: 16-bit address literals are passed to integer task arguments
+// and the integer file handle is tested as a boolean; both lints are false positives.
+/* verilator lint_off WIDTHEXPAND */
+/* verilator lint_off WIDTHTRUNC */
 module tb_dma_overlay;
     integer lane;
     n2m_memory_pkg::memory_oam_request_t oam_request;
@@ -100,7 +104,7 @@ module tb_dma_overlay;
     task automatic readback(input n2m_memory_pkg::memory_store_t bank,input integer offset,input logic[7:0] expected);
         @(negedge clk_sys);setup_store=bank;setup_address=15'(offset);setup_read=1;
         @(negedge clk_sys);
-        if(!access_valid || access_rdata!==expected)
+        if(!access_valid || access_rdata!=expected)
             $fatal(1,"DMA_OVERLAY_READBACK case=%0d store=%0d address=%0d expected=%02x actual=%02x",case_index,bank,offset,expected,access_rdata);
         setup_read=0;
     endtask
@@ -115,7 +119,7 @@ module tb_dma_overlay;
                 endcase
                 expected_byte=result_byte(expected_address);
             end
-            if(access_address!==15'(expected_address) || access_wdata!==expected_byte)
+            if(access_address!=15'(expected_address) || access_wdata!=expected_byte)
                 $fatal(1,"DMA_OVERLAY_WRITE case=%0d address=%0d expected=%02x actual=%02x",case_index,access_address,expected_byte,access_wdata);
             $fdisplay(trace,"%0d,%0d,%0d,%02x",case_index,writes,access_address,access_wdata);
             writes=writes+1;total_writes=total_writes+1;
@@ -130,7 +134,7 @@ module tb_dma_overlay;
                 endcase
                 expected_byte=result_byte(expected_address);
             end
-            if((15'(oam_request.pair)*15'd2+15'(lane))!==15'(expected_address) || oam_request.data[8*lane +: 8]!==expected_byte)
+            if((15'(oam_request.pair)*15'd2+15'(lane))!=15'(expected_address) || oam_request.data[8*lane +: 8]!=expected_byte)
                 $fatal(1,"DMA_OVERLAY_WRITE case=%0d address=%0d expected=%02x actual=%02x",case_index,(15'(oam_request.pair)*15'd2+15'(lane)),expected_byte,oam_request.data[8*lane +: 8]);
             $fdisplay(trace,"%0d,%0d,%0d,%02x",case_index,writes,(15'(oam_request.pair)*15'd2+15'(lane)),oam_request.data[8*lane +: 8]);
             writes=writes+1;total_writes=total_writes+1;
@@ -171,7 +175,7 @@ module tb_dma_overlay;
             expected_pair=case_index==0 ? 16'h55f3:16'h5503;
             repeat(40)begin
                 @(negedge clk_sys);
-                if(ppu_oam_valid && ppu_oam_data!==expected_pair)
+                if(ppu_oam_valid && ppu_oam_data!=expected_pair)
                     $fatal(1,"DMA_OVERLAY_PAIR case=%0d expected=%04x actual=%04x",case_index,expected_pair,ppu_oam_data);
             end
             if(!ppu_oam_valid || writes!=48)$fatal(1,"DMA_OVERLAY_COMPLETE case=%0d writes=%0d valid=%0d",case_index,writes,ppu_oam_valid);

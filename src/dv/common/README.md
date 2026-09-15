@@ -22,7 +22,7 @@ The seed is retained for reproduction; stimulus is deterministic. The corrupt
 target uses seed 1, matching its exact registered diagnostic.
 
 Run both `register-macros` and `register-macros-corrupt` through
-`python tools/build.py sim test <target> --sim questa --tag <tag>`. The builder retains commands, raw exit codes,
+`python tools/build.py sim test <target> --tag <tag>`. The builder retains commands, raw exit codes,
 seed, logs and waves. Tile positive/corrupt targets separately prove integration
 against their unchanged exhaustive oracle. FPGA and simulation host tests cover
 transitive include cache invalidation, missing/dynamic dependencies and constraints;

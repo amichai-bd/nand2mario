@@ -1,5 +1,8 @@
 `timescale 1ns/1ps
 `default_nettype none
+// Lint waiver: the integer file handle is tested as a boolean (`if (!trace)`);
+// the truncation lint is a false positive.
+/* verilator lint_off WIDTHTRUNC */
 module tb_dma_reset;
     n2m_memory_pkg::memory_oam_request_t oam_request;
     n2m_memory_pkg::memory_oam_response_t oam_response;
@@ -101,7 +104,7 @@ module tb_dma_reset;
                 expected_address=write_count;expected_byte=8'(write_count)^8'h69;
                 if(context_index==0 || write_count>1)$fatal(1,"DMA_RESET_EXTRA_TRANSFER");
             end
-            if(access_address!==15'(expected_address) || access_wdata!==expected_byte)
+            if(access_address!=15'(expected_address) || access_wdata!=expected_byte)
                 $fatal(1,"DMA_RESET_PREFIX case=%0d expected=%0d:%02x actual=%0d:%02x",
                     case_index,expected_address,expected_byte,access_address,access_wdata);
             $fdisplay(trace,"%0d,%0d,%0d,%02x",case_index,write_count,access_address,access_wdata);
@@ -120,7 +123,7 @@ module tb_dma_reset;
                 expected_address=write_count;expected_byte=8'(write_count)^8'h69;
                 if(context_index==0 || write_count>1)$fatal(1,"DMA_RESET_EXTRA_TRANSFER");
             end
-            if((15'(oam_request.pair)*15'd2+15'(lane))!==15'(expected_address) || oam_request.data[8*lane +: 8]!==expected_byte)
+            if((15'(oam_request.pair)*15'd2+15'(lane))!=15'(expected_address) || oam_request.data[8*lane +: 8]!=expected_byte)
                 $fatal(1,"DMA_RESET_PREFIX case=%0d expected=%0d:%02x actual=%0d:%02x",
                     case_index,expected_address,expected_byte,(15'(oam_request.pair)*15'd2+15'(lane)),oam_request.data[8*lane +: 8]);
             $fdisplay(trace,"%0d,%0d,%0d,%02x",case_index,write_count,(15'(oam_request.pair)*15'd2+15'(lane)),oam_request.data[8*lane +: 8]);
@@ -168,7 +171,7 @@ module tb_dma_reset;
                 if(context_index==2)mcycle(1,8'hc1);
             end
             repeat(reset_phase)dot_step();
-            if(cpu_phase!==2'(reset_phase))$fatal(1,"DMA_RESET_PHASE");
+            if(cpu_phase!=2'(reset_phase))$fatal(1,"DMA_RESET_PHASE");
             case(context_index)
                 0:expected_count=0;
                 1:expected_count=reset_phase==3 ? 1:0;
@@ -190,14 +193,14 @@ module tb_dma_reset;
             for(index=0;index<160;index=index+1) begin
                 @(negedge clk_sys);setup_store=n2m_memory_pkg::STORE_OAM;setup_address=15'(index);setup_read=1;
                 @(negedge clk_sys);
-                if(!access_valid || access_rdata!==8'h00)$fatal(1,"DMA_RESET_READBACK case=%0d offset=%0d actual=%02x",case_index,index,access_rdata);
+                if(!access_valid || access_rdata!=8'h00)$fatal(1,"DMA_RESET_READBACK case=%0d offset=%0d actual=%02x",case_index,index,access_rdata);
                 readback_count=readback_count+1;
             end
             setup_read=0;setup=0;
             repeat(8)mcycle(0,0);
             request_valid=1;bus_plan='0;bus_plan.address=16'hff46;
             repeat(4)dot_step();
-            if(!response_valid || read_data!==8'h00)$fatal(1,"DMA_RESET_FF46 case=%0d actual=%02x",case_index,read_data);
+            if(!response_valid || read_data!=8'h00)$fatal(1,"DMA_RESET_FF46 case=%0d actual=%02x",case_index,read_data);
             request_valid=0;bus_plan='0;check_cancel();case_index=case_index+1;
         end
         if(total_writes!=60 || readback_count!=5120)$fatal(1,"DMA_RESET_TOTAL writes=%0d reads=%0d",total_writes,readback_count);

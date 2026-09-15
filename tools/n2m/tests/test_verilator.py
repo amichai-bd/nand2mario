@@ -164,6 +164,46 @@ class CommandTests(unittest.TestCase):
         self.assertTrue(run[0].endswith("obj_dir/sim"))
         self.assertEqual(run[1:], ["+seed=7", "+verilator+seed+7", "+verilator+rand+reset+2", "+inject_failure"])
 
+    def test_defines_become_build_options_and_are_validated(self):
+        registry = self.root / "src/dv/builder/targets.json"
+        targets = read_json(registry)
+        pristine = dict(targets["builder-smoke"])
+        targets["builder-smoke"] = {**pristine, "defines": ["PRELOADED", "DEPTH=8"]}
+        registry.write_text(json.dumps(targets))
+        target, _ = load_target(self.root, "builder-smoke")
+        attempt = self.build / "attempt"
+        compiler = self.build / "compile"
+        for folder in (attempt / "waves", compiler):
+            folder.mkdir(parents=True)
+        (build, *_), (run, *_) = verilator.commands(self.sim, self.root, target, 1, compiler, attempt)
+        self.assertIn("+define+PRELOADED", build)
+        self.assertIn("+define+DEPTH=8", build)
+        self.assertNotIn("+define+PRELOADED", run)
+        for bad in (["-gPRELOADED=1"], "PRELOADED", ["A B"]):
+            targets["builder-smoke"] = {**pristine, "defines": bad}
+            registry.write_text(json.dumps(targets))
+            with self.assertRaisesRegex(ValueError, "defines must list"):
+                load_target(self.root, "builder-smoke")
+
+    def test_adc_binding_writes_the_channel_fixture_beside_the_run(self):
+        target, _ = load_target(self.root, "builder-smoke")
+        target = {**target, "vendor_model": "intel-adc"}
+        attempt = self.build / "attempt"
+        compiler = self.build / "compile"
+        for folder in (attempt / "waves", compiler):
+            folder.mkdir(parents=True)
+        verilator.commands(self.sim, self.root, target, 1, compiler, attempt)
+        self.assertEqual(sorted(p.name for p in attempt.glob("adc_ch*.txt")), sorted(f"adc_ch{i}.txt" for i in range(17)))
+        self.assertEqual((attempt / "adc_ch1.txt").read_text(), "0 0.625\n")
+        self.assertEqual((attempt / "adc_ch2.txt").read_text(), "0 1.25\n")
+        self.assertEqual((attempt / "adc_ch0.txt").read_text(), "0 0.0\n")
+        # A replay against the retained attempt leaves identical files alone
+        # and refuses a foreign file under a fixture name.
+        verilator.commands(self.sim, self.root, target, 1, compiler, attempt)
+        (attempt / "adc_ch3.txt").write_text("0 9.9\n")
+        with self.assertRaisesRegex(ValueError, "ADC stimulus path already exists"):
+            verilator.commands(self.sim, self.root, target, 1, compiler, attempt)
+
     def test_identical_retained_harness_is_left_untouched_and_a_stale_one_rewritten(self):
         target, _ = load_target(self.root, "builder-smoke")
         attempt = self.build / "attempt"
@@ -214,6 +254,15 @@ class CommandTests(unittest.TestCase):
         self.assertEqual(build[-1], runtime["support"])
         self.assertEqual(run[1:4], ["--trace", "--trace-file", verilator.WAVES])
         self.assertEqual(run[-1], "+smoke_root=" + str(self.root))
+        # Only the declared access list is public; the whole-design switch
+        # would cost the optimizations the product targets need for their budget.
+        self.assertNotIn("--public-flat-rw", build)
+        config = self.build / verilator.ACCESS_CONFIG
+        self.assertIn(str(config), build)
+        text = config.read_text()
+        self.assertTrue(text.startswith("`verilator_config\n"))
+        for name in target["driver"]["access"]:
+            self.assertIn(f'public_flat_rw -module "tb_verilator_peer" -var "{name}"', text)
 
 
 class RecordTests(unittest.TestCase):
@@ -266,14 +315,20 @@ class RecordTests(unittest.TestCase):
         self.args.rebuild = False
         self.assertEqual(self.run_stage()["cache"], "CACHED")
 
-    def test_vendor_model_stays_questa_and_a_driver_needs_the_peer_module(self):
+    def test_vendor_model_is_recorded_and_a_driver_needs_the_peer_module(self):
         registry = self.root / "src/dv/builder/targets.json"
         targets = read_json(registry)
         pristine = dict(targets["builder-smoke"])
         (self.root / "driver.do").write_text("run -all\n")
         (self.root / "driver.py").write_text("import cocotb\n")
         access = ["tx_go", "finish_request"]
-        for change, message in (({"vendor_model": "intel-memory"}, "vendor_model"),
+        # The synthesis binding is accepted as a record; the Questa-only
+        # mixed-mode inventory and unknown bindings are refused.
+        targets["builder-smoke"] = {**pristine, "vendor_model": "intel-memory"}
+        registry.write_text(json.dumps(targets))
+        self.assertEqual(load_target(self.root, "builder-smoke")[0]["vendor_model"], "intel-memory")
+        for change, message in (({"vendor_model": "altera-mf"}, "vendor_model must be one of"),
+                                ({"vendor_model": "intel-memory", "intel_mixed_mode_instances": ["tb.dut.ram"]}, "intel_mixed_mode_instances"),
                                 ({"driver": {"script": "driver.do", "peer": "tools/build.py", "inputs": [], "access": access}}, "Verilator peer module"),
                                 ({"driver": {"script": "driver.py", "peer": "tools/build.py", "inputs": []}}, "nonempty access list"),
                                 ({"driver": {"script": "missing.py", "peer": "tools/build.py", "inputs": [], "access": access}}, "missing or out-of-tree driver input")):

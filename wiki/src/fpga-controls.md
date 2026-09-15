@@ -52,7 +52,8 @@ during `areset`, drops `locked` at once when `areset` rises and raises it 64
 reference edges after `areset` falls; a reference clock that differs from the
 configured period by more than 1 % is a named fatal failure. The control double
 reads the two-column channel files `adc_ch0.txt` to `adc_ch16.txt` from the run
-directory 1 ps after time zero, accepts one command while locked and idle,
+directory 1 ps after time zero (the [builder writes them](../tools/n2m/SPEC.md#intel-adc-binding-under-verilator)
+for every `intel-adc` target), accepts one command while locked and idle,
 holds `command_ready` low through the response cycle, and answers 80
 `clk_adc` rising edges later with the accepted channel and the next row's
 voltage as `trunc((Vin / Vref) * 4096)` clamped to twelve bits, where Vref is

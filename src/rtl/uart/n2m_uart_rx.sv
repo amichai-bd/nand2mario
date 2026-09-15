@@ -46,7 +46,11 @@ module n2m_uart_rx #(
             phase_next = PHASE_BITS'(CLOCK_HZ / 2);
             bit_index_next = '0;
             if (!rx_sync) state_next = START;
+        // Lint waiver: the phase accumulator is zero-extended against the
+        // integer clock rate; the intended unsigned comparison is unchanged.
+        /* verilator lint_off WIDTHEXPAND */
         end else if (sum >= CLOCK_HZ) begin
+        /* verilator lint_on WIDTHEXPAND */
             // Retain fractional residue across all bits in this byte.
             phase_next = sum - PHASE_BITS'(CLOCK_HZ);
             case (state)
@@ -74,7 +78,9 @@ module n2m_uart_rx #(
     `DFF_ARST_VAL(byte_valid, valid_next, clk_sys, reset_sys, 1'b0)
     `DFF_ARST_VAL(frame_error, error_next, clk_sys, reset_sys, 1'b0)
     `N2M_ASSERT_NO_RST(UART_RX_RATE, clk_sys, BAUD > 0 && CLOCK_HZ >= 8 * BAUD)
+    /* verilator lint_off WIDTHEXPAND */
     `N2M_ASSERT(UART_RX_PHASE, clk_sys, reset_sys, phase < CLOCK_HZ)
+    /* verilator lint_on WIDTHEXPAND */
     `N2M_ASSERT_NEVER(UART_RX_ERROR_VALID, clk_sys, reset_sys, frame_error && byte_valid)
     `N2M_ASSERT_KNOWN(UART_RX_OUTPUT, clk_sys, reset_sys, ({byte_valid, frame_error, byte_data}))
 endmodule

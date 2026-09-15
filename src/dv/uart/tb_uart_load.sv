@@ -1,5 +1,8 @@
 `timescale 1ns/1ps
 `default_nettype none
+// Lint waiver: the integer file handle is tested as a boolean (`if (!trace)`);
+// the truncation lint is a false positive.
+/* verilator lint_off WIDTHTRUNC */
 module tb_uart_load;
     logic clk_sys, reset_sys, start, busy, done;
     n2m_uart_pkg::uart_load_operation_t operation;
@@ -51,7 +54,7 @@ module tb_uart_load;
             if (presence_fault && checking_presence && rom_read_valid && rom_address == 7777)
                 force dut.presence_value = 1'b1;
         end
-        if (!done || status !== expected_status) $fatal(1,"UART_LOAD_RESULT op=%0d expected=%0d actual=%0d",operation,expected_status,status);
+        if (!done || status != expected_status) $fatal(1,"UART_LOAD_RESULT op=%0d expected=%0d actual=%0d",operation,expected_status,status);
         if (operation == n2m_uart_pkg::UART_LOAD_END) endings = endings + 1;
         @(negedge clk_sys);
         if (busy || done || rom_write || rom_read) $fatal(1,"UART_LOAD_IDLE");
@@ -84,10 +87,10 @@ module tb_uart_load;
         launch(n2m_uart_pkg::UART_LOAD_READ,at,size); index = 0; cycles = 0;
         while (!done && cycles < 3000) begin
             if (output_valid) begin
-                if (output_data !== image_byte(at+index)) $fatal(1,"UART_LOAD_READBACK index=%0d",at+index);
+                if (output_data != image_byte(at+index)) $fatal(1,"UART_LOAD_READBACK index=%0d",at+index);
                 // Hold the returned byte across host-response backpressure.
                 repeat (2) @(negedge clk_sys);
-                if (!output_valid || output_data !== image_byte(at+index)) $fatal(1,"UART_LOAD_READ_HOLD");
+                if (!output_valid || output_data != image_byte(at+index)) $fatal(1,"UART_LOAD_READ_HOLD");
                 output_ready = 1; @(negedge clk_sys); output_ready = 0;
                 index = index + 1; reads = reads + 1;
             end else @(negedge clk_sys);

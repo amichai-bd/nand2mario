@@ -4,9 +4,18 @@
 // Address ownership only. Service, masks and commit effects belong downstream.
 module n2m_memory_decode (
     input var logic [15:0] address,
+    // Lint waiver: in the composed system the CPU's combinational read path
+    // closes a false loop from destination through owner read data back to
+    // the address; Verilator does not split it and the runtime converges.
+    /* verilator lint_off UNOPTFLAT */
     output n2m_memory_pkg::memory_destination_t destination,
+    /* verilator lint_on UNOPTFLAT */
     output n2m_memory_pkg::memory_store_t store,
+    // Lint waiver: tb_memory_decode forces offset for its alias fault; the
+    // force is reported as a second driver.
+    /* verilator lint_off MULTIDRIVEN */
     output logic [14:0] offset
+    /* verilator lint_on MULTIDRIVEN */
 );
 
     always_comb begin

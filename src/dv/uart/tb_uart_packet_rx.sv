@@ -1,4 +1,7 @@
 `timescale 1ns/1ps
+// Lint waiver: the 9-bit DUT byte count is compared with an integer
+// expectation; the width lint is a false positive.
+/* verilator lint_off WIDTHEXPAND */
 module tb_uart_packet_rx;
     logic clk;
     logic reset;
@@ -137,7 +140,7 @@ module tb_uart_packet_rx;
         end
         if (!request_valid || request_bytes != raw_size)
             $fatal(1, "UART_RX_REQUEST_SIZE expected=%0d actual=%0d valid=%b", raw_size, request_bytes, request_valid);
-        if (header !== {raw[9],raw[8],raw[7],raw[6],raw[5],raw[4],raw[3],raw[2],raw[1],raw[0]})
+        if (header != {raw[9],raw[8],raw[7],raw[6],raw[5],raw[4],raw[3],raw[2],raw[1],raw[0]})
             $fatal(1, "UART_RX_HEADER actual=%h", header);
         repeat (3) @(negedge clk);
         for (index = 0; index < raw_size; index = index + 1) begin
@@ -147,7 +150,7 @@ module tb_uart_packet_rx;
             if (corrupt && index == 2) force dut.stores.decoded_read_data = 8'h00;
             @(posedge clk);
             #1;
-            if (!packet_valid || packet_data !== raw[index])
+            if (!packet_valid || packet_data != raw[index])
                 $fatal(1, "UART_RX_PACKET_BYTE index=%0d expected=%02h actual=%02h valid=%b", index, raw[index], packet_data, packet_valid);
             checked_bytes = checked_bytes + 1;
             @(negedge clk);

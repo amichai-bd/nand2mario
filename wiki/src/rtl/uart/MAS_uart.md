@@ -112,7 +112,7 @@ or physical operation; the [system contract](../system/MAS_system.md) owns compo
 
 The [test plan](../../../../src/dv/uart/README.md) separates serial framing,
 packet integrity, duplicate handling and completed control effects. Required
-actual runs use Questa and the installed Intel model, through the shared builder.
+actual runs use Verilator with the repository memory double, through the shared builder.
 Component simulation does not establish physical transmission acceptance.
 
 ## Serial byte boundary

@@ -59,7 +59,7 @@ module tb_oam_late_write;
         raw_read = 1;
         for (i = 0; i < 160; i = i + 1) begin
             raw_address = 15'(i); edge_cycle();
-            if (!access_valid || access_rdata !== expected[i])
+            if (!access_valid || access_rdata != expected[i])
                 $fatal(1, "OAM_LATE_DATA byte=%0d expected=%02h actual=%02h", i, expected[i], access_rdata);
         end
         raw_read = 0; checks = checks + 1;
@@ -73,7 +73,7 @@ module tb_oam_late_write;
         if (read_requests - reads_before != 5) $fatal(1, "OAM_LATE_FRESH_OPERANDS");
         ppu_pair = 78; ppu_read = 1; late_window = 1; commit = 1;
         #1;
-        if (!late_commit || request.pair !== target[7:1] || request.write_enable !== 2'b11)
+        if (!late_commit || request.pair != target[7:1] || request.write_enable != 2'b11)
             $fatal(1, "OAM_LATE_T4");
         if (target[7:1] == 78 && ppu_read_allowed) $fatal(1, "OAM_LATE_COLLISION_GATE");
         if ($test$plusargs("collision")) force dut.ppu_read_allowed = 1'b1;
@@ -86,9 +86,9 @@ module tb_oam_late_write;
             edge_cycle();
         end
         edge_cycle(); // A+4 reread is complete before the A+5 capture.
-        if (!ppu_valid || ppu_data !== {expected[157],expected[156]})
+        if (!ppu_valid || ppu_data != {expected[157],expected[156]})
             $fatal(1, "OAM_LATE_CAPTURE expected=%04h actual=%04h", {expected[157],expected[156]}, ppu_data);
-        if (!access_valid || access_rdata !== value) $fatal(1, "OAM_LATE_NEXT_READ");
+        if (!access_valid || access_rdata != value) $fatal(1, "OAM_LATE_NEXT_READ");
         edge_cycle(); raw_read = 0; ppu_read = 0;
         if (fault) $fatal(1, "OAM_LATE_FAULT");
         checks = checks + 1;

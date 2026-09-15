@@ -220,6 +220,37 @@ class VerilatorDriverStageTests(unittest.TestCase):
         self.assertIn('unexplained simulator warning', record['error'])
 
 
+    def test_expected_peer_raised_failure_passes_by_its_signature_with_exit_zero(self):
+        # The host_play driver raises the retired driver's FAIL <name>; cocotb
+        # records it and ends through $finish, so the raw exit is zero.
+        self.args.target = 'verilator-peer-fatal'
+        registry = self.root / 'src/dv/builder/targets.json'
+        targets = json.loads(registry.read_text())
+        signature = targets['verilator-peer-fatal']['signature']
+        self.raw_exit = 0
+        self.xml = PEER_XML.format(failures=1, verdict=f'<failure message="{signature}" type="RuntimeError" />')
+        self.transcript = f'  101000.00ns WARNING  cocotb.regression  driver.peer failed\nRuntimeError: {signature}\n'
+        record = self.run_stage()
+        self.assertEqual(record['status'], 'PASS', record.get('error'))
+        self.assertEqual(record['python_results']['status'], 'FAIL')
+        self.assertEqual(record['commands'][-1]['exit_code'], 0)
+        # Another failure name, a passing peer, or a foreign warning all fail.
+        self.args.rebuild = True
+        self.xml = PEER_XML.format(failures=1, verdict='<failure message="PLAY_OTHER" type="RuntimeError" />')
+        self.transcript = '  101000.00ns WARNING  cocotb.regression  driver.peer failed\nRuntimeError: PLAY_OTHER\n'
+        self.assertEqual(self.run_stage()['status'], 'FAIL')
+        self.xml = PEER_XML.format(failures=0, verdict='')
+        self.transcript = f'{signature}\n'
+        record = self.run_stage()
+        self.assertEqual(record['status'], 'FAIL')
+        self.assertIn('unexpected exit 0', record['error'])
+        self.xml = PEER_XML.format(failures=1, verdict=f'<failure message="{signature}" type="RuntimeError" />')
+        self.transcript = f'  101000.00ns WARNING  cocotb.regression  driver.peer failed\n  WARNING other\nRuntimeError: {signature}\n'
+        record = self.run_stage()
+        self.assertEqual(record['status'], 'FAIL')
+        self.assertIn('unexplained simulator warning', record['error'])
+
+
 class DriverDeadlineTests(unittest.TestCase):
     def test_long_transaction_then_next_request(self):
         # Execute the actual Tcl control flow with only public mailbox operations

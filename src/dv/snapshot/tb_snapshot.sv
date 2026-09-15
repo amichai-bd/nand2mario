@@ -52,12 +52,12 @@ module tb_snapshot;
         waited = 0;
         while (!snapshot_done && waited < 12000) begin edge_cycle(); waited = waited + 1; end
         if (!snapshot_done || !snapshot_ok || !snapshot_valid) $fatal(1, "SNAPSHOT_COPY_TIMEOUT");
-        if (snapshot_metadata.epoch !== 32'd7 || snapshot_metadata.seq !== 64'd0 ||
-            snapshot_metadata.dot !== 64'd23040 || snapshot_metadata.size !== 32'd5760)
+        if (snapshot_metadata.epoch != 32'd7 || snapshot_metadata.seq != 64'd0 ||
+            snapshot_metadata.dot != 64'd23040 || snapshot_metadata.size != 32'd5760)
             $fatal(1, "SNAPSHOT_METADATA");
         for (byte_index = 0; byte_index < 5760; byte_index = byte_index + 1) begin
             frame_read = 1; frame_address = 13'(byte_index); edge_cycle();
-            if (!frame_valid || frame_data !== expected_byte(byte_index))
+            if (!frame_valid || frame_data != expected_byte(byte_index))
                 $fatal(1, "SNAPSHOT_BYTE index=%0d expected=%02h actual=%02h", byte_index, expected_byte(byte_index), frame_data);
             checks = checks + 1;
             frame_read = 0; edge_cycle();
