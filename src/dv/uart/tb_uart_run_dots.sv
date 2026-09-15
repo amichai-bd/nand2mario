@@ -16,6 +16,10 @@ module tb_uart_run_dots;
     n2m_timebase u_timebase (.clk_sys, .reset_sys, .core_reset, .pause_request,
         .gb_tick(emulated_tick), .paused);
     assign gb_tick = emulated_tick && !cpu_stopped;
+    // No engine client in this fixture.
+    logic engine_pause, engine_reset_request, engine_reset_accept, engine_reset_done;
+    assign engine_pause = 1'b0;
+    assign engine_reset_request = 1'b0;
     n2m_uart_core_control u_control (.*);
     assign retirement_valid = gb_tick && instruction_complete;
     always #20 clk_sys = !clk_sys;

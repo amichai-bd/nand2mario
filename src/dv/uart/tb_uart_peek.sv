@@ -71,7 +71,12 @@ module tb_uart_peek;
         .io_if(8'd0), .io_ie(8'd0),
         .peek_ready(peek_ready),.peek_read(peek_read),.peek_select(peek_select),.peek_offset(peek_offset),
         .peek_rdata(peek_rdata),.peek_valid(peek_valid),
-        .sdram_initialized(1'b0), .sdram_request_valid(), .sdram_request_write(), .sdram_request_address(), .sdram_request_data(), .sdram_request_ready(1'b0), .sdram_response_valid(1'b0), .sdram_response_data('0)
+        .sdram_initialized(1'b0), .sdram_request_valid(), .sdram_request_write(), .sdram_request_address(), .sdram_request_data(), .sdram_request_ready(1'b0), .sdram_response_valid(1'b0), .sdram_response_data('0),
+        // No loader profile in this composition.
+        .loader_copy_busy(1'b0), .loader_swap_busy(1'b0), .engine_invalidate(1'b0), .engine_publish(1'b0),
+        .engine_profile(8'd0), .library_status(32'd0), .library_key1(32'd0), .engine_pause(1'b0),
+        .engine_reset_request(1'b0), .engine_reset_accept(), .engine_reset_done(), .host_session(),
+        .host_port_busy(), .library_return()
     );
     n2m_timebase u_timebase (.clk_sys(clk_sys),.reset_sys(reset_sys),.core_reset(core_reset),
         .pause_request(pause_request),.gb_tick(gb_tick),.paused(paused));

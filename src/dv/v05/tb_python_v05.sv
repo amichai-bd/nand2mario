@@ -64,6 +64,16 @@ module tb_python_v05 #(
     assign wave_load = wave_enable ? {dut.rom_write, dut.rom_read,
         dut.rom_address, dut.rom_write_data, dut.rom_read_valid, dut.rom_read_data} : 34'd0;
 
+    // No KEY1 or SDRAM in this fixture; the loader profile stays idle.
+    logic key1_n, sdram_initialized, sdram_request_valid, sdram_request_write;
+    logic sdram_request_ready, sdram_response_valid;
+    logic [25:0] sdram_request_address;
+    logic [127:0] sdram_request_data, sdram_response_data;
+    assign key1_n = 1'b1;
+    assign sdram_initialized = 1'b0;
+    assign sdram_request_ready = 1'b0;
+    assign sdram_response_valid = 1'b0;
+    assign sdram_response_data = '0;
     n2m_v05_system #(.UART_BAUD(3125000), .BUILD_ID(BUILD_ID)) dut (.*);
     // +define+PRELOADED selects the prepared image. Verilator resolves a
     // defparam value in the target instance, so a wrapper parameter cannot.

@@ -38,6 +38,10 @@ module v05_proof #(
         .address(), .write_data(), .read_data(), .irq_ack(),
         .source_valid(), .source_start(), .source_abort(),
         .source_display_eligible(), .source_shade(), .source_x(), .source_y(),
-        .source_epoch(), .source_dot()
+        .source_epoch(), .source_dot(),
+        // No KEY1 or SDRAM in this composition; the loader stays idle.
+        .key1_n(1'b1), .sdram_initialized(1'b0), .sdram_request_valid(), .sdram_request_write(),
+        .sdram_request_address(), .sdram_request_data(), .sdram_request_ready(1'b0),
+        .sdram_response_valid(1'b0), .sdram_response_data('0)
     );
 endmodule

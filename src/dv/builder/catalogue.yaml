@@ -11,6 +11,7 @@ labels:
   audio: "APU and audio service behavior."
   baseline: "The test-only baseline fixture and harness."
   builder: "The tagged build machinery of tools/n2m and tools/build.py."
+  cartridge: "The loader profile: bank and select registers, copy engine, arbiters and KEY1 return."
   builder-fault: "Migrated regressions.json subset: deliberate aggregate failure witness."
   ci: "Trusted CI admission, recovery and status."
   clocking: "Clock, reset and CDC control."
@@ -228,6 +229,12 @@ units:
   joypad-register-fault: {kind: sim, level: 2, labels: [fault, joypad], duration_seconds: 0.42}
   joypad-registers: {kind: sim, level: 2, labels: [joypad], duration_seconds: 0.43}
   library-peer: {kind: sim, level: 1, labels: [python-tb, storage], duration_seconds: 134.04}
+  loader-key1: {kind: sim, level: 1, labels: [cartridge], duration_seconds: null}
+  loader-key1-queue: {kind: sim, level: 1, labels: [cartridge], duration_seconds: null}
+  loader-map: {kind: sim, level: 1, labels: [cartridge], duration_seconds: null}
+  loader-swap: {kind: sim, level: 1, labels: [cartridge], duration_seconds: null}
+  loader-swap-fault: {kind: sim, level: 1, labels: [cartridge], duration_seconds: null}
+  loader-window: {kind: sim, level: 1, labels: [cartridge], duration_seconds: null}
   memory-bank-enables: {kind: sim, level: 1, labels: [memory], duration_seconds: 0.92}
   memory-bank-enables-fault: {kind: sim, level: 2, labels: [fault, memory], duration_seconds: 0.84}
   memory-cpu-duplicate: {kind: sim, level: 2, labels: [fault, memory], duration_seconds: 0.60}

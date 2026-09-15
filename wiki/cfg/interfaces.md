@@ -2,7 +2,7 @@
 
 Generated from cfg/interfaces.json by tools/n2m/interfaces.py; DO NOT EDIT.
 
-Source SHA-256: `8ac4111c2bf4c6b6a57e660228071fb41e2bfd627c1d3ced6a9d0c60fbb17624`.
+Source SHA-256: `61baa1343688abb0beeceb051ddd5f1459db24b156e1f09ba823b7ce03dc5955`.
 
 See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior, reset, framing and tests.
 
@@ -335,12 +335,13 @@ See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior,
 | Constant | Bits | Value | Meaning |
 |---|---|---|---|
 | `LIBRARY_SLOT_BYTES` | 32 | `0x8000` | One image slot: a complete 32 KiB dmg-direct-v1 image |
-| `LIBRARY_SLOT_COUNT` | 8 | `0x10` | Game slots 0-15 |
+| `LIBRARY_SLOTS` | 8 | `0x10` | Game slots 0-15 |
 | `LIBRARY_MENU_INDEX` | 8 | `0x10` | Image index of the menu image; the largest selectable index |
-| `LIBRARY_IMAGE_COUNT` | 8 | `0x11` | Sixteen game slots plus the menu |
+| `LIBRARY_CATALOGUE_ENTRIES` | 8 | `0x11` | Catalogue entries: sixteen game slots plus the menu |
 | `LIBRARY_WINDOW_BYTES` | 32 | `0x4000` | One banked window: the ROM store upper half |
 | `LIBRARY_WINDOW_BANKS` | 8 | `0x40` | Window bank register range; bank n is SDRAM bytes n*WINDOW_BYTES onward |
 | `LIBRARY_CATALOGUE_ADDRESS` | 32 | `0x88000` | SDRAM byte address of the catalogue table; window bank 34 |
+| `LIBRARY_ENTRY_BYTES` | 8 | `0x20` | One catalogue entry; the catalogue_entry record lays it out |
 | `LIBRARY_CATALOGUE_VALID` | 8 | `0x1` | Catalogue valid byte of a selectable entry |
 | `LIBRARY_FILL_BOUND_EDGES` | 32 | `0x9C40` | Window fill bound from the bank commit edge to window_busy falling |
 | `LIBRARY_SWAP_BOUND_EDGES` | 32 | `0x13880` | Image swap bound from the accepting select commit edge to copy_busy falling |

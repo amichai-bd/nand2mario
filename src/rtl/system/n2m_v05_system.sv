@@ -5,7 +5,9 @@
 // Required owners for the original v0.5 program; unused destinations reject service.
 module n2m_v05_system #(
     parameter integer UART_BAUD = 115200,
-    parameter logic [127:0] BUILD_ID = 128'h88000000000000000000000000000001
+    parameter logic [127:0] BUILD_ID = 128'h88000000000000000000000000000001,
+    parameter int unsigned KEY1_DEBOUNCE_EDGES = 32'(n2m_interfaces_pkg::LIBRARY_KEY1_DEBOUNCE_EDGES),
+    parameter int unsigned KEY1_HOLD_EDGES = 32'(n2m_interfaces_pkg::LIBRARY_KEY1_HOLD_EDGES)
 ) (
     input var logic clk_sys,
     input var logic reset_sys,
@@ -35,7 +37,19 @@ module n2m_v05_system #(
     output logic [7:0] source_x, source_y,
     output logic [31:0] source_epoch,
     output logic [63:0] source_dot,
-    output logic fault
+    output logic fault,
+    // Loader profile: KEY1 return pin and the SDRAM controller line interface
+    // (wiki/src/rtl/cartridge/MAS_loader_profile.md). The controller and its
+    // pins live in the board top.
+    input var logic key1_n,
+    input var logic sdram_initialized,
+    output logic sdram_request_valid,
+    output logic sdram_request_write,
+    output logic [n2m_interfaces_pkg::SDRAM_ADDRESS_BITS-1:0] sdram_request_address,
+    output logic [n2m_interfaces_pkg::SDRAM_LINE_BYTES*8-1:0] sdram_request_data,
+    input var logic sdram_request_ready,
+    input var logic sdram_response_valid,
+    input var logic [n2m_interfaces_pkg::SDRAM_LINE_BYTES*8-1:0] sdram_response_data
 );
     // Quartus 25.1 misresolves package constants inside instance connections.
     localparam n2m_memory_pkg::memory_destination_t IRQ_DESTINATION = n2m_memory_pkg::MEMORY_IRQ;
@@ -54,6 +68,20 @@ module n2m_v05_system #(
     logic image_valid, rom_write, rom_read, rom_read_valid;
     logic [14:0] rom_address;
     logic [7:0] rom_write_data, rom_read_data;
+    // Loader profile owner wiring.
+    localparam n2m_memory_pkg::memory_store_t ROM_STORE = n2m_memory_pkg::STORE_ROM;
+    logic loader_read_override, loader_copy_busy, loader_swap_busy;
+    logic [7:0] loader_read_data, dma_read_data;
+    logic rom_host_write, rom_host_read;
+    logic [31:0] rom_host_offset;
+    logic [7:0] rom_host_wdata;
+    logic host_sdram_valid, host_sdram_write, host_sdram_ready, host_sdram_response_valid;
+    logic [n2m_interfaces_pkg::SDRAM_ADDRESS_BITS-1:0] host_sdram_address;
+    logic [n2m_interfaces_pkg::SDRAM_LINE_BYTES*8-1:0] host_sdram_data;
+    logic engine_pause, engine_reset_request, engine_reset_accept, engine_reset_done;
+    logic engine_invalidate, engine_publish, host_session, host_port_busy, library_return;
+    logic [7:0] engine_profile;
+    logic [31:0] library_status, library_key1;
     logic snapshot_request, frame_read;
     logic peek_read, peek_valid, peek_ready, oam_sequence_active;
     logic [7:0] peek_select, peek_rdata;
@@ -132,9 +160,39 @@ module n2m_v05_system #(
         .snapshot_ok, .snapshot_valid, .snapshot_metadata,
         .frame_read, .frame_address, .frame_data, .frame_valid,
         .peek_ready, .peek_read, .peek_select, .peek_offset, .peek_rdata, .peek_valid,
-        // The composed system has no SDRAM yet; the loader slice binds it.
-        .sdram_initialized(1'b0), .sdram_request_valid(), .sdram_request_write(), .sdram_request_address(), .sdram_request_data(), .sdram_request_ready(1'b0), .sdram_response_valid(1'b0), .sdram_response_data('0)
+        // Host SDRAM lines reach the controller through the loader's arbiter.
+        .sdram_initialized, .sdram_request_valid(host_sdram_valid), .sdram_request_write(host_sdram_write),
+        .sdram_request_address(host_sdram_address), .sdram_request_data(host_sdram_data),
+        .sdram_request_ready(host_sdram_ready), .sdram_response_valid(host_sdram_response_valid),
+        .sdram_response_data,
+        .loader_copy_busy, .loader_swap_busy, .engine_invalidate, .engine_publish, .engine_profile,
+        .library_status, .library_key1, .engine_pause, .engine_reset_request,
+        .engine_reset_accept, .engine_reset_done, .host_session, .host_port_busy, .library_return
     );
+    // The loader owns the ROM host port, the storage arbiter and the CPU view
+    // of the bank/select/status bytes; its commits are the CPU ROM writes the
+    // memory owner resolves and the stores otherwise ignore.
+    n2m_loader #(.KEY1_DEBOUNCE_EDGES(KEY1_DEBOUNCE_EDGES), .KEY1_HOLD_EDGES(KEY1_HOLD_EDGES)) u_loader (
+        .clk_sys, .reset_sys, .profile, .image_valid, .host_session, .host_port_busy,
+        .host_return(library_return), .paused, .sdram_initialized,
+        .rom_commit(raw_write && raw_store == ROM_STORE), .commit_offset(raw_offset), .commit_data(raw_wdata),
+        .cpu_address(address), .read_override(loader_read_override), .read_data(loader_read_data),
+        .key1_n,
+        .uart_rom_write(rom_write), .uart_rom_read(rom_read), .uart_rom_address(rom_address),
+        .uart_rom_wdata(rom_write_data),
+        .rom_host_write, .rom_host_read, .rom_host_offset, .rom_host_wdata,
+        .host_sdram_valid, .host_sdram_write, .host_sdram_address, .host_sdram_data,
+        .host_sdram_ready, .host_sdram_response_valid,
+        .sdram_request_valid, .sdram_request_write, .sdram_request_address, .sdram_request_data,
+        .sdram_request_ready, .sdram_response_valid, .sdram_response_data,
+        .engine_pause, .engine_reset_request, .engine_reset_accept, .engine_reset_done,
+        .image_invalidate(engine_invalidate), .image_publish(engine_publish), .image_profile(engine_profile),
+        .copy_busy(loader_copy_busy), .swap_busy(loader_swap_busy), .window_busy(), .sdram_ready(),
+        .library_status, .library_key1
+    );
+    // Loader status bytes and the $FF window mask replace the memory owner's
+    // byte on the CPU read path; every other read is unchanged.
+    assign read_data = loader_read_override ? loader_read_data : dma_read_data;
     n2m_timebase u_timebase (.clk_sys, .reset_sys, .core_reset, .pause_request,
         .gb_tick(emulated_tick), .paused);
     // STOP withholds emulated ticks from every owner, so no dot elapses while
@@ -168,7 +226,7 @@ module n2m_v05_system #(
         .bus_commit(bus_commit && !cpu_fault), .address_effect,
         .address_effect_resolved(address_effect_resolved && !cpu_fault),
         .address_effect_sample(address_effect_sample && !cpu_fault),
-        .read_data, .response_valid, .oam_sequence_active, .fault(memory_fault),
+        .read_data(dma_read_data), .response_valid, .oam_sequence_active, .fault(memory_fault),
         .peripheral_prepare(owner_prepare), .peripheral_commit(owner_commit),
         .peripheral_destination(destination), .peripheral_address(owner_address),
         .peripheral_write(owner_write), .peripheral_wdata(owner_wdata),
@@ -214,8 +272,8 @@ module n2m_v05_system #(
         .access_read(raw_read), .access_write(raw_write), .access_store(raw_store),
         .access_address(raw_offset), .access_wdata(raw_wdata),
         .access_rdata(storage_rdata), .access_valid(storage_valid),
-        .host_read(rom_read), .host_write(rom_write), .host_offset({17'd0,rom_address}),
-        .host_wdata(rom_write_data), .host_rdata(rom_read_data), .host_valid(rom_read_valid),
+        .host_read(rom_host_read), .host_write(rom_host_write), .host_offset(rom_host_offset),
+        .host_wdata(rom_host_wdata), .host_rdata(rom_read_data), .host_valid(rom_read_valid),
         .core_paused(paused), .oam_sequence_active, .peek_ready,
         .peek_read, .peek_select, .peek_offset, .peek_rdata, .peek_valid,
         .ppu_vram_read(raw_vram_read), .ppu_vram_address(raw_vram_address),
