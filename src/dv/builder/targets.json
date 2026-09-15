@@ -29423,5 +29423,108 @@
         "dot_count"
       ]
     }
+  },
+  "sdram-init": {
+    "sources": [
+      "src/rtl/storage/n2m_sdram_pkg.sv",
+      "src/rtl/storage/n2m_sdram_ctrl.sv",
+      "src/rtl/storage/n2m_sim_sdram.sv",
+      "src/dv/storage/tb_sdram_ctrl.sv"
+    ],
+    "top": "tb_sdram_ctrl",
+    "simulators": [
+      "verilator"
+    ],
+    "args": [
+      "+fixture=init"
+    ],
+    "expected_exit": "zero",
+    "signature": "PASS sdram-init initialized=5036 idle=5038 precharge=5000 mode=5035 refreshes=8"
+  },
+  "sdram-line": {
+    "sources": [
+      "src/rtl/storage/n2m_sdram_pkg.sv",
+      "src/rtl/storage/n2m_sdram_ctrl.sv",
+      "src/rtl/storage/n2m_sim_sdram.sv",
+      "src/dv/storage/tb_sdram_ctrl.sv"
+    ],
+    "top": "tb_sdram_ctrl",
+    "simulators": [
+      "verilator"
+    ],
+    "args": [
+      "+fixture=line"
+    ],
+    "expected_exit": "zero",
+    "signature": "PASS sdram-line lines=16 reads=34 writes=19"
+  },
+  "sdram-refresh": {
+    "sources": [
+      "src/rtl/storage/n2m_sdram_pkg.sv",
+      "src/rtl/storage/n2m_sdram_ctrl.sv",
+      "src/rtl/storage/n2m_sim_sdram.sv",
+      "src/dv/storage/tb_sdram_ctrl.sv"
+    ],
+    "top": "tb_sdram_ctrl",
+    "simulators": [
+      "verilator"
+    ],
+    "args": [
+      "+fixture=refresh"
+    ],
+    "expected_exit": "zero",
+    "signature": "PASS sdram-refresh clocks=40000"
+  },
+  "sdram-fault-misaligned": {
+    "sources": [
+      "src/rtl/storage/n2m_sdram_pkg.sv",
+      "src/rtl/storage/n2m_sdram_ctrl.sv",
+      "src/rtl/storage/n2m_sim_sdram.sv",
+      "src/dv/storage/tb_sdram_ctrl.sv"
+    ],
+    "top": "tb_sdram_ctrl",
+    "simulators": [
+      "verilator"
+    ],
+    "args": [
+      "+fixture=fault-misaligned"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT SDRAM_LINE_ALIGNED"
+  },
+  "sdram-fault-before-init": {
+    "sources": [
+      "src/rtl/storage/n2m_sdram_pkg.sv",
+      "src/rtl/storage/n2m_sdram_ctrl.sv",
+      "src/rtl/storage/n2m_sim_sdram.sv",
+      "src/dv/storage/tb_sdram_ctrl.sv"
+    ],
+    "top": "tb_sdram_ctrl",
+    "simulators": [
+      "verilator"
+    ],
+    "args": [
+      "+fixture=fault-before-init"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "N2M_ASSERT SDRAM_REQUEST_BEFORE_INIT"
+  },
+  "sdram-fault-deadline": {
+    "sources": [
+      "src/rtl/storage/n2m_sdram_pkg.sv",
+      "src/rtl/storage/n2m_sdram_ctrl.sv",
+      "src/rtl/storage/n2m_sim_sdram.sv",
+      "src/dv/storage/tb_sdram_ctrl.sv"
+    ],
+    "top": "tb_sdram_ctrl",
+    "simulators": [
+      "verilator"
+    ],
+    "args": [
+      "+fixture=refresh",
+      "-gREFRESH_INTERVAL=178"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "SDRAM_MODEL_REFRESH_DEADLINE"
   }
 }

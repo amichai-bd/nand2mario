@@ -41,6 +41,7 @@ labels:
   serial: "Serial transfer and its service."
   snapshot: "Frame snapshot capture."
   springtrail: "The original Springtrail game, its reference and its fixtures."
+  storage: "The SDRAM controller and its pin-level device model."
   stackdrop: "The Stackdrop fixture game and its reference."
   sw: "The original assembler, linker, packager and asset converter."
   system: "Whole-system composition above one RTL owner."
@@ -435,6 +436,12 @@ units:
   python-vram-write: {kind: sim, level: 2, labels: [integration, memory, python-tb], duration_seconds: 4.78}
   register-macros: {kind: sim, level: 2, labels: [common], duration_seconds: 1.46}
   register-macros-corrupt: {kind: sim, level: 2, labels: [common, fault], duration_seconds: 0.45}
+  sdram-fault-before-init: {kind: sim, level: 1, labels: [fault, storage], duration_seconds: 0.80}
+  sdram-fault-deadline: {kind: sim, level: 1, labels: [fault, storage], duration_seconds: 0.99}
+  sdram-fault-misaligned: {kind: sim, level: 1, labels: [fault, storage], duration_seconds: 0.77}
+  sdram-init: {kind: sim, level: 1, labels: [storage], duration_seconds: 0.78}
+  sdram-line: {kind: sim, level: 1, labels: [storage], duration_seconds: 0.87}
+  sdram-refresh: {kind: sim, level: 1, labels: [storage], duration_seconds: 1.06}
   serial-boundary-fault: {kind: sim, level: 2, labels: [fault, serial], duration_seconds: 0.74}
   serial-register-fault: {kind: sim, level: 2, labels: [fault, serial], duration_seconds: 0.72}
   serial-registers: {kind: sim, level: 1, labels: [serial], duration_seconds: 0.73}
