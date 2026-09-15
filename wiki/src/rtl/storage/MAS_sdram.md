@@ -238,12 +238,14 @@ actual register-to-pin delays.
 
 Realized by the [`sdram-proof`](../../../../src/fpga/de10_lite/sdram.sdc) fit
 with the inverted clock (Quartus Prime Lite 25.1std, `10M50DAF484C7G`): the
-worst output setup slack against `sdram_clk` is 8.29 ns (slow 1200 mV 85C),
-8.91 ns (slow 0C) and 12.10 ns (fast 0C), so the register-to-pin delay of the
-command, address and write-data paths is at most about 8.9 ns including clock
-uncertainty; the output hold slack is at least 19.0 ns; the read-data capture
-paths are inside the system clock's worst setup slack of 5.50 ns; no port or
-path is unconstrained. The fitter reports one jitter warning because the
+worst output setup slack against `sdram_clk` is 8.80 ns (slow 1200 mV 85C),
+9.43 ns (slow 0C) and 13.00 ns (fast 0C), so the register-to-pin delay of the
+command, address and write-data paths is at most about 8.4 ns including clock
+uncertainty; the output hold slack is at least 18.9 ns; the read-data capture
+paths are inside the system clock's worst setup slack of 5.89 ns; no port or
+path is unconstrained, and `DRAM_CLK` itself is the generated clock's port
+rather than a timed output (its `check_timing` entry is the one the builder
+accepts for this image). The fitter reports one jitter warning because the
 routed inverted clock does not use a dedicated PLL output pin; the builder
 classifies exactly that line for this target.
 
