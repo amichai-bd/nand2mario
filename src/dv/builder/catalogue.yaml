@@ -54,11 +54,11 @@ units:
   .agents/skills/issue-author/scripts/test_create_issue.py: {kind: unit, level: 0, labels: [agents], duration_seconds: 0.07}
   .agents/skills/rtl-coder/scripts/test_check_sv_style.py: {kind: unit, level: 0, labels: [agents], duration_seconds: 0.04}
   .agents/skills/update-crewmates/scripts/test_update_caps.py: {kind: unit, level: 0, labels: [agents], duration_seconds: 0.09}
-  adc-backend: {kind: sim, level: 2, labels: [input], duration_seconds: 1.43}
-  adc-backend-corrupt: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 1.20}
-  adc-pairs: {kind: sim, level: 2, labels: [input], duration_seconds: 0.42}
-  adc-pairs-channel: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 0.38}
-  adc-pairs-corrupt: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 0.40}
+  adc-backend: {kind: sim, level: 2, labels: [input], duration_seconds: 4.02}
+  adc-backend-corrupt: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 1.42}
+  adc-pairs: {kind: sim, level: 2, labels: [input], duration_seconds: 2.85}
+  adc-pairs-channel: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 0.60}
+  adc-pairs-corrupt: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 0.60}
   assert-synthesis: {kind: sim, level: 1, labels: [common], duration_seconds: 1.38}
   async-assert-direct: {kind: sim, level: 2, labels: [common, fault], duration_seconds: 1.68}
   async-assert-hold: {kind: sim, level: 2, labels: [common, fault], duration_seconds: 0.44}
@@ -77,14 +77,14 @@ units:
   clocking-bad-numerator: {kind: sim, level: 2, labels: [clocking, fault], duration_seconds: 1.37}
   clocking-drop-tick: {kind: sim, level: 2, labels: [clocking, fault], duration_seconds: 1.38}
   clocking-early-reset: {kind: sim, level: 2, labels: [clocking, fault], duration_seconds: 0.50}
-  controls-lifecycle: {kind: sim, level: 2, labels: [input], duration_seconds: 1.08}
-  controls-lifecycle-corrupt: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 1.05}
-  controls-mask: {kind: sim, level: 2, labels: [input], duration_seconds: 0.45}
-  controls-mask-corrupt: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 0.44}
-  controls-sticky: {kind: sim, level: 2, labels: [input], duration_seconds: 1.03}
-  controls-unsolicited: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 0.91}
-  controls-wire: {kind: sim, level: 2, labels: [input], duration_seconds: 5.77}
-  controls-wire-corrupt: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 1.52}
+  controls-lifecycle: {kind: sim, level: 2, labels: [input], duration_seconds: 6.15}
+  controls-lifecycle-corrupt: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 1.36}
+  controls-mask: {kind: sim, level: 2, labels: [input], duration_seconds: 2.83}
+  controls-mask-corrupt: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 0.68}
+  controls-sticky: {kind: sim, level: 2, labels: [input], duration_seconds: 6.19}
+  controls-unsolicited: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 1.40}
+  controls-wire: {kind: sim, level: 2, labels: [input], duration_seconds: 14.81}
+  controls-wire-corrupt: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 2.13}
   cpu-alu: {kind: sim, level: 1, labels: [cpu], duration_seconds: 1.53}
   cpu-alu-corrupt: {kind: sim, level: 2, labels: [cpu, fault], duration_seconds: 0.49}
   cpu-bus: {kind: sim, level: 2, labels: [cpu], duration_seconds: 0.60}
@@ -192,13 +192,13 @@ units:
   host-play-input: {kind: sim, level: 2, labels: [fault, host-play, integration, memory], duration_seconds: 143.99}
   host-play-missing: {kind: sim, level: 2, labels: [fault, host-play, integration, memory], duration_seconds: 119.49}
   host-play-release: {kind: sim, level: 2, labels: [fault, host-play, integration, memory], duration_seconds: 165.69}
-  input-matrix: {kind: sim, level: 1, labels: [input], duration_seconds: 0.44}
-  input-matrix-boundary: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 0.41}
-  input-matrix-data: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 0.41}
-  input-matrix-event: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 0.42}
-  input-matrix-source: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 0.40}
-  input-ordering: {kind: sim, level: 2, labels: [input], duration_seconds: 0.41}
-  input-power: {kind: sim, level: 2, labels: [input], duration_seconds: 1.28}
+  input-matrix: {kind: sim, level: 1, labels: [input], duration_seconds: 3.07}
+  input-matrix-boundary: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 0.66}
+  input-matrix-data: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 0.67}
+  input-matrix-event: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 0.65}
+  input-matrix-source: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 0.66}
+  input-ordering: {kind: sim, level: 2, labels: [input], duration_seconds: 3.36}
+  input-power: {kind: sim, level: 2, labels: [input], duration_seconds: 4.02}
   integration-preloaded: {kind: sim, level: 2, labels: [integration, memory], duration_seconds: 10.52}
   integration-smoke: {kind: sim, level: 2, labels: [builder, integration, memory], duration_seconds: 61.91}
   integration-smoke-data: {kind: sim, level: 2, labels: [builder, fault, integration, memory], duration_seconds: 54.29}
@@ -314,9 +314,9 @@ units:
   python-bkb: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 31.61}
   python-bks: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 15.43}
   python-bkx: {kind: sim, level: 2, labels: [fault, integration, python-tb, springtrail, system, v05], duration_seconds: 12.85}
-  python-controls-startup: {kind: sim, level: 2, labels: [input, integration, python-tb, v05], duration_seconds: 10.89}
-  python-controls-system: {kind: sim, level: 2, labels: [input, integration, python-tb, v05], duration_seconds: 24.11}
-  python-controls-system-corrupt: {kind: sim, level: 2, labels: [fault, input, integration, python-tb, v05], duration_seconds: 24.39}
+  python-controls-startup: {kind: sim, level: 2, labels: [input, integration, python-tb, v05], duration_seconds: 0.94}
+  python-controls-system: {kind: sim, level: 2, labels: [input, integration, python-tb, v05], duration_seconds: 0.84}
+  python-controls-system-corrupt: {kind: sim, level: 2, labels: [fault, input, integration, python-tb, v05], duration_seconds: 0.83}
   python-courier-a: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 22.03}
   python-courier-b: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 22.63}
   python-courier-c: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 22.49}
@@ -445,10 +445,10 @@ units:
   serial-boundary-fault: {kind: sim, level: 2, labels: [fault, serial], duration_seconds: 0.74}
   serial-register-fault: {kind: sim, level: 2, labels: [fault, serial], duration_seconds: 0.72}
   serial-registers: {kind: sim, level: 1, labels: [serial], duration_seconds: 0.73}
-  sim-adc-double: {kind: sim, level: 0, labels: [input], duration_seconds: 0.43}
-  sim-adc-double-channel: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 0.47}
-  sim-adc-double-corrupt: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 0.42}
-  sim-adc-double-missing: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 0.40}
+  sim-adc-double: {kind: sim, level: 0, labels: [input], duration_seconds: 3.10}
+  sim-adc-double-channel: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 0.63}
+  sim-adc-double-corrupt: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 0.53}
+  sim-adc-double-missing: {kind: sim, level: 2, labels: [fault, input], duration_seconds: 0.57}
   sim-ram-double: {kind: sim, level: 0, labels: [common], duration_seconds: 1.27}
   sim-ram-double-bad-preload: {kind: sim, level: 2, labels: [common, fault], duration_seconds: 1.09}
   sim-ram-double-collision: {kind: sim, level: 2, labels: [common, fault], duration_seconds: 1.05}
