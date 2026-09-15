@@ -83,3 +83,31 @@ class StoreFitTests(unittest.TestCase):
         for index, changed in enumerate(mutations):
             with self.subTest(mutation=index), self.assertRaises(ValueError):
                 verify_netlist(changed)
+
+
+class StoreTargetTests(unittest.TestCase):
+    def test_registry_assigns_every_store_port(self):
+        """Every n2m_memory_stores port is the physical clock or a virtual pin; a new port must be registered."""
+        import re
+        from n2m import fpga
+        root = Path(__file__).resolve().parents[3]
+        target = fpga.target_definition(root, "memory-stores")
+        source = (root / "src/rtl/memory/n2m_memory_stores.sv").read_text(encoding="utf-8")
+        header = source[source.index("module n2m_memory_stores"):source.index(");")]
+        ports = re.findall(r"(?m)^\s*(input|output)\s+(?:var\s+)?(\S+)\s+(?:\[[^\]]+\]\s+)?(\w+)\s*,?\s*$", header)
+        self.assertEqual(len(ports), 41, "the store port list changed; update this count and the registry")
+        assigned = {name.split("[")[0] for name in [*target["pins"], *target["virtual_pins"]]}
+        structs = {name.split(".")[0] for name in target["virtual_pins"] if "." in name}
+        for _, kind, name in ports:
+            self.assertIn(name, structs if kind.startswith("n2m_memory_pkg::memory_oam") else assigned, name)
+        self.assertEqual(target["pins"], {"clk_sys": "PIN_P11"})
+        sdc = (root / "src/fpga/de10_lite/memory_stores.sdc").read_text(encoding="utf-8")
+        budgets = [set(match.split()) for match in re.findall(r"set_input_delay .*\[get_ports \{([^}]*)\}\]", sdc)]
+        self.assertEqual(len(budgets), 2, "one -max and one -min input budget")
+        for direction, kind, name in ports:
+            if direction != "input" or name == "clk_sys":
+                continue
+            declaration = header[:header.index(" " + name)].rsplit("\n", 1)[-1]
+            token = name + ("*" if kind.startswith("n2m_memory_pkg::") or "[" in declaration else "")
+            for budget in budgets:
+                self.assertIn(token, budget, name)

@@ -67,6 +67,19 @@ fit as needing it; if the signature still appears with a nonzero exit, preserve
 the failure and report it. This changes no DLL or security policy and does not
 relabel failed attempts.
 
+A second, unrelated Quartus 25.1std generator failure is a crash: `qmegawiz`
+exits 3 with an empty `generate-*pll.log` and the Windows Application log
+(`Get-WinEvent -LogName Application`, event 1000) shows `mega_altpllq.exe`
+faulting in `mega_mwizcq.dll` (0xc0000005). Verified rate on the build host:
+8 of 20 and 3 of 15 standalone launches, with up to three in a row; a private
+`TEMP` and a pause between launches did not change it, and dropping `-silent`
+opens the wizard GUI, so that variant could not be measured.
+`fpga build` retries only that exact signature up to six launches and records
+each exit code in `commands` and `generator_retries` (see the
+[generated clocking inputs](../../../../wiki/tools/n2m/SPEC.md#generated-clocking-inputs)).
+A generator exit with output, another exit code or a timeout is a real failure
+and is not retried; report it.
+
 ## Package constants in Quartus 25.1
 
 Quartus 25.1std.0 Build 1129 reported error10162 for selected package-qualified

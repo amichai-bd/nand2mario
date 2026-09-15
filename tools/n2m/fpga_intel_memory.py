@@ -14,7 +14,8 @@ SYS_CLOCK = r"\clk_sys~inputclkctrl_outclk"
 PIX_CLOCK = r"\u_clocking|u_pll|altpll_component|auto_generated|wire_pll1_clk[0]~clkctrl_outclk"
 
 
-def verify_netlist(text):
+def verify_netlist(text, *, system_clock=SYS_CLOCK):
+    """Check the ten fitted M9K atoms; system_clock is the fitted net that clocks every A/B system port."""
     atoms = re.findall(r"fiftyfivenm_ram_block\s+\\(\S+)\s*\((.*?)\);", text, re.DOTALL)
     if len(atoms) != 10:
         raise ValueError("Intel physical RAM atom count differs")
@@ -47,7 +48,7 @@ def verify_netlist(text):
             raise ValueError(f"Intel physical RAM parameter differs: {name}")
         if any(key.startswith("mem_init") or key.startswith("init_file") for key in params):
             raise ValueError("Intel physical RAM initialization unexpectedly present")
-        expected_ports = {"clk0": SYS_CLOCK, "clk1": PIX_CLOCK if owner == "frame_ram" else "gnd",
+        expected_ports = {"clk0": system_clock, "clk1": PIX_CLOCK if owner == "frame_ram" else "gnd",
                           "clr0": "gnd", "clr1": "gnd", "portbwe": "gnd", "portbbyteenamasks": "1'b1"}
         if any(ports.get(key) != value for key, value in expected_ports.items()):
             raise ValueError(f"Intel physical RAM clocks, reset or read-only B differ: {name}")
@@ -107,7 +108,7 @@ def audit(quote):
     return "\n".join(lines) + "\n"
 
 
-def verify(folder):
+def verify(folder, *, system_clock=SYS_CLOCK):
     output = folder / "output"
     inventory = (output / "intel_memory_inputs.rpt").read_text().splitlines()
     expected_inputs = ["sys 63"]
@@ -140,7 +141,7 @@ def verify(folder):
     netlist = (folder / "simulation/questa/design.vo").read_text(encoding="utf-8")
     if "fiftyfivenm_ram_block" not in netlist or re.search(r"(?i)black.?box", netlist):
         raise ValueError("Intel memory device RAM primitive missing or black boxed")
-    evidence["physical_atoms"] = verify_netlist(netlist)
+    evidence["physical_atoms"] = verify_netlist(netlist, system_clock=system_clock)
     launch_paths = {}
     for corner in ("slow85", "slow0", "fast0"):
         for index, source in enumerate(["frame_read"] + [f"frame_address[{bit}]" for bit in range(15)]):

@@ -288,6 +288,35 @@ def execute(argv, folder, log, timeout, record, build):
     return text
 
 
+# The ALTPLL generator (qmegawiz launching mega_altpllq.exe) crashes with an
+# access violation in mega_mwizcq.dll on about one launch in three under
+# Quartus Prime Lite 25.1std on Windows; the launcher then exits 3 with an
+# empty log. Standalone probes saw 8 of 20 and 3 of 15 launches fail, with up
+# to three consecutive failures; a private TEMP and a pause between launches
+# changed nothing, and dropping -silent opens the wizard GUI, so it could not
+# be measured. Only that exact silent signature is
+# retried, up to six launches in total; every attempt keeps its exit code in
+# the record and command log.
+GENERATOR_ATTEMPTS = 6
+GENERATOR_SILENT_EXIT = 3
+
+
+def generator_execute(argv, folder, log, timeout, record, build):
+    """Run a generator command, retrying only its silent exit-3 crash."""
+    for attempt in range(1, GENERATOR_ATTEMPTS + 1):
+        try:
+            return execute(argv, folder, log, timeout, record, build)
+        except RuntimeError:
+            command = record["commands"][-1]
+            silent = (command.get("exit_code") == GENERATOR_SILENT_EXIT and not command.get("timed_out")
+                      and log.is_file() and log.stat().st_size == 0)
+            if not silent or attempt == GENERATOR_ATTEMPTS:
+                raise
+            command["retried"] = True
+            record.setdefault("generator_retries", []).append(
+                {"command": command["argv"], "attempt": attempt, "exit_code": command["exit_code"], "log": log.name})
+
+
 def tools(directory, folder, record, build, timeout):
     directory = Path(directory).resolve()
     identities = {}
@@ -366,7 +395,7 @@ def timing_evidence(folder, target, *, build_id=None):
         if target["top"] == "adc_proof":
             lock_event = adc_evidence["lock_event"]
     vga_evidence = fpga_vga.verify(folder, lcd=target["top"] == "ppu_proof", controls=target["top"] == "controls_proof", **system_profile) if target.get("top") in ("vga_proof", "ppu_proof", "controls_proof") else None
-    memory_evidence = fpga_intel_memory.verify(folder) if target.get("top") == "intel_memory_proof" else None
+    memory_evidence = fpga_intel_memory.verify(folder, **{"system_clock": fpga_pll.SYSTEM_NET} if parallel else {}) if target.get("top") == "intel_memory_proof" else None
     if target.get("top") == "n2m_memory_stores":
         memory_evidence = fpga_memory_stores.verify(folder)
     for name, count in rows:
@@ -486,9 +515,9 @@ def build_fpga(root, build, args, provenance=None):
             record["artifacts"].update(old["artifacts"])
         else:
             if "adc" in record["tools"]:
-                fpga_adc.generate(folder, record["tools"]["adc"], execute, args.timeout, record, build)
+                fpga_adc.generate(folder, record["tools"]["adc"], generator_execute, args.timeout, record, build)
             if "pll" in target:
-                fpga_pll.generate(folder, record["tools"]["altpll"], target["pll"], execute, args.timeout, record, build)
+                fpga_pll.generate(folder, record["tools"]["altpll"], target["pll"], generator_execute, args.timeout, record, build)
             prepare(root, folder, target, build_id=record.get("build_id"))
             execute([record["tools"]["quartus_sh"]["path"], "--flow", "compile", "design"], folder, folder / "compile.log", args.timeout, record, build)
             execute([record["tools"]["quartus_sta"]["path"], "-t", "audit.tcl"], folder, folder / "audit.log", args.timeout, record, build)
