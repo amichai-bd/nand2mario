@@ -62,13 +62,9 @@ module n2m_uart_packet_rx #(
     assign request_bytes = decoded_count;
     assign more_encoded = encoded_index + 1'b1 < encoded_count;
     assign encoded_read = state == FETCH;
-    // Lint waiver: the narrow unsigned operand is zero-extended against an integer
-    // constant; the intended unsigned comparison is unchanged.
-    /* verilator lint_off WIDTHEXPAND */
     assign encoded_write = state == RECEIVE && rx_valid && !rx_error && rx_data != 0 &&
-                           !discard_input && encoded_count < n2m_uart_pkg::UART_ENCODED_MAX;
-    assign decoded_write = emit_byte && decoded_count < n2m_uart_pkg::UART_RAW_MAX;
-    /* verilator lint_on WIDTHEXPAND */
+                           !discard_input && 32'(encoded_count) < n2m_uart_pkg::UART_ENCODED_MAX;
+    assign decoded_write = emit_byte && 32'(decoded_count) < n2m_uart_pkg::UART_RAW_MAX;
     assign decoded_read = request_valid && packet_read;
 
     n2m_uart_packet_store stores (
@@ -121,9 +117,7 @@ module n2m_uart_packet_rx #(
                             state_next = FETCH;
                         end else encoded_count_next = '0;
                     end else if (!discard_input) begin
-                        /* verilator lint_off WIDTHEXPAND */
-                        if (encoded_count < n2m_uart_pkg::UART_ENCODED_MAX)
-                        /* verilator lint_on WIDTHEXPAND */
+                        if (32'(encoded_count) < n2m_uart_pkg::UART_ENCODED_MAX)
                             encoded_count_next = encoded_count + 1'b1;
                         else begin
                             discard_input_next = 1'b1;
@@ -131,9 +125,7 @@ module n2m_uart_packet_rx #(
                         end
                     end
                 end else if (encoded_count != 0 || discard_input) begin
-                    /* verilator lint_off WIDTHEXPAND */
-                    if (idle_count == TIMEOUT_CYCLES - 1) begin
-                    /* verilator lint_on WIDTHEXPAND */
+                    if (32'(idle_count) == TIMEOUT_CYCLES - 1) begin
                         idle_count_next = '0;
                         encoded_count_next = '0;
                         discard_input_next = 1'b0;
@@ -175,10 +167,8 @@ module n2m_uart_packet_rx #(
                 state_next = FETCH;
             end
             CHECK: begin
-                /* verilator lint_off WIDTHEXPAND */
-                if (decoded_count >= n2m_interfaces_pkg::PACKET_HEADER_BYTES + 2 && crc == tail &&
+                if (32'(decoded_count) >= n2m_interfaces_pkg::PACKET_HEADER_BYTES + 2 && crc == tail &&
                     header.kind == n2m_interfaces_pkg::WIRE_REQUEST && header.status == n2m_interfaces_pkg::STATUS_OK)
-                /* verilator lint_on WIDTHEXPAND */
                     state_next = HOLD;
                 else begin
                     state_next = RECEIVE;
@@ -197,15 +187,11 @@ module n2m_uart_packet_rx #(
         endcase
 
         if (emit_byte) begin
-            /* verilator lint_off WIDTHEXPAND */
-            if (decoded_count >= n2m_uart_pkg::UART_RAW_MAX) begin
-            /* verilator lint_on WIDTHEXPAND */
+            if (32'(decoded_count) >= n2m_uart_pkg::UART_RAW_MAX) begin
                 state_next = RECEIVE;
                 encoded_count_next = '0;
             end else begin
-                /* verilator lint_off WIDTHEXPAND */
-                if (decoded_count < n2m_interfaces_pkg::PACKET_HEADER_BYTES)
-                /* verilator lint_on WIDTHEXPAND */
+                if (32'(decoded_count) < n2m_interfaces_pkg::PACKET_HEADER_BYTES)
                     header_next[8 * decoded_count +: 8] = emitted_data;
                 // Delay two bytes so the received little-endian CRC itself
                 // never enters the header/payload CRC accumulator.

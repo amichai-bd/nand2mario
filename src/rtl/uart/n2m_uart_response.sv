@@ -33,11 +33,7 @@ module n2m_uart_response (
     assign response_write = state == HEADER || (state == PAYLOAD && payload_valid)
         || state == CRC_LOW || state == CRC_HIGH;
     assign response_address = index;
-    // Lint waiver: the narrow unsigned operand is zero-extended against an integer
-    // constant; the intended unsigned comparison is unchanged.
-    /* verilator lint_off WIDTHEXPAND */
-    assign response_bytes = n2m_uart_pkg::UART_ADDRESS_BITS'(n2m_interfaces_pkg::PACKET_HEADER_BYTES + header.length + 2);
-    /* verilator lint_on WIDTHEXPAND */
+    assign response_bytes = n2m_uart_pkg::UART_ADDRESS_BITS'(n2m_interfaces_pkg::PACKET_HEADER_BYTES + 32'(header.length) + 2);
     always_comb begin
         case (state)
             HEADER: response_data = 8'(header >> (index * 8));
@@ -60,17 +56,13 @@ module n2m_uart_response (
             HEADER: begin
                 index_next = index + 1'b1;
                 crc_next = n2m_uart_pkg::crc16_byte(crc, response_data);
-                /* verilator lint_off WIDTHEXPAND */
-                if (index == n2m_interfaces_pkg::PACKET_HEADER_BYTES - 1)
-                /* verilator lint_on WIDTHEXPAND */
+                if (32'(index) == n2m_interfaces_pkg::PACKET_HEADER_BYTES - 1)
                     state_next = header.length == 0 ? CRC_LOW : PAYLOAD;
             end
             PAYLOAD: if (payload_valid) begin
                 index_next = index + 1'b1;
                 crc_next = n2m_uart_pkg::crc16_byte(crc, payload_data);
-                /* verilator lint_off WIDTHEXPAND */
-                if (index + 1'b1 == n2m_interfaces_pkg::PACKET_HEADER_BYTES + header.length)
-                /* verilator lint_on WIDTHEXPAND */
+                if (32'(index) + 1'b1 == n2m_interfaces_pkg::PACKET_HEADER_BYTES + 32'(header.length))
                     state_next = CRC_LOW;
             end
             CRC_LOW: begin

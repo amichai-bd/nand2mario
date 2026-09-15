@@ -123,11 +123,7 @@ module n2m_uart_load #(
             end
             CLEAR: begin
                 address_next = address + 1'b1;
-                // Lint waiver: the 15-bit address is zero-extended against the
-                // integer ROM size; the intended unsigned comparison is unchanged.
-                /* verilator lint_off WIDTHEXPAND */
-                if (address == n2m_interfaces_pkg::PROFILE_ROM_BYTES - 1) begin
-                /* verilator lint_on WIDTHEXPAND */
+                if (32'(address) == n2m_interfaces_pkg::PROFILE_ROM_BYTES - 1) begin
                     cleared_next = 1;
                     state_next = COMPLETE;
                 end
@@ -142,11 +138,7 @@ module n2m_uart_load #(
                 missing_next = missing || !presence_value;
                 crc_next = updated_crc;
                 address_next = address + 1'b1;
-                // Lint waiver: the 15-bit address is zero-extended against the
-                // integer ROM size; the intended unsigned comparison is unchanged.
-                /* verilator lint_off WIDTHEXPAND */
-                if (address == n2m_interfaces_pkg::PROFILE_ROM_BYTES - 1) begin
-                /* verilator lint_on WIDTHEXPAND */
+                if (32'(address) == n2m_interfaces_pkg::PROFILE_ROM_BYTES - 1) begin
                     status_next = missing_next || (updated_crc ^ n2m_interfaces_pkg::WIRE_CRC32_INIT) != image_crc
                         ? n2m_interfaces_pkg::STATUS_BAD_IMAGE : n2m_interfaces_pkg::STATUS_OK;
                     state_next = COMPLETE;
@@ -176,13 +168,9 @@ module n2m_uart_load #(
     `DFF_ARST_VAL(held_data, held_data_next, clk_sys, reset_sys, '0)
     `DFF_ARST_VAL(status, status_next, clk_sys, reset_sys, n2m_interfaces_pkg::STATUS_OK)
     `N2M_ASSERT(UART_LOAD_START_IDLE, clk_sys, reset_sys, start |-> !busy)
-    // Lint waiver: the narrow unsigned operand is zero-extended against an integer
-    // constant; the intended unsigned comparison is unchanged.
-    /* verilator lint_off WIDTHEXPAND */
     `N2M_ASSERT(UART_LOAD_RANGE, clk_sys, reset_sys,
         start && (operation == n2m_uart_pkg::UART_LOAD_WRITE || operation == n2m_uart_pkg::UART_LOAD_READ) |->
-        count != 0 && count <= n2m_interfaces_pkg::WIRE_MAX_PAYLOAD && ({1'b0, offset} + {17'b0, count}) <= n2m_interfaces_pkg::PROFILE_ROM_BYTES)
-    /* verilator lint_on WIDTHEXPAND */
+        count != 0 && count <= n2m_interfaces_pkg::WIRE_MAX_PAYLOAD && ({1'b0, offset} + {17'b0, count}) <= 33'(n2m_interfaces_pkg::PROFILE_ROM_BYTES))
     `N2M_ASSERT(UART_LOAD_CLEAR_REQUIRED, clk_sys, reset_sys,
         start && (operation == n2m_uart_pkg::UART_LOAD_WRITE || operation == n2m_uart_pkg::UART_LOAD_END) |-> cleared)
     `N2M_ASSERT(UART_LOAD_ROM_SERVICE, clk_sys, reset_sys,
