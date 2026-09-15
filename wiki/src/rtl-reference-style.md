@@ -58,7 +58,9 @@ acceptance.
 Use `logic` for SystemVerilog signals; do not declare them with `wire` or `reg`.
 Use `input var logic` when an explicit input port kind is needed under
 `default_nettype none`. Preserve widths, signedness, single runtime drivers and
-appropriate counter, string, enum and record types. The compiler directive
+appropriate counter, string, enum and record types. Make intentional widening
+explicit with a sized cast such as `32'(count)` rather than a width lint waiver.
+The compiler directive
 `default_nettype wire` restores compiler state; it is not a signal declaration.
 Generated vendor Verilog and its netlist-parser fixtures retain vendor syntax.
 

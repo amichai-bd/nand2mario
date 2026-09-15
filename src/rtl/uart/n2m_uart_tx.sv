@@ -34,11 +34,7 @@ module n2m_uart_tx #(
                 shift_next = {1'b1, byte_data, 1'b0};
                 remaining_next = 10;
             end
-        // Lint waiver: the phase accumulator is zero-extended against the
-        // integer clock rate; the intended unsigned comparison is unchanged.
-        /* verilator lint_off WIDTHEXPAND */
-        end else if (sum >= CLOCK_HZ) begin
-        /* verilator lint_on WIDTHEXPAND */
+        end else if (sum >= PHASE_BITS'(CLOCK_HZ)) begin
             phase_next = sum - PHASE_BITS'(CLOCK_HZ);
             shift_next = {1'b1, shift[9:1]};
             remaining_next = remaining - 1'b1;
@@ -48,9 +44,7 @@ module n2m_uart_tx #(
     `DFF_ARST_VAL(shift, shift_next, clk_sys, reset_sys, 10'h3ff)
     `DFF_ARST_VAL(remaining, remaining_next, clk_sys, reset_sys, '0)
     `N2M_ASSERT_NO_RST(UART_TX_RATE, clk_sys, BAUD > 0 && CLOCK_HZ >= 8 * BAUD)
-    /* verilator lint_off WIDTHEXPAND */
-    `N2M_ASSERT(UART_TX_PHASE, clk_sys, reset_sys, phase < CLOCK_HZ)
-    /* verilator lint_on WIDTHEXPAND */
+    `N2M_ASSERT(UART_TX_PHASE, clk_sys, reset_sys, phase < PHASE_BITS'(CLOCK_HZ))
     `N2M_ASSERT(UART_TX_COUNT, clk_sys, reset_sys, remaining <= 10)
     `N2M_ASSERT(UART_TX_IDLE_HIGH, clk_sys, reset_sys, remaining == 0 |-> uart_tx)
     `N2M_ASSERT_KNOWN(UART_TX_OUTPUT, clk_sys, reset_sys, ({byte_ready, uart_tx}))
