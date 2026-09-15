@@ -33,7 +33,8 @@ inside the builder. The identity choice names its producing checked `v05-board`
 attempt and does not accept a manually typed identity. Moving back or cancelling
 sends no UART traffic and opens no window. Opening the UART choice may run the
 doctor's read-only PowerShell CIM PnP query; it does not open the port or send a
-byte.
+byte. The final review says that confirmation opens UART, may transmit the
+selected game's load, reset, run and controller operations, and opens the GUI.
 
 A successful `python tools/build.py fpga program ...` text run for a checked
 `v05-board` attempt prints this launcher command with the attempt's

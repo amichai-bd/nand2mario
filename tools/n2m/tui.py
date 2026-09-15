@@ -17,12 +17,13 @@ import subprocess
 import sys
 
 from . import catalogue, interface_codec
+from .fpga import identity_target, target_definition
 from .progress import powershell_command
 from .tui_choices import (build_tags, checked_packages, checked_sofs, command_actions,
                           external_images, fpga_targets, parser_at,
                           regression_subsets, retained_values, simulation_targets,
-                          software_targets, top_families, compatible_selection,
-                          uart_candidates)
+                          selection_uses_vendor_model, software_targets,
+                          top_families, compatible_selection, uart_candidates)
 from .tui_terminal import (BACK, VIEW_ROWS, Choice, Menu, Terminal, decode_posix,
                            decode_windows)
 
@@ -38,6 +39,7 @@ class Plan:
     effect: str
     set_options: dict = field(default_factory=dict)
     editor: object = None
+    back_to_action: bool = False
 
 
 
@@ -59,7 +61,8 @@ def _named(values):
     return [Choice(value, str(value)) for value in values]
 
 
-def _manual_value(menu, title, retained=()):
+def _manual_value(menu, title, retained=(), *, validator=None, invalid_title=None,
+                  normalize=lambda value: value):
     options = [Choice(value, value, "reused from a retained local result") for value in retained]
     options.append(Choice("__manual__", "Type another value…"))
     while True:
@@ -67,10 +70,19 @@ def _manual_value(menu, title, retained=()):
         if selected is BACK:
             return BACK
         if selected != "__manual__":
-            return selected
-        value = menu.text(title)
-        if value is not BACK:
-            return value
+            selected = normalize(selected)
+            if validator is None or validator(selected):
+                return selected
+            continue
+        prompt = title
+        while True:
+            value = menu.text(prompt)
+            if value is BACK:
+                break
+            value = normalize(value)
+            if validator is None or validator(value):
+                return value
+            prompt = invalid_title or title
 
 
 def _backend(menu, title="Select simulator"):
@@ -80,14 +92,19 @@ def _backend(menu, title="Select simulator"):
 
 
 def _uart(menu, root):
-    return _manual_value(menu, "Select UART port", uart_candidates(root))
+    return _manual_value(
+        menu, "Select UART port", uart_candidates(root),
+        validator=lambda value: bool(re.fullmatch(r"COM[1-9][0-9]*", value)),
+        invalid_title="UART port must be COM followed by a positive number",
+        normalize=lambda value: value.upper())
 
 
 def _checked_build_ids(root, *, target=None):
     return [Choice(build_id, f"{fpga_target or 'unknown target'} — {path}",
                    f"on-wire ID {build_id}")
             for path, fpga_target, build_id in checked_sofs(root)
-            if build_id and (target is None or fpga_target == target)]
+            if isinstance(build_id, str) and re.fullmatch(r"[0-9a-fA-F]{32}", build_id)
+            and int(build_id, 16) != 0 and (target is None or fpga_target == target)]
 
 
 def _launcher_build_id(menu, root):
@@ -108,9 +125,9 @@ def _reviewed_build_id(menu, root):
             value = menu.text(title)
             if value is BACK:
                 break
-            if re.fullmatch(r"[0-9a-fA-F]{32}", value):
+            if re.fullmatch(r"[0-9a-fA-F]{32}", value) and int(value, 16) != 0:
                 return value.lower()
-            title = "Build ID must be exactly 32 hexadecimal digits"
+            title = "Build ID must be 32 hexadecimal digits and nonzero"
 
 
 def _quartus(menu, root):
@@ -264,7 +281,8 @@ def _tests_plan(menu, root):
         if action is BACK:
             return BACK
         if action == "validate":
-            return Plan(["tests", action], ("tests", action), "Current host", "Validate the test catalogue")
+            return Plan(["tests", action], ("tests", action), "Current host",
+                        "Validate the test catalogue", back_to_action=True)
         if action == "affected":
             plan = _editable(menu, [("base", lambda _: menu.text(
                 "Git base reference", default="origin/main"))], lambda answers: Plan(
@@ -321,7 +339,8 @@ def _sw_plan(menu, root):
             return BACK
         argv = ["sw", action]
         if action not in ("assemble", "build"):
-            return Plan(argv, ("sw", action), "Current host", effects[action])
+            return Plan(argv, ("sw", action), "Current host", effects[action],
+                        back_to_action=True)
         plan = _editable(menu, [("target", lambda _: menu.choose(
             "Select software target", _named(software_targets(root, action))))], lambda answers: Plan(
                 [*argv, answers["target"]], ("sw", action), "Current host", effects[action]))
@@ -390,7 +409,8 @@ def _launcher_plan(menu, root):
     return _editable(menu, [("build", lambda _: _launcher_build_id(menu, root)),
                             ("uart", lambda _: _uart(menu, root))], lambda answers: Plan(
         ["--expected-build-id", answers["build"], "--uart-port", answers["uart"]],
-        ("launcher",), "Windows PowerShell", "Open UART and LAUNCH the game catalogue GUI"))
+        ("launcher",), "Windows PowerShell",
+        "Open UART, TRANSMIT load/reset/run/control operations, and LAUNCH the game catalogue GUI"))
 
 
 def _sim_host(backend):
@@ -435,23 +455,30 @@ def _argument_value(plan, flag):
         return None
 
 
-def _option_applies(plan, action):
+def _option_applies(plan, action, root=None):
+    root = Path(root or Path(__file__).resolve().parents[2])
     backend = _argument_value(plan, "--sim")
     if action.dest == "verilator_bin" and backend != "verilator":
         return False
     if action.dest in ("questa_bin", "intel_sim_lib") and backend != "questa":
         return False
+    if action.dest == "intel_sim_lib" and not selection_uses_vendor_model(
+            root, plan.parser_path, plan.argv, plan.set_options):
+        return False
+    if plan.parser_path == ("fpga", "build") and action.dest == "build_id":
+        return identity_target(target_definition(root, plan.argv[2]))
     if plan.parser_path == ("doctor",):
         profile = _argument_value(plan, "--profile")
         hardware = {"quartus_bin", "jtag_cable", "uart_port", "uart_vid", "uart_pid", "uart_identity"}
         if profile != "environment" and action.dest in hardware:
             return False
-    if plan.parser_path == ("host", "keyboard") and action.dest == "endpoint_restarted":
+    if plan.parser_path in (("host", "crc-proof"), ("host", "keyboard")) \
+            and action.dest == "endpoint_restarted":
         return False
     return True
 
 
-def _option_actions(plan):
+def _option_actions(plan, root=None):
     leaf = _leaf_parser(plan)
     used = {value for value in plan.argv if isinstance(value, str) and value.startswith("-")}
     choices = []
@@ -459,7 +486,7 @@ def _option_actions(plan):
         flags = action.option_strings
         if not flags or action.dest in ("help", "json") or action.required or any(flag in used for flag in flags):
             continue
-        if not _option_applies(plan, action):
+        if not _option_applies(plan, action, root):
             continue
         if any(action in group._group_actions
                and any(peer is not action and any(flag in used for flag in peer.option_strings)
@@ -482,8 +509,8 @@ def _option_label(action, current):
 
 def advanced(menu, plan, root):
     """Edit only optional leaf flags.  JSON stays on the ordinary CLI."""
-    actions = _option_actions(plan)
     while True:
+        actions = _option_actions(plan, root)
         choices = [Choice("done", "Done")]
         choices += [Choice(action, _option_label(action, plan.set_options)) for action in actions]
         selected = menu.choose("Advanced options", choices,
@@ -514,9 +541,9 @@ def advanced(menu, plan, root):
             plan.set_options[action.dest] = value
 
 
-def final_argv(plan):
+def final_argv(plan, root=None):
     argv = list(plan.argv)
-    for action in _option_actions(plan):
+    for action in _option_actions(plan, root):
         if action.dest not in plan.set_options:
             continue
         value = plan.set_options[action.dest]
@@ -533,6 +560,31 @@ def final_argv(plan):
     return argv
 
 
+def _cmd_argument(value):
+    """Quote one CRT argv token for an interactive cmd.exe paste."""
+    value = str(value)
+    unsafe = next((char for char in value if char in '\0\r\n%!"'), None)
+    if unsafe is not None:
+        name = {"\0": "NUL", "\r": "CR", "\n": "LF", "%": "%", "!": "!", '"': '"'}[unsafe]
+        raise ValueError(f"classic cmd.exe review cannot safely display an argument containing {name}")
+    encoded = ['"']
+    backslashes = 0
+    for char in value:
+        if char == "\\":
+            backslashes += 1
+            continue
+        encoded.append("\\" * backslashes)
+        backslashes = 0
+        encoded.append(char)
+    encoded.append("\\" * (backslashes * 2))
+    encoded.append('"')
+    return "".join(encoded)
+
+
+def _cmd_command(argv):
+    return " ".join(_cmd_argument(value) for value in argv)
+
+
 def command_text(plan, root, system=None, executable=None):
     system = system or platform.system()
     program = "tools/gb_launcher.py" if plan.parser_path == ("launcher",) else "tools/build.py"
@@ -542,15 +594,17 @@ def command_text(plan, root, system=None, executable=None):
         interpreter = sys.executable
     else:
         interpreter = "python" if plan.host.startswith("Windows") else "python3"
-    shown = [interpreter, program, *final_argv(plan)]
+    shown = [interpreter, program, *final_argv(plan, root)]
     if plan.host == "Windows classic conhost.exe cmd.exe":
-        return subprocess.list2cmdline(shown)
-    return powershell_command(shown) if plan.host == "Windows PowerShell" or system == "Windows" else shlex.join(shown)
+        return _cmd_command(shown)
+    if plan.host == "Windows PowerShell" or (plan.host == "Current host" and system == "Windows"):
+        return "& " + powershell_command(shown)
+    return shlex.join(shown)
 
 
 def validate_plan(plan, root=None):
     """Prove the selected builder vector satisfies its existing argparse leaf."""
-    argv = final_argv(plan)
+    argv = final_argv(plan, root)
     errors = io.StringIO()
     if plan.parser_path == ("launcher",):
         from gb_launcher import parse_args
@@ -619,6 +673,10 @@ def select_command(menu, root, system=None, classic_console=None):
             configured = advanced(menu, plan, root)
             if configured is BACK:
                 if plan.editor is None:
+                    if plan.back_to_action:
+                        plan = make_plan(menu, root, intent)
+                        if plan is not BACK:
+                            continue
                     break
                 edited = plan.editor(menu)
                 if edited is BACK:
@@ -641,7 +699,7 @@ def run(root=None, terminal=None, runner=subprocess.run, system=None, classic_co
     terminal = terminal or Terminal(system=system)
     if not terminal.interactive():
         help_argv = [sys.executable, "tools/build.py", "--help"]
-        help_command = (subprocess.list2cmdline(help_argv)
+        help_command = (_cmd_command(help_argv)
                         if (system or platform.system()) == "Windows" else shlex.join(help_argv))
         print(f"The build menu needs an interactive terminal. Run `{help_command}` for the ordinary CLI.",
               file=sys.stderr, flush=True)
@@ -656,5 +714,5 @@ def run(root=None, terminal=None, runner=subprocess.run, system=None, classic_co
         print("Cancelled; nothing was run.", flush=True)
         return 0
     leaf = root / "tools" / ("gb_launcher.py" if selected.parser_path == ("launcher",) else "build.py")
-    command = [sys.executable, str(leaf), *final_argv(selected)]
+    command = [sys.executable, str(leaf), *final_argv(selected, root)]
     return runner(command, cwd=root, shell=False).returncode

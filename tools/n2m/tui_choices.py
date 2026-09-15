@@ -224,3 +224,36 @@ def compatible_selection(root, model, backend, *, level=None, labels=()):
     targets = read_object(root / "src/dv/builder/targets.json")
     simulations = [name for name in selected if model["units"][name]["kind"] == "sim"]
     return all(backend in targets[name]["simulators"] for name in simulations)
+
+
+def selection_uses_vendor_model(root, parser_path, argv, set_options=None):
+    """Return whether the selected live simulation set needs an Intel model."""
+    set_options = set_options or {}
+    if parser_path == ("sim", "test"):
+        selected = [argv[2]]
+    elif parser_path == ("regress",):
+        subsets, _ = load_subsets(root)
+        selected = subsets[argv[1]]["targets"]
+    elif parser_path == ("tests", "run"):
+        model, _ = catalogue.load(root)
+        level = _argument_value(argv, "--level")
+        if level is None:
+            level = set_options.get("level")
+        level = int(level) if level is not None else None
+        labels = _argument_values(argv, "--label")
+        labels.extend(set_options.get("label", []))
+        chosen, _ = catalogue.select(model, level, labels)
+        selected = [name for name in chosen if model["units"][name]["kind"] == "sim"]
+    else:
+        return False
+    targets = read_object(root / "src/dv/builder/targets.json")
+    return any(targets[name].get("vendor_model") is not None for name in selected)
+
+
+def _argument_value(argv, flag):
+    values = _argument_values(argv, flag)
+    return values[-1] if values else None
+
+
+def _argument_values(argv, flag):
+    return [argv[index + 1] for index, value in enumerate(argv[:-1]) if value == flag]

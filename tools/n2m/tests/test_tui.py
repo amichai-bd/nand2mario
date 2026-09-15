@@ -126,7 +126,7 @@ class TuiTests(unittest.TestCase):
                         ("fpga", "build"), "Windows PowerShell", "build")
         text = tui.command_text(plan, ROOT, "Windows", executable=r"C:\Program Files\Python\python.exe")
         self.assertIn("'C:\\Program Files\\Intel FPGA\\bin64'", text)
-        self.assertTrue(text.startswith("'C:\\Program Files\\Python\\python.exe' tools/build.py fpga build"))
+        self.assertTrue(text.startswith("& 'C:\\Program Files\\Python\\python.exe' tools/build.py fpga build"))
         local = tui.Plan(["sw", "build", "path with spaces"], ("sw", "build"), "Current host", "build")
         self.assertIn("'path with spaces'", tui.command_text(
             local, ROOT, "Windows", executable=r"C:\Python Folder\python.exe"))
@@ -179,6 +179,10 @@ class TuiTests(unittest.TestCase):
             self.assertIs(tui._launcher_build_id(tui.Menu(terminal), Path(temporary)), tui.BACK)
             self.assertNotIn("Type another", "\n".join(terminal.frames[-1]))
 
+        with patch("n2m.tui.checked_sofs", return_value=[
+                ("workdir/builds/zero/output/design.sof", "v05-board", "0" * 32)]):
+            self.assertEqual(tui._checked_build_ids(ROOT, target="v05-board"), [])
+
     def test_reviewed_host_identity_keeps_explicit_manual_path(self):
         value = "12" * 16
         terminal = ScriptedTerminal(["ENTER", *value, "ENTER"])
@@ -186,9 +190,18 @@ class TuiTests(unittest.TestCase):
 
     def test_manual_reviewed_host_identity_reprompts_and_normalizes(self):
         value = "AB" * 16
-        terminal = ScriptedTerminal(["ENTER", *"wrong", "ENTER", *value, "ENTER"])
+        terminal = ScriptedTerminal(["ENTER", *("0" * 32), "ENTER", *"wrong", "ENTER",
+                                     *value, "ENTER"])
         self.assertEqual(tui._reviewed_build_id(tui.Menu(terminal), Path("missing-root")), value.lower())
-        self.assertIn("Build ID must be exactly 32 hexadecimal digits", "\n".join(terminal.frames[-1]))
+        self.assertIn("Build ID must be 32 hexadecimal digits and nonzero",
+                      "\n".join(terminal.frames[-1]))
+
+    def test_manual_uart_reprompts_and_normalizes_a_positive_com_port(self):
+        terminal = ScriptedTerminal(["ENTER", *"COM 7", "ENTER", *"com7", "ENTER"])
+        with patch("n2m.tui.uart_candidates", return_value=[]):
+            self.assertEqual(tui._uart(tui.Menu(terminal), ROOT), "COM7")
+        self.assertIn("UART port must be COM followed by a positive number",
+                      "\n".join(terminal.frames[-1]))
 
     def test_doctor_full_environment_is_questa_on_windows_only(self):
         terminal = ScriptedTerminal(["DOWN", "ENTER", "ENTER"])
@@ -312,7 +325,7 @@ class TuiTests(unittest.TestCase):
     def test_advanced_options_follow_backend_profile_and_mutex_contracts(self):
         def options(argv, path):
             return {action.dest for action in tui._option_actions(
-                tui.Plan(argv, path, "Current host", "test"))}
+                tui.Plan(argv, path, "Current host", "test"), ROOT)}
         verilator = options(["sim", "test", "builder-smoke", "--sim", "verilator"], ("sim", "test"))
         self.assertIn("verilator_bin", verilator)
         self.assertNotIn("questa_bin", verilator)
@@ -320,7 +333,19 @@ class TuiTests(unittest.TestCase):
         questa = options(["sim", "test", "builder-smoke", "--sim", "questa"], ("sim", "test"))
         self.assertNotIn("verilator_bin", questa)
         self.assertIn("questa_bin", questa)
-        self.assertIn("intel_sim_lib", questa)
+        self.assertNotIn("intel_sim_lib", questa)
+        vendor = options(["sim", "test", "python-v05-continuous", "--sim", "questa"],
+                         ("sim", "test"))
+        self.assertIn("intel_sim_lib", vendor)
+
+        self.assertNotIn("intel_sim_lib", options(
+            ["regress", "pre-merge", "--sim", "questa"], ("regress",)))
+        self.assertIn("intel_sim_lib", options(
+            ["regress", "composed-smoke", "--sim", "questa"], ("regress",)))
+        self.assertNotIn("intel_sim_lib", options(
+            ["tests", "run", "--level", "0", "--sim", "questa"], ("tests", "run")))
+        self.assertIn("intel_sim_lib", options(
+            ["tests", "run", "--level", "1", "--sim", "questa"], ("tests", "run")))
 
         simulation = options(["doctor", "--profile", "simulation", "--sim", "verilator"], ("doctor",))
         self.assertNotIn("quartus_bin", simulation)
@@ -337,16 +362,24 @@ class TuiTests(unittest.TestCase):
         load.set_options["tag"] = "load1"
         self.assertNotIn("--external", tui.final_argv(load))
 
+        for target, expected in (("builder-smoke", False), ("controls-board", True),
+                                 ("v05-board", True), ("v05-controls-board", True)):
+            with self.subTest(fpga_target=target):
+                build = options(["fpga", "build", target, "--quartus-bin", "tools"],
+                                ("fpga", "build"))
+                self.assertEqual("build_id" in build, expected)
+
     def test_keyboard_review_and_advanced_match_classic_console_contract(self):
-        plan = tui.Plan(["host", "keyboard", "--uart-port", "COM 7",
-                         "--expected-build-id", "00" * 16],
+        plan = tui.Plan(["host", "keyboard", "--uart-port", "COM7",
+                         "--expected-build-id", "01" * 16],
                         ("host", "keyboard"), "Windows classic conhost.exe cmd.exe", "keys")
-        options = {action.dest for action in tui._option_actions(plan)}
+        options = {action.dest for action in tui._option_actions(plan, ROOT)}
         self.assertNotIn("endpoint_restarted", options)
         self.assertNotIn("json", options)
         command = tui.command_text(plan, ROOT, "Windows", executable=r"C:\Python Folder\python.exe")
-        self.assertTrue(command.startswith('"C:\\Python Folder\\python.exe" tools/build.py host keyboard'))
-        self.assertIn('"COM 7"', command)
+        self.assertTrue(command.startswith(
+            '"C:\\Python Folder\\python.exe" "tools/build.py" "host" "keyboard"'))
+        self.assertIn('"--uart-port" "COM7"', command)
         self.assertTrue(tui.compatible_host(plan, "Windows", classic_console=lambda: True))
         self.assertFalse(tui.compatible_host(plan, "Windows", classic_console=lambda: False))
         self.assertFalse(tui.compatible_host(plan, "Linux"))
@@ -364,15 +397,55 @@ class TuiTests(unittest.TestCase):
             self.assertNotIn("Run now", "\n".join(invalid.frames[-1]))
             serial.assert_not_called()
 
+        crc = tui.Plan(["host", "crc-proof", "--uart-port", "COM7",
+                        "--expected-build-id", "01" * 16],
+                       ("host", "crc-proof"), "Windows PowerShell", "proof")
+        self.assertNotIn("endpoint_restarted",
+                         {action.dest for action in tui._option_actions(crc, ROOT)})
+
+    def test_cmd_review_quotes_every_token_and_refuses_expansion_sensitive_values(self):
+        identity = r"USB\VID_0403&PID_6001\SERIAL"
+        plan = tui.Plan(["host", "keyboard", "--uart-port", "COM7",
+                         "--uart-identity", identity,
+                         "--expected-build-id", "01" * 16],
+                        ("host", "keyboard"), "Windows classic conhost.exe cmd.exe", "keys")
+        command = tui.command_text(plan, ROOT, "Windows",
+                                   executable=r"C:\Program Files\Python\python.exe")
+        self.assertTrue(command.startswith(
+            '"C:\\Program Files\\Python\\python.exe" "tools/build.py"'))
+        self.assertIn('"' + identity + '"', command)
+        self.assertIn('"--uart-port" "COM7"', command)
+
+        metacharacters = tui.Plan(["host", "keyboard", "--uart-port", "COM7",
+                                   "--expected-build-id", "01" * 16],
+                                  ("host", "keyboard"),
+                                  "Windows classic conhost.exe cmd.exe", "keys")
+        self.assertIn('"C:\\Python ^|<>()& Tools\\python.exe"', tui.command_text(
+            metacharacters, ROOT, "Windows",
+            executable=r"C:\Python ^|<>()& Tools\python.exe"))
+        for unsafe in ("bad%PATH%", "bad!value", "bad\rvalue", "bad\nvalue", "bad\0value",
+                       'bad"value'):
+            with self.subTest(unsafe=repr(unsafe)), self.assertRaisesRegex(
+                    ValueError, "classic cmd.exe review"):
+                refused = tui.Plan(["host", "keyboard", "--uart-port", unsafe,
+                                    "--expected-build-id", "01" * 16],
+                                   ("host", "keyboard"),
+                                   "Windows classic conhost.exe cmd.exe", "keys")
+                tui.command_text(refused, ROOT, "Windows", executable=r"C:\Python\python.exe")
+
     def test_foreign_host_commands_use_the_destination_python_launcher(self):
         windows = tui.Plan(["fpga", "build", "v05-board", "--quartus-bin", "tools"],
                            ("fpga", "build"), "Windows PowerShell", "build")
         wsl = tui.Plan(["sim", "test", "builder-smoke", "--sim", "verilator"],
                        ("sim", "test"), "WSL Linux", "simulate")
         with patch("n2m.tui.sys.executable", "/usr/bin/python3"):
-            self.assertTrue(tui.command_text(windows, ROOT, "Linux").startswith("python tools/build.py"))
+            self.assertTrue(tui.command_text(windows, ROOT, "Linux").startswith("& python tools/build.py"))
         with patch("n2m.tui.sys.executable", r"C:\Python Folder\python.exe"):
             self.assertTrue(tui.command_text(wsl, ROOT, "Windows").startswith("python3 tools/build.py"))
+        apostrophe = tui.Plan(["sw", "build", "owner's path"], ("sw", "build"),
+                              "WSL Linux", "build")
+        self.assertEqual(tui.command_text(apostrophe, ROOT, "Windows"),
+                         "python3 tools/build.py sw build 'owner'\"'\"'s path'")
 
     def test_sparse_and_backend_specific_level_label_pairs_remain_selectable(self):
         model = {"labels": {"audio": "audio checks", "builder": "builder checks"},
@@ -529,8 +602,25 @@ class TuiTests(unittest.TestCase):
         runner.assert_not_called()
         self.assertGreaterEqual(sum(frame[0] == "Select simulator" for frame in terminal.frames), 2)
 
+    def test_escape_from_zero_choice_leaf_reopens_its_family_action(self):
+        for query, intent, action, title in (("verification", "tests", "validate", "Verification action"),
+                                             ("software", "sw", "oracle", "Software action")):
+            with self.subTest(intent=intent, action=action):
+                terminal = ScriptedTerminal([*query, "ENTER", *action, "ENTER",
+                                             "ESC", "ESC", "ESC"])
+                self.assertIs(tui.select_command(tui.Menu(terminal), ROOT), tui.CANCEL)
+                headings = [frame[0] for frame in terminal.frames]
+                self.assertGreaterEqual(headings.count(title), 2)
+                second_action = len(headings) - 1 - headings[::-1].index(title)
+                self.assertLess(second_action, len(headings) - 1)
+                self.assertEqual(headings[-1], "nand2mario build menu")
+
+        check = ScriptedTerminal([*"check", "ENTER", "ESC", "ESC"])
+        self.assertIs(tui.select_command(tui.Menu(check), ROOT), tui.CANCEL)
+        self.assertNotIn("Builder action", [frame[0] for frame in check.frames])
+
     def test_launcher_delegates_to_existing_gui_only_after_confirmation(self):
-        plan = tui.Plan(["--expected-build-id", "00" * 16, "--uart-port", "COM 7"],
+        plan = tui.Plan(["--expected-build-id", "00" * 16, "--uart-port", "COM7"],
                         ("launcher",), "Windows PowerShell", "GUI")
         runner = Mock(return_value=Mock(returncode=0))
         terminal = ScriptedTerminal([])
@@ -538,8 +628,19 @@ class TuiTests(unittest.TestCase):
             self.assertEqual(tui.run(ROOT, terminal=terminal, runner=runner, system="Windows"), 0)
         command = runner.call_args.args[0]
         self.assertEqual(command[1], str(ROOT / "tools/gb_launcher.py"))
-        self.assertIn("COM 7", command)
+        self.assertIn("COM7", command)
         self.assertFalse(runner.call_args.kwargs["shell"])
+
+    def test_launcher_review_names_uart_transmission_and_gui_effects(self):
+        with patch("n2m.tui._launcher_build_id", return_value="00" * 16), \
+                patch("n2m.tui._uart", return_value="COM7"):
+            plan = tui._launcher_plan(tui.Menu(ScriptedTerminal([])), ROOT)
+        terminal = ScriptedTerminal(["ENTER"])
+        self.assertEqual(tui.choose_execution(tui.Menu(terminal), plan, ROOT, "Windows"), "run")
+        review = "\n".join(terminal.frames[-1])
+        self.assertIn("Open UART", review)
+        self.assertIn("TRANSMIT load/reset/run/control operations", review)
+        self.assertIn("LAUNCH the game catalogue GUI", review)
 
     def test_non_tty_and_cancel_never_spawn_anything(self):
         runner = Mock()

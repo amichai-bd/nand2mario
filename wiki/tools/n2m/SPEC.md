@@ -92,13 +92,21 @@ The menu offers current healthy Windows UART ports from the doctor's read-only
 PowerShell CIM PnP query, followed by recent retained selections and manual
 entry. Opening a UART selection screen may start that discovery subprocess. It
 does not import the serial backend, open a port, drive DTR/RTS or send a byte.
+Manual entry accepts `COM` followed by a positive port number and normalizes it
+to uppercase before Review.
 The selected host command still repeats fresh PnP identity and health checks
 before serial open. Recent simulator, Intel-model and Quartus directories come
 from retained manifests; manual entry remains available. Applicable optional
 flags live under **Advanced options** with the ordinary CLI defaults. Options
 that do not apply to the selected simulator, doctor profile, or mutually
-exclusive input stay hidden. `host keyboard` also hides
-`--endpoint-restarted`. The doctor asks for scope first: simulation scope then
+exclusive input stay hidden. `--intel-sim-lib` appears only when the selected
+live target, regression subset, or test-catalogue selection includes an Intel
+vendor-model simulation. FPGA `--build-id` appears only when the selected live
+target definition carries an identity macro. The identity-bound `host crc-proof`
+and `host keyboard` actions accept a manually reviewed build identity only when
+it is exactly 32 hexadecimal digits and nonzero. They also hide
+`--endpoint-restarted`. The doctor asks
+for scope first: simulation scope then
 offers either backend, while the full hardware environment fixes Questa and
 Windows because Quartus, JTAG and UART discovery are Windows-owned. `--json` is
 intentionally absent.
@@ -109,8 +117,14 @@ a GUI. A runnable current-host command displays the actual Python interpreter.
 A foreign-host command uses the repository's portable `python` spelling for
 Windows or `python3` for WSL, because the current interpreter belongs to the
 wrong host. The relative script and arguments are quoted for POSIX, PowerShell,
-or classic `conhost.exe cmd.exe` as required. `host keyboard` names that classic
-console explicitly. It offers **Run now** only after a read-only check proves
+or classic `conhost.exe cmd.exe` as required. A PowerShell display uses the
+invocation operator. A classic interactive `cmd.exe` display quotes every token
+with Windows CRT argument rules, keeping `&`, `|`, `<`, `>`, `(`, `)`, `^`, spaces,
+and backslashes inside the token. It refuses values containing CR, LF, NUL, `%`,
+`!`, or a double quote because those cannot be presented as one honestly
+copyable interactive command; the display is not batch-file syntax. `host
+keyboard` names that classic console explicitly. It offers **Run now** only
+after a read-only check proves
 the TUI's parent is `cmd.exe` and its console window is visible and foreground;
 Windows Terminal, PowerShell and WSL get a copy instruction instead. This
 display is not the execution mechanism. **Run now** starts
