@@ -100,7 +100,7 @@ sources, and a retirement snapshot differing from its T3 vector. Do not copy
 CPU next-state into the oracle or claim these scripts execute the full CPU.
 
 Actual source/ack/observed-state faults must cause exact nonzero named mismatch
-diagnostics. Retain positive and negative Questa logs, source/tool identities,
+diagnostics. Retain positive and negative simulation logs, source/tool identities,
 public waveforms, sequence/counts and expected/actual register traces. This
 acceptance does not establish peripheral or whole-system acceptance.
 

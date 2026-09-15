@@ -40,7 +40,7 @@ module tb_dmg_tile_pixel;
             observed = {valid_s1, color_index_s1, shade_s1};
             // Exercise the same checker with a deliberately corrupted observation.
             if (corrupt && cycle == 5) observed[0] = ~observed[0];
-            assert (observed === expected) else
+            assert (observed == expected) else
                 $fatal(1, "MISMATCH cycle=%0d phase=%s expected=%b actual=%b low=%h high=%h x=%0d palette=%h seed=none",
                        cycle, phase_name, expected, observed, row_low_s0,
                        row_high_s0, pixel_x_s0, palette_s0);
@@ -79,7 +79,9 @@ module tb_dmg_tile_pixel;
         corrupt = $test$plusargs("corrupt");
         $dumpfile("waves.vcd");
         $dumpvars(0, tb_dmg_tile_pixel);
-        step(1, 0, 0, 'x, 'z, 'x, 'x);
+        // Don't-care inputs use two-state fill values: all ones where the
+        // Questa stimulus drove X and all zeros where it drove Z.
+        step(1, 0, 0, '1, '0, '1, '1);
         // Exhaust all binary control combinations from a populated stage.
         for (rst = 0; rst < 2; rst = rst + 1)
             for (en = 0; en < 2; en = en + 1)
@@ -87,10 +89,10 @@ module tb_dmg_tile_pixel;
                     step(0, 1, 1, 8'h80, 8'h00, 0, 8'h1b);
                     step(rst[0], en[0], valid_in[0], 8'h00, 8'h01, 7, 8'he4);
                 end
-        step(0, 0, 'x, 'x, 'z, 'x, 'z);
-        step(0, 0, 0, 'z, 'x, 'z, 'x);
-        step(0, 1, 0, 'x, 'z, 'x, 'z);
-        step(1, 'x, 'x, 'z, 'x, 'z, 'x);
+        step(0, 0, '1, '1, '0, '1, '0);
+        step(0, 0, 0, '0, '1, '0, '1);
+        step(0, 1, 0, '1, '0, '1, '0);
+        step(1, '1, '1, '0, '1, '0, '1);
         for (x = 0; x < 8; x = x + 1) begin
             step(0, 1, 1, 8'h3c, 8'h7e, x[2:0], 8'he4);
             step(0, 1, 1, 8'h80 >> x, 8'h01 << x, x[2:0], 8'h1b);
@@ -114,7 +116,7 @@ module tb_dmg_tile_pixel;
         step(0, 0, 1, 0, 0, 0, 0);
         step(1, 0, 1, 0, 0, 0, 0);
         step(0, 1, 1, 8'h01, 8'h00, 7, 8'hff);
-        step(0, 1, 0, 'x, 'z, 'x, 'z);
+        step(0, 1, 0, '1, '0, '1, '0);
         $display("PASS pixel_cases=%0d palette_cases=%0d cycles=%0d seed=none",
                  pixel_cases, palette_cases, cycle);
         $finish;

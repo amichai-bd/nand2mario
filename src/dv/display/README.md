@@ -21,7 +21,7 @@ and palette transformations, not their full Cartesian product.
 Both builder targets must pass: `tile-pixel` proves normal behavior;
 `tile-pixel-corrupt` proves the exact expected checker failure. Builder contract
 tests reject unrelated failures and prevent the normal target accepting the
-corrupt signature. The Questa runner still checks both cases locally.
+corrupt signature. The Verilator runner checks both cases locally.
 
 Logs include expected/actual, cycle, phase, and input payload on failure. A
 6 ms simulated-time watchdog prevents hangs. VCD records directed controls

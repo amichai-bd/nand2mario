@@ -27,7 +27,7 @@ module tb_register_macros;
     task automatic check(input bit inject);
         actual = {plain, cleared, valued, enabled, combined};
         if (inject) actual[0] = ~actual[0];
-        if (actual !== expected)
+        if (actual != expected)
             $fatal(1, "REGISTER_MISMATCH cycle=%0d seed=%0d expected=%h actual=%h", cycle, seed, expected, actual);
     endtask
 

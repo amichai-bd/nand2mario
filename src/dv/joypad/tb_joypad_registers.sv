@@ -1,5 +1,8 @@
 `timescale 1ns/1ps
 `default_nettype none
+// Lint waiver: the integer file handle is tested as a boolean; the width
+// lint on that idiom is a false positive.
+/* verilator lint_off WIDTHTRUNC */
 module tb_joypad_registers;
     logic clk_sys, reset_sys, core_reset, gb_tick;
     logic input_commit, io_commit, io_write, io_selected, selected_active;
@@ -17,9 +20,9 @@ module tb_joypad_registers;
             2: expected_data=8'he0 | (8'h0f & ~expected_buttons);
             3: expected_data=8'hff;
         endcase
-        if(io_selected!==(io_address==16'hff00) ||
-            io_rdata!==(io_address==16'hff00 ? expected_data : 8'd0) ||
-            buttons_observe!==expected_buttons || selected_active!==(expected_data[3:0]!=4'hf))
+        if(io_selected!=(io_address==16'hff00) ||
+            io_rdata!=(io_address==16'hff00 ? expected_data : 8'd0) ||
+            buttons_observe!=expected_buttons || selected_active!=(expected_data[3:0]!=4'hf))
             $fatal(1,"JOY_REG_READ case=%0d expected=%02h actual=%02h buttons=%02h",case_number,expected_data,io_rdata,buttons_observe);
         $fdisplay(trace,"%0d,%02h,%0d,%04h,%02h,%02h",case_number,expected_buttons,expected_select,io_address,expected_data,io_rdata);
         checks=checks+1;

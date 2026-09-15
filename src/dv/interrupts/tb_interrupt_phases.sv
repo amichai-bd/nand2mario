@@ -1,5 +1,8 @@
 `timescale 1ns/1ps
 `default_nettype none
+// Lint waiver: the integer file handle is tested as a boolean; the width
+// lint on that idiom is a false positive.
+/* verilator lint_off WIDTHTRUNC */
 module tb_interrupt_phases;
     logic clk_sys, reset_sys, core_reset, gb_tick, io_commit, io_write;
     logic [15:0] io_address;
@@ -28,7 +31,7 @@ module tb_interrupt_phases;
         #1;
         $fdisplay(trace_file, "%0d,%0d,%02h,%02h,%02h,%02h,%02h,%02h", scenario, checks,
             flags, if_observe, enables, ie_observe, if_stored, ie_stored);
-        if (if_observe !== flags || ie_observe !== enables)
+        if (if_observe != flags || ie_observe != enables)
             $fatal(1, "INTERRUPT_PHASE_OBSERVE case=%0d check=%0d expected_if=%02h actual_if=%02h expected_ie=%02h actual_ie=%02h",
                 scenario, checks, flags, if_observe, enables, ie_observe);
         checks = checks + 1;
@@ -47,13 +50,13 @@ module tb_interrupt_phases;
     endtask
     task automatic finish_b(input logic [4:0] flags, input logic [7:0] enables);
         check(flags,enables); capture_b = 1; edge_cycle(); capture_b = 0;
-        if (captured_if !== flags || captured_ie !== enables)
+        if (captured_if != flags || captured_ie != enables)
             $fatal(1, "INTERRUPT_PHASE_CAPTURE case=%0d expected_if=%02h actual_if=%02h", scenario,flags,captured_if);
         check(flags,enables);
     endtask
     task automatic select_t3(input logic [4:0] literal_vector);
         frozen_vector = if_observe & ie_observe[4:0];
-        if (frozen_vector !== literal_vector)
+        if (frozen_vector != literal_vector)
             $fatal(1, "INTERRUPT_T3_VECTOR case=%0d expected=%02h actual=%02h",scenario,literal_vector,frozen_vector);
         edge_cycle();
     endtask
@@ -94,7 +97,7 @@ module tb_interrupt_phases;
                 #4; clk_sys = 1;
                 if (arrival == 4) source_level <= 1;
                 #1; clk_sys = 0; capture_b = 0;
-                if (captured_if !== expected_b || captured_ie !== 0)
+                if (captured_if != expected_b || captured_ie != 0)
                     $fatal(1,"INTERRUPT_PHASE_CAPTURE case=%0d",scenario);
                 if (arrival == 5) begin
                     check(expected_b,0); source_level = 1;
@@ -113,7 +116,7 @@ module tb_interrupt_phases;
         begin_a(1,16'hFFFF,8'hA5,0); finish_b(5'h1F,8'hA5);
         select_t3(5'h05);
         begin_a(0,0,0,5'h04); finish_b(5'h1B,8'hA5);
-        if (frozen_vector !== 5'h05) $fatal(1,"INTERRUPT_SNAPSHOT_CHANGED");
+        if (frozen_vector != 5'h05) $fatal(1,"INTERRUPT_SNAPSHOT_CHANGED");
         scenario = scenario + 1;
 
         // High stack write changes IE before the next T3: canceled vector.
@@ -122,7 +125,7 @@ module tb_interrupt_phases;
         begin_a(1,16'hFFFF,8'h05,0); finish_b(5'h05,8'h05);
         select_t3(5'h05);
         begin_a(1,16'hFFFF,8'h02,0);
-        if (ie_stored !== 8'h05 || io_rdata !== 8'h05) $fatal(1,"INTERRUPT_PREWRITE_IE");
+        if (ie_stored != 8'h05 || io_rdata != 8'h05) $fatal(1,"INTERRUPT_PREWRITE_IE");
         finish_b(5'h05,8'h02); select_t3(0);
         begin_a(0,0,0,0); finish_b(5'h05,8'h02);
         scenario = scenario + 1;
@@ -136,9 +139,9 @@ module tb_interrupt_phases;
         begin_a(1,16'hFFFF,8'h02,0); finish_b(5'h03,8'h02);
         select_t3(5'h02);
         begin_a(1,16'hFF0F,8'h1F,5'h02);
-        if (if_stored !== 5'h03 || io_rdata !== 8'hE3) $fatal(1,"INTERRUPT_PREWRITE_IF");
+        if (if_stored != 5'h03 || io_rdata != 8'hE3) $fatal(1,"INTERRUPT_PREWRITE_IF");
         finish_b(5'h1D,8'h02);
-        if (frozen_vector !== 5'h02) $fatal(1,"INTERRUPT_SNAPSHOT_CHANGED");
+        if (frozen_vector != 5'h02) $fatal(1,"INTERRUPT_SNAPSHOT_CHANGED");
         scenario = scenario + 1;
 
         // A low IE write can disable selection for a later boundary, while
@@ -146,7 +149,7 @@ module tb_interrupt_phases;
         begin_a(1,16'hFF0F,8'h03,0); finish_b(5'h03,8'h02);
         select_t3(5'h02);
         begin_a(1,16'hFFFF,8'h00,5'h02); finish_b(5'h01,8'h00);
-        if (frozen_vector !== 5'h02) $fatal(1,"INTERRUPT_SNAPSHOT_CHANGED");
+        if (frozen_vector != 5'h02) $fatal(1,"INTERRUPT_SNAPSHOT_CHANGED");
         select_t3(0);
         scenario = scenario + 1;
         // A committed service read must have no write side effect.
