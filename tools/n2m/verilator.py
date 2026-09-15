@@ -3,10 +3,13 @@ import re
 
 # Verilate-time options shared by every target. Warnings stay fatal to the
 # build; nothing here demotes them. Randomized initial values replace the
-# four-state checks Questa provided, and --x-initial-edge keeps an event-driven
-# simulator's time-zero X-to-value edges so an asynchronous reset asserted at
-# time zero still resets, exactly as it did under Questa.
-COMMON_OPTIONS = ("--x-assign", "unique", "--x-initial", "unique", "--x-initial-edge",
+# four-state checks Questa provided. --x-initial-edge is deliberately absent:
+# it fires every sensitivity trigger once at initialization, even for a clock
+# that is never driven, instead of only the X-to-value edges an event-driven
+# simulator sees. An edge therefore fires only on an assignment that changes a
+# value; a testbench asserts a time-zero asynchronous reset by an explicit
+# assignment after time zero.
+COMMON_OPTIONS = ("--x-assign", "unique", "--x-initial", "unique",
                   "--trace-fst", "-j", "0", "--Mdir", "obj_dir", "--prefix", "Vtop", "-o", "sim")
 # Runtime plusargs: the run seed feeds both the testbench and Verilator's own
 # randomization; +verilator+rand+reset+2 randomizes every uninitialized value.

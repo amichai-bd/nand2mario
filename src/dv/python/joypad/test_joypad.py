@@ -47,7 +47,7 @@ async def joypad_contract(dut):
     seed = int(os.environ["COCOTB_RANDOM_SEED"])
     rng = random.Random(seed)
     state = (0, 3, 0)
-    pins = dict(reset_sys=1, core_reset=0, gb_tick=0, input_commit=0,
+    pins = dict(reset_sys=0, core_reset=0, gb_tick=0, input_commit=0,
                 input_buttons=0, io_commit=0, io_write=0, io_address=0xFF00, io_wdata=0)
     cycle = 0
     checks = 0
@@ -110,6 +110,12 @@ async def joypad_contract(dut):
             await step(name + " held")
             await step(name + " release", **{name: 0})
 
+        # A two-state simulator has no X-to-1 edge at time zero, so the
+        # asynchronous reset is asserted by an explicit change after the
+        # first evaluation; the checker then observes it before any clock.
+        await Timer(1, unit="ns")
+        pins["reset_sys"] = 1
+        dut.reset_sys.value = 1
         await Timer(1, unit="ns")
         await check("initial reset", "async")
         await step("reset release", reset_sys=0)

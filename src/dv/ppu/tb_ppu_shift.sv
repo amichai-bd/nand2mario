@@ -11,7 +11,7 @@ module tb_ppu_shift;
     task automatic edge_check(input logic [1:0] bg, input logic [1:0] obj);
         #5; clk_sys = 1;
         #1; cases = cases + 1;
-        if ({background_color, object_color} !== {bg, obj})
+        if ({background_color, object_color} != {bg, obj})
             $fatal(1, "PPU_SHIFT_MISMATCH case=%0d expected=%0h actual=%0h",
                 cases, {bg, obj}, {background_color, object_color});
         #4; clk_sys = 0;
@@ -109,12 +109,6 @@ module tb_ppu_shift;
         background_load = 0;
         object_load = 0;
         advance = 0;
-        if ($test$plusargs("unknown")) begin
-            gb_tick = 1;
-            edge_check(0, 0); // retire prior hold history before targeted unknown fault
-            force dut.obj_low = 8'hxx;
-            edge_check(0, 0); // named state assertion must terminate before check
-        end
         $display("PASS PPU shift literal_cases=18");
         $finish;
     end

@@ -3,6 +3,8 @@
 `include "src/rtl/common/macros.svh"
 // Original scene and coordinate oracle. No expected value uses DUT fetch,
 // position, mode, line counters or window state.
+// Lint waiver: the integer file handle is tested as a boolean; the width lint on that idiom is a false positive.
+/* verilator lint_off WIDTHTRUNC */
 module tb_ppu_live_scroll;
     logic clk_sys, reset_sys, core_reset, gb_tick, pause_request, paused;
     logic [31:0] epoch;
@@ -81,10 +83,10 @@ module tb_ppu_live_scroll;
         if (io_commit && io_address == 16'hff40 && io_wdata[7] && !ref_lcd_on) enable_dot = dot_before;
         if (!reset_sys && source_valid && !case_done) begin
             if (gb_tick || source_abort || fault) $fatal(1, "PPU_LIVE_SCROLL_FORWARD");
-            if (source_x !== 8'(pixel_count % 160) || source_y !== 8'(pixel_count / 160)
-                || source_start !== (pixel_count == 0))
+            if (source_x != 8'(pixel_count % 160) || source_y != 8'(pixel_count / 160)
+                || source_start != (pixel_count == 0))
                 $fatal(1, "PPU_LIVE_SCROLL_ORDER case=%0d frame=%0d index=%0d", case_index, frame_count, pixel_count);
-            if (source_dot !== dot_before || source_dot <= previous_dot || source_epoch !== 32'd5)
+            if (source_dot != dot_before || source_dot <= previous_dot || source_epoch != 32'd5)
                 $fatal(1, "PPU_LIVE_SCROLL_DOT");
             expected = 0;
             if (frame_count == 1) begin
@@ -96,14 +98,14 @@ module tb_ppu_live_scroll;
             end
             if (frame_count == 1 && pixel_count == 0) begin
                 expected_first = enable_dot + 64'd70317;
-                if (source_dot !== expected_first)
+                if (source_dot != expected_first)
                     $fatal(1, "PPU_LIVE_SCROLL_FIRST case=%0d expected=%0d actual=%0d", case_index, expected_first, source_dot);
                 first_pixels = first_pixels + 1;
             end
-            if (source_shade !== expected)
+            if (source_shade != expected)
                 $fatal(1, "PPU_LIVE_SCROLL_PIXEL case=%0d frame=%0d index=%0d expected=%0d actual=%0d",
                     case_index, frame_count, pixel_count, expected, source_shade);
-            if (source_display_eligible !== (frame_count != 0)) $fatal(1, "PPU_LIVE_SCROLL_ELIGIBILITY");
+            if (source_display_eligible != (frame_count != 0)) $fatal(1, "PPU_LIVE_SCROLL_ELIGIBILITY");
             $fdisplay(trace_file, "%0d,%0d,%0d,%0d,%0d,%0d", case_index, frame_count, pixel_count, source_dot, expected, source_shade);
             previous_dot = source_dot;
             if (frame_count == 1 && pixel_count == 159) case_done = 1;

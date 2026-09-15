@@ -64,14 +64,14 @@ module tb_ppu_ly153;
                               input logic irq_value, input logic event_value);
         io_address = 16'hff44;
         #1;
-        if (io_rdata !== line_value)
+        if (io_rdata != line_value)
             $fatal(1, "PPU_LY153_READ elapsed=%0d expected=%0d actual=%0d", elapsed, line_value, io_rdata);
         io_address = 16'hff41;
         #1;
-        if (io_rdata[2] !== flag_value || stat_condition !== irq_value)
+        if (io_rdata[2] != flag_value || stat_condition != irq_value)
             $fatal(1, "PPU_LY153_COMPARE elapsed=%0d expected_flag=%0d actual_flag=%0d expected_irq=%0d actual_irq=%0d",
                 elapsed, flag_value, io_rdata[2], irq_value, stat_condition);
-        if (stat_rise !== event_value)
+        if (stat_rise != event_value)
             $fatal(1, "PPU_LY153_EVENT elapsed=%0d expected=%0d actual=%0d", elapsed, event_value, stat_rise);
         cases = cases + 1;
     endtask
@@ -93,7 +93,12 @@ module tb_ppu_ly153;
         initialize_case(compare, mask);
         advance_to(100);
         if ($test$plusargs("extra_irq")) begin
+            // One injected edge. A released variable keeps its forced value
+            // under Verilator until the next write, so force the idle 0 for
+            // one cycle before releasing; Questa re-evaluated the port at release.
             force dut.stat_rise = 1'b1;
+            @(negedge clk_sys);
+            force dut.stat_rise = 1'b0;
             @(negedge clk_sys);
             release dut.stat_rise;
         end

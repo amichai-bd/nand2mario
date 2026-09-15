@@ -56,8 +56,8 @@ module tb_ppu_access;
         input logic vram_allowed, input logic oam_allowed);
         @(negedge clk_sys); io_address = 16'hff41; io_write = 0;
         do @(posedge clk_sys); while (!(gb_tick && dot_before == enable_dot + 64'(elapsed)));
-        if (cpu_phase != 3 || !io_selected || io_rdata[1:0] !== expected_mode
-            || vram_cpu_allow !== vram_allowed || oam_cpu_allow !== oam_allowed)
+        if (cpu_phase != 3 || !io_selected || io_rdata[1:0] != expected_mode
+            || vram_cpu_allow != vram_allowed || oam_cpu_allow != oam_allowed)
             $fatal(1, "PPU_ACCESS_CPU elapsed=%0d expected_mode=%0d actual_mode=%0d expected_vram=%0d actual_vram=%0d expected_oam=%0d actual_oam=%0d",
                 elapsed, expected_mode, io_rdata[1:0], vram_allowed, vram_cpu_allow,
                 oam_allowed, oam_cpu_allow);

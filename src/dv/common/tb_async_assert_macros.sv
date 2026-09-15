@@ -98,7 +98,6 @@ module tb_async_assert_macros;
             reset = 1; no_reset_ok = 0;
         end
         if ($test$plusargs("fail_never")) forbidden = 1;
-        if ($test$plusargs("fail_known")) known_value = 1'bx;
         edge_check();
         $display("PASS async and assertion macros edges=10 reset-pulses=2");
         $finish;

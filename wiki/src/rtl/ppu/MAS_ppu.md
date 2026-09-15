@@ -329,7 +329,7 @@ exercise disable on first/last pixels, pending offers, acknowledgements and
 swap boundaries, including repeated toggles before acknowledgement.
 
 Positive and deliberate pixel/timing/interrupt faults must compile, elaborate
-and run in Questa through the shared builder, with exact expected nonzero
+and run under Verilator through the shared builder, with exact expected nonzero
 negative diagnostics. Source-pixel and timing/interrupt traces, original scenes,
 commands, seeds and waves remain tagged artifacts. None establishes physical
 monitor or complete-system acceptance.

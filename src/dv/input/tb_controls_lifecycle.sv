@@ -45,7 +45,7 @@ module tb_controls_lifecycle;
     endtask
     task automatic check(input logic [7:0] value);
         expected = value;
-        if (observed !== value) $fatal(1,"CONTROLS_LIFECYCLE scenario=%0d method=%0d check=%0d expected=%02h actual=%02h", scenario,method,checks,value,observed);
+        if (observed != value) $fatal(1,"CONTROLS_LIFECYCLE scenario=%0d method=%0d check=%0d expected=%02h actual=%02h", scenario,method,checks,value,observed);
         checks = checks + 1;
     endtask
     task automatic restart;
@@ -58,7 +58,7 @@ module tb_controls_lifecycle;
         integer wait_count;
         wait_count = 0;
         while (!command_valid && wait_count < 8) begin step(); wait_count = wait_count + 1; end
-        if (!command_valid || command_channel !== channel) $fatal(1,"CONTROLS_COMMAND expected=%0d actual=%0d",channel,command_channel);
+        if (!command_valid || command_channel != channel) $fatal(1,"CONTROLS_COMMAND expected=%0d actual=%0d",channel,command_channel);
         command_ready = 1'b1; step(); command_ready = 1'b0;
     endtask
     task automatic respond(input logic [4:0] channel, input logic [11:0] data);

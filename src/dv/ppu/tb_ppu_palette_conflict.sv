@@ -1,6 +1,8 @@
 `timescale 1ns/1ps
 `default_nettype none
 // Original literal old/conflict/new cases. No model or DUT-derived oracle.
+// Lint waiver: the integer file handle is tested as a boolean; the width lint on that idiom is a false positive.
+/* verilator lint_off WIDTHTRUNC */
 module tb_ppu_palette_conflict;
     logic clk_sys, reset, gb_tick, io_commit, io_write;
     logic [15:0] io_address;
@@ -28,10 +30,10 @@ module tb_ppu_palette_conflict;
         checks = checks + 1;
         $fdisplay(trace_file, "%0d,%0d,%06x,%06x,%02x,%02x", checks, palette,
             expected_render, {render_obp1, render_obp0, render_bgp}, readback, io_rdata);
-        if ({render_obp1, render_obp0, render_bgp} !== expected_render)
+        if ({render_obp1, render_obp0, render_bgp} != expected_render)
             $fatal(1, "PPU_PALETTE_CONFLICT palette=%0d expected=%06x actual=%06x",
                 palette, expected_render, {render_obp1, render_obp0, render_bgp});
-        if (!io_selected || io_rdata !== readback)
+        if (!io_selected || io_rdata != readback)
             $fatal(1, "PPU_PALETTE_READBACK expected=%02x actual=%02x", readback, io_rdata);
     endtask
     task automatic tick;

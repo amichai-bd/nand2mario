@@ -3,6 +3,10 @@
 `include "src/rtl/common/macros.svh"
 // Original scene and coordinate oracle. No expected value uses DUT fetch,
 // position, mode, line counters or window state.
+// Lint waiver: integer attribute masks and the file handle are tested as booleans and
+// integer pixel counts feed 64-bit dot arithmetic; the width lint on those idioms is a false positive.
+/* verilator lint_off WIDTHEXPAND */
+/* verilator lint_off WIDTHTRUNC */
 module tb_ppu_render;
     logic clk_sys, reset_sys, core_reset, gb_tick, pause_request, paused;
     logic [31:0] epoch;
@@ -184,7 +188,7 @@ module tb_ppu_render;
         io_address = address;
         io_write = 0;
         do @(posedge clk_sys); while (!(gb_tick && dot_before == enable_dot + 64'(elapsed)));
-        if ((io_rdata & mask) !== value)
+        if ((io_rdata & mask) != value)
             $fatal(1, "PPU_RENDER_STARTUP elapsed=%0d address=%h expected=%h actual=%h",
                 elapsed, address, value, io_rdata & mask);
         startup_reads = startup_reads + 1;
@@ -197,8 +201,8 @@ module tb_ppu_render;
     always @(posedge clk_sys) begin
         if (!reset_sys && source_valid) begin
             if (gb_tick || source_abort || fault) $fatal(1, "PPU_RENDER_FORWARD_PHASE");
-            if (source_x !== 8'(pixel_count % 160) || source_y !== 8'(pixel_count / 160)
-                || source_start !== (pixel_count == 0))
+            if (source_x != 8'(pixel_count % 160) || source_y != 8'(pixel_count / 160)
+                || source_start != (pixel_count == 0))
                 $fatal(1, "PPU_RENDER_ORDER frame=%0d index=%0d xy=%0d,%0d",
                     frame_count, pixel_count, source_x, source_y);
             // Pinned Pan Docs X0 exception is11 dots independent of SCX.
@@ -208,12 +212,12 @@ module tb_ppu_render;
             if (object_zero && frame_count == 1 && pixel_count % 160 == 0) begin
                 zero_expected_dot = normal_first_dot + 64'(456 * (pixel_count / 160)
                     + (pixel_count / 160 >= 84 && pixel_count / 160 < 100 ? 11 : 0));
-                if (source_dot !== zero_expected_dot)
+                if (source_dot != zero_expected_dot)
                     $fatal(1, "PPU_X0_FIRST line=%0d expected=%0d actual=%0d",
                         pixel_count / 160, zero_expected_dot, source_dot);
                 if (pixel_count / 160 >= 84 && pixel_count / 160 < 100) zero_lines = zero_lines + 1;
             end
-            if (source_dot !== dot_before || source_dot <= previous_dot || source_epoch !== 32'd5)
+            if (source_dot != dot_before || source_dot <= previous_dot || source_epoch != 32'd5)
                 $fatal(1, "PPU_RENDER_TIMESTAMP frame=%0d index=%0d", frame_count, pixel_count);
             if (temporal && pixel_count == 0 && frame_count == 1) normal_first_dot = source_dot;
             if (temporal && pixel_count == 0 && frame_count == 2
@@ -229,14 +233,14 @@ module tb_ppu_render;
                     commit_pixels[selected_pixel[3:2]] = commit_pixels[selected_pixel[3:2]] + 1;
                 if (source_dot > palette_write_dot[selected_pixel[3:2]] && expected != prior_palette[selected_pixel[3:2]][2 * selected_pixel[1:0] +: 2])
                     after_pixels[selected_pixel[3:2]] = after_pixels[selected_pixel[3:2]] + 1;
-                if (source_shade !== expected)
+                if (source_shade != expected)
                     $fatal(1, "PPU_PALETTE_PIXEL frame=%0d index=%0d palette=%0d expected=%0d actual=%0d",
                         frame_count, pixel_count, selected_pixel[3:2], expected, source_shade);
             end
-            if (source_shade !== expected)
+            if (source_shade != expected)
                 $fatal(1, "PPU_RENDER_PIXEL frame=%0d index=%0d expected=%0d actual=%0d",
                     frame_count, pixel_count, expected, source_shade);
-            if (source_display_eligible !== (frame_count != 0)) $fatal(1, "PPU_RENDER_ELIGIBILITY");
+            if (source_display_eligible != (frame_count != 0)) $fatal(1, "PPU_RENDER_ELIGIBILITY");
             $fdisplay(trace_file, "%0d,%0d,%0d,%0d,%0d", frame_count, pixel_count,
                 source_dot, expected, source_shade);
             previous_dot = source_dot;

@@ -144,6 +144,26 @@ class Validation(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "requires a recorded reason"):
             module.load(self.root)
 
+    def test_retired_names_a_reason_and_may_not_stay_registered_or_catalogued(self):
+        reason = "A two-state simulator cannot witness X."
+        self.write(model(units={"cpu-alu": dict(ENTRY)}) | {"retired": {"ppu-shift-unknown": reason}})
+        loaded, _ = module.load(self.root)
+        self.assertEqual(loaded["retired"], {"ppu-shift-unknown": reason})
+        self.assertEqual(module.coverage(self.root, loaded), [])
+        self.assertIn("retired:\n  ppu-shift-unknown:", module.format_document(loaded))
+        self.write(model(units={"tools/x/test_a.py": {"kind": "unit", "level": 0, "labels": [],
+                                                      "duration_seconds": None}})
+                   | {"retired": {"cpu-alu": reason}})
+        loaded, _ = module.load(self.root)
+        self.assertIn("retired target cpu-alu is still registered in targets.json",
+                      module.coverage(self.root, loaded))
+        self.write(model() | {"retired": {"cpu-alu": " "}})
+        with self.assertRaisesRegex(ValueError, "requires a recorded reason"):
+            module.load(self.root)
+        self.write(model(units={"cpu-alu": dict(ENTRY)}) | {"retired": {"cpu-alu": reason}})
+        with self.assertRaisesRegex(ValueError, "both a unit and retired"):
+            module.load(self.root)
+
     def test_generated_output_and_other_checkouts_are_not_the_tree(self):
         for hidden in ("workdir", "worktrees", "__pycache__"):
             (self.root / hidden).mkdir()

@@ -59,11 +59,11 @@ module tb_ppu_stat_off;
         @(negedge clk_sys);
         io_address = 16'hff44;
         #1;
-        if (io_rdata !== 0) $fatal(1, "PPU_STAT_OFF_LY case=%0d actual=%0d", cases, io_rdata);
+        if (io_rdata != 0) $fatal(1, "PPU_STAT_OFF_LY case=%0d actual=%0d", cases, io_rdata);
         io_address = 16'hff41;
         #1;
-        if (io_rdata[2] !== flag || stat_condition !== line_value || rises != edges
-            || (off && io_rdata[1:0] !== 0))
+        if (io_rdata[2] != flag || stat_condition != line_value || rises != edges
+            || (off && io_rdata[1:0] != 0))
             $fatal(1, "PPU_STAT_OFF_STATE case=%0d expected_flag=%0d expected_line=%0d expected_edges=%0d actual_flag=%0d actual_line=%0d actual_edges=%0d mode=%0d",
                 cases, flag, line_value, edges, io_rdata[2], stat_condition, rises, io_rdata[1:0]);
         cases = cases + 1;
