@@ -159,9 +159,8 @@ def run(root, build, args, provenance):
                 raw, rows = library.read_catalogue(client)
                 (folder / 'catalogue.bin').write_bytes(raw)
                 report['result'] = {'catalogue': rows, 'catalogue_sha256': summary(raw)['sha256']}
-                if hasattr(abi, 'HOST_REG_LIBRARY_STATUS'):
-                    report['result']['library_status'] = library.decode_library_status(
-                        client.read_host(abi.HOST_REG_LIBRARY_STATUS))
+                report['result']['library_status'] = library.decode_library_status(
+                    client.read_host(abi.HOST_REG_LIBRARY_STATUS))
                 if not args.json:
                     print(library.format_table(rows), flush=True)
             elif args.action == 'status':

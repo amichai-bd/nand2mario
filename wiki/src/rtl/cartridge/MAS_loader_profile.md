@@ -31,7 +31,7 @@ gives it.
 
 | Term | Definition |
 |---|---|
-| Profile | The value the endpoint publishes in the `PROFILE` host register: `DIRECT_ID` (1) is the existing mapperless game profile; `LOADER_ID` (2) is this profile. The generated [interface table](../interfaces/MAS_interfaces.md) owns both constants once the loader slice adds `LOADER_ID`. |
+| Profile | The value the endpoint publishes in the `PROFILE` host register: `DIRECT_ID` (1) is the existing mapperless game profile; `LOADER_ID` (2) is this profile. The generated [interface table](../interfaces/MAS_interfaces.md) owns both constants. |
 | ROM store | The existing 32 KiB `dmg-direct-v1` store in the [memory owner](../memory/MAS_memory.md#stores-and-ownership); byte offset `o` is CPU address `o`. |
 | Low half, upper half | ROM store offsets `$0000`-`$3FFF` and `$4000`-`$7FFF`. |
 | Image index | 0-15 a game slot, 16 the menu image; the [SDRAM layout](../storage/MAS_sdram.md#address-space-layout) puts image `i` at device address `i * 32768`. |
@@ -206,10 +206,13 @@ images to slots 0..N-1, the `--menu` image to index 16 and the catalogue
 through the [host SDRAM line commands](#host-interaction), each slot read back
 and compared by CRC32 with its catalogue entry, the catalogue compared byte for
 byte; a mismatch is reported by slot and fails the command. `host library
-status` reads the catalogue as stored (and `LIBRARY_STATUS` once it exists,
-[#667](https://github.com/amichai-bd/nand2mario/issues/667)). Until the
-loader-profile menu image exists ([#668](https://github.com/amichai-bd/nand2mario/issues/668)),
-the menu entry's `profile` is `DIRECT_ID`, the profile the packaged image runs in.
+status` reads the catalogue as stored and `LIBRARY_STATUS`. The menu entry's
+`profile` is the generated ID of the profile the packaged menu image runs in:
+`LOADER_ID` for the loader-profile menu image
+([#668](https://github.com/amichai-bd/nand2mario/issues/668)), `DIRECT_ID` for
+a direct-profile image at index 16; the select rule above accepts either. The
+host tool takes every slot, catalogue and profile number from the generated
+[interface table](../interfaces/MAS_interfaces.md).
 Then the host loads the menu into the ROM store with the existing
 `LOAD_BEGIN`/`LOAD_WRITE`/`LOAD_END` sequence using profile `LOADER_ID`, then
 `RUN`. From then on the player uses only the board.
@@ -350,7 +353,7 @@ and a CPU bus driver or the real CPU. Fixtures, each within the
 
 Implemented by [`tb_loader`](../../../../src/dv/cartridge/tb_loader.sv) with
 a bus driver in place of the CPU (`loader-map`, `loader-window`,
-`loader-swap`, `loader-swap-fault`, `loader-key1` at the real thresholds and
+`loader-swap`, `loader-swap-host`, `loader-swap-fault`, `loader-key1` at the real thresholds and
 `loader-key1-queue` for the ordering cases at shortened thresholds) and by
 [`tb_loader_system`](../../../../src/dv/cartridge/tb_loader_system.sv) with the
 real CPU running a menu program from SDRAM (`loader-host`, `loader-menu`),
@@ -362,6 +365,7 @@ all under the `cartridge` label; the
 | `loader-map` | All 65,536 addresses in `LOADER_ID`: reads and writes route per the [address map](#address-map-in-the-loader-profile); `$FF` window reads while busy; in `DIRECT_ID` the loader registers are absent and the direct rules hold byte for byte |
 | `loader-window` | Bank commits 0, 1, 33, 34, 63; upper half equals the SDRAM bank after `window_busy` falls; 40,000-edge bound; ignored commit during busy; `window_ready` and `$A001` |
 | `loader-swap` | Select 0, 15 and 16 with a valid catalogue: pause, `image_valid` low before the first ROM write, CRC, `PROFILE`, epoch + 1, running without host `RUN`; 80,000-edge bound; the ROM store equals the image byte for byte |
+| `loader-swap-host` | A select committed by the menu while a host `RUN_DOTS` runs, and a return requested during a host `STEP`: the host command completes (`STOPPED`, `STEP_LIMIT`), the swap completes within the bound with the expected `PROFILE` and epoch + 1, the console stays paused for the host afterwards and resumes on host `RUN`; the ROM store equals the image |
 | `loader-swap-fault` | Invalid entry, wrong length, bad profile, CRC mismatch: exact result codes, no ROM byte changed for refused selects, paused with `image_valid` 0 for the mismatch |
 | `loader-key1` | 4 ms glitch, 0.49 s and 0.51 s presses, hold through the swap, press during a swap (`key1_pending`), press in a host session (dropped), release and re-press |
 | `loader-host` | `LOAD_BEGIN` during swap returns `BAD_STATE`; during fill it waits; `SDRAM_WRITE`/`SDRAM_READ` round trips; `LIBRARY_STATUS`; `WRITE_HOST(LIBRARY_CONTROL)` return; a direct host load of a game after a swap behaves as today |

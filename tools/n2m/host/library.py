@@ -1,35 +1,52 @@
 """The sixteen-slot SDRAM game library: slots, menu image, catalogue and verification.
 
 Layout owner: wiki/src/rtl/storage/MAS_sdram.md#address-space-layout. Slot i
-is one complete 32 KiB image at i * 32 KiB; index 16 is the menu image; the
-catalogue is 17 entries of 32 bytes at 0x88000, little-endian, and the
-remainder of its 1 KiB is zero. The copy engine compares CRC-32/ISO-HDLC over
-the 32 KiB image with the catalogue crc32, so the host verifies the same
-quantity after writing.
+is one complete image at i * SLOT_BYTES; MENU_INDEX is the menu image; the
+catalogue is CATALOGUE_ENTRIES records of ENTRY_BYTES at CATALOGUE_ADDRESS,
+little-endian, and the remainder of its 1 KiB region is zero. The copy engine
+compares CRC-32/ISO-HDLC over the whole image with the catalogue crc32, so the
+host verifies the same quantity after writing.
 """
-import struct
 import zlib
 
 from .. import generated_interfaces as abi
-from ..interface_codec import SDRAM_LINE
+from ..interface_codec import SDRAM_LINE, pack_record, unpack_record
 
-# Layout constants named by the storage contract. They move to the generated
-# interface table when cfg/interfaces.json gains the library group.
-SLOT_BYTES = abi.PROFILE_ROM_BYTES
-GAME_SLOTS = 16
-MENU_INDEX = 16
-IMAGE_COUNT = 17
-CATALOGUE_ADDRESS = 0x88000
-ENTRY_BYTES = 32
+# Every number below comes from cfg/interfaces.json through the generated
+# table, so the host tool and the RTL share one source.
+SLOT_BYTES = abi.LIBRARY_SLOT_BYTES
+GAME_SLOTS = abi.LIBRARY_SLOTS
+MENU_INDEX = abi.LIBRARY_MENU_INDEX
+IMAGE_COUNT = abi.LIBRARY_CATALOGUE_ENTRIES
+CATALOGUE_ADDRESS = abi.LIBRARY_CATALOGUE_ADDRESS
+ENTRY_BYTES = abi.LIBRARY_ENTRY_BYTES
+VALID = abi.LIBRARY_CATALOGUE_VALID
+# The catalogue_entry record: valid 0 is an empty slot; the title fields carry
+# header bytes 0x0134-0x0143 verbatim, split into two little-endian words.
+EMPTY = 0
+ENTRY_FIELDS = {field['name']: field['bits'] // 8 for field in abi.RECORDS['catalogue_entry']}
+TITLE_START = 0x134
+TITLE_BYTES = ENTRY_FIELDS['title_low'] + ENTRY_FIELDS['title_high']
+# The layout reserves one 1 KiB region for the catalogue (entries then zero
+# bytes). The host writes and compares the whole region so a stale byte behind
+# the entries cannot survive a load.
 CATALOGUE_BYTES = 1024
-TITLE_START, TITLE_BYTES = 0x134, 16
-ENTRY = struct.Struct('<BBHI16s8x')
-VALID, EMPTY = 0x01, 0x00
 
 # Package profile name to the generated profile ID the image runs in. The
-# packager admits only these profiles, so the catalogue never carries an
-# unknown ID.
-PROFILE_IDS = {abi.PROFILE_NAME: abi.PROFILE_DIRECT_ID}
+# packager admits only the direct profile today; the loader-profile menu image
+# (#668) names LOADER_PROFILE_NAME so its menu entry carries LOADER_ID. The
+# contract accepts either ID at MENU_INDEX.
+LOADER_PROFILE_NAME = 'dmg-loader-v1'
+PROFILE_IDS = {abi.PROFILE_NAME: abi.PROFILE_DIRECT_ID, LOADER_PROFILE_NAME: abi.PROFILE_LOADER_ID}
+
+# LIBRARY_STATUS word fields and names; layout per the loader profile's host
+# interaction rule: $A000 in bits 7:0, $A002 in 15:8, $A003 in 23:16, bank in 29:24.
+RESULT_NAMES = {abi.LIBRARY_RESULT_NONE: 'NONE', abi.LIBRARY_RESULT_OK: 'OK',
+                abi.LIBRARY_RESULT_INVALID_SLOT: 'INVALID_SLOT', abi.LIBRARY_RESULT_CRC_MISMATCH: 'CRC_MISMATCH',
+                abi.LIBRARY_RESULT_NOT_READY: 'NOT_READY'}
+STATUS_FLAGS = (('copy_busy', abi.LIBRARY_STATUS_COPY_BUSY), ('window_ready', abi.LIBRARY_STATUS_WINDOW_READY),
+                ('sdram_ready', abi.LIBRARY_STATUS_SDRAM_READY), ('key1_pending', abi.LIBRARY_STATUS_KEY1_PENDING),
+                ('flash_boot', abi.LIBRARY_STATUS_FLASH_BOOT))
 
 
 def slot_name(index):
@@ -38,7 +55,7 @@ def slot_name(index):
 
 def slot_address(index):
     if type(index) is not int or not 0 <= index < IMAGE_COUNT:
-        raise ValueError('library index must be 0..16')
+        raise ValueError(f'library index must be 0..{MENU_INDEX}')
     return index * SLOT_BYTES
 
 
@@ -49,10 +66,10 @@ def profile_id(name):
 
 
 def image_entry(image, profile):
-    """The catalogue entry describing one 32 KiB image."""
+    """The catalogue entry describing one complete slot image."""
     image = bytes(image)
     if len(image) != SLOT_BYTES:
-        raise ValueError('library image must be exactly one 32 KiB slot')
+        raise ValueError(f'library image must be exactly one {SLOT_BYTES}-byte slot')
     return {'valid': VALID, 'profile': profile, 'length': SLOT_BYTES, 'crc32': zlib.crc32(image),
             'title': image[TITLE_START:TITLE_START + TITLE_BYTES]}
 
@@ -61,15 +78,23 @@ EMPTY_ENTRY = {'valid': EMPTY, 'profile': 0, 'length': 0, 'crc32': 0, 'title': b
 
 
 def pack_entry(entry):
-    return ENTRY.pack(entry['valid'], entry['profile'], entry['length'], entry['crc32'], entry['title'])
+    """One generated catalogue_entry record; the title is padded or cut to its field width."""
+    title = bytes(entry['title'])[:TITLE_BYTES].ljust(TITLE_BYTES, b'\0')
+    low = ENTRY_FIELDS['title_low']
+    return pack_record('catalogue_entry', {
+        'valid': entry['valid'], 'profile': entry['profile'], 'length': entry['length'], 'crc32': entry['crc32'],
+        'title_low': int.from_bytes(title[:low], 'little'), 'title_high': int.from_bytes(title[low:], 'little'),
+        'reserved': 0})
 
 
 def unpack_entry(raw):
     if len(raw) != ENTRY_BYTES:
-        raise ValueError('catalogue entry must be 32 bytes')
-    valid, profile, length, crc32, title = ENTRY.unpack(raw)
-    return {'valid': valid, 'profile': profile, 'length': length, 'crc32': crc32, 'title': title,
-            'reserved_zero': raw[24:] == bytes(8)}
+        raise ValueError(f'catalogue entry must be {ENTRY_BYTES} bytes')
+    fields = unpack_record('catalogue_entry', raw)
+    title = (fields['title_low'].to_bytes(ENTRY_FIELDS['title_low'], 'little')
+             + fields['title_high'].to_bytes(ENTRY_FIELDS['title_high'], 'little'))
+    return {'valid': fields['valid'], 'profile': fields['profile'], 'length': fields['length'],
+            'crc32': fields['crc32'], 'title': title, 'reserved_zero': fields['reserved'] == 0}
 
 
 def build_catalogue(entries):
@@ -118,7 +143,7 @@ def read_region(client, address, size, notify, name):
 
 
 def read_catalogue(client, *, progress=None):
-    """The catalogue as stored, parsed into 17 rows."""
+    """The catalogue as stored, parsed into one row per entry."""
     raw = read_region(client, CATALOGUE_ADDRESS, CATALOGUE_BYTES, progress or (lambda _e: None), 'catalogue')
     return raw, [describe(index, entry) for index, entry in enumerate(parse_catalogue(raw))]
 
@@ -135,7 +160,7 @@ def load_library(client, images, menu=None, *, progress=None):
     """Write every image, the menu and the catalogue, then read all back and verify.
 
     ``images`` is a list of (image, profile_name) for slots 0..N-1, at most
-    16; ``menu`` is one (image, profile_name) for index 16 or None. Every
+    GAME_SLOTS; ``menu`` is one (image, profile_name) for MENU_INDEX or None. Every
     write completes before the first read so an aliased slot cannot pass.
     Returns the library table with a per-slot verdict; the caller decides the
     exit status from ``mismatch_count``.
@@ -171,9 +196,11 @@ def load_library(client, images, menu=None, *, progress=None):
 
 
 def decode_library_status(word):
-    """The LIBRARY_STATUS fields the loader profile's host interaction rule names."""
-    return {'word': word, 'a000': word & 0xFF, 'a002': (word >> 8) & 0xFF,
-            'a003': (word >> 16) & 0xFF, 'bank': (word >> 24) & 0x3F}
+    """The LIBRARY_STATUS fields the loader profile's host interaction rule names, with generated names."""
+    a000, a002, a003 = word & 0xFF, (word >> 8) & 0xFF, (word >> 16) & 0xFF
+    return {'word': word, 'a000': a000, 'a002': a002, 'a003': a003, 'bank': (word >> 24) % abi.LIBRARY_WINDOW_BANKS,
+            'flags': [name for name, mask in STATUS_FLAGS if a000 & mask],
+            'result': RESULT_NAMES.get(a002, 'UNKNOWN')}
 
 
 def format_table(rows, verified=False):
