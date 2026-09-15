@@ -263,6 +263,17 @@ class FpgaTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 fpga.diagnostics(text)
 
+    def test_sdram_clock_routing_diagnostic_is_exact(self):
+        line = fpga.SDRAM_CLOCK_WARNING.format(file=(self.build.resolve() / "db" / "n2m_system_pll_altpll.v").as_posix())
+        explained = fpga.sdram_clock_diagnostics("Info: fitting\n" + line + "\n", self.build)
+        self.assertEqual([item["code"] for item in fpga.diagnostics(line, explained)], ["15064"])
+        for text in ("", line + "\n" + line, line.replace("DRAM_CLK", "DRAM_CKE"), line.replace("Line: 51", "Line: 52")):
+            with self.subTest(text=text[:40]):
+                with self.assertRaisesRegex(ValueError, "SDRAM clock routing"):
+                    fpga.sdram_clock_diagnostics(text, self.build)
+        with self.assertRaises(ValueError):
+            fpga.diagnostics(line)
+
     def test_v05_generated_design_diagnostics_are_exact_and_retained(self):
         database = self.build / "db"
         database.mkdir()

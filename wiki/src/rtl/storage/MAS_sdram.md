@@ -1,11 +1,17 @@
 # SDRAM storage and timing
 
-Planned owner: `src/rtl/storage/` (controller) and `src/dv/storage/` (pin-level
-device model and fixtures). No implementation exists yet; the SDRAM bring-up
-slice of [#658](https://github.com/amichai-bd/nand2mario/issues/658) ports the
-controller and device model recorded in the
-[provenance index](../../../tools/provenance.md#external-inputs) and closes this
-gap. Until then this page is the contract that bring-up derives its tests from.
+Owner: [`src/rtl/storage`](../../../../src/rtl/storage/n2m_sdram_ctrl.sv) holds the
+controller [`n2m_sdram_ctrl`](../../../../src/rtl/storage/n2m_sdram_ctrl.sv), its
+package [`n2m_sdram_pkg`](../../../../src/rtl/storage/n2m_sdram_pkg.sv) and the
+pin-level simulation model [`n2m_sim_sdram`](../../../../src/rtl/storage/n2m_sim_sdram.sv);
+[`src/dv/storage`](../../../../src/dv/storage/README.md) holds the fixtures. The
+controller is ported from the source recorded in the
+[provenance index](../../../tools/provenance.md#external-inputs); the model is
+original. The host reaches the controller through the
+[UART endpoint's line commands](../uart/MAS_uart.md#core-and-storage-integration)
+and the [`sdram-proof`](../../../../src/fpga/de10_lite/README.md) board image
+fits it on the DE10-Lite pins. This page is the contract those implementations
+and their tests follow.
 
 ## Scope
 
@@ -299,9 +305,12 @@ In priority order:
 
 ## Verification
 
-Simulation runs under Verilator on WSL with an original pin-level device model
-in `src/dv/storage/`, written against the datasheet in the
-[references](#references), not against the controller's constants. The model:
+Simulation runs under Verilator on WSL with the original pin-level device model
+[`n2m_sim_sdram`](../../../../src/rtl/storage/n2m_sim_sdram.sv), written against
+the datasheet in the [references](#references), not against the controller's
+constants. It lives beside the controller, like the memory owner's simulation
+double, so the Questa compile gate compiles it; no FPGA target lists it. The
+model:
 
 - stores 16-bit words in a sparse map keyed by `{bank, row, column}` and
   returns seeded random data for words never written unless a fixture opts in
@@ -320,14 +329,17 @@ in `src/dv/storage/`, written against the datasheet in the
   `DRAM_DQ` afterwards;
 - counts refreshes, reads and writes for the fixture.
 
-Required fixtures, each within the [wall budget](../../../tools/n2m/SPEC.md#test-wall-budget):
+Required fixtures, each within the [wall budget](../../../tools/n2m/SPEC.md#test-wall-budget)
+and implemented by [`tb_sdram_ctrl`](../../../../src/dv/storage/tb_sdram_ctrl.sv)
+under the `storage` label ([test plan](../../../../src/dv/storage/README.md)):
 
 | Fixture | Checks |
 |---|---|
 | `sdram-init` | `initialized` exactly at clock 5036 and `idle` exactly at clock 5038 after reset release; command order and waits above; DQM behavior; model counts 8 refreshes |
 | `sdram-line` | Write then read a boundary set of lines (first and last line of slots 0, 15 and 16, both catalogue lines, the first and last line of a row, one line in each bank); exact 17/18/22-clock bounds; byte order; `response_data` stable until the next read |
 | `sdram-refresh` | 40,000 clocks of back-to-back requests; age never exceeds 178; every refresh costs exactly 5 clocks; the throughput bound above holds |
-| `sdram-fault` | Deliberate misaligned request, request before `initialized`, and a mutated refresh deadline of 196 each fail with the named diagnostic |
+| `sdram-fault` | Deliberate misaligned request, request before `initialized`, and a mutated refresh deadline of 196 each fail with the named diagnostic; three registry targets (`sdram-fault-misaligned`, `sdram-fault-before-init`, `sdram-fault-deadline`) because each fault ends its run, the last through the controller's `REFRESH_INTERVAL` parameter set to 178 |
+| `uart-sdram` | The host line commands over the real UART wire into the controller and model: `BAD_VALUE` before `initialized`, boundary lines and a fifteen-line run written and read back byte for byte, misaligned, out-of-device, zero or sixteen-line and wrong-length refusals; `uart-sdram-fault` corrupts one expected byte |
 
 Assertions the controller carries (names are the contract; a testbench may
 reference them):
@@ -350,9 +362,11 @@ Questa compiles the controller and model under the compile-only gate the
 retains PLL, pin, I/O timing and both-frequency slack reports as in the
 [required verification](../../clocks-resets-cdc.md#required-verification).
 A board memory test, driven over UART through the host line commands in the
-[loader profile](../cartridge/MAS_loader_profile.md#host-interaction), writes
-and reads back every slot boundary line and a pseudo-random fill of one full
-slot; it is authorized per slice and does not replace the simulation bounds.
+[loader profile](../cartridge/MAS_loader_profile.md#host-interaction) by
+[`host sdram-test`](../../../tools/n2m/host/SPEC.md#commands), writes a seeded
+address-dependent line pattern over a range (one slot by default, the whole
+device with `--full`) and reads it back with every mismatch listed by address;
+it is authorized per session and does not replace the simulation bounds.
 
 ## References
 
@@ -360,6 +374,13 @@ slot; it is authorized per slice and does not replace the simulation bounds.
   characteristics) and the command truth table, distributed as
   `Datasheet/SDRAM/IS42S16320D.pdf` in the Terasic DE10-Lite System CD v2.2.0;
   see the [provenance index](../../../tools/provenance.md#external-inputs).
+- ISSI combined `IS42/45S86400D/16320D/32160D` datasheet Rev. B, 2015-05-12,
+  page 19, the revision the bring-up slice confirmed the four I/O numbers
+  against: for the -7 grade it lists tAC 5.4 ns at CL2, tOH 2.7 ns, tDS/tCMS
+  1.5 ns and tDH/tCMH 0.8 ns, so the constraints above (derived from the
+  2011 revision and equal to this revision's -5 column) stay on the
+  conservative side; tRCD/tRP 15 ns, tRC 60 ns, tRAS 37 ns, tDPL 14 ns and
+  tMRD 14 ns are unchanged.
 - Terasic DE10-Lite pin data (System CD v2.2.0), the source of the SDRAM pin
   assignments.
 - Ported controller and device model: `bui-bui` `src/rtl/mafia/sdram/` and

@@ -314,8 +314,35 @@ def execute(argv, folder, log, timeout, record, build):
         explained = [*explained, *fpga_pll.explained_diagnostics(text, folder, record["definition"]["pll"])]
     if log.name == "compile.log" and record.get("target") == "v05-board":
         explained = [*explained, *generated_design_diagnostics(text, folder)]
+    if log.name == "compile.log" and sdram_target(record.get("definition", {})):
+        explained = [*explained, *sdram_clock_diagnostics(text, folder)]
     record["classified_diagnostics"].extend(diagnostics(text, explained))
     return text
+
+
+SDRAM_CLOCK_WARNING = ('Warning (15064): PLL "n2m_clocking:u_clocking|n2m_system_pll:u_system_pll|altpll:altpll_component|'
+                       'n2m_system_pll_altpll:auto_generated|pll1" output port clk[0] feeds output pin "DRAM_CLK~output" via '
+                       'non-dedicated routing -- jitter performance depends on switching rate of other design elements. '
+                       'Use PLL dedicated clock outputs to ensure jitter performance File: {file} Line: 51')
+
+
+def sdram_clock_diagnostics(text, folder):
+    """Explain the one 15064 warning the SDRAM contract's clock relationship produces.
+
+    The contract drives DRAM_CLK as the inverted 25 MHz system clock through
+    the fabric to a pin that is not a dedicated PLL output; the fitter warns
+    about jitter on that route once. Exactly one such line naming the system
+    PLL, the DRAM_CLK output and this attempt's generated PLL file is
+    accepted; anything else stays unexplained.
+    """
+    expected = SDRAM_CLOCK_WARNING.format(file=(Path(folder).resolve() / "db" / "n2m_system_pll_altpll.v").as_posix())
+    lines = [line.strip() for line in text.splitlines() if line.strip().startswith("Warning (15064):")]
+    if lines != [expected]:
+        raise ValueError("SDRAM clock routing diagnostic identity/count differs")
+    return [{"code": "15064", "text": expected,
+             "reason": "The SDRAM contract's initial clock relationship inverts clk_sys through the fabric to DRAM_CLK; "
+                       "the 20 ns half-period margins in its I/O budget absorb the routed-clock jitter and the board "
+                       "memory test is the acceptance. The PLL-phase fallback is the recorded alternative."}]
 
 
 # The ALTPLL generator (qmegawiz launching mega_altpllq.exe) crashes with an
