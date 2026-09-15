@@ -21,16 +21,21 @@ Use the installed Python 3.12.14 executable's actual name/path for the first
 command. No package installation or interpreter fallback occurs during a test
 command. The ordinary builder interpreter (`python3`) still runs all SV targets.
 
-The intentional negative target uses the same Python checker:
+The intentional negative target uses the same Python checker against a
+wrapper with one broken read line:
 
 ```bash
 workdir/builds/python-dv-env/.venv/bin/python tools/build.py sim test python-joypad-fault --tag python-joypad-fault --json
 ```
 
-This command must exit 1 and publish FAIL with
-`JOYP_MISMATCH cycle=3 phase=post signal=io_rdata expected=238 actual=239`.
-The raw simulator exit is retained separately and is zero. The negative target
-is not a reusable successful stage.
+It is registered `expected_exit: "nonzero"` with the signature
+`JOYP_MISMATCH cycle=3 phase=post signal=io_rdata expected=238 actual=239`, so
+the command exits 0 and publishes PASS only when the named Python test fails
+with that message; `results.xml` retains the failure and `python_results`
+reports `FAIL` for the test itself. The simulator process exits zero in both
+targets. A passing checker, a different mismatch or missing results fails the
+target, as the [builder contract](../../../wiki/tools/n2m/SPEC.md#python-testbenches-under-verilator)
+defines, and `tests run --label joypad` counts it like any other `fault` unit.
 
 Inspect `sim/test/<target>/result.json` under the selected build tag for immutable
 attempt paths. Each attempt retains commands, the Verilator build log, `sim.log`,

@@ -314,12 +314,24 @@ fingerprint.
 `properties` block with `sim_time_duration`, and a `failure`, `error` or
 `skipped` child when the test did not pass. PASS requires raw exit zero, the
 transcript signature, exactly one counted test whose identity matches the
-declared `module` and `test`, positive wall and simulation time, no verdict
-child and zero failure counts, plus nonempty `results.xml`,
-`transactions.jsonl`, `waves/simulation.fst` and `sim.log`. A Python failure
-with raw exit zero still fails the builder and is never reused. The optional
-`python.waves` list is validated as before but does not narrow the trace:
-Verilator's FST holds the whole top.
+declared `module` and `test`, positive wall and simulation time, and the
+verdict `expected_exit` declares, plus nonempty `results.xml`,
+`transactions.jsonl`, `waves/simulation.fst` and `sim.log`. cocotb ends a
+failed test through `$finish`, so the simulator process exits zero for every
+Python target and a nonzero process exit always fails the attempt; for a
+Python target `expected_exit` names the verdict of its named test. `zero`
+requires no verdict child and zero failure counts. `nonzero` is the Python
+form of a deliberate failure, checked by
+[`python_tb.accepted`](../../../tools/n2m/python_tb.py): the test must carry a
+`failure` or `error` child whose message contains the target's `signature`
+(a `skipped` child never satisfies it), the signature must also appear in the
+transcript, and a warning line is explained only when it names the declared
+`<module>.<test> failed`, as cocotb's `WARNING cocotb.regression` report of
+the failed test does; every other warning still fails the attempt. A passing
+or skipped test, an unrelated failure, or invalid results fail a `nonzero`
+target exactly as a failure fails a `zero` target, and neither is reused. [`python-joypad-fault`](../../../src/dv/python/joypad/README.md) is
+the registered example. The optional `python.waves` list is validated as
+before but does not narrow the trace: Verilator's FST holds the whole top.
 
 ### Preload fixtures under Verilator
 
@@ -503,9 +515,10 @@ unchanged. `testbench: "python"` explicitly selects cocotb with a closed `python
 object requiring `module`, `test` and `inputs`, with optional `waves`. No other
 keys are accepted. The module/test are identifiers;
 inputs name checked-in files including exactly one module file. Unsupported
-types, missing inputs, incompatible driver settings and nonzero
-raw-exit expectations fail without fallback. The first path accepts one named
-Python test per target. The [usage guide](../../../src/dv/python/README.md) owns
+types, missing inputs and driver settings fail without fallback.
+`expected_exit` names the Python verdict, as the
+[Verilator Python contract](#python-testbenches-under-verilator) defines. The
+first path accepts one named Python test per target. The [usage guide](../../../src/dv/python/README.md) owns
 setup and commands; the [joypad plan](../../../src/dv/python/joypad/README.md)
 owns its bounded subsystem coverage.
 

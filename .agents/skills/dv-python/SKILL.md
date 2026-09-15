@@ -94,8 +94,11 @@ Prove both a correct run and a deliberate DUT-side defect with the unchanged
 checker. Distinguish compile/elaboration failures, simulator failures, and
 functional mismatches. Check the result XML as well as process status: a zero
 simulator exit alone may conceal a failed Python test. A negative proof requires
-the exact expected mismatch and a failing test-command exit; preserve the raw
-simulator exit independently and report any difference. Follow stricter project
+the exact expected mismatch in the result XML and transcript; a registered
+`expected_exit: "nonzero"` Python target passes only on that failure, as the
+[builder contract](../../../wiki/tools/n2m/SPEC.md#python-testbenches-under-verilator)
+defines. Preserve the raw simulator exit independently and report any
+difference. Follow stricter project
 acceptance requirements before promoting an experiment into required evidence.
 
 Pin Python dependencies and record interpreter/simulator versions and provenance.

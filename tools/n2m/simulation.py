@@ -137,7 +137,7 @@ def simulate(root, build, args, simulator, provenance=None):
     stage = build / "sim/test" / args.target
     current = stage / "result.json"
     old = read_json(current)
-    if not args.rebuild and cache_matches(old, fingerprint, root, build) and (not python_runtime or target["expected_exit"] != "zero" or python_tb.evidence(root, old, peer_config or target["python"], driver=bool(driver))):
+    if not args.rebuild and cache_matches(old, fingerprint, root, build) and (not python_runtime or (driver and target["expected_exit"] != "zero") or python_tb.evidence(root, old, target, driver=bool(driver))):
         return {**old, "cache": "CACHED"}
     attempt_id = uuid.uuid4().hex
     attempt = stage / "attempts" / attempt_id
@@ -216,13 +216,19 @@ def simulate(root, build, args, simulator, provenance=None):
                                and record.get("python_results", {}).get("status") == "PASS")
             if running and python_runtime and not driver:
                 record["python_results"] = python_tb.results(attempt / "results.xml", target["python"])
-            if (result.returncode == 0) != (expected == "zero"):
+            # cocotb ends a failed Python testbench through $finish, so that
+            # simulator process exits zero either way and the target's
+            # expected_exit names the verdict of its named test, judged from
+            # results.xml. A driver target's testbench still exits on its own.
+            if (result.returncode == 0) != (expected == "zero" or (python_runtime is not None and not driver)):
                 raise RuntimeError(f"unexpected exit {result.returncode}; see {log.relative_to(root)}")
-            if running and python_runtime and expected == "zero" and record["python_results"]["status"] != "PASS":
-                if driver:
+            if running and python_runtime and driver:
+                if expected == "zero" and record["python_results"]["status"] != "PASS":
                     raise RuntimeError(f"Verilator peer failed: {python_tb.failure_name(record['python_results'])}")
-                raise RuntimeError(f"Python test failed: {record['python_results']}")
+            elif running and python_runtime and not python_tb.accepted(record["python_results"], target):
+                raise RuntimeError(f"Python test verdict does not match expected_exit {expected}: {record['python_results']}")
             problem = diagnostic(result.stdout, target["signature"] if expected == "nonzero" else None,
+                                 explained=python_tb.explained_warnings(target) if running and python_runtime and not driver else (),
                                  peer=peer_config["module"] if driver else None)
             if problem:
                 raise RuntimeError(f"{problem}; see {log.relative_to(root)}")
@@ -241,7 +247,7 @@ def simulate(root, build, args, simulator, provenance=None):
     record["finished"] = datetime.now(timezone.utc).isoformat()
     artifacts = [p for base in (compile_dir, attempt) for p in base.rglob("*") if p.is_file()]
     record["artifacts"] = {p.relative_to(root).as_posix(): file_hash(p) for p in artifacts}
-    if python_runtime and record["status"] == "PASS" and target["expected_exit"] == "zero" and not python_tb.evidence(root, record, peer_config or target["python"], driver=bool(driver)):
+    if python_runtime and record["status"] == "PASS" and not (driver and target["expected_exit"] != "zero") and not python_tb.evidence(root, record, target, driver=bool(driver)):
         record.update(status="FAIL", error="incomplete Python test evidence")
     atomic_json(attempt / "result.json", record)
     # result.json is authoritative. Immutable attempt paths keep old readers
