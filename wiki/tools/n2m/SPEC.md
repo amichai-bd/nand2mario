@@ -318,9 +318,7 @@ testbench construct and the reason. A comment must not open with the word
 [`cpu_lint.vlt`](../../../src/dv/cpu/cpu_lint.vlt) is the CPU area's file.
 `/* verilator lint_off */` comments inside RTL are reserved for warnings the
 RTL itself owns; a testbench-induced warning is waived in a `.vlt`, never in
-the RTL. Testbench-induced comments still present in RTL under `src/rtl/` are
-a tracked gap: [#639](https://github.com/amichai-bd/nand2mario/issues/639)
-moves them into area waiver files.
+the RTL.
 
 ### Registered target execution
 
