@@ -1034,9 +1034,12 @@ and never falls back between the two. The compile set is fixed by the tree:
    [`questa_lint_fault.sv`](../../../src/dv/builder/questa_lint_fault.sv): an
    `initial` writer beside `always_ff`, legal to Verilator and rejected by
    `vopt` (vopt-7061). The command must then FAIL naming
-   `questa_lint_fault.sv`; a PASS with the fault injected is a defect.
+   `questa_lint_fault.sv` and record `fault_detected: true`. A run that
+   compiles the fixture clean is reported as FAIL with
+   `fault injection not detected`, and a failure naming anything else records
+   `fault_detected: false`.
 
-No testbench is compiled. `SYNTHESIS` and `VERILATOR` stay undefined, so the
+The plan above is validated before any tool is probed. No testbench is compiled. `SYNTHESIS` and `VERILATOR` stay undefined, so the
 RTL presents its Questa view: `` `ifdef SYNTHESIS `` branches are excluded and
 Intel instances bind to the stand-ins. The repository root is the include
 directory, as for every other Questa compile.

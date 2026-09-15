@@ -144,6 +144,7 @@ class LintGateTests(unittest.TestCase):
         for command in report["commands"]:
             self.assertIn(command["log"], report["artifacts"])
         self.assertNotIn("failure", report)
+        self.assertNotIn("fault_detected", report)
         self.assertEqual(report["stand_ins"], list(lint.STAND_IN_UNITS))
 
     def test_vlog_error_fails_by_name_and_stops_before_elaboration(self):
@@ -182,12 +183,38 @@ class LintGateTests(unittest.TestCase):
         self.assertIsNone(report["commands"][-1]["exit_code"])
         self.assertIn("partial transcript", (ROOT / report["failure"]["log"]).read_text())
 
-    def test_inject_fault_adds_the_fixture_and_its_top(self):
+    def test_inject_fault_detected_fails_naming_the_fixture(self):
         self.args.inject_fault = True
+        self.tools.vopt[lint.FAULT_TOP] = ("** Error (suppressible): " + str(ROOT / lint.FAULT)
+                                           + "(10): (vopt-7061) Variable 'q' driven in an always_ff block.\n"
+                                           "Errors: 1, Warnings: 0\n")
         report = self.gate()
         self.assertTrue(report["inject_fault"])
         self.assertEqual(report["sources"][-1], lint.FAULT)
+        self.assertEqual((report["status"], report["fault_detected"]), ("FAIL", True))
+        self.assertTrue(report["error"].startswith(f"vopt {lint.FAULT_TOP}: exit 2; names questa_lint_fault.sv"))
+        self.assertEqual(report["commands"][-1]["label"], f"vopt {lint.FAULT_TOP}")
+
+    def test_inject_fault_undetected_is_an_explicit_failure(self):
+        self.args.inject_fault = True
+        report = self.gate()
+        self.assertEqual((report["status"], report["fault_detected"]), ("FAIL", False))
+        self.assertEqual(report["error"], f"fault injection not detected: {lint.FAULT} compiled and elaborated clean")
         self.assertIn(f"vopt {lint.FAULT_TOP}", [command["label"] for command in report["commands"]])
+        self.assertEqual(read_json(ROOT / report["attempt_result"])["status"], "FAIL")
+        # A failure elsewhere is a real failure, not detection of the fixture.
+        tops = sorted(lint.fpga_tops(ROOT))
+        self.tools.vopt[tops[0]] = "** Error: (vopt-3008) Failed to find design unit 'n2m_missing'.\nErrors: 1, Warnings: 0\n"
+        report = self.gate()
+        self.assertEqual((report["status"], report["fault_detected"]), ("FAIL", False))
+        self.assertTrue(report["error"].startswith(f"vopt {tops[0]}: exit 2; names n2m_missing"))
+
+    def test_plan_is_validated_before_any_tool_probe(self):
+        with patch("n2m.lint.plan", side_effect=ValueError("bad plan")), \
+                patch("n2m.lint.questa_tools", side_effect=AssertionError("probed")):
+            report = lint.lint_questa(ROOT, self.build, self.args, {})
+        self.assertEqual((report["status"], report["error"], report["commands"]), ("FAIL", "bad plan", []))
+        self.assertNotIn("tools", report)
 
     def test_discovery_failure_is_recorded(self):
         with patch("n2m.lint.questa_tools", side_effect=ToolError("missing vopt; select the Questa tool directory explicitly")):

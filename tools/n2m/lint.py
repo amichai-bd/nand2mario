@@ -133,12 +133,14 @@ def lint_questa(root, build, args, provenance, progress=None):
               "started": datetime.now(timezone.utc).isoformat(), "commands": [],
               "stand_ins": list(STAND_IN_UNITS), "simulation": "none; vsim is never launched"}
     try:
-        with progress.stage("Discover Questa compile tools"):
-            tools, info = questa_tools(getattr(args, "questa_bin", None), QUESTA_COMPILE_TOOLS)
-        report["tools"] = info["tools"]
+        # The tree is validated before any tool is probed, so a bad plan never
+        # spends a tool launch and a missing tool never hides a bad plan.
         selected = plan(root, report["inject_fault"])
         report.update(sources=selected["sources"], inputs=selected["inputs"],
                       tops={top: entry for top, entry in selected["tops"].items()})
+        with progress.stage("Discover Questa compile tools"):
+            tools, info = questa_tools(getattr(args, "questa_bin", None), QUESTA_COMPILE_TOOLS)
+        report["tools"] = info["tools"]
         progress.line(f"Questa compile gate: {len(selected['sources'])} sources, {len(selected['tops'])} tops")
         library = (attempt / "work").as_posix()
 
@@ -184,6 +186,13 @@ def lint_questa(root, build, args, provenance, progress=None):
         report["status"] = "PASS"
     except Exception as error:
         report.update(status="FAIL", error=str(error))
+    if report["inject_fault"]:
+        # The injected fault must be the reason for the FAIL. A clean run, or a
+        # failure elsewhere, means the fixture did not prove detection.
+        names = report.get("failure", {}).get("names", [])
+        report["fault_detected"] = Path(FAULT).name in names
+        if report["status"] == "PASS":
+            report.update(status="FAIL", error=f"fault injection not detected: {FAULT} compiled and elaborated clean")
     report["elapsed_seconds"] = round(time.monotonic() - started, 3)
     report["artifacts"] = {p.relative_to(root).as_posix(): file_hash(p)
                            for p in attempt.rglob("*") if p.is_file() and "work" not in p.relative_to(attempt).parts}
