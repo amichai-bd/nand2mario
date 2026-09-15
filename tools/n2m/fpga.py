@@ -291,9 +291,12 @@ def execute(argv, folder, log, timeout, record, build):
 # The ALTPLL generator (qmegawiz launching mega_altpllq.exe) crashes with an
 # access violation in mega_mwizcq.dll on about one launch in three under
 # Quartus Prime Lite 25.1std on Windows; the launcher then exits 3 with an
-# empty log. Only that exact silent signature is retried, a bounded number of
-# times; every attempt keeps its exit code in the record and command log.
-GENERATOR_ATTEMPTS = 3
+# empty log. Standalone probes saw 8 of 20 and 3 of 15 launches fail, with up
+# to three consecutive failures; a private TEMP, a pause between launches and
+# dropping -silent changed nothing. Only that exact silent signature is
+# retried, up to six launches in total; every attempt keeps its exit code in
+# the record and command log.
+GENERATOR_ATTEMPTS = 6
 GENERATOR_SILENT_EXIT = 3
 
 

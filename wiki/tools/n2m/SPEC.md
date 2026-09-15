@@ -1738,11 +1738,14 @@ output is never accepted. One exact failure is retried: under Quartus Prime Lite
 25.1std on Windows the generator's `mega_altpllq.exe` faults in
 `mega_mwizcq.dll` (access violation, Windows Application log event 1000) on
 about one launch in three, and `qmegawiz` then exits 3 with an empty log. The
-builder relaunches the same generator command up to three times in total only
-for that signature: exit 3, no timeout, empty log. Every launch stays in
-`commands` with its exit code and `retried: true`, and `generator_retries`
-lists each retried attempt. A reported failure, a different exit code, a
-timeout or a third silent exit fails the request. A later explicit build
+builder relaunches the same generator command, up to six launches in total,
+only for that signature: exit 3, no timeout, empty log. Standalone probes saw
+8 of 20 and 3 of 15 launches fail with up to three consecutive failures; a
+private `TEMP`, a pause between launches and dropping `-silent` did not change
+the rate, so the bound covers a run of five. Every launch stays in `commands`
+with its exit code and `retried: true`, and `generator_retries` lists each
+retried attempt. A reported failure, a different exit code, a timeout or a
+sixth silent exit fails the request. A later explicit build
 request creates a separate attempt.
 
 Optional declarative `timing` assignments produce owned SDC with checked exact
