@@ -276,7 +276,7 @@ module tb_python_v05 #(
             wait(bus_commit && write_enable && address == 16'hc0ee);
             do @(negedge clk_sys);
             while (!(dut.raw_write && dut.raw_store == n2m_memory_pkg::STORE_WRAM && dut.raw_offset == 15'h0100));
-            if (dut.raw_wdata !== 8'd0) $fatal(1, "STACKDROP_FAULT_SOURCE");
+            if (dut.raw_wdata != 8'd0) $fatal(1, "STACKDROP_FAULT_SOURCE");
             $display("STACKDROP_CELL_MUTATION expected=0 actual=1 dot=%0d", dot_count);
             force dut.raw_wdata = 8'd1;
             @(posedge clk_sys);
@@ -339,7 +339,7 @@ module tb_python_v05 #(
         if ($test$plusargs("display_boundary_fault")) begin
             do @(negedge clk_sys);
             while (!(bus_commit && write_enable && address == 16'hff45));
-            if (dut.owner_wdata !== 8'd15) $fatal(1, "DISPLAY308_FAULT_SOURCE");
+            if (dut.owner_wdata != 8'd15) $fatal(1, "DISPLAY308_FAULT_SOURCE");
             force dut.owner_wdata = 8'd16;
             @(posedge clk_sys);
             @(negedge clk_sys);
@@ -368,7 +368,7 @@ module tb_python_v05 #(
             wait(bus_commit && write_enable && address == 16'hc0fc);
             do @(negedge clk_sys);
             while (!(dut.request_valid && write_enable && address == 16'h9c40));
-            if (write_data !== 8'd0) $fatal(1, "HUD493_FAULT_SOURCE");
+            if (write_data != 8'd0) $fatal(1, "HUD493_FAULT_SOURCE");
             $display("HUD493_COLUMN_MUTATION expected=0 actual=1 dot=%0d", dot_count);
             force dut.write_data = 8'd1;
             wait(bus_commit);
@@ -385,7 +385,7 @@ module tb_python_v05 #(
             wait(bus_commit && write_enable && address == 16'hc0fc);
             do @(negedge clk_sys);
             while (!(dut.request_valid && write_enable && address == 16'hc029));
-            if (write_data !== 8'd2) $fatal(1, "INTERACTION494_FAULT_SOURCE");
+            if (write_data != 8'd2) $fatal(1, "INTERACTION494_FAULT_SOURCE");
             $display("INTERACTION494_OUTPUT_MUTATION score2->0 dot=%0d", dot_count);
             force dut.write_data = 8'd0;
             wait(bus_commit);
@@ -402,7 +402,7 @@ module tb_python_v05 #(
             wait(bus_commit && write_enable && address == 16'hc0fc);
             do @(negedge clk_sys);
             while (!(dut.request_valid && write_enable && address == 16'hc102));
-            if (write_data !== 8'd42) $fatal(1, "COURIER492_FAULT_SOURCE");
+            if (write_data != 8'd42) $fatal(1, "COURIER492_FAULT_SOURCE");
             $display("COURIER492_OUTPUT_MUTATION tile42->0 dot=%0d", dot_count);
             force dut.write_data = 8'd0;
             wait(bus_commit);
@@ -419,7 +419,7 @@ module tb_python_v05 #(
             do @(negedge clk_sys);
             while (!(dut.u_ppu.lcdc[7] && dut.oam_request.write_enable == 2'b01
                      && dut.oam_request.pair == 1));
-            if (dut.oam_request.data[7:0] !== 8'd42) $fatal(1, "COURIER292_FAULT_SOURCE");
+            if (dut.oam_request.data[7:0] != 8'd42) $fatal(1, "COURIER292_FAULT_SOURCE");
             $display("COURIER292_FAULT tile 42 -> 0 at dot %0d", dot_count);
             force dut.oam_request.data = 16'd0;
             @(posedge clk_sys);
@@ -433,7 +433,7 @@ module tb_python_v05 #(
         if ($test$plusargs("oam_last_fault")) begin
             do @(negedge clk_sys);
             while (!(dut.oam_request.write_enable == 2'b10 && dut.oam_request.pair == 79));
-            if (dut.oam_request.data[15:8] !== 8'h70) $fatal(1, "OAM299_FAULT_SOURCE");
+            if (dut.oam_request.data[15:8] != 8'h70) $fatal(1, "OAM299_FAULT_SOURCE");
             $display("OAM299_FAULT last byte 70 -> 00 at dot %0d", dot_count);
             force dut.oam_request.data = 16'd0;
             @(posedge clk_sys);
@@ -447,7 +447,7 @@ module tb_python_v05 #(
         if ($test$plusargs("dma_byte_fault")) begin
             do @(negedge clk_sys);
             while (!(dut.oam_request.write_enable == 2'b01 && dut.oam_request.pair == 0));
-            if (dut.oam_request.data[7:0] !== 8'ha5) $fatal(1, "DMA239_FAULT_SOURCE");
+            if (dut.oam_request.data[7:0] != 8'ha5) $fatal(1, "DMA239_FAULT_SOURCE");
             force dut.oam_request.data = 16'd0;
             @(posedge clk_sys);
             @(negedge clk_sys);
@@ -460,7 +460,7 @@ module tb_python_v05 #(
         if ($test$plusargs("image_fault")) begin
             do @(negedge clk_sys);
             while (!(!reset_sys && dut.rom_write && dut.rom_address == 15'h0200));
-            if (dut.rom_write_data !== 8'hf3) $fatal(1, "V05_IMAGE_FAULT_SOURCE");
+            if (dut.rom_write_data != 8'hf3) $fatal(1, "V05_IMAGE_FAULT_SOURCE");
             wave_enable = 1;
             $display("V05_IMAGE_MUTATION address=0200 expected=f3 actual=00");
             force dut.rom_write_data = 8'h00;
