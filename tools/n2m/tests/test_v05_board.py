@@ -31,7 +31,7 @@ class BoardTests(unittest.TestCase):
         sdc = (self.folder / 'checked.sdc').read_text()
         self.assertIn('u_system|u_uart|u_serial_rx|rx_meta', sdc)
         self.assertNotIn('rx_sync', sdc)
-        self.assertEqual(len(fpga_controls.required_reports(chains=fpga_v05.UART_CHAINS)), 6)
+        self.assertEqual(len(fpga_controls.required_reports(chains=fpga_v05.UART_CHAINS)), 12)
 
     def test_invalid_board_mapping_and_identity_rejected(self):
         for port in fpga_v05.BOARD_PINS:

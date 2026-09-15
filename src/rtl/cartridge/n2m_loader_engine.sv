@@ -110,8 +110,9 @@ module n2m_loader_engine (
         result_write_next = 1'b0;
         case (state)
             IDLE: if (start) begin
+                // A hold from an earlier CRC mismatch stays until a valid image
+                // is published; the catalogue check must not let the core run.
                 index_next = start_index;
-                fault_hold_next = 1'b0;
                 crc_next = n2m_interfaces_pkg::WIRE_CRC32_INIT;
                 fetch_next = FETCH_REQ;
                 buffer_full_next = 1'b0;
@@ -198,6 +199,7 @@ module n2m_loader_engine (
             PUBLISH: begin
                 result_next = n2m_interfaces_pkg::LIBRARY_RESULT_OK;
                 result_write_next = 1'b1;
+                fault_hold_next = 1'b0;
                 state_next = RESET_REQ;
             end
             RESET_REQ: if (reset_accept) state_next = RESET_WAIT;

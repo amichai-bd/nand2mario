@@ -43,8 +43,8 @@ the real CPU executing a menu program from slot 16 and drives the UART wire at
 | `loader-swap-fault` | `tb_loader` `swap-fault` | `PASS loader-swap-fault checks=26 swaps=1 fills=0 engine_writes=65536` |
 | `loader-key1` | `tb_loader` `key1`, real thresholds, no VCD | `PASS loader-key1 checks=4 swaps=0 fills=0 engine_writes=32768` |
 | `loader-key1-queue` | `tb_loader` `key1-queue` with `-gKEY1_DEBOUNCE_EDGES=5000 -gKEY1_HOLD_EDGES=50000` | `PASS loader-key1-queue checks=6 swaps=0 fills=0 engine_writes=98304` |
-| `loader-host` | `tb_loader_system` `host` | `PASS loader-system-host` |
-| `loader-menu` | `tb_loader_system` `menu` | `PASS loader-system-menu` |
+| `loader-host` | `tb_loader_system` `host` | `PASS loader-system-host checks=37 swaps=0 returns=2 commands=168` |
+| `loader-menu` | `tb_loader_system` `menu` | `PASS loader-system-menu checks=19 swaps=4 returns=4 commands=18` |
 
 The named assertions of the contract live in the RTL: `LOADER_PORT_EXCLUSIVE`
 and `LOADER_FILL_HOST_PORT` in the port arbiter, `LOADER_SWAP_PAUSED`,
