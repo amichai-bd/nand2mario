@@ -53,7 +53,7 @@ def validate(data):
     integer(data['schema_version'], 1, 1, 'schema_version')
     if data['byte_order'] != 'little' or data['profile_name'] != 'dmg-direct-v1':
         raise ValueError('unsupported byte order or profile')
-    keys(data['groups'], 'gb gb_reg gb_view vector profile host host_reg state button wire status trace frame command peek input_source host_write_mask sdram', 'groups')
+    keys(data['groups'], 'gb gb_reg gb_view vector profile host host_reg state button wire status trace frame command peek input_source host_write_mask sdram library', 'groups')
     constants = {}
     for group, entries in data['groups'].items():
         if type(entries) is not list or not entries:

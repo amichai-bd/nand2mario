@@ -2,7 +2,7 @@
 
 Generated from cfg/interfaces.json by tools/n2m/interfaces.py; DO NOT EDIT.
 
-Source SHA-256: `54a322fecd3c5e85bafd922f86b8df82a78e7a20d5a4f3e901e4941259705470`.
+Source SHA-256: `8ac4111c2bf4c6b6a57e660228071fb41e2bfd627c1d3ced6a9d0c60fbb17624`.
 
 See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior, reset, framing and tests.
 
@@ -119,6 +119,7 @@ See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior,
 | Constant | Bits | Value | Meaning |
 |---|---|---|---|
 | `PROFILE_DIRECT_ID` | 8 | `0x1` | dmg-direct-v1; original v0.5 programs only |
+| `PROFILE_LOADER_ID` | 8 | `0x2` | Banked-window loader profile of the on-board menu; wiki/src/rtl/cartridge/MAS_loader_profile.md |
 | `PROFILE_ROM_BYTES` | 32 | `0x8000` | Exact load image length |
 | `PROFILE_BANK_BYTES` | 16 | `0x4000` | Section boundary |
 | `PROFILE_HEADER_START` | 16 | `0x100` | Packager reservation inclusive |
@@ -194,6 +195,9 @@ See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior,
 | `HOST_REG_IO_IF` | 32 | `0x1008C` | DMG IF committed request flags in bits 4:0; read-only live view |
 | `HOST_REG_IO_IE` | 32 | `0x10090` | DMG IE committed byte; read-only live view |
 | `HOST_REG_IO_LCD_STATUS` | 32 | `0x10094` | LCDC, STAT and LY sampled on one edge; LY in bits 7:0; read-only live view |
+| `HOST_REG_LIBRARY_STATUS` | 32 | `0x10098` | Loader status: $A000 byte in bits 7:0, $A002 result in 15:8, $A003 last index in 23:16, bank in 29:24; read-only |
+| `HOST_REG_LIBRARY_KEY1` | 32 | `0x1009C` | KEY1 debounced hold counter in system clock edges; read-only |
+| `HOST_REG_LIBRARY_CONTROL` | 32 | `0x100A0` | Write 1 through WRITE_HOST to request the menu return exactly like a KEY1 hold; reads as 0 |
 
 ## State
 
@@ -315,6 +319,7 @@ See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior,
 |---|---|---|---|
 | `HOST_WRITE_MASK_INPUT` | 32 | `0xFF` | Writable host button mask bits. |
 | `HOST_WRITE_MASK_INPUT_SOURCE` | 32 | `0x1` | Writable source selection bit. |
+| `HOST_WRITE_MASK_LIBRARY_CONTROL` | 32 | `0x1` | Writable menu-return request bit. |
 
 ## Sdram
 
@@ -324,6 +329,34 @@ See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior,
 | `SDRAM_BYTES` | 32 | `0x4000000` | Device size in bytes |
 | `SDRAM_LINE_BYTES` | 8 | `0x10` | One line: the unit of every SDRAM host command |
 | `SDRAM_READ_MAX_LINES` | 8 | `0xF` | Largest SDRAM_READ line count; 15 lines fit one response payload |
+
+## Library
+
+| Constant | Bits | Value | Meaning |
+|---|---|---|---|
+| `LIBRARY_SLOT_BYTES` | 32 | `0x8000` | One image slot: a complete 32 KiB dmg-direct-v1 image |
+| `LIBRARY_SLOT_COUNT` | 8 | `0x10` | Game slots 0-15 |
+| `LIBRARY_MENU_INDEX` | 8 | `0x10` | Image index of the menu image; the largest selectable index |
+| `LIBRARY_IMAGE_COUNT` | 8 | `0x11` | Sixteen game slots plus the menu |
+| `LIBRARY_WINDOW_BYTES` | 32 | `0x4000` | One banked window: the ROM store upper half |
+| `LIBRARY_WINDOW_BANKS` | 8 | `0x40` | Window bank register range; bank n is SDRAM bytes n*WINDOW_BYTES onward |
+| `LIBRARY_CATALOGUE_ADDRESS` | 32 | `0x88000` | SDRAM byte address of the catalogue table; window bank 34 |
+| `LIBRARY_CATALOGUE_VALID` | 8 | `0x1` | Catalogue valid byte of a selectable entry |
+| `LIBRARY_FILL_BOUND_EDGES` | 32 | `0x9C40` | Window fill bound from the bank commit edge to window_busy falling |
+| `LIBRARY_SWAP_BOUND_EDGES` | 32 | `0x13880` | Image swap bound from the accepting select commit edge to copy_busy falling |
+| `LIBRARY_RESULT_NONE` | 8 | `0x0` | $A002: no swap since global reset |
+| `LIBRARY_RESULT_OK` | 8 | `0x1` | $A002: the last swap completed with a matching CRC |
+| `LIBRARY_RESULT_INVALID_SLOT` | 8 | `0x2` | $A002: the catalogue entry was not a valid 32768-byte image with a known profile |
+| `LIBRARY_RESULT_CRC_MISMATCH` | 8 | `0x3` | $A002: the copied bytes did not match the catalogue CRC |
+| `LIBRARY_RESULT_NOT_READY` | 8 | `0x4` | $A002: a select or bank commit while the SDRAM was not ready |
+| `LIBRARY_STATUS_COPY_BUSY` | 8 | `0x80` | $A000 bit 7: a window fill or swap is in progress |
+| `LIBRARY_STATUS_WINDOW_READY` | 8 | `0x40` | $A000 bit 6: the upper half holds the selected bank completely |
+| `LIBRARY_STATUS_SDRAM_READY` | 8 | `0x20` | $A000 bit 5: the SDRAM controller is initialized and no boot copier runs |
+| `LIBRARY_STATUS_KEY1_PENDING` | 8 | `0x10` | $A000 bit 4: a KEY1 return waits for the current copy to finish |
+| `LIBRARY_STATUS_FLASH_BOOT` | 8 | `0x8` | $A000 bit 3: this power-up's library was copied from flash |
+| `LIBRARY_CONTROL_RETURN` | 32 | `0x1` | WRITE_HOST(LIBRARY_CONTROL) value that requests the menu return |
+| `LIBRARY_KEY1_DEBOUNCE_EDGES` | 32 | `0x1E848` | KEY1 level must be stable this many edges (5 ms) before the debounced level changes |
+| `LIBRARY_KEY1_HOLD_EDGES` | 32 | `0xBEBC20` | Debounced KEY1 press length (0.5 s) that raises one menu return |
 
 ## Packet Header record
 
@@ -490,6 +523,20 @@ See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior,
 |---|---|---|---|
 | `address` | 0 | 32 | Line-aligned device byte address; bits 31:26 and 3:0 zero |
 | `count` | 4 | 8 | 1 through READ_MAX_LINES lines; the whole range stays inside the device |
+
+## Catalogue Entry record
+
+32 bytes, in listed order; each field is unsigned little-endian.
+
+| Field | Byte offset | Bits | Meaning |
+|---|---|---|---|
+| `valid` | 0 | 8 | 1 valid image, 0 empty slot; any other value is invalid |
+| `profile` | 1 | 8 | Profile ID the image runs in: DIRECT_ID for games, LOADER_ID for the menu |
+| `length` | 2 | 16 | Image length; must equal SLOT_BYTES |
+| `crc32` | 4 | 32 | CRC-32/ISO-HDLC of the 32768 image bytes, as LOAD_BEGIN |
+| `title_low` | 8 | 64 | Image header bytes 0x0134-0x013B verbatim |
+| `title_high` | 16 | 64 | Image header bytes 0x013C-0x0143 verbatim |
+| `reserved` | 24 | 64 | Zero |
 
 ## Commands
 
