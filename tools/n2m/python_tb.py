@@ -354,12 +354,33 @@ def discover():
         raise ValueError("Python TB dependencies unavailable; install src/dv/python/requirements.txt in the pinned environment") from error
 
 
+# The cocotb test every Verilator peer module defines.
+PEER_TEST = "peer"
+
+
+def peer_config(target):
+    """The cocotb identity of a driver target's peer module: {module, test}."""
+    return {"module": Path(target["driver"]["script"]).stem, "test": PEER_TEST}
+
+
+def failure_name(results):
+    """The name a failed peer test raised, from its results verdict."""
+    for diagnostic in results.get("diagnostics", []):
+        if diagnostic.get("message"):
+            return diagnostic["message"]
+    return results.get("error") or "no failure message"
+
+
 def environment(root, target, attempt, seed, runtime):
     # External filters, result locations or seed settings must not alter a target.
     env = {k: v for k, v in os.environ.items()
            if not k.startswith(("COCOTB_", "GPI_", "PYGPI_", "PYTHON")) and k != "LIBPYTHON_LOC"}
-    config = target["python"]
-    module = next(root / p for p in config["inputs"] if Path(p).stem == config["module"])
+    if "driver" in target:
+        config = peer_config(target)
+        module = root / target["driver"]["script"]
+    else:
+        config = target["python"]
+        module = next(root / p for p in config["inputs"] if Path(p).stem == config["module"])
     prefixes = (Path(sys.prefix).resolve(), Path(sys.base_prefix).resolve())
     runtime_paths = [p for p in sys.path if p and any(Path(p).resolve().is_relative_to(base) for base in prefixes)]
     env.update(PYTHONPATH=os.pathsep.join([str(module.parent), *runtime_paths]),
@@ -568,11 +589,17 @@ def results(path, config):
         return {"status": "FAIL", "error": f"invalid Python results: {error}"}
 
 
-def evidence(root, record, config):
-    """Require the inventory as well as hashes before accepting/reusing success."""
+def evidence(root, record, config, *, driver=False):
+    """Require the inventory as well as hashes before accepting/reusing success.
+
+    A driver target's transactions are the Python peer's own record; its
+    inventory is the peer transcript and exit record beside the cocotb results.
+    """
     name = record.get("python_results_file")
     if not isinstance(name, str) or name not in record["artifacts"]:
         return False
     folder = (root / name).parent
-    required = [folder / p for p in ("results.xml", "transactions.jsonl", "waves/simulation.fst", "sim.log")]
+    inventory = ("results.xml", "peer.log", "peer-result.json", "waves/simulation.fst", "sim.log") if driver \
+        else ("results.xml", "transactions.jsonl", "waves/simulation.fst", "sim.log")
+    required = [folder / p for p in inventory]
     return all(p.relative_to(root).as_posix() in record["artifacts"] and p.is_file() and p.stat().st_size > 0 for p in required) and results(root / name, config)["status"] == "PASS"

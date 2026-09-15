@@ -28507,5 +28507,98 @@
     ],
     "expected_exit": "nonzero",
     "signature": "N2M_SIM_ADC_STIMULUS_EMPTY file=adc_ch5.txt"
+  },
+  "verilator-peer": {
+    "sources": [
+      "src/dv/integration/tb_verilator_peer.sv"
+    ],
+    "top": "tb_verilator_peer",
+    "simulator": "verilator",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS verilator-peer transactions=3",
+    "timeout_seconds": 60,
+    "driver": {
+      "script": "src/dv/integration/driver.py",
+      "peer": "src/dv/integration/peer_check.py",
+      "inputs": [
+        "src/dv/integration/peer_bridge.py"
+      ],
+      "access": [
+        "tx_bytes",
+        "rx_bytes",
+        "tx_count",
+        "rx_count",
+        "tx_busy",
+        "rx_done",
+        "tx_go",
+        "finish_request",
+        "simulation_ns",
+        "dot_count"
+      ]
+    }
+  },
+  "verilator-peer-fault": {
+    "sources": [
+      "src/dv/integration/tb_verilator_peer.sv"
+    ],
+    "top": "tb_verilator_peer",
+    "simulator": "verilator",
+    "args": [],
+    "expected_exit": "zero",
+    "signature": "PASS verilator-peer transactions=3",
+    "timeout_seconds": 60,
+    "driver": {
+      "script": "src/dv/integration/driver.py",
+      "peer": "src/dv/integration/peer_check_fault.py",
+      "inputs": [
+        "src/dv/integration/peer_bridge.py",
+        "src/dv/integration/peer_check.py"
+      ],
+      "access": [
+        "tx_bytes",
+        "rx_bytes",
+        "tx_count",
+        "rx_count",
+        "tx_busy",
+        "rx_done",
+        "tx_go",
+        "finish_request",
+        "simulation_ns",
+        "dot_count"
+      ]
+    }
+  },
+  "verilator-peer-fatal": {
+    "sources": [
+      "src/dv/integration/tb_verilator_peer.sv"
+    ],
+    "top": "tb_verilator_peer",
+    "simulator": "verilator",
+    "args": [
+      "+echo_fault"
+    ],
+    "expected_exit": "nonzero",
+    "signature": "PEER_ECHO_FAULT seq=2",
+    "timeout_seconds": 60,
+    "driver": {
+      "script": "src/dv/integration/driver.py",
+      "peer": "src/dv/integration/peer_check.py",
+      "inputs": [
+        "src/dv/integration/peer_bridge.py"
+      ],
+      "access": [
+        "tx_bytes",
+        "rx_bytes",
+        "tx_count",
+        "rx_count",
+        "tx_busy",
+        "rx_done",
+        "tx_go",
+        "finish_request",
+        "simulation_ns",
+        "dot_count"
+      ]
+    }
   }
 }

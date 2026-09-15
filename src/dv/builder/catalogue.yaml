@@ -641,6 +641,9 @@ units:
   uart-stopped-step-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 1.16}
   uart-validation: {kind: sim, level: 2, labels: [uart], duration_seconds: 0.43}
   uart-validation-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 0.42}
+  verilator-peer: {kind: sim, level: 1, labels: [builder, integration, python-tb], duration_seconds: null}
+  verilator-peer-fatal: {kind: sim, level: 2, labels: [builder, fault, integration, python-tb], duration_seconds: null}
+  verilator-peer-fault: {kind: sim, level: 2, labels: [builder, fault, integration, python-tb], duration_seconds: null}
   vga: {kind: sim, level: 2, labels: [vga], duration_seconds: 288.16}
   vga-active-swap: {kind: sim, level: 2, labels: [fault, vga], duration_seconds: null}
   vga-bank-reuse: {kind: sim, level: 2, labels: [fault, vga], duration_seconds: null}
