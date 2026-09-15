@@ -13,12 +13,7 @@ module n2m_cpu_control (
     input var logic [63:0] dot_before,
     input var logic [7:0] ie,
     input var logic [4:0] iflags,
-    // Lint waiver: a testbench memory that answers combinationally closes a
-    // false loop from read_data through the bus plan under Verilator. The
-    // full build reports it here even when --lint-only is clean (tb_cpu_irq).
-    /* verilator lint_off UNOPTFLAT */
     input var logic [7:0] read_data,
-    /* verilator lint_on UNOPTFLAT */
     input var logic joyp_selected_active,
     input var logic wake_request,
     input var logic [1:0] phase,
@@ -359,13 +354,8 @@ module n2m_cpu_control (
         retire_capture.dot_after = dot_before + 64'd1;
     end
 
-    // Lint waiver: CPU testbenches force control and registers for initial
-    // state setup and fault injection; Verilator reports the force as a
-    // second driver. The product logic has one driver each.
-    /* verilator lint_off MULTIDRIVEN */
     `DFF_ARST_VAL(control, control_next, clk_sys, reset_sys, profile_control())
     `DFF_ARST_VAL(registers, registers_next, clk_sys, reset_sys, profile_registers())
-    /* verilator lint_on MULTIDRIVEN */
 
     `N2M_ASSERT(CPU_STOP_WAKE_BOUNDARY, clk_sys, reset_sys || core_reset,
         (stopped && wake_request) |-> (phase == 0 && !gb_tick))

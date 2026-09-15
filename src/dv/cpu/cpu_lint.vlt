@@ -16,3 +16,26 @@ lint_off -rule MULTIDRIVEN -file "*/src/rtl/cpu/n2m_cpu_retire.sv" -match "*'ret
 // MULTIDRIVEN: tb_cpu_halt_lock and tb_cpu_vectors force retirement_valid for
 // fault injection; the force counts as a second driver of the register.
 lint_off -rule MULTIDRIVEN -file "*/src/rtl/cpu/n2m_cpu_retire.sv" -match "*'retirement_valid'"
+
+// MULTIDRIVEN: tb_cpu_vectors forces u_control.control and u_control.registers
+// for initial state setup and register corruption; each force counts as a
+// second driver of the register. The product logic has one driver each.
+lint_off -rule MULTIDRIVEN -file "*/src/rtl/cpu/n2m_cpu_control.sv" -match "*'control'"
+lint_off -rule MULTIDRIVEN -file "*/src/rtl/cpu/n2m_cpu_control.sv" -match "*'registers'"
+
+// MULTIDRIVEN: tb_cpu_stop forces u_stop_policy.action and divider_reset for
+// fault injection; each force counts as a second driver of the always_comb
+// output.
+lint_off -rule MULTIDRIVEN -file "*/src/rtl/cpu/n2m_cpu_stop_policy.sv" -match "*'action'"
+lint_off -rule MULTIDRIVEN -file "*/src/rtl/cpu/n2m_cpu_stop_policy.sv" -match "*'divider_reset'"
+
+// UNOPTFLAT: a testbench memory that answers read_data combinationally closes
+// a false loop from the bus plan address back through execute_result and
+// read_data. Verilator does not split the control block at struct
+// granularity; the runtime converges. It reports the loop once, at the
+// variable where it cuts it: bus_plan under tb_cpu_halt_lock and
+// tb_cpu_vectors, u_bus.plan under tb_cpu_program, tb_cpu_stop_wake and
+// tb_cpu_wrap, and u_control.read_data under tb_cpu_irq.
+lint_off -rule UNOPTFLAT -file "*/src/rtl/cpu/n2m_cpu.sv" -match "*Circular combinational logic: '*.bus_plan'"
+lint_off -rule UNOPTFLAT -file "*/src/rtl/cpu/n2m_cpu_bus.sv" -match "*Circular combinational logic: '*.u_bus.plan'"
+lint_off -rule UNOPTFLAT -file "*/src/rtl/cpu/n2m_cpu_control.sv" -match "*Circular combinational logic: '*.u_control.read_data'"
