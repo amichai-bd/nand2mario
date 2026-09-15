@@ -29,7 +29,9 @@ required validation, independent current-head review and conversations are satis
 ## Policy and protection
 
 The `PR policy` check requires a valid numbered branch, `main` base, and closing
-references to open assigned issues including the primary branch issue. Only the
+references to open assigned issues including the primary branch issue. A PR
+that changes `src/rtl/` or `src/fpga/` also needs the
+[Questa compile gate block](#questa-compile-gate-block) for its head. Only the
 fixed [checkpoint exceptions](#checkpoint-exceptions) below may use matching
 checkpoint and `Refs` lines without a closing reference, and only the
 [automated statistics refresh](#automated-statistics-refresh) may merge without
@@ -111,11 +113,11 @@ wiki run. Then, by changed scope:
   python tools/build.py lint questa --tag <tag> --json
   ```
 
-  It must report `PASS`. The PR body records the head it ran on, the tool
-  banners from `tools`, the source and top counts, `elapsed_seconds` and the
-  retained `attempt_result` path. A FAIL names the offending file or unit and
-  blocks the merge; explaining a new warning class means changing the RTL or
-  the documented policy, never suppressing the diagnostic.
+  It must report `PASS`. The PR body records the result in the
+  [Questa compile gate block](#questa-compile-gate-block) below, which the
+  hosted `PR policy` check enforces. A FAIL names the offending file or unit
+  and blocks the merge; explaining a new warning class means changing the RTL
+  or the documented policy, never suppressing the diagnostic.
 - The scoped [verification tier](../src/dv/integration/SPEC.md#verification-tiers)
   supplies simulation, FPGA and hardware evidence; no hosted job ever ran those.
   Run a [declared subset](../tools/n2m/SPEC.md#regression-subsets) rather than
@@ -124,6 +126,43 @@ wiki run. Then, by changed scope:
 
 A failure in any of these blocks the merge exactly as a red hosted check did.
 Reuse results only for an unchanged head with unchanged relevant inputs.
+
+### Questa compile gate block
+
+When the PR's changed files, read from the files API, include any path under
+`src/rtl/` or `src/fpga/` (a rename counts on either side), `PR policy` fails
+unless the body carries a fenced block whose first line is
+`Questa compile gate` and whose `head` names the current PR head. Copy this
+template and fill every value from the gate's `result.json`:
+
+````text
+```text
+Questa compile gate
+head: <PR head SHA, 7 to 40 hex digits>
+vlog: <tools.vlog.version banner>
+vopt: <tools.vopt.version banner>
+sources: <len(sources)>
+tops: <len(tops)>
+elapsed_seconds: <elapsed_seconds>
+attempt_result: <attempt_result path>
+status: PASS
+```
+````
+
+The check reads `key: value` lines inside that fence only; the same lines in
+prose do not count. `head` must be a prefix of the PR head SHA: the block goes
+stale on every push, so rerun the gate on the new head and update the block
+before the check can pass. `sources` and `tops` are positive integers,
+`elapsed_seconds` is a number, and `status` must be exactly `PASS`; a `FAIL`
+block, a missing field or a stale head fails the check with a message naming
+this section and the [gate specification](../tools/n2m/SPEC.md#questa-compile-gate).
+An older block may stay in the body when a later block names the current head.
+PRs that change no `src/rtl/` or `src/fpga/` path are unaffected, and the
+[checkpoint exceptions](#checkpoint-exceptions) and
+[automated statistics refresh](#automated-statistics-refresh) are unchanged.
+The check does not run Questa; it only refuses to merge without the record.
+[`test_pr_policy.py`](https://github.com/amichai-bd/nand2mario/blob/main/tools/ci/tests/test_pr_policy.py)
+covers the missing, PASS, stale, FAIL and unaffected cases.
 
 ## Checkpoint exceptions
 
