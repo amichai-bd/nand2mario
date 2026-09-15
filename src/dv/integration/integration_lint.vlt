@@ -1,0 +1,14 @@
+`verilator_config
+// Lint waivers for warnings the integration testbenches induce in src/rtl.
+// Each waiver names the rule, the RTL file and signal, and the testbench
+// construct that causes the report. RTL lint comments stay reserved for
+// warnings the RTL itself owns. A comment here must not open with the word
+// "verilator": the lexer would read it as a lint meta-comment.
+
+// UNOPTFLAT: n2m_smoke_system answers the CPU read_data combinationally, so
+// under tb_integration and tb_python_integration the owner read data closes a
+// false loop back through the CPU to the decoded destination and the address.
+// The loop is not split at struct granularity; the runtime
+// converges. It reports the loop once, at the variable where it cuts it.
+lint_off -rule UNOPTFLAT -file "*/src/rtl/memory/n2m_memory_cpu_port.sv" -match "*Circular combinational logic: '*.u_cpu_port.owner_rdata'"
+lint_off -rule UNOPTFLAT -file "*/src/rtl/memory/n2m_memory_decode.sv" -match "*Circular combinational logic: '*.u_cpu_port.decode.destination'"

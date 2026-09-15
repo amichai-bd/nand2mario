@@ -115,12 +115,8 @@ module n2m_dma_service (
     `DFF_ARST_VAL(late_row_q, late_row_next, clk_sys, reset, 64'd0)
     `DFF_RST_EN(late_word_q, oam_response.data, clk_sys,
         oam_response.valid && pair_response_kind_q==READ_LATE && response_index_q==4, reset, 16'd0)
-    // Lint waiver: tb_dma_late forces late_ready_q for fault injection,
-    // which Verilator reports as a second driver.
-    /* verilator lint_off MULTIDRIVEN */
     `DFF_ARST_VAL(late_ready_q, accept ? 1'b0 : late_ready_q ||
         (oam_response.valid && pair_response_kind_q==READ_LATE && response_index_q==4), clk_sys, reset, 1'b0)
-    /* verilator lint_on MULTIDRIVEN */
     assign late_result=n2m_memory_pkg::oam_late_result(late_row_q, late_word_q, late_address_q[2:0], late_data_q);
     always_comb begin
         overlay_previous=previous_q;
@@ -277,12 +273,8 @@ module n2m_dma_service (
     `DFF_RST_EN(other_q, pair_response_offset_q[0] ? oam_response.data[7:0] : oam_response.data[15:8], clk_sys, oam_response.valid && pair_response_kind_q==READ_OTHER, reset, 8'd0)
     `DFF_RST_EN(other_offset_q, pair_response_offset_q, clk_sys,
         oam_response.valid && pair_response_kind_q==READ_OTHER, reset, 8'd0)
-    // Lint waiver: tb_dma_tags forces other_valid_q for fault injection,
-    // which Verilator reports as a second driver.
-    /* verilator lint_off MULTIDRIVEN */
     `DFF_ARST_VAL(other_valid_q, accept ? 1'b0 : other_valid_q ||
         (oam_response.valid && pair_response_kind_q==READ_OTHER), clk_sys, reset, 1'b0)
-    /* verilator lint_on MULTIDRIVEN */
     `DFF_RST_EN(cpu_data_q, access_rdata, clk_sys, access_valid && response_kind_q==READ_CPU, reset, 8'd0)
     `DFF_RST_EN(cpu_address_q, response_address_q, clk_sys,
         access_valid && response_kind_q==READ_CPU, reset, 16'd0)

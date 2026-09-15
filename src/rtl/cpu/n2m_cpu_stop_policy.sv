@@ -12,12 +12,8 @@ module n2m_cpu_stop_policy (
 
     always_comb begin
         padding = !enabled_pending;
-        // Lint waiver: tb_cpu_stop forces action and divider_reset for fault
-        // injection; Verilator reports the force as a second driver.
-        /* verilator lint_off MULTIDRIVEN */
         if (selected_active) action = enabled_pending ? n2m_cpu_pkg::STOP_CONTINUE : n2m_cpu_pkg::STOP_HALT;
         else action = n2m_cpu_pkg::STOP_OSCILLATOR;
         divider_reset = execute && !selected_active;
-        /* verilator lint_on MULTIDRIVEN */
     end
 endmodule
