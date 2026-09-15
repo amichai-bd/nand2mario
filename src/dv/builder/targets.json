@@ -3341,7 +3341,8 @@
       "src/rtl/interrupts/n2m_interrupts.sv",
       "src/rtl/timer/n2m_timer_pkg.sv",
       "src/rtl/timer/n2m_timer.sv",
-      "src/dv/timer/tb_timer_reload.sv"
+      "src/dv/timer/tb_timer_reload.sv",
+      "src/dv/timer/timer_lint.vlt"
     ],
     "top": "tb_timer_reload",
     "simulators": [
@@ -3398,7 +3399,8 @@
       "src/rtl/interrupts/n2m_interrupts.sv",
       "src/rtl/timer/n2m_timer_pkg.sv",
       "src/rtl/timer/n2m_timer.sv",
-      "src/dv/timer/tb_timer_reload.sv"
+      "src/dv/timer/tb_timer_reload.sv",
+      "src/dv/timer/timer_lint.vlt"
     ],
     "top": "tb_timer_reload",
     "simulators": [
@@ -3415,7 +3417,8 @@
       "src/rtl/interrupts/n2m_interrupts.sv",
       "src/rtl/timer/n2m_timer_pkg.sv",
       "src/rtl/timer/n2m_timer.sv",
-      "src/dv/timer/tb_timer_reload.sv"
+      "src/dv/timer/tb_timer_reload.sv",
+      "src/dv/timer/timer_lint.vlt"
     ],
     "top": "tb_timer_reload",
     "simulators": [
