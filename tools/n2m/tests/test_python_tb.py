@@ -136,6 +136,9 @@ class PythonTests(unittest.TestCase):
             (failed.replace("JOYP_MISMATCH cycle=3 phase=post", "JOYP_UNKNOWN cycle=3"), self.stdout, "verdict does not match"),
             (failed.replace('message="JOYP_MISMATCH cycle=3 phase=post"', ''), self.stdout, "verdict does not match"),
             (XML.replace('failures="0"', 'failures="1"'), self.stdout, "verdict does not match"),
+            (XML.replace('skipped="0"', 'skipped="1"').replace(
+                '</properties>', '</properties><skipped message="JOYP_MISMATCH cycle=3 phase=post" />'),
+             self.stdout, "verdict does not match"),
             ("<broken", self.stdout, "verdict does not match"),
             (failed, self.stdout + "\nWARNING  cocotb.regression  other failed", "unexplained simulator warning"),
             (failed, self.stdout.replace("test_joypad.joypad_contract failed", "test_joypad.other failed"),

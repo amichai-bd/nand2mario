@@ -323,12 +323,13 @@ Python target `expected_exit` names the verdict of its named test. `zero`
 requires no verdict child and zero failure counts. `nonzero` is the Python
 form of a deliberate failure, checked by
 [`python_tb.accepted`](../../../tools/n2m/python_tb.py): the test must carry a
-`failure` or `error` child whose message contains the target's `signature`,
-the signature must also appear in the transcript, and the one cocotb
-`WARNING cocotb.regression <module>.<test> failed` line is the only explained
-warning. A passing test, an unrelated failure, or invalid results fail a
-`nonzero` target exactly as a failure fails a `zero` target, and neither is
-reused. [`python-joypad-fault`](../../../src/dv/python/joypad/README.md) is
+`failure` or `error` child whose message contains the target's `signature`
+(a `skipped` child never satisfies it), the signature must also appear in the
+transcript, and a warning line is explained only when it names the declared
+`<module>.<test> failed`, as cocotb's `WARNING cocotb.regression` report of
+the failed test does; every other warning still fails the attempt. A passing
+or skipped test, an unrelated failure, or invalid results fail a `nonzero`
+target exactly as a failure fails a `zero` target, and neither is reused. [`python-joypad-fault`](../../../src/dv/python/joypad/README.md) is
 the registered example. The optional `python.waves` list is validated as
 before but does not narrow the trace: Verilator's FST holds the whole top.
 

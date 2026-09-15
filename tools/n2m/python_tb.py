@@ -600,7 +600,8 @@ def accepted(outcome, target):
     if target["expected_exit"] == "zero":
         return outcome["status"] == "PASS"
     return outcome["status"] == "FAIL" and any(
-        target["signature"] in (item.get("message") or "") for item in outcome.get("diagnostics", ()))
+        item.get("kind") in ("failure", "error") and target["signature"] in (item.get("message") or "")
+        for item in outcome.get("diagnostics", ()))
 
 
 def explained_warnings(target):

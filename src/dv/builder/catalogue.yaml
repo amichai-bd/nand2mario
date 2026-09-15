@@ -71,7 +71,7 @@ units:
   baseline-broken: {kind: sim, level: 2, labels: [baseline, fault], duration_seconds: 0.41}
   baseline-good: {kind: sim, level: 1, labels: [baseline], duration_seconds: 0.41}
   builder-smoke: {kind: sim, level: 0, labels: [builder, builder-fault, pre-merge], duration_seconds: 1.63}
-  builder-smoke-fail: {kind: sim, level: 2, labels: [builder, builder-fault], duration_seconds: null}
+  builder-smoke-fail: {kind: sim, level: 2, labels: [builder-fault], duration_seconds: null}
   clocking: {kind: sim, level: 1, labels: [clocking], duration_seconds: 6.58}
   clocking-bad-numerator: {kind: sim, level: 2, labels: [clocking, fault], duration_seconds: 1.37}
   clocking-drop-tick: {kind: sim, level: 2, labels: [clocking, fault], duration_seconds: 1.38}
