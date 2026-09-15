@@ -1281,15 +1281,13 @@
   },
   "intel-memory": {
     "sources": [
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/dv/common/tb_intel_ram.sv"
     ],
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_intel_ram.frame_case.dut.ram.m_default.altsyncram_inst"
-    ],
     "top": "tb_intel_ram",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS Intel memory configurations=4 initialized_words=23344 latency=1",
@@ -1297,15 +1295,13 @@
   },
   "intel-memory-collision": {
     "sources": [
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/dv/common/tb_intel_ram.sv"
     ],
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_intel_ram.frame_case.dut.ram.m_default.altsyncram_inst"
-    ],
     "top": "tb_intel_ram",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+collision"
     ],
@@ -1314,15 +1310,13 @@
   },
   "intel-memory-data": {
     "sources": [
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/dv/common/tb_intel_ram.sv"
     ],
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_intel_ram.frame_case.dut.ram.m_default.altsyncram_inst"
-    ],
     "top": "tb_intel_ram",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+corrupt"
     ],
@@ -1331,15 +1325,13 @@
   },
   "intel-memory-latency": {
     "sources": [
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/dv/common/tb_intel_ram.sv"
     ],
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_intel_ram.frame_case.dut.ram.m_default.altsyncram_inst"
-    ],
     "top": "tb_intel_ram",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+late"
     ],

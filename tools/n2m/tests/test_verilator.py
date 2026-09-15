@@ -256,14 +256,20 @@ class RecordTests(unittest.TestCase):
         self.args.rebuild = False
         self.assertEqual(self.run_stage()["cache"], "CACHED")
 
-    def test_vendor_model_stays_questa_and_a_driver_needs_the_peer_module(self):
+    def test_vendor_model_is_recorded_and_a_driver_needs_the_peer_module(self):
         registry = self.root / "src/dv/builder/targets.json"
         targets = read_json(registry)
         pristine = dict(targets["builder-smoke"])
         (self.root / "driver.do").write_text("run -all\n")
         (self.root / "driver.py").write_text("import cocotb\n")
         access = ["tx_go", "finish_request"]
-        for change, message in (({"vendor_model": "intel-memory"}, "vendor_model"),
+        # The synthesis binding is accepted as a record; the Questa-only
+        # mixed-mode inventory and unknown bindings are refused.
+        targets["builder-smoke"] = {**pristine, "vendor_model": "intel-memory"}
+        registry.write_text(json.dumps(targets))
+        self.assertEqual(load_target(self.root, "builder-smoke")[0]["vendor_model"], "intel-memory")
+        for change, message in (({"vendor_model": "altera-mf"}, "vendor_model must be one of"),
+                                ({"vendor_model": "intel-memory", "intel_mixed_mode_instances": ["tb.dut.ram"]}, "intel_mixed_mode_instances"),
                                 ({"driver": {"script": "driver.do", "peer": "tools/build.py", "inputs": [], "access": access}}, "Verilator peer module"),
                                 ({"driver": {"script": "driver.py", "peer": "tools/build.py", "inputs": []}}, "nonempty access list"),
                                 ({"driver": {"script": "missing.py", "peer": "tools/build.py", "inputs": [], "access": access}}, "missing or out-of-tree driver input")):

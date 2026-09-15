@@ -20,6 +20,8 @@ from .simulation_peer import Peer
 SIMULATORS = ("verilator", "questa")
 RETIRED = "questa"
 RETIRED_REASON = "questa-retired"
+# Synthesis bindings a verilator target may record; none is compiled.
+VENDOR_MODELS = ("intel-memory", "intel-adc", "intel-controls")
 
 
 def simulator_problem(name, target):
@@ -72,11 +74,17 @@ def load_target(root, name):
             if not path.is_relative_to(root.resolve()) or not path.is_file():
                 raise ValueError(f"missing or out-of-tree driver input: {source}")
     if not retired(target):
-        # The Intel models were a Questa binding; a target that still needs
-        # one stays questa until its area migrates. A verilator driver's
-        # script is the cocotb peer module; the retired Tcl script is refused.
-        if target.get("vendor_model") is not None:
-            raise ValueError(f"target {name}: vendor_model is not supported under verilator")
+        # vendor_model names the synthesis binding of the RTL under test. The
+        # Verilator stage compiles no vendor source: the wrapper selects the
+        # repository double under VERILATOR, so the field is a record only.
+        # The mixed-mode inventory classified the Questa model's coercion
+        # diagnostic, which the double never emits; it is refused here.
+        if target.get("vendor_model") not in (None, *VENDOR_MODELS):
+            raise ValueError(f"target {name}: vendor_model must be one of {', '.join(VENDOR_MODELS)}")
+        if "intel_mixed_mode_instances" in target:
+            raise ValueError(f"target {name}: intel_mixed_mode_instances is a Questa diagnostic inventory; the double has no coercion diagnostic")
+        # A verilator driver's script is the cocotb peer module; the retired
+        # Tcl script is refused.
         if "driver" in target:
             if not target["driver"]["script"].endswith(".py"):
                 raise ValueError(f"target {name}: driver script must be the Verilator peer module (.py)")
@@ -120,6 +128,8 @@ def simulate(root, build, args, simulator, provenance=None):
     hashes = {p: file_hash(root / p) for p in inputs}
     options = {"seed": args.seed, "target": args.target, "definition": target,
                "simulator": "verilator", "os": platform.system()}
+    if target.get("vendor_model") is not None:
+        options["vendor_model"] = {"synthesis_binding": target["vendor_model"], "simulation": "repository double under VERILATOR"}
     if python_runtime:
         options["python_runtime"] = python_runtime
     if driver:
