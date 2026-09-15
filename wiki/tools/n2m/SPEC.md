@@ -96,13 +96,23 @@ Manual entry accepts `COM` followed by a positive port number and normalizes it
 to uppercase before Review.
 The selected host command still repeats fresh PnP identity and health checks
 before serial open. Recent simulator, Intel-model and Quartus directories come
-from retained manifests; manual entry remains available. Applicable optional
-flags live under **Advanced options** with the ordinary CLI defaults. Options
-that do not apply to the selected simulator, doctor profile, or mutually
-exclusive input stay hidden. `--intel-sim-lib` appears only when the selected
-live target, regression subset, or test-catalogue selection includes an Intel
-vendor-model simulation. FPGA `--build-id` appears only when the selected live
-target definition carries an identity macro. The identity-bound `host crc-proof`
+from retained manifests; manual entry remains available. If ordinary `PATH`
+discovery lacks the selected simulator and exactly one retained directory has
+all of that backend's executables, the menu preselects its `--verilator-bin` or
+`--questa-bin` option. Verilator requires `verilator`; Questa requires `vlib`,
+`vmap`, `vlog`, and `vsim`. Stale directories and incomplete tool sets do not
+qualify. Zero or multiple qualifying directories leave ordinary discovery in
+place. **Advanced options** shows an automatic selection and can replace it or
+clear it back to ordinary discovery. These browse-time decisions inspect only
+the filesystem and executable search path; tool identification and execution
+remain part of the confirmed child command.
+
+Applicable optional flags live under **Advanced options** with the ordinary CLI
+defaults. Options that do not apply to the selected simulator, doctor profile,
+or mutually exclusive input stay hidden. `--intel-sim-lib` appears only when
+the selected live target, regression subset, or test-catalogue selection
+includes an Intel vendor-model simulation. FPGA `--build-id` appears only when
+the selected live target definition carries an identity macro. The identity-bound `host crc-proof`
 and `host keyboard` actions accept a manually reviewed build identity only when
 it is exactly 32 hexadecimal digits and nonzero. They also hide
 `--endpoint-restarted`. The doctor asks

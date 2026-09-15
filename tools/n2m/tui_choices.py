@@ -1,8 +1,10 @@
 """Live registry and retained-record choices for the progressive build menu."""
 import argparse
 import json
+import os
 import platform
 from pathlib import Path
+import shutil
 from types import SimpleNamespace
 import tempfile
 
@@ -137,6 +139,37 @@ def retained_values(root, key):
                     if value not in values:
                         values.append(value)
     return values
+
+
+def retained_simulator_directory(root, backend, *, system=None, which=None):
+    """Return one usable retained tool directory when PATH lacks the backend.
+
+    This is a browse-time filesystem and PATH check only. Simulator version
+    queries and all other child processes remain owned by the confirmed build.
+    """
+    tools = {"verilator": ("verilator",),
+             "questa": ("vlib", "vmap", "vlog", "vsim")}
+    if backend not in tools:
+        raise ValueError(f"unsupported simulator: {backend}")
+    which = which or shutil.which
+    suffix = ".exe" if (system or platform.system()) == "Windows" else ""
+    names = tuple(name + suffix for name in tools[backend])
+    if all(which(name) for name in names):
+        return None
+
+    root = Path(root)
+    applicable = []
+    seen = set()
+    for value in retained_values(root, backend + "_bin"):
+        directory = Path(value)
+        checked = directory if directory.is_absolute() else root / directory
+        if not checked.is_dir() or not all(which(str(checked / name)) for name in names):
+            continue
+        identity = os.path.normcase(str(checked.resolve()))
+        if identity not in seen:
+            seen.add(identity)
+            applicable.append(value)
+    return applicable[0] if len(applicable) == 1 else None
 
 
 def current_uart_candidates(root, *, system=None, discover=None):
