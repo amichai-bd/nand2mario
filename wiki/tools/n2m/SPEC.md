@@ -749,19 +749,27 @@ The `intel-memory` FPGA target retains the four MAS configurations with virtual
 system request and observation ports. A real pixel-domain producer outside
 the wrapper alternates read-enable and advances through addresses 0–23039.
 Its sixteen launch registers use the existing pixel clock and reset. There
-is no fictional off-chip pixel input budget. The audit checks the exact
+is no fictional off-chip pixel input budget. The virtual system inputs carry a
+1-2 ns bookkeeping budget: they land directly on M9K input registers, whose
+clock arrives about 0.8 ns after the PLL-compensated logic clock, so a zero
+minimum would report a hold violation on a pin that does not exist. The audit
+checks the exact
 63 system input names, all existing timing gates, and setup/hold paths from
 every pixel request register into memory at all three timing corners. Each
 path must use the same pixel launch/capture clock and have nonnegative slack.
-It also checks four logical RAM shapes and ten fitted M9Ks. Fitted atom checks bind data and byte lanes, system/pixel
-clocks, B address/read-control clocks, unregistered outputs, disabled B writes,
+It also checks four logical RAM shapes and ten fitted M9Ks. Fitted atom checks bind data and byte lanes, the system PLL
+and pixel PLL clock nets, B address/read-control clocks, unregistered outputs, disabled B writes,
 and absent memory clear/initialization. The fitter's physical new-data mode
 may include NBE handling; the MAS permits simultaneous A read/write only with
 all public lanes enabled, where that mapping preserves the defined result.
 
 The `memory-stores` FPGA target constrains the seven direct-profile stores at
 25 MHz with virtual service inputs and outputs, including explicit packed-struct
-member names for the paired OAM port. Its checker requires the exact
+member names for the paired OAM port. Every store port other than `clk_sys` is
+a virtual pin with a 0-2 ns input budget; a port added to the store without a
+registry entry fails the fitter's pin-assignment check, and
+[`test_fpga_memory_stores.py`](../../../tools/n2m/tests/test_fpga_memory_stores.py)
+compares the registry with the module header. Its checker requires the exact
 seven logical depths, 395,640 bits and 52 fitted M9Ks. It checks both port
 register stages, the common clock, disabled B writes, whole-byte enables,
 physical bit inventory, and absent primitive reset/initialization. The ordinary
@@ -1190,6 +1198,17 @@ milestone acceptance remain separate: [board bring-up](../../src/board-bring-up.
 records the physical verification and the observed monitor picture, and the
 [v0.5 matrix](../../src/dv/v05/SPEC.md#revised-milestone-matrix)
 defines composed acceptance.
+
+The external-control synchronizer audit in
+[fpga_controls](../../../tools/n2m/fpga_controls.py) reads the fitted netlist
+for every button and UART chain. Each first stage must be the sole sink of its
+input buffer, reached either directly or through a chain of at most two unary
+LUTs; each LUT has one live input, a buffer or inverter mask, no carry, and no
+fanout beyond the next stage, and the combined polarity must match the
+declared inversion. Two LUTs are accepted because the fitter may pack the
+first-stage inverter behind a separate feeder LUT; the fit varies with the
+identity constant, so both packings are legal results of the same RTL. Wider
+logic, longer chains, ambiguous drivers or bypass fanout fail.
 
 The composed memory check accounts for every logical store and physical atom:
 seven direct-profile stores (52 atoms), four 5760-byte snapshot stores (32),
@@ -1714,9 +1733,17 @@ fingerprint. The generated HDL, generation command/log and vendor auxiliary
 files remain under the immutable attempt. The generated HDL is checked against
 the requested parameters and loaded directly; generated QIP Tcl is retained but
 not evaluated. Reuse requires this evidence as well as the complete fit/timing
-inventory. Generator errors fail the request and remain retained; there is no
-automatic retry or acceptance of partial output. A later explicit build request
-creates a separate attempt.
+inventory. Generator errors fail the request and remain retained; partial
+output is never accepted. One exact failure is retried: under Quartus Prime Lite
+25.1std on Windows the generator's `mega_altpllq.exe` faults in
+`mega_mwizcq.dll` (access violation, Windows Application log event 1000) on
+about one launch in three, and `qmegawiz` then exits 3 with an empty log. The
+builder relaunches the same generator command up to three times in total only
+for that signature: exit 3, no timeout, empty log. Every launch stays in
+`commands` with its exit code and `retried: true`, and `generator_retries`
+lists each retried attempt. A reported failure, a different exit code, a
+timeout or a third silent exit fails the request. A later explicit build
+request creates a separate attempt.
 
 Optional declarative `timing` assignments produce owned SDC with checked exact
 asynchronous-reset pins and output clock/port collections. Every collection must
@@ -1752,8 +1779,12 @@ retained; their reset-chain identification is not a hardware reliability claim.
 The functional netlist writer's exact diagnostic 10905 explains that MAX 10
 supports functional, not timing, simulation netlists; TimeQuest supplies timing.
 The exact diagnostic 176127 is explained only for the verified system/pixel
-pair and its generated file: their distinct required ratios prevent PLL merging.
-Bandwidth, routing and other timing diagnostics remain failures.
+pair and one of its two generated `db/` files: their distinct required ratios
+prevent PLL merging. Quartus names the two PLLs in either order and cites
+whichever generated file it visits second (25.1std names the system PLL first
+and `n2m_system_pll_altpll.v`); the classifier compares the pair and the file
+as sets, accepts at most one such line, and rejects any other pair, path or
+text. Bandwidth, routing and other timing diagnostics remain failures.
 
 [lock-guide]: https://docs.altera.com/r/docs/683047/21.1/max-10-clocking-and-pll-user-guide/pll-control-signals
 ## Software oracle
