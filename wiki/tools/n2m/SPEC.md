@@ -490,8 +490,11 @@ is its Python peer: requests of 1, 19 and 271 bytes, `WAIT 136280`, `DONE`,
 checking each reply and monotonic simulation time. `verilator-peer` expects
 `PASS verilator-peer transactions=3`; `verilator-peer-fault` uses
 [`peer_check_fault.py`](../../../src/dv/integration/peer_check_fault.py), which
-sends `WAIT 5` after the first request, and must fail as `Verilator peer
-failed: SMOKE_DRIVER_WAIT_RANGE`; `verilator-peer-fatal` passes `+echo_fault`
+sends `WAIT 5` after the first request; it is registered
+`expected_exit: "nonzero"` with signature `SMOKE_DRIVER_WAIT_RANGE`, so it
+passes only by the peer raising that name (the peer-raised failure form
+below), and a run whose peer passes fails it as `unexpected exit 0`;
+`verilator-peer-fatal` passes `+echo_fault`
 so the endpoint raises `PEER_ECHO_FAULT seq=2` inside the second transaction
 and must exit nonzero with that signature. Measured on WSL: build 1.4 s cold
 and 0.25 s with `ccache`, run under 0.5 s, `CACHED` on rerun.

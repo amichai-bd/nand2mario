@@ -28540,8 +28540,8 @@
     "top": "tb_verilator_peer",
     "simulator": "verilator",
     "args": [],
-    "expected_exit": "zero",
-    "signature": "PASS verilator-peer transactions=3",
+    "expected_exit": "nonzero",
+    "signature": "SMOKE_DRIVER_WAIT_RANGE",
     "timeout_seconds": 60,
     "driver": {
       "script": "src/dv/integration/driver.py",
