@@ -43,8 +43,10 @@ and [`n2m_sdram_ctrl.sv`](../../src/rtl/storage/n2m_sdram_ctrl.sv) come from
 `bui-bui` `src/rtl/mafia/sdram/` (MIT, adapted there from
 [FPGA-MAFIA](https://github.com/FPGA-MAFIA/fpga_mafia) revision
 `0939fe7586f472942f64003c26048e1bf37e5c85`). The index records the `bui-bui`
-revision and file hashes copied from and every local change; the MIT notice
-is at the head of both files. The pin-level device model
+revision and file hashes copied from and every local change; the MIT license
+text is copied beside the files as
+[`LICENSE-sdram-controller.txt`](../../src/rtl/storage/LICENSE-sdram-controller.txt)
+and both SPDX headers point to it. The pin-level device model
 [`n2m_sim_sdram.sv`](../../src/rtl/storage/n2m_sim_sdram.sv) is original,
 written against the datasheet. The Terasic DE10-Lite System CD v2.2.0 pin data
 and the ISSI `IS42S16320D` datasheet (Rev. 00B, 2011-06-09) in that CD are the

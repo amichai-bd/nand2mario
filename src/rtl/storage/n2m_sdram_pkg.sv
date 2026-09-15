@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MIT
+// License text: LICENSE-sdram-controller.txt beside this file.
 // Ported from bui-bui src/rtl/mafia/sdram/mafia_sdram_pkg.sv (MIT, adapted
 // from FPGA-MAFIA); see wiki/tools/provenance.md. Renamed and restyled for
 // this repository; the constants are the contract in

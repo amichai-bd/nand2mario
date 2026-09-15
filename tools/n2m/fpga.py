@@ -320,6 +320,16 @@ def execute(argv, folder, log, timeout, record, build):
     return text
 
 
+def accepted_clock_port_entry(name, count, target, checks):
+    """The one check_timing exception of the SDRAM image: DRAM_CLK without an output delay.
+
+    Only for sdram_proof, only the no_output_delay row, only a count of one,
+    and only when the report names exactly that port with its clock note.
+    """
+    return (name == "no_output_delay" and count == 1 and sdram_target(target)
+            and re.search(r";\s*DRAM_CLK\s*;\s*No output delay was set on output port\. This port has clock assignments\.\s*;", checks) is not None)
+
+
 SDRAM_CLOCK_WARNING = ('Warning (15064): PLL "n2m_clocking:u_clocking|n2m_system_pll:u_system_pll|altpll:altpll_component|'
                        'n2m_system_pll_altpll:auto_generated|pll1" output port clk[0] feeds output pin "DRAM_CLK~output" via '
                        'non-dedicated routing -- jitter performance depends on switching rate of other design elements. '
@@ -462,8 +472,7 @@ def timing_evidence(folder, target, *, build_id=None):
         # has no data path, so it is the one output without an output delay;
         # the unconstrained-path summary above has already shown zero output
         # ports and paths, and the clock inventory binds that port to sdram_clk.
-        if (name == "no_output_delay" and int(count) == 1 and sdram_target(target)
-                and re.search(r";\s*DRAM_CLK\s*;\s*No output delay was set on output port\. This port has clock assignments\.\s*;", checks)):
+        if accepted_clock_port_entry(name, int(count), target, checks):
             continue
         if int(count) and not (name == "virtual_clock" and int(count) == 1 and "No virtual clock was found." in checks):
             raise ValueError(f"structural timing failure: {name}={count}")

@@ -132,6 +132,24 @@ def verify_fit(folder, target):
                 raise ValueError(f"reset stage path endpoints differ: {name}")
 
 
+SDRAM_CLOCK = "sdram_clk"
+
+
+def clock_inventory(target, reference, adc_pll=None):
+    """Every STA clock row a parallel-PLL target must show: name -> (kind, period, ratio, master)."""
+    wanted = {"clk_reference": ("Base", reference, None, None),
+              SYSTEM_CLOCK: ("Generated", reference*2, ["50.00", "2", "1"], "clk_reference"),
+              PIXEL_PLL + "|clk[0]": ("Generated", reference*125/63, ["50.00", "125", "63"], "clk_reference")}
+    if adc_pll:
+        wanted.update({"clk_adc_reference": ("Base", 100.0, None, None),
+                       adc_pll + "|clk[0]": ("Generated", 100.0, ["50.00", "1", "1"], "clk_adc_reference")})
+    # The SDRAM image adds the contract's inverted pin clock: the system PLL
+    # output inverted at DRAM_CLK, same period, unit ratio, no duty column.
+    if target.get("top") == "sdram_proof":
+        wanted[SDRAM_CLOCK] = ("Generated", reference*2, ["", "1", "1"], SYSTEM_CLOCK)
+    return wanted
+
+
 def verify_parallel_fit(folder, target):
     """Bind each fitted column and clock to its declared physical owner."""
     fit = (folder / "output/design.fit.rpt").read_text(encoding="cp1252" if os.name == "nt" else "utf-8")
@@ -167,17 +185,8 @@ def verify_parallel_fit(folder, target):
     clocks = [[v.strip() for v in line.split(';')[1:-1]] for line in sta.splitlines()
               if re.match(r";[^;]+;\s*(?:Base|Generated)\s*;", line)]
     reference = float(target["timing"]["reference_ns"])
-    wanted = {"clk_reference": ("Base", reference, None, None),
-              SYSTEM_CLOCK: ("Generated", reference*2, ["50.00", "2", "1"], "clk_reference"),
-              PIXEL_PLL + "|clk[0]": ("Generated", reference*125/63, ["50.00", "125", "63"], "clk_reference")}
-    if adc_pll in expected:
-        wanted.update({"clk_adc_reference": ("Base", 100.0, None, None),
-                       adc_pll + "|clk[0]": ("Generated", 100.0, ["50.00", "1", "1"], "clk_adc_reference")})
-    # The SDRAM image adds the contract's inverted pin clock: the system PLL
-    # output inverted at DRAM_CLK, same period, no ratio, no duty column.
-    sdram_clock = "sdram_clk" if target.get("top") == "sdram_proof" else None
-    if sdram_clock:
-        wanted[sdram_clock] = ("Generated", reference*2, ["", "1", "1"], SYSTEM_CLOCK)
+    wanted = clock_inventory(target, reference, adc_pll if adc_pll in expected else None)
+    sdram_clock = SDRAM_CLOCK if SDRAM_CLOCK in wanted else None
     if len(clocks) != len(wanted) or {r[0] for r in clocks} != set(wanted):
         raise ValueError("parallel PLL clock inventory differs")
     for row in clocks:

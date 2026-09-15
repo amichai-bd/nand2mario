@@ -263,6 +263,48 @@ class FpgaTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 fpga.diagnostics(text)
 
+    def test_sdram_clock_port_entry_is_accepted_only_for_the_sdram_image(self):
+        report = "; DRAM_CLK ; No output delay was set on output port. This port has clock assignments. ;\n"
+        sdram = {"top": "sdram_proof"}
+        self.assertTrue(fpga.accepted_clock_port_entry("no_output_delay", 1, sdram, report))
+        for name, count, target, checks in (("no_output_delay", 1, {"top": "v05_proof"}, report),
+                                            ("no_output_delay", 2, sdram, report),
+                                            ("no_input_delay", 1, sdram, report),
+                                            ("no_output_delay", 1, sdram, report.replace("DRAM_CLK", "DRAM_CKE")),
+                                            ("no_output_delay", 1, sdram, "")):
+            with self.subTest(name=name, count=count, top=target["top"]):
+                self.assertFalse(fpga.accepted_clock_port_entry(name, count, target, checks))
+
+    def test_sdram_image_adds_exactly_the_inverted_pin_clock_to_the_inventory(self):
+        from n2m import fpga_pll
+        base = fpga_pll.clock_inventory({"top": "v05_proof"}, 20.0)
+        sdram = fpga_pll.clock_inventory({"top": "sdram_proof"}, 20.0)
+        self.assertEqual(set(base), {"clk_reference", fpga_pll.SYSTEM_CLOCK, fpga_pll.PIXEL_PLL + "|clk[0]"})
+        self.assertEqual(set(sdram) - set(base), {"sdram_clk"})
+        self.assertEqual(sdram["sdram_clk"], ("Generated", 40.0, ["", "1", "1"], fpga_pll.SYSTEM_CLOCK))
+        self.assertEqual({k: v for k, v in sdram.items() if k != "sdram_clk"}, base)
+        self.assertIn("clk_adc_reference", fpga_pll.clock_inventory({"top": "controls_proof"}, 20.0, fpga_pll.ADC_PLL))
+
+    def test_sdram_image_carries_its_own_build_identity(self):
+        repository = Path(__file__).resolve().parents[3]
+        target = fpga.target_definition(repository, "sdram-proof")
+        self.assertTrue(fpga.identity_target(target))
+        self.assertTrue(fpga.sdram_target(target))
+        with self.assertRaisesRegex(ValueError, "SDRAM build requires a nonzero"):
+            fpga.prepare(repository, self.build, target, build_id=None)
+        with self.assertRaisesRegex(ValueError, "SDRAM build requires a nonzero"):
+            fpga.prepare(repository, self.build, target, build_id="00" * 16)
+        fpga.prepare(repository, self.build, target, build_id="ab" * 16)
+        qsf = (self.build / "design.qsf").read_text(encoding="utf-8")
+        self.assertIn("set_global_assignment -name VERILOG_MACRO \"N2M_SDRAM_BUILD_ID=128'h" + "ab" * 16 + "\"", qsf)
+        self.assertNotIn("N2M_V05_BUILD_ID", qsf)
+        self.assertNotIn("N2M_CONTROLS_BUILD_ID", qsf)
+        self.assertIn('RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED"', qsf)
+        self.assertIn('IO_STANDARD "3.3 V SCHMITT TRIGGER" -to board_reset_n', qsf)
+        self.assertEqual(qsf.count('CURRENT_STRENGTH_NEW "8MA" -to "DRAM_'), 39)
+        self.assertEqual(qsf.count('-name IO_STANDARD "3.3-V LVTTL"'), 53)
+        self.assertIn("controls_uart", (self.build / "checked.sdc").read_text(encoding="utf-8"))
+
     def test_structural_netlist_accepts_bidirectional_ports_only_as_declarations(self):
         from n2m.fpga_lock import parse_netlist
         netlist = ("module top (a, b);\ninput a;\ninout [15:0] b;\nwire gnd;\nwire vcc;\ntri1 devclrn;\ntri1 devpor;\n"

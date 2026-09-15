@@ -1475,9 +1475,9 @@ and includes its header hashes in each fresh manifest, without caching.
 ## FPGA build
 
 `fpga build --build-id <32 lowercase hex digits, nonzero>` is a comparison-only option for the
-targets that carry an identity macro (`controls_proof` and the `v05` board
-targets). It replaces the fingerprint-derived `N2M_CONTROLS_BUILD_ID` /
-`N2M_V05_BUILD_ID` constant with the given nonzero value so two builds of
+targets that carry an identity macro (`controls_proof`, the `v05` board
+targets and `sdram_proof`). It replaces the fingerprint-derived `N2M_CONTROLS_BUILD_ID` /
+`N2M_V05_BUILD_ID` / `N2M_SDRAM_BUILD_ID` constant with the given nonzero value so two builds of
 different sources can be compared with `tools/fpga_netlist_compare.py`; the
 constant is folded into logic, so fingerprint-derived identities never match
 across sources. The record carries `build_id_override: true` and a notice, the
