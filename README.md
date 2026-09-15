@@ -277,8 +277,10 @@ The method is documented in
 
 The target is original-DMG-compatible behavior for this project, not a claim of
 exact silicon identity or universal cartridge compatibility. The current game
-profile is mapperless and silent; additional cartridge mappers, CGB/SGB support,
-full audio, and unrelated platform extensions are outside the present core goal.
+profile is mapperless and silent; the only extra cartridge behavior is our own
+[loader profile](wiki/src/rtl/cartridge/MAS_loader_profile.md) for the on-board
+game menu. MBC-family mappers, CGB/SGB support, full audio, and unrelated
+platform extensions are outside the present core goal.
 
 Commercial ROMs, boot ROMs, saves, credentials, and copied commercial game
 assets must not be committed. External code, tests, models, and tools are pinned

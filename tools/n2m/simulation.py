@@ -33,6 +33,12 @@ def simulator_problem(name, target):
     return None
 
 
+# An area run (`tests run`, `regress`) reports a selected target that lacks
+# the requested backend under this skip reason; a single-target `sim test`
+# of the same pair still fails before launch.
+UNSUPPORTED_REASON = "unsupported-backend"
+
+
 def require_backend(name, target, backend):
     """Refuse an unsupported pair before tool discovery or launch."""
     if backend not in SIMULATORS:
@@ -40,6 +46,20 @@ def require_backend(name, target, backend):
     if backend not in target["simulators"]:
         raise ValueError(f"target {name} does not support simulator {backend}; supported: "
                          + ", ".join(target["simulators"]))
+
+
+def unsupported_backend(root, name, backend):
+    """Validate one registry row; return the refusal message for a pair it
+    does not declare, or None when it supports the backend.
+
+    Registry problems still raise: only a valid row that omits the backend
+    is a skip, never a malformed or unknown target."""
+    target = load_target(root, name)[0]
+    try:
+        require_backend(name, target, backend)
+    except ValueError as error:
+        return str(error)
+    return None
 
 
 def load_target(root, name, backend=None):

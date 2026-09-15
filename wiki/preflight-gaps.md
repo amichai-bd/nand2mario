@@ -58,8 +58,10 @@ contract distinguishes implemented behavior from planned features.
 
 **Risk**
 
-Agents may add CGB behavior, unrelated mappers, audio output, or compiler work
-before the core can run a test ROM.
+Agents may add CGB behavior, MBC-family mappers, audio output, or compiler work
+before the core can run a test ROM. The only permitted cartridge behavior
+beyond the direct profile is the charter's own
+[loader profile](src/rtl/cartridge/MAS_loader_profile.md).
 
 **Close when**
 
@@ -398,7 +400,9 @@ or compatibility defect. Original content must not inherit copied game assets.
 - Two clean software builds produce identical image bytes and hashes.
 - The built header/checksums identify the supported 32 KiB ROM-only/no-RAM profile.
 - The image uses the existing direct-entry and Intel-backed storage contracts,
-  with no MBC or SDRAM dependency.
+  with no MBC dependency and no dependency on the
+  [SDRAM library](src/rtl/storage/MAS_sdram.md), which stores images without
+  changing them.
 - The original image loads and reaches the independently checked foundation
   checkpoint; later game verification and physical acceptance remain separate.
 

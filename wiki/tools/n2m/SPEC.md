@@ -227,8 +227,11 @@ change: Verilator runs with `--x-initial unique` and
 rather than by an `X` check.
 
 Every registry target records its supported [simulators](#simulator-field).
-Capability remains explicit per target; selecting an undeclared backend is a
-configuration failure, not a migration skip.
+Capability remains explicit per target. A single-target `sim test` of an
+undeclared backend is a configuration failure. An area run (`tests run`,
+`regress`) reports such a target as `SKIPPED unsupported-backend` by name,
+counting it as neither pass nor defect, and never falls back; see
+[execution](#execution-and-contention) and [regression subsets](#regression-subsets).
 
 ### Command ownership by operating system
 
@@ -324,11 +327,16 @@ pipe; the whole output is kept, and the one-line `error` is the first
 `FAIL:`/`ERROR:` header, else the `FAILED` verdict, else the last line. A unit's
 own trailing print is never reported as its failure.
 
-A selection whose simulation units do not all support the requested backend
-fails before any child is launched. A unit labelled
-`needs-cocotb` is skipped with reason `cocotb-environment` when the pinned
-`src/dv/python` interpreter is absent. A skip is not a defect, and is never
-silently swallowed: the summary lists every skipped unit in `skipped`.
+Every selected simulation unit is validated before any child is launched; a
+registry problem fails the selection. A valid unit that does not declare the
+requested backend is skipped with reason `unsupported-backend` and never
+launched, so a label that mixes Verilator-capable and Questa-only rows runs its
+supported rows on either host. There is no fallback to the other simulator. A
+unit labelled `needs-cocotb` is skipped with reason `cocotb-environment` when
+the pinned `src/dv/python` interpreter is absent. A skip is not a defect, and
+is never silently swallowed: the summary lists every skipped unit in
+`skipped`, the unit's record carries its `reason`, and the text summary names
+each skipped unit with that reason.
 
 The default aggregate budget is the ordinary 300-second pre-merge aggregate.
 `--budget` declares another; above 300 seconds it also needs `--broader`, as a
@@ -1202,10 +1210,12 @@ flag. Every declared subset is validated whenever the file is read, so one bad
 declaration fails every `regress` invocation. Every member of the selected
 subset also passes the target validator before the first child runs.
 
-Before the first child runs, every member must include the selected backend in
-its `simulators` list. An unsupported member fails the regression as a
-configuration error; no supported member launches first and no backend fallback
-occurs.
+Before the first child runs, every member is validated; a registry problem
+fails the regression before any child launches. A valid member that does not
+include the selected backend in its `simulators` list is `SKIPPED` with reason
+`unsupported-backend`, listed in `skipped`, never launched and counted as
+neither pass nor defect; no backend fallback occurs. A single-target `sim test`
+of the same pair still fails before launch.
 Members run in order, each as the `sim test` worker under the same tag with the
 regression's backend, `--seed` (default 1), `--rebuild` and matching backend
 tool options. The regression supervises each child exactly as a standalone
@@ -1224,9 +1234,10 @@ writer is alive. A `CACHED` member is a valid reuse of
 unchanged inputs; use `--rebuild` for fresh evidence. Later members still run
 after a failure, so the aggregate reports every outcome.
 
-The aggregate is `PASS` only when every member passes within the budget.
-Otherwise it is `FAIL` and the error names each non-passing member and its
-status, for example `regression builder-fault failed: builder-smoke-fail FAIL`.
+The aggregate is `PASS` only when every launched member passes within the
+budget; an `unsupported-backend` skip does not fail it. Otherwise it is `FAIL`
+and the error names each non-passing member and its status, for example
+`regression builder-fault failed: builder-smoke-fail FAIL`.
 The result records the subset, tier, purpose, budget, `broader`, seed, the
 subset file hash, `targets` keyed by name with status, cache, exit code,
 elapsed seconds, error or skip reason and the child `result.json` path, the

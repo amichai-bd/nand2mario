@@ -37,6 +37,20 @@ selected licensed [PPU logic adaptation](../../src/rtl/ppu/upstream.json). No te
 or emulator code is imported. New imports must add a record before use. Reproducible fetching of future verification suites belongs to
 [GAP-013](../preflight-gaps.md#gap-013-external-dependencies).
 
+The SDRAM controller and its pin-level device model for the
+[game library](../src/project-charter.md#game-library) are an approved import,
+not yet ported: `bui-bui` `src/rtl/mafia/sdram/mafia_sdram_pkg.sv`,
+`mafia_sdram_ctrl.sv` and `src/dv/mafia/mafia_sdram_device_model.sv`, MIT,
+adapted there from [FPGA-MAFIA](https://github.com/FPGA-MAFIA/fpga_mafia)
+revision `0939fe7586f472942f64003c26048e1bf37e5c85`. The index carries the
+record; the bring-up slice that ports them copies the MIT notice beside the
+files, records the `bui-bui` revision and file hashes it copied from, and
+lists every local change. The Terasic DE10-Lite System CD v2.2.0 pin data and
+the ISSI `IS42S16320D` datasheet (Rev. 00B, 2011-06-09) in that CD are the
+reference sources for pins and timing in the
+[SDRAM contract](../src/rtl/storage/MAS_sdram.md); they are vendor documents,
+consulted and cited, not redistributed.
+
 `frog-bui` is a process and behavioral research reference only. Its inspected
 revision and absent root license are recorded in the
 [wiki dependency notes](../../tools/wiki/THIRD_PARTY.md). Do not copy its source
