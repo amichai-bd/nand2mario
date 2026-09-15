@@ -227,6 +227,7 @@ units:
   joypad-matrix-fault: {kind: sim, level: 2, labels: [fault, joypad], duration_seconds: 0.42}
   joypad-register-fault: {kind: sim, level: 2, labels: [fault, joypad], duration_seconds: 0.42}
   joypad-registers: {kind: sim, level: 2, labels: [joypad], duration_seconds: 0.43}
+  library-peer: {kind: sim, level: 1, labels: [host, python-tb, storage], duration_seconds: 134.04}
   memory-bank-enables: {kind: sim, level: 1, labels: [memory], duration_seconds: 0.92}
   memory-bank-enables-fault: {kind: sim, level: 2, labels: [fault, memory], duration_seconds: 0.84}
   memory-cpu-duplicate: {kind: sim, level: 2, labels: [fault, memory], duration_seconds: 0.60}
@@ -570,7 +571,7 @@ units:
   tools/n2m/tests/test_gui_pad.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 0.12}
   tools/n2m/tests/test_hdl.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 0.06}
   tools/n2m/tests/test_host.py: {kind: unit, level: 1, labels: [builder, host], duration_seconds: 1.28}
-  tools/n2m/tests/test_host_library.py: {kind: unit, level: 1, labels: [builder, host, storage], duration_seconds: 9.14}
+  tools/n2m/tests/test_host_library.py: {kind: unit, level: 1, labels: [builder, host, storage], duration_seconds: 8.98}
   tools/n2m/tests/test_host_play.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 0.11}
   tools/n2m/tests/test_import_check.py: {kind: unit, level: 0, labels: [builder, python-tb], duration_seconds: 0.24}
   tools/n2m/tests/test_intel_adc.py: {kind: unit, level: 0, labels: [builder, memory], duration_seconds: 0.13}
@@ -647,7 +648,6 @@ units:
   uart-run-dots: {kind: sim, level: 2, labels: [uart], duration_seconds: 1.57}
   uart-run-dots-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 1.05}
   uart-run-dots-wire: {kind: sim, level: 2, labels: [uart], duration_seconds: 42.21}
-  library-peer: {kind: sim, level: 1, labels: [host, python-tb, storage, uart], duration_seconds: 0.00}
   uart-sdram: {kind: sim, level: 1, labels: [host, storage, uart], duration_seconds: 2.62}
   uart-sdram-fault: {kind: sim, level: 1, labels: [fault, host, storage, uart], duration_seconds: 2.30}
   uart-serial: {kind: sim, level: 2, labels: [uart], duration_seconds: 2.71}
