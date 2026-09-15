@@ -321,6 +321,30 @@ class FpgaTests(unittest.TestCase):
         self.assertEqual(record['commands'][-1]['exit_code'], 7)
         self.assertIn('failed', log.read_text())
 
+    def test_generator_execute_retries_only_the_silent_exit_three(self):
+        counter = self.build / 'attempts.txt'
+        script = ("import sys, pathlib; p = pathlib.Path(sys.argv[1]); n = int(p.read_text()) + 1 if p.exists() else 1; "
+                  "p.write_text(str(n)); sys.exit(3 if n < int(sys.argv[2]) else 0)")
+        record = {'commands': [], 'classified_diagnostics': []}
+        log = self.build / 'generate-pll.log'
+        fpga.generator_execute([sys.executable, '-c', script, str(counter), '3'], self.build, log, 5, record, self.build)
+        self.assertEqual([c['exit_code'] for c in record['commands']], [3, 3, 0])
+        self.assertEqual([c.get('retried') for c in record['commands']], [True, True, None])
+        self.assertEqual([(r['attempt'], r['exit_code'], r['log']) for r in record['generator_retries']],
+                         [(1, 3, 'generate-pll.log'), (2, 3, 'generate-pll.log')])
+        counter.unlink()
+        record = {'commands': [], 'classified_diagnostics': []}
+        with self.assertRaisesRegex(RuntimeError, 'Quartus exit 3'):
+            fpga.generator_execute([sys.executable, '-c', script, str(counter), '9'], self.build, log, 5, record, self.build)
+        self.assertEqual([c['exit_code'] for c in record['commands']], [3] * fpga.GENERATOR_ATTEMPTS)
+        self.assertEqual(len(record['generator_retries']), fpga.GENERATOR_ATTEMPTS - 1)
+        for code in ("print('generator diagnostic'); raise SystemExit(3)", "raise SystemExit(7)"):
+            record = {'commands': [], 'classified_diagnostics': []}
+            with self.assertRaises(RuntimeError):
+                fpga.generator_execute([sys.executable, '-c', code], self.build, log, 5, record, self.build)
+            self.assertEqual(len(record['commands']), 1, 'a reported or different failure is not retried')
+            self.assertNotIn('generator_retries', record)
+
     def test_execute_sets_the_allocator_override_for_the_child_only(self):
         record = {'commands': [], 'classified_diagnostics': []}
         log = self.build / 'environment.log'
