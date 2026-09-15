@@ -713,9 +713,9 @@ cannot reuse an older PASS. Vendor source is never copied into tracked files.
 
 `intel_mixed_mode_instances` named the exact vendor instances expected to emit
 the reviewed model's mixed-port coercion warning. This inventory was part of
-the Questa descriptor and fingerprint; no registered target declares it, and the
-validator refuses it under `verilator` because the double emits no coercion
-diagnostic. The forbidden collision it classified is checked under both
+the Questa descriptor and fingerprint; no `verilator` target declares it (the
+Python `questa` targets keep theirs until their migration), and the validator
+refuses it under `verilator` because the double emits no coercion diagnostic. The forbidden collision it classified is checked under both
 simulators by the wrapper's `INTEL_RAM_MIXED_PORT_A/B` assertions, which
 `intel-memory-collision` witnesses. Only the pinned source's exact two-line time-zero
 diagnostic is classified, and only during runtime. Missing, duplicate,
