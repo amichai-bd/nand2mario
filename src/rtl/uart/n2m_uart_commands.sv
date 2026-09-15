@@ -88,7 +88,23 @@ module n2m_uart_commands (
     output logic [n2m_interfaces_pkg::SDRAM_LINE_BYTES*8-1:0] sdram_request_data,
     input var logic sdram_request_ready,
     input var logic sdram_response_valid,
-    input var logic [n2m_interfaces_pkg::SDRAM_LINE_BYTES*8-1:0] sdram_response_data
+    input var logic [n2m_interfaces_pkg::SDRAM_LINE_BYTES*8-1:0] sdram_response_data,
+    // Loader profile owner (wiki/src/rtl/cartridge/MAS_loader_profile.md#host-interaction).
+    input var logic loader_copy_busy,
+    input var logic loader_swap_busy,
+    input var logic engine_invalidate,
+    input var logic engine_publish,
+    input var logic [7:0] engine_profile,
+    input var logic [31:0] library_status,
+    input var logic [31:0] library_key1,
+    input var logic engine_pause,
+    input var logic engine_reset_request,
+    output logic engine_reset_accept,
+    output logic engine_reset_done,
+    output logic host_session,
+    output logic host_loading,
+    output logic host_port_busy,
+    output logic library_return
 );
     typedef enum logic [4:0] {
         IDLE, ARG_FETCH, ARG_USE, VALIDATE, CORE_START, CORE_WAIT,
@@ -112,6 +128,7 @@ module n2m_uart_commands (
     logic sdram_write_selected;
     logic [n2m_uart_pkg::UART_ADDRESS_BITS-1:0] index, index_next;
     logic loading, loading_next, image_valid_next;
+    logic engine_invalid, engine_invalid_next, load_begin_hold, library_control_write;
     logic [7:0] profile_next, reply_status, reply_status_next;
     logic [15:0] reply_length, reply_length_next;
     logic [n2m_interfaces_pkg::SNAPSHOT_BYTES*8-1:0] reply_value, reply_value_next;
@@ -148,14 +165,29 @@ module n2m_uart_commands (
     assign begin_fields = arguments[n2m_interfaces_pkg::LOAD_BEGIN_BYTES*8-1:0];
     assign range_fields = arguments[n2m_interfaces_pkg::READ_RANGE_BYTES*8-1:0];
     assign peek_fields = arguments[n2m_interfaces_pkg::PEEK_RANGE_BYTES*8-1:0];
-    assign endpoint_state = loading ? n2m_interfaces_pkg::STATE_LOADING : (paused ? n2m_interfaces_pkg::STATE_PAUSED : n2m_interfaces_pkg::STATE_RUNNING);
+    // A swap in progress and an engine-invalidated image both report LOADING.
+    assign endpoint_state = loading || loader_swap_busy || engine_invalid ? n2m_interfaces_pkg::STATE_LOADING
+        : (paused ? n2m_interfaces_pkg::STATE_PAUSED : n2m_interfaces_pkg::STATE_RUNNING);
+    // The endpoint's claim on the console and the ROM host port, seen by the
+    // loader before the session or readback registers.
+    assign load_begin_hold = state == VALIDATE && request_header.command == n2m_interfaces_pkg::COMMAND_LOAD_BEGIN &&
+        validation_status == n2m_interfaces_pkg::STATUS_OK;
+    assign host_session = loading || load_begin_hold;
+    assign host_loading = loading;
+    assign host_port_busy = load_start || load_busy;
+    assign library_control_write = request_header.command == n2m_interfaces_pkg::COMMAND_WRITE_HOST &&
+        write_fields.address == n2m_interfaces_pkg::HOST_REG_LIBRARY_CONTROL;
+    assign library_return = state == VALIDATE && library_control_write && validation_status == n2m_interfaces_pkg::STATUS_OK &&
+        write_fields.value == n2m_interfaces_pkg::LIBRARY_CONTROL_RETURN && !reset_sys;
     assign packet_read = (state == ARG_FETCH || state == WRITE_FETCH) && !reset_sys;
     assign packet_address = state == ARG_FETCH ? n2m_uart_pkg::UART_ADDRESS_BITS'(n2m_interfaces_pkg::PACKET_HEADER_BYTES + arg_index)
         : n2m_uart_pkg::UART_ADDRESS_BITS'(n2m_interfaces_pkg::PACKET_HEADER_BYTES + n2m_interfaces_pkg::OFFSET_BYTES) + index;
-    assign core_start = state == CORE_START;
+    // The engine's reset request may hold the core control owner.
+    assign core_start = state == CORE_START && !core_busy;
     assign core_command = request_header.command == n2m_interfaces_pkg::COMMAND_LOAD_BEGIN || request_header.command == n2m_interfaces_pkg::COMMAND_LOAD_END
         ? n2m_interfaces_pkg::COMMAND_RESET : (request_header.command == n2m_interfaces_pkg::COMMAND_WRITE_HOST ? n2m_interfaces_pkg::COMMAND_INPUT : request_header.command);
-    assign load_start = state == LOAD_START;
+    // The engine owns the ROM host port while it copies; load operations wait.
+    assign load_start = state == LOAD_START && !loader_copy_busy;
     always_comb begin
         case (request_header.command)
             n2m_interfaces_pkg::COMMAND_LOAD_BEGIN: load_operation = n2m_uart_pkg::UART_LOAD_BEGIN;
@@ -200,13 +232,14 @@ module n2m_uart_commands (
         .buttons(buttons), .input_source(input_source), .physical_buttons(physical_buttons),
         .effective_buttons(effective_buttons), .snapshot_valid(snapshot_valid), .snapshot_metadata(snapshot_metadata),
         .build_id(build_id), .io_lcdc, .io_stat, .io_ly, .io_lyc, .io_scy, .io_scx, .io_wy, .io_wx, .io_bgp, .io_obp0, .io_obp1, .io_div, .io_tima, .io_tma, .io_tac, .io_if, .io_ie,
+        .library_status(library_status), .library_key1(library_key1),
         .address_valid(host_address_valid), .data(host_data)
     );
     n2m_uart_validate u_validate (
         .header(request_header), .packet_bytes(request_bytes), .arguments(arguments),
         .forced_status(command_forced_status), .endpoint_state(endpoint_state),
         .image_valid(image_valid), .snapshot_valid(snapshot_valid), .host_address_valid(host_address_valid),
-        .sdram_ready(sdram_initialized),
+        .sdram_ready(sdram_initialized), .swap_busy(loader_swap_busy),
         .status(validation_status), .response_length(validation_length)
     );
     n2m_uart_sdram u_sdram (
@@ -227,6 +260,8 @@ module n2m_uart_commands (
         .step_budget(arguments[31:0]), .input_write(core_input), .gb_tick(gb_tick),
         .paused(paused), .core_initialized(core_initialized), .instruction_complete(instruction_complete),
         .retirement_valid(retirement_valid), .cpu_stopped(cpu_stopped), .pause_request(pause_request),
+        .engine_pause(engine_pause), .engine_reset_request(engine_reset_request),
+        .engine_reset_accept(engine_reset_accept), .engine_reset_done(engine_reset_done),
         .core_reset(core_reset), .accepted_input(accepted_input), .epoch(epoch), .dot_count(dot_count),
         .retirement_count(retirement_count), .busy(core_busy), .done(core_done), .status(core_status),
         .completed_dot(core_completed_dot), .run_dots_result(run_dots_result)
@@ -259,6 +294,7 @@ module n2m_uart_commands (
         reply_status_next = reply_status;
         reply_length_next = reply_length;
         reply_value_next = reply_value;
+        engine_invalid_next = engine_invalid;
         case (state)
             IDLE: if (command_valid) begin
                 arguments_next = 0;
@@ -285,10 +321,18 @@ module n2m_uart_commands (
                 else case (request_header.command)
                     n2m_interfaces_pkg::COMMAND_PING: begin reply_value_next[31:0] = n2m_interfaces_pkg::WIRE_ABI; state_next = REPLY_START; end
                     n2m_interfaces_pkg::COMMAND_READ_HOST: begin reply_value_next[31:0] = host_data; state_next = REPLY_START; end
-                    n2m_interfaces_pkg::COMMAND_RESET, n2m_interfaces_pkg::COMMAND_RUN, n2m_interfaces_pkg::COMMAND_HALT, n2m_interfaces_pkg::COMMAND_STEP, n2m_interfaces_pkg::COMMAND_RUN_DOTS, n2m_interfaces_pkg::COMMAND_INPUT, n2m_interfaces_pkg::COMMAND_WRITE_HOST: state_next = CORE_START;
-                    n2m_interfaces_pkg::COMMAND_LOAD_BEGIN: begin
+                    n2m_interfaces_pkg::COMMAND_RESET, n2m_interfaces_pkg::COMMAND_RUN, n2m_interfaces_pkg::COMMAND_HALT, n2m_interfaces_pkg::COMMAND_STEP, n2m_interfaces_pkg::COMMAND_RUN_DOTS, n2m_interfaces_pkg::COMMAND_INPUT: state_next = CORE_START;
+                    // The menu-return write is the loader's, not an input write.
+                    n2m_interfaces_pkg::COMMAND_WRITE_HOST: begin
+                        if (library_control_write) begin
+                            reply_value_next[63:0] = dot_count;
+                            state_next = REPLY_START;
+                        end else state_next = CORE_START;
+                    end
+                    // A window fill in progress finishes before the session
+                    // opens, so the fill never writes into a host load.
+                    n2m_interfaces_pkg::COMMAND_LOAD_BEGIN: if (!loader_copy_busy) begin
                         loading_next = 1;
-                        image_valid_next = 0;
                         profile_next = begin_fields.profile;
                         state_next = CORE_START;
                     end
@@ -303,9 +347,14 @@ module n2m_uart_commands (
             // lines through the reply path as READ_ROM does.
             SDRAM_START: state_next = request_header.command == n2m_interfaces_pkg::COMMAND_SDRAM_WRITE ? SDRAM_WAIT : REPLY_START;
             SDRAM_WAIT: if (sdram_done) state_next = REPLY_START;
-            CORE_START: state_next = CORE_WAIT;
+            CORE_START: if (!core_busy) state_next = CORE_WAIT;
             CORE_WAIT: if (core_done) begin
-                if (request_header.command == n2m_interfaces_pkg::COMMAND_LOAD_BEGIN) state_next = LOAD_START;
+                // The old image stays valid until the core is paused and reset,
+                // so a running CPU never loses a read response to the session.
+                if (request_header.command == n2m_interfaces_pkg::COMMAND_LOAD_BEGIN) begin
+                    image_valid_next = 0;
+                    state_next = LOAD_START;
+                end
                 else begin
                     if (request_header.command == n2m_interfaces_pkg::COMMAND_LOAD_END) begin loading_next = 0; image_valid_next = 1; end
                     reply_status_next = core_status;
@@ -316,7 +365,7 @@ module n2m_uart_commands (
                     state_next = REPLY_START;
                 end
             end
-            LOAD_START: begin
+            LOAD_START: if (!loader_copy_busy) begin
                 index_next = 0;
                 if (request_header.command == n2m_interfaces_pkg::COMMAND_LOAD_WRITE) state_next = WRITE_FETCH;
                 else if (request_header.command == n2m_interfaces_pkg::COMMAND_READ_ROM) state_next = REPLY_START;
@@ -367,6 +416,18 @@ module n2m_uart_commands (
             REPLY_ROM, REPLY_SDRAM, REPLY_WAIT: if (reply_done) state_next = IDLE;
             default: state_next = IDLE;
         endcase
+        // The engine is the second writer of image_valid and PROFILE: cleared
+        // before its first ROM byte, set only after the CRC compared equal.
+        if (engine_invalidate) begin
+            image_valid_next = 0;
+            profile_next = 0;
+            engine_invalid_next = 1;
+        end
+        if (engine_publish) begin
+            image_valid_next = 1;
+            profile_next = engine_profile;
+        end
+        if (image_valid_next) engine_invalid_next = 0;
     end
     `DFF_ARST_VAL(state, state_next, clk_sys, reset_sys, IDLE)
     `DFF_ARST_VAL(arguments, arguments_next, clk_sys, reset_sys, '0)
@@ -375,6 +436,7 @@ module n2m_uart_commands (
     `DFF_ARST_VAL(index, index_next, clk_sys, reset_sys, '0)
     `DFF_ARST_VAL(loading, loading_next, clk_sys, reset_sys, 1'b0)
     `DFF_ARST_VAL(image_valid, image_valid_next, clk_sys, reset_sys, 1'b0)
+    `DFF_ARST_VAL(engine_invalid, engine_invalid_next, clk_sys, reset_sys, 1'b0)
     `DFF_ARST_VAL(profile, profile_next, clk_sys, reset_sys, '0)
     `DFF_ARST_VAL(reply_status, reply_status_next, clk_sys, reset_sys, n2m_interfaces_pkg::STATUS_OK)
     `DFF_ARST_VAL(reply_length, reply_length_next, clk_sys, reset_sys, '0)
@@ -392,6 +454,8 @@ module n2m_uart_commands (
         !peek_read || !(frame_read || rom_read || rom_write || snapshot_request))
     `N2M_ASSERT(UART_COMMAND_WRITE_READY, clk_sys, reset_sys, state == WRITE_USE |-> load_input_ready)
     `N2M_ASSERT(UART_COMMAND_LOAD_PAUSED, clk_sys, reset_sys, rom_write |-> loading && paused)
+    `N2M_ASSERT(UART_COMMAND_LOAD_PORT_FREE, clk_sys, reset_sys, (rom_write || rom_read) |-> !loader_copy_busy)
+    `N2M_ASSERT(UART_COMMAND_ENGINE_SESSION, clk_sys, reset_sys, !(engine_invalidate && loading))
     `N2M_ASSERT(UART_COMMAND_PACKET_RANGE, clk_sys, reset_sys,
         packet_read |-> packet_address < request_bytes - 2)
     `N2M_ASSERT(UART_COMMAND_SDRAM_READY, clk_sys, reset_sys, sdram_start |-> sdram_initialized && !sdram_busy)

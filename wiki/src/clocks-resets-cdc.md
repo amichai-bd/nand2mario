@@ -222,7 +222,7 @@ the last acknowledged offer, so no unsynchronized bank-return bus is needed.
 | Pixel status/counters -> host | Separate request/ack snapshot mailbox, stable bundle until ack; never sample a live multi-bit counter |
 | Host commands/input -> DMG | Same system domain; ordered synchronous handshakes, no CDC |
 | SDRAM pins <-> system | Source-synchronous I/O, not a CDC: `DRAM_CLK` is `clk_sys` inverted at the pin and every controller register is in `clk_sys`; the [SDRAM contract](rtl/storage/MAS_sdram.md#clock-relationship-and-constraints) owns the relationship and I/O delays. The `sdram-proof` fit meets them with the initial inverted-clock relationship: worst `sdram_clk` output setup slack 9.03 ns and hold slack 18.7 ns across the three corners, every system-clock path including the read-data capture at 6.30 ns or better, zero unconstrained ports |
-| KEY1 -> system | Two-flop level synchronizer, then debounce and hold counting in the [loader profile](rtl/cartridge/MAS_loader_profile.md#key1-return) |
+| KEY1 -> system | Two-flop level synchronizer ([`n2m_loader_key1`](../../src/rtl/cartridge/n2m_loader_key1.sv), `key_meta`/`key_sync` with the synchronizer attribute), then debounce and hold counting in the [loader profile](rtl/cartridge/MAS_loader_profile.md#key1-return); `PIN_A7`, 3.3 V Schmitt trigger, the same 0-2 ns bookkeeping input delay and checked first-stage exception as KEY0 and UART RX in the `v05` board images |
 
 No other crossing is permitted without updating this inventory. Host frame
 readback must take a stable snapshot or explicit bank lease in its contract;

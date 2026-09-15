@@ -71,6 +71,7 @@ module tb_io_peek;
         .io_scx(a_scx), .io_wy(a_wy), .io_wx(a_wx), .io_bgp(a_bgp), .io_obp0(a_obp0),
         .io_obp1(a_obp1), .io_div(a_div), .io_tima(a_tima), .io_tma(a_tma), .io_tac(a_tac),
         .io_if({3'b0, a_if_stored}), .io_ie(a_ie_stored),
+        .library_status(32'd0), .library_key1(32'd0),
         .address_valid(peek_valid), .data(peek_data)
     );
 

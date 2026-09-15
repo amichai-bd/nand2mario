@@ -10,7 +10,7 @@ own numeric ranges, fills, profile and load semantics.
 
 | Store | Sole storage owner | Behavior owner and access |
 |---|---|---|
-| Direct ROM | Memory, generated exact profile size | Host endpoint validates LOAD_BEGIN/presence/CRC and controls loading; memory accepts bounded byte offsets and supports complete readback. CPU ROM writes never load bytes. |
+| Direct ROM | Memory, generated exact profile size | Host endpoint validates LOAD_BEGIN/presence/CRC and controls loading; memory accepts bounded byte offsets and supports complete readback. CPU ROM writes never load bytes. The [loader profile](../cartridge/MAS_loader_profile.md#copy-engine-and-rom-store-port-ownership) is the second writer of the host port, through its port arbiter, and observes the resolved CPU ROM write commits as its bank and select registers. |
 | WRAM | Memory | CPU commits and the separately arbitrated DMA read port. Echo uses the same low thirteen address bits, with no second store. |
 | HRAM | Memory | CPU commits; no alias at IE or the host address range. |
 | VRAM | Memory | CPU access policy comes from PPU/arbitration; PPU reads the same store through its fixed service port. |
@@ -277,7 +277,10 @@ corruption behavior. Treat its read result and corruption event independently.
 ### Absent cartridge RAM in the direct profile
 
 The approved digital profile returns FF for every A000-BFFF read and ignores
-all writes to that range. It allocates no cartridge RAM and sends no prepare
+all writes to that range. In the [loader profile](../cartridge/MAS_loader_profile.md#address-map-in-the-loader-profile)
+the system composition replaces the read byte at A000-A003 with the loader's
+registered status bytes, and at 4000-7FFF with FF while a window fill runs; the
+decoder, dispatch and this owner's write handling are unchanged. It allocates no cartridge RAM and sends no prepare
 or commit to an external owner. Read service is combinational, with the same
 reset, initialization and sticky-fault masking as other CPU responses.
 

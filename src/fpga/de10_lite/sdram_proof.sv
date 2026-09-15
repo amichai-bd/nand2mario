@@ -86,7 +86,12 @@ module sdram_proof #(
         .sdram_initialized(sdram_initialized), .sdram_request_valid(sdram_request_valid),
         .sdram_request_write(sdram_request_write), .sdram_request_address(sdram_request_address),
         .sdram_request_data(sdram_request_data), .sdram_request_ready(sdram_request_ready),
-        .sdram_response_valid(sdram_response_valid), .sdram_response_data(sdram_response_data)
+        .sdram_response_valid(sdram_response_valid), .sdram_response_data(sdram_response_data),
+        // No loader profile in this image: the host bridge is the only requester.
+        .loader_copy_busy(1'b0), .loader_swap_busy(1'b0), .engine_invalidate(1'b0), .engine_publish(1'b0),
+        .engine_profile(8'd0), .library_status(32'd0), .library_key1(32'd0), .engine_pause(1'b0),
+        .engine_reset_request(1'b0), .engine_reset_accept(), .engine_reset_done(), .host_session(), .host_loading(),
+        .host_port_busy(), .library_return()
     );
     n2m_sdram_ctrl u_sdram (
         .clk_sys(clk_sys), .reset_sys(reset_sys),

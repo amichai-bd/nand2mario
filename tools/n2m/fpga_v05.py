@@ -1,14 +1,21 @@
 """Scoped v0.5 composition crossing reports using the existing VGA profile."""
 from . import fpga_vga, fpga_controls, fpga_memory_stores
 
+# The UART receiver and the loader profile's KEY1 return both end at checked
+# two-flop synchronizers (wiki/src/rtl/cartridge/MAS_loader_profile.md#key1-return).
 UART_CHAINS = (("uart", "uart_rx", "u_system|u_uart|u_serial_rx|rx_meta",
-                "u_system|u_uart|u_serial_rx|rx_sync"),)
-BOARD_INPUTS = {"clk_reference": "PIN_P11", "board_reset_n": "PIN_B8",
+                "u_system|u_uart|u_serial_rx|rx_sync"),
+               ("key1", "key1_n", "u_system|u_loader|u_key1|key_meta",
+                "u_system|u_loader|u_key1|key_sync"))
+BOARD_INPUTS = {"clk_reference": "PIN_P11", "board_reset_n": "PIN_B8", "key1_n": "PIN_A7",
                 "uart_rx": "PIN_AB5", "uart_tx": "PIN_AB6"}
+# The DE10-Lite SDRAM pins (Terasic pin data) the composed images drive
+# through the loader's storage arbiter; the SDRAM contract owns the timing.
+DRAM_PINS = {"DRAM_ADDR[0]": "PIN_U17", "DRAM_ADDR[1]": "PIN_W19", "DRAM_ADDR[2]": "PIN_V18", "DRAM_ADDR[3]": "PIN_U18", "DRAM_ADDR[4]": "PIN_U19", "DRAM_ADDR[5]": "PIN_T18", "DRAM_ADDR[6]": "PIN_T19", "DRAM_ADDR[7]": "PIN_R18", "DRAM_ADDR[8]": "PIN_P18", "DRAM_ADDR[9]": "PIN_P19", "DRAM_ADDR[10]": "PIN_T20", "DRAM_ADDR[11]": "PIN_P20", "DRAM_ADDR[12]": "PIN_R20", "DRAM_BA[0]": "PIN_T21", "DRAM_BA[1]": "PIN_T22", "DRAM_DQ[0]": "PIN_Y21", "DRAM_DQ[1]": "PIN_Y20", "DRAM_DQ[2]": "PIN_AA22", "DRAM_DQ[3]": "PIN_AA21", "DRAM_DQ[4]": "PIN_Y22", "DRAM_DQ[5]": "PIN_W22", "DRAM_DQ[6]": "PIN_W20", "DRAM_DQ[7]": "PIN_V21", "DRAM_DQ[8]": "PIN_P21", "DRAM_DQ[9]": "PIN_J22", "DRAM_DQ[10]": "PIN_H21", "DRAM_DQ[11]": "PIN_H22", "DRAM_DQ[12]": "PIN_G22", "DRAM_DQ[13]": "PIN_G20", "DRAM_DQ[14]": "PIN_G19", "DRAM_DQ[15]": "PIN_F22", "DRAM_CAS_N": "PIN_U21", "DRAM_CKE": "PIN_N22", "DRAM_CLK": "PIN_L14", "DRAM_CS_N": "PIN_U20", "DRAM_DQML": "PIN_V22", "DRAM_RAS_N": "PIN_U22", "DRAM_DQMH": "PIN_J21", "DRAM_WE_N": "PIN_V20"}
 BOARD_PINS = dict(BOARD_INPUTS, **dict(zip(fpga_vga.PORTS, (
     "PIN_AA1", "PIN_V1", "PIN_Y2", "PIN_Y1",
     "PIN_W1", "PIN_T2", "PIN_R2", "PIN_R1",
-    "PIN_P1", "PIN_T1", "PIN_P4", "PIN_N2", "PIN_N3", "PIN_N1"))))
+    "PIN_P1", "PIN_T1", "PIN_P4", "PIN_N2", "PIN_N3", "PIN_N1"))), **DRAM_PINS)
 
 
 def board_target(target):
