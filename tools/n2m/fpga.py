@@ -391,7 +391,7 @@ def timing_evidence(folder, target, *, build_id=None):
         if target["top"] == "adc_proof":
             lock_event = adc_evidence["lock_event"]
     vga_evidence = fpga_vga.verify(folder, lcd=target["top"] == "ppu_proof", controls=target["top"] == "controls_proof", **system_profile) if target.get("top") in ("vga_proof", "ppu_proof", "controls_proof") else None
-    memory_evidence = fpga_intel_memory.verify(folder) if target.get("top") == "intel_memory_proof" else None
+    memory_evidence = fpga_intel_memory.verify(folder, **{"system_clock": fpga_pll.SYSTEM_NET} if parallel else {}) if target.get("top") == "intel_memory_proof" else None
     if target.get("top") == "n2m_memory_stores":
         memory_evidence = fpga_memory_stores.verify(folder)
     for name, count in rows:
