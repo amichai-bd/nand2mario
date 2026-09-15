@@ -98,15 +98,22 @@ from retained manifests; manual entry remains available. Applicable optional
 flags live under **Advanced options** with the ordinary CLI defaults. Options
 that do not apply to the selected simulator, doctor profile, or mutually
 exclusive input stay hidden. `host keyboard` also hides
-`--endpoint-restarted`. `--json` is intentionally absent.
+`--endpoint-restarted`. The doctor asks for scope first: simulation scope then
+offers either backend, while the full hardware environment fixes Questa and
+Windows because Quartus, JTAG and UART discovery are Windows-owned. `--json` is
+intentionally absent.
 
 The final screen names the native host and whether the selection builds, runs a
 simulation, deletes a build, programs the FPGA, transmits over UART, or launches
-a GUI. It displays the actual Python interpreter and a copyable relative script
-path, quoted for POSIX, PowerShell, or classic `conhost.exe cmd.exe` as required.
-`host keyboard` names that classic console explicitly; Windows Terminal,
-PowerShell and WSL are not valid keyboard hosts. This display is not the
-execution mechanism. **Run now** starts
+a GUI. A runnable current-host command displays the actual Python interpreter.
+A foreign-host command uses the repository's portable `python` spelling for
+Windows or `python3` for WSL, because the current interpreter belongs to the
+wrong host. The relative script and arguments are quoted for POSIX, PowerShell,
+or classic `conhost.exe cmd.exe` as required. `host keyboard` names that classic
+console explicitly. It offers **Run now** only after a read-only check proves
+the TUI's parent is `cmd.exe` and its console window is visible and foreground;
+Windows Terminal, PowerShell and WSL get a copy instruction instead. This
+display is not the execution mechanism. **Run now** starts
 `[sys.executable, <absolute tools/build.py>, ...]` or the existing
 `gb_launcher.py` as an argument vector with `shell=False`. Builder selections
 therefore re-enter the public dispatcher; `sim test` and `sim preflight` remain

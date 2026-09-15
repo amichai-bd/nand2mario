@@ -108,6 +108,10 @@ class Terminal:
             self.stdout.write("\x1b[?25l")
             self.stdout.flush()
         except Exception:
+            if self._saved is not None:
+                import termios
+                termios.tcsetattr(self.stdin.fileno(), termios.TCSADRAIN, self._saved)
+                self._saved = None
             if self._windows_console is not None:
                 self._windows_console.__exit__(*sys.exc_info())
             raise

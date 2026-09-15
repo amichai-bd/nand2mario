@@ -184,6 +184,23 @@ class TuiTests(unittest.TestCase):
         terminal = ScriptedTerminal(["ENTER", *value, "ENTER"])
         self.assertEqual(tui._reviewed_build_id(tui.Menu(terminal), Path("missing-root")), value)
 
+    def test_manual_reviewed_host_identity_reprompts_and_normalizes(self):
+        value = "AB" * 16
+        terminal = ScriptedTerminal(["ENTER", *"wrong", "ENTER", *value, "ENTER"])
+        self.assertEqual(tui._reviewed_build_id(tui.Menu(terminal), Path("missing-root")), value.lower())
+        self.assertIn("Build ID must be exactly 32 hexadecimal digits", "\n".join(terminal.frames[-1]))
+
+    def test_doctor_full_environment_is_questa_on_windows_only(self):
+        terminal = ScriptedTerminal(["DOWN", "ENTER", "ENTER"])
+        plan = tui._doctor_plan(tui.Menu(terminal), ROOT)
+        self.assertEqual(plan.argv, ["doctor", "--profile", "environment", "--sim", "questa"])
+        self.assertEqual(plan.host, "Windows PowerShell")
+        backend_frame = "\n".join(terminal.frames[-1])
+        self.assertIn("Questa", backend_frame)
+        self.assertNotIn("Verilator", backend_frame)
+        self.assertTrue(tui.compatible_host(plan, "Windows"))
+        self.assertFalse(tui.compatible_host(plan, "Linux"))
+
     def test_current_uart_candidates_reuse_read_only_discovery(self):
         with tempfile.TemporaryDirectory(prefix="tui uart ") as temporary:
             root = Path(temporary)
@@ -330,11 +347,32 @@ class TuiTests(unittest.TestCase):
         command = tui.command_text(plan, ROOT, "Windows", executable=r"C:\Python Folder\python.exe")
         self.assertTrue(command.startswith('"C:\\Python Folder\\python.exe" tools/build.py host keyboard'))
         self.assertIn('"COM 7"', command)
-        self.assertTrue(tui.compatible_host(plan, "Windows"))
+        self.assertTrue(tui.compatible_host(plan, "Windows", classic_console=lambda: True))
+        self.assertFalse(tui.compatible_host(plan, "Windows", classic_console=lambda: False))
         self.assertFalse(tui.compatible_host(plan, "Linux"))
         terminal = ScriptedTerminal(["DOWN", "ENTER"])
         self.assertEqual(tui.choose_execution(tui.Menu(terminal), plan, ROOT, "Linux"), "cancel")
         self.assertIn("Native host: Windows classic conhost.exe cmd.exe", "\n".join(terminal.frames[-1]))
+
+        with patch("n2m.host.transport.open_serial") as serial:
+            valid = ScriptedTerminal(["ENTER"])
+            self.assertEqual(tui.choose_execution(tui.Menu(valid), plan, ROOT, "Windows",
+                                                  classic_console=lambda: True), "run")
+            invalid = ScriptedTerminal(["DOWN", "ENTER"])
+            self.assertEqual(tui.choose_execution(tui.Menu(invalid), plan, ROOT, "Windows",
+                                                  classic_console=lambda: False), "cancel")
+            self.assertNotIn("Run now", "\n".join(invalid.frames[-1]))
+            serial.assert_not_called()
+
+    def test_foreign_host_commands_use_the_destination_python_launcher(self):
+        windows = tui.Plan(["fpga", "build", "v05-board", "--quartus-bin", "tools"],
+                           ("fpga", "build"), "Windows PowerShell", "build")
+        wsl = tui.Plan(["sim", "test", "builder-smoke", "--sim", "verilator"],
+                       ("sim", "test"), "WSL Linux", "simulate")
+        with patch("n2m.tui.sys.executable", "/usr/bin/python3"):
+            self.assertTrue(tui.command_text(windows, ROOT, "Linux").startswith("python tools/build.py"))
+        with patch("n2m.tui.sys.executable", r"C:\Python Folder\python.exe"):
+            self.assertTrue(tui.command_text(wsl, ROOT, "Windows").startswith("python3 tools/build.py"))
 
     def test_sparse_and_backend_specific_level_label_pairs_remain_selectable(self):
         model = {"labels": {"audio": "audio checks", "builder": "builder checks"},
@@ -426,6 +464,26 @@ class TuiTests(unittest.TestCase):
             pass
         self.assertEqual(calls, [(7, 0x7), (7, 0x2)])
 
+    @unittest.skipIf(os.name == "nt", "POSIX PTY contract")
+    def test_posix_enter_write_failure_restores_terminal_mode(self):
+        import termios
+        master, slave = os.openpty()
+        reader = os.fdopen(os.dup(slave), "r", encoding="utf-8")
+        class BrokenOutput:
+            def write(self, _):
+                raise OSError("output failed")
+            def flush(self):
+                pass
+        try:
+            before = termios.tcgetattr(slave)
+            with self.assertRaisesRegex(OSError, "output failed"):
+                tui.Terminal(stdin=reader, stdout=BrokenOutput(), system="Linux").__enter__()
+            self.assertEqual(termios.tcgetattr(slave), before)
+        finally:
+            reader.close()
+            os.close(master)
+            os.close(slave)
+
     def test_each_leaf_plan_is_complete_before_review(self):
         incomplete = tui.Plan(["fpga", "build", "v05-board"], ("fpga", "build"),
                               "Windows PowerShell", "build")
@@ -485,9 +543,10 @@ class TuiTests(unittest.TestCase):
 
     def test_non_tty_and_cancel_never_spawn_anything(self):
         runner = Mock()
-        with patch("sys.stderr", new=io.StringIO()) as errors:
+        with patch("sys.stderr", new=io.StringIO()) as errors, \
+                patch("n2m.tui.sys.executable", "/usr/bin/python3"):
             self.assertEqual(tui.run(ROOT, terminal=ScriptedTerminal([], False), runner=runner), 2)
-        self.assertIn("--help", errors.getvalue())
+        self.assertIn("`/usr/bin/python3 tools/build.py --help`", errors.getvalue())
         runner.assert_not_called()
         with patch("n2m.tui.select_command", return_value=tui.CANCEL):
             self.assertEqual(tui.run(ROOT, terminal=ScriptedTerminal([]), runner=runner), 0)

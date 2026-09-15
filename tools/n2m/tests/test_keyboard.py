@@ -13,7 +13,7 @@ from n2m import generated_interfaces as abi
 from n2m.host.client import Client, UncertainCompletion
 from n2m.host.keyboard import run
 from n2m.host.command import run as command
-from n2m.host.console import Console
+from n2m.host.console import Console, classic_cmd_console_available
 from n2m.host.transport import session
 from n2m.doctor import select_uart
 from n2m.interface_codec import decode_packet, encode_packet, pack_record, unpack_record
@@ -199,6 +199,41 @@ class NativeConsoleTests(unittest.TestCase):
         with patch('n2m.host.console.os.name','nt'),patch('ctypes.WinDLL',side_effect=[kernel,user],create=True):
             with self.assertRaisesRegex(RuntimeError,'unsupported'):Console().__enter__()
         kernel.SetConsoleMode.assert_not_called()
+
+    def test_read_only_classic_cmd_probe_checks_parent_visibility_and_focus(self):
+        kernel,user=self.native()
+        for name in ('CreateToolhelp32Snapshot','Process32FirstW','Process32NextW','CloseHandle'):
+            setattr(kernel,name,Mock())
+        kernel.CreateToolhelp32Snapshot.return_value=11
+        rows=[(42,7,'python.exe'),(7,1,'cmd.exe')]
+        def row(out, value):
+            out._obj.pid,out._obj.parent,out._obj.executable=value
+            return True
+        kernel.Process32FirstW.side_effect=lambda snapshot,out:row(out,rows[0])
+        pending=iter(rows[1:])
+        def next_row(snapshot,out):
+            value=next(pending,None)
+            return row(out,value) if value else False
+        kernel.Process32NextW.side_effect=next_row
+        self.assertTrue(classic_cmd_console_available(
+            kernel=kernel,user=user,pid=42,system='Windows'))
+        kernel.SetConsoleMode.assert_not_called()
+        kernel.GetNumberOfConsoleInputEvents.assert_not_called()
+        kernel.ReadConsoleInputW.assert_not_called()
+
+        user.IsWindowVisible.return_value=False
+        self.assertFalse(classic_cmd_console_available(
+            kernel=kernel,user=user,pid=42,system='Windows'))
+        user.IsWindowVisible.return_value=True
+        user.GetForegroundWindow.return_value=99
+        self.assertFalse(classic_cmd_console_available(
+            kernel=kernel,user=user,pid=42,system='Windows'))
+        user.GetForegroundWindow.return_value=7
+        powershell=[(42,7,'python.exe'),(7,1,'powershell.exe')]
+        kernel.Process32FirstW.side_effect=lambda snapshot,out:row(out,powershell[0])
+        pending=iter(powershell[1:])
+        self.assertFalse(classic_cmd_console_available(
+            kernel=kernel,user=user,pid=42,system='Windows'))
 
     def test_read_failure_and_idle(self):
         kernel,user=self.native()

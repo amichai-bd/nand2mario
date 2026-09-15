@@ -11,6 +11,7 @@ import io
 import json
 from pathlib import Path
 import platform
+import re
 import shlex
 import subprocess
 import sys
@@ -102,9 +103,14 @@ def _reviewed_build_id(menu, root):
             return BACK
         if selected != "__manual__":
             return selected
-        value = menu.text("Reviewed 32-digit on-wire build ID")
-        if value is not BACK:
-            return value
+        title = "Reviewed 32-digit on-wire build ID"
+        while True:
+            value = menu.text(title)
+            if value is BACK:
+                break
+            if re.fullmatch(r"[0-9a-fA-F]{32}", value):
+                return value.lower()
+            title = "Build ID must be exactly 32 hexadecimal digits"
 
 
 def _quartus(menu, root):
@@ -169,10 +175,15 @@ def _sim_plan(menu, root):
 
 def _doctor_plan(menu, root):
     steps = [
-        ("sim", lambda _: _backend(menu)),
         ("profile", lambda _: menu.choose("Select readiness scope", [
             Choice("simulation", "Simulation", "Run the selected simulator smoke only"),
-            Choice("environment", "Full environment", "Also inspect Quartus, JTAG and UART without programming or transmission")]))]
+            Choice("environment", "Full Windows environment", "Inspect Questa, Quartus, JTAG and UART without programming or transmission")])),
+        ("sim", lambda answers: menu.choose(
+            "Select simulator" if answers["profile"] == "simulation" else "Full environment simulator",
+            [Choice("verilator", "Verilator", "Runs natively on WSL Linux; no license"),
+             Choice("questa", "Questa", "Runs natively on Windows PowerShell; license required")]
+            if answers["profile"] == "simulation" else
+            [Choice("questa", "Questa", "The full hardware environment is Windows-owned")]))]
     return _editable(menu, steps, lambda answers: Plan(
                 ["doctor", "--profile", answers["profile"], "--sim", answers["sim"]],
                 ("doctor",), _sim_host(answers["sim"]),
@@ -525,7 +536,13 @@ def final_argv(plan):
 def command_text(plan, root, system=None, executable=None):
     system = system or platform.system()
     program = "tools/gb_launcher.py" if plan.parser_path == ("launcher",) else "tools/build.py"
-    shown = [executable or sys.executable, program, *final_argv(plan)]
+    if executable is not None:
+        interpreter = executable
+    elif compatible_host(plan, system, classic_console=lambda: True):
+        interpreter = sys.executable
+    else:
+        interpreter = "python" if plan.host.startswith("Windows") else "python3"
+    shown = [interpreter, program, *final_argv(plan)]
     if plan.host == "Windows classic conhost.exe cmd.exe":
         return subprocess.list2cmdline(shown)
     return powershell_command(shown) if plan.host == "Windows PowerShell" or system == "Windows" else shlex.join(shown)
@@ -549,23 +566,28 @@ def validate_plan(plan, root=None):
         raise ValueError(detail[-1] if detail else f"invalid command (argparse exit {error.code})") from None
 
 
-def compatible_host(plan, system=None):
+def compatible_host(plan, system=None, classic_console=None):
     system = system or platform.system()
     if plan.host == "Windows PowerShell":
         return system == "Windows"
     if plan.host == "Windows classic conhost.exe cmd.exe":
-        return system == "Windows"
+        if system != "Windows":
+            return False
+        if classic_console is None:
+            from .host.console import classic_cmd_console_available
+            classic_console = classic_cmd_console_available
+        return bool(classic_console())
     if plan.host == "WSL Linux":
         return system != "Windows"
     return True
 
 
-def choose_execution(menu, plan, root, system=None):
+def choose_execution(menu, plan, root, system=None, classic_console=None):
     validate_plan(plan, root)
     command = command_text(plan, root, system)
     while True:
         lines = ["Review", "", f"Native host: {plan.host}", f"Effect: {plan.effect}", "", command, ""]
-        if compatible_host(plan, system):
+        if compatible_host(plan, system, classic_console):
             choices = [Choice("run", "Run now"), Choice("back", "Back to options"), Choice("cancel", "Cancel")]
             hint = "Nothing runs until Run now is selected."
         else:
@@ -578,7 +600,7 @@ def choose_execution(menu, plan, root, system=None):
         return selected
 
 
-def select_command(menu, root, system=None):
+def select_command(menu, root, system=None, classic_console=None):
     families = top_families()
     missing = set(families) - set(INTENTS)
     if missing:
@@ -606,7 +628,7 @@ def select_command(menu, root, system=None):
                 else:
                     plan = edited
                 continue
-            decision = choose_execution(menu, plan, root, system)
+            decision = choose_execution(menu, plan, root, system, classic_console)
             if decision == "back":
                 continue
             if decision == "cancel":
@@ -614,16 +636,19 @@ def select_command(menu, root, system=None):
             return plan
 
 
-def run(root=None, terminal=None, runner=subprocess.run, system=None):
+def run(root=None, terminal=None, runner=subprocess.run, system=None, classic_console=None):
     root = Path(root or Path(__file__).resolve().parents[2]).resolve()
     terminal = terminal or Terminal(system=system)
     if not terminal.interactive():
-        print("The build menu needs an interactive terminal. Run `python tools/build.py --help` for the ordinary CLI.",
+        help_argv = [sys.executable, "tools/build.py", "--help"]
+        help_command = (subprocess.list2cmdline(help_argv)
+                        if (system or platform.system()) == "Windows" else shlex.join(help_argv))
+        print(f"The build menu needs an interactive terminal. Run `{help_command}` for the ordinary CLI.",
               file=sys.stderr, flush=True)
         return 2
     try:
         with terminal:
-            selected = select_command(Menu(terminal), root, system)
+            selected = select_command(Menu(terminal), root, system, classic_console)
     except (OSError, ValueError, json.JSONDecodeError) as error:
         print(f"Build menu: {error}", file=sys.stderr, flush=True)
         return 1
