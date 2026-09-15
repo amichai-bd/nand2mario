@@ -267,8 +267,10 @@ image so that the copy engine has one rule for every image. Catalogue entry
 | 8-23 | 16 | `title`: bytes `0x0134`-`0x0143` of the image header, copied verbatim |
 | 24-31 | 8 | Reserved, zero |
 
-The host writes the catalogue in phase 1 ([boot source](../cartridge/MAS_loader_profile.md#boot-source));
-the hardware reads it and never writes it. The menu reads it through the
+The host writes the catalogue in phase 1 ([boot source](../cartridge/MAS_loader_profile.md#boot-source))
+and the [boot copier](MAS_flash_library.md#boot-copier) writes it from the
+flash mirror of this layout at power-up; the CPU-side hardware reads it and
+never writes it. The menu reads it through the
 banked window as bank 34 (`0x0088000 / 16384`). The copy engine treats a
 slot as selectable only when `valid == 0x01`, `length == 32768` and `profile`
 is a known ID. Every layout constant is one generated table in

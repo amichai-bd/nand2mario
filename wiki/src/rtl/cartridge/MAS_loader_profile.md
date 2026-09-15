@@ -154,6 +154,11 @@ The arbiter presents them to the controller as one requester:
   it). During a window fill the arbiter alternates: after an engine line is
   accepted, a waiting host line is accepted next.
 - The arbiter adds one edge of latency to acceptance and none to the response.
+- The [boot copier](../storage/MAS_flash_library.md#boot-copier) is the third
+  client. While it is in `CHECK` or `COPY` it has priority and is in practice
+  the only requester, because the core is paused with an invalid image and
+  `sdram_ready` is 0 to the host; after it reaches `DONE` it never requests
+  again until `reset_sys`, and the two rules above apply unchanged.
 
 ### Status bytes
 
@@ -163,9 +168,10 @@ The arbiter presents them to the controller as one requester:
 |---|---|---|
 | 7 | `copy_busy` | A window fill or swap is in progress |
 | 6 | `window_ready` | The upper half holds bank `bank` completely; cleared by a bank commit, set when its fill completes |
-| 5 | `sdram_ready` | The SDRAM controller's `initialized` |
+| 5 | `sdram_ready` | The SDRAM controller's `initialized` and the [boot copier](../storage/MAS_flash_library.md#boot-copier) not in `CHECK` or `COPY` |
 | 4 | `key1_pending` | KEY1 has been held past the debounce threshold and the return is waiting for `copy_busy` to fall (see [KEY1](#key1-return)) |
-| 3:0 | 0 | Reserved |
+| 3 | `flash_boot` | This power-up's library was copied from flash: set on the edge the [boot copier](../storage/MAS_flash_library.md#boot-copier) leaves `COPY`, cleared only by `reset_sys` |
+| 2:0 | 0 | Reserved |
 
 `$A002` result codes: `0` `NONE` (no swap since global reset), `1` `OK`,
 `2` `INVALID_SLOT`, `3` `CRC_MISMATCH`, `4` `NOT_READY` (select or bank commit
@@ -179,16 +185,25 @@ can pair a result with the index that produced it.
 
 ### Boot source
 
-Phase 1 (this contract): after configuration, SDRAM holds nothing useful.
-The host loads the library over UART: images and the catalogue through the
+Two sources fill SDRAM; both leave the CPU-visible rules above unchanged.
+
+Host load (phase 1): after configuration the host loads the library over
+UART: images and the catalogue through the
 [host SDRAM line commands](#host-interaction), then the menu into the ROM store
 with the existing `LOAD_BEGIN`/`LOAD_WRITE`/`LOAD_END` sequence using
 profile `LOADER_ID`, then `RUN`. From then on the player uses only the board.
-A power cycle or global reset requires the host load again.
+A power cycle or global reset requires the host load again unless the flash
+library is present.
 
-Phase 2 (optional, later): flash-resident images with a configuration-time
-copier. It is not part of this contract; it must not change the CPU-visible
-rules above.
+Flash boot (phase 2): the [flash library](../storage/MAS_flash_library.md)
+holds the 17 images and the catalogue in the MAX 10 internal flash. Its boot
+copier fills SDRAM after the controller's `initialized`, then requests a
+select of slot 16 through the [copy engine](#copy-engine-and-rom-store-port-ownership)
+exactly as [KEY1 return](#key1-return) does, so the menu runs without a host.
+While the copier runs, `sdram_ready` is 0 and the endpoint reports `LOADING`;
+the [host interaction](#host-interaction) rules bound the host's wait. A host
+load afterwards overwrites SDRAM only; flash is never written by the console.
+An erased flash skips the copier and leaves phase 1 behaviour.
 
 ### Core reset sequencing and image validity
 
@@ -252,6 +267,9 @@ command. Rules, in priority order:
    return `BAD_STATE` as today. `LOAD_BEGIN` (precondition `any`) also returns
    `BAD_STATE` while `copy_busy`; the host retries after at most 3.2 ms.
    `LOAD_WRITE`/`LOAD_END` return `BAD_STATE` because no host session is open.
+   The [boot copier](../storage/MAS_flash_library.md#precedence-over-host-loads)
+   reports the same `LOADING` while it fills SDRAM after a power-up; there
+   the host retries after at most 32 ms, the copier's whole-boot bound.
 3. While `copy_busy` for a window fill, the core runs and the endpoint reports
    `RUNNING`; every host command keeps its normal behavior. A `LOAD_BEGIN`
    during a fill waits for the fill to finish (at most 1.6 ms) before it pauses
@@ -279,8 +297,11 @@ command. Rules, in priority order:
 In priority order:
 
 1. `reset_sys`: every register and counter above returns to its reset value;
-   `PROFILE` 0, `image_valid` 0, `bank` 0, `$A002` `NONE`, `$A003` `$FF`.
-   SDRAM contents are lost; the host reloads the library.
+   `PROFILE` 0, `image_valid` 0, `bank` 0, `$A002` `NONE`, `$A003` `$FF`,
+   `flash_boot` 0. SDRAM contents are lost; the
+   [boot copier](../storage/MAS_flash_library.md#boot-copier) reloads them
+   from flash when the flash library is present, otherwise the host reload
+   is the fallback.
 2. Select and bank commits on the same edge are impossible (one CPU commit per
    edge). A select commit while a fill is in progress is ignored; the fill
    completes normally.
