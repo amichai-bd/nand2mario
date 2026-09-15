@@ -208,13 +208,16 @@ by name as `SKIPPED` with reason `questa-retired`, publish a `SKIPPED`
 `sim/test/<target>/result.json` naming `simulator`, `os` and `seed`, and never
 discover a simulator or launch a child. It counts as neither a pass nor a
 defect; `sim test` exits 2 and the aggregate commands list it in `skipped`.
-The Intel vendor models and the Tcl peer driver were Questa bindings, so a
-`verilator` target may not declare `vendor_model` or `driver`; the validator
-refuses each with a clear message, and a target that still needs them stays
-`questa` until its area migration. `preload` runs on the Verilator stage; see
-[preload fixtures](#preload-fixtures-under-verilator). The migrated targets
+The Intel vendor models were a Questa binding, so a `verilator` target may
+not declare `vendor_model`; the validator refuses it with a clear message, and
+a target that still needs one stays `questa` until its area migration.
+`preload` runs on the Verilator stage; see
+[preload fixtures](#preload-fixtures-under-verilator). A `driver` runs through
+the [Verilator peer](#verilator-peer-driver). The migrated targets
 are `builder-smoke`, `builder-smoke-fail`, `python-joypad`,
-`python-joypad-fault`, `preload-fixture`, the 58 SystemVerilog targets
+`python-joypad-fault`, `preload-fixture`, the three `tb_verilator_peer`
+targets `verilator-peer`, `verilator-peer-fault` and `verilator-peer-fatal`,
+the 58 SystemVerilog targets
 labelled `cpu`, the 67 SystemVerilog targets labelled `ppu` or `input`
 that declare no `vendor_model` in the [test catalogue](#test-catalogue), the
 34 SystemVerilog targets without a `vendor_model` labelled `joypad`,
@@ -354,7 +357,9 @@ verified manifest is retained in the record as `preload` (`image_sha256`,
 `image_crc32`, `files` hashes and `fixture` when one is named). The run
 executes from the attempt directory, so `$readmemh("preload-crc.hex")` under
 `SIM_PRELOAD` and `SIM_INIT_FILE("preload-rom.mif")` resolve to the prepared
-files, as they did under Questa.
+files, as they did under Questa. A driver target that sets `driver.preload`
+instead prepares through its Python peer, and the same recheck runs after the
+peer is ready and before the run launches.
 
 `preload-fixture` ([`tb_preload_fixture.sv`](../../../src/dv/preload/tb_preload_fixture.sv))
 proves the pipeline without product RTL: it reads the ROM MIF, presence MIF and
@@ -362,12 +367,103 @@ CRC hex from its run directory, rebuilds the 32768 bytes, requires the CRC-32
 of the rebuilt image to equal the hex the loader reads, and checks the
 integration image's entry stub and title. Measured on WSL: build 4.5 s, run
 under 0.1 s, `CACHED` on rerun. Preload targets whose fixtures also need the
-Intel doubles or the peer driver (the memory, v0.5 and Python areas) flip to
-`verilator` in their area migrations.
+Intel doubles (the memory, v0.5 and Python areas) flip to `verilator` in their
+area migrations.
 [`test_verilator.py`](../../../tools/n2m/tests/test_verilator.py)
 `PreloadTests` cover validation, preparation, the pre-launch recheck, the
 record, and fingerprint invalidation by a changed fixture input or Mooneye tool
 identity, with doubles.
+
+### Verilator peer driver
+
+A `driver` target steers a SystemVerilog testbench from the builder-owned
+Python peer through a live byte bridge. The catalogue schema is unchanged:
+`driver` holds `script`, `peer`, `inputs`, `access` and optional boolean
+`preload`. Under `simulator: "verilator"` the `script` is the Verilator peer,
+a cocotb module ending in `.py` that defines one test named `peer`; `access`
+must be a nonempty list of top-level identifiers. The validator, `tests
+validate` and `check` refuse a `verilator` driver whose script is not a `.py`
+module (`driver script must be the Verilator peer module (.py)`), whose
+access list is empty, or whose script, peer or inputs are missing or outside
+the tree. A `questa` target keeps its retired Tcl script and is `SKIPPED`.
+
+The run is the [Python flow](#python-testbenches-under-verilator) with
+`--timing` kept, because the testbench owns the clock, the checks, the
+signature and `$finish`; cocotb's main advances to the testbench's next time
+slot between the peer's own timers. The stage discovers the pinned runtime,
+so `sim test` for a driver target runs on the pinned interpreter like a
+Python target. Before the run command the builder starts the Python peer
+([`simulation_peer.py`](../../../tools/n2m/simulation_peer.py)), waits for
+`peer-ready.json`, rechecks a declared `preload`, and passes the listener port
+as `N2M_PEER_PORT` and the access list as `N2M_DRIVER_ACCESS` beside the
+cocotb environment; `COCOTB_TEST_MODULES` is the script's module name and its
+directory heads `PYTHONPATH`. The run also receives `+smoke_root=<root>`. The
+record's `peer` names the port, module and access list; `driver.script`,
+`driver.peer`, `driver.inputs`, the pinned requirements and the peer
+interpreter identity enter the fingerprint.
+
+[`peer_bridge.py`](../../../src/dv/integration/peer_bridge.py) is the peer's
+protocol, shared by [`integration/driver.py`](../../../src/dv/integration/driver.py)
+(absolute `WAIT 136280`) and [`host_play/driver.py`](../../../src/dv/host_play/driver.py)
+(relative `WAIT 200000|150000`, `FAIL PLAY_*`, `driver-progress.log`). It
+connects to the peer, advances 1 us, then answers line by line: `TX <hex>`
+clears `rx_count` and `rx_done`, deposits `tx_bytes`, `tx_count` and `tx_go`,
+polls every 100 us of simulation time until `rx_done` and not `tx_busy`
+within 120 s of wall time, and replies `RX <simulation_ns> <hex>`; `WAIT <n>`
+polls `dot_count` and replies `WAITED <simulation_ns>`; `DONE` closes the
+bridge, deposits `finish_request` and advances 1 us, inside which the
+testbench prints its signature and calls `$finish`, and the test then
+completes. Every observed or deposited object must be in `access`, resolved
+once on the top at start (`SMOKE_DRIVER_ACCESS <name>` otherwise). Faults are
+raised by name with the retired driver's vocabulary: `SMOKE_DRIVER_TX_SIZE`,
+`SMOKE_DRIVER_RX_SIZE`, `SMOKE_DRIVER_WAIT_RANGE`, `SMOKE_DRIVER_MESSAGE`,
+`SMOKE_DRIVER_LINE_SIZE`, `SMOKE_DRIVER_PEER_EOF`, `SMOKE_DRIVER_PEER_TIMEOUT`
+(30 s peer idle) and `SMOKE_DRIVER_RESPONSE_TIMEOUT`. Progress lines
+`SMOKE_DRIVER phase=<phase> ordinal=<n> wall_ms=... sim_ns=... dot=...
+tx_count=... tx_busy=... rx_count=... rx_done=...` go to the transcript, and
+`driver-transactions.json` records each request, reply and simulation time
+beside the Python peer's own `client.json`.
+
+The verdict for `expected_exit: "zero"`: raw exit zero, the cocotb
+`results.xml` for `<module>.peer` reports PASS, the transcript signature is
+present, no diagnostic, the retained wave exists, and the Python peer exited
+zero within 5 s. A peer fault fails the attempt as `Verilator peer failed:
+<name>` with the raised name, and the Python peer is reaped with
+`completed_normally: false`. A `driver` attempt is reused only with
+`results.xml`, `peer.log`, `peer-result.json`, `waves/simulation.fst` and
+`sim.log` present and nonempty. For `expected_exit: "nonzero"` the testbench's
+`$fatal` ends the simulation while the peer test is running; cocotb then
+reports exactly `WARNING cocotb.regression <module>.peer failed` and
+`cocotb.regression.SimFailure: cocotb expected it would shut down the
+simulation, but the simulation ended prematurely...`. When the declared
+signature appears on a diagnostic line (`%Fatal`, `%Error`, `ERROR` or
+`CRITICAL`), that two-line report is
+accepted as the fatal's own stop report for that module only; any other
+warning still fails the attempt, and no results check applies.
+
+[`tb_verilator_peer.sv`](../../../src/dv/integration/tb_verilator_peer.sv) proves
+the peer without product RTL: the tb_integration mailboxes, a 25 MHz
+`dot_count`, and a byte endpoint that answers each request with every byte
+inverted by `0x5a` plus a terminating zero. [`peer_check.py`](../../../src/dv/integration/peer_check.py)
+is its Python peer: requests of 1, 19 and 271 bytes, `WAIT 136280`, `DONE`,
+checking each reply and monotonic simulation time. `verilator-peer` expects
+`PASS verilator-peer transactions=3`; `verilator-peer-fault` uses
+[`peer_check_fault.py`](../../../src/dv/integration/peer_check_fault.py), which
+sends `WAIT 5` after the first request, and must fail as `Verilator peer
+failed: SMOKE_DRIVER_WAIT_RANGE`; `verilator-peer-fatal` passes `+echo_fault`
+so the endpoint raises `PEER_ECHO_FAULT seq=2` inside the second transaction
+and must exit nonzero with that signature. Measured on WSL: build 1.4 s cold
+and 0.25 s with `ccache`, run under 0.5 s, `CACHED` on rerun.
+[`test_peer_bridge.py`](../../../tools/n2m/tests/test_peer_bridge.py) covers
+the protocol against a fake access list;
+[`test_simulation_peer.py`](../../../tools/n2m/tests/test_simulation_peer.py)
+and [`test_verilator.py`](../../../tools/n2m/tests/test_verilator.py) cover
+validation, the stage, the by-name failure and the fatal acceptance with
+doubles. The twelve product driver targets (`integration-smoke` and its
+variants, `integration-preloaded`, the `host-play` targets and the two
+`tb_preload_load` targets) also declare `vendor_model` and stay `questa` until
+the Intel doubles land; their flip is tracked in
+[#611](https://github.com/amichai-bd/nand2mario/issues/611).
 
 ### Record
 
@@ -375,8 +471,9 @@ Beyond the shared fields, a Verilator record carries `simulator`
 (`verilator`), `os`, `seed`, `waves` (`format: fst` and the retained path),
 `timing` with `build_seconds` and `run_seconds` measured separately so the
 compile cost against the wall budget is visible, `elapsed_seconds`,
-`exit_code` and `timeout_seconds` on each command, and `preload` when the
-target declares a fixture. Measured on WSL: the
+`exit_code` and `timeout_seconds` on each command, `preload` when the
+target declares a fixture, and `peer` plus `python_results` when it declares
+a driver. Measured on WSL: the
 `builder-smoke` build takes about 4 s cold and under 0.3 s with `ccache`, the
 run milliseconds; `python-joypad` builds in 0.3 s and runs in 0.4 s.
 [`test_verilator.py`](../../../tools/n2m/tests/test_verilator.py) covers
@@ -388,12 +485,15 @@ evidence.
 
 This section describes the retired path. Every target it still applies to is
 registered `simulator: "questa"` and is reported `SKIPPED questa-retired` by
-the commands above; its command construction, macro, Intel model bindings and
-Tcl peer driver stay in [`questa.py`](../../../tools/n2m/questa.py),
-[`intel_memory.py`](../../../tools/n2m/intel_memory.py),
-[`intel_adc.py`](../../../tools/n2m/intel_adc.py) and
-[`simulation_peer.py`](../../../tools/n2m/simulation_peer.py) for the area
+the commands above; its command construction, macro and Intel model bindings
+stay in [`questa.py`](../../../tools/n2m/questa.py),
+[`intel_memory.py`](../../../tools/n2m/intel_memory.py) and
+[`intel_adc.py`](../../../tools/n2m/intel_adc.py) for the area
 migrations under [#595](https://github.com/amichai-bd/nand2mario/issues/595).
+Its Tcl driver scripts (`driver.do`, `load.do`) stay beside their `questa`
+targets; the Python peer process they connected to is the same
+[`simulation_peer.py`](../../../tools/n2m/simulation_peer.py) the
+[Verilator peer](#verilator-peer-driver) uses.
 
 ### Testbench types
 
@@ -1625,12 +1725,15 @@ and retained evidence. No licensed simulation is involved.
 ## Preloaded execution target
 
 A declared simulation driver may set boolean `preload` to select the
-[validated preload boundary](../../src/dv/preload/SPEC.md). Its peer prepares the
-software image and Intel initialization files before readiness. The builder
-rechecks the image and every declared initialization-file hash immediately
-before launching Questa; missing or changed artifacts fail the attempt and
-reap the peer. Generated files remain under the immutable attempt directory.
-This target is separate from real-UART loading and does not replace its checks.
+[validated preload boundary](../../src/dv/preload/SPEC.md). Its Python peer
+prepares the software image and initialization files before it publishes
+readiness. The builder rechecks the image and every declared
+initialization-file hash after the peer is ready and immediately before
+launching the run; missing or changed artifacts fail the attempt and reap the
+peer. Under Verilator the run is the [Verilator peer driver](#verilator-peer-driver);
+the retired `questa` targets used the same peer through their Tcl scripts.
+Generated files remain under the immutable attempt directory. This target is
+separate from real-UART loading and does not replace its checks.
 
 
 ## Python fixture preflight

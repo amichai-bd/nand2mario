@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import platform
 import re
+import sys
 import time
 import uuid
 
@@ -12,6 +13,7 @@ from .simulator import ToolError
 from .verilator import commands as verilator_commands, diagnostic, WAVES
 from .records import atomic_json, atomic_text, cache_matches, digest, file_hash, read_json
 from . import python_tb
+from .simulation_peer import Peer
 
 # Every registry target names the simulator it runs on. A questa target is
 # retired: it is reported SKIPPED by name and never launched.
@@ -70,12 +72,16 @@ def load_target(root, name):
             if not path.is_relative_to(root.resolve()) or not path.is_file():
                 raise ValueError(f"missing or out-of-tree driver input: {source}")
     if not retired(target):
-        # The Intel models and the Tcl peer driver were Questa bindings; a
-        # target that still needs them stays questa until its area migrates.
+        # The Intel models were a Questa binding; a target that still needs
+        # one stays questa until its area migrates. A verilator driver's
+        # script is the cocotb peer module; the retired Tcl script is refused.
         if target.get("vendor_model") is not None:
             raise ValueError(f"target {name}: vendor_model is not supported under verilator")
         if "driver" in target:
-            raise ValueError(f"target {name}: a Tcl driver is not supported under verilator")
+            if not target["driver"]["script"].endswith(".py"):
+                raise ValueError(f"target {name}: driver script must be the Verilator peer module (.py)")
+            if not target["driver"].get("access"):
+                raise ValueError(f"target {name}: a Verilator driver needs a nonempty access list")
     python_tb.validate(root, target, name)
     return target, registry
 
@@ -93,12 +99,19 @@ def simulate(root, build, args, simulator, provenance=None):
     target, registry = load_target(root, args.target)
     if retired(target):
         return skipped_record(root, build, args, provenance)
-    python_runtime = python_tb.discover() if target.get("testbench") == "python" else None
+    driver = target.get("driver")
+    # A driver target runs its SystemVerilog testbench under the cocotb peer,
+    # so it needs the pinned Python runtime like a Python testbench.
+    python_runtime = python_tb.discover() if target.get("testbench") == "python" or driver else None
+    peer_config = python_tb.peer_config(target) if driver else None
     hdl_inputs = dependencies(root, target["sources"])
     inputs = hdl_inputs + [registry.relative_to(root).as_posix(), "tools/build.py"]
     inputs += [str(p.relative_to(root)).replace("\\", "/") for p in (root / "tools/n2m").glob("*.py")]
     inputs += ["tools/n2m/dependencies.json"]
-    if python_runtime:
+    if driver:
+        inputs += [driver["script"], driver["peer"], *driver["inputs"]]
+        inputs += ["src/dv/python/requirements.txt", "src/dv/python/THIRD_PARTY.md"]
+    if target.get("testbench") == "python":
         inputs += target["python"]["inputs"] + ["src/dv/python/requirements.txt", "src/dv/python/THIRD_PARTY.md"]
     elif target.get("preload") is not None:
         # A Python target's inputs already carry its fixture; a SystemVerilog
@@ -109,6 +122,8 @@ def simulate(root, build, args, simulator, provenance=None):
                "simulator": "verilator", "os": platform.system()}
     if python_runtime:
         options["python_runtime"] = python_runtime
+    if driver:
+        options["peer_python"] = {"path": sys.executable, "sha256": file_hash(Path(sys.executable)), "version": sys.version}
     fixture_tools = None
     if target.get("preload") == "mooneye-reg-f":
         # The locked fixture is built by the host compiler and CMake; their
@@ -120,7 +135,7 @@ def simulate(root, build, args, simulator, provenance=None):
     stage = build / "sim/test" / args.target
     current = stage / "result.json"
     old = read_json(current)
-    if not args.rebuild and cache_matches(old, fingerprint, root, build) and (not python_runtime or python_tb.evidence(root, old, target["python"])):
+    if not args.rebuild and cache_matches(old, fingerprint, root, build) and (not python_runtime or target["expected_exit"] != "zero" or python_tb.evidence(root, old, peer_config or target["python"], driver=bool(driver))):
         return {**old, "cache": "CACHED"}
     attempt_id = uuid.uuid4().hex
     attempt = stage / "attempts" / attempt_id
@@ -164,22 +179,49 @@ def simulate(root, build, args, simulator, provenance=None):
                 # launch; the run reads them from the attempt directory.
                 from .preload import verify
                 record["preload"] = verify(attempt)
+            peer = None
+            result = None
             started = time.monotonic()
             try:
+                if running and driver:
+                    # The builder owns the Python peer; the cocotb peer inside
+                    # the run connects to its listener and touches only the
+                    # declared access list.
+                    peer = Peer(root, attempt, driver["peer"])
+                    port = peer.start()
+                    if driver.get("preload", False):
+                        from .preload import verify
+                        record["preload"] = verify(attempt)
+                    call_options["env"].update(N2M_PEER_PORT=str(port), N2M_DRIVER_ACCESS=",".join(driver["access"]))
+                    record["peer"] = {"port": port, "access": list(driver["access"]), "module": peer_config["module"]}
                 result = simulator.run(argv, cwd=cwd, **call_options)
             finally:
                 elapsed = time.monotonic() - started
                 record["commands"][-1]["elapsed_seconds"] = elapsed
                 record["timing"]["run_seconds" if running else "build_seconds"] += elapsed
-            log.write_text(result.stdout, encoding="utf-8")
-            record["commands"][-1]["exit_code"] = result.returncode
-            if running and python_runtime:
+                if result is not None:
+                    # Retain the transcript before the peer is judged: a peer
+                    # that exits nonzero after a passing run must not lose it.
+                    log.write_text(result.stdout, encoding="utf-8")
+                    record["commands"][-1]["exit_code"] = result.returncode
+                if peer is not None:
+                    # The Python peer completed only when the run exited zero
+                    # and the cocotb peer reported PASS; any other outcome
+                    # reaps it and keeps its transcript and exit for the record.
+                    if result is not None:
+                        record["python_results"] = python_tb.results(attempt / "results.xml", peer_config)
+                    peer.close(result is not None and result.returncode == 0
+                               and record.get("python_results", {}).get("status") == "PASS")
+            if running and python_runtime and not driver:
                 record["python_results"] = python_tb.results(attempt / "results.xml", target["python"])
             if (result.returncode == 0) != (expected == "zero"):
                 raise RuntimeError(f"unexpected exit {result.returncode}; see {log.relative_to(root)}")
-            if running and python_runtime and record["python_results"]["status"] != "PASS":
+            if running and python_runtime and expected == "zero" and record["python_results"]["status"] != "PASS":
+                if driver:
+                    raise RuntimeError(f"Verilator peer failed: {python_tb.failure_name(record['python_results'])}")
                 raise RuntimeError(f"Python test failed: {record['python_results']}")
-            problem = diagnostic(result.stdout, target["signature"] if expected == "nonzero" else None)
+            problem = diagnostic(result.stdout, target["signature"] if expected == "nonzero" else None,
+                                 peer=peer_config["module"] if driver else None)
             if problem:
                 raise RuntimeError(f"{problem}; see {log.relative_to(root)}")
         if target["signature"] not in result.stdout:
@@ -197,7 +239,7 @@ def simulate(root, build, args, simulator, provenance=None):
     record["finished"] = datetime.now(timezone.utc).isoformat()
     artifacts = [p for base in (compile_dir, attempt) for p in base.rglob("*") if p.is_file()]
     record["artifacts"] = {p.relative_to(root).as_posix(): file_hash(p) for p in artifacts}
-    if python_runtime and record["status"] == "PASS" and not python_tb.evidence(root, record, target["python"]):
+    if python_runtime and record["status"] == "PASS" and target["expected_exit"] == "zero" and not python_tb.evidence(root, record, peer_config or target["python"], driver=bool(driver)):
         record.update(status="FAIL", error="incomplete Python test evidence")
     atomic_json(attempt / "result.json", record)
     # result.json is authoritative. Immutable attempt paths keep old readers

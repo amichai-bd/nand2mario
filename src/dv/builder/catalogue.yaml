@@ -572,6 +572,7 @@ units:
   tools/n2m/tests/test_linker.py: {kind: unit, level: 0, labels: [builder, sw], duration_seconds: 0.82}
   tools/n2m/tests/test_live_viewer.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 2.28}
   tools/n2m/tests/test_mooneye.py: {kind: unit, level: 0, labels: [builder, mooneye], duration_seconds: 0.11}
+  tools/n2m/tests/test_peer_bridge.py: {kind: unit, level: 0, labels: [builder, integration], duration_seconds: null}
   tools/n2m/tests/test_ppu_scene.py: {kind: unit, level: 0, labels: [builder, ppu], duration_seconds: 0.04}
   tools/n2m/tests/test_preload.py: {kind: unit, level: 0, labels: [builder, preload], duration_seconds: 0.13}
   tools/n2m/tests/test_preload_compare.py: {kind: unit, level: 0, labels: [builder, preload], duration_seconds: 0.07}
@@ -641,6 +642,9 @@ units:
   uart-stopped-step-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 1.16}
   uart-validation: {kind: sim, level: 2, labels: [uart], duration_seconds: 0.43}
   uart-validation-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 0.42}
+  verilator-peer: {kind: sim, level: 1, labels: [builder, integration, python-tb], duration_seconds: null}
+  verilator-peer-fatal: {kind: sim, level: 2, labels: [builder, fault, integration, python-tb], duration_seconds: null}
+  verilator-peer-fault: {kind: sim, level: 2, labels: [builder, fault, integration, python-tb], duration_seconds: null}
   vga: {kind: sim, level: 2, labels: [vga], duration_seconds: 288.16}
   vga-active-swap: {kind: sim, level: 2, labels: [fault, vga], duration_seconds: null}
   vga-bank-reuse: {kind: sim, level: 2, labels: [fault, vga], duration_seconds: null}

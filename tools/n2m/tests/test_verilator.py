@@ -108,6 +108,24 @@ class DiagnosticTests(unittest.TestCase):
         self.assertEqual(verilator.diagnostic(fatal + "%Warning-X: y\n", SIGNATURE), "unexplained simulator warning")
 
 
+PEER_STOP = ("  2160.00ns WARNING  cocotb.regression                  driver.peer failed\n"
+             "                                                        cocotb.regression.SimFailure: cocotb expected it would "
+             "shut down the simulation, but the simulation ended prematurely. This could be due to an assertion failure.\n")
+
+
+class PeerDiagnosticTests(unittest.TestCase):
+    def test_cocotb_report_of_the_expected_fatal_is_part_of_that_fatal(self):
+        fatal = "[2160000] %Fatal: tb.sv:36: Assertion failed in tb.endpoint: PEER_ECHO_FAULT seq=2\n%Error: /r/tb.sv:36: Verilog $stop\nAborting...\n"
+        self.assertIsNone(verilator.diagnostic(fatal + PEER_STOP, "PEER_ECHO_FAULT seq=2", peer="driver"))
+        # Only a driver target, only with its expected fatal present, and only for its own module.
+        self.assertEqual(verilator.diagnostic(fatal + PEER_STOP, "PEER_ECHO_FAULT seq=2"), "unexplained simulator warning")
+        self.assertEqual(verilator.diagnostic(PEER_STOP, "PEER_ECHO_FAULT seq=2", peer="driver"), "unexplained simulator warning")
+        self.assertEqual(verilator.diagnostic(fatal + PEER_STOP.replace("driver.peer", "other.peer"), "PEER_ECHO_FAULT seq=2", peer="driver"),
+                         "unexplained simulator warning")
+        self.assertEqual(verilator.diagnostic(fatal + PEER_STOP + "  9.00ns WARNING  cocotb.regression  deprecated\n",
+                                              "PEER_ECHO_FAULT seq=2", peer="driver"), "unexplained simulator warning")
+
+
 class CommandTests(unittest.TestCase):
     setUp = test_builder.BuilderTests.setUp
 
@@ -173,6 +191,21 @@ class CommandTests(unittest.TestCase):
         self.assertIn("+verilator+seed+3", run)
 
 
+    def test_driver_target_keeps_timing_under_the_vpi_flow_and_names_the_root(self):
+        shutil.copytree(test_builder.ROOT / "src/dv/integration", self.root / "src/dv/integration",
+                        ignore=shutil.ignore_patterns("__pycache__"))
+        target, _ = load_target(self.root, "verilator-peer")
+        runtime = {"library_dir": "/venv/cocotb/libs", "support": "/venv/cocotb/share/lib/verilator/verilator.cpp"}
+        attempt = self.build / "attempt"
+        (attempt / "waves").mkdir(parents=True)
+        (build, *_), (run, *_) = verilator.commands(self.sim, self.root, target, 3, self.build, attempt, python_runtime=runtime)
+        self.assertIn("--vpi", build)
+        self.assertIn("--timing", build)
+        self.assertEqual(build[-1], runtime["support"])
+        self.assertEqual(run[1:4], ["--trace", "--trace-file", verilator.WAVES])
+        self.assertEqual(run[-1], "+smoke_root=" + str(self.root))
+
+
 class RecordTests(unittest.TestCase):
     setUp = test_builder.BuilderTests.setUp
     run_stage = test_builder.BuilderTests.run_stage
@@ -223,19 +256,29 @@ class RecordTests(unittest.TestCase):
         self.args.rebuild = False
         self.assertEqual(self.run_stage()["cache"], "CACHED")
 
-    def test_vendor_model_and_driver_targets_stay_questa(self):
+    def test_vendor_model_stays_questa_and_a_driver_needs_the_peer_module(self):
         registry = self.root / "src/dv/builder/targets.json"
         targets = read_json(registry)
         pristine = dict(targets["builder-smoke"])
+        (self.root / "driver.do").write_text("run -all\n")
+        (self.root / "driver.py").write_text("import cocotb\n")
+        access = ["tx_go", "finish_request"]
         for change, message in (({"vendor_model": "intel-memory"}, "vendor_model"),
-                                ({"driver": {"script": "tools/build.py", "peer": "tools/build.py", "inputs": []}}, "Tcl driver")):
+                                ({"driver": {"script": "driver.do", "peer": "tools/build.py", "inputs": [], "access": access}}, "Verilator peer module"),
+                                ({"driver": {"script": "driver.py", "peer": "tools/build.py", "inputs": []}}, "nonempty access list"),
+                                ({"driver": {"script": "missing.py", "peer": "tools/build.py", "inputs": [], "access": access}}, "missing or out-of-tree driver input")):
             targets["builder-smoke"] = {**pristine, **change}
             registry.write_text(json.dumps(targets))
             with self.assertRaisesRegex(ValueError, message):
                 load_target(self.root, "builder-smoke")
-            targets["builder-smoke"]["simulator"] = "questa"
-            registry.write_text(json.dumps(targets))
-            self.assertEqual(load_target(self.root, "builder-smoke")[0]["simulator"], "questa")
+        # The retired Tcl script still validates on a questa target.
+        targets["builder-smoke"] = {**pristine, "simulator": "questa",
+                                    "driver": {"script": "driver.do", "peer": "tools/build.py", "inputs": []}}
+        registry.write_text(json.dumps(targets))
+        self.assertEqual(load_target(self.root, "builder-smoke")[0]["simulator"], "questa")
+        targets["builder-smoke"] = {**pristine, "driver": {"script": "driver.py", "peer": "tools/build.py", "inputs": [], "access": access}}
+        registry.write_text(json.dumps(targets))
+        self.assertEqual(load_target(self.root, "builder-smoke")[0]["driver"]["access"], access)
 
 
 class PreloadTests(unittest.TestCase):

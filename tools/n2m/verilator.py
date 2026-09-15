@@ -22,14 +22,24 @@ WARNING = re.compile(r"(?m)^\s*(?:\[\d+\]\s*)?%Warning\b|\bWARNING\b")
 ERROR = re.compile(r"(?m)^.*(?:(?:\[\d+\]\s*)?%(?:Error|Fatal)\b|\bERROR\b|\bCRITICAL\b).*$")
 # $fatal's own stop is reported on a second line the expected failure never carries.
 FATAL_STOP = re.compile(r"^%Error: \S+: Verilog \$stop$|^Aborting\.\.\.$")
+# A testbench $fatal under the cocotb peer ends the simulation while the peer
+# test is still running; cocotb reports that as this two-line failure. It is
+# the fatal's own stop report for a driver target that expects the fatal.
+PEER_STOP = (r"(?m)^\s*[\d.]+ns WARNING\s+cocotb\.regression\s+{module}\.peer failed\n"
+             r"\s*cocotb\.regression\.SimFailure: cocotb expected it would shut down the simulation, "
+             r"but the simulation ended prematurely\..*$\n?")
 
 
-def diagnostic(output, expected_failure=None):
+def diagnostic(output, expected_failure=None, *, peer=None):
     """Return the first problem in a Verilator build or run transcript, else None.
 
     Any warning is a problem. Every error line must carry the expected failure
-    text when one is declared; without one, any error line is a problem.
+    text when one is declared; without one, any error line is a problem. For a
+    driver target whose expected fatal appears, the cocotb peer's report of
+    the ended simulation is part of that fatal.
     """
+    if peer and expected_failure and any(expected_failure in line for line in ERROR.findall(output)):
+        output = re.sub(PEER_STOP.format(module=re.escape(peer)), "", output, count=1)
     if WARNING.search(output):
         return "unexplained simulator warning"
     for line in ERROR.findall(output):
@@ -83,12 +93,17 @@ def commands(simulator, root, target, seed, compiler, attempt, *, python_runtime
     """
     tool = simulator.tools["verilator"]
     sources = [simulator.path(root / source) for source in target["sources"]]
+    driver = "driver" in target
     if python_runtime or target.get("preload") is not None:
         from .python_tb import prepare as prepare_fixture
         prepare_fixture(target, attempt, root, fixture_tools)
     if python_runtime:
+        # cocotb's own main drives the design; a driver target keeps --timing
+        # because its SystemVerilog testbench owns the clock and the checks,
+        # and cocotb's loop advances to the testbench's next time slot.
         library = python_runtime["library_dir"]
         build = [tool, "--cc", "--exe", "--build", "--vpi", "--public-flat-rw",
+                 *(["--timing"] if driver else []),
                  "--timescale", "1ns/1ps", *COMMON_OPTIONS,
                  "-LDFLAGS", f"-Wl,-rpath,{library} -L{library} -lcocotbvpi_verilator",
                  "--top-module", target["top"], "+incdir+" + simulator.path(root),
@@ -106,5 +121,7 @@ def commands(simulator, root, target, seed, compiler, attempt, *, python_runtime
                  *sources, HARNESS]
         run = [str(compiler / "obj_dir/sim")]
     run += [f"+seed={seed}", f"+verilator+seed+{seed}", "+verilator+rand+reset+2", *target["args"]]
+    if driver:
+        run.append("+smoke_root=" + simulator.path(root))
     return [(build, compiler, compiler / "build.log", "zero"),
             (run, attempt, attempt / "sim.log", target["expected_exit"])]
