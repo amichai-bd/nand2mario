@@ -3,6 +3,7 @@ from contextlib import redirect_stdout
 import io
 import json
 from pathlib import Path
+import re
 import sys
 import tempfile
 import unittest
@@ -98,13 +99,55 @@ class LibraryTests(unittest.TestCase):
         self.assertEqual((library.slot_address(0), library.slot_address(15), library.slot_address(16)),
                          (0, 0x78000, 0x80000))
         self.assertEqual(library.CATALOGUE_ADDRESS, 0x88000)
-        for bad in (-1, 17, '0'):
+        for bad in (-1, abi.LIBRARY_CATALOGUE_ENTRIES, '0'):
             with self.assertRaises(ValueError):
                 library.slot_address(bad)
         with self.assertRaises(ValueError):
             library.image_entry(image[:-1], 1)
         with self.assertRaises(ValueError):
             library.profile_id('dmg-mbc1')
+
+    def test_layout_values_come_from_the_generated_table(self):
+        self.assertEqual((library.SLOT_BYTES, library.GAME_SLOTS, library.MENU_INDEX, library.IMAGE_COUNT,
+                          library.CATALOGUE_ADDRESS, library.ENTRY_BYTES, library.VALID),
+                         (abi.LIBRARY_SLOT_BYTES, abi.LIBRARY_SLOTS, abi.LIBRARY_MENU_INDEX, abi.LIBRARY_CATALOGUE_ENTRIES,
+                          abi.LIBRARY_CATALOGUE_ADDRESS, abi.LIBRARY_ENTRY_BYTES, abi.LIBRARY_CATALOGUE_VALID))
+        self.assertEqual((library.ENTRY_BYTES, library.TITLE_BYTES), (abi.CATALOGUE_ENTRY_BYTES, 16))
+        self.assertEqual(library.IMAGE_COUNT, library.GAME_SLOTS + 1)
+        self.assertEqual(library.CATALOGUE_ADDRESS, abi.LIBRARY_MENU_INDEX * abi.LIBRARY_SLOT_BYTES + abi.LIBRARY_SLOT_BYTES)
+        self.assertEqual(library.CATALOGUE_ADDRESS % abi.LIBRARY_WINDOW_BYTES, 0)
+        # The module names no library number of its own: the generated table owns them.
+        source = (ROOT / 'tools/n2m/host/library.py').read_text()
+        self.assertEqual(re.findall(r'\b(?:32768|0x8000|0x80000|0x88000|557056|abi\.PROFILE_ROM_BYTES)\b', source), [])
+        self.assertEqual(re.findall(r'^[A-Z_]+ = \d+$', source, re.MULTILINE), ['EMPTY = 0', 'CATALOGUE_BYTES = 1024'])
+        # Entry field offsets follow the generated record.
+        image = fixture_image('OFFSETS', 9)
+        raw = library.pack_entry(library.image_entry(image, abi.PROFILE_LOADER_ID))
+        self.assertEqual(raw[abi.CATALOGUE_ENTRY_VALID_OFFSET], abi.LIBRARY_CATALOGUE_VALID)
+        self.assertEqual(raw[abi.CATALOGUE_ENTRY_PROFILE_OFFSET], abi.PROFILE_LOADER_ID)
+        self.assertEqual(int.from_bytes(raw[abi.CATALOGUE_ENTRY_LENGTH_OFFSET:abi.CATALOGUE_ENTRY_CRC32_OFFSET], 'little'),
+                         abi.LIBRARY_SLOT_BYTES)
+        self.assertEqual(int.from_bytes(raw[abi.CATALOGUE_ENTRY_CRC32_OFFSET:abi.CATALOGUE_ENTRY_TITLE_LOW_OFFSET], 'little'),
+                         zlib.crc32(image))
+        self.assertEqual(raw[abi.CATALOGUE_ENTRY_TITLE_LOW_OFFSET:abi.CATALOGUE_ENTRY_RESERVED_OFFSET], b'OFFSETS' + bytes(9))
+        self.assertEqual(library.unpack_entry(raw)['profile'], abi.PROFILE_LOADER_ID)
+
+    def test_menu_entry_profile_follows_the_package_profile(self):
+        self.assertEqual(library.profile_id(abi.PROFILE_NAME), abi.PROFILE_DIRECT_ID)
+        self.assertEqual(library.profile_id(library.LOADER_PROFILE_NAME), abi.PROFILE_LOADER_ID)
+        self.assertEqual(library.PROFILE_IDS, {'dmg-direct-v1': 1, 'dmg-loader-v1': 2})
+        game = (fixture_image('GAME', 21), abi.PROFILE_NAME)
+        for name, expected in ((library.LOADER_PROFILE_NAME, abi.PROFILE_LOADER_ID), (abi.PROFILE_NAME, abi.PROFILE_DIRECT_ID)):
+            with self.subTest(profile=name):
+                endpoint = Endpoint()
+                result = library.load_library(Client(endpoint), [game], (fixture_image('MENU', 23), name))
+                self.assertEqual(result['status'], 'PASS')
+                self.assertEqual([row['profile'] for row in result['slots']], [abi.PROFILE_DIRECT_ID, expected])
+                catalogue = b''.join(endpoint.sdram[abi.LIBRARY_CATALOGUE_ADDRESS + line * 16] for line in range(64))
+                rows = library.parse_catalogue(catalogue)
+                self.assertEqual(rows[abi.LIBRARY_MENU_INDEX]['profile'], expected)
+                self.assertEqual(rows[0]['profile'], abi.PROFILE_DIRECT_ID)
+                self.assertEqual(rows[abi.LIBRARY_MENU_INDEX]['valid'], abi.LIBRARY_CATALOGUE_VALID)
 
     def test_load_writes_slots_menu_and_catalogue_then_verifies(self):
         images = [(fixture_image(f'GAME {i}', 3 + 2 * i), abi.PROFILE_NAME) for i in range(3)]
@@ -172,7 +215,8 @@ class LibraryTests(unittest.TestCase):
                          [('slot 0', 1, 'GAME 0'), ('slot 1', 1, 'GAME 1'), ('menu', 1, 'MENU')])
         self.assertEqual(rows[1]['crc32'], f"{zlib.crc32(fixture_image('GAME 1', 8)):08x}")
         self.assertEqual(report['result']['library_status'],
-                         {'word': 0x00FF0020, 'a000': 0x20, 'a002': 0, 'a003': 0xFF, 'bank': 0})
+                         {'word': 0x00FF0020, 'a000': 0x20, 'a002': 0, 'a003': 0xFF, 'bank': 0,
+                          'flags': ['sdram_ready'], 'result': 'NONE'})
         with patch('n2m.host.command.session', self.fake_session(endpoint)), redirect_stdout(io.StringIO()) as stdout:
             self.assertEqual(main(['host', 'library', 'status', '--uart-port', 'COM92', '--tag', self.tag], ROOT), 0)
         self.assertIn('16     menu     1      1        32768', stdout.getvalue())
@@ -207,7 +251,13 @@ class LibraryTests(unittest.TestCase):
 
     def test_library_status_word_fields(self):
         self.assertEqual(library.decode_library_status(0x2A030201),
-                         {'word': 0x2A030201, 'a000': 0x01, 'a002': 0x02, 'a003': 0x03, 'bank': 0x2A})
+                         {'word': 0x2A030201, 'a000': 0x01, 'a002': 0x02, 'a003': 0x03, 'bank': 0x2A,
+                          'flags': [], 'result': 'INVALID_SLOT'})
+        busy = abi.LIBRARY_STATUS_COPY_BUSY | abi.LIBRARY_STATUS_SDRAM_READY | abi.LIBRARY_STATUS_KEY1_PENDING
+        decoded = library.decode_library_status((abi.LIBRARY_RESULT_CRC_MISMATCH << 8) | busy | (63 << 24))
+        self.assertEqual((decoded['flags'], decoded['result'], decoded['bank']),
+                         (['copy_busy', 'sdram_ready', 'key1_pending'], 'CRC_MISMATCH', 63))
+        self.assertEqual(library.decode_library_status(0x0700)['result'], 'UNKNOWN')
 
 
 if __name__ == '__main__':
