@@ -36,8 +36,12 @@ the [settling proof](../../../../src/dv/springtrail/JOYP_SETTLE.md) owns validat
 Do not put movement, enemies or game state in RTL. Keep the approved original-DMG
 model, 25 MHz system architecture, register macros, Intel storage/models and
 clock/reset/CDC contracts. Change hardware only for an independently demonstrated
-compatibility defect in its owning contract. Do not add an MBC, SDRAM, a game
-engine, an AI framework, a compiler or audio to deliver this game.
+compatibility defect in its owning contract. Do not add an MBC, a game
+engine, an AI framework, a compiler or audio to deliver this game. The game
+does not depend on the [SDRAM library](../../rtl/storage/MAS_sdram.md) or the
+[loader profile](../../rtl/cartridge/MAS_loader_profile.md): those are the
+menu's owners, and a game started from the menu runs in this same profile
+with the same bytes.
 
 ## Player-visible rules
 

@@ -12,11 +12,13 @@ The [clocking implementation](rtl/clocking/MAS_clocking.md) supplies the
 
 Target DE10-Lite `10M50DAF484C7G`. Use `MAX10_CLK1_50` on `PIN_P11`, nominal
 50 MHz, as `clk_reference` for reset bootstrap and both system/pixel PLLs. These are manual-derived design
-constraints, not verification of the connected board. The second 50 MHz input,
-SDRAM and physical audio are unused in the initial fixed-ROM design. The
+constraints, not verification of the connected board. The second 50 MHz input
+and physical audio are unused. The
 [board controls contract](fpga-controls.md) adds the independent N5 ADC clock
-and its dedicated PLL for physical input acquisition.
-Adding SDRAM requires a separate storage/timing contract before integration.
+and its dedicated PLL for physical input acquisition. The
+[SDRAM storage and timing contract](rtl/storage/MAS_sdram.md) owns the SDRAM
+pin clock, its relationship to `clk_sys` and its I/O constraints; the SDRAM
+controller itself runs entirely in `clk_sys`.
 
 | Name | Nominal rate | Consumers | Required accuracy |
 |---|---|---|---|
@@ -219,6 +221,8 @@ the last acknowledged offer, so no unsynchronized bank-return bus is needed.
 | Frame pixels system -> pixel | Dual-clock RAM; read/write ownership disjoint for each bank |
 | Pixel status/counters -> host | Separate request/ack snapshot mailbox, stable bundle until ack; never sample a live multi-bit counter |
 | Host commands/input -> DMG | Same system domain; ordered synchronous handshakes, no CDC |
+| SDRAM pins <-> system | Source-synchronous I/O, not a CDC: `DRAM_CLK` is derived from `clk_sys` and every controller register is in `clk_sys`; the [SDRAM contract](rtl/storage/MAS_sdram.md#clock-relationship-and-constraints) owns the relationship and I/O delays |
+| KEY1 -> system | Two-flop level synchronizer, then debounce and hold counting in the [loader profile](rtl/cartridge/MAS_loader_profile.md#key1-return) |
 
 No other crossing is permitted without updating this inventory. Host frame
 readback must take a stable snapshot or explicit bank lease in its contract;
@@ -260,7 +264,9 @@ observed picture on a connected monitor. That observation is not a measurement:
 a measured board electrical proof and any additional external budget stay open,
 and [GAP-012](../preflight-gaps.md#gap-012-vga-frame-crossing) owns monitor
 timing tolerance. Unused board ports
-are absent from the top. SDRAM constraints cannot be inferred from this plan.
+are absent from the top. SDRAM I/O constraints are in the
+[SDRAM contract](rtl/storage/MAS_sdram.md#clock-relationship-and-constraints),
+not inferred from this plan.
 
 ## Required verification
 

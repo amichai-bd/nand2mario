@@ -41,9 +41,11 @@ The completed self-authored v0.5 program remains a qualified hardware baseline.
 For `v0.9`, build the original platformer in the existing 32 KiB mapperless
 `dmg-direct-v1` profile, with no cartridge RAM. No MBC or commercial-ROM identity
 is a prerequisite. Keep gameplay in software and fix hardware only for actual
-compatibility defects in its owning contract. Defer additional mappers,
-CGB, SGB, and link support. Full APU completion and physical audio are deferred;
-these releases prove silent video and input, not full DMG compatibility.
+compatibility defects in its owning contract. The only cartridge behavior
+beyond the direct profile is our own [loader profile](#game-library) for the
+on-board menu. Defer MBC-family mappers, CGB, SGB, and link support. Full APU
+completion and physical audio are deferred; these releases prove silent video
+and input, not full DMG compatibility.
 
 ## Compatibility scope
 
@@ -69,9 +71,12 @@ so the CPU never faults; the audio owner's
 game observes. Absent synthesis is
 [GAP-016](../preflight-gaps.md#gap-016-audio-synthesis-rtl); the physical
 output path is [GAP-014](../preflight-gaps.md#gap-014-physical-audio-path).
-No mapper exists. A separate 64 KiB MBC1 profile for our own game is an open
-gap in [#307](https://github.com/amichai-bd/nand2mario/issues/307); it is not
-a release prerequisite.
+Every game in the table runs in the mapperless profile. The
+[game library](#game-library) below adds our own loader profile for the menu
+only; a game selected from it still runs in `dmg-direct-v1`. A separate 64 KiB
+MBC1 profile for our own game is an open gap in
+[#307](https://github.com/amichai-bd/nand2mario/issues/307); it is not a
+release prerequisite.
 
 Third-party ROM support is not offered in any release. A freely licensed
 32 KiB mapperless ROM that uses only the implemented peripherals may run, but
@@ -104,6 +109,58 @@ Existing UART commands
 follow the [shared interface contract](rtl/interfaces/MAS_interfaces.md).
 The pinned `frog-bui` [UART][uart] and [shared input][keyboard] sources inform
 this separation without granting reuse.
+
+## Game library
+
+Owner decisions of 2026-09-15. The DE10-Lite holds a library of our own
+games in its SDRAM and a menu program lets the player pick one using only the
+board. The two contracts below are the single sources for the numbers; this
+section records the decisions they implement.
+
+- Library: sixteen 32 KiB slots (512 KiB) in the DE10-Lite SDRAM plus a
+  catalogue table, laid out by the
+  [SDRAM storage and timing contract](rtl/storage/MAS_sdram.md#address-space-layout).
+  Images are our own builds only; the third-party rule above is unchanged.
+- Cartridge behavior: our own [loader profile](rtl/cartridge/MAS_loader_profile.md),
+  identified by its own profile ID. The low 16 KiB is fixed menu code; the
+  upper 16 KiB is a switchable window into SDRAM so the menu reads game
+  headers and the catalogue directly; a select register makes hardware copy
+  the chosen 32 KiB image into the ROM store and reset the core. After the
+  swap the game runs in the existing mapperless `dmg-direct-v1` profile and
+  sees exactly what a host-loaded image sees. This is not an MBC and does not
+  widen the [compatibility scope](#compatibility-scope).
+- Boot source: phase 1, the host loads the slots, the catalogue and the menu
+  over UART after configuration. Phase 2, optional and later, flash-resident
+  images with a configuration-time copier once MAX 10 flash capacity is
+  verified; it is not started by this decision.
+- Return to menu: `KEY1` held about half a second swaps the menu image back
+  and resets the core; the [loader profile](rtl/cartridge/MAS_loader_profile.md#key1-return)
+  owns the debounce and hold numbers. Hardware detects it; games need no
+  cooperation.
+- Selection input: the existing joypad path through the
+  [shared input owner](rtl/input/MAS_input.md); the menu reads JOYP like any
+  game. No new host MMIO for games.
+- SDRAM controller and pin-level device model: ported from `bui-bui`
+  `src/rtl/mafia/sdram/` (MIT, adapted from FPGA-MAFIA) with its DE10-Lite
+  pins and constraints, recorded in the
+  [provenance index](../tools/provenance.md#external-inputs); the
+  [SDRAM contract](rtl/storage/MAS_sdram.md#operating-point) owns the
+  operating point.
+- Workflow: all simulation under Verilator on WSL; a Questa compile-only gate
+  on Windows for `src/rtl` and `src/fpga` before every merge that touches them;
+  Quartus builds and loads from Windows; board programming and physical
+  sessions are authorized per slice on request within the
+  [hardware authorization](../agents/bootstrap-plan.md#verification-and-hardware-authorization).
+- Order: contracts, Questa gate, SDRAM bring-up (simulation, fit, board memory
+  test), slot loader over UART, loader mapper and KEY1 return, menu software,
+  optional flash boot. The epic
+  [#658](https://github.com/amichai-bd/nand2mario/issues/658) tracks the open
+  implementation and verification gaps; each slice closes its own.
+
+The [Springtrail specification](sw/springtrail/SPEC.md) still forbids adding
+hardware to deliver the game itself; the library is a separate owner that the
+game does not depend on. The [clock plan](clocks-resets-cdc.md) delegates
+SDRAM timing to the storage contract.
 
 ## Release acceptance
 

@@ -13,6 +13,33 @@
       "purpose": "Adapted opcode-to-form data for original assembler; RGBDS remains independent oracle",
       "local_changes": "Retain base/CB dictionaries as JSON; enforce explicit accumulator, LDH C and address-based JR forms; omit disassembler aliases/illegal slots",
       "storage": "tools/sw/opcodes.json"
+    },
+    {
+      "name": "SDRAM controller and pin-level device model (port planned)",
+      "source": "https://github.com/FPGA-MAFIA/fpga_mafia",
+      "commit": "0939fe7586f472942f64003c26048e1bf37e5c85",
+      "intermediate_source": "bui-bui src/rtl/mafia/sdram/mafia_sdram_pkg.sv, mafia_sdram_ctrl.sv and src/dv/mafia/mafia_sdram_device_model.sv; MIT-licensed adaptation of the FPGA-MAFIA SDRAM controller for the DE10-Lite at 25 MHz, CL2, BL8, with its PROVENANCE.md and import-manifest.json",
+      "license": "MIT",
+      "notices": "To be copied beside the ported files as src/rtl/storage/LICENSE and src/rtl/storage/PROVENANCE.md by the SDRAM bring-up slice; the bui-bui revision and per-file hashes copied from are recorded there",
+      "purpose": "Adapted SDRAM controller and original pin-level device model for the game library; contract in wiki/src/rtl/storage/MAS_sdram.md",
+      "local_changes": "Planned: rename into the n2m namespace, use the shared register macros and assertion vocabulary, expose the contract's line interface and initialized/idle outputs, keep the 25 MHz timing constants; every actual change is listed in the ported PROVENANCE.md",
+      "storage": "src/rtl/storage and src/dv/storage after the port; nothing imported yet"
+    }
+  ],
+  "reference_documents": [
+    {
+      "name": "Terasic DE10-Lite System CD v2.2.0 pin data",
+      "source": "https://download.terasic.com/downloads/cd-rom/de10-lite/DE10-Lite_v.2.2.0_SystemCD.zip",
+      "purpose": "SDRAM and KEY pin locations for the game library; vendor document consulted, not redistributed",
+      "local_changes": "none",
+      "storage": "Not stored; pin assignments derived from it live in the board .qsf and wiki/src/rtl/storage/MAS_sdram.md"
+    },
+    {
+      "name": "ISSI IS42S16320D datasheet Rev. 00B, 2011-06-09",
+      "source": "Datasheet/SDRAM/IS42S16320D.pdf inside the Terasic DE10-Lite System CD v2.2.0",
+      "purpose": "SDRAM command truth table and AC timing (tAC, tOH, tIS, tIH, tRCD, tRP, tRC, tWR, tMRD, tREF) behind the constants in wiki/src/rtl/storage/MAS_sdram.md; vendor document consulted, not redistributed",
+      "local_changes": "none",
+      "storage": "Not stored"
     }
   ],
   "dependencies": [
