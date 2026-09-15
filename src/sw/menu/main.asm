@@ -202,8 +202,9 @@ LDH [GB_REG_JOYP],A
 RET
 
 ; Down, then Up, clamped to slots 0..15; A commits the cursor to the select
-; register. An accepted select swaps the image and this code never resumes;
-; a refused one leaves its result and index for ShowStatus.
+; register once every title row is listed. An accepted select swaps the
+; image and this code never resumes; a refused one leaves its result and
+; index for ShowStatus.
 Navigate:
 LD A,[Pressed]
 BIT 3,A
@@ -226,6 +227,9 @@ NotUp:
 LD A,[Pressed]
 BIT 4,A
 RET Z
+LD A,[Pending]
+CP A,LIBRARY_SLOTS
+RET NZ
 LD A,[Cursor]
 LD [LOADER_SELECT],A
 WaitCopy:
@@ -235,8 +239,8 @@ JR NZ,WaitCopy
 RET
 
 ; Delayed catalogue path: commit the bank once the SDRAM is ready, then draw
-; one title row per frame while the window holds bank 34; a window that lost
-; window_ready is committed again (ignored while a fill is still running).
+; one title row per frame once the window holds bank 34. The window is read
+; only here and at boot; nothing after a selection depends on window_ready.
 Catalogue:
 LD A,[BankDone]
 OR A,A
@@ -251,7 +255,7 @@ CP A,LIBRARY_SLOTS
 RET Z
 LD A,[LOADER_STATUS]
 AND A,LIBRARY_STATUS_WINDOW_READY
-JP Z,CommitBank
+RET Z
 LD A,[Pending]
 CALL DrawSlot
 LD A,[Pending]

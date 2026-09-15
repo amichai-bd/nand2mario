@@ -31,13 +31,21 @@ Every frame, at the start of VBlank (`LY == 144`) and finishing inside it:
    A held button acts once.
 2. A Down edge moves the cursor one slot down, then an Up edge one slot up,
    clamped to slots 0..15; no wrap.
-3. An A edge writes the cursor's slot index to the select register and polls
-   `$A000` bit 7 until the loader is idle. An accepted select swaps the image
-   and resets the core; the menu never resumes. A refused select leaves its
-   result in `$A002` and the index in `$A003`.
+3. An A edge, once all sixteen title rows are listed, writes the cursor's
+   slot index to the select register and polls `$A000` bit 7 until the
+   loader is idle. An accepted select swaps the image and resets the core;
+   the menu never resumes. A refused select leaves its result in `$A002` and
+   the index in `$A003`. Before the catalogue is listed, A does nothing.
 4. Delayed catalogue path: when bank 34 has not been committed and
    `sdram_ready` is now set, commit it; when it has been committed and
    `window_ready` is set, draw one remaining title row per frame.
+
+The catalogue is read once, at boot or through the delayed path; the drawn
+map is the menu's copy of the titles. Nothing after a selection depends on
+`window_ready`, so the hardware's clearing of that bit by a refused select
+([#685](https://github.com/amichai-bd/nand2mario/issues/685), a deviation
+from the [bank register rule](../../rtl/cartridge/MAS_loader_profile.md#bank-register))
+does not affect the menu.
 5. Redraw the cursor cell and the status row only when they changed, so the
    ordinary frame writes at most two map cells plus one row.
 
@@ -59,7 +67,7 @@ to a running menu. KEY1 or the host recover as the loader contract states.
 
 | Range | Use |
 |---|---|
-| `$0200`-`$04DB` | `code` section: entry `Start`, frame loop, drawing routines and text tables (732 bytes) |
+| `$0200`-`$04E1` | `code` section: entry `Start`, frame loop, drawing routines and text tables (738 bytes) |
 | `$0800`-`$0A6F` | `assets` section: the 39 font tiles, 624 bytes, from `ASSET "Font"` |
 | `$4000`-`$7FFF` | The banked window; the image keeps the upper half `$FF` because the hardware maps SDRAM there. The linker refuses ROM1 sections in this profile |
 | `$2000`-`$3FFF` write | Bank register: the menu writes 34 once per boot |
@@ -156,7 +164,7 @@ compares every captured display-eligible frame; the
 |---|---|
 | `menu-frame` | The boot frame equals the reference for the fixture library; Down, Down, Up move the cursor with a pixel-exact frame after each press; Up at slot 0 and a held button change nothing |
 | `menu-select` | Down then A commits 1 to the select register; the game boots in `DIRECT_ID` with epoch + 1 and `LIBRARY_STATUS` result `OK` index 1 |
-| `menu-refused` | A on the empty slot 3 is refused: `LIBRARY_STATUS` reports `INVALID_SLOT` index 3 and the frame shows `SLOT 03 INVALID`; Up keeps the message; A on slot 2 starts that game |
+| `menu-refused` | A on the empty slot 3 is refused: `LIBRARY_STATUS` reports `INVALID_SLOT` index 3 (its `window_ready` bit is not asserted, [#685](https://github.com/amichai-bd/nand2mario/issues/685)) and the frame shows `SLOT 03 INVALID`; Up keeps the message; A on slot 2 starts that game |
 | `menu-frame-fault` | The frame comparison rejects a forced wrong source shade with the exact `MENU_PIXEL` diagnostic |
 | `src/dv/menu/test_menu_reference.py` | Font provenance, glyph mapping, layout rows, status texts, fixture library bytes, snapshot unpacking and the negative pixel check |
 

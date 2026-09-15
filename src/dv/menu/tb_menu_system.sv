@@ -366,9 +366,8 @@ module tb_menu_system;
         step(BUTTON_DOWN, 2);
         step(BUTTON_DOWN, 3);
         // Slot 3 is empty: the select is refused and the status row says so.
-        // window_ready (bit 6) is masked: the refused job clears it although
-        // the window still holds bank 34, a hardware/contract gap the menu
-        // tolerates by recommitting the bank when it still has rows to draw.
+        // window_ready (bit 6) is masked: the hardware clears it on a refused
+        // select against the contract (#685); the menu never depends on it.
         step(BUTTON_A, 4);
         read_status({2'b0, 6'd34, 8'd3, LIBRARY_RESULT_INVALID_SLOT, 8'h20}, 32'h3FFFFFBF);
         step(BUTTON_UP, 5);
