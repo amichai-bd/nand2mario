@@ -173,6 +173,11 @@ def verify_parallel_fit(folder, target):
     if adc_pll in expected:
         wanted.update({"clk_adc_reference": ("Base", 100.0, None, None),
                        adc_pll + "|clk[0]": ("Generated", 100.0, ["50.00", "1", "1"], "clk_adc_reference")})
+    # The SDRAM image adds the contract's inverted pin clock: the system PLL
+    # output inverted at DRAM_CLK, same period, no ratio, no duty column.
+    sdram_clock = "sdram_clk" if target.get("top") == "sdram_proof" else None
+    if sdram_clock:
+        wanted[sdram_clock] = ("Generated", reference*2, ["", "1", "1"], SYSTEM_CLOCK)
     if len(clocks) != len(wanted) or {r[0] for r in clocks} != set(wanted):
         raise ValueError("parallel PLL clock inventory differs")
     for row in clocks:
@@ -181,6 +186,8 @@ def verify_parallel_fit(folder, target):
             raise ValueError("parallel PLL clock period differs")
         if ratio is not None and (row[6:9] != ratio or row[14] != master):
             raise ValueError("parallel PLL clock relationship differs")
+        if row[0] == sdram_clock and (row[13] != "true" or row[16] != "{ DRAM_CLK }"):
+            raise ValueError("SDRAM pin clock is not the inverted system clock at DRAM_CLK")
     summary = (folder / "output/design.fit.summary").read_text()
     if re.findall(r"(?m)^Total PLLs : (\d+) /", summary) != [str(len(expected))]:
         raise ValueError("parallel PLL physical resource count differs")

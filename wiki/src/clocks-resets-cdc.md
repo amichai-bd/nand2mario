@@ -221,7 +221,7 @@ the last acknowledged offer, so no unsynchronized bank-return bus is needed.
 | Frame pixels system -> pixel | Dual-clock RAM; read/write ownership disjoint for each bank |
 | Pixel status/counters -> host | Separate request/ack snapshot mailbox, stable bundle until ack; never sample a live multi-bit counter |
 | Host commands/input -> DMG | Same system domain; ordered synchronous handshakes, no CDC |
-| SDRAM pins <-> system | Source-synchronous I/O, not a CDC: `DRAM_CLK` is derived from `clk_sys` and every controller register is in `clk_sys`; the [SDRAM contract](rtl/storage/MAS_sdram.md#clock-relationship-and-constraints) owns the relationship and I/O delays |
+| SDRAM pins <-> system | Source-synchronous I/O, not a CDC: `DRAM_CLK` is `clk_sys` inverted at the pin and every controller register is in `clk_sys`; the [SDRAM contract](rtl/storage/MAS_sdram.md#clock-relationship-and-constraints) owns the relationship and I/O delays. The `sdram-proof` fit meets them with the initial inverted-clock relationship: worst `sdram_clk` output setup slack 8.29 ns and hold slack 19.0 ns across the three corners, every system-clock path including the read-data capture at 5.50 ns or better, zero unconstrained ports |
 | KEY1 -> system | Two-flop level synchronizer, then debounce and hold counting in the [loader profile](rtl/cartridge/MAS_loader_profile.md#key1-return) |
 
 No other crossing is permitted without updating this inventory. Host frame
@@ -266,7 +266,8 @@ and [GAP-012](../preflight-gaps.md#gap-012-vga-frame-crossing) owns monitor
 timing tolerance. Unused board ports
 are absent from the top. SDRAM I/O constraints are in the
 [SDRAM contract](rtl/storage/MAS_sdram.md#clock-relationship-and-constraints),
-not inferred from this plan.
+not inferred from this plan; [`sdram.sdc`](../../src/fpga/de10_lite/sdram.sdc)
+carries them for the `sdram-proof` image.
 
 ## Required verification
 

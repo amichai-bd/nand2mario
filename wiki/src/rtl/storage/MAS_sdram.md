@@ -236,6 +236,17 @@ reports for the nominal and 19.998 ns analyses. The controller's outputs are
 registered or one level of logic from registers; the bring-up slice records the
 actual register-to-pin delays.
 
+Realized by the [`sdram-proof`](../../../../src/fpga/de10_lite/sdram.sdc) fit
+with the inverted clock (Quartus Prime Lite 25.1std, `10M50DAF484C7G`): the
+worst output setup slack against `sdram_clk` is 8.29 ns (slow 1200 mV 85C),
+8.91 ns (slow 0C) and 12.10 ns (fast 0C), so the register-to-pin delay of the
+command, address and write-data paths is at most about 8.9 ns including clock
+uncertainty; the output hold slack is at least 19.0 ns; the read-data capture
+paths are inside the system clock's worst setup slack of 5.50 ns; no port or
+path is unconstrained. The fitter reports one jitter warning because the
+routed inverted clock does not use a dedicated PLL output pin; the builder
+classifies exactly that line for this target.
+
 Fallback if the fit or the board memory test fails with the inverted clock:
 add a third output to the system PLL at 25 MHz with a requested phase shift
 (start at -90 degrees, then tune) driving `DRAM_CLK` through a dedicated clock
