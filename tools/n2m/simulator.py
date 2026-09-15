@@ -10,10 +10,58 @@ from .verilator import diagnostic as verilator_diagnostic
 from .questa import diagnostic as questa_diagnostic
 
 
+QUESTA_SIMULATION_TOOLS = ("vlib", "vmap", "vlog", "vsim")
+# The compile gate elaborates with vopt and never launches vsim.
+QUESTA_COMPILE_TOOLS = ("vlib", "vmap", "vlog", "vopt")
+
+
 class ToolError(RuntimeError):
     def __init__(self, message, output=""):
         super().__init__(message)
         self.output = output
+
+
+def run_tool(argv, cwd=None, timeout=60, env=None):
+    """Run one argv without a shell; a launch failure or timeout is a ToolError."""
+    try:
+        return subprocess.run(argv, cwd=cwd, env=env, text=True, encoding="utf-8",
+                              errors="replace", stdout=subprocess.PIPE,
+                              stderr=subprocess.STDOUT, timeout=timeout)
+    except (OSError, subprocess.TimeoutExpired) as error:
+        output = getattr(error, "stdout", "") or ""
+        if isinstance(output, bytes):
+            output = output.decode("utf-8", errors="replace")
+        raise ToolError(f"command failed: {argv}: {error}", output) from error
+
+
+def questa_tools(directory, names, run=run_tool):
+    """Resolve the named native Questa executables; record path, hash and banner.
+
+    Discovery uses PATH or the explicit directory and never falls back between
+    them. vlib has no version query; its path and hash are its identity.
+    """
+    if directory is not None and (not directory or not Path(directory).is_dir()):
+        raise ToolError("--questa-bin must name an existing tool directory")
+    tools = {}
+    info = {"backend": "questa", "tools": {}, "discovery": []}
+    for name in names:
+        suffix = ".exe" if os.name == "nt" else ""
+        candidate = str(Path(directory) / (name + suffix)) if directory is not None else name
+        found = shutil.which(candidate)
+        if not found:
+            raise ToolError(f"missing {name}; select the Questa tool directory explicitly")
+        path = str(Path(found).resolve())
+        tools[name] = path
+        detail = {"path": path, "sha256": hashlib.sha256(Path(path).read_bytes()).hexdigest()}
+        if name != "vlib":
+            result = run([path, "-version"])
+            info["discovery"].append({"argv": [path, "-version"], "exit_code": result.returncode,
+                                      "output": result.stdout})
+            if result.returncode or questa_diagnostic(result.stdout) or "Questa" not in result.stdout:
+                raise ToolError(f"could not identify Questa {name}: {result.stdout.strip()}", result.stdout)
+            detail["version"] = result.stdout.strip()
+        info["tools"][name] = detail
+    return tools, info
 
 
 class Simulator:
@@ -68,42 +116,11 @@ class Simulator:
 
     def discover_questa(self, directory):
         """Find the native Questa tools and record each executable identity."""
-        if directory is not None and (not directory or not Path(directory).is_dir()):
-            raise ToolError("--questa-bin must name an existing tool directory")
-        self.tools = {}
-        self.info = {"backend": "questa", "tools": {}, "discovery": []}
-        for name in ("vlib", "vmap", "vlog", "vsim"):
-            suffix = ".exe" if os.name == "nt" else ""
-            candidate = str(Path(directory) / (name + suffix)) if directory is not None else name
-            found = shutil.which(candidate)
-            if not found:
-                raise ToolError(f"missing {name}; select the Questa tool directory explicitly")
-            path = str(Path(found).resolve())
-            self.tools[name] = path
-            detail = {"path": path, "sha256": hashlib.sha256(Path(path).read_bytes()).hexdigest()}
-            # vlib has no version query; its path and hash are its identity.
-            if name != "vlib":
-                result = self.run([path, "-version"])
-                self.info["discovery"].append({"argv": [path, "-version"],
-                                               "exit_code": result.returncode,
-                                               "output": result.stdout})
-                if result.returncode or questa_diagnostic(result.stdout) or "Questa" not in result.stdout:
-                    raise ToolError(f"could not identify Questa {name}: {result.stdout.strip()}", result.stdout)
-                detail["version"] = result.stdout.strip()
-            self.info["tools"][name] = detail
+        self.tools, self.info = questa_tools(directory, QUESTA_SIMULATION_TOOLS, self.run)
         self.compiler, self.runtime = self.tools["vlog"], self.tools["vsim"]
 
     def run(self, argv, cwd=None, timeout=60, env=None):
-        command = argv
-        try:
-            return subprocess.run(command, cwd=cwd, env=env, text=True, encoding="utf-8",
-                                  errors="replace", stdout=subprocess.PIPE,
-                                  stderr=subprocess.STDOUT, timeout=timeout)
-        except (OSError, subprocess.TimeoutExpired) as error:
-            output = getattr(error, "stdout", "") or ""
-            if isinstance(output, bytes):
-                output = output.decode("utf-8", errors="replace")
-            raise ToolError(f"command failed: {command}: {error}", output) from error
+        return run_tool(argv, cwd=cwd, timeout=timeout, env=env)
 
     def path(self, path):
         return str(Path(path).resolve())

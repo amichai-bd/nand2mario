@@ -10,6 +10,7 @@ import uuid
 from .fpga import ALLOCATOR_NOTICE, ALLOCATOR_OVERRIDE, ALLOCATOR_OVERRIDE_NOTICE, quartus_environment
 from .records import file_hash
 from .questa import diagnostic as questa_diagnostic, write_macro
+from .simulator import QUESTA_COMPILE_TOOLS, ToolError, questa_tools
 
 SMOKE = "src/dv/builder/builder_smoke.sv"
 SMOKE_SIGNATURE = "PASS builder-smoke seed=1 checks=22"
@@ -125,6 +126,26 @@ def questa(root, folder, directory):
             "fault": {"expected": SMOKE_FAULT, "detected": True}}
 
 
+def questa_lint(folder, directory):
+    """Report that the compile gate's tools are present; the gate itself is not run."""
+    try:
+        tools, info = questa_tools(directory, QUESTA_COMPILE_TOOLS,
+                                   lambda argv: _record(argv, folder))
+    except ToolError as error:
+        raise RuntimeError(str(error)) from error
+    return {"tools": tools, "versions": {name: detail.get("version") for name, detail in info["tools"].items()
+                                          if "version" in detail},
+            "command": "python tools/build.py lint questa --tag <tag> --json",
+            "license": "none required; vlog and vopt only",
+            "scope": "tool availability only; run the command for compile evidence"}
+
+
+def _record(argv, folder):
+    from types import SimpleNamespace
+    output = execute(argv, folder, Path(argv[0]).stem + "-version.log")
+    return SimpleNamespace(returncode=0, stdout=output)
+
+
 def quartus(folder, directory):
     tool = executable(directory, "quartus_sh")
     # Same process-only override as the build flow, so both see the same Quartus behavior.
@@ -224,6 +245,7 @@ def doctor(root, build, args, provenance):
         check(backend, lambda folder: verilator(root, folder, args.verilator_bin))
     else:
         check(backend, lambda folder: questa(root, folder, args.questa_bin))
+        check("questa-lint", lambda folder: questa_lint(folder, args.questa_bin))
     untested = ["Quartus", "JTAG", "UART"]
     if args.profile == "environment":
         check("quartus", lambda folder: quartus(folder, args.quartus_bin))
