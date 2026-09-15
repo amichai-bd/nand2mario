@@ -195,6 +195,8 @@ def parser():
             leaf.add_argument('--length', type=lambda value: int(value, 0), default=0x8000,
                               help='bytes to test, a line multiple; default one 32 KiB slot')
             leaf.add_argument('--full', action='store_true', help='test the whole 64 MiB device instead of --start/--length')
+            leaf.add_argument('--boundary', action='store_true',
+                              help="the storage contract's boundary lines (slot, catalogue, row and bank edges) instead of a range")
             leaf.add_argument('--seed', type=int, default=1, help='pattern seed')
     return result
 

@@ -58,6 +58,8 @@ def run(root, build, args, provenance):
             sdram_read(args.address, args.lines)
         if args.action == 'sdram-test':
             from ..interface_codec import sdram_line_address
+            if args.boundary and args.full:
+                raise ValueError('--boundary and --full are exclusive')
             sdram_start = 0 if args.full else args.start
             sdram_length = abi.SDRAM_BYTES if args.full else args.length
             if sdram_length <= 0 or sdram_length % abi.SDRAM_LINE_BYTES or sdram_start + sdram_length > abi.SDRAM_BYTES:
@@ -118,6 +120,11 @@ def run(root, build, args, provenance):
                 (folder / 'sdram.bin').write_bytes(contents)
                 report['result'] = {'address': args.address, 'lines': args.lines, 'contents': summary(contents),
                                     'hex': contents.hex()}
+            elif args.action == 'sdram-test' and args.boundary:
+                from .client import sdram_boundary_test
+                report['result'] = sdram_boundary_test(client, seed=args.seed)
+                if report['result']['mismatch_count']:
+                    raise ValueError(f"SDRAM boundary test found {report['result']['mismatch_count']} mismatching lines")
             elif args.action == 'sdram-test':
                 def progress(event):
                     if not args.json:

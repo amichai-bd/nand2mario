@@ -296,6 +296,36 @@ class HostTests(unittest.TestCase):
         result = client.sdram_test(0, 16 * 100, mismatch_limit=8)
         self.assertEqual((result['mismatch_count'], len(result['mismatches'])), (100, 8))
 
+    def test_sdram_boundary_test_covers_every_contract_line(self):
+        from n2m.host.client import SDRAM_BOUNDARY_LINES, sdram_boundary_test
+        endpoint = Endpoint()
+        result = sdram_boundary_test(Client(endpoint), seed=2)
+        self.assertEqual((result['status'], result['mismatch_count'], result['lines']), ('PASS', 0, 14))
+        addresses = [address for _, address in SDRAM_BOUNDARY_LINES]
+        self.assertEqual(len(set(addresses)), 14)
+        self.assertEqual({a >> 24 for a in addresses}, {0, 1, 2, 3})
+        self.assertIn(0x3FFFFF0, addresses)
+        self.assertTrue(all(a % 16 == 0 for a in addresses))
+        writes = [unpack_record('sdram_write', p)['address'] for n, p, s in endpoint.requests if n == 'SDRAM_WRITE']
+        reads = [unpack_record('sdram_read', p) for n, p, s in endpoint.requests if n == 'SDRAM_READ']
+        self.assertEqual(writes, addresses)
+        self.assertEqual(reads, [{'address': a, 'count': 1} for a in addresses])
+        corrupt = Endpoint(defect='sdram-corrupt')
+        corrupt.sdram_ready = True
+        result = sdram_boundary_test(Client(corrupt), seed=2)
+        # The corrupt fake flips a byte of the line at 0x30, which is not a boundary line.
+        self.assertEqual(result['status'], 'PASS')
+        endpoint = Endpoint()
+        original = endpoint.write
+        def dropping(packet):
+            outcome = original(packet)
+            if endpoint.requests[-1][0] == 'SDRAM_WRITE' and unpack_record('sdram_write', endpoint.requests[-1][1])['address'] == 0x3FFFFF0:
+                endpoint.sdram.pop(0x3FFFFF0, None)
+            return outcome
+        endpoint.write = dropping
+        result = sdram_boundary_test(Client(endpoint))
+        self.assertEqual((result['status'], result['mismatch_count'], result['mismatches'][0]['name']), ('FAIL', 1, 'bank 3 device end'))
+
     def test_cli_sdram_test_through_fake_session(self):
         endpoint = Endpoint()
         def fake_session(folder, args, state_root):
@@ -307,6 +337,13 @@ class HostTests(unittest.TestCase):
                                    '--uart-port', 'COM92', '--tag', tag, '--json'], ROOT), 0)
         report = json.loads(stdout.getvalue())
         self.assertEqual((report['status'], report['result']['status'], report['result']['lines']), ('PASS', 'PASS', 32))
+        with patch('n2m.host.command.session', fake_session), redirect_stdout(io.StringIO()) as stdout:
+            self.assertEqual(main(['host', 'sdram-test', '--boundary', '--uart-port', 'COM92', '--tag', tag, '--json'], ROOT), 0)
+        report = json.loads(stdout.getvalue())
+        self.assertEqual((report['result']['mode'], report['result']['lines'], report['result']['mismatch_count']), ('boundary', 14, 0))
+        with patch('n2m.host.command.session') as opener, redirect_stdout(io.StringIO()):
+            self.assertEqual(main(['host', 'sdram-test', '--boundary', '--full', '--uart-port', 'COM92', '--tag', tag, '--json'], ROOT), 1)
+        opener.assert_not_called()
         with patch('n2m.host.command.session', fake_session), redirect_stdout(io.StringIO()) as stdout:
             self.assertEqual(main(['host', 'sdram-write', '--address', '0x10', '--data', '00112233445566778899aabbccddeeff',
                                    '--uart-port', 'COM92', '--tag', tag, '--json'], ROOT), 0)

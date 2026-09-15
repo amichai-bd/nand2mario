@@ -378,8 +378,9 @@ A board memory test, driven over UART through the host line commands in the
 [loader profile](../cartridge/MAS_loader_profile.md#host-interaction) by
 [`host sdram-test`](../../../tools/n2m/host/SPEC.md#commands), writes a seeded
 address-dependent line pattern over a range (one slot by default, the whole
-device with `--full`) and reads it back with every mismatch listed by address;
-it is authorized per session and does not replace the simulation bounds.
+device with `--full`) or over the boundary set above (`--boundary`) and reads
+it back with every mismatch listed by address; it is authorized per session and
+does not replace the simulation bounds.
 
 ## References
 

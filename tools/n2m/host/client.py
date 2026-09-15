@@ -303,6 +303,35 @@ class Client:
                 'status': 'PASS' if mismatch_count == 0 else 'FAIL'}
 
 
+# The storage contract's boundary set (wiki/src/rtl/storage/MAS_sdram.md#verification):
+# first and last line of slots 0, 15 and 16, first and last catalogue line,
+# first and last line of a row, one line in each bank including the device end.
+SDRAM_BOUNDARY_LINES = (
+    ('slot 0 first', 0x0000000), ('slot 0 last', 0x0007FF0),
+    ('slot 15 first', 0x0078000), ('slot 15 last', 0x007FFF0),
+    ('slot 16 first', 0x0080000), ('slot 16 last', 0x0087FF0),
+    ('catalogue first', 0x0088000), ('catalogue last', 0x00883F0),
+    ('row first', 0x1002800), ('row last', 0x1002FF0),
+    ('bank 0', 0x0000010), ('bank 1', 0x1ABC800), ('bank 2', 0x2000FF0), ('bank 3 device end', 0x3FFFFF0),
+)
+
+
+def sdram_boundary_test(client, *, seed=1):
+    """Write every boundary line, then read each back and compare by address."""
+    for _name, address in SDRAM_BOUNDARY_LINES:
+        client.sdram_write(address, sdram_pattern(address, seed))
+    mismatches = []
+    for name, address in SDRAM_BOUNDARY_LINES:
+        actual = client.sdram_read(address, 1)
+        expected = sdram_pattern(address, seed)
+        if actual != expected:
+            mismatches.append({'name': name, 'address': address, 'expected': expected.hex(), 'actual': actual.hex()})
+    return {'mode': 'boundary', 'lines': len(SDRAM_BOUNDARY_LINES), 'seed': seed,
+            'addresses': {name: address for name, address in SDRAM_BOUNDARY_LINES},
+            'mismatch_count': len(mismatches), 'mismatches': mismatches,
+            'status': 'PASS' if not mismatches else 'FAIL'}
+
+
 def sdram_pattern(address, seed):
     """The 16-byte test line for one device address: address- and seed-dependent, no two lines alike."""
     line = bytearray()
