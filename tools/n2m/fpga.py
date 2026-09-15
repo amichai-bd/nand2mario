@@ -12,7 +12,7 @@ import uuid
 from .hdl import dependencies
 from .records import atomic_json, cache_matches, digest, file_hash, read_json
 from .progress import Progress, display_path
-from . import fpga_pll, fpga_constraints, fpga_vga, fpga_intel_memory, fpga_memory_stores, fpga_adc, fpga_controls, fpga_v05, process_tree
+from . import fpga_pll, fpga_constraints, fpga_vga, fpga_intel_memory, fpga_memory_stores, fpga_adc, fpga_controls, fpga_v05, fpga_flash, process_tree
 
 DEVICE = "10M50DAF484C7G"
 REGISTRY = "src/fpga/de10_lite/targets.json"
@@ -99,7 +99,7 @@ def target_definition(root, name):
         fpga_v05.validate_board(target)
     if "pll" in target:
         fpga_pll.validate(target["pll"])
-        if target["top"] not in ("clocking_proof", "vga_proof", "ppu_proof", "intel_memory_proof", "controls_proof", "v05_proof", "v05_controls_proof", "sdram_proof") or "timing" not in target:
+        if target["top"] not in ("clocking_proof", "vga_proof", "ppu_proof", "intel_memory_proof", "controls_proof", "v05_proof", "v05_controls_proof", "sdram_proof", "flash_proof") or "timing" not in target:
             raise ValueError("PLL evidence currently requires the bounded clocking proof target")
     if "timing" in target:
         fpga_constraints.validate(target["timing"])
@@ -140,6 +140,9 @@ def identity_target(target):
 # one build identity macro and the same checked UART synchronizer chain as the
 # other board images.
 SDRAM_TOP = "sdram_proof"
+# The flash reader proof image: the On-Chip Flash IP walked over the user
+# range, physical reset and LED pins, no identity macro.
+FLASH_TOP = "flash_proof"
 SDRAM_CHAINS = (("uart", "uart_rx", "u_uart|u_serial_rx|rx_meta", "u_uart|u_serial_rx|rx_sync"),)
 
 
@@ -181,6 +184,8 @@ def prepare(root, folder, target, build_id=None):
             lines.append('set_global_assignment -name VERILOG_FILE n2m_system_pll.v')
     if "src/rtl/input/n2m_adc_backend.sv" in target["sources"]:
         lines.extend(fpga_adc.assignments())
+    if fpga_flash.flash_target(target):
+        lines.extend(fpga_flash.assignments())
     if "timing" in target or target["top"] in ("v05_proof", "v05_controls_proof"):
         (folder / "checked.sdc").write_text(checked_constraints(target), encoding="utf-8")
         lines.append('set_global_assignment -name SDC_FILE checked.sdc')
@@ -189,12 +194,12 @@ def prepare(root, folder, target, build_id=None):
                       f'set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to {tcl_word(port)}'])
         if target.get("top") in ("vga_proof", "ppu_proof", "controls_proof", "v05_proof", "v05_controls_proof") and port in fpga_vga.PORTS:
             lines.append(f'set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to {tcl_word(port)}')
-        if (target["top"] == "controls_proof" or fpga_v05.board_target(target) or target["top"] == SDRAM_TOP) and (port == "uart_tx" or re.fullmatch(r"leds\[[0-9]\]", port)):
+        if (target["top"] in ("controls_proof", SDRAM_TOP, FLASH_TOP) or fpga_v05.board_target(target)) and (port == "uart_tx" or re.fullmatch(r"leds\[[0-9]\]", port)):
             lines.append(f'set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to {tcl_word(port)}')
         # SDRAM command, address, clock and data pins: 3.3-V LVTTL at 8 mA.
         if sdram_target(target) and port.startswith("DRAM_"):
             lines.append(f'set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to {tcl_word(port)}')
-    if target["top"] == "controls_proof" or fpga_v05.board_target(target) or target["top"] == SDRAM_TOP:
+    if target["top"] in ("controls_proof", SDRAM_TOP, FLASH_TOP) or fpga_v05.board_target(target):
         lines.append('set_instance_assignment -name IO_STANDARD "3.3 V SCHMITT TRIGGER" -to board_reset_n')
     # KEY1 is the loader profile's return button, the same pin data as KEY0.
     if "key1_n" in target["pins"]:
@@ -500,6 +505,8 @@ def timing_evidence(folder, target, *, build_id=None):
         evidence["board_uart"] = fpga_controls.verify(folder, system_clock=fpga_pll.SYSTEM_CLOCK,
             system_net=fpga_pll.SYSTEM_NET, chains=SDRAM_CHAINS, top=SDRAM_TOP)
         evidence["board_build_id"] = fpga_controls.verify_identity(folder, build_id, macro="N2M_SDRAM_BUILD_ID", instances=1)
+    if fpga_flash.flash_target(target):
+        evidence["onchip_flash"] = fpga_flash.verify(folder)
     return evidence
 
 
@@ -521,6 +528,8 @@ def complete_cache(record, fingerprint, root, build, target, build_id=None):
             required += [folder / "output" / name for name in fpga_pll.required_reports()]
         if "src/rtl/input/n2m_adc_backend.sv" in target.get("sources", []):
             required += [folder / name for name in (*fpga_adc.CONTROL, "n2m_adc_pll.v", "generate-adc-pll.log")]
+        if fpga_flash.flash_target(target):
+            required += [folder / name for name in fpga_flash.SOURCES]
         if "pll" in target or any(p in target["sources"] for p in ("src/rtl/common/n2m_intel_ram.sv", "src/rtl/input/n2m_adc_backend.sv")):
             required += [folder / "simulation/questa/design.vo", folder / "netlist.log"]
         required += [folder / name for name in ("design.qpf", "design.qsf", "audit.tcl", "compile.log", "audit.log")]
@@ -579,6 +588,8 @@ def build_fpga(root, build, args, provenance=None, progress=None):
                 record["tools"]["altsyncram"] = fpga_intel_memory.identity(args.quartus_bin)
             if "src/rtl/input/n2m_adc_backend.sv" in target["sources"]:
                 record["tools"]["adc"] = fpga_adc.identity(args.quartus_bin)
+            if fpga_flash.flash_target(target):
+                record["tools"]["onchip_flash"] = fpga_flash.identity(args.quartus_bin)
         record["definition"] = target
         fingerprint_inputs = {"inputs": record["inputs"], "tools": record["tools"], "definition": target, "timeout": args.timeout}
         override = getattr(args, "build_id", None)
@@ -615,6 +626,9 @@ def build_fpga(root, build, args, provenance=None, progress=None):
             if "pll" in target:
                 with progress.stage("Generate clock PLLs", f"logs: {display_path(root, folder)}"):
                     fpga_pll.generate(folder, record["tools"]["altpll"], target["pll"], generator_execute, args.timeout, record, build)
+            if "onchip_flash" in record["tools"]:
+                with progress.stage("Stage On-Chip Flash IP sources", f"folder: {display_path(root, folder)}"):
+                    fpga_flash.stage(folder, record["tools"]["onchip_flash"])
             prepare(root, folder, target, build_id=record.get("build_id"))
             with progress.stage("Compile, fit, assemble, and time", f"log: {display_path(root, folder / 'compile.log')}"):
                 execute([record["tools"]["quartus_sh"]["path"], "--flow", "compile", "design"], folder, folder / "compile.log", args.timeout, record, build)

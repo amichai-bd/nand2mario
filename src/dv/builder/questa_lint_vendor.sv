@@ -2,7 +2,7 @@
 // installs during `fpga build`. Port- and parameter-compatible empty bodies:
 // `lint questa` binds repository RTL to these ports and claims no vendor
 // behavior. Only that command compiles this file; it is in no synthesis source
-// set. tools/n2m/lint.py requires exactly these five units, in this order.
+// set. tools/n2m/lint.py requires exactly these six units, in this order.
 `timescale 1ns/1ps
 module n2m_system_pll (
     input  logic inclk0,
@@ -133,5 +133,76 @@ module altsyncram #(
     input  logic                       addressstall_b,
     output logic [width_b-1:0]         q_b,
     output logic [2:0]                 eccstatus
+);
+endmodule
+
+// Installed Intel On-Chip Flash IP behind n2m_flash_reader outside VERILATOR
+// builds; the builder copies its four pinned source files into the attempt.
+module altera_onchip_flash #(
+    parameter string DEVICE_FAMILY = "MAX 10",
+    parameter string PART_NAME = "Unknown",
+    parameter string IS_DUAL_BOOT = "False",
+    parameter string IS_ERAM_SKIP = "False",
+    parameter string IS_COMPRESSED_IMAGE = "False",
+    parameter string INIT_FILENAME = "",
+    parameter string DEVICE_ID = "08",
+    parameter string INIT_FILENAME_SIM = "",
+    parameter int PARALLEL_MODE = 0,
+    parameter int READ_AND_WRITE_MODE = 0,
+    parameter int WRAPPING_BURST_MODE = 0,
+    parameter int AVMM_CSR_DATA_WIDTH = 32,
+    parameter int AVMM_DATA_DATA_WIDTH = 32,
+    parameter int AVMM_DATA_ADDR_WIDTH = 20,
+    parameter int AVMM_DATA_BURSTCOUNT_WIDTH = 13,
+    parameter int FLASH_DATA_WIDTH = 32,
+    parameter int FLASH_ADDR_WIDTH = 23,
+    parameter int FLASH_SEQ_READ_DATA_COUNT = 2,
+    parameter int FLASH_READ_CYCLE_MAX_INDEX = 3,
+    parameter int FLASH_ADDR_ALIGNMENT_BITS = 1,
+    parameter int FLASH_RESET_CYCLE_MAX_INDEX = 28,
+    parameter int FLASH_BUSY_TIMEOUT_CYCLE_MAX_INDEX = 112,
+    parameter int FLASH_ERASE_TIMEOUT_CYCLE_MAX_INDEX = 40603248,
+    parameter int FLASH_WRITE_TIMEOUT_CYCLE_MAX_INDEX = 35382,
+    parameter int MIN_VALID_ADDR = 1,
+    parameter int MAX_VALID_ADDR = 1,
+    parameter int MIN_UFM_VALID_ADDR = 1,
+    parameter int MAX_UFM_VALID_ADDR = 1,
+    parameter int SECTOR1_START_ADDR = 1,
+    parameter int SECTOR1_END_ADDR = 1,
+    parameter int SECTOR2_START_ADDR = 1,
+    parameter int SECTOR2_END_ADDR = 1,
+    parameter int SECTOR3_START_ADDR = 1,
+    parameter int SECTOR3_END_ADDR = 1,
+    parameter int SECTOR4_START_ADDR = 1,
+    parameter int SECTOR4_END_ADDR = 1,
+    parameter int SECTOR5_START_ADDR = 1,
+    parameter int SECTOR5_END_ADDR = 1,
+    parameter int SECTOR_READ_PROTECTION_MODE = 31,
+    parameter int SECTOR1_MAP = 1,
+    parameter int SECTOR2_MAP = 1,
+    parameter int SECTOR3_MAP = 1,
+    parameter int SECTOR4_MAP = 1,
+    parameter int SECTOR5_MAP = 1,
+    parameter int ADDR_RANGE1_END_ADDR = 1,
+    parameter int ADDR_RANGE2_END_ADDR = 1,
+    parameter int ADDR_RANGE1_OFFSET = 1,
+    parameter int ADDR_RANGE2_OFFSET = 1,
+    parameter int ADDR_RANGE3_OFFSET = 1
+) (
+    input  logic                                  clock,
+    input  logic                                  reset_n,
+    input  logic                                  avmm_data_read,
+    input  logic                                  avmm_data_write,
+    input  logic [AVMM_DATA_ADDR_WIDTH-1:0]       avmm_data_addr,
+    input  logic [AVMM_DATA_DATA_WIDTH-1:0]       avmm_data_writedata,
+    input  logic [AVMM_DATA_BURSTCOUNT_WIDTH-1:0] avmm_data_burstcount,
+    output logic                                  avmm_data_waitrequest,
+    output logic                                  avmm_data_readdatavalid,
+    output logic [AVMM_DATA_DATA_WIDTH-1:0]       avmm_data_readdata,
+    input  logic                                  avmm_csr_read,
+    input  logic                                  avmm_csr_write,
+    input  logic                                  avmm_csr_addr,
+    input  logic [AVMM_CSR_DATA_WIDTH-1:0]        avmm_csr_writedata,
+    output logic [AVMM_CSR_DATA_WIDTH-1:0]        avmm_csr_readdata
 );
 endmodule
