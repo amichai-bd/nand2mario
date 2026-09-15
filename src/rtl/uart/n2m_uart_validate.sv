@@ -34,6 +34,10 @@ module n2m_uart_validate (
         response_length = 0;
         range_end = {1'b0, range_fields.offset} + {17'b0, range_fields.count};
         peek_end = {1'b0, peek_fields.offset} + {17'b0, peek_fields.count};
+        // Lint waiver: 16-bit lengths and 33-bit range ends are compared
+        // against 32-bit integer constants; the intended unsigned
+        // comparison is unchanged.
+        /* verilator lint_off WIDTHEXPAND */
         case (header.command)
             n2m_interfaces_pkg::COMMAND_PING: response_length = 16'(n2m_interfaces_pkg::WORD_BYTES);
             n2m_interfaces_pkg::COMMAND_READ_HOST: begin
@@ -110,6 +114,7 @@ module n2m_uart_validate (
             end
             default: command_known = 0;
         endcase
+        /* verilator lint_on WIDTHEXPAND */
         status = n2m_interfaces_pkg::STATUS_OK;
         if (forced_status != n2m_interfaces_pkg::STATUS_OK) status = forced_status;
         else if (header.version != n2m_interfaces_pkg::WIRE_VERSION) status = n2m_interfaces_pkg::STATUS_BAD_VERSION;

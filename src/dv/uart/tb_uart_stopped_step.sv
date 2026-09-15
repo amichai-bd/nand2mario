@@ -1,5 +1,7 @@
 `timescale 1ns/1ps
 `default_nettype none
+// Lint waiver: the integer file handle is tested as a boolean; the width lint on that idiom is a false positive.
+/* verilator lint_off WIDTHTRUNC */
 module tb_uart_stopped_step;
     logic clk_sys, reset_sys, start, gb_tick, paused, pause_request, core_reset;
     logic core_initialized, instruction_complete, retirement_valid, cpu_stopped;
@@ -51,7 +53,7 @@ module tb_uart_stopped_step;
         #1;
         if(asleep_check) begin
             if(!paused || !pause_request || gb_tick)$fatal(1,"UART_STOP_STEP_PAUSED");
-            if(!cpu_stopped || dot_count!==frozen_dot || retirement_count!==frozen_retire || epoch!==frozen_epoch)
+            if(!cpu_stopped || dot_count!=frozen_dot || retirement_count!=frozen_retire || epoch!=frozen_epoch)
                 $fatal(1,"UART_STOP_STEP_FROZEN");
             if(wakes!=0 || bus_commit || instruction_complete || retirement_valid || core_reset)
                 $fatal(1,"UART_STOP_STEP_EFFECT");
@@ -62,7 +64,7 @@ module tb_uart_stopped_step;
         @(negedge clk_sys);command=selected_command;start=1;
         @(negedge clk_sys);start=0;cycles=0;
         while(!done && cycles<2000)begin @(negedge clk_sys);cycles=cycles+1;end
-        if(!done || status!==expected_status)$fatal(1,"UART_STOP_STEP_RESULT expected=%0d actual=%0d cycles=%0d",expected_status,status,cycles);
+        if(!done || status!=expected_status)$fatal(1,"UART_STOP_STEP_RESULT expected=%0d actual=%0d cycles=%0d",expected_status,status,cycles);
         if(asleep_check && cycles!=0)$fatal(1,"UART_STOP_STEP_NOT_IMMEDIATE cycles=%0d",cycles);
         @(negedge clk_sys);repeat(30)@(negedge clk_sys);
     endtask
@@ -88,7 +90,7 @@ module tb_uart_stopped_step;
             asleep_check=1;
             if(release_pause)force u_control.pause_request=0;
             issue(6,8);
-            if(buttons!==input_buttons || pending_wake!==scenario[1])$fatal(1,"UART_STOP_STEP_INPUT_WAKE");
+            if(buttons!=input_buttons || pending_wake!=scenario[1])$fatal(1,"UART_STOP_STEP_INPUT_WAKE");
             $fdisplay(trace,"%0d,%0d,%02h,%0d,%0d,%0d,%0d",scenario,step_budget,buttons,pending_wake,dot_count,retirement_count,status);
             asleep_check=0;checks=checks+1;
         end

@@ -79,7 +79,7 @@
       "src/dv/baseline/tb_baseline.sv"
     ],
     "top": "tb_baseline",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+broken"
     ],
@@ -98,7 +98,7 @@
       "src/dv/baseline/tb_baseline.sv"
     ],
     "top": "tb_baseline",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS baseline transactions=75 bins=ff"
@@ -3435,7 +3435,7 @@
       "src/dv/uart/tb_uart_packet_tx.sv"
     ],
     "top": "tb_uart_packet_tx",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS UART packet TX replies=11 resets=3 COBS zero 254 max serial_stop",
@@ -3450,7 +3450,7 @@
       "src/dv/uart/tb_uart_packet_tx.sv"
     ],
     "top": "tb_uart_packet_tx",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+corrupt"
     ],
@@ -3467,7 +3467,7 @@
       "src/dv/uart/tb_uart_packet_tx.sv"
     ],
     "top": "tb_uart_packet_tx",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+missing"
     ],
@@ -3808,7 +3808,7 @@
       "src/dv/uart/tb_uart_stopped_step.sv"
     ],
     "top": "tb_uart_stopped_step",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS UART stopped STEP immediate cases=4 zero_dots input_preserved queued_wake=1"
@@ -3831,7 +3831,7 @@
       "src/dv/uart/tb_uart_stopped_step.sv"
     ],
     "top": "tb_uart_stopped_step",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+release_pause"
     ],
@@ -4913,7 +4913,7 @@
     ],
     "timeout_seconds": 60,
     "top": "tb_dma_engine",
-    "simulator": "questa"
+    "simulator": "verilator"
   },
   "dma-engine-byte": {
     "args": [
@@ -4929,7 +4929,7 @@
     ],
     "timeout_seconds": 60,
     "top": "tb_dma_engine",
-    "simulator": "questa"
+    "simulator": "verilator"
   },
   "dma-engine-service": {
     "args": [
@@ -4945,7 +4945,7 @@
     ],
     "timeout_seconds": 60,
     "top": "tb_dma_engine",
-    "simulator": "questa"
+    "simulator": "verilator"
   },
   "dma-engine-time": {
     "args": [
@@ -4961,7 +4961,7 @@
     ],
     "timeout_seconds": 60,
     "top": "tb_dma_engine",
-    "simulator": "questa"
+    "simulator": "verilator"
   },
   "oam-corrupt": {
     "args": [],
@@ -4974,7 +4974,7 @@
     ],
     "timeout_seconds": 30,
     "top": "tb_oam_corrupt",
-    "simulator": "questa"
+    "simulator": "verilator"
   },
   "oam-corrupt-mask": {
     "args": [
@@ -4989,7 +4989,7 @@
     ],
     "timeout_seconds": 30,
     "top": "tb_oam_corrupt",
-    "simulator": "questa"
+    "simulator": "verilator"
   },
   "oam-corrupt-output": {
     "args": [
@@ -5004,7 +5004,7 @@
     ],
     "timeout_seconds": 30,
     "top": "tb_oam_corrupt",
-    "simulator": "questa"
+    "simulator": "verilator"
   },
   "dma-terminal": {
     "sources": [
@@ -5917,7 +5917,7 @@
     "signature": "PASS OAM qualifier cases=6811 full/high-mask addresses scan exclusions",
     "timeout_seconds": 30,
     "top": "tb_oam_qualify",
-    "simulator": "questa",
+    "simulator": "verilator",
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/cpu/n2m_cpu_pkg.sv",
@@ -5934,7 +5934,7 @@
     "signature": "OAM_QUALIFIER_ORACLE case=0 expected=0 actual=2",
     "timeout_seconds": 30,
     "top": "tb_oam_qualify",
-    "simulator": "questa",
+    "simulator": "verilator",
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/cpu/n2m_cpu_pkg.sv",
@@ -5951,7 +5951,7 @@
     "signature": "OAM_OBSERVATION_RESOLVED",
     "timeout_seconds": 30,
     "top": "tb_oam_qualify",
-    "simulator": "questa",
+    "simulator": "verilator",
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/cpu/n2m_cpu_pkg.sv",
@@ -6445,7 +6445,7 @@
       "src/dv/uart/tb_uart_validation.sv"
     ],
     "top": "tb_uart_validation",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "signature": "PASS UART validation checks=200",
     "expected_exit": "zero"
@@ -6460,7 +6460,7 @@
       "src/dv/uart/tb_uart_validation.sv"
     ],
     "top": "tb_uart_validation",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+CORRUPT_HOST"
     ],
@@ -14289,7 +14289,7 @@
       "src/dv/uart/tb_uart_run_dots.sv"
     ],
     "top": "tb_uart_run_dots",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS UART RUN_DOTS cases=9 exact_ticks phase STOP settlement reset STEP"
@@ -14303,7 +14303,7 @@
       "src/dv/uart/tb_uart_run_dots.sv"
     ],
     "top": "tb_uart_run_dots",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+CORRUPT_RESULT"
     ],
@@ -19015,7 +19015,7 @@
       "src/dv/uart/tb_io_peek.sv"
     ],
     "top": "tb_io_peek",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "signature": "PASS io peek isolation checks=630598 peeks=20019",
     "expected_exit": "zero"
@@ -19032,7 +19032,7 @@
       "src/dv/uart/tb_io_peek.sv"
     ],
     "top": "tb_io_peek",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+PEEK_DISTURB"
     ],

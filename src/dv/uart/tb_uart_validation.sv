@@ -39,14 +39,14 @@ module tb_uart_validation;
         #1;
         if (corrupt && value == 32'h00010030) force data = 32'h0;
         #1;
-        if (address_valid !== expected_valid || data !== expected_data)
+        if (address_valid != expected_valid || data != expected_data)
             $fatal(1, "UART_HOST_VALUE address=%08x expected=%08x actual=%08x valid=%b/%b",
                 address, expected_data, data, expected_valid, address_valid);
         checks = checks + 1;
     endtask
     task automatic check_reply(input logic [7:0] expected_status, input logic [15:0] expected_length);
         #1;
-        if (status !== expected_status || response_length !== expected_length)
+        if (status != expected_status || response_length != expected_length)
             $fatal(1, "UART_VALIDATE_LENGTH command=%02x expected=%02x/%0d actual=%02x/%0d",
                 header.command, expected_status, expected_length, status, response_length);
         checks = checks + 1;

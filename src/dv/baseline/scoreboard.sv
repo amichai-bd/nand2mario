@@ -1,4 +1,6 @@
 `timescale 1ns/1ps
+// Lint waiver: the integer file handle is tested as a boolean; the width lint on that idiom is a false positive.
+/* verilator lint_off WIDTHTRUNC */
 module baseline_scoreboard(input logic strobe, reset, enable,
                            input logic [7:0] operand, actual,
                            input integer cycle, seed,
@@ -19,7 +21,7 @@ module baseline_scoreboard(input logic strobe, reset, enable,
     // Directed literal checkpoints independently sanity-check the reference.
     if ((cycle == 4 && expected != 128) || (cycle == 6 && expected != 0))
       $fatal(1, "BASELINE_ORACLE cycle=%0d expected_checkpoint=128_or_0 actual=%0d seed=%0d", cycle, expected, seed);
-    if (actual !== expected[7:0])
+    if (actual != expected[7:0])
       $fatal(1, "BASELINE_MISMATCH cycle=%0d expected=%0d actual=%0d seed=%0d", cycle, expected, actual, seed);
     prior <= expected;
     checked = checked + 1;

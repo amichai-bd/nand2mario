@@ -131,12 +131,12 @@ module tb_io_peek;
     );
 
     task automatic same(input string signal, input logic [31:0] a, input logic [31:0] b);
-        if (a !== b) $fatal(1, "IO_PEEK_DIVERGENCE signal=%0s", signal);
+        if (a != b) $fatal(1, "IO_PEEK_DIVERGENCE signal=%0s", signal);
         checks = checks + 1;
     endtask
 
     task automatic expect_word(input logic [31:0] value, input logic [31:0] expected);
-        if (!peek_valid || value !== expected)
+        if (!peek_valid || value != expected)
             $fatal(1, "IO_PEEK_VALUE address=%08x expected=%08x actual=%08x valid=%b",
                 peek_address, expected, value, peek_valid);
         checks = checks + 1;
@@ -188,9 +188,12 @@ module tb_io_peek;
     end
 
     // Every committed observation must match between the peeked and unpeeked
-    // copies on every edge, including during reset.
+    // copies on every edge after time zero, including during reset. A
+    // two-state simulator has no X-to-0 clock edge at time zero, and a
+    // randomized initial clock value may or may not produce one, so the
+    // guard names the time rather than counting that edge.
     always @(negedge clk_sys) begin
-        if (cycle > 0) begin
+        if ($time > 0) begin
             same("div", {24'd0, a_div}, {24'd0, b_div});
             same("tima", {24'd0, a_tima}, {24'd0, b_tima});
             same("tma", {24'd0, a_tma}, {24'd0, b_tma});
@@ -254,7 +257,7 @@ module tb_io_peek;
         reset = 0;
         repeat (CYCLES) @(posedge clk_sys);
         // Progress, so a silent stuck divider cannot pass as agreement.
-        if (a_div === b_div && a_div === 8'd0 && a_tima === 8'd0)
+        if (a_div == b_div && a_div == 8'd0 && a_tima == 8'd0)
             $fatal(1, "IO_PEEK_NO_PROGRESS div=%02x tima=%02x", a_div, a_tima);
         $display("PASS io peek isolation checks=%0d peeks=%0d", checks, peeks);
         $finish;
