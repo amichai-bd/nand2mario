@@ -88,7 +88,7 @@ class MooneyeTests(unittest.TestCase):
                 mooneye.os.environ.pop('N2M_MOONEYE_BUILD_HOST', None)
                 self.assertEqual(mooneye.tool_identity(ROOT), identity)
         with patch.dict('os.environ', {'N2M_MOONEYE_BUILD_HOST': 'windows'}):
-            with self.assertRaisesRegex(ValueError, 'retired Questa installation'):
+            with self.assertRaisesRegex(ValueError, 'requires the Questa installation'):
                 mooneye.tool_identity(ROOT)
 
     def test_missing_and_unknown_build_host(self):

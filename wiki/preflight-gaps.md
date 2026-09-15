@@ -107,14 +107,13 @@ confirmed. Dependency fetching requirements remain in GAP-013.
 
 The [build command](tools/n2m/SPEC.md) implements tagged doctor, builder
 checks and self-checking simulation. Under its
-[simulator policy](tools/n2m/SPEC.md#simulator-policy) Verilator on WSL is the
-sole simulator; `doctor` runs there without a license, while `sim test`,
-`regress` and `tests run` still drive the unmigrated Questa path until the
-builder Verilator path lands. The
+[simulator policy](tools/n2m/SPEC.md#simulator-policy), Verilator runs natively
+on WSL and Questa runs natively on Windows. `doctor`, `sim test`, `regress` and
+`tests run` select the host-native default or an explicit supported backend. The
 [builder implementation](../tools/n2m/cli.py) dispatches scoped doctor, software,
 simulation, regression and FPGA stages with tagged evidence. Command ownership
-is per OS: WSL owns simulation and `doctor`; Windows PowerShell owns `fpga build`
-and `fpga program`.
+is per OS: WSL owns Verilator; Windows PowerShell owns Questa, `fpga build` and
+`fpga program`.
 
 **Risk**
 
@@ -137,10 +136,10 @@ Agents may invent different commands, directories, or tool invocations.
 **Current state**
 
 The [environment doctor](tools/n2m/SPEC.md#environment-doctor) implements
-checked Verilator smoke runs on WSL with no license consulted, Quartus edition
-reporting, and read-only JTAG/UART enumeration. On Windows it states that
-simulation checks run on WSL and performs only the Quartus, JTAG and UART
-identity checks. It reports selected UART health/identity, expected JTAG
+checked simulator smoke runs: Verilator on WSL with no license consulted, and
+Questa on Windows with a successful runtime checkout recorded. The environment
+profile adds Quartus edition reporting and read-only JTAG/UART enumeration. It
+reports selected UART health/identity, expected JTAG
 identity and Quartus version independently. Each run must establish current
 environment readiness; executable discovery alone is not runtime proof.
 
@@ -150,11 +149,11 @@ Checking only executable names can report success while every simulation fails.
 
 **Close when**
 
-- Quartus and Verilator are found without editing global `PATH`.
-- Quartus license success, failure, or unverified scope is reported truthfully;
-  the simulator check records that no license was consulted.
+- Quartus, Verilator and Questa are found without editing global `PATH`.
+- Quartus and Questa license success, failure, or unverified scope is reported
+  truthfully; the Verilator check records that no license was consulted.
 - A repository-owned SV design compiles, elaborates, runs, and checks a value in
-  Verilator, and its injected fault is detected; scoped execution is recorded in
+  each selected simulator, and its injected fault is detected; scoped execution is recorded in
   GAP-008.
 - USB-Blaster reports the expected MAX 10 device.
 - UART is found by VID, PID, or serial identity with an explicit override.
@@ -268,10 +267,9 @@ The [shared baseline](src/dv/baseline/SPEC.md) supplies separate stimulus,
 observation, integer reference, scoreboard, assertions and fixture coverage.
 Its known-good and deliberately broken examples run with checked
 logs, seed, expected/actual CSV and waves. The regression runner checks raw failure
-exits, complete traces and artifact integrity. Verilator on WSL is the sole
-simulator under the builder's [simulator policy](tools/n2m/SPEC.md#simulator-policy);
-the baseline examples are unmigrated `questa` targets and report `SKIPPED`
-with reason `questa-retired` until their own migration.
+exits, complete traces and artifact integrity. The baseline examples are
+Verilator-capable and their reader uses the backend-qualified authoritative
+result under the builder's [simulator policy](tools/n2m/SPEC.md#simulator-policy).
 The [baseline specification](src/dv/baseline/SPEC.md) links independent adapters,
 their licenses, immutable pins, comparison formats and bounded regression levels.
 Baseline fixture coverage is not CPU, full-system or physical acceptance.
@@ -282,12 +280,13 @@ The [current authorization](agents/bootstrap-plan.md#verification-and-hardware-a
 supersedes the earlier general simulation deferral. Required simulation must compile, elaborate, run, and check expected results. Positive
 and deliberately failing checks, independent review, and passing CI remain
 required for affected delivery; compilation alone is not a simulation pass.
-No evidence may depend on a license variable; a license failure is not a
-`SKIPPED` reason for new work.
+License-dependent evidence must record the selected tool and successful runtime
+checkout; a license failure is not a `SKIPPED` reason.
 
 The [tile runner](tools/sim/SPEC.md) checks normal and deliberately corrupt runs;
 the [doctor](tools/n2m/SPEC.md#environment-doctor) checks smoke observations
-and the smoke's injected fault under Verilator with no license consulted.
+and the smoke's injected fault under either native backend. Verilator consults
+no license; Questa records successful checkout.
 Isolated build directories and validated cache reuse belong to the shared backend.
 The deliberately failing smoke remains FAIL; only exact expected tile corruption
 is accepted. Each affected change must execute its own required simulator coverage.

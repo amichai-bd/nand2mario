@@ -28,7 +28,7 @@ def tool_identity(root, installation=None):
     """The selected installed compiler/build tools enter the simulation identity.
 
     On Linux the locked Ubuntu host toolchain is the default and runs natively;
-    the Windows backend needs the retired Questa installation's MinGW tools.
+    the Windows backend needs the Questa installation's bundled MinGW tools.
     """
     lock = pins(root)
     backend = os.environ.get('N2M_MOONEYE_BUILD_HOST', 'wsl' if os.name == 'posix' else 'windows')
@@ -41,7 +41,7 @@ def tool_identity(root, installation=None):
     if backend != 'windows':
         raise ValueError('MOONEYE_BUILD_HOST')
     if installation is None:
-        raise ValueError('MOONEYE_BUILD_HOST windows requires the retired Questa installation')
+        raise ValueError('MOONEYE_BUILD_HOST windows requires the Questa installation')
     tools = {name: str(checked(installation / spec['path'], spec['sha256']))
              for name, spec in lock['host_tools'].items()}
     # Include compiler headers/libraries and CMake modules, not only launchers.

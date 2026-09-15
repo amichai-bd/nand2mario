@@ -1,5 +1,4 @@
-"""Verilator discovery, command shape, transcript checks, retired targets and
-per-OS command ownership; host doubles only, never RTL evidence."""
+"""Verilator discovery, command shape, target capabilities and host ownership."""
 import contextlib
 import io
 import json
@@ -12,9 +11,9 @@ from unittest.mock import patch
 
 import test_builder
 from n2m import verilator
-from n2m.cli import FPGA_HOST, SIMULATION_HOST, main
+from n2m.cli import FPGA_HOST, QUESTA_HOST, VERILATOR_HOST, main
 from n2m.records import read_json
-from n2m.simulation import RETIRED_REASON, load_target
+from n2m.simulation import load_target
 from n2m.simulator import Simulator, ToolError
 
 VERSION = "Verilator 5.052 2026-09-05 rev v5.052"
@@ -42,12 +41,12 @@ class DiscoveryTests(unittest.TestCase):
             self.assertEqual((identity["version"], identity["release"]), (VERSION, "5.052"))
             self.assertEqual(Path(identity["path"]).parent, directory.resolve())
             self.assertIn("cxx", simulator.info["tools"])
-        for backend, directory_arg in (("questa", str(directory)), ("verilator", ""),
+        for backend, directory_arg in (("verilator", ""),
                                        ("verilator", str(directory / "absent"))):
             with self.assertRaises(ToolError):
                 Simulator(backend, verilator_bin=directory_arg)
-        for backend in ("questa", "icarus", "auto"):
-            with self.assertRaisesRegex(ToolError, "only Verilator"):
+        for backend in ("icarus", "auto"):
+            with self.assertRaisesRegex(ToolError, "unsupported simulator"):
                 Simulator(backend)
 
     def test_bad_banner_warning_and_missing_compiler_fail_discovery(self):
@@ -61,19 +60,18 @@ class DiscoveryTests(unittest.TestCase):
                     Simulator("verilator")
         with patch("n2m.simulator.shutil.which", return_value=None):
             with self.assertRaisesRegex(ToolError, "missing verilator"):
-                Simulator()
+                Simulator("verilator")
 
-    def test_retired_cli_options_fail_parsing(self):
-        for option in (["--sim", "questa"], ["--sim", "auto"], ["--questa-bin", "old"],
-                       ["--intel-sim-lib", "old"], ["--iverilog", "old"]):
+    def test_unknown_cli_options_fail_parsing(self):
+        for option in (["--sim", "auto"], ["--iverilog", "old"]):
             with self.subTest(option=option), contextlib.redirect_stderr(io.StringIO()):
                 with self.assertRaises(SystemExit) as caught:
                     main(["sim", "test", "builder-smoke", *option], self.root)
                 self.assertEqual(caught.exception.code, 2)
         for command in (["regress", "pre-merge"], ["tests", "run", "--level", "0"]):
-            with self.subTest(command=command), contextlib.redirect_stderr(io.StringIO()):
-                with self.assertRaises(SystemExit):
-                    main(command + ["--questa-bin", "old"], self.root)
+            with self.subTest(command=command), contextlib.redirect_stdout(io.StringIO()) as output:
+                self.assertEqual(main(command + ["--questa-bin", "old", "--json"], self.root), 1)
+                self.assertIn("--questa-bin applies only to --sim questa", output.getvalue())
 
     def test_cli_selection_forwards_the_tool_directory(self):
         self.sim = test_builder.FakeSimulator()
@@ -83,7 +81,7 @@ class DiscoveryTests(unittest.TestCase):
                 patch("n2m.cli.git_state", return_value={}), contextlib.redirect_stdout(io.StringIO()) as output:
             self.assertEqual(main(command, self.root), 0)
         self.assertEqual(discover.call_args.args, ("verilator",))
-        self.assertEqual(discover.call_args.kwargs, {"verilator_bin": "tools with spaces"})
+        self.assertEqual(discover.call_args.kwargs, {"verilator_bin": "tools with spaces", "questa_bin": None})
         report = json.loads(output.getvalue())
         self.assertEqual((report["simulator"], report["os"]), ("verilator", report["provenance"]["os"]))
 
@@ -364,21 +362,29 @@ class RecordTests(unittest.TestCase):
         targets["builder-smoke"] = {**pristine, "vendor_model": "intel-memory"}
         registry.write_text(json.dumps(targets))
         self.assertEqual(load_target(self.root, "builder-smoke")[0]["vendor_model"], "intel-memory")
+        targets["builder-smoke"] = {**pristine, "simulators": ["verilator", "questa"],
+                                    "vendor_model": "intel-memory",
+                                    "intel_mixed_mode_instances": ["tb.dut.ram"]}
+        registry.write_text(json.dumps(targets))
+        self.assertEqual(load_target(self.root, "builder-smoke")[0]["intel_mixed_mode_instances"],
+                         ["tb.dut.ram"])
         for change, message in (({"vendor_model": "altera-mf"}, "vendor_model must be one of"),
-                                ({"vendor_model": "intel-memory", "intel_mixed_mode_instances": ["tb.dut.ram"]}, "intel_mixed_mode_instances"),
-                                ({"driver": {"script": "driver.do", "peer": "tools/build.py", "inputs": [], "access": access}}, "Verilator peer module"),
-                                ({"driver": {"script": "driver.py", "peer": "tools/build.py", "inputs": []}}, "nonempty access list"),
-                                ({"driver": {"script": "missing.py", "peer": "tools/build.py", "inputs": [], "access": access}}, "missing or out-of-tree driver input")):
+                                ({"simulators": ["verilator"], "vendor_model": "intel-memory", "intel_mixed_mode_instances": ["tb.dut.ram"]}, "intel_mixed_mode_instances"),
+                                ({"simulators": ["verilator"], "driver": {"script": "driver.do", "peer": "tools/build.py", "inputs": [], "access": access}}, "Python peer driver supports only Verilator"),
+                                ({"simulators": ["verilator"], "driver": {"script": "driver.py", "peer": "tools/build.py", "inputs": []}}, "nonempty access list"),
+                                ({"simulators": ["verilator"], "driver": {"script": "missing.py", "peer": "tools/build.py", "inputs": [], "access": access}}, "missing or out-of-tree driver input")):
             targets["builder-smoke"] = {**pristine, **change}
             registry.write_text(json.dumps(targets))
             with self.assertRaisesRegex(ValueError, message):
                 load_target(self.root, "builder-smoke")
-        # The retired Tcl script still validates on a questa target.
-        targets["builder-smoke"] = {**pristine, "simulator": "questa",
+        # Tcl peer drivers are not part of the common Python-peer contract.
+        targets["builder-smoke"] = {**pristine, "simulators": ["questa"],
                                     "driver": {"script": "driver.do", "peer": "tools/build.py", "inputs": []}}
         registry.write_text(json.dumps(targets))
-        self.assertEqual(load_target(self.root, "builder-smoke")[0]["simulator"], "questa")
-        targets["builder-smoke"] = {**pristine, "driver": {"script": "driver.py", "peer": "tools/build.py", "inputs": [], "access": access}}
+        with self.assertRaisesRegex(ValueError, "Python peer driver supports only Verilator"):
+            load_target(self.root, "builder-smoke")
+        targets["builder-smoke"] = {**pristine, "simulators": ["verilator"],
+                                    "driver": {"script": "driver.py", "peer": "tools/build.py", "inputs": [], "access": access}}
         registry.write_text(json.dumps(targets))
         self.assertEqual(load_target(self.root, "builder-smoke")[0]["driver"]["access"], access)
 
@@ -527,46 +533,37 @@ class PreloadTests(unittest.TestCase):
         self.assertEqual(second["options"]["fixture_tools"], identities[1])
 
 
-class RetiredTests(unittest.TestCase):
+class CapabilityTests(unittest.TestCase):
     setUp = test_builder.BuilderTests.setUp
     run_stage = test_builder.BuilderTests.run_stage
 
     def test_missing_or_unknown_simulator_is_rejected(self):
         registry = self.root / "src/dv/builder/targets.json"
         targets = read_json(registry)
-        for value in (None, "icarus", "Verilator", 1):
-            targets["builder-smoke"]["simulator"] = value
+        for value in (None, [], ["icarus"], ["Verilator"], ["verilator", "verilator"], 1):
+            targets["builder-smoke"]["simulators"] = value
             if value is None:
-                del targets["builder-smoke"]["simulator"]
+                del targets["builder-smoke"]["simulators"]
             registry.write_text(json.dumps(targets))
-            with self.assertRaisesRegex(ValueError, "must declare simulator as one of verilator, questa"):
+            with self.assertRaisesRegex(ValueError, "must declare simulators as a nonempty unique list"):
                 load_target(self.root, "builder-smoke")
 
-    def test_questa_target_is_skipped_by_name_without_discovery(self):
-        # The test copy marks tile-pixel retired whatever the registry says now.
+    def test_unsupported_pair_fails_before_discovery(self):
         registry = self.root / "src/dv/builder/targets.json"
         targets = read_json(registry)
-        targets["tile-pixel"]["simulator"] = "questa"
+        targets["builder-smoke"]["simulators"] = ["verilator"]
         registry.write_text(json.dumps(targets))
-        self.args.target = "tile-pixel"
-        with self.assertRaisesRegex(ValueError, "missing or out-of-tree source"):
-            self.run_stage()
-        for owner in ("src/rtl/display", "src/dv/display", "src/rtl/common"):
-            shutil.copytree(test_builder.ROOT / owner, self.root / owner)
-        record = self.run_stage()
-        self.assertEqual((record["status"], record["reason"], record["simulator"]), ("SKIPPED", RETIRED_REASON, "questa"))
-        self.assertIn("os", record)
-        self.assertEqual(self.sim.calls, [])
-        self.assertEqual(read_json(self.build / "sim/test/tile-pixel/result.json")["status"], "SKIPPED")
-        # The CLI reports it the same way, exits 2, and never discovers a simulator.
+        with self.assertRaisesRegex(ValueError, "does not support simulator questa"):
+            load_target(self.root, "builder-smoke", "questa")
         with patch("n2m.cli.Simulator", side_effect=AssertionError("discovered")), \
+                patch("n2m.cli.platform.system", return_value="Windows"), \
                 patch("n2m.cli.git_state", return_value={"commit": "test"}), \
                 contextlib.redirect_stdout(io.StringIO()) as output:
-            code = main(["sim", "test", "tile-pixel", "--tag", "retired"], self.root)
-        self.assertEqual(code, 2)
-        self.assertIn(f"tile-pixel: SKIPPED {RETIRED_REASON}", output.getvalue())
-        self.assertEqual(read_json(self.root / "workdir/builds/retired/manifest.json")["status"], "SKIPPED")
+            code = main(["sim", "test", "builder-smoke", "--sim", "questa", "--tag", "unsupported", "--json"], self.root)
+        self.assertEqual(code, 1)
+        self.assertIn("does not support simulator questa", json.loads(output.getvalue())["error"])
         self.assertFalse((self.root / "workdir/latest.txt").exists())
+        self.assertFalse((self.root / "workdir/builds/unsupported").exists())
 
 
 class HostOwnershipTests(unittest.TestCase):
@@ -581,14 +578,17 @@ class HostOwnershipTests(unittest.TestCase):
             code = main([*argv, "--json"], self.root)
         return code, json.loads(output.getvalue())
 
-    def test_windows_refuses_simulation_commands(self):
-        for argv in (["sim", "test", "builder-smoke", "--tag", "w1"], ["sim", "preflight", "python-joypad", "--tag", "w2"],
-                     ["tests", "run", "--level", "0", "--tag", "w3"], ["regress", "pre-merge", "--tag", "w4"]):
-            with self.subTest(argv=argv):
-                code, report = self.run_cli("Windows", *argv)
-                self.assertEqual(code, 1)
-                self.assertEqual((report["status"], report["error"], report["os"]), ("FAIL", SIMULATION_HOST, "Windows"))
-                self.assertFalse((self.root / "workdir/builds" / argv[-1]).exists())
+    def test_each_simulator_is_refused_on_the_foreign_host(self):
+        for system, backend, reason in (("Windows", "verilator", VERILATOR_HOST),
+                                        ("Linux", "questa", QUESTA_HOST)):
+            for argv in (["sim", "test", "builder-smoke", "--tag", "h1"],
+                         ["tests", "run", "--level", "0", "--tag", "h2"],
+                         ["regress", "pre-merge", "--tag", "h3"]):
+                with self.subTest(system=system, backend=backend, argv=argv):
+                    code, report = self.run_cli(system, *argv, "--sim", backend)
+                    self.assertEqual(code, 1)
+                    self.assertEqual((report["status"], report["error"], report["os"]),
+                                     ("FAIL", reason, system))
 
     def test_linux_refuses_fpga_commands(self):
         for argv in (["fpga", "build", "smoke", "--quartus-bin", "tools", "--tag", "l1"],

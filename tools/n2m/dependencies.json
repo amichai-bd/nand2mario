@@ -264,7 +264,7 @@
     "tag": "v5.052",
     "commit": "ea338be98e1e838d3518809ce8899f85a009963c",
     "license": "LGPL-3.0-only OR Artistic-2.0; see upstream LICENSE, LICENSES/ and the SPDX header in every source file",
-    "purpose": "Sole RTL simulator, built from source on WSL Ubuntu 24.04; the distribution package (5.020) is below cocotb's 5.036 minimum",
+    "purpose": "Supported WSL RTL simulator, built from source on Ubuntu 24.04; the distribution package (5.020) is below cocotb's 5.036 minimum",
     "local_changes": "none",
     "storage": "User prefix outside the repository, for example /home/<user>/tools/verilator-v5.052; nothing is vendored or redistributed",
     "install": {
@@ -282,7 +282,7 @@
     "source": "https://github.com/cocotb/cocotb/tree/v2.1.0",
     "sdist_sha256": "db9761f947dedf0f264dc1e7ef632e0f0b1d0eab26a4e6bbd4ca97ee46cb6da4",
     "license": "BSD-3-Clause; upstream LICENSE ships in the installed distribution",
-    "purpose": "Python testbench runtime for the simulator; requires Verilator 5.036 or newer",
+    "purpose": "Python testbench runtime for Verilator and Questa; the Verilator adapter requires version 5.036 or newer",
     "local_changes": "none",
     "lock": "src/dv/python/requirements.txt",
     "storage": "Ignored isolated environment under workdir/builds/python-dv-env/.venv; no package source is committed",

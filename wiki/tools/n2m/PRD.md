@@ -32,17 +32,14 @@ simulator, retaining reproducible failure evidence under the
 [baseline contract](../../src/dv/baseline/SPEC.md), without claiming CPU
 or hardware coverage from this fixture.
 
-Verilator on WSL is the sole simulator; the licensed Questa seat has left the
-flow and no command may depend on a license. The
-[simulator policy](SPEC.md#simulator-policy) owns the rules: one build tool
-with per-OS command ownership (simulation and `doctor` on WSL, FPGA build and
-programming on Windows), behavioral doubles for Intel primitives keyed on the
-predefined `VERILATOR` macro, per-area migration in which an unmigrated target
-reports `SKIPPED` with reason `questa-retired`, and the authorized removal of
-four-state assertions in favor of randomized initial values. The
-[doctor](SPEC.md#environment-doctor) proves a checked Verilator smoke without a
-license, and [Verilator simulation](SPEC.md#verilator-simulation) owns the
-`sim test`, `regress` and `tests run` path.
+The builder supports host-native Verilator on WSL and Questa on Windows. The
+[simulator policy](SPEC.md#simulator-policy) owns selection, target capability,
+per-backend caches and command ownership. The Verilator path uses behavioral
+doubles for Intel primitives keyed on `VERILATOR`; Questa uses checked installed
+Intel models. The [doctor](SPEC.md#environment-doctor) proves a positive and
+injected-failure smoke on either host. Verilator consults no license. A Questa
+PASS records a successful runtime checkout; license failure is FAIL, never
+SKIPPED.
 The shared builder also supports independent Python
 testbenches alongside SV through the [Python adapter](../../../tools/n2m/python_tb.py), using the same
 tagged evidence and cache rules. Python failures must fail the command even
@@ -53,8 +50,8 @@ Product memory simulation under Verilator uses the repository's behavioral
 double of the Intel primitive for the same explicit wrapper used by MAX 10
 synthesis; Quartus always sees the vendor instance. The
 [shared memory MAS](../../src/rtl/common/MAS_memory_primitives.md) owns the
-double's contract, port timing and consumer migration boundaries. While
-unmigrated targets still run on Questa, the [model adapter](../../../tools/n2m/intel_memory.py)
+double's contract, port timing and consumer boundaries. For Questa-capable
+targets, the [model adapter](../../../tools/n2m/intel_memory.py)
 keeps requiring checked model selection, retained source hashes and binding, and
 failure on a missing, modified or shadow model.
 Pre-merge host checks verify host contracts only; the [CI boundary](SPEC.md#ci-execution-boundary)

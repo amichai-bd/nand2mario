@@ -189,9 +189,11 @@ and detailed ABI, reset/load, protocol, clock/CDC, and input contracts within
 approved behavior. Escalate changes to scope, acceptance, or safety boundaries.
 The [current authorization](../agents/bootstrap-plan.md#verification-and-hardware-authorization)
 owns permission and prerequisites for simulation and physical execution, including
-the board approval required above. Simulation runs under Verilator on WSL, the
-sole simulator in the builder's [simulator policy](../tools/n2m/SPEC.md#simulator-policy),
-and never depends on a license; Quartus builds and programming run from Windows.
+the board approval required above. Simulation uses the target's supported
+backend under the builder's
+[simulator policy](../tools/n2m/SPEC.md#simulator-policy): Verilator on WSL or
+native Questa on Windows. License failure is a simulation failure, never a
+skip; Quartus builds and programming run from Windows.
 Simulation cannot satisfy physical acceptance.
 Shared baseline evidence is recorded in
 [GAP-008](../preflight-gaps.md#gap-008-verification-baseline).

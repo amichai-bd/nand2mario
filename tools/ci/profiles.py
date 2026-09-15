@@ -53,7 +53,8 @@ def check_artifacts(root, build, record):
 def check_record(root, req, profile, target, tag, raw_exit, printed, selected_tools):
     source_inventory = verify_sources(root, req['sha'])
     build = root / 'workdir/builds' / tag
-    stage = build / ('sim/test' if profile == BASELINE else 'fpga') / target
+    stage = (build / 'sim/test' / target / 'verilator' if profile == BASELINE
+             else build / 'fpga' / target)
     record = json.loads((stage / 'result.json').read_text(encoding='utf-8'))
     require(all(printed.get(k) == v for k, v in record.items()), 'printed/stage record mismatch')
     clean = builder_digest({'diff': hashlib.sha256(b'').hexdigest(), 'untracked': {}})

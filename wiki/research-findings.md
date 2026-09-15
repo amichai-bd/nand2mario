@@ -43,7 +43,7 @@ compiler follow in explicit milestones.
 | Python | 3.14.5 with `pyserial`; `pytest` is not installed |
 | Quartus | Prime Lite 25.1std.0 Build 1129 with MAX 10 support |
 | Quartus path | Installed outside the normal `PATH`; resolve through tool configuration |
-| Questa | Questa FPGA Starter Edition 2025.2; license variables are set |
+| Questa | Questa FPGA Starter Edition 2025.2; the shared smoke compiles cleanly, but native runtime checkout fails with `Invalid license environment` because no valid `SALT_LICENSE_SERVER` service is configured |
 | FPGA | USB-Blaster detects MAX 10 device `10M50DA` |
 | UART | FTDI USB serial adapter detected; select its port at runtime |
 | WSL | Ubuntu 24.04 is available |
@@ -177,10 +177,10 @@ Recommended independent evidence:
 - Quartus fit, resource, RAM inference, and timing reports.
 
 Use a UVM-lite structure first: interfaces, transactions, drivers, monitors,
-scoreboards, assertions, coverage, and reference models. Verilator on WSL is
-the sole supported simulator under the
-[builder simulator policy](tools/n2m/SPEC.md#simulator-policy); covergroups
-are unsupported there.
+scoreboards, assertions, coverage, and reference models. The builder supports
+Verilator on WSL and Questa on Windows under the
+[simulator policy](tools/n2m/SPEC.md#simulator-policy); covergroups remain
+unsupported on the Verilator path.
 
 A model generated from the same opcode table as the RTL is not an independent
 oracle. At least one test path must use an independent implementation or published

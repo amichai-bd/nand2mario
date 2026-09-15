@@ -21,7 +21,7 @@ import sys
 import time
 
 from .records import atomic_json, atomic_text, file_hash, workspace
-from .simulation import RETIRED_REASON, load_target, retired, simulator_problem
+from .simulation import load_target, simulator_problem
 from .test_budget import supervise
 
 CATALOGUE = "src/dv/builder/catalogue.yaml"
@@ -427,11 +427,15 @@ def run_unit(root, path, entry):
 def run_simulation(root, tag, target, args, remaining):
     """Run one registry target as the ordinary sim-test worker."""
     command = [sys.executable, str(Path(root) / "tools/n2m/test_budget.py"), "sim", "test", target,
-               "--tag", tag, "--seed", str(args.seed), "--json"]
+               "--tag", tag, "--seed", str(args.seed), "--sim", args.sim, "--json"]
     if args.rebuild:
         command.append("--rebuild")
     if getattr(args, "verilator_bin", None):
         command += ["--verilator-bin", args.verilator_bin]
+    if getattr(args, "questa_bin", None):
+        command += ["--questa-bin", args.questa_bin]
+    if getattr(args, "intel_sim_lib", None):
+        command += ["--intel-sim-lib", args.intel_sim_lib]
     started = time.monotonic()
     code, text = supervise(command, Path(root), tag, target=target, ceiling=math.floor(remaining))
     elapsed = time.monotonic() - started
@@ -484,18 +488,19 @@ def run_selection(root, model, path, tag, args, budget, provenance):
     chosen, selector = select(model, args.level, args.label)
     simulations = [name for name in chosen if model["units"][name]["kind"] == "sim"]
     # Fail before any simulator time is spent when a selected target cannot run.
-    # A retired target is named as SKIPPED; it is neither a pass nor a defect.
-    unrunnable, skipped = {}, set()
+    unrunnable = {}
     for target in simulations:
         try:
-            if retired(load_target(Path(root), target)[0]):
-                skipped.add(target)
+            load_target(Path(root), target, args.sim)
         except Exception as error:
             unrunnable[target] = str(error)
+    if unrunnable:
+        named = "; ".join(f"{name}: {error}" for name, error in sorted(unrunnable.items()))
+        raise ValueError(f"selection does not support simulator {args.sim}: {named}")
     record = {"selector": selector, "level": args.level, "labels": list(args.label),
               "selected": len(chosen), "budget_seconds": budget, "broader": bool(args.broader),
               "catalogue": {"path": CATALOGUE, "sha256": file_hash(path)},
-              "seed": args.seed, "units": {}, "failed": [], "skipped": [],
+              "seed": args.seed, "simulator": args.sim, "units": {}, "failed": [], "skipped": [],
               "provenance": provenance or {}, "started": datetime.now(timezone.utc).isoformat()}
     started = time.monotonic()
     durations = {}
@@ -504,10 +509,6 @@ def run_selection(root, model, path, tag, args, budget, provenance):
         remaining = budget - (time.monotonic() - started)
         if remaining < MINIMUM_CHILD_SECONDS:
             outcome = {"status": "FAIL", "error": "aggregate budget exhausted before start"}
-        elif name in unrunnable:
-            outcome = {"status": "FAIL", "error": unrunnable[name]}
-        elif name in skipped:
-            outcome = {"status": "SKIPPED", "reason": RETIRED_REASON}
         elif entry["kind"] == "sim":
             outcome = run_simulation(root, tag, name, args, remaining)
         else:

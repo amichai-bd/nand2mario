@@ -25,7 +25,7 @@ identity; this test is deterministic and reports `seed=none`.
 ## Simulator
 
 The builder runs [Verilator on WSL](../n2m/SPEC.md#verilator-simulation). Both
-tile targets are registered `simulator: "verilator"`: `tile-pixel` passes with
+tile targets declare `simulators: ["verilator"]`: `tile-pixel` passes with
 its exhaustive signature and `tile-pixel-corrupt` fails with its exact mismatch
 diagnostic. The testbench drives two-state fill values where its earlier
 stimulus drove X and Z; the checks are unchanged.
@@ -42,6 +42,8 @@ python3 tools/sim/tile_pixel.py --verilator-bin <prefix>/bin --tag tile-standalo
 ```
 
 This standalone runner checks normal and deliberately corrupt cases together.
+It accepts only Verilator and does not inherit the shared builder's backend
+selection.
 It resolves and hashes transitive headers under the shared
 [include contract](../n2m/SPEC.md#hdl-includes). Missing or unsupported includes
 retain a failure manifest before tools run. It records commit/dirty status,
@@ -58,7 +60,7 @@ line must carry the expected mismatch. The normal case requires the full
 exhaustive completion signature and a zero exit. Corruption requires the full
 intended mismatch diagnostic and a nonzero exit; additional errors or warnings
 fail the runner even when an expected signature appears. The runner accepts
-only `--sim verilator`; retired selections such as `questa` fail argument
+only `--sim verilator`; `questa` and other unsupported selections fail argument
 parsing, and there is no fallback.
 
 Both paths reject tool, compile, elaboration, warning, timeout, exit, or expected

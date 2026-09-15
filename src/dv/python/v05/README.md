@@ -25,7 +25,7 @@ to check scalar and packed values, single reads, and resolver independence.
 | python-v05-identity | Read an independent 128-bit build identity through the actual UART and product Client |
 | python-v05-identity-fault | The same checker rejects one changed DUT identity bit |
 | python-v05-startup | Original build, full UART load/readback, blank and first normal frame, checked pause |
-| python-v05-continuous | Legacy 600-interval/18-input schedule (about 10 s of simulated time); not authorized under the revised matrix and held `simulator: "questa"` under [#634](https://github.com/amichai-bd/nand2mario/issues/634) |
+| python-v05-continuous | Legacy 600-interval/18-input schedule (about 10 s of simulated time); not authorized under the revised matrix and held `simulators: ["questa"]` under [#634](https://github.com/amichai-bd/nand2mario/issues/634) |
 | python-v05-image-fault | Actual ROM write at 0200 changes F3 to 00; LOAD_END rejects BAD_IMAGE |
 | python-v05-pixel-fault | Actual first eligible source shade changes 1 to 0; exact pixel mismatch |
 | python-v05-short | Preloaded complete path, two inputs, six frames and final pause |

@@ -76,7 +76,8 @@ class BaselineTests(unittest.TestCase):
             (folder / name).write_text(text)
         manifest = {"status": "PASS", "seed": 31, "commands": [{"exit_code": 0}],
                     "artifacts": {p.relative_to(self.root).as_posix(): file_hash(p) for p in folder.iterdir()}}
-        path = folder / "manifest.json"
+        path = folder / "sim/test/baseline-good/verilator/result.json"
+        path.parent.mkdir(parents=True)
         path.write_text(json.dumps(manifest))
         baseline.evidence(self.root, "case", 31, False)
         manifest["commands"][0]["exit_code"] = 1
