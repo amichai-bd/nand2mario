@@ -16,6 +16,7 @@ from .doctor import doctor
 from .host.command import run as host_command
 from .fpga import build_fpga
 from .fpga_program import program as program_fpga
+from .lint import lint_questa
 from .progress import Progress, powershell_command
 from .rgbds import oracle
 from .regress import clean, regress
@@ -110,6 +111,13 @@ def parser():
     program_parser.add_argument("--timeout", type=int, default=60)
     program_parser.add_argument("--tag")
     program_parser.add_argument("--json", action="store_true")
+    lint = commands.add_parser("lint", help="front-end gates without a simulation run").add_subparsers(dest="action", required=True)
+    gate = lint.add_parser("questa", help="vlog every src/rtl source and vopt every FPGA top under native Questa; no vsim, no runtime license")
+    gate.add_argument("--questa-bin", help="directory containing vlib, vmap, vlog and vopt; otherwise discover on PATH")
+    gate.add_argument("--inject-fault", action="store_true",
+                      help="also compile src/dv/builder/questa_lint_fault.sv; the gate must FAIL naming it")
+    gate.add_argument("--tag")
+    gate.add_argument("--json", action="store_true")
     sw = commands.add_parser("sw").add_subparsers(dest="action", required=True)
     rgbds = sw.add_parser("oracle", help="check original fixtures with pinned upstream RGBDS")
     rgbds.add_argument("--offline", action="store_true", help="require verified cached downloads")
@@ -224,6 +232,10 @@ def tagged(root, args, header, publish, progress=None):
             elif args.command == 'host':
                 provenance = {k: report[k] for k in ('commit', 'dirty_tree_fingerprint', 'host', 'python') if k in report}
                 report.update(host_command(root, build, args, provenance))
+            elif args.command == "lint":
+                provenance = {k: report[k] for k in ("commit", "dirty_tree_fingerprint", "host", "python", "os") if k in report}
+                progress.line("Questa compile gate: src/rtl and every registered FPGA top; no simulation")
+                report.update(lint_questa(root, build, args, provenance, progress=progress))
             elif args.command == "sw":
                 provenance = {k: report[k] for k in ("commit", "dirty_tree_fingerprint", "host", "python") if k in report}
                 report.update(oracle(root, build, args, provenance) if args.action == "oracle"
@@ -367,6 +379,15 @@ def _human_result(args, report, progress):
                     report["wire_build_id"], "--uart-port", "<UART-port>"]))
         return
 
+    if args.command == "lint":
+        if report.get("attempt_result"):
+            progress.line(f"Result record: {report['attempt_result']}")
+        failure = report.get("failure")
+        if isinstance(failure, dict):
+            for line in failure.get("errors", []):
+                progress.line(line.strip())
+        return
+
     progress.line(f"{report.get('cache', status)}: {args.command} tag={report.get('tag', '-')}")
 
 
@@ -375,6 +396,7 @@ def _human_result(args, report, progress):
 VERILATOR_HOST = "Verilator simulation runs on WSL Linux"
 QUESTA_HOST = "Questa simulation runs on Windows PowerShell"
 FPGA_HOST = "FPGA build and programming run on Windows PowerShell"
+LINT_HOST = "Questa compile gate runs on Windows PowerShell"
 
 
 def simulator_command(args):
@@ -406,6 +428,8 @@ def foreign_host(args):
         return QUESTA_HOST
     if args.command == "fpga" and system != "Windows":
         return FPGA_HOST
+    if args.command == "lint" and system != "Windows":
+        return LINT_HOST
     return None
 
 
@@ -452,7 +476,7 @@ def main(argv=None, root=None):
     if args.json:
         print(json.dumps(report, sort_keys=True))
     else:
-        guided = (args.command == "fpga"
+        guided = (args.command in ("fpga", "lint")
                   or (args.command == "sim" and args.action == "test"))
         if guided:
             _human_result(args, report, progress)

@@ -53,6 +53,7 @@ INTENTS = {
     "tests": ("Run or inspect verification", "Validate, list, explain or run the test catalogue"),
     "clean": ("Clean one build", "Delete exactly one selected build tag"),
     "fpga": ("Build or program the FPGA", "Build a checked image or program the attached FPGA"),
+    "lint": ("Gate RTL under Questa", "Compile and elaborate product RTL and FPGA tops; no simulation"),
     "sw": ("Build software", "Assemble, link, package or check original software"),
     "host": ("Use UART controls", "Open the selected UART and transmit a host operation"),
 }
@@ -447,6 +448,9 @@ def make_plan(menu, root, intent):
         return _clean_plan(menu, root)
     if intent == "fpga":
         return _fpga_plan(menu, root)
+    if intent == "lint":
+        return Plan(["lint", "questa"], ("lint", "questa"), "Windows PowerShell",
+                    "Compile src/rtl and elaborate every FPGA top under Questa; no vsim, no license")
     if intent == "sw":
         return _sw_plan(menu, root)
     if intent == "host":
@@ -470,7 +474,7 @@ def _argument_value(plan, flag):
 
 def _option_applies(plan, action, root=None):
     root = Path(root or Path(__file__).resolve().parents[2])
-    backend = _argument_value(plan, "--sim")
+    backend = "questa" if plan.parser_path == ("lint", "questa") else _argument_value(plan, "--sim")
     if action.dest == "verilator_bin" and backend != "verilator":
         return False
     if action.dest in ("questa_bin", "intel_sim_lib") and backend != "questa":

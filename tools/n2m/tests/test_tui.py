@@ -382,6 +382,7 @@ class TuiTests(unittest.TestCase):
             ("sim", "preflight"): ["sim", "preflight", "python-joypad"],
             ("fpga", "build"): ["fpga", "build", "v05-board", "--quartus-bin", "tools"],
             ("fpga", "program"): ["fpga", "program", "--sof", "checked.sof", "--quartus-bin", "tools"],
+            ("lint", "questa"): ["lint", "questa"],
             ("tests", "validate"): ["tests", "validate"],
             ("tests", "list"): ["tests", "list", "--level", "0"],
             ("tests", "affected"): ["tests", "affected", "--base", "origin/main"],
@@ -409,7 +410,7 @@ class TuiTests(unittest.TestCase):
             elif action in ("crc-proof", "keyboard"):
                 argv += ["--expected-build-id", "00" * 16]
             samples[("host", action)] = argv
-        expected = {(family, action) for family in ("sim", "fpga", "tests", "sw", "host")
+        expected = {(family, action) for family in ("sim", "fpga", "lint", "tests", "sw", "host")
                     for action in tui.command_actions((family,))}
         expected |= {("doctor",), ("check",), ("regress",), ("clean",)}
         self.assertEqual(set(samples), expected)

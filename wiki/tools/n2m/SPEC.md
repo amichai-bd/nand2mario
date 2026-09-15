@@ -1,9 +1,10 @@
 # Build system
 
 Status: host-native Verilator on WSL and Questa on Windows support `doctor`,
-`sim test`, `tests run` and `regress`. `check`, MAX 10 `fpga build`, [software
-build/conformance](../sw/SPEC.md), [host load/control](host/SPEC.md), the [test
-catalogue](#test-catalogue), [declared regression subsets](#regression-subsets)
+`sim test`, `tests run` and `regress`. `check`, the Windows
+[Questa compile gate](#questa-compile-gate) `lint questa`, MAX 10 `fpga build`,
+[software build/conformance](../sw/SPEC.md), [host load/control](host/SPEC.md),
+the [test catalogue](#test-catalogue), [declared regression subsets](#regression-subsets)
 and [tagged cleanup](#cleanup) are implemented.
 
 ## Purpose
@@ -40,7 +41,13 @@ python3 tools/build.py regress builder-fault --tag deliberate-aggregate --json
 python3 tools/build.py clean --tag deliberate-aggregate --json
 ```
 
-FPGA commands run on Windows PowerShell; see [FPGA build](#fpga-build).
+FPGA commands run on Windows PowerShell; see [FPGA build](#fpga-build). So does
+the [Questa compile gate](#questa-compile-gate):
+
+```powershell
+python tools/build.py lint questa --tag questa-gate --json
+python tools/build.py lint questa --inject-fault --tag questa-gate-fault --json
+```
 
 The second identical simulation reports `CACHED`. The deliberate-failure target
 must exit 1 and retain its mismatch log and waveform. The `builder-fault` subset
@@ -229,11 +236,13 @@ counting it as neither pass nor defect, and never falls back; see
 ### Command ownership by operating system
 
 One build tool serves two hosts. WSL Linux owns Verilator simulation. Windows
-PowerShell owns Questa simulation, `fpga build` and `fpga program`. Each side
+PowerShell owns Questa simulation, the [Questa compile gate](#questa-compile-gate),
+`fpga build` and `fpga program`. Each side
 refuses a foreign simulator before any workspace is taken: Windows reports
 `Verilator simulation runs on WSL Linux`; non-Windows hosts report `Questa
 simulation runs on Windows PowerShell`. Linux still refuses `fpga` commands
-with `FPGA build and programming run on Windows PowerShell`. Every command
+with `FPGA build and programming run on Windows PowerShell` and `lint questa`
+with `Questa compile gate runs on Windows PowerShell`. Every command
 header and simulation record carries `os`
 (`platform.system()`), and caches, fingerprints and compiled objects live under
 the running host's own `workdir/`. [`test_verilator.py`](../../../tools/n2m/tests/test_verilator.py)
@@ -991,7 +1000,93 @@ commands, and input/tool hashes remain beneath the tag. Unexpected warnings,
 errors, timeouts, or missing signatures fail; expected nonzero targets require
 their full diagnostic and reject additional errors.
 
-### Feedback selection gap
+### Questa compile gate
+
+```powershell
+python tools/build.py lint questa --tag <tag> --json
+python tools/build.py lint questa --questa-bin <directory> --tag <tag> --json
+python tools/build.py lint questa --inject-fault --tag <tag> --json
+```
+
+`lint questa` proves that a second front end accepts the product RTL that
+Verilator simulates and Quartus synthesizes. It compiles and elaborates; it
+never launches `vsim`, so it needs no runtime license. It is a required local
+check for every PR touching `src/rtl` or `src/fpga` under the
+[PR policy](../../agents/pull-requests.md#hosted-and-local-checks).
+[`lint.py`](../../../tools/n2m/lint.py) owns the command;
+[`test_lint.py`](../../../tools/n2m/tests/test_lint.py) covers its contracts
+with tool doubles. Windows PowerShell owns execution; other hosts refuse with
+`Questa compile gate runs on Windows PowerShell` before any workspace is taken.
+
+Discovery resolves `vlib`, `vmap`, `vlog` and `vopt` on PATH or in
+`--questa-bin <directory>`, records each path, SHA-256 and `-version` banner,
+and never falls back between the two. The compile set is fixed by the tree:
+
+1. every `.sv` file under `src/rtl`, packages first, each package after the
+   packages it names with `::`; a package cycle fails before any tool runs;
+2. every source of every target in the
+   [FPGA registry](../../../src/fpga/de10_lite/targets.json), validated by the
+   same [target definition](#fpga-build) and synthesis
+   [dependency resolver](#hdl-includes) as `fpga build`;
+3. the elaboration stand-ins
+   [`questa_lint_vendor.sv`](../../../src/dv/builder/questa_lint_vendor.sv):
+   port- and parameter-compatible empty modules for exactly `n2m_system_pll`,
+   `n2m_pixel_pll`, `n2m_adc_pll`, `altera_modular_adc_control` and
+   `altsyncram`, the units Quartus generates or installs during `fpga build`.
+   They are elaboration stand-ins, not models: no behavior, no vendor
+   parameter checking. Only this command compiles them; they belong to no
+   synthesis source set and are not the `VERILATOR` doubles. The result
+   lists them under `stand_ins` so a reviewer sees the gate's blind spots, and
+   a file declaring any other set of units fails the plan;
+4. with `--inject-fault`, the deliberate fault
+   [`questa_lint_fault.sv`](../../../src/dv/builder/questa_lint_fault.sv): an
+   `initial` writer beside `always_ff`, legal to Verilator and rejected by
+   `vopt` (vopt-7061). The command must then FAIL naming
+   `questa_lint_fault.sv` and record `fault_detected: true`. A run that
+   compiles the fixture clean is reported as FAIL with
+   `fault injection not detected`, and a failure naming anything else records
+   `fault_detected: false`.
+
+The plan above is validated before any tool is probed. No testbench is compiled. `SYNTHESIS` and `VERILATOR` stay undefined, so the
+RTL presents its Questa view: `` `ifdef SYNTHESIS `` branches are excluded and
+Intel instances bind to the stand-ins. The repository root is the include
+directory, as for every other Questa compile.
+
+Each run creates the immutable attempt
+`workdir/builds/<tag>/lint/questa/<attempt>/` and runs, in order and each with
+a 300-second bound: `vmap -c`, `vlib work`, `vmap work <library>`, one
+`vlog -sv -work work +incdir+<root> <ordered sources>`, then
+`vopt -work work <top> -o <top>_opt` for every distinct registered top in name
+order. Every top is elaborated once, however many targets share it. A step
+fails on a nonzero exit, a timeout, or the shared
+[strict transcript policy](../../../tools/n2m/questa.py): any warning line
+other than a zero-warning summary, any `Error`/`Fatal` line or a nonzero
+`Errors:` count. Notes pass; the only Note the installed tools emit is the
+`-220` ini-file notice. Nothing is suppressed, and the first failing step ends
+the run.
+
+The attempt retains `commands.log` (one JSON argv per line), `ini.log`,
+`library.log`, `map.log`, `compile.log`, `elaborate-<top>.log` and
+`result.json`; the `work` library is regenerated and not hashed. `result.json`
+and the tag manifest carry `status`, `error`, `provenance` (commit, dirty-tree
+fingerprint, host, Python, OS), `tools` (path, `sha256`, `version` per tool),
+`sources` in compile order, `inputs` (SHA-256 of every source and included
+header), `tops` (each top's registry `targets` and `sources`; the injected
+fault carries `injected: true`), `stand_ins`, `commands` (label, argv, cwd,
+log, `exit_code`, `elapsed_seconds`; a timed-out step records `exit_code:
+null`), `elapsed_seconds`, `artifacts` (relative path to SHA-256), and on
+failure `failure` with the failing `label`, `problem`, every error line under
+`errors`, the source files and design units those lines name under `names`,
+and the `log`. PASS exits 0 and updates `workdir/latest.txt`; FAIL exits 1
+and names the failing step and the offending file or unit in `error`. The
+gate is never cached: every invocation compiles again.
+
+The Windows [doctor](#environment-doctor) with `--sim questa` adds the
+`questa-lint` check: it discovers the four executables, records their banners
+and the exact command, and reports PASS without running the gate. The
+simulation smoke's runtime license status does not affect that check.
+
+## Feedback selection gap
 
 Required validation still follows the [PR check policy](../../agents/pull-requests.md#hosted-and-local-checks).
 Conservative affected-test selection and shared fixture preflight are planned in
@@ -1229,6 +1324,10 @@ adds the remaining tools:
   A PASS records that the runtime license checkout succeeded. A missing tool,
   license failure, unexpected diagnostic, wrong exit or missing signature fails.
   `--questa-bin <directory>` selects the four native executables.
+- Questa compile gate (Windows only, with `--sim questa`): the `questa-lint`
+  check discovers `vlib`, `vmap`, `vlog` and `vopt`, records their banners
+  and the `lint questa` command, and PASSes on availability alone; see the
+  [compile gate](#questa-compile-gate). A missing executable fails it.
 - Quartus: report version and edition. Lite needs no license file; other editions
   report unverified licensing. Unexpected diagnostics fail. Version discovery
   does not prove synthesis. The version output may carry exactly the pinned
@@ -1789,6 +1888,12 @@ workdir/builds/<tag>/
 │           ├── audit.tcl
 │           ├── db/
 │           └── output/
+├── lint/
+│   └── questa/<attempt>/
+│       ├── result.json
+│       ├── commands.log
+│       ├── compile.log
+│       └── elaborate-<top>.log
 └── sw/
     └── <image-name>/
         ├── obj/

@@ -237,6 +237,7 @@ class DoctorTests(unittest.TestCase):
     def test_selected_questa_is_checked_and_environment_adds_fpga_probes(self):
         args = parser().parse_args(["doctor", "--sim", "questa"])
         with patch("n2m.doctor.questa", return_value={"tools": {"vsim": "fixture"}}) as smoke, \
+                patch("n2m.doctor.questa_lint", return_value={}), \
                 patch("n2m.doctor.verilator") as verilator_probe:
             report = doctor(ROOT, self.folder, args, {})
         self.assertEqual((report["status"], report["simulator"], report["readiness"]),
@@ -250,23 +251,26 @@ class DoctorTests(unittest.TestCase):
                 patch("n2m.doctor.executable", return_value="jtagconfig"), \
                 patch("n2m.doctor.execute", return_value="1) USB-Blaster\n  031050DD 10M50DA\n"), \
                 patch("n2m.doctor.uart", return_value={"selected": "COM5"}) as uart_probe, \
+                patch("n2m.doctor.questa_lint", return_value={}), \
                 patch("n2m.doctor.questa", return_value={}):
             report = doctor(ROOT, self.folder, args, {})
         quartus_probe.assert_called_once()
         uart_probe.assert_called_once()
         self.assertEqual({name: c["status"] for name, c in report["checks"].items()},
-                         {"questa": "PASS", "quartus": "PASS", "jtag": "PASS", "uart": "PASS"})
+                         {"questa": "PASS", "questa-lint": "PASS", "quartus": "PASS", "jtag": "PASS", "uart": "PASS"})
         self.assertEqual((report["status"], report["readiness"]), ("PASS", "complete"))
         with patch("n2m.doctor.quartus", return_value={}), \
                 patch("n2m.doctor.executable", return_value="jtagconfig"), \
                 patch("n2m.doctor.execute", return_value="1) USB-Blaster\n  031050DD 10M50DA\n"), \
                 patch("n2m.doctor.uart", return_value={"status": "WARNING"}), \
+                patch("n2m.doctor.questa_lint", return_value={}), \
                 patch("n2m.doctor.questa", return_value={}):
             self.assertEqual(doctor(ROOT, self.folder, args, {})["status"], "WARNING")
         with patch("n2m.doctor.quartus", side_effect=RuntimeError("missing quartus_sh")), \
                 patch("n2m.doctor.executable", return_value="jtagconfig"), \
                 patch("n2m.doctor.execute", return_value="1) USB-Blaster\n  031050DD 10M50DA\n"), \
                 patch("n2m.doctor.uart", return_value={}), \
+                patch("n2m.doctor.questa_lint", return_value={}), \
                 patch("n2m.doctor.questa", return_value={}):
             self.assertEqual(doctor(ROOT, self.folder, args, {})["status"], "FAIL")
 
