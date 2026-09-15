@@ -240,9 +240,9 @@ units:
   memory-service-corrupt: {kind: sim, level: 2, labels: [fault, memory], duration_seconds: 0.55}
   memory-stores: {kind: sim, level: 2, labels: [memory], duration_seconds: 1.03}
   memory-stores-early: {kind: sim, level: 2, labels: [fault, memory], duration_seconds: 0.52}
-  mooneye-corrupt: {kind: sim, level: 2, labels: [integration, memory, milestone, mooneye, python-tb], duration_seconds: null}
-  mooneye-missing: {kind: sim, level: 2, labels: [integration, memory, milestone, mooneye, python-tb], duration_seconds: null}
-  mooneye-reg-f: {kind: sim, level: 2, labels: [integration, memory, milestone, mooneye, python-tb], duration_seconds: null}
+  mooneye-corrupt: {kind: sim, level: 2, labels: [fault, integration, memory, milestone, mooneye, python-tb], duration_seconds: 93.78}
+  mooneye-missing: {kind: sim, level: 2, labels: [fault, integration, memory, milestone, mooneye, python-tb], duration_seconds: 113.39}
+  mooneye-reg-f: {kind: sim, level: 2, labels: [integration, memory, milestone, mooneye, python-tb], duration_seconds: 82.17}
   oam-corrupt: {kind: sim, level: 1, labels: [dma], duration_seconds: 1.95}
   oam-corrupt-mask: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: 0.47}
   oam-corrupt-output: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: 0.41}
@@ -571,7 +571,7 @@ units:
   tools/n2m/tests/test_launcher.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 0.19}
   tools/n2m/tests/test_linker.py: {kind: unit, level: 0, labels: [builder, sw], duration_seconds: 0.98}
   tools/n2m/tests/test_live_viewer.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 2.37}
-  tools/n2m/tests/test_mooneye.py: {kind: unit, level: 0, labels: [builder, mooneye], duration_seconds: 0.12}
+  tools/n2m/tests/test_mooneye.py: {kind: unit, level: 0, labels: [builder, mooneye], duration_seconds: 0.14}
   tools/n2m/tests/test_peer_bridge.py: {kind: unit, level: 0, labels: [builder, integration], duration_seconds: 0.08}
   tools/n2m/tests/test_ppu_scene.py: {kind: unit, level: 0, labels: [builder, ppu], duration_seconds: 0.05}
   tools/n2m/tests/test_preload.py: {kind: unit, level: 0, labels: [builder, preload], duration_seconds: 0.15}

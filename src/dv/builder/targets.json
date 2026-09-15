@@ -13968,6 +13968,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -14008,7 +14009,7 @@
     ],
     "top": "tb_python_mooneye",
     "simulators": [
-      "questa"
+      "verilator"
     ],
     "args": [],
     "expected_exit": "zero",
@@ -14080,6 +14081,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -14120,13 +14122,13 @@
     ],
     "top": "tb_python_mooneye",
     "simulators": [
-      "questa"
+      "verilator"
     ],
     "args": [
       "+completion_fault"
     ],
-    "expected_exit": "zero",
-    "signature": "PASS mooneye-reg-f bank=1 pc=4a81 registers=3,5,8,13,21,34",
+    "expected_exit": "nonzero",
+    "signature": "MOONEYE_COMPLETION_REGISTERS expected=(3, 5, 8, 13, 21, 34) actual=(66, 66, 66, 66, 66, 66)",
     "timeout_seconds": 1500,
     "vendor_model": "intel-memory",
     "testbench": "python",
@@ -14194,6 +14196,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -14234,13 +14237,13 @@
     ],
     "top": "tb_python_mooneye",
     "simulators": [
-      "questa"
+      "verilator"
     ],
     "args": [
       "+missing_completion"
     ],
-    "expected_exit": "zero",
-    "signature": "PASS mooneye-reg-f bank=1 pc=4a81 registers=3,5,8,13,21,34",
+    "expected_exit": "nonzero",
+    "signature": "MOONEYE_MISSING_COMPLETION",
     "timeout_seconds": 1500,
     "vendor_model": "intel-memory",
     "testbench": "python",
