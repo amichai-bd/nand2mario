@@ -12,11 +12,11 @@ module tb_uart_validation;
     logic [15:0] response_length;
     logic [31:0] expected_data;
     logic expected_valid;
-    logic corrupt;
+    logic corrupt, host_loading;
     integer checks;
     integer byte_index;
     integer bit_index;
-    logic [31:0] words [0:39];
+    logic [31:0] words [0:42];
     n2m_uart_host_registers u_host (
         .address(address), .endpoint_state(endpoint_state), .image_valid(1'b1), .profile(8'hA6),
         .dot_count(64'h1122334455667788), .retirement_count(64'h99AABBCCDDEEFF00),
@@ -27,12 +27,14 @@ module tb_uart_validation;
         .io_scx(8'h22), .io_wy(8'h33), .io_wx(8'h44), .io_bgp(8'hE4), .io_obp0(8'hD2),
         .io_obp1(8'hC1), .io_div(8'hAB), .io_tima(8'h7F), .io_tma(8'h80), .io_tac(8'h05),
         .io_if(8'h13), .io_ie(8'h1F),
+        .library_status(32'h3A5B6C7D), .library_key1(32'h00BEBC20),
         .address_valid(address_valid), .data(data)
     );
     n2m_uart_validate u_validate (
         .header(header), .packet_bytes(packet_bytes), .arguments(arguments), .forced_status(8'h00),
         .endpoint_state(endpoint_state), .image_valid(1'b1), .snapshot_valid(1'b1),
-        .host_address_valid(address_valid), .sdram_ready(1'b1), .status(status), .response_length(response_length)
+        .host_address_valid(address_valid), .sdram_ready(1'b1), .swap_busy(1'b0), .host_loading(host_loading),
+        .status(status), .response_length(response_length)
     );
     task automatic check_address(input logic [31:0] value, input logic valid_value, input logic [31:0] word_value);
         address = value; expected_valid = valid_value; expected_data = word_value;
@@ -65,20 +67,22 @@ module tb_uart_validation;
                   32'h01234567,32'hA5A6A7A8,32'h1,32'hA5,32'h3C,
                   32'h91,32'h43,32'h11,32'h22,32'h5A,32'h5B,32'hE4,32'hD2,32'hC1,32'h33,
                   32'h44,32'hAB,32'h7F,32'h80,32'h05,32'h13,32'h1F,32'h0091435A,
+                  32'h3A5B6C7D,32'h00BEBC20,32'h0,
                   32'h0,32'h0};
         metadata = '0; metadata.seq = 64'h23456789ABCDEF01; metadata.epoch = 32'hA5A6A7A8;
+        host_loading = 0;
         endpoint_state = 8'h02; header = '0; header.version = 8'h01; header.kind = 8'h01;
         packet_bytes = 9'd12; arguments = '0; checks = 0; address = 0;
         expected_data = 0; expected_valid = 0; corrupt = $test$plusargs("CORRUPT_HOST");
         $dumpfile("waves.vcd");
         $dumpvars(0, address, data, address_valid, expected_data, expected_valid, endpoint_state,
             header, packet_bytes, arguments, status, response_length, checks);
-        // All bytes around the thirty-eight literal aligned ABI addresses, then
+        // All bytes around the forty-one literal aligned ABI addresses, then
         // two unassigned words above the map, then high aliases.
-        for (byte_index = 0; byte_index < 160; byte_index = byte_index + 1)
+        for (byte_index = 0; byte_index < 172; byte_index = byte_index + 1)
             check_address(32'h00010000 + 32'(byte_index),
-                          byte_index % 4 == 0 && byte_index < 152,
-                          byte_index % 4 == 0 && byte_index < 152 ? words[byte_index / 4] : 32'd0);
+                          byte_index % 4 == 0 && byte_index < 164,
+                          byte_index % 4 == 0 && byte_index < 164 ? words[byte_index / 4] : 32'd0);
         for (bit_index = 17; bit_index < 32; bit_index = bit_index + 1)
             check_address(32'h00010000 | (32'd1 << bit_index), 1'b0, 32'd0);
         check_address(32'h00000000, 1'b0, 32'd0);
@@ -102,9 +106,27 @@ module tb_uart_validation;
         command_case(8'h0C,16'd0,16'd24);
         arguments = '0; arguments[31:0] = 32'h00010020; arguments[63:32] = 32'h5A;
         command_case(8'h0E,16'd8,16'd8);
+        // The menu-return write accepts only its one control bit.
+        arguments = '0; arguments[31:0] = 32'h000100A0; arguments[63:32] = 32'h1;
+        command_case(8'h0E,16'd8,16'd8);
+        packet_bytes = 9'd20; arguments[63:32] = 32'h2; check_reply(8'h04,16'd0);
+        // LOAD_BEGIN accepts the direct and loader profiles, no other.
+        arguments = '0; arguments[7:0] = 8'h01; arguments[39:8] = 32'd32768; arguments[71:40] = 32'h12345678;
+        command_case(8'h07,16'd9,16'd0);
+        packet_bytes = 9'd21; arguments[7:0] = 8'h02; check_reply(8'h00,16'd0);
+        arguments[7:0] = 8'h03; check_reply(8'h04,16'd0);
+        // LOAD_END and LOAD_WRITE need the open host session: LOADING from a
+        // swap or an invalidated image alone is BAD_STATE.
+        endpoint_state = 8'h02; header.command = 8'h09; header.length = 16'd0; packet_bytes = 9'd12;
+        check_reply(8'h05,16'd0);
+        host_loading = 1; check_reply(8'h00,16'd0);
+        header.command = 8'h08; header.length = 16'd5; packet_bytes = 9'd17; arguments = '0;
+        check_reply(8'h00,16'd0);
+        host_loading = 0; check_reply(8'h05,16'd0);
+        endpoint_state = 8'h00;
         address = 32'hDEADBEEF; header.command = 8'h02; header.length = 16'd4; packet_bytes = 9'd16;
         check_reply(8'h04,16'd0);
-        if (checks != 200) $fatal(1, "UART_VALIDATE_COVERAGE");
+        if (checks != 223) $fatal(1, "UART_VALIDATE_COVERAGE");
         $display("PASS UART validation checks=%0d", checks); $finish;
     end
 endmodule

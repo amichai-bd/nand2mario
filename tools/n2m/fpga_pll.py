@@ -145,7 +145,7 @@ def clock_inventory(target, reference, adc_pll=None):
                        adc_pll + "|clk[0]": ("Generated", 100.0, ["50.00", "1", "1"], "clk_adc_reference")})
     # The SDRAM image adds the contract's inverted pin clock: the system PLL
     # output inverted at DRAM_CLK, same period, unit ratio, no duty column.
-    if target.get("top") == "sdram_proof":
+    if target.get("top") == "sdram_proof" or "DRAM_CLK" in target.get("pins", {}):
         wanted[SDRAM_CLOCK] = ("Generated", reference*2, ["", "1", "1"], SYSTEM_CLOCK)
     return wanted
 

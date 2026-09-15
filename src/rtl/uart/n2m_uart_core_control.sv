@@ -16,6 +16,12 @@ module n2m_uart_core_control (
     input var logic instruction_complete,
     input var logic retirement_valid,
     input var logic cpu_stopped,
+    // Engine client (wiki/src/rtl/cartridge/MAS_loader_profile.md#core-reset-sequencing-and-image-validity):
+    // a separate pause bit and a reset request serialized with host commands.
+    input var logic engine_pause,
+    input var logic engine_reset_request,
+    output logic engine_reset_accept,
+    output logic engine_reset_done,
     output logic pause_request,
     output logic core_reset,
     output n2m_input_pkg::input_write_t accepted_input,
@@ -41,8 +47,13 @@ module n2m_uart_core_control (
     logic [63:0] dot_next, retirement_next, completed_dot_next;
     logic stop_step;
     logic stop_dots;
+    // The loader's engine pause removes every tick, so a stepping command can
+    // no longer reach its budget: it completes on the paused level instead
+    // (STEP_LIMIT / STOPPED), leaving the host pause set as every step does.
+    logic engine_stop;
     logic [31:0] executed, executed_next;
     logic [7:0] reason, reason_next;
+    logic engine_owned, engine_owned_next;
     assign run_dots_result.dot = completed_dot;
     assign run_dots_result.executed = executed;
     assign run_dots_result.reason = reason;
@@ -50,7 +61,10 @@ module n2m_uart_core_control (
     assign accepted_input.source_write = pending_input.source_write;
     assign accepted_input.value = pending_input.value;
     assign busy = state != IDLE;
-    assign done = state == COMPLETE;
+    assign done = state == COMPLETE && !engine_owned;
+    // The host command wins an IDLE edge; the engine request waits one edge.
+    assign engine_reset_accept = state == IDLE && !start && engine_reset_request && !reset_sys;
+    assign engine_reset_done = state == COMPLETE && engine_owned;
     assign core_reset = state == RESET_ASSERT && !reset_sys;
     assign stop_step = state == STEP_RUN && gb_tick && (instruction_complete || remaining == 1);
     // A sleeping oscillator spends no dot and receives no tick, so an
@@ -58,7 +72,8 @@ module n2m_uart_core_control (
     assign stop_dots = state == DOTS_RUN && (cpu_stopped || (gb_tick && remaining == 1));
     // A new HALT/RESET at the current A edge must stop after that very dot.
     // paused is registered in the timebase, so this creates no tick loop.
-    assign pause_request = host_pause || stop_step || stop_dots ||
+    assign engine_stop = engine_pause && paused && !gb_tick;
+    assign pause_request = host_pause || engine_pause || stop_step || stop_dots ||
         (start && (command == n2m_interfaces_pkg::COMMAND_HALT || command == n2m_interfaces_pkg::COMMAND_RESET));
     always_comb begin
         state_next = state;
@@ -72,8 +87,13 @@ module n2m_uart_core_control (
         retirement_next = retirement_count + (retirement_valid ? 64'd1 : 64'd0);
         status_next = status;
         completed_dot_next = completed_dot;
+        engine_owned_next = engine_owned;
         case (state)
-            IDLE: if (start) begin
+            IDLE: if (engine_reset_accept) begin
+                // The engine holds engine_pause, so RESET_WAIT completes at once.
+                engine_owned_next = 1;
+                state_next = RESET_WAIT;
+            end else if (start) begin
                 status_next = n2m_interfaces_pkg::STATUS_OK;
                 case (command)
                     n2m_interfaces_pkg::COMMAND_HALT: begin host_pause_next = 1; state_next = HALT_WAIT; end
@@ -113,7 +133,9 @@ module n2m_uart_core_control (
                 completed_dot_next = dot_count;
                 state_next = COMPLETE;
             end
-            RUN_WAIT: if (!paused) state_next = COMPLETE;
+            // A swap holding the core paused completes RUN; the console resumes
+            // when the engine releases, because host_pause is already clear.
+            RUN_WAIT: if (!paused || engine_pause) state_next = COMPLETE;
             RESET_WAIT: if (paused) state_next = RESET_ASSERT;
             RESET_ASSERT: begin
                 epoch_next = epoch + 1'b1;
@@ -129,7 +151,12 @@ module n2m_uart_core_control (
                 completed_dot_next = dot_count;
                 state_next = COMPLETE;
             end
-            STEP_RUN: if (gb_tick) begin
+            STEP_RUN: if (engine_stop) begin
+                host_pause_next = 1;
+                status_next = n2m_interfaces_pkg::STATUS_STEP_LIMIT;
+                completed_dot_next = dot_count;
+                state_next = STEP_PAUSE;
+            end else if (gb_tick) begin
                 remaining_next = remaining - 1'b1;
                 if (stop_step) begin
                     host_pause_next = 1;
@@ -138,7 +165,12 @@ module n2m_uart_core_control (
                     state_next = STEP_PAUSE;
                 end
             end
-            DOTS_RUN: begin
+            DOTS_RUN: if (engine_stop) begin
+                host_pause_next = 1;
+                reason_next = n2m_interfaces_pkg::WIRE_RUN_DOTS_STOPPED;
+                completed_dot_next = dot_count;
+                state_next = STEP_PAUSE;
+            end else begin
                 if (gb_tick) begin
                     executed_next = executed + 1'b1;
                     remaining_next = remaining - 1'b1;
@@ -152,11 +184,12 @@ module n2m_uart_core_control (
             end
             // Allow the finishing A capture to publish at B before replying.
             STEP_PAUSE: if (paused) state_next = COMPLETE;
-            COMPLETE: state_next = IDLE;
+            COMPLETE: begin engine_owned_next = 0; state_next = IDLE; end
             default: state_next = IDLE;
         endcase
     end
     `DFF_ARST_VAL(state, state_next, clk_sys, reset_sys, IDLE)
+    `DFF_ARST_VAL(engine_owned, engine_owned_next, clk_sys, reset_sys, 1'b0)
     `DFF_ARST_VAL(host_pause, host_pause_next, clk_sys, reset_sys, 1'b1)
     `DFF_ARST_VAL(remaining, remaining_next, clk_sys, reset_sys, '0)
     `DFF_ARST_VAL(executed, executed_next, clk_sys, reset_sys, '0)
@@ -168,6 +201,8 @@ module n2m_uart_core_control (
     `DFF_ARST_VAL(status, status_next, clk_sys, reset_sys, n2m_interfaces_pkg::STATUS_OK)
     `DFF_ARST_VAL(completed_dot, completed_dot_next, clk_sys, reset_sys, '0)
     `N2M_ASSERT(UART_CORE_START_IDLE, clk_sys, reset_sys, start |-> !busy)
+    `N2M_ASSERT(LOADER_ONE_CORE_CLIENT, clk_sys, reset_sys, !(start && engine_reset_accept))
+    `N2M_ASSERT(UART_CORE_ENGINE_OWNED, clk_sys, reset_sys, engine_owned |-> busy)
     `N2M_ASSERT(UART_CORE_RESET_PAUSED, clk_sys, reset_sys, core_reset |-> paused && !gb_tick)
     `N2M_ASSERT(UART_CORE_INIT_FROZEN, clk_sys, reset_sys, state == INIT_WAIT |-> paused && !gb_tick)
     `N2M_ASSERT(UART_STEP_BUDGET, clk_sys, reset_sys,

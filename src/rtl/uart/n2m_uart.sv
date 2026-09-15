@@ -76,7 +76,23 @@ module n2m_uart #(
     output logic [n2m_interfaces_pkg::SDRAM_LINE_BYTES*8-1:0] sdram_request_data,
     input var logic sdram_request_ready,
     input var logic sdram_response_valid,
-    input var logic [n2m_interfaces_pkg::SDRAM_LINE_BYTES*8-1:0] sdram_response_data
+    input var logic [n2m_interfaces_pkg::SDRAM_LINE_BYTES*8-1:0] sdram_response_data,
+    // Loader profile owner (wiki/src/rtl/cartridge/MAS_loader_profile.md).
+    input var logic loader_copy_busy,
+    input var logic loader_swap_busy,
+    input var logic engine_invalidate,
+    input var logic engine_publish,
+    input var logic [7:0] engine_profile,
+    input var logic [31:0] library_status,
+    input var logic [31:0] library_key1,
+    input var logic engine_pause,
+    input var logic engine_reset_request,
+    output logic engine_reset_accept,
+    output logic engine_reset_done,
+    output logic host_session,
+    output logic host_loading,
+    output logic host_port_busy,
+    output logic library_return
 );
     n2m_input_pkg::input_write_t accepted_input;
     logic [7:0] input_source, physical_observe;
@@ -184,7 +200,14 @@ module n2m_uart #(
         .sdram_initialized(sdram_initialized), .sdram_request_valid(sdram_request_valid),
         .sdram_request_write(sdram_request_write), .sdram_request_address(sdram_request_address),
         .sdram_request_data(sdram_request_data), .sdram_request_ready(sdram_request_ready),
-        .sdram_response_valid(sdram_response_valid), .sdram_response_data(sdram_response_data)
+        .sdram_response_valid(sdram_response_valid), .sdram_response_data(sdram_response_data),
+        .loader_copy_busy(loader_copy_busy), .loader_swap_busy(loader_swap_busy),
+        .engine_invalidate(engine_invalidate), .engine_publish(engine_publish), .engine_profile(engine_profile),
+        .library_status(library_status), .library_key1(library_key1),
+        .engine_pause(engine_pause), .engine_reset_request(engine_reset_request),
+        .engine_reset_accept(engine_reset_accept), .engine_reset_done(engine_reset_done),
+        .host_session(host_session), .host_loading(host_loading), .host_port_busy(host_port_busy),
+        .library_return(library_return)
     );
 endmodule
 `default_nettype wire

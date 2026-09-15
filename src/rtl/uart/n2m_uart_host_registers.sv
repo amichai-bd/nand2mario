@@ -34,6 +34,8 @@ module n2m_uart_host_registers (
     input var logic [7:0] io_tac,
     input var logic [7:0] io_if,
     input var logic [7:0] io_ie,
+    input var logic [31:0] library_status,
+    input var logic [31:0] library_key1,
     output logic address_valid,
     output logic [31:0] data
 );
@@ -79,6 +81,9 @@ module n2m_uart_host_registers (
         else if (address == n2m_interfaces_pkg::HOST_REG_IO_IE) data = {24'b0, io_ie};
         else if (address == n2m_interfaces_pkg::HOST_REG_IO_LCD_STATUS)
             data = {8'b0, io_lcdc, io_stat, io_ly};
+        else if (address == n2m_interfaces_pkg::HOST_REG_LIBRARY_STATUS) data = library_status;
+        else if (address == n2m_interfaces_pkg::HOST_REG_LIBRARY_KEY1) data = library_key1;
+        else if (address == n2m_interfaces_pkg::HOST_REG_LIBRARY_CONTROL) data = 32'd0;
         else address_valid = 0;
     end
 endmodule

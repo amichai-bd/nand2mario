@@ -29,6 +29,16 @@ module tb_python_controls;
         corrupt = 0;
         injection_done = 0;
     end
+    // No KEY1 or SDRAM in this fixture; the loader profile stays idle.
+    logic key1_n, sdram_initialized, sdram_request_valid, sdram_request_write;
+    logic sdram_request_ready, sdram_response_valid;
+    logic [25:0] sdram_request_address;
+    logic [127:0] sdram_request_data, sdram_response_data;
+    assign key1_n = 1'b1;
+    assign sdram_initialized = 1'b0;
+    assign sdram_request_ready = 1'b0;
+    assign sdram_response_valid = 1'b0;
+    assign sdram_response_data = '0;
     n2m_controls_system #(.UART_BAUD(3125000)) dut (.*);
     defparam dut.u_system.u_stores.rom.SIM_INIT_FILE = "preload-rom.mif";
     defparam dut.u_system.u_uart.u_commands.u_load.u_presence.u_presence.SIM_INIT_FILE = "preload-presence.mif";

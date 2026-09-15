@@ -1,10 +1,19 @@
 # Loader profile
 
-Planned owner: `src/rtl/cartridge/`. No implementation exists yet; the slot
-loader, loader mapper and KEY1 slices of
-[#658](https://github.com/amichai-bd/nand2mario/issues/658) implement this page
-and close the gap. Until then this is the contract those slices derive their
-tests from.
+Owner: [`src/rtl/cartridge`](../../../../src/rtl/cartridge/n2m_loader.sv).
+[`n2m_loader`](../../../../src/rtl/cartridge/n2m_loader.sv) decodes the
+register commits, serves the status bytes and the window mask on the CPU read
+path, queues jobs and the KEY1 return and owns
+[`n2m_loader_engine`](../../../../src/rtl/cartridge/n2m_loader_engine.sv) (the
+copy engine), [`n2m_rom_port_arbiter`](../../../../src/rtl/cartridge/n2m_rom_port_arbiter.sv),
+[`n2m_storage_arbiter`](../../../../src/rtl/cartridge/n2m_storage_arbiter.sv) and
+[`n2m_loader_key1`](../../../../src/rtl/cartridge/n2m_loader_key1.sv).
+[`n2m_v05_system`](../../../../src/rtl/system/n2m_v05_system.sv) composes it
+between the memory owner, the UART endpoint and the board top's SDRAM
+controller; [`src/dv/cartridge`](../../../../src/dv/cartridge/README.md) holds
+the fixtures. The generated [interface table](../interfaces/MAS_interfaces.md)
+owns `PROFILE_LOADER_ID`, the `LIBRARY_*` host registers and the `library`
+layout, result, status-bit and KEY1 timing constants this page names.
 
 ## Scope
 
@@ -51,7 +60,11 @@ place of the direct profile's ROM and absent-cartridge rules. Everything else
 | `$A004`-`$BFFF` | `$FF` | ignored |
 
 Reads keep the memory owner's one-edge service: every byte above is either a
-ROM store read or a registered byte, so no CPU cycle is stretched. Register
+ROM store read or a registered byte, so no CPU cycle is stretched. The
+[memory owner](../memory/MAS_memory.md#fixed-service-and-cpu-commit) resolves
+the addresses as today; the system composition replaces the read byte with the
+loader's registered byte for `$A000`-`$BFFF` and the `$FF` mask, and hands the
+resolved ROM write commits to the loader. Register
 writes take effect on the `bus_commit` edge, like every peripheral write. The
 register addresses use the ranges MBC1 uses for its bank and mode registers so
 that our assembler and linker conventions carry over; the meaning is ours and
@@ -335,6 +348,15 @@ control owner, [SDRAM controller and device model](../storage/MAS_sdram.md#verif
 and a CPU bus driver or the real CPU. Fixtures, each within the
 [wall budget](../../../tools/n2m/SPEC.md#test-wall-budget):
 
+Implemented by [`tb_loader`](../../../../src/dv/cartridge/tb_loader.sv) with
+a bus driver in place of the CPU (`loader-map`, `loader-window`,
+`loader-swap`, `loader-swap-fault`, `loader-key1` at the real thresholds and
+`loader-key1-queue` for the ordering cases at shortened thresholds) and by
+[`tb_loader_system`](../../../../src/dv/cartridge/tb_loader_system.sv) with the
+real CPU running a menu program from SDRAM (`loader-host`, `loader-menu`),
+all under the `cartridge` label; the
+[test plan](../../../../src/dv/cartridge/README.md) maps each row to its checks.
+
 | Fixture | Checks |
 |---|---|
 | `loader-map` | All 65,536 addresses in `LOADER_ID`: reads and writes route per the [address map](#address-map-in-the-loader-profile); `$FF` window reads while busy; in `DIRECT_ID` the loader registers are absent and the direct rules hold byte for byte |
@@ -366,6 +388,10 @@ this owner: after a host library load, the UART log shows the swap epoch
 change and `LIBRARY_STATUS` for a selection made through the physical joypad,
 the game's frame hashes match the direct-load run of the same image, and a
 KEY1 hold returns to the menu; the owner confirms the picture when present.
+The `v05-board` and `v05-controls-board` images carry the SDRAM pins and KEY1
+(`PIN_A7`) for that session. Until it has run, the Verilator fixtures above are
+preliminary evidence only and the board and VGA-readback acceptance of the
+epic [#658](https://github.com/amichai-bd/nand2mario/issues/658) is not met.
 
 ## References
 

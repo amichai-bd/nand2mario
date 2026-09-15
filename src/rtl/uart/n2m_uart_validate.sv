@@ -11,6 +11,8 @@ module n2m_uart_validate (
     input var logic snapshot_valid,
     input var logic host_address_valid,
     input var logic sdram_ready,
+    input var logic swap_busy,
+    input var logic host_loading,
     output logic [7:0] status,
     output logic [15:0] response_length
 );
@@ -68,15 +70,21 @@ module n2m_uart_validate (
             end
             n2m_interfaces_pkg::COMMAND_LOAD_BEGIN: begin
                 length_valid = 32'(header.length) == n2m_interfaces_pkg::LOAD_BEGIN_BYTES;
-                value_valid = begin_fields.profile == n2m_interfaces_pkg::PROFILE_DIRECT_ID && begin_fields.size == n2m_interfaces_pkg::PROFILE_ROM_BYTES;
+                value_valid = (begin_fields.profile == n2m_interfaces_pkg::PROFILE_DIRECT_ID ||
+                    begin_fields.profile == n2m_interfaces_pkg::PROFILE_LOADER_ID) &&
+                    begin_fields.size == n2m_interfaces_pkg::PROFILE_ROM_BYTES;
+                // A swap in progress owns the ROM store; the host retries.
+                state_valid = !swap_busy;
             end
             n2m_interfaces_pkg::COMMAND_LOAD_WRITE: begin
                 length_valid = 32'(header.length) > n2m_interfaces_pkg::OFFSET_BYTES;
                 range_end = {1'b0, arguments[31:0]} + (33'(header.length) - 33'(n2m_interfaces_pkg::OFFSET_BYTES));
                 value_valid = range_end <= 33'(n2m_interfaces_pkg::PROFILE_ROM_BYTES);
-                state_valid = endpoint_state == n2m_interfaces_pkg::STATE_LOADING;
+                // LOADING also covers a swap or an engine-invalidated image;
+                // only the open host session may write or end a load.
+                state_valid = host_loading;
             end
-            n2m_interfaces_pkg::COMMAND_LOAD_END: state_valid = endpoint_state == n2m_interfaces_pkg::STATE_LOADING;
+            n2m_interfaces_pkg::COMMAND_LOAD_END: state_valid = host_loading;
             n2m_interfaces_pkg::COMMAND_READ_ROM, n2m_interfaces_pkg::COMMAND_READ_FRAME: begin
                 length_valid = 32'(header.length) == n2m_interfaces_pkg::READ_RANGE_BYTES;
                 value_valid = range_fields.count != 0 && range_fields.count <= n2m_interfaces_pkg::WIRE_MAX_PAYLOAD &&
@@ -91,7 +99,9 @@ module n2m_uart_validate (
                 value_valid = (write_fields.address == n2m_interfaces_pkg::HOST_REG_INPUT &&
                     (write_fields.value & ~n2m_interfaces_pkg::HOST_WRITE_MASK_INPUT) == 0) ||
                     (write_fields.address == n2m_interfaces_pkg::HOST_REG_INPUT_SOURCE &&
-                    (write_fields.value & ~n2m_interfaces_pkg::HOST_WRITE_MASK_INPUT_SOURCE) == 0);
+                    (write_fields.value & ~n2m_interfaces_pkg::HOST_WRITE_MASK_INPUT_SOURCE) == 0) ||
+                    (write_fields.address == n2m_interfaces_pkg::HOST_REG_LIBRARY_CONTROL &&
+                    (write_fields.value & ~n2m_interfaces_pkg::HOST_WRITE_MASK_LIBRARY_CONTROL) == 0);
                 state_valid = endpoint_state != n2m_interfaces_pkg::STATE_LOADING;
                 response_length = 16'(n2m_interfaces_pkg::DOT_BYTES);
             end

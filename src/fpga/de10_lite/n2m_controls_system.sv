@@ -26,7 +26,18 @@ module n2m_controls_system #(
     output logic hsync_n, vsync_n,
     output logic [63:0] display_sequence,
     output logic [31:0] display_epoch,
-    output logic paused, fault
+    output logic paused, fault,
+    // Loader profile: KEY1 return and the SDRAM line interface to the board
+    // top's controller (wiki/src/rtl/cartridge/MAS_loader_profile.md).
+    input var logic key1_n,
+    input var logic sdram_initialized,
+    output logic sdram_request_valid,
+    output logic sdram_request_write,
+    output logic [n2m_interfaces_pkg::SDRAM_ADDRESS_BITS-1:0] sdram_request_address,
+    output logic [n2m_interfaces_pkg::SDRAM_LINE_BYTES*8-1:0] sdram_request_data,
+    input var logic sdram_request_ready,
+    input var logic sdram_response_valid,
+    input var logic [n2m_interfaces_pkg::SDRAM_LINE_BYTES*8-1:0] sdram_response_data
 );
     logic gb_tick;
     logic physical_commit;
@@ -66,6 +77,9 @@ module n2m_controls_system #(
         .address(), .write_data(), .read_data(), .irq_ack(),
         .source_valid(), .source_start(), .source_abort(),
         .source_display_eligible(), .source_shade(), .source_x(), .source_y(),
-        .source_epoch(), .source_dot()
+        .source_epoch(), .source_dot(),
+        .key1_n, .sdram_initialized, .sdram_request_valid, .sdram_request_write,
+        .sdram_request_address, .sdram_request_data, .sdram_request_ready,
+        .sdram_response_valid, .sdram_response_data
     );
 endmodule
