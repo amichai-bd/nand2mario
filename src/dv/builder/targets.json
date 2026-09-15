@@ -9834,7 +9834,7 @@
     ],
     "expected_exit": "zero",
     "signature": "PASS V05 continuous",
-    "timeout_seconds": 450,
+    "timeout_seconds": 900,
     "vendor_model": "intel-memory",
     "testbench": "python",
     "python": {
@@ -9894,8 +9894,8 @@
     },
     "preload": "v05",
     "wall_allowance": {
-      "seconds": 450,
-      "reason": "measured 210-second run at about 2 ms simulated per wall second; parallel load measured x1.46 on similar targets"
+      "seconds": 900,
+      "reason": "measured 202-271-second idle runs at about 2 ms simulated per wall second; more than twice that under concurrent simulation from other worktrees, with one run killed at a 450-second allowance"
     }
   },
   "python-v05-image-fault": {
