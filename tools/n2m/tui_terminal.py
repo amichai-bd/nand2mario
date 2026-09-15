@@ -152,4 +152,3 @@ class Menu:
                 value = value[:-1]
             elif isinstance(key, str) and len(key) == 1 and key.isprintable():
                 value += key
-
