@@ -413,7 +413,7 @@ units:
   python-v05-bounded: {kind: sim, level: 2, labels: [integration, python-tb, system, v05], duration_seconds: 22.65}
   python-v05-bounded-pixel: {kind: sim, level: 2, labels: [fault, integration, python-tb, system, v05], duration_seconds: 19.07}
   python-v05-bounded-progress: {kind: sim, level: 2, labels: [fault, integration, python-tb, system, v05], duration_seconds: 5.67}
-  python-v05-continuous: {kind: sim, level: 2, labels: [integration, python-tb, system, v05], duration_seconds: null}
+  python-v05-continuity: {kind: sim, level: 2, labels: [integration, python-tb, system, v05], duration_seconds: null}
   python-v05-dma: {kind: sim, level: 2, labels: [dma, integration, python-tb, system, v05], duration_seconds: 7.19}
   python-v05-dma-byte: {kind: sim, level: 2, labels: [dma, fault, integration, python-tb, system, v05], duration_seconds: 6.17}
   python-v05-identity: {kind: sim, level: 2, labels: [integration, python-tb, system, v05], duration_seconds: 6.03}
@@ -658,3 +658,4 @@ not_runnable:
 retired:
   async-assert-known: "Witnessed N2M_ASSERT_KNOWN firing on an X input; a two-state simulator cannot witness X, so N2M_ASSERT_KNOWN is a no-op under VERILATOR."
   ppu-shift-unknown: "Witnessed shift_state_known firing on a forced X obj_low; a two-state simulator cannot witness X, so N2M_ASSERT_KNOWN is a no-op under VERILATOR."
+  python-v05-continuous: "Legacy 600-frame/18-input schedule of about 10 s simulated time; at the measured 2 ms of simulated time per wall second under Verilator it cannot finish inside the 900-second wall ceiling. Retired by the owner decision in #634; python-v05-continuity keeps every legacy input transition at one-frame spacing over 23 frames."
