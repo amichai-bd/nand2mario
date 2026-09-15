@@ -13,7 +13,3 @@ set_input_delay -clock sdram_clk -max 7.0 [get_ports {DRAM_DQ[*]}]
 set_input_delay -clock sdram_clk -min 1.5 [get_ports {DRAM_DQ[*]}]
 set_output_delay -clock sdram_clk -max 2.8 [get_ports {DRAM_ADDR[*] DRAM_BA[*] DRAM_CAS_N DRAM_CKE DRAM_CS_N DRAM_DQ[*] DRAM_DQML DRAM_DQMH DRAM_RAS_N DRAM_WE_N}]
 set_output_delay -clock sdram_clk -min -1.8 [get_ports {DRAM_ADDR[*] DRAM_BA[*] DRAM_CAS_N DRAM_CKE DRAM_CS_N DRAM_DQ[*] DRAM_DQML DRAM_DQMH DRAM_RAS_N DRAM_WE_N}]
-# DRAM_CLK carries the generated clock itself and has no data path; the zero
-# delays keep check_timing's output-delay inventory complete.
-set_output_delay -clock sdram_clk -max 0.0 [get_ports {DRAM_CLK}]
-set_output_delay -clock sdram_clk -min 0.0 [get_ports {DRAM_CLK}]

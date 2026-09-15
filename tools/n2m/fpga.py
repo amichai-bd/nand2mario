@@ -458,6 +458,13 @@ def timing_evidence(folder, target, *, build_id=None):
     for name, count in rows:
         if name == "no_clock" and int(count) == expected_lock_events and ("pll" in target or adc_evidence is not None):
             continue
+        # The SDRAM image's DRAM_CLK port carries the generated pin clock and
+        # has no data path, so it is the one output without an output delay;
+        # the unconstrained-path summary above has already shown zero output
+        # ports and paths, and the clock inventory binds that port to sdram_clk.
+        if (name == "no_output_delay" and int(count) == 1 and sdram_target(target)
+                and re.search(r";\s*DRAM_CLK\s*;\s*No output delay was set on output port\. This port has clock assignments\.\s*;", checks)):
+            continue
         if int(count) and not (name == "virtual_clock" and int(count) == 1 and "No virtual clock was found." in checks):
             raise ValueError(f"structural timing failure: {name}={count}")
     evidence = {"slack_ns": slacks, "fit_summary": fit, "unconstrained": "none", "ignored_constraints": "none", "vendor_lock_event": lock_event, "vga": vga_evidence, "intel_memory": memory_evidence,
