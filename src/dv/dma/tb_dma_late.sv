@@ -1,5 +1,8 @@
 `timescale 1ns/1ps
 `default_nettype none
+// Lint waiver: 16-bit bus addresses index the 160-entry expected OAM array;
+// the truncation lint is a false positive.
+/* verilator lint_off WIDTHTRUNC */
 module tb_dma_late;
     integer lane;
     n2m_memory_pkg::memory_oam_request_t oam_request;
@@ -82,7 +85,7 @@ module tb_dma_late;
         for(index=0;index<160;index=index+1) begin
             @(negedge clk_sys); setup_address=15'(index); setup_read=1;
             @(negedge clk_sys);
-            if(!access_valid || access_rdata!==expected_oam[index])
+            if(!access_valid || access_rdata!=expected_oam[index])
                 $fatal(1,"DMA_LATE_STORAGE case=%0d offset=%0d expected=%02x actual=%02x",
                     case_index,index,expected_oam[index],access_rdata);
             setup_read=0;
@@ -180,7 +183,7 @@ module tb_dma_late;
             request_valid=0; bus_plan='0; oam_cpu_late_write=0;
             repeat(4) @(negedge clk_sys);
             // Before the A+5 edge, registered pair78 must already be fresh.
-            if(case_index<6 && (!ppu_oam_valid || ppu_oam_data!==expected_pair))
+            if(case_index<6 && (!ppu_oam_valid || ppu_oam_data!=expected_pair))
                 $fatal(1,"DMA_LATE_CAPTURE case=%0d expected=%04x actual=%04x valid=%0b",
                     case_index,expected_pair,ppu_oam_data,ppu_oam_valid);
             checks=checks+1;
@@ -196,13 +199,13 @@ module tb_dma_late;
                 checks=checks+1;expected_oam[156]='h42;
                 bus_plan.write_enable=0;bus_plan.write_data=0;oam_cpu_allow=1;oam_cpu_late_write=0;
                 repeat(4) @(negedge clk_sys);
-                if(!ppu_oam_valid || ppu_oam_data!==16'hbc42) $fatal(1,"DMA_LATE_REPEAT_CAPTURE");
+                if(!ppu_oam_valid || ppu_oam_data!=16'hbc42) $fatal(1,"DMA_LATE_REPEAT_CAPTURE");
                 checks=checks+1;
                 // Consume T1 at A+5, then the next read at A+23.
                 gb_tick=1;@(negedge clk_sys);gb_tick=0;cpu_phase=1;ppu_oam_phase=0;
                 repeat(2) dot_step();repeat(5) @(negedge clk_sys);
                 gb_tick=1;bus_commit=1;address_effect_sample=1;
-                if(!response_valid || read_data!==8'h42) $fatal(1,"DMA_LATE_NEXT_READ");
+                if(!response_valid || read_data!=8'h42) $fatal(1,"DMA_LATE_NEXT_READ");
                 @(negedge clk_sys);gb_tick=0;bus_commit=0;address_effect_sample=0;cpu_phase=0;
                 request_valid=0;bus_plan='0;oam_cpu_allow=0;checks=checks+1;
                 repeat(30) @(negedge clk_sys);readback();

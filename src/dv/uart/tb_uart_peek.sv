@@ -3,6 +3,11 @@
 // Full-wire host peek. Bytes are placed through the core's own arbitrated
 // access port and read back over UART from the five non-ROM stores while the
 // core is paused. Contract: wiki/src/rtl/memory/MAS_memory.md.
+// Lint waiver: byte array elements are passed to integer CRC and index
+// arithmetic and the integer file handle is tested as a boolean; both width lints
+// are false positives.
+/* verilator lint_off WIDTHEXPAND */
+/* verilator lint_off WIDTHTRUNC */
 module tb_uart_peek;
     logic clk_sys, reset_sys, uart_rx, uart_tx;
     logic gb_tick, paused, pause_request, core_reset, core_initialized;
@@ -156,7 +161,7 @@ module tb_uart_peek;
             raw_reply[6]!=expected_command || raw_reply[7]!=expected_status || {raw_reply[9],raw_reply[8]}!=16'(expected_size))
             $fatal(1,"UART_PEEK_HEADER seq=%0d cmd=%0d status=%0d expected=%0d",expected_token,raw_reply[6],raw_reply[7],expected_status);
         for(payload_index=0;payload_index<expected_size && !skip_payload;payload_index=payload_index+1)
-            if(raw_reply[10+payload_index]!==expected_payload[payload_index])
+            if(raw_reply[10+payload_index]!=expected_payload[payload_index])
                 $fatal(1,"UART_PEEK_PAYLOAD cmd=%0d index=%0d expected=%02h actual=%02h",
                     expected_command,payload_index,expected_payload[payload_index],raw_reply[10+payload_index]);
         $fdisplay(trace,"%0d,%0d,%0d,%0d",expected_token,expected_command,expected_status,expected_size);
@@ -169,10 +174,10 @@ module tb_uart_peek;
             @(negedge uart_tx);
             if (!reset_sys) begin
                 repeat(4) @(negedge clk_sys);
-                if(uart_tx!==0) $fatal(1,"UART_PEEK_TX_START");
+                if(uart_tx!=0) $fatal(1,"UART_PEEK_TX_START");
                 for(bit_number=0;bit_number<8;bit_number=bit_number+1) begin repeat(8) @(negedge clk_sys);value[bit_number]=uart_tx;end
                 repeat(8) @(negedge clk_sys);
-                if(uart_tx!==1) $fatal(1,"UART_PEEK_TX_STOP");
+                if(uart_tx!=1) $fatal(1,"UART_PEEK_TX_STOP");
                 repeat(4) @(negedge clk_sys);
                 if(value==0) check_reply();
                 else begin if(reply_size>=270) $fatal(1,"UART_PEEK_TX_OVERFLOW");encoded_reply[reply_size]=value;reply_size=reply_size+1;end
@@ -335,7 +340,7 @@ module tb_uart_peek;
                 repeat(3000) @(negedge clk_sys);
                 // The reply path must be parked at its fetch state, not merely
                 // slow: the hold, not the wire, is what delayed service.
-                if(dut.u_commands.state!==dut.u_commands.PEEK_FETCH)
+                if(dut.u_commands.state!=dut.u_commands.PEEK_FETCH)
                     $fatal(1,"UART_PEEK_HOLD_NOT_AT_FETCH");
                 held_cycles=1;
                 oam_sequence_active=0;

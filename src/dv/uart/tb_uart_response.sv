@@ -1,5 +1,9 @@
 `timescale 1ns/1ps
 `default_nettype none
+// Lint waiver: 9-bit DUT counts are compared with integer expectations and
+// the integer file handle is tested as a boolean; both width lints are false positives.
+/* verilator lint_off WIDTHEXPAND */
+/* verilator lint_off WIDTHTRUNC */
 module tb_uart_response;
     logic clk_sys, reset_sys, start, busy, done;
     logic [31:0] sequence_token;
@@ -28,7 +32,7 @@ module tb_uart_response;
     always #5 clk_sys = !clk_sys;
     always @(posedge clk_sys) begin
         if (!reset_sys && response_write) begin
-            if (response_address != writes || response_data !== expected_byte(scenario, writes))
+            if (response_address != writes || response_data != expected_byte(scenario, writes))
                 $fatal(1,"UART_RESPONSE_BYTE case=%0d index=%0d expected=%02h actual=%02h",scenario,writes,expected_byte(scenario,writes),response_data);
             $fdisplay(trace,"write,%0d,%0d,%02h",scenario,writes,response_data);
             writes = writes + 1;
@@ -68,7 +72,7 @@ module tb_uart_response;
         for (offset = 0; offset < writes; offset = offset + 1) begin
             @(negedge clk_sys); read_enable = 1; read_address = n2m_uart_pkg::UART_ADDRESS_BITS'(offset);
             @(posedge clk_sys); #1;
-            if (!read_valid[2] || read_data[23:16] !== expected_byte(scenario, offset))
+            if (!read_valid[2] || read_data[23:16] != expected_byte(scenario, offset))
                 $fatal(1,"UART_RESPONSE_STORED case=%0d index=%0d",scenario,offset);
             reads = reads + 1;
             $fdisplay(trace,"read,%0d,%0d,%02h",scenario,offset,read_data[23:16]);
