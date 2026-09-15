@@ -27,14 +27,17 @@ generated response timeout or call simulator APIs from a worker thread.
 
 Using the [pinned Python environment](../README.md), run:
 
-```powershell
-workdir/builds/python-dv-env/.venv/Scripts/python.exe tools/build.py sim test python-host-play --tag python-host-play --json
+```bash
+workdir/builds/python-dv-env/.venv/bin/python tools/build.py sim test python-host-play --tag python-host-play --json
 ```
 
-The four negative targets are `python-host-play-frame`, `python-host-play-missing`,
-`python-host-play-input` and `python-host-play-release`. They force actual snapshot
-data, completion, JOYP buttons or release commit. The original checker must fail
-with PLAY_OBJECT_COUNT, PLAY_MISSING_FRAME, or the exact wrong image respectively.
+Measured under Verilator 5.052 the positive run takes about 200 s after a 20 s
+build, inside the default 300 s budget. The four negative targets are
+`python-host-play-frame`, `python-host-play-missing`, `python-host-play-input`
+and `python-host-play-release`. They force actual snapshot data, completion,
+JOYP buttons or release commit. The original checker must fail with
+PLAY_OBJECT_COUNT, PLAY_MISSING_FRAME, or the exact wrong image respectively;
+each is registered `expected_exit: "nonzero"` with that line as its signature.
 Python test failure and builder exit1 are required; raw simulator exit0 alone is
 not success. Expected images are never changed to accommodate a fault.
 
