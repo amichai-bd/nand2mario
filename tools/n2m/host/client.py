@@ -4,7 +4,8 @@ import time
 import zlib
 
 from .. import generated_interfaces as abi
-from ..interface_codec import checked_range, decode_packet, encode_packet, pack_record, peek_store, unpack_record, uint
+from ..interface_codec import (SDRAM_LINE, checked_range, decode_packet, encode_packet, pack_record, peek_store,
+                               sdram_line_address, sdram_read, sdram_write, unpack_record, uint)
 
 
 class UncertainCompletion(RuntimeError):
@@ -247,3 +248,66 @@ class Client:
         # The dedicated snapshot survives core reset and new source frames. No
         # second SNAPSHOT is sent while chunks are being retrieved.
         return metadata, pixels
+
+    def sdram_write(self, address, line):
+        """Write one 16-byte line at a line-aligned device address."""
+        return self.request('SDRAM_WRITE', sdram_write(address, line))
+
+    def sdram_read(self, address, lines=1):
+        """Read 1..15 consecutive lines; returns exactly lines*16 bytes."""
+        return self.request('SDRAM_READ', sdram_read(address, lines), count=lines * SDRAM_LINE)
+
+    def sdram_test(self, start, length, *, seed=1, progress=None, mismatch_limit=64):
+        """Write a seeded pattern over a line range, read it back and compare.
+
+        Writes go one line per SDRAM_WRITE and reads fifteen lines per
+        SDRAM_READ. The pattern is derived from the seed and the line address
+        so a stale or aliased line never matches by accident. Every mismatch is
+        reported by device address with expected and actual bytes, up to
+        ``mismatch_limit`` detailed entries; the count is always complete.
+        """
+        if type(start) is not int or type(length) is not int or length <= 0 or start % SDRAM_LINE or length % SDRAM_LINE:
+            raise ValueError('SDRAM test range must be line aligned and nonempty')
+        sdram_line_address(start)
+        if start + length > abi.SDRAM_BYTES:
+            raise ValueError('SDRAM test range exceeds the device')
+        notify = progress or (lambda _event: None)
+        lines = length // SDRAM_LINE
+        notify({'stage': 'write', 'completed': 0, 'total': lines})
+        for index in range(lines):
+            address = start + index * SDRAM_LINE
+            self.sdram_write(address, sdram_pattern(address, seed))
+            if index % 256 == 255 or index == lines - 1:
+                notify({'stage': 'write', 'completed': index + 1, 'total': lines})
+        mismatches = []
+        mismatch_count = 0
+        compared = 0
+        notify({'stage': 'read', 'completed': 0, 'total': lines})
+        for index in range(0, lines, abi.SDRAM_READ_MAX_LINES):
+            count = min(abi.SDRAM_READ_MAX_LINES, lines - index)
+            address = start + index * SDRAM_LINE
+            actual = self.sdram_read(address, count)
+            expected = b''.join(sdram_pattern(address + i * SDRAM_LINE, seed) for i in range(count))
+            if actual != expected:
+                for i in range(count):
+                    got, want = actual[i * SDRAM_LINE:(i + 1) * SDRAM_LINE], expected[i * SDRAM_LINE:(i + 1) * SDRAM_LINE]
+                    if got != want:
+                        mismatch_count += 1
+                        if len(mismatches) < mismatch_limit:
+                            mismatches.append({'address': address + i * SDRAM_LINE, 'expected': want.hex(), 'actual': got.hex()})
+            compared += count
+            if compared % (abi.SDRAM_READ_MAX_LINES * 64) < abi.SDRAM_READ_MAX_LINES or compared == lines:
+                notify({'stage': 'read', 'completed': compared, 'total': lines})
+        return {'start': start, 'length': length, 'lines': lines, 'seed': seed,
+                'mismatch_count': mismatch_count, 'mismatches': mismatches,
+                'status': 'PASS' if mismatch_count == 0 else 'FAIL'}
+
+
+def sdram_pattern(address, seed):
+    """The 16-byte test line for one device address: address- and seed-dependent, no two lines alike."""
+    line = bytearray()
+    state = (address // SDRAM_LINE) * 2654435761 + seed * 40503 + 0x9e3779b9
+    for index in range(SDRAM_LINE):
+        state = (state * 6364136223846793005 + 1442695040888963407) & 0xFFFFFFFFFFFFFFFF
+        line.append(((state >> 33) ^ (address >> 4) ^ index) & 0xFF)
+    return bytes(line)

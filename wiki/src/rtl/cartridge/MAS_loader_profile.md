@@ -274,8 +274,8 @@ command. Rules, in priority order:
    `RUNNING`; every host command keeps its normal behavior. A `LOAD_BEGIN`
    during a fill waits for the fill to finish (at most 1.6 ms) before it pauses
    the core, so the fill never writes into a host session.
-4. Host SDRAM line commands, added by the slot loader slice to the generated
-   command table: `SDRAM_WRITE` (26-bit line-aligned device address plus 16
+4. Host SDRAM line commands in the generated command table (the SDRAM
+   bring-up slice adds them; the loader slice adds the arbiter): `SDRAM_WRITE` (26-bit line-aligned device address plus 16
    bytes; response empty) and `SDRAM_READ` (device address plus a line count
    1-15; response the bytes). Both require `sdram_ready` and a line-aligned
    address, else `BAD_VALUE`; both are accepted in every endpoint state and

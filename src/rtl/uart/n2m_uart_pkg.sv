@@ -3,6 +3,8 @@ package n2m_uart_pkg;
     localparam integer UART_RAW_MAX = n2m_interfaces_pkg::PACKET_HEADER_BYTES + 32'(n2m_interfaces_pkg::WIRE_MAX_PAYLOAD) + 2;
     localparam integer UART_ENCODED_MAX = UART_RAW_MAX + UART_RAW_MAX / 254 + 1;
     localparam integer UART_ADDRESS_BITS = $clog2(UART_ENCODED_MAX);
+    // The widest fixed request record the dispatcher captures before validation.
+    localparam integer UART_ARGUMENT_BYTES = n2m_interfaces_pkg::SDRAM_WRITE_BYTES;
     typedef enum logic [1:0] {
         UART_LOAD_BEGIN, UART_LOAD_WRITE, UART_LOAD_END, UART_LOAD_READ
     } uart_load_operation_t;

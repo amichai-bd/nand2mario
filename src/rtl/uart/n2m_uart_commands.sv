@@ -79,17 +79,32 @@ module n2m_uart_commands (
     output logic [7:0] peek_select,
     output logic [12:0] peek_offset,
     input var logic [7:0] peek_rdata,
-    input var logic peek_valid
+    input var logic peek_valid,
+    // SDRAM line service through the storage owner's single request port.
+    input var logic sdram_initialized,
+    output logic sdram_request_valid,
+    output logic sdram_request_write,
+    output logic [n2m_interfaces_pkg::SDRAM_ADDRESS_BITS-1:0] sdram_request_address,
+    output logic [n2m_interfaces_pkg::SDRAM_LINE_BYTES*8-1:0] sdram_request_data,
+    input var logic sdram_request_ready,
+    input var logic sdram_response_valid,
+    input var logic [n2m_interfaces_pkg::SDRAM_LINE_BYTES*8-1:0] sdram_response_data
 );
     typedef enum logic [4:0] {
         IDLE, ARG_FETCH, ARG_USE, VALIDATE, CORE_START, CORE_WAIT,
         LOAD_START, LOAD_WAIT, WRITE_FETCH, WRITE_USE,
         SNAPSHOT_START, SNAPSHOT_WAIT, REPLY_START, REPLY_SMALL,
-        REPLY_ROM, FRAME_FETCH, FRAME_USE, PEEK_FETCH, PEEK_USE, REPLY_WAIT
+        REPLY_ROM, FRAME_FETCH, FRAME_USE, PEEK_FETCH, PEEK_USE, REPLY_WAIT,
+        SDRAM_START, SDRAM_WAIT, REPLY_SDRAM
     } state_t;
     state_t state, state_next;
-    logic [n2m_interfaces_pkg::LOAD_BEGIN_BYTES*8-1:0] arguments, arguments_next;
-    logic [3:0] arg_index, arg_index_next, arg_limit, arg_limit_next;
+    logic [n2m_uart_pkg::UART_ARGUMENT_BYTES*8-1:0] arguments, arguments_next;
+    logic [4:0] arg_index, arg_index_next, arg_limit, arg_limit_next;
+    logic [4:0] arg_capture;
+    logic sdram_start, sdram_busy, sdram_done, sdram_output_valid, sdram_output_ready;
+    logic [7:0] sdram_output_data;
+    n2m_interfaces_pkg::sdram_write_t sdram_write_fields;
+    n2m_interfaces_pkg::sdram_read_t sdram_read_fields;
     logic [n2m_uart_pkg::UART_ADDRESS_BITS-1:0] index, index_next;
     logic loading, loading_next, image_valid_next;
     logic [7:0] profile_next, reply_status, reply_status_next;
@@ -116,10 +131,16 @@ module n2m_uart_commands (
     n2m_interfaces_pkg::read_range_t range_fields;
     n2m_interfaces_pkg::peek_range_t peek_fields;
     assign write_fields = arguments[n2m_interfaces_pkg::WRITE_HOST_BYTES*8-1:0];
+    assign sdram_write_fields = arguments[n2m_interfaces_pkg::SDRAM_WRITE_BYTES*8-1:0];
+    assign sdram_read_fields = arguments[n2m_interfaces_pkg::SDRAM_READ_BYTES*8-1:0];
+    // Only SDRAM_WRITE captures its full 20-byte record; every other command
+    // keeps the original 9-byte capture so its timing is unchanged.
+    assign arg_capture = request_header.command == n2m_interfaces_pkg::COMMAND_SDRAM_WRITE
+        ? 5'(n2m_interfaces_pkg::SDRAM_WRITE_BYTES) : 5'(n2m_interfaces_pkg::LOAD_BEGIN_BYTES);
     assign core_input.valid = 1'b1;
     assign core_input.source_write = request_header.command == n2m_interfaces_pkg::COMMAND_WRITE_HOST && write_fields.address == n2m_interfaces_pkg::HOST_REG_INPUT_SOURCE;
     assign core_input.value = request_header.command == n2m_interfaces_pkg::COMMAND_WRITE_HOST ? write_fields.value[7:0] : arguments[7:0];
-    assign begin_fields = arguments;
+    assign begin_fields = arguments[n2m_interfaces_pkg::LOAD_BEGIN_BYTES*8-1:0];
     assign range_fields = arguments[n2m_interfaces_pkg::READ_RANGE_BYTES*8-1:0];
     assign peek_fields = arguments[n2m_interfaces_pkg::PEEK_RANGE_BYTES*8-1:0];
     assign endpoint_state = loading ? n2m_interfaces_pkg::STATE_LOADING : (paused ? n2m_interfaces_pkg::STATE_PAUSED : n2m_interfaces_pkg::STATE_RUNNING);
@@ -143,7 +164,9 @@ module n2m_uart_commands (
     assign load_input_valid = state == WRITE_USE && packet_data_valid;
     assign load_output_ready = state == REPLY_ROM && payload_ready;
     assign reply_start = state == REPLY_START;
-    assign command_done = reply_done && (state == REPLY_WAIT || state == REPLY_ROM);
+    assign command_done = reply_done && (state == REPLY_WAIT || state == REPLY_ROM || state == REPLY_SDRAM);
+    assign sdram_start = state == SDRAM_START && !reset_sys;
+    assign sdram_output_ready = state == REPLY_SDRAM && payload_ready;
     assign snapshot_request = state == SNAPSHOT_START && !reset_sys;
     assign frame_read = state == FRAME_FETCH && payload_ready && !reset_sys;
     assign frame_address = range_fields.offset[12:0] + 13'(index);
@@ -159,6 +182,7 @@ module n2m_uart_commands (
                 payload_data = 8'(reply_value >> (index*8));
             end
             REPLY_ROM: begin payload_valid = load_output_valid; payload_data = load_output_data; end
+            REPLY_SDRAM: begin payload_valid = sdram_output_valid; payload_data = sdram_output_data; end
             FRAME_USE: begin payload_valid = frame_valid; payload_data = frame_data; end
             PEEK_USE: begin payload_valid = peek_valid; payload_data = peek_rdata; end
             default: begin end
@@ -176,7 +200,21 @@ module n2m_uart_commands (
         .header(request_header), .packet_bytes(request_bytes), .arguments(arguments),
         .forced_status(command_forced_status), .endpoint_state(endpoint_state),
         .image_valid(image_valid), .snapshot_valid(snapshot_valid), .host_address_valid(host_address_valid),
+        .sdram_ready(sdram_initialized),
         .status(validation_status), .response_length(validation_length)
+    );
+    n2m_uart_sdram u_sdram (
+        .clk_sys(clk_sys), .reset_sys(reset_sys), .start(sdram_start),
+        .write(request_header.command == n2m_interfaces_pkg::COMMAND_SDRAM_WRITE),
+        .address(sdram_write_fields.address[n2m_interfaces_pkg::SDRAM_ADDRESS_BITS-1:0]),
+        .line_count(sdram_read_fields.count[3:0]),
+        .write_data({sdram_write_fields.data3, sdram_write_fields.data2, sdram_write_fields.data1, sdram_write_fields.data0}),
+        .busy(sdram_busy), .done(sdram_done), .output_valid(sdram_output_valid),
+        .output_data(sdram_output_data), .output_ready(sdram_output_ready),
+        .sdram_request_valid(sdram_request_valid), .sdram_request_write(sdram_request_write),
+        .sdram_request_address(sdram_request_address), .sdram_request_data(sdram_request_data),
+        .sdram_request_ready(sdram_request_ready), .sdram_response_valid(sdram_response_valid),
+        .sdram_response_data(sdram_response_data)
     );
     n2m_uart_core_control u_core_control (
         .clk_sys(clk_sys), .reset_sys(reset_sys), .start(core_start), .command(core_command),
@@ -219,7 +257,7 @@ module n2m_uart_commands (
             IDLE: if (command_valid) begin
                 arguments_next = 0;
                 arg_index_next = 0;
-                arg_limit_next = 32'(request_header.length) < n2m_interfaces_pkg::LOAD_BEGIN_BYTES ? 4'(request_header.length) : 4'(n2m_interfaces_pkg::LOAD_BEGIN_BYTES);
+                arg_limit_next = 32'(request_header.length) < 32'(arg_capture) ? 5'(request_header.length) : arg_capture;
                 index_next = 0;
                 if (command_forced_status != n2m_interfaces_pkg::STATUS_OK || request_header.version != n2m_interfaces_pkg::WIRE_VERSION ||
                     request_header.length > n2m_interfaces_pkg::WIRE_MAX_PAYLOAD ||
@@ -230,8 +268,8 @@ module n2m_uart_commands (
             ARG_FETCH: state_next = ARG_USE;
             ARG_USE: if (packet_data_valid) begin
                 arguments_next[arg_index*8 +: 8] = packet_data;
-                arg_index_next = arg_index + 1'b1;
-                state_next = arg_index + 1'b1 == arg_limit ? VALIDATE : ARG_FETCH;
+                arg_index_next = arg_index + 5'd1;
+                state_next = arg_index + 5'd1 == arg_limit ? VALIDATE : ARG_FETCH;
             end
             VALIDATE: begin
                 reply_status_next = validation_status;
@@ -251,9 +289,14 @@ module n2m_uart_commands (
                     n2m_interfaces_pkg::COMMAND_LOAD_WRITE, n2m_interfaces_pkg::COMMAND_LOAD_END, n2m_interfaces_pkg::COMMAND_READ_ROM: state_next = LOAD_START;
                     n2m_interfaces_pkg::COMMAND_SNAPSHOT: state_next = SNAPSHOT_START;
                     n2m_interfaces_pkg::COMMAND_READ_FRAME, n2m_interfaces_pkg::COMMAND_PEEK: state_next = REPLY_START;
+                    n2m_interfaces_pkg::COMMAND_SDRAM_WRITE, n2m_interfaces_pkg::COMMAND_SDRAM_READ: state_next = SDRAM_START;
                     default: state_next = REPLY_START;
                 endcase
             end
+            // A write completes before its empty reply; a read streams its
+            // lines through the reply path as READ_ROM does.
+            SDRAM_START: state_next = request_header.command == n2m_interfaces_pkg::COMMAND_SDRAM_WRITE ? SDRAM_WAIT : REPLY_START;
+            SDRAM_WAIT: if (sdram_done) state_next = REPLY_START;
             CORE_START: state_next = CORE_WAIT;
             CORE_WAIT: if (core_done) begin
                 if (request_header.command == n2m_interfaces_pkg::COMMAND_LOAD_BEGIN) state_next = LOAD_START;
@@ -296,6 +339,7 @@ module n2m_uart_commands (
                 else if (request_header.command == n2m_interfaces_pkg::COMMAND_READ_ROM) state_next = REPLY_ROM;
                 else if (request_header.command == n2m_interfaces_pkg::COMMAND_READ_FRAME) state_next = FRAME_FETCH;
                 else if (request_header.command == n2m_interfaces_pkg::COMMAND_PEEK) state_next = PEEK_FETCH;
+                else if (request_header.command == n2m_interfaces_pkg::COMMAND_SDRAM_READ) state_next = REPLY_SDRAM;
                 else state_next = REPLY_SMALL;
             end
             REPLY_SMALL: if (payload_ready) begin
@@ -314,7 +358,7 @@ module n2m_uart_commands (
                 index_next = index + 1'b1;
                 state_next = 16'(index) + 1'b1 == reply_length ? REPLY_WAIT : PEEK_FETCH;
             end
-            REPLY_ROM, REPLY_WAIT: if (reply_done) state_next = IDLE;
+            REPLY_ROM, REPLY_SDRAM, REPLY_WAIT: if (reply_done) state_next = IDLE;
             default: state_next = IDLE;
         endcase
     end
@@ -344,6 +388,9 @@ module n2m_uart_commands (
     `N2M_ASSERT(UART_COMMAND_LOAD_PAUSED, clk_sys, reset_sys, rom_write |-> loading && paused)
     `N2M_ASSERT(UART_COMMAND_PACKET_RANGE, clk_sys, reset_sys,
         packet_read |-> packet_address < request_bytes - 2)
+    `N2M_ASSERT(UART_COMMAND_SDRAM_READY, clk_sys, reset_sys, sdram_start |-> sdram_initialized && !sdram_busy)
+    `N2M_ASSERT(UART_COMMAND_SDRAM_SERVICE, clk_sys, reset_sys,
+        sdram_output_valid |-> state == REPLY_SDRAM || state == REPLY_START)
     `N2M_ASSERT_KNOWN(UART_COMMAND_STATE, clk_sys, reset_sys, ({state, command_valid, image_valid, loading}))
 endmodule
 `default_nettype wire

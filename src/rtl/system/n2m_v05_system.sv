@@ -131,7 +131,9 @@ module n2m_v05_system #(
         .snapshot_request, .snapshot_ready, .snapshot_done,
         .snapshot_ok, .snapshot_valid, .snapshot_metadata,
         .frame_read, .frame_address, .frame_data, .frame_valid,
-        .peek_ready, .peek_read, .peek_select, .peek_offset, .peek_rdata, .peek_valid
+        .peek_ready, .peek_read, .peek_select, .peek_offset, .peek_rdata, .peek_valid,
+        // The composed system has no SDRAM yet; the loader slice binds it.
+        .sdram_initialized(1'b0), .sdram_request_valid(), .sdram_request_write(), .sdram_request_address(), .sdram_request_data(), .sdram_request_ready(1'b0), .sdram_response_valid(1'b0), .sdram_response_data('0)
     );
     n2m_timebase u_timebase (.clk_sys, .reset_sys, .core_reset, .pause_request,
         .gb_tick(emulated_tick), .paused);

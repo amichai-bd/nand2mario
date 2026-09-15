@@ -407,6 +407,10 @@ class TuiTests(unittest.TestCase):
                 argv += ["--address", "0", "--value", "0"]
             elif action == "peek":
                 argv += ["--store", sorted(interface_codec.PEEK_STORES)[0]]
+            elif action == "sdram-write":
+                argv += ["--address", "0", "--data", "00" * 16]
+            elif action == "sdram-read":
+                argv += ["--address", "0"]
             elif action in ("crc-proof", "keyboard"):
                 argv += ["--expected-build-id", "00" * 16]
             samples[("host", action)] = argv

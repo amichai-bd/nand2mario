@@ -1313,6 +1313,18 @@
         "bits": 8,
         "value": 16,
         "description": "Read exact bytes from one paused non-ROM store; read-only, rejected unless paused."
+      },
+      {
+        "name": "SDRAM_WRITE",
+        "bits": 8,
+        "value": 17,
+        "description": "Write one 16-byte line at a line-aligned SDRAM device address; requires the SDRAM initialized."
+      },
+      {
+        "name": "SDRAM_READ",
+        "bits": 8,
+        "value": 18,
+        "description": "Read 1 through 15 consecutive 16-byte lines from a line-aligned SDRAM device address; requires the SDRAM initialized."
       }
     ],
     "peek": [
@@ -1373,6 +1385,32 @@
         "bits": 32,
         "value": 1,
         "description": "Writable source selection bit."
+      }
+    ],
+    "sdram": [
+      {
+        "name": "ADDRESS_BITS",
+        "bits": 8,
+        "value": 26,
+        "description": "Device byte address width; the DE10-Lite SDRAM holds 64 MiB"
+      },
+      {
+        "name": "BYTES",
+        "bits": 32,
+        "value": 67108864,
+        "description": "Device size in bytes"
+      },
+      {
+        "name": "LINE_BYTES",
+        "bits": 8,
+        "value": 16,
+        "description": "One line: the unit of every SDRAM host command"
+      },
+      {
+        "name": "READ_MAX_LINES",
+        "bits": 8,
+        "value": 15,
+        "description": "Largest SDRAM_READ line count; 15 lines fit one response payload"
       }
     ]
   },
@@ -1672,6 +1710,45 @@
         "bits": 8,
         "description": "COUNT or STOPPED completion"
       }
+    ],
+    "sdram_write": [
+      {
+        "name": "address",
+        "bits": 32,
+        "description": "Line-aligned device byte address; bits 31:26 and 3:0 zero"
+      },
+      {
+        "name": "data0",
+        "bits": 32,
+        "description": "Line bytes 0-3, byte 0 first"
+      },
+      {
+        "name": "data1",
+        "bits": 32,
+        "description": "Line bytes 4-7"
+      },
+      {
+        "name": "data2",
+        "bits": 32,
+        "description": "Line bytes 8-11"
+      },
+      {
+        "name": "data3",
+        "bits": 32,
+        "description": "Line bytes 12-15"
+      }
+    ],
+    "sdram_read": [
+      {
+        "name": "address",
+        "bits": 32,
+        "description": "Line-aligned device byte address; bits 31:26 and 3:0 zero"
+      },
+      {
+        "name": "count",
+        "bits": 8,
+        "description": "1 through READ_MAX_LINES lines; the whole range stays inside the device"
+      }
     ]
   },
   "commands": [
@@ -1770,6 +1847,18 @@
       "request": "peek_range",
       "response": "bytes",
       "state": "paused"
+    },
+    {
+      "name": "SDRAM_WRITE",
+      "request": "sdram_write",
+      "response": "empty",
+      "state": "any; SDRAM initialized"
+    },
+    {
+      "name": "SDRAM_READ",
+      "request": "sdram_read",
+      "response": "bytes",
+      "state": "any; SDRAM initialized"
     }
   ],
   "references": [

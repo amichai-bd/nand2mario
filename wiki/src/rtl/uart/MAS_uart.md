@@ -103,6 +103,16 @@ alone cannot prove data integrity. Running ROM writes are rejected before the
 memory port is enabled. The [memory implementation](../memory/MAS_memory.md) remains its own owner; endpoint composition
 binds its reviewed ROM ports rather than copying backing storage.
 
+`SDRAM_WRITE` and `SDRAM_READ` reach the [SDRAM controller](../storage/MAS_sdram.md)
+through `n2m_uart_sdram`, which holds one line request until the controller
+accepts it and, for reads, streams each returned line through the chunked
+reply path READ_ROM uses. Validation checks alignment, device bounds, the
+1-15 line count and the controller's `initialized` flag before any request
+is issued; both commands are accepted in every endpoint state. Only
+`SDRAM_WRITE` captures its full 20-byte record before validation; every
+other command keeps its 9-byte capture and timing. A composition without an
+SDRAM ties `sdram_initialized` low and both commands answer `BAD_VALUE`.
+
 The [snapshot owner](../snapshot/MAS_snapshot.md) supplies a separate completion/read boundary; UART
 does not read or lease VGA banks. CPU, PPU, DMA, JOYP and endpoint framing are
 distinct owners. Boundary fixtures do not establish their full system composition

@@ -49,6 +49,9 @@ class Endpoint:
         self.snapshot_calls = 0
         self.closed = False
         self.timeout = 2
+        # SDRAM: a sparse line store behind the storage owner's initialized flag.
+        self.sdram = {}
+        self.sdram_ready = True
 
     def write(self, packet):
         header, payload = decode_packet(packet)
@@ -136,6 +139,20 @@ class Endpoint:
                 status = abi.STATUS_BAD_VALUE
             else:
                 response = bytes(self.stores[selector][offset:offset + count])
+        elif name in ('SDRAM_WRITE', 'SDRAM_READ'):
+            request = unpack_record('sdram_write' if name == 'SDRAM_WRITE' else 'sdram_read', payload)
+            address = request['address']
+            lines = 1 if name == 'SDRAM_WRITE' else request['count']
+            if (not self.sdram_ready or address % abi.SDRAM_LINE_BYTES or not 1 <= lines <= abi.SDRAM_READ_MAX_LINES
+                    or address + lines * abi.SDRAM_LINE_BYTES > abi.SDRAM_BYTES):
+                status = abi.STATUS_BAD_VALUE
+            elif name == 'SDRAM_WRITE':
+                self.sdram[address] = payload[4:]
+            else:
+                response = b''.join(self.sdram.get(address + i * abi.SDRAM_LINE_BYTES, bytes(16)) for i in range(lines))
+                if self.defect == 'sdram-corrupt' and address <= 0x30 < address + lines * abi.SDRAM_LINE_BYTES:
+                    at = 0x30 - address + 5
+                    response = response[:at] + bytes([response[at] ^ 0x80]) + response[at + 1:]
         elif name == 'SNAPSHOT':
             self.snapshot_calls += 1
             response = pack_record('snapshot', {'epoch': 3, 'seq': 0x100000002, 'dot': 0x100000003,
@@ -206,6 +223,103 @@ class HostTests(unittest.TestCase):
         with patch.object(client, 'request', return_value={'dot': 18}) as request:
             self.assertEqual(client.select_input_source(1), {'dot': 18})
             request.assert_called_once_with('WRITE_HOST', bytes.fromhex('44 00 01 00 01 00 00 00'))
+
+    def test_sdram_commands_validate_before_transport(self):
+        endpoint = Endpoint()
+        client = Client(endpoint)
+        for address, line in ((8, bytes(16)), (0x4000000, bytes(16)), (0, bytes(15)), (0, bytes(17))):
+            with self.assertRaises(ValueError):
+                client.sdram_write(address, line)
+        for address, lines in ((8, 1), (0, 0), (0, 16), (0x3fffff0, 2), (0x4000000, 1)):
+            with self.assertRaises(ValueError):
+                client.sdram_read(address, lines)
+        for start, length in ((8, 16), (0, 0), (0, 8), (0x4000000 - 16, 32)):
+            with self.assertRaises(ValueError):
+                client.sdram_test(start, length)
+        self.assertEqual(endpoint.requests, [])
+        # Wire shape: 32-bit address then the sixteen line bytes, byte 0 first.
+        with patch.object(client, 'request', return_value=None) as request:
+            client.sdram_write(0x3fffff0, bytes(range(16)))
+            request.assert_called_once_with('SDRAM_WRITE', bytes.fromhex('f0ffff03') + bytes(range(16)))
+        with patch.object(client, 'request', return_value=bytes(240)) as request:
+            client.sdram_read(0x88000, 15)
+            request.assert_called_once_with('SDRAM_READ', bytes.fromhex('008008000f'), count=240)
+
+    def test_sdram_write_read_and_pattern_test(self):
+        endpoint = Endpoint()
+        client = Client(endpoint)
+        line = bytes(range(16))
+        self.assertIsNone(client.sdram_write(0x7ff0, line))
+        self.assertEqual(client.sdram_read(0x7ff0), line)
+        self.assertEqual(client.sdram_read(0x7fe0, 2), bytes(16) + line)
+        endpoint.sdram_ready = False
+        with self.assertRaises(RejectedCommand) as rejected:
+            client.sdram_write(0, line)
+        self.assertEqual(rejected.exception.status, abi.STATUS_BAD_VALUE)
+        endpoint.sdram_ready = True
+        endpoint.requests.clear()
+        events = []
+        result = client.sdram_test(0x10000, 2 * 15 * 16 + 16, seed=3, progress=events.append)
+        self.assertEqual((result['status'], result['mismatch_count'], result['lines'], result['mismatches']), ('PASS', 0, 31, []))
+        writes = [payload for name, payload, seq in endpoint.requests if name == 'SDRAM_WRITE']
+        reads = [unpack_record('sdram_read', payload) for name, payload, seq in endpoint.requests if name == 'SDRAM_READ']
+        self.assertEqual(len(writes), 31)
+        self.assertEqual(reads, [{'address': 0x10000, 'count': 15}, {'address': 0x10000 + 240, 'count': 15}, {'address': 0x10000 + 480, 'count': 1}])
+        self.assertEqual(events[0], {'stage': 'write', 'completed': 0, 'total': 31})
+        self.assertEqual(events[-1], {'stage': 'read', 'completed': 31, 'total': 31})
+        # Two lines with different addresses never share a pattern, and the seed changes it.
+        from n2m.host.client import sdram_pattern
+        self.assertNotEqual(sdram_pattern(0, 1), sdram_pattern(16, 1))
+        self.assertNotEqual(sdram_pattern(0, 1), sdram_pattern(0, 2))
+        self.assertEqual(len(sdram_pattern(0x3fffff0, 1)), 16)
+
+    def test_sdram_test_reports_every_mismatch_by_address(self):
+        endpoint = Endpoint(defect='sdram-corrupt')
+        client = Client(endpoint)
+        result = client.sdram_test(0, 64, seed=1)
+        self.assertEqual((result['status'], result['mismatch_count']), ('FAIL', 1))
+        self.assertEqual(result['mismatches'][0]['address'], 0x30)
+        expected = bytes.fromhex(result['mismatches'][0]['expected'])
+        actual = bytes.fromhex(result['mismatches'][0]['actual'])
+        self.assertEqual([i for i in range(16) if expected[i] != actual[i]], [5])
+        # The detailed list is bounded; the count is not.
+        endpoint = Endpoint()
+        client = Client(endpoint)
+        endpoint.sdram_ready = True
+        original = endpoint.write
+        def dropping_write(packet):
+            outcome = original(packet)
+            if endpoint.requests[-1][0] == 'SDRAM_WRITE':
+                endpoint.sdram.pop(unpack_record('sdram_write', endpoint.requests[-1][1])['address'], None)
+            return outcome
+        endpoint.write = dropping_write
+        result = client.sdram_test(0, 16 * 100, mismatch_limit=8)
+        self.assertEqual((result['mismatch_count'], len(result['mismatches'])), (100, 8))
+
+    def test_cli_sdram_test_through_fake_session(self):
+        endpoint = Endpoint()
+        def fake_session(folder, args, state_root):
+            return session(folder, args, self.folder / 'state',
+                           discover=lambda folder, args: select_uart([DEVICE], args), opener=lambda port: endpoint)
+        tag = 'host-sdram-' + self.folder.name.rsplit(' ', 1)[-1].lower().replace('_', '-')
+        with patch('n2m.host.command.session', fake_session), redirect_stdout(io.StringIO()) as stdout:
+            self.assertEqual(main(['host', 'sdram-test', '--start', '0x8000', '--length', '0x200', '--seed', '5',
+                                   '--uart-port', 'COM92', '--tag', tag, '--json'], ROOT), 0)
+        report = json.loads(stdout.getvalue())
+        self.assertEqual((report['status'], report['result']['status'], report['result']['lines']), ('PASS', 'PASS', 32))
+        with patch('n2m.host.command.session', fake_session), redirect_stdout(io.StringIO()) as stdout:
+            self.assertEqual(main(['host', 'sdram-write', '--address', '0x10', '--data', '00112233445566778899aabbccddeeff',
+                                   '--uart-port', 'COM92', '--tag', tag, '--json'], ROOT), 0)
+            self.assertEqual(main(['host', 'sdram-read', '--address', '0x10', '--lines', '1',
+                                   '--uart-port', 'COM92', '--tag', tag, '--json'], ROOT), 0)
+        report = json.loads(stdout.getvalue().strip().splitlines()[-1])
+        self.assertEqual(report['result']['hex'], '00112233445566778899aabbccddeeff')
+        with patch('n2m.host.command.session') as opener, redirect_stdout(io.StringIO()) as stdout:
+            self.assertEqual(main(['host', 'sdram-write', '--address', '0x8', '--data', '00' * 16,
+                                   '--uart-port', 'COM92', '--tag', tag, '--json'], ROOT), 1)
+            self.assertEqual(main(['host', 'sdram-test', '--start', '0', '--length', '8',
+                                   '--uart-port', 'COM92', '--tag', tag, '--json'], ROOT), 1)
+        opener.assert_not_called()
 
     def test_live_io_registers_read_without_pausing(self):
         endpoint = Endpoint()

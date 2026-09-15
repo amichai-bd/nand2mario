@@ -4,12 +4,13 @@
 module n2m_uart_validate (
     input var n2m_interfaces_pkg::packet_header_t header,
     input var logic [n2m_uart_pkg::UART_ADDRESS_BITS-1:0] packet_bytes,
-    input var logic [n2m_interfaces_pkg::LOAD_BEGIN_BYTES*8-1:0] arguments,
+    input var logic [n2m_uart_pkg::UART_ARGUMENT_BYTES*8-1:0] arguments,
     input var logic [7:0] forced_status,
     input var logic [7:0] endpoint_state,
     input var logic image_valid,
     input var logic snapshot_valid,
     input var logic host_address_valid,
+    input var logic sdram_ready,
     output logic [7:0] status,
     output logic [15:0] response_length
 );
@@ -21,8 +22,13 @@ module n2m_uart_validate (
     n2m_interfaces_pkg::read_range_t range_fields;
     n2m_interfaces_pkg::peek_range_t peek_fields;
     logic [32:0] peek_end;
+    n2m_interfaces_pkg::sdram_write_t sdram_write_fields;
+    n2m_interfaces_pkg::sdram_read_t sdram_read_fields;
+    logic [32:0] sdram_end;
     assign write_fields = arguments[n2m_interfaces_pkg::WRITE_HOST_BYTES*8-1:0];
-    assign begin_fields = arguments;
+    assign begin_fields = arguments[n2m_interfaces_pkg::LOAD_BEGIN_BYTES*8-1:0];
+    assign sdram_write_fields = arguments[n2m_interfaces_pkg::SDRAM_WRITE_BYTES*8-1:0];
+    assign sdram_read_fields = arguments[n2m_interfaces_pkg::SDRAM_READ_BYTES*8-1:0];
     assign range_fields = arguments[n2m_interfaces_pkg::READ_RANGE_BYTES*8-1:0];
     assign peek_fields = arguments[n2m_interfaces_pkg::PEEK_RANGE_BYTES*8-1:0];
     always_comb begin
@@ -34,6 +40,7 @@ module n2m_uart_validate (
         response_length = 0;
         range_end = {1'b0, range_fields.offset} + {17'b0, range_fields.count};
         peek_end = {1'b0, peek_fields.offset} + {17'b0, peek_fields.count};
+        sdram_end = {1'b0, sdram_read_fields.address} + ({25'b0, sdram_read_fields.count} << 4);
         case (header.command)
             n2m_interfaces_pkg::COMMAND_PING: response_length = 16'(n2m_interfaces_pkg::WORD_BYTES);
             n2m_interfaces_pkg::COMMAND_READ_HOST: begin
@@ -107,6 +114,20 @@ module n2m_uart_validate (
             n2m_interfaces_pkg::COMMAND_SNAPSHOT: begin
                 state_valid = endpoint_state != n2m_interfaces_pkg::STATE_LOADING;
                 response_length = 16'(n2m_interfaces_pkg::SNAPSHOT_BYTES);
+            end
+            // SDRAM lines are accepted in every endpoint state; a misaligned or
+            // out-of-device address, or an uninitialized SDRAM, is BAD_VALUE.
+            n2m_interfaces_pkg::COMMAND_SDRAM_WRITE: begin
+                length_valid = 32'(header.length) == n2m_interfaces_pkg::SDRAM_WRITE_BYTES;
+                value_valid = sdram_ready && sdram_write_fields.address[3:0] == 4'd0 &&
+                    sdram_write_fields.address < n2m_interfaces_pkg::SDRAM_BYTES;
+            end
+            n2m_interfaces_pkg::COMMAND_SDRAM_READ: begin
+                length_valid = 32'(header.length) == n2m_interfaces_pkg::SDRAM_READ_BYTES;
+                value_valid = sdram_ready && sdram_read_fields.address[3:0] == 4'd0 &&
+                    sdram_read_fields.count != 8'd0 && sdram_read_fields.count <= n2m_interfaces_pkg::SDRAM_READ_MAX_LINES &&
+                    sdram_end <= {1'b0, n2m_interfaces_pkg::SDRAM_BYTES};
+                response_length = 16'({4'd0, sdram_read_fields.count, 4'd0});
             end
             default: command_known = 0;
         endcase

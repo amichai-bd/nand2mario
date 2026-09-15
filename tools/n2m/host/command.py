@@ -49,6 +49,20 @@ def run(root, build, args, provenance):
         if args.action == 'peek':
             from ..interface_codec import peek_store
             peek_store(args.store)
+        if args.action == 'sdram-write':
+            from ..interface_codec import sdram_write
+            sdram_line = bytes.fromhex(args.data)
+            sdram_write(args.address, sdram_line)
+        if args.action == 'sdram-read':
+            from ..interface_codec import sdram_read
+            sdram_read(args.address, args.lines)
+        if args.action == 'sdram-test':
+            from ..interface_codec import sdram_line_address
+            sdram_start = 0 if args.full else args.start
+            sdram_length = abi.SDRAM_BYTES if args.full else args.length
+            if sdram_length <= 0 or sdram_length % abi.SDRAM_LINE_BYTES or sdram_start + sdram_length > abi.SDRAM_BYTES:
+                raise ValueError('SDRAM test range must be a positive line multiple inside the device')
+            sdram_line_address(sdram_start)
         state_root = session_root(root)
         with ExitStack() as stack:
             if args.action == 'keyboard':
@@ -96,6 +110,21 @@ def run(root, build, args, provenance):
                 report['result'] = {'snapshot': metadata, 'pixels': summary(pixels)}
             elif args.action == 'write':
                 report['result'] = client.write_host(args.address, args.value)
+            elif args.action == 'sdram-write':
+                client.sdram_write(args.address, sdram_line)
+                report['result'] = {'address': args.address, 'line': summary(sdram_line)}
+            elif args.action == 'sdram-read':
+                contents = client.sdram_read(args.address, args.lines)
+                (folder / 'sdram.bin').write_bytes(contents)
+                report['result'] = {'address': args.address, 'lines': args.lines, 'contents': summary(contents),
+                                    'hex': contents.hex()}
+            elif args.action == 'sdram-test':
+                def progress(event):
+                    if not args.json:
+                        print(f"sdram-test {event['stage']}: {event['completed']}/{event['total']} lines", flush=True)
+                report['result'] = client.sdram_test(sdram_start, sdram_length, seed=args.seed, progress=progress)
+                if report['result']['mismatch_count']:
+                    raise ValueError(f"SDRAM test found {report['result']['mismatch_count']} mismatching lines")
             elif args.action == 'status':
                 # Do not read mutable split counters while the endpoint is running.
                 report['result'] = {name: client.read_host(getattr(abi, 'HOST_REG_' + name))

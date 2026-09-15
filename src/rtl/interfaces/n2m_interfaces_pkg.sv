@@ -1,5 +1,5 @@
 // Generated from cfg/interfaces.json by tools/n2m/interfaces.py; DO NOT EDIT.
-// Source SHA-256: 4da94a1c51ff2fbc7a0dd4c7888f3a7f91a2a39f4fdad69c9ddcfe363454d2da
+// Source SHA-256: 54a322fecd3c5e85bafd922f86b8df82a78e7a20d5a4f3e901e4941259705470
 `timescale 1ns/1ps
 package n2m_interfaces_pkg;
   localparam logic [7:0] GB_ADDRESS_BITS = 8'h10;
@@ -216,6 +216,8 @@ package n2m_interfaces_pkg;
   localparam logic [7:0] COMMAND_WRITE_HOST = 8'hE;
   localparam logic [7:0] COMMAND_RUN_DOTS = 8'hF;
   localparam logic [7:0] COMMAND_PEEK = 8'h10;
+  localparam logic [7:0] COMMAND_SDRAM_WRITE = 8'h11;
+  localparam logic [7:0] COMMAND_SDRAM_READ = 8'h12;
   localparam logic [7:0] PEEK_WRAM = 8'h1;
   localparam logic [7:0] PEEK_HRAM = 8'h2;
   localparam logic [7:0] PEEK_VRAM = 8'h3;
@@ -225,6 +227,10 @@ package n2m_interfaces_pkg;
   localparam logic [7:0] INPUT_SOURCE_PHYSICAL = 8'h1;
   localparam logic [31:0] HOST_WRITE_MASK_INPUT = 32'hFF;
   localparam logic [31:0] HOST_WRITE_MASK_INPUT_SOURCE = 32'h1;
+  localparam logic [7:0] SDRAM_ADDRESS_BITS = 8'h1A;
+  localparam logic [31:0] SDRAM_BYTES = 32'h4000000;
+  localparam logic [7:0] SDRAM_LINE_BYTES = 8'h10;
+  localparam logic [7:0] SDRAM_READ_MAX_LINES = 8'hF;
   localparam integer PACKET_HEADER_BYTES = 10;
   localparam integer PACKET_HEADER_VERSION_OFFSET = 0;
   localparam integer PACKET_HEADER_KIND_OFFSET = 1;
@@ -372,4 +378,24 @@ package n2m_interfaces_pkg;
     logic [31:0] executed;
     logic [63:0] dot;
   } run_dots_t;
+  localparam integer SDRAM_WRITE_BYTES = 20;
+  localparam integer SDRAM_WRITE_ADDRESS_OFFSET = 0;
+  localparam integer SDRAM_WRITE_DATA0_OFFSET = 4;
+  localparam integer SDRAM_WRITE_DATA1_OFFSET = 8;
+  localparam integer SDRAM_WRITE_DATA2_OFFSET = 12;
+  localparam integer SDRAM_WRITE_DATA3_OFFSET = 16;
+  typedef struct packed {
+    logic [31:0] data3;
+    logic [31:0] data2;
+    logic [31:0] data1;
+    logic [31:0] data0;
+    logic [31:0] address;
+  } sdram_write_t;
+  localparam integer SDRAM_READ_BYTES = 5;
+  localparam integer SDRAM_READ_ADDRESS_OFFSET = 0;
+  localparam integer SDRAM_READ_COUNT_OFFSET = 4;
+  typedef struct packed {
+    logic [7:0] count;
+    logic [31:0] address;
+  } sdram_read_t;
 endpackage

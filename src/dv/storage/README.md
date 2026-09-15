@@ -24,6 +24,7 @@ state; the device model keeps its own storage and timing history.
 | Ordering | Write then read of one line back to back returns the written line; a request raised right after a write acceptance waits for it |
 | Refresh | Age measured from the observed AUTO REFRESH commands never exceeds 178 and reaches 178 three times through requests accepted at age 159; `request_ready` is low for exactly the five clocks around each refresh from `IDLE` |
 | Throughput | With `request_valid` held high, at least 2048 lines are accepted in 38,100 clocks |
+| Host line commands | Over the real UART endpoint: a write before initialization is `BAD_VALUE`; boundary lines and a fifteen-line run are written one line per `SDRAM_WRITE` and read back by `SDRAM_READ` with the bytes compared; misaligned, out-of-device, zero or sixteen-line and wrong-length requests are refused before the controller sees them |
 | Faults | A misaligned address fails `SDRAM_LINE_ALIGNED`; a request before `initialized` fails `SDRAM_REQUEST_BEFORE_INIT`; a controller built with `REFRESH_INTERVAL=178` reaches age 196 and the model fails `SDRAM_MODEL_REFRESH_DEADLINE` |
 
 The device model measures refresh gaps in device edges between AUTO REFRESH
@@ -41,6 +42,8 @@ continuous check fires on the first edge past that limit.
 | `sdram-fault-misaligned` | `fault-misaligned` | nonzero exit, `N2M_ASSERT SDRAM_LINE_ALIGNED` |
 | `sdram-fault-before-init` | `fault-before-init` | nonzero exit, `N2M_ASSERT SDRAM_REQUEST_BEFORE_INIT` |
 | `sdram-fault-deadline` | `refresh` with `-gREFRESH_INTERVAL=178` | nonzero exit, `SDRAM_MODEL_REFRESH_DEADLINE` |
+| `uart-sdram` | [`tb_uart_sdram`](tb_uart_sdram.sv): `SDRAM_WRITE`/`SDRAM_READ` packets over the UART wire into the controller and model | `PASS UART SDRAM wire writes=20 lines_read=23 rejected=11` |
+| `uart-sdram-fault` | same with `+payload_fault` | nonzero exit, `UART_SDRAM_PAYLOAD cmd=18 index=0` |
 
 Run one with `python3 tools/build.py sim test <target> --tag <tag>` on WSL, or
 all of them with `python3 tools/build.py tests run --label storage --tag <tag>`.
