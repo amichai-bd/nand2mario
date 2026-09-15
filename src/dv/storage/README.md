@@ -63,16 +63,18 @@ testbench, [`tb_flash_reader`](tb_flash_reader.sv), selects a fixture with
 `+fixture=<name>`. It writes its own word-addressed hex image
 (`flash-fixture.hex` in the run directory, 0-based Avalon words), loads it
 into the double and keeps its own copy of every defined word. A line accepted
-at the edge ending clock `c` is accepted at edge `A = c+1`; every check counts
-from `A`.
+at the edge ending clock `c` is accepted at edge `A = c+1`; the IP accepts the
+Avalon read at edge `V = A+3` when idle, otherwise 17 edges after its previous
+acceptance; every cadence check counts from `V`. The counts were simulated
+from the pinned vendor data controller before the double was written.
 
 | Requirement | Independent check |
 |---|---|
 | Word addressing | While the Avalon read is up, `avmm_data_addr` equals the accepted flash word less `0x00800` and `burstcount` is 4 |
-| Cadence | The Avalon read is on the bus in clocks `A..A+2` with `waitrequest` high in `A`, `A+1` and low in `A+2`; `readdatavalid` exactly in clocks `A+9..A+12` carrying words 0-3 of the fixture's copy; `line_data_valid` exactly in clock `A+13` with the four words little-endian; `line_ready` low from `A` through `A+13` and high from `A+14` |
+| Cadence | The Avalon read is on the bus from clock `A` to `V-1` with `waitrequest` high until `V-2` and low in `V-1`; `readdatavalid` exactly in clocks `V+7..V+10` carrying words 0-3 of the fixture's copy; `line_data_valid` exactly in clock `V+11` with the four words little-endian; `line_ready` low from `A` through `V+11` and high from `V+12` |
 | Contents | Every slot's first and last line (slot 5 left undefined), the whole catalogue, the line either side of the UFM0, CFM2 and CFM1 starts, one mid-slot line with a byte-order witness and the last user line, each read once alone and compared word for word |
 | Erased reads | The undefined slot's first and last line, the first reserved line and the line before the last user line read `0xFFFFFFFF` in every word |
-| Throughput | The 64 catalogue lines with `line_valid` held high: 63 acceptances exactly 15 clocks after the previous one |
+| Throughput | The 64 catalogue lines with `line_valid` held high: 63 acceptances at the first ready clock (`V+13`), one Avalon read per 17 clocks |
 | Hold | `line_data` unchanged from `line_data_valid` until the next acceptance |
 | Reset | `reset_sys` six clocks into a read: nothing published, `line_ready` high on release, the next reads correct; the double's read and word counts equal the testbench's |
 | Faults | A misaligned word fails `FLASH_LINE_ALIGNED`; a word past `0x2E7FF` fails `FLASH_LINE_RANGE` |

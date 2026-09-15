@@ -30,18 +30,20 @@ package n2m_flash_pkg;
     localparam int FLASH_AVMM_ADDR_BITS = 18;
     localparam int FLASH_AVMM_BURST_BITS = 3;
     localparam logic [FLASH_AVMM_BURST_BITS-1:0] FLASH_BURST_COUNT = 3'd4;
-    // Read cadence of the parallel 10M50 IP at 25 MHz, counted in clk_sys
-    // edges from the edge the reader accepts a line: the IP accepts the
-    // Avalon read three edges later, word 0 is sampled seven edges after that
-    // acceptance and word 3 ten edges after it (edge 13); line_data_valid is
-    // high in the following clock and line_ready in the one after, so a
-    // back-to-back stream accepts one line every 15 clocks. A longer burst
+    // Read cadence of the parallel 10M50 IP at 25 MHz (simulated from the
+    // shipped data controller), counted in clk_sys edges from the edge the
+    // reader accepts a line while the IP is idle: the IP accepts the Avalon
+    // read three edges later, word 0 is sampled eight edges after that
+    // acceptance and word 3 eleven edges after it (edge 14); line_data_valid
+    // is high in the following clock and line_ready in the one after. The IP
+    // is idle again 17 clocks after a read was presented, so a held stream
+    // accepts one Avalon read, and one line, every 17 clocks. A longer burst
     // would continue at four words per seven clocks.
     localparam int FLASH_AVMM_WAIT_CLOCKS = 3;
-    localparam int FLASH_FIRST_WORD_CLOCK = 7;
-    localparam int FLASH_LAST_WORD_CLOCK = 10;
+    localparam int FLASH_FIRST_WORD_CLOCK = 8;
+    localparam int FLASH_LAST_WORD_CLOCK = 11;
     localparam int FLASH_LINE_CLOCKS = FLASH_AVMM_WAIT_CLOCKS + FLASH_LAST_WORD_CLOCK;
-    localparam int FLASH_LINE_PERIOD_CLOCKS = FLASH_LINE_CLOCKS + 2;
+    localparam int FLASH_LINE_PERIOD_CLOCKS = 17;
     localparam int FLASH_BURST_PERIOD_CLOCKS = 7;
     localparam logic [31:0] FLASH_ERASED_WORD = 32'hFFFFFFFF;
 

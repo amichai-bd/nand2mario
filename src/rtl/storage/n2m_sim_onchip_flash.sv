@@ -7,11 +7,13 @@
 // image loads with $readmemh from a word-addressed Verilog hex file; every
 // word the file does not define reads erased, 0xFFFFFFFF. The cadence is the
 // shipped parallel 10M50 data controller's, traced from its RTL rather than
-// copied: a read presented while idle is accepted at the third edge, word 0
-// is valid seven clocks after that acceptance, the next three words follow on
-// consecutive clocks, a longer burst continues at four words per seven clocks,
-// and the slave captures its next read four edges after its last word. Every Avalon
-// or range violation is a named fatal.
+// copied and confirmed by simulating that controller (workdir trace cited in
+// the delivering PR): a read presented while idle is accepted at the third
+// edge, word 0 is sampled eight edges after that acceptance, the next three
+// words follow on consecutive edges, a longer burst continues at four words
+// per seven clocks, and the controller is idle again in the seventeenth clock
+// after the read was presented, so a held read is accepted every 17 clocks.
+// Every Avalon or range violation is a named fatal.
 `timescale 1ns/1ps
 `default_nettype none
 
@@ -36,15 +38,17 @@ module n2m_sim_onchip_flash #(
     localparam logic [31:0] ERASED = 32'hFFFFFFFF;
     // Clocks after the edge that captured an idle read: waitrequest falls in
     // clock 1 so the master sees acceptance at the second edge after capture
-    // (the third after it presented the read); word 0 is valid in clock 8.
+    // (the third after it presented the read); word 0 is on the bus in clock
+    // 9 and sampled at edge 10, eight edges after the acceptance.
     localparam int ACCEPT_CLOCK = 1;
-    localparam int FIRST_WORD_CLOCK = 8;
+    localparam int FIRST_WORD_CLOCK = 9;
     localparam int GROUP_WORDS = 4;
     localparam int GROUP_PERIOD = 7;
-    // The IP leaves its read state three clocks after the last word and
+    // The IP is idle again four clocks after the last word's clock and
     // samples a waiting read at the edge after that: capture is possible
-    // again four edges after the last word's clock.
-    localparam int IDLE_AFTER_LAST = 4;
+    // again five edges after the last word's clock (17 after the previous
+    // capture for a burst of four).
+    localparam int IDLE_AFTER_LAST = 5;
 
     logic [31:0] words [0:WORDS-1];
     logic busy;
@@ -62,7 +66,7 @@ module n2m_sim_onchip_flash #(
         return ERASED;
     endfunction
 
-    // Word j of a burst is valid in clock FIRST_WORD_CLOCK + (j % 4) + 7 * (j / 4).
+    // Word j of a burst is on the bus in clock FIRST_WORD_CLOCK + (j % 4) + 7 * (j / 4).
     function automatic int word_clock(input int j);
         return FIRST_WORD_CLOCK + (j % GROUP_WORDS) + GROUP_PERIOD * (j / GROUP_WORDS);
     endfunction

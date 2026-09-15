@@ -29,7 +29,7 @@ module flash_proof (
     logic [23:0] pixel_heartbeat;
     int k;
 
-    // clk_pix has one consumer, the LEDR5 heartbeat, so the pixel PLL output
+    // clk_pix has one consumer, the LEDR6 heartbeat, so the pixel PLL output
     // and its checked reset chain stay in the fit and the clock inventory is
     // the composed image's.
     n2m_clocking u_clocking (

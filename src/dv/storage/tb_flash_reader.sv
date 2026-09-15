@@ -20,18 +20,21 @@ module tb_flash_reader;
     localparam logic [19:0] CATALOGUE = 20'h22800;
     localparam logic [19:0] RESERVED = 20'h22900;
     localparam int ERASED_SLOT = 5;
-    // Clocks after the accepting edge A, as seen mid-clock: the Avalon read is
-    // on the bus in clocks A..A+2 and accepted at edge A+3; word 0 is on the
-    // bus in clock A+9 (sampled at edge A+10, seven edges after the Avalon
-    // acceptance) through word 3 in A+12 (edge A+13); the line is published
-    // in clock A+13, ready returns in A+14 and the next line can be accepted
-    // at edge A+15.
+    // Cadence of the pinned vendor controller, simulated under Verilator
+    // (workdir trace cited in the delivering PR). From the line-accepting edge
+    // A the Avalon read is on the bus from clock A; the IP accepts it at edge
+    // V = A+3 when idle, otherwise at the edge it is idle again, 17 edges
+    // after its previous acceptance. Counted from V as seen mid-clock: word
+    // 0 is on the bus in clock V+7 (sampled at edge V+8) through word 3 in
+    // V+10 (edge V+11); the line is published in clock V+11, ready returns in
+    // V+12 and the next line can be accepted at edge V+13.
     localparam int AVMM_ACCEPT = 3;
-    localparam int FIRST_WORD = 9;
-    localparam int LAST_WORD = 12;
-    localparam int PUBLISH = 13;
-    localparam int READY_AGAIN = 14;
-    localparam int BACK_TO_BACK = 15;
+    localparam int AVMM_PERIOD = 17;
+    localparam int FIRST_WORD = 7;
+    localparam int LAST_WORD = 10;
+    localparam int PUBLISH = 11;
+    localparam int READY_AGAIN = 12;
+    localparam int NEXT_ACCEPT = 13;
     localparam string IMAGE = "flash-fixture.hex";
 
     logic clk_sys;
@@ -53,6 +56,8 @@ module tb_flash_reader;
     // Monitor record of the accepted line.
     bit outstanding;
     int accept_edge;
+    int avalon_edge;
+    int previous_avalon_edge;
     logic [19:0] accepted_word;
     bit accepted_back_to_back;
     int lines_accepted;
@@ -141,7 +146,7 @@ module tb_flash_reader;
             held = 1'b0;
             in_reset = 1'b1;
         end else begin
-            since = clock_index - accept_edge;
+            since = clock_index - avalon_edge;
             if (in_reset) begin
                 // The reader returns to idle with reset release; nothing is published.
                 if (!line_ready) $fatal(1, "FLASH_TB_READY_AFTER_RESET clock=%0d", clock_index);
@@ -149,16 +154,16 @@ module tb_flash_reader;
                 in_reset = 1'b0;
             end
             if (dut.avmm_read) begin
-                if (!outstanding || since < 0 || since >= AVMM_ACCEPT)
-                    $fatal(1, "FLASH_TB_AVMM_READ_WINDOW clock=%0d accepted=%0d outstanding=%b", clock_index, accept_edge, outstanding);
+                if (!outstanding || clock_index < accept_edge || since >= 0)
+                    $fatal(1, "FLASH_TB_AVMM_READ_WINDOW clock=%0d accepted=%0d avalon=%0d outstanding=%b", clock_index, accept_edge, avalon_edge, outstanding);
                 // Contract translation: the IP's Avalon word is the flash word less the UFM1 base.
                 if (dut.avmm_address != 18'(accepted_word - DATA_BASE))
                     $fatal(1, "FLASH_TB_TRANSLATION word=%h avalon=%h expected=%h", accepted_word, dut.avmm_address, accepted_word - DATA_BASE);
                 if (dut.avmm_burstcount != 3'd4)
                     $fatal(1, "FLASH_TB_BURSTCOUNT clock=%0d burstcount=%0d", clock_index, dut.avmm_burstcount);
-                if (dut.avmm_waitrequest != (since < AVMM_ACCEPT - 1))
+                if (dut.avmm_waitrequest != (since < -1))
                     $fatal(1, "FLASH_TB_WAITREQUEST clock=%0d since=%0d waitrequest=%b", clock_index, since, dut.avmm_waitrequest);
-            end else if (outstanding && since >= 0 && since < AVMM_ACCEPT)
+            end else if (outstanding && clock_index >= accept_edge && since < 0)
                 $fatal(1, "FLASH_TB_AVMM_READ_DROPPED clock=%0d since=%0d", clock_index, since);
             if (dut.avmm_readdatavalid) begin
                 if (!outstanding || since < FIRST_WORD || since > LAST_WORD)
@@ -171,7 +176,7 @@ module tb_flash_reader;
                 $fatal(1, "FLASH_TB_WORD_MISSING clock=%0d since=%0d", clock_index, since);
             if (line_data_valid) begin
                 if (!outstanding || since != PUBLISH)
-                    $fatal(1, "FLASH_TB_PUBLISH_CLOCK clock=%0d accepted=%0d outstanding=%b", clock_index, accept_edge, outstanding);
+                    $fatal(1, "FLASH_TB_PUBLISH_CLOCK clock=%0d avalon=%0d outstanding=%b", clock_index, avalon_edge, outstanding);
                 if (line_data !== expected_line(accepted_word))
                     $fatal(1, "FLASH_TB_LINE word=%h expected=%h actual=%h", accepted_word, expected_line(accepted_word), line_data);
                 if (expected_line(accepted_word) == {4{32'hFFFFFFFF}}) erased_lines = erased_lines + 1;
@@ -179,8 +184,8 @@ module tb_flash_reader;
                 held = 1'b1;
                 held_line = line_data;
             end else if (outstanding && since == PUBLISH)
-                $fatal(1, "FLASH_TB_PUBLISH_MISSING clock=%0d accepted=%0d", clock_index, accept_edge);
-            if (outstanding && line_ready != (since >= READY_AGAIN))
+                $fatal(1, "FLASH_TB_PUBLISH_MISSING clock=%0d avalon=%0d", clock_index, avalon_edge);
+            if (outstanding && clock_index >= accept_edge && line_ready != (since >= READY_AGAIN))
                 $fatal(1, "FLASH_TB_READY clock=%0d since=%0d ready=%b", clock_index, since, line_ready);
             if (outstanding && since == READY_AGAIN) outstanding = 1'b0;
             if (held) begin
@@ -191,8 +196,15 @@ module tb_flash_reader;
             // Acceptance at the edge ending this clock.
             if (line_valid && line_ready) begin
                 if (outstanding) $fatal(1, "FLASH_TB_OVERLAP clock=%0d", clock_index);
-                accepted_back_to_back = lines_accepted != 0 && clock_index + 1 - accept_edge == BACK_TO_BACK;
+                // Back to back: accepted at the first ready clock of the previous line.
+                accepted_back_to_back = lines_accepted != 0 && clock_index + 1 == avalon_edge + NEXT_ACCEPT;
                 accept_edge = clock_index + 1;
+                previous_avalon_edge = avalon_edge;
+                // The IP accepts the Avalon read at A+3 from idle, otherwise
+                // when it is idle again, 17 edges after its previous acceptance.
+                avalon_edge = accept_edge + AVMM_ACCEPT;
+                if (lines_accepted != 0 && previous_avalon_edge + AVMM_PERIOD > avalon_edge)
+                    avalon_edge = previous_avalon_edge + AVMM_PERIOD;
                 accepted_word = line_word;
                 outstanding = 1'b1;
                 held = 1'b0;
@@ -262,8 +274,9 @@ module tb_flash_reader;
         read_line(RESERVED);
         read_line(USER_LAST - 20'd7);
         if (erased_lines != 4) $fatal(1, "FLASH_TB_ERASED_LINES count=%0d", erased_lines);
-        // The catalogue back to back with line_valid held high: one line
-        // per BACK_TO_BACK clocks, the next word presented at each acceptance.
+        // The catalogue back to back with line_valid held high: each line
+        // accepted at the first ready clock, one Avalon read per 17 clocks,
+        // the next word presented at each acceptance.
         @(posedge clk_sys);
         #1;
         start_clock = clock_index;
@@ -276,7 +289,7 @@ module tb_flash_reader;
         wait_ready();
         if (back_to_back_lines != 63)
             $fatal(1, "FLASH_TB_BACK_TO_BACK lines=%0d expected=63 clocks=%0d", back_to_back_lines, clock_index - start_clock);
-        // Reset while the words are arriving abandons the read.
+        // Reset while the IP is fetching abandons the read.
         @(posedge clk_sys);
         #1;
         present(DATA_BASE);
@@ -321,6 +334,8 @@ module tb_flash_reader;
         clock_index = 0;
         outstanding = 1'b0;
         accept_edge = 0;
+        avalon_edge = 0;
+        previous_avalon_edge = 0;
         accepted_word = '0;
         accepted_back_to_back = 1'b0;
         lines_accepted = 0;
