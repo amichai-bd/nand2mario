@@ -39,15 +39,15 @@ module tb_memory_stores;
             selected = 0;
             if (store_number < 6 && index < bytes_in_store(store_number)) selected[store_number] = 1;
             if ({dut.wave_ram.a_read, dut.oam_low.a_read, dut.vram.a_read,
-                 dut.hram.a_read, dut.wram.a_read, dut.rom.b_read} !== (writing ? 6'd0 : selected) ||
-                dut.oam_high.a_read !== (!writing && selected[4]) ||
-                dut.rom.a_write !== 1'b0 ||
-                dut.wram.a_write !== (writing && selected[1]) ||
-                dut.hram.a_write !== (writing && selected[2]) ||
-                dut.vram.a_write !== (writing && selected[3]) ||
-                dut.oam_low.a_write !== (writing && selected[4] && index%2==0) ||
-                dut.oam_high.a_write !== (writing && selected[4] && index%2==1) ||
-                dut.wave_ram.a_write !== (writing && selected[5]))
+                 dut.hram.a_read, dut.wram.a_read, dut.rom.b_read} != (writing ? 6'd0 : selected) ||
+                dut.oam_high.a_read != (!writing && selected[4]) ||
+                dut.rom.a_write != 1'b0 ||
+                dut.wram.a_write != (writing && selected[1]) ||
+                dut.hram.a_write != (writing && selected[2]) ||
+                dut.vram.a_write != (writing && selected[3]) ||
+                dut.oam_low.a_write != (writing && selected[4] && index%2==0) ||
+                dut.oam_high.a_write != (writing && selected[4] && index%2==1) ||
+                dut.wave_ram.a_write != (writing && selected[5]))
                 $fatal(1,"MEMORY_BANK_ENABLE store=%0d address=%04h",store_number,access_address);
         end
     endtask
@@ -65,19 +65,19 @@ module tb_memory_stores;
             if (early && index == 7) force dut.init_done = 1'b1;
             // Observe public primitive write ports; expectations come from the
             // independently counted sweep edge, not the DUT's clear counter.
-            if (dut.wram.a_write !== 1'b1 || dut.vram.a_write !== 1'b1
-                || dut.wram.a_address !== 13'(index) || dut.vram.a_address !== 13'(index)
-                || dut.wram.a_wdata !== 8'd0 || dut.vram.a_wdata !== 8'd0
-                || dut.hram.a_write !== (index < 127)
-                || dut.oam_low.a_write !== (index < 160 && index % 2 == 0)
-                || dut.oam_high.a_write !== (index < 160 && index % 2 == 1)
-                || dut.wave_ram.a_write !== (index < 16))
+            if (dut.wram.a_write != 1'b1 || dut.vram.a_write != 1'b1
+                || dut.wram.a_address != 13'(index) || dut.vram.a_address != 13'(index)
+                || dut.wram.a_wdata != 8'd0 || dut.vram.a_wdata != 8'd0
+                || dut.hram.a_write != (index < 127)
+                || dut.oam_low.a_write != (index < 160 && index % 2 == 0)
+                || dut.oam_high.a_write != (index < 160 && index % 2 == 1)
+                || dut.wave_ram.a_write != (index < 16))
                 $fatal(1, "MEMORY_STORES_CLEAR_WRITES edge=%0d", index);
-            if ((index < 127 && (dut.hram.a_address !== 7'(index) || dut.hram.a_wdata !== 8'd0))
-                || (index < 160 && (dut.oam_low.a_address !== 7'(index / 2)
-                    || dut.oam_high.a_address !== 7'(index / 2)
-                    || dut.oam_low.a_wdata !== 8'd0 || dut.oam_high.a_wdata !== 8'd0))
-                || (index < 16 && (dut.wave_ram.a_address !== 4'(index) || dut.wave_ram.a_wdata !== 8'd0)))
+            if ((index < 127 && (dut.hram.a_address != 7'(index) || dut.hram.a_wdata != 8'd0))
+                || (index < 160 && (dut.oam_low.a_address != 7'(index / 2)
+                    || dut.oam_high.a_address != 7'(index / 2)
+                    || dut.oam_low.a_wdata != 8'd0 || dut.oam_high.a_wdata != 8'd0))
+                || (index < 16 && (dut.wave_ram.a_address != 4'(index) || dut.wave_ram.a_wdata != 8'd0)))
                 $fatal(1, "MEMORY_STORES_CLEAR_ADDRESS_DATA edge=%0d", index);
             edge_cycle();
         end
@@ -95,7 +95,7 @@ module tb_memory_stores;
             for (index = 0; index < size; index = index + 1) begin
                 peek_offset = 13'(index);
                 edge_cycle();
-                if (!peek_valid || peek_rdata !== pattern(selector, index))
+                if (!peek_valid || peek_rdata != pattern(selector, index))
                     $fatal(1, "MEMORY_PEEK_BYTE store=%0d offset=%0d expected=%02h actual=%02h valid=%0d",
                         selector, index, pattern(selector, index), peek_rdata, peek_valid);
                 peeked = peeked + 1;
@@ -124,7 +124,7 @@ module tb_memory_stores;
             for (index = 0; index < size; index = index + 1) begin
                 access_address = 15'(index);
                 edge_cycle();
-                if (!access_valid || access_rdata !== (patterned ? pattern(store_number, index) : 8'd0))
+                if (!access_valid || access_rdata != (patterned ? pattern(store_number, index) : 8'd0))
                     $fatal(1, "MEMORY_STORES_READ store=%0d offset=%0d expected=%02h actual=%02h valid=%0d",
                         store_number, index, patterned ? pattern(store_number, index) : 8'd0, access_rdata, access_valid);
                 inspected = inspected + 1;
@@ -210,9 +210,9 @@ module tb_memory_stores;
             ppu_oam_pair = 7'(index % 80);
             wave_address = 4'(index % 16);
             edge_cycle();
-            if (!ppu_vram_valid || ppu_vram_rdata !== pattern(3, index)
-                || !ppu_oam_valid || ppu_oam_rdata !== {pattern(4, (index % 80) * 2 + 1), pattern(4, (index % 80) * 2)}
-                || !wave_valid || wave_rdata !== pattern(5, index % 16))
+            if (!ppu_vram_valid || ppu_vram_rdata != pattern(3, index)
+                || !ppu_oam_valid || ppu_oam_rdata != {pattern(4, (index % 80) * 2 + 1), pattern(4, (index % 80) * 2)}
+                || !wave_valid || wave_rdata != pattern(5, index % 16))
                 $fatal(1, "MEMORY_STORES_PARALLEL offset=%0d", index);
         end
         ppu_vram_read = 0; ppu_oam_read = 0; wave_read = 0;
@@ -226,15 +226,15 @@ module tb_memory_stores;
             oam_request.write_enable=0; oam_request.read=1;
             access_read=1; access_store=n2m_memory_pkg::STORE_WRAM; access_address=15'(index);
             ppu_oam_read=1; ppu_oam_pair=7'(index); edge_cycle();
-            if (!oam_response.valid || oam_response.data!==16'ha55a ||
-                !access_valid || access_rdata!==pattern(1,index) ||
-                !ppu_oam_valid || ppu_oam_rdata!==16'ha55a)
+            if (!oam_response.valid || oam_response.data!=16'ha55a ||
+                !access_valid || access_rdata!=pattern(1,index) ||
+                !ppu_oam_valid || ppu_oam_rdata!=16'ha55a)
                 $fatal(1,"MEMORY_OAM_PARALLEL_PAIR index=%0d",index);
             oam_request='0; ppu_oam_read=0;
             access_store=n2m_memory_pkg::STORE_OAM; access_address=15'(index*2); edge_cycle();
-            if (!access_valid || access_rdata!==8'h5a) $fatal(1,"MEMORY_OAM_LOW_BYTE");
+            if (!access_valid || access_rdata!=8'h5a) $fatal(1,"MEMORY_OAM_LOW_BYTE");
             access_address=15'(index*2+1); edge_cycle();
-            if (!access_valid || access_rdata!==8'ha5) $fatal(1,"MEMORY_OAM_HIGH_BYTE");
+            if (!access_valid || access_rdata!=8'ha5) $fatal(1,"MEMORY_OAM_HIGH_BYTE");
             access_read=0;
         end
         host_write = 1;
@@ -267,8 +267,8 @@ module tb_memory_stores;
         for (index = 0; index < 32768; index = index + 1) begin
             host_offset = 32'(index); access_address = 15'(32767 - index);
             edge_cycle();
-            if (!host_valid || host_rdata !== pattern(0, index)
-                || !access_valid || access_rdata !== pattern(0, 32767 - index))
+            if (!host_valid || host_rdata != pattern(0, index)
+                || !access_valid || access_rdata != pattern(0, 32767 - index))
                 $fatal(1, "MEMORY_STORES_ROM_RETAIN offset=%0d", index);
         end
         // Global reset cancels prepared ROM responses and retains every loaded
@@ -291,8 +291,8 @@ module tb_memory_stores;
         for (index = 0; index < 32768; index = index + 1) begin
             host_offset = 32'(index); access_address = 15'(32767 - index);
             edge_cycle();
-            if (!host_valid || host_rdata !== pattern(0, index)
-                || !access_valid || access_rdata !== pattern(0, 32767 - index))
+            if (!host_valid || host_rdata != pattern(0, index)
+                || !access_valid || access_rdata != pattern(0, 32767 - index))
                 $fatal(1, "MEMORY_STORES_GLOBAL_ROM_RETAIN offset=%0d", index);
         end
         $display("PASS memory stores RAM_inspected=%0d peeked=%0d ROM_bytes=32768 clear_edges=8192", inspected, peeked);

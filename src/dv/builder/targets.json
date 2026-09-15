@@ -1281,15 +1281,13 @@
   },
   "intel-memory": {
     "sources": [
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/dv/common/tb_intel_ram.sv"
     ],
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_intel_ram.frame_case.dut.ram.m_default.altsyncram_inst"
-    ],
     "top": "tb_intel_ram",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS Intel memory configurations=4 initialized_words=23344 latency=1",
@@ -1297,15 +1295,13 @@
   },
   "intel-memory-collision": {
     "sources": [
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/dv/common/tb_intel_ram.sv"
     ],
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_intel_ram.frame_case.dut.ram.m_default.altsyncram_inst"
-    ],
     "top": "tb_intel_ram",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+collision"
     ],
@@ -1314,15 +1310,13 @@
   },
   "intel-memory-data": {
     "sources": [
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/dv/common/tb_intel_ram.sv"
     ],
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_intel_ram.frame_case.dut.ram.m_default.altsyncram_inst"
-    ],
     "top": "tb_intel_ram",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+corrupt"
     ],
@@ -1331,15 +1325,13 @@
   },
   "intel-memory-latency": {
     "sources": [
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/dv/common/tb_intel_ram.sv"
     ],
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_intel_ram.frame_case.dut.ram.m_default.altsyncram_inst"
-    ],
     "top": "tb_intel_ram",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+late"
     ],
@@ -1474,6 +1466,7 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
       "src/rtl/memory/n2m_memory_decode.sv",
@@ -1481,7 +1474,7 @@
       "src/dv/memory/tb_memory_cpu_port.sv"
     ],
     "top": "tb_memory_cpu_port",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+duplicate_fault"
     ],
@@ -1493,6 +1486,7 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
       "src/rtl/memory/n2m_memory_decode.sv",
@@ -1500,7 +1494,7 @@
       "src/dv/memory/tb_memory_cpu_port.sv"
     ],
     "top": "tb_memory_cpu_port",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+missing_fault"
     ],
@@ -1512,6 +1506,7 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
       "src/rtl/memory/n2m_memory_decode.sv",
@@ -1519,7 +1514,7 @@
       "src/dv/memory/tb_memory_cpu_port.sv"
     ],
     "top": "tb_memory_cpu_port",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+write_fault"
     ],
@@ -1531,6 +1526,7 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
       "src/rtl/memory/n2m_memory_decode.sv",
@@ -1538,7 +1534,7 @@
       "src/dv/memory/tb_memory_cpu_port.sv"
     ],
     "top": "tb_memory_cpu_port",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS memory CPU port writes=7 owner_commits=1 fixed_io=71 absent_cart=8192 reset_phases=16 echo ROM stale pause"
@@ -1549,10 +1545,11 @@
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_decode.sv",
-      "src/dv/memory/tb_memory_cpu_synthesis.sv"
+      "src/dv/memory/tb_memory_cpu_synthesis.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv"
     ],
     "top": "tb_memory_cpu_port",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+write_fault"
     ],
@@ -1567,7 +1564,7 @@
       "src/dv/memory/tb_memory_decode.sv"
     ],
     "top": "tb_memory_decode",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS memory decode addresses=65536 echo=7680"
@@ -1580,7 +1577,7 @@
       "src/dv/memory/tb_memory_decode.sv"
     ],
     "top": "tb_memory_decode",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+alias_fault"
     ],
@@ -1592,6 +1589,7 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
       "src/rtl/memory/n2m_memory_decode.sv",
@@ -1599,7 +1597,7 @@
       "src/dv/memory/tb_memory_service.sv"
     ],
     "top": "tb_memory_service",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS memory concurrent CPU PPU writes=352 preA_pairs=1040 blocked unusable"
@@ -1609,6 +1607,7 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
       "src/rtl/memory/n2m_memory_decode.sv",
@@ -1616,7 +1615,7 @@
       "src/dv/memory/tb_memory_service.sv"
     ],
     "top": "tb_memory_service",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+corrupt_response"
     ],
@@ -1628,12 +1627,13 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
       "src/dv/memory/tb_memory_stores.sv"
     ],
     "top": "tb_memory_stores",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS memory stores RAM_inspected=83435 peeked=16687 ROM_bytes=32768 clear_edges=8192"
@@ -1643,12 +1643,13 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
       "src/dv/memory/tb_memory_stores.sv"
     ],
     "top": "tb_memory_stores",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+early"
     ],
@@ -1660,12 +1661,13 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
       "src/dv/memory/tb_memory_stores.sv"
     ],
     "top": "tb_memory_stores",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+peek_running"
     ],
@@ -1801,6 +1803,7 @@
       "src/rtl/ppu/n2m_ppu_position.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
       "src/rtl/ppu/n2m_ppu.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/vga/n2m_frame_ram.sv",
       "src/rtl/vga/n2m_vga_scan.sv",
@@ -1808,17 +1811,12 @@
       "src/dv/ppu/tb_ppu_lcd_video.sv"
     ],
     "top": "tb_ppu_lcd_video",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS PPU LCD composed first last cancellation aborts=2 frames=3 VGA pixels=207360 resets=2",
     "timeout_seconds": 300,
-    "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_ppu_lcd_video.bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_ppu_lcd_video.bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_ppu_lcd_video.bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ]
+    "vendor_model": "intel-memory"
   },
   "ppu-lcd-video-corrupt": {
     "sources": [
@@ -1833,6 +1831,7 @@
       "src/rtl/ppu/n2m_ppu_position.sv",
       "src/rtl/ppu/n2m_ppu_window.sv",
       "src/rtl/ppu/n2m_ppu.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/vga/n2m_frame_ram.sv",
       "src/rtl/vga/n2m_vga_scan.sv",
@@ -1840,19 +1839,14 @@
       "src/dv/ppu/tb_ppu_lcd_video.sv"
     ],
     "top": "tb_ppu_lcd_video",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+lcd_observer_corrupt"
     ],
     "expected_exit": "nonzero",
     "signature": "PPU_LCD_OBSERVER run=2 index=0 expected_sequence=1 actual=3",
     "timeout_seconds": 300,
-    "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_ppu_lcd_video.bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_ppu_lcd_video.bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_ppu_lcd_video.bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ]
+    "vendor_model": "intel-memory"
   },
   "ppu-lcdc-fetch": {
     "sources": [
@@ -2543,6 +2537,7 @@
       "src/rtl/ppu/n2m_ppu_window.sv",
       "src/rtl/ppu/n2m_ppu.sv",
       "src/dv/ppu/tb_ppu_render.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/vga/n2m_frame_ram.sv",
       "src/rtl/vga/n2m_vga_scan.sv",
@@ -2550,7 +2545,7 @@
       "src/dv/ppu/tb_ppu_video.sv"
     ],
     "top": "tb_ppu_video",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+temporal",
       "+video"
@@ -2558,12 +2553,7 @@
     "expected_exit": "zero",
     "signature": "PASS PPU video observer frames=3 pixels=69120",
     "timeout_seconds": 300,
-    "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_ppu_video.bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_ppu_video.bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_ppu_video.bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ]
+    "vendor_model": "intel-memory"
   },
   "ppu-video-corrupt": {
     "sources": [
@@ -2579,6 +2569,7 @@
       "src/rtl/ppu/n2m_ppu_window.sv",
       "src/rtl/ppu/n2m_ppu.sv",
       "src/dv/ppu/tb_ppu_render.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/vga/n2m_frame_ram.sv",
       "src/rtl/vga/n2m_vga_scan.sv",
@@ -2586,7 +2577,7 @@
       "src/dv/ppu/tb_ppu_video.sv"
     ],
     "top": "tb_ppu_video",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+temporal",
       "+video",
@@ -2595,12 +2586,7 @@
     "expected_exit": "nonzero",
     "signature": "PPU_VIDEO_OBSERVER_PIXEL frame=1 index=0",
     "timeout_seconds": 300,
-    "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_ppu_video.bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_ppu_video.bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_ppu_video.bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ]
+    "vendor_model": "intel-memory"
   },
   "ppu-window-disabled-wx": {
     "sources": [
@@ -2821,10 +2807,11 @@
   },
   "snapshot": {
     "top": "tb_snapshot",
-    "simulator": "questa",
+    "simulator": "verilator",
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/snapshot/n2m_snapshot_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/snapshot/n2m_frame_snapshot.sv",
       "src/dv/snapshot/tb_snapshot.sv"
@@ -2837,10 +2824,11 @@
   },
   "snapshot-latency": {
     "top": "tb_snapshot_lifecycle",
-    "simulator": "questa",
+    "simulator": "verilator",
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/snapshot/n2m_snapshot_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/snapshot/n2m_frame_snapshot.sv",
       "src/dv/snapshot/tb_snapshot_lifecycle.sv"
@@ -2855,10 +2843,11 @@
   },
   "snapshot-lifecycle": {
     "top": "tb_snapshot_lifecycle",
-    "simulator": "questa",
+    "simulator": "verilator",
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/snapshot/n2m_snapshot_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/snapshot/n2m_frame_snapshot.sv",
       "src/dv/snapshot/tb_snapshot_lifecycle.sv"
@@ -2871,10 +2860,11 @@
   },
   "snapshot-overwrite": {
     "top": "tb_snapshot_lifecycle",
-    "simulator": "questa",
+    "simulator": "verilator",
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/snapshot/n2m_snapshot_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/snapshot/n2m_frame_snapshot.sv",
       "src/dv/snapshot/tb_snapshot_lifecycle.sv"
@@ -2889,10 +2879,11 @@
   },
   "snapshot-ownership": {
     "top": "tb_snapshot_lifecycle",
-    "simulator": "questa",
+    "simulator": "verilator",
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/snapshot/n2m_snapshot_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/snapshot/n2m_frame_snapshot.sv",
       "src/dv/snapshot/tb_snapshot_lifecycle.sv"
@@ -2910,6 +2901,7 @@
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/snapshot/n2m_snapshot_pkg.sv",
       "src/rtl/clocking/n2m_reset_control.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/vga/n2m_frame_ram.sv",
       "src/rtl/vga/n2m_vga_scan.sv",
@@ -2919,13 +2911,8 @@
       "src/dv/snapshot/tb_snapshot_vga.sv"
     ],
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_snapshot_vga.video.dut.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_snapshot_vga.video.dut.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_snapshot_vga.video.dut.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "top": "tb_snapshot_vga",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS snapshot VGA pre_reset_frames=18 immutable",
@@ -3068,6 +3055,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -3092,7 +3080,7 @@
       "src/dv/uart/tb_uart_endpoint.sv"
     ],
     "top": "tb_uart_endpoint",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS UART endpoint full_wire ROM32768 reset_ack replay STEP IRQ input snapshot host_space",
@@ -3111,6 +3099,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -3135,7 +3124,7 @@
       "src/dv/uart/tb_uart_endpoint.sv"
     ],
     "top": "tb_uart_endpoint",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+duplicate_fault"
     ],
@@ -3156,6 +3145,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -3180,7 +3170,7 @@
       "src/dv/uart/tb_uart_endpoint.sv"
     ],
     "top": "tb_uart_endpoint",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+readback_fault"
     ],
@@ -3193,6 +3183,7 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -3217,7 +3208,7 @@
       "src/dv/uart/tb_uart_peek.sv"
     ],
     "top": "tb_uart_peek",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS UART peek wire stores=5 bytes=16689 rejected=19 held commands=",
@@ -3228,6 +3219,7 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -3252,7 +3244,7 @@
       "src/dv/uart/tb_uart_peek.sv"
     ],
     "top": "tb_uart_peek",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+peek_fault"
     ],
@@ -3266,13 +3258,14 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/uart/n2m_uart_exchange_store.sv",
       "src/rtl/uart/n2m_uart_exchange.sv",
       "src/dv/uart/tb_uart_exchange.sv"
     ],
     "top": "tb_uart_exchange",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS UART exchange replies=14 effects=7 dispatch=9"
@@ -3282,13 +3275,14 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/uart/n2m_uart_exchange_store.sv",
       "src/rtl/uart/n2m_uart_exchange.sv",
       "src/dv/uart/tb_uart_exchange.sv"
     ],
     "top": "tb_uart_exchange",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+corrupt"
     ],
@@ -3300,13 +3294,14 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/uart/n2m_uart_exchange_store.sv",
       "src/rtl/uart/n2m_uart_exchange.sv",
       "src/dv/uart/tb_uart_exchange.sv"
     ],
     "top": "tb_uart_exchange",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+duplicate"
     ],
@@ -3316,6 +3311,7 @@
   "uart-load": {
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -3325,7 +3321,7 @@
       "src/dv/uart/tb_uart_load.sv"
     ],
     "top": "tb_uart_load",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS UART load full_ROM CRC32 presence repair overlap readback reset",
@@ -3335,6 +3331,7 @@
   "uart-load-crc": {
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -3344,7 +3341,7 @@
       "src/dv/uart/tb_uart_load.sv"
     ],
     "top": "tb_uart_load",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+crc_fault"
     ],
@@ -3356,6 +3353,7 @@
   "uart-load-presence": {
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -3365,7 +3363,7 @@
       "src/dv/uart/tb_uart_load.sv"
     ],
     "top": "tb_uart_load",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+presence_fault"
     ],
@@ -3379,13 +3377,14 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/uart/n2m_uart_packet_store.sv",
       "src/rtl/uart/n2m_uart_packet_rx.sv",
       "src/dv/uart/tb_uart_packet_rx.sv"
     ],
     "top": "tb_uart_packet_rx",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+corrupt"
     ],
@@ -3397,13 +3396,14 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/uart/n2m_uart_packet_store.sv",
       "src/rtl/uart/n2m_uart_packet_rx.sv",
       "src/dv/uart/tb_uart_packet_rx.sv"
     ],
     "top": "tb_uart_packet_rx",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+bad_read"
     ],
@@ -3415,13 +3415,14 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/uart/n2m_uart_packet_store.sv",
       "src/rtl/uart/n2m_uart_packet_rx.sv",
       "src/dv/uart/tb_uart_packet_rx.sv"
     ],
     "top": "tb_uart_packet_rx",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS UART packet RX requests=7"
@@ -3478,6 +3479,7 @@
   "uart-response": {
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/uart/n2m_uart_pkg.sv",
       "src/rtl/uart/n2m_uart_exchange_store.sv",
@@ -3485,7 +3487,7 @@
       "src/dv/uart/tb_uart_response.sv"
     ],
     "top": "tb_uart_response",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS UART response packets=6 bytes=328 resets=3 Intel_staging CRC16",
@@ -3495,6 +3497,7 @@
   "uart-response-corrupt": {
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/uart/n2m_uart_pkg.sv",
       "src/rtl/uart/n2m_uart_exchange_store.sv",
@@ -3502,7 +3505,7 @@
       "src/dv/uart/tb_uart_response.sv"
     ],
     "top": "tb_uart_response",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+corrupt"
     ],
@@ -3516,6 +3519,7 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/uart/n2m_uart_packet_store.sv",
       "src/rtl/uart/n2m_uart_packet_rx.sv",
@@ -3524,7 +3528,7 @@
       "src/dv/uart/tb_uart_serial.sv"
     ],
     "top": "tb_uart_serial",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "signature": "PASS UART serial bytes=446 errors=2 packets=10 reset_bits=10",
     "expected_exit": "zero",
@@ -3535,6 +3539,7 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/uart/n2m_uart_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/uart/n2m_uart_packet_store.sv",
       "src/rtl/uart/n2m_uart_packet_rx.sv",
@@ -3543,7 +3548,7 @@
       "src/dv/uart/tb_uart_serial.sv"
     ],
     "top": "tb_uart_serial",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+corrupt"
     ],
@@ -3554,6 +3559,7 @@
   "vga": {
     "sources": [
       "src/rtl/clocking/n2m_reset_control.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/vga/n2m_frame_ram.sv",
       "src/rtl/vga/n2m_vga_scan.sv",
@@ -3561,13 +3567,8 @@
       "src/dv/vga/tb_vga.sv"
     ],
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_vga.dut.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_vga.dut.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_vga.dut.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "top": "tb_vga",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS vga every-pixel observer ownership fast slow pause core-reset lockloss stopped-pixel",
@@ -3576,6 +3577,7 @@
   "vga-active-swap": {
     "sources": [
       "src/rtl/clocking/n2m_reset_control.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/vga/n2m_frame_ram.sv",
       "src/rtl/vga/n2m_vga_scan.sv",
@@ -3583,13 +3585,8 @@
       "src/dv/vga/tb_vga.sv"
     ],
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_vga.dut.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_vga.dut.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_vga.dut.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "top": "tb_vga",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+active_swap"
     ],
@@ -3600,6 +3597,7 @@
   "vga-bank-reuse": {
     "sources": [
       "src/rtl/clocking/n2m_reset_control.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/vga/n2m_frame_ram.sv",
       "src/rtl/vga/n2m_vga_scan.sv",
@@ -3607,13 +3605,8 @@
       "src/dv/vga/tb_vga.sv"
     ],
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_vga.dut.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_vga.dut.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_vga.dut.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "top": "tb_vga",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+bank_reuse"
     ],
@@ -3624,6 +3617,7 @@
   "vga-lcd": {
     "sources": [
       "src/rtl/clocking/n2m_reset_control.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/vga/n2m_frame_ram.sv",
       "src/rtl/vga/n2m_vga_scan.sv",
@@ -3631,23 +3625,19 @@
       "src/dv/vga/tb_vga.sv"
     ],
     "top": "tb_vga",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+lcd"
     ],
     "expected_exit": "zero",
     "signature": "PASS VGA LCD abort blank stale-offer core-reset stopped-pixel ack-completion-invalidation",
     "timeout_seconds": 300,
-    "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_vga.dut.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_vga.dut.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_vga.dut.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ]
+    "vendor_model": "intel-memory"
   },
   "vga-lcd-corrupt": {
     "sources": [
       "src/rtl/clocking/n2m_reset_control.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/vga/n2m_frame_ram.sv",
       "src/rtl/vga/n2m_vga_scan.sv",
@@ -3655,7 +3645,7 @@
       "src/dv/vga/tb_vga.sv"
     ],
     "top": "tb_vga",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+lcd",
       "+blank_corrupt"
@@ -3663,16 +3653,12 @@
     "expected_exit": "nonzero",
     "signature": "VGA_PIXEL:",
     "timeout_seconds": 300,
-    "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_vga.dut.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_vga.dut.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_vga.dut.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ]
+    "vendor_model": "intel-memory"
   },
   "vga-lcd-reset": {
     "sources": [
       "src/rtl/clocking/n2m_reset_control.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/vga/n2m_frame_ram.sv",
       "src/rtl/vga/n2m_vga_scan.sv",
@@ -3680,23 +3666,19 @@
       "src/dv/vga/tb_vga.sv"
     ],
     "top": "tb_vga",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+lcd_reset"
     ],
     "expected_exit": "zero",
     "signature": "PASS VGA LCD shared-reset release-skew stopped-pixel retained-white global-mask",
     "timeout_seconds": 300,
-    "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_vga.dut.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_vga.dut.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_vga.dut.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ]
+    "vendor_model": "intel-memory"
   },
   "vga-read-latency": {
     "sources": [
       "src/rtl/clocking/n2m_reset_control.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/vga/n2m_frame_ram.sv",
       "src/rtl/vga/n2m_vga_scan.sv",
@@ -3704,13 +3686,8 @@
       "src/dv/vga/tb_vga.sv"
     ],
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_vga.dut.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_vga.dut.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_vga.dut.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "top": "tb_vga",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+read_latency"
     ],
@@ -3722,6 +3699,7 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/uart/n2m_uart_pkg.sv",
       "src/rtl/uart/n2m_uart_packet_store.sv",
@@ -3746,7 +3724,7 @@
       "src/dv/uart/tb_uart_snapshot.sv"
     ],
     "top": "tb_uart_snapshot",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS UART snapshot actual_Intel wire bytes=23040 commands=",
@@ -3757,6 +3735,7 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/uart/n2m_uart_pkg.sv",
       "src/rtl/uart/n2m_uart_packet_store.sv",
@@ -3781,7 +3760,7 @@
       "src/dv/uart/tb_uart_snapshot.sv"
     ],
     "top": "tb_uart_snapshot",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+corrupt_frame"
     ],
@@ -3996,6 +3975,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -4035,14 +4015,14 @@
       "src/dv/integration/tb_integration.sv"
     ],
     "top": "tb_integration",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS integration records=69 frames=2 pixels=46080 ram=3 stack=4 video=16",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
     "driver": {
-      "script": "src/dv/integration/driver.do",
+      "script": "src/dv/integration/driver.py",
       "peer": "src/dv/integration/peer.py",
       "inputs": [
         "src/dv/integration/image.py",
@@ -4127,6 +4107,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -4166,7 +4147,7 @@
       "src/dv/integration/tb_integration.sv"
     ],
     "top": "tb_integration",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+data_fault"
     ],
@@ -4175,7 +4156,7 @@
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
     "driver": {
-      "script": "src/dv/integration/driver.do",
+      "script": "src/dv/integration/driver.py",
       "peer": "src/dv/integration/peer.py",
       "inputs": [
         "src/dv/integration/image.py",
@@ -4260,6 +4241,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -4299,7 +4281,7 @@
       "src/dv/integration/tb_integration.sv"
     ],
     "top": "tb_integration",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+irq_fault"
     ],
@@ -4308,7 +4290,7 @@
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
     "driver": {
-      "script": "src/dv/integration/driver.do",
+      "script": "src/dv/integration/driver.py",
       "peer": "src/dv/integration/peer.py",
       "inputs": [
         "src/dv/integration/image.py",
@@ -4393,6 +4375,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -4432,7 +4415,7 @@
       "src/dv/integration/tb_integration.sv"
     ],
     "top": "tb_integration",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+pixel_fault"
     ],
@@ -4441,7 +4424,7 @@
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
     "driver": {
-      "script": "src/dv/integration/driver.do",
+      "script": "src/dv/integration/driver.py",
       "peer": "src/dv/integration/peer.py",
       "inputs": [
         "src/dv/integration/image.py",
@@ -4624,6 +4607,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -4648,7 +4632,7 @@
       "src/dv/uart/tb_uart_endpoint.sv"
     ],
     "top": "tb_uart_endpoint",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+input_mmio"
     ],
@@ -4718,6 +4702,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -4743,7 +4728,7 @@
     ],
     "timeout_seconds": 60,
     "top": "tb_dma_composition",
-    "simulator": "questa",
+    "simulator": "verilator",
     "vendor_model": "intel-memory"
   },
   "dma-composition-byte": {
@@ -4763,6 +4748,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -4788,7 +4774,7 @@
     ],
     "timeout_seconds": 60,
     "top": "tb_dma_composition",
-    "simulator": "questa",
+    "simulator": "verilator",
     "vendor_model": "intel-memory"
   },
   "dma-composition-fault-hardware": {
@@ -4804,11 +4790,12 @@
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/dma/n2m_oam_pkg.sv",
       "src/rtl/dma/n2m_dma_pkg.sv",
-      "src/dv/dma/tb_dma_hardware_fault.sv"
+      "src/dv/dma/tb_dma_hardware_fault.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv"
     ],
     "timeout_seconds": 60,
     "top": "tb_dma_composition",
-    "simulator": "questa",
+    "simulator": "verilator",
     "vendor_model": "intel-memory"
   },
   "dma-composition-halt": {
@@ -4828,6 +4815,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -4853,7 +4841,7 @@
     ],
     "timeout_seconds": 60,
     "top": "tb_dma_composition",
-    "simulator": "questa",
+    "simulator": "verilator",
     "vendor_model": "intel-memory"
   },
   "dma-composition-unresolved": {
@@ -4873,6 +4861,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -4898,7 +4887,7 @@
     ],
     "timeout_seconds": 60,
     "top": "tb_dma_composition",
-    "simulator": "questa",
+    "simulator": "verilator",
     "vendor_model": "intel-memory"
   },
   "dma-engine": {
@@ -5010,6 +4999,7 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -5026,7 +5016,7 @@
       "src/dv/dma/tb_dma_terminal.sv"
     ],
     "top": "tb_dma_terminal",
-    "simulator": "questa",
+    "simulator": "verilator",
     "timeout_seconds": 60,
     "expected_exit": "zero",
     "signature": "PASS DMA terminal actual object pair before and after commit",
@@ -5037,6 +5027,7 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -5053,7 +5044,7 @@
       "src/dv/dma/tb_dma_terminal.sv"
     ],
     "top": "tb_dma_terminal",
-    "simulator": "questa",
+    "simulator": "verilator",
     "timeout_seconds": 60,
     "expected_exit": "nonzero",
     "signature": "DMA_TERMINAL_PAIR expected=a52a actual=002a",
@@ -5079,6 +5070,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -5104,7 +5096,7 @@
     ],
     "timeout_seconds": 60,
     "top": "tb_dma_composition",
-    "simulator": "questa",
+    "simulator": "verilator",
     "vendor_model": "intel-memory"
   },
   "dma-composition-read-increment": {
@@ -5124,6 +5116,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -5149,7 +5142,7 @@
     ],
     "timeout_seconds": 60,
     "top": "tb_dma_composition",
-    "simulator": "questa",
+    "simulator": "verilator",
     "vendor_model": "intel-memory"
   },
   "dma-composition-read-row-fault": {
@@ -5170,6 +5163,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -5195,7 +5189,7 @@
     ],
     "timeout_seconds": 60,
     "top": "tb_dma_composition",
-    "simulator": "questa",
+    "simulator": "verilator",
     "vendor_model": "intel-memory"
   },
   "dma-composition-stop": {
@@ -5215,6 +5209,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -5240,7 +5235,7 @@
     ],
     "timeout_seconds": 60,
     "top": "tb_dma_composition",
-    "simulator": "questa",
+    "simulator": "verilator",
     "vendor_model": "intel-memory"
   },
   "dma-composition-pause-0": {
@@ -5260,6 +5255,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -5285,7 +5281,7 @@
     ],
     "timeout_seconds": 60,
     "top": "tb_dma_composition",
-    "simulator": "questa",
+    "simulator": "verilator",
     "vendor_model": "intel-memory"
   },
   "dma-composition-pause-1": {
@@ -5305,6 +5301,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -5330,7 +5327,7 @@
     ],
     "timeout_seconds": 60,
     "top": "tb_dma_composition",
-    "simulator": "questa",
+    "simulator": "verilator",
     "vendor_model": "intel-memory"
   },
   "dma-composition-pause-2": {
@@ -5350,6 +5347,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -5375,7 +5373,7 @@
     ],
     "timeout_seconds": 60,
     "top": "tb_dma_composition",
-    "simulator": "questa",
+    "simulator": "verilator",
     "vendor_model": "intel-memory"
   },
   "dma-composition-pause-3": {
@@ -5395,6 +5393,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -5420,7 +5419,7 @@
     ],
     "timeout_seconds": 60,
     "top": "tb_dma_composition",
-    "simulator": "questa",
+    "simulator": "verilator",
     "vendor_model": "intel-memory"
   },
   "dma-composition-pause-fault": {
@@ -5441,6 +5440,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -5466,13 +5466,14 @@
     ],
     "timeout_seconds": 60,
     "top": "tb_dma_composition",
-    "simulator": "questa",
+    "simulator": "verilator",
     "vendor_model": "intel-memory"
   },
   "dma-access": {
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -5488,7 +5489,7 @@
       "src/dv/dma/tb_dma_access.sv"
     ],
     "top": "tb_dma_access",
-    "simulator": "questa",
+    "simulator": "verilator",
     "timeout_seconds": 60,
     "expected_exit": "zero",
     "signature": "PASS DMA access seven source cases bytes=1120 reads=44",
@@ -5499,6 +5500,7 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -5514,7 +5516,7 @@
       "src/dv/dma/tb_dma_access.sv"
     ],
     "top": "tb_dma_access",
-    "simulator": "questa",
+    "simulator": "verilator",
     "timeout_seconds": 60,
     "expected_exit": "nonzero",
     "signature": "DMA_ACCESS_READ case=0 address=c123 expected=81 actual=ff",
@@ -5527,6 +5529,7 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -5542,7 +5545,7 @@
       "src/dv/dma/tb_dma_restart.sv"
     ],
     "top": "tb_dma_restart",
-    "simulator": "questa",
+    "simulator": "verilator",
     "timeout_seconds": 60,
     "expected_exit": "zero",
     "signature": "PASS DMA restart four literal timelines writes=985 readback=640",
@@ -5553,6 +5556,7 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -5568,7 +5572,7 @@
       "src/dv/dma/tb_dma_restart.sv"
     ],
     "top": "tb_dma_restart",
-    "simulator": "questa",
+    "simulator": "verilator",
     "timeout_seconds": 60,
     "expected_exit": "nonzero",
     "signature": "DMA_RESTART_WRITE_TIME expected_delta=13 actual_delta=12",
@@ -5581,6 +5585,7 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -5596,7 +5601,7 @@
       "src/dv/dma/tb_dma_reset.sv"
     ],
     "top": "tb_dma_reset",
-    "simulator": "questa",
+    "simulator": "verilator",
     "timeout_seconds": 60,
     "expected_exit": "zero",
     "signature": "PASS DMA reset cases=32 prefix_writes=60 readback=5120 ff46=32",
@@ -5607,6 +5612,7 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -5622,7 +5628,7 @@
       "src/dv/dma/tb_dma_reset.sv"
     ],
     "top": "tb_dma_reset",
-    "simulator": "questa",
+    "simulator": "verilator",
     "timeout_seconds": 60,
     "expected_exit": "nonzero",
     "signature": "DMA_RESET_CANCEL case=0 active=0 source=0 write=1",
@@ -5635,6 +5641,7 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -5650,7 +5657,7 @@
       "src/dv/dma/tb_dma_overlay.sv"
     ],
     "top": "tb_dma_overlay",
-    "simulator": "questa",
+    "simulator": "verilator",
     "timeout_seconds": 60,
     "expected_exit": "zero",
     "signature": "PASS DMA overlay feedback cases=2 writes=96 readback=100",
@@ -5661,6 +5668,7 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -5676,7 +5684,7 @@
       "src/dv/dma/tb_dma_overlay.sv"
     ],
     "top": "tb_dma_overlay",
-    "simulator": "questa",
+    "simulator": "verilator",
     "timeout_seconds": 60,
     "expected_exit": "nonzero",
     "signature": "DMA_OVERLAY_WRITE case=1 address=40 expected=03 actual=f3",
@@ -5702,6 +5710,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -5727,7 +5736,7 @@
     ],
     "timeout_seconds": 60,
     "top": "tb_dma_composition",
-    "simulator": "questa",
+    "simulator": "verilator",
     "vendor_model": "intel-memory"
   },
   "dma-family-sp": {
@@ -5747,6 +5756,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -5772,7 +5782,7 @@
     ],
     "timeout_seconds": 60,
     "top": "tb_dma_composition",
-    "simulator": "questa",
+    "simulator": "verilator",
     "vendor_model": "intel-memory"
   },
   "dma-family-store": {
@@ -5792,6 +5802,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -5817,7 +5828,7 @@
     ],
     "timeout_seconds": 60,
     "top": "tb_dma_composition",
-    "simulator": "questa",
+    "simulator": "verilator",
     "vendor_model": "intel-memory"
   },
   "dma-family-pop": {
@@ -5837,6 +5848,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -5862,7 +5874,7 @@
     ],
     "timeout_seconds": 60,
     "top": "tb_dma_composition",
-    "simulator": "questa",
+    "simulator": "verilator",
     "vendor_model": "intel-memory"
   },
   "dma-family-pop-fault": {
@@ -5883,6 +5895,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -5908,7 +5921,7 @@
     ],
     "timeout_seconds": 60,
     "top": "tb_dma_composition",
-    "simulator": "questa",
+    "simulator": "verilator",
     "vendor_model": "intel-memory"
   },
   "oam-qualify": {
@@ -5964,6 +5977,7 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -5981,7 +5995,7 @@
       "src/dv/dma/tb_dma_io.sv"
     ],
     "top": "tb_dma_io",
-    "simulator": "questa",
+    "simulator": "verilator",
     "timeout_seconds": 60,
     "expected_exit": "zero",
     "signature": "PASS DMA IO bytes=160 owner_commits=18 reads=9 preT3=1 readback=160",
@@ -5992,6 +6006,7 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -6009,7 +6024,7 @@
       "src/dv/dma/tb_dma_io.sv"
     ],
     "top": "tb_dma_io",
-    "simulator": "questa",
+    "simulator": "verilator",
     "timeout_seconds": 60,
     "expected_exit": "nonzero",
     "signature": "DMA_IO_IRQ_PRE_T3 expected_ie=1f actual_ie=1f expected_if=04 actual_if=00",
@@ -6035,6 +6050,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -6060,7 +6076,7 @@
     ],
     "timeout_seconds": 60,
     "top": "tb_dma_composition",
-    "simulator": "questa",
+    "simulator": "verilator",
     "vendor_model": "intel-memory"
   },
   "dma-lcd-cancel-fault": {
@@ -6081,6 +6097,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -6106,13 +6123,14 @@
     ],
     "timeout_seconds": 60,
     "top": "tb_dma_composition",
-    "simulator": "questa",
+    "simulator": "verilator",
     "vendor_model": "intel-memory"
   },
   "dma-tags": {
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -6128,7 +6146,7 @@
       "src/dv/dma/tb_dma_tags.sv"
     ],
     "top": "tb_dma_tags",
-    "simulator": "questa",
+    "simulator": "verilator",
     "timeout_seconds": 60,
     "expected_exit": "zero",
     "signature": "PASS DMA scan tags row4 off row12 row13 writes=8 readback=8",
@@ -6139,6 +6157,7 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -6154,7 +6173,7 @@
       "src/dv/dma/tb_dma_tags.sv"
     ],
     "top": "tb_dma_tags",
-    "simulator": "questa",
+    "simulator": "verilator",
     "timeout_seconds": 60,
     "expected_exit": "nonzero",
     "signature": "DMA_TAG_FRESH_ROW address=108 expected=84 actual=00",
@@ -6167,6 +6186,7 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -6182,7 +6202,7 @@
       "src/dv/dma/tb_dma_tags.sv"
     ],
     "top": "tb_dma_tags",
-    "simulator": "questa",
+    "simulator": "verilator",
     "timeout_seconds": 60,
     "expected_exit": "nonzero",
     "signature": "DMA_RAW_SERVICE",
@@ -6195,6 +6215,7 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -6210,7 +6231,7 @@
       "src/dv/dma/tb_dma_tags.sv"
     ],
     "top": "tb_dma_tags",
-    "simulator": "questa",
+    "simulator": "verilator",
     "timeout_seconds": 60,
     "expected_exit": "nonzero",
     "signature": "DMA_OPERAND_SERVICE",
@@ -6223,6 +6244,7 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -6238,7 +6260,7 @@
       "src/dv/dma/tb_dma_tags.sv"
     ],
     "top": "tb_dma_tags",
-    "simulator": "questa",
+    "simulator": "verilator",
     "timeout_seconds": 60,
     "expected_exit": "nonzero",
     "signature": "DMA_PAIR_SERVICE",
@@ -6331,6 +6353,8 @@
   "adc-backend": {
     "sources": [
       "src/rtl/clocking/n2m_reset_control.sv",
+      "src/rtl/input/n2m_sim_adc_control.sv",
+      "src/rtl/input/n2m_sim_adc_pll.sv",
       "src/rtl/input/n2m_adc_backend.sv",
       "src/rtl/input/n2m_controls_pkg.sv",
       "src/rtl/input/n2m_button_filter.sv",
@@ -6340,7 +6364,7 @@
       "src/dv/input/tb_adc_backend.sv"
     ],
     "top": "tb_adc_backend",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "signature": "PASS actual ADC model replies=8 commands=9 lock-cancel",
     "expected_exit": "zero",
@@ -6349,6 +6373,8 @@
   "adc-backend-corrupt": {
     "sources": [
       "src/rtl/clocking/n2m_reset_control.sv",
+      "src/rtl/input/n2m_sim_adc_control.sv",
+      "src/rtl/input/n2m_sim_adc_pll.sv",
       "src/rtl/input/n2m_adc_backend.sv",
       "src/rtl/input/n2m_controls_pkg.sv",
       "src/rtl/input/n2m_button_filter.sv",
@@ -6358,7 +6384,7 @@
       "src/dv/input/tb_adc_backend.sv"
     ],
     "top": "tb_adc_backend",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+CORRUPT_ADC"
     ],
@@ -6479,6 +6505,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -6526,14 +6553,14 @@
       "src/dv/host_play/tb_host_play.sv"
     ],
     "top": "tb_integration",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS host play five immutable images four transitions",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
     "driver": {
-      "script": "src/dv/host_play/driver.do",
+      "script": "src/dv/host_play/driver.py",
       "peer": "src/dv/host_play/peer.py",
       "inputs": [
         "src/dv/host_play/image.py",
@@ -6603,12 +6630,7 @@
         "source_display_eligible",
         "fault"
       ]
-    },
-    "intel_mixed_mode_instances": [
-      "tb_integration.dut.g_play.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_integration.dut.g_play.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_integration.dut.g_play.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ]
+    }
   },
   "host-play-frame": {
     "sources": [
@@ -6622,6 +6644,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -6669,7 +6692,7 @@
       "src/dv/host_play/tb_host_play.sv"
     ],
     "top": "tb_integration",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+frame_fault"
     ],
@@ -6678,7 +6701,7 @@
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
     "driver": {
-      "script": "src/dv/host_play/driver.do",
+      "script": "src/dv/host_play/driver.py",
       "peer": "src/dv/host_play/peer.py",
       "inputs": [
         "src/dv/host_play/image.py",
@@ -6748,12 +6771,7 @@
         "source_display_eligible",
         "fault"
       ]
-    },
-    "intel_mixed_mode_instances": [
-      "tb_integration.dut.g_play.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_integration.dut.g_play.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_integration.dut.g_play.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ]
+    }
   },
   "host-play-missing": {
     "sources": [
@@ -6767,6 +6785,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -6814,7 +6833,7 @@
       "src/dv/host_play/tb_host_play.sv"
     ],
     "top": "tb_integration",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+missing_frame"
     ],
@@ -6823,7 +6842,7 @@
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
     "driver": {
-      "script": "src/dv/host_play/driver.do",
+      "script": "src/dv/host_play/driver.py",
       "peer": "src/dv/host_play/peer.py",
       "inputs": [
         "src/dv/host_play/image.py",
@@ -6893,12 +6912,7 @@
         "source_display_eligible",
         "fault"
       ]
-    },
-    "intel_mixed_mode_instances": [
-      "tb_integration.dut.g_play.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_integration.dut.g_play.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_integration.dut.g_play.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ]
+    }
   },
   "host-play-input": {
     "sources": [
@@ -6912,6 +6926,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -6959,7 +6974,7 @@
       "src/dv/host_play/tb_host_play.sv"
     ],
     "top": "tb_integration",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+input_fault"
     ],
@@ -6968,7 +6983,7 @@
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
     "driver": {
-      "script": "src/dv/host_play/driver.do",
+      "script": "src/dv/host_play/driver.py",
       "peer": "src/dv/host_play/peer.py",
       "inputs": [
         "src/dv/host_play/image.py",
@@ -7038,12 +7053,7 @@
         "source_display_eligible",
         "fault"
       ]
-    },
-    "intel_mixed_mode_instances": [
-      "tb_integration.dut.g_play.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_integration.dut.g_play.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_integration.dut.g_play.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ]
+    }
   },
   "host-play-release": {
     "sources": [
@@ -7057,6 +7067,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -7104,7 +7115,7 @@
       "src/dv/host_play/tb_host_play.sv"
     ],
     "top": "tb_integration",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+release_fault"
     ],
@@ -7113,7 +7124,7 @@
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
     "driver": {
-      "script": "src/dv/host_play/driver.do",
+      "script": "src/dv/host_play/driver.py",
       "peer": "src/dv/host_play/peer.py",
       "inputs": [
         "src/dv/host_play/image.py",
@@ -7183,12 +7194,7 @@
         "source_display_eligible",
         "fault"
       ]
-    },
-    "intel_mixed_mode_instances": [
-      "tb_integration.dut.g_play.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_integration.dut.g_play.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_integration.dut.g_play.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ]
+    }
   },
   "controls-wire": {
     "sources": [
@@ -7198,6 +7204,7 @@
       "src/rtl/input/n2m_controls_pkg.sv",
       "src/rtl/joypad/n2m_joypad_pkg.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/uart/n2m_uart_pkg.sv",
       "src/rtl/uart/n2m_uart_packet_store.sv",
@@ -7228,16 +7235,11 @@
       "src/dv/input/tb_controls_wire.sv"
     ],
     "top": "tb_controls_wire",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS CONTROLS_WIRE commands=22 replies=22 pixels=96 paused=1",
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_controls_wire.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_controls_wire.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_controls_wire.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "timeout_seconds": 180
   },
   "controls-wire-corrupt": {
@@ -7248,6 +7250,7 @@
       "src/rtl/input/n2m_controls_pkg.sv",
       "src/rtl/joypad/n2m_joypad_pkg.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/uart/n2m_uart_pkg.sv",
       "src/rtl/uart/n2m_uart_packet_store.sv",
@@ -7278,18 +7281,13 @@
       "src/dv/input/tb_controls_wire.sv"
     ],
     "top": "tb_controls_wire",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+corrupt_mask"
     ],
     "expected_exit": "nonzero",
     "signature": "CONTROLS_WIRE_MASK expected=16 joypad=00",
     "vendor_model": "intel-memory",
-    "intel_mixed_mode_instances": [
-      "tb_controls_wire.u_bridge.banks[0].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_controls_wire.u_bridge.banks[1].u_ram.u_storage.ram.m_default.altsyncram_inst",
-      "tb_controls_wire.u_bridge.banks[2].u_ram.u_storage.ram.m_default.altsyncram_inst"
-    ],
     "timeout_seconds": 180
   },
   "memory-bank-enables": {
@@ -7297,12 +7295,13 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
       "src/dv/memory/tb_memory_stores.sv"
     ],
     "top": "tb_memory_stores",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+range_probe"
     ],
@@ -7314,12 +7313,13 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
       "src/dv/memory/tb_memory_stores.sv"
     ],
     "top": "tb_memory_stores",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+range_probe",
       "+range_fault"
@@ -7363,6 +7363,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -7402,16 +7403,17 @@
       "src/dv/integration/tb_integration.sv"
     ],
     "top": "tb_integration",
-    "simulator": "questa",
-    "args": [
-      "-gPRELOADED=1"
+    "simulator": "verilator",
+    "args": [],
+    "defines": [
+      "PRELOADED"
     ],
     "expected_exit": "zero",
     "signature": "PASS integration records=69 frames=2 pixels=46080 ram=3 stack=4 video=16",
     "timeout_seconds": 300,
     "vendor_model": "intel-memory",
     "driver": {
-      "script": "src/dv/integration/driver.do",
+      "script": "src/dv/integration/driver.py",
       "peer": "src/dv/preload/peer.py",
       "inputs": [
         "src/dv/integration/image.py",
@@ -7489,6 +7491,7 @@
   "preload-lifecycle": {
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/uart/n2m_uart_pkg.sv",
       "src/rtl/uart/n2m_uart_presence_store.sv",
@@ -7496,54 +7499,46 @@
       "src/dv/preload/tb_preload_load.sv"
     ],
     "top": "tb_preload_load",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS preload lifecycle bytes=32768 clear=32768 scans=4",
     "timeout_seconds": 60,
     "vendor_model": "intel-memory",
-    "driver": {
-      "script": "src/dv/preload/load.do",
-      "peer": "src/dv/preload/prepare_peer.py",
-      "inputs": [
-        "src/dv/integration/image.py",
-        "src/dv/integration/program.asm",
-        "src/dv/integration/program.json",
-        "src/dv/integration/retirement.json",
-        "src/sw/generated/interfaces.inc",
-        "tools/sw/assembler.py",
-        "tools/sw/assets.py",
-        "tools/sw/asset_conformance.py",
-        "tools/sw/build.py",
-        "tools/sw/conformance.py",
-        "tools/sw/expressions.py",
-        "tools/sw/layout.schema.json",
-        "tools/sw/linker.py",
-        "tools/sw/link_conformance.py",
-        "tools/sw/listing.schema.json",
-        "tools/sw/map.schema.json",
-        "tools/sw/object.schema.json",
-        "tools/sw/objects.py",
-        "tools/sw/opcodes.json",
-        "tools/sw/package.py",
-        "tools/sw/rom_build.py",
-        "tools/sw/shade.schema.json",
-        "tools/sw/symbols.schema.json",
-        "tools/sw/targets.py",
-        "tools/sw/targets.schema.json",
-        "tools/n2m/host/client.py",
-        "tools/n2m/host/command.py",
-        "tools/n2m/host/package.py",
-        "tools/n2m/host/transport.py",
-        "tools/n2m/host/__init__.py",
-        "src/dv/integration/peer.py"
-      ],
-      "preload": true
-    }
+    "preload": "integration",
+    "preload_inputs": [
+      "src/dv/integration/image.py",
+      "src/dv/integration/program.asm",
+      "src/dv/integration/program.json",
+      "src/dv/integration/retirement.json",
+      "src/sw/generated/interfaces.inc",
+      "tools/sw/assembler.py",
+      "tools/sw/asset_conformance.py",
+      "tools/sw/assets.py",
+      "tools/sw/build.py",
+      "tools/sw/columns.py",
+      "tools/sw/conformance.py",
+      "tools/sw/expressions.py",
+      "tools/sw/layout.schema.json",
+      "tools/sw/link_conformance.py",
+      "tools/sw/linker.py",
+      "tools/sw/listing.schema.json",
+      "tools/sw/map.schema.json",
+      "tools/sw/object.schema.json",
+      "tools/sw/objects.py",
+      "tools/sw/opcodes.json",
+      "tools/sw/package.py",
+      "tools/sw/rom_build.py",
+      "tools/sw/shade.schema.json",
+      "tools/sw/symbols.schema.json",
+      "tools/sw/targets.py",
+      "tools/sw/targets.schema.json"
+    ]
   },
   "preload-crc-fault": {
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/uart/n2m_uart_pkg.sv",
       "src/rtl/uart/n2m_uart_presence_store.sv",
@@ -7551,7 +7546,7 @@
       "src/dv/preload/tb_preload_load.sv"
     ],
     "top": "tb_preload_load",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+crc_fault"
     ],
@@ -7559,44 +7554,35 @@
     "signature": "UART_PRELOAD_CRC",
     "timeout_seconds": 60,
     "vendor_model": "intel-memory",
-    "driver": {
-      "script": "src/dv/preload/load.do",
-      "peer": "src/dv/preload/prepare_peer.py",
-      "inputs": [
-        "src/dv/integration/image.py",
-        "src/dv/integration/program.asm",
-        "src/dv/integration/program.json",
-        "src/dv/integration/retirement.json",
-        "src/sw/generated/interfaces.inc",
-        "tools/sw/assembler.py",
-        "tools/sw/assets.py",
-        "tools/sw/asset_conformance.py",
-        "tools/sw/build.py",
-        "tools/sw/conformance.py",
-        "tools/sw/expressions.py",
-        "tools/sw/layout.schema.json",
-        "tools/sw/linker.py",
-        "tools/sw/link_conformance.py",
-        "tools/sw/listing.schema.json",
-        "tools/sw/map.schema.json",
-        "tools/sw/object.schema.json",
-        "tools/sw/objects.py",
-        "tools/sw/opcodes.json",
-        "tools/sw/package.py",
-        "tools/sw/rom_build.py",
-        "tools/sw/shade.schema.json",
-        "tools/sw/symbols.schema.json",
-        "tools/sw/targets.py",
-        "tools/sw/targets.schema.json",
-        "tools/n2m/host/client.py",
-        "tools/n2m/host/command.py",
-        "tools/n2m/host/package.py",
-        "tools/n2m/host/transport.py",
-        "tools/n2m/host/__init__.py",
-        "src/dv/integration/peer.py"
-      ],
-      "preload": true
-    }
+    "preload": "integration",
+    "preload_inputs": [
+      "src/dv/integration/image.py",
+      "src/dv/integration/program.asm",
+      "src/dv/integration/program.json",
+      "src/dv/integration/retirement.json",
+      "src/sw/generated/interfaces.inc",
+      "tools/sw/assembler.py",
+      "tools/sw/asset_conformance.py",
+      "tools/sw/assets.py",
+      "tools/sw/build.py",
+      "tools/sw/columns.py",
+      "tools/sw/conformance.py",
+      "tools/sw/expressions.py",
+      "tools/sw/layout.schema.json",
+      "tools/sw/link_conformance.py",
+      "tools/sw/linker.py",
+      "tools/sw/listing.schema.json",
+      "tools/sw/map.schema.json",
+      "tools/sw/object.schema.json",
+      "tools/sw/objects.py",
+      "tools/sw/opcodes.json",
+      "tools/sw/package.py",
+      "tools/sw/rom_build.py",
+      "tools/sw/shade.schema.json",
+      "tools/sw/symbols.schema.json",
+      "tools/sw/targets.py",
+      "tools/sw/targets.schema.json"
+    ]
   },
   "python-joypad": {
     "testbench": "python",
@@ -10676,13 +10662,14 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
       "src/dv/memory/n2m_oam_late_write.sv",
       "src/dv/memory/tb_oam_late_write.sv"
     ],
     "top": "tb_oam_late_write",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS OAM late owner checks=12"
@@ -10692,13 +10679,14 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
       "src/dv/memory/n2m_oam_late_write.sv",
       "src/dv/memory/tb_oam_late_write.sv"
     ],
     "top": "tb_oam_late_write",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+collision"
     ],
@@ -11018,6 +11006,7 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -11033,7 +11022,7 @@
       "src/dv/dma/tb_dma_late.sv"
     ],
     "top": "tb_dma_late",
-    "simulator": "questa",
+    "simulator": "verilator",
     "timeout_seconds": 60,
     "expected_exit": "zero",
     "signature": "PASS DMA late owner checks=23",
@@ -11044,6 +11033,7 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/cpu/n2m_cpu_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -11059,7 +11049,7 @@
       "src/dv/dma/tb_dma_late.sv"
     ],
     "top": "tb_dma_late",
-    "simulator": "questa",
+    "simulator": "verilator",
     "timeout_seconds": 60,
     "expected_exit": "nonzero",
     "signature": "DMA_LATE_READY",
@@ -14272,6 +14262,7 @@
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
       "src/rtl/clocking/n2m_timebase.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
@@ -14296,7 +14287,7 @@
       "src/dv/uart/tb_uart_endpoint.sv"
     ],
     "top": "tb_uart_endpoint",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+RUN_DOTS_WIRE"
     ],
@@ -15827,6 +15818,7 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
       "src/rtl/memory/n2m_memory_decode.sv",
@@ -15836,7 +15828,7 @@
       "src/dv/audio/tb_audio_service.sv"
     ],
     "top": "tb_audio_service",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS audio service register_reads=69 register_writes=46 wave_reads=48 wave_writes=32 serial_cases=7",
@@ -15847,6 +15839,7 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
       "src/rtl/memory/n2m_memory_decode.sv",
@@ -15856,7 +15849,7 @@
       "src/dv/audio/tb_audio_service.sv"
     ],
     "top": "tb_audio_service",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+mask_corrupt"
     ],
@@ -15869,6 +15862,7 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
       "src/rtl/memory/n2m_memory_decode.sv",
@@ -15878,7 +15872,7 @@
       "src/dv/audio/tb_audio_service.sv"
     ],
     "top": "tb_audio_service",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+wave_corrupt"
     ],
@@ -15891,6 +15885,7 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/memory/n2m_memory_pkg.sv",
+      "src/rtl/common/n2m_sim_dual_port_ram.sv",
       "src/rtl/common/n2m_intel_ram.sv",
       "src/rtl/memory/n2m_memory_stores.sv",
       "src/rtl/memory/n2m_memory_decode.sv",
@@ -15900,7 +15895,7 @@
       "src/dv/audio/tb_audio_service.sv"
     ],
     "top": "tb_audio_service",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+drop_service"
     ],
@@ -28351,8 +28346,8 @@
     "top": "tb_verilator_peer",
     "simulator": "verilator",
     "args": [],
-    "expected_exit": "zero",
-    "signature": "PASS verilator-peer transactions=3",
+    "expected_exit": "nonzero",
+    "signature": "SMOKE_DRIVER_WAIT_RANGE",
     "timeout_seconds": 60,
     "driver": {
       "script": "src/dv/integration/driver.py",

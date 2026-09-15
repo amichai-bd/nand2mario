@@ -79,7 +79,7 @@ module tb_memory_decode;
             #1;
             if (alias_fault && index == 'hE123) force dut.offset = 15'h1234;
             #1;
-            if (destination !== expected_destination || store !== expected_store || offset !== expected_offset)
+            if (destination != expected_destination || store != expected_store || offset != expected_offset)
                 $fatal(1, "MEMORY_DECODE_MISMATCH address=%04h destination=%0d store=%0d offset=%04h", address, destination, store, offset);
         end
         $display("PASS memory decode addresses=65536 echo=7680");

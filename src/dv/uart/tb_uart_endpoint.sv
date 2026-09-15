@@ -1,5 +1,10 @@
 `timescale 1ns/1ps
 `default_nettype none
+// Lint waiver: byte array elements are passed to integer CRC and index
+// arithmetic and the integer file handle is tested as a boolean; both width lints
+// are false positives.
+/* verilator lint_off WIDTHEXPAND */
+/* verilator lint_off WIDTHTRUNC */
 module tb_uart_endpoint;
     logic clk_sys, reset_sys, uart_rx, uart_tx;
     logic gb_tick, paused, pause_request, core_reset, core_initialized;
@@ -126,7 +131,7 @@ module tb_uart_endpoint;
         end
         #1;
         if (!reset_sys) begin
-            if (dot_count !== observed_dots || retirement_count !== observed_retirements) $fatal(1,"UART_ENDPOINT_COUNTS");
+            if (dot_count != observed_dots || retirement_count != observed_retirements) $fatal(1,"UART_ENDPOINT_COUNTS");
             if (buttons != prior_buttons) begin
                 if (!sampled_reset && sampled_tick) $fatal(1,"UART_ENDPOINT_INPUT_DOT_EDGE");
                 observed_input_dot = observed_dots;
@@ -193,7 +198,7 @@ module tb_uart_endpoint;
         for(payload_index=0;payload_index<expected_size;payload_index=payload_index+1) begin
             expected=expected_payload[payload_index];
             if(dot_reply) expected=8'((input_reply ? observed_input_dot : observed_dots)>>(payload_index*8));
-            if(raw_reply[10+payload_index]!==expected) $fatal(1,"UART_ENDPOINT_PAYLOAD cmd=%0d index=%0d expected=%02h actual=%02h",expected_command,payload_index,expected,raw_reply[10+payload_index]);
+            if(raw_reply[10+payload_index]!=expected) $fatal(1,"UART_ENDPOINT_PAYLOAD cmd=%0d index=%0d expected=%02h actual=%02h",expected_command,payload_index,expected,raw_reply[10+payload_index]);
         end
         if (expected_status==0 && (expected_command==3 || expected_command==7 || expected_command==9) && (!paused || !core_initialized))
             $fatal(1,"UART_ENDPOINT_EARLY_RESET_REPLY");
@@ -207,10 +212,10 @@ module tb_uart_endpoint;
             @(negedge uart_tx);
             if (!reset_sys) begin
                 repeat(4) @(negedge clk_sys);
-                if(uart_tx!==0) $fatal(1,"UART_ENDPOINT_TX_START");
+                if(uart_tx!=0) $fatal(1,"UART_ENDPOINT_TX_START");
                 for(bit_number=0;bit_number<8;bit_number=bit_number+1) begin repeat(8) @(negedge clk_sys);value[bit_number]=uart_tx;end
                 repeat(8) @(negedge clk_sys);
-                if(uart_tx!==1) $fatal(1,"UART_ENDPOINT_TX_STOP");
+                if(uart_tx!=1) $fatal(1,"UART_ENDPOINT_TX_STOP");
                 repeat(4) @(negedge clk_sys);
                 if(value==0) check_reply();
                 else begin if(reply_size>=270) $fatal(1,"UART_ENDPOINT_TX_OVERFLOW");encoded_reply[reply_size]=value;reply_size=reply_size+1;end
@@ -273,7 +278,7 @@ module tb_uart_endpoint;
         word_request(32'h10044);expect_word({24'd0,source});exchange(2,4,0,4);
         word_request(32'h10048);expect_word({24'd0,physical_mask});exchange(2,4,0,4);
         word_request(32'h1004c);expect_word({24'd0,effective_mask});exchange(2,4,0,4);
-        if(buttons!==host_mask || effective_buttons!==effective_mask)$fatal(1,"UART_INPUT_OBSERVATION");
+        if(buttons!=host_mask || effective_buttons!=effective_mask)$fatal(1,"UART_INPUT_OBSERVATION");
     endtask
     always @(posedge clk_sys) begin
         if(reset_sys) accepted_inputs=0;
@@ -430,7 +435,7 @@ module tb_uart_endpoint;
         for(item=0;item<10;item=item+1) begin
             request_payload[0]=item<8 ? 8'(1<<item) : (item==8 ? 255 : 0);
             expect_dot(29);exchange(11,1,0,8);
-            if(buttons!==request_payload[0] || dot_count!=29)$fatal(1,"UART_ENDPOINT_BUTTONS");
+            if(buttons!=request_payload[0] || dot_count!=29)$fatal(1,"UART_ENDPOINT_BUTTONS");
         end
         exchange(4,0,0,0);
         before_writes=rom_writes;word_request(0);request_payload[4]=8'h11;exchange(8,5,5,0);

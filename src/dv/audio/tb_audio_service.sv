@@ -3,6 +3,9 @@
 // Composed proof that serial, audio-register and wave-RAM accesses are served
 // by owners instead of faulting the CPU port. The owner selection repeats the
 // v0.5 system composition; the CPU port, decoder and stores are the real ones.
+// Lint waiver: 16-bit register address literals initialize an integer loop
+// index; the width lint is a false positive.
+/* verilator lint_off WIDTHEXPAND */
 module tb_audio_service;
     logic clk_sys, reset_sys, core_reset, init_done;
     logic request_valid, write_enable, bus_commit, response_valid, contract_fault, gb_tick;
@@ -143,7 +146,7 @@ module tb_audio_service;
             settle = settle + 1;
         end
         if (!response_valid) $fatal(1, "AUDIO_NO_RESPONSE address=%04h", target);
-        if (read_data !== expected)
+        if (read_data != expected)
             $fatal(1, "AUDIO_READ address=%04h expected=%02h actual=%02h", target, expected, read_data);
         bus_commit = 1; gb_tick = 1;
         edge_cycle();

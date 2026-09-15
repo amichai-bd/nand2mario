@@ -1,4 +1,7 @@
 `timescale 1ns/1ps
+// Lint waiver: the 9-bit DUT byte count is compared with an integer
+// expectation; the width lint is a false positive.
+/* verilator lint_off WIDTHEXPAND */
 module tb_uart_exchange;
     logic clk;
     logic reset;
@@ -129,7 +132,7 @@ module tb_uart_exchange;
         #1;
         if (!execute && command_valid)
             $fatal(1, "UART_EXCHANGE_DUPLICATE_EXECUTION seq=%h", request_header.seq);
-        if (execute && (!command_valid || forced_status !== status))
+        if (execute && (!command_valid || forced_status != status))
             $fatal(1, "UART_EXCHANGE_STATUS expected=%h actual=%h command=%b", status, forced_status, command_valid);
         if (execute) begin
             expected_size = reply_size;
@@ -178,7 +181,7 @@ module tb_uart_exchange;
                 force dut.stores.read_data = 24'h000000;
             @(posedge clk);
             #1;
-            if (!transmit_data_valid || transmit_data !== expected[index])
+            if (!transmit_data_valid || transmit_data != expected[index])
                 $fatal(1, "UART_EXCHANGE_REPLY_BYTE index=%0d expected=%02h actual=%02h valid=%b", index, expected[index], transmit_data, transmit_data_valid);
             bytes_checked = bytes_checked + 1;
             @(negedge clk);

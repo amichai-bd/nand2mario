@@ -1,5 +1,8 @@
 `timescale 1ns/1ps
 `default_nettype none
+// Lint waiver: OAM byte indices are formed as 15-bit pair arithmetic
+// and index the 160-entry expected array; the truncation lint is a false positive.
+/* verilator lint_off WIDTHTRUNC */
 module tb_dma_composition;
     integer lane;
     n2m_memory_pkg::memory_oam_request_t oam_request;
@@ -183,7 +186,7 @@ module tb_dma_composition;
             if(gb_tick && previous_pair_request && ppu_oam_phase!=0) begin
                 if(!dma_active) observed_pair={expected_oam[int'(previous_pair)*2+1],expected_oam[int'(previous_pair)*2]};
                 else observed_pair=expected_held;
-                if((!dma_active || ppu_oam_phase==2) && (!ppu_oam_valid || ppu_oam_data!==observed_pair))
+                if((!dma_active || ppu_oam_phase==2) && (!ppu_oam_valid || ppu_oam_data!=observed_pair))
                     $fatal(1,"DMA_COMPOSITION_PPU pair=%0d expected=%04x actual=%04x",previous_pair,observed_pair,ppu_oam_data);
                 checks=checks+1;
             end
@@ -207,21 +210,21 @@ module tb_dma_composition;
                 end
                 sampled_read=0; sampled_write=0;
                 if(read_case && bus_commit && bus_plan.address[15:8]==8'hfe) begin
-                    if(bus_plan.write_enable || bus_plan.address!==16'('hfe00+((read_increment_case || family_pop) ? reads : 0)))
+                    if(bus_plan.write_enable || bus_plan.address!=16'('hfe00+((read_increment_case || family_pop) ? reads : 0)))
                         $fatal(1,"DMA_COMPOSITION_READ_ADDRESS index=%0d actual=%04x",reads,bus_plan.address);
                     reads=reads+1; sampled_read=1;
                 end
                 if(family_store && bus_commit && bus_plan.address[15:8]==8'hfe) begin
-                    if(!bus_plan.write_enable || bus_plan.address!==16'('hfe3f-ordinary_writes))
+                    if(!bus_plan.write_enable || bus_plan.address!=16'('hfe3f-ordinary_writes))
                         $fatal(1,"DMA_FAMILY_STORE_ADDRESS index=%0d actual=%04x",ordinary_writes,bus_plan.address);
-                    if(bus_plan.write_data!==8'hc0)$fatal(1,"DMA_FAMILY_STORE_DATA expected=c0 actual=%02x",bus_plan.write_data);
+                    if(bus_plan.write_data!=8'hc0)$fatal(1,"DMA_FAMILY_STORE_DATA expected=c0 actual=%02x",bus_plan.write_data);
                     ordinary_writes=ordinary_writes+1;
                     // A permitted ordinary store commits independently of scan corruption.
                     if(!dma_active && oam_cpu_allow)expected_oam[bus_plan.address[7:0]]=8'hc0;
                 end
                 if(address_effect_sample && address_effect.valid && address_effect.write_effect &&
                     address_effect.address[15:8]==8'hfe) begin
-                    if(address_effect.address!==16'(family_decrement ? 'hfe3f-effects :
+                    if(address_effect.address!=16'(family_decrement ? 'hfe3f-effects :
                         'hfe00+(family_pop ? 2*effects:effects))) $fatal(1,"DMA_COMPOSITION_IDU");
                     effects=effects+1; sampled_write=1;
                 end
@@ -248,12 +251,12 @@ module tb_dma_composition;
                     expected_held={expected_oam[(selected_offset/2)*2+1],expected_oam[(selected_offset/2)*2]};
             end
             if(access_write && access_store==n2m_memory_pkg::STORE_OAM) begin
-                if(access_wdata!==expected_oam[access_address])
+                if(access_wdata!=expected_oam[access_address])
                     $fatal(1,"DMA_COMPOSITION_WRITE address=%0d expected=%02x actual=%02x",access_address,expected_oam[access_address],access_wdata);
                 $fdisplay(trace,"%0d,%0d,%02x,%02x",dot_before,access_address,expected_oam[access_address],access_wdata);
             end
             for (lane=0; lane<2; lane=lane+1) if (oam_request.write_enable[lane]) begin
-                if(oam_request.data[8*lane +: 8]!==expected_oam[(15'(oam_request.pair)*15'd2+15'(lane))])
+                if(oam_request.data[8*lane +: 8]!=expected_oam[(15'(oam_request.pair)*15'd2+15'(lane))])
                     $fatal(1,"DMA_COMPOSITION_WRITE address=%0d expected=%02x actual=%02x",(15'(oam_request.pair)*15'd2+15'(lane)),expected_oam[(15'(oam_request.pair)*15'd2+15'(lane))],oam_request.data[8*lane +: 8]);
                 $fdisplay(trace,"%0d,%0d,%02x,%02x",dot_before,(15'(oam_request.pair)*15'd2+15'(lane)),expected_oam[(15'(oam_request.pair)*15'd2+15'(lane))],oam_request.data[8*lane +: 8]);
             end
@@ -356,7 +359,7 @@ module tb_dma_composition;
             @(negedge clk_sys);
             while(!(seen_start && dma_age>=10 && cpu_phase==2'(pause_phase))) @(negedge clk_sys);
             pause_dot=dot_before; pause_sample_phase=cpu_phase; run_enable=0;
-            if(pause_sample_phase!==2'(pause_phase)) $fatal(1,"DMA_PAUSE_REQUEST_PHASE");
+            if(pause_sample_phase!=2'(pause_phase)) $fatal(1,"DMA_PAUSE_REQUEST_PHASE");
             wait(paused); @(negedge clk_sys);
             if(dot_before!=pause_dot+1 || cpu_phase!=pause_sample_phase+2'd1)
                 $fatal(1,"DMA_PAUSE_ACCEPTING_DOT phase=%0d before=%0d after=%0d",pause_phase,pause_dot,dot_before);
@@ -385,7 +388,7 @@ module tb_dma_composition;
         end
         if(corrupt_row_case) begin
             wait(row_fault_ready); @(negedge clk_sys);
-            if(!oam_request.write_enable[row_fault_address[0]] || oam_request.pair!==row_fault_address[7:1] || oam_request.data[8*int'(row_fault_address[0]) +: 8]!==8'h10)
+            if(!oam_request.write_enable[row_fault_address[0]] || oam_request.pair!=row_fault_address[7:1] || oam_request.data[8*int'(row_fault_address[0]) +: 8]!=8'h10)
                 $fatal(1,"DMA_ROW_FAULT_PRECONDITION address=%0d actual=%0d data=%02x",row_fault_address,access_address,access_wdata);
             force dut.oam_request.data=16'h0000;
         end
@@ -408,13 +411,13 @@ module tb_dma_composition;
         wait(stop_case ? cpu_stopped : cpu_halted);
         if(power_case) begin
             @(negedge clk_sys); held_count=dma_count;
-            if(held_count!=1 || !dma_active || expected_held!==16'h0810 || dut.service.dma_held_pair!==16'h0810)
+            if(held_count!=1 || !dma_active || expected_held!=16'h0810 || dut.service.dma_held_pair!=16'h0810)
                 $fatal(1,"DMA_POWER_EVEN_PAIR count=%0d pair=%04x",held_count,expected_held);
             sleep_dot=dot_before;
             repeat(1000) begin
                 @(negedge clk_sys);
                 if(stop_case && dot_before!=sleep_dot) $fatal(1,"DMA_STOP_DOT_HOLD");
-                if(dut.service.dma_held_pair!==16'h0810) $fatal(1,"DMA_POWER_ACTUAL_PAIR");
+                if(dut.service.dma_held_pair!=16'h0810) $fatal(1,"DMA_POWER_ACTUAL_PAIR");
             end
             if(dma_count!=held_count || !dma_active) $fatal(1,"DMA_POWER_PROGRESS");
             if(stop_case) begin
@@ -445,7 +448,7 @@ module tb_dma_composition;
         for(index=0;index<160;index=index+1) begin
             @(negedge clk_sys); setup_read=1; setup_store=n2m_memory_pkg::STORE_OAM; setup_address=15'(index);
             @(negedge clk_sys);
-            if(!access_valid || access_rdata!==expected_oam[index])
+            if(!access_valid || access_rdata!=expected_oam[index])
                 $fatal(1,"DMA_COMPOSITION_READBACK offset=%0d expected=%02x actual=%02x",index,expected_oam[index],access_rdata);
         end
         $fclose(trace);

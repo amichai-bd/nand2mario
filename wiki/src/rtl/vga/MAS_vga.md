@@ -116,8 +116,8 @@ system write port and one pixel read port, 23040 entries of two bits, and one
 registered read stage. Three instances implement the ownership banks. Memory
 contents and read data have no reset initialization. A read is enabled only for
 a valid display bank and scaled-image coordinate. Ownership excludes same-bank
-read/write collisions; collision results are never consumed. The same `n2m_intel_ram` instance and parameters run against the installed
-Intel model in Questa and synthesize for MAX 10. A is write-only and B is
+read/write collisions; collision results are never consumed. The same `n2m_intel_ram` instance and parameters run against the repository
+memory double under Verilator and synthesize the vendor primitive for MAX 10. A is write-only and B is
 read-only with independent clocks. Its address/input stage provides the one-edge
 read; the primitive output is unregistered, so no second RAM stage is added.
 The adapter ties reset inactive, discards unused valid/A-read outputs, and gates
@@ -158,7 +158,7 @@ records every observer completion. A raster oracle checks every output coordinat
 sync, border and scaled shade. Ownership monitors check immutable offers,
 disjoint RAM ownership, blanking-only swaps, acknowledgement ordering and
 counter explanations. Deliberate illegal bank reuse and active-video swap must
-produce their specific nonzero failures in Questa. Clock/reset schedules include
+produce their specific nonzero failures under Verilator. Clock/reset schedules include
 faster and slower sources, pause, core reset, outstanding-offer global reset,
 lock loss, and stopped pixel clocks.
 

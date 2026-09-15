@@ -82,7 +82,7 @@ module tb_memory_cpu_port;
         address = target; write_enable = 0; request_valid = 1;
         #1;
         edge_cycle();
-        if (!response_valid || read_data !== value) $fatal(1, "MEMORY_CPU_READ address=%04h expected=%02h actual=%02h", target, value, read_data);
+        if (!response_valid || read_data != value) $fatal(1, "MEMORY_CPU_READ address=%04h expected=%02h actual=%02h", target, value, read_data);
         // Sleeping/HALT-style preparation has no commit and can refresh data.
         repeat (4) edge_cycle();
         bus_commit = 1; edge_cycle(); bus_commit = 0;
@@ -144,15 +144,15 @@ module tb_memory_cpu_port;
         initialize();
         // Readback of bytes already loaded is legal before a complete image.
         host_read = 1; host_offset = 0; edge_cycle();
-        if (!host_valid || host_rdata !== 8'h5A) $fatal(1, "MEMORY_CPU_PARTIAL_LOAD_FIRST");
+        if (!host_valid || host_rdata != 8'h5A) $fatal(1, "MEMORY_CPU_PARTIAL_LOAD_FIRST");
         host_offset = 16; edge_cycle();
-        if (!host_valid || host_rdata !== 8'h4A) $fatal(1, "MEMORY_CPU_PARTIAL_LOAD_LAST");
+        if (!host_valid || host_rdata != 8'h4A) $fatal(1, "MEMORY_CPU_PARTIAL_LOAD_LAST");
         host_read = 0; host_write = 1;
         for (index = 17; index < 32768; index = index + 1) begin
             host_offset = 32'(index); host_wdata = index == 'h123 ? 8'h5A : 8'(index ^ 'h5A); edge_cycle();
         end
         host_write = 0; host_read = 1; host_offset = 32767; edge_cycle();
-        if (!host_valid || host_rdata !== 8'hA5) $fatal(1, "MEMORY_CPU_COMPLETE_LOAD_LAST");
+        if (!host_valid || host_rdata != 8'hA5) $fatal(1, "MEMORY_CPU_COMPLETE_LOAD_LAST");
         host_read = 0; endpoint_loading = 0;
         read_byte(16'h0123, 8'h5A);
         write_byte(16'h0123, 8'hC3);
@@ -174,7 +174,7 @@ module tb_memory_cpu_port;
         #1;
         if (response_valid) $fatal(1, "MEMORY_CPU_STALE_ADDRESS");
         edge_cycle();
-        if (!response_valid || read_data !== 0) $fatal(1, "MEMORY_CPU_NEW_ADDRESS");
+        if (!response_valid || read_data != 0) $fatal(1, "MEMORY_CPU_NEW_ADDRESS");
         if (duplicate_fault) begin
             write_enable = 1;
             force dut.storage_write = 1'b1;
@@ -193,7 +193,7 @@ module tb_memory_cpu_port;
                     $fatal(1, "MEMORY_CPU_FIXED_WRITE_EFFECT address=%04h", address);
                 edge_cycle(); bus_commit = 0; write_enable = 0;
                 #1;
-                if (!response_valid || read_data !== 8'hFF || owner_prepare || storage_read)
+                if (!response_valid || read_data != 8'hFF || owner_prepare || storage_read)
                     $fatal(1, "MEMORY_CPU_FIXED_READ address=%04h", address);
                 bus_commit = 1; edge_cycle(); bus_commit = 0;
                 fixed_reads = fixed_reads + 1;
@@ -211,7 +211,7 @@ module tb_memory_cpu_port;
             if (owner_prepare || owner_commit || storage_read || storage_write)
                 $fatal(1, "MEMORY_CPU_ABSENT_WRITE_EFFECT address=%04h", address);
             edge_cycle(); bus_commit = 0; write_enable = 0; #1;
-            if (!response_valid || read_data !== 8'hFF || owner_prepare || storage_read)
+            if (!response_valid || read_data != 8'hFF || owner_prepare || storage_read)
                 $fatal(1, "MEMORY_CPU_ABSENT_READ address=%04h expected=ff actual=%02h", address, read_data);
             bus_commit = 1; edge_cycle(); bus_commit = 0;
             absent_reads = absent_reads + 1;
@@ -222,10 +222,10 @@ module tb_memory_cpu_port;
         // not a timer, DMA or PPU implementation or its acceptance evidence.
         address = 16'hFF46; write_enable = 0; owner_service_available = 1; owner_valid = 1;
         owner_rdata = 8'h35; #1;
-        if (owner_destination != n2m_memory_pkg::MEMORY_DMA || !owner_prepare || !response_valid || read_data !== 8'h35)
+        if (owner_destination != n2m_memory_pkg::MEMORY_DMA || !owner_prepare || !response_valid || read_data != 8'h35)
             $fatal(1, "MEMORY_CPU_OWNER_PREPARE");
         owner_rdata = 8'hC7; #1;
-        if (read_data !== 8'hC7) $fatal(1, "MEMORY_CPU_OWNER_PRE_T4");
+        if (read_data != 8'hC7) $fatal(1, "MEMORY_CPU_OWNER_PRE_T4");
         bus_commit = 1; edge_cycle(); bus_commit = 0;
         owner_valid = 0; #1;
         if (response_valid) $fatal(1, "MEMORY_CPU_MISSING_RESPONSE");

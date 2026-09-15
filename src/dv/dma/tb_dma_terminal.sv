@@ -90,7 +90,7 @@ module tb_dma_terminal;
         @(negedge clk_sys);
         gb_tick=0; bus_commit=0; address_effect_sample=0; cpu_phase=cpu_phase+2'd1;
         if(fault || ppu_fault) $fatal(1,"DMA_TERMINAL_FAULT");
-        if(fetch_phase1 && object_attributes!==8'ha5) $fatal(1,"DMA_TERMINAL_CAPTURE");
+        if(fetch_phase1 && object_attributes!=8'ha5) $fatal(1,"DMA_TERMINAL_CAPTURE");
     endtask
     task automatic begin_dma;
         while(cpu_phase!=0) dot_step();
@@ -100,7 +100,7 @@ module tb_dma_terminal;
         request_valid=0; bus_plan='0;
     endtask
     task automatic expect_pair;
-        if(ppu_oam_phase!=2 || object_pair!=79 || !ppu_oam_valid || ppu_oam_data!==16'ha52a)
+        if(ppu_oam_phase!=2 || object_pair!=79 || !ppu_oam_valid || ppu_oam_data!=16'ha52a)
             $fatal(1,"DMA_TERMINAL_PAIR expected=a52a actual=%04x phase=%0d pair=%0d",ppu_oam_data,ppu_oam_phase,object_pair);
     endtask
     initial begin
@@ -135,14 +135,14 @@ module tb_dma_terminal;
         if(dma_active || !dut.pair_pending || dut.pending_pair!=79) $fatal(1,"DMA_TERMINAL_PENDING");
         // Different request tag must select its real raw pair while79 is pending.
         other_pair=1; repeat(3) @(negedge clk_sys);
-        if(!ppu_oam_valid || ppu_oam_data!==16'h0810) $fatal(1,"DMA_TERMINAL_OTHER_PAIR");
+        if(!ppu_oam_valid || ppu_oam_data!=16'h0810) $fatal(1,"DMA_TERMINAL_OTHER_PAIR");
         other_pair=0;
         repeat(2) @(negedge clk_sys);
         if(corrupt) force dut.ppu_oam_data=16'h002a;
         // Five clocks elapsed since A: consume the earliest next Game Boy dot.
         #1; expect_pair(); fetch_phase1=1; gb_tick=1;
         @(negedge clk_sys); gb_tick=0; cpu_phase=cpu_phase+2'd1;
-        if(object_attributes!==8'ha5 || tile_row_address!==11'h150) $fatal(1,"DMA_TERMINAL_CAPTURE");
+        if(object_attributes!=8'ha5 || tile_row_address!=11'h150) $fatal(1,"DMA_TERMINAL_CAPTURE");
         dot_step(); expect_pair();
         if(!dut.pair_pending) $fatal(1,"DMA_TERMINAL_PRECOMMIT");
         dot_step(); expect_pair();

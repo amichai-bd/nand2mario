@@ -208,9 +208,18 @@ by name as `SKIPPED` with reason `questa-retired`, publish a `SKIPPED`
 `sim/test/<target>/result.json` naming `simulator`, `os` and `seed`, and never
 discover a simulator or launch a child. It counts as neither a pass nor a
 defect; `sim test` exits 2 and the aggregate commands list it in `skipped`.
-The Intel vendor models were a Questa binding, so a `verilator` target may
-not declare `vendor_model`; the validator refuses it with a clear message, and
-a target that still needs one stays `questa` until its area migration.
+`vendor_model` on a `verilator` target records the synthesis binding of the
+RTL under test (`intel-memory`, `intel-adc` or `intel-controls`). The Verilator
+stage compiles no vendor source: the wrapper selects the repository double
+under `VERILATOR`, and the record's `options.vendor_model` names the binding
+and the double. `intel_mixed_mode_instances` was the Questa model's
+coercion-diagnostic inventory; the double emits no such diagnostic, so the
+validator refuses the field under `verilator` (see the
+[memory MAS](../../src/rtl/common/MAS_memory_primitives.md#writes-and-collisions)).
+An `intel-adc` target receives the [channel fixture files](#intel-adc-binding-under-verilator)
+beside its run. `defines` lists `NAME` or `NAME=VALUE` identifiers that the
+build passes as `+define+`; elaboration-time selection is a build option, not
+a runtime plusarg, and the validator refuses any other shape.
 `preload` runs on the Verilator stage; see
 [preload fixtures](#preload-fixtures-under-verilator). A `driver` runs through
 the [Verilator peer](#verilator-peer-driver). The migrated targets
@@ -225,7 +234,11 @@ that declare no `vendor_model` in the [test catalogue](#test-catalogue), the
 (`clocking-early-reset`, `timebase25`, `timebase25-bad-numerator`) or
 `common` (`assert-synthesis`, `register-macros`, `register-macros-corrupt`),
 the 23 SystemVerilog targets without a `vendor_model` labelled `dma`, `uart`
-or `baseline`, the three `tb_clocking` targets `clocking`, `clocking-bad-numerator` and
+or `baseline`, the 117 SystemVerilog targets that declare a `vendor_model`
+(the `memory`, `dma`, `uart`, `vga`, `snapshot`, `audio`, `ppu`, `input`,
+`common`, `integration` and `host-play` areas, including the ten `driver`
+targets and the two `tb_preload_load` targets), the two `tb_memory_decode`
+targets `memory-decode` and `memory-decode-alias`, the three `tb_clocking` targets `clocking`, `clocking-bad-numerator` and
 `clocking-drop-tick`, and the five `tb_async_assert_macros` targets
 `async-assert-macros`, `async-assert-direct`, `async-assert-hold`,
 `async-assert-never` and `async-assert-no_reset`. `ppu-shift-unknown` and
@@ -378,9 +391,11 @@ proves the pipeline without product RTL: it reads the ROM MIF, presence MIF and
 CRC hex from its run directory, rebuilds the 32768 bytes, requires the CRC-32
 of the rebuilt image to equal the hex the loader reads, and checks the
 integration image's entry stub and title. Measured on WSL: build 4.5 s, run
-under 0.1 s, `CACHED` on rerun. Preload targets whose fixtures also need the
-Intel doubles (the memory, v0.5 and Python areas) flip to `verilator` in their
-area migrations.
+under 0.1 s, `CACHED` on rerun. `preload-lifecycle` and `preload-crc-fault`
+([`tb_preload_load.sv`](../../../src/dv/preload/tb_preload_load.sv)) run the
+loader against the initialized RAM double with the same `preload: "integration"`
+declaration and rebuild their expected bytes from the prepared ROM MIF. The
+Python-area preload targets flip in their own migration.
 [`test_verilator.py`](../../../tools/n2m/tests/test_verilator.py)
 `PreloadTests` cover validation, preparation, the pre-launch recheck, the
 record, and fingerprint invalidation by a changed fixture input or Mooneye tool
@@ -402,7 +417,16 @@ the tree. A `questa` target keeps its retired Tcl script and is `SKIPPED`.
 The run is the [Python flow](#python-testbenches-under-verilator) with
 `--timing` kept, because the testbench owns the clock, the checks, the
 signature and `$finish`; cocotb's main advances to the testbench's next time
-slot between the peer's own timers. The stage discovers the pinned runtime,
+slot between the peer's own timers. Instead of `--public-flat-rw`, the build
+takes a generated configuration `compile/verilator/<target>/<attempt>/access.vlt`
+that makes exactly the `access` list public on the top module
+(`public_flat_rw -module "<top>" -var "<name>"`); the peer touches nothing
+else, and the whole-design switch cost Verilator most of its optimizations
+(`integration-smoke` ran 168 s with it and 68 s without), and compiles with
+`-CFLAGS -O2` instead of Verilator's default `-Os`, because the composed
+product systems otherwise exhaust their wall budget (`host-play` ran 200 s
+with `-O2` and did not finish in 288 s without). The build also passes the
+target's `defines` as `+define+`. The stage discovers the pinned runtime,
 so `sim test` for a driver target runs on the pinned interpreter like a
 Python target. Before the run command the builder starts the Python peer
 ([`simulation_peer.py`](../../../tools/n2m/simulation_peer.py)), waits for
@@ -451,7 +475,13 @@ simulation, but the simulation ended prematurely...`. When the declared
 signature appears on a diagnostic line (`%Fatal`, `%Error`, `ERROR` or
 `CRITICAL`), that two-line report is
 accepted as the fatal's own stop report for that module only; any other
-warning still fails the attempt, and no results check applies.
+warning still fails the attempt, and no results check applies. A deliberate
+failure the peer raises instead (the `host-play` variants' `FAIL PLAY_*`)
+ends through `$finish` with raw exit zero; that form passes only when the
+peer test's `results.xml` failure message carries the declared signature
+([`python_tb.accepted`](../../../tools/n2m/python_tb.py)), the signature is
+in the transcript, and the only explained warning is cocotb's
+`<module>.peer failed` report of that test.
 
 [`tb_verilator_peer.sv`](../../../src/dv/integration/tb_verilator_peer.sv) proves
 the peer without product RTL: the tb_integration mailboxes, a 25 MHz
@@ -461,8 +491,11 @@ is its Python peer: requests of 1, 19 and 271 bytes, `WAIT 136280`, `DONE`,
 checking each reply and monotonic simulation time. `verilator-peer` expects
 `PASS verilator-peer transactions=3`; `verilator-peer-fault` uses
 [`peer_check_fault.py`](../../../src/dv/integration/peer_check_fault.py), which
-sends `WAIT 5` after the first request, and must fail as `Verilator peer
-failed: SMOKE_DRIVER_WAIT_RANGE`; `verilator-peer-fatal` passes `+echo_fault`
+sends `WAIT 5` after the first request; it is registered
+`expected_exit: "nonzero"` with signature `SMOKE_DRIVER_WAIT_RANGE`, so it
+passes only by the peer raising that name (the peer-raised failure form
+below), and a run whose peer passes fails it as `unexpected exit 0`;
+`verilator-peer-fatal` passes `+echo_fault`
 so the endpoint raises `PEER_ECHO_FAULT seq=2` inside the second transaction
 and must exit nonzero with that signature. Measured on WSL: build 1.4 s cold
 and 0.25 s with `ccache`, run under 0.5 s, `CACHED` on rerun.
@@ -471,11 +504,14 @@ the protocol against a fake access list;
 [`test_simulation_peer.py`](../../../tools/n2m/tests/test_simulation_peer.py)
 and [`test_verilator.py`](../../../tools/n2m/tests/test_verilator.py) cover
 validation, the stage, the by-name failure and the fatal acceptance with
-doubles. The twelve product driver targets (`integration-smoke` and its
-variants, `integration-preloaded`, the `host-play` targets and the two
-`tb_preload_load` targets) also declare `vendor_model` and stay `questa` until
-the Intel doubles land; their flip is tracked in
-[#611](https://github.com/amichai-bd/nand2mario/issues/611).
+doubles. The ten product driver targets (`integration-smoke` and its three
+fault variants, `integration-preloaded` and the five `host-play` targets) run
+through this peer with `script` at `src/dv/integration/driver.py` or
+`src/dv/host_play/driver.py`; `integration-preloaded` selects its prepared
+images with `defines: ["PRELOADED"]`, and its `driver.preload` peer prepares
+them. The two `tb_preload_load` targets declare no driver: their retired
+`load.do` only acknowledged image preparation, which `preload: "integration"`
+with `preload_inputs` now does on the stage.
 
 ### Record
 
@@ -502,8 +538,9 @@ stay in [`questa.py`](../../../tools/n2m/questa.py),
 [`intel_memory.py`](../../../tools/n2m/intel_memory.py) and
 [`intel_adc.py`](../../../tools/n2m/intel_adc.py) for the area
 migrations under [#595](https://github.com/amichai-bd/nand2mario/issues/595).
-Its Tcl driver scripts (`driver.do`, `load.do`) stay beside their `questa`
-targets; the Python peer process they connected to is the same
+The retired Tcl driver scripts (`driver.do`, `load.do`) remain in the tree
+for the Questa retirement; no registered target names them. The Python peer
+process they connected to is the same
 [`simulation_peer.py`](../../../tools/n2m/simulation_peer.py) the
 [Verilator peer](#verilator-peer-driver) uses.
 
@@ -646,14 +683,26 @@ single occurrence and one-warning/zero-error summary required. Raw logs and
 or runtime warnings remain failures. No vendor bytes are edited or compiler
 warnings suppressed. Host dependency tests are not hardware behavior evidence.
 
+### Intel ADC binding under Verilator
+
+A `verilator` target with `vendor_model: "intel-adc"` lists the PLL and control
+doubles among its sources. Before the build the stage writes the original
+voltage fixture `adc_ch0.txt` to `adc_ch16.txt` into the attempt from
+[`intel_adc.stimulus_manifest`](../../../tools/n2m/intel_adc.py): channel 1
+holds 0.625 V, channel 2 holds 1.25 V, every other channel 0 V, one row each.
+An existing file with the fixture text is left alone; a different file under a
+fixture name fails the attempt. [`test_verilator.py`](../../../tools/n2m/tests/test_verilator.py)
+covers the files and the refusal.
+
 ### Installed Intel memory model
 
-A target declaring `vendor_model: "intel-memory"` requires the installed source
-set pinned in [dependencies.json](../../../tools/n2m/dependencies.json).
-The retired adapter found `quartus/eda/sim_lib` beside the selected Questa
+Under Verilator none of this section applies: a `verilator` target's
+`vendor_model: "intel-memory"` is the recorded synthesis binding and the stage
+compiles the repository double. The retired Questa adapter required the
+installed source set pinned in [dependencies.json](../../../tools/n2m/dependencies.json).
+It found `quartus/eda/sim_lib` beside the selected Questa
 distribution, or took `--intel-sim-lib <directory>` explicitly; the builder no
-longer accepts that option (it fails argument parsing) and no migrated target
-declares `vendor_model`. Each required source must
+longer accepts that option (it fails argument parsing). Each required source had to
 exist and match the supported hash before cache reuse or compilation. A missing,
 modified or wrong model fails; there is no portable fallback. Repository HDL
 that defines a shadow `altsyncram` or `altsyncram_body` is rejected.
@@ -666,9 +715,13 @@ parameters, dependency pin and builder options enter the fingerprint. Updating
 an approved pin changes the fingerprint; removing/changing an installed source
 cannot reuse an older PASS. Vendor source is never copied into tracked files.
 
-`intel_mixed_mode_instances` names the exact vendor instances expected to emit
-the reviewed model's mixed-port coercion warning. This inventory is part of the
-descriptor and fingerprint. Only the pinned source's exact two-line time-zero
+`intel_mixed_mode_instances` named the exact vendor instances expected to emit
+the reviewed model's mixed-port coercion warning. This inventory was part of
+the Questa descriptor and fingerprint; no `verilator` target declares it (the
+Python `questa` targets keep theirs until their migration), and the validator
+refuses it under `verilator` because the double emits no coercion diagnostic. The forbidden collision it classified is checked under both
+simulators by the wrapper's `INTEL_RAM_MIXED_PORT_A/B` assertions, which
+`intel-memory-collision` witnesses. Only the pinned source's exact two-line time-zero
 diagnostic is classified, and only during runtime. Missing, duplicate,
 wrong-instance, wrong-time and other warnings fail. `explained_diagnostics`
 records each original pair, source hash and reason; raw logs remain unchanged.

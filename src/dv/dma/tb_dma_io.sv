@@ -92,19 +92,19 @@ module tb_dma_io;
             if(event_case && cpu_phase==2)begin
                 if(bad_irq)force if_observe=5'h00;
                 #1;
-                if(ie_observe!==8'h1f || if_observe!==5'h04 || !oam_request.read)
+                if(ie_observe!=8'h1f || if_observe!=5'h04 || !oam_request.read)
                     $fatal(1,"DMA_IO_IRQ_PRE_T3 expected_ie=1f actual_ie=%02x expected_if=04 actual_if=%02x oam_read=%0d",ie_observe,if_observe,oam_request.read);
                 t3_checks=t3_checks+1;
             end
             gb_tick=1;bus_commit=valid_request && cpu_phase==3;address_effect_sample=bus_commit;
             #1;
             if(valid_request && destination!=n2m_memory_pkg::MEMORY_DMA)begin
-                if(!peripheral_prepare || peripheral_destination!==destination || peripheral_address!==address ||
-                    peripheral_write!==wr || peripheral_wdata!==value || peripheral_commit!==bus_commit)
+                if(!peripheral_prepare || peripheral_destination!=destination || peripheral_address!=address ||
+                    peripheral_write!=wr || peripheral_wdata!=value || peripheral_commit!=bus_commit)
                     $fatal(1,"DMA_IO_ROUTE address=%04x destination=%0d actual=%0d commit=%0d",address,destination,peripheral_destination,peripheral_commit);
             end else if(peripheral_commit)$fatal(1,"DMA_IO_LOCAL_COMMIT");
             if(bus_commit && !wr)begin
-                if(!response_valid || read_data!==expected_read)
+                if(!response_valid || read_data!=expected_read)
                     $fatal(1,"DMA_IO_READ address=%04x expected=%02x actual=%02x",address,expected_read,read_data);
                 reads=reads+1;
             end
@@ -121,12 +121,12 @@ module tb_dma_io;
                 else if(seen_start)age=age+1;
             end
             if(access_write && access_store==n2m_memory_pkg::STORE_OAM)begin
-                if(access_address!==15'(writes) || access_wdata!==8'h7b)
+                if(access_address!=15'(writes) || access_wdata!=8'h7b)
                     $fatal(1,"DMA_IO_TRANSFER index=%0d actual=%0d:%02x",writes,access_address,access_wdata);
                 writes=writes+1;
             end
             for (lane=0; lane<2; lane=lane+1) if (oam_request.write_enable[lane]) begin
-                if((15'(oam_request.pair)*15'd2+15'(lane))!==15'(writes) || oam_request.data[8*lane +: 8]!==8'h7b)
+                if((15'(oam_request.pair)*15'd2+15'(lane))!=15'(writes) || oam_request.data[8*lane +: 8]!=8'h7b)
                     $fatal(1,"DMA_IO_TRANSFER index=%0d actual=%0d:%02x",writes,(15'(oam_request.pair)*15'd2+15'(lane)),oam_request.data[8*lane +: 8]);
                 writes=writes+1;
             end
@@ -171,7 +171,7 @@ module tb_dma_io;
         observe=0;setup=1;
         for(index=0;index<160;index=index+1)begin
             @(negedge clk_sys);setup_store=n2m_memory_pkg::STORE_OAM;setup_address=15'(index);setup_read=1;
-            @(negedge clk_sys);if(!access_valid || access_rdata!==8'h7b)$fatal(1,"DMA_IO_READBACK");
+            @(negedge clk_sys);if(!access_valid || access_rdata!=8'h7b)$fatal(1,"DMA_IO_READBACK");
         end
         $display("PASS DMA IO bytes=160 owner_commits=18 reads=9 preT3=1 readback=160");$finish;
     end

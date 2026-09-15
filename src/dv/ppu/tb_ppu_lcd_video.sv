@@ -3,6 +3,9 @@
 `include "src/rtl/common/macros.svh"
 // Original scene and coordinate oracle. No expected value uses DUT fetch,
 // position, mode, line counters or window state.
+// Lint waiver: the integer file handle is tested as a boolean (`if (!trace_file)`);
+// the truncation lint is a false positive.
+/* verilator lint_off WIDTHTRUNC */
 module tb_ppu_lcd_video;
     logic clk_sys, reset_sys, core_reset, gb_tick, pause_request, paused;
     logic [31:0] epoch;
@@ -109,7 +112,7 @@ module tb_ppu_lcd_video;
     always @(posedge clk_sys) begin
         if (!reset_sys) begin
             if (enable_commit) begin enable_dot = dot_before; stream_frame = 0; pixel_count = 0; end
-            if (source_abort !== abort_due || observe_abort !== abort_due)
+            if (source_abort != abort_due || observe_abort != abort_due)
                 $fatal(1, "PPU_LCD_ABORT_BOUNDARY run=%0d expected=%0d source=%0d observer=%0d",
                     run_number, abort_due, source_abort, observe_abort);
             if (abort_due) begin
@@ -121,16 +124,16 @@ module tb_ppu_lcd_video;
                 aborted = aborted + 1; pixel_count = 0;
             end
             if (source_valid) begin
-                if (gb_tick || fault || observe_valid !== 1'b1) $fatal(1, "PPU_LCD_FORWARD");
+                if (gb_tick || fault || observe_valid != 1'b1) $fatal(1, "PPU_LCD_FORWARD");
                 expected = stream_frame == 0 ? 2'd0 : 2'd1;
-                if (source_x !== 8'(pixel_count % 160) || source_y !== 8'(pixel_count / 160)
-                    || source_start !== (pixel_count == 0) || source_shade !== expected
-                    || source_display_eligible !== (stream_frame != 0)
-                    || source_dot !== dot_before || source_epoch !== 32'd5)
+                if (source_x != 8'(pixel_count % 160) || source_y != 8'(pixel_count / 160)
+                    || source_start != (pixel_count == 0) || source_shade != expected
+                    || source_display_eligible != (stream_frame != 0)
+                    || source_dot != dot_before || source_epoch != 32'd5)
                     $fatal(1, "PPU_LCD_SOURCE run=%0d frame=%0d index=%0d", run_number, stream_frame, pixel_count);
-                if (observe_index !== 15'(pixel_count) || observe_shade !== expected
-                    || observe_sequence !== 64'(completed) || observe_epoch !== 32'd5
-                    || observe_dot !== dot_before || observe_complete !== (pixel_count == 23039))
+                if (observe_index != 15'(pixel_count) || observe_shade != expected
+                    || observe_sequence != 64'(completed) || observe_epoch != 32'd5
+                    || observe_dot != dot_before || observe_complete != (pixel_count == 23039))
                     $fatal(1, "PPU_LCD_OBSERVER run=%0d index=%0d expected_sequence=%0d actual=%0d",
                         run_number, pixel_count, completed, observe_sequence);
                 $fdisplay(trace_file, "%0d,%0d,%0d,%0d,%0d", run_number, stream_frame, pixel_count, source_dot, expected);
@@ -142,13 +145,13 @@ module tb_ppu_lcd_video;
     end
     always @(negedge clk_pix) begin
         if (!reset_pix && video_valid && video_image && white_required) begin
-            if (red !== 4'hf || green !== 4'hf || blue !== 4'hf) begin
-                if (completed < 3 || !display_valid || display_sequence !== 64'd2 || display_epoch !== 32'd5)
+            if (red != 4'hf || green != 4'hf || blue != 4'hf) begin
+                if (completed < 3 || !display_valid || display_sequence != 64'd2 || display_epoch != 32'd5)
                     $fatal(1, "PPU_LCD_EARLY_UNBLANK complete=%0d display=%0d", completed, display_sequence);
                 release_seen = 1;
             end
             if (release_seen) begin
-                if (red !== 4'ha || green !== 4'ha || blue !== 4'ha)
+                if (red != 4'ha || green != 4'ha || blue != 4'ha)
                     $fatal(1, "PPU_LCD_RELEASE_IMAGE x=%0d y=%0d", video_x, video_y);
                 checked_image = checked_image + 1;
             end
@@ -203,18 +206,18 @@ module tb_ppu_lcd_video;
         repeat (4) @(negedge clk_sys);
         io_address = 16'hff40;
         #1;
-        if (io_rdata !== 0 || !display_valid || display_sequence !== 64'd2
+        if (io_rdata != 0 || !display_valid || display_sequence != 64'd2
             || source_valid || observe_valid || observe_abort)
             $fatal(1, "PPU_LCD_PAUSED_CORE_RESET");
         wait (video_valid && video_image);
         @(negedge clk_pix);
         #1;
-        if (red !== 4'ha || green !== 4'ha || blue !== 4'ha)
+        if (red != 4'ha || green != 4'ha || blue != 4'ha)
             $fatal(1, "PPU_LCD_CORE_LAST_IMAGE");
         // Shared reset clears both mailbox endpoints; no one-ended reset case.
         reset_sys = 1;
         #1;
-        if (red !== 0 || green !== 0 || blue !== 0 || !hsync_n || !vsync_n)
+        if (red != 0 || green != 0 || blue != 0 || !hsync_n || !vsync_n)
             $fatal(1, "PPU_LCD_GLOBAL_BLACK");
         repeat (3) @(negedge clk_pix);
         if (display_valid || source_valid || observe_valid)

@@ -88,7 +88,7 @@ module tb_dma_tags;
                 default:$fatal(1,"DMA_TAG_EXTRA_WRITE");
             endcase
             expected_byte=8'(expected_address+24);
-            if(access_address!==15'(expected_address) || access_wdata!==expected_byte)
+            if(access_address!=15'(expected_address) || access_wdata!=expected_byte)
                 $fatal(1,"DMA_TAG_FRESH_ROW address=%0d expected=%02x actual=%02x",access_address,expected_byte,access_wdata);
             writes=writes+1;
         end
@@ -99,7 +99,7 @@ module tb_dma_tags;
                 default:$fatal(1,"DMA_TAG_EXTRA_WRITE");
             endcase
             expected_byte=8'(expected_address+24);
-            if((15'(oam_request.pair)*15'd2+15'(lane))!==15'(expected_address) || oam_request.data[8*lane +: 8]!==expected_byte)
+            if((15'(oam_request.pair)*15'd2+15'(lane))!=15'(expected_address) || oam_request.data[8*lane +: 8]!=expected_byte)
                 $fatal(1,"DMA_TAG_FRESH_ROW address=%0d expected=%02x actual=%02x",(15'(oam_request.pair)*15'd2+15'(lane)),expected_byte,oam_request.data[8*lane +: 8]);
             writes=writes+1;
         end
@@ -144,7 +144,7 @@ module tb_dma_tags;
         for(index=104;index<112;index=index+1)begin
             @(negedge clk_sys);setup_store=n2m_memory_pkg::STORE_OAM;setup_address=15'(index);setup_read=1;
             @(negedge clk_sys);
-            if(!access_valid || access_rdata!==8'(index+24))$fatal(1,"DMA_TAG_READBACK");
+            if(!access_valid || access_rdata!=8'(index+24))$fatal(1,"DMA_TAG_READBACK");
         end
         $display("PASS DMA scan tags row4 off row12 row13 writes=8 readback=8");$finish;
     end

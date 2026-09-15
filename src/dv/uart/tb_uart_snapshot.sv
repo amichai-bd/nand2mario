@@ -1,5 +1,10 @@
 `timescale 1ns/1ps
 `default_nettype none
+// Lint waiver: byte array elements are passed to integer CRC and index
+// arithmetic and the integer file handle is tested as a boolean; both width lints
+// are false positives.
+/* verilator lint_off WIDTHEXPAND */
+/* verilator lint_off WIDTHTRUNC */
 module tb_uart_snapshot;
     logic clk_sys, reset_sys, uart_rx, uart_tx;
     logic gb_tick, paused, pause_request, core_reset, core_initialized;
@@ -85,7 +90,7 @@ module tb_uart_snapshot;
             if(snapshot_request && snapshot_ready) begin
                 copy_active=1;old_metadata=snapshot_metadata;was_valid=snapshot_valid;
             end
-            if(copy_active && !snapshot_done && (snapshot_metadata !== old_metadata || snapshot_valid !== was_valid))
+            if(copy_active && !snapshot_done && (snapshot_metadata != old_metadata || snapshot_valid != was_valid))
                 $fatal(1,"UART_SNAPSHOT_EARLY_PUBLICATION");
             if(snapshot_done) begin copy_active=0;if(snapshot_ok)publication_count=publication_count+1;end
         end
@@ -151,7 +156,7 @@ module tb_uart_snapshot;
         for(payload_index=0;payload_index<expected_size;payload_index=payload_index+1) begin
             expected=expected_payload[payload_index];
             if(dot_reply) expected=8'((input_reply ? observed_input_dot : observed_dots)>>(payload_index*8));
-            if(raw_reply[10+payload_index]!==expected) $fatal(1,"UART_SNAPSHOT_PAYLOAD cmd=%0d index=%0d expected=%02h actual=%02h",expected_command,payload_index,expected,raw_reply[10+payload_index]);
+            if(raw_reply[10+payload_index]!=expected) $fatal(1,"UART_SNAPSHOT_PAYLOAD cmd=%0d index=%0d expected=%02h actual=%02h",expected_command,payload_index,expected,raw_reply[10+payload_index]);
         end
         if (expected_status==0 && (expected_command==3 || expected_command==7 || expected_command==9) && (!paused || !core_initialized))
             $fatal(1,"UART_SNAPSHOT_EARLY_RESET_REPLY");
@@ -165,10 +170,10 @@ module tb_uart_snapshot;
             @(negedge uart_tx);
             if (!reset_sys) begin
                 repeat(4) @(negedge clk_sys);
-                if(uart_tx!==0) $fatal(1,"UART_SNAPSHOT_TX_START");
+                if(uart_tx!=0) $fatal(1,"UART_SNAPSHOT_TX_START");
                 for(bit_number=0;bit_number<8;bit_number=bit_number+1) begin repeat(8) @(negedge clk_sys);value[bit_number]=uart_tx;end
                 repeat(8) @(negedge clk_sys);
-                if(uart_tx!==1) $fatal(1,"UART_SNAPSHOT_TX_STOP");
+                if(uart_tx!=1) $fatal(1,"UART_SNAPSHOT_TX_STOP");
                 repeat(4) @(negedge clk_sys);
                 if(value==0) check_reply();
                 else begin if(reply_size>=270) $fatal(1,"UART_SNAPSHOT_TX_OVERFLOW");encoded_reply[reply_size]=value;reply_size=reply_size+1;end

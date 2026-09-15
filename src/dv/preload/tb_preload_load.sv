@@ -16,6 +16,8 @@ module tb_preload_load;
     logic [31:0] crc_word [0:0];
     logic [7:0] expected_bytes [0:32767];
     integer clear_writes, rom_reads, cycles;
+    integer mif, matched, mif_address, mif_value, mif_count;
+    string line;
     bit crc_fault;
     n2m_uart_load #(.SIM_PRELOAD(1)) dut (.*);
     defparam dut.u_presence.u_presence.SIM_INIT_FILE = "preload-presence.mif";
@@ -42,7 +44,7 @@ module tb_preload_load;
     endtask
     task automatic finish_status(input logic [7:0] expected);
         wait(done); #1;
-        if(status!==expected) $fatal(1,"PRELOAD_LOAD_STATUS expected=%02x actual=%02x",expected,status);
+        if(status!=expected) $fatal(1,"PRELOAD_LOAD_STATUS expected=%02x actual=%02x",expected,status);
         @(negedge clk_sys); wait(!busy);
     endtask
     initial begin
@@ -51,7 +53,19 @@ module tb_preload_load;
         offset=0; count=0; expected_crc=0; input_valid=0; input_data=0; output_ready=1;
         clear_writes=0; rom_reads=0; cycles=0; crc_fault=$test$plusargs("crc_fault");
         $readmemh("preload-crc.hex",crc_word);
-        $readmemh("preload-bytes.hex",expected_bytes);
+        // The expected bytes are rebuilt from the prepared ROM MIF, the same
+        // file the initialized RAM loads, as tb_preload_fixture does.
+        mif=$fopen("preload-rom.mif","r"); mif_count=0;
+        if(mif==0) $fatal(1,"PRELOAD_LOAD_OPEN preload-rom.mif");
+        while(!$feof(mif)) begin
+            if($fgets(line,mif)==0) break;
+            matched=$sscanf(line,"%h : %h;",mif_address,mif_value);
+            if(matched!=2) continue;
+            if(mif_address<0 || mif_address>=32768) $fatal(1,"PRELOAD_LOAD_ADDRESS %0d",mif_address);
+            expected_bytes[mif_address]=mif_value[7:0]; mif_count=mif_count+1;
+        end
+        $fclose(mif);
+        if(mif_count!=32768) $fatal(1,"PRELOAD_LOAD_COUNT expected=32768 actual=%0d",mif_count);
         $dumpfile("waves/public.vcd");
         $dumpvars(0,clk_sys,reset_sys,start,operation,busy,done,status,rom_read,rom_write,
             rom_address,rom_read_data,rom_read_valid,expected_crc,clear_writes,rom_reads);

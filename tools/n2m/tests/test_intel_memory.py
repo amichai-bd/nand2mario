@@ -70,13 +70,13 @@ class IntelMemoryTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "missing Intel simulation library"):
             intel_memory.resolve(self.root, self.questa(), target, str(self.models / "absent"))
 
-    def test_a_vendor_model_target_runs_only_as_questa(self):
-        """The installed model is a Questa binding: a verilator target that still
-        names it fails validation, and a questa target with it is retired."""
+    def test_a_vendor_model_target_records_the_binding_and_a_questa_one_is_retired(self):
+        """The installed model was a Questa binding: a verilator target keeps
+        vendor_model as its recorded synthesis binding and compiles no vendor
+        source, and a questa target with it is retired."""
         from n2m.simulation import load_target
         self.prepare_model()
-        with self.assertRaisesRegex(ValueError, "vendor_model is not supported under verilator"):
-            load_target(self.root, "builder-smoke")
+        self.assertEqual(load_target(self.root, "builder-smoke")[0]["vendor_model"], "intel-memory")
         registry = self.root / "src/dv/builder/targets.json"
         targets = read_json(registry)
         targets["builder-smoke"]["simulator"] = "questa"

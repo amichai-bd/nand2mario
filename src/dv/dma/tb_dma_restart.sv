@@ -1,5 +1,8 @@
 `timescale 1ns/1ps
 `default_nettype none
+// Lint waiver: the integer file handle is tested as a boolean (`if (!trace)`);
+// the truncation lint is a false positive.
+/* verilator lint_off WIDTHTRUNC */
 module tb_dma_restart;
     integer lane;
     n2m_memory_pkg::memory_oam_request_t oam_request;
@@ -91,7 +94,7 @@ module tb_dma_restart;
             @(negedge clk_sys);gb_tick=0;bus_commit=0;address_effect_sample=0;cpu_phase=cpu_phase+2'd1;
         end
         request_valid=0;bus_plan='0;
-        if(fault || dma_active!==active_after)
+        if(fault || dma_active!=active_after)
             $fatal(1,"DMA_RESTART_ACTIVE case=%0d expected=%0d actual=%0d fault=%0d",case_index,active_after,dma_active,fault);
     endtask
     task automatic final_readback;
@@ -101,7 +104,7 @@ module tb_dma_restart;
         for(index=0;index<160;index=index+1) begin
             @(negedge clk_sys);setup_store=n2m_memory_pkg::STORE_OAM;setup_address=15'(index);setup_read=1;
             @(negedge clk_sys);
-            if(!access_valid || access_rdata!==value_at(1,index) || access_rdata!==expected_oam[index])
+            if(!access_valid || access_rdata!=value_at(1,index) || access_rdata!=expected_oam[index])
                 $fatal(1,"DMA_RESTART_READBACK case=%0d offset=%0d expected=%02x actual=%02x",case_index,index,value_at(1,index),access_rdata);
         end
         setup_read=0;setup=0;observe=1;
@@ -112,7 +115,7 @@ module tb_dma_restart;
             if(!expected_pending) $fatal(1,"DMA_RESTART_UNEXPECTED_WRITE");
             if(system_edges!=expected_edge)
                 $fatal(1,"DMA_RESTART_WRITE_TIME expected_delta=13 actual_delta=%0d",system_edges-accepted_edge);
-            if(access_address!=={7'd0,expected_offset} || access_wdata!==expected_byte)
+            if(access_address!={7'd0,expected_offset} || access_wdata!=expected_byte)
                 $fatal(1,"DMA_RESTART_WRITE case=%0d expected=%0d:%02x actual=%0d:%02x",case_index,expected_offset,expected_byte,access_address,access_wdata);
             $fdisplay(trace,"%0d,%0d,%0d,%02x,%0d,%0d",case_index,write_count,access_address,access_wdata,system_edges,expected_edge);
             expected_pending=0;write_count=write_count+1;
@@ -121,7 +124,7 @@ module tb_dma_restart;
             if(!expected_pending) $fatal(1,"DMA_RESTART_UNEXPECTED_WRITE");
             if(system_edges!=expected_edge)
                 $fatal(1,"DMA_RESTART_WRITE_TIME expected_delta=13 actual_delta=%0d",system_edges-accepted_edge);
-            if((15'(oam_request.pair)*15'd2+15'(lane))!=={7'd0,expected_offset} || oam_request.data[8*lane +: 8]!==expected_byte)
+            if((15'(oam_request.pair)*15'd2+15'(lane))!={7'd0,expected_offset} || oam_request.data[8*lane +: 8]!=expected_byte)
                 $fatal(1,"DMA_RESTART_WRITE case=%0d expected=%0d:%02x actual=%0d:%02x",case_index,expected_offset,expected_byte,(15'(oam_request.pair)*15'd2+15'(lane)),oam_request.data[8*lane +: 8]);
             $fdisplay(trace,"%0d,%0d,%0d,%02x,%0d,%0d",case_index,write_count,(15'(oam_request.pair)*15'd2+15'(lane)),oam_request.data[8*lane +: 8],system_edges,expected_edge);
             expected_pending=0;write_count=write_count+1;

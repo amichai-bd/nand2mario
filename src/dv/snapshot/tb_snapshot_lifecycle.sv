@@ -47,15 +47,15 @@ module tb_snapshot_lifecycle;
         if (!snapshot_done || !snapshot_ok) $fatal(1,"SNAPSHOT_COMPLETION case=%0d",scenario);
     endtask
     task automatic metadata(input integer frame_number, epoch_number, sequence_number);
-        if (!snapshot_valid || snapshot_metadata.epoch !== 32'(epoch_number) ||
-            snapshot_metadata.seq !== 64'(sequence_number) || snapshot_metadata.size !== 32'd5760 ||
-            snapshot_metadata.dot !== 64'(frame_number*100000+23039))
+        if (!snapshot_valid || snapshot_metadata.epoch != 32'(epoch_number) ||
+            snapshot_metadata.seq != 64'(sequence_number) || snapshot_metadata.size != 32'd5760 ||
+            snapshot_metadata.dot != 64'(frame_number*100000+23039))
             $fatal(1,"SNAPSHOT_PUBLISHED_METADATA case=%0d",scenario);
     endtask
     task automatic check_read(input integer frame_number, address);
         frame_read = 1; frame_address = 13'(address); edge_cycle();
         if (!frame_valid) $fatal(1,"SNAPSHOT_LIFECYCLE_LATENCY case=%0d byte=%0d",scenario,address);
-        if (frame_data !== expected_byte(frame_number,address))
+        if (frame_data != expected_byte(frame_number,address))
             $fatal(1,"SNAPSHOT_LIFECYCLE_DATA case=%0d byte=%0d expected=%02h actual=%02h",
                 scenario,address,expected_byte(frame_number,address),frame_data);
         checked = checked + 1; frame_read = 0; edge_cycle();
@@ -90,7 +90,7 @@ module tb_snapshot_lifecycle;
             observe_epoch=7; observe_sequence=1; observe_dot=64'(200000+p);
             observe_complete=p==23039; frame_read=1; frame_address=13'(p%5760);
             edge_cycle();
-            if (!frame_valid || frame_data !== expected_byte(1,p%5760))
+            if (!frame_valid || frame_data != expected_byte(1,p%5760))
                 $fatal(1,"SNAPSHOT_CONCURRENT_READ byte=%0d",p%5760);
             checked=checked+1;
         end

@@ -1,5 +1,8 @@
 `timescale 1ns/1ps
 `default_nettype none
+// Lint waiver: 16-bit address literals are passed to integer task arguments;
+// the width lint on that idiom is a false positive.
+/* verilator lint_off WIDTHEXPAND */
 module tb_dma_access;
     integer lane;
     n2m_memory_pkg::memory_oam_request_t oam_request;
@@ -76,7 +79,7 @@ module tb_dma_access;
         repeat(cpu_phase==0 ? 4 : 5) @(negedge clk_sys);
         gb_tick=1; bus_commit=request_valid && cpu_phase==3; address_effect_sample=bus_commit;
         if(bus_commit && !bus_plan.write_enable && check_read) begin
-            if(!response_valid || read_data!==expected_read)
+            if(!response_valid || read_data!=expected_read)
                 $fatal(1,"DMA_ACCESS_READ case=%0d address=%04x expected=%02x actual=%02x",case_index,bus_plan.address,expected_read,read_data);
             reads_checked=reads_checked+1;
         end
@@ -94,7 +97,7 @@ module tb_dma_access;
     task automatic readback(input n2m_memory_pkg::memory_store_t bank,input integer offset,input logic[7:0] expected);
         @(negedge clk_sys); setup_store=bank; setup_address=15'(offset); setup_read=1;
         @(negedge clk_sys);
-        if(!access_valid || access_rdata!==expected)
+        if(!access_valid || access_rdata!=expected)
             $fatal(1,"DMA_ACCESS_STORAGE case=%0d store=%0d offset=%0d expected=%02x actual=%02x",case_index,bank,offset,expected,access_rdata);
         setup_read=0;
     endtask
@@ -109,12 +112,12 @@ module tb_dma_access;
             end
         end
         if(observe && access_write && access_store==n2m_memory_pkg::STORE_OAM) begin
-            if(access_address!=15'(writes) || access_wdata!==expected_oam[writes])
+            if(access_address!=15'(writes) || access_wdata!=expected_oam[writes])
                 $fatal(1,"DMA_ACCESS_WRITE case=%0d index=%0d address=%0d expected=%02x actual=%02x",case_index,writes,access_address,expected_oam[writes],access_wdata);
             writes=writes+1;
         end
             for (lane=0; lane<2; lane=lane+1) if (observe && oam_request.write_enable[lane]) begin
-            if((15'(oam_request.pair)*15'd2+15'(lane))!=15'(writes) || oam_request.data[8*lane +: 8]!==expected_oam[writes])
+            if((15'(oam_request.pair)*15'd2+15'(lane))!=15'(writes) || oam_request.data[8*lane +: 8]!=expected_oam[writes])
                 $fatal(1,"DMA_ACCESS_WRITE case=%0d index=%0d address=%0d expected=%02x actual=%02x",case_index,writes,(15'(oam_request.pair)*15'd2+15'(lane)),expected_oam[writes],oam_request.data[8*lane +: 8]);
             writes=writes+1;
         end

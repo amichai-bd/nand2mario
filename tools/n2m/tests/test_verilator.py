@@ -200,6 +200,25 @@ class CommandTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "defines must list"):
                 load_target(self.root, "builder-smoke")
 
+    def test_adc_binding_writes_the_channel_fixture_beside_the_run(self):
+        target, _ = load_target(self.root, "builder-smoke")
+        target = {**target, "vendor_model": "intel-adc"}
+        attempt = self.build / "attempt"
+        compiler = self.build / "compile"
+        for folder in (attempt / "waves", compiler):
+            folder.mkdir(parents=True)
+        verilator.commands(self.sim, self.root, target, 1, compiler, attempt)
+        self.assertEqual(sorted(p.name for p in attempt.glob("adc_ch*.txt")), sorted(f"adc_ch{i}.txt" for i in range(17)))
+        self.assertEqual((attempt / "adc_ch1.txt").read_text(), "0 0.625\n")
+        self.assertEqual((attempt / "adc_ch2.txt").read_text(), "0 1.25\n")
+        self.assertEqual((attempt / "adc_ch0.txt").read_text(), "0 0.0\n")
+        # A replay against the retained attempt leaves identical files alone
+        # and refuses a foreign file under a fixture name.
+        verilator.commands(self.sim, self.root, target, 1, compiler, attempt)
+        (attempt / "adc_ch3.txt").write_text("0 9.9\n")
+        with self.assertRaisesRegex(ValueError, "ADC stimulus path already exists"):
+            verilator.commands(self.sim, self.root, target, 1, compiler, attempt)
+
     def test_identical_retained_harness_is_left_untouched_and_a_stale_one_rewritten(self):
         target, _ = load_target(self.root, "builder-smoke")
         attempt = self.build / "attempt"
@@ -250,6 +269,15 @@ class CommandTests(unittest.TestCase):
         self.assertEqual(build[-1], runtime["support"])
         self.assertEqual(run[1:4], ["--trace", "--trace-file", verilator.WAVES])
         self.assertEqual(run[-1], "+smoke_root=" + str(self.root))
+        # Only the declared access list is public; the whole-design switch
+        # would cost the optimizations the product targets need for their budget.
+        self.assertNotIn("--public-flat-rw", build)
+        config = self.build / verilator.ACCESS_CONFIG
+        self.assertIn(str(config), build)
+        text = config.read_text()
+        self.assertTrue(text.startswith("`verilator_config\n"))
+        for name in target["driver"]["access"]:
+            self.assertIn(f'public_flat_rw -module "tb_verilator_peer" -var "{name}"', text)
 
 
 class RecordTests(unittest.TestCase):

@@ -1,5 +1,8 @@
 `timescale 1ns/1ps
 `include "src/rtl/common/macros.svh"
+// Lint waiver: the integer file handle is tested as a boolean (`if (!pixel_trace)`);
+// the truncation lint is a false positive.
+/* verilator lint_off WIDTHTRUNC */
 module tb_vga;
     logic clk_sys, clk_pix, pixel_running;
     bit pixel_phase;
@@ -122,8 +125,8 @@ module tb_vga;
             else if (ref_ready_samples < 2) ref_ready_samples++;
         end
         #1;
-        if (!reset_sys && (discard_count !== ref_discards || dut.writer_bank !== 2'(ref_writer) ||
-            dut.system_display_bank !== 2'(ref_old_display) || dut.pending !== ref_pending))
+        if (!reset_sys && (discard_count != ref_discards || dut.writer_bank != 2'(ref_writer) ||
+            dut.system_display_bank != 2'(ref_old_display) || dut.pending != ref_pending))
             $fatal(1, "FRAME_SOURCE_SELECTION: expected writer=%0d display=%0d pending=%0d discards=%0d actual=%0d,%0d,%0d,%0d",
                    ref_writer, ref_old_display, ref_pending, ref_discards,
                    dut.writer_bank, dut.system_display_bank, dut.pending, discard_count);
@@ -147,21 +150,21 @@ module tb_vga;
             complete_frames.delete();
         end else begin
             if (core_reset) begin observed_pixel = 0; observed_seq = 0; end
-            if (observe_abort !== (source_abort && !core_reset))
+            if (observe_abort != (source_abort && !core_reset))
                 $fatal(1, "OBSERVER_ABORT: lost or invented cancellation");
             if (observe_abort) begin
-                if (observe_complete || observe_sequence !== 64'(observed_seq)
-                    || observe_epoch !== source_epoch) $fatal(1, "OBSERVER_ABORT_IDENTITY");
+                if (observe_complete || observe_sequence != 64'(observed_seq)
+                    || observe_epoch != source_epoch) $fatal(1, "OBSERVER_ABORT_IDENTITY");
                 observed_pixel = 0; abort_total++;
             end
-            if (observe_valid !== (source_valid && !source_abort && !core_reset))
+            if (observe_valid != (source_valid && !source_abort && !core_reset))
                 $fatal(1, "OBSERVER_VALID: lost or invented source edge");
             if (observe_valid) begin
-                if (observe_index !== 15'(observed_pixel) ||
-                    observe_sequence !== 64'(observed_seq) ||
-                    observe_epoch !== source_epoch || observe_dot !== source_dot ||
-                    observe_shade !== pattern(int'(source_epoch), observed_seq, observed_pixel) ||
-                    observe_complete !== (observed_pixel == 23039))
+                if (observe_index != 15'(observed_pixel) ||
+                    observe_sequence != 64'(observed_seq) ||
+                    observe_epoch != source_epoch || observe_dot != source_dot ||
+                    observe_shade != pattern(int'(source_epoch), observed_seq, observed_pixel) ||
+                    observe_complete != (observed_pixel == 23039))
                     $fatal(1, "OBSERVER_PIXEL: epoch=%0d sequence=%0d index=%0d", source_epoch, observed_seq, observed_pixel);
                 if (observed_pixel == 23039) begin
                     complete_frames[int'(source_epoch)][observed_seq] = 1;
@@ -207,9 +210,9 @@ module tb_vga;
         end
         #1;
         if (!reset_pix) begin
-            if (display_valid !== ref_display_valid || dut.display_bank !== 2'(ref_display_bank) ||
-                display_sequence !== 64'(ref_display_seq) || display_epoch !== 32'(ref_display_epoch) ||
-                repeat_count !== ref_repeats)
+            if (display_valid != ref_display_valid || dut.display_bank != 2'(ref_display_bank) ||
+                display_sequence != 64'(ref_display_seq) || display_epoch != 32'(ref_display_epoch) ||
+                repeat_count != ref_repeats)
                 $fatal(1, "FRAME_DISPLAY_SELECTION: expected epoch=%0d seq=%0d bank=%0d repeats=%0d actual=%0d,%0d,%0d,%0d",
                        ref_display_epoch, ref_display_seq, ref_display_bank, ref_repeats,
                        display_epoch, display_sequence, dut.display_bank, repeat_count);
@@ -224,7 +227,7 @@ module tb_vga;
             previous_display_seq = display_sequence;
             previous_display_epoch = display_epoch;
             have_previous_display = display_valid;
-            if (video_valid !== (pix_edges >= 2))
+            if (video_valid != (pix_edges >= 2))
                 $fatal(1, "VGA_PIPELINE: valid edge=%0d", pix_edges);
             if (video_valid) begin
                 point = (pix_edges - 2) % 420000;
@@ -236,9 +239,9 @@ module tb_vga;
                     index = ((ey - 24) / 3) * 160 + (ex - 80) / 3;
                     expected_gray = ref_blank_active ? 4'hf : gray(pattern(ref_display_epoch, ref_display_seq, index));
                 end
-                if (video_x !== 10'(ex) || video_y !== 10'(ey) || video_active !== ea || video_image !== ei ||
-                    hsync_n !== !(ex >= 656 && ex <= 751) || vsync_n !== !(ey >= 490 && ey <= 491) ||
-                    {red, green, blue} !== {expected_gray, expected_gray, expected_gray})
+                if (video_x != 10'(ex) || video_y != 10'(ey) || video_active != ea || video_image != ei ||
+                    hsync_n != !(ex >= 656 && ex <= 751) || vsync_n != !(ey >= 490 && ey <= 491) ||
+                    {red, green, blue} != {expected_gray, expected_gray, expected_gray})
                     $fatal(1, "VGA_PIXEL: coordinate=%0d,%0d actual=%0d,%0d expected=%h actual=%h epoch=%0d sequence=%0d",
                            ex, ey, video_x, video_y, expected_gray, red, display_epoch, display_sequence);
                 if (ei && (ex == 80 || ex == 559))
@@ -285,7 +288,7 @@ module tb_vga;
         @(negedge clk_sys); blank_assert = 1;
         @(negedge clk_sys); blank_assert = 0;
         send_pixels(23040, 1, 0);
-        if (discard_count !== 64'd1 || !ref_blank_requested || dut.pending !== 1'b0)
+        if (discard_count != 64'd1 || !ref_blank_requested || dut.pending != 1'b0)
             $fatal(1, "LCD_RESET_SKEW: unavailable peer acceptance");
         @(negedge clk_sys); core_reset = 1; source_epoch = 1;
         @(negedge clk_sys); core_reset = 0;
@@ -293,13 +296,13 @@ module tb_vga;
         wait (!reset_pix);
         wait (video_y == 30 && video_x == 100);
         repeat (10) @(negedge clk_pix);
-        if (!ref_blank_active || display_valid || {red, green, blue} !== 12'hfff)
+        if (!ref_blank_active || display_valid || {red, green, blue} != 12'hfff)
             $fatal(1, "LCD_RESET_SKEW: retained white not visible");
         // A genuine shared lock loss masks white asynchronously, even stopped.
         @(negedge clk_pix); pixel_running = 0;
         #7; pll_locked = 0;
         #1;
-        if (!reset_sys || !reset_pix || {red, green, blue} !== 12'h000)
+        if (!reset_sys || !reset_pix || {red, green, blue} != 12'h000)
             $fatal(1, "LCD_RESET_SKEW: global mask");
         repeat (4) @(negedge clk_sys);
         if (ref_blank_requested) $fatal(1, "LCD_RESET_SKEW: global state clear");
@@ -493,7 +496,7 @@ module tb_vga;
         if (!ref_pending) $fatal(1, "VGA_COVERAGE: reset needs outstanding offer");
         #7; pll_locked = 0;
         #1;
-        if ({red, green, blue} !== 12'h000 || !hsync_n || !vsync_n || !reset_sys || !reset_pix)
+        if ({red, green, blue} != 12'h000 || !hsync_n || !vsync_n || !reset_sys || !reset_pix)
             $fatal(1, "VGA_RESET_MASK: stopped pixel reset outputs");
         repeat (5) @(negedge clk_sys);
         pixel_running = 1; pll_locked = 1; source_epoch = 0;

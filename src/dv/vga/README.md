@@ -26,13 +26,13 @@ Check asynchronous black/inactive output masking while the pixel clock is stoppe
 
 Mutations force writer reuse of an immutable bank and a display bank change
 during active video. Each must terminate with the corresponding ownership/swap
-diagnostic and a nonzero Questa exit. Watchdogs run from independent simulation
+diagnostic and a nonzero simulator exit. Watchdogs run from independent simulation
 time. The complete raster target has a 600-second host runtime bound and a
 250-ms simulated watchdog; preparation commands retain their default bound.
 Wave output is
 bounded to control signals, without dumping complete RAM arrays.
 
-Delivery evidence includes actual Questa positive and named-fatal negative
+Delivery evidence includes actual Verilator positive and named-fatal negative
 records, nominal/upper Quartus fits, explicit RAM configuration and bundle/output timing,
 an invalid constraint target, and checked cache reuse. The pixel fixture uses
 nominal 25.2 MHz rounded to 1 ps, with a phase offset excluding coincident clock

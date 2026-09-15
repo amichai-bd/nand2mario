@@ -133,6 +133,8 @@ def simulate(root, build, args, simulator, provenance=None):
     hashes = {p: file_hash(root / p) for p in inputs}
     options = {"seed": args.seed, "target": args.target, "definition": target,
                "simulator": "verilator", "os": platform.system()}
+    if target.get("vendor_model") is not None:
+        options["vendor_model"] = {"synthesis_binding": target["vendor_model"], "simulation": "repository double under VERILATOR"}
     if python_runtime:
         options["python_runtime"] = python_runtime
     if driver:
@@ -230,17 +232,25 @@ def simulate(root, build, args, simulator, provenance=None):
             # cocotb ends a failed Python testbench through $finish, so that
             # simulator process exits zero either way and the target's
             # expected_exit names the verdict of its named test, judged from
-            # results.xml. A driver target's testbench still exits on its own.
-            if (result.returncode == 0) != (expected == "zero" or (python_runtime is not None and not driver)):
+            # results.xml. A driver target's testbench still exits on its own
+            # through $fatal; a deliberate failure the peer raises instead
+            # (the retired driver's FAIL <name>) also ends with exit zero and
+            # is judged from the peer test's verdict the same way.
+            peer_failure = (running and python_runtime and driver and expected == "nonzero"
+                            and result.returncode == 0 and python_tb.accepted(record["python_results"], target))
+            if (result.returncode == 0) != (expected == "zero" or (python_runtime is not None and not driver)) and not peer_failure:
                 raise RuntimeError(f"unexpected exit {result.returncode}; see {log.relative_to(root)}")
             if running and python_runtime and driver:
                 if expected == "zero" and record["python_results"]["status"] != "PASS":
                     raise RuntimeError(f"Verilator peer failed: {python_tb.failure_name(record['python_results'])}")
             elif running and python_runtime and not python_tb.accepted(record["python_results"], target):
                 raise RuntimeError(f"Python test verdict does not match expected_exit {expected}: {record['python_results']}")
+            if running and python_runtime and (not driver or peer_failure):
+                explained = python_tb.explained_warnings(target)
+            else:
+                explained = ()
             problem = diagnostic(result.stdout, target["signature"] if expected == "nonzero" else None,
-                                 explained=python_tb.explained_warnings(target) if running and python_runtime and not driver else (),
-                                 peer=peer_config["module"] if driver else None)
+                                 explained=explained, peer=peer_config["module"] if driver else None)
             if problem:
                 raise RuntimeError(f"{problem}; see {log.relative_to(root)}")
         if target["signature"] not in result.stdout:
