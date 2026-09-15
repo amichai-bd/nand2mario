@@ -30,7 +30,7 @@ class PreloadComparisonTests(unittest.TestCase):
                       'seed': 1, 'options': {'target': 'integration-smoke', 'definition': definition}}
             if mode == 'preloaded':
                 record['options']['target'] = 'integration-preloaded'
-                definition['args'] = ['-gPRELOADED=1']
+                definition['defines'] = ['PRELOADED']
                 definition['driver'].update(peer='src/dv/preload/peer.py', preload=True,
                                             inputs=['src/dv/integration/peer.py'])
                 record['inputs']['src/dv/preload/peer.py'] = 'extra'

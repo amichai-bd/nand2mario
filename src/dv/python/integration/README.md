@@ -22,24 +22,27 @@ preinitialized image, paused-state reads, INPUT0 at 150001000 ns, and RUN at
 40 ns falling clock boundary. Serial bits last 320 ns; bytes start 3240 ns
 apart. Reset deasserts at 320 ns. Execution completes after dot 136280; Python
 polls the final bound every microsecond, so the finish may be a few dots later.
-The cocotb test has a 210 ms simulation bound and the builder a 600 s wall bound.
-No TCP bridge or repeated Tcl `run` calls participate.
+The cocotb test has a 210 ms simulation bound and the builder the default 300 s
+wall budget; measured under Verilator 5.052, the run takes about 42 s after a
+15 s build. cocotb's own main drives the simulator; no TCP bridge participates.
 
 Use the [pinned environment](../README.md), then run:
 
-```powershell
-workdir/builds/python-dv-env/.venv/Scripts/python.exe tools/build.py sim test python-integration --tag integration-python --json
-workdir/builds/python-dv-env/.venv/Scripts/python.exe tools/build.py sim test python-integration --tag integration-python-repeat --json
-workdir/builds/python-dv-env/.venv/Scripts/python.exe tools/build.py sim test python-integration-fault --tag integration-python-fault --json
+```bash
+workdir/builds/python-dv-env/.venv/bin/python tools/build.py sim test python-integration --tag integration-python --json
+workdir/builds/python-dv-env/.venv/bin/python tools/build.py sim test python-integration --tag integration-python-repeat --json
+workdir/builds/python-dv-env/.venv/bin/python tools/build.py sim test python-integration-fault --tag integration-python-fault --json
 ```
 
 The fault target forces the actual DUT's normal-frame shade to 1. The unchanged
-checker must report `INTEGRATION_PIXEL frame=1 index=0 expected=0 actual=1` and
-the builder must exit 1. This is a failed test, not a cached positive stage.
+checker must report `INTEGRATION_PIXEL frame=1 index=0 expected=0 actual=1`;
+the target is registered `expected_exit: "nonzero"` with that signature, so the
+builder reports PASS only for that failure and `python_results` keeps `FAIL`
+for the test itself.
 
 Each immutable attempt contains transactions JSONL, retirement/bus/pixel CSV,
-result XML, initialization and software image files, WLF/VCD of top-level
-public signals, simulator logs, and the builder's source/model/runtime hashes.
+result XML, initialization and software image files, the FST of the wrapper,
+simulator logs, and the builder's source/model/runtime hashes.
 Compare applied-input traces as well as output traces before attributing a
 change to execution control. Buffered output or wave size does not identify an
 exact simulator stall point.
@@ -75,11 +78,12 @@ or justify a testbench migration. Runtime conclusions belong to the PR evidence.
 ## Continuous real-UART mode
 
 Issue176 adds `python-integration-uart` alongside the preloaded diagnostic.
-It uses the unchanged product Client through cocotb2.0.1 `task.bridge` and
+It uses the unchanged product Client through cocotb 2.1.0 `task.bridge` and
 `task.resume`. The transport drives actual UART RX bits and returns only bytes
 decoded from UART TX; the independent diagnostic monitors check execution.
-The wrapper selects PRELOADED0, leaving Intel ROM/presence initialization UNUSED
-and requiring real LOAD_BEGIN/LOAD_WRITE/LOAD_END followed by full ROM readback.
+The target declares no `PRELOADED` define, leaving Intel ROM/presence
+initialization UNUSED and requiring real LOAD_BEGIN/LOAD_WRITE/LOAD_END
+followed by full ROM readback.
 
 The original software pipeline builds program.gb in the attempt. Client verifies
 all32768 bytes, profile and valid paused state. Independent initial observations
@@ -87,7 +91,9 @@ require epoch2, dot0 and no execution activity. INPUT0/RUN start the program;
 after136280 dots, HALT and STATE_PAUSED complete the sequence. The full69 records,
 145 bus observations and46080 pixels keep their existing expectations.
 
-The test has a500ms simulated bound and600s builder bound at25MHz/3.125Mbaud.
+The test has a 500 ms simulated bound and the default 300 s builder budget at
+25 MHz/3.125 Mbaud; measured under Verilator 5.052 the positive run takes about
+94 s.
 The data/IRQ/pixel fault targets change actual DUT observations using the same
 fault locations as the integration contract. They must fail the unchanged checker.
 Acceptance requires a positive, a clean repeat with byte-identical retirement,

@@ -87,7 +87,7 @@ def main():
         record["inputs"] = {p.relative_to(ROOT).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest() for p in inputs}
         record["commit"] = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
         record["dirty"] = bool(subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT, text=True))
-        simulator = Simulator(verilator_bin=args.verilator_bin)
+        simulator = Simulator("verilator", verilator_bin=args.verilator_bin)
         record["tools"] = simulator.info
         compiler = build / "compile" / args.sim
         compiler.mkdir(parents=True)

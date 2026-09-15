@@ -9,15 +9,13 @@ import uuid
 
 from .fpga import ALLOCATOR_NOTICE, ALLOCATOR_OVERRIDE, ALLOCATOR_OVERRIDE_NOTICE, quartus_environment
 from .records import file_hash
+from .questa import diagnostic as questa_diagnostic, write_macro
 
 SMOKE = "src/dv/builder/builder_smoke.sv"
 SMOKE_SIGNATURE = "PASS builder-smoke seed=1 checks=22"
 SMOKE_FAULT = "count cycle=3 expected=7 actual=3 seed=1"
 # Verilator consults no license. The check removes these so a PASS cannot depend on them.
-LICENSE_VARIABLES = ("SALT_LICENSE_FILE", "LM_LICENSE_FILE", "MGLS_LICENSE_FILE")
-WSL_NOTICE = "not applicable; simulation runs on WSL Linux: python3 tools/build.py doctor"
-# Informational only: this status never lowers the doctor result or readiness.
-NOT_APPLICABLE = "NOT_APPLICABLE"
+LICENSE_VARIABLES = ("SALT_LICENSE_FILE", "SALT_LICENSE_SERVER", "LM_LICENSE_FILE", "MGLS_LICENSE_FILE")
 
 
 def execute(argv, cwd, log, timeout=60, env=None, expect_failure=False):
@@ -96,13 +94,35 @@ def verilator(root, folder, directory):
             "fault": {"expected": SMOKE_FAULT, "detected": True}}
 
 
-def host_is_windows():
-    return os.name == "nt"
-
-
-def wsl_only(folder):
-    (folder / "notice.log").write_text(WSL_NOTICE + "\n", encoding="utf-8")
-    return {"status": NOT_APPLICABLE, "detail": WSL_NOTICE}
+def questa(root, folder, directory):
+    """Compile, elaborate, run and fault-check the smoke under native Questa."""
+    names = {name: executable(directory, name) for name in ("vlib", "vmap", "vlog", "vsim")}
+    version = execute([names["vsim"], "-version"], folder, "version.log")
+    if "Questa" not in version or questa_diagnostic(version):
+        raise RuntimeError("unrecognized Questa version or diagnostic; see version.log")
+    execute([names["vmap"], "-c"], folder, "ini.log")
+    library = execute([names["vlib"], "work"], folder, "library.log")
+    if questa_diagnostic(library):
+        raise RuntimeError("simulator diagnostic; see library.log")
+    compiled = execute([names["vlog"], "-sv", "-work", "work", str(root / SMOKE)],
+                       folder, "compile.log")
+    if questa_diagnostic(compiled):
+        raise RuntimeError("simulator diagnostic; see compile.log")
+    (folder / "waves").mkdir(exist_ok=True)
+    write_macro(folder)
+    base = [names["vsim"], "-c", "-onfinish", "stop", "-wlf"]
+    output = execute([*base, "waves/smoke.wlf", "work.builder_smoke", "+seed=1",
+                      "-do", "do run.do"], folder, "sim.log")
+    if SMOKE_SIGNATURE not in output or questa_diagnostic(output):
+        raise RuntimeError("simulation diagnostic or missing checked result; see sim.log")
+    fault = execute([*base, "waves/fault.wlf", "work.builder_smoke", "+seed=1",
+                     "+inject_failure", "-do", "do run.do"], folder, "fault.log",
+                    expect_failure=True)
+    if SMOKE_FAULT not in fault or SMOKE_SIGNATURE in fault or questa_diagnostic(fault, SMOKE_FAULT):
+        raise RuntimeError("injected fault was not reported; see fault.log")
+    return {"version": version.strip(), "tools": names,
+            "license": "runtime checkout succeeded for this smoke invocation",
+            "fault": {"expected": SMOKE_FAULT, "detected": True}}
 
 
 def quartus(folder, directory):
@@ -199,24 +219,24 @@ def doctor(root, build, args, provenance):
         checks[name]["artifacts"] = {p.relative_to(root).as_posix(): file_hash(p)
                                      for p in folder.rglob("*") if p.is_file()}
 
-    # WSL owns simulation; Windows owns the FPGA tools. Windows only states where the smoke runs.
-    windows = host_is_windows()
-    check("verilator", wsl_only if windows else lambda folder: verilator(root, folder, args.verilator_bin))
-    untested = ["Quartus", "JTAG", "UART"] + (["Verilator smoke"] if windows else [])
+    backend = args.sim
+    if backend == "verilator":
+        check(backend, lambda folder: verilator(root, folder, args.verilator_bin))
+    else:
+        check(backend, lambda folder: questa(root, folder, args.questa_bin))
+    untested = ["Quartus", "JTAG", "UART"]
     if args.profile == "environment":
         check("quartus", lambda folder: quartus(folder, args.quartus_bin))
         check("jtag", lambda folder: parse_jtag(execute(
             [executable(args.quartus_bin, "jtagconfig")], folder, "chain.log"), args.jtag_cable))
         check("uart", lambda folder: uart(folder, args))
-        untested = ["Quartus synthesis", "physical wiring/voltage", "UART communication", "FPGA programming"] \
-            + (["Verilator smoke"] if windows else [])
-    applicable = [c["status"] for c in checks.values() if c["status"] != NOT_APPLICABLE]
+        untested = ["Quartus synthesis", "physical wiring/voltage", "UART communication", "FPGA programming"]
+    applicable = [c["status"] for c in checks.values()]
     status = "FAIL" if "FAIL" in applicable else "WARNING" if "WARNING" in applicable else "PASS"
     return {"status": status, "checks": checks,
-            "profile": args.profile, "simulator": "verilator",
+            "profile": args.profile, "simulator": backend,
             "inputs": {p.relative_to(root).as_posix(): file_hash(p) for p in
                        [root / SMOKE, *(root / "tools/n2m").glob("*.py")]},
-            "tools": checks["verilator"].get("tools", {}), "untested": untested,
-            # Windows' simulation profile checks nothing applicable, so it establishes no readiness.
+            "tools": checks[backend].get("tools", {}), "untested": untested,
             "readiness": "complete" if applicable and all(s == "PASS" for s in applicable) else "partial",
             "scope": f"{args.profile} checks only; warnings do not establish readiness"}

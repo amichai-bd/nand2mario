@@ -29,7 +29,7 @@ class IntelMemoryTests(unittest.TestCase):
         targets["builder-smoke"]["vendor_model"] = "intel-memory"
         registry.write_text(json.dumps(targets))
         self.args.intel_sim_lib = str(self.models)
-        def run(argv, cwd=None):
+        def run(argv, cwd=None, **_):
             self.sim.calls.append(argv)
             if argv[0] == "vlib":
                 (cwd / argv[1]).mkdir()
@@ -40,6 +40,7 @@ class IntelMemoryTests(unittest.TestCase):
                 (cwd / library / "compiled.bin").write_text("fake compilation artifact")
             if argv[0] == "vsim":
                 (cwd / "waves/smoke.vcd").write_text("fake wave")
+                (cwd / "waves/simulation.wlf").write_text("fake wave")
             return SimpleNamespace(returncode=0, stdout="PASS builder-smoke\nErrors: 0, Warnings: 0")
         self.sim.run = run
 
@@ -70,20 +71,23 @@ class IntelMemoryTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "missing Intel simulation library"):
             intel_memory.resolve(self.root, self.questa(), target, str(self.models / "absent"))
 
-    def test_a_vendor_model_target_records_the_binding_and_a_questa_one_is_retired(self):
-        """The installed model was a Questa binding: a verilator target keeps
-        vendor_model as its recorded synthesis binding and compiles no vendor
-        source, and a questa target with it is retired."""
+    def test_a_vendor_model_target_runs_through_the_selected_questa_binding(self):
         from n2m.simulation import load_target
         self.prepare_model()
         self.assertEqual(load_target(self.root, "builder-smoke")[0]["vendor_model"], "intel-memory")
         registry = self.root / "src/dv/builder/targets.json"
         targets = read_json(registry)
-        targets["builder-smoke"]["simulator"] = "questa"
+        targets["builder-smoke"]["simulators"] = ["questa"]
         registry.write_text(json.dumps(targets))
+        self.sim.backend = "questa"
+        self.sim.compiler = "vlog"
+        self.sim.tools = {name: name for name in ("vlib", "vmap", "vlog", "vsim")}
+        self.sim.info = {"backend": "questa", "tools": {name: {"path": name}
+                                                         for name in self.sim.tools}}
         result = self.run_stage()
-        self.assertEqual((result["status"], result["reason"]), ("SKIPPED", "questa-retired"))
-        self.assertEqual(self.sim.calls, [])
+        self.assertEqual((result["status"], result["simulator"]), ("PASS", "questa"), result)
+        self.assertEqual(result["options"]["vendor_model"]["selection"], "intel-memory")
+        self.assertTrue(any(argv[0] == "vsim" for argv in self.sim.calls))
 
     def test_selected_tool_installation_discovery(self):
         self.prepare_model()

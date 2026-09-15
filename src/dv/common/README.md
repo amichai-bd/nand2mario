@@ -83,6 +83,5 @@ are written by the top at time zero from shared image functions.
 
 Targets: `sim-ram-double` (pass), `sim-ram-double-corrupt`,
 `sim-ram-double-collision`, `sim-ram-double-partial-lanes` and
-`sim-ram-double-bad-preload`, all `simulator: verilator`. The unspecified
+`sim-ram-double-bad-preload`, all `simulators: ["verilator"]`. The unspecified
 values are drawn from the run's seeded random stream, so a seed reproduces them.
-

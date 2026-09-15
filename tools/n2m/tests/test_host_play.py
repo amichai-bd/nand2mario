@@ -115,12 +115,12 @@ class HostPlayTests(unittest.TestCase):
             root=Path(folder)
             registry=root/'src/dv/builder/targets.json'
             registry.parent.mkdir(parents=True)
-            (root/'driver.do').write_text('# fixture')
+            (root/'driver.py').write_text('# fixture')
             (root/'peer.py').write_text('# fixture')
-            target={'signature':'PASS','sources':[],'expected_exit':'zero','simulator':'questa'}
+            target={'signature':'PASS','sources':[],'expected_exit':'zero','simulators':['verilator']}
             for driver,budget,valid in ((False,300,True),(False,301,False),(True,300,True),(True,301,False),(True,1500,False),(True,True,False)):
                 row=dict(target,timeout_seconds=budget)
-                if driver:row['driver']={'script':'driver.do','peer':'peer.py','inputs':[]}
+                if driver:row['driver']={'script':'driver.py','peer':'peer.py','inputs':[],'access':['signal']}
                 registry.write_text(json.dumps({'play':row}))
                 if valid:
                     self.assertEqual(load_target(root,'play')[0]['timeout_seconds'],budget)

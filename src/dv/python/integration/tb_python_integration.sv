@@ -2,7 +2,7 @@
 `default_nettype none
 // Clock, public observation latches and supported memory initialization only.
 // All stimulus, expectations and verdicts belong to the Python test.
-module tb_python_integration #(parameter bit PRELOADED = 1);
+module tb_python_integration;
     logic clk_sys, reset_sys, uart_rx, uart_tx;
     logic gb_tick, paused, core_reset, retirement_valid, bus_commit, write_enable;
     logic [31:0] epoch;
@@ -40,9 +40,13 @@ module tb_python_integration #(parameter bit PRELOADED = 1);
             || dut.u_oam_late.phase != 0 || inspection_request.write_enable != 0))
             $fatal(1, "OAM_INSPECTION_READ_ONLY");
     end
-    defparam dut.u_stores.rom.SIM_INIT_FILE = PRELOADED ? "preload-rom.mif" : "UNUSED";
-    defparam dut.u_uart.u_commands.u_load.u_presence.u_presence.SIM_INIT_FILE = PRELOADED ? "preload-presence.mif" : "UNUSED";
-    defparam dut.u_uart.u_commands.u_load.SIM_PRELOAD = PRELOADED;
+    // +define+PRELOADED selects the prepared image. Verilator resolves a
+    // defparam value in the target instance, so a wrapper parameter cannot.
+`ifdef PRELOADED
+    defparam dut.u_stores.rom.SIM_INIT_FILE = "preload-rom.mif";
+    defparam dut.u_uart.u_commands.u_load.u_presence.u_presence.SIM_INIT_FILE = "preload-presence.mif";
+    defparam dut.u_uart.u_commands.u_load.SIM_PRELOAD = 1;
+`endif
     always #20 clk_sys = !clk_sys;
 
     // Bus commits describe the consumed pre-edge transaction. Retirement and

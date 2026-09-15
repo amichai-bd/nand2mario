@@ -10,12 +10,13 @@ import sys
 import uuid
 
 from .records import atomic_json, atomic_text, file_hash, git_state, workspace
-from .simulation import load_target, retired, simulate, skipped_record
+from .simulation import SIMULATORS, load_target, publish_mirror, simulate, stage_paths
 from .simulator import Simulator, ToolError
 from .doctor import doctor
 from .host.command import run as host_command
 from .fpga import build_fpga
 from .fpga_program import program as program_fpga
+from .progress import Progress, powershell_command
 from .rgbds import oracle
 from .regress import clean, regress
 from . import catalogue, interface_codec
@@ -30,11 +31,12 @@ from sw.expressions import AssemblyError
 def parser():
     result = argparse.ArgumentParser(description="Tagged repository builds (doctor, check, sim test, regress, clean, fpga build).")
     commands = result.add_subparsers(dest="command", required=True)
-    leaves = [commands.add_parser("doctor", help="run checked Verilator smoke on WSL; no hardware access"),
+    leaves = [commands.add_parser("doctor", help="run the checked host-native simulator smoke; no hardware access"),
               commands.add_parser("check", help="run builder tests")]
     leaves[0].add_argument("--profile", choices=("simulation", "environment"), default="simulation")
     leaves[0].add_argument("--verilator-bin", help="directory containing verilator; otherwise discover on PATH")
-    leaves[0].add_argument("--sim", choices=("verilator",), default="verilator")
+    leaves[0].add_argument("--questa-bin", help="directory containing native Questa tools; otherwise discover on PATH")
+    leaves[0].add_argument("--sim", choices=SIMULATORS)
     for option in ("quartus-bin", "jtag-cable", "uart-port", "uart-vid", "uart-pid", "uart-identity"):
         leaves[0].add_argument("--" + option)
     sim = commands.add_parser("sim").add_subparsers(dest="action", required=True)
@@ -43,7 +45,9 @@ def parser():
     test.add_argument("--seed", type=int, default=1)
     test.add_argument("--rebuild", action="store_true")
     test.add_argument("--verilator-bin", help="directory containing verilator; otherwise discover on PATH")
-    test.add_argument("--sim", choices=("verilator",), default="verilator")
+    test.add_argument("--questa-bin", help="directory containing native Questa tools; otherwise discover on PATH")
+    test.add_argument("--intel-sim-lib", help="supported Quartus eda/sim_lib directory for Questa Intel-model targets")
+    test.add_argument("--sim", choices=SIMULATORS)
     preflight = sim.add_parser("preflight", help="prepare and check Python fixtures without discovering or launching a simulator")
     preflight.add_argument("target")
     preflight.add_argument("--tag")
@@ -59,7 +63,9 @@ def parser():
     subset.add_argument("--broader", action="store_true",
                         help="declare a subset whose budget exceeds the ordinary 300-second pre-merge aggregate")
     subset.add_argument("--verilator-bin")
-    subset.add_argument("--sim", choices=("verilator",), default="verilator")
+    subset.add_argument("--questa-bin")
+    subset.add_argument("--intel-sim-lib")
+    subset.add_argument("--sim", choices=SIMULATORS)
     subset.add_argument("--tag")
     subset.add_argument("--json", action="store_true")
     tests = commands.add_parser("tests", help="one catalogue of every runnable test; select by level and label").add_subparsers(dest="action", required=True)
@@ -79,6 +85,9 @@ def parser():
     runner.add_argument("--broader", action="store_true",
                         help="declare a budget above the ordinary 300-second pre-merge aggregate")
     runner.add_argument("--verilator-bin")
+    runner.add_argument("--questa-bin")
+    runner.add_argument("--intel-sim-lib")
+    runner.add_argument("--sim", choices=SIMULATORS)
     for leaf in (validate, listing, runner, affected):
         leaf.add_argument("--tag")
         leaf.add_argument("--json", action="store_true")
@@ -168,9 +177,11 @@ def parser():
     return result
 
 
-def tagged(root, args, header, publish):
+def tagged(root, args, header, publish, progress=None):
     """Run one command inside its exclusive tagged workspace."""
+    progress = progress or Progress(False)
     reclaimed = []
+    operation_folder = None
     with workspace(root, args.tag, reclaimed) as build:
         report = header(build.name)
         if reclaimed:
@@ -199,12 +210,15 @@ def tagged(root, args, header, publish):
             elif args.command == "fpga":
                 provenance = {k: report[k] for k in ("commit", "dirty_tree_fingerprint", "host", "python") if k in report}
                 if args.action == "build":
-                    report.update(build_fpga(root, build, args, provenance))
+                    progress.line(f"FPGA build: target {args.target}")
+                    report.update(build_fpga(root, build, args, provenance, progress=progress))
                 else:
                     folder = build / "fpga-program" / uuid.uuid4().hex[:12]
                     folder.mkdir(parents=True)
+                    operation_folder = folder
+                    progress.line(f"FPGA program: {args.sof}")
                     result = program_fpga(root, folder, Path(args.sof), quartus_bin=args.quartus_bin,
-                                          cable=args.jtag_cable, timeout=args.timeout)
+                                          cable=args.jtag_cable, timeout=args.timeout, progress=progress)
                     report.update(status="PASS", provenance=provenance, **result,
                                  artifacts={p.relative_to(root).as_posix(): file_hash(p) for p in folder.rglob("*") if p.is_file()})
             elif args.command == 'host':
@@ -225,12 +239,14 @@ def tagged(root, args, header, publish):
                 if not 0 <= args.seed <= 2147483647:
                     raise ValueError("seed must be between 0 and 2147483647")
                 provenance = {k: report[k] for k in ("commit", "dirty_tree_fingerprint", "host", "python", "os") if k in report}
-                if retired(load_target(root, args.target)[0]):
-                    # Nothing to discover: a retired target is reported, not run.
-                    report.update(skipped_record(root, build, args, provenance))
-                else:
-                    simulator = Simulator(args.sim, verilator_bin=args.verilator_bin)
-                    report.update(simulate(root, build, args, simulator, provenance))
+                # Capability validation precedes discovery, so an unsupported
+                # pair never probes or falls back to another simulator.
+                load_target(root, args.target, args.sim)
+                progress.line(f"Simulation: target {args.target}; backend {args.sim}")
+                with progress.stage(f"Discover {args.sim.capitalize()} tools"):
+                    simulator = Simulator(args.sim, verilator_bin=args.verilator_bin,
+                                          questa_bin=args.questa_bin)
+                report.update(simulate(root, build, args, simulator, provenance, progress=progress))
         except Exception as error:
             report.update(status="FAIL", error=str(error))
             if isinstance(error, AssemblyError):
@@ -239,33 +255,142 @@ def tagged(root, args, header, publish):
                 atomic_json(diagnostic, report['diagnostics'])
                 report['artifacts'] = {diagnostic.relative_to(root).as_posix(): file_hash(diagnostic)}
             failure_artifacts = {}
+            failure_text = str(error) + "\n"
             if isinstance(error, ToolError):
                 folder = build / "discovery" / uuid.uuid4().hex
                 folder.mkdir(parents=True)
                 log = folder / "failure.log"
-                log.write_text(error.output + "\n" + str(error) + "\n", encoding="utf-8")
+                failure_text = error.output + "\n" + str(error) + "\n"
+                log.write_text(failure_text, encoding="utf-8")
                 failure_artifacts[log.relative_to(root).as_posix()] = file_hash(log)
                 report["artifacts"] = failure_artifacts
                 atomic_json(folder / "result.json", report)
-            if args.command == "sim" and re.fullmatch(r"[a-z0-9][a-z0-9_-]*", args.target):
-                atomic_json(build / "sim/test" / args.target / "result.json",
-                            {"status": "FAIL", "error": str(error), "artifacts": failure_artifacts})
+            if operation_folder is not None:
+                failure_artifacts.update({p.relative_to(root).as_posix(): file_hash(p)
+                                          for p in operation_folder.rglob("*") if p.is_file()})
+                report["artifacts"] = failure_artifacts
+            if args.command == "sim" and args.action == "test" and re.fullmatch(r"[a-z0-9][a-z0-9_-]*", args.target):
+                stage, mirror, authoritative = stage_paths(root, build, args.target, args.sim)
+                failure = {"status": "FAIL", "error": str(error), "artifacts": failure_artifacts,
+                           "simulator": args.sim, "os": platform.system(),
+                           "authoritative_result": authoritative}
+                atomic_text(stage / "sim.log", failure_text)
+                atomic_json(stage / "result.json", failure)
+                publish_mirror(root, mirror, failure, stage / "sim.log")
         publish(build, report)
     return report
 
 
-# One build tool, two operating systems: simulation belongs to WSL Linux and
-# the Quartus flow to Windows PowerShell. Each side refuses the other's commands.
-SIMULATION_HOST = "simulation runs on WSL Linux"
+def _artifacts(report, *, suffix=None, contains=None):
+    paths = report.get("artifacts", {})
+    if isinstance(paths, dict):
+        paths = paths.keys()
+    elif not isinstance(paths, list):
+        paths = []
+    return sorted(path for path in paths
+                  if (suffix is None or path.endswith(suffix))
+                  and (contains is None or contains in path))
+
+
+def _diagnostic(report):
+    for suffix in ("failure.log", "program.log", "sim.log", "compile.log", "chain.log"):
+        paths = _artifacts(report, suffix=suffix)
+        if paths:
+            return paths[-1]
+    return None
+
+
+def _human_result(args, report, progress):
+    """Render the compact handoff after live stages have finished."""
+    status = report.get("status", "FAIL")
+    cache = report.get("cache")
+    progress.line(f"Result: {status}" + (f" ({cache})" if cache else ""))
+    if "error" in report:
+        progress.line(f"Error: {report['error']}")
+    diagnostic = _diagnostic(report)
+    if status != "PASS" and diagnostic:
+        progress.line(f"Diagnostic: {diagnostic}")
+
+    if args.command == "sim" and args.action == "test":
+        for path in _artifacts(report, suffix=".log", contains="/compile/"):
+            progress.line(f"Compile log: {path}")
+        sim_logs = _artifacts(report, suffix="sim.log", contains="/attempts/")
+        if sim_logs:
+            progress.line(f"Simulation log: {sim_logs[-1]}")
+        if report.get("authoritative_result"):
+            progress.line(f"Result record: {report['authoritative_result']}")
+        waves = report.get("waves")
+        if isinstance(waves, dict) and waves.get("path"):
+            progress.line(f"Waveform ({waves.get('format', 'unknown').upper()}): {waves['path']}")
+        if status == "PASS":
+            progress.line("Next (Windows PowerShell): " + powershell_command([
+                "python", "tools/build.py", "fpga", "build", "v05-board",
+                "--quartus-bin", "<Quartus-bin>", "--tag", "fpga-v05"]))
+        return
+
+    if args.command == "fpga" and args.action == "build":
+        if report.get("attempt_result"):
+            progress.line(f"Result record: {report['attempt_result']}")
+        bitstreams = _artifacts(report, suffix="/output/design.sof")
+        if bitstreams:
+            label = "Checked bitstream" if status == "PASS" else "Unverified bitstream artifact"
+            progress.line(f"{label}: {bitstreams[-1]}")
+        if status == "PASS" and bitstreams and not report.get("build_id_override"):
+            progress.line("Next (Windows PowerShell): " + powershell_command([
+                "python", "tools/build.py", "fpga", "program", "--sof", bitstreams[-1],
+                "--quartus-bin", args.quartus_bin]))
+        return
+
+    if args.command == "fpga" and args.action == "program":
+        if report.get("cable") and report.get("devices"):
+            progress.line(f"JTAG: cable {report['cable']}; device {', '.join(report['devices'])}")
+        if report.get("program_log"):
+            progress.line(f"Program log: {report['program_log']}")
+        if report.get("wire_build_id"):
+            progress.line(f"On-wire build ID: {report['wire_build_id']}")
+            if status == "PASS" and report.get("fpga_target") == "v05-board":
+                progress.line("Next (Windows PowerShell): " + powershell_command([
+                    "python", "tools/gb_launcher.py", "--expected-build-id",
+                    report["wire_build_id"], "--uart-port", "<UART-port>"]))
+        return
+
+    progress.line(f"{report.get('cache', status)}: {args.command} tag={report.get('tag', '-')}")
+
+
+# One build tool, two native simulator hosts and one FPGA host. No command
+# launches the other operating system or translates one backend into another.
+VERILATOR_HOST = "Verilator simulation runs on WSL Linux"
+QUESTA_HOST = "Questa simulation runs on Windows PowerShell"
 FPGA_HOST = "FPGA build and programming run on Windows PowerShell"
+
+
+def simulator_command(args):
+    return (args.command == "doctor" or args.command == "regress"
+            or (args.command == "sim" and args.action == "test")
+            or (args.command == "tests" and args.action == "run"))
+
+
+def resolve_simulator(args, system=None):
+    """Resolve omission to the native backend and reject ignored tool options."""
+    if not simulator_command(args):
+        return
+    if args.sim is None:
+        args.sim = "questa" if (system or platform.system()) == "Windows" else "verilator"
+    if args.sim == "verilator" and getattr(args, "questa_bin", None) is not None:
+        raise ValueError("--questa-bin applies only to --sim questa")
+    if args.sim == "verilator" and getattr(args, "intel_sim_lib", None) is not None:
+        raise ValueError("--intel-sim-lib applies only to --sim questa")
+    if args.sim == "questa" and getattr(args, "verilator_bin", None) is not None:
+        raise ValueError("--verilator-bin applies only to --sim verilator")
 
 
 def foreign_host(args):
     """The refusal message when this OS does not own the requested command."""
     system = platform.system()
-    simulation = args.command in ("sim", "regress") or (args.command == "tests" and args.action == "run")
-    if simulation and system == "Windows":
-        return SIMULATION_HOST
+    if simulator_command(args) and args.sim == "verilator" and system == "Windows":
+        return VERILATOR_HOST
+    if simulator_command(args) and args.sim == "questa" and system != "Windows":
+        return QUESTA_HOST
     if args.command == "fpga" and system != "Windows":
         return FPGA_HOST
     return None
@@ -275,6 +400,7 @@ def main(argv=None, root=None):
     args = parser().parse_args(argv)
     root = Path(root or Path(__file__).resolve().parents[2]).resolve()
     report = {"status": "FAIL"}
+    progress = Progress(not args.json)
 
     def header(tag):
         return {"tag": tag, "created": datetime.now(timezone.utc).isoformat(),
@@ -288,6 +414,7 @@ def main(argv=None, root=None):
             atomic_text(root / "workdir/latest.txt", build.name + "\n")
 
     try:
+        resolve_simulator(args)
         refusal = foreign_host(args)
         if refusal:
             report = {"tag": args.tag or "-", "os": platform.system(), "status": "FAIL", "error": refusal,
@@ -300,16 +427,26 @@ def main(argv=None, root=None):
             # No workspace: the tag directory itself is what clean removes.
             report = header(args.tag)
             report.update(clean(root, args.tag))
+        elif args.command == "sim" and args.action == "test":
+            # The single-target capability contract is checked before the tag
+            # workspace is created. The stage repeats this check defensively.
+            load_target(root, args.target, args.sim)
+            report = tagged(root, args, header, publish, progress)
         else:
-            report = tagged(root, args, header, publish)
+            report = tagged(root, args, header, publish, progress)
     except Exception as error:
         report.update(status="FAIL", error=str(error))
     if args.json:
         print(json.dumps(report, sort_keys=True))
     else:
-        print(f"{report.get('cache', report['status'])}: {args.command} tag={report.get('tag', '-')}")
-        if "error" in report:
-            print(report["error"])
+        guided = (args.command == "fpga"
+                  or (args.command == "sim" and args.action == "test"))
+        if guided:
+            _human_result(args, report, progress)
+        else:
+            print(f"{report.get('cache', report['status'])}: {args.command} tag={report.get('tag', '-')}")
+            if "error" in report:
+                print(report["error"])
         for line in report.get("notices", []):
             print(line)
         if args.command == "tests" and "units" in report and isinstance(report["units"], dict):

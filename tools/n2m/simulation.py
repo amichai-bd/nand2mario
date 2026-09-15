@@ -10,32 +10,39 @@ import uuid
 
 from .hdl import dependencies
 from .simulator import ToolError
-from .verilator import commands as verilator_commands, diagnostic, WAVES
+from .verilator import commands as verilator_commands, diagnostic as verilator_diagnostic, WAVES as VERILATOR_WAVES
+from .questa import commands as questa_commands, diagnostic as questa_diagnostic
 from .records import atomic_json, atomic_text, cache_matches, digest, file_hash, read_json
-from . import python_tb
+from .progress import Progress, display_path
+from . import intel_adc, intel_memory, python_tb
 from .simulation_peer import Peer
 
-# Every registry target names the simulator it runs on. A questa target is
-# retired: it is reported SKIPPED by name and never launched.
+# Every registry target names each backend whose observable checks it preserves.
 SIMULATORS = ("verilator", "questa")
-RETIRED = "questa"
-RETIRED_REASON = "questa-retired"
-# Synthesis bindings a verilator target may record; none is compiled.
 VENDOR_MODELS = ("intel-memory", "intel-adc", "intel-controls")
 
 
 def simulator_problem(name, target):
-    """The validation message for a target's simulator field, or None."""
-    if not isinstance(target, dict) or target.get("simulator") not in SIMULATORS:
-        return f"target {name} must declare simulator as one of {', '.join(SIMULATORS)}"
+    """The validation message for a target's simulator capability list, or None."""
+    simulators = target.get("simulators") if isinstance(target, dict) else None
+    if (not isinstance(simulators, list) or not simulators
+            or any(simulator not in SIMULATORS for simulator in simulators)
+            or len(set(simulators)) != len(simulators)):
+        return (f"target {name} must declare simulators as a nonempty unique list "
+                f"drawn from {', '.join(SIMULATORS)}")
     return None
 
 
-def retired(target):
-    return target["simulator"] == RETIRED
+def require_backend(name, target, backend):
+    """Refuse an unsupported pair before tool discovery or launch."""
+    if backend not in SIMULATORS:
+        raise ValueError(f"unsupported simulator: {backend}; expected verilator or questa")
+    if backend not in target["simulators"]:
+        raise ValueError(f"target {name} does not support simulator {backend}; supported: "
+                         + ", ".join(target["simulators"]))
 
 
-def load_target(root, name):
+def load_target(root, name, backend=None):
     registry = root / "src/dv/builder/targets.json"
     targets = json.loads(registry.read_text(encoding="utf-8"))
     if name not in targets or not re.fullmatch(r"[a-z0-9][a-z0-9_-]*", name):
@@ -44,6 +51,8 @@ def load_target(root, name):
     problem = simulator_problem(name, target)
     if problem:
         raise ValueError(problem)
+    if backend is not None:
+        require_backend(name, target, backend)
     if not isinstance(target.get("signature"), str) or not target["signature"].strip():
         raise ValueError("target signature must be a nonempty string")
     if target["expected_exit"] not in ("zero", "nonzero"):
@@ -73,51 +82,55 @@ def load_target(root, name):
             path = (root / source).resolve()
             if not path.is_relative_to(root.resolve()) or not path.is_file():
                 raise ValueError(f"missing or out-of-tree driver input: {source}")
-    if not retired(target):
-        # vendor_model names the synthesis binding of the RTL under test. The
-        # Verilator stage compiles no vendor source: the wrapper selects the
-        # repository double under VERILATOR, so the field is a record only.
-        # The mixed-mode inventory classified the Questa model's coercion
-        # diagnostic, which the double never emits; it is refused here.
-        if target.get("vendor_model") not in (None, *VENDOR_MODELS):
-            raise ValueError(f"target {name}: vendor_model must be one of {', '.join(VENDOR_MODELS)}")
-        if "intel_mixed_mode_instances" in target:
-            raise ValueError(f"target {name}: intel_mixed_mode_instances is a Questa diagnostic inventory; the double has no coercion diagnostic")
-        # Elaboration-time selection is a build option, not a runtime plusarg:
-        # each entry becomes +define+NAME or +define+NAME=VALUE on the build.
-        defines = target.get("defines", [])
-        if not isinstance(defines, list) or any(not isinstance(d, str) or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*(=[A-Za-z0-9_]+)?", d) for d in defines):
-            raise ValueError(f"target {name}: defines must list NAME or NAME=VALUE identifiers")
-        # A verilator driver's script is the cocotb peer module; the retired
-        # Tcl script is refused.
-        if "driver" in target:
-            if not target["driver"]["script"].endswith(".py"):
-                raise ValueError(f"target {name}: driver script must be the Verilator peer module (.py)")
-            if not target["driver"].get("access"):
-                raise ValueError(f"target {name}: a Verilator driver needs a nonempty access list")
+    if target.get("vendor_model") not in (None, *VENDOR_MODELS):
+        raise ValueError(f"target {name}: vendor_model must be one of {', '.join(VENDOR_MODELS)}")
+    if "intel_mixed_mode_instances" in target and "questa" not in target["simulators"]:
+        raise ValueError(f"target {name}: intel_mixed_mode_instances requires Questa support")
+    # Elaboration-time selection is a build option, not a runtime plusarg.
+    defines = target.get("defines", [])
+    if not isinstance(defines, list) or any(not isinstance(d, str) or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*(=[A-Za-z0-9_]+)?", d) for d in defines):
+        raise ValueError(f"target {name}: defines must list NAME or NAME=VALUE identifiers")
+    if "driver" in target:
+        if target["simulators"] != ["verilator"] or not target["driver"]["script"].endswith(".py"):
+            raise ValueError(f"target {name}: the Python peer driver supports only Verilator")
+        if not target["driver"].get("access"):
+            raise ValueError(f"target {name}: a Verilator driver needs a nonempty access list")
     python_tb.validate(root, target, name)
     return target, registry
 
 
-def skipped_record(root, build, args, provenance=None):
-    """Publish and return the SKIPPED record of a retired target; nothing runs."""
-    record = {"status": "SKIPPED", "reason": RETIRED_REASON, "target": args.target,
-              "simulator": RETIRED, "os": platform.system(), "seed": args.seed,
-              "provenance": provenance or {}, "finished": datetime.now(timezone.utc).isoformat()}
-    atomic_json(build / "sim/test" / args.target / "result.json", record)
-    return record
+def stage_paths(root, build, target, backend):
+    """Return the backend authority and legacy last-completed-run mirror."""
+    mirror = build / "sim/test" / target
+    stage = mirror / backend
+    return stage, mirror, (stage / "result.json").relative_to(root).as_posix()
 
 
-def simulate(root, build, args, simulator, provenance=None):
-    target, registry = load_target(root, args.target)
-    if retired(target):
-        return skipped_record(root, build, args, provenance)
+def publish_mirror(root, mirror, record, log=None):
+    """Atomically update the compatibility mirror; it is never a cache input."""
+    mirrored = {**record, "authoritative_result": record["authoritative_result"]}
+    if log is not None and log.is_file():
+        atomic_text(mirror / "sim.log", log.read_text(encoding="utf-8"))
+    atomic_json(mirror / "result.json", mirrored)
+
+
+def simulate(root, build, args, simulator, provenance=None, progress=None):
+    progress = progress or Progress(False)
+    backend = simulator.backend
+    target, registry = load_target(root, args.target, backend)
     driver = target.get("driver")
     # A driver target runs its SystemVerilog testbench under the cocotb peer,
     # so it needs the pinned Python runtime like a Python testbench.
-    python_runtime = python_tb.discover() if target.get("testbench") == "python" or driver else None
+    python_runtime = python_tb.discover(backend) if target.get("testbench") == "python" or driver else None
     peer_config = python_tb.peer_config(target) if driver else None
     hdl_inputs = dependencies(root, target["sources"])
+    vendor_model = None
+    if backend == "questa":
+        vendor_model = intel_memory.resolve(root, simulator, target, getattr(args, "intel_sim_lib", None))
+        if vendor_model is not None:
+            if vendor_model["selection"] in ("intel-adc", "intel-controls"):
+                intel_adc.reject_shadow_models(root, hdl_inputs)
+            intel_memory.reject_shadow_models(root, hdl_inputs)
     inputs = hdl_inputs + [registry.relative_to(root).as_posix(), "tools/build.py"]
     inputs += [str(p.relative_to(root)).replace("\\", "/") for p in (root / "tools/n2m").glob("*.py")]
     inputs += ["tools/n2m/dependencies.json"]
@@ -132,9 +145,11 @@ def simulate(root, build, args, simulator, provenance=None):
         inputs += target["preload_inputs"]
     hashes = {p: file_hash(root / p) for p in inputs}
     options = {"seed": args.seed, "target": args.target, "definition": target,
-               "simulator": "verilator", "os": platform.system()}
+               "simulator": backend, "os": platform.system()}
     if target.get("vendor_model") is not None:
-        options["vendor_model"] = {"synthesis_binding": target["vendor_model"], "simulation": "repository double under VERILATOR"}
+        options["vendor_model"] = (vendor_model if backend == "questa" else
+                                   {"synthesis_binding": target["vendor_model"],
+                                    "simulation": "repository double under VERILATOR"})
     if python_runtime:
         options["python_runtime"] = python_runtime
     if driver:
@@ -144,43 +159,62 @@ def simulate(root, build, args, simulator, provenance=None):
         # The locked fixture is built by the host compiler and CMake; their
         # identity shapes the image, so it enters the fingerprint.
         from .mooneye import tool_identity
-        fixture_tools = tool_identity(root)
+        installation = Path(simulator.tools["vlog"]).resolve().parents[2] if backend == "questa" else None
+        fixture_tools = tool_identity(root, installation)
         options["fixture_tools"] = fixture_tools
     fingerprint = digest({"inputs": hashes, "tools": simulator.info, "options": options})
-    stage = build / "sim/test" / args.target
+    stage, mirror, authoritative = stage_paths(root, build, args.target, backend)
     current = stage / "result.json"
     old = read_json(current)
     if not args.rebuild and cache_matches(old, fingerprint, root, build) and (not python_runtime or (driver and target["expected_exit"] != "zero") or python_tb.evidence(root, old, target, driver=bool(driver))):
-        return {**old, "cache": "CACHED"}
+        cached = {**old, "cache": "CACHED", "authoritative_result": authoritative}
+        publish_mirror(root, mirror, cached, stage / "sim.log")
+        progress.cached("Compile and elaborate")
+        progress.cached("Run simulation")
+        progress.cached("Check simulation result")
+        return cached
     attempt_id = uuid.uuid4().hex
     attempt = stage / "attempts" / attempt_id
-    compile_dir = build / "compile/verilator" / args.target / attempt_id
+    compile_dir = build / "compile" / backend / args.target / attempt_id
     for path in (attempt / "waves", attempt / "coverage", compile_dir):
         path.mkdir(parents=True, exist_ok=True)
     from .test_budget import target_selection
     record = {"status": "RUNNING", "cache": "BUILT", "fingerprint": fingerprint,
               "inputs": hashes, "tools": simulator.info, "seed": args.seed,
-              "simulator": "verilator", "os": platform.system(),
-              "waves": {"format": "fst", "path": (attempt / WAVES).relative_to(root).as_posix()},
+              "simulator": backend, "os": platform.system(),
+              "waves": {"format": "fst" if backend == "verilator" else "wlf",
+                        "path": (attempt / (VERILATOR_WAVES if backend == "verilator"
+                                             else "waves/simulation.wlf")).relative_to(root).as_posix()},
               "timing": {"build_seconds": 0.0, "run_seconds": 0.0},
               "options": options, "commands": [], "artifacts": {},
+              "authoritative_result": authoritative,
               "started": datetime.now(timezone.utc).isoformat(),
               "provenance": provenance or {}}
     # Invalidate the previous success before execution. A killed process leaves
     # RUNNING and a lock, never a reusable success for its unfinished request.
     atomic_json(current, record)
     log = compile_dir / "prepare.log"
+    active_stage = None
     try:
-        commands = verilator_commands(simulator, root, target, args.seed, compile_dir, attempt,
-                                      python_runtime=python_runtime, fixture_tools=fixture_tools)
+        commands = (verilator_commands(simulator, root, target, args.seed, compile_dir, attempt,
+                                       python_runtime=python_runtime, fixture_tools=fixture_tools)
+                    if backend == "verilator" else
+                    questa_commands(simulator, root, target, args.seed, compile_dir, attempt,
+                                    vendor_model=vendor_model, python_runtime=python_runtime,
+                                    fixture_tools=fixture_tools))
         for argv, cwd, log, expected in commands:
+            running = log.name == "sim.log"
+            label = "Run simulation" if running else "Compile and elaborate"
+            if not running and log.name not in ("build.log", "compile.log"):
+                label += ": " + log.stem.replace("-", " ")
+            detail = f"log: {display_path(root, log)}"
+            active_stage = (label, progress.begin(label, detail), detail)
             command = simulator.command(argv)
             record["commands"].append({"argv": command, "cwd": str(cwd)})
             with (build / "commands.log").open("a", encoding="utf-8") as stream:
                 stream.write(json.dumps(record["commands"][-1]) + "\n")
-            running = log.name == "sim.log"
-            # The C++ build of a large design is bounded by the target's own
-            # selected wall; the run keeps the registry's runtime bound.
+            # Verilator's C++ build and Questa's vendor compilation share the
+            # target wall; the run keeps the registry's runtime bound.
             if running:
                 call_options = {"timeout": target["timeout_seconds"]} if "timeout_seconds" in target else {}
             else:
@@ -229,36 +263,76 @@ def simulate(root, build, args, simulator, provenance=None):
                                and record.get("python_results", {}).get("status") == "PASS")
             if running and python_runtime and not driver:
                 record["python_results"] = python_tb.results(attempt / "results.xml", target["python"])
-            # cocotb ends a failed Python testbench through $finish, so that
-            # simulator process exits zero either way and the target's
-            # expected_exit names the verdict of its named test, judged from
-            # results.xml. A driver target's testbench still exits on its own
-            # through $fatal; a deliberate failure the peer raises instead
-            # (the retired driver's FAIL <name>) also ends with exit zero and
-            # is judged from the peer test's verdict the same way.
+            # cocotb ends a failed Python testbench through $finish, so its
+            # named XML verdict remains separate from the raw process exit.
             peer_failure = (running and python_runtime and driver and expected == "nonzero"
                             and result.returncode == 0 and python_tb.accepted(record["python_results"], target))
-            if (result.returncode == 0) != (expected == "zero" or (python_runtime is not None and not driver)) and not peer_failure:
+            if ((result.returncode == 0)
+                    != (expected == "zero" or (python_runtime is not None and not driver))
+                    and not peer_failure):
                 raise RuntimeError(f"unexpected exit {result.returncode}; see {log.relative_to(root)}")
             if running and python_runtime and driver:
                 if expected == "zero" and record["python_results"]["status"] != "PASS":
-                    raise RuntimeError(f"Verilator peer failed: {python_tb.failure_name(record['python_results'])}")
+                    raise RuntimeError(f"{backend.capitalize()} peer failed: {python_tb.failure_name(record['python_results'])}")
             elif running and python_runtime and not python_tb.accepted(record["python_results"], target):
-                raise RuntimeError(f"Python test verdict does not match expected_exit {expected}: {record['python_results']}")
-            if running and python_runtime and (not driver or peer_failure):
-                explained = python_tb.explained_warnings(target)
+                raise RuntimeError(f"Python test verdict does not match expected_exit {target['expected_exit']}: {record['python_results']}")
+            checked_output = result.stdout
+            if backend == "questa":
+                if log.name == "adc-pll-generate.log":
+                    record["generated_adc_pll"] = intel_adc.verify_generated(cwd)
+                if log.name == "intel-adc-control-compile.log":
+                    checked_output, record["explained_compile_diagnostics"] = \
+                        intel_adc.classify_compile_diagnostics(checked_output, vendor_model, log.name)
+                if running:
+                    if vendor_model and vendor_model["selection"] in ("intel-adc", "intel-controls"):
+                        memory_explained = []
+                        if vendor_model["selection"] == "intel-controls":
+                            checked_output, memory_explained = intel_memory.classify_diagnostics(
+                                checked_output, vendor_model["memory_diagnostics"])
+                        checked_output, adc_explained = intel_adc.classify_sim_diagnostics(
+                            checked_output, vendor_model,
+                            python_access=bool(python_runtime) and vendor_model["selection"] == "intel-controls")
+                        record["explained_diagnostics"] = memory_explained + adc_explained
+                    else:
+                        checked_output, record["explained_diagnostics"] = \
+                            intel_memory.classify_diagnostics(checked_output, vendor_model)
+                    if python_runtime:
+                        checked_output, explained_python = python_tb.classify_questa(checked_output)
+                        if explained_python:
+                            record["explained_python_diagnostics"] = explained_python
+                problem = questa_diagnostic(
+                    checked_output,
+                    target["signature"] if (running and not python_runtime
+                                             and target["expected_exit"] == "nonzero") else None)
             else:
-                explained = ()
-            problem = diagnostic(result.stdout, target["signature"] if expected == "nonzero" else None,
-                                 explained=explained, peer=peer_config["module"] if driver else None)
+                explained = python_tb.explained_warnings(target) if running and python_runtime and (not driver or peer_failure) else ()
+                problem = verilator_diagnostic(
+                    checked_output, target["signature"] if expected == "nonzero" else None,
+                    explained=explained, peer=peer_config["module"] if driver else None)
             if problem:
                 raise RuntimeError(f"{problem}; see {log.relative_to(root)}")
+            progress.finish(active_stage[0], active_stage[1], detail=active_stage[2])
+            active_stage = None
+        active_stage = ("Check simulation result",
+                        progress.begin("Check simulation result"), None)
         if target["signature"] not in result.stdout:
             raise RuntimeError(f"missing expected signature: {target['signature']}")
-        if not (attempt / WAVES).is_file():
-            raise RuntimeError(f"missing retained waves: {WAVES}")
+        waves = VERILATOR_WAVES if backend == "verilator" else "waves/simulation.wlf"
+        if not (attempt / waves).is_file():
+            raise RuntimeError(f"missing retained waves: {waves}")
+        artifacts = [p for base in (compile_dir, attempt)
+                     for p in base.rglob("*") if p.is_file()]
+        record["artifacts"] = {p.relative_to(root).as_posix(): file_hash(p)
+                               for p in artifacts}
+        if (python_runtime and not (driver and target["expected_exit"] != "zero")
+                and not python_tb.evidence(root, record, target, driver=bool(driver))):
+            raise RuntimeError("incomplete Python test evidence")
+        progress.finish(active_stage[0], active_stage[1], status="PASS", detail=active_stage[2])
+        active_stage = None
         record["status"] = "PASS"
     except Exception as error:
+        if active_stage is not None:
+            progress.finish(active_stage[0], active_stage[1], status="FAIL", detail=active_stage[2])
         if isinstance(error, ToolError):
             log.write_text(error.output + "\n" + str(error) + "\n", encoding="utf-8")
         record["status"] = "FAIL"
@@ -268,11 +342,10 @@ def simulate(root, build, args, simulator, provenance=None):
     record["finished"] = datetime.now(timezone.utc).isoformat()
     artifacts = [p for base in (compile_dir, attempt) for p in base.rglob("*") if p.is_file()]
     record["artifacts"] = {p.relative_to(root).as_posix(): file_hash(p) for p in artifacts}
-    if python_runtime and record["status"] == "PASS" and not (driver and target["expected_exit"] != "zero") and not python_tb.evidence(root, record, target, driver=bool(driver)):
-        record.update(status="FAIL", error="incomplete Python test evidence")
     atomic_json(attempt / "result.json", record)
-    # result.json is authoritative. Immutable attempt paths keep old readers
-    # valid while the publication pointer changes in one atomic replace.
+    # The backend-qualified record is authoritative. The generic files are
+    # compatibility mirrors of the last completed run and are never reused.
     atomic_text(stage / "sim.log", (attempt / "sim.log").read_text(encoding="utf-8"))
     atomic_json(current, record)
+    publish_mirror(root, mirror, record, attempt / "sim.log")
     return record

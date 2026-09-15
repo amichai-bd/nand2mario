@@ -27,7 +27,7 @@ retirement records, expected/actual mismatch detail, coverage and waves beneath
 the shared builder tag. Bound each case and the complete suite by independent
 watchdogs that fail nonzero. Final acceptance requires actual simulation under Verilator through the
 builder; host-only checks and prior software encoding proofs cannot substitute.
-All 58 CPU targets are registered `simulator: "verilator"` and run with
+All 58 CPU targets declare `simulators: ["verilator"]` and run with
 randomized initial values; the testbenches compare two-state values only.
 
 No full external adapter, integrated PPU/loader, commercial ROM or physical
