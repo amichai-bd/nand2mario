@@ -45,6 +45,8 @@ is not device authentication or proof of correct wiring.
 | `host sdram-write --address <integer> --data <32 hex digits>` | Write one 16-byte line at a line-aligned SDRAM device address through generated `SDRAM_WRITE`; alignment and device bounds are checked before the port opens. |
 | `host sdram-read --address <integer> --lines <1-15>` | Read consecutive lines through `SDRAM_READ`; the bytes land in `sdram.bin` and the record carries their hex and hash. |
 | `host sdram-test [--start <integer> --length <bytes> \| --full \| --boundary] [--seed <n>]` | Write a seeded address-dependent pattern over the range one line per `SDRAM_WRITE`, read it back fifteen lines per `SDRAM_READ` and compare; every mismatching line is listed by device address with expected and actual bytes (first 64 in detail, all counted). Default range is one 32 KiB slot at 0; `--full` covers the 64 MiB device and takes hours at 115200 baud. `--boundary` instead writes and reads back the [storage contract's boundary set](../../../src/rtl/storage/MAS_sdram.md#verification): first and last line of slots 0, 15 and 16, both catalogue edges, first and last line of a row and one line in each bank including the device end, naming each mismatching line. The command fails when any line mismatches. |
+| `host library load <result.json>... [--menu <result.json>]` | Fill the [sixteen-slot library](../../../src/rtl/storage/MAS_sdram.md#address-space-layout): each immutable software attempt is validated by the packager before the port opens (loose ROMs, foreign profiles and more than sixteen images are refused), written to slot `i` at `i * 32 KiB` one line per `SDRAM_WRITE`, the `--menu` image to index 16, then the 17-entry catalogue (valid, profile, length, CRC32, header title, reserved) at `0x88000`. Every write completes before the readback: each slot is read by `SDRAM_READ`, compared byte for byte and by CRC32 against its catalogue entry, and the catalogue bytes are compared. The library table is printed (JSON: `result.slots`, `result.catalogue`); any mismatch names the slot and its title in `error` and fails the command with the table retained. Does not load the menu into the ROM store or run anything. |
+| `host library status` | Read the catalogue as stored and print its 17 rows (index, name, valid, profile, length, CRC32, title); the raw bytes land in `catalogue.bin`. Reads `LIBRARY_STATUS` as well once the loader profile's register exists in the generated map. |
 | `host crc-proof --expected-build-id <32hex>` | Fixed bad-CRC PING diagnostic on an already certain, reviewed endpoint. Requires the physical verification workflow below. |
 
 `host peek` reads DMG memory off a paused board so a hardware-only defect can
@@ -82,6 +84,13 @@ out-of-device range before anything is sent, and the endpoint answers
 `BAD_VALUE` while the SDRAM is not initialized. The test pattern is a
 per-line function of device address and seed, so an aliased or stale line
 never matches by accident.
+
+`host.library.load_library(client, images, menu, progress=)` and
+`host.library.read_catalogue(client)` implement the library verbs over those
+line commands: `build_catalogue` packs the contract's little-endian 32-byte
+entries (`<BBHI16s8x`) and `parse_catalogue` reads them back; the same
+functions drive the `library-peer` Verilator target through the simulation
+peer, so the wire bytes are those a board receives.
 
 `Client.write_host(address, value)` uses the same whitelist.
 `Client.select_input_source(source)` selects UART or PHYSICAL through that write.

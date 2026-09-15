@@ -647,6 +647,7 @@ units:
   uart-run-dots: {kind: sim, level: 2, labels: [uart], duration_seconds: 1.57}
   uart-run-dots-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 1.05}
   uart-run-dots-wire: {kind: sim, level: 2, labels: [uart], duration_seconds: 42.21}
+  library-peer: {kind: sim, level: 1, labels: [host, python-tb, storage, uart], duration_seconds: 0.00}
   uart-sdram: {kind: sim, level: 1, labels: [host, storage, uart], duration_seconds: 2.62}
   uart-sdram-fault: {kind: sim, level: 1, labels: [fault, host, storage, uart], duration_seconds: 2.30}
   uart-serial: {kind: sim, level: 2, labels: [uart], duration_seconds: 2.71}
