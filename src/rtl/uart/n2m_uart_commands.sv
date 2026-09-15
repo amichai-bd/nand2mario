@@ -105,6 +105,11 @@ module n2m_uart_commands (
     logic [7:0] sdram_output_data;
     n2m_interfaces_pkg::sdram_write_t sdram_write_fields;
     n2m_interfaces_pkg::sdram_read_t sdram_read_fields;
+    // Quartus 25.1 rejects package-qualified constants inside instance
+    // expressions (error 10162); these aliases keep the owning values.
+    localparam logic [7:0] SDRAM_WRITE_COMMAND = n2m_interfaces_pkg::COMMAND_SDRAM_WRITE;
+    localparam integer SDRAM_ADDRESS_BITS = n2m_interfaces_pkg::SDRAM_ADDRESS_BITS;
+    logic sdram_write_selected;
     logic [n2m_uart_pkg::UART_ADDRESS_BITS-1:0] index, index_next;
     logic loading, loading_next, image_valid_next;
     logic [7:0] profile_next, reply_status, reply_status_next;
@@ -166,6 +171,7 @@ module n2m_uart_commands (
     assign reply_start = state == REPLY_START;
     assign command_done = reply_done && (state == REPLY_WAIT || state == REPLY_ROM || state == REPLY_SDRAM);
     assign sdram_start = state == SDRAM_START && !reset_sys;
+    assign sdram_write_selected = request_header.command == SDRAM_WRITE_COMMAND;
     assign sdram_output_ready = state == REPLY_SDRAM && payload_ready;
     assign snapshot_request = state == SNAPSHOT_START && !reset_sys;
     assign frame_read = state == FRAME_FETCH && payload_ready && !reset_sys;
@@ -205,8 +211,8 @@ module n2m_uart_commands (
     );
     n2m_uart_sdram u_sdram (
         .clk_sys(clk_sys), .reset_sys(reset_sys), .start(sdram_start),
-        .write(request_header.command == n2m_interfaces_pkg::COMMAND_SDRAM_WRITE),
-        .address(sdram_write_fields.address[n2m_interfaces_pkg::SDRAM_ADDRESS_BITS-1:0]),
+        .write(sdram_write_selected),
+        .address(sdram_write_fields.address[SDRAM_ADDRESS_BITS-1:0]),
         .line_count(sdram_read_fields.count[3:0]),
         .write_data({sdram_write_fields.data3, sdram_write_fields.data2, sdram_write_fields.data1, sdram_write_fields.data0}),
         .busy(sdram_busy), .done(sdram_done), .output_valid(sdram_output_valid),
