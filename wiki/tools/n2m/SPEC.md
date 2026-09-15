@@ -1039,8 +1039,9 @@ and never falls back between the two. The compile set is fixed by the tree:
 3. the elaboration stand-ins
    [`questa_lint_vendor.sv`](../../../src/dv/builder/questa_lint_vendor.sv):
    port- and parameter-compatible empty modules for exactly `n2m_system_pll`,
-   `n2m_pixel_pll`, `n2m_adc_pll`, `altera_modular_adc_control` and
-   `altsyncram`, the units Quartus generates or installs during `fpga build`.
+   `n2m_pixel_pll`, `n2m_adc_pll`, `altera_modular_adc_control`, `altsyncram`
+   and `altera_onchip_flash`, the units Quartus generates or installs during
+   `fpga build`.
    They are elaboration stand-ins, not models: no behavior, no vendor
    parameter checking. Only this command compiles them; they belong to no
    synthesis source set and are not the `VERILATOR` doubles. The result
@@ -1494,6 +1495,19 @@ programs only an `output/design.sof` still in place beside a readable attempt
 `result.json` whose `artifacts` list that file with its current hash, and it
 refuses a record that carries the override. A copied, moved or altered `.sof`,
 or one without a record, is refused. Other targets reject the option.
+
+An image that lists the [flash reader](../../src/rtl/storage/MAS_flash_library.md#on-chip-flash-ip-boundary)
+resolves the installed Intel On-Chip Flash IP through
+[`fpga_flash.py`](../../../tools/n2m/fpga_flash.py): the four synthesis files
+of `ip/altera/altera_onchip_flash/` and its two hw.tcl definitions must match
+the pinned SHA-256 values, the four files are copied beside the generated
+project and named as `VERILOG_FILE` assignments, and the QSF carries
+`INTERNAL_FLASH_UPDATE_MODE "Single Comp Image"`. No generator runs: the
+reader instantiates `altera_onchip_flash` with the derived parameters itself.
+The record keeps the IP identity under `tools.onchip_flash`, the cache
+requires the staged copies, and the evidence checks `UFM blocks : 1 / 1` and
+the configuration mode assignment under `onchip_flash`. `flash-proof` is the
+bounded fit of that path.
 
 The `v05-board` target uses the existing composed system with the physical pins
 in the [system contract](../../src/rtl/system/MAS_system.md). It requires a

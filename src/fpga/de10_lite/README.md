@@ -65,3 +65,18 @@ the UART synchronizer chain and leaves unused package pins as inputs. LEDR9
 shows clocking ready, LEDR8 SDRAM initialized, LEDR7 controller idle and LEDR6
 toggles on every accepted line. Programming and the board memory test are
 authorized per session.
+
+`flash-proof` is the flash reader fit: the installed Intel On-Chip Flash IP
+(`altera_onchip_flash`, read-only parallel data slave, incrementing burst of 4,
+single compressed image mode) behind
+[`n2m_flash_reader`](../../rtl/storage/n2m_flash_reader.sv) on the same
+parallel system and pixel PLLs and reset bootstrap as `sdram-proof`, walked
+continuously over the 736 KiB user range by
+[`flash_proof`](flash_proof.sv). The builder copies the four pinned IP source
+files into the attempt and sets `INTERNAL_FLASH_UPDATE_MODE "Single Comp
+Image"`; the fit must place `UFM blocks : 1 / 1`. KEY0/B8 is the reset and
+LEDR9-0 show clocking ready, reader ready, a toggle per pass over the user
+range, the pixel-clock heartbeat and the low six bits of a running checksum
+of every line read. The flash is not initialized by this image; reading its
+contents on the board is the later flash boot check under the
+[flash library contract](../../../wiki/src/rtl/storage/MAS_flash_library.md#verification).

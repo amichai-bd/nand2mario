@@ -325,6 +325,9 @@ def execute(argv, folder, log, timeout, record, build):
         explained = [*explained, *generated_design_diagnostics(text, folder)]
     if log.name == "compile.log" and sdram_target(record.get("definition", {})):
         explained = [*explained, *sdram_clock_diagnostics(text, folder)]
+    if log.name in fpga_flash.STROBE_COUNTS and fpga_flash.flash_target(record.get("definition", {})):
+        explained = [*explained, *fpga_flash.explained_diagnostics(text, folder, record["tools"]["onchip_flash"],
+                                                                   record["definition"]["top"], log.name)]
     record["classified_diagnostics"].extend(diagnostics(text, explained))
     return text
 
@@ -449,7 +452,10 @@ def timing_evidence(folder, target, *, build_id=None):
     ucp = (output / "unconstrained.rpt").read_text(encoding="utf-8")
     rows = re.findall(r";\s*(Illegal Clocks|Unconstrained [^;]+?)\s*;\s*(\d+)\s*;\s*(\d+)\s*;", ucp)
     expected = {"Illegal Clocks", "Unconstrained Clocks", "Unconstrained Input Ports", "Unconstrained Input Port Paths", "Unconstrained Output Ports", "Unconstrained Output Port Paths"}
-    if {name for name, _, _ in rows} != expected or any(int(a) or int(b) for _, a, b in rows):
+    if {name for name, _, _ in rows} != expected or any(
+            (int(a) or int(b)) and not (name == "Unconstrained Clocks" and a == b and
+                                        fpga_flash.accepted_unconstrained_clock(int(a), target, ucp))
+            for name, a, b in rows):
         raise ValueError("unconstrained paths or missing unconstrained-path summary")
     ignored = (output / "ignored.rpt").read_text(encoding="utf-8")
     if "No constraints were ignored." not in ignored:
@@ -485,7 +491,8 @@ def timing_evidence(folder, target, *, build_id=None):
             continue
         if int(count) and not (name == "virtual_clock" and int(count) == 1 and "No virtual clock was found." in checks):
             raise ValueError(f"structural timing failure: {name}={count}")
-    evidence = {"slack_ns": slacks, "fit_summary": fit, "unconstrained": "none", "ignored_constraints": "none", "vendor_lock_event": lock_event, "vga": vga_evidence, "intel_memory": memory_evidence,
+    unconstrained = "none" if not any(int(a) for _, a, _ in rows) else "one: the On-Chip Flash IP sense-enable strobe clock"
+    evidence = {"slack_ns": slacks, "fit_summary": fit, "unconstrained": unconstrained, "ignored_constraints": "none", "vendor_lock_event": lock_event, "vga": vga_evidence, "intel_memory": memory_evidence,
             "virtual_clock_check": "No virtual clock required for the physical-clock-referenced fixture" if "No virtual clock was found." in checks else "passed"}
     if target["top"] in ("v05_proof", "v05_controls_proof"):
         evidence["vga_paths"] = fpga_v05.verify_paths(folder, system_clock=fpga_pll.SYSTEM_CLOCK, controls=fpga_v05.control_target(target))

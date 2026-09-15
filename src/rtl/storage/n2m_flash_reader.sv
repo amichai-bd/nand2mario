@@ -66,7 +66,7 @@ module n2m_flash_reader #(
         state_next = state;
         case (state.phase)
             FLASH_IDLE: begin
-                if (line_valid) begin
+                if (accept) begin
                     state_next.address = flash_avmm_address(line_word);
                     state_next.word = '0;
                     state_next.phase = FLASH_ISSUE;

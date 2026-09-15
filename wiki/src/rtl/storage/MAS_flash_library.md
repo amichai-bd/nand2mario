@@ -1,11 +1,17 @@
 # Flash-resident game library and boot copier
 
-Planned owner: `src/rtl/storage/` (flash reader and boot copier) and
-`src/dv/storage/` (Verilator double and fixtures). No implementation exists
-yet; the flash boot slice of
-[#658](https://github.com/amichai-bd/nand2mario/issues/658) implements this
-page and closes that gap. Until then this page is the contract the slice
-derives its RTL, builder changes and tests from.
+Owner: `src/rtl/storage/` and `src/dv/storage/`. Implemented today: the
+flash reader [`n2m_flash_reader`](../../../../src/rtl/storage/n2m_flash_reader.sv)
+with its constants in [`n2m_flash_pkg`](../../../../src/rtl/storage/n2m_flash_pkg.sv),
+the IP double [`n2m_sim_onchip_flash`](../../../../src/rtl/storage/n2m_sim_onchip_flash.sv),
+the [`tb_flash_reader`](../../../../src/dv/storage/tb_flash_reader.sv) fixtures
+and the [`flash-proof`](../../../../src/fpga/de10_lite/flash_proof.sv) fit.
+The boot copier and its fixtures ([#675](https://github.com/amichai-bd/nand2mario/issues/675)),
+the builder's `library.hex`/`.pof` path ([#676](https://github.com/amichai-bd/nand2mario/issues/676))
+and the board check ([#677](https://github.com/amichai-bd/nand2mario/issues/677),
+[#681](https://github.com/amichai-bd/nand2mario/issues/681)) remain open under
+[#658](https://github.com/amichai-bd/nand2mario/issues/658); until they land,
+the sections below that describe them are the contract those slices derive from.
 
 ## Scope
 
@@ -25,7 +31,7 @@ decision to hold the library in flash.
 | Term | Definition |
 |---|---|
 | Flash | The 10M50's internal flash: sectors UFM1, UFM0, CFM2, CFM1, CFM0, in that address order. |
-| Word | One 32-bit flash word; every flash address on this page is a word address in the On-Chip Flash IP's data address space. |
+| Word | One 32-bit flash word; every flash address on this page is a word address in the MAX 10 flash's own numbering, where UFM1 starts at word `0x00800`. The On-Chip Flash IP's Avalon-MM data slave numbers the same words from 0 and adds that base internally (`ADDR_RANGE1_OFFSET`), so the reader drives `avmm_data_addr = flash_word - 0x00800` (`n2m_flash_pkg::FLASH_DATA_BASE`) and every image the IP or its double loads is written in the 0-based Avalon numbering. |
 | Page | 64 Kb (8 KiB, 2048 words), the smallest erasable unit; a 32 KiB image is exactly 4 pages. |
 | User range | Words `0x00800`-`0x2E7FF` (736 KiB): UFM1, UFM0, CFM2 and CFM1, the sectors left to the user in the single compressed image mode. |
 | Library | The 17 slot images (0-15 games, 16 the menu) and the catalogue, 545 KiB, laid out as in [SDRAM](MAS_sdram.md#address-space-layout). |
@@ -69,8 +75,8 @@ an invalid entry.
 
 ### On-chip flash IP boundary
 
-The flash reader `n2m_flash_reader` wraps the Intel On-Chip Flash IP and
-exposes a line read interface to the copier:
+The flash reader [`n2m_flash_reader`](../../../../src/rtl/storage/n2m_flash_reader.sv)
+wraps the Intel On-Chip Flash IP and exposes a line read interface to the copier:
 
 | Signal | Direction | Meaning |
 |---|---|---|
@@ -80,34 +86,63 @@ exposes a line read interface to the copier:
 | `line_data_valid` | out | One clock; `line_data[127:0]` holds the four words, word `k` in bits `32k+31:32k`. |
 | `line_data[127:0]` | out | Stable until the next acceptance. |
 
+The reader holds one line at a time: `line_ready` is high only while it is
+idle, it drops with the acceptance and returns the clock after
+`line_data_valid`. Counted from the accepting edge, the IP accepts the Avalon
+read at edge 3, the reader captures word 0 at edge 10 and word 3 at edge 13,
+publishes the line in clock 13 and is ready again in clock 14, so a stream
+with `line_valid` held high accepts one line every 15 clocks
+(`n2m_flash_pkg::FLASH_LINE_PERIOD_CLOCKS`). Reset returns the reader and
+the IP to idle and abandons the outstanding read; nothing is published.
+
 Inside, under synthesis the wrapper instantiates `altera_onchip_flash` from
 Quartus 25.1std `ip/altera/altera_onchip_flash/` with: parallel data
 interface, incrementing burst, read-only data slave, configuration mode
 "Single Compressed Image", sectors UFM1, UFM0, CFM2, CFM1 "Read only", CFM0
 "Hidden", clock `clk_sys`, and the 10M50 sector parameters recorded in that
-IP's `altera_onchip_flash_hw_proc.tcl`. Each line is one Avalon-MM read with
-`burstcount = 4` at an aligned word address; the IP returns four words in
-seven clocks after its address phase (`FLASH_SEQ_READ_DATA_COUNT = 4`,
-`FLASH_READ_CYCLE_MAX_INDEX = 5` for 10M40/50) and holds `waitrequest`
-otherwise. The IP's control slave is not connected to any writer: no erase and
-no program path exists in the console.
+IP's `altera_onchip_flash_hw_proc.tcl`. The IP is plain parameterised
+Verilog, so no Platform Designer or megafunction generation runs: the wrapper
+instantiates it directly with the parameter values the hw.tcl derives for
+`10M50DAF484C7G` (Avalon address 18 bits, burstcount 3 bits, sectors 1-4 at
+words `0x00000`-`0x2DFFF`, `ADDR_RANGE1_OFFSET 0x800`, 25 MHz timeouts,
+`FLASH_SEQ_READ_DATA_COUNT = 4`, `FLASH_READ_CYCLE_MAX_INDEX = 5`), and the
+[builder](../../../tools/n2m/SPEC.md#fpga-build) stages the four pinned
+synthesis files ([`fpga_flash.py`](../../../../tools/n2m/fpga_flash.py)) and
+writes the configuration mode assignment for every image that lists the
+reader. Each line is one Avalon-MM read with `burstcount = 4` at an aligned
+word address. The IP holds `waitrequest` so that the read is accepted at the
+third edge after it is presented, then returns word 0 seven edges after that
+acceptance and words 1-3 on the next three edges (`FLASH_READ_CYCLE_MAX_INDEX`
+5 dummy cycles, then four words from its 128-bit data register); a longer
+burst continues at four words per seven clocks. Between reads it is busy for
+two more clocks. The IP's control slave is not connected to any writer: no
+erase and no program path exists in the console.
 
 Under the predefined `VERILATOR` macro the wrapper instantiates
-`n2m_sim_onchip_flash` instead, the same rule as the
-[ADC double](../../fpga-controls.md) and the
+[`n2m_sim_onchip_flash`](../../../../src/rtl/storage/n2m_sim_onchip_flash.sv)
+instead, the same rule as the [ADC double](../../fpga-controls.md) and the
 [memory primitive](../common/MAS_memory_primitives.md): a repository double of
-the data slave (`read`, `addr`, `burstcount`, `waitrequest`,
-`readdatavalid`, `readdata`) that loads the build's flash `.hex` with
-`$readmemh`, returns `0xFFFFFFFF` for words the file does not define, and
-reproduces the cadence above: `waitrequest` for 3 clocks, then four
-`readdatavalid` words within the following 7 clocks, at most 128 words per
-burst. Quartus never sees the double. The Windows
-[Questa compile gate](../../../tools/n2m/SPEC.md#questa-compile-gate) gains one
-elaboration stand-in, `altera_onchip_flash`, port- and parameter-compatible
-and empty, beside the existing five.
+the data slave (`read`, `write`, `addr`, `burstcount`, `waitrequest`,
+`readdatavalid`, `readdata`, the IP's port names) that loads the build's
+flash image with `$readmemh`, returns `0xFFFFFFFF` for words the file does
+not define, and reproduces the cadence above: the read captured at the third
+edge, four `readdatavalid` words seven to ten edges after it, four words per
+seven clocks for a longer burst, at most 128 words per burst. The image is a
+word-addressed Verilog hex file (`@<avalon word>` records, one 32-bit word
+each) in the 0-based Avalon numbering; the Intel HEX the assembler reads for
+`INIT_FILENAME` encodes the same words byte-addressed, so the builder emits
+both, as the vendor IP itself keeps separate `.hex` and `.dat` files. The
+double fails with a named fatal on a write (`FLASH_MODEL_WRITE`), a read
+whose fields change under `waitrequest` (`FLASH_MODEL_HOLD`), a misaligned,
+out-of-range or zero burst (`FLASH_MODEL_ALIGNED`, `FLASH_MODEL_RANGE`,
+`FLASH_MODEL_BURST`). Quartus never sees the double. The Windows
+[Questa compile gate](../../../tools/n2m/SPEC.md#questa-compile-gate) has one
+elaboration stand-in for the IP, `altera_onchip_flash`, port- and
+parameter-compatible and empty, beside the other five.
 
 ### Boot copier
 
+The copier is not implemented yet ([#675](https://github.com/amichai-bd/nand2mario/issues/675)).
 From `reset_sys` release the copier performs, in order:
 
 1. `WAIT_SDRAM`: wait for the SDRAM controller's `initialized`
@@ -176,7 +211,11 @@ whether this power-up's library came from flash; the menu may display it.
 
 ### Programming the flash
 
-The flash is programmed only through JTAG with the Quartus Programmer:
+The builder's image and `.pof` path is not implemented yet
+([#676](https://github.com/amichai-bd/nand2mario/issues/676)); the reader's
+`INIT_FILENAME` parameter is the hook it fills, and an empty name leaves the
+flash uninitialized. The flash is programmed only through JTAG with the
+Quartus Programmer:
 
 1. The builder assembles the library image `library.hex` (Intel HEX, byte
    addressed at `4 * flash_word`) from the 17 images and the catalogue it
@@ -227,23 +266,34 @@ Simulation runs under Verilator on WSL with the double loaded from the same
 | `flash-copy` | With a two-image fixture library (slots 0 and 16 valid): `COPY` starts after `initialized`, every SDRAM line equals the flash line, ascending order, `COPY` duration within the bounds above, `flash_boot` set, slot 16 swapped and the core running the menu |
 | `flash-blank` | Erased flash: no SDRAM request, no select, `flash_boot = 0`, `sdram_ready` rises at most 20 clocks after `initialized` (clock 5056 after reset release at the latest, exact count checked); the phase 1 host load then works unchanged |
 | `flash-precedence` | `LOAD_BEGIN` and `SDRAM_READ` during `COPY` are refused with the existing codes and accepted after `DONE`; a host load after boot overwrites SDRAM and the double's contents are unchanged |
-| `flash-reader` | Aligned line reads at the four sector boundaries, `waitrequest`/`readdatavalid` cadence, `0xFFFFFFFF` for undefined words, a misaligned request fails `FLASH_LINE_ALIGNED` |
+| `flash-reader` | Through the reader against the double loaded from a fixture image the testbench writes: every slot's first and last line, the whole catalogue, the line either side of each sector start and the last user line, each compared word for word with the fixture's own copy; an untouched slot, the reserved range and the user range's end read `0xFFFFFFFF`; the Avalon address equals the flash word less `0x00800`, burstcount is 4, `waitrequest`/`readdatavalid` and `line_data_valid`/`line_ready` follow the edge counts above, the catalogue streams back to back at one line per 15 clocks, the published line holds until the next acceptance, and a reset during a read publishes nothing |
+| `flash-reader-fault-misaligned`, `flash-reader-fault-range` | A misaligned request fails `FLASH_LINE_ALIGNED`; a word past the user range fails `FLASH_LINE_RANGE` |
 
 Assertions the copier and reader carry:
 
 | Assertion | Rule |
 |---|---|
 | `FLASH_LINE_ALIGNED` | acceptance implies `line_word[1:0] == 0` |
+| `FLASH_LINE_RANGE` | acceptance implies `0x00800 <= line_word <= 0x2E7FF` |
 | `FLASH_ONE_OUTSTANDING` | no acceptance while a read has no `line_data_valid` yet |
+| `FLASH_DATA_EXPECTED` | `readdatavalid` only while a line is outstanding |
 | `FLASH_COPY_ORDER` | each accepted SDRAM write address is the previous one plus 16, starting at 0 |
 | `FLASH_COPY_BOUND` | `COPY` leaves within 700,000 clocks of entering |
 | `FLASH_NO_WRITE` | the IP's control slave `write` is constant 0 |
 
 Questa compiles the wrapper against the `altera_onchip_flash` stand-in under
-the compile gate. The fit retains `UFM blocks : 1 / 1`, the configuration
-mode, and the unchanged PLL, pin and slack evidence. A board check,
-authorized per slice: program the `.pof`, power-cycle without a host, observe
-the menu; then a host load, then a power cycle restoring the flash menu.
+the compile gate. The [`flash-proof`](../../../../src/fpga/de10_lite/README.md)
+fit places the reader on the composed image's PLLs and reset and walks the
+user range continuously; the builder checks `UFM blocks : 1 / 1`, the
+configuration mode assignment and the unchanged PLL, pin and slack evidence.
+The `flash-copy`, `flash-blank` and `flash-precedence` fixtures land with the
+copier ([#675](https://github.com/amichai-bd/nand2mario/issues/675)). A board
+check, authorized per slice ([#677](https://github.com/amichai-bd/nand2mario/issues/677),
+[#681](https://github.com/amichai-bd/nand2mario/issues/681)): program the
+`.pof`, power-cycle without a host, observe the menu; then a host load, then a
+power cycle restoring the flash menu. Until it runs, the reader's evidence is
+simulation against the double plus the fit; the flash contents have not been
+read on the board.
 
 ### Measured facts
 

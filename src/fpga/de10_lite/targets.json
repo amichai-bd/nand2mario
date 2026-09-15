@@ -2218,7 +2218,7 @@
               "leds[2]",
               "leds[3]",
               "leds[4]",
-              "leds[6]",
+              "leds[5]",
               "leds[7]",
               "leds[8]",
               "leds[9]"
@@ -2228,7 +2228,7 @@
             "clock": "u_clocking|u_pll|altpll_component|auto_generated|pll1|clk[0]",
             "count": 1,
             "ports": [
-              "leds[5]"
+              "leds[6]"
             ]
           }
         ],
