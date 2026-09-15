@@ -56,8 +56,8 @@ all of them with `python3 tools/build.py tests run --label storage --tag <tag>`.
 `storage` label, on the pinned
 [cocotb interpreter](../python/README.md) (`workdir/builds/python-dv-env/.venv/bin/python`).
 It takes about 135 s wall, most of it the 6,208 one-line `SDRAM_WRITE`
-transactions through the bridge, so it stays out of the `uart` label, whose
-300 s aggregate could not absorb it.
+transactions through the bridge, so it stays out of the `uart` and `host`
+labels, whose 300 s aggregates could not absorb it.
 Verilator needs the `lz4.h` header and library the
 [installation notes](../../../wiki/tools/n2m/SPEC.md#installation) name.
 Each fixture finishes in a few seconds; the builder retains the command, raw

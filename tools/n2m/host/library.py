@@ -85,7 +85,8 @@ def parse_catalogue(raw):
 
 
 def title_text(title):
-    return title.rstrip(b'\0').decode('ascii', 'replace')
+    """Printable ASCII only: control and non-ASCII bytes become '?' so a title cannot steer a terminal."""
+    return ''.join(chr(byte) if 0x20 <= byte < 0x7f else '?' for byte in title.rstrip(b'\0'))
 
 
 def describe(index, entry):

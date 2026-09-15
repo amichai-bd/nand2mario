@@ -388,36 +388,43 @@ def _host_steps(menu, root, action):
     return steps
 
 
+def _host_argv(action, answers):
+    """The builder vector and its leaf parser path for one host action."""
+    argv = ["host", action, "--uart-port", answers["uart"]]
+    if action == "library":
+        # The verb is a nested leaf: its own options, not the intermediate parser's.
+        image = [answers["image"]] if answers["image"] else []
+        return ["host", action, answers["verb"], *image, "--uart-port", answers["uart"]], ("host", action, answers["verb"])
+    if action == "load":
+        argv += ["--" + answers["source"], answers["image"]]
+    if action in ("step", "run-dots"):
+        argv += ["--dots", answers["dots"]]
+    if action == "input":
+        argv += ["--mask", answers["mask"]]
+    if action == "peek":
+        argv += ["--store", answers["store"]]
+    if action == "write":
+        argv += ["--address", answers["address"], "--value", answers["value"]]
+    if action == "sdram-write":
+        argv += ["--address", answers["address"], "--data", answers["data"]]
+    if action == "sdram-read":
+        argv += ["--address", answers["address"], "--lines", answers["lines"]]
+    if action == "sdram-test":
+        argv += ["--start", answers["start"], "--length", answers["length"]]
+    if action in ("crc-proof", "keyboard"):
+        argv += ["--expected-build-id", answers["build"]]
+    return argv, ("host", action)
+
+
 def _host_plan(menu, root):
     while True:
         action = menu.choose("UART action", _named(command_actions(("host",))))
         if action is BACK:
             return BACK
         def factory(answers):
-            argv = ["host", action, "--uart-port", answers["uart"]]
-            if action == "library":
-                argv = ["host", action, answers["verb"], *([answers["image"]] if answers["image"] else []),
-                        "--uart-port", answers["uart"]]
-            if action == "load":
-                argv += ["--" + answers["source"], answers["image"]]
-            if action in ("step", "run-dots"):
-                argv += ["--dots", answers["dots"]]
-            if action == "input":
-                argv += ["--mask", answers["mask"]]
-            if action == "peek":
-                argv += ["--store", answers["store"]]
-            if action == "write":
-                argv += ["--address", answers["address"], "--value", answers["value"]]
-            if action == "sdram-write":
-                argv += ["--address", answers["address"], "--data", answers["data"]]
-            if action == "sdram-read":
-                argv += ["--address", answers["address"], "--lines", answers["lines"]]
-            if action == "sdram-test":
-                argv += ["--start", answers["start"], "--length", answers["length"]]
-            if action in ("crc-proof", "keyboard"):
-                argv += ["--expected-build-id", answers["build"]]
+            argv, path = _host_argv(action, answers)
             host = "Windows classic conhost.exe cmd.exe" if action == "keyboard" else "Windows PowerShell"
-            return Plan(argv, ("host", action), host,
+            return Plan(argv, path, host,
                         "Open UART and TRANSMIT interactive key events" if action == "keyboard"
                         else "Open UART and TRANSMIT the selected host operation")
         plan = _editable(menu, _host_steps(menu, root, action), factory)

@@ -197,6 +197,13 @@ class LibraryTests(unittest.TestCase):
                 self.assertEqual(json.loads(stdout.getvalue())['status'], 'FAIL')
             opener.assert_not_called()
 
+    def test_titles_print_without_control_bytes(self):
+        self.assertEqual(library.title_text(b'GAME \x1b[2J\x07\xff1\0\0'), 'GAME ?[2J??1')
+        raw = library.pack_entry({'valid': 1, 'profile': 1, 'length': 32768, 'crc32': 0, 'title': b'\x1b]0;x\x07'})
+        row = library.describe(3, library.unpack_entry(raw))
+        self.assertEqual(row['title'], '?]0;x?')
+        self.assertNotIn('\x1b', library.format_table([row]))
+
     def test_library_status_word_fields(self):
         self.assertEqual(library.decode_library_status(0x2A030201),
                          {'word': 0x2A030201, 'a000': 0x01, 'a002': 0x02, 'a003': 0x03, 'bank': 0x2A})

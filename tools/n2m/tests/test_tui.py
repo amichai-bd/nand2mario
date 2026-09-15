@@ -398,7 +398,11 @@ class TuiTests(unittest.TestCase):
         for action in tui.command_actions(("host",)):
             argv = [*host_base, action, "--uart-port", "COM7"]
             if action == "library":
-                argv = [*host_base, action, "status", "--uart-port", "COM7"]
+                # Both leaves; the plan path names the leaf so advanced options come from it.
+                for verb, extra in (("status", []), ("load", ["workdir/builds/x/sw/build/t/runs/0123456789ab/result.json"])):
+                    argv = [*host_base, action, verb, *extra, "--uart-port", "COM7"]
+                    samples[("host", action, verb)] = argv
+                continue
             if action == "load":
                 argv += ["--external", "libbet"]
             elif action in ("step", "run-dots"):
@@ -417,19 +421,35 @@ class TuiTests(unittest.TestCase):
                 argv += ["--expected-build-id", "00" * 16]
             samples[("host", action)] = argv
         expected = {(family, action) for family in ("sim", "fpga", "lint", "tests", "sw", "host")
-                    for action in tui.command_actions((family,))}
+                    for action in tui.command_actions((family,)) if (family, action) != ("host", "library")}
+        expected |= {("host", "library", "load"), ("host", "library", "status")}
         expected |= {("doctor",), ("check",), ("regress",), ("clean",)}
         self.assertEqual(set(samples), expected)
         from n2m.cli import parser
         for path, argv in samples.items():
             with self.subTest(path=path):
                 parsed = parser().parse_args(argv)
-                self.assertEqual((parsed.command,) + ((parsed.action,) if hasattr(parsed, "action") else ()), path)
+                leaf = tuple(getattr(parsed, name) for name in ("command", "action", "verb") if hasattr(parsed, name))
+                self.assertEqual(leaf, path)
                 plan = tui.Plan(argv, path, "Current host", "test")
                 tui.validate_plan(plan)
         launcher = tui.Plan(["--expected-build-id", "00" * 16, "--uart-port", "COM7"],
                             ("launcher",), "Windows PowerShell", "GUI")
         tui.validate_plan(launcher)
+
+    def test_library_plans_use_the_leaf_parsers_for_advanced_options(self):
+        package = "workdir/builds/x/sw/build/t/runs/0123456789ab/result.json"
+        argv, path = tui._host_argv("library", {"uart": "COM7", "verb": "load", "image": package})
+        self.assertEqual((argv, path), (["host", "library", "load", package, "--uart-port", "COM7"], ("host", "library", "load")))
+        plan = tui.Plan(argv, path, "Windows PowerShell", "test")
+        tui.validate_plan(plan)
+        options = {action.dest for action in tui._leaf_parser(plan)._actions}
+        self.assertIn("menu", options)
+        self.assertIn("endpoint_restarted", options)
+        argv, path = tui._host_argv("library", {"uart": "COM7", "verb": "status", "image": ""})
+        self.assertEqual((argv, path), (["host", "library", "status", "--uart-port", "COM7"], ("host", "library", "status")))
+        tui.validate_plan(tui.Plan(argv, path, "Windows PowerShell", "test"))
+        self.assertNotIn("menu", {action.dest for action in tui._leaf_parser(tui.Plan(argv, path, "x", "y"))._actions})
 
     def test_launcher_uses_its_parser_and_contract_before_review(self):
         from gb_launcher import parse_args

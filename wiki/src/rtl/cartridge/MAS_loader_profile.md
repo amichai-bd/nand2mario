@@ -193,7 +193,10 @@ images to slots 0..N-1, the `--menu` image to index 16 and the catalogue
 through the [host SDRAM line commands](#host-interaction), each slot read back
 and compared by CRC32 with its catalogue entry, the catalogue compared byte for
 byte; a mismatch is reported by slot and fails the command. `host library
-status` reads the catalogue as stored (and `LIBRARY_STATUS` once it exists).
+status` reads the catalogue as stored (and `LIBRARY_STATUS` once it exists,
+[#667](https://github.com/amichai-bd/nand2mario/issues/667)). Until the
+loader-profile menu image exists ([#668](https://github.com/amichai-bd/nand2mario/issues/668)),
+the menu entry's `profile` is `DIRECT_ID`, the profile the packaged image runs in.
 Then the host loads the menu into the ROM store with the existing
 `LOAD_BEGIN`/`LOAD_WRITE`/`LOAD_END` sequence using profile `LOADER_ID`, then
 `RUN`. From then on the player uses only the board.
