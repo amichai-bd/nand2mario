@@ -42,11 +42,13 @@ hold after a legitimate update, sustained hold, release/resume, and a reset puls
 entirely between sampled edges. An independently driven observed signal probes
 the stable helper without deriving its expected behavior from the DUT.
 
-Run `async-assert-macros` for the passing case. The five targets
-`async-assert-hold`, `async-assert-direct`, `async-assert-no_reset`,
-`async-assert-never`, and `async-assert-known` each corrupt only their named
-invariant on the final edge. Require the registered `N2M_ASSERT <name>_check`
-instance diagnostic and a nonzero raw Questa exit. An assertion watchdog is
+Run `async-assert-macros` for the passing case. The four targets
+`async-assert-hold`, `async-assert-direct`, `async-assert-no_reset` and
+`async-assert-never` each corrupt only their named invariant on the final edge.
+Require the registered `N2M_ASSERT <name>_check` instance diagnostic and a
+nonzero raw simulator exit. `known_check` is instantiated but has no fault
+target: `N2M_ASSERT_KNOWN` is a no-op under `VERILATOR`, because a two-state
+simulator cannot witness X. An assertion watchdog is
 fatal. `assert-synthesis` invokes all helpers with undefined arguments under
 `SYNTHESIS`; compilation and its pass signature prove complete removal.
 Actual clocking Quartus builds additionally prove synthesis exclusion and retain

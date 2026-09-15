@@ -14,7 +14,7 @@
       "src/dv/common/tb_async_assert_macros.sv"
     ],
     "top": "tb_async_assert_macros",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+fail_direct"
     ],
@@ -26,31 +26,19 @@
       "src/dv/common/tb_async_assert_macros.sv"
     ],
     "top": "tb_async_assert_macros",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+fail_hold"
     ],
     "expected_exit": "nonzero",
     "signature": "N2M_ASSERT hold_check instance=tb_async_assert_macros"
   },
-  "async-assert-known": {
-    "sources": [
-      "src/dv/common/tb_async_assert_macros.sv"
-    ],
-    "top": "tb_async_assert_macros",
-    "simulator": "questa",
-    "args": [
-      "+fail_known"
-    ],
-    "expected_exit": "nonzero",
-    "signature": "N2M_ASSERT known_check instance=tb_async_assert_macros"
-  },
   "async-assert-macros": {
     "sources": [
       "src/dv/common/tb_async_assert_macros.sv"
     ],
     "top": "tb_async_assert_macros",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS async and assertion macros edges=10 reset-pulses=2"
@@ -60,7 +48,7 @@
       "src/dv/common/tb_async_assert_macros.sv"
     ],
     "top": "tb_async_assert_macros",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+fail_never"
     ],
@@ -72,7 +60,7 @@
       "src/dv/common/tb_async_assert_macros.sv"
     ],
     "top": "tb_async_assert_macros",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+fail_no_reset"
     ],
@@ -144,7 +132,7 @@
       "src/dv/clocking/tb_clocking.sv"
     ],
     "top": "tb_clocking",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [],
     "expected_exit": "zero",
     "signature": "PASS clocking startup qualification lockloss pause core-reset periods jitter stopped-pixel"
@@ -156,7 +144,7 @@
       "src/dv/clocking/tb_clocking.sv"
     ],
     "top": "tb_clocking",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+bad_numerator"
     ],
@@ -170,7 +158,7 @@
       "src/dv/clocking/tb_clocking.sv"
     ],
     "top": "tb_clocking",
-    "simulator": "questa",
+    "simulator": "verilator",
     "args": [
       "+drop_tick"
     ],
@@ -2348,19 +2336,6 @@
     "top": "tb_ppu_shift",
     "simulator": "verilator",
     "signature": "PASS PPU shift literal_cases=18",
-    "sources": [
-      "src/rtl/ppu/n2m_ppu_shift.sv",
-      "src/dv/ppu/tb_ppu_shift.sv"
-    ]
-  },
-  "ppu-shift-unknown": {
-    "expected_exit": "nonzero",
-    "args": [
-      "+unknown"
-    ],
-    "top": "tb_ppu_shift",
-    "simulator": "questa",
-    "signature": "N2M_ASSERT shift_state_known",
     "sources": [
       "src/rtl/ppu/n2m_ppu_shift.sv",
       "src/dv/ppu/tb_ppu_shift.sv"

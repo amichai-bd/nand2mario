@@ -120,9 +120,12 @@ class CommandTests(unittest.TestCase):
         commands = verilator.commands(self.sim, self.root, target, 7, compiler, attempt)
         (build, build_cwd, build_log, expected), (run, run_cwd, run_log, run_expected) = commands
         self.assertEqual((build_cwd, build_log.name, expected), (compiler, "build.log", "zero"))
-        for option in ("--timing", "--trace-fst", "--x-initial-edge", "--cc", "--exe", "--build"):
+        for option in ("--timing", "--trace-fst", "--cc", "--exe", "--build"):
             self.assertIn(option, build)
         self.assertEqual(build[build.index("--x-initial") + 1], "unique")
+        # Time-zero edges follow value changes only; the initialization-edge
+        # emulation would clock every process once at time zero.
+        self.assertNotIn("--x-initial-edge", build)
         self.assertEqual(build[build.index("--top-module") + 1], "builder_smoke")
         self.assertEqual(build[-1], verilator.HARNESS)
         harness = (compiler / verilator.HARNESS).read_text()

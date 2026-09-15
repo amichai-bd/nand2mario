@@ -184,12 +184,15 @@ def format_document(model):
     lines.append("units:\n")
     for name in sorted(model["units"]):
         lines.append(format_unit(name, model["units"][name]))
-    if not model["not_runnable"]:
-        lines.append("not_runnable: {}\n")
-    else:
-        lines.append("not_runnable:\n")
-        for name in sorted(model["not_runnable"]):
-            lines.append(f"  {name}: {_quote(model['not_runnable'][name])}\n")
+    for key in ("not_runnable", "retired"):
+        entries = model.get(key) or {}
+        if not entries:
+            if key == "not_runnable":
+                lines.append("not_runnable: {}\n")
+            continue
+        lines.append(f"{key}:\n")
+        for name in sorted(entries):
+            lines.append(f"  {name}: {_quote(entries[name])}\n")
     return "".join(lines)
 
 
@@ -205,8 +208,10 @@ def load(root):
     """Read and validate the catalogue. Every rule here fails the build."""
     path = Path(root) / CATALOGUE
     model = read_yaml(path.read_text(encoding="utf-8"))
-    if not isinstance(model, dict) or set(model) != {"version", "labels", "units", "not_runnable"}:
-        raise ValueError("catalogue requires exactly version, labels, units and not_runnable")
+    if (not isinstance(model, dict)
+            or set(model) - {"retired"} != {"version", "labels", "units", "not_runnable"}):
+        raise ValueError("catalogue requires exactly version, labels, units and not_runnable, "
+                         "plus an optional retired mapping")
     if model["version"] != 1:
         raise ValueError("catalogue requires version 1")
     vocabulary = model["labels"]
@@ -247,6 +252,16 @@ def load(root):
             raise ValueError(f"not_runnable {name} requires a recorded reason")
         if name in units:
             raise ValueError(f"{name} is both a unit and not_runnable")
+    # A retired target is a former registry target the simulator cannot serve;
+    # it is named with its reason so it never disappears silently.
+    model["retired"] = model.get("retired") or {}
+    if not isinstance(model["retired"], dict):
+        raise ValueError("catalogue retired must be a mapping of target name to reason")
+    for name, reason in model["retired"].items():
+        if not TARGET.fullmatch(name) or not isinstance(reason, str) or not reason.strip():
+            raise ValueError(f"retired {name} requires a recorded reason")
+        if name in units:
+            raise ValueError(f"{name} is both a unit and retired")
     return model, path
 
 
@@ -292,6 +307,8 @@ def coverage(root, model):
         problems.append(f"registry target {name} is missing from {CATALOGUE}")
     for name in sorted(simulations - set(targets)):
         problems.append(f"catalogue target {name} is not a registered simulation target")
+    for name in sorted(set(model["retired"]) & set(targets)):
+        problems.append(f"retired target {name} is still registered in targets.json")
     for name in sorted(targets):
         problem = simulator_problem(name, targets[name])
         if problem:
@@ -543,7 +560,8 @@ def command(root, args, header, publish):
         if args.action == "validate":
             problems = coverage(root, model)
             report.update(units=len(model["units"]), labels=sorted(model["labels"]),
-                          not_runnable=sorted(model["not_runnable"]), problems=problems,
+                          not_runnable=sorted(model["not_runnable"]), retired=sorted(model["retired"]),
+                          problems=problems,
                           status="FAIL" if problems else "PASS")
             if problems:
                 report["error"] = problems[0]

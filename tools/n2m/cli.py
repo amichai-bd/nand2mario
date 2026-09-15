@@ -326,7 +326,8 @@ def main(argv=None, root=None):
         if args.command == "tests" and "problems" in report:
             for problem in report["problems"]:
                 print(problem)
-            print(f"{report['units']} units, {len(report['not_runnable'])} not runnable")
+            print(f"{report['units']} units, {len(report['not_runnable'])} not runnable, "
+                  f"{len(report.get('retired', []))} retired")
         if args.command == "sim" and report.get("status") == "SKIPPED":
             print(f"{args.target}: SKIPPED {report['reason']}")
         if args.command == "regress" and "targets" in report:

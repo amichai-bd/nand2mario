@@ -157,7 +157,7 @@ project names and original implementations:
 | `N2M_ASSERT(NAME, CLK, RESET, PROPERTY)` | Property on rising CLK, disabled while RESET is high |
 | `N2M_ASSERT_NO_RST(NAME, CLK, PROPERTY)` | Property on every rising CLK, including reset |
 | `N2M_ASSERT_NEVER(NAME, CLK, RESET, CONDITION)` | CONDITION must be false |
-| `N2M_ASSERT_KNOWN(NAME, CLK, RESET, SIGNAL)` | SIGNAL has no X or Z bits |
+| `N2M_ASSERT_KNOWN(NAME, CLK, RESET, SIGNAL)` | SIGNAL has no X or Z bits; a no-op under `VERILATOR`, where two-state values fail by mismatch instead |
 | `N2M_ASSERT_STABLE_WHEN(NAME, CLK, RESET, HOLD, SIGNAL)` | Prior sampled HOLD requires SIGNAL to remain stable |
 
 Failures use `$fatal(1)` with the assertion name and `%m` instance hierarchy.
