@@ -74,6 +74,7 @@ module tb_loader #(
     // Core control (host client driven by the fixture) and timebase.
     logic core_start, core_busy, core_done, pause_request, core_reset, gb_tick, paused;
     logic [7:0] core_command, core_status;
+    logic [31:0] core_budget;
     logic [31:0] epoch;
     logic [63:0] dot_count, retirement_count, completed_dot;
     n2m_input_pkg::input_write_t accepted_input;
@@ -136,7 +137,7 @@ module tb_loader #(
     assign cpu_read_data = read_override ? loader_read_data : port_read_data;
     n2m_uart_core_control u_core (
         .clk_sys(clk_sys), .reset_sys(reset_sys), .start(core_start), .command(core_command),
-        .step_budget(32'd1), .input_write('0), .gb_tick(gb_tick), .paused(paused),
+        .step_budget(core_budget), .input_write('0), .gb_tick(gb_tick), .paused(paused),
         .core_initialized(init_done), .instruction_complete(1'b0), .retirement_valid(1'b0), .cpu_stopped(1'b0),
         .engine_pause(engine_pause), .engine_reset_request(engine_reset_request),
         .engine_reset_accept(engine_reset_accept), .engine_reset_done(engine_reset_done),
@@ -283,6 +284,13 @@ module tb_loader #(
         core_start = 0;
         while (!core_done) edge_cycle();
         edge_cycle();
+    endtask
+    // Start a host command and return at once; the fixture watches core_done.
+    task automatic host_start(input logic [7:0] command_value, input logic [31:0] budget);
+        edge_cycle();
+        core_budget = budget; core_command = command_value; core_start = 1;
+        edge_cycle();
+        core_start = 0;
     endtask
     task automatic check_upper_half(input int bank);
         int offset;
@@ -513,6 +521,49 @@ module tb_loader #(
         checks = checks + 1;
     endtask
 
+    // A swap while a stepping host command runs: the command completes on the
+    // engine's pause (STEP_LIMIT / STOPPED), the swap proceeds and the host
+    // pause the step leaves behind keeps the console paused afterwards.
+    task automatic fixture_swap_host;
+        int edges;
+        logic [31:0] epoch_before;
+        // RUN_DOTS with a large budget from the paused console, then a select
+        // from the menu it lets run.
+        host_command(COMMAND_HALT);
+        host_start(COMMAND_RUN_DOTS, WIRE_RUN_DOTS_MAX);
+        epoch_before = epoch;
+        cpu_write(16'h6000, 8'd1);
+        edges = 0;
+        while (!core_done) begin edge_cycle(); edges = edges + 1; if (edges > 2000) $fatal(1, "LOADER_TB_DOTS_NO_COMPLETION"); end
+        if (run_dots_result.reason != WIRE_RUN_DOTS_STOPPED || !paused) $fatal(1, "LOADER_TB_DOTS_REASON reason=%0d paused=%b", run_dots_result.reason, paused);
+        wait_copy(edges, SWAP_BOUND, "swap during RUN_DOTS");
+        if (profile != PROFILE_DIRECT_ID || epoch != epoch_before + 1) $fatal(1, "LOADER_TB_DOTS_SWAP");
+        repeat (300) edge_cycle();
+        if (!paused) $fatal(1, "LOADER_TB_DOTS_HOST_PAUSE_LOST");
+        host_command(COMMAND_RUN);
+        if (paused) $fatal(1, "LOADER_TB_DOTS_RUN");
+        check_rom_image(1);
+        checks = checks + 1;
+        // STEP with the maximum budget and no completing instruction, then the
+        // menu return: STEP_LIMIT, the swap, and the console paused afterwards.
+        host_command(COMMAND_HALT);
+        host_start(COMMAND_STEP, WIRE_STEP_MAX_DOTS);
+        wait_running();
+        epoch_before = epoch;
+        host_return = 1; edge_cycle(); host_return = 0;
+        edges = 0;
+        while (!core_done) begin edge_cycle(); edges = edges + 1; if (edges > 2000) $fatal(1, "LOADER_TB_STEP_NO_COMPLETION"); end
+        if (core_status != STATUS_STEP_LIMIT || !paused) $fatal(1, "LOADER_TB_STEP_STATUS status=%0d", core_status);
+        wait_copy(edges, SWAP_BOUND, "return during STEP");
+        if (profile != PROFILE_LOADER_ID || epoch != epoch_before + 1) $fatal(1, "LOADER_TB_STEP_SWAP");
+        repeat (300) edge_cycle();
+        if (!paused) $fatal(1, "LOADER_TB_STEP_HOST_PAUSE_LOST");
+        host_command(COMMAND_RUN);
+        if (paused) $fatal(1, "LOADER_TB_STEP_RUN");
+        swaps = swaps + 2;
+        checks = checks + 1;
+    endtask
+
     task automatic fixture_not_ready;
         // Before the controller initializes, both commits are refused NOT_READY.
         int edges;
@@ -609,12 +660,24 @@ module tb_loader #(
         wait_copy(edges, SWAP_BOUND, "second return");
         if (epoch != epoch_before + 1) $fatal(1, "LOADER_TB_KEY1_SECOND");
         checks = checks + 1;
+        // A return on the very edge the engine finishes a swap starts the menu
+        // swap directly and leaves nothing pending.
+        while (paused) edge_cycle();
+        epoch_before = epoch;
+        cpu_write(16'h6000, 8'd4);
+        while (!dut.engine_done) edge_cycle();
+        host_return = 1; edge_cycle(); host_return = 0;
+        #1;
+        if (!copy_busy || library_status[4]) $fatal(1, "LOADER_TB_KEY1_DONE_EDGE busy=%b pending=%b", copy_busy, library_status[4]);
+        wait_copy(edges, SWAP_BOUND, "done-edge return");
+        if (profile != PROFILE_LOADER_ID || epoch != epoch_before + 2 || library_status[4]) $fatal(1, "LOADER_TB_KEY1_DONE_EDGE_SWAP");
+        checks = checks + 1;
     endtask
 
     initial begin
         clk_sys = 0; reset_sys = 1; sdram_reset = 0; key1_n = 1; host_session = 0; host_port_busy = 0; host_return = 0;
         request_valid = 0; write_enable = 0; bus_commit = 0; address = 0; write_data = 0;
-        core_start = 0; core_command = 0; host_sdram_valid = 0; host_sdram_write = 0;
+        core_start = 0; core_command = 0; core_budget = 32'd1; host_sdram_valid = 0; host_sdram_write = 0;
         host_sdram_address = 0; host_sdram_data = 0;
         profile = PROFILE_LOADER_ID; image_valid = 1;
         checks = 0; engine_writes = 0; swaps = 0; fills = 0; invalid_writes = 0; saw_invalid_write = 0;
@@ -650,6 +713,7 @@ module tb_loader #(
             "swap-fault": fixture_swap_fault();
             "key1": fixture_key1();
             "key1-queue": fixture_key1_queue();
+            "swap-host": fixture_swap_host();
             default: $fatal(1, "LOADER_TB_FIXTURE %s", fixture);
         endcase
         if (contract_fault) $fatal(1, "LOADER_TB_CPU_PORT_FAULT");

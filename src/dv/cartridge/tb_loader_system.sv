@@ -405,6 +405,13 @@ module tb_loader_system #(
         write_host(HOST_REG_LIBRARY_CONTROL, LIBRARY_CONTROL_RETURN, STATUS_OK);
         if (!dut.loader_swap_busy) $fatal(1, "LOADER_SYS_RETURN_NOT_BUSY");
         load_begin(PROFILE_DIRECT_ID, image_crc[5], STATUS_BAD_STATE);
+        // No host session is open during the swap: LOAD_WRITE and LOAD_END are
+        // refused although the endpoint reports LOADING.
+        request_payload[0]=0; request_payload[1]=0; request_payload[2]=0; request_payload[3]=0; request_payload[4]=8'hAA;
+        exchange(COMMAND_LOAD_WRITE,5,STATUS_BAD_STATE,0);
+        exchange(COMMAND_LOAD_END,0,STATUS_BAD_STATE,0);
+        checks = checks + 2;
+        if (!dut.loader_swap_busy) $fatal(1, "LOADER_SYS_SWAP_ENDED_EARLY");
         wait_copy(SWAP_BOUND, "return from game");
         if (epoch != epoch_before + 1) $fatal(1, "LOADER_SYS_RETURN_EPOCH");
         read_host(HOST_REG_PROFILE, PROFILE_LOADER_ID, "menu again");

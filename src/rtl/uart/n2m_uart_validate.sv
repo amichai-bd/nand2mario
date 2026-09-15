@@ -12,6 +12,7 @@ module n2m_uart_validate (
     input var logic host_address_valid,
     input var logic sdram_ready,
     input var logic swap_busy,
+    input var logic host_loading,
     output logic [7:0] status,
     output logic [15:0] response_length
 );
@@ -79,9 +80,11 @@ module n2m_uart_validate (
                 length_valid = 32'(header.length) > n2m_interfaces_pkg::OFFSET_BYTES;
                 range_end = {1'b0, arguments[31:0]} + (33'(header.length) - 33'(n2m_interfaces_pkg::OFFSET_BYTES));
                 value_valid = range_end <= 33'(n2m_interfaces_pkg::PROFILE_ROM_BYTES);
-                state_valid = endpoint_state == n2m_interfaces_pkg::STATE_LOADING;
+                // LOADING also covers a swap or an engine-invalidated image;
+                // only the open host session may write or end a load.
+                state_valid = host_loading;
             end
-            n2m_interfaces_pkg::COMMAND_LOAD_END: state_valid = endpoint_state == n2m_interfaces_pkg::STATE_LOADING;
+            n2m_interfaces_pkg::COMMAND_LOAD_END: state_valid = host_loading;
             n2m_interfaces_pkg::COMMAND_READ_ROM, n2m_interfaces_pkg::COMMAND_READ_FRAME: begin
                 length_valid = 32'(header.length) == n2m_interfaces_pkg::READ_RANGE_BYTES;
                 value_valid = range_fields.count != 0 && range_fields.count <= n2m_interfaces_pkg::WIRE_MAX_PAYLOAD &&

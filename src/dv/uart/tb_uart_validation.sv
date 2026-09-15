@@ -12,7 +12,7 @@ module tb_uart_validation;
     logic [15:0] response_length;
     logic [31:0] expected_data;
     logic expected_valid;
-    logic corrupt;
+    logic corrupt, host_loading;
     integer checks;
     integer byte_index;
     integer bit_index;
@@ -33,7 +33,7 @@ module tb_uart_validation;
     n2m_uart_validate u_validate (
         .header(header), .packet_bytes(packet_bytes), .arguments(arguments), .forced_status(8'h00),
         .endpoint_state(endpoint_state), .image_valid(1'b1), .snapshot_valid(1'b1),
-        .host_address_valid(address_valid), .sdram_ready(1'b1), .swap_busy(1'b0),
+        .host_address_valid(address_valid), .sdram_ready(1'b1), .swap_busy(1'b0), .host_loading(host_loading),
         .status(status), .response_length(response_length)
     );
     task automatic check_address(input logic [31:0] value, input logic valid_value, input logic [31:0] word_value);
@@ -70,6 +70,7 @@ module tb_uart_validation;
                   32'h3A5B6C7D,32'h00BEBC20,32'h0,
                   32'h0,32'h0};
         metadata = '0; metadata.seq = 64'h23456789ABCDEF01; metadata.epoch = 32'hA5A6A7A8;
+        host_loading = 0;
         endpoint_state = 8'h02; header = '0; header.version = 8'h01; header.kind = 8'h01;
         packet_bytes = 9'd12; arguments = '0; checks = 0; address = 0;
         expected_data = 0; expected_valid = 0; corrupt = $test$plusargs("CORRUPT_HOST");
@@ -114,9 +115,18 @@ module tb_uart_validation;
         command_case(8'h07,16'd9,16'd0);
         packet_bytes = 9'd21; arguments[7:0] = 8'h02; check_reply(8'h00,16'd0);
         arguments[7:0] = 8'h03; check_reply(8'h04,16'd0);
+        // LOAD_END and LOAD_WRITE need the open host session: LOADING from a
+        // swap or an invalidated image alone is BAD_STATE.
+        endpoint_state = 8'h02; header.command = 8'h09; header.length = 16'd0; packet_bytes = 9'd12;
+        check_reply(8'h05,16'd0);
+        host_loading = 1; check_reply(8'h00,16'd0);
+        header.command = 8'h08; header.length = 16'd5; packet_bytes = 9'd17; arguments = '0;
+        check_reply(8'h00,16'd0);
+        host_loading = 0; check_reply(8'h05,16'd0);
+        endpoint_state = 8'h00;
         address = 32'hDEADBEEF; header.command = 8'h02; header.length = 16'd4; packet_bytes = 9'd16;
         check_reply(8'h04,16'd0);
-        if (checks != 219) $fatal(1, "UART_VALIDATE_COVERAGE");
+        if (checks != 223) $fatal(1, "UART_VALIDATE_COVERAGE");
         $display("PASS UART validation checks=%0d", checks); $finish;
     end
 endmodule

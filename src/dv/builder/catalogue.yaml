@@ -236,6 +236,7 @@ units:
   loader-menu: {kind: sim, level: 1, labels: [cartridge, system], duration_seconds: null}
   loader-swap: {kind: sim, level: 1, labels: [cartridge], duration_seconds: null}
   loader-swap-fault: {kind: sim, level: 1, labels: [cartridge], duration_seconds: null}
+  loader-swap-host: {kind: sim, level: 1, labels: [cartridge], duration_seconds: null}
   loader-window: {kind: sim, level: 1, labels: [cartridge], duration_seconds: null}
   memory-bank-enables: {kind: sim, level: 1, labels: [memory], duration_seconds: 0.92}
   memory-bank-enables-fault: {kind: sim, level: 2, labels: [fault, memory], duration_seconds: 0.84}

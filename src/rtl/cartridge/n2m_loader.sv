@@ -92,7 +92,7 @@ module n2m_loader #(
     logic key1_pending, key1_pending_next;
     logic job_valid, job_valid_next, job_swap, job_swap_next;
     logic [6:0] job_index, job_index_next;
-    logic return_request;
+    logic return_request, return_busy;
     logic [7:0] status_byte;
     logic [16:0] busy_edges, busy_edges_next;
 
@@ -110,6 +110,8 @@ module n2m_loader #(
     assign fill_running = (job_valid && !job_swap) || (engine_busy && !engine_swap);
     assign window_busy = fill_running;
     assign engine_start = job_valid && !engine_busy && !host_port_busy && !host_session;
+    // On the engine's done edge the loader is free again for a return event.
+    assign return_busy = job_valid || (engine_busy && !engine_done);
 
     always_comb begin
         bank_next = bank;
@@ -155,7 +157,8 @@ module n2m_loader #(
         // The return is dropped in a host session, queued behind a copy and
         // otherwise starts the menu swap; a second event while queued is dropped.
         if (return_request && !host_session) begin
-            if (copy_busy) key1_pending_next = 1'b1;
+            if (engine_done && key1_pending) begin end  // second event while queued: dropped
+            else if (return_busy) key1_pending_next = 1'b1;
             else begin
                 job_valid_next = 1'b1;
                 job_swap_next = 1'b1;

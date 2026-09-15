@@ -231,9 +231,13 @@ image once the paused core has reset (a running CPU never loses a read response
 to the session) and awaits aggregate core initialization, then completes the
 presence sweep. It accepts the direct and the [loader](../cartridge/MAS_loader_profile.md)
 profile IDs. While the loader's engine copies, LOAD_BEGIN waits for a window
-fill and is refused with BAD_STATE during a swap; LOAD_WRITE, LOAD_END and
-READ_ROM wait for the engine to release the ROM host port. A swap in progress
-and an engine-invalidated image both report LOADING. LOAD_END publishes validity only after actual presence/ROM CRC success
+fill and is refused with BAD_STATE during a swap; LOAD_WRITE and LOAD_END need
+the open host session, not merely the LOADING state, and READ_ROM waits for
+the engine to release the ROM host port. A swap in progress and an
+engine-invalidated image both report LOADING. A STEP or RUN_DOTS in flight
+when the engine pauses the core cannot reach its budget: it completes on the
+paused level with STEP_LIMIT or the STOPPED reason and leaves the host pause
+set, so the console stays paused after the swap until RUN. LOAD_END publishes validity only after actual presence/ROM CRC success
 and another completed core initialization. Failed END remains LOADING. RESET
 preserves image validity and transport/cache state; its reply waits for aggregate
 initialization. The system owner gates CPU memory service during initialization

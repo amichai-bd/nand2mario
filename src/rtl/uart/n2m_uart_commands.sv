@@ -239,7 +239,7 @@ module n2m_uart_commands (
         .header(request_header), .packet_bytes(request_bytes), .arguments(arguments),
         .forced_status(command_forced_status), .endpoint_state(endpoint_state),
         .image_valid(image_valid), .snapshot_valid(snapshot_valid), .host_address_valid(host_address_valid),
-        .sdram_ready(sdram_initialized), .swap_busy(loader_swap_busy),
+        .sdram_ready(sdram_initialized), .swap_busy(loader_swap_busy), .host_loading(loading),
         .status(validation_status), .response_length(validation_length)
     );
     n2m_uart_sdram u_sdram (

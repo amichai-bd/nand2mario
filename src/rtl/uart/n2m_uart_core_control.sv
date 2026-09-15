@@ -47,6 +47,10 @@ module n2m_uart_core_control (
     logic [63:0] dot_next, retirement_next, completed_dot_next;
     logic stop_step;
     logic stop_dots;
+    // The loader's engine pause removes every tick, so a stepping command can
+    // no longer reach its budget: it completes on the paused level instead
+    // (STEP_LIMIT / STOPPED), leaving the host pause set as every step does.
+    logic engine_stop;
     logic [31:0] executed, executed_next;
     logic [7:0] reason, reason_next;
     logic engine_owned, engine_owned_next;
@@ -68,6 +72,7 @@ module n2m_uart_core_control (
     assign stop_dots = state == DOTS_RUN && (cpu_stopped || (gb_tick && remaining == 1));
     // A new HALT/RESET at the current A edge must stop after that very dot.
     // paused is registered in the timebase, so this creates no tick loop.
+    assign engine_stop = engine_pause && paused && !gb_tick;
     assign pause_request = host_pause || engine_pause || stop_step || stop_dots ||
         (start && (command == n2m_interfaces_pkg::COMMAND_HALT || command == n2m_interfaces_pkg::COMMAND_RESET));
     always_comb begin
@@ -128,7 +133,9 @@ module n2m_uart_core_control (
                 completed_dot_next = dot_count;
                 state_next = COMPLETE;
             end
-            RUN_WAIT: if (!paused) state_next = COMPLETE;
+            // A swap holding the core paused completes RUN; the console resumes
+            // when the engine releases, because host_pause is already clear.
+            RUN_WAIT: if (!paused || engine_pause) state_next = COMPLETE;
             RESET_WAIT: if (paused) state_next = RESET_ASSERT;
             RESET_ASSERT: begin
                 epoch_next = epoch + 1'b1;
@@ -144,7 +151,12 @@ module n2m_uart_core_control (
                 completed_dot_next = dot_count;
                 state_next = COMPLETE;
             end
-            STEP_RUN: if (gb_tick) begin
+            STEP_RUN: if (engine_stop) begin
+                host_pause_next = 1;
+                status_next = n2m_interfaces_pkg::STATUS_STEP_LIMIT;
+                completed_dot_next = dot_count;
+                state_next = STEP_PAUSE;
+            end else if (gb_tick) begin
                 remaining_next = remaining - 1'b1;
                 if (stop_step) begin
                     host_pause_next = 1;
@@ -153,7 +165,12 @@ module n2m_uart_core_control (
                     state_next = STEP_PAUSE;
                 end
             end
-            DOTS_RUN: begin
+            DOTS_RUN: if (engine_stop) begin
+                host_pause_next = 1;
+                reason_next = n2m_interfaces_pkg::WIRE_RUN_DOTS_STOPPED;
+                completed_dot_next = dot_count;
+                state_next = STEP_PAUSE;
+            end else begin
                 if (gb_tick) begin
                     executed_next = executed + 1'b1;
                     remaining_next = remaining - 1'b1;
