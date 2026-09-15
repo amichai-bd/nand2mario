@@ -171,7 +171,8 @@ class LibraryTests(unittest.TestCase):
         self.assertEqual([(row['name'], row['valid'], row['title']) for row in rows if row['valid']],
                          [('slot 0', 1, 'GAME 0'), ('slot 1', 1, 'GAME 1'), ('menu', 1, 'MENU')])
         self.assertEqual(rows[1]['crc32'], f"{zlib.crc32(fixture_image('GAME 1', 8)):08x}")
-        self.assertNotIn('library_status', report['result'])
+        self.assertEqual(report['result']['library_status'],
+                         {'word': 0x00FF0020, 'a000': 0x20, 'a002': 0, 'a003': 0xFF, 'bank': 0})
         with patch('n2m.host.command.session', self.fake_session(endpoint)), redirect_stdout(io.StringIO()) as stdout:
             self.assertEqual(main(['host', 'library', 'status', '--uart-port', 'COM92', '--tag', self.tag], ROOT), 0)
         self.assertIn('16     menu     1      1        32768', stdout.getvalue())

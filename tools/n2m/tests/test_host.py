@@ -75,6 +75,10 @@ class Endpoint:
             values[abi.HOST_REG_IO_LCDC] = 0x91
             values[abi.HOST_REG_IO_LCD_STATUS] = (0x91 << 16) | (values[abi.HOST_REG_IO_STAT] << 8) | self.line
             values[abi.HOST_REG_DOT_LO] = self.dot
+            # The loader profile's read-only views: SDRAM ready, no swap yet,
+            # index $FF, bank 0; the hold counter idle.
+            values[abi.HOST_REG_LIBRARY_STATUS] = 0x00FF0020
+            values[abi.HOST_REG_LIBRARY_KEY1] = 0
             if address in (abi.HOST_REG_IO_LCD_STATUS, abi.HOST_REG_IO_LY):
                 self.line = (self.line + 7) % 154
                 self.dot += 456
