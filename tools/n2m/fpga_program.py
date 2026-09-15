@@ -2,6 +2,13 @@
 from pathlib import Path
 
 from .doctor import executable, execute, parse_jtag
+from .records import read_json
+
+
+def comparison_only(sof):
+    """True when the attempt record beside `output/design.sof` pinned its BUILD_ID."""
+    record = read_json(Path(sof).resolve().parent.parent / "result.json")
+    return bool(record and record.get("build_id_override"))
 
 
 def program(root, folder, sof, *, quartus_bin, cable=None, timeout=60):
@@ -18,6 +25,8 @@ def program(root, folder, sof, *, quartus_bin, cable=None, timeout=60):
     if (not sof.is_file() or sof.suffix != ".sof" or sof.is_symlink()
             or not sof.resolve().is_relative_to(root.resolve())):
         raise ValueError("missing or unsafe .sof path")
+    if comparison_only(sof):
+        raise ValueError("refusing to program a comparison-only build: its BUILD_ID was pinned by --build-id")
     chain = parse_jtag(execute([executable(quartus_bin, "jtagconfig")], folder, "chain.log"), cable)
     index = chain["selected"]["index"]
     output = execute([executable(quartus_bin, "quartus_pgm"), "-c", index, "-m", "jtag",

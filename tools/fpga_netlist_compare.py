@@ -4,7 +4,8 @@
 For every target built under both trees, the resource summary, the map and fit
 resource-utilization-by-entity hierarchy rows, the map resource usage summary
 and the post-fit simulation netlist (when a target retains one) must be
-identical. Timestamps and the attempt path are the only permitted differences.
+identical. Timestamps, the checkout root, the build tag and the attempt path are
+the only permitted differences.
 A PASS build with a missing report or missing netlist fails the comparison;
 each passing target records the fields that were actually compared.
 
@@ -97,7 +98,21 @@ def needs_netlist(definition):
     return "pll" in definition or any(source in definition.get("sources", []) for source in NETLIST_SOURCES)
 
 
-def identity(folder, record, definition):
+def normalized_error(text, root, tag):
+    """Error text with the checkout root, build tag and attempt id replaced.
+
+    Quartus diagnostics embed absolute file paths, so two clones of the same
+    source differ only by these three site-specific fragments.
+    """
+    text = text or ""
+    for form in {str(root), root.as_posix(), str(root).replace("/", "\\")}:
+        text = text.replace(form, "<root>")
+    text = re.sub(r"builds[\\/]" + re.escape(tag) + r"(?=[\\/])", "builds/<tag>", text)
+    text = re.sub(r"attempts[\\/][0-9a-f]+", "attempts/<id>", text)
+    return text or None
+
+
+def identity(folder, record, definition, root, tag):
     """Every comparable fact of one build, plus the list of fields actually compared.
 
     A PASS record must have every required report, and design.vo when the
@@ -107,8 +122,7 @@ def identity(folder, record, definition):
     """
     output = folder / "output"
     passing = record["status"] == "PASS"
-    result = {"status": record["status"],
-              "error": re.sub(r"attempts[\\/][0-9a-f]+", "attempts/<id>", record.get("error", "")) or None}
+    result = {"status": record["status"], "error": normalized_error(record.get("error", ""), root, tag)}
     compared = ["status", "error"]
     if passing:
         for name in REQUIRED_REPORTS:
@@ -160,7 +174,7 @@ def compare(baseline_root, baseline_tag, head_root, head_tag):
                 entry.update(status="MISSING", reason=f"{side}: {problem}")
                 break
             try:
-                sides[side], compared[side] = identity(folder, record, definitions[target])
+                sides[side], compared[side] = identity(folder, record, definitions[target], root, tag)
             except ValueError as error:
                 entry.update(status="FAIL", reason=f"{side}: {error}")
                 break

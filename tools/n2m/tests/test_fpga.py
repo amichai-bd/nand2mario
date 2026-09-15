@@ -73,6 +73,32 @@ class FpgaTests(unittest.TestCase):
         with patch.object(fpga, "tools", return_value=self.info), patch.object(fpga, "execute", side_effect=execute or self.execute):
             return fpga.build_fpga(self.root, self.build, self.args)
 
+    def test_build_id_override_is_comparison_only(self):
+        self.args.build_id = "ab" * 16
+        result = self.run_build()
+        self.assertEqual(result["status"], "FAIL")
+        self.assertIn("identity macro", result["error"])
+        del self.args.build_id
+        with patch.object(fpga.fpga_v05, "board_target", return_value=True), \
+                patch.object(fpga, "prepare") as prepare, patch.object(fpga, "timing_evidence", return_value={"ok": 1}):
+            plain = self.run_build()
+            self.assertEqual((plain["status"], plain["build_id"]), ("PASS", plain["fingerprint"][:32]))
+            self.assertNotIn("build_id_override", plain)
+            self.args.build_id = "ab" * 16
+            pinned = self.run_build()
+            self.assertEqual((pinned["status"], pinned["cache"], pinned["build_id"]), ("PASS", "BUILT", "ab" * 16))
+            self.assertTrue(pinned["build_id_override"])
+            self.assertIn(fpga.BUILD_ID_OVERRIDE_NOTICE, pinned["notices"])
+            self.assertNotEqual(pinned["fingerprint"], plain["fingerprint"])
+            self.assertEqual(prepare.call_args.kwargs["build_id"], "ab" * 16)
+            for bad in ("AB" * 16, "0" * 32, "ab" * 15):
+                self.args.build_id = bad
+                self.assertEqual(self.run_build()["status"], "FAIL")
+            del self.args.build_id
+            again = self.run_build()
+            self.assertEqual((again["status"], again["build_id"]), ("PASS", plain["fingerprint"][:32]))
+            self.assertNotIn("build_id_override", again)
+
     def test_struct_member_ports_are_bounded_names(self):
         self.target["virtual_pins"] = ["request.read", "request.pair[*]", "response.data[0]"]
         self.save_target()

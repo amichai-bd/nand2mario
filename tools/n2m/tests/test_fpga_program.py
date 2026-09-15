@@ -8,7 +8,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from n2m.cli import main
-from n2m.fpga_program import program
+from n2m.fpga_program import comparison_only, program
 
 ROOT = Path(__file__).resolve().parents[3]
 VALID_CHAIN = "1) USB-Blaster [USB-0]\n  031050DD 10M50DA(.|ES)/10M50DC\n"
@@ -106,3 +106,21 @@ class FpgaProgramTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ComparisonOnlyRefusalTests(unittest.TestCase):
+    def test_pinned_build_id_sof_is_refused(self):
+        base = ROOT / "workdir/builds/fpga-program-unit-tests"
+        base.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(prefix="pinned ", dir=base) as temp:
+            attempt = Path(temp)
+            (attempt / "output").mkdir()
+            sof = attempt / "output/design.sof"
+            sof.write_text("not a real bitstream\n")
+            (attempt / "result.json").write_text(json.dumps({"status": "PASS", "build_id_override": True}))
+            with patch("n2m.fpga_program.execute") as run:
+                with self.assertRaises(ValueError):
+                    program(ROOT, attempt, sof, quartus_bin="tools")
+                run.assert_not_called()
+            (attempt / "result.json").write_text(json.dumps({"status": "PASS", "build_id": "ab" * 16}))
+            self.assertFalse(comparison_only(sof))

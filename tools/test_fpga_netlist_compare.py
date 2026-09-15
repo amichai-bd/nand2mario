@@ -112,6 +112,27 @@ class NetlistCompareTests(unittest.TestCase):
         self.assertEqual(report["targets"]["plain"]["status"], "PASS")
         self.assertIn("deliberate", report["targets"]["plain"]["note"])
 
+    def test_deliberate_failure_text_ignores_root_tag_and_attempt(self):
+        for tree in (self.baseline, self.head):
+            root = tree.root.as_posix()
+            tree.build("plain", status="FAIL", reports=False, netlist=None,
+                       error=f"unexplained Quartus diagnostic: File: {root}/src/x.sdc Line: 2; "
+                             f"File: {root}/workdir/builds/{tree.tag}/fpga/plain/attempts/abc123/db/pll.v")
+            tree.build("memory"); tree.build("clocked")
+        report = self.run_compare()
+        self.assertEqual(report["targets"]["plain"]["status"], "PASS", report["targets"]["plain"])
+        self.assertEqual(compare.normalized_error("x C:\\clone\\builds\\t\\fpga\\a\\attempts\\0af", Path("C:\\clone"), "t"),
+                         "x <root>\\builds/<tag>\\fpga\\a\\attempts/<id>")
+
+    def test_differing_failure_text_fails(self):
+        self.baseline.build("plain", status="FAIL", reports=False, netlist=None, error="hold slack -0.086")
+        self.head.build("plain", status="FAIL", reports=False, netlist=None, error="hold slack -0.090")
+        self.baseline.build("memory"); self.head.build("memory")
+        self.baseline.build("clocked"); self.head.build("clocked")
+        report = self.run_compare()
+        self.assertEqual(report["targets"]["plain"]["status"], "FAIL")
+        self.assertEqual(report["targets"]["plain"]["field"], "error")
+
     def test_summary_rows_strip_timestamp(self):
         self.assertEqual(compare.summary_rows(SUMMARY)[0], "Fitter Status : Successful")
 

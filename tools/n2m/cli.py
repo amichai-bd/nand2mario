@@ -91,6 +91,7 @@ def parser():
     build.add_argument("--quartus-bin", required=True, help="explicit directory containing Quartus executables")
     build.add_argument("--timeout", type=int, default=600, help="per-tool timeout in seconds, 1..3600")
     build.add_argument("--rebuild", action="store_true")
+    build.add_argument("--build-id", help="comparison only: pin the 128-bit identity macro (32 hex digits) instead of the fingerprint prefix; the result cannot be programmed")
     build.add_argument("--tag")
     build.add_argument("--json", action="store_true")
     program_parser = fpga.add_parser("program", help="write a checked .sof to the connected board; USB-Blaster/10M50DA identity checked first")
