@@ -109,12 +109,6 @@ module tb_ppu_shift;
         background_load = 0;
         object_load = 0;
         advance = 0;
-        if ($test$plusargs("unknown")) begin
-            gb_tick = 1;
-            edge_check(0, 0); // retire prior hold history before targeted unknown fault
-            force dut.obj_low = 8'hxx;
-            edge_check(0, 0); // named state assertion must terminate before check
-        end
         $display("PASS PPU shift literal_cases=18");
         $finish;
     end

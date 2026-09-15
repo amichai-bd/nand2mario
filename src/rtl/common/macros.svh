@@ -59,8 +59,14 @@
 `define N2M_ASSERT_NEVER(NAME, CLK, RESET, CONDITION) \
     `N2M_ASSERT(NAME, CLK, RESET, !(CONDITION))
 
+// A two-state simulator cannot witness X: under Verilator this check is a
+// documented no-op and an uninitialized read fails by value mismatch instead.
+`ifdef VERILATOR
+`define N2M_ASSERT_KNOWN(NAME, CLK, RESET, SIGNAL)
+`else
 `define N2M_ASSERT_KNOWN(NAME, CLK, RESET, SIGNAL) \
     `N2M_ASSERT(NAME, CLK, RESET, !$isunknown(SIGNAL))
+`endif
 
 // HOLD at the prior edge controls the update observed now. A reset clears
 // history asynchronously; the first subsequent sampled edge has no predecessor.

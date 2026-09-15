@@ -107,8 +107,9 @@ standalone `test_*.py` unittest file in the tree. A runnable unit is the
 smallest thing that can be executed alone, which is what makes a recorded
 duration meaningful.
 
-The file holds `version` 1, a `labels` vocabulary, a `units` mapping and a
-`not_runnable` mapping. Each unit declares exactly:
+The file holds `version` 1, a `labels` vocabulary, a `units` mapping, a
+`not_runnable` mapping and an optional `retired` mapping. Each unit declares
+exactly:
 
 - `kind`: `sim` for a registered target, `unit` for a `test_*.py` file;
 - `level`: `0`, `1` or `2`, single-valued and ordered. Level 0 buys simple
@@ -123,6 +124,14 @@ The file holds `version` 1, a `labels` vocabulary, a `units` mapping and a
 covers the builder's own `tools/n2m/test_budget.py`, which is the wall-budget
 supervisor rather than a test, and two cocotb entry points under
 `src/dv/springtrail` that no registry target names.
+
+`retired` maps a former registry target name to the reason the simulator cannot
+serve it. A retired name may not remain in the registry or in `units`; `tests
+validate` and `check` fail on either. It records `async-assert-known` and
+`ppu-shift-unknown`, whose expected fatal was a four-state `N2M_ASSERT_KNOWN`
+on an X input; a two-state simulator cannot witness X, so the
+[macro](../../src/rtl-reference-style.md#named-assertion-convention) is a no-op
+under `VERILATOR`.
 
 The file is a strict YAML subset so the builder keeps its stdlib-only
 dependencies: block mappings, flow mappings, flow sequences, plain and quoted
@@ -206,11 +215,14 @@ refuses each with a clear message, and a target that still needs them stays
 [preload fixtures](#preload-fixtures-under-verilator). The migrated targets
 are `builder-smoke`, `builder-smoke-fail`, `python-joypad`,
 `python-joypad-fault`, `preload-fixture`, the 58 SystemVerilog targets
-labelled `cpu` and the 67 SystemVerilog targets labelled `ppu` or `input`
-that declare no `vendor_model` in the [test catalogue](#test-catalogue);
-`ppu-shift-unknown` stays `questa` because its expected fatal is a
-four-state `N2M_ASSERT_KNOWN` that Verilator's two-state `$isunknown` never
-raises.
+labelled `cpu`, the 67 SystemVerilog targets labelled `ppu` or `input`
+that declare no `vendor_model` in the [test catalogue](#test-catalogue), the
+three `tb_clocking` targets `clocking`, `clocking-bad-numerator` and
+`clocking-drop-tick`, and the five `tb_async_assert_macros` targets
+`async-assert-macros`, `async-assert-direct`, `async-assert-hold`,
+`async-assert-never` and `async-assert-no_reset`. `ppu-shift-unknown` and
+`async-assert-known` are [retired](#test-catalogue): their expected fatal was
+a four-state `N2M_ASSERT_KNOWN` that a two-state simulator never raises.
 
 ### Registered target execution
 
@@ -229,7 +241,7 @@ and no command changes the caller's environment or reads a license variable.
 
 Each attempt has two commands. The build verilates and compiles under
 `compile/verilator/<target>/<attempt>/obj_dir/` with `--cc --exe --build`,
-`--trace-fst`, `--x-assign unique --x-initial unique --x-initial-edge`,
+`--trace-fst`, `--x-assign unique --x-initial unique`,
 `+incdir+<root>`, `--top-module <top>` and `-j 0`, within the target's selected
 [wall budget](#test-wall-budget). Verilator's lint warnings stay fatal; nothing
 passes `-Wno-fatal`. A SystemVerilog testbench builds with `--timing` and a
@@ -241,11 +253,26 @@ run executes `obj_dir/sim` from the attempt with `+seed=<seed>`,
 `+verilator+seed+<seed>`, `+verilator+rand+reset+2` and the registry `args`,
 under the registry `timeout_seconds` (default 60).
 
-`--x-initial-edge` keeps the event-driven semantics the testbenches were
-written against: an asynchronous reset asserted at time zero is a posedge from
-the randomized initial value, so the design resets before its first clock, as it
-did under Questa. Without it, randomized reset state is held until the first
-clock edge and the unchanged joypad test fails by value mismatch.
+Time-zero edge semantics follow an event-driven simulator: an edge fires only
+when an assignment changes a signal's value. Verilator captures each trigger's
+previous value from the randomized initial state at initialization, so a
+randomized initial value is never itself an edge and a clock that is never
+driven never clocks its process. The runner therefore does not pass
+`--x-initial-edge`: Verilator 5.052 implements that option by setting every
+trigger at initialization (`V3SchedTrigger.cpp`), which executes every
+`always @(posedge clk ...)` once at time zero with the testbench's time-zero
+inputs, shifts `n2m_reset_control`'s synchronizers one edge early and loads
+power-up initialized `DFF_INIT_*` registers before any real edge. The
+alternative of keeping the option with deterministic clock and reset initial
+values cannot work, because that trigger is set regardless of value. The cost
+is that a two-state simulator has no X-to-value edge: an asynchronous reset
+written at time zero, by an `initial` block or a cocotb write before the first
+evaluation, fires its `posedge` only when the randomized previous value
+happened to be 0. A testbench that needs the reset before its first clock
+asserts it by an explicit assignment after time zero, as
+[`test_joypad.py`](../../../src/dv/python/joypad/test_joypad.py) does; a reset
+held across the first clock edge needs nothing, because the clocked branch of
+`DFF_ARST_*` and `DFF_RST_*` resets there.
 
 Any `%Warning` line in the build or run, and any `WARNING`, `ERROR` or
 `CRITICAL` word from cocotb's log, fails the attempt as `unexplained simulator
