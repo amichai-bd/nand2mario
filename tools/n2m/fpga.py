@@ -16,6 +16,8 @@ from . import fpga_pll, fpga_constraints, fpga_vga, fpga_intel_memory, fpga_memo
 DEVICE = "10M50DAF484C7G"
 REGISTRY = "src/fpga/de10_lite/targets.json"
 TOOLS = ("quartus_sh", "quartus_map", "quartus_fit", "quartus_asm", "quartus_sta", "quartus_eda")
+BUILD_ID_OVERRIDE_NOTICE = ("BUILD_ID pinned by --build-id for netlist comparison only; "
+                            "this result is not a board image and programming refuses it")
 REQUIRED_REPORTS = ("design.map.rpt", "design.fit.rpt", "design.fit.summary", "design.asm.rpt", "design.sta.rpt", "design.sta.summary",
                     "design.sof", "unconstrained.rpt", "check_timing.rpt", "ignored.rpt")
 SDC_COMMANDS = set("create_clock create_generated_clock derive_clock_uncertainty derive_pll_clocks set_input_delay set_output_delay set_false_path set_multicycle_path set_max_delay set_min_delay set_clock_uncertainty set_clock_groups set_clock_latency set_clock_transition".split())
@@ -389,7 +391,7 @@ def timing_evidence(folder, target, *, build_id=None):
     return evidence
 
 
-def complete_cache(record, fingerprint, root, build, target):
+def complete_cache(record, fingerprint, root, build, target, build_id=None):
     if not cache_matches(record, fingerprint, root, build):
         return False
     try:
@@ -424,7 +426,7 @@ def complete_cache(record, fingerprint, root, build, target):
             required += [folder / "output" / name for name in fpga_controls.required_reports(chains=fpga_v05.chains(target))]
         if any(p.relative_to(root).as_posix() not in record["artifacts"] for p in required):
             return False
-        if (target.get("top") == "controls_proof" or fpga_v05.board_target(target)) and record.get("build_id") != fingerprint[:32]:
+        if (target.get("top") == "controls_proof" or fpga_v05.board_target(target)) and record.get("build_id") != build_id:
             return False
         return timing_evidence(folder, target, build_id=record.get("build_id")) == record["evidence"]
     except (KeyError, TypeError, ValueError, OSError):
@@ -462,10 +464,24 @@ def build_fpga(root, build, args, provenance=None):
         if "src/rtl/input/n2m_adc_backend.sv" in target["sources"]:
             record["tools"]["adc"] = fpga_adc.identity(args.quartus_bin)
         record["definition"] = target
-        record["fingerprint"] = digest({"inputs": record["inputs"], "tools": record["tools"], "definition": target, "timeout": args.timeout})
-        if target["top"] == "controls_proof" or fpga_v05.board_target(target):
-            record["build_id"] = record["fingerprint"][:32]
-        if not args.rebuild and complete_cache(old, record["fingerprint"], root, build, target):
+        fingerprint_inputs = {"inputs": record["inputs"], "tools": record["tools"], "definition": target, "timeout": args.timeout}
+        override = getattr(args, "build_id", None)
+        identity_target = target["top"] == "controls_proof" or fpga_v05.board_target(target)
+        if override is not None:
+            # Comparison-only: two builds of different sources can share one
+            # identity constant so their netlists are comparable. The result
+            # is never a board image; programming refuses it.
+            if not identity_target:
+                raise ValueError("--build-id applies only to targets with an identity macro")
+            if not isinstance(override, str) or not re.fullmatch(r"[0-9a-f]{32}", override) or int(override, 16) == 0:
+                raise ValueError("--build-id must be 32 lowercase hex digits and nonzero")
+            fingerprint_inputs["build_id_override"] = override
+            record["build_id_override"] = True
+            record["notices"].append(BUILD_ID_OVERRIDE_NOTICE)
+        record["fingerprint"] = digest(fingerprint_inputs)
+        if identity_target:
+            record["build_id"] = override if override is not None else record["fingerprint"][:32]
+        if not args.rebuild and complete_cache(old, record["fingerprint"], root, build, target, build_id=record.get("build_id")):
             record.update(status="PASS", cache="CACHED", reused_result=old["attempt_result"], evidence=old["evidence"], evidence_directory=old["evidence_directory"])
             record["artifacts"].update(old["artifacts"])
         else:

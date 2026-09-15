@@ -48,11 +48,12 @@ separate source with its own revision.
 ## Separate declarations and assignments
 
 Product RAM and ROM backing stores use the
-[shared Intel memory boundary](rtl/common/MAS_memory_primitives.md), with the
-same explicit `altsyncram` instance in Questa and MAX 10 synthesis. Its owner
-contract distinguishes ordinary flop state and independent reference arrays,
-and tracks existing-store migrations. Portable DUT arrays are not replacement
-acceptance for the installed vendor model.
+[shared Intel memory boundary](rtl/common/MAS_memory_primitives.md): one
+explicit instance backed by the vendor `altsyncram` in MAX 10 synthesis and by
+the repository double in simulation. Its owner contract distinguishes ordinary
+flop state and independent reference arrays, and tracks existing-store
+migrations. Portable DUT arrays outside that boundary are not replacement
+acceptance.
 
 Use `logic` for SystemVerilog signals; do not declare them with `wire` or `reg`.
 Use `input var logic` when an explicit input port kind is needed under
@@ -74,7 +75,7 @@ widths, signedness and synchronizer attributes. Do not replace a continuous
 driver with initialization or add initialization to previously unknown state.
 An `initial` block runs at time zero rather than before procedural execution;
 keep testbench defaults and their immediate consumers in one startup process,
-and check reset/clock transitions and configuration startup in Questa. Prove
+and check reset/clock transitions and configuration startup in simulation. Prove
 FPGA power-up inference in Quartus when moving product initialization.
 
 Run `python .agents/skills/rtl-coder/scripts/check_sv_style.py` before review.
@@ -171,7 +172,7 @@ hold. The consuming contract must establish which edge owns a control.
 `SYNTHESIS` removes all assertion declarations, checks and history state. The
 [FPGA builder](../tools/n2m/SPEC.md#hdl-includes) explicitly defines it; simulation
 normally does not. Prove both exclusion and an exact named nonzero failure in
-Questa. The [test plan](../../src/dv/common/README.md) covers each helper.
+simulation. The [test plan](../../src/dv/common/README.md) covers each helper.
 Transaction scoreboards retain independent expected/actual diagnostics; these
 local helpers do not replace the oracle or require a procedural-check macro.
 

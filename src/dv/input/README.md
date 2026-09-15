@@ -65,3 +65,34 @@ The paused timebase must remain paused while the diagnostic VGA producer advance
 96 displayed samples are checked from literal geometry and shade arithmetic.
 The negative changes actual JOYP observation from 16 to zero. Physical wiring,
 ADC accuracy, and the generated board clocks are separate acceptance evidence.
+
+## ADC doubles
+
+Contract: [DE10-Lite physical controls](../../../wiki/src/fpga-controls.md#acquisition-and-filtering).
+`tb_sim_adc_double` drives `n2m_adc_backend` directly, so under `VERILATOR` it
+exercises `n2m_sim_adc_pll` and `n2m_sim_adc_control`. It owns the 10 MHz
+reference, `pll_areset` and `reset_sys`, and writes `adc_ch0.txt` to
+`adc_ch16.txt` at time zero in the builder's two-column format: channel 1 is
+the product fixture (0.625 V), channel 2 carries four rows (1.25, 2.0, 3.3,
+-0.5 V) and the others 0 V.
+
+| Requirement | Independent check |
+|---|---|
+| PLL reset | No `clk_adc` edge and `pll_locked` low while `areset` is high |
+| PLL ratio | Ten `clk_adc` edges in the first microsecond after release |
+| Lock delay | `pll_locked` rises 6.4 to 6.5 us after release at a falling reference edge (64 counted edges) |
+| Control reset | `command_ready` low in reset, high two cycles after release |
+| Handshake | A held command is accepted once; `command_ready` stays low until the response cycle; one response per command |
+| Channel tag and codes | Channel 1 gives 1024; channel 2 replays 2048, 3276, 4095 (clamped), 0 (clamped), then 2048 |
+| Latency | 195 to 206 system cycles from acceptance to response (80 ADC edges at 10 MHz) |
+| Reset abandon | `reset_sys` during a conversion yields no response; the next command completes |
+| Lock loss | `areset` during a conversion drops `locked` at once, stops `clk_adc`, yields no response and blocks the port until lock returns |
+| Diagnostics | `+bad_channel` trips the backend's `adc_command_channel`; `+missing_stimulus` writes an empty channel file and trips `N2M_SIM_ADC_STIMULUS_EMPTY` |
+| Checker proof | `+corrupt` forces channel 1 data to 0 and requires the exact `ADC_DOUBLE_DATA` diagnostic |
+
+Targets: `sim-adc-double` (pass), `sim-adc-double-corrupt`,
+`sim-adc-double-channel` and `sim-adc-double-missing`, all
+`simulator: verilator`. `tb_adc_backend` composes the same backend with the
+real reset controller and producer; its `adc-backend` targets still declare the
+vendor model and follow the builder's simulator policy.
+

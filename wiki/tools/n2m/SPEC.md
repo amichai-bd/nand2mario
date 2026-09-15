@@ -999,6 +999,19 @@ and includes its header hashes in each fresh manifest, without caching.
 
 ## FPGA build
 
+`fpga build --build-id <32 lowercase hex digits, nonzero>` is a comparison-only option for the
+targets that carry an identity macro (`controls_proof` and the `v05` board
+targets). It replaces the fingerprint-derived `N2M_CONTROLS_BUILD_ID` /
+`N2M_V05_BUILD_ID` constant with the given nonzero value so two builds of
+different sources can be compared with `tools/fpga_netlist_compare.py`; the
+constant is folded into logic, so fingerprint-derived identities never match
+across sources. The record carries `build_id_override: true` and a notice, the
+override is part of the cache fingerprint. `fpga program` fails closed: it
+programs only an `output/design.sof` still in place beside a readable attempt
+`result.json` whose `artifacts` list that file with its current hash, and it
+refuses a record that carries the override. A copied, moved or altered `.sof`,
+or one without a record, is refused. Other targets reject the option.
+
 The `v05-board` target uses the existing composed system with the physical pins
 in the [system contract](../../src/rtl/system/MAS_system.md). It requires a
 nonzero producing fingerprint identity through `N2M_V05_BUILD_ID`; generated

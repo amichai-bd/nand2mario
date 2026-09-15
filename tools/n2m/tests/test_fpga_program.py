@@ -8,7 +8,8 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from n2m.cli import main
-from n2m.fpga_program import program
+from n2m.fpga_program import attempt_record, program
+from n2m.records import file_hash
 
 ROOT = Path(__file__).resolve().parents[3]
 VALID_CHAIN = "1) USB-Blaster [USB-0]\n  031050DD 10M50DA(.|ES)/10M50DC\n"
@@ -23,8 +24,17 @@ class FpgaProgramTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory(prefix="program ", dir=base)
         self.addCleanup(self.temp.cleanup)
         self.folder = Path(self.temp.name)
-        self.sof = self.folder / "design.sof"
-        self.sof.write_text("not a real bitstream\n")
+        self.sof = self.write_attempt(self.folder)
+
+    def write_attempt(self, attempt, record=None):
+        """A built attempt: output/design.sof listed by hash in result.json beside it."""
+        (attempt / "output").mkdir(exist_ok=True)
+        sof = attempt / "output/design.sof"
+        sof.write_text("not a real bitstream\n")
+        if record is None:
+            record = {"status": "PASS", "artifacts": {sof.resolve().relative_to(ROOT.resolve()).as_posix(): file_hash(sof)}}
+        (attempt / "result.json").write_text(json.dumps(record))
+        return sof
 
     def test_missing_wrong_suffix_or_outside_sof_is_refused(self):
         with self.assertRaises(ValueError):
@@ -102,6 +112,42 @@ class FpgaProgramTests(unittest.TestCase):
         report = json.loads((self.folder / "workdir/builds/program-cli-fail/manifest.json").read_text())
         self.assertEqual(report["status"], "FAIL")
         self.assertIn("USB-Blaster", report["error"])
+
+
+
+
+class AttemptRecordRefusalTests(FpgaProgramTests):
+    def refused(self, sof, fragment):
+        with patch("n2m.fpga_program.execute") as run:
+            with self.assertRaises(ValueError) as caught:
+                program(ROOT, self.folder, sof, quartus_bin="tools")
+            run.assert_not_called()
+        self.assertIn(fragment, str(caught.exception))
+
+    def test_pinned_build_id_sof_is_refused(self):
+        listed = json.loads((self.folder / "result.json").read_text())
+        (self.folder / "result.json").write_text(json.dumps({**listed, "build_id_override": True}))
+        self.refused(self.sof, "comparison-only")
+
+    def test_missing_or_corrupt_record_is_refused(self):
+        (self.folder / "result.json").unlink()
+        self.refused(self.sof, "no readable attempt record")
+        (self.folder / "result.json").write_text("{not json")
+        self.refused(self.sof, "no readable attempt record")
+        (self.folder / "result.json").write_text(json.dumps({"status": "PASS"}))
+        self.refused(self.sof, "not the artifact")
+
+    def test_copied_or_altered_sof_is_refused(self):
+        copied = self.folder / "design.sof"
+        copied.write_bytes(self.sof.read_bytes())
+        self.refused(copied, "no readable attempt record")
+        other = self.folder / "other"
+        other.mkdir()
+        self.write_attempt(other)
+        moved = other / "output/design.sof"
+        moved.write_bytes(self.sof.read_bytes() + b"x")
+        self.refused(moved, "not the artifact")
+        self.assertEqual(attempt_record(ROOT, self.sof)["status"], "PASS")
 
 
 if __name__ == "__main__":
