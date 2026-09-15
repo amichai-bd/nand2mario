@@ -318,6 +318,18 @@ at `5da9148` with Quartus Prime 25.1std.0 Build 1129 Lite on Windows:
   programmed, so the compressed image fits CFM0 (672 KiB) with about 333 KiB
   spare. `quartus_cpf` emits no `.rbf` for the 10M50, so erased-byte counts
   are the size evidence.
+- `flash-proof` fit of the reader on the composed image's PLLs and reset
+  (Quartus Prime 25.1std.0 Build 1129 Lite): 428 logic elements, 317
+  registers, 2 PLLs, `UFM blocks : 1 / 1`, no memory bits; every setup,
+  hold, recovery, removal and pulse-width slack positive at the three
+  corners (worst hold 0.11 ns); the IP's sense-enable strobe is the one
+  unconstrained clock and, with the atom register it clocks, one of two
+  extra `no_clock` rows, both classified by name in the
+  [builder record](../../../tools/n2m/SPEC.md#diagnostic-classification).
+  The IP cadence in simulation (read accepted at the third edge, four words
+  at edges 7-10 after it, 15 clocks per line back to back) is traced from the
+  shipped data controller RTL and checked by `flash-reader`; it is not yet
+  measured on the board.
 - Flash IP read cadence (4 words per 7 clocks) and program/erase times
   (word typical 102 us, maximum 305 us; sector or page erase at most 350 ms;
   endurance at least 10,000 cycles) come from the shipped IP RTL and
