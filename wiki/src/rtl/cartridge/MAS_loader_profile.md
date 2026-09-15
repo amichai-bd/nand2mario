@@ -163,9 +163,10 @@ The arbiter presents them to the controller as one requester:
 |---|---|---|
 | 7 | `copy_busy` | A window fill or swap is in progress |
 | 6 | `window_ready` | The upper half holds bank `bank` completely; cleared by a bank commit, set when its fill completes |
-| 5 | `sdram_ready` | The SDRAM controller's `initialized` |
+| 5 | `sdram_ready` | The SDRAM controller's `initialized` and the [boot copier](../storage/MAS_flash_library.md#boot-copier) not in `CHECK` or `COPY` |
 | 4 | `key1_pending` | KEY1 has been held past the debounce threshold and the return is waiting for `copy_busy` to fall (see [KEY1](#key1-return)) |
-| 3:0 | 0 | Reserved |
+| 3 | `flash_boot` | This power-up's library was copied from flash by the [boot copier](../storage/MAS_flash_library.md#boot-copier); 0 after a `reset_sys` until its copy completes |
+| 2:0 | 0 | Reserved |
 
 `$A002` result codes: `0` `NONE` (no swap since global reset), `1` `OK`,
 `2` `INVALID_SLOT`, `3` `CRC_MISMATCH`, `4` `NOT_READY` (select or bank commit
@@ -179,61 +180,25 @@ can pair a result with the index that produced it.
 
 ### Boot source
 
-Phase 1 (this contract): after configuration, SDRAM holds nothing useful.
-The host loads the library over UART: images and the catalogue through the
+Two sources fill SDRAM; both leave the CPU-visible rules above unchanged.
+
+Host load (phase 1): after configuration the host loads the library over
+UART: images and the catalogue through the
 [host SDRAM line commands](#host-interaction), then the menu into the ROM store
 with the existing `LOAD_BEGIN`/`LOAD_WRITE`/`LOAD_END` sequence using
 profile `LOADER_ID`, then `RUN`. From then on the player uses only the board.
-A power cycle or global reset requires the host load again.
+A power cycle or global reset requires the host load again unless the flash
+library is present.
 
-Phase 2 (optional, later): flash-resident images with a configuration-time
-copier. It is not part of this contract; it must not change the CPU-visible
-rules above.
-
-#### Flash capacity (measured)
-
-Facts for the phase 2 decision in
-[#669](https://github.com/amichai-bd/nand2mario/issues/669); they change no
-rule above. The 10M50 internal flash has five sectors. Sizes come from the
-Intel MAX 10 User Flash Memory User Guide UG-M10UFM (2020.06.30) Table 1
-(pages per sector, 64 Kb pages); the 32-bit word addresses are the On-Chip
-Flash IP's own map in Quartus 25.1std
-`ip/altera/altera_onchip_flash/altera_onchip_flash/altera_onchip_flash_hw_proc.tcl`
-(`device_sector_size`, `device_sector_address_offset`, 10M50 rows).
-
-| Sector | Pages | Size | IP word address |
-|---|---|---|---|
-| UFM1 | 4 | 32 KiB | `0x00800`-`0x027FF` |
-| UFM0 | 4 | 32 KiB | `0x02800`-`0x047FF` |
-| CFM2 | 48 | 384 KiB | `0x04800`-`0x1C7FF` |
-| CFM1 | 36 | 288 KiB | `0x1C800`-`0x2E7FF` |
-| CFM0 | 84 | 672 KiB | `0x2E800`-`0x587FF` |
-
-Which sectors the user may hold depends on the internal configuration mode
-(UG-M10UFM Table 2; MAX 10 FPGA Configuration User Guide UG-M10CONFIG
-2020.11.05 Table 3 and Figure 2; there is no dual uncompressed mode). The
-user space is one contiguous word range from `0x00800` upward. A library
-image is 32 KiB and the [catalogue](../storage/MAS_sdram.md#address-space-layout)
-1 KiB; 17 images plus the catalogue need 545 KiB.
-
-| Mode (`INTERNAL_FLASH_UPDATE_MODE`) | Image sectors | User space | 32 KiB images beside the catalogue |
-|---|---|---|---|
-| Single uncompressed image (`Single Image`, the Quartus default the [FPGA build](../../../tools/n2m/SPEC.md#fpga-build) leaves in place) | CFM0+CFM1 | UFM1+UFM0+CFM2 = 448 KiB | 13 |
-| Single compressed image (`Single Comp Image`) | CFM0 | UFM1+UFM0+CFM2+CFM1 = 736 KiB | 22 (17 leave 191 KiB spare) |
-| Dual compressed images (`Dual Images`) | CFM0; CFM1+CFM2 | UFM1+UFM0 = 64 KiB | 1 |
-| Either single mode with memory initialization | CFM0+CFM1+CFM2 | 64 KiB | 1 |
-
-Measured on `v05-board` at `5da9148` with Quartus Prime 25.1std.0 Build 1129
-Lite: 10,222 of 49,760 logic elements, 761,704 memory bits, 0 of 1 UFM
-blocks; `design.pof` is 1,450,252 bytes in every mode because it spans the
-whole flash. In the default mode its first 455.9 KiB are erased (`0xFF`), the
-unused UFM1+UFM0+CFM2 range, and 870.0 KiB are programmed. Recompiled with
-`INTERNAL_FLASH_UPDATE_MODE "Single Comp Image"` and no other change, the
-same sources fit and assemble without error in 154 s; the `.pof` then has
-743.9 KiB erased from its start and 339.1 KiB programmed, so the compressed
-image fits CFM0 with about half of that sector spare. The flow does not emit
-a `.rbf` for this device (`quartus_cpf`: no passive serial scheme), so these
-erased-byte counts are the size evidence.
+Flash boot (phase 2): the [flash library](../storage/MAS_flash_library.md)
+holds the 17 images and the catalogue in the MAX 10 internal flash. Its boot
+copier fills SDRAM after the controller's `initialized`, then requests a
+select of slot 16 through the [copy engine](#copy-engine-and-rom-store-port-ownership)
+exactly as [KEY1 return](#key1-return) does, so the menu runs without a host.
+While the copier runs, `sdram_ready` is 0 and the endpoint reports `LOADING`;
+the [host interaction](#host-interaction) rules bound the host's wait. A host
+load afterwards overwrites SDRAM only; flash is never written by the console.
+An erased flash skips the copier and leaves phase 1 behaviour.
 
 ### Core reset sequencing and image validity
 
@@ -297,6 +262,9 @@ command. Rules, in priority order:
    return `BAD_STATE` as today. `LOAD_BEGIN` (precondition `any`) also returns
    `BAD_STATE` while `copy_busy`; the host retries after at most 3.2 ms.
    `LOAD_WRITE`/`LOAD_END` return `BAD_STATE` because no host session is open.
+   The [boot copier](../storage/MAS_flash_library.md#precedence-over-host-loads)
+   reports the same `LOADING` while it fills SDRAM after a power-up; there
+   the host retries after at most 30 ms.
 3. While `copy_busy` for a window fill, the core runs and the endpoint reports
    `RUNNING`; every host command keeps its normal behavior. A `LOAD_BEGIN`
    during a fill waits for the fill to finish (at most 1.6 ms) before it pauses
@@ -324,7 +292,8 @@ command. Rules, in priority order:
 In priority order:
 
 1. `reset_sys`: every register and counter above returns to its reset value;
-   `PROFILE` 0, `image_valid` 0, `bank` 0, `$A002` `NONE`, `$A003` `$FF`.
+   `PROFILE` 0, `image_valid` 0, `bank` 0, `$A002` `NONE`, `$A003` `$FF`,
+   `flash_boot` 0.
    SDRAM contents are lost; the host reloads the library.
 2. Select and bank commits on the same edge are impossible (one CPU commit per
    edge). A select commit while a fill is in progress is ignored; the fill

@@ -1,0 +1,286 @@
+# Flash-resident game library and boot copier
+
+Planned owner: `src/rtl/storage/` (flash reader and boot copier) and
+`src/dv/storage/` (Verilator double and fixtures). No implementation exists
+yet; the flash boot slice of
+[#658](https://github.com/amichai-bd/nand2mario/issues/658) implements this
+page and closes that gap. Until then this page is the contract the slice
+derives its RTL, builder changes and tests from.
+
+## Scope
+
+This page governs the copy of the game library held in the MAX 10 internal
+flash of the DE10-Lite: the internal configuration mode the bitstream uses,
+the flash layout of the images and catalogue, the on-chip flash IP boundary
+and its simulation double, the power-up copier that moves the library into
+SDRAM, its precedence over host loads, and how the flash is programmed. The
+[SDRAM contract](MAS_sdram.md) owns the SDRAM layout the copier fills and the
+line interface it writes through. The [loader profile](../cartridge/MAS_loader_profile.md)
+owns the storage arbiter, the copy engine, the status bytes and what the Game
+Boy CPU sees. The [charter](../../project-charter.md#game-library) owns the
+decision to hold the library in flash.
+
+## Terms
+
+| Term | Definition |
+|---|---|
+| Flash | The 10M50's internal flash: sectors UFM1, UFM0, CFM2, CFM1, CFM0, in that address order. |
+| Word | One 32-bit flash word; every flash address on this page is a word address in the On-Chip Flash IP's data address space. |
+| Page | 64 Kb (8 KiB, 2048 words), the smallest erasable unit; a 32 KiB image is exactly 4 pages. |
+| User range | Words `0x00800`-`0x2E7FF` (736 KiB): UFM1, UFM0, CFM2 and CFM1, the sectors left to the user in the single compressed image mode. |
+| Library | The 17 slot images (0-15 games, 16 the menu) and the catalogue, 545 KiB, laid out as in [SDRAM](MAS_sdram.md#address-space-layout). |
+| Line | 16 bytes, one SDRAM line request; four consecutive flash words, little-endian, word `k` of the line in bits `32k+31:32k` of `request_data`. |
+| `clk_sys` | 25 MHz; the flash IP, the copier and the SDRAM controller share it. Counts below are `clk_sys` clocks unless a unit is given. |
+| Copier | The power-up state machine that reads the library from flash and writes it to SDRAM through the [storage arbiter](../cartridge/MAS_loader_profile.md#storage-arbiter). |
+
+## Contract
+
+### Configuration mode
+
+The bitstream uses the MAX 10 internal configuration mode "Single Compressed
+Image". The builder writes `set_global_assignment -name INTERNAL_FLASH_UPDATE_MODE "Single Comp Image"`
+into every generated project; the mode is a device option applied by the
+fitter, so an assembler-only rerun cannot change it. The compressed image
+lives in CFM0; UFM1, UFM0, CFM2 and CFM1 form the contiguous user range. The
+`.sof` that `fpga program` writes over JTAG is unaffected by the mode. Dual
+image modes are excluded: they leave 64 KiB, one image.
+
+### Flash layout
+
+The library mirrors the SDRAM layout word for word from flash word `0x00800`:
+
+```text
+flash_word(a) = 0x00800 + (a >> 2)      for SDRAM device byte address a, 0 <= a < 0x88400
+```
+
+| Flash word | Size | Content | Sector |
+|---|---|---|---|
+| `0x00800 + i * 0x2000`, i = 0..16 | 8192 words, 32 KiB | Slot `i`, one complete 32 KiB image; slot 16 is the menu | slots 0-1 UFM1, UFM0; 2-13 CFM2; 14-16 CFM1 |
+| `0x22800`-`0x228FF` | 256 words, 1 KiB | Catalogue, 17 entries x 32 bytes, same format as the [SDRAM catalogue](MAS_sdram.md#address-space-layout) | CFM1 |
+| `0x22900`-`0x2E7FF` | 48,896 words, 191 KiB | Erased, reserved | CFM1 |
+
+Slot `i` byte `b` is at flash word `0x00800 + (i * 32768 + b) / 4`, byte
+`b % 4` of the word, least significant byte first. Slot boundaries fall on
+page boundaries, so one image can be re-programmed without touching another.
+The catalogue is written with the images and is the copier's validity source:
+the library is present when entry 16 has `valid == 0x01`, `length == 32768`
+and `profile == LOADER_ID`. An erased flash reads `0xFF` everywhere, which is
+an invalid entry.
+
+### On-chip flash IP boundary
+
+The flash reader `n2m_flash_reader` wraps the Intel On-Chip Flash IP and
+exposes a line read interface to the copier:
+
+| Signal | Direction | Meaning |
+|---|---|---|
+| `line_valid` | in | Request the line whose first word is `line_word`; held until `line_ready`. |
+| `line_word[19:0]` | in | Flash word address, bits 1:0 zero. |
+| `line_ready` | out | Request accepted this edge. |
+| `line_data_valid` | out | One clock; `line_data[127:0]` holds the four words, word `k` in bits `32k+31:32k`. |
+| `line_data[127:0]` | out | Stable until the next acceptance. |
+
+Inside, under synthesis the wrapper instantiates `altera_onchip_flash` from
+Quartus 25.1std `ip/altera/altera_onchip_flash/` with: parallel data
+interface, incrementing burst, read-only data slave, configuration mode
+"Single Compressed Image", sectors UFM1, UFM0, CFM2, CFM1 "Read only", CFM0
+"Hidden", clock `clk_sys`, and the 10M50 sector parameters recorded in that
+IP's `altera_onchip_flash_hw_proc.tcl`. Each line is one Avalon-MM read with
+`burstcount = 4` at an aligned word address; the IP returns four words in
+seven clocks after its address phase (`FLASH_SEQ_READ_DATA_COUNT = 4`,
+`FLASH_READ_CYCLE_MAX_INDEX = 5` for 10M40/50) and holds `waitrequest`
+otherwise. The IP's control slave is not connected to any writer: no erase and
+no program path exists in the console.
+
+Under the predefined `VERILATOR` macro the wrapper instantiates
+`n2m_sim_onchip_flash` instead, the same rule as the
+[ADC double](../input/MAS_input.md) and the
+[memory primitive](../common/MAS_memory_primitives.md): a repository double of
+the data slave (`read`, `addr`, `burstcount`, `waitrequest`,
+`readdatavalid`, `readdata`) that loads the build's flash `.hex` with
+`$readmemh`, returns `0xFFFFFFFF` for words the file does not define, and
+reproduces the cadence above: `waitrequest` for 3 clocks, then four
+`readdatavalid` words within the following 7 clocks, at most 128 words per
+burst. Quartus never sees the double. The Windows
+[Questa compile gate](../../../tools/n2m/SPEC.md#questa-compile-gate) gains one
+elaboration stand-in, `altera_onchip_flash`, port- and parameter-compatible
+and empty, beside the existing five.
+
+### Boot copier
+
+From `reset_sys` release the copier performs, in order:
+
+1. `WAIT_SDRAM`: wait for the SDRAM controller's `initialized`
+   (clock 5036 of [initialization](MAS_sdram.md#initialization)).
+2. `CHECK`: read the catalogue's entry 16 (flash words `0x22880`-`0x22887`,
+   two lines). If it is not valid as defined above, go to `DONE` with
+   `flash_boot = 0`: SDRAM is left as [phase 1](../cartridge/MAS_loader_profile.md#boot-source)
+   expects and nothing else on this page happens at this power-up.
+3. `COPY`: for SDRAM byte address `a = 0x0000000` to `0x00883F0` in steps of
+   16, read flash line `flash_word(a)` and write it to SDRAM line `a` through
+   the arbiter, one line outstanding, in ascending order: slots 0-16, then
+   the catalogue. 34,880 lines.
+4. `BOOT`: request a select of slot 16 through the
+   [copy engine](../cartridge/MAS_loader_profile.md#copy-engine-and-rom-store-port-ownership)
+   exactly as [KEY1 return](../cartridge/MAS_loader_profile.md#key1-return)
+   does, so the menu image is swapped into the ROM store, the core is reset
+   and runs. Set `flash_boot = 1`.
+5. `DONE`: idle until the next `reset_sys`. Core resets and host loads never
+   restart the copier.
+
+Timing bounds a testbench checks:
+
+- Flash side: a line read completes at most 10 clocks after acceptance
+  (3 clocks of `waitrequest`, 7 clocks of data). The reader never issues a
+  second read before the previous data arrived.
+- SDRAM side: the copier keeps `request_valid` high through `COPY`; the
+  [sustained throughput](MAS_sdram.md#access-sequence-and-latency-bounds) of
+  one line per 18.6 clocks bounds the copy: 34,880 lines complete within
+  648,768 clocks (25.95 ms) of arbiter access plus the flash prefetch of the
+  first line, so `COPY` lasts at most 700,000 clocks (28.0 ms) and at least
+  34,880 x 18 = 627,840 clocks. The copier prefetches the next flash line
+  while the current SDRAM write waits, so the SDRAM, not the flash, sets the
+  pace.
+- `flash_boot` is visible before the `BOOT` select is requested; the menu
+  runs within 700,000 + 5036 clocks plus one swap (at most 1.6 ms) of reset
+  release: under 30 ms.
+
+### Precedence over host loads
+
+While the copier is in `CHECK` or `COPY`:
+
+- `sdram_ready` (`$A000` bit 5 and `LIBRARY_STATUS` bit 5) is 0: it is
+  defined as the controller's `initialized` and the copier not in `CHECK` or
+  `COPY`. Host `SDRAM_WRITE`/`SDRAM_READ` therefore return `BAD_VALUE` as the
+  [host interaction](../cartridge/MAS_loader_profile.md#host-interaction) rules
+  already state.
+- The arbiter serves only the copier; no engine or host line request exists
+  yet because the core is paused with an invalid image after `reset_sys`.
+- The endpoint reports `STATE == LOADING`, exactly as during a swap, so
+  `LOAD_BEGIN` returns `BAD_STATE`; the host retries after at most 30 ms
+  instead of the 3.2 ms swap bound. Every other host command keeps its
+  existing precondition behaviour.
+
+After `DONE`, host commands behave as in phase 1: a host load session
+excludes the engine, host SDRAM line commands overwrite slots and catalogue
+in SDRAM, and `key1_return` works. Flash is never written by the console, so
+the next power-up restores the flash library regardless of what the host
+loaded. `$A000` bit 3, `flash_boot`, and `LIBRARY_STATUS` bit 3 report
+whether this power-up's library came from flash; the menu may display it.
+
+### Programming the flash
+
+The flash is programmed only through JTAG with the Quartus Programmer:
+
+1. The builder assembles the library image `library.hex` (Intel HEX, byte
+   addressed at `4 * flash_word`) from the 17 images and the catalogue it
+   already knows how to produce for the [host loader](../../../tools/n2m/host/SPEC.md);
+   empty slots are omitted so they read erased.
+2. The flash IP instance names `library.hex` as its initialization file, so
+   the assembler's auto-generated `design.pof` holds the compressed bitstream
+   in CFM0 and the library in the user range. Changing an image changes only
+   the assembler input: a rerun of `quartus_asm` (seconds), not a fit.
+3. `fpga program` gains a checked `.pof` path with the same attempt-record
+   rules as the `.sof` path, running `quartus_pgm -m jtag` with program and
+   verify. Programming replaces the CFM0 image and the user range; the
+   in-system programming time from the MAX 10 configuration guide is 52.9 s
+   for CFM0, 22.7 s for CFM1 and 30.2 s for CFM2 on the 10M50 before system
+   overhead; the slice records the measured time.
+4. A host command that writes flash through the IP's program path is
+   deferred: the IP is instantiated read-only, and every sector keeps its
+   write protection. Reopening this needs an owner decision.
+
+## Edge cases
+
+In priority order:
+
+1. `reset_sys` at any clock: the copier returns to `WAIT_SDRAM`, `flash_boot`
+   to 0, every outstanding flash read is abandoned; the flash IP is reset with
+   the console.
+2. Erased or invalid entry 16: no SDRAM write, no select, `flash_boot = 0`;
+   the host load of phase 1 is the only way to a valid library at this
+   power-up.
+3. A flash read returning a line while the arbiter has not yet accepted the
+   previous SDRAM write: the copier holds the line; it never drops or
+   reorders lines (`FLASH_COPY_ORDER`).
+4. Host `LOAD_BEGIN` or a `WRITE_HOST(LIBRARY_CONTROL)` during `COPY`:
+   refused with `BAD_STATE` by the existing `LOADING` rules; the copier is
+   never interrupted.
+5. A catalogue in flash whose entry 16 is valid but whose game entries are
+   invalid: the copy still runs for all 17 slots; the menu shows the empty
+   slots as phase 1 does.
+
+## Verification
+
+Simulation runs under Verilator on WSL with the double loaded from the same
+`library.hex` the build would use. Required fixtures, each within the
+[wall budget](../../../tools/n2m/SPEC.md#test-wall-budget):
+
+| Fixture | Checks |
+|---|---|
+| `flash-copy` | With a two-image fixture library (slots 0 and 16 valid): `COPY` starts after `initialized`, every SDRAM line equals the flash line, ascending order, `COPY` duration within the bounds above, `flash_boot` set, slot 16 swapped and the core running the menu |
+| `flash-blank` | Erased flash: no SDRAM request, no select, `flash_boot = 0`, `sdram_ready` rises with `initialized`; the phase 1 host load then works unchanged |
+| `flash-precedence` | `LOAD_BEGIN` and `SDRAM_READ` during `COPY` are refused with the existing codes and accepted after `DONE`; a host load after boot overwrites SDRAM and the double's contents are unchanged |
+| `flash-reader` | Aligned line reads at the four sector boundaries, `waitrequest`/`readdatavalid` cadence, `0xFFFFFFFF` for undefined words, a misaligned request fails `FLASH_LINE_ALIGNED` |
+
+Assertions the copier and reader carry:
+
+| Assertion | Rule |
+|---|---|
+| `FLASH_LINE_ALIGNED` | acceptance implies `line_word[1:0] == 0` |
+| `FLASH_ONE_OUTSTANDING` | no acceptance while a read has no `line_data_valid` yet |
+| `FLASH_COPY_ORDER` | each accepted SDRAM write address is the previous one plus 16, starting at 0 |
+| `FLASH_COPY_BOUND` | `COPY` leaves within 700,000 clocks of entering |
+| `FLASH_NO_WRITE` | the IP's control slave `write` is constant 0 |
+
+Questa compiles the wrapper against the `altera_onchip_flash` stand-in under
+the compile gate. The fit retains `UFM blocks : 1 / 1`, the configuration
+mode, and the unchanged PLL, pin and slack evidence. A board check,
+authorized per slice: program the `.pof`, power-cycle without a host, observe
+the menu; then a host load, then a power cycle restoring the flash menu.
+
+### Measured facts
+
+Measured on 2026-09-15 for the go decision recorded in
+[#669](https://github.com/amichai-bd/nand2mario/issues/669), on `v05-board`
+at `5da9148` with Quartus Prime 25.1std.0 Build 1129 Lite on Windows:
+
+- Sector sizes: UFM1 4 pages, UFM0 4, CFM2 48, CFM1 36, CFM0 84 of 64 Kb
+  (UG-M10UFM Table 1); user range 5,888 Kb = 736 KiB in the single compressed
+  mode, 448 KiB (UFM1+UFM0+CFM2) in the single uncompressed mode, 64 KiB in
+  the dual and memory-initialization modes (UG-M10UFM Table 2, UG-M10CONFIG
+  Table 3 and Figure 2). Word addresses from the IP's
+  `device_sector_address_offset`, 10M50 rows.
+- Default build (no mode assignment; Quartus default `Single Image`): whole
+  `fpga build` 188 s; 10,222 of 49,760 logic elements, 761,704 memory bits,
+  UFM blocks 0 of 1; `design.sof` 3,216,546 bytes; `design.pof` 1,450,252
+  bytes, of which the first 455.9 KiB are erased (`0xFF`) and 870.0 KiB are
+  programmed: the uncompressed image in CFM0+CFM1.
+- Same sources with `INTERNAL_FLASH_UPDATE_MODE "Single Comp Image"` added:
+  fit and assembler pass in 154 s with identical resources; `design.pof` is
+  the same size with 743.9 KiB erased from its start and 339.1 KiB
+  programmed, so the compressed image fits CFM0 (672 KiB) with about 333 KiB
+  spare. `quartus_cpf` emits no `.rbf` for the 10M50, so erased-byte counts
+  are the size evidence.
+- Flash IP read cadence (4 words per 7 clocks) and program/erase times
+  (word typical 102 us, maximum 305 us; sector or page erase at most 350 ms;
+  endurance at least 10,000 cycles) come from the shipped IP RTL and
+  UG-M10UFM; they are not yet measured on the board.
+
+## References
+
+- Intel MAX 10 User Flash Memory User Guide, UG-M10UFM, 2020.06.30: Table 1
+  "UFM and CFM Array Size", Table 2 "Dynamic Flash Size Support: Flash and
+  Analog Variants", section 4.2 (Avalon-MM operating modes, read and burst
+  timing, program and erase), Table 7 (initialization files).
+- Intel MAX 10 FPGA Configuration User Guide, UG-M10CONFIG, 2020.11.05:
+  Table 3 "Supported Internal Configuration Modes", Figure 2 "Configuration
+  Flash Memory Sectors Utilization", Table 4 "Configuration Flash Memory
+  Programming Time", section 3.3 (selecting the mode, `.pof` generation).
+- Quartus Prime 25.1std Lite, `ip/altera/altera_onchip_flash/`: `altera_onchip_flash.v`,
+  `altera_onchip_flash_avmm_data_controller.v`, `altera_onchip_flash_hw_proc.tcl`
+  (sector sizes, address offsets, 10M40/50 read cycle parameters),
+  `bin64/assignment_defaults.qdf` (`INTERNAL_FLASH_UPDATE_MODE` default).
+- [SDRAM storage and timing](MAS_sdram.md), [loader profile](../cartridge/MAS_loader_profile.md),
+  [shared memory primitives](../common/MAS_memory_primitives.md),
+  [n2m builder](../../../tools/n2m/SPEC.md#fpga-build), [charter](../../project-charter.md#game-library).

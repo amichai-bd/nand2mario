@@ -130,9 +130,13 @@ section records the decisions they implement.
   sees exactly what a host-loaded image sees. This is not an MBC and does not
   widen the [compatibility scope](#compatibility-scope).
 - Boot source: phase 1, the host loads the slots, the catalogue and the menu
-  over UART after configuration. Phase 2, optional and later, flash-resident
-  images with a configuration-time copier once MAX 10 flash capacity is
-  verified; it is not started by this decision.
+  over UART after configuration. Phase 2, decided go on 2026-09-15 after the
+  capacity measurement: all 17 images and the catalogue are flash-resident in
+  the MAX 10 internal flash under the single compressed image mode, and a
+  boot copier fills SDRAM at power-up; the
+  [flash library contract](rtl/storage/MAS_flash_library.md) owns the layout,
+  copier, precedence and programming path. Phase 1 stays the fallback and
+  the host override.
 - Return to menu: `KEY1` held about half a second swaps the menu image back
   and resets the core; the [loader profile](rtl/cartridge/MAS_loader_profile.md#key1-return)
   owns the debounce and hold numbers. Hardware detects it; games need no
