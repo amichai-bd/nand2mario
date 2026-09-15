@@ -648,6 +648,12 @@ class TuiTests(unittest.TestCase):
                 patch("n2m.tui.sys.executable", "/usr/bin/python3"):
             self.assertEqual(tui.run(ROOT, terminal=ScriptedTerminal([], False), runner=runner), 2)
         self.assertIn("`/usr/bin/python3 tools/build.py --help`", errors.getvalue())
+        with patch("sys.stderr", new=io.StringIO()) as errors, \
+                patch("n2m.tui.sys.executable", r"C:\Program Files\Python\python.exe"):
+            self.assertEqual(tui.run(ROOT, terminal=ScriptedTerminal([], False), runner=runner,
+                                     system="Windows"), 2)
+        self.assertIn("`& 'C:\\Program Files\\Python\\python.exe' tools/build.py --help`",
+                      errors.getvalue())
         runner.assert_not_called()
         with patch("n2m.tui.select_command", return_value=tui.CANCEL):
             self.assertEqual(tui.run(ROOT, terminal=ScriptedTerminal([]), runner=runner), 0)

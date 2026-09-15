@@ -699,8 +699,9 @@ def run(root=None, terminal=None, runner=subprocess.run, system=None, classic_co
     terminal = terminal or Terminal(system=system)
     if not terminal.interactive():
         help_argv = [sys.executable, "tools/build.py", "--help"]
-        help_command = (_cmd_command(help_argv)
-                        if (system or platform.system()) == "Windows" else shlex.join(help_argv))
+        help_command = ("& " + powershell_command(help_argv)
+                        if (system or platform.system()) == "Windows"
+                        else shlex.join(help_argv))
         print(f"The build menu needs an interactive terminal. Run `{help_command}` for the ordinary CLI.",
               file=sys.stderr, flush=True)
         return 2
