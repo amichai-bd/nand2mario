@@ -94,7 +94,7 @@ no program path exists in the console.
 
 Under the predefined `VERILATOR` macro the wrapper instantiates
 `n2m_sim_onchip_flash` instead, the same rule as the
-[ADC double](../input/MAS_input.md) and the
+[ADC double](../../fpga-controls.md) and the
 [memory primitive](../common/MAS_memory_primitives.md): a repository double of
 the data slave (`read`, `addr`, `burstcount`, `waitrequest`,
 `readdatavalid`, `readdata`) that loads the build's flash `.hex` with
@@ -113,18 +113,21 @@ From `reset_sys` release the copier performs, in order:
 1. `WAIT_SDRAM`: wait for the SDRAM controller's `initialized`
    (clock 5036 of [initialization](MAS_sdram.md#initialization)).
 2. `CHECK`: read the catalogue's entry 16 (flash words `0x22880`-`0x22887`,
-   two lines). If it is not valid as defined above, go to `DONE` with
-   `flash_boot = 0`: SDRAM is left as [phase 1](../cartridge/MAS_loader_profile.md#boot-source)
+   two line reads, at most 10 clocks each, so `CHECK` lasts at most 20
+   clocks). If it is not valid as defined above, go to `DONE` with
+   `flash_boot` still 0: SDRAM is left as [phase 1](../cartridge/MAS_loader_profile.md#boot-source)
    expects and nothing else on this page happens at this power-up.
 3. `COPY`: for SDRAM byte address `a = 0x0000000` to `0x00883F0` in steps of
    16, read flash line `flash_word(a)` and write it to SDRAM line `a` through
    the arbiter, one line outstanding, in ascending order: slots 0-16, then
-   the catalogue. 34,880 lines.
+   the catalogue. 34,880 lines. `flash_boot` is set on the edge the last
+   line is accepted, which is the edge `COPY` leaves; this is its only
+   setting event, and only `reset_sys` clears it.
 4. `BOOT`: request a select of slot 16 through the
    [copy engine](../cartridge/MAS_loader_profile.md#copy-engine-and-rom-store-port-ownership)
    exactly as [KEY1 return](../cartridge/MAS_loader_profile.md#key1-return)
    does, so the menu image is swapped into the ROM store, the core is reset
-   and runs. Set `flash_boot = 1`.
+   and runs.
 5. `DONE`: idle until the next `reset_sys`. Core resets and host loads never
    restart the copier.
 
@@ -141,9 +144,12 @@ Timing bounds a testbench checks:
   34,880 x 18 = 627,840 clocks. The copier prefetches the next flash line
   while the current SDRAM write waits, so the SDRAM, not the flash, sets the
   pace.
-- `flash_boot` is visible before the `BOOT` select is requested; the menu
-  runs within 700,000 + 5036 clocks plus one swap (at most 1.6 ms) of reset
-  release: under 30 ms.
+- Whole boot: `CHECK` at most 20 clocks, `COPY` at most 700,000 clocks, the
+  slot 16 swap at most 80,000 edges (3.2 ms, the
+  [swap bound](../cartridge/MAS_loader_profile.md#select-register)):
+  the menu runs within 800,000 clocks (32.0 ms) of `initialized`, so within
+  805,036 clocks of reset release. `flash_boot` is visible before the `BOOT`
+  select is requested.
 
 ### Precedence over host loads
 
@@ -157,8 +163,8 @@ While the copier is in `CHECK` or `COPY`:
 - The arbiter serves only the copier; no engine or host line request exists
   yet because the core is paused with an invalid image after `reset_sys`.
 - The endpoint reports `STATE == LOADING`, exactly as during a swap, so
-  `LOAD_BEGIN` returns `BAD_STATE`; the host retries after at most 30 ms
-  instead of the 3.2 ms swap bound. Every other host command keeps its
+  `LOAD_BEGIN` returns `BAD_STATE`; the host retries after at most 32 ms
+  (the whole-boot bound above) instead of the 3.2 ms swap bound. Every other host command keeps its
   existing precondition behaviour.
 
 After `DONE`, host commands behave as in phase 1: a host load session
@@ -219,7 +225,7 @@ Simulation runs under Verilator on WSL with the double loaded from the same
 | Fixture | Checks |
 |---|---|
 | `flash-copy` | With a two-image fixture library (slots 0 and 16 valid): `COPY` starts after `initialized`, every SDRAM line equals the flash line, ascending order, `COPY` duration within the bounds above, `flash_boot` set, slot 16 swapped and the core running the menu |
-| `flash-blank` | Erased flash: no SDRAM request, no select, `flash_boot = 0`, `sdram_ready` rises with `initialized`; the phase 1 host load then works unchanged |
+| `flash-blank` | Erased flash: no SDRAM request, no select, `flash_boot = 0`, `sdram_ready` rises at most 20 clocks after `initialized` (clock 5056 after reset release at the latest, exact count checked); the phase 1 host load then works unchanged |
 | `flash-precedence` | `LOAD_BEGIN` and `SDRAM_READ` during `COPY` are refused with the existing codes and accepted after `DONE`; a host load after boot overwrites SDRAM and the double's contents are unchanged |
 | `flash-reader` | Aligned line reads at the four sector boundaries, `waitrequest`/`readdatavalid` cadence, `0xFFFFFFFF` for undefined words, a misaligned request fails `FLASH_LINE_ALIGNED` |
 
@@ -241,8 +247,8 @@ the menu; then a host load, then a power cycle restoring the flash menu.
 
 ### Measured facts
 
-Measured on 2026-09-15 for the go decision recorded in
-[#669](https://github.com/amichai-bd/nand2mario/issues/669), on `v05-board`
+Measured on 2026-09-15 for the go decision recorded in the
+[charter](../../project-charter.md#game-library), on `v05-board`
 at `5da9148` with Quartus Prime 25.1std.0 Build 1129 Lite on Windows:
 
 - Sector sizes: UFM1 4 pages, UFM0 4, CFM2 48, CFM1 36, CFM0 84 of 64 Kb
