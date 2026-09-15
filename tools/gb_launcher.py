@@ -60,27 +60,36 @@ def play(args):
     return 0 if result['status'] == 'PASS' and result.get('released') else 1
 
 
-def main(argv=None):
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--expected-build-id', required=True, help='reviewed 32-hex wire build identity')
+def parser():
+    result = argparse.ArgumentParser(description=__doc__)
+    result.add_argument('--expected-build-id', required=True, help='reviewed 32-hex wire build identity')
     for name in ('uart-port', 'uart-vid', 'uart-pid', 'uart-identity'):
-        parser.add_argument('--' + name)
-    parser.add_argument('--tag', help='unique runtime tag; one is generated when omitted')
-    parser.add_argument('--seconds', type=int, default=900, help='session lease; default 900, at most 3600')
-    args = parser.parse_args(list(sys.argv[1:] if argv is None else argv))
+        result.add_argument('--' + name)
+    result.add_argument('--tag', help='unique runtime tag; one is generated when omitted')
+    result.add_argument('--seconds', type=int, default=900, help='session lease; default 900, at most 3600')
+    return result
+
+
+def parse_args(argv=None, root=ROOT):
+    command_parser = parser()
+    args = command_parser.parse_args(list(sys.argv[1:] if argv is None else argv))
     build = (args.expected_build_id or '').lower()
     if len(build) != 32 or any(character not in '0123456789abcdef' for character in build):
-        parser.error('explicit reviewed 32-digit lowercase build ID required')
+        command_parser.error('explicit reviewed 32-digit lowercase build ID required')
     args.expected_build_id = build
     if not 1 <= args.seconds <= 3600:
-        parser.error('seconds 1..3600 required')
+        command_parser.error('seconds 1..3600 required')
     if args.tag is None:
         args.tag = 'launcher' + uuid.uuid4().hex
     if not args.tag.isalnum():
-        parser.error('tag must be alphanumeric')
-    if (ROOT / 'workdir/builds' / args.tag / 'launcher').exists():
-        parser.error('runtime tag already exists; omit --tag for a fresh session')
-    return play(args)
+        command_parser.error('tag must be alphanumeric')
+    if (Path(root) / 'workdir/builds' / args.tag / 'launcher').exists():
+        command_parser.error('runtime tag already exists; omit --tag for a fresh session')
+    return args
+
+
+def main(argv=None):
+    return play(parse_args(argv))
 
 
 if __name__ == '__main__':

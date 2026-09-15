@@ -202,7 +202,7 @@ all prescribed inputs, with separately bounded FPGA endurance. Simulated
 continuity across all 18 prescribed input transitions is the
 [`python-v05-continuity`](../../../../src/dv/python/v05/README.md#continuity-schedule)
 target: one-frame spacing, 23 frames, every retirement, write and pixel through
-actual pause, inside the default wall budget. No exhaustive
+actual pause, under its declared 900-second wall allowance. No exhaustive
 physical retirement/pixel or 600-frame claim follows from this matrix.
 Declare each broader milestone's
 test selection, total expected cost, physical duration/inputs/sampling and

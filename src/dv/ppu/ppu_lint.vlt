@@ -1,0 +1,19 @@
+`verilator_config
+// Lint waivers for warnings the PPU testbenches induce in src/rtl.
+// Each waiver names the rule, the RTL file and signal, and the testbench
+// construct that causes the report. RTL lint comments stay reserved for
+// warnings the RTL itself owns. A comment here must not open with the word
+// "verilator": the lexer would read it as a lint meta-comment.
+
+// MULTIDRIVEN: tb_ppu_render, tb_ppu_scroll_window, tb_ppu_fine_scroll and
+// tb_ppu_live_scroll force source_shade for fault injection; the force counts
+// as a second driver of the always_ff register.
+lint_off -rule MULTIDRIVEN -file "*/src/rtl/ppu/n2m_ppu.sv" -match "*'source_shade'"
+
+// MULTIDRIVEN: tb_ppu_render forces source_dot for fault injection; the force
+// counts as a second driver of the always_ff register.
+lint_off -rule MULTIDRIVEN -file "*/src/rtl/ppu/n2m_ppu.sv" -match "*'source_dot'"
+
+// MULTIDRIVEN: tb_ppu_mix forces shade for fault injection; the force counts
+// as a second driver of the always_comb output.
+lint_off -rule MULTIDRIVEN -file "*/src/rtl/ppu/n2m_ppu_mix.sv" -match "*'shade'"

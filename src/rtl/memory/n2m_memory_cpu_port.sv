@@ -30,12 +30,7 @@ module n2m_memory_cpu_port (
     output logic [15:0] owner_address,
     output logic owner_write,
     output logic [7:0] owner_wdata,
-    // Lint waiver: in the composed system the owner read data closes a false
-    // combinational loop back through the CPU to the decoded destination,
-    // which Verilator does not split; the runtime converges.
-    /* verilator lint_off UNOPTFLAT */
     input var logic [7:0] owner_rdata,
-    /* verilator lint_on UNOPTFLAT */
     input var logic owner_valid,
     input var logic owner_service_available
 );

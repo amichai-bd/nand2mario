@@ -201,6 +201,9 @@ def supervise(command, root, tag, *, target=None, ceiling=None):
 def main():
     from n2m.cli import main as worker, parser
     argv = sys.argv[1:]
+    if argv in (["-tui"], ["--tui"]):
+        from n2m.tui import run
+        return run()
     if argv[:2] not in (["sim", "test"], ["sim", "preflight"]):
         return worker(argv)
     args = parser().parse_args(argv)

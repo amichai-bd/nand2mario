@@ -25,6 +25,17 @@ $Build = '<reviewed 32-digit lowercase wire build ID>'
 python tools/gb_launcher.py --expected-build-id $Build --uart-port $Port
 ```
 
+For guided selection, run `python tools/build.py --tui`, choose **Play or load a
+game**, select the checked playable build identity and healthy UART port, and
+confirm the reviewed Windows command. The terminal menu starts this same
+`gb_launcher.py` entry point; it does not duplicate the catalogue, load or pad
+inside the builder. The identity choice names its producing checked `v05-board`
+attempt and does not accept a manually typed identity. Moving back or cancelling
+sends no UART traffic and opens no window. Opening the UART choice may run the
+doctor's read-only PowerShell CIM PnP query; it does not open the port or send a
+byte. The final review says that confirmation opens UART, may transmit the
+selected game's load, reset, run and controller operations, and opens the GUI.
+
 A successful `python tools/build.py fpga program ...` text run for a checked
 `v05-board` attempt prints this launcher command with the attempt's
 byte-reversed on-wire build ID filled in and `<UART-port>` left explicit. Proof

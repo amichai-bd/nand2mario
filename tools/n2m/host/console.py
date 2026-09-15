@@ -17,6 +17,67 @@ class Record(ctypes.Structure):
     _fields_ = [('kind', w.WORD), ('data', Data)]
 
 
+class ProcessEntry(ctypes.Structure):
+    _fields_ = [('size', w.DWORD), ('usage', w.DWORD), ('pid', w.DWORD),
+                ('heap', ctypes.c_size_t), ('module', w.DWORD), ('threads', w.DWORD),
+                ('parent', w.DWORD), ('priority', w.LONG), ('flags', w.DWORD),
+                ('executable', w.WCHAR * 260)]
+
+
+def _parent_executable(kernel, pid):
+    kernel.CreateToolhelp32Snapshot.argtypes = [w.DWORD, w.DWORD]
+    kernel.CreateToolhelp32Snapshot.restype = w.HANDLE
+    kernel.Process32FirstW.argtypes = kernel.Process32NextW.argtypes = [w.HANDLE, ctypes.POINTER(ProcessEntry)]
+    kernel.CloseHandle.argtypes = [w.HANDLE]
+    snapshot = kernel.CreateToolhelp32Snapshot(0x2, 0)
+    if not snapshot or snapshot == w.HANDLE(-1).value:
+        return None
+    try:
+        entry = ProcessEntry(size=ctypes.sizeof(ProcessEntry))
+        processes = {}
+        found = kernel.Process32FirstW(snapshot, ctypes.byref(entry))
+        while found:
+            processes[entry.pid] = (entry.parent, entry.executable)
+            found = kernel.Process32NextW(snapshot, ctypes.byref(entry))
+        parent = processes.get(pid, (None, None))[0]
+        return processes.get(parent, (None, None))[1]
+    finally:
+        kernel.CloseHandle(snapshot)
+
+
+def classic_cmd_console_available(*, kernel=None, user=None, pid=None, system=None):
+    """Prove the TUI is in the visible foreground classic cmd console.
+
+    This is read-only. It neither changes console mode nor consumes an input
+    event, so the keyboard command remains the owner of its full preflight.
+    """
+    if (system or os.name) not in ('Windows', 'nt'):
+        return False
+    try:
+        kernel = kernel or ctypes.WinDLL('kernel32', use_last_error=True)
+        user = user or ctypes.WinDLL('user32', use_last_error=True)
+        signatures = (
+            (kernel, 'GetStdHandle', [w.DWORD], w.HANDLE),
+            (kernel, 'GetConsoleWindow', [], w.HWND),
+            (kernel, 'GetConsoleMode', [w.HANDLE, ctypes.POINTER(w.DWORD)], w.BOOL),
+            (user, 'GetForegroundWindow', [], w.HWND),
+            (user, 'IsWindowVisible', [w.HWND], w.BOOL),
+        )
+        for library, name, arguments, result in signatures:
+            function = getattr(library, name)
+            function.argtypes, function.restype = arguments, result
+        handle = kernel.GetStdHandle(-10)
+        window = kernel.GetConsoleWindow()
+        mode = w.DWORD()
+        visible = (kernel.GetConsoleMode(handle, ctypes.byref(mode)) and window
+                   and user.IsWindowVisible(window)
+                   and user.GetForegroundWindow() == window)
+        parent = _parent_executable(kernel, pid or os.getpid()) if visible else None
+        return bool(parent and parent.casefold() == 'cmd.exe')
+    except (AttributeError, OSError, TypeError, ValueError):
+        return False
+
+
 class Console:
     def __enter__(self):
         if os.name != 'nt':

@@ -1,0 +1,18 @@
+`verilator_config
+// Lint waivers for warnings the DMA testbenches induce in src/rtl.
+// Each waiver names the rule, the RTL file and signal, and the testbench
+// construct that causes the report. RTL lint comments stay reserved for
+// warnings the RTL itself owns. A comment here must not open with the word
+// "verilator": the lexer would read it as a lint meta-comment.
+
+// MULTIDRIVEN: tb_dma_late forces service.late_ready_q for fault injection;
+// the force counts as a second driver of the always_ff register.
+lint_off -rule MULTIDRIVEN -file "*/src/rtl/dma/n2m_dma_service.sv" -match "*'late_ready_q'"
+
+// MULTIDRIVEN: tb_dma_tags forces service.other_valid_q for fault injection;
+// the force counts as a second driver of the always_ff register.
+lint_off -rule MULTIDRIVEN -file "*/src/rtl/dma/n2m_dma_service.sv" -match "*'other_valid_q'"
+
+// MULTIDRIVEN: tb_oam_qualify forces kind for fault injection; the force
+// counts as a second driver of the always_comb output.
+lint_off -rule MULTIDRIVEN -file "*/src/rtl/dma/n2m_oam_qualify.sv" -match "*'kind'"

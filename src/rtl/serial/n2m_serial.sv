@@ -38,9 +38,6 @@ module n2m_serial (
     `DFF_ARST_VAL(sb_q, sb_next, clk_sys, reset, n2m_interfaces_pkg::PROFILE_PERIPHERAL_FILL)
     `DFF_ARST_VAL(transfer_q, transfer_next, clk_sys, reset, n2m_interfaces_pkg::PROFILE_PERIPHERAL_FILL[7])
     `DFF_ARST_VAL(clock_q, clock_next, clk_sys, reset, n2m_interfaces_pkg::PROFILE_PERIPHERAL_FILL[0])
-    // Lint waiver: tb_serial_registers forces io_rdata for fault injection,
-    // which Verilator reports as a second driver.
-    /* verilator lint_off MULTIDRIVEN */
     always_comb begin
         io_rdata = 0;
         case (io_address)
@@ -52,7 +49,6 @@ module n2m_serial (
             default: begin end
         endcase
     end
-    /* verilator lint_on MULTIDRIVEN */
     `N2M_ASSERT(SERIAL_COMMIT_BOUNDARY, clk_sys, reset, !io_commit || (gb_tick && io_selected))
     `N2M_ASSERT_KNOWN(SERIAL_CONTROLS, clk_sys, reset, {gb_tick, io_commit, io_write})
     `N2M_ASSERT(SERIAL_WRITE_KNOWN, clk_sys, reset,

@@ -36,6 +36,23 @@ def wire_build_id(record):
     return bytes.fromhex(build_id)[::-1].hex()
 
 
+def checked_attempt(root, sof):
+    """Apply the programmer's complete pre-JTAG artifact checks."""
+    root = Path(root)
+    sof = Path(sof)
+    if (not sof.is_file() or sof.suffix != ".sof" or sof.is_symlink()
+            or not sof.resolve().is_relative_to(root.resolve())):
+        raise ValueError("missing or unsafe .sof path")
+    record = attempt_record(root, sof)
+    on_wire = wire_build_id(record)
+    fpga_target = record.get("target")
+    if (fpga_target is not None
+            and (not isinstance(fpga_target, str)
+                 or not re.fullmatch(r"[a-z0-9][a-z0-9_-]*", fpga_target))):
+        raise ValueError("attempt record carries an invalid FPGA target")
+    return record, on_wire, fpga_target
+
+
 def program(root, folder, sof, *, quartus_bin, cable=None, timeout=60, progress=None):
     """Verify the selected USB-Blaster reports the expected device, then program it.
 
@@ -54,16 +71,7 @@ def program(root, folder, sof, *, quartus_bin, cable=None, timeout=60, progress=
     label = "Check FPGA build record"
     started = progress.begin(label)
     try:
-        if (not sof.is_file() or sof.suffix != ".sof" or sof.is_symlink()
-                or not sof.resolve().is_relative_to(root.resolve())):
-            raise ValueError("missing or unsafe .sof path")
-        record = attempt_record(root, sof)
-        on_wire = wire_build_id(record)
-        fpga_target = record.get("target")
-        if (fpga_target is not None
-                and (not isinstance(fpga_target, str)
-                     or not re.fullmatch(r"[a-z0-9][a-z0-9_-]*", fpga_target))):
-            raise ValueError("attempt record carries an invalid FPGA target")
+        record, on_wire, fpga_target = checked_attempt(root, sof)
     except Exception as error:
         diagnostic = folder / "failure.log"
         diagnostic.write_text(str(error) + "\n", encoding="utf-8")

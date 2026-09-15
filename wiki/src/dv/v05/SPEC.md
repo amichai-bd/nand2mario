@@ -96,7 +96,10 @@ bounded window, fault, complementary and endurance requirements.
 Every new simulation follows the 300-second total cap, targeting120 seconds;
 ordinary pre-merge aggregate target is 300 seconds. Record actual per-test and
 aggregate costs in the acceptance evidence, including any unmet target. Do not
-launch the obsolete long target. FPGA compilation is separately measured.
+launch the obsolete long target. Under the recorded #634 decision, the
+[`python-v05-continuity`](../../../../src/dv/python/v05/README.md#continuity-schedule)
+target alone declares the 900-second wall allowance ceiling for its 18-transition,
+23-frame schedule. FPGA compilation is separately measured.
 
 ## Original timing and legacy input schedule
 

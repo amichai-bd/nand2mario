@@ -48,14 +48,9 @@ module n2m_interrupts (
     end
 
     `DFF_ARST_VAL(pending, gb_tick, clk_sys, reset, 1'b0)
-    // Lint waiver: tb_interrupts forces operation_b, source_history and
-    // flags_q for fault injection; Verilator reports the force as a second
-    // driver. The product logic has one driver each.
-    /* verilator lint_off MULTIDRIVEN */
     `DFF_ARST_VAL(operation_b, gb_tick ? operation_a : operation_b, clk_sys, reset, '0)
     `DFF_ARST_VAL(source_history, source_level, clk_sys, reset, 5'd0)
     `DFF_ARST_VAL(flags_q, flags_next, clk_sys, reset, n2m_interfaces_pkg::PROFILE_PERIPHERAL_FILL[4:0])
-    /* verilator lint_on MULTIDRIVEN */
     `DFF_ARST_VAL(enable_q, enable_next, clk_sys, reset, n2m_interfaces_pkg::PROFILE_PERIPHERAL_FILL)
 
     assign if_stored = reset ? n2m_interfaces_pkg::PROFILE_PERIPHERAL_FILL[4:0] : flags_q;

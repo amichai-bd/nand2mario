@@ -1,0 +1,10 @@
+`verilator_config
+// Lint waivers for warnings the timer testbenches induce in src/rtl.
+// Each waiver names the rule, the RTL file and signal, and the testbench
+// construct that causes the report. RTL lint comments stay reserved for
+// warnings the RTL itself owns. A comment here must not open with the word
+// "verilator": the lexer would read it as a lint meta-comment.
+
+// MULTIDRIVEN: tb_timer_reload forces request_q for fault injection; the
+// force counts as a second driver of the always_ff register.
+lint_off -rule MULTIDRIVEN -file "*/src/rtl/timer/n2m_timer.sv" -match "*'request_q'"

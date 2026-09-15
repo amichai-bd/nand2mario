@@ -78,13 +78,8 @@ module n2m_dma (
     logic [15:0] owner_address;
     logic [7:0] direct_wdata, owner_wdata, owner_rdata;
     logic owner_valid, owner_available, local_owner, local_memory, local_allowed;
-    // Lint waiver: in the composed system the DMA read data and conflict close
-    // a false combinational loop back through the CPU's read path; Verilator
-    // does not split it and the runtime converges.
-    /* verilator lint_off UNOPTFLAT */
     logic [7:0] port_rdata;
     logic conflict;
-    /* verilator lint_on UNOPTFLAT */
     logic [7:0] cache_data;
     logic port_valid, cache_valid, service_read, service_write;
     logic main_conflict, vram_conflict, ram_feedback, redirect_write;

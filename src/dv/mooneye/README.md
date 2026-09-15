@@ -35,7 +35,8 @@ header differs from the project's original-software packager; do not rewrite it
 or introduce a skip-validation option. No product RTL change is part of 103.
 
 Use the [shared Python builder](../python/README.md) with targets
-`mooneye-reg-f`, `mooneye-corrupt` and `mooneye-missing`. Each builds the locked
+`mooneye-reg-f`, `mooneye-corrupt` and `mooneye-missing`; all three declare
+`simulators: ["verilator"]` and run on WSL. Each builds the locked
 tool and unmodified case before simulation. The declared Python inputs include
 the pins and notices; compiler files and CMake modules enter the stage identity.
 On Linux the locked Ubuntu host toolchain (`N2M_MOONEYE_BUILD_HOST=wsl`) is the
@@ -44,7 +45,10 @@ the selected Questa installation's MinGW tools and fails without it; unknown
 hosts fail. No ROM import or tool-build cache bypass is used. The host identity
 hash covers executables, compiler headers, GCC support files, system libraries
 and CMake modules, is rechecked before and after building, and enters the
-simulation fingerprint. A changed host requires a reviewed pin update.
+simulation fingerprint. A changed host requires a reviewed pin update: the
+`wsl_host` pin records the identity hash, the tool versions that produce it,
+the Ubuntu release, the date it was recorded and the exact Linux image hash,
+which the rebuilt fixture must reproduce.
 
 WLA 10.6 sorts equal-priority, equal-size sections without returning equality in
 `wlalink/write.c:_sections_sort`. Linux and Windows therefore place eight helper
@@ -76,6 +80,9 @@ The corrupt target forces the six actual public retirement registers to `42`
 at the linked instruction. The missing target replaces the actual CPU read
 response there with HALT (`76`); IE is zero and the real PPU keeps advancing.
 The unchanged checker must reject these with `MOONEYE_COMPLETION_REGISTERS`
-and `MOONEYE_MISSING_COMPLETION`. A passing test ends immediately on completion,
+and `MOONEYE_MISSING_COMPLETION`; both targets are registered
+`expected_exit: "nonzero"` with those names as signatures under the
+[Python failure rule](../../../wiki/tools/n2m/SPEC.md#python-testbenches-under-verilator),
+so each passes only by failing in its declared way. A passing test ends immediately on completion,
 before the upstream serial routine. Retain XML, client transactions, complete
 records, waves, build provenance and the observed completion under the attempt.

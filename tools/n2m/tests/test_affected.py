@@ -1,4 +1,6 @@
 """Real Git impact and omission witnesses; no simulator is invoked."""
+import contextlib
+import io
 import json
 from pathlib import Path
 import subprocess
@@ -8,6 +10,7 @@ import unittest
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[2]))
 from n2m import affected, catalogue
+from n2m.cli import main
 
 ROOT=Path(__file__).resolve().parents[3]
 
@@ -144,6 +147,31 @@ class Impact(unittest.TestCase):
 
     def test_bad_base_ref_is_refused(self):
         with self.assertRaises(subprocess.CalledProcessError):affected.report(self.root,'--help')
+
+
+    def cli(self,*argv):
+        output=io.StringIO()
+        with contextlib.redirect_stdout(output):code=main(['tests','affected','--base',self.base,*argv],root=self.root)
+        return code,output.getvalue()
+
+    def test_text_output_lists_every_unit_decision_and_the_json_summary(self):
+        self.write('src/dv/springtrail/model.py','VALUE=9\n')
+        code,text=self.cli('--json');self.assertEqual(code,0);report=json.loads(text)
+        self.assertEqual((report['status'],report['selected'],report['review_candidates']),('PASS',2,1))
+        code,text=self.cli();self.assertEqual(code,0);lines=text.splitlines()
+        self.assertEqual(lines[0],'PASS: tests tag=-')
+        self.assertIn(f"Base: {report['base']}  head: {report['head']}  1 changed paths",lines)
+        self.assertIn('a: selected changed inputs: src/dv/springtrail/model.py',lines)
+        self.assertIn('b: review_candidate validated declared repository inputs equal base',lines)
+        self.assertIn('tools/test_host.py: selected standalone host dependency closure is unknown',lines)
+        self.assertIn('2 selected, 1 review candidates of 3 units',lines)
+        self.assertNotIn('Fallback:',text);self.assertIn('Scope: advisory only',text);self.assertIn('Elapsed: ',text)
+
+    def test_text_output_names_each_fallback_reason(self):
+        self.write('new.dat','payload')
+        code,text=self.cli();self.assertEqual(code,0)
+        self.assertIn('Fallback: new, deleted or renamed paths require full impact review',text.splitlines())
+        self.assertIn('0 review candidates',text)
 
 
 if __name__=='__main__':unittest.main()

@@ -300,6 +300,19 @@ def _diagnostic(report):
     return None
 
 
+def affected_lines(report):
+    """Text rows for the advisory affected record: every unit, then the summary."""
+    lines = [f"Base: {report['base']}  head: {report['head']}  {len(report.get('changes', []))} changed paths"]
+    lines += [f"Fallback: {reason}" for reason in report.get("fallback", [])]
+    for name, row in report["units"].items():
+        lines.append(f"{name}: {row['decision']} {'; '.join(row.get('reasons', []))}".rstrip())
+    lines.append(f"{report['selected']} selected, {report['review_candidates']} review candidates "
+                 f"of {len(report['units'])} units")
+    lines.append(f"Scope: {report['scope']}; required checks {report['required_checks']}")
+    lines.append(f"Elapsed: {report.get('elapsed_seconds', 0):.1f}s")
+    return lines
+
+
 def _human_result(args, report, progress):
     """Render the compact handoff after live stages have finished."""
     status = report.get("status", "FAIL")
@@ -449,7 +462,10 @@ def main(argv=None, root=None):
                 print(report["error"])
         for line in report.get("notices", []):
             print(line)
-        if args.command == "tests" and "units" in report and isinstance(report["units"], dict):
+        if args.command == "tests" and args.action == "affected" and "units" in report:
+            for line in affected_lines(report):
+                print(line)
+        if args.command == "tests" and args.action == "run" and isinstance(report.get("units"), dict):
             for name, outcome in report["units"].items():
                 if outcome["status"] != "PASS":
                     print(f"{name}: {outcome['status']} {outcome.get('reason', outcome.get('error', ''))}".rstrip())

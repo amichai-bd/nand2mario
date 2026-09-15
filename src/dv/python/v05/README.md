@@ -72,30 +72,38 @@ row, which needed about 10 s of simulated time and cannot finish under any wall
 allowance at the measured rate of about 2 ms simulated per wall second. The
 continuity schedule in `reference.schedule(continuity=True)` keeps the legacy
 transition list unchanged and shortens only the spacing between transitions:
-transition j (j = 1..18) is issued in normal frame j, at
-`FIRST_IMAGE_END + j*70224 + 20000` with a 2000-dot accept window during HALT,
-and first changes frame j+3. The last transition (release of Right+A) is
-visible from frame 21; the run ends after frame 22 completes at dot 1652371
+transition j (j = 1..18) is issued 20000 dots after normal frame j+1
+completes, at `FIRST_IMAGE_END + j*70224 + 20000` (frame 1 completes at
+`FIRST_IMAGE_END`), with a 2000-dot accept window during HALT, and is first
+visible in frame j+3. The last transition (release of Right+A) is visible from
+frame 21; the run ends after frame 22 completes at dot 1652371
 (`CONTINUITY_FRAMES` = 23, frames 0..22), and the final pause must land within
 2000 dots after it. The same `Online` monitor checks every retirement
 (6357 setup plus 21 updates of 76), every program write, every pixel of all 23
-frames, each applied-input reply against its window and mask, the `continuity`
-and `time_progress` monitors (no reset, fault or early pause; tick count equals
-elapsed time throughout) and the final pause window. The target declares the
-900-second [wall allowance](../../../../wiki/tools/n2m/SPEC.md#declared-wall-allowance)
-ceiling: idle runs measured 202..271 s at about 2 ms simulated per wall
-second, concurrent simulation from other worktrees more than doubled that,
-and one run was killed at a 450-second allowance.
+frames, each applied-input reply against its window and mask, the
+`continuity_monitor` and `time_progress` monitors (no reset, fault or early
+pause; tick count equals elapsed time throughout) and the final pause window.
+The target declares the 900-second
+[wall allowance](../../../../wiki/tools/n2m/SPEC.md#declared-wall-allowance)
+ceiling: runs measured 165..336 s at about 2 ms simulated per wall second
+depending on concurrent simulation from other worktrees, and one run was
+killed at a 450-second allowance under that contention.
 
 Preserved from the legacy run: every button press and release and the Right+A
-pair, in the frozen order, each with its exact apply window, its JOYP wake and
-its first updated frame; every-pixel checking of every intervening frame;
-continuous reset/fault/pause and tick-progress invariants from RUN through
-pause. Weakened by the shorter window: the run observes 23 frames (0.39 s
-simulated) instead of 602 (10 s), so 19-frame idle stretches between
-transitions and long steady-state VBlank cadence are not exercised, and the
-legacy frame identities (update at frame 20j+3) are replaced by j+3. The
-matrix keeps sustained endurance on the FPGA, not in simulation.
+pair, in the frozen order, each with its exact apply window; the IF bit 4
+request on a selected-line change and the `buttons` field in every retirement;
+the VBlank wake and 76-retirement update that publishes the mask; its first
+updated frame; every-pixel checking of every intervening frame; continuous
+reset/fault/pause and tick-progress invariants from RUN through pause.
+Weakened by the shorter window: the run observes 23 frames (0.39 s simulated)
+instead of 602 (10 s), so 19-frame idle stretches between transitions and long
+steady-state VBlank cadence are not exercised; the legacy frame identities
+(update at frame 20j+3) are replaced by j+3; tick-progress drift is checked
+over 0.39 s rather than 10 s, so a rare dropped or extra tick is caught only
+if it falls inside that window; and the 450 ms simulation watchdog leaves
+about 11 percent margin over the roughly 400 ms the schedule and its
+command latency take. The matrix keeps sustained endurance on the FPGA, not
+in simulation.
 
 ## Scoped implementation acceptance
 
