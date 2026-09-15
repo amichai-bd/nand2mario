@@ -359,6 +359,7 @@ class BuilderTests(unittest.TestCase):
         positions = [text.index(fragment) for fragment in ordered]
         self.assertEqual(positions, sorted(positions), text)
         self.assertIn("--quartus-bin '<Quartus-bin>'", text)
+        self.assertIn("--tag fpga-v05", text)
 
         with patch("n2m.cli.Simulator", return_value=self.sim), \
                 patch("n2m.cli.git_state", return_value={}), \

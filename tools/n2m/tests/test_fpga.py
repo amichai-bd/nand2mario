@@ -394,10 +394,13 @@ class FpgaTests(unittest.TestCase):
                       output.getvalue())
 
     def test_cli_text_output_prints_the_override_notice(self):
+        comparison = [False]
+
         def fake(root, build, args, provenance=None, progress=None):
             bitstream = "workdir/builds/notice/fpga/smoke/attempts/path with spaces/output/design.sof"
             return {"status": "PASS", "cache": "BUILT", "attempt_result": "result.json",
                     "artifacts": {bitstream: "hash"},
+                    "build_id_override": comparison[0],
                     "notices": [fpga.ALLOCATOR_OVERRIDE_NOTICE]}
 
         with patch("n2m.cli.build_fpga", side_effect=fake), patch("n2m.cli.git_state", return_value={}), \
@@ -411,6 +414,14 @@ class FpgaTests(unittest.TestCase):
         self.assertIn("Checked bitstream: workdir/builds/notice/fpga/smoke/attempts/path with spaces/output/design.sof", text)
         self.assertIn("--sof 'workdir/builds/notice/fpga/smoke/attempts/path with spaces/output/design.sof'", text)
         self.assertIn("--quartus-bin 'tools with spaces'", text)
+
+        comparison[0] = True
+        with patch("n2m.cli.build_fpga", side_effect=fake), patch("n2m.cli.git_state", return_value={}), \
+                patch("n2m.cli.platform.system", return_value="Windows"), \
+                contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(main(["fpga", "build", "smoke", "--quartus-bin", "tools",
+                                   "--tag", "notice-comparison"], self.root), 0)
+        self.assertNotIn("Next (Windows PowerShell):", output.getvalue())
 
     def test_execute_keeps_unexplained_warning_failure(self):
         record = {'commands': [], 'classified_diagnostics': []}

@@ -325,7 +325,7 @@ def _human_result(args, report, progress):
         if status == "PASS":
             progress.line("Next (Windows PowerShell): " + powershell_command([
                 "python", "tools/build.py", "fpga", "build", "v05-board",
-                "--quartus-bin", "<Quartus-bin>", "--tag", "<FPGA-tag>"]))
+                "--quartus-bin", "<Quartus-bin>", "--tag", "fpga-v05"]))
         return
 
     if args.command == "fpga" and args.action == "build":

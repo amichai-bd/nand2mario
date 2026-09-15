@@ -77,6 +77,8 @@ final evidence checking. Its summary gives the immutable attempt record and
 checked `design.sof`, followed by the exact `fpga program` command for that
 artifact. Arguments that contain spaces or PowerShell metacharacters are
 single-quoted, with embedded quotes escaped.
+A comparison-only result produced with `--build-id` prints no programming
+handoff, matching the programmer's existing refusal of that image.
 
 Programming checks the attempt record before JTAG discovery, reports the
 selected cable and device, then reports programming and its explicit success
