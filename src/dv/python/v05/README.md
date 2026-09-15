@@ -81,7 +81,11 @@ visible from frame 21; the run ends after frame 22 completes at dot 1652371
 (6357 setup plus 21 updates of 76), every program write, every pixel of all 23
 frames, each applied-input reply against its window and mask, the `continuity`
 and `time_progress` monitors (no reset, fault or early pause; tick count equals
-elapsed time throughout) and the final pause window.
+elapsed time throughout) and the final pause window. The target declares a
+450-second [wall allowance](../../../../wiki/tools/n2m/SPEC.md#declared-wall-allowance):
+the run measured about 210 s at about 2 ms simulated per wall second, and
+parallel simulator load measured a 1.46 factor on similar targets, so the
+default 300 s leaves no dependable margin.
 
 Preserved from the legacy run: every button press and release and the Right+A
 pair, in the frozen order, each with its exact apply window, its JOYP wake and
