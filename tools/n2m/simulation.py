@@ -199,6 +199,11 @@ def simulate(root, build, args, simulator, provenance=None):
                 elapsed = time.monotonic() - started
                 record["commands"][-1]["elapsed_seconds"] = elapsed
                 record["timing"]["run_seconds" if running else "build_seconds"] += elapsed
+                if result is not None:
+                    # Retain the transcript before the peer is judged: a peer
+                    # that exits nonzero after a passing run must not lose it.
+                    log.write_text(result.stdout, encoding="utf-8")
+                    record["commands"][-1]["exit_code"] = result.returncode
                 if peer is not None:
                     # The Python peer completed only when the run exited zero
                     # and the cocotb peer reported PASS; any other outcome
@@ -207,8 +212,6 @@ def simulate(root, build, args, simulator, provenance=None):
                         record["python_results"] = python_tb.results(attempt / "results.xml", peer_config)
                     peer.close(result is not None and result.returncode == 0
                                and record.get("python_results", {}).get("status") == "PASS")
-            log.write_text(result.stdout, encoding="utf-8")
-            record["commands"][-1]["exit_code"] = result.returncode
             if running and python_runtime and not driver:
                 record["python_results"] = python_tb.results(attempt / "results.xml", target["python"])
             if (result.returncode == 0) != (expected == "zero"):

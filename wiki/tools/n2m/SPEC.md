@@ -436,7 +436,8 @@ zero within 5 s. A peer fault fails the attempt as `Verilator peer failed:
 reports exactly `WARNING cocotb.regression <module>.peer failed` and
 `cocotb.regression.SimFailure: cocotb expected it would shut down the
 simulation, but the simulation ended prematurely...`. When the declared
-signature appears on a `%Fatal` or `%Error` line, that two-line report is
+signature appears on a diagnostic line (`%Fatal`, `%Error`, `ERROR` or
+`CRITICAL`), that two-line report is
 accepted as the fatal's own stop report for that module only; any other
 warning still fails the attempt, and no results check applies.
 

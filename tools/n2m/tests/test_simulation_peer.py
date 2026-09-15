@@ -194,6 +194,15 @@ class VerilatorDriverStageTests(unittest.TestCase):
         self.assertFalse(peer_result['completed_normally'])
         self.assertEqual(self.run_stage()['cache'], 'BUILT')
 
+    def test_peer_exit_after_a_passing_run_keeps_the_transcript(self):
+        (self.root / 'child.py').write_text((self.root / 'child.py').read_text() + "sys.exit(7)\n")
+        record = self.run_stage()
+        self.assertEqual(record['status'], 'FAIL')
+        self.assertEqual(record['error'], 'simulation peer failed with exit 7')
+        self.assertEqual(record['commands'][-1]['exit_code'], 0)
+        sim_log = self.root / next(p for p in record['artifacts'] if p.endswith('/sim.log'))
+        self.assertEqual(sim_log.read_text(), self.transcript)
+
     def test_expected_testbench_fatal_accepts_the_peer_stop_report_only(self):
         self.args.target = 'verilator-peer-fatal'
         self.raw_exit = 1
