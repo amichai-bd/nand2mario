@@ -49,6 +49,7 @@ class SyntheticTree:
 
 class NetlistCompareTests(unittest.TestCase):
     definitions = {"plain": {"sources": ["src/dv/builder/fpga_smoke.sv"]},
+                   "plain-invalid": {"sources": ["src/dv/builder/fpga_smoke.sv"]},
                    "memory": {"sources": ["src/rtl/common/n2m_intel_ram.sv"]},
                    "clocked": {"sources": ["src/x.sv"], "pll": {"module": "n2m_pixel_pll"}}}
 
@@ -67,6 +68,7 @@ class NetlistCompareTests(unittest.TestCase):
     def test_identical_trees_pass_and_record_compared_fields(self):
         for tree in (self.baseline, self.head):
             tree.build("plain", netlist=None)
+            tree.build("plain-invalid", netlist=None)
             tree.build("memory")
             tree.build("clocked", netlist="cell b;\n")
         report = self.run_compare()
@@ -104,13 +106,15 @@ class NetlistCompareTests(unittest.TestCase):
         self.assertEqual(report["targets"]["memory"]["field"], "netlist_sha256")
         self.assertEqual(report["targets"]["clocked"]["status"], "PASS")
 
-    def test_identical_deliberate_failures_pass(self):
+    def test_identical_failures_pass_with_a_note(self):
         for tree in (self.baseline, self.head):
-            tree.build("plain", status="FAIL", reports=False, netlist=None, error="negative clock period")
+            tree.build("plain", status="FAIL", reports=False, netlist=None, error="hold slack -0.086")
+            tree.build("plain-invalid", status="FAIL", reports=False, netlist=None, error="negative clock period")
             tree.build("memory"); tree.build("clocked")
         report = self.run_compare()
-        self.assertEqual(report["targets"]["plain"]["status"], "PASS")
-        self.assertIn("deliberate", report["targets"]["plain"]["note"])
+        self.assertEqual(report["status"], "PASS")
+        self.assertEqual(report["targets"]["plain"]["note"], "both builds fail identically")
+        self.assertEqual(report["targets"]["plain-invalid"]["note"], "both builds fail identically (deliberate invalid target)")
 
     def test_deliberate_failure_text_ignores_root_tag_and_attempt(self):
         for tree in (self.baseline, self.head):

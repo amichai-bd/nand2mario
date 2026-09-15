@@ -93,6 +93,11 @@ REQUIRED_REPORTS = ("design.fit.summary", "design.map.rpt", "design.fit.rpt")
 NETLIST_SOURCES = ("src/rtl/common/n2m_intel_ram.sv", "src/rtl/input/n2m_adc_backend.sv")
 
 
+def deliberate_failure(target, definition):
+    """The *-invalid targets, or a registry entry marking its expected failure."""
+    return target.endswith("-invalid") or bool(definition.get("expected_failure"))
+
+
 def needs_netlist(definition):
     """The same rule as tools/n2m/fpga.py: PLL, Intel RAM or ADC targets retain design.vo."""
     return "pll" in definition or any(source in definition.get("sources", []) for source in NETLIST_SOURCES)
@@ -117,8 +122,8 @@ def identity(folder, record, definition, root, tag):
 
     A PASS record must have every required report, and design.vo when the
     target retains one; a missing file is a ValueError, never a silent None.
-    The *-invalid targets fail by design, so a FAIL record contributes its
-    error text and whatever reports Quartus wrote before stopping.
+    A FAIL record (a deliberate *-invalid target or a failure identical on both
+    sides) contributes its error text and whatever reports Quartus wrote.
     """
     output = folder / "output"
     passing = record["status"] == "PASS"
@@ -186,7 +191,9 @@ def compare(baseline_root, baseline_tag, head_root, head_tag):
             if key:
                 entry.update(status="FAIL", field=key, detail=detail)
             elif sides["head"]["status"] == "FAIL":
-                entry["note"] = "both builds fail identically (deliberate invalid target)"
+                entry["note"] = "both builds fail identically"
+                if deliberate_failure(target, definitions[target]):
+                    entry["note"] += " (deliberate invalid target)"
             elif len(compared["head"]) < 2 + len(SECTIONS) + 1:
                 entry.update(status="FAIL", reason="incomplete comparison: " + ", ".join(compared["head"]))
         if entry["status"] != "PASS":
