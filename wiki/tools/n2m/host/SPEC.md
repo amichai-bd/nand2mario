@@ -30,7 +30,7 @@ is not device authentication or proof of correct wiring.
 |---|---|
 | `host status` | ABI/build identity and single-word state, image-valid, profile and input registers. No incoherent live split counters. |
 | `host io --samples <n>` | Repeated live LCD triple and dot readings plus one pass over the frozen DMG I/O set. Reads only; the endpoint is never paused or stepped. Samples land in `io_samples.json`. |
-| `host load --package <result.json>` | Validated immutable software attempt, load begin/write/end, complete byte-for-byte readback, valid/paused/profile checks. Does not run the ROM. |
+| `host load --package <result.json>` | Validated immutable software attempt, load begin/write/end, complete byte-for-byte readback, valid/paused/profile checks. `LOAD_BEGIN` carries the generated ID of the profile the package record names (`dmg-direct-v1` is `DIRECT_ID`, the [menu's](../../../src/sw/menu/SPEC.md) `dmg-loader-v1` is `LOADER_ID`) and the endpoint must report that profile afterwards. Does not run the ROM. |
 | `host load --external <name>` | Same transmission and verification from a pinned external image fetched at run time. Exactly one of `--package` or `--external` is accepted. |
 | `host reset` | Generated core RESET, acknowledged after initialization. |
 | `host run` | Resume through generated RUN. |

@@ -235,7 +235,8 @@ JR NZ,WaitCopy
 RET
 
 ; Delayed catalogue path: commit the bank once the SDRAM is ready, then draw
-; one title row per frame once the window holds bank 34.
+; one title row per frame while the window holds bank 34; a window that lost
+; window_ready is committed again (ignored while a fill is still running).
 Catalogue:
 LD A,[BankDone]
 OR A,A
@@ -250,7 +251,7 @@ CP A,LIBRARY_SLOTS
 RET Z
 LD A,[LOADER_STATUS]
 AND A,LIBRARY_STATUS_WINDOW_READY
-RET Z
+JP Z,CommitBank
 LD A,[Pending]
 CALL DrawSlot
 LD A,[Pending]
