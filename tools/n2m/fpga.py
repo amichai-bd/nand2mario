@@ -190,6 +190,9 @@ def prepare(root, folder, target, build_id=None):
             lines.append(f'set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to {tcl_word(port)}')
         if (target["top"] == "controls_proof" or fpga_v05.board_target(target) or sdram_target(target)) and (port == "uart_tx" or re.fullmatch(r"leds\[[0-9]\]", port)):
             lines.append(f'set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to {tcl_word(port)}')
+        # SDRAM command, address, clock and data pins: 3.3-V LVTTL at 8 mA.
+        if sdram_target(target) and port.startswith("DRAM_"):
+            lines.append(f'set_instance_assignment -name CURRENT_STRENGTH_NEW "8MA" -to {tcl_word(port)}')
     if target["top"] == "controls_proof" or fpga_v05.board_target(target) or sdram_target(target):
         lines.append('set_instance_assignment -name IO_STANDARD "3.3 V SCHMITT TRIGGER" -to board_reset_n')
     for port in target["virtual_pins"]:

@@ -51,10 +51,12 @@ module sdram_proof #(
     logic sdram_response_valid;
     logic [n2m_sdram_pkg::SDRAM_LINE_BITS-1:0] sdram_response_data;
     logic activity;
+    logic [4:0] line_count;
+    logic [23:0] pixel_heartbeat;
 
-    // The same system and pixel PLLs as the composed image; clk_pix only
-    // qualifies its reset here, so the clock inventory the builder checks is
-    // unchanged.
+    // The same system and pixel PLLs as the composed image. clk_pix has one
+    // consumer, the LEDR5 heartbeat, so the pixel PLL output and its checked
+    // reset chain stay in the fit and the clock inventory is unchanged.
     n2m_clocking u_clocking (
         .clk_reference, .clk_sys(clk_sys), .board_reset_n(board_reset_n), .clk_pix(clk_pix),
         .reset_sys(reset_sys), .reset_pix(reset_pix), .ready(ready)
@@ -96,8 +98,11 @@ module sdram_proof #(
         .DRAM_CLK(DRAM_CLK), .DRAM_CS_N(DRAM_CS_N), .DRAM_DQ(DRAM_DQ), .DRAM_DQML(DRAM_DQML),
         .DRAM_DQMH(DRAM_DQMH), .DRAM_RAS_N(DRAM_RAS_N), .DRAM_WE_N(DRAM_WE_N)
     );
-    // LEDR9 clocks ready, LEDR8 SDRAM initialized, LEDR7 controller idle,
-    // LEDR6 toggles on every accepted line; the rest are off.
+    // LEDR9 clocking ready, LEDR8 SDRAM initialized, LEDR7 controller idle,
+    // LEDR6 toggles on every accepted line, LEDR5 is the pixel-clock
+    // heartbeat (about 1.5 Hz), LEDR4-0 count accepted lines.
     `DFF_RST_EN(activity, !activity, clk_sys, sdram_request_valid && sdram_request_ready, reset_sys, 1'b0)
-    assign leds = {ready, sdram_initialized, sdram_idle, activity, 6'd0};
+    `DFF_RST_EN(line_count, line_count + 5'd1, clk_sys, sdram_request_valid && sdram_request_ready, reset_sys, 5'd0)
+    `DFF_ARST_VAL(pixel_heartbeat, pixel_heartbeat + 24'd1, clk_pix, reset_pix, 24'd0)
+    assign leds = {ready, sdram_initialized, sdram_idle, activity, pixel_heartbeat[23], line_count};
 endmodule
