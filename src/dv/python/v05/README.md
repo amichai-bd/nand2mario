@@ -13,9 +13,10 @@ snapshots as its every-frame oracle.
 `known()` reads one public logic snapshot. It accepts `0/1/L/H`, normalizes weak
 bits, and rejects `X/Z/U/W/-` with `V05_UNKNOWN <signal>`. The conversion avoids
 per-bit objects and does not consult `COCOTB_RESOLVE_X`. The runner already removes
-that ambient setting. In cocotb 2.0.1, direct scalar `int(Logic('L'))` under the
-ambient `error` resolver raises despite `is_resolvable`; this unused resolver
-corner is not part of the runner's observation contract. Run
+that ambient setting; the ambient resolver's behavior on weak scalars is not part
+of the observation contract. Under Verilator every value is two-state, so the
+`V05_UNKNOWN` rejection is inert and uninitialized reads surface as mismatches
+against the randomized initial values instead. Run
 `python -B src/dv/python/v05/test_known.py` in the pinned Python DV environment
 to check scalar and packed values, single reads, and resolver independence.
 
@@ -24,7 +25,7 @@ to check scalar and packed values, single reads, and resolver independence.
 | python-v05-identity | Read an independent 128-bit build identity through the actual UART and product Client |
 | python-v05-identity-fault | The same checker rejects one changed DUT identity bit |
 | python-v05-startup | Original build, full UART load/readback, blank and first normal frame, checked pause |
-| python-v05-continuous | Legacy 600-interval/18-input schedule; not authorized to run under the revised matrix |
+| python-v05-continuous | Legacy 600-interval/18-input schedule (about 10 s of simulated time); not authorized under the revised matrix and held `simulator: "questa"` under [#634](https://github.com/amichai-bd/nand2mario/issues/634) |
 | python-v05-image-fault | Actual ROM write at 0200 changes F3 to 00; LOAD_END rejects BAD_IMAGE |
 | python-v05-pixel-fault | Actual first eligible source shade changes 1 to 0; exact pixel mismatch |
 | python-v05-short | Preloaded complete path, two inputs, six frames and final pause |
@@ -37,8 +38,14 @@ to check scalar and packed values, single reads, and resolver independence.
 | python-v05-physical | Same bounded original program receives atomic physical Right+A; actual UART selection, source isolation and switch-back readbacks |
 | python-v05-physical-mask | Actual physical connection loses A; unchanged Right+A checker rejects the applied mask |
 
-Fault runs require failing Python/XML and nonzero outer builder; preserve the
-actual raw simulator exit independently. Every test follows the
+Fault targets are registered `expected_exit: "nonzero"` with the first line of
+their named test's failure as `signature`, as the
+[builder contract](../../../../wiki/tools/n2m/SPEC.md#python-testbenches-under-verilator)
+defines: the builder reports PASS only when `results.xml` holds that failure, and
+the simulator process exits zero either way. Measured under Verilator 5.052 with
+the top-only public build: `python-v05-short` runs in 54 s and
+`python-v05-startup` (full UART load and readback, 307 ms simulated) in 150 s,
+both inside the default budget. Every test follows the
 [300-second total wall budget](../../../../wiki/tools/n2m/SPEC.md#test-wall-budget),
 including preparation, compilation, execution and checking. Target 120 seconds
 per simulation and 300 seconds ordinary pre-merge aggregate. The legacy full
