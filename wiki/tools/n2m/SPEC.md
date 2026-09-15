@@ -221,7 +221,8 @@ that declare no `vendor_model` in the [test catalogue](#test-catalogue), the
 `interrupts`, `timer`, `serial`, `interfaces`, `display`, `clocking`
 (`clocking-early-reset`, `timebase25`, `timebase25-bad-numerator`) or
 `common` (`assert-synthesis`, `register-macros`, `register-macros-corrupt`),
-the three `tb_clocking` targets `clocking`, `clocking-bad-numerator` and
+the 23 SystemVerilog targets without a `vendor_model` labelled `dma`, `uart`
+or `baseline`, the three `tb_clocking` targets `clocking`, `clocking-bad-numerator` and
 `clocking-drop-tick`, and the five `tb_async_assert_macros` targets
 `async-assert-macros`, `async-assert-direct`, `async-assert-hold`,
 `async-assert-never` and `async-assert-no_reset`. `ppu-shift-unknown` and

@@ -15,7 +15,7 @@ stable around the rising edge. The clock period is 10 ns; observation occurs
 
 `fixture.sv` contains the only intentional defect: `+broken` drops the operand's
 high bit before addition. It changes the DUT, never the oracle. The directed
-sequence produces expected zero and actual 128 at cycle 6. Questa must
+sequence produces expected zero and actual 128 at cycle 6. The simulator must
 exit nonzero with that exact mismatch. A compiler failure, warning, timeout,
 other fatal diagnostic or zero runtime exit cannot satisfy this negative case.
 
@@ -27,14 +27,15 @@ other fatal diagnostic or zero runtime exit cannot satisfy this negative case.
 | Monitor | Capture applied reset/enable/operand and resulting output; publish one sampled transaction per rising edge |
 | Reference | Predict using integer history and modulo arithmetic; never read DUT internal or output state |
 | Scoreboard | Compare each transaction, write expected/actual evidence before failure, and update reference history |
-| Assertions | Reject unknown outputs, incorrect reset, and disabled-state changes independently of the scoreboard |
+| Assertions | Reject incorrect reset and disabled-state changes independently of the scoreboard; the two-state simulator randomizes uninitialized values, so an unknown output fails by mismatch |
 | Coverage | Record reset, reset+enable, addition, zero/max operands, wrap, hold, and reset-after-activity |
 
 The [test plan](../../../../src/dv/baseline/README.md) maps normal, edge, reset,
 error and ordering cases to these components. Use this separation for later
 units; their contracts must supply expected behavior before writing checks.
 This UVM-lite uses modules and explicit sampled transactions, without class,
-UVM library, SVA or covergroup dependencies. It runs in Questa.
+UVM library, SVA or covergroup dependencies. It runs under
+[Verilator](../../../tools/n2m/SPEC.md#verilator-simulation).
 
 Directed literal checkpoints independently establish the oracle's expected
 128 at cycle 4 and zero at cycle 6. The good test requires 75 comparisons and
@@ -50,28 +51,29 @@ owns tool discovery, strict diagnostics, immutable attempts, cache and exits.
 A direct fixture run is:
 
 ```text
-python tools/build.py sim test baseline-good --sim questa --seed 31 --tag baseline-good
-python tools/build.py sim test baseline-broken --sim questa --seed 31 --tag baseline-broken
+python3 tools/build.py sim test baseline-good --seed 31 --tag baseline-good
+python3 tools/build.py sim test baseline-broken --seed 31 --tag baseline-broken
 ```
 
 The [regression runner](../../../../tools/n2m/baseline.py) executes the
 [manifest](../../../../src/dv/baseline/regression.json) and validates artifacts:
 
 ```text
-python tools/n2m/baseline.py --sim questa --level smoke --tag baseline-smoke
-python tools/n2m/baseline.py --sim questa --level regression --tag baseline-regression
+python3 tools/n2m/baseline.py --level smoke --tag baseline-smoke
+python3 tools/n2m/baseline.py --level regression --tag baseline-regression
 ```
 
-Questa is the default and sole backend; `--sim questa` is optional. The optional
-`--questa-bin` chooses its installation directory. Retired `portable` and `both`
-selections fail argument parsing. Missing tools/license/runtime failures fail
-the run. No command modifies global paths, licenses or device state.
+Verilator is the default and sole backend; `--sim verilator` is optional. The
+optional `--verilator-bin` names its tool directory. Retired `questa`,
+`portable` and `both` selections fail argument parsing. Missing tools and
+runtime failures fail the run; no license is consulted. No command modifies
+global paths or device state.
 
 The manifest owns the seed lists and aggregate wall budgets. `smoke` uses one
 seed and both good/broken targets for changed-unit PR checks. `regression` uses
 four seeds, including zero and the largest accepted seed, for baseline delivery
 and later scheduled or affected integration runs. Required local delivery runs
-Questa; host contracts are checked locally, and no hosted job runs them. The
+Verilator; host contracts are checked locally, and no hosted job runs them. The
 [trusted route](../../../tools/n2m/SPEC.md#ci-execution-boundary) remains due in #32. Future CPU/system regressions must add separately reviewed
 lists and budgets; no unimplemented CPU coverage is silently included.
 
@@ -84,7 +86,8 @@ The runner always requests fresh simulations. Tags are exclusive, at most
 ## Evidence and trace validation
 
 Each child builder attempt records source/tool fingerprints, seed, exact command,
-raw exit, compilation/elaboration/runtime logs, `baseline.vcd`, and Questa WLF. `transactions.csv` has these ordered decimal integer columns:
+raw exit, build and run logs, the testbench's `baseline.vcd` and the harness
+`waves/simulation.fst`. `transactions.csv` has these ordered decimal integer columns:
 `seed,cycle,reset,enable,operand,expected,actual`. Cycle numbers start at one.
 The scoreboard flushes each row before a fatal mismatch. Good runs additionally
 write `coverage/bins.txt`; incomplete/broken runs do not claim full coverage.

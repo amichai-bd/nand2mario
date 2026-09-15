@@ -27,48 +27,39 @@ identity; this test is deterministic and reports `seed=none`.
 The builder runs [Verilator on WSL](../n2m/SPEC.md#verilator-simulation). Both
 tile targets are registered `simulator: "verilator"`: `tile-pixel` passes with
 its exhaustive signature and `tile-pixel-corrupt` fails with its exact mismatch
-diagnostic. The testbench drives two-state fill values where its Questa
-stimulus drove X and Z; the checks are unchanged. The Questa sections below
-describe the retired path they last ran on.
-
-## Questa checks (retired path)
-
-Use the shared builder with the same normal and corruption targets:
-
-```powershell
-python tools/build.py sim test tile-pixel --sim questa --tag tile-questa --json
-python tools/build.py sim test tile-pixel-corrupt --sim questa --tag tile-questa-corrupt --json
-```
-
-The [Questa backend contract](../n2m/SPEC.md#questa-simulation) owns discovery,
-isolated libraries, strict diagnostics, and cache behavior. Add `--questa-bin
-<directory>` for explicit discovery; use `--rebuild` for fresh runtime evidence.
+diagnostic. The testbench drives two-state fill values where its earlier
+stimulus drove X and Z; the checks are unchanged.
 
 ## Standalone checks
 
 Follow the [current authorization](../../agents/bootstrap-plan.md#verification-and-hardware-authorization).
-Use Python 3.12 or later,
-`vlib`, `vmap`, `vlog`, and `vsim` on `PATH`, and a valid simulation license:
+Use Python 3.12 or later and the pinned Verilator on `PATH`, or name its tool
+directory:
 
-```powershell
-python tools/sim/tile_pixel.py --sim questa --tag tile-questa
+```bash
+python3 tools/sim/tile_pixel.py --tag tile-standalone
+python3 tools/sim/tile_pixel.py --verilator-bin <prefix>/bin --tag tile-standalone
 ```
 
 This standalone runner checks normal and deliberately corrupt cases together.
 It resolves and hashes transitive headers under the shared
 [include contract](../n2m/SPEC.md#hdl-includes). Missing or unsupported includes
 retain a failure manifest before tools run. It records commit/dirty status,
-commands, tool banners, logs, and VCDs
-under a fresh tag; existing tags are rejected and results are never cached.
-Each Questa case retains a `run.do` macro. Its handlers run with `-onfinish stop`
-and inspect the simulator's stop reason: normal `$finish` exits zero; fatal,
-other breaks, macro errors, or return without `$finish` exit nonzero. The normal
-case requires the full exhaustive completion signature. Corruption requires
-the full intended mismatch diagnostic and a nonzero exit; additional errors
-or warnings fail the runner even when an expected signature appears.
-The standalone runner still accepts only `--sim questa`; the registered
-targets are the Verilator path. Retired simulator selections fail argument
-parsing; there is no fallback.
+the Verilator and C++ compiler identities from the
+[shared discovery](../n2m/SPEC.md#verilator-simulation), commands, logs, the
+harness FST and the testbench VCD under a fresh tag; existing tags are rejected
+and results are never cached. It builds the
+[shared runner's command plan](../../../tools/n2m/verilator.py) once under
+`compile/verilator/` and runs each case from `sim/test/tile-pixel/<case>/`
+with the runner's seeded plusargs; the testbench itself is deterministic and
+the manifest records the randomization seed separately from its `seed=none`.
+Transcripts pass the runner's strict check: any `%Warning` fails, and an error
+line must carry the expected mismatch. The normal case requires the full
+exhaustive completion signature and a zero exit. Corruption requires the full
+intended mismatch diagnostic and a nonzero exit; additional errors or warnings
+fail the runner even when an expected signature appears. The runner accepts
+only `--sim verilator`; retired selections such as `questa` fail argument
+parsing, and there is no fallback.
 
 Both paths reject tool, compile, elaboration, warning, timeout, exit, or expected
 output failures. Host command-construction tests do not prove simulator execution. The
