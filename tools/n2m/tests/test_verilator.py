@@ -325,6 +325,12 @@ class RecordTests(unittest.TestCase):
         targets["builder-smoke"] = {**pristine, "vendor_model": "intel-memory"}
         registry.write_text(json.dumps(targets))
         self.assertEqual(load_target(self.root, "builder-smoke")[0]["vendor_model"], "intel-memory")
+        targets["builder-smoke"] = {**pristine, "simulators": ["verilator", "questa"],
+                                    "vendor_model": "intel-memory",
+                                    "intel_mixed_mode_instances": ["tb.dut.ram"]}
+        registry.write_text(json.dumps(targets))
+        self.assertEqual(load_target(self.root, "builder-smoke")[0]["intel_mixed_mode_instances"],
+                         ["tb.dut.ram"])
         for change, message in (({"vendor_model": "altera-mf"}, "vendor_model must be one of"),
                                 ({"simulators": ["verilator"], "vendor_model": "intel-memory", "intel_mixed_mode_instances": ["tb.dut.ram"]}, "intel_mixed_mode_instances"),
                                 ({"simulators": ["verilator"], "driver": {"script": "driver.do", "peer": "tools/build.py", "inputs": [], "access": access}}, "Python peer driver supports only Verilator"),
@@ -520,6 +526,7 @@ class CapabilityTests(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("does not support simulator questa", json.loads(output.getvalue())["error"])
         self.assertFalse((self.root / "workdir/latest.txt").exists())
+        self.assertFalse((self.root / "workdir/builds/unsupported").exists())
 
 
 class HostOwnershipTests(unittest.TestCase):

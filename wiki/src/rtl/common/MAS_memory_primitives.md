@@ -98,11 +98,13 @@ bank/address ownership across unrelated clocks, including physical timing
 windows. Simultaneous reads are allowed. There is no B write port.
 
 Hardware requires `DONT_CARE` for different clocks; Quartus critical warning
-15003 remains a failure. The Questa model's time-zero coercion diagnostic for
-that parameter, and the `intel_mixed_mode_instances` inventory that classified
-it, are retired with that model: the double emits no diagnostic, and the
-collision rule is checked by the wrapper's `INTEL_RAM_MIXED_PORT_A/B`
-assertions, which `intel-memory-collision` witnesses.
+15003 remains a failure. Questa uses the checked installed model and classifies
+its reviewed time-zero coercion diagnostic through the target's
+`intel_mixed_mode_instances` inventory. A target may declare that inventory
+only when its capability list includes Questa. Verilator ignores the inventory
+and its double emits no coercion diagnostic. Both backends check the collision
+rule through the wrapper's `INTEL_RAM_MIXED_PORT_A/B` assertions, which
+`intel-memory-collision` witnesses.
 
 The MAX 10 guide documents [read-enable holding](https://docs.altera.com/r/docs/683431/current/max-10-embedded-memory-user-guide/read-enable?contentId=LsRwx_P_1NO6gEMewkvOBQ),
 [same-port new data](https://docs.altera.com/r/docs/683431/current/max-10-embedded-memory-user-guide/same-port-read-during-write-mode?contentId=mPC_Y0bBM58cJ0SN~2R3EA),

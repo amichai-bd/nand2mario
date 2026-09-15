@@ -210,10 +210,11 @@ selects the backend first.
 RTL under test (`intel-memory`, `intel-adc` or `intel-controls`). The Verilator
 stage compiles no vendor source: the wrapper selects the repository double
 under `VERILATOR`, and the record's `options.vendor_model` names the binding
-and the double. `intel_mixed_mode_instances` was the Questa model's
-coercion-diagnostic inventory; the double emits no such diagnostic, so the
-validator refuses the field under `verilator` (see the
-[memory MAS](../../src/rtl/common/MAS_memory_primitives.md#writes-and-collisions)).
+and the double. `intel_mixed_mode_instances` is the Questa model's
+coercion-diagnostic inventory. A target may declare it only when its capability
+list includes Questa. A dual-capable target may therefore retain the inventory,
+but only the Questa run consumes it; the Verilator double emits no such
+diagnostic (see the [memory MAS](../../src/rtl/common/MAS_memory_primitives.md#writes-and-collisions)).
 An `intel-adc` target receives the [channel fixture files](#intel-adc-binding-under-verilator)
 beside its run. `defines` lists `NAME` or `NAME=VALUE` identifiers that the
 build passes as `+define+`; elaboration-time selection is a build option, not
@@ -1098,8 +1099,16 @@ because the distribution package (5.020) is below cocotb's 5.036 minimum; and
 `--verilator-bin <prefix>/bin`. Paths with spaces are supported. There is no
 simulator bootstrap, automatic download or license configuration command.
 Native Questa expects `vlib`, `vmap`, `vlog` and `vsim` on PATH or
-`--questa-bin <directory>` and uses the caller's license environment. Recorded
-executable versions and hashes identify the installed tool.
+`--questa-bin <directory>` and uses the caller's license environment. Questa
+2025.2 requires `SALT_LICENSE_SERVER` to name a valid SALT service; a legacy
+FlexNet feature file in `SALT_LICENSE_FILE` or `MGLS_LICENSE_FILE` is not a
+substitute. Obtain the server setting from the license administrator, keep its
+value out of repository files and logs, and validate checkout with the installed
+`lmutil lmdiag` before running `doctor --sim questa`. Recorded executable
+versions and hashes identify the installed tool. On the current development
+machine, native vmap/vlib/vlog and the shared-smoke compile complete with zero
+errors and warnings, but vsim exits 4 at SALT checkout with `Invalid license
+environment`; this is a blocked runtime, not simulator PASS evidence.
 
 ## CI execution boundary
 
@@ -1638,6 +1647,11 @@ Before execution, the published record becomes `RUNNING`, preventing reuse after
 interruption. Completion publishes `PASS` or `FAIL`; a failed forced rebuild
 invalidates the earlier success for that backend stage and preserves both attempts.
 Discovery or preparation failure also invalidates that backend's prior success.
+If discovery fails before an immutable attempt exists, the backend-qualified and
+generic `sim.log` mirrors are atomically replaced with the failure transcript;
+neither may retain an earlier PASS log beside the new FAIL result. An unsupported
+target/backend pair is rejected before the workspace is opened, so it publishes
+neither a new result nor a new log.
 `manifest.json` and `status.json` describe the latest command on the tag. The
 latest pointer changes only after command success; it records the last successful
 invocation's tag, whose later contents may change when explicitly reused.

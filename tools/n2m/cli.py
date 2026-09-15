@@ -247,11 +247,13 @@ def tagged(root, args, header, publish):
                 atomic_json(diagnostic, report['diagnostics'])
                 report['artifacts'] = {diagnostic.relative_to(root).as_posix(): file_hash(diagnostic)}
             failure_artifacts = {}
+            failure_text = str(error) + "\n"
             if isinstance(error, ToolError):
                 folder = build / "discovery" / uuid.uuid4().hex
                 folder.mkdir(parents=True)
                 log = folder / "failure.log"
-                log.write_text(error.output + "\n" + str(error) + "\n", encoding="utf-8")
+                failure_text = error.output + "\n" + str(error) + "\n"
+                log.write_text(failure_text, encoding="utf-8")
                 failure_artifacts[log.relative_to(root).as_posix()] = file_hash(log)
                 report["artifacts"] = failure_artifacts
                 atomic_json(folder / "result.json", report)
@@ -260,8 +262,9 @@ def tagged(root, args, header, publish):
                 failure = {"status": "FAIL", "error": str(error), "artifacts": failure_artifacts,
                            "simulator": args.sim, "os": platform.system(),
                            "authoritative_result": authoritative}
+                atomic_text(stage / "sim.log", failure_text)
                 atomic_json(stage / "result.json", failure)
-                publish_mirror(root, mirror, failure)
+                publish_mirror(root, mirror, failure, stage / "sim.log")
         publish(build, report)
     return report
 
@@ -335,6 +338,11 @@ def main(argv=None, root=None):
             # No workspace: the tag directory itself is what clean removes.
             report = header(args.tag)
             report.update(clean(root, args.tag))
+        elif args.command == "sim" and args.action == "test":
+            # The single-target capability contract is checked before the tag
+            # workspace is created. The stage repeats this check defensively.
+            load_target(root, args.target, args.sim)
+            report = tagged(root, args, header, publish)
         else:
             report = tagged(root, args, header, publish)
     except Exception as error:

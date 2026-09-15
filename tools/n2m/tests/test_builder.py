@@ -319,6 +319,11 @@ class BuilderTests(unittest.TestCase):
                 self.assertEqual(main(command + ["--rebuild"], self.root), 1)
             current = self.root / "workdir/builds/discovery/sim/test/builder-smoke/verilator/result.json"
             self.assertEqual(read_json(current)["status"], "FAIL")
+            backend_log = current.with_name("sim.log")
+            mirror_log = current.parent.parent / "sim.log"
+            self.assertEqual(backend_log.read_text(), mirror_log.read_text())
+            self.assertIn("missing runtime", backend_log.read_text())
+            self.assertNotIn("PASS builder-smoke", backend_log.read_text())
             self.assertEqual(main(command, self.root), 0)
             self.assertEqual(len(self.sim.calls), 4)
 
