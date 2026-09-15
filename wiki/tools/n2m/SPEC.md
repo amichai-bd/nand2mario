@@ -59,6 +59,49 @@ workspace creation, tool discovery or child launch; there is no fallback.
 evidence. It also proves the [test catalogue](#test-catalogue) still
 covers every test in the tree, and fails naming the first uncovered file.
 
+## Human terminal progress
+
+Without `--json`, a single simulation or FPGA command reports live, flushed
+stage lines. `[....]` marks work that is running. `[done]` and `[PASS]` name a
+completed operation and its measured wall duration. `[FAIL]` names the stage
+that stopped and its retained diagnostic path. `[CACHED]` says that checked
+evidence was reused; it never presents recorded work as a new execution.
+
+Simulation names the target and backend, tool discovery, each compile or
+elaboration command, execution, and the checked result. Its final summary gives
+the compile and simulation logs, authoritative `result.json`, retained waveform,
+and the Windows PowerShell command that starts the `v05-board` FPGA build.
+FPGA build names Quartus discovery, including target-specific IP identities,
+cache checking, generation when applicable,
+compile/fit/assembly/timing, the timing audit, optional netlist generation, and
+final evidence checking. Its summary gives the immutable attempt record and
+checked `design.sof`, followed by the exact `fpga program` command for that
+artifact. Arguments that contain spaces or PowerShell metacharacters are
+single-quoted, with embedded quotes escaped.
+A failed build may name a produced `.sof` only as an unverified artifact; it
+never labels that file checked or offers it to the programmer.
+A comparison-only result produced with `--build-id` prints no programming
+handoff, matching the programmer's existing refusal of that image.
+
+Programming checks the attempt record before JTAG discovery. An early refusal
+writes `failure.log` in the program operation directory and names that retained
+diagnostic on the failed stage and final summary. A valid attempt reports the
+selected cable and device, then reports programming and its explicit success
+check separately. Its final summary gives `program.log`. For a build with a
+recorded identity it also gives the UART on-wire identity: the byte reversal of
+the checked FPGA attempt's `build_id`. A checked `v05-board` attempt carries its
+producing target into the program result, and only that playable target places
+the identity in a copyable [`gb_launcher.py`](host/LAUNCHER.md) command with an
+explicit `<UART-port>` placeholder. Other proof targets never advertise the
+game launcher.
+
+These handoffs never execute their next command. WSL remains the Verilator host;
+Windows PowerShell remains the Questa, Quartus, JTAG, UART and launcher host.
+No command silently crosses that boundary. The ordinary hardware safeguards
+still apply before a person runs the printed programming or launcher command.
+With `--json`, none of these human lines is written and stdout remains exactly
+one parseable result object for aggregate and child callers.
+
 ## Simulator policy
 
 The supported backends are Verilator v5.052 on WSL Linux and native Questa on

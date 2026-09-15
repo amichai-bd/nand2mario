@@ -82,7 +82,9 @@ class ProfileTests(unittest.TestCase):
         self.req = {'sha': git('rev-parse', 'HEAD')}
         self.target = target; self.tag = 'fixture'
         self.build = self.root / 'workdir/builds' / self.tag
-        self.stage = self.build / 'sim/test' / target
+        # Trusted readers consume the backend-qualified authority. The generic
+        # sibling is only a compatibility mirror and never authorizes evidence.
+        self.stage = self.build / 'sim/test' / target / 'verilator'
         self.attempt = self.stage / 'attempts/one'
         self.compiler = self.build / 'compile/verilator' / target / 'one'
         self.attempt.mkdir(parents=True); self.compiler.mkdir(parents=True)

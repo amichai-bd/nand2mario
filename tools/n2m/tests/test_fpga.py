@@ -14,6 +14,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from n2m import fpga
 from n2m.cli import main
+from n2m.progress import Progress
 
 
 def reports(folder):
@@ -367,16 +368,91 @@ class FpgaTests(unittest.TestCase):
         attempt = json.loads((self.root / result['attempt_result']).read_text())
         self.assertEqual(attempt['notices'], result['notices'])
 
+    def test_build_progress_names_real_and_cached_stages(self):
+        output = io.StringIO()
+        with patch.object(fpga, "tools", return_value=self.info), \
+                patch.object(fpga, "execute", side_effect=self.execute):
+            result = fpga.build_fpga(self.root, self.build, self.args,
+                                     progress=Progress(stream=output))
+        self.assertEqual(result["status"], "PASS")
+        text = output.getvalue()
+        ordered = ["[....] Discover Quartus tools", "[done] Discover Quartus tools",
+                   "[....] Check FPGA cache", "[done] Check FPGA cache",
+                   "[....] Compile, fit, assemble, and time",
+                   "[done] Compile, fit, assemble, and time",
+                   "[....] Audit timing and constraints", "[done] Audit timing and constraints",
+                   "[....] Check FPGA result", "[PASS] Check FPGA result"]
+        positions = [text.index(fragment) for fragment in ordered]
+        self.assertEqual(positions, sorted(positions), text)
+        output = io.StringIO()
+        with patch.object(fpga, "tools", return_value=self.info), \
+                patch.object(fpga, "execute", side_effect=self.execute):
+            cached = fpga.build_fpga(self.root, self.build, self.args,
+                                     progress=Progress(stream=output))
+        self.assertEqual(cached["cache"], "CACHED")
+        self.assertIn("[CACHED] Compile, fit, assemble, and time — reused checked result",
+                      output.getvalue())
+
+    def test_auxiliary_identity_failure_fails_quartus_discovery_stage(self):
+        source = self.root / "src/rtl/common/n2m_intel_ram.sv"
+        source.parent.mkdir(parents=True)
+        source.write_text("module n2m_intel_ram; endmodule\n")
+        self.target["sources"].append("src/rtl/common/n2m_intel_ram.sv")
+        self.save_target()
+        output = io.StringIO()
+        with patch.object(fpga, "tools", return_value=self.info), \
+                patch.object(fpga.fpga_intel_memory, "identity",
+                             side_effect=RuntimeError("missing altsyncram identity")):
+            result = fpga.build_fpga(self.root, self.build, self.args,
+                                     progress=Progress(stream=output))
+        self.assertEqual(result["status"], "FAIL")
+        self.assertIn("altsyncram identity", result["error"])
+        text = output.getvalue()
+        self.assertIn("[FAIL] Discover Quartus tools", text)
+        self.assertNotIn("[done] Discover Quartus tools", text)
+
     def test_cli_text_output_prints_the_override_notice(self):
-        def fake(root, build, args, provenance=None):
-            return {"status": "PASS", "notices": [fpga.ALLOCATOR_OVERRIDE_NOTICE]}
+        comparison = [False]
+        status = ["PASS"]
+
+        def fake(root, build, args, provenance=None, progress=None):
+            bitstream = "workdir/builds/notice/fpga/smoke/attempts/path with spaces/output/design.sof"
+            return {"status": status[0], "cache": "BUILT", "attempt_result": "result.json",
+                    "artifacts": {bitstream: "hash"},
+                    "build_id_override": comparison[0],
+                    "notices": [fpga.ALLOCATOR_OVERRIDE_NOTICE]}
 
         with patch("n2m.cli.build_fpga", side_effect=fake), patch("n2m.cli.git_state", return_value={}), \
                 patch("n2m.cli.platform.system", return_value="Windows"), \
                 contextlib.redirect_stdout(io.StringIO()) as output:
-            code = main(["fpga", "build", "smoke", "--quartus-bin", "tools", "--tag", "notice"], self.root)
+            code = main(["fpga", "build", "smoke", "--quartus-bin", "tools with spaces",
+                         "--tag", "notice"], self.root)
         self.assertEqual(code, 0)
-        self.assertIn(fpga.ALLOCATOR_OVERRIDE_NOTICE, output.getvalue().splitlines())
+        text = output.getvalue()
+        self.assertIn(fpga.ALLOCATOR_OVERRIDE_NOTICE, text.splitlines())
+        self.assertIn("Checked bitstream: workdir/builds/notice/fpga/smoke/attempts/path with spaces/output/design.sof", text)
+        self.assertIn("--sof 'workdir/builds/notice/fpga/smoke/attempts/path with spaces/output/design.sof'", text)
+        self.assertIn("--quartus-bin 'tools with spaces'", text)
+
+        comparison[0] = True
+        with patch("n2m.cli.build_fpga", side_effect=fake), patch("n2m.cli.git_state", return_value={}), \
+                patch("n2m.cli.platform.system", return_value="Windows"), \
+                contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(main(["fpga", "build", "smoke", "--quartus-bin", "tools",
+                                   "--tag", "notice-comparison"], self.root), 0)
+        self.assertNotIn("Next (Windows PowerShell):", output.getvalue())
+
+        comparison[0] = False
+        status[0] = "FAIL"
+        with patch("n2m.cli.build_fpga", side_effect=fake), patch("n2m.cli.git_state", return_value={}), \
+                patch("n2m.cli.platform.system", return_value="Windows"), \
+                contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(main(["fpga", "build", "smoke", "--quartus-bin", "tools",
+                                   "--tag", "notice-failed"], self.root), 1)
+        text = output.getvalue()
+        self.assertIn("Unverified bitstream artifact:", text)
+        self.assertNotIn("Checked bitstream:", text)
+        self.assertNotIn("Next (Windows PowerShell):", text)
 
     def test_execute_keeps_unexplained_warning_failure(self):
         record = {'commands': [], 'classified_diagnostics': []}
