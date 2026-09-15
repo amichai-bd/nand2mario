@@ -333,7 +333,8 @@ def _human_result(args, report, progress):
             progress.line(f"Result record: {report['attempt_result']}")
         bitstreams = _artifacts(report, suffix="/output/design.sof")
         if bitstreams:
-            progress.line(f"Checked bitstream: {bitstreams[-1]}")
+            label = "Checked bitstream" if status == "PASS" else "Unverified bitstream artifact"
+            progress.line(f"{label}: {bitstreams[-1]}")
         if status == "PASS" and bitstreams and not report.get("build_id_override"):
             progress.line("Next (Windows PowerShell): " + powershell_command([
                 "python", "tools/build.py", "fpga", "program", "--sof", bitstreams[-1],
@@ -347,7 +348,7 @@ def _human_result(args, report, progress):
             progress.line(f"Program log: {report['program_log']}")
         if report.get("wire_build_id"):
             progress.line(f"On-wire build ID: {report['wire_build_id']}")
-            if status == "PASS":
+            if status == "PASS" and report.get("fpga_target") == "v05-board":
                 progress.line("Next (Windows PowerShell): " + powershell_command([
                     "python", "tools/gb_launcher.py", "--expected-build-id",
                     report["wire_build_id"], "--uart-port", "<UART-port>"]))

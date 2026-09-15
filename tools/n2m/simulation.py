@@ -320,6 +320,13 @@ def simulate(root, build, args, simulator, provenance=None, progress=None):
         waves = VERILATOR_WAVES if backend == "verilator" else "waves/simulation.wlf"
         if not (attempt / waves).is_file():
             raise RuntimeError(f"missing retained waves: {waves}")
+        artifacts = [p for base in (compile_dir, attempt)
+                     for p in base.rglob("*") if p.is_file()]
+        record["artifacts"] = {p.relative_to(root).as_posix(): file_hash(p)
+                               for p in artifacts}
+        if (python_runtime and not (driver and target["expected_exit"] != "zero")
+                and not python_tb.evidence(root, record, target, driver=bool(driver))):
+            raise RuntimeError("incomplete Python test evidence")
         progress.finish(active_stage[0], active_stage[1], status="PASS", detail=active_stage[2])
         active_stage = None
         record["status"] = "PASS"
@@ -335,8 +342,6 @@ def simulate(root, build, args, simulator, provenance=None, progress=None):
     record["finished"] = datetime.now(timezone.utc).isoformat()
     artifacts = [p for base in (compile_dir, attempt) for p in base.rglob("*") if p.is_file()]
     record["artifacts"] = {p.relative_to(root).as_posix(): file_hash(p) for p in artifacts}
-    if python_runtime and record["status"] == "PASS" and not (driver and target["expected_exit"] != "zero") and not python_tb.evidence(root, record, target, driver=bool(driver)):
-        record.update(status="FAIL", error="incomplete Python test evidence")
     atomic_json(attempt / "result.json", record)
     # The backend-qualified record is authoritative. The generic files are
     # compatibility mirrors of the last completed run and are never reused.

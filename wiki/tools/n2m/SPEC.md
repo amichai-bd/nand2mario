@@ -71,22 +71,29 @@ Simulation names the target and backend, tool discovery, each compile or
 elaboration command, execution, and the checked result. Its final summary gives
 the compile and simulation logs, authoritative `result.json`, retained waveform,
 and the Windows PowerShell command that starts the `v05-board` FPGA build.
-FPGA build names Quartus discovery, cache checking, generation when applicable,
+FPGA build names Quartus discovery, including target-specific IP identities,
+cache checking, generation when applicable,
 compile/fit/assembly/timing, the timing audit, optional netlist generation, and
 final evidence checking. Its summary gives the immutable attempt record and
 checked `design.sof`, followed by the exact `fpga program` command for that
 artifact. Arguments that contain spaces or PowerShell metacharacters are
 single-quoted, with embedded quotes escaped.
+A failed build may name a produced `.sof` only as an unverified artifact; it
+never labels that file checked or offers it to the programmer.
 A comparison-only result produced with `--build-id` prints no programming
 handoff, matching the programmer's existing refusal of that image.
 
-Programming checks the attempt record before JTAG discovery, reports the
+Programming checks the attempt record before JTAG discovery. An early refusal
+writes `failure.log` in the program operation directory and names that retained
+diagnostic on the failed stage and final summary. A valid attempt reports the
 selected cable and device, then reports programming and its explicit success
 check separately. Its final summary gives `program.log`. For a build with a
 recorded identity it also gives the UART on-wire identity: the byte reversal of
-the checked FPGA attempt's `build_id`. That identity is placed in a copyable
-[`gb_launcher.py`](host/LAUNCHER.md) command with an explicit `<UART-port>`
-placeholder.
+the checked FPGA attempt's `build_id`. A checked `v05-board` attempt carries its
+producing target into the program result, and only that playable target places
+the identity in a copyable [`gb_launcher.py`](host/LAUNCHER.md) command with an
+explicit `<UART-port>` placeholder. Other proof targets never advertise the
+game launcher.
 
 These handoffs never execute their next command. WSL remains the Verilator host;
 Windows PowerShell remains the Questa, Quartus, JTAG, UART and launcher host.

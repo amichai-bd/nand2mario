@@ -35,7 +35,8 @@ class FpgaProgramTests(unittest.TestCase):
         sof = attempt / "output/design.sof"
         sof.write_text("not a real bitstream\n")
         if record is None:
-            record = {"status": "PASS", "artifacts": {sof.resolve().relative_to(ROOT.resolve()).as_posix(): file_hash(sof)}}
+            record = {"status": "PASS", "target": "v05-board",
+                      "artifacts": {sof.resolve().relative_to(ROOT.resolve()).as_posix(): file_hash(sof)}}
         (attempt / "result.json").write_text(json.dumps(record))
         return sof
 
@@ -94,6 +95,7 @@ class FpgaProgramTests(unittest.TestCase):
             result = program(ROOT, self.folder, self.sof, quartus_bin="tools",
                              progress=Progress(stream=output))
         self.assertEqual(result["wire_build_id"], "ffeeddccbbaa99887766554433221100")
+        self.assertEqual(result["fpga_target"], "v05-board")
         text = output.getvalue()
         ordered = ["[....] Check FPGA build record", "[done] Check FPGA build record",
                    "[....] Discover JTAG chain", "[done] Discover JTAG chain",
@@ -138,12 +140,33 @@ class FpgaProgramTests(unittest.TestCase):
         self.assertEqual(report["status"], "FAIL")
         self.assertIn("USB-Blaster", report["error"])
 
+    def test_early_attempt_refusal_retains_and_surfaces_a_diagnostic(self):
+        (self.folder / "result.json").unlink()
+        with patch("n2m.fpga_program.execute") as run, \
+                patch("n2m.cli.platform.system", return_value="Windows"), \
+                contextlib.redirect_stdout(io.StringIO()) as output:
+            code = main(["fpga", "program", "--sof", str(self.sof),
+                         "--quartus-bin", "tools", "--tag", "program-attempt-refusal"],
+                        self.folder)
+        self.assertEqual(code, 1)
+        run.assert_not_called()
+        report = json.loads((self.folder / "workdir/builds/program-attempt-refusal/manifest.json").read_text())
+        diagnostic = next(name for name in report["artifacts"] if name.endswith("/failure.log"))
+        self.assertIn("no readable attempt record", (self.folder / diagnostic).read_text())
+        text = output.getvalue()
+        self.assertIn("[FAIL] Check FPGA build record", text)
+        self.assertIn(f"diagnostic: {diagnostic}", text)
+        self.assertIn(f"Diagnostic: {diagnostic}", text)
+
     def test_cli_text_offers_the_existing_launcher_with_a_uart_placeholder(self):
+        target = ["v05-board"]
+
         def fake(root, folder, sof, *, quartus_bin, cable, timeout, progress=None):
             (folder / "program.log").write_text("retained\n")
             return {"cable": "1", "devices": ["10M50DA(.|ES)/10M50DC"],
                     "sof": str(sof), "program_log": (folder / "program.log").relative_to(root).as_posix(),
-                    "wire_build_id": "ffeeddccbbaa99887766554433221100", "scope": "double"}
+                    "wire_build_id": "ffeeddccbbaa99887766554433221100",
+                    "fpga_target": target[0], "scope": "double"}
 
         with patch("n2m.cli.program_fpga", side_effect=fake), \
                 patch("n2m.cli.platform.system", return_value="Windows"), \
@@ -155,6 +178,16 @@ class FpgaProgramTests(unittest.TestCase):
         self.assertIn("On-wire build ID: ffeeddccbbaa99887766554433221100", text)
         self.assertIn("python tools/gb_launcher.py --expected-build-id ffeeddccbbaa99887766554433221100 ", text)
         self.assertIn("--uart-port '<UART-port>'", text)
+
+        target[0] = "controls-board"
+        with patch("n2m.cli.program_fpga", side_effect=fake), \
+                patch("n2m.cli.platform.system", return_value="Windows"), \
+                contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(main(["fpga", "program", "--sof", str(self.sof),
+                                   "--quartus-bin", "tools", "--tag", "program-controls"],
+                                  self.folder), 0)
+        self.assertIn("On-wire build ID:", output.getvalue())
+        self.assertNotIn("Next (Windows PowerShell):", output.getvalue())
 
 
 
@@ -171,6 +204,11 @@ class AttemptRecordRefusalTests(FpgaProgramTests):
         listed = json.loads((self.folder / "result.json").read_text())
         (self.folder / "result.json").write_text(json.dumps({**listed, "build_id_override": True}))
         self.refused(self.sof, "comparison-only")
+
+    def test_malformed_producing_target_is_refused(self):
+        listed = json.loads((self.folder / "result.json").read_text())
+        (self.folder / "result.json").write_text(json.dumps({**listed, "target": "../v05-board"}))
+        self.refused(self.sof, "invalid FPGA target")
 
     def test_missing_or_corrupt_record_is_refused(self):
         (self.folder / "result.json").unlink()

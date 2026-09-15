@@ -489,12 +489,12 @@ def build_fpga(root, build, args, provenance=None, progress=None):
         record["inputs"] = {p: file_hash(root / p) for p in inputs}
         with progress.stage("Discover Quartus tools", f"logs: {display_path(root, folder)}"):
             record["tools"] = tools(args.quartus_bin, folder, record, build, min(args.timeout, 60))
-        if "pll" in target:
-            record["tools"]["altpll"] = fpga_pll.identity(args.quartus_bin)
-        if "src/rtl/common/n2m_intel_ram.sv" in target["sources"]:
-            record["tools"]["altsyncram"] = fpga_intel_memory.identity(args.quartus_bin)
-        if "src/rtl/input/n2m_adc_backend.sv" in target["sources"]:
-            record["tools"]["adc"] = fpga_adc.identity(args.quartus_bin)
+            if "pll" in target:
+                record["tools"]["altpll"] = fpga_pll.identity(args.quartus_bin)
+            if "src/rtl/common/n2m_intel_ram.sv" in target["sources"]:
+                record["tools"]["altsyncram"] = fpga_intel_memory.identity(args.quartus_bin)
+            if "src/rtl/input/n2m_adc_backend.sv" in target["sources"]:
+                record["tools"]["adc"] = fpga_adc.identity(args.quartus_bin)
         record["definition"] = target
         fingerprint_inputs = {"inputs": record["inputs"], "tools": record["tools"], "definition": target, "timeout": args.timeout}
         override = getattr(args, "build_id", None)
