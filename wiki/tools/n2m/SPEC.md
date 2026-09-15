@@ -474,7 +474,13 @@ simulation, but the simulation ended prematurely...`. When the declared
 signature appears on a diagnostic line (`%Fatal`, `%Error`, `ERROR` or
 `CRITICAL`), that two-line report is
 accepted as the fatal's own stop report for that module only; any other
-warning still fails the attempt, and no results check applies.
+warning still fails the attempt, and no results check applies. A deliberate
+failure the peer raises instead (the `host-play` variants' `FAIL PLAY_*`)
+ends through `$finish` with raw exit zero; that form passes only when the
+peer test's `results.xml` failure message carries the declared signature
+([`python_tb.accepted`](../../../tools/n2m/python_tb.py)), the signature is
+in the transcript, and the only explained warning is cocotb's
+`<module>.peer failed` report of that test.
 
 [`tb_verilator_peer.sv`](../../../src/dv/integration/tb_verilator_peer.sv) proves
 the peer without product RTL: the tb_integration mailboxes, a 25 MHz

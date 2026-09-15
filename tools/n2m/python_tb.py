@@ -606,7 +606,12 @@ def accepted(outcome, target):
 
 def explained_warnings(target):
     """cocotb reports the declared failure as one WARNING line; nothing else is explained."""
-    if target["expected_exit"] != "nonzero" or "python" not in target:
+    if target["expected_exit"] != "nonzero":
+        return ()
+    if "driver" in target:
+        config = peer_config(target)
+        return (f"{config['module']}.{config['test']} failed",)
+    if "python" not in target:
         return ()
     return (f"{target['python']['module']}.{target['python']['test']} failed",)
 
