@@ -43,6 +43,16 @@ class ScriptedTerminal:
 
 
 class TuiTests(unittest.TestCase):
+    def _retained_tool(self, root, tag, key, directory, names):
+        directory.mkdir(parents=True, exist_ok=True)
+        for name in names:
+            tool = directory / name
+            tool.write_text("controlled tool double\n", encoding="utf-8")
+            tool.chmod(0o755)
+        manifest = root / "workdir/builds" / tag / "manifest.json"
+        manifest.parent.mkdir(parents=True, exist_ok=True)
+        manifest.write_text(json.dumps({"requested": {key: str(directory)}}), encoding="utf-8")
+
     def test_posix_and_windows_arrow_enter_escape_decoding(self):
         rest = iter("[A")
         self.assertEqual(tui.decode_posix("\x1b", lambda: next(rest, "")), "UP")
@@ -90,6 +100,118 @@ class TuiTests(unittest.TestCase):
             self.assertEqual(tui.simulation_targets(root, "verilator"), ["both", "preload-sv", "v-only"])
             self.assertEqual(tui.simulation_targets(root, "questa"), ["both", "q-only"])
             self.assertEqual(tui.simulation_targets(root, None, preflight=True), ["both"])
+
+    def test_retained_simulator_default_requires_one_complete_directory_and_missing_path(self):
+        with tempfile.TemporaryDirectory(prefix="tui retained tools ") as temporary:
+            root = Path(temporary)
+            verilator = root / "installed tools with spaces" / "bin"
+            self._retained_tool(root, "valid", "verilator_bin", verilator, ("verilator",))
+            stale = root / "removed" / "bin"
+            manifest = root / "workdir/builds/stale/manifest.json"
+            manifest.parent.mkdir(parents=True)
+            manifest.write_text(json.dumps({"requested": {"verilator_bin": str(stale)}}))
+
+            def missing_path(candidate):
+                return None if candidate == "verilator" else str(candidate) if Path(candidate).is_file() else None
+
+            self.assertEqual(tui.retained_simulator_directory(
+                root, "verilator", system="Linux", which=missing_path), str(verilator))
+            self.assertIsNone(tui.retained_simulator_directory(
+                root, "verilator", system="Linux", which=lambda candidate: "/usr/bin/verilator"
+                if candidate == "verilator" else missing_path(candidate)))
+
+            second = root / "second" / "bin"
+            self._retained_tool(root, "second", "verilator_bin", second, ("verilator",))
+            self.assertIsNone(tui.retained_simulator_directory(
+                root, "verilator", system="Linux", which=missing_path))
+
+    def test_retained_questa_default_requires_every_windows_tool(self):
+        with tempfile.TemporaryDirectory(prefix="tui retained questa ") as temporary:
+            root = Path(temporary)
+            complete = root / "Questa tools" / "win64"
+            names = tuple(name + ".exe" for name in ("vlib", "vmap", "vlog", "vsim"))
+            self._retained_tool(root, "complete", "questa_bin", complete, names)
+            incomplete = root / "incomplete" / "win64"
+            self._retained_tool(root, "incomplete", "questa_bin", incomplete, names[:-1])
+
+            def missing_path(candidate):
+                return str(candidate) if Path(candidate).is_file() else None
+
+            self.assertEqual(tui.retained_simulator_directory(
+                root, "questa", system="Windows", which=missing_path), str(complete))
+            (complete / "vsim.exe").unlink()
+            self.assertIsNone(tui.retained_simulator_directory(
+                root, "questa", system="Windows", which=missing_path))
+
+    def test_reported_simulation_path_reuses_retained_tool_without_launching_it(self):
+        with tempfile.TemporaryDirectory(prefix="tui reported failure ") as temporary:
+            root = Path(temporary)
+            directory = root / "Verilator tools" / "bin"
+            self._retained_tool(root, "manual-verilator", "verilator_bin", directory,
+                                ("verilator",))
+            terminal = ScriptedTerminal(["DOWN", "DOWN", "DOWN", "ENTER",
+                                         "ENTER", "ENTER", "ENTER", "ENTER", "ENTER"])
+            runner = Mock(return_value=Mock(returncode=0))
+            with patch("n2m.tui.simulation_targets", return_value=["ppu-access"]), \
+                    patch("n2m.tui_choices.shutil.which",
+                          side_effect=lambda candidate: str(candidate)
+                          if Path(candidate).is_file() else None):
+                self.assertEqual(tui.run(root, terminal=terminal, runner=runner, system="Linux"), 0)
+            command = runner.call_args.args[0]
+            self.assertEqual(command[-2:], ["--verilator-bin", str(directory)])
+            self.assertEqual(runner.call_count, 1)
+
+    def test_retained_default_browsing_and_cancel_do_not_start_a_child(self):
+        with tempfile.TemporaryDirectory(prefix="tui browse only ") as temporary:
+            root = Path(temporary)
+            directory = root / "Verilator" / "bin"
+            self._retained_tool(root, "retained", "verilator_bin", directory, ("verilator",))
+            terminal = ScriptedTerminal(["DOWN", "DOWN", "DOWN", "ENTER",
+                                         "ENTER", "ENTER", "ENTER", "ENTER",
+                                         "DOWN", "DOWN", "ENTER"])
+            runner = Mock()
+            with patch("n2m.tui.simulation_targets", return_value=["ppu-access"]), \
+                    patch("n2m.tui_choices.shutil.which",
+                          side_effect=lambda candidate: str(candidate)
+                          if Path(candidate).is_file() else None), \
+                    patch("subprocess.run") as subprocess_runner:
+                self.assertEqual(tui.run(
+                    root, terminal=terminal, runner=runner, system="Linux"), 0)
+            runner.assert_not_called()
+            subprocess_runner.assert_not_called()
+
+    def test_every_live_simulator_plan_receives_the_retained_default(self):
+        plans = []
+        with patch("n2m.tui.retained_simulator_directory", return_value="tools retained"):
+            plans.append(tui._sim_plan(tui.Menu(ScriptedTerminal(
+                ["ENTER", "ENTER", *list("builder-smoke"), "ENTER"])), ROOT))
+            plans.append(tui._doctor_plan(tui.Menu(ScriptedTerminal(["ENTER", "ENTER"])), ROOT))
+            plans.append(tui._regress_plan(tui.Menu(ScriptedTerminal(["ENTER", "ENTER"])), ROOT))
+            plans.append(tui._tests_plan(tui.Menu(ScriptedTerminal(
+                [*list("run"), "ENTER", "ENTER", "ENTER", "ENTER"])), ROOT))
+        self.assertEqual([plan.parser_path for plan in plans],
+                         [("sim", "test"), ("doctor",), ("regress",), ("tests", "run")])
+        for plan in plans:
+            self.assertEqual(plan.set_options, {"verilator_bin": "tools retained"})
+
+    def test_advanced_can_clear_or_override_an_automatic_simulator_directory(self):
+        automatic = "automatic tools"
+        plan = tui.Plan(["sim", "test", "builder-smoke", "--sim", "verilator"],
+                        ("sim", "test"), "WSL Linux", "simulate",
+                        set_options={"verilator_bin": automatic})
+        with patch("n2m.tui.retained_values", return_value=[automatic]):
+            cleared = ScriptedTerminal([*list("verilator"), "ENTER", "DOWN", "ENTER", "ENTER"])
+            tui.advanced(tui.Menu(cleared), plan, ROOT)
+        self.assertIsNone(plan.set_options["verilator_bin"])
+        self.assertNotIn("--verilator-bin", tui.final_argv(plan, ROOT))
+
+        override = "replacement tools with spaces"
+        plan.set_options["verilator_bin"] = automatic
+        with patch("n2m.tui.retained_values", return_value=[automatic]):
+            edited = ScriptedTerminal([*list("verilator"), "ENTER", "DOWN", "DOWN", "ENTER",
+                                       *override, "ENTER", "ENTER"])
+            tui.advanced(tui.Menu(edited), plan, ROOT)
+        self.assertEqual(tui.final_argv(plan, ROOT)[-2:], ["--verilator-bin", override])
 
     def test_checked_sof_discovery_rejects_uninventoried_and_returns_wire_id(self):
         with tempfile.TemporaryDirectory(prefix="tui path with spaces ") as temporary:

@@ -21,7 +21,8 @@ from .fpga import identity_target, target_definition
 from .progress import powershell_command
 from .tui_choices import (build_tags, checked_packages, checked_sofs, command_actions,
                           external_images, fpga_targets, parser_at,
-                          regression_subsets, retained_values, simulation_targets,
+                          regression_subsets, retained_simulator_directory,
+                          retained_values, simulation_targets,
                           selection_uses_vendor_model, software_targets,
                           top_families, compatible_selection, uart_candidates)
 from .tui_terminal import (BACK, VIEW_ROWS, Choice, Menu, Terminal, decode_posix,
@@ -61,9 +62,11 @@ def _named(values):
     return [Choice(value, str(value)) for value in values]
 
 
-def _manual_value(menu, title, retained=(), *, validator=None, invalid_title=None,
-                  normalize=lambda value: value):
+def _manual_value(menu, title, retained=(), *, allow_default=False, validator=None,
+                  invalid_title=None, normalize=lambda value: value):
     options = [Choice(value, value, "reused from a retained local result") for value in retained]
+    if allow_default:
+        options.append(Choice(None, "Use ordinary PATH discovery"))
     options.append(Choice("__manual__", "Type another value…"))
     while True:
         selected = menu.choose(title, options)
@@ -177,9 +180,9 @@ def _sim_plan(menu, root):
                 ("sim", lambda _: _backend(menu)),
                 ("target", lambda a: menu.choose(
                     "Select simulation test", _named(simulation_targets(root, a["sim"]))))]
-            plan = _editable(menu, steps, lambda answers: Plan(
+            plan = _editable(menu, steps, lambda answers: _simulator_default(Plan(
                 ["sim", "test", answers["target"], "--sim", answers["sim"]],
-                ("sim", "test"), _sim_host(answers["sim"]), "Build, run and check a simulation"))
+                ("sim", "test"), _sim_host(answers["sim"]), "Build, run and check a simulation"), root))
         else:
             targets = simulation_targets(root, None, preflight=True)
             plan = _editable(menu, [("target", lambda _: menu.choose(
@@ -201,19 +204,19 @@ def _doctor_plan(menu, root):
              Choice("questa", "Questa", "Runs natively on Windows PowerShell; license required")]
             if answers["profile"] == "simulation" else
             [Choice("questa", "Questa", "The full hardware environment is Windows-owned")]))]
-    return _editable(menu, steps, lambda answers: Plan(
+    return _editable(menu, steps, lambda answers: _simulator_default(Plan(
                 ["doctor", "--profile", answers["profile"], "--sim", answers["sim"]],
                 ("doctor",), _sim_host(answers["sim"]),
-                "Run simulator smoke" + (" and read-only device discovery" if answers["profile"] == "environment" else "")))
+                "Run simulator smoke" + (" and read-only device discovery" if answers["profile"] == "environment" else "")), root))
 
 
 def _regress_plan(menu, root):
     steps = [
         ("sim", lambda _: _backend(menu)),
         ("subset", lambda a: menu.choose("Select compatible regression", regression_subsets(root, a["sim"])))]
-    return _editable(menu, steps, lambda answers: Plan(
+    return _editable(menu, steps, lambda answers: _simulator_default(Plan(
         ["regress", answers["subset"], "--sim", answers["sim"]], ("regress",),
-        _sim_host(answers["sim"]), "Run a bounded simulation regression"))
+        _sim_host(answers["sim"]), "Run a bounded simulation regression"), root))
 
 
 def _available_selection(root, model, backend, *, level=None, labels=()):
@@ -295,10 +298,10 @@ def _tests_plan(menu, root):
         else:
             steps = [("sim", lambda _: _backend(menu)),
                      ("selector", lambda a: _test_selection(menu, root, a["sim"]))]
-            plan = _editable(menu, steps, lambda answers: Plan(
+            plan = _editable(menu, steps, lambda answers: _simulator_default(Plan(
                 ["tests", action, *answers["selector"], "--sim", answers["sim"]],
                 ("tests", action), _sim_host(answers["sim"]),
-                "Run the selected unit and simulation tests"))
+                "Run the selected unit and simulation tests"), root))
         if plan is not BACK:
             return plan
 
@@ -417,6 +420,16 @@ def _sim_host(backend):
     return "WSL Linux" if backend == "verilator" else "Windows PowerShell"
 
 
+def _simulator_default(plan, root):
+    backend = _argument_value(plan, "--sim")
+    if backend is not None:
+        option = backend + "_bin"
+        directory = retained_simulator_directory(root, backend)
+        if directory is not None and option not in plan.set_options:
+            plan.set_options[option] = directory
+    return plan
+
+
 def make_plan(menu, root, intent):
     if intent == "launcher":
         return _launcher_plan(menu, root)
@@ -530,7 +543,10 @@ def advanced(menu, plan, root):
             if value is not BACK:
                 value = [item.strip() for item in value.split(",") if item.strip()]
         elif action.dest in ("verilator_bin", "questa_bin", "intel_sim_lib", "quartus_bin"):
-            value = _manual_value(menu, f"Set {action.option_strings[-1]}", retained_values(root, action.dest))
+            value = _manual_value(
+                menu, f"Set {action.option_strings[-1]}", retained_values(root, action.dest),
+                allow_default=(action.dest in ("verilator_bin", "questa_bin")
+                               and plan.set_options.get(action.dest) is not None))
         elif action.choices:
             values = [Choice(None, "Use default")]
             values += [Choice(value, str(value)) for value in action.choices]
