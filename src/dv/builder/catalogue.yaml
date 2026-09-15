@@ -240,8 +240,8 @@ units:
   memory-service-corrupt: {kind: sim, level: 2, labels: [fault, memory], duration_seconds: 0.55}
   memory-stores: {kind: sim, level: 2, labels: [memory], duration_seconds: 1.03}
   memory-stores-early: {kind: sim, level: 2, labels: [fault, memory], duration_seconds: 0.52}
-  mooneye-corrupt: {kind: sim, level: 2, labels: [integration, memory, milestone, mooneye, python-tb], duration_seconds: null}
-  mooneye-missing: {kind: sim, level: 2, labels: [integration, memory, milestone, mooneye, python-tb], duration_seconds: null}
+  mooneye-corrupt: {kind: sim, level: 2, labels: [fault, integration, memory, milestone, mooneye, python-tb], duration_seconds: null}
+  mooneye-missing: {kind: sim, level: 2, labels: [fault, integration, memory, milestone, mooneye, python-tb], duration_seconds: null}
   mooneye-reg-f: {kind: sim, level: 2, labels: [integration, memory, milestone, mooneye, python-tb], duration_seconds: null}
   oam-corrupt: {kind: sim, level: 1, labels: [dma], duration_seconds: 1.95}
   oam-corrupt-mask: {kind: sim, level: 2, labels: [dma, fault], duration_seconds: 0.47}

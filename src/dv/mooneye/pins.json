@@ -62,7 +62,9 @@
     }
   },
   "wsl_host": {
-    "sha256": "2d73c29e1a5c6fe2b6583ca32a81c6a64d402ada71c25549d24ed8e44579d26c",
+    "sha256": "873896e66c636c2c1a45c8c66887e07d0580b37fa5dc76edaa13f5e43eb0d3e8",
+    "recorded": "2026-09-15",
+    "release": "Ubuntu 24.04.3 LTS",
     "description": "Ubuntu 24.04 x86_64 host compiler inputs, libraries and CMake modules",
     "versions": {
       "ar": "GNU ar (GNU Binutils for Ubuntu) 2.42",
