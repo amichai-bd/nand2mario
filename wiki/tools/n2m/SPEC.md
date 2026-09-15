@@ -691,7 +691,7 @@ warnings suppressed. Host dependency tests are not hardware behavior evidence.
 
 ### Intel ADC binding under Verilator
 
-A `verilator` target with `vendor_model: "intel-adc"` lists the PLL and control
+A `verilator` target with `vendor_model: "intel-adc"` or `"intel-controls"` lists the PLL and control
 doubles among its sources. Before the build the stage writes the original
 voltage fixture `adc_ch0.txt` to `adc_ch16.txt` into the attempt from
 [`intel_adc.stimulus_manifest`](../../../tools/n2m/intel_adc.py): channel 1

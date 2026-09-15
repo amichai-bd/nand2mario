@@ -219,6 +219,22 @@ class CommandTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "ADC stimulus path already exists"):
             verilator.commands(self.sim, self.root, target, 1, compiler, attempt)
 
+    def test_controls_binding_writes_the_same_channel_fixture(self):
+        # The composed controls binding carries the ADC, so its double needs
+        # the same channel files as a plain intel-adc target.
+        target, _ = load_target(self.root, "builder-smoke")
+        target = {**target, "vendor_model": "intel-controls"}
+        attempt = self.build / "attempt"
+        compiler = self.build / "compile"
+        for folder in (attempt / "waves", compiler):
+            folder.mkdir(parents=True)
+        verilator.commands(self.sim, self.root, target, 1, compiler, attempt)
+        self.assertEqual(len(list(attempt.glob("adc_ch*.txt"))), 17)
+        target = {**target, "vendor_model": "intel-memory"}
+        (attempt / "adc_ch0.txt").unlink()
+        verilator.commands(self.sim, self.root, target, 1, compiler, attempt)
+        self.assertFalse((attempt / "adc_ch0.txt").exists())
+
     def test_identical_retained_harness_is_left_untouched_and_a_stale_one_rewritten(self):
         target, _ = load_target(self.root, "builder-smoke")
         attempt = self.build / "attempt"

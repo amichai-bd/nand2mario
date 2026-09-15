@@ -128,9 +128,10 @@ def commands(simulator, root, target, seed, compiler, attempt, *, python_runtime
     if python_runtime or target.get("preload") is not None:
         from .python_tb import prepare as prepare_fixture
         prepare_fixture(target, attempt, root, fixture_tools)
-    if target.get("vendor_model") == "intel-adc":
+    if target.get("vendor_model") in ("intel-adc", "intel-controls"):
         # The control double replays the same channel files the retired
-        # Questa binding wrote beside the run.
+        # Questa binding wrote beside the run; the composed controls binding
+        # carries the same ADC.
         from .intel_adc import write_stimulus
         write_stimulus(attempt)
     if python_runtime:
