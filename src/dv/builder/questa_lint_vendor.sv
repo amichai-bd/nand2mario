@@ -1,7 +1,8 @@
-// Questa compile-gate stand-ins for vendor units Quartus generates or installs
-// during `fpga build`. Empty bodies with the instantiated ports and parameters:
-// the gate binds repository RTL to these ports and claims no vendor behavior.
-// tools/n2m/lint.py requires exactly these five units, in this order.
+// Elaboration stand-ins, not models, for the vendor units Quartus generates or
+// installs during `fpga build`. Port- and parameter-compatible empty bodies:
+// `lint questa` binds repository RTL to these ports and claims no vendor
+// behavior. Only that command compiles this file; it is in no synthesis source
+// set. tools/n2m/lint.py requires exactly these five units, in this order.
 `timescale 1ns/1ps
 module n2m_system_pll (
     input  logic inclk0,

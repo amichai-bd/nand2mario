@@ -1020,14 +1020,16 @@ and never falls back between the two. The compile set is fixed by the tree:
    [FPGA registry](../../../src/fpga/de10_lite/targets.json), validated by the
    same [target definition](#fpga-build) and synthesis
    [dependency resolver](#hdl-includes) as `fpga build`;
-3. the vendor stand-ins
+3. the elaboration stand-ins
    [`questa_lint_vendor.sv`](../../../src/dv/builder/questa_lint_vendor.sv):
-   empty modules with the instantiated ports and parameters of exactly
-   `n2m_system_pll`, `n2m_pixel_pll`, `n2m_adc_pll`,
-   `altera_modular_adc_control` and `altsyncram`, the units Quartus generates
-   or installs during `fpga build`. The gate binds repository RTL to those
-   ports; it checks no vendor behavior, and a file declaring any other set of
-   units fails the plan;
+   port- and parameter-compatible empty modules for exactly `n2m_system_pll`,
+   `n2m_pixel_pll`, `n2m_adc_pll`, `altera_modular_adc_control` and
+   `altsyncram`, the units Quartus generates or installs during `fpga build`.
+   They are elaboration stand-ins, not models: no behavior, no vendor
+   parameter checking. Only this command compiles them; they belong to no
+   synthesis source set and are not the `VERILATOR` doubles. The result
+   lists them under `stand_ins` so a reviewer sees the gate's blind spots, and
+   a file declaring any other set of units fails the plan;
 4. with `--inject-fault`, the deliberate fault
    [`questa_lint_fault.sv`](../../../src/dv/builder/questa_lint_fault.sv): an
    `initial` writer beside `always_ff`, legal to Verilator and rejected by
