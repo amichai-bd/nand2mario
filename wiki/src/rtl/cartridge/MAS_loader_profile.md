@@ -66,7 +66,10 @@ until the last byte is written. A commit while `copy_busy` (window fill or
 swap in progress) is ignored and sets no error; the menu polls `$A000` bit 7
 first. After global reset `bank` is 0 and no fill has run: the upper half
 holds whatever the last image left there, and `window_ready` is 0 until the
-first fill completes.
+first fill completes. `window_ready` is also cleared by every swap and by
+every host load session, because both overwrite the upper half; `bank`
+keeps its value, and the menu must commit the bank register again to
+refill the window.
 
 Reads of `$4000`-`$7FFF` return `$FF` while `window_busy`, so a program that
 does not poll observes a defined value rather than a mix of old and new bytes.
@@ -74,11 +77,11 @@ The window is a copy, not a live view: SDRAM writes by the host after the fill
 are not seen until the next bank commit.
 
 Window fill bound: 40,000 edges (1.6 ms) from the commit edge to `window_busy`
-falling. Derivation: 1024 lines at 18.6 edges each is 19,050 edges of SDRAM
-time and 16,384 byte writes on the ROM store's host port; the two overlap
-through the engine's one-line buffer, and CPU reads of the low half take at
-most one port-A edge per DMG M-cycle, leaving the engine at least 20 of every
-23 edges. The bound is checked; the derivation is guidance.
+falling. Derivation: the fill is SDRAM-bound at 1024 lines of about 18.6
+edges each, about 19,050 edges; the 16,384 byte writes on the ROM store's
+host port overlap the SDRAM reads through the engine's one-line buffer and
+nothing else uses that port during a fill. The bound is checked; the
+derivation is guidance.
 
 ### Select register
 
@@ -96,12 +99,15 @@ A commit to `$6000`-`$7FFF` with `data` in 0-16 starts a swap of image index
    order written, with the same `crc32_byte` function `LOAD_END` uses.
 5. Compares the CRC with the catalogue `crc32`. Mismatch: result
    `CRC_MISMATCH`, `image_valid` stays 0, the core stays paused with `PROFILE`
-   0; the host or KEY1 recovers. Match: publish `PROFILE = catalogue profile`,
-   `image_valid = 1`, result `OK`.
+   0; the host `LOAD_BEGIN` or the physical KEY1 recovers. Match: publish
+   `PROFILE = catalogue profile`, `image_valid = 1`, result `OK`.
 6. Requests a core reset through the core control owner (same effect as the
    host `RESET` command: epoch + 1, dot and retirement counters 0, direct
-   entry state), waits for `core_initialized`, then releases the pause so the
-   new image runs without a host `RUN`.
+   entry state), waits for `core_initialized`, then releases its own pause
+   request so the new image runs without a host `RUN`. The engine's pause
+   request is a separate bit from the host's `host_pause`: a host `HALT`
+   held before or during the swap keeps the console paused afterwards until
+   the host sends `RUN`.
 
 `copy_busy` is true from the accepting commit edge through step 6.
 Swap bound: 80,000 edges (3.2 ms) from the accepting edge to `copy_busy`
@@ -124,11 +130,15 @@ arbiter in this owner:
   for the visible rules. A grant to both on one edge is a named fatal
   assertion, `LOADER_PORT_EXCLUSIVE`.
 
-During a window fill the core runs. The engine writes only offsets
-`$4000`-`$7FFF`, and the CPU port's ROM reads have priority on port A: the
-engine writes on edges with no CPU or DMA ROM read. During a swap the core is
-paused and has no ROM traffic, so the engine writes every edge it has data.
-The engine never reads the ROM store; the CRC comes from the bytes it writes.
+The ROM store's [host port](../memory/MAS_memory.md#raw-store-service) is
+port A of the store; CPU and DMA ROM reads use port B. The two ports are
+independent, so the engine writes on every edge it has data and nothing
+yields to CPU reads, during a fill as well as during a swap. During a window
+fill the core runs and the engine writes only offsets `$4000`-`$7FFF`; a CPU
+read of the byte being written on the same edge is the primitive's
+unspecified mixed-port case, and the `$FF`-while-`window_busy` rule masks it
+because that read never reaches the CPU. The engine never reads the ROM
+store; the CRC comes from the bytes it writes.
 
 ### Storage arbiter
 
@@ -159,8 +169,13 @@ The arbiter presents them to the controller as one requester:
 
 `$A002` result codes: `0` `NONE` (no swap since global reset), `1` `OK`,
 `2` `INVALID_SLOT`, `3` `CRC_MISMATCH`, `4` `NOT_READY` (select or bank commit
-while `sdram_ready` was 0). The code changes only when a swap or fill ends or
-is refused for `NOT_READY`.
+while `sdram_ready` was 0). The code changes on exactly these events: a swap
+ends (`OK` or `CRC_MISMATCH`), a select is refused in step 1
+(`INVALID_SLOT`), or a select or bank commit is refused because
+`sdram_ready` was 0 (`NOT_READY`). A completed fill and an ignored commit
+during `copy_busy` leave it unchanged. `$A003` is written with `data` on
+every select commit with `data` in 0-16, including refused ones, so the menu
+can pair a result with the index that produced it.
 
 ### Boot source
 
@@ -186,7 +201,10 @@ states. The existing invariants hold unchanged: `core_reset` only while
 epoch and clears the dot and retirement counters. `image_valid` and `PROFILE`
 are owned by the endpoint's command owner today; this contract adds the
 engine as a second writer with the same rules: cleared before any ROM byte
-changes, set only after the full CRC check.
+changes, set only after the full CRC check. The engine does not use the UART
+presence bitmap: its validity comes from the CRC over the bytes it wrote, and
+`LOAD_BEGIN`/`LOAD_END` semantics are unchanged because every host session
+still starts with its own presence sweep.
 
 After a swap into a game, `PROFILE == DIRECT_ID` and the console is
 indistinguishable from a host `LOAD_BEGIN`/`LOAD_END`/`RESET`/`RUN` of the same
@@ -250,8 +268,11 @@ command. Rules, in priority order:
    in 23:16, `bank` in 29:24) and `LIBRARY_KEY1` (hold counter in edges),
    and may trigger the menu return itself with a whitelisted
    `WRITE_HOST(LIBRARY_CONTROL)` write of value 1, which behaves exactly like
-   `key1_return`. Exact addresses and command codes belong to
-   `cfg/interfaces.json`; the names here are the contract.
+   `key1_return`. `WRITE_HOST` keeps its existing `not LOADING`
+   precondition, so this write is accepted in `PAUSED` and `RUNNING` only;
+   after a `CRC_MISMATCH` the endpoint is `LOADING` and the host recovers
+   with `LOAD_BEGIN`, not with this write. Exact addresses and command codes
+   belong to `cfg/interfaces.json`; the names here are the contract.
 
 ## Edge cases
 
@@ -266,8 +287,9 @@ In priority order:
 3. Select of index 16 from the menu: a legal restart of the menu.
 4. Catalogue entry valid but SDRAM contents wrong: the CRC step catches it;
    result `CRC_MISMATCH`; the console is paused with no valid image; the host
-   sees `LOADING` and can `LOAD_BEGIN` immediately (no `copy_busy`), or KEY1
-   can try the menu again.
+   sees `LOADING` and can `LOAD_BEGIN` immediately (no `copy_busy`), or the
+   physical KEY1 can try the menu again. `WRITE_HOST(LIBRARY_CONTROL)` is
+   refused in `LOADING`, so it cannot be the recovery path.
 5. `key1_return` during a swap started by select: `key1_pending`, then the
    menu swap runs after the game swap completes; the player sees the game for
    at most 3.2 ms plus its own boot.
@@ -302,7 +324,7 @@ Named assertions the owner carries:
 | `LOADER_VALID_IMPLIES_CRC` | `image_valid` rising from an engine swap implies the CRC compared equal on that edge |
 | `LOADER_SWAP_PAUSED` | Engine ROM writes with a 32 KiB job imply `paused` |
 | `LOADER_FILL_UPPER_ONLY` | Engine writes during a fill have offset bit 14 set |
-| `LOADER_FILL_YIELDS` | An engine write during a fill never coincides with a CPU or DMA ROM read on port A |
+| `LOADER_FILL_HOST_PORT` | Every engine write reaches the ROM store through its host port (port A) and never coincides with a UART load owner write |
 | `LOADER_REGS_ONLY_IN_PROFILE` | A bank or select register effect implies `PROFILE == LOADER_ID` |
 | `LOADER_SWAP_BOUND` | `copy_busy` for a swap falls within 80,000 edges of rising |
 | `LOADER_FILL_BOUND` | `copy_busy` for a fill falls within 40,000 edges of rising |

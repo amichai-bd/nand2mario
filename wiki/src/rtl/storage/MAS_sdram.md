@@ -108,15 +108,20 @@ From `reset_sys` release the controller performs, in order:
 1. `POWERUP`: 5000 clocks of NOP with `DRAM_CKE` high, `DRAM_DQM*` high.
 2. `PRECHARGE` all banks, then wait tRP.
 3. Eight `AUTO REFRESH` commands, each followed by the tRC wait.
-4. `LOAD MODE` with `13'h023`, then wait tMRD.
-5. `IDLE`; `initialized` becomes true and the refresh age counter starts at 0.
+4. `LOAD MODE` with `13'h023`; `initialized` becomes true and the refresh
+   age counter starts at 0 on the edge that registers this command; then
+   wait tMRD.
+5. `IDLE`; `idle` and `request_ready` become true.
 
 `initialized` is an output. It is false in reset and never returns to false
 without `reset_sys`. Core reset does not touch the controller: SDRAM contents
-and initialization survive every core reset and every host load. Total
-initialization takes 5000 + 3 + 8 x 4 + 3 = 5038 clocks (201.5 us); a
-testbench checks `initialized` rises at or before clock 5100 after reset
-release and no ACTIVATE, READ or WRITE is issued before it.
+and initialization survive every core reset and every host load. Counting
+the first clock after reset release as clock 0: POWERUP occupies clocks
+0-4999, PRECHARGE is at 5000, the eight AUTO REFRESH commands at
+5003 + 4k for k = 0..7, LOAD MODE at 5035, `initialized` is visible from
+clock 5036 and `idle` from clock 5038 (201.5 us). A testbench checks both
+clock numbers exactly and that no ACTIVATE, READ or WRITE is issued before
+`idle`.
 
 ### Line request interface
 
@@ -166,8 +171,11 @@ the margins. Bounds a testbench checks:
 - Read or write occupancy: `request_ready` returns exactly 18 clocks after
   acceptance when no refresh is due, and at most 18 + 5 = 23 clocks otherwise.
 - Acceptance latency for the single requester: at most 5 clocks from
-  `request_valid` while `initialized`, because the only cause of not-ready in
-  `IDLE` is one refresh, which takes 5 clocks (see below).
+  `request_valid` raised while the controller is in `IDLE`, because the
+  only cause of not-ready in `IDLE` is one refresh, which takes 5 clocks
+  (see below). A request raised during a transaction waits for that
+  transaction first: writes have no completion pulse, so a request issued
+  right after a write acceptance waits up to 18 + 5 clocks.
 - Worst read latency, request to response: 5 + 17 = 22 clocks, 880 ns.
 - Sustained throughput: one line per 18 clocks plus one refresh (5 clocks) per
   refresh interval, at least 1 line per 18.6 clocks on average: 32 KiB (2048
@@ -180,9 +188,10 @@ A refresh age counter counts clocks since the last AUTO REFRESH once
 `initialized`. When the age reaches 160 in `IDLE`, `request_ready` falls and the
 controller issues AUTO REFRESH at the next clock, waits tRC (3 more clocks), and
 returns to `IDLE` at the fifth clock with the age reset to 0. Refresh is issued
-only from `IDLE`, so a transaction accepted at age 159 finishes at age 177,
-which is below the 195-clock deadline; the age never exceeds 195 while
-initialized. There is no refresh during initialization other than the eight
+only from `IDLE`, so a transaction accepted at age 159 returns to `IDLE` at
+age 177 and the AUTO REFRESH command issues at age 178. The maximum age
+while initialized is therefore 178, 17 clocks inside the 195-clock deadline;
+a testbench checks 178, and the controller asserts the deadline. There is no refresh during initialization other than the eight
 initial ones, and none in reset (SDRAM contents are lost across `reset_sys`
 and after power-up; the [loader profile](../cartridge/MAS_loader_profile.md#boot-source)
 owns re-loading them).
@@ -274,7 +283,8 @@ In priority order:
    released, state machine to `POWERUP`, `initialized` false, `request_ready`
    false, no response pulse. Device contents are undefined afterwards.
 2. A request with `request_address[3:0] != 0` or asserted while
-   `initialized == 0`: never accepted; a named assertion fails in simulation.
+   `initialized == 0`: never accepted; `SDRAM_LINE_ALIGNED` or
+   `SDRAM_REQUEST_BEFORE_INIT` fails in simulation.
 3. Refresh due at the same edge as `request_valid` in `IDLE`: refresh wins,
    the request waits 5 clocks. Age reaching 160 during a transaction: the
    transaction completes first, then the refresh.
@@ -312,9 +322,9 @@ Required fixtures, each within the [wall budget](../../../tools/n2m/SPEC.md#test
 
 | Fixture | Checks |
 |---|---|
-| `sdram-init` | `initialized` at clock 5038 +/- 0 after reset release; command order and waits above; DQM behavior; model counts 8 refreshes |
+| `sdram-init` | `initialized` exactly at clock 5036 and `idle` exactly at clock 5038 after reset release; command order and waits above; DQM behavior; model counts 8 refreshes |
 | `sdram-line` | Write then read a boundary set of lines (first and last line of slots 0, 15 and 16, both catalogue lines, the first and last line of a row, one line in each bank); exact 17/18/22-clock bounds; byte order; `response_data` stable until the next read |
-| `sdram-refresh` | 40,000 clocks of back-to-back requests; age never exceeds 195; every refresh costs exactly 5 clocks; the throughput bound above holds |
+| `sdram-refresh` | 40,000 clocks of back-to-back requests; age never exceeds 178; every refresh costs exactly 5 clocks; the throughput bound above holds |
 | `sdram-fault` | Deliberate misaligned request, request before `initialized`, and a mutated refresh deadline of 196 each fail with the named diagnostic |
 
 Assertions the controller carries (names are the contract; a testbench may
@@ -323,8 +333,8 @@ reference them):
 | Assertion | Rule |
 |---|---|
 | `SDRAM_LINE_ALIGNED` | acceptance implies `request_address[3:0] == 0` |
-| `SDRAM_INITIALIZED_BEFORE_ACCEPT` | acceptance implies `initialized` |
-| `SDRAM_REQUEST_STABLE` | `request_valid` without `request_ready` implies write flag, address and data are unchanged at the next clock |
+| `SDRAM_REQUEST_BEFORE_INIT` | `request_valid` implies `initialized` |
+| `SDRAM_REQUEST_STABLE` | `request_valid` without `request_ready`, followed by `request_valid` still high at the next clock, implies write flag, address and data are unchanged at that clock; withdrawal is allowed |
 | `SDRAM_REFRESH_DEADLINE` | `initialized` implies `refresh_age <= 195` |
 | `SDRAM_REFRESH_IDLE_ONLY` | AUTO REFRESH command implies the previous phase was `IDLE` or initialization |
 | `SDRAM_READ_LATENCY` | acceptance of a read implies `response_valid` exactly 17 clocks later |

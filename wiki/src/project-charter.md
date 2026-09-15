@@ -133,16 +133,19 @@ section records the decisions they implement.
   over UART after configuration. Phase 2, optional and later, flash-resident
   images with a configuration-time copier once MAX 10 flash capacity is
   verified; it is not started by this decision.
-- Return to menu: `KEY1` held about half a second (12,500,000 system edges,
-  after a 5 ms debounce) swaps the menu image back and resets the core.
-  Hardware detects it; games need no cooperation.
+- Return to menu: `KEY1` held about half a second swaps the menu image back
+  and resets the core; the [loader profile](rtl/cartridge/MAS_loader_profile.md#key1-return)
+  owns the debounce and hold numbers. Hardware detects it; games need no
+  cooperation.
 - Selection input: the existing joypad path through the
   [shared input owner](rtl/input/MAS_input.md); the menu reads JOYP like any
   game. No new host MMIO for games.
 - SDRAM controller and pin-level device model: ported from `bui-bui`
-  `src/rtl/mafia/sdram/` (MIT, adapted from FPGA-MAFIA), 25 MHz, CAS latency 2,
-  8-beat bursts, with its DE10-Lite pins and constraints, recorded in the
-  [provenance index](../tools/provenance.md#external-inputs).
+  `src/rtl/mafia/sdram/` (MIT, adapted from FPGA-MAFIA) with its DE10-Lite
+  pins and constraints, recorded in the
+  [provenance index](../tools/provenance.md#external-inputs); the
+  [SDRAM contract](rtl/storage/MAS_sdram.md#operating-point) owns the
+  operating point.
 - Workflow: all simulation under Verilator on WSL; a Questa compile-only gate
   on Windows for `src/rtl` and `src/fpga` before every merge that touches them;
   Quartus builds and loads from Windows; board programming and physical
