@@ -2,7 +2,7 @@
 
 Generated from cfg/interfaces.json by tools/n2m/interfaces.py; DO NOT EDIT.
 
-Source SHA-256: `4da94a1c51ff2fbc7a0dd4c7888f3a7f91a2a39f4fdad69c9ddcfe363454d2da`.
+Source SHA-256: `54a322fecd3c5e85bafd922f86b8df82a78e7a20d5a4f3e901e4941259705470`.
 
 See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior, reset, framing and tests.
 
@@ -289,6 +289,8 @@ See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior,
 | `COMMAND_WRITE_HOST` | 8 | `0xE` | Write a whitelisted host control register. |
 | `COMMAND_RUN_DOTS` | 8 | `0xF` | Run a bounded number of real dots and pause |
 | `COMMAND_PEEK` | 8 | `0x10` | Read exact bytes from one paused non-ROM store; read-only, rejected unless paused. |
+| `COMMAND_SDRAM_WRITE` | 8 | `0x11` | Write one 16-byte line at a line-aligned SDRAM device address; requires the SDRAM initialized. |
+| `COMMAND_SDRAM_READ` | 8 | `0x12` | Read 1 through 15 consecutive 16-byte lines from a line-aligned SDRAM device address; requires the SDRAM initialized. |
 
 ## Peek
 
@@ -313,6 +315,15 @@ See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior,
 |---|---|---|---|
 | `HOST_WRITE_MASK_INPUT` | 32 | `0xFF` | Writable host button mask bits. |
 | `HOST_WRITE_MASK_INPUT_SOURCE` | 32 | `0x1` | Writable source selection bit. |
+
+## Sdram
+
+| Constant | Bits | Value | Meaning |
+|---|---|---|---|
+| `SDRAM_ADDRESS_BITS` | 8 | `0x1A` | Device byte address width; the DE10-Lite SDRAM holds 64 MiB |
+| `SDRAM_BYTES` | 32 | `0x4000000` | Device size in bytes |
+| `SDRAM_LINE_BYTES` | 8 | `0x10` | One line: the unit of every SDRAM host command |
+| `SDRAM_READ_MAX_LINES` | 8 | `0xF` | Largest SDRAM_READ line count; 15 lines fit one response payload |
 
 ## Packet Header record
 
@@ -459,6 +470,27 @@ See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior,
 | `executed` | 8 | 32 | Actual ticks executed by this operation |
 | `reason` | 12 | 8 | COUNT or STOPPED completion |
 
+## Sdram Write record
+
+20 bytes, in listed order; each field is unsigned little-endian.
+
+| Field | Byte offset | Bits | Meaning |
+|---|---|---|---|
+| `address` | 0 | 32 | Line-aligned device byte address; bits 31:26 and 3:0 zero |
+| `data0` | 4 | 32 | Line bytes 0-3, byte 0 first |
+| `data1` | 8 | 32 | Line bytes 4-7 |
+| `data2` | 12 | 32 | Line bytes 8-11 |
+| `data3` | 16 | 32 | Line bytes 12-15 |
+
+## Sdram Read record
+
+5 bytes, in listed order; each field is unsigned little-endian.
+
+| Field | Byte offset | Bits | Meaning |
+|---|---|---|---|
+| `address` | 0 | 32 | Line-aligned device byte address; bits 31:26 and 3:0 zero |
+| `count` | 4 | 8 | 1 through READ_MAX_LINES lines; the whole range stays inside the device |
+
 ## Commands
 
 | Name | Request payload | Successful response | Allowed state |
@@ -479,6 +511,8 @@ See [interface contracts](../src/rtl/interfaces/MAS_interfaces.md) for behavior,
 | `WRITE_HOST` | `write_host` | `dot` | Not LOADING. |
 | `RUN_DOTS` | `word` | `run_dots` | paused valid image |
 | `PEEK` | `peek_range` | `bytes` | paused |
+| `SDRAM_WRITE` | `sdram_write` | `empty` | any; SDRAM initialized |
+| `SDRAM_READ` | `sdram_read` | `bytes` | any; SDRAM initialized |
 
 ## Provenance
 

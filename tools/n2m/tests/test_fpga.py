@@ -213,6 +213,18 @@ class FpgaTests(unittest.TestCase):
         (self.root / truncated['attempt_result']).write_text(json.dumps(truncated))
         self.assertEqual(self.run_build()['cache'], 'BUILT')
 
+    def test_indexed_names_inside_getters_are_literal_not_nested(self):
+        for text in ('create_generated_clock -name sdram_clk -source [get_pins {u_clocking|u_system_pll|altpll_component|auto_generated|pll1|clk[0]}] -invert [get_ports {DRAM_CLK}]',
+                     'set_input_delay -clock sdram_clk -max 7.0 [get_ports {DRAM_DQ[*]}]',
+                     'set_output_delay -clock sdram_clk -min -1.8 [get_ports {DRAM_ADDR[*] DRAM_BA[1] DRAM_WE_N}]'):
+            with self.subTest(text=text):
+                fpga.self_contained_sdc(text)
+        for text in ('create_clock -period 20 [get_ports [get_ports clk]]', 'create_clock -period 20 [get_ports {clk[a]}]',
+                     'create_clock -period 20 [get_ports {clk[0:1]}]'):
+            with self.subTest(text=text):
+                with self.assertRaisesRegex(ValueError, 'unsupported'):
+                    fpga.self_contained_sdc(text)
+
     def test_nested_namespaced_and_indirect_sdc_loads_are_rejected(self):
         for text in ('if {1} { source extra.sdc }', '::source extra.sdc',
                      'set command source\n$command extra.sdc', 'create_clock -period [exec helper] clk'):
@@ -250,6 +262,68 @@ class FpgaTests(unittest.TestCase):
         for text in ("Warning (292013): unexpected license problem", "Critical Warning (332012): ignored clock", "Error (1): failed", "Warning (999): unknown"):
             with self.assertRaises(ValueError):
                 fpga.diagnostics(text)
+
+    def test_sdram_clock_port_entry_is_accepted_only_for_the_sdram_image(self):
+        report = "; DRAM_CLK ; No output delay was set on output port. This port has clock assignments. ;\n"
+        sdram = {"top": "sdram_proof"}
+        self.assertTrue(fpga.accepted_clock_port_entry("no_output_delay", 1, sdram, report))
+        for name, count, target, checks in (("no_output_delay", 1, {"top": "v05_proof"}, report),
+                                            ("no_output_delay", 2, sdram, report),
+                                            ("no_input_delay", 1, sdram, report),
+                                            ("no_output_delay", 1, sdram, report.replace("DRAM_CLK", "DRAM_CKE")),
+                                            ("no_output_delay", 1, sdram, "")):
+            with self.subTest(name=name, count=count, top=target["top"]):
+                self.assertFalse(fpga.accepted_clock_port_entry(name, count, target, checks))
+
+    def test_sdram_image_adds_exactly_the_inverted_pin_clock_to_the_inventory(self):
+        from n2m import fpga_pll
+        base = fpga_pll.clock_inventory({"top": "v05_proof"}, 20.0)
+        sdram = fpga_pll.clock_inventory({"top": "sdram_proof"}, 20.0)
+        self.assertEqual(set(base), {"clk_reference", fpga_pll.SYSTEM_CLOCK, fpga_pll.PIXEL_PLL + "|clk[0]"})
+        self.assertEqual(set(sdram) - set(base), {"sdram_clk"})
+        self.assertEqual(sdram["sdram_clk"], ("Generated", 40.0, ["", "1", "1"], fpga_pll.SYSTEM_CLOCK))
+        self.assertEqual({k: v for k, v in sdram.items() if k != "sdram_clk"}, base)
+        self.assertIn("clk_adc_reference", fpga_pll.clock_inventory({"top": "controls_proof"}, 20.0, fpga_pll.ADC_PLL))
+
+    def test_sdram_image_carries_its_own_build_identity(self):
+        repository = Path(__file__).resolve().parents[3]
+        target = fpga.target_definition(repository, "sdram-proof")
+        self.assertTrue(fpga.identity_target(target))
+        self.assertTrue(fpga.sdram_target(target))
+        with self.assertRaisesRegex(ValueError, "SDRAM build requires a nonzero"):
+            fpga.prepare(repository, self.build, target, build_id=None)
+        with self.assertRaisesRegex(ValueError, "SDRAM build requires a nonzero"):
+            fpga.prepare(repository, self.build, target, build_id="00" * 16)
+        fpga.prepare(repository, self.build, target, build_id="ab" * 16)
+        qsf = (self.build / "design.qsf").read_text(encoding="utf-8")
+        self.assertIn("set_global_assignment -name VERILOG_MACRO \"N2M_SDRAM_BUILD_ID=128'h" + "ab" * 16 + "\"", qsf)
+        self.assertNotIn("N2M_V05_BUILD_ID", qsf)
+        self.assertNotIn("N2M_CONTROLS_BUILD_ID", qsf)
+        self.assertIn('RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED"', qsf)
+        self.assertIn('IO_STANDARD "3.3 V SCHMITT TRIGGER" -to board_reset_n', qsf)
+        self.assertEqual(qsf.count('CURRENT_STRENGTH_NEW "8MA" -to "DRAM_'), 39)
+        self.assertEqual(qsf.count('-name IO_STANDARD "3.3-V LVTTL"'), 53)
+        self.assertIn("controls_uart", (self.build / "checked.sdc").read_text(encoding="utf-8"))
+
+    def test_structural_netlist_accepts_bidirectional_ports_only_as_declarations(self):
+        from n2m.fpga_lock import parse_netlist
+        netlist = ("module top (a, b);\ninput a;\ninout [15:0] b;\nwire gnd;\nwire vcc;\ntri1 devclrn;\ntri1 devpor;\n"
+                   "assign gnd = 1'b0;\nassign vcc = 1'b1;\nendmodule\n")
+        _, cells, _, declarations, _, _ = parse_netlist(netlist, "top")
+        self.assertEqual((cells, declarations[:2]), ({}, ["input a", "inout [15:0] b"]))
+        with self.assertRaisesRegex(ValueError, "unsupported structural"):
+            parse_netlist(netlist.replace("inout [15:0] b", "supply0 b"), "top")
+
+    def test_sdram_clock_routing_diagnostic_is_exact(self):
+        line = fpga.SDRAM_CLOCK_WARNING.format(file=(self.build.resolve() / "db" / "n2m_system_pll_altpll.v").as_posix())
+        explained = fpga.sdram_clock_diagnostics("Info: fitting\n" + line + "\n", self.build)
+        self.assertEqual([item["code"] for item in fpga.diagnostics(line, explained)], ["15064"])
+        for text in ("", line + "\n" + line, line.replace("DRAM_CLK", "DRAM_CKE"), line.replace("Line: 51", "Line: 52")):
+            with self.subTest(text=text[:40]):
+                with self.assertRaisesRegex(ValueError, "SDRAM clock routing"):
+                    fpga.sdram_clock_diagnostics(text, self.build)
+        with self.assertRaises(ValueError):
+            fpga.diagnostics(line)
 
     def test_v05_generated_design_diagnostics_are_exact_and_retained(self):
         database = self.build / "db"

@@ -175,3 +175,32 @@ def host_write(address, value):
     if mask is None or value & ~mask:
         raise ValueError('host register is read only, unknown, or value has reserved bits')
     return pack_record('write_host', {'address': address, 'value': value})
+
+
+# SDRAM line commands: one 16-byte line per SDRAM_WRITE, 1..15 lines per
+# SDRAM_READ, both at a line-aligned 26-bit device byte address.
+SDRAM_LINE = abi.SDRAM_LINE_BYTES
+
+
+def sdram_line_address(address, lines=1):
+    """Reject a misaligned or out-of-device line range before anything is sent."""
+    uint(address, abi.SDRAM_ADDRESS_BITS)
+    if address % SDRAM_LINE:
+        raise ValueError('SDRAM address is not line aligned')
+    if type(lines) is not int or not 1 <= lines <= abi.SDRAM_READ_MAX_LINES:
+        raise ValueError(f'SDRAM line count outside 1..{abi.SDRAM_READ_MAX_LINES}')
+    if address + lines * SDRAM_LINE > abi.SDRAM_BYTES:
+        raise ValueError('SDRAM line range exceeds the device')
+    return address
+
+
+def sdram_write(address, line):
+    line = bytes(line)
+    if len(line) != SDRAM_LINE:
+        raise ValueError(f'SDRAM line must be exactly {SDRAM_LINE} bytes')
+    words = {f'data{i}': int.from_bytes(line[4 * i:4 * i + 4], 'little') for i in range(4)}
+    return pack_record('sdram_write', {'address': sdram_line_address(address), **words})
+
+
+def sdram_read(address, lines):
+    return pack_record('sdram_read', {'address': sdram_line_address(address, lines), 'count': lines})

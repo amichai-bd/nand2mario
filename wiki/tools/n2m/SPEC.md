@@ -1475,9 +1475,9 @@ and includes its header hashes in each fresh manifest, without caching.
 ## FPGA build
 
 `fpga build --build-id <32 lowercase hex digits, nonzero>` is a comparison-only option for the
-targets that carry an identity macro (`controls_proof` and the `v05` board
-targets). It replaces the fingerprint-derived `N2M_CONTROLS_BUILD_ID` /
-`N2M_V05_BUILD_ID` constant with the given nonzero value so two builds of
+targets that carry an identity macro (`controls_proof`, the `v05` board
+targets and `sdram_proof`). It replaces the fingerprint-derived `N2M_CONTROLS_BUILD_ID` /
+`N2M_V05_BUILD_ID` / `N2M_SDRAM_BUILD_ID` constant with the given nonzero value so two builds of
 different sources can be compared with `tools/fpga_netlist_compare.py`; the
 constant is folded into logic, so fingerprint-derived identities never match
 across sources. The record carries `build_id_override: true` and a notice, the
@@ -1633,6 +1633,8 @@ bounded build flow; different text under the same number fails:
 | 292013, LogicLock requires a subscription | Lite does not provide this optional placement feature. The generated QSF has no LogicLock assignments; this does not excuse missing required IP/tool licenses. |
 | 169177, MAX 10 3.3/3.0/2.5-V interface advisory pointing to AN 447 | The fitter reminds the user of electrical requirements. A generated image does not verify wiring, voltage, or physical acceptance; those remain required before use. |
 | Exact `TBBmalloc` `_msize` replacement notice | The installed allocator cannot replace that CRT allocation hook. It is not a failed compilation or timing check; retain the notice and require all execution/report evidence. The [allocator override](#quartus-allocator-override) keeps this condition from aborting a launch. |
+| 15064, exact system PLL `clk[0]` feeding `DRAM_CLK~output` via non-dedicated routing, `sdram-proof` only | The [SDRAM contract](../../src/rtl/storage/MAS_sdram.md#clock-relationship-and-constraints) drives `DRAM_CLK` as the inverted system clock through the fabric to a pin that is not a dedicated PLL output. Exactly one line naming that PLL, that pin and the attempt's generated PLL file is accepted; the routed-clock jitter is inside the contract's 20 ns half-period I/O budget and the board memory test is the acceptance. |
+| `check_timing` no_output_delay = 1, `sdram-proof` only | `DRAM_CLK` is the target of the `sdram_clk` generated clock and has no data path, so it is the one output port without an output delay; giving it one makes TimeQuest time the clock network as a data path. The unconstrained-path summary must still show zero output ports and paths, and the clock inventory binds the port to `sdram_clk`. |
 | `check_timing` virtual_clock = 1, exactly “No virtual clock was found.” | The fixture's I/O delays reference its physical clock. No virtual reference clock is required. Every other structural check still must be zero. |
 
 The installed Quartus messages and `report_ucp`, `check_timing`, `report_sdc`

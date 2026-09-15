@@ -76,7 +76,8 @@ module tb_uart_endpoint;
         .io_obp1(8'hc1), .io_div(8'hab), .io_tima(8'h7f), .io_tma(8'h80), .io_tac(8'h05),
         .io_if(8'h13), .io_ie(8'h1f),
         .peek_ready(peek_ready),.peek_read(peek_read),.peek_select(peek_select),.peek_offset(peek_offset),
-        .peek_rdata(peek_rdata),.peek_valid(peek_valid)
+        .peek_rdata(peek_rdata),.peek_valid(peek_valid),
+        .sdram_initialized(1'b0), .sdram_request_valid(), .sdram_request_write(), .sdram_request_address(), .sdram_request_data(), .sdram_request_ready(1'b0), .sdram_response_valid(1'b0), .sdram_response_data('0)
     );
     n2m_timebase u_timebase (.*);
     n2m_cpu u_cpu (

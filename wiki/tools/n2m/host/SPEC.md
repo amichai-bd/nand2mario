@@ -42,6 +42,9 @@ is not device authentication or proof of correct wiring.
 | `host write --address <integer> --value <integer>` | Write the generated INPUT mask or INPUT_SOURCE selector; reject read-only/unknown addresses and reserved value bits before opening the port. |
 | `host snapshot` | One SNAPSHOT followed by all READ_FRAME chunks; retain metadata and packed shades. No new snapshot during readback. |
 | `host peek --store <wram\|hram\|vram\|oam\|wave>` | Read one whole non-ROM store from a paused board in PEEK chunks; retain its size and hash. Read-only; the core must be paused. Independent of snapshot readback. |
+| `host sdram-write --address <integer> --data <32 hex digits>` | Write one 16-byte line at a line-aligned SDRAM device address through generated `SDRAM_WRITE`; alignment and device bounds are checked before the port opens. |
+| `host sdram-read --address <integer> --lines <1-15>` | Read consecutive lines through `SDRAM_READ`; the bytes land in `sdram.bin` and the record carries their hex and hash. |
+| `host sdram-test [--start <integer> --length <bytes> \| --full \| --boundary] [--seed <n>]` | Write a seeded address-dependent pattern over the range one line per `SDRAM_WRITE`, read it back fifteen lines per `SDRAM_READ` and compare; every mismatching line is listed by device address with expected and actual bytes (first 64 in detail, all counted). Default range is one 32 KiB slot at 0; `--full` covers the 64 MiB device and takes hours at 115200 baud. `--boundary` instead writes and reads back the [storage contract's boundary set](../../../src/rtl/storage/MAS_sdram.md#verification): first and last line of slots 0, 15 and 16, both catalogue edges, first and last line of a row and one line in each bank including the device end, naming each mismatching line. The command fails when any line mismatches. |
 | `host crc-proof --expected-build-id <32hex>` | Fixed bad-CRC PING diagnostic on an already certain, reviewed endpoint. Requires the physical verification workflow below. |
 
 `host peek` reads DMG memory off a paused board so a hardware-only defect can
@@ -69,6 +72,16 @@ disturbs a held snapshot, and a held snapshot does not block a peek, so the two
 may be interleaved; this is the deliberate opposite of `host snapshot`'s own
 "no new snapshot during readback" rule, because peek and READ_FRAME address
 disjoint storage while a second capture would overwrite the bank being read.
+
+`Client.sdram_write(address, line)`, `Client.sdram_read(address, lines)` and
+`Client.sdram_test(start, length, seed=, progress=)` drive the SDRAM line
+commands the [storage contract](../../../src/rtl/storage/MAS_sdram.md) and the
+[loader profile](../../../src/rtl/cartridge/MAS_loader_profile.md#host-interaction)
+define; `interface_codec.sdram_line_address` rejects a misaligned or
+out-of-device range before anything is sent, and the endpoint answers
+`BAD_VALUE` while the SDRAM is not initialized. The test pattern is a
+per-line function of device address and seed, so an aliased or stale line
+never matches by accident.
 
 `Client.write_host(address, value)` uses the same whitelist.
 `Client.select_input_source(source)` selects UART or PHYSICAL through that write.

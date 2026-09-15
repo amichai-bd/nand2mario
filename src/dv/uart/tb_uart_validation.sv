@@ -7,7 +7,7 @@ module tb_uart_validation;
     n2m_interfaces_pkg::snapshot_t metadata;
     n2m_interfaces_pkg::packet_header_t header;
     logic [8:0] packet_bytes;
-    logic [71:0] arguments;
+    logic [159:0] arguments;
     logic [7:0] status;
     logic [15:0] response_length;
     logic [31:0] expected_data;
@@ -32,7 +32,7 @@ module tb_uart_validation;
     n2m_uart_validate u_validate (
         .header(header), .packet_bytes(packet_bytes), .arguments(arguments), .forced_status(8'h00),
         .endpoint_state(endpoint_state), .image_valid(1'b1), .snapshot_valid(1'b1),
-        .host_address_valid(address_valid), .status(status), .response_length(response_length)
+        .host_address_valid(address_valid), .sdram_ready(1'b1), .status(status), .response_length(response_length)
     );
     task automatic check_address(input logic [31:0] value, input logic valid_value, input logic [31:0] word_value);
         address = value; expected_valid = valid_value; expected_data = word_value;
@@ -88,14 +88,14 @@ module tb_uart_validation;
         command_case(8'h01,16'd0,16'd4);
         command_case(8'h02,16'd4,16'd4);
         command_case(8'h05,16'd0,16'd8);
-        arguments = 72'd1;
+        arguments = 160'd1;
         command_case(8'h06,16'd4,16'd8);
         command_case(8'h0F,16'd4,16'd13);
         packet_bytes = 9'd16;
-        arguments = 72'd70224; check_reply(8'h00,16'd13);
-        arguments = 72'd0; check_reply(8'h04,16'd0);
-        arguments = 72'd70225; check_reply(8'h04,16'd0);
-        arguments = 72'd1; endpoint_state = 8'h01; check_reply(8'h05,16'd0);
+        arguments = 160'd70224; check_reply(8'h00,16'd13);
+        arguments = 160'd0; check_reply(8'h04,16'd0);
+        arguments = 160'd70225; check_reply(8'h04,16'd0);
+        arguments = 160'd1; endpoint_state = 8'h01; check_reply(8'h05,16'd0);
         endpoint_state = 8'h02; check_reply(8'h05,16'd0);
         endpoint_state = 8'h00;
         command_case(8'h0B,16'd1,16'd8);

@@ -149,7 +149,8 @@ def parser():
     asset_check.add_argument("--tag")
     asset_check.add_argument("--json", action="store_true")
     host = commands.add_parser('host', help='explicit UART load/control; follows verified hardware workflow').add_subparsers(dest='action', required=True)
-    for action in ('status', 'io', 'load', 'reset', 'run', 'halt', 'step', 'run-dots', 'input', 'write', 'snapshot', 'peek', 'crc-proof', 'keyboard'):
+    for action in ('status', 'io', 'load', 'reset', 'run', 'halt', 'step', 'run-dots', 'input', 'write', 'snapshot', 'peek',
+                   'sdram-write', 'sdram-read', 'sdram-test', 'crc-proof', 'keyboard'):
         description = None
         if action == 'keyboard':
             description = ('Focused Windows classic console only (conhost.exe cmd.exe); Windows Terminal/WSL are unsupported. '
@@ -182,6 +183,21 @@ def parser():
         if action == 'write':
             leaf.add_argument('--address', type=lambda value: int(value, 0), required=True)
             leaf.add_argument('--value', type=lambda value: int(value, 0), required=True)
+        if action in ('sdram-write', 'sdram-read'):
+            leaf.add_argument('--address', type=lambda value: int(value, 0), required=True,
+                              help='line-aligned SDRAM device byte address')
+        if action == 'sdram-write':
+            leaf.add_argument('--data', required=True, help='exactly 16 bytes as 32 hex digits, byte 0 first')
+        if action == 'sdram-read':
+            leaf.add_argument('--lines', type=int, default=1, help='1..15 consecutive lines')
+        if action == 'sdram-test':
+            leaf.add_argument('--start', type=lambda value: int(value, 0), default=0, help='line-aligned start address')
+            leaf.add_argument('--length', type=lambda value: int(value, 0), default=0x8000,
+                              help='bytes to test, a line multiple; default one 32 KiB slot')
+            leaf.add_argument('--full', action='store_true', help='test the whole 64 MiB device instead of --start/--length')
+            leaf.add_argument('--boundary', action='store_true',
+                              help="the storage contract's boundary lines (slot, catalogue, row and bank edges) instead of a range")
+            leaf.add_argument('--seed', type=int, default=1, help='pattern seed')
     return result
 
 

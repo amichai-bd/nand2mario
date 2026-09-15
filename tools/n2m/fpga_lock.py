@@ -28,7 +28,7 @@ def parse_netlist(text, top):
             continue
         if re.fullmatch(r"module\s+" + re.escape(top) + r"\s*\([A-Za-z0-9_,\s]+\)", statement):
             continue
-        if re.fullmatch(r"(?:input|output|wire|tri0|tri1)\s+(?:\[\d+:\d+\]\s*)?(?:\\[^\s]+\s*(?:\[\d+\])?|[A-Za-z_]\w*)", statement):
+        if re.fullmatch(r"(?:input|output|inout|wire|tri0|tri1)\s+(?:\[\d+:\d+\]\s*)?(?:\\[^\s]+\s*(?:\[\d+\])?|[A-Za-z_]\w*)", statement):
             declarations.append(" ".join(statement.split()))
             continue
         param = re.fullmatch(r"defparam\s+(?:\\([^\s]+)\s+|([A-Za-z_]\w*)\s*)\.(\w+)\s*=\s*(\"[^\"]*\"|[A-Za-z0-9_'.+-]+)", statement)

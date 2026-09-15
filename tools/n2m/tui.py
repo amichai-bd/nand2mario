@@ -369,6 +369,15 @@ def _host_steps(menu, root, action):
     if action == "write":
         steps += [("address", lambda _: menu.text("Host register address")),
                   ("value", lambda _: menu.text("Value"))]
+    if action in ("sdram-write", "sdram-read"):
+        steps.append(("address", lambda _: menu.text("Line-aligned SDRAM device address (for example 0x0)", default="0x0")))
+    if action == "sdram-write":
+        steps.append(("data", lambda _: menu.text("Sixteen line bytes as 32 hex digits", default="00" * 16)))
+    if action == "sdram-read":
+        steps.append(("lines", lambda _: menu.text("Lines to read (1-15)", default="1")))
+    if action == "sdram-test":
+        steps += [("start", lambda _: menu.text("Line-aligned start address", default="0x0")),
+                  ("length", lambda _: menu.text("Bytes to test, a line multiple", default="0x8000"))]
     if action in ("crc-proof", "keyboard"):
         steps.append(("build", lambda _: _reviewed_build_id(menu, root)))
     return steps
@@ -391,6 +400,12 @@ def _host_plan(menu, root):
                 argv += ["--store", answers["store"]]
             if action == "write":
                 argv += ["--address", answers["address"], "--value", answers["value"]]
+            if action == "sdram-write":
+                argv += ["--address", answers["address"], "--data", answers["data"]]
+            if action == "sdram-read":
+                argv += ["--address", answers["address"], "--lines", answers["lines"]]
+            if action == "sdram-test":
+                argv += ["--start", answers["start"], "--length", answers["length"]]
             if action in ("crc-proof", "keyboard"):
                 argv += ["--expected-build-id", answers["build"]]
             host = "Windows classic conhost.exe cmd.exe" if action == "keyboard" else "Windows PowerShell"

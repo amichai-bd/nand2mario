@@ -89,7 +89,8 @@ module n2m_smoke_system #(parameter bit HOST_PLAY = 0) (
         .io_scx(8'd0), .io_wy(8'd0), .io_wx(8'd0), .io_bgp(8'd0), .io_obp0(8'd0),
         .io_obp1(8'd0), .io_div(8'd0), .io_tima(8'd0), .io_tma(8'd0), .io_tac(8'd0),
         .io_if(8'd0), .io_ie(8'd0),
-        .peek_ready, .peek_read, .peek_select, .peek_offset, .peek_rdata, .peek_valid
+        .peek_ready, .peek_read, .peek_select, .peek_offset, .peek_rdata, .peek_valid,
+        .sdram_initialized(1'b0), .sdram_request_valid(), .sdram_request_write(), .sdram_request_address(), .sdram_request_data(), .sdram_request_ready(1'b0), .sdram_response_valid(1'b0), .sdram_response_data('0)
     );
     n2m_timebase u_timebase (.clk_sys, .reset_sys, .core_reset, .pause_request, .gb_tick, .paused);
     n2m_cpu u_cpu (

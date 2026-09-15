@@ -1,11 +1,17 @@
 # SDRAM storage and timing
 
-Planned owner: `src/rtl/storage/` (controller) and `src/dv/storage/` (pin-level
-device model and fixtures). No implementation exists yet; the SDRAM bring-up
-slice of [#658](https://github.com/amichai-bd/nand2mario/issues/658) ports the
-controller and device model recorded in the
-[provenance index](../../../tools/provenance.md#external-inputs) and closes this
-gap. Until then this page is the contract that bring-up derives its tests from.
+Owner: [`src/rtl/storage`](../../../../src/rtl/storage/n2m_sdram_ctrl.sv) holds the
+controller [`n2m_sdram_ctrl`](../../../../src/rtl/storage/n2m_sdram_ctrl.sv), its
+package [`n2m_sdram_pkg`](../../../../src/rtl/storage/n2m_sdram_pkg.sv) and the
+pin-level simulation model [`n2m_sim_sdram`](../../../../src/rtl/storage/n2m_sim_sdram.sv);
+[`src/dv/storage`](../../../../src/dv/storage/README.md) holds the fixtures. The
+controller is ported from the source recorded in the
+[provenance index](../../../tools/provenance.md#external-inputs); the model is
+original. The host reaches the controller through the
+[UART endpoint's line commands](../uart/MAS_uart.md#core-and-storage-integration)
+and the [`sdram-proof`](../../../../src/fpga/de10_lite/README.md) board image
+fits it on the DE10-Lite pins. This page is the contract those implementations
+and their tests follow.
 
 ## Scope
 
@@ -155,17 +161,23 @@ state machine:
 | 1 | ACTIVATE (bank, row) | ACTIVATE |
 | 2-3 | wait tRCD | wait tRCD |
 | 4 | READ (column) | WRITE (column), beat 0 driven |
-| 5-11 | beats captured from clock 6 | beats 1-7 driven at clocks 5-11 |
-| 12-13 | beats 6-7 captured | wait tWR |
+| 5-12 | beat `k` captured at the edge ending clock `5+k` | beats 1-7 driven at clocks 5-11, wait tWR at 12 |
+| 13 | bus released by the device | wait tWR |
 | 14 | PRECHARGE all | PRECHARGE all |
 | 15-16 | wait tRP | wait tRP |
 | 17 | `response_valid` | complete, no pulse |
 | 18 | `IDLE`, `request_ready` if no refresh due | same |
 
-Read beat `k` is valid on `DRAM_DQ` from tAC after the second `DRAM_CLK` edge
-following the READ edge, and is captured at the `clk_sys` edge ending clock
-`6+k`; see the [clock relationship](#clock-relationship-and-constraints) for
-the margins. Bounds a testbench checks:
+Read beat `k` is driven by the device as a result of `DRAM_CLK` edge
+READ + CL - 1 + `k` (the first edge after the READ edge for beat 0), valid tAC
+after that edge and held tOH past edge READ + CL + `k`; the controller captures
+it at the `clk_sys` edge ending clock `5+k`, 20 ns after the launching edge.
+This is the datasheet's CAS-latency definition ("the DQs will start driving as
+a result of the clock edge one cycle earlier, n + m - 1"), not "after edge
+n + m": the ported controller and its model both assumed the latter and the
+board returned every line shifted by one word (see [references](#references)).
+See the [clock relationship](#clock-relationship-and-constraints) for the
+margins. Bounds a testbench checks:
 
 - Read: `response_valid` exactly 17 clocks after acceptance.
 - Read or write occupancy: `request_ready` returns exactly 18 clocks after
@@ -229,6 +241,29 @@ minus pin-to-register delay; both must show nonnegative slack in the fit
 reports for the nominal and 19.998 ns analyses. The controller's outputs are
 registered or one level of logic from registers; the bring-up slice records the
 actual register-to-pin delays.
+
+Realized by the [`sdram-proof`](../../../../src/fpga/de10_lite/sdram.sdc) fit
+with the inverted clock (Quartus Prime Lite 25.1std, `10M50DAF484C7G`): the
+worst output setup slack against `sdram_clk` is 9.03 ns (slow 1200 mV 85C),
+9.61 ns (slow 0C) and 13.48 ns (fast 0C), so the register-to-pin delay of the
+command, address and write-data paths is at most about 8.2 ns including clock
+uncertainty; the output hold slack is at least 18.7 ns; the read-data capture
+paths are inside the system clock's worst setup slack of 6.30 ns; no port or
+path is unconstrained, and `DRAM_CLK` itself is the generated clock's port
+rather than a timed output (its `check_timing` entry is the one the builder
+accepts for this image). The fitter reports one jitter warning because the
+routed inverted clock does not use a dedicated PLL output pin; the builder
+classifies exactly that line for this target.
+
+Board observation (session of 2026-09-15, `sdram-proof` at the fit above):
+programming and the endpoint identity passed and the one-slot memory test
+returned every line shifted by one 16-bit word with the last word repeated.
+The cause was the read-beat alignment above, shared by the controller and the
+model, not the clock phase: writes were correct and static timing holds. The
+inverted relationship therefore stands. The retest of the same day with the
+corrected capture (build identity `c25fb0bd7cd93846446b46ec3ce40398`) passed:
+one 32 KiB slot (2048 lines) and the fourteen boundary lines above read back
+with zero mismatches over UART.
 
 Fallback if the fit or the board memory test fails with the inverted clock:
 add a third output to the system PLL at 25 MHz with a requested phase shift
@@ -299,9 +334,12 @@ In priority order:
 
 ## Verification
 
-Simulation runs under Verilator on WSL with an original pin-level device model
-in `src/dv/storage/`, written against the datasheet in the
-[references](#references), not against the controller's constants. The model:
+Simulation runs under Verilator on WSL with the original pin-level device model
+[`n2m_sim_sdram`](../../../../src/rtl/storage/n2m_sim_sdram.sv), written against
+the datasheet in the [references](#references), not against the controller's
+constants. It lives beside the controller, like the memory owner's simulation
+double, so the Questa compile gate compiles it; no FPGA target lists it. The
+model:
 
 - stores 16-bit words in a sparse map keyed by `{bank, row, column}` and
   returns seeded random data for words never written unless a fixture opts in
@@ -316,18 +354,24 @@ in `src/dv/storage/`, written against the datasheet in the
   REFRESH or tMRD after LOAD MODE; more than 195 `DRAM_CLK` edges between
   refreshes once initialized; a write beat with `DRAM_DQ` unknown or a
   `DRAM_DQM*` high; the controller driving `DRAM_DQ` while the model drives it;
-- drives read beats CL2 edges after READ for exactly 8 beats and releases
+- drives beat `k` tAC after device edge READ + CL - 1 + `k` for exactly 8
+  beats (a `READ_LAUNCH_EDGES` parameter, default CL - 1, lets a fixture move
+  that edge to reproduce a misaligned controller) and releases
   `DRAM_DQ` afterwards;
 - counts refreshes, reads and writes for the fixture.
 
-Required fixtures, each within the [wall budget](../../../tools/n2m/SPEC.md#test-wall-budget):
+Required fixtures, each within the [wall budget](../../../tools/n2m/SPEC.md#test-wall-budget)
+and implemented by [`tb_sdram_ctrl`](../../../../src/dv/storage/tb_sdram_ctrl.sv)
+under the `storage` label ([test plan](../../../../src/dv/storage/README.md)):
 
 | Fixture | Checks |
 |---|---|
 | `sdram-init` | `initialized` exactly at clock 5036 and `idle` exactly at clock 5038 after reset release; command order and waits above; DQM behavior; model counts 8 refreshes |
 | `sdram-line` | Write then read a boundary set of lines (first and last line of slots 0, 15 and 16, both catalogue lines, the first and last line of a row, one line in each bank); exact 17/18/22-clock bounds; byte order; `response_data` stable until the next read |
 | `sdram-refresh` | 40,000 clocks of back-to-back requests; age never exceeds 178; every refresh costs exactly 5 clocks; the throughput bound above holds |
-| `sdram-fault` | Deliberate misaligned request, request before `initialized`, and a mutated refresh deadline of 196 each fail with the named diagnostic |
+| `sdram-fault` | Deliberate misaligned request, request before `initialized`, and a mutated refresh deadline of 196 each fail with the named diagnostic; three registry targets (`sdram-fault-misaligned`, `sdram-fault-before-init`, `sdram-fault-deadline`) because each fault ends its run, the last through the controller's `REFRESH_INTERVAL` parameter set to 178 |
+| `sdram-fault-read-early`, `sdram-fault-read-late` | The `line` fixture against a model launching read data one edge early (`MODEL_READ_LAUNCH_EDGES=0`, the board's relative misalignment) or one edge late (`=2`, the assumption the port arrived with); each fails `SDRAM_TB_READBACK` naming the one-word shift (`+1`, `-1`) |
+| `uart-sdram` | The host line commands over the real UART wire into the controller and model: `BAD_VALUE` before `initialized`, boundary lines and a fifteen-line run written and read back byte for byte, misaligned, out-of-device, zero or sixteen-line and wrong-length refusals; `uart-sdram-fault` corrupts one expected byte |
 
 Assertions the controller carries (names are the contract; a testbench may
 reference them):
@@ -350,9 +394,17 @@ Questa compiles the controller and model under the compile-only gate the
 retains PLL, pin, I/O timing and both-frequency slack reports as in the
 [required verification](../../clocks-resets-cdc.md#required-verification).
 A board memory test, driven over UART through the host line commands in the
-[loader profile](../cartridge/MAS_loader_profile.md#host-interaction), writes
-and reads back every slot boundary line and a pseudo-random fill of one full
-slot; it is authorized per slice and does not replace the simulation bounds.
+[loader profile](../cartridge/MAS_loader_profile.md#host-interaction) by
+[`host sdram-test`](../../../tools/n2m/host/SPEC.md#commands), writes a seeded
+address-dependent line pattern over a range (one slot by default, the whole
+device with `--full`) or over the boundary set above (`--boundary`) and reads
+it back with every mismatch listed by address; it is authorized per session and
+does not replace the simulation bounds.
+Simulation results, including the reproduction fixtures above, are
+preliminary evidence only: the storage contract counts as met on the board
+only when the corrected volatile bitstream has run on the DE10-Lite and the
+one-slot plus boundary-line UART tests have passed, with the fit,
+programming, host-status and test records retained and linked.
 
 ## References
 
@@ -360,6 +412,19 @@ slot; it is authorized per slice and does not replace the simulation bounds.
   characteristics) and the command truth table, distributed as
   `Datasheet/SDRAM/IS42S16320D.pdf` in the Terasic DE10-Lite System CD v2.2.0;
   see the [provenance index](../../../tools/provenance.md#external-inputs).
+- ISSI combined `IS42/45S86400D/16320D/32160D` datasheet Rev. B, 2015-05-12:
+  page 28 defines the CAS latency ("the DQs will start driving as a result of
+  the clock edge one cycle earlier (n + m - 1) ... valid by clock edge
+  n + m"). The ported controller and the device model agreed on the other
+  reading until the board returned shifted lines; a model that shares the
+  controller's assumption is not evidence for it, which is why the model's
+  launch edge is now written from this sentence and the reproduction fixtures
+  exist. Page 19 is the revision the bring-up slice confirmed the four I/O
+  numbers against: for the -7 grade it lists tAC 5.4 ns at CL2, tOH 2.7 ns, tDS/tCMS
+  1.5 ns and tDH/tCMH 0.8 ns, so the constraints above (derived from the
+  2011 revision and equal to this revision's -5 column) stay on the
+  conservative side; tRCD/tRP 15 ns, tRC 60 ns, tRAS 37 ns, tDPL 14 ns and
+  tMRD 14 ns are unchanged.
 - Terasic DE10-Lite pin data (System CD v2.2.0), the source of the SDRAM pin
   assignments.
 - Ported controller and device model: `bui-bui` `src/rtl/mafia/sdram/` and
