@@ -97,6 +97,11 @@ def commands(simulator, root, target, seed, compiler, attempt, *, python_runtime
     if python_runtime or target.get("preload") is not None:
         from .python_tb import prepare as prepare_fixture
         prepare_fixture(target, attempt, root, fixture_tools)
+    if target.get("vendor_model") == "intel-adc":
+        # The control double replays the same channel files the retired
+        # Questa binding wrote beside the run.
+        from .intel_adc import write_stimulus
+        write_stimulus(attempt)
     if python_runtime:
         # cocotb's own main drives the design; a driver target keeps --timing
         # because its SystemVerilog testbench owns the clock and the checks,
@@ -117,6 +122,7 @@ def commands(simulator, root, target, seed, compiler, attempt, *, python_runtime
         if not harness.is_file() or harness.read_text(encoding="utf-8") != source:
             harness.write_text(source, encoding="utf-8")
         build = [tool, "--cc", "--exe", "--build", "--timing", *COMMON_OPTIONS,
+                 *[f"+define+{define}" for define in target.get("defines", [])],
                  "--top-module", target["top"], "+incdir+" + simulator.path(root),
                  *sources, HARNESS]
         run = [str(compiler / "obj_dir/sim")]

@@ -44,6 +44,21 @@ def stimulus_manifest():
                       for name, text in files.items()}}
 
 
+def write_stimulus(attempt):
+    """Write the original voltage fixture for the ADC control double under Verilator.
+
+    The double reads adc_ch0.txt to adc_ch16.txt from the run directory; a
+    file already holding the fixture text is left as it is.
+    """
+    for name, entry in stimulus_manifest()["files"].items():
+        path = Path(attempt) / name
+        if path.is_file() and path.read_text(encoding="ascii") == entry["text"]:
+            continue
+        if path.exists():
+            raise ValueError("ADC stimulus path already exists")
+        path.write_text(entry["text"], encoding="ascii")
+
+
 def prepare_stimulus(attempt, descriptor):
     if descriptor.get("stimulus") != stimulus_manifest():
         raise ValueError("ADC stimulus descriptor differs from the original voltage fixture")

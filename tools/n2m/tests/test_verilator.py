@@ -154,6 +154,46 @@ class CommandTests(unittest.TestCase):
         self.assertTrue(run[0].endswith("obj_dir/sim"))
         self.assertEqual(run[1:], ["+seed=7", "+verilator+seed+7", "+verilator+rand+reset+2", "+inject_failure"])
 
+    def test_defines_become_build_options_and_are_validated(self):
+        registry = self.root / "src/dv/builder/targets.json"
+        targets = read_json(registry)
+        pristine = dict(targets["builder-smoke"])
+        targets["builder-smoke"] = {**pristine, "defines": ["PRELOADED", "DEPTH=8"]}
+        registry.write_text(json.dumps(targets))
+        target, _ = load_target(self.root, "builder-smoke")
+        attempt = self.build / "attempt"
+        compiler = self.build / "compile"
+        for folder in (attempt / "waves", compiler):
+            folder.mkdir(parents=True)
+        (build, *_), (run, *_) = verilator.commands(self.sim, self.root, target, 1, compiler, attempt)
+        self.assertIn("+define+PRELOADED", build)
+        self.assertIn("+define+DEPTH=8", build)
+        self.assertNotIn("+define+PRELOADED", run)
+        for bad in (["-gPRELOADED=1"], "PRELOADED", ["A B"]):
+            targets["builder-smoke"] = {**pristine, "defines": bad}
+            registry.write_text(json.dumps(targets))
+            with self.assertRaisesRegex(ValueError, "defines must list"):
+                load_target(self.root, "builder-smoke")
+
+    def test_adc_binding_writes_the_channel_fixture_beside_the_run(self):
+        target, _ = load_target(self.root, "builder-smoke")
+        target = {**target, "vendor_model": "intel-adc"}
+        attempt = self.build / "attempt"
+        compiler = self.build / "compile"
+        for folder in (attempt / "waves", compiler):
+            folder.mkdir(parents=True)
+        verilator.commands(self.sim, self.root, target, 1, compiler, attempt)
+        self.assertEqual(sorted(p.name for p in attempt.glob("adc_ch*.txt")), sorted(f"adc_ch{i}.txt" for i in range(17)))
+        self.assertEqual((attempt / "adc_ch1.txt").read_text(), "0 0.625\n")
+        self.assertEqual((attempt / "adc_ch2.txt").read_text(), "0 1.25\n")
+        self.assertEqual((attempt / "adc_ch0.txt").read_text(), "0 0.0\n")
+        # A replay against the retained attempt leaves identical files alone
+        # and refuses a foreign file under a fixture name.
+        verilator.commands(self.sim, self.root, target, 1, compiler, attempt)
+        (attempt / "adc_ch3.txt").write_text("0 9.9\n")
+        with self.assertRaisesRegex(ValueError, "ADC stimulus path already exists"):
+            verilator.commands(self.sim, self.root, target, 1, compiler, attempt)
+
     def test_identical_retained_harness_is_left_untouched_and_a_stale_one_rewritten(self):
         target, _ = load_target(self.root, "builder-smoke")
         attempt = self.build / "attempt"

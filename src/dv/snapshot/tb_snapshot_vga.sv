@@ -43,7 +43,7 @@ module tb_snapshot_vga;
         end
         #1;
         if (frame_read && host_initialized && !video.reset_sys) begin
-            if (!frame_valid || frame_data !== expected_byte(expected_epoch,expected_sequence,int'(frame_address)))
+            if (!frame_valid || frame_data != expected_byte(expected_epoch,expected_sequence,int'(frame_address)))
                 $fatal(1,"SNAPSHOT_VGA_READ byte=%0d epoch=%0d sequence=%0d expected=%02h actual=%02h",
                     frame_address,expected_epoch,expected_sequence,
                     expected_byte(expected_epoch,expected_sequence,int'(frame_address)),frame_data);
@@ -51,15 +51,15 @@ module tb_snapshot_vga;
         end
         // The response on this edge still belongs to the pre-edge host bank.
         if (snapshot_done && !video.reset_sys) begin
-            if (!snapshot_ok || !snapshot_valid || snapshot_metadata.epoch !== 32'(requested_epoch)
-                || snapshot_metadata.seq !== 64'(requested_sequence) || snapshot_metadata.dot !== requested_dot
-                || snapshot_metadata.size !== 32'd5760) $fatal(1,"SNAPSHOT_VGA_METADATA");
+            if (!snapshot_ok || !snapshot_valid || snapshot_metadata.epoch != 32'(requested_epoch)
+                || snapshot_metadata.seq != 64'(requested_sequence) || snapshot_metadata.dot != requested_dot
+                || snapshot_metadata.size != 32'd5760) $fatal(1,"SNAPSHOT_VGA_METADATA");
             expected_epoch=requested_epoch; expected_sequence=requested_sequence; expected_dot=requested_dot;
             acquisitions=acquisitions+1; copy_active=0; host_initialized=1;
         end
         if (host_initialized && !video.reset_sys && !snapshot_done &&
-            (!snapshot_valid || snapshot_metadata.epoch !== 32'(expected_epoch)
-             || snapshot_metadata.seq !== 64'(expected_sequence) || snapshot_metadata.dot !== expected_dot))
+            (!snapshot_valid || snapshot_metadata.epoch != 32'(expected_epoch)
+             || snapshot_metadata.seq != 64'(expected_sequence) || snapshot_metadata.dot != expected_dot))
             $fatal(1,"SNAPSHOT_VGA_IMMUTABLE_METADATA");
     end
     always @(posedge video.core_reset) if (host_initialized) resets=resets+1;

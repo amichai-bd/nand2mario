@@ -66,19 +66,24 @@ mode uploads and reads back the full image before the same execution checks.
 
 ## Legacy live transport and completion
 
-The following finite-Tcl transport describes the historical target. It is not
-the default delivery path or a prerequisite for unrelated continuous Python work.
+The following live transport describes the `integration-smoke` target under
+the [Verilator peer driver](../../../tools/n2m/SPEC.md#verilator-peer-driver).
+It is not the default delivery path or a prerequisite for unrelated continuous
+Python work.
 
 The target uses a 25 MHz system clock and an eight-system-edge serial bit
 period (3.125 Mbaud) for bounded simulation;
 the real receiver/transmitter and packet/command/load owners remain active.
-A builder-owned Python peer runs the product Client. A target-local Tcl driver
-bridges encoded request bytes into a DV serial transmitter and returns bytes
-captured from UART TX. It never decodes commands, supplies expected responses
-or writes product storage. Its loopback channel is not a physical serial port.
+A builder-owned Python peer runs the product Client. The target's cocotb peer
+module ([`driver.py`](../../../../src/dv/integration/driver.py) over
+[`peer_bridge.py`](../../../../src/dv/integration/peer_bridge.py)) bridges
+encoded request bytes into the testbench's DV serial transmitter mailboxes and
+returns bytes captured from UART TX, touching only the declared `access` list.
+It never decodes commands, supplies expected responses or writes product
+storage. Its loopback channel is not a physical serial port.
 
 Peer readiness has a five-second wall bound. Reply waiting and simulation
-progress use a120-second wall tolerance, checked between simulation chunks.
+progress use a 120-second wall tolerance, polled every 100 us of simulation time.
 The Client's simulated response deadline is unchanged. The target's outer
 runtime bound is 300 seconds, subject to the total supervisor deadline. Its simulated watchdog is500 ms, preserving the
 12.5-million-system-edge budget while the slower test UART loads and reads back

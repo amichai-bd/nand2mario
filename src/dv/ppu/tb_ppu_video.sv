@@ -37,13 +37,13 @@ module tb_ppu_video;
     );
     always @(posedge scene.clk_sys) begin
         if (!scene.reset_sys) begin
-            if (observe_abort || observe_valid !== scene.source_valid)
+            if (observe_abort || observe_valid != scene.source_valid)
                 $fatal(1, "PPU_VIDEO_OBSERVER_VALID");
             if (observe_valid) begin
                 expected = frame == 0 ? 2'd0 : scene.scene(index % 160, index / 160);
-                if (observe_index !== 15'(index) || observe_sequence !== 64'(frame)
-                    || observe_epoch !== 32'd5 || observe_dot !== scene.dot_before
-                    || observe_shade !== expected || observe_complete !== (index == 23039))
+                if (observe_index != 15'(index) || observe_sequence != 64'(frame)
+                    || observe_epoch != 32'd5 || observe_dot != scene.dot_before
+                    || observe_shade != expected || observe_complete != (index == 23039))
                     $fatal(1, "PPU_VIDEO_OBSERVER_PIXEL frame=%0d index=%0d", frame, index);
                 if (index == 23039) begin
                     completed = completed + 1;
@@ -54,7 +54,9 @@ module tb_ppu_video;
         end
     end
     initial begin
-        wait (scene.simulation_done);
+        // The scene raises simulation_done after its frames; a level wait could
+        // pass on a randomized time-zero value, so wait for the rising edge.
+        @(posedge scene.simulation_done);
         @(negedge scene.clk_sys);
         if (completed != 3) $fatal(1, "PPU_VIDEO_COMPLETION_COUNT actual=%0d", completed);
         $display("PASS PPU video observer frames=3 pixels=69120");

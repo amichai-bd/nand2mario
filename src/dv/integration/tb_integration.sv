@@ -1,8 +1,11 @@
 `timescale 1ns/1ps
 `default_nettype none
-module tb_integration #(
-    parameter bit PRELOADED = 0
-);
+// Lint waiver: integer file handles are tested as booleans and the RAM write
+// case lists only the three checked addresses its guard admits; both lints are
+// false positives.
+/* verilator lint_off WIDTHTRUNC */
+/* verilator lint_off CASEINCOMPLETE */
+module tb_integration;
     logic clk_sys, reset_sys, uart_rx, uart_tx;
     logic gb_tick, paused, core_reset;
     logic [31:0] epoch;
@@ -19,7 +22,7 @@ module tb_integration #(
     logic [31:0] source_epoch;
     logic [63:0] source_dot;
     logic fault;
-    // Only these serial stimulus/receiver mailboxes are writable by Tcl.
+    // Only these serial stimulus/receiver mailboxes are writable by the peer driver.
     logic [7:0] tx_bytes [0:271];
     logic [7:0] rx_bytes [0:271];
     integer tx_count, rx_count;
@@ -33,9 +36,13 @@ module tb_integration #(
     bit data_fault, irq_fault, pixel_fault, dumping, initial_seen;
     string root_path;
     n2m_smoke_system dut (.*);
-    defparam dut.u_stores.rom.SIM_INIT_FILE = PRELOADED ? "preload-rom.mif" : "UNUSED";
-    defparam dut.u_uart.u_commands.u_load.u_presence.u_presence.SIM_INIT_FILE = PRELOADED ? "preload-presence.mif" : "UNUSED";
-    defparam dut.u_uart.u_commands.u_load.SIM_PRELOAD = PRELOADED;
+    // The preloaded target selects the prepared images at build time through
+    // the registry's defines (+define+PRELOADED); a defparam takes constants only.
+`ifdef PRELOADED
+    defparam dut.u_stores.rom.SIM_INIT_FILE = "preload-rom.mif";
+    defparam dut.u_uart.u_commands.u_load.u_presence.u_presence.SIM_INIT_FILE = "preload-presence.mif";
+    defparam dut.u_uart.u_commands.u_load.SIM_PRELOAD = 1;
+`endif
     always #20 clk_sys = !clk_sys;
     always @(posedge clk_sys) simulation_ns = $time;
 
@@ -62,7 +69,7 @@ module tb_integration #(
             @(negedge uart_tx);
             repeat(12) @(posedge clk_sys);
             for(b=0;b<8;b=b+1) begin value[b]=uart_tx; repeat(8) @(posedge clk_sys); end
-            if(uart_tx!==1 || rx_count>=272 || rx_done) $fatal(1,"SMOKE_SERIAL_RX_FRAME");
+            if(uart_tx!=1 || rx_count>=272 || rx_done) $fatal(1,"SMOKE_SERIAL_RX_FRAME");
             rx_bytes[rx_count]=value; rx_count=rx_count+1;
             if(value==0) rx_done=1;
         end
@@ -72,24 +79,24 @@ module tb_integration #(
             $fdisplay(bus_file,"%0d,%04h,%0d,%02h",dot_count+1,address,write_enable,write_enable ? write_data : read_data);
             if(write_enable && address>=16'hc000 && address<=16'hc002) begin
                 case(address)
-                    16'hc000: if(write_data!==8'h3c) $fatal(1,"SMOKE_RAM_C000");
-                    16'hc001: if(write_data!==8'h41) $fatal(1,"SMOKE_RAM_C001");
-                    16'hc002: if(write_data!==8'ha7) $fatal(1,"SMOKE_RAM_C002");
+                    16'hc000: if(write_data!=8'h3c) $fatal(1,"SMOKE_RAM_C000");
+                    16'hc001: if(write_data!=8'h41) $fatal(1,"SMOKE_RAM_C001");
+                    16'hc002: if(write_data!=8'ha7) $fatal(1,"SMOKE_RAM_C002");
                 endcase
                 ram_writes=ram_writes+1;
             end
             if(write_enable && address>=16'hdffa && address<=16'hdffd) begin
                 case(stack_writes)
-                    0: if(address!==16'hdffd || write_data!==2) $fatal(1,"SMOKE_STACK0");
-                    1: if(address!==16'hdffc || write_data!==8'h22) $fatal(1,"SMOKE_STACK1");
-                    2: if(address!==16'hdffb || write_data!==1) $fatal(1,"SMOKE_STACK2");
-                    3: if(address!==16'hdffa || write_data!==8'h20) $fatal(1,"SMOKE_STACK3");
+                    0: if(address!=16'hdffd || write_data!=2) $fatal(1,"SMOKE_STACK0");
+                    1: if(address!=16'hdffc || write_data!=8'h22) $fatal(1,"SMOKE_STACK1");
+                    2: if(address!=16'hdffb || write_data!=1) $fatal(1,"SMOKE_STACK2");
+                    3: if(address!=16'hdffa || write_data!=8'h20) $fatal(1,"SMOKE_STACK3");
                     default: $fatal(1,"SMOKE_STACK_EXTRA");
                 endcase
                 stack_writes=stack_writes+1;
             end
             if(write_enable && address>=16'h8000 && address<=16'h9fff) begin
-                if(address!==16'(16'h8000+video_writes) || write_data!==(video_writes%2==0 ? 8'h55 : 8'h33))
+                if(address!=16'(16'h8000+video_writes) || write_data!=(video_writes%2==0 ? 8'h55 : 8'h33))
                     $fatal(1,"SMOKE_TILE_WRITE");
                 video_writes=video_writes+1;
             end
@@ -97,11 +104,11 @@ module tb_integration #(
         #1;
         if(!reset_sys) begin
             if(dut.u_uart.image_valid && !initial_seen) begin
-                if(epoch!==32'd2 || dot_count!==64'd0 || !paused || core_reset ||
-                    !dut.u_uart.core_initialized || dut.u_uart.retirement_count!==64'd0 ||
-                    dut.u_uart.profile!==n2m_interfaces_pkg::PROFILE_DIRECT_ID ||
-                    dut.u_uart.endpoint_state!==n2m_interfaces_pkg::STATE_PAUSED ||
-                    dut.u_uart.buttons!==8'd0 || dut.u_uart.effective_buttons!==8'd0 ||
+                if(epoch!=32'd2 || dot_count!=64'd0 || !paused || core_reset ||
+                    !dut.u_uart.core_initialized || dut.u_uart.retirement_count!=64'd0 ||
+                    dut.u_uart.profile!=n2m_interfaces_pkg::PROFILE_DIRECT_ID ||
+                    dut.u_uart.endpoint_state!=n2m_interfaces_pkg::STATE_PAUSED ||
+                    dut.u_uart.buttons!=8'd0 || dut.u_uart.effective_buttons!=8'd0 ||
                     bus_commit || retirement_valid || source_valid)
                     $fatal(1,"SMOKE_LOADED_INITIAL_STATE");
                 initial_seen=1;
@@ -118,22 +125,22 @@ module tb_integration #(
             if(dot_count!=0 && !dumping) begin dumping=1; $dumpon; end
             if(retirement_valid) begin
                 if(event_index>=69) $fatal(1,"SMOKE_EXTRA_RECORD");
-                if(retirement!==expected_records[event_index])
+                if(retirement!=expected_records[event_index])
                     $fatal(1,"SMOKE_RECORD seq=%0d expected=%096h actual=%096h",event_index,expected_records[event_index],retirement);
                 $fdisplay(records_file,"%0d,%096h",event_index,retirement);
                 event_index=event_index+1;
             end
             if(source_valid && frame_index<2) begin
                 expected_shade=frame_index==0 ? 2'd0 : 2'(pixel_index%4);
-                if(source_x!==8'(pixel_index%160) || source_y!==8'(pixel_index/160) ||
-                    source_start!==(pixel_index==0) || source_epoch!==32'd2 ||
-                    source_display_eligible!==(frame_index==1) || source_abort)
+                if(source_x!=8'(pixel_index%160) || source_y!=8'(pixel_index/160) ||
+                    source_start!=(pixel_index==0) || source_epoch!=32'd2 ||
+                    source_display_eligible!=(frame_index==1) || source_abort)
                     $fatal(1,"SMOKE_PIXEL_ORDER frame=%0d index=%0d",frame_index,pixel_index);
-                if(source_shade!==expected_shade)
+                if(source_shade!=expected_shade)
                     $fatal(1,"SMOKE_PIXEL frame=%0d index=%0d expected=%0d actual=%0d",frame_index,pixel_index,expected_shade,source_shade);
                 if(frame_index==1) begin
                     expected_pixel_dot=64'd70908+64'(pixel_index/160)*456+64'(pixel_index%160);
-                    if(source_dot!==expected_pixel_dot) $fatal(1,"SMOKE_PIXEL_DOT index=%0d expected=%0d actual=%0d",pixel_index,expected_pixel_dot,source_dot);
+                    if(source_dot!=expected_pixel_dot) $fatal(1,"SMOKE_PIXEL_DOT index=%0d expected=%0d actual=%0d",pixel_index,expected_pixel_dot,source_dot);
                 end
                 $fdisplay(pixels_file,"%0d,%0d,%0d,%0d",frame_index,pixel_index,source_dot,source_shade);
                 if(pixel_index==23039) begin pixel_index=0; frame_index=frame_index+1; end

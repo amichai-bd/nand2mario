@@ -83,6 +83,11 @@ def load_target(root, name):
             raise ValueError(f"target {name}: vendor_model must be one of {', '.join(VENDOR_MODELS)}")
         if "intel_mixed_mode_instances" in target:
             raise ValueError(f"target {name}: intel_mixed_mode_instances is a Questa diagnostic inventory; the double has no coercion diagnostic")
+        # Elaboration-time selection is a build option, not a runtime plusarg:
+        # each entry becomes +define+NAME or +define+NAME=VALUE on the build.
+        defines = target.get("defines", [])
+        if not isinstance(defines, list) or any(not isinstance(d, str) or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*(=[A-Za-z0-9_]+)?", d) for d in defines):
+            raise ValueError(f"target {name}: defines must list NAME or NAME=VALUE identifiers")
         # A verilator driver's script is the cocotb peer module; the retired
         # Tcl script is refused.
         if "driver" in target:

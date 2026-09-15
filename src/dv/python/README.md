@@ -5,8 +5,11 @@ as SystemVerilog targets, on WSL Linux.
 The first target is the [independent joypad test](joypad/README.md).
 The [integration diagnostic](integration/README.md) independently reproduces
 the retained preloaded UART execution sequence with the real composed subsystem;
-it and the other preloaded targets are still registered `simulator: "questa"`
-and report `SKIPPED questa-retired` until their areas migrate.
+it and the other Python preloaded targets are still registered
+`simulator: "questa"` and report `SKIPPED questa-retired` until the Python
+migration ([#612](https://github.com/amichai-bd/nand2mario/issues/612)); the
+SystemVerilog `integration-smoke` and `integration-preloaded` targets already
+run under the Verilator peer.
 The [Python DV skill](../../../.agents/skills/dv-python/SKILL.md) owns the method.
 
 Create an isolated environment using a Python 3.12.14 executable:
