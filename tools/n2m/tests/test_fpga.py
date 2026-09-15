@@ -263,6 +263,15 @@ class FpgaTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 fpga.diagnostics(text)
 
+    def test_structural_netlist_accepts_bidirectional_ports_only_as_declarations(self):
+        from n2m.fpga_lock import parse_netlist
+        netlist = ("module top (a, b);\ninput a;\ninout [15:0] b;\nwire gnd;\nwire vcc;\ntri1 devclrn;\ntri1 devpor;\n"
+                   "assign gnd = 1'b0;\nassign vcc = 1'b1;\nendmodule\n")
+        _, cells, _, declarations, _, _ = parse_netlist(netlist, "top")
+        self.assertEqual((cells, declarations[:2]), ({}, ["input a", "inout [15:0] b"]))
+        with self.assertRaisesRegex(ValueError, "unsupported structural"):
+            parse_netlist(netlist.replace("inout [15:0] b", "supply0 b"), "top")
+
     def test_sdram_clock_routing_diagnostic_is_exact(self):
         line = fpga.SDRAM_CLOCK_WARNING.format(file=(self.build.resolve() / "db" / "n2m_system_pll_altpll.v").as_posix())
         explained = fpga.sdram_clock_diagnostics("Info: fitting\n" + line + "\n", self.build)
