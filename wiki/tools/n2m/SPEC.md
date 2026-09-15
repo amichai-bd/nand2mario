@@ -285,8 +285,9 @@ targets `memory-decode` and `memory-decode-alias`, the three `tb_clocking` targe
 `async-assert-macros`, `async-assert-direct`, `async-assert-hold`,
 `async-assert-never` and `async-assert-no_reset`, and the 123 Python cocotb
 targets of the [Python area](../../../src/dv/python/README.md), which declare
-`["verilator"]` only. Four Python rows keep `["questa"]`: the three
-`tb_python_mooneye` targets under the owner's pending pin decision, and
+`["verilator"]` only, including the three `tb_python_mooneye` targets that
+build the [locked Mooneye fixture](../../../src/dv/mooneye/README.md) with the
+re-recorded native host pin. One Python row keeps `["questa"]`:
 `python-v05-continuous`, whose 600-frame schedule cannot finish inside any
 declared wall allowance
 ([#634](https://github.com/amichai-bd/nand2mario/issues/634)). `ppu-shift-unknown` and

@@ -7,11 +7,11 @@ The first target is the [independent joypad test](joypad/README.md).
 The [integration diagnostic](integration/README.md) independently reproduces
 the retained preloaded UART execution sequence with the real composed subsystem.
 Every Python target declares `simulators: ["verilator"]` and runs under
-Verilator 5.052 on WSL with cocotb 2.1.0, except the three Mooneye targets,
-which stay `["questa"]` under the owner's bounded pin decision, and
-`python-v05-continuous`, whose 600-frame schedule (about 10 s of simulated
-time) cannot finish inside any declared wall allowance and stays `["questa"]`
-under [#634](https://github.com/amichai-bd/nand2mario/issues/634). Questa
+Verilator 5.052 on WSL with cocotb 2.1.0, including the three
+[Mooneye targets](../mooneye/README.md) under the owner's bounded wall
+allowance, except `python-v05-continuous`, whose 600-frame schedule (about
+10 s of simulated time) cannot finish inside any declared wall allowance and
+stays `["questa"]` under [#634](https://github.com/amichai-bd/nand2mario/issues/634). Questa
 remains the native Windows backend for the targets that declare it; no Python
 target claims a Questa capability this host cannot prove.
 Composed wrappers build with only their top module public and `-O2`; the
