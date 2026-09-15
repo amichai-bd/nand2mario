@@ -193,8 +193,10 @@ class PrPolicyTests(unittest.TestCase):
         self.assertEqual(0, self.run_policy("166", "165-policy", self.gate_body(head=self.HEAD), files=self.RTL))
         self.assertEqual(0, self.run_policy("166", "165-policy", self.gate_body().replace("\n", "\r\n"),
                                             files=self.RTL))
-        self.assertEqual(0, self.run_policy("166", "165-policy", self.gate_body().replace("```text", "```"),
-                                            files=self.RTL))
+        for fence in ("```", "```text ", "```sh"):
+            with self.subTest(fence=fence):
+                self.assertEqual(0, self.run_policy("166", "165-policy", self.gate_body().replace("```text", fence),
+                                                    files=self.RTL))
         # An older FAIL block may stay in the body when a PASS block names the head.
         stale = self.gate_body(head="0c02984", status="FAIL").split("Closes")[0]
         self.assertEqual(0, self.run_policy("166", "165-policy", stale + self.gate_body(), files=self.RTL))
@@ -229,6 +231,10 @@ class PrPolicyTests(unittest.TestCase):
                 self.assertEqual(1, self.run_policy("166", "165-policy", self.gate_body(**{key: value}),
                                                     files=self.RTL))
                 self.assertIn("integer sources and tops counts", self.output.getvalue())
+        # One line per field: a repeated key is ambiguous, whatever it says.
+        self.assertEqual(1, self.run_policy("166", "165-policy", self.gate_body().replace(
+            "status: PASS", "status: FAIL\nstatus: PASS"), files=self.RTL))
+        self.assertIn("::error::Questa compile gate evidence block repeats status", self.output.getvalue())
         # Keyed lines outside a fenced block are prose, not evidence.
         self.assertEqual(1, self.run_policy("166", "165-policy", self.gate_body().replace("```", ""),
                                             files=self.RTL))

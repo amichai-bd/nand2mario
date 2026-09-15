@@ -131,10 +131,20 @@ jobs:
               text = body.replace("\r\n", "\n")
               gate_help = ("see wiki/agents/pull-requests.md#hosted-and-local-checks and "
                            "wiki/tools/n2m/SPEC.md#questa-compile-gate")
-              blocks = [
-                  dict(re.findall(r"(?m)^([a-z_]+):[ \t]*(.*?)[ \t]*$", found))
-                  for found in re.findall(r"```(?:text)?\n(Questa compile gate\n.*?)```", text, re.S)
+              # Any fence info string is accepted; the first line identifies the block.
+              pairs = [
+                  re.findall(r"(?m)^([a-z_]+):[ \t]*(.*?)[ \t]*$", found)
+                  for found in re.findall(r"```[^\n]*\n(Questa compile gate\n.*?)```", text, re.S)
               ]
+              duplicates = sorted({key for found in pairs for key, _ in found
+                                   if [k for k, _ in found].count(key) > 1})
+              if duplicates:
+                  print(
+                      "::error::Questa compile gate evidence block repeats "
+                      f"{', '.join(duplicates)}; keep one line per field; {gate_help}."
+                  )
+                  sys.exit(1)
+              blocks = [dict(found) for found in pairs]
               if not blocks:
                   print(
                       "::error::Changed files under src/rtl or src/fpga "
