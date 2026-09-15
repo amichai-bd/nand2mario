@@ -9,9 +9,10 @@ the retained preloaded UART execution sequence with the real composed subsystem.
 Every Python target declares `simulators: ["verilator"]` and runs under
 Verilator 5.052 on WSL with cocotb 2.1.0, including the three
 [Mooneye targets](../mooneye/README.md) under the owner's bounded wall
-allowance, except `python-v05-continuous`, whose 600-frame schedule (about
-10 s of simulated time) cannot finish inside any declared wall allowance and
-stays `["questa"]` under [#634](https://github.com/amichai-bd/nand2mario/issues/634). Questa
+allowance: 127 Python rows, all `["verilator"]`, no Questa-only Python row.
+The 600-frame `python-v05-continuous` row is retired in the catalogue; the
+[continuity schedule](v05/README.md#continuity-schedule) covers its input
+transitions under a declared 900-second wall allowance. Questa
 remains the native Windows backend for the targets that declare it; no Python
 target claims a Questa capability this host cannot prove.
 Composed wrappers build with only their top module public and `-O2`; the

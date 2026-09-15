@@ -198,7 +198,11 @@ qualified gameplay evidence cannot substitute for them.
 
 The revised [v0.5 matrix](../v05/SPEC.md#revised-milestone-matrix) combines precise
 bounded startup/cross-frame observation, timer/DMA proofs, real UART loading and
-all prescribed inputs, with separately bounded FPGA endurance. No exhaustive
+all prescribed inputs, with separately bounded FPGA endurance. Simulated
+continuity across all 18 prescribed input transitions is the
+[`python-v05-continuity`](../../../../src/dv/python/v05/README.md#continuity-schedule)
+target: one-frame spacing, 23 frames, every retirement, write and pixel through
+actual pause, under its declared 900-second wall allowance. No exhaustive
 physical retirement/pixel or 600-frame claim follows from this matrix.
 Declare each broader milestone's
 test selection, total expected cost, physical duration/inputs/sampling and

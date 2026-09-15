@@ -16,7 +16,7 @@ sys.path[:0] = [str(ROOT / 'tools'), str(ROOT / 'src/dv/v05'),
                str(ROOT / 'src/dv/python/integration')]
 from client_transport import connect, frames, refresh_clock
 from online import Online
-from reference import FIRST_IMAGE_END, INPUT_MASKS, WINDOW_END, LCD_COMMIT, FRAME_DOTS, BOUNDED_END, input_window, unpack_retirement
+from reference import FIRST_IMAGE_END, LCD_COMMIT, FRAME_DOTS, BOUNDED_END, input_window, schedule, schedule_end, unpack_retirement
 from n2m.records import git_state
 from n2m import generated_interfaces as abi
 from n2m.preload import adopt, verify
@@ -32,26 +32,27 @@ def known(signal):
     return int(bits.translate(_WEAK_BITS), 2)
 
 
-def wave_windows(complete, *, short=False, bounded=False):
+def wave_windows(complete, *, short=False, bounded=False, continuity=False):
     if bounded:
         return [(0,64), (LCD_COMMIT-32,LCD_COMMIT+256), (49968,52128), (107616,108192),
                 (112268,112556), (BOUNDED_END-32,BOUNDED_END+2000)]
     windows = [(0,64), (LCD_COMMIT-32,LCD_COMMIT+256),
                (FIRST_IMAGE_END-32,FIRST_IMAGE_END+64)]
     if complete:
-        for j in range(1,3 if short else 19):
-            low,high = input_window(j, short=short)
+        transitions, spacing, _ = schedule(short=short, continuity=continuity)
+        for j in range(1, transitions + 1):
+            low,high = input_window(j, short=short, continuity=continuity)
             windows.append((low-32, high+128))
-            first = LCD_COMMIT+70316+((1 if short else 20)*j+2)*FRAME_DOTS
+            first = LCD_COMMIT+70316+(spacing*j+2)*FRAME_DOTS
             wake = first - 4652
             windows.append((wake-32,wake+508+32))
             windows.append((first-32,first+256))
-        end = FIRST_IMAGE_END + 4*FRAME_DOTS if short else WINDOW_END
+        end = schedule_end(short=short, continuity=continuity)
         windows.append((end-32,end+2000))
     return sorted(windows)
 
 
-async def run(dut, *, complete, short=False, bounded=False, preloaded=False, physical=False):
+async def run(dut, *, complete, short=False, bounded=False, continuity=False, preloaded=False, physical=False):
     assert not physical or (bounded and preloaded), 'V05_PHYSICAL_PROFILE'
     entered = time.monotonic()
     dut._log.info("V05_PHASE entry")
@@ -64,7 +65,7 @@ async def run(dut, *, complete, short=False, bounded=False, preloaded=False, phy
     for row in recipe['instructions']:
         literal = bytes.fromhex(row['bytes'])
         assert image[row['pc']:row['pc'] + len(literal)] == literal, 'V05_IMAGE_RECIPE'
-    monitor = Online(short=short, bounded=bounded)
+    monitor = Online(short=short, bounded=bounded, continuity=continuity)
     received = Queue()
     entries = []
     armed = False
@@ -94,7 +95,7 @@ async def run(dut, *, complete, short=False, bounded=False, preloaded=False, phy
 
         async def waveform_windows():
             await FallingEdge(dut.paused)
-            for first, last in wave_windows(complete, short=short, bounded=bounded):
+            for first, last in wave_windows(complete, short=short, bounded=bounded, continuity=continuity):
                 while known(dut.dot_count) < first:
                     await Timer(1, unit='us')
                 await Timer(1, unit='ns')
@@ -178,7 +179,7 @@ async def run(dut, *, complete, short=False, bounded=False, preloaded=False, phy
             async for encoded in frames(dut):
                 received.put_nowait(encoded)
 
-        async def continuity():
+        async def continuity_monitor():
             while True:
                 await First(*(ValueChange(signal) for signal in (dut.reset_sys, dut.core_reset, dut.paused, dut.fault)))
                 await ReadOnly()
@@ -213,7 +214,7 @@ async def run(dut, *, complete, short=False, bounded=False, preloaded=False, phy
         phase('before_first_timer')
         await Timer(1, unit='ns')
         phase('after_first_timer')
-        tasks = [cocotb.start_soon(fn()) for fn in (records, writes, source, inputs, receiver, continuity, time_progress, heartbeat, waveform_windows)]
+        tasks = [cocotb.start_soon(fn()) for fn in (records, writes, source, inputs, receiver, continuity_monitor, time_progress, heartbeat, waveform_windows)]
         await Timer(320, unit='ns')
         dut.reset_sys.value = 0
         dut.reset_pix.value = 0
@@ -300,7 +301,7 @@ async def run(dut, *, complete, short=False, bounded=False, preloaded=False, phy
         phase('run_reply')
         if complete:
             for index, mask in enumerate(monitor.input_masks, 1):
-                low, high = input_window(index, short=short, bounded=bounded)
+                low, high = input_window(index, short=short, bounded=bounded, continuity=continuity)
                 while known(dut.dot_count) < low:
                     await Timer(1, unit='us')
                     check_tasks()
@@ -334,7 +335,8 @@ async def run(dut, *, complete, short=False, bounded=False, preloaded=False, phy
         assert known(dut.paused) and bound <= pause_dot <= bound + 2000, 'V05_PAUSE_WINDOW'
         if complete:
             summary = monitor.finish(pause_dot)
-            summary['scope'] = 'bounded startup/cross-frame' if bounded else 'short complete-path only' if short else 'legacy 600-interval'
+            summary['scope'] = ('bounded startup/cross-frame' if bounded else 'short complete-path only' if short
+                                else 'continuity: 18 transitions at one-frame spacing' if continuity else 'legacy 600-interval')
             if physical:
                 summary['input_scope'] = 'public physical commit, UART isolation and source switch'
         else:

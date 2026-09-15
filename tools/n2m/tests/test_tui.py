@@ -334,7 +334,7 @@ class TuiTests(unittest.TestCase):
         self.assertNotIn("verilator_bin", questa)
         self.assertIn("questa_bin", questa)
         self.assertNotIn("intel_sim_lib", questa)
-        vendor = options(["sim", "test", "python-v05-continuous", "--sim", "questa"],
+        vendor = options(["sim", "test", "python-v05-continuity", "--sim", "questa"],
                          ("sim", "test"))
         self.assertIn("intel_sim_lib", vendor)
 

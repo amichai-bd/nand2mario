@@ -174,34 +174,56 @@ class Reference:
             yield record
 
 INPUT_MASKS = (1, 0, 2, 0, 4, 0, 8, 0, 16, 0, 32, 0, 64, 0, 128, 0, 17, 0)
+# Transition j is issued in frame spacing*j and first changes frame spacing*j+3.
+# The continuity schedule keeps all 18 legacy transitions at one-frame spacing
+# and ends with the first frame after the last visible update (frame 21).
+CONTINUITY_FRAMES = 23
 
 
-def input_window(transition, *, short=False, bounded=False):
+def schedule(*, short=False, continuity=False):
+    """(transitions, frame spacing, frame count) of the legacy, short or continuity schedule."""
+    if short and continuity:
+        raise ValueError('conflicting v05 schedules')
+    if continuity:
+        return 18, 1, CONTINUITY_FRAMES
+    if short:
+        return 2, 1, 6
+    return 18, 20, 602
+
+
+def schedule_end(*, short=False, continuity=False):
+    """Completed dot of the schedule's last frame; frame 1 completes at FIRST_IMAGE_END."""
+    return FIRST_IMAGE_END + (schedule(short=short, continuity=continuity)[2] - 2) * FRAME_DOTS
+
+
+def input_window(transition, *, short=False, bounded=False, continuity=False):
     if bounded:
         if transition != 1:
             raise ValueError('input transition outside bounded schedule')
         return 50000, 52000  # First HALT42008, before first VBlank107646.
-    if not 1 <= transition <= (2 if short else 18):
+    transitions, spacing, _ = schedule(short=short, continuity=continuity)
+    if not 1 <= transition <= transitions:
         raise ValueError('input transition outside original schedule')
-    first = FIRST_IMAGE_END + (1 if short else 20) * transition * FRAME_DOTS + 20000
+    first = FIRST_IMAGE_END + spacing * transition * FRAME_DOTS + 20000
     return first, first + 2000
 
 
-def frame_mask(frame, *, short=False, bounded=False):
+def frame_mask(frame, *, short=False, bounded=False, continuity=False):
     if bounded:
         return 0x11 if frame >= 1 else 0
+    transitions, spacing, _ = schedule(short=short, continuity=continuity)
     mask = 0
-    for j, value in enumerate(INPUT_MASKS[:2] if short else INPUT_MASKS, 1):
-        if frame >= (1 if short else 20) * j + 3:
+    for j, value in enumerate(INPUT_MASKS[:transitions], 1):
+        if frame >= spacing * j + 3:
             mask = value
     return mask
 
 
-def pixel_shade(frame, x, y, *, short=False, bounded=False):
+def pixel_shade(frame, x, y, *, short=False, bounded=False, continuity=False):
     if frame == 0:
         return 0
     marker = x < 8 and y < 8
-    cell = x < 64 and 64 <= y < 72 and bool(frame_mask(frame, short=short, bounded=bounded) & (1 << (x // 8)))
+    cell = x < 64 and 64 <= y < 72 and bool(frame_mask(frame, short=short, bounded=bounded, continuity=continuity) & (1 << (x // 8)))
     return int(marker or cell)
 
 

@@ -25,7 +25,7 @@ to check scalar and packed values, single reads, and resolver independence.
 | python-v05-identity | Read an independent 128-bit build identity through the actual UART and product Client |
 | python-v05-identity-fault | The same checker rejects one changed DUT identity bit |
 | python-v05-startup | Original build, full UART load/readback, blank and first normal frame, checked pause |
-| python-v05-continuous | Legacy 600-interval/18-input schedule (about 10 s of simulated time); not authorized under the revised matrix and held `simulators: ["questa"]` under [#634](https://github.com/amichai-bd/nand2mario/issues/634) |
+| python-v05-continuity | Preloaded continuity check: all 18 legacy input transitions at one-frame spacing, 23 frames, every retirement, write and pixel through actual pause; see [Continuity schedule](#continuity-schedule) |
 | python-v05-image-fault | Actual ROM write at 0200 changes F3 to 00; LOAD_END rejects BAD_IMAGE |
 | python-v05-pixel-fault | Actual first eligible source shade changes 1 to 0; exact pixel mismatch |
 | python-v05-short | Preloaded complete path, two inputs, six frames and final pause |
@@ -64,6 +64,46 @@ pause. The projection changes recorded signal activity only; stimulus and
 checks continue outside the windows. Wave-open/close observations record actual
 dots. The full test retains original frame timing, including all intervening
 frames; bounded startup success alone does not complete the contract.
+
+## Continuity schedule
+
+`python-v05-continuity` replaces the retired 600-frame `python-v05-continuous`
+row, which needed about 10 s of simulated time and cannot finish under any wall
+allowance at the measured rate of about 2 ms simulated per wall second. The
+continuity schedule in `reference.schedule(continuity=True)` keeps the legacy
+transition list unchanged and shortens only the spacing between transitions:
+transition j (j = 1..18) is issued 20000 dots after normal frame j+1
+completes, at `FIRST_IMAGE_END + j*70224 + 20000` (frame 1 completes at
+`FIRST_IMAGE_END`), with a 2000-dot accept window during HALT, and is first
+visible in frame j+3. The last transition (release of Right+A) is visible from
+frame 21; the run ends after frame 22 completes at dot 1652371
+(`CONTINUITY_FRAMES` = 23, frames 0..22), and the final pause must land within
+2000 dots after it. The same `Online` monitor checks every retirement
+(6357 setup plus 21 updates of 76), every program write, every pixel of all 23
+frames, each applied-input reply against its window and mask, the
+`continuity_monitor` and `time_progress` monitors (no reset, fault or early
+pause; tick count equals elapsed time throughout) and the final pause window.
+The target declares the 900-second
+[wall allowance](../../../../wiki/tools/n2m/SPEC.md#declared-wall-allowance)
+ceiling: runs measured 165..336 s at about 2 ms simulated per wall second
+depending on concurrent simulation from other worktrees, and one run was
+killed at a 450-second allowance under that contention.
+
+Preserved from the legacy run: every button press and release and the Right+A
+pair, in the frozen order, each with its exact apply window; the IF bit 4
+request on a selected-line change and the `buttons` field in every retirement;
+the VBlank wake and 76-retirement update that publishes the mask; its first
+updated frame; every-pixel checking of every intervening frame; continuous
+reset/fault/pause and tick-progress invariants from RUN through pause.
+Weakened by the shorter window: the run observes 23 frames (0.39 s simulated)
+instead of 602 (10 s), so 19-frame idle stretches between transitions and long
+steady-state VBlank cadence are not exercised; the legacy frame identities
+(update at frame 20j+3) are replaced by j+3; tick-progress drift is checked
+over 0.39 s rather than 10 s, so a rare dropped or extra tick is caught only
+if it falls inside that window; and the 450 ms simulation watchdog leaves
+about 11 percent margin over the roughly 400 ms the schedule and its
+command latency take. The matrix keeps sustained endurance on the FPGA, not
+in simulation.
 
 ## Scoped implementation acceptance
 
