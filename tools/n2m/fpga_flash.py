@@ -105,6 +105,13 @@ def strobe_node(top):
     return f"n2m_flash_reader:{READER_INSTANCES[top]}|{STROBE}"
 
 
+def no_clock_rows(top):
+    """check_timing no-clock rows the IP adds: the strobe register and the atom register it clocks."""
+    return (strobe_node(top),
+            f"n2m_flash_reader:{READER_INSTANCES[top]}|altera_onchip_flash:u_flash|"
+            "altera_onchip_flash_block:altera_onchip_flash_block|ufm_block~XE_YE_TO_SE_FF")
+
+
 def explained_diagnostics(text, folder, sources, top, log_name):
     """Exact vendor read-only-mode and strobe diagnostics of the pinned IP.
 

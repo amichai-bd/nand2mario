@@ -74,11 +74,11 @@ def parse_netlist(text, top):
     return text, cells, parameters, declarations, assignments, assigned_nets
 
 
-def verify(text, checks, top="clocking_proof"):
+def verify(text, checks, top="clocking_proof", *, extra_rows=()):
     if top not in ("clocking_proof", "vga_proof", "ppu_proof", "intel_memory_proof", "controls_proof", "v05_controls_proof"):
         raise ValueError("unsupported PLL proof top")
     rows = re.findall(r";\s*([^;\r\n]+?)\s*;\s*No clock feeds this register's clock port\.\s*;", checks)
-    expected_rows = [ROW]
+    expected_rows = [ROW, *extra_rows]
     if top in ("controls_proof", "v05_controls_proof"):
         expected_rows.append(("n2m_controls_system:u_controls|" if top == "v05_controls_proof" else "") + "n2m_adc_backend:u_adc|n2m_adc_pll:u_pll|altpll:altpll_component|n2m_adc_pll_altpll:auto_generated|pll_lock_sync")
     if rows != expected_rows:
@@ -186,12 +186,17 @@ def verify(text, checks, top="clocking_proof"):
             "topology": "constant-one D; PLL reset clears; raw lock loss propagates; only reset sampling fanout"}
 
 
-def verify_parallel(text, checks, top):
-    """Prove both lock events only qualify reset, including either raw lock loss."""
+def verify_parallel(text, checks, top, *, extra_rows=()):
+    """Prove both lock events only qualify reset, including either raw lock loss.
+
+    extra_rows names further no-clock registers the caller has already
+    accounted for (the flash IP's atom strobe register); they are not lock
+    events and get no further inspection here.
+    """
     from .fpga_pll import SYSTEM_NET
     system = "u_clocking|u_system_pll|altpll_component|auto_generated|"
     system_row = "n2m_clocking:u_clocking|n2m_system_pll:u_system_pll|altpll:altpll_component|n2m_system_pll_altpll:auto_generated|pll_lock_sync"
-    expected_rows = [ROW, system_row]
+    expected_rows = [ROW, system_row, *extra_rows]
     if top in ("controls_proof", "v05_controls_proof"):
         expected_rows.append(("n2m_controls_system:u_controls|" if top == "v05_controls_proof" else "") + "n2m_adc_backend:u_adc|n2m_adc_pll:u_pll|altpll:altpll_component|n2m_adc_pll_altpll:auto_generated|pll_lock_sync")
     rows = re.findall(r";\s*([^;\r\n]+?)\s*;\s*No clock feeds this register's clock port\.\s*;", checks)

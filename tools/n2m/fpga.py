@@ -457,6 +457,7 @@ def timing_evidence(folder, target, *, build_id=None):
                                         fpga_flash.accepted_unconstrained_clock(int(a), target, ucp))
             for name, a, b in rows):
         raise ValueError("unconstrained paths or missing unconstrained-path summary")
+    unconstrained = "none" if not any(int(a) for _, a, _ in rows) else "one: the On-Chip Flash IP sense-enable strobe clock"
     ignored = (output / "ignored.rpt").read_text(encoding="utf-8")
     if "No constraints were ignored." not in ignored:
         raise ValueError("ignored or missing SDC assignments evidence")
@@ -466,10 +467,16 @@ def timing_evidence(folder, target, *, build_id=None):
         raise ValueError("missing structural timing checks")
     lock_event = None
     expected_lock_events = (2 if target["top"] in ("controls_proof", "v05_controls_proof") else 1) + int(parallel)
+    # The flash IP's sense-enable strobe and the atom register it clocks are
+    # two more no-clock rows; both must be named exactly.
+    flash_rows = fpga_flash.no_clock_rows(target["top"]) if fpga_flash.flash_target(target) else ()
+    expected_lock_events += len(flash_rows)
+    if any(row not in checks for row in flash_rows):
+        raise ValueError("On-Chip Flash IP strobe no-clock rows differ")
     if "pll" in target:
         if dict(rows).get("no_clock") != str(expected_lock_events):
             raise ValueError("vendor lock event row missing or extra no-clock endpoints")
-        lock_event = fpga_pll.verify_lock_event(folder, checks, target["top"], parallel=parallel)
+        lock_event = fpga_pll.verify_lock_event(folder, checks, target["top"], parallel=parallel, extra_rows=flash_rows[1:])
         fpga_pll.verify_fit(folder, target)
     adc_evidence = None
     if target["top"] in ("adc_proof", "controls_proof", "v05_controls_proof"):
@@ -491,7 +498,6 @@ def timing_evidence(folder, target, *, build_id=None):
             continue
         if int(count) and not (name == "virtual_clock" and int(count) == 1 and "No virtual clock was found." in checks):
             raise ValueError(f"structural timing failure: {name}={count}")
-    unconstrained = "none" if not any(int(a) for _, a, _ in rows) else "one: the On-Chip Flash IP sense-enable strobe clock"
     evidence = {"slack_ns": slacks, "fit_summary": fit, "unconstrained": unconstrained, "ignored_constraints": "none", "vendor_lock_event": lock_event, "vga": vga_evidence, "intel_memory": memory_evidence,
             "virtual_clock_check": "No virtual clock required for the physical-clock-referenced fixture" if "No virtual clock was found." in checks else "passed"}
     if target["top"] in ("v05_proof", "v05_controls_proof"):
