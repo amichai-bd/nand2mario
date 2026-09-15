@@ -1,0 +1,18 @@
+`verilator_config
+// Lint waivers for warnings the CPU testbenches induce in src/rtl/cpu.
+// Each waiver names the rule, the RTL file and signal, and the testbench
+// construct that causes the report. RTL lint comments stay reserved for
+// warnings the RTL itself owns. A comment here must not open with the word
+// "verilator": the lexer would read it as a lint meta-comment.
+
+// MULTIDRIVEN: tb_cpu_if_observation forces retirement_b_next for fault
+// injection; the force counts as a second driver of the always_comb variable.
+lint_off -rule MULTIDRIVEN -file "*/src/rtl/cpu/n2m_cpu_retire.sv" -match "*'retirement_b_next'"
+
+// MULTIDRIVEN: tb_cpu_program forces retirement.pc_after for fault injection;
+// the force counts as a second driver of the always_ff register.
+lint_off -rule MULTIDRIVEN -file "*/src/rtl/cpu/n2m_cpu_retire.sv" -match "*'retirement'"
+
+// MULTIDRIVEN: tb_cpu_halt_lock and tb_cpu_vectors force retirement_valid for
+// fault injection; the force counts as a second driver of the register.
+lint_off -rule MULTIDRIVEN -file "*/src/rtl/cpu/n2m_cpu_retire.sv" -match "*'retirement_valid'"

@@ -1,6 +1,8 @@
 """Verilator command construction, harness main and strict transcript checks."""
 import re
 
+from .hdl import is_verilator_config
+
 # Verilate-time options shared by every target. Warnings stay fatal to the
 # build; nothing here demotes them. Randomized initial values replace the
 # four-state checks Questa provided. --x-initial-edge is deliberately absent:
@@ -123,7 +125,10 @@ def commands(simulator, root, target, seed, compiler, attempt, *, python_runtime
     ($readmemh and SIM_INIT_FILE paths are relative to it) land beside the record.
     """
     tool = simulator.tools["verilator"]
-    sources = [simulator.path(root / source) for source in target["sources"]]
+    # Source-listed Verilator configuration files (.vlt) carry the target's
+    # lint waivers. They precede the generated access list so both apply.
+    configs = [simulator.path(root / source) for source in target["sources"] if is_verilator_config(source)]
+    sources = [simulator.path(root / source) for source in target["sources"] if not is_verilator_config(source)]
     driver = "driver" in target
     if python_runtime or target.get("preload") is not None:
         from .python_tb import prepare as prepare_fixture
@@ -148,7 +153,7 @@ def commands(simulator, root, target, seed, compiler, attempt, *, python_runtime
         text = access_config(target["top"], target["driver"]["access"] if driver else None)
         if not config.is_file() or config.read_text(encoding="utf-8") != text:
             config.write_text(text, encoding="utf-8")
-        build = [tool, "--cc", "--exe", "--build", "--vpi", "--timing", simulator.path(config), "-CFLAGS", "-O2",
+        build = [tool, "--cc", "--exe", "--build", "--vpi", *configs, "--timing", simulator.path(config), "-CFLAGS", "-O2",
                  "--timescale", "1ns/1ps", *COMMON_OPTIONS,
                  *[f"+define+{define}" for define in target.get("defines", [])],
                  "-LDFLAGS", f"-Wl,-rpath,{library} -L{library} -lcocotbvpi_verilator",
@@ -165,7 +170,7 @@ def commands(simulator, root, target, seed, compiler, attempt, *, python_runtime
         build = [tool, "--cc", "--exe", "--build", "--timing", *COMMON_OPTIONS,
                  *[f"+define+{define}" for define in target.get("defines", [])],
                  "--top-module", target["top"], *parameter_args(target["args"]),
-                 "+incdir+" + simulator.path(root), *sources, HARNESS]
+                 "+incdir+" + simulator.path(root), *configs, *sources, HARNESS]
         run = [str(compiler / "obj_dir/sim")]
     # Registry args are the run's plusargs, except -g<NAME>=<VALUE>, which
     # Questa applied at vsim time and Verilator takes at verilate time as -G.

@@ -264,7 +264,8 @@ build passes as `+define+`; elaboration-time selection is a build option, not
 a runtime plusarg, and the validator refuses any other shape.
 `preload` runs on the Verilator stage; see
 [preload fixtures](#preload-fixtures-under-verilator). A `driver` runs through
-the [Verilator peer](#verilator-peer-driver). The migrated targets
+the [Verilator peer](#verilator-peer-driver). `sources` may list
+[lint waiver files](#lint-waiver-files) beside the HDL. The migrated targets
 are `builder-smoke`, `builder-smoke-fail`, `python-joypad`,
 `python-joypad-fault`, `preload-fixture`, the three `tb_verilator_peer`
 targets `verilator-peer`, `verilator-peer-fault` and `verilator-peer-fatal`,
@@ -292,6 +293,34 @@ declared wall allowance
 ([#634](https://github.com/amichai-bd/nand2mario/issues/634)). `ppu-shift-unknown` and
 `async-assert-known` are [retired](#test-catalogue): their expected fatal was
 a four-state `N2M_ASSERT_KNOWN` that a two-state simulator never raises.
+
+### Lint waiver files
+
+A target's `sources` may list Verilator configuration files (`src/**/*.vlt`)
+beside its `.sv` and `.svh` sources. [`hdl.py`](../../../tools/n2m/hdl.py)
+accepts them as inputs: each enters the record's `inputs` and the fingerprint
+like HDL, is never read for `` `include ``, cannot itself be included, and is
+refused as an FPGA source. [`verilator.py`](../../../tools/n2m/verilator.py)
+passes every listed `.vlt` on the build command line before the HDL, and
+before the generated [peer access list](#verilator-peer-driver) so both
+configurations apply. `tests validate`, `check` and the
+[SystemVerilog style checker](../../../.agents/skills/rtl-coder/scripts/check_sv_style.py)
+accept them; the style checker reads only `.sv` and `.svh`.
+
+A waiver file holds the lint waivers a testbench induces in RTL it does not
+own, such as `MULTIDRIVEN` from a testbench `force` or `UNOPTFLAT` from a
+zero-delay testbench memory loop. It lives beside the testbench, and every
+target whose testbench induces the warning lists it. Each waiver is a
+`lint_off` line naming the rule (`-rule`), the RTL file and signal or entity
+(`-file` with `-match`, or `-lines`), preceded by a comment naming the
+testbench construct and the reason. A comment must not open with the word
+`verilator`, which the lexer reads as a lint meta-comment.
+[`cpu_lint.vlt`](../../../src/dv/cpu/cpu_lint.vlt) is the CPU area's file.
+`/* verilator lint_off */` comments inside RTL are reserved for warnings the
+RTL itself owns; a testbench-induced warning is waived in a `.vlt`, never in
+the RTL. Testbench-induced comments still present in RTL under `src/rtl/` are
+a tracked gap: [#639](https://github.com/amichai-bd/nand2mario/issues/639)
+moves them into area waiver files.
 
 ### Registered target execution
 
@@ -1215,8 +1244,9 @@ inputs, deterministic artifacts and independent conformance requirements.
 
 Simulation and FPGA builds share the [dependency resolver](../../../tools/n2m/hdl.py).
 Sources are repository `src/` files. An include must name a literal, canonical
-repository path such as `src/rtl/common/macros.svh`. Only `.sv` source files, `.svh` headers and
-ASCII path letters, digits, underscore, hyphen, slash and period are accepted.
+repository path such as `src/rtl/common/macros.svh`. Only `.sv` source files, `.svh` headers,
+simulation [lint waiver files](#lint-waiver-files) (`.vlt`, hashed but never included
+or synthesized) and ASCII path letters, digits, underscore, hyphen, slash and period are accepted.
 Relative traversal, missing files, escapes, symlink files, cycles, dynamic names,
 extra include tokens and ambiguous source-directory shadow files fail before
 cache lookup or compilation. Closure is limited to 256 source/header files.

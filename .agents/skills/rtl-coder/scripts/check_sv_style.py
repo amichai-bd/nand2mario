@@ -86,10 +86,20 @@ def violations(source):
     return sorted(found)
 
 
+# Only SystemVerilog is checked. Verilator configuration files (.vlt) beside
+# a testbench hold lint waivers, not declarations, and are left alone.
+CHECKED_SUFFIXES = ('.sv', '.svh')
+
+
+def checked(name):
+    return name.endswith(CHECKED_SUFFIXES)
+
+
 def main():
-    paths = subprocess.check_output(['git', 'ls-files', '-z', '--', '*.sv', '*.svh'], cwd=ROOT).decode().split('\0')
+    paths = subprocess.check_output(['git', 'ls-files', '-z', '--', *(f'*{suffix}' for suffix in CHECKED_SUFFIXES)],
+                                    cwd=ROOT).decode().split('\0')
     errors = []
-    for name in filter(None, paths):
+    for name in filter(checked, paths):
         source = (ROOT / name).read_text(encoding='utf-8')
         for line in legacy_declarations(source):
             errors.append(f'{name}:{line}: use logic instead of wire/reg signals')

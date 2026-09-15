@@ -348,7 +348,8 @@
       "src/rtl/cpu/n2m_cpu_stop_policy.sv",
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_halt_lock.sv"
+      "src/dv/cpu/tb_cpu_halt_lock.sv",
+      "src/dv/cpu/cpu_lint.vlt"
     ],
     "top": "tb_cpu_halt_lock",
     "simulators": [
@@ -371,7 +372,8 @@
       "src/rtl/cpu/n2m_cpu_stop_policy.sv",
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_halt_lock.sv"
+      "src/dv/cpu/tb_cpu_halt_lock.sv",
+      "src/dv/cpu/cpu_lint.vlt"
     ],
     "top": "tb_cpu_halt_lock",
     "simulators": [
@@ -436,7 +438,8 @@
       "src/rtl/cpu/n2m_cpu_stop_policy.sv",
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_if_observation.sv"
+      "src/dv/cpu/tb_cpu_if_observation.sv",
+      "src/dv/cpu/cpu_lint.vlt"
     ],
     "top": "tb_cpu_if_observation",
     "simulators": [
@@ -457,7 +460,8 @@
       "src/rtl/cpu/n2m_cpu_stop_policy.sv",
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_if_observation.sv"
+      "src/dv/cpu/tb_cpu_if_observation.sv",
+      "src/dv/cpu/cpu_lint.vlt"
     ],
     "top": "tb_cpu_if_observation",
     "simulators": [
@@ -635,7 +639,8 @@
       "src/rtl/cpu/n2m_cpu_stop_policy.sv",
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_halt_lock.sv"
+      "src/dv/cpu/tb_cpu_halt_lock.sv",
+      "src/dv/cpu/cpu_lint.vlt"
     ],
     "top": "tb_cpu_halt_lock",
     "simulators": [
@@ -658,7 +663,8 @@
       "src/rtl/cpu/n2m_cpu_stop_policy.sv",
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_program.sv"
+      "src/dv/cpu/tb_cpu_program.sv",
+      "src/dv/cpu/cpu_lint.vlt"
     ],
     "top": "tb_cpu_program",
     "simulators": [
@@ -679,7 +685,8 @@
       "src/rtl/cpu/n2m_cpu_stop_policy.sv",
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_program.sv"
+      "src/dv/cpu/tb_cpu_program.sv",
+      "src/dv/cpu/cpu_lint.vlt"
     ],
     "top": "tb_cpu_program",
     "simulators": [
@@ -702,7 +709,8 @@
       "src/rtl/cpu/n2m_cpu_stop_policy.sv",
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_program.sv"
+      "src/dv/cpu/tb_cpu_program.sv",
+      "src/dv/cpu/cpu_lint.vlt"
     ],
     "top": "tb_cpu_program",
     "simulators": [
@@ -725,7 +733,8 @@
       "src/rtl/cpu/n2m_cpu_stop_policy.sv",
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_program.sv"
+      "src/dv/cpu/tb_cpu_program.sv",
+      "src/dv/cpu/cpu_lint.vlt"
     ],
     "top": "tb_cpu_program",
     "simulators": [
@@ -748,7 +757,8 @@
       "src/rtl/cpu/n2m_cpu_stop_policy.sv",
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_program.sv"
+      "src/dv/cpu/tb_cpu_program.sv",
+      "src/dv/cpu/cpu_lint.vlt"
     ],
     "top": "tb_cpu_program",
     "simulators": [
@@ -772,7 +782,8 @@
       "src/rtl/cpu/n2m_cpu_stop_policy.sv",
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_program.sv"
+      "src/dv/cpu/tb_cpu_program.sv",
+      "src/dv/cpu/cpu_lint.vlt"
     ],
     "top": "tb_cpu_program",
     "simulators": [
@@ -795,7 +806,8 @@
       "src/rtl/cpu/n2m_cpu_stop_policy.sv",
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_program.sv"
+      "src/dv/cpu/tb_cpu_program.sv",
+      "src/dv/cpu/cpu_lint.vlt"
     ],
     "top": "tb_cpu_program",
     "simulators": [
@@ -818,7 +830,8 @@
       "src/rtl/cpu/n2m_cpu_stop_policy.sv",
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_program.sv"
+      "src/dv/cpu/tb_cpu_program.sv",
+      "src/dv/cpu/cpu_lint.vlt"
     ],
     "top": "tb_cpu_program",
     "simulators": [
@@ -1209,7 +1222,8 @@
       "src/rtl/cpu/n2m_cpu_stop_policy.sv",
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_vectors.sv"
+      "src/dv/cpu/tb_cpu_vectors.sv",
+      "src/dv/cpu/cpu_lint.vlt"
     ],
     "top": "tb_cpu_vectors",
     "simulators": [
@@ -1231,7 +1245,8 @@
       "src/rtl/cpu/n2m_cpu_stop_policy.sv",
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_vectors.sv"
+      "src/dv/cpu/tb_cpu_vectors.sv",
+      "src/dv/cpu/cpu_lint.vlt"
     ],
     "top": "tb_cpu_vectors",
     "simulators": [
@@ -1255,7 +1270,8 @@
       "src/rtl/cpu/n2m_cpu_stop_policy.sv",
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_vectors.sv"
+      "src/dv/cpu/tb_cpu_vectors.sv",
+      "src/dv/cpu/cpu_lint.vlt"
     ],
     "top": "tb_cpu_vectors",
     "simulators": [
@@ -4216,7 +4232,8 @@
       "src/rtl/cpu/n2m_cpu_stop_policy.sv",
       "src/rtl/cpu/n2m_cpu_control.sv",
       "src/rtl/cpu/n2m_cpu.sv",
-      "src/dv/cpu/tb_cpu_vectors.sv"
+      "src/dv/cpu/tb_cpu_vectors.sv",
+      "src/dv/cpu/cpu_lint.vlt"
     ],
     "top": "tb_cpu_vectors",
     "simulators": [
