@@ -134,6 +134,13 @@ module n2m_sim_sdram #(
         device_data = '0;
     end
 
+    // Fixture preload: one 16-bit word at an even device byte address, byte
+    // `address` in bits 7:0. Call after the controller raises CKE, because
+    // CKE low restarts the device with empty storage.
+    task automatic preload_word(input logic [25:0] address, input logic [15:0] value);
+        words[word_key(address[25:24], address[23:11], address[10:1])] = value;
+    endtask
+
     always @(posedge dram_clk) begin : device
         command_t command;
         logic drive_now;

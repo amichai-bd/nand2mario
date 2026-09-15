@@ -1451,7 +1451,7 @@
         "description": "One image slot: a complete 32 KiB dmg-direct-v1 image"
       },
       {
-        "name": "SLOT_COUNT",
+        "name": "SLOTS",
         "bits": 8,
         "value": 16,
         "description": "Game slots 0-15"
@@ -1463,10 +1463,10 @@
         "description": "Image index of the menu image; the largest selectable index"
       },
       {
-        "name": "IMAGE_COUNT",
+        "name": "CATALOGUE_ENTRIES",
         "bits": 8,
         "value": 17,
-        "description": "Sixteen game slots plus the menu"
+        "description": "Catalogue entries: sixteen game slots plus the menu"
       },
       {
         "name": "WINDOW_BYTES",
@@ -1485,6 +1485,12 @@
         "bits": 32,
         "value": 557056,
         "description": "SDRAM byte address of the catalogue table; window bank 34"
+      },
+      {
+        "name": "ENTRY_BYTES",
+        "bits": 8,
+        "value": 32,
+        "description": "One catalogue entry; the catalogue_entry record lays it out"
       },
       {
         "name": "CATALOGUE_VALID",

@@ -77,7 +77,12 @@ module tb_uart_endpoint;
         .io_if(8'h13), .io_ie(8'h1f),
         .peek_ready(peek_ready),.peek_read(peek_read),.peek_select(peek_select),.peek_offset(peek_offset),
         .peek_rdata(peek_rdata),.peek_valid(peek_valid),
-        .sdram_initialized(1'b0), .sdram_request_valid(), .sdram_request_write(), .sdram_request_address(), .sdram_request_data(), .sdram_request_ready(1'b0), .sdram_response_valid(1'b0), .sdram_response_data('0)
+        .sdram_initialized(1'b0), .sdram_request_valid(), .sdram_request_write(), .sdram_request_address(), .sdram_request_data(), .sdram_request_ready(1'b0), .sdram_response_valid(1'b0), .sdram_response_data('0),
+        // No loader profile in this composition.
+        .loader_copy_busy(1'b0), .loader_swap_busy(1'b0), .engine_invalidate(1'b0), .engine_publish(1'b0),
+        .engine_profile(8'd0), .library_status(32'd0), .library_key1(32'd0), .engine_pause(1'b0),
+        .engine_reset_request(1'b0), .engine_reset_accept(), .engine_reset_done(), .host_session(),
+        .host_port_busy(), .library_return()
     );
     n2m_timebase u_timebase (.*);
     n2m_cpu u_cpu (
@@ -471,7 +476,7 @@ module tb_uart_endpoint;
             exchange(2,4,0,4);
         end
         word_request(32'h10040);expect_word(epoch-1);exchange(2,4,0,4);
-        word_request(32'h10098);exchange(2,4,4,0);
+        word_request(32'h100a4);exchange(2,4,4,0);
         word_request(32'h10050);expect_word(32'h91);exchange(2,4,0,4);
         word_request(32'h10060);expect_word(32'h5a);exchange(2,4,0,4);
         word_request(32'h1007c);expect_word(32'hab);exchange(2,4,0,4);

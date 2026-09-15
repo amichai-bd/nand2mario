@@ -1,5 +1,5 @@
 // Generated from cfg/interfaces.json by tools/n2m/interfaces.py; DO NOT EDIT.
-// Source SHA-256: 8ac4111c2bf4c6b6a57e660228071fb41e2bfd627c1d3ced6a9d0c60fbb17624
+// Source SHA-256: 61baa1343688abb0beeceb051ddd5f1459db24b156e1f09ba823b7ce03dc5955
 `timescale 1ns/1ps
 package n2m_interfaces_pkg;
   localparam logic [7:0] GB_ADDRESS_BITS = 8'h10;
@@ -237,12 +237,13 @@ package n2m_interfaces_pkg;
   localparam logic [7:0] SDRAM_LINE_BYTES = 8'h10;
   localparam logic [7:0] SDRAM_READ_MAX_LINES = 8'hF;
   localparam logic [31:0] LIBRARY_SLOT_BYTES = 32'h8000;
-  localparam logic [7:0] LIBRARY_SLOT_COUNT = 8'h10;
+  localparam logic [7:0] LIBRARY_SLOTS = 8'h10;
   localparam logic [7:0] LIBRARY_MENU_INDEX = 8'h10;
-  localparam logic [7:0] LIBRARY_IMAGE_COUNT = 8'h11;
+  localparam logic [7:0] LIBRARY_CATALOGUE_ENTRIES = 8'h11;
   localparam logic [31:0] LIBRARY_WINDOW_BYTES = 32'h4000;
   localparam logic [7:0] LIBRARY_WINDOW_BANKS = 8'h40;
   localparam logic [31:0] LIBRARY_CATALOGUE_ADDRESS = 32'h88000;
+  localparam logic [7:0] LIBRARY_ENTRY_BYTES = 8'h20;
   localparam logic [7:0] LIBRARY_CATALOGUE_VALID = 8'h1;
   localparam logic [31:0] LIBRARY_FILL_BOUND_EDGES = 32'h9C40;
   localparam logic [31:0] LIBRARY_SWAP_BOUND_EDGES = 32'h13880;
