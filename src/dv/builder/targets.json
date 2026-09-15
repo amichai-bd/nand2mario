@@ -6467,7 +6467,8 @@
       "src/rtl/cpu/n2m_cpu_pkg.sv",
       "src/rtl/dma/n2m_oam_pkg.sv",
       "src/rtl/dma/n2m_oam_qualify.sv",
-      "src/dv/dma/tb_oam_qualify.sv"
+      "src/dv/dma/tb_oam_qualify.sv",
+      "src/dv/dma/dma_lint.vlt"
     ]
   },
   "oam-qualify-corrupt": {
@@ -6486,7 +6487,8 @@
       "src/rtl/cpu/n2m_cpu_pkg.sv",
       "src/rtl/dma/n2m_oam_pkg.sv",
       "src/rtl/dma/n2m_oam_qualify.sv",
-      "src/dv/dma/tb_oam_qualify.sv"
+      "src/dv/dma/tb_oam_qualify.sv",
+      "src/dv/dma/dma_lint.vlt"
     ]
   },
   "oam-qualify-mask": {
@@ -6505,7 +6507,8 @@
       "src/rtl/cpu/n2m_cpu_pkg.sv",
       "src/rtl/dma/n2m_oam_pkg.sv",
       "src/rtl/dma/n2m_oam_qualify.sv",
-      "src/dv/dma/tb_oam_qualify.sv"
+      "src/dv/dma/tb_oam_qualify.sv",
+      "src/dv/dma/dma_lint.vlt"
     ]
   },
   "dma-io": {
@@ -6686,7 +6689,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
-      "src/dv/dma/tb_dma_tags.sv"
+      "src/dv/dma/tb_dma_tags.sv",
+      "src/dv/dma/dma_lint.vlt"
     ],
     "top": "tb_dma_tags",
     "simulators": [
@@ -6715,7 +6719,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
-      "src/dv/dma/tb_dma_tags.sv"
+      "src/dv/dma/tb_dma_tags.sv",
+      "src/dv/dma/dma_lint.vlt"
     ],
     "top": "tb_dma_tags",
     "simulators": [
@@ -6746,7 +6751,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
-      "src/dv/dma/tb_dma_tags.sv"
+      "src/dv/dma/tb_dma_tags.sv",
+      "src/dv/dma/dma_lint.vlt"
     ],
     "top": "tb_dma_tags",
     "simulators": [
@@ -6777,7 +6783,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
-      "src/dv/dma/tb_dma_tags.sv"
+      "src/dv/dma/tb_dma_tags.sv",
+      "src/dv/dma/dma_lint.vlt"
     ],
     "top": "tb_dma_tags",
     "simulators": [
@@ -6808,7 +6815,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
-      "src/dv/dma/tb_dma_tags.sv"
+      "src/dv/dma/tb_dma_tags.sv",
+      "src/dv/dma/dma_lint.vlt"
     ],
     "top": "tb_dma_tags",
     "simulators": [
@@ -11711,7 +11719,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
-      "src/dv/dma/tb_dma_late.sv"
+      "src/dv/dma/tb_dma_late.sv",
+      "src/dv/dma/dma_lint.vlt"
     ],
     "top": "tb_dma_late",
     "simulators": [
@@ -11740,7 +11749,8 @@
       "src/rtl/dma/n2m_dma_engine.sv",
       "src/rtl/dma/n2m_dma_service.sv",
       "src/rtl/dma/n2m_dma.sv",
-      "src/dv/dma/tb_dma_late.sv"
+      "src/dv/dma/tb_dma_late.sv",
+      "src/dv/dma/dma_lint.vlt"
     ],
     "top": "tb_dma_late",
     "simulators": [
