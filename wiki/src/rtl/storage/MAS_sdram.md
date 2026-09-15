@@ -398,6 +398,11 @@ address-dependent line pattern over a range (one slot by default, the whole
 device with `--full`) or over the boundary set above (`--boundary`) and reads
 it back with every mismatch listed by address; it is authorized per session and
 does not replace the simulation bounds.
+Simulation results, including the reproduction fixtures above, are
+preliminary evidence only: the storage contract counts as met on the board
+only when the corrected volatile bitstream has run on the DE10-Lite and the
+one-slot plus boundary-line UART tests have passed, with the fit,
+programming, host-status and test records retained and linked.
 
 ## References
 
