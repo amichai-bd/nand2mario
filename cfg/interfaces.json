@@ -547,6 +547,12 @@
         "description": "dmg-direct-v1; original v0.5 programs only"
       },
       {
+        "name": "LOADER_ID",
+        "bits": 8,
+        "value": 2,
+        "description": "Banked-window loader profile of the on-board menu; wiki/src/rtl/cartridge/MAS_loader_profile.md"
+      },
+      {
         "name": "ROM_BYTES",
         "bits": 32,
         "value": 32768,
@@ -939,6 +945,24 @@
         "bits": 32,
         "value": 65684,
         "description": "LCDC, STAT and LY sampled on one edge; LY in bits 7:0; read-only live view"
+      },
+      {
+        "name": "LIBRARY_STATUS",
+        "bits": 32,
+        "value": 65688,
+        "description": "Loader status: $A000 byte in bits 7:0, $A002 result in 15:8, $A003 last index in 23:16, bank in 29:24; read-only"
+      },
+      {
+        "name": "LIBRARY_KEY1",
+        "bits": 32,
+        "value": 65692,
+        "description": "KEY1 debounced hold counter in system clock edges; read-only"
+      },
+      {
+        "name": "LIBRARY_CONTROL",
+        "bits": 32,
+        "value": 65696,
+        "description": "Write 1 through WRITE_HOST to request the menu return exactly like a KEY1 hold; reads as 0"
       }
     ],
     "state": [
@@ -1385,6 +1409,12 @@
         "bits": 32,
         "value": 1,
         "description": "Writable source selection bit."
+      },
+      {
+        "name": "LIBRARY_CONTROL",
+        "bits": 32,
+        "value": 1,
+        "description": "Writable menu-return request bit."
       }
     ],
     "sdram": [
@@ -1411,6 +1441,146 @@
         "bits": 8,
         "value": 15,
         "description": "Largest SDRAM_READ line count; 15 lines fit one response payload"
+      }
+    ],
+    "library": [
+      {
+        "name": "SLOT_BYTES",
+        "bits": 32,
+        "value": 32768,
+        "description": "One image slot: a complete 32 KiB dmg-direct-v1 image"
+      },
+      {
+        "name": "SLOT_COUNT",
+        "bits": 8,
+        "value": 16,
+        "description": "Game slots 0-15"
+      },
+      {
+        "name": "MENU_INDEX",
+        "bits": 8,
+        "value": 16,
+        "description": "Image index of the menu image; the largest selectable index"
+      },
+      {
+        "name": "IMAGE_COUNT",
+        "bits": 8,
+        "value": 17,
+        "description": "Sixteen game slots plus the menu"
+      },
+      {
+        "name": "WINDOW_BYTES",
+        "bits": 32,
+        "value": 16384,
+        "description": "One banked window: the ROM store upper half"
+      },
+      {
+        "name": "WINDOW_BANKS",
+        "bits": 8,
+        "value": 64,
+        "description": "Window bank register range; bank n is SDRAM bytes n*WINDOW_BYTES onward"
+      },
+      {
+        "name": "CATALOGUE_ADDRESS",
+        "bits": 32,
+        "value": 557056,
+        "description": "SDRAM byte address of the catalogue table; window bank 34"
+      },
+      {
+        "name": "CATALOGUE_VALID",
+        "bits": 8,
+        "value": 1,
+        "description": "Catalogue valid byte of a selectable entry"
+      },
+      {
+        "name": "FILL_BOUND_EDGES",
+        "bits": 32,
+        "value": 40000,
+        "description": "Window fill bound from the bank commit edge to window_busy falling"
+      },
+      {
+        "name": "SWAP_BOUND_EDGES",
+        "bits": 32,
+        "value": 80000,
+        "description": "Image swap bound from the accepting select commit edge to copy_busy falling"
+      },
+      {
+        "name": "RESULT_NONE",
+        "bits": 8,
+        "value": 0,
+        "description": "$A002: no swap since global reset"
+      },
+      {
+        "name": "RESULT_OK",
+        "bits": 8,
+        "value": 1,
+        "description": "$A002: the last swap completed with a matching CRC"
+      },
+      {
+        "name": "RESULT_INVALID_SLOT",
+        "bits": 8,
+        "value": 2,
+        "description": "$A002: the catalogue entry was not a valid 32768-byte image with a known profile"
+      },
+      {
+        "name": "RESULT_CRC_MISMATCH",
+        "bits": 8,
+        "value": 3,
+        "description": "$A002: the copied bytes did not match the catalogue CRC"
+      },
+      {
+        "name": "RESULT_NOT_READY",
+        "bits": 8,
+        "value": 4,
+        "description": "$A002: a select or bank commit while the SDRAM was not ready"
+      },
+      {
+        "name": "STATUS_COPY_BUSY",
+        "bits": 8,
+        "value": 128,
+        "description": "$A000 bit 7: a window fill or swap is in progress"
+      },
+      {
+        "name": "STATUS_WINDOW_READY",
+        "bits": 8,
+        "value": 64,
+        "description": "$A000 bit 6: the upper half holds the selected bank completely"
+      },
+      {
+        "name": "STATUS_SDRAM_READY",
+        "bits": 8,
+        "value": 32,
+        "description": "$A000 bit 5: the SDRAM controller is initialized and no boot copier runs"
+      },
+      {
+        "name": "STATUS_KEY1_PENDING",
+        "bits": 8,
+        "value": 16,
+        "description": "$A000 bit 4: a KEY1 return waits for the current copy to finish"
+      },
+      {
+        "name": "STATUS_FLASH_BOOT",
+        "bits": 8,
+        "value": 8,
+        "description": "$A000 bit 3: this power-up's library was copied from flash"
+      },
+      {
+        "name": "CONTROL_RETURN",
+        "bits": 32,
+        "value": 1,
+        "description": "WRITE_HOST(LIBRARY_CONTROL) value that requests the menu return"
+      },
+      {
+        "name": "KEY1_DEBOUNCE_EDGES",
+        "bits": 32,
+        "value": 125000,
+        "description": "KEY1 level must be stable this many edges (5 ms) before the debounced level changes"
+      },
+      {
+        "name": "KEY1_HOLD_EDGES",
+        "bits": 32,
+        "value": 12500000,
+        "description": "Debounced KEY1 press length (0.5 s) that raises one menu return"
       }
     ]
   },
@@ -1748,6 +1918,43 @@
         "name": "count",
         "bits": 8,
         "description": "1 through READ_MAX_LINES lines; the whole range stays inside the device"
+      }
+    ],
+    "catalogue_entry": [
+      {
+        "name": "valid",
+        "bits": 8,
+        "description": "1 valid image, 0 empty slot; any other value is invalid"
+      },
+      {
+        "name": "profile",
+        "bits": 8,
+        "description": "Profile ID the image runs in: DIRECT_ID for games, LOADER_ID for the menu"
+      },
+      {
+        "name": "length",
+        "bits": 16,
+        "description": "Image length; must equal SLOT_BYTES"
+      },
+      {
+        "name": "crc32",
+        "bits": 32,
+        "description": "CRC-32/ISO-HDLC of the 32768 image bytes, as LOAD_BEGIN"
+      },
+      {
+        "name": "title_low",
+        "bits": 64,
+        "description": "Image header bytes 0x0134-0x013B verbatim"
+      },
+      {
+        "name": "title_high",
+        "bits": 64,
+        "description": "Image header bytes 0x013C-0x0143 verbatim"
+      },
+      {
+        "name": "reserved",
+        "bits": 64,
+        "description": "Zero"
       }
     ]
   },
