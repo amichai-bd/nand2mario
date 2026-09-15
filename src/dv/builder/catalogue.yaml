@@ -217,7 +217,7 @@ units:
   interrupts-duplicate: {kind: sim, level: 2, labels: [fault, interrupts], duration_seconds: 0.50}
   interrupts-lost: {kind: sim, level: 2, labels: [fault, interrupts], duration_seconds: 0.49}
   interrupts-priority: {kind: sim, level: 2, labels: [fault, interrupts], duration_seconds: 0.48}
-  io-peek: {kind: sim, level: 0, labels: [interrupts, ppu, timer, uart], duration_seconds: 2.55}
+  io-peek: {kind: sim, level: 0, labels: [interrupts, ppu, timer, uart], duration_seconds: 0.61}
   io-peek-disturb: {kind: sim, level: 0, labels: [fault, interrupts, ppu, timer, uart], duration_seconds: 0.55}
   joypad-boundary-fault: {kind: sim, level: 2, labels: [fault, joypad], duration_seconds: 2.30}
   joypad-events: {kind: sim, level: 1, labels: [joypad], duration_seconds: 3.78}
@@ -307,9 +307,9 @@ units:
   ppu-window-wx166: {kind: sim, level: 2, labels: [ppu], duration_seconds: 2.63}
   ppu-window-wy: {kind: sim, level: 2, labels: [ppu], duration_seconds: 2.68}
   ppu-window-wy-late: {kind: sim, level: 2, labels: [ppu], duration_seconds: 2.66}
-  preload-crc-fault: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 3.83}
+  preload-crc-fault: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 0.73}
   preload-fixture: {kind: sim, level: 1, labels: [preload], duration_seconds: 1.40}
-  preload-lifecycle: {kind: sim, level: 1, labels: [uart], duration_seconds: 1.20}
+  preload-lifecycle: {kind: sim, level: 1, labels: [uart], duration_seconds: 1.48}
   python-bka: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 37.27}
   python-bkb: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 31.61}
   python-bks: {kind: sim, level: 2, labels: [integration, python-tb, springtrail, system, v05], duration_seconds: 15.43}
@@ -438,9 +438,9 @@ units:
   register-macros-corrupt: {kind: sim, level: 2, labels: [common, fault], duration_seconds: 0.45}
   sdram-fault-before-init: {kind: sim, level: 1, labels: [fault, storage], duration_seconds: 2.92}
   sdram-fault-deadline: {kind: sim, level: 1, labels: [fault, storage], duration_seconds: 3.03}
+  sdram-fault-misaligned: {kind: sim, level: 1, labels: [fault, storage], duration_seconds: 0.53}
   sdram-fault-read-early: {kind: sim, level: 1, labels: [fault, storage], duration_seconds: 3.03}
   sdram-fault-read-late: {kind: sim, level: 1, labels: [fault, storage], duration_seconds: 2.76}
-  sdram-fault-misaligned: {kind: sim, level: 1, labels: [fault, storage], duration_seconds: 0.53}
   sdram-init: {kind: sim, level: 1, labels: [storage], duration_seconds: 0.53}
   sdram-line: {kind: sim, level: 1, labels: [storage], duration_seconds: 0.55}
   sdram-refresh: {kind: sim, level: 1, labels: [storage], duration_seconds: 0.64}
@@ -623,39 +623,39 @@ units:
   tools/wiki/test_refresh_statistics.py: {kind: unit, level: 0, labels: [wiki], duration_seconds: 0.08}
   tools/wiki/test_repository_stats.py: {kind: unit, level: 0, labels: [wiki], duration_seconds: 0.13}
   tools/wiki/test_site.py: {kind: unit, level: 0, labels: [wiki], duration_seconds: 0.16}
-  uart-endpoint: {kind: sim, level: 2, labels: [uart], duration_seconds: 29.69}
-  uart-endpoint-duplicate: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 2.90}
-  uart-endpoint-readback: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 16.70}
-  uart-exchange: {kind: sim, level: 2, labels: [uart], duration_seconds: 4.01}
-  uart-exchange-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 1.22}
-  uart-exchange-duplicate: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 1.23}
-  uart-input-mmio: {kind: sim, level: 2, labels: [uart], duration_seconds: 3.63}
-  uart-load: {kind: sim, level: 2, labels: [uart], duration_seconds: 4.94}
-  uart-load-crc: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 0.95}
-  uart-load-presence: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 1.64}
-  uart-packet-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 3.05}
-  uart-packet-range: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 1.22}
-  uart-packet-rx: {kind: sim, level: 2, labels: [uart], duration_seconds: 1.22}
-  uart-packet-tx: {kind: sim, level: 2, labels: [uart], duration_seconds: 2.45}
-  uart-packet-tx-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 0.50}
-  uart-packet-tx-missing: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 0.49}
-  uart-peek: {kind: sim, level: 2, labels: [host, memory, uart], duration_seconds: 13.99}
-  uart-peek-fault: {kind: sim, level: 2, labels: [fault, host, memory, uart], duration_seconds: 10.01}
-  uart-response: {kind: sim, level: 2, labels: [uart], duration_seconds: 2.49}
-  uart-response-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 0.52}
-  uart-run-dots: {kind: sim, level: 2, labels: [uart], duration_seconds: 3.13}
-  uart-run-dots-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 0.54}
-  uart-run-dots-wire: {kind: sim, level: 2, labels: [uart], duration_seconds: 33.77}
-  uart-sdram: {kind: sim, level: 1, labels: [host, storage, uart], duration_seconds: 3.92}
-  uart-sdram-fault: {kind: sim, level: 1, labels: [fault, host, storage, uart], duration_seconds: 1.93}
-  uart-serial: {kind: sim, level: 2, labels: [uart], duration_seconds: 4.70}
-  uart-serial-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 0.57}
-  uart-snapshot: {kind: sim, level: 2, labels: [uart], duration_seconds: 11.94}
-  uart-snapshot-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 1.76}
-  uart-stopped-step: {kind: sim, level: 2, labels: [uart], duration_seconds: 3.78}
-  uart-stopped-step-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 1.61}
-  uart-validation: {kind: sim, level: 2, labels: [uart], duration_seconds: 0.53}
-  uart-validation-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 0.52}
+  uart-endpoint: {kind: sim, level: 2, labels: [uart], duration_seconds: 36.63}
+  uart-endpoint-duplicate: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 3.73}
+  uart-endpoint-readback: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 20.48}
+  uart-exchange: {kind: sim, level: 2, labels: [uart], duration_seconds: 1.49}
+  uart-exchange-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 1.44}
+  uart-exchange-duplicate: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 1.61}
+  uart-input-mmio: {kind: sim, level: 2, labels: [uart], duration_seconds: 4.71}
+  uart-load: {kind: sim, level: 2, labels: [uart], duration_seconds: 2.40}
+  uart-load-crc: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 1.12}
+  uart-load-presence: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 2.20}
+  uart-packet-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 1.82}
+  uart-packet-range: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 1.77}
+  uart-packet-rx: {kind: sim, level: 2, labels: [uart], duration_seconds: 1.98}
+  uart-packet-tx: {kind: sim, level: 2, labels: [uart], duration_seconds: 0.98}
+  uart-packet-tx-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 1.13}
+  uart-packet-tx-missing: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 1.24}
+  uart-peek: {kind: sim, level: 2, labels: [host, memory, uart], duration_seconds: 23.28}
+  uart-peek-fault: {kind: sim, level: 2, labels: [fault, host, memory, uart], duration_seconds: 15.99}
+  uart-response: {kind: sim, level: 2, labels: [uart], duration_seconds: 0.77}
+  uart-response-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 0.78}
+  uart-run-dots: {kind: sim, level: 2, labels: [uart], duration_seconds: 1.57}
+  uart-run-dots-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 1.05}
+  uart-run-dots-wire: {kind: sim, level: 2, labels: [uart], duration_seconds: 42.21}
+  uart-sdram: {kind: sim, level: 1, labels: [host, storage, uart], duration_seconds: 2.62}
+  uart-sdram-fault: {kind: sim, level: 1, labels: [fault, host, storage, uart], duration_seconds: 2.30}
+  uart-serial: {kind: sim, level: 2, labels: [uart], duration_seconds: 2.71}
+  uart-serial-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 0.70}
+  uart-snapshot: {kind: sim, level: 2, labels: [uart], duration_seconds: 10.41}
+  uart-snapshot-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 2.08}
+  uart-stopped-step: {kind: sim, level: 2, labels: [uart], duration_seconds: 1.63}
+  uart-stopped-step-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 1.73}
+  uart-validation: {kind: sim, level: 2, labels: [uart], duration_seconds: 0.70}
+  uart-validation-corrupt: {kind: sim, level: 2, labels: [fault, uart], duration_seconds: 0.68}
   verilator-peer: {kind: sim, level: 1, labels: [builder, integration, python-tb], duration_seconds: 1.04}
   verilator-peer-fatal: {kind: sim, level: 2, labels: [builder, fault, integration, python-tb], duration_seconds: 0.88}
   verilator-peer-fault: {kind: sim, level: 2, labels: [fault, integration, python-tb], duration_seconds: 0.89}
