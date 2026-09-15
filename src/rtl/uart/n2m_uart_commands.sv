@@ -108,7 +108,7 @@ module n2m_uart_commands (
     // Quartus 25.1 rejects package-qualified constants inside instance
     // expressions (error 10162); these aliases keep the owning values.
     localparam logic [7:0] SDRAM_WRITE_COMMAND = n2m_interfaces_pkg::COMMAND_SDRAM_WRITE;
-    localparam integer SDRAM_ADDRESS_BITS = n2m_interfaces_pkg::SDRAM_ADDRESS_BITS;
+    localparam integer SDRAM_ADDRESS_BITS = 32'(n2m_interfaces_pkg::SDRAM_ADDRESS_BITS);
     logic sdram_write_selected;
     logic [n2m_uart_pkg::UART_ADDRESS_BITS-1:0] index, index_next;
     logic loading, loading_next, image_valid_next;
