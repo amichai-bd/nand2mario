@@ -1,6 +1,10 @@
 `timescale 1ns/1ps
 `default_nettype none
 
+// Lint waiver: integer bookkeeping and file handles are tested as booleans
+// and against narrow DUT fields; the width lint on those idioms is a false positive.
+/* verilator lint_off WIDTHEXPAND */
+/* verilator lint_off WIDTHTRUNC */
 module tb_cpu_program;
     logic clk_sys;
     logic reset_sys;
@@ -87,17 +91,17 @@ module tb_cpu_program;
             if (address_effect_sample || address_effect.valid)
                 $fatal(1, "CPU_PROGRAM_IDU_RESET");
         end else begin
-            if (address_effect_phase !== dot_before[1:0] ||
-                    address_effect_sample !== (gb_tick && dot_before[1:0] == 3 && response_valid && bus_index < 50))
+            if (address_effect_phase != dot_before[1:0] ||
+                    address_effect_sample != (gb_tick && dot_before[1:0] == 3 && response_valid && bus_index < 50))
                 $fatal(1, "CPU_PROGRAM_IDU_EDGE dot=%0d", dot_before);
             if (bus_index < 50) begin
                 expected_effect_mask = expected_effect_valid[bus_index] ? 16'hffff : 0;
                 if (bus_index == 32) expected_effect_mask = 16'hff00;
                 if (!address_effect_resolved ||
-                        address_effect.valid !== expected_effect_valid[bus_index] ||
-                        address_effect.write_effect !== expected_effect_valid[bus_index] ||
-                        address_effect.address !== expected_effect_address[bus_index] ||
-                        address_effect.known_mask !== expected_effect_mask)
+                        address_effect.valid != expected_effect_valid[bus_index] ||
+                        address_effect.write_effect != expected_effect_valid[bus_index] ||
+                        address_effect.address != expected_effect_address[bus_index] ||
+                        address_effect.known_mask != expected_effect_mask)
                     $fatal(1, "CPU_PROGRAM_IDU cycle=%0d dot=%0d expected=%0d/%04h/%04h actual=%0d/%04h/%04h resolved=%0d",
                         bus_index, dot_before, expected_effect_valid[bus_index],
                         expected_effect_address[bus_index], expected_effect_mask,
@@ -114,8 +118,8 @@ module tb_cpu_program;
                         bus_index, address_effect.valid, address_effect.address,
                         address_effect.known_mask, address_effect.write_effect);
             end else if (!address_effect_resolved || !address_effect.valid ||
-                    !address_effect.write_effect || address_effect.address !== 16'h0131 ||
-                    address_effect.known_mask !== 16'hffff || address_effect_sample)
+                    !address_effect.write_effect || address_effect.address != 16'h0131 ||
+                    address_effect.known_mask != 16'hffff || address_effect_sample)
                 $fatal(1, "CPU_PROGRAM_IDU_HALTED_PREPARATION");
         end
     endtask
@@ -130,13 +134,13 @@ module tb_cpu_program;
                 expected_write = encoded_kind >= 7;
                 if (expected_write) encoded_kind = encoded_kind - 4;
                 $fdisplay(trace, "%0d,%0d,%04h,%0d,%02h,%0d", dot_before+1, access_kind, address, write_enable, write_enable ? write_data : read_data, bus_commit);
-                if (bus_commit !== (encoded_kind != 0))
+                if (bus_commit != (encoded_kind != 0))
                     $fatal(1, "CPU_PROGRAM_TIMING dot=%0d expected_access=%0d actual_commit=%0d", dot_before+1, encoded_kind, bus_commit);
-                if (encoded_kind != 0 && (access_kind !== 3'(encoded_kind) || address !== expected_address[bus_index] || write_enable !== expected_write || (write_enable ? write_data : read_data) !== expected_data[bus_index]))
+                if (encoded_kind != 0 && (access_kind != 3'(encoded_kind) || address != expected_address[bus_index] || write_enable != expected_write || (write_enable ? write_data : read_data) != expected_data[bus_index]))
                     $fatal(1, "CPU_PROGRAM_BUS dot=%0d expected_address=%04h actual_address=%04h expected_data=%02h actual_data=%02h", dot_before+1, expected_address[bus_index], address, expected_data[bus_index], write_enable ? write_data : read_data);
                 bus_index = bus_index + 1;
             end else if (bus_commit || !request_valid || write_enable ||
-                    access_kind !== n2m_cpu_pkg::ACCESS_OPCODE || address !== 16'h0131)
+                    access_kind != n2m_cpu_pkg::ACCESS_OPCODE || address != 16'h0131)
                 $fatal(1, "CPU_PROGRAM_HALTED_ACCESS");
         end
     endtask
@@ -165,7 +169,7 @@ module tb_cpu_program;
                 (effect_page ? 16'hfdfe : 16'hcffe) : (effect_page ? 16'hfe00 : 16'hd000);
             if (event_index == 17) expected_record[336 +: 8] = 1;
             $fdisplay(records, "%0d,%096h,%096h", event_index, expected_record, retirement);
-            if (retirement !== expected_record)
+            if (retirement != expected_record)
                 $fatal(1, "CPU_PROGRAM_STATE event=%0d expected=%096h actual=%096h", event_index, expected_record, retirement);
             event_index = event_index + 1;
         end

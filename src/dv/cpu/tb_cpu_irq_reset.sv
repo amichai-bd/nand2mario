@@ -1,6 +1,9 @@
 `timescale 1ns/1ps
 `default_nettype none
 
+// Lint waiver: integer bookkeeping and file handles are tested as booleans
+// and against narrow DUT fields; the width lint on those idioms is a false positive.
+/* verilator lint_off WIDTHTRUNC */
 module tb_cpu_irq_reset;
     logic clk_sys;
     logic reset_sys;
@@ -88,7 +91,7 @@ module tb_cpu_irq_reset;
                 if (event_index==2) expected[368 +: 8]=1;
             end
             $fdisplay(records,"%0d,%0d,%0d,%096h,%096h",scenario,fresh,event_index,expected,retirement);
-            if (retirement!==expected) $fatal(1,"CPU_IRQ_RESET_RECORD case=%0d fresh=%0d event=%0d",scenario,fresh,event_index);
+            if (retirement!=expected) $fatal(1,"CPU_IRQ_RESET_RECORD case=%0d fresh=%0d event=%0d",scenario,fresh,event_index);
             event_index=event_index+1;
         end
     endtask
@@ -100,7 +103,7 @@ module tb_cpu_irq_reset;
         end else begin
             if (fault || halted || stopped || locked) $fatal(1,"CPU_IRQ_RESET_STATE");
             if (!gb_tick && (bus_commit || address_effect_sample)) $fatal(1,"CPU_IRQ_RESET_PAUSE");
-            if (address_effect_phase!==dot_before[1:0]) $fatal(1,"CPU_IRQ_RESET_PHASE");
+            if (address_effect_phase!=dot_before[1:0]) $fatal(1,"CPU_IRQ_RESET_PHASE");
             if (gb_tick && dot_before[1:0]==3) begin
                 expected_kind=1; expected_address=16'('h100+int'(dot_before)/4); expected_write=0; expected_byte=0;
                 if (!fresh) begin
@@ -113,9 +116,9 @@ module tb_cpu_irq_reset;
                     endcase
                 end
                 if (!expected_write) expected_byte=memory[expected_address];
-                if (bus_commit!==(expected_kind!=0) ||
-                        (expected_kind!=0 && (access_kind!==expected_kind || address!==expected_address ||
-                        write_enable!==expected_write || (write_enable ? write_data : read_data)!==expected_byte)))
+                if (bus_commit!=(expected_kind!=0) ||
+                        (expected_kind!=0 && (access_kind!=expected_kind || address!=expected_address ||
+                        write_enable!=expected_write || (write_enable ? write_data : read_data)!=expected_byte)))
                     $fatal(1,"CPU_IRQ_RESET_BUS case=%0d dot=%0d",scenario,dot_before+1);
             end
         end
@@ -160,7 +163,7 @@ module tb_cpu_irq_reset;
             if (target_dot>=32 && !capture_case) response_valid=0;
             // Do not publish the captured IRQ in the two trailing-edge cases.
             if (!capture_case) for (quiet=0; quiet<12; quiet=quiet+1) edge_cycle(0);
-            if (dot_before!==64'(target_dot) || event_index!=3 || writes!=expected_writes)
+            if (dot_before!=64'(target_dot) || event_index!=3 || writes!=expected_writes)
                 $fatal(1,"CPU_IRQ_RESET_HELD case=%0d writes=%0d expected=%0d",scenario,writes,expected_writes);
             if (global_case) reset_sys=1; else core_reset=1;
             if (corrupt && scenario==19) force dut.u_bus.commit=1'b1;
@@ -170,8 +173,8 @@ module tb_cpu_irq_reset;
             edge_cycle(1);
             if (retirement_valid || halted || stopped || locked || fault || address_effect_phase!=0)
                 $fatal(1,"CPU_IRQ_RESET_CLEARED");
-            if (writes!=expected_writes || memory['hfffd] !== (expected_writes>=1 ? 8'd1 : 8'd0) ||
-                    memory['hfffc] !== (expected_writes>=2 ? 8'd3 : 8'd0))
+            if (writes!=expected_writes || memory['hfffd] != (expected_writes>=1 ? 8'd1 : 8'd0) ||
+                    memory['hfffc] != (expected_writes>=2 ? 8'd3 : 8'd0))
                 $fatal(1,"CPU_IRQ_RESET_COMMITTED_MEMORY");
             iflags=0; response_valid=1; memory['h100]=0;
             fresh=1; event_index=0; epoch=32'(2*scenario+2);

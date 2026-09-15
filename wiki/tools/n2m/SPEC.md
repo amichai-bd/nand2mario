@@ -205,14 +205,15 @@ refuses each with a clear message, and a target that still needs them stays
 `questa` until its area migration. `preload` runs on the Verilator stage; see
 [preload fixtures](#preload-fixtures-under-verilator). The migrated targets
 are `builder-smoke`, `builder-smoke-fail`, `python-joypad`,
-`python-joypad-fault`, `preload-fixture` and the SystemVerilog targets whose
-registry row says `verilator` in the joypad, interrupt, timer, serial,
-clocking, interface, display and common areas; the [test catalogue](#test-catalogue)
-labels name them. The three `tb_clocking` targets and six
-`tb_async_assert_macros` targets stay `questa`: `--x-initial-edge` fires every
-clocked process once at time zero, which clocks their power-up initialized
-`DFF_INIT` registers before any real edge; see
-[#608](https://github.com/amichai-bd/nand2mario/issues/608).
+`python-joypad-fault`, `preload-fixture`, the 58 SystemVerilog targets
+labelled `cpu` in the [test catalogue](#test-catalogue), and the 34
+SystemVerilog targets whose registry row says `verilator` in the joypad,
+interrupt, timer, serial, clocking, interface, display and common areas. The
+three `tb_clocking` targets and six `tb_async_assert_macros` targets stay
+`questa`: `--x-initial-edge` fires every clocked process once at time zero,
+which clocks their power-up initialized `DFF_INIT` registers before any real
+edge; [#620](https://github.com/amichai-bd/nand2mario/issues/620) tracks
+them by name.
 
 ### Registered target execution
 

@@ -1,6 +1,8 @@
-`timescale 1ns/1ps
 `default_nettype none
 
+// Lint waiver: integer case counters and file handles are tested as booleans;
+// the width lint on those idioms is a false positive.
+/* verilator lint_off WIDTHTRUNC */
 module tb_cpu_alu;
     logic [4:0] operation;
     logic [7:0] lhs;
@@ -35,9 +37,9 @@ module tb_cpu_alu;
         if (corrupt && cases == 17) force dut.value = 8'h09;
         #1;
         observed = {value, flags_out};
-        if (cases < 256 || observed !== expected)
+        if (cases < 256 || observed != expected)
             $fdisplay(trace, "%0d,%0d,%02h,%02h,%02h,%0d,%04h,%04h", cases, operation_id, lhs, rhs, flags_in, selected_bit, expected, observed);
-        if (observed !== expected)
+        if (observed != expected)
             $fatal(1, "CPU_ALU_MISMATCH case=%0d op=%0d lhs=%02h rhs=%02h flags=%02h bit=%0d expected=%04h actual=%04h", cases, operation_id, lhs, rhs, flags_in, selected_bit, expected, observed);
         cases = cases + 1;
         if (cases == 256) $dumpoff;

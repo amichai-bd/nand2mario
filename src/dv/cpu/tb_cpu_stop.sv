@@ -1,6 +1,9 @@
 `timescale 1ns/1ps
 `default_nettype none
 
+// Lint waiver: integer bookkeeping and file handles are tested as booleans
+// and against narrow DUT fields; the width lint on those idioms is a false positive.
+/* verilator lint_off WIDTHTRUNC */
 module tb_cpu_stop;
     logic clk_sys;
     logic reset_sys;
@@ -74,14 +77,14 @@ module tb_cpu_stop;
 
     task automatic check_bus;
         expected_divider = gb_tick && dot_before == 15 && !joyp_selected_active;
-        if (divider_reset_request !== expected_divider)
+        if (divider_reset_request != expected_divider)
             $fatal(1, "CPU_STOP_DIVIDER case=%0d dot=%0d expected=%0d actual=%0d", scenario, dot_before+1, expected_divider, divider_reset_request);
         if (expected_divider) divider_count = divider_count + 1;
         if (!gb_tick && (bus_commit || address_effect_sample)) $fatal(1, "CPU_STOP_PAUSE_COMMIT");
         if (gb_tick && dot_before[1:0] == 3) begin
             if (dot_before == 15 && (!address_effect_sample || !address_effect_resolved ||
-                    !address_effect.valid || address_effect.address !== 16'h0103 ||
-                    address_effect.known_mask !== 16'hffff || !address_effect.write_effect))
+                    !address_effect.valid || address_effect.address != 16'h0103 ||
+                    address_effect.known_mask != 16'hffff || !address_effect.write_effect))
                 $fatal(1,"CPU_STOP_ENTRY_IDU_MATRIX case=%0d",scenario);
             expected_kind = 0;
             expected_address = 0;
@@ -99,9 +102,9 @@ module tb_cpu_stop;
                 36: if (interrupt_case) begin expected_kind=1; expected_address='h40; expected_byte=0; end
                 default: begin end
             endcase
-            if (bus_commit !== (expected_kind != 0) || irq_ack !== expected_ack ||
-                    (expected_kind != 0 && (access_kind !== expected_kind || address !== expected_address ||
-                    write_enable !== expected_write || (write_enable ? write_data : read_data) !== expected_byte)))
+            if (bus_commit != (expected_kind != 0) || irq_ack != expected_ack ||
+                    (expected_kind != 0 && (access_kind != expected_kind || address != expected_address ||
+                    write_enable != expected_write || (write_enable ? write_data : read_data) != expected_byte)))
                 $fatal(1, "CPU_STOP_BUS case=%0d dot=%0d expected=%0d/%04h/%02h actual=%0d/%04h/%02h ack=%02h", scenario, dot_before+1,
                     expected_kind, expected_address, expected_byte, access_kind,address,write_enable ? write_data : read_data,irq_ack);
             $fdisplay(trace,"%0d,%0d,%0d,%04h,%0d,%02h,%0d,%0d",scenario,dot_before+1,access_kind,address,write_enable,write_enable ? write_data : read_data,bus_commit,divider_reset_request);
@@ -151,7 +154,7 @@ module tb_cpu_stop;
                 default: $fatal(1,"CPU_STOP_EXTRA_EVENT case=%0d event=%0d",scenario,event_index);
             endcase
             $fdisplay(records,"%0d,%0d,%096h,%096h",scenario,event_index,expected,retirement);
-            if (retirement !== expected)
+            if (retirement != expected)
                 $fatal(1,"CPU_STOP_RECORD case=%0d event=%0d expected=%096h actual=%096h",scenario,event_index,expected,retirement);
             event_index = event_index + 1;
         end
@@ -207,7 +210,7 @@ module tb_cpu_stop;
             for (quiet=0; quiet<40; quiet=quiet+1) edge_cycle(0);
             if (fault || locked || !initialized || event_index != (continue_case ? 4 : 3) ||
                     divider_count != (joyp_selected_active ? 0 : 1) ||
-                    stopped !== !joyp_selected_active || halted !== (joyp_selected_active && !pending_case) || dot_before != 64'(target_dot))
+                    stopped != !joyp_selected_active || halted != (joyp_selected_active && !pending_case) || dot_before != 64'(target_dot))
                 $fatal(1,"CPU_STOP_FINAL case=%0d events=%0d div=%0d halt=%0d stop=%0d dot=%0d",scenario,event_index,divider_count,halted,stopped,dot_before);
             if (interrupt_case && (memory['hfffd] != 1 || memory['hfffc] != 3)) $fatal(1,"CPU_STOP_STACK");
             core_reset=1; edge_cycle(0);

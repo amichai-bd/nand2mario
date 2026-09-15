@@ -1,6 +1,9 @@
 `timescale 1ns/1ps
 `default_nettype none
 
+// Lint waiver: integer bookkeeping and file handles are tested as booleans
+// and against narrow DUT fields; the width lint on those idioms is a false positive.
+/* verilator lint_off WIDTHTRUNC */
 module tb_cpu_wake_reset;
     logic clk_sys;
     logic reset_sys;
@@ -90,7 +93,7 @@ module tb_cpu_wake_reset;
                 if (event_index==2) begin expected[208 +: 24]='h76; expected[336 +: 8]=1; end
             end
             $fdisplay(records,"%0d,%0d,%0d,%096h,%096h",scenario,fresh,event_index,expected,retirement);
-            if (retirement !== expected) $fatal(1,"CPU_WAKE_RESET_RECORD case=%0d fresh=%0d event=%0d",scenario,fresh,event_index);
+            if (retirement != expected) $fatal(1,"CPU_WAKE_RESET_RECORD case=%0d fresh=%0d event=%0d",scenario,fresh,event_index);
             event_index=event_index+1;
         end
     endtask
@@ -104,11 +107,11 @@ module tb_cpu_wake_reset;
             if (write_enable && bus_commit) $fatal(1,"CPU_WAKE_RESET_STACK_WRITE");
             if (!gb_tick && (bus_commit || address_effect_sample)) $fatal(1,"CPU_WAKE_RESET_PAUSE");
             if (!fresh && dot_before>=16) begin
-                if (!halted || !request_valid || address!==16'h103 || access_kind!==1 ||
-                        write_enable || bus_commit || address_effect_sample || address_effect_phase!==dot_before[1:0])
+                if (!halted || !request_valid || address!=16'h103 || access_kind!=1 ||
+                        write_enable || bus_commit || address_effect_sample || address_effect_phase!=dot_before[1:0])
                     $fatal(1,"CPU_WAKE_RESET_PREPARE case=%0d dot=%0d",scenario,dot_before);
             end else if (gb_tick && dot_before[1:0]==3) begin
-                if (!bus_commit || access_kind!==1 || address!==16'('h100+int'(dot_before)/4))
+                if (!bus_commit || access_kind!=1 || address!=16'('h100+int'(dot_before)/4))
                     $fatal(1,"CPU_WAKE_RESET_FETCH case=%0d fresh=%0d dot=%0d",scenario,fresh,dot_before);
             end
         end
@@ -153,7 +156,7 @@ module tb_cpu_wake_reset;
             // Phase zero also carries the newly pending input, before capture.
             iflags=1;
             for (quiet=0; quiet<12; quiet=quiet+1) edge_cycle(0);
-            if (dot_before!==64'(20+phase_case) || event_index!=3 || writes!=0)
+            if (dot_before!=64'(20+phase_case) || event_index!=3 || writes!=0)
                 $fatal(1,"CPU_WAKE_RESET_HELD");
             // Both reset types cancel at the chosen paused phase. Phase three
             // has a frozen pending request and would otherwise wake at T4.

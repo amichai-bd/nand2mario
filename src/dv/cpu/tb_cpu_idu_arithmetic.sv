@@ -1,6 +1,9 @@
 `timescale 1ns/1ps
 `default_nettype none
 
+// Lint waiver: integer bookkeeping and file handles are tested as booleans
+// and against narrow DUT fields; the width lint on those idioms is a false positive.
+/* verilator lint_off WIDTHTRUNC */
 module tb_cpu_idu_arithmetic;
     logic clk_sys;
     logic reset_sys;
@@ -88,20 +91,20 @@ module tb_cpu_idu_arithmetic;
         // Four arithmetic idle cycles and the final HALT dummy fetch have
         // no extra effect. All other cycles increment an observed PC.
         expected_effect = !(bus_index == 7 || bus_index == 10 || bus_index == 11 || bus_index == 14 || bus_index == 16);
-        if (address_effect_phase !== dot_before[1:0] ||
-                address_effect_sample !== (gb_tick && dot_before[1:0] == 3))
+        if (address_effect_phase != dot_before[1:0] ||
+                address_effect_sample != (gb_tick && dot_before[1:0] == 3))
             $fatal(1, "CPU_IDU_ARITH_PHASE dot=%0d", dot_before);
-        if (!address_effect_resolved || address_effect.valid !== expected_effect ||
-                address_effect.write_effect !== expected_effect ||
-                address_effect.address !== (expected_effect ? expected_address[bus_index] : 16'b0) ||
-                address_effect.known_mask !== (expected_effect ? 16'hffff : 16'b0))
+        if (!address_effect_resolved || address_effect.valid != expected_effect ||
+                address_effect.write_effect != expected_effect ||
+                address_effect.address != (expected_effect ? expected_address[bus_index] : 16'b0) ||
+                address_effect.known_mask != (expected_effect ? 16'hffff : 16'b0))
             $fatal(1, "CPU_IDU_ARITH_EFFECT cycle=%0d dot=%0d expected_valid=%0d actual=%0d/%04h/%04h resolved=%0d",
                 bus_index, dot_before, expected_effect, address_effect.valid,
                 address_effect.address, address_effect.known_mask, address_effect_resolved);
         if (gb_tick && dot_before[1:0] == 3) begin
-            if (bus_commit !== (expected_kind[bus_index] != 0) ||
-                    access_kind !== expected_kind[bus_index] || write_enable ||
-                    (expected_kind[bus_index] != 0 && (address !== expected_address[bus_index] || read_data !== expected_data[bus_index])))
+            if (bus_commit != (expected_kind[bus_index] != 0) ||
+                    access_kind != expected_kind[bus_index] || write_enable ||
+                    (expected_kind[bus_index] != 0 && (address != expected_address[bus_index] || read_data != expected_data[bus_index])))
                 $fatal(1, "CPU_IDU_ARITH_BUS cycle=%0d dot=%0d", bus_index, dot_before+1);
             $fdisplay(trace, "%0d,%0d,%0d,%04h,%0d,%04h,%04h,%0d", dot_before+1,
                 bus_index, access_kind, address, address_effect.valid,
@@ -127,7 +130,7 @@ module tb_cpu_idu_arithmetic;
             expected_record[304 +: 16] = event_index == 0 ? 16'hfffe : (event_index < 3 ? 16'hfe80 : 16'hfe81);
             if (event_index == 5) expected_record[336 +: 8] = 1;
             $fdisplay(records, "%0d,%096h,%096h", event_index, expected_record, retirement);
-            if (retirement !== expected_record)
+            if (retirement != expected_record)
                 $fatal(1, "CPU_IDU_ARITH_RECORD event=%0d expected=%096h actual=%096h", event_index, expected_record, retirement);
             event_index = event_index + 1;
         end

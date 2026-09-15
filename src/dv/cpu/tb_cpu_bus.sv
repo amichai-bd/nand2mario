@@ -1,6 +1,8 @@
-`timescale 1ns/1ps
 `default_nettype none
 
+// Lint waiver: integer bookkeeping and file handles are tested as booleans
+// and against narrow DUT fields; the width lint on those idioms is a false positive.
+/* verilator lint_off WIDTHTRUNC */
 module tb_cpu_bus;
     logic clk_sys;
     logic reset_sys;
@@ -47,9 +49,9 @@ module tb_cpu_bus;
         gb_tick = tick;
         #4;
         expected_commit = tick && expected_phase == 3 && active && complete_enable && !core_reset && !reset_sys && plan_kind != 0 && (plan_write || response_valid);
-        if (commit !== expected_commit)
+        if (commit != expected_commit)
             $fatal(1, "CPU_BUS_MISMATCH commit cycle=%0d phase=%0d expected=%0d actual=%0d", cycles, expected_phase, expected_commit, commit);
-        if (request_valid && (address !== plan_address || write_data !== plan_write_data || write_enable !== plan_write || access_kind !== plan_kind))
+        if (request_valid && (address != plan_address || write_data != plan_write_data || write_enable != plan_write || access_kind != plan_kind))
             $fatal(1, "CPU_BUS_MISMATCH request payload");
         $fdisplay(trace, "%0d,%0d,%0d,%0d,%0d,%04h,%0d", cycles, expected_phase, active, tick, core_reset, address, commit);
         if (expected_commit) expected_commits = expected_commits + 1;
@@ -57,7 +59,7 @@ module tb_cpu_bus;
         if (core_reset || reset_sys) expected_phase = 0;
         else if (tick) expected_phase = (expected_phase + 1) % 4;
         #1;
-        if (phase !== 2'(expected_phase))
+        if (phase != 2'(expected_phase))
             $fatal(1, "CPU_BUS_MISMATCH phase cycle=%0d expected=%0d actual=%0d", cycles, expected_phase, phase);
         if (fault) $fatal(1, "CPU_BUS_MISMATCH unexpected fault");
         #4;

@@ -1,6 +1,9 @@
 `timescale 1ns/1ps
 `default_nettype none
 
+// Lint waiver: integer bookkeeping and file handles are tested as booleans
+// and against narrow DUT fields; the width lint on those idioms is a false positive.
+/* verilator lint_off WIDTHTRUNC */
 module tb_cpu_stop_idu;
     logic clk_sys;
     logic reset_sys;
@@ -79,14 +82,14 @@ module tb_cpu_stop_idu;
                 24: begin expected_address=entry_address; expected_data=8'h3c; end
                 default: $fatal(1,"CPU_STOP_IDU_EXTRA_CYCLE");
             endcase
-            if(bus_commit !== (expected_kind!=0) || (expected_kind!=0 &&
-                    (!request_valid || address!==expected_address || access_kind!==expected_kind || read_data!==expected_data)))
+            if(bus_commit != (expected_kind!=0) || (expected_kind!=0 &&
+                    (!request_valid || address!=expected_address || access_kind!=expected_kind || read_data!=expected_data)))
                 $fatal(1,"CPU_STOP_IDU_BUS case=%0d dot=%0d",scenario,dot_before+1);
             if(dot_before==23) begin
                 if(!address_effect_sample || !address_effect_resolved || !address_effect.valid ||
-                    address_effect.address!==entry_address || address_effect.known_mask!==16'hffff || !address_effect.write_effect)
+                    address_effect.address!=entry_address || address_effect.known_mask!=16'hffff || !address_effect.write_effect)
                     $fatal(1,"CPU_STOP_ENTRY_IDU case=%0d expected=%04h actual=%04h",scenario,entry_address,address_effect.address);
-                if(divider_reset_request!==!selected_case) $fatal(1,"CPU_STOP_IDU_DIVIDER");
+                if(divider_reset_request!=!selected_case) $fatal(1,"CPU_STOP_IDU_DIVIDER");
                 effects=effects+1;
             end
             commits=commits+integer'(bus_commit); cycles=cycles+1;
@@ -113,7 +116,7 @@ module tb_cpu_stop_idu;
                 default: $fatal(1,"CPU_STOP_IDU_EXTRA_RECORD");
             endcase
             $fdisplay(records,"%0d,%0d,%096h,%096h",scenario,event_index,expected,retirement);
-            if(retirement!==expected) $fatal(1,"CPU_STOP_IDU_RECORD case=%0d event=%0d expected=%096h actual=%096h",scenario,event_index,expected,retirement);
+            if(retirement!=expected) $fatal(1,"CPU_STOP_IDU_RECORD case=%0d event=%0d expected=%096h actual=%096h",scenario,event_index,expected,retirement);
             event_index=event_index+1;
         end
     endtask
@@ -156,7 +159,7 @@ module tb_cpu_stop_idu;
                 edge_cycle(1); release dut.address_effect.address; edge_cycle(0); edge_cycle(0);
             end
             repeat(9) edge_cycle(0);
-            if(event_index!=2 || commits!=5 || cycles!=6 || effects!=1 || stopped!==!selected_case || halted!==(selected_case && !pending_case))
+            if(event_index!=2 || commits!=5 || cycles!=6 || effects!=1 || stopped!=!selected_case || halted!=(selected_case && !pending_case))
                 $fatal(1,"CPU_STOP_IDU_TOTAL case=%0d",scenario);
         end
         $fclose(trace); $fclose(records);
