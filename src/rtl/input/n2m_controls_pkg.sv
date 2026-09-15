@@ -25,14 +25,10 @@ package n2m_controls_pkg;
         negative_leave = center - (center - minimum) / 4;
         positive_enter = center + (maximum - center) / 3;
         positive_leave = center + (maximum - center) / 4;
-        // Lint waiver: the 12-bit sample is zero-extended against the 32-bit
-        // unsigned thresholds; the intended unsigned comparison is unchanged.
-        /* verilator lint_off WIDTHEXPAND */
-        if (sample <= negative_enter) return AXIS_NEGATIVE;
-        if (sample >= positive_enter) return AXIS_POSITIVE;
-        if (previous == AXIS_NEGATIVE && sample < negative_leave) return AXIS_NEGATIVE;
-        if (previous == AXIS_POSITIVE && sample > positive_leave) return AXIS_POSITIVE;
-        /* verilator lint_on WIDTHEXPAND */
+        if (32'(sample) <= negative_enter) return AXIS_NEGATIVE;
+        if (32'(sample) >= positive_enter) return AXIS_POSITIVE;
+        if (previous == AXIS_NEGATIVE && 32'(sample) < negative_leave) return AXIS_NEGATIVE;
+        if (previous == AXIS_POSITIVE && 32'(sample) > positive_leave) return AXIS_POSITIVE;
         return AXIS_CENTER;
     endfunction
 endpackage
