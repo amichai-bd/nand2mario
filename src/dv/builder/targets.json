@@ -16611,7 +16611,8 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/serial/n2m_serial.sv",
-      "src/dv/serial/tb_serial_registers.sv"
+      "src/dv/serial/tb_serial_registers.sv",
+      "src/dv/serial/serial_lint.vlt"
     ],
     "top": "tb_serial_registers",
     "simulators": [
@@ -16626,7 +16627,8 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/serial/n2m_serial.sv",
-      "src/dv/serial/tb_serial_registers.sv"
+      "src/dv/serial/tb_serial_registers.sv",
+      "src/dv/serial/serial_lint.vlt"
     ],
     "top": "tb_serial_registers",
     "simulators": [
@@ -16643,7 +16645,8 @@
     "sources": [
       "src/rtl/interfaces/n2m_interfaces_pkg.sv",
       "src/rtl/serial/n2m_serial.sv",
-      "src/dv/serial/tb_serial_registers.sv"
+      "src/dv/serial/tb_serial_registers.sv",
+      "src/dv/serial/serial_lint.vlt"
     ],
     "top": "tb_serial_registers",
     "simulators": [
