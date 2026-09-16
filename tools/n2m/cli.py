@@ -23,7 +23,7 @@ from .lint import lint_questa
 from .progress import Progress, powershell_command
 from .rgbds import oracle
 from .regress import clean, regress
-from . import catalogue, interface_codec
+from . import catalogue, host_suite, interface_codec
 from sw.build import assemble_target
 from sw.rom_build import build_target
 from sw.link_conformance import proof as link_proof
@@ -261,18 +261,15 @@ def tagged(root, args, header, publish, progress=None):
         atomic_json(build / "status.json", {"status": "RUNNING"})
         try:
             if args.command == "check":
-                command = [sys.executable, "-B", "-m", "unittest", "discover", "-s",
-                           str(root / "tools/n2m/tests"), "-v"]
-                result = subprocess.run(command, cwd=root, text=True, stdout=subprocess.PIPE,
-                                        stderr=subprocess.STDOUT, timeout=180)
-                (build / "check.log").write_text(result.stdout, encoding="utf-8")
-                (build / "commands.log").write_text(json.dumps(command) + "\n", encoding="utf-8")
+                suite, problems = host_suite.run(root, build / "check.log")
+                (build / "commands.log").write_text("".join(json.dumps(c) + "\n" for c in suite["commands"]),
+                                                    encoding="utf-8")
                 # A test in the tree but not in the catalogue fails this check.
                 model, _ = catalogue.load(root)
-                problems = catalogue.coverage(root, model)
-                report.update(status="PASS" if result.returncode == 0 and not problems else "FAIL",
-                              commands=[command], catalogue_units=len(model["units"]),
-                              catalogue_problems=problems,
+                coverage = catalogue.coverage(root, model)
+                problems += coverage
+                report.update(status="PASS" if not problems else "FAIL", **suite,
+                              catalogue_units=len(model["units"]), catalogue_problems=coverage,
                               artifacts=[str((build / "check.log").relative_to(root))])
                 if problems:
                     report["error"] = problems[0]
