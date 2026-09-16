@@ -32,10 +32,17 @@ CONFIGURATION_MODE = 'set_global_assignment -name INTERNAL_FLASH_UPDATE_MODE "Si
 # The reader's INIT_FILENAME parameter names the Intel HEX the assembler folds
 # into the .pof user range; the file sits beside the generated project.
 INIT_PARAMETER = "INIT_FILENAME"
-# Reader instance path per registered top; a top not listed here has no
-# classified flash diagnostics and fails on the first one.
-READER_INSTANCES = {"flash_proof": "u_reader"}
 POF = "output/design.pof"
+# Reader instance path per registered top as (module, instance) pairs from
+# the top down; a top not listed here has no classified flash diagnostics and
+# fails on the first one. reader_path() gives the QSF instance path and
+# strobe_node() the fitted netlist name.
+READER_INSTANCES = {
+    "flash_proof": (("n2m_flash_reader", "u_reader"),),
+    "v05_proof": (("n2m_v05_system", "u_system"), ("n2m_boot_copier", "u_copier"), ("n2m_flash_reader", "u_reader")),
+    "v05_controls_proof": (("n2m_controls_system", "u_controls"), ("n2m_v05_system", "u_system"),
+                           ("n2m_boot_copier", "u_copier"), ("n2m_flash_reader", "u_reader")),
+}
 # Registers of the vendor data controller that only its read-and-write mode
 # reads: Quartus 25.1 names each once with its line in the pinned file.
 UNUSED_OBJECTS = (
@@ -51,8 +58,12 @@ STROBE = "altera_onchip_flash:u_flash|altera_onchip_flash_avmm_data_controller:a
 STROBE_WARNING = ("Warning (332060): Node: {node} was determined to be a clock but was found without an "
                   "associated clock assignment.")
 # The fitter's own timing pass and the three quartus_sta corners each report
-# the strobe once in compile.log; the audit's single netlist reports it once.
-STROBE_COUNTS = {"compile.log": 4, "audit.log": 1}
+# the strobe once in compile.log; the audit reports it once per timing
+# netlist update in its script (one for flash_proof, seven for the composed
+# images whose audit walks three corners twice), read from audit.tcl.
+STROBE_COUNTS = {"compile.log": 4}
+STROBE_LOGS = ("compile.log", "audit.log")
+AUDIT_UPDATE = "update_timing_netlist"
 
 
 def flash_target(target):
@@ -84,13 +95,6 @@ def stage(folder, sources):
         if file_hash(source) != sources[name]["sha256"]:
             raise ValueError("Intel On-Chip Flash IP dependency changed before staging")
         shutil.copyfile(source, folder / name)
-
-
-def reader_path(top):
-    """Hierarchical instance path of the flash reader under the given top."""
-    if top not in READER_INSTANCES:
-        raise ValueError("unsupported flash reader top for the library image")
-    return READER_INSTANCES[top]
 
 
 def init_assignment(top):
@@ -152,17 +156,28 @@ def pof_evidence(path, words):
             "cfm0_spare_bytes": flash_library.CFM0_BYTES - used}
 
 
-def strobe_node(top):
-    """Fitted name of the IP's sense-enable strobe register under the given top."""
+def reader_path(top):
+    """QSF instance path of the reader under the given top (`set_parameter -to`)."""
     if top not in READER_INSTANCES:
         raise ValueError("unsupported flash reader top for diagnostic classification")
-    return f"n2m_flash_reader:{READER_INSTANCES[top]}|{STROBE}"
+    return "|".join(instance for _, instance in READER_INSTANCES[top])
+
+
+def reader_node(top):
+    """Fitted netlist name of the reader instance under the given top."""
+    reader_path(top)
+    return "|".join(f"{module}:{instance}" for module, instance in READER_INSTANCES[top])
+
+
+def strobe_node(top):
+    """Fitted name of the IP's sense-enable strobe register under the given top."""
+    return f"{reader_node(top)}|{STROBE}"
 
 
 def no_clock_rows(top):
     """check_timing no-clock rows the IP adds: the strobe register and the atom register it clocks."""
     return (strobe_node(top),
-            f"n2m_flash_reader:{READER_INSTANCES[top]}|altera_onchip_flash:u_flash|"
+            f"{reader_node(top)}|altera_onchip_flash:u_flash|"
             "altera_onchip_flash_block:altera_onchip_flash_block|ufm_block~XE_YE_TO_SE_FF")
 
 
@@ -191,16 +206,27 @@ def explained_diagnostics(text, folder, sources, top, log_name):
     for line in required:
         if lines.count(line) != 1:
             raise ValueError("missing or duplicate On-Chip Flash IP read-only diagnostic")
-    if lines.count(strobe) != STROBE_COUNTS[log_name]:
+    strobe_count = strobe_expected(folder, log_name)
+    if lines.count(strobe) != strobe_count:
         raise ValueError("On-Chip Flash IP strobe clock diagnostic count differs")
     actual = [line for line in lines if re.match(r"Warning \((10036|332060)\):", line)
               and CONTROLLER in line or line == strobe]
-    if sorted(actual) != sorted(required + [strobe] * STROBE_COUNTS[log_name]):
+    if sorted(actual) != sorted(required + [strobe] * strobe_count):
         raise ValueError("unexpected On-Chip Flash IP diagnostic")
     return [{"code": re.match(r"Warning \((\d+)\)", line)[1], "text": line,
              "reason": "pinned Intel On-Chip Flash IP: read-only mode leaves the vendor write/erase registers "
                        "unread and its sense-enable strobe clocks one UFM atom register without a clock assignment"}
             for line in required + [strobe]]
+
+
+def strobe_expected(folder, log_name):
+    """Strobe diagnostics a log must carry: fixed for compile.log, one per audit netlist update."""
+    if log_name in STROBE_COUNTS:
+        return STROBE_COUNTS[log_name]
+    if log_name != "audit.log":
+        raise ValueError("unsupported log for On-Chip Flash IP diagnostic classification")
+    script = (Path(folder) / "audit.tcl").read_text(encoding="utf-8")
+    return sum(1 for line in script.splitlines() if line.strip() == AUDIT_UPDATE)
 
 
 def accepted_unconstrained_clock(count, target, report):

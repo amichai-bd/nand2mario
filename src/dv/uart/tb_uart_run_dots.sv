@@ -20,6 +20,9 @@ module tb_uart_run_dots;
     logic engine_pause, engine_reset_request, engine_reset_accept, engine_reset_done;
     assign engine_pause = 1'b0;
     assign engine_reset_request = 1'b0;
+    // No boot copier here: the host pause release stays idle.
+    logic boot_run;
+    assign boot_run = 1'b0;
     n2m_uart_core_control u_control (.*);
     assign retirement_valid = gb_tick && instruction_complete;
     always #20 clk_sys = !clk_sys;

@@ -79,6 +79,11 @@ module n2m_v05_system #(
     logic [n2m_interfaces_pkg::SDRAM_ADDRESS_BITS-1:0] host_sdram_address;
     logic [n2m_interfaces_pkg::SDRAM_LINE_BYTES*8-1:0] host_sdram_data;
     logic engine_pause, engine_reset_request, engine_reset_accept, engine_reset_done;
+    // Boot copier client and status (wiki/src/rtl/storage/MAS_flash_library.md).
+    logic copier_busy, copier_pending, copier_valid, copier_write, copier_ready, copier_response_valid;
+    logic [n2m_interfaces_pkg::SDRAM_ADDRESS_BITS-1:0] copier_address;
+    logic [n2m_interfaces_pkg::SDRAM_LINE_BYTES*8-1:0] copier_data;
+    logic flash_boot, boot_return, boot_run, loader_sdram_ready;
     logic engine_invalidate, engine_publish, host_session, host_loading, host_port_busy, library_return;
     logic [7:0] engine_profile;
     logic [31:0] library_status, library_key1;
@@ -160,14 +165,24 @@ module n2m_v05_system #(
         .snapshot_ok, .snapshot_valid, .snapshot_metadata,
         .frame_read, .frame_address, .frame_data, .frame_valid,
         .peek_ready, .peek_read, .peek_select, .peek_offset, .peek_rdata, .peek_valid,
-        // Host SDRAM lines reach the controller through the loader's arbiter.
-        .sdram_initialized, .sdram_request_valid(host_sdram_valid), .sdram_request_write(host_sdram_write),
+        // Host SDRAM lines reach the controller through the loader's arbiter;
+        // the loader's sdram_ready (initialized and no boot copy) gates them.
+        .sdram_initialized(loader_sdram_ready), .sdram_request_valid(host_sdram_valid), .sdram_request_write(host_sdram_write),
         .sdram_request_address(host_sdram_address), .sdram_request_data(host_sdram_data),
         .sdram_request_ready(host_sdram_ready), .sdram_response_valid(host_sdram_response_valid),
         .sdram_response_data,
         .loader_copy_busy, .loader_swap_busy, .engine_invalidate, .engine_publish, .engine_profile,
         .library_status, .library_key1, .engine_pause, .engine_reset_request,
-        .engine_reset_accept, .engine_reset_done, .host_session, .host_loading, .host_port_busy, .library_return
+        .engine_reset_accept, .engine_reset_done, .host_session, .host_loading, .host_port_busy, .library_return,
+        .boot_run
+    );
+    // The boot copier fills SDRAM from the flash library after power-up and
+    // requests the menu select; it is the storage arbiter's third client.
+    n2m_boot_copier u_copier (
+        .clk_sys, .reset_sys, .sdram_initialized,
+        .sdram_active(copier_busy), .sdram_valid(copier_valid), .sdram_write(copier_write),
+        .sdram_address(copier_address), .sdram_data(copier_data), .sdram_ready(copier_ready),
+        .busy(), .library_pending(copier_pending), .flash_boot, .boot_return, .boot_run
     );
     // The loader owns the ROM host port, the storage arbiter and the CPU view
     // of the bank/select/status bytes; its commits are the CPU ROM writes the
@@ -175,6 +190,8 @@ module n2m_v05_system #(
     n2m_loader #(.KEY1_DEBOUNCE_EDGES(KEY1_DEBOUNCE_EDGES), .KEY1_HOLD_EDGES(KEY1_HOLD_EDGES)) u_loader (
         .clk_sys, .reset_sys, .profile, .image_valid, .host_session, .host_loading, .host_port_busy,
         .host_return(library_return), .paused, .sdram_initialized,
+        .copier_busy, .copier_pending, .copier_valid, .copier_write, .copier_address, .copier_data,
+        .copier_ready, .copier_response_valid, .flash_boot, .boot_return,
         .rom_commit(raw_write && raw_store == ROM_STORE), .commit_offset(raw_offset), .commit_data(raw_wdata),
         .cpu_address(address), .read_override(loader_read_override), .read_data(loader_read_data),
         .key1_n,
@@ -187,7 +204,7 @@ module n2m_v05_system #(
         .sdram_request_ready, .sdram_response_valid, .sdram_response_data,
         .engine_pause, .engine_reset_request, .engine_reset_accept, .engine_reset_done,
         .image_invalidate(engine_invalidate), .image_publish(engine_publish), .image_profile(engine_profile),
-        .copy_busy(loader_copy_busy), .swap_busy(loader_swap_busy), .window_busy(), .sdram_ready(),
+        .copy_busy(loader_copy_busy), .swap_busy(loader_swap_busy), .window_busy(), .sdram_ready(loader_sdram_ready),
         .library_status, .library_key1
     );
     // Loader status bytes and the $FF window mask replace the memory owner's

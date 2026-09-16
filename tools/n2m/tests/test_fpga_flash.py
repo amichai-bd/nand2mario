@@ -58,8 +58,10 @@ class FlashIpTests(unittest.TestCase):
         self.assertEqual(lines[4], fpga_flash.CONFIGURATION_MODE)
         self.assertEqual(lines[5], 'set_parameter -name INIT_FILENAME "library.hex" -to "u_reader"')
         self.assertEqual(len(lines), 6)
+        self.assertEqual(fpga_flash.assignments("v05_proof")[5],
+                         'set_parameter -name INIT_FILENAME "library.hex" -to "u_system|u_copier|u_reader"')
         with self.assertRaisesRegex(ValueError, "unsupported flash reader top"):
-            fpga_flash.assignments("v05_proof")
+            fpga_flash.assignments("sdram_proof")
         self.assertTrue(fpga_flash.flash_target(TARGET))
         self.assertFalse(fpga_flash.flash_target({"top": "sdram_proof", "sources": ["src/rtl/storage/n2m_sdram_ctrl.sv"]}))
 
@@ -158,15 +160,23 @@ class FlashIpTests(unittest.TestCase):
             self.assertEqual([item["code"] for item in explained], ["10036"] * 20 + ["332060"])
             self.assertEqual([item["code"] for item in fpga.diagnostics(text, explained)], ["10036"] * 20 + ["332060"] * 4)
             strobe = fpga_flash.STROBE_WARNING.format(node=STROBE)
+            (self.attempt / "audit.tcl").write_text("create_timing_netlist\nread_sdc\nupdate_timing_netlist\n")
             audit = fpga_flash.explained_diagnostics(strobe + "\n", self.attempt, sources, "flash_proof", "audit.log")
             self.assertEqual([item["code"] for item in audit], ["332060"])
+            # A composed audit updates the netlist once per corner and pass.
+            (self.attempt / "audit.tcl").write_text("create_timing_netlist\n" + "update_timing_netlist\n" * 7)
+            with self.assertRaisesRegex(ValueError, "strobe clock diagnostic count"):
+                fpga_flash.explained_diagnostics(strobe + "\n", self.attempt, sources, "flash_proof", "audit.log")
+            self.assertEqual([item["code"] for item in fpga_flash.explained_diagnostics(
+                (strobe + "\n") * 7, self.attempt, sources, "flash_proof", "audit.log")], ["332060"])
+            (self.attempt / "audit.tcl").write_text("create_timing_netlist\nread_sdc\nupdate_timing_netlist\n")
             for broken in (text.replace("write_count", "read_count", 1), text + strobe + "\n",
                            text.replace(strobe + "\n", "", 1), text.replace("(201)", "(202)", 1)):
                 with self.subTest(broken=broken[-80:]):
                     with self.assertRaises(ValueError):
                         fpga_flash.explained_diagnostics(broken, self.attempt, sources, "flash_proof", "compile.log")
             with self.assertRaisesRegex(ValueError, "unsupported flash reader top"):
-                fpga_flash.explained_diagnostics(text, self.attempt, sources, "v05_proof", "compile.log")
+                fpga_flash.explained_diagnostics(text, self.attempt, sources, "sdram_proof", "compile.log")
         with self.assertRaises(ValueError):
             fpga.diagnostics(text)
 
@@ -178,6 +188,17 @@ class FlashIpTests(unittest.TestCase):
                                     (1, TARGET, report + report), (1, TARGET, "")):
             with self.subTest(count=count, top=target["top"], text=text[:30]):
                 self.assertFalse(fpga_flash.accepted_unconstrained_clock(count, target, text))
+
+    def test_reader_paths_follow_the_instance_pairs(self):
+        self.assertEqual(fpga_flash.reader_path("flash_proof"), "u_reader")
+        self.assertEqual(fpga_flash.reader_path("v05_proof"), "u_system|u_copier|u_reader")
+        self.assertEqual(fpga_flash.reader_path("v05_controls_proof"), "u_controls|u_system|u_copier|u_reader")
+        self.assertEqual(fpga_flash.strobe_node("v05_proof"),
+                         "n2m_v05_system:u_system|n2m_boot_copier:u_copier|n2m_flash_reader:u_reader|" + fpga_flash.STROBE)
+        self.assertTrue(fpga_flash.no_clock_rows("v05_proof")[1].startswith(
+            "n2m_v05_system:u_system|n2m_boot_copier:u_copier|n2m_flash_reader:u_reader|altera_onchip_flash:u_flash|"))
+        with self.assertRaisesRegex(ValueError, "unsupported flash reader top"):
+            fpga_flash.reader_path("sdram_proof")
 
     def test_no_clock_rows_extend_the_parallel_lock_inventory(self):
         rows = fpga_flash.no_clock_rows("flash_proof")

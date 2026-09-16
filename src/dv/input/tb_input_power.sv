@@ -25,7 +25,7 @@ module tb_input_power;
         .clk_sys(clk_sys),.reset_sys(reset_sys),.start(start),.command(command),.step_budget(32'd70224),
         .input_write(input_write),.gb_tick(gb_tick),.paused(paused),.core_initialized(core_initialized),
         .instruction_complete(instruction_complete),.retirement_valid(retirement_valid),.cpu_stopped(cpu_stopped),
-        .engine_pause(1'b0),.engine_reset_request(1'b0),.engine_reset_accept(),.engine_reset_done(),
+        .engine_pause(1'b0),.engine_reset_request(1'b0), .boot_run(1'b0),.engine_reset_accept(),.engine_reset_done(),
         .pause_request(pause_request),.core_reset(core_reset),.accepted_input(accepted_input),.epoch(epoch),
         .dot_count(dot_count),.retirement_count(retirement_count),.busy(busy),.done(done),.status(status),.completed_dot(completed_dot),.run_dots_result()
     );

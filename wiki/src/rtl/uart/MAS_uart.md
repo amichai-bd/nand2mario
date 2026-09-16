@@ -117,8 +117,10 @@ reply path READ_ROM uses. Validation checks the write payload shape
 (`BAD_LENGTH` unless it is the address plus 1 through 15 whole lines; a
 16-line payload exceeds `MAX_PAYLOAD` and is discarded as oversize input
 before any command), then alignment, device bounds of the whole range, the
-1-15 read count and the controller's `initialized` flag (`BAD_VALUE`) before
-any request is issued; both commands are accepted in every endpoint state.
+1-15 read count and the loader's `sdram_ready` (the controller's
+`initialized` and the [boot copier](../storage/MAS_flash_library.md#precedence-over-host-loads)
+past `COPY`; `BAD_VALUE`) before any request is issued; both commands are
+accepted in every endpoint state.
 Every command captures the same 9-byte argument record. A composition without
 an SDRAM ties `sdram_initialized` low and both commands answer `BAD_VALUE`.
 
@@ -254,6 +256,10 @@ and host loading. It supplies fixed one-edge ROM and snapshot read service.
 
 `n2m_uart_core_control` owns host pause, epoch and dot/retirement counters. It
 also owns the [RUN_DOTS countdown](../interfaces/MAS_interfaces.md#bounded-dot-execution).
+Host pause is set at reset, so a console without a host stays paused until the
+[boot copier](../storage/MAS_flash_library.md#boot-copier)'s one-clock
+`boot_run` clears it exactly as `RUN` does, on the clock the copier requests
+the menu select; a later `HALT` sets it again as usual.
 The [loader profile](../cartridge/MAS_loader_profile.md#core-reset-sequencing-and-image-validity)
 is its second client: a separate pause bit ORed into the pause request and a
 reset request accepted only in IDLE when no host command starts on the same

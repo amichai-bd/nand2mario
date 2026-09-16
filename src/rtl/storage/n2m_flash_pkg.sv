@@ -46,6 +46,26 @@ package n2m_flash_pkg;
     localparam int FLASH_LINE_PERIOD_CLOCKS = 17;
     localparam int FLASH_BURST_PERIOD_CLOCKS = 7;
     localparam logic [31:0] FLASH_ERASED_WORD = 32'hFFFFFFFF;
+    // Boot copier (wiki/src/rtl/storage/MAS_flash_library.md#boot-copier):
+    // the library is SDRAM byte addresses 0 to FLASH_COPY_BYTES-1, copied one
+    // 16-byte line at a time; entry 16 of the catalogue (8 words) decides
+    // whether the flash library is present. COPY must leave within
+    // FLASH_COPY_BOUND_CLOCKS of entering.
+    localparam int FLASH_COPY_BYTES = 32'h00088400;
+    localparam int FLASH_COPY_LINES = FLASH_COPY_BYTES / 16;
+    localparam logic [25:0] FLASH_COPY_LAST_LINE = 26'(FLASH_COPY_BYTES - 16);
+    localparam logic [FLASH_WORD_BITS-1:0] FLASH_COPY_END_WORD = FLASH_CATALOGUE_START + 20'(FLASH_CATALOGUE_WORDS);
+    localparam logic [FLASH_WORD_BITS-1:0] FLASH_CHECK_START = FLASH_CATALOGUE_START + 20'h80;
+    localparam logic [FLASH_WORD_BITS-1:0] FLASH_CHECK_END = FLASH_CHECK_START + 20'd8;
+    localparam int FLASH_COPY_BOUND_CLOCKS = 700000;
+
+    typedef enum logic [2:0] {
+        BOOT_WAIT_SDRAM,
+        BOOT_CHECK,
+        BOOT_COPY,
+        BOOT_BOOT,
+        BOOT_DONE
+    } boot_phase_t;
 
     typedef enum logic [1:0] {
         FLASH_IDLE,

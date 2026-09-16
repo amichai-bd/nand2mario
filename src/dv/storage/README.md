@@ -85,6 +85,46 @@ from the pinned vendor data controller before the double was written.
 | `flash-reader-fault-misaligned` | `fault-misaligned` | nonzero exit, `N2M_ASSERT FLASH_LINE_ALIGNED` |
 | `flash-reader-fault-range` | `fault-range` | nonzero exit, `N2M_ASSERT FLASH_LINE_RANGE` |
 
+## Boot copier
+
+Contract: [flash library, boot copier](../../../wiki/src/rtl/storage/MAS_flash_library.md#boot-copier).
+DUT: [`n2m_boot_copier`](../../rtl/storage/n2m_boot_copier.sv) composed in
+`n2m_v05_system` with the real loader, storage arbiter, UART endpoint, core
+control owner, SDRAM controller and device model. The fixtures live in
+[`tb_loader_system`](../cartridge/tb_loader_system.sv) (`+fixture=<name>`),
+which already drives the UART wire and builds the 17-image library the
+loader fixtures use. For `flash-copy` and `flash-precedence` it writes that
+library as the double's word-addressed hex (`flash-boot.hex`, 0-based Avalon
+words, slot 3 omitted so erased words are copied too) and loads it through
+`dut.u_copier.u_reader.u_flash.load` before reset release; `flash-blank`
+leaves the double erased. Clock 0 is the first clock after reset release; a
+mid-clock monitor records the first clock `initialized`, the loader's
+`sdram_ready` and `flash_boot` are seen and, while armed, checks every
+accepted SDRAM write against the fixture's own flash bytes.
+
+| Requirement | Independent check |
+|---|---|
+| Order and contents | Every accepted write during the boot is a write, its address the previous plus 16 from 0, its data the flash line; 34,880 lines; afterwards every 16-bit SDRAM word of the library range equals the flash bytes, slot 3 `0xFF` |
+| Timing | `initialized` first seen in clock 5036; `sdram_ready` never high before `flash_boot`; `COPY` (clock 5070 to the last acceptance) within 627,840-700,000 clocks; the menu running within 800,000 clocks of `initialized` |
+| Menu without a host | Profile `LOADER_ID`, image valid, not paused, epoch 1 and dots advancing before the first host packet; then `STATE == RUNNING`, `LIBRARY_STATUS` with `flash_boot`, `sdram_ready`, result `OK` and `$A003 == $FF`; `HALT` pauses, `RUN` resumes; an `SDRAM_READ` of erased slot 3 returns `0xFF` |
+| Erased flash | `sdram_ready` first high in clock 5070 exactly, no SDRAM write, no engine job, `flash_boot` 0, paused with no image; `LIBRARY_STATUS` `0x00FF0020`; an `SDRAM_WRITE`/`SDRAM_READ` round trip; a host load of a game paused until `RUN`, then running with the status unchanged |
+| Precedence | During `COPY`: `STATE == LOADING`, `LIBRARY_STATUS` `0x00FF0000`, `LOAD_BEGIN` and `WRITE_HOST(LIBRARY_CONTROL)` `BAD_STATE`, `SDRAM_READ`/`SDRAM_WRITE` `BAD_VALUE`, `flash_boot` still 0 afterwards; after the boot the menu runs, SDRAM equals the flash, `SDRAM_READ` returns library lines, a host load of a game succeeds, `SDRAM_WRITE` overwrites a line and reads back, `LIBRARY_STATUS` `0x21FF0128`, every double word unchanged |
+
+| Target | Fixture | Expected result |
+|---|---|---|
+| `flash-copy` | `flash-copy` | `PASS loader-system-flash-copy checks=13 swaps=0 returns=0 commands=8` |
+| `flash-blank` | `flash-blank` | `PASS loader-system-flash-blank checks=13 swaps=0 returns=0 commands=141` |
+| `flash-precedence` | `flash-precedence` | `PASS loader-system-flash-precedence checks=17 swaps=0 returns=0 commands=145` |
+
+The copier's named assertions (`FLASH_COPY_ORDER`, `FLASH_COPY_BOUND`,
+`FLASH_COPY_REQUEST_IN_COPY`, `FLASH_COPY_LINE_EXPECTED`,
+`FLASH_COPY_HOLD_FREE`, `FLASH_BOOT_AFTER_COPY`) and the loader's
+`LOADER_COPIER_EXCLUSIVE` are armed in every run. The three targets carry the
+`flash` and `system` labels: each compiles the whole composed system and the
+three together take about 180 s, which the 300 s `storage` aggregate (with
+`library-peer` at 105 to 145 s) cannot absorb. Run them with
+`python3 tools/build.py tests run --label flash --tag <tag>`.
+
 Run one with `python3 tools/build.py sim test <target> --tag <tag>` on WSL, or
 all of them with `python3 tools/build.py tests run --label storage --tag <tag>`.
 `library-peer` carries the `python-tb` label: run it, and therefore the whole

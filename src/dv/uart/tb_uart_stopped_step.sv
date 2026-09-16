@@ -27,6 +27,9 @@ module tb_uart_stopped_step;
     logic engine_pause, engine_reset_request, engine_reset_accept, engine_reset_done;
     assign engine_pause = 1'b0;
     assign engine_reset_request = 1'b0;
+    // No boot copier here: the host pause release stays idle.
+    logic boot_run;
+    assign boot_run = 1'b0;
     n2m_uart_core_control u_control (.*);
     n2m_input u_input (
         .clk_sys(clk_sys), .reset_sys(reset_sys), .core_reset(core_reset), .gb_tick(gb_tick),
