@@ -4,10 +4,15 @@ Eight freely licensed homebrew Game Boy games, written by eight other people,
 were pinned by digest and booted on the DE10-Lite running this repository's
 DMG. **Six of the eight run and play. Two never draw anything**, for one
 specific and documented reason given below. One further pin, the 64 KiB MBC1
-game PostBot, is the
-[MBC1 profile's test material](../src/rtl/cartridge/MAS_mbc1_profile.md#external-test-material):
-it loads through `host load --external postbot`, has not been captured on the
-board, and is not claimed to run here.
+game PostBot (Tobias Rojahn, MIT), is the
+[MBC1 profile's test material](../src/rtl/cartridge/MAS_mbc1_profile.md#external-test-material).
+It ran on this board in the MBC1 profile on 2026-09-16, loaded through
+`host load --external postbot` (65,536 bytes verified): a title frame, then
+gameplay frames after Start and A, recorded in the
+[board-evidence record of PR #737](https://github.com/amichai-bd/nand2mario/pull/737#issuecomment-5697081714).
+That run admits it to the [flash library](../tools/n2m/SPEC.md#external-images)
+at slot 10, the eleventh registered game. No frame of it has been ingested
+into the archive below, so this page shows none.
 
 **What these pictures are.** Every frame below is a `host snapshot`: the packed
 160x144 framebuffer the board returned over UART during one recorded session.

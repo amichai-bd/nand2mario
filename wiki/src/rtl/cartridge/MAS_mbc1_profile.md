@@ -205,9 +205,10 @@ Named assertions, synthesis-excluded:
 ## External test material
 
 Loaded through `host load --external <pin>` from [`tools/n2m/dependencies.json`](../../../../tools/n2m/dependencies.json);
-no image bytes are committed, the pin records its licence notice, and the
-library keeps 32 KiB slots ([#712](https://github.com/amichai-bd/nand2mario/issues/712)).
-The board launcher lists it once a board session has captured it.
+no image bytes are committed and the pin records its licence notice. Having
+run on the board in this profile, it is registered at slot 10 of the
+[flash library](../../../tools/n2m/SPEC.md#external-images) as the two-slot
+64 KiB image. The board launcher lists it once a board session has captured it.
 
 | Pin | Game | Author | Licence | Provenance | Header |
 |---|---|---|---|---|---|

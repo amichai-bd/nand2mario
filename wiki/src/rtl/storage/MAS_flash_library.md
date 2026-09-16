@@ -75,7 +75,8 @@ Slot `i` byte `b` is at flash word `0x00800 + (i * 32768 + b) / 4`, byte
 on page boundaries, so one image can be re-programmed without touching
 another. Capacity: sixteen game slots, so a library of `n32` 32 KiB and
 `n64` 64 KiB games needs `n32 + 2 * n64 <= 16`; the ten registered 32 KiB
-games leave room for three 64 KiB images.
+games and the one registered 64 KiB game (slots 10-11) leave four slots, room
+for two more 64 KiB images.
 The catalogue is written with the images and is the copier's validity source:
 the library is present when entry 16 has `valid == 0x01`, `length == 32768`
 and `profile == LOADER_ID`. An erased flash reads `0xFF` everywhere, which is

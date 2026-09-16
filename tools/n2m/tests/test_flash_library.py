@@ -20,12 +20,14 @@ SLOT_WORDS = library.SLOT_BYTES // 4
 CATALOGUE_WORD = 0x22800
 DATA_BASE = 0x00800
 EXTERNALS = {3: 'libbet', 4: 'airaki', 5: 'gb-wordyl', 6: 'max-pirate', 7: 'alien-invasion', 8: 'square-fall',
-             9: 'unstoppable-knight'}
+             9: 'unstoppable-knight', 10: 'postbot'}
+# The 64 KiB MBC1 pin: slot 10 and its continuation slot 11 (two-slot rule).
+BANKED_EXTERNALS = {10: 'postbot'}
 # Header titles of the pinned images as `title_text` prints them (bytes 0x134-0x143; the 0x80
 # CGB flag at 0x143 keeps the zero padding before it, all printed `?`) and the pinned display
 # titles that stand in for the two blank headers.
 EXTERNAL_TITLES = {3: 'LIBBET' + '?' * 10, 4: 'AIRAKI1     ????', 5: 'GB-WORDYL' + '?' * 7,
-                   6: 'MAXPIRATE', 7: 'ALIEN INVASION', 8: 'SQUARE FALL', 9: 'KNIGHT' + '?' * 10}
+                   6: 'MAXPIRATE', 7: 'ALIEN INVASION', 8: 'SQUARE FALL', 9: 'KNIGHT' + '?' * 10, 10: 'POSTBOT'}
 
 
 def external_image(title, seed, cartridge=0, rom_size=0, size=library.SLOT_BYTES):
@@ -276,7 +278,7 @@ class RegistryTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, message):
                     self.registry(**fields)
 
-    def test_checked_in_registry_lists_our_games_and_the_seven_playing_homebrew_images(self):
+    def test_checked_in_registry_lists_our_games_and_the_eight_homebrew_games_that_ran_here(self):
         registry = flash_library.load_registry(ROOT)
         self.assertEqual(registry['slots'], {0: 'springtrail', 1: 'stackdrop', 2: 'v05',
                                              **{index: 'external:' + name for index, name in EXTERNALS.items()}})
@@ -286,10 +288,14 @@ class RegistryTests(unittest.TestCase):
         for index, name in EXTERNALS.items():
             self.assertEqual(registry['externals'][index],
                              {'pin': name, 'licence': pins[name]['license'], 'source': pins[name]['url'], 'sha256': pins[name]['sha256']})
-        # The two images that never enable the LCD stay out, and the 64 KiB MBC1 pin is not a
-        # one-slot image (#712); the two blank-header images carry a display title.
-        self.assertEqual(sorted(set(pins) - set(EXTERNALS.values())), ['postbot', 'rex-run', 'wyrmhole'])
-        self.assertEqual(pins['postbot'].get('profile'), 'dmg-mbc1-v1')
+        # The two images that never enable the LCD stay out; the 64 KiB MBC1 pin fills slots
+        # 10-11, so slot 11 is not registered; the two blank-header images carry a display title.
+        self.assertEqual(sorted(set(pins) - set(EXTERNALS.values())), ['rex-run', 'wyrmhole'])
+        self.assertEqual({name: pins[name].get('profile', 'dmg-direct-v1') for name in EXTERNALS.values()},
+                         {name: 'dmg-mbc1-v1' if name in BANKED_EXTERNALS.values() else 'dmg-direct-v1' for name in EXTERNALS.values()})
+        self.assertEqual({index: pins[name]['size'] for index, name in EXTERNALS.items()},
+                         {index: abi.MBC1_ROM_BYTES if index in BANKED_EXTERNALS else library.SLOT_BYTES for index in EXTERNALS})
+        self.assertNotIn(11, registry['slots'])
         self.assertEqual({name: pins[name].get('title') for name in ('alien-invasion', 'square-fall')},
                          {'alien-invasion': 'ALIEN INVASION', 'square-fall': 'SQUARE FALL'})
 
@@ -312,6 +318,7 @@ class ExternalImageTests(unittest.TestCase):
         self.pins = {name: {'url': f'https://example.invalid/{name}.gb', 'sha256': hashlib.sha256(image).hexdigest(),
                             'size': len(image), 'license': 'MIT'} for name, image in self.images.items()}
         self.pins['blank']['title'] = 'BLANK TITLE'
+        self.pins['banked']['profile'] = 'dmg-mbc1-v1'
         self.pins['bad-title'] = dict(self.pins['blank'], title='lower case')
         self.pins['uncached'] = dict(self.pins['named'])
         self.pins['wrong-hash'] = dict(self.pins['named'], sha256='1' * 64)
@@ -406,6 +413,53 @@ class ExternalImageTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'not cached: uncached'):
                 flash_library.build_images(self.root, build, registry, {}, offline=True)
 
+    def test_build_images_places_a_registered_64_kib_external_in_two_slots(self):
+        registry = {'slots': {0: 'springtrail', 10: 'external:banked'}, 'menu': 'menu',
+                    'externals': {10: {'pin': 'banked', 'licence': 'MIT', 'source': self.pins['banked']['url'],
+                                       'sha256': self.pins['banked']['sha256']}}}
+        build = self.root / 'workdir/builds/unit'
+
+        def fake_build(root, build, args, provenance):
+            rom = build / 'sw/build' / args.target / 'runs/0/image.gb'
+            rom.parent.mkdir(parents=True, exist_ok=True)
+            rom.write_bytes(fixture_image(args.target.upper(), 19))
+            relative = rom.relative_to(root).as_posix()
+            profile = library.LOADER_PROFILE_NAME if args.target == 'menu' else abi.PROFILE_NAME
+            return {'status': 'PASS', 'rom': relative, 'profile': profile, 'attempt': '0', 'fingerprint': 'f' * 8,
+                    'artifacts': {relative: file_hash(rom)}}
+
+        with patch('sw.rom_build.build_target', fake_build), \
+                patch('n2m.host.external.urllib.request.urlopen', side_effect=AssertionError('offline')):
+            images = flash_library.build_images(self.root, build, registry, {}, offline=True)
+        self.assertEqual(sorted(images), [0, 10, library.MENU_INDEX])
+        self.assertEqual(images[10][:2], (self.images['banked'], 'dmg-mbc1-v1'))
+        self.assertEqual(images[10][2]['image_sha256'], self.pins['banked']['sha256'])
+        assembled = flash_library.assemble(images)
+        words = assembled['words']
+        # Slots 10 and 11 hold the image; slots 12-15 stay erased; the menu and catalogue follow.
+        self.assertEqual(len(words), 4 * SLOT_WORDS + 256)
+        self.assertEqual(words[10 * SLOT_WORDS], int.from_bytes(self.images['banked'][:4], 'little'))
+        self.assertEqual(words[12 * SLOT_WORDS - 1], int.from_bytes(self.images['banked'][-4:], 'little'))
+        self.assertNotIn(12 * SLOT_WORDS, words)
+        parsed = flash_library.parse_intel_hex(flash_library.intel_hex(words))
+        self.assertEqual(bytes(parsed[10 * library.SLOT_BYTES + b] for b in range(abi.MBC1_ROM_BYTES)), self.images['banked'])
+        rows = {row['index']: row for row in assembled['rows']}
+        self.assertEqual(sorted(rows), [0, 10, library.MENU_INDEX])
+        self.assertEqual((rows[10]['title'], rows[10]['profile'], rows[10]['profile_name'], rows[10]['flash_word'], rows[10]['pin']),
+                         ('BANKED GAME', abi.PROFILE_MBC1_ID, 'dmg-mbc1-v1', '0x14800', 'banked'))
+        catalogue = library.parse_catalogue(assembled['catalogue'])
+        self.assertEqual((catalogue[10]['valid'], catalogue[10]['profile'], catalogue[10]['length'], catalogue[10]['crc32']),
+                         (library.VALID, abi.PROFILE_MBC1_ID, abi.MBC1_ROM_BYTES, zlib.crc32(self.images['banked'])))
+        self.assertEqual(catalogue[11], {**library.EMPTY_ENTRY, 'reserved_zero': True})
+        # A pin whose profile disagrees with its header is refused by name.
+        self.pins['banked-ram']['profile'] = self.pins['banked-rom-only']['profile'] = 'dmg-mbc1-v1'
+        (self.root / external.PIN_FILE).write_text(json.dumps({'external_roms': {'images': self.pins}}))
+        with patch('n2m.host.external.urllib.request.urlopen', side_effect=AssertionError('offline')):
+            with self.assertRaisesRegex(ValueError, 'banked-ram header 0x147/0x148 does not describe a 65536-byte dmg-mbc1-v1 cartridge'):
+                flash_library.external_image(self.root, 'banked-ram', offline=True)
+            with self.assertRaisesRegex(ValueError, 'banked-rom-only header 0x147/0x148 does not describe'):
+                flash_library.external_image(self.root, 'banked-rom-only', offline=True)
+
 
 class BuilderTests(unittest.TestCase):
     def test_flash_targets_require_the_pof_and_the_library_files(self):
@@ -426,15 +480,18 @@ class BuilderTests(unittest.TestCase):
             report = flash_library.library_stage(ROOT, build, SimpleNamespace(rebuild=False, offline=True), {'commit': 'test'})
             self.assertEqual(report['status'], 'PASS', report.get('error'))
             summary = report['library']
-            self.assertEqual([row['index'] for row in summary['images']], [*range(10), 16])
+            self.assertEqual([row['index'] for row in summary['images']], [*range(11), 16])
             self.assertEqual([row['title'] for row in summary['images']],
-                             ['SPRINGTRAIL', 'STACKDROP', 'V05 BUTTONS', *(EXTERNAL_TITLES[i] for i in range(3, 10)), 'GAME MENU'])
-            self.assertEqual(summary['images'][10]['profile'], abi.PROFILE_LOADER_ID)
+                             ['SPRINGTRAIL', 'STACKDROP', 'V05 BUTTONS', *(EXTERNAL_TITLES[i] for i in range(3, 11)), 'GAME MENU'])
+            self.assertEqual(summary['images'][11]['profile'], abi.PROFILE_LOADER_ID)
             self.assertEqual({row['profile'] for row in summary['images'][:10]}, {abi.PROFILE_DIRECT_ID})
+            self.assertEqual((summary['images'][10]['profile'], summary['images'][10]['profile_name'], summary['images'][10]['flash_word']),
+                             (abi.PROFILE_MBC1_ID, 'dmg-mbc1-v1', '0x14800'))
             self.assertEqual(summary['catalogue_flash_word'], '0x22800')
-            self.assertEqual(summary['defined_words'], 11 * SLOT_WORDS + 256)
+            # Ten 32 KiB slots, the two-slot PostBot image, the menu and the catalogue.
+            self.assertEqual(summary['defined_words'], 13 * SLOT_WORDS + 256)
             pins = json.loads((ROOT / external.PIN_FILE).read_text())['external_roms']['images']
-            for row in summary['images'][3:10]:
+            for row in summary['images'][3:11]:
                 pin = pins[EXTERNALS[row['index']]]
                 self.assertEqual((row['kind'], row['pin'], row['licence'], row['source'], row['image_sha256']),
                                  ('external', EXTERNALS[row['index']], pin['license'], pin['url'], pin['sha256']))
@@ -452,8 +509,15 @@ class BuilderTests(unittest.TestCase):
                 image = path.read_bytes()
                 self.assertEqual(file_hash(path), row['image_sha256'])
                 base = row['index'] * library.SLOT_BYTES
-                self.assertEqual(bytes(parsed[base + b] for b in range(library.SLOT_BYTES)), image)
+                self.assertEqual(bytes(parsed[base + b] for b in range(len(image))), image)
                 self.assertEqual(row['crc32'], f'{zlib.crc32(image):08x}')
+            self.assertEqual(len(images_by_index := {row['index']: row for row in summary['images']}), 12)
+            self.assertEqual(images_by_index[10]['pin'], 'postbot')
+            catalogue = library.parse_catalogue((ROOT / summary['files']['catalogue.bin']['path']).read_bytes())
+            self.assertEqual((catalogue[10]['profile'], catalogue[10]['length'], catalogue[10]['title'][:7]),
+                             (abi.PROFILE_MBC1_ID, abi.MBC1_ROM_BYTES, b'POSTBOT'))
+            self.assertEqual(catalogue[11], {**library.EMPTY_ENTRY, 'reserved_zero': True})
+            self.assertEqual([row['valid'] for row in catalogue], [library.VALID] * 11 + [0] * 5 + [library.VALID])
             mirror = json.loads((build / 'sw/library/result.json').read_text())
             self.assertEqual(mirror['attempt'], report['attempt'])
 
