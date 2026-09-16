@@ -336,7 +336,8 @@ def _fpga_plan(menu, root):
 def _sw_plan(menu, root):
     effects = {"oracle": "Run the pinned RGBDS comparison", "assemble": "Assemble original software",
                "build": "Build and package original software", "conformance": "Run assembler conformance",
-               "link-conformance": "Run linker/package conformance", "asset-conformance": "Run asset conformance"}
+               "link-conformance": "Run linker/package conformance", "asset-conformance": "Run asset conformance",
+               "library": "Assemble the flash library image"}
     while True:
         action = menu.choose("Software action", _named(command_actions(("sw",))))
         if action is BACK:

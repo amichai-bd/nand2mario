@@ -10,6 +10,7 @@ from pathlib import Path
 import re
 import shutil
 
+from . import flash_library
 from .records import file_hash
 
 READER = "src/rtl/storage/n2m_flash_reader.sv"
@@ -28,9 +29,13 @@ DEFINITIONS = {
     "altera_onchip_flash_hw_proc.tcl": "bd6465a1f3cb08e65888ed5a7d5f085b5979bc8073d8878844bd8f422ac29a2c",
 }
 CONFIGURATION_MODE = 'set_global_assignment -name INTERNAL_FLASH_UPDATE_MODE "Single Comp Image"'
+# The reader's INIT_FILENAME parameter names the Intel HEX the assembler folds
+# into the .pof user range; the file sits beside the generated project.
+INIT_PARAMETER = "INIT_FILENAME"
 # Reader instance path per registered top; a top not listed here has no
 # classified flash diagnostics and fails on the first one.
 READER_INSTANCES = {"flash_proof": "u_reader"}
+POF = "output/design.pof"
 # Registers of the vendor data controller that only its read-and-write mode
 # reads: Quartus 25.1 names each once with its line in the pinned file.
 UNUSED_OBJECTS = (
@@ -81,21 +86,70 @@ def stage(folder, sources):
         shutil.copyfile(source, folder / name)
 
 
-def assignments():
-    return [f"set_global_assignment -name VERILOG_FILE {name}" for name in SOURCES] + [CONFIGURATION_MODE]
+def reader_path(top):
+    """Hierarchical instance path of the flash reader under the given top."""
+    if top not in READER_INSTANCES:
+        raise ValueError("unsupported flash reader top for the library image")
+    return READER_INSTANCES[top]
 
 
-def verify(folder):
-    """The fit placed the one UFM block and kept the compressed single image mode."""
+def init_assignment(top):
+    """QSF parameter assignment naming library.hex on the reader instance."""
+    return f'set_parameter -name {INIT_PARAMETER} "{flash_library.HEX_NAME}" -to "{reader_path(top)}"'
+
+
+def assignments(top):
+    return ([f"set_global_assignment -name VERILOG_FILE {name}" for name in SOURCES]
+            + [CONFIGURATION_MODE, init_assignment(top)])
+
+
+def verify(folder, top):
+    """The fit placed the one UFM block, kept the compressed single image mode and the .pof holds the library."""
     summary = (folder / "output/design.fit.summary").read_text(encoding="utf-8")
     blocks = re.findall(r"(?m)^UFM blocks\s*:\s*(\d+)\s*/\s*(\d+)", summary)
     if blocks != [("1", "1")]:
         raise ValueError("On-Chip Flash IP fit did not place the UFM block")
     qsf = (folder / "design.qsf").read_text(encoding="utf-8")
-    if qsf.count(CONFIGURATION_MODE) != 1:
-        raise ValueError("internal flash configuration mode assignment missing")
+    if qsf.count(CONFIGURATION_MODE) != 1 or qsf.count(init_assignment(top)) != 1:
+        raise ValueError("internal flash configuration mode or library initialization assignment missing")
+    words = flash_library.parse_verilog_hex((folder / flash_library.DAT_NAME).read_text(encoding="ascii"))
+    hex_bytes = flash_library.parse_intel_hex((folder / flash_library.HEX_NAME).read_text(encoding="ascii"))
+    if hex_bytes != dict(enumerate(flash_library.words_to_bytes(words))):
+        raise ValueError("library.hex and library.dat define different words")
     return {"ufm_blocks": 1, "configuration_mode": "Single Comp Image",
-            "sources": {name: file_hash(folder / name) for name in SOURCES}}
+            "sources": {name: file_hash(folder / name) for name in SOURCES},
+            "init_filename": flash_library.HEX_NAME, "reader": reader_path(top),
+            "pof": pof_evidence(folder / POF, words)}
+
+
+def pof_evidence(path, words):
+    """The .pof carries the library byte for byte in the user range and the compressed image fits CFM0.
+
+    The assembler's .pof holds the flash content in address order after its
+    header: the 736 KiB user range (UFM1, UFM0, CFM2, CFM1), then the 672 KiB
+    CFM0, each 32-bit word bit-reversed (flash_library.pof_words). The user
+    range is located by its exact expected bytes, so a shifted, reordered or
+    altered library fails here, and CFM0 usage is the last programmed byte
+    after it.
+    """
+    if not path.is_file() or not path.stat().st_size:
+        raise ValueError("missing FPGA evidence: design.pof")
+    pof = path.read_bytes()
+    expected = flash_library.pof_words(flash_library.words_to_bytes(words))
+    base = pof.find(expected)
+    if base < 0 or pof.find(expected, base + 1) >= 0:
+        raise ValueError("the .pof user range does not hold the assembled library exactly once")
+    cfm0 = pof[base + flash_library.USER_BYTES:base + flash_library.USER_BYTES + flash_library.CFM0_BYTES]
+    if len(cfm0) != flash_library.CFM0_BYTES:
+        raise ValueError("the .pof ends before the CFM0 sector")
+    used = len(cfm0.rstrip(b"\xFF"))
+    programmed = sum(1 for byte in cfm0 if byte != 0xFF)
+    if used > flash_library.CFM0_BYTES:
+        raise ValueError("compressed image exceeds CFM0")
+    return {"sha256": file_hash(path), "bytes": len(pof), "user_range_offset": base,
+            "user_range_match": True, "library_bytes": len(words) * flash_library.WORD_BYTES,
+            "cfm0_bytes": flash_library.CFM0_BYTES, "cfm0_used_bytes": used, "cfm0_programmed_bytes": programmed,
+            "cfm0_spare_bytes": flash_library.CFM0_BYTES - used}
 
 
 def strobe_node(top):

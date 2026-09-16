@@ -6,7 +6,7 @@ import tempfile
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from n2m import fpga, fpga_flash, fpga_lock
+from n2m import fpga, fpga_flash, fpga_lock, flash_library
 
 TARGET = {"top": "flash_proof", "sources": [fpga_flash.READER]}
 STROBE = fpga_flash.strobe_node("flash_proof")
@@ -52,30 +52,73 @@ class FlashIpTests(unittest.TestCase):
         fpga_flash.stage(self.attempt, sources)
         self.assertEqual(sorted(p.name for p in self.attempt.iterdir()), sorted(fpga_flash.SOURCES))
 
-    def test_assignments_name_the_four_files_and_the_compressed_image_mode(self):
-        lines = fpga_flash.assignments()
+    def test_assignments_name_the_four_files_the_compressed_image_mode_and_the_library(self):
+        lines = fpga_flash.assignments("flash_proof")
         self.assertEqual(lines[:4], [f"set_global_assignment -name VERILOG_FILE {n}" for n in fpga_flash.SOURCES])
         self.assertEqual(lines[4], fpga_flash.CONFIGURATION_MODE)
+        self.assertEqual(lines[5], 'set_parameter -name INIT_FILENAME "library.hex" -to "u_reader"')
+        self.assertEqual(len(lines), 6)
+        with self.assertRaisesRegex(ValueError, "unsupported flash reader top"):
+            fpga_flash.assignments("v05_proof")
         self.assertTrue(fpga_flash.flash_target(TARGET))
         self.assertFalse(fpga_flash.flash_target({"top": "sdram_proof", "sources": ["src/rtl/storage/n2m_sdram_ctrl.sv"]}))
 
-    def test_verify_requires_the_ufm_block_and_the_mode_assignment(self):
+    def library(self):
+        """A two-word library and a .pof holding it: erased user range, the words, then a CFM0 with 5 programmed bytes."""
+        words = {0: 0x03020100, 0x22000: 0x80000101}
+        flash_library.write(self.attempt, {"words": words, "catalogue": b"", "rows": []})
+        (self.attempt / flash_library.CATALOGUE_NAME).unlink()
+        user = flash_library.pof_words(flash_library.words_to_bytes(words))
+        cfm0 = b"\x12\x34\xFF\x56\x78" + b"\xFF" * (flash_library.CFM0_BYTES - 5)
+        return words, b"POF header" + user + cfm0 + b"trailer"
+
+    def test_verify_requires_the_ufm_block_the_assignments_and_the_library_in_the_pof(self):
         output = self.attempt / "output"
         output.mkdir()
         for name in fpga_flash.SOURCES:
             (self.attempt / name).write_text("copy\n")
-        (self.attempt / "design.qsf").write_text(fpga_flash.CONFIGURATION_MODE + "\n")
+        (self.attempt / "design.qsf").write_text("\n".join(fpga_flash.assignments("flash_proof")) + "\n")
         (output / "design.fit.summary").write_text("UFM blocks : 1 / 1 ( 100 % )\n")
-        evidence = fpga_flash.verify(self.attempt)
+        words, pof = self.library()
+        (output / "design.pof").write_bytes(pof)
+        evidence = fpga_flash.verify(self.attempt, "flash_proof")
         self.assertEqual((evidence["ufm_blocks"], evidence["configuration_mode"]), (1, "Single Comp Image"))
         self.assertEqual(set(evidence["sources"]), set(fpga_flash.SOURCES))
+        self.assertEqual((evidence["init_filename"], evidence["reader"]), ("library.hex", "u_reader"))
+        self.assertEqual(evidence["pof"]["user_range_offset"], len(b"POF header"))
+        self.assertEqual((evidence["pof"]["cfm0_used_bytes"], evidence["pof"]["cfm0_programmed_bytes"],
+                          evidence["pof"]["cfm0_spare_bytes"], evidence["pof"]["library_bytes"]),
+                         (5, 4, flash_library.CFM0_BYTES - 5, 8))
+        self.assertTrue(evidence["pof"]["user_range_match"])
         (output / "design.fit.summary").write_text("UFM blocks : 0 / 1 ( 0 % )\n")
         with self.assertRaisesRegex(ValueError, "UFM block"):
-            fpga_flash.verify(self.attempt)
+            fpga_flash.verify(self.attempt, "flash_proof")
         (output / "design.fit.summary").write_text("UFM blocks : 1 / 1 ( 100 % )\n")
-        (self.attempt / "design.qsf").write_text("")
-        with self.assertRaisesRegex(ValueError, "configuration mode"):
-            fpga_flash.verify(self.attempt)
+        (self.attempt / "design.qsf").write_text(fpga_flash.CONFIGURATION_MODE + "\n")
+        with self.assertRaisesRegex(ValueError, "configuration mode or library initialization"):
+            fpga_flash.verify(self.attempt, "flash_proof")
+        (self.attempt / "design.qsf").write_text("\n".join(fpga_flash.assignments("flash_proof")) + "\n")
+        # One altered library byte, a missing or truncated .pof, and a
+        # disagreeing .dat each fail.
+        altered = bytearray(pof)
+        altered[len(b"POF header")] ^= 1
+        (output / "design.pof").write_bytes(altered)
+        with self.assertRaisesRegex(ValueError, "does not hold the assembled library"):
+            fpga_flash.verify(self.attempt, "flash_proof")
+        (output / "design.pof").write_bytes(pof[:-len(b"trailer") - 1])
+        with self.assertRaisesRegex(ValueError, "ends before the CFM0"):
+            fpga_flash.verify(self.attempt, "flash_proof")
+        (output / "design.pof").unlink()
+        with self.assertRaisesRegex(ValueError, "design.pof"):
+            fpga_flash.verify(self.attempt, "flash_proof")
+        (output / "design.pof").write_bytes(pof)
+        (self.attempt / flash_library.DAT_NAME).write_text("@00000 03020100\n")
+        with self.assertRaisesRegex(ValueError, "different words"):
+            fpga_flash.verify(self.attempt, "flash_proof")
+        (self.attempt / flash_library.DAT_NAME).write_text("@00000 03020100\n@22000 80000101\n")
+        (self.attempt / flash_library.HEX_NAME).write_text(flash_library.intel_hex(words, count=0x22001))
+        with self.assertRaisesRegex(ValueError, "different words"):
+            fpga_flash.verify(self.attempt, "flash_proof")
 
     def compile_log(self):
         path = (self.attempt / fpga_flash.CONTROLLER).resolve().as_posix()

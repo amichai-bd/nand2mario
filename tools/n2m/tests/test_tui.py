@@ -393,6 +393,7 @@ class TuiTests(unittest.TestCase):
             ("sw", "conformance"): ["sw", "conformance"],
             ("sw", "link-conformance"): ["sw", "link-conformance"],
             ("sw", "asset-conformance"): ["sw", "asset-conformance"],
+            ("sw", "library"): ["sw", "library"],
         }
         host_base = ["host"]
         for action in tui.command_actions(("host",)):

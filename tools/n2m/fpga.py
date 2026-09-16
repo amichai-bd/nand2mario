@@ -12,7 +12,7 @@ import uuid
 from .hdl import dependencies
 from .records import atomic_json, cache_matches, digest, file_hash, read_json
 from .progress import Progress, display_path
-from . import fpga_pll, fpga_constraints, fpga_vga, fpga_intel_memory, fpga_memory_stores, fpga_adc, fpga_controls, fpga_v05, fpga_flash, process_tree
+from . import fpga_pll, fpga_constraints, fpga_vga, fpga_intel_memory, fpga_memory_stores, fpga_adc, fpga_controls, fpga_v05, fpga_flash, flash_library, process_tree
 
 DEVICE = "10M50DAF484C7G"
 REGISTRY = "src/fpga/de10_lite/targets.json"
@@ -185,7 +185,7 @@ def prepare(root, folder, target, build_id=None):
     if "src/rtl/input/n2m_adc_backend.sv" in target["sources"]:
         lines.extend(fpga_adc.assignments())
     if fpga_flash.flash_target(target):
-        lines.extend(fpga_flash.assignments())
+        lines.extend(fpga_flash.assignments(target["top"]))
     if "timing" in target or target["top"] in ("v05_proof", "v05_controls_proof"):
         (folder / "checked.sdc").write_text(checked_constraints(target), encoding="utf-8")
         lines.append('set_global_assignment -name SDC_FILE checked.sdc')
@@ -422,7 +422,7 @@ def timing_evidence(folder, target, *, build_id=None):
     if "pll" in target:
         fpga_pll.verify(folder, target["pll"])
     output = folder / "output"
-    for name in REQUIRED_REPORTS:
+    for name in required_reports(target):
         if not (output / name).is_file() or not (output / name).stat().st_size:
             raise ValueError(f"missing FPGA evidence: {name}")
     fit = (output / "design.fit.summary").read_text(encoding="utf-8")
@@ -519,8 +519,13 @@ def timing_evidence(folder, target, *, build_id=None):
             system_net=fpga_pll.SYSTEM_NET, chains=SDRAM_CHAINS, top=SDRAM_TOP)
         evidence["board_build_id"] = fpga_controls.verify_identity(folder, build_id, macro="N2M_SDRAM_BUILD_ID", instances=1)
     if fpga_flash.flash_target(target):
-        evidence["onchip_flash"] = fpga_flash.verify(folder)
+        evidence["onchip_flash"] = fpga_flash.verify(folder, target["top"])
     return evidence
+
+
+def required_reports(target):
+    """The report and image inventory; a flash image also assembles the .pof."""
+    return REQUIRED_REPORTS + (("design.pof",) if fpga_flash.flash_target(target) else ())
 
 
 def complete_cache(record, fingerprint, root, build, target, build_id=None):
@@ -533,7 +538,7 @@ def complete_cache(record, fingerprint, root, build, target, build_id=None):
             return False
         if read_json(immutable) != record:
             return False
-        required = [folder / "output" / name for name in REQUIRED_REPORTS]
+        required = [folder / "output" / name for name in required_reports(target)]
         if "pll" in target:
             required += [folder / "n2m_pixel_pll.v", folder / "generate-pll.log"]
             if target["pll"].get("system_divide") == 2:
@@ -542,7 +547,7 @@ def complete_cache(record, fingerprint, root, build, target, build_id=None):
         if "src/rtl/input/n2m_adc_backend.sv" in target.get("sources", []):
             required += [folder / name for name in (*fpga_adc.CONTROL, "n2m_adc_pll.v", "generate-adc-pll.log")]
         if fpga_flash.flash_target(target):
-            required += [folder / name for name in fpga_flash.SOURCES]
+            required += [folder / name for name in (*fpga_flash.SOURCES, flash_library.HEX_NAME, flash_library.DAT_NAME)]
         if "pll" in target or any(p in target["sources"] for p in ("src/rtl/common/n2m_intel_ram.sv", "src/rtl/input/n2m_adc_backend.sv")):
             required += [folder / "simulation/questa/design.vo", folder / "netlist.log"]
         required += [folder / name for name in ("design.qpf", "design.qsf", "audit.tcl", "compile.log", "audit.log")]
@@ -591,6 +596,8 @@ def build_fpga(root, build, args, provenance=None, progress=None):
             raise ValueError("FPGA stage timeout must be between 1 and 3600 seconds")
         target = target_definition(root, args.target)
         inputs = [REGISTRY, "tools/build.py", *dependencies(root, target["sources"], synthesis=True), *target["constraints"]]
+        if fpga_flash.flash_target(target):
+            inputs.append(flash_library.REGISTRY)
         inputs += [p.relative_to(root).as_posix() for p in (root / "tools/n2m").glob("*.py")]
         record["inputs"] = {p: file_hash(root / p) for p in inputs}
         with progress.stage("Discover Quartus tools", f"logs: {display_path(root, folder)}"):
@@ -605,6 +612,16 @@ def build_fpga(root, build, args, provenance=None, progress=None):
                 record["tools"]["onchip_flash"] = fpga_flash.identity(args.quartus_bin)
         record["definition"] = target
         fingerprint_inputs = {"inputs": record["inputs"], "tools": record["tools"], "definition": target, "timeout": args.timeout}
+        if fpga_flash.flash_target(target):
+            # The library is assembled before the cache check: its words are a
+            # build input, so a changed game image forces a new attempt.
+            with progress.stage("Assemble flash library", f"folder: {display_path(root, folder)}"):
+                registry = flash_library.load_registry(root)
+                images = flash_library.build_images(root, build, registry, provenance or {}, rebuild=args.rebuild)
+                assembled = flash_library.assemble(images)
+                hashes = flash_library.write(folder, assembled)
+                record["library"] = flash_library.summary(registry, assembled, hashes, folder, root)
+            fingerprint_inputs["library"] = hashes
         override = getattr(args, "build_id", None)
         has_identity = identity_target(target)
         if override is not None:
@@ -629,6 +646,8 @@ def build_fpga(root, build, args, provenance=None, progress=None):
         if cache_ok:
             record.update(status="PASS", cache="CACHED", reused_result=old["attempt_result"], evidence=old["evidence"], evidence_directory=old["evidence_directory"])
             record["artifacts"].update(old["artifacts"])
+            if "library" in record:
+                record["library"]["files"] = old["library"]["files"]
             progress.cached("Compile, fit, assemble, and time")
             progress.cached("Audit timing and constraints")
             progress.cached("Check FPGA result")

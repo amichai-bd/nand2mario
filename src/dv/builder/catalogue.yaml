@@ -576,6 +576,7 @@ units:
   tools/n2m/tests/test_doctor.py: {kind: unit, level: 0, labels: [builder], duration_seconds: 0.23}
   tools/n2m/tests/test_external_rom.py: {kind: unit, level: 0, labels: [builder, host], duration_seconds: 0.54}
   tools/n2m/tests/test_fixture_preflight.py: {kind: unit, level: 1, labels: [builder, python-tb], duration_seconds: 6.01}
+  tools/n2m/tests/test_flash_library.py: {kind: unit, level: 0, labels: [builder, fpga, storage, sw], duration_seconds: 0.00}
   tools/n2m/tests/test_fpga.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 1.26}
   tools/n2m/tests/test_fpga_adc.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.08}
   tools/n2m/tests/test_fpga_clocking.py: {kind: unit, level: 0, labels: [builder, fpga], duration_seconds: 0.12}

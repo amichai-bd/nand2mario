@@ -16,6 +16,7 @@ from .doctor import doctor
 from .host.command import run as host_command
 from .fpga import build_fpga
 from .fpga_program import program as program_fpga
+from .flash_library import library_stage
 from .lint import lint_questa
 from .progress import Progress, powershell_command
 from .rgbds import oracle
@@ -134,6 +135,10 @@ def parser():
     cartridge.add_argument("--rebuild", action="store_true")
     cartridge.add_argument("--tag")
     cartridge.add_argument("--json", action="store_true")
+    flash_library = sw.add_parser("library", help="assemble the flash library image (library.hex, library.dat) from src/fpga/de10_lite/library.json; no Quartus")
+    flash_library.add_argument("--rebuild", action="store_true")
+    flash_library.add_argument("--tag")
+    flash_library.add_argument("--json", action="store_true")
     proof = sw.add_parser("conformance", help="compare complete original instruction matrix against RGBDS")
     proof.add_argument("--offline", action="store_true")
     proof.add_argument("--mutate", action="store_true", help="deliberately corrupt one encoded byte; must fail")
@@ -271,6 +276,7 @@ def tagged(root, args, header, publish, progress=None):
                               else asset_proof(root, build, args, provenance) if args.action == "asset-conformance"
                               else link_proof(root, build, args, provenance) if args.action == "link-conformance"
                               else build_target(root, build, args, provenance) if args.action == "build"
+                              else library_stage(root, build, args, provenance) if args.action == "library"
                               else assemble_target(root, build, args, provenance))
             elif args.command == "sim" and args.action == "preflight":
                 from .fixture_preflight import run
@@ -388,6 +394,11 @@ def _human_result(args, report, progress):
         if bitstreams:
             label = "Checked bitstream" if status == "PASS" else "Unverified bitstream artifact"
             progress.line(f"{label}: {bitstreams[-1]}")
+        flash_images = _artifacts(report, suffix="/output/design.pof")
+        if flash_images and status == "PASS":
+            pof = report.get("evidence", {}).get("onchip_flash", {}).get("pof", {})
+            progress.line(f"Flash image (.pof, library in the user range): {flash_images[-1]}")
+            progress.line(f"CFM0 used {pof.get('cfm0_used_bytes')} of {pof.get('cfm0_bytes')} bytes; spare {pof.get('cfm0_spare_bytes')}")
         if status == "PASS" and bitstreams and not report.get("build_id_override"):
             progress.line("Next (Windows PowerShell): " + powershell_command([
                 "python", "tools/build.py", "fpga", "program", "--sof", bitstreams[-1],
