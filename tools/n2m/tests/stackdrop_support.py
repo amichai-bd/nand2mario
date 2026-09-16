@@ -24,5 +24,5 @@ Game, reference_cells, decode = reference.Game, reference.cells, screen.decode
 
 
 def image(game):
-    with patch.dict(sys.modules, {'cases': cases, 'reference': reference}):
+    with patch.dict(sys.modules, {'cases': cases, 'reference': reference, 'screen': screen}):
         return screen.image(game)

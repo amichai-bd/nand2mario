@@ -53,7 +53,7 @@ class ProgramArtTests(unittest.TestCase):
         for buttons in OVER_SCRIPT:
             over.update(buttons)
         for name, game in (('title', Game()), ('play', play), ('over', over)):
-            with patch.dict(sys.modules, {'cases': cases, 'reference': reference}):
+            with patch.dict(sys.modules, {'cases': cases, 'reference': reference, 'screen': screen}):
                 self.assertEqual(bytes(stackdrop_prepare(shapes, faces, game)), cases.buffer(game), name)
             self.assertEqual(self.frame('stackdrop', name), image(game), name)
         self.assertEqual(screen.decode(self.frame('stackdrop', 'title'))['status'], 0)
