@@ -160,28 +160,62 @@ stepped mode. It sends no RUN or HALT as part of the action, so the selected
 mode survives the return. It exposes no arbitrary UART operation, image load,
 reset, configuration, file access or upload.
 
-Before each capture, including the first, the single UART owner freezes the
-currently published FIFO batch under the producer lock. It executes that whole
-batch in order, releasing and verifying input 0 after each press, then performs
-one complete SNAPSHOT and all 5760 READ_FRAME bytes. In stepped mode each press
-holds its mask across its own step before that release, and a batch with no press
-takes one step of its own; the step is emulated time, not a frame readback, so
-nothing interleaves with one. Arrivals during a batch or capture wait for the
-next batch.
-At most 16 requests can be pending; a finite batch prevents capture starvation.
+UART-framebuffer mode retains one serial cycle: the sole UART owner freezes the
+currently published FIFO batch under the producer lock, executes it in order,
+then performs one complete SNAPSHOT and all 5760 READ_FRAME bytes. Arrivals
+during that batch or capture wait for the next cycle.
 
-A loader-profile menu selection is the one bounded exception to an immediate
-input readback. The accepted mask can make the menu start an image swap; that
-swap resets the core and clears host and effective input before the viewer reads
-them back. `STATE == LOADING`, or a changed supported `PROFILE` after that short
-state has already passed, identifies this transition. The viewer does not replay
-the accepted tap into the selected game. It waits for the generated worst-case
-64 KiB swap bound (`LIBRARY_SWAP_BOUND_MBC1_EDGES`, 120,000 system edges), then
-requires `IMAGE_VALID == 1`, a generated supported profile, UART input authority,
-host and effective input 0, and RUNNING in free-run or PAUSED in stepped mode.
-Only then does it retire the tap and process the next request. A mask write that
-the endpoint certainly rejected with `BAD_STATE` before applying it may be sent
-once after the same verification; an accepted write is never replayed.
+Camera-with-UART mode separates those jobs. A camera publisher owns camera reads,
+JPEG publication and capture artifacts, but has no UART client. The sole UART
+owner polls the finite FIFO independently, so a blocked camera read cannot delay
+a queued command and a UART command or 134 ms hold cannot stall camera
+publication. At most 16 requests can be pending. The UART owner still executes
+each frozen batch in order and releases one press before starting the next.
+Shutdown closes the camera source and then always waits a bounded time for the
+publisher thread to stop; a failed source close and a publisher that stays alive
+are both reported in the run result, never only the last one.
+
+An ordinary free-run tap outside the loader-selection boundary sends exactly two
+acknowledged `COMMAND_INPUT` operations: the complete press mask, the fixed 134
+ms host hold, then neutral mask 0. The successful replies identify the completed
+dots where those masks took effect. The steady path adds no STATE, PROFILE or
+effective-input read.
+Stepped mode still holds each press mask across its own step before sending the
+neutral command; a batch with no press takes one step of its own. A step is
+emulated time, not a frame readback, so no other UART request interleaves with
+one.
+
+Camera cadence never causes a health read, and in free-run it sends no UART
+request at all. In stepped mode with a camera, each newly observed camera frame
+sequence lets the UART owner take one `RUN_DOTS` step when no press in that cycle
+already stepped, so an idle stepped view still advances at camera pace. While
+idle, the UART owner checks STATE and PROFILE at most once per second. A stable
+check is exactly those two reads. A LOADING state or changed profile invokes the
+full bounded post-loader guard, which samples STATE again itself rather than
+trusting the older health read; an unexpected selected-mode state stops the worker. Preflight, loader settlement,
+Main menu and shutdown retain their fuller image, input-authority, neutral-input
+and mode checks.
+
+A loader-profile menu selection is the bounded exception to an ordinary release.
+An acknowledged press can make the menu start an image swap; that swap resets the
+core and clears host and effective input. The viewer never replays that accepted
+press into the selected game. If an input command is explicitly rejected with
+`BAD_STATE`, or the idle health check later observes `STATE == LOADING` or a
+changed supported PROFILE, the UART owner reads a fresh STATE sample of its own,
+because the swap may have begun after an earlier read or finished before it. A
+LOADING sample waits for the generated worst-case 64 KiB swap bound
+(`LIBRARY_SWAP_BOUND_MBC1_EDGES`, 120,000 system edges); a swap that already
+completed is verified without the wait. The guard then requires
+`IMAGE_VALID == 1`, a generated supported profile, UART input authority, host and
+effective input 0, and RUNNING in free-run or PAUSED in stepped mode. Only then
+does it continue. An input command that the endpoint certainly rejected with
+`BAD_STATE` before applying a nonzero press may be sent once after the same
+verification. An acknowledged command is never replayed. A rejected neutral
+release is not resent because loader reset itself establishes neutral input and
+the guard verifies it. Because A is the loader menu's specified selection
+control, its accepted neutral release also performs the two-read STATE/PROFILE
+boundary check. That catches a short swap which completed entirely during the
+134 ms hold and applies the full guard before any next queued tap.
 
 An image still loading after the bound, an invalid or unsupported image, a
 non-neutral input, the wrong selected-mode state, or protocol uncertainty stops
@@ -201,11 +235,13 @@ The running service record must say that UART controls are enabled. A camera-onl
 tag refuses this command before it creates an inbox item. Camera plus the explicit
 UART-control option accepts it under the same bounded queue as browser taps.
 
-In free-run, durations are approximate monotonic host time after the input
+In free-run, durations are approximate monotonic host time after the press
 acknowledgement, not exact emulated frame counts. Stepped mode ignores the
 requested milliseconds: see below. A full local batch can add about 16 seconds plus
-UART acknowledgements before the next capture. During that time the page shows
-PROCESSING INPUTS and the real age of the previous image, not false freshness.
+UART acknowledgements before the next UART-framebuffer capture. During that time
+the UART-framebuffer page shows PROCESSING INPUTS and the real age of the previous
+image, not false freshness. A camera page continues publishing fresh JPEGs while
+that same ordered batch runs.
 
 History is newest first. Each record includes its assigned ID, the button or mask
 of a press, the selected mode, or Main menu, its queued timestamp and its observed
@@ -233,6 +269,7 @@ Retain the latest 50 terminal records plus every queued/executing record. Atomic
 history updates share the producer lock with admission, so an old queued update
 cannot overwrite execution. History polling never accesses UART. Persistence
 failure cannot skip release of an already-pressed key or report false retirement.
+Camera publication and history polling never access UART.
 
 ## Free-run and stepped modes
 

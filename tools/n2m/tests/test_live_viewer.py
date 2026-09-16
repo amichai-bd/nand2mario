@@ -9,13 +9,16 @@ import tempfile
 import threading
 import time
 import unittest
+import unittest.mock
 import zlib
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[2]))
 from n2m import generated_interfaces as abi
 from n2m.host.client import RejectedCommand
 from n2m.live_viewer import (FRAME_DOTS, LOADER_SWAP_SECONDS, MAX_STEP_FRAMES,
-                             Latest, advance, capture_loop, server, PAGE)
+                             CameraPublisher, LoaderTransition, Latest, advance,
+                             capture_loop, cleanup_error_names, server, PAGE)
+from n2m.springtrail_play import PlayFailure
 from fpga_viewer import png_writer, Stop
 from n2m.viewer_buttons import (MAIN_MENU_ACTION, Buttons, enqueue,
                                 enqueue_action, enqueue_mode, history)
@@ -53,9 +56,12 @@ class Fake:
     def write_host(self, address, value):
         self.events.append(('write',address,value))
         if address==abi.HOST_REG_INPUT:self.mask=value
-    def control(self, action):
-        self.events.append(action)
-        assert action in ('RUN','HALT')
+    def control(self, action, value=None):
+        self.events.append(('input',value) if action=='INPUT' else action)
+        assert action in ('RUN','HALT','INPUT')
+        if action == 'INPUT':
+            self.mask = value
+            return {'dot':self.dot}
         self.state = abi.STATE_RUNNING if action=='RUN' else abi.STATE_PAUSED
     def run_dots(self, count):
         self.events.append(('run_dots',count))
@@ -102,30 +108,22 @@ class LoaderSwapFake(Fake):
         self.state = abi.STATE_LOADING
         self.mask = 0  # The accepted loader reset clears host/effective input.
 
-    def read_host(self, address):
-        if address == abi.HOST_REG_INPUT_EFFECTIVE and self.pending_swap:
-            # The game can take time after accepting the mask before its menu
-            # commit. Begin the hardware-bounded interval only at this readback.
+    def control(self, action, value=None):
+        if action == 'INPUT' and self.pending_swap:
+            # The accepted press can take arbitrary game time to reach the menu
+            # commit. This later command observes LOADING only after the commit.
             self.clock.wait(self.delayed_commit_bounds*LOADER_SWAP_SECONDS)
             self.start_swap()
-        return super().read_host(address)
-
-    def write_host(self, address, value):
         if self.state == abi.STATE_LOADING:
-            self.events.append(('write-rejected',address,value))
-            raise RejectedCommand('WRITE_HOST',abi.STATUS_BAD_STATE)
-        super().write_host(address,value)
-        if address == abi.HOST_REG_INPUT and value == abi.BUTTON_A and not self.swap_started:
+            self.events.append((action,value,'rejected'))
+            raise RejectedCommand(action,abi.STATUS_BAD_STATE)
+        result = super().control(action,value)
+        if action == 'INPUT' and value == abi.BUTTON_A and not self.swap_started:
             if self.delayed_commit_bounds:
                 self.pending_swap = True
             else:
                 self.start_swap()
-
-    def control(self, action):
-        if self.state == abi.STATE_LOADING:
-            self.events.append((action,'rejected'))
-            raise RejectedCommand(action,abi.STATUS_BAD_STATE)
-        super().control(action)
+        return result
 
     def transition_pause(self, seconds):
         self.pause_calls.append(seconds)
@@ -137,6 +135,51 @@ class LoaderSwapFake(Fake):
             self.profile = self.final_profile
             self.state = self.final_state
             self.mask = self.final_mask
+
+
+class SwapCompletesAfterRejection(Fake):
+    """A swap that finishes between a BAD_STATE reply and the next host read.
+
+    `reject` names the INPUT mask the loader rejects: a nonzero press, or the
+    neutral release after an accepted A press. The swap completes immediately
+    after that rejection, so every follow-up read already shows the new image.
+    """
+    def __init__(self, clock, *, reject):
+        super().__init__(clock)
+        self.profile, self.reject = abi.PROFILE_LOADER_ID, reject
+        self.pause_calls = []
+
+    def control(self, action, value=None):
+        if action == 'INPUT' and value == self.reject and self.profile == abi.PROFILE_LOADER_ID:
+            self.events.append((action,value,'rejected'))
+            self.profile, self.state, self.valid, self.mask = \
+                abi.PROFILE_DIRECT_ID, abi.STATE_RUNNING, 1, 0
+            raise RejectedCommand(action,abi.STATUS_BAD_STATE)
+        result = super().control(action,value)
+        if action == 'INPUT' and value == abi.BUTTON_A and self.reject == 0:
+            self.state, self.valid, self.mask = abi.STATE_LOADING, 0, 0
+        return result
+
+    def transition_pause(self, seconds):
+        self.pause_calls.append(seconds)
+
+
+class SwapStartsBetweenHealthReads(Fake):
+    """STATE reads RUNNING, then the loader invalidates the image before PROFILE."""
+    def __init__(self, clock):
+        super().__init__(clock)
+        self.profile, self.state = abi.PROFILE_LOADER_ID, abi.STATE_RUNNING
+        self.pause_calls = []
+
+    def read_host(self, address):
+        value = super().read_host(address)
+        if address == abi.HOST_REG_STATE and self.profile == abi.PROFILE_LOADER_ID:
+            self.profile, self.state, self.valid = abi.PROFILE_DIRECT_ID, abi.STATE_LOADING, 0
+        return value
+
+    def transition_pause(self, seconds):
+        self.pause_calls.append(seconds)
+        self.state, self.valid = abi.STATE_RUNNING, 1
 
 
 class MainMenuFake(Fake):
@@ -180,6 +223,43 @@ class FakeCamera:
         seq = 1 if self.fault=='duplicate' else self.count
         return {'kind':'camera','seq':seq},b'camera-jpeg-'+bytes([seq])
     def close(self):self.closed=True
+
+
+class PacedCamera:
+    """Small real-time camera fake whose close unblocks an in-flight read.
+
+    `close_fault` makes close raise after unblocking the read ('unblock') or
+    without unblocking it ('hold'); the test releases a held read itself.
+    """
+    def __init__(self, *, blocked=False, close_fault=None):
+        self.blocked, self.close_fault = blocked, close_fault
+        self.gate = threading.Event()
+        self.read_started = threading.Event()
+        self.closed = False
+        self.count = 0
+
+    def start(self):
+        pass
+
+    def read(self):
+        self.read_started.set()
+        if self.blocked:
+            self.gate.wait(2)
+            self.blocked = False
+            self.gate.clear()
+        elif self.gate.wait(.005):
+            raise RuntimeError('camera closed')
+        if self.closed:
+            raise RuntimeError('camera closed')
+        self.count += 1
+        return {'kind':'camera','seq':self.count},('frame-%d'%self.count).encode()
+
+    def close(self):
+        self.closed = True
+        if self.close_fault != 'hold':
+            self.gate.set()
+        if self.close_fault:
+            raise OSError('camera close failed')
 
 
 class ViewerTests(unittest.TestCase):
@@ -256,6 +336,121 @@ class ViewerTests(unittest.TestCase):
                           isinstance(event,tuple) and event[:2] == ('write',abi.HOST_REG_INPUT)],
                          ['HALT',('write',abi.HOST_REG_INPUT,0)])
 
+    def test_stable_tap_is_exactly_two_acknowledged_input_commands(self):
+        clock=Clock();clock.value=0;client=Fake(clock)
+        transition=LoaderTransition(client,lambda:'free-run',
+                                    profile=abi.PROFILE_DIRECT_ID)
+        with tempfile.TemporaryDirectory() as folder:
+            out=Path(folder);(out/'service.json').write_text('{}');enqueue(out,1,134)
+            receipt=Buttons(out).one(client,clock,clock=clock,wait=clock.wait,
+                                     apply=transition.apply)
+        self.assertEqual(receipt['status'],'APPLIED')
+        self.assertTrue(receipt['released'])
+        self.assertEqual(client.events,[('input',1),('input',0)])
+
+    def test_idle_health_is_two_reads_and_refuses_a_wrong_mode(self):
+        clock=Clock();client=Fake(clock);client.state=abi.STATE_RUNNING
+        transition=LoaderTransition(client,lambda:'free-run',
+                                    profile=abi.PROFILE_DIRECT_ID)
+        self.assertIsNone(transition.health())
+        self.assertEqual(client.events,[('read',abi.HOST_REG_STATE),
+                                        ('read',abi.HOST_REG_PROFILE)])
+        client.events.clear();client.state=abi.STATE_PAUSED
+        with self.assertRaises(PlayFailure):
+            transition.health()
+        self.assertEqual(client.events,[('read',abi.HOST_REG_STATE),
+                                        ('read',abi.HOST_REG_PROFILE)])
+
+    def test_blocked_camera_read_does_not_delay_a_queued_tap(self):
+        pressed=threading.Event();released=threading.Event()
+        class Observed(Fake):
+            def control(self,action,value=None):
+                result=super().control(action,value)
+                if action=='INPUT':
+                    (released if value==0 else pressed).set()
+                return result
+        stop=threading.Event();camera=PacedCamera(blocked=True);latest=Latest()
+        client=Observed(time.monotonic);box={}
+        with tempfile.TemporaryDirectory() as folder:
+            out=Path(folder);(out/'service.json').write_text('{}')
+            thread=threading.Thread(target=lambda:box.setdefault('result',capture_loop(
+                client,latest,out,png_writer,expected_build=BUILD,stop=stop,
+                seconds=2,buttons=Buttons(out),camera=camera,health_interval=10)))
+            thread.start()
+            self.assertTrue(camera.read_started.wait(1))
+            deadline=time.monotonic()+.5
+            while True:
+                try:
+                    enqueue(out,abi.BUTTON_RIGHT,134)
+                    break
+                except FileExistsError:
+                    if time.monotonic() >= deadline:
+                        raise
+                    time.sleep(.005)
+            self.assertTrue(pressed.wait(.5))
+            self.assertTrue(released.wait(.5))
+            self.assertEqual(latest.read()[0]['sequence'],0)
+            camera.gate.set()
+            deadline=time.monotonic()+1
+            while latest.read()[0]['sequence']==0 and time.monotonic()<deadline:
+                time.sleep(.005)
+            self.assertGreater(latest.read()[0]['sequence'],0)
+            stop.set();thread.join(3)
+            self.assertFalse(thread.is_alive())
+        self.assertEqual(box['result']['status'],'PASS')
+        self.assertEqual([event for event in client.events
+                          if isinstance(event,tuple) and event[0]=='input'],
+                         [('input',abi.BUTTON_RIGHT),('input',0)])
+
+    def test_camera_publishes_during_input_ack_and_held_tap(self):
+        input_started=threading.Event();allow_ack=threading.Event()
+        acked=threading.Event();released=threading.Event()
+        class SlowAck(Fake):
+            def control(self,action,value=None):
+                result=super().control(action,value)
+                if action=='INPUT' and value:
+                    input_started.set()
+                    if not allow_ack.wait(1):
+                        raise TimeoutError('test input acknowledgement blocked')
+                    acked.set()
+                elif action=='INPUT':
+                    released.set()
+                return result
+        stop=threading.Event();camera=PacedCamera();latest=Latest()
+        client=SlowAck(time.monotonic);box={}
+        with tempfile.TemporaryDirectory() as folder:
+            out=Path(folder);(out/'service.json').write_text('{}')
+            thread=threading.Thread(target=lambda:box.setdefault('result',capture_loop(
+                client,latest,out,png_writer,expected_build=BUILD,stop=stop,
+                seconds=2,buttons=Buttons(out),camera=camera,health_interval=10)))
+            thread.start()
+            self.assertTrue(camera.read_started.wait(1))
+            deadline=time.monotonic()+1
+            while latest.read()[0]['sequence']<1 and time.monotonic()<deadline:
+                time.sleep(.005)
+            enqueue(out,abi.BUTTON_A,134)
+            self.assertTrue(input_started.wait(.5))
+            during_command=latest.read()[0]['sequence']
+            deadline=time.monotonic()+.5
+            while latest.read()[0]['sequence']<=during_command and time.monotonic()<deadline:
+                time.sleep(.005)
+            self.assertGreater(latest.read()[0]['sequence'],during_command)
+            allow_ack.set();self.assertTrue(acked.wait(.5))
+            during_hold=latest.read()[0]['sequence']
+            deadline=time.monotonic()+.1
+            while latest.read()[0]['sequence']<=during_hold and time.monotonic()<deadline:
+                time.sleep(.005)
+            self.assertGreater(latest.read()[0]['sequence'],during_hold)
+            self.assertFalse(released.is_set())
+            self.assertTrue(released.wait(.5))
+            stop.set();thread.join(3)
+            self.assertFalse(thread.is_alive())
+        self.assertEqual(box['result']['status'],'PASS')
+        self.assertGreater(box['result']['capture_count'],5)
+        state_reads=[event for event in client.events
+                     if event==('read',abi.HOST_REG_STATE)]
+        self.assertEqual(len(state_reads),3)  # Preflight twice, final cleanup once.
+
     def test_loader_reset_consumes_tap_then_later_tap_and_capture_continue(self):
         clock=Clock();clock.value=0;client=LoaderSwapFake(clock);latest=Latest(clock=clock)
         with tempfile.TemporaryDirectory() as folder:
@@ -271,9 +466,13 @@ class ViewerTests(unittest.TestCase):
             'profile':abi.PROFILE_DIRECT_ID,'state':abi.STATE_RUNNING,
             'bound_edges':abi.LIBRARY_SWAP_BOUND_MBC1_EDGES})
         self.assertEqual((rows[first]['state'],rows[second]['state']),('RETIRED','RETIRED'))
-        writes=[event[2] for event in client.events
-                if isinstance(event,tuple) and event[:2] == ('write',abi.HOST_REG_INPUT)]
-        self.assertEqual(writes,[abi.BUTTON_A,0,abi.BUTTON_B,0,0])
+        inputs=[event[1] for event in client.events
+                if isinstance(event,tuple) and event[0] in ('input','INPUT')]
+        self.assertEqual(inputs,[abi.BUTTON_A,0,abi.BUTTON_B,0])
+        self.assertEqual([event for event in client.events
+                          if isinstance(event,tuple) and event[:2] ==
+                          ('write',abi.HOST_REG_INPUT)],
+                         [('write',abi.HOST_REG_INPUT,0)])
         self.assertEqual(client.mask,0)
         self.assertFalse(client.uncertain)
         self.assertEqual(result['cleanup'],{
@@ -292,6 +491,98 @@ class ViewerTests(unittest.TestCase):
         self.assertEqual(client.pause_calls,[LOADER_SWAP_SECONDS])
         self.assertEqual(result['inputs'][0]['loader_transition']['profile'],
                          abi.PROFILE_DIRECT_ID)
+        self.assertEqual(client.mask,0)
+
+    def test_completed_loader_swap_settles_before_the_next_queued_tap(self):
+        class CompletedSwap(Fake):
+            def __init__(self, clock):
+                super().__init__(clock);self.profile=abi.PROFILE_LOADER_ID
+            def control(self,action,value=None):
+                result=super().control(action,value)
+                if action=='INPUT' and value==abi.BUTTON_A:
+                    # The short loader interval completes during the 134 ms
+                    # hold, so neutral INPUT is accepted by the new image.
+                    self.profile=abi.PROFILE_DIRECT_ID
+                    self.state=abi.STATE_RUNNING
+                    self.mask=0
+                return result
+        clock=Clock();clock.value=0;client=CompletedSwap(clock)
+        with tempfile.TemporaryDirectory() as folder:
+            out=Path(folder);(out/'service.json').write_text('{}')
+            enqueue(out,abi.BUTTON_A,134);enqueue(out,abi.BUTTON_B,134)
+            result=capture_loop(client,Latest(clock=clock),out,png_writer,
+                                expected_build=BUILD,stop=clock,clock=clock,
+                                wait=clock.wait,seconds=4,buttons=Buttons(out))
+        self.assertEqual(result['status'],'PASS')
+        self.assertEqual(result['inputs'][0]['loader_transition']['profile'],
+                         abi.PROFILE_DIRECT_ID)
+        first_release=client.events.index(('input',0))
+        second_press=client.events.index(('input',abi.BUTTON_B))
+        boundary=client.events[first_release+1:second_press]
+        self.assertIn(('read',abi.HOST_REG_STATE),boundary)
+        self.assertIn(('read',abi.HOST_REG_PROFILE),boundary)
+        self.assertEqual(client.events.count(('input',abi.BUTTON_A)),1)
+
+    def test_health_split_read_waits_when_the_swap_starts_between_state_and_profile(self):
+        clock=Clock();client=SwapStartsBetweenHealthReads(clock)
+        transition=LoaderTransition(client,lambda:'free-run',
+                                    profile=abi.PROFILE_LOADER_ID,
+                                    pause=client.transition_pause)
+        settled=transition.health()
+        self.assertEqual(settled['profile'],abi.PROFILE_DIRECT_ID)
+        self.assertEqual(settled['state'],abi.STATE_RUNNING)
+        self.assertEqual(client.pause_calls,[LOADER_SWAP_SECONDS])
+        self.assertEqual(client.events[:3],[('read',abi.HOST_REG_STATE),
+                                            ('read',abi.HOST_REG_PROFILE),
+                                            ('read',abi.HOST_REG_STATE)])
+        self.assertEqual(transition.profile,abi.PROFILE_DIRECT_ID)
+
+    def test_rejected_press_retries_once_after_a_swap_that_completed_before_the_read(self):
+        clock=Clock();clock.value=0
+        client=SwapCompletesAfterRejection(clock,reject=abi.BUTTON_B)
+        with tempfile.TemporaryDirectory() as folder:
+            out=Path(folder);(out/'service.json').write_text('{}')
+            index=enqueue(out,abi.BUTTON_B,134)
+            result=capture_loop(client,Latest(clock=clock),out,png_writer,
+                                expected_build=BUILD,stop=clock,clock=clock,
+                                wait=clock.wait,seconds=4,buttons=Buttons(out),
+                                transition_pause=client.transition_pause)
+            rows={row['id']:row for row in history(out)}
+        self.assertEqual(result['status'],'PASS')
+        receipt=result['inputs'][0]
+        self.assertEqual((receipt['status'],receipt['released']),('APPLIED',True))
+        self.assertEqual(receipt['loader_transition']['profile'],abi.PROFILE_DIRECT_ID)
+        self.assertEqual(rows[index]['state'],'RETIRED')
+        self.assertEqual(client.pause_calls,[])
+        inputs=[event for event in client.events
+                if isinstance(event,tuple) and event[0] in ('input','INPUT')]
+        self.assertEqual(inputs,[('INPUT',abi.BUTTON_B,'rejected'),
+                                 ('input',abi.BUTTON_B),('input',0)])
+        self.assertEqual(client.mask,0)
+
+    def test_rejected_release_is_verified_neutral_after_a_swap_that_completed_before_the_read(self):
+        clock=Clock();clock.value=0
+        client=SwapCompletesAfterRejection(clock,reject=0)
+        with tempfile.TemporaryDirectory() as folder:
+            out=Path(folder);(out/'service.json').write_text('{}')
+            first=enqueue(out,abi.BUTTON_A,134);second=enqueue(out,abi.BUTTON_B,134)
+            result=capture_loop(client,Latest(clock=clock),out,png_writer,
+                                expected_build=BUILD,stop=clock,clock=clock,
+                                wait=clock.wait,seconds=4,buttons=Buttons(out),
+                                transition_pause=client.transition_pause)
+            rows={row['id']:row for row in history(out)}
+        self.assertEqual(result['status'],'PASS')
+        receipt=result['inputs'][0]
+        self.assertEqual((receipt['status'],receipt['released']),('APPLIED',True))
+        self.assertEqual(receipt['loader_transition']['profile'],abi.PROFILE_DIRECT_ID)
+        self.assertEqual((rows[first]['state'],rows[second]['state']),('RETIRED','RETIRED'))
+        self.assertEqual(client.pause_calls,[])
+        inputs=[event for event in client.events
+                if isinstance(event,tuple) and event[0] in ('input','INPUT')]
+        # The accepted A press is never replayed and the rejected release is not
+        # resent: the guard verified the reset's neutral input instead.
+        self.assertEqual(inputs,[('input',abi.BUTTON_A),('INPUT',0,'rejected'),
+                                 ('input',abi.BUTTON_B),('input',0)])
         self.assertEqual(client.mask,0)
 
     def test_loader_transition_rejects_invalid_image_profile_input_and_mode(self):
@@ -329,9 +620,8 @@ class ViewerTests(unittest.TestCase):
         self.assertEqual(rows[first]['state'],'FAILED')
         self.assertEqual(rows[second]['state'],'QUEUED')
         self.assertEqual(client.state,abi.STATE_LOADING)
-        self.assertEqual(clock.value,2*LOADER_SWAP_SECONDS)
-        self.assertNotIn(abi.BUTTON_B,[event[2] for event in client.events
-                                      if isinstance(event,tuple) and event[:2] == ('write',abi.HOST_REG_INPUT)])
+        self.assertEqual(clock.value,.134+LOADER_SWAP_SECONDS)
+        self.assertNotIn(('input',abi.BUTTON_B),client.events)
 
     def test_loader_transition_uncertainty_sends_no_follow_up_traffic(self):
         clock=Clock();clock.value=0;client=LoaderSwapFake(clock,uncertain=True)
@@ -344,9 +634,8 @@ class ViewerTests(unittest.TestCase):
         self.assertEqual(result['status'],'FAIL')
         self.assertFalse(result['cleanup']['verified'])
         self.assertTrue(client.uncertain)
-        trigger=client.events.index(('write',abi.HOST_REG_INPUT,abi.BUTTON_A))
-        self.assertFalse([event for event in client.events[trigger+1:]
-                          if isinstance(event,tuple) and event[0] in ('write','write-rejected')])
+        self.assertIn(('input',abi.BUTTON_A),client.events)
+        self.assertEqual(client.events[-1],('read',abi.HOST_REG_STATE))
 
     def test_main_menu_uses_bounded_return_and_preserves_free_run(self):
         clock=Clock();clock.value=0;client=MainMenuFake(clock);latest=Latest(clock=clock)
@@ -424,6 +713,43 @@ class ViewerTests(unittest.TestCase):
         self.assertEqual(called,[])
         self.assertFalse([event for event in client.events if isinstance(event,tuple)
                           and event[:2] == ('write',abi.HOST_REG_LIBRARY_CONTROL)])
+
+    def test_failed_camera_close_still_joins_the_publisher(self):
+        stop=threading.Event()
+        for fault,expected,alive in (('unblock','OSError',False),('hold','RuntimeError+OSError',True)):
+            with self.subTest(fault=fault),tempfile.TemporaryDirectory() as folder:
+                camera=PacedCamera(blocked=True,close_fault=fault)
+                publisher=CameraPublisher(camera,Latest(),Path(folder),stop)
+                publisher.join_seconds=.05
+                publisher.start()
+                self.assertTrue(camera.read_started.wait(1))
+                with self.assertRaises(Exception) as caught:
+                    publisher.close()
+                self.assertEqual(cleanup_error_names(caught.exception),expected)
+                self.assertEqual(publisher.thread.is_alive(),alive)
+                camera.gate.set();publisher.thread.join(1)
+                self.assertFalse(publisher.thread.is_alive())
+
+    def test_failed_camera_close_is_reported_with_the_live_publisher(self):
+        stop=threading.Event();camera=PacedCamera(blocked=True,close_fault='hold')
+        client=Fake(time.monotonic);latest=Latest();box={}
+        with tempfile.TemporaryDirectory() as folder, \
+                unittest.mock.patch.object(CameraPublisher,'join_seconds',.05):
+            out=Path(folder);(out/'service.json').write_text('{}')
+            thread=threading.Thread(target=lambda:box.setdefault('result',capture_loop(
+                client,latest,out,png_writer,expected_build=BUILD,stop=stop,
+                seconds=2,buttons=Buttons(out),camera=camera,health_interval=10)))
+            thread.start()
+            self.assertTrue(camera.read_started.wait(1))
+            stop.set();thread.join(3)
+            self.assertFalse(thread.is_alive())
+            camera.gate.set()
+        result=box['result']
+        self.assertEqual((result['status'],result['camera_cleanup_error']),
+                         ('FAIL','RuntimeError+OSError'))
+        # The UART owner still verified neutral release after the camera failure.
+        self.assertEqual(result['cleanup'],{'verified':True,'state':abi.STATE_PAUSED,
+                                            'input_effective':0})
 
     def test_camera_failure_is_retained_and_closes_source(self):
         for fault,stage,error in (('start','camera-start','RuntimeError'),('read','capture','TimeoutError'),
@@ -625,10 +951,11 @@ class ButtonQueueTests(unittest.TestCase):
                            stop=clock,seconds=4,interval=2,clock=clock,wait=clock.wait,buttons=Buttons(out))
             self.assertEqual(r['status'],'PASS')
             self.assertEqual([x['id'] for x in r['inputs']],[1,2])
-            relevant=[x for x in client.events if x in ('snapshot','READ_FRAME_COMPLETE') or isinstance(x,tuple) and x[0]=='write']
+            relevant=[x for x in client.events if x in ('snapshot','READ_FRAME_COMPLETE') or
+                      isinstance(x,tuple) and x[0] in ('write','input')]
             self.assertEqual(relevant,[
-                ('write',abi.HOST_REG_INPUT,1),('write',abi.HOST_REG_INPUT,0),
-                ('write',abi.HOST_REG_INPUT,2),('write',abi.HOST_REG_INPUT,0),
+                ('input',1),('input',0),
+                ('input',2),('input',0),
                 'snapshot','READ_FRAME_COMPLETE','snapshot','READ_FRAME_COMPLETE',
                 ('write',abi.HOST_REG_INPUT,0)])
 
@@ -658,8 +985,8 @@ class ButtonQueueTests(unittest.TestCase):
             capture_loop(client,Latest(clock=clock),out,png_writer,expected_build=BUILD,
                          stop=clock,seconds=4,interval=2,clock=clock,wait=wait,buttons=Buttons(out))
             events=client.events
-            self.assertLess(events.index(('write',abi.HOST_REG_INPUT,1)),events.index('snapshot'))
-            self.assertGreater(events.index(('write',abi.HOST_REG_INPUT,2)),events.index('READ_FRAME_COMPLETE'))
+            self.assertLess(events.index(('input',1)),events.index('snapshot'))
+            self.assertGreater(events.index(('input',2)),events.index('READ_FRAME_COMPLETE'))
 
     def test_history_transitions_retention_and_newest_first(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -865,18 +1192,19 @@ class ButtonQueueTests(unittest.TestCase):
 
     def test_uncertain_press_stops_capture_without_further_traffic(self):
         class Broken(Fake):
-            def write_host(self,address,value):
-                super().write_host(address,value)
-                if value:
+            def control(self,action,value=None):
+                result=super().control(action,value)
+                if action=='INPUT' and value:
                     self.uncertain=True
                     raise RuntimeError('uncertain input')
+                return result
         with tempfile.TemporaryDirectory() as folder:
             out=self.runtime(folder);enqueue(out,1,134)
             clock=Clock();clock.value=0;client=Broken(clock)
             r=capture_loop(client,Latest(clock=clock),out,png_writer,expected_build=BUILD,
                            stop=clock,seconds=4,clock=clock,wait=clock.wait,buttons=Buttons(out))
             self.assertEqual(r['status'],'FAIL');self.assertFalse(r['cleanup']['verified'])
-            self.assertEqual(client.events[-1],('write',abi.HOST_REG_INPUT,1))
+            self.assertEqual(client.events[-1],('input',1))
             self.assertEqual(client.count,0)
             self.assertEqual(history(out)[0]['state'],'UNCERTAIN')
             self.assertFalse(list((out/'inbox').glob('*.json')))
@@ -913,10 +1241,10 @@ class SteppedModeTests(unittest.TestCase):
             self.assertEqual(result['status'],'PASS')
             relevant=[x for x in client.events
                       if x in ('snapshot','READ_FRAME_COMPLETE','HALT','RUN')
-                      or isinstance(x,tuple) and x[0] in ('write','run_dots')]
+                      or isinstance(x,tuple) and x[0] in ('write','input','run_dots')]
             self.assertEqual(relevant,[
                 'RUN',
-                ('write',abi.HOST_REG_INPUT,1),('write',abi.HOST_REG_INPUT,0),
+                ('input',1),('input',0),
                 'HALT',('run_dots',FRAME_DOTS),'snapshot','READ_FRAME_COMPLETE',
                 ('run_dots',FRAME_DOTS),'snapshot','READ_FRAME_COMPLETE',
                 'HALT',('write',abi.HOST_REG_INPUT,0)])
@@ -990,9 +1318,9 @@ class SteppedModeTests(unittest.TestCase):
 
     def test_mode_change_cannot_skip_an_in_flight_release(self):
         class ReleaseFails(Fake):
-            def write_host(self,address,value):
-                if value==0:raise RuntimeError('release rejected')
-                super().write_host(address,value)
+            def control(self,action,value=None):
+                if action=='INPUT' and value==0:raise RuntimeError('release rejected')
+                return super().control(action,value)
         with tempfile.TemporaryDirectory() as folder:
             out=self.runtime(folder);enqueue(out,1,134);enqueue_mode(out,'stepped')
             clock=Clock();clock.value=0;buttons=Buttons(out)
@@ -1091,11 +1419,11 @@ class SteppedModeTests(unittest.TestCase):
             self.assertEqual(client.stepped_masks,[0,abi.BUTTON_RIGHT,0])
             relevant=[x for x in client.events
                       if x in ('snapshot','READ_FRAME_COMPLETE','HALT','RUN')
-                      or isinstance(x,tuple) and x[0] in ('write','run_dots')]
+                      or isinstance(x,tuple) and x[0] in ('write','input','run_dots')]
             self.assertEqual(relevant,[
                 'RUN','HALT',('run_dots',FRAME_DOTS),'snapshot','READ_FRAME_COMPLETE',
-                ('write',abi.HOST_REG_INPUT,abi.BUTTON_RIGHT),('run_dots',FRAME_DOTS),
-                ('write',abi.HOST_REG_INPUT,0),'snapshot','READ_FRAME_COMPLETE',
+                ('input',abi.BUTTON_RIGHT),('run_dots',FRAME_DOTS),
+                ('input',0),'snapshot','READ_FRAME_COMPLETE',
                 ('run_dots',FRAME_DOTS),'snapshot','READ_FRAME_COMPLETE',
                 'HALT',('write',abi.HOST_REG_INPUT,0)])
             receipt=result['inputs'][-1]
