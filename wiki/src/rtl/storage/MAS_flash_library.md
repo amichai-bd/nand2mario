@@ -127,6 +127,19 @@ pinned data controller, not read from its documentation. The IP's control
 slave is not connected to any writer: no erase and no program path exists in
 the console.
 
+The IP drives the flash array's `xe_ye` enable from one LUT,
+`(~is_busy && avmm_read) || is_read_busy` in its data controller, and the
+array samples it against the IP's own LUT-gated `drclk`
+(`~enable_drclk_neg_reg || clock || ...`), which reaches the array about
+0.7 ns after the fabric clock at the fast corner with a 1.0 ns hold
+requirement. Synthesis merges the reader's `avmm_read` decode into that LUT,
+so both the reader's `state.phase` register and the IP's `read_state`
+register reach `xe_ye` with a hold margin the fitter alone leaves near zero
+(0.068 and -0.044 ns measured); the vendor `.sdc` constrains only its
+`flash_busy_reg`/`flash_busy_clear_reg`. The
+[system-clock hold uncertainty](../../clocks-resets-cdc.md#timing-constraints)
+supplies the margin; no false path is applied to this check.
+
 Under the predefined `VERILATOR` macro the wrapper instantiates
 [`n2m_sim_onchip_flash`](../../../../src/rtl/storage/n2m_sim_onchip_flash.sv)
 instead, the same rule as the [ADC double](../../fpga-controls.md) and the

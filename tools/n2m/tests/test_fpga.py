@@ -525,7 +525,7 @@ class FpgaTests(unittest.TestCase):
 
         def fake(root, build, args, provenance=None, progress=None):
             bitstream = "workdir/builds/notice/fpga/smoke/attempts/path with spaces/output/design.sof"
-            hold = {"clock": "sdram_clk", "worst": {"corner": "fast0", "report": "hold_fast0_sdram.rpt", "slack_ns": 18.939,
+            hold = {"clock": "sdram_clk", "worst": {"corner": "fast0", "report": "hold_fast0_sdram.rpt", "slack_ns": 18.939, "hold_uncertainty_ns": 0.15,
                                                      "from": "u_system|u_sdram|addr[0]", "to": "DRAM_ADDR[0]"}, "corners": {}}
             return {"status": status[0], "cache": "BUILT", "attempt_result": "result.json",
                     "artifacts": {bitstream: "hash"},
@@ -544,7 +544,7 @@ class FpgaTests(unittest.TestCase):
         self.assertIn("Checked bitstream: workdir/builds/notice/fpga/smoke/attempts/path with spaces/output/design.sof", text)
         self.assertIn("--sof 'workdir/builds/notice/fpga/smoke/attempts/path with spaces/output/design.sof'", text)
         self.assertIn("--quartus-bin 'tools with spaces'", text)
-        self.assertIn("Worst hold (sdram sdram_clk): 18.939 ns at fast0, u_system|u_sdram|addr[0] -> DRAM_ADDR[0] (hold_fast0_sdram.rpt)", text.splitlines())
+        self.assertIn("Worst hold (sdram sdram_clk): 18.939 ns at fast0 above 0.150 ns hold uncertainty, u_system|u_sdram|addr[0] -> DRAM_ADDR[0] (hold_fast0_sdram.rpt)", text.splitlines())
 
         comparison[0] = True
         with patch("n2m.cli.build_fpga", side_effect=fake), patch("n2m.cli.git_state", return_value={}), \

@@ -1647,11 +1647,16 @@ The evidence records them under `hold_paths`: `npaths`, then `clocks.<label>`
 with the `clock` name, `corners.<corner>` (`report`, `found`, `violated`,
 `worst_slack_ns` and the `paths` rows: `slack_ns`, `from`, `to`,
 `launch_clock`, `latch_clock`, `relationship_ns`, `clock_skew_ns`,
-`data_delay_ns`, entity prefixes stripped from the node names) and `worst`,
+`data_delay_ns` and `hold_uncertainty_ns`, the clock uncertainty TimeQuest
+applied to that path's hold check as read from its required-time detail,
+entity prefixes stripped from the node names) and `worst`,
 the tightest first row across corners with its `corner` and `report`. The
-text output prints one `Worst hold (<label> <clock>)` line per clock. A
-report whose delay model, header, table, latch clock, ordering or violation
-count disagrees fails as malformed evidence; a clock without paths records an
+text output prints one `Worst hold (<label> <clock>)` line per clock, naming
+the slack, corner and uncertainty. The system clock carries the
+[0.150 ns added hold uncertainty](../../src/clocks-resets-cdc.md#timing-constraints),
+so its reported slack is the margin above that constructed value. A
+report whose delay model, header, table, latch clock, ordering, violation
+count or uncertainty rows disagree fails as malformed evidence; a clock without paths records an
 empty list and no `worst`. Slack signs are recorded, not judged: a negative
 hold still fails through the timing summary as before, and this audit adds
 no threshold.

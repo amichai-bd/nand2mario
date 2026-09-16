@@ -236,6 +236,15 @@ Use Quartus Prime Lite/Standard TimeQuest for the exact MAX 10 part. Define the
 `derive_pll_clocks`, then `derive_clock_uncertainty`. Also analyze the upper
 reference bound with input period 19.998 ns. Generated clocks must retain the
 actual input/output relationship; tick enables get no clock declaration.
+Then add 0.150 ns of same-clock hold uncertainty on the system PLL clock
+(`set_clock_uncertainty -hold -add`) in every SDC that derives it:
+register-to-hard-block paths (M9K address registers, the flash IP's LUT-gated
+`drclk`) have no logic to absorb the block's later clock and the fitter pads
+hold only to the constrained zero, so successive fits of unchanged RTL
+measured 0.161 down to -0.044 ns on them. The added uncertainty makes the
+fitter route each such path with that physical margin; the
+[hold path audit](../tools/n2m/SPEC.md#hold-path-audit) records the applied
+value as `hold_uncertainty_ns` and the reported slack is what remains above it.
 
 Keep both related domains timed by default. Do not apply a blanket asynchronous
 clock-group exception: that can hide the frame bundle's physical settling bound.
