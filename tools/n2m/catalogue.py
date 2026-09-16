@@ -20,6 +20,7 @@ import subprocess
 import sys
 import time
 
+from . import host_closure
 from .records import atomic_json, atomic_text, file_hash, workspace
 from .simulation import UNSUPPORTED_REASON, simulator_problem, unsupported_backend
 from .test_budget import supervise
@@ -34,6 +35,8 @@ MINIMUM_CHILD_SECONDS = 13
 LABEL = re.compile(r"[a-z0-9][a-z0-9-]*")
 TARGET = re.compile(r"[a-z0-9][a-z0-9_-]*")
 UNIT_FILE = re.compile(r"[A-Za-z0-9_./-]+\.py")
+INPUT_PATH = re.compile(r"[A-Za-z0-9_.][A-Za-z0-9_./-]*")
+EXTERNAL = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 # Directories that hold generated output or another checkout, never our tree.
 SKIP_DIRECTORIES = frozenset({".git", "workdir", "worktrees", "__pycache__", "node_modules", ".venv"})
 # The pinned cocotb interpreter of src/dv/python/README.md; units labelled
@@ -45,7 +48,9 @@ HEADER = ("# Catalogue of every runnable test unit: one entry per registry targe
           "# per standalone test_*.py file. Levels are ordered, so selecting a level runs\n"
           "# every level below it. Labels are a set, validated against the vocabulary\n"
           "# below. duration_seconds is the wall of the last actual run, written back by\n"
-          "# `tools/build.py tests run`; it is never edited by hand.\n"
+          "# `tools/build.py tests run`; it is never edited by hand. A host unit's optional\n"
+          "# inputs list the data files or directories it reads; its module imports are\n"
+          "# derived, and external_imports names the packages outside the tree they reach.\n"
           "#\n"
           "# Whole-line comments only; see tools/n2m/catalogue.py for the accepted subset.\n")
 
@@ -181,6 +186,10 @@ def format_document(model):
     lines = [HEADER, "version: %d\n" % model["version"], "labels:\n"]
     for label in sorted(model["labels"]):
         lines.append(f"  {label}: {_quote(model['labels'][label])}\n")
+    if model.get("external_imports"):
+        lines.append("external_imports:\n")
+        for name in sorted(model["external_imports"]):
+            lines.append(f"  {name}: {_quote(model['external_imports'][name])}\n")
     lines.append("units:\n")
     for name in sorted(model["units"]):
         lines.append(format_unit(name, model["units"][name]))
@@ -198,8 +207,11 @@ def format_document(model):
 
 def format_unit(name, entry):
     labels = ", ".join(sorted(entry["labels"]))
+    inputs = ""
+    if entry.get("inputs") is not None:
+        inputs = f", inputs: [{', '.join(sorted(entry['inputs']))}]"
     return (f"  {name}: {{kind: {entry['kind']}, level: {entry['level']}, "
-            f"labels: [{labels}], duration_seconds: {_duration(entry['duration_seconds'])}}}\n")
+            f"labels: [{labels}], duration_seconds: {_duration(entry['duration_seconds'])}{inputs}}}\n")
 
 
 # ------------------------------------------------------------------ the model
@@ -209,9 +221,9 @@ def load(root):
     path = Path(root) / CATALOGUE
     model = read_yaml(path.read_text(encoding="utf-8"))
     if (not isinstance(model, dict)
-            or set(model) - {"retired"} != {"version", "labels", "units", "not_runnable"}):
+            or set(model) - {"retired", "external_imports"} != {"version", "labels", "units", "not_runnable"}):
         raise ValueError("catalogue requires exactly version, labels, units and not_runnable, "
-                         "plus an optional retired mapping")
+                         "plus optional external_imports and retired mappings")
     if model["version"] != 1:
         raise ValueError("catalogue requires version 1")
     vocabulary = model["labels"]
@@ -226,10 +238,21 @@ def load(root):
     if not isinstance(units, dict) or not units:
         raise ValueError("catalogue requires a nonempty units mapping")
     for name, entry in units.items():
-        if not isinstance(entry, dict) or set(entry) != {"kind", "level", "labels", "duration_seconds"}:
-            raise ValueError(f"unit {name} requires exactly kind, level, labels and duration_seconds")
+        if not isinstance(entry, dict) or set(entry) - {"inputs"} != {"kind", "level", "labels", "duration_seconds"}:
+            raise ValueError(f"unit {name} requires exactly kind, level, labels and duration_seconds, "
+                             "plus optional host inputs")
         if entry["kind"] not in KINDS:
             raise ValueError(f"unit {name} kind must be one of {', '.join(KINDS)}")
+        if "inputs" in entry:
+            inputs = entry["inputs"]
+            if entry["kind"] != "unit":
+                raise ValueError(f"unit {name} is a simulation target; its inputs live in targets.json")
+            if not isinstance(inputs, list) or len(set(inputs)) != len(inputs):
+                raise ValueError(f"unit {name} inputs must be a set of repository paths")
+            for source in inputs:
+                if (not isinstance(source, str) or not INPUT_PATH.fullmatch(source) or source.endswith("/")
+                        or ".." in source.split("/")):
+                    raise ValueError(f"unit {name} input is not a repository-relative path: {source}")
         if entry["level"] not in LEVELS:
             raise ValueError(f"unit {name} level must be 0, 1 or 2")
         pattern = TARGET if entry["kind"] == "sim" else UNIT_FILE
@@ -252,6 +275,14 @@ def load(root):
             raise ValueError(f"not_runnable {name} requires a recorded reason")
         if name in units:
             raise ValueError(f"{name} is both a unit and not_runnable")
+    # An external import is a package outside the tree that a host unit's import
+    # closure reaches; it is named with its provenance so it never passes silently.
+    model["external_imports"] = model.get("external_imports") or {}
+    if not isinstance(model["external_imports"], dict):
+        raise ValueError("catalogue external_imports must be a mapping of package name to provenance")
+    for name, reason in model["external_imports"].items():
+        if not EXTERNAL.fullmatch(name) or not isinstance(reason, str) or not reason.strip():
+            raise ValueError(f"external_imports {name} requires a recorded provenance")
     # A retired target is a former registry target the simulator cannot serve;
     # it is named with its reason so it never disappears silently.
     model["retired"] = model.get("retired") or {}
@@ -321,6 +352,11 @@ def coverage(root, model):
     for path in sorted(files | set(model["not_runnable"])):
         if not (root / path).is_file():
             problems.append(f"catalogue entry {path} names no file in the tree")
+    # Every host unit's import closure must be derivable, and a declared closure consistent.
+    cache = {}
+    for path in sorted(files):
+        if (root / path).is_file():
+            problems += host_closure.check(root, path, units[path], model["external_imports"], cache)
     return problems
 
 

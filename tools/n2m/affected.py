@@ -6,7 +6,7 @@ import subprocess
 import time
 from pathlib import Path
 
-from . import catalogue
+from . import catalogue, host_closure
 from .hdl import dependencies
 from .records import file_hash
 from .simulation import load_target
@@ -81,6 +81,21 @@ def uncertainty(root, target):
     return None
 
 
+def tracked_files(root, directory):
+    """Tracked files under one declared directory input; untracked additions force fallback anyway."""
+    return [p for p in git(root,'ls-files','-z','--',directory).decode().split('\0') if p]
+
+
+def host_inputs(root, model, cache):
+    """Declared host unit closures by name; an undeclared or unknown closure is absent."""
+    inputs={}
+    for name,entry in model['units'].items():
+        if entry['kind']!='unit':continue
+        try:inputs[name]=host_closure.closure(root,name,entry,model['external_imports'],cache,lambda d:tracked_files(root,d))
+        except host_closure.Unknown:continue
+    return inputs
+
+
 def report(root, base):
     started=time.monotonic(); root=Path(root).resolve()
     commit,changed=changes(root,base)
@@ -90,7 +105,7 @@ def report(root, base):
     names,_=catalogue.select(model,level=2)
     paths={r['path'] for r in changed}|{r['old_path'] for r in changed if 'old_path' in r}
     definitions=json.loads((root/'src/dv/builder/targets.json').read_text(encoding='utf-8'))
-    inputs={}; errors={}
+    inputs=host_inputs(root,model,{}); errors={}
     for name in names:
         if model['units'][name]['kind']!='sim':continue
         try:inputs[name]=target_inputs(root,definitions[name])
@@ -101,24 +116,32 @@ def report(root, base):
     if paths-known:fallback.append('unmapped changed paths: '+', '.join(sorted(paths-known)))
     if any(p.startswith(('tools/','cfg/','.github/')) or p in ('src/dv/builder/targets.json',catalogue.CATALOGUE) for p in paths):
         fallback.append('tool, configuration or catalogue change can affect preparation and execution')
+    # Units share most closure files, so each path is hashed and compared to the base once.
+    equal_to_base={}
+    def same(path):
+        if path not in equal_to_base:
+            equal_to_base[path]=(file_hash(root/path),hashlib.sha256(git(root,'show',commit+':'+path)).hexdigest())
+        return equal_to_base[path]
     units={}
     for name in names:
         row=dict(decision='selected',reasons=[])
-        if model['units'][name]['kind']=='unit':
-            row['reasons']=['standalone host dependency closure is unknown']
+        host=model['units'][name]['kind']=='unit'
+        if host and name not in inputs:
+            row['reasons']=['unknown closure: no declared inputs in '+catalogue.CATALOGUE]
         elif fallback:row['reasons']=fallback[:]
         elif name in errors:row['reasons']=['input validation: '+errors[name]]
         elif paths&inputs[name]:row['reasons']=['changed inputs: '+', '.join(sorted(paths&inputs[name]))]
         else:
             try:
-                target,_=load_target(root,name)
-                unknown=uncertainty(root,target)
+                # A host unit's declared closure is validated by `tests validate`; a simulation
+                # target also needs its call-free qualification before its inputs count as complete.
+                unknown=None if host else uncertainty(root,load_target(root,name)[0])
                 if unknown:row['reasons']=[unknown]
                 else:
-                    hashes={p:file_hash(root/p) for p in sorted(inputs[name])}
-                    equal=all(hashlib.sha256(git(root,'show',commit+':'+p)).hexdigest()==h for p,h in hashes.items())
-                    if equal:
-                        row.update(decision='review_candidate',reasons=['validated declared repository inputs equal base'],inputs=hashes,
+                    hashes={p:same(p)[0] for p in sorted(inputs[name])}
+                    if all(current==base for current,base in map(same,hashes)):
+                        reason='validated declared host closure equal base' if host else 'validated declared repository inputs equal base'
+                        row.update(decision='review_candidate',reasons=[reason],inputs=hashes,
                                    limitation='not accepted reuse; prior result, tool/runtime identity and scoped gates still require review')
                     else:row['reasons']=['input bytes differ from base']
             except (ValueError,OSError,KeyError,StopIteration,SyntaxError,subprocess.CalledProcessError) as error:
